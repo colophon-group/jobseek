@@ -11,9 +11,13 @@
     "compile": "lingui compile"
   },
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
     "@lingui/core": "^5",
     "@lingui/macro": "^5",
     "@lingui/react": "^5",
+    "@mui/material": "^7.3.8",
+    "@mui/material-nextjs": "^7.3.8",
     "next": "^15",
     "react": "^19",
     "react-dom": "^19"

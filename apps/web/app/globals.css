@@ -1,0 +1,48 @@
+/*
+ * Design tokens for non-MUI code (CSS Modules, server components).
+ * Values must match src/theme/tokens.ts — that file is the source of truth.
+ *
+ * MUI components use --mui-palette-* variables generated automatically
+ * by createTheme({ cssVariables: true }). These custom properties exist
+ * for code that doesn't go through MUI.
+ */
+
+/* ── Light (default) ── */
+:root {
+  --background: #f7f8fb;
+  --foreground: #18181b;
+  --muted: #52525b;
+  --muted-strong: #3f3f46;
+  --surface: #ffffff;
+  --surface-alpha: rgba(255, 255, 255, 0.85);
+  --border-soft: rgba(24, 24, 27, 0.08);
+  --divider: #d4d4d4;
+  --primary: #111111;
+  --primary-contrast: #f5f5f5;
+}
+
+/* ── Dark ── */
+.dark {
+  --background: #09090b;
+  --foreground: #f4f4f5;
+  --muted: #a1a1aa;
+  --muted-strong: #d4d4d8;
+  --surface: #0f0f0f;
+  --surface-alpha: rgba(0, 0, 0, 0.8);
+  --border-soft: rgba(255, 255, 255, 0.08);
+  --divider: #2a2a2a;
+  --primary: #f5f5f5;
+  --primary-contrast: #09090b;
+}
+
+/* ── Base reset ── */
+body {
+  background: var(--background);
+  color: var(--foreground);
+  margin: 0;
+  min-height: 100vh;
+}
+
+a {
+  color: inherit;
+}

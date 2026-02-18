@@ -19,6 +19,18 @@ msgstr ""
 msgid "home.hero.title"
 msgstr "Finde deine nächste Chance"
 
+#. Heading shown when a page crashes unexpectedly
+#. js-lingui-explicit-id
+#: app/[lang]/error.tsx:16
+msgid "error.title"
+msgstr "Etwas ist schiefgelaufen"
+
+#. Button to retry loading the page after an error
+#. js-lingui-explicit-id
+#: app/[lang]/error.tsx:24
+msgid "error.retryButton"
+msgstr "Erneut versuchen"
+
 #. Subheading below the main title on the landing page
 #. js-lingui-explicit-id
 #: app/[lang]/page.tsx:17

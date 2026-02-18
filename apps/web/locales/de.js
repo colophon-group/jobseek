@@ -1,1 +1,1 @@
-/*eslint-disable*/module.exports={messages:JSON.parse("{\"home.hero.subtitle\":[\"Willkommen bei Jobseek\"],\"home.hero.title\":[\"Finde deine nächste Chance\"]}")};
+/*eslint-disable*/module.exports={messages:JSON.parse("{\"error.retryButton\":[\"Erneut versuchen\"],\"error.title\":[\"Etwas ist schiefgelaufen\"],\"home.hero.subtitle\":[\"Willkommen bei Jobseek\"],\"home.hero.title\":[\"Finde deine nächste Chance\"]}")};
