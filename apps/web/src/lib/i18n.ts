@@ -1,7 +1,7 @@
 import { type I18n, type Messages, setupI18n } from "@lingui/core";
 import { setI18n } from "@lingui/react/server";
 
-export const locales = ["en", "de"] as const;
+export const locales = ["en", "de", "fr", "it"] as const;
 export type Locale = (typeof locales)[number];
 export const defaultLocale: Locale = "en";
 

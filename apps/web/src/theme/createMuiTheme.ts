@@ -13,6 +13,7 @@ import { tokens } from "./tokens";
  */
 
 const typography: ThemeOptions["typography"] = {
+  fontFamily: "var(--font-sans), 'JetBrains Mono', 'Inter', 'Helvetica Neue', 'Arial', sans-serif",
   fontWeightRegular: 500,
   fontWeightMedium: 600,
   fontWeightBold: 700,

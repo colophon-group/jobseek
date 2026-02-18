@@ -16,8 +16,10 @@
     "@lingui/core": "^5",
     "@lingui/macro": "^5",
     "@lingui/react": "^5",
+    "@mui/icons-material": "^7.3.8",
     "@mui/material": "^7.3.8",
     "@mui/material-nextjs": "^7.3.8",
+    "flag-icons": "^7.5.0",
     "next": "^15",
     "react": "^19",
     "react-dom": "^19"

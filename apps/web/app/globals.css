@@ -7,6 +7,16 @@
  * for code that doesn't go through MUI.
  */
 
+/* ── JetBrains Mono ── */
+@font-face { font-family: "JetBrains Mono"; src: url("/fonts/JetBrainsMono-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "JetBrains Mono"; src: url("/fonts/JetBrainsMono-Italic.woff2") format("woff2"); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: "JetBrains Mono"; src: url("/fonts/JetBrainsMono-Medium.woff2") format("woff2"); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: "JetBrains Mono"; src: url("/fonts/JetBrainsMono-MediumItalic.woff2") format("woff2"); font-weight: 500; font-style: italic; font-display: swap; }
+@font-face { font-family: "JetBrains Mono"; src: url("/fonts/JetBrainsMono-SemiBold.woff2") format("woff2"); font-weight: 600; font-style: normal; font-display: swap; }
+@font-face { font-family: "JetBrains Mono"; src: url("/fonts/JetBrainsMono-SemiBoldItalic.woff2") format("woff2"); font-weight: 600; font-style: italic; font-display: swap; }
+@font-face { font-family: "JetBrains Mono"; src: url("/fonts/JetBrainsMono-Bold.woff2") format("woff2"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "JetBrains Mono"; src: url("/fonts/JetBrainsMono-BoldItalic.woff2") format("woff2"); font-weight: 700; font-style: italic; font-display: swap; }
+
 /* ── Light (default) ── */
 :root {
   --background: #f7f8fb;
@@ -19,6 +29,30 @@
   --divider: #d4d4d4;
   --primary: #111111;
   --primary-contrast: #f5f5f5;
+
+  --info-color: #1d4ed8;
+  --info-bg: rgba(29, 78, 216, 0.06);
+  --info-border: rgba(29, 78, 216, 0.25);
+  --success-color: #15803d;
+  --success-bg: rgba(21, 128, 61, 0.06);
+  --success-border: rgba(21, 128, 61, 0.25);
+  --warning-color: #b45309;
+  --warning-bg: rgba(180, 83, 9, 0.06);
+  --warning-border: rgba(180, 83, 9, 0.25);
+  --error-color: #b91c1c;
+  --error-bg: rgba(185, 28, 28, 0.06);
+  --error-border: rgba(185, 28, 28, 0.25);
+
+  --spacing-xs: 0.5rem;
+  --spacing-sm: 1rem;
+  --spacing-md: 1.5rem;
+  --spacing-lg: 2rem;
+  --spacing-xl: 3rem;
+
+  --font-sans: "JetBrains Mono", "Inter", "Helvetica Neue", Arial, sans-serif;
+
+  --code-bg: rgba(24, 24, 27, 0.07);
+  --code-border: rgba(24, 24, 27, 0.15);
 }
 
 /* ── Dark ── */
@@ -33,16 +67,53 @@
   --divider: #2a2a2a;
   --primary: #f5f5f5;
   --primary-contrast: #09090b;
+
+  --info-color: #93bbfd;
+  --info-bg: rgba(147, 187, 253, 0.08);
+  --info-border: rgba(147, 187, 253, 0.2);
+  --success-color: #4ade80;
+  --success-bg: rgba(74, 222, 128, 0.08);
+  --success-border: rgba(74, 222, 128, 0.2);
+  --warning-color: #fb923c;
+  --warning-bg: rgba(251, 146, 60, 0.08);
+  --warning-border: rgba(251, 146, 60, 0.2);
+  --error-color: #f87171;
+  --error-bg: rgba(248, 113, 113, 0.08);
+  --error-border: rgba(248, 113, 113, 0.2);
+
+  --code-bg: rgba(255, 255, 255, 0.07);
+  --code-border: rgba(255, 255, 255, 0.15);
+}
+
+/* ── Public domain art theme toggle ── */
+:root {
+  --pda-light-display: block;
+  --pda-dark-display: none;
+}
+.dark {
+  --pda-light-display: none;
+  --pda-dark-display: block;
 }
 
 /* ── Base reset ── */
 body {
   background: var(--background);
   color: var(--foreground);
+  font-family: var(--font-sans);
+  font-weight: 500;
   margin: 0;
   min-height: 100vh;
 }
 
 a {
   color: inherit;
+}
+
+code {
+  font-size: 0.88em;
+  font-weight: 400;
+  padding: 0.05em 0.15em;
+  border-radius: 4px;
+  background: var(--code-bg);
+  border: 1px solid var(--code-border);
 }

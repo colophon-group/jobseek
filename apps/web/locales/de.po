@@ -13,11 +13,635 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#. Subheading below the main title on the landing page
+#. js-lingui-explicit-id
+#: app/[lang]/page.tsx:17
+#~ msgid "home.hero.subtitle"
+#~ msgstr "Willkommen bei Jobseek"
+
+#. Footer link to license page
+#. js-lingui-explicit-id
+#: src/components/Footer.tsx:41
+#~ msgid "common.footer.license"
+#~ msgstr ""
+
+#. CC right 1
+#. js-lingui-explicit-id
+#: src/components/LicenseContent.tsx:128
+msgid "license.data.r1"
+msgstr "„Viktor Shcherbakov, Sammlung von Stellenanzeigen\" mit einem Link zur Quelle."
+
+#. Feature: alerts you drive title
+#. js-lingui-explicit-id
+#: src/components/Features.tsx:191
+msgid "home.features.s2.p3.title"
+msgstr "Benachrichtigungen, die du steuerst"
+
+#. MIT license section title
+#. js-lingui-explicit-id
+#: src/components/LicenseContent.tsx:93
+msgid "license.code.title"
+msgstr "Anwendungscode (MIT-Lizenz)"
+
+#. TOC: Application code (MIT)
+#. js-lingui-explicit-id
+#: src/components/LicenseContent.tsx:37
+msgid "license.toc.code"
+msgstr "Anwendungscode (MIT)"
+
+#. Free feature: application tracker
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx:62
+msgid "home.pricing.free.f2"
+msgstr "Bewerbungstracker"
+
+#. Pro feature: application tracker
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx:119
+msgid "home.pricing.pro.f2"
+msgstr "Bewerbungstracker"
+
+#. Feature: application tracker title
+#. js-lingui-explicit-id
+#: src/components/Features.tsx:139
+msgid "home.features.s1.p2.title"
+msgstr "Bewerbungstracker"
+
+#. Step 3 body
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:165
+msgid "indexing.ingestion.s3.body"
+msgstr "Als letztes Mittel parsen wir die Karriereseiten selbst, bevorzugen dabei die neuesten Einträge zuerst und stoppen, sobald bereits indexierte Stellen wieder auftauchen, anstatt jede Seite zu durchsuchen."
+
+#. Link text for browsing the repo
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:237
+msgid "indexing.oss.browseRepo"
+msgstr "Repository ansehen unter"
+
+#. Feature section 1 heading
+#. js-lingui-explicit-id
+#: src/components/Features.tsx:125
+msgid "home.features.s1.title"
+msgstr "Entwickelt für aktive Jobsuchende"
+
+#. Aria label for language switcher button
+#. js-lingui-explicit-id
+#: src/components/LocaleSwitcher.tsx:36
+msgid "common.locale.switch"
+msgstr "Sprache ändern"
+
+#. Pricing section heading
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx:149
+msgid "home.pricing.title"
+msgstr "Wähle den passenden Plan"
+
+#. Step 2 title
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:152
+msgid "indexing.ingestion.s2.title"
+msgstr "Client-APIs als Zweites."
+
+#. Aria label for close mobile menu button
+#. js-lingui-explicit-id
+#: src/components/MobileMenu.tsx:69
+msgid "common.mobileMenu.close"
+msgstr "Menü schließen"
+
+#. CC license section title
+#. js-lingui-explicit-id
+#: src/components/LicenseContent.tsx:119
+msgid "license.data.title"
+msgstr "Sammlung von Stellenanzeigen (CC BY-NC 4.0)"
+
+#. Feature: company alerts title
+#. js-lingui-explicit-id
+#: src/components/Features.tsx:134
+msgid "home.features.s1.p1.title"
+msgstr "Unternehmens-Benachrichtigungen"
+
+#. Footer link to contact email
+#. js-lingui-explicit-id
+#: src/components/Footer.tsx:44
+msgid "common.footer.contact"
+msgstr "Kontakt"
+
+#. TOC: Contact
+#. js-lingui-explicit-id
+#: src/components/LicenseContent.tsx:39
+msgid "license.toc.contact"
+msgstr "Kontakt"
+
+#. Contact section title
+#. js-lingui-explicit-id
+#: src/components/LicenseContent.tsx:147
+msgid "license.contact.title"
+msgstr "Kontakt"
+
+#. Table of contents heading
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:33
+msgid "indexing.toc.title"
+msgstr "Inhalt"
+
+#. Table of contents heading
+#. js-lingui-explicit-id
+#: src/components/LicenseContent.tsx:32
+msgid "license.toc.title"
+msgstr "Inhalt"
+
+#. MIT right 1
+#. js-lingui-explicit-id
+#: src/components/LicenseContent.tsx:102
+msgid "license.code.r1"
+msgstr "Den Code für jeden Zweck kopieren und ändern, einschließlich kommerzieller Produkte."
+
+#. TOC: Crawling assurances
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:38
+msgid "indexing.toc.assurances"
+msgstr "Crawling-Zusicherungen"
+
+#. Assurances section title
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:76
+msgid "indexing.assurances.title"
+msgstr "Crawling-Zusicherungen"
+
+#. Feature section 2 description
+#. js-lingui-explicit-id
+#: src/components/Features.tsx:175
+msgid "home.features.s2.description"
+msgstr "Dein Lieblingsunternehmen fehlt im Feed? Füge den Karriereseiten-Link ein und wir beginnen, ihn für dich zu scrapen — keine Skripte, keine Tabellen, kein Warten in Support-Warteschlangen."
+
+#. Pro feature: email alerts
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx:127
+msgid "home.pricing.pro.f4"
+msgstr "E-Mail-Benachrichtigungen & Updates"
+
+#. Assurance 3 body
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:100
+msgid "indexing.assurances.i3.body"
+msgstr "Auch nach der Entdeckung rufen wir Stellendetailseiten mit einem strikten Limit von einer Anfrage pro Seite pro Minute ab."
+
+#. Assurance 1 body
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:82
+msgid "indexing.assurances.i1.body"
+msgstr "Jedes Wiederholungsfenster nutzt exponentielles Backoff, damit wir einen Server nie überlasten, und wir brechen ab, wenn ein Host weiterhin Timeouts liefert."
+
+#. Feature section 1 eyebrow text
+#. js-lingui-explicit-id
+#: src/components/Features.tsx:122
+msgid "home.features.s1.eyebrow"
+msgstr "Alles, was du brauchst, um vorne zu bleiben"
+
+#. Nav link: Features
+#. Nav link: Features
+#. js-lingui-explicit-id
+#: src/components/Header.tsx:77
+#: src/components/MobileMenu.tsx:81
+msgid "common.nav.features"
+msgstr "Funktionen"
+
 #. Main heading on the landing page
 #. js-lingui-explicit-id
-#: app/[lang]/page.tsx:14
+#: src/components/Hero.tsx:38
 msgid "home.hero.title"
-msgstr "Finde deine nächste Chance"
+msgstr "Relevante Stellen schneller finden."
+
+#. Feature: company alerts description
+#. js-lingui-explicit-id
+#: src/components/Features.tsx:135
+msgid "home.features.s1.p1.description"
+msgstr "Folge Wunscharbeitgebern und werde benachrichtigt, wenn neue Stellen erscheinen."
+
+#. Pro tier description
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx:110
+msgid "home.pricing.pro.description"
+msgstr "Für aktive Jobsuchende, die unbegrenzte Reichweite und schnellere Einblicke brauchen."
+
+#. Free tier period
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx:49
+msgid "home.pricing.free.period"
+msgstr "Für immer"
+
+#. Free tier name
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx:44
+msgid "home.pricing.free.name"
+msgstr "Kostenlos"
+
+#. Hero primary call-to-action
+#. js-lingui-explicit-id
+#: src/components/Hero.tsx:21
+msgid "home.hero.primaryCta"
+msgstr "Jetzt starten"
+
+#. Footer link to GitHub repo
+#. js-lingui-explicit-id
+#: src/components/Footer.tsx:34
+msgid "common.footer.github"
+msgstr "GitHub"
+
+#. CTA when logged in: go to dashboard
+#. js-lingui-explicit-id
+#: src/components/Hero.tsx:20
+msgid "common.dashboard.goTo"
+msgstr "Zum Dashboard"
+
+#. Step 3 title
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:162
+msgid "indexing.ingestion.s3.title"
+msgstr "Behutsames Seiten-Parsing."
+
+#. Nav link: How do we index jobs?
+#. Nav link: How do we index jobs?
+#. js-lingui-explicit-id
+#: src/components/Header.tsx:83
+#: src/components/MobileMenu.tsx:87
+msgid "common.nav.company"
+msgstr "Wie indexieren wir Stellen?"
+
+#. TOC: How postings enter the index
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:39
+msgid "indexing.toc.ingestion"
+msgstr "Wie Stellenanzeigen in den Index gelangen"
+
+#. Ingestion section title
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:132
+msgid "indexing.ingestion.title"
+msgstr "Wie Stellenanzeigen in den Index gelangen"
+
+#. Indexing page title
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:57
+msgid "indexing.hero.title"
+msgstr "Wie wir Stellenanzeigen finden und verarbeiten"
+
+#. Step 2 body
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:155
+msgid "indexing.ingestion.s2.body"
+msgstr "Falls keine Sitemap existiert, untersuchen wir die Client-Anwendung auf JSON-APIs, die sie aufruft; wenn wir welche finden, nutzen wir diese Endpunkte direkt, um Stellenanzeigen-URLs aufzulisten, ohne das DOM zu scrapen."
+
+#. Opt-out section body
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:209
+msgid "indexing.optOut.body"
+msgstr "Wenn Sie unerwartete Aktivitäten unseres Crawlers bemerken oder es vorziehen, dass Ihre Karriereseite nicht indexiert wird, schreiben Sie uns bitte eine E-Mail und wir werden umgehend antworten."
+
+#. Outreach section body
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:250
+msgid "indexing.outreach.body"
+msgstr "Wenn Sie ungewöhnliches Crawler-Verhalten bemerken, es vorziehen, dass wir Ihre Inhalte nicht indexieren, oder Vorschläge zur Verbesserung unserer Schutzmaßnahmen haben, kontaktieren Sie uns bitte."
+
+#. Indexing page eyebrow
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:54
+msgid "indexing.hero.eyebrow"
+msgstr "Indexierungsrichtlinie"
+
+#. TOC: Job data (CC BY-NC 4.0)
+#. js-lingui-explicit-id
+#: src/components/LicenseContent.tsx:38
+msgid "license.toc.data"
+msgstr "Stellendaten (CC BY-NC 4.0)"
+
+#. Indexing page description
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:60
+msgid "indexing.hero.description"
+msgstr "Job Seek ist eine Suchmaschine sowohl für aktive Kandidaten als auch für Fachleute, die den Markt passiv beobachten — sie zeigt aktuelle Stellen und behandelt dabei die Infrastruktur der Arbeitgeber respektvoll. Diese Seite dokumentiert genau, wie sich unser Crawler verhält, welche Kontrollen ihn höflich halten und wie Stellen letztlich in den Index gelangen."
+
+#. License page description
+#. js-lingui-explicit-id
+#: src/components/LicenseContent.tsx:63
+msgid "license.hero.description"
+msgstr "Die Codebasis von Job Seek ist Open Source unter MIT. Die von uns gesammelten und aufbereiteten Stellendaten stehen unter Creative Commons BY-NC 4.0. Nachfolgend eine verständliche Zusammenfassung — bitte lies die vollständigen Lizenzen für die genauen Bedingungen."
+
+#. Hero eyebrow text above the title
+#. js-lingui-explicit-id
+#: src/components/Hero.tsx:35
+msgid "home.hero.eyebrow"
+msgstr "Den Puls des Arbeitsmarkts im Blick behalten."
+
+#. Feature: kill tab routine title
+#. js-lingui-explicit-id
+#: src/components/Features.tsx:186
+msgid "home.features.s2.p2.title"
+msgstr "Schluss mit der 50-Tab-Routine"
+
+#. Hero secondary call-to-action
+#. js-lingui-explicit-id
+#: src/components/Hero.tsx:50
+msgid "home.hero.secondaryCta"
+msgstr "Mehr erfahren"
+
+#. Footer link to license page
+#. js-lingui-explicit-id
+#: src/components/Footer.tsx:49
+msgid "common.footer.licenseLink"
+msgstr "Lizenz"
+
+#. License page title
+#. js-lingui-explicit-id
+#: src/components/LicenseContent.tsx:60
+msgid "license.hero.title"
+msgstr "Lizenz von Job Seek"
+
+#. License page eyebrow
+#. js-lingui-explicit-id
+#: src/components/LicenseContent.tsx:57
+msgid "license.hero.eyebrow"
+msgstr "Lizenzierung"
+
+#. Login button label
+#. Login button label
+#. js-lingui-explicit-id
+#: src/components/Header.tsx:48
+#: src/components/MobileMenu.tsx:38
+msgid "common.auth.login"
+msgstr "Anmelden"
+
+#. Feature: application tracker description
+#. js-lingui-explicit-id
+#: src/components/Features.tsx:140
+msgid "home.features.s1.p2.description"
+msgstr "Erfasse, wo du dich beworben hast, Status, Kontakte und nächste Schritte."
+
+#. TOC: Need to reach us?
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:43
+msgid "indexing.toc.outreach"
+msgstr "Kontakt aufnehmen?"
+
+#. Outreach section title
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:247
+msgid "indexing.outreach.title"
+msgstr "Kontakt aufnehmen?"
+
+#. CC right 2
+#. js-lingui-explicit-id
+#: src/components/LicenseContent.tsx:133
+msgid "license.data.r2"
+msgstr "Keine kommerzielle Weiterverbreitung oder Weiterverkauf ohne Genehmigung."
+
+#. MIT right 3
+#. js-lingui-explicit-id
+#: src/components/LicenseContent.tsx:108
+msgid "license.code.r3"
+msgstr "Keine Gewährleistung — Nutzung auf eigenes Risiko."
+
+#. Step 4 body
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:175
+msgid "indexing.ingestion.s4.body"
+msgstr "Sobald wir eine einzelne Stellenanzeige abrufen, speichern wir nur die stellenspezifischen Metadaten (Titel, Rollenbeschreibung, Standort, Vergütungshinweise, Stellen-URL und Zeitstempel) sowie extrahierte strukturierte Felder. Wir archivieren keine nicht verwandten Seiteninhalte."
+
+#. Assurance 3 title
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:99
+msgid "indexing.assurances.i3.title"
+msgstr "Eine Seite pro Minute."
+
+#. CTA when logged in: open dashboard
+#. CTA when logged in: open dashboard
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx:26
+#: src/components/Pricing.tsx:83
+msgid "common.dashboard.open"
+msgstr "Dashboard öffnen"
+
+#. Aria label for mobile menu button
+#. js-lingui-explicit-id
+#: src/components/Header.tsx:107
+msgid "common.header.openMenu"
+msgstr "Hauptmenü öffnen"
+
+#. TOC: Open-source crawlers
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:42
+msgid "indexing.toc.oss"
+msgstr "Open-Source-Crawler"
+
+#. Open-source section title
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:230
+msgid "indexing.oss.title"
+msgstr "Open-Source-Crawler"
+
+#. TOC: Opt-out or questions
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:40
+msgid "indexing.toc.optOut"
+msgstr "Opt-out oder Fragen"
+
+#. Opt-out section title
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:206
+msgid "indexing.optOut.title"
+msgstr "Opt-out oder Fragen"
+
+#. Assurance 2 body
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:90
+msgid "indexing.assurances.i2.body"
+msgstr "Unser Crawler liest <0>robots.txt</0>, befolgt Disallow-Regeln, identifiziert sich über <1>User-Agent</1> und respektiert den W3C-<2>TDM-Reservation</2>-Header — wenn eine Seite Reservation signalisiert, überspringen wir sie."
+
+#. TOC: Our stance on automation
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:41
+msgid "indexing.toc.automation"
+msgstr "Unsere Haltung zur Automatisierung"
+
+#. Automation stance title
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:219
+msgid "indexing.automation.title"
+msgstr "Unsere Haltung zur Automatisierung"
+
+#. TOC: Overview
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:37
+msgid "indexing.toc.overview"
+msgstr "Überblick"
+
+#. TOC: Overview
+#. js-lingui-explicit-id
+#: src/components/LicenseContent.tsx:36
+msgid "license.toc.overview"
+msgstr "Überblick"
+
+#. Table of contents aria label
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:34
+msgid "indexing.toc.ariaLabel"
+msgstr "Seiteninhalt"
+
+#. Table of contents aria label
+#. js-lingui-explicit-id
+#: src/components/LicenseContent.tsx:33
+msgid "license.toc.ariaLabel"
+msgstr "Seiteninhalt"
+
+#. Feature: kill tab routine description
+#. js-lingui-explicit-id
+#: src/components/Features.tsx:187
+msgid "home.features.s2.p2.description"
+msgstr "Sammle alle interessanten Startups in einem Dashboard, statt mit Chrome-Fenstern und Lesezeichen zu jonglieren."
+
+#. Feature: paste a link title
+#. js-lingui-explicit-id
+#: src/components/Features.tsx:181
+msgid "home.features.s2.p1.title"
+msgstr "Link einfügen, Crawl starten"
+
+#. Pro tier period
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx:106
+msgid "home.pricing.pro.period"
+msgstr "pro Monat"
+
+#. Feature: paste a link description
+#. js-lingui-explicit-id
+#: src/components/Features.tsx:182
+msgid "home.features.s2.p1.description"
+msgstr "Verweise uns auf eine beliebige Karriereseite oder ein Notion-Jobboard und Job Seek spiegelt sie innerhalb von Minuten in deinem Workspace."
+
+#. Pricing section eyebrow
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx:146
+msgid "home.pricing.eyebrow"
+msgstr "Preise"
+
+#. Nav link: Pricing
+#. Nav link: Pricing
+#. js-lingui-explicit-id
+#: src/components/Header.tsx:80
+#: src/components/MobileMenu.tsx:84
+msgid "common.nav.pricing"
+msgstr "Preise"
+
+#. Pro tier name
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx:101
+msgid "home.pricing.pro.name"
+msgstr "Pro"
+
+#. Nav link: Product
+#. Nav link: Product
+#. js-lingui-explicit-id
+#: src/components/Header.tsx:74
+#: src/components/MobileMenu.tsx:78
+msgid "common.nav.product"
+msgstr "Produkt"
+
+#. Fallback credit text for public domain artwork
+#. js-lingui-explicit-id
+#: src/components/PublicDomainArt.tsx:66
+msgid "common.art.publicDomain"
+msgstr "Gemeinfrei"
+
+#. Contact call to action
+#. js-lingui-explicit-id
+#: src/components/LicenseContent.tsx:150
+msgid "license.contactCta"
+msgstr "Fragen zur Lizenzierung oder kommerziellen Nutzung? Schreib uns eine E-Mail."
+
+#. Link to full CC license
+#. js-lingui-explicit-id
+#: src/components/LicenseContent.tsx:140
+msgid "license.data.linkLabel"
+msgstr "CC BY-NC 4.0 Lizenz lesen"
+
+#. Link to full MIT license
+#. js-lingui-explicit-id
+#: src/components/LicenseContent.tsx:112
+msgid "license.code.linkLabel"
+msgstr "Vollständige MIT-Lizenz lesen"
+
+#. MIT right 2
+#. js-lingui-explicit-id
+#: src/components/LicenseContent.tsx:105
+msgid "license.code.r2"
+msgstr "Deine Änderungen weiterverbreiten, solange du den MIT-Hinweis beifügst."
+
+#. Footer license summary text
+#. js-lingui-explicit-id
+#: src/components/Footer.tsx:19
+msgid "common.footer.text"
+msgstr "Veröffentlicht unter der MIT-Lizenz. Stellendaten sind CC BY-NC 4.0."
+
+#. Assurance 1 title
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:81
+msgid "indexing.assurances.i1.title"
+msgstr "Respektvolles Tempo."
+
+#. Assurance 2 title
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:88
+msgid "indexing.assurances.i2.title"
+msgstr "Robots, Attribution und TDM-Reservation."
+
+#. Feature: saved searches description
+#. js-lingui-explicit-id
+#: src/components/Features.tsx:145
+msgid "home.features.s1.p3.description"
+msgstr "Speichere deine Filter für schnelle Überprüfungen, ohne alles neu eintippen zu müssen."
+
+#. Free feature: saved searches
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx:66
+msgid "home.pricing.free.f3"
+msgstr "Gespeicherte Suchen"
+
+#. Pro feature: saved searches
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx:123
+msgid "home.pricing.pro.f3"
+msgstr "Gespeicherte Suchen"
+
+#. Feature: saved searches title
+#. js-lingui-explicit-id
+#: src/components/Features.tsx:144
+msgid "home.features.s1.p3.title"
+msgstr "Gespeicherte Suchen"
+
+#. Step 4 title
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:172
+msgid "indexing.ingestion.s4.title"
+msgstr "Selektive Speicherung."
+
+#. Feature: alerts you drive description
+#. js-lingui-explicit-id
+#: src/components/Features.tsx:192
+msgid "home.features.s2.p3.description"
+msgstr "Lege die Frequenz pro Unternehmen fest, damit du von neuen Stellen erfährst, ohne den ganzen Tag durch Jobportale zu scrollen."
+
+#. Pricing section description
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx:152
+msgid "home.pricing.description"
+msgstr "Einfache, transparente Preise. Starte kostenlos und upgrade, wenn du deine Jobsuche ernst meinst."
+
+#. Step 1 title
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:142
+msgid "indexing.ingestion.s1.title"
+msgstr "Zuerst die Sitemap."
 
 #. Heading shown when a page crashes unexpectedly
 #. js-lingui-explicit-id
@@ -25,14 +649,130 @@ msgstr "Finde deine nächste Chance"
 msgid "error.title"
 msgstr "Etwas ist schiefgelaufen"
 
+#. Free tier CTA
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx:27
+msgid "home.pricing.free.cta"
+msgstr "Kostenlos starten"
+
+#. Feature section 2 eyebrow text
+#. js-lingui-explicit-id
+#: src/components/Features.tsx:169
+msgid "home.features.s2.eyebrow"
+msgstr "Behalte die Kontrolle"
+
+#. Free feature: subscribe to companies
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx:58
+msgid "home.pricing.free.f1"
+msgstr "Bis zu 5 Unternehmen abonnieren"
+
+#. Hero description paragraph
+#. js-lingui-explicit-id
+#: src/components/Hero.tsx:41
+msgid "home.hero.description"
+msgstr "Abonniere Updates von Unternehmen, verfolge Bewerbungen und verpasse keine neuen Stellen. Entwickelt, damit du die Kontrolle behältst — nicht damit ein Bot deine Entscheidungen trifft."
+
+#. Aria label for switching to dark mode
+#. js-lingui-explicit-id
+#: src/components/ThemeToggleButton.tsx:22
+msgid "common.theme.switchToDark"
+msgstr "Zum dunklen Modus wechseln"
+
+#. Aria label for switching to light mode
+#. js-lingui-explicit-id
+#: src/components/ThemeToggleButton.tsx:21
+msgid "common.theme.switchToLight"
+msgstr "Zum hellen Modus wechseln"
+
+#. Free tier description
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx:53
+msgid "home.pricing.free.description"
+msgstr "Teste Job Seek mit genug Spielraum, um bei deinen Traumunternehmen auf dem Laufenden zu bleiben."
+
+#. Feature section 2 heading
+#. js-lingui-explicit-id
+#: src/components/Features.tsx:172
+msgid "home.features.s2.title"
+msgstr "Der erste Job-Aggregator, der dich ans Steuer lässt"
+
+#. Dashboard nav button label
+#. Dashboard nav button label
+#. js-lingui-explicit-id
+#: src/components/Header.tsx:47
+#: src/components/MobileMenu.tsx:37
+msgid "common.dashboard.action"
+msgstr "Zum Dashboard"
+
+#. Feature section 1 description
+#. js-lingui-explicit-id
+#: src/components/Features.tsx:128
+msgid "home.features.s1.description"
+msgstr "Verfolge Stellen, werde benachrichtigt, wenn Unternehmen etwas Neues veröffentlichen, und halte deine Pipeline sauber."
+
+#. Open-source section body
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:233
+msgid "indexing.oss.body"
+msgstr "Transparenz ist uns wichtig, daher ist der Code für unseren Job-Link-Erfassungsdienst und die Extraktionspipeline Open Source."
+
 #. Button to retry loading the page after an error
 #. js-lingui-explicit-id
 #: app/[lang]/error.tsx:24
 msgid "error.retryButton"
 msgstr "Erneut versuchen"
 
-#. Subheading below the main title on the landing page
+#. Pro feature: unlimited subscriptions
 #. js-lingui-explicit-id
-#: app/[lang]/page.tsx:17
-msgid "home.hero.subtitle"
-msgstr "Willkommen bei Jobseek"
+#: src/components/Pricing.tsx:115
+msgid "home.pricing.pro.f1"
+msgstr "Unbegrenzte Unternehmensabonnements"
+
+#. Pro tier CTA
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx:84
+msgid "home.pricing.pro.cta"
+msgstr "Auf Pro upgraden"
+
+#. Step 1 body
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:145
+msgid "indexing.ingestion.s1.body"
+msgstr "Wir suchen nach einer Sitemap, die bereits alle Karriere- oder Stellendetailseiten auflistet — idealerweise von <0>robots.txt</0> verlinkt — und verlassen uns darauf, wann immer möglich."
+
+#. Ingestion section description
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:135
+msgid "indexing.ingestion.description"
+msgstr "Wir suchen zuerst nach strukturierten Feeds, bevor wir rohes HTML scrapen. Zuerst prüfen wir auf Sitemaps, dann auf clientseitige JSON-APIs, und parsen vollständige Seiten nur, wenn beides nicht existiert."
+
+#. Automation stance body
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:222
+msgid "indexing.automation.body"
+msgstr "Wir lehnen es ab, Einstellungs- oder Jobsuch-Entscheidungen an undurchsichtige Automatisierung zu übergeben — ob auf Arbeitgeber- oder Bewerberseite. Jeder ausgehende Link enthält <0>utm_source=jobseek</0>, damit Recruiter den Traffic erkennen, und wir überprüfen kontinuierlich Nutzungsmuster und setzen Hürden ein, um automatisierte Bewerbungen zu verhindern."
+
+#. Info box about sitemaps
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:197
+msgid "indexing.sitemapNote"
+msgstr "Wir empfehlen ausdrücklich, eine leicht auffindbare Sitemap für Ihren Karrierebereich zu veröffentlichen. Ohne eine solche senden wir regelmäßig leichtgewichtige <0>HEAD</0>-Anfragen an zuvor entdeckte Stellen-URLs, um zu prüfen, ob sie noch aktiv sind, was unnötigen Traffic verursacht."
+
+#. CC right 3
+#. js-lingui-explicit-id
+#: src/components/LicenseContent.tsx:136
+msgid "license.data.r3"
+msgstr "Du kannst die Daten für Forschung oder persönliche Dashboards remixen/transformieren."
+
+#. MIT license summary
+#. js-lingui-explicit-id
+#: src/components/LicenseContent.tsx:96
+msgid "license.code.summary"
+msgstr "Du kannst den Code in persönlichen oder kommerziellen Produkten verwenden, ändern und weiterverbreiten, solange du den Copyright- und Lizenzhinweis beifügst."
+
+#. CC license summary
+#. js-lingui-explicit-id
+#: src/components/LicenseContent.tsx:122
+msgid "license.data.summary"
+msgstr "Du darfst den Stellendatensatz mit Quellenangabe für nicht-kommerzielle Zwecke nutzen. Kommerzielle Nutzung erfordert vorherige schriftliche Zustimmung."
