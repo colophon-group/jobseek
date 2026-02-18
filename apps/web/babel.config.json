@@ -1,0 +1,19 @@
+{
+  "presets": [
+    [
+      "next/babel",
+      {
+        "preset-env": {
+          "targets": {
+            "chrome": "80",
+            "firefox": "78",
+            "safari": "14",
+            "edge": "80"
+          },
+          "exclude": ["transform-unicode-property-regex"]
+        }
+      }
+    ]
+  ],
+  "plugins": ["@lingui/babel-plugin-lingui-macro"]
+}

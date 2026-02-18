@@ -1,0 +1,1 @@
+/*eslint-disable*/module.exports={messages:JSON.parse("{\"home.hero.subtitle\":[\"Welcome to Jobseek\"],\"home.hero.title\":[\"Find your next opportunity\"]}")};
