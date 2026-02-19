@@ -109,12 +109,6 @@ msgstr "Collection d'offres d'emploi (CC BY-NC 4.0)"
 msgid "home.features.s1.p1.title"
 msgstr "Alertes entreprises"
 
-#. Footer link to contact email
-#. js-lingui-explicit-id
-#: src/components/Footer.tsx:44
-msgid "common.footer.contact"
-msgstr "Contact"
-
 #. TOC: Contact
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:39
@@ -127,16 +121,22 @@ msgstr "Contact"
 msgid "license.contact.title"
 msgstr "Contact"
 
-#. Table of contents heading
+#. Footer link to contact email
 #. js-lingui-explicit-id
-#: src/components/HowWeIndexContent.tsx:33
-msgid "indexing.toc.title"
-msgstr "Sommaire"
+#: src/components/Footer.tsx:44
+msgid "common.footer.contact"
+msgstr "Contact"
 
 #. Table of contents heading
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:32
 msgid "license.toc.title"
+msgstr "Sommaire"
+
+#. Table of contents heading
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:33
+msgid "indexing.toc.title"
 msgstr "Sommaire"
 
 #. MIT right 1
@@ -195,6 +195,11 @@ msgstr "Tout ce qu'il te faut pour garder une longueur d'avance"
 msgid "common.nav.features"
 msgstr "Fonctionnalités"
 
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/page.tsx:20
+msgid "home.meta.title"
+msgstr "Trouve les postes pertinents plus vite"
+
 #. Main heading on the landing page
 #. js-lingui-explicit-id
 #: src/components/Hero.tsx:38
@@ -237,6 +242,12 @@ msgstr "Commencer"
 msgid "common.footer.github"
 msgstr "GitHub"
 
+#. Link to return to the homepage from a 404 page
+#. js-lingui-explicit-id
+#: app/[lang]/not-found.tsx:23
+msgid "notFound.goHome"
+msgstr "Retour à l'accueil"
+
 #. CTA when logged in: go to dashboard
 #. js-lingui-explicit-id
 #: src/components/Hero.tsx:20
@@ -257,6 +268,11 @@ msgstr "Analyse de pages respectueuse."
 msgid "common.nav.company"
 msgstr "Comment indexons-nous les offres ?"
 
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/how-we-index/page.tsx:15
+msgid "indexing.meta.description"
+msgstr "Comment Job Seek découvre, explore et indexe les offres d'emploi — et les garanties que nous appliquons."
+
 #. TOC: How postings enter the index
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:39
@@ -274,6 +290,11 @@ msgstr "Comment les offres entrent dans l'index"
 #: src/components/HowWeIndexContent.tsx:57
 msgid "indexing.hero.title"
 msgstr "Comment nous trouvons et traitons les offres d'emploi"
+
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/how-we-index/page.tsx:14
+msgid "indexing.meta.title"
+msgstr "Comment nous indexons"
 
 #. Step 2 body
 #. js-lingui-explicit-id
@@ -335,6 +356,11 @@ msgstr "Fini la routine des 50 onglets"
 msgid "home.hero.secondaryCta"
 msgstr "En savoir plus"
 
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/license/page.tsx:14
+msgid "license.meta.title"
+msgstr "Licence"
+
 #. Footer link to license page
 #. js-lingui-explicit-id
 #: src/components/Footer.tsx:49
@@ -352,6 +378,11 @@ msgstr "Licence de Job Seek"
 #: src/components/LicenseContent.tsx:57
 msgid "license.hero.eyebrow"
 msgstr "Licences"
+
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/license/page.tsx:15
+msgid "license.meta.description"
+msgstr "Conditions de licence du code applicatif de Job Seek (MIT) et des données d'emploi (CC BY-NC 4.0)."
 
 #. Login button label
 #. Login button label
@@ -461,15 +492,21 @@ msgstr "Notre position sur l'automatisation"
 
 #. TOC: Overview
 #. js-lingui-explicit-id
-#: src/components/HowWeIndexContent.tsx:37
-msgid "indexing.toc.overview"
+#: src/components/LicenseContent.tsx:36
+msgid "license.toc.overview"
 msgstr "Aperçu"
 
 #. TOC: Overview
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:36
-msgid "license.toc.overview"
+#: src/components/HowWeIndexContent.tsx:37
+msgid "indexing.toc.overview"
 msgstr "Aperçu"
+
+#. Table of contents aria label
+#. js-lingui-explicit-id
+#: src/components/LicenseContent.tsx:33
+msgid "license.toc.ariaLabel"
+msgstr "Sommaire de la page"
 
 #. Table of contents aria label
 #. js-lingui-explicit-id
@@ -477,11 +514,11 @@ msgstr "Aperçu"
 msgid "indexing.toc.ariaLabel"
 msgstr "Sommaire de la page"
 
-#. Table of contents aria label
+#. Heading shown on the 404 page
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:33
-msgid "license.toc.ariaLabel"
-msgstr "Sommaire de la page"
+#: app/[lang]/not-found.tsx:13
+msgid "notFound.title"
+msgstr "Page introuvable"
 
 #. Feature: kill tab routine description
 #. js-lingui-explicit-id
@@ -507,18 +544,18 @@ msgstr "par mois"
 msgid "home.features.s2.p1.description"
 msgstr "Indique-nous n'importe quelle page carrières ou tableau d'offres Notion et Job Seek le reproduit dans ton espace de travail en quelques minutes."
 
-#. Pricing section eyebrow
-#. js-lingui-explicit-id
-#: src/components/Pricing.tsx:146
-msgid "home.pricing.eyebrow"
-msgstr "Tarifs"
-
 #. Nav link: Pricing
 #. Nav link: Pricing
 #. js-lingui-explicit-id
 #: src/components/Header.tsx:80
 #: src/components/MobileMenu.tsx:84
 msgid "common.nav.pricing"
+msgstr "Tarifs"
+
+#. Pricing section eyebrow
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx:146
+msgid "home.pricing.eyebrow"
 msgstr "Tarifs"
 
 #. Pro tier name
@@ -655,6 +692,11 @@ msgstr "Garde le contrôle"
 msgid "home.pricing.free.f1"
 msgstr "Suivi de 5 entreprises maximum"
 
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/page.tsx:21
+msgid "home.meta.description"
+msgstr "Abonne-toi aux mises à jour d'entreprises, suis tes candidatures et ne rate aucune nouvelle offre."
+
 #. Hero description paragraph
 #. js-lingui-explicit-id
 #: src/components/Hero.tsx:41
@@ -684,6 +726,12 @@ msgstr "Teste Job Seek avec assez de marge pour rester à jour avec les entrepri
 #: src/components/Features.tsx:172
 msgid "home.features.s2.title"
 msgstr "Le premier agrégateur d'emploi qui te met aux commandes"
+
+#. Body text on the 404 page
+#. js-lingui-explicit-id
+#: app/[lang]/not-found.tsx:18
+msgid "notFound.body"
+msgstr "La page que tu cherches n'existe pas ou a été déplacée."
 
 #. Dashboard nav button label
 #. Dashboard nav button label

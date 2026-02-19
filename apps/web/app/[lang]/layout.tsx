@@ -5,11 +5,18 @@ import type { ReactNode } from "react";
 import { LinguiClientProvider } from "@/components/LinguiProvider";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { type Locale, isLocale, defaultLocale, loadCatalog } from "@/lib/i18n";
+import { siteConfig } from "@/content/config";
 import "../globals.css";
 
 export const metadata: Metadata = {
-  title: "Jobseek",
-  description: "Find your next opportunity",
+  title: { template: "%s | Job Seek", default: "Job Seek" },
+  metadataBase: new URL(siteConfig.url),
+  openGraph: {
+    type: "website",
+    siteName: "Job Seek",
+    locale: "en",
+  },
+  twitter: { card: "summary" },
 };
 
 type Props = {

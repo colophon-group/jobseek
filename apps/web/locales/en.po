@@ -13,18 +13,6 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
-#. Subheading below the main title on the landing page
-#. js-lingui-explicit-id
-#: app/[lang]/page.tsx:17
-#~ msgid "home.hero.subtitle"
-#~ msgstr "Welcome to Jobseek"
-
-#. Footer link to license page
-#. js-lingui-explicit-id
-#: src/components/Footer.tsx:41
-#~ msgid "common.footer.license"
-#~ msgstr "License"
-
 #. CC right 1
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:128
@@ -121,12 +109,6 @@ msgstr "Collection of job postings (CC BY-NC 4.0)"
 msgid "home.features.s1.p1.title"
 msgstr "Company alerts"
 
-#. Footer link to contact email
-#. js-lingui-explicit-id
-#: src/components/Footer.tsx:44
-msgid "common.footer.contact"
-msgstr "Contact"
-
 #. TOC: Contact
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:39
@@ -139,16 +121,22 @@ msgstr "Contact"
 msgid "license.contact.title"
 msgstr "Contact"
 
-#. Table of contents heading
+#. Footer link to contact email
 #. js-lingui-explicit-id
-#: src/components/HowWeIndexContent.tsx:33
-msgid "indexing.toc.title"
-msgstr "Contents"
+#: src/components/Footer.tsx:44
+msgid "common.footer.contact"
+msgstr "Contact"
 
 #. Table of contents heading
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:32
 msgid "license.toc.title"
+msgstr "Contents"
+
+#. Table of contents heading
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:33
+msgid "indexing.toc.title"
 msgstr "Contents"
 
 #. MIT right 1
@@ -207,6 +195,11 @@ msgstr "Everything you need to stay ahead"
 msgid "common.nav.features"
 msgstr "Features"
 
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/page.tsx:20
+msgid "home.meta.title"
+msgstr "Find Relevant Roles Faster"
+
 #. Main heading on the landing page
 #. js-lingui-explicit-id
 #: src/components/Hero.tsx:38
@@ -249,6 +242,12 @@ msgstr "Get started"
 msgid "common.footer.github"
 msgstr "GitHub"
 
+#. Link to return to the homepage from a 404 page
+#. js-lingui-explicit-id
+#: app/[lang]/not-found.tsx:23
+msgid "notFound.goHome"
+msgstr "Go home"
+
 #. CTA when logged in: go to dashboard
 #. js-lingui-explicit-id
 #: src/components/Hero.tsx:20
@@ -269,6 +268,11 @@ msgstr "Graceful page parsing."
 msgid "common.nav.company"
 msgstr "How do we index jobs?"
 
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/how-we-index/page.tsx:15
+msgid "indexing.meta.description"
+msgstr "How Job Seek discovers, crawls, and indexes job postings — and the safeguards we follow."
+
 #. TOC: How postings enter the index
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:39
@@ -286,6 +290,11 @@ msgstr "How postings enter the index"
 #: src/components/HowWeIndexContent.tsx:57
 msgid "indexing.hero.title"
 msgstr "How we find and process job postings"
+
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/how-we-index/page.tsx:14
+msgid "indexing.meta.title"
+msgstr "How We Index"
 
 #. Step 2 body
 #. js-lingui-explicit-id
@@ -347,6 +356,11 @@ msgstr "Kill the 50-tab routine"
 msgid "home.hero.secondaryCta"
 msgstr "Learn more"
 
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/license/page.tsx:14
+msgid "license.meta.title"
+msgstr "License"
+
 #. Footer link to license page
 #. js-lingui-explicit-id
 #: src/components/Footer.tsx:49
@@ -364,6 +378,11 @@ msgstr "License of Job Seek"
 #: src/components/LicenseContent.tsx:57
 msgid "license.hero.eyebrow"
 msgstr "Licensing"
+
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/license/page.tsx:15
+msgid "license.meta.description"
+msgstr "Licensing terms for Job Seek application code (MIT) and job data (CC BY-NC 4.0)."
 
 #. Login button label
 #. Login button label
@@ -473,15 +492,21 @@ msgstr "Our stance on automation"
 
 #. TOC: Overview
 #. js-lingui-explicit-id
-#: src/components/HowWeIndexContent.tsx:37
-msgid "indexing.toc.overview"
+#: src/components/LicenseContent.tsx:36
+msgid "license.toc.overview"
 msgstr "Overview"
 
 #. TOC: Overview
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:36
-msgid "license.toc.overview"
+#: src/components/HowWeIndexContent.tsx:37
+msgid "indexing.toc.overview"
 msgstr "Overview"
+
+#. Table of contents aria label
+#. js-lingui-explicit-id
+#: src/components/LicenseContent.tsx:33
+msgid "license.toc.ariaLabel"
+msgstr "Page contents"
 
 #. Table of contents aria label
 #. js-lingui-explicit-id
@@ -489,11 +514,11 @@ msgstr "Overview"
 msgid "indexing.toc.ariaLabel"
 msgstr "Page contents"
 
-#. Table of contents aria label
+#. Heading shown on the 404 page
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:33
-msgid "license.toc.ariaLabel"
-msgstr "Page contents"
+#: app/[lang]/not-found.tsx:13
+msgid "notFound.title"
+msgstr "Page not found"
 
 #. Feature: kill tab routine description
 #. js-lingui-explicit-id
@@ -519,18 +544,18 @@ msgstr "per month"
 msgid "home.features.s2.p1.description"
 msgstr "Point us at any careers page or Notion job board and Job Seek mirrors it in your workspace within minutes."
 
-#. Pricing section eyebrow
-#. js-lingui-explicit-id
-#: src/components/Pricing.tsx:146
-msgid "home.pricing.eyebrow"
-msgstr "Pricing"
-
 #. Nav link: Pricing
 #. Nav link: Pricing
 #. js-lingui-explicit-id
 #: src/components/Header.tsx:80
 #: src/components/MobileMenu.tsx:84
 msgid "common.nav.pricing"
+msgstr "Pricing"
+
+#. Pricing section eyebrow
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx:146
+msgid "home.pricing.eyebrow"
 msgstr "Pricing"
 
 #. Pro tier name
@@ -667,6 +692,11 @@ msgstr "Stay in control"
 msgid "home.pricing.free.f1"
 msgstr "Subscribe to up to 5 companies"
 
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/page.tsx:21
+msgid "home.meta.description"
+msgstr "Subscribe to updates from companies, track applications, and never miss new openings."
+
 #. Hero description paragraph
 #. js-lingui-explicit-id
 #: src/components/Hero.tsx:41
@@ -696,6 +726,12 @@ msgstr "Test Job Seek with enough headroom to be up to date with your dream comp
 #: src/components/Features.tsx:172
 msgid "home.features.s2.title"
 msgstr "The first job aggregator that puts you behind the wheel"
+
+#. Body text on the 404 page
+#. js-lingui-explicit-id
+#: app/[lang]/not-found.tsx:18
+msgid "notFound.body"
+msgstr "The page you are looking for does not exist or has been moved."
 
 #. Dashboard nav button label
 #. Dashboard nav button label
