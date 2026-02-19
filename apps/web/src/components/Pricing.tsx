@@ -30,14 +30,12 @@ function FreeTier({ isLoggedIn }: { isLoggedIn: boolean }) {
     <Box sx={{ flex: { xs: "0 1 auto", md: "1 1 320px" }, maxWidth: { xs: 500, md: 360 }, width: "100%", display: "flex", mx: { xs: "auto", md: 0 } }}>
       <Card
         variant="outlined"
-        sx={(theme) => ({
+        sx={{
           display: "flex",
           flexDirection: "column",
-          borderWidth: 1,
-          borderColor: theme.palette.mode === "light" ? theme.palette.grey[300] : theme.palette.divider,
           boxShadow: "none",
           width: "100%",
-        })}
+        }}
       >
         <CardContent sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
           <Typography variant="subtitle1" color="text.secondary">
@@ -87,14 +85,14 @@ function ProTier({ isLoggedIn }: { isLoggedIn: boolean }) {
     <Box sx={{ flex: { xs: "0 1 auto", md: "1 1 320px" }, maxWidth: { xs: 500, md: 360 }, width: "100%", display: "flex", mx: { xs: "auto", md: 0 } }}>
       <Card
         variant="outlined"
-        sx={(theme) => ({
+        sx={{
           display: "flex",
           flexDirection: "column",
           borderWidth: 2,
-          borderColor: theme.palette.primary.main,
-          boxShadow: theme.shadows[2],
+          borderColor: "var(--primary)",
+          boxShadow: 2,
           width: "100%",
-        })}
+        }}
       >
         <CardContent sx={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
           <Typography variant="subtitle1" color="text.secondary">

@@ -12,7 +12,7 @@
 
 `src/theme/tokens.ts` owns every design token as a JS object. Two consumers read from it:
 
-- **`createMuiTheme.ts`** — imports `tokens` directly, builds MUI `colorSchemes` with real hex values. MUI generates `--mui-palette-*` CSS variables automatically via `cssVariables` mode. The `.dark` class on `<html>` triggers the dark scheme.
+- **`createMuiTheme.ts`** — imports `tokens` directly, builds separate light and dark MUI themes with real hex values. `ThemeProvider` swaps the active theme based on `mode` state. The `.dark` class on `<html>` triggers the dark scheme for custom CSS properties.
 - **`globals.css`** — mirrors the same values as CSS custom properties (`--background`, `--foreground`, etc.) for CSS Modules and server components that can't access MUI's theme.
 
 When changing a token, update `tokens.ts` first, then update the matching variable in `globals.css`.

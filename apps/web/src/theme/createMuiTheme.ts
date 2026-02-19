@@ -3,11 +3,13 @@ import { createTheme } from "@mui/material/styles";
 import { tokens } from "./tokens";
 
 /**
- * MUI theme with CSS variables mode + light/dark color schemes.
+ * MUI theme — one per color scheme (light / dark).
  *
- * MUI generates `--mui-palette-*` CSS variables automatically.
- * The `.dark` class on <html> triggers the dark scheme — same
- * class that globals.css uses for its custom properties.
+ * We deliberately avoid MUI's CSS-variables mode (`cssVariables`)
+ * because its `CssVarsProvider` manages the `.dark` class on <html>
+ * via localStorage / system preference, conflicting with our
+ * cookie-based SSR approach.  Instead we build two static themes
+ * and swap them in ThemeProvider based on the React state.
  *
  * Token hex values come from tokens.ts (shared with globals.css).
  */
@@ -73,14 +75,11 @@ function paletteFrom(t: (typeof tokens)["light" | "dark"]) {
   };
 }
 
-export function buildMuiTheme() {
+export function buildMuiTheme(mode: "light" | "dark") {
   return createTheme({
-    cssVariables: {
-      colorSchemeSelector: ".dark",
-    },
-    colorSchemes: {
-      light: { palette: paletteFrom(tokens.light) },
-      dark: { palette: paletteFrom(tokens.dark) },
+    palette: {
+      mode,
+      ...paletteFrom(tokens[mode]),
     },
     typography,
     shape,
