@@ -1,22 +1,14 @@
 "use client";
 
-import { createContext, useContext } from "react";
-import type { ReactNode } from "react";
+import { useUser } from "@stackframe/stack";
 
-type AuthState = {
-  isLoggedIn: boolean;
-};
-
-const AuthContext = createContext<AuthState>({ isLoggedIn: false });
-
-export function AuthProvider({ children }: { children: ReactNode }) {
-  return (
-    <AuthContext.Provider value={{ isLoggedIn: false }}>
-      {children}
-    </AuthContext.Provider>
-  );
-}
-
-export function useAuth(): AuthState {
-  return useContext(AuthContext);
+/**
+ * Thin convenience hook over Stack's `useUser()`.
+ *
+ * Keeps existing call-sites (`useAuth().isLoggedIn`) working
+ * without coupling every component directly to `@stackframe/stack`.
+ */
+export function useAuth() {
+  const user = useUser();
+  return { isLoggedIn: Boolean(user), user };
 }

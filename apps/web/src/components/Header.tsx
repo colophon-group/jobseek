@@ -42,7 +42,7 @@ export function Header({ onOpenMobileAction }: HeaderProps) {
   const { t } = useLingui();
   const lp = useLocalePath();
 
-  const authHref = isLoggedIn ? lp(siteConfig.nav.dashboard.href) : lp(siteConfig.nav.login.href);
+  const authHref = isLoggedIn ? lp(siteConfig.nav.dashboard.href) : siteConfig.nav.login.href;
   const authLabel = isLoggedIn
     ? t({ id: "common.dashboard.action", comment: "Dashboard nav button label", message: "To dashboard" })
     : t({ id: "common.auth.login", comment: "Login button label", message: "Log in" });
@@ -88,7 +88,6 @@ export function Header({ onOpenMobileAction }: HeaderProps) {
             <LocaleSwitcher />
             <ThemeToggleButton />
             <Button
-              component={Link}
               href={authHref}
               variant="contained"
               color="primary"

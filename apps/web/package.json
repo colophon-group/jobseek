@@ -19,10 +19,12 @@
     "@mui/icons-material": "^7.3.8",
     "@mui/material": "^7.3.8",
     "@mui/material-nextjs": "^7.3.8",
+    "@stackframe/stack": "^2.8.69",
     "flag-icons": "^7.5.0",
     "next": "^15",
     "react": "^19",
-    "react-dom": "^19"
+    "react-dom": "^19",
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
     "@lingui/babel-plugin-lingui-macro": "^5",

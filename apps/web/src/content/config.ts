@@ -54,7 +54,7 @@ export const siteConfig = {
     pricing: { href: "/#pricing" },
     company: { href: "/how-we-index" },
     license: { href: "/license", hidden: true },
-    login: { href: "/handler/signup", hidden: true },
+    login: { href: "/handler/sign-up", hidden: true },
     dashboard: { href: "/dashboard", hidden: true },
   },
 
@@ -91,8 +91,8 @@ export const siteConfig = {
 
   pricing: {
     anchorId: "pricing",
-    free: { href: "/handler/signup", highlight: false },
-    pro: { href: "/handler/signup", highlight: true },
+    free: { href: "/handler/sign-up", highlight: false },
+    pro: { href: "/handler/sign-up", highlight: true },
   },
 
   indexing: {
