@@ -1,8 +1,10 @@
 "use client";
 
+import { useContext } from "react";
 import Image from "next/image";
 import type { CSSProperties, ReactNode } from "react";
 import { useLingui } from "@lingui/react/macro";
+import { ThemeContext } from "@/components/ThemeProvider";
 import Box from "@mui/material/Box";
 import type { SxProps, Theme } from "@mui/material/styles";
 import type { PublicDomainAsset, CropInsets } from "@/content/config";
@@ -27,12 +29,12 @@ export function PublicDomainArt({
   sx,
   children,
 }: PublicDomainArtProps) {
+  const { mode } = useContext(ThemeContext);
   const { t } = useLingui();
   const { light, dark, href, alt, width, height, title, author, date, link, crop: assetCrop } = asset;
 
-  const lightSrc = light ?? dark ?? href;
-  const darkSrc = dark ?? light ?? href;
-  if (!lightSrc && !darkSrc) {
+  const src = (mode === "dark" ? (dark ?? light) : (light ?? dark)) ?? href;
+  if (!src) {
     return null;
   }
 
@@ -80,40 +82,19 @@ export function PublicDomainArt({
         ...sx,
       }}
     >
-      {/* Light mode image */}
-      {lightSrc && (
-        <Image
-          src={lightSrc}
-          alt={alt}
-          fill
-          sizes="(min-width: 1024px) 40vw, 100vw"
-          style={{
-            ...imageStyle,
-            display: "var(--pda-light-display, block)",
-          }}
-          priority={false}
-        />
-      )}
-      {/* Dark mode image */}
-      {darkSrc && darkSrc !== lightSrc && (
-        <Image
-          src={darkSrc}
-          alt=""
-          aria-hidden
-          fill
-          sizes="(min-width: 1024px) 40vw, 100vw"
-          style={{
-            ...imageStyle,
-            display: "var(--pda-dark-display, none)",
-          }}
-          priority={false}
-        />
-      )}
+      <Image
+        src={src}
+        alt={alt}
+        fill
+        sizes="(min-width: 1024px) 40vw, 100vw"
+        style={imageStyle}
+        priority={false}
+      />
       {children}
       {credit && (title || author) && (
         <Box
           component="a"
-          href={link ?? href ?? lightSrc ?? darkSrc}
+          href={link ?? href ?? src}
           target="_blank"
           rel="noreferrer"
           sx={{

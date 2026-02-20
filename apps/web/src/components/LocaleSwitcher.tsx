@@ -12,13 +12,12 @@ import ListItemText from "@mui/material/ListItemText";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import LanguageIcon from "@mui/icons-material/Language";
 import type { IconButtonProps } from "@mui/material/IconButton";
-import "flag-icons/css/flag-icons.min.css";
 
-const localeLabels: Record<Locale, { label: string; country: string }> = {
-  en: { label: "English", country: "gb" },
-  de: { label: "Deutsch", country: "de" },
-  fr: { label: "Français", country: "fr" },
-  it: { label: "Italiano", country: "it" },
+const localeLabels: Record<Locale, { label: string; flag: string }> = {
+  en: { label: "English", flag: "/flags/gb.svg" },
+  de: { label: "Deutsch", flag: "/flags/de.svg" },
+  fr: { label: "Français", flag: "/flags/fr.svg" },
+  it: { label: "Italiano", flag: "/flags/it.svg" },
 };
 
 type LocaleSwitcherProps = Omit<IconButtonProps, "onClick" | "color">;
@@ -76,7 +75,7 @@ export function LocaleSwitcher({ sx, ...iconButtonProps }: LocaleSwitcherProps) 
             onClick={() => handleSelect(locale)}
           >
             <ListItemIcon sx={{ minWidth: 28 }}>
-              <span className={`fi fi-${localeLabels[locale].country}`} style={{ fontSize: "0.9em" }} />
+              <img src={localeLabels[locale].flag} alt="" width={20} height={15} style={{ display: "block" }} />
             </ListItemIcon>
             <ListItemText>{localeLabels[locale].label}</ListItemText>
           </MenuItem>
