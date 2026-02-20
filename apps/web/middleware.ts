@@ -1,8 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { locales, defaultLocale, isLocale } from "@/lib/i18n";
 
-const PUBLIC_FILE = /\.(.*)$/;
-
 function getPreferredLocale(request: NextRequest): string {
   const acceptLanguage = request.headers.get("accept-language");
   if (!acceptLanguage) return defaultLocale;
@@ -22,19 +20,8 @@ function getPreferredLocale(request: NextRequest): string {
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Skip internal paths, static files, and the auth handler
-  if (
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/api") ||
-    pathname.startsWith("/handler") ||
-    PUBLIC_FILE.test(pathname)
-  ) {
-    return NextResponse.next();
-  }
-
   // Check if pathname already has a locale prefix
-  const segments = pathname.split("/");
-  const maybeLocale = segments[1];
+  const maybeLocale = pathname.split("/")[1];
 
   if (isLocale(maybeLocale)) {
     // Persist the locale in a cookie so the root layout can set <html lang>
@@ -53,5 +40,10 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next|api|favicon.ico|.*\\..*).*)"],
+  // Only run on paths that need locale handling:
+  // - bare `/` (root redirect)
+  // - `/en/...`, `/de/...`, `/fr/...`, `/it/...` (set locale cookie)
+  // - bare paths without locale prefix like `/how-we-index` (redirect to prefixed)
+  // Excludes: _next, api, handler, static files, flags, fonts, images
+  matcher: ["/((?!_next|api|handler|flags|fonts|publicdomain|favicon\\.ico|.*\\..*).*)" ],
 };
