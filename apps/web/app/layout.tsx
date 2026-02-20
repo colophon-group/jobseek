@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { StackProvider, StackTheme } from "@stackframe/stack";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { Analytics } from "@vercel/analytics/next";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { stackServerApp } from "@/stack/server";
 import { siteConfig } from "@/content/config";
@@ -42,6 +43,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
             </ThemeProvider>
           </StackTheme>
         </StackProvider>
+        <Analytics />
       </body>
     </html>
   );
