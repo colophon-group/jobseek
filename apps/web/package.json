@@ -8,7 +8,11 @@
     "start": "next start",
     "lint": "next lint",
     "extract": "lingui extract",
-    "compile": "lingui compile"
+    "compile": "lingui compile",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/db/migrate.ts",
+    "db:seed": "tsx src/db/seed.ts",
+    "db:push": "drizzle-kit push"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -19,9 +23,11 @@
     "@mui/icons-material": "^7.3.8",
     "@mui/material": "^7.3.8",
     "@mui/material-nextjs": "^7.3.8",
+    "@neondatabase/serverless": "^1.0.2",
     "@stackframe/stack": "^2.8.69",
     "@vercel/analytics": "^1.6.1",
     "@vercel/speed-insights": "^1.3.1",
+    "drizzle-orm": "^0.45.1",
     "next": "^15",
     "react": "^19",
     "react-dom": "^19",
@@ -36,6 +42,10 @@
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv": "^17.3.1",
+    "drizzle-kit": "^0.31.9",
+    "postgres": "^3.4.8",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }
