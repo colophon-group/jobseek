@@ -73,22 +73,9 @@ async function main() {
     },
   ]);
 
-  // --- Subscriptions (using placeholder stack_user_ids) ---
-  await db.insert(subscriptions).values([
-    {
-      stackUserId: "placeholder-user-1",
-      plan: "free",
-      status: "active",
-      startsAt: new Date(),
-    },
-    {
-      stackUserId: "placeholder-user-2",
-      plan: "unlimited",
-      status: "active",
-      startsAt: new Date("2025-01-01"),
-      endsAt: new Date("2026-01-01"),
-    },
-  ]);
+  // --- Subscriptions (placeholder user IDs — no real users in seed) ---
+  // Skipped: subscriptions reference user.id via FK, so seeding
+  // requires real Better Auth users. Create subscriptions after sign-up.
 
   console.log("Seed complete.");
 }

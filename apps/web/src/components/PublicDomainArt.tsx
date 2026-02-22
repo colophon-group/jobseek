@@ -40,29 +40,14 @@ export function PublicDomainArt({
 
   const objectPosition = `${focus?.x ?? 50}% ${focus?.y ?? 50}%`;
   const appliedCrop = crop ?? assetCrop;
-
-  const imageCropStyle = (() => {
-    if (!appliedCrop) return {} as CSSProperties;
-    const { top = 0, right = 0, bottom = 0, left = 0 } = appliedCrop;
-    const effectiveWidth = Math.max(1, width - left - right);
-    const effectiveHeight = Math.max(1, height - top - bottom);
-    const scaleX = width / effectiveWidth;
-    const scaleY = height / effectiveHeight;
-    const translateXPct = (left / width) * 100;
-    const translateYPct = (top / height) * 100;
-    if (scaleX === 1 && scaleY === 1 && translateXPct === 0 && translateYPct === 0) {
-      return {} as CSSProperties;
-    }
-    return {
-      transformOrigin: "top left",
-      transform: `translate(${-translateXPct}%, ${-translateYPct}%) scale(${scaleX}, ${scaleY})`,
-    } as CSSProperties;
-  })();
+  const { top: cropTop = 0, right: cropRight = 0, bottom: cropBottom = 0, left: cropLeft = 0 } = appliedCrop ?? {};
+  const hasCrop = cropTop > 0 || cropRight > 0 || cropBottom > 0 || cropLeft > 0;
+  const effectiveWidth = Math.max(1, width - cropLeft - cropRight);
+  const effectiveHeight = Math.max(1, height - cropTop - cropBottom);
 
   const imageStyle: CSSProperties = {
     objectFit: "cover",
     objectPosition,
-    ...imageCropStyle,
   };
 
   const creditFallback = t({
@@ -82,14 +67,35 @@ export function PublicDomainArt({
         ...sx,
       }}
     >
-      <Image
-        src={src}
-        alt={alt}
-        fill
-        sizes="(min-width: 1024px) 40vw, 100vw"
-        style={imageStyle}
-        priority={false}
-      />
+      {hasCrop ? (
+        <Box
+          sx={{
+            position: "absolute",
+            width: `${(width / effectiveWidth) * 100}%`,
+            height: `${(height / effectiveHeight) * 100}%`,
+            top: `${-(cropTop / effectiveHeight) * 100}%`,
+            left: `${-(cropLeft / effectiveWidth) * 100}%`,
+          }}
+        >
+          <Image
+            src={src}
+            alt={alt}
+            fill
+            sizes="(min-width: 1024px) 40vw, 100vw"
+            style={imageStyle}
+            priority={false}
+          />
+        </Box>
+      ) : (
+        <Image
+          src={src}
+          alt={alt}
+          fill
+          sizes="(min-width: 1024px) 40vw, 100vw"
+          style={imageStyle}
+          priority={false}
+        />
+      )}
       {children}
       {credit && (title || author) && (
         <Box

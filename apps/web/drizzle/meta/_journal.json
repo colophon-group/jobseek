@@ -8,6 +8,13 @@
       "when": 1771781291587,
       "tag": "0000_complex_madame_masque",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1771881600000,
+      "tag": "0001_better_auth",
+      "breakpoints": true
     }
   ]
 }

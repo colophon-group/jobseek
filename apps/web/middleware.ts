@@ -44,6 +44,6 @@ export const config = {
   // - bare `/` (root redirect)
   // - `/en/...`, `/de/...`, `/fr/...`, `/it/...` (set locale cookie)
   // - bare paths without locale prefix like `/how-we-index` (redirect to prefixed)
-  // Excludes: _next, api, handler, static files, flags, fonts, images
-  matcher: ["/((?!_next|api|handler|flags|fonts|publicdomain|favicon\\.ico|.*\\..*).*)" ],
+  // Excludes: _next, api, static files, flags, fonts, images
+  matcher: ["/((?!_next|api|flags|fonts|publicdomain|favicon\\.ico|.*\\..*).*)" ],
 };

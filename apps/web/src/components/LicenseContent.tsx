@@ -26,8 +26,11 @@ export function LicenseContent() {
   const heroArt = publicDomainAssets[siteConfig.license.hero.art.assetKey];
   const heroArtFocus = siteConfig.license.hero.art.focus;
   const heroArtMaxWidth = 300;
-  const heroArtWidth = heroArt ? Math.min(heroArt.width, heroArtMaxWidth) : undefined;
-  const heroArtAspect = heroArt ? heroArt.width / heroArt.height : 1;
+  const cropInsets = heroArt?.crop;
+  const effectiveW = heroArt ? heroArt.width - (cropInsets?.left ?? 0) - (cropInsets?.right ?? 0) : 0;
+  const effectiveH = heroArt ? heroArt.height - (cropInsets?.top ?? 0) - (cropInsets?.bottom ?? 0) : 0;
+  const heroArtWidth = heroArt ? Math.min(effectiveW, heroArtMaxWidth) : undefined;
+  const heroArtAspect = effectiveH > 0 ? effectiveW / effectiveH : 1;
 
   const tocTitle = t({ id: "license.toc.title", comment: "Table of contents heading", message: "Contents" });
   const tocAriaLabel = t({ id: "license.toc.ariaLabel", comment: "Table of contents aria label", message: "Page contents" });

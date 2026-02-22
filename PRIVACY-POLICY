@@ -1,0 +1,183 @@
+PRIVACY POLICY
+
+Last updated: 22 February 2026
+
+This Privacy Policy describes how Viktor Shcherbakov, operating as
+Colophon Group ("we", "us", "our"), collects, uses, stores, and
+protects personal data when you use the Job Seek web application
+("Service") available at https://js-jobseek.vercel.app and any
+successor domains.
+
+By using the Service you agree to the collection and use of
+information in accordance with this policy. If you do not agree, please
+do not use the Service.
+
+
+1. DATA CONTROLLER
+
+Viktor Shcherbakov
+Email: business@colophon-group.org
+
+
+2. DATA WE COLLECT
+
+  a. Account data
+     When you sign in via an OAuth provider (e.g. Google, GitHub) we
+     receive and store:
+       - your name,
+       - your email address, and
+       - your profile picture.
+     We do not receive or store your password. We do not request access
+     to your contacts, calendar, files, or any other data held by the
+     OAuth provider beyond the basic profile information listed above.
+
+  b. Usage data
+     As you use the Service we store the data you create, including
+     but not limited to saved companies, job postings, alert
+     preferences, and application tracking information.
+
+  c. Technical data
+     We collect anonymous, aggregated page-view analytics through
+     Vercel Analytics. This data contains no personal identifiers and
+     does not use cookies.
+
+
+3. LEGAL BASIS FOR PROCESSING (GDPR Art. 6)
+
+  We process personal data on the following bases:
+    - Contract (Art. 6(1)(b)):  to provide and maintain the Service
+      you signed up for.
+    - Consent (Art. 6(1)(a)):   where you have given consent, e.g. by
+      opting in to job-alert notifications.
+    - Legitimate interest (Art. 6(1)(f)):  to improve, secure, and
+      maintain the Service (anonymous analytics).
+
+
+4. HOW WE USE YOUR DATA
+
+  We use the data described in Section 2 to:
+    - authenticate your identity,
+    - provide the core features of the Service (saved companies, saved
+      job postings, job-search alerts),
+    - send you job-alert notifications you have opted in to, and
+    - understand usage patterns and improve the Service (anonymous
+      analytics only).
+
+  We do NOT:
+    - sell, rent, or share your personal data with third parties for
+      marketing or advertising purposes,
+    - use your data to build advertising profiles, or
+    - make automated decisions that produce legal effects concerning
+      you.
+
+
+5. THIRD-PARTY SERVICES
+
+  The Service relies on the following third-party processors. Each
+  operates under its own privacy policy.
+
+  a. OAuth providers (authentication)
+     We use third-party OAuth providers (e.g. Google, GitHub) to
+     authenticate users. We receive only the basic profile information
+     listed in Section 2(a). Each provider's use of your data is
+     governed by its own privacy policy.
+
+  b. Vercel (hosting and analytics)
+     The Service is hosted on Vercel. Vercel Analytics collects
+     anonymous, cookie-free page-view data. Vercel's privacy policy:
+     https://vercel.com/legal/privacy-policy
+
+  c. Neon (database)
+     Your account and usage data is stored in a managed PostgreSQL
+     database provided by Neon. Data is encrypted at rest. Neon's
+     privacy policy:
+     https://neon.tech/privacy-policy
+
+
+6. DATA STORAGE AND SECURITY
+
+  - All data in transit is encrypted via HTTPS / TLS.
+  - Data at rest is encrypted by the database provider (Neon).
+  - We do not store your OAuth provider password.
+  - Access to production systems is restricted to authorised
+    personnel.
+  - We review our security practices periodically and apply updates
+    as needed.
+
+
+7. COOKIES
+
+  The Service uses only strictly necessary cookies for session
+  management and authentication. We do not use advertising, tracking,
+  or analytics cookies. Vercel Analytics operates without cookies.
+
+
+8. YOUR RIGHTS (GDPR)
+
+  If you are located in the European Economic Area (EEA), United
+  Kingdom, or Switzerland, you have the following rights under the
+  General Data Protection Regulation:
+
+    - Access:          request a copy of all personal data we hold
+                       about you.
+    - Rectification:   ask us to correct inaccurate or incomplete
+                       data.
+    - Erasure:         request deletion of your account and all
+                       associated data ("right to be forgotten").
+    - Data portability: receive your personal data in a structured,
+                       commonly used, machine-readable format.
+    - Restriction:     ask us to limit processing of your data.
+    - Objection:       object to processing based on legitimate
+                       interest.
+    - Withdraw consent: revoke consent at any time (e.g. by deleting
+                       your account or contacting us). Withdrawal does
+                       not affect the lawfulness of processing before
+                       withdrawal.
+
+  To exercise any of these rights, email us at the address in
+  Section 1. We will respond within 30 days. If you are unsatisfied
+  with our response, you have the right to lodge a complaint with your
+  local data protection supervisory authority.
+
+
+9. DATA RETENTION
+
+  We retain your personal data for as long as your account is active.
+  If you delete your account, all associated personal data will be
+  permanently removed from our database within 30 days. Anonymous
+  analytics data that cannot be linked back to you may be retained
+  indefinitely.
+
+
+10. INTERNATIONAL TRANSFERS
+
+  Your data may be processed on servers located in the United States
+  (Vercel, Neon). Where data is transferred outside the EEA, we rely
+  on the processor's Standard Contractual Clauses or other lawful
+  transfer mechanisms.
+
+
+11. CHILDREN'S PRIVACY
+
+  The Service is not directed at children under the age of 16. We do
+  not knowingly collect personal data from children. If you believe a
+  child has provided us with personal data, please contact us so we
+  can delete it.
+
+
+12. CHANGES TO THIS POLICY
+
+  We may update this Privacy Policy from time to time. When we do, we
+  will revise the "Last updated" date at the top. If the changes are
+  material, we will make a reasonable effort to notify you (e.g. via
+  a notice on the Service). Your continued use of the Service after
+  publication constitutes acceptance of the updated policy.
+
+
+13. CONTACT
+
+  For questions about this Privacy Policy or to exercise your data
+  rights, contact:
+
+  Viktor Shcherbakov
+  Email: business@colophon-group.org

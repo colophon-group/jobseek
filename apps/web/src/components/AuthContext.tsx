@@ -1,14 +1,14 @@
 "use client";
 
-import { useUser } from "@stackframe/stack";
+import { authClient } from "@/lib/auth-client";
 
 /**
- * Thin convenience hook over Stack's `useUser()`.
+ * Thin convenience hook over Better Auth's `useSession()`.
  *
  * Keeps existing call-sites (`useAuth().isLoggedIn`) working
- * without coupling every component directly to `@stackframe/stack`.
+ * without coupling every component directly to `better-auth`.
  */
 export function useAuth() {
-  const user = useUser();
-  return { isLoggedIn: Boolean(user), user };
+  const { data: session } = authClient.useSession();
+  return { isLoggedIn: Boolean(session?.user), user: session?.user ?? null };
 }

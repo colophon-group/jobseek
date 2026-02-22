@@ -1,0 +1,9 @@
+[project]
+name = "script"
+version = "0.1.0"
+description = "Scripts supporting Job Seek"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "pillow>=12.0.0",
+]

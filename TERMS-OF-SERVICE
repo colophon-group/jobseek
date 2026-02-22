@@ -1,0 +1,181 @@
+TERMS OF SERVICE
+
+Last updated: 22 February 2026
+
+These Terms of Service ("Terms") govern your access to and use of the
+Job Seek web application ("Service") operated by Viktor Shcherbakov,
+operating as Colophon Group ("we", "us", "our"), available at
+https://js-jobseek.vercel.app and any successor domains.
+
+By creating an account or using the Service you agree to be bound by
+these Terms. If you do not agree, do not use the Service.
+
+
+1. ELIGIBILITY
+
+You must be at least 16 years old to use the Service. By using the
+Service you represent that you meet this requirement.
+
+
+2. THE SERVICE
+
+Job Seek is a job-posting aggregator that allows you to:
+  - browse and search indexed job postings,
+  - save companies and individual job postings,
+  - set up job-search alerts, and
+  - track your applications.
+
+We aggregate publicly available job postings from employer career
+pages. We do not guarantee the accuracy, completeness, or timeliness
+of any job posting or employer information displayed on the Service.
+
+
+3. ACCOUNTS
+
+  a. You must sign in through a supported OAuth provider to use
+     certain features. You are responsible for maintaining the
+     security of your account.
+
+  b. You may not create multiple accounts, impersonate another
+     person, or use the Service on behalf of an entity without
+     authorisation.
+
+  c. We reserve the right to suspend or terminate accounts that
+     violate these Terms.
+
+
+4. ACCEPTABLE USE
+
+You agree not to:
+
+  a. use the Service for any unlawful purpose;
+
+  b. scrape, crawl, or programmatically access the Service beyond
+     what is permitted by our public APIs (if any) and robots.txt;
+
+  c. attempt to gain unauthorised access to the Service, its
+     servers, or any connected systems;
+
+  d. interfere with the proper functioning of the Service, including
+     by transmitting malware or overloading infrastructure;
+
+  e. submit automated or bulk job applications through or in
+     connection with the Service;
+
+  f. reproduce, redistribute, or commercially exploit any
+     substantial portion of the job data indexed by the Service,
+     except as permitted under the CC BY-NC 4.0 licence described
+     in the LICENSE-JOB-DATA file; or
+
+  g. use the Service in any manner that could damage, disable, or
+     impair the Service.
+
+
+5. INTELLECTUAL PROPERTY
+
+  a. Application code — the source code of Job Seek is released
+     under the MIT License. See the LICENSE file for details.
+
+  b. Job data — the collection of job postings indexed by the
+     Service is licensed under Creative Commons
+     Attribution-NonCommercial 4.0 International (CC BY-NC 4.0).
+     See the LICENSE-JOB-DATA file for details.
+
+  c. Employer content — individual job posting descriptions remain
+     the intellectual property of their respective authors and
+     employers. We display them for informational purposes under
+     fair use / fair dealing principles.
+
+
+6. DISCLAIMER OF WARRANTIES
+
+THE SERVICE IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT
+WARRANTIES OF ANY KIND, WHETHER EXPRESS, IMPLIED, OR STATUTORY,
+INCLUDING BUT NOT LIMITED TO IMPLIED WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
+
+WE DO NOT WARRANT THAT:
+  - THE SERVICE WILL BE UNINTERRUPTED, TIMELY, SECURE, OR
+    ERROR-FREE;
+  - THE RESULTS OBTAINED FROM THE SERVICE WILL BE ACCURATE OR
+    RELIABLE;
+  - ANY JOB POSTING DISPLAYED ON THE SERVICE IS CURRENT, COMPLETE,
+    OR ACCURATE; OR
+  - ANY DEFECTS IN THE SERVICE WILL BE CORRECTED.
+
+
+7. LIMITATION OF LIABILITY
+
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT
+SHALL WE BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL,
+CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR ANY LOSS OF PROFITS, DATA,
+USE, GOODWILL, OR OTHER INTANGIBLE LOSSES, RESULTING FROM:
+
+  a. YOUR ACCESS TO, USE OF, OR INABILITY TO USE THE SERVICE;
+  b. ANY CONDUCT OR CONTENT OF ANY THIRD PARTY ON THE SERVICE;
+  c. ANY JOB POSTING OR EMPLOYER INFORMATION OBTAINED FROM THE
+     SERVICE; OR
+  d. UNAUTHORISED ACCESS, USE, OR ALTERATION OF YOUR DATA.
+
+
+8. PAID FEATURES
+
+  a. We may offer paid subscription tiers ("Pro") with additional
+     features. Pricing and features will be displayed before
+     purchase.
+
+  b. Unless otherwise stated, payments are non-refundable. You may
+     cancel your subscription at any time; access continues until
+     the end of the billing period.
+
+  c. We reserve the right to change pricing with reasonable notice.
+     Continued use after a price change constitutes acceptance.
+
+
+9. PRIVACY
+
+Our collection and use of personal data is described in our Privacy
+Policy, available at /privacy-policy and in the PRIVACY-POLICY file
+in the project repository. By using the Service you acknowledge that
+you have read and understood the Privacy Policy.
+
+
+10. TERMINATION
+
+  a. You may stop using the Service and delete your account at any
+     time.
+
+  b. We may suspend or terminate your access at our discretion, with
+     or without notice, for conduct that we believe violates these
+     Terms or is harmful to the Service, other users, or third
+     parties.
+
+  c. Upon termination, your right to use the Service ceases
+     immediately. Provisions that by their nature should survive
+     termination (including Sections 5, 6, 7, and 11) will survive.
+
+
+11. GOVERNING LAW AND DISPUTES
+
+These Terms are governed by the laws of the Federal Republic of
+Germany. Any disputes arising from or relating to these Terms or
+the Service shall be resolved in the courts of Berlin, Germany,
+unless mandatory consumer protection laws in your jurisdiction
+require otherwise.
+
+
+12. CHANGES TO THESE TERMS
+
+We may update these Terms from time to time. When we do, we will
+revise the "Last updated" date at the top. If the changes are
+material, we will make a reasonable effort to notify you (e.g. via
+a notice on the Service). Your continued use of the Service after
+publication constitutes acceptance of the updated Terms.
+
+
+13. CONTACT
+
+For questions about these Terms, contact:
+
+Viktor Shcherbakov
+Email: business@colophon-group.org

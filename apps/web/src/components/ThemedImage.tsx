@@ -1,9 +1,5 @@
-"use client";
-
-import { useContext } from "react";
 import Image from "next/image";
 import type { CSSProperties } from "react";
-import { ThemeContext } from "@/components/ThemeProvider";
 
 type ThemedImageProps = {
   lightSrc: string;
@@ -16,8 +12,9 @@ type ThemedImageProps = {
 };
 
 /**
- * Renders only the image matching the current theme.
- * Theme is known from the first render (cookie-based), so no flash occurs.
+ * Renders both light and dark images; CSS `.dark` class on <html> toggles
+ * which one is visible.  Avoids hydration mismatches because the HTML is
+ * identical on server and client — no runtime theme check needed.
  */
 export function ThemedImage({
   lightSrc,
@@ -28,17 +25,24 @@ export function ThemedImage({
   className,
   style,
 }: ThemedImageProps) {
-  const { mode } = useContext(ThemeContext);
-  const src = mode === "dark" ? darkSrc : lightSrc;
-
   return (
-    <Image
-      src={src}
-      alt={alt}
-      width={width}
-      height={height}
-      className={className}
-      style={style}
-    />
+    <>
+      <Image
+        src={lightSrc}
+        alt={alt}
+        width={width}
+        height={height}
+        className={`themed-img-light${className ? ` ${className}` : ""}`}
+        style={style}
+      />
+      <Image
+        src={darkSrc}
+        alt={alt}
+        width={width}
+        height={height}
+        className={`themed-img-dark${className ? ` ${className}` : ""}`}
+        style={style}
+      />
+    </>
   );
 }

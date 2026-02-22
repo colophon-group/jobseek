@@ -49,6 +49,16 @@ export function Footer({ lang }: FooterProps) {
               <Trans id="common.footer.licenseLink" comment="Footer link to license page">License</Trans>
             </a>
           </li>
+          <li>
+            <a className={styles.link} href={`${prefix}${links[3].href}`}>
+              <Trans id="common.footer.privacyLink" comment="Footer link to privacy policy page">Privacy</Trans>
+            </a>
+          </li>
+          <li>
+            <a className={styles.link} href={`${prefix}${links[4].href}`}>
+              <Trans id="common.footer.termsLink" comment="Footer link to terms of service page">Terms</Trans>
+            </a>
+          </li>
         </ul>
       </div>
     </footer>

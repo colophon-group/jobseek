@@ -5,6 +5,7 @@ import { useLingui } from "@lingui/react/macro";
 import { useAuth } from "@/components/AuthContext";
 import { siteConfig, publicDomainAssets } from "@/content/config";
 import { PublicDomainArt } from "@/components/PublicDomainArt";
+import { useLocalePath } from "@/lib/useLocalePath";
 import Container from "@mui/material/Container";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
@@ -14,8 +15,9 @@ import Box from "@mui/material/Box";
 export function Hero() {
   const { isLoggedIn } = useAuth();
   const { t } = useLingui();
+  const lp = useLocalePath();
 
-  const primaryHref = isLoggedIn ? siteConfig.nav.dashboard.href : siteConfig.nav.login.href;
+  const primaryHref = isLoggedIn ? lp(siteConfig.nav.dashboard.href) : lp(siteConfig.nav.login.href);
   const primaryLabel = isLoggedIn
     ? t({ id: "common.dashboard.goTo", comment: "CTA when logged in: go to dashboard", message: "Go to dashboard" })
     : t({ id: "home.hero.primaryCta", comment: "Hero primary call-to-action", message: "Get started" });

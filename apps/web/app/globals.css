@@ -85,15 +85,10 @@
   --code-border: rgba(255, 255, 255, 0.15);
 }
 
-/* ── Public domain art theme toggle ── */
-:root {
-  --pda-light-display: block;
-  --pda-dark-display: none;
-}
-.dark {
-  --pda-light-display: none;
-  --pda-dark-display: block;
-}
+/* ── Theme-dependent image toggle ── */
+.themed-img-dark { display: none; }
+.dark .themed-img-light { display: none; }
+.dark .themed-img-dark { display: initial; }
 
 /* ── Base reset ── */
 body {

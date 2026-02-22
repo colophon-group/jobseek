@@ -32,7 +32,7 @@ export type PublicDomainAsset = {
 export const siteConfig = {
   url: "https://jobseek.com",
   domain: "jobseek.com",
-  repoUrl: "https://github.com/colophon-group/jobseek-frontend",
+  repoUrl: "https://github.com/colophon-group/jobseek",
   creator: "Viktor Shcherbakov",
 
   logo: {
@@ -54,7 +54,7 @@ export const siteConfig = {
     pricing: { href: "/#pricing" },
     company: { href: "/how-we-index" },
     license: { href: "/license", hidden: true },
-    login: { href: "/handler/sign-up", hidden: true },
+    login: { href: "/sign-in", hidden: true },
     dashboard: { href: "/dashboard", hidden: true },
   },
 
@@ -91,8 +91,8 @@ export const siteConfig = {
 
   pricing: {
     anchorId: "pricing",
-    free: { href: "/handler/sign-up", highlight: false },
-    pro: { href: "/handler/sign-up", highlight: true },
+    free: { href: "/sign-up", highlight: false },
+    pro: { href: "/sign-up", highlight: true },
   },
 
   indexing: {
@@ -125,25 +125,49 @@ export const siteConfig = {
     },
   },
 
+  privacy: {
+    lastUpdated: "2026-02-22",
+    hero: {
+      art: {
+        assetKey: "the_advocate" as const,
+        focus: { x: 0, y: 25 },
+      },
+    },
+  },
+
+  terms: {
+    lastUpdated: "2026-02-22",
+    hero: {
+      art: {
+        assetKey: "the_king" as const,
+        focus: { x: 0, y: 20 },
+      },
+    },
+  },
+
   homepageArt: {
     assetKey: "the_miser" as const,
     focus: { x: 45, y: 40 },
   },
 
   seo: {
-    disallow: ["/dashboard", "/handler/"],
+    disallow: ["/dashboard", "/sign-in", "/sign-up"],
     sitemap: [
       { path: "/", changeFrequency: "weekly", priority: 1 },
       { path: "/how-we-index", changeFrequency: "monthly", priority: 0.6 },
       { path: "/license", changeFrequency: "monthly", priority: 0.5 },
+      { path: "/privacy-policy", changeFrequency: "monthly", priority: 0.5 },
+      { path: "/terms", changeFrequency: "monthly", priority: 0.5 },
     ],
   },
 
   footer: {
     links: [
-      { href: "https://github.com/colophon-group/jobseek-frontend", external: true },
+      { href: "https://github.com/colophon-group/jobseek", external: true },
       { href: "mailto:business@colophon-group.org", external: true },
       { href: "/license", external: false },
+      { href: "/privacy-policy", external: false },
+      { href: "/terms", external: false },
     ],
   },
 
@@ -174,6 +198,7 @@ export const publicDomainAssets: Record<string, PublicDomainAsset> = {
     dark: "/publicdomain/the_king_light.png",
     height: 724,
     width: 550,
+    crop: { top: 145, right: 28, bottom: 145, left: 28 },
     alt: "The King by Hans Holbein",
     link: "https://pdimagearchive.org/images/1c02a0da-9b8e-4756-9e60-a22e6b72b0a8/",
     title: "The King",
@@ -213,6 +238,19 @@ export const publicDomainAssets: Record<string, PublicDomainAsset> = {
     alt: "The Monk by Hans Holbein",
     link: "https://pdimagearchive.org/images/e7a7ebf2-5cb5-4f84-b059-1694dedb1360/",
     title: "The Monk",
+    author: "Hans Holbein",
+    date: "1523-5",
+  },
+  the_advocate: {
+    href: "/publicdomain/master/the_advocate.jpg",
+    light: "/publicdomain/the_advocate_dark.png",
+    dark: "/publicdomain/the_advocate_light.png",
+    height: 724,
+    width: 550,
+    crop: { bottom: 217 },
+    alt: "The Advocate by Hans Holbein",
+    link: "https://pdimagearchive.org/images/7815702f-8b16-4df0-9e43-1e6dd7a5748a/",
+    title: "The Advocate",
     author: "Hans Holbein",
     date: "1523-5",
   },

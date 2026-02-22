@@ -13,9 +13,417 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#. Right of access
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:239
+#~ msgid "privacy.rights.access"
+#~ msgstr ""
+
+#. Right of data portability
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:248
+#~ msgid "privacy.rights.portability"
+#~ msgstr ""
+
+#. Right of erasure
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:245
+#~ msgid "privacy.rights.erasure"
+#~ msgstr ""
+
+#. Right to object
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:254
+#~ msgid "privacy.rights.objection"
+#~ msgstr ""
+
+#. Right of rectification
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:242
+#~ msgid "privacy.rights.rectification"
+#~ msgstr ""
+
+#. Right to restrict processing
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:251
+#~ msgid "privacy.rights.restriction"
+#~ msgstr ""
+
+#. Right to withdraw consent
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:257
+#~ msgid "privacy.rights.withdraw"
+#~ msgstr ""
+
+#. Account data subsection
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:111
+#~ msgid "privacy.dataCollected.accountTitle"
+#~ msgstr ""
+
+#. Encryption in transit
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:216
+#~ msgid "privacy.storage.r1"
+#~ msgstr ""
+
+#. Analytics data
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:139
+#~ msgid "privacy.dataCollected.technical1"
+#~ msgstr ""
+
+#. TOC: Changes
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:43
+#~ msgid "privacy.toc.changes"
+#~ msgstr ""
+
+#. Policy changes section title
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:294
+#~ msgid "privacy.changes.title"
+#~ msgstr ""
+
+#. Saved companies
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:124
+#~ msgid "privacy.dataCollected.usage1"
+#~ msgstr ""
+
+#. TOC: Cookies
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:41
+#~ msgid "privacy.toc.cookies"
+#~ msgstr ""
+
+#. Cookies section title
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:270
+#~ msgid "privacy.cookies.title"
+#~ msgstr ""
+
+#. TOC: Data retention
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:42
+#~ msgid "privacy.toc.retention"
+#~ msgstr ""
+
+#. Data retention section title
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:282
+#~ msgid "privacy.retention.title"
+#~ msgstr ""
+
+#. TOC: Data storage
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:39
+#~ msgid "privacy.toc.storage"
+#~ msgstr ""
+
+#. Data storage section title
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:212
+#~ msgid "privacy.storage.title"
+#~ msgstr ""
+
+#. Google privacy policy link
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:185
+#~ msgid "privacy.thirdParties.googleLink"
+#~ msgstr ""
+
+#. Saved job postings
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:127
+#~ msgid "privacy.dataCollected.usage2"
+#~ msgstr ""
+
+#. Job alerts
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:130
+#~ msgid "privacy.dataCollected.usage3"
+#~ msgstr ""
+
+#. Cookies description
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:273
+#~ msgid "privacy.cookies.description"
+#~ msgstr ""
+
+#. OAuth profile data
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:115
+#~ msgid "privacy.dataCollected.account1"
+#~ msgstr ""
+
+#. Neon privacy policy link
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:203
+#~ msgid "privacy.thirdParties.neonLink"
+#~ msgstr ""
+
+#. Technical data subsection
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:135
+#~ msgid "privacy.dataCollected.technicalTitle"
+#~ msgstr ""
+
+#. Usage data subsection
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:120
+#~ msgid "privacy.dataCollected.usageTitle"
+#~ msgstr ""
+
+#. Vercel privacy policy link
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:194
+#~ msgid "privacy.thirdParties.vercelLink"
+#~ msgstr ""
+
+#. No selling data
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:164
+#~ msgid "privacy.howWeUse.noSale"
+#~ msgstr ""
+
+#. No password storage
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:222
+#~ msgid "privacy.storage.r3"
+#~ msgstr ""
+
+#. Policy changes description
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:297
+#~ msgid "privacy.changes.description"
+#~ msgstr ""
+
+#. Data retention description
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:285
+#~ msgid "privacy.retention.description"
+#~ msgstr ""
+
+#. Database encryption
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:219
+#~ msgid "privacy.storage.r2"
+#~ msgstr ""
+
+#. Analytics data
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:114
+#~ msgid "privacy.dataCollected.analytics"
+#~ msgstr "Statistiche anonime sulle visualizzazioni di pagina tramite Vercel Analytics. Nessun cookie, nessun identificativo personale."
+
+#. Right: get a copy
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:186
+#~ msgid "privacy.rights.r1"
+#~ msgstr "Richiedere una copia di tutti i dati che conserviamo su di te."
+
+#. Usage data
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:111
+#~ msgid "privacy.dataCollected.usage"
+#~ msgstr "Le aziende che segui, le offerte di lavoro che salvi e le preferenze di notifica che imposti."
+
+#. TOC: Contact
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:41
+#~ msgid "privacy.toc.contact"
+#~ msgstr "Contatti"
+
+#. Contact section title
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:232
+#~ msgid "privacy.contact.title"
+#~ msgstr "Contatti"
+
+#. Table of contents heading
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:32
+#~ msgid "privacy.toc.title"
+#~ msgstr "Indice"
+
+#. How to exercise rights
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:202
+#~ msgid "privacy.rights.howTo"
+#~ msgstr "Scrivici e ti risponderemo entro 30 giorni. Se elimini il tuo account, tutti i tuoi dati vengono cancellati entro 30 giorni."
+
+#. Encryption note
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:218
+#~ msgid "privacy.extras.encryption"
+#~ msgstr "Tutto viaggia su HTTPS ed è crittografato a riposo."
+
+#. Right: export
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:192
+#~ msgid "privacy.rights.r3"
+#~ msgstr "Esportare i tuoi dati in un formato leggibile da una macchina."
+
+#. Good to know section title
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:211
+#~ msgid "privacy.extras.title"
+#~ msgstr "Buono a sapersi"
+
+#. Google OAuth
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:157
+#~ msgid "privacy.thirdParties.google"
+#~ msgstr "Google — gestisce l'accesso. Riceviamo il tuo nome, la tua email e la foto del profilo. Non accediamo ai tuoi contatti, al calendario o ad altri dati."
+
+#. Right: fix or delete
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:189
+#~ msgid "privacy.rights.r2"
+#~ msgstr "Far correggere o cancellare i tuoi dati in qualsiasi momento."
+
+#. TOC: How we use it
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:38
+#~ msgid "privacy.toc.howWeUse"
+#~ msgstr "Come li utilizziamo"
+
+#. How we use data section title
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:122
+#~ msgid "privacy.howWeUse.title"
+#~ msgstr "Come li utilizziamo"
+
+#. Changes note
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:221
+#~ msgid "privacy.extras.changes"
+#~ msgstr "Se aggiorniamo questa informativa, cambieremo la data in cima alla pagina."
+
+#. Neon database
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:167
+#~ msgid "privacy.thirdParties.neon"
+#~ msgstr "Neon — conserva i tuoi dati in un database PostgreSQL crittografato."
+
+#. Right: object
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:195
+#~ msgid "privacy.rights.r4"
+#~ msgstr "Opporti al trattamento dei tuoi dati o limitarlo."
+
+#. Data collected intro
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:102
+#~ msgid "privacy.dataCollected.intro"
+#~ msgstr "Solo ciò che serve per far funzionare il servizio. Niente di più."
+
+#. TOC: Overview
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:36
+#~ msgid "privacy.toc.overview"
+#~ msgstr "Panoramica"
+
+#. Table of contents aria label
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:33
+#~ msgid "privacy.toc.ariaLabel"
+#~ msgstr "Contenuto della pagina"
+
+#. Purpose: notifications
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:137
+#~ msgid "privacy.howWeUse.r3"
+#~ msgstr "Inviarti le notifiche di lavoro via email che hai attivato."
+
+#. Purpose: features
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:134
+#~ msgid "privacy.howWeUse.r2"
+#~ msgstr "Mostrarti le aziende salvate, le offerte seguite e le notifiche."
+
+#. Purpose: sign in
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:131
+#~ msgid "privacy.howWeUse.r1"
+#~ msgstr "Farti accedere e mantenere attiva la tua sessione."
+
+#. TOC: Third-party services
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:39
+#~ msgid "privacy.toc.thirdParties"
+#~ msgstr "Servizi di terze parti"
+
+#. Third-party services section title
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:148
+#~ msgid "privacy.thirdParties.title"
+#~ msgstr "Servizi di terze parti"
+
+#. Vercel hosting
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:162
+#~ msgid "privacy.thirdParties.vercel"
+#~ msgstr "Vercel — ospita l'app e raccoglie statistiche anonime sulle pagine visitate, senza cookie."
+
+#. No selling
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:140
+#~ msgid "privacy.howWeUse.r4"
+#~ msgstr "Non vendiamo, affittiamo o condividiamo i tuoi dati per scopi di marketing."
+
+#. Cookies note
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:215
+#~ msgid "privacy.extras.cookies"
+#~ msgstr "Usiamo i cookie solo per tenerti connesso — niente pubblicità, niente tracciamento."
+
+#. Third-party services intro
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:151
+#~ msgid "privacy.thirdParties.intro"
+#~ msgstr "Utilizziamo alcuni servizi per far funzionare Job Seek. Ecco chi sono e cosa fanno."
+
+#. TOC: What we collect
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:37
+#~ msgid "privacy.toc.dataCollected"
+#~ msgstr "Cosa raccogliamo"
+
+#. Data collected section title
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:99
+#~ msgid "privacy.dataCollected.title"
+#~ msgstr "Cosa raccogliamo"
+
+#. Right: withdraw
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:198
+#~ msgid "privacy.rights.r5"
+#~ msgstr "Revocare il consenso in qualsiasi momento eliminando il tuo account o contattandoci."
+
+#. How we use data intro
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:125
+#~ msgid "privacy.howWeUse.intro"
+#~ msgstr "I tuoi dati alimentano le funzionalità per cui ti sei iscritto — e nient'altro."
+
+#. OAuth profile data
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:108
+#~ msgid "privacy.dataCollected.account"
+#~ msgstr "Il tuo nome, la tua email e la foto del profilo dall'accesso Google. Non vediamo mai la tua password."
+
+#. TOC: Your rights
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:40
+#~ msgid "privacy.toc.rights"
+#~ msgstr "I tuoi diritti"
+
 #. CC right 1
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:128
+#: src/components/LicenseContent.tsx:131
 msgid "license.data.r1"
 msgstr "\"Viktor Shcherbakov, Collection of Job Postings\" con un link alla fonte."
 
@@ -25,27 +433,39 @@ msgstr "\"Viktor Shcherbakov, Collection of Job Postings\" con un link alla font
 msgid "home.features.s2.p3.title"
 msgstr "Avvisi che controlli davvero"
 
+#. Encryption
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:101
+msgid "privacy.short.r5"
+msgstr "Tutti i dati sono crittografati in transito e a riposo."
+
+#. Link to sign-in page from sign-up
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/sign-up/page.tsx:145
+msgid "auth.signUp.hasAccount"
+msgstr "Hai già un account? <0>Accedi</0>"
+
 #. MIT license section title
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:93
+#: src/components/LicenseContent.tsx:96
 msgid "license.code.title"
 msgstr "Codice dell'applicazione (MIT License)"
 
 #. TOC: Application code (MIT)
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:37
+#: src/components/LicenseContent.tsx:40
 msgid "license.toc.code"
 msgstr "Codice dell'applicazione (MIT)"
 
 #. Free feature: application tracker
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:62
+#: src/components/Pricing.tsx:60
 msgid "home.pricing.free.f2"
 msgstr "Tracker delle candidature"
 
 #. Pro feature: application tracker
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:119
+#: src/components/Pricing.tsx:117
 msgid "home.pricing.pro.f2"
 msgstr "Tracker delle candidature"
 
@@ -73,15 +493,21 @@ msgstr "Consulta il repository su"
 msgid "home.features.s1.title"
 msgstr "Pensato per chi cerca lavoro attivamente"
 
+#. Terms page description
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx:51
+msgid "terms.hero.description"
+msgstr "Utilizzando Job Seek accetti questi termini. Ecco un riassunto in parole semplici."
+
 #. Aria label for language switcher button
 #. js-lingui-explicit-id
-#: src/components/LocaleSwitcher.tsx:36
+#: src/components/LocaleSwitcher.tsx:35
 msgid "common.locale.switch"
 msgstr "Cambia lingua"
 
 #. Pricing section heading
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:149
+#: src/components/Pricing.tsx:147
 msgid "home.pricing.title"
 msgstr "Scegli il piano giusto per te"
 
@@ -97,9 +523,15 @@ msgstr "API client come seconda opzione."
 msgid "common.mobileMenu.close"
 msgstr "Chiudi menu"
 
+#. TOTP code input label
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/sign-in/2fa/page.tsx:68
+msgid "auth.2fa.field.code"
+msgstr "Codice"
+
 #. CC license section title
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:119
+#: src/components/LicenseContent.tsx:122
 msgid "license.data.title"
 msgstr "Raccolta di annunci di lavoro (CC BY-NC 4.0)"
 
@@ -111,13 +543,13 @@ msgstr "Avvisi aziendali"
 
 #. TOC: Contact
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:39
+#: src/components/LicenseContent.tsx:42
 msgid "license.toc.contact"
 msgstr "Contatti"
 
 #. Contact section title
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:147
+#: src/components/LicenseContent.tsx:150
 msgid "license.contact.title"
 msgstr "Contatti"
 
@@ -129,7 +561,7 @@ msgstr "Contatti"
 
 #. Table of contents heading
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:32
+#: src/components/LicenseContent.tsx:35
 msgid "license.toc.title"
 msgstr "Sommario"
 
@@ -139,9 +571,31 @@ msgstr "Sommario"
 msgid "indexing.toc.title"
 msgstr "Sommario"
 
+#. GitHub OAuth button
+#. GitHub OAuth button
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/sign-in/page.tsx:121
+#: app/[lang]/(auth)/sign-up/page.tsx:132
+msgid "auth.oauth.github"
+msgstr "Continua con GitHub"
+
+#. Google OAuth button
+#. Google OAuth button
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/sign-in/page.tsx:129
+#: app/[lang]/(auth)/sign-up/page.tsx:140
+msgid "auth.oauth.google"
+msgstr "Continua con Google"
+
+#. Cookies
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:98
+msgid "privacy.short.r4"
+msgstr "I cookie servono solo per la sessione — niente pubblicità, niente tracciamento."
+
 #. MIT right 1
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:102
+#: src/components/LicenseContent.tsx:105
 msgid "license.code.r1"
 msgstr "Copiare e modificare il codice per qualsiasi scopo, inclusi prodotti commerciali."
 
@@ -157,17 +611,55 @@ msgstr "Garanzie di crawling"
 msgid "indexing.assurances.title"
 msgstr "Garanzie di crawling"
 
+#. Sign-up page heading
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/sign-up/page.tsx:66
+msgid "auth.signUp.title"
+msgstr "Crea un account"
+
+#. Sign-up button while loading
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/sign-up/page.tsx:116
+msgid "auth.signUp.button.loading"
+msgstr "Creazione account..."
+
+#. Link to sign-up page from sign-in
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/sign-in/page.tsx:134
+msgid "auth.signIn.noAccount"
+msgstr "Non hai un account? <0>Registrati</0>"
+
+#. No scraping
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx:95
+msgid "terms.short.r3"
+msgstr "Niente scraping, candidature automatizzate o abuso della piattaforma."
+
 #. Feature section 2 description
 #. js-lingui-explicit-id
 #: src/components/Features.tsx:175
 msgid "home.features.s2.description"
 msgstr "Non trovi la tua azienda preferita nel feed? Incolla il link alla pagina carriere e inizieremo a monitorarla per te — niente script, niente fogli di calcolo, niente attese."
 
+#. Email input label
+#. Email input label
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/sign-in/page.tsx:78
+#: app/[lang]/(auth)/sign-up/page.tsx:89
+msgid "auth.field.email"
+msgstr "E-mail"
+
 #. Pro feature: email alerts
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:127
+#: src/components/Pricing.tsx:125
 msgid "home.pricing.pro.f4"
 msgstr "Avvisi e aggiornamenti via email"
+
+#. 2FA verification page subtitle
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/sign-in/2fa/page.tsx:56
+msgid "auth.2fa.subtitle"
+msgstr "Inserisci il codice a 6 cifre dalla tua app di autenticazione"
 
 #. Assurance 3 body
 #. js-lingui-explicit-id
@@ -214,19 +706,19 @@ msgstr "Segui le aziende che ti interessano e ricevi una notifica quando pubblic
 
 #. Pro tier description
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:110
+#: src/components/Pricing.tsx:108
 msgid "home.pricing.pro.description"
 msgstr "Per chi cerca lavoro attivamente e vuole una copertura illimitata e risultati più rapidi."
 
 #. Free tier period
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:49
+#: src/components/Pricing.tsx:47
 msgid "home.pricing.free.period"
 msgstr "Per sempre"
 
 #. Free tier name
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:44
+#: src/components/Pricing.tsx:42
 msgid "home.pricing.free.name"
 msgstr "Gratis"
 
@@ -235,6 +727,12 @@ msgstr "Gratis"
 #: src/components/Hero.tsx:21
 msgid "home.hero.primaryCta"
 msgstr "Inizia ora"
+
+#. Sign-up page subtitle
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/sign-up/page.tsx:69
+msgid "auth.signUp.subtitle"
+msgstr "Inizia con Job Seek"
 
 #. Footer link to GitHub repo
 #. js-lingui-explicit-id
@@ -267,6 +765,11 @@ msgstr "Parsing delle pagine rispettoso."
 #: src/components/MobileMenu.tsx:87
 msgid "common.nav.company"
 msgstr "Come indicizziamo gli annunci?"
+
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/privacy-policy/page.tsx:15
+msgid "privacy.meta.description"
+msgstr "Come Job Seek raccoglie, utilizza e protegge i tuoi dati personali."
 
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/how-we-index/page.tsx:15
@@ -320,9 +823,15 @@ msgstr "Se notate un comportamento anomalo del crawler, preferite che non indici
 msgid "indexing.hero.eyebrow"
 msgstr "Politica di indicizzazione"
 
+#. Invalid 2FA code error
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/sign-in/2fa/page.tsx:36
+msgid "auth.2fa.error.invalid"
+msgstr "Codice non valido"
+
 #. TOC: Job data (CC BY-NC 4.0)
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:38
+#: src/components/LicenseContent.tsx:41
 msgid "license.toc.data"
 msgstr "Dati sugli annunci (CC BY-NC 4.0)"
 
@@ -334,7 +843,7 @@ msgstr "Job Seek è un motore di ricerca sia per candidati attivi sia per profes
 
 #. License page description
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:63
+#: src/components/LicenseContent.tsx:66
 msgid "license.hero.description"
 msgstr "Il codice sorgente di Job Seek è open source sotto licenza MIT. I dati sugli annunci che raccogliamo e arricchiamo sono Creative Commons BY-NC 4.0. Di seguito il riepilogo in linguaggio semplice — si prega di leggere le licenze complete per i termini esatti."
 
@@ -349,6 +858,18 @@ msgstr "Tieni il polso del mercato del lavoro."
 #: src/components/Features.tsx:186
 msgid "home.features.s2.p2.title"
 msgstr "Basta con le 50 schede aperte"
+
+#. Last updated date label
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx:56
+msgid "terms.hero.lastUpdated"
+msgstr "Ultimo aggiornamento:"
+
+#. Last updated date label
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:56
+msgid "privacy.hero.lastUpdated"
+msgstr "Ultimo aggiornamento:"
 
 #. Hero secondary call-to-action
 #. js-lingui-explicit-id
@@ -369,13 +890,13 @@ msgstr "Licenza"
 
 #. License page title
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:60
+#: src/components/LicenseContent.tsx:63
 msgid "license.hero.title"
 msgstr "Licenza di Job Seek"
 
 #. License page eyebrow
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:57
+#: src/components/LicenseContent.tsx:60
 msgid "license.hero.eyebrow"
 msgstr "Licenze"
 
@@ -398,6 +919,12 @@ msgstr "Accedi"
 msgid "home.features.s1.p2.description"
 msgstr "Annota dove ti sei candidato, lo stato, i contatti e i prossimi passi."
 
+#. Name input label
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/sign-up/page.tsx:80
+msgid "auth.field.name"
+msgstr "Nome"
+
 #. TOC: Need to reach us?
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:43
@@ -412,13 +939,13 @@ msgstr "Vuole contattarci?"
 
 #. CC right 2
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:133
+#: src/components/LicenseContent.tsx:136
 msgid "license.data.r2"
 msgstr "Nessuna ridistribuzione commerciale o rivendita senza autorizzazione."
 
 #. MIT right 3
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:108
+#: src/components/LicenseContent.tsx:111
 msgid "license.code.r3"
 msgstr "Nessuna garanzia — l'uso è a proprio rischio e pericolo."
 
@@ -438,13 +965,13 @@ msgstr "Una pagina al minuto."
 #. CTA when logged in: open dashboard
 #. js-lingui-explicit-id
 #: src/components/Pricing.tsx:26
-#: src/components/Pricing.tsx:83
+#: src/components/Pricing.tsx:81
 msgid "common.dashboard.open"
 msgstr "Apri dashboard"
 
 #. Aria label for mobile menu button
 #. js-lingui-explicit-id
-#: src/components/Header.tsx:107
+#: src/components/Header.tsx:106
 msgid "common.header.openMenu"
 msgstr "Apri menu principale"
 
@@ -472,6 +999,14 @@ msgstr "Opt-out o domande"
 msgid "indexing.optOut.title"
 msgstr "Opt-out o domande"
 
+#. Divider between form and OAuth buttons
+#. Divider between form and OAuth buttons
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/sign-in/page.tsx:111
+#: app/[lang]/(auth)/sign-up/page.tsx:122
+msgid "auth.divider.or"
+msgstr "o"
+
 #. Assurance 2 body
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:90
@@ -492,7 +1027,7 @@ msgstr "La nostra posizione sull'automazione"
 
 #. TOC: Overview
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:36
+#: src/components/LicenseContent.tsx:39
 msgid "license.toc.overview"
 msgstr "Panoramica"
 
@@ -504,7 +1039,7 @@ msgstr "Panoramica"
 
 #. Table of contents aria label
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:33
+#: src/components/LicenseContent.tsx:36
 msgid "license.toc.ariaLabel"
 msgstr "Contenuti della pagina"
 
@@ -526,6 +1061,14 @@ msgstr "Pagina non trovata"
 msgid "home.features.s2.p2.description"
 msgstr "Raccogli tutte le startup interessanti in un'unica dashboard invece di destreggiarti tra finestre di Chrome e segnalibri."
 
+#. Password input label
+#. Password input label
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/sign-in/page.tsx:88
+#: app/[lang]/(auth)/sign-up/page.tsx:99
+msgid "auth.field.password"
+msgstr "Password"
+
 #. Feature: paste a link title
 #. js-lingui-explicit-id
 #: src/components/Features.tsx:181
@@ -534,7 +1077,7 @@ msgstr "Incolla un link, avvia il crawling"
 
 #. Pro tier period
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:106
+#: src/components/Pricing.tsx:104
 msgid "home.pricing.pro.period"
 msgstr "al mese"
 
@@ -554,13 +1097,36 @@ msgstr "Prezzi"
 
 #. Pricing section eyebrow
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:146
+#: src/components/Pricing.tsx:144
 msgid "home.pricing.eyebrow"
 msgstr "Prezzi"
 
+#. Privacy policy page eyebrow
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:45
+msgid "privacy.hero.eyebrow"
+msgstr "Privacy"
+
+#. Footer link to privacy policy page
+#. js-lingui-explicit-id
+#: src/components/Footer.tsx:54
+msgid "common.footer.privacyLink"
+msgstr "Privacy"
+
+#. Privacy policy page title
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:48
+msgid "privacy.hero.title"
+msgstr "Privacy su Job Seek"
+
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/privacy-policy/page.tsx:14
+msgid "privacy.meta.title"
+msgstr "Informativa sulla privacy"
+
 #. Pro tier name
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:101
+#: src/components/Pricing.tsx:99
 msgid "home.pricing.pro.name"
 msgstr "Pro"
 
@@ -574,31 +1140,55 @@ msgstr "Prodotto"
 
 #. Fallback credit text for public domain artwork
 #. js-lingui-explicit-id
-#: src/components/PublicDomainArt.tsx:66
+#: src/components/PublicDomainArt.tsx:53
 msgid "common.art.publicDomain"
 msgstr "Pubblico dominio"
 
 #. Contact call to action
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:150
+#: src/components/LicenseContent.tsx:153
 msgid "license.contactCta"
 msgstr "Domande sulle licenze o sull'uso commerciale? Scriveteci via email."
 
+#. Terms contact call to action
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx:109
+msgid "terms.contact.description"
+msgstr "Domande? Scrivici."
+
+#. Privacy contact call to action
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:121
+msgid "privacy.contact.description"
+msgstr "Domande? Scrivici."
+
 #. Link to full CC license
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:140
+#: src/components/LicenseContent.tsx:143
 msgid "license.data.linkLabel"
 msgstr "Leggi la licenza CC BY-NC 4.0"
 
 #. Link to full MIT license
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:112
+#: src/components/LicenseContent.tsx:115
 msgid "license.code.linkLabel"
 msgstr "Leggi la licenza MIT completa"
 
+#. Link to full privacy policy text
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:128
+msgid "privacy.extras.fullPolicyLink"
+msgstr "Leggi l'informativa sulla privacy completa"
+
+#. Link to full terms of service text
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx:116
+msgid "terms.fullTermsLink"
+msgstr "Leggi i termini di servizio completi"
+
 #. MIT right 2
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:105
+#: src/components/LicenseContent.tsx:108
 msgid "license.code.r2"
 msgstr "Ridistribuire le proprie modifiche, a condizione di includere l'avviso MIT."
 
@@ -628,13 +1218,13 @@ msgstr "Salva i tuoi filtri per scansioni rapide senza dover riscrivere tutto og
 
 #. Free feature: saved searches
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:66
+#: src/components/Pricing.tsx:64
 msgid "home.pricing.free.f3"
 msgstr "Ricerche salvate"
 
 #. Pro feature: saved searches
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:123
+#: src/components/Pricing.tsx:121
 msgid "home.pricing.pro.f3"
 msgstr "Ricerche salvate"
 
@@ -656,9 +1246,45 @@ msgstr "Archiviazione selettiva."
 msgid "home.features.s2.p3.description"
 msgstr "Imposta la frequenza per ogni azienda così ricevi aggiornamenti sulle nuove posizioni senza passare la giornata a scorrere siti di lavoro."
 
+#. Sign-in page heading
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/sign-in/page.tsx:64
+msgid "auth.signIn.title"
+msgstr "Accedi"
+
+#. Sign-in submit button
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/sign-in/page.tsx:106
+msgid "auth.signIn.button.submit"
+msgstr "Accedi"
+
+#. Sign-up submit button
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/sign-up/page.tsx:117
+msgid "auth.signUp.button.submit"
+msgstr "Registrati"
+
+#. Generic sign-in error fallback
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/sign-in/page.tsx:42
+msgid "auth.signIn.error.generic"
+msgstr "Accesso non riuscito"
+
+#. Generic sign-up error fallback
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/sign-up/page.tsx:44
+msgid "auth.signUp.error.generic"
+msgstr "Registrazione non riuscita"
+
+#. Sign-in button while loading
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/sign-in/page.tsx:105
+msgid "auth.signIn.button.loading"
+msgstr "Accesso in corso..."
+
 #. Pricing section description
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:152
+#: src/components/Pricing.tsx:150
 msgid "home.pricing.description"
 msgstr "Prezzi semplici e trasparenti. Inizia gratis e passa al piano superiore quando la tua ricerca di lavoro fa sul serio."
 
@@ -688,7 +1314,7 @@ msgstr "Mantieni il controllo"
 
 #. Free feature: subscribe to companies
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:58
+#: src/components/Pricing.tsx:56
 msgid "home.pricing.free.f1"
 msgstr "Segui fino a 5 aziende"
 
@@ -715,9 +1341,37 @@ msgstr "Passa alla modalità scura"
 msgid "common.theme.switchToLight"
 msgstr "Passa alla modalità chiara"
 
+#. Terms page eyebrow
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx:45
+msgid "terms.hero.eyebrow"
+msgstr "Termini di servizio"
+
+#. Footer link to terms of service page
+#. js-lingui-explicit-id
+#: src/components/Footer.tsx:59
+msgid "common.footer.termsLink"
+msgstr "Termini"
+
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/terms/page.tsx:14
+msgid "terms.meta.title"
+msgstr "Termini di servizio"
+
+#. Terms page title
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx:48
+msgid "terms.hero.title"
+msgstr "Termini di servizio"
+
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/terms/page.tsx:15
+msgid "terms.meta.description"
+msgstr "Termini di servizio dell'applicazione Job Seek."
+
 #. Free tier description
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:53
+#: src/components/Pricing.tsx:51
 msgid "home.pricing.free.description"
 msgstr "Prova Job Seek con abbastanza spazio per restare aggiornato sulle aziende dei tuoi sogni."
 
@@ -732,6 +1386,24 @@ msgstr "Il primo aggregatore di lavoro che ti mette al volante"
 #: app/[lang]/not-found.tsx:18
 msgid "notFound.body"
 msgstr "La pagina che stai cercando non esiste o è stata spostata."
+
+#. Provided as-is
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx:98
+msgid "terms.short.r4"
+msgstr "Il servizio è fornito così com'è, senza garanzie."
+
+#. Short version section title
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx:85
+msgid "terms.short.title"
+msgstr "In breve"
+
+#. Short version section title
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:85
+msgid "privacy.short.title"
+msgstr "In breve"
 
 #. Dashboard nav button label
 #. Dashboard nav button label
@@ -759,17 +1431,59 @@ msgstr "La trasparenza è importante, perciò il codice del nostro servizio di r
 msgid "error.retryButton"
 msgstr "Riprova"
 
+#. 2FA verification page heading
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/sign-in/2fa/page.tsx:53
+msgid "auth.2fa.title"
+msgstr "Autenticazione a due fattori"
+
+#. Your rights intro
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:112
+msgid "privacy.rights.intro"
+msgstr "Secondo il GDPR puoi richiedere una copia dei tuoi dati, farli correggere o cancellare, esportarli o opporti al trattamento. Elimina il tuo account e tutto viene cancellato entro 30 giorni."
+
 #. Pro feature: unlimited subscriptions
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:115
+#: src/components/Pricing.tsx:113
 msgid "home.pricing.pro.f1"
 msgstr "Abbonamenti aziendali illimitati"
 
 #. Pro tier CTA
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:84
+#: src/components/Pricing.tsx:82
 msgid "home.pricing.pro.cta"
 msgstr "Passa a Pro"
+
+#. 2FA verify submit button
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/sign-in/2fa/page.tsx:87
+msgid "auth.2fa.button.submit"
+msgstr "Verifica"
+
+#. 2FA verify button while loading
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/sign-in/2fa/page.tsx:86
+msgid "auth.2fa.button.loading"
+msgstr "Verifica in corso..."
+
+#. What the service does
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx:92
+msgid "terms.short.r2"
+msgstr "Aggreghiamo offerte di lavoro pubbliche. Non garantiamo che siano accurate o aggiornate."
+
+#. Privacy policy page description
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:51
+msgid "privacy.hero.description"
+msgstr "Raccogliamo solo il necessario, non vendiamo i tuoi dati e puoi cancellare tutto in qualsiasi momento."
+
+#. No selling
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:92
+msgid "privacy.short.r2"
+msgstr "Non vendiamo, affittiamo o condividiamo i tuoi dati per scopi di marketing."
 
 #. Step 1 body
 #. js-lingui-explicit-id
@@ -789,26 +1503,62 @@ msgstr "Cerchiamo feed strutturati prima di fare scraping dell'HTML grezzo. Prim
 msgid "indexing.automation.body"
 msgstr "Ci opponiamo a delegare le decisioni di assunzione o di ricerca lavoro ad automazioni opache — sia dal lato dei datori di lavoro che dei candidati. Ogni link in uscita che condividiamo include <0>utm_source=jobseek</0> affinché i recruiter riconoscano il traffico, e monitoriamo continuamente i pattern di utilizzo applicando frizioni per scoraggiare le candidature automatizzate."
 
+#. What we store
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:89
+msgid "privacy.short.r1"
+msgstr "Conserviamo il tuo nome, la tua email e la foto del profilo dall'accesso OAuth, più i dati che crei nell'app."
+
 #. Info box about sitemaps
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:197
 msgid "indexing.sitemapNote"
 msgstr "Incoraggiamo vivamente la pubblicazione di una sitemap facilmente individuabile per la sezione carriere. In sua assenza, inviamo periodicamente richieste <0>HEAD</0> leggere agli URL degli annunci già scoperti per verificare che siano ancora attivi, generando traffico non necessario."
 
+#. Third parties
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:95
+msgid "privacy.short.r3"
+msgstr "Utilizziamo pochi servizi terzi per accesso, hosting e archiviazione — nient’altro."
+
+#. Sign-in page subtitle
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/sign-in/page.tsx:67
+msgid "auth.signIn.subtitle"
+msgstr "Bentornato"
+
+#. Account deletion
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx:101
+msgid "terms.short.r5"
+msgstr "Puoi eliminare il tuo account in qualsiasi momento."
+
 #. CC right 3
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:136
+#: src/components/LicenseContent.tsx:139
 msgid "license.data.r3"
 msgstr "È possibile rielaborare/trasformare i dati per ricerche o dashboard personali."
 
 #. MIT license summary
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:96
+#: src/components/LicenseContent.tsx:99
 msgid "license.code.summary"
 msgstr "È possibile utilizzare, modificare e ridistribuire il codice in prodotti personali o commerciali a condizione di includere l'avviso di copyright e licenza."
 
 #. CC license summary
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:122
+#: src/components/LicenseContent.tsx:125
 msgid "license.data.summary"
 msgstr "È consentito riutilizzare il dataset degli annunci con attribuzione per scopi non commerciali. L'uso commerciale richiede il previo consenso scritto."
+
+#. Age requirement
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx:89
+msgid "terms.short.r1"
+msgstr "Devi avere almeno 16 anni per usare Job Seek."
+
+#. Your rights section title
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:109
+msgid "privacy.rights.title"
+msgstr "I tuoi diritti"

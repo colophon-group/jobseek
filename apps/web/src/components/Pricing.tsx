@@ -4,6 +4,7 @@ import { Trans } from "@lingui/react/macro";
 import { useLingui } from "@lingui/react/macro";
 import { useAuth } from "@/components/AuthContext";
 import { siteConfig } from "@/content/config";
+import { useLocalePath } from "@/lib/useLocalePath";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import Container from "@mui/material/Container";
 import Stack from "@mui/material/Stack";
@@ -20,8 +21,9 @@ import Box from "@mui/material/Box";
 
 function FreeTier({ isLoggedIn }: { isLoggedIn: boolean }) {
   const { t } = useLingui();
+  const lp = useLocalePath();
   const cfg = siteConfig.pricing.free;
-  const ctaHref = isLoggedIn ? siteConfig.nav.dashboard.href : cfg.href;
+  const ctaHref = isLoggedIn ? lp(siteConfig.nav.dashboard.href) : lp(cfg.href);
   const ctaLabel = isLoggedIn
     ? t({ id: "common.dashboard.open", comment: "CTA when logged in: open dashboard", message: "Open dashboard" })
     : t({ id: "home.pricing.free.cta", comment: "Free tier CTA", message: "Start for free" });
@@ -75,8 +77,9 @@ function FreeTier({ isLoggedIn }: { isLoggedIn: boolean }) {
 
 function ProTier({ isLoggedIn }: { isLoggedIn: boolean }) {
   const { t } = useLingui();
+  const lp = useLocalePath();
   const cfg = siteConfig.pricing.pro;
-  const ctaHref = isLoggedIn ? siteConfig.nav.dashboard.href : cfg.href;
+  const ctaHref = isLoggedIn ? lp(siteConfig.nav.dashboard.href) : lp(cfg.href);
   const ctaLabel = isLoggedIn
     ? t({ id: "common.dashboard.open", comment: "CTA when logged in: open dashboard", message: "Open dashboard" })
     : t({ id: "home.pricing.pro.cta", comment: "Pro tier CTA", message: "Upgrade to Pro" });

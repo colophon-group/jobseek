@@ -10,9 +10,9 @@ if (!url) {
   throw new Error("DATABASE_URL_UNPOOLED or DATABASE_URL must be set");
 }
 
-const stackUserId = process.argv[2];
-if (!stackUserId) {
-  console.error("Usage: tsx src/db/scripts/make-admin.ts <stack_user_id>");
+const userId = process.argv[2];
+if (!userId) {
+  console.error("Usage: tsx src/db/scripts/make-admin.ts <user_id>");
   process.exit(1);
 }
 
@@ -22,20 +22,20 @@ async function main() {
   const existing = await db
     .select()
     .from(usersMeta)
-    .where(eq(usersMeta.stackUserId, stackUserId));
+    .where(eq(usersMeta.userId, userId));
 
   if (existing.length > 0) {
     await db
       .update(usersMeta)
       .set({ role: "admin", updatedAt: new Date() })
-      .where(eq(usersMeta.stackUserId, stackUserId));
-    console.log(`Updated existing user ${stackUserId} to admin.`);
+      .where(eq(usersMeta.userId, userId));
+    console.log(`Updated existing user ${userId} to admin.`);
   } else {
     await db.insert(usersMeta).values({
-      stackUserId,
+      userId,
       role: "admin",
     });
-    console.log(`Created admin user_meta for ${stackUserId}.`);
+    console.log(`Created admin user_meta for ${userId}.`);
   }
 }
 
