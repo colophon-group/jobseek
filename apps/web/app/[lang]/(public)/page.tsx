@@ -5,8 +5,6 @@ import { Features } from "@/components/Features";
 import { Pricing } from "@/components/Pricing";
 import { PublicDomainArt } from "@/components/PublicDomainArt";
 import { siteConfig, publicDomainAssets } from "@/content/config";
-import Box from "@mui/material/Box";
-import Container from "@mui/material/Container";
 
 type Props = {
   params: Promise<{ lang: string }>;
@@ -41,17 +39,17 @@ export default async function HomePage({ params }: Props) {
       <Features />
       <Pricing />
       {afterPricingArt && (
-        <Box component="section" sx={{ py: 10 }}>
-          <Container maxWidth="lg">
-            <Box sx={{ mx: "auto", width: "100%", maxWidth: 768 }}>
+        <section className="py-20">
+          <div className="mx-auto max-w-[1200px] px-4">
+            <div className="mx-auto h-[360px] w-full max-w-[768px] sm:h-[460px] lg:h-[560px]">
               <PublicDomainArt
                 asset={afterPricingArt}
                 focus={siteConfig.homepageArt.focus}
-                sx={{ minHeight: { xs: 360, sm: 460, lg: 560 } }}
+                className="h-full w-full"
               />
-            </Box>
-          </Container>
-        </Box>
+            </div>
+          </div>
+        </section>
       )}
     </>
   );

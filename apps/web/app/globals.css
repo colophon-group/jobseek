@@ -1,21 +1,51 @@
+@import "tailwindcss";
+
 /*
- * Design tokens for non-MUI code (CSS Modules, server components).
- * Values must match src/theme/tokens.ts — that file is the source of truth.
- *
- * MUI components use --mui-palette-* variables generated automatically
- * by createTheme({ cssVariables: true }). These custom properties exist
- * for code that doesn't go through MUI.
+ * Design tokens — single source of truth for all styling.
+ * CSS custom properties (below) are consumed by Tailwind via @theme,
+ * and by the MUI theme (admin-only) via src/theme/tokens.ts.
  */
+
+@theme {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-alpha: var(--surface-alpha);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-strong: var(--muted-strong);
+  --color-border-soft: var(--border-soft);
+  --color-divider: var(--divider);
+  --color-primary: var(--primary);
+  --color-primary-contrast: var(--primary-contrast);
+  --color-info: var(--info-color);
+  --color-info-bg: var(--info-bg);
+  --color-info-border: var(--info-border);
+  --color-success: var(--success-color);
+  --color-success-bg: var(--success-bg);
+  --color-success-border: var(--success-border);
+  --color-warning: var(--warning-color);
+  --color-warning-bg: var(--warning-bg);
+  --color-warning-border: var(--warning-border);
+  --color-error: var(--error-color);
+  --color-error-bg: var(--error-bg);
+  --color-error-border: var(--error-border);
+  --color-code-bg: var(--code-bg);
+  --color-code-border: var(--code-border);
+  --color-tooltip-bg: var(--tooltip-bg);
+
+  --font-sans: "JetBrains Mono", "Inter", "Helvetica Neue", Arial, sans-serif;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-full: 999px;
+}
 
 /* ── JetBrains Mono ── */
 @font-face { font-family: "JetBrains Mono"; src: url("/fonts/JetBrainsMono-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
-@font-face { font-family: "JetBrains Mono"; src: url("/fonts/JetBrainsMono-Italic.woff2") format("woff2"); font-weight: 400; font-style: italic; font-display: swap; }
 @font-face { font-family: "JetBrains Mono"; src: url("/fonts/JetBrainsMono-Medium.woff2") format("woff2"); font-weight: 500; font-style: normal; font-display: swap; }
-@font-face { font-family: "JetBrains Mono"; src: url("/fonts/JetBrainsMono-MediumItalic.woff2") format("woff2"); font-weight: 500; font-style: italic; font-display: swap; }
 @font-face { font-family: "JetBrains Mono"; src: url("/fonts/JetBrainsMono-SemiBold.woff2") format("woff2"); font-weight: 600; font-style: normal; font-display: swap; }
-@font-face { font-family: "JetBrains Mono"; src: url("/fonts/JetBrainsMono-SemiBoldItalic.woff2") format("woff2"); font-weight: 600; font-style: italic; font-display: swap; }
 @font-face { font-family: "JetBrains Mono"; src: url("/fonts/JetBrainsMono-Bold.woff2") format("woff2"); font-weight: 700; font-style: normal; font-display: swap; }
-@font-face { font-family: "JetBrains Mono"; src: url("/fonts/JetBrainsMono-BoldItalic.woff2") format("woff2"); font-weight: 700; font-style: italic; font-display: swap; }
 
 /* ── Light (default) ── */
 :root {
@@ -44,16 +74,9 @@
   --error-bg: rgba(185, 28, 28, 0.06);
   --error-border: rgba(185, 28, 28, 0.25);
 
-  --spacing-xs: 0.5rem;
-  --spacing-sm: 1rem;
-  --spacing-md: 1.5rem;
-  --spacing-lg: 2rem;
-  --spacing-xl: 3rem;
-
-  --font-sans: "JetBrains Mono", "Inter", "Helvetica Neue", Arial, sans-serif;
-
   --code-bg: rgba(24, 24, 27, 0.07);
   --code-border: rgba(24, 24, 27, 0.15);
+  --tooltip-bg: rgba(97, 97, 97, 0.92);
 }
 
 /* ── Dark ── */
@@ -92,25 +115,39 @@
 .dark .themed-img-light { display: none; }
 .dark .themed-img-dark { display: initial; }
 
-/* ── Base reset ── */
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans);
-  font-weight: 500;
-  margin: 0;
-  min-height: 100vh;
+/* ── Tooltip animation ── */
+@keyframes tooltip-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes tooltip-out {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.96); }
 }
 
-a {
-  color: inherit;
-}
+/* ── Base reset (inside @layer so Tailwind utilities can override) ── */
+@layer base {
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    margin: 0;
+    min-height: 100vh;
+  }
 
-code {
-  font-size: 0.88em;
-  font-weight: 400;
-  padding: 0.05em 0.15em;
-  border-radius: 4px;
-  background: var(--code-bg);
-  border: 1px solid var(--code-border);
+  a {
+    color: inherit;
+  }
+
+  code {
+    font-size: 0.88em;
+    font-weight: 400;
+    padding: 0.05em 0.15em;
+    border-radius: 4px;
+    background: var(--code-bg);
+    border: 1px solid var(--code-border);
+  }
 }

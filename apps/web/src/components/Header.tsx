@@ -1,46 +1,34 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Trans } from "@lingui/react/macro";
 import { useLingui } from "@lingui/react/macro";
-import { useAuth } from "@/components/AuthContext";
+import { useAuth } from "@/lib/useAuth";
 import { siteConfig } from "@/content/config";
 import { ThemeToggleButton } from "@/components/ThemeToggleButton";
 import { LocaleSwitcher } from "@/components/LocaleSwitcher";
 import { ThemedImage } from "@/components/ThemedImage";
 import { useLocalePath } from "@/lib/useLocalePath";
-import AppBar from "@mui/material/AppBar";
-import Toolbar from "@mui/material/Toolbar";
-import Container from "@mui/material/Container";
-import Stack from "@mui/material/Stack";
-import Button from "@mui/material/Button";
-import IconButton from "@mui/material/IconButton";
-import Box from "@mui/material/Box";
-import MenuIcon from "@mui/icons-material/Menu";
-import LoginIcon from "@mui/icons-material/Login";
+import { Button } from "@/components/ui/Button";
+import { Menu, LogIn } from "lucide-react";
 
 type HeaderProps = {
   onOpenMobileAction: () => void;
 };
 
-const navButtonSx = {
-  fontSize: "0.875rem",
-  fontWeight: 500,
-  textTransform: "none",
-  px: 1.5,
-  py: 0.5,
-  borderColor: "transparent",
-  color: "text.primary",
-  letterSpacing: 0.2,
-  minWidth: "auto",
-  "&:hover": { borderColor: "transparent", backgroundColor: "transparent", color: "text.secondary" },
-  "&:focus-visible": { outline: "none", borderColor: "transparent" },
-} as const;
+const navLinkClass =
+  "whitespace-nowrap text-sm font-medium px-3 py-1 transition-colors hover:text-muted";
 
 export function Header({ onOpenMobileAction }: HeaderProps) {
   const { isLoggedIn } = useAuth();
   const { t } = useLingui();
   const lp = useLocalePath();
+  const pathname = usePathname();
+
+  function ariaCurrent(href: string) {
+    return pathname === href || pathname.startsWith(href + "/") ? ("page" as const) : undefined;
+  }
 
   const authHref = isLoggedIn ? lp(siteConfig.nav.dashboard.href) : lp(siteConfig.nav.login.href);
   const authLabel = isLoggedIn
@@ -48,69 +36,53 @@ export function Header({ onOpenMobileAction }: HeaderProps) {
     : t({ id: "common.auth.login", comment: "Login button label", message: "Log in" });
 
   return (
-    <AppBar
-      position="sticky"
-      color="transparent"
-      elevation={0}
-      sx={{ backdropFilter: "blur(12px)", borderBottom: 1, borderColor: "divider" }}
-    >
-      <Container maxWidth="lg">
-        <Toolbar disableGutters sx={{ minHeight: 72, gap: 2 }}>
-          <Box component={Link} href={lp("/")} sx={{ display: "inline-flex", alignItems: "center", gap: 1 }}>
-            <ThemedImage
-              lightSrc={siteConfig.logoWide.light}
-              darkSrc={siteConfig.logoWide.dark}
-              alt="Job Seek"
-              width={siteConfig.logoWide.width}
-              height={siteConfig.logoWide.height}
-              style={{ height: 36, width: "auto" }}
-            />
-          </Box>
+    <header className="sticky top-0 z-50 border-b border-divider backdrop-blur-md">
+      <div className="mx-auto flex h-12 max-w-[1200px] items-center gap-4 px-4">
+        <Link href={lp("/")} className="inline-flex shrink-0 items-center gap-2">
+          <ThemedImage
+            lightSrc={siteConfig.logoWide.light}
+            darkSrc={siteConfig.logoWide.dark}
+            alt="Job Seek"
+            width={siteConfig.logoWide.width}
+            height={siteConfig.logoWide.height}
+            style={{ height: 36, width: "auto" }}
+          />
+        </Link>
 
-          <Box flexGrow={1} />
+        <div className="flex-1" />
 
-          <Stack component="nav" direction="row" spacing={2.5} sx={{ display: { xs: "none", md: "flex" } }}>
-            <Button component={Link} href={lp(siteConfig.nav.product.href)} variant="outlined" color="inherit" size="small" disableElevation sx={navButtonSx}>
-              <Trans id="common.nav.product" comment="Nav link: Product">Product</Trans>
-            </Button>
-            <Button component={Link} href={lp(siteConfig.nav.features.href)} variant="outlined" color="inherit" size="small" disableElevation sx={navButtonSx}>
-              <Trans id="common.nav.features" comment="Nav link: Features">Features</Trans>
-            </Button>
-            <Button component={Link} href={lp(siteConfig.nav.pricing.href)} variant="outlined" color="inherit" size="small" disableElevation sx={navButtonSx}>
-              <Trans id="common.nav.pricing" comment="Nav link: Pricing">Pricing</Trans>
-            </Button>
-            <Button component={Link} href={lp(siteConfig.nav.company.href)} variant="outlined" color="inherit" size="small" disableElevation sx={navButtonSx}>
-              <Trans id="common.nav.company" comment="Nav link: How do we index jobs?">How do we index jobs?</Trans>
-            </Button>
-          </Stack>
+        <nav className="hidden items-center gap-5 lg:flex">
+          <Link href={lp(siteConfig.nav.product.href)} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.product.href))}>
+            <Trans id="common.nav.product" comment="Nav link: Product">Product</Trans>
+          </Link>
+          <Link href={lp(siteConfig.nav.features.href)} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.features.href))}>
+            <Trans id="common.nav.features" comment="Nav link: Features">Features</Trans>
+          </Link>
+          <Link href={lp(siteConfig.nav.pricing.href)} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.pricing.href))}>
+            <Trans id="common.nav.pricing" comment="Nav link: Pricing">Pricing</Trans>
+          </Link>
+          <Link href={lp(siteConfig.nav.company.href)} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.company.href))}>
+            <Trans id="common.nav.company" comment="Nav link: How do we index jobs?">How do we index jobs?</Trans>
+          </Link>
+        </nav>
 
-          <Stack direction="row" spacing={1.5} alignItems="center" sx={{ display: { xs: "none", md: "flex" } }}>
-            <LocaleSwitcher />
-            <ThemeToggleButton />
-            <Button
-              href={authHref}
-              variant="contained"
-              color="primary"
-              size="small"
-              startIcon={<LoginIcon fontSize="small" />}
-              sx={{ "&:focus-visible": { outline: "none" } }}
-            >
-              {authLabel}
-            </Button>
-          </Stack>
+        <div className="hidden items-center gap-3 lg:flex">
+          <LocaleSwitcher />
+          <ThemeToggleButton />
+          <Button href={authHref} variant="primary" size="sm" className="gap-2">
+            <LogIn size={16} />
+            {authLabel}
+          </Button>
+        </div>
 
-          <IconButton
-            edge="end"
-            onClick={onOpenMobileAction}
-            sx={{ display: { xs: "inline-flex", md: "none" } }}
-            aria-label={t({ id: "common.header.openMenu", comment: "Aria label for mobile menu button", message: "Open main menu" })}
-            disableRipple
-            disableFocusRipple
-          >
-            <MenuIcon fontSize="small" />
-          </IconButton>
-        </Toolbar>
-      </Container>
-    </AppBar>
+        <button
+          onClick={onOpenMobileAction}
+          className="inline-flex items-center justify-center rounded-md p-1.5 text-foreground hover:bg-border-soft lg:hidden"
+          aria-label={t({ id: "common.header.openMenu", comment: "Aria label for mobile menu button", message: "Open main menu" })}
+        >
+          <Menu size={20} />
+        </button>
+      </div>
+    </header>
   );
 }

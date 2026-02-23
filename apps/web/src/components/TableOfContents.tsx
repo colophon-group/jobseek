@@ -1,13 +1,5 @@
 "use client";
 
-import Box from "@mui/material/Box";
-import Stack from "@mui/material/Stack";
-import Typography from "@mui/material/Typography";
-import List from "@mui/material/List";
-import ListItemButton from "@mui/material/ListItemButton";
-import ListItemText from "@mui/material/ListItemText";
-import type { SxProps, Theme } from "@mui/material/styles";
-
 export type TocItem = {
   label: string;
   href: string;
@@ -18,14 +10,14 @@ type TableOfContentsProps = {
   title: string;
   ariaLabel: string;
   items: TocItem[];
-  sx?: SxProps<Theme>;
+  className?: string;
 };
 
 export function TableOfContents({
   title,
   ariaLabel,
   items,
-  sx,
+  className,
 }: TableOfContentsProps) {
   if (!items?.length) {
     return null;
@@ -33,55 +25,33 @@ export function TableOfContents({
 
   const renderItems = (entries: TocItem[], depth = 0) =>
     entries.map((item) => (
-      <Box key={item.href} sx={{ pl: depth ? depth * 1.5 : 0 }}>
-        <ListItemButton
-          component="a"
+      <li key={item.href} style={depth ? { paddingLeft: `${depth * 1.5}rem` } : undefined}>
+        <a
           href={item.href}
-          dense
-          sx={{
-            borderRadius: 1,
-            minHeight: 36,
-            px: 1.5,
-            "&:hover": { backgroundColor: "action.hover" },
-          }}
+          className={`block rounded px-3 py-1.5 text-[0.9rem] hover:bg-border-soft ${depth ? "font-medium" : "font-semibold"}`}
+          style={{ minHeight: 36 }}
         >
-          <ListItemText
-            primary={item.label}
-            slotProps={{
-              primary: {
-                sx: {
-                  fontSize: "0.9rem",
-                  fontWeight: depth ? 500 : 600,
-                },
-              },
-            }}
-          />
-        </ListItemButton>
-        {item.children?.length ? renderItems(item.children, depth + 1) : null}
-      </Box>
+          {item.label}
+        </a>
+        {item.children?.length ? (
+          <ul className="list-none p-0">{renderItems(item.children, depth + 1)}</ul>
+        ) : null}
+      </li>
     ));
 
   return (
-    <Box
-      component="nav"
+    <nav
       aria-label={ariaLabel}
-      sx={{
-        minWidth: 200,
-        width: "100%",
-        position: { xs: "static", md: "sticky" },
-        top: { md: 120 },
-        alignSelf: "flex-start",
-        ...sx,
-      }}
+      className={`min-w-[200px] w-full self-start md:sticky md:top-[120px] ${className ?? ""}`}
     >
-      <Stack spacing={2}>
-        <Typography variant="overline" color="text.secondary" letterSpacing={1.5}>
+      <div className="flex flex-col gap-4">
+        <span className="text-xs font-semibold uppercase tracking-wider text-muted">
           {title}
-        </Typography>
-        <List disablePadding dense>
+        </span>
+        <ul className="list-none p-0">
           {renderItems(items)}
-        </List>
-      </Stack>
-    </Box>
+        </ul>
+      </div>
+    </nav>
   );
 }

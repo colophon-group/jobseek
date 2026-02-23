@@ -2,15 +2,11 @@
 
 import { Trans } from "@lingui/react/macro";
 import { useLingui } from "@lingui/react/macro";
-import { useAuth } from "@/components/AuthContext";
+import { useAuth } from "@/lib/useAuth";
 import { siteConfig, publicDomainAssets } from "@/content/config";
 import { PublicDomainArt } from "@/components/PublicDomainArt";
 import { useLocalePath } from "@/lib/useLocalePath";
-import Container from "@mui/material/Container";
-import Stack from "@mui/material/Stack";
-import Typography from "@mui/material/Typography";
-import Button from "@mui/material/Button";
-import Box from "@mui/material/Box";
+import { Button } from "@/components/ui/Button";
 
 export function Hero() {
   const { isLoggedIn } = useAuth();
@@ -26,44 +22,41 @@ export function Hero() {
   const heroArtFocus = siteConfig.hero.art.focus;
 
   return (
-    <Container component="section" maxWidth="lg" sx={{ py: { xs: 8, md: 12 } }}>
-      <Stack
-        direction={{ xs: "column", md: "row" }}
-        spacing={{ xs: 6, md: 10 }}
-        alignItems="stretch"
-      >
-        <Stack maxWidth={640} spacing={3}>
-          <Typography variant="overline" color="text.secondary" letterSpacing={1.5}>
+    <section className="mx-auto max-w-[1200px] px-4 py-16 md:py-24">
+      <div className="flex flex-col items-stretch gap-12 md:flex-row md:gap-20">
+        <div className="flex flex-1 flex-col gap-6">
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted">
             <Trans id="home.hero.eyebrow" comment="Hero eyebrow text above the title">Keep your hand on the job market pulse.</Trans>
-          </Typography>
-          <Typography variant="h2" component="h1">
+          </span>
+          <h1 className="text-3xl font-bold md:text-4xl">
             <Trans id="home.hero.title" comment="Main heading on the landing page">Find relevant roles faster.</Trans>
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
+          </h1>
+          <p className="text-muted">
             <Trans id="home.hero.description" comment="Hero description paragraph">
               Subscribe to updates from companies, track applications, and never miss new openings. Designed to keep you in control, not hand your decisions to a bot.
             </Trans>
-          </Typography>
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ pt: 2 }}>
-            <Button href={primaryHref} variant="contained" size="large">
+          </p>
+          <div className="flex flex-col gap-4 pt-4 sm:flex-row">
+            <Button href={primaryHref}>
               {primaryLabel}
             </Button>
-            <Button href={siteConfig.nav.features.href} variant="outlined" size="large">
+            <Button href={lp(siteConfig.nav.features.href)} variant="outline">
               <Trans id="home.hero.secondaryCta" comment="Hero secondary call-to-action">Learn more</Trans>
             </Button>
-          </Stack>
-        </Stack>
+          </div>
+        </div>
 
         {heroArt && (
-          <Box sx={{ flex: 1 }}>
+          <div className="h-[280px] w-full sm:h-[340px] md:h-auto md:min-w-[360px] md:max-w-[420px] md:flex-[1_1_360px]">
             <PublicDomainArt
               asset={heroArt}
               focus={heroArtFocus}
-              sx={{ minHeight: { xs: 240, sm: 300, lg: 380 }, width: "100%" }}
+              crop={{ top: 100, bottom: 100, left: 0, right: 0 }}
+              className="h-full w-full"
             />
-          </Box>
+          </div>
         )}
-      </Stack>
-    </Container>
+      </div>
+    </section>
   );
 }

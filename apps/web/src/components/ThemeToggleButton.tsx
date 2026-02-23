@@ -3,23 +3,14 @@
 import { useState, useEffect } from "react";
 import { useTheme } from "next-themes";
 import { useLingui } from "@lingui/react/macro";
-import IconButton from "@mui/material/IconButton";
-import Tooltip from "@mui/material/Tooltip";
-import type { IconButtonProps } from "@mui/material/IconButton";
-import DarkModeIcon from "@mui/icons-material/DarkMode";
-import LightModeIcon from "@mui/icons-material/LightMode";
+import * as Tooltip from "@radix-ui/react-tooltip";
+import { Moon, Sun } from "lucide-react";
 
-type ThemeToggleButtonProps = Omit<IconButtonProps, "onClick" | "color">;
+type ThemeToggleButtonProps = {
+  className?: string;
+};
 
-/**
- * Mounted guard: first client render matches the SSG output (dark assumed)
- * to avoid hydration mismatch on icon/aria-label.  After mount, switches
- * to the actual resolved theme.
- *
- * TODO: remove the mounted guard once MUI is phased out — with CSS-only
- * styling the icon can be toggled via .dark class without hydration risk.
- */
-export function ThemeToggleButton({ sx, ...iconButtonProps }: ThemeToggleButtonProps) {
+export function ThemeToggleButton({ className }: ThemeToggleButtonProps) {
   const { resolvedTheme, setTheme } = useTheme();
   const { t } = useLingui();
   const [mounted, setMounted] = useState(false);
@@ -33,17 +24,26 @@ export function ThemeToggleButton({ sx, ...iconButtonProps }: ThemeToggleButtonP
     : t({ id: "common.theme.switchToDark", comment: "Aria label for switching to dark mode", message: "Switch to dark mode" });
 
   return (
-    <Tooltip title={label}>
-      <IconButton
-        onClick={() => setTheme(next)}
-        size="small"
-        color="inherit"
-        aria-label={label}
-        sx={sx}
-        {...iconButtonProps}
-      >
-        {isDark ? <LightModeIcon fontSize="small" /> : <DarkModeIcon fontSize="small" />}
-      </IconButton>
-    </Tooltip>
+    <Tooltip.Provider delayDuration={0} skipDelayDuration={300}>
+      <Tooltip.Root>
+        <Tooltip.Trigger asChild>
+          <button
+            onClick={() => setTheme(next)}
+            className={`inline-flex items-center justify-center rounded-md p-1.5 text-foreground hover:bg-border-soft transition-colors ${className ?? ""}`}
+            aria-label={label}
+          >
+            {isDark ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+        </Tooltip.Trigger>
+        <Tooltip.Portal>
+          <Tooltip.Content
+            className="z-50 rounded-md bg-tooltip-bg px-2.5 py-1 text-xs text-white data-[state=delayed-open]:animate-[tooltip-in_150ms_ease] data-[state=instant-open]:animate-[tooltip-in_150ms_ease] data-[state=closed]:animate-[tooltip-out_100ms_ease_forwards]"
+            sideOffset={6}
+          >
+            {label}
+          </Tooltip.Content>
+        </Tooltip.Portal>
+      </Tooltip.Root>
+    </Tooltip.Provider>
   );
 }

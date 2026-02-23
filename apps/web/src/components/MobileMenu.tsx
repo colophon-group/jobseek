@@ -1,26 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import dynamic from "next/dynamic";
+import { usePathname } from "next/navigation";
 import { Trans } from "@lingui/react/macro";
 import { useLingui } from "@lingui/react/macro";
-import { useAuth } from "@/components/AuthContext";
+import { useAuth } from "@/lib/useAuth";
 import { siteConfig } from "@/content/config";
 import { ThemeToggleButton } from "@/components/ThemeToggleButton";
 import { LocaleSwitcher } from "@/components/LocaleSwitcher";
 import { ThemedImage } from "@/components/ThemedImage";
 import { useLocalePath } from "@/lib/useLocalePath";
-import Drawer from "@mui/material/Drawer";
-import Box from "@mui/material/Box";
-import IconButton from "@mui/material/IconButton";
-import Stack from "@mui/material/Stack";
-import List from "@mui/material/List";
-import ListItemButton from "@mui/material/ListItemButton";
-import ListItemText from "@mui/material/ListItemText";
-import Divider from "@mui/material/Divider";
-import Button from "@mui/material/Button";
-
-const CloseIcon = dynamic(() => import("@mui/icons-material/Close"), { ssr: false });
+import { Button } from "@/components/ui/Button";
+import * as Dialog from "@radix-ui/react-dialog";
+import { X } from "lucide-react";
 
 type MobileMenuProps = {
   open: boolean;
@@ -31,6 +23,11 @@ export function MobileMenu({ open, onCloseAction }: MobileMenuProps) {
   const { isLoggedIn } = useAuth();
   const { t } = useLingui();
   const lp = useLocalePath();
+  const pathname = usePathname();
+
+  function ariaCurrent(href: string) {
+    return pathname === href || pathname.startsWith(href + "/") ? ("page" as const) : undefined;
+  }
 
   const authHref = isLoggedIn ? lp(siteConfig.nav.dashboard.href) : lp(siteConfig.nav.login.href);
   const authLabel = isLoggedIn
@@ -38,62 +35,77 @@ export function MobileMenu({ open, onCloseAction }: MobileMenuProps) {
     : t({ id: "common.auth.login", comment: "Login button label", message: "Log in" });
 
   return (
-    <Drawer
-      anchor="right"
-      open={open}
-      onClose={onCloseAction}
-      slotProps={{ paper: { sx: { width: 320 } } }}
-    >
-      <Box sx={{ px: 2.5, py: 3 }}>
-        <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
-          <Box
-            component={Link}
-            href={lp("/")}
-            onClick={onCloseAction}
-            sx={{ display: "inline-flex", alignItems: "center", gap: 1, textDecoration: "none" }}
-          >
-            <ThemedImage
-              darkSrc={siteConfig.logoWide.dark}
-              lightSrc={siteConfig.logoWide.light}
-              alt="Job Seek"
-              width={siteConfig.logoWide.width}
-              height={siteConfig.logoWide.height}
-              style={{ height: 32, width: "auto" }}
-            />
-          </Box>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <LocaleSwitcher />
-            <ThemeToggleButton />
-            <IconButton
-              onClick={onCloseAction}
-              aria-label={t({ id: "common.mobileMenu.close", comment: "Aria label for close mobile menu button", message: "Close menu" })}
-            >
-              <CloseIcon fontSize="small" />
-            </IconButton>
-          </Stack>
-        </Stack>
+    <Dialog.Root open={open} onOpenChange={(v) => { if (!v) onCloseAction(); }}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40 data-[state=open]:animate-in data-[state=open]:fade-in-0" />
+        <Dialog.Content
+          className="fixed inset-y-0 right-0 z-50 w-80 bg-surface shadow-xl data-[state=open]:animate-in data-[state=open]:slide-in-from-right"
+          aria-describedby={undefined}
+        >
+          <Dialog.Title className="sr-only">Menu</Dialog.Title>
+          <div className="px-5 py-6">
+            <div className="flex items-center justify-between gap-2">
+              <Link
+                href={lp("/")}
+                onClick={onCloseAction}
+                className="inline-flex items-center gap-2 no-underline"
+              >
+                <ThemedImage
+                  darkSrc={siteConfig.logoWide.dark}
+                  lightSrc={siteConfig.logoWide.light}
+                  alt="Job Seek"
+                  width={siteConfig.logoWide.width}
+                  height={siteConfig.logoWide.height}
+                  style={{ height: 32, width: "auto" }}
+                />
+              </Link>
+              <div className="flex items-center gap-2">
+                <LocaleSwitcher />
+                <ThemeToggleButton />
+                <Dialog.Close asChild>
+                  <button
+                    className="inline-flex items-center justify-center rounded-md p-1.5 text-foreground hover:bg-border-soft"
+                    aria-label={t({ id: "common.mobileMenu.close", comment: "Aria label for close mobile menu button", message: "Close menu" })}
+                  >
+                    <X size={18} />
+                  </button>
+                </Dialog.Close>
+              </div>
+            </div>
 
-        <List sx={{ mt: 2 }}>
-          <ListItemButton component={Link} href={lp(siteConfig.nav.product.href)} onClick={onCloseAction}>
-            <ListItemText primary={<Trans id="common.nav.product" comment="Nav link: Product">Product</Trans>} />
-          </ListItemButton>
-          <ListItemButton component={Link} href={lp(siteConfig.nav.features.href)} onClick={onCloseAction}>
-            <ListItemText primary={<Trans id="common.nav.features" comment="Nav link: Features">Features</Trans>} />
-          </ListItemButton>
-          <ListItemButton component={Link} href={lp(siteConfig.nav.pricing.href)} onClick={onCloseAction}>
-            <ListItemText primary={<Trans id="common.nav.pricing" comment="Nav link: Pricing">Pricing</Trans>} />
-          </ListItemButton>
-          <ListItemButton component={Link} href={lp(siteConfig.nav.company.href)} onClick={onCloseAction}>
-            <ListItemText primary={<Trans id="common.nav.company" comment="Nav link: How do we index jobs?">How do we index jobs?</Trans>} />
-          </ListItemButton>
-        </List>
+            <nav className="mt-6">
+              <ul className="flex flex-col">
+                <li>
+                  <Link href={lp(siteConfig.nav.product.href)} onClick={onCloseAction} className="block rounded-md px-3 py-2.5 transition-colors hover:bg-border-soft" aria-current={ariaCurrent(lp(siteConfig.nav.product.href))}>
+                    <Trans id="common.nav.product" comment="Nav link: Product">Product</Trans>
+                  </Link>
+                </li>
+                <li>
+                  <Link href={lp(siteConfig.nav.features.href)} onClick={onCloseAction} className="block rounded-md px-3 py-2.5 transition-colors hover:bg-border-soft" aria-current={ariaCurrent(lp(siteConfig.nav.features.href))}>
+                    <Trans id="common.nav.features" comment="Nav link: Features">Features</Trans>
+                  </Link>
+                </li>
+                <li>
+                  <Link href={lp(siteConfig.nav.pricing.href)} onClick={onCloseAction} className="block rounded-md px-3 py-2.5 transition-colors hover:bg-border-soft" aria-current={ariaCurrent(lp(siteConfig.nav.pricing.href))}>
+                    <Trans id="common.nav.pricing" comment="Nav link: Pricing">Pricing</Trans>
+                  </Link>
+                </li>
+                <li>
+                  <Link href={lp(siteConfig.nav.company.href)} onClick={onCloseAction} className="block rounded-md px-3 py-2.5 transition-colors hover:bg-border-soft" aria-current={ariaCurrent(lp(siteConfig.nav.company.href))}>
+                    <Trans id="common.nav.company" comment="Nav link: How do we index jobs?">How do we index jobs?</Trans>
+                  </Link>
+                </li>
+              </ul>
+            </nav>
 
-        <Divider sx={{ my: 2 }} />
+            <hr className="my-4 border-divider" />
 
-        <Button href={authHref} fullWidth variant="outlined" size="large" onClick={onCloseAction}>
-          {authLabel}
-        </Button>
-      </Box>
-    </Drawer>
+            <Button href={authHref} variant="outline" onClick={onCloseAction} className="w-full text-center">
+              {authLabel}
+            </Button>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }

@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { usersMeta } from "@/db/schema";
 import { verifyAdminCookie } from "@/lib/admin-cookie";
+import { MuiThemeProvider } from "@/components/ThemeProvider";
 
 type Props = {
   children: ReactNode;
@@ -41,5 +42,5 @@ export default async function AdminLayout({ children, params }: Props) {
     redirect(`/${lang}/admin/verify-2fa`);
   }
 
-  return <>{children}</>;
+  return <MuiThemeProvider>{children}</MuiThemeProvider>;
 }

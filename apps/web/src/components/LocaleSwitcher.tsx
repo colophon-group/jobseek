@@ -1,17 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useLingui } from "@lingui/react/macro";
 import { locales, type Locale } from "@/lib/i18n";
-import IconButton from "@mui/material/IconButton";
-import Tooltip from "@mui/material/Tooltip";
-import Menu from "@mui/material/Menu";
-import MenuItem from "@mui/material/MenuItem";
-import ListItemText from "@mui/material/ListItemText";
-import ListItemIcon from "@mui/material/ListItemIcon";
-import LanguageIcon from "@mui/icons-material/Language";
-import type { IconButtonProps } from "@mui/material/IconButton";
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
+import * as Tooltip from "@radix-ui/react-tooltip";
+import { Globe } from "lucide-react";
 
 const localeLabels: Record<Locale, { label: string; flag: string }> = {
   en: { label: "English", flag: "/flags/gb.svg" },
@@ -20,17 +14,16 @@ const localeLabels: Record<Locale, { label: string; flag: string }> = {
   it: { label: "Italiano", flag: "/flags/it.svg" },
 };
 
-type LocaleSwitcherProps = Omit<IconButtonProps, "onClick" | "color">;
+type LocaleSwitcherProps = {
+  className?: string;
+};
 
-export function LocaleSwitcher({ sx, ...iconButtonProps }: LocaleSwitcherProps) {
+export function LocaleSwitcher({ className }: LocaleSwitcherProps) {
   const { t } = useLingui();
   const router = useRouter();
   const pathname = usePathname();
   const params = useParams();
   const currentLocale = (params.lang as string) ?? "en";
-
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const open = Boolean(anchorEl);
 
   const label = t({
     id: "common.locale.switch",
@@ -39,48 +32,53 @@ export function LocaleSwitcher({ sx, ...iconButtonProps }: LocaleSwitcherProps) 
   });
 
   function handleSelect(locale: Locale) {
-    setAnchorEl(null);
     if (locale === currentLocale) return;
-    // Replace the current locale segment in the path
     const newPath = pathname.replace(`/${currentLocale}`, `/${locale}`);
     router.push(newPath);
   }
 
   return (
-    <>
-      <Tooltip title={label}>
-        <IconButton
-          onClick={(e) => setAnchorEl(e.currentTarget)}
-          size="small"
-          color="inherit"
-          aria-label={label}
-          aria-haspopup="true"
-          aria-expanded={open || undefined}
-          sx={sx}
-          {...iconButtonProps}
-        >
-          <LanguageIcon fontSize="small" />
-        </IconButton>
-      </Tooltip>
-      <Menu
-        anchorEl={anchorEl}
-        open={open}
-        onClose={() => setAnchorEl(null)}
-        slotProps={{ paper: { sx: { minWidth: 140 } } }}
-      >
-        {locales.map((locale) => (
-          <MenuItem
-            key={locale}
-            selected={locale === currentLocale}
-            onClick={() => handleSelect(locale)}
-          >
-            <ListItemIcon sx={{ minWidth: 28 }}>
-              <img src={localeLabels[locale].flag} alt="" width={20} height={15} style={{ display: "block" }} />
-            </ListItemIcon>
-            <ListItemText>{localeLabels[locale].label}</ListItemText>
-          </MenuItem>
-        ))}
-      </Menu>
-    </>
+    <Tooltip.Provider delayDuration={0} skipDelayDuration={300}>
+      <Tooltip.Root>
+        <DropdownMenu.Root>
+          <Tooltip.Trigger asChild>
+            <DropdownMenu.Trigger asChild>
+              <button
+                className={`inline-flex items-center justify-center rounded-md p-1.5 text-foreground hover:bg-border-soft transition-colors ${className ?? ""}`}
+                aria-label={label}
+              >
+                <Globe size={18} />
+              </button>
+            </DropdownMenu.Trigger>
+          </Tooltip.Trigger>
+          <Tooltip.Portal>
+            <Tooltip.Content
+              className="z-50 rounded-md bg-tooltip-bg px-2.5 py-1 text-xs text-white data-[state=delayed-open]:animate-[tooltip-in_150ms_ease] data-[state=instant-open]:animate-[tooltip-in_150ms_ease] data-[state=closed]:animate-[tooltip-out_100ms_ease_forwards]"
+              sideOffset={6}
+            >
+              {label}
+            </Tooltip.Content>
+          </Tooltip.Portal>
+          <DropdownMenu.Portal>
+            <DropdownMenu.Content
+              className="z-50 min-w-[140px] rounded-md border border-border-soft bg-surface p-1 shadow-lg"
+              sideOffset={5}
+              align="end"
+            >
+              {locales.map((locale) => (
+                <DropdownMenu.Item
+                  key={locale}
+                  className={`flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-border-soft ${locale === currentLocale ? "font-semibold" : ""}`}
+                  onSelect={() => handleSelect(locale)}
+                >
+                  <img src={localeLabels[locale].flag} alt="" width={20} height={15} className="block" />
+                  <span>{localeLabels[locale].label}</span>
+                </DropdownMenu.Item>
+              ))}
+            </DropdownMenu.Content>
+          </DropdownMenu.Portal>
+        </DropdownMenu.Root>
+      </Tooltip.Root>
+    </Tooltip.Provider>
   );
 }

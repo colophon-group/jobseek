@@ -5,8 +5,7 @@ import { useTheme } from "next-themes";
 import Image from "next/image";
 import type { CSSProperties, ReactNode } from "react";
 import { useLingui } from "@lingui/react/macro";
-import Box from "@mui/material/Box";
-import type { SxProps, Theme } from "@mui/material/styles";
+import { Trans } from "@lingui/react/macro";
 import type { PublicDomainAsset, CropInsets } from "@/content/config";
 
 type PublicDomainArtProps = {
@@ -17,25 +16,18 @@ type PublicDomainArtProps = {
   };
   crop?: CropInsets;
   credit?: boolean;
-  sx?: SxProps<Theme>;
+  className?: string;
+  style?: CSSProperties;
   children?: ReactNode;
 };
 
-/**
- * Mounted guard: first client render matches SSG (dark variant) to avoid
- * hydration mismatch on the <Image> src.  After mount, switches to the
- * actual resolved theme's image variant.
- *
- * TODO: remove the mounted guard once MUI is phased out — with CSS-only
- * styling, both images can be rendered and toggled via .dark class
- * (the ThemedImage pattern) without Emotion specificity conflicts.
- */
 export function PublicDomainArt({
   asset,
   focus,
   crop,
   credit = true,
-  sx,
+  className,
+  style,
   children,
 }: PublicDomainArtProps) {
   const { resolvedTheme } = useTheme();
@@ -70,20 +62,14 @@ export function PublicDomainArt({
   });
 
   return (
-    <Box
-      sx={{
-        position: "relative",
-        overflow: "hidden",
-        borderRadius: 2,
-        boxShadow: "0px 8px 24px rgba(15, 23, 42, 0.16)",
-        minHeight: "100%",
-        ...sx,
-      }}
+    <div
+      className={`relative min-h-full overflow-hidden rounded-md shadow-[0px_8px_24px_rgba(15,23,42,0.16)] ${className ?? ""}`}
+      style={style}
     >
       {hasCrop ? (
-        <Box
-          sx={{
-            position: "absolute",
+        <div
+          className="absolute"
+          style={{
             width: `${(width / effectiveWidth) * 100}%`,
             height: `${(height / effectiveHeight) * 100}%`,
             top: `${-(cropTop / effectiveHeight) * 100}%`,
@@ -98,7 +84,7 @@ export function PublicDomainArt({
             style={imageStyle}
             priority={false}
           />
-        </Box>
+        </div>
       ) : (
         <Image
           src={src}
@@ -111,33 +97,18 @@ export function PublicDomainArt({
       )}
       {children}
       {credit && (title || author) && (
-        <Box
-          component="a"
+        <a
           href={link ?? href ?? src}
           target="_blank"
           rel="noreferrer"
-          sx={{
-            position: "absolute",
-            right: 16,
-            bottom: 16,
-            fontSize: "0.75rem",
-            letterSpacing: 0.2,
-            textTransform: "uppercase",
-            fontWeight: 600,
-            color: "rgba(255,255,255,0.9)",
-            textDecoration: "none",
-            backgroundColor: "rgba(0,0,0,0.6)",
-            borderRadius: 999,
-            px: 1.5,
-            py: 0.5,
-            backdropFilter: "blur(6px)",
-          }}
+          className="absolute right-4 bottom-4 rounded-full bg-black/60 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white/90 no-underline backdrop-blur-sm"
         >
           {title ? `${title}` : creditFallback}
           {author ? ` · ${author}` : ""}
           {date ? ` (${date})` : ""}
-        </Box>
+          <span className="sr-only"><Trans id="common.a11y.opensInNewTab" comment="Screen reader text for external links">(opens in new tab)</Trans></span>
+        </a>
       )}
-    </Box>
+    </div>
   );
 }

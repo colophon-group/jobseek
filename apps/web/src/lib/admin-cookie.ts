@@ -1,3 +1,4 @@
+import "server-only";
 import { createHmac, timingSafeEqual } from "crypto";
 
 const SECRET = process.env.BETTER_AUTH_SECRET!;

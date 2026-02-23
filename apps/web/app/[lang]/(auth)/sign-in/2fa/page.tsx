@@ -4,13 +4,10 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Trans } from "@lingui/react/macro";
 import { useLingui } from "@lingui/react/macro";
-import Alert from "@mui/material/Alert";
-import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import TextField from "@mui/material/TextField";
-import Typography from "@mui/material/Typography";
 import { authClient } from "@/lib/auth-client";
 import { useLocalePath } from "@/lib/useLocalePath";
+import { Button } from "@/components/ui/Button";
+import { ErrorAlert } from "@/components/ui/ErrorAlert";
 
 export default function TwoFactorPage() {
   const router = useRouter();
@@ -49,44 +46,37 @@ export default function TwoFactorPage() {
 
   return (
     <>
-      <Typography variant="h5" fontWeight={700} textAlign="center" gutterBottom>
+      <h2 className="text-center text-xl font-bold">
         <Trans id="auth.2fa.title" comment="2FA verification page heading">Two-factor authentication</Trans>
-      </Typography>
-      <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ mb: 3 }}>
+      </h2>
+      <p className="mb-6 text-center text-sm text-muted">
         <Trans id="auth.2fa.subtitle" comment="2FA verification page subtitle">Enter the 6-digit code from your authenticator app</Trans>
-      </Typography>
+      </p>
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
+      <ErrorAlert message={error} />
 
-      <Box component="form" onSubmit={handleSubmit} noValidate>
-        <TextField
-          inputRef={inputRef}
-          label={t({ id: "auth.2fa.field.code", comment: "TOTP code input label", message: "Code" })}
-          fullWidth
-          required
-          autoFocus
-          autoComplete="one-time-code"
-          inputProps={{ inputMode: "numeric", maxLength: 6, pattern: "[0-9]*" }}
-          value={code}
-          onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-          sx={{ mb: 3 }}
-        />
-        <Button
-          type="submit"
-          variant="contained"
-          fullWidth
-          size="large"
-          disabled={loading || code.length !== 6}
-        >
+      <form onSubmit={handleSubmit} noValidate>
+        <label className="mb-6 block">
+          <span className="mb-1 block text-sm font-medium">{t({ id: "auth.2fa.field.code", comment: "TOTP code input label", message: "Code" })}</span>
+          <input
+            ref={inputRef}
+            required
+            autoFocus
+            autoComplete="one-time-code"
+            inputMode="numeric"
+            maxLength={6}
+            pattern="[0-9]*"
+            value={code}
+            onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            className="w-full rounded-md border border-border-soft bg-background px-3 py-2 text-center text-lg tracking-widest text-foreground outline-none focus:border-primary"
+          />
+        </label>
+        <Button type="submit" disabled={loading || code.length !== 6} className="w-full">
           {loading
             ? t({ id: "auth.2fa.button.loading", comment: "2FA verify button while loading", message: "Verifying..." })
             : t({ id: "auth.2fa.button.submit", comment: "2FA verify submit button", message: "Verify" })}
         </Button>
-      </Box>
+      </form>
     </>
   );
 }

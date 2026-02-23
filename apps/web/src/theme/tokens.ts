@@ -1,11 +1,8 @@
 /**
- * Design tokens — single source of truth.
+ * Design tokens — used by the admin-only MUI theme (createMuiTheme.ts).
  *
- * Used by:
- *  - createMuiTheme.ts (MUI palette)
- *  - globals.css        (CSS custom properties — must be kept in sync manually)
- *
- * When changing a value here, update the matching variable in globals.css.
+ * The canonical source of truth is now globals.css (CSS custom properties
+ * consumed by Tailwind via @theme). Values here must match globals.css.
  */
 
 export const tokens = {

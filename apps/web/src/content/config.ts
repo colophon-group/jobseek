@@ -53,9 +53,9 @@ export const siteConfig = {
     features: { href: "/#features" },
     pricing: { href: "/#pricing" },
     company: { href: "/how-we-index" },
-    license: { href: "/license", hidden: true },
-    login: { href: "/sign-in", hidden: true },
-    dashboard: { href: "/dashboard", hidden: true },
+    license: { href: "/license" },
+    login: { href: "/sign-in" },
+    dashboard: { href: "/dashboard" },
   },
 
   hero: {
@@ -91,12 +91,11 @@ export const siteConfig = {
 
   pricing: {
     anchorId: "pricing",
-    free: { href: "/sign-up", highlight: false },
-    pro: { href: "/sign-up", highlight: true },
+    free: { href: "/sign-up" },
+    pro: { href: "/sign-up" },
   },
 
   indexing: {
-    botName: "JobSeekBot",
     contactEmail: "business@colophon-group.org",
     ossRepoUrl: "https://github.com/colophon-group/jobseek-indexing",
     anchors: {
@@ -171,27 +170,9 @@ export const siteConfig = {
     ],
   },
 
-  ui: {
-    externalLinkTracking: {
-      utmSource: "jobseek",
-      utmMedium: "website",
-    },
-  },
 } as const;
 
 export const publicDomainAssets: Record<string, PublicDomainAsset> = {
-  operateur_cephalique: {
-    href: "/publicdomain/master/operateur_cephalique.jpg",
-    light: "/publicdomain/operateur_cephalique_dark.png",
-    dark: "/publicdomain/operateur_cephalique_light.png",
-    height: 1024,
-    width: 774,
-    alt: "Operateur Cephalique by Campion",
-    link: "https://pdimagearchive.org/images/d526ff08-72e3-4ebf-a858-ffc50becbd56",
-    title: "Operateur Cephalique",
-    author: "Campion",
-    date: "1663",
-  },
   the_king: {
     href: "/publicdomain/master/the_king.jpg",
     light: "/publicdomain/the_king_dark.png",
@@ -265,18 +246,6 @@ export const publicDomainAssets: Record<string, PublicDomainAsset> = {
     title: "The Judge",
     author: "Hans Holbein",
     date: "1523-5",
-    crop: { left: 50, bottom: 120 },
-  },
-  expulsion_from_paradise: {
-    href: "/publicdomain/master/expulsion_from_paradise.jpg",
-    light: "/publicdomain/expulsion_from_paradise_dark.png",
-    dark: "/publicdomain/expulsion_from_paradise_light.png",
-    height: 705,
-    width: 550,
-    alt: "Expulsion from Paradise by Hans Holbein",
-    link: "https://pdimagearchive.org/images/402db071-bd53-4a89-b612-b1711d14ab4d/",
-    title: "Expulsion from Paradise",
-    author: "Hans Holbein",
-    date: "1523-5",
+    crop: { left: 50, top: 37, bottom: 183 },
   },
 };
