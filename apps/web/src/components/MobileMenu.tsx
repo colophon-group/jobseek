@@ -76,17 +76,17 @@ export function MobileMenu({ open, onCloseAction }: MobileMenuProps) {
             <nav className="mt-6">
               <ul className="flex flex-col">
                 <li>
-                  <Link href={lp(siteConfig.nav.product.href)} onClick={onCloseAction} className="block rounded-md px-3 py-2.5 transition-colors hover:bg-border-soft" aria-current={ariaCurrent(lp(siteConfig.nav.product.href))}>
+                  <Link href={lp(siteConfig.nav.product.href)} prefetch={false} onClick={onCloseAction} className="block rounded-md px-3 py-2.5 transition-colors hover:bg-border-soft" aria-current={ariaCurrent(lp(siteConfig.nav.product.href))}>
                     <Trans id="common.nav.product" comment="Nav link: Product">Product</Trans>
                   </Link>
                 </li>
                 <li>
-                  <Link href={lp(siteConfig.nav.features.href)} onClick={onCloseAction} className="block rounded-md px-3 py-2.5 transition-colors hover:bg-border-soft" aria-current={ariaCurrent(lp(siteConfig.nav.features.href))}>
+                  <Link href={lp(siteConfig.nav.features.href)} prefetch={false} onClick={onCloseAction} className="block rounded-md px-3 py-2.5 transition-colors hover:bg-border-soft" aria-current={ariaCurrent(lp(siteConfig.nav.features.href))}>
                     <Trans id="common.nav.features" comment="Nav link: Features">Features</Trans>
                   </Link>
                 </li>
                 <li>
-                  <Link href={lp(siteConfig.nav.pricing.href)} onClick={onCloseAction} className="block rounded-md px-3 py-2.5 transition-colors hover:bg-border-soft" aria-current={ariaCurrent(lp(siteConfig.nav.pricing.href))}>
+                  <Link href={lp(siteConfig.nav.pricing.href)} prefetch={false} onClick={onCloseAction} className="block rounded-md px-3 py-2.5 transition-colors hover:bg-border-soft" aria-current={ariaCurrent(lp(siteConfig.nav.pricing.href))}>
                     <Trans id="common.nav.pricing" comment="Nav link: Pricing">Pricing</Trans>
                   </Link>
                 </li>

@@ -40,7 +40,7 @@ export function Hero() {
             <Button href={primaryHref}>
               {primaryLabel}
             </Button>
-            <Button href={lp(siteConfig.nav.features.href)} variant="outline">
+            <Button href={lp(siteConfig.nav.features.href)} prefetch={false} variant="outline">
               <Trans id="home.hero.secondaryCta" comment="Hero secondary call-to-action">Learn more</Trans>
             </Button>
           </div>

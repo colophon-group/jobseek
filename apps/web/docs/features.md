@@ -67,19 +67,19 @@ image is fully contained within the layout at ultra-wide resolutions.
 
 ## Theme handling
 
-`ThemedImage` renders both a light and dark `<img>` element. The `ImageWrapper`
-`<style>` block includes scoped display-toggle rules:
+`ThemedImage` is a client component that renders a **single** `<Image>` tag
+matching the active theme. It defaults to the dark variant during SSR (matching
+`defaultTheme="dark"`) and swaps after hydration if the user is in light mode.
 
-```css
-.feat-img-std .themed-img-dark { display: none; }
-.dark .feat-img-std .themed-img-light { display: none; }
-.feat-img-std .themed-img-light,
-.dark .feat-img-std .themed-img-dark { display: block; }
-```
+Previously, `ThemedImage` rendered **both** light and dark `<img>` elements
+and toggled visibility via CSS (`display: none`). This caused browsers to
+download both images for every themed image on every page — doubling edge
+requests for logos, screenshots, and artwork. On Vercel each request is a
+billed edge request, so this was a significant cost driver. The single-image
+client component halved image requests across the site.
 
-These **must** be more specific than the global toggle in `globals.css`
-(`.themed-img-dark { display: none }`), because the `img` sizing rules in
-the same block would otherwise force `display: block` on the wrong image.
+The `ImageWrapper` `<style>` block no longer needs theme-toggle CSS rules —
+only border-radius and image sizing remain.
 
 ## Constants
 

@@ -40,17 +40,17 @@ export function Footer({ lang }: FooterProps) {
               </a>
             </li>
             <li>
-              <Link className={linkClass} href={`${prefix}${links[2].href}`}>
+              <Link className={linkClass} prefetch={false} href={`${prefix}${links[2].href}`}>
                 <Trans id="common.footer.licenseLink" comment="Footer link to license page">License</Trans>
               </Link>
             </li>
             <li>
-              <Link className={linkClass} href={`${prefix}${links[3].href}`}>
+              <Link className={linkClass} prefetch={false} href={`${prefix}${links[3].href}`}>
                 <Trans id="common.footer.privacyLink" comment="Footer link to privacy policy page">Privacy</Trans>
               </Link>
             </li>
             <li>
-              <Link className={linkClass} href={`${prefix}${links[4].href}`}>
+              <Link className={linkClass} prefetch={false} href={`${prefix}${links[4].href}`}>
                 <Trans id="common.footer.termsLink" comment="Footer link to terms of service page">Terms</Trans>
               </Link>
             </li>

@@ -51,14 +51,17 @@ export function Header({ onOpenMobileAction }: HeaderProps) {
 
         <div className="flex-1" />
 
+        {/* prefetch={false} on same-page anchor links (/, /#features, /#pricing)
+            to avoid wasted edge requests. "How do we index" and CTA buttons
+            keep prefetch enabled — those are cross-page hot paths. */}
         <nav className="hidden items-center gap-5 lg:flex">
-          <Link href={lp(siteConfig.nav.product.href)} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.product.href))}>
+          <Link href={lp(siteConfig.nav.product.href)} prefetch={false} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.product.href))}>
             <Trans id="common.nav.product" comment="Nav link: Product">Product</Trans>
           </Link>
-          <Link href={lp(siteConfig.nav.features.href)} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.features.href))}>
+          <Link href={lp(siteConfig.nav.features.href)} prefetch={false} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.features.href))}>
             <Trans id="common.nav.features" comment="Nav link: Features">Features</Trans>
           </Link>
-          <Link href={lp(siteConfig.nav.pricing.href)} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.pricing.href))}>
+          <Link href={lp(siteConfig.nav.pricing.href)} prefetch={false} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.pricing.href))}>
             <Trans id="common.nav.pricing" comment="Nav link: Pricing">Pricing</Trans>
           </Link>
           <Link href={lp(siteConfig.nav.company.href)} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.company.href))}>

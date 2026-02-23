@@ -149,14 +149,14 @@ export function AuthForm({ mode }: AuthFormProps) {
         {isSignUp ? (
           <Trans id="auth.signUp.hasAccount" comment="Link to sign-in page from sign-up">
             Already have an account?{" "}
-            <Link href={lp("/sign-in")} className="font-semibold">
+            <Link href={lp("/sign-in")} prefetch={false} className="font-semibold transition-colors hover:text-muted">
               Sign in
             </Link>
           </Trans>
         ) : (
           <Trans id="auth.signIn.noAccount" comment="Link to sign-up page from sign-in">
             Don&apos;t have an account?{" "}
-            <Link href={lp("/sign-up")} className="font-semibold">
+            <Link href={lp("/sign-up")} prefetch={false} className="font-semibold transition-colors hover:text-muted">
               Sign up
             </Link>
           </Trans>
