@@ -1,10 +1,9 @@
 "use client";
 
-import { useContext } from "react";
+import { useTheme } from "next-themes";
 import Image from "next/image";
 import type { CSSProperties, ReactNode } from "react";
 import { useLingui } from "@lingui/react/macro";
-import { ThemeContext } from "@/components/ThemeProvider";
 import Box from "@mui/material/Box";
 import type { SxProps, Theme } from "@mui/material/styles";
 import type { PublicDomainAsset, CropInsets } from "@/content/config";
@@ -29,7 +28,8 @@ export function PublicDomainArt({
   sx,
   children,
 }: PublicDomainArtProps) {
-  const { mode } = useContext(ThemeContext);
+  const { resolvedTheme } = useTheme();
+  const mode = resolvedTheme ?? "dark";
   const { t } = useLingui();
   const { light, dark, href, alt, width, height, title, author, date, link, crop: assetCrop } = asset;
 
