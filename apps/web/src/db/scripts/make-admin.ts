@@ -3,7 +3,7 @@ dotenv.config({ path: ".env.local" });
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { eq } from "drizzle-orm";
-import { usersMeta } from "../schema";
+import { user } from "../schema";
 
 const url = process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL;
 if (!url) {
@@ -19,24 +19,18 @@ if (!userId) {
 const db = drizzle(neon(url));
 
 async function main() {
-  const existing = await db
-    .select()
-    .from(usersMeta)
-    .where(eq(usersMeta.userId, userId));
+  const [updated] = await db
+    .update(user)
+    .set({ role: "admin" })
+    .where(eq(user.id, userId))
+    .returning({ id: user.id, email: user.email, role: user.role });
 
-  if (existing.length > 0) {
-    await db
-      .update(usersMeta)
-      .set({ role: "admin", updatedAt: new Date() })
-      .where(eq(usersMeta.userId, userId));
-    console.log(`Updated existing user ${userId} to admin.`);
-  } else {
-    await db.insert(usersMeta).values({
-      userId,
-      role: "admin",
-    });
-    console.log(`Created admin user_meta for ${userId}.`);
+  if (!updated) {
+    console.error(`User ${userId} not found.`);
+    process.exit(1);
   }
+
+  console.log(`Promoted ${updated.email} (${updated.id}) to admin.`);
 }
 
 main().catch((err) => {

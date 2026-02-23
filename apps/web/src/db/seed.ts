@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { companies, jobPostings, subscriptions } from "./schema";
+import { company, jobPosting } from "./schema";
 
 const url = process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL;
 if (!url) {
@@ -16,7 +16,7 @@ async function main() {
 
   // --- Companies ---
   const [acme, globex, initech] = await db
-    .insert(companies)
+    .insert(company)
     .values([
       {
         name: "Acme Corp",
@@ -41,7 +41,7 @@ async function main() {
     .returning();
 
   // --- Job Postings ---
-  await db.insert(jobPostings).values([
+  await db.insert(jobPosting).values([
     {
       companyId: acme.id,
       title: "Senior Frontend Engineer",

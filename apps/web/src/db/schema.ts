@@ -21,6 +21,7 @@ export const user = pgTable("user", {
     .$onUpdate(() => new Date())
     .notNull(),
   twoFactorEnabled: boolean("two_factor_enabled").default(false),
+  role: text("role", { enum: ["user", "admin"] }).notNull().default("user"),
 });
 
 export const session = pgTable(
@@ -99,20 +100,7 @@ export const twoFactor = pgTable(
 
 // ── App-specific tables ──────────────────────────────────────────────
 
-export const usersMeta = pgTable("users_meta", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  userId: text("user_id")
-    .unique()
-    .notNull()
-    .references(() => user.id, { onDelete: "cascade" }),
-  role: text("role", { enum: ["user", "admin"] })
-    .notNull()
-    .default("user"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
-
-export const subscriptions = pgTable("subscriptions", {
+export const subscription = pgTable("subscription", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: text("user_id")
     .notNull()
@@ -125,7 +113,7 @@ export const subscriptions = pgTable("subscriptions", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const companies = pgTable("companies", {
+export const company = pgTable("company", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
   slug: text("slug").unique().notNull(),
@@ -136,11 +124,11 @@ export const companies = pgTable("companies", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const jobPostings = pgTable("job_postings", {
+export const jobPosting = pgTable("job_posting", {
   id: uuid("id").defaultRandom().primaryKey(),
   companyId: uuid("company_id")
     .notNull()
-    .references(() => companies.id, { onDelete: "cascade" }),
+    .references(() => company.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   description: text("description"),
   location: text("location"),
