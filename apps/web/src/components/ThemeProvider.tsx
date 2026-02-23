@@ -1,25 +1,18 @@
 "use client";
 
-import { useMemo } from "react";
-import { useTheme } from "next-themes";
 import { CssBaseline, ThemeProvider as MuiBaseThemeProvider } from "@mui/material";
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v15-appRouter";
-import { buildMuiTheme } from "@/theme/createMuiTheme";
-
-const lightTheme = buildMuiTheme("light");
-const darkTheme = buildMuiTheme("dark");
+import { muiTheme } from "@/theme/createMuiTheme";
 
 /**
- * MUI wrapper that reads the resolved theme from next-themes
- * and passes the corresponding MUI theme to MUI's ThemeProvider.
+ * MUI wrapper using CSS-variables mode.
+ *
+ * All MUI palette colors are CSS custom properties (--mui-palette-*)
+ * whose values switch when the `.dark` class is present on <html>.
+ * next-themes' inline script sets that class before first paint,
+ * so colors are always correct — no JS theme swap, no mounted guard.
  */
 export function MuiThemeProvider({ children }: { children: React.ReactNode }) {
-  const { resolvedTheme } = useTheme();
-  const muiTheme = useMemo(
-    () => (resolvedTheme === "light" ? lightTheme : darkTheme),
-    [resolvedTheme],
-  );
-
   return (
     <AppRouterCacheProvider>
       <MuiBaseThemeProvider theme={muiTheme}>

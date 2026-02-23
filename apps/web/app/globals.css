@@ -87,7 +87,7 @@
   --code-border: rgba(255, 255, 255, 0.15);
 }
 
-/* ── Theme-dependent image toggle ── */
+/* ── Theme-dependent image toggle (used by ThemedImage) ── */
 .themed-img-dark { display: none; }
 .dark .themed-img-light { display: none; }
 .dark .themed-img-dark { display: initial; }

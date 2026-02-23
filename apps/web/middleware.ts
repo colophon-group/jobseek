@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { locales, defaultLocale, isLocale } from "@/lib/i18n";
+import { defaultLocale, isLocale } from "@/lib/i18n";
 
 function getPreferredLocale(request: NextRequest): string {
   const acceptLanguage = request.headers.get("accept-language");
@@ -18,32 +18,15 @@ function getPreferredLocale(request: NextRequest): string {
 }
 
 export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-
-  // Check if pathname already has a locale prefix
-  const maybeLocale = pathname.split("/")[1];
-
-  if (isLocale(maybeLocale)) {
-    // Persist the locale in a cookie so the root layout can set <html lang>
-    const response = NextResponse.next();
-    response.cookies.set("locale", maybeLocale, { path: "/", maxAge: 31536000 });
-    return response;
-  }
-
-  // Redirect to locale-prefixed path
   const locale = getPreferredLocale(request);
   const url = request.nextUrl.clone();
-  url.pathname = `/${locale}${pathname}`;
-  const response = NextResponse.redirect(url);
-  response.cookies.set("locale", locale, { path: "/", maxAge: 31536000 });
-  return response;
+  url.pathname = `/${locale}${request.nextUrl.pathname}`;
+  return NextResponse.redirect(url);
 }
 
 export const config = {
-  // Only run on paths that need locale handling:
-  // - bare `/` (root redirect)
-  // - `/en/...`, `/de/...`, `/fr/...`, `/it/...` (set locale cookie)
-  // - bare paths without locale prefix like `/how-we-index` (redirect to prefixed)
-  // Excludes: _next, api, static files, flags, fonts, images
-  matcher: ["/((?!_next|api|flags|fonts|publicdomain|favicon\\.ico|.*\\..*).*)" ],
+  // Only match paths that do NOT start with a locale prefix, static assets,
+  // API routes, or Next.js internals.  Locale-prefixed paths (e.g. /en/…)
+  // skip the middleware entirely — no edge invocation needed.
+  matcher: ["/((?!_next|api|flags|fonts|publicdomain|favicon\\.ico|en|de|fr|it|.*\\..*).*)" ],
 };

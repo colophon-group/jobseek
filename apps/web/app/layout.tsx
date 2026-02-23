@@ -1,4 +1,3 @@
-import { cookies } from "next/headers";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { ThemeProvider } from "next-themes";
@@ -19,12 +18,23 @@ export const metadata: Metadata = {
   twitter: { card: "summary" },
 };
 
-export default async function RootLayout({ children }: { children: ReactNode }) {
-  const cookieStore = await cookies();
-  const locale = cookieStore.get("locale")?.value ?? "en";
+/**
+ * Inline script that sets <html lang> from the URL pathname before first paint.
+ * Same pattern next-themes uses for the `class` attribute.
+ * Keeps the root layout free of cookies()/headers() so public pages can be
+ * statically generated.
+ */
+const langScript = `try{var l=location.pathname.split('/')[1];if(['en','de','fr','it'].includes(l))document.documentElement.lang=l}catch(e){}`;
 
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <link rel="preload" href="/fonts/JetBrainsMono-Medium.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
+        <link rel="preload" href="/fonts/JetBrainsMono-SemiBold.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
+        <link rel="preload" href="/fonts/JetBrainsMono-Bold.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
+        <script dangerouslySetInnerHTML={{ __html: langScript }} />
+      </head>
       <body>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
           <MuiThemeProvider>

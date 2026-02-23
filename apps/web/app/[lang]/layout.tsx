@@ -1,12 +1,17 @@
 import { setI18n } from "@lingui/react/server";
 import type { ReactNode } from "react";
 import { LinguiClientProvider } from "@/components/LinguiProvider";
-import { type Locale, isLocale, defaultLocale, loadCatalog } from "@/lib/i18n";
+import { type Locale, isLocale, defaultLocale, locales, loadCatalog } from "@/lib/i18n";
 
 type Props = {
   children: ReactNode;
   params: Promise<{ lang: string }>;
 };
+
+/** Pre-render a version of every page for each supported locale. */
+export function generateStaticParams() {
+  return locales.map((lang) => ({ lang }));
+}
 
 export default async function LocaleLayout({ children, params }: Props) {
   const { lang } = await params;

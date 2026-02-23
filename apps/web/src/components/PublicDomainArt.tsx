@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useTheme } from "next-themes";
 import Image from "next/image";
 import type { CSSProperties, ReactNode } from "react";
@@ -20,6 +21,15 @@ type PublicDomainArtProps = {
   children?: ReactNode;
 };
 
+/**
+ * Mounted guard: first client render matches SSG (dark variant) to avoid
+ * hydration mismatch on the <Image> src.  After mount, switches to the
+ * actual resolved theme's image variant.
+ *
+ * TODO: remove the mounted guard once MUI is phased out — with CSS-only
+ * styling, both images can be rendered and toggled via .dark class
+ * (the ThemedImage pattern) without Emotion specificity conflicts.
+ */
 export function PublicDomainArt({
   asset,
   focus,
@@ -29,7 +39,10 @@ export function PublicDomainArt({
   children,
 }: PublicDomainArtProps) {
   const { resolvedTheme } = useTheme();
-  const mode = resolvedTheme ?? "dark";
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const mode = mounted ? (resolvedTheme ?? "dark") : "dark";
+
   const { t } = useLingui();
   const { light, dark, href, alt, width, height, title, author, date, link, crop: assetCrop } = asset;
 
