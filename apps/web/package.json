@@ -17,13 +17,9 @@
     "optimize:svg": "svgo public/*.svg --multipass"
   },
   "dependencies": {
-    "@emotion/react": "^11.14.0",
-    "@emotion/styled": "^11.14.1",
     "@lingui/core": "^5",
     "@lingui/macro": "^5",
     "@lingui/react": "^5",
-    "@mui/material": "^7.3.8",
-    "@mui/material-nextjs": "^7.3.8",
     "@neondatabase/serverless": "^1.0.2",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-dropdown-menu": "^2.1.16",
@@ -36,7 +32,6 @@
     "lucide-react": "^0.575.0",
     "next": "^15",
     "next-themes": "^0.4.6",
-    "otpauth": "^9.5.0",
     "react": "^19",
     "react-dom": "^19",
     "server-only": "^0.0.1",

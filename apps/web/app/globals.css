@@ -2,8 +2,7 @@
 
 /*
  * Design tokens — single source of truth for all styling.
- * CSS custom properties (below) are consumed by Tailwind via @theme,
- * and by the MUI theme (admin-only) via src/theme/tokens.ts.
+ * CSS custom properties (below) are consumed by Tailwind via @theme.
  */
 
 @theme {

@@ -13,436 +13,6 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
-#. Right of access
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:239
-#~ msgid "privacy.rights.access"
-#~ msgstr "<0>Access</0> — request a copy of all personal data we hold about you."
-
-#. Right of data portability
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:248
-#~ msgid "privacy.rights.portability"
-#~ msgstr "<0>Data portability</0> — receive your data in a machine-readable format."
-
-#. Right of erasure
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:245
-#~ msgid "privacy.rights.erasure"
-#~ msgstr "<0>Erasure</0> — request deletion of your account and all associated data."
-
-#. Right to object
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:254
-#~ msgid "privacy.rights.objection"
-#~ msgstr "<0>Objection</0> — object to processing of your personal data."
-
-#. Right of rectification
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:242
-#~ msgid "privacy.rights.rectification"
-#~ msgstr "<0>Rectification</0> — ask us to correct inaccurate data."
-
-#. Right to restrict processing
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:251
-#~ msgid "privacy.rights.restriction"
-#~ msgstr "<0>Restriction</0> — ask us to limit how we process your data."
-
-#. Right to withdraw consent
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:257
-#~ msgid "privacy.rights.withdraw"
-#~ msgstr "<0>Withdraw consent</0> — revoke consent at any time by deleting your account or contacting us."
-
-#. Account data subsection
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:111
-#~ msgid "privacy.dataCollected.accountTitle"
-#~ msgstr "Account data"
-
-#. Encryption in transit
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:216
-#~ msgid "privacy.storage.r1"
-#~ msgstr "All data is transmitted over encrypted connections (HTTPS/TLS)."
-
-#. Analytics data
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:139
-#~ msgid "privacy.dataCollected.technical1"
-#~ msgstr "Anonymous page-view analytics collected by Vercel Analytics (no cookies, no personal identifiers)."
-
-#. TOC: Changes
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:43
-#~ msgid "privacy.toc.changes"
-#~ msgstr "Changes to this policy"
-
-#. Policy changes section title
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:294
-#~ msgid "privacy.changes.title"
-#~ msgstr "Changes to this policy"
-
-#. Saved companies
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:124
-#~ msgid "privacy.dataCollected.usage1"
-#~ msgstr "Companies you choose to track."
-
-#. TOC: Cookies
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:41
-#~ msgid "privacy.toc.cookies"
-#~ msgstr "Cookies"
-
-#. Cookies section title
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:270
-#~ msgid "privacy.cookies.title"
-#~ msgstr "Cookies"
-
-#. TOC: Data retention
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:42
-#~ msgid "privacy.toc.retention"
-#~ msgstr "Data retention"
-
-#. Data retention section title
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:282
-#~ msgid "privacy.retention.title"
-#~ msgstr "Data retention"
-
-#. TOC: Data storage
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:39
-#~ msgid "privacy.toc.storage"
-#~ msgstr "Data storage"
-
-#. Data storage section title
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:212
-#~ msgid "privacy.storage.title"
-#~ msgstr "Data storage and security"
-
-#. Google privacy policy link
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:185
-#~ msgid "privacy.thirdParties.googleLink"
-#~ msgstr "Google Privacy Policy"
-
-#. Saved job postings
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:127
-#~ msgid "privacy.dataCollected.usage2"
-#~ msgstr "Job postings you save or mark as applied."
-
-#. Job alerts
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:130
-#~ msgid "privacy.dataCollected.usage3"
-#~ msgstr "Job search alert preferences you configure."
-
-#. Cookies description
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:273
-#~ msgid "privacy.cookies.description"
-#~ msgstr "Job Seek uses only strictly necessary cookies for authentication (session cookies). We do not use advertising or tracking cookies. Vercel Analytics does not use cookies."
-
-#. OAuth profile data
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:115
-#~ msgid "privacy.dataCollected.account1"
-#~ msgstr "Name, email address, and profile picture provided by your authentication provider (e.g. Google)."
-
-#. Neon privacy policy link
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:203
-#~ msgid "privacy.thirdParties.neonLink"
-#~ msgstr "Neon Privacy Policy"
-
-#. Technical data subsection
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:135
-#~ msgid "privacy.dataCollected.technicalTitle"
-#~ msgstr "Technical data"
-
-#. Usage data subsection
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:120
-#~ msgid "privacy.dataCollected.usageTitle"
-#~ msgstr "Usage data"
-
-#. Vercel privacy policy link
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:194
-#~ msgid "privacy.thirdParties.vercelLink"
-#~ msgstr "Vercel Privacy Policy"
-
-#. No selling data
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:164
-#~ msgid "privacy.howWeUse.noSale"
-#~ msgstr "We do not sell, rent, or share your personal data with third parties for marketing purposes."
-
-#. No password storage
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:222
-#~ msgid "privacy.storage.r3"
-#~ msgstr "We do not store your password. Authentication is handled entirely by your OAuth provider."
-
-#. Policy changes description
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:297
-#~ msgid "privacy.changes.description"
-#~ msgstr "We may update this privacy policy from time to time. When we do, we will revise the \"last updated\" date at the top of this page. We encourage you to review this page periodically."
-
-#. Data retention description
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:285
-#~ msgid "privacy.retention.description"
-#~ msgstr "We retain your data for as long as your account is active. If you delete your account, all associated personal data will be permanently removed from our database within 30 days."
-
-#. Database encryption
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:219
-#~ msgid "privacy.storage.r2"
-#~ msgstr "Your data is stored in a managed PostgreSQL database with encryption at rest."
-
-#. Analytics data
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:114
-#~ msgid "privacy.dataCollected.analytics"
-#~ msgstr "Anonymous page-view counts via Vercel Analytics. No cookies, no personal identifiers."
-
-#. Right: get a copy
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:186
-#~ msgid "privacy.rights.r1"
-#~ msgstr "Ask for a copy of everything we have on you."
-
-#. Usage data
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:111
-#~ msgid "privacy.dataCollected.usage"
-#~ msgstr "Companies you track, job postings you save, and alert preferences you set up."
-
-#. TOC: Contact
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:41
-#~ msgid "privacy.toc.contact"
-#~ msgstr "Contact"
-
-#. Contact section title
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:232
-#~ msgid "privacy.contact.title"
-#~ msgstr "Contact"
-
-#. Table of contents heading
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:32
-#~ msgid "privacy.toc.title"
-#~ msgstr "Contents"
-
-#. How to exercise rights
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:202
-#~ msgid "privacy.rights.howTo"
-#~ msgstr "To exercise any of these rights, contact us at the email below. We will respond within 30 days."
-
-#. Encryption note
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:218
-#~ msgid "privacy.extras.encryption"
-#~ msgstr "Everything travels over HTTPS and is encrypted at rest."
-
-#. Right: export
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:192
-#~ msgid "privacy.rights.r3"
-#~ msgstr "Export your data in a machine-readable format."
-
-#. Good to know section title
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:211
-#~ msgid "privacy.extras.title"
-#~ msgstr "Good to know"
-
-#. Google OAuth
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:157
-#~ msgid "privacy.thirdParties.google"
-#~ msgstr "<0>Google OAuth</0> — authentication. We receive your name, email, and profile picture. We do not access your Google contacts, calendar, or any other Google service data."
-
-#. Right: fix or delete
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:189
-#~ msgid "privacy.rights.r2"
-#~ msgstr "Have us correct or delete your data at any time."
-
-#. TOC: How we use it
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:38
-#~ msgid "privacy.toc.howWeUse"
-#~ msgstr "How we use your data"
-
-#. How we use data section title
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:122
-#~ msgid "privacy.howWeUse.title"
-#~ msgstr "How we use your data"
-
-#. Changes note
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:221
-#~ msgid "privacy.extras.changes"
-#~ msgstr "If we update this policy we’ll change the date at the top of the page."
-
-#. Neon database
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:167
-#~ msgid "privacy.thirdParties.neon"
-#~ msgstr "<0>Neon</0> — managed PostgreSQL database where your account and usage data is stored."
-
-#. Right: object
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:195
-#~ msgid "privacy.rights.r4"
-#~ msgstr "Object to or restrict how we process your data."
-
-#. Data collected intro
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:102
-#~ msgid "privacy.dataCollected.intro"
-#~ msgstr "We collect only the data necessary to provide and improve the service."
-
-#. TOC: Overview
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:36
-#~ msgid "privacy.toc.overview"
-#~ msgstr "Overview"
-
-#. Table of contents aria label
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:33
-#~ msgid "privacy.toc.ariaLabel"
-#~ msgstr "Page contents"
-
-#. Purpose: notifications
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:137
-#~ msgid "privacy.howWeUse.r3"
-#~ msgstr "To send you job alert notifications you have opted in to."
-
-#. Purpose: features
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:134
-#~ msgid "privacy.howWeUse.r2"
-#~ msgstr "To authenticate your identity via your chosen OAuth provider."
-
-#. Purpose: sign in
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:131
-#~ msgid "privacy.howWeUse.r1"
-#~ msgstr "To provide and maintain the Job Seek service, including your saved companies, job postings, and alerts."
-
-#. TOC: Third-party services
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:39
-#~ msgid "privacy.toc.thirdParties"
-#~ msgstr "Third-party services"
-
-#. Third-party services section title
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:148
-#~ msgid "privacy.thirdParties.title"
-#~ msgstr "Third-party services"
-
-#. Vercel hosting
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:162
-#~ msgid "privacy.thirdParties.vercel"
-#~ msgstr "<0>Vercel</0> — hosting and anonymous web analytics."
-
-#. No selling
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:140
-#~ msgid "privacy.howWeUse.r4"
-#~ msgstr "To understand how the service is used and improve it (via anonymous analytics)."
-
-#. Cookies note
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:215
-#~ msgid "privacy.extras.cookies"
-#~ msgstr "We only use cookies for keeping you signed in — no ads, no tracking."
-
-#. Third-party services intro
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:151
-#~ msgid "privacy.thirdParties.intro"
-#~ msgstr "Job Seek relies on the following third-party services to operate. Each has its own privacy policy."
-
-#. TOC: What we collect
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:37
-#~ msgid "privacy.toc.dataCollected"
-#~ msgstr "Data we collect"
-
-#. Data collected section title
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:99
-#~ msgid "privacy.dataCollected.title"
-#~ msgstr "Data we collect"
-
-#. Right: withdraw
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:198
-#~ msgid "privacy.rights.r5"
-#~ msgstr "Withdraw consent anytime by deleting your account or emailing us."
-
-#. How we use data intro
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:125
-#~ msgid "privacy.howWeUse.intro"
-#~ msgstr "Your data powers the features you signed up for and nothing else."
-
-#. OAuth profile data
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:108
-#~ msgid "privacy.dataCollected.account"
-#~ msgstr "Your name, email, and profile picture from Google sign-in. We never see your password."
-
-#. TOC: Your rights
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:40
-#~ msgid "privacy.toc.rights"
-#~ msgstr "Your rights (GDPR)"
-
-#. CTA when logged in: go to dashboard
-#. js-lingui-explicit-id
-#: src/components/Hero.tsx:18
-#~ msgid "common.dashboard.goTo"
-#~ msgstr "Go to dashboard"
-
-#. CTA when logged in: open dashboard
-#. CTA when logged in: open dashboard
-#. js-lingui-explicit-id
-#: src/components/Pricing.tsx:27
-#: src/components/Pricing.tsx:68
-#~ msgid "common.dashboard.open"
-#~ msgstr "Open dashboard"
-
-#. Dashboard nav button label
-#. Dashboard nav button label
-#. js-lingui-explicit-id
-#: src/components/Header.tsx:35
-#: src/components/MobileMenu.tsx:34
-#~ msgid "common.dashboard.action"
-#~ msgstr "To dashboard"
-
 #. CC right 1
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:80
@@ -564,12 +134,6 @@ msgstr "Client APIs second."
 #: src/components/MobileMenu.tsx:64
 msgid "common.mobileMenu.close"
 msgstr "Close menu"
-
-#. TOTP code input label
-#. js-lingui-explicit-id
-#: app/[lang]/(auth)/sign-in/2fa/page.tsx:60
-msgid "auth.2fa.field.code"
-msgstr "Code"
 
 #. CC license section title
 #. js-lingui-explicit-id
@@ -702,12 +266,6 @@ msgstr "Email"
 #: src/components/Pricing.tsx:86
 msgid "home.pricing.pro.f4"
 msgstr "Email alerts & updates"
-
-#. 2FA verification page subtitle
-#. js-lingui-explicit-id
-#: app/[lang]/(auth)/sign-in/2fa/page.tsx:53
-msgid "auth.2fa.subtitle"
-msgstr "Enter the 6-digit code from your authenticator app"
 
 #. Assurance 3 body
 #. js-lingui-explicit-id
@@ -865,12 +423,6 @@ msgstr "If you notice unusual crawler behaviour, prefer that we do not index you
 msgid "indexing.hero.eyebrow"
 msgstr "Indexing policy"
 
-#. Invalid 2FA code error
-#. js-lingui-explicit-id
-#: app/[lang]/(auth)/sign-in/2fa/page.tsx:33
-msgid "auth.2fa.error.invalid"
-msgstr "Invalid code"
-
 #. TOC: Job data (CC BY-NC 4.0)
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:24
@@ -903,14 +455,14 @@ msgstr "Kill the 50-tab routine"
 
 #. Last updated date label
 #. js-lingui-explicit-id
-#: src/components/TermsContent.tsx:28
-msgid "terms.hero.lastUpdated"
+#: src/components/PrivacyPolicyContent.tsx:28
+msgid "privacy.hero.lastUpdated"
 msgstr "Last updated:"
 
 #. Last updated date label
 #. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:28
-msgid "privacy.hero.lastUpdated"
+#: src/components/TermsContent.tsx:28
+msgid "terms.hero.lastUpdated"
 msgstr "Last updated:"
 
 #. Hero secondary call-to-action
@@ -1192,16 +744,16 @@ msgstr "Public Domain"
 msgid "license.contactCta"
 msgstr "Questions about licensing or commercial use? Email us."
 
-#. Terms contact call to action
-#. js-lingui-explicit-id
-#: src/components/TermsContent.tsx:54
-msgid "terms.contact.description"
-msgstr "Questions? Email us."
-
 #. Privacy contact call to action
 #. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx:66
 msgid "privacy.contact.description"
+msgstr "Questions? Email us."
+
+#. Terms contact call to action
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx:54
+msgid "terms.contact.description"
 msgstr "Questions? Email us."
 
 #. Link to full CC license
@@ -1401,15 +953,15 @@ msgstr "Terms"
 msgid "common.footer.termsLink"
 msgstr "Terms"
 
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/terms/page.tsx:14
+msgid "terms.meta.title"
+msgstr "Terms of Service"
+
 #. Terms page title
 #. js-lingui-explicit-id
 #: src/components/TermsContent.tsx:22
 msgid "terms.hero.title"
-msgstr "Terms of Service"
-
-#. js-lingui-explicit-id
-#: app/[lang]/(public)/terms/page.tsx:14
-msgid "terms.meta.title"
 msgstr "Terms of Service"
 
 #. js-lingui-explicit-id
@@ -1443,14 +995,14 @@ msgstr "The service is provided as-is — no warranties."
 
 #. Short version section title
 #. js-lingui-explicit-id
-#: src/components/TermsContent.tsx:40
-msgid "terms.short.title"
+#: src/components/PrivacyPolicyContent.tsx:40
+msgid "privacy.short.title"
 msgstr "The short version"
 
 #. Short version section title
 #. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:40
-msgid "privacy.short.title"
+#: src/components/TermsContent.tsx:40
+msgid "terms.short.title"
 msgstr "The short version"
 
 #. Cookie banner message
@@ -1477,12 +1029,6 @@ msgstr "Transparency matters, so the code for our job link collection service an
 msgid "error.retryButton"
 msgstr "Try again"
 
-#. 2FA verification page heading
-#. js-lingui-explicit-id
-#: app/[lang]/(auth)/sign-in/2fa/page.tsx:50
-msgid "auth.2fa.title"
-msgstr "Two-factor authentication"
-
 #. Your rights intro
 #. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx:57
@@ -1500,18 +1046,6 @@ msgstr "Unlimited company subscriptions"
 #: src/components/Pricing.tsx:64
 msgid "home.pricing.pro.cta"
 msgstr "Upgrade to Pro"
-
-#. 2FA verify submit button
-#. js-lingui-explicit-id
-#: app/[lang]/(auth)/sign-in/2fa/page.tsx:77
-msgid "auth.2fa.button.submit"
-msgstr "Verify"
-
-#. 2FA verify button while loading
-#. js-lingui-explicit-id
-#: app/[lang]/(auth)/sign-in/2fa/page.tsx:76
-msgid "auth.2fa.button.loading"
-msgstr "Verifying..."
 
 #. What the service does
 #. js-lingui-explicit-id

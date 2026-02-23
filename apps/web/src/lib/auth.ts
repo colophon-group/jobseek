@@ -1,21 +1,11 @@
 import "server-only";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { twoFactor } from "better-auth/plugins";
 import { nextCookies } from "better-auth/next-js";
 import { db } from "@/db";
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, { provider: "pg" }),
-  user: {
-    additionalFields: {
-      role: {
-        type: "string",
-        defaultValue: "user",
-        input: false,
-      },
-    },
-  },
   emailAndPassword: { enabled: true },
   socialProviders: {
     github: {
@@ -31,5 +21,5 @@ export const auth = betterAuth({
       clientSecret: process.env.LINKEDIN_CLIENT_SECRET!,
     },
   },
-  plugins: [twoFactor(), nextCookies()],
+  plugins: [nextCookies()],
 });
