@@ -81,7 +81,7 @@ export function AuthForm({ mode }: AuthFormProps) {
     router.push(dashboardUrl);
   }
 
-  async function handleOAuth(provider: "github" | "google") {
+  async function handleOAuth(provider: "github" | "google" | "linkedin") {
     await authClient.signIn.social({
       provider,
       callbackURL: dashboardUrl,
