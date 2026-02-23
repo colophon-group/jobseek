@@ -459,13 +459,13 @@ msgstr "Application code (MIT)"
 
 #. Free feature: application tracker
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:60
+#: src/components/Pricing.tsx:62
 msgid "home.pricing.free.f2"
 msgstr "Application tracker"
 
 #. Pro feature: application tracker
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:117
+#: src/components/Pricing.tsx:120
 msgid "home.pricing.pro.f2"
 msgstr "Application tracker"
 
@@ -507,7 +507,7 @@ msgstr "Change language"
 
 #. Pricing section heading
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:147
+#: src/components/Pricing.tsx:150
 msgid "home.pricing.title"
 msgstr "Choose the right plan for you"
 
@@ -651,7 +651,7 @@ msgstr "Email"
 
 #. Pro feature: email alerts
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:125
+#: src/components/Pricing.tsx:128
 msgid "home.pricing.pro.f4"
 msgstr "Email alerts & updates"
 
@@ -694,7 +694,7 @@ msgstr "Find Relevant Roles Faster"
 
 #. Main heading on the landing page
 #. js-lingui-explicit-id
-#: src/components/Hero.tsx:38
+#: src/components/Hero.tsx:40
 msgid "home.hero.title"
 msgstr "Find relevant roles faster."
 
@@ -706,25 +706,25 @@ msgstr "Follow target employers and get notified when they add new roles."
 
 #. Pro tier description
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:108
+#: src/components/Pricing.tsx:111
 msgid "home.pricing.pro.description"
 msgstr "For active job seekers who need unlimited reach and faster insight."
 
 #. Free tier period
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:47
+#: src/components/Pricing.tsx:49
 msgid "home.pricing.free.period"
 msgstr "Forever"
 
 #. Free tier name
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:42
+#: src/components/Pricing.tsx:44
 msgid "home.pricing.free.name"
 msgstr "Free"
 
 #. Hero primary call-to-action
 #. js-lingui-explicit-id
-#: src/components/Hero.tsx:21
+#: src/components/Hero.tsx:23
 msgid "home.hero.primaryCta"
 msgstr "Get started"
 
@@ -748,7 +748,7 @@ msgstr "Go home"
 
 #. CTA when logged in: go to dashboard
 #. js-lingui-explicit-id
-#: src/components/Hero.tsx:20
+#: src/components/Hero.tsx:22
 msgid "common.dashboard.goTo"
 msgstr "Go to dashboard"
 
@@ -849,7 +849,7 @@ msgstr "Job Seek's codebase is open source under MIT. The job data we collect an
 
 #. Hero eyebrow text above the title
 #. js-lingui-explicit-id
-#: src/components/Hero.tsx:35
+#: src/components/Hero.tsx:37
 msgid "home.hero.eyebrow"
 msgstr "Keep your hand on the job market pulse."
 
@@ -873,7 +873,7 @@ msgstr "Last updated:"
 
 #. Hero secondary call-to-action
 #. js-lingui-explicit-id
-#: src/components/Hero.tsx:50
+#: src/components/Hero.tsx:52
 msgid "home.hero.secondaryCta"
 msgstr "Learn more"
 
@@ -964,8 +964,8 @@ msgstr "One page per minute."
 #. CTA when logged in: open dashboard
 #. CTA when logged in: open dashboard
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:26
-#: src/components/Pricing.tsx:81
+#: src/components/Pricing.tsx:28
+#: src/components/Pricing.tsx:84
 msgid "common.dashboard.open"
 msgstr "Open dashboard"
 
@@ -1077,7 +1077,7 @@ msgstr "Paste a link, kick off a crawl"
 
 #. Pro tier period
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:104
+#: src/components/Pricing.tsx:107
 msgid "home.pricing.pro.period"
 msgstr "per month"
 
@@ -1087,18 +1087,18 @@ msgstr "per month"
 msgid "home.features.s2.p1.description"
 msgstr "Point us at any careers page or Notion job board and Job Seek mirrors it in your workspace within minutes."
 
+#. Pricing section eyebrow
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx:147
+msgid "home.pricing.eyebrow"
+msgstr "Pricing"
+
 #. Nav link: Pricing
 #. Nav link: Pricing
 #. js-lingui-explicit-id
 #: src/components/Header.tsx:80
 #: src/components/MobileMenu.tsx:84
 msgid "common.nav.pricing"
-msgstr "Pricing"
-
-#. Pricing section eyebrow
-#. js-lingui-explicit-id
-#: src/components/Pricing.tsx:144
-msgid "home.pricing.eyebrow"
 msgstr "Pricing"
 
 #. Privacy policy page eyebrow
@@ -1126,7 +1126,7 @@ msgstr "Privacy Policy"
 
 #. Pro tier name
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:99
+#: src/components/Pricing.tsx:102
 msgid "home.pricing.pro.name"
 msgstr "Pro"
 
@@ -1140,7 +1140,7 @@ msgstr "Product"
 
 #. Fallback credit text for public domain artwork
 #. js-lingui-explicit-id
-#: src/components/PublicDomainArt.tsx:53
+#: src/components/PublicDomainArt.tsx:66
 msgid "common.art.publicDomain"
 msgstr "Public Domain"
 
@@ -1218,13 +1218,13 @@ msgstr "Save your filters for quick scans without retyping everything."
 
 #. Free feature: saved searches
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:64
+#: src/components/Pricing.tsx:66
 msgid "home.pricing.free.f3"
 msgstr "Saved searches"
 
 #. Pro feature: saved searches
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:121
+#: src/components/Pricing.tsx:124
 msgid "home.pricing.pro.f3"
 msgstr "Saved searches"
 
@@ -1284,7 +1284,7 @@ msgstr "Signing in..."
 
 #. Pricing section description
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:150
+#: src/components/Pricing.tsx:153
 msgid "home.pricing.description"
 msgstr "Simple, transparent pricing. Start for free and upgrade when you get serious about your job search."
 
@@ -1302,7 +1302,7 @@ msgstr "Something went wrong"
 
 #. Free tier CTA
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:27
+#: src/components/Pricing.tsx:29
 msgid "home.pricing.free.cta"
 msgstr "Start for free"
 
@@ -1314,7 +1314,7 @@ msgstr "Stay in control"
 
 #. Free feature: subscribe to companies
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:56
+#: src/components/Pricing.tsx:58
 msgid "home.pricing.free.f1"
 msgstr "Subscribe to up to 5 companies"
 
@@ -1325,19 +1325,19 @@ msgstr "Subscribe to updates from companies, track applications, and never miss 
 
 #. Hero description paragraph
 #. js-lingui-explicit-id
-#: src/components/Hero.tsx:41
+#: src/components/Hero.tsx:43
 msgid "home.hero.description"
 msgstr "Subscribe to updates from companies, track applications, and never miss new openings. Designed to keep you in control, not hand your decisions to a bot."
 
 #. Aria label for switching to dark mode
 #. js-lingui-explicit-id
-#: src/components/ThemeToggleButton.tsx:22
+#: src/components/ThemeToggleButton.tsx:33
 msgid "common.theme.switchToDark"
 msgstr "Switch to dark mode"
 
 #. Aria label for switching to light mode
 #. js-lingui-explicit-id
-#: src/components/ThemeToggleButton.tsx:21
+#: src/components/ThemeToggleButton.tsx:32
 msgid "common.theme.switchToLight"
 msgstr "Switch to light mode"
 
@@ -1371,7 +1371,7 @@ msgstr "Terms of Service for the Job Seek application."
 
 #. Free tier description
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:51
+#: src/components/Pricing.tsx:53
 msgid "home.pricing.free.description"
 msgstr "Test Job Seek with enough headroom to be up to date with your dream companies."
 
@@ -1445,13 +1445,13 @@ msgstr "Under GDPR you can ask for a copy of your data, have it corrected or del
 
 #. Pro feature: unlimited subscriptions
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:113
+#: src/components/Pricing.tsx:116
 msgid "home.pricing.pro.f1"
 msgstr "Unlimited company subscriptions"
 
 #. Pro tier CTA
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:82
+#: src/components/Pricing.tsx:85
 msgid "home.pricing.pro.cta"
 msgstr "Upgrade to Pro"
 
