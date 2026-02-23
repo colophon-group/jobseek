@@ -83,6 +83,39 @@ For things like theme preference, locale, or UI state — handle client-side. On
 
 After `pnpm build`, Next.js prints a summary showing which routes are static (`○`) and which are dynamic (`λ` or `ƒ`). Verify that public pages show as static. If a page unexpectedly shows as dynamic, check its component tree for `cookies()`, `headers()`, `searchParams`, or `fetch` with `cache: 'no-store'`.
 
+### Never call useAuth() / useSession() on public pages
+
+This is one of the most impactful rules for edge request cost.
+
+Better Auth's `useSession()` hook (wrapped by our `useAuth()`) fires a
+`GET /api/auth/get-session` request on mount. This is both an **edge request**
+and a **serverless function invocation** — the two billable Vercel metrics.
+It also re-fires on every **window focus** event (rate-limited to 5 seconds),
+so tab-switching during a single visit generates repeated requests.
+
+The public components (Header, MobileMenu, Hero, Pricing) previously used
+`useAuth()` solely to toggle CTA labels ("Log in" vs "Go to dashboard").
+This meant every visitor to every page — including the ~95% who are
+anonymous — triggered a session API call that returned nothing useful.
+
+**Current rule**: public pages always render the anonymous CTA state. Auth
+checks only happen inside the dashboard route group, where the user is
+already authenticated and the session check is genuinely needed.
+
+If a future feature needs auth-dependent UI on a public page (e.g. showing
+a user avatar in the header), consider one of these alternatives instead of
+re-adding `useSession()`:
+
+- **Non-httpOnly cookie hint**: Set a lightweight `logged_in=1` cookie
+  (non-httpOnly) at sign-in. Client JS can check `document.cookie` without
+  a network request. Clear it on sign-out.
+- **Deferred component**: Use `next/dynamic` with `ssr: false` to load the
+  auth-dependent fragment only after the main page renders, so it doesn't
+  block or slow initial paint.
+
+The `useAuth` hook is kept in `src/lib/useAuth.ts` for use in dashboard
+components.
+
 ## Link prefetch strategy
 
 Next.js `<Link>` prefetches the RSC payload for every linked route when the
@@ -100,8 +133,8 @@ improves perceived navigation speed.
 | Link | Location | Href | Why hot |
 |------|----------|------|---------|
 | "How do we index" | Header nav, Mobile menu | `/how-we-index` | Cross-page nav link, high interest |
-| Login / Dashboard CTA | Header, Mobile menu | `/sign-in` or `/dashboard` | Primary action |
-| Hero primary CTA | Hero section | `/dashboard` or `/sign-up` | Main conversion funnel |
+| Log in CTA | Header, Mobile menu | `/sign-in` | Primary action |
+| Hero primary CTA | Hero section | `/sign-in` | Main conversion funnel |
 | Pricing CTAs | Pricing cards | `/sign-up` | Conversion funnel |
 
 ### Cold paths (prefetch **disabled**)

@@ -2,7 +2,6 @@
 
 import { Trans } from "@lingui/react/macro";
 import { useLingui } from "@lingui/react/macro";
-import { useAuth } from "@/lib/useAuth";
 import { siteConfig } from "@/content/config";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { eyebrowClass, sectionHeadingClass } from "@/lib/styles";
@@ -18,14 +17,12 @@ function FeatureItem({ children }: { children: React.ReactNode }) {
   );
 }
 
-function FreeTier({ isLoggedIn }: { isLoggedIn: boolean }) {
+function FreeTier() {
   const { t } = useLingui();
   const lp = useLocalePath();
   const cfg = siteConfig.pricing.free;
-  const ctaHref = isLoggedIn ? lp(siteConfig.nav.dashboard.href) : lp(cfg.href);
-  const ctaLabel = isLoggedIn
-    ? t({ id: "common.dashboard.open", comment: "CTA when logged in: open dashboard", message: "Open dashboard" })
-    : t({ id: "home.pricing.free.cta", comment: "Free tier CTA", message: "Start for free" });
+  const ctaHref = lp(cfg.href);
+  const ctaLabel = t({ id: "home.pricing.free.cta", comment: "Free tier CTA", message: "Start for free" });
 
   return (
     <div className="mx-auto flex w-full max-w-[500px] md:mx-0 md:max-w-[360px] md:flex-[1_1_320px]">
@@ -59,14 +56,12 @@ function FreeTier({ isLoggedIn }: { isLoggedIn: boolean }) {
   );
 }
 
-function ProTier({ isLoggedIn }: { isLoggedIn: boolean }) {
+function ProTier() {
   const { t } = useLingui();
   const lp = useLocalePath();
   const cfg = siteConfig.pricing.pro;
-  const ctaHref = isLoggedIn ? lp(siteConfig.nav.dashboard.href) : lp(cfg.href);
-  const ctaLabel = isLoggedIn
-    ? t({ id: "common.dashboard.open", comment: "CTA when logged in: open dashboard", message: "Open dashboard" })
-    : t({ id: "home.pricing.pro.cta", comment: "Pro tier CTA", message: "Upgrade to Pro" });
+  const ctaHref = lp(cfg.href);
+  const ctaLabel = t({ id: "home.pricing.pro.cta", comment: "Pro tier CTA", message: "Upgrade to Pro" });
 
   return (
     <div className="mx-auto flex w-full max-w-[500px] md:mx-0 md:max-w-[360px] md:flex-[1_1_320px]">
@@ -102,8 +97,6 @@ function ProTier({ isLoggedIn }: { isLoggedIn: boolean }) {
 }
 
 export function Pricing() {
-  const { isLoggedIn } = useAuth();
-
   return (
     <section id={siteConfig.pricing.anchorId} className="mx-auto max-w-[1200px] px-4 py-12 md:py-20">
       <div className="mx-auto flex max-w-[640px] flex-col gap-4 text-center">
@@ -119,8 +112,8 @@ export function Pricing() {
       </div>
 
       <div className="mt-8 flex flex-col flex-wrap items-center justify-center gap-6 md:mt-12 md:flex-row md:items-stretch">
-        <FreeTier isLoggedIn={isLoggedIn} />
-        <ProTier isLoggedIn={isLoggedIn} />
+        <FreeTier />
+        <ProTier />
       </div>
     </section>
   );

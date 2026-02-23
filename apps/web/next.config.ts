@@ -35,6 +35,13 @@ const nextConfig: NextConfig = {
         { key: "Cache-Control", value: "public, max-age=604800" },
       ],
     },
+    {
+      // Favicon and web manifest — rarely change
+      source: "/(favicon.ico|site.webmanifest|apple-touch-icon.png|android-chrome-:path*)",
+      headers: [
+        { key: "Cache-Control", value: "public, max-age=604800" },
+      ],
+    },
   ],
   webpack: (config) => {
     config.module.rules.push({

@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Trans } from "@lingui/react/macro";
 import { useLingui } from "@lingui/react/macro";
-import { useAuth } from "@/lib/useAuth";
 import { siteConfig } from "@/content/config";
 import { ThemeToggleButton } from "@/components/ThemeToggleButton";
 import { LocaleSwitcher } from "@/components/LocaleSwitcher";
@@ -20,7 +19,6 @@ type MobileMenuProps = {
 };
 
 export function MobileMenu({ open, onCloseAction }: MobileMenuProps) {
-  const { isLoggedIn } = useAuth();
   const { t } = useLingui();
   const lp = useLocalePath();
   const pathname = usePathname();
@@ -29,10 +27,8 @@ export function MobileMenu({ open, onCloseAction }: MobileMenuProps) {
     return pathname === href || pathname.startsWith(href + "/") ? ("page" as const) : undefined;
   }
 
-  const authHref = isLoggedIn ? lp(siteConfig.nav.dashboard.href) : lp(siteConfig.nav.login.href);
-  const authLabel = isLoggedIn
-    ? t({ id: "common.dashboard.action", comment: "Dashboard nav button label", message: "To dashboard" })
-    : t({ id: "common.auth.login", comment: "Login button label", message: "Log in" });
+  const authHref = lp(siteConfig.nav.login.href);
+  const authLabel = t({ id: "common.auth.login", comment: "Login button label", message: "Log in" });
 
   return (
     <Dialog.Root open={open} onOpenChange={(v) => { if (!v) onCloseAction(); }}>

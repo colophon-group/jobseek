@@ -421,6 +421,28 @@ msgstr ""
 #~ msgid "privacy.toc.rights"
 #~ msgstr "Tes droits"
 
+#. CTA when logged in: go to dashboard
+#. js-lingui-explicit-id
+#: src/components/Hero.tsx:18
+#~ msgid "common.dashboard.goTo"
+#~ msgstr "Accéder au tableau de bord"
+
+#. CTA when logged in: open dashboard
+#. CTA when logged in: open dashboard
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx:27
+#: src/components/Pricing.tsx:68
+#~ msgid "common.dashboard.open"
+#~ msgstr "Ouvrir le tableau de bord"
+
+#. Dashboard nav button label
+#. Dashboard nav button label
+#. js-lingui-explicit-id
+#: src/components/Header.tsx:35
+#: src/components/MobileMenu.tsx:34
+#~ msgid "common.dashboard.action"
+#~ msgstr "Tableau de bord"
+
 #. CC right 1
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:80
@@ -449,7 +471,7 @@ msgstr ""
 
 #. Feature: alerts you drive title
 #. js-lingui-explicit-id
-#: src/components/Features.tsx:254
+#: src/components/Features.tsx:248
 msgid "home.features.s2.p3.title"
 msgstr "Des alertes que tu pilotes vraiment"
 
@@ -479,19 +501,19 @@ msgstr "Code applicatif (MIT)"
 
 #. Free feature: application tracker
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:48
+#: src/components/Pricing.tsx:45
 msgid "home.pricing.free.f2"
 msgstr "Suivi des candidatures"
 
 #. Pro feature: application tracker
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:89
+#: src/components/Pricing.tsx:84
 msgid "home.pricing.pro.f2"
 msgstr "Suivi des candidatures"
 
 #. Feature: application tracker title
 #. js-lingui-explicit-id
-#: src/components/Features.tsx:191
+#: src/components/Features.tsx:185
 msgid "home.features.s1.p2.title"
 msgstr "Suivi des candidatures"
 
@@ -509,7 +531,7 @@ msgstr "Parcourir le dépôt sur"
 
 #. Feature section 1 heading
 #. js-lingui-explicit-id
-#: src/components/Features.tsx:177
+#: src/components/Features.tsx:171
 msgid "home.features.s1.title"
 msgstr "Conçu pour les chercheurs d'emploi actifs"
 
@@ -521,13 +543,13 @@ msgstr "En utilisant Job Seek, tu acceptes ces conditions. Voici un résumé en 
 
 #. Aria label for language switcher button
 #. js-lingui-explicit-id
-#: src/components/LocaleSwitcher.tsx:28
+#: src/components/LocaleSwitcher.tsx:75
 msgid "common.locale.switch"
 msgstr "Changer de langue"
 
 #. Pricing section heading
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:114
+#: src/components/Pricing.tsx:107
 msgid "home.pricing.title"
 msgstr "Choisis l'offre qui te convient"
 
@@ -539,7 +561,7 @@ msgstr "API clientes en second."
 
 #. Aria label for close mobile menu button
 #. js-lingui-explicit-id
-#: src/components/MobileMenu.tsx:68
+#: src/components/MobileMenu.tsx:64
 msgid "common.mobileMenu.close"
 msgstr "Fermer le menu"
 
@@ -557,7 +579,7 @@ msgstr "Collection d'offres d'emploi (CC BY-NC 4.0)"
 
 #. Feature: company alerts title
 #. js-lingui-explicit-id
-#: src/components/Features.tsx:186
+#: src/components/Features.tsx:180
 msgid "home.features.s1.p1.title"
 msgstr "Alertes entreprises"
 
@@ -639,6 +661,12 @@ msgstr "Créer un compte"
 msgid "auth.signUp.button.loading"
 msgstr "Création du compte..."
 
+#. Cookie banner details button
+#. js-lingui-explicit-id
+#: src/components/CookieBanner.tsx:45
+msgid "common.cookies.details"
+msgstr "Détails"
+
 #. Link to sign-up page from sign-in
 #. js-lingui-explicit-id
 #: src/components/AuthForm.tsx:157
@@ -653,7 +681,7 @@ msgstr "Pas de scraping, pas de candidatures automatisées, pas d'abus de la pla
 
 #. Feature section 2 description
 #. js-lingui-explicit-id
-#: src/components/Features.tsx:238
+#: src/components/Features.tsx:232
 msgid "home.features.s2.description"
 msgstr "Tu ne trouves pas ton entreprise préférée dans le flux ? Colle le lien de sa page carrières et on commence à la scraper pour toi — pas de scripts, pas de tableurs, pas d'attente au support."
 
@@ -665,7 +693,7 @@ msgstr "E-mail"
 
 #. Pro feature: email alerts
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:91
+#: src/components/Pricing.tsx:86
 msgid "home.pricing.pro.f4"
 msgstr "Alertes e-mail et mises à jour"
 
@@ -689,15 +717,15 @@ msgstr "Chaque fenêtre de réessai utilise un backoff exponentiel afin de ne ja
 
 #. Feature section 1 eyebrow text
 #. js-lingui-explicit-id
-#: src/components/Features.tsx:174
+#: src/components/Features.tsx:168
 msgid "home.features.s1.eyebrow"
 msgstr "Tout ce qu'il te faut pour garder une longueur d'avance"
 
 #. Nav link: Features
 #. Nav link: Features
 #. js-lingui-explicit-id
-#: src/components/Header.tsx:59
-#: src/components/MobileMenu.tsx:85
+#: src/components/Header.tsx:60
+#: src/components/MobileMenu.tsx:81
 msgid "common.nav.features"
 msgstr "Fonctionnalités"
 
@@ -708,37 +736,37 @@ msgstr "Trouve les postes pertinents plus vite"
 
 #. Main heading on the landing page
 #. js-lingui-explicit-id
-#: src/components/Hero.tsx:32
+#: src/components/Hero.tsx:28
 msgid "home.hero.title"
 msgstr "Trouve les bons postes plus vite."
 
 #. Feature: company alerts description
 #. js-lingui-explicit-id
-#: src/components/Features.tsx:187
+#: src/components/Features.tsx:181
 msgid "home.features.s1.p1.description"
 msgstr "Suis les employeurs qui t'intéressent et reçois une notification dès qu'ils publient de nouveaux postes."
 
 #. Pro tier description
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:85
+#: src/components/Pricing.tsx:80
 msgid "home.pricing.pro.description"
 msgstr "Pour les chercheurs d'emploi actifs qui veulent une portée illimitée et des informations plus rapides."
 
 #. Free tier period
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:40
+#: src/components/Pricing.tsx:37
 msgid "home.pricing.free.period"
 msgstr "Pour toujours"
 
 #. Free tier name
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:35
+#: src/components/Pricing.tsx:32
 msgid "home.pricing.free.name"
 msgstr "Gratuit"
 
 #. Hero primary call-to-action
 #. js-lingui-explicit-id
-#: src/components/Hero.tsx:19
+#: src/components/Hero.tsx:15
 msgid "home.hero.primaryCta"
 msgstr "Commencer"
 
@@ -756,15 +784,9 @@ msgstr "GitHub"
 
 #. Link to return to the homepage from a 404 page
 #. js-lingui-explicit-id
-#: app/[lang]/not-found.tsx:23
+#: app/[lang]/not-found.tsx:22
 msgid "notFound.goHome"
 msgstr "Retour à l'accueil"
-
-#. CTA when logged in: go to dashboard
-#. js-lingui-explicit-id
-#: src/components/Hero.tsx:18
-msgid "common.dashboard.goTo"
-msgstr "Accéder au tableau de bord"
 
 #. Step 3 title
 #. js-lingui-explicit-id
@@ -775,8 +797,8 @@ msgstr "Analyse de pages respectueuse."
 #. Nav link: How do we index jobs?
 #. Nav link: How do we index jobs?
 #. js-lingui-explicit-id
-#: src/components/Header.tsx:65
-#: src/components/MobileMenu.tsx:95
+#: src/components/Header.tsx:66
+#: src/components/MobileMenu.tsx:91
 msgid "common.nav.company"
 msgstr "Comment indexons-nous les offres ?"
 
@@ -863,21 +885,15 @@ msgstr "Le code source de Job Seek est ouvert sous licence MIT. Les données d'e
 
 #. Hero eyebrow text above the title
 #. js-lingui-explicit-id
-#: src/components/Hero.tsx:29
+#: src/components/Hero.tsx:25
 msgid "home.hero.eyebrow"
 msgstr "Garde le pouls du marché de l'emploi."
 
 #. Feature: kill tab routine title
 #. js-lingui-explicit-id
-#: src/components/Features.tsx:249
+#: src/components/Features.tsx:243
 msgid "home.features.s2.p2.title"
 msgstr "Fini la routine des 50 onglets"
-
-#. Last updated date label
-#. js-lingui-explicit-id
-#: src/components/TermsContent.tsx:28
-msgid "terms.hero.lastUpdated"
-msgstr "Dernière mise à jour :"
 
 #. Last updated date label
 #. js-lingui-explicit-id
@@ -885,9 +901,15 @@ msgstr "Dernière mise à jour :"
 msgid "privacy.hero.lastUpdated"
 msgstr "Dernière mise à jour :"
 
+#. Last updated date label
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx:28
+msgid "terms.hero.lastUpdated"
+msgstr "Dernière mise à jour :"
+
 #. Hero secondary call-to-action
 #. js-lingui-explicit-id
-#: src/components/Hero.tsx:44
+#: src/components/Hero.tsx:40
 msgid "home.hero.secondaryCta"
 msgstr "En savoir plus"
 
@@ -922,14 +944,14 @@ msgstr "Conditions de licence du code applicatif de Job Seek (MIT) et des donné
 #. Login button label
 #. Login button label
 #. js-lingui-explicit-id
-#: src/components/Header.tsx:36
-#: src/components/MobileMenu.tsx:35
+#: src/components/Header.tsx:34
+#: src/components/MobileMenu.tsx:31
 msgid "common.auth.login"
 msgstr "Se connecter"
 
 #. Feature: application tracker description
 #. js-lingui-explicit-id
-#: src/components/Features.tsx:192
+#: src/components/Features.tsx:186
 msgid "home.features.s1.p2.description"
 msgstr "Note où tu as postulé, le statut, les contacts et les prochaines étapes."
 
@@ -963,6 +985,12 @@ msgstr "Aucune redistribution ou revente commerciale sans autorisation."
 msgid "license.code.r3"
 msgstr "Aucune garantie — utilisation à vos risques et périls."
 
+#. Cookie banner accept button
+#. js-lingui-explicit-id
+#: src/components/CookieBanner.tsx:51
+msgid "common.cookies.ok"
+msgstr "Ok"
+
 #. Step 4 body
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:139
@@ -975,17 +1003,9 @@ msgstr "Une fois qu'une offre individuelle est récupérée, nous ne stockons qu
 msgid "indexing.assurances.i3.title"
 msgstr "Une page par minute."
 
-#. CTA when logged in: open dashboard
-#. CTA when logged in: open dashboard
-#. js-lingui-explicit-id
-#: src/components/Pricing.tsx:27
-#: src/components/Pricing.tsx:68
-msgid "common.dashboard.open"
-msgstr "Ouvrir le tableau de bord"
-
 #. Aria label for mobile menu button
 #. js-lingui-explicit-id
-#: src/components/Header.tsx:81
+#: src/components/Header.tsx:82
 msgid "common.header.openMenu"
 msgstr "Ouvrir le menu principal"
 
@@ -1063,13 +1083,13 @@ msgstr "Sommaire de la page"
 
 #. Heading shown on the 404 page
 #. js-lingui-explicit-id
-#: app/[lang]/not-found.tsx:13
+#: app/[lang]/not-found.tsx:12
 msgid "notFound.title"
 msgstr "Page introuvable"
 
 #. Feature: kill tab routine description
 #. js-lingui-explicit-id
-#: src/components/Features.tsx:250
+#: src/components/Features.tsx:244
 msgid "home.features.s2.p2.description"
 msgstr "Regroupe toutes les startups intéressantes dans un seul tableau de bord au lieu de jongler entre les fenêtres Chrome et les favoris."
 
@@ -1081,13 +1101,13 @@ msgstr "Mot de passe"
 
 #. Feature: paste a link title
 #. js-lingui-explicit-id
-#: src/components/Features.tsx:244
+#: src/components/Features.tsx:238
 msgid "home.features.s2.p1.title"
 msgstr "Colle un lien, lance un crawl"
 
 #. Pro tier period
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:81
+#: src/components/Pricing.tsx:76
 msgid "home.pricing.pro.period"
 msgstr "par mois"
 
@@ -1099,21 +1119,21 @@ msgstr ""
 
 #. Feature: paste a link description
 #. js-lingui-explicit-id
-#: src/components/Features.tsx:245
+#: src/components/Features.tsx:239
 msgid "home.features.s2.p1.description"
 msgstr "Indique-nous n'importe quelle page carrières ou tableau d'offres Notion et Job Seek le reproduit dans ton espace de travail en quelques minutes."
 
 #. Pricing section eyebrow
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:111
+#: src/components/Pricing.tsx:104
 msgid "home.pricing.eyebrow"
 msgstr "Tarifs"
 
 #. Nav link: Pricing
 #. Nav link: Pricing
 #. js-lingui-explicit-id
-#: src/components/Header.tsx:62
-#: src/components/MobileMenu.tsx:90
+#: src/components/Header.tsx:63
+#: src/components/MobileMenu.tsx:86
 msgid "common.nav.pricing"
 msgstr "Tarifs"
 
@@ -1142,15 +1162,15 @@ msgstr "Politique de confidentialité"
 
 #. Pro tier name
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:76
+#: src/components/Pricing.tsx:71
 msgid "home.pricing.pro.name"
 msgstr "Pro"
 
 #. Nav link: Product
 #. Nav link: Product
 #. js-lingui-explicit-id
-#: src/components/Header.tsx:56
-#: src/components/MobileMenu.tsx:80
+#: src/components/Header.tsx:57
+#: src/components/MobileMenu.tsx:76
 msgid "common.nav.product"
 msgstr "Produit"
 
@@ -1166,16 +1186,16 @@ msgstr "Domaine public"
 msgid "license.contactCta"
 msgstr "Des questions sur les licences ou l'utilisation commerciale ? Écrivez-nous."
 
-#. Terms contact call to action
-#. js-lingui-explicit-id
-#: src/components/TermsContent.tsx:54
-msgid "terms.contact.description"
-msgstr "Des questions ? Écris-nous."
-
 #. Privacy contact call to action
 #. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx:66
 msgid "privacy.contact.description"
+msgstr "Des questions ? Écris-nous."
+
+#. Terms contact call to action
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx:54
+msgid "terms.contact.description"
 msgstr "Des questions ? Écris-nous."
 
 #. Link to full CC license
@@ -1228,25 +1248,25 @@ msgstr "Robots, attribution et réservation TDM."
 
 #. Feature: saved searches description
 #. js-lingui-explicit-id
-#: src/components/Features.tsx:197
+#: src/components/Features.tsx:191
 msgid "home.features.s1.p3.description"
 msgstr "Enregistre tes filtres pour des recherches rapides sans tout retaper à chaque fois."
 
 #. Free feature: saved searches
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:49
+#: src/components/Pricing.tsx:46
 msgid "home.pricing.free.f3"
 msgstr "Recherches enregistrées"
 
 #. Pro feature: saved searches
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:90
+#: src/components/Pricing.tsx:85
 msgid "home.pricing.pro.f3"
 msgstr "Recherches enregistrées"
 
 #. Feature: saved searches title
 #. js-lingui-explicit-id
-#: src/components/Features.tsx:196
+#: src/components/Features.tsx:190
 msgid "home.features.s1.p3.title"
 msgstr "Recherches enregistrées"
 
@@ -1258,7 +1278,7 @@ msgstr "Stockage sélectif."
 
 #. Feature: alerts you drive description
 #. js-lingui-explicit-id
-#: src/components/Features.tsx:255
+#: src/components/Features.tsx:249
 msgid "home.features.s2.p3.description"
 msgstr "Définis la fréquence par entreprise pour être informé des nouvelles offres sans scroller les sites d'emploi toute la journée."
 
@@ -1300,7 +1320,7 @@ msgstr "Connexion en cours..."
 
 #. Pricing section description
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:117
+#: src/components/Pricing.tsx:110
 msgid "home.pricing.description"
 msgstr "Des tarifs simples et transparents. Commence gratuitement et passe à la vitesse supérieure quand ta recherche d'emploi devient sérieuse."
 
@@ -1318,25 +1338,25 @@ msgstr ""
 
 #. Heading shown when a page crashes unexpectedly
 #. js-lingui-explicit-id
-#: app/[lang]/error.tsx:16
+#: app/[lang]/error.tsx:15
 msgid "error.title"
 msgstr "Une erreur est survenue"
 
 #. Free tier CTA
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:28
+#: src/components/Pricing.tsx:25
 msgid "home.pricing.free.cta"
 msgstr "Commencer gratuitement"
 
 #. Feature section 2 eyebrow text
 #. js-lingui-explicit-id
-#: src/components/Features.tsx:232
+#: src/components/Features.tsx:226
 msgid "home.features.s2.eyebrow"
 msgstr "Garde le contrôle"
 
 #. Free feature: subscribe to companies
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:47
+#: src/components/Pricing.tsx:44
 msgid "home.pricing.free.f1"
 msgstr "Suivi de 5 entreprises maximum"
 
@@ -1347,7 +1367,7 @@ msgstr "Abonne-toi aux mises à jour d'entreprises, suis tes candidatures et ne 
 
 #. Hero description paragraph
 #. js-lingui-explicit-id
-#: src/components/Hero.tsx:35
+#: src/components/Hero.tsx:31
 msgid "home.hero.description"
 msgstr "Abonne-toi aux actualités des entreprises, suis tes candidatures et ne rate plus aucune offre. Conçu pour que tu gardes le contrôle, pas pour confier tes décisions à un robot."
 
@@ -1393,19 +1413,19 @@ msgstr "Conditions d'utilisation de l'application Job Seek."
 
 #. Free tier description
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:44
+#: src/components/Pricing.tsx:41
 msgid "home.pricing.free.description"
 msgstr "Teste Job Seek avec assez de marge pour rester à jour avec les entreprises de tes rêves."
 
 #. Feature section 2 heading
 #. js-lingui-explicit-id
-#: src/components/Features.tsx:235
+#: src/components/Features.tsx:229
 msgid "home.features.s2.title"
 msgstr "Le premier agrégateur d'emploi qui te met aux commandes"
 
 #. Body text on the 404 page
 #. js-lingui-explicit-id
-#: app/[lang]/not-found.tsx:18
+#: app/[lang]/not-found.tsx:17
 msgid "notFound.body"
 msgstr "La page que tu cherches n'existe pas ou a été déplacée."
 
@@ -1417,27 +1437,25 @@ msgstr "Le service est fourni tel quel, sans garantie."
 
 #. Short version section title
 #. js-lingui-explicit-id
-#: src/components/TermsContent.tsx:40
-msgid "terms.short.title"
-msgstr "En bref"
-
-#. Short version section title
-#. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx:40
 msgid "privacy.short.title"
 msgstr "En bref"
 
-#. Dashboard nav button label
-#. Dashboard nav button label
+#. Short version section title
 #. js-lingui-explicit-id
-#: src/components/Header.tsx:35
-#: src/components/MobileMenu.tsx:34
-msgid "common.dashboard.action"
-msgstr "Tableau de bord"
+#: src/components/TermsContent.tsx:40
+msgid "terms.short.title"
+msgstr "En bref"
+
+#. Cookie banner message
+#. js-lingui-explicit-id
+#: src/components/CookieBanner.tsx:35
+msgid "common.cookies.message"
+msgstr "Ce site utilise des cookies uniquement pour l'authentification et les fonctionnalités essentielles."
 
 #. Feature section 1 description
 #. js-lingui-explicit-id
-#: src/components/Features.tsx:180
+#: src/components/Features.tsx:174
 msgid "home.features.s1.description"
 msgstr "Suis les postes, reçois des notifications quand les entreprises publient quelque chose de nouveau, et garde ton pipeline propre."
 
@@ -1449,7 +1467,7 @@ msgstr "La transparence compte, c'est pourquoi le code de notre service de colle
 
 #. Button to retry loading the page after an error
 #. js-lingui-explicit-id
-#: app/[lang]/error.tsx:24
+#: app/[lang]/error.tsx:23
 msgid "error.retryButton"
 msgstr "Réessayer"
 
@@ -1467,13 +1485,13 @@ msgstr "Selon le RGPD, tu peux demander une copie de tes données, les faire cor
 
 #. Pro feature: unlimited subscriptions
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:88
+#: src/components/Pricing.tsx:83
 msgid "home.pricing.pro.f1"
 msgstr "Abonnements entreprises illimités"
 
 #. Pro tier CTA
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:69
+#: src/components/Pricing.tsx:64
 msgid "home.pricing.pro.cta"
 msgstr "Passer au Pro"
 

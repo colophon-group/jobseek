@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Trans } from "@lingui/react/macro";
 import { useLingui } from "@lingui/react/macro";
-import { useAuth } from "@/lib/useAuth";
 import { siteConfig } from "@/content/config";
 import { ThemeToggleButton } from "@/components/ThemeToggleButton";
 import { LocaleSwitcher } from "@/components/LocaleSwitcher";
@@ -21,7 +20,6 @@ const navLinkClass =
   "whitespace-nowrap text-sm font-medium px-3 py-1 transition-colors hover:text-muted";
 
 export function Header({ onOpenMobileAction }: HeaderProps) {
-  const { isLoggedIn } = useAuth();
   const { t } = useLingui();
   const lp = useLocalePath();
   const pathname = usePathname();
@@ -30,13 +28,13 @@ export function Header({ onOpenMobileAction }: HeaderProps) {
     return pathname === href || pathname.startsWith(href + "/") ? ("page" as const) : undefined;
   }
 
-  const authHref = isLoggedIn ? lp(siteConfig.nav.dashboard.href) : lp(siteConfig.nav.login.href);
-  const authLabel = isLoggedIn
-    ? t({ id: "common.dashboard.action", comment: "Dashboard nav button label", message: "To dashboard" })
-    : t({ id: "common.auth.login", comment: "Login button label", message: "Log in" });
+  // Always show the anonymous CTA on public pages to avoid a /api/auth/get-session
+  // request on every page load. The dashboard handles its own auth check.
+  const authHref = lp(siteConfig.nav.login.href);
+  const authLabel = t({ id: "common.auth.login", comment: "Login button label", message: "Log in" });
 
   return (
-    <header className="sticky top-0 z-50 border-b border-divider backdrop-blur-md">
+    <header className="border-b border-divider backdrop-blur-md">
       <div className="mx-auto flex h-12 max-w-[1200px] items-center gap-4 px-4">
         <Link href={lp("/")} className="inline-flex shrink-0 items-center gap-2">
           <ThemedImage

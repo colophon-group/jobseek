@@ -2,21 +2,17 @@
 
 import { Trans } from "@lingui/react/macro";
 import { useLingui } from "@lingui/react/macro";
-import { useAuth } from "@/lib/useAuth";
 import { siteConfig, publicDomainAssets } from "@/content/config";
 import { PublicDomainArt } from "@/components/PublicDomainArt";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { Button } from "@/components/ui/Button";
 
 export function Hero() {
-  const { isLoggedIn } = useAuth();
   const { t } = useLingui();
   const lp = useLocalePath();
 
-  const primaryHref = isLoggedIn ? lp(siteConfig.nav.dashboard.href) : lp(siteConfig.nav.login.href);
-  const primaryLabel = isLoggedIn
-    ? t({ id: "common.dashboard.goTo", comment: "CTA when logged in: go to dashboard", message: "Go to dashboard" })
-    : t({ id: "home.hero.primaryCta", comment: "Hero primary call-to-action", message: "Get started" });
+  const primaryHref = lp(siteConfig.nav.login.href);
+  const primaryLabel = t({ id: "home.hero.primaryCta", comment: "Hero primary call-to-action", message: "Get started" });
 
   const heroArt = publicDomainAssets[siteConfig.hero.art.assetKey];
   const heroArtFocus = siteConfig.hero.art.focus;
