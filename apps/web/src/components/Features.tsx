@@ -39,10 +39,8 @@
  *
  * ## Theme handling
  *
- * ThemedImage renders both light and dark <img> elements. The ImageWrapper
- * <style> block includes display toggle rules scoped to `.feat-img-*` that
- * must be more specific than the global toggle in globals.css to prevent
- * both images from showing simultaneously.
+ * ThemedImage is a client component that renders a single <img> matching
+ * the active theme, so no CSS display toggles are needed.
  *
  * ## Key constants
  *
@@ -141,10 +139,6 @@ function ImageWrapper({
           max-width: none;
           height: auto;
         }
-        .feat-img-${id} .themed-img-dark { display: none; }
-        .dark .feat-img-${id} .themed-img-light { display: none; }
-        .feat-img-${id} .themed-img-light,
-        .dark .feat-img-${id} .themed-img-dark { display: block; }
       `}</style>
       {children}
     </div>

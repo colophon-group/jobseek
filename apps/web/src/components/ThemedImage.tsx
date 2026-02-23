@@ -1,3 +1,7 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useTheme } from "next-themes";
 import Image from "next/image";
 import type { CSSProperties } from "react";
 
@@ -12,9 +16,9 @@ type ThemedImageProps = {
 };
 
 /**
- * Renders both light and dark images; CSS `.dark` class on <html> toggles
- * which one is visible.  Avoids hydration mismatches because the HTML is
- * identical on server and client — no runtime theme check needed.
+ * Renders a single <Image> matching the active theme.
+ * Defaults to the dark variant during SSR and before hydration
+ * (matches ThemeProvider defaultTheme="dark").
  */
 export function ThemedImage({
   lightSrc,
@@ -25,24 +29,20 @@ export function ThemedImage({
   className,
   style,
 }: ThemedImageProps) {
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  const src = mounted && resolvedTheme === "light" ? lightSrc : darkSrc;
+
   return (
-    <>
-      <Image
-        src={lightSrc}
-        alt={alt}
-        width={width}
-        height={height}
-        className={`themed-img-light${className ? ` ${className}` : ""}`}
-        style={style}
-      />
-      <Image
-        src={darkSrc}
-        alt={alt}
-        width={width}
-        height={height}
-        className={`themed-img-dark${className ? ` ${className}` : ""}`}
-        style={style}
-      />
-    </>
+    <Image
+      src={src}
+      alt={alt}
+      width={width}
+      height={height}
+      className={className}
+      style={style}
+    />
   );
 }
