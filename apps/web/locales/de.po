@@ -615,15 +615,21 @@ msgstr "Inhalt"
 
 #. GitHub OAuth button
 #. js-lingui-explicit-id
-#: src/components/ui/OAuthButtons.tsx:26
+#: src/components/ui/OAuthButtons.tsx:27
 msgid "auth.oauth.github"
 msgstr "Weiter mit GitHub"
 
 #. Google OAuth button
 #. js-lingui-explicit-id
-#: src/components/ui/OAuthButtons.tsx:30
+#: src/components/ui/OAuthButtons.tsx:31
 msgid "auth.oauth.google"
 msgstr "Weiter mit Google"
+
+#. LinkedIn OAuth button
+#. js-lingui-explicit-id
+#: src/components/ui/OAuthButtons.tsx:35
+msgid "auth.oauth.linkedin"
+msgstr "Weiter mit LinkedIn"
 
 #. Cookies
 #. js-lingui-explicit-id
@@ -663,7 +669,7 @@ msgstr "Konto wird erstellt…"
 
 #. Cookie banner details button
 #. js-lingui-explicit-id
-#: src/components/CookieBanner.tsx:45
+#: src/components/CookieBanner.tsx:47
 msgid "common.cookies.details"
 msgstr "Details"
 
@@ -897,14 +903,14 @@ msgstr "Schluss mit der 50-Tab-Routine"
 
 #. Last updated date label
 #. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:28
-msgid "privacy.hero.lastUpdated"
+#: src/components/TermsContent.tsx:28
+msgid "terms.hero.lastUpdated"
 msgstr "Zuletzt aktualisiert:"
 
 #. Last updated date label
 #. js-lingui-explicit-id
-#: src/components/TermsContent.tsx:28
-msgid "terms.hero.lastUpdated"
+#: src/components/PrivacyPolicyContent.tsx:28
+msgid "privacy.hero.lastUpdated"
 msgstr "Zuletzt aktualisiert:"
 
 #. Hero secondary call-to-action
@@ -987,7 +993,7 @@ msgstr "Keine Gewährleistung — Nutzung auf eigenes Risiko."
 
 #. Cookie banner accept button
 #. js-lingui-explicit-id
-#: src/components/CookieBanner.tsx:51
+#: src/components/CookieBanner.tsx:53
 msgid "common.cookies.ok"
 msgstr "Ok"
 
@@ -1035,7 +1041,7 @@ msgstr "Opt-out oder Fragen"
 
 #. Divider between form and OAuth buttons
 #. js-lingui-explicit-id
-#: src/components/ui/OAuthButtons.tsx:19
+#: src/components/ui/OAuthButtons.tsx:20
 msgid "auth.divider.or"
 msgstr "oder"
 
@@ -1186,16 +1192,16 @@ msgstr "Gemeinfrei"
 msgid "license.contactCta"
 msgstr "Fragen zur Lizenzierung oder kommerziellen Nutzung? Schreib uns eine E-Mail."
 
-#. Privacy contact call to action
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:66
-msgid "privacy.contact.description"
-msgstr "Fragen? Schreib uns eine E-Mail."
-
 #. Terms contact call to action
 #. js-lingui-explicit-id
 #: src/components/TermsContent.tsx:54
 msgid "terms.contact.description"
+msgstr "Fragen? Schreib uns eine E-Mail."
+
+#. Privacy contact call to action
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:66
+msgid "privacy.contact.description"
 msgstr "Fragen? Schreib uns eine E-Mail."
 
 #. Link to full CC license
@@ -1395,15 +1401,15 @@ msgstr "Nutzungsbedingungen"
 msgid "common.footer.termsLink"
 msgstr "AGB"
 
-#. js-lingui-explicit-id
-#: app/[lang]/(public)/terms/page.tsx:14
-msgid "terms.meta.title"
-msgstr "Nutzungsbedingungen"
-
 #. Terms page title
 #. js-lingui-explicit-id
 #: src/components/TermsContent.tsx:22
 msgid "terms.hero.title"
+msgstr "Nutzungsbedingungen"
+
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/terms/page.tsx:14
+msgid "terms.meta.title"
 msgstr "Nutzungsbedingungen"
 
 #. js-lingui-explicit-id
@@ -1437,19 +1443,19 @@ msgstr "Der Service wird ohne Gewährleistung bereitgestellt."
 
 #. Short version section title
 #. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:40
-msgid "privacy.short.title"
-msgstr "Die Kurzfassung"
-
-#. Short version section title
-#. js-lingui-explicit-id
 #: src/components/TermsContent.tsx:40
 msgid "terms.short.title"
 msgstr "Die Kurzfassung"
 
+#. Short version section title
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:40
+msgid "privacy.short.title"
+msgstr "Die Kurzfassung"
+
 #. Cookie banner message
 #. js-lingui-explicit-id
-#: src/components/CookieBanner.tsx:35
+#: src/components/CookieBanner.tsx:36
 msgid "common.cookies.message"
 msgstr "Diese Seite verwendet Cookies ausschließlich für Authentifizierung und grundlegende Funktionen."
 

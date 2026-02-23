@@ -29,14 +29,16 @@ export function CookieBanner() {
 
   return (
     <div className="border-b border-info-border bg-info-bg">
-      <div className="mx-auto flex max-w-[1200px] items-center gap-3 px-4 py-2 text-sm text-info">
-        <Info size={16} className="shrink-0" />
-        <p className="flex-1">
-          <Trans id="common.cookies.message" comment="Cookie banner message">
-            This site uses cookies only for authentication and essential functionality.
-          </Trans>
-        </p>
-        <div className="flex shrink-0 items-center gap-2">
+      <div className="mx-auto flex max-w-[1200px] flex-col gap-2 px-4 py-2 text-sm text-info sm:flex-row sm:items-center sm:gap-3">
+        <div className="flex flex-1 items-start gap-2">
+          <Info size={16} className="mt-0.5 shrink-0" />
+          <p>
+            <Trans id="common.cookies.message" comment="Cookie banner message">
+              This site uses cookies only for authentication and essential functionality.
+            </Trans>
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
           <Link
             href={lp("/privacy-policy")}
             prefetch={false}

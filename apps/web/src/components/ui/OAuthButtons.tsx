@@ -1,10 +1,11 @@
 import { Trans } from "@lingui/react/macro";
 import { Github } from "lucide-react";
 import { GoogleIcon } from "@/components/icons/GoogleIcon";
+import { LinkedInIcon } from "@/components/icons/LinkedInIcon";
 import { Button } from "@/components/ui/Button";
 
 type OAuthButtonsProps = {
-  onOAuth: (provider: "github" | "google") => void;
+  onOAuth: (provider: "github" | "google" | "linkedin") => void;
 };
 
 export function OAuthButtons({ onOAuth }: OAuthButtonsProps) {
@@ -28,6 +29,10 @@ export function OAuthButtons({ onOAuth }: OAuthButtonsProps) {
         <Button variant="outline" className="w-full gap-2" onClick={() => onOAuth("google")}>
           <GoogleIcon />
           <Trans id="auth.oauth.google" comment="Google OAuth button">Continue with Google</Trans>
+        </Button>
+        <Button variant="outline" className="w-full gap-2" onClick={() => onOAuth("linkedin")}>
+          <LinkedInIcon />
+          <Trans id="auth.oauth.linkedin" comment="LinkedIn OAuth button">Continue with LinkedIn</Trans>
         </Button>
       </div>
     </>

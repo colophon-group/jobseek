@@ -2,11 +2,11 @@ import Link from "next/link";
 import type { ComponentProps } from "react";
 
 const base =
-  "inline-flex items-center justify-center whitespace-nowrap rounded-full font-semibold transition-opacity hover:opacity-90 disabled:opacity-50";
+  "inline-flex items-center justify-center whitespace-nowrap rounded-full font-semibold cursor-pointer disabled:opacity-50";
 
 const variants = {
-  primary: "border border-primary bg-primary text-primary-contrast",
-  outline: "border border-current",
+  primary: "border border-primary bg-primary text-primary-contrast transition-opacity hover:opacity-90",
+  outline: "border border-current transition-colors hover:bg-border-soft",
 } as const;
 
 const sizes = {
