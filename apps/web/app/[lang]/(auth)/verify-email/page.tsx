@@ -64,7 +64,7 @@ export default function VerifyEmailPage() {
           </Trans>
         </h2>
         <ErrorAlert message={error} />
-        <Button href={lp("/sign-in")} className="mt-4">
+        <Button href={lp("/sign-in")} prefetch={false} className="mt-4">
           <Trans id="auth.verify.error.backToSignIn" comment="Link back to sign-in after failed verification">
             Back to sign in
           </Trans>
@@ -86,7 +86,7 @@ export default function VerifyEmailPage() {
           Your email has been verified. You can now sign in.
         </Trans>
       </p>
-      <Button href={lp("/dashboard")} className="mt-4">
+      <Button href={lp("/dashboard")} prefetch={false} className="mt-4">
         <Trans id="auth.verify.success.continue" comment="Button to continue to dashboard after verification">
           Continue to dashboard
         </Trans>

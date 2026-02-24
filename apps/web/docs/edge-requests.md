@@ -17,6 +17,8 @@ Public marketing pages and auth pages contain no user-specific data. They are **
 /en/license       — static
 /en/sign-in       — static (client component layout)
 /en/sign-up       — static
+/en/check-email   — static (client component, reads sessionStorage)
+/en/verify-email  — static (client component, reads ?token query param)
 ```
 
 These pages produce **zero edge function invocations** — Vercel serves them directly from the CDN.
@@ -151,6 +153,8 @@ or the user is already on an adjacent page.
 | Privacy | Footer | `/privacy-policy` | Legal — rarely clicked |
 | Terms | Footer | `/terms` | Legal — rarely clicked |
 | Sign in ↔ Sign up | Auth form | `/sign-in`, `/sign-up` | User is already on an auth page |
+| Back to sign in | Verify email (error) | `/sign-in` | User is already on an auth page |
+| Continue to dashboard | Verify email (success) | `/dashboard` | User will click immediately — no prefetch benefit |
 | Logo (auth) | Auth layout | `/` | Return-to-marketing, not a hot path |
 
 ### When adding new links
