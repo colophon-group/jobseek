@@ -3,10 +3,31 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 import { db } from "@/db";
+import { sendVerificationEmail } from "@/lib/email";
+import { type Locale, defaultLocale, isLocale } from "@/lib/i18n";
+
+function localeFromRequest(request?: Request): Locale {
+  const referer = request?.headers.get("referer") ?? "";
+  const segment = new URL(referer, "http://localhost").pathname.split("/")[1];
+  return segment && isLocale(segment) ? segment : defaultLocale;
+}
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, { provider: "pg" }),
-  emailAndPassword: { enabled: true },
+  emailAndPassword: {
+    enabled: true,
+    requireEmailVerification: true,
+  },
+  emailVerification: {
+    sendOnSignUp: true,
+    autoSignInAfterVerification: true,
+    sendVerificationEmail: async ({ user, token }, request) => {
+      const locale = localeFromRequest(request);
+      const base = process.env.BETTER_AUTH_URL ?? "http://localhost:3000";
+      const verifyUrl = `${base}/${locale}/verify-email?token=${token}`;
+      void sendVerificationEmail(user.email, verifyUrl, locale);
+    },
+  },
   socialProviders: {
     github: {
       clientId: process.env.GITHUB_CLIENT_ID!,

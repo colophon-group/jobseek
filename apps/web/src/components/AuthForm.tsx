@@ -29,6 +29,11 @@ export function AuthForm({ mode }: AuthFormProps) {
   const isSignUp = mode === "sign-up";
   const dashboardUrl = lp("/dashboard");
 
+  function goToCheckEmail() {
+    sessionStorage.setItem("verify-email", email);
+    router.push(lp("/check-email"));
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
@@ -61,6 +66,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         setLoading(false);
         return;
       }
+      goToCheckEmail();
     } else {
       const { error } = await authClient.signIn.email({
         email,
@@ -68,6 +74,10 @@ export function AuthForm({ mode }: AuthFormProps) {
         callbackURL: dashboardUrl,
       });
       if (error) {
+        if (error.status === 403) {
+          goToCheckEmail();
+          return;
+        }
         setError(error.message ?? t({
           id: "auth.signIn.error.generic",
           comment: "Generic sign-in error fallback",
@@ -76,9 +86,8 @@ export function AuthForm({ mode }: AuthFormProps) {
         setLoading(false);
         return;
       }
+      router.push(dashboardUrl);
     }
-
-    router.push(dashboardUrl);
   }
 
   async function handleOAuth(provider: "github" | "google" | "linkedin") {

@@ -53,7 +53,7 @@ msgstr "Toutes les données sont chiffrées en transit et au repos."
 
 #. Link to sign-in page from sign-up
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:150
+#: src/components/AuthForm.tsx:218
 msgid "auth.signUp.hasAccount"
 msgstr "Déjà un compte ? <0>Se connecter</0>"
 
@@ -93,6 +93,12 @@ msgstr "Suivi des candidatures"
 msgid "indexing.ingestion.s3.body"
 msgstr "En dernier recours, nous analysons directement les pages carrières, en privilégiant le tri du plus récent au plus ancien et en nous arrêtant dès que des offres déjà indexées réapparaissent, plutôt que de parcourir chaque page."
 
+#. Link back to sign-in after failed verification
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/verify-email/page.tsx:68
+msgid "auth.verify.error.backToSignIn"
+msgstr "Retour à la connexion"
+
 #. Link text for browsing the repo
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:192
@@ -116,6 +122,12 @@ msgstr "En utilisant Job Seek, tu acceptes ces conditions. Voici un résumé en 
 #: src/components/LocaleSwitcher.tsx:75
 msgid "common.locale.switch"
 msgstr "Changer de langue"
+
+#. Heading after sign-up telling user to check email
+#. js-lingui-explicit-id
+#: src/components/AuthForm.tsx:133
+msgid "auth.verify.checkEmail.title"
+msgstr "Vérifiez votre e-mail"
 
 #. Pricing section heading
 #. js-lingui-explicit-id
@@ -177,6 +189,12 @@ msgstr "Sommaire"
 msgid "indexing.toc.title"
 msgstr "Sommaire"
 
+#. Button to continue to dashboard after verification
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/verify-email/page.tsx:90
+msgid "auth.verify.success.continue"
+msgstr "Continuer vers le tableau de bord"
+
 #. GitHub OAuth button
 #. js-lingui-explicit-id
 #: src/components/ui/OAuthButtons.tsx:27
@@ -221,13 +239,13 @@ msgstr "Garanties de crawl"
 
 #. Sign-up page heading
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:95
+#: src/components/AuthForm.tsx:163
 msgid "auth.signUp.title"
 msgstr "Créer un compte"
 
 #. Sign-up button while loading
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:138
+#: src/components/AuthForm.tsx:206
 msgid "auth.signUp.button.loading"
 msgstr "Création du compte..."
 
@@ -239,7 +257,7 @@ msgstr "Détails"
 
 #. Link to sign-up page from sign-in
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:157
+#: src/components/AuthForm.tsx:225
 msgid "auth.signIn.noAccount"
 msgstr "Pas encore de compte ? <0>S'inscrire</0>"
 
@@ -257,7 +275,7 @@ msgstr "Tu ne trouves pas ton entreprise préférée dans le flux ? Colle le lie
 
 #. Email input label
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:118
+#: src/components/AuthForm.tsx:186
 msgid "auth.field.email"
 msgstr "E-mail"
 
@@ -266,6 +284,12 @@ msgstr "E-mail"
 #: src/components/Pricing.tsx:86
 msgid "home.pricing.pro.f4"
 msgstr "Alertes e-mail et mises à jour"
+
+#. Heading when email is successfully verified
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/verify-email/page.tsx:80
+msgid "auth.verify.success.title"
+msgstr "E-mail vérifié"
 
 #. Assurance 3 body
 #. js-lingui-explicit-id
@@ -284,6 +308,12 @@ msgstr "Chaque fenêtre de réessai utilise un backoff exponentiel afin de ne ja
 #: src/components/Features.tsx:168
 msgid "home.features.s1.eyebrow"
 msgstr "Tout ce qu'il te faut pour garder une longueur d'avance"
+
+#. Error when resending verification email fails
+#. js-lingui-explicit-id
+#: src/components/AuthForm.tsx:102
+msgid "auth.verify.resendError"
+msgstr "Échec du renvoi de l'e-mail de vérification"
 
 #. Nav link: Features
 #. Nav link: Features
@@ -336,7 +366,7 @@ msgstr "Commencer"
 
 #. Sign-up page subtitle
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:100
+#: src/components/AuthForm.tsx:168
 msgid "auth.signUp.subtitle"
 msgstr "Commencez avec Job Seek"
 
@@ -422,6 +452,12 @@ msgstr "Si vous remarquez un comportement inhabituel de notre robot, préférez 
 #: src/components/HowWeIndexContent.tsx:45
 msgid "indexing.hero.eyebrow"
 msgstr "Politique d'indexation"
+
+#. Error when verification token is missing from URL
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/verify-email/page.tsx:24
+msgid "auth.verify.error.noToken"
+msgstr "Lien de vérification invalide"
 
 #. TOC: Job data (CC BY-NC 4.0)
 #. js-lingui-explicit-id
@@ -515,7 +551,7 @@ msgstr "Note où tu as postulé, le statut, les contacts et les prochaines étap
 
 #. Name input label
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:109
+#: src/components/AuthForm.tsx:177
 msgid "auth.field.name"
 msgstr "Nom"
 
@@ -653,7 +689,7 @@ msgstr "Regroupe toutes les startups intéressantes dans un seul tableau de bord
 
 #. Password input label
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:127
+#: src/components/AuthForm.tsx:195
 msgid "auth.field.password"
 msgstr "Mot de passe"
 
@@ -671,7 +707,7 @@ msgstr "par mois"
 
 #. Error when required fields are empty
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:38
+#: src/components/AuthForm.tsx:42
 msgid "auth.error.fieldsRequired"
 msgstr ""
 
@@ -681,18 +717,18 @@ msgstr ""
 msgid "home.features.s2.p1.description"
 msgstr "Indique-nous n'importe quelle page carrières ou tableau d'offres Notion et Job Seek le reproduit dans ton espace de travail en quelques minutes."
 
-#. Pricing section eyebrow
-#. js-lingui-explicit-id
-#: src/components/Pricing.tsx:104
-msgid "home.pricing.eyebrow"
-msgstr "Tarifs"
-
 #. Nav link: Pricing
 #. Nav link: Pricing
 #. js-lingui-explicit-id
 #: src/components/Header.tsx:63
 #: src/components/MobileMenu.tsx:86
 msgid "common.nav.pricing"
+msgstr "Tarifs"
+
+#. Pricing section eyebrow
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx:104
+msgid "home.pricing.eyebrow"
 msgstr "Tarifs"
 
 #. Privacy policy page eyebrow
@@ -792,6 +828,18 @@ msgstr "Redistribuez vos modifications, à condition d'inclure la mention MIT."
 msgid "common.footer.text"
 msgstr "Publié sous licence MIT. Les données d'emploi sont sous CC BY-NC 4.0."
 
+#. Resend button during cooldown with seconds remaining
+#. js-lingui-explicit-id
+#: src/components/AuthForm.tsx:151
+msgid "auth.verify.cooldown"
+msgstr "Renvoyer dans {cooldown}s"
+
+#. Button to resend verification email
+#. js-lingui-explicit-id
+#: src/components/AuthForm.tsx:152
+msgid "auth.verify.resend"
+msgstr "Renvoyer l'e-mail de vérification"
+
 #. Assurance 1 title
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:67
@@ -834,6 +882,12 @@ msgstr "Recherches enregistrées"
 msgid "indexing.ingestion.s4.title"
 msgstr "Stockage sélectif."
 
+#. Resend button while sending
+#. js-lingui-explicit-id
+#: src/components/AuthForm.tsx:149
+msgid "auth.verify.resending"
+msgstr "Envoi en cours..."
+
 #. Feature: alerts you drive description
 #. js-lingui-explicit-id
 #: src/components/Features.tsx:249
@@ -842,37 +896,37 @@ msgstr "Définis la fréquence par entreprise pour être informé des nouvelles 
 
 #. Sign-in page heading
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:96
+#: src/components/AuthForm.tsx:164
 msgid "auth.signIn.title"
 msgstr "Se connecter"
 
 #. Sign-in submit button
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:142
+#: src/components/AuthForm.tsx:210
 msgid "auth.signIn.button.submit"
 msgstr "Se connecter"
 
 #. Sign-up submit button
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:139
+#: src/components/AuthForm.tsx:207
 msgid "auth.signUp.button.submit"
 msgstr "S'inscrire"
 
 #. Generic sign-in error fallback
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:71
+#: src/components/AuthForm.tsx:82
 msgid "auth.signIn.error.generic"
 msgstr "Échec de la connexion"
 
 #. Generic sign-up error fallback
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:56
+#: src/components/AuthForm.tsx:60
 msgid "auth.signUp.error.generic"
 msgstr "Échec de l'inscription"
 
 #. Sign-in button while loading
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:141
+#: src/components/AuthForm.tsx:209
 msgid "auth.signIn.button.loading"
 msgstr "Connexion en cours..."
 
@@ -1047,6 +1101,24 @@ msgstr "Abonnements entreprises illimités"
 msgid "home.pricing.pro.cta"
 msgstr "Passer au Pro"
 
+#. Generic email verification error
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/verify-email/page.tsx:35
+msgid "auth.verify.error.generic"
+msgstr "Échec de la vérification"
+
+#. Heading when email verification fails
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/verify-email/page.tsx:62
+msgid "auth.verify.error.title"
+msgstr "Échec de la vérification"
+
+#. Shown while verifying email token
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/verify-email/page.tsx:50
+msgid "auth.verify.loading"
+msgstr "Vérification de votre e-mail..."
+
 #. What the service does
 #. js-lingui-explicit-id
 #: src/components/TermsContent.tsx:44
@@ -1083,6 +1155,12 @@ msgstr "Nous recherchons des flux structurés avant de scraper du HTML brut. Nou
 msgid "indexing.automation.body"
 msgstr "Nous nous opposons à ce que les décisions de recrutement ou de recherche d'emploi soient confiées à une automatisation opaque — que ce soit côté employeur ou côté candidat. Chaque lien sortant que nous partageons inclut <0>utm_source=jobseek</0> afin que les recruteurs identifient le trafic, et nous examinons en permanence les schémas d'utilisation tout en imposant des frictions pour dissuader les candidatures automatisées."
 
+#. Description telling user a verification link was sent
+#. js-lingui-explicit-id
+#: src/components/AuthForm.tsx:138
+msgid "auth.verify.checkEmail.description"
+msgstr "Nous avons envoyé un lien de vérification à <0>{email}</0>. Cliquez sur le lien pour vérifier votre compte."
+
 #. What we store
 #. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx:43
@@ -1103,7 +1181,7 @@ msgstr "Nous utilisons quelques services tiers pour la connexion, l’hébergeme
 
 #. Sign-in page subtitle
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:101
+#: src/components/AuthForm.tsx:169
 msgid "auth.signIn.subtitle"
 msgstr "Content de vous revoir"
 
@@ -1136,6 +1214,12 @@ msgstr "Vous pouvez réutiliser le jeu de données d'emploi avec attribution à 
 #: src/components/TermsContent.tsx:43
 msgid "terms.short.r1"
 msgstr "Tu dois avoir au moins 16 ans pour utiliser Job Seek."
+
+#. Description after successful email verification
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/verify-email/page.tsx:85
+msgid "auth.verify.success.description"
+msgstr "Votre e-mail a été vérifié. Vous pouvez maintenant vous connecter."
 
 #. Your rights section title
 #. js-lingui-explicit-id

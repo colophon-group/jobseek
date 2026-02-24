@@ -1,7 +1,7 @@
 "use client";
 
 import type { SVGProps } from "react";
-import { useParams, usePathname, useRouter } from "next/navigation";
+import { useParams, usePathname, useSearchParams, useRouter } from "next/navigation";
 import { useLingui } from "@lingui/react/macro";
 import { locales, type Locale } from "@/lib/i18n";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
@@ -69,6 +69,7 @@ export function LocaleSwitcher({ className }: LocaleSwitcherProps) {
   const { t } = useLingui();
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const params = useParams();
   const currentLocale = (params.lang as string) ?? "en";
 
@@ -81,7 +82,8 @@ export function LocaleSwitcher({ className }: LocaleSwitcherProps) {
   function handleSelect(locale: Locale) {
     if (locale === currentLocale) return;
     const newPath = pathname.replace(`/${currentLocale}`, `/${locale}`);
-    router.push(newPath);
+    const qs = searchParams.toString();
+    router.push(qs ? `${newPath}?${qs}` : newPath);
   }
 
   return (

@@ -11,7 +11,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
   const lp = useLocalePath();
 
   return (
-    <div className="mx-auto max-w-sm px-4">
+    <div className="mx-auto w-fit min-w-[24rem] max-w-lg px-4">
       <div className="flex min-h-screen flex-col items-center justify-center py-8">
         <Link href={lp("/")} prefetch={false} className="mb-6 block h-9 w-36">
           <ThemedImage
