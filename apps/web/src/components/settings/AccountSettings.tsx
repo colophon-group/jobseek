@@ -1,0 +1,480 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import { Trans } from "@lingui/react/macro";
+import { useLingui } from "@lingui/react/macro";
+import { Github } from "lucide-react";
+import { authClient } from "@/lib/auth-client";
+import { useAuth } from "@/lib/useAuth";
+import { useLocalePath } from "@/lib/useLocalePath";
+import { getPasswordResetCooldown, recordPasswordResetRequest } from "@/lib/actions/preferences";
+import { Button } from "@/components/ui/Button";
+import { FormField } from "@/components/ui/FormField";
+import { ErrorAlert } from "@/components/ui/ErrorAlert";
+import { GoogleIcon } from "@/components/icons/GoogleIcon";
+import { LinkedInIcon } from "@/components/icons/LinkedInIcon";
+
+/* ── Types ── */
+
+type ConnectedAccount = {
+  providerId: string;
+  accountId: string;
+};
+
+/* ── Login prompt for unauthenticated users ── */
+
+function LoginPrompt() {
+  const { t } = useLingui();
+  const lp = useLocalePath();
+  return (
+    <div className="flex flex-col items-center gap-4 py-12 text-center">
+      <p className="text-muted">
+        <Trans id="settings.account.loginRequired" comment="Message when user must log in to see account settings">
+          Please log in to manage your account settings.
+        </Trans>
+      </p>
+      <Button href={lp("/sign-in")} variant="primary" size="md">
+        {t({ id: "common.auth.login", comment: "Login button label", message: "Log in" })}
+      </Button>
+    </div>
+  );
+}
+
+/* ── Password Section ── */
+
+function PasswordSection({ hasPassword, onPasswordSet }: { hasPassword: boolean; onPasswordSet: () => void }) {
+  if (hasPassword) return <ResetPasswordFlow />;
+  return <SetPasswordFlow onSuccess={onPasswordSet} />;
+}
+
+function SetPasswordFlow({ onSuccess }: { onSuccess: () => void }) {
+  const { t } = useLingui();
+  const [newPassword, setNewPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
+    if (!newPassword) {
+      setError(t({ id: "settings.account.password.newRequired", comment: "Error when new password is empty", message: "Please enter a password" }));
+      return;
+    }
+    setLoading(true);
+    const { error } = await authClient.$fetch("/set-password", {
+      method: "POST",
+      body: { newPassword },
+    });
+    setLoading(false);
+    if (error) {
+      setError(error.message ?? t({ id: "settings.account.password.setError", comment: "Generic set password error", message: "Failed to set password" }));
+    } else {
+      setSuccess(t({ id: "settings.account.password.setSuccess", comment: "Success message after setting password", message: "Password set successfully." }));
+      setNewPassword("");
+      onSuccess();
+    }
+  }
+
+  return (
+    <section>
+      <h3 className="mb-1 text-base font-semibold">
+        <Trans id="settings.account.password.title" comment="Password section heading">Password</Trans>
+      </h3>
+      <p className="mb-4 text-sm text-muted">
+        <Trans id="settings.account.password.setDescription" comment="Set password description for OAuth users">
+          You signed in with a social account. Set a password to enable email changes and additional security.
+        </Trans>
+      </p>
+      {error && <ErrorAlert message={error} />}
+      {success && (
+        <div className="mb-4 rounded-md border border-success-border bg-success-bg px-4 py-3 text-sm text-success">
+          {success}
+        </div>
+      )}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <FormField
+          label={t({ id: "settings.account.password.newLabel", comment: "New password input label", message: "New password" })}
+          type="password"
+          required
+          autoComplete="new-password"
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
+        />
+        <Button type="submit" disabled={loading} size="sm">
+          {loading
+            ? t({ id: "settings.account.password.setting", comment: "Set password button while loading", message: "Setting..." })
+            : t({ id: "settings.account.password.set", comment: "Set password button", message: "Set password" })}
+        </Button>
+      </form>
+    </section>
+  );
+}
+
+function ResetPasswordFlow() {
+  const { t } = useLingui();
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    getPasswordResetCooldown().then(setCooldown);
+  }, []);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setInterval(() => {
+      setCooldown((prev) => {
+        const next = prev - 1;
+        if (next <= 0) clearInterval(timer);
+        return Math.max(0, next);
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [cooldown > 0]);
+
+  async function handleReset() {
+    if (!user?.email) return;
+    setError("");
+    setSuccess("");
+    setLoading(true);
+
+    const result = await recordPasswordResetRequest();
+    if (result.cooldown) {
+      setCooldown(result.cooldown);
+      setLoading(false);
+      return;
+    }
+    if (result.error) {
+      setError(result.error);
+      setLoading(false);
+      return;
+    }
+
+    const { error } = await (authClient as unknown as {
+      requestPasswordReset: (opts: { email: string; redirectTo: string }) =>
+        Promise<{ error: { message?: string } | null }>;
+    }).requestPasswordReset({
+      email: user.email,
+      redirectTo: "/reset-password",
+    });
+    setLoading(false);
+    if (error) {
+      setError(error.message ?? t({ id: "settings.account.password.error", comment: "Generic password reset error", message: "Failed to send reset email" }));
+    } else {
+      setSuccess(t({ id: "settings.account.password.success", comment: "Success message after password reset request", message: "Password reset link sent. Please check your inbox. It may take a few minutes to arrive." }));
+      setCooldown(60);
+    }
+  }
+
+  return (
+    <section>
+      <h3 className="mb-1 text-base font-semibold">
+        <Trans id="settings.account.password.title" comment="Password section heading">Password</Trans>
+      </h3>
+      <p className="mb-4 text-sm text-muted">
+        <Trans id="settings.account.password.description" comment="Password section description">
+          Change your password via a secure email link.
+        </Trans>
+      </p>
+      {error && <ErrorAlert message={error} />}
+      {success && (
+        <div className="mb-4 rounded-md border border-success-border bg-success-bg px-4 py-3 text-sm text-success">
+          {success}
+        </div>
+      )}
+      <Button onClick={handleReset} disabled={loading || cooldown > 0} size="sm">
+        {loading
+          ? t({ id: "settings.account.password.sending", comment: "Reset password button while loading", message: "Sending..." })
+          : cooldown > 0
+            ? t({ id: "settings.account.password.cooldown", comment: "Reset password button during cooldown with seconds remaining", message: `Resend in ${cooldown}s` })
+            : t({ id: "settings.account.password.send", comment: "Reset password button", message: "Send reset link" })}
+      </Button>
+    </section>
+  );
+}
+
+/* ── Change Email (requires password) ── */
+
+function ChangeEmailSection({ hasPassword }: { hasPassword: boolean }) {
+  const { t } = useLingui();
+  const lp = useLocalePath();
+  const [newEmail, setNewEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
+    if (!newEmail) {
+      setError(t({ id: "settings.account.email.required", comment: "Error when email field is empty", message: "Please enter a new email address" }));
+      return;
+    }
+    if (!password) {
+      setError(t({ id: "settings.account.email.passwordRequired", comment: "Error when password is empty for email change", message: "Please enter your password to confirm" }));
+      return;
+    }
+    setLoading(true);
+    // Verify password via changePassword with same password (Better Auth checks current)
+    const verifyResult = await authClient.changePassword({
+      currentPassword: password,
+      newPassword: password,
+      revokeOtherSessions: true,
+    });
+    if (verifyResult.error) {
+      setLoading(false);
+      setError(t({ id: "settings.account.email.wrongPassword", comment: "Error when password is incorrect", message: "Incorrect password" }));
+      return;
+    }
+    const { error } = await authClient.changeEmail({
+      newEmail,
+      callbackURL: lp("/app/settings/account"),
+    });
+    setLoading(false);
+    if (error) {
+      setError(error.message ?? t({ id: "settings.account.email.error", comment: "Generic email change error", message: "Failed to change email" }));
+    } else {
+      setSuccess(t({ id: "settings.account.email.success", comment: "Success message after email change request", message: "Verification email sent. Please check your inbox. It may take a few minutes to arrive." }));
+      setNewEmail("");
+      setPassword("");
+    }
+  }
+
+  return (
+    <section>
+      <h3 className="mb-1 text-base font-semibold">
+        <Trans id="settings.account.email.title" comment="Change email section heading">Change email</Trans>
+      </h3>
+      <p className="mb-4 text-sm text-muted">
+        <Trans id="settings.account.email.description" comment="Change email section description">
+          Update the email address associated with your account.
+        </Trans>
+      </p>
+      {!hasPassword ? (
+        <p className="text-sm text-muted">
+          <Trans id="settings.account.email.needsPassword" comment="Message when password must be set before changing email">
+            Please set a password first to change your email address.
+          </Trans>
+        </p>
+      ) : (
+        <>
+          {error && <ErrorAlert message={error} />}
+          {success && (
+            <div className="mb-4 rounded-md border border-success-border bg-success-bg px-4 py-3 text-sm text-success">
+              {success}
+            </div>
+          )}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <FormField
+              label={t({ id: "settings.account.email.label", comment: "New email input label", message: "New email" })}
+              type="email"
+              required
+              autoComplete="email"
+              value={newEmail}
+              onChange={(e) => setNewEmail(e.target.value)}
+            />
+            <FormField
+              label={t({ id: "settings.account.email.passwordLabel", comment: "Password confirmation for email change", message: "Current password" })}
+              type="password"
+              required
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <Button type="submit" disabled={loading} size="sm">
+              {loading
+                ? t({ id: "settings.account.email.saving", comment: "Email save button while loading", message: "Saving..." })
+                : t({ id: "settings.account.email.save", comment: "Email save button", message: "Update email" })}
+            </Button>
+          </form>
+        </>
+      )}
+    </section>
+  );
+}
+
+/* ── Connected Accounts ── */
+
+const socialProviders = [
+  { id: "github", label: "GitHub", icon: <Github size={20} /> },
+  { id: "google", label: "Google", icon: <GoogleIcon size={20} /> },
+  { id: "linkedin", label: "LinkedIn", icon: <LinkedInIcon size={20} /> },
+] as const;
+
+function ConnectedAccountsSection({ accounts }: { accounts: ConnectedAccount[] }) {
+  const { t } = useLingui();
+  const lp = useLocalePath();
+  const [localAccounts, setLocalAccounts] = useState(accounts);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  useEffect(() => { setLocalAccounts(accounts); }, [accounts]);
+
+  function isConnected(providerId: string) {
+    return localAccounts.some((a) => a.providerId === providerId);
+  }
+
+  async function handleConnect(provider: string) {
+    setActionLoading(provider);
+    await authClient.linkSocial({
+      provider: provider as "github" | "google" | "linkedin",
+      callbackURL: lp("/app/settings/account"),
+    });
+    setActionLoading(null);
+  }
+
+  async function handleDisconnect(providerId: string) {
+    setActionLoading(providerId);
+    await authClient.unlinkAccount({ providerId });
+    setLocalAccounts((prev) => prev.filter((a) => a.providerId !== providerId));
+    setActionLoading(null);
+  }
+
+  return (
+    <section>
+      <h3 className="mb-1 text-base font-semibold">
+        <Trans id="settings.account.socials.title" comment="Connected accounts section heading">Connected accounts</Trans>
+      </h3>
+      <p className="mb-4 text-sm text-muted">
+        <Trans id="settings.account.socials.description" comment="Connected accounts section description">
+          Manage your linked social accounts.
+        </Trans>
+      </p>
+      <div className="space-y-2">
+        {socialProviders.map((p) => {
+          const connected = isConnected(p.id);
+          return (
+            <div key={p.id} className="flex items-center justify-between rounded-md border border-border-soft px-4 py-3">
+              <div className="flex items-center gap-3">
+                {p.icon}
+                <span className="text-sm font-medium">{p.label}</span>
+              </div>
+              <Button
+                onClick={() => (connected ? handleDisconnect(p.id) : handleConnect(p.id))}
+                disabled={actionLoading === p.id}
+                variant={connected ? "outline" : "primary"}
+                size="sm"
+              >
+                {connected
+                  ? t({ id: "settings.account.socials.disconnect", comment: "Disconnect social account button", message: "Disconnect" })
+                  : t({ id: "settings.account.socials.connect", comment: "Connect social account button", message: "Connect" })}
+              </Button>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+/* ── Delete Account ── */
+
+function DeleteAccountSection() {
+  const { t } = useLingui();
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleDelete(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    if (!password) {
+      setError(t({ id: "settings.account.delete.passwordRequired", comment: "Error when password is empty for deletion", message: "Please enter your password to confirm" }));
+      return;
+    }
+    setLoading(true);
+    const { error } = await authClient.deleteUser({ password });
+    setLoading(false);
+    if (error) {
+      setError(error.message ?? t({ id: "settings.account.delete.error", comment: "Generic account deletion error", message: "Failed to delete account" }));
+    } else {
+      window.location.href = "/";
+    }
+  }
+
+  return (
+    <section className="rounded-md border border-error-border bg-error-bg p-4">
+      <h3 className="mb-1 text-base font-semibold text-error">
+        <Trans id="settings.account.delete.title" comment="Delete account section heading">Delete account</Trans>
+      </h3>
+      <p className="mb-4 text-sm text-error">
+        <Trans id="settings.account.delete.description" comment="Delete account section description">
+          Permanently delete your account and all associated data. This action cannot be undone.
+        </Trans>
+      </p>
+      {!showConfirm ? (
+        <Button onClick={() => setShowConfirm(true)} variant="danger" size="sm">
+          {t({ id: "settings.account.delete.button", comment: "Delete account button", message: "Delete my account" })}
+        </Button>
+      ) : (
+        <>
+          {error && <ErrorAlert message={error} />}
+          <form onSubmit={handleDelete} className="space-y-3">
+            <FormField
+              label={t({ id: "settings.account.delete.passwordLabel", comment: "Password confirmation for deletion", message: "Confirm your password" })}
+              type="password"
+              required
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <div className="flex gap-2">
+              <Button type="submit" disabled={loading} variant="danger" size="sm">
+                {loading
+                  ? t({ id: "settings.account.delete.deleting", comment: "Delete button while loading", message: "Deleting..." })
+                  : t({ id: "settings.account.delete.confirm", comment: "Confirm delete button", message: "Confirm deletion" })}
+              </Button>
+              <Button
+                type="button"
+                onClick={() => { setShowConfirm(false); setError(""); setPassword(""); }}
+                variant="outline"
+                size="sm"
+              >
+                {t({ id: "settings.account.delete.cancel", comment: "Cancel delete button", message: "Cancel" })}
+              </Button>
+            </div>
+          </form>
+        </>
+      )}
+    </section>
+  );
+}
+
+/* ── Main Component ── */
+
+export function AccountSettings() {
+  const { isLoggedIn } = useAuth();
+  const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchAccounts = useCallback(() => {
+    authClient.listAccounts().then(({ data }) => {
+      setAccounts((data as ConnectedAccount[] | null) ?? []);
+      setLoading(false);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (isLoggedIn) fetchAccounts();
+  }, [isLoggedIn, fetchAccounts]);
+
+  if (!isLoggedIn) return <LoginPrompt />;
+  if (loading) return <p className="text-sm text-muted">Loading...</p>;
+
+  const hasPassword = accounts.some((a) => a.providerId === "credential");
+
+  return (
+    <div className="space-y-10">
+      <PasswordSection hasPassword={hasPassword} onPasswordSet={fetchAccounts} />
+      <ChangeEmailSection hasPassword={hasPassword} />
+      <ConnectedAccountsSection accounts={accounts} />
+      <DeleteAccountSection />
+    </div>
+  );
+}

@@ -20,8 +20,10 @@ export default async function PublicLayout({ children, params }: Props) {
       >
         <Trans id="common.a11y.skipToContent" comment="Skip to main content link for keyboard users">Skip to content</Trans>
       </a>
-      <HeaderShell />
-      <div id="main-content">{children}</div>
+      <div className="fixed top-0 right-0 left-0 z-50">
+        <HeaderShell />
+      </div>
+      <div id="main-content" className="pt-12">{children}</div>
       <Footer lang={locale} />
     </>
   );

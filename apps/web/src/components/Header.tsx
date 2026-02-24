@@ -10,7 +10,7 @@ import { LocaleSwitcher } from "@/components/LocaleSwitcher";
 import { ThemedImage } from "@/components/ThemedImage";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { Button } from "@/components/ui/Button";
-import { Menu, LogIn } from "lucide-react";
+import { Menu } from "lucide-react";
 
 type HeaderProps = {
   onOpenMobileAction: () => void;
@@ -28,10 +28,8 @@ export function Header({ onOpenMobileAction }: HeaderProps) {
     return pathname === href || pathname.startsWith(href + "/") ? ("page" as const) : undefined;
   }
 
-  // Always show the anonymous CTA on public pages to avoid a /api/auth/get-session
-  // request on every page load. The dashboard handles its own auth check.
-  const authHref = lp(siteConfig.nav.login.href);
-  const authLabel = t({ id: "common.auth.login", comment: "Login button label", message: "Log in" });
+  const appHref = lp(siteConfig.nav.app.href);
+  const appLabel = t({ id: "home.hero.primaryCta", comment: "Hero primary call-to-action", message: "Get started" });
 
   return (
     <header className="border-b border-divider backdrop-blur-md">
@@ -70,15 +68,14 @@ export function Header({ onOpenMobileAction }: HeaderProps) {
         <div className="hidden items-center gap-3 lg:flex">
           <LocaleSwitcher />
           <ThemeToggleButton />
-          <Button href={authHref} variant="primary" size="sm" className="gap-2">
-            <LogIn size={16} />
-            {authLabel}
+          <Button href={appHref} variant="primary" size="sm">
+            {appLabel}
           </Button>
         </div>
 
         <button
           onClick={onOpenMobileAction}
-          className="inline-flex items-center justify-center rounded-md p-1.5 text-foreground hover:bg-border-soft lg:hidden"
+          className="inline-flex items-center justify-center rounded-md p-1.5 text-foreground hover:bg-border-soft cursor-pointer lg:hidden"
           aria-label={t({ id: "common.header.openMenu", comment: "Aria label for mobile menu button", message: "Open main menu" })}
         >
           <Menu size={20} />

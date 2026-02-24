@@ -8,6 +8,34 @@
       "when": 1771881186913,
       "tag": "0000_harsh_annihilus",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1771957325943,
+      "tag": "0001_sparkling_human_torch",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1771957914765,
+      "tag": "0002_great_gorgon",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1771958716683,
+      "tag": "0003_misty_black_bolt",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1771961507568,
+      "tag": "0004_huge_typhoid_mary",
+      "breakpoints": true
     }
   ]
 }

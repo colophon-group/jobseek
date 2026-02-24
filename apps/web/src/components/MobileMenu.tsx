@@ -27,8 +27,8 @@ export function MobileMenu({ open, onCloseAction }: MobileMenuProps) {
     return pathname === href || pathname.startsWith(href + "/") ? ("page" as const) : undefined;
   }
 
-  const authHref = lp(siteConfig.nav.login.href);
-  const authLabel = t({ id: "common.auth.login", comment: "Login button label", message: "Log in" });
+  const appHref = lp(siteConfig.nav.app.href);
+  const appLabel = t({ id: "home.hero.primaryCta", comment: "Hero primary call-to-action", message: "Get started" });
 
   return (
     <Dialog.Root open={open} onOpenChange={(v) => { if (!v) onCloseAction(); }}>
@@ -60,7 +60,7 @@ export function MobileMenu({ open, onCloseAction }: MobileMenuProps) {
                 <ThemeToggleButton />
                 <Dialog.Close asChild>
                   <button
-                    className="inline-flex items-center justify-center rounded-md p-1.5 text-foreground hover:bg-border-soft"
+                    className="inline-flex items-center justify-center rounded-md p-1.5 text-foreground hover:bg-border-soft cursor-pointer"
                     aria-label={t({ id: "common.mobileMenu.close", comment: "Aria label for close mobile menu button", message: "Close menu" })}
                   >
                     <X size={18} />
@@ -96,8 +96,8 @@ export function MobileMenu({ open, onCloseAction }: MobileMenuProps) {
 
             <hr className="my-4 border-divider" />
 
-            <Button href={authHref} variant="outline" onClick={onCloseAction} className="w-full text-center">
-              {authLabel}
+            <Button href={appHref} variant="outline" onClick={onCloseAction} className="w-full text-center">
+              {appLabel}
             </Button>
           </div>
         </Dialog.Content>

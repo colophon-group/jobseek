@@ -7,6 +7,7 @@ import { Trans } from "@lingui/react/macro";
 import { useLingui } from "@lingui/react/macro";
 import { authClient } from "@/lib/auth-client";
 import { useLocalePath } from "@/lib/useLocalePath";
+import { getPreferences } from "@/lib/actions/preferences";
 import { Button } from "@/components/ui/Button";
 import { FormField } from "@/components/ui/FormField";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
@@ -27,7 +28,7 @@ export function AuthForm({ mode }: AuthFormProps) {
   const [loading, setLoading] = useState(false);
 
   const isSignUp = mode === "sign-up";
-  const dashboardUrl = lp("/dashboard");
+  const dashboardUrl = lp("/app");
 
   function goToCheckEmail() {
     sessionStorage.setItem("verify-email", email);
@@ -86,7 +87,13 @@ export function AuthForm({ mode }: AuthFormProps) {
         setLoading(false);
         return;
       }
-      router.push(dashboardUrl);
+      const prefs = await getPreferences();
+      const targetLocale = prefs?.locale;
+      if (targetLocale && !dashboardUrl.startsWith(`/${targetLocale}/`)) {
+        router.push(`/${targetLocale}/app`);
+      } else {
+        router.push(dashboardUrl);
+      }
     }
   }
 

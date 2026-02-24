@@ -1,0 +1,1 @@
+ALTER TABLE "user_preferences" ADD COLUMN "last_password_reset_at" timestamp;

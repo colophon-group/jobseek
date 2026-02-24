@@ -1,0 +1,1 @@
+ALTER TABLE "user_preferences" ADD COLUMN "cookie_consent" boolean DEFAULT false NOT NULL;

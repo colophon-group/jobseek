@@ -1,11 +1,13 @@
 import {
   pgTable,
+  pgPolicy,
   uuid,
   text,
   boolean,
   timestamp,
   index,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 // ── Better Auth core tables ──────────────────────────────────────────
 
@@ -80,6 +82,44 @@ export const verification = pgTable(
   },
   (table) => [index("verification_identifier_idx").on(table.identifier)],
 );
+
+// ── User preferences (1:1 with user) ────────────────────────────────
+
+export const userPreferences = pgTable("user_preferences", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .unique()
+    .references(() => user.id, { onDelete: "cascade" }),
+  theme: text("theme", { enum: ["light", "dark"] }).default("light").notNull(),
+  locale: text("locale", { enum: ["en", "de", "fr", "it"] })
+    .default("en")
+    .notNull(),
+  cookieConsent: boolean("cookie_consent").default(false).notNull(),
+  lastPasswordResetAt: timestamp("last_password_reset_at"),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+}, (table) => [
+  pgPolicy("user_preferences_select", {
+    for: "select",
+    using: sql`${table.userId} = current_setting('app.current_user_id', true)`,
+  }),
+  pgPolicy("user_preferences_insert", {
+    for: "insert",
+    withCheck: sql`${table.userId} = current_setting('app.current_user_id', true)`,
+  }),
+  pgPolicy("user_preferences_update", {
+    for: "update",
+    using: sql`${table.userId} = current_setting('app.current_user_id', true)`,
+    withCheck: sql`${table.userId} = current_setting('app.current_user_id', true)`,
+  }),
+  pgPolicy("user_preferences_delete", {
+    for: "delete",
+    using: sql`${table.userId} = current_setting('app.current_user_id', true)`,
+  }),
+]).enableRLS();
 
 // ── App-specific tables ──────────────────────────────────────────────
 

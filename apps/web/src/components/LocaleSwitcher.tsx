@@ -93,7 +93,7 @@ export function LocaleSwitcher({ className }: LocaleSwitcherProps) {
           <Tooltip.Trigger asChild>
             <DropdownMenu.Trigger asChild>
               <button
-                className={`inline-flex items-center justify-center rounded-md p-1.5 text-foreground hover:bg-border-soft transition-colors ${className ?? ""}`}
+                className={`inline-flex items-center justify-center rounded-md p-1.5 text-foreground hover:bg-border-soft transition-colors cursor-pointer ${className ?? ""}`}
                 aria-label={label}
               >
                 <Globe size={18} />

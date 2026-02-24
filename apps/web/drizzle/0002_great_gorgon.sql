@@ -1,0 +1,6 @@
+ALTER TABLE "user_preferences" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
+ALTER TABLE "user_preferences" FORCE ROW LEVEL SECURITY;--> statement-breakpoint
+CREATE POLICY "user_preferences_select" ON "user_preferences" AS PERMISSIVE FOR SELECT TO public USING ("user_preferences"."user_id" = current_setting('app.current_user_id', true));--> statement-breakpoint
+CREATE POLICY "user_preferences_insert" ON "user_preferences" AS PERMISSIVE FOR INSERT TO public WITH CHECK ("user_preferences"."user_id" = current_setting('app.current_user_id', true));--> statement-breakpoint
+CREATE POLICY "user_preferences_update" ON "user_preferences" AS PERMISSIVE FOR UPDATE TO public USING ("user_preferences"."user_id" = current_setting('app.current_user_id', true)) WITH CHECK ("user_preferences"."user_id" = current_setting('app.current_user_id', true));--> statement-breakpoint
+CREATE POLICY "user_preferences_delete" ON "user_preferences" AS PERMISSIVE FOR DELETE TO public USING ("user_preferences"."user_id" = current_setting('app.current_user_id', true));

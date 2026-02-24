@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { Trans } from "@lingui/react/macro";
+import { msg } from "@lingui/core/macro";
+import { getI18n } from "@lingui/react/server";
 import { siteConfig } from "@/content/config";
 
 type FooterProps = {
@@ -7,6 +9,7 @@ type FooterProps = {
 };
 
 export function Footer({ lang }: FooterProps) {
+  const i18n = getI18n()!;
   const year = new Date().getFullYear();
   const links = siteConfig.footer.links;
   const prefix = lang ? `/${lang}` : "";
@@ -25,7 +28,7 @@ export function Footer({ lang }: FooterProps) {
             Released under the MIT License. Job data is CC BY-NC 4.0.
           </Trans>
         </p>
-        <nav aria-label="Footer" className="order-1 sm:order-2">
+        <nav aria-label={i18n._(msg({ id: "common.footer.ariaLabel", comment: "Aria label for footer navigation", message: "Footer" }))} className="order-1 sm:order-2">
           <ul className="flex list-none gap-4 p-0">
             <li>
               <a className={linkClass} href={links[0].href} target="_blank" rel="noreferrer">

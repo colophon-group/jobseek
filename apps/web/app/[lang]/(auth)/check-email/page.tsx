@@ -56,7 +56,7 @@ export default function CheckEmailPage() {
     setError("");
     const { error } = await authClient.sendVerificationEmail({
       email,
-      callbackURL: lp("/dashboard"),
+      callbackURL: lp("/app"),
     });
     if (error) {
       setError(error.message ?? t({
@@ -82,14 +82,14 @@ export default function CheckEmailPage() {
       </h2>
       <p className="mt-2 text-sm text-muted">
         <Trans id="auth.verify.checkEmail.description" comment="Description telling user a verification link was sent">
-          We sent a verification link to <strong>{email}</strong>. Click the link to verify your account.
+          We sent a verification link to <strong>{email}</strong>. Click the link to verify your account. It may take a few minutes to arrive.
         </Trans>
       </p>
       <button
         type="button"
         onClick={handleResend}
         disabled={resending || cooldown > 0}
-        className="mt-4 text-sm font-semibold transition-colors hover:text-muted disabled:opacity-50"
+        className="mt-4 text-sm font-semibold transition-colors hover:text-muted disabled:opacity-50 cursor-pointer"
       >
         {resending
           ? t({ id: "auth.verify.resending", comment: "Resend button while sending", message: "Sending..." })

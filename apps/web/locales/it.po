@@ -13,6 +13,48 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#. Current password input label
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:155
+#~ msgid "settings.account.password.current"
+#~ msgstr ""
+
+#. New password input label
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:163
+#~ msgid "settings.account.password.new"
+#~ msgstr ""
+
+#. Error when password fields are empty
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:118
+#~ msgid "settings.account.password.required"
+#~ msgstr ""
+
+#. Password save button while loading
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:172
+#~ msgid "settings.account.password.saving"
+#~ msgstr ""
+
+#. System theme option
+#. js-lingui-explicit-id
+#: src/components/settings/GeneralSettings.tsx:82
+#~ msgid "settings.theme.system"
+#~ msgstr ""
+
+#. Password save button
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:173
+#~ msgid "settings.account.password.save"
+#~ msgstr ""
+
+#. Loading connected accounts
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:216
+#~ msgid "settings.account.socials.loading"
+#~ msgstr "Caricamento…"
+
 #. CC right 1
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:80
@@ -28,8 +70,8 @@ msgstr "\"Viktor Shcherbakov, Collection of Job Postings\" con un link alla font
 #. Screen reader text for external links
 #. Screen reader text for external links
 #. js-lingui-explicit-id
-#: src/components/Footer.tsx:33
-#: src/components/Footer.tsx:39
+#: src/components/Footer.tsx:36
+#: src/components/Footer.tsx:42
 #: src/components/HowWeIndexContent.tsx:196
 #: src/components/LicenseContent.tsx:64
 #: src/components/LicenseContent.tsx:89
@@ -37,6 +79,24 @@ msgstr "\"Viktor Shcherbakov, Collection of Job Postings\" con un link alla font
 #: src/components/PublicDomainArt.tsx:109
 #: src/components/TermsContent.tsx:62
 msgid "common.a11y.opensInNewTab"
+msgstr ""
+
+#. Account settings nav link
+#. js-lingui-explicit-id
+#: src/components/settings/SettingsNav.tsx:26
+msgid "settings.nav.account"
+msgstr "Account"
+
+#. Account bottom bar label
+#. js-lingui-explicit-id
+#: src/components/AppHeader.tsx:208
+msgid "app.header.nav.account"
+msgstr ""
+
+#. Aria label for user avatar menu
+#. js-lingui-explicit-id
+#: src/components/AppHeader.tsx:77
+msgid "app.header.avatar.label"
 msgstr ""
 
 #. Feature: alerts you drive title
@@ -53,7 +113,7 @@ msgstr "Tutti i dati sono crittografati in transito e a riposo."
 
 #. Link to sign-in page from sign-up
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:218
+#: src/components/AuthForm.tsx:166
 msgid "auth.signUp.hasAccount"
 msgstr "Hai già un account? <0>Accedi</0>"
 
@@ -95,9 +155,15 @@ msgstr "Come ultima risorsa analizziamo le pagine carriere stesse, preferendo l'
 
 #. Link back to sign-in after failed verification
 #. js-lingui-explicit-id
-#: app/[lang]/(auth)/verify-email/page.tsx:68
+#: app/[lang]/verify-email/page.tsx:72
 msgid "auth.verify.error.backToSignIn"
 msgstr "Torna all'accesso"
+
+#. Link back to sign-in from reset password
+#. js-lingui-explicit-id
+#: app/[lang]/reset-password/page.tsx:42
+msgid "auth.resetPassword.backToSignIn"
+msgstr ""
 
 #. Link text for browsing the repo
 #. js-lingui-explicit-id
@@ -117,17 +183,41 @@ msgstr "Pensato per chi cerca lavoro attivamente"
 msgid "terms.hero.description"
 msgstr "Utilizzando Job Seek accetti questi termini. Ecco un riassunto in parole semplici."
 
+#. Cancel delete button
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:439
+msgid "settings.account.delete.cancel"
+msgstr "Annulla"
+
+#. Change email section heading
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:252
+msgid "settings.account.email.title"
+msgstr "Cambia email"
+
 #. Aria label for language switcher button
 #. js-lingui-explicit-id
-#: src/components/LocaleSwitcher.tsx:75
+#: src/components/LocaleSwitcher.tsx:76
 msgid "common.locale.switch"
 msgstr "Cambia lingua"
 
+#. Password section description
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:179
+msgid "settings.account.password.description"
+msgstr "Imposta o cambia la tua password tramite un link email sicuro."
+
 #. Heading after sign-up telling user to check email
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:133
+#: app/[lang]/(auth)/check-email/page.tsx:79
 msgid "auth.verify.checkEmail.title"
 msgstr "Controlla la tua email"
+
+#. Theme settings description
+#. js-lingui-explicit-id
+#: src/components/settings/GeneralSettings.tsx:119
+msgid "settings.general.theme.description"
+msgstr "Scegli l'aspetto di Job Seek."
 
 #. Pricing section heading
 #. js-lingui-explicit-id
@@ -159,6 +249,42 @@ msgstr "Raccolta di annunci di lavoro (CC BY-NC 4.0)"
 msgid "home.features.s1.p1.title"
 msgstr "Avvisi aziendali"
 
+#. Confirm delete button
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:431
+msgid "settings.account.delete.confirm"
+msgstr "Conferma eliminazione"
+
+#. Confirm password input label
+#. js-lingui-explicit-id
+#: app/[lang]/reset-password/page.tsx:142
+msgid "auth.resetPassword.confirmPassword"
+msgstr ""
+
+#. Password confirmation for deletion
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:420
+msgid "settings.account.delete.passwordLabel"
+msgstr "Conferma la tua password"
+
+#. Connect social account button
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:365
+msgid "settings.account.socials.connect"
+msgstr "Collega"
+
+#. Connected accounts section heading
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:341
+msgid "settings.account.socials.title"
+msgstr "Account collegati"
+
+#. Footer link to contact email
+#. js-lingui-explicit-id
+#: src/components/Footer.tsx:41
+msgid "common.footer.contact"
+msgstr "Contatti"
+
 #. TOC: Contact
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:25
@@ -171,11 +297,11 @@ msgstr "Contatti"
 msgid "license.contact.title"
 msgstr "Contatti"
 
-#. Footer link to contact email
+#. Table of contents heading
 #. js-lingui-explicit-id
-#: src/components/Footer.tsx:38
-msgid "common.footer.contact"
-msgstr "Contatti"
+#: src/components/HowWeIndexContent.tsx:23
+msgid "indexing.toc.title"
+msgstr "Sommario"
 
 #. Table of contents heading
 #. js-lingui-explicit-id
@@ -183,15 +309,9 @@ msgstr "Contatti"
 msgid "license.toc.title"
 msgstr "Sommario"
 
-#. Table of contents heading
+#. Button to continue to app after verification
 #. js-lingui-explicit-id
-#: src/components/HowWeIndexContent.tsx:23
-msgid "indexing.toc.title"
-msgstr "Sommario"
-
-#. Button to continue to dashboard after verification
-#. js-lingui-explicit-id
-#: app/[lang]/(auth)/verify-email/page.tsx:90
+#: app/[lang]/verify-email/page.tsx:96
 msgid "auth.verify.success.continue"
 msgstr "Continua alla dashboard"
 
@@ -239,25 +359,61 @@ msgstr "Garanzie di crawling"
 
 #. Sign-up page heading
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:163
+#: src/components/AuthForm.tsx:111
 msgid "auth.signUp.title"
 msgstr "Crea un account"
 
 #. Sign-up button while loading
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:206
+#: src/components/AuthForm.tsx:154
 msgid "auth.signUp.button.loading"
 msgstr "Creazione account..."
 
+#. Password confirmation for email change
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:283
+msgid "settings.account.email.passwordLabel"
+msgstr "Password attuale"
+
+#. Dark theme option
+#. js-lingui-explicit-id
+#: src/components/settings/GeneralSettings.tsx:98
+msgid "settings.theme.dark"
+msgstr "Scuro"
+
+#. Delete account section heading
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:404
+msgid "settings.account.delete.title"
+msgstr "Elimina account"
+
+#. Delete account button
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:413
+msgid "settings.account.delete.button"
+msgstr "Elimina il mio account"
+
+#. Delete button while loading
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:430
+msgid "settings.account.delete.deleting"
+msgstr "Eliminazione…"
+
 #. Cookie banner details button
 #. js-lingui-explicit-id
-#: src/components/CookieBanner.tsx:47
+#: src/components/CookieBanner.tsx:60
 msgid "common.cookies.details"
 msgstr "Dettagli"
 
+#. Disconnect social account button
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:364
+msgid "settings.account.socials.disconnect"
+msgstr "Scollega"
+
 #. Link to sign-up page from sign-in
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:225
+#: src/components/AuthForm.tsx:173
 msgid "auth.signIn.noAccount"
 msgstr "Non hai un account? <0>Registrati</0>"
 
@@ -275,7 +431,7 @@ msgstr "Non trovi la tua azienda preferita nel feed? Incolla il link alla pagina
 
 #. Email input label
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:186
+#: src/components/AuthForm.tsx:134
 msgid "auth.field.email"
 msgstr "E-mail"
 
@@ -287,9 +443,15 @@ msgstr "Avvisi e aggiornamenti via email"
 
 #. Heading when email is successfully verified
 #. js-lingui-explicit-id
-#: app/[lang]/(auth)/verify-email/page.tsx:80
+#: app/[lang]/verify-email/page.tsx:86
 msgid "auth.verify.success.title"
 msgstr "Email verificata"
+
+#. Reset password page subtitle
+#. js-lingui-explicit-id
+#: app/[lang]/reset-password/page.tsx:124
+msgid "auth.resetPassword.subtitle"
+msgstr ""
 
 #. Assurance 3 body
 #. js-lingui-explicit-id
@@ -309,16 +471,46 @@ msgstr "Ogni finestra di retry utilizza un backoff esponenziale, così non sovra
 msgid "home.features.s1.eyebrow"
 msgstr "Tutto ciò che ti serve per restare al passo"
 
+#. Generic email change error
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:241
+msgid "settings.account.email.error"
+msgstr "Impossibile cambiare l'email"
+
+#. Generic account deletion error
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:395
+msgid "settings.account.delete.error"
+msgstr "Impossibile eliminare l'account"
+
 #. Error when resending verification email fails
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:102
+#: app/[lang]/(auth)/check-email/page.tsx:62
 msgid "auth.verify.resendError"
 msgstr "Impossibile inviare nuovamente l'email di verifica"
+
+#. Generic reset password error
+#. js-lingui-explicit-id
+#: app/[lang]/reset-password/page.tsx:106
+msgid "auth.resetPassword.error.generic"
+msgstr ""
+
+#. Generic password reset error
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:166
+msgid "settings.account.password.error"
+msgstr "Impossibile inviare l'email di reimpostazione"
+
+#. Generic set password error
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:72
+msgid "settings.account.password.setError"
+msgstr "Impossibile impostare la password"
 
 #. Nav link: Features
 #. Nav link: Features
 #. js-lingui-explicit-id
-#: src/components/Header.tsx:60
+#: src/components/Header.tsx:58
 #: src/components/MobileMenu.tsx:81
 msgid "common.nav.features"
 msgstr "Funzionalità"
@@ -340,6 +532,12 @@ msgstr "Trova le posizioni giuste, più velocemente."
 msgid "home.features.s1.p1.description"
 msgstr "Segui le aziende che ti interessano e ricevi una notifica quando pubblicano nuove posizioni."
 
+#. Aria label for footer navigation
+#. js-lingui-explicit-id
+#: src/components/Footer.tsx:31
+msgid "common.footer.ariaLabel"
+msgstr ""
+
 #. Pro tier description
 #. js-lingui-explicit-id
 #: src/components/Pricing.tsx:80
@@ -358,21 +556,31 @@ msgstr "Per sempre"
 msgid "home.pricing.free.name"
 msgstr "Gratis"
 
+#. General settings nav link
+#. js-lingui-explicit-id
+#: src/components/settings/SettingsNav.tsx:21
+msgid "settings.nav.general"
+msgstr "Generale"
+
+#. Hero primary call-to-action
+#. Hero primary call-to-action
 #. Hero primary call-to-action
 #. js-lingui-explicit-id
+#: src/components/Header.tsx:32
 #: src/components/Hero.tsx:15
+#: src/components/MobileMenu.tsx:31
 msgid "home.hero.primaryCta"
 msgstr "Inizia ora"
 
 #. Sign-up page subtitle
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:168
+#: src/components/AuthForm.tsx:116
 msgid "auth.signUp.subtitle"
 msgstr "Inizia con Job Seek"
 
 #. Footer link to GitHub repo
 #. js-lingui-explicit-id
-#: src/components/Footer.tsx:32
+#: src/components/Footer.tsx:35
 msgid "common.footer.github"
 msgstr "GitHub"
 
@@ -388,10 +596,22 @@ msgstr "Torna alla home"
 msgid "indexing.ingestion.s3.title"
 msgstr "Parsing delle pagine rispettoso."
 
+#. Aria label to hide password
+#. js-lingui-explicit-id
+#: src/components/ui/FormField.tsx:35
+msgid "form.password.hide"
+msgstr ""
+
+#. Home nav icon tooltip
+#. js-lingui-explicit-id
+#: src/components/AppHeader.tsx:55
+msgid "app.header.nav.home"
+msgstr ""
+
 #. Nav link: How do we index jobs?
 #. Nav link: How do we index jobs?
 #. js-lingui-explicit-id
-#: src/components/Header.tsx:66
+#: src/components/Header.tsx:64
 #: src/components/MobileMenu.tsx:91
 msgid "common.nav.company"
 msgstr "Come indicizziamo gli annunci?"
@@ -447,15 +667,27 @@ msgstr "Se notate attività impreviste del nostro crawler o preferite che il vos
 msgid "indexing.outreach.body"
 msgstr "Se notate un comportamento anomalo del crawler, preferite che non indicizziamo i vostri contenuti o avete suggerimenti su come migliorare le nostre misure di sicurezza, contattateci."
 
+#. Error when password is incorrect
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:232
+msgid "settings.account.email.wrongPassword"
+msgstr "Password errata"
+
 #. Indexing page eyebrow
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:45
 msgid "indexing.hero.eyebrow"
 msgstr "Politica di indicizzazione"
 
+#. Heading when reset link is invalid
+#. js-lingui-explicit-id
+#: app/[lang]/reset-password/page.tsx:32
+msgid "auth.resetPassword.error.title"
+msgstr ""
+
 #. Error when verification token is missing from URL
 #. js-lingui-explicit-id
-#: app/[lang]/(auth)/verify-email/page.tsx:24
+#: app/[lang]/verify-email/page.tsx:25
 msgid "auth.verify.error.noToken"
 msgstr "Link di verifica non valido"
 
@@ -489,16 +721,22 @@ msgstr "Tieni il polso del mercato del lavoro."
 msgid "home.features.s2.p2.title"
 msgstr "Basta con le 50 schede aperte"
 
-#. Last updated date label
+#. Language settings section heading
 #. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:28
-msgid "privacy.hero.lastUpdated"
-msgstr "Ultimo aggiornamento:"
+#: src/components/settings/GeneralSettings.tsx:146
+msgid "settings.general.language.title"
+msgstr "Lingua"
 
 #. Last updated date label
 #. js-lingui-explicit-id
 #: src/components/TermsContent.tsx:28
 msgid "terms.hero.lastUpdated"
+msgstr "Ultimo aggiornamento:"
+
+#. Last updated date label
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:28
+msgid "privacy.hero.lastUpdated"
 msgstr "Ultimo aggiornamento:"
 
 #. Hero secondary call-to-action
@@ -514,7 +752,7 @@ msgstr "Licenza"
 
 #. Footer link to license page
 #. js-lingui-explicit-id
-#: src/components/Footer.tsx:44
+#: src/components/Footer.tsx:47
 msgid "common.footer.licenseLink"
 msgstr "Licenza"
 
@@ -535,11 +773,19 @@ msgstr "Licenze"
 msgid "license.meta.description"
 msgstr "Termini di licenza per il codice dell'applicazione Job Seek (MIT) e i dati sulle offerte di lavoro (CC BY-NC 4.0)."
 
+#. Light theme option
+#. js-lingui-explicit-id
+#: src/components/settings/GeneralSettings.tsx:97
+msgid "settings.theme.light"
+msgstr "Chiaro"
+
+#. Login button label
 #. Login button label
 #. Login button label
 #. js-lingui-explicit-id
-#: src/components/Header.tsx:34
-#: src/components/MobileMenu.tsx:31
+#: src/components/AppHeader.tsx:174
+#: src/components/AppHeader.tsx:220
+#: src/components/settings/AccountSettings.tsx:37
 msgid "common.auth.login"
 msgstr "Accedi"
 
@@ -549,9 +795,15 @@ msgstr "Accedi"
 msgid "home.features.s1.p2.description"
 msgstr "Annota dove ti sei candidato, lo stato, i contatti e i prossimi passi."
 
+#. Connected accounts section description
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:344
+msgid "settings.account.socials.description"
+msgstr "Gestisci i tuoi account social collegati."
+
 #. Name input label
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:177
+#: src/components/AuthForm.tsx:125
 msgid "auth.field.name"
 msgstr "Nome"
 
@@ -567,6 +819,24 @@ msgstr "Vuole contattarci?"
 msgid "indexing.outreach.title"
 msgstr "Vuole contattarci?"
 
+#. New email input label
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:275
+msgid "settings.account.email.label"
+msgstr "Nuova email"
+
+#. New password input label
+#. js-lingui-explicit-id
+#: app/[lang]/reset-password/page.tsx:133
+msgid "auth.resetPassword.newPassword"
+msgstr ""
+
+#. New password input label
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:98
+msgid "settings.account.password.newLabel"
+msgstr "Nuova password"
+
 #. CC right 2
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:84
@@ -581,7 +851,7 @@ msgstr "Nessuna garanzia — l'uso è a proprio rischio e pericolo."
 
 #. Cookie banner accept button
 #. js-lingui-explicit-id
-#: src/components/CookieBanner.tsx:53
+#: src/components/CookieBanner.tsx:66
 msgid "common.cookies.ok"
 msgstr "Ok"
 
@@ -599,7 +869,7 @@ msgstr "Una pagina al minuto."
 
 #. Aria label for mobile menu button
 #. js-lingui-explicit-id
-#: src/components/Header.tsx:82
+#: src/components/Header.tsx:79
 msgid "common.header.openMenu"
 msgstr "Apri menu principale"
 
@@ -653,26 +923,26 @@ msgstr "La nostra posizione sull'automazione"
 
 #. TOC: Overview
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:22
-msgid "license.toc.overview"
-msgstr "Panoramica"
-
-#. TOC: Overview
-#. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:27
 msgid "indexing.toc.overview"
 msgstr "Panoramica"
 
-#. Table of contents aria label
+#. TOC: Overview
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:19
-msgid "license.toc.ariaLabel"
-msgstr "Contenuti della pagina"
+#: src/components/LicenseContent.tsx:22
+msgid "license.toc.overview"
+msgstr "Panoramica"
 
 #. Table of contents aria label
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:24
 msgid "indexing.toc.ariaLabel"
+msgstr "Contenuti della pagina"
+
+#. Table of contents aria label
+#. js-lingui-explicit-id
+#: src/components/LicenseContent.tsx:19
+msgid "license.toc.ariaLabel"
 msgstr "Contenuti della pagina"
 
 #. Heading shown on the 404 page
@@ -689,9 +959,41 @@ msgstr "Raccogli tutte le startup interessanti in un'unica dashboard invece di d
 
 #. Password input label
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:195
+#: src/components/AuthForm.tsx:143
 msgid "auth.field.password"
 msgstr "Password"
+
+#. Password section heading
+#. Password section heading
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:83
+#: src/components/settings/AccountSettings.tsx:176
+msgid "settings.account.password.title"
+msgstr "Password"
+
+#. Success message after password reset request
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:168
+msgid "settings.account.password.success"
+msgstr "Link per il reset della password inviato. Controlla la tua casella di posta. Potrebbe volerci qualche minuto per l'arrivo."
+
+#. Success message after setting password
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:74
+msgid "settings.account.password.setSuccess"
+msgstr "Password impostata con successo."
+
+#. Heading after password is successfully reset
+#. js-lingui-explicit-id
+#: app/[lang]/reset-password/page.tsx:57
+msgid "auth.resetPassword.success.title"
+msgstr ""
+
+#. Error when passwords do not match
+#. js-lingui-explicit-id
+#: app/[lang]/reset-password/page.tsx:90
+msgid "auth.resetPassword.error.mismatch"
+msgstr ""
 
 #. Feature: paste a link title
 #. js-lingui-explicit-id
@@ -705,11 +1007,59 @@ msgstr "Incolla un link, avvia il crawling"
 msgid "home.pricing.pro.period"
 msgstr "al mese"
 
+#. Delete account section description
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:407
+msgid "settings.account.delete.description"
+msgstr "Elimina definitivamente il tuo account e tutti i dati associati. Questa azione non può essere annullata."
+
+#. Error when email field is empty
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:216
+msgid "settings.account.email.required"
+msgstr "Inserisci un nuovo indirizzo email"
+
+#. Error when new password is empty
+#. js-lingui-explicit-id
+#: app/[lang]/reset-password/page.tsx:81
+msgid "auth.resetPassword.error.required"
+msgstr ""
+
+#. Error when new password is empty
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:62
+msgid "settings.account.password.newRequired"
+msgstr "Inserisci una password"
+
+#. Error when password is empty for email change
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:220
+msgid "settings.account.email.passwordRequired"
+msgstr "Inserisci la tua password per confermare"
+
+#. Error when password is empty for deletion
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:388
+msgid "settings.account.delete.passwordRequired"
+msgstr "Inserisci la tua password per confermare"
+
 #. Error when required fields are empty
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:42
+#: src/components/AuthForm.tsx:44
 msgid "auth.error.fieldsRequired"
 msgstr ""
+
+#. Message when user must log in to see account settings
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:32
+msgid "settings.account.loginRequired"
+msgstr "Effettua l'accesso per gestire le impostazioni del tuo account."
+
+#. Message when password must be set before changing email
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:261
+msgid "settings.account.email.needsPassword"
+msgstr "Imposta prima una password per poter modificare il tuo indirizzo email."
 
 #. Feature: paste a link description
 #. js-lingui-explicit-id
@@ -717,18 +1067,18 @@ msgstr ""
 msgid "home.features.s2.p1.description"
 msgstr "Indicaci qualsiasi pagina carriere o job board su Notion e Job Seek la replica nel tuo spazio di lavoro in pochi minuti."
 
-#. Nav link: Pricing
-#. Nav link: Pricing
-#. js-lingui-explicit-id
-#: src/components/Header.tsx:63
-#: src/components/MobileMenu.tsx:86
-msgid "common.nav.pricing"
-msgstr "Prezzi"
-
 #. Pricing section eyebrow
 #. js-lingui-explicit-id
 #: src/components/Pricing.tsx:104
 msgid "home.pricing.eyebrow"
+msgstr "Prezzi"
+
+#. Nav link: Pricing
+#. Nav link: Pricing
+#. js-lingui-explicit-id
+#: src/components/Header.tsx:61
+#: src/components/MobileMenu.tsx:86
+msgid "common.nav.pricing"
 msgstr "Prezzi"
 
 #. Privacy policy page eyebrow
@@ -739,7 +1089,7 @@ msgstr "Privacy"
 
 #. Footer link to privacy policy page
 #. js-lingui-explicit-id
-#: src/components/Footer.tsx:49
+#: src/components/Footer.tsx:52
 msgid "common.footer.privacyLink"
 msgstr "Privacy"
 
@@ -763,7 +1113,7 @@ msgstr "Pro"
 #. Nav link: Product
 #. Nav link: Product
 #. js-lingui-explicit-id
-#: src/components/Header.tsx:57
+#: src/components/Header.tsx:55
 #: src/components/MobileMenu.tsx:76
 msgid "common.nav.product"
 msgstr "Prodotto"
@@ -780,16 +1130,16 @@ msgstr "Pubblico dominio"
 msgid "license.contactCta"
 msgstr "Domande sulle licenze o sull'uso commerciale? Scriveteci via email."
 
-#. Privacy contact call to action
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:66
-msgid "privacy.contact.description"
-msgstr "Domande? Scrivici."
-
 #. Terms contact call to action
 #. js-lingui-explicit-id
 #: src/components/TermsContent.tsx:54
 msgid "terms.contact.description"
+msgstr "Domande? Scrivici."
+
+#. Privacy contact call to action
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:66
+msgid "privacy.contact.description"
 msgstr "Domande? Scrivici."
 
 #. Link to full CC license
@@ -824,21 +1174,39 @@ msgstr "Ridistribuire le proprie modifiche, a condizione di includere l'avviso M
 
 #. Footer license summary text
 #. js-lingui-explicit-id
-#: src/components/Footer.tsx:21
+#: src/components/Footer.tsx:24
 msgid "common.footer.text"
 msgstr "Rilasciato sotto licenza MIT. I dati sugli annunci sono CC BY-NC 4.0."
 
 #. Resend button during cooldown with seconds remaining
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:151
+#: app/[lang]/(auth)/check-email/page.tsx:97
 msgid "auth.verify.cooldown"
+msgstr "Reinvia tra {cooldown}s"
+
+#. Reset password button during cooldown with seconds remaining
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:193
+msgid "settings.account.password.cooldown"
 msgstr "Reinvia tra {cooldown}s"
 
 #. Button to resend verification email
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:152
+#: app/[lang]/(auth)/check-email/page.tsx:98
 msgid "auth.verify.resend"
 msgstr "Reinvia email di verifica"
+
+#. Reset password submit button
+#. js-lingui-explicit-id
+#: app/[lang]/reset-password/page.tsx:153
+msgid "auth.resetPassword.button.submit"
+msgstr ""
+
+#. Reset button while loading
+#. js-lingui-explicit-id
+#: app/[lang]/reset-password/page.tsx:152
+msgid "auth.resetPassword.button.loading"
+msgstr ""
 
 #. Assurance 1 title
 #. js-lingui-explicit-id
@@ -858,6 +1226,12 @@ msgstr "Robot, attribuzione e riserva TDM."
 msgid "home.features.s1.p3.description"
 msgstr "Salva i tuoi filtri per scansioni rapide senza dover riscrivere tutto ogni volta."
 
+#. Saved items nav icon tooltip
+#. js-lingui-explicit-id
+#: src/components/AppHeader.tsx:56
+msgid "app.header.nav.saved"
+msgstr ""
+
 #. Free feature: saved searches
 #. js-lingui-explicit-id
 #: src/components/Pricing.tsx:46
@@ -876,17 +1250,65 @@ msgstr "Ricerche salvate"
 msgid "home.features.s1.p3.title"
 msgstr "Ricerche salvate"
 
+#. Email save button while loading
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:292
+msgid "settings.account.email.saving"
+msgstr "Salvataggio…"
+
+#. Search nav icon tooltip
+#. js-lingui-explicit-id
+#: src/components/AppHeader.tsx:58
+msgid "app.header.nav.search"
+msgstr ""
+
+#. Placeholder text in app header search bar
+#. js-lingui-explicit-id
+#: src/components/AppHeader.tsx:135
+msgid "app.header.searchPlaceholder"
+msgstr ""
+
+#. Language settings description
+#. js-lingui-explicit-id
+#: src/components/settings/GeneralSettings.tsx:149
+msgid "settings.general.language.description"
+msgstr "Seleziona la lingua preferita."
+
 #. Step 4 title
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:137
 msgid "indexing.ingestion.s4.title"
 msgstr "Archiviazione selettiva."
 
+#. Reset password button
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:194
+msgid "settings.account.password.send"
+msgstr "Invia il link"
+
 #. Resend button while sending
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:149
+#: app/[lang]/(auth)/check-email/page.tsx:95
 msgid "auth.verify.resending"
 msgstr "Invio in corso..."
+
+#. Reset password button while loading
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:191
+msgid "settings.account.password.sending"
+msgstr "Invio…"
+
+#. Reset password page heading
+#. js-lingui-explicit-id
+#: app/[lang]/reset-password/page.tsx:119
+msgid "auth.resetPassword.title"
+msgstr ""
+
+#. Set password button
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:108
+msgid "settings.account.password.set"
+msgstr "Imposta password"
 
 #. Feature: alerts you drive description
 #. js-lingui-explicit-id
@@ -894,21 +1316,57 @@ msgstr "Invio in corso..."
 msgid "home.features.s2.p3.description"
 msgstr "Imposta la frequenza per ogni azienda così ricevi aggiornamenti sulle nuove posizioni senza passare la giornata a scorrere siti di lavoro."
 
+#. Set password button while loading
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:107
+msgid "settings.account.password.setting"
+msgstr "Impostazione…"
+
+#. Settings page heading
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/app/settings/layout.tsx:20
+msgid "settings.title"
+msgstr "Impostazioni"
+
+#. Settings nav icon tooltip
+#. js-lingui-explicit-id
+#: src/components/AppHeader.tsx:57
+msgid "app.header.nav.settings"
+msgstr ""
+
+#. Aria label to show password
+#. js-lingui-explicit-id
+#: src/components/ui/FormField.tsx:36
+msgid "form.password.show"
+msgstr ""
+
+#. Button to go to sign-in after reset
+#. js-lingui-explicit-id
+#: app/[lang]/reset-password/page.tsx:67
+msgid "auth.resetPassword.success.signIn"
+msgstr ""
+
 #. Sign-in page heading
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:164
+#: src/components/AuthForm.tsx:112
 msgid "auth.signIn.title"
 msgstr "Accedi"
 
 #. Sign-in submit button
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:210
+#: src/components/AuthForm.tsx:158
 msgid "auth.signIn.button.submit"
 msgstr "Accedi"
 
+#. Sign out dropdown menu item
+#. js-lingui-explicit-id
+#: src/components/AppHeader.tsx:107
+msgid "app.header.signOut"
+msgstr ""
+
 #. Sign-up submit button
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:207
+#: src/components/AuthForm.tsx:155
 msgid "auth.signUp.button.submit"
 msgstr "Registrati"
 
@@ -920,13 +1378,13 @@ msgstr "Accesso non riuscito"
 
 #. Generic sign-up error fallback
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:60
+#: src/components/AuthForm.tsx:62
 msgid "auth.signUp.error.generic"
 msgstr "Registrazione non riuscita"
 
 #. Sign-in button while loading
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:209
+#: src/components/AuthForm.tsx:157
 msgid "auth.signIn.button.loading"
 msgstr "Accesso in corso..."
 
@@ -1003,7 +1461,7 @@ msgstr "Termini di servizio"
 
 #. Footer link to terms of service page
 #. js-lingui-explicit-id
-#: src/components/Footer.tsx:54
+#: src/components/Footer.tsx:57
 msgid "common.footer.termsLink"
 msgstr "Termini"
 
@@ -1049,19 +1507,31 @@ msgstr "Il servizio è fornito così com'è, senza garanzie."
 
 #. Short version section title
 #. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:40
-msgid "privacy.short.title"
-msgstr "In breve"
-
-#. Short version section title
-#. js-lingui-explicit-id
 #: src/components/TermsContent.tsx:40
 msgid "terms.short.title"
 msgstr "In breve"
 
+#. Short version section title
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:40
+msgid "privacy.short.title"
+msgstr "In breve"
+
+#. Theme settings section heading
+#. js-lingui-explicit-id
+#: src/components/settings/GeneralSettings.tsx:116
+msgid "settings.general.theme.title"
+msgstr "Tema"
+
+#. Message when reset token is missing
+#. js-lingui-explicit-id
+#: app/[lang]/reset-password/page.tsx:37
+msgid "auth.resetPassword.error.noToken"
+msgstr ""
+
 #. Cookie banner message
 #. js-lingui-explicit-id
-#: src/components/CookieBanner.tsx:36
+#: src/components/CookieBanner.tsx:49
 msgid "common.cookies.message"
 msgstr "Questo sito utilizza i cookie solo per l'autenticazione e le funzionalità essenziali."
 
@@ -1095,27 +1565,45 @@ msgstr "Secondo il GDPR puoi richiedere una copia dei tuoi dati, farli corregger
 msgid "home.pricing.pro.f1"
 msgstr "Abbonamenti aziendali illimitati"
 
+#. Email save button
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:293
+msgid "settings.account.email.save"
+msgstr "Aggiorna"
+
+#. Change email section description
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:255
+msgid "settings.account.email.description"
+msgstr "Aggiorna l'indirizzo email associato al tuo account."
+
 #. Pro tier CTA
 #. js-lingui-explicit-id
 #: src/components/Pricing.tsx:64
 msgid "home.pricing.pro.cta"
 msgstr "Passa a Pro"
 
+#. Success message after email change request
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:243
+msgid "settings.account.email.success"
+msgstr "Email di verifica inviata. Controlla la tua casella di posta. Potrebbe volerci qualche minuto per l'arrivo."
+
 #. Generic email verification error
 #. js-lingui-explicit-id
-#: app/[lang]/(auth)/verify-email/page.tsx:35
+#: app/[lang]/verify-email/page.tsx:36
 msgid "auth.verify.error.generic"
 msgstr "Verifica fallita"
 
 #. Heading when email verification fails
 #. js-lingui-explicit-id
-#: app/[lang]/(auth)/verify-email/page.tsx:62
+#: app/[lang]/verify-email/page.tsx:66
 msgid "auth.verify.error.title"
 msgstr "Verifica fallita"
 
 #. Shown while verifying email token
 #. js-lingui-explicit-id
-#: app/[lang]/(auth)/verify-email/page.tsx:50
+#: app/[lang]/verify-email/page.tsx:52
 msgid "auth.verify.loading"
 msgstr "Verifica dell'email in corso..."
 
@@ -1157,9 +1645,9 @@ msgstr "Ci opponiamo a delegare le decisioni di assunzione o di ricerca lavoro a
 
 #. Description telling user a verification link was sent
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:138
+#: app/[lang]/(auth)/check-email/page.tsx:84
 msgid "auth.verify.checkEmail.description"
-msgstr "Abbiamo inviato un link di verifica a <0>{email}</0>. Clicca sul link per verificare il tuo account."
+msgstr "Abbiamo inviato un link di verifica a <0>{email}</0>. Clicca il link per verificare il tuo account. Potrebbe volerci qualche minuto per l'arrivo."
 
 #. What we store
 #. js-lingui-explicit-id
@@ -1181,9 +1669,15 @@ msgstr "Utilizziamo pochi servizi terzi per accesso, hosting e archiviazione —
 
 #. Sign-in page subtitle
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:169
+#: src/components/AuthForm.tsx:117
 msgid "auth.signIn.subtitle"
 msgstr "Bentornato"
+
+#. Main app page heading
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/app/page.tsx:14
+msgid "app.home.title"
+msgstr ""
 
 #. Account deletion
 #. js-lingui-explicit-id
@@ -1215,11 +1709,29 @@ msgstr "È consentito riutilizzare il dataset degli annunci con attribuzione per
 msgid "terms.short.r1"
 msgstr "Devi avere almeno 16 anni per usare Job Seek."
 
+#. Set password description for OAuth users
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:86
+msgid "settings.account.password.setDescription"
+msgstr "Hai effettuato l'accesso con un account social. Imposta una password per abilitare le modifiche email e maggiore sicurezza."
+
 #. Description after successful email verification
 #. js-lingui-explicit-id
-#: app/[lang]/(auth)/verify-email/page.tsx:85
+#: app/[lang]/verify-email/page.tsx:91
 msgid "auth.verify.success.description"
 msgstr "La tua email è stata verificata. Ora puoi accedere."
+
+#. Main app page subtitle
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/app/page.tsx:17
+msgid "app.home.subtitle"
+msgstr ""
+
+#. Description after successful password reset
+#. js-lingui-explicit-id
+#: app/[lang]/reset-password/page.tsx:62
+msgid "auth.resetPassword.success.description"
+msgstr ""
 
 #. Your rights section title
 #. js-lingui-explicit-id

@@ -10,7 +10,9 @@ function getResend() {
 
 const FROM_ADDRESS = "Job Seek <noreply@updates.colophon-group.org>";
 
-const copy = {
+type EmailCopy = Record<string, string>;
+
+const verifyCopy = {
   en: {
     subject: "Verify your email address",
     heading: "Verify your email",
@@ -43,35 +45,88 @@ const copy = {
     fallback: "Oppure copia e incolla questo link nel tuo browser:",
     ignore: "Se non hai creato un account, puoi ignorare questa email.",
   },
-} as const satisfies Record<Locale, Record<string, string>>;
+} as const satisfies Record<Locale, EmailCopy>;
+
+const resetCopy = {
+  en: {
+    subject: "Reset your password",
+    heading: "Reset your password",
+    body: "Click the button below to set a new password.",
+    button: "Reset password",
+    fallback: "Or copy and paste this link into your browser:",
+    ignore: "If you didn't request a password reset, you can safely ignore this email.",
+  },
+  de: {
+    subject: "Passwort zurücksetzen",
+    heading: "Passwort zurücksetzen",
+    body: "Klicke auf den Button, um ein neues Passwort festzulegen.",
+    button: "Passwort zurücksetzen",
+    fallback: "Oder kopiere diesen Link in deinen Browser:",
+    ignore: "Falls du kein Zurücksetzen angefordert hast, kannst du diese E-Mail ignorieren.",
+  },
+  fr: {
+    subject: "Réinitialiser votre mot de passe",
+    heading: "Réinitialiser votre mot de passe",
+    body: "Cliquez sur le bouton ci-dessous pour définir un nouveau mot de passe.",
+    button: "Réinitialiser le mot de passe",
+    fallback: "Ou copiez et collez ce lien dans votre navigateur :",
+    ignore: "Si vous n'avez pas demandé de réinitialisation, vous pouvez ignorer cet e-mail.",
+  },
+  it: {
+    subject: "Reimposta la tua password",
+    heading: "Reimposta la tua password",
+    body: "Clicca il pulsante qui sotto per impostare una nuova password.",
+    button: "Reimposta password",
+    fallback: "Oppure copia e incolla questo link nel tuo browser:",
+    ignore: "Se non hai richiesto il reset, puoi ignorare questa email.",
+  },
+} as const satisfies Record<Locale, EmailCopy>;
+
+function buildEmail(t: EmailCopy, url: string) {
+  return `
+    <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+      <h2>${t.heading}</h2>
+      <p>${t.body}</p>
+      <a href="${url}"
+         style="display: inline-block; padding: 10px 20px; background: #111111; color: #f5f5f5; text-decoration: none; border-radius: 9999px; font-weight: 600; font-size: 16px;">
+        ${t.button}
+      </a>
+      <p style="margin-top: 16px; color: #666; font-size: 14px;">
+        ${t.fallback}<br/>
+        <a href="${url}" style="color: #666; word-break: break-all;">${url}</a>
+      </p>
+      <p style="margin-top: 16px; color: #666; font-size: 14px;">
+        ${t.ignore}
+      </p>
+    </div>
+  `;
+}
 
 export async function sendVerificationEmail(
   to: string,
   url: string,
   locale: Locale = "en",
 ) {
-  const t = copy[locale];
-
+  const t = verifyCopy[locale];
   await getResend().emails.send({
     from: FROM_ADDRESS,
     to,
     subject: t.subject,
-    html: `
-      <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
-        <h2>${t.heading}</h2>
-        <p>${t.body}</p>
-        <a href="${url}"
-           style="display: inline-block; padding: 10px 20px; background: #111111; color: #f5f5f5; text-decoration: none; border-radius: 9999px; font-weight: 600; font-size: 16px;">
-          ${t.button}
-        </a>
-        <p style="margin-top: 16px; color: #666; font-size: 14px;">
-          ${t.fallback}<br/>
-          <a href="${url}" style="color: #666; word-break: break-all;">${url}</a>
-        </p>
-        <p style="margin-top: 16px; color: #666; font-size: 14px;">
-          ${t.ignore}
-        </p>
-      </div>
-    `,
+    html: buildEmail(t, url),
   });
 }
+
+export async function sendResetPasswordEmail(
+  to: string,
+  url: string,
+  locale: Locale = "en",
+) {
+  const t = resetCopy[locale];
+  await getResend().emails.send({
+    from: FROM_ADDRESS,
+    to,
+    subject: t.subject,
+    html: buildEmail(t, url),
+  });
+}
+

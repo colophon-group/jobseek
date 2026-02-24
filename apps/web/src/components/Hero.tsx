@@ -11,7 +11,7 @@ export function Hero() {
   const { t } = useLingui();
   const lp = useLocalePath();
 
-  const primaryHref = lp(siteConfig.nav.login.href);
+  const primaryHref = lp(siteConfig.nav.app.href);
   const primaryLabel = t({ id: "home.hero.primaryCta", comment: "Hero primary call-to-action", message: "Get started" });
 
   const heroArt = publicDomainAssets[siteConfig.hero.art.assetKey];
