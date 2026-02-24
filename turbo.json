@@ -11,6 +11,9 @@
         "GITHUB_CLIENT_SECRET",
         "GOOGLE_CLIENT_ID",
         "GOOGLE_CLIENT_SECRET",
+        "LINKEDIN_CLIENT_ID",
+        "LINKEDIN_CLIENT_SECRET",
+        "RESEND_API_KEY",
         "DATABASE_URL",
         "DATABASE_URL_UNPOOLED"
       ]

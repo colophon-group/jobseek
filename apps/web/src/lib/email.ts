@@ -2,7 +2,11 @@ import "server-only";
 import { Resend } from "resend";
 import type { Locale } from "@/lib/i18n";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+let _resend: Resend | null = null;
+function getResend() {
+  if (!_resend) _resend = new Resend(process.env.RESEND_API_KEY);
+  return _resend;
+}
 
 const FROM_ADDRESS = "Job Seek <noreply@updates.colophon-group.org>";
 
@@ -48,7 +52,7 @@ export async function sendVerificationEmail(
 ) {
   const t = copy[locale];
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM_ADDRESS,
     to,
     subject: t.subject,
