@@ -191,22 +191,18 @@ Follow this pattern: fetch data in the page server component, pass as props.
 Only use client-side fetches for data that changes after user interaction
 (e.g. refreshing account list after linking a social provider).
 
-### Performance consideration: withRLS
+### Why no RLS on user_preferences
 
-The `withRLS` helper uses the WebSocket Pool driver (`@neondatabase/serverless`
-Pool) to run queries inside a transaction with `set_config('app.current_user_id', ...)`.
-This has **significantly more overhead** than the stateless HTTP neon driver
-(`neon()`) used by `db`:
+Row-Level Security was removed from `user_preferences`. While RLS provides
+defense-in-depth, it required the WebSocket Pool driver (`@neondatabase/serverless`
+Pool) for transactions (`set_config` + query), which added ~1-1.5s per write
+on Vercel serverless due to cold WebSocket connections and 4 round-trips
+(BEGIN → set_config → query → COMMIT).
 
-- WebSocket connection establishment / pool acquisition
-- Transaction overhead (BEGIN → set_config → query → COMMIT = 4 round-trips)
-- ~150-200ms total even though each individual Neon query runs in <10ms
-
-**Rule:** Never use `withRLS` in the page-load critical path if avoidable.
-For read-only queries where the `WHERE` clause already filters by the
-authenticated `userId`, prefer the HTTP driver (`db`) with no RLS wrapper.
-Reserve `withRLS` for mutations and sensitive operations where defense-in-depth
-matters (e.g. `updatePreferences`, `recordPasswordResetRequest`).
+All `user_preferences` queries already go through server actions that validate
+the session and filter by the authenticated `userId`. The auth check in the
+server action IS the security boundary. Use the stateless HTTP neon driver
+(`db`) for all preference queries.
 
 ## Link prefetch strategy
 

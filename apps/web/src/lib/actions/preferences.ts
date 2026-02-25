@@ -4,7 +4,6 @@ import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { db } from "@/db";
 import { account, userPreferences } from "@/db/schema";
-import { withRLS } from "@/db/rls";
 import { auth } from "@/lib/auth";
 import { getSession } from "@/lib/sessionCache";
 
@@ -14,16 +13,13 @@ export async function getPreferences() {
   const session = await getSession();
   if (!session) return null;
 
-  const row = await withRLS(session.user.id, async (tx) => {
-    const [result] = await tx
-      .select()
-      .from(userPreferences)
-      .where(eq(userPreferences.userId, session.user.id))
-      .limit(1);
-    return result ?? null;
-  });
+  const [row] = await db
+    .select()
+    .from(userPreferences)
+    .where(eq(userPreferences.userId, session.user.id))
+    .limit(1);
 
-  return row;
+  return row ?? null;
 }
 
 export async function updatePreferences(
@@ -36,27 +32,24 @@ export async function updatePreferences(
   const session = await getSession();
   if (!session) throw new Error("Not authenticated");
 
-  const row = await withRLS(session.user.id, async (tx) => {
-    const [result] = await tx
-      .insert(userPreferences)
-      .values({
-        userId: session.user.id,
-        theme: data.theme ?? "light",
-        locale: data.locale ?? "en",
-        cookieConsent: data.cookieConsent ?? false,
-      })
-      .onConflictDoUpdate({
-        target: userPreferences.userId,
-        set: {
-          ...(data.theme !== undefined && { theme: data.theme }),
-          ...(data.locale !== undefined && { locale: data.locale }),
-          ...(data.cookieConsent !== undefined && { cookieConsent: data.cookieConsent }),
-          updatedAt: new Date(),
-        },
-      })
-      .returning();
-    return result;
-  });
+  const [row] = await db
+    .insert(userPreferences)
+    .values({
+      userId: session.user.id,
+      theme: data.theme ?? "light",
+      locale: data.locale ?? "en",
+      cookieConsent: data.cookieConsent ?? false,
+    })
+    .onConflictDoUpdate({
+      target: userPreferences.userId,
+      set: {
+        ...(data.theme !== undefined && { theme: data.theme }),
+        ...(data.locale !== undefined && { locale: data.locale }),
+        ...(data.cookieConsent !== undefined && { cookieConsent: data.cookieConsent }),
+        updatedAt: new Date(),
+      },
+    })
+    .returning();
 
   return row;
 }
@@ -65,14 +58,11 @@ export async function getPasswordResetCooldown(): Promise<number> {
   const session = await getSession();
   if (!session) return 0;
 
-  const row = await withRLS(session.user.id, async (tx) => {
-    const [result] = await tx
-      .select({ lastPasswordResetAt: userPreferences.lastPasswordResetAt })
-      .from(userPreferences)
-      .where(eq(userPreferences.userId, session.user.id))
-      .limit(1);
-    return result ?? null;
-  });
+  const [row] = await db
+    .select({ lastPasswordResetAt: userPreferences.lastPasswordResetAt })
+    .from(userPreferences)
+    .where(eq(userPreferences.userId, session.user.id))
+    .limit(1);
 
   if (!row?.lastPasswordResetAt) return 0;
 
@@ -89,24 +79,22 @@ export async function recordPasswordResetRequest(): Promise<{ error?: string; co
     return { cooldown: remaining };
   }
 
-  await withRLS(session.user.id, async (tx) => {
-    await tx
-      .insert(userPreferences)
-      .values({
-        userId: session.user.id,
-        theme: "light",
-        locale: "en",
-        cookieConsent: false,
+  await db
+    .insert(userPreferences)
+    .values({
+      userId: session.user.id,
+      theme: "light",
+      locale: "en",
+      cookieConsent: false,
+      lastPasswordResetAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: userPreferences.userId,
+      set: {
         lastPasswordResetAt: new Date(),
-      })
-      .onConflictDoUpdate({
-        target: userPreferences.userId,
-        set: {
-          lastPasswordResetAt: new Date(),
-          updatedAt: new Date(),
-        },
-      });
-  });
+        updatedAt: new Date(),
+      },
+    });
 
   return {};
 }

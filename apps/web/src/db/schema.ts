@@ -1,13 +1,11 @@
 import {
   pgTable,
-  pgPolicy,
   uuid,
   text,
   boolean,
   timestamp,
   index,
 } from "drizzle-orm/pg-core";
-import { sql } from "drizzle-orm";
 
 // ── Better Auth core tables ──────────────────────────────────────────
 
@@ -101,25 +99,7 @@ export const userPreferences = pgTable("user_preferences", {
     .defaultNow()
     .$onUpdate(() => new Date())
     .notNull(),
-}, (table) => [
-  pgPolicy("user_preferences_select", {
-    for: "select",
-    using: sql`${table.userId} = current_setting('app.current_user_id', true)`,
-  }),
-  pgPolicy("user_preferences_insert", {
-    for: "insert",
-    withCheck: sql`${table.userId} = current_setting('app.current_user_id', true)`,
-  }),
-  pgPolicy("user_preferences_update", {
-    for: "update",
-    using: sql`${table.userId} = current_setting('app.current_user_id', true)`,
-    withCheck: sql`${table.userId} = current_setting('app.current_user_id', true)`,
-  }),
-  pgPolicy("user_preferences_delete", {
-    for: "delete",
-    using: sql`${table.userId} = current_setting('app.current_user_id', true)`,
-  }),
-]).enableRLS();
+});
 
 // ── App-specific tables ──────────────────────────────────────────────
 
