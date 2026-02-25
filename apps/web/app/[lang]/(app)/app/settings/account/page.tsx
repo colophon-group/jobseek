@@ -1,4 +1,5 @@
 import { initI18nForPage } from "@/lib/i18n";
+import { getAccountPageData } from "@/lib/actions/preferences";
 import { AccountSettings } from "@/components/settings/AccountSettings";
 
 type Props = {
@@ -8,5 +9,7 @@ type Props = {
 export default async function AccountSettingsPage({ params }: Props) {
   await initI18nForPage(params);
 
-  return <AccountSettings />;
+  const data = await getAccountPageData();
+
+  return <AccountSettings initialData={data} />;
 }

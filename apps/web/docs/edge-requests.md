@@ -23,15 +23,13 @@ Public marketing pages and auth pages contain no user-specific data. They are **
 
 These pages produce **zero edge function invocations** — Vercel serves them directly from the CDN.
 
-### Dynamic pages (dashboard, admin, API)
+### Dynamic pages (app, API)
 
 Pages that check authentication or read cookies are rendered on every request:
 
 ```
-/en/dashboard/*   — dynamic (reads headers() for session)
-/en/admin/*       — dynamic (reads headers() + cookies() + DB query)
+/en/app/*         — dynamic (reads headers() for session)
 /api/auth/*       — dynamic (Better Auth handler)
-/api/admin/*      — dynamic (2FA verification)
 ```
 
 This is correct — these pages genuinely need per-request data.
@@ -56,7 +54,7 @@ The root layout sets `lang="en"` as default. An inline script reads the locale f
 
 The root layout (`app/layout.tsx`) and the locale layout (`app/[lang]/layout.tsx`) must **never** call `cookies()`, `headers()`, or any function that reads request data. These layouts are shared by every page — a single dynamic call here forces the **entire app** into per-request rendering.
 
-If you need request data, put it in a **route-group layout** that only wraps the pages that need it (e.g. `(dashboard)/layout.tsx`).
+If you need request data, put it in a **route-group layout** that only wraps the pages that need it (e.g. `(app)/layout.tsx`).
 
 ### Keep `generateStaticParams` in `[lang]/layout.tsx`
 
@@ -72,10 +70,10 @@ The middleware matcher explicitly excludes locale-prefixed paths. When adding a 
 app/[lang]/
   (public)/    ← no cookies/headers in layout → static
   (auth)/      ← client component layout → static
-  (dashboard)/ ← reads headers() for auth → dynamic (intentional)
+  (app)/       ← reads headers() for auth → dynamic (intentional)
 ```
 
-If you add a new section, choose the right route group. Don't put static content pages inside `(dashboard)/`.
+If you add a new section, choose the right route group. Don't put static content pages inside `(app)/`.
 
 ### Don't read cookies/headers for cosmetic data
 
@@ -89,20 +87,15 @@ After `pnpm build`, Next.js prints a summary showing which routes are static (`�
 
 This is one of the most impactful rules for edge request cost.
 
-Better Auth's `useSession()` hook (wrapped by our `useAuth()`) fires a
-`GET /api/auth/get-session` request on mount. This is both an **edge request**
-and a **serverless function invocation** — the two billable Vercel metrics.
-It also re-fires on every **window focus** event (rate-limited to 5 seconds),
-so tab-switching during a single visit generates repeated requests.
-
-The public components (Header, MobileMenu, Hero, Pricing) previously used
-`useAuth()` solely to toggle CTA labels ("Log in" vs "Go to dashboard").
-This meant every visitor to every page — including the ~95% who are
-anonymous — triggered a session API call that returned nothing useful.
+Better Auth's `useSession()` hook fires a `GET /api/auth/get-session` request
+on mount. This is both an **edge request** and a **serverless function
+invocation** — the two billable Vercel metrics. It also re-fires on every
+**window focus** event (rate-limited to 5 seconds), so tab-switching during a
+single visit generates repeated requests.
 
 **Current rule**: public pages always render the anonymous CTA state. Auth
-checks only happen inside the dashboard route group, where the user is
-already authenticated and the session check is genuinely needed.
+checks only happen inside the `(app)` route group, where the user is already
+authenticated and the session check is genuinely needed.
 
 If a future feature needs auth-dependent UI on a public page (e.g. showing
 a user avatar in the header), consider one of these alternatives instead of
@@ -115,15 +108,97 @@ re-adding `useSession()`:
   auth-dependent fragment only after the main page renders, so it doesn't
   block or slow initial paint.
 
-The `useAuth` hook is kept in `src/lib/useAuth.ts` for use in dashboard
-components.
+## SessionProvider — zero-cost client auth
+
+The `(app)/layout.tsx` already fetches the session server-side via
+`getSession()`. Instead of having client components re-fetch it with
+`authClient.useSession()` (which triggers `GET /api/auth/get-session`),
+we pass the session through React context:
+
+```
+Server: (app)/layout.tsx → getSession() → <SessionProvider user={session.user}>
+Client: useAuth() → reads from SessionProvider context (zero network requests)
+```
+
+**What this eliminates:**
+
+- `GET /api/auth/get-session` on every app page mount
+- Re-fetch on every window focus event (tab switching)
+- localStorage caching workaround (no longer needed)
+
+**Trade-off:** If the session changes externally (e.g. user changes name on
+another tab), the data won't refresh until the next page navigation. This is
+acceptable because account changes already redirect the user, causing a fresh
+server render.
+
+The `useAuth()` hook in `src/lib/useAuth.ts` is a thin wrapper over
+`useSession()` from `SessionProvider.tsx`.
+
+## Cached session deduplication
+
+`src/lib/sessionCache.ts` wraps `auth.api.getSession()` with React's
+`cache()`. This deduplicates session lookups within a single server render:
+
+```
+(app)/layout.tsx  → getSession()  → DB query #1
+getPreferences()  → getSession()  → cache hit (no query)
+getAccountPageData() → getSession() → cache hit (no query)
+```
+
+Without caching, each call independently queries the database for the same
+session token. With `cache()`, only one query runs per request.
+
+**Note:** `cache()` scopes to a single request. Separate HTTP requests
+(e.g. client-triggered server actions) each get their own cache scope.
+
+## Server-side data fetching for app pages
+
+App pages fetch data in their server components and pass it as props to client
+components. This eliminates client-side `useEffect` → fetch patterns that
+generate additional API calls after the page loads.
+
+### Account settings page
+
+`getAccountPageData()` returns connected accounts + password reset cooldown
+in a single server call. The page component passes this to `<AccountSettings>`:
+
+```
+Before: Page renders → client mounts → GET /api/auth/get-session
+                                      → GET /api/auth/list-accounts
+                                      → server action getPasswordResetCooldown()
+                                           → another getSession() internally
+         = 4 requests
+
+After:  Page renders → getAccountPageData() (server, 1 DB query)
+                     → passes data as props
+         = 0 additional client requests
+```
+
+### General settings page
+
+`getPreferences()` is called in the page server component and passed as
+`initialTheme` / `initialLocale` props to `<GeneralSettings>`:
+
+```
+Before: Page renders → client mounts → server action getPreferences()
+                                           → getSession() internally
+         = 1 extra request
+
+After:  Page renders → getPreferences() (server, shared session cache)
+                     → passes data as props
+         = 0 additional client requests
+```
+
+### When adding new app pages
+
+Follow this pattern: fetch data in the page server component, pass as props.
+Only use client-side fetches for data that changes after user interaction
+(e.g. refreshing account list after linking a social provider).
 
 ## Link prefetch strategy
 
 Next.js `<Link>` prefetches the RSC payload for every linked route when the
-link enters the viewport. Each prefetch is an edge request. With several
-nav links in the header and footer, this adds **~7+ extra edge requests per
-page view** — most of them wasted.
+link enters the viewport. Each prefetch of a dynamic route is an edge request.
 
 We disable prefetch on all links except high-conversion cross-page paths.
 
@@ -153,15 +228,32 @@ or the user is already on an adjacent page.
 | Privacy | Footer | `/privacy-policy` | Legal — rarely clicked |
 | Terms | Footer | `/terms` | Legal — rarely clicked |
 | Sign in ↔ Sign up | Auth form | `/sign-in`, `/sign-up` | User is already on an auth page |
-| Back to sign in | Verify email (error) | `/sign-in` | User is already on an auth page |
-| Continue to dashboard | Verify email (success) | `/dashboard` | User will click immediately — no prefetch benefit |
-| Logo (auth) | Auth layout | `/` | Return-to-marketing, not a hot path |
+| Back to sign in | Verify email (error) | `/sign-in` | Error recovery path |
+| Continue | Verify email (success) | `/app` | User will click immediately |
+| Logo (auth) | Auth layout | `/app` | Same-app navigation |
+| App nav icons | AppHeader (desktop) | `/app`, `/app/settings` | Dynamic pages behind auth |
+| App bottom bar | AppHeader (mobile) | `/app`, `/app/settings` | Dynamic pages behind auth |
 
 ### When adding new links
 
-- **Cross-page link likely to be clicked?** → Leave prefetch as default (enabled).
+- **Cross-page link on a public page likely to be clicked?** → Leave prefetch as default (enabled).
 - **Same-page anchor, legal page, or low-traffic route?** → Add `prefetch={false}`.
+- **Inside the `(app)` route group?** → Add `prefetch={false}` (dynamic pages behind auth).
 - **Inside `Button` component?** → Pass `prefetch={false}` as a prop; it forwards to `<Link>`.
+
+## Font loading
+
+Fonts are loaded via `@font-face` declarations in `globals.css` with
+`font-display: swap`. The browser only downloads a font file when it
+encounters text using that specific weight.
+
+**Do not add `<link rel="preload">` for fonts.** Preload hints combined with
+`@font-face` cause browsers to download each font **twice** — once from the
+preload and once from the CSS. This was previously doubling font bandwidth
+(~376 kB × 2 = ~752 kB wasted per page load).
+
+Fonts are cached for 1 year with `immutable` via `Cache-Control` headers in
+`next.config.ts`. After the first visit, fonts are served from browser cache.
 
 ## Asset caching
 
@@ -174,6 +266,7 @@ reduce repeat edge requests.
 | `next/image` responses (`/_next/image`) | 1 week (`minimumCacheTTL`) | Default is 60s — far too short |
 | SVGs, PNGs in `public/` | 1 week | Rarely change; no content hash in URL |
 | JS/CSS chunks (`/_next/static/*`) | 1 year, `immutable` | Content-hashed filenames (Next.js default) |
+| Favicon, manifest, icons | 1 week | Rarely change |
 
 Vercel purges its CDN cache on every deploy. Browser caches persist for the
 configured TTL — this is acceptable because these assets rarely change.

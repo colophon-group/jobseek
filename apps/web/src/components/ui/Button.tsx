@@ -8,6 +8,7 @@ const variants = {
   primary: "border border-primary bg-primary text-primary-contrast transition-opacity hover:opacity-90",
   outline: "border border-current transition-colors hover:bg-border-soft",
   danger: "border border-error-border bg-error-border text-error transition-opacity hover:opacity-80",
+  "danger-outline": "border border-error-border text-error transition-colors hover:bg-error-bg",
 } as const;
 
 const sizes = {

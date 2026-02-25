@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Trans } from "@lingui/react/macro";
 import { useLingui } from "@lingui/react/macro";
 import { Github } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { useAuth } from "@/lib/useAuth";
 import { useLocalePath } from "@/lib/useLocalePath";
-import { getPasswordResetCooldown, recordPasswordResetRequest } from "@/lib/actions/preferences";
+import { recordPasswordResetRequest } from "@/lib/actions/preferences";
 import { Button } from "@/components/ui/Button";
 import { FormField } from "@/components/ui/FormField";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
@@ -19,6 +19,12 @@ import { LinkedInIcon } from "@/components/icons/LinkedInIcon";
 type ConnectedAccount = {
   providerId: string;
   accountId: string;
+};
+
+type AccountPageData = {
+  accounts: ConnectedAccount[];
+  hasPassword: boolean;
+  cooldown: number;
 };
 
 /* ── Login prompt for unauthenticated users ── */
@@ -42,8 +48,16 @@ function LoginPrompt() {
 
 /* ── Password Section ── */
 
-function PasswordSection({ hasPassword, onPasswordSet }: { hasPassword: boolean; onPasswordSet: () => void }) {
-  if (hasPassword) return <ResetPasswordFlow />;
+function PasswordSection({
+  hasPassword,
+  initialCooldown,
+  onPasswordSet,
+}: {
+  hasPassword: boolean;
+  initialCooldown: number;
+  onPasswordSet: () => void;
+}) {
+  if (hasPassword) return <ResetPasswordFlow initialCooldown={initialCooldown} />;
   return <SetPasswordFlow onSuccess={onPasswordSet} />;
 }
 
@@ -63,10 +77,10 @@ function SetPasswordFlow({ onSuccess }: { onSuccess: () => void }) {
       return;
     }
     setLoading(true);
-    const { error } = await authClient.$fetch("/set-password", {
-      method: "POST",
-      body: { newPassword },
-    });
+    const { error } = await (authClient as unknown as {
+      setPassword: (opts: { newPassword: string }) =>
+        Promise<{ error: { message?: string } | null }>;
+    }).setPassword({ newPassword });
     setLoading(false);
     if (error) {
       setError(error.message ?? t({ id: "settings.account.password.setError", comment: "Generic set password error", message: "Failed to set password" }));
@@ -112,17 +126,13 @@ function SetPasswordFlow({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
-function ResetPasswordFlow() {
+function ResetPasswordFlow({ initialCooldown }: { initialCooldown: number }) {
   const { t } = useLingui();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [cooldown, setCooldown] = useState(0);
-
-  useEffect(() => {
-    getPasswordResetCooldown().then(setCooldown);
-  }, []);
+  const [cooldown, setCooldown] = useState(initialCooldown);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -197,13 +207,12 @@ function ResetPasswordFlow() {
   );
 }
 
-/* ── Change Email (requires password) ── */
+/* ── Change Email ── */
 
-function ChangeEmailSection({ hasPassword }: { hasPassword: boolean }) {
+function ChangeEmailSection() {
   const { t } = useLingui();
   const lp = useLocalePath();
   const [newEmail, setNewEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -216,22 +225,7 @@ function ChangeEmailSection({ hasPassword }: { hasPassword: boolean }) {
       setError(t({ id: "settings.account.email.required", comment: "Error when email field is empty", message: "Please enter a new email address" }));
       return;
     }
-    if (!password) {
-      setError(t({ id: "settings.account.email.passwordRequired", comment: "Error when password is empty for email change", message: "Please enter your password to confirm" }));
-      return;
-    }
     setLoading(true);
-    // Verify password via changePassword with same password (Better Auth checks current)
-    const verifyResult = await authClient.changePassword({
-      currentPassword: password,
-      newPassword: password,
-      revokeOtherSessions: true,
-    });
-    if (verifyResult.error) {
-      setLoading(false);
-      setError(t({ id: "settings.account.email.wrongPassword", comment: "Error when password is incorrect", message: "Incorrect password" }));
-      return;
-    }
     const { error } = await authClient.changeEmail({
       newEmail,
       callbackURL: lp("/app/settings/account"),
@@ -242,7 +236,6 @@ function ChangeEmailSection({ hasPassword }: { hasPassword: boolean }) {
     } else {
       setSuccess(t({ id: "settings.account.email.success", comment: "Success message after email change request", message: "Verification email sent. Please check your inbox. It may take a few minutes to arrive." }));
       setNewEmail("");
-      setPassword("");
     }
   }
 
@@ -256,45 +249,29 @@ function ChangeEmailSection({ hasPassword }: { hasPassword: boolean }) {
           Update the email address associated with your account.
         </Trans>
       </p>
-      {!hasPassword ? (
-        <p className="text-sm text-muted">
-          <Trans id="settings.account.email.needsPassword" comment="Message when password must be set before changing email">
-            Please set a password first to change your email address.
-          </Trans>
-        </p>
-      ) : (
-        <>
-          {error && <ErrorAlert message={error} />}
-          {success && (
-            <div className="mb-4 rounded-md border border-success-border bg-success-bg px-4 py-3 text-sm text-success">
-              {success}
-            </div>
-          )}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <FormField
-              label={t({ id: "settings.account.email.label", comment: "New email input label", message: "New email" })}
-              type="email"
-              required
-              autoComplete="email"
-              value={newEmail}
-              onChange={(e) => setNewEmail(e.target.value)}
-            />
-            <FormField
-              label={t({ id: "settings.account.email.passwordLabel", comment: "Password confirmation for email change", message: "Current password" })}
-              type="password"
-              required
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            <Button type="submit" disabled={loading} size="sm">
-              {loading
-                ? t({ id: "settings.account.email.saving", comment: "Email save button while loading", message: "Saving..." })
-                : t({ id: "settings.account.email.save", comment: "Email save button", message: "Update email" })}
-            </Button>
-          </form>
-        </>
+      {error && <ErrorAlert message={error} />}
+      {success && (
+        <div className="mb-4 rounded-md border border-success-border bg-success-bg px-4 py-3 text-sm text-success">
+          {success}
+        </div>
       )}
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4 min-[480px]:flex-row min-[480px]:items-end">
+        <div className="flex-1">
+          <FormField
+            label={t({ id: "settings.account.email.label", comment: "New email input label", message: "New email" })}
+            type="email"
+            required
+            autoComplete="email"
+            value={newEmail}
+            onChange={(e) => setNewEmail(e.target.value)}
+          />
+        </div>
+        <Button type="submit" disabled={loading} size="sm">
+          {loading
+            ? t({ id: "settings.account.email.saving", comment: "Email save button while loading", message: "Saving..." })
+            : t({ id: "settings.account.email.save", comment: "Email save button", message: "Update email" })}
+        </Button>
+      </form>
     </section>
   );
 }
@@ -377,19 +354,13 @@ function ConnectedAccountsSection({ accounts }: { accounts: ConnectedAccount[] }
 function DeleteAccountSection() {
   const { t } = useLingui();
   const [showConfirm, setShowConfirm] = useState(false);
-  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  async function handleDelete(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleDelete() {
     setError("");
-    if (!password) {
-      setError(t({ id: "settings.account.delete.passwordRequired", comment: "Error when password is empty for deletion", message: "Please enter your password to confirm" }));
-      return;
-    }
     setLoading(true);
-    const { error } = await authClient.deleteUser({ password });
+    const { error } = await authClient.deleteUser({});
     setLoading(false);
     if (error) {
       setError(error.message ?? t({ id: "settings.account.delete.error", comment: "Generic account deletion error", message: "Failed to delete account" }));
@@ -408,39 +379,26 @@ function DeleteAccountSection() {
           Permanently delete your account and all associated data. This action cannot be undone.
         </Trans>
       </p>
+      {error && <ErrorAlert message={error} />}
       {!showConfirm ? (
         <Button onClick={() => setShowConfirm(true)} variant="danger" size="sm">
           {t({ id: "settings.account.delete.button", comment: "Delete account button", message: "Delete my account" })}
         </Button>
       ) : (
-        <>
-          {error && <ErrorAlert message={error} />}
-          <form onSubmit={handleDelete} className="space-y-3">
-            <FormField
-              label={t({ id: "settings.account.delete.passwordLabel", comment: "Password confirmation for deletion", message: "Confirm your password" })}
-              type="password"
-              required
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            <div className="flex gap-2">
-              <Button type="submit" disabled={loading} variant="danger" size="sm">
-                {loading
-                  ? t({ id: "settings.account.delete.deleting", comment: "Delete button while loading", message: "Deleting..." })
-                  : t({ id: "settings.account.delete.confirm", comment: "Confirm delete button", message: "Confirm deletion" })}
-              </Button>
-              <Button
-                type="button"
-                onClick={() => { setShowConfirm(false); setError(""); setPassword(""); }}
-                variant="outline"
-                size="sm"
-              >
-                {t({ id: "settings.account.delete.cancel", comment: "Cancel delete button", message: "Cancel" })}
-              </Button>
-            </div>
-          </form>
-        </>
+        <div className="flex gap-2">
+          <Button onClick={handleDelete} disabled={loading} variant="danger" size="sm">
+            {loading
+              ? t({ id: "settings.account.delete.deleting", comment: "Delete button while loading", message: "Deleting..." })
+              : t({ id: "settings.account.delete.confirm", comment: "Confirm delete button", message: "Confirm deletion" })}
+          </Button>
+          <Button
+            onClick={() => { setShowConfirm(false); setError(""); }}
+            variant="danger-outline"
+            size="sm"
+          >
+            {t({ id: "settings.account.delete.cancel", comment: "Cancel delete button", message: "Cancel" })}
+          </Button>
+        </div>
       )}
     </section>
   );
@@ -448,31 +406,25 @@ function DeleteAccountSection() {
 
 /* ── Main Component ── */
 
-export function AccountSettings() {
+export function AccountSettings({ initialData }: { initialData: AccountPageData | null }) {
   const { isLoggedIn } = useAuth();
-  const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [accounts, setAccounts] = useState<ConnectedAccount[]>(initialData?.accounts ?? []);
+  const [hasPassword, setHasPassword] = useState(initialData?.hasPassword ?? false);
 
-  const fetchAccounts = useCallback(() => {
+  if (!isLoggedIn || !initialData) return <LoginPrompt />;
+
+  function refreshAccounts() {
     authClient.listAccounts().then(({ data }) => {
-      setAccounts((data as ConnectedAccount[] | null) ?? []);
-      setLoading(false);
+      const list = (data as ConnectedAccount[] | null) ?? [];
+      setAccounts(list);
+      setHasPassword(list.some((a) => a.providerId === "credential"));
     });
-  }, []);
-
-  useEffect(() => {
-    if (isLoggedIn) fetchAccounts();
-  }, [isLoggedIn, fetchAccounts]);
-
-  if (!isLoggedIn) return <LoginPrompt />;
-  if (loading) return <p className="text-sm text-muted">Loading...</p>;
-
-  const hasPassword = accounts.some((a) => a.providerId === "credential");
+  }
 
   return (
     <div className="space-y-10">
-      <PasswordSection hasPassword={hasPassword} onPasswordSet={fetchAccounts} />
-      <ChangeEmailSection hasPassword={hasPassword} />
+      <PasswordSection hasPassword={hasPassword} initialCooldown={initialData.cooldown} onPasswordSet={refreshAccounts} />
+      <ChangeEmailSection />
       <ConnectedAccountsSection accounts={accounts} />
       <DeleteAccountSection />
     </div>

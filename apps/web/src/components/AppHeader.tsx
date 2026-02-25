@@ -23,7 +23,7 @@ function NavIcon({ href, label, children }: { href: string; label: string; child
   return (
     <Tooltip.Root>
       <Tooltip.Trigger asChild>
-        <Link href={href} className={iconBtnClass} aria-label={label}>
+        <Link href={href} prefetch={false} className={iconBtnClass} aria-label={label}>
           {children}
         </Link>
       </Tooltip.Trigger>
@@ -38,7 +38,7 @@ function NavIcon({ href, label, children }: { href: string; label: string; child
 
 function BottomBarLink({ href, label, children }: { href: string; label: string; children: React.ReactNode }) {
   return (
-    <Link href={href} className="flex flex-1 flex-col items-center gap-0.5 py-1.5 text-foreground transition-colors hover:text-muted">
+    <Link href={href} prefetch={false} className="flex flex-1 flex-col items-center gap-0.5 py-1.5 text-foreground transition-colors hover:text-muted">
       {children}
       <span className="text-[10px] leading-tight">{label}</span>
     </Link>
@@ -115,7 +115,7 @@ export function AppHeader() {
       <header className="fixed top-0 right-0 left-0 z-50 hidden border-b border-divider backdrop-blur-md md:block">
         <div className="mx-auto flex h-12 max-w-[1200px] items-center gap-4 px-4">
           {/* Logo */}
-          <Link href={appHref} className="inline-flex shrink-0 items-center gap-2">
+          <Link href={appHref} prefetch={false} className="inline-flex shrink-0 items-center gap-2">
             <ThemedImage
               lightSrc={siteConfig.logoWide.light}
               darkSrc={siteConfig.logoWide.dark}

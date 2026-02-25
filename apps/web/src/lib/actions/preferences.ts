@@ -1,15 +1,15 @@
 "use server";
 
-import { headers } from "next/headers";
 import { eq } from "drizzle-orm";
-import { auth } from "@/lib/auth";
-import { userPreferences } from "@/db/schema";
+import { db } from "@/db";
+import { account, userPreferences } from "@/db/schema";
 import { withRLS } from "@/db/rls";
+import { getSession } from "@/lib/sessionCache";
 
 const PASSWORD_RESET_COOLDOWN_SECONDS = 60;
 
 export async function getPreferences() {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getSession();
   if (!session) return null;
 
   const row = await withRLS(session.user.id, async (tx) => {
@@ -31,7 +31,7 @@ export async function updatePreferences(
     cookieConsent?: boolean;
   },
 ) {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getSession();
   if (!session) throw new Error("Not authenticated");
 
   const row = await withRLS(session.user.id, async (tx) => {
@@ -60,7 +60,7 @@ export async function updatePreferences(
 }
 
 export async function getPasswordResetCooldown(): Promise<number> {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getSession();
   if (!session) return 0;
 
   const row = await withRLS(session.user.id, async (tx) => {
@@ -79,7 +79,7 @@ export async function getPasswordResetCooldown(): Promise<number> {
 }
 
 export async function recordPasswordResetRequest(): Promise<{ error?: string; cooldown?: number }> {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getSession();
   if (!session) return { error: "Not authenticated" };
 
   const remaining = await getPasswordResetCooldown();
@@ -107,4 +107,40 @@ export async function recordPasswordResetRequest(): Promise<{ error?: string; co
   });
 
   return {};
+}
+
+/**
+ * Returns everything the account settings page needs in a single call.
+ * Called from the page server component to avoid client-side fetches.
+ */
+export async function getAccountPageData() {
+  const session = await getSession();
+  if (!session) return null;
+
+  const [accounts, cooldownRow] = await Promise.all([
+    db
+      .select({ providerId: account.providerId, accountId: account.accountId })
+      .from(account)
+      .where(eq(account.userId, session.user.id)),
+    withRLS(session.user.id, async (tx) => {
+      const [result] = await tx
+        .select({ lastPasswordResetAt: userPreferences.lastPasswordResetAt })
+        .from(userPreferences)
+        .where(eq(userPreferences.userId, session.user.id))
+        .limit(1);
+      return result ?? null;
+    }),
+  ]);
+
+  let cooldown = 0;
+  if (cooldownRow?.lastPasswordResetAt) {
+    const elapsed = Math.floor((Date.now() - cooldownRow.lastPasswordResetAt.getTime()) / 1000);
+    cooldown = Math.max(0, PASSWORD_RESET_COOLDOWN_SECONDS - elapsed);
+  }
+
+  return {
+    accounts: accounts.map((a) => ({ providerId: a.providerId, accountId: a.accountId })),
+    hasPassword: accounts.some((a) => a.providerId === "credential"),
+    cooldown,
+  };
 }

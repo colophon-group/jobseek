@@ -6,7 +6,7 @@ import { useParams, usePathname, useSearchParams, useRouter } from "next/navigat
 import { Trans } from "@lingui/react/macro";
 import { useLingui } from "@lingui/react/macro";
 import { locales, type Locale } from "@/lib/i18n";
-import { getPreferences, updatePreferences } from "@/lib/actions/preferences";
+import { updatePreferences } from "@/lib/actions/preferences";
 import type { SVGProps } from "react";
 
 /* ── Flags (reused from LocaleSwitcher) ── */
@@ -66,7 +66,11 @@ const localeLabels: Record<Locale, string> = {
 
 /* ── Component ── */
 
-export function GeneralSettings() {
+export function GeneralSettings({
+  initialTheme,
+}: {
+  initialTheme?: string | null;
+}) {
   const { theme, setTheme } = useTheme();
   const { t } = useLingui();
   const router = useRouter();
@@ -78,18 +82,9 @@ export function GeneralSettings() {
   const [, startTransition] = useTransition();
   useEffect(() => setMounted(true), []);
 
-  // Load saved preferences on mount
+  // Sync theme with server-provided preference (no fetch needed)
   useEffect(() => {
-    getPreferences().then((prefs) => {
-      if (!prefs) return;
-      if (prefs.theme && prefs.theme !== theme) setTheme(prefs.theme);
-      if (prefs.locale && prefs.locale !== currentLocale) {
-        const newPath = pathname.replace(`/${currentLocale}`, `/${prefs.locale}`);
-        const qs = searchParams.toString();
-        router.push(qs ? `${newPath}?${qs}` : newPath);
-      }
-    });
-    // Only run on mount
+    if (initialTheme && initialTheme !== theme) setTheme(initialTheme);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
