@@ -32,7 +32,7 @@ export function Header({ onOpenMobileAction }: HeaderProps) {
   const appLabel = t({ id: "home.hero.primaryCta", comment: "Hero primary call-to-action", message: "Get started" });
 
   return (
-    <header className="border-b border-divider backdrop-blur-md">
+    <header className="border-b border-divider bg-surface-alpha backdrop-blur-md">
       <div className="mx-auto flex h-12 max-w-[1200px] items-center gap-4 px-4">
         <Link href={lp("/")} className="inline-flex shrink-0 items-center gap-2">
           <ThemedImage

@@ -9,7 +9,7 @@ export function HeaderShell() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="shrink-0 z-50 backdrop-blur-md">
+    <div className="shrink-0 z-50 bg-surface-alpha backdrop-blur-md">
       <Header onOpenMobileAction={() => setMobileOpen(true)} />
       <CookieBanner />
       <MobileMenu open={mobileOpen} onCloseAction={() => setMobileOpen(false)} />

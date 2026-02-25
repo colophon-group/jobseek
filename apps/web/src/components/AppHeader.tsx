@@ -112,7 +112,7 @@ export function AppHeader() {
   return (
     <Tooltip.Provider delayDuration={0} skipDelayDuration={300}>
       {/* ── Desktop top header ── */}
-      <header className="fixed top-0 right-0 left-0 z-50 hidden border-b border-divider backdrop-blur-md md:block">
+      <header className="fixed top-0 right-0 left-0 z-50 hidden border-b border-divider bg-surface-alpha backdrop-blur-md md:block">
         <div className="mx-auto flex h-12 max-w-[1200px] items-center gap-4 px-4">
           {/* Logo */}
           <Link href={appHref} prefetch={false} className="inline-flex shrink-0 items-center gap-2">
@@ -179,7 +179,7 @@ export function AppHeader() {
       </header>
 
       {/* ── Mobile bottom bar ── */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 flex items-center border-t border-divider backdrop-blur-md md:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 flex items-center border-t border-divider bg-surface-alpha backdrop-blur-md md:hidden">
         <BottomBarLink href={appHref} label={homeLabel}>
           <Home size={20} />
         </BottomBarLink>

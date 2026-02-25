@@ -13,7 +13,7 @@ export default async function SettingsLayout({ params, children }: Props) {
 
   return (
     <>
-      <div className="fixed left-0 right-0 top-0 z-40 border-b border-divider backdrop-blur-md md:top-12">
+      <div className="fixed left-0 right-0 top-0 z-40 border-b border-divider bg-surface-alpha backdrop-blur-md md:top-12">
         <div className="mx-auto max-w-[1200px] px-4">
           <div className="mx-auto max-w-4xl">
             <h1 className="pt-4 pb-2 text-2xl font-bold">
