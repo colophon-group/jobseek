@@ -154,46 +154,59 @@ session token. With `cache()`, only one query runs per request.
 ## Server-side data fetching for app pages
 
 App pages fetch data in their server components and pass it as props to client
-components. This eliminates client-side `useEffect` → fetch patterns that
-generate additional API calls after the page loads.
+components. The data rides along with the RSC navigation payload — no extra
+network request after mount.
+
+**Key principle:** Avoid `useEffect` → server action fetch patterns on page
+load. These create a sequential waterfall: the browser first downloads the RSC
+payload (page shell), then mounts the component, then fires a second request
+for data. Fetching in the server component collapses this into a single request.
 
 ### Account settings page
 
-`getAccountPageData()` returns connected accounts + password reset cooldown
-in a single server call. The page component passes this to `<AccountSettings>`:
+`getAccountPageData()` returns connected accounts in the page server component
+and passes them as `initialData` to `<AccountSettings>`:
 
 ```
-Before: Page renders → client mounts → GET /api/auth/get-session
-                                      → GET /api/auth/list-accounts
-                                      → server action getPasswordResetCooldown()
-                                           → another getSession() internally
-         = 4 requests
-
-After:  Page renders → getAccountPageData() (server, 1 DB query)
-                     → passes data as props
-         = 0 additional client requests
+Before: RSC navigation (60ms) → mount → server action (280ms) = 2 requests, 340ms
+After:  RSC navigation (~80ms, includes DB query)             = 1 request,  80ms
 ```
+
+The server action uses the neon HTTP driver (stateless, fast) to query the
+`account` table. It does NOT use `withRLS` — the `account` table has no RLS
+policies, and the query filters by `userId` from the validated session.
+
+Client-side re-fetching (`refreshAccounts`) is only used after user-initiated
+mutations (e.g. setting a password), not on page load.
 
 ### General settings page
 
-`getPreferences()` is called in the page server component and passed as
-`initialTheme` / `initialLocale` props to `<GeneralSettings>`:
-
-```
-Before: Page renders → client mounts → server action getPreferences()
-                                           → getSession() internally
-         = 1 extra request
-
-After:  Page renders → getPreferences() (server, shared session cache)
-                     → passes data as props
-         = 0 additional client requests
-```
+No server-side data fetching needed. Theme comes from `next-themes`
+(`useTheme()`), locale comes from the URL. Both are available client-side
+without a DB query.
 
 ### When adding new app pages
 
 Follow this pattern: fetch data in the page server component, pass as props.
 Only use client-side fetches for data that changes after user interaction
 (e.g. refreshing account list after linking a social provider).
+
+### Performance consideration: withRLS
+
+The `withRLS` helper uses the WebSocket Pool driver (`@neondatabase/serverless`
+Pool) to run queries inside a transaction with `set_config('app.current_user_id', ...)`.
+This has **significantly more overhead** than the stateless HTTP neon driver
+(`neon()`) used by `db`:
+
+- WebSocket connection establishment / pool acquisition
+- Transaction overhead (BEGIN → set_config → query → COMMIT = 4 round-trips)
+- ~150-200ms total even though each individual Neon query runs in <10ms
+
+**Rule:** Never use `withRLS` in the page-load critical path if avoidable.
+For read-only queries where the `WHERE` clause already filters by the
+authenticated `userId`, prefer the HTTP driver (`db`) with no RLS wrapper.
+Reserve `withRLS` for mutations and sensitive operations where defense-in-depth
+matters (e.g. `updatePreferences`, `recordPasswordResetRequest`).
 
 ## Link prefetch strategy
 

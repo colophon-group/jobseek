@@ -1,9 +1,11 @@
 "use server";
 
 import { eq } from "drizzle-orm";
+import { headers } from "next/headers";
 import { db } from "@/db";
 import { account, userPreferences } from "@/db/schema";
 import { withRLS } from "@/db/rls";
+import { auth } from "@/lib/auth";
 import { getSession } from "@/lib/sessionCache";
 
 const PASSWORD_RESET_COOLDOWN_SECONDS = 60;
@@ -107,6 +109,22 @@ export async function recordPasswordResetRequest(): Promise<{ error?: string; co
   });
 
   return {};
+}
+
+export async function setPassword(newPassword: string): Promise<{ error?: string }> {
+  const session = await getSession();
+  if (!session) return { error: "Not authenticated" };
+
+  try {
+    await auth.api.setPassword({
+      body: { newPassword },
+      headers: await headers(),
+    });
+    return {};
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : "Failed to set password";
+    return { error: message };
+  }
 }
 
 /**

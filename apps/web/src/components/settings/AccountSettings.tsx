@@ -7,7 +7,7 @@ import { Github } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { useAuth } from "@/lib/useAuth";
 import { useLocalePath } from "@/lib/useLocalePath";
-import { recordPasswordResetRequest, getAccountPageData } from "@/lib/actions/preferences";
+import { setPassword as setPasswordAction, recordPasswordResetRequest, getAccountPageData } from "@/lib/actions/preferences";
 import { Button } from "@/components/ui/Button";
 import { FormField } from "@/components/ui/FormField";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
@@ -64,13 +64,10 @@ function SetPasswordFlow({ onSuccess }: { onSuccess: () => void }) {
       return;
     }
     setLoading(true);
-    const { error } = await (authClient as unknown as {
-      setPassword: (opts: { newPassword: string }) =>
-        Promise<{ error: { message?: string } | null }>;
-    }).setPassword({ newPassword });
+    const result = await setPasswordAction(newPassword);
     setLoading(false);
-    if (error) {
-      setError(error.message ?? t({ id: "settings.account.password.setError", comment: "Generic set password error", message: "Failed to set password" }));
+    if (result.error) {
+      setError(result.error ?? t({ id: "settings.account.password.setError", comment: "Generic set password error", message: "Failed to set password" }));
     } else {
       setSuccess(t({ id: "settings.account.password.setSuccess", comment: "Success message after setting password", message: "Password set successfully." }));
       setNewPassword("");
@@ -94,16 +91,18 @@ function SetPasswordFlow({ onSuccess }: { onSuccess: () => void }) {
           {success}
         </div>
       )}
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4 min-[480px]:flex-row min-[480px]:items-end">
         <input type="hidden" name="username" autoComplete="username" value={user?.email ?? ""} />
-        <FormField
-          label={t({ id: "settings.account.password.newLabel", comment: "New password input label", message: "New password" })}
-          type="password"
-          required
-          autoComplete="new-password"
-          value={newPassword}
-          onChange={(e) => setNewPassword(e.target.value)}
-        />
+        <div className="flex-1">
+          <FormField
+            label={t({ id: "settings.account.password.newLabel", comment: "New password input label", message: "New password" })}
+            type="password"
+            required
+            autoComplete="new-password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+          />
+        </div>
         <Button type="submit" disabled={loading} size="sm">
           {loading
             ? t({ id: "settings.account.password.setting", comment: "Set password button while loading", message: "Setting..." })
