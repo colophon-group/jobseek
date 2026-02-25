@@ -12,7 +12,7 @@ type Props = {
 };
 
 export default async function AppLayout({ params, children }: Props) {
-  const { lang } = await params;
+  const { lang: _lang } = await params;
   const session = await getSession();
 
   const prefs = session ? await getPreferences() : null;

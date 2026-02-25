@@ -58,10 +58,7 @@ function FreeTier() {
 
 function ProTier() {
   const { t } = useLingui();
-  const lp = useLocalePath();
-  const cfg = siteConfig.pricing.pro;
-  const ctaHref = lp(cfg.href);
-  const ctaLabel = t({ id: "home.pricing.pro.cta", comment: "Pro tier CTA", message: "Upgrade to Pro" });
+  const ctaLabel = t({ id: "home.pricing.pro.cta", comment: "Pro tier CTA — disabled until subscriptions launch", message: "Coming soon" });
 
   return (
     <div className="mx-auto flex w-full max-w-[500px] md:mx-0 md:max-w-[360px] md:flex-[1_1_320px]">
@@ -87,7 +84,7 @@ function ProTier() {
           </ul>
         </div>
         <div className="px-6 pb-6">
-          <Button href={ctaHref} className="w-full text-center">
+          <Button disabled className="w-full text-center">
             {ctaLabel}
           </Button>
         </div>

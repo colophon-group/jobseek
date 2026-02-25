@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "lingui compile && next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "extract": "lingui extract",
     "compile": "lingui compile",
     "db:generate": "drizzle-kit generate",
@@ -48,6 +48,7 @@
     "@lingui/format-po": "^5",
     "@lingui/loader": "^5.9.1",
     "@next/bundle-analyzer": "^16.1.6",
+    "@next/eslint-plugin-next": "^16.1.6",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
@@ -57,11 +58,13 @@
     "@vitest/ui": "^4.0.18",
     "dotenv": "^17.3.1",
     "drizzle-kit": "^0.31.9",
+    "eslint": "^9.39.3",
     "happy-dom": "^20.7.0",
     "postgres": "^3.4.8",
     "svgo": "^4.0.0",
     "tsx": "^4.21.0",
     "typescript": "^5",
+    "typescript-eslint": "^8.56.1",
     "vitest": "^4.0.18"
   }
 }

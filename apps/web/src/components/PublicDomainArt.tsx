@@ -77,6 +77,7 @@ export function PublicDomainArt({
           }}
         >
           <Image
+            key={src}
             src={src}
             alt={alt}
             fill
@@ -87,6 +88,7 @@ export function PublicDomainArt({
         </div>
       ) : (
         <Image
+          key={src}
           src={src}
           alt={alt}
           fill

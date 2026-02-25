@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
-import { createElement, type ReactNode } from "react";
+import "react";
 
 const mockUseSession = vi.fn();
 vi.mock("@/components/SessionProvider", () => ({

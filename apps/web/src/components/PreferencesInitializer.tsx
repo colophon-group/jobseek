@@ -14,7 +14,7 @@ export function PreferencesInitializer({ theme, cookieConsent }: Props) {
   useEffect(() => {
     if (theme) setTheme(theme);
     if (cookieConsent) localStorage.setItem("cookie-consent", "1");
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); // Run once on mount — props come from server and won't change
 
   return null;
 }
