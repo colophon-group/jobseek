@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Trans } from "@lingui/react/macro";
 import { useLingui } from "@lingui/react/macro";
 import { Github } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { useAuth } from "@/lib/useAuth";
 import { useLocalePath } from "@/lib/useLocalePath";
-import { recordPasswordResetRequest } from "@/lib/actions/preferences";
+import { getPasswordResetCooldown, recordPasswordResetRequest } from "@/lib/actions/preferences";
 import { Button } from "@/components/ui/Button";
 import { FormField } from "@/components/ui/FormField";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
@@ -19,12 +19,6 @@ import { LinkedInIcon } from "@/components/icons/LinkedInIcon";
 type ConnectedAccount = {
   providerId: string;
   accountId: string;
-};
-
-type AccountPageData = {
-  accounts: ConnectedAccount[];
-  hasPassword: boolean;
-  cooldown: number;
 };
 
 /* ── Login prompt for unauthenticated users ── */
@@ -48,21 +42,14 @@ function LoginPrompt() {
 
 /* ── Password Section ── */
 
-function PasswordSection({
-  hasPassword,
-  initialCooldown,
-  onPasswordSet,
-}: {
-  hasPassword: boolean;
-  initialCooldown: number;
-  onPasswordSet: () => void;
-}) {
-  if (hasPassword) return <ResetPasswordFlow initialCooldown={initialCooldown} />;
+function PasswordSection({ hasPassword, onPasswordSet }: { hasPassword: boolean; onPasswordSet: () => void }) {
+  if (hasPassword) return <ResetPasswordFlow />;
   return <SetPasswordFlow onSuccess={onPasswordSet} />;
 }
 
 function SetPasswordFlow({ onSuccess }: { onSuccess: () => void }) {
   const { t } = useLingui();
+  const { user } = useAuth();
   const [newPassword, setNewPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -108,6 +95,7 @@ function SetPasswordFlow({ onSuccess }: { onSuccess: () => void }) {
         </div>
       )}
       <form onSubmit={handleSubmit} className="space-y-4">
+        <input type="hidden" name="username" autoComplete="username" value={user?.email ?? ""} />
         <FormField
           label={t({ id: "settings.account.password.newLabel", comment: "New password input label", message: "New password" })}
           type="password"
@@ -126,13 +114,17 @@ function SetPasswordFlow({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
-function ResetPasswordFlow({ initialCooldown }: { initialCooldown: number }) {
+function ResetPasswordFlow() {
   const { t } = useLingui();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [cooldown, setCooldown] = useState(initialCooldown);
+  const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    getPasswordResetCooldown().then(setCooldown);
+  }, []);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -406,24 +398,30 @@ function DeleteAccountSection() {
 
 /* ── Main Component ── */
 
-export function AccountSettings({ initialData }: { initialData: AccountPageData | null }) {
+export function AccountSettings() {
   const { isLoggedIn } = useAuth();
-  const [accounts, setAccounts] = useState<ConnectedAccount[]>(initialData?.accounts ?? []);
-  const [hasPassword, setHasPassword] = useState(initialData?.hasPassword ?? false);
+  const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  if (!isLoggedIn || !initialData) return <LoginPrompt />;
-
-  function refreshAccounts() {
+  const fetchAccounts = useCallback(() => {
     authClient.listAccounts().then(({ data }) => {
-      const list = (data as ConnectedAccount[] | null) ?? [];
-      setAccounts(list);
-      setHasPassword(list.some((a) => a.providerId === "credential"));
+      setAccounts((data as ConnectedAccount[] | null) ?? []);
+      setLoading(false);
     });
-  }
+  }, []);
+
+  useEffect(() => {
+    if (isLoggedIn) fetchAccounts();
+  }, [isLoggedIn, fetchAccounts]);
+
+  if (!isLoggedIn) return <LoginPrompt />;
+  if (loading) return null;
+
+  const hasPassword = accounts.some((a) => a.providerId === "credential");
 
   return (
     <div className="space-y-10">
-      <PasswordSection hasPassword={hasPassword} initialCooldown={initialData.cooldown} onPasswordSet={refreshAccounts} />
+      <PasswordSection hasPassword={hasPassword} onPasswordSet={fetchAccounts} />
       <ChangeEmailSection />
       <ConnectedAccountsSection accounts={accounts} />
       <DeleteAccountSection />

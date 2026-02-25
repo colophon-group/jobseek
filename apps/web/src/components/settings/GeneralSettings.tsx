@@ -66,11 +66,7 @@ const localeLabels: Record<Locale, string> = {
 
 /* ── Component ── */
 
-export function GeneralSettings({
-  initialTheme,
-}: {
-  initialTheme?: string | null;
-}) {
+export function GeneralSettings() {
   const { theme, setTheme } = useTheme();
   const { t } = useLingui();
   const router = useRouter();
@@ -81,12 +77,6 @@ export function GeneralSettings({
   const [mounted, setMounted] = useState(false);
   const [, startTransition] = useTransition();
   useEffect(() => setMounted(true), []);
-
-  // Sync theme with server-provided preference (no fetch needed)
-  useEffect(() => {
-    if (initialTheme && initialTheme !== theme) setTheme(initialTheme);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const themeOptions = [
     { value: "light", label: t({ id: "settings.theme.light", comment: "Light theme option", message: "Light" }) },
