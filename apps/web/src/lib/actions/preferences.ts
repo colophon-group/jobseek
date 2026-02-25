@@ -32,13 +32,19 @@ export async function updatePreferences(
   const userId = await getSessionUserId();
   if (!userId) return null;
 
+  const [existing] = await db
+    .select()
+    .from(userPreferences)
+    .where(eq(userPreferences.userId, userId))
+    .limit(1);
+
   const [row] = await db
     .insert(userPreferences)
     .values({
       userId,
-      theme: data.theme ?? "light",
-      locale: data.locale ?? "en",
-      cookieConsent: data.cookieConsent ?? false,
+      theme: data.theme ?? existing?.theme ?? "light",
+      locale: data.locale ?? existing?.locale ?? "en",
+      cookieConsent: data.cookieConsent ?? existing?.cookieConsent ?? false,
     })
     .onConflictDoUpdate({
       target: userPreferences.userId,

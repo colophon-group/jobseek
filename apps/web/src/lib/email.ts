@@ -82,18 +82,23 @@ const resetCopy = {
   },
 } as const satisfies Record<Locale, EmailCopy>;
 
+function escapeHtml(str: string) {
+  return str.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 function buildEmail(t: EmailCopy, url: string) {
+  const safeUrl = escapeHtml(url);
   return `
     <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
       <h2>${t.heading}</h2>
       <p>${t.body}</p>
-      <a href="${url}"
+      <a href="${safeUrl}"
          style="display: inline-block; padding: 10px 20px; background: #111111; color: #f5f5f5; text-decoration: none; border-radius: 9999px; font-weight: 600; font-size: 16px;">
         ${t.button}
       </a>
       <p style="margin-top: 16px; color: #666; font-size: 14px;">
         ${t.fallback}<br/>
-        <a href="${url}" style="color: #666; word-break: break-all;">${url}</a>
+        <a href="${safeUrl}" style="color: #666; word-break: break-all;">${safeUrl}</a>
       </p>
       <p style="margin-top: 16px; color: #666; font-size: 14px;">
         ${t.ignore}

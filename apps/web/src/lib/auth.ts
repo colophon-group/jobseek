@@ -30,7 +30,7 @@ export const auth = betterAuth({
       const locale = localeFromRequest(request);
       const base = process.env.BETTER_AUTH_URL ?? "http://localhost:3000";
       const verifyUrl = `${base}/${locale}/verify-email?token=${token}`;
-      void sendVerificationEmail(user.email, verifyUrl, locale);
+      await sendVerificationEmail(user.email, verifyUrl, locale);
     },
   },
   user: {

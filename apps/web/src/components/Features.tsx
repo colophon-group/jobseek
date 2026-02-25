@@ -1,55 +1,5 @@
 "use client";
 
-/**
- * Features — "bleed" showcase sections on the homepage.
- *
- * ## Layout concept
- *
- * Each section is a two-column row: text + screenshot image. The screenshot
- * is intentionally wider than the viewport — it "bleeds" past the screen edge
- * and gets progressively clipped as the viewport narrows.
- *
- * - Section 1 (standard):  text LEFT,  image bleeds RIGHT.
- * - Section 2 (inverted):  text RIGHT, image bleeds LEFT.
- *
- * Text columns are aligned with the 1200px page container via ALIGN_PAD,
- * a CSS max() expression. The image side has zero padding so it sits flush
- * against the viewport edge.
- *
- * ## Responsive breakpoints
- *
- * - < 1024px   — Stacked. Text on top with px-4 inset, image below bleeding
- *                to the appropriate edge.
- * - >= 1024px  — Side by side. Text max 520px, image fills remaining space.
- * - >= 2448px  — Extra-wide. Both edges pull inward; image gets full border-
- *                radius and no longer touches the viewport edge.
- *
- * ## Image clipping
- *
- * ImageWrapper sets `overflow: hidden` with `max-width: <screenshot-width>px`.
- * The inner <img> has a fixed pixel width (e.g. 1200px) with `max-width: none`,
- * so it overflows its container. As the viewport narrows:
- *   - Standard:  image is left-aligned  → right side clips first.
- *   - Inverted:  image is right-aligned → left side clips first.
- *
- * Border-radius is applied only to the visible (inner) edge:
- *   - Standard:  left-rounded  (24px 0 0 24px)
- *   - Inverted:  right-rounded (0 24px 24px 0)
- *   - Extra-wide: fully rounded (24px)
- *
- * ## Theme handling
- *
- * ThemedImage is a client component that renders a single <img> matching
- * the active theme, so no CSS display toggles are needed.
- *
- * ## Key constants
- *
- * See CONTAINER_MAX, CONTAINER_PAD, ALIGN_PAD, IMAGE_BORDER_RADIUS,
- * EXTRA_WIDE_BREAKPOINT, and MEDIA_SHADOW below.
- *
- * @see docs/features.md for the full specification.
- */
-
 import type { ElementType, CSSProperties } from "react";
 import { Trans } from "@lingui/react/macro";
 import { siteConfig } from "@/content/config";
@@ -160,7 +110,7 @@ function FeatureSection1() {
           .feat-row-1 { padding-right: ${extraWideInset(mediaWidth)}; }
         }
       `}</style>
-      <div className="feat-row-1 flex flex-col items-stretch gap-12 lg:flex-row lg:gap-16 lg:gap-20">
+      <div className="feat-row-1 flex flex-col items-stretch gap-12 lg:flex-row lg:gap-20">
         <div className="w-full shrink-0 pr-4 lg:w-auto lg:max-w-[520px] lg:pr-0" style={{ flexBasis: TEXT_MAX_W }}>
           <div className="flex flex-col gap-4">
             <div>
@@ -218,7 +168,7 @@ function FeatureSection2() {
           .feat-row-2 { padding-left: ${extraWideInset(mediaWidth)}; }
         }
       `}</style>
-      <div className="feat-row-2 flex flex-col items-stretch gap-12 lg:flex-row-reverse lg:gap-16 lg:gap-20">
+      <div className="feat-row-2 flex flex-col items-stretch gap-12 lg:flex-row-reverse lg:gap-20">
         <div className="w-full shrink-0 pl-4 lg:w-auto lg:max-w-[520px] lg:pl-0" style={{ flexBasis: TEXT_MAX_W }}>
           <div className="flex flex-col gap-4">
             <div>

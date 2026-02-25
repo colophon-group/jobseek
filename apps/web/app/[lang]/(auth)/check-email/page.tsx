@@ -48,7 +48,7 @@ export default function CheckEmailPage() {
       if (remaining <= 0) clearInterval(timer);
     }, 1000);
     return () => clearInterval(timer);
-  }, [cooldown > 0]);
+  }, [cooldown]);
 
   const handleResend = useCallback(async () => {
     if (!email) return;
@@ -58,14 +58,15 @@ export default function CheckEmailPage() {
       email,
       callbackURL: lp("/app"),
     });
+    setResending(false);
     if (error) {
       setError(error.message ?? t({
         id: "auth.verify.resendError",
         comment: "Error when resending verification email fails",
         message: "Failed to resend verification email",
       }));
+      return;
     }
-    setResending(false);
     startCooldown();
     setCooldown(COOLDOWN_SECONDS);
   }, [email, lp, t]);

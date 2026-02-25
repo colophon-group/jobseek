@@ -25,7 +25,7 @@ export default function VerifyEmailPage() {
 
     if (!token) {
       setStatus("error");
-      setError("Invalid verification link");
+      setError(t({ id: "auth.verify.error.invalidLink", comment: "Error when verification link has no token", message: "Invalid verification link" }));
       return;
     }
 
@@ -33,7 +33,7 @@ export default function VerifyEmailPage() {
     authClient.verifyEmail({ query: { token } }).then(({ error }) => {
       if (error) {
         setStatus("error");
-        setError(error.message ?? "Verification failed");
+        setError(error.message ?? t({ id: "auth.verify.error.generic", comment: "Generic error when email verification fails", message: "Verification failed" }));
       } else {
         setStatus("success");
       }

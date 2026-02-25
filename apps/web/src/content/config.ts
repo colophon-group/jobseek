@@ -163,13 +163,13 @@ export const siteConfig = {
   },
 
   footer: {
-    links: [
-      { href: "https://github.com/colophon-group/jobseek", external: true },
-      { href: "mailto:business@colophon-group.org", external: true },
-      { href: "/license", external: false },
-      { href: "/privacy-policy", external: false },
-      { href: "/terms", external: false },
-    ],
+    links: {
+      github: { href: "https://github.com/colophon-group/jobseek", external: true },
+      contact: { href: "mailto:business@colophon-group.org", external: true },
+      license: { href: "/license", external: false },
+      privacy: { href: "/privacy-policy", external: false },
+      terms: { href: "/terms", external: false },
+    },
   },
 
 } as const;

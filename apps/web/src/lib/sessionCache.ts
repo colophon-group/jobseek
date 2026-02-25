@@ -30,9 +30,6 @@ export async function getSessionUserId(): Promise<string | null> {
     cookieStore.get("__Secure-better-auth.session_token")?.value ??
     cookieStore.get("better-auth.session_token")?.value;
   if (!token) {
-    // Debug: log available cookie names to diagnose mismatch
-    const allNames = cookieStore.getAll().map((c) => c.name);
-    console.log("[getSessionUserId] no token found. cookies:", allNames);
     return null;
   }
 

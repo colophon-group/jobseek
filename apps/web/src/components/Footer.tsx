@@ -31,29 +31,29 @@ export function Footer({ lang }: FooterProps) {
         <nav aria-label={i18n._(msg({ id: "common.footer.ariaLabel", comment: "Aria label for footer navigation", message: "Footer" }))} className="order-1 sm:order-2">
           <ul className="flex list-none gap-4 p-0">
             <li>
-              <a className={linkClass} href={links[0].href} target="_blank" rel="noreferrer">
+              <a className={linkClass} href={links.github.href} target="_blank" rel="noreferrer">
                 <Trans id="common.footer.github" comment="Footer link to GitHub repo">GitHub</Trans>
                 <span className="sr-only"><Trans id="common.a11y.opensInNewTab" comment="Screen reader text for external links">(opens in new tab)</Trans></span>
               </a>
             </li>
             <li>
-              <a className={linkClass} href={links[1].href} target="_blank" rel="noreferrer">
+              <a className={linkClass} href={links.contact.href} target="_blank" rel="noreferrer">
                 <Trans id="common.footer.contact" comment="Footer link to contact email">Contact</Trans>
                 <span className="sr-only"><Trans id="common.a11y.opensInNewTab" comment="Screen reader text for external links">(opens in new tab)</Trans></span>
               </a>
             </li>
             <li>
-              <Link className={linkClass} prefetch={false} href={`${prefix}${links[2].href}`}>
+              <Link className={linkClass} prefetch={false} href={`${prefix}${links.license.href}`}>
                 <Trans id="common.footer.licenseLink" comment="Footer link to license page">License</Trans>
               </Link>
             </li>
             <li>
-              <Link className={linkClass} prefetch={false} href={`${prefix}${links[3].href}`}>
+              <Link className={linkClass} prefetch={false} href={`${prefix}${links.privacy.href}`}>
                 <Trans id="common.footer.privacyLink" comment="Footer link to privacy policy page">Privacy</Trans>
               </Link>
             </li>
             <li>
-              <Link className={linkClass} prefetch={false} href={`${prefix}${links[4].href}`}>
+              <Link className={linkClass} prefetch={false} href={`${prefix}${links.terms.href}`}>
                 <Trans id="common.footer.termsLink" comment="Footer link to terms of service page">Terms</Trans>
               </Link>
             </li>

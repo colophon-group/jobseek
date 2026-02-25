@@ -11,6 +11,7 @@ import { setPassword as setPasswordAction, recordPasswordResetRequest, getAccoun
 import { Button } from "@/components/ui/Button";
 import { FormField } from "@/components/ui/FormField";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
+import { SuccessAlert } from "@/components/ui/SuccessAlert";
 import { GoogleIcon } from "@/components/icons/GoogleIcon";
 import { LinkedInIcon } from "@/components/icons/LinkedInIcon";
 
@@ -85,12 +86,8 @@ function SetPasswordFlow({ onSuccess }: { onSuccess: () => void }) {
           You signed in with a social account. Set a password to enable email changes and additional security.
         </Trans>
       </p>
-      {error && <ErrorAlert message={error} />}
-      {success && (
-        <div className="mb-4 rounded-md border border-success-border bg-success-bg px-4 py-3 text-sm text-success">
-          {success}
-        </div>
-      )}
+      <ErrorAlert message={error} />
+      <SuccessAlert message={success} />
       <form onSubmit={handleSubmit} className="flex flex-col gap-4 min-[480px]:flex-row min-[480px]:items-end">
         <input type="hidden" name="username" autoComplete="username" value={user?.email ?? ""} />
         <div className="flex-1">
@@ -131,7 +128,7 @@ function ResetPasswordFlow({ initialCooldown }: { initialCooldown: number }) {
       });
     }, 1000);
     return () => clearInterval(timer);
-  }, [cooldown > 0]);
+  }, [cooldown]);
 
   async function handleReset() {
     if (!user?.email) return;
@@ -177,12 +174,8 @@ function ResetPasswordFlow({ initialCooldown }: { initialCooldown: number }) {
           Change your password via a secure email link.
         </Trans>
       </p>
-      {error && <ErrorAlert message={error} />}
-      {success && (
-        <div className="mb-4 rounded-md border border-success-border bg-success-bg px-4 py-3 text-sm text-success">
-          {success}
-        </div>
-      )}
+      <ErrorAlert message={error} />
+      <SuccessAlert message={success} />
       <Button onClick={handleReset} disabled={loading || cooldown > 0} size="sm">
         {loading
           ? t({ id: "settings.account.password.sending", comment: "Reset password button while loading", message: "Sending..." })
@@ -236,12 +229,8 @@ function ChangeEmailSection() {
           Update the email address associated with your account.
         </Trans>
       </p>
-      {error && <ErrorAlert message={error} />}
-      {success && (
-        <div className="mb-4 rounded-md border border-success-border bg-success-bg px-4 py-3 text-sm text-success">
-          {success}
-        </div>
-      )}
+      <ErrorAlert message={error} />
+      <SuccessAlert message={success} />
       <form onSubmit={handleSubmit} className="flex flex-col gap-4 min-[480px]:flex-row min-[480px]:items-end">
         <div className="flex-1">
           <FormField
@@ -271,31 +260,35 @@ const socialProviders = [
   { id: "linkedin", label: "LinkedIn", icon: <LinkedInIcon size={20} /> },
 ] as const;
 
-function ConnectedAccountsSection({ accounts }: { accounts: ConnectedAccount[] }) {
+function ConnectedAccountsSection({ accounts, onDisconnect }: { accounts: ConnectedAccount[]; onDisconnect: (providerId: string) => void }) {
   const { t } = useLingui();
   const lp = useLocalePath();
-  const [localAccounts, setLocalAccounts] = useState(accounts);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  useEffect(() => { setLocalAccounts(accounts); }, [accounts]);
-
   function isConnected(providerId: string) {
-    return localAccounts.some((a) => a.providerId === providerId);
+    return accounts.some((a) => a.providerId === providerId);
   }
 
   async function handleConnect(provider: string) {
     setActionLoading(provider);
-    await authClient.linkSocial({
+    const result = await authClient.linkSocial({
       provider: provider as "github" | "google" | "linkedin",
       callbackURL: lp("/app/settings/account"),
     });
+    if (result.error) {
+      // linkSocial redirects on success, so we only reach here on error
+    }
     setActionLoading(null);
   }
 
   async function handleDisconnect(providerId: string) {
     setActionLoading(providerId);
-    await authClient.unlinkAccount({ providerId });
-    setLocalAccounts((prev) => prev.filter((a) => a.providerId !== providerId));
+    try {
+      await authClient.unlinkAccount({ providerId });
+      onDisconnect(providerId);
+    } catch {
+      // Keep provider in UI on failure
+    }
     setActionLoading(null);
   }
 
@@ -366,7 +359,7 @@ function DeleteAccountSection() {
           Permanently delete your account and all associated data. This action cannot be undone.
         </Trans>
       </p>
-      {error && <ErrorAlert message={error} />}
+      <ErrorAlert message={error} />
       {!showConfirm ? (
         <Button onClick={() => setShowConfirm(true)} variant="danger" size="sm">
           {t({ id: "settings.account.delete.button", comment: "Delete account button", message: "Delete my account" })}
@@ -410,6 +403,10 @@ export function AccountSettings({ initialData }: { initialData?: AccountPageData
     });
   }, []);
 
+  const handleDisconnect = useCallback((providerId: string) => {
+    setAccounts((prev) => prev.filter((a) => a.providerId !== providerId));
+  }, []);
+
   if (!isLoggedIn) return <LoginPrompt />;
   if (!initialData) return null;
 
@@ -419,7 +416,7 @@ export function AccountSettings({ initialData }: { initialData?: AccountPageData
     <div className="space-y-10">
       <PasswordSection hasPassword={hasPassword} initialCooldown={0} onPasswordSet={refreshAccounts} />
       <ChangeEmailSection />
-      <ConnectedAccountsSection accounts={accounts} />
+      <ConnectedAccountsSection accounts={accounts} onDisconnect={handleDisconnect} />
       <DeleteAccountSection />
     </div>
   );

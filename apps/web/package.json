@@ -14,7 +14,9 @@
     "db:seed": "tsx src/db/seed.ts",
     "db:push": "drizzle-kit push",
     "analyze": "ANALYZE=true next build",
-    "optimize:svg": "svgo public/*.svg --multipass"
+    "optimize:svg": "svgo public/*.svg --multipass",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@lingui/core": "^5",
@@ -46,14 +48,20 @@
     "@lingui/format-po": "^5",
     "@lingui/loader": "^5.9.1",
     "@next/bundle-analyzer": "^16.1.6",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/ui": "^4.0.18",
     "dotenv": "^17.3.1",
     "drizzle-kit": "^0.31.9",
+    "happy-dom": "^20.7.0",
     "postgres": "^3.4.8",
     "svgo": "^4.0.0",
     "tsx": "^4.21.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.0.18"
   }
 }

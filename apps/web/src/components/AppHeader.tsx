@@ -48,7 +48,7 @@ function BottomBarLink({ href, label, children }: { href: string; label: string;
 export function AppHeader() {
   const { t } = useLingui();
   const lp = useLocalePath();
-  const { isLoggedIn, user, isPending } = useAuth();
+  const { isLoggedIn, user } = useAuth();
 
   const appHref = lp(siteConfig.nav.app.href);
 
