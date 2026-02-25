@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Trans } from "@lingui/react/macro";
 import { useLingui } from "@lingui/react/macro";
-import { Github } from "lucide-react";
+import { GitHubIcon } from "@/components/icons/GitHubIcon";
 import { authClient } from "@/lib/auth-client";
 import { useAuth } from "@/lib/useAuth";
 import { useLocalePath } from "@/lib/useLocalePath";
@@ -255,7 +255,7 @@ function ChangeEmailSection() {
 /* ── Connected Accounts ── */
 
 const socialProviders = [
-  { id: "github", label: "GitHub", icon: <Github size={20} /> },
+  { id: "github", label: "GitHub", icon: <GitHubIcon size={20} /> },
   { id: "google", label: "Google", icon: <GoogleIcon size={20} /> },
   { id: "linkedin", label: "LinkedIn", icon: <LinkedInIcon size={20} /> },
 ] as const;

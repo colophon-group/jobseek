@@ -1,5 +1,5 @@
 import { Trans } from "@lingui/react/macro";
-import { Github } from "lucide-react";
+import { GitHubIcon } from "@/components/icons/GitHubIcon";
 import { GoogleIcon } from "@/components/icons/GoogleIcon";
 import { LinkedInIcon } from "@/components/icons/LinkedInIcon";
 import { Button } from "@/components/ui/Button";
@@ -23,7 +23,7 @@ export function OAuthButtons({ onOAuth }: OAuthButtonsProps) {
       </div>
       <div className="flex flex-col gap-3">
         <Button variant="outline" className="w-full gap-2" onClick={() => onOAuth("github")}>
-          <Github size={20} />
+          <GitHubIcon size={20} />
           <Trans id="auth.oauth.github" comment="GitHub OAuth button">Continue with GitHub</Trans>
         </Button>
         <Button variant="outline" className="w-full gap-2" onClick={() => onOAuth("google")}>
