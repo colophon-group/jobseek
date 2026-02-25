@@ -111,7 +111,7 @@ export function GeneralSettings() {
               className={`rounded-md border px-4 py-2 text-sm transition-colors cursor-pointer ${
                 mounted && theme === opt.value
                   ? "border-primary bg-primary text-primary-contrast font-semibold"
-                  : "border-border-soft bg-surface hover:bg-border-soft"
+                  : "border-divider bg-surface hover:bg-border-soft"
               }`}
             >
               {opt.label}
@@ -139,7 +139,7 @@ export function GeneralSettings() {
                 className={`flex items-center gap-2 rounded-md border px-4 py-2.5 text-sm transition-colors cursor-pointer ${
                   isActive
                     ? "border-primary bg-primary text-primary-contrast font-semibold"
-                    : "border-border-soft bg-surface hover:bg-border-soft"
+                    : "border-divider bg-surface hover:bg-border-soft"
                 }`}
               >
                 <Flag width={20} height={15} className="shrink-0" aria-hidden />

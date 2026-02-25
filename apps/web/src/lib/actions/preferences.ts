@@ -5,7 +5,7 @@ import { headers } from "next/headers";
 import { db } from "@/db";
 import { account, userPreferences } from "@/db/schema";
 import { auth } from "@/lib/auth";
-import { getSession } from "@/lib/sessionCache";
+import { getSession, getSessionUserId } from "@/lib/sessionCache";
 
 const PASSWORD_RESET_COOLDOWN_SECONDS = 60;
 
@@ -29,13 +29,13 @@ export async function updatePreferences(
     cookieConsent?: boolean;
   },
 ) {
-  const session = await getSession();
-  if (!session) throw new Error("Not authenticated");
+  const userId = await getSessionUserId();
+  if (!userId) return null;
 
   const [row] = await db
     .insert(userPreferences)
     .values({
-      userId: session.user.id,
+      userId,
       theme: data.theme ?? "light",
       locale: data.locale ?? "en",
       cookieConsent: data.cookieConsent ?? false,

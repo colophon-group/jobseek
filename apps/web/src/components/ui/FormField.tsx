@@ -5,7 +5,7 @@ import { useLingui } from "@lingui/react/macro";
 import { Eye, EyeOff } from "lucide-react";
 
 const inputClass =
-  "w-full rounded-md border border-border-soft bg-background px-3 py-1.5 text-sm text-foreground outline-none focus:border-primary";
+  "w-full rounded-md border border-divider bg-background px-3 py-1.5 text-sm text-foreground outline-none focus:border-primary";
 
 type FormFieldProps = {
   label: string;

@@ -313,7 +313,7 @@ function ConnectedAccountsSection({ accounts }: { accounts: ConnectedAccount[] }
         {socialProviders.map((p) => {
           const connected = isConnected(p.id);
           return (
-            <div key={p.id} className="flex items-center justify-between rounded-md border border-border-soft px-4 py-3">
+            <div key={p.id} className="flex items-center justify-between rounded-md border border-divider px-4 py-3">
               <div className="flex items-center gap-3">
                 {p.icon}
                 <span className="text-sm font-medium">{p.label}</span>
