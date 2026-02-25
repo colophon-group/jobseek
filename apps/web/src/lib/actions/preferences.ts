@@ -117,30 +117,13 @@ export async function getAccountPageData() {
   const session = await getSession();
   if (!session) return null;
 
-  const [accounts, cooldownRow] = await Promise.all([
-    db
-      .select({ providerId: account.providerId, accountId: account.accountId })
-      .from(account)
-      .where(eq(account.userId, session.user.id)),
-    withRLS(session.user.id, async (tx) => {
-      const [result] = await tx
-        .select({ lastPasswordResetAt: userPreferences.lastPasswordResetAt })
-        .from(userPreferences)
-        .where(eq(userPreferences.userId, session.user.id))
-        .limit(1);
-      return result ?? null;
-    }),
-  ]);
-
-  let cooldown = 0;
-  if (cooldownRow?.lastPasswordResetAt) {
-    const elapsed = Math.floor((Date.now() - cooldownRow.lastPasswordResetAt.getTime()) / 1000);
-    cooldown = Math.max(0, PASSWORD_RESET_COOLDOWN_SECONDS - elapsed);
-  }
+  const accounts = await db
+    .select({ providerId: account.providerId, accountId: account.accountId })
+    .from(account)
+    .where(eq(account.userId, session.user.id));
 
   return {
     accounts: accounts.map((a) => ({ providerId: a.providerId, accountId: a.accountId })),
     hasPassword: accounts.some((a) => a.providerId === "credential"),
-    cooldown,
   };
 }

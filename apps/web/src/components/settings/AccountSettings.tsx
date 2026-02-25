@@ -7,7 +7,7 @@ import { Github } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { useAuth } from "@/lib/useAuth";
 import { useLocalePath } from "@/lib/useLocalePath";
-import { getPasswordResetCooldown, recordPasswordResetRequest } from "@/lib/actions/preferences";
+import { recordPasswordResetRequest, getAccountPageData } from "@/lib/actions/preferences";
 import { Button } from "@/components/ui/Button";
 import { FormField } from "@/components/ui/FormField";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
@@ -42,8 +42,8 @@ function LoginPrompt() {
 
 /* ── Password Section ── */
 
-function PasswordSection({ hasPassword, onPasswordSet }: { hasPassword: boolean; onPasswordSet: () => void }) {
-  if (hasPassword) return <ResetPasswordFlow />;
+function PasswordSection({ hasPassword, initialCooldown, onPasswordSet }: { hasPassword: boolean; initialCooldown: number; onPasswordSet: () => void }) {
+  if (hasPassword) return <ResetPasswordFlow initialCooldown={initialCooldown} />;
   return <SetPasswordFlow onSuccess={onPasswordSet} />;
 }
 
@@ -114,17 +114,13 @@ function SetPasswordFlow({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
-function ResetPasswordFlow() {
+function ResetPasswordFlow({ initialCooldown }: { initialCooldown: number }) {
   const { t } = useLingui();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [cooldown, setCooldown] = useState(0);
-
-  useEffect(() => {
-    getPasswordResetCooldown().then(setCooldown);
-  }, []);
+  const [cooldown, setCooldown] = useState(initialCooldown);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -396,32 +392,33 @@ function DeleteAccountSection() {
   );
 }
 
+/* ── Types ── */
+
+type AccountPageData = {
+  accounts: ConnectedAccount[];
+  hasPassword: boolean;
+} | null;
+
 /* ── Main Component ── */
 
-export function AccountSettings() {
+export function AccountSettings({ initialData }: { initialData?: AccountPageData }) {
   const { isLoggedIn } = useAuth();
-  const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [accounts, setAccounts] = useState<ConnectedAccount[]>(initialData?.accounts ?? []);
 
-  const fetchAccounts = useCallback(() => {
-    authClient.listAccounts().then(({ data }) => {
-      setAccounts((data as ConnectedAccount[] | null) ?? []);
-      setLoading(false);
+  const refreshAccounts = useCallback(() => {
+    getAccountPageData().then((data) => {
+      if (data) setAccounts(data.accounts);
     });
   }, []);
 
-  useEffect(() => {
-    if (isLoggedIn) fetchAccounts();
-  }, [isLoggedIn, fetchAccounts]);
-
   if (!isLoggedIn) return <LoginPrompt />;
-  if (loading) return null;
+  if (!initialData) return null;
 
   const hasPassword = accounts.some((a) => a.providerId === "credential");
 
   return (
     <div className="space-y-10">
-      <PasswordSection hasPassword={hasPassword} onPasswordSet={fetchAccounts} />
+      <PasswordSection hasPassword={hasPassword} initialCooldown={0} onPasswordSet={refreshAccounts} />
       <ChangeEmailSection />
       <ConnectedAccountsSection accounts={accounts} />
       <DeleteAccountSection />
