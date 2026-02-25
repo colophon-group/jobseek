@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect } from "react";
 import { useTheme } from "next-themes";
 import { useParams, usePathname, useSearchParams, useRouter } from "next/navigation";
 import { Trans } from "@lingui/react/macro";
@@ -75,7 +75,6 @@ export function GeneralSettings() {
   const params = useParams();
   const currentLocale = (params.lang as string) ?? "en";
   const [mounted, setMounted] = useState(false);
-  const [, startTransition] = useTransition();
   useEffect(() => setMounted(true), []);
 
   const themeOptions = [
@@ -88,9 +87,7 @@ export function GeneralSettings() {
     const newPath = pathname.replace(`/${currentLocale}`, `/${locale}`);
     const qs = searchParams.toString();
     router.push(qs ? `${newPath}?${qs}` : newPath);
-    startTransition(() => {
-      updatePreferences({ locale });
-    });
+    void updatePreferences({ locale });
   }
 
   return (
@@ -109,9 +106,7 @@ export function GeneralSettings() {
               key={opt.value}
               onClick={() => {
                 setTheme(opt.value);
-                startTransition(() => {
-                  updatePreferences({ theme: opt.value as "light" | "dark" });
-                });
+                void updatePreferences({ theme: opt.value as "light" | "dark" });
               }}
               className={`rounded-md border px-4 py-2 text-sm transition-colors cursor-pointer ${
                 mounted && theme === opt.value

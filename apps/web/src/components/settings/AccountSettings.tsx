@@ -71,7 +71,7 @@ function SetPasswordFlow({ onSuccess }: { onSuccess: () => void }) {
     } else {
       setSuccess(t({ id: "settings.account.password.setSuccess", comment: "Success message after setting password", message: "Password set successfully." }));
       setNewPassword("");
-      onSuccess();
+      setTimeout(onSuccess, 2000);
     }
   }
 
