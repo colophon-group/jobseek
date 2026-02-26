@@ -8,6 +8,7 @@ import * as Tooltip from "@radix-ui/react-tooltip";
 import { Globe } from "lucide-react";
 import { flags, localeLabels } from "@/components/flags";
 import { updatePreferences } from "@/lib/actions/preferences";
+import { localPrefs } from "@/lib/preference-timestamps";
 
 type LocaleSwitcherProps = {
   className?: string;
@@ -29,10 +30,13 @@ export function LocaleSwitcher({ className }: LocaleSwitcherProps) {
 
   function handleSelect(locale: Locale) {
     if (locale === currentLocale) return;
+    const now = new Date().toISOString();
+    localPrefs.localeTimestamp.set(now);
+    localPrefs.locale.set(locale);
     const newPath = pathname.replace(`/${currentLocale}`, `/${locale}`);
     const qs = searchParams.toString();
     router.push(qs ? `${newPath}?${qs}` : newPath);
-    void updatePreferences({ locale });
+    void updatePreferences({ locale, localeUpdatedAt: now });
   }
 
   return (

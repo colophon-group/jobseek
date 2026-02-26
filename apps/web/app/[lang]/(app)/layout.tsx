@@ -23,6 +23,9 @@ export default async function AppLayout({ params, children }: Props) {
         {prefs && (
           <PreferencesInitializer
             theme={prefs.theme}
+            themeUpdatedAt={prefs.themeUpdatedAt?.toISOString() ?? null}
+            locale={prefs.locale}
+            localeUpdatedAt={prefs.localeUpdatedAt?.toISOString() ?? null}
             cookieConsent={prefs.cookieConsent}
           />
         )}

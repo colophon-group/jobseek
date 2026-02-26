@@ -27,6 +27,8 @@ export async function updatePreferences(
     theme?: "light" | "dark";
     locale?: "en" | "de" | "fr" | "it";
     cookieConsent?: boolean;
+    themeUpdatedAt?: string;
+    localeUpdatedAt?: string;
   },
 ) {
   const userId = await getSessionUserId();
@@ -38,20 +40,59 @@ export async function updatePreferences(
     .where(eq(userPreferences.userId, userId))
     .limit(1);
 
+  // For updates (existing row), enforce "only update if newer" per field
+  if (existing) {
+    const set: Record<string, unknown> = {
+      updatedAt: new Date(),
+    };
+
+    if (data.cookieConsent !== undefined) {
+      set.cookieConsent = data.cookieConsent;
+    }
+
+    // Theme: only update if incoming timestamp >= existing, or no existing timestamp
+    if (data.theme !== undefined) {
+      const incomingTs = data.themeUpdatedAt ? new Date(data.themeUpdatedAt) : null;
+      const existingTs = existing.themeUpdatedAt;
+      if (!existingTs || !incomingTs || incomingTs >= existingTs) {
+        set.theme = data.theme;
+        set.themeUpdatedAt = incomingTs ?? new Date();
+      }
+    }
+
+    // Locale: only update if incoming timestamp >= existing, or no existing timestamp
+    if (data.locale !== undefined) {
+      const incomingTs = data.localeUpdatedAt ? new Date(data.localeUpdatedAt) : null;
+      const existingTs = existing.localeUpdatedAt;
+      if (!existingTs || !incomingTs || incomingTs >= existingTs) {
+        set.locale = data.locale;
+        set.localeUpdatedAt = incomingTs ?? new Date();
+      }
+    }
+
+    const [row] = await db
+      .update(userPreferences)
+      .set(set)
+      .where(eq(userPreferences.userId, userId))
+      .returning();
+
+    return row;
+  }
+
+  // Insert (new row): always write everything
   const [row] = await db
     .insert(userPreferences)
     .values({
       userId,
-      theme: data.theme ?? existing?.theme ?? "light",
-      locale: data.locale ?? existing?.locale ?? "en",
-      cookieConsent: data.cookieConsent ?? existing?.cookieConsent ?? false,
+      theme: data.theme ?? "light",
+      locale: data.locale ?? "en",
+      cookieConsent: data.cookieConsent ?? false,
+      themeUpdatedAt: data.themeUpdatedAt ? new Date(data.themeUpdatedAt) : new Date(),
+      localeUpdatedAt: data.localeUpdatedAt ? new Date(data.localeUpdatedAt) : new Date(),
     })
     .onConflictDoUpdate({
       target: userPreferences.userId,
       set: {
-        ...(data.theme !== undefined && { theme: data.theme }),
-        ...(data.locale !== undefined && { locale: data.locale }),
-        ...(data.cookieConsent !== undefined && { cookieConsent: data.cookieConsent }),
         updatedAt: new Date(),
       },
     })

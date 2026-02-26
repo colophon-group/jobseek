@@ -5,6 +5,8 @@ import { useTheme } from "next-themes";
 import { useLingui } from "@lingui/react/macro";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { Moon, Sun } from "lucide-react";
+import { localPrefs } from "@/lib/preference-timestamps";
+import { updatePreferences } from "@/lib/actions/preferences";
 
 type ThemeToggleButtonProps = {
   className?: string;
@@ -28,7 +30,12 @@ export function ThemeToggleButton({ className }: ThemeToggleButtonProps) {
       <Tooltip.Root>
         <Tooltip.Trigger asChild>
           <button
-            onClick={() => setTheme(next)}
+            onClick={() => {
+              setTheme(next);
+              const now = new Date().toISOString();
+              localPrefs.themeTimestamp.set(now);
+              void updatePreferences({ theme: next, themeUpdatedAt: now });
+            }}
             className={`inline-flex items-center justify-center rounded-md p-1.5 text-foreground hover:bg-border-soft transition-colors cursor-pointer ${className ?? ""}`}
             aria-label={label}
           >

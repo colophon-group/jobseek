@@ -43,6 +43,13 @@
       "when": 1771984014825,
       "tag": "0005_odd_doctor_octopus",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1772100922402,
+      "tag": "0006_cute_living_mummy",
+      "breakpoints": true
     }
   ]
 }

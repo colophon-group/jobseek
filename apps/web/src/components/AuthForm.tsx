@@ -7,7 +7,8 @@ import { Trans } from "@lingui/react/macro";
 import { useLingui } from "@lingui/react/macro";
 import { authClient } from "@/lib/auth-client";
 import { useLocalePath } from "@/lib/useLocalePath";
-import { getPreferences } from "@/lib/actions/preferences";
+import { getPreferences, updatePreferences } from "@/lib/actions/preferences";
+import { localPrefs } from "@/lib/preference-timestamps";
 import { Button } from "@/components/ui/Button";
 import { FormField } from "@/components/ui/FormField";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
@@ -88,9 +89,38 @@ export function AuthForm({ mode }: AuthFormProps) {
         return;
       }
       const prefs = await getPreferences();
-      const targetLocale = prefs?.locale;
-      if (targetLocale && !dashboardUrl.startsWith(`/${targetLocale}/`)) {
-        router.push(`/${targetLocale}/app`);
+      if (prefs) {
+        // Sync theme: compare timestamps
+        const localThemeTs = localPrefs.themeTimestamp.get();
+        const dbThemeTs = prefs.themeUpdatedAt?.toISOString() ?? null;
+        if (localThemeTs && dbThemeTs && new Date(localThemeTs) > new Date(dbThemeTs)) {
+          // Local theme is newer — will be synced by PreferencesInitializer
+        } else if (dbThemeTs) {
+          localPrefs.themeTimestamp.set(dbThemeTs);
+        }
+
+        // Resolve locale: compare timestamps
+        const localLocaleTs = localPrefs.localeTimestamp.get();
+        const dbLocaleTs = prefs.localeUpdatedAt?.toISOString() ?? null;
+        let targetLocale: string = prefs.locale;
+        if (localLocaleTs && dbLocaleTs && new Date(localLocaleTs) > new Date(dbLocaleTs)) {
+          // Local locale is newer — sync to DB
+          const localLocale = localPrefs.locale.get();
+          if (localLocale) {
+            targetLocale = localLocale;
+            void updatePreferences({ locale: localLocale as "en" | "de" | "fr" | "it", localeUpdatedAt: localLocaleTs });
+          }
+        } else {
+          // DB wins — save DB timestamps locally
+          if (dbLocaleTs) localPrefs.localeTimestamp.set(dbLocaleTs);
+          localPrefs.locale.set(prefs.locale);
+        }
+
+        if (targetLocale && !dashboardUrl.startsWith(`/${targetLocale}/`)) {
+          router.push(`/${targetLocale}/app`);
+        } else {
+          router.push(dashboardUrl);
+        }
       } else {
         router.push(dashboardUrl);
       }

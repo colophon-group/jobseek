@@ -94,6 +94,8 @@ export const userPreferences = pgTable("user_preferences", {
     .default("en")
     .notNull(),
   cookieConsent: boolean("cookie_consent").default(false).notNull(),
+  themeUpdatedAt: timestamp("theme_updated_at"),
+  localeUpdatedAt: timestamp("locale_updated_at"),
   lastPasswordResetAt: timestamp("last_password_reset_at"),
   updatedAt: timestamp("updated_at")
     .defaultNow()

@@ -8,6 +8,7 @@ import { useLingui } from "@lingui/react/macro";
 import { locales, type Locale } from "@/lib/i18n";
 import { updatePreferences } from "@/lib/actions/preferences";
 import { flags, localeLabels } from "@/components/flags";
+import { localPrefs } from "@/lib/preference-timestamps";
 
 /* ── Component ── */
 
@@ -29,10 +30,13 @@ export function GeneralSettings() {
 
   function handleLocaleSwitch(locale: Locale) {
     if (locale === currentLocale) return;
+    const now = new Date().toISOString();
+    localPrefs.localeTimestamp.set(now);
+    localPrefs.locale.set(locale);
     const newPath = pathname.replace(`/${currentLocale}`, `/${locale}`);
     const qs = searchParams.toString();
     router.push(qs ? `${newPath}?${qs}` : newPath);
-    void updatePreferences({ locale });
+    void updatePreferences({ locale, localeUpdatedAt: now });
   }
 
   return (
@@ -50,8 +54,10 @@ export function GeneralSettings() {
             <button
               key={opt.value}
               onClick={() => {
+                const now = new Date().toISOString();
                 setTheme(opt.value);
-                void updatePreferences({ theme: opt.value as "light" | "dark" });
+                localPrefs.themeTimestamp.set(now);
+                void updatePreferences({ theme: opt.value as "light" | "dark", themeUpdatedAt: now });
               }}
               className={`rounded-md border px-4 py-2 text-sm transition-colors cursor-pointer ${
                 mounted && theme === opt.value
