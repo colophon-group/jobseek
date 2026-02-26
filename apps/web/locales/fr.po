@@ -39,16 +39,16 @@ msgstr "« Viktor Shcherbakov, Collection of Job Postings » avec un lien vers l
 msgid "common.a11y.opensInNewTab"
 msgstr "(ouvre dans un nouvel onglet)"
 
-#. Account bottom bar label
-#. js-lingui-explicit-id
-#: src/components/AppHeader.tsx:208
-msgid "app.header.nav.account"
-msgstr "Compte"
-
 #. Account settings nav link
 #. js-lingui-explicit-id
 #: src/components/settings/SettingsNav.tsx:26
 msgid "settings.nav.account"
+msgstr "Compte"
+
+#. Account bottom bar label
+#. js-lingui-explicit-id
+#: src/components/AppHeader.tsx:208
+msgid "app.header.nav.account"
 msgstr "Compte"
 
 #. Aria label for user avatar menu
@@ -71,7 +71,7 @@ msgstr "Toutes les données sont chiffrées en transit et au repos."
 
 #. Link to sign-in page from sign-up
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:166
+#: src/components/AuthForm.tsx:196
 msgid "auth.signUp.hasAccount"
 msgstr "Déjà un compte ? <0>Se connecter</0>"
 
@@ -155,7 +155,7 @@ msgstr "Changer l'e-mail"
 
 #. Aria label for language switcher button
 #. js-lingui-explicit-id
-#: src/components/LocaleSwitcher.tsx:24
+#: src/components/LocaleSwitcher.tsx:25
 msgid "common.locale.switch"
 msgstr "Changer de langue"
 
@@ -173,7 +173,7 @@ msgstr "Vérifie ton e-mail"
 
 #. Theme settings description
 #. js-lingui-explicit-id
-#: src/components/settings/GeneralSettings.tsx:46
+#: src/components/settings/GeneralSettings.tsx:50
 msgid "settings.general.theme.description"
 msgstr "Choisis l'apparence de Job Seek."
 
@@ -237,6 +237,12 @@ msgstr "Connecter"
 msgid "settings.account.socials.title"
 msgstr "Comptes connectés"
 
+#. Footer link to contact email
+#. js-lingui-explicit-id
+#: src/components/Footer.tsx:41
+msgid "common.footer.contact"
+msgstr "Contact"
+
 #. TOC: Contact
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:25
@@ -249,22 +255,16 @@ msgstr "Contact"
 msgid "license.contact.title"
 msgstr "Contact"
 
-#. Footer link to contact email
+#. Table of contents heading
 #. js-lingui-explicit-id
-#: src/components/Footer.tsx:41
-msgid "common.footer.contact"
-msgstr "Contact"
+#: src/components/HowWeIndexContent.tsx:23
+msgid "indexing.toc.title"
+msgstr "Sommaire"
 
 #. Table of contents heading
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:18
 msgid "license.toc.title"
-msgstr "Sommaire"
-
-#. Table of contents heading
-#. js-lingui-explicit-id
-#: src/components/HowWeIndexContent.tsx:23
-msgid "indexing.toc.title"
 msgstr "Sommaire"
 
 #. Button to continue to app after verification
@@ -317,19 +317,19 @@ msgstr "Garanties de crawl"
 
 #. Sign-up page heading
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:111
+#: src/components/AuthForm.tsx:141
 msgid "auth.signUp.title"
 msgstr "Créer un compte"
 
 #. Sign-up button while loading
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:154
+#: src/components/AuthForm.tsx:184
 msgid "auth.signUp.button.loading"
 msgstr "Création du compte..."
 
 #. Dark theme option
 #. js-lingui-explicit-id
-#: src/components/settings/GeneralSettings.tsx:27
+#: src/components/settings/GeneralSettings.tsx:28
 msgid "settings.theme.dark"
 msgstr "Sombre"
 
@@ -365,7 +365,7 @@ msgstr "Déconnecter"
 
 #. Link to sign-up page from sign-in
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:173
+#: src/components/AuthForm.tsx:203
 msgid "auth.signIn.noAccount"
 msgstr "Pas encore de compte ? <0>S'inscrire</0>"
 
@@ -383,7 +383,7 @@ msgstr "Tu ne trouves pas ton entreprise préférée dans le flux ? Colle le lie
 
 #. Email input label
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:134
+#: src/components/AuthForm.tsx:164
 msgid "auth.field.email"
 msgstr "E-mail"
 
@@ -484,6 +484,12 @@ msgstr "Trouve les bons postes plus vite."
 msgid "home.features.s1.p1.description"
 msgstr "Suis les employeurs qui t'intéressent et reçois une notification dès qu'ils publient de nouveaux postes."
 
+#. Link to follow Job Seek on LinkedIn
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/app/page.tsx:31
+msgid "app.home.followLinkedIn"
+msgstr "Suivez-nous sur LinkedIn"
+
 #. Aria label for footer navigation
 #. js-lingui-explicit-id
 #: src/components/Footer.tsx:31
@@ -526,7 +532,7 @@ msgstr "Commencer"
 
 #. Sign-up page subtitle
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:116
+#: src/components/AuthForm.tsx:146
 msgid "auth.signUp.subtitle"
 msgstr "Commence avec Job Seek"
 
@@ -649,6 +655,12 @@ msgstr "Données d'emploi (CC BY-NC 4.0)"
 msgid "indexing.hero.description"
 msgstr "Job Seek est un moteur de recherche pour les candidats actifs comme pour les professionnels qui suivent le marché de façon passive — il fait remonter les offres récentes tout en respectant l'infrastructure des employeurs. Cette page décrit précisément le comportement de notre robot d'indexation, les contrôles qui garantissent sa courtoisie, et comment les offres atterrissent dans l'index."
 
+#. Main app page subtitle explaining the app is being built
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/app/page.tsx:21
+msgid "app.home.subtitle"
+msgstr "Job Seek est en cours de développement. Restez à l'écoute pour les mises à jour !"
+
 #. License page description
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:38
@@ -669,7 +681,7 @@ msgstr "Fini la routine des 50 onglets"
 
 #. Language settings section heading
 #. js-lingui-explicit-id
-#: src/components/settings/GeneralSettings.tsx:71
+#: src/components/settings/GeneralSettings.tsx:77
 msgid "settings.general.language.title"
 msgstr "Langue"
 
@@ -721,7 +733,7 @@ msgstr "Conditions de licence du code applicatif de Job Seek (MIT) et des donné
 
 #. Light theme option
 #. js-lingui-explicit-id
-#: src/components/settings/GeneralSettings.tsx:26
+#: src/components/settings/GeneralSettings.tsx:27
 msgid "settings.theme.light"
 msgstr "Clair"
 
@@ -749,7 +761,7 @@ msgstr "Gère tes comptes sociaux liés."
 
 #. Name input label
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:125
+#: src/components/AuthForm.tsx:155
 msgid "auth.field.name"
 msgstr "Nom"
 
@@ -869,26 +881,26 @@ msgstr "Notre position sur l'automatisation"
 
 #. TOC: Overview
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:22
-msgid "license.toc.overview"
-msgstr "Aperçu"
-
-#. TOC: Overview
-#. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:27
 msgid "indexing.toc.overview"
 msgstr "Aperçu"
 
-#. Table of contents aria label
+#. TOC: Overview
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:19
-msgid "license.toc.ariaLabel"
-msgstr "Sommaire de la page"
+#: src/components/LicenseContent.tsx:22
+msgid "license.toc.overview"
+msgstr "Aperçu"
 
 #. Table of contents aria label
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:24
 msgid "indexing.toc.ariaLabel"
+msgstr "Sommaire de la page"
+
+#. Table of contents aria label
+#. js-lingui-explicit-id
+#: src/components/LicenseContent.tsx:19
+msgid "license.toc.ariaLabel"
 msgstr "Sommaire de la page"
 
 #. Heading shown on the 404 page
@@ -905,7 +917,7 @@ msgstr "Regroupe toutes les startups intéressantes dans un seul tableau de bord
 
 #. Password input label
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:143
+#: src/components/AuthForm.tsx:173
 msgid "auth.field.password"
 msgstr "Mot de passe"
 
@@ -979,7 +991,7 @@ msgstr "Saisis un mot de passe"
 
 #. Error when required fields are empty
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:44
+#: src/components/AuthForm.tsx:45
 msgid "auth.error.fieldsRequired"
 msgstr "Remplis tous les champs"
 
@@ -995,18 +1007,18 @@ msgstr "Connecte-toi pour gérer les paramètres de ton compte."
 msgid "home.features.s2.p1.description"
 msgstr "Indique-nous n'importe quelle page carrières ou tableau d'offres Notion et Job Seek le reproduit dans ton espace de travail en quelques minutes."
 
-#. Pricing section eyebrow
-#. js-lingui-explicit-id
-#: src/components/Pricing.tsx:101
-msgid "home.pricing.eyebrow"
-msgstr "Tarifs"
-
 #. Nav link: Pricing
 #. Nav link: Pricing
 #. js-lingui-explicit-id
 #: src/components/Header.tsx:61
 #: src/components/MobileMenu.tsx:86
 msgid "common.nav.pricing"
+msgstr "Tarifs"
+
+#. Pricing section eyebrow
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx:101
+msgid "home.pricing.eyebrow"
 msgstr "Tarifs"
 
 #. Privacy policy page eyebrow
@@ -1198,7 +1210,7 @@ msgstr "Rechercher…"
 
 #. Language settings description
 #. js-lingui-explicit-id
-#: src/components/settings/GeneralSettings.tsx:74
+#: src/components/settings/GeneralSettings.tsx:80
 msgid "settings.general.language.description"
 msgstr "Sélectionne ta langue préférée."
 
@@ -1276,13 +1288,13 @@ msgstr "Se connecter"
 
 #. Sign-in page heading
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:112
+#: src/components/AuthForm.tsx:142
 msgid "auth.signIn.title"
 msgstr "Se connecter"
 
 #. Sign-in submit button
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:158
+#: src/components/AuthForm.tsx:188
 msgid "auth.signIn.button.submit"
 msgstr "Se connecter"
 
@@ -1294,25 +1306,25 @@ msgstr "Se déconnecter"
 
 #. Sign-up submit button
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:155
+#: src/components/AuthForm.tsx:185
 msgid "auth.signUp.button.submit"
 msgstr "S'inscrire"
 
 #. Generic sign-in error fallback
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:82
+#: src/components/AuthForm.tsx:83
 msgid "auth.signIn.error.generic"
 msgstr "Échec de la connexion"
 
 #. Generic sign-up error fallback
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:62
+#: src/components/AuthForm.tsx:63
 msgid "auth.signUp.error.generic"
 msgstr "Échec de l'inscription"
 
 #. Sign-in button while loading
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:157
+#: src/components/AuthForm.tsx:187
 msgid "auth.signIn.button.loading"
 msgstr "Connexion en cours..."
 
@@ -1371,13 +1383,13 @@ msgstr "Abonne-toi aux actualités des entreprises, suis tes candidatures et ne 
 
 #. Aria label for switching to dark mode
 #. js-lingui-explicit-id
-#: src/components/ThemeToggleButton.tsx:24
+#: src/components/ThemeToggleButton.tsx:26
 msgid "common.theme.switchToDark"
 msgstr "Passer au mode sombre"
 
 #. Aria label for switching to light mode
 #. js-lingui-explicit-id
-#: src/components/ThemeToggleButton.tsx:23
+#: src/components/ThemeToggleButton.tsx:25
 msgid "common.theme.switchToLight"
 msgstr "Passer au mode clair"
 
@@ -1447,7 +1459,7 @@ msgstr "En bref"
 
 #. Theme settings section heading
 #. js-lingui-explicit-id
-#: src/components/settings/GeneralSettings.tsx:43
+#: src/components/settings/GeneralSettings.tsx:47
 msgid "settings.general.theme.title"
 msgstr "Thème"
 
@@ -1480,6 +1492,12 @@ msgstr "La transparence compte, c'est pourquoi le code de notre service de colle
 #: app/[lang]/error.tsx:23
 msgid "error.retryButton"
 msgstr "Réessayer"
+
+#. Main app page heading
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/app/page.tsx:16
+msgid "app.home.title"
+msgstr "En développement actif"
 
 #. Your rights intro
 #. js-lingui-explicit-id
@@ -1591,15 +1609,9 @@ msgstr "Nous utilisons quelques services tiers pour la connexion, l’hébergeme
 
 #. Sign-in page subtitle
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:117
+#: src/components/AuthForm.tsx:147
 msgid "auth.signIn.subtitle"
 msgstr "Content de te revoir"
-
-#. Main app page heading
-#. js-lingui-explicit-id
-#: app/[lang]/(app)/app/page.tsx:14
-msgid "app.home.title"
-msgstr "Bienvenue sur Job Seek"
 
 #. Account deletion
 #. js-lingui-explicit-id
@@ -1642,12 +1654,6 @@ msgstr "Tu t'es connecté avec un compte social. Définis un mot de passe pour p
 #: app/[lang]/verify-email/page.tsx:87
 msgid "auth.verify.success.description"
 msgstr "Ton e-mail a été vérifié."
-
-#. Main app page subtitle
-#. js-lingui-explicit-id
-#: app/[lang]/(app)/app/page.tsx:17
-msgid "app.home.subtitle"
-msgstr "Ton tableau de bord du marché de l'emploi."
 
 #. Description after successful password reset
 #. js-lingui-explicit-id
