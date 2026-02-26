@@ -45,6 +45,8 @@ export default async function HomePage({ params }: Props) {
               <PublicDomainArt
                 asset={afterPricingArt}
                 focus={siteConfig.homepageArt.focus}
+                sizes="(min-width: 768px) 768px, 100vw"
+                priority
                 className="h-full w-full"
               />
             </div>

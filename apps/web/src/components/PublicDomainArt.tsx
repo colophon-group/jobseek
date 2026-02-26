@@ -16,6 +16,8 @@ type PublicDomainArtProps = {
   };
   crop?: CropInsets;
   credit?: boolean;
+  sizes?: string;
+  priority?: boolean;
   className?: string;
   style?: CSSProperties;
   children?: ReactNode;
@@ -26,6 +28,8 @@ export function PublicDomainArt({
   focus,
   crop,
   credit = true,
+  sizes = "(min-width: 1024px) 40vw, 100vw",
+  priority = false,
   className,
   style,
   children,
@@ -81,9 +85,9 @@ export function PublicDomainArt({
             src={src}
             alt={alt}
             fill
-            sizes="(min-width: 1024px) 40vw, 100vw"
+            sizes={sizes}
             style={imageStyle}
-            priority={false}
+            priority={priority}
           />
         </div>
       ) : (
@@ -92,9 +96,9 @@ export function PublicDomainArt({
           src={src}
           alt={alt}
           fill
-          sizes="(min-width: 1024px) 40vw, 100vw"
+          sizes={sizes}
           style={imageStyle}
-          priority={false}
+          priority={priority}
         />
       )}
       {children}
