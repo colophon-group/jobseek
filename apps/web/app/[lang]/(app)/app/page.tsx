@@ -26,7 +26,7 @@ export default async function AppPage({ params }: Props) {
         href="https://www.linkedin.com/company/jobseek-the-aggregator/"
         target="_blank"
         rel="noopener noreferrer"
-        className="mt-6 inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+        className="mt-6 inline-flex items-center justify-center whitespace-nowrap rounded-full font-semibold border border-primary bg-primary text-primary-contrast transition-opacity hover:opacity-90 px-5 py-2"
       >
         <Trans id="app.home.followLinkedIn" comment="Link to follow Job Seek on LinkedIn">
           Follow us on LinkedIn
