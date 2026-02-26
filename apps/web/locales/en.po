@@ -163,7 +163,7 @@ msgstr "Change language"
 #. js-lingui-explicit-id
 #: src/components/settings/AccountSettings.tsx:173
 msgid "settings.account.password.description"
-msgstr "Update your password. This will sign you out of other devices."
+msgstr "Change your password via a secure email link."
 
 #. Heading after sign-up telling user to check email
 #. js-lingui-explicit-id
@@ -205,7 +205,7 @@ msgstr "Collection of job postings (CC BY-NC 4.0)"
 #. js-lingui-explicit-id
 #: src/components/Pricing.tsx:61
 msgid "home.pricing.pro.cta"
-msgstr "Upgrade to Pro"
+msgstr "Coming soon"
 
 #. Feature: company alerts title
 #. js-lingui-explicit-id
@@ -271,7 +271,7 @@ msgstr "Contents"
 #. js-lingui-explicit-id
 #: app/[lang]/verify-email/page.tsx:92
 msgid "auth.verify.success.continue"
-msgstr "Continue to dashboard"
+msgstr "Continue"
 
 #. GitHub OAuth button
 #. js-lingui-explicit-id
@@ -451,7 +451,7 @@ msgstr "Failed to reset password. The link may have expired."
 #. js-lingui-explicit-id
 #: src/components/settings/AccountSettings.tsx:160
 msgid "settings.account.password.error"
-msgstr "Failed to change password"
+msgstr "Failed to send reset email"
 
 #. Generic set password error
 #. js-lingui-explicit-id
@@ -915,7 +915,7 @@ msgstr "Password"
 #: src/components/settings/AccountSettings.tsx:82
 #: src/components/settings/AccountSettings.tsx:170
 msgid "settings.account.password.title"
-msgstr "Change password"
+msgstr "Password"
 
 #. Success message after password reset request
 #. js-lingui-explicit-id
@@ -1497,7 +1497,7 @@ msgstr "Unlimited company subscriptions"
 #. js-lingui-explicit-id
 #: src/components/settings/AccountSettings.tsx:248
 msgid "settings.account.email.save"
-msgstr "Update"
+msgstr "Update email"
 
 #. Change email section description
 #. js-lingui-explicit-id

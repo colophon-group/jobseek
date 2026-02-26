@@ -163,7 +163,7 @@ msgstr "Cambia lingua"
 #. js-lingui-explicit-id
 #: src/components/settings/AccountSettings.tsx:173
 msgid "settings.account.password.description"
-msgstr "Imposta o cambia la tua password tramite un link email sicuro."
+msgstr "Cambia la tua password tramite un link email sicuro."
 
 #. Heading after sign-up telling user to check email
 #. js-lingui-explicit-id
@@ -271,7 +271,7 @@ msgstr "Sommario"
 #. js-lingui-explicit-id
 #: app/[lang]/verify-email/page.tsx:92
 msgid "auth.verify.success.continue"
-msgstr "Continua alla dashboard"
+msgstr "Continua"
 
 #. GitHub OAuth button
 #. js-lingui-explicit-id
@@ -546,7 +546,7 @@ msgstr "Torna alla home"
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:129
 msgid "indexing.ingestion.s3.title"
-msgstr "Parsing delle pagine rispettoso."
+msgstr "Parsing delle pagine delicato."
 
 #. Aria label to hide password
 #. js-lingui-explicit-id
@@ -611,13 +611,13 @@ msgstr "Se non esiste una sitemap, ispezioniamo l'applicazione client alla ricer
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:164
 msgid "indexing.optOut.body"
-msgstr "Se notate attività impreviste del nostro crawler o preferite che il vostro sito carriere non venga indicizzato, scriveteci via email e risponderemo tempestivamente."
+msgstr "Se noti attività impreviste del nostro crawler o preferisci che il tuo sito carriere non venga indicizzato, scrivici via email e risponderemo tempestivamente."
 
 #. Outreach section body
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:206
 msgid "indexing.outreach.body"
-msgstr "Se notate un comportamento anomalo del crawler, preferite che non indicizziamo i vostri contenuti o avete suggerimenti su come migliorare le nostre misure di sicurezza, contattateci."
+msgstr "Se noti un comportamento anomalo del crawler, preferisci che non indicizziamo i tuoi contenuti o hai suggerimenti su come migliorare le nostre misure di sicurezza, contattaci."
 
 #. Indexing page eyebrow
 #. js-lingui-explicit-id
@@ -757,13 +757,13 @@ msgstr "Nome"
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:33
 msgid "indexing.toc.outreach"
-msgstr "Vuole contattarci?"
+msgstr "Vuoi contattarci?"
 
 #. Outreach section title
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:203
 msgid "indexing.outreach.title"
-msgstr "Vuole contattarci?"
+msgstr "Vuoi contattarci?"
 
 #. New email input label
 #. js-lingui-explicit-id
@@ -1056,7 +1056,7 @@ msgstr "Pubblico dominio"
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:99
 msgid "license.contactCta"
-msgstr "Domande sulle licenze o sull'uso commerciale? Scriveteci via email."
+msgstr "Domande sulle licenze o sull'uso commerciale? Scrivici via email."
 
 #. Terms contact call to action
 #. js-lingui-explicit-id
@@ -1320,7 +1320,7 @@ msgstr "Accesso in corso..."
 #. js-lingui-explicit-id
 #: src/components/Pricing.tsx:107
 msgid "home.pricing.description"
-msgstr "Prezzi semplici e trasparenti. Inizia gratis e passa al piano superiore quando la tua ricerca di lavoro fa sul serio."
+msgstr "Prezzi semplici e trasparenti. Inizia gratis e passa al piano superiore quando fai sul serio con la tua ricerca di lavoro."
 
 #. Step 1 title
 #. js-lingui-explicit-id
@@ -1497,7 +1497,7 @@ msgstr "Abbonamenti aziendali illimitati"
 #. js-lingui-explicit-id
 #: src/components/settings/AccountSettings.tsx:248
 msgid "settings.account.email.save"
-msgstr "Aggiorna"
+msgstr "Aggiorna email"
 
 #. Change email section description
 #. js-lingui-explicit-id
@@ -1581,7 +1581,7 @@ msgstr "Conserviamo il tuo nome, la tua email e la foto del profilo dall'accesso
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:151
 msgid "indexing.sitemapNote"
-msgstr "Incoraggiamo vivamente la pubblicazione di una sitemap facilmente individuabile per la sezione carriere. In sua assenza, inviamo periodicamente richieste <0>HEAD</0> leggere agli URL degli annunci già scoperti per verificare che siano ancora attivi, generando traffico non necessario."
+msgstr "Incoraggiamo vivamente la pubblicazione di una sitemap facilmente individuabile per la tua sezione carriere. In assenza di una sitemap, inviamo periodicamente richieste <0>HEAD</0> leggere agli URL degli annunci già scoperti per verificare che siano ancora attivi, generando traffico non necessario."
 
 #. Third parties
 #. js-lingui-explicit-id
@@ -1641,7 +1641,7 @@ msgstr "Hai effettuato l'accesso con un account social. Imposta una password per
 #. js-lingui-explicit-id
 #: app/[lang]/verify-email/page.tsx:87
 msgid "auth.verify.success.description"
-msgstr "La tua email è stata verificata. Ora puoi accedere."
+msgstr "La tua email è stata verificata."
 
 #. Main app page subtitle
 #. js-lingui-explicit-id

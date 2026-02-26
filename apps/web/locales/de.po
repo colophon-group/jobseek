@@ -163,7 +163,7 @@ msgstr "Sprache ändern"
 #. js-lingui-explicit-id
 #: src/components/settings/AccountSettings.tsx:173
 msgid "settings.account.password.description"
-msgstr "Setze oder ändere dein Passwort über einen sicheren E-Mail-Link."
+msgstr "Ändere dein Passwort über einen sicheren E-Mail-Link."
 
 #. Heading after sign-up telling user to check email
 #. js-lingui-explicit-id
@@ -271,7 +271,7 @@ msgstr "Inhalt"
 #. js-lingui-explicit-id
 #: app/[lang]/verify-email/page.tsx:92
 msgid "auth.verify.success.continue"
-msgstr "Weiter zum Dashboard"
+msgstr "Weiter"
 
 #. GitHub OAuth button
 #. js-lingui-explicit-id
@@ -611,13 +611,13 @@ msgstr "Falls keine Sitemap existiert, untersuchen wir die Client-Anwendung auf 
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:164
 msgid "indexing.optOut.body"
-msgstr "Wenn Sie unerwartete Aktivitäten unseres Crawlers bemerken oder es vorziehen, dass Ihre Karriereseite nicht indexiert wird, schreiben Sie uns bitte eine E-Mail und wir werden umgehend antworten."
+msgstr "Wenn du unerwartete Aktivitäten unseres Crawlers bemerkst oder es vorziehst, dass deine Karriereseite nicht indexiert wird, schreib uns bitte eine E-Mail und wir werden umgehend antworten."
 
 #. Outreach section body
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:206
 msgid "indexing.outreach.body"
-msgstr "Wenn Sie ungewöhnliches Crawler-Verhalten bemerken, es vorziehen, dass wir Ihre Inhalte nicht indexieren, oder Vorschläge zur Verbesserung unserer Schutzmaßnahmen haben, kontaktieren Sie uns bitte."
+msgstr "Wenn du ungewöhnliches Crawler-Verhalten bemerkst, es vorziehst, dass wir deine Inhalte nicht indexieren, oder Vorschläge zur Verbesserung unserer Schutzmaßnahmen hast, kontaktiere uns bitte."
 
 #. Indexing page eyebrow
 #. js-lingui-explicit-id
@@ -1218,7 +1218,7 @@ msgstr "Link senden"
 #. js-lingui-explicit-id
 #: app/[lang]/(auth)/check-email/page.tsx:96
 msgid "auth.verify.resending"
-msgstr "Wird gesendet..."
+msgstr "Wird gesendet…"
 
 #. Reset password button while loading
 #. js-lingui-explicit-id
@@ -1497,7 +1497,7 @@ msgstr "Unbegrenzte Unternehmensabonnements"
 #. js-lingui-explicit-id
 #: src/components/settings/AccountSettings.tsx:248
 msgid "settings.account.email.save"
-msgstr "Aktualisieren"
+msgstr "E-Mail aktualisieren"
 
 #. Change email section description
 #. js-lingui-explicit-id
@@ -1527,7 +1527,7 @@ msgstr "Bestätigung fehlgeschlagen"
 #. js-lingui-explicit-id
 #: app/[lang]/verify-email/page.tsx:48
 msgid "auth.verify.loading"
-msgstr "E-Mail wird bestätigt..."
+msgstr "E-Mail wird bestätigt…"
 
 #. What the service does
 #. js-lingui-explicit-id
@@ -1581,7 +1581,7 @@ msgstr "Wir speichern deinen Namen, deine E-Mail und dein Profilbild von deiner 
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:151
 msgid "indexing.sitemapNote"
-msgstr "Wir empfehlen ausdrücklich, eine leicht auffindbare Sitemap für Ihren Karrierebereich zu veröffentlichen. Ohne eine solche senden wir regelmäßig leichtgewichtige <0>HEAD</0>-Anfragen an zuvor entdeckte Stellen-URLs, um zu prüfen, ob sie noch aktiv sind, was unnötigen Traffic verursacht."
+msgstr "Wir empfehlen ausdrücklich, eine leicht auffindbare Sitemap für deinen Karrierebereich zu veröffentlichen. Ohne eine solche senden wir regelmäßig leichtgewichtige <0>HEAD</0>-Anfragen an zuvor entdeckte Stellen-URLs, um zu prüfen, ob sie noch aktiv sind, was unnötigen Traffic verursacht."
 
 #. Third parties
 #. js-lingui-explicit-id
@@ -1641,7 +1641,7 @@ msgstr "Du hast dich mit einem Social-Media-Konto angemeldet. Setze ein Passwort
 #. js-lingui-explicit-id
 #: app/[lang]/verify-email/page.tsx:87
 msgid "auth.verify.success.description"
-msgstr "Deine E-Mail wurde bestätigt. Du kannst dich jetzt anmelden."
+msgstr "Deine E-Mail wurde bestätigt."
 
 #. Main app page subtitle
 #. js-lingui-explicit-id

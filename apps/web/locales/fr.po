@@ -61,7 +61,7 @@ msgstr "Menu du compte"
 #. js-lingui-explicit-id
 #: src/components/Features.tsx:198
 msgid "home.features.s2.p3.title"
-msgstr "Des alertes que tu pilotes vraiment"
+msgstr "Des alertes que tu contrôles vraiment"
 
 #. Encryption
 #. js-lingui-explicit-id
@@ -163,19 +163,19 @@ msgstr "Changer de langue"
 #. js-lingui-explicit-id
 #: src/components/settings/AccountSettings.tsx:173
 msgid "settings.account.password.description"
-msgstr "Définissez ou modifiez votre mot de passe via un lien e-mail sécurisé."
+msgstr "Modifie ton mot de passe via un lien e-mail sécurisé."
 
 #. Heading after sign-up telling user to check email
 #. js-lingui-explicit-id
 #: app/[lang]/(auth)/check-email/page.tsx:80
 msgid "auth.verify.checkEmail.title"
-msgstr "Vérifiez votre e-mail"
+msgstr "Vérifie ton e-mail"
 
 #. Theme settings description
 #. js-lingui-explicit-id
 #: src/components/settings/GeneralSettings.tsx:46
 msgid "settings.general.theme.description"
-msgstr "Choisissez l'apparence de Job Seek."
+msgstr "Choisis l'apparence de Job Seek."
 
 #. Pricing section heading
 #. js-lingui-explicit-id
@@ -271,7 +271,7 @@ msgstr "Sommaire"
 #. js-lingui-explicit-id
 #: app/[lang]/verify-email/page.tsx:92
 msgid "auth.verify.success.continue"
-msgstr "Continuer vers le tableau de bord"
+msgstr "Continuer"
 
 #. GitHub OAuth button
 #. js-lingui-explicit-id
@@ -301,7 +301,7 @@ msgstr "Les cookies servent uniquement à la session — pas de pub, pas de trac
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:58
 msgid "license.code.r1"
-msgstr "Copiez et modifiez le code pour tout usage, y compris des produits commerciaux."
+msgstr "Copie et modifie le code pour tout usage, y compris des produits commerciaux."
 
 #. TOC: Crawling assurances
 #. js-lingui-explicit-id
@@ -403,7 +403,7 @@ msgstr "E-mail vérifié"
 #. js-lingui-explicit-id
 #: app/[lang]/reset-password/page.tsx:124
 msgid "auth.resetPassword.subtitle"
-msgstr "Entrez votre nouveau mot de passe ci-dessous."
+msgstr "Entre ton nouveau mot de passe ci-dessous."
 
 #. Assurance 3 body
 #. js-lingui-explicit-id
@@ -528,7 +528,7 @@ msgstr "Commencer"
 #. js-lingui-explicit-id
 #: src/components/AuthForm.tsx:116
 msgid "auth.signUp.subtitle"
-msgstr "Commencez avec Job Seek"
+msgstr "Commence avec Job Seek"
 
 #. Footer link to GitHub repo
 #. js-lingui-explicit-id
@@ -611,13 +611,13 @@ msgstr "En l'absence de sitemap, nous inspectons l'application cliente à la rec
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:164
 msgid "indexing.optOut.body"
-msgstr "Si vous constatez une activité inattendue de notre robot d'indexation ou préférez que votre site carrières ne soit pas indexé, veuillez nous contacter par e-mail et nous vous répondrons rapidement."
+msgstr "Si tu constates une activité inattendue de notre robot d'indexation ou préfères que ton site carrières ne soit pas indexé, contacte-nous par e-mail et nous te répondrons rapidement."
 
 #. Outreach section body
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:206
 msgid "indexing.outreach.body"
-msgstr "Si vous remarquez un comportement inhabituel de notre robot, préférez que nous n'indexions pas votre contenu, ou avez des suggestions pour améliorer nos mesures de protection, n'hésitez pas à nous contacter."
+msgstr "Si tu remarques un comportement inhabituel de notre robot, préfères que nous n'indexions pas ton contenu, ou as des suggestions pour améliorer nos mesures de protection, n'hésite pas à nous contacter."
 
 #. Indexing page eyebrow
 #. js-lingui-explicit-id
@@ -653,7 +653,7 @@ msgstr "Job Seek est un moteur de recherche pour les candidats actifs comme pour
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:38
 msgid "license.hero.description"
-msgstr "Le code source de Job Seek est ouvert sous licence MIT. Les données d'emploi que nous collectons et enrichissons sont sous Creative Commons BY-NC 4.0. Vous trouverez ci-dessous un résumé en langage clair — veuillez consulter les licences complètes pour les termes exacts."
+msgstr "Le code source de Job Seek est ouvert sous licence MIT. Les données d'emploi que nous collectons et enrichissons sont sous Creative Commons BY-NC 4.0. Tu trouveras ci-dessous un résumé en langage clair — consulte les licences complètes pour les termes exacts."
 
 #. Hero eyebrow text above the title
 #. js-lingui-explicit-id
@@ -745,7 +745,7 @@ msgstr "Note où tu as postulé, le statut, les contacts et les prochaines étap
 #. js-lingui-explicit-id
 #: src/components/settings/AccountSettings.tsx:301
 msgid "settings.account.socials.description"
-msgstr "Gérez vos comptes sociaux liés."
+msgstr "Gère tes comptes sociaux liés."
 
 #. Name input label
 #. js-lingui-explicit-id
@@ -793,7 +793,7 @@ msgstr "Aucune redistribution ou revente commerciale sans autorisation."
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:60
 msgid "license.code.r3"
-msgstr "Aucune garantie — utilisation à vos risques et périls."
+msgstr "Aucune garantie — utilisation à tes risques et périls."
 
 #. Cookie banner accept button
 #. js-lingui-explicit-id
@@ -805,7 +805,7 @@ msgstr "Ok"
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:139
 msgid "indexing.ingestion.s4.body"
-msgstr "Une fois qu'une offre individuelle est récupérée, nous ne stockons que les métadonnées propres au poste (intitulé, description du rôle, localisation, informations de rémunération, URL de l'offre et horodatages) ainsi que les champs structurés extraits. Nous n'archivons pas le contenu non lié au site."
+msgstr "Une fois qu'une offre individuelle est récupérée, nous ne stockons que les métadonnées propres au poste (intitulé, description du rôle, localisation, informations de rémunération, URL de l'offre et horodatages) ainsi que les champs structurés extraits. Nous n'archivons pas les contenus du site sans rapport avec les offres d'emploi."
 
 #. Assurance 3 title
 #. js-lingui-explicit-id
@@ -921,7 +921,7 @@ msgstr "Mot de passe"
 #. js-lingui-explicit-id
 #: src/components/settings/AccountSettings.tsx:162
 msgid "settings.account.password.success"
-msgstr "Lien de réinitialisation envoyé. Veuillez vérifier votre boîte de réception. La réception peut prendre quelques minutes."
+msgstr "Lien de réinitialisation envoyé. Vérifie ta boîte de réception. La réception peut prendre quelques minutes."
 
 #. Success message after setting password
 #. js-lingui-explicit-id
@@ -957,37 +957,37 @@ msgstr "par mois"
 #. js-lingui-explicit-id
 #: src/components/settings/AccountSettings.tsx:358
 msgid "settings.account.delete.description"
-msgstr "Supprimez définitivement votre compte et toutes les données associées. Cette action est irréversible."
+msgstr "Supprime définitivement ton compte et toutes les données associées. Cette action est irréversible."
 
 #. Error when email field is empty
 #. js-lingui-explicit-id
 #: src/components/settings/AccountSettings.tsx:205
 msgid "settings.account.email.required"
-msgstr "Veuillez saisir une nouvelle adresse e-mail"
+msgstr "Saisis une nouvelle adresse e-mail"
 
 #. Error when new password is empty
 #. js-lingui-explicit-id
 #: app/[lang]/reset-password/page.tsx:81
 msgid "auth.resetPassword.error.required"
-msgstr "Veuillez entrer un nouveau mot de passe"
+msgstr "Entre un nouveau mot de passe"
 
 #. Error when new password is empty
 #. js-lingui-explicit-id
 #: src/components/settings/AccountSettings.tsx:64
 msgid "settings.account.password.newRequired"
-msgstr "Veuillez saisir un mot de passe"
+msgstr "Saisis un mot de passe"
 
 #. Error when required fields are empty
 #. js-lingui-explicit-id
 #: src/components/AuthForm.tsx:44
 msgid "auth.error.fieldsRequired"
-msgstr "Veuillez remplir tous les champs"
+msgstr "Remplis tous les champs"
 
 #. Message when user must log in to see account settings
 #. js-lingui-explicit-id
 #: src/components/settings/AccountSettings.tsx:33
 msgid "settings.account.loginRequired"
-msgstr "Veuillez vous connecter pour gérer les paramètres de votre compte."
+msgstr "Connecte-toi pour gérer les paramètres de ton compte."
 
 #. Feature: paste a link description
 #. js-lingui-explicit-id
@@ -1056,7 +1056,7 @@ msgstr "Domaine public"
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:99
 msgid "license.contactCta"
-msgstr "Des questions sur les licences ou l'utilisation commerciale ? Écrivez-nous."
+msgstr "Des questions sur les licences ou l'utilisation commerciale ? Écris-nous."
 
 #. Terms contact call to action
 #. js-lingui-explicit-id
@@ -1098,7 +1098,7 @@ msgstr "Lire les conditions d'utilisation complètes"
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:59
 msgid "license.code.r2"
-msgstr "Redistribuez vos modifications, à condition d'inclure la mention MIT."
+msgstr "Redistribue tes modifications, à condition d'inclure la mention MIT."
 
 #. Footer license summary text
 #. js-lingui-explicit-id
@@ -1200,7 +1200,7 @@ msgstr "Rechercher…"
 #. js-lingui-explicit-id
 #: src/components/settings/GeneralSettings.tsx:74
 msgid "settings.general.language.description"
-msgstr "Sélectionnez votre langue préférée."
+msgstr "Sélectionne ta langue préférée."
 
 #. Step 4 title
 #. js-lingui-explicit-id
@@ -1455,7 +1455,7 @@ msgstr "Thème"
 #. js-lingui-explicit-id
 #: app/[lang]/reset-password/page.tsx:37
 msgid "auth.resetPassword.error.noToken"
-msgstr "Ce lien de réinitialisation est invalide ou a expiré. Veuillez en demander un nouveau."
+msgstr "Ce lien de réinitialisation est invalide ou a expiré. Demandes-en un nouveau."
 
 #. Cookie banner message
 #. js-lingui-explicit-id
@@ -1497,19 +1497,19 @@ msgstr "Abonnements entreprises illimités"
 #. js-lingui-explicit-id
 #: src/components/settings/AccountSettings.tsx:248
 msgid "settings.account.email.save"
-msgstr "Mettre à jour"
+msgstr "Mettre à jour l'e-mail"
 
 #. Change email section description
 #. js-lingui-explicit-id
 #: src/components/settings/AccountSettings.tsx:228
 msgid "settings.account.email.description"
-msgstr "Mettez à jour l'adresse e-mail associée à votre compte."
+msgstr "Mets à jour l'adresse e-mail associée à ton compte."
 
 #. Success message after email change request
 #. js-lingui-explicit-id
 #: src/components/settings/AccountSettings.tsx:217
 msgid "settings.account.email.success"
-msgstr "E-mail de vérification envoyé. Veuillez vérifier votre boîte de réception. La réception peut prendre quelques minutes."
+msgstr "E-mail de vérification envoyé. Vérifie ta boîte de réception. La réception peut prendre quelques minutes."
 
 #. Generic error when email verification fails
 #. js-lingui-explicit-id
@@ -1527,7 +1527,7 @@ msgstr "Échec de la vérification"
 #. js-lingui-explicit-id
 #: app/[lang]/verify-email/page.tsx:48
 msgid "auth.verify.loading"
-msgstr "Vérification de votre e-mail..."
+msgstr "Vérification de ton e-mail…"
 
 #. What the service does
 #. js-lingui-explicit-id
@@ -1569,7 +1569,7 @@ msgstr "Nous nous opposons à ce que les décisions de recrutement ou de recherc
 #. js-lingui-explicit-id
 #: app/[lang]/(auth)/check-email/page.tsx:85
 msgid "auth.verify.checkEmail.description"
-msgstr "Nous avons envoyé un lien de vérification à <0>{email}</0>. Cliquez sur le lien pour vérifier votre compte. La réception peut prendre quelques minutes."
+msgstr "Nous avons envoyé un lien de vérification à <0>{email}</0>. Clique sur le lien pour vérifier ton compte. La réception peut prendre quelques minutes."
 
 #. What we store
 #. js-lingui-explicit-id
@@ -1581,7 +1581,7 @@ msgstr "Nous stockons ton nom, ton e-mail et ta photo de profil de ta connexion 
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:151
 msgid "indexing.sitemapNote"
-msgstr "Nous encourageons vivement la publication d'un sitemap facilement découvrable pour votre section carrières. Sans cela, nous envoyons périodiquement des requêtes <0>HEAD</0> légères sur les URL d'offres précédemment découvertes pour vérifier qu'elles sont toujours actives, ce qui génère du trafic inutile."
+msgstr "Nous encourageons vivement la publication d'un sitemap facilement découvrable pour ta section carrières. Sans cela, nous envoyons périodiquement des requêtes <0>HEAD</0> légères sur les URL d'offres précédemment découvertes pour vérifier qu'elles sont toujours actives, ce qui génère du trafic inutile."
 
 #. Third parties
 #. js-lingui-explicit-id
@@ -1593,7 +1593,7 @@ msgstr "Nous utilisons quelques services tiers pour la connexion, l’hébergeme
 #. js-lingui-explicit-id
 #: src/components/AuthForm.tsx:117
 msgid "auth.signIn.subtitle"
-msgstr "Content de vous revoir"
+msgstr "Content de te revoir"
 
 #. Main app page heading
 #. js-lingui-explicit-id
@@ -1611,19 +1611,19 @@ msgstr "Tu peux supprimer ton compte à tout moment."
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:85
 msgid "license.data.r3"
-msgstr "Vous pouvez remixer ou transformer les données à des fins de recherche ou pour des tableaux de bord personnels."
+msgstr "Tu peux remixer ou transformer les données à des fins de recherche ou pour des tableaux de bord personnels."
 
 #. MIT license summary
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:53
 msgid "license.code.summary"
-msgstr "Vous pouvez utiliser, modifier et redistribuer le code dans des produits personnels ou commerciaux à condition d'inclure la mention de droit d'auteur et de licence."
+msgstr "Tu peux utiliser, modifier et redistribuer le code dans des produits personnels ou commerciaux à condition d'inclure la mention de droit d'auteur et de licence."
 
 #. CC license summary
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:74
 msgid "license.data.summary"
-msgstr "Vous pouvez réutiliser le jeu de données d'emploi avec attribution à des fins non commerciales. Toute utilisation commerciale nécessite un accord écrit préalable."
+msgstr "Tu peux réutiliser le jeu de données d'emploi avec attribution à des fins non commerciales. Toute utilisation commerciale nécessite un accord écrit préalable."
 
 #. Age requirement
 #. js-lingui-explicit-id
@@ -1635,25 +1635,25 @@ msgstr "Tu dois avoir au moins 16 ans pour utiliser Job Seek."
 #. js-lingui-explicit-id
 #: src/components/settings/AccountSettings.tsx:85
 msgid "settings.account.password.setDescription"
-msgstr "Vous vous êtes connecté avec un compte social. Définissez un mot de passe pour permettre les changements d'e-mail et renforcer la sécurité."
+msgstr "Tu t'es connecté avec un compte social. Définis un mot de passe pour permettre les changements d'e-mail et renforcer la sécurité."
 
 #. Description after successful email verification
 #. js-lingui-explicit-id
 #: app/[lang]/verify-email/page.tsx:87
 msgid "auth.verify.success.description"
-msgstr "Votre e-mail a été vérifié. Vous pouvez maintenant vous connecter."
+msgstr "Ton e-mail a été vérifié."
 
 #. Main app page subtitle
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/app/page.tsx:17
 msgid "app.home.subtitle"
-msgstr "Votre tableau de bord du marché de l'emploi."
+msgstr "Ton tableau de bord du marché de l'emploi."
 
 #. Description after successful password reset
 #. js-lingui-explicit-id
 #: app/[lang]/reset-password/page.tsx:62
 msgid "auth.resetPassword.success.description"
-msgstr "Votre mot de passe a été réinitialisé. Vous pouvez maintenant vous connecter avec votre nouveau mot de passe."
+msgstr "Ton mot de passe a été réinitialisé. Tu peux maintenant te connecter avec ton nouveau mot de passe."
 
 #. Your rights section title
 #. js-lingui-explicit-id
