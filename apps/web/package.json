@@ -19,6 +19,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@formatjs/intl-localematcher": "^0.8.1",
     "@lingui/core": "^5",
     "@lingui/macro": "^5",
     "@lingui/react": "^5",
@@ -32,6 +33,7 @@
     "better-auth": "^1.4.18",
     "drizzle-orm": "^0.45.1",
     "lucide-react": "^0.575.0",
+    "negotiator": "^1.0.0",
     "next": "^15",
     "next-themes": "^0.4.6",
     "react": "^19",
@@ -52,6 +54,7 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
+    "@types/negotiator": "^0.6.4",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",

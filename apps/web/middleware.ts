@@ -1,24 +1,26 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { defaultLocale, isLocale } from "@/lib/i18n";
+import { match } from "@formatjs/intl-localematcher";
+import Negotiator from "negotiator";
+import { defaultLocale, locales, isLocale } from "@/lib/i18n";
 
-function getPreferredLocale(request: NextRequest): string {
-  const acceptLanguage = request.headers.get("accept-language");
-  if (!acceptLanguage) return defaultLocale;
+const COOKIE_NAME = "NEXT_LOCALE";
 
-  const preferred = acceptLanguage
-    .split(",")
-    .map((lang) => {
-      const [code, q] = lang.trim().split(";q=");
-      return { code: code.split("-")[0].toLowerCase(), q: q ? parseFloat(q) : 1 };
-    })
-    .sort((a, b) => b.q - a.q)
-    .find((lang) => isLocale(lang.code));
+function getLocale(request: NextRequest): string {
+  // 1. Explicit cookie from a previous locale switch
+  const cookieLocale = request.cookies.get(COOKIE_NAME)?.value;
+  if (cookieLocale && isLocale(cookieLocale)) return cookieLocale;
 
-  return preferred?.code ?? defaultLocale;
+  // 2. Accept-Language negotiation
+  const headers: Record<string, string> = {};
+  request.headers.forEach((value, key) => {
+    headers[key] = value;
+  });
+  const languages = new Negotiator({ headers }).languages();
+  return match(languages, locales as unknown as string[], defaultLocale);
 }
 
 export function middleware(request: NextRequest) {
-  const locale = getPreferredLocale(request);
+  const locale = getLocale(request);
   const url = request.nextUrl.clone();
   url.pathname = `/${locale}${request.nextUrl.pathname}`;
   return NextResponse.redirect(url);

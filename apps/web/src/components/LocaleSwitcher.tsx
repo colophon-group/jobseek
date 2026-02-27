@@ -30,6 +30,7 @@ export function LocaleSwitcher({ className }: LocaleSwitcherProps) {
 
   function handleSelect(locale: Locale) {
     if (locale === currentLocale) return;
+    document.cookie = `NEXT_LOCALE=${locale}; path=/; max-age=31536000; SameSite=Lax`;
     const now = new Date().toISOString();
     localPrefs.localeTimestamp.set(now);
     localPrefs.locale.set(locale);
