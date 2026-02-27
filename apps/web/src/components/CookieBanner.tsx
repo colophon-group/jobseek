@@ -39,8 +39,8 @@ export function CookieBanner({ aboveBottomBar, serverConsent }: CookieBannerProp
 
   return (
     <div className={aboveBottomBar
-      ? "fixed bottom-[52px] left-0 right-0 z-50 border-t border-info-border bg-info-bg md:static md:bottom-auto md:z-auto md:border-b md:border-t-0"
-      : "border-b border-info-border bg-info-bg"
+      ? "fixed bottom-[52px] left-0 right-0 z-50 border-t border-info-border bg-info-bg dark:bg-[rgba(147,187,253,0.15)] backdrop-blur-sm md:static md:bottom-auto md:z-auto md:border-b md:border-t-0"
+      : "border-b border-info-border bg-info-bg dark:bg-[rgba(147,187,253,0.15)] backdrop-blur-sm"
     }>
       <div className="mx-auto flex max-w-[1200px] flex-col gap-2 px-4 py-2 text-sm text-info sm:flex-row sm:items-center sm:gap-3">
         <div className="flex flex-1 items-start gap-2">
