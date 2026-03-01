@@ -4,7 +4,7 @@ import { useActionState, useEffect, useRef } from "react";
 import { useLingui } from "@lingui/react";
 import { msg } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
-import { type RequestCompanyResult, requestCompany } from "@/lib/actions/stats";
+import { requestCompany } from "@/lib/actions/stats";
 import { Button } from "@/components/ui/Button";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
 
