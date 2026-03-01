@@ -1,10 +1,14 @@
+import { sql } from "drizzle-orm";
 import {
   pgTable,
   uuid,
   text,
   boolean,
+  integer,
   timestamp,
   index,
+  uniqueIndex,
+  jsonb,
 } from "drizzle-orm/pg-core";
 
 // ── Better Auth core tables ──────────────────────────────────────────
@@ -122,21 +126,156 @@ export const company = pgTable("company", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
   slug: text("slug").unique().notNull(),
-  jobBoard: text("job_board"),
+  logo: text("logo"),
+  icon: text("icon"),
   website: text("website"),
   description: text("description"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const jobPosting = pgTable("job_posting", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  companyId: uuid("company_id")
-    .notNull()
-    .references(() => company.id, { onDelete: "cascade" }),
-  title: text("title").notNull(),
-  description: text("description"),
-  location: text("location"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+export const jobBoard = pgTable(
+  "job_board",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => company.id, { onDelete: "cascade" }),
+    crawlerType: text("crawler_type"),
+    boardUrl: text("board_url").notNull().unique(),
+
+    checkIntervalMinutes: integer("check_interval_minutes").notNull().default(60),
+    nextCheckAt: timestamp("next_check_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }),
+    lastSuccessAt: timestamp("last_success_at", { withTimezone: true }),
+
+    consecutiveFailures: integer("consecutive_failures").default(0).notNull(),
+    lastError: text("last_error"),
+    isEnabled: boolean("is_enabled").default(true).notNull(),
+    metadata: jsonb("metadata").default({}),
+
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("idx_jb_next_check").on(table.nextCheckAt),
+    index("idx_jb_company").on(table.companyId),
+  ],
+);
+
+export const jobPosting = pgTable(
+  "job_posting",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => company.id, { onDelete: "cascade" }),
+    boardId: uuid("board_id").references(() => jobBoard.id, {
+      onDelete: "set null",
+    }),
+    title: text("title"),
+    description: text("description"),
+    locations: text("locations").array(),
+    employmentType: text("employment_type"),
+    jobLocationType: text("job_location_type"),
+    baseSalary: jsonb("base_salary"),
+    skills: text("skills").array(),
+    datePosted: timestamp("date_posted", { withTimezone: true }),
+    validThrough: timestamp("valid_through", { withTimezone: true }),
+    responsibilities: text("responsibilities").array(),
+    qualifications: text("qualifications").array(),
+    metadata: jsonb("metadata").default({}),
+    fetchMethod: text("fetch_method"),
+    latestVersionId: uuid("latest_version_id"),
+    sourceUrl: text("source_url").unique(),
+    status: text("status").default("active").notNull(),
+    firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).defaultNow(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+    delistedAt: timestamp("delisted_at", { withTimezone: true }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("idx_jp_locations").using("gin", table.locations),
+    index("idx_jp_skills").using("gin", table.skills),
+    index("idx_jp_employment_type").on(table.employmentType),
+    index("idx_jp_status_active").on(table.status).where(sql`status = 'active'`),
+    index("idx_jp_last_seen_active").on(table.lastSeenAt).where(sql`status = 'active'`),
+    index("idx_jp_valid_through").on(table.validThrough).where(sql`valid_through IS NOT NULL`),
+  ],
+);
+
+export const jobPostingVersion = pgTable(
+  "job_posting_version",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    jobPostingId: uuid("job_posting_id")
+      .notNull()
+      .references(() => jobPosting.id, { onDelete: "cascade" }),
+    content: jsonb("content").notNull(),
+    contentHash: text("content_hash").notNull(),
+    fetchMethod: text("fetch_method").notNull(),
+    fetchedAt: timestamp("fetched_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("idx_jpv_posting_fetched").on(table.jobPostingId, table.fetchedAt),
+    uniqueIndex("idx_jpv_posting_hash").on(table.jobPostingId, table.contentHash),
+  ],
+);
+
+export const companyRequest = pgTable(
+  "company_request",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    input: text("input").notNull().unique(),
+    count: integer("count").notNull().default(1),
+    lastUserHint: jsonb("last_user_hint"),
+    status: text("status", {
+      enum: ["pending", "processing", "screening_passed", "completed", "rejected", "failed"],
+    })
+      .notNull()
+      .default("pending"),
+    resolvedCompanyId: uuid("resolved_company_id").references(
+      () => company.id,
+    ),
+    resolvedJobBoardId: uuid("resolved_job_board_id").references(
+      () => jobBoard.id,
+    ),
+    retries: integer("retries").notNull().default(0),
+    maxRetries: integer("max_retries").notNull().default(3),
+    errorMessage: text("error_message"),
+    githubIssueNumber: integer("github_issue_number"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("idx_cr_status").on(table.status).where(sql`status = 'pending'`),
+  ],
+);
+
+export const jobUrlQueue = pgTable(
+  "job_url_queue",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    jobPostingId: uuid("job_posting_id")
+      .notNull()
+      .references(() => jobPosting.id, { onDelete: "cascade" }),
+    url: text("url").notNull().unique(),
+    status: text("status").notNull().default("pending"),
+    retries: integer("retries").default(0),
+    maxRetries: integer("max_retries").default(3),
+    errorMessage: text("error_message"),
+    lockedUntil: timestamp("locked_until", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("idx_juq_pending").on(table.status, table.createdAt).where(sql`status = 'pending'`),
+  ],
+);

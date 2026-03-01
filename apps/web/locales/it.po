@@ -13,6 +13,18 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#. Success message after submitting a company request
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/app/company-request-form.tsx:38
+#~ msgid "app.home.request.success"
+#~ msgstr ""
+
+#. Error when user is not logged in
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/app/company-request-form.tsx:17
+#~ msgid "app.home.request.error.unauthorized"
+#~ msgstr ""
+
 #. CC right 1
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:80
@@ -34,7 +46,7 @@ msgstr "\"Viktor Shcherbakov, Collection of Job Postings\" con un link alla font
 #: src/components/LicenseContent.tsx:64
 #: src/components/LicenseContent.tsx:89
 #: src/components/PrivacyPolicyContent.tsx:74
-#: src/components/PublicDomainArt.tsx:111
+#: src/components/PublicDomainArt.tsx:115
 #: src/components/TermsContent.tsx:62
 msgid "common.a11y.opensInNewTab"
 msgstr "(apre in una nuova scheda)"
@@ -207,6 +219,12 @@ msgstr "Raccolta di annunci di lavoro (CC BY-NC 4.0)"
 msgid "home.pricing.pro.cta"
 msgstr "In arrivo"
 
+#. Label for the company counter on the app home page
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/app/page.tsx:35
+msgid "app.home.stats.companies"
+msgstr ""
+
 #. Feature: company alerts title
 #. js-lingui-explicit-id
 #: src/components/Features.tsx:130
@@ -237,12 +255,6 @@ msgstr "Collega"
 msgid "settings.account.socials.title"
 msgstr "Account collegati"
 
-#. Footer link to contact email
-#. js-lingui-explicit-id
-#: src/components/Footer.tsx:41
-msgid "common.footer.contact"
-msgstr "Contatti"
-
 #. TOC: Contact
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:25
@@ -255,16 +267,22 @@ msgstr "Contatti"
 msgid "license.contact.title"
 msgstr "Contatti"
 
-#. Table of contents heading
+#. Footer link to contact email
 #. js-lingui-explicit-id
-#: src/components/HowWeIndexContent.tsx:23
-msgid "indexing.toc.title"
-msgstr "Sommario"
+#: src/components/Footer.tsx:41
+msgid "common.footer.contact"
+msgstr "Contatti"
 
 #. Table of contents heading
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:18
 msgid "license.toc.title"
+msgstr "Sommario"
+
+#. Table of contents heading
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:23
+msgid "indexing.toc.title"
 msgstr "Sommario"
 
 #. Button to continue to app after verification
@@ -381,6 +399,12 @@ msgstr "Niente scraping, candidature automatizzate o abuso della piattaforma."
 msgid "home.features.s2.description"
 msgstr "Non trovi la tua azienda preferita nel feed? Incolla il link alla pagina carriere e inizieremo a monitorarla per te — niente script, niente fogli di calcolo, niente attese."
 
+#. Placeholder for the company request input field
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/app/company-request-form.tsx:45
+msgid "app.home.request.placeholder"
+msgstr ""
+
 #. Email input label
 #. js-lingui-explicit-id
 #: src/components/AuthForm.tsx:164
@@ -486,7 +510,7 @@ msgstr "Segui le aziende che ti interessano e ricevi una notifica quando pubblic
 
 #. Link to follow Job Seek on LinkedIn
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/app/page.tsx:31
+#: app/[lang]/(app)/app/page.tsx:72
 msgid "app.home.followLinkedIn"
 msgstr "Seguici su LinkedIn"
 
@@ -631,6 +655,18 @@ msgstr "Se noti un comportamento anomalo del crawler, preferisci che non indiciz
 msgid "indexing.hero.eyebrow"
 msgstr "Politica di indicizzazione"
 
+#. Error when company request input is too long
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/app/company-request-form.tsx:16
+msgid "app.home.request.error.tooLong"
+msgstr ""
+
+#. Error when company request input is too short
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/app/company-request-form.tsx:15
+msgid "app.home.request.error.tooShort"
+msgstr ""
+
 #. Heading when reset link is invalid
 #. js-lingui-explicit-id
 #: app/[lang]/reset-password/page.tsx:32
@@ -649,6 +685,12 @@ msgstr "Link di verifica non valido"
 msgid "license.toc.data"
 msgstr "Dati sugli annunci (CC BY-NC 4.0)"
 
+#. Label for the job postings counter on the app home page
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/app/page.tsx:44
+msgid "app.home.stats.jobPostings"
+msgstr ""
+
 #. Indexing page description
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:51
@@ -657,7 +699,7 @@ msgstr "Job Seek è un motore di ricerca sia per candidati attivi sia per profes
 
 #. Main app page subtitle explaining the app is being built
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/app/page.tsx:21
+#: app/[lang]/(app)/app/page.tsx:25
 msgid "app.home.subtitle"
 msgstr "Job Seek è in fase di sviluppo attivo. Resta aggiornato per le novità!"
 
@@ -687,14 +729,14 @@ msgstr "Lingua"
 
 #. Last updated date label
 #. js-lingui-explicit-id
-#: src/components/TermsContent.tsx:28
-msgid "terms.hero.lastUpdated"
+#: src/components/PrivacyPolicyContent.tsx:28
+msgid "privacy.hero.lastUpdated"
 msgstr "Ultimo aggiornamento:"
 
 #. Last updated date label
 #. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:28
-msgid "privacy.hero.lastUpdated"
+#: src/components/TermsContent.tsx:28
+msgid "terms.hero.lastUpdated"
 msgstr "Ultimo aggiornamento:"
 
 #. Hero secondary call-to-action
@@ -807,6 +849,12 @@ msgstr "Nessuna ridistribuzione commerciale o rivendita senza autorizzazione."
 msgid "license.code.r3"
 msgstr "Nessuna garanzia — l'uso è a proprio rischio e pericolo."
 
+#. Warning shown when the request was saved in DB but GitHub issue creation failed
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/app/company-request-form.tsx:91
+msgid "app.home.request.issueWarning"
+msgstr "Nota: Non siamo riusciti a creare un ticket di monitoraggio, ma la tua richiesta è stata salvata."
+
 #. Cookie banner accept button
 #. js-lingui-explicit-id
 #: src/components/CookieBanner.tsx:66
@@ -881,26 +929,26 @@ msgstr "La nostra posizione sull'automazione"
 
 #. TOC: Overview
 #. js-lingui-explicit-id
-#: src/components/HowWeIndexContent.tsx:27
-msgid "indexing.toc.overview"
-msgstr "Panoramica"
-
-#. TOC: Overview
-#. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:22
 msgid "license.toc.overview"
 msgstr "Panoramica"
 
-#. Table of contents aria label
+#. TOC: Overview
 #. js-lingui-explicit-id
-#: src/components/HowWeIndexContent.tsx:24
-msgid "indexing.toc.ariaLabel"
-msgstr "Contenuti della pagina"
+#: src/components/HowWeIndexContent.tsx:27
+msgid "indexing.toc.overview"
+msgstr "Panoramica"
 
 #. Table of contents aria label
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:19
 msgid "license.toc.ariaLabel"
+msgstr "Contenuti della pagina"
+
+#. Table of contents aria label
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:24
+msgid "indexing.toc.ariaLabel"
 msgstr "Contenuti della pagina"
 
 #. Heading shown on the 404 page
@@ -953,6 +1001,12 @@ msgstr "Password aggiornata"
 msgid "auth.resetPassword.error.mismatch"
 msgstr "Le password non corrispondono"
 
+#. Description below the heading explaining users can request a company
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/app/page.tsx:58
+msgid "app.home.request.description"
+msgstr ""
+
 #. Feature: paste a link title
 #. js-lingui-explicit-id
 #: src/components/Features.tsx:188
@@ -970,6 +1024,12 @@ msgstr "al mese"
 #: src/components/settings/AccountSettings.tsx:358
 msgid "settings.account.delete.description"
 msgstr "Elimina definitivamente il tuo account e tutti i dati associati. Questa azione non può essere annullata."
+
+#. Error when company request input is empty
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/app/company-request-form.tsx:14
+msgid "app.home.request.error.empty"
+msgstr ""
 
 #. Error when email field is empty
 #. js-lingui-explicit-id
@@ -989,6 +1049,12 @@ msgstr "Inserisci una nuova password"
 msgid "settings.account.password.newRequired"
 msgstr "Inserisci una password"
 
+#. Error when company request input has no alphanumeric characters
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/app/company-request-form.tsx:17
+msgid "app.home.request.error.invalid"
+msgstr ""
+
 #. Error when required fields are empty
 #. js-lingui-explicit-id
 #: src/components/AuthForm.tsx:45
@@ -1007,18 +1073,18 @@ msgstr "Effettua l'accesso per gestire le impostazioni del tuo account."
 msgid "home.features.s2.p1.description"
 msgstr "Indicaci qualsiasi pagina carriere o job board su Notion e Job Seek la replica nel tuo spazio di lavoro in pochi minuti."
 
+#. Pricing section eyebrow
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx:101
+msgid "home.pricing.eyebrow"
+msgstr "Prezzi"
+
 #. Nav link: Pricing
 #. Nav link: Pricing
 #. js-lingui-explicit-id
 #: src/components/Header.tsx:61
 #: src/components/MobileMenu.tsx:86
 msgid "common.nav.pricing"
-msgstr "Prezzi"
-
-#. Pricing section eyebrow
-#. js-lingui-explicit-id
-#: src/components/Pricing.tsx:101
-msgid "home.pricing.eyebrow"
 msgstr "Prezzi"
 
 #. Privacy policy page eyebrow
@@ -1060,7 +1126,7 @@ msgstr "Prodotto"
 
 #. Fallback credit text for public domain artwork
 #. js-lingui-explicit-id
-#: src/components/PublicDomainArt.tsx:58
+#: src/components/PublicDomainArt.tsx:62
 msgid "common.art.publicDomain"
 msgstr "Pubblico dominio"
 
@@ -1070,16 +1136,16 @@ msgstr "Pubblico dominio"
 msgid "license.contactCta"
 msgstr "Domande sulle licenze o sull'uso commerciale? Scrivici via email."
 
-#. Terms contact call to action
-#. js-lingui-explicit-id
-#: src/components/TermsContent.tsx:54
-msgid "terms.contact.description"
-msgstr "Domande? Scrivici."
-
 #. Privacy contact call to action
 #. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx:66
 msgid "privacy.contact.description"
+msgstr "Domande? Scrivici."
+
+#. Terms contact call to action
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx:54
+msgid "terms.contact.description"
 msgstr "Domande? Scrivici."
 
 #. Link to full CC license
@@ -1117,6 +1183,18 @@ msgstr "Ridistribuire le proprie modifiche, a condizione di includere l'avviso M
 #: src/components/Footer.tsx:24
 msgid "common.footer.text"
 msgstr "Rilasciato sotto licenza MIT. I dati sugli annunci sono CC BY-NC 4.0."
+
+#. Success message after submitting a company request, with link to GitHub issue for tracking
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/app/company-request-form.tsx:65
+msgid "app.home.request.success.withIssue"
+msgstr "Richiesta inviata! Segui i progressi qui:"
+
+#. Success message when request was saved but GitHub issue could not be created
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/app/company-request-form.tsx:70
+msgid "app.home.request.success.noIssue"
+msgstr "Richiesta inviata! Inizieremo presto a monitorare questa azienda."
 
 #. Resend button during cooldown with seconds remaining
 #. js-lingui-explicit-id
@@ -1352,6 +1430,12 @@ msgstr "Vai al contenuto"
 msgid "error.title"
 msgstr "Qualcosa è andato storto"
 
+#. Generic error when company request fails
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/app/company-request-form.tsx:18
+msgid "app.home.request.error.unknown"
+msgstr ""
+
 #. Free tier CTA
 #. js-lingui-explicit-id
 #: src/components/Pricing.tsx:25
@@ -1363,6 +1447,18 @@ msgstr "Inizia gratis"
 #: src/components/Features.tsx:176
 msgid "home.features.s2.eyebrow"
 msgstr "Mantieni il controllo"
+
+#. Submit button for the company request form
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/app/company-request-form.tsx:57
+msgid "app.home.request.submit"
+msgstr ""
+
+#. Submit button while request is in progress
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/app/company-request-form.tsx:56
+msgid "app.home.request.submitting"
+msgstr ""
 
 #. Free feature: subscribe to companies
 #. js-lingui-explicit-id
@@ -1447,14 +1543,14 @@ msgstr "Il servizio è fornito così com'è, senza garanzie."
 
 #. Short version section title
 #. js-lingui-explicit-id
-#: src/components/TermsContent.tsx:40
-msgid "terms.short.title"
+#: src/components/PrivacyPolicyContent.tsx:40
+msgid "privacy.short.title"
 msgstr "In breve"
 
 #. Short version section title
 #. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:40
-msgid "privacy.short.title"
+#: src/components/TermsContent.tsx:40
+msgid "terms.short.title"
 msgstr "In breve"
 
 #. Theme settings section heading
@@ -1495,7 +1591,7 @@ msgstr "Riprova"
 
 #. Main app page heading
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/app/page.tsx:16
+#: app/[lang]/(app)/app/page.tsx:20
 msgid "app.home.title"
 msgstr "In fase di sviluppo"
 
@@ -1612,6 +1708,12 @@ msgstr "Utilizziamo pochi servizi terzi per accesso, hosting e archiviazione —
 #: src/components/AuthForm.tsx:147
 msgid "auth.signIn.subtitle"
 msgstr "Bentornato"
+
+#. Heading above the company request input on the app home page
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/app/page.tsx:53
+msgid "app.home.request.heading"
+msgstr ""
 
 #. Account deletion
 #. js-lingui-explicit-id

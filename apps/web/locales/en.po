@@ -13,6 +13,18 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#. Success message after submitting a company request
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/app/company-request-form.tsx:38
+#~ msgid "app.home.request.success"
+#~ msgstr "Request submitted! We'll start tracking this company soon."
+
+#. Error when user is not logged in
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/app/company-request-form.tsx:17
+#~ msgid "app.home.request.error.unauthorized"
+#~ msgstr "You must be logged in."
+
 #. CC right 1
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:80
@@ -34,7 +46,7 @@ msgstr "“Viktor Shcherbakov, Collection of Job Postings” with a link to the 
 #: src/components/LicenseContent.tsx:64
 #: src/components/LicenseContent.tsx:89
 #: src/components/PrivacyPolicyContent.tsx:74
-#: src/components/PublicDomainArt.tsx:111
+#: src/components/PublicDomainArt.tsx:115
 #: src/components/TermsContent.tsx:62
 msgid "common.a11y.opensInNewTab"
 msgstr "(opens in new tab)"
@@ -207,6 +219,12 @@ msgstr "Collection of job postings (CC BY-NC 4.0)"
 msgid "home.pricing.pro.cta"
 msgstr "Coming soon"
 
+#. Label for the company counter on the app home page
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/app/page.tsx:35
+msgid "app.home.stats.companies"
+msgstr "Companies Tracked"
+
 #. Feature: company alerts title
 #. js-lingui-explicit-id
 #: src/components/Features.tsx:130
@@ -237,12 +255,6 @@ msgstr "Connect"
 msgid "settings.account.socials.title"
 msgstr "Connected accounts"
 
-#. Footer link to contact email
-#. js-lingui-explicit-id
-#: src/components/Footer.tsx:41
-msgid "common.footer.contact"
-msgstr "Contact"
-
 #. TOC: Contact
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:25
@@ -255,16 +267,22 @@ msgstr "Contact"
 msgid "license.contact.title"
 msgstr "Contact"
 
-#. Table of contents heading
+#. Footer link to contact email
 #. js-lingui-explicit-id
-#: src/components/HowWeIndexContent.tsx:23
-msgid "indexing.toc.title"
-msgstr "Contents"
+#: src/components/Footer.tsx:41
+msgid "common.footer.contact"
+msgstr "Contact"
 
 #. Table of contents heading
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:18
 msgid "license.toc.title"
+msgstr "Contents"
+
+#. Table of contents heading
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:23
+msgid "indexing.toc.title"
 msgstr "Contents"
 
 #. Button to continue to app after verification
@@ -381,6 +399,12 @@ msgstr "Don’t scrape the service, submit automated applications, or abuse the 
 msgid "home.features.s2.description"
 msgstr "Don't see your favourite company in the feed? Paste its careers link and we'll start scraping it for you—no scripts, no spreadsheets, no waiting in support queues."
 
+#. Placeholder for the company request input field
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/app/company-request-form.tsx:45
+msgid "app.home.request.placeholder"
+msgstr "e.g. Stripe, or https://boards.greenhouse.io/stripe"
+
 #. Email input label
 #. js-lingui-explicit-id
 #: src/components/AuthForm.tsx:164
@@ -486,7 +510,7 @@ msgstr "Follow target employers and get notified when they add new roles."
 
 #. Link to follow Job Seek on LinkedIn
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/app/page.tsx:31
+#: app/[lang]/(app)/app/page.tsx:72
 msgid "app.home.followLinkedIn"
 msgstr "Follow us on LinkedIn"
 
@@ -631,6 +655,18 @@ msgstr "If you notice unusual crawler behaviour, prefer that we do not index you
 msgid "indexing.hero.eyebrow"
 msgstr "Indexing policy"
 
+#. Error when company request input is too long
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/app/company-request-form.tsx:16
+msgid "app.home.request.error.tooLong"
+msgstr "Input is too long."
+
+#. Error when company request input is too short
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/app/company-request-form.tsx:15
+msgid "app.home.request.error.tooShort"
+msgstr "Input is too short."
+
 #. Heading when reset link is invalid
 #. js-lingui-explicit-id
 #: app/[lang]/reset-password/page.tsx:32
@@ -649,6 +685,12 @@ msgstr "Invalid verification link"
 msgid "license.toc.data"
 msgstr "Job data (CC BY-NC 4.0)"
 
+#. Label for the job postings counter on the app home page
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/app/page.tsx:44
+msgid "app.home.stats.jobPostings"
+msgstr "Job Postings"
+
 #. Indexing page description
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:51
@@ -657,7 +699,7 @@ msgstr "Job Seek is a search engine for both active candidates and professionals
 
 #. Main app page subtitle explaining the app is being built
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/app/page.tsx:21
+#: app/[lang]/(app)/app/page.tsx:25
 msgid "app.home.subtitle"
 msgstr "Job Seek is being actively built. Stay tuned for updates!"
 
@@ -687,14 +729,14 @@ msgstr "Language"
 
 #. Last updated date label
 #. js-lingui-explicit-id
-#: src/components/TermsContent.tsx:28
-msgid "terms.hero.lastUpdated"
+#: src/components/PrivacyPolicyContent.tsx:28
+msgid "privacy.hero.lastUpdated"
 msgstr "Last updated:"
 
 #. Last updated date label
 #. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:28
-msgid "privacy.hero.lastUpdated"
+#: src/components/TermsContent.tsx:28
+msgid "terms.hero.lastUpdated"
 msgstr "Last updated:"
 
 #. Hero secondary call-to-action
@@ -807,6 +849,12 @@ msgstr "No commercial redistribution or resale without permission."
 msgid "license.code.r3"
 msgstr "No warranty — use at your own risk."
 
+#. Warning shown when the request was saved in DB but GitHub issue creation failed
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/app/company-request-form.tsx:91
+msgid "app.home.request.issueWarning"
+msgstr "Note: We couldn't create a tracking issue, but your request was saved."
+
 #. Cookie banner accept button
 #. js-lingui-explicit-id
 #: src/components/CookieBanner.tsx:66
@@ -881,26 +929,26 @@ msgstr "Our stance on automation"
 
 #. TOC: Overview
 #. js-lingui-explicit-id
-#: src/components/HowWeIndexContent.tsx:27
-msgid "indexing.toc.overview"
-msgstr "Overview"
-
-#. TOC: Overview
-#. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:22
 msgid "license.toc.overview"
 msgstr "Overview"
 
-#. Table of contents aria label
+#. TOC: Overview
 #. js-lingui-explicit-id
-#: src/components/HowWeIndexContent.tsx:24
-msgid "indexing.toc.ariaLabel"
-msgstr "Page contents"
+#: src/components/HowWeIndexContent.tsx:27
+msgid "indexing.toc.overview"
+msgstr "Overview"
 
 #. Table of contents aria label
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:19
 msgid "license.toc.ariaLabel"
+msgstr "Page contents"
+
+#. Table of contents aria label
+#. js-lingui-explicit-id
+#: src/components/HowWeIndexContent.tsx:24
+msgid "indexing.toc.ariaLabel"
 msgstr "Page contents"
 
 #. Heading shown on the 404 page
@@ -953,6 +1001,12 @@ msgstr "Password updated"
 msgid "auth.resetPassword.error.mismatch"
 msgstr "Passwords do not match"
 
+#. Description below the heading explaining users can request a company
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/app/page.tsx:58
+msgid "app.home.request.description"
+msgstr "Enter a company name or careers page URL and we'll start tracking their job postings."
+
 #. Feature: paste a link title
 #. js-lingui-explicit-id
 #: src/components/Features.tsx:188
@@ -970,6 +1024,12 @@ msgstr "per month"
 #: src/components/settings/AccountSettings.tsx:358
 msgid "settings.account.delete.description"
 msgstr "Permanently delete your account and all associated data. This action cannot be undone."
+
+#. Error when company request input is empty
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/app/company-request-form.tsx:14
+msgid "app.home.request.error.empty"
+msgstr "Please enter a company name or URL."
 
 #. Error when email field is empty
 #. js-lingui-explicit-id
@@ -989,6 +1049,12 @@ msgstr "Please enter a new password"
 msgid "settings.account.password.newRequired"
 msgstr "Please enter a password"
 
+#. Error when company request input has no alphanumeric characters
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/app/company-request-form.tsx:17
+msgid "app.home.request.error.invalid"
+msgstr "Please enter a valid company name or URL."
+
 #. Error when required fields are empty
 #. js-lingui-explicit-id
 #: src/components/AuthForm.tsx:45
@@ -1007,18 +1073,18 @@ msgstr "Please log in to manage your account settings."
 msgid "home.features.s2.p1.description"
 msgstr "Point us at any careers page or Notion job board and Job Seek mirrors it in your workspace within minutes."
 
+#. Pricing section eyebrow
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx:101
+msgid "home.pricing.eyebrow"
+msgstr "Pricing"
+
 #. Nav link: Pricing
 #. Nav link: Pricing
 #. js-lingui-explicit-id
 #: src/components/Header.tsx:61
 #: src/components/MobileMenu.tsx:86
 msgid "common.nav.pricing"
-msgstr "Pricing"
-
-#. Pricing section eyebrow
-#. js-lingui-explicit-id
-#: src/components/Pricing.tsx:101
-msgid "home.pricing.eyebrow"
 msgstr "Pricing"
 
 #. Privacy policy page eyebrow
@@ -1060,7 +1126,7 @@ msgstr "Product"
 
 #. Fallback credit text for public domain artwork
 #. js-lingui-explicit-id
-#: src/components/PublicDomainArt.tsx:58
+#: src/components/PublicDomainArt.tsx:62
 msgid "common.art.publicDomain"
 msgstr "Public Domain"
 
@@ -1070,16 +1136,16 @@ msgstr "Public Domain"
 msgid "license.contactCta"
 msgstr "Questions about licensing or commercial use? Email us."
 
-#. Terms contact call to action
-#. js-lingui-explicit-id
-#: src/components/TermsContent.tsx:54
-msgid "terms.contact.description"
-msgstr "Questions? Email us."
-
 #. Privacy contact call to action
 #. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx:66
 msgid "privacy.contact.description"
+msgstr "Questions? Email us."
+
+#. Terms contact call to action
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx:54
+msgid "terms.contact.description"
 msgstr "Questions? Email us."
 
 #. Link to full CC license
@@ -1117,6 +1183,18 @@ msgstr "Redistribute your changes, as long as you include the MIT notice."
 #: src/components/Footer.tsx:24
 msgid "common.footer.text"
 msgstr "Released under the MIT License. Job data is CC BY-NC 4.0."
+
+#. Success message after submitting a company request, with link to GitHub issue for tracking
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/app/company-request-form.tsx:65
+msgid "app.home.request.success.withIssue"
+msgstr "Request submitted! Track progress here:"
+
+#. Success message when request was saved but GitHub issue could not be created
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/app/company-request-form.tsx:70
+msgid "app.home.request.success.noIssue"
+msgstr "Request submitted! We'll start tracking this company soon."
 
 #. Resend button during cooldown with seconds remaining
 #. js-lingui-explicit-id
@@ -1352,6 +1430,12 @@ msgstr "Skip to content"
 msgid "error.title"
 msgstr "Something went wrong"
 
+#. Generic error when company request fails
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/app/company-request-form.tsx:18
+msgid "app.home.request.error.unknown"
+msgstr "Something went wrong. Please try again."
+
 #. Free tier CTA
 #. js-lingui-explicit-id
 #: src/components/Pricing.tsx:25
@@ -1363,6 +1447,18 @@ msgstr "Start for free"
 #: src/components/Features.tsx:176
 msgid "home.features.s2.eyebrow"
 msgstr "Stay in control"
+
+#. Submit button for the company request form
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/app/company-request-form.tsx:57
+msgid "app.home.request.submit"
+msgstr "Submit"
+
+#. Submit button while request is in progress
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/app/company-request-form.tsx:56
+msgid "app.home.request.submitting"
+msgstr "Submitting..."
 
 #. Free feature: subscribe to companies
 #. js-lingui-explicit-id
@@ -1447,14 +1543,14 @@ msgstr "The service is provided as-is — no warranties."
 
 #. Short version section title
 #. js-lingui-explicit-id
-#: src/components/TermsContent.tsx:40
-msgid "terms.short.title"
+#: src/components/PrivacyPolicyContent.tsx:40
+msgid "privacy.short.title"
 msgstr "The short version"
 
 #. Short version section title
 #. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:40
-msgid "privacy.short.title"
+#: src/components/TermsContent.tsx:40
+msgid "terms.short.title"
 msgstr "The short version"
 
 #. Theme settings section heading
@@ -1495,7 +1591,7 @@ msgstr "Try again"
 
 #. Main app page heading
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/app/page.tsx:16
+#: app/[lang]/(app)/app/page.tsx:20
 msgid "app.home.title"
 msgstr "Under Active Development"
 
@@ -1612,6 +1708,12 @@ msgstr "We use a handful of third-party services for sign-in, hosting, and stora
 #: src/components/AuthForm.tsx:147
 msgid "auth.signIn.subtitle"
 msgstr "Welcome back"
+
+#. Heading above the company request input on the app home page
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/app/page.tsx:53
+msgid "app.home.request.heading"
+msgstr "Which company should we track?"
 
 #. Account deletion
 #. js-lingui-explicit-id

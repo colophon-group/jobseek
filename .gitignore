@@ -10,3 +10,5 @@ dist
 
 # Lingui compiled catalogs (source .po files are tracked)
 locales/*.js
+
+*.pem

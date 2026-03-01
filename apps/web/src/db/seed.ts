@@ -21,7 +21,6 @@ async function main() {
       {
         name: "Acme Corp",
         slug: "acme-corp",
-        jobBoard: "https://jobs.acme.example.com",
         website: "https://acme.example.com",
         description: "A global leader in innovative solutions.",
       },
