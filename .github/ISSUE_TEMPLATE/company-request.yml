@@ -1,0 +1,15 @@
+name: Company Scraper Request
+description: Request a new scraper or report a broken one for a specific company
+labels: ["company-request"]
+body:
+  - type: textarea
+    id: request
+    attributes:
+      label: Company
+      description: Company name, homepage URL, or anything that helps identify the company. A homepage URL is most helpful.
+      placeholder: |
+        Stripe — https://stripe.com
+        or just: Stripe
+        or just: https://stripe.com/jobs
+    validations:
+      required: true
