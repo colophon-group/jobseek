@@ -45,30 +45,30 @@ async function main() {
       companyId: acme.id,
       title: "Senior Frontend Engineer",
       description: "Build amazing user interfaces with React and Next.js.",
-      location: "Berlin, Germany",
+      locations: ["Berlin, Germany"],
     },
     {
       companyId: acme.id,
       title: "Backend Developer",
       description: "Design and implement scalable APIs.",
-      location: "Remote",
+      locations: ["Remote"],
     },
     {
       companyId: globex.id,
       title: "Product Manager",
-      location: "Munich, Germany",
+      locations: ["Munich, Germany"],
     },
     {
       companyId: globex.id,
       title: "DevOps Engineer",
       description: "Manage CI/CD pipelines and cloud infrastructure.",
-      location: "Vienna, Austria",
+      locations: ["Vienna, Austria"],
     },
     {
       companyId: initech.id,
       title: "Full Stack Developer",
       description: "Work across the entire stack with TypeScript.",
-      location: "Zurich, Switzerland",
+      locations: ["Zurich, Switzerland"],
     },
   ]);
 
