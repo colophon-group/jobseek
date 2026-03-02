@@ -264,6 +264,7 @@ function ConnectedAccountsSection({ accounts, onDisconnect }: { accounts: Connec
   const { t } = useLingui();
   const lp = useLocalePath();
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [error, setError] = useState("");
 
   function isConnected(providerId: string) {
     return accounts.some((a) => a.providerId === providerId);
@@ -271,23 +272,29 @@ function ConnectedAccountsSection({ accounts, onDisconnect }: { accounts: Connec
 
   async function handleConnect(provider: string) {
     setActionLoading(provider);
+    setError("");
     const result = await authClient.linkSocial({
       provider: provider as "github" | "google" | "linkedin",
       callbackURL: lp("/app/settings/account"),
     });
     if (result.error) {
-      // linkSocial redirects on success, so we only reach here on error
+      setError(result.error.message ?? t({ id: "settings.account.socials.connectError", comment: "Error when linking social account fails", message: "Failed to connect account" }));
     }
     setActionLoading(null);
   }
 
   async function handleDisconnect(providerId: string) {
     setActionLoading(providerId);
+    setError("");
     try {
-      await authClient.unlinkAccount({ providerId });
-      onDisconnect(providerId);
+      const result = await authClient.unlinkAccount({ providerId });
+      if (result.error) {
+        setError(result.error.message ?? t({ id: "settings.account.socials.disconnectError", comment: "Error when unlinking social account fails", message: "Failed to disconnect account" }));
+      } else {
+        onDisconnect(providerId);
+      }
     } catch {
-      // Keep provider in UI on failure
+      setError(t({ id: "settings.account.socials.disconnectError", comment: "Error when unlinking social account fails", message: "Failed to disconnect account" }));
     }
     setActionLoading(null);
   }
@@ -302,6 +309,7 @@ function ConnectedAccountsSection({ accounts, onDisconnect }: { accounts: Connec
           Manage your linked social accounts.
         </Trans>
       </p>
+      <ErrorAlert message={error} />
       <div className="space-y-2">
         {socialProviders.map((p) => {
           const connected = isConnected(p.id);

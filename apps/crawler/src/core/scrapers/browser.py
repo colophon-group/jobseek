@@ -26,7 +26,10 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient) -> JobContent:
             "Install with: uv sync --group dev && uv run playwright install chromium"
         ) from err
 
+    _VALID_WAIT = {"load", "domcontentloaded", "networkidle", "commit"}
     wait_strategy = config.get("wait", "networkidle")
+    if wait_strategy not in _VALID_WAIT:
+        raise ValueError(f"Invalid wait strategy {wait_strategy!r}, must be one of {_VALID_WAIT}")
 
     # Extract selector config (everything except "wait")
     field_selectors: dict[str, str] = {}
@@ -38,22 +41,28 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient) -> JobContent:
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
-        page = await browser.new_page()
+        try:
+            page = await browser.new_page()
 
-        await page.goto(url, wait_until=wait_strategy, timeout=30000)
+            await page.goto(url, wait_until=wait_strategy, timeout=30000)
 
-        for field_name, selector in field_selectors.items():
-            try:
-                element = await page.query_selector(selector)
-                if element:
-                    text = await element.inner_text()
-                    text = text.strip()
-                    if text:
-                        results[field_name] = text
-            except Exception:
-                log.debug("browser.selector_failed", url=url, field=field_name, selector=selector)
-
-        await browser.close()
+            for field_name, selector in field_selectors.items():
+                try:
+                    element = await page.query_selector(selector)
+                    if element:
+                        text = await element.inner_text()
+                        text = text.strip()
+                        if text:
+                            results[field_name] = text
+                except Exception:
+                    log.debug(
+                        "browser.selector_failed",
+                        url=url,
+                        field=field_name,
+                        selector=selector,
+                    )
+        finally:
+            await browser.close()
 
     def get_list(key: str) -> list[str] | None:
         val = results.get(key)

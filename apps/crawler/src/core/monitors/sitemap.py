@@ -241,7 +241,7 @@ async def discover(
     return set(urls), new_sitemap_url
 
 
-async def can_handle(url: str, client) -> dict | None:
+async def can_handle(url: str, client: httpx.AsyncClient | None = None) -> dict | None:
     """Try to discover a sitemap — if found, return its URL as metadata."""
     try:
         sitemap_url, _root = await _discover_sitemap(url, client)

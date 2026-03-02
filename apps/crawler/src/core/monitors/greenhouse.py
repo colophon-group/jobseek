@@ -115,7 +115,7 @@ async def discover(board: dict, client: httpx.AsyncClient) -> list[DiscoveredJob
     return jobs
 
 
-async def can_handle(url: str, client=None) -> dict | None:
+async def can_handle(url: str, client: httpx.AsyncClient | None = None) -> dict | None:
     """Detect Greenhouse: domain check -> page HTML scan -> slug-based API probe."""
     token = _token_from_url(url)
     if token:
@@ -131,12 +131,12 @@ async def can_handle(url: str, client=None) -> dict | None:
             if match:
                 found = match.group(1)
                 if found not in _IGNORE_TOKENS:
-                    log.info("greenhouse.detected_in_page", url=url, token=found)
+                    log.info("greenhouse.detected_in_page", url=url, board_token=found)
                     return {"token": found}
 
     for slug in slugs_from_url(url):
         if await _probe_token(slug, client):
-            log.info("greenhouse.detected_by_probe", url=url, token=slug)
+            log.info("greenhouse.detected_by_probe", url=url, board_token=slug)
             return {"token": slug}
 
     return None

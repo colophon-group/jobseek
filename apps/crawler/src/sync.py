@@ -14,9 +14,13 @@ import argparse
 import asyncio
 import json
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import polars as pl
 import structlog
+
+if TYPE_CHECKING:
+    import asyncpg
 
 from src.config import settings
 from src.db import close_pool, create_pool
@@ -74,7 +78,9 @@ def _load_boards() -> pl.DataFrame:
     return df
 
 
-async def sync_companies(conn, companies: pl.DataFrame, dry_run: bool) -> dict[str, str]:
+async def sync_companies(
+    conn: asyncpg.Connection, companies: pl.DataFrame, dry_run: bool
+) -> dict[str, str]:
     """Upsert companies, return slug -> id mapping."""
     slug_to_id: dict[str, str] = {}
 
@@ -104,7 +110,7 @@ async def sync_companies(conn, companies: pl.DataFrame, dry_run: bool) -> dict[s
 
 
 async def sync_boards(
-    conn,
+    conn: asyncpg.Connection,
     boards: pl.DataFrame,
     slug_to_id: dict[str, str],
     dry_run: bool,

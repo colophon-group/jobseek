@@ -39,13 +39,16 @@ class DiscoveredJob:
     metadata: dict | None = None
 
 
-# Discover functions return either set[str] (URL-only) or list[DiscoveredJob] (rich).
-DiscoverFunc = Callable[..., Awaitable[set[str] | list[DiscoveredJob]]]
+# Discover functions return either set[str] (URL-only), list[DiscoveredJob] (rich),
+# or tuple[set[str], str | None] (URL-only + metadata, e.g. sitemap).
+DiscoverFunc = Callable[
+    ..., Awaitable[set[str] | list[DiscoveredJob] | tuple[set[str], str | None]]
+]
 
-# can_handle: (url, client) -> dict | None.
+# can_handle: async (url, client) -> dict | None.
 # Returns metadata dict (truthy) when the monitor can handle the URL,
 # or None when it cannot.
-CanHandleFunc = Callable[..., dict | None | Awaitable[dict | None]]
+CanHandleFunc = Callable[..., Awaitable[dict | None]]
 
 
 @dataclass
@@ -97,9 +100,7 @@ async def detect_monitor_type(
     for monitor in _REGISTRY:
         if monitor.can_handle is None:
             continue
-        result = monitor.can_handle(url, client)
-        if hasattr(result, "__await__"):
-            result = await result
+        result = await monitor.can_handle(url, client)
         if result is not None:
             return monitor.name, result
     return None

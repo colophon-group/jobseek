@@ -222,7 +222,7 @@ async def _process_one_board(
                 await conn.execute(_RECORD_SUCCESS, board_id)
             return
 
-        async with pool.acquire() as conn:
+        async with pool.acquire() as conn, conn.transaction():
             # Persist newly discovered sitemap URL
             if result.new_sitemap_url:
                 await conn.execute(

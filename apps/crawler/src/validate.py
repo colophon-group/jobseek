@@ -27,7 +27,7 @@ log = structlog.get_logger()
 DATA_DIR = Path(__file__).parent.parent / "data"
 
 _SLUG_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
-_URL_RE = re.compile(r"^https?://")
+_URL_RE = re.compile(r"^https?://[^\s/]+")
 
 
 class ValidationError:
