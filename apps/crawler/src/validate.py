@@ -1,10 +1,11 @@
 """CSV validation and diagnostic tools.
 
 Usage:
-    uv run python -m src.validate                           # validate CSVs
-    uv run python -m src.validate --detect <url>            # auto-detect monitor type
-    uv run python -m src.validate --probe-jsonld <url>      # check for JSON-LD
-    uv run python -m src.validate --test-monitor <slug> <board-url>  # test crawl
+    uv run python -m src.validate                                        # validate CSVs
+    uv run python -m src.validate --detect <url>                         # auto-detect monitor type
+    uv run python -m src.validate --probe-jsonld <url>                   # check for JSON-LD
+    uv run python -m src.validate --test-monitor <slug> <board-url>      # test crawl
+    uv run python -m src.validate --test-scraper <url> <type> [config]   # test scrape one job
 """
 
 from __future__ import annotations
@@ -248,15 +249,33 @@ async def test_monitor(slug: str, board_url: str) -> None:
                 sample_url = next(iter(result.urls))
                 print(f"  Sample URL: {sample_url}")
 
-        # Auto-merge guidance
-        count = len(result.urls)
-        if count < 500:
-            print("\n  Label: auto-merge (< 500 jobs)")
-        elif count < 5000:
-            print("\n  Label: review-size (500-5000 jobs)")
-        else:
-            print("\n  Label: review-load (> 5000 jobs)")
+    finally:
+        await http.aclose()
 
+
+async def test_scraper(url: str, scraper_type: str, scraper_config_json: str | None) -> None:
+    """Test scraping a single job URL and report results + timing."""
+    from src.core.scrape import scrape_one
+    from src.shared.http import create_http_client
+
+    config = json.loads(scraper_config_json) if scraper_config_json else {}
+    http = create_http_client()
+    try:
+        print(f"Scraping {url} (type: {scraper_type})...")
+        start = time.monotonic()
+        result = await scrape_one(url, scraper_type, config, http)
+        elapsed = time.monotonic() - start
+
+        print(f"  Scraped in {elapsed:.1f}s")
+        if result.title:
+            print(f"  Title: {result.title}")
+        if result.locations:
+            print(f"  Location: {', '.join(result.locations)}")
+        if result.description:
+            desc_preview = result.description[:120].replace("\n", " ")
+            print(f"  Description: {desc_preview}...")
+        if not result.title and not result.description:
+            print("  Warning: no title or description extracted")
     finally:
         await http.aclose()
 
@@ -273,6 +292,12 @@ def main():
         metavar=("SLUG", "BOARD_URL"),
         help="Test crawl a board",
     )
+    parser.add_argument(
+        "--test-scraper",
+        nargs="+",
+        metavar=("URL", "TYPE"),
+        help="Test scrape one job URL: <url> <scraper-type> [config-json]",
+    )
     args = parser.parse_args()
 
     if args.detect:
@@ -286,6 +311,15 @@ def main():
     if args.test_monitor:
         slug, board_url = args.test_monitor
         asyncio.run(test_monitor(slug, board_url))
+        return
+
+    if args.test_scraper:
+        parts = args.test_scraper
+        if len(parts) < 2:
+            parser.error("--test-scraper requires at least URL and TYPE")
+        url, stype = parts[0], parts[1]
+        sconfig = parts[2] if len(parts) > 2 else None
+        asyncio.run(test_scraper(url, stype, sconfig))
         return
 
     # Default: validate CSVs

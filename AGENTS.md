@@ -43,6 +43,9 @@ uv run python -m src.validate --probe-jsonld <job-page-url>
 # Test crawl a board
 uv run python -m src.validate --test-monitor <company-slug> <board-url>
 
+# Test scrape a single job page
+uv run python -m src.validate --test-scraper <job-page-url> <scraper-type> [scraper-config-json]
+
 # Sync CSVs to database
 uv run python -m src.sync
 uv run python -m src.sync --dry-run
@@ -55,6 +58,12 @@ uv run scheduler --once
 
 # Run tests
 uv run pytest tests/
+
+# CSV management (add/update/remove company and board rows)
+uv run python -m src.csvtool company <slug> add [--name NAME] [--website URL] [--logo-url URL] [--icon-url URL]
+uv run python -m src.csvtool company <slug> del
+uv run python -m src.csvtool board <slug> add --board-url URL [--monitor-type TYPE] [--monitor-config JSON] [--scraper-type TYPE] [--scraper-config JSON]
+uv run python -m src.csvtool board <slug> del --board-url URL
 
 # Install dependencies
 uv sync
@@ -95,8 +104,18 @@ gh pr list --state open --search "Closes #<issue-number>"
 
 - If an open PR exists and has recent activity (commits within 24h for config PRs, 72h for code PRs) → **stop processing entirely**. The issue is actively claimed. Do not create a competing PR or continue to subsequent steps.
 - If an open PR exists but appears stale (no recent commits beyond the thresholds above) → leave a comment on the stale PR noting it may be abandoned, then **proceed** to create your own PR as normal.
-- If no open PR exists → create a draft PR with `Closes #<issue-number>` in the body.
-  Use branch name `add-company/<slug>`.
+- If no open PR exists → create a branch, seed a stub company row, and open a draft PR:
+
+```bash
+git checkout -b add-company/<slug>
+cd apps/crawler
+uv run python -m src.csvtool company <slug> add
+cd ../..
+git add data/companies.csv
+git commit -m "Add <name>"
+git push -u origin add-company/<slug>
+gh pr create --draft --title "Add <name>" --body "Closes #<issue-number>"
+```
 
 ### 2. Research the Company
 
@@ -152,10 +171,14 @@ For URL-only monitors (`sitemap`, `discover`):
    - No JSON-LD → inspect page HTML for CSS selectors → `scraper_type: html`
    - Page needs JS to render → `scraper_type: browser` (CSS selectors + wait strategy)
 
-2. **Verify extraction** on 2–3 sample job URLs:
+2. **Verify extraction** on 2–3 sample job URLs using `--test-scraper`:
+   ```bash
+   uv run python -m src.validate --test-scraper <job-page-url> <scraper-type> [config-json]
+   ```
    - Does the title extract correctly?
    - Does the location extract correctly?
    - Does the description extract correctly?
+   - Note the scrape time reported — you'll need it for the stats comment in step 9.
 
 3. **Iterate** if extraction is wrong or incomplete:
    - Revise CSS selectors
@@ -171,19 +194,16 @@ If no existing monitor/scraper type can handle the site after exhausting config 
 3. Create a new PR on a `fix-crawler/<description>` branch
 4. In the new PR body, reference the closed draft PR (e.g. "Supersedes #12")
 5. Ensure the new PR closes the original issue (`Closes #<issue-number>`)
-6. Apply label: `review-code` (always requires human review)
-7. Include both the code change AND the CSV config in the same PR
+6. Include both the code change AND the CSV config in the same PR
 
 ### 7. Add CSV Rows
 
-Add to `data/companies.csv`:
-```csv
-<slug>,<name>,<website>,<logo_url>,<icon_url>
-```
+Update the company row (created as a stub in step 1) with the researched details, then add the board row:
 
-Add to `data/boards.csv`:
-```csv
-<slug>,<board_url>,<monitor_type>,<monitor_config>,<scraper_type>,<scraper_config>
+```bash
+cd apps/crawler
+uv run python -m src.csvtool company <slug> add --name "<name>" --website <url> --logo-url <url> --icon-url <url>
+uv run python -m src.csvtool board <slug> add --board-url <url> --monitor-type <type> [--monitor-config JSON] [--scraper-type TYPE] [--scraper-config JSON]
 ```
 
 ### 8. Validate
@@ -194,10 +214,23 @@ uv run python -m src.validate
 
 ### 9. Create the PR
 
-Mark PR as ready. Include in body:
-- Monitor type, scraper type
-- Estimated job count and crawl time
-- Apply label: `auto-merge` (<500 jobs, config-only) or `review-size`/`review-load` (larger)
+1. Post a **crawl stats comment** on the PR with the numbers from steps 4 and 5.
+   Use this exact format (CI parses the hidden JSON):
+
+   ```
+   <!-- crawl-stats {"jobs": <N>, "monitor_time": <seconds>, "scraper_time": <seconds>} -->
+   | Metric | Value |
+   |---|---|
+   | Jobs | <N> |
+   | Monitor time | <seconds>s |
+   | Scraper time | <seconds>s |
+   ```
+
+   - **Jobs**: number of postings found by `--test-monitor`
+   - **Monitor time**: seconds to fetch all job links (reported by `--test-monitor`)
+   - **Scraper time**: seconds to scrape one job page (reported by `--test-scraper`; use `0` for API monitors)
+
+2. Mark the PR as ready for review. CI will handle labeling and merging.
 
 ## CSV Schemas
 
@@ -258,7 +291,7 @@ company_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config
 - Modifying CI/CD workflows
 - Adding new dependencies
 
-### Escalate (propose code changes via PR with `review-code` label)
+### Escalate (propose code changes via PR)
 - Existing monitor types can't discover all jobs on a board
 - Existing scraper types can't extract data from job pages
 - Adding a new monitor or scraper type

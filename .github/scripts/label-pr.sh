@@ -1,0 +1,172 @@
+#!/usr/bin/env bash
+#
+# Determine and apply labels to a company-request PR.
+#
+# Checks changed files, diff size, and content sanity, then parses
+# the crawl-stats comment to decide:
+#   auto-merge    — config-only, sane diff, <500 jobs, crawl <=60s
+#   review-size   — >=500 jobs (or missing stats)
+#   review-load   — monitor crawl >60s
+#   review-code   — unexpected files or suspicious diff content
+#
+# Required env vars: GH_TOKEN, PR, REPO, GITHUB_OUTPUT
+
+set -euo pipefail
+
+: "${PR:?PR is required}"
+: "${REPO:?REPO is required}"
+
+ALLOWED_FILES="apps/crawler/data/companies.csv apps/crawler/data/boards.csv"
+VALID_MONITOR_TYPES="greenhouse|lever|sitemap|discover"
+VALID_SCRAPER_TYPES="greenhouse_api|lever_api|json-ld|html|browser"
+SLUG_RE='^[a-z0-9]+(-[a-z0-9]+)*$'
+URL_RE='^https?://'
+MAX_ADDED_LINES=4
+
+# --- Check changed files ---
+
+FILES=$(gh pr diff "$PR" --repo "$REPO" --name-only)
+echo "Changed files:"
+echo "$FILES"
+
+CONFIG_ONLY=true
+while IFS= read -r f; do
+  [ -z "$f" ] && continue
+  MATCH=false
+  for ALLOWED in $ALLOWED_FILES; do
+    if [ "$f" = "$ALLOWED" ]; then
+      MATCH=true
+      break
+    fi
+  done
+  if [ "$MATCH" != "true" ]; then
+    echo "::warning::Unexpected file: $f"
+    CONFIG_ONLY=false
+  fi
+done <<< "$FILES"
+
+# --- Check diff size and content ---
+
+DIFF=$(gh pr diff "$PR" --repo "$REPO")
+ADDED_LINES=$(echo "$DIFF" | grep -c '^+[^+]' || true)
+echo "Added lines: $ADDED_LINES (max $MAX_ADDED_LINES)"
+
+DIFF_OK=true
+
+if [ "$ADDED_LINES" -gt "$MAX_ADDED_LINES" ]; then
+  echo "::warning::Too many added lines ($ADDED_LINES > $MAX_ADDED_LINES)"
+  DIFF_OK=false
+fi
+
+# Validate each added line in the diff (skip diff headers)
+while IFS= read -r line; do
+  # Strip the leading "+"
+  content="${line:1}"
+
+  # Skip empty lines and CSV headers
+  [ -z "$content" ] && continue
+  echo "$content" | grep -qE '^(slug,|company_slug,)' && continue
+
+  # Count fields — companies.csv has 5, boards.csv has 6
+  FIELD_COUNT=$(echo "$content" | awk -F',' '{print NF}')
+  if [ "$FIELD_COUNT" -ne 5 ] && [ "$FIELD_COUNT" -ne 6 ]; then
+    echo "::warning::Unexpected field count ($FIELD_COUNT): $content"
+    DIFF_OK=false
+    continue
+  fi
+
+  if [ "$FIELD_COUNT" -eq 5 ]; then
+    # companies.csv: slug,name,website,logo_url,icon_url
+    SLUG=$(echo "$content" | cut -d',' -f1)
+    WEBSITE=$(echo "$content" | cut -d',' -f3)
+
+    if ! echo "$SLUG" | grep -qE "$SLUG_RE"; then
+      echo "::warning::Invalid slug: $SLUG"
+      DIFF_OK=false
+    fi
+    if [ -n "$WEBSITE" ] && ! echo "$WEBSITE" | grep -qE "$URL_RE"; then
+      echo "::warning::Invalid website URL: $WEBSITE"
+      DIFF_OK=false
+    fi
+  fi
+
+  if [ "$FIELD_COUNT" -eq 6 ]; then
+    # boards.csv: company_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config
+    SLUG=$(echo "$content" | cut -d',' -f1)
+    BOARD_URL=$(echo "$content" | cut -d',' -f2)
+    MONITOR=$(echo "$content" | cut -d',' -f3)
+    SCRAPER=$(echo "$content" | cut -d',' -f5)
+
+    if ! echo "$SLUG" | grep -qE "$SLUG_RE"; then
+      echo "::warning::Invalid company_slug: $SLUG"
+      DIFF_OK=false
+    fi
+    if ! echo "$BOARD_URL" | grep -qE "$URL_RE"; then
+      echo "::warning::Invalid board_url: $BOARD_URL"
+      DIFF_OK=false
+    fi
+    if ! echo "$MONITOR" | grep -qE "^($VALID_MONITOR_TYPES)$"; then
+      echo "::warning::Invalid monitor_type: $MONITOR"
+      DIFF_OK=false
+    fi
+    if [ -n "$SCRAPER" ] && ! echo "$SCRAPER" | grep -qE "^($VALID_SCRAPER_TYPES)$"; then
+      echo "::warning::Invalid scraper_type: $SCRAPER"
+      DIFF_OK=false
+    fi
+  fi
+done < <(echo "$DIFF" | grep '^+[^+]' || true)
+
+# --- Parse crawl-stats comment ---
+
+STATS_FOUND=false
+JOBS=0
+MONITOR_TIME=0
+
+COMMENTS=$(gh api "repos/$REPO/issues/$PR/comments" --jq '.[].body')
+STATS_LINE=$(echo "$COMMENTS" | grep '<!-- crawl-stats' | tail -1 || true)
+
+if [ -n "$STATS_LINE" ]; then
+  JSON=$(echo "$STATS_LINE" | sed 's/.*<!-- crawl-stats //;s/ -->.*//')
+  echo "Crawl stats: $JSON"
+
+  JOBS=$(echo "$JSON" | jq -r '.jobs // 0')
+  MONITOR_TIME=$(echo "$JSON" | jq -r '.monitor_time // 0')
+  STATS_FOUND=true
+else
+  echo "::warning::No crawl-stats comment found"
+fi
+
+# --- Determine labels ---
+
+LABELS=""
+
+if [ "$CONFIG_ONLY" != "true" ]; then
+  LABELS="review-code"
+elif [ "$DIFF_OK" != "true" ]; then
+  LABELS="review-code"
+elif [ "$STATS_FOUND" != "true" ]; then
+  LABELS="review-size"
+elif [ "$JOBS" -ge 500 ] 2>/dev/null; then
+  LABELS="review-size"
+else
+  LABELS="auto-merge"
+fi
+
+# review-load is independent — based on monitor crawl time
+if [ "$STATS_FOUND" = "true" ]; then
+  SLOW=$(echo "$MONITOR_TIME > 60" | bc -l 2>/dev/null || echo 0)
+  if [ "$SLOW" = "1" ]; then
+    LABELS="$LABELS,review-load"
+  fi
+fi
+
+# --- Apply labels ---
+
+IFS=',' read -ra LABEL_ARR <<< "$LABELS"
+for L in "${LABEL_ARR[@]}"; do
+  gh label create "$L" --repo "$REPO" 2>/dev/null || true
+  gh pr edit "$PR" --repo "$REPO" --add-label "$L"
+done
+
+echo "Applied labels: $LABELS"
+echo "labels=$LABELS" >> "$GITHUB_OUTPUT"

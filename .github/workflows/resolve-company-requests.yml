@@ -56,14 +56,14 @@ jobs:
             Summary of steps:
             1. Read the user request from the issue body
             2. Check for existing PRs claiming this issue — if one is active, stop entirely
-            3. Create a draft PR with branch `add-company/<slug>` and "Closes #${{ steps.select.outputs.selected }}" in the body
+            3. Create branch, seed stub company with csvtool, commit, push, open draft PR
             4. Research the company — find name, website, logo, icon, career page URL
             5. Detect the monitor type: `cd apps/crawler && uv run python -m src.validate --detect <board-url>`
-            6. For sitemap/discover monitors, check for JSON-LD: `uv run python -m src.validate --probe-jsonld <job-page-url>`
-            7. Test crawl: `uv run python -m src.validate --test-monitor <slug> <board-url>`
-            8. Add rows to data/companies.csv and data/boards.csv
+            6. Test crawl: `uv run python -m src.validate --test-monitor <slug> <board-url>` — note job count and time
+            7. For sitemap/discover monitors, probe JSON-LD and test scraper: `--test-scraper <url> <type>` — note scrape time
+            8. Update company and add board via csvtool
             9. Validate: `uv run python -m src.validate`
-            10. Mark PR as ready with monitor type, scraper type, job count, and appropriate label
+            10. Post crawl stats comment (see AGENTS.md step 9 for exact format), then mark PR as ready
 
             Only process this ONE issue. Do not process any others.
           claude_args: "--max-turns 25"
