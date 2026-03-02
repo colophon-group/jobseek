@@ -24,14 +24,4 @@ The agent environment needs:
 - Python 3.12+ with [`uv`](https://docs.astral.sh/uv/)
 - Web access (to research companies and fetch career pages)
 
-### What the agent does
-
-1. Checks for existing PRs on the issue (avoids duplicate work)
-2. Creates a draft PR on branch `add-company/<slug>`
-3. Researches the company — name, website, logo, icon, career page
-4. Detects the monitor type and test-crawls the board
-5. Configures and verifies the scraper
-6. Adds rows to `data/companies.csv` and `data/boards.csv`
-7. Validates and marks the PR as ready
-
 Full instructions are in [`AGENTS.md`](./AGENTS.md). Architecture docs are in [`docs/`](./docs/).

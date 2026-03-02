@@ -28,8 +28,8 @@ jobs:
 
       - run: pnpm lint
 
-  test:
-    name: Test
+  test-web:
+    name: Test Web
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -44,3 +44,21 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - run: pnpm --filter @jobseek/web test
+
+  test-crawler:
+    name: Test Crawler
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: uv sync --group dev
+        working-directory: apps/crawler
+
+      - run: uv run pytest tests/ -v
+        working-directory: apps/crawler

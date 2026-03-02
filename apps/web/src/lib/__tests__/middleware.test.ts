@@ -21,12 +21,16 @@ import type { NextRequest } from "next/server";
 
 function createMockRequest(pathname: string, acceptLanguage?: string): NextRequest {
   const url = new URL(`http://localhost${pathname}`);
+  const headersMap = new Map<string, string>();
+  if (acceptLanguage) headersMap.set("accept-language", acceptLanguage);
+
   return {
     headers: {
-      get: (name: string) => {
-        if (name === "accept-language") return acceptLanguage ?? null;
-        return null;
-      },
+      get: (name: string) => headersMap.get(name) ?? null,
+      forEach: (cb: (value: string, key: string) => void) => headersMap.forEach(cb),
+    },
+    cookies: {
+      get: (_name: string) => undefined,
     },
     nextUrl: {
       clone: () => new URL(url),
