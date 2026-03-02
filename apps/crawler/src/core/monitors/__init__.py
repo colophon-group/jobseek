@@ -8,8 +8,9 @@ Monitors discover which jobs exist on a board. They return either:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Callable, Awaitable
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
 if TYPE_CHECKING:
@@ -65,12 +66,14 @@ def register(
     can_handle: CanHandleFunc | None = None,
 ) -> None:
     """Register a monitor type. Registry stays sorted by cost (cheapest first)."""
-    _REGISTRY.append(MonitorType(
-        name=name,
-        cost=cost,
-        discover=discover,
-        can_handle=can_handle,
-    ))
+    _REGISTRY.append(
+        MonitorType(
+            name=name,
+            cost=cost,
+            discover=discover,
+            can_handle=can_handle,
+        )
+    )
     _REGISTRY.sort(key=lambda m: m.cost)
 
 
@@ -84,7 +87,8 @@ def get_discoverer(name: str) -> DiscoverFunc:
 
 
 async def detect_monitor_type(
-    url: str, client: "httpx.AsyncClient",
+    url: str,
+    client: httpx.AsyncClient,
 ) -> tuple[str, dict] | None:
     """Determine the best monitor type for a URL, trying cheapest first.
 
@@ -116,7 +120,9 @@ def slugs_from_url(url: str) -> list[str]:
 
 
 async def fetch_page_text(
-    url: str, client: "httpx.AsyncClient", max_chars: int = 500_000,
+    url: str,
+    client: httpx.AsyncClient,
+    max_chars: int = 500_000,
 ) -> str | None:
     """Fetch a page and return its text content (capped), or None on error."""
     try:
@@ -129,6 +135,8 @@ async def fetch_page_text(
 
 
 # Import modules to trigger registration
-from src.core.monitors import greenhouse  # noqa: E402, F401
-from src.core.monitors import lever  # noqa: E402, F401
-from src.core.monitors import sitemap  # noqa: E402, F401
+from src.core.monitors import (  # noqa: E402
+    greenhouse,  # noqa: F401
+    lever,  # noqa: F401
+    sitemap,  # noqa: F401
+)

@@ -4,13 +4,16 @@ import httpx
 import pytest
 
 from src.core.monitors import (
-    get_discoverer,
-    detect_monitor_type,
-    slugs_from_url,
-    fetch_page_text,
     _REGISTRY as monitor_registry,
 )
-from src.core.scrapers import get_scraper, _REGISTRY as scraper_registry
+from src.core.monitors import (
+    detect_monitor_type,
+    fetch_page_text,
+    get_discoverer,
+    slugs_from_url,
+)
+from src.core.scrapers import _REGISTRY as scraper_registry
+from src.core.scrapers import get_scraper
 
 
 class TestMonitorRegistry:

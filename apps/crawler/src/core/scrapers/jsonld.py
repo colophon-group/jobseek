@@ -201,10 +201,7 @@ async def probe(url: str, http: httpx.AsyncClient) -> bool:
             return False
         extractor = _JsonLdExtractor()
         extractor.feed(response.text)
-        for block in extractor.results:
-            if _find_job_posting(block):
-                return True
-        return False
+        return any(_find_job_posting(block) for block in extractor.results)
     except Exception:
         return False
 

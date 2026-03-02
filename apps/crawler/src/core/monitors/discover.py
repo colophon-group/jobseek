@@ -28,11 +28,11 @@ async def discover(board: dict, client=None) -> set[str]:
     """
     try:
         from playwright.async_api import async_playwright
-    except ImportError:
+    except ImportError as err:
         raise RuntimeError(
             "playwright is required for the discover monitor. "
             "Install with: uv sync --group dev && uv run playwright install chromium"
-        )
+        ) from err
 
     metadata = board.get("metadata") or {}
     board_url = board["board_url"]
@@ -45,8 +45,8 @@ async def discover(board: dict, client=None) -> set[str]:
         browser = await p.chromium.launch(headless=True)
         context = await browser.new_context(
             user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                       "AppleWebKit/537.36 (KHTML, like Gecko) "
-                       "Chrome/120.0.0.0 Safari/537.36",
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/120.0.0.0 Safari/537.36",
         )
         page = await context.new_page()
 
@@ -55,17 +55,21 @@ async def discover(board: dict, client=None) -> set[str]:
                 if "json" in (response.headers.get("content-type") or ""):
                     body = await response.json()
                     if isinstance(body, list) and len(body) > 0:
-                        api_responses.append({
-                            "url": response.url,
-                            "data": body,
-                        })
+                        api_responses.append(
+                            {
+                                "url": response.url,
+                                "data": body,
+                            }
+                        )
                     elif isinstance(body, dict):
                         for value in body.values():
                             if isinstance(value, list) and len(value) > 5:
-                                api_responses.append({
-                                    "url": response.url,
-                                    "data": value,
-                                })
+                                api_responses.append(
+                                    {
+                                        "url": response.url,
+                                        "data": value,
+                                    }
+                                )
                                 break
             except Exception:
                 pass

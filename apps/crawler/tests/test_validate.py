@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from src.validate import validate_csvs, ValidationError
+from src.validate import ValidationError, validate_csvs
 
 
 class TestValidationError:
@@ -207,7 +207,7 @@ class TestValidateCsvs:
         self._write_csvs(
             tmp_path,
             "slug,name,website,logo_url,icon_url\ntest,Test,https://test.com,,\n",
-            'company_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n'
+            "company_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
             'test,https://example.com,greenhouse,"{""token"":""test""}",,\n',
         )
         monkeypatch.setattr("src.validate.DATA_DIR", tmp_path)

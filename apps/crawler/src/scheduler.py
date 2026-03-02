@@ -8,15 +8,16 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import contextlib
 import signal
 
 import structlog
 
+from src.batch import process_monitor_batch, process_scrape_batch
 from src.config import settings
-from src.db import create_pool, close_pool
+from src.db import close_pool, create_pool
 from src.shared.http import create_http_client
 from src.shared.logging import setup_logging
-from src.batch import process_monitor_batch, process_scrape_batch
 
 log = structlog.get_logger()
 
@@ -88,12 +89,8 @@ async def run_poll_loop(
                 log.info("scheduler.scrape_batch", **vars(result))
 
         if not did_work:
-            try:
-                await asyncio.wait_for(
-                    shutdown_event.wait(), timeout=poll_interval
-                )
-            except asyncio.TimeoutError:
-                pass
+            with contextlib.suppress(TimeoutError):
+                await asyncio.wait_for(shutdown_event.wait(), timeout=poll_interval)
 
 
 async def run() -> None:
@@ -125,8 +122,11 @@ async def run() -> None:
                 loop.add_signal_handler(sig, lambda: shutdown_event.set())
 
             await run_poll_loop(
-                pool, http, shutdown_event,
-                monitor=do_monitor, scrape=do_scrape,
+                pool,
+                http,
+                shutdown_event,
+                monitor=do_monitor,
+                scrape=do_scrape,
             )
     finally:
         log.info("scheduler.shutting_down")

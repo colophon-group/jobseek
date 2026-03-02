@@ -4,15 +4,14 @@ import httpx
 import pytest
 
 from src.core.monitors.lever import (
-    _build_description,
-    _parse_salary,
-    _parse_job,
-    _token_from_url,
     _api_url,
-    discover,
+    _build_description,
+    _parse_job,
+    _parse_salary,
+    _token_from_url,
     can_handle,
+    discover,
 )
-from src.core.monitors import DiscoveredJob
 
 
 class TestBuildDescription:
@@ -55,16 +54,33 @@ class TestBuildDescription:
 
 class TestParseSalary:
     def test_per_year(self):
-        salary_range = {"currency": "USD", "min": 100000, "max": 150000, "interval": "per-year-salary"}
+        salary_range = {
+            "currency": "USD",
+            "min": 100000,
+            "max": 150000,
+            "interval": "per-year-salary",
+        }
         result = _parse_salary(salary_range)
         assert result == {"currency": "USD", "min": 100000, "max": 150000, "unit": "year"}
 
     def test_per_hour(self):
-        result = _parse_salary({"currency": "USD", "min": 50, "max": 80, "interval": "per-hour-wage"})
+        salary_range = {
+            "currency": "USD",
+            "min": 50,
+            "max": 80,
+            "interval": "per-hour-wage",
+        }
+        result = _parse_salary(salary_range)
         assert result["unit"] == "hour"
 
     def test_per_month(self):
-        result = _parse_salary({"currency": "EUR", "min": 5000, "max": 7000, "interval": "per-month-salary"})
+        salary_range = {
+            "currency": "EUR",
+            "min": 5000,
+            "max": 7000,
+            "interval": "per-month-salary",
+        }
+        result = _parse_salary(salary_range)
         assert result["unit"] == "month"
 
     def test_unknown_interval(self):
@@ -156,7 +172,12 @@ class TestParseJob:
     def test_salary(self):
         posting = {
             "hostedUrl": "https://jobs.lever.co/test/123",
-            "salaryRange": {"currency": "USD", "min": 100000, "max": 150000, "interval": "per-year-salary"},
+            "salaryRange": {
+                "currency": "USD",
+                "min": 100000,
+                "max": 150000,
+                "interval": "per-year-salary",
+            },
             "categories": {},
         }
         result = _parse_job(posting)
@@ -198,10 +219,21 @@ class TestApiUrl:
 class TestDiscover:
     async def test_single_page(self):
         def handler(request):
-            return httpx.Response(200, json=[
-                {"hostedUrl": "https://jobs.lever.co/test/1", "text": "Job 1", "categories": {}},
-                {"hostedUrl": "https://jobs.lever.co/test/2", "text": "Job 2", "categories": {}},
-            ])
+            return httpx.Response(
+                200,
+                json=[
+                    {
+                        "hostedUrl": "https://jobs.lever.co/test/1",
+                        "text": "Job 1",
+                        "categories": {},
+                    },
+                    {
+                        "hostedUrl": "https://jobs.lever.co/test/2",
+                        "text": "Job 2",
+                        "categories": {},
+                    },
+                ],
+            )
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             board = {"board_url": "https://jobs.lever.co/testco", "metadata": {"token": "testco"}}
@@ -220,17 +252,25 @@ class TestDiscover:
             assert len(jobs) == 0
 
     async def test_no_token_raises(self):
-        async with httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(200))) as client:
+        transport = httpx.MockTransport(lambda r: httpx.Response(200))
+        async with httpx.AsyncClient(transport=transport) as client:
             board = {"board_url": "https://example.com/careers", "metadata": {}}
             with pytest.raises(ValueError, match="Cannot derive Lever token"):
                 await discover(board, client)
 
     async def test_skips_jobs_without_url(self):
         def handler(request):
-            return httpx.Response(200, json=[
-                {"text": "No URL", "categories": {}},
-                {"hostedUrl": "https://jobs.lever.co/test/1", "text": "Has URL", "categories": {}},
-            ])
+            return httpx.Response(
+                200,
+                json=[
+                    {"text": "No URL", "categories": {}},
+                    {
+                        "hostedUrl": "https://jobs.lever.co/test/1",
+                        "text": "Has URL",
+                        "categories": {},
+                    },
+                ],
+            )
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             board = {"board_url": "https://jobs.lever.co/testco", "metadata": {"token": "testco"}}
@@ -248,16 +288,30 @@ class TestDiscover:
             skip = int(params.get("skip", 0))
             if skip == 0:
                 # Full batch of 100
-                return httpx.Response(200, json=[
-                    {"hostedUrl": f"https://jobs.lever.co/test/{i}", "text": f"Job {i}", "categories": {}}
-                    for i in range(100)
-                ])
+                return httpx.Response(
+                    200,
+                    json=[
+                        {
+                            "hostedUrl": f"https://jobs.lever.co/test/{i}",
+                            "text": f"Job {i}",
+                            "categories": {},
+                        }
+                        for i in range(100)
+                    ],
+                )
             else:
                 # Partial batch — end of pages
-                return httpx.Response(200, json=[
-                    {"hostedUrl": f"https://jobs.lever.co/test/{i}", "text": f"Job {i}", "categories": {}}
-                    for i in range(100, 110)
-                ])
+                return httpx.Response(
+                    200,
+                    json=[
+                        {
+                            "hostedUrl": f"https://jobs.lever.co/test/{i}",
+                            "text": f"Job {i}",
+                            "categories": {},
+                        }
+                        for i in range(100, 110)
+                    ],
+                )
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             board = {"board_url": "https://jobs.lever.co/testco", "metadata": {"token": "testco"}}

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import httpx
 
-from src.core.scrapers.html import _SimpleSelector, _SelectorExtractor, scrape
 from src.core.scrapers import JobContent
+from src.core.scrapers.html import _SelectorExtractor, _SimpleSelector, scrape
 
 
 class TestSimpleSelector:

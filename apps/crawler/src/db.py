@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncpg
 
 from src.config import settings

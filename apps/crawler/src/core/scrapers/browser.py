@@ -20,11 +20,11 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient) -> JobContent:
     """Extract job data from a JS-rendered page using Playwright + CSS selectors."""
     try:
         from playwright.async_api import async_playwright
-    except ImportError:
+    except ImportError as err:
         raise RuntimeError(
             "playwright is required for the browser scraper. "
             "Install with: uv sync --group dev && uv run playwright install chromium"
-        )
+        ) from err
 
     wait_strategy = config.get("wait", "networkidle")
 

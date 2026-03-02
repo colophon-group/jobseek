@@ -19,7 +19,7 @@ import polars as pl
 import structlog
 
 from src.config import settings
-from src.db import create_pool, close_pool
+from src.db import close_pool, create_pool
 from src.shared.logging import setup_logging
 
 log = structlog.get_logger()
@@ -90,7 +90,12 @@ async def sync_companies(conn, companies: pl.DataFrame, dry_run: bool) -> dict[s
             continue
 
         result = await conn.fetchrow(
-            _UPSERT_COMPANY, slug, name, website, logo_url, icon_url,
+            _UPSERT_COMPANY,
+            slug,
+            name,
+            website,
+            logo_url,
+            icon_url,
         )
         slug_to_id[result["slug"]] = str(result["id"])
         log.info("sync.company.upserted", slug=slug)
@@ -123,7 +128,11 @@ async def sync_boards(
             if result:
                 company_id = str(result["id"])
             else:
-                log.error("sync.board.missing_company", company_slug=company_slug, board_url=board_url)
+                log.error(
+                    "sync.board.missing_company",
+                    company_slug=company_slug,
+                    board_url=board_url,
+                )
                 continue
 
         # Parse monitor_config JSON
@@ -133,7 +142,11 @@ async def sync_boards(
                 parsed = json.loads(monitor_config_str)
                 metadata = json.dumps(parsed)
             except json.JSONDecodeError:
-                log.error("sync.board.invalid_config", board_url=board_url, config=monitor_config_str)
+                log.error(
+                    "sync.board.invalid_config",
+                    board_url=board_url,
+                    config=monitor_config_str,
+                )
                 continue
 
         if dry_run:
@@ -141,7 +154,11 @@ async def sync_boards(
             continue
 
         await conn.fetchrow(
-            _UPSERT_BOARD, company_id, board_url, monitor_type, metadata,
+            _UPSERT_BOARD,
+            company_id,
+            board_url,
+            monitor_type,
+            metadata,
         )
         log.info("sync.board.upserted", board_url=board_url, monitor_type=monitor_type)
 
@@ -162,10 +179,9 @@ async def run_sync(dry_run: bool = False) -> None:
 
     pool = await create_pool()
     try:
-        async with pool.acquire() as conn:
-            async with conn.transaction():
-                slug_to_id = await sync_companies(conn, companies, dry_run)
-                await sync_boards(conn, boards, slug_to_id, dry_run)
+        async with pool.acquire() as conn, conn.transaction():
+            slug_to_id = await sync_companies(conn, companies, dry_run)
+            await sync_boards(conn, boards, slug_to_id, dry_run)
 
         log.info(
             "sync.complete",

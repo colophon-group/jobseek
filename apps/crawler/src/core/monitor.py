@@ -48,7 +48,7 @@ async def monitor_one(
     board_url: str,
     monitor_type: str,
     monitor_config: dict | None,
-    http: "httpx.AsyncClient",
+    http: httpx.AsyncClient,
 ) -> MonitorResult:
     """Discover jobs on one board.
 

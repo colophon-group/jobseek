@@ -25,5 +25,7 @@ class TestSettings:
     def test_database_url_required(self, monkeypatch):
         monkeypatch.delenv("DATABASE_URL", raising=False)
         import pytest
-        with pytest.raises(Exception):
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
             Settings(_env_file=None)

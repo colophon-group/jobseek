@@ -7,11 +7,8 @@ when the monitor returns URL-only results (sitemap, discover). API monitors
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Callable, Awaitable
-
-if TYPE_CHECKING:
-    import httpx
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 
 
 @dataclass(slots=True)
@@ -58,6 +55,8 @@ def get_scraper(name: str) -> ScrapeFunc:
 
 
 # Import modules to trigger registration
-from src.core.scrapers import jsonld  # noqa: E402, F401
-from src.core.scrapers import html  # noqa: E402, F401
-from src.core.scrapers import browser  # noqa: E402, F401
+from src.core.scrapers import (  # noqa: E402
+    browser,  # noqa: F401
+    html,  # noqa: F401
+    jsonld,  # noqa: F401
+)

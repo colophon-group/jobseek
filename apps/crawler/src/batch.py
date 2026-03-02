@@ -8,14 +8,13 @@ from __future__ import annotations
 
 import asyncio
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import asyncpg
 import httpx
 import structlog
 
-from src.core.monitor import MonitorResult, monitor_one
-from src.core.monitors import DiscoveredJob
+from src.core.monitor import monitor_one
 from src.core.scrape import scrape_one
 
 log = structlog.get_logger()
@@ -181,6 +180,7 @@ WHERE id = $1
 
 # ── Helpers ──────────────────────────────────────────────────────────
 
+
 def _jsonb(val: dict | None) -> str | None:
     return json.dumps(val) if val is not None else None
 
@@ -193,6 +193,7 @@ class BatchResult:
 
 
 # ── Monitor Batch ────────────────────────────────────────────────────
+
 
 async def _process_one_board(
     board: asyncpg.Record,
@@ -254,10 +255,20 @@ async def _process_one_board(
                         _INSERT_RICH_JOB,
                         [
                             (
-                                company_id, board_id, j.title, j.description, j.locations,
-                                j.employment_type, j.job_location_type, _jsonb(j.base_salary),
-                                j.skills, j.date_posted, j.responsibilities, j.qualifications,
-                                _jsonb(j.metadata), j.url,
+                                company_id,
+                                board_id,
+                                j.title,
+                                j.description,
+                                j.locations,
+                                j.employment_type,
+                                j.job_location_type,
+                                _jsonb(j.base_salary),
+                                j.skills,
+                                j.date_posted,
+                                j.responsibilities,
+                                j.qualifications,
+                                _jsonb(j.metadata),
+                                j.url,
                             )
                             for j in new_jobs
                         ],
@@ -272,9 +283,17 @@ async def _process_one_board(
                         _UPDATE_RELISTED_CONTENT,
                         [
                             (
-                                pid, j.title, j.description, j.locations,
-                                j.employment_type, j.job_location_type, _jsonb(j.base_salary),
-                                j.skills, j.date_posted, j.responsibilities, j.qualifications,
+                                pid,
+                                j.title,
+                                j.description,
+                                j.locations,
+                                j.employment_type,
+                                j.job_location_type,
+                                _jsonb(j.base_salary),
+                                j.skills,
+                                j.date_posted,
+                                j.responsibilities,
+                                j.qualifications,
                                 _jsonb(j.metadata),
                             )
                             for pid, j in relisted_pairs
@@ -284,7 +303,10 @@ async def _process_one_board(
             # URL-only path
             if result.jobs_by_url is None and new_urls:
                 inserted = await conn.fetch(
-                    _INSERT_URL_ONLY_JOBS, company_id, board_id, new_urls,
+                    _INSERT_URL_ONLY_JOBS,
+                    company_id,
+                    board_id,
+                    new_urls,
                 )
                 posting_ids = [str(r["id"]) for r in inserted]
                 urls = [r["source_url"] for r in inserted]
@@ -332,6 +354,7 @@ async def process_monitor_batch(
 
 # ── Scrape Batch ─────────────────────────────────────────────────────
 
+
 async def _process_one_scrape(
     queue_item: asyncpg.Record,
     pool: asyncpg.Pool,
@@ -350,10 +373,17 @@ async def _process_one_scrape(
         async with pool.acquire() as conn:
             await conn.execute(
                 _UPDATE_JOB_CONTENT,
-                posting_id, content.title, content.description, content.locations,
-                content.employment_type, content.job_location_type,
-                _jsonb(content.base_salary), content.skills, content.date_posted,
-                content.responsibilities, content.qualifications,
+                posting_id,
+                content.title,
+                content.description,
+                content.locations,
+                content.employment_type,
+                content.job_location_type,
+                _jsonb(content.base_salary),
+                content.skills,
+                content.date_posted,
+                content.responsibilities,
+                content.qualifications,
                 _jsonb(content.metadata),
             )
             await conn.execute(_MARK_SCRAPE_SUCCESS, queue_id)
@@ -388,9 +418,7 @@ async def process_scrape_batch(
     # For now, use json-ld as the default scraper type
     async with asyncio.TaskGroup() as tg:
         for item in items:
-            tg.create_task(
-                _process_one_scrape(item, pool, http, "json-ld", None)
-            )
+            tg.create_task(_process_one_scrape(item, pool, http, "json-ld", None))
 
     result.succeeded = result.processed
     return result

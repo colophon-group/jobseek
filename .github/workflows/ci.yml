@@ -11,8 +11,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  lint:
-    name: Lint
+  lint-web:
+    name: Lint Web
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,6 +27,27 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - run: pnpm lint
+
+  lint-crawler:
+    name: Lint Crawler
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: uv sync --group dev
+        working-directory: apps/crawler
+
+      - run: uv run ruff check src/ tests/
+        working-directory: apps/crawler
+
+      - run: uv run ruff format --check src/ tests/
+        working-directory: apps/crawler
 
   test-web:
     name: Test Web

@@ -3,22 +3,19 @@ from __future__ import annotations
 import xml.etree.ElementTree as ET
 
 import httpx
-import pytest
 
 from src.core.monitors.sitemap import (
-    _strip_utm,
-    _extract_urls,
-    _is_sitemap_index,
-    _extract_child_sitemaps,
-    _is_job_related,
-    _walk_up_candidates,
     _common_nonstandard_candidates,
-    _try_fetch_xml,
+    _extract_child_sitemaps,
+    _extract_urls,
+    _is_job_related,
+    _is_sitemap_index,
     _parse_robots_sitemaps,
-    SitemapDiscoveryError,
-    SitemapParseError,
-    discover,
+    _strip_utm,
+    _try_fetch_xml,
+    _walk_up_candidates,
     can_handle,
+    discover,
 )
 
 
@@ -247,7 +244,11 @@ class TestDiscover:
         </urlset>"""
 
         def handler(request):
-            return httpx.Response(200, text=sitemap_xml, headers={"content-type": "application/xml"})
+            return httpx.Response(
+                200,
+                text=sitemap_xml,
+                headers={"content-type": "application/xml"},
+            )
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             board = {
@@ -268,7 +269,11 @@ class TestDiscover:
         def handler(request):
             url = str(request.url)
             if "sitemap.xml" in url:
-                return httpx.Response(200, text=sitemap_xml, headers={"content-type": "application/xml"})
+                return httpx.Response(
+                    200,
+                    text=sitemap_xml,
+                    headers={"content-type": "application/xml"},
+                )
             return httpx.Response(404)
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
@@ -297,7 +302,11 @@ class TestDiscover:
                 return httpx.Response(404)
             # Discovery succeeds
             if "sitemap.xml" in url:
-                return httpx.Response(200, text=sitemap_xml, headers={"content-type": "application/xml"})
+                return httpx.Response(
+                    200,
+                    text=sitemap_xml,
+                    headers={"content-type": "application/xml"},
+                )
             return httpx.Response(404)
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
@@ -323,9 +332,17 @@ class TestDiscover:
         def handler(request):
             url = str(request.url)
             if "sitemap-jobs.xml" in url:
-                return httpx.Response(200, text=child_xml, headers={"content-type": "application/xml"})
+                return httpx.Response(
+                    200,
+                    text=child_xml,
+                    headers={"content-type": "application/xml"},
+                )
             if "sitemap.xml" in url:
-                return httpx.Response(200, text=index_xml, headers={"content-type": "application/xml"})
+                return httpx.Response(
+                    200,
+                    text=index_xml,
+                    headers={"content-type": "application/xml"},
+                )
             return httpx.Response(404)
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
@@ -348,7 +365,11 @@ class TestCanHandle:
         def handler(request):
             url = str(request.url)
             if "sitemap.xml" in url:
-                return httpx.Response(200, text=sitemap_xml, headers={"content-type": "application/xml"})
+                return httpx.Response(
+                    200,
+                    text=sitemap_xml,
+                    headers={"content-type": "application/xml"},
+                )
             return httpx.Response(404)
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:

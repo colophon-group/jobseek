@@ -18,7 +18,7 @@ async def scrape_one(
     url: str,
     scraper_type: str,
     scraper_config: dict | None,
-    http: "httpx.AsyncClient",
+    http: httpx.AsyncClient,
 ) -> JobContent:
     """Extract structured job data from one URL.
 

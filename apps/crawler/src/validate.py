@@ -113,7 +113,13 @@ def validate_csvs() -> list[ValidationError]:
         if not company_slug:
             errors.append(ValidationError("boards.csv", i, "Empty company_slug"))
         elif company_slug not in slugs:
-            errors.append(ValidationError("boards.csv", i, f"company_slug {company_slug!r} not in companies.csv"))
+            errors.append(
+                ValidationError(
+                    "boards.csv",
+                    i,
+                    f"company_slug {company_slug!r} not in companies.csv",
+                )
+            )
 
         if not board_url:
             errors.append(ValidationError("boards.csv", i, "Empty board_url"))
@@ -126,26 +132,44 @@ def validate_csvs() -> list[ValidationError]:
         if not monitor_type:
             errors.append(ValidationError("boards.csv", i, "Empty monitor_type"))
         elif monitor_type not in valid_monitor_types:
-            errors.append(ValidationError("boards.csv", i, f"Invalid monitor_type: {monitor_type!r}"))
+            errors.append(
+                ValidationError(
+                    "boards.csv",
+                    i,
+                    f"Invalid monitor_type: {monitor_type!r}",
+                )
+            )
 
         if scraper_type and scraper_type not in valid_scraper_types:
-            errors.append(ValidationError("boards.csv", i, f"Invalid scraper_type: {scraper_type!r}"))
+            errors.append(
+                ValidationError(
+                    "boards.csv",
+                    i,
+                    f"Invalid scraper_type: {scraper_type!r}",
+                )
+            )
 
         if monitor_type in url_only_monitors and not scraper_type:
-            errors.append(ValidationError("boards.csv", i, f"monitor_type {monitor_type!r} requires a scraper_type"))
+            errors.append(
+                ValidationError(
+                    "boards.csv",
+                    i,
+                    f"monitor_type {monitor_type!r} requires a scraper_type",
+                )
+            )
 
         # Validate JSON configs
         if monitor_config:
             try:
                 json.loads(monitor_config)
             except json.JSONDecodeError:
-                errors.append(ValidationError("boards.csv", i, f"Invalid monitor_config JSON"))
+                errors.append(ValidationError("boards.csv", i, "Invalid monitor_config JSON"))
 
         if scraper_config:
             try:
                 json.loads(scraper_config)
             except json.JSONDecodeError:
-                errors.append(ValidationError("boards.csv", i, f"Invalid scraper_config JSON"))
+                errors.append(ValidationError("boards.csv", i, "Invalid scraper_config JSON"))
 
     return errors
 
@@ -215,11 +239,11 @@ async def test_monitor(slug: str, board_url: str) -> None:
 
         print(f"  Found {len(result.urls)} jobs in {elapsed:.1f}s")
         if result.jobs_by_url:
-            print(f"  Rich data: yes (titles, descriptions, etc.)")
+            print("  Rich data: yes (titles, descriptions, etc.)")
             sample = next(iter(result.jobs_by_url.values()))
             print(f"  Sample: {sample.title}")
         else:
-            print(f"  Rich data: no (URLs only, needs scraper)")
+            print("  Rich data: no (URLs only, needs scraper)")
             if result.urls:
                 sample_url = next(iter(result.urls))
                 print(f"  Sample URL: {sample_url}")
@@ -227,11 +251,11 @@ async def test_monitor(slug: str, board_url: str) -> None:
         # Auto-merge guidance
         count = len(result.urls)
         if count < 500:
-            print(f"\n  Label: auto-merge (< 500 jobs)")
+            print("\n  Label: auto-merge (< 500 jobs)")
         elif count < 5000:
-            print(f"\n  Label: review-size (500-5000 jobs)")
+            print("\n  Label: review-size (500-5000 jobs)")
         else:
-            print(f"\n  Label: review-load (> 5000 jobs)")
+            print("\n  Label: review-load (> 5000 jobs)")
 
     finally:
         await http.aclose()
@@ -243,7 +267,12 @@ def main():
     parser = argparse.ArgumentParser(description="CSV validation and diagnostics")
     parser.add_argument("--detect", metavar="URL", help="Auto-detect monitor type for a URL")
     parser.add_argument("--probe-jsonld", metavar="URL", help="Check if URL has JSON-LD JobPosting")
-    parser.add_argument("--test-monitor", nargs=2, metavar=("SLUG", "BOARD_URL"), help="Test crawl a board")
+    parser.add_argument(
+        "--test-monitor",
+        nargs=2,
+        metavar=("SLUG", "BOARD_URL"),
+        help="Test crawl a board",
+    )
     args = parser.parse_args()
 
     if args.detect:

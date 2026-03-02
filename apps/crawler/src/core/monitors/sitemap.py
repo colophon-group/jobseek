@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
-from urllib.parse import urlparse, urlencode, parse_qs
+from urllib.parse import parse_qs, urlencode, urlparse
 
 import httpx
 import structlog
@@ -119,7 +119,8 @@ def _common_nonstandard_candidates(board_url: str) -> list[str]:
 
 
 async def _parse_robots_sitemaps(
-    board_url: str, client: httpx.AsyncClient,
+    board_url: str,
+    client: httpx.AsyncClient,
 ) -> list[str]:
     parsed = urlparse(board_url)
     robots_url = f"{parsed.scheme}://{parsed.netloc}/robots.txt"
@@ -145,7 +146,8 @@ async def _parse_robots_sitemaps(
 
 
 async def _resolve_sitemap_index(
-    root: ET.Element, client: httpx.AsyncClient,
+    root: ET.Element,
+    client: httpx.AsyncClient,
 ) -> ET.Element | None:
     children = _extract_child_sitemaps(root)
     if not children:
@@ -157,7 +159,8 @@ async def _resolve_sitemap_index(
 
 
 async def _discover_sitemap(
-    board_url: str, client: httpx.AsyncClient,
+    board_url: str,
+    client: httpx.AsyncClient,
 ) -> tuple[str, ET.Element]:
     """Try multiple strategies to find and fetch the sitemap XML.
 
@@ -198,7 +201,8 @@ async def _discover_sitemap(
 
 
 async def discover(
-    board: dict, client: httpx.AsyncClient,
+    board: dict,
+    client: httpx.AsyncClient,
 ) -> tuple[set[str], str | None]:
     """Fetch and parse an XML sitemap, returning (discovered_urls, sitemap_url).
 

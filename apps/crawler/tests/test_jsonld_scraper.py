@@ -2,18 +2,18 @@ from __future__ import annotations
 
 import httpx
 
+from src.core.scrapers import JobContent
 from src.core.scrapers.jsonld import (
-    _JsonLdExtractor,
-    _find_job_posting,
     _extract_locations,
     _extract_salary,
-    _text_or_list,
-    _strip_html,
+    _find_job_posting,
+    _JsonLdExtractor,
     _parse_posting,
-    scrape,
+    _strip_html,
+    _text_or_list,
     probe,
+    scrape,
 )
-from src.core.scrapers import JobContent
 
 
 class TestJsonLdExtractor:

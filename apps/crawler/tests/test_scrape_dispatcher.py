@@ -34,7 +34,10 @@ class TestScrapeOne:
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             result = await scrape_one(
-                "https://example.com/job", "html", {"title": ".title"}, client,
+                "https://example.com/job",
+                "html",
+                {"title": ".title"},
+                client,
             )
             assert isinstance(result, JobContent)
             assert result.title == "Engineer"
@@ -54,6 +57,7 @@ class TestScrapeOne:
             assert result.title == "Test"
 
     async def test_unknown_scraper_raises(self):
-        async with httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(200))) as client:
+        transport = httpx.MockTransport(lambda r: httpx.Response(200))
+        async with httpx.AsyncClient(transport=transport) as client:
             with pytest.raises(ValueError, match="Unknown scraper type"):
                 await scrape_one("https://example.com/job", "nonexistent", {}, client)

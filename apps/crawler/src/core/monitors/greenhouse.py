@@ -11,7 +11,7 @@ import re
 import httpx
 import structlog
 
-from src.core.monitors import DiscoveredJob, register, fetch_page_text, slugs_from_url
+from src.core.monitors import DiscoveredJob, fetch_page_text, register, slugs_from_url
 
 log = structlog.get_logger()
 

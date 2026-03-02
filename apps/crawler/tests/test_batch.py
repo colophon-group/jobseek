@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from src.batch import _jsonb, BatchResult
+from src.batch import BatchResult, _jsonb
 
 
 class TestJsonb:

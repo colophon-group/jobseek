@@ -3,14 +3,14 @@ from __future__ import annotations
 import httpx
 import pytest
 
+from src.core.monitors import DiscoveredJob
 from src.core.monitors.greenhouse import (
+    _api_url,
     _parse_job,
     _token_from_url,
-    _api_url,
-    discover,
     can_handle,
+    discover,
 )
-from src.core.monitors import DiscoveredJob
 
 
 class TestParseJob:
@@ -127,29 +127,37 @@ class TestApiUrl:
         assert _api_url("stripe") == "https://boards-api.greenhouse.io/v1/boards/stripe/jobs"
 
     def test_with_slug(self):
-        assert _api_url("my-company") == "https://boards-api.greenhouse.io/v1/boards/my-company/jobs"
+        assert (
+            _api_url("my-company") == "https://boards-api.greenhouse.io/v1/boards/my-company/jobs"
+        )
 
 
 class TestDiscover:
     async def test_returns_jobs(self):
         def handler(request):
-            return httpx.Response(200, json={
-                "jobs": [
-                    {
-                        "absolute_url": "https://boards.greenhouse.io/test/jobs/1",
-                        "title": "Engineer",
-                        "content": "Desc",
-                    },
-                    {
-                        "absolute_url": "https://boards.greenhouse.io/test/jobs/2",
-                        "title": "Designer",
-                        "content": "Desc 2",
-                    },
-                ]
-            })
+            return httpx.Response(
+                200,
+                json={
+                    "jobs": [
+                        {
+                            "absolute_url": "https://boards.greenhouse.io/test/jobs/1",
+                            "title": "Engineer",
+                            "content": "Desc",
+                        },
+                        {
+                            "absolute_url": "https://boards.greenhouse.io/test/jobs/2",
+                            "title": "Designer",
+                            "content": "Desc 2",
+                        },
+                    ]
+                },
+            )
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            board = {"board_url": "https://boards.greenhouse.io/testco", "metadata": {"token": "testco"}}
+            board = {
+                "board_url": "https://boards.greenhouse.io/testco",
+                "metadata": {"token": "testco"},
+            }
             jobs = await discover(board, client)
             assert len(jobs) == 2
             assert all(isinstance(j, DiscoveredJob) for j in jobs)
@@ -160,12 +168,16 @@ class TestDiscover:
             return httpx.Response(200, json={"jobs": []})
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            board = {"board_url": "https://boards.greenhouse.io/testco", "metadata": {"token": "testco"}}
+            board = {
+                "board_url": "https://boards.greenhouse.io/testco",
+                "metadata": {"token": "testco"},
+            }
             jobs = await discover(board, client)
             assert len(jobs) == 0
 
     async def test_no_token_raises(self):
-        async with httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(200))) as client:
+        transport = httpx.MockTransport(lambda r: httpx.Response(200))
+        async with httpx.AsyncClient(transport=transport) as client:
             board = {"board_url": "https://example.com/careers", "metadata": {}}
             with pytest.raises(ValueError, match="Cannot derive Greenhouse token"):
                 await discover(board, client)
@@ -192,15 +204,21 @@ class TestDiscover:
 
     async def test_skips_jobs_without_url(self):
         def handler(request):
-            return httpx.Response(200, json={
-                "jobs": [
-                    {"title": "No URL"},
-                    {"absolute_url": "https://example.com/job", "title": "Has URL"},
-                ]
-            })
+            return httpx.Response(
+                200,
+                json={
+                    "jobs": [
+                        {"title": "No URL"},
+                        {"absolute_url": "https://example.com/job", "title": "Has URL"},
+                    ]
+                },
+            )
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            board = {"board_url": "https://boards.greenhouse.io/testco", "metadata": {"token": "testco"}}
+            board = {
+                "board_url": "https://boards.greenhouse.io/testco",
+                "metadata": {"token": "testco"},
+            }
             jobs = await discover(board, client)
             assert len(jobs) == 1
             assert jobs[0].title == "Has URL"
@@ -210,7 +228,10 @@ class TestDiscover:
             return httpx.Response(500)
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            board = {"board_url": "https://boards.greenhouse.io/testco", "metadata": {"token": "testco"}}
+            board = {
+                "board_url": "https://boards.greenhouse.io/testco",
+                "metadata": {"token": "testco"},
+            }
             with pytest.raises(httpx.HTTPStatusError):
                 await discover(board, client)
 

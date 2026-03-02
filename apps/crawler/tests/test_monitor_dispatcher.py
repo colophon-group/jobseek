@@ -3,8 +3,8 @@ from __future__ import annotations
 import httpx
 import pytest
 
+from src.core.monitor import _normalize_discovered, monitor_one
 from src.core.monitors import DiscoveredJob
-from src.core.monitor import _normalize_discovered, MonitorResult, monitor_one
 
 
 class TestNormalizeDiscovered:
@@ -53,16 +53,19 @@ class TestNormalizeDiscovered:
 class TestMonitorOne:
     async def test_greenhouse_integration(self):
         def handler(request):
-            return httpx.Response(200, json={
-                "jobs": [
-                    {
-                        "absolute_url": "https://boards.greenhouse.io/test/jobs/1",
-                        "title": "Engineer",
-                        "content": "<p>Description</p>",
-                        "location": {"name": "NYC"},
-                    }
-                ]
-            })
+            return httpx.Response(
+                200,
+                json={
+                    "jobs": [
+                        {
+                            "absolute_url": "https://boards.greenhouse.io/test/jobs/1",
+                            "title": "Engineer",
+                            "content": "<p>Description</p>",
+                            "location": {"name": "NYC"},
+                        }
+                    ]
+                },
+            )
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             result = await monitor_one(
@@ -77,6 +80,7 @@ class TestMonitorOne:
             assert job.title == "Engineer"
 
     async def test_unknown_monitor_raises(self):
-        async with httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(200))) as client:
+        transport = httpx.MockTransport(lambda r: httpx.Response(200))
+        async with httpx.AsyncClient(transport=transport) as client:
             with pytest.raises(ValueError, match="Unknown monitor type"):
                 await monitor_one("https://example.com", "nonexistent", {}, client)
