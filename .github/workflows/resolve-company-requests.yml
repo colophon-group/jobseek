@@ -1,0 +1,69 @@
+name: Resolve company requests
+
+on:
+  schedule:
+    - cron: "0 */1 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: resolve-company-requests
+  cancel-in-progress: false
+
+env:
+  BUDGET_PER_5H: 5
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    if: ${{ vars.ENABLE_COMPANY_RESOLVER != 'false' }}
+    steps:
+      - name: Check required secrets
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::error::CLAUDE_CODE_OAUTH_TOKEN secret is not set — skipping."
+            exit 1
+          fi
+        env:
+          TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+      - uses: actions/checkout@v4
+
+      - name: Select issue
+        id: select
+        run: .github/scripts/select-issue.sh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+
+      - name: Check budget
+        id: budget
+        if: steps.select.outputs.selected != ''
+        run: .github/scripts/check-budget.sh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUDGET_PER_5H: ${{ env.BUDGET_PER_5H }}
+
+      - uses: anthropics/claude-code-action@v1
+        if: >
+          steps.select.outputs.selected != '' &&
+          steps.budget.outputs.remaining > 0
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            Resolve issue #${{ steps.select.outputs.selected }} (labeled "company-request").
+            Follow the instructions in AGENTS.md to resolve it.
+
+            Summary of steps:
+            1. Read the user request from the issue body
+            2. Check for existing PRs claiming this issue — if one is active, stop entirely
+            3. Create a draft PR with branch `add-company/<slug>` and "Closes #${{ steps.select.outputs.selected }}" in the body
+            4. Research the company — find name, website, logo, icon, career page URL
+            5. Detect the monitor type: `cd apps/crawler && uv run python -m src.validate --detect <board-url>`
+            6. For sitemap/discover monitors, check for JSON-LD: `uv run python -m src.validate --probe-jsonld <job-page-url>`
+            7. Test crawl: `uv run python -m src.validate --test-monitor <slug> <board-url>`
+            8. Add rows to data/companies.csv and data/boards.csv
+            9. Validate: `uv run python -m src.validate`
+            10. Mark PR as ready with monitor type, scraper type, job count, and appropriate label
+
+            Only process this ONE issue. Do not process any others.
+          claude_args: "--max-turns 25"

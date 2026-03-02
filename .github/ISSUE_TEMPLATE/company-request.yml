@@ -13,3 +13,8 @@ body:
         or just: https://stripe.com/jobs
     validations:
       required: true
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        **Agent instructions:** follow [AGENTS.md](https://github.com/colophon-group/jobseek/blob/main/AGENTS.md#how-to-add-a-company) to resolve this issue.

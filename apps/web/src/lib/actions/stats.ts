@@ -115,6 +115,10 @@ function buildIssueBody(
     "",
     input,
     "",
+    "---",
+    "",
+    "**Agent instructions:** follow [AGENTS.md](https://github.com/colophon-group/jobseek/blob/main/AGENTS.md#how-to-add-a-company) to resolve this issue.",
+    "",
   ];
 
   if (userHint && Object.keys(userHint).length > 0) {

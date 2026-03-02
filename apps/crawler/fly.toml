@@ -1,0 +1,12 @@
+app = "jobseek-crawler"
+primary_region = "fra"
+
+[build]
+
+[processes]
+  crawler = "uv run scheduler"
+
+[env]
+  LOG_LEVEL = "INFO"
+  CRAWLER_CONCURRENCY = "10"
+  CRAWLER_POLL_INTERVAL = "15"
