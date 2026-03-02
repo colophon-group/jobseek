@@ -1,3 +1,4 @@
 company_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config
 stripe,https://stripe.com/jobs/search,greenhouse,,,
 deepmind,https://deepmind.google/about/careers/,greenhouse,"{""token"": ""deepmind""}","",""
+google,https://www.google.com/about/careers/applications/jobs/results/,sitemap,"{""sitemap_url"": ""https://www.google.com/about/careers/applications/jobs/sitemap.xml""}",browser,"{""title"": ""h2.p1N2lc"", ""location"": "".op1BBf .r0wTof"", ""description"": "".aG5W3"", ""wait"": ""networkidle""}"
