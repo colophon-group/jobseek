@@ -109,20 +109,23 @@ def check_existing_prs(issue_number: int) -> list[dict[str, str]]:
 
 
 def create_draft_pr(title: str, body: str) -> int:
-    """Create a draft PR and return its number."""
-    import json
+    """Create a draft PR and return its number.
 
+    ``gh pr create`` prints the PR URL to stdout (e.g.
+    ``https://github.com/owner/repo/pull/42``).  We extract the number
+    from the trailing path segment.
+    """
     result = _run(
         [
             "gh", "pr", "create",
             "--draft",
             "--title", title,
             "--body", body,
-            "--json", "number",
         ],
     )
-    data = json.loads(result.stdout)
-    return int(data["number"])
+    url = result.stdout.strip()
+    # URL format: https://github.com/<owner>/<repo>/pull/<number>
+    return int(url.rstrip("/").split("/")[-1])
 
 
 def mark_pr_ready(pr_number: int) -> None:

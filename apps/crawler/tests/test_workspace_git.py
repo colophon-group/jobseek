@@ -8,6 +8,7 @@ from unittest.mock import patch
 from src.workspace.git import (
     check_existing_prs,
     check_gh_auth,
+    create_draft_pr,
     current_branch,
 )
 
@@ -50,3 +51,9 @@ class TestGitWrappers:
             mock.return_value.stdout = ""
             result = check_existing_prs(10)
             assert result == []
+
+    def test_create_draft_pr_parses_url(self):
+        with patch("src.workspace.git._run") as mock:
+            mock.return_value.stdout = "https://github.com/owner/repo/pull/42\n"
+            pr_number = create_draft_pr("Add stripe", "Closes #10")
+            assert pr_number == 42
