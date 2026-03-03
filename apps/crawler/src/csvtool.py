@@ -1,6 +1,7 @@
 """CSV management library for adding, updating, and removing company/board rows.
 
-Library functions used by workspace CLI commands. No standalone CLI entry point — use ``ws`` commands instead.
+Library functions used by workspace CLI commands.
+No standalone CLI entry point — use ``ws`` commands instead.
 """
 
 from __future__ import annotations

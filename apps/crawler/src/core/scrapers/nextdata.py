@@ -163,7 +163,10 @@ def _map_to_job_content(raw: dict[str, object]) -> JobContent:
             continue
         if key.startswith("metadata."):
             metadata[key.removeprefix("metadata.")] = value
-        elif key in ("title", "description", "employment_type", "job_location_type", "date_posted", "valid_through"):
+        elif key in (
+            "title", "description", "employment_type",
+            "job_location_type", "date_posted", "valid_through",
+        ):
             kwargs[key] = value
         elif key == "locations":
             kwargs["locations"] = value if isinstance(value, list) else [value]
@@ -205,7 +208,6 @@ def parse_html(html: str, config: dict) -> JobContent:
 
 async def scrape(url: str, config: dict, http: httpx.AsyncClient, pw=None, **kwargs) -> JobContent:
     """Extract job data from a Next.js ``__NEXT_DATA__`` blob."""
-    path = config.get("path")
     fields_map: dict[str, str] = config.get("fields") or {}
     render = config.get("render", False)
     actions = config.get("actions")

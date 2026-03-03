@@ -203,7 +203,7 @@ async def probe_all_monitors(
             if result is not None:
                 return monitor.name, result, _build_comment(monitor.name, result)
             return monitor.name, None, "Not detected"
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return monitor.name, None, f"Timeout ({timeout:.0f}s)"
         except Exception as exc:
             return monitor.name, None, f"Error: {exc}"

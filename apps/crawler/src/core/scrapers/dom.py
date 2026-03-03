@@ -16,6 +16,7 @@ Requires playwright when ``render`` is true:
 
 from __future__ import annotations
 
+import contextlib
 import json
 from pathlib import Path
 
@@ -80,7 +81,7 @@ def _heuristic_steps(elements: list[dict]) -> list[dict] | None:
     steps.append(desc_step)
 
     # Location: look for an element with "location" in its text
-    for i, el in enumerate(elements):
+    for el in elements:
         text_lower = el["text"].lower()
         if "location" in text_lower and len(el["text"]) < 40:
             steps.append({
@@ -104,7 +105,6 @@ def can_handle(htmls: list[str]) -> dict | None:
     """
     # Try each page until we get usable steps
     best_steps = None
-    best_elements = None
 
     for html in htmls:
         elements = flatten(html)
@@ -113,7 +113,6 @@ def can_handle(htmls: list[str]) -> dict | None:
         steps = _heuristic_steps(elements)
         if steps:
             best_steps = steps
-            best_elements = elements
             break
 
     if not best_steps:
@@ -155,11 +154,12 @@ def _map_to_job_content(raw: dict[str, str | list[str] | None]) -> JobContent:
             continue
         if key.startswith("metadata."):
             metadata[key.removeprefix("metadata.")] = value
-        elif key in ("title", "description", "employment_type", "job_location_type", "date_posted", "valid_through"):
+        elif key in (
+            "title", "description", "employment_type",
+            "job_location_type", "date_posted", "valid_through",
+        ):
             kwargs[key] = value
-        elif key == "location":
-            kwargs["locations"] = [value] if isinstance(value, str) else value
-        elif key == "locations":
+        elif key == "location" or key == "locations":
             kwargs["locations"] = [value] if isinstance(value, str) else value
         elif key in ("qualifications", "responsibilities", "skills"):
             kwargs[key] = [value] if isinstance(value, str) else value
@@ -172,7 +172,10 @@ def _map_to_job_content(raw: dict[str, str | list[str] | None]) -> JobContent:
     return JobContent(**kwargs)
 
 
-async def scrape(url: str, config: dict, http: httpx.AsyncClient, pw=None, artifact_dir: Path | None = None) -> JobContent:
+async def scrape(
+    url: str, config: dict, http: httpx.AsyncClient,
+    pw=None, artifact_dir: Path | None = None,
+) -> JobContent:
     """Extract job data using step-based extraction.
 
     When ``render`` is false (default), fetches via static HTTP.
@@ -223,12 +226,10 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, pw=None, artif
     elements = flatten(html)
 
     if artifact_dir is not None:
-        try:
+        with contextlib.suppress(Exception):
             (artifact_dir / "flat.json").write_text(
                 json.dumps(elements, indent=2, ensure_ascii=False),
             )
-        except Exception:
-            pass  # Best-effort
 
     raw = walk_steps(elements, steps)
     content = _map_to_job_content(raw)

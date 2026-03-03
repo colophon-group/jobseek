@@ -27,7 +27,10 @@ from src.workspace.state import (
 @click.option("--website", help="Company homepage URL")
 @click.option("--logo-url", help="Logo image URL")
 @click.option("--icon-url", help="Icon image URL")
-def set_(slug: str | None, name: str | None, website: str | None, logo_url: str | None, icon_url: str | None):
+def set_(
+    slug: str | None, name: str | None, website: str | None,
+    logo_url: str | None, icon_url: str | None,
+):
     """Set company metadata in workspace."""
     slug = resolve_slug(slug)
 

@@ -80,14 +80,20 @@ class TestApplyUrlFilter:
             "https://example.com/jobs/intern",
             "https://example.com/blog/post",
         ])
-        filtered = _apply_url_filter(result, {"url_filter": {"include": "/jobs/", "exclude": "/intern"}})
+        filtered = _apply_url_filter(
+            result, {"url_filter": {"include": "/jobs/", "exclude": "/intern"}},
+        )
         assert filtered.urls == {"https://example.com/jobs/1"}
         assert filtered.filtered_count == 2
 
     def test_filters_jobs_by_url(self):
         jobs = {
-            "https://example.com/jobs/1": DiscoveredJob(url="https://example.com/jobs/1", title="Job 1"),
-            "https://example.com/blog/2": DiscoveredJob(url="https://example.com/blog/2", title="Blog"),
+            "https://example.com/jobs/1": DiscoveredJob(
+                url="https://example.com/jobs/1", title="Job 1",
+            ),
+            "https://example.com/blog/2": DiscoveredJob(
+                url="https://example.com/blog/2", title="Blog",
+            ),
         }
         result = self._make_result(jobs.keys(), jobs_by_url=jobs)
         filtered = _apply_url_filter(result, {"url_filter": "/jobs/"})

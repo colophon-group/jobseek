@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import click
 
@@ -18,10 +18,8 @@ from src.workspace.state import (
     get_active_slug,
     list_boards,
     list_workspaces,
-    load_board,
     load_workspace,
     resolve_slug,
-    save_board,
     save_workspace,
     set_active_slug,
     workspace_exists,
@@ -93,7 +91,7 @@ def new(slug: str, issue: int):
     # Create workspace
     ws = Workspace(
         slug=slug,
-        created_at=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        created_at=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         branch=branch,
         issue=issue,
         pr=pr_number,
@@ -112,7 +110,7 @@ def new(slug: str, issue: int):
     )
 
     out.plain("workspace", f"State: created (active: {slug})")
-    out.next_step(f'ws set --name "..." --website "..."')
+    out.next_step('ws set --name "..." --website "..."')
 
 
 @click.command()
@@ -206,7 +204,7 @@ def reject(slug: str | None, issue: int | None, reason: str, message: str):
 @click.argument("slug", required=False)
 def del_(slug: str | None):
     """Remove workspace + CSV rows + close PR + delete branch."""
-    from src.csvtool import board_del, company_del
+    from src.csvtool import company_del
     from src.workspace import git
 
     slug = resolve_slug(slug)

@@ -9,7 +9,6 @@ import pytest
 
 from src.core.scrapers import JobContent
 
-
 # ---------------------------------------------------------------------------
 # Helpers (same pattern as test_browser_shared.py)
 # ---------------------------------------------------------------------------
@@ -115,7 +114,12 @@ class TestDomScraper:
         config = {
             "render": True,
             "steps": [
-                {"text": "About the role", "field": "description", "stop": "Requirements", "html": True},
+                {
+                    "text": "About the role",
+                    "field": "description",
+                    "stop": "Requirements",
+                    "html": True,
+                },
             ]
         }
         with _patch_playwright(page):
@@ -312,6 +316,8 @@ class TestDomScraper:
                 raise ImportError("no playwright")
             return real_import(name, *args, **kwargs)
 
-        with patch("builtins.__import__", side_effect=fake_import):
-            with pytest.raises(RuntimeError, match="playwright is required"):
-                await scrape("https://example.com/job/1", config, http)
+        with (
+            patch("builtins.__import__", side_effect=fake_import),
+            pytest.raises(RuntimeError, match="playwright is required"),
+        ):
+            await scrape("https://example.com/job/1", config, http)

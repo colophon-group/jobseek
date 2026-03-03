@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -15,7 +15,7 @@ from src.workspace.state import artifacts_dir
 
 def _run_dir(slug: str, alias: str, category: str) -> Path:
     """Create and return a timestamped run directory."""
-    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
+    ts = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
     d = artifacts_dir(slug, alias) / category / f"run-{ts}"
     d.mkdir(parents=True, exist_ok=True)
     return d

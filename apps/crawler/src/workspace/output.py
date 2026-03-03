@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import sys
 
-
 # Column width for the category prefix
 _CAT_WIDTH = 14
 

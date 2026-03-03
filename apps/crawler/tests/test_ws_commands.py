@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from contextlib import ExitStack
 from dataclasses import dataclass
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 from click.testing import CliRunner
 
@@ -25,7 +25,10 @@ from src.workspace.state import (
 )
 
 COMPANIES_HEADER = "slug,name,website,logo_url,icon_url\n"
-BOARDS_HEADER = "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
+BOARDS_HEADER = (
+    "company_slug,board_slug,board_url,monitor_type,"
+    "monitor_config,scraper_type,scraper_config\n"
+)
 
 
 def _setup_csvs(tmp_path, companies="", boards=""):
@@ -344,7 +347,8 @@ class TestSelectMonitorValidation:
         runner = CliRunner()
         result = runner.invoke(ws, ["select", "monitor", "test", "nonexistent"])
         assert result.exit_code != 0
-        assert "Unknown monitor type" in result.output or "Unknown monitor type" in (result.stderr_bytes or b"").decode()
+        stderr = (result.stderr_bytes or b"").decode()
+        assert "Unknown monitor type" in result.output or "Unknown monitor type" in stderr
 
     def test_valid_monitor_type(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
@@ -385,7 +389,8 @@ class TestSelectScraperValidation:
         runner = CliRunner()
         result = runner.invoke(ws, ["select", "scraper", "test", "nonexistent"])
         assert result.exit_code != 0
-        assert "Unknown scraper type" in result.output or "Unknown scraper type" in (result.stderr_bytes or b"").decode()
+        stderr = (result.stderr_bytes or b"").decode()
+        assert "Unknown scraper type" in result.output or "Unknown scraper type" in stderr
 
     def test_valid_scraper_type(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
@@ -418,7 +423,10 @@ def _enter_monitor_patches(tmp_path) -> tuple[ExitStack, MagicMock]:
     """Enter common patches for run monitor tests. Returns (stack, mock_asyncio)."""
     stack = ExitStack()
     mock_asyncio = stack.enter_context(patch("src.workspace.commands.crawl.asyncio"))
-    stack.enter_context(patch("src.workspace.artifacts.monitor_run_dir", return_value=tmp_path / "artifacts"))
+    stack.enter_context(patch(
+        "src.workspace.artifacts.monitor_run_dir",
+        return_value=tmp_path / "artifacts",
+    ))
     stack.enter_context(patch("src.workspace.artifacts.save_jobs"))
     stack.enter_context(patch("src.workspace.artifacts.save_quality"))
     stack.enter_context(patch("src.workspace.artifacts.save_http_log"))
@@ -431,7 +439,10 @@ def _enter_scraper_patches(tmp_path) -> tuple[ExitStack, MagicMock]:
     """Enter common patches for run scraper tests. Returns (stack, mock_asyncio)."""
     stack = ExitStack()
     mock_asyncio = stack.enter_context(patch("src.workspace.commands.crawl.asyncio"))
-    stack.enter_context(patch("src.workspace.artifacts.scraper_run_dir", return_value=tmp_path / "artifacts"))
+    stack.enter_context(patch(
+        "src.workspace.artifacts.scraper_run_dir",
+        return_value=tmp_path / "artifacts",
+    ))
     stack.enter_context(patch("src.workspace.artifacts.save_results"))
     stack.enter_context(patch("src.workspace.artifacts.save_quality"))
     stack.enter_context(patch("src.workspace.artifacts.save_http_log"))

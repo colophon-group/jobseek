@@ -44,7 +44,10 @@ def extract_field(item: dict, spec: str) -> str | list[str] | None:
             return None
         values = []
         for entry in arr:
-            val = resolve_path(entry, rest) if "." in rest else (entry.get(rest) if isinstance(entry, dict) else None)
+            if "." in rest:
+                val = resolve_path(entry, rest)
+            else:
+                val = entry.get(rest) if isinstance(entry, dict) else None
             if val is not None:
                 values.append(str(val))
         return values or None

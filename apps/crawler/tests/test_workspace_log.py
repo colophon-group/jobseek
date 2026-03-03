@@ -52,7 +52,12 @@ class TestFormatTranscript:
         ]
         board_logs = {
             "careers": [
-                {"ts": "2026-03-03T14:23:00Z", "cmd": "add board", "ok": True, "msg": "Added careers"},
+                {
+                    "ts": "2026-03-03T14:23:00Z",
+                    "cmd": "add board",
+                    "ok": True,
+                    "msg": "Added careers",
+                },
                 {"ts": "2026-03-03T14:25:00Z", "cmd": "run monitor", "ok": True, "msg": "138 jobs"},
             ],
         }

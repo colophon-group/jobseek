@@ -278,8 +278,7 @@ def walk_steps(
             # Collect elements from match, stopping on stop text / stop tag / stop count
             collected_els: list[dict] = []
             stop_idx = None
-            collected = 0
-            for i in range(match_idx, len(elements)):
+            for collected, i in enumerate(range(match_idx, len(elements))):
                 # Stop-text and stop-tag checks skip the matched element itself
                 if i != match_idx:
                     if stop and _norm(stop) in _norm(elements[i]["text"]):
@@ -292,7 +291,6 @@ def walk_steps(
                     stop_idx = i
                     break
                 collected_els.append(elements[i])
-                collected += 1
 
             if html:
                 value = _join_html(collected_els)

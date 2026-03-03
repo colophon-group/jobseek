@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 import asyncio
-import json
 from unittest.mock import AsyncMock
 
-import httpx
 import pytest
 
 from src.core.monitors import (
@@ -12,13 +10,15 @@ from src.core.monitors import (
     _build_comment,
     probe_all_monitors,
 )
-from src.core.scrapers import JobContent, probe_scrapers
-from src.core.scrapers.dom import can_handle as dom_can_handle
+from src.core.scrapers import probe_scrapers
 from src.core.scrapers.dom import _heuristic_steps
+from src.core.scrapers.dom import can_handle as dom_can_handle
 from src.core.scrapers.jsonld import can_handle as jsonld_can_handle
 from src.core.scrapers.nextdata import (
     _auto_map_fields,
     _find_job_object,
+)
+from src.core.scrapers.nextdata import (
     can_handle as nextdata_can_handle,
 )
 
@@ -42,12 +42,19 @@ def _patch_registry(monkeypatch):
     async def _dom_can_handle(url, client, pw=None):
         return {"urls": 15}
 
+    mk = AsyncMock()
     fake_registry = [
-        MonitorType(name="greenhouse", cost=10, discover=AsyncMock(), can_handle=_gh_can_handle),
-        MonitorType(name="lever", cost=10, discover=AsyncMock(), can_handle=_lever_can_handle),
-        MonitorType(name="nextdata", cost=20, discover=AsyncMock(), can_handle=_nextdata_can_handle),
-        MonitorType(name="sitemap", cost=50, discover=AsyncMock(), can_handle=_sitemap_can_handle),
-        MonitorType(name="dom", cost=100, discover=AsyncMock(), can_handle=_dom_can_handle),
+        MonitorType(name="greenhouse", cost=10, discover=mk(), can_handle=_gh_can_handle),
+        MonitorType(name="lever", cost=10, discover=mk(), can_handle=_lever_can_handle),
+        MonitorType(
+            name="nextdata", cost=20, discover=mk(),
+            can_handle=_nextdata_can_handle,
+        ),
+        MonitorType(
+            name="sitemap", cost=50, discover=mk(),
+            can_handle=_sitemap_can_handle,
+        ),
+        MonitorType(name="dom", cost=100, discover=mk(), can_handle=_dom_can_handle),
     ]
     monkeypatch.setattr("src.core.monitors._REGISTRY", fake_registry)
     return fake_registry
@@ -83,13 +90,15 @@ class TestBuildComment:
         assert "(render)" not in comment
 
     def test_nextdata_with_render(self):
-        comment = _build_comment("nextdata", {"path": "props.pageProps.positions", "count": 42, "render": True})
+        meta = {"path": "props.pageProps.positions", "count": 42, "render": True}
+        comment = _build_comment("nextdata", meta)
         assert "__NEXT_DATA__" in comment
         assert "42" in comment
         assert "(render)" in comment
 
     def test_sitemap_with_urls(self):
-        comment = _build_comment("sitemap", {"sitemap_url": "https://example.com/sitemap.xml", "urls": 322})
+        meta = {"sitemap_url": "https://example.com/sitemap.xml", "urls": 322}
+        comment = _build_comment("sitemap", meta)
         assert "Sitemap" in comment
         assert "322" in comment
         assert "https://example.com/sitemap.xml" in comment
@@ -512,7 +521,7 @@ class TestProbeScrapers:
         )
 
         # All scrapers should return "Fetch failed"
-        for name, meta, comment in results:
+        for _name, meta, comment in results:
             assert meta is None
             assert "Fetch failed" in comment
 

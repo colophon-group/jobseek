@@ -207,7 +207,8 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, pw=None, **kwa
     When ``render`` is true, renders the page with Playwright first.
     """
     if config.get("render"):
-        from src.shared.browser import BROWSER_KEYS, render as browser_render
+        from src.shared.browser import BROWSER_KEYS
+        from src.shared.browser import render as browser_render
 
         browser_config = {k: v for k, v in config.items() if k in BROWSER_KEYS}
         html = await browser_render(url, browser_config, pw=pw)

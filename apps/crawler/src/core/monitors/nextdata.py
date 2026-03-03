@@ -82,9 +82,12 @@ def _find_jobs_path(data: dict) -> tuple[str, int] | None:
     """Search common paths for a plausible jobs array. Returns (path, count) or None."""
     for path in _COMMON_PATHS:
         arr = resolve_path(data, path)
-        if isinstance(arr, list) and len(arr) >= 5:
-            if all(isinstance(item, dict) for item in arr[:5]):
-                return path, len(arr)
+        if (
+            isinstance(arr, list)
+            and len(arr) >= 5
+            and all(isinstance(item, dict) for item in arr[:5])
+        ):
+            return path, len(arr)
     return None
 
 
@@ -238,7 +241,10 @@ def _extract_rich(
                 continue
             if target.startswith("metadata."):
                 metadata_fields[target.removeprefix("metadata.")] = value
-            elif target in ("title", "description", "employment_type", "job_location_type", "date_posted"):
+            elif target in (
+                "title", "description", "employment_type",
+                "job_location_type", "date_posted",
+            ):
                 kwargs[target] = value
             elif target == "locations":
                 kwargs["locations"] = value if isinstance(value, list) else [value]

@@ -9,8 +9,8 @@ in boards.csv — no schema change needed.
 from __future__ import annotations
 
 import asyncio
-from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 import structlog
 
@@ -115,7 +115,7 @@ async def run_actions(page, actions: list[dict]) -> None:
         kind = action.get("action")
         try:
             await asyncio.wait_for(_execute_action(page, action, kind), timeout=timeout)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             log.warning("browser.action.timeout", action=kind, timeout=timeout)
         except Exception:
             log.warning("browser.action.failed", action=kind, exc_info=True)
@@ -175,8 +175,7 @@ async def render(url: str, config: dict | None = None, pw=None) -> str:
 
     from playwright.async_api import async_playwright
 
-    async with async_playwright() as _pw:
-        async with open_page(_pw, config) as page:
-            await navigate(page, url, config)
-            await run_actions(page, config.get("actions", []))
-            return await page.content()
+    async with async_playwright() as _pw, open_page(_pw, config) as page:
+        await navigate(page, url, config)
+        await run_actions(page, config.get("actions", []))
+        return await page.content()

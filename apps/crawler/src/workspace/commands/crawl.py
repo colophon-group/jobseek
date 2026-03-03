@@ -19,7 +19,6 @@ from src.workspace.state import (
     save_board,
     save_workspace,
     workspace_exists,
-    ws_log_path,
 )
 
 
@@ -70,8 +69,10 @@ def probe_monitors(slug: str | None):
     save_probe(
         probe_dir,
         [
-            {"name": name, "detected": metadata is not None, "metadata": metadata, "comment": comment}
-            for name, metadata, comment in results
+            {
+                "name": name, "detected": metadata is not None,
+                "metadata": metadata, "comment": comment,
+            } for name, metadata, comment in results
         ],
     )
     out.plain("artifacts", f"Saved: {probe_dir}")
@@ -98,7 +99,11 @@ def probe_monitors(slug: str | None):
     if best:
         out.next_step(f"ws select monitor {best[0]}")
     else:
-        out.warn("probe", "No monitors detected. Check the board URL or try ws select monitor dom --config '{\"render\": true}'")
+        out.warn(
+            "probe",
+            "No monitors detected. Check the board URL or try "
+            "ws select monitor dom --config '{\"render\": true}'",
+        )
 
     # Log
     summary = ", ".join(probe_summary_parts)
@@ -127,7 +132,10 @@ def probe_scraper(slug: str | None, urls: tuple[str, ...]):
     # Guard: API monitors don't need scrapers
     api_monitors = {"greenhouse", "lever"}
     if board.monitor_type in api_monitors:
-        out.warn("scraper", f"Monitor '{board.monitor_type}' returns full data — scraper not needed")
+        out.warn(
+            "scraper",
+            f"Monitor '{board.monitor_type}' returns full data \u2014 scraper not needed",
+        )
         return
 
     # Determine sample URLs
@@ -163,21 +171,21 @@ def probe_scraper(slug: str | None, urls: tuple[str, ...]):
     save_probe(
         probe_dir,
         [
-            {"name": name, "detected": metadata is not None, "metadata": metadata, "comment": comment}
-            for name, metadata, comment in results
+            {
+                "name": name, "detected": metadata is not None,
+                "metadata": metadata, "comment": comment,
+            } for name, metadata, comment in results
         ],
     )
     out.plain("artifacts", f"Saved: {probe_dir}")
 
     # Print results
     print()
-    detected_any = False
     best_name = None
     best_config = None
 
     for name, metadata, comment in results:
         if metadata is not None:
-            detected_any = True
             symbol = "\u2713"
             suffix = ""
             # json-ld needs no config, others are heuristic
@@ -391,7 +399,8 @@ def run_monitor(slug: str | None):
         quality = {"total": total, "fields": {}}
         for field in _MONITOR_QUALITY_FIELDS:
             count = sum(1 for j in jobs if getattr(j, field, None))
-            quality["fields"][field] = {"count": count, "pct": round(count / total * 100) if total else 0}
+            pct = round(count / total * 100) if total else 0
+            quality["fields"][field] = {"count": count, "pct": pct}
         save_quality(run_dir, quality)
         board.monitor_run["quality"] = {f: v["count"] for f, v in quality["fields"].items()}
 
@@ -405,7 +414,10 @@ def run_monitor(slug: str | None):
         out.plain("monitor", f"URL filter: {result.filtered_count} URLs removed")
 
     if job_count == 0:
-        out.warn("monitor", f"0 jobs in {elapsed:.1f}s — check board URL or try a different monitor type")
+        out.warn(
+            "monitor",
+            f"0 jobs in {elapsed:.1f}s \u2014 check board URL or try a different monitor type",
+        )
     else:
         out.info("monitor", f"{job_count} jobs in {elapsed:.1f}s")
     if has_rich:
@@ -605,8 +617,10 @@ def run_scraper(slug: str | None, urls: tuple[str, ...]):
     quality = {
         "total": total,
         "fields": {
-            f: {"count": quality_totals[f], "pct": round(quality_totals[f] / total * 100) if total else 0}
-            for f in _SCRAPER_QUALITY_FIELDS
+            f: {
+                "count": quality_totals[f],
+                "pct": round(quality_totals[f] / total * 100) if total else 0,
+            } for f in _SCRAPER_QUALITY_FIELDS
         },
         "per_url": quality_per_url,
     }
@@ -655,7 +669,8 @@ def run_scraper(slug: str | None, urls: tuple[str, ...]):
     _IMPORTANT_OPTIONAL = ("job_location_type", "employment_type", "date_posted")
     missing_important = [f for f in _IMPORTANT_OPTIONAL if quality_totals.get(f, 0) == 0]
     if missing_important:
-        out.plain("scraper", f"Missing: {', '.join(missing_important)} — check raw data for mappable fields")
+        missing = ", ".join(missing_important)
+        out.plain("scraper", f"Missing: {missing} \u2014 check raw data for mappable fields")
 
     action_log.append_to_list(
         board.log,
@@ -666,12 +681,13 @@ def run_scraper(slug: str | None, urls: tuple[str, ...]):
     save_board(slug, board)
 
     # Quality-aware next step
+    alt_scraper = "dom" if board.scraper_type != "dom" else "json-ld"
     if titles_found == 0:
-        out.warn("scraper", "No titles extracted — try a different scraper type")
-        out.next_step("ws select scraper dom" if board.scraper_type != "dom" else "ws select scraper json-ld")
+        out.warn("scraper", "No titles extracted \u2014 try a different scraper type")
+        out.next_step(f"ws select scraper {alt_scraper}")
     elif descs_found == 0:
-        out.warn("scraper", "No descriptions extracted — try a different scraper type")
-        out.next_step("ws select scraper dom" if board.scraper_type != "dom" else "ws select scraper json-ld")
+        out.warn("scraper", "No descriptions extracted \u2014 try a different scraper type")
+        out.next_step(f"ws select scraper {alt_scraper}")
     elif titles_found < total or descs_found < total:
         parts = []
         if titles_found < total:

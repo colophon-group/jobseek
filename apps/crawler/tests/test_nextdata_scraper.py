@@ -6,11 +6,9 @@ import json
 from unittest.mock import AsyncMock, patch
 
 import httpx
-import pytest
 
 from src.core.scrapers import JobContent
 from src.core.scrapers.nextdata import scrape
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -128,26 +126,27 @@ class TestNextdataScraper:
     async def test_render_mode(self):
         """render: true delegates to shared.browser.render."""
         config = {**BASE_CONFIG, "render": True}
-        with patch("src.core.scrapers.nextdata.browser_render", create=True):
-            with patch(
+        with (
+            patch("src.core.scrapers.nextdata.browser_render", create=True),
+            patch(
                 "src.shared.browser.render",
                 new_callable=AsyncMock,
                 return_value=SAMPLE_HTML,
-            ) as mock_render:
-                # Need to patch at the import point in the scraper
+            ),
+            patch(
+                "src.core.scrapers.nextdata.browser_render",
+                new_callable=AsyncMock,
+                return_value=SAMPLE_HTML,
+            ),
+        ):
+            # Actually patch the lazy import
+            async with httpx.AsyncClient(transport=_mock_transport("")) as client:
                 with patch(
-                    "src.core.scrapers.nextdata.browser_render",
+                    "src.shared.browser.render",
                     new_callable=AsyncMock,
                     return_value=SAMPLE_HTML,
                 ):
-                    # Actually patch the lazy import
-                    async with httpx.AsyncClient(transport=_mock_transport("")) as client:
-                        with patch(
-                            "src.shared.browser.render",
-                            new_callable=AsyncMock,
-                            return_value=SAMPLE_HTML,
-                        ):
-                            result = await scrape("https://example.com/job/1", config, client)
+                    result = await scrape("https://example.com/job/1", config, client)
         assert result.title == "Engineer"
 
     async def test_no_next_data(self):

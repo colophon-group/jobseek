@@ -3,7 +3,6 @@ from __future__ import annotations
 import warnings
 
 from src.shared.extract import (
-    FlattenParser,
     _join_html,
     _norm,
     extract_sections,
@@ -32,7 +31,10 @@ class TestFlatten:
         assert els[0]["text"] == "Hello bold and link text"
 
     def test_skip_tags_excluded(self):
-        html = "<div>Visible</div><script>var x=1;</script><style>.x{}</style><div>Also visible</div>"
+        html = (
+            "<div>Visible</div><script>var x=1;</script>"
+            "<style>.x{}</style><div>Also visible</div>"
+        )
         els = flatten(html)
         assert len(els) == 2
         assert els[0]["text"] == "Visible"
@@ -45,7 +47,10 @@ class TestFlatten:
         assert els[0]["text"] == "Content"
 
     def test_aria_hidden_excluded(self):
-        html = '<div>Visible</div><div aria-hidden="true"><p>Hidden subtree</p></div><div>After</div>'
+        html = (
+            '<div>Visible</div><div aria-hidden="true">'
+            "<p>Hidden subtree</p></div><div>After</div>"
+        )
         els = flatten(html)
         assert len(els) == 2
         assert els[0]["text"] == "Visible"

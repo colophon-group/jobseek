@@ -11,7 +11,6 @@ Requires playwright when ``render`` is true:
 
 from __future__ import annotations
 
-import re
 from html.parser import HTMLParser
 from typing import TYPE_CHECKING
 from urllib.parse import urljoin
@@ -147,9 +146,8 @@ async def dom_discover(board: dict, client: httpx.AsyncClient = None, pw=None) -
                     "Install with: uv sync --group dev && uv run playwright install chromium"
                 ) from err
 
-            async with async_playwright() as p:
-                async with open_page(p, combined) as page:
-                    urls = await _extract_links_rendered(page, combined)
+            async with async_playwright() as p, open_page(p, combined) as page:
+                urls = await _extract_links_rendered(page, combined)
     else:
         from src.core.monitors import fetch_page_text
 

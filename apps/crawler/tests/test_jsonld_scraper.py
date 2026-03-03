@@ -350,8 +350,11 @@ class TestScrape:
 
         with patch("src.shared.browser.render", new_callable=AsyncMock) as mock_render:
             mock_render.return_value = page_html
-            async with httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(500))) as client:
-                result = await scrape("https://example.com/job", {"render": True}, client, pw="fake_pw")
+            transport = httpx.MockTransport(lambda r: httpx.Response(500))
+            async with httpx.AsyncClient(transport=transport) as client:
+                result = await scrape(
+                    "https://example.com/job", {"render": True}, client, pw="fake_pw",
+                )
                 assert result.title == "Rendered"
                 mock_render.assert_called_once_with("https://example.com/job", {}, pw="fake_pw")
 

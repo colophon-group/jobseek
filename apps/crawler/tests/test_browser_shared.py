@@ -21,7 +21,6 @@ from src.shared.browser import (
     run_actions,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -71,9 +70,9 @@ class TestConstants:
         assert "Chrome/120" in DEFAULT_USER_AGENT
 
     def test_valid_wait_strategies(self):
-        assert VALID_WAIT_STRATEGIES == frozenset(
+        assert frozenset(
             {"load", "domcontentloaded", "networkidle", "commit"}
-        )
+        ) == VALID_WAIT_STRATEGIES
 
     def test_overlay_selectors_non_empty(self):
         assert isinstance(OVERLAY_SELECTORS, tuple)

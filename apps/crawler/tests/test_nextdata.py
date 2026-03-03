@@ -4,7 +4,6 @@ import json
 from unittest.mock import AsyncMock, patch
 
 import httpx
-import pytest
 
 from src.core.monitors import DiscoveredJob
 from src.core.monitors.nextdata import (
@@ -45,7 +44,11 @@ NEXT_DATA = {
 
 
 def _html_with_next_data(data: dict) -> str:
-    return f'<html><body><script id="__NEXT_DATA__" type="application/json">{json.dumps(data)}</script></body></html>'
+    payload = json.dumps(data)
+    return (
+        f'<html><body><script id="__NEXT_DATA__"'
+        f' type="application/json">{payload}</script></body></html>'
+    )
 
 
 SAMPLE_HTML = _html_with_next_data(NEXT_DATA)
@@ -90,7 +93,8 @@ class TestResolvePath:
         assert _resolve_path({"a": {"b": {"c": 42}}}, "a.b.c") == 42
 
     def test_list_value(self):
-        assert _resolve_path(NEXT_DATA, "props.pageProps.positions") == NEXT_DATA["props"]["pageProps"]["positions"]
+        expected = NEXT_DATA["props"]["pageProps"]["positions"]
+        assert _resolve_path(NEXT_DATA, "props.pageProps.positions") == expected
 
     def test_missing_key(self):
         assert _resolve_path({"a": {"b": 1}}, "a.x") is None
@@ -225,7 +229,11 @@ class TestDiscoverRichMode:
                 "path": "props.pageProps.positions",
                 "url_template": "https://example.com/{slug}-{id}/",
                 "slug_fields": ["text"],
-                "fields": {"title": "text", "locations": "locations[].name", "metadata.team": "team"},
+                "fields": {
+                    "title": "text",
+                    "locations": "locations[].name",
+                    "metadata.team": "team",
+                },
             },
         }
         html = _html_with_next_data(data)
@@ -442,7 +450,15 @@ class TestErrorHandling:
         assert result == set()
 
     async def test_non_dict_items_skipped(self):
-        data = {"props": {"pageProps": {"positions": ["string1", "string2", {"id": "1", "text": "Job"}]}}}
+        data = {
+            "props": {
+                "pageProps": {
+                    "positions": [
+                        "string1", "string2", {"id": "1", "text": "Job"},
+                    ],
+                },
+            },
+        }
         board = {
             "board_url": "https://example.com/careers",
             "metadata": {

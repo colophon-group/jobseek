@@ -216,10 +216,7 @@ async def probe_url(url: str) -> None:
         print(header)
         print(separator)
         for name, metadata, comment in results:
-            if metadata is not None:
-                symbol = "\u2713"
-            else:
-                symbol = "\u2717"
+            symbol = "\u2713" if metadata is not None else "\u2717"
             print(f"  {name:<14}{symbol:<8}{comment}")
         print()
     finally:
