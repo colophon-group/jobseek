@@ -5,7 +5,7 @@ from __future__ import annotations
 import click
 
 from src.workspace.commands.config import add_board, del_board, set_
-from src.workspace.commands.crawl import probe, run_monitor, run_scraper, select_monitor, select_scraper
+from src.workspace.commands.crawl import probe_monitors, probe_scraper, run_monitor, run_scraper, select_monitor, select_scraper
 from src.workspace.commands.help import help_cmd
 from src.workspace.commands.lifecycle import del_, new, reject, status, submit, use, validate
 
@@ -24,7 +24,6 @@ ws.add_command(submit)
 ws.add_command(reject)
 ws.add_command(status)
 ws.add_command(validate)
-ws.add_command(probe)
 ws.add_command(help_cmd, name="help")
 
 
@@ -35,6 +34,16 @@ def add_group():
     """Add resources to a workspace."""
 
 add_group.add_command(add_board, name="board")
+
+
+# ── `ws probe` group ────────────────────────────────────────────────────
+
+@ws.group(name="probe")
+def probe_group():
+    """Probe monitor or scraper types for the active board."""
+
+probe_group.add_command(probe_monitors, name="monitor")
+probe_group.add_command(probe_scraper, name="scraper")
 
 
 # ── `ws del` group ──────────────────────────────────────────────────────

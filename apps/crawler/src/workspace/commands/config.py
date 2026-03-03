@@ -146,7 +146,7 @@ def add_board(slug_or_alias: str, alias: str | None, url: str):
 
     out.info("board", f"Added board {board_slug} — {url}")
     out.plain("board", f"Active board: {board_slug}")
-    out.next_step("ws probe")
+    out.next_step("ws probe monitor")
 
 
 @click.command(name="board")

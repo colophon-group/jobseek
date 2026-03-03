@@ -12,5 +12,6 @@ dist
 locales/*.js
 
 *.pem
+__pycache__/
 /apps/crawler/tmp/
 /apps/crawler/.workspace/

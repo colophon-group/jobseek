@@ -338,6 +338,39 @@ class TestScrape:
             assert result.title == "GraphJob"
 
 
+    async def test_render_uses_playwright(self):
+        """When render=true, scrape should use browser rendering instead of HTTP."""
+        from unittest.mock import AsyncMock, patch
+
+        page_html = """<html><head>
+        <script type="application/ld+json">
+        {"@type": "JobPosting", "title": "Rendered"}
+        </script>
+        </head></html>"""
+
+        with patch("src.shared.browser.render", new_callable=AsyncMock) as mock_render:
+            mock_render.return_value = page_html
+            async with httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(500))) as client:
+                result = await scrape("https://example.com/job", {"render": True}, client, pw="fake_pw")
+                assert result.title == "Rendered"
+                mock_render.assert_called_once_with("https://example.com/job", {}, pw="fake_pw")
+
+    async def test_render_false_uses_http(self):
+        """When render is false/absent, scrape should use static HTTP."""
+        page_html = """<html><head>
+        <script type="application/ld+json">
+        {"@type": "JobPosting", "title": "Static"}
+        </script>
+        </head></html>"""
+
+        def handler(request):
+            return httpx.Response(200, text=page_html)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape("https://example.com/job", {"render": False}, client)
+            assert result.title == "Static"
+
+
 class TestProbe:
     async def test_found(self):
         page_html = """<html><head>

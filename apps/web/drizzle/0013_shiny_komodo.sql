@@ -1,0 +1,1 @@
+ALTER TABLE "company_resolve_queue" ADD COLUMN "user_hints" jsonb DEFAULT '{}'::jsonb;

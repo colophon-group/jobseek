@@ -411,7 +411,7 @@ class TestSelectScraperValidation:
         runner = CliRunner()
         result = runner.invoke(ws, ["select", "scraper", "test", "json-ld"])
         assert result.exit_code == 0
-        assert "No config needed" in result.output
+        assert "Optional: render" in result.output
 
 
 def _enter_monitor_patches(tmp_path) -> tuple[ExitStack, MagicMock]:

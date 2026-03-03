@@ -1,0 +1,1 @@
+ALTER TABLE "job_board" ADD COLUMN "metadata" jsonb DEFAULT '{}'::jsonb;

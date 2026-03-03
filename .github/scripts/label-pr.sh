@@ -58,6 +58,16 @@ if [ "$ADDED_LINES" -gt "$MAX_ADDED_LINES" ]; then
   DIFF_OK=false
 fi
 
+# parse_csv_line: use Python's csv module to correctly handle quoted fields
+# containing commas (e.g. JSON config). Outputs fields tab-separated.
+parse_csv_line() {
+  python3 -c "
+import csv, sys
+for row in csv.reader([sys.argv[1]]):
+    print('\t'.join(row))
+" "$1"
+}
+
 # Validate each added line in the diff (skip diff headers)
 while IFS= read -r line; do
   # Strip the leading "+"
@@ -67,8 +77,10 @@ while IFS= read -r line; do
   [ -z "$content" ] && continue
   echo "$content" | grep -qE '^(slug,|company_slug,)' && continue
 
-  # Count fields — companies.csv has 5, boards.csv has 7
-  FIELD_COUNT=$(echo "$content" | awk -F',' '{print NF}')
+  # Parse with CSV-aware splitter
+  PARSED=$(parse_csv_line "$content")
+  FIELD_COUNT=$(echo "$PARSED" | awk -F'\t' '{print NF}')
+
   if [ "$FIELD_COUNT" -ne 5 ] && [ "$FIELD_COUNT" -ne 7 ]; then
     echo "::warning::Unexpected field count ($FIELD_COUNT): $content"
     DIFF_OK=false
@@ -77,8 +89,8 @@ while IFS= read -r line; do
 
   if [ "$FIELD_COUNT" -eq 5 ]; then
     # companies.csv: slug,name,website,logo_url,icon_url
-    SLUG=$(echo "$content" | cut -d',' -f1)
-    WEBSITE=$(echo "$content" | cut -d',' -f3)
+    SLUG=$(echo "$PARSED" | cut -d$'\t' -f1)
+    WEBSITE=$(echo "$PARSED" | cut -d$'\t' -f3)
 
     if ! echo "$SLUG" | grep -qE "$SLUG_RE"; then
       echo "::warning::Invalid slug: $SLUG"
@@ -92,10 +104,10 @@ while IFS= read -r line; do
 
   if [ "$FIELD_COUNT" -eq 7 ]; then
     # boards.csv: company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config
-    SLUG=$(echo "$content" | cut -d',' -f1)
-    BOARD_URL=$(echo "$content" | cut -d',' -f3)
-    MONITOR=$(echo "$content" | cut -d',' -f4)
-    SCRAPER=$(echo "$content" | cut -d',' -f6)
+    SLUG=$(echo "$PARSED" | cut -d$'\t' -f1)
+    BOARD_URL=$(echo "$PARSED" | cut -d$'\t' -f3)
+    MONITOR=$(echo "$PARSED" | cut -d$'\t' -f4)
+    SCRAPER=$(echo "$PARSED" | cut -d$'\t' -f6)
 
     if ! echo "$SLUG" | grep -qE "$SLUG_RE"; then
       echo "::warning::Invalid company_slug: $SLUG"

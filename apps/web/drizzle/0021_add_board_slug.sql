@@ -1,0 +1,1 @@
+ALTER TABLE job_board ADD COLUMN board_slug TEXT UNIQUE;

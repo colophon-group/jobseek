@@ -28,6 +28,122 @@ from src.shared.extract import flatten, walk_steps
 
 log = structlog.get_logger()
 
+# ── Heuristic stop markers ────────────────────────────────────────────
+
+_STOP_MARKERS = [
+    "Apply", "Requirements", "Qualifications", "Back",
+    "Submit", "Similar", "Share", "Related",
+]
+
+
+def _heuristic_steps(elements: list[dict]) -> list[dict] | None:
+    """Generate heuristic extraction steps from flattened elements."""
+    if not elements:
+        return None
+
+    # Find first h1 — title
+    h1_idx = None
+    for i, el in enumerate(elements):
+        if el["tag"] == "h1":
+            h1_idx = i
+            break
+
+    if h1_idx is None:
+        return None
+
+    steps: list[dict] = [{"tag": "h1", "field": "title"}]
+
+    # Description: content after h1, stop at known marker
+    desc_step: dict = {
+        "tag": "h1",
+        "offset": 1,
+        "field": "description",
+        "html": True,
+        "optional": True,
+    }
+
+    # Look for a stop marker in elements after h1
+    for i in range(h1_idx + 1, len(elements)):
+        text = elements[i]["text"]
+        for marker in _STOP_MARKERS:
+            if marker.lower() in text.lower() and len(text) < 60:
+                desc_step["stop"] = marker
+                break
+        if "stop" in desc_step:
+            break
+
+    # If no stop marker found, use stop_count based on remaining content
+    if "stop" not in desc_step:
+        remaining = len(elements) - h1_idx - 1
+        desc_step["stop_count"] = min(remaining, 50)
+
+    steps.append(desc_step)
+
+    # Location: look for an element with "location" in its text
+    for i, el in enumerate(elements):
+        text_lower = el["text"].lower()
+        if "location" in text_lower and len(el["text"]) < 40:
+            steps.append({
+                "text": "Location",
+                "offset": 1,
+                "field": "location",
+                "optional": True,
+                "from": 0,
+            })
+            break
+
+    return steps
+
+
+def can_handle(htmls: list[str]) -> dict | None:
+    """Generate heuristic extraction steps from multiple page HTMLs.
+
+    Analyzes all pages and returns steps that work across the collection.
+    Uses the first page's structure to generate steps, then validates
+    that the title step (h1) matches on other pages too.
+    """
+    # Try each page until we get usable steps
+    best_steps = None
+    best_elements = None
+
+    for html in htmls:
+        elements = flatten(html)
+        if not elements:
+            continue
+        steps = _heuristic_steps(elements)
+        if steps:
+            best_steps = steps
+            best_elements = elements
+            break
+
+    if not best_steps:
+        return None
+
+    # Validate h1 exists on other pages too (title step consistency)
+    h1_found = 0
+    for html in htmls:
+        elements = flatten(html)
+        if any(el["tag"] == "h1" for el in elements):
+            h1_found += 1
+
+    # Require h1 on at least half the pages
+    if h1_found < len(htmls) / 2:
+        return None
+
+    return {"steps": best_steps}
+
+
+def parse_html(html: str, config: dict) -> JobContent:
+    """Extract job data from pre-fetched HTML using step-based extraction."""
+    steps = config.get("steps")
+    if not steps:
+        return JobContent()
+    elements = flatten(html)
+    raw = walk_steps(elements, steps)
+    return _map_to_job_content(raw)
+
+
+# ── Core extraction ───────────────────────────────────────────────────
 
 def _map_to_job_content(raw: dict[str, str | list[str] | None]) -> JobContent:
     """Map extraction result dict to a ``JobContent`` dataclass."""
@@ -121,4 +237,4 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, pw=None, artif
     return content
 
 
-register("dom", scrape)
+register("dom", scrape, can_handle=can_handle, parse_html=parse_html)

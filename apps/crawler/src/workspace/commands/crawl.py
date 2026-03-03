@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import random
 import time
 
 import click
@@ -33,9 +34,15 @@ def _get_active_board(slug: str):
     return ws, board
 
 
-@click.command()
+_MONITOR_PROBE_HINTS: dict[str, str] = {
+    "sitemap": "Tip: may include non-job URLs \u2014 verify count, consider url_filter",
+    "dom": "Tip: static detection only \u2014 try render: true if count seems low",
+}
+
+
+@click.command(name="monitor")
 @click.argument("slug", required=False)
-def probe(slug: str | None):
+def probe_monitors(slug: str | None):
     """Probe all monitor types for the active board's URL."""
     slug = resolve_slug(slug)
     ws, board = _get_active_board(slug)
@@ -81,6 +88,9 @@ def probe(slug: str | None):
             symbol = "\u2717"
 
         out.plain("probe", f"{name:<14}{symbol}  {comment}")
+        # Per-type hint for detected monitors
+        if metadata is not None and name in _MONITOR_PROBE_HINTS:
+            out.plain("probe", f"  {_MONITOR_PROBE_HINTS[name]}")
         probe_summary_parts.append(f"{name} {symbol}")
 
     # Suggest best detected monitor
@@ -92,7 +102,7 @@ def probe(slug: str | None):
 
     # Log
     summary = ", ".join(probe_summary_parts)
-    action_log.append_to_list(board.log, "probe", True, summary)
+    action_log.append_to_list(board.log, "probe monitor", True, summary)
     save_board(slug, board)
 
     # Store probe metadata for select monitor auto-config
@@ -106,6 +116,115 @@ def probe(slug: str | None):
         save_board(slug, board)
 
 
+@click.command(name="scraper")
+@click.argument("slug", required=False)
+@click.option("--url", "urls", multiple=True, help="Override sample URLs")
+def probe_scraper(slug: str | None, urls: tuple[str, ...]):
+    """Probe all scraper types against sample URLs."""
+    slug = resolve_slug(slug)
+    ws, board = _get_active_board(slug)
+
+    # Guard: API monitors don't need scrapers
+    api_monitors = {"greenhouse", "lever"}
+    if board.monitor_type in api_monitors:
+        out.warn("scraper", f"Monitor '{board.monitor_type}' returns full data — scraper not needed")
+        return
+
+    # Determine sample URLs
+    target_urls: list[str] = list(urls)
+    if not target_urls:
+        if not board.monitor_run:
+            out.die("No monitor results. Run: ws run monitor (or provide --url)")
+        target_urls = board.monitor_run.get("sample_urls", [])
+        if not target_urls:
+            out.die("No sample URLs available. Run the monitor first, or provide --url.")
+
+    # Limit to 3 URLs for probe
+    target_urls = target_urls[:3]
+
+    out.info("probe", f"Probing {len(target_urls)} sample URLs...")
+
+    async def _run():
+        from src.core.scrapers import probe_scrapers
+        from src.shared.http import create_http_client
+
+        http = create_http_client()
+        try:
+            return await probe_scrapers(target_urls, http)
+        finally:
+            await http.aclose()
+
+    results = asyncio.run(_run())
+
+    # Save artifacts
+    from src.workspace.artifacts import save_probe, scraper_probe_run_dir
+
+    probe_dir = scraper_probe_run_dir(slug, board.alias)
+    save_probe(
+        probe_dir,
+        [
+            {"name": name, "detected": metadata is not None, "metadata": metadata, "comment": comment}
+            for name, metadata, comment in results
+        ],
+    )
+    out.plain("artifacts", f"Saved: {probe_dir}")
+
+    # Print results
+    print()
+    detected_any = False
+    best_name = None
+    best_config = None
+
+    for name, metadata, comment in results:
+        if metadata is not None:
+            detected_any = True
+            symbol = "\u2713"
+            suffix = ""
+            # json-ld needs no config, others are heuristic
+            if name != "json-ld":
+                suffix = "  (heuristic config)"
+            out.plain("probe", f"  {name:<14}{symbol}  {comment}{suffix}")
+
+            # Print suggested config
+            config = metadata.get("config", {})
+            if config:
+                out.plain("probe", f"    config: {json.dumps(config)}")
+
+            # Track best
+            if best_name is None:
+                best_name = name
+                best_config = config
+        else:
+            symbol = "\u2717"
+            out.plain("probe", f"  {name:<14}{symbol}  {comment}")
+
+    print()
+
+    # Quality hints
+    if best_name:
+        if best_config:
+            out.next_step(f"ws select scraper {best_name} --config '{json.dumps(best_config)}'")
+        else:
+            out.next_step(f"ws select scraper {best_name}")
+
+        # Heuristic warning for non-json-ld
+        if best_name != "json-ld":
+            out.warn("probe", "Heuristic config \u2014 verify fields, check for unmapped data")
+    else:
+        out.warn("probe", "No scrapers auto-detected. Try manual dom config:")
+        out.plain("probe", "  ws help steps")
+
+    # Log action
+    probe_summary_parts = [
+        f"{name} {'✓' if meta is not None else '✗'}"
+        for name, meta, _ in results
+    ]
+    action_log.append_to_list(
+        board.log, "probe scraper", True, ", ".join(probe_summary_parts),
+    )
+    save_board(slug, board)
+
+
 _MONITOR_CONFIG_HINTS = {
     "greenhouse": "Requires: token (auto-filled from probe)",
     "lever": "Requires: token (auto-filled from probe)",
@@ -115,7 +234,7 @@ _MONITOR_CONFIG_HINTS = {
 }
 
 _SCRAPER_CONFIG_HINTS = {
-    "json-ld": "No config needed",
+    "json-ld": "Optional: render, actions, wait, timeout",
     "dom": "Requires: steps[]. Optional: render, actions, wait, timeout",
     "nextdata": "Requires: fields. Optional: path, render, actions",
 }
@@ -247,7 +366,7 @@ def run_monitor(slug: str | None):
         "jobs": job_count,
         "time": round(elapsed, 1),
         "has_rich_data": has_rich,
-        "sample_urls": list(result.urls)[:5],
+        "sample_urls": random.sample(sorted(result.urls), min(10, len(result.urls))),
         "ran_at": __import__("datetime").datetime.now(
             __import__("datetime").timezone.utc
         ).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -383,8 +502,6 @@ def select_scraper(slug_or_type: str, type_: str | None, config_json: str | None
 @click.option("--url", "urls", multiple=True, help="Specific URLs to scrape (repeatable)")
 def run_scraper(slug: str | None, urls: tuple[str, ...]):
     """Test-scrape sample job pages from the active board."""
-    import random
-
     slug = resolve_slug(slug)
     ws, board = _get_active_board(slug)
 
@@ -394,11 +511,10 @@ def run_scraper(slug: str | None, urls: tuple[str, ...]):
     # Determine which URLs to scrape
     target_urls: list[str] = list(urls)
     if not target_urls:
-        # Pick from monitor results
-        sample_urls = board.monitor_run.get("sample_urls", [])
-        if not sample_urls:
+        # Use all stored samples (already randomly selected by run monitor)
+        target_urls = board.monitor_run.get("sample_urls", [])
+        if not target_urls:
             out.die("No URLs available. Run the monitor first, or provide --url.")
-        target_urls = random.sample(sample_urls, min(3, len(sample_urls)))
 
     # Create artifact directory before the run so scrape_one can write raw HTML
     from src.workspace.artifacts import (
@@ -534,6 +650,12 @@ def run_scraper(slug: str | None, urls: tuple[str, ...]):
     ]
     if optional_parts:
         out.plain("scraper", f"Optional: {', '.join(optional_parts)}")
+
+    # Show missing important fields to prompt optimization
+    _IMPORTANT_OPTIONAL = ("job_location_type", "employment_type", "date_posted")
+    missing_important = [f for f in _IMPORTANT_OPTIONAL if quality_totals.get(f, 0) == 0]
+    if missing_important:
+        out.plain("scraper", f"Missing: {', '.join(missing_important)} — check raw data for mappable fields")
 
     action_log.append_to_list(
         board.log,

@@ -1,0 +1,1 @@
+DROP TABLE "company_resolve_queue" CASCADE;

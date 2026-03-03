@@ -72,7 +72,8 @@ ws new <slug> --issue <N>              # Create workspace + branch + draft PR (s
 ws use <slug>                          # Switch active workspace (multi-workspace only)
 ws set --name "..." --website "..."
 ws add board <alias> --url <board-url>
-ws probe                               # Probe all monitor types
+ws probe monitor                       # Probe all monitor types
+ws probe scraper                       # Probe all scraper types
 ws select monitor <type>               # Select monitor
 ws run monitor                         # Test crawl
 ws select scraper <type>               # Select scraper

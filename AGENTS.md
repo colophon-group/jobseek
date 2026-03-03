@@ -39,7 +39,8 @@ ws new <slug> --issue <N>              # Create workspace + branch + draft PR (s
 ws use <slug>                          # Switch active workspace (multi-workspace only)
 ws set --name "..." --website "..." --logo-url "..." --icon-url "..."
 ws add board <alias> --url <board-url>
-ws probe                               # Probe all monitor types for active board
+ws probe monitor                       # Probe all monitor types for active board
+ws probe scraper                       # Probe all scraper types against sample URLs
 ws select monitor <type> [--config JSON]
 ws run monitor                         # Test crawl
 ws select scraper <type> [--config JSON]
@@ -144,10 +145,10 @@ URLs are advisory-checked (reachability, image content type) but always saved.
 
 ```bash
 ws add board careers --url "https://boards.greenhouse.io/stripe"
-ws probe
+ws probe monitor
 ```
 
-`add board` auto-prefixes the alias with the company slug (`careers` → `stripe-careers`) and auto-activates the board. `probe` tries all monitor types and reports results.
+`add board` auto-prefixes the alias with the company slug (`careers` → `stripe-careers`) and auto-activates the board. `probe monitor` tries all monitor types and reports results.
 
 ### 5. Select and Test Monitor
 
@@ -169,14 +170,30 @@ ws run monitor
 
 API monitors (`greenhouse`, `lever`) return full data — `ws run monitor` prints "Skipping scraper" and auto-marks scraper steps as done.
 
-For URL-only monitors (`sitemap`, `dom`):
+For URL-only monitors (`sitemap`, `dom`), start by probing all scraper types:
 
 ```bash
-ws select scraper json-ld
+ws probe scraper
+```
+
+This tries all scraper types with heuristic auto-config against sample URLs and shows a quality comparison. Then select the best one:
+
+```bash
+ws select scraper json-ld --config '<from probe>'
 ws run scraper
 ```
 
 Check the extraction quality table. If fields are missing, iterate with a different type or config.
+
+### 6b. Optimize Field Extraction
+
+Before submitting, check the raw data source for additional mappable fields that come at no extra cost (same data source, no additional requests). Look for: `employment_type`, `date_posted`, `job_location_type`, team/department (as `metadata.*`), `base_salary`, `qualifications`, `responsibilities`.
+
+- **nextdata**: Read the `nextdata.json` or scraper-probe artifact to see all available keys in each item, then extend `fields` mapping.
+- **dom**: Inspect `sample-N.html`, `flat.json`, or scraper-probe artifacts for additional structured content near extracted fields.
+- **json-ld**: No action needed — json-ld automatically extracts all standard JobPosting properties.
+
+Run `ws run scraper` again after config changes to verify new fields appear.
 
 ### 7. Submit
 
@@ -217,7 +234,7 @@ ws set --name "Stripe" --website "https://stripe.com" \
 
 # Board + monitor
 ws add board careers --url "https://boards.greenhouse.io/stripe"
-ws probe
+ws probe monitor
 ws select monitor greenhouse
 ws run monitor
 

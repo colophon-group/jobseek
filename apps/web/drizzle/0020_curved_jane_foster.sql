@@ -1,0 +1,1 @@
+ALTER TABLE "company_request" ADD COLUMN "github_issue_number" integer;

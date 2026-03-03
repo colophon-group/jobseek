@@ -41,6 +41,11 @@ def probe_run_dir(slug: str, alias: str) -> Path:
     return _run_dir(slug, alias, "probe")
 
 
+def scraper_probe_run_dir(slug: str, alias: str) -> Path:
+    """Create and return a timestamped scraper-probe run directory."""
+    return _run_dir(slug, alias, "scraper-probe")
+
+
 def save_probe(run_dir: Path, results: list[dict]) -> None:
     """Save probe detection results to a run directory."""
     (run_dir / "probe.json").write_text(json.dumps(results, indent=2, default=str))

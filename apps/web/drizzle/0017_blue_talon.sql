@@ -1,0 +1,1 @@
+ALTER TABLE "company_request" ADD COLUMN "last_user_hint" jsonb;

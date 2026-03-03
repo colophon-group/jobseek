@@ -1,0 +1,1 @@
+ALTER TABLE "job_board" ALTER COLUMN "crawler_type" DROP NOT NULL;

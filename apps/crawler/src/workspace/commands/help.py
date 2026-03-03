@@ -18,7 +18,11 @@ Available topics:
   steps             DOM scraper step key reference
   actions           Browser action pipeline
   artifacts         Debug artifacts saved by ws commands
-  troubleshooting   Common failures + what to try"""
+  troubleshooting   Common failures + what to try
+
+Commands:
+  ws probe monitor   Probe all monitor types for active board
+  ws probe scraper   Probe all scraper types against sample URLs"""
 
 MONITORS = """\
 Monitor Types (cheapest first):
@@ -31,7 +35,7 @@ Monitor Types (cheapest first):
   sitemap        50      URL set         Yes
   dom            100     URL set         Yes
 
-Decision tree (after ws probe):
+Decision tree (after ws probe monitor):
   1. Detected greenhouse/lever?     → Use it (no scraper needed)
   2. Detected nextdata?             → monitor: nextdata
   3. Detected sitemap?              → monitor: sitemap, scraper: json-ld
@@ -41,6 +45,7 @@ All monitors support url_filter to include/exclude URLs by regex:
   "url_filter": "/jobs/"                          Include only
   "url_filter": {"include": "/jobs/", "exclude": "/blog/"}
 
+  ws probe monitor                  Run monitor probe
   ws help monitor <type>            Detailed config reference
   ws help scrapers                  Scraper overview"""
 
@@ -54,6 +59,10 @@ Scraper Types:
   dom            Static/PW   Yes (steps)      Custom HTML structure
 
   API monitors (greenhouse, lever) skip the scraper step entirely.
+
+  Probe first: ws probe scraper tries all types automatically against
+  sample URLs. Heuristic configs are a starting point — refine based
+  on probe quality stats.
 
   Try json-ld first — many sites embed JobPosting structured data for SEO.
   If json-ld returns empty fields, switch to dom or nextdata.
@@ -70,6 +79,7 @@ Field importance:
   Missing locations acceptable only if job_location_type is set (remote-only).
   See: ws help fields                  Full field reference
 
+  ws probe scraper                  Run scraper probe
   ws help scraper <type>            Detailed config reference
   ws help steps                     DOM scraper step format"""
 
@@ -177,7 +187,11 @@ nextdata — Next.js __NEXT_DATA__ Discovery
               props.pageProps.allJobs, props.pageProps.data.positions,
               props.pageProps.data.jobs. Needs >= 5 items (all dicts).
 
-  Pair with:  nextdata or json-ld scraper (if URL-only mode)"""
+  Pair with:  nextdata or json-ld scraper (if URL-only mode)
+
+  Tip: Inspect nextdata.json artifact to see all available keys in each
+  item before choosing your fields mapping. Map employment_type, date_posted,
+  job_location_type, team/department if present — they come at no extra cost."""
 
 MONITOR_DOM = """\
 dom — Link Extraction (fallback)
@@ -257,7 +271,12 @@ nextdata — Next.js __NEXT_DATA__ Page Extractor
     actions   Browser action pipeline (auto-enables render)
 
   When to use:  When job pages are Next.js and embed data in __NEXT_DATA__.
-  Empty result? Verify path points to the right data with browser devtools."""
+  Empty result? Verify path points to the right data with browser devtools.
+
+  Tip: Before finalizing config, inspect the full nextdata.json artifact
+  (saved by ws run monitor or ws probe monitor) for additional mappable fields.
+  Look for employment_type, date_posted, job_location_type, team/department
+  — these often exist in the raw data but aren't mapped by default."""
 
 SCRAPER_DOM = """\
 dom — Step-based Extraction Engine
@@ -416,16 +435,25 @@ Debug Artifacts — files saved by ws commands
   All artifacts are saved under:
     .workspace/<slug>/artifacts/<board_alias>/<category>/run-<timestamp>/
 
-  Categories: probe, monitor, scraper
+  Categories: probe, scraper-probe, monitor, scraper
 
 
-  ws probe                    → artifacts/<alias>/probe/run-<ts>/
+  ws probe monitor            → artifacts/<alias>/probe/run-<ts>/
   ─────────────────────────────────────────────────────────────────
     probe.json         Array of detection results, one per monitor type.
                        Each: {name, detected, metadata, comment}.
                        Shows which monitors detected the board and why others
                        failed. The metadata dict auto-fills config when you
                        run ws select monitor.
+
+
+  ws probe scraper            → artifacts/<alias>/scraper-probe/run-<ts>/
+  ─────────────────────────────────────────────────────────────────
+    probe.json         Array of scraper detection results.
+                       Each: {name, detected, metadata, comment}.
+                       Metadata includes heuristic config and quality stats
+                       (titles, descriptions, locations counts).
+                       Use config from metadata to ws select scraper.
 
 
   ws run monitor              → artifacts/<alias>/monitor/run-<ts>/
@@ -518,12 +546,13 @@ Troubleshooting:
     → greenhouse/lever may need a different token
 
   Scraper extracts empty fields:
+    → Start with ws probe scraper to see which types work
     json-ld     Page has partial or no JSON-LD → try dom scraper
     nextdata    Data structure differs per page → check path + fields
     dom         Selectors don't match → inspect page HTML, adjust steps
 
   Debugging with artifacts (ws help artifacts):
-    → Every ws probe / ws run monitor / ws run scraper saves debug files
+    → Every ws probe monitor / ws probe scraper / ws run saves debug files
     → Monitor: inspect raw source (response.json, sitemap.xml, nextdata.json, page.html)
     → Scraper: compare sample-N.html against sample-N.json to find missing fields
     → DOM scraper: read flat.json to find correct tag/text/attr selectors for steps

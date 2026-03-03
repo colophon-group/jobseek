@@ -174,23 +174,54 @@ def _parse_posting(posting: dict) -> JobContent:
     )
 
 
-async def scrape(url: str, config: dict, http: httpx.AsyncClient, pw=None, **kwargs) -> JobContent:
-    """Extract job data from JSON-LD on a page."""
-    response = await http.get(url, follow_redirects=True)
-    response.raise_for_status()
-
+def parse_html(html: str, config: dict | None = None) -> JobContent:
+    """Extract JobPosting data from pre-fetched HTML."""
     extractor = _JsonLdExtractor()
-    extractor.feed(response.text)
+    extractor.feed(html)
 
     for block in extractor.results:
         posting = _find_job_posting(block)
         if posting:
-            content = _parse_posting(posting)
-            log.debug("jsonld.extracted", url=url, title=content.title)
-            return content
+            return _parse_posting(posting)
 
-    log.warning("jsonld.not_found", url=url)
     return JobContent()
+
+
+def can_handle(htmls: list[str]) -> dict | None:
+    """Check if pages contain JSON-LD JobPosting. Returns ``{}`` if majority have it."""
+    found = 0
+    for html in htmls:
+        extractor = _JsonLdExtractor()
+        extractor.feed(html)
+        if any(_find_job_posting(block) for block in extractor.results):
+            found += 1
+    # Require at least half the pages to have JSON-LD
+    if found > 0 and found >= len(htmls) / 2:
+        return {}
+    return None
+
+
+async def scrape(url: str, config: dict, http: httpx.AsyncClient, pw=None, **kwargs) -> JobContent:
+    """Extract job data from JSON-LD on a page.
+
+    When ``render`` is true, renders the page with Playwright first.
+    """
+    if config.get("render"):
+        from src.shared.browser import BROWSER_KEYS, render as browser_render
+
+        browser_config = {k: v for k, v in config.items() if k in BROWSER_KEYS}
+        html = await browser_render(url, browser_config, pw=pw)
+    else:
+        response = await http.get(url, follow_redirects=True)
+        response.raise_for_status()
+        html = response.text
+
+    content = parse_html(html, config)
+    if content.title:
+        log.debug("jsonld.extracted", url=url, title=content.title)
+    else:
+        log.warning("jsonld.not_found", url=url)
+    return content
 
 
 async def probe(url: str, http: httpx.AsyncClient) -> bool:
@@ -199,11 +230,9 @@ async def probe(url: str, http: httpx.AsyncClient) -> bool:
         response = await http.get(url, follow_redirects=True)
         if response.status_code != 200:
             return False
-        extractor = _JsonLdExtractor()
-        extractor.feed(response.text)
-        return any(_find_job_posting(block) for block in extractor.results)
+        return can_handle([response.text]) is not None
     except Exception:
         return False
 
 
-register("json-ld", scrape)
+register("json-ld", scrape, can_handle=can_handle, parse_html=parse_html)
