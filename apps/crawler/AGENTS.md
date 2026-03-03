@@ -22,24 +22,40 @@ src/
 │   │   ├── greenhouse.py  # Greenhouse JSON API
 │   │   ├── lever.py       # Lever Postings API
 │   │   ├── sitemap.py     # XML sitemap parser
-│   │   └── discover.py    # Playwright-based discovery
+│   │   ├── nextdata.py    # Next.js __NEXT_DATA__ discovery
+│   │   └── dom.py         # Playwright DOM-based discovery
 │   ├── scrapers/          # Scraper implementations
 │   │   ├── __init__.py    # Registry + JobContent dataclass
 │   │   ├── jsonld.py      # JSON-LD extractor
-│   │   ├── html.py        # CSS selector extraction
-│   │   └── browser.py     # Playwright extraction
+│   │   ├── nextdata.py    # Next.js data extractor
+│   │   └── dom.py         # Step-based extraction (static or Playwright)
 │   ├── monitor.py         # monitor_one() dispatcher
 │   └── scrape.py          # scrape_one() dispatcher
+├── workspace/             # Workspace CLI (ws command)
+│   ├── cli.py             # Click entry point + groups
+│   ├── commands/          # Command implementations
+│   │   ├── lifecycle.py   # new, reject, del, submit, status, validate
+│   │   ├── config.py      # set, add board, del board
+│   │   └── crawl.py       # probe, select/run monitor, select/run scraper
+│   ├── state.py           # YAML workspace state
+│   ├── log.py             # Action log + transcript
+│   ├── git.py             # Git/GitHub CLI wrappers
+│   ├── output.py          # Terminal output helpers
+│   ├── artifacts.py       # Debug artifact storage
+│   └── url_check.py       # URL validation helpers
+├── shared/
+│   ├── constants.py       # DATA_DIR, WORKSPACE_DIR, SLUG_RE, URL_RE
+│   ├── csv_io.py          # CSV read/write utilities
+│   ├── http.py            # httpx client factory
+│   ├── logging.py         # structlog config
+│   └── slug.py            # slugify utility
 ├── batch.py               # Batch processor
 ├── scheduler.py           # Scheduler (entry point)
 ├── sync.py                # CSV → DB sync
-├── validate.py            # CSV validation
+├── inspect.py             # CSV validation + diagnostic library
+├── csvtool.py             # CSV management library
 ├── db.py                  # asyncpg pool
-├── config.py              # pydantic-settings
-└── shared/
-    ├── http.py            # httpx client factory
-    ├── logging.py         # structlog config
-    └── slug.py            # slugify utility
+└── config.py              # pydantic-settings
 ```
 
 ## Commands
@@ -47,6 +63,31 @@ src/
 ```bash
 # Install deps
 uv sync
+
+# Workspace CLI (alias for convenience)
+alias ws='uv run ws'
+
+# Workspace lifecycle — ws new sets the active workspace; slug is omitted after that
+ws new <slug> --issue <N>              # Create workspace + branch + draft PR (sets active)
+ws use <slug>                          # Switch active workspace (multi-workspace only)
+ws set --name "..." --website "..."
+ws add board <alias> --url <board-url>
+ws probe                               # Probe all monitor types
+ws select monitor <type>               # Select monitor
+ws run monitor                         # Test crawl
+ws select scraper <type>               # Select scraper
+ws run scraper                         # Test scrape
+ws submit --summary "..."              # Validate, commit, push, post stats
+
+# Utilities
+ws validate                            # Validate CSVs
+ws status                              # Show active workspace (or list all)
+ws use --board <alias>                 # Switch active board
+ws del                                 # Remove workspace + CSV rows + close PR
+
+# Rejection
+ws reject --issue <N> --reason <key> --message "..."
+ws reject --reason <key> --message "..."  # Uses active workspace's issue
 
 # Run crawler (poll loop)
 uv run scheduler
@@ -56,9 +97,6 @@ uv run scheduler --once
 
 # Sync CSVs to DB
 uv run python -m src.sync
-
-# Validate CSVs
-uv run python -m src.validate
 
 # Run tests
 uv run pytest tests/

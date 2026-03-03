@@ -13,7 +13,8 @@ A monitor takes a board config and returns either **full job data** (API monitor
 | `greenhouse` | Low | Full job data | Board is powered by Greenhouse |
 | `lever` | Low | Full job data | Board is powered by Lever |
 | `sitemap` | Medium | URL set | Site has an XML sitemap with job URLs |
-| `discover` | High | URL set | JS-rendered SPA, no sitemap, no API |
+| `nextdata` | Medium | URL set or full data | Next.js site with `__NEXT_DATA__` or API routes |
+| `dom` | High | URL set | Last resort — link extraction from page HTML |
 
 Always prefer cheaper monitors. API monitors (greenhouse, lever) are the best case — they return complete job data in a single request, no scraper needed.
 
@@ -71,18 +72,65 @@ Parses XML sitemaps to discover job URLs.
 
 **Returns**: URL set only. Needs a scraper to extract job details.
 
-### discover
+### nextdata
 
-Playwright-based auto-discovery for JS-heavy career pages. This is the most expensive monitor type — it launches a headless browser, intercepts network requests, scores JSON responses to find the job list API, and paginates.
+Extracts job listings from Next.js sites using `__NEXT_DATA__` props.
 
 **Config**:
 ```json
-{"wait": "networkidle", "pagination": "offset"}
+{
+  "path": "props.pageProps.positions",
+  "url_template": "https://example.com/jobs/{id}",
+  "slug_fields": ["title"],
+  "render": false,
+  "actions": [],
+  "fields": {
+    "title": "title",
+    "locations": "offices[].name",
+    "metadata.team": "department.name"
+  }
+}
 ```
+
+| Key | Required | Description |
+|-----|----------|-------------|
+| `path` | Yes | Dot-path to the jobs array in `__NEXT_DATA__` JSON |
+| `url_template` | Yes | URL template with `{field}` placeholders from each item |
+| `slug_fields` | No | Fields to slugify and expose as `{slug}` in the template |
+| `render` | No | `false` (default) for static HTTP, `true` for Playwright |
+| `actions` | No | Browser action pipeline (see [Actions](#actions)); implies `render: true` |
+| `fields` | No | Field mapping for rich mode (omit for URL-only) |
+
+**Returns**: URL set or full data depending on whether `fields` is configured. May need a scraper for full job details.
+
+**When to use**: When the career site is built with Next.js and embeds job data in `__NEXT_DATA__`.
+
+### dom
+
+Link extraction from career pages. By default (``render: false``) fetches via static HTTP and parses `<a>` tags. Set `render: true` to render with Playwright for JS-heavy SPAs.
+
+**Config**:
+```json
+{
+  "render": false,
+  "actions": []
+}
+```
+
+| Key | Required | Description |
+|-----|----------|-------------|
+| `render` | No | `false` (default) for static HTTP, `true` for Playwright |
+| `actions` | No | Browser action pipeline (see [Actions](#actions)); implies `render: true` |
+| `wait` | No | Playwright wait strategy (only when rendering) |
+| `timeout` | No | Playwright navigation timeout in ms (only when rendering) |
+| `user_agent` | No | Custom User-Agent string (only when rendering) |
+| `headless` | No | Run browser in headless mode, default `true` (only when rendering) |
+
+Link discovery filters `<a href>` URLs containing job-related keywords (job, career, position, posting, opening, role, vacancy).
 
 **Returns**: URL set only. Needs a scraper to extract job details.
 
-**When to use**: Only when no API monitor or sitemap is available. The agent should exhaust all other options first.
+**When to use**: Only when no API monitor, sitemap, or nextdata monitor is available. The agent should exhaust all other options first.
 
 ---
 
@@ -92,13 +140,13 @@ A scraper takes a job page URL and returns structured job data. Only needed when
 
 ### Scraper Types
 
-| Type | Needs fetch? | How it works |
-|------|-------------|-------------|
-| `greenhouse_api` | No | Data comes from monitor (passthrough) |
-| `lever_api` | No | Data comes from monitor (passthrough) |
-| `json-ld` | Yes (static) | Parses `<script type="application/ld+json">` |
-| `html` | Yes (static) | CSS selectors → field mapping |
-| `browser` | Yes (Playwright) | Renders JS, then extracts via selectors |
+| Type | Fetch mode | How it works |
+|------|-----------|-------------|
+| `greenhouse_api` | No fetch | Data comes from monitor (passthrough) |
+| `lever_api` | No fetch | Data comes from monitor (passthrough) |
+| `json-ld` | Static | Parses `<script type="application/ld+json">` |
+| `nextdata` | Static or Playwright | Extracts from Next.js `__NEXT_DATA__` props |
+| `dom` | Static or Playwright | Step-based extraction engine |
 
 ### greenhouse_api / lever_api
 
@@ -123,49 +171,146 @@ No config needed — the extractor handles all standard JobPosting fields automa
 - `qualifications` / `skills` / `responsibilities` → lists
 - `datePosted` / `validThrough` → dates
 
-**When to use**: Try this first for any sitemap-discovered board. Many sites (Meta, LinkedIn, Indeed, Workable-powered) embed JSON-LD. Use `uv run python -m src.validate --probe-jsonld <url>` to check.
+**When to use**: Try this first for any sitemap-discovered board. Many sites (Meta, LinkedIn, Indeed, Workable-powered) embed JSON-LD. Use `ws probe` to auto-detect, or `ws select scraper json-ld` and `ws run scraper` to test.
 
-### html
+### nextdata
 
-CSS selector-based extraction for sites without JSON-LD.
+Extracts job details from Next.js `__NEXT_DATA__` page props.
 
 **Config**:
 ```json
 {
-  "title": "h2.p1N2lc",
-  "location": "span.vo5qdf",
-  "description": "h3:contains('About') ~ p",
-  "qualifications": "h3:contains('Minimum qualifications') ~ li",
-  "responsibilities": "h3:contains('Responsibilities') ~ li"
+  "path": "props.pageProps.jobData",
+  "render": false,
+  "actions": [],
+  "fields": {
+    "title": "title",
+    "description": "descriptionHtml",
+    "locations": "locations[].name",
+    "metadata.team": "department.name"
+  }
 }
 ```
 
-Each key is a job field, each value is a CSS selector. The scraper fetches the page (static HTTP), parses the HTML, and extracts text from matching elements.
+| Key | Required | Description |
+|-----|----------|-------------|
+| `path` | No | Dot-path to the job object in `__NEXT_DATA__` JSON |
+| `fields` | Yes | Map of target field → source path in the job object |
+| `render` | No | `false` (default) for static HTTP, `true` for Playwright |
+| `actions` | No | Browser action pipeline (see [Actions](#actions)); implies `render: true` |
 
-**When to use**: When the site has no JSON-LD but has a consistent HTML structure. The agent determines the right selectors during the research phase.
+**When to use**: When the career site is built with Next.js and individual job pages embed data in `__NEXT_DATA__`.
 
-### browser
+### dom
 
-Playwright-based extraction for JS-heavy sites that don't render job details server-side.
+Step-based extraction engine. Supports two modes:
 
-**Config**:
+- **`render: false`** (default) — fetches via static HTTP (no browser needed)
+- **`render: true`** — launches Playwright to render JS before extraction
+
+**Config** (static mode):
 ```json
 {
+  "steps": [
+    {"tag": "h1", "field": "title"},
+    {"text": "Location", "offset": 1, "field": "location"},
+    {"text": "About", "field": "description", "stop": "Requirements", "html": true}
+  ]
+}
+```
+
+**Config** (Playwright mode):
+```json
+{
+  "render": true,
+  "steps": [
+    {"tag": "h1", "field": "title"},
+    {"text": "Location", "offset": 1, "field": "location"},
+    {"text": "About", "field": "description", "stop": "Requirements", "html": true}
+  ],
   "wait": "networkidle",
-  "title": "[data-testid='job-title']",
-  "location": "[data-testid='location']"
+  "actions": [{"action": "dismiss_overlays"}]
 }
 ```
 
-Same as `html` but launches a headless browser first to render JavaScript. The `wait` field controls when extraction starts (`networkidle`, `domcontentloaded`, or a specific selector).
+| Key | Required | Description |
+|-----|----------|-------------|
+| `steps` | Yes | Extraction steps (see [Step keys](#step-keys)) |
+| `render` | No | `false` (default) for static HTTP, `true` for Playwright |
+| `actions` | No | Browser action pipeline (see [Actions](#actions)); implies `render: true` |
+| `wait` | No | Playwright wait strategy (only when rendering) |
+| `timeout` | No | Playwright navigation timeout in ms (only when rendering) |
+| `user_agent` | No | Custom User-Agent string (only when rendering) |
+| `headless` | No | Run browser in headless mode, default `true` (only when rendering) |
 
-**When to use**: Only when static HTML extraction fails. Common for Ashby, Workday, and Workable-powered sites.
+#### Step keys
+
+Each step in the `steps` array supports:
+
+| Key | Description |
+|-----|-------------|
+| `tag` | Match by element tag name |
+| `text` | Match by substring in element text |
+| `attr` | Match by HTML attribute (`"key=substring"` or `"key"`) |
+| `field` | Output field name (omit for anchor-only steps) |
+| `offset` | Skip N elements after match before extracting (default 0) |
+| `stop` | Stop collecting when element text contains this string |
+| `stop_tag` | Stop collecting when element tag matches |
+| `stop_count` | Max elements to collect in a range |
+| `optional` | If true, suppress warning when step not found |
+| `regex` | Regex with capture group; applied to extracted text |
+| `split` | Split extracted text into a list on this delimiter |
+| `html` | If true, preserve tag structure in range output as HTML |
+| `from` | Override seek start position (e.g. 0 to search from beginning) |
+
+**When to use**: For any site that needs step-based extraction. Use the default `render: false` when the page works without JavaScript; set `render: true` for JS-heavy SPAs (Ashby, Workday, Workable).
+
+---
+
+## Browser Config Keys
+
+The following keys are standardized across all monitors and scrapers that support rendering:
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `render` | `false` | `true` to render with Playwright, `false` for static HTTP |
+| `actions` | `[]` | Action pipeline to run after page load (implies `render: true`) |
+| `wait` | `"networkidle"` | Playwright wait strategy: `load`, `domcontentloaded`, `networkidle`, `commit` |
+| `timeout` | `30000` | Playwright navigation timeout in milliseconds |
+| `user_agent` | Chrome UA | Custom User-Agent string |
+| `headless` | `true` | Run browser in headless mode |
+
+If `actions` are configured with `render: false`, the system overrides to `render: true` and emits a misconfiguration warning.
+
+### Actions
+
+The action pipeline runs sequentially after page navigation, before content extraction. Each action has a 10-second timeout (configurable per-action via `"timeout"` key). Failures are logged as warnings and execution continues.
+
+| Action | Keys | Description |
+|--------|------|-------------|
+| `dismiss_overlays` | — | Remove common cookie/consent banners |
+| `click` | `selector` | Click the first element matching the CSS selector |
+| `remove` | `selector` | Remove all elements matching the CSS selector from the DOM |
+| `wait` | `ms` (default 1000) | Wait for a fixed duration |
+| `evaluate` | `script` | Run arbitrary JavaScript on the page |
+
+Example:
+```json
+{
+  "actions": [
+    {"action": "dismiss_overlays"},
+    {"action": "click", "selector": "button.load-more"},
+    {"action": "wait", "ms": 2000},
+    {"action": "remove", "selector": ".cookie-banner"}
+  ]
+}
+```
 
 ---
 
 ## Choosing the Right Config
 
-Decision tree for agents:
+Decision tree for agents (use `ws probe` to auto-detect):
 
 ```
 1. Is the board URL on greenhouse.io or detected as Greenhouse?
@@ -178,26 +323,32 @@ Decision tree for agents:
    a. Do individual job pages have JSON-LD?
       → monitor: sitemap, scraper: json-ld
    b. Do job pages have consistent HTML structure?
-      → monitor: sitemap, scraper: html
+      → monitor: sitemap, scraper: dom
 
-4. None of the above?
+4. Is the site built with Next.js?
+   → monitor: nextdata, scraper: nextdata or json-ld
+
+5. None of the above?
    a. Do job pages render without JS?
-      → monitor: discover, scraper: json-ld or html
+      → monitor: dom, scraper: json-ld or dom
    b. Job pages need JS to render?
-      → monitor: discover, scraper: browser
+      → monitor: dom (render: true), scraper: dom (render: true)
 ```
 
 ## Existing Code
 
 Monitor implementations are adapted from the current crawler:
 
-| New location | Source |
-|-------------|--------|
-| `src/core/monitors/greenhouse.py` | `src/monitor/crawler_types/greenhouse.py` |
-| `src/core/monitors/lever.py` | `src/monitor/crawler_types/lever.py` |
-| `src/core/monitors/sitemap.py` | `src/monitor/crawler_types/sitemap.py` |
-| `src/core/monitors/discover.py` | `scripts/discover_jobs.py` (promoted) |
-| `src/core/scrapers/jsonld.py` | `examples/flatten_url.py::extract_jsonld()` (promoted) |
+| Location | Description |
+|----------|-------------|
+| `src/core/monitors/greenhouse.py` | Greenhouse JSON API monitor |
+| `src/core/monitors/lever.py` | Lever Postings API monitor |
+| `src/core/monitors/sitemap.py` | XML sitemap parser monitor |
+| `src/core/monitors/nextdata.py` | Next.js `__NEXT_DATA__` monitor |
+| `src/core/monitors/dom.py` | Link extraction monitor (static or Playwright) |
+| `src/core/scrapers/jsonld.py` | JSON-LD extractor |
+| `src/core/scrapers/dom.py` | Step-based scraper (static or Playwright) |
+| `src/core/scrapers/nextdata.py` | Next.js data extractor |
 
 ---
 
@@ -207,25 +358,24 @@ Monitor implementations are adapted from the current crawler:
 
 1. Check if the website shows a total job count (e.g. "Showing 247 open positions")
 2. `sitemap` monitor: the sitemap may not include all job URLs
-   → Try `discover` monitor as fallback
+   → Try `dom` or `nextdata` monitor as fallback
 3. `greenhouse`/`lever`: API may require a different token
    → Try alternative slugs derived from the URL or page HTML
-4. `discover` monitor: pagination may not be working
-   → Adjust pagination config (`offset` vs `page-number`)
+4. `dom` monitor: try `render: true` if the page needs JavaScript to show all links
 
 ### Monitor returns zero jobs
 
 1. Verify the board URL is correct and loads in a browser
 2. For `greenhouse`/`lever`: verify the token is correct (try hitting the API directly)
 3. For `sitemap`: verify the sitemap contains job URLs (not just pages)
-4. For `discover`: the page may need a specific wait strategy or user interaction
+4. For `dom`: try `render: true` and add actions if needed (e.g. cookie dismissal)
 
 ### Scraper extracts empty or wrong fields
 
-1. `json-ld`: verify JSON-LD exists (`--probe-jsonld`) — some pages have partial JSON-LD that's missing fields
-2. `html`: selectors may be wrong — inspect the page HTML, try different selectors
-3. `browser`: page may need longer wait time or specific interaction
-4. Consider switching scraper type (e.g. `json-ld` → `html` if JSON-LD is incomplete)
+1. `json-ld`: verify JSON-LD exists — some pages have partial JSON-LD that's missing fields
+2. `dom`: check step config — use `ws run scraper` to test, examine `flat.json` artifact
+3. `dom` with `render: true`: page may need longer wait time or specific actions
+4. Consider switching scraper type (e.g. `json-ld` → `dom` if JSON-LD is incomplete)
 
 ### None of the existing types work
 

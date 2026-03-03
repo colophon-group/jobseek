@@ -239,7 +239,7 @@ class TestDiscover:
 class TestCanHandle:
     async def test_greenhouse_url(self):
         result = await can_handle("https://boards.greenhouse.io/stripe")
-        assert result == {}
+        assert result == {"token": "stripe"}
 
     async def test_non_greenhouse_url_no_client(self):
         result = await can_handle("https://example.com/careers")

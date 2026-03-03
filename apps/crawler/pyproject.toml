@@ -5,8 +5,10 @@ description = "Job listing monitor and extraction crawler"
 requires-python = ">=3.12"
 dependencies = [
     "asyncpg>=0.30",
+    "click>=8.1",
     "httpx>=0.28",
     "pydantic-settings>=2.7",
+    "pyyaml>=6.0",
     "structlog>=24.4",
     "python-dotenv>=1.0",
     "polars>=1.38.1",
@@ -14,6 +16,7 @@ dependencies = [
 
 [project.scripts]
 scheduler = "src.scheduler:main"
+ws = "src.workspace.cli:main"
 
 [dependency-groups]
 dev = [

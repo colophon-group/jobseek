@@ -174,7 +174,7 @@ def _parse_posting(posting: dict) -> JobContent:
     )
 
 
-async def scrape(url: str, config: dict, http: httpx.AsyncClient) -> JobContent:
+async def scrape(url: str, config: dict, http: httpx.AsyncClient, pw=None, **kwargs) -> JobContent:
     """Extract job data from JSON-LD on a page."""
     response = await http.get(url, follow_redirects=True)
     response.raise_for_status()

@@ -23,17 +23,29 @@ Board configurations. One row per job board. A company can have multiple boards.
 | Column | Required | Description |
 |--------|----------|-------------|
 | `company_slug` | Yes | References `slug` in companies.csv. |
+| `board_slug` | Yes | Unique board identifier in `{company}-{alias}` format (e.g. `stripe-careers`). |
 | `board_url` | Yes | Career page URL (unique). |
-| `monitor_type` | Yes | How to discover listings: `greenhouse`, `lever`, `sitemap`, `discover`. |
+| `monitor_type` | Yes | How to discover listings: `greenhouse`, `lever`, `sitemap`, `nextdata`, `dom`. |
 | `monitor_config` | No | JSON string with monitor-specific settings. |
-| `scraper_type` | No | How to extract details: `greenhouse_api`, `lever_api`, `json-ld`, `html`, `browser`. |
+| `scraper_type` | No | How to extract details: `greenhouse_api`, `lever_api`, `json-ld`, `html`, `dom`, `nextdata`. |
 | `scraper_config` | No | JSON string with scraper-specific settings. |
 
 ## Adding a Company
 
-1. Add a row to `companies.csv`
-2. Add one or more rows to `boards.csv`
-3. Validate: `uv run python -m src.validate`
+Use the `ws` CLI tool:
+
+```bash
+alias ws='uv run ws'
+ws new stripe --issue 42
+ws set stripe --name "Stripe" --website "https://stripe.com"
+ws add board stripe careers --url "https://boards.greenhouse.io/stripe"
+ws probe stripe
+ws select monitor stripe greenhouse
+ws run monitor stripe
+ws submit stripe --summary "Configured greenhouse monitor (138 jobs)"
+```
+
+Or manually: add rows to both CSVs, then validate with `ws validate`.
 
 Keep rows sorted by slug. JSON configs use standard CSV quoting (wrap in double quotes, escape inner quotes by doubling them).
 
@@ -46,7 +58,7 @@ stripe,Stripe,https://stripe.com,https://stripe.com/img/logo.svg,https://stripe.
 
 boards.csv:
 ```
-stripe,https://boards.greenhouse.io/stripe,greenhouse,"{""token"":""stripe""}",greenhouse_api,
+stripe,stripe-careers,https://boards.greenhouse.io/stripe,greenhouse,"{""token"":""stripe""}",greenhouse_api,
 ```
 
 ## Reading in Python

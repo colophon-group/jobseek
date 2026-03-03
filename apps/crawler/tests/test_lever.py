@@ -332,7 +332,7 @@ class TestDiscover:
 class TestCanHandle:
     async def test_lever_url(self):
         result = await can_handle("https://jobs.lever.co/stripe")
-        assert result == {}
+        assert result == {"token": "stripe"}
 
     async def test_non_lever_url_no_client(self):
         result = await can_handle("https://example.com/careers")

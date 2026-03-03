@@ -22,7 +22,7 @@ Everything in this phase is additive. Nothing existing breaks.
 - `src/batch.py` — portable batch processor
 - `src/scheduler.py` — poll-loop scheduler (replaces monitor/main.py)
 - `src/sync.py` — CSV → DB sync
-- `src/validate.py` — CSV validation
+- `src/inspect.py` — CSV validation
 
 ### Phase 2 — Wire Up GitHub Actions
 

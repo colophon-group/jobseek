@@ -1,4 +1,4 @@
-company_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config
-stripe,https://stripe.com/jobs/search,greenhouse,,,
-deepmind,https://deepmind.google/about/careers/,greenhouse,"{""token"": ""deepmind""}",,
-meta,https://www.metacareers.com/jobs,sitemap,,json-ld,
+company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config
+stripe,stripe-careers,https://stripe.com/jobs/search,greenhouse,,,
+deepmind,deepmind-careers,https://deepmind.google/about/careers/,greenhouse,"{""token"": ""deepmind""}",,
+meta,meta-careers,https://www.metacareers.com/jobs,sitemap,,json-ld,

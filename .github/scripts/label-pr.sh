@@ -17,11 +17,11 @@ set -euo pipefail
 : "${REPO:?REPO is required}"
 
 ALLOWED_FILES="apps/crawler/data/companies.csv apps/crawler/data/boards.csv"
-VALID_MONITOR_TYPES="greenhouse|lever|sitemap|discover"
-VALID_SCRAPER_TYPES="greenhouse_api|lever_api|json-ld|html|browser"
+VALID_MONITOR_TYPES="greenhouse|lever|sitemap|nextdata|dom"
+VALID_SCRAPER_TYPES="greenhouse_api|lever_api|json-ld|dom|nextdata"
 SLUG_RE='^[a-z0-9]+(-[a-z0-9]+)*$'
 URL_RE='^https?://'
-MAX_ADDED_LINES=4
+MAX_ADDED_LINES=5
 
 # --- Check changed files ---
 
@@ -67,9 +67,9 @@ while IFS= read -r line; do
   [ -z "$content" ] && continue
   echo "$content" | grep -qE '^(slug,|company_slug,)' && continue
 
-  # Count fields — companies.csv has 5, boards.csv has 6
+  # Count fields — companies.csv has 5, boards.csv has 7
   FIELD_COUNT=$(echo "$content" | awk -F',' '{print NF}')
-  if [ "$FIELD_COUNT" -ne 5 ] && [ "$FIELD_COUNT" -ne 6 ]; then
+  if [ "$FIELD_COUNT" -ne 5 ] && [ "$FIELD_COUNT" -ne 7 ]; then
     echo "::warning::Unexpected field count ($FIELD_COUNT): $content"
     DIFF_OK=false
     continue
@@ -90,12 +90,12 @@ while IFS= read -r line; do
     fi
   fi
 
-  if [ "$FIELD_COUNT" -eq 6 ]; then
-    # boards.csv: company_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config
+  if [ "$FIELD_COUNT" -eq 7 ]; then
+    # boards.csv: company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config
     SLUG=$(echo "$content" | cut -d',' -f1)
-    BOARD_URL=$(echo "$content" | cut -d',' -f2)
-    MONITOR=$(echo "$content" | cut -d',' -f3)
-    SCRAPER=$(echo "$content" | cut -d',' -f5)
+    BOARD_URL=$(echo "$content" | cut -d',' -f3)
+    MONITOR=$(echo "$content" | cut -d',' -f4)
+    SCRAPER=$(echo "$content" | cut -d',' -f6)
 
     if ! echo "$SLUG" | grep -qE "$SLUG_RE"; then
       echo "::warning::Invalid company_slug: $SLUG"

@@ -141,6 +141,7 @@ export const jobBoard = pgTable(
     companyId: uuid("company_id")
       .notNull()
       .references(() => company.id, { onDelete: "cascade" }),
+    boardSlug: text("board_slug").unique(),
     crawlerType: text("crawler_type"),
     boardUrl: text("board_url").notNull().unique(),
 
@@ -176,6 +177,7 @@ export const jobPosting = pgTable(
       onDelete: "set null",
     }),
     title: text("title"),
+    /** HTML fragment preserving original page structure (p, ul/li, h3, etc.). */
     description: text("description"),
     locations: text("locations").array(),
     employmentType: text("employment_type"),

@@ -203,6 +203,7 @@ async def _discover_sitemap(
 async def discover(
     board: dict,
     client: httpx.AsyncClient,
+    pw=None,
 ) -> tuple[set[str], str | None]:
     """Fetch and parse an XML sitemap, returning (discovered_urls, sitemap_url).
 
@@ -241,11 +242,12 @@ async def discover(
     return set(urls), new_sitemap_url
 
 
-async def can_handle(url: str, client: httpx.AsyncClient | None = None) -> dict | None:
-    """Try to discover a sitemap — if found, return its URL as metadata."""
+async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None) -> dict | None:
+    """Try to discover a sitemap — if found, return its URL and URL count as metadata."""
     try:
-        sitemap_url, _root = await _discover_sitemap(url, client)
-        return {"sitemap_url": sitemap_url}
+        sitemap_url, root = await _discover_sitemap(url, client)
+        url_count = len(_extract_urls(root))
+        return {"sitemap_url": sitemap_url, "urls": url_count}
     except SitemapDiscoveryError:
         return None
 

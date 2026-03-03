@@ -53,17 +53,25 @@ jobs:
             Resolve issue #${{ steps.select.outputs.selected }} (labeled "company-request").
             Follow the instructions in AGENTS.md to resolve it.
 
-            Summary of steps:
+            Setup: cd apps/crawler && uv sync && alias ws='uv run ws'
+
+            Summary of steps (ws new sets the active workspace — omit the slug on all subsequent commands):
             1. Read the user request from the issue body
-            2. Check for existing PRs claiming this issue — if one is active, stop entirely
-            3. Create branch, seed stub company with csvtool, commit, push, open draft PR
+            2. Validate the request (web research, no crawler tooling):
+               a. Check company isn't already in data/companies.csv
+               b. Confirm the company exists and is currently operating
+               c. Find a public careers page with at least one job listing
+               On failure: ws reject --issue ${{ steps.select.outputs.selected }} --reason <key> --message "..."
+            3. Claim: ws new <slug> --issue ${{ steps.select.outputs.selected }}
+               (checks for existing PRs, creates branch + stub CSV + draft PR, sets active workspace)
             4. Research the company — find name, website, logo, icon, career page URL
-            5. Detect the monitor type: `cd apps/crawler && uv run python -m src.validate --detect <board-url>`
-            6. Test crawl: `uv run python -m src.validate --test-monitor <slug> <board-url>` — note job count and time
-            7. For sitemap/discover monitors, probe JSON-LD and test scraper: `--test-scraper <url> <type>` — note scrape time
-            8. Update company and add board via csvtool
-            9. Validate: `uv run python -m src.validate`
-            10. Post crawl stats comment (see AGENTS.md step 9 for exact format), then mark PR as ready
+            5. Set details: ws set --name "..." --website "..." --logo-url "..." --icon-url "..."
+            6. Add board + probe: ws add board <alias> --url <board-url> && ws probe
+            7. Select + test monitor: ws select monitor <type> && ws run monitor
+               If 0 jobs but validation passed, it's a monitor misconfiguration — debug systematically
+            8. For non-API monitors: ws select scraper <type> && ws run scraper
+            9. Submit: ws submit --summary "..."
+               (validates CSV, commits, pushes, posts crawl stats, marks PR ready, posts transcript)
 
             Only process this ONE issue. Do not process any others.
           claude_args: "--max-turns 25"

@@ -1,0 +1,24 @@
+name: Label rejected requests
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    if: contains(github.event.comment.body, '<!-- validation-failed:')
+    permissions:
+      issues: write
+    steps:
+      - name: Extract reason and apply label
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BODY: ${{ github.event.comment.body }}
+          ISSUE: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          REASON=$(echo "$BODY" | grep -oP '<!-- validation-failed: \K[a-z-]+')
+          if [ -n "$REASON" ]; then
+            gh issue edit "$ISSUE" -R "$REPO" --add-label "$REASON"
+          fi

@@ -21,7 +21,7 @@ Jobseek monitors company career pages for new job postings. Companies are config
 │           ├── batch.py     # Batch processor
 │           ├── scheduler.py # Poll-loop scheduler
 │           ├── sync.py      # CSV → DB sync
-│           └── validate.py  # CSV validation
+│           └── inspect.py   # CSV validation + diagnostics
 ├── docs/                    # Architecture documentation
 └── .github/workflows/       # CI + agent automation
 ```
@@ -31,20 +31,31 @@ Jobseek monitors company career pages for new job postings. Companies are config
 All crawler commands run from `apps/crawler/`:
 
 ```bash
-# Validate CSV files
-uv run python -m src.validate
+# Setup (once per session)
+alias ws='uv run ws'
 
-# Auto-detect monitor type for a URL
-uv run python -m src.validate --detect <url>
+# Workspace lifecycle — ws new sets the active workspace; all other commands use it automatically
+ws new <slug> --issue <N>              # Create workspace + branch + draft PR (sets active)
+ws use <slug>                          # Switch active workspace (multi-workspace only)
+ws set --name "..." --website "..." --logo-url "..." --icon-url "..."
+ws add board <alias> --url <board-url>
+ws probe                               # Probe all monitor types for active board
+ws select monitor <type> [--config JSON]
+ws run monitor                         # Test crawl
+ws select scraper <type> [--config JSON]
+ws run scraper [--url URL ...]         # Test scrape sample pages
+ws submit --summary "..."              # Validate, commit, push, post stats + transcript
 
-# Check if a job page has JSON-LD
-uv run python -m src.validate --probe-jsonld <job-page-url>
+# Rejection (before or after workspace creation)
+ws reject --issue <N> --reason <key> --message "..."
+ws reject --reason <key> --message "..."  # Uses active workspace's issue
 
-# Test crawl a board
-uv run python -m src.validate --test-monitor <company-slug> <board-url>
-
-# Test scrape a single job page
-uv run python -m src.validate --test-scraper <job-page-url> <scraper-type> [scraper-config-json]
+# Utilities
+ws validate                            # Validate CSVs
+ws status                              # Show active workspace (or list all if none active)
+ws use --board <alias>                 # Switch active board
+ws del                                 # Remove workspace + CSV rows + close PR
+ws help [topic]                        # Reference docs for monitors, scrapers, config
 
 # Sync CSVs to database
 uv run python -m src.sync
@@ -53,17 +64,8 @@ uv run python -m src.sync --dry-run
 # Run the crawler (poll loop)
 uv run scheduler
 
-# Run one batch and exit
-uv run scheduler --once
-
 # Run tests
 uv run pytest tests/
-
-# CSV management (add/update/remove company and board rows)
-uv run python -m src.csvtool company <slug> add [--name NAME] [--website URL] [--logo-url URL] [--icon-url URL]
-uv run python -m src.csvtool company <slug> del
-uv run python -m src.csvtool board <slug> add --board-url URL [--monitor-type TYPE] [--monitor-config JSON] [--scraper-type TYPE] [--scraper-config JSON]
-uv run python -m src.csvtool board <slug> del --board-url URL
 
 # Install dependencies
 uv sync
@@ -82,155 +84,146 @@ pnpm compile      # Compile .po to .js catalogs
 
 ## How to Add a Company
 
-This is the primary task agents perform. Follow these steps exactly.
+This is the primary task agents perform. Use the `ws` CLI tool for the workspace-driven flow.
 
-### 0. Verify GitHub CLI Auth
-
-Before starting, verify that the GitHub CLI is authenticated:
-
-```bash
-gh auth status
-```
-
-If not authenticated, ask the user to run `gh auth login` in the current console session before proceeding. Do not continue until `gh auth status` succeeds.
-
-### 1. Claim the Issue
-
-Before creating a PR, check for existing open PRs:
-
-```bash
-gh pr list --state open --search "Closes #<issue-number>"
-```
-
-- If an open PR exists and has recent activity (commits within 24h for config PRs, 72h for code PRs) → **stop processing entirely**. The issue is actively claimed. Do not create a competing PR or continue to subsequent steps.
-- If an open PR exists but appears stale (no recent commits beyond the thresholds above) → leave a comment on the stale PR noting it may be abandoned, then **proceed** to create your own PR as normal.
-- If no open PR exists → create a branch, seed a stub company row, and open a draft PR:
-
-```bash
-git checkout -b add-company/<slug>
-cd apps/crawler
-uv run python -m src.csvtool company <slug> add
-cd ../..
-git add data/companies.csv
-git commit -m "Add <name>"
-git push -u origin add-company/<slug>
-gh pr create --draft --title "Add <name>" --body "Closes #<issue-number>"
-```
-
-### 2. Research the Company
-
-Find:
-- **Official name**: The company's official/common name
-- **Website**: Company homepage (e.g., `https://stripe.com`)
-- **Logo URL**: Direct link to logo image file (SVG or PNG, not a page)
-- **Icon URL**: Favicon or small icon (check `/favicon.ico`, `<link rel="icon">` in HTML, or Google Favicons: `https://www.google.com/s2/favicons?domain=example.com&sz=128`)
-- **Career page URL(s)**: The job board URL(s)
-
-### 3. Detect the Monitor Type
+### Setup
 
 ```bash
 cd apps/crawler
-uv run python -m src.validate --detect <board-url>
+uv sync
+alias ws='uv run ws'
 ```
 
-If auto-detection fails, identify manually:
-- URL contains `greenhouse.io` or page references Greenhouse API → `greenhouse`
-- URL contains `lever.co` or page references Lever API → `lever`
-- Site has XML sitemap with job URLs → `sitemap`
-- JS-rendered SPA, no sitemap → `discover`
+### 1. Validate the Request (pre-workspace)
 
-### 4. Test Crawl and Verify Monitor
+Before creating a workspace, use web research to verify the request is actionable. Do **not** use crawler tooling at this stage.
+
+**Pre-check**: grep `data/companies.csv` for the slug in the first column (to avoid matching other columns):
 
 ```bash
-uv run python -m src.validate --test-monitor <slug> <board-url>
+grep -q "^<slug>," data/companies.csv
 ```
 
-After the test crawl:
-1. Check the career page for a displayed job count (e.g. "Showing 247 open positions")
-2. Compare the crawled count against the website's count:
-   - **Match (within ~10%)** → proceed to step 5
-   - **Significant gap** → investigate and iterate:
-     - Wrong monitor type? Try alternatives (e.g. sitemap → discover)
-     - Sitemap missing job URLs? Try `discover` monitor instead
-     - API returning partial results? Check pagination config
-     - Custom domain hiding behind a different ATS? Re-run `--detect`
-   - Re-run test crawl after each change until counts align
-   - If a gap remains after trying all options, document the discrepancy with an explanation
+If already present, comment and close the issue.
 
-### 5. Configure and Verify Scraper
+**Check 1 — Real company**: web search confirms the company exists and is operating.
+**Check 2 — Public careers page**: find a publicly accessible career/jobs URL.
+**Check 3 — At least one listing visible**: the career page shows job postings.
 
-API monitors (`greenhouse`, `lever`) return full data — skip to step 7.
-
-For URL-only monitors (`sitemap`, `discover`):
-
-1. **Probe JSON-LD** (try this first):
-   ```bash
-   uv run python -m src.validate --probe-jsonld <a-job-page-url>
-   ```
-   - JSON-LD found → `scraper_type: json-ld` (no config needed)
-   - No JSON-LD → inspect page HTML for CSS selectors → `scraper_type: html`
-   - Page needs JS to render → `scraper_type: browser` (CSS selectors + wait strategy)
-
-2. **Verify extraction** on 2–3 sample job URLs using `--test-scraper`:
-   ```bash
-   uv run python -m src.validate --test-scraper <job-page-url> <scraper-type> [config-json]
-   ```
-   - Does the title extract correctly?
-   - Does the location extract correctly?
-   - Does the description extract correctly?
-   - Note the scrape time reported — you'll need it for the stats comment in step 9.
-
-3. **Iterate** if extraction is wrong or incomplete:
-   - Revise CSS selectors
-   - Try a different scraper type (e.g. `json-ld` → `html`, `html` → `browser`)
-   - Repeat until extraction works on all samples
-
-### 6. Escalate to Code Changes (when needed)
-
-If no existing monitor/scraper type can handle the site after exhausting config options:
-
-1. **Close the draft PR** created in step 1 (the `add-company/<slug>` branch)
-2. Document what was tried and why it failed
-3. Create a new PR on a `fix-crawler/<description>` branch
-4. In the new PR body, reference the closed draft PR (e.g. "Supersedes #12")
-5. Ensure the new PR closes the original issue (`Closes #<issue-number>`)
-6. Include both the code change AND the CSV config in the same PR
-
-### 7. Add CSV Rows
-
-Update the company row (created as a stub in step 1) with the researched details, then add the board row:
+**On any failure**, reject with reason key (`not-a-company`, `company-not-found`, `no-job-board`, `no-open-positions`):
 
 ```bash
-cd apps/crawler
-uv run python -m src.csvtool company <slug> add --name "<name>" --website <url> --logo-url <url> --icon-url <url>
-uv run python -m src.csvtool board <slug> add --board-url <url> --monitor-type <type> [--monitor-config JSON] [--scraper-type TYPE] [--scraper-config JSON]
+ws reject --issue 42 --reason no-job-board --message "No public careers page found for Acme Corp"
 ```
 
-### 8. Validate
+**Edge cases**:
+- Ambiguous name with no URL → `company-not-found`
+- Careers page behind auth → `no-job-board`
+- Unusual format (PDF, iframe) → proceed, monitor/scraper will handle it
+- Small company (1–3 jobs) → valid, proceed
+
+### 2. Claim the Issue
+
+`ws new` handles: gh auth check, existing PR check, branch creation, stub CSV row, commit, push, draft PR. It also sets the active workspace, so all subsequent commands auto-resolve the slug.
 
 ```bash
-uv run python -m src.validate
+ws new stripe --issue 42
 ```
 
-### 9. Create the PR
+### 3. Research and Set Company Details
 
-1. Post a **crawl stats comment** on the PR with the numbers from steps 4 and 5.
-   Use this exact format (CI parses the hidden JSON):
+```bash
+ws set --name "Stripe" --website "https://stripe.com" \
+  --logo-url "https://stripe.com/img/logo.svg" \
+  --icon-url "https://www.google.com/s2/favicons?domain=stripe.com&sz=128"
+```
 
-   ```
-   <!-- crawl-stats {"jobs": <N>, "monitor_time": <seconds>, "scraper_time": <seconds>} -->
-   | Metric | Value |
-   |---|---|
-   | Jobs | <N> |
-   | Monitor time | <seconds>s |
-   | Scraper time | <seconds>s |
-   ```
+URLs are advisory-checked (reachability, image content type) but always saved.
 
-   - **Jobs**: number of postings found by `--test-monitor`
-   - **Monitor time**: seconds to fetch all job links (reported by `--test-monitor`)
-   - **Scraper time**: seconds to scrape one job page (reported by `--test-scraper`; use `0` for API monitors)
+### 4. Add Board and Probe Monitors
 
-2. Mark the PR as ready for review. CI will handle labeling and merging.
+```bash
+ws add board careers --url "https://boards.greenhouse.io/stripe"
+ws probe
+```
+
+`add board` auto-prefixes the alias with the company slug (`careers` → `stripe-careers`) and auto-activates the board. `probe` tries all monitor types and reports results.
+
+### 5. Select and Test Monitor
+
+```bash
+ws select monitor greenhouse
+ws run monitor
+```
+
+After the test crawl, compare the job count against the website's displayed total. If counts don't match, iterate:
+
+```bash
+ws select monitor sitemap
+ws run monitor
+```
+
+**Zero jobs**: Step 1 confirmed listings exist, so 0 results indicates misconfiguration. Debug systematically — try different monitor types, check API tokens, verify the URL.
+
+### 6. Select and Test Scraper (non-API monitors only)
+
+API monitors (`greenhouse`, `lever`) return full data — `ws run monitor` prints "Skipping scraper" and auto-marks scraper steps as done.
+
+For URL-only monitors (`sitemap`, `dom`):
+
+```bash
+ws select scraper json-ld
+ws run scraper
+```
+
+Check the extraction quality table. If fields are missing, iterate with a different type or config.
+
+### 7. Submit
+
+`ws submit` handles: CSV write, validation, commit, push, crawl stats comment, mark PR ready, transcript comment.
+
+```bash
+ws submit --summary "..."
+```
+
+The `--summary` should focus on **difficulties, roadblocks, or unexpected behaviors** encountered during configuration — not just restate the final result. If everything went smoothly, say so briefly. Examples:
+
+- `"Straightforward greenhouse config, 138 jobs"` — nothing notable happened
+- `"Sitemap had 200 URLs but only 40 were job pages; rest were blog posts. Used path filter."` — unexpected sitemap content
+- `"Auto-detect returned lever but token was wrong; had to extract correct token from page source."` — detection worked but config needed manual adjustment
+- `"Tried sitemap (0 jobs — sitemap only has blog posts), then dom monitor worked. JSON-LD scraper missing locations, switched to dom scraper with render: false."` — multiple iterations needed
+
+### 8. Escalate to Code Changes (when needed)
+
+If no existing monitor/scraper type works after exhausting config options:
+
+1. Use `ws del` to clean up the config-only workspace
+2. Create a new PR on a `fix-crawler/<description>` branch manually
+3. Reference what was tried in the PR body
+4. Include both the code change and CSV config in the same PR
+
+### Full Example
+
+```bash
+alias ws='uv run ws'
+
+# Claim (sets active workspace — no need to repeat the slug after this)
+ws new stripe --issue 42
+
+# Configure
+ws set --name "Stripe" --website "https://stripe.com" \
+  --logo-url "https://stripe.com/img/logo.svg" \
+  --icon-url "https://www.google.com/s2/favicons?domain=stripe.com&sz=128"
+
+# Board + monitor
+ws add board careers --url "https://boards.greenhouse.io/stripe"
+ws probe
+ws select monitor greenhouse
+ws run monitor
+
+# Submit (~8 total commands)
+ws submit --summary "Straightforward greenhouse config, 138 jobs"
+```
 
 ## CSV Schemas
 
@@ -249,15 +242,45 @@ slug,name,website,logo_url,icon_url
 ### data/boards.csv
 
 ```
-company_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config
+company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config
 ```
 
 - `company_slug`: must exist in companies.csv
+- `board_slug`: unique identifier in `{company}-{alias}` format (e.g., `stripe-careers`)
 - `board_url`: unique career page URL
-- `monitor_type`: `greenhouse` | `lever` | `sitemap` | `discover`
+- `monitor_type`: `greenhouse` | `lever` | `sitemap` | `nextdata` | `dom`
 - `monitor_config`: JSON string (use `""` for inner quotes)
-- `scraper_type`: `greenhouse_api` | `lever_api` | `json-ld` | `html` | `browser` (empty for API monitors)
+- `scraper_type`: `greenhouse_api` | `lever_api` | `json-ld` | `dom` | `nextdata` (empty for API monitors)
 - `scraper_config`: JSON string (empty for json-ld, greenhouse_api, lever_api)
+
+## Job Data Fields
+
+- **Required**: `title`, `description` (HTML) — must be N/N, do not submit with 0/N
+- **Important**: `locations`, `job_location_type` — missing locations acceptable only if `job_location_type` is set (e.g. remote-only companies)
+- **Optional**: `employment_type`, `date_posted`, `base_salary`, `skills`, `qualifications`, `responsibilities`
+
+`ws run scraper` shows extraction stats. Titles and descriptions should be N/N.
+0/N titles or 0/N descriptions means wrong scraper type or config — do not submit.
+
+## Configuration Priorities
+
+When choosing between monitor/scraper configurations, optimize in this order:
+
+1. **Coverage** — all jobs on the board must be discovered. Full coverage always takes priority. If a cheaper monitor finds fewer jobs, use the one with full coverage.
+2. **Required fields** — title and description must extract for every job. 0/N on either is a blocker.
+3. **Resilience** — prefer configurations that won't break when the site changes. This is valued higher than speed. Resilient choices: API monitors > sitemap > dom; json-ld scraper > dom scraper; `render: false` > `render: true`; simple configs > complex configs with many selectors.
+4. **Important fields** — locations and job_location_type should extract when available. Missing locations are acceptable only for remote-only companies where job_location_type is populated.
+5. **Speed/cost** — among equivalent configs, prefer cheaper monitors and `render: false`. But never sacrifice coverage or resilience for speed.
+6. **Optional fields** — more is better, but not at the cost of resilience or speed.
+
+### Key rules
+
+- **Always prefer `render: false`** when content loads without JavaScript. Only use `render: true` when static fetch produces empty or incomplete results.
+- **API monitors are most resilient** — Greenhouse/Lever APIs are stable and return rich data. Always use them when detected.
+- **json-ld scraper is more resilient than dom** — schema.org markup is standardized. Try json-ld before dom for any URL-only monitor.
+- **Multi-board companies**: configure all career pages unless one board's listings are a strict superset of another's. When in doubt, configure both.
+- **Low quality after exhausting config options**: if extraction quality remains poor after trying all applicable monitor/scraper combinations, escalate to code changes (`ws del`, then `fix-crawler/` branch). Document what was tried.
+- **Resilience is subjective** — optimizing for it requires case-by-case judgment. Simpler configurations that rely on stable structures (APIs, sitemaps, schema.org) are preferred over complex step-based selectors that may break on site redesigns.
 
 ## Code Style (Python — apps/crawler)
 
@@ -273,7 +296,7 @@ company_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config
 
 - Branch naming: `add-company/<slug>` for company additions, `fix-crawler/<description>` for code changes
 - Commit messages: imperative mood, concise (`Add Stripe`, `Fix sitemap parser timeout`)
-- PR body: include issue reference (`Closes #N`), monitor/scraper types, estimates
+- PR body: managed automatically by `ws new` and `ws submit`
 - Never push directly to main — always create a PR
 
 ## Boundaries
@@ -283,7 +306,6 @@ company_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config
 - Test crawl before submitting PR
 - Verify crawled job count against the website's displayed total
 - Test scraper extraction on 2–3 sample URLs before committing
-- Include job count estimates in PR body
 - Follow the CSV schemas exactly
 
 ### Ask (check with maintainer first)

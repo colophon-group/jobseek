@@ -28,20 +28,12 @@ PRs that add company configs can be auto-merged or require human review, based o
 
 **Human review** (medium/high risk):
 - Greenhouse board with 3000 jobs → `review-size`
-- Discover-type board requiring Playwright → `review-load`
+- DOM-type board requiring Playwright → `review-load`
 - Any PR that modifies `.py` files → `review-code`
 
 ## Determining Estimates
 
-The agent gets estimates from the test crawl:
-
-```bash
-# Test crawl reports job count and duration
-uv run python -m src.validate --test-monitor stripe https://boards.greenhouse.io/stripe
-# Output: Found 247 jobs in 1.2s
-```
-
-For sitemap monitors, the URL count from the sitemap is the estimate. For API monitors, the API response includes the total count. For discover monitors, the first page load gives a rough estimate.
+The agent gets estimates from the test crawl via `ws run monitor`, which reports job count and duration. For sitemap monitors, the URL count from the sitemap is the estimate. For API monitors, the API response includes the total count. For dom monitors, the first page load gives a rough estimate.
 
 ## Auto-Merge Workflow
 

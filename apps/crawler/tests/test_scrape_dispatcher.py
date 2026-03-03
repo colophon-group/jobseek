@@ -24,9 +24,9 @@ class TestScrapeOne:
             assert result.title == "Data Scientist"
             assert result.description == "ML work"
 
-    async def test_delegates_to_html(self):
+    async def test_delegates_to_dom_static(self):
         page_html = """<html><body>
-        <h1 class="title">Engineer</h1>
+        <h1>Engineer</h1>
         </body></html>"""
 
         def handler(request):
@@ -35,8 +35,8 @@ class TestScrapeOne:
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             result = await scrape_one(
                 "https://example.com/job",
-                "html",
-                {"title": ".title"},
+                "dom",
+                {"render": False, "steps": [{"tag": "h1", "field": "title"}]},
                 client,
             )
             assert isinstance(result, JobContent)

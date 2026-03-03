@@ -18,70 +18,65 @@ A coding agent picks up the issue and resolves it by creating a PR. The agent ca
 
 ### Step-by-Step
 
-1. **Claim**: First, check if an open PR already references this issue
-   (`gh pr list --state open --search "Closes #N"`). If an active PR
-   exists (recent commits within threshold: 24h for config PRs, 72h for
-   code changes) — **stop entirely**. If the PR appears stale, comment
-   on it and proceed to create your own. If no PR exists, create a draft
-   PR mentioning the issue (`Closes #N`). This signals to other agents
-   that the issue is taken.
+All workspace commands use the `ws` CLI tool (`alias ws='uv run ws'`). See AGENTS.md for the full command reference.
 
-2. **Research**: Agent finds:
-   - Official company name
-   - Company homepage URL
-   - Logo URL (direct image file, not a page containing a logo)
-   - Favicon/icon URL
-   - Career/jobs page URL(s) — there may be multiple boards
+1. **Validate the request**: Before creating any workspace, use web
+   research to verify the request is actionable:
+   - Check `data/companies.csv` to confirm the company isn't already configured
+   - Confirm the company exists and is currently operating
+   - Find a public careers page with at least one visible job listing
+   - On failure: `ws reject --issue N --reason <key> --message "..."` — this comments with a structured reason marker, closes the issue, and stops
+   - See AGENTS.md for the full list of rejection reasons and edge cases
 
-3. **Detect monitor type**: For each board URL, determine the best monitor:
-   - Run `uv run python -m src.validate --detect <url>` to auto-detect
-   - Or identify manually: Greenhouse and Lever boards have distinctive URLs
+2. **Claim the issue**: `ws new <slug> --issue N` — checks gh auth, checks for
+   existing PRs (active → stop, stale → comment and proceed), creates branch,
+   seeds stub company row, opens draft PR. Sets the active workspace so all
+   subsequent commands auto-resolve the slug.
+
+3. **Set company details**: `ws set --name "..." --website "..." --logo-url "..." --icon-url "..."`
+   - Agent researches: official name, homepage, logo URL, favicon/icon URL
+   - URL validation is advisory — values are always saved
+
+4. **Add board and probe monitors**: `ws add board <alias> --url <board-url>` then `ws probe`
+   - Probe tries all monitor types and reports results with suggested configs
    - See [04 — Monitors and Scrapers](./04-monitors-and-scrapers.md) for details
 
-4. **Test crawl and verify monitor**: Run the test crawl, then verify the results:
-   - `uv run python -m src.validate --test-monitor <company-slug> <board-url>`
+5. **Select and test monitor**: `ws select monitor <type>` then `ws run monitor`
    - Check the career page for a displayed job count (e.g. "Showing 247 open positions")
    - Compare crawled count against the website's count (should be within ~10%)
-   - If there's a significant gap, iterate: try a different monitor type, check pagination config, re-run detection
+   - If there's a significant gap, iterate: `ws select monitor <other-type>`, `ws run monitor`
+   - If 0 jobs returned but validation passed in step 1, it's a monitor misconfiguration — debug systematically
    - See "Verification and Iteration" below for details
 
-5. **Configure and verify scraper**: For URL-only monitors, determine and test the scraper:
-   - Try JSON-LD first (`uv run python -m src.validate --probe-jsonld <url>`)
-   - Fall back to HTML selectors if no JSON-LD
-   - API monitors (greenhouse, lever) don't need a scraper config
+6. **Select and test scraper** (non-API monitors only): `ws select scraper <type>` then `ws run scraper`
+   - API monitors (greenhouse, lever) auto-skip this step
    - Verify extraction on 2–3 sample job URLs (title, location, description)
-   - If extraction fails, iterate: revise selectors or try a different scraper type
+   - If extraction fails, iterate: revise config or try a different scraper type
 
-6. **Escalate to code changes** (if needed): When no existing config works:
-   - Close the draft PR from step 1 (the `add-company/<slug>` branch)
+7. **Escalate to code changes** (if needed): When no existing config works:
+   - `ws del` to clean up the config-only workspace
    - Create a new PR on a `fix-crawler/<description>` branch with `review-code` label
    - Reference the closed draft PR and ensure the new PR closes the original issue
    - See "Escalating to Code Changes" below for details
 
-7. **Add CSV rows**:
-   - Add a row to `data/companies.csv` (company info)
-   - Add a row to `data/boards.csv` for each board (monitor + scraper config)
-   - Run `uv run python -m src.validate` to check CSV validity
-
-8. **Finalize PR**:
-   - Mark PR as ready for review
-   - Include in PR body: job count estimate, crawl time, monitor/scraper types
-   - Apply appropriate label for auto-merge rules (see [05 — Auto-Merge](./05-auto-merge.md))
+8. **Submit**: `ws submit --summary "..."` — writes CSV from workspace state,
+   validates, commits, pushes, posts crawl stats on PR, marks PR ready, posts
+   transcript on issue. CI handles labeling and merging (see [05 — Auto-Merge](./05-auto-merge.md)).
 
 ## Verification and Iteration
 
 Agents should not blindly trust the first test crawl result. The workflow includes verification loops to catch incomplete configurations early.
 
-**Monitor verification**: After a test crawl, cross-reference the crawled job count with what the career page displays. Many sites show a total like "247 open positions" — if the monitor only found 50, something is wrong. Common causes:
-- The sitemap doesn't include all job URLs → try `discover` monitor instead
-- The API token is wrong or returns a different subset → try alternative slugs
+**Monitor verification**: After `ws run monitor`, cross-reference the crawled job count with what the career page displays. Many sites show a total like "247 open positions" — if the monitor only found 50, something is wrong. Common causes:
+- The sitemap doesn't include all job URLs → try `dom` or `nextdata` monitor instead
+- The API token is wrong or returns a different subset → try alternative API slugs
 - Pagination isn't working → check pagination config
-- The monitor type is wrong entirely → re-run `--detect` or try manually
+- The monitor type is wrong entirely → re-run `ws probe` or try manually
 
-**Scraper verification**: After configuring a scraper, test extraction on 2–3 sample job URLs. Check that the title, location, and description extract correctly. If fields are empty or garbled:
+**Scraper verification**: After `ws run scraper`, check the extraction quality table. Verify that title, location, and description extract correctly. If fields are empty or garbled:
 - CSS selectors may be wrong → inspect the page HTML, try different selectors
 - JSON-LD may be partial → switch from `json-ld` to `html` scraper
-- Page may need JS to render → switch from `html` to `browser` scraper
+- Page may need JS to render → switch from `html` to `dom` scraper
 
 The goal is to iterate until the configuration is verified, not to submit on the first attempt.
 
@@ -101,8 +96,8 @@ When config alone can't handle a site, the agent can propose source code changes
 2. Document what was tried and why it failed
 3. Keep the code change minimal and focused
 
-**PR transition workflow**: Since the agent already created a draft PR in step 1, it must clean up before creating the code change PR:
-1. Close the original draft PR (`add-company/<slug>`) with a comment explaining why (e.g. "Config-only approach insufficient — escalating to code change")
+**PR transition workflow**: Since the agent already created a workspace and draft PR, it must clean up before creating the code change PR:
+1. Run `ws del` — this closes the draft PR, removes CSV rows, and deletes the branch
 2. Create a new branch (`fix-crawler/<description>`) and a new PR
 3. In the new PR body, reference the closed draft (e.g. "Supersedes #12") so reviewers can see what was tried
 4. Ensure the new PR body includes `Closes #<issue-number>` to close the original issue

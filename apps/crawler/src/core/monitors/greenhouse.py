@@ -73,18 +73,35 @@ def _api_url(token: str) -> str:
     return f"https://boards-api.greenhouse.io/v1/boards/{token}/jobs"
 
 
-async def _probe_token(token: str, client: httpx.AsyncClient) -> bool:
+async def _probe_token(token: str, client: httpx.AsyncClient) -> tuple[bool, int | None]:
+    """Probe the Greenhouse API for a token. Returns (found, job_count)."""
     try:
         resp = await client.get(_api_url(token), params={"content": "false"})
         if resp.status_code != 200:
-            return False
+            return False, None
         data = resp.json()
-        return isinstance(data.get("jobs"), list)
+        jobs = data.get("jobs")
+        if isinstance(jobs, list):
+            return True, len(jobs)
+        return False, None
     except Exception:
-        return False
+        return False, None
 
 
-async def discover(board: dict, client: httpx.AsyncClient) -> list[DiscoveredJob]:
+async def _fetch_job_count(token: str, client: httpx.AsyncClient) -> int | None:
+    """Lightweight API call to get the job count for a token."""
+    try:
+        resp = await client.get(_api_url(token), params={"content": "false"})
+        if resp.status_code != 200:
+            return None
+        data = resp.json()
+        jobs = data.get("jobs")
+        return len(jobs) if isinstance(jobs, list) else None
+    except Exception:
+        return None
+
+
+async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[DiscoveredJob]:
     """Fetch job listings with full content from the Greenhouse public API."""
     metadata = board.get("metadata") or {}
     token = metadata.get("token") or _token_from_url(board["board_url"])
@@ -115,11 +132,15 @@ async def discover(board: dict, client: httpx.AsyncClient) -> list[DiscoveredJob
     return jobs
 
 
-async def can_handle(url: str, client: httpx.AsyncClient | None = None) -> dict | None:
+async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None) -> dict | None:
     """Detect Greenhouse: domain check -> page HTML scan -> slug-based API probe."""
     token = _token_from_url(url)
     if token:
-        return {}
+        if client is not None:
+            count = await _fetch_job_count(token, client)
+            if count is not None:
+                return {"token": token, "jobs": count}
+        return {"token": token}
 
     if client is None:
         return None
@@ -132,12 +153,20 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None) -> dict 
                 found = match.group(1)
                 if found not in _IGNORE_TOKENS:
                     log.info("greenhouse.detected_in_page", url=url, board_token=found)
-                    return {"token": found}
+                    count = await _fetch_job_count(found, client)
+                    result: dict = {"token": found}
+                    if count is not None:
+                        result["jobs"] = count
+                    return result
 
     for slug in slugs_from_url(url):
-        if await _probe_token(slug, client):
+        found, count = await _probe_token(slug, client)
+        if found:
             log.info("greenhouse.detected_by_probe", url=url, board_token=slug)
-            return {"token": slug}
+            result = {"token": slug}
+            if count is not None:
+                result["jobs"] = count
+            return result
 
     return None
 

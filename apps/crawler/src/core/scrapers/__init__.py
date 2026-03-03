@@ -1,7 +1,7 @@
 """Scraper registry and shared types.
 
 Scrapers extract structured job details from individual pages. Only needed
-when the monitor returns URL-only results (sitemap, discover). API monitors
+when the monitor returns URL-only results (sitemap, dom). API monitors
 (greenhouse, lever) return full data and skip the scraper step.
 """
 
@@ -13,9 +13,18 @@ from dataclasses import dataclass
 
 @dataclass(slots=True)
 class JobContent:
-    """Structured job data extracted from a single page."""
+    """Structured job data extracted from a single page.
+
+    Text fields use **HTML** to preserve document structure (headings,
+    paragraphs, lists).  ``description`` is an HTML fragment — the same
+    format that API monitors (Greenhouse, Lever) already produce.
+    ``responsibilities`` and ``qualifications`` are arrays of plain-text
+    strings (one item per bullet point).
+    """
 
     title: str | None = None
+    #: HTML fragment preserving the original page structure
+    #: (``<p>``, ``<ul><li>``, ``<h3>``, etc.).
     description: str | None = None
     locations: list[str] | None = None
     employment_type: str | None = None
@@ -24,7 +33,9 @@ class JobContent:
     valid_through: str | None = None
     base_salary: dict | None = None
     skills: list[str] | None = None
+    #: Plain-text strings, one per bullet point.
     responsibilities: list[str] | None = None
+    #: Plain-text strings, one per bullet point.
     qualifications: list[str] | None = None
     metadata: dict | None = None
 
@@ -56,7 +67,7 @@ def get_scraper(name: str) -> ScrapeFunc:
 
 # Import modules to trigger registration
 from src.core.scrapers import (  # noqa: E402
-    browser,  # noqa: F401
-    html,  # noqa: F401
+    dom,  # noqa: F401
     jsonld,  # noqa: F401
+    nextdata,  # noqa: F401
 )

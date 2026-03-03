@@ -31,10 +31,9 @@ meta,Meta,https://meta.com,https://...,https://...
 ## data/boards.csv
 
 ```csv
-company_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config
-stripe,https://boards.greenhouse.io/stripe,greenhouse,"{""token"":""stripe""}",greenhouse_api,
-meta,https://www.metacareers.com/jobs,sitemap,"{""sitemap_url"":""https://...""}",json-ld,
-google,https://careers.google.com/jobs,discover,"{""wait"":""networkidle""}",html,"{""title"":""h2.p1N2lc"",""location"":""span.vo5qdf""}"
+company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config
+stripe,stripe-careers,https://boards.greenhouse.io/stripe,greenhouse,"{""token"":""stripe""}",greenhouse_api,
+meta,meta-careers,https://www.metacareers.com/jobs,sitemap,"{""sitemap_url"":""https://...""}",json-ld,
 ```
 
 ### Fields
@@ -42,19 +41,21 @@ google,https://careers.google.com/jobs,discover,"{""wait"":""networkidle""}",htm
 | Field | Required | Description |
 |-------|----------|-------------|
 | `company_slug` | Yes | Foreign key to companies.csv `slug`. |
+| `board_slug` | Yes | Unique board identifier in `{company}-{alias}` format. |
 | `board_url` | Yes | The career page URL to monitor. |
-| `monitor_type` | Yes | How to discover listings. One of: `greenhouse`, `lever`, `sitemap`, `discover`. |
+| `monitor_type` | Yes | How to discover listings. One of: `greenhouse`, `lever`, `sitemap`, `nextdata`, `dom`. |
 | `monitor_config` | No | JSON object with monitor-specific settings. |
-| `scraper_type` | No | How to extract job details. One of: `greenhouse_api`, `lever_api`, `json-ld`, `html`, `browser`. Empty when monitor provides full data. |
+| `scraper_type` | No | How to extract job details. One of: `greenhouse_api`, `lever_api`, `json-ld`, `dom`, `nextdata`. Empty when monitor provides full data. |
 | `scraper_config` | No | JSON object with scraper-specific settings. |
 
 ### Rules
 
 - `company_slug` must reference an existing row in companies.csv
+- `board_slug` must be unique across all rows and match slug format
 - `board_url` must be unique across all rows
 - `monitor_config` and `scraper_config` are JSON strings (use `""` for quotes inside CSV)
 - API monitors (`greenhouse`, `lever`) typically don't need a `scraper_type` — the monitor returns full job data
-- URL-only monitors (`sitemap`, `discover`) require a `scraper_type`
+- URL-only monitors (`sitemap`, `dom`) require a `scraper_type`
 
 ### Monitor + Scraper Pairing
 
@@ -95,14 +96,15 @@ uv run python -m src.sync --dry-run    # show what would change without writing
 
 ## CSV Validation
 
-The validate script (`src/validate.py`) checks CSV integrity. It runs in CI and agents use it before committing.
+The `ws validate` command checks CSV integrity. It runs in CI and agents use it before submitting.
 
 ```bash
 cd apps/crawler
-uv run python -m src.validate                        # validate CSVs
-uv run python -m src.validate --detect <url>         # auto-detect monitor type for a URL
-uv run python -m src.validate --probe-jsonld <url>   # check if a job page has JSON-LD
-uv run python -m src.validate --test-monitor <slug> <board-url>  # test crawl a board
+alias ws='uv run ws'
+ws validate                            # validate CSVs
+ws probe                               # probe all monitor types for active board
+ws run monitor                         # test crawl active board
+ws run scraper                         # test scrape sample pages
 ```
 
 ### Validation Checks
@@ -110,6 +112,7 @@ uv run python -m src.validate --test-monitor <slug> <board-url>  # test crawl a 
 - All slugs are valid format (lowercase alphanumeric + hyphens)
 - All slugs in boards.csv exist in companies.csv
 - No duplicate slugs in companies.csv
+- No duplicate board_slugs in boards.csv
 - No duplicate board_urls in boards.csv
 - All URLs are valid and have a scheme
 - monitor_config and scraper_config are valid JSON (when present)

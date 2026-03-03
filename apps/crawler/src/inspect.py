@@ -1,34 +1,24 @@
-"""CSV validation and diagnostic tools.
+"""CSV validation and diagnostic library.
 
-Usage:
-    uv run python -m src.validate                                        # validate CSVs
-    uv run python -m src.validate --detect <url>                         # auto-detect monitor type
-    uv run python -m src.validate --probe-jsonld <url>                   # check for JSON-LD
-    uv run python -m src.validate --test-monitor <slug> <board-url>      # test crawl
-    uv run python -m src.validate --test-scraper <url> <type> [config]   # test scrape one job
+Library functions for CSV validation and monitor/scraper diagnostics.
+Used by workspace CLI commands. No standalone CLI entry point — use ``ws`` commands instead.
 """
 
 from __future__ import annotations
 
-import argparse
-import asyncio
 import json
-import re
-import sys
 import time
-from pathlib import Path
 
 import polars as pl
 import structlog
 
-from src.shared.logging import setup_logging
+from src.shared.constants import DATA_DIR, SLUG_RE, URL_RE
 
 log = structlog.get_logger()
 
-DATA_DIR = Path(__file__).parent.parent / "data"
-
-_SLUG_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
-_URL_RE = re.compile(r"^https?://[^\s/]+")
+# Re-export for backward compatibility
+_SLUG_RE = SLUG_RE
+_URL_RE = URL_RE
 
 
 class ValidationError:
@@ -91,20 +81,22 @@ def validate_csvs() -> list[ValidationError]:
             errors.append(ValidationError("companies.csv", i, f"Invalid URL: {website!r}"))
 
     # Validate boards
-    required_board_cols = {"company_slug", "board_url", "monitor_type"}
+    required_board_cols = {"company_slug", "board_slug", "board_url", "monitor_type"}
     actual_cols = set(boards.columns)
     missing = required_board_cols - actual_cols
     if missing:
         errors.append(ValidationError("boards.csv", None, f"Missing columns: {missing}"))
         return errors
 
-    valid_monitor_types = {"greenhouse", "lever", "sitemap", "discover"}
-    valid_scraper_types = {"greenhouse_api", "lever_api", "json-ld", "html", "browser", ""}
-    url_only_monitors = {"sitemap", "discover"}
+    valid_monitor_types = {"greenhouse", "lever", "sitemap", "nextdata", "dom"}
+    valid_scraper_types = {"greenhouse_api", "lever_api", "json-ld", "dom", "nextdata", ""}
+    url_only_monitors = {"sitemap", "dom"}
     board_urls: set[str] = set()
+    board_slugs: set[str] = set()
 
     for i, row in enumerate(boards.iter_rows(named=True), start=2):
         company_slug = row.get("company_slug", "")
+        board_slug = row.get("board_slug") or ""
         board_url = row.get("board_url", "")
         monitor_type = row.get("monitor_type", "")
         monitor_config = row.get("monitor_config") or ""
@@ -121,6 +113,18 @@ def validate_csvs() -> list[ValidationError]:
                     f"company_slug {company_slug!r} not in companies.csv",
                 )
             )
+
+        if not board_slug:
+            errors.append(ValidationError("boards.csv", i, "Empty board_slug"))
+        elif not _SLUG_RE.match(board_slug):
+            errors.append(
+                ValidationError("boards.csv", i, f"Invalid board_slug format: {board_slug!r}")
+            )
+        elif board_slug in board_slugs:
+            errors.append(
+                ValidationError("boards.csv", i, f"Duplicate board_slug: {board_slug!r}")
+            )
+        board_slugs.add(board_slug)
 
         if not board_url:
             errors.append(ValidationError("boards.csv", i, "Empty board_url"))
@@ -191,7 +195,33 @@ async def detect_monitor_type(url: str) -> None:
                 print(f"  Metadata: {json.dumps(metadata)}")
         else:
             print("  No monitor type detected automatically.")
-            print("  Consider using 'discover' monitor type (requires Playwright).")
+            print("  Consider using 'nextdata' (Next.js) or 'dom' (Playwright) monitor type.")
+    finally:
+        await http.aclose()
+
+
+async def probe_url(url: str) -> None:
+    """Probe all monitor types against a URL and print a summary table."""
+    from src.core.monitors import probe_all_monitors
+    from src.shared.http import create_http_client
+
+    http = create_http_client()
+    try:
+        print(f"Probing {url} ...\n")
+        results = await probe_all_monitors(url, http)
+
+        # Print table
+        header = f"  {'Monitor':<14}{'Result':<8}Details"
+        separator = "  " + "\u2500" * 60
+        print(header)
+        print(separator)
+        for name, metadata, comment in results:
+            if metadata is not None:
+                symbol = "\u2713"
+            else:
+                symbol = "\u2717"
+            print(f"  {name:<14}{symbol:<8}{comment}")
+        print()
     finally:
         await http.aclose()
 
@@ -209,7 +239,7 @@ async def probe_jsonld(url: str) -> None:
             print("  JSON-LD JobPosting found! Use scraper_type: json-ld")
         else:
             print("  No JSON-LD JobPosting found.")
-            print("  Consider using scraper_type: html (with CSS selectors)")
+            print("  Consider using scraper_type: dom (with render: false for static pages)")
     finally:
         await http.aclose()
 
@@ -280,58 +310,3 @@ async def test_scraper(url: str, scraper_type: str, scraper_config_json: str | N
         await http.aclose()
 
 
-def main():
-    setup_logging("INFO")
-
-    parser = argparse.ArgumentParser(description="CSV validation and diagnostics")
-    parser.add_argument("--detect", metavar="URL", help="Auto-detect monitor type for a URL")
-    parser.add_argument("--probe-jsonld", metavar="URL", help="Check if URL has JSON-LD JobPosting")
-    parser.add_argument(
-        "--test-monitor",
-        nargs=2,
-        metavar=("SLUG", "BOARD_URL"),
-        help="Test crawl a board",
-    )
-    parser.add_argument(
-        "--test-scraper",
-        nargs="+",
-        metavar=("URL", "TYPE"),
-        help="Test scrape one job URL: <url> <scraper-type> [config-json]",
-    )
-    args = parser.parse_args()
-
-    if args.detect:
-        asyncio.run(detect_monitor_type(args.detect))
-        return
-
-    if args.probe_jsonld:
-        asyncio.run(probe_jsonld(args.probe_jsonld))
-        return
-
-    if args.test_monitor:
-        slug, board_url = args.test_monitor
-        asyncio.run(test_monitor(slug, board_url))
-        return
-
-    if args.test_scraper:
-        parts = args.test_scraper
-        if len(parts) < 2:
-            parser.error("--test-scraper requires at least URL and TYPE")
-        url, stype = parts[0], parts[1]
-        sconfig = parts[2] if len(parts) > 2 else None
-        asyncio.run(test_scraper(url, stype, sconfig))
-        return
-
-    # Default: validate CSVs
-    errors = validate_csvs()
-    if errors:
-        print(f"Validation failed with {len(errors)} error(s):\n")
-        for error in errors:
-            print(f"  {error}")
-        sys.exit(1)
-    else:
-        print("Validation passed.")
-
-
-if __name__ == "__main__":
-    main()

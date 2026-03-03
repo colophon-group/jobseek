@@ -43,9 +43,10 @@ RETURNING id, slug
 """
 
 _UPSERT_BOARD = """
-INSERT INTO job_board (company_id, board_url, crawler_type, metadata)
-VALUES ($1, $2, $3, $4::jsonb)
+INSERT INTO job_board (company_id, board_slug, board_url, crawler_type, metadata)
+VALUES ($1, $2, $3, $4, $5::jsonb)
 ON CONFLICT (board_url) DO UPDATE SET
+    board_slug = COALESCE(EXCLUDED.board_slug, job_board.board_slug),
     crawler_type = EXCLUDED.crawler_type,
     metadata = EXCLUDED.metadata,
     updated_at = now()
@@ -120,6 +121,7 @@ async def sync_boards(
 
     for row in boards.iter_rows(named=True):
         company_slug = row["company_slug"]
+        board_slug = row.get("board_slug") or None
         board_url = row["board_url"]
         monitor_type = row["monitor_type"]
         monitor_config_str = row.get("monitor_config") or None
@@ -162,6 +164,7 @@ async def sync_boards(
         await conn.fetchrow(
             _UPSERT_BOARD,
             company_id,
+            board_slug,
             board_url,
             monitor_type,
             metadata,

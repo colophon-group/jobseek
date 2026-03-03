@@ -111,18 +111,38 @@ def _api_url(token: str) -> str:
     return f"https://api.lever.co/v0/postings/{token}"
 
 
-async def _probe_token(token: str, client: httpx.AsyncClient) -> bool:
+async def _probe_token(token: str, client: httpx.AsyncClient) -> tuple[bool, int | None]:
+    """Probe the Lever API for a token. Returns (found, job_count)."""
     try:
-        resp = await client.get(_api_url(token), params={"limit": 1})
+        resp = await client.get(_api_url(token), params={"limit": 100})
         if resp.status_code != 200:
-            return False
+            return False, None
         data = resp.json()
-        return isinstance(data, list)
+        if isinstance(data, list):
+            count = len(data)
+            if count >= 100:
+                return True, "100+"  # type: ignore[return-value]
+            return True, count
+        return False, None
     except Exception:
-        return False
+        return False, None
 
 
-async def discover(board: dict, client: httpx.AsyncClient) -> list[DiscoveredJob]:
+async def _fetch_job_count(token: str, client: httpx.AsyncClient) -> int | str | None:
+    """Lightweight API call to get the job count for a token."""
+    try:
+        resp = await client.get(_api_url(token), params={"limit": 100})
+        if resp.status_code != 200:
+            return None
+        data = resp.json()
+        if isinstance(data, list):
+            return "100+" if len(data) >= 100 else len(data)
+        return None
+    except Exception:
+        return None
+
+
+async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[DiscoveredJob]:
     """Fetch job listings from the Lever public API with pagination."""
     metadata = board.get("metadata") or {}
     token = metadata.get("token") or _token_from_url(board["board_url"])
@@ -162,11 +182,15 @@ async def discover(board: dict, client: httpx.AsyncClient) -> list[DiscoveredJob
     return jobs
 
 
-async def can_handle(url: str, client: httpx.AsyncClient | None = None) -> dict | None:
+async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None) -> dict | None:
     """Detect Lever: domain check -> page HTML scan -> slug-based API probe."""
     token = _token_from_url(url)
     if token:
-        return {}
+        if client is not None:
+            count = await _fetch_job_count(token, client)
+            if count is not None:
+                return {"token": token, "jobs": count}
+        return {"token": token}
 
     if client is None:
         return None
@@ -179,12 +203,20 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None) -> dict 
                 found = match.group(1)
                 if found not in _IGNORE_TOKENS:
                     log.info("lever.detected_in_page", url=url, board_token=found)
-                    return {"token": found}
+                    count = await _fetch_job_count(found, client)
+                    result: dict = {"token": found}
+                    if count is not None:
+                        result["jobs"] = count
+                    return result
 
     for slug in slugs_from_url(url):
-        if await _probe_token(slug, client):
+        found, count = await _probe_token(slug, client)
+        if found:
             log.info("lever.detected_by_probe", url=url, board_token=slug)
-            return {"token": slug}
+            result = {"token": slug}
+            if count is not None:
+                result["jobs"] = count
+            return result
 
     return None
 

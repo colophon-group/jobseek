@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from src.core.monitor import _normalize_discovered, monitor_one
+from src.core.monitor import MonitorResult, _apply_url_filter, _normalize_discovered, monitor_one
 from src.core.monitors import DiscoveredJob
 
 
@@ -48,6 +48,68 @@ class TestNormalizeDiscovered:
     def test_empty_set(self):
         result = _normalize_discovered(set())
         assert result.urls == set()
+
+
+class TestApplyUrlFilter:
+    def _make_result(self, urls, jobs_by_url=None, new_sitemap_url=None):
+        return MonitorResult(
+            urls=set(urls),
+            jobs_by_url=jobs_by_url,
+            new_sitemap_url=new_sitemap_url,
+        )
+
+    def test_no_filter(self):
+        result = self._make_result(["https://example.com/jobs/1", "https://example.com/blog/2"])
+        filtered = _apply_url_filter(result, {})
+        assert filtered.urls == result.urls
+        assert filtered.filtered_count == 0
+
+    def test_include_string(self):
+        result = self._make_result([
+            "https://example.com/jobs/1",
+            "https://example.com/jobs/2",
+            "https://example.com/blog/hello",
+        ])
+        filtered = _apply_url_filter(result, {"url_filter": "/jobs/"})
+        assert filtered.urls == {"https://example.com/jobs/1", "https://example.com/jobs/2"}
+        assert filtered.filtered_count == 1
+
+    def test_include_exclude_dict(self):
+        result = self._make_result([
+            "https://example.com/jobs/1",
+            "https://example.com/jobs/intern",
+            "https://example.com/blog/post",
+        ])
+        filtered = _apply_url_filter(result, {"url_filter": {"include": "/jobs/", "exclude": "/intern"}})
+        assert filtered.urls == {"https://example.com/jobs/1"}
+        assert filtered.filtered_count == 2
+
+    def test_filters_jobs_by_url(self):
+        jobs = {
+            "https://example.com/jobs/1": DiscoveredJob(url="https://example.com/jobs/1", title="Job 1"),
+            "https://example.com/blog/2": DiscoveredJob(url="https://example.com/blog/2", title="Blog"),
+        }
+        result = self._make_result(jobs.keys(), jobs_by_url=jobs)
+        filtered = _apply_url_filter(result, {"url_filter": "/jobs/"})
+        assert filtered.urls == {"https://example.com/jobs/1"}
+        assert filtered.jobs_by_url is not None
+        assert len(filtered.jobs_by_url) == 1
+        assert "https://example.com/jobs/1" in filtered.jobs_by_url
+
+    def test_invalid_regex(self):
+        result = self._make_result(["https://example.com/jobs/1"])
+        filtered = _apply_url_filter(result, {"url_filter": "[invalid"})
+        assert filtered.urls == result.urls
+        assert filtered.filtered_count == 0
+
+    def test_preserves_new_sitemap_url(self):
+        result = self._make_result(
+            ["https://example.com/jobs/1", "https://example.com/blog/2"],
+            new_sitemap_url="https://example.com/sitemap.xml",
+        )
+        filtered = _apply_url_filter(result, {"url_filter": "/jobs/"})
+        assert filtered.new_sitemap_url == "https://example.com/sitemap.xml"
+        assert filtered.filtered_count == 1
 
 
 class TestMonitorOne:

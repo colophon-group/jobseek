@@ -29,6 +29,14 @@ class TestMonitorRegistry:
         names = [m.name for m in monitor_registry]
         assert "sitemap" in names
 
+    def test_dom_registered(self):
+        names = [m.name for m in monitor_registry]
+        assert "dom" in names
+
+    def test_nextdata_registered(self):
+        names = [m.name for m in monitor_registry]
+        assert "nextdata" in names
+
     def test_sorted_by_cost(self):
         costs = [m.cost for m in monitor_registry]
         assert costs == sorted(costs)
@@ -45,6 +53,14 @@ class TestMonitorRegistry:
         fn = get_discoverer("sitemap")
         assert callable(fn)
 
+    def test_get_discoverer_dom(self):
+        fn = get_discoverer("dom")
+        assert callable(fn)
+
+    def test_get_discoverer_nextdata(self):
+        fn = get_discoverer("nextdata")
+        assert callable(fn)
+
     def test_get_discoverer_unknown_raises(self):
         with pytest.raises(ValueError, match="Unknown monitor type"):
             get_discoverer("nonexistent")
@@ -54,22 +70,22 @@ class TestScraperRegistry:
     def test_jsonld_registered(self):
         assert "json-ld" in scraper_registry
 
-    def test_html_registered(self):
-        assert "html" in scraper_registry
-
-    def test_browser_registered(self):
-        assert "browser" in scraper_registry
+    def test_dom_registered(self):
+        assert "dom" in scraper_registry
 
     def test_get_scraper_jsonld(self):
         fn = get_scraper("json-ld")
         assert callable(fn)
 
-    def test_get_scraper_html(self):
-        fn = get_scraper("html")
+    def test_get_scraper_dom(self):
+        fn = get_scraper("dom")
         assert callable(fn)
 
-    def test_get_scraper_browser(self):
-        fn = get_scraper("browser")
+    def test_nextdata_registered(self):
+        assert "nextdata" in scraper_registry
+
+    def test_get_scraper_nextdata(self):
+        fn = get_scraper("nextdata")
         assert callable(fn)
 
     def test_get_scraper_unknown_raises(self):

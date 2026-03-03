@@ -1,37 +1,18 @@
-"""CSV management tool for adding, updating, and removing company/board rows.
+"""CSV management library for adding, updating, and removing company/board rows.
 
-Usage:
-    uv run python -m src.csvtool company <slug> add [--name NAME] [--website URL] [--logo-url URL] [--icon-url URL]
-    uv run python -m src.csvtool company <slug> del
-    uv run python -m src.csvtool board <slug> add --board-url URL [--monitor-type TYPE] [--monitor-config JSON] [--scraper-type TYPE] [--scraper-config JSON]
-    uv run python -m src.csvtool board <slug> del --board-url URL
+Library functions used by workspace CLI commands. No standalone CLI entry point — use ``ws`` commands instead.
 """
 
 from __future__ import annotations
 
-import argparse
-import csv
 import sys
 from pathlib import Path
 
-from src.validate import DATA_DIR, _SLUG_RE
+from src.shared.constants import DATA_DIR, SLUG_RE
+from src.shared.csv_io import read_csv as _read_csv
+from src.shared.csv_io import write_csv as _write_csv
 
-
-def _read_csv(path: Path) -> tuple[list[str], list[dict[str, str]]]:
-    """Read a CSV file and return (headers, rows_as_dicts)."""
-    with open(path, newline="") as f:
-        reader = csv.DictReader(f)
-        headers = reader.fieldnames or []
-        rows = list(reader)
-    return headers, rows
-
-
-def _write_csv(path: Path, headers: list[str], rows: list[dict[str, str]]) -> None:
-    """Write rows back to a CSV file."""
-    with open(path, "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=headers)
-        writer.writeheader()
-        writer.writerows(rows)
+_SLUG_RE = SLUG_RE
 
 
 def _company_slugs(path: Path) -> set[str]:
@@ -132,6 +113,7 @@ def company_del(slug: str) -> None:
 def board_add(
     slug: str,
     *,
+    board_slug: str | None = None,
     board_url: str | None = None,
     monitor_type: str | None = None,
     monitor_config: str | None = None,
@@ -148,17 +130,24 @@ def board_add(
 
     headers, rows = _read_csv(boards_path)
 
-    # Look for existing board to update
+    # Look for existing board to update (by board_url or board_slug)
     target = None
     if board_url:
         for row in rows:
             if row["company_slug"] == slug and row["board_url"] == board_url:
                 target = row
                 break
+    elif board_slug:
+        for row in rows:
+            if row.get("board_slug") == board_slug:
+                target = row
+                break
 
     if target is not None:
         # Update existing board
         updates: dict[str, str] = {}
+        if board_slug is not None:
+            updates["board_slug"] = board_slug
         if monitor_type is not None:
             updates["monitor_type"] = monitor_type
         if monitor_config is not None:
@@ -176,7 +165,7 @@ def board_add(
         _write_csv(boards_path, headers, rows)
 
         fields = ", ".join(f"{k}={v!r}" for k, v in updates.items())
-        print(f"Updated board {board_url!r}: {fields}")
+        print(f"Updated board {board_url or board_slug!r}: {fields}")
     else:
         # Create new board
         if not board_url:
@@ -185,6 +174,8 @@ def board_add(
 
         new_row = {col: "" for col in headers}
         new_row["company_slug"] = slug
+        if board_slug is not None:
+            new_row["board_slug"] = board_slug
         new_row["board_url"] = board_url
         if monitor_type is not None:
             new_row["monitor_type"] = monitor_type
@@ -227,65 +218,3 @@ def board_del(slug: str, *, board_url: str | None = None) -> None:
         print(f"Removed {removed} board(s) for {slug!r}")
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="CSV management tool")
-    sub = parser.add_subparsers(dest="entity", required=True)
-
-    # --- company ---
-    p_co = sub.add_parser("company", help="Manage company rows")
-    p_co.add_argument("slug", help="Company slug")
-    p_co_sub = p_co.add_subparsers(dest="action", required=True)
-
-    p_co_add = p_co_sub.add_parser("add", help="Add or update a company")
-    p_co_add.add_argument("--name", help="Display name")
-    p_co_add.add_argument("--website", help="Homepage URL")
-    p_co_add.add_argument("--logo-url", help="Logo image URL")
-    p_co_add.add_argument("--icon-url", help="Icon image URL")
-
-    p_co_sub.add_parser("del", help="Remove a company and its boards")
-
-    # --- board ---
-    p_bd = sub.add_parser("board", help="Manage board rows")
-    p_bd.add_argument("slug", help="Company slug")
-    p_bd_sub = p_bd.add_subparsers(dest="action", required=True)
-
-    p_bd_add = p_bd_sub.add_parser("add", help="Add or update a board")
-    p_bd_add.add_argument("--board-url", help="Board URL")
-    p_bd_add.add_argument("--monitor-type", help="Monitor type")
-    p_bd_add.add_argument("--monitor-config", help="Monitor config JSON")
-    p_bd_add.add_argument("--scraper-type", help="Scraper type")
-    p_bd_add.add_argument("--scraper-config", help="Scraper config JSON")
-
-    p_bd_del = p_bd_sub.add_parser("del", help="Remove board(s)")
-    p_bd_del.add_argument("--board-url", help="Board URL (omit to remove all boards for slug)")
-
-    args = parser.parse_args()
-
-    if args.entity == "company":
-        if args.action == "add":
-            company_add(
-                args.slug,
-                name=args.name,
-                website=args.website,
-                logo_url=args.logo_url,
-                icon_url=args.icon_url,
-            )
-        elif args.action == "del":
-            company_del(args.slug)
-
-    elif args.entity == "board":
-        if args.action == "add":
-            board_add(
-                args.slug,
-                board_url=args.board_url,
-                monitor_type=args.monitor_type,
-                monitor_config=args.monitor_config,
-                scraper_type=args.scraper_type,
-                scraper_config=args.scraper_config,
-            )
-        elif args.action == "del":
-            board_del(args.slug, board_url=args.board_url)
-
-
-if __name__ == "__main__":
-    main()

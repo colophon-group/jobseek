@@ -12,3 +12,5 @@ dist
 locales/*.js
 
 *.pem
+/apps/crawler/tmp/
+/apps/crawler/.workspace/
