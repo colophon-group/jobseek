@@ -2,29 +2,49 @@
 
 Claims due work from the DB, runs single jobs concurrently, writes results back.
 Portable across all deployment environments.
+
+Concurrency model: domain-parallel pipelines.  Boards sharing a rate-limit
+domain (same ATS API or hostname) are processed serially to respect politeness.
+Different domains run fully concurrently for maximum throughput.
 """
 
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
+from collections import defaultdict
 from dataclasses import dataclass
+from urllib.parse import urlparse
 
 import asyncpg
 import httpx
 import structlog
 
 from src.core.monitor import monitor_one
+from src.core.monitors import api_monitor_types
 from src.core.scrape import scrape_one
+from src.shared.dedup import filter_unseen, mark_seen
+from src.shared.queue import QueueItem, dequeue, enqueue, recover_stale, requeue_retries
+from src.shared.queue import complete as queue_complete
+from src.shared.queue import fail as queue_fail
+from src.shared.redis import get_redis
 
 log = structlog.get_logger()
+
+
+# ── Constants ────────────────────────────────────────────────────────
+
+# API monitor types share a single API host per type (throttle-domain keys).
+_API_MONITOR_TYPES = api_monitor_types()
 
 
 # ── SQL Queries ──────────────────────────────────────────────────────
 
 _FETCH_DUE_BOARDS = """
 UPDATE job_board
-SET last_checked_at = now()
+SET last_checked_at = now(),
+    next_check_at = now() + (check_interval_minutes || ' minutes')::interval
 WHERE id IN (
     SELECT id FROM job_board
     WHERE is_enabled = true
@@ -96,7 +116,7 @@ UPDATE job_board
 SET consecutive_failures = consecutive_failures + 1,
     last_error = $2,
     next_check_at = now() + LEAST(
-        (check_interval_minutes * pow(2, consecutive_failures)) || ' minutes',
+        (5 * pow(2, consecutive_failures)) || ' minutes',
         '1440 minutes'
     )::interval,
     is_enabled = CASE WHEN consecutive_failures + 1 >= 5 THEN false ELSE is_enabled END,
@@ -129,30 +149,11 @@ SELECT $1, $2, unnest($3::text[]), 'active', now(), now()
 RETURNING id, source_url
 """
 
-_ENQUEUE_URLS = """
-INSERT INTO job_url_queue (job_posting_id, url)
-SELECT unnest($1::uuid[]), unnest($2::text[])
-ON CONFLICT (url) DO NOTHING
-"""
-
 _UPDATE_METADATA = """
 UPDATE job_board
 SET metadata = COALESCE(metadata, '{}'::jsonb) || $2::jsonb,
     updated_at = now()
 WHERE id = $1
-"""
-
-_CLAIM_SCRAPE_QUEUE = """
-UPDATE job_url_queue
-SET status = 'processing', locked_until = now() + interval '5 minutes'
-WHERE id IN (
-    SELECT q.id FROM job_url_queue q
-    WHERE q.status = 'pending'
-    ORDER BY q.created_at
-    LIMIT $1
-    FOR UPDATE SKIP LOCKED
-)
-RETURNING id, job_posting_id, url
 """
 
 _UPDATE_JOB_CONTENT = """
@@ -164,25 +165,25 @@ SET title = $2, description = $3, locations = $4,
 WHERE id = $1
 """
 
-_MARK_SCRAPE_SUCCESS = """
-UPDATE job_url_queue SET status = 'completed' WHERE id = $1
-"""
-
-_MARK_SCRAPE_FAILURE = """
-UPDATE job_url_queue
-SET status = CASE WHEN retries + 1 >= max_retries THEN 'failed' ELSE 'pending' END,
-    retries = retries + 1,
-    error_message = $2,
-    locked_until = NULL
-WHERE id = $1
-"""
-
 
 # ── Helpers ──────────────────────────────────────────────────────────
 
 
 def _jsonb(val: dict | None) -> str | None:
     return json.dumps(val) if val is not None else None
+
+
+def _throttle_key(board: asyncpg.Record) -> str:
+    """Return the rate-limit domain for a board.
+
+    API monitors share an API host per type (e.g. all greenhouse boards
+    hit boards-api.greenhouse.io), so crawler_type is the key.
+    URL-only monitors each hit their own company domain.
+    """
+    crawler_type = board["crawler_type"]
+    if crawler_type in _API_MONITOR_TYPES:
+        return crawler_type
+    return urlparse(board["board_url"]).hostname or board["board_url"]
 
 
 @dataclass
@@ -300,18 +301,31 @@ async def _process_one_board(
                         ],
                     )
 
-            # URL-only path
+            # URL-only path — insert stubs in Postgres, enqueue to Redis
             if result.jobs_by_url is None and new_urls:
-                inserted = await conn.fetch(
-                    _INSERT_URL_ONLY_JOBS,
-                    company_id,
-                    board_id,
-                    new_urls,
-                )
-                posting_ids = [str(r["id"]) for r in inserted]
-                urls = [r["source_url"] for r in inserted]
-                await conn.execute(_ENQUEUE_URLS, posting_ids, urls)
-                board_log.info("batch.enqueued", count=len(urls))
+                # Filter out already-seen URLs (cross-instance dedup)
+                with contextlib.suppress(Exception):
+                    new_urls = await filter_unseen(new_urls)
+
+                if new_urls:
+                    inserted = await conn.fetch(
+                        _INSERT_URL_ONLY_JOBS,
+                        company_id,
+                        board_id,
+                        new_urls,
+                    )
+                    queue_items = [
+                        QueueItem(
+                            job_posting_id=str(r["id"]),
+                            url=r["source_url"],
+                            board_id=board_id,
+                        )
+                        for r in inserted
+                    ]
+                    await enqueue(queue_items)
+                    with contextlib.suppress(Exception):
+                        await mark_seen([r["source_url"] for r in inserted])
+                    board_log.info("batch.enqueued", count=len(queue_items))
 
             await conn.execute(_RECORD_SUCCESS, board_id)
 
@@ -323,57 +337,88 @@ async def _process_one_board(
             gone=len(gone),
         )
 
+        # Invalidate stats cache when job counts change
+        if new_urls or gone:
+            with contextlib.suppress(Exception):
+                await get_redis().delete("cache:platform-stats")
+
     except Exception as exc:
         board_log.exception("batch.monitor.error")
         error_msg = str(exc)[:500]
-        async with pool.acquire() as conn:
-            await conn.execute(_RECORD_FAILURE, board_id, error_msg)
+        with contextlib.suppress(Exception):
+            async with pool.acquire() as conn:
+                await conn.execute(_RECORD_FAILURE, board_id, error_msg)
+
+
+async def _monitor_pipeline(
+    boards: list[asyncpg.Record],
+    pool: asyncpg.Pool,
+    http: httpx.AsyncClient,
+) -> int:
+    """Process boards for one rate-limit domain serially.
+
+    Returns count of boards that completed without error.
+    """
+    succeeded = 0
+    for board in boards:
+        try:
+            await _process_one_board(board, pool, http)
+            succeeded += 1
+        except Exception:
+            log.exception("batch.monitor.pipeline_error", board_id=str(board["id"]))
+    return succeeded
 
 
 async def process_monitor_batch(
     pool: asyncpg.Pool,
     http: httpx.AsyncClient,
-    limit: int = 10,
+    limit: int = 200,
 ) -> BatchResult:
-    """Claim due boards and run monitor_one for each concurrently."""
+    """Claim due boards and process with domain-parallel pipelines.
+
+    Boards sharing a rate-limit domain (same ATS API or hostname) run
+    serially to respect politeness.  Different domains run concurrently.
+    """
     boards = await pool.fetch(_FETCH_DUE_BOARDS, limit)
 
     if not boards:
         return BatchResult()
 
-    log.info("batch.monitor.start", count=len(boards))
-    result = BatchResult(processed=len(boards))
+    # Group by rate-limit domain
+    groups: defaultdict[str, list[asyncpg.Record]] = defaultdict(list)
+    for board in boards:
+        groups[_throttle_key(board)].append(board)
 
+    log.info("batch.monitor.start", boards=len(boards), domains=len(groups))
+
+    # Run domain pipelines concurrently
+    tasks: list[asyncio.Task[int]] = []
     async with asyncio.TaskGroup() as tg:
-        for board in boards:
-            tg.create_task(_process_one_board(board, pool, http))
+        for group_boards in groups.values():
+            tasks.append(tg.create_task(_monitor_pipeline(group_boards, pool, http)))
 
-    result.succeeded = result.processed  # TaskGroup raises on failure
-    return result
+    succeeded = sum(t.result() for t in tasks)
+    return BatchResult(processed=len(boards), succeeded=succeeded, failed=len(boards) - succeeded)
 
 
 # ── Scrape Batch ─────────────────────────────────────────────────────
 
 
 async def _process_one_scrape(
-    queue_item: asyncpg.Record,
+    item: QueueItem,
     pool: asyncpg.Pool,
     http: httpx.AsyncClient,
     scraper_type: str,
     scraper_config: dict | None,
-) -> None:
-    """Run a scrape for a single queued URL."""
-    queue_id = str(queue_item["id"])
-    posting_id = str(queue_item["job_posting_id"])
-    url = queue_item["url"]
-
+) -> bool:
+    """Run a scrape for a single queued URL. Returns True on success."""
     try:
-        content = await scrape_one(url, scraper_type, scraper_config, http)
+        content = await scrape_one(item.url, scraper_type, scraper_config, http)
 
         async with pool.acquire() as conn:
             await conn.execute(
                 _UPDATE_JOB_CONTENT,
-                posting_id,
+                item.job_posting_id,
                 content.title,
                 content.description,
                 content.locations,
@@ -386,39 +431,70 @@ async def _process_one_scrape(
                 content.qualifications,
                 _jsonb(content.metadata),
             )
-            await conn.execute(_MARK_SCRAPE_SUCCESS, queue_id)
 
-        log.debug("batch.scrape.success", url=url, title=content.title)
+        await queue_complete(item)
+        log.debug("batch.scrape.success", url=item.url, title=content.title)
+        return True
 
     except Exception as exc:
-        log.error("batch.scrape.error", url=url, error=str(exc))
-        async with pool.acquire() as conn:
-            await conn.execute(_MARK_SCRAPE_FAILURE, queue_id, str(exc)[:500])
+        log.error("batch.scrape.error", url=item.url, error=str(exc))
+        with contextlib.suppress(Exception):
+            await queue_fail(item, str(exc)[:500])
+        return False
+
+
+async def _scrape_pipeline(
+    items: list[QueueItem],
+    pool: asyncpg.Pool,
+    http: httpx.AsyncClient,
+) -> int:
+    """Process scrape items for one domain serially.
+
+    Returns count of items that completed successfully.
+    """
+    succeeded = 0
+    for item in items:
+        try:
+            if await _process_one_scrape(item, pool, http, "json-ld", None):
+                succeeded += 1
+        except Exception:
+            log.exception("batch.scrape.pipeline_error", url=item.url)
+    return succeeded
 
 
 async def process_scrape_batch(
     pool: asyncpg.Pool,
     http: httpx.AsyncClient,
-    limit: int = 10,
+    limit: int = 200,
 ) -> BatchResult:
-    """Claim due URLs from queue and run scrape_one for each concurrently.
+    """Claim URLs from Redis queue and scrape with domain-parallel pipelines.
 
-    Note: This fetches board scraper config for each URL from the job_posting's board.
-    For simplicity, uses json-ld as the default scraper when no config is specified.
+    Items targeting the same hostname run serially (respecting per-domain
+    throttle).  Different hostnames run concurrently.
     """
-    items = await pool.fetch(_CLAIM_SCRAPE_QUEUE, limit)
+    # Move due retries back to the main queue
+    await requeue_retries()
+    # Recover items stuck beyond visibility timeout
+    await recover_stale()
+
+    items = await dequeue(limit)
 
     if not items:
         return BatchResult()
 
-    log.info("batch.scrape.start", count=len(items))
-    result = BatchResult(processed=len(items))
+    # Group by target hostname
+    groups: defaultdict[str, list[QueueItem]] = defaultdict(list)
+    for item in items:
+        host = urlparse(item.url).hostname or "unknown"
+        groups[host].append(item)
 
-    # Look up scraper config for each item's board
-    # For now, use json-ld as the default scraper type
+    log.info("batch.scrape.start", items=len(items), domains=len(groups))
+
+    # Run domain pipelines concurrently
+    tasks: list[asyncio.Task[int]] = []
     async with asyncio.TaskGroup() as tg:
-        for item in items:
-            tg.create_task(_process_one_scrape(item, pool, http, "json-ld", None))
+        for group_items in groups.values():
+            tasks.append(tg.create_task(_scrape_pipeline(group_items, pool, http)))
 
-    result.succeeded = result.processed
-    return result
+    succeeded = sum(t.result() for t in tasks)
+    return BatchResult(processed=len(items), succeeded=succeeded, failed=len(items) - succeeded)

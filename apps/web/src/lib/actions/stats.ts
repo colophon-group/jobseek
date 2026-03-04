@@ -1,30 +1,32 @@
 "use server";
 
 import { sql, eq } from "drizzle-orm";
-import { unstable_cache } from "next/cache";
 import { headers } from "next/headers";
 import { Octokit } from "@octokit/rest";
 import { createAppAuth } from "@octokit/auth-app";
 import { db } from "@/db";
 import { company, companyRequest, jobPosting } from "@/db/schema";
+import { cached } from "@/lib/cache";
 
-export const getStats = unstable_cache(
-  async () => {
-    const [[companyRow], [jobRow]] = await Promise.all([
-      db.select({ count: sql<number>`count(*)` }).from(company),
-      db
-        .select({ count: sql<number>`count(*)` })
-        .from(jobPosting)
-        .where(sql`${jobPosting.status} = 'active'`),
-    ]);
-    return {
-      companyCount: Number(companyRow.count),
-      jobPostingCount: Number(jobRow.count),
-    };
-  },
-  ["platform-stats"],
-  { revalidate: 21600 },
-);
+export function getStats() {
+  return cached(
+    "platform-stats",
+    async () => {
+      const [[companyRow], [jobRow]] = await Promise.all([
+        db.select({ count: sql<number>`count(*)` }).from(company),
+        db
+          .select({ count: sql<number>`count(*)` })
+          .from(jobPosting)
+          .where(sql`${jobPosting.status} = 'active'`),
+      ]);
+      return {
+        companyCount: Number(companyRow.count),
+        jobPostingCount: Number(jobRow.count),
+      };
+    },
+    { ttl: 21600 }, // 6 hours
+  );
+}
 
 const INPUT_MIN_LENGTH = 2;
 const INPUT_MAX_LENGTH = 200;
@@ -114,10 +116,6 @@ function buildIssueBody(
     "### User request",
     "",
     input,
-    "",
-    "---",
-    "",
-    "**Agent instructions:** follow [AGENTS.md](https://github.com/colophon-group/jobseek/blob/main/AGENTS.md#how-to-add-a-company) to resolve this issue.",
     "",
   ];
 

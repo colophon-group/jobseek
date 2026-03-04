@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import asyncio
 import json
+import math
 import random
 import time
 
 import click
 
+from src.core.monitors import api_monitor_types, is_rich_monitor
 from src.workspace import log as action_log
 from src.workspace import output as out
 from src.workspace.state import (
@@ -17,20 +19,101 @@ from src.workspace.state import (
     resolve_slug,
     resolve_two_args,
     save_board,
-    save_workspace,
     workspace_exists,
 )
 
 
-def _get_active_board(slug: str):
-    """Load workspace and its active board. Dies if either is missing."""
+def _resolve_board(slug: str, board_alias: str | None = None):
+    """Resolve board from --board flag or active_board.
+
+    Reads workspace.yaml (for active_board fallback) but never writes it.
+    Runs lightweight preflight checks and prints warnings.
+    """
     if not workspace_exists(slug):
         out.die(f"Workspace {slug!r} not found")
     ws = load_workspace(slug)
-    if not ws.active_board:
-        out.die("No active board. Run: ws add board <alias> --url <url>")
-    board = load_board(slug, ws.active_board)
+
+    # Preflight checks (branch mismatch etc.)
+    from src.workspace.preflight import run_preflight
+
+    for issue in run_preflight(ws):
+        if issue.severity == "critical":
+            out.die(f"Preflight: {issue.message}")
+        else:
+            out.warn("preflight", issue.message)
+
+    alias = board_alias or ws.active_board
+    if not alias:
+        out.die("No active board. Provide --board or run: ws add board <alias> --url <url>")
+    board = load_board(slug, alias)
     return ws, board
+
+
+def _auto_config_name(board, type_: str) -> str:
+    """Generate a unique config name for the given type."""
+    if type_ not in board.configs:
+        return type_
+    n = 2
+    while f"{type_}-{n}" in board.configs:
+        n += 1
+    return f"{type_}-{n}"
+
+
+# ── Cost scoring ───────────────────────────────────────────────────────
+
+
+def _estimate_monitor_cost(name: str, n_jobs: int, metadata: dict | None = None) -> float:
+    """Estimate seconds per single monitor invocation (one polling cycle)."""
+    if name in api_monitor_types():
+        return 1.0
+    if name == "api_sniffer":
+        page_size = (metadata or {}).get("items", 50)
+        pages = max(1, math.ceil(n_jobs / page_size))
+        if (metadata or {}).get("browser"):
+            return 5.0 + 0.5 * pages
+        return 0.3 * pages
+    if name == "sitemap":
+        return 1.5
+    if name in ("dom", "nextdata"):
+        return 1.0
+    return 2.0
+
+
+#: Default per-job scraper cost assumptions by scraper type.
+_SCRAPER_COST_PER_JOB: dict[str, float] = {
+    "json-ld": 0.3,
+    "nextdata": 0.3,
+    "embedded": 0.3,
+    "dom": 0.5,
+    "dom_render": 4.0,
+    "api_sniffer": 3.0,
+}
+
+_DEFAULT_SCRAPER_COST = 0.3  # json-ld / httpx-based
+
+
+def _estimate_cycle_cost(
+    monitor_cost: float, n_jobs: int, rich: bool, scraper_per_job: float = _DEFAULT_SCRAPER_COST
+) -> float:
+    """Estimate steady-state cost per polling cycle (monitor + amortized scraper).
+
+    At ~3% monthly turnover, ~N/24000 new jobs appear per hour-long cycle.
+    Rich monitors (API-native, api_sniffer with fields) skip the scraper entirely.
+
+    This represents the ongoing cost, NOT the initial load.
+    """
+    if rich:
+        return monitor_cost
+    new_per_cycle = n_jobs / 24000
+    return monitor_cost + scraper_per_job * new_per_cycle
+
+
+def _estimate_initial_load(n_jobs: int, scraper_per_job: float = _DEFAULT_SCRAPER_COST) -> float:
+    """Estimate one-time cost to scrape all existing jobs on first run.
+
+    Only applies to URL-only monitors; rich monitors return 0.
+    """
+    return n_jobs * scraper_per_job
 
 
 _MONITOR_PROBE_HINTS: dict[str, str] = {
@@ -42,10 +125,12 @@ _MONITOR_PROBE_HINTS: dict[str, str] = {
 
 @click.command(name="monitor")
 @click.argument("slug", required=False)
-def probe_monitors(slug: str | None):
+@click.option("--board", "-b", "board_alias", default=None, help="Target board alias")
+@click.option("--current-jobs", "-n", type=int, default=0, help="Estimated job count for cost scoring")
+def probe_monitors(slug: str | None, board_alias: str | None, current_jobs: int):
     """Probe all monitor types for the active board's URL."""
     slug = resolve_slug(slug)
-    ws, board = _get_active_board(slug)
+    ws, board = _resolve_board(slug, board_alias)
 
     async def _run():
         from playwright.async_api import async_playwright
@@ -81,28 +166,76 @@ def probe_monitors(slug: str | None):
     )
     out.plain("artifacts", f"Saved: {probe_dir}")
 
-    # Store probe results and print
-    probe_summary_parts = []
+    # Compute cost scores and classify results
+    # Each entry: (name, metadata, comment, monitor_cost, initial_load, rich)
+    n_jobs = current_jobs or 200  # Default estimate for cost scoring
+    scored: list[tuple[str, dict | None, str, float | None, float, bool]] = []
     for name, metadata, comment in results:
         if metadata is not None:
-            symbol = "\u2713"
-            # Store suggested config for later use
-            if board.monitor_type is None:
-                pass  # Don't auto-select
+            rich = name in api_monitor_types() or (
+                name == "api_sniffer" and bool((metadata or {}).get("fields"))
+            )
+            mon_cost = _estimate_monitor_cost(name, n_jobs, metadata)
+            init_load = 0.0 if rich else _estimate_initial_load(n_jobs)
+            scored.append((name, metadata, comment, mon_cost, init_load, rich))
         else:
-            symbol = "\u2717"
+            scored.append((name, metadata, comment, None, 0.0, False))
 
-        out.plain("probe", f"{name:<14}{symbol}  {comment}")
-        # Per-type hint for detected monitors
+    # Determine priority threshold: monitor cost of cheapest detected URL-only, or 1.5
+    detected_url_only_costs = [
+        s for _, m, _, s, _il, r in scored if m is not None and not r and s is not None
+    ]
+    threshold = min(detected_url_only_costs) if detected_url_only_costs else 1.5
+
+    high = [(n, m, c, s, il, r) for n, m, c, s, il, r in scored if m is not None and s is not None and s <= threshold]
+    low = [(n, m, c, s, il, r) for n, m, c, s, il, r in scored if m is not None and (s is None or s > threshold)]
+    undetected = [(n, m, c, s, il, r) for n, m, c, s, il, r in scored if m is None]
+
+    # Print with priority split (only when --current-jobs is given and there are detections)
+    probe_summary_parts = []
+    use_priority_split = current_jobs > 0 and (high or low)
+
+    def _print_entry(name, metadata, comment, mon_cost, init_load, rich):
+        symbol = "\u2713" if metadata is not None else "\u2717"
+        cost_str = f"~{mon_cost:.1f}s/cycle" if mon_cost is not None else ""
+        if rich:
+            kind_str = "rich"
+        elif metadata is not None:
+            kind_str = f"URL-only (+scraper ~{init_load:.0f}s initial)" if init_load else "URL-only"
+        else:
+            kind_str = ""
+        parts = [f"{name:<14}{symbol}  {comment}"]
+        if cost_str:
+            parts.append(f"  {cost_str}  {kind_str}")
+        out.plain("probe", "  ".join(parts))
         if metadata is not None and name in _MONITOR_PROBE_HINTS:
             out.plain("probe", f"  {_MONITOR_PROBE_HINTS[name]}")
         probe_summary_parts.append(f"{name} {symbol}")
 
-    # Suggest best detected monitor
-    best = next(((name, meta) for name, meta, _ in results if meta is not None), None)
-    if best:
-        best_name, best_meta = best
-        # Suppress Next: when the best monitor found 0 jobs
+    if use_priority_split:
+        if high:
+            out.plain("probe", f"-- High priority (<={threshold:.1f}s/cycle at N={n_jobs}) --")
+            for entry in high:
+                _print_entry(*entry)
+            print()
+        if low:
+            out.plain("probe", f"-- Low priority (>{threshold:.1f}s/cycle at N={n_jobs}) --")
+            for entry in low:
+                _print_entry(*entry)
+            print()
+        if undetected:
+            for entry in undetected:
+                _print_entry(*entry)
+    else:
+        for entry in scored:
+            _print_entry(*entry)
+
+    # Suggest best detected monitor (prefer rich, then cheapest monitor cost)
+    detected_scored = [(n, m, c, s, il, r) for n, m, c, s, il, r in scored if m is not None]
+    if detected_scored:
+        # Rich monitors sort before URL-only; within each group sort by monitor cost
+        detected_scored.sort(key=lambda x: (not x[5], x[3] if x[3] is not None else float("inf")))
+        best_name, best_meta, _, _, _, _ = detected_scored[0]
         best_jobs = best_meta.get("jobs", best_meta.get("urls", best_meta.get("count")))
         if best_jobs is not None and best_jobs == 0:
             out.warn(
@@ -118,40 +251,34 @@ def probe_monitors(slug: str | None):
             "ws select monitor dom --config '{\"render\": true}'",
         )
 
+    # Store probe detections with cost estimates and metadata
+    board.detections["_meta"] = {"url": board.url}
+    for name, metadata, _comment, mon_cost, init_load, rich in scored:
+        if metadata is not None:
+            detection = dict(metadata)
+            if mon_cost is not None:
+                detection["monitor_per_cycle"] = round(mon_cost, 2)
+                detection["initial_load"] = round(init_load, 2)
+                detection["rich"] = rich
+            board.detections[name] = detection
+
     # Log
     summary = ", ".join(probe_summary_parts)
     action_log.append_to_list(board.log, "probe monitor", True, summary)
     save_board(slug, board)
 
-    # Store probe metadata for select monitor auto-config
-    probe_data = {}
-    for name, metadata, _comment in results:
-        if metadata is not None:
-            probe_data[name] = metadata
-    if probe_data:
-        board.monitor_config = board.monitor_config or {}
-        board.monitor_config["_probe"] = probe_data
-        save_board(slug, board)
-
 
 @click.command(name="scraper")
 @click.argument("slug", required=False)
+@click.option("--board", "-b", "board_alias", default=None, help="Target board alias")
 @click.option("--url", "urls", multiple=True, help="Override sample URLs")
-def probe_scraper(slug: str | None, urls: tuple[str, ...]):
+def probe_scraper(slug: str | None, board_alias: str | None, urls: tuple[str, ...]):
     """Probe all scraper types against sample URLs."""
     slug = resolve_slug(slug)
-    ws, board = _get_active_board(slug)
+    ws, board = _resolve_board(slug, board_alias)
 
     # Guard: API monitors don't need scrapers
-    api_monitors = {
-        "ashby", "greenhouse", "hireology", "lever", "personio", "pinpoint",
-        "recruitee", "rippling", "smartrecruiters", "successfactors",
-        "workable", "workday",
-    }
-    is_rich_monitor = board.monitor_type in api_monitors or (
-        board.monitor_type == "api_sniffer" and (board.monitor_config or {}).get("fields")
-    )
-    if is_rich_monitor:
+    if is_rich_monitor(board.monitor_type, board.monitor_config):
         out.warn(
             "scraper",
             f"Monitor '{board.monitor_type}' returns full data \u2014 scraper not needed",
@@ -301,13 +428,170 @@ def probe_scraper(slug: str | None, urls: tuple[str, ...]):
     save_board(slug, board)
 
 
+@click.command(name="deep")
+@click.argument("slug", required=False)
+@click.option("--board", "-b", "board_alias", default=None, help="Target board alias")
+@click.option("--current-jobs", "-n", type=int, default=0, help="Estimated job count for cost scoring")
+def probe_deep(slug: str | None, board_alias: str | None, current_jobs: int):
+    """Playwright-based api_sniffer detection with cost scoring."""
+    slug = resolve_slug(slug)
+    ws, board = _resolve_board(slug, board_alias)
+    n_jobs = current_jobs or 200
+
+    async def _run():
+        from playwright.async_api import async_playwright
+
+        from src.core.monitors import get_can_handle
+        from src.shared.http import create_http_client
+
+        http = create_http_client()
+        try:
+            async with async_playwright() as pw:
+                can_handle = get_can_handle("api_sniffer")
+                metadata = await can_handle(board.url, http, pw=pw)
+                # Test plain httpx access to detected api_url
+                httpx_ok = False
+                if metadata and metadata.get("api_url"):
+                    from src.core.monitors.api_sniffer import http_fetch
+
+                    data = await http_fetch(http, metadata.get("method", "GET"), metadata["api_url"])
+                    httpx_ok = data is not None
+                return metadata, httpx_ok
+        finally:
+            await http.aclose()
+
+    metadata, httpx_ok = asyncio.run(_run())
+
+    # Save artifact
+    from src.workspace.artifacts import deep_probe_run_dir, save_probe
+
+    probe_dir = deep_probe_run_dir(slug, board.alias)
+    save_probe(probe_dir, [{"name": "api_sniffer", "detected": metadata is not None, "metadata": metadata}])
+    out.plain("artifacts", f"Saved: {probe_dir}")
+
+    if metadata:
+        rich = bool(metadata.get("fields"))
+        mon_pw = _estimate_monitor_cost("api_sniffer", n_jobs, {**metadata, "browser": True})
+        mon_httpx = _estimate_monitor_cost("api_sniffer", n_jobs, {**metadata, "browser": False}) if httpx_ok else None
+        init_load = 0.0 if rich else _estimate_initial_load(n_jobs)
+
+        rich_str = "rich" if rich else f"URL-only (+scraper ~{init_load:.0f}s initial)"
+        out.info("deep", f"api_sniffer   OK  {metadata.get('items', '?')} items  ~{mon_pw:.1f}s/cycle (PW)  {rich_str}")
+        out.plain("deep", f"  api_url: {metadata.get('api_url', '?')}")
+        if metadata.get("fields"):
+            fields = ", ".join(metadata["fields"].keys()) if isinstance(metadata["fields"], dict) else str(metadata["fields"])
+            out.plain("deep", f"  fields: {fields}")
+        if httpx_ok and mon_httpx is not None:
+            out.plain("deep", f"  httpx test: OK accessible (~{mon_httpx:.1f}s/cycle without Playwright)")
+        elif httpx_ok is False:
+            out.plain("deep", "  httpx test: failed (Playwright required)")
+
+        # Store in detections with clear cost breakdown
+        detection = dict(metadata)
+        detection["monitor_per_cycle_pw"] = round(mon_pw, 2)
+        if mon_httpx is not None:
+            detection["monitor_per_cycle_httpx"] = round(mon_httpx, 2)
+        detection["initial_load"] = round(init_load, 2)
+        detection["httpx_accessible"] = httpx_ok
+        detection["rich"] = rich
+        board.detections["api_sniffer"] = detection
+        action_log.append_to_list(board.log, "probe deep", True, f"api_sniffer detected, {metadata.get('items', '?')} items")
+        save_board(slug, board)
+
+        out.next_step("ws select monitor api_sniffer")
+    else:
+        out.warn("deep", "api_sniffer not detected — no XHR/fetch API found")
+        action_log.append_to_list(board.log, "probe deep", False, "api_sniffer not detected")
+        save_board(slug, board)
+
+
+@click.command(name="api")
+@click.argument("url")
+@click.argument("slug", required=False)
+@click.option("--board", "-b", "board_alias", default=None, help="Target board alias")
+def probe_api(url: str, slug: str | None, board_alias: str | None):
+    """Fetch and analyze an API endpoint for api_sniffer configuration."""
+    slug = resolve_slug(slug)
+    ws, board = _resolve_board(slug, board_alias)
+
+    async def _run():
+        from src.shared.http import create_http_client
+
+        http = create_http_client()
+        try:
+            resp = await http.get(url, timeout=30)
+            return resp
+        finally:
+            await http.aclose()
+
+    resp = asyncio.run(_run())
+
+    # Save artifact
+    from src.workspace.artifacts import api_probe_run_dir
+
+    probe_dir = api_probe_run_dir(slug, board.alias)
+    content_type = resp.headers.get("content-type", "")
+
+    if "json" in content_type:
+        data = resp.json()
+        (probe_dir / "response.json").write_text(json.dumps(data, indent=2, default=str))
+        out.info("probe", f"Fetched {resp.status_code} ({content_type.split(';')[0]}, {len(resp.content):,} bytes)")
+
+        # Analyze JSON structure
+        from src.shared.api_sniff import find_arrays, find_total_count, find_url_field
+
+        arrays = find_arrays(data)
+
+        if arrays:
+            from src.core.monitors.api_sniffer import find_html_strings, pick_best_array, score_array
+
+            best_path, best_items = pick_best_array(arrays, url)
+            url_field = find_url_field(best_items)
+            total = find_total_count(data, best_path) or len(best_items)
+            html_hits = find_html_strings(best_items[0]) if best_items else []
+
+            print()
+            out.plain("probe", f"Best array: {best_path} ({len(best_items)} items)")
+            if best_items:
+                sample = best_items[0]
+                out.plain("probe", f"Item keys: {', '.join(list(sample.keys())[:15])}")
+            if url_field:
+                out.plain("probe", f"URL field: {url_field}")
+            out.plain("probe", f"Total count: {total}")
+            if html_hits:
+                out.plain("probe", f"HTML fields: {', '.join(p for p, _ in html_hits[:5])}")
+
+            # Suggest config
+            print()
+            suggested: dict = {
+                "api_url": url,
+                "json_path": best_path,
+            }
+            if url_field:
+                suggested["url_field"] = url_field
+
+            out.plain("probe", f"Suggested config: {json.dumps(suggested)}")
+            out.next_step(f"ws select monitor api_sniffer --config '{json.dumps(suggested)}'")
+        else:
+            out.warn("probe", "No arrays found in JSON response")
+    else:
+        (probe_dir / "response.html").write_bytes(resp.content)
+        out.info("probe", f"Fetched {resp.status_code} ({content_type.split(';')[0]}, {len(resp.content):,} bytes)")
+        out.plain("probe", "HTML response — scan for embedded API endpoints manually")
+        out.plain("probe", f"Saved to: {probe_dir / 'response.html'}")
+
+    out.plain("artifacts", f"Saved: {probe_dir}")
+    action_log.append_to_list(board.log, "probe api", True, f"Analyzed {url}")
+    save_board(slug, board)
+
+
 _MONITOR_CONFIG_HINTS = {
     "greenhouse": "Requires: token (auto-filled from probe)",
     "lever": "Requires: token (auto-filled from probe)",
     "hireology": "Requires: slug (auto-filled from probe)",
     "recruitee": "Requires: slug or api_base (auto-filled from probe)",
     "rippling": "Requires: slug (auto-filled from probe)",
-    "successfactors": "Optional: feed_url (auto-filled from probe)",
+    "rss": "Optional: preset, feed_url (auto-filled from probe)",
     "sitemap": "Optional: sitemap_url, url_filter (regex to include/exclude URLs)",
     "nextdata": "Requires: path, url_template. Optional: fields, render, actions, url_filter",
     "dom": "Optional: render, actions, wait, timeout, url_filter",
@@ -326,11 +610,24 @@ _SCRAPER_CONFIG_HINTS = {
 @click.command(name="monitor")
 @click.argument("slug_or_type")
 @click.argument("type_", required=False)
+@click.option("--board", "-b", "board_alias", default=None, help="Target board alias")
+@click.option("--as", "config_name", default=None, help="Name for this configuration")
 @click.option("--config", "config_json", help="Monitor config JSON")
-def select_monitor(slug_or_type: str, type_: str | None, config_json: str | None):
+def select_monitor(
+    slug_or_type: str,
+    type_: str | None,
+    board_alias: str | None,
+    config_name: str | None,
+    config_json: str | None,
+):
     """Set monitor type for the active board."""
     slug, type_ = resolve_two_args(slug_or_type, type_)
-    ws, board = _get_active_board(slug)
+    ws, board = _resolve_board(slug, board_alias)
+
+    # Stale probe detection: warn if board URL changed since probe ran
+    probe_meta = board.detections.get("_meta", {})
+    if probe_meta and probe_meta.get("url") and probe_meta["url"] != board.url:
+        out.warn("monitor", f"Probe was run against {probe_meta['url']!r} but board URL is now {board.url!r} — re-probe recommended")
 
     # Validate type against registry
     from src.core.monitors import get_discoverer
@@ -343,27 +640,43 @@ def select_monitor(slug_or_type: str, type_: str | None, config_json: str | None
     config = {}
     if config_json:
         config = json.loads(config_json)
+    elif type_ in board.detections:
+        # Auto-fill from probe detections
+        config = dict(board.detections[type_])
+        out.info("monitor", f"Auto-filled config from probe: {json.dumps(config)}")
     elif board.monitor_config and "_probe" in board.monitor_config:
-        # Auto-fill from probe results
+        # Backward compat: old-style probe data in monitor_config
         probe_data = board.monitor_config["_probe"]
         if type_ in probe_data:
             config = {k: v for k, v in probe_data[type_].items()}
             out.info("monitor", f"Auto-filled config from probe: {json.dumps(config)}")
 
-    # Clean up probe data from config
-    clean_config = {k: v for k, v in config.items() if k != "_probe"}
+    # Clean up probe/internal data from config
+    _internal_keys = {"_probe", "monitor_per_cycle", "initial_load", "cost_est", "cost_est_pw", "cost_est_httpx", "rich", "httpx_accessible", "jobs", "urls", "count"}
+    clean_config = {k: v for k, v in config.items() if k not in _internal_keys}
 
-    board.monitor_type = type_
-    board.monitor_config = clean_config
-    ws.progress["monitor_selected"] = True
+    # Generate or use provided config name
+    name = config_name or _auto_config_name(board, type_)
 
+    # Create named config entry with cost estimate
+    mon_est = _estimate_monitor_cost(type_, 200, clean_config)
+    rich = is_rich_monitor(type_, clean_config)
+    init_load = 0.0 if rich else _estimate_initial_load(200)
+    board.configs[name] = {
+        "monitor_type": type_,
+        "monitor_config": clean_config,
+        "status": "selected",
+        "cost": {
+            "monitor_per_cycle": round(mon_est, 2),
+            "initial_load": round(init_load, 2),
+        },
+    }
+    board.active_config = name
+
+    action_log.append_to_list(board.log, "select monitor", True, f"Selected monitor: {type_} (as {name!r})")
     save_board(slug, board)
-    save_workspace(ws)
 
-    action_log.append_to_list(board.log, "select monitor", True, f"Selected monitor: {type_}")
-    save_board(slug, board)
-
-    out.info("monitor", f"Selected monitor: {type_}")
+    out.info("monitor", f"Selected monitor: {type_} (as {name!r})")
     if clean_config:
         out.plain("monitor", f"Config: {json.dumps(clean_config)}")
     elif type_ in _MONITOR_CONFIG_HINTS:
@@ -406,10 +719,11 @@ _CORE_FIELDS = ("title", "description", "locations")
 
 @click.command(name="monitor")
 @click.argument("slug", required=False)
-def run_monitor(slug: str | None):
+@click.option("--board", "-b", "board_alias", default=None, help="Target board alias")
+def run_monitor(slug: str | None, board_alias: str | None):
     """Test-crawl the active board with its selected monitor."""
     slug = resolve_slug(slug)
-    ws, board = _get_active_board(slug)
+    ws, board = _resolve_board(slug, board_alias)
 
     if not board.monitor_type:
         out.die("No monitor selected. Run: ws select monitor <type>")
@@ -459,6 +773,9 @@ def run_monitor(slug: str | None):
     job_count = len(result.urls)
     has_rich = result.jobs_by_url is not None
 
+    # Regression detection: previous run had jobs, now 0
+    prev_jobs = (board.monitor_run or {}).get("jobs", 0)
+
     # Store results in board
     board.monitor_run = {
         "jobs": job_count,
@@ -469,7 +786,13 @@ def run_monitor(slug: str | None):
         .datetime.now(__import__("datetime").timezone.utc)
         .strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
-    ws.progress["monitor_tested"] = True
+
+    # Mark config as tested and record measured cost
+    cfg = board._ensure_cfg()
+    cfg["status"] = "tested"
+    cost = cfg.get("cost") or {}
+    cost["monitor_per_cycle"] = round(elapsed, 2)
+    cfg["cost"] = cost
 
     # Save processed job data (raw data already saved by monitor_one)
     jobs_data = []
@@ -498,7 +821,6 @@ def run_monitor(slug: str | None):
     out.plain("artifacts", f"Saved: {run_dir}")
 
     save_board(slug, board)
-    save_workspace(ws)
 
     # Print results
     if result.filtered_count:
@@ -509,6 +831,11 @@ def run_monitor(slug: str | None):
             "monitor",
             f"0 jobs in {elapsed:.1f}s \u2014 check board URL or try a different monitor type",
         )
+        if prev_jobs > 0:
+            out.warn(
+                "monitor",
+                f"Regression: previous run found {prev_jobs} jobs, now 0 — board may have changed",
+            )
     else:
         out.info("monitor", f"{job_count} jobs in {elapsed:.1f}s")
 
@@ -562,19 +889,11 @@ def run_monitor(slug: str | None):
             if optional_parts:
                 out.plain("monitor", f"Optional: {', '.join(optional_parts)}")
         # API monitors skip scraper (including api_sniffer with fields)
-        api_monitors = {
-            "ashby", "greenhouse", "lever", "personio", "pinpoint",
-            "recruitee", "rippling", "smartrecruiters", "successfactors",
-            "workable", "workday",
-        }
-        is_rich_api = board.monitor_type in api_monitors or (
-            board.monitor_type == "api_sniffer" and (board.monitor_config or {}).get("fields")
-        )
-        if is_rich_api:
+        if is_rich_monitor(board.monitor_type, board.monitor_config):
             out.plain("monitor", "Skipping scraper — monitor returns full job data")
-            ws.progress["scraper_selected"] = True
-            ws.progress["scraper_tested"] = True
-            save_workspace(ws)
+            # Mark config as rich so derived progress knows scraper is not needed
+            board._ensure_cfg()["rich"] = True
+            save_board(slug, board)
     else:
         out.plain("monitor", "Rich data: no (URLs only, needs scraper)")
 
@@ -606,11 +925,12 @@ def run_monitor(slug: str | None):
 @click.command(name="scraper")
 @click.argument("slug_or_type")
 @click.argument("type_", required=False)
+@click.option("--board", "-b", "board_alias", default=None, help="Target board alias")
 @click.option("--config", "config_json", help="Scraper config JSON")
-def select_scraper(slug_or_type: str, type_: str | None, config_json: str | None):
+def select_scraper(slug_or_type: str, type_: str | None, board_alias: str | None, config_json: str | None):
     """Set scraper type for the active board."""
     slug, type_ = resolve_two_args(slug_or_type, type_)
-    ws, board = _get_active_board(slug)
+    ws, board = _resolve_board(slug, board_alias)
 
     # Validate type against registry
     from src.core.scrapers import get_scraper
@@ -624,10 +944,8 @@ def select_scraper(slug_or_type: str, type_: str | None, config_json: str | None
 
     board.scraper_type = type_
     board.scraper_config = config
-    ws.progress["scraper_selected"] = True
 
     save_board(slug, board)
-    save_workspace(ws)
 
     action_log.append_to_list(board.log, "select scraper", True, f"Selected scraper: {type_}")
     save_board(slug, board)
@@ -642,11 +960,12 @@ def select_scraper(slug_or_type: str, type_: str | None, config_json: str | None
 
 @click.command(name="scraper")
 @click.argument("slug", required=False)
+@click.option("--board", "-b", "board_alias", default=None, help="Target board alias")
 @click.option("--url", "urls", multiple=True, help="Specific URLs to scrape (repeatable)")
-def run_scraper(slug: str | None, urls: tuple[str, ...]):
+def run_scraper(slug: str | None, board_alias: str | None, urls: tuple[str, ...]):
     """Test-scrape sample job pages from the active board."""
     slug = resolve_slug(slug)
-    ws, board = _get_active_board(slug)
+    ws, board = _resolve_board(slug, board_alias)
 
     if not board.scraper_type:
         out.die("No scraper selected. Run: ws select scraper <type>")
@@ -723,7 +1042,16 @@ def run_scraper(slug: str | None, urls: tuple[str, ...]):
         .datetime.now(__import__("datetime").timezone.utc)
         .strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
-    ws.progress["scraper_tested"] = True
+
+    # Mark config as tested and record measured scraper cost
+    cfg = board._ensure_cfg()
+    cfg["status"] = "tested"
+    cost = cfg.get("cost") or {}
+    cost["scraper_per_job"] = round(avg_time, 2)
+    # Update initial load estimate using measured per-job time
+    n_jobs = board.monitor_run.get("jobs", 200) if board.monitor_run else 200
+    cost["initial_load"] = round(_estimate_initial_load(n_jobs, avg_time), 2)
+    cfg["cost"] = cost
 
     # Save extracted job content (raw HTML already saved by scrape_one)
     from dataclasses import asdict
@@ -767,7 +1095,6 @@ def run_scraper(slug: str | None, urls: tuple[str, ...]):
     out.plain("artifacts", f"Saved: {run_dir}")
 
     save_board(slug, board)
-    save_workspace(ws)
 
     # Print results table
     print()
@@ -878,3 +1205,321 @@ def run_scraper(slug: str | None, urls: tuple[str, ...]):
         out.next_step("ws submit")
     else:
         out.next_step("ws submit")
+
+
+# ── Config management commands ─────────────────────────────────────────
+
+
+@click.command(name="config")
+@click.argument("name")
+@click.argument("slug", required=False)
+@click.option("--board", "-b", "board_alias", default=None, help="Target board alias")
+def select_config(name: str, slug: str | None, board_alias: str | None):
+    """Re-activate a previously tested configuration."""
+    slug = resolve_slug(slug)
+    ws, board = _resolve_board(slug, board_alias)
+
+    if name not in board.configs:
+        out.die(f"Config {name!r} not found. Available: {', '.join(board.configs) or 'none'}")
+
+    cfg = board.configs[name]
+    if cfg.get("status") == "rejected":
+        out.warn("config", f"Config {name!r} was previously rejected: {cfg.get('rejection_reason', '')}")
+
+    board.active_config = name
+    action_log.append_to_list(board.log, "select config", True, f"Re-activated config: {name!r}")
+    save_board(slug, board)
+
+    out.info("config", f"Active config: {name!r} ({cfg.get('monitor_type', '?')})")
+    status = cfg.get("status", "unknown")
+    out.plain("config", f"Status: {status}")
+    if status == "tested":
+        out.next_step("ws feedback" if not cfg.get("feedback") else "ws submit")
+    else:
+        out.next_step("ws run monitor")
+
+
+@click.command(name="reject-config")
+@click.argument("name")
+@click.argument("slug", required=False)
+@click.option("--board", "-b", "board_alias", default=None, help="Target board alias")
+@click.option("--reason", "-r", required=True, help="Reason for rejecting this config")
+def reject_config(name: str, slug: str | None, board_alias: str | None, reason: str):
+    """Reject a configuration (board-local, not a GitHub action)."""
+    slug = resolve_slug(slug)
+    ws, board = _resolve_board(slug, board_alias)
+
+    if name not in board.configs:
+        out.die(f"Config {name!r} not found. Available: {', '.join(board.configs) or 'none'}")
+
+    board.configs[name]["status"] = "rejected"
+    board.configs[name]["rejection_reason"] = reason
+
+    # If rejecting the active config, clear active_config
+    if board.active_config == name:
+        board.active_config = None
+
+    action_log.append_to_list(board.log, "reject config", True, f"Rejected {name!r}: {reason}")
+    save_board(slug, board)
+
+    out.info("config", f"Rejected config {name!r}: {reason}")
+    remaining = [n for n, c in board.configs.items() if c.get("status") != "rejected"]
+    if remaining:
+        out.plain("config", f"Available configs: {', '.join(remaining)}")
+    else:
+        out.next_step("ws select monitor <type>")
+
+
+# ── Feedback command ───────────────────────────────────────────────────
+
+_QUALITY_VALUES = ("clean", "noisy", "unusable", "absent")
+
+_FEEDBACK_FIELDS = [
+    "title",
+    "description",
+    "locations",
+    "employment_type",
+    "job_location_type",
+    "date_posted",
+    "base_salary",
+    "skills",
+    "qualifications",
+    "responsibilities",
+    "valid_through",
+]
+
+_REQUIRED_FIELDS = ("title", "description")
+_IMPORTANT_FIELDS = ("locations", "employment_type", "job_location_type")
+
+
+@click.command(name="feedback")
+@click.argument("name", required=False)
+@click.argument("slug", required=False)
+@click.option("--board", "-b", "board_alias", default=None, help="Target board alias")
+@click.option("--title", "title_q", type=click.Choice(_QUALITY_VALUES), help="Title quality")
+@click.option("--description", "desc_q", type=click.Choice(_QUALITY_VALUES), help="Description quality")
+@click.option("--locations", "loc_q", type=click.Choice(_QUALITY_VALUES), help="Locations quality")
+@click.option("--locations-notes", "loc_notes", default="", help="Locations quality notes")
+@click.option("--employment-type", "et_q", type=click.Choice(_QUALITY_VALUES), help="Employment type quality")
+@click.option("--employment-type-notes", "et_notes", default="", help="Employment type notes")
+@click.option("--job-location-type", "jlt_q", type=click.Choice(_QUALITY_VALUES), help="Job location type quality")
+@click.option("--job-location-type-notes", "jlt_notes", default="", help="Job location type notes")
+@click.option("--date-posted", "dp_q", type=click.Choice(_QUALITY_VALUES), help="Date posted quality")
+@click.option("--base-salary", "bs_q", type=click.Choice(_QUALITY_VALUES), help="Base salary quality")
+@click.option("--skills", "sk_q", type=click.Choice(_QUALITY_VALUES), help="Skills quality")
+@click.option("--qualifications", "qual_q", type=click.Choice(_QUALITY_VALUES), help="Qualifications quality")
+@click.option("--responsibilities", "resp_q", type=click.Choice(_QUALITY_VALUES), help="Responsibilities quality")
+@click.option("--valid-through", "vt_q", type=click.Choice(_QUALITY_VALUES), help="Valid through quality")
+@click.option(
+    "--verdict",
+    required=True,
+    type=click.Choice(("good", "acceptable", "poor", "unusable")),
+    help="Overall verdict",
+)
+@click.option("--verdict-notes", default="", help="Verdict notes")
+def feedback_cmd(
+    name: str | None,
+    slug: str | None,
+    board_alias: str | None,
+    title_q: str | None,
+    desc_q: str | None,
+    loc_q: str | None,
+    loc_notes: str,
+    et_q: str | None,
+    et_notes: str,
+    jlt_q: str | None,
+    jlt_notes: str,
+    dp_q: str | None,
+    bs_q: str | None,
+    sk_q: str | None,
+    qual_q: str | None,
+    resp_q: str | None,
+    vt_q: str | None,
+    verdict: str,
+    verdict_notes: str,
+):
+    """Record extraction quality feedback for a configuration."""
+    slug = resolve_slug(slug)
+    ws, board = _resolve_board(slug, board_alias)
+
+    # Default name to active config
+    if not name:
+        name = board.active_config
+    if not name or name not in board.configs:
+        out.die(
+            f"Config {name!r} not found. Available: {', '.join(board.configs) or 'none'}"
+        )
+
+    cfg = board.configs[name]
+
+    # Gather run quality data for auto-population
+    run = cfg.get("run") or {}
+    scraper_run = cfg.get("scraper_run") or {}
+    total = run.get("jobs", 0) or scraper_run.get("count", 0)
+    run_quality = run.get("quality") or {}
+    scraper_quality = scraper_run.get("quality") or {}
+    coverage_data = {**run_quality, **scraper_quality}
+
+    # Map option values to field names
+    explicit_quality = {
+        "title": title_q,
+        "description": desc_q,
+        "locations": loc_q,
+        "employment_type": et_q,
+        "job_location_type": jlt_q,
+        "date_posted": dp_q,
+        "base_salary": bs_q,
+        "skills": sk_q,
+        "qualifications": qual_q,
+        "responsibilities": resp_q,
+        "valid_through": vt_q,
+    }
+    notes_map = {
+        "locations": loc_notes,
+        "employment_type": et_notes,
+        "job_location_type": jlt_notes,
+    }
+
+    # Build per-field feedback
+    fields_fb: dict[str, dict] = {}
+    for field_name in _FEEDBACK_FIELDS:
+        count = coverage_data.get(field_name, 0)
+        coverage = f"{count}/{total}" if total else "0/0"
+
+        # Determine quality: explicit > auto-populate
+        q = explicit_quality.get(field_name)
+        if q is None:
+            if count == 0:
+                q = "absent"
+            else:
+                # Any field with coverage needs explicit assessment
+                q = None
+
+        if q is not None:
+            entry: dict[str, str] = {"coverage": coverage, "quality": q}
+            notes = notes_map.get(field_name, "")
+            if notes:
+                entry["notes"] = notes
+            fields_fb[field_name] = entry
+
+    # Require explicit quality for all fields that have coverage (or are required)
+    missing_explicit = []
+    for field_name in _FEEDBACK_FIELDS:
+        if field_name in fields_fb:
+            continue
+        count = coverage_data.get(field_name, 0)
+        if count > 0 or field_name in _REQUIRED_FIELDS:
+            missing_explicit.append(f"--{field_name.replace('_', '-')}")
+    if missing_explicit:
+        out.die(f"Explicit quality required for: {', '.join(missing_explicit)} (clean/noisy/unusable/absent)")
+
+    # Compute tier summaries
+    def _tier_summary(tier_fields: tuple[str, ...]) -> dict[str, str]:
+        tier_coverage = 0
+        tier_total = 0
+        worst_q = "clean"
+        q_rank = {"clean": 0, "noisy": 1, "unusable": 2, "absent": 3}
+        for f in tier_fields:
+            fb = fields_fb.get(f)
+            if fb:
+                c, t = fb["coverage"].split("/")
+                tier_coverage += int(c)
+                tier_total += int(t)
+                if q_rank.get(fb["quality"], 0) > q_rank.get(worst_q, 0):
+                    worst_q = fb["quality"]
+        return {"coverage": f"{tier_coverage}/{tier_total}", "quality": worst_q}
+
+    feedback_data = {
+        "fields": fields_fb,
+        "required": _tier_summary(_REQUIRED_FIELDS),
+        "important": _tier_summary(_IMPORTANT_FIELDS),
+        "optional": _tier_summary(
+            tuple(f for f in _FEEDBACK_FIELDS if f not in _REQUIRED_FIELDS and f not in _IMPORTANT_FIELDS)
+        ),
+        "verdict": verdict,
+        "verdict_notes": verdict_notes,
+    }
+
+    cfg["feedback"] = feedback_data
+    action_log.append_to_list(board.log, "feedback", True, f"Feedback for {name!r}: verdict={verdict}")
+    save_board(slug, board)
+
+    out.info("feedback", f"Recorded feedback for {name!r}: verdict={verdict}")
+    for tier_name, tier_fields in [
+        ("Required", _REQUIRED_FIELDS),
+        ("Important", _IMPORTANT_FIELDS),
+    ]:
+        tier = feedback_data.get(tier_name.lower(), {})
+        out.plain("feedback", f"  {tier_name}: {tier.get('coverage', '?')} ({tier.get('quality', '?')})")
+    if verdict in ("good", "acceptable"):
+        out.next_step("ws submit")
+    elif verdict == "poor":
+        out.warn("feedback", "Verdict is poor — submit requires --force")
+    else:
+        out.warn("feedback", "Verdict is unusable — cannot submit")
+
+
+# ── Quality gates ──────────────────────────────────────────────────────
+
+
+def _url_reachable(url: str) -> bool:
+    """Check if a URL is reachable (2xx/3xx). Returns False on error."""
+    try:
+        import httpx
+
+        resp = httpx.head(url, follow_redirects=True, timeout=10)
+        return resp.status_code < 400
+    except Exception:
+        return False
+
+
+def run_quality_gates(
+    ws,
+    boards: list,
+) -> tuple[list[str], list[str]]:
+    """Check quality gates for submit. Returns (blockers, warnings)."""
+    blockers: list[str] = []
+    warnings: list[str] = []
+
+    if not boards:
+        blockers.append("No boards configured")
+        return blockers, warnings
+
+    if not ws.name:
+        blockers.append("Company name not set")
+    if not ws.website:
+        blockers.append("Company website not set")
+
+    for b in boards:
+        if not b.active_config:
+            blockers.append(f"Board {b.alias}: no config selected")
+            continue
+
+        cfg = b.configs.get(b.active_config)
+        if not cfg:
+            blockers.append(f"Board {b.alias}: active config {b.active_config!r} not found")
+            continue
+
+        if cfg.get("status") != "tested":
+            blockers.append(f"Board {b.alias}: config not tested")
+        elif cfg.get("run", {}).get("jobs", 0) == 0:
+            blockers.append(f"Board {b.alias}: 0 jobs found")
+
+        fb = cfg.get("feedback")
+        if not fb:
+            blockers.append(f"Board {b.alias}: no feedback for {b.active_config!r}")
+        elif fb.get("verdict") == "unusable":
+            blockers.append(f"Board {b.alias}: verdict is unusable")
+        elif fb.get("verdict") == "poor":
+            blockers.append(f"Board {b.alias}: verdict is poor (use --force)")
+
+    if not ws.logo_url:
+        warnings.append("No logo URL set")
+    elif not _url_reachable(ws.logo_url):
+        blockers.append(f"logo_url unreachable: {ws.logo_url}")
+    if not ws.icon_url:
+        warnings.append("No icon URL set")
+    elif not _url_reachable(ws.icon_url):
+        blockers.append(f"icon_url unreachable: {ws.icon_url}")
+
+    return blockers, warnings

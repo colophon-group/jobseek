@@ -3,6 +3,13 @@ from __future__ import annotations
 import pytest
 
 from src.csvtool import _read_csv, board_add, board_del, company_add, company_del
+from src.workspace.errors import (
+    BoardNotFoundError,
+    InvalidSlugError,
+    MissingRequiredFieldError,
+    NothingToUpdateError,
+    SlugNotFoundError,
+)
 
 COMPANIES_HEADER = "slug,name,website,logo_url,icon_url\n"
 BOARDS_HEADER = (
@@ -49,12 +56,12 @@ class TestCompanyAdd:
 
     def test_invalid_slug(self, tmp_path, monkeypatch):
         self._setup(tmp_path, monkeypatch)
-        with pytest.raises(SystemExit):
+        with pytest.raises(InvalidSlugError):
             company_add("INVALID")
 
     def test_existing_no_updates(self, tmp_path, monkeypatch):
         self._setup(tmp_path, monkeypatch, companies="test-co,Test,,,\n")
-        with pytest.raises(SystemExit):
+        with pytest.raises(NothingToUpdateError):
             company_add("test-co")
 
     def test_preserves_other_companies(self, tmp_path, monkeypatch):
@@ -107,7 +114,7 @@ class TestCompanyDel:
 
     def test_nonexistent(self, tmp_path, monkeypatch):
         self._setup(tmp_path, monkeypatch)
-        with pytest.raises(SystemExit):
+        with pytest.raises(SlugNotFoundError):
             company_del("nonexistent")
 
     def test_preserves_other_companies(self, tmp_path, monkeypatch):
@@ -181,12 +188,12 @@ class TestBoardAdd:
 
     def test_company_not_found(self, tmp_path, monkeypatch):
         self._setup(tmp_path, monkeypatch)
-        with pytest.raises(SystemExit):
+        with pytest.raises(SlugNotFoundError):
             board_add("nonexistent", board_url="https://test.com/jobs", monitor_type="greenhouse")
 
     def test_missing_board_url_on_create(self, tmp_path, monkeypatch):
         self._setup(tmp_path, monkeypatch, companies="test-co,Test,,,\n")
-        with pytest.raises(SystemExit):
+        with pytest.raises(MissingRequiredFieldError):
             board_add("test-co", monitor_type="greenhouse")
 
     def test_existing_no_updates(self, tmp_path, monkeypatch):
@@ -196,7 +203,7 @@ class TestBoardAdd:
             companies="test-co,Test,,,\n",
             boards="test-co,test-co-careers,https://test.com/jobs,greenhouse,,,\n",
         )
-        with pytest.raises(SystemExit):
+        with pytest.raises(NothingToUpdateError):
             board_add("test-co", board_url="https://test.com/jobs")
 
     def test_preserves_other_boards(self, tmp_path, monkeypatch):
@@ -247,12 +254,12 @@ class TestBoardDel:
 
     def test_specific_board_not_found(self, tmp_path, monkeypatch):
         self._setup(tmp_path, monkeypatch)
-        with pytest.raises(SystemExit):
+        with pytest.raises(BoardNotFoundError):
             board_del("test-co", board_url="https://nonexistent.com")
 
     def test_no_boards_for_slug(self, tmp_path, monkeypatch):
         self._setup(tmp_path, monkeypatch)
-        with pytest.raises(SystemExit):
+        with pytest.raises(BoardNotFoundError):
             board_del("nonexistent")
 
     def test_preserves_other_boards(self, tmp_path, monkeypatch):

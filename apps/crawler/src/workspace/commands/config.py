@@ -138,7 +138,6 @@ def add_board(slug_or_alias: str, alias: str | None, url: str):
 
     # Auto-activate
     ws.active_board = alias
-    ws.progress["board_added"] = True
     save_workspace(ws)
 
     action_log.append(

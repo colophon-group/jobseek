@@ -106,6 +106,7 @@ class TestDiscoverReplay:
             "method": "GET",
             "json_path": "results",
             "url_field": "url",
+            "browser": True,
             "fields": {"title": "title", "description": "desc"},
         }
         board = {"board_url": "https://example.com/careers", "metadata": config}
@@ -147,6 +148,7 @@ class TestDiscoverReplay:
             "method": "GET",
             "json_path": "results",
             "url_field": "url",
+            "browser": True,
         }
         board = {"board_url": "https://example.com/careers", "metadata": config}
 

@@ -19,7 +19,7 @@ src/
 ├── core/
 │   ├── monitors/          # Monitor implementations
 │   │   ├── __init__.py    # Registry + DiscoveredJob dataclass
-│   │   ├── api_sniffer.py # XHR/fetch API capture (Playwright)
+│   │   ├── api_sniffer.py # API capture (httpx for public APIs, Playwright for browser-dependent)
 │   │   ├── ashby.py       # Ashby Job Board API
 │   │   ├── greenhouse.py  # Greenhouse JSON API
 │   │   ├── hireology.py   # Hireology Careers API
@@ -27,7 +27,7 @@ src/
 │   │   ├── personio.py    # Personio Public XML Feed
 │   │   ├── recruitee.py   # Recruitee Careers Site API
 │   │   ├── rippling.py    # Rippling ATS Job Board API
-│   │   ├── successfactors.py # SAP SuccessFactors CSB RSS Feed
+│   │   ├── rss.py            # RSS 2.0 feed monitor (SuccessFactors, Teamtailor, generic)
 │   │   ├── workday.py     # Workday Job Board API
 │   │   ├── sitemap.py     # XML sitemap parser
 │   │   ├── nextdata.py    # Next.js __NEXT_DATA__ discovery
@@ -44,12 +44,16 @@ src/
 ├── workspace/             # Workspace CLI (ws command)
 │   ├── cli.py             # Click entry point + groups
 │   ├── commands/          # Command implementations
-│   │   ├── lifecycle.py   # new, reject, del, submit, status, validate
+│   │   ├── lifecycle.py   # new, reject, del, submit, status, validate, resume
 │   │   ├── config.py      # set, add board, del board
-│   │   └── crawl.py       # probe, select/run monitor, select/run scraper
-│   ├── state.py           # YAML workspace state
+│   │   ├── crawl.py       # probe, select/run monitor/scraper, feedback
+│   │   └── help.py        # Reference docs for monitors, scrapers, config
+│   ├── state.py           # YAML workspace state (v2: named configs)
 │   ├── log.py             # Action log + transcript
-│   ├── git.py             # Git/GitHub CLI wrappers
+│   ├── git.py             # Git/GitHub CLI wrappers (retry, error wrapping)
+│   ├── errors.py          # Exception hierarchy (WorkspaceError, CsvToolError, GitError)
+│   ├── preflight.py       # Pre-flight checks (branch, PR state)
+│   ├── filelock.py        # Advisory file locking
 │   ├── output.py          # Terminal output helpers
 │   ├── artifacts.py       # Debug artifact storage
 │   └── url_check.py       # URL validation helpers
@@ -84,16 +88,22 @@ ws use <slug>                          # Switch active workspace (multi-workspac
 ws set --name "..." --website "..."
 ws add board <alias> --url <board-url>
 ws probe monitor                       # Probe all monitor types
-ws probe scraper                       # Probe all scraper types
-ws select monitor <type>               # Select monitor
+ws probe scraper                       # Probe all scraper types against sample URLs
+ws probe deep                          # Playwright-based api_sniffer detection
+ws probe api <url>                     # Analyze API endpoint for api_sniffer config
+ws select monitor <type> [--as <name>] # Select monitor (named configs)
 ws run monitor                         # Test crawl
-ws select scraper <type>               # Select scraper
-ws run scraper                         # Test scrape
-ws submit --summary "..."              # Validate, commit, push, post stats
+ws select scraper <type> [--config JSON] # Select scraper
+ws run scraper [--url URL ...]         # Test scrape
+ws feedback [<config>] --verdict good  # Record extraction quality (mandatory)
+ws select config <name>                # Re-activate a previously tested config
+ws reject-config <name> --reason "..." # Mark a config as rejected
+ws submit [--summary "..."] [--force]  # Validate, commit, push, post stats
 
 # Utilities
 ws validate                            # Validate CSVs
 ws status                              # Show active workspace (or list all)
+ws resume                              # Diagnose workspace state + suggest next action
 ws use --board <alias>                 # Switch active board
 ws del                                 # Remove workspace + CSV rows + close PR
 
@@ -131,6 +141,8 @@ uv run pytest tests/
 
 ## Scraper Evaluation Guidelines
 
+See [docs/08-job-data-fields.md](../../docs/08-job-data-fields.md) for the complete field reference (types, formats, accepted values, per-ATS source mapping, and `fields` mapping syntax).
+
 When evaluating scraper probe results and extraction output:
 
 - **Do not blindly follow "Next:" suggestions** — if required fields show 0/N, the heuristic config is wrong. A scraper that can't extract titles or descriptions will never produce complete data.
@@ -139,6 +151,7 @@ When evaluating scraper probe results and extraction output:
 - **N/N does not mean correct** — verify actual content in `ws run scraper` output. Truncated locations ("+2 more"), garbled text, or generic placeholders count as populated but are not complete. Completeness requires the actual values to be correct.
 - **Don't patch broken data** — if extracted content is incomplete, find the complete data source instead of applying regex cleanup. Reliability comes from extracting complete data at the source.
 - **Verify content quality before submitting** — read the content samples, not just the stats. A field showing N/N with wrong content is worse than one showing 0/N (which at least signals a problem).
+- **Check field formats** — `locations` must be `list[str]` (not objects), `description` must be HTML, `base_salary` must be `{currency, min, max, unit}` dict, `job_location_type` should be `"remote"`/`"hybrid"`/`"onsite"`. See the [field reference](../../docs/08-job-data-fields.md) for details.
 
 ## Proposing Code Changes
 

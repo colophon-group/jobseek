@@ -50,14 +50,14 @@ async def run_once(
     scrape: bool = True,
 ) -> None:
     """Process one batch and return."""
-    concurrency = settings.crawler_concurrency
+    limit = settings.crawler_batch_limit
 
     if monitor:
-        result = await process_monitor_batch(pool, http, limit=concurrency)
+        result = await process_monitor_batch(pool, http, limit=limit)
         log.info("scheduler.monitor_batch", **vars(result))
 
     if scrape:
-        result = await process_scrape_batch(pool, http, limit=concurrency)
+        result = await process_scrape_batch(pool, http, limit=limit)
         log.info("scheduler.scrape_batch", **vars(result))
 
 
@@ -69,28 +69,35 @@ async def run_poll_loop(
     monitor: bool = True,
     scrape: bool = True,
 ) -> None:
-    """Long-running poll loop. Processes batches every poll_interval seconds."""
-    poll_interval = settings.crawler_poll_interval
-    concurrency = settings.crawler_concurrency
+    """Long-running poll loop with adaptive polling.
+
+    When work is found, checks again quickly (1s). When idle, backs off
+    exponentially up to poll_interval. This reduces latency for new work
+    while avoiding busy-waiting when idle.
+    """
+    max_interval = settings.crawler_poll_interval
+    limit = settings.crawler_batch_limit
+    idle_interval = 1.0  # Start responsive
 
     while not shutdown_event.is_set():
         did_work = False
 
         if monitor:
-            result = await process_monitor_batch(pool, http, limit=concurrency)
+            result = await process_monitor_batch(pool, http, limit=limit)
             if result.processed > 0:
                 did_work = True
                 log.info("scheduler.monitor_batch", **vars(result))
 
         if scrape:
-            result = await process_scrape_batch(pool, http, limit=concurrency)
+            result = await process_scrape_batch(pool, http, limit=limit)
             if result.processed > 0:
                 did_work = True
                 log.info("scheduler.scrape_batch", **vars(result))
 
-        if not did_work:
-            with contextlib.suppress(TimeoutError):
-                await asyncio.wait_for(shutdown_event.wait(), timeout=poll_interval)
+        idle_interval = 1.0 if did_work else min(idle_interval * 2, max_interval)
+
+        with contextlib.suppress(TimeoutError):
+            await asyncio.wait_for(shutdown_event.wait(), timeout=idle_interval)
 
 
 async def run() -> None:
@@ -105,7 +112,7 @@ async def run() -> None:
         mode="once" if args.once else "poll",
         monitor=do_monitor,
         scrape=do_scrape,
-        concurrency=settings.crawler_concurrency,
+        batch_limit=settings.crawler_batch_limit,
         poll_interval=settings.crawler_poll_interval,
     )
 

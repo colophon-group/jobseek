@@ -1,0 +1,34 @@
+name: Sync CSVs to DB
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/crawler/data/companies.csv"
+      - "apps/crawler/data/boards.csv"
+
+concurrency:
+  group: sync-csv
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Sync
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: uv sync
+        working-directory: apps/crawler
+
+      - run: uv run python -m src.sync
+        working-directory: apps/crawler
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}

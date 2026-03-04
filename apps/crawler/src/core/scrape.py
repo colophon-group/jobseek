@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from src.core.scrapers import JobContent, get_scraper
+from src.shared.throttle import throttle_domain
 
 if TYPE_CHECKING:
     import httpx
@@ -50,6 +51,9 @@ async def scrape_one(
     to the scraper to reuse a shared browser process.
     """
     scraper = get_scraper(scraper_type)
+
+    # Per-domain politeness throttle
+    await throttle_domain(url)
 
     if artifact_dir is not None and job_id is not None:
         artifact_dir.mkdir(parents=True, exist_ok=True)

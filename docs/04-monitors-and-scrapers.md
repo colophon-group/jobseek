@@ -2,21 +2,43 @@
 
 Monitors discover which jobs exist on a board. Scrapers extract details from individual job pages. Together they form the data pipeline.
 
+## Rich vs URL-Only Monitors
+
+Monitors fall into two categories:
+
+- **Rich monitors** return complete `DiscoveredJob` data (title, description, locations, etc.) in a single request. The batch processor inserts this directly — no scraper step is needed. All API monitors are rich.
+- **URL-only monitors** return a set of job page URLs. Each URL is then scraped individually to extract job details.
+
+Cost implications:
+- **Rich**: cost = one monitor invocation per cycle (~0.5–2s). No scraper cost.
+- **URL-only**: cost = one monitor invocation + N × scraper cost per new job. First run scrapes all existing jobs (initial load: N × 0.3–4s depending on scraper type). Steady-state cost is low since only new jobs need scraping.
+
 ## Monitors
 
-A monitor takes a board config and returns either **full job data** (API monitors) or **URL sets** (page monitors).
+A monitor takes a board config and returns either **full job data** (rich monitors) or **URL sets** (URL-only monitors).
 
-### Monitor Types (ordered by cost)
+### Monitor Types
 
-| Type | Cost | Returns | When to Use |
+| Type | Kind | Returns | When to Use |
 |------|------|---------|-------------|
-| `greenhouse` | Low | Full job data | Board is powered by Greenhouse |
-| `lever` | Low | Full job data | Board is powered by Lever |
-| `sitemap` | Medium | URL set | Site has an XML sitemap with job URLs |
-| `nextdata` | Medium | URL set or full data | Next.js site with `__NEXT_DATA__` or API routes |
-| `dom` | High | URL set | Last resort — link extraction from page HTML |
+| `ashby` | Rich | Full job data | Ashby ATS |
+| `greenhouse` | Rich | Full job data | Greenhouse ATS |
+| `hireology` | Rich | Full job data | Hireology ATS |
+| `lever` | Rich | Full job data | Lever ATS |
+| `personio` | Rich | Full job data | Personio XML feed |
+| `pinpoint` | Rich | Full job data | Pinpoint ATS |
+| `recruitee` | Rich | Full job data | Recruitee ATS |
+| `rippling` | Rich | Full job data | Rippling ATS |
+| `rss` | Rich | Full job data | RSS 2.0 feeds (SuccessFactors, Teamtailor, etc.) |
+| `smartrecruiters` | Rich | Full job data | SmartRecruiters ATS |
+| `workable` | Rich | Full job data | Workable ATS |
+| `workday` | Rich | Full job data | Workday ATS |
+| `api_sniffer` | Rich* | Full or URLs | XHR/fetch capture (*rich when `fields` auto-mapped) |
+| `sitemap` | URL-only | URL set | Site has an XML sitemap with job URLs |
+| `nextdata` | URL-only | URL set | Next.js site with `__NEXT_DATA__` |
+| `dom` | URL-only | URL set | Last resort — link extraction from page HTML |
 
-Always prefer cheaper monitors. API monitors (greenhouse, lever) are the best case — they return complete job data in a single request, no scraper needed.
+Always prefer rich monitors. API monitors are the best case — they return complete job data in a single request, no scraper needed.
 
 ### greenhouse
 
@@ -142,15 +164,13 @@ A scraper takes a job page URL and returns structured job data. Only needed when
 
 | Type | Fetch mode | How it works |
 |------|-----------|-------------|
-| `greenhouse_api` | No fetch | Data comes from monitor (passthrough) |
-| `lever_api` | No fetch | Data comes from monitor (passthrough) |
 | `json-ld` | Static | Parses `<script type="application/ld+json">` |
 | `nextdata` | Static or Playwright | Extracts from Next.js `__NEXT_DATA__` props |
+| `embedded` | Static | Extracts from embedded JSON/JS data in page source |
 | `dom` | Static or Playwright | Step-based extraction engine |
+| `api_sniffer` | Playwright | Captures XHR/fetch API responses |
 
-### greenhouse_api / lever_api
-
-Passthrough scrapers — the monitor already provides full job data. No additional fetching needed.
+> **Note:** API monitors (ashby, greenhouse, lever, etc.) return full job data directly — no scraper is needed. The `scraper_type` column is left empty for these.
 
 ### json-ld
 
@@ -161,15 +181,9 @@ Parses [schema.org/JobPosting](https://schema.org/JobPosting) JSON-LD from the p
 {}
 ```
 
-No config needed — the extractor handles all standard JobPosting fields automatically:
-- `title` → title
-- `description` → description (HTML)
-- `jobLocation` → locations (handles single object or array)
-- `baseSalary` → salary (currency, min, max, unit)
-- `employmentType` → employment type
-- `jobLocationType` → remote/hybrid/onsite
-- `qualifications` / `skills` / `responsibilities` → lists
-- `datePosted` / `validThrough` → dates
+No config needed — the extractor handles all standard [schema.org/JobPosting](https://schema.org/JobPosting) fields automatically. See [08 — Job Data Fields: Schema.org Mapping](./08-job-data-fields.md#schemaorg--json-ld-mapping) for the complete mapping table.
+
+Key mappings: `title`/`name` → title, `description` → description (HTML), `jobLocation` → locations, `baseSalary` → `{currency, min, max, unit}` dict, `employmentType` → employment type, `jobLocationType` → remote/hybrid/onsite, `skills`/`responsibilities`/`qualifications` → lists, `datePosted`/`validThrough` → dates.
 
 **When to use**: Try this first for any sitemap-discovered board. Many sites (Meta, LinkedIn, Indeed, Workable-powered) embed JSON-LD. Use `ws probe` to auto-detect, or `ws select scraper json-ld` and `ws run scraper` to test.
 
@@ -195,7 +209,7 @@ Extracts job details from Next.js `__NEXT_DATA__` page props.
 | Key | Required | Description |
 |-----|----------|-------------|
 | `path` | No | Dot-path to the job object in `__NEXT_DATA__` JSON |
-| `fields` | Yes | Map of target field → source path in the job object |
+| `fields` | Yes | Map of target field → source path in the job object (see [08 — Job Data Fields: Field Mapping](./08-job-data-fields.md#field-mapping-in-scrapers)) |
 | `render` | No | `false` (default) for static HTTP, `true` for Playwright |
 | `actions` | No | Browser action pipeline (see [Actions](#actions)); implies `render: true` |
 
@@ -313,13 +327,10 @@ Example:
 Decision tree for agents (use `ws probe` to auto-detect):
 
 ```
-1. Is the board URL on greenhouse.io or detected as Greenhouse?
-   → monitor: greenhouse, scraper: greenhouse_api
+1. Is the board on a known ATS (Greenhouse, Lever, Ashby, etc.)?
+   → Use the corresponding API monitor (scraper not needed — returns full data)
 
-2. Is the board URL on lever.co or detected as Lever?
-   → monitor: lever, scraper: lever_api
-
-3. Does the site have an XML sitemap with job URLs?
+2. Does the site have an XML sitemap with job URLs?
    a. Do individual job pages have JSON-LD?
       → monitor: sitemap, scraper: json-ld
    b. Do job pages have consistent HTML structure?

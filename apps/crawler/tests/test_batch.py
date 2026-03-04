@@ -1,8 +1,32 @@
 from __future__ import annotations
 
 import json
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from src.batch import BatchResult, _jsonb
+import pytest
+
+from src.batch import (
+    _INSERT_RICH_JOB,
+    _INSERT_URL_ONLY_JOBS,
+    _RECORD_FAILURE,
+    _RECORD_SUCCESS,
+    _UPDATE_JOB_CONTENT,
+    _UPDATE_METADATA,
+    _UPDATE_RELISTED_CONTENT,
+    BatchResult,
+    _jsonb,
+    _monitor_pipeline,
+    _process_one_board,
+    _process_one_scrape,
+    _scrape_pipeline,
+    _throttle_key,
+    process_monitor_batch,
+    process_scrape_batch,
+)
+from src.core.monitor import MonitorResult
+from src.core.monitors import DiscoveredJob, api_monitor_types
+from src.core.scrapers import JobContent
+from src.shared.queue import QueueItem
 
 
 class TestJsonb:
@@ -32,3 +56,694 @@ class TestBatchResult:
         assert r.processed == 10
         assert r.succeeded == 8
         assert r.failed == 2
+
+
+class TestThrottleKey:
+    def _board(self, **kw):
+        defaults = {"crawler_type": "sitemap", "board_url": "https://example.com/jobs"}
+        defaults.update(kw)
+        record = MagicMock()
+        record.__getitem__ = lambda self, key: defaults[key]
+        return record
+
+    def test_api_monitor_returns_type(self):
+        board = self._board(crawler_type="greenhouse")
+        assert _throttle_key(board) == "greenhouse"
+
+    def test_all_api_types(self):
+        for api_type in api_monitor_types():
+            board = self._board(crawler_type=api_type)
+            assert _throttle_key(board) == api_type
+
+    def test_url_monitor_returns_hostname(self):
+        board = self._board(crawler_type="sitemap", board_url="https://acme.com/jobs")
+        assert _throttle_key(board) == "acme.com"
+
+    def test_dom_monitor_returns_hostname(self):
+        board = self._board(crawler_type="dom", board_url="https://bigcorp.com/careers")
+        assert _throttle_key(board) == "bigcorp.com"
+
+    def test_no_hostname_fallback(self):
+        board = self._board(crawler_type="sitemap", board_url="not-a-url")
+        assert _throttle_key(board) == "not-a-url"
+
+
+# ── Shared helpers ───────────────────────────────────────────────────
+
+
+def _mock_board(**overrides):
+    """Create a dict-like mock for asyncpg.Record."""
+    defaults = {
+        "id": "board-1",
+        "company_id": "company-1",
+        "board_url": "https://example.com/jobs",
+        "crawler_type": "greenhouse",
+        "metadata": None,
+    }
+    defaults.update(overrides)
+    record = MagicMock()
+    record.__getitem__ = lambda self, key: defaults[key]
+    return record
+
+
+@pytest.fixture
+def mock_pool():
+    """Return (pool, conn) where pool.acquire() yields conn inside a transaction."""
+    pool = AsyncMock()
+    conn = AsyncMock()
+
+    # pool.acquire() must be a sync call returning an async context manager
+    acq_cm = AsyncMock()
+    acq_cm.__aenter__ = AsyncMock(return_value=conn)
+    acq_cm.__aexit__ = AsyncMock(return_value=False)
+    pool.acquire = MagicMock(return_value=acq_cm)
+
+    # conn.transaction() must be a sync call returning an async context manager
+    tx_cm = AsyncMock()
+    tx_cm.__aenter__ = AsyncMock()
+    tx_cm.__aexit__ = AsyncMock(return_value=False)
+    conn.transaction = MagicMock(return_value=tx_cm)
+
+    return pool, conn
+
+
+@pytest.fixture
+def mock_http():
+    return AsyncMock()
+
+
+def _discovered_job(url="https://example.com/job/1", **kw):
+    defaults = {
+        "url": url,
+        "title": "Engineer",
+        "description": "<p>Great role</p>",
+        "locations": ["NYC"],
+        "employment_type": "FULL_TIME",
+        "job_location_type": "onsite",
+        "date_posted": "2025-01-01",
+        "base_salary": None,
+        "skills": None,
+        "responsibilities": None,
+        "qualifications": None,
+        "metadata": None,
+    }
+    defaults.update(kw)
+    return DiscoveredJob(**defaults)
+
+
+def _job_content(**kw):
+    defaults = {
+        "title": "Engineer",
+        "description": "<p>Great role</p>",
+        "locations": ["NYC"],
+        "employment_type": "FULL_TIME",
+        "job_location_type": "onsite",
+        "date_posted": "2025-01-01",
+        "base_salary": None,
+        "skills": None,
+        "responsibilities": None,
+        "qualifications": None,
+        "metadata": None,
+    }
+    defaults.update(kw)
+    return JobContent(**defaults)
+
+
+def _diff_row(action, row_id=None, url="https://example.com/job/1"):
+    """Create a dict-like mock for a DIFF_URLS result row."""
+    data = {"action": action, "id": row_id, "url": url}
+    row = MagicMock()
+    row.__getitem__ = lambda self, key: data[key]
+    return row
+
+
+def _inserted_row(row_id, source_url):
+    """Create a dict-like mock for an INSERT_URL_ONLY_JOBS result row."""
+    data = {"id": row_id, "source_url": source_url}
+    row = MagicMock()
+    row.__getitem__ = lambda self, key: data[key]
+    return row
+
+
+# ── TestProcessOneBoard ──────────────────────────────────────────────
+
+
+class TestProcessOneBoard:
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one")
+    async def test_empty_result_records_success(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """Monitor returns empty urls -> _RECORD_SUCCESS called, no transaction."""
+        pool, conn = mock_pool
+        mock_monitor.return_value = MonitorResult(urls=set())
+        board = _mock_board()
+
+        await _process_one_board(board, pool, mock_http)
+
+        conn.execute.assert_awaited_once_with(_RECORD_SUCCESS, "board-1")
+        conn.fetch.assert_not_awaited()
+        mock_get_redis.assert_not_called()
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one")
+    async def test_rich_data_inserts_new_jobs(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """Monitor returns DiscoveredJobs -> executemany with _INSERT_RICH_JOB."""
+        pool, conn = mock_pool
+        url1 = "https://example.com/job/1"
+        url2 = "https://example.com/job/2"
+        job1 = _discovered_job(url=url1)
+        job2 = _discovered_job(url=url2, title="Designer")
+        mock_monitor.return_value = MonitorResult(
+            urls={url1, url2},
+            jobs_by_url={url1: job1, url2: job2},
+        )
+        # DIFF returns both as new
+        conn.fetch.return_value = [
+            _diff_row("new", url=url1),
+            _diff_row("new", url=url2),
+        ]
+        board = _mock_board()
+
+        await _process_one_board(board, pool, mock_http)
+
+        # executemany called with _INSERT_RICH_JOB
+        conn.executemany.assert_awaited()
+        call_args = conn.executemany.await_args_list
+        assert any(c.args[0] == _INSERT_RICH_JOB for c in call_args)
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.mark_seen")
+    @patch("src.batch.enqueue")
+    @patch("src.batch.filter_unseen")
+    @patch("src.batch.monitor_one")
+    async def test_url_only_inserts_stubs_and_enqueues(
+        self,
+        mock_monitor,
+        mock_filter_unseen,
+        mock_enqueue,
+        mock_mark_seen,
+        mock_get_redis,
+        mock_pool,
+        mock_http,
+    ):
+        """Monitor returns urls only (jobs_by_url=None) -> INSERT_URL_ONLY_JOBS + enqueue."""
+        pool, conn = mock_pool
+        url1 = "https://example.com/job/1"
+        mock_monitor.return_value = MonitorResult(urls={url1}, jobs_by_url=None)
+        conn.fetch.side_effect = [
+            # First fetch call: DIFF_URLS
+            [_diff_row("new", url=url1)],
+            # Second fetch call: INSERT_URL_ONLY_JOBS
+            [_inserted_row("jp-1", url1)],
+        ]
+        mock_filter_unseen.return_value = [url1]
+        board = _mock_board()
+
+        await _process_one_board(board, pool, mock_http)
+
+        # INSERT_URL_ONLY_JOBS was called
+        assert conn.fetch.await_count == 2
+        second_fetch = conn.fetch.await_args_list[1]
+        assert second_fetch.args[0] == _INSERT_URL_ONLY_JOBS
+        # enqueue was called
+        mock_enqueue.assert_awaited_once()
+        items = mock_enqueue.await_args.args[0]
+        assert len(items) == 1
+        assert items[0].url == url1
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one")
+    async def test_gone_jobs_in_diff(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """DIFF_URLS returns 'gone' rows -> they trigger cache invalidation."""
+        pool, conn = mock_pool
+        url1 = "https://example.com/job/1"
+        mock_monitor.return_value = MonitorResult(urls={url1}, jobs_by_url=None)
+        conn.fetch.return_value = [
+            _diff_row("gone", row_id="jp-gone", url="https://example.com/old"),
+        ]
+        mock_redis = AsyncMock()
+        mock_get_redis.return_value = mock_redis
+        board = _mock_board()
+
+        await _process_one_board(board, pool, mock_http)
+
+        # Cache invalidation because there are gone jobs
+        mock_redis.delete.assert_awaited_with("cache:platform-stats")
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one")
+    async def test_relisted_jobs_content_update(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """Rich data with relisted rows -> _UPDATE_RELISTED_CONTENT called."""
+        pool, conn = mock_pool
+        url1 = "https://example.com/job/1"
+        job1 = _discovered_job(url=url1)
+        mock_monitor.return_value = MonitorResult(
+            urls={url1},
+            jobs_by_url={url1: job1},
+        )
+        conn.fetch.return_value = [
+            _diff_row("relisted", row_id="jp-relisted", url=url1),
+        ]
+        board = _mock_board()
+
+        await _process_one_board(board, pool, mock_http)
+
+        conn.executemany.assert_awaited()
+        call_args = conn.executemany.await_args_list
+        assert any(c.args[0] == _UPDATE_RELISTED_CONTENT for c in call_args)
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one")
+    async def test_new_sitemap_url_updates_metadata(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """result.new_sitemap_url set -> _UPDATE_METADATA called."""
+        pool, conn = mock_pool
+        url1 = "https://example.com/job/1"
+        mock_monitor.return_value = MonitorResult(
+            urls={url1},
+            jobs_by_url=None,
+            new_sitemap_url="https://example.com/sitemap-jobs.xml",
+        )
+        conn.fetch.return_value = []  # No diff changes
+        board = _mock_board()
+
+        await _process_one_board(board, pool, mock_http)
+
+        # _UPDATE_METADATA was called in the transaction
+        execute_calls = conn.execute.await_args_list
+        metadata_calls = [c for c in execute_calls if c.args[0] == _UPDATE_METADATA]
+        assert len(metadata_calls) == 1
+        assert "sitemap-jobs.xml" in metadata_calls[0].args[2]
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one")
+    async def test_error_records_failure(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """monitor_one raises -> _RECORD_FAILURE called with truncated error."""
+        pool, conn = mock_pool
+        long_error = "x" * 1000
+        mock_monitor.side_effect = RuntimeError(long_error)
+        board = _mock_board()
+
+        await _process_one_board(board, pool, mock_http)
+
+        failure_calls = [
+            c for c in conn.execute.await_args_list if c.args[0] == _RECORD_FAILURE
+        ]
+        assert len(failure_calls) == 1
+        error_arg = failure_calls[0].args[2]
+        assert len(error_arg) <= 500
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.mark_seen")
+    @patch("src.batch.enqueue")
+    @patch("src.batch.filter_unseen")
+    @patch("src.batch.monitor_one")
+    async def test_stats_cache_invalidated_on_changes(
+        self,
+        mock_monitor,
+        mock_filter_unseen,
+        mock_enqueue,
+        mock_mark_seen,
+        mock_get_redis,
+        mock_pool,
+        mock_http,
+    ):
+        """New or gone jobs -> get_redis().delete called."""
+        pool, conn = mock_pool
+        url1 = "https://example.com/job/1"
+        mock_monitor.return_value = MonitorResult(urls={url1}, jobs_by_url=None)
+        conn.fetch.side_effect = [
+            [_diff_row("new", url=url1)],
+            [_inserted_row("jp-1", url1)],
+        ]
+        mock_filter_unseen.return_value = [url1]
+        board = _mock_board()
+
+        mock_redis = AsyncMock()
+        mock_get_redis.return_value = mock_redis
+
+        await _process_one_board(board, pool, mock_http)
+
+        mock_redis.delete.assert_awaited_with("cache:platform-stats")
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one")
+    async def test_no_cache_invalidation_when_no_changes(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """No new/gone jobs -> get_redis().delete NOT called."""
+        pool, conn = mock_pool
+        url1 = "https://example.com/job/1"
+        mock_monitor.return_value = MonitorResult(
+            urls={url1},
+            jobs_by_url={url1: _discovered_job(url=url1)},
+        )
+        # Only existing active jobs, no new/gone/relisted
+        conn.fetch.return_value = []
+        board = _mock_board()
+
+        await _process_one_board(board, pool, mock_http)
+
+        mock_get_redis.assert_not_called()
+
+
+# ── TestMonitorPipeline ──────────────────────────────────────────────
+
+
+class TestMonitorPipeline:
+    @patch("src.batch._process_one_board", new_callable=AsyncMock)
+    async def test_all_succeed(self, mock_process, mock_pool, mock_http):
+        """3 boards, all succeed -> returns 3."""
+        pool, _ = mock_pool
+        boards = [_mock_board(id=f"b-{i}") for i in range(3)]
+
+        result = await _monitor_pipeline(boards, pool, mock_http)
+
+        assert result == 3
+        assert mock_process.await_count == 3
+
+    @patch("src.batch._process_one_board", new_callable=AsyncMock)
+    async def test_partial_failure(self, mock_process, mock_pool, mock_http):
+        """3 boards, 1 raises in _process_one_board -> returns 2."""
+        pool, _ = mock_pool
+        boards = [_mock_board(id=f"b-{i}") for i in range(3)]
+        mock_process.side_effect = [None, RuntimeError("fail"), None]
+
+        result = await _monitor_pipeline(boards, pool, mock_http)
+
+        assert result == 2
+
+    @patch("src.batch._process_one_board", new_callable=AsyncMock)
+    async def test_empty_boards(self, mock_process, mock_pool, mock_http):
+        """Empty list -> returns 0."""
+        pool, _ = mock_pool
+
+        result = await _monitor_pipeline([], pool, mock_http)
+
+        assert result == 0
+        mock_process.assert_not_awaited()
+
+
+# ── TestProcessMonitorBatch ──────────────────────────────────────────
+
+
+class TestProcessMonitorBatch:
+    @patch("src.batch._monitor_pipeline", new_callable=AsyncMock)
+    async def test_no_due_boards(self, mock_pipeline, mock_pool, mock_http):
+        """pool.fetch returns [] -> BatchResult(0,0,0)."""
+        pool, _ = mock_pool
+        pool.fetch.return_value = []
+
+        result = await process_monitor_batch(pool, mock_http)
+
+        assert result == BatchResult(0, 0, 0)
+        mock_pipeline.assert_not_awaited()
+
+    @patch("src.batch._monitor_pipeline", new_callable=AsyncMock)
+    async def test_single_domain(self, mock_pipeline, mock_pool, mock_http):
+        """All boards same throttle key -> one pipeline call."""
+        pool, _ = mock_pool
+        boards = [
+            _mock_board(id="b-1", crawler_type="greenhouse"),
+            _mock_board(id="b-2", crawler_type="greenhouse"),
+        ]
+        pool.fetch.return_value = boards
+        mock_pipeline.return_value = 2
+
+        result = await process_monitor_batch(pool, mock_http)
+
+        assert result.processed == 2
+        assert result.succeeded == 2
+        assert result.failed == 0
+        mock_pipeline.assert_awaited_once()
+
+    @patch("src.batch._monitor_pipeline", new_callable=AsyncMock)
+    async def test_multiple_domains(self, mock_pipeline, mock_pool, mock_http):
+        """Boards with different keys -> parallel pipelines -> correct counts."""
+        pool, _ = mock_pool
+        boards = [
+            _mock_board(id="b-1", crawler_type="greenhouse"),
+            _mock_board(id="b-2", crawler_type="lever"),
+            _mock_board(id="b-3", crawler_type="greenhouse"),
+        ]
+        pool.fetch.return_value = boards
+        # Two groups: greenhouse (2 boards) and lever (1 board)
+        mock_pipeline.side_effect = [2, 1]
+
+        result = await process_monitor_batch(pool, mock_http)
+
+        assert result.processed == 3
+        assert result.succeeded == 3
+        assert result.failed == 0
+        assert mock_pipeline.await_count == 2
+
+    @patch("src.batch._monitor_pipeline", new_callable=AsyncMock)
+    async def test_grouping_correctness(self, mock_pipeline, mock_pool, mock_http):
+        """2 greenhouse + 1 sitemap -> 2 groups with correct board lists."""
+        pool, _ = mock_pool
+        gh1 = _mock_board(id="b-1", crawler_type="greenhouse")
+        gh2 = _mock_board(id="b-2", crawler_type="greenhouse")
+        sm1 = _mock_board(
+            id="b-3", crawler_type="sitemap", board_url="https://acme.com/sitemap.xml"
+        )
+        pool.fetch.return_value = [gh1, gh2, sm1]
+        mock_pipeline.side_effect = [2, 1]
+
+        result = await process_monitor_batch(pool, mock_http)
+
+        assert result.processed == 3
+        assert result.succeeded == 3
+        # Verify two pipeline calls were made
+        assert mock_pipeline.await_count == 2
+        # Collect the board lists passed to each pipeline call
+        call_board_lists = [c.args[0] for c in mock_pipeline.await_args_list]
+        call_sizes = sorted(len(bl) for bl in call_board_lists)
+        assert call_sizes == [1, 2]
+
+
+# ── TestProcessOneScrape ─────────────────────────────────────────────
+
+
+class TestProcessOneScrape:
+    @patch("src.batch.queue_complete", new_callable=AsyncMock)
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_success_updates_and_completes(
+        self, mock_scrape, mock_complete, mock_pool, mock_http
+    ):
+        """scrape_one returns content -> UPDATE + queue_complete -> True."""
+        pool, conn = mock_pool
+        content = _job_content()
+        mock_scrape.return_value = content
+        item = QueueItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+
+        result = await _process_one_scrape(item, pool, mock_http, "json-ld", None)
+
+        assert result is True
+        # Verify UPDATE_JOB_CONTENT was called
+        conn.execute.assert_awaited_once()
+        assert conn.execute.await_args.args[0] == _UPDATE_JOB_CONTENT
+        # queue_complete was called
+        mock_complete.assert_awaited_once_with(item)
+
+    @patch("src.batch.queue_fail", new_callable=AsyncMock)
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_failure_calls_queue_fail(
+        self, mock_scrape, mock_fail, mock_pool, mock_http
+    ):
+        """scrape_one raises -> queue_fail -> False."""
+        pool, conn = mock_pool
+        mock_scrape.side_effect = RuntimeError("scrape error")
+        item = QueueItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+
+        result = await _process_one_scrape(item, pool, mock_http, "json-ld", None)
+
+        assert result is False
+        mock_fail.assert_awaited_once()
+        call_args = mock_fail.await_args
+        assert call_args.args[0] == item
+        assert "scrape error" in call_args.args[1]
+
+    @patch("src.batch.queue_complete", new_callable=AsyncMock)
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_content_fields_passed_correctly(
+        self, mock_scrape, mock_complete, mock_pool, mock_http
+    ):
+        """Verify all JobContent fields are passed to UPDATE_JOB_CONTENT."""
+        pool, conn = mock_pool
+        content = _job_content(
+            title="Senior Engineer",
+            description="<p>Description</p>",
+            locations=["London", "Remote"],
+            employment_type="FULL_TIME",
+            job_location_type="hybrid",
+            date_posted="2025-06-01",
+            base_salary={"currency": "GBP", "min": 80000, "max": 120000, "unit": "YEAR"},
+            skills=["Python", "SQL"],
+            responsibilities=["Lead team", "Write code"],
+            qualifications=["5 years exp"],
+            metadata={"team": "Platform"},
+        )
+        mock_scrape.return_value = content
+        item = QueueItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+
+        await _process_one_scrape(item, pool, mock_http, "json-ld", None)
+
+        call_args = conn.execute.await_args.args
+        assert call_args[0] == _UPDATE_JOB_CONTENT
+        assert call_args[1] == "jp-1"  # job_posting_id
+        assert call_args[2] == "Senior Engineer"  # title
+        assert call_args[3] == "<p>Description</p>"  # description
+        assert call_args[4] == ["London", "Remote"]  # locations
+        assert call_args[5] == "FULL_TIME"  # employment_type
+        assert call_args[6] == "hybrid"  # job_location_type
+        # base_salary is passed through _jsonb
+        expected_salary = {"currency": "GBP", "min": 80000, "max": 120000, "unit": "YEAR"}
+        assert json.loads(call_args[7]) == expected_salary
+        assert call_args[8] == ["Python", "SQL"]  # skills
+        assert call_args[9] == "2025-06-01"  # date_posted
+        assert call_args[10] == ["Lead team", "Write code"]  # responsibilities
+        assert call_args[11] == ["5 years exp"]  # qualifications
+        assert json.loads(call_args[12]) == {"team": "Platform"}  # metadata
+
+
+# ── TestScrapePipeline ───────────────────────────────────────────────
+
+
+class TestScrapePipeline:
+    @patch("src.batch._process_one_scrape", new_callable=AsyncMock)
+    async def test_all_succeed(self, mock_process, mock_pool, mock_http):
+        """3 items succeed -> returns 3."""
+        pool, _ = mock_pool
+        mock_process.return_value = True
+        items = [
+            QueueItem(job_posting_id=f"jp-{i}", url=f"https://example.com/job/{i}", board_id="b-1")
+            for i in range(3)
+        ]
+
+        result = await _scrape_pipeline(items, pool, mock_http)
+
+        assert result == 3
+        assert mock_process.await_count == 3
+
+    @patch("src.batch._process_one_scrape", new_callable=AsyncMock)
+    async def test_partial_failure(self, mock_process, mock_pool, mock_http):
+        """1 fails -> returns 2."""
+        pool, _ = mock_pool
+        mock_process.side_effect = [True, False, True]
+        items = [
+            QueueItem(job_posting_id=f"jp-{i}", url=f"https://example.com/job/{i}", board_id="b-1")
+            for i in range(3)
+        ]
+
+        result = await _scrape_pipeline(items, pool, mock_http)
+
+        assert result == 2
+
+    @patch("src.batch._process_one_scrape", new_callable=AsyncMock)
+    async def test_empty_items(self, mock_process, mock_pool, mock_http):
+        """Empty list -> returns 0."""
+        pool, _ = mock_pool
+
+        result = await _scrape_pipeline([], pool, mock_http)
+
+        assert result == 0
+        mock_process.assert_not_awaited()
+
+
+# ── TestProcessScrapeBatch ───────────────────────────────────────────
+
+
+class TestProcessScrapeBatch:
+    @patch("src.batch._scrape_pipeline", new_callable=AsyncMock)
+    @patch("src.batch.dequeue", new_callable=AsyncMock)
+    @patch("src.batch.recover_stale", new_callable=AsyncMock)
+    @patch("src.batch.requeue_retries", new_callable=AsyncMock)
+    async def test_empty_queue(
+        self, mock_requeue, mock_recover, mock_dequeue, mock_pipeline, mock_pool, mock_http
+    ):
+        """dequeue returns [] -> BatchResult(0,0,0)."""
+        pool, _ = mock_pool
+        mock_dequeue.return_value = []
+
+        result = await process_scrape_batch(pool, mock_http)
+
+        assert result == BatchResult(0, 0, 0)
+        mock_pipeline.assert_not_awaited()
+
+    @patch("src.batch._scrape_pipeline", new_callable=AsyncMock)
+    @patch("src.batch.dequeue", new_callable=AsyncMock)
+    @patch("src.batch.recover_stale", new_callable=AsyncMock)
+    @patch("src.batch.requeue_retries", new_callable=AsyncMock)
+    async def test_calls_maintenance_first(
+        self, mock_requeue, mock_recover, mock_dequeue, mock_pipeline, mock_pool, mock_http
+    ):
+        """Verify requeue_retries and recover_stale called before dequeue."""
+        pool, _ = mock_pool
+        mock_dequeue.return_value = []
+
+        call_order = []
+        mock_requeue.side_effect = lambda: call_order.append("requeue")
+        mock_recover.side_effect = lambda: call_order.append("recover")
+        mock_dequeue.side_effect = lambda limit: (call_order.append("dequeue"), [])[1]
+
+        await process_scrape_batch(pool, mock_http)
+
+        assert call_order == ["requeue", "recover", "dequeue"]
+
+    @patch("src.batch._scrape_pipeline", new_callable=AsyncMock)
+    @patch("src.batch.dequeue", new_callable=AsyncMock)
+    @patch("src.batch.recover_stale", new_callable=AsyncMock)
+    @patch("src.batch.requeue_retries", new_callable=AsyncMock)
+    async def test_groups_by_hostname(
+        self, mock_requeue, mock_recover, mock_dequeue, mock_pipeline, mock_pool, mock_http
+    ):
+        """Items with different hostnames -> multiple pipelines."""
+        pool, _ = mock_pool
+        items = [
+            QueueItem(job_posting_id="jp-1", url="https://alpha.com/job/1", board_id="b-1"),
+            QueueItem(job_posting_id="jp-2", url="https://beta.com/job/1", board_id="b-2"),
+            QueueItem(job_posting_id="jp-3", url="https://alpha.com/job/2", board_id="b-1"),
+        ]
+        mock_dequeue.return_value = items
+        mock_pipeline.side_effect = [2, 1]
+
+        result = await process_scrape_batch(pool, mock_http)
+
+        assert result.processed == 3
+        assert result.succeeded == 3
+        assert result.failed == 0
+        assert mock_pipeline.await_count == 2
+
+    @patch("src.batch._scrape_pipeline", new_callable=AsyncMock)
+    @patch("src.batch.dequeue", new_callable=AsyncMock)
+    @patch("src.batch.recover_stale", new_callable=AsyncMock)
+    @patch("src.batch.requeue_retries", new_callable=AsyncMock)
+    async def test_returns_correct_counts(
+        self, mock_requeue, mock_recover, mock_dequeue, mock_pipeline, mock_pool, mock_http
+    ):
+        """Mix of success/failure -> correct BatchResult."""
+        pool, _ = mock_pool
+        items = [
+            QueueItem(job_posting_id="jp-1", url="https://alpha.com/job/1", board_id="b-1"),
+            QueueItem(job_posting_id="jp-2", url="https://alpha.com/job/2", board_id="b-1"),
+            QueueItem(job_posting_id="jp-3", url="https://beta.com/job/1", board_id="b-2"),
+        ]
+        mock_dequeue.return_value = items
+        # alpha group: 1 of 2 succeed; beta group: 0 of 1 succeed
+        mock_pipeline.side_effect = [1, 0]
+
+        result = await process_scrape_batch(pool, mock_http)
+
+        assert result.processed == 3
+        assert result.succeeded == 1
+        assert result.failed == 2

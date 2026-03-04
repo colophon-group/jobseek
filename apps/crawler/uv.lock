@@ -215,6 +215,7 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "pyyaml" },
     { name = "structlog" },
+    { name = "upstash-redis" },
 ]
 
 [package.dev-dependencies]
@@ -236,6 +237,7 @@ requires-dist = [
     { name = "python-dotenv", specifier = ">=1.0" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "structlog", specifier = ">=24.4" },
+    { name = "upstash-redis", specifier = ">=1.6.0" },
 ]
 
 [package.metadata.requires-dev]
@@ -569,4 +571,16 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/55/e3/70399cb7dd41c10ac53367ae42139cf4b1ca5f36bb3dc6c9d33acdb43655/typing_inspection-0.4.2.tar.gz", hash = "sha256:ba561c48a67c5958007083d386c3295464928b01faa735ab8547c5692e87f464", size = 75949, upload-time = "2025-10-01T02:14:41.687Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/dc/9b/47798a6c91d8bdb567fe2698fe81e0c6b7cb7ef4d13da4114b41d239f65d/typing_inspection-0.4.2-py3-none-any.whl", hash = "sha256:4ed1cacbdc298c220f1bd249ed5287caa16f34d44ef4e9c3d0cbad5b521545e7", size = 14611, upload-time = "2025-10-01T02:14:40.154Z" },
+]
+
+[[package]]
+name = "upstash-redis"
+version = "1.6.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "httpx" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/62/02/b2a6a1e04b4e83b20c54b161c9d75c2c04a4d06fb93c6418abb549136c8c/upstash_redis-1.6.0.tar.gz", hash = "sha256:23ae31acac3c95e5a9c1e732657c9b195ddda511c687021f9e9fd4a795606925", size = 41673, upload-time = "2026-02-03T07:00:59.375Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/44/7b/d0663e6b82933f4440b6854cac3a72413b4cbaddbce12fc17d5f5ec79618/upstash_redis-1.6.0-py3-none-any.whl", hash = "sha256:2f717f1fdc01c5f93a0fb30e0979c37c926d7810f14d7e207531d6858de259c7", size = 43461, upload-time = "2026-02-03T07:00:58.416Z" },
 ]

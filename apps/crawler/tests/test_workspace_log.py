@@ -78,10 +78,15 @@ class TestFormatCrawlStats:
     def test_basic_stats(self):
         boards = {
             "careers": {
-                "monitor_type": "sitemap",
-                "scraper_type": "json-ld",
-                "monitor_run": {"jobs": 138, "time": 4.2},
-                "scraper_run": {"avg_time": 1.1},
+                "active_config": "sitemap",
+                "configs": {
+                    "sitemap": {
+                        "monitor_type": "sitemap",
+                        "scraper_type": "json-ld",
+                        "run": {"jobs": 138, "time": 4.2},
+                        "scraper_run": {"avg_time": 1.1},
+                    },
+                },
             }
         }
         stats = format_crawl_stats(boards)
@@ -95,8 +100,13 @@ class TestFormatCrawlStats:
     def test_api_monitor_no_scraper(self):
         boards = {
             "careers": {
-                "monitor_type": "greenhouse",
-                "monitor_run": {"jobs": 50, "time": 2.0},
+                "active_config": "greenhouse",
+                "configs": {
+                    "greenhouse": {
+                        "monitor_type": "greenhouse",
+                        "run": {"jobs": 50, "time": 2.0},
+                    },
+                },
             }
         }
         stats = format_crawl_stats(boards)
@@ -104,22 +114,32 @@ class TestFormatCrawlStats:
         # No scraper row when scraper_type is None
         assert "Scraper" not in stats
 
-    def test_extraction_quality(self):
+    def test_verdict_in_metrics_table(self):
         boards = {
             "careers": {
-                "monitor_type": "sitemap",
-                "scraper_type": "dom",
-                "monitor_run": {"jobs": 10, "time": 1.0},
-                "scraper_run": {
-                    "avg_time": 0.5,
-                    "count": 3,
-                    "titles": 3,
-                    "descriptions": 2,
-                    "locations": 1,
+                "active_config": "sitemap",
+                "configs": {
+                    "sitemap": {
+                        "monitor_type": "sitemap",
+                        "scraper_type": "dom",
+                        "status": "tested",
+                        "run": {"jobs": 10, "time": 1.0},
+                        "scraper_run": {"avg_time": 0.5},
+                        "feedback": {
+                            "verdict": "acceptable",
+                            "fields": {
+                                "title": "clean",
+                                "description": "clean",
+                                "locations": "noisy",
+                            },
+                        },
+                    },
                 },
             }
         }
         stats = format_crawl_stats(boards)
-        assert "| Titles | 3/3 |" in stats
-        assert "| Descriptions | 2/3 |" in stats
-        assert "| Locations | 1/3 |" in stats
+        # Verdict now appears as a row in the metrics table
+        assert "| Verdict | **acceptable** |" in stats
+        # Field coverage is NOT in the stats comment (lives in PR body only)
+        assert "Field Coverage" not in stats
+        assert "Required" not in stats

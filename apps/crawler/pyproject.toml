@@ -13,6 +13,7 @@ dependencies = [
     "python-dotenv>=1.0",
     "polars>=1.38.1",
     "jmespath>=1.0",
+    "upstash-redis>=1.6.0",
 ]
 
 [project.scripts]

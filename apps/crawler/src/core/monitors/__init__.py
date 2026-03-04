@@ -65,6 +65,7 @@ class MonitorType:
     cost: int  # lower = cheaper = tried first
     discover: DiscoverFunc
     can_handle: CanHandleFunc | None = None
+    rich: bool = False  # True for API monitors that return full job data
 
 
 _REGISTRY: list[MonitorType] = []
@@ -75,6 +76,8 @@ def register(
     discover: DiscoverFunc,
     cost: int,
     can_handle: CanHandleFunc | None = None,
+    *,
+    rich: bool = False,
 ) -> None:
     """Register a monitor type. Registry stays sorted by cost (cheapest first)."""
     _REGISTRY.append(
@@ -83,9 +86,31 @@ def register(
             cost=cost,
             discover=discover,
             can_handle=can_handle,
+            rich=rich,
         )
     )
     _REGISTRY.sort(key=lambda m: m.cost)
+
+
+def api_monitor_types() -> frozenset[str]:
+    """Return the set of monitor type names that return rich (full) job data."""
+    return frozenset(m.name for m in _REGISTRY if m.rich)
+
+
+def is_rich_monitor(monitor_type: str, config: dict | None = None) -> bool:
+    """Check if a monitor type returns rich data (scraper not needed).
+
+    Statically-rich monitors (greenhouse, lever, etc.) always return True.
+    api_sniffer is rich only when ``fields`` is present in config.
+    """
+    return monitor_type in api_monitor_types() or (
+        monitor_type == "api_sniffer" and bool((config or {}).get("fields"))
+    )
+
+
+def all_monitor_types() -> frozenset[str]:
+    """Return the set of all registered monitor type names."""
+    return frozenset(m.name for m in _REGISTRY)
 
 
 def get_discoverer(name: str) -> DiscoverFunc:
@@ -93,6 +118,17 @@ def get_discoverer(name: str) -> DiscoverFunc:
     for monitor in _REGISTRY:
         if monitor.name == name:
             return monitor.discover
+    available = [m.name for m in _REGISTRY]
+    raise ValueError(f"Unknown monitor type: {name!r}. Available: {available}")
+
+
+def get_can_handle(name: str) -> CanHandleFunc:
+    """Look up a can_handle function by monitor type name."""
+    for monitor in _REGISTRY:
+        if monitor.name == name:
+            if monitor.can_handle is None:
+                raise ValueError(f"Monitor {name!r} has no can_handle probe")
+            return monitor.can_handle
     available = [m.name for m in _REGISTRY]
     raise ValueError(f"Unknown monitor type: {name!r}. Available: {available}")
 
@@ -233,12 +269,25 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"Personio XML \u2014 slug: {slug}, {jobs} jobs"
         return f"Personio XML \u2014 slug: {slug}"
-    if name == "successfactors":
+    if name == "rss":
+        preset = metadata.get("preset", "generic")
         feed_url = metadata.get("feed_url", "?")
         jobs = metadata.get("jobs")
-        if jobs is not None:
-            return f"SuccessFactors RSS \u2014 {feed_url}, {jobs} jobs"
-        return f"SuccessFactors RSS \u2014 {feed_url}"
+        label = {
+            "successfactors": "SuccessFactors RSS",
+            "teamtailor": "Teamtailor RSS",
+        }.get(preset, f"RSS ({preset})")
+        count_str = f"{jobs}" if jobs is not None else ""
+        # For paginated presets, first-page count may be approximate
+        if preset == "teamtailor" and jobs is not None:
+            from src.core.monitors.rss import _PRESETS
+
+            tt = _PRESETS.get("teamtailor")
+            if tt and jobs >= tt.page_size:
+                count_str = f"{jobs}+"
+        if count_str:
+            return f"{label} \u2014 {feed_url}, {count_str} jobs"
+        return f"{label} \u2014 {feed_url}"
     if name == "api_sniffer":
         items = metadata.get("items")
         total = metadata.get("total")
@@ -307,9 +356,9 @@ from src.core.monitors import (  # noqa: E402
     pinpoint,  # noqa: F401
     recruitee,  # noqa: F401
     rippling,  # noqa: F401
+    rss,  # noqa: F401
     sitemap,  # noqa: F401
     smartrecruiters,  # noqa: F401
-    successfactors,  # noqa: F401
     workable,  # noqa: F401
     workday,  # noqa: F401
 )

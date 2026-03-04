@@ -32,7 +32,7 @@ meta,Meta,https://meta.com,https://...,https://...
 
 ```csv
 company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config
-stripe,stripe-careers,https://boards.greenhouse.io/stripe,greenhouse,"{""token"":""stripe""}",greenhouse_api,
+stripe,stripe-careers,https://boards.greenhouse.io/stripe,greenhouse,"{""token"":""stripe""}",,
 meta,meta-careers,https://www.metacareers.com/jobs,sitemap,"{""sitemap_url"":""https://...""}",json-ld,
 ```
 
@@ -45,7 +45,7 @@ meta,meta-careers,https://www.metacareers.com/jobs,sitemap,"{""sitemap_url"":""h
 | `board_url` | Yes | The career page URL to monitor. |
 | `monitor_type` | Yes | How to discover listings. One of: `greenhouse`, `lever`, `sitemap`, `nextdata`, `dom`. |
 | `monitor_config` | No | JSON object with monitor-specific settings. |
-| `scraper_type` | No | How to extract job details. One of: `greenhouse_api`, `lever_api`, `json-ld`, `dom`, `nextdata`. Empty when monitor provides full data. |
+| `scraper_type` | No | How to extract job details. One of: `json-ld`, `dom`, `nextdata`, `embedded`, `api_sniffer`. Empty when API monitor provides full data. |
 | `scraper_config` | No | JSON object with scraper-specific settings. |
 
 ### Rules
@@ -54,19 +54,23 @@ meta,meta-careers,https://www.metacareers.com/jobs,sitemap,"{""sitemap_url"":""h
 - `board_slug` must be unique across all rows and match slug format
 - `board_url` must be unique across all rows
 - `monitor_config` and `scraper_config` are JSON strings (use `""` for quotes inside CSV)
-- API monitors (`greenhouse`, `lever`) typically don't need a `scraper_type` — the monitor returns full job data
-- URL-only monitors (`sitemap`, `dom`) require a `scraper_type`
+- **Rich monitors** (all API types: ashby, greenhouse, hireology, lever, personio, pinpoint, recruitee, rippling, rss, smartrecruiters, workable, workday; also `api_sniffer` with auto-mapped `fields`) return full job data — `scraper_type` is empty
+- **URL-only monitors** (`sitemap`, `dom`, `nextdata`, `api_sniffer` without `fields`) return URLs only — `scraper_type` is required
 
 ### Monitor + Scraper Pairing
 
 | Monitor Type | Returns | Scraper Needed? | Typical Scraper |
 |-------------|---------|-----------------|-----------------|
-| `greenhouse` | Full job data | No | `greenhouse_api` (passthrough) |
-| `lever` | Full job data | No | `lever_api` (passthrough) |
-| `sitemap` | URLs only | Yes | `json-ld` or `html` |
-| `discover` | URLs only | Yes | `json-ld`, `html`, or `browser` |
+| API monitors (greenhouse, lever, ashby, etc.) | Full job data | No | *(empty)* |
+| `api_sniffer` with `fields` | Full job data | No | *(empty)* |
+| `sitemap` | URLs only | Yes | `json-ld` or `dom` |
+| `nextdata` | URLs only | Yes | `nextdata` or `json-ld` |
+| `dom` | URLs only | Yes | `json-ld`, `dom`, or `embedded` |
+| `api_sniffer` without `fields` | URLs only | Yes | `json-ld`, `dom`, or `embedded` |
 
-See [04 — Monitors and Scrapers](./04-monitors-and-scrapers.md) for config details per type.
+> **Note:** During workspace development, multiple configurations can be tested and stored as named configs in the workspace YAML. At submit time, only the active config is written to the CSV row.
+
+See [04 — Monitors and Scrapers](./04-monitors-and-scrapers.md) for config details per type. See [08 — Job Data Fields](./08-job-data-fields.md) for the complete field reference (types, formats, per-ATS source mapping).
 
 ## DB Sync
 

@@ -18,7 +18,7 @@ set -euo pipefail
 
 ALLOWED_FILES="apps/crawler/data/companies.csv apps/crawler/data/boards.csv"
 VALID_MONITOR_TYPES="ashby|greenhouse|lever|sitemap|nextdata|dom|api_sniffer"
-VALID_SCRAPER_TYPES="ashby_api|greenhouse_api|lever_api|json-ld|dom|nextdata|embedded|api_sniffer"
+VALID_SCRAPER_TYPES="json-ld|dom|nextdata|embedded|api_sniffer"
 SLUG_RE='^[a-z0-9]+(-[a-z0-9]+)*$'
 URL_RE='^https?://'
 MAX_ADDED_LINES=5

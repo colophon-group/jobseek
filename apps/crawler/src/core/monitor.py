@@ -172,16 +172,19 @@ async def _save_raw(
                 resp = await http.get(api_url, follow_redirects=True)
                 if resp.status_code == 200:
                     (artifact_dir / "response.xml").write_text(resp.text)
-        elif monitor_type == "successfactors":
-            from urllib.parse import urlparse
+        elif monitor_type == "rss":
+            feed = monitor_config.get("feed_url")
+            if not feed:
+                preset = monitor_config.get("preset", "generic")
+                from src.core.monitors.rss import _PRESETS, _build_feed_url
 
-            parsed = urlparse(board_url)
-            feed = monitor_config.get(
-                "feed_url", f"{parsed.scheme}://{parsed.netloc}/googlefeed.xml"
-            )
-            resp = await http.get(feed, follow_redirects=True)
-            if resp.status_code == 200:
-                (artifact_dir / "response.xml").write_text(resp.text)
+                p = _PRESETS.get(preset)
+                if p:
+                    feed = _build_feed_url(board_url, p.feed_paths[0])
+            if feed:
+                resp = await http.get(feed, follow_redirects=True)
+                if resp.status_code == 200:
+                    (artifact_dir / "response.xml").write_text(resp.text)
         elif monitor_type == "dom":
             resp = await http.get(board_url, follow_redirects=True)
             if resp.status_code == 200:

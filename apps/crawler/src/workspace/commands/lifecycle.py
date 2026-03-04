@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 
 import click
 
+from src.core.monitors import is_rich_monitor
 from src.shared.constants import DATA_DIR, SLUG_RE
 from src.shared.csv_io import read_csv
 from src.workspace import log as action_log
 from src.workspace import output as out
+from src.workspace.errors import CsvToolError, GitError, GitHubApiError
 from src.workspace.state import (
     Board,
     Workspace,
@@ -229,14 +232,14 @@ def del_(slug: str | None):
         try:
             git.close_pr(ws.pr)
             out.info("github", f"Closed PR #{ws.pr}")
-        except Exception:
+        except GitHubApiError:
             out.warn("github", f"Could not close PR #{ws.pr}")
 
     # Delete CSV rows
     try:
         company_del(slug)
         out.info("csv", f"Removed {slug!r} from companies.csv (+ boards)")
-    except SystemExit:
+    except CsvToolError:
         out.warn("csv", f"Company {slug!r} not found in CSV (may not have been added)")
 
     # Delete branch
@@ -274,23 +277,66 @@ def status(slug: str | None):
         print(f"  PR:      #{ws.pr}" if ws.pr else "  PR:      (none)")
         print(f"  Name:    {ws.name or '(not set)'}")
         print(f"  Website: {ws.website or '(not set)'}")
-        print(f"  Active:  {ws.active_board or '(none)'}")
         print()
 
         if boards:
             print("  Boards:")
             for b in boards:
                 active = " *" if b.alias == ws.active_board else ""
-                monitor = b.monitor_type or "(none)"
-                jobs = b.monitor_run.get("jobs", "?")
-                print(f"    {b.slug}{active} — {monitor}, {jobs} jobs")
+                if b.active_config:
+                    cfg = (b.configs or {}).get(b.active_config, {})
+                    mtype = cfg.get("monitor_type", "?")
+                    status_str = cfg.get("status", "?")
+                    jobs = (cfg.get("run") or {}).get("jobs", "?")
+                    cost = (cfg.get("cost") or {}).get("monitor_per_cycle")
+                    cost_str = f" ~{cost}s" if cost is not None else ""
+                    fb = cfg.get("feedback", {})
+                    verdict = fb.get("verdict", "") if fb else ""
+                    verdict_str = f" [{verdict}]" if verdict else ""
+                    print(f"    {b.slug}{active} — {b.active_config} ({mtype}, {jobs} jobs{cost_str}){verdict_str}")
+                    if status_str == "selected":
+                        print(f"      -> Not tested yet")
+                else:
+                    print(f"    {b.slug}{active} — no config selected")
             print()
 
+            # Show config history if multiple configs exist
+            has_multi = any(len(b.configs or {}) > 1 for b in boards)
+            if has_multi:
+                print("  Configs:")
+                for b in boards:
+                    for name, cfg in (b.configs or {}).items():
+                        mtype = cfg.get("monitor_type", "?")
+                        cfg_status = cfg.get("status", "?")
+                        sel = " *" if name == b.active_config else ""
+                        print(f"    {name}{sel} ({mtype}) — {cfg_status}")
+                print()
+
         # Progress
-        print("  Progress:")
-        for key, done in ws.progress.items():
-            sym = "\u2713" if done else "\u2717"
-            print(f"    {sym} {key}")
+        submitted = ws.submitted
+        all_ready = all(
+            not _check_board_readiness(b)
+            for b in boards
+        ) if boards else False
+
+        if submitted:
+            print("  Status: submitted")
+        elif all_ready:
+            print("  Status: ready to submit")
+        elif not boards:
+            print("  Status: no boards configured")
+        else:
+            print("  Status: in progress")
+
+        # Last error
+        if ws.last_error:
+            print()
+            cmd = ws.last_error.get("command", "?")
+            step = ws.last_error.get("step")
+            err = ws.last_error.get("error", "?")
+            step_str = f" (step: {step})" if step else ""
+            print(f"  Last error: {cmd}{step_str} — {err}")
+
         print()
     else:
         workspaces = list_workspaces()
@@ -300,7 +346,7 @@ def status(slug: str | None):
         active = get_active_slug()
         print()
         for ws in workspaces:
-            submitted = "\u2713" if ws.progress.get("submitted") else " "
+            submitted = "\u2713" if ws.submitted else " "
             issue_str = f"#{ws.issue}" if ws.issue else ""
             pr_str = f"PR #{ws.pr}" if ws.pr else ""
             marker = " *" if ws.slug == active else ""
@@ -324,9 +370,7 @@ def validate():
 
 
 def _build_pr_body(ws: Workspace, boards: list[Board]) -> str:
-    """Build enriched PR body with company and board summary."""
-    import json
-
+    """Build enriched PR body with company info, board configs, and quality data."""
     lines = [f"Closes #{ws.issue}", ""]
 
     display_name = ws.name or ws.slug
@@ -345,15 +389,7 @@ def _build_pr_body(ws: Workspace, boards: list[Board]) -> str:
             monitor_cfg = f" · `{json.dumps(b.monitor_config)}`"
         lines.append(f"| Monitor | `{b.monitor_type}`{monitor_cfg} |")
 
-        api_monitors = {
-            "ashby", "greenhouse", "hireology", "lever", "personio", "pinpoint",
-            "recruitee", "rippling", "smartrecruiters", "successfactors",
-            "workable", "workday",
-        }
-        is_rich_api = b.monitor_type in api_monitors or (
-            b.monitor_type == "api_sniffer" and (b.monitor_config or {}).get("fields")
-        )
-        if is_rich_api:
+        if is_rich_monitor(b.monitor_type, b.monitor_config):
             lines.append("| Scraper | *(API — not needed)* |")
         elif b.scraper_type:
             scraper_cfg = ""
@@ -363,55 +399,106 @@ def _build_pr_body(ws: Workspace, boards: list[Board]) -> str:
 
         job_count = (b.monitor_run or {}).get("jobs", "?")
         lines.append(f"| Jobs | {job_count} |")
+
+        # Show cost if available
+        cfg = (b.configs or {}).get(b.active_config or "")
+        if cfg and cfg.get("cost"):
+            cost = cfg["cost"]
+            mon = cost.get("monitor_per_cycle")
+            if mon is not None:
+                lines.append(f"| Cost | ~{mon}s/cycle |")
+
+        lines.append("")
+
+        # Extraction quality from feedback
+        if cfg and cfg.get("feedback"):
+            fb = cfg["feedback"]
+            verdict = fb.get("verdict", "?")
+            lines.append("### Extraction Quality")
+            lines.append("")
+            lines.append("| Field | Quality |")
+            lines.append("|-------|---------|")
+            from src.workspace.log import _format_field_quality
+
+            for field_name, quality in fb.get("fields", {}).items():
+                lines.append(f"| {field_name} | {_format_field_quality(quality)} |")
+            notes = fb.get("notes", "")
+            lines.append("")
+            lines.append(f"**Verdict**: {verdict}")
+            if notes:
+                lines.append(f" — {notes}")
+            lines.append("")
+
+    # Configs comparison (collapsed)
+    all_configs = []
+    for b in boards:
+        for name, cfg in (b.configs or {}).items():
+            cfg_status = cfg.get("status", "?")
+            mtype = cfg.get("monitor_type", "?")
+            stype = cfg.get("scraper_type") or "—"
+            cost = cfg.get("cost", {})
+            mon_cost = cost.get("monitor_per_cycle")
+            cost_str = f"~{mon_cost}s" if mon_cost is not None else "—"
+            jobs = cfg.get("run", {}).get("jobs", "?") if cfg.get("run") else "—"
+            fb = cfg.get("feedback")
+            fb_verdict = fb.get("verdict", "") if fb else ""
+            rejection = cfg.get("rejection_reason", "")
+            # Build status cell
+            if name == b.active_config:
+                status_cell = "**selected**"
+            elif rejection:
+                status_cell = f"rejected: {rejection}"
+            else:
+                status_cell = cfg_status
+            # Build notes
+            notes = fb_verdict if fb_verdict else ""
+            all_configs.append((name, mtype, stype, jobs, cost_str, status_cell, notes))
+
+    if len(all_configs) > 1:
+        lines.append("<details>")
+        lines.append("<summary>Configurations evaluated</summary>")
+        lines.append("")
+        lines.append("| # | Config | Monitor | Scraper | Jobs | Cost | Status | Notes |")
+        lines.append("|---|--------|---------|---------|------|------|--------|-------|")
+        for i, (name, mtype, stype, jobs, cost_str, status_cell, notes) in enumerate(all_configs, 1):
+            lines.append(f"| {i} | {name} | `{mtype}` | {stype} | {jobs} | {cost_str} | {status_cell} | {notes} |")
+        lines.append("")
+        lines.append("</details>")
         lines.append("")
 
     return "\n".join(lines)
 
 
-@click.command()
-@click.argument("slug", required=False)
-@click.option("--summary", help="One-line summary for the transcript")
-def submit(slug: str | None, summary: str | None):
-    """Finalize: write CSV, validate, commit, push, post stats, mark PR ready."""
+# ── Submit step registry ──────────────────────────────────────────────
+
+# (key, description, critical)
+# Critical steps abort on failure; non-critical warn and continue.
+SUBMIT_STEPS: list[tuple[str, str, bool]] = [
+    ("csv_written", "Write company/board CSVs", True),
+    ("validated", "Validate CSVs", True),
+    ("committed", "Commit changes", True),
+    ("pushed", "Push to remote", True),
+    ("pr_body_updated", "Update PR body", False),
+    ("stats_posted", "Post crawl stats on PR", False),
+    ("transcript_posted", "Post transcript on PR", False),
+    ("pr_ready", "Mark PR ready for review", False),
+    ("issue_completed", "Post completion on issue", False),
+]
+
+
+def _execute_submit_step(
+    step_key: str,
+    ws: Workspace,
+    boards: list[Board],
+    summary: str | None,
+) -> None:
+    """Execute a single submit step. Raises on failure."""
     from src.csvtool import board_add, company_add
     from src.inspect import validate_csvs
     from src.workspace import git
 
-    slug = resolve_slug(slug)
-
-    if not workspace_exists(slug):
-        out.die(f"Workspace {slug!r} not found")
-
-    ws = load_workspace(slug)
-    boards = list_boards(slug)
-
-    # Advisory warnings
-    if not boards:
-        out.warn("submit", "No boards configured")
-    for b in boards:
-        if not b.monitor_type:
-            out.warn("submit", f"Board {b.alias}: no monitor selected")
-        if not b.monitor_run:
-            out.warn("submit", f"Board {b.alias}: monitor not tested")
-        # Check if scraper is needed but not tested
-        api_monitors = {
-            "ashby", "greenhouse", "hireology", "lever", "personio", "pinpoint",
-            "recruitee", "rippling", "smartrecruiters", "successfactors",
-            "workable", "workday",
-        }
-        is_rich_api = b.monitor_type in api_monitors or (
-            b.monitor_type == "api_sniffer" and (b.monitor_config or {}).get("fields")
-        )
-        if b.monitor_type and not is_rich_api:
-            if not b.scraper_type:
-                out.warn("submit", f"Board {b.alias}: no scraper selected (non-API monitor)")
-            elif not b.scraper_run:
-                out.warn("submit", f"Board {b.alias}: scraper not tested")
-
-    # Step 1: Write company details to CSV
-    import json
-
-    try:
+    if step_key == "csv_written":
+        # Write company details
         kwargs = {}
         if ws.name:
             kwargs["name"] = ws.name
@@ -422,14 +509,10 @@ def submit(slug: str | None, summary: str | None):
         if ws.icon_url:
             kwargs["icon_url"] = ws.icon_url
         if kwargs:
-            company_add(slug, **kwargs)
-            out.info("csv", f"Updated company {slug!r} in companies.csv")
-    except SystemExit:
-        out.die("Failed to update company CSV row")
+            company_add(ws.slug, **kwargs)
 
-    # Step 2: Write board configs to CSV
-    for b in boards:
-        try:
+        # Write board configs
+        for b in boards:
             board_kwargs: dict = {
                 "board_slug": b.slug,
                 "board_url": b.url,
@@ -442,66 +525,131 @@ def submit(slug: str | None, summary: str | None):
                 board_kwargs["scraper_type"] = b.scraper_type
             if b.scraper_config:
                 board_kwargs["scraper_config"] = json.dumps(b.scraper_config)
-            board_add(slug, **board_kwargs)
-            out.info("csv", f"Added/updated board {b.slug!r} in boards.csv")
-        except SystemExit:
-            out.die(f"Failed to add/update board {b.slug!r}")
+            board_add(ws.slug, **board_kwargs)
 
-    # Step 3: Validate
-    errors = validate_csvs()
-    if errors:
-        out.error("validate", f"CSV validation failed with {len(errors)} error(s):")
-        for error in errors:
-            out.error("validate", f"  {error}")
-        out.die("Fix validation errors before submitting")
-    out.info("validate", "CSV validation passed")
+    elif step_key == "validated":
+        errors = validate_csvs()
+        if errors:
+            raise CsvToolError(f"CSV validation failed: {'; '.join(errors[:3])}")
 
-    # Step 4: Commit and push
-    git.add_files(["data/"])
-    commit_msg = f"Configure {ws.name or slug}"
-    if ws.issue:
-        commit_msg += f"\n\nCloses #{ws.issue}"
-    git.commit(commit_msg)
-    git.push()
-    out.info("git", "Committed and pushed")
+    elif step_key == "committed":
+        if not git.has_uncommitted_changes(["data/"]):
+            return  # Nothing to commit — already done
+        git.add_files(["data/"])
+        commit_msg = f"Configure {ws.name or ws.slug}"
+        if ws.issue:
+            commit_msg += f"\n\nCloses #{ws.issue}"
+        git.commit(commit_msg)
 
-    # Step 5: Enrich PR body
-    if ws.pr and boards:
-        pr_body = _build_pr_body(ws, boards)
-        git.edit_pr_body(ws.pr, pr_body)
-        out.info("github", f"Updated PR #{ws.pr} body")
+    elif step_key == "pushed":
+        if not git.is_ahead_of_remote():
+            return  # Already pushed
+        git.push()
 
-    # Step 6: Post crawl stats
-    if boards:
-        board_data = {b.alias: b.to_dict() for b in boards}
-        stats_comment = action_log.format_crawl_stats(board_data)
-        if ws.pr:
+    elif step_key == "pr_body_updated":
+        if ws.pr and boards:
+            pr_body = _build_pr_body(ws, boards)
+            git.edit_pr_body(ws.pr, pr_body)
+
+    elif step_key == "stats_posted":
+        if ws.pr and boards:
+            board_data = {b.alias: b.to_dict() for b in boards}
+            stats_comment = action_log.format_crawl_stats(board_data)
             git.comment_on_pr(ws.pr, stats_comment)
-            out.info("github", f"Posted crawl stats on PR #{ws.pr}")
 
-    # Step 7: Mark PR ready
-    if ws.pr:
-        git.mark_pr_ready(ws.pr)
-        out.info("github", f"PR #{ws.pr} marked as ready for review")
+    elif step_key == "transcript_posted":
+        if ws.pr:
+            ws_log = action_log.read(ws_log_path(ws.slug))
+            board_logs = {b.alias: b.log for b in boards}
+            transcript_body = action_log.format_transcript(ws_log, board_logs)
+            summary_text = summary or f"Configured {ws.name or ws.slug}"
+            transcript_comment = (
+                f"**Summary**: {summary_text}\n\n"
+                f"<details>\n<summary>Agent transcript</summary>\n\n"
+                f"{transcript_body}\n\n"
+                f"</details>"
+            )
+            git.comment_on_pr(ws.pr, transcript_comment)
 
-    # Step 8: Post transcript
-    if ws.issue:
-        ws_log = action_log.read(ws_log_path(slug))
-        board_logs = {b.alias: b.log for b in boards}
-        transcript_body = action_log.format_transcript(ws_log, board_logs)
+    elif step_key == "pr_ready":
+        if ws.pr:
+            git.mark_pr_ready(ws.pr)
 
-        summary_text = summary or f"Configured {ws.name or slug}"
-        transcript_comment = (
-            f"**Transcript summary**: {summary_text}\n\n"
-            f"<details>\n<summary>Transcript</summary>\n\n"
-            f"{transcript_body}\n\n"
-            f"</details>"
-        )
-        git.comment_on_issue(ws.issue, transcript_comment)
-        out.info("github", f"Posted transcript on issue #{ws.issue}")
+    elif step_key == "issue_completed":
+        if ws.issue:
+            total_jobs = sum((b.monitor_run or {}).get("jobs", 0) for b in boards)
+            display_name = ws.name or ws.slug
+            body = f"**{display_name}** has been added — {total_jobs} open positions found.\n\n"
+            if ws.pr:
+                body += f"Merging #{ws.pr} will activate monitoring."
+            git.comment_on_issue(ws.issue, body)
 
-    # Step 9: Update progress
-    ws.progress["submitted"] = True
+
+@click.command()
+@click.argument("slug", required=False)
+@click.option("--summary", help="One-line summary for the transcript")
+@click.option("--force", is_flag=True, help="Force submit despite poor quality verdict")
+def submit(slug: str | None, summary: str | None, force: bool):
+    """Finalize: write CSV, validate, commit, push, post stats, mark PR ready."""
+    from src.workspace.commands.crawl import run_quality_gates
+
+    slug = resolve_slug(slug)
+
+    if not workspace_exists(slug):
+        out.die(f"Workspace {slug!r} not found")
+
+    ws = load_workspace(slug)
+    boards = list_boards(slug)
+
+    # Quality gates
+    blockers, warnings = run_quality_gates(ws, boards)
+    for w in warnings:
+        out.warn("submit", w)
+    if blockers:
+        poor_only = all("poor" in b for b in blockers)
+        if not force or not poor_only:
+            for b in blockers:
+                out.error("submit", b)
+            out.die("Quality gates failed. Fix issues or use --force.")
+        else:
+            for b in blockers:
+                out.warn("submit", f"(forced) {b}")
+
+    # Stale submit detection: if config selections changed since last submit, restart
+    current_configs = {b.alias: b.active_config for b in boards}
+    prev_configs = ws.submit_state.get("_active_configs")
+    if prev_configs and prev_configs != current_configs:
+        out.warn("submit", "Board config changed since last submit — restarting")
+        ws.submit_state = {}
+
+    ws.submit_state["_active_configs"] = current_configs
+
+    # Execute steps with checkpointing
+    for step_key, step_desc, critical in SUBMIT_STEPS:
+        if ws.submit_state.get(step_key):
+            out.plain("submit", f"OK {step_desc} (done)")
+            continue
+
+        try:
+            _execute_submit_step(step_key, ws, boards, summary)
+            ws.submit_state[step_key] = True
+            save_workspace(ws)
+            out.info("submit", f"OK {step_desc}")
+        except (GitError, CsvToolError) as e:
+            if critical:
+                ws.last_error = {
+                    "command": "submit",
+                    "step": step_key,
+                    "error": str(e),
+                    "at": datetime.now(UTC).isoformat(),
+                }
+                save_workspace(ws)
+                out.die(f"{step_desc} failed: {e}")
+            else:
+                out.warn("submit", f"{step_desc} failed: {e}")
+
+    # Clear last_error on success
+    ws.last_error = {}
     save_workspace(ws)
 
     action_log.append(
@@ -512,3 +660,202 @@ def submit(slug: str | None, summary: str | None):
     )
 
     out.info("workspace", "Submit complete")
+
+
+# ── Resume ────────────────────────────────────────────────────────────
+
+
+# Priority-ordered: first matching issue determines the "Next:" suggestion.
+_NEXT_STEPS: list[tuple[str | None, str]] = [
+    ("branch_missing", "Branch not found — recreate with: git checkout -b {branch}"),
+    ("wrong_branch", "git checkout {branch}"),
+    ("pr_merged", "PR is already merged — workspace is complete"),
+    ("pr_closed", "PR is closed — reopen or create a new workspace"),
+    ("no_name", 'ws set --name "..." --website "..."'),
+    ("no_website", 'ws set --name "..." --website "..."'),
+    ("no_boards", "ws add board <alias> --url <url>"),
+    ("no_config", "ws probe monitor --current-jobs N"),
+    ("config_rejected", "ws probe monitor --current-jobs N"),
+    ("config_missing", "ws probe monitor --current-jobs N"),
+    ("not_tested", "ws run monitor"),
+    ("zero_jobs", 'ws select monitor <type> --as <name>'),
+    ("no_feedback", 'ws feedback "<config-name>"'),
+    ("unusable", 'ws select monitor <type> --as <name>'),
+    ("poor_quality", "ws submit --force  # or try another config"),
+    (None, "ws submit"),
+]
+
+
+def _check_environment(ws: Workspace) -> list[tuple[str, str, str]]:
+    """Check environment health. Returns [(code, message, severity), ...]."""
+    from src.workspace import git
+
+    issues: list[tuple[str, str, str]] = []
+
+    # Branch exists locally?
+    if ws.branch:
+        try:
+            result = git._run(["git", "branch", "--list", ws.branch], check=False)
+            if ws.branch not in result.stdout:
+                issues.append(("branch_missing", f"Branch {ws.branch} not found locally", "critical"))
+            else:
+                current = git.current_branch()
+                if current != ws.branch:
+                    issues.append(("wrong_branch", f"On {current}, expected {ws.branch}", "warning"))
+        except Exception:
+            issues.append(("git_error", "Could not check git state", "warning"))
+
+    # PR still open?
+    if ws.pr:
+        try:
+            result = git._run(["gh", "pr", "view", str(ws.pr), "--json", "state"], check=False)
+            if result.returncode == 0:
+                state = json.loads(result.stdout).get("state")
+                if state == "MERGED":
+                    issues.append(("pr_merged", f"PR #{ws.pr} is already merged", "info"))
+                elif state != "OPEN":
+                    issues.append(("pr_closed", f"PR #{ws.pr} is {state}", "warning"))
+        except Exception:
+            pass  # Skip if gh not available
+
+    return issues
+
+
+def _check_workspace_completeness(ws: Workspace, boards: list[Board]) -> list[tuple[str, str, str]]:
+    """Check workspace data completeness."""
+    issues: list[tuple[str, str, str]] = []
+    if not ws.name:
+        issues.append(("no_name", "Company name not set", "warning"))
+    if not ws.website:
+        issues.append(("no_website", "Company website not set", "warning"))
+    if not boards:
+        issues.append(("no_boards", "No boards configured", "critical"))
+    return issues
+
+
+def _check_board_readiness(board: Board) -> list[tuple[str, str, str]]:
+    """Check per-board readiness."""
+    issues: list[tuple[str, str, str]] = []
+
+    if not board.active_config:
+        issues.append(("no_config", f"Board {board.alias}: no config selected", "critical"))
+        return issues
+
+    cfg = (board.configs or {}).get(board.active_config)
+    if not cfg:
+        issues.append(("config_missing", f"Board {board.alias}: config {board.active_config!r} not found", "critical"))
+        return issues
+
+    status = cfg.get("status", "selected")
+    if status == "rejected":
+        issues.append(("config_rejected", f"Board {board.alias}: active config is rejected", "critical"))
+    elif status == "selected":
+        issues.append(("not_tested", f"Board {board.alias}: config not tested yet", "warning"))
+    elif status == "tested":
+        run = cfg.get("run") or {}
+        if run.get("jobs", 0) == 0:
+            issues.append(("zero_jobs", f"Board {board.alias}: 0 jobs found", "critical"))
+        fb = cfg.get("feedback")
+        if not fb:
+            issues.append(("no_feedback", f"Board {board.alias}: no feedback recorded", "warning"))
+        elif fb.get("verdict") == "unusable":
+            issues.append(("unusable", f"Board {board.alias}: verdict is unusable", "critical"))
+        elif fb.get("verdict") == "poor":
+            issues.append(("poor_quality", f"Board {board.alias}: verdict is poor", "warning"))
+
+    return issues
+
+
+@click.command()
+@click.argument("slug", required=False)
+def resume(slug: str | None):
+    """Analyze workspace state and suggest next action."""
+    slug = resolve_slug(slug)
+
+    if not workspace_exists(slug):
+        out.die(f"Workspace {slug!r} not found")
+
+    ws = load_workspace(slug)
+    boards = list_boards(slug)
+
+    print(f"\n  Workspace: {ws.slug}", end="")
+    if ws.branch:
+        print(f" (branch: {ws.branch}", end="")
+        if ws.pr:
+            print(f", PR #{ws.pr}", end="")
+        print(")", end="")
+    print()
+
+    # Phase 1: Environment
+    all_issues: list[tuple[str, str, str]] = []
+    env_issues = _check_environment(ws)
+    if env_issues or ws.branch:
+        print("\n  Environment:")
+        if ws.branch and not any(c == "branch_missing" for c, _, _ in env_issues):
+            print("    OK Branch exists")
+        for code, msg, severity in env_issues:
+            sym = "!!" if severity == "critical" else "!!"
+            print(f"    {sym} {msg}")
+        if ws.pr and not any(c == "pr_closed" for c, _, _ in env_issues):
+            print(f"    OK PR #{ws.pr} is open")
+    all_issues.extend(env_issues)
+
+    # Phase 2: Workspace completeness
+    ws_issues = _check_workspace_completeness(ws, boards)
+    print("\n  Company:")
+    if ws.name:
+        print(f"    OK Name: {ws.name}")
+    if ws.website:
+        print(f"    OK Website: {ws.website}")
+    for code, msg, severity in ws_issues:
+        print(f"    !! {msg}")
+    all_issues.extend(ws_issues)
+
+    # Phase 3: Per-board readiness
+    for b in boards:
+        board_issues = _check_board_readiness(b)
+        print(f"\n  Board: {b.slug}")
+
+        if b.active_config:
+            cfg = (b.configs or {}).get(b.active_config, {})
+            mtype = cfg.get("monitor_type", "?")
+            jobs = (cfg.get("run") or {}).get("jobs", "?")
+            cost = (cfg.get("cost") or {}).get("monitor_per_cycle")
+            cost_str = f", ~{cost}s" if cost is not None else ""
+            print(f"    OK Config: {b.active_config} ({mtype}, {jobs} jobs{cost_str})")
+
+            fb = cfg.get("feedback")
+            if fb:
+                print(f"    OK Feedback: {fb.get('verdict', '?')}")
+
+        if not board_issues:
+            print("    -> Ready")
+        for code, msg, severity in board_issues:
+            sym = "!!" if severity == "critical" else "!!"
+            print(f"    {sym} {msg}")
+        all_issues.extend(board_issues)
+
+    # Last error
+    if ws.last_error:
+        print("\n  Last error:")
+        cmd = ws.last_error.get("command", "?")
+        step = ws.last_error.get("step")
+        err = ws.last_error.get("error", "?")
+        at = ws.last_error.get("at", "?")
+        step_str = f" (step: {step})" if step else ""
+        print(f"    Command: {cmd}{step_str}")
+        print(f"    Error: {err}")
+        print(f"    At: {at}")
+
+    # Next step suggestion
+    issue_codes = {c for c, _, _ in all_issues}
+    next_cmd = None
+    for code, suggestion in _NEXT_STEPS:
+        if code is None or code in issue_codes:
+            next_cmd = suggestion.format(branch=ws.branch or "?")
+            break
+
+    print()
+    if next_cmd:
+        out.next_step(next_cmd)
+    print()

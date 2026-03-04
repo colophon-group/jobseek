@@ -43,8 +43,10 @@ RETURNING id, slug
 """
 
 _UPSERT_BOARD = """
-INSERT INTO job_board (company_id, board_slug, board_url, crawler_type, metadata)
-VALUES ($1, $2, $3, $4, $5::jsonb)
+INSERT INTO job_board (company_id, board_slug, board_url, crawler_type, metadata,
+                       next_check_at)
+VALUES ($1, $2, $3, $4, $5::jsonb,
+        now() + (random() * 3600) * interval '1 second')
 ON CONFLICT (board_url) DO UPDATE SET
     board_slug = COALESCE(EXCLUDED.board_slug, job_board.board_slug),
     crawler_type = EXCLUDED.crawler_type,

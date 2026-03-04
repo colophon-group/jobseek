@@ -1,14 +1,19 @@
 from __future__ import annotations
 
+from unittest.mock import AsyncMock, patch
+
 import httpx
 import pytest
 
 from src.core.scrape import scrape_one
 from src.core.scrapers import JobContent
 
+_patch_throttle = patch("src.core.scrape.throttle_domain", new_callable=AsyncMock)
+
 
 class TestScrapeOne:
-    async def test_delegates_to_jsonld(self):
+    @_patch_throttle
+    async def test_delegates_to_jsonld(self, _mock_throttle):
         page_html = """<html><head>
         <script type="application/ld+json">
         {"@type": "JobPosting", "title": "Data Scientist", "description": "ML work"}
@@ -24,7 +29,8 @@ class TestScrapeOne:
             assert result.title == "Data Scientist"
             assert result.description == "ML work"
 
-    async def test_delegates_to_dom_static(self):
+    @_patch_throttle
+    async def test_delegates_to_dom_static(self, _mock_throttle):
         page_html = """<html><body>
         <h1>Engineer</h1>
         </body></html>"""
@@ -42,7 +48,8 @@ class TestScrapeOne:
             assert isinstance(result, JobContent)
             assert result.title == "Engineer"
 
-    async def test_none_config_treated_as_empty(self):
+    @_patch_throttle
+    async def test_none_config_treated_as_empty(self, _mock_throttle):
         page_html = """<html><head>
         <script type="application/ld+json">
         {"@type": "JobPosting", "title": "Test"}

@@ -17,4 +17,4 @@ body:
     attributes:
       value: |
         ---
-        **Agent instructions:** follow [AGENTS.md](https://github.com/colophon-group/jobseek/blob/main/AGENTS.md#how-to-add-a-company) to resolve this issue.
+        Requests are processed automatically. You'll be notified when monitoring is active.

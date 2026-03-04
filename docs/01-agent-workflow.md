@@ -41,27 +41,36 @@ All workspace commands use the `ws` CLI tool (`alias ws='uv run ws'`). See AGENT
    - Probe tries all monitor types and reports results with suggested configs
    - See [04 — Monitors and Scrapers](./04-monitors-and-scrapers.md) for details
 
-5. **Select and test monitor**: `ws select monitor <type>` then `ws run monitor`
+5. **Select and test monitor**: `ws select monitor <type> [--as <name>]` then `ws run monitor`
+   - Use `--as <name>` to try multiple configurations under different names
    - Check the career page for a displayed job count (e.g. "Showing 247 open positions")
    - Compare crawled count against the website's count (should be within ~10%)
-   - If there's a significant gap, iterate: `ws select monitor <other-type>`, `ws run monitor`
+   - If there's a significant gap, iterate: `ws select monitor <other-type> --as <name>`, `ws run monitor`
+   - Use `ws select config <name>` to switch back to a previously tested config
    - If 0 jobs returned but validation passed in step 1, it's a monitor misconfiguration — debug systematically
    - See "Verification and Iteration" below for details
 
 6. **Select and test scraper** (non-API monitors only): `ws select scraper <type>` then `ws run scraper`
-   - API monitors (greenhouse, lever) auto-skip this step
+   - API monitors (greenhouse, lever, ashby, etc.) return full data and auto-skip this step
    - Verify extraction on 2–3 sample job URLs (title, location, description)
    - If extraction fails, iterate: revise config or try a different scraper type
 
-7. **Escalate to code changes** (if needed): When no existing config works:
+7. **Record feedback**: `ws feedback --title clean --description clean --verdict good`
+   - Mandatory before submit — quality gates enforce this
+   - Verdict options: `good`, `acceptable`, `poor` (submit with `--force`), `unusable` (cannot submit)
+   - If verdict is `poor` or `unusable`: `ws reject-config <name> --reason "..."` and try another config
+
+8. **Escalate to code changes** (if needed): When no existing config works:
+   - Record feedback with `--verdict unusable` to document what failed
    - `ws del` to clean up the config-only workspace
    - Create a new PR on a `fix-crawler/<description>` branch with `review-code` label
    - Reference the closed draft PR and ensure the new PR closes the original issue
    - See "Escalating to Code Changes" below for details
 
-8. **Submit**: `ws submit --summary "..."` — writes CSV from workspace state,
-   validates, commits, pushes, posts crawl stats on PR, marks PR ready, posts
-   transcript on issue. CI handles labeling and merging (see [05 — Auto-Merge](./05-auto-merge.md)).
+9. **Submit**: `ws submit [--summary "..."] [--force]` — runs quality gates, writes CSV,
+   validates, commits, pushes, posts crawl stats + transcript on PR, marks PR ready, posts
+   completion on issue. Submit is checkpoint-based — if it fails partway, use `ws resume` to
+   diagnose and re-run. CI handles labeling and merging (see [05 — Auto-Merge](./05-auto-merge.md)).
 
 ## Verification and Iteration
 
@@ -154,7 +163,7 @@ fix-crawler/workday-scraper
 - Website: <url>
 - Board: <board_url>
 - Monitor: <type> (e.g., greenhouse)
-- Scraper: <type> (e.g., greenhouse_api / json-ld / html)
+- Scraper: <type> (e.g., json-ld / dom / empty for API monitors)
 - Estimated jobs: <count>
 - Estimated crawl time: <duration>
 

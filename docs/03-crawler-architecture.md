@@ -91,7 +91,7 @@ async def process_scrape_batch(pool, http, limit=10) -> BatchResult:
 - `limit` parameter controls how many boards/URLs are claimed per batch
 - `asyncio.TaskGroup` runs them concurrently within a batch
 - `FOR UPDATE SKIP LOCKED` prevents multiple crawlers from claiming the same board
-- Failed boards get exponential backoff (interval doubles, capped at 24h, auto-disabled at 5 consecutive failures)
+- Failed boards get exponential backoff starting at 5 minutes (5 → 10 → 20 → 40 min, capped at 24h, auto-disabled at 5 consecutive failures)
 
 ## Layer 3: Scheduler
 

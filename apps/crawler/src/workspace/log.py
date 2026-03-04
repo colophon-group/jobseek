@@ -66,10 +66,35 @@ def format_transcript(
     return "\n".join(lines)
 
 
+def _format_field_quality(value: Any) -> str:
+    """Format a feedback field value for display.
+
+    Handles both dict format (``{'coverage': '63/63', 'quality': 'clean'}``)
+    and plain string format.
+    """
+    if isinstance(value, dict):
+        cov = value.get("coverage", "")
+        qual = value.get("quality", "")
+        return f"{cov} ({qual})" if cov else qual
+    return str(value)
+
+
+def _get_active_cfg(board: dict[str, Any]) -> dict[str, Any]:
+    """Extract the active config entry from a v2 board dict."""
+    active = board.get("active_config")
+    if not active:
+        return {}
+    return (board.get("configs") or {}).get(active, {})
+
+
 def format_crawl_stats(boards: dict[str, dict[str, Any]]) -> str:
     """Generate crawl stats comment from board run data.
 
-    Returns the full markdown comment including the hidden JSON marker.
+    Returns the full markdown comment including the hidden JSON marker,
+    field coverage tiers, and verdict from feedback.
+
+    Reads from the v2 board structure where run data, monitor/scraper
+    type, cost, and feedback are inside ``configs[active_config]``.
     """
     import json
 
@@ -78,52 +103,64 @@ def format_crawl_stats(boards: dict[str, dict[str, Any]]) -> str:
     max_scraper_time = 0.0
     monitor_type = None
     scraper_type = None
-    total_titles = None
-    total_descs = None
-    total_locations = None
-    sample_count = None
+    configs_tried = 0
+    verdict = None
+    feedback_fields: dict[str, Any] = {}
 
     for _alias, board in boards.items():
-        mr = board.get("monitor_run") or {}
-        sr = board.get("scraper_run") or {}
+        cfg = _get_active_cfg(board)
+        mr = cfg.get("run") or {}
+        sr = cfg.get("scraper_run") or {}
         total_jobs += mr.get("jobs", 0)
         max_monitor_time = max(max_monitor_time, mr.get("time", 0.0))
         max_scraper_time = max(max_scraper_time, sr.get("avg_time", 0.0))
-        monitor_type = board.get("monitor_type") or monitor_type
-        scraper_type = board.get("scraper_type") or scraper_type
+        monitor_type = cfg.get("monitor_type") or monitor_type
+        scraper_type = cfg.get("scraper_type") or scraper_type
 
-        if sr.get("titles") is not None:
-            total_titles = (total_titles or 0) + sr["titles"]
-            sample_count = (sample_count or 0) + sr.get("count", 0)
-        if sr.get("descriptions") is not None:
-            total_descs = (total_descs or 0) + sr["descriptions"]
-        if sr.get("locations") is not None:
-            total_locations = (total_locations or 0) + sr["locations"]
+        # Count configs tried
+        configs_tried += len(board.get("configs") or {})
+
+        # Get feedback from active config
+        fb = cfg.get("feedback")
+        if fb:
+            verdict = fb.get("verdict")
+            feedback_fields = fb.get("fields", {})
+
+    # Cost from active config
+    cost_str = None
+    for _alias, board in boards.items():
+        cfg = _get_active_cfg(board)
+        cost = cfg.get("cost", {})
+        mon = cost.get("monitor_per_cycle")
+        if mon is not None:
+            from src.core.monitors import is_rich_monitor
+
+            m_type = cfg.get("monitor_type")
+            m_config = cfg.get("monitor_config")
+            if is_rich_monitor(m_type, m_config):
+                cost_str = f"~{mon}s (API — no scraper)"
+            else:
+                cost_str = f"~{mon}s/cycle + scraper"
 
     stats = {
         "jobs": total_jobs,
         "monitor_time": max_monitor_time,
         "scraper_time": max_scraper_time,
-        "monitor_type": monitor_type,
-        "scraper_type": scraper_type,
-        "titles": total_titles,
-        "descriptions": total_descs,
-        "locations": total_locations,
     }
     stats_json = json.dumps({k: v for k, v in stats.items() if v is not None})
 
     rows = [
         f"| Jobs | {total_jobs} |",
-        f"| Monitor | `{monitor_type}` · {max_monitor_time}s |",
+        f"| Monitor | `{monitor_type}` · {max_monitor_time}s (measured) |",
     ]
     if scraper_type:
         rows.append(f"| Scraper | `{scraper_type}` · {max_scraper_time}s |")
-    if total_titles is not None and sample_count:
-        rows.append(f"| Titles | {total_titles}/{sample_count} |")
-    if total_descs is not None and sample_count:
-        rows.append(f"| Descriptions | {total_descs}/{sample_count} |")
-    if total_locations is not None and sample_count:
-        rows.append(f"| Locations | {total_locations}/{sample_count} |")
+    if cost_str:
+        rows.append(f"| Cost/cycle | {cost_str} |")
+    if configs_tried > 1:
+        rows.append(f"| Configs tried | {configs_tried} |")
+    if verdict:
+        rows.append(f"| Verdict | **{verdict}** |")
 
     table = "\n".join(rows)
     return f"<!-- crawl-stats {stats_json} -->\n| Metric | Value |\n|---|---|\n{table}"

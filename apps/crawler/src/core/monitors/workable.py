@@ -322,4 +322,4 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
     return None
 
 
-register("workable", discover, cost=10, can_handle=can_handle)
+register("workable", discover, cost=10, can_handle=can_handle, rich=True)

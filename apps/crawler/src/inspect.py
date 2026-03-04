@@ -12,6 +12,7 @@ import time
 import polars as pl
 import structlog
 
+from src.core.monitors import all_monitor_types
 from src.shared.constants import DATA_DIR, SLUG_RE, URL_RE
 
 log = structlog.get_logger()
@@ -88,38 +89,14 @@ def validate_csvs() -> list[ValidationError]:
         errors.append(ValidationError("boards.csv", None, f"Missing columns: {missing}"))
         return errors
 
-    valid_monitor_types = {
-        "ashby",
-        "greenhouse",
-        "hireology",
-        "lever",
-        "personio",
-        "pinpoint",
-        "recruitee",
-        "rippling",
-        "smartrecruiters",
-        "successfactors",
-        "workable",
-        "workday",
-        "sitemap",
-        "nextdata",
-        "dom",
-        "api_sniffer",
-    }
+    valid_monitor_types = all_monitor_types()
     valid_scraper_types = {
-        "ashby_api",
-        "greenhouse_api",
-        "lever_api",
-        "smartrecruiters_api",
-        "pinpoint_api",
-        "workable_api",
-        "workday_api",
         "json-ld",
         "dom",
         "nextdata",
         "embedded",
         "api_sniffer",
-        "",
+        "",  # API monitors don't need a scraper
     }
     url_only_monitors = {"sitemap", "dom"}
     board_urls: set[str] = set()

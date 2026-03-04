@@ -46,6 +46,16 @@ def scraper_probe_run_dir(slug: str, alias: str) -> Path:
     return _run_dir(slug, alias, "scraper-probe")
 
 
+def deep_probe_run_dir(slug: str, alias: str) -> Path:
+    """Create and return a timestamped deep-probe run directory."""
+    return _run_dir(slug, alias, "deep-probe")
+
+
+def api_probe_run_dir(slug: str, alias: str) -> Path:
+    """Create and return a timestamped api-probe run directory."""
+    return _run_dir(slug, alias, "api-probe")
+
+
 def save_probe(run_dir: Path, results: list[dict]) -> None:
     """Save probe detection results to a run directory."""
     (run_dir / "probe.json").write_text(json.dumps(results, indent=2, default=str))

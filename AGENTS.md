@@ -41,11 +41,16 @@ ws set --name "..." --website "..." --logo-url "..." --icon-url "..."
 ws add board <alias> --url <board-url>
 ws probe monitor                       # Probe all monitor types for active board
 ws probe scraper                       # Probe all scraper types against sample URLs
-ws select monitor <type> [--config JSON]
+ws probe deep                          # Playwright-based api_sniffer detection
+ws probe api <url>                     # Analyze API endpoint for api_sniffer config
+ws select monitor <type> [--as <name>] [--config JSON]
 ws run monitor                         # Test crawl
 ws select scraper <type> [--config JSON]
 ws run scraper [--url URL ...]         # Test scrape sample pages
-ws submit --summary "..."              # Validate, commit, push, post stats + transcript
+ws feedback [<config>] --title clean --description clean --verdict good  # Record quality
+ws select config <name>                # Re-activate a previously tested config
+ws reject-config <name> --reason "..." # Mark a config as rejected
+ws submit [--summary "..."] [--force]  # Validate, commit, push, post stats + transcript
 
 # Rejection (before or after workspace creation)
 ws reject --issue <N> --reason <key> --message "..."
@@ -54,6 +59,7 @@ ws reject --reason <key> --message "..."  # Uses active workspace's issue
 # Utilities
 ws validate                            # Validate CSVs
 ws status                              # Show active workspace (or list all if none active)
+ws resume                              # Diagnose workspace state and suggest next action
 ws use --board <alias>                 # Switch active board
 ws del                                 # Remove workspace + CSV rows + close PR
 ws help [topic]                        # Reference docs for monitors, scrapers, config
@@ -139,7 +145,7 @@ ws set --name "Stripe" --website "https://stripe.com" \
   --icon-url "https://www.google.com/s2/favicons?domain=stripe.com&sz=128"
 ```
 
-URLs are advisory-checked (reachability, image content type) but always saved.
+URLs must be reachable — submit blocks on unreachable logo/icon URLs. Prefer logos hosted on the company's own website (OG image, press/brand page, or page source) to ensure they stay up-to-date.
 
 ### 4. Add Board and Probe Monitors
 
@@ -157,18 +163,20 @@ ws select monitor greenhouse
 ws run monitor
 ```
 
-After the test crawl, compare the job count against the website's displayed total. If counts don't match, iterate:
+Use `--as <name>` to try multiple configurations under different names:
 
 ```bash
-ws select monitor sitemap
+ws select monitor sitemap --as sitemap-filtered --config '{"url_filter": "/jobs/"}'
 ws run monitor
 ```
+
+After the test crawl, compare the job count against the website's displayed total. If counts don't match, iterate. Use `ws select config <name>` to switch back to a previously tested configuration.
 
 **Zero jobs**: Step 1 confirmed listings exist, so 0 results indicates misconfiguration. Debug systematically — try different monitor types, check API tokens, verify the URL.
 
 ### 6. Select and Test Scraper (non-API monitors only)
 
-API monitors (`greenhouse`, `hireology`, `lever`, `ashby`, `personio`, `pinpoint`, `recruitee`, `rippling`, `smartrecruiters`, `successfactors`, `workable`, `workday`) return full data — `ws run monitor` prints "Skipping scraper" and auto-marks scraper steps as done. `api_sniffer` with auto-mapped `fields` also skips the scraper step.
+API monitors (`greenhouse`, `hireology`, `lever`, `ashby`, `personio`, `pinpoint`, `recruitee`, `rippling`, `rss`, `smartrecruiters`, `workable`, `workday`) return full data — `ws run monitor` prints "Skipping scraper" and auto-marks scraper steps as done. `api_sniffer` with auto-mapped `fields` also skips the scraper step.
 
 For URL-only monitors (`sitemap`, `dom`, `api_sniffer` without `fields`), follow this checklist **in order**:
 
@@ -231,7 +239,7 @@ Before submitting, verify that extracted content is **complete and correct**, no
 
 - Read the content samples in `ws run scraper` output. A populated field is not necessarily a correct field — verify the actual text makes sense and isn't truncated, garbled, or generic. For example, locations showing "+2 more" means incomplete data even if the field counts as populated.
 - If extracted content looks incomplete, investigate the page source for better data sources. Don't apply regex cleanup to broken data — find where the complete data lives. Reliability comes from extracting complete data at the source, not patching partial data downstream.
-- Check for additional mappable fields in the raw data source (same data source, no additional requests): `employment_type`, `date_posted`, `job_location_type`, team/department (as `metadata.*`), `base_salary`, `qualifications`, `responsibilities`.
+- Check for additional mappable fields in the raw data source (same data source, no additional requests): `employment_type`, `date_posted`, `job_location_type`, team/department (as `metadata.*`), `base_salary`, `qualifications`, `responsibilities`. See [docs/08-job-data-fields.md](docs/08-job-data-fields.md) for accepted formats and values for each field.
 
 **Per scraper type:**
 - **nextdata**: Read the `nextdata.json` or scraper-probe artifact to see all available keys in each item, then extend `fields` mapping.
@@ -242,13 +250,40 @@ Before submitting, verify that extracted content is **complete and correct**, no
 
 Run `ws run scraper` again after config changes to verify new fields appear and content quality is correct.
 
-### 7. Submit
+### 7. Record Feedback
 
-`ws submit` handles: CSV write, validation, commit, push, crawl stats comment, mark PR ready, transcript comment.
+After testing, record extraction quality feedback. This is **mandatory before submit**.
+
+```bash
+ws feedback --title clean --description clean --verdict good
+```
+
+Quality values per field: `clean` (correct), `noisy` (partially correct), `unusable` (wrong data), `absent` (field not extracted).
+
+Verdict levels:
+- `good` — all required fields clean, important fields mostly clean
+- `acceptable` — required fields clean, some important fields noisy
+- `poor` — required fields noisy or important fields absent (submit with `--force`)
+- `unusable` — required fields unusable (cannot submit, try another config)
+
+If the verdict is `poor` or `unusable`, try a different config:
+
+```bash
+ws reject-config <name> --reason "Locations missing, titles truncated"
+ws select monitor <type> --as <new-name>
+ws run monitor
+# ...test again, then ws feedback
+```
+
+### 8. Submit
+
+`ws submit` handles: CSV write, validation, commit, push, crawl stats comment, mark PR ready, transcript comment. Submit runs quality gates — feedback must be recorded with a `good` or `acceptable` verdict.
 
 ```bash
 ws submit --summary "..."
 ```
+
+Use `--force` to submit despite a `poor` verdict (not for `unusable`). Use `ws resume` to diagnose issues if submit fails partway — it supports checkpoint-based retry.
 
 The `--summary` should focus on **difficulties, roadblocks, or unexpected behaviors** encountered during configuration — not just restate the final result. If everything went smoothly, say so briefly. Examples:
 
@@ -257,14 +292,15 @@ The `--summary` should focus on **difficulties, roadblocks, or unexpected behavi
 - `"Auto-detect returned lever but token was wrong; had to extract correct token from page source."` — detection worked but config needed manual adjustment
 - `"Tried sitemap (0 jobs — sitemap only has blog posts), then dom monitor worked. JSON-LD scraper missing locations, switched to dom scraper with render: false."` — multiple iterations needed
 
-### 8. Escalate to Code Changes (when needed)
+### 9. Escalate to Code Changes (when needed)
 
 If no existing monitor/scraper type works after exhausting config options:
 
-1. Use `ws del` to clean up the config-only workspace
-2. Create a new PR on a `fix-crawler/<description>` branch manually
-3. Reference what was tried in the PR body
-4. Include both the code change and CSV config in the same PR
+1. Record feedback with `--verdict unusable` to document what failed
+2. Use `ws del` to clean up the config-only workspace
+3. Create a new PR on a `fix-crawler/<description>` branch manually
+4. Reference what was tried in the PR body
+5. Include both the code change and CSV config in the same PR
 
 ### Full Example
 
@@ -285,7 +321,8 @@ ws probe monitor
 ws select monitor greenhouse
 ws run monitor
 
-# Submit (~8 total commands)
+# Feedback + submit
+ws feedback --title clean --description clean --verdict good
 ws submit --summary "Straightforward greenhouse config, 138 jobs"
 ```
 
@@ -312,16 +349,19 @@ company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scrap
 - `company_slug`: must exist in companies.csv
 - `board_slug`: unique identifier in `{company}-{alias}` format (e.g., `stripe-careers`)
 - `board_url`: unique career page URL
-- `monitor_type`: `ashby` | `greenhouse` | `hireology` | `lever` | `personio` | `pinpoint` | `recruitee` | `rippling` | `smartrecruiters` | `successfactors` | `workable` | `workday` | `sitemap` | `nextdata` | `dom` | `api_sniffer`
+- `monitor_type`: `ashby` | `greenhouse` | `hireology` | `lever` | `personio` | `pinpoint` | `recruitee` | `rippling` | `rss` | `smartrecruiters` | `workable` | `workday` | `sitemap` | `nextdata` | `dom` | `api_sniffer`
 - `monitor_config`: JSON string (use `""` for inner quotes)
-- `scraper_type`: `ashby_api` | `greenhouse_api` | `lever_api` | `pinpoint_api` | `smartrecruiters_api` | `workable_api` | `workday_api` | `json-ld` | `dom` | `nextdata` | `embedded` | `api_sniffer` (empty for API monitors)
-- `scraper_config`: JSON string (empty for json-ld, greenhouse_api, lever_api)
+- `scraper_type`: `json-ld` | `dom` | `nextdata` | `embedded` | `api_sniffer` (empty for API monitors — they return full data directly)
+- `scraper_config`: JSON string (empty for json-ld)
 
 ## Job Data Fields
 
-- **Required**: `title`, `description` (HTML) — must be N/N, do not submit with 0/N
-- **Important**: `locations`, `job_location_type` — missing locations acceptable only if `job_location_type` is set (e.g. remote-only companies)
-- **Optional**: `employment_type`, `date_posted`, `base_salary`, `skills`, `qualifications`, `responsibilities`
+See [docs/08-job-data-fields.md](docs/08-job-data-fields.md) for the complete field reference including types, formats, per-ATS source mapping, and JSON-LD schema.org mapping.
+
+- **Required**: `title` (plain text), `description` (HTML fragment) — must be N/N, do not submit with 0/N
+- **Important**: `locations` (list of strings), `job_location_type` (`"remote"`/`"hybrid"`/`"onsite"`) — missing locations acceptable only if `job_location_type` is set (e.g. remote-only companies)
+- **Optional**: `employment_type` (string), `date_posted` (ISO 8601), `base_salary` (`{currency, min, max, unit}` dict), `skills` (list), `qualifications` (list), `responsibilities` (list)
+- **Metadata**: free-form dict for ATS-specific fields — use `metadata.<key>` in scraper field mappings (common keys: `department`, `team`, `id`)
 
 `ws run scraper` shows extraction stats. Titles and descriptions should be N/N.
 0/N titles or 0/N descriptions means wrong scraper type or config — do not submit.
@@ -344,7 +384,7 @@ When choosing between monitor/scraper configurations, optimize in this order:
 - **json-ld scraper is more resilient than dom** — schema.org markup is standardized. Try json-ld before dom for any URL-only monitor.
 - **Multi-board companies**: configure all career pages unless one board's listings are a strict superset of another's. When in doubt, configure both.
 - **Low quality after exhausting config options**: if extraction quality remains poor after trying all applicable monitor/scraper combinations, escalate to code changes (`ws del`, then `fix-crawler/` branch). Document what was tried.
-- **api_sniffer bridges the gap** — when no known ATS API exists but the site loads data via internal APIs, api_sniffer captures those APIs. With `fields` auto-mapped it acts like an API monitor (scraper skipped). More resilient than dom for API-driven sites. After selecting, inspect the auto-filled `api_url` for page size parameters (e.g. `result_limit=10`, `per_page=20`) and increase them if the API allows (e.g. `result_limit=100`). Update `pagination.increment` to match. This reduces the number of requests needed.
+- **api_sniffer bridges the gap** — when no known ATS API exists but the site loads data via internal APIs, api_sniffer captures those APIs. With `fields` auto-mapped it acts like an API monitor (scraper skipped). More resilient than dom for API-driven sites. After selecting, inspect the auto-filled `api_url` for page size parameters (e.g. `result_limit=10`, `per_page=20`) and increase them if the API allows (e.g. `result_limit=100`). Update `pagination.increment` to match. This reduces the number of requests needed. For public JSON APIs that don't need browser cookies (e.g. WordPress sites returning HTML fragments in JSON), manually configure `api_url` + `json_path` to use plain HTTP mode (no Playwright). Set `"browser": true` only when the API requires cookies/auth context established by navigating the page first.
 - **Resilience is subjective** — optimizing for it requires case-by-case judgment. Simpler configurations that rely on stable structures (APIs, sitemaps, schema.org) are preferred over complex step-based selectors that may break on site redesigns.
 
 ## Code Style (Python — apps/crawler)

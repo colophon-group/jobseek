@@ -2,19 +2,28 @@
 
 from __future__ import annotations
 
+import sys
+
 import click
 
+from src.workspace import output as out
 from src.workspace.commands.config import add_board, del_board, set_
 from src.workspace.commands.crawl import (
+    feedback_cmd,
+    probe_api,
+    probe_deep,
     probe_monitors,
     probe_scraper,
+    reject_config,
     run_monitor,
     run_scraper,
+    select_config,
     select_monitor,
     select_scraper,
 )
 from src.workspace.commands.help import help_cmd
-from src.workspace.commands.lifecycle import del_, new, reject, status, submit, use, validate
+from src.workspace.commands.lifecycle import del_, new, reject, resume, status, submit, use, validate
+from src.workspace.errors import WorkspaceError
 
 
 @click.group()
@@ -31,7 +40,10 @@ ws.add_command(submit)
 ws.add_command(reject)
 ws.add_command(status)
 ws.add_command(validate)
+ws.add_command(resume)
 ws.add_command(help_cmd, name="help")
+ws.add_command(feedback_cmd, name="feedback")
+ws.add_command(reject_config, name="reject-config")
 
 
 # ── `ws add` group ──────────────────────────────────────────────────────
@@ -55,6 +67,8 @@ def probe_group():
 
 probe_group.add_command(probe_monitors, name="monitor")
 probe_group.add_command(probe_scraper, name="scraper")
+probe_group.add_command(probe_deep, name="deep")
+probe_group.add_command(probe_api, name="api")
 
 
 # ── `ws del` group ──────────────────────────────────────────────────────
@@ -87,6 +101,7 @@ def select_group():
 
 select_group.add_command(select_monitor, name="monitor")
 select_group.add_command(select_scraper, name="scraper")
+select_group.add_command(select_config, name="config")
 
 
 # ── `ws run` group ─────────────────────────────────────────────────────
@@ -102,4 +117,15 @@ run_group.add_command(run_scraper, name="scraper")
 
 
 def main():
-    ws()
+    try:
+        ws(standalone_mode=False)
+    except click.exceptions.Exit:
+        pass
+    except click.ClickException as e:
+        e.show()
+        sys.exit(e.exit_code)
+    except WorkspaceError as e:
+        out.die(str(e))
+    except KeyboardInterrupt:
+        print("\nAborted.", file=sys.stderr)
+        sys.exit(130)

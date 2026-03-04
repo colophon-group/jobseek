@@ -6,12 +6,18 @@ No standalone CLI entry point — use ``ws`` commands instead.
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 from src.shared.constants import DATA_DIR, SLUG_RE
 from src.shared.csv_io import read_csv as _read_csv
 from src.shared.csv_io import write_csv as _write_csv
+from src.workspace.errors import (
+    BoardNotFoundError,
+    InvalidSlugError,
+    MissingRequiredFieldError,
+    NothingToUpdateError,
+    SlugNotFoundError,
+)
 
 _SLUG_RE = SLUG_RE
 
@@ -32,8 +38,7 @@ def company_add(
 ) -> None:
     """Add a new company or update an existing one."""
     if not _SLUG_RE.match(slug):
-        print(f"Error: invalid slug format: {slug!r}", file=sys.stderr)
-        sys.exit(1)
+        raise InvalidSlugError(f"Invalid slug format: {slug!r}")
 
     companies_path = DATA_DIR / "companies.csv"
     headers, rows = _read_csv(companies_path)
@@ -75,8 +80,7 @@ def company_add(
             updates["icon_url"] = icon_url
 
         if not updates:
-            print(f"Company {slug!r} already exists, nothing to update.", file=sys.stderr)
-            sys.exit(1)
+            raise NothingToUpdateError(f"Company {slug!r} already exists, nothing to update")
 
         target.update(updates)
         _write_csv(companies_path, headers, rows)
@@ -95,8 +99,7 @@ def company_del(slug: str) -> None:
     rows = [r for r in rows if r["slug"] != slug]
 
     if len(rows) == original_len:
-        print(f"Error: slug {slug!r} not found in companies.csv", file=sys.stderr)
-        sys.exit(1)
+        raise SlugNotFoundError(f"Slug {slug!r} not found in companies.csv")
 
     _write_csv(companies_path, headers, rows)
 
@@ -126,8 +129,7 @@ def board_add(
     boards_path = DATA_DIR / "boards.csv"
 
     if slug not in _company_slugs(companies_path):
-        print(f"Error: slug {slug!r} not found in companies.csv", file=sys.stderr)
-        sys.exit(1)
+        raise SlugNotFoundError(f"Slug {slug!r} not found in companies.csv")
 
     headers, rows = _read_csv(boards_path)
 
@@ -159,8 +161,7 @@ def board_add(
             updates["scraper_config"] = scraper_config
 
         if not updates:
-            print(f"Board {board_url!r} already exists, nothing to update.", file=sys.stderr)
-            sys.exit(1)
+            raise NothingToUpdateError(f"Board {board_url!r} already exists, nothing to update")
 
         target.update(updates)
         _write_csv(boards_path, headers, rows)
@@ -170,8 +171,7 @@ def board_add(
     else:
         # Create new board
         if not board_url:
-            print("Error: --board-url is required when adding a new board", file=sys.stderr)
-            sys.exit(1)
+            raise MissingRequiredFieldError("board_url is required when adding a new board")
 
         new_row = {col: "" for col in headers}
         new_row["company_slug"] = slug
@@ -201,11 +201,7 @@ def board_del(slug: str, *, board_url: str | None = None) -> None:
         original_len = len(rows)
         rows = [r for r in rows if not (r["company_slug"] == slug and r["board_url"] == board_url)]
         if len(rows) == original_len:
-            print(
-                f"Error: board ({slug!r}, {board_url!r}) not found in boards.csv",
-                file=sys.stderr,
-            )
-            sys.exit(1)
+            raise BoardNotFoundError(f"Board ({slug!r}, {board_url!r}) not found in boards.csv")
         _write_csv(boards_path, headers, rows)
         print(f"Removed board {board_url!r} for {slug!r}")
     else:
@@ -213,7 +209,6 @@ def board_del(slug: str, *, board_url: str | None = None) -> None:
         rows = [r for r in rows if r["company_slug"] != slug]
         removed = original_len - len(rows)
         if removed == 0:
-            print(f"Error: no boards found for {slug!r}", file=sys.stderr)
-            sys.exit(1)
+            raise BoardNotFoundError(f"No boards found for {slug!r}")
         _write_csv(boards_path, headers, rows)
         print(f"Removed {removed} board(s) for {slug!r}")
