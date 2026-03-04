@@ -31,6 +31,7 @@ Monitor Types (cheapest first):
   ────────────────────────────────────────────────────────
   ashby             10      Full job data   No (skipped)
   greenhouse        10      Full job data   No (skipped)
+  hireology         10      Full job data   No (skipped)
   lever             10      Full job data   No (skipped)
   recruitee         10      Full job data   No (skipped)
   rippling          10      Full job data   No (skipped)
@@ -39,6 +40,7 @@ Monitor Types (cheapest first):
   workday           10      Full job data   No (skipped)
   pinpoint          10      Full job data   No (skipped)
   personio          10      Full job data   No (skipped)
+  successfactors    10      Full job data   No (skipped)
   nextdata          20      URLs or full    If URL-only
   sitemap        50      URL set         Yes
   api_sniffer    80      URLs or full    If URL-only (no fields)
@@ -71,7 +73,7 @@ Scraper Types:
   api_sniffer    Playwright  Optional (fields)  SPA/XHR job pages
 
   API monitors (greenhouse, lever, ashby, recruitee, rippling, workday, pinpoint,
-  personio) skip the scraper step entirely.
+  personio, successfactors) skip the scraper step entirely.
   api_sniffer scraper is auto-probed via Playwright in ws probe scraper.
 
   Probe first: ws probe scraper tries all types automatically against
@@ -117,6 +119,29 @@ greenhouse — Greenhouse Public API
 
   Detection:  ws probe shows "Greenhouse API — token: X, N jobs"
   Zero jobs?  Verify token — try the API URL directly in a browser"""
+
+MONITOR_HIREOLOGY = """\
+hireology — Hireology Careers API
+
+  API:      GET https://api.hireology.com/v2/public/careers/{slug}?page_size=500
+  Returns:  Full job data (title, HTML description, locations, employment_type,
+            job_location_type, date_posted)
+            metadata: organization, job_family, id
+  Scraper:  Not needed (API returns full data, scraper step is skipped)
+  Cap:      10,000 jobs
+  Note:     Single API call for most boards (page_size=500)
+
+  Config:
+    {"slug": "bristolhonda"}
+
+    slug     Careers path slug. Auto-filled by ws probe from:
+             1. Direct URL (careers.hireology.com/{slug})
+             2. New domain ({slug}.hireology.careers)
+             3. Inline HTML scan for Hireology API references
+             4. Slug-based API probe
+
+  Detection:  ws probe shows "Hireology API — slug: X, N jobs"
+  Zero jobs?  Verify slug — try the API URL directly in a browser"""
 
 MONITOR_LEVER = """\
 lever — Lever Postings API
@@ -371,6 +396,30 @@ personio — Personio Public XML Feed
 
   Detection:  ws probe shows "Personio XML — slug: X, N jobs"
   Zero jobs?  Verify slug — try the XML URL directly in a browser"""
+
+MONITOR_SUCCESSFACTORS = """\
+successfactors — SAP SuccessFactors Career Site Builder (CSB)
+
+  Feed:     GET https://{domain}/googlefeed.xml
+  Format:   RSS 2.0 with Google Base namespace extensions
+  Returns:  Full job data (title, HTML description, locations)
+            metadata: id, employer, job_function, expiration_date
+  Scraper:  Not needed (feed returns full data, scraper step is skipped)
+  Cap:      10,000 jobs
+  Note:     Single request — returns all jobs, no pagination
+
+  Config:
+    {"feed_url": "https://jobs.sap.com/googlefeed.xml"}
+
+    feed_url   RSS feed URL. Auto-filled by ws probe.
+               Derived from board URL: {origin}/googlefeed.xml
+
+  Detection:  ws probe shows "SuccessFactors RSS — {feed_url}, N jobs"
+              Detected via page HTML markers (successfactors.eu, rmkcdn CDN,
+              jobs2web.com references) or blind /googlefeed.xml probe.
+  Zero jobs?  Verify the feed URL directly in a browser.
+              Some sites serve /sitemap.xml as a proper sitemap — use
+              /googlefeed.xml which is always the RSS feed."""
 
 MONITOR_WORKABLE = """\
 workable — Workable Posting API
@@ -945,6 +994,7 @@ Troubleshooting:
 
 MONITOR_CARDS: dict[str, str] = {
     "greenhouse": MONITOR_GREENHOUSE,
+    "hireology": MONITOR_HIREOLOGY,
     "lever": MONITOR_LEVER,
     "ashby": MONITOR_ASHBY,
     "recruitee": MONITOR_RECRUITEE,
@@ -954,6 +1004,7 @@ MONITOR_CARDS: dict[str, str] = {
     "workday": MONITOR_WORKDAY,
     "pinpoint": MONITOR_PINPOINT,
     "personio": MONITOR_PERSONIO,
+    "successfactors": MONITOR_SUCCESSFACTORS,
     "sitemap": MONITOR_SITEMAP,
     "nextdata": MONITOR_NEXTDATA,
     "dom": MONITOR_DOM,

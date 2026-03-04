@@ -196,6 +196,12 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"Recruitee API \u2014 {label}, {jobs} jobs"
         return f"Recruitee API \u2014 {label}"
+    if name == "hireology":
+        slug = metadata.get("slug", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"Hireology API \u2014 slug: {slug}, {jobs} jobs"
+        return f"Hireology API \u2014 slug: {slug}"
     if name == "rippling":
         slug = metadata.get("slug", "?")
         jobs = metadata.get("jobs")
@@ -227,6 +233,12 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"Personio XML \u2014 slug: {slug}, {jobs} jobs"
         return f"Personio XML \u2014 slug: {slug}"
+    if name == "successfactors":
+        feed_url = metadata.get("feed_url", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"SuccessFactors RSS \u2014 {feed_url}, {jobs} jobs"
+        return f"SuccessFactors RSS \u2014 {feed_url}"
     if name == "api_sniffer":
         items = metadata.get("items")
         total = metadata.get("total")
@@ -288,6 +300,7 @@ from src.core.monitors import (  # noqa: E402
     ashby,  # noqa: F401
     dom,  # noqa: F401
     greenhouse,  # noqa: F401
+    hireology,  # noqa: F401
     lever,  # noqa: F401
     nextdata,  # noqa: F401
     personio,  # noqa: F401
@@ -296,6 +309,7 @@ from src.core.monitors import (  # noqa: E402
     rippling,  # noqa: F401
     sitemap,  # noqa: F401
     smartrecruiters,  # noqa: F401
+    successfactors,  # noqa: F401
     workable,  # noqa: F401
     workday,  # noqa: F401
 )

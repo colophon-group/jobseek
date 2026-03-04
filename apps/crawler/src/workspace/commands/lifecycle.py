@@ -346,8 +346,9 @@ def _build_pr_body(ws: Workspace, boards: list[Board]) -> str:
         lines.append(f"| Monitor | `{b.monitor_type}`{monitor_cfg} |")
 
         api_monitors = {
-            "ashby", "greenhouse", "lever", "personio", "pinpoint",
-            "recruitee", "rippling", "smartrecruiters", "workable", "workday",
+            "ashby", "greenhouse", "hireology", "lever", "personio", "pinpoint",
+            "recruitee", "rippling", "smartrecruiters", "successfactors",
+            "workable", "workday",
         }
         is_rich_api = b.monitor_type in api_monitors or (
             b.monitor_type == "api_sniffer" and (b.monitor_config or {}).get("fields")
@@ -394,8 +395,9 @@ def submit(slug: str | None, summary: str | None):
             out.warn("submit", f"Board {b.alias}: monitor not tested")
         # Check if scraper is needed but not tested
         api_monitors = {
-            "ashby", "greenhouse", "lever", "personio", "pinpoint",
-            "recruitee", "rippling", "smartrecruiters", "workable", "workday",
+            "ashby", "greenhouse", "hireology", "lever", "personio", "pinpoint",
+            "recruitee", "rippling", "smartrecruiters", "successfactors",
+            "workable", "workday",
         }
         is_rich_api = b.monitor_type in api_monitors or (
             b.monitor_type == "api_sniffer" and (b.monitor_config or {}).get("fields")

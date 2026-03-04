@@ -168,7 +168,7 @@ ws run monitor
 
 ### 6. Select and Test Scraper (non-API monitors only)
 
-API monitors (`greenhouse`, `lever`, `ashby`, `personio`, `pinpoint`, `recruitee`, `rippling`, `smartrecruiters`, `workable`, `workday`) return full data — `ws run monitor` prints "Skipping scraper" and auto-marks scraper steps as done. `api_sniffer` with auto-mapped `fields` also skips the scraper step.
+API monitors (`greenhouse`, `hireology`, `lever`, `ashby`, `personio`, `pinpoint`, `recruitee`, `rippling`, `smartrecruiters`, `successfactors`, `workable`, `workday`) return full data — `ws run monitor` prints "Skipping scraper" and auto-marks scraper steps as done. `api_sniffer` with auto-mapped `fields` also skips the scraper step.
 
 For URL-only monitors (`sitemap`, `dom`, `api_sniffer` without `fields`), follow this checklist **in order**:
 
@@ -312,7 +312,7 @@ company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scrap
 - `company_slug`: must exist in companies.csv
 - `board_slug`: unique identifier in `{company}-{alias}` format (e.g., `stripe-careers`)
 - `board_url`: unique career page URL
-- `monitor_type`: `ashby` | `greenhouse` | `lever` | `personio` | `pinpoint` | `recruitee` | `rippling` | `smartrecruiters` | `workable` | `workday` | `sitemap` | `nextdata` | `dom` | `api_sniffer`
+- `monitor_type`: `ashby` | `greenhouse` | `hireology` | `lever` | `personio` | `pinpoint` | `recruitee` | `rippling` | `smartrecruiters` | `successfactors` | `workable` | `workday` | `sitemap` | `nextdata` | `dom` | `api_sniffer`
 - `monitor_config`: JSON string (use `""` for inner quotes)
 - `scraper_type`: `ashby_api` | `greenhouse_api` | `lever_api` | `pinpoint_api` | `smartrecruiters_api` | `workable_api` | `workday_api` | `json-ld` | `dom` | `nextdata` | `embedded` | `api_sniffer` (empty for API monitors)
 - `scraper_config`: JSON string (empty for json-ld, greenhouse_api, lever_api)

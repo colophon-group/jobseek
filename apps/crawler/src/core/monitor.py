@@ -134,6 +134,15 @@ async def _save_raw(
                     (artifact_dir / "response.json").write_text(
                         json.dumps(resp.json(), indent=2, default=str)
                     )
+        elif monitor_type == "hireology":
+            slug = monitor_config.get("slug", "")
+            if slug:
+                api_url = f"https://api.hireology.com/v2/public/careers/{slug}?page_size=500"
+                resp = await http.get(api_url)
+                if resp.status_code == 200:
+                    (artifact_dir / "response.json").write_text(
+                        json.dumps(resp.json(), indent=2, default=str)
+                    )
         elif monitor_type == "rippling":
             slug = monitor_config.get("slug", "")
             if slug:
@@ -163,6 +172,16 @@ async def _save_raw(
                 resp = await http.get(api_url, follow_redirects=True)
                 if resp.status_code == 200:
                     (artifact_dir / "response.xml").write_text(resp.text)
+        elif monitor_type == "successfactors":
+            from urllib.parse import urlparse
+
+            parsed = urlparse(board_url)
+            feed = monitor_config.get(
+                "feed_url", f"{parsed.scheme}://{parsed.netloc}/googlefeed.xml"
+            )
+            resp = await http.get(feed, follow_redirects=True)
+            if resp.status_code == 200:
+                (artifact_dir / "response.xml").write_text(resp.text)
         elif monitor_type == "dom":
             resp = await http.get(board_url, follow_redirects=True)
             if resp.status_code == 200:
