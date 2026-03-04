@@ -348,14 +348,51 @@ async def _discover_replay(
 
     # Try Playwright-based replay first
     use_http = False
-    async with open_page(pw, {}) as page:
+    browser_config = {k: v for k, v in config.items() if k in ("headless", "user_agent")}
+    async with open_page(pw, browser_config) as page:
+        # Intercept requests to discover live API URL (handles token rotation)
+        stored_parsed = urlparse(api_url)
+        stored_host = stored_parsed.netloc
+        # Match on the stable part of the API path (after any rotating token segment)
+        # e.g. "/apigw-TOKEN/v1/api/jobs/search" → "/v1/api/jobs/search"
+        stored_path_suffix = "/".join(
+            p for p in stored_parsed.path.split("/") if p and not p.startswith("apigw-")
+        )
+        live_api_url: str | None = None
+
+        def _on_request(req):
+            nonlocal live_api_url
+            if live_api_url is not None:
+                return
+            parsed = urlparse(req.url)
+            # Must be same host and contain the stable path suffix
+            if parsed.netloc == stored_host and stored_path_suffix in parsed.path:
+                live_api_url = req.url
+                log.debug("api_sniffer.live_url_captured", url=req.url)
+
+        page.on("request", _on_request)
+
         # Navigate to board_url to establish cookies/auth context
+        nav_ok = False
         try:
             await navigate(page, board_url, {"wait": wait, "timeout": timeout})
+            nav_ok = True
         except Exception:
             log.warning("api_sniffer.navigation_failed", board_url=board_url, exc_info=True)
 
         await asyncio.sleep(settle)
+
+        # If we captured a live API URL, update the replay URL
+        if live_api_url:
+            # Preserve configured params/pagination but use the live base URL
+            live_parsed = urlparse(live_api_url)
+            stored_parsed = urlparse(api_url)
+            if live_parsed.path != stored_parsed.path:
+                # Reconstruct api_url with the live base + stored query params
+                new_base = urlunparse(live_parsed._replace(query=""))
+                old_base = urlunparse(stored_parsed._replace(query=""))
+                api_url = api_url.replace(old_base, new_base)
+                log.info("api_sniffer.url_updated", old=old_base, new=new_base)
 
         # Replay the API call
         headers = clean_headers(request_headers)
@@ -498,7 +535,8 @@ async def _discover_auto(
     timeout = config.get("timeout", _DEFAULT_TIMEOUT)
     settle = config.get("settle", _DEFAULT_SETTLE)
 
-    async with open_page(pw, {}) as page:
+    browser_config = {k: v for k, v in config.items() if k in ("headless", "user_agent")}
+    async with open_page(pw, browser_config) as page:
         page_host = urlparse(board_url).netloc
         exchanges = await capture_exchanges(page, page_host)
 
