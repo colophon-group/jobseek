@@ -4,18 +4,18 @@ Instructions for coding agents working on this repository.
 
 ## Project Overview
 
-Jobseek monitors company career pages for new job postings. Companies are configured via CSV files in `data/`. A Python crawler monitors boards and extracts job details. A Next.js frontend serves the data.
+Jobseek monitors company career pages for new job postings. Companies are configured via CSV files in `apps/crawler/data/`. A Python crawler monitors boards and extracts job details. A Next.js frontend serves the data.
 
 ## Repository Structure
 
 ```
 /
-├── data/
-│   ├── companies.csv        # Company registry (slug, name, website, logos)
-│   └── boards.csv           # Board configs (monitor + scraper per board)
 ├── apps/
 │   ├── web/                 # Next.js 15 frontend (TypeScript, Drizzle ORM, Lingui i18n)
 │   └── crawler/             # Python crawler (asyncpg, httpx, structlog)
+│       ├── data/
+│       │   ├── companies.csv    # Company registry (slug, name, website, logos)
+│       │   └── boards.csv      # Board configs (monitor + scraper per board)
 │       └── src/
 │           ├── core/        # Pure business logic (monitors + scrapers)
 │           ├── batch.py     # Batch processor
@@ -168,15 +168,24 @@ ws run monitor
 
 ### 6. Select and Test Scraper (non-API monitors only)
 
-API monitors (`greenhouse`, `lever`) return full data — `ws run monitor` prints "Skipping scraper" and auto-marks scraper steps as done.
+API monitors (`greenhouse`, `lever`, `ashby`) return full data — `ws run monitor` prints "Skipping scraper" and auto-marks scraper steps as done. `api_sniffer` with auto-mapped `fields` also skips the scraper step.
 
-For URL-only monitors (`sitemap`, `dom`), start by probing all scraper types:
+For URL-only monitors (`sitemap`, `dom`, `api_sniffer` without `fields`), start by probing all scraper types:
 
 ```bash
 ws probe scraper
 ```
 
-This tries all scraper types with heuristic auto-config against sample URLs and shows a quality comparison. Then select the best one:
+This tries all scraper types with heuristic auto-config against sample URLs and shows a quality comparison.
+
+**Before selecting, evaluate probe results critically:**
+- Do not follow the "Next:" suggestion if required fields show 0/N — the heuristic config is wrong. A scraper that can't extract titles or descriptions will never produce complete data regardless of other settings.
+- If the probe warns about JS-rendered pages (SPA warning), check the page source for embedded structured data (script tags, inline JSON) before trying `render: true` with DOM scraper. The data you need may exist in a format the probe doesn't test — completeness depends on finding the right data source.
+- For dom scraper, inspect `flat.json` to verify DOM element order before writing steps. Steps must follow DOM order (the cursor only moves forward) — wrong order silently skips fields, undermining reliability.
+
+If no scraper auto-detects and the page source contains structured JSON data in `<script>` tags or JS variable assignments, use the `embedded` scraper with manual config (`script_id`, `pattern`, or `variable`). This is more resilient than DOM scraping for sites with embedded structured data.
+
+Then select the best one:
 
 ```bash
 ws select scraper json-ld --config '<from probe>'
@@ -185,15 +194,23 @@ ws run scraper
 
 Check the extraction quality table. If fields are missing, iterate with a different type or config.
 
-### 6b. Optimize Field Extraction
+### 6b. Verify Extraction Quality
 
-Before submitting, check the raw data source for additional mappable fields that come at no extra cost (same data source, no additional requests). Look for: `employment_type`, `date_posted`, `job_location_type`, team/department (as `metadata.*`), `base_salary`, `qualifications`, `responsibilities`.
+Before submitting, verify that extracted content is **complete and correct**, not just populated. A field counting N/N does not mean the data is right — completeness requires actual content verification:
 
+- Read the content samples in `ws run scraper` output. A populated field is not necessarily a correct field — verify the actual text makes sense and isn't truncated, garbled, or generic. For example, locations showing "+2 more" means incomplete data even if the field counts as populated.
+- If extracted content looks incomplete, investigate the page source for better data sources. Don't apply regex cleanup to broken data — find where the complete data lives. Reliability comes from extracting complete data at the source, not patching partial data downstream.
+- Check for additional mappable fields in the raw data source (same data source, no additional requests): `employment_type`, `date_posted`, `job_location_type`, team/department (as `metadata.*`), `base_salary`, `qualifications`, `responsibilities`.
+- When structured data exists in the page source, try the `embedded` scraper (`ws help scraper embedded`) before DOM scraping or code changes. It handles `<script>` tags, JS variables, and callback patterns. Only escalate to code changes if no existing scraper can parse the data.
+
+**Per scraper type:**
 - **nextdata**: Read the `nextdata.json` or scraper-probe artifact to see all available keys in each item, then extend `fields` mapping.
 - **dom**: Inspect `sample-N.html`, `flat.json`, or scraper-probe artifacts for additional structured content near extracted fields.
 - **json-ld**: No action needed — json-ld automatically extracts all standard JobPosting properties.
+- **embedded**: Inspect page source for `<script id="...">` tags with JSON, JS variable assignments (`window.__DATA__ = {...}`), or callback patterns (`AF_initDataCallback`). Use browser DevTools (Elements → search for `<script`) to find the data source, then configure `script_id`, `pattern`, or `variable` accordingly. Check all available keys in the JSON and map additional fields.
+- **api_sniffer**: Auto-probed via Playwright in `ws probe scraper`. Detects pages that load job data via XHR/fetch. If probe shows quality stats, use the suggested config. If content is server-rendered (not loaded via XHR), use json-ld or dom instead.
 
-Run `ws run scraper` again after config changes to verify new fields appear.
+Run `ws run scraper` again after config changes to verify new fields appear and content quality is correct.
 
 ### 7. Submit
 
@@ -265,9 +282,9 @@ company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scrap
 - `company_slug`: must exist in companies.csv
 - `board_slug`: unique identifier in `{company}-{alias}` format (e.g., `stripe-careers`)
 - `board_url`: unique career page URL
-- `monitor_type`: `greenhouse` | `lever` | `sitemap` | `nextdata` | `dom`
+- `monitor_type`: `ashby` | `greenhouse` | `lever` | `sitemap` | `nextdata` | `dom` | `api_sniffer`
 - `monitor_config`: JSON string (use `""` for inner quotes)
-- `scraper_type`: `greenhouse_api` | `lever_api` | `json-ld` | `dom` | `nextdata` (empty for API monitors)
+- `scraper_type`: `ashby_api` | `greenhouse_api` | `lever_api` | `json-ld` | `dom` | `nextdata` | `embedded` | `api_sniffer` (empty for API monitors)
 - `scraper_config`: JSON string (empty for json-ld, greenhouse_api, lever_api)
 
 ## Job Data Fields
@@ -293,10 +310,11 @@ When choosing between monitor/scraper configurations, optimize in this order:
 ### Key rules
 
 - **Always prefer `render: false`** when content loads without JavaScript. Only use `render: true` when static fetch produces empty or incomplete results.
-- **API monitors are most resilient** — Greenhouse/Lever APIs are stable and return rich data. Always use them when detected.
+- **API monitors are most resilient** — Ashby/Greenhouse/Lever APIs are stable and return rich data. Always use them when detected.
 - **json-ld scraper is more resilient than dom** — schema.org markup is standardized. Try json-ld before dom for any URL-only monitor.
 - **Multi-board companies**: configure all career pages unless one board's listings are a strict superset of another's. When in doubt, configure both.
 - **Low quality after exhausting config options**: if extraction quality remains poor after trying all applicable monitor/scraper combinations, escalate to code changes (`ws del`, then `fix-crawler/` branch). Document what was tried.
+- **api_sniffer bridges the gap** — when no known ATS API exists but the site loads data via internal APIs, api_sniffer captures those APIs. With `fields` auto-mapped it acts like an API monitor (scraper skipped). More resilient than dom for API-driven sites.
 - **Resilience is subjective** — optimizing for it requires case-by-case judgment. Simpler configurations that rely on stable structures (APIs, sitemaps, schema.org) are preferred over complex step-based selectors that may break on site redesigns.
 
 ## Code Style (Python — apps/crawler)

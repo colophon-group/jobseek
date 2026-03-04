@@ -119,9 +119,11 @@ async def _save_raw(
                     (artifact_dir / "nextdata.json").write_text(
                         json.dumps(data, indent=2, default=str)
                     )
-        elif monitor_type in ("greenhouse", "lever"):
+        elif monitor_type in ("ashby", "greenhouse", "lever"):
             token = monitor_config.get("token", "")
-            if monitor_type == "greenhouse":
+            if monitor_type == "ashby":
+                api_url = f"https://api.ashbyhq.com/posting-api/job-board/{token}?includeCompensation=true"
+            elif monitor_type == "greenhouse":
                 api_url = f"https://boards-api.greenhouse.io/v1/boards/{token}/jobs?content=true"
             else:
                 api_url = f"https://api.lever.co/v0/postings/{token}?limit=100"
@@ -134,6 +136,16 @@ async def _save_raw(
             resp = await http.get(board_url, follow_redirects=True)
             if resp.status_code == 200:
                 (artifact_dir / "page.html").write_text(resp.text)
+        elif monitor_type == "api_sniffer":
+            # Raw data captured during Playwright session in discover();
+            # re-fetch API response if api_url is in config.
+            api_url = monitor_config.get("api_url")
+            if api_url:
+                resp = await http.get(api_url, follow_redirects=True)
+                if resp.status_code == 200:
+                    (artifact_dir / "response.json").write_text(
+                        json.dumps(resp.json(), indent=2, default=str)
+                    )
     except Exception:
         pass  # Best-effort — don't fail the monitor run
 

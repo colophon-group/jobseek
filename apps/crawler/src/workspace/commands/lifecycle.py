@@ -335,8 +335,12 @@ def _build_pr_body(ws: Workspace, boards: list[Board]) -> str:
             monitor_cfg = f" · `{json.dumps(b.monitor_config)}`"
         lines.append(f"| Monitor | `{b.monitor_type}`{monitor_cfg} |")
 
-        api_monitors = {"greenhouse", "lever"}
-        if b.monitor_type in api_monitors:
+        api_monitors = {"ashby", "greenhouse", "lever"}
+        is_rich_api = b.monitor_type in api_monitors or (
+            b.monitor_type == "api_sniffer"
+            and (b.monitor_config or {}).get("fields")
+        )
+        if is_rich_api:
             lines.append("| Scraper | *(API — not needed)* |")
         elif b.scraper_type:
             scraper_cfg = ""
@@ -377,8 +381,12 @@ def submit(slug: str | None, summary: str | None):
         if not b.monitor_run:
             out.warn("submit", f"Board {b.alias}: monitor not tested")
         # Check if scraper is needed but not tested
-        api_monitors = {"greenhouse", "lever"}
-        if b.monitor_type and b.monitor_type not in api_monitors:
+        api_monitors = {"ashby", "greenhouse", "lever"}
+        is_rich_api = b.monitor_type in api_monitors or (
+            b.monitor_type == "api_sniffer"
+            and (b.monitor_config or {}).get("fields")
+        )
+        if b.monitor_type and not is_rich_api:
             if not b.scraper_type:
                 out.warn("submit", f"Board {b.alias}: no scraper selected (non-API monitor)")
             elif not b.scraper_run:
@@ -434,7 +442,10 @@ def submit(slug: str | None, summary: str | None):
 
     # Step 4: Commit and push
     git.add_files(["data/"])
-    git.commit(f"Configure {ws.name or slug}")
+    commit_msg = f"Configure {ws.name or slug}"
+    if ws.issue:
+        commit_msg += f"\n\nCloses #{ws.issue}"
+    git.commit(commit_msg)
     git.push()
     out.info("git", "Committed and pushed")
 

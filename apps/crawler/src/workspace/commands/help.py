@@ -12,8 +12,8 @@ Usage: ws help <topic>
 Available topics:
   monitors          Monitor type overview + decision tree
   scrapers          Scraper type overview + field importance
-  monitor <type>    Per-type reference (greenhouse, lever, sitemap, nextdata, dom)
-  scraper <type>    Per-type reference (json-ld, nextdata, dom)
+  monitor <type>    Per-type reference (greenhouse, lever, ashby, sitemap, nextdata, dom, api_sniffer)
+  scraper <type>    Per-type reference (json-ld, nextdata, embedded, dom, api_sniffer)
   fields            Job data fields — types, formats, importance
   steps             DOM scraper step key reference
   actions           Browser action pipeline
@@ -29,17 +29,20 @@ Monitor Types (cheapest first):
 
   Type           Cost    Returns         Scraper needed?
   ─────────────────────────────────────────────────────
+  ashby          10      Full job data   No (skipped)
   greenhouse     10      Full job data   No (skipped)
   lever          10      Full job data   No (skipped)
   nextdata       20      URLs or full    If URL-only
   sitemap        50      URL set         Yes
+  api_sniffer    80      URLs or full    If URL-only (no fields)
   dom            100     URL set         Yes
 
 Decision tree (after ws probe monitor):
-  1. Detected greenhouse/lever?     → Use it (no scraper needed)
-  2. Detected nextdata?             → monitor: nextdata
-  3. Detected sitemap?              → monitor: sitemap, scraper: json-ld
-  4. Nothing detected?              → monitor: dom, scraper: dom
+  1. Detected greenhouse/lever/ashby?  → Use it (no scraper needed)
+  2. Detected nextdata?                → monitor: nextdata
+  3. Detected sitemap?                 → monitor: sitemap, scraper: json-ld (or embedded)
+  4. Detected api_sniffer?             → Use it (check if fields auto-mapped)
+  5. Nothing detected?                 → monitor: dom, scraper: dom
 
 All monitors support url_filter to include/exclude URLs by regex:
   "url_filter": "/jobs/"                          Include only
@@ -56,16 +59,20 @@ Scraper Types:
   ───────────────────────────────────────────────────────────
   json-ld        Static      No               Sites with schema.org/JobPosting
   nextdata       Static/PW   Yes (fields)     Next.js sites with __NEXT_DATA__
+  embedded       Static/PW   Yes (fields)     JS-embedded JSON (script tags, variables)
   dom            Static/PW   Yes (steps)      Custom HTML structure
+  api_sniffer    Playwright  Optional (fields)  SPA/XHR job pages
 
-  API monitors (greenhouse, lever) skip the scraper step entirely.
+  API monitors (greenhouse, lever, ashby) skip the scraper step entirely.
+  api_sniffer scraper is auto-probed via Playwright in ws probe scraper.
 
   Probe first: ws probe scraper tries all types automatically against
   sample URLs. Heuristic configs are a starting point — refine based
   on probe quality stats.
 
   Try json-ld first — many sites embed JobPosting structured data for SEO.
-  If json-ld returns empty fields, switch to dom or nextdata.
+  If json-ld returns empty fields, check page source for embedded JSON data
+  (script tags, JS variables) → try embedded scraper. Fall back to dom last.
 
 Field importance:
   Required     title — every job must have a title
@@ -219,6 +226,87 @@ dom — Link Extraction (fallback)
 
   Pair with:   json-ld (try first) or dom scraper"""
 
+MONITOR_ASHBY = """\
+ashby — Ashby Job Board API
+
+  API:      POST https://jobs.ashbyhq.com/api/non-user-graphql
+  Returns:  Full job data (title, HTML description, locations, employment_type,
+            job_location_type, date_posted, base_salary)
+            metadata: team, department, id
+  Scraper:  Not needed (API returns full data, scraper step is skipped)
+
+  Config:
+    {"token": "company-slug"}
+
+    token    Board identifier (company slug). Auto-filled by ws probe from:
+             1. Direct URL (jobs.ashbyhq.com/{token})
+             2. Inline JS scan for Ashby API references
+
+  Detection:  ws probe shows "Ashby API — token: X, N jobs"
+  Zero jobs?  Verify token — check the board URL is correct"""
+
+MONITOR_API_SNIFFER = """\
+api_sniffer — XHR/Fetch API Capture (Playwright)
+
+  Captures JSON API responses during page load via Playwright.
+  Works for React SPAs, custom platforms, and any site that
+  loads job data via internal JSON APIs.
+
+  Returns:  Full job data (if fields auto-mapped) or URL set
+  Cost:     80 — between sitemap (50) and dom (100)
+  Requires: Playwright
+
+  Config (auto-filled from ws probe monitor):
+    {
+      "api_url": "https://example.com/api/jobs",
+      "method": "GET",
+      "json_path": "results.jobs",
+      "url_field": "url",
+      "url_template": "https://example.com/jobs/{id}",
+      "pagination": {
+        "param_name": "offset",
+        "style": "offset",
+        "start_value": 0,
+        "increment": 20,
+        "location": "query"
+      },
+      "fields": {
+        "title": "title",
+        "description": "bodyHtml",
+        "locations": "offices[].name",
+        "employment_type": "type",
+        "metadata.team": "department"
+      }
+    }
+
+    api_url          Captured API endpoint URL (auto-filled)
+    method           HTTP method: GET or POST (auto-filled)
+    json_path        Dot-notation path to jobs array in response
+    url_field        Field name containing job URL (if found)
+    url_template     URL pattern with {field} placeholders (from DOM cross-ref)
+    request_headers  Cleaned request headers (auto-filled)
+    post_data        POST body string (for POST APIs, null for GET)
+    pagination       Pagination config (auto-detected from multiple requests)
+    fields           Field mapping (same spec as nextdata: key, nested.key, array[].field)
+                     When present → rich mode (scraper skipped)
+                     When absent → URL-only (scraper needed)
+
+  Modes:
+    Rich (fields present):  Returns list[DiscoveredJob], scraper skipped.
+      Auto-mapped from API response during probe. Verify quality —
+      auto-mapping may miss fields or map wrong keys.
+    URL-only (no fields):   Returns set[str], needs scraper.
+      URLs derived from url_field, url_template, or DOM cross-reference.
+
+  Detection:  ws probe shows "API sniffer — N items, total: M, score: S at <url>"
+  Zero jobs?  Verify api_url is correct, check if cookies/auth context is needed
+              (page is navigated first to establish cookies), check pagination config.
+
+  Tip: After ws select monitor api_sniffer, inspect the auto-filled config.
+  If fields are auto-mapped, verify their quality in ws run monitor output.
+  If fields are missing or wrong, adjust the fields mapping manually or
+  remove fields entirely to use URL-only mode with a scraper."""
+
 SCRAPER_JSONLD = """\
 json-ld — Schema.org JobPosting Extractor
 
@@ -278,6 +366,46 @@ nextdata — Next.js __NEXT_DATA__ Page Extractor
   Look for employment_type, date_posted, job_location_type, team/department
   — these often exist in the raw data but aren't mapped by default."""
 
+SCRAPER_EMBEDDED = """\
+embedded — Generalized Embedded Data Extractor
+
+  Fetch:    Static HTTP (or Playwright with render: true)
+  Config:
+    {
+      "script_id": "app-data",
+      "path": "job",
+      "fields": {"title": "title", "description": "body",
+                 "locations": "offices[].name"}
+    }
+
+    Data source (one of, checked in priority order):
+      script_id    ID of a <script> tag containing JSON
+      pattern      Regex matching up to start of JSON (e.g. AF_initDataCallback)
+      variable     JS variable name (e.g. window.__DATA__)
+
+    path      jmespath expression to navigate to job object (optional)
+    fields    Dict mapping JobContent fields to jmespath expressions:
+              - Named keys: "title", "category.name"
+              - Array wildcard: "offices[].name"
+              - Positional index: "[1]", "[9][*][2]"
+              Target fields: title, description, locations, employment_type,
+              job_location_type, date_posted, valid_through, qualifications,
+              responsibilities, skills. Prefix with "metadata." for extras.
+    render    Use Playwright (default: false)
+    actions   Browser action pipeline (auto-enables render)
+
+  When to use:  Sites with structured job data embedded in JavaScript
+                that isn't Next.js __NEXT_DATA__ (use nextdata for that).
+                Examples: Google Wiz (AF_initDataCallback), custom SPAs
+                with window.__DATA__ assignments, or named <script> blocks.
+
+  Empty result? Verify the data source (script_id/pattern/variable) matches
+                the page content. Check path navigates to the right object.
+                Use jmespath syntax for field expressions.
+
+  Tip: nextdata scraper is syntactic sugar for embedded with
+       script_id: "__NEXT_DATA__" pre-filled."""
+
 SCRAPER_DOM = """\
 dom — Step-based Extraction Engine
 
@@ -312,6 +440,37 @@ dom — Step-based Extraction Engine
 
   See: ws help steps     Full step format reference
   See: ws help actions   Browser action pipeline"""
+
+SCRAPER_API_SNIFFER = """\
+api_sniffer — XHR/Fetch API Capture (single page)
+
+  Fetch:    Playwright only (opens page, captures XHR/fetch responses)
+  Config:
+    {"fields": {"title": "name", "description": "content"}}
+
+    fields    Optional. Dict mapping JobContent fields to JSON response keys.
+              Same spec as nextdata: key, nested.key, array[].field.
+              If omitted, auto-maps heuristically from captured response.
+              Target fields: title, description, locations, employment_type,
+              job_location_type, date_posted, valid_through, qualifications,
+              responsibilities, skills. Prefix with "metadata." for extras.
+
+  Auto-probed via Playwright in ws probe scraper. Requires Playwright.
+  Can also be manually selected: ws select scraper api_sniffer
+
+  How it works:
+    1. Opens job page with Playwright
+    2. Captures all JSON responses during page load
+    3. Finds the best single-job response (dict with title + description keys)
+    4. Extracts fields using config mapping or heuristic matching
+
+  When to use:  Job pages are SPAs that load content via XHR/fetch.
+                Typical sign: other scrapers in ws probe scraper find nothing,
+                page source is empty/minimal, but the page renders full content
+                in browser.
+
+  Empty result? The page may not load single-job data via XHR — the content
+                may be embedded in the initial HTML via SSR. Try json-ld or dom."""
 
 FIELDS = """\
 Job Data Fields — types, formats, importance
@@ -385,6 +544,15 @@ Extraction Steps — DOM scraper step format
     - All conditions (tag + text + attr) must match (AND logic)
     - Text matching normalizes Unicode punctuation to ASCII
     - Cursor advances forward after each step; use "from": 0 to reset
+
+  DOM order:
+    Steps MUST follow the order elements appear in the HTML, not logical
+    importance. The cursor only moves forward. If step B appears before
+    step A in the DOM, step A will be silently skipped (optional) or warn
+    (required). Inspect flat.json to see actual element order. Use
+    "from": 0 to reset the cursor when a field is above earlier steps.
+    Correct DOM order is critical for extraction completeness — wrong
+    order means silently missing fields.
 
   Examples:
     {"tag": "h1", "field": "title"}
@@ -482,6 +650,10 @@ Debug Artifacts — files saved by ws commands
                        Inspect to find job link patterns and verify that
                        static fetch captures the content (vs needing render).
 
+    api_sniff.json     Captured API exchanges (api_sniffer monitor).
+                       Shows detected API URL, method, items found, and score.
+                       Inspect to verify correct API was selected.
+
     http_log.json      All HTTP requests/responses with status codes and
                        headers. Debug connectivity, redirects, rate limits.
 
@@ -539,6 +711,8 @@ Troubleshooting:
     sitemap           Sitemap may only have blog/page URLs, not jobs → try dom
     nextdata          Path may be wrong — check __NEXT_DATA__ in browser devtools
     dom               Try render: true, or check that links contain job keywords
+    api_sniffer       Verify api_url, check if site needs cookies (board page
+                      navigated first), try different board URL
 
   Monitor returns fewer jobs than expected:
     → Compare against website's displayed total ("Showing N positions")
@@ -547,9 +721,12 @@ Troubleshooting:
 
   Scraper extracts empty fields:
     → Start with ws probe scraper to see which types work
-    json-ld     Page has partial or no JSON-LD → try dom scraper
+    json-ld     Page has partial or no JSON-LD → try embedded or dom scraper
     nextdata    Data structure differs per page → check path + fields
+    embedded    Verify data source (script_id/pattern/variable) matches page →
+                check path + fields with browser DevTools
     dom         Selectors don't match → inspect page HTML, adjust steps
+    api_sniffer Page may not load job data via XHR — try json-ld or dom instead
 
   Debugging with artifacts (ws help artifacts):
     → Every ws probe monitor / ws probe scraper / ws run saves debug files
@@ -569,15 +746,19 @@ Troubleshooting:
 MONITOR_CARDS: dict[str, str] = {
     "greenhouse": MONITOR_GREENHOUSE,
     "lever": MONITOR_LEVER,
+    "ashby": MONITOR_ASHBY,
     "sitemap": MONITOR_SITEMAP,
     "nextdata": MONITOR_NEXTDATA,
     "dom": MONITOR_DOM,
+    "api_sniffer": MONITOR_API_SNIFFER,
 }
 
 SCRAPER_CARDS: dict[str, str] = {
     "json-ld": SCRAPER_JSONLD,
     "nextdata": SCRAPER_NEXTDATA,
+    "embedded": SCRAPER_EMBEDDED,
     "dom": SCRAPER_DOM,
+    "api_sniffer": SCRAPER_API_SNIFFER,
 }
 
 TOPIC_MAP: dict[str, str] = {

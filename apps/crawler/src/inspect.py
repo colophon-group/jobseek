@@ -88,8 +88,14 @@ def validate_csvs() -> list[ValidationError]:
         errors.append(ValidationError("boards.csv", None, f"Missing columns: {missing}"))
         return errors
 
-    valid_monitor_types = {"greenhouse", "lever", "sitemap", "nextdata", "dom"}
-    valid_scraper_types = {"greenhouse_api", "lever_api", "json-ld", "dom", "nextdata", ""}
+    valid_monitor_types = {
+        "ashby", "greenhouse", "lever", "sitemap",
+        "nextdata", "dom", "api_sniffer",
+    }
+    valid_scraper_types = {
+        "ashby_api", "greenhouse_api", "lever_api", "json-ld",
+        "dom", "nextdata", "embedded", "api_sniffer", "",
+    }
     url_only_monitors = {"sitemap", "dom"}
     board_urls: set[str] = set()
     board_slugs: set[str] = set()
@@ -162,6 +168,24 @@ def validate_csvs() -> list[ValidationError]:
                     f"monitor_type {monitor_type!r} requires a scraper_type",
                 )
             )
+
+        # api_sniffer without fields in config requires a scraper
+        if monitor_type == "api_sniffer" and not scraper_type:
+            has_fields = False
+            if monitor_config:
+                try:
+                    cfg = json.loads(monitor_config)
+                    has_fields = bool(cfg.get("fields"))
+                except (json.JSONDecodeError, AttributeError):
+                    pass
+            if not has_fields:
+                errors.append(
+                    ValidationError(
+                        "boards.csv",
+                        i,
+                        "monitor_type 'api_sniffer' without 'fields' in config requires a scraper_type",
+                    )
+                )
 
         # Validate JSON configs
         if monitor_config:

@@ -25,7 +25,7 @@ jobs:
       - name: Enable auto-merge
         if: contains(steps.label.outputs.labels, 'auto-merge')
         run: |
-          gh pr merge "$PR" --repo "$REPO" --auto --squash
+          gh pr merge "$PR" --repo "$REPO" --auto --rebase
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}

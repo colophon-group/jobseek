@@ -37,6 +37,10 @@ class TestMonitorRegistry:
         names = [m.name for m in monitor_registry]
         assert "nextdata" in names
 
+    def test_api_sniffer_registered(self):
+        names = [m.name for m in monitor_registry]
+        assert "api_sniffer" in names
+
     def test_sorted_by_cost(self):
         costs = [m.cost for m in monitor_registry]
         assert costs == sorted(costs)
@@ -59,6 +63,10 @@ class TestMonitorRegistry:
 
     def test_get_discoverer_nextdata(self):
         fn = get_discoverer("nextdata")
+        assert callable(fn)
+
+    def test_get_discoverer_api_sniffer(self):
+        fn = get_discoverer("api_sniffer")
         assert callable(fn)
 
     def test_get_discoverer_unknown_raises(self):
@@ -87,6 +95,25 @@ class TestScraperRegistry:
     def test_get_scraper_nextdata(self):
         fn = get_scraper("nextdata")
         assert callable(fn)
+
+    def test_embedded_registered(self):
+        assert "embedded" in scraper_registry
+
+    def test_get_scraper_embedded(self):
+        fn = get_scraper("embedded")
+        assert callable(fn)
+
+    def test_api_sniffer_registered(self):
+        assert "api_sniffer" in scraper_registry
+
+    def test_get_scraper_api_sniffer(self):
+        fn = get_scraper("api_sniffer")
+        assert callable(fn)
+
+    def test_api_sniffer_has_probe_pw(self):
+        scraper = scraper_registry["api_sniffer"]
+        assert scraper.probe_pw is not None
+        assert callable(scraper.probe_pw)
 
     def test_get_scraper_unknown_raises(self):
         with pytest.raises(ValueError, match="Unknown scraper type"):

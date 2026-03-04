@@ -146,6 +146,12 @@ async def fetch_page_text(
 
 def _build_comment(name: str, metadata: dict) -> str:
     """Build a human-readable comment from probe metadata."""
+    if name == "ashby":
+        token = metadata.get("token", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"Ashby API \u2014 token: {token}, {jobs} jobs"
+        return f"Ashby API \u2014 token: {token}"
     if name == "greenhouse":
         token = metadata.get("token", "?")
         jobs = metadata.get("jobs")
@@ -176,6 +182,25 @@ def _build_comment(name: str, metadata: dict) -> str:
         if urls is not None:
             return f"DOM \u2014 {urls} job links found (static)"
         return "DOM \u2014 link extraction"
+    if name == "api_sniffer":
+        items = metadata.get("items")
+        total = metadata.get("total")
+        score = metadata.get("score")
+        api_url = metadata.get("api_url", "?")
+        # Truncate API URL for display
+        if len(api_url) > 80:
+            api_url = api_url[:77] + "..."
+        parts = []
+        if items is not None:
+            parts.append(f"{items} items")
+        if total is not None:
+            parts.append(f"total: {total}")
+        if score is not None:
+            parts.append(f"score: {score}")
+        detail = ", ".join(parts) if parts else ""
+        if detail:
+            return f"API sniffer \u2014 {detail} at {api_url}"
+        return f"API sniffer \u2014 {api_url}"
     return str(metadata)
 
 
@@ -214,6 +239,8 @@ async def probe_all_monitors(
 
 # Import modules to trigger registration
 from src.core.monitors import (  # noqa: E402
+    api_sniffer,  # noqa: F401
+    ashby,  # noqa: F401
     dom,  # noqa: F401
     greenhouse,  # noqa: F401
     lever,  # noqa: F401

@@ -49,6 +49,7 @@ class JobContent:
 ScrapeFunc = Callable[..., Awaitable[JobContent]]
 CanHandleFunc = Callable[[list[str]], dict | None]
 ParseHtmlFunc = Callable[[str, dict], JobContent]
+ProbePwFunc = Callable[[list[str], object], Awaitable[tuple[dict | None, str]]]
 
 
 @dataclass
@@ -57,12 +58,13 @@ class ScraperType:
     scrape: ScrapeFunc
     can_handle: CanHandleFunc | None = None
     parse_html: ParseHtmlFunc | None = None
+    probe_pw: ProbePwFunc | None = None
 
 
 _REGISTRY: dict[str, ScraperType] = {}
 
 # Display order for probe results
-_PROBE_ORDER = ["json-ld", "nextdata", "dom"]
+_PROBE_ORDER = ["json-ld", "nextdata", "embedded", "dom", "api_sniffer"]
 
 
 def register(
@@ -71,10 +73,12 @@ def register(
     *,
     can_handle: CanHandleFunc | None = None,
     parse_html: ParseHtmlFunc | None = None,
+    probe_pw: ProbePwFunc | None = None,
 ) -> None:
     """Register a scraper type."""
     _REGISTRY[name] = ScraperType(
         name=name, scrape=scrape, can_handle=can_handle, parse_html=parse_html,
+        probe_pw=probe_pw,
     )
 
 
@@ -98,15 +102,20 @@ async def probe_scrapers(
     urls: list[str],
     http: httpx.AsyncClient,
     timeout: float = 30.0,
-) -> list[tuple[str, dict | None, str]]:
+    pw=None,
+) -> tuple[list[tuple[str, dict | None, str]], bool]:
     """Probe all registered scrapers against sample URLs.
 
     Fetches all URLs once (static HTTP), then runs each scraper's
     ``can_handle`` + ``parse_html`` against the fetched pages.
 
-    Returns ``[(name, metadata_or_none, comment), ...]`` sorted by
-    display order (json-ld, nextdata, dom).
+    Returns ``([(name, metadata_or_none, comment), ...], spa_suspect)``
+    where results are sorted by display order (json-ld, nextdata, dom)
+    and ``spa_suspect`` is True if any page has very little static text
+    content (likely a JS-rendered SPA).
     """
+    from src.shared.extract import flatten
+
     # 1. Fetch all URLs in parallel (static HTTP)
     pages: list[tuple[str, str | None]] = []  # (url, html_or_none)
 
@@ -128,13 +137,25 @@ async def probe_scrapers(
 
     fetched = [(url, html) for url, html in pages if html is not None]
     if not fetched:
-        return [
-            (name, None, "Fetch failed \u2014 no pages retrieved")
-            for name in _PROBE_ORDER
-            if name in _REGISTRY
-        ]
+        return (
+            [
+                (name, None, "Fetch failed \u2014 no pages retrieved")
+                for name in _PROBE_ORDER
+                if name in _REGISTRY
+            ],
+            False,
+        )
 
     all_htmls = [html for _, html in fetched]
+
+    # Detect SPA: check if any page has very little text content
+    spa_suspect = False
+    for html in all_htmls:
+        elements = flatten(html)
+        text_len = sum(len(el.get("text", "")) for el in elements)
+        if text_len < 200:
+            spa_suspect = True
+            break
 
     # 2. Probe each scraper
     results: list[tuple[str, dict | None, str]] = []
@@ -143,6 +164,24 @@ async def probe_scrapers(
         if name not in _REGISTRY:
             continue
         scraper = _REGISTRY[name]
+
+        # Playwright-based probe path
+        if scraper.probe_pw is not None:
+            if pw is None:
+                results.append((name, None, "Skipped \u2014 Playwright not available"))
+                continue
+            try:
+                metadata, comment = await asyncio.wait_for(
+                    scraper.probe_pw(urls, pw),
+                    timeout=timeout,
+                )
+                results.append((name, metadata, comment))
+            except asyncio.TimeoutError:
+                results.append((name, None, "Timeout"))
+            except Exception as exc:
+                log.debug("probe_scrapers.probe_pw_error", scraper=name, exc_info=True)
+                results.append((name, None, f"Error: {exc}"))
+            continue
 
         if scraper.can_handle is None or scraper.parse_html is None:
             results.append((name, None, "No auto-detection"))
@@ -187,12 +226,14 @@ async def probe_scrapers(
 
         results.append((name, metadata, comment))
 
-    return results
+    return results, spa_suspect
 
 
 # Import modules to trigger registration
 from src.core.scrapers import (  # noqa: E402
+    api_sniffer,  # noqa: F401
     dom,  # noqa: F401
+    embedded,  # noqa: F401
     jsonld,  # noqa: F401
     nextdata,  # noqa: F401
 )

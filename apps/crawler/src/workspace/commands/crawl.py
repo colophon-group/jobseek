@@ -35,6 +35,7 @@ def _get_active_board(slug: str):
 
 _MONITOR_PROBE_HINTS: dict[str, str] = {
     "sitemap": "Tip: may include non-job URLs \u2014 verify count, consider url_filter",
+    "api_sniffer": "Tip: auto-maps fields from API response \u2014 verify field quality in probe metadata",
     "dom": "Tip: static detection only \u2014 try render: true if count seems low",
 }
 
@@ -130,8 +131,12 @@ def probe_scraper(slug: str | None, urls: tuple[str, ...]):
     ws, board = _get_active_board(slug)
 
     # Guard: API monitors don't need scrapers
-    api_monitors = {"greenhouse", "lever"}
-    if board.monitor_type in api_monitors:
+    api_monitors = {"ashby", "greenhouse", "lever"}
+    is_rich_monitor = board.monitor_type in api_monitors or (
+        board.monitor_type == "api_sniffer"
+        and (board.monitor_config or {}).get("fields")
+    )
+    if is_rich_monitor:
         out.warn(
             "scraper",
             f"Monitor '{board.monitor_type}' returns full data \u2014 scraper not needed",
@@ -153,16 +158,19 @@ def probe_scraper(slug: str | None, urls: tuple[str, ...]):
     out.info("probe", f"Probing {len(target_urls)} sample URLs...")
 
     async def _run():
+        from playwright.async_api import async_playwright
+
         from src.core.scrapers import probe_scrapers
         from src.shared.http import create_http_client
 
         http = create_http_client()
         try:
-            return await probe_scrapers(target_urls, http)
+            async with async_playwright() as pw:
+                return await probe_scrapers(target_urls, http, pw=pw)
         finally:
             await http.aclose()
 
-    results = asyncio.run(_run())
+    results, spa_suspect = asyncio.run(_run())
 
     # Save artifacts
     from src.workspace.artifacts import save_probe, scraper_probe_run_dir
@@ -179,10 +187,31 @@ def probe_scraper(slug: str | None, urls: tuple[str, ...]):
     )
     out.plain("artifacts", f"Saved: {probe_dir}")
 
+    # SPA warning — probe fetches statically, results may be unreliable
+    if spa_suspect:
+        print()
+        out.warn(
+            "probe",
+            "Pages have very little static text \u2014 site may be JS-rendered (SPA).",
+        )
+        out.plain(
+            "probe",
+            "  Probe results may be unreliable. Consider render: true.",
+        )
+        out.plain(
+            "probe",
+            "  Check page source for embedded structured data (script tags, inline JSON).",
+        )
+        out.plain(
+            "probe",
+            "  If found: ws select scraper embedded --config '{...}' (ws help scraper embedded)",
+        )
+
     # Print results
     print()
     best_name = None
     best_config = None
+    best_meta = None
 
     for name, metadata, comment in results:
         if metadata is not None:
@@ -202,6 +231,7 @@ def probe_scraper(slug: str | None, urls: tuple[str, ...]):
             if best_name is None:
                 best_name = name
                 best_config = config
+                best_meta = metadata
         else:
             symbol = "\u2717"
             out.plain("probe", f"  {name:<14}{symbol}  {comment}")
@@ -210,14 +240,32 @@ def probe_scraper(slug: str | None, urls: tuple[str, ...]):
 
     # Quality hints
     if best_name:
-        if best_config:
-            out.next_step(f"ws select scraper {best_name} --config '{json.dumps(best_config)}'")
-        else:
-            out.next_step(f"ws select scraper {best_name}")
+        # Gate: suppress "Next:" when required fields are 0/N
+        titles_ok = (best_meta or {}).get("titles", 0) > 0
+        descs_ok = (best_meta or {}).get("descriptions", 0) > 0
 
-        # Heuristic warning for non-json-ld
-        if best_name != "json-ld":
-            out.warn("probe", "Heuristic config \u2014 verify fields, check for unmapped data")
+        if not titles_ok or not descs_ok:
+            missing = []
+            if not titles_ok:
+                missing.append("titles")
+            if not descs_ok:
+                missing.append("descriptions")
+            out.warn(
+                "probe",
+                f"Best scraper has 0/N {' and '.join(missing)} "
+                "\u2014 heuristic config is wrong, do not use as-is",
+            )
+            out.plain("probe", "  Inspect page source for embedded JSON → ws help scraper embedded")
+            out.plain("probe", "  Or try manual dom config → ws help steps")
+        else:
+            if best_config:
+                out.next_step(f"ws select scraper {best_name} --config '{json.dumps(best_config)}'")
+            else:
+                out.next_step(f"ws select scraper {best_name}")
+
+            # Heuristic warning for non-json-ld
+            if best_name != "json-ld":
+                out.warn("probe", "Heuristic config \u2014 verify fields, check for unmapped data")
     else:
         out.warn("probe", "No scrapers auto-detected. Try manual dom config:")
         out.plain("probe", "  ws help steps")
@@ -239,12 +287,15 @@ _MONITOR_CONFIG_HINTS = {
     "sitemap": "Optional: sitemap_url, url_filter (regex to include/exclude URLs)",
     "nextdata": "Requires: path, url_template. Optional: fields, render, actions, url_filter",
     "dom": "Optional: render, actions, wait, timeout, url_filter",
+    "api_sniffer": "Auto-filled from probe: api_url, method, json_path, fields, pagination",
 }
 
 _SCRAPER_CONFIG_HINTS = {
     "json-ld": "Optional: render, actions, wait, timeout",
     "dom": "Requires: steps[]. Optional: render, actions, wait, timeout",
     "nextdata": "Requires: fields. Optional: path, render, actions",
+    "embedded": "Requires: fields + one of: script_id/pattern/variable. Optional: path, render",
+    "api_sniffer": "Optional: fields (auto-maps if omitted). Requires Playwright.",
 }
 
 
@@ -420,6 +471,39 @@ def run_monitor(slug: str | None):
         )
     else:
         out.info("monitor", f"{job_count} jobs in {elapsed:.1f}s")
+
+    # Count verification prompt — completeness matters most
+    if job_count > 0:
+        out.plain(
+            "monitor",
+            "Verify: compare this count against the website's displayed job total",
+        )
+
+    # url_filter tip for sitemap monitors without a filter
+    if (
+        board.monitor_type == "sitemap"
+        and job_count > 0
+        and not (board.monitor_config or {}).get("url_filter")
+    ):
+        sample_urls = sorted(result.urls)[:20]
+        if sample_urls:
+            from urllib.parse import urlparse
+            from os.path import commonprefix
+
+            paths = [urlparse(u).path for u in sample_urls]
+            prefix = commonprefix(paths)
+            # Trim to last full segment
+            if prefix and "/" in prefix:
+                prefix = prefix[:prefix.rindex("/") + 1]
+            if prefix and prefix != "/" and len(prefix) >= 3:
+                matching = sum(1 for u in sample_urls if urlparse(u).path.startswith(prefix))
+                if matching / len(sample_urls) >= 0.8:
+                    out.plain(
+                        "monitor",
+                        f"Tip: {matching}/{len(sample_urls)} sample URLs share prefix "
+                        f"\"{prefix}\" \u2014 consider url_filter for reliability",
+                    )
+
     if has_rich:
         out.plain("monitor", "Rich data: yes (titles, descriptions)")
         # Quality summary for rich data
@@ -437,9 +521,13 @@ def run_monitor(slug: str | None):
             ]
             if optional_parts:
                 out.plain("monitor", f"Optional: {', '.join(optional_parts)}")
-        # API monitors skip scraper
-        api_monitors = {"greenhouse", "lever"}
-        if board.monitor_type in api_monitors:
+        # API monitors skip scraper (including api_sniffer with fields)
+        api_monitors = {"ashby", "greenhouse", "lever"}
+        is_rich_api = board.monitor_type in api_monitors or (
+            board.monitor_type == "api_sniffer"
+            and (board.monitor_config or {}).get("fields")
+        )
+        if is_rich_api:
             out.plain("monitor", "Skipping scraper — monitor returns full job data")
             ws.progress["scraper_selected"] = True
             ws.progress["scraper_tested"] = True
@@ -671,6 +759,41 @@ def run_scraper(slug: str | None, urls: tuple[str, ...]):
     if missing_important:
         missing = ", ".join(missing_important)
         out.plain("scraper", f"Missing: {missing} \u2014 check raw data for mappable fields")
+
+    # Content samples grouped by field — show actual values for quality verification
+    _SAMPLE_FIELDS = [
+        "title", "locations", "description", "employment_type",
+        "job_location_type", "date_posted", "valid_through",
+        "qualifications", "responsibilities", "skills", "metadata",
+    ]
+
+    if results:
+        print()
+        out.plain("scraper", "Extracted content:")
+        for field_name in _SAMPLE_FIELDS:
+            values = []
+            for _, content, _ in results:
+                val = getattr(content, field_name, None)
+                if val is None:
+                    values.append("\u2014")
+                elif isinstance(val, str):
+                    if len(val) > 120:
+                        values.append(val[:60] + " \u2026 " + val[-40:])
+                    else:
+                        values.append(val)
+                elif isinstance(val, list):
+                    values.append(", ".join(str(v)[:60] for v in val[:5]))
+                elif isinstance(val, dict):
+                    values.append(json.dumps(val)[:120])
+                else:
+                    values.append(str(val)[:120])
+
+            # Only show fields that have at least one non-empty value
+            if all(v == "\u2014" for v in values):
+                continue
+            out.plain("scraper", f"  {field_name}:")
+            for i, v in enumerate(values):
+                out.plain("scraper", f"    [{i}] {v}")
 
     action_log.append_to_list(
         board.log,

@@ -12,6 +12,7 @@ dependencies = [
     "structlog>=24.4",
     "python-dotenv>=1.0",
     "polars>=1.38.1",
+    "jmespath>=1.0",
 ]
 
 [project.scripts]

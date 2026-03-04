@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -10,7 +10,7 @@ from src.core.monitors import (
     _build_comment,
     probe_all_monitors,
 )
-from src.core.scrapers import probe_scrapers
+from src.core.scrapers import _PROBE_ORDER, probe_scrapers
 from src.core.scrapers.dom import _heuristic_steps
 from src.core.scrapers.dom import can_handle as dom_can_handle
 from src.core.scrapers.jsonld import can_handle as jsonld_can_handle
@@ -453,6 +453,9 @@ def _mock_http_client(responses: dict[str, tuple[int, str]]) -> AsyncMock:
     return client
 
 
+_SPA_HTML = "<html><body><div id='app'></div></body></html>"
+
+
 class TestProbeScrapers:
     async def test_all_scrapers_probed(self):
         """Mock HTTP to return test HTML, verify all scrapers probed."""
@@ -461,7 +464,7 @@ class TestProbeScrapers:
             "https://example.com/job/2": (200, _JSONLD_HTML),
         })
 
-        results = await probe_scrapers(
+        results, _spa_suspect = await probe_scrapers(
             ["https://example.com/job/1", "https://example.com/job/2"],
             http,
         )
@@ -470,6 +473,7 @@ class TestProbeScrapers:
         assert "json-ld" in names
         assert "nextdata" in names
         assert "dom" in names
+        assert "api_sniffer" in names
 
     async def test_jsonld_detected_with_quality(self):
         """json-ld detected → metadata has quality stats."""
@@ -478,7 +482,7 @@ class TestProbeScrapers:
             "https://example.com/job/2": (200, _JSONLD_HTML_2),
         })
 
-        results = await probe_scrapers(
+        results, _ = await probe_scrapers(
             ["https://example.com/job/1", "https://example.com/job/2"],
             http,
         )
@@ -498,7 +502,7 @@ class TestProbeScrapers:
             "https://example.com/job/2": (200, _NEXTDATA_HTML_2),
         })
 
-        results = await probe_scrapers(
+        results, _ = await probe_scrapers(
             ["https://example.com/job/1", "https://example.com/job/2"],
             http,
         )
@@ -515,7 +519,7 @@ class TestProbeScrapers:
             "https://example.com/job/1": (500, ""),
         })
 
-        results = await probe_scrapers(
+        results, spa_suspect = await probe_scrapers(
             ["https://example.com/job/1"],
             http,
         )
@@ -524,17 +528,130 @@ class TestProbeScrapers:
         for _name, meta, comment in results:
             assert meta is None
             assert "Fetch failed" in comment
+        assert spa_suspect is False
 
     async def test_probe_order(self):
-        """Results should be in display order: json-ld, nextdata, dom."""
+        """Results should be in display order: json-ld, nextdata, embedded, dom, api_sniffer."""
         http = _mock_http_client({
             "https://example.com/job/1": (200, _JSONLD_HTML),
         })
 
-        results = await probe_scrapers(
+        results, _ = await probe_scrapers(
             ["https://example.com/job/1"],
             http,
         )
 
         names = [r[0] for r in results]
-        assert names == ["json-ld", "nextdata", "dom"]
+        assert names == ["json-ld", "nextdata", "embedded", "dom", "api_sniffer"]
+
+    async def test_spa_detection(self):
+        """Pages with very little text content should set spa_suspect=True."""
+        http = _mock_http_client({
+            "https://example.com/job/1": (200, _SPA_HTML),
+        })
+
+        _results, spa_suspect = await probe_scrapers(
+            ["https://example.com/job/1"],
+            http,
+        )
+
+        assert spa_suspect is True
+
+    async def test_spa_not_triggered_for_normal_pages(self):
+        """Pages with substantial text (> 200 chars) should not trigger SPA warning."""
+        rich_html = (
+            "<html><body><h1>Software Engineer</h1>"
+            "<p>Location: San Francisco, California, United States</p>"
+            "<p>We are looking for a talented software engineer to join our "
+            "growing team. You will work on cutting-edge technology and help "
+            "build products that millions of people use every day.</p>"
+            "<h2>Requirements</h2>"
+            "<ul><li>5+ years of professional experience</li>"
+            "<li>Strong knowledge of Python and JavaScript</li></ul>"
+            "</body></html>"
+        )
+        http = _mock_http_client({
+            "https://example.com/job/1": (200, rich_html),
+            "https://example.com/job/2": (200, rich_html),
+        })
+
+        _results, spa_suspect = await probe_scrapers(
+            ["https://example.com/job/1", "https://example.com/job/2"],
+            http,
+        )
+
+        assert spa_suspect is False
+
+
+class TestProbeScrapersPw:
+    def test_api_sniffer_in_probe_order(self):
+        """api_sniffer should appear in the probe order list."""
+        assert "api_sniffer" in _PROBE_ORDER
+
+    async def test_api_sniffer_skipped_without_pw(self):
+        """When pw=None, api_sniffer should show 'Skipped' message."""
+        http = _mock_http_client({
+            "https://example.com/job/1": (200, _JSONLD_HTML),
+        })
+
+        results, _ = await probe_scrapers(
+            ["https://example.com/job/1"],
+            http,
+            pw=None,
+        )
+
+        api_sniffer = next(r for r in results if r[0] == "api_sniffer")
+        assert api_sniffer[1] is None
+        assert "Skipped" in api_sniffer[2]
+        assert "Playwright" in api_sniffer[2]
+
+    async def test_api_sniffer_detected_with_pw(self):
+        """When pw is provided and probe_pw detects data, shows quality stats."""
+        http = _mock_http_client({
+            "https://example.com/job/1": (200, _JSONLD_HTML),
+        })
+
+        # Mock the api_sniffer's probe_pw to return detected metadata
+        fake_metadata = {
+            "config": {"fields": {"title": "title"}},
+            "total": 1,
+            "titles": 1,
+            "descriptions": 1,
+            "locations": 0,
+            "fields": {"title": 1, "description": 1},
+        }
+
+        async def fake_probe_pw(urls, pw):
+            return fake_metadata, "1/1 titles, 1/1 desc, 0/1 locations"
+
+        pw = MagicMock()
+
+        with patch.object(
+            __import__("src.core.scrapers", fromlist=["_REGISTRY"])._REGISTRY["api_sniffer"],
+            "probe_pw",
+            fake_probe_pw,
+        ):
+            results, _ = await probe_scrapers(
+                ["https://example.com/job/1"],
+                http,
+                pw=pw,
+            )
+
+        api_sniffer = next(r for r in results if r[0] == "api_sniffer")
+        assert api_sniffer[1] is not None
+        assert api_sniffer[1]["titles"] == 1
+        assert "titles" in api_sniffer[2]
+
+    async def test_probe_order_includes_api_sniffer(self):
+        """Results should include api_sniffer in the probe order."""
+        http = _mock_http_client({
+            "https://example.com/job/1": (200, _JSONLD_HTML),
+        })
+
+        results, _ = await probe_scrapers(
+            ["https://example.com/job/1"],
+            http,
+        )
+
+        names = [r[0] for r in results]
+        assert names == ["json-ld", "nextdata", "embedded", "dom", "api_sniffer"]

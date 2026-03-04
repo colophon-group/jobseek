@@ -695,3 +695,206 @@ class TestRunScraperOutput:
         assert "Optional:" in result.output
         assert "employment_type" in result.output
         assert "skills" in result.output
+
+    def test_content_samples_shown(self, tmp_path, monkeypatch):
+        """ws run scraper should show extracted content grouped by field."""
+        self._setup_board_with_monitor(tmp_path, monkeypatch)
+
+        from src.core.scrapers import JobContent
+
+        contents = [
+            JobContent(title="Engineer", description="<p>Build things</p>", locations=["NYC"]),
+            JobContent(title="Designer", description="<p>Design things</p>", locations=["SF"]),
+        ]
+
+        stack, mock_asyncio = _enter_scraper_patches(tmp_path)
+        with stack:
+            mock_asyncio.run.return_value = (
+                [
+                    ("https://test.com/jobs/1", contents[0], 0.5),
+                    ("https://test.com/jobs/2", contents[1], 0.3),
+                ],
+                [],
+            )
+            runner = CliRunner()
+            result = runner.invoke(ws, ["run", "scraper", "test"])
+
+        assert "Extracted content:" in result.output
+        assert "title:" in result.output
+        assert "[0] Engineer" in result.output
+        assert "[1] Designer" in result.output
+        assert "locations:" in result.output
+        assert "NYC" in result.output
+
+    def test_content_samples_truncates_long_strings(self, tmp_path, monkeypatch):
+        """Long strings (like descriptions) should be truncated in content samples."""
+        self._setup_board_with_monitor(tmp_path, monkeypatch)
+
+        from src.core.scrapers import JobContent
+
+        long_desc = "<p>" + "x" * 200 + "</p>"
+        contents = [
+            JobContent(title="Engineer", description=long_desc, locations=["NYC"]),
+        ]
+
+        stack, mock_asyncio = _enter_scraper_patches(tmp_path)
+        with stack:
+            mock_asyncio.run.return_value = (
+                [("https://test.com/jobs/1", contents[0], 0.5)],
+                [],
+            )
+            runner = CliRunner()
+            result = runner.invoke(ws, ["run", "scraper", "test"])
+
+        assert "Extracted content:" in result.output
+        # Should be truncated with ellipsis
+        assert "\u2026" in result.output
+
+
+class TestRunMonitorVerifyPrompt:
+    def _setup_monitor_board(self, tmp_path, monkeypatch, monitor_type="sitemap"):
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(Workspace(slug="test"))
+        save_board(
+            "test",
+            Board(alias="careers", slug="test-careers", url="https://test.com/jobs",
+                  monitor_type=monitor_type),
+        )
+        ws_obj = load_workspace("test")
+        ws_obj.active_board = "careers"
+        save_workspace(ws_obj)
+
+    def test_verify_prompt_shown(self, tmp_path, monkeypatch):
+        """Non-zero job count should show verification prompt."""
+        self._setup_monitor_board(tmp_path, monkeypatch)
+
+        @dataclass
+        class FakeResult:
+            urls: set[str]
+            jobs_by_url: dict | None
+            filtered_count: int = 0
+
+        fake_result = FakeResult(
+            urls={"https://test.com/jobs/1", "https://test.com/jobs/2"},
+            jobs_by_url=None,
+        )
+
+        stack, mock_asyncio = _enter_monitor_patches(tmp_path)
+        with stack:
+            mock_asyncio.run.return_value = (fake_result, 2.0, [])
+            runner = CliRunner()
+            result = runner.invoke(ws, ["run", "monitor", "test"])
+
+        assert "Verify: compare this count" in result.output
+
+    def test_no_verify_prompt_on_zero_jobs(self, tmp_path, monkeypatch):
+        """0 jobs should not show verification prompt."""
+        self._setup_monitor_board(tmp_path, monkeypatch)
+
+        @dataclass
+        class FakeResult:
+            urls: set[str]
+            jobs_by_url: dict | None
+            filtered_count: int = 0
+
+        fake_result = FakeResult(urls=set(), jobs_by_url=None)
+
+        stack, mock_asyncio = _enter_monitor_patches(tmp_path)
+        with stack:
+            mock_asyncio.run.return_value = (fake_result, 1.0, [])
+            runner = CliRunner()
+            result = runner.invoke(ws, ["run", "monitor", "test"])
+
+        assert "Verify: compare this count" not in result.output
+
+
+def _enter_probe_scraper_patches(tmp_path) -> tuple[ExitStack, MagicMock]:
+    """Enter common patches for probe scraper tests. Returns (stack, mock_asyncio)."""
+    stack = ExitStack()
+    mock_asyncio = stack.enter_context(patch("src.workspace.commands.crawl.asyncio"))
+    stack.enter_context(patch(
+        "src.workspace.artifacts.scraper_probe_run_dir",
+        return_value=tmp_path / "artifacts",
+    ))
+    stack.enter_context(patch("src.workspace.artifacts.save_probe"))
+    return stack, mock_asyncio
+
+
+class TestProbeScraperQualityGate:
+    def _setup_board_with_monitor(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(Workspace(slug="test"))
+        save_board(
+            "test",
+            Board(
+                alias="careers", slug="test-careers", url="https://test.com/jobs",
+                monitor_type="sitemap",
+                monitor_run={"sample_urls": ["https://test.com/jobs/1"]},
+            ),
+        )
+        ws_obj = load_workspace("test")
+        ws_obj.active_board = "careers"
+        save_workspace(ws_obj)
+
+    def test_next_step_suppressed_on_zero_titles(self, tmp_path, monkeypatch):
+        """0/N titles should suppress Next: and show warning."""
+        self._setup_board_with_monitor(tmp_path, monkeypatch)
+
+        # Probe results: best scraper has 0 titles
+        fake_results = [
+            ("json-ld", {"config": {}, "total": 1, "titles": 0, "descriptions": 1,
+                         "locations": 0, "fields": {"description": 1}}, "0/1 titles, 1/1 desc, 0/1 locations"),
+            ("nextdata", None, "Not detected"),
+            ("dom", None, "Not detected"),
+            ("api_sniffer", None, "Skipped \u2014 Playwright not available"),
+        ]
+
+        stack, mock_asyncio = _enter_probe_scraper_patches(tmp_path)
+        with stack:
+            mock_asyncio.run.return_value = (fake_results, False)
+            runner = CliRunner()
+            result = runner.invoke(ws, ["probe", "scraper", "test"])
+
+        assert "Next:" not in result.output
+        assert "0/N titles" in result.output or "heuristic config is wrong" in result.output
+
+    def test_next_step_shown_when_fields_ok(self, tmp_path, monkeypatch):
+        """When required fields are populated, Next: should be shown."""
+        self._setup_board_with_monitor(tmp_path, monkeypatch)
+
+        fake_results = [
+            ("json-ld", {"config": {}, "total": 1, "titles": 1, "descriptions": 1,
+                         "locations": 1, "fields": {"title": 1, "description": 1, "locations": 1}},
+             "1/1 titles, 1/1 desc, 1/1 locations"),
+            ("nextdata", None, "Not detected"),
+            ("dom", None, "Not detected"),
+            ("api_sniffer", None, "Skipped \u2014 Playwright not available"),
+        ]
+
+        stack, mock_asyncio = _enter_probe_scraper_patches(tmp_path)
+        with stack:
+            mock_asyncio.run.return_value = (fake_results, False)
+            runner = CliRunner()
+            result = runner.invoke(ws, ["probe", "scraper", "test"])
+
+        assert "Next:" in result.output
+        assert "ws select scraper json-ld" in result.output
+
+    def test_spa_warning_shown(self, tmp_path, monkeypatch):
+        """SPA suspect should show warning in probe output."""
+        self._setup_board_with_monitor(tmp_path, monkeypatch)
+
+        fake_results = [
+            ("json-ld", None, "Not detected"),
+            ("nextdata", None, "Not detected"),
+            ("dom", None, "Not detected"),
+            ("api_sniffer", None, "Not detected (0/1 pages had XHR job data)"),
+        ]
+
+        stack, mock_asyncio = _enter_probe_scraper_patches(tmp_path)
+        with stack:
+            mock_asyncio.run.return_value = (fake_results, True)
+            runner = CliRunner()
+            result = runner.invoke(ws, ["probe", "scraper", "test"])
+
+        assert "JS-rendered" in result.output or "SPA" in result.output

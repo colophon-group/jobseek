@@ -19,6 +19,8 @@ src/
 ├── core/
 │   ├── monitors/          # Monitor implementations
 │   │   ├── __init__.py    # Registry + DiscoveredJob dataclass
+│   │   ├── api_sniffer.py # XHR/fetch API capture (Playwright)
+│   │   ├── ashby.py       # Ashby Job Board API
 │   │   ├── greenhouse.py  # Greenhouse JSON API
 │   │   ├── lever.py       # Lever Postings API
 │   │   ├── sitemap.py     # XML sitemap parser
@@ -26,8 +28,10 @@ src/
 │   │   └── dom.py         # Playwright DOM-based discovery
 │   ├── scrapers/          # Scraper implementations
 │   │   ├── __init__.py    # Registry + JobContent dataclass
+│   │   ├── api_sniffer.py # XHR/fetch API capture for single pages
 │   │   ├── jsonld.py      # JSON-LD extractor
-│   │   ├── nextdata.py    # Next.js data extractor
+│   │   ├── nextdata.py    # Next.js data extractor (thin wrapper for embedded)
+│   │   ├── embedded.py    # Generalized embedded JSON extractor
 │   │   └── dom.py         # Step-based extraction (static or Playwright)
 │   ├── monitor.py         # monitor_one() dispatcher
 │   └── scrape.py          # scrape_one() dispatcher
@@ -44,6 +48,7 @@ src/
 │   ├── artifacts.py       # Debug artifact storage
 │   └── url_check.py       # URL validation helpers
 ├── shared/
+│   ├── api_sniff.py       # API sniffing utilities (data classes, scoring, pagination)
 │   ├── constants.py       # DATA_DIR, WORKSPACE_DIR, SLUG_RE, URL_RE
 │   ├── csv_io.py          # CSV read/write utilities
 │   ├── http.py            # httpx client factory
@@ -117,6 +122,17 @@ uv run pytest tests/
 2. Implement `async def scrape(url: str, config: dict, http: httpx.AsyncClient) -> JobContent`
 3. Register at module bottom: `register("<name>", scrape)`
 4. Import in `src/core/scrapers/__init__.py`
+
+## Scraper Evaluation Guidelines
+
+When evaluating scraper probe results and extraction output:
+
+- **Do not blindly follow "Next:" suggestions** — if required fields show 0/N, the heuristic config is wrong. A scraper that can't extract titles or descriptions will never produce complete data.
+- **SPA warning means probe results are unreliable** — check the page source for embedded structured data (script tags, inline JSON) before trying `render: true`. The data may exist in a format the probe doesn't test.
+- **DOM order matters** — for dom scraper, inspect `flat.json` before writing steps. Steps must follow DOM order (forward-only cursor). Wrong order silently skips fields, undermining reliability.
+- **N/N does not mean correct** — verify actual content in `ws run scraper` output. Truncated locations ("+2 more"), garbled text, or generic placeholders count as populated but are not complete. Completeness requires the actual values to be correct.
+- **Don't patch broken data** — if extracted content is incomplete, find the complete data source instead of applying regex cleanup. Reliability comes from extracting complete data at the source.
+- **Verify content quality before submitting** — read the content samples, not just the stats. A field showing N/N with wrong content is worse than one showing 0/N (which at least signals a problem).
 
 ## Proposing Code Changes
 
