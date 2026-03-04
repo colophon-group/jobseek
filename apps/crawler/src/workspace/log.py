@@ -105,7 +105,6 @@ def format_crawl_stats(boards: dict[str, dict[str, Any]]) -> str:
     scraper_type = None
     configs_tried = 0
     verdict = None
-    feedback_fields: dict[str, Any] = {}
 
     for _alias, board in boards.items():
         cfg = _get_active_cfg(board)
@@ -124,7 +123,6 @@ def format_crawl_stats(boards: dict[str, dict[str, Any]]) -> str:
         fb = cfg.get("feedback")
         if fb:
             verdict = fb.get("verdict")
-            feedback_fields = fb.get("fields", {})
 
     # Cost from active config
     cost_str = None

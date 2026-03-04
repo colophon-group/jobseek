@@ -126,7 +126,10 @@ _MONITOR_PROBE_HINTS: dict[str, str] = {
 @click.command(name="monitor")
 @click.argument("slug", required=False)
 @click.option("--board", "-b", "board_alias", default=None, help="Target board alias")
-@click.option("--current-jobs", "-n", type=int, default=0, help="Estimated job count for cost scoring")
+@click.option(
+    "--current-jobs", "-n", type=int, default=0,
+    help="Estimated job count for cost scoring",
+)
 def probe_monitors(slug: str | None, board_alias: str | None, current_jobs: int):
     """Probe all monitor types for the active board's URL."""
     slug = resolve_slug(slug)
@@ -187,9 +190,15 @@ def probe_monitors(slug: str | None, board_alias: str | None, current_jobs: int)
     ]
     threshold = min(detected_url_only_costs) if detected_url_only_costs else 1.5
 
-    high = [(n, m, c, s, il, r) for n, m, c, s, il, r in scored if m is not None and s is not None and s <= threshold]
-    low = [(n, m, c, s, il, r) for n, m, c, s, il, r in scored if m is not None and (s is None or s > threshold)]
-    undetected = [(n, m, c, s, il, r) for n, m, c, s, il, r in scored if m is None]
+    high = [
+        e for e in scored
+        if e[1] is not None and e[3] is not None and e[3] <= threshold
+    ]
+    low = [
+        e for e in scored
+        if e[1] is not None and (e[3] is None or e[3] > threshold)
+    ]
+    undetected = [e for e in scored if e[1] is None]
 
     # Print with priority split (only when --current-jobs is given and there are detections)
     probe_summary_parts = []
@@ -431,7 +440,10 @@ def probe_scraper(slug: str | None, board_alias: str | None, urls: tuple[str, ..
 @click.command(name="deep")
 @click.argument("slug", required=False)
 @click.option("--board", "-b", "board_alias", default=None, help="Target board alias")
-@click.option("--current-jobs", "-n", type=int, default=0, help="Estimated job count for cost scoring")
+@click.option(
+    "--current-jobs", "-n", type=int, default=0,
+    help="Estimated job count for cost scoring",
+)
 def probe_deep(slug: str | None, board_alias: str | None, current_jobs: int):
     """Playwright-based api_sniffer detection with cost scoring."""
     slug = resolve_slug(slug)
@@ -454,7 +466,10 @@ def probe_deep(slug: str | None, board_alias: str | None, current_jobs: int):
                 if metadata and metadata.get("api_url"):
                     from src.core.monitors.api_sniffer import http_fetch
 
-                    data = await http_fetch(http, metadata.get("method", "GET"), metadata["api_url"])
+                    data = await http_fetch(
+                        http, metadata.get("method", "GET"),
+                        metadata["api_url"],
+                    )
                     httpx_ok = data is not None
                 return metadata, httpx_ok
         finally:
@@ -466,23 +481,49 @@ def probe_deep(slug: str | None, board_alias: str | None, current_jobs: int):
     from src.workspace.artifacts import deep_probe_run_dir, save_probe
 
     probe_dir = deep_probe_run_dir(slug, board.alias)
-    save_probe(probe_dir, [{"name": "api_sniffer", "detected": metadata is not None, "metadata": metadata}])
+    save_probe(probe_dir, [{
+        "name": "api_sniffer",
+        "detected": metadata is not None,
+        "metadata": metadata,
+    }])
     out.plain("artifacts", f"Saved: {probe_dir}")
 
     if metadata:
         rich = bool(metadata.get("fields"))
-        mon_pw = _estimate_monitor_cost("api_sniffer", n_jobs, {**metadata, "browser": True})
-        mon_httpx = _estimate_monitor_cost("api_sniffer", n_jobs, {**metadata, "browser": False}) if httpx_ok else None
+        mon_pw = _estimate_monitor_cost(
+            "api_sniffer", n_jobs, {**metadata, "browser": True},
+        )
+        mon_httpx = (
+            _estimate_monitor_cost(
+                "api_sniffer", n_jobs, {**metadata, "browser": False},
+            ) if httpx_ok else None
+        )
         init_load = 0.0 if rich else _estimate_initial_load(n_jobs)
 
-        rich_str = "rich" if rich else f"URL-only (+scraper ~{init_load:.0f}s initial)"
-        out.info("deep", f"api_sniffer   OK  {metadata.get('items', '?')} items  ~{mon_pw:.1f}s/cycle (PW)  {rich_str}")
+        rich_str = (
+            "rich" if rich
+            else f"URL-only (+scraper ~{init_load:.0f}s initial)"
+        )
+        items = metadata.get('items', '?')
+        out.info(
+            "deep",
+            f"api_sniffer   OK  {items} items"
+            f"  ~{mon_pw:.1f}s/cycle (PW)  {rich_str}",
+        )
         out.plain("deep", f"  api_url: {metadata.get('api_url', '?')}")
         if metadata.get("fields"):
-            fields = ", ".join(metadata["fields"].keys()) if isinstance(metadata["fields"], dict) else str(metadata["fields"])
+            fields = (
+                ", ".join(metadata["fields"].keys())
+                if isinstance(metadata["fields"], dict)
+                else str(metadata["fields"])
+            )
             out.plain("deep", f"  fields: {fields}")
         if httpx_ok and mon_httpx is not None:
-            out.plain("deep", f"  httpx test: OK accessible (~{mon_httpx:.1f}s/cycle without Playwright)")
+            out.plain(
+                "deep",
+                f"  httpx test: OK accessible"
+                f" (~{mon_httpx:.1f}s/cycle without Playwright)",
+            )
         elif httpx_ok is False:
             out.plain("deep", "  httpx test: failed (Playwright required)")
 
@@ -495,7 +536,11 @@ def probe_deep(slug: str | None, board_alias: str | None, current_jobs: int):
         detection["httpx_accessible"] = httpx_ok
         detection["rich"] = rich
         board.detections["api_sniffer"] = detection
-        action_log.append_to_list(board.log, "probe deep", True, f"api_sniffer detected, {metadata.get('items', '?')} items")
+        items = metadata.get('items', '?')
+        action_log.append_to_list(
+            board.log, "probe deep", True,
+            f"api_sniffer detected, {items} items",
+        )
         save_board(slug, board)
 
         out.next_step("ws select monitor api_sniffer")
@@ -535,7 +580,12 @@ def probe_api(url: str, slug: str | None, board_alias: str | None):
     if "json" in content_type:
         data = resp.json()
         (probe_dir / "response.json").write_text(json.dumps(data, indent=2, default=str))
-        out.info("probe", f"Fetched {resp.status_code} ({content_type.split(';')[0]}, {len(resp.content):,} bytes)")
+        ct = content_type.split(';')[0]
+        out.info(
+            "probe",
+            f"Fetched {resp.status_code} ({ct}, "
+            f"{len(resp.content):,} bytes)",
+        )
 
         # Analyze JSON structure
         from src.shared.api_sniff import find_arrays, find_total_count, find_url_field
@@ -543,7 +593,10 @@ def probe_api(url: str, slug: str | None, board_alias: str | None):
         arrays = find_arrays(data)
 
         if arrays:
-            from src.core.monitors.api_sniffer import find_html_strings, pick_best_array, score_array
+            from src.core.monitors.api_sniffer import (
+                find_html_strings,
+                pick_best_array,
+            )
 
             best_path, best_items = pick_best_array(arrays, url)
             url_field = find_url_field(best_items)
@@ -576,8 +629,16 @@ def probe_api(url: str, slug: str | None, board_alias: str | None):
             out.warn("probe", "No arrays found in JSON response")
     else:
         (probe_dir / "response.html").write_bytes(resp.content)
-        out.info("probe", f"Fetched {resp.status_code} ({content_type.split(';')[0]}, {len(resp.content):,} bytes)")
-        out.plain("probe", "HTML response — scan for embedded API endpoints manually")
+        ct = content_type.split(';')[0]
+        out.info(
+            "probe",
+            f"Fetched {resp.status_code} ({ct}, "
+            f"{len(resp.content):,} bytes)",
+        )
+        out.plain(
+            "probe",
+            "HTML response — scan for embedded API endpoints manually",
+        )
         out.plain("probe", f"Saved to: {probe_dir / 'response.html'}")
 
     out.plain("artifacts", f"Saved: {probe_dir}")
@@ -627,7 +688,11 @@ def select_monitor(
     # Stale probe detection: warn if board URL changed since probe ran
     probe_meta = board.detections.get("_meta", {})
     if probe_meta and probe_meta.get("url") and probe_meta["url"] != board.url:
-        out.warn("monitor", f"Probe was run against {probe_meta['url']!r} but board URL is now {board.url!r} — re-probe recommended")
+        out.warn(
+            "monitor",
+            f"Probe was run against {probe_meta['url']!r} "
+            f"but board URL is now {board.url!r} — re-probe recommended",
+        )
 
     # Validate type against registry
     from src.core.monitors import get_discoverer
@@ -652,7 +717,11 @@ def select_monitor(
             out.info("monitor", f"Auto-filled config from probe: {json.dumps(config)}")
 
     # Clean up probe/internal data from config
-    _internal_keys = {"_probe", "monitor_per_cycle", "initial_load", "cost_est", "cost_est_pw", "cost_est_httpx", "rich", "httpx_accessible", "jobs", "urls", "count"}
+    _internal_keys = {
+        "_probe", "monitor_per_cycle", "initial_load", "cost_est",
+        "cost_est_pw", "cost_est_httpx", "rich", "httpx_accessible",
+        "jobs", "urls", "count",
+    }
     clean_config = {k: v for k, v in config.items() if k not in _internal_keys}
 
     # Generate or use provided config name
@@ -673,7 +742,10 @@ def select_monitor(
     }
     board.active_config = name
 
-    action_log.append_to_list(board.log, "select monitor", True, f"Selected monitor: {type_} (as {name!r})")
+    action_log.append_to_list(
+        board.log, "select monitor", True,
+        f"Selected monitor: {type_} (as {name!r})",
+    )
     save_board(slug, board)
 
     out.info("monitor", f"Selected monitor: {type_} (as {name!r})")
@@ -927,7 +999,10 @@ def run_monitor(slug: str | None, board_alias: str | None):
 @click.argument("type_", required=False)
 @click.option("--board", "-b", "board_alias", default=None, help="Target board alias")
 @click.option("--config", "config_json", help="Scraper config JSON")
-def select_scraper(slug_or_type: str, type_: str | None, board_alias: str | None, config_json: str | None):
+def select_scraper(
+    slug_or_type: str, type_: str | None,
+    board_alias: str | None, config_json: str | None,
+):
     """Set scraper type for the active board."""
     slug, type_ = resolve_two_args(slug_or_type, type_)
     ws, board = _resolve_board(slug, board_alias)
@@ -1224,7 +1299,8 @@ def select_config(name: str, slug: str | None, board_alias: str | None):
 
     cfg = board.configs[name]
     if cfg.get("status") == "rejected":
-        out.warn("config", f"Config {name!r} was previously rejected: {cfg.get('rejection_reason', '')}")
+        reason = cfg.get('rejection_reason', '')
+        out.warn("config", f"Config {name!r} was previously rejected: {reason}")
 
     board.active_config = name
     action_log.append_to_list(board.log, "select config", True, f"Re-activated config: {name!r}")
@@ -1296,20 +1372,20 @@ _IMPORTANT_FIELDS = ("locations", "employment_type", "job_location_type")
 @click.argument("name", required=False)
 @click.argument("slug", required=False)
 @click.option("--board", "-b", "board_alias", default=None, help="Target board alias")
-@click.option("--title", "title_q", type=click.Choice(_QUALITY_VALUES), help="Title quality")
-@click.option("--description", "desc_q", type=click.Choice(_QUALITY_VALUES), help="Description quality")
-@click.option("--locations", "loc_q", type=click.Choice(_QUALITY_VALUES), help="Locations quality")
-@click.option("--locations-notes", "loc_notes", default="", help="Locations quality notes")
-@click.option("--employment-type", "et_q", type=click.Choice(_QUALITY_VALUES), help="Employment type quality")
-@click.option("--employment-type-notes", "et_notes", default="", help="Employment type notes")
-@click.option("--job-location-type", "jlt_q", type=click.Choice(_QUALITY_VALUES), help="Job location type quality")
-@click.option("--job-location-type-notes", "jlt_notes", default="", help="Job location type notes")
-@click.option("--date-posted", "dp_q", type=click.Choice(_QUALITY_VALUES), help="Date posted quality")
-@click.option("--base-salary", "bs_q", type=click.Choice(_QUALITY_VALUES), help="Base salary quality")
-@click.option("--skills", "sk_q", type=click.Choice(_QUALITY_VALUES), help="Skills quality")
-@click.option("--qualifications", "qual_q", type=click.Choice(_QUALITY_VALUES), help="Qualifications quality")
-@click.option("--responsibilities", "resp_q", type=click.Choice(_QUALITY_VALUES), help="Responsibilities quality")
-@click.option("--valid-through", "vt_q", type=click.Choice(_QUALITY_VALUES), help="Valid through quality")
+@click.option("--title", "title_q", type=click.Choice(_QUALITY_VALUES))
+@click.option("--description", "desc_q", type=click.Choice(_QUALITY_VALUES))
+@click.option("--locations", "loc_q", type=click.Choice(_QUALITY_VALUES))
+@click.option("--locations-notes", "loc_notes", default="")
+@click.option("--employment-type", "et_q", type=click.Choice(_QUALITY_VALUES))
+@click.option("--employment-type-notes", "et_notes", default="")
+@click.option("--job-location-type", "jlt_q", type=click.Choice(_QUALITY_VALUES))
+@click.option("--job-location-type-notes", "jlt_notes", default="")
+@click.option("--date-posted", "dp_q", type=click.Choice(_QUALITY_VALUES))
+@click.option("--base-salary", "bs_q", type=click.Choice(_QUALITY_VALUES))
+@click.option("--skills", "sk_q", type=click.Choice(_QUALITY_VALUES))
+@click.option("--qualifications", "qual_q", type=click.Choice(_QUALITY_VALUES))
+@click.option("--responsibilities", "resp_q", type=click.Choice(_QUALITY_VALUES))
+@click.option("--valid-through", "vt_q", type=click.Choice(_QUALITY_VALUES))
 @click.option(
     "--verdict",
     required=True,
@@ -1389,11 +1465,7 @@ def feedback_cmd(
         # Determine quality: explicit > auto-populate
         q = explicit_quality.get(field_name)
         if q is None:
-            if count == 0:
-                q = "absent"
-            else:
-                # Any field with coverage needs explicit assessment
-                q = None
+            q = "absent" if count == 0 else None
 
         if q is not None:
             entry: dict[str, str] = {"coverage": coverage, "quality": q}
@@ -1411,7 +1483,11 @@ def feedback_cmd(
         if count > 0 or field_name in _REQUIRED_FIELDS:
             missing_explicit.append(f"--{field_name.replace('_', '-')}")
     if missing_explicit:
-        out.die(f"Explicit quality required for: {', '.join(missing_explicit)} (clean/noisy/unusable/absent)")
+        out.die(
+            "Explicit quality required for: "
+            f"{', '.join(missing_explicit)} "
+            "(clean/noisy/unusable/absent)",
+        )
 
     # Compute tier summaries
     def _tier_summary(tier_fields: tuple[str, ...]) -> dict[str, str]:
@@ -1434,23 +1510,32 @@ def feedback_cmd(
         "required": _tier_summary(_REQUIRED_FIELDS),
         "important": _tier_summary(_IMPORTANT_FIELDS),
         "optional": _tier_summary(
-            tuple(f for f in _FEEDBACK_FIELDS if f not in _REQUIRED_FIELDS and f not in _IMPORTANT_FIELDS)
+            tuple(
+                f for f in _FEEDBACK_FIELDS
+                if f not in _REQUIRED_FIELDS
+                and f not in _IMPORTANT_FIELDS
+            )
         ),
         "verdict": verdict,
         "verdict_notes": verdict_notes,
     }
 
     cfg["feedback"] = feedback_data
-    action_log.append_to_list(board.log, "feedback", True, f"Feedback for {name!r}: verdict={verdict}")
+    action_log.append_to_list(
+        board.log, "feedback", True,
+        f"Feedback for {name!r}: verdict={verdict}",
+    )
     save_board(slug, board)
 
     out.info("feedback", f"Recorded feedback for {name!r}: verdict={verdict}")
-    for tier_name, tier_fields in [
+    for tier_name, _tier_fields in [
         ("Required", _REQUIRED_FIELDS),
         ("Important", _IMPORTANT_FIELDS),
     ]:
         tier = feedback_data.get(tier_name.lower(), {})
-        out.plain("feedback", f"  {tier_name}: {tier.get('coverage', '?')} ({tier.get('quality', '?')})")
+        cov = tier.get('coverage', '?')
+        qual = tier.get('quality', '?')
+        out.plain("feedback", f"  {tier_name}: {cov} ({qual})")
     if verdict in ("good", "acceptable"):
         out.next_step("ws submit")
     elif verdict == "poor":

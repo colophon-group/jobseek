@@ -103,7 +103,10 @@ class TestWorkspace:
             "slug": "test",
             "created_at": "2026-03-03T14:22:00Z",
             "git": {"branch": "add-company/test", "issue": 42, "pr": 7},
-            "company": {"name": "Test", "website": "https://test.com", "logo_url": "", "icon_url": ""},
+            "company": {
+                "name": "Test", "website": "https://test.com",
+                "logo_url": "", "icon_url": "",
+            },
             "active_board": "careers",
             "progress": {
                 "board_added": True,
@@ -376,10 +379,9 @@ class TestUpdateWorkspace:
 
         monkeypatch.setattr("src.workspace.state.WORKSPACE_DIR", tmp_path)
         save_workspace(Workspace(slug="test", name="Original"))
-        with pytest.raises(ValueError, match="boom"):
-            with update_workspace("test") as ws:
-                ws.name = "Changed"
-                raise ValueError("boom")
+        with pytest.raises(ValueError, match="boom"), update_workspace("test") as ws:
+            ws.name = "Changed"
+            raise ValueError("boom")
         loaded = load_workspace("test")
         assert loaded.name == "Original"
 

@@ -293,9 +293,12 @@ def status(slug: str | None):
                     fb = cfg.get("feedback", {})
                     verdict = fb.get("verdict", "") if fb else ""
                     verdict_str = f" [{verdict}]" if verdict else ""
-                    print(f"    {b.slug}{active} — {b.active_config} ({mtype}, {jobs} jobs{cost_str}){verdict_str}")
+                    print(
+                        f"    {b.slug}{active} — {b.active_config}"
+                        f" ({mtype}, {jobs} jobs{cost_str}){verdict_str}"
+                    )
                     if status_str == "selected":
-                        print(f"      -> Not tested yet")
+                        print("      -> Not tested yet")
                 else:
                     print(f"    {b.slug}{active} — no config selected")
             print()
@@ -458,10 +461,20 @@ def _build_pr_body(ws: Workspace, boards: list[Board]) -> str:
         lines.append("<details>")
         lines.append("<summary>Configurations evaluated</summary>")
         lines.append("")
-        lines.append("| # | Config | Monitor | Scraper | Jobs | Cost | Status | Notes |")
-        lines.append("|---|--------|---------|---------|------|------|--------|-------|")
-        for i, (name, mtype, stype, jobs, cost_str, status_cell, notes) in enumerate(all_configs, 1):
-            lines.append(f"| {i} | {name} | `{mtype}` | {stype} | {jobs} | {cost_str} | {status_cell} | {notes} |")
+        lines.append(
+            "| # | Config | Monitor | Scraper"
+            " | Jobs | Cost | Status | Notes |"
+        )
+        lines.append(
+            "|---|--------|---------|---------|------|------|--------|-------|"
+        )
+        for i, (name, mtype, stype, jobs, cost_str, status_cell, notes) in enumerate(  # noqa: E501
+            all_configs, 1,
+        ):
+            lines.append(
+                f"| {i} | {name} | `{mtype}` | {stype}"
+                f" | {jobs} | {cost_str} | {status_cell} | {notes} |"
+            )
         lines.append("")
         lines.append("</details>")
         lines.append("")
@@ -697,11 +710,19 @@ def _check_environment(ws: Workspace) -> list[tuple[str, str, str]]:
         try:
             result = git._run(["git", "branch", "--list", ws.branch], check=False)
             if ws.branch not in result.stdout:
-                issues.append(("branch_missing", f"Branch {ws.branch} not found locally", "critical"))
+                issues.append((
+                    "branch_missing",
+                    f"Branch {ws.branch} not found locally",
+                    "critical",
+                ))
             else:
                 current = git.current_branch()
                 if current != ws.branch:
-                    issues.append(("wrong_branch", f"On {current}, expected {ws.branch}", "warning"))
+                    issues.append((
+                        "wrong_branch",
+                        f"On {current}, expected {ws.branch}",
+                        "warning",
+                    ))
         except Exception:
             issues.append(("git_error", "Could not check git state", "warning"))
 
@@ -743,12 +764,21 @@ def _check_board_readiness(board: Board) -> list[tuple[str, str, str]]:
 
     cfg = (board.configs or {}).get(board.active_config)
     if not cfg:
-        issues.append(("config_missing", f"Board {board.alias}: config {board.active_config!r} not found", "critical"))
+        issues.append((
+            "config_missing",
+            f"Board {board.alias}: config "
+            f"{board.active_config!r} not found",
+            "critical",
+        ))
         return issues
 
     status = cfg.get("status", "selected")
     if status == "rejected":
-        issues.append(("config_rejected", f"Board {board.alias}: active config is rejected", "critical"))
+        issues.append((
+            "config_rejected",
+            f"Board {board.alias}: active config is rejected",
+            "critical",
+        ))
     elif status == "selected":
         issues.append(("not_tested", f"Board {board.alias}: config not tested yet", "warning"))
     elif status == "tested":
@@ -793,8 +823,8 @@ def resume(slug: str | None):
         print("\n  Environment:")
         if ws.branch and not any(c == "branch_missing" for c, _, _ in env_issues):
             print("    OK Branch exists")
-        for code, msg, severity in env_issues:
-            sym = "!!" if severity == "critical" else "!!"
+        for _code, msg, severity in env_issues:
+            sym = "!!" if severity == "critical" else "!"
             print(f"    {sym} {msg}")
         if ws.pr and not any(c == "pr_closed" for c, _, _ in env_issues):
             print(f"    OK PR #{ws.pr} is open")
@@ -807,7 +837,7 @@ def resume(slug: str | None):
         print(f"    OK Name: {ws.name}")
     if ws.website:
         print(f"    OK Website: {ws.website}")
-    for code, msg, severity in ws_issues:
+    for _code, msg, _severity in ws_issues:
         print(f"    !! {msg}")
     all_issues.extend(ws_issues)
 
@@ -830,8 +860,8 @@ def resume(slug: str | None):
 
         if not board_issues:
             print("    -> Ready")
-        for code, msg, severity in board_issues:
-            sym = "!!" if severity == "critical" else "!!"
+        for _code, msg, severity in board_issues:
+            sym = "!!" if severity == "critical" else "!"
             print(f"    {sym} {msg}")
         all_issues.extend(board_issues)
 

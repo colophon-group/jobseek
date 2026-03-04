@@ -9,18 +9,19 @@ A workspace lives at ``.workspace/<slug>/`` and contains:
 
 from __future__ import annotations
 
+import contextlib
 import os
 import tempfile
+from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Generator
+from typing import Any
 
 import yaml
 
 from src.shared.constants import WORKSPACE_DIR
 from src.workspace.filelock import file_lock
-
 
 # ── Atomic file write ──────────────────────────────────────────────────
 
@@ -33,10 +34,8 @@ def _atomic_write(path: Path, content: str) -> None:
             f.write(content)
         os.replace(tmp, path)
     except BaseException:
-        try:
+        with contextlib.suppress(OSError):
             os.unlink(tmp)
-        except OSError:
-            pass
         raise
 
 
@@ -358,7 +357,10 @@ def load_workspace(slug: str) -> Workspace:
     except yaml.YAMLError as e:
         raise WorkspaceStateError(f"Corrupt workspace YAML for {slug!r}: {e}") from e
     if not isinstance(data, dict):
-        raise WorkspaceStateError(f"Invalid workspace YAML for {slug!r}: expected mapping, got {type(data).__name__}")
+        raise WorkspaceStateError(
+            f"Invalid workspace YAML for {slug!r}: "
+            f"expected mapping, got {type(data).__name__}"
+        )
     return Workspace.from_dict(data)
 
 
@@ -367,7 +369,10 @@ def save_board(slug: str, board: Board) -> None:
     path = board_yaml_path(slug, board.alias)
     path.parent.mkdir(parents=True, exist_ok=True)
     with file_lock(path):
-        _atomic_write(path, yaml.dump(board.to_dict(), default_flow_style=False, sort_keys=False))
+        content = yaml.dump(
+            board.to_dict(), default_flow_style=False, sort_keys=False,
+        )
+        _atomic_write(path, content)
 
 
 def load_board(slug: str, alias: str) -> Board:
@@ -382,7 +387,10 @@ def load_board(slug: str, alias: str) -> Board:
     except yaml.YAMLError as e:
         raise WorkspaceStateError(f"Corrupt board YAML for {alias!r}: {e}") from e
     if not isinstance(data, dict):
-        raise WorkspaceStateError(f"Invalid board YAML for {alias!r}: expected mapping, got {type(data).__name__}")
+        raise WorkspaceStateError(
+            f"Invalid board YAML for {alias!r}: "
+            f"expected mapping, got {type(data).__name__}"
+        )
     return Board.from_dict(data)
 
 
