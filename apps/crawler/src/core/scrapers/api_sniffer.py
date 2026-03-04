@@ -10,7 +10,6 @@ Auto-probed via Playwright when ``ws probe scraper`` runs.
 from __future__ import annotations
 
 import asyncio
-import json
 from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
@@ -21,7 +20,6 @@ from src.shared.api_sniff import (
     TITLE_FIELDS,
     auto_map_fields,
     capture_exchanges,
-    find_arrays,
 )
 from src.shared.nextdata import extract_field
 
@@ -57,6 +55,11 @@ _WORKPLACE_TYPE_FIELDS = (
     "job_location_type", "jobLocationType", "workplace_type", "workplaceType",
     "remote_type", "locationType", "isRemote", "remote",
 )
+
+# Defaults for Playwright navigation — configurable via scraper_config
+_DEFAULT_WAIT = "load"
+_DEFAULT_TIMEOUT = 20_000
+_DEFAULT_SETTLE = 3  # seconds to wait after navigation for XHRs to complete
 
 
 def _find_single_job(exchanges: list) -> dict | None:
@@ -255,43 +258,49 @@ async def probe_pw(
     """
     from src.shared.browser import navigate, open_page
 
+    wait = _DEFAULT_WAIT
+    timeout = _DEFAULT_TIMEOUT
+    settle = _DEFAULT_SETTLE
+
     _QUALITY_FIELDS = [
         "title", "description", "locations", "employment_type",
         "job_location_type", "date_posted",
     ]
+
+    async def _probe_one(url: str) -> tuple[JobContent | None, dict | None]:
+        """Probe a single URL, return (content, job_obj) or (None, None)."""
+        try:
+            async with open_page(pw, {}) as page:
+                page_host = urlparse(url).netloc
+                exchanges = await capture_exchanges(page, page_host)
+                await navigate(page, url, {"wait": wait, "timeout": timeout})
+                await asyncio.sleep(settle)
+
+                job_obj = _find_single_job(exchanges)
+                if job_obj is None:
+                    return None, None
+                return _extract_heuristic(job_obj), job_obj
+        except Exception:
+            log.debug("api_sniffer_scraper.probe_pw_error", url=url, exc_info=True)
+            return None, None
+
+    # Probe all URLs concurrently
+    results = await asyncio.gather(*[_probe_one(u) for u in urls])
 
     total = len(urls)
     detected = 0
     field_counts: dict[str, int] = {f: 0 for f in _QUALITY_FIELDS}
     sample_config: dict | None = None
 
-    for url in urls:
-        try:
-            async with open_page(pw, {}) as page:
-                page_host = urlparse(url).netloc
-                exchanges = await capture_exchanges(page, page_host)
-                await navigate(page, url, {"wait": "networkidle", "timeout": 30_000})
-                await asyncio.sleep(2)
-
-                job_obj = _find_single_job(exchanges)
-                if job_obj is None:
-                    continue
-
-                detected += 1
-
-                # Measure quality via heuristic extraction
-                content = _extract_heuristic(job_obj)
-                for f in _QUALITY_FIELDS:
-                    if getattr(content, f, None):
-                        field_counts[f] += 1
-
-                # Build config from first detected page
-                if sample_config is None:
-                    sample_config = {"fields": auto_map_fields([job_obj])}
-
-        except Exception:
-            log.debug("api_sniffer_scraper.probe_pw_error", url=url, exc_info=True)
+    for content, job_obj in results:
+        if content is None:
             continue
+        detected += 1
+        for f in _QUALITY_FIELDS:
+            if getattr(content, f, None):
+                field_counts[f] += 1
+        if sample_config is None and job_obj is not None:
+            sample_config = {"fields": auto_map_fields([job_obj])}
 
     # Require >= 50% of pages to have detected job data
     if detected == 0 or detected / total < 0.5:
@@ -328,20 +337,19 @@ async def scrape(
         log.error("api_sniffer_scraper.no_playwright", url=url)
         return JobContent()
 
-    from urllib.parse import urlparse
-
     from src.shared.browser import navigate, open_page
+
+    wait = config.get("wait", _DEFAULT_WAIT)
+    timeout = config.get("timeout", _DEFAULT_TIMEOUT)
+    settle = config.get("settle", _DEFAULT_SETTLE)
 
     try:
         async with open_page(pw, {}) as page:
             page_host = urlparse(url).netloc
             exchanges = await capture_exchanges(page, page_host)
 
-            await navigate(page, url, {"wait": "networkidle", "timeout": 30_000})
-
-            # Brief wait for async responses
-            import asyncio
-            await asyncio.sleep(2)
+            await navigate(page, url, {"wait": wait, "timeout": timeout})
+            await asyncio.sleep(settle)
 
             job_obj = _find_single_job(exchanges)
             if job_obj is None:

@@ -207,7 +207,7 @@ def _build_comment(name: str, metadata: dict) -> str:
 async def probe_all_monitors(
     url: str,
     client: httpx.AsyncClient,
-    timeout: float = 30.0,
+    timeout: float = 60.0,
     pw=None,
 ) -> list[tuple[str, dict | None, str]]:
     """Run can_handle for every monitor type in parallel.

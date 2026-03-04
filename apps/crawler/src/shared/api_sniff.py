@@ -8,9 +8,10 @@ are grouped at the bottom of the module.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from urllib.parse import parse_qs, urlencode, urljoin, urlparse, urlunparse
 
 import structlog
@@ -202,8 +203,9 @@ def find_url_field(items: list[dict]) -> str | None:
     # By field name
     for item in sample:
         for key in item:
-            if URL_FIELDS.search(key):
-                if any(_looks_like_url(str(it.get(key, ""))) for it in sample):
+            if URL_FIELDS.search(key) and any(
+                _looks_like_url(str(it.get(key, ""))) for it in sample
+            ):
                     return key
 
     # By value pattern
@@ -408,10 +410,8 @@ def _diff_json_bodies(body1: str | None, body2: str | None) -> tuple[str, int, i
             for key in set(a) | set(b):
                 walk(a.get(key), b.get(key), f"{path}.{key}" if path else key)
         elif a != b:
-            try:
+            with contextlib.suppress(ValueError, TypeError):
                 diffs.append((path, int(a), int(b)))  # type: ignore[arg-type]
-            except (ValueError, TypeError):
-                pass
 
     walk(j1, j2)
     if len(diffs) == 1:
@@ -740,8 +740,10 @@ async def trigger_interactions(page, exchanges: list[Exchange]) -> None:
                 + 'button[class*="search"], [id*="btnSearch"]'
             );
             if (searchBtn) { searchBtn.click(); return 'search-btn'; }
-            const allBtns = [...document.querySelectorAll('a, button, input[type="button"]')];
-            const srch = allBtns.find(el => /^search$/i.test(el.textContent.trim()) || el.value === 'Search');
+            const allBtns = [...document.querySelectorAll(
+                'a, button, input[type="button"]')];
+            const srch = allBtns.find(el =>
+                /^search$/i.test(el.textContent.trim()) || el.value === 'Search');
             if (srch) { srch.click(); return 'search-text'; }
             return null;
         }""")
@@ -757,7 +759,8 @@ async def trigger_interactions(page, exchanges: list[Exchange]) -> None:
             '[aria-label*="page 2"], [aria-label*="Page 2"], [aria-label="Next"]'
         );
         if (byAria) { byAria.click(); return 'aria'; }
-        const allLinks = [...document.querySelectorAll('a, button, span[role="link"], span[tabindex]')];
+        const allLinks = [...document.querySelectorAll(
+            'a, button, span[role="link"], span[tabindex]')];
         const page2 = allLinks.find(el =>
             el.textContent.trim() === '2' &&
             el.closest('[class*="pagin"], [class*="pager"], [role="navigation"]')

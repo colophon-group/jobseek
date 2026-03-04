@@ -35,7 +35,7 @@ def _get_active_board(slug: str):
 
 _MONITOR_PROBE_HINTS: dict[str, str] = {
     "sitemap": "Tip: may include non-job URLs \u2014 verify count, consider url_filter",
-    "api_sniffer": "Tip: auto-maps fields from API response \u2014 verify field quality in probe metadata",
+    "api_sniffer": "Tip: auto-maps fields from API response — verify field quality",
     "dom": "Tip: static detection only \u2014 try render: true if count seems low",
 }
 
@@ -496,8 +496,8 @@ def run_monitor(slug: str | None):
     ):
         sample_urls = sorted(result.urls)[:20]
         if sample_urls:
-            from urllib.parse import urlparse
             from os.path import commonprefix
+            from urllib.parse import urlparse
 
             paths = [urlparse(u).path for u in sample_urls]
             prefix = commonprefix(paths)

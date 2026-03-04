@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
-
 from src.core.scrapers.api_sniffer import (
     _extract_from_object,
     _extract_heuristic,

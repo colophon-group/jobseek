@@ -344,7 +344,7 @@ When choosing between monitor/scraper configurations, optimize in this order:
 - **json-ld scraper is more resilient than dom** — schema.org markup is standardized. Try json-ld before dom for any URL-only monitor.
 - **Multi-board companies**: configure all career pages unless one board's listings are a strict superset of another's. When in doubt, configure both.
 - **Low quality after exhausting config options**: if extraction quality remains poor after trying all applicable monitor/scraper combinations, escalate to code changes (`ws del`, then `fix-crawler/` branch). Document what was tried.
-- **api_sniffer bridges the gap** — when no known ATS API exists but the site loads data via internal APIs, api_sniffer captures those APIs. With `fields` auto-mapped it acts like an API monitor (scraper skipped). More resilient than dom for API-driven sites.
+- **api_sniffer bridges the gap** — when no known ATS API exists but the site loads data via internal APIs, api_sniffer captures those APIs. With `fields` auto-mapped it acts like an API monitor (scraper skipped). More resilient than dom for API-driven sites. After selecting, inspect the auto-filled `api_url` for page size parameters (e.g. `result_limit=10`, `per_page=20`) and increase them if the API allows (e.g. `result_limit=100`). Update `pagination.increment` to match. This reduces the number of requests needed.
 - **Resilience is subjective** — optimizing for it requires case-by-case judgment. Simpler configurations that rely on stable structures (APIs, sitemaps, schema.org) are preferred over complex step-based selectors that may break on site redesigns.
 
 ## Code Style (Python — apps/crawler)

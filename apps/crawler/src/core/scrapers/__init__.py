@@ -136,26 +136,18 @@ async def probe_scrapers(
     pages = await asyncio.gather(*[_fetch(u) for u in urls])
 
     fetched = [(url, html) for url, html in pages if html is not None]
-    if not fetched:
-        return (
-            [
-                (name, None, "Fetch failed \u2014 no pages retrieved")
-                for name in _PROBE_ORDER
-                if name in _REGISTRY
-            ],
-            False,
-        )
-
     all_htmls = [html for _, html in fetched]
+    static_failed = len(fetched) == 0
 
     # Detect SPA: check if any page has very little text content
     spa_suspect = False
-    for html in all_htmls:
-        elements = flatten(html)
-        text_len = sum(len(el.get("text", "")) for el in elements)
-        if text_len < 200:
-            spa_suspect = True
-            break
+    if not static_failed:
+        for html in all_htmls:
+            elements = flatten(html)
+            text_len = sum(len(el.get("text", "")) for el in elements)
+            if text_len < 200:
+                spa_suspect = True
+                break
 
     # 2. Probe each scraper
     results: list[tuple[str, dict | None, str]] = []
@@ -165,18 +157,19 @@ async def probe_scrapers(
             continue
         scraper = _REGISTRY[name]
 
-        # Playwright-based probe path
+        # Playwright-based probe path — needs more time (browser per URL)
         if scraper.probe_pw is not None:
             if pw is None:
                 results.append((name, None, "Skipped \u2014 Playwright not available"))
                 continue
             try:
+                pw_timeout = max(timeout, 90.0)
                 metadata, comment = await asyncio.wait_for(
                     scraper.probe_pw(urls, pw),
-                    timeout=timeout,
+                    timeout=pw_timeout,
                 )
                 results.append((name, metadata, comment))
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 results.append((name, None, "Timeout"))
             except Exception as exc:
                 log.debug("probe_scrapers.probe_pw_error", scraper=name, exc_info=True)
@@ -185,6 +178,11 @@ async def probe_scrapers(
 
         if scraper.can_handle is None or scraper.parse_html is None:
             results.append((name, None, "No auto-detection"))
+            continue
+
+        # Static scrapers need fetched HTML
+        if static_failed:
+            results.append((name, None, "Fetch failed \u2014 no pages retrieved"))
             continue
 
         # Pass all fetched HTMLs to can_handle for collective analysis

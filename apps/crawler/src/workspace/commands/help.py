@@ -12,7 +12,7 @@ Usage: ws help <topic>
 Available topics:
   monitors          Monitor type overview + decision tree
   scrapers          Scraper type overview + field importance
-  monitor <type>    Per-type reference (greenhouse, lever, ashby, sitemap, nextdata, dom, api_sniffer)
+  monitor <type>    Per-type reference (greenhouse, lever, ashby, sitemap, dom, ...)
   scraper <type>    Per-type reference (json-ld, nextdata, embedded, dom, api_sniffer)
   fields            Job data fields — types, formats, importance
   steps             DOM scraper step key reference
@@ -284,12 +284,21 @@ api_sniffer — XHR/Fetch API Capture (Playwright)
     json_path        Dot-notation path to jobs array in response
     url_field        Field name containing job URL (if found)
     url_template     URL pattern with {field} placeholders (from DOM cross-ref)
+    params           Query parameters merged into api_url at request time.
+                     Auto-filled from the captured URL (empty and pagination
+                     params stripped). Edit result_limit / per_page here to
+                     increase page size, and update pagination.increment to match.
     request_headers  Cleaned request headers (auto-filled)
     post_data        POST body string (for POST APIs, null for GET)
     pagination       Pagination config (auto-detected from multiple requests)
     fields           Field mapping (same spec as nextdata: key, nested.key, array[].field)
                      When present → rich mode (scraper skipped)
                      When absent → URL-only (scraper needed)
+    wait             Navigation wait strategy: "load", "domcontentloaded", or
+                     "networkidle". Default: "load". Use "networkidle" for sites
+                     where XHRs fire late; avoid it on heavy sites (analytics/ads).
+    timeout          Navigation timeout in ms. Default: 20000.
+    settle           Seconds to wait after navigation for late XHRs. Default: 3.
 
   Modes:
     Rich (fields present):  Returns list[DiscoveredJob], scraper skipped.
@@ -305,7 +314,12 @@ api_sniffer — XHR/Fetch API Capture (Playwright)
   Tip: After ws select monitor api_sniffer, inspect the auto-filled config.
   If fields are auto-mapped, verify their quality in ws run monitor output.
   If fields are missing or wrong, adjust the fields mapping manually or
-  remove fields entirely to use URL-only mode with a scraper."""
+  remove fields entirely to use URL-only mode with a scraper.
+
+  Page size: The auto-captured api_url may use a small page size (e.g.
+  result_limit=10). If the API supports larger pages, edit api_url to
+  increase the limit (e.g. result_limit=100) and update pagination.increment
+  to match. This reduces the number of API calls needed to fetch all jobs."""
 
 SCRAPER_JSONLD = """\
 json-ld — Schema.org JobPosting Extractor
@@ -454,6 +468,11 @@ api_sniffer — XHR/Fetch API Capture (single page)
               Target fields: title, description, locations, employment_type,
               job_location_type, date_posted, valid_through, qualifications,
               responsibilities, skills. Prefix with "metadata." for extras.
+    wait      Navigation wait strategy: "load", "domcontentloaded", or
+              "networkidle". Default: "load". Use "networkidle" for sites
+              where XHRs fire late; avoid it on heavy sites (analytics/ads).
+    timeout   Navigation timeout in ms. Default: 20000.
+    settle    Seconds to wait after navigation for late XHRs. Default: 3.
 
   Auto-probed via Playwright in ws probe scraper. Requires Playwright.
   Can also be manually selected: ws select scraper api_sniffer

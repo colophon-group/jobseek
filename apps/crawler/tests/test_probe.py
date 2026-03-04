@@ -524,10 +524,11 @@ class TestProbeScrapers:
             http,
         )
 
-        # All scrapers should return "Fetch failed"
+        # All scrapers should report failure (static ones "Fetch failed",
+        # Playwright-based ones "Skipped" since pw=None)
         for _name, meta, comment in results:
             assert meta is None
-            assert "Fetch failed" in comment
+            assert "Fetch failed" in comment or "Skipped" in comment
         assert spa_suspect is False
 
     async def test_probe_order(self):

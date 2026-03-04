@@ -2,13 +2,9 @@
 
 from __future__ import annotations
 
-import pytest
-
 from src.shared.api_sniff import (
     ArrayCandidate,
     Exchange,
-    JobListResult,
-    PaginationInfo,
     auto_map_fields,
     detect_job_list,
     extract_items,
@@ -147,7 +143,8 @@ class TestScoreCandidate:
         )
         cand = ArrayCandidate(exchange=ex, json_path="jobs", items=items)
         score = score_candidate(cand, "https://example.com/careers")
-        assert score >= 50  # URL(30) + title(15) + job keyword(10) + total(10) + uniformity(10) + origin(5)
+        # URL(30) + title(15) + job keyword(10) + total(10) + uniformity(10) + origin(5)
+        assert score >= 50
 
     def test_low_score_few_keys(self):
         items = [{"a": 1}, {"a": 2}, {"a": 3}]
@@ -224,9 +221,10 @@ class TestExtractUrls:
 
 class TestInferPagination:
     def test_query_param_diff(self):
-        ex1 = _make_exchange(url="https://example.com/api/jobs?offset=0&limit=20", phase="load")
-        ex2 = _make_exchange(url="https://example.com/api/jobs?offset=20&limit=20", phase="interaction")
-        result = infer_pagination([ex1, ex2], "https://example.com/api/jobs?offset=0&limit=20", 20)
+        base = "https://example.com/api/jobs"
+        ex1 = _make_exchange(url=f"{base}?offset=0&limit=20", phase="load")
+        ex2 = _make_exchange(url=f"{base}?offset=20&limit=20", phase="interaction")
+        result = infer_pagination([ex1, ex2], f"{base}?offset=0&limit=20", 20)
         assert result is not None
         assert result.param_name == "offset"
         assert result.style == "offset"

@@ -183,7 +183,7 @@ def validate_csvs() -> list[ValidationError]:
                     ValidationError(
                         "boards.csv",
                         i,
-                        "monitor_type 'api_sniffer' without 'fields' in config requires a scraper_type",
+                        "api_sniffer without 'fields' in config requires a scraper_type",
                     )
                 )
 

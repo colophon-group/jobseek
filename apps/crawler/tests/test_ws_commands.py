@@ -842,8 +842,10 @@ class TestProbeScraperQualityGate:
 
         # Probe results: best scraper has 0 titles
         fake_results = [
-            ("json-ld", {"config": {}, "total": 1, "titles": 0, "descriptions": 1,
-                         "locations": 0, "fields": {"description": 1}}, "0/1 titles, 1/1 desc, 0/1 locations"),
+            ("json-ld", {"config": {}, "total": 1, "titles": 0,
+                         "descriptions": 1, "locations": 0,
+                         "fields": {"description": 1}},
+             "0/1 titles, 1/1 desc, 0/1 locations"),
             ("nextdata", None, "Not detected"),
             ("dom", None, "Not detected"),
             ("api_sniffer", None, "Skipped \u2014 Playwright not available"),

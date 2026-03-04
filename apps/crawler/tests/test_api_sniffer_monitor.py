@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from src.core.monitors.api_sniffer import _extract_rich, _extract_urls_from_template, discover
-from src.shared.api_sniff import Exchange
 
 
 class TestExtractRich:

@@ -18,7 +18,7 @@ from __future__ import annotations
 import asyncio
 import json
 from typing import TYPE_CHECKING
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 import structlog
 
@@ -46,6 +46,20 @@ log = structlog.get_logger()
 MAX_ITEMS = 10_000
 MAX_PAGES = 50
 
+# Defaults for Playwright navigation — configurable via monitor_config
+_DEFAULT_WAIT = "load"
+_DEFAULT_TIMEOUT = 20_000
+_DEFAULT_SETTLE = 3  # seconds to wait after navigation for XHRs to complete
+
+
+def _merge_params(url: str, params: dict) -> str:
+    """Merge extra query params into a URL."""
+    parsed = urlparse(url)
+    existing = parse_qs(parsed.query, keep_blank_values=True)
+    existing.update({k: [v] if isinstance(v, str) else v for k, v in params.items()})
+    new_query = urlencode(existing, doseq=True)
+    return urlunparse(parsed._replace(query=new_query))
+
 
 # ---------------------------------------------------------------------------
 # can_handle
@@ -68,8 +82,8 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
             page_host = urlparse(url).netloc
             exchanges = await capture_exchanges(page, page_host)
 
-            await navigate(page, url, {"wait": "networkidle", "timeout": 45_000})
-            await asyncio.sleep(3)
+            await navigate(page, url, {"wait": _DEFAULT_WAIT, "timeout": _DEFAULT_TIMEOUT})
+            await asyncio.sleep(_DEFAULT_SETTLE)
 
             await dismiss_overlays(page)
             await trigger_interactions(page, exchanges)
@@ -87,14 +101,38 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
             # Auto-map fields
             fields = auto_map_fields(result.candidate.items)
 
+            # Split captured URL into clean base + params
+            parsed_url = urlparse(ex.url)
+            raw_params = parse_qs(parsed_url.query, keep_blank_values=True)
+
+            # Params managed by pagination config — don't duplicate
+            pag_params = set()
+            if result.pagination:
+                pag_params.add(result.pagination.param_name)
+
+            # Separate meaningful params from the URL
+            clean_params: dict[str, str | list[str]] = {}
+            for k, vals in raw_params.items():
+                if k in pag_params:
+                    continue
+                # Drop empty-valued params
+                non_empty = [v for v in vals if v]
+                if not non_empty:
+                    continue
+                clean_params[k] = non_empty[0] if len(non_empty) == 1 else non_empty
+
+            base_url = urlunparse(parsed_url._replace(query=""))
+
             # Build metadata
             meta: dict = {
-                "api_url": ex.url,
+                "api_url": base_url,
                 "method": ex.method,
                 "json_path": result.candidate.json_path,
                 "items": page_size,
                 "score": result.candidate.score,
             }
+            if clean_params:
+                meta["params"] = clean_params
             if result.url_field:
                 meta["url_field"] = result.url_field
             else:
@@ -187,10 +225,13 @@ async def _discover_replay(
     pw,
 ) -> list[DiscoveredJob] | set[str]:
     """Replay a stored API call, optionally paginating."""
-    from src.shared.api_sniff import JobListResult, ArrayCandidate, Exchange, PaginationInfo
+    from src.shared.api_sniff import ArrayCandidate, Exchange, JobListResult, PaginationInfo
     from src.shared.browser import navigate, open_page
 
     api_url = config["api_url"]
+    params = config.get("params")
+    if params:
+        api_url = _merge_params(api_url, params)
     method = config.get("method", "GET")
     json_path = config.get("json_path", "$")
     url_field = config.get("url_field")
@@ -200,14 +241,18 @@ async def _discover_replay(
     fields_map: dict[str, str] = config.get("fields") or {}
     pagination_config = config.get("pagination")
 
+    wait = config.get("wait", _DEFAULT_WAIT)
+    timeout = config.get("timeout", _DEFAULT_TIMEOUT)
+    settle = config.get("settle", _DEFAULT_SETTLE)
+
     async with open_page(pw, {}) as page:
         # Navigate to board_url to establish cookies/auth context
         try:
-            await navigate(page, board_url, {"wait": "networkidle", "timeout": 45_000})
+            await navigate(page, board_url, {"wait": wait, "timeout": timeout})
         except Exception:
             log.warning("api_sniffer.navigation_failed", board_url=board_url, exc_info=True)
 
-        await asyncio.sleep(1)
+        await asyncio.sleep(settle)
 
         # Replay the API call
         headers = clean_headers(request_headers)
@@ -267,11 +312,13 @@ async def _discover_replay(
                         break
                 if id_f:
                     url_map = {}
-                    for item, u in zip(items, dom_urls):
+                    for item, u in zip(items, dom_urls, strict=False):
                         url_map[str(item.get(id_f, ""))] = u
 
         if fields_map:
-            return _extract_rich(items, fields_map, url_field, url_template, board_url, url_map=url_map)
+            return _extract_rich(
+                items, fields_map, url_field, url_template, board_url, url_map=url_map,
+            )
 
         # URL-only mode
         if url_template:
@@ -294,16 +341,20 @@ async def _discover_auto(
 
     fields_map: dict[str, str] = config.get("fields") or {}
 
+    wait = config.get("wait", _DEFAULT_WAIT)
+    timeout = config.get("timeout", _DEFAULT_TIMEOUT)
+    settle = config.get("settle", _DEFAULT_SETTLE)
+
     async with open_page(pw, {}) as page:
         page_host = urlparse(board_url).netloc
         exchanges = await capture_exchanges(page, page_host)
 
         try:
-            await navigate(page, board_url, {"wait": "networkidle", "timeout": 45_000})
+            await navigate(page, board_url, {"wait": wait, "timeout": timeout})
         except Exception:
             log.warning("api_sniffer.navigation_failed", board_url=board_url, exc_info=True)
 
-        await asyncio.sleep(3)
+        await asyncio.sleep(settle)
         await dismiss_overlays(page)
         await trigger_interactions(page, exchanges)
 
@@ -342,7 +393,7 @@ async def _discover_auto(
                         break
                 if id_f:
                     url_map = {}
-                    for item, u in zip(items, dom_urls):
+                    for item, u in zip(items, dom_urls, strict=False):
                         url_map[str(item.get(id_f, ""))] = u
 
         if fields_map:
