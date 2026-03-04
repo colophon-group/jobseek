@@ -45,7 +45,7 @@ Monitor Types (cheapest first):
   dom            100     URL set         Yes
 
 Decision tree (after ws probe monitor):
-  1. Detected greenhouse/lever/ashby/recruitee/rippling/smartrecruiters/workable/workday/pinpoint/personio?  → Use it (no scraper needed)
+  1. Detected known ATS API (greenhouse/lever/ashby/etc)?  → Use it (no scraper needed)
   2. Detected nextdata?                → monitor: nextdata
   3. Detected sitemap?                 → monitor: sitemap, scraper: json-ld (or embedded)
   4. Detected api_sniffer?             → Use it (check if fields auto-mapped)
@@ -70,7 +70,8 @@ Scraper Types:
   dom            Static/PW   Yes (steps)      Custom HTML structure
   api_sniffer    Playwright  Optional (fields)  SPA/XHR job pages
 
-  API monitors (greenhouse, lever, ashby, recruitee, rippling, workday, pinpoint, personio) skip the scraper step entirely.
+  API monitors (greenhouse, lever, ashby, recruitee, rippling, workday, pinpoint,
+  personio) skip the scraper step entirely.
   api_sniffer scraper is auto-probed via Playwright in ws probe scraper.
 
   Probe first: ws probe scraper tries all types automatically against

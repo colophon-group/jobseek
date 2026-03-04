@@ -197,11 +197,11 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
     api_base = metadata.get("api_base")
     if not api_base:
         slug = metadata.get("slug") or _slug_from_url(board_url)
-        if slug:
-            api_base = f"https://{slug}.recruitee.com"
-        else:
-            # Custom domain — use the board URL's host directly
-            api_base = _api_base_from_url(board_url)
+        api_base = (
+            f"https://{slug}.recruitee.com"
+            if slug
+            else _api_base_from_url(board_url)  # Custom domain
+        )
 
     if not api_base:
         raise ValueError(
