@@ -7,9 +7,9 @@ writes to the same board or workspace file.
 from __future__ import annotations
 
 import fcntl
+from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Generator
 
 from src.config import settings
 

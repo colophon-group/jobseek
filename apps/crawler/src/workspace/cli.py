@@ -22,7 +22,16 @@ from src.workspace.commands.crawl import (
     select_scraper,
 )
 from src.workspace.commands.help import help_cmd
-from src.workspace.commands.lifecycle import del_, new, reject, resume, status, submit, use, validate
+from src.workspace.commands.lifecycle import (
+    del_,
+    new,
+    reject,
+    resume,
+    status,
+    submit,
+    use,
+    validate,
+)
 from src.workspace.errors import WorkspaceError
 
 
