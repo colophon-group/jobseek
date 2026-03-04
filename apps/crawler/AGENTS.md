@@ -23,6 +23,10 @@ src/
 │   │   ├── ashby.py       # Ashby Job Board API
 │   │   ├── greenhouse.py  # Greenhouse JSON API
 │   │   ├── lever.py       # Lever Postings API
+│   │   ├── personio.py    # Personio Public XML Feed
+│   │   ├── recruitee.py   # Recruitee Careers Site API
+│   │   ├── rippling.py    # Rippling ATS Job Board API
+│   │   ├── workday.py     # Workday Job Board API
 │   │   ├── sitemap.py     # XML sitemap parser
 │   │   ├── nextdata.py    # Next.js __NEXT_DATA__ discovery
 │   │   └── dom.py         # Playwright DOM-based discovery

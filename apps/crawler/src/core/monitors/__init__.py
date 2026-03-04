@@ -182,6 +182,51 @@ def _build_comment(name: str, metadata: dict) -> str:
         if urls is not None:
             return f"DOM \u2014 {urls} job links found (static)"
         return "DOM \u2014 link extraction"
+    if name == "smartrecruiters":
+        token = metadata.get("token", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"SmartRecruiters API \u2014 token: {token}, {jobs} jobs"
+        return f"SmartRecruiters API \u2014 token: {token}"
+    if name == "recruitee":
+        slug = metadata.get("slug", "?")
+        api_base = metadata.get("api_base", "")
+        jobs = metadata.get("jobs")
+        label = slug if slug != "?" else api_base
+        if jobs is not None:
+            return f"Recruitee API \u2014 {label}, {jobs} jobs"
+        return f"Recruitee API \u2014 {label}"
+    if name == "rippling":
+        slug = metadata.get("slug", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"Rippling API \u2014 slug: {slug}, {jobs} jobs"
+        return f"Rippling API \u2014 slug: {slug}"
+    if name == "workable":
+        token = metadata.get("token", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"Workable API \u2014 token: {token}, {jobs} jobs"
+        return f"Workable API \u2014 token: {token}"
+    if name == "workday":
+        company = metadata.get("company", "?")
+        site = metadata.get("site", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"Workday API \u2014 {company}/{site}, {jobs} jobs"
+        return f"Workday API \u2014 {company}/{site}"
+    if name == "pinpoint":
+        slug = metadata.get("slug", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"Pinpoint API \u2014 slug: {slug}, {jobs} jobs"
+        return f"Pinpoint API \u2014 slug: {slug}"
+    if name == "personio":
+        slug = metadata.get("slug", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"Personio XML \u2014 slug: {slug}, {jobs} jobs"
+        return f"Personio XML \u2014 slug: {slug}"
     if name == "api_sniffer":
         items = metadata.get("items")
         total = metadata.get("total")
@@ -245,5 +290,12 @@ from src.core.monitors import (  # noqa: E402
     greenhouse,  # noqa: F401
     lever,  # noqa: F401
     nextdata,  # noqa: F401
+    personio,  # noqa: F401
+    pinpoint,  # noqa: F401
+    recruitee,  # noqa: F401
+    rippling,  # noqa: F401
     sitemap,  # noqa: F401
+    smartrecruiters,  # noqa: F401
+    workable,  # noqa: F401
+    workday,  # noqa: F401
 )

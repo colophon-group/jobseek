@@ -27,18 +27,25 @@ Commands:
 MONITORS = """\
 Monitor Types (cheapest first):
 
-  Type           Cost    Returns         Scraper needed?
-  ─────────────────────────────────────────────────────
-  ashby          10      Full job data   No (skipped)
-  greenhouse     10      Full job data   No (skipped)
-  lever          10      Full job data   No (skipped)
-  nextdata       20      URLs or full    If URL-only
+  Type              Cost    Returns         Scraper needed?
+  ────────────────────────────────────────────────────────
+  ashby             10      Full job data   No (skipped)
+  greenhouse        10      Full job data   No (skipped)
+  lever             10      Full job data   No (skipped)
+  recruitee         10      Full job data   No (skipped)
+  rippling          10      Full job data   No (skipped)
+  smartrecruiters   10      Full job data   No (skipped)
+  workable          10      Full job data   No (skipped)
+  workday           10      Full job data   No (skipped)
+  pinpoint          10      Full job data   No (skipped)
+  personio          10      Full job data   No (skipped)
+  nextdata          20      URLs or full    If URL-only
   sitemap        50      URL set         Yes
   api_sniffer    80      URLs or full    If URL-only (no fields)
   dom            100     URL set         Yes
 
 Decision tree (after ws probe monitor):
-  1. Detected greenhouse/lever/ashby?  → Use it (no scraper needed)
+  1. Detected greenhouse/lever/ashby/recruitee/rippling/smartrecruiters/workable/workday/pinpoint/personio?  → Use it (no scraper needed)
   2. Detected nextdata?                → monitor: nextdata
   3. Detected sitemap?                 → monitor: sitemap, scraper: json-ld (or embedded)
   4. Detected api_sniffer?             → Use it (check if fields auto-mapped)
@@ -63,7 +70,7 @@ Scraper Types:
   dom            Static/PW   Yes (steps)      Custom HTML structure
   api_sniffer    Playwright  Optional (fields)  SPA/XHR job pages
 
-  API monitors (greenhouse, lever, ashby) skip the scraper step entirely.
+  API monitors (greenhouse, lever, ashby, recruitee, rippling, workday, pinpoint, personio) skip the scraper step entirely.
   api_sniffer scraper is auto-probed via Playwright in ws probe scraper.
 
   Probe first: ws probe scraper tries all types automatically against
@@ -244,6 +251,179 @@ ashby — Ashby Job Board API
 
   Detection:  ws probe shows "Ashby API — token: X, N jobs"
   Zero jobs?  Verify token — check the board URL is correct"""
+
+MONITOR_RECRUITEE = """\
+recruitee — Recruitee Careers Site API
+
+  API:      GET https://{slug}.recruitee.com/api/offers
+            GET https://{custom-domain}/api/offers  (custom domains)
+  Returns:  Full job data (title, HTML description, locations, employment_type,
+            job_location_type, date_posted, base_salary)
+            metadata: department, tags, category, id
+  Scraper:  Not needed (API returns full data, scraper step is skipped)
+  Cap:      10,000 jobs
+  Note:     Single API call — no pagination needed
+
+  Config:
+    {"slug": "acme"}               # Standard domain
+    {"api_base": "https://jobs.acme.com"}  # Custom domain
+
+    slug       Company slug for {slug}.recruitee.com. Auto-filled by ws probe from:
+               1. Direct URL ({slug}.recruitee.com)
+               2. Inline HTML scan for recruitee markers
+               3. Slug-based API probe (derives slug from domain)
+    api_base   Full base URL for custom domains. Auto-filled when detected
+               via HTML scan (e.g. karriere.herta.de → https://karriere.herta.de).
+
+  Detection:  ws probe shows "Recruitee API — {slug}, N jobs"
+  Zero jobs?  Verify slug — try the API URL directly in a browser
+  Custom domains:  Recruitee supports custom domains (e.g. karriere.herta.de).
+                   The API is at https://{custom-domain}/api/offers."""
+
+MONITOR_SMARTRECRUITERS = """\
+smartrecruiters — SmartRecruiters Posting API
+
+  API:      GET https://api.smartrecruiters.com/v1/companies/{token}/postings?limit=100&offset=0
+            GET https://api.smartrecruiters.com/v1/companies/{token}/postings/{id}  (detail)
+  Returns:  Full job data (title, HTML description, locations, employment_type,
+            job_location_type, date_posted, base_salary)
+            metadata: department, function, experienceLevel
+  Scraper:  Not needed (API returns full data, scraper step is skipped)
+  Cap:      10,000 jobs
+  Note:     N+1 API calls (1 list + N detail requests, concurrency=10)
+
+  Config:
+    {"token": "smartrecruiters"}
+
+    token    Company identifier. Auto-filled by ws probe from:
+             1. Direct URL (jobs.smartrecruiters.com/{token})
+             2. Inline JS scan for SmartRecruiters API references
+             3. Slug-based API probe (derives slug from domain)
+
+  Detection:  ws probe shows "SmartRecruiters API — token: X, N jobs"
+  Zero jobs?  Verify token — try the API URL directly in a browser"""
+
+MONITOR_RIPPLING = """\
+rippling — Rippling ATS Job Board API
+
+  API:      GET https://api.rippling.com/platform/api/ats/v1/board/{slug}/jobs
+            GET https://api.rippling.com/platform/api/ats/v1/board/{slug}/jobs/{uuid}  (detail)
+  Returns:  Full job data (title, HTML description, locations, employment_type,
+            date_posted, base_salary)
+            metadata: department, base_department, company
+  Scraper:  Not needed (API returns full data, scraper step is skipped)
+  Cap:      10,000 jobs
+  Note:     N+1 API calls (1 list + N detail requests, concurrency=10)
+
+  Config:
+    {"slug": "rippling"}
+
+    slug     Board slug. Auto-filled by ws probe from:
+             1. Direct URL (ats.rippling.com/{slug}/jobs)
+             2. Inline HTML scan for Rippling ATS references
+             3. Slug-based API probe (derives slug from domain)
+
+  Detection:  ws probe shows "Rippling API — slug: X, N jobs"
+  Zero jobs?  Verify slug — try the API URL directly in a browser"""
+
+MONITOR_PINPOINT = """\
+pinpoint — Pinpoint HQ Postings API
+
+  API:      GET https://{slug}.pinpointhq.com/postings.json
+  Returns:  Full job data (title, HTML description, locations, employment_type,
+            job_location_type, base_salary)
+            metadata: department, division, requisition_id
+  Scraper:  Not needed (API returns full data, scraper step is skipped)
+  Cap:      10,000 jobs
+  Note:     Single API call — returns all jobs, no pagination
+
+  Config:
+    {"slug": "workwithus"}
+
+    slug     Company subdomain. Auto-filled by ws probe from:
+             1. Direct URL ({slug}.pinpointhq.com)
+             2. Inline HTML scan for pinpointhq.com references
+             3. Slug-based API probe (derives slug from domain)
+
+  Detection:  ws probe shows "Pinpoint API — slug: X, N jobs"
+  Zero jobs?  Verify slug — try the API URL directly in a browser"""
+
+MONITOR_PERSONIO = """\
+personio — Personio Public XML Feed
+
+  API:      GET https://{slug}.jobs.personio.de/xml?language=en
+  Returns:  Full job data (title, HTML description, locations, employment_type,
+            date_posted)
+            metadata: department, subcompany, recruitingCategory, seniority,
+            yearsOfExperience, occupation, occupationCategory, keywords
+  Scraper:  Not needed (API returns full data, scraper step is skipped)
+  Cap:      10,000 jobs
+  Note:     Single XML request — returns all jobs, no pagination
+
+  Config:
+    {"slug": "sennder"}
+
+    slug     Company subdomain. Auto-filled by ws probe from:
+             1. Direct URL ({slug}.jobs.personio.de)
+             2. Inline HTML scan for jobs.personio.de references
+             3. Slug-based API probe (derives slug from domain)
+
+  Detection:  ws probe shows "Personio XML — slug: X, N jobs"
+  Zero jobs?  Verify slug — try the XML URL directly in a browser"""
+
+MONITOR_WORKABLE = """\
+workable — Workable Posting API
+
+  API:      POST https://apply.workable.com/api/v3/accounts/{token}/jobs
+            GET  https://apply.workable.com/api/v2/accounts/{token}/jobs/{shortcode}  (detail)
+  Returns:  Full job data (title, HTML description, locations, employment_type,
+            job_location_type, date_posted)
+            metadata: department
+  Scraper:  Not needed (API returns full data, scraper step is skipped)
+  Cap:      10,000 jobs
+  Note:     N+1 API calls (1 list + N detail requests, concurrency=10)
+            List endpoint uses cursor pagination (token in POST body)
+
+  Config:
+    {"token": "neowork"}
+
+    token    Company slug. Auto-filled by ws probe from:
+             1. Direct URL (apply.workable.com/{token})
+             2. Inline HTML scan for Workable references
+             3. Slug-based API probe (derives slug from domain)
+
+  Detection:  ws probe shows "Workable API — token: X, N jobs"
+  Zero jobs?  Verify token — try the API URL directly in a browser"""
+
+MONITOR_WORKDAY = """\
+workday — Workday Job Board API
+
+  API:      POST https://{company}.{wd_instance}.myworkdayjobs.com/wday/cxs/{company}/{site}/jobs
+            GET  https://{company}.{wd_instance}.myworkdayjobs.com/wday/cxs/{company}/{site}/job/{externalPath}
+  Returns:  Full job data (title, HTML description, locations, employment_type,
+            job_location_type, date_posted)
+            metadata: jobReqId
+  Scraper:  Not needed (API returns full data, scraper step is skipped)
+  Cap:      10,000 jobs
+  Note:     N+1 API calls (1 list + N detail requests, concurrency=10)
+            Max page size is 20 (API returns 400 for higher values)
+            API caps results at 2000 per query — automatically splits by
+            facet (e.g. job category) for companies with >2000 listings
+
+  Config:
+    {"company": "nvidia", "wd_instance": "wd5", "site": "NVIDIAExternalCareerSite"}
+
+    company       Company subdomain. Auto-filled by ws probe from:
+                  1. Direct URL ({company}.wd{N}.myworkdayjobs.com/{site})
+                  2. Inline HTML scan for Workday markers
+    wd_instance   Workday instance (e.g. wd1, wd5). Auto-filled from URL.
+    site          Career site identifier. Auto-filled from URL path.
+
+  URL format:   https://{company}.wd{N}.myworkdayjobs.com/{site}
+                May include locale prefix: /en-US/{site} (stripped automatically)
+
+  Detection:  ws probe shows "Workday API — {company}/{site}, N jobs"
+  Zero jobs?  Verify URL — try the list API URL directly in a browser"""
 
 MONITOR_API_SNIFFER = """\
 api_sniffer — XHR/Fetch API Capture (Playwright)
@@ -766,6 +946,13 @@ MONITOR_CARDS: dict[str, str] = {
     "greenhouse": MONITOR_GREENHOUSE,
     "lever": MONITOR_LEVER,
     "ashby": MONITOR_ASHBY,
+    "recruitee": MONITOR_RECRUITEE,
+    "rippling": MONITOR_RIPPLING,
+    "smartrecruiters": MONITOR_SMARTRECRUITERS,
+    "workable": MONITOR_WORKABLE,
+    "workday": MONITOR_WORKDAY,
+    "pinpoint": MONITOR_PINPOINT,
+    "personio": MONITOR_PERSONIO,
     "sitemap": MONITOR_SITEMAP,
     "nextdata": MONITOR_NEXTDATA,
     "dom": MONITOR_DOM,

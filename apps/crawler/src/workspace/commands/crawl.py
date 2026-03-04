@@ -143,7 +143,7 @@ def probe_scraper(slug: str | None, urls: tuple[str, ...]):
     ws, board = _get_active_board(slug)
 
     # Guard: API monitors don't need scrapers
-    api_monitors = {"ashby", "greenhouse", "lever"}
+    api_monitors = {"ashby", "greenhouse", "lever", "personio", "pinpoint", "recruitee", "rippling", "smartrecruiters", "workable", "workday"}
     is_rich_monitor = board.monitor_type in api_monitors or (
         board.monitor_type == "api_sniffer" and (board.monitor_config or {}).get("fields")
     )
@@ -300,6 +300,8 @@ def probe_scraper(slug: str | None, urls: tuple[str, ...]):
 _MONITOR_CONFIG_HINTS = {
     "greenhouse": "Requires: token (auto-filled from probe)",
     "lever": "Requires: token (auto-filled from probe)",
+    "recruitee": "Requires: slug or api_base (auto-filled from probe)",
+    "rippling": "Requires: slug (auto-filled from probe)",
     "sitemap": "Optional: sitemap_url, url_filter (regex to include/exclude URLs)",
     "nextdata": "Requires: path, url_template. Optional: fields, render, actions, url_filter",
     "dom": "Optional: render, actions, wait, timeout, url_filter",
@@ -554,7 +556,7 @@ def run_monitor(slug: str | None):
             if optional_parts:
                 out.plain("monitor", f"Optional: {', '.join(optional_parts)}")
         # API monitors skip scraper (including api_sniffer with fields)
-        api_monitors = {"ashby", "greenhouse", "lever"}
+        api_monitors = {"ashby", "greenhouse", "lever", "personio", "pinpoint", "recruitee", "rippling", "smartrecruiters", "workable", "workday"}
         is_rich_api = board.monitor_type in api_monitors or (
             board.monitor_type == "api_sniffer" and (board.monitor_config or {}).get("fields")
         )

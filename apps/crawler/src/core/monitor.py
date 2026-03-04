@@ -119,6 +119,30 @@ async def _save_raw(
                     (artifact_dir / "nextdata.json").write_text(
                         json.dumps(data, indent=2, default=str)
                     )
+        elif monitor_type == "recruitee":
+            api_base = monitor_config.get("api_base", "")
+            slug = monitor_config.get("slug", "")
+            if api_base:
+                api_url = f"{api_base}/api/offers"
+            elif slug:
+                api_url = f"https://{slug}.recruitee.com/api/offers"
+            else:
+                api_url = None
+            if api_url:
+                resp = await http.get(api_url, follow_redirects=True)
+                if resp.status_code == 200:
+                    (artifact_dir / "response.json").write_text(
+                        json.dumps(resp.json(), indent=2, default=str)
+                    )
+        elif monitor_type == "rippling":
+            slug = monitor_config.get("slug", "")
+            if slug:
+                api_url = f"https://api.rippling.com/platform/api/ats/v1/board/{slug}/jobs"
+                resp = await http.get(api_url)
+                if resp.status_code == 200:
+                    (artifact_dir / "response.json").write_text(
+                        json.dumps(resp.json(), indent=2, default=str)
+                    )
         elif monitor_type in ("ashby", "greenhouse", "lever"):
             token = monitor_config.get("token", "")
             if monitor_type == "ashby":
@@ -132,6 +156,13 @@ async def _save_raw(
                 (artifact_dir / "response.json").write_text(
                     json.dumps(resp.json(), indent=2, default=str)
                 )
+        elif monitor_type == "personio":
+            slug = monitor_config.get("slug", "")
+            if slug:
+                api_url = f"https://{slug}.jobs.personio.de/xml?language=en"
+                resp = await http.get(api_url, follow_redirects=True)
+                if resp.status_code == 200:
+                    (artifact_dir / "response.xml").write_text(resp.text)
         elif monitor_type == "dom":
             resp = await http.get(board_url, follow_redirects=True)
             if resp.status_code == 200:
