@@ -161,8 +161,8 @@ def probe_scraper(slug: str | None, urls: tuple[str, ...]):
         if not target_urls:
             out.die("No sample URLs available. Run the monitor first, or provide --url.")
 
-    # Limit to 3 URLs for probe
-    target_urls = target_urls[:3]
+    # Use all available sample URLs (up to 10, as stored by monitor run)
+    target_urls = target_urls[:10]
 
     out.info("probe", f"Probing {len(target_urls)} sample URLs...")
 

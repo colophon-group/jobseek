@@ -170,25 +170,56 @@ ws run monitor
 
 API monitors (`greenhouse`, `lever`, `ashby`) return full data — `ws run monitor` prints "Skipping scraper" and auto-marks scraper steps as done. `api_sniffer` with auto-mapped `fields` also skips the scraper step.
 
-For URL-only monitors (`sitemap`, `dom`, `api_sniffer` without `fields`), start by probing all scraper types:
+For URL-only monitors (`sitemap`, `dom`, `api_sniffer` without `fields`), follow this checklist **in order**:
+
+#### Step 1: Probe all scraper types
 
 ```bash
 ws probe scraper
 ```
 
-This tries all scraper types with heuristic auto-config against sample URLs and shows a quality comparison.
+This tries all scraper types with heuristic auto-config against sample URLs and shows a quality comparison. The probe runs against all available sample URLs (up to 10).
 
-**Before selecting, evaluate probe results critically:**
-- Do not follow the "Next:" suggestion if required fields show 0/N — the heuristic config is wrong. A scraper that can't extract titles or descriptions will never produce complete data regardless of other settings.
-- If the probe warns about JS-rendered pages (SPA warning), check the page source for embedded structured data (script tags, inline JSON) before trying `render: true` with DOM scraper. The data you need may exist in a format the probe doesn't test — completeness depends on finding the right data source.
-- For dom scraper, inspect `flat.json` to verify DOM element order before writing steps. Steps must follow DOM order (the cursor only moves forward) — wrong order silently skips fields, undermining reliability.
+#### Step 2: Evaluate probe results — do NOT blindly follow "Next:"
 
-If no scraper auto-detects and the page source contains structured JSON data in `<script>` tags or JS variable assignments, use the `embedded` scraper with manual config (`script_id`, `pattern`, or `variable`). This is more resilient than DOM scraping for sites with embedded structured data.
+- If required fields show 0/N for the best scraper, the **heuristic config** is wrong — not necessarily the scraper type. A detected pattern (e.g., `AF_initDataCallback`, NextData) is a strong signal even when the auto-generated field mapping fails.
+- For dom scraper, inspect `flat.json` to verify DOM element order before writing steps. Steps must follow DOM order (the cursor only moves forward) — wrong order silently skips fields.
 
-Then select the best one:
+#### Step 3: If probe detects a pattern but fields are 0/N, investigate the raw data
+
+**Do not skip this step.** When the probe detects embedded data (AF_initDataCallback, NextData, script tags) but the heuristic field mapping fails, the data is there — you just need to map it manually.
+
+1. Download the raw HTML with `curl -s <url> -o /tmp/page.html` — do NOT use WebFetch for this (it summarizes via LLM and will miss large data blobs like JSON arrays or callback payloads).
+2. Search for the detected pattern in the raw HTML to find the data structure.
+3. Write a small Python script to parse and print the structure, identifying which array indices or object keys contain title, description, locations, etc.
+4. Configure the `embedded` scraper with the correct `pattern`, `path`, and `fields` based on what you found. Run `ws help scraper embedded` for config format and examples (it explicitly covers Google Wiz/AF_initDataCallback, NextData, and other patterns).
+
+#### Step 4: If no embedded data, check for JSON-LD
+
+If the page has `<script type="application/ld+json">` with JobPosting schema:
 
 ```bash
-ws select scraper json-ld --config '<from probe>'
+ws select scraper json-ld
+ws run scraper
+```
+
+JSON-LD is more resilient than DOM scraping — try it first.
+
+#### Step 5: If no structured data, try DOM scraper (render: false first)
+
+**Always prefer `render: false`** — only use `render: true` when static fetch produces empty or incomplete results. Check if the data exists in the static HTML before assuming JS rendering is needed.
+
+```bash
+ws select scraper dom --config '{"render": false, "steps": [...]}'
+ws run scraper
+```
+
+#### Step 6: Only then try render: true
+
+If static DOM extraction produces empty results and no embedded data exists:
+
+```bash
+ws select scraper dom --config '{"render": true, "steps": [...]}'
 ws run scraper
 ```
 
@@ -201,13 +232,12 @@ Before submitting, verify that extracted content is **complete and correct**, no
 - Read the content samples in `ws run scraper` output. A populated field is not necessarily a correct field — verify the actual text makes sense and isn't truncated, garbled, or generic. For example, locations showing "+2 more" means incomplete data even if the field counts as populated.
 - If extracted content looks incomplete, investigate the page source for better data sources. Don't apply regex cleanup to broken data — find where the complete data lives. Reliability comes from extracting complete data at the source, not patching partial data downstream.
 - Check for additional mappable fields in the raw data source (same data source, no additional requests): `employment_type`, `date_posted`, `job_location_type`, team/department (as `metadata.*`), `base_salary`, `qualifications`, `responsibilities`.
-- When structured data exists in the page source, try the `embedded` scraper (`ws help scraper embedded`) before DOM scraping or code changes. It handles `<script>` tags, JS variables, and callback patterns. Only escalate to code changes if no existing scraper can parse the data.
 
 **Per scraper type:**
 - **nextdata**: Read the `nextdata.json` or scraper-probe artifact to see all available keys in each item, then extend `fields` mapping.
 - **dom**: Inspect `sample-N.html`, `flat.json`, or scraper-probe artifacts for additional structured content near extracted fields.
 - **json-ld**: No action needed — json-ld automatically extracts all standard JobPosting properties.
-- **embedded**: Inspect page source for `<script id="...">` tags with JSON, JS variable assignments (`window.__DATA__ = {...}`), or callback patterns (`AF_initDataCallback`). Use browser DevTools (Elements → search for `<script`) to find the data source, then configure `script_id`, `pattern`, or `variable` accordingly. Check all available keys in the JSON and map additional fields.
+- **embedded**: Inspect page source for `<script id="...">` tags with JSON, JS variable assignments (`window.__DATA__ = {...}`), or callback patterns (`AF_initDataCallback`). Download raw HTML with `curl` (not WebFetch) and write a small script to explore the data structure. Check all available keys in the JSON and map additional fields.
 - **api_sniffer**: Auto-probed via Playwright in `ws probe scraper`. Detects pages that load job data via XHR/fetch. If probe shows quality stats, use the suggested config. If content is server-rendered (not loaded via XHR), use json-ld or dom instead.
 
 Run `ws run scraper` again after config changes to verify new fields appear and content quality is correct.
