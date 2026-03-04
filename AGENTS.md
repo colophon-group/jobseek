@@ -108,7 +108,7 @@ grep -q "^<slug>," data/companies.csv
 If already present, comment and close the issue.
 
 **Check 1 — Real company**: web search confirms the company exists and is operating.
-**Check 2 — Public careers page**: find a publicly accessible career/jobs URL.
+**Check 2 — Public careers page**: find the careers/jobs URL by checking the company's own website (look for "Careers" or "Jobs" links). Do not rely solely on web search results — they may be stale or point to the wrong ATS. Fetch the company's careers page directly to discover the current board URL.
 **Check 3 — At least one listing visible**: the career page shows job postings.
 
 **On any failure**, reject with reason key (`not-a-company`, `company-not-found`, `no-job-board`, `no-open-positions`):

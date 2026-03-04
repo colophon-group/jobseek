@@ -98,7 +98,16 @@ def probe_monitors(slug: str | None):
     # Suggest best detected monitor
     best = next(((name, meta) for name, meta, _ in results if meta is not None), None)
     if best:
-        out.next_step(f"ws select monitor {best[0]}")
+        best_name, best_meta = best
+        # Suppress Next: when the best monitor found 0 jobs
+        best_jobs = best_meta.get("jobs", best_meta.get("urls", best_meta.get("count")))
+        if best_jobs is not None and best_jobs == 0:
+            out.warn(
+                "probe",
+                f"{best_name} detected but returned 0 jobs — verify the board URL is correct",
+            )
+        else:
+            out.next_step(f"ws select monitor {best_name}")
     else:
         out.warn(
             "probe",
