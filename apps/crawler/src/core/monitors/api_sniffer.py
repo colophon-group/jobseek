@@ -32,8 +32,11 @@ from src.shared.api_sniff import (
     extract_urls,
     extract_urls_via_dom_crossref,
     fetch_json,
+    find_total_count,
     infer_pagination,
     paginate_all,
+    set_body_param,
+    set_url_param,
     trigger_interactions,
 )
 from src.shared.nextdata import extract_field
@@ -217,16 +220,112 @@ async def discover(
     api_url = metadata.get("api_url")
 
     if api_url:
-        return await _discover_replay(board_url, metadata, pw)
+        return await _discover_replay(board_url, metadata, pw, client=client)
     return await _discover_auto(board_url, metadata, pw)
+
+
+async def _fetch_json_http(
+    client: httpx.AsyncClient,
+    method: str,
+    url: str,
+    headers: dict,
+    body: str | None,
+) -> object:
+    """Fetch JSON directly via httpx (no browser context)."""
+    req_headers = {**headers, "Accept": "application/json"}
+    if method.upper() == "POST":
+        resp = await client.post(url, content=body, headers=req_headers)
+    else:
+        resp = await client.get(url, headers=req_headers)
+    resp.raise_for_status()
+    return resp.json()
+
+
+async def _paginate_all_http(
+    client: httpx.AsyncClient,
+    method: str,
+    api_url: str,
+    headers: dict,
+    post_data: str | None,
+    json_path: str,
+    items: list[dict],
+    pagination_config: dict,
+    total_count: int | None,
+) -> list[dict]:
+    """Paginate API results using direct HTTP calls."""
+    pag_param = pagination_config["param_name"]
+    pag_style = pagination_config["style"]
+    pag_start = pagination_config["start_value"]
+    pag_increment = pagination_config["increment"]
+    pag_location = pagination_config["location"]
+
+    all_items = list(items)
+    page_size = len(items)
+    if page_size == 0:
+        return all_items
+
+    if total_count and total_count > page_size:
+        total_pages = min(
+            (total_count + page_size - 1) // page_size,
+            MAX_PAGES,
+        )
+    else:
+        total_pages = MAX_PAGES
+
+    current_value = pag_start + pag_increment
+    pages_fetched = 1
+    empty_count = 0
+    clean = clean_headers(headers)
+
+    while pages_fetched < total_pages:
+        if pag_location == "query":
+            fetch_url = set_url_param(api_url, pag_param, current_value)
+            fetch_body = post_data
+        else:
+            fetch_url = api_url
+            fetch_body = set_body_param(post_data, pag_param, current_value)
+
+        log.debug(
+            "api_sniffer.http_paginate",
+            page=pages_fetched + 1,
+            param=pag_param,
+            value=current_value,
+        )
+
+        try:
+            data = await _fetch_json_http(client, method, fetch_url, clean, fetch_body)
+            page_items = extract_items(data, json_path)
+
+            if not page_items:
+                empty_count += 1
+                if empty_count >= 2:
+                    break
+            else:
+                empty_count = 0
+                all_items.extend(page_items)
+                if len(page_items) < page_size:
+                    break
+        except Exception:
+            log.debug("api_sniffer.http_pagination_failed", exc_info=True)
+            break
+
+        pages_fetched += 1
+        current_value += pag_increment
+
+    return all_items
 
 
 async def _discover_replay(
     board_url: str,
     config: dict,
     pw,
+    client: httpx.AsyncClient | None = None,
 ) -> list[DiscoveredJob] | set[str]:
-    """Replay a stored API call, optionally paginating."""
+    """Replay a stored API call, optionally paginating.
+
+    Falls back to direct HTTP when Playwright-based fetch fails (e.g. when the
+    board site blocks headless browsers but the API itself is publicly accessible).
+    """
     from src.shared.api_sniff import ArrayCandidate, Exchange, JobListResult, PaginationInfo
     from src.shared.browser import navigate, open_page
 
@@ -247,6 +346,8 @@ async def _discover_replay(
     timeout = config.get("timeout", _DEFAULT_TIMEOUT)
     settle = config.get("settle", _DEFAULT_SETTLE)
 
+    # Try Playwright-based replay first
+    use_http = False
     async with open_page(pw, {}) as page:
         # Navigate to board_url to establish cookies/auth context
         try:
@@ -258,90 +359,129 @@ async def _discover_replay(
 
         # Replay the API call
         headers = clean_headers(request_headers)
+        data = None
         try:
             data = await fetch_json(page, method, api_url, headers, post_data)
         except Exception:
-            log.error("api_sniffer.replay_failed", api_url=api_url, exc_info=True)
+            log.warning("api_sniffer.replay_failed", api_url=api_url, exc_info=True)
+            if client is not None:
+                use_http = True
+                log.info("api_sniffer.http_fallback", api_url=api_url)
+
+        if data is None and not use_http:
             return list() if fields_map else set()
 
-        items = extract_items(data, json_path)
-        if not items:
-            log.warning("api_sniffer.no_items", api_url=api_url, json_path=json_path)
-            return list() if fields_map else set()
+        if data is not None:
+            items = extract_items(data, json_path)
+            if not items:
+                log.warning("api_sniffer.no_items", api_url=api_url, json_path=json_path)
+                return list() if fields_map else set()
 
-        # Paginate if configured
-        if pagination_config and len(items) > 0:
-            pag = PaginationInfo(
-                param_name=pagination_config["param_name"],
-                style=pagination_config["style"],
-                start_value=pagination_config["start_value"],
-                increment=pagination_config["increment"],
-                location=pagination_config["location"],
-            )
-            ex = Exchange(
-                method=method,
-                url=api_url,
-                request_headers=request_headers,
-                post_data=post_data,
-                status=200,
-                body=data,
-                content_type="application/json",
-                phase="load",
-            )
-            from src.shared.api_sniff import find_total_count
+            # Paginate if configured
+            if pagination_config and len(items) > 0:
+                pag = PaginationInfo(
+                    param_name=pagination_config["param_name"],
+                    style=pagination_config["style"],
+                    start_value=pagination_config["start_value"],
+                    increment=pagination_config["increment"],
+                    location=pagination_config["location"],
+                )
+                ex = Exchange(
+                    method=method,
+                    url=api_url,
+                    request_headers=request_headers,
+                    post_data=post_data,
+                    status=200,
+                    body=data,
+                    content_type="application/json",
+                    phase="load",
+                )
+                total_count = find_total_count(data, json_path)
+                cand = ArrayCandidate(exchange=ex, json_path=json_path, items=items)
+                job_result = JobListResult(
+                    candidate=cand,
+                    url_field=url_field,
+                    total_count=total_count,
+                    pagination=pag,
+                )
+                items = await paginate_all(page, job_result, MAX_PAGES)
 
-            total_count = find_total_count(data, json_path)
-            cand = ArrayCandidate(exchange=ex, json_path=json_path, items=items)
-            job_result = JobListResult(
-                candidate=cand,
-                url_field=url_field,
-                total_count=total_count,
-                pagination=pag,
-            )
-            items = await paginate_all(page, job_result, MAX_PAGES)
+            # Cap
+            if len(items) > MAX_ITEMS:
+                log.warning("api_sniffer.truncated", total=len(items), cap=MAX_ITEMS)
+                items = items[:MAX_ITEMS]
 
-        # Cap
-        if len(items) > MAX_ITEMS:
-            log.warning("api_sniffer.truncated", total=len(items), cap=MAX_ITEMS)
-            items = items[:MAX_ITEMS]
+            # Build URL map via DOM cross-ref if no url_field and no url_template
+            url_map: dict[str, str] | None = None
+            if not url_field and not url_template:
+                from src.shared.api_sniff import ID_FIELDS as _ID_FIELDS
 
-        # Build URL map via DOM cross-ref if no url_field and no url_template
-        url_map: dict[str, str] | None = None
-        if not url_field and not url_template:
-            from src.shared.api_sniff import ID_FIELDS as _ID_FIELDS
+                dom_urls = await extract_urls_via_dom_crossref(page, items, board_url)
+                if dom_urls:
+                    # Build id → url map
+                    id_f = None
+                    for key in items[0]:
+                        if _ID_FIELDS.match(key):
+                            id_f = key
+                            break
+                    if id_f:
+                        url_map = {}
+                        for item, u in zip(items, dom_urls, strict=False):
+                            url_map[str(item.get(id_f, ""))] = u
 
-            dom_urls = await extract_urls_via_dom_crossref(page, items, board_url)
-            if dom_urls:
-                # Build id → url map
-                id_f = None
-                for key in items[0]:
-                    if _ID_FIELDS.match(key):
-                        id_f = key
-                        break
-                if id_f:
-                    url_map = {}
-                    for item, u in zip(items, dom_urls, strict=False):
-                        url_map[str(item.get(id_f, ""))] = u
+            if fields_map:
+                return _extract_rich(
+                    items,
+                    fields_map,
+                    url_field,
+                    url_template,
+                    board_url,
+                    url_map=url_map,
+                )
 
-        if fields_map:
-            return _extract_rich(
-                items,
-                fields_map,
-                url_field,
-                url_template,
-                board_url,
-                url_map=url_map,
-            )
+            # URL-only mode
+            if url_template:
+                return _extract_urls_from_template(items, url_template, board_url)
+            urls = extract_urls(items, url_field, board_url)
+            if not urls and url_map:
+                return set(url_map.values())
+            if not urls:
+                urls = await extract_urls_via_dom_crossref(page, items, board_url)
+            return set(urls)
 
-        # URL-only mode
-        if url_template:
-            return _extract_urls_from_template(items, url_template, board_url)
-        urls = extract_urls(items, url_field, board_url)
-        if not urls and url_map:
-            return set(url_map.values())
-        if not urls:
-            urls = await extract_urls_via_dom_crossref(page, items, board_url)
-        return set(urls)
+    # HTTP fallback: Playwright fetch failed, use httpx directly
+    assert client is not None
+    headers = clean_headers(request_headers)
+    try:
+        data = await _fetch_json_http(client, method, api_url, headers, post_data)
+    except Exception:
+        log.error("api_sniffer.http_fallback_failed", api_url=api_url, exc_info=True)
+        return list() if fields_map else set()
+
+    items = extract_items(data, json_path)
+    if not items:
+        log.warning("api_sniffer.no_items", api_url=api_url, json_path=json_path)
+        return list() if fields_map else set()
+
+    # Paginate via HTTP
+    if pagination_config and len(items) > 0:
+        total_count = find_total_count(data, json_path)
+        items = await _paginate_all_http(
+            client, method, api_url, request_headers, post_data,
+            json_path, items, pagination_config, total_count,
+        )
+
+    if len(items) > MAX_ITEMS:
+        log.warning("api_sniffer.truncated", total=len(items), cap=MAX_ITEMS)
+        items = items[:MAX_ITEMS]
+
+    if fields_map:
+        return _extract_rich(items, fields_map, url_field, url_template, board_url)
+
+    if url_template:
+        return _extract_urls_from_template(items, url_template, board_url)
+    urls = extract_urls(items, url_field, board_url)
+    return set(urls)
 
 
 async def _discover_auto(
