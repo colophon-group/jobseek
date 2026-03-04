@@ -14,6 +14,7 @@ log = structlog.get_logger()
 
 MAX_URLS = 10_000
 NS = "{http://www.sitemaps.org/schemas/sitemap/0.9}"
+NS_GOOGLE = "{http://www.google.com/schemas/sitemap/0.9}"
 
 _JOB_KEYWORDS = ("job", "career", "posting", "position", "vacancy", "opening")
 
@@ -39,15 +40,17 @@ def _strip_utm(url: str) -> str:
 
 def _extract_urls(root: ET.Element) -> list[str]:
     urls: list[str] = []
-    for url_el in root.findall(f"{NS}url"):
-        loc = url_el.find(f"{NS}loc")
-        if loc is not None and loc.text:
-            urls.append(_strip_utm(loc.text.strip()))
-    if not urls:
-        for url_el in root.findall("url"):
-            loc = url_el.find("loc")
+    for ns in (NS, NS_GOOGLE):
+        for url_el in root.findall(f"{ns}url"):
+            loc = url_el.find(f"{ns}loc")
             if loc is not None and loc.text:
                 urls.append(_strip_utm(loc.text.strip()))
+        if urls:
+            return urls
+    for url_el in root.findall("url"):
+        loc = url_el.find("loc")
+        if loc is not None and loc.text:
+            urls.append(_strip_utm(loc.text.strip()))
     return urls
 
 
@@ -58,15 +61,17 @@ def _is_sitemap_index(root: ET.Element) -> bool:
 
 def _extract_child_sitemaps(root: ET.Element) -> list[str]:
     urls: list[str] = []
-    for el in root.findall(f"{NS}sitemap"):
-        loc = el.find(f"{NS}loc")
-        if loc is not None and loc.text:
-            urls.append(loc.text.strip())
-    if not urls:
-        for el in root.findall("sitemap"):
-            loc = el.find("loc")
+    for ns in (NS, NS_GOOGLE):
+        for el in root.findall(f"{ns}sitemap"):
+            loc = el.find(f"{ns}loc")
             if loc is not None and loc.text:
                 urls.append(loc.text.strip())
+        if urls:
+            return urls
+    for el in root.findall("sitemap"):
+        loc = el.find("loc")
+        if loc is not None and loc.text:
+            urls.append(loc.text.strip())
     return urls
 
 
