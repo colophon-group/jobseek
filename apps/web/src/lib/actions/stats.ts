@@ -8,7 +8,7 @@ import { db } from "@/db";
 import { company, companyRequest, jobPosting } from "@/db/schema";
 import { cached } from "@/lib/cache";
 
-export function getStats() {
+export async function getStats() {
   return cached(
     "platform-stats",
     async () => {
