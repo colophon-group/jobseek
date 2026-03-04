@@ -32,8 +32,14 @@ log = structlog.get_logger()
 # ── Heuristic stop markers ────────────────────────────────────────────
 
 _STOP_MARKERS = [
-    "Apply", "Requirements", "Qualifications", "Back",
-    "Submit", "Similar", "Share", "Related",
+    "Apply",
+    "Requirements",
+    "Qualifications",
+    "Back",
+    "Submit",
+    "Similar",
+    "Share",
+    "Related",
 ]
 
 
@@ -84,13 +90,15 @@ def _heuristic_steps(elements: list[dict]) -> list[dict] | None:
     for el in elements:
         text_lower = el["text"].lower()
         if "location" in text_lower and len(el["text"]) < 40:
-            steps.append({
-                "text": "Location",
-                "offset": 1,
-                "field": "location",
-                "optional": True,
-                "from": 0,
-            })
+            steps.append(
+                {
+                    "text": "Location",
+                    "offset": 1,
+                    "field": "location",
+                    "optional": True,
+                    "from": 0,
+                }
+            )
             break
 
     return steps
@@ -144,6 +152,7 @@ def parse_html(html: str, config: dict) -> JobContent:
 
 # ── Core extraction ───────────────────────────────────────────────────
 
+
 def _map_to_job_content(raw: dict[str, str | list[str] | None]) -> JobContent:
     """Map extraction result dict to a ``JobContent`` dataclass."""
     kwargs: dict[str, object] = {}
@@ -155,8 +164,12 @@ def _map_to_job_content(raw: dict[str, str | list[str] | None]) -> JobContent:
         if key.startswith("metadata."):
             metadata[key.removeprefix("metadata.")] = value
         elif key in (
-            "title", "description", "employment_type",
-            "job_location_type", "date_posted", "valid_through",
+            "title",
+            "description",
+            "employment_type",
+            "job_location_type",
+            "date_posted",
+            "valid_through",
         ):
             kwargs[key] = value
         elif key == "location" or key == "locations":
@@ -173,8 +186,11 @@ def _map_to_job_content(raw: dict[str, str | list[str] | None]) -> JobContent:
 
 
 async def scrape(
-    url: str, config: dict, http: httpx.AsyncClient,
-    pw=None, artifact_dir: Path | None = None,
+    url: str,
+    config: dict,
+    http: httpx.AsyncClient,
+    pw=None,
+    artifact_dir: Path | None = None,
 ) -> JobContent:
     """Extract job data using step-based extraction.
 

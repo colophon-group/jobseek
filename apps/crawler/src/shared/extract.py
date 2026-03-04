@@ -4,6 +4,7 @@ Flattens HTML into a list of contentful leaf elements, then walks
 extraction steps to pull out named fields.  No I/O, no dependencies
 beyond stdlib.
 """
+
 from __future__ import annotations
 
 import re
@@ -12,30 +13,93 @@ from html import escape
 from html.parser import HTMLParser
 
 # Tags that never contain visible job content
-SKIP_TAGS = frozenset({
-    "script", "style", "noscript", "svg", "path", "meta", "link",
-    "iframe", "object", "embed", "head", "template",
-})
+SKIP_TAGS = frozenset(
+    {
+        "script",
+        "style",
+        "noscript",
+        "svg",
+        "path",
+        "meta",
+        "link",
+        "iframe",
+        "object",
+        "embed",
+        "head",
+        "template",
+    }
+)
 
 # Tags that are structural noise (nav, footer, etc.)
-NOISE_TAGS = frozenset({
-    "nav", "footer", "header",
-})
+NOISE_TAGS = frozenset(
+    {
+        "nav",
+        "footer",
+        "header",
+    }
+)
 
 # Inline tags that don't constitute their own "block" — we fold their
 # text into the parent block element.
-INLINE_TAGS = frozenset({
-    "a", "abbr", "acronym", "b", "bdo", "big", "br", "button", "cite",
-    "code", "dfn", "em", "i", "img", "input", "kbd", "label", "map",
-    "mark", "q", "ruby", "s", "samp", "select", "small", "span",
-    "strong", "sub", "sup", "textarea", "time", "tt", "u", "var", "wbr",
-})
+INLINE_TAGS = frozenset(
+    {
+        "a",
+        "abbr",
+        "acronym",
+        "b",
+        "bdo",
+        "big",
+        "br",
+        "button",
+        "cite",
+        "code",
+        "dfn",
+        "em",
+        "i",
+        "img",
+        "input",
+        "kbd",
+        "label",
+        "map",
+        "mark",
+        "q",
+        "ruby",
+        "s",
+        "samp",
+        "select",
+        "small",
+        "span",
+        "strong",
+        "sub",
+        "sup",
+        "textarea",
+        "time",
+        "tt",
+        "u",
+        "var",
+        "wbr",
+    }
+)
 
 # Void elements that have no closing tag
-VOID_TAGS = frozenset({
-    "area", "base", "br", "col", "embed", "hr", "img", "input",
-    "link", "meta", "param", "source", "track", "wbr",
-})
+VOID_TAGS = frozenset(
+    {
+        "area",
+        "base",
+        "br",
+        "col",
+        "embed",
+        "hr",
+        "img",
+        "input",
+        "link",
+        "meta",
+        "param",
+        "source",
+        "track",
+        "wbr",
+    }
+)
 
 
 class FlattenParser(HTMLParser):
@@ -58,11 +122,13 @@ class FlattenParser(HTMLParser):
         # Collapse whitespace
         text = " ".join(text.split())
         if text and len(text) > 0:
-            self.elements.append({
-                "tag": self._current_block_tag or "?",
-                "attrs": self._current_block_attrs,
-                "text": text,
-            })
+            self.elements.append(
+                {
+                    "tag": self._current_block_tag or "?",
+                    "attrs": self._current_block_attrs,
+                    "text": text,
+                }
+            )
         self._current_text = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]):
@@ -151,19 +217,21 @@ def flatten(html: str) -> list[dict]:
     return parser.elements
 
 
-_UNICODE_PUNCT = str.maketrans({
-    "\u2018": "'",   # left single quote
-    "\u2019": "'",   # right single quote
-    "\u201c": '"',   # left double quote
-    "\u201d": '"',   # right double quote
-    "\u2013": "-",   # en dash
-    "\u2014": "-",   # em dash
-    "\u00a0": " ",   # non-breaking space
-    "\u200b": "",    # zero-width space
-    "\u200c": "",    # zero-width non-joiner
-    "\u200d": "",    # zero-width joiner
-    "\ufeff": "",    # BOM / zero-width no-break space
-})
+_UNICODE_PUNCT = str.maketrans(
+    {
+        "\u2018": "'",  # left single quote
+        "\u2019": "'",  # right single quote
+        "\u201c": '"',  # left double quote
+        "\u201d": '"',  # right double quote
+        "\u2013": "-",  # en dash
+        "\u2014": "-",  # em dash
+        "\u00a0": " ",  # non-breaking space
+        "\u200b": "",  # zero-width space
+        "\u200c": "",  # zero-width non-joiner
+        "\u200d": "",  # zero-width joiner
+        "\ufeff": "",  # BOM / zero-width no-break space
+    }
+)
 
 
 def _norm(s: str) -> str:
@@ -197,7 +265,8 @@ def _join_html(collected: list[dict]) -> str:
 
 
 def walk_steps(
-    elements: list[dict], steps: list[dict],
+    elements: list[dict],
+    steps: list[dict],
 ) -> dict[str, str | list[str] | None]:
     """Walk flat elements according to extraction steps, returning extracted fields.
 

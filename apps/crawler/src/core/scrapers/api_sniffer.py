@@ -31,29 +31,65 @@ log = structlog.get_logger()
 
 # Fields we look for in a single-job JSON response
 _DESCRIPTION_FIELDS = (
-    "description", "body", "content", "bodyHtml", "body_html",
-    "descriptionHtml", "description_html", "text", "details",
-    "job_description", "jobDescription", "summary",
+    "description",
+    "body",
+    "content",
+    "bodyHtml",
+    "body_html",
+    "descriptionHtml",
+    "description_html",
+    "text",
+    "details",
+    "job_description",
+    "jobDescription",
+    "summary",
 )
 
 _LOCATION_FIELDS = (
-    "location", "locations", "locationName", "location_name",
-    "office", "offices", "city", "cities", "place",
+    "location",
+    "locations",
+    "locationName",
+    "location_name",
+    "office",
+    "offices",
+    "city",
+    "cities",
+    "place",
 )
 
 _EMPLOYMENT_TYPE_FIELDS = (
-    "employment_type", "employmentType", "type", "job_type", "jobType",
-    "work_type", "workType", "contract_type", "contractType",
+    "employment_type",
+    "employmentType",
+    "type",
+    "job_type",
+    "jobType",
+    "work_type",
+    "workType",
+    "contract_type",
+    "contractType",
 )
 
 _DATE_FIELDS = (
-    "date_posted", "datePosted", "posted_at", "postedAt", "published_at",
-    "publishedAt", "created_at", "createdAt", "publish_date",
+    "date_posted",
+    "datePosted",
+    "posted_at",
+    "postedAt",
+    "published_at",
+    "publishedAt",
+    "created_at",
+    "createdAt",
+    "publish_date",
 )
 
 _WORKPLACE_TYPE_FIELDS = (
-    "job_location_type", "jobLocationType", "workplace_type", "workplaceType",
-    "remote_type", "locationType", "isRemote", "remote",
+    "job_location_type",
+    "jobLocationType",
+    "workplace_type",
+    "workplaceType",
+    "remote_type",
+    "locationType",
+    "isRemote",
+    "remote",
 )
 
 # Defaults for Playwright navigation — configurable via scraper_config
@@ -166,8 +202,12 @@ def _extract_with_mapping(obj: dict, fields_map: dict[str, str]) -> JobContent:
         elif target in ("skills", "responsibilities", "qualifications"):
             kwargs[target] = value if isinstance(value, list) else [value]
         elif target in (
-            "title", "description", "employment_type",
-            "job_location_type", "date_posted", "valid_through",
+            "title",
+            "description",
+            "employment_type",
+            "job_location_type",
+            "date_posted",
+            "valid_through",
         ):
             kwargs[target] = value
         else:
@@ -263,8 +303,12 @@ async def probe_pw(
     settle = _DEFAULT_SETTLE
 
     _QUALITY_FIELDS = [
-        "title", "description", "locations", "employment_type",
-        "job_location_type", "date_posted",
+        "title",
+        "description",
+        "locations",
+        "employment_type",
+        "job_location_type",
+        "date_posted",
     ]
 
     async def _probe_one(url: str) -> tuple[JobContent | None, dict | None]:

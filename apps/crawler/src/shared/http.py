@@ -34,14 +34,16 @@ def create_logging_http_client() -> tuple[httpx.AsyncClient, list[dict[str, Any]
         start = timings.pop(id(req), None)
         elapsed = round(time.monotonic() - start, 3) if start else None
         content_length = response.headers.get("content-length")
-        log_entries.append({
-            "method": str(req.method),
-            "url": str(req.url),
-            "status": response.status_code,
-            "content_type": response.headers.get("content-type", ""),
-            "content_length": int(content_length) if content_length else None,
-            "elapsed": elapsed,
-        })
+        log_entries.append(
+            {
+                "method": str(req.method),
+                "url": str(req.url),
+                "status": response.status_code,
+                "content_type": response.headers.get("content-type", ""),
+                "content_length": int(content_length) if content_length else None,
+                "elapsed": elapsed,
+            }
+        )
 
     client = httpx.AsyncClient(
         **_CLIENT_DEFAULTS,

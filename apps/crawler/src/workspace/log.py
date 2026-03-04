@@ -126,9 +126,4 @@ def format_crawl_stats(boards: dict[str, dict[str, Any]]) -> str:
         rows.append(f"| Locations | {total_locations}/{sample_count} |")
 
     table = "\n".join(rows)
-    return (
-        f"<!-- crawl-stats {stats_json} -->\n"
-        f"| Metric | Value |\n"
-        f"|---|---|\n"
-        f"{table}"
-    )
+    return f"<!-- crawl-stats {stats_json} -->\n| Metric | Value |\n|---|---|\n{table}"

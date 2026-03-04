@@ -157,10 +157,7 @@ class TestApiUrl:
         assert _api_url("stripe") == "https://api.ashbyhq.com/posting-api/job-board/stripe"
 
     def test_with_hyphen(self):
-        assert (
-            _api_url("my-company")
-            == "https://api.ashbyhq.com/posting-api/job-board/my-company"
-        )
+        assert _api_url("my-company") == "https://api.ashbyhq.com/posting-api/job-board/my-company"
 
 
 class TestDiscover:

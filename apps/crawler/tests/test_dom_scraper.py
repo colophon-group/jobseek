@@ -51,9 +51,7 @@ def _patch_playwright(page: MagicMock):
     mock_async_pw = MagicMock()
     mock_async_pw.__aenter__ = AsyncMock(return_value=mock_pw)
     mock_async_pw.__aexit__ = AsyncMock(return_value=False)
-    return patch(
-        "playwright.async_api.async_playwright", return_value=mock_async_pw
-    )
+    return patch("playwright.async_api.async_playwright", return_value=mock_async_pw)
 
 
 FIXTURE_HTML = """
@@ -120,7 +118,7 @@ class TestDomScraper:
                     "stop": "Requirements",
                     "html": True,
                 },
-            ]
+            ],
         }
         with _patch_playwright(page):
             result = await scrape("https://example.com/job/1", config, httpx.AsyncClient())
@@ -136,7 +134,7 @@ class TestDomScraper:
             "render": True,
             "steps": [
                 {"text": "Location", "offset": 1, "field": "location"},
-            ]
+            ],
         }
         with _patch_playwright(page):
             result = await scrape("https://example.com/job/1", config, httpx.AsyncClient())
@@ -154,7 +152,7 @@ class TestDomScraper:
             "render": True,
             "steps": [
                 {"text": "Locations", "offset": 1, "field": "locations", "split": " | "},
-            ]
+            ],
         }
         with _patch_playwright(page):
             result = await scrape("https://example.com/job/1", config, httpx.AsyncClient())
@@ -169,7 +167,7 @@ class TestDomScraper:
             "render": True,
             "steps": [
                 {"text": "Team", "offset": 1, "field": "metadata.team"},
-            ]
+            ],
         }
         with _patch_playwright(page):
             result = await scrape("https://example.com/job/1", config, httpx.AsyncClient())
@@ -185,7 +183,7 @@ class TestDomScraper:
             "render": True,
             "steps": [
                 {"text": "Requirements", "field": "qualifications", "stop_count": 3, "split": "\n"},
-            ]
+            ],
         }
         with _patch_playwright(page):
             result = await scrape("https://example.com/job/1", config, httpx.AsyncClient())
@@ -309,7 +307,7 @@ class TestDomScraper:
         config = {"render": True, "steps": [{"tag": "h1", "field": "title"}]}
         http = httpx.AsyncClient()
 
-        real_import = __builtins__.__import__ if hasattr(__builtins__, '__import__') else __import__
+        real_import = __builtins__.__import__ if hasattr(__builtins__, "__import__") else __import__
 
         def fake_import(name, *args, **kwargs):
             if name == "playwright.async_api":

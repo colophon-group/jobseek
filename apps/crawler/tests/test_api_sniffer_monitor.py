@@ -30,7 +30,9 @@ class TestExtractRich:
         ]
         fields = {"title": "title"}
         jobs = _extract_rich(
-            items, fields, None,
+            items,
+            fields,
+            None,
             "https://example.com/jobs/{id}/{slug}",
             "https://example.com",
         )

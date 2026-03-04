@@ -26,8 +26,7 @@ from src.workspace.state import (
 
 COMPANIES_HEADER = "slug,name,website,logo_url,icon_url\n"
 BOARDS_HEADER = (
-    "company_slug,board_slug,board_url,monitor_type,"
-    "monitor_config,scraper_type,scraper_config\n"
+    "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
 )
 
 
@@ -162,7 +161,9 @@ class TestAddBoard:
         _patch_all(monkeypatch, tmp_path)
         save_workspace(Workspace(slug="test"))
         runner = CliRunner()
-        result = runner.invoke(ws, ["add", "board", "test", "careers", "--url", "https://test.com/jobs"])
+        result = runner.invoke(
+            ws, ["add", "board", "test", "careers", "--url", "https://test.com/jobs"]
+        )
         assert result.exit_code == 0
         assert "test-careers" in result.output
 
@@ -183,7 +184,9 @@ class TestAddBoard:
         _patch_all(monkeypatch, tmp_path)
         save_workspace(Workspace(slug="test"))
         runner = CliRunner()
-        result = runner.invoke(ws, ["add", "board", "test", "test-careers", "--url", "https://test.com/jobs"])
+        result = runner.invoke(
+            ws, ["add", "board", "test", "test-careers", "--url", "https://test.com/jobs"]
+        )
         assert result.exit_code == 0
         assert "already prefixed" in result.output
 
@@ -261,13 +264,22 @@ class TestReject:
         _patch_all(monkeypatch, tmp_path)
         runner = CliRunner()
 
-        with patch("src.workspace.git.comment_on_issue") as mock_comment, \
-             patch("src.workspace.git.close_issue") as mock_close:
-            result = runner.invoke(ws, [
-                "reject", "--issue", "42",
-                "--reason", "no-job-board",
-                "--message", "No careers page found",
-            ])
+        with (
+            patch("src.workspace.git.comment_on_issue") as mock_comment,
+            patch("src.workspace.git.close_issue") as mock_close,
+        ):
+            result = runner.invoke(
+                ws,
+                [
+                    "reject",
+                    "--issue",
+                    "42",
+                    "--reason",
+                    "no-job-board",
+                    "--message",
+                    "No careers page found",
+                ],
+            )
             assert result.exit_code == 0
             mock_comment.assert_called_once()
             mock_close.assert_called_once_with(42)
@@ -277,13 +289,21 @@ class TestReject:
         save_workspace(Workspace(slug="test", issue=42))
         runner = CliRunner()
 
-        with patch("src.workspace.git.comment_on_issue"), \
-             patch("src.workspace.git.close_issue") as mock_close:
-            result = runner.invoke(ws, [
-                "reject", "test",
-                "--reason", "no-open-positions",
-                "--message", "Zero listings visible",
-            ])
+        with (
+            patch("src.workspace.git.comment_on_issue"),
+            patch("src.workspace.git.close_issue") as mock_close,
+        ):
+            result = runner.invoke(
+                ws,
+                [
+                    "reject",
+                    "test",
+                    "--reason",
+                    "no-open-positions",
+                    "--message",
+                    "Zero listings visible",
+                ],
+            )
             assert result.exit_code == 0
             mock_close.assert_called_once_with(42)
 
@@ -293,13 +313,20 @@ class TestReject:
         set_active_slug("test")
         runner = CliRunner()
 
-        with patch("src.workspace.git.comment_on_issue"), \
-             patch("src.workspace.git.close_issue") as mock_close:
-            result = runner.invoke(ws, [
-                "reject",
-                "--reason", "no-open-positions",
-                "--message", "Zero listings visible",
-            ])
+        with (
+            patch("src.workspace.git.comment_on_issue"),
+            patch("src.workspace.git.close_issue") as mock_close,
+        ):
+            result = runner.invoke(
+                ws,
+                [
+                    "reject",
+                    "--reason",
+                    "no-open-positions",
+                    "--message",
+                    "Zero listings visible",
+                ],
+            )
             assert result.exit_code == 0
             mock_close.assert_called_once_with(42)
 
@@ -311,8 +338,10 @@ class TestDel:
         save_workspace(Workspace(slug="test", branch="add-company/test", pr=10))
         runner = CliRunner()
 
-        with patch("src.workspace.git.close_pr") as mock_close_pr, \
-             patch("src.workspace.git.delete_branch") as mock_del_branch:
+        with (
+            patch("src.workspace.git.close_pr") as mock_close_pr,
+            patch("src.workspace.git.delete_branch") as mock_del_branch,
+        ):
             result = runner.invoke(ws, ["del", "test"])
             assert result.exit_code == 0
             mock_close_pr.assert_called_once_with(10)
@@ -327,8 +356,7 @@ class TestDel:
         set_active_slug("test")
         runner = CliRunner()
 
-        with patch("src.workspace.git.close_pr"), \
-             patch("src.workspace.git.delete_branch"):
+        with patch("src.workspace.git.close_pr"), patch("src.workspace.git.delete_branch"):
             result = runner.invoke(ws, ["del", "test"])
             assert result.exit_code == 0
 
@@ -423,10 +451,12 @@ def _enter_monitor_patches(tmp_path) -> tuple[ExitStack, MagicMock]:
     """Enter common patches for run monitor tests. Returns (stack, mock_asyncio)."""
     stack = ExitStack()
     mock_asyncio = stack.enter_context(patch("src.workspace.commands.crawl.asyncio"))
-    stack.enter_context(patch(
-        "src.workspace.artifacts.monitor_run_dir",
-        return_value=tmp_path / "artifacts",
-    ))
+    stack.enter_context(
+        patch(
+            "src.workspace.artifacts.monitor_run_dir",
+            return_value=tmp_path / "artifacts",
+        )
+    )
     stack.enter_context(patch("src.workspace.artifacts.save_jobs"))
     stack.enter_context(patch("src.workspace.artifacts.save_quality"))
     stack.enter_context(patch("src.workspace.artifacts.save_http_log"))
@@ -439,16 +469,20 @@ def _enter_scraper_patches(tmp_path) -> tuple[ExitStack, MagicMock]:
     """Enter common patches for run scraper tests. Returns (stack, mock_asyncio)."""
     stack = ExitStack()
     mock_asyncio = stack.enter_context(patch("src.workspace.commands.crawl.asyncio"))
-    stack.enter_context(patch(
-        "src.workspace.artifacts.scraper_run_dir",
-        return_value=tmp_path / "artifacts",
-    ))
+    stack.enter_context(
+        patch(
+            "src.workspace.artifacts.scraper_run_dir",
+            return_value=tmp_path / "artifacts",
+        )
+    )
     stack.enter_context(patch("src.workspace.artifacts.save_results"))
     stack.enter_context(patch("src.workspace.artifacts.save_quality"))
     stack.enter_context(patch("src.workspace.artifacts.save_http_log"))
     stack.enter_context(patch("src.workspace.artifacts.save_events"))
     stack.enter_context(patch("src.workspace.artifacts.capture_structlog", return_value=[]))
-    stack.enter_context(patch("random.sample", return_value=["https://test.com/jobs/1", "https://test.com/jobs/2"]))
+    stack.enter_context(
+        patch("random.sample", return_value=["https://test.com/jobs/1", "https://test.com/jobs/2"])
+    )
     return stack, mock_asyncio
 
 
@@ -458,8 +492,12 @@ class TestRunMonitorOutput:
         save_workspace(Workspace(slug="test"))
         save_board(
             "test",
-            Board(alias="careers", slug="test-careers", url="https://test.com/jobs",
-                  monitor_type=monitor_type),
+            Board(
+                alias="careers",
+                slug="test-careers",
+                url="https://test.com/jobs",
+                monitor_type=monitor_type,
+            ),
         )
         ws_obj = load_workspace("test")
         ws_obj.active_board = "careers"
@@ -541,13 +579,18 @@ class TestRunMonitorOutput:
 
         jobs = {
             "https://test.com/jobs/1": DiscoveredJob(
-                url="https://test.com/jobs/1", title="Engineer",
-                description="<p>Build</p>", locations=["NYC"],
-                employment_type="FULL_TIME", date_posted="2026-01-01",
+                url="https://test.com/jobs/1",
+                title="Engineer",
+                description="<p>Build</p>",
+                locations=["NYC"],
+                employment_type="FULL_TIME",
+                date_posted="2026-01-01",
             ),
             "https://test.com/jobs/2": DiscoveredJob(
-                url="https://test.com/jobs/2", title="Designer",
-                description="<p>Design</p>", locations=["SF"],
+                url="https://test.com/jobs/2",
+                title="Designer",
+                description="<p>Design</p>",
+                locations=["SF"],
             ),
         }
 
@@ -578,8 +621,11 @@ class TestRunScraperOutput:
         save_board(
             "test",
             Board(
-                alias="careers", slug="test-careers", url="https://test.com/jobs",
-                monitor_type="sitemap", scraper_type=scraper_type,
+                alias="careers",
+                slug="test-careers",
+                url="https://test.com/jobs",
+                monitor_type="sitemap",
+                scraper_type=scraper_type,
                 monitor_run={"sample_urls": ["https://test.com/jobs/1", "https://test.com/jobs/2"]},
             ),
         )
@@ -673,8 +719,11 @@ class TestRunScraperOutput:
 
         contents = [
             JobContent(
-                title="Engineer", description="<p>Hi</p>", locations=["NYC"],
-                employment_type="FULL_TIME", date_posted="2026-01-01",
+                title="Engineer",
+                description="<p>Hi</p>",
+                locations=["NYC"],
+                employment_type="FULL_TIME",
+                date_posted="2026-01-01",
                 skills=["Python", "SQL"],
             ),
             JobContent(title="Designer", description="<p>Hi</p>", locations=["SF"]),
@@ -757,8 +806,12 @@ class TestRunMonitorVerifyPrompt:
         save_workspace(Workspace(slug="test"))
         save_board(
             "test",
-            Board(alias="careers", slug="test-careers", url="https://test.com/jobs",
-                  monitor_type=monitor_type),
+            Board(
+                alias="careers",
+                slug="test-careers",
+                url="https://test.com/jobs",
+                monitor_type=monitor_type,
+            ),
         )
         ws_obj = load_workspace("test")
         ws_obj.active_board = "careers"
@@ -812,10 +865,12 @@ def _enter_probe_scraper_patches(tmp_path) -> tuple[ExitStack, MagicMock]:
     """Enter common patches for probe scraper tests. Returns (stack, mock_asyncio)."""
     stack = ExitStack()
     mock_asyncio = stack.enter_context(patch("src.workspace.commands.crawl.asyncio"))
-    stack.enter_context(patch(
-        "src.workspace.artifacts.scraper_probe_run_dir",
-        return_value=tmp_path / "artifacts",
-    ))
+    stack.enter_context(
+        patch(
+            "src.workspace.artifacts.scraper_probe_run_dir",
+            return_value=tmp_path / "artifacts",
+        )
+    )
     stack.enter_context(patch("src.workspace.artifacts.save_probe"))
     return stack, mock_asyncio
 
@@ -827,7 +882,9 @@ class TestProbeScraperQualityGate:
         save_board(
             "test",
             Board(
-                alias="careers", slug="test-careers", url="https://test.com/jobs",
+                alias="careers",
+                slug="test-careers",
+                url="https://test.com/jobs",
                 monitor_type="sitemap",
                 monitor_run={"sample_urls": ["https://test.com/jobs/1"]},
             ),
@@ -842,10 +899,18 @@ class TestProbeScraperQualityGate:
 
         # Probe results: best scraper has 0 titles
         fake_results = [
-            ("json-ld", {"config": {}, "total": 1, "titles": 0,
-                         "descriptions": 1, "locations": 0,
-                         "fields": {"description": 1}},
-             "0/1 titles, 1/1 desc, 0/1 locations"),
+            (
+                "json-ld",
+                {
+                    "config": {},
+                    "total": 1,
+                    "titles": 0,
+                    "descriptions": 1,
+                    "locations": 0,
+                    "fields": {"description": 1},
+                },
+                "0/1 titles, 1/1 desc, 0/1 locations",
+            ),
             ("nextdata", None, "Not detected"),
             ("dom", None, "Not detected"),
             ("api_sniffer", None, "Skipped \u2014 Playwright not available"),
@@ -865,9 +930,18 @@ class TestProbeScraperQualityGate:
         self._setup_board_with_monitor(tmp_path, monkeypatch)
 
         fake_results = [
-            ("json-ld", {"config": {}, "total": 1, "titles": 1, "descriptions": 1,
-                         "locations": 1, "fields": {"title": 1, "description": 1, "locations": 1}},
-             "1/1 titles, 1/1 desc, 1/1 locations"),
+            (
+                "json-ld",
+                {
+                    "config": {},
+                    "total": 1,
+                    "titles": 1,
+                    "descriptions": 1,
+                    "locations": 1,
+                    "fields": {"title": 1, "description": 1, "locations": 1},
+                },
+                "1/1 titles, 1/1 desc, 1/1 locations",
+            ),
             ("nextdata", None, "Not detected"),
             ("dom", None, "Not detected"),
             ("api_sniffer", None, "Skipped \u2014 Playwright not available"),

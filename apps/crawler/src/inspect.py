@@ -89,12 +89,24 @@ def validate_csvs() -> list[ValidationError]:
         return errors
 
     valid_monitor_types = {
-        "ashby", "greenhouse", "lever", "sitemap",
-        "nextdata", "dom", "api_sniffer",
+        "ashby",
+        "greenhouse",
+        "lever",
+        "sitemap",
+        "nextdata",
+        "dom",
+        "api_sniffer",
     }
     valid_scraper_types = {
-        "ashby_api", "greenhouse_api", "lever_api", "json-ld",
-        "dom", "nextdata", "embedded", "api_sniffer", "",
+        "ashby_api",
+        "greenhouse_api",
+        "lever_api",
+        "json-ld",
+        "dom",
+        "nextdata",
+        "embedded",
+        "api_sniffer",
+        "",
     }
     url_only_monitors = {"sitemap", "dom"}
     board_urls: set[str] = set()
@@ -127,9 +139,7 @@ def validate_csvs() -> list[ValidationError]:
                 ValidationError("boards.csv", i, f"Invalid board_slug format: {board_slug!r}")
             )
         elif board_slug in board_slugs:
-            errors.append(
-                ValidationError("boards.csv", i, f"Duplicate board_slug: {board_slug!r}")
-            )
+            errors.append(ValidationError("boards.csv", i, f"Duplicate board_slug: {board_slug!r}"))
         board_slugs.add(board_slug)
 
         if not board_url:
@@ -329,5 +339,3 @@ async def test_scraper(url: str, scraper_type: str, scraper_config_json: str | N
             print("  Warning: no title or description extracted")
     finally:
         await http.aclose()
-
-

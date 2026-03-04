@@ -31,10 +31,10 @@ JOB_DATA = {
 
 def _html_with_next_data(data: dict) -> str:
     return (
-        f'<html><body>'
+        f"<html><body>"
         f'<script id="__NEXT_DATA__" type="application/json">'
-        f'{json.dumps(data)}'
-        f'</script></body></html>'
+        f"{json.dumps(data)}"
+        f"</script></body></html>"
     )
 
 
@@ -44,6 +44,7 @@ SAMPLE_HTML = _html_with_next_data(JOB_DATA)
 def _mock_transport(html: str, status: int = 200):
     def handler(request):
         return httpx.Response(status, text=html)
+
     return httpx.MockTransport(handler)
 
 

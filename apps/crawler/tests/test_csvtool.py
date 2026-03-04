@@ -6,8 +6,7 @@ from src.csvtool import _read_csv, board_add, board_del, company_add, company_de
 
 COMPANIES_HEADER = "slug,name,website,logo_url,icon_url\n"
 BOARDS_HEADER = (
-    "company_slug,board_slug,board_url,monitor_type,"
-    "monitor_config,scraper_type,scraper_config\n"
+    "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
 )
 
 

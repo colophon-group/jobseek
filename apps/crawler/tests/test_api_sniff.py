@@ -19,13 +19,17 @@ from src.shared.api_sniff import (
 )
 
 
-def _make_exchange(url="https://example.com/api/jobs", method="GET", body=None,
-                   post_data=None, phase="load"):
+def _make_exchange(
+    url="https://example.com/api/jobs", method="GET", body=None, post_data=None, phase="load"
+):
     return Exchange(
-        method=method, url=url,
+        method=method,
+        url=url,
         request_headers={"accept": "application/json"},
-        post_data=post_data, status=200,
-        body=body, content_type="application/json",
+        post_data=post_data,
+        status=200,
+        body=body,
+        content_type="application/json",
         phase=phase,
     )
 
@@ -241,12 +245,16 @@ class TestInferPagination:
 
     def test_body_diff(self):
         ex1 = _make_exchange(
-            url="https://example.com/api/jobs", method="POST",
-            post_data='{"offset": 0, "limit": 20}', phase="load",
+            url="https://example.com/api/jobs",
+            method="POST",
+            post_data='{"offset": 0, "limit": 20}',
+            phase="load",
         )
         ex2 = _make_exchange(
-            url="https://example.com/api/jobs", method="POST",
-            post_data='{"offset": 20, "limit": 20}', phase="interaction",
+            url="https://example.com/api/jobs",
+            method="POST",
+            post_data='{"offset": 20, "limit": 20}',
+            phase="interaction",
         )
         result = infer_pagination([ex1, ex2], "https://example.com/api/jobs", 20)
         assert result is not None
@@ -327,12 +335,14 @@ class TestSetBodyParam:
     def test_set_value(self):
         result = set_body_param('{"offset": 0}', "offset", 20)
         import json
+
         parsed = json.loads(result)
         assert parsed["offset"] == 20
 
     def test_nested(self):
         result = set_body_param('{"paging": {"offset": 0}}', "paging.offset", 20)
         import json
+
         parsed = json.loads(result)
         assert parsed["paging"]["offset"] == 20
 

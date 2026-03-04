@@ -101,14 +101,16 @@ class Workspace:
     active_board: str = ""
 
     # Advisory progress tracking
-    progress: dict[str, bool] = field(default_factory=lambda: {
-        "board_added": False,
-        "monitor_selected": False,
-        "monitor_tested": False,
-        "scraper_selected": False,
-        "scraper_tested": False,
-        "submitted": False,
-    })
+    progress: dict[str, bool] = field(
+        default_factory=lambda: {
+            "board_added": False,
+            "monitor_selected": False,
+            "monitor_tested": False,
+            "scraper_selected": False,
+            "scraper_tested": False,
+            "submitted": False,
+        }
+    )
 
     def to_dict(self) -> dict[str, Any]:
         d: dict[str, Any] = {

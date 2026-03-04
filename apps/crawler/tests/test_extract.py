@@ -32,8 +32,7 @@ class TestFlatten:
 
     def test_skip_tags_excluded(self):
         html = (
-            "<div>Visible</div><script>var x=1;</script>"
-            "<style>.x{}</style><div>Also visible</div>"
+            "<div>Visible</div><script>var x=1;</script><style>.x{}</style><div>Also visible</div>"
         )
         els = flatten(html)
         assert len(els) == 2
@@ -48,8 +47,7 @@ class TestFlatten:
 
     def test_aria_hidden_excluded(self):
         html = (
-            '<div>Visible</div><div aria-hidden="true">'
-            "<p>Hidden subtree</p></div><div>After</div>"
+            '<div>Visible</div><div aria-hidden="true"><p>Hidden subtree</p></div><div>After</div>'
         )
         els = flatten(html)
         assert len(els) == 2
@@ -96,7 +94,7 @@ class TestFlatten:
         assert els[0]["text"] == "Text more text"
 
     def test_hidden_attribute_excluded(self):
-        html = '<div>Show</div><div hidden><p>Hidden</p></div><div>End</div>'
+        html = "<div>Show</div><div hidden><p>Hidden</p></div><div>End</div>"
         els = flatten(html)
         assert len(els) == 2
         assert els[0]["text"] == "Show"

@@ -242,8 +242,11 @@ def _extract_rich(
             if target.startswith("metadata."):
                 metadata_fields[target.removeprefix("metadata.")] = value
             elif target in (
-                "title", "description", "employment_type",
-                "job_location_type", "date_posted",
+                "title",
+                "description",
+                "employment_type",
+                "job_location_type",
+                "date_posted",
             ):
                 kwargs[target] = value
             elif target == "locations":

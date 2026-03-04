@@ -182,7 +182,9 @@ async def monitor_one(
     result = _apply_url_filter(result, config)
     if result.filtered_count:
         structlog.get_logger().info(
-            "monitor.url_filter", kept=len(result.urls), removed=result.filtered_count,
+            "monitor.url_filter",
+            kept=len(result.urls),
+            removed=result.filtered_count,
         )
 
     if artifact_dir is not None:

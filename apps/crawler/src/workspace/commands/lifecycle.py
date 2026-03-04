@@ -70,13 +70,14 @@ def new(slug: str, issue: int):
 
     # Add stub CSV row
     from src.csvtool import company_add
+
     company_add(slug)
     out.plain("csv", "Added stub row to companies.csv")
 
     # Commit and push
     git.add_files(["data/companies.csv"])
     git.commit(f"Add {slug}")
-    out.plain("git", f"Committed: \"Add {slug}\"")
+    out.plain("git", f'Committed: "Add {slug}"')
 
     git.push(branch, set_upstream=True)
     out.plain("git", f"Pushed to origin/{branch}")
@@ -86,7 +87,7 @@ def new(slug: str, issue: int):
         title=f"Add {slug}",
         body=f"Closes #{issue}",
     )
-    out.info("github", f"Created draft PR #{pr_number} — \"Add {slug}\" (closes #{issue})")
+    out.info("github", f'Created draft PR #{pr_number} — "Add {slug}" (closes #{issue})')
 
     # Create workspace
     ws = Workspace(
@@ -161,9 +162,18 @@ def use(slug: str | None, board: str | None, company_opt: str | None, board_opt:
 @click.command()
 @click.argument("slug", required=False)
 @click.option("--issue", type=int, help="GitHub issue number (if no workspace)")
-@click.option("--reason", required=True, type=click.Choice([
-    "not-a-company", "company-not-found", "no-job-board", "no-open-positions",
-]))
+@click.option(
+    "--reason",
+    required=True,
+    type=click.Choice(
+        [
+            "not-a-company",
+            "company-not-found",
+            "no-job-board",
+            "no-open-positions",
+        ]
+    ),
+)
 @click.option("--message", required=True, help="Human-readable explanation")
 def reject(slug: str | None, issue: int | None, reason: str, message: str):
     """Comment + close an issue as rejected."""
@@ -337,8 +347,7 @@ def _build_pr_body(ws: Workspace, boards: list[Board]) -> str:
 
         api_monitors = {"ashby", "greenhouse", "lever"}
         is_rich_api = b.monitor_type in api_monitors or (
-            b.monitor_type == "api_sniffer"
-            and (b.monitor_config or {}).get("fields")
+            b.monitor_type == "api_sniffer" and (b.monitor_config or {}).get("fields")
         )
         if is_rich_api:
             lines.append("| Scraper | *(API — not needed)* |")
@@ -383,8 +392,7 @@ def submit(slug: str | None, summary: str | None):
         # Check if scraper is needed but not tested
         api_monitors = {"ashby", "greenhouse", "lever"}
         is_rich_api = b.monitor_type in api_monitors or (
-            b.monitor_type == "api_sniffer"
-            and (b.monitor_config or {}).get("fields")
+            b.monitor_type == "api_sniffer" and (b.monitor_config or {}).get("fields")
         )
         if b.monitor_type and not is_rich_api:
             if not b.scraper_type:

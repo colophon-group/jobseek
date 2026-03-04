@@ -23,11 +23,24 @@ log = structlog.get_logger()
 # ---------------------------------------------------------------------------
 
 SKIP_PATTERNS: tuple[str, ...] = (
-    "google-analytics", "analytics", "dataplane.rum",
-    "doubleclick", "facebook", "hotjar", "sentry",
-    "segment", "amplitude", "mixpanel", "newrelic",
-    "cloudwatch", "boomerang", "demdex.net", "omtrdc.net",
-    "googlesyndication", "googletagmanager", "gtag",
+    "google-analytics",
+    "analytics",
+    "dataplane.rum",
+    "doubleclick",
+    "facebook",
+    "hotjar",
+    "sentry",
+    "segment",
+    "amplitude",
+    "mixpanel",
+    "newrelic",
+    "cloudwatch",
+    "boomerang",
+    "demdex.net",
+    "omtrdc.net",
+    "googlesyndication",
+    "googletagmanager",
+    "gtag",
 )
 
 JOB_KEYWORDS = re.compile(
@@ -63,23 +76,49 @@ SLUG_FIELDS = re.compile(
 )
 
 SIZE_PARAMS: tuple[str, ...] = (
-    "result_limit", "limit", "pageSize", "page_size", "size",
-    "per_page", "perPage", "count", "rows", "hitsPerPage",
-    "num", "rpp", "resultsPerPage", "results_per_page",
-    "itemsPerPage", "items_per_page", "maxResults", "max_results",
+    "result_limit",
+    "limit",
+    "pageSize",
+    "page_size",
+    "size",
+    "per_page",
+    "perPage",
+    "count",
+    "rows",
+    "hitsPerPage",
+    "num",
+    "rpp",
+    "resultsPerPage",
+    "results_per_page",
+    "itemsPerPage",
+    "items_per_page",
+    "maxResults",
+    "max_results",
 )
 
 PAGINATION_PARAM_DEFAULTS: dict[str, int] = {
-    "page": 1, "pagenumber": 1, "p": 1, "pageno": 1,
-    "offset": 0, "start": 0, "skip": 0, "from": 0,
+    "page": 1,
+    "pagenumber": 1,
+    "p": 1,
+    "pageno": 1,
+    "offset": 0,
+    "start": 0,
+    "skip": 0,
+    "from": 0,
 }
 
 _DESIRED_PAGE_SIZE = 100
 
 # Headers to strip when replaying requests
-_SKIP_HEADERS = frozenset({
-    "host", "connection", "content-length", "accept-encoding", "transfer-encoding",
-})
+_SKIP_HEADERS = frozenset(
+    {
+        "host",
+        "connection",
+        "content-length",
+        "accept-encoding",
+        "transfer-encoding",
+    }
+)
 
 # ---------------------------------------------------------------------------
 # Field auto-mapping patterns
@@ -87,39 +126,47 @@ _SKIP_HEADERS = frozenset({
 
 FIELD_PATTERNS: dict[str, re.Pattern] = {
     "title": re.compile(
-        r"^(title|name|job_?title|position_?title|label|heading|role|job_?name)$", re.I,
+        r"^(title|name|job_?title|position_?title|label|heading|role|job_?name)$",
+        re.I,
     ),
     "description": re.compile(
         r"^(description|body|content|bodyHtml|body_?html|descriptionHtml"
-        r"|description_?html|text|details|job_?description|summary)$", re.I,
+        r"|description_?html|text|details|job_?description|summary)$",
+        re.I,
     ),
     "employment_type": re.compile(
         r"^(employment_?type|type|job_?type|work_?type|contract_?type"
-        r"|employmentType|workType)$", re.I,
+        r"|employmentType|workType)$",
+        re.I,
     ),
     "date_posted": re.compile(
         r"^(date_?posted|posted_?at|posted_?date|published_?at|created_?at"
-        r"|datePosted|publishedAt|createdAt|publish_?date)$", re.I,
+        r"|datePosted|publishedAt|createdAt|publish_?date)$",
+        re.I,
     ),
     "job_location_type": re.compile(
         r"^(job_?location_?type|workplace_?type|remote_?type|location_?type"
-        r"|workplaceType|locationType|isRemote|remote)$", re.I,
+        r"|workplaceType|locationType|isRemote|remote)$",
+        re.I,
     ),
 }
 
 # Location patterns — match both simple keys and array-of-object patterns
 _LOCATION_KEY_PATTERNS = re.compile(
-    r"^(location|locations|office|offices|city|cities|place|places)$", re.I,
+    r"^(location|locations|office|offices|city|cities|place|places)$",
+    re.I,
 )
 _LOCATION_SUBFIELD_PATTERNS = re.compile(
-    r"^(name|title|city|label|display_?name|displayName|value)$", re.I,
+    r"^(name|title|city|label|display_?name|displayName|value)$",
+    re.I,
 )
 
 # Metadata patterns — department/team
 _METADATA_PATTERNS: dict[str, re.Pattern] = {
     "metadata.team": re.compile(
         r"^(team|department|group|division|org|organization|category"
-        r"|departmentName|teamName|team_?name|department_?name)$", re.I,
+        r"|departmentName|teamName|team_?name|department_?name)$",
+        re.I,
     ),
 }
 
@@ -127,6 +174,7 @@ _METADATA_PATTERNS: dict[str, re.Pattern] = {
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class Exchange:
@@ -174,6 +222,7 @@ class JobListResult:
 # Pure functions — no Playwright dependency
 # ---------------------------------------------------------------------------
 
+
 def find_arrays(obj: object, path: str = "") -> list[tuple[str, list[dict]]]:
     """Recursively find arrays of 3+ dicts in any JSON structure."""
     results: list[tuple[str, list[dict]]] = []
@@ -206,7 +255,7 @@ def find_url_field(items: list[dict]) -> str | None:
             if URL_FIELDS.search(key) and any(
                 _looks_like_url(str(it.get(key, ""))) for it in sample
             ):
-                    return key
+                return key
 
     # By value pattern
     for key in sample[0]:
@@ -323,8 +372,10 @@ def detect_job_list(exchanges: list[Exchange], page_url: str) -> JobListResult |
     for c in candidates[:5]:
         log.debug(
             "api_sniff.candidate",
-            score=c.score, path=c.json_path,
-            items=len(c.items), url=c.exchange.url[:100],
+            score=c.score,
+            path=c.json_path,
+            items=len(c.items),
+            url=c.exchange.url[:100],
         )
 
     best = candidates[0]
@@ -363,6 +414,7 @@ def extract_urls(items: list[dict], url_field: str | None, page_url: str) -> lis
 # ---------------------------------------------------------------------------
 # Pagination inference — pure
 # ---------------------------------------------------------------------------
+
 
 def _diff_query_params(url1: str, url2: str) -> tuple[str, int, int] | None:
     """Find the single query param that changed numerically between two URLs."""
@@ -427,9 +479,9 @@ def infer_pagination(
     """Infer pagination from two exchanges to the same endpoint, or from URL patterns."""
     parsed = urlparse(best_url)
     matching = [
-        ex for ex in exchanges
-        if urlparse(ex.url).path == parsed.path
-        and urlparse(ex.url).netloc == parsed.netloc
+        ex
+        for ex in exchanges
+        if urlparse(ex.url).path == parsed.path and urlparse(ex.url).netloc == parsed.netloc
     ]
 
     # Deduplicate by URL + post_data
@@ -444,7 +496,7 @@ def infer_pagination(
     if len(unique_matching) >= 2:
         pairs = []
         for i, ex1 in enumerate(unique_matching):
-            for ex2 in unique_matching[i + 1:]:
+            for ex2 in unique_matching[i + 1 :]:
                 priority = 0 if ex1.phase != ex2.phase else 1
                 pairs.append((priority, ex1, ex2))
         pairs.sort(key=lambda x: x[0])
@@ -456,8 +508,11 @@ def infer_pagination(
                 inc = abs(v2 - v1)
                 style = "offset" if inc == page_size else "page"
                 return PaginationInfo(
-                    param_name=name, style=style,
-                    start_value=min(v1, v2), increment=inc, location="query",
+                    param_name=name,
+                    style=style,
+                    start_value=min(v1, v2),
+                    increment=inc,
+                    location="query",
                 )
 
             diff = _diff_json_bodies(ex1.post_data, ex2.post_data)
@@ -466,8 +521,11 @@ def infer_pagination(
                 inc = abs(v2 - v1)
                 style = "offset" if inc == page_size else "page"
                 return PaginationInfo(
-                    param_name=name, style=style,
-                    start_value=min(v1, v2), increment=inc, location="body",
+                    param_name=name,
+                    style=style,
+                    start_value=min(v1, v2),
+                    increment=inc,
+                    location="body",
                 )
 
     # Single exchange fallback: look for obvious params
@@ -485,8 +543,11 @@ def infer_pagination(
             try:
                 val = int(qs[param][0])
                 return PaginationInfo(
-                    param_name=param, style="offset",
-                    start_value=0, increment=page_size, location="query",
+                    param_name=param,
+                    style="offset",
+                    start_value=0,
+                    increment=page_size,
+                    location="query",
                     observed_value=val,
                 )
             except (ValueError, TypeError):
@@ -497,8 +558,11 @@ def infer_pagination(
             try:
                 val = int(qs[param][0])
                 return PaginationInfo(
-                    param_name=param, style="page",
-                    start_value=1, increment=1, location="query",
+                    param_name=param,
+                    style="page",
+                    start_value=1,
+                    increment=1,
+                    location="query",
                     observed_value=val,
                 )
             except (ValueError, TypeError):
@@ -514,8 +578,11 @@ def infer_pagination(
                         try:
                             val = int(body[param])
                             return PaginationInfo(
-                                param_name=param, style="offset",
-                                start_value=0, increment=page_size, location="body",
+                                param_name=param,
+                                style="offset",
+                                start_value=0,
+                                increment=page_size,
+                                location="body",
                                 observed_value=val,
                             )
                         except (ValueError, TypeError):
@@ -525,8 +592,11 @@ def infer_pagination(
                         try:
                             val = int(body[param])
                             return PaginationInfo(
-                                param_name=param, style="page",
-                                start_value=1, increment=1, location="body",
+                                param_name=param,
+                                style="page",
+                                start_value=1,
+                                increment=1,
+                                location="body",
                                 observed_value=val,
                             )
                         except (ValueError, TypeError):
@@ -540,6 +610,7 @@ def infer_pagination(
 # ---------------------------------------------------------------------------
 # URL / body parameter helpers — pure
 # ---------------------------------------------------------------------------
+
 
 def set_url_param(url: str, param: str, value: object) -> str:
     """Set a single query param in a URL."""
@@ -607,6 +678,7 @@ def clean_headers(headers: dict) -> dict:
 # ---------------------------------------------------------------------------
 # Field auto-mapping
 # ---------------------------------------------------------------------------
+
 
 def auto_map_fields(items: list[dict]) -> dict[str, str]:
     """Auto-detect field mapping from sample items.
@@ -690,6 +762,7 @@ def auto_map_fields(items: list[dict]) -> dict[str, str]:
 # Playwright-dependent functions
 # ---------------------------------------------------------------------------
 
+
 async def capture_exchanges(page, page_host: str) -> list[Exchange]:
     """Attach a response listener that captures JSON XHR/fetch pairs.
 
@@ -712,16 +785,18 @@ async def capture_exchanges(page, page_host: str) -> list[Exchange]:
             body = json.loads(text)
         except Exception:
             return
-        exchanges.append(Exchange(
-            method=req.method,
-            url=req.url,
-            request_headers=dict(req.headers),
-            post_data=req.post_data,
-            status=resp.status,
-            body=body,
-            content_type=ct,
-            phase="load",
-        ))
+        exchanges.append(
+            Exchange(
+                method=req.method,
+                url=req.url,
+                request_headers=dict(req.headers),
+                post_data=req.post_data,
+                status=resp.status,
+                body=body,
+                content_type=ct,
+                phase="load",
+            )
+        )
 
     page.on("response", on_response)
     return exchanges
@@ -783,12 +858,19 @@ async def trigger_interactions(page, exchanges: list[Exchange]) -> None:
     # CSS-based fallback
     if len(exchanges) == before_pagination:
         for sel in [
-            '[aria-label*="page 2"]', '[aria-label*="Page 2"]',
-            'a[href*="page=2"]', '.pagination li:nth-child(2) a',
-            'button:has-text("Next")', 'a:has-text("Next")',
-            '[aria-label="Next"]', '.next a', '.next button',
-            'button:has-text("Load more")', 'button:has-text("Show more")',
-            'button:has-text("View more")', 'a:has-text("View more")',
+            '[aria-label*="page 2"]',
+            '[aria-label*="Page 2"]',
+            'a[href*="page=2"]',
+            ".pagination li:nth-child(2) a",
+            'button:has-text("Next")',
+            'a:has-text("Next")',
+            '[aria-label="Next"]',
+            ".next a",
+            ".next button",
+            'button:has-text("Load more")',
+            'button:has-text("Show more")',
+            'button:has-text("View more")',
+            'a:has-text("View more")',
         ]:
             try:
                 await page.click(sel, timeout=2000, force=True)
@@ -811,20 +893,29 @@ async def trigger_interactions(page, exchanges: list[Exchange]) -> None:
 
 
 async def fetch_json(
-    page, method: str, url: str, headers: dict, body: str | None,
+    page,
+    method: str,
+    url: str,
+    headers: dict,
+    body: str | None,
 ) -> object:
     """Execute a fetch inside the browser context, return parsed JSON."""
-    text = await page.evaluate("""async ([method, url, headers, body]) => {
+    text = await page.evaluate(
+        """async ([method, url, headers, body]) => {
         const opts = { method, headers: JSON.parse(headers) };
         if (body) opts.body = body;
         const resp = await fetch(url, opts);
         return await resp.text();
-    }""", [method, url, json.dumps(headers), body])
+    }""",
+        [method, url, json.dumps(headers), body],
+    )
     return json.loads(text)
 
 
 async def paginate_all(
-    page, result: JobListResult, max_pages: int,
+    page,
+    result: JobListResult,
+    max_pages: int,
 ) -> list[dict]:
     """Replay the API via page.evaluate(fetch(...)) with incremented params."""
     pag = result.pagination
@@ -861,15 +952,19 @@ async def paginate_all(
             if len(probe_items) > page_size:
                 log.debug(
                     "api_sniff.page_size_increased",
-                    old=page_size, new=len(probe_items),
+                    old=page_size,
+                    new=len(probe_items),
                 )
                 page_size = len(probe_items)
                 all_items = probe_items
                 ex = Exchange(
-                    method=ex.method, url=probe_url,
+                    method=ex.method,
+                    url=probe_url,
                     request_headers=ex.request_headers,
-                    post_data=probe_body, status=ex.status,
-                    body=data, content_type=ex.content_type,
+                    post_data=probe_body,
+                    status=ex.status,
+                    body=data,
+                    content_type=ex.content_type,
                     phase=ex.phase,
                 )
                 new_total = find_total_count(data, result.candidate.json_path)
@@ -883,7 +978,8 @@ async def paginate_all(
     # Calculate total pages
     if result.total_count and page_size > 0 and result.total_count > page_size:
         total_pages = min(
-            (result.total_count + page_size - 1) // page_size, max_pages,
+            (result.total_count + page_size - 1) // page_size,
+            max_pages,
         )
     else:
         total_pages = max_pages
@@ -905,8 +1001,10 @@ async def paginate_all(
             fetch_body = set_body_param(ex.post_data, pag.param_name, current_value)
 
         log.debug(
-            "api_sniff.paginate", page=pages_fetched + 1,
-            param=pag.param_name, value=current_value,
+            "api_sniff.paginate",
+            page=pages_fetched + 1,
+            param=pag.param_name,
+            value=current_value,
         )
 
         try:
@@ -934,7 +1032,9 @@ async def paginate_all(
 
 
 async def extract_urls_via_dom_crossref(
-    page, items: list[dict], page_url: str,
+    page,
+    items: list[dict],
+    page_url: str,
 ) -> list[str]:
     """Cross-reference JSON item IDs with <a href> links on the page.
 
@@ -985,7 +1085,7 @@ async def extract_urls_via_dom_crossref(
         return []
 
     prefix = ref_path[:id_start]
-    after_id = ref_path[id_start + len(ref_id):]
+    after_id = ref_path[id_start + len(ref_id) :]
 
     ref_item = next((it for it in items if str(it.get(id_field)) == ref_id), None)
     slug_field = None

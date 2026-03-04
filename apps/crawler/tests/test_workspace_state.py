@@ -129,6 +129,7 @@ class TestActiveWorkspace:
     def test_resolve_slug_no_active_dies(self, tmp_path, monkeypatch):
         monkeypatch.setattr("src.workspace.state.WORKSPACE_DIR", tmp_path)
         import pytest
+
         with pytest.raises(SystemExit):
             resolve_slug(None)
 

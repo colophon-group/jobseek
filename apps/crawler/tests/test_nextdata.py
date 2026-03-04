@@ -80,6 +80,7 @@ BOARD_URL_ONLY = {
 def _mock_transport(html: str, status: int = 200):
     def handler(request):
         return httpx.Response(status, text=html)
+
     return httpx.MockTransport(handler)
 
 
@@ -310,9 +311,7 @@ class TestCanHandle:
         # can_handle requires >=5 items to consider the array plausible
         data = {
             "props": {
-                "pageProps": {
-                    "positions": [{"id": str(i), "text": f"Job {i}"} for i in range(6)]
-                }
+                "pageProps": {"positions": [{"id": str(i), "text": f"Job {i}"} for i in range(6)]}
             }
         }
         html = _html_with_next_data(data)
@@ -353,9 +352,7 @@ class TestCanHandle:
         """When static HTTP has no __NEXT_DATA__, falls back to Playwright."""
         data = {
             "props": {
-                "pageProps": {
-                    "positions": [{"id": str(i), "text": f"Job {i}"} for i in range(6)]
-                }
+                "pageProps": {"positions": [{"id": str(i), "text": f"Job {i}"} for i in range(6)]}
             }
         }
         rendered_html = _html_with_next_data(data)
@@ -376,9 +373,7 @@ class TestCanHandle:
         """Playwright is not invoked when static HTTP finds __NEXT_DATA__."""
         data = {
             "props": {
-                "pageProps": {
-                    "positions": [{"id": str(i), "text": f"Job {i}"} for i in range(6)]
-                }
+                "pageProps": {"positions": [{"id": str(i), "text": f"Job {i}"} for i in range(6)]}
             }
         }
         html = _html_with_next_data(data)
@@ -454,7 +449,9 @@ class TestErrorHandling:
             "props": {
                 "pageProps": {
                     "positions": [
-                        "string1", "string2", {"id": "1", "text": "Job"},
+                        "string1",
+                        "string2",
+                        {"id": "1", "text": "Job"},
                     ],
                 },
             },

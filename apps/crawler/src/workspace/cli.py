@@ -36,24 +36,29 @@ ws.add_command(help_cmd, name="help")
 
 # ── `ws add` group ──────────────────────────────────────────────────────
 
+
 @ws.group(name="add")
 def add_group():
     """Add resources to a workspace."""
+
 
 add_group.add_command(add_board, name="board")
 
 
 # ── `ws probe` group ────────────────────────────────────────────────────
 
+
 @ws.group(name="probe")
 def probe_group():
     """Probe monitor or scraper types for the active board."""
+
 
 probe_group.add_command(probe_monitors, name="monitor")
 probe_group.add_command(probe_scraper, name="scraper")
 
 
 # ── `ws del` group ──────────────────────────────────────────────────────
+
 
 @ws.group(name="del", invoke_without_command=True)
 @click.argument("slug", required=False)
@@ -64,17 +69,21 @@ def del_group(ctx, slug):
         # Resolve slug from active workspace if not provided
         if slug is None:
             from src.workspace.state import resolve_slug
+
             slug = resolve_slug(None)
         ctx.invoke(del_, slug=slug)
+
 
 del_group.add_command(del_board, name="board")
 
 
 # ── `ws select` group ──────────────────────────────────────────────────
 
+
 @ws.group(name="select")
 def select_group():
     """Select monitor or scraper type."""
+
 
 select_group.add_command(select_monitor, name="monitor")
 select_group.add_command(select_scraper, name="scraper")
@@ -82,9 +91,11 @@ select_group.add_command(select_scraper, name="scraper")
 
 # ── `ws run` group ─────────────────────────────────────────────────────
 
+
 @ws.group(name="run")
 def run_group():
     """Run monitor or scraper tests."""
+
 
 run_group.add_command(run_monitor, name="monitor")
 run_group.add_command(run_scraper, name="scraper")

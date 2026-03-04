@@ -28,8 +28,11 @@ from src.workspace.state import (
 @click.option("--logo-url", help="Logo image URL")
 @click.option("--icon-url", help="Icon image URL")
 def set_(
-    slug: str | None, name: str | None, website: str | None,
-    logo_url: str | None, icon_url: str | None,
+    slug: str | None,
+    name: str | None,
+    website: str | None,
+    logo_url: str | None,
+    icon_url: str | None,
 ):
     """Set company metadata in workspace."""
     slug = resolve_slug(slug)
@@ -74,6 +77,7 @@ def _check_url(label: str, url: str) -> None:
     """Advisory URL reachability check."""
     try:
         import httpx
+
         resp = httpx.head(url, follow_redirects=True, timeout=10)
         if resp.status_code < 400:
             final = str(resp.url)
@@ -91,6 +95,7 @@ def _check_image(label: str, url: str) -> None:
     """Advisory image probe — check content type and size."""
     try:
         import httpx
+
         resp = httpx.get(url, follow_redirects=True, timeout=10)
         ct = resp.headers.get("content-type", "")
         size = len(resp.content)
@@ -179,5 +184,3 @@ def del_board(slug_or_alias: str, alias: str | None):
             out.plain("board", f"Active board switched to: {ws.active_board}")
         else:
             out.plain("board", "No boards remaining")
-
-

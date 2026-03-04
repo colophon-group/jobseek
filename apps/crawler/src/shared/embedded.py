@@ -124,7 +124,7 @@ def extract_by_pattern(html: str, pattern: str) -> object | None:
         return None
 
     # Find the first { or [ after the match
-    rest = html[match.end():]
+    rest = html[match.end() :]
     for i, ch in enumerate(rest):
         if ch in "{[":
             end = find_json_extent(rest, i)

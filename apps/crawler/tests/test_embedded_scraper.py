@@ -14,24 +14,25 @@ from src.core.scrapers.embedded import can_handle, parse_html, scrape
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 def _script_html(script_id: str, data: dict) -> str:
     return (
-        f'<html><body>'
+        f"<html><body>"
         f'<script id="{script_id}" type="application/json">'
-        f'{json.dumps(data)}'
-        f'</script></body></html>'
+        f"{json.dumps(data)}"
+        f"</script></body></html>"
     )
 
 
 def _variable_html(var_name: str, data: dict) -> str:
-    return f'<html><body><script>{var_name} = {json.dumps(data)};</script></body></html>'
+    return f"<html><body><script>{var_name} = {json.dumps(data)};</script></body></html>"
 
 
 def _af_callback_html(data: list) -> str:
     return (
-        f'<html><body><script>'
+        f"<html><body><script>"
         f"AF_initDataCallback({{key: 'ds:1', data: {json.dumps(data)}}});"
-        f'</script></body></html>'
+        f"</script></body></html>"
     )
 
 
@@ -48,16 +49,26 @@ SCRIPT_HTML = _script_html("app-data", {"job": JOB_DATA})
 VARIABLE_HTML = _variable_html("window.__DATA__", {"job": JOB_DATA})
 
 # Google Wiz style: positional array
-AF_DATA = ["ignored", "Software Engineer", "uuid-123", "Engineering",
-           None, None, None, None, None,
-           [["id1", None, "New York"], ["id2", None, "Remote"]],
-           "<p>Job description here</p>"]
+AF_DATA = [
+    "ignored",
+    "Software Engineer",
+    "uuid-123",
+    "Engineering",
+    None,
+    None,
+    None,
+    None,
+    None,
+    [["id1", None, "New York"], ["id2", None, "Remote"]],
+    "<p>Job description here</p>",
+]
 AF_HTML = _af_callback_html(AF_DATA)
 
 
 def _mock_transport(html: str, status: int = 200):
     def handler(request):
         return httpx.Response(status, text=html)
+
     return httpx.MockTransport(handler)
 
 
@@ -217,8 +228,19 @@ class TestCanHandle:
         assert "fields" in result
 
     def test_af_callback_detected(self):
-        data = [1, "Engineer", "desc", None, None, None, None, None, None, None,
-                "<p>Description</p>"]
+        data = [
+            1,
+            "Engineer",
+            "desc",
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            "<p>Description</p>",
+        ]
         html = _af_callback_html(data)
         result = can_handle([html])
         assert result is not None
@@ -241,10 +263,10 @@ class TestCanHandle:
         """__NEXT_DATA__ should NOT be detected by embedded (that's nextdata's domain)."""
         data = {"props": {"pageProps": {"title": "Eng", "description": "Hi"}}}
         html = (
-            f'<html><body>'
+            f"<html><body>"
             f'<script id="__NEXT_DATA__" type="application/json">'
-            f'{json.dumps(data)}'
-            f'</script></body></html>'
+            f"{json.dumps(data)}"
+            f"</script></body></html>"
         )
         result = can_handle([html])
         assert result is None

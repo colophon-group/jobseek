@@ -92,10 +92,15 @@ def check_existing_prs(issue_number: int) -> list[dict[str, str]]:
 
     result = _run(
         [
-            "gh", "pr", "list",
-            "--state", "open",
-            "--search", f"Closes #{issue_number}",
-            "--json", "number,title,url",
+            "gh",
+            "pr",
+            "list",
+            "--state",
+            "open",
+            "--search",
+            f"Closes #{issue_number}",
+            "--json",
+            "number,title,url",
         ],
         check=False,
     )
@@ -116,10 +121,14 @@ def create_draft_pr(title: str, body: str) -> int:
     """
     result = _run(
         [
-            "gh", "pr", "create",
+            "gh",
+            "pr",
+            "create",
             "--draft",
-            "--title", title,
-            "--body", body,
+            "--title",
+            title,
+            "--body",
+            body,
         ],
     )
     url = result.stdout.strip()

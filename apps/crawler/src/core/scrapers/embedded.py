@@ -118,8 +118,12 @@ def _map_to_job_content(raw: dict[str, object]) -> JobContent:
         if key.startswith("metadata."):
             metadata[key.removeprefix("metadata.")] = value
         elif key in (
-            "title", "description", "employment_type",
-            "job_location_type", "date_posted", "valid_through",
+            "title",
+            "description",
+            "employment_type",
+            "job_location_type",
+            "date_posted",
+            "valid_through",
         ):
             kwargs[key] = value
         elif key == "locations":
@@ -259,7 +263,13 @@ def parse_html(html: str, config: dict) -> JobContent:
 
 
 async def scrape(
-    url: str, config: dict, http, pw=None, artifact_dir=None, job_id=None, **kwargs,
+    url: str,
+    config: dict,
+    http,
+    pw=None,
+    artifact_dir=None,
+    job_id=None,
+    **kwargs,
 ) -> JobContent:
     """Extract job data from embedded structured JSON in HTML."""
     fields_map: dict[str, str] = config.get("fields") or {}

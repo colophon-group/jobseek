@@ -16,10 +16,14 @@ from src.shared.api_sniff import Exchange
 
 def _make_exchange(url="https://example.com/api/job", body=None, phase="load"):
     return Exchange(
-        method="GET", url=url,
-        request_headers={}, post_data=None,
-        status=200, body=body,
-        content_type="application/json", phase=phase,
+        method="GET",
+        url=url,
+        request_headers={},
+        post_data=None,
+        status=200,
+        body=body,
+        content_type="application/json",
+        phase=phase,
     )
 
 
@@ -218,10 +222,12 @@ class TestProbePw:
 
         pw = MagicMock()
 
-        with patch("src.shared.browser.open_page", mock_open_page), \
-             patch("src.core.scrapers.api_sniffer.capture_exchanges", fake_capture), \
-             patch("src.shared.browser.navigate", fake_navigate), \
-             patch("asyncio.sleep", new_callable=AsyncMock):
+        with (
+            patch("src.shared.browser.open_page", mock_open_page),
+            patch("src.core.scrapers.api_sniffer.capture_exchanges", fake_capture),
+            patch("src.shared.browser.navigate", fake_navigate),
+            patch("asyncio.sleep", new_callable=AsyncMock),
+        ):
             metadata, comment = await probe_pw(
                 ["https://example.com/job/1", "https://example.com/job/2"],
                 pw,
@@ -252,10 +258,12 @@ class TestProbePw:
 
         pw = MagicMock()
 
-        with patch("src.shared.browser.open_page", mock_open_page), \
-             patch("src.core.scrapers.api_sniffer.capture_exchanges", fake_capture), \
-             patch("src.shared.browser.navigate", fake_navigate), \
-             patch("asyncio.sleep", new_callable=AsyncMock):
+        with (
+            patch("src.shared.browser.open_page", mock_open_page),
+            patch("src.core.scrapers.api_sniffer.capture_exchanges", fake_capture),
+            patch("src.shared.browser.navigate", fake_navigate),
+            patch("asyncio.sleep", new_callable=AsyncMock),
+        ):
             metadata, comment = await probe_pw(
                 ["https://example.com/job/1"],
                 pw,
@@ -294,12 +302,18 @@ class TestProbePw:
 
         pw = MagicMock()
 
-        with patch("src.shared.browser.open_page", mock_open_page), \
-             patch("src.core.scrapers.api_sniffer.capture_exchanges", fake_capture), \
-             patch("src.shared.browser.navigate", fake_navigate), \
-             patch("asyncio.sleep", new_callable=AsyncMock):
+        with (
+            patch("src.shared.browser.open_page", mock_open_page),
+            patch("src.core.scrapers.api_sniffer.capture_exchanges", fake_capture),
+            patch("src.shared.browser.navigate", fake_navigate),
+            patch("asyncio.sleep", new_callable=AsyncMock),
+        ):
             metadata, comment = await probe_pw(
-                ["https://example.com/job/1", "https://example.com/job/2", "https://example.com/job/3"],
+                [
+                    "https://example.com/job/1",
+                    "https://example.com/job/2",
+                    "https://example.com/job/3",
+                ],
                 pw,
             )
 

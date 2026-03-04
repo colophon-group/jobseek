@@ -27,7 +27,7 @@ class TestFindJsonExtent:
         assert find_json_extent(text, 0) == len(text)
 
     def test_nested_arrays(self):
-        text = '[[1, 2], [3, [4, 5]]]'
+        text = "[[1, 2], [3, [4, 5]]]"
         assert find_json_extent(text, 0) == len(text)
 
     def test_strings_with_brackets(self):
@@ -130,7 +130,7 @@ class TestExtractByVariable:
         assert result == {"loaded": True}
 
     def test_let_declaration(self):
-        html = 'let config = [1, 2, 3];'
+        html = "let config = [1, 2, 3];"
         result = extract_by_variable(html, "config")
         assert result == [1, 2, 3]
 
@@ -208,7 +208,7 @@ class TestParseEmbedded:
         script_data = {"from": "script"}
         html = (
             f'<script id="data">{json.dumps(script_data)}</script>'
-            f'window.__X__ = {json.dumps({"from": "var"})};'
+            f"window.__X__ = {json.dumps({'from': 'var'})};"
         )
         result = parse_embedded(html, {"script_id": "data", "variable": "window.__X__"})
         assert result == script_data

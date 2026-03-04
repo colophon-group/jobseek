@@ -77,7 +77,10 @@ def register(
 ) -> None:
     """Register a scraper type."""
     _REGISTRY[name] = ScraperType(
-        name=name, scrape=scrape, can_handle=can_handle, parse_html=parse_html,
+        name=name,
+        scrape=scrape,
+        can_handle=can_handle,
+        parse_html=parse_html,
         probe_pw=probe_pw,
     )
 
@@ -92,9 +95,17 @@ def get_scraper(name: str) -> ScrapeFunc:
 
 # Quality fields checked in probe results
 _QUALITY_FIELDS = [
-    "title", "description", "locations", "employment_type",
-    "job_location_type", "date_posted", "valid_through", "base_salary",
-    "skills", "responsibilities", "qualifications",
+    "title",
+    "description",
+    "locations",
+    "employment_type",
+    "job_location_type",
+    "date_posted",
+    "valid_through",
+    "base_salary",
+    "skills",
+    "responsibilities",
+    "qualifications",
 ]
 
 

@@ -70,9 +70,10 @@ class TestConstants:
         assert "Chrome/120" in DEFAULT_USER_AGENT
 
     def test_valid_wait_strategies(self):
-        assert frozenset(
-            {"load", "domcontentloaded", "networkidle", "commit"}
-        ) == VALID_WAIT_STRATEGIES
+        assert (
+            frozenset({"load", "domcontentloaded", "networkidle", "commit"})
+            == VALID_WAIT_STRATEGIES
+        )
 
     def test_overlay_selectors_non_empty(self):
         assert isinstance(OVERLAY_SELECTORS, tuple)
@@ -98,12 +99,8 @@ class TestNavigate:
 
     async def test_custom_config(self):
         page = _make_page()
-        await navigate(
-            page, "https://example.com", {"wait": "load", "timeout": 5000}
-        )
-        page.goto.assert_awaited_once_with(
-            "https://example.com", wait_until="load", timeout=5000
-        )
+        await navigate(page, "https://example.com", {"wait": "load", "timeout": 5000})
+        page.goto.assert_awaited_once_with("https://example.com", wait_until="load", timeout=5000)
 
     async def test_invalid_wait_raises(self):
         page = _make_page()
@@ -151,9 +148,7 @@ class TestRunActions:
 
     async def test_evaluate_action(self):
         page = _make_page()
-        await run_actions(
-            page, [{"action": "evaluate", "script": "window.scrollTo(0, 9999)"}]
-        )
+        await run_actions(page, [{"action": "evaluate", "script": "window.scrollTo(0, 9999)"}])
         page.evaluate.assert_awaited_once_with("window.scrollTo(0, 9999)")
 
     async def test_dismiss_overlays_action(self):
@@ -313,9 +308,7 @@ class TestRender:
         mock_async_pw.__aenter__ = AsyncMock(return_value=mock_pw)
         mock_async_pw.__aexit__ = AsyncMock(return_value=False)
 
-        with patch(
-            "playwright.async_api.async_playwright", return_value=mock_async_pw
-        ):
+        with patch("playwright.async_api.async_playwright", return_value=mock_async_pw):
             html = await render("https://example.com")
         assert html == "<html><body>rendered</body></html>"
 
@@ -328,9 +321,7 @@ class TestRender:
         mock_async_pw.__aexit__ = AsyncMock(return_value=False)
 
         config = {"wait": "load", "timeout": 5000}
-        with patch(
-            "playwright.async_api.async_playwright", return_value=mock_async_pw
-        ):
+        with patch("playwright.async_api.async_playwright", return_value=mock_async_pw):
             await render("https://example.com", config)
         mock_page.goto.assert_awaited_once_with(
             "https://example.com", wait_until="load", timeout=5000
@@ -345,9 +336,7 @@ class TestRender:
         mock_async_pw.__aexit__ = AsyncMock(return_value=False)
 
         config = {"actions": [{"action": "dismiss_overlays"}]}
-        with patch(
-            "playwright.async_api.async_playwright", return_value=mock_async_pw
-        ):
+        with patch("playwright.async_api.async_playwright", return_value=mock_async_pw):
             await render("https://example.com", config)
         # dismiss_overlays calls page.evaluate
         mock_page.evaluate.assert_awaited_once()
@@ -360,8 +349,6 @@ class TestRender:
         mock_async_pw.__aenter__ = AsyncMock(return_value=mock_pw)
         mock_async_pw.__aexit__ = AsyncMock(return_value=False)
 
-        with patch(
-            "playwright.async_api.async_playwright", return_value=mock_async_pw
-        ):
+        with patch("playwright.async_api.async_playwright", return_value=mock_async_pw):
             html = await render("https://example.com", None)
         assert html == "<html></html>"

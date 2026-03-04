@@ -141,7 +141,9 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
                     from src.shared.api_sniff import ID_FIELDS as _ID_FIELDS
 
                     dom_urls = await extract_urls_via_dom_crossref(
-                        page, result.candidate.items, url,
+                        page,
+                        result.candidate.items,
+                        url,
                     )
                     if dom_urls:
                         # Derive template from the first URL + first item
@@ -277,18 +279,24 @@ async def _discover_replay(
                 location=pagination_config["location"],
             )
             ex = Exchange(
-                method=method, url=api_url,
+                method=method,
+                url=api_url,
                 request_headers=request_headers,
-                post_data=post_data, status=200,
-                body=data, content_type="application/json",
+                post_data=post_data,
+                status=200,
+                body=data,
+                content_type="application/json",
                 phase="load",
             )
             from src.shared.api_sniff import find_total_count
+
             total_count = find_total_count(data, json_path)
             cand = ArrayCandidate(exchange=ex, json_path=json_path, items=items)
             job_result = JobListResult(
-                candidate=cand, url_field=url_field,
-                total_count=total_count, pagination=pag,
+                candidate=cand,
+                url_field=url_field,
+                total_count=total_count,
+                pagination=pag,
             )
             items = await paginate_all(page, job_result, MAX_PAGES)
 
@@ -317,7 +325,12 @@ async def _discover_replay(
 
         if fields_map:
             return _extract_rich(
-                items, fields_map, url_field, url_template, board_url, url_map=url_map,
+                items,
+                fields_map,
+                url_field,
+                url_template,
+                board_url,
+                url_map=url_map,
             )
 
         # URL-only mode
@@ -365,7 +378,9 @@ async def _discover_auto(
 
         page_size = len(result.candidate.items)
         result.pagination = infer_pagination(
-            exchanges, result.candidate.exchange.url, page_size,
+            exchanges,
+            result.candidate.exchange.url,
+            page_size,
         )
 
         items = await paginate_all(page, result, MAX_PAGES)
@@ -431,6 +446,7 @@ def _extract_rich(
     id_field = None
     if url_map and items:
         from src.shared.api_sniff import ID_FIELDS as _ID_FIELDS
+
         for key in items[0]:
             if _ID_FIELDS.match(key):
                 id_field = key
@@ -476,8 +492,11 @@ def _extract_rich(
             if target.startswith("metadata."):
                 metadata_fields[target.removeprefix("metadata.")] = value
             elif target in (
-                "title", "description", "employment_type",
-                "job_location_type", "date_posted",
+                "title",
+                "description",
+                "employment_type",
+                "job_location_type",
+                "date_posted",
             ):
                 kwargs[target] = value
             elif target == "locations":

@@ -47,11 +47,15 @@ def _patch_registry(monkeypatch):
         MonitorType(name="greenhouse", cost=10, discover=mk(), can_handle=_gh_can_handle),
         MonitorType(name="lever", cost=10, discover=mk(), can_handle=_lever_can_handle),
         MonitorType(
-            name="nextdata", cost=20, discover=mk(),
+            name="nextdata",
+            cost=20,
+            discover=mk(),
             can_handle=_nextdata_can_handle,
         ),
         MonitorType(
-            name="sitemap", cost=50, discover=mk(),
+            name="sitemap",
+            cost=50,
+            discover=mk(),
             can_handle=_sitemap_can_handle,
         ),
         MonitorType(name="dom", cost=100, discover=mk(), can_handle=_dom_can_handle),
@@ -400,6 +404,7 @@ class TestNextdataAutoMap:
 class TestDomHeuristicSteps:
     def test_h1_with_content(self):
         from src.shared.extract import flatten
+
         elements = flatten(_DOM_HTML)
         steps = _heuristic_steps(elements)
         assert steps is not None
@@ -413,6 +418,7 @@ class TestDomHeuristicSteps:
 
     def test_h1_with_stop_marker(self):
         from src.shared.extract import flatten
+
         elements = flatten(_DOM_HTML)
         steps = _heuristic_steps(elements)
         desc_step = steps[1]
@@ -420,6 +426,7 @@ class TestDomHeuristicSteps:
 
     def test_location_detected(self):
         from src.shared.extract import flatten
+
         elements = flatten(_DOM_HTML)
         steps = _heuristic_steps(elements)
         location_steps = [s for s in steps if s.get("field") == "location"]
@@ -428,6 +435,7 @@ class TestDomHeuristicSteps:
 
     def test_no_h1_returns_none(self):
         from src.shared.extract import flatten
+
         elements = flatten(_NO_H1_HTML)
         steps = _heuristic_steps(elements)
         assert steps is None
@@ -459,10 +467,12 @@ _SPA_HTML = "<html><body><div id='app'></div></body></html>"
 class TestProbeScrapers:
     async def test_all_scrapers_probed(self):
         """Mock HTTP to return test HTML, verify all scrapers probed."""
-        http = _mock_http_client({
-            "https://example.com/job/1": (200, _JSONLD_HTML),
-            "https://example.com/job/2": (200, _JSONLD_HTML),
-        })
+        http = _mock_http_client(
+            {
+                "https://example.com/job/1": (200, _JSONLD_HTML),
+                "https://example.com/job/2": (200, _JSONLD_HTML),
+            }
+        )
 
         results, _spa_suspect = await probe_scrapers(
             ["https://example.com/job/1", "https://example.com/job/2"],
@@ -477,10 +487,12 @@ class TestProbeScrapers:
 
     async def test_jsonld_detected_with_quality(self):
         """json-ld detected → metadata has quality stats."""
-        http = _mock_http_client({
-            "https://example.com/job/1": (200, _JSONLD_HTML),
-            "https://example.com/job/2": (200, _JSONLD_HTML_2),
-        })
+        http = _mock_http_client(
+            {
+                "https://example.com/job/1": (200, _JSONLD_HTML),
+                "https://example.com/job/2": (200, _JSONLD_HTML_2),
+            }
+        )
 
         results, _ = await probe_scrapers(
             ["https://example.com/job/1", "https://example.com/job/2"],
@@ -497,10 +509,12 @@ class TestProbeScrapers:
 
     async def test_nextdata_detected_with_config(self):
         """nextdata detected → metadata has config + quality."""
-        http = _mock_http_client({
-            "https://example.com/job/1": (200, _NEXTDATA_HTML),
-            "https://example.com/job/2": (200, _NEXTDATA_HTML_2),
-        })
+        http = _mock_http_client(
+            {
+                "https://example.com/job/1": (200, _NEXTDATA_HTML),
+                "https://example.com/job/2": (200, _NEXTDATA_HTML_2),
+            }
+        )
 
         results, _ = await probe_scrapers(
             ["https://example.com/job/1", "https://example.com/job/2"],
@@ -515,9 +529,11 @@ class TestProbeScrapers:
 
     async def test_fetch_failure_handled(self):
         """Fetch failures don't crash the probe."""
-        http = _mock_http_client({
-            "https://example.com/job/1": (500, ""),
-        })
+        http = _mock_http_client(
+            {
+                "https://example.com/job/1": (500, ""),
+            }
+        )
 
         results, spa_suspect = await probe_scrapers(
             ["https://example.com/job/1"],
@@ -533,9 +549,11 @@ class TestProbeScrapers:
 
     async def test_probe_order(self):
         """Results should be in display order: json-ld, nextdata, embedded, dom, api_sniffer."""
-        http = _mock_http_client({
-            "https://example.com/job/1": (200, _JSONLD_HTML),
-        })
+        http = _mock_http_client(
+            {
+                "https://example.com/job/1": (200, _JSONLD_HTML),
+            }
+        )
 
         results, _ = await probe_scrapers(
             ["https://example.com/job/1"],
@@ -547,9 +565,11 @@ class TestProbeScrapers:
 
     async def test_spa_detection(self):
         """Pages with very little text content should set spa_suspect=True."""
-        http = _mock_http_client({
-            "https://example.com/job/1": (200, _SPA_HTML),
-        })
+        http = _mock_http_client(
+            {
+                "https://example.com/job/1": (200, _SPA_HTML),
+            }
+        )
 
         _results, spa_suspect = await probe_scrapers(
             ["https://example.com/job/1"],
@@ -571,10 +591,12 @@ class TestProbeScrapers:
             "<li>Strong knowledge of Python and JavaScript</li></ul>"
             "</body></html>"
         )
-        http = _mock_http_client({
-            "https://example.com/job/1": (200, rich_html),
-            "https://example.com/job/2": (200, rich_html),
-        })
+        http = _mock_http_client(
+            {
+                "https://example.com/job/1": (200, rich_html),
+                "https://example.com/job/2": (200, rich_html),
+            }
+        )
 
         _results, spa_suspect = await probe_scrapers(
             ["https://example.com/job/1", "https://example.com/job/2"],
@@ -591,9 +613,11 @@ class TestProbeScrapersPw:
 
     async def test_api_sniffer_skipped_without_pw(self):
         """When pw=None, api_sniffer should show 'Skipped' message."""
-        http = _mock_http_client({
-            "https://example.com/job/1": (200, _JSONLD_HTML),
-        })
+        http = _mock_http_client(
+            {
+                "https://example.com/job/1": (200, _JSONLD_HTML),
+            }
+        )
 
         results, _ = await probe_scrapers(
             ["https://example.com/job/1"],
@@ -608,9 +632,11 @@ class TestProbeScrapersPw:
 
     async def test_api_sniffer_detected_with_pw(self):
         """When pw is provided and probe_pw detects data, shows quality stats."""
-        http = _mock_http_client({
-            "https://example.com/job/1": (200, _JSONLD_HTML),
-        })
+        http = _mock_http_client(
+            {
+                "https://example.com/job/1": (200, _JSONLD_HTML),
+            }
+        )
 
         # Mock the api_sniffer's probe_pw to return detected metadata
         fake_metadata = {
@@ -645,9 +671,11 @@ class TestProbeScrapersPw:
 
     async def test_probe_order_includes_api_sniffer(self):
         """Results should include api_sniffer in the probe order."""
-        http = _mock_http_client({
-            "https://example.com/job/1": (200, _JSONLD_HTML),
-        })
+        http = _mock_http_client(
+            {
+                "https://example.com/job/1": (200, _JSONLD_HTML),
+            }
+        )
 
         results, _ = await probe_scrapers(
             ["https://example.com/job/1"],

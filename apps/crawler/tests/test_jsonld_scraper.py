@@ -337,7 +337,6 @@ class TestScrape:
             result = await scrape("https://example.com/job", {}, client)
             assert result.title == "GraphJob"
 
-
     async def test_render_uses_playwright(self):
         """When render=true, scrape should use browser rendering instead of HTTP."""
         from unittest.mock import AsyncMock, patch
@@ -353,7 +352,10 @@ class TestScrape:
             transport = httpx.MockTransport(lambda r: httpx.Response(500))
             async with httpx.AsyncClient(transport=transport) as client:
                 result = await scrape(
-                    "https://example.com/job", {"render": True}, client, pw="fake_pw",
+                    "https://example.com/job",
+                    {"render": True},
+                    client,
+                    pw="fake_pw",
                 )
                 assert result.title == "Rendered"
                 mock_render.assert_called_once_with("https://example.com/job", {}, pw="fake_pw")

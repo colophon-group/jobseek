@@ -71,9 +71,12 @@ def probe_monitors(slug: str | None):
         probe_dir,
         [
             {
-                "name": name, "detected": metadata is not None,
-                "metadata": metadata, "comment": comment,
-            } for name, metadata, comment in results
+                "name": name,
+                "detected": metadata is not None,
+                "metadata": metadata,
+                "comment": comment,
+            }
+            for name, metadata, comment in results
         ],
     )
     out.plain("artifacts", f"Saved: {probe_dir}")
@@ -142,8 +145,7 @@ def probe_scraper(slug: str | None, urls: tuple[str, ...]):
     # Guard: API monitors don't need scrapers
     api_monitors = {"ashby", "greenhouse", "lever"}
     is_rich_monitor = board.monitor_type in api_monitors or (
-        board.monitor_type == "api_sniffer"
-        and (board.monitor_config or {}).get("fields")
+        board.monitor_type == "api_sniffer" and (board.monitor_config or {}).get("fields")
     )
     if is_rich_monitor:
         out.warn(
@@ -189,9 +191,12 @@ def probe_scraper(slug: str | None, urls: tuple[str, ...]):
         probe_dir,
         [
             {
-                "name": name, "detected": metadata is not None,
-                "metadata": metadata, "comment": comment,
-            } for name, metadata, comment in results
+                "name": name,
+                "detected": metadata is not None,
+                "metadata": metadata,
+                "comment": comment,
+            }
+            for name, metadata, comment in results
         ],
     )
     out.plain("artifacts", f"Saved: {probe_dir}")
@@ -281,11 +286,13 @@ def probe_scraper(slug: str | None, urls: tuple[str, ...]):
 
     # Log action
     probe_summary_parts = [
-        f"{name} {'✓' if meta is not None else '✗'}"
-        for name, meta, _ in results
+        f"{name} {'✓' if meta is not None else '✗'}" for name, meta, _ in results
     ]
     action_log.append_to_list(
-        board.log, "probe scraper", True, ", ".join(probe_summary_parts),
+        board.log,
+        "probe scraper",
+        True,
+        ", ".join(probe_summary_parts),
     )
     save_board(slug, board)
 
@@ -358,16 +365,31 @@ def select_monitor(slug_or_type: str, type_: str | None, config_json: str | None
 
 # Fields checked in quality reports for DiscoveredJob (monitor rich data)
 _MONITOR_QUALITY_FIELDS = [
-    "title", "description", "locations", "employment_type",
-    "job_location_type", "date_posted", "base_salary",
-    "skills", "responsibilities", "qualifications",
+    "title",
+    "description",
+    "locations",
+    "employment_type",
+    "job_location_type",
+    "date_posted",
+    "base_salary",
+    "skills",
+    "responsibilities",
+    "qualifications",
 ]
 
 # Fields checked in quality reports for JobContent (scraper extraction)
 _SCRAPER_QUALITY_FIELDS = [
-    "title", "description", "locations", "employment_type",
-    "job_location_type", "date_posted", "valid_through", "base_salary",
-    "skills", "responsibilities", "qualifications",
+    "title",
+    "description",
+    "locations",
+    "employment_type",
+    "job_location_type",
+    "date_posted",
+    "valid_through",
+    "base_salary",
+    "skills",
+    "responsibilities",
+    "qualifications",
 ]
 
 # Core fields always shown in terminal output
@@ -435,9 +457,9 @@ def run_monitor(slug: str | None):
         "time": round(elapsed, 1),
         "has_rich_data": has_rich,
         "sample_urls": random.sample(sorted(result.urls), min(10, len(result.urls))),
-        "ran_at": __import__("datetime").datetime.now(
-            __import__("datetime").timezone.utc
-        ).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "ran_at": __import__("datetime")
+        .datetime.now(__import__("datetime").timezone.utc)
+        .strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
     ws.progress["monitor_tested"] = True
 
@@ -445,6 +467,7 @@ def run_monitor(slug: str | None):
     jobs_data = []
     if result.jobs_by_url:
         from dataclasses import asdict
+
         jobs_data = [asdict(j) for j in result.jobs_by_url.values()]
     else:
         jobs_data = [{"url": u} for u in list(result.urls)[:100]]
@@ -503,14 +526,14 @@ def run_monitor(slug: str | None):
             prefix = commonprefix(paths)
             # Trim to last full segment
             if prefix and "/" in prefix:
-                prefix = prefix[:prefix.rindex("/") + 1]
+                prefix = prefix[: prefix.rindex("/") + 1]
             if prefix and prefix != "/" and len(prefix) >= 3:
                 matching = sum(1 for u in sample_urls if urlparse(u).path.startswith(prefix))
                 if matching / len(sample_urls) >= 0.8:
                     out.plain(
                         "monitor",
                         f"Tip: {matching}/{len(sample_urls)} sample URLs share prefix "
-                        f"\"{prefix}\" \u2014 consider url_filter for reliability",
+                        f'"{prefix}" \u2014 consider url_filter for reliability',
                     )
 
     if has_rich:
@@ -533,8 +556,7 @@ def run_monitor(slug: str | None):
         # API monitors skip scraper (including api_sniffer with fields)
         api_monitors = {"ashby", "greenhouse", "lever"}
         is_rich_api = board.monitor_type in api_monitors or (
-            board.monitor_type == "api_sniffer"
-            and (board.monitor_config or {}).get("fields")
+            board.monitor_type == "api_sniffer" and (board.monitor_config or {}).get("fields")
         )
         if is_rich_api:
             out.plain("monitor", "Skipping scraper — monitor returns full job data")
@@ -652,8 +674,13 @@ def run_scraper(slug: str | None, urls: tuple[str, ...]):
                     job_id = f"sample-{i}"
                     start = time.monotonic()
                     content = await scrape_one(
-                        url, board.scraper_type, board.scraper_config or None, http,
-                        artifact_dir=run_dir, job_id=job_id, pw=pw,
+                        url,
+                        board.scraper_type,
+                        board.scraper_config or None,
+                        http,
+                        artifact_dir=run_dir,
+                        job_id=job_id,
+                        pw=pw,
                     )
                     elapsed = time.monotonic() - start
                     results.append((url, content, elapsed))
@@ -680,9 +707,9 @@ def run_scraper(slug: str | None, urls: tuple[str, ...]):
         "titles": titles_found,
         "descriptions": descs_found,
         "locations": locations_found,
-        "ran_at": __import__("datetime").datetime.now(
-            __import__("datetime").timezone.utc
-        ).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "ran_at": __import__("datetime")
+        .datetime.now(__import__("datetime").timezone.utc)
+        .strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
     ws.progress["scraper_tested"] = True
 
@@ -717,7 +744,8 @@ def run_scraper(slug: str | None, urls: tuple[str, ...]):
             f: {
                 "count": quality_totals[f],
                 "pct": round(quality_totals[f] / total * 100) if total else 0,
-            } for f in _SCRAPER_QUALITY_FIELDS
+            }
+            for f in _SCRAPER_QUALITY_FIELDS
         },
         "per_url": quality_per_url,
     }
@@ -771,9 +799,17 @@ def run_scraper(slug: str | None, urls: tuple[str, ...]):
 
     # Content samples grouped by field — show actual values for quality verification
     _SAMPLE_FIELDS = [
-        "title", "locations", "description", "employment_type",
-        "job_location_type", "date_posted", "valid_through",
-        "qualifications", "responsibilities", "skills", "metadata",
+        "title",
+        "locations",
+        "description",
+        "employment_type",
+        "job_location_type",
+        "date_posted",
+        "valid_through",
+        "qualifications",
+        "responsibilities",
+        "skills",
+        "metadata",
     ]
 
     if results:

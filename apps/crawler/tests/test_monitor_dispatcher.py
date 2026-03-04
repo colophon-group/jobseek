@@ -65,23 +65,28 @@ class TestApplyUrlFilter:
         assert filtered.filtered_count == 0
 
     def test_include_string(self):
-        result = self._make_result([
-            "https://example.com/jobs/1",
-            "https://example.com/jobs/2",
-            "https://example.com/blog/hello",
-        ])
+        result = self._make_result(
+            [
+                "https://example.com/jobs/1",
+                "https://example.com/jobs/2",
+                "https://example.com/blog/hello",
+            ]
+        )
         filtered = _apply_url_filter(result, {"url_filter": "/jobs/"})
         assert filtered.urls == {"https://example.com/jobs/1", "https://example.com/jobs/2"}
         assert filtered.filtered_count == 1
 
     def test_include_exclude_dict(self):
-        result = self._make_result([
-            "https://example.com/jobs/1",
-            "https://example.com/jobs/intern",
-            "https://example.com/blog/post",
-        ])
+        result = self._make_result(
+            [
+                "https://example.com/jobs/1",
+                "https://example.com/jobs/intern",
+                "https://example.com/blog/post",
+            ]
+        )
         filtered = _apply_url_filter(
-            result, {"url_filter": {"include": "/jobs/", "exclude": "/intern"}},
+            result,
+            {"url_filter": {"include": "/jobs/", "exclude": "/intern"}},
         )
         assert filtered.urls == {"https://example.com/jobs/1"}
         assert filtered.filtered_count == 2
@@ -89,10 +94,12 @@ class TestApplyUrlFilter:
     def test_filters_jobs_by_url(self):
         jobs = {
             "https://example.com/jobs/1": DiscoveredJob(
-                url="https://example.com/jobs/1", title="Job 1",
+                url="https://example.com/jobs/1",
+                title="Job 1",
             ),
             "https://example.com/blog/2": DiscoveredJob(
-                url="https://example.com/blog/2", title="Blog",
+                url="https://example.com/blog/2",
+                title="Blog",
             ),
         }
         result = self._make_result(jobs.keys(), jobs_by_url=jobs)

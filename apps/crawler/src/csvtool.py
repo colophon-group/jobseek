@@ -217,5 +217,3 @@ def board_del(slug: str, *, board_url: str | None = None) -> None:
             sys.exit(1)
         _write_csv(boards_path, headers, rows)
         print(f"Removed {removed} board(s) for {slug!r}")
-
-

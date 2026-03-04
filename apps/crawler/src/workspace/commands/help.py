@@ -793,6 +793,7 @@ TOPIC_MAP: dict[str, str] = {
 
 # ── Click command ────────────────────────────────────────────────────────
 
+
 @click.command("help")
 @click.argument("topic", required=False)
 @click.argument("subtype", required=False)
