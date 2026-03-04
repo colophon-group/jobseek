@@ -27,7 +27,7 @@ Board configurations. One row per job board. A company can have multiple boards.
 | `board_url` | Yes | Career page URL (unique). |
 | `monitor_type` | Yes | How to discover listings: `greenhouse`, `lever`, `sitemap`, `nextdata`, `dom`. |
 | `monitor_config` | No | JSON string with monitor-specific settings. |
-| `scraper_type` | No | How to extract details: `greenhouse_api`, `lever_api`, `json-ld`, `html`, `dom`, `nextdata`. |
+| `scraper_type` | No | How to extract details: `json-ld`, `dom`, `nextdata`, `embedded`, `api_sniffer`. Empty for API monitors. |
 | `scraper_config` | No | JSON string with scraper-specific settings. |
 
 ## Adding a Company
@@ -58,7 +58,7 @@ stripe,Stripe,https://stripe.com,https://stripe.com/img/logo.svg,https://stripe.
 
 boards.csv:
 ```
-stripe,stripe-careers,https://boards.greenhouse.io/stripe,greenhouse,"{""token"":""stripe""}",greenhouse_api,
+stripe,stripe-careers,https://boards.greenhouse.io/stripe,greenhouse,"{""token"":""stripe""}",,
 ```
 
 ## Reading in Python
