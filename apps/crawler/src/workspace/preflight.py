@@ -10,8 +10,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from src.config import settings
-
 if TYPE_CHECKING:
     from src.workspace.state import Workspace
 
@@ -33,11 +31,8 @@ def run_preflight(
     Returns a list of issues found.  Callers decide how to handle them
     (warnings are printed, criticals may abort).
     """
-    if not settings.ws_preflight_enabled:
-        return []
-
     if check_branch is None:
-        check_branch = settings.ws_preflight_check_branch
+        check_branch = True
 
     issues: list[PreflightIssue] = []
 

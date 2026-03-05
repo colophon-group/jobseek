@@ -49,6 +49,9 @@ async def throttle_domain(url: str) -> None:
     key = f"throttle:{hostname}"
     redis = get_redis()
 
+    if redis is None:
+        return
+
     last_raw = await redis.get(key)
     if last_raw is not None:
         elapsed = time.time() - float(last_raw)

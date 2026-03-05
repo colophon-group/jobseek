@@ -6,8 +6,11 @@ import subprocess
 import time
 from pathlib import Path
 
-from src.config import settings
 from src.workspace.errors import GitCommandError, GitHubApiError
+
+_GIT_RETRIES = 2
+_GH_RETRIES = 2
+_RETRY_DELAY = 2.0
 
 
 def _is_retryable(e: GitCommandError | GitHubApiError) -> bool:
@@ -50,7 +53,7 @@ def _run(
             last_err = err_cls(cmd=args, returncode=exc.returncode, stderr=exc.stderr or "")
 
             if attempt < retries and _is_retryable(last_err):
-                time.sleep(settings.ws_retry_delay)
+                time.sleep(_RETRY_DELAY)
                 continue
             raise last_err from exc
 
@@ -124,7 +127,7 @@ def push(branch: str | None = None, set_upstream: bool = False) -> None:
     args = ["git", "push"]
     if set_upstream and branch:
         args += ["-u", "origin", branch]
-    _run(args, retries=settings.ws_git_retries)
+    _run(args, retries=_GIT_RETRIES)
 
 
 def delete_branch(name: str, remote: bool = True) -> None:
@@ -191,7 +194,7 @@ def create_draft_pr(title: str, body: str) -> int:
             "--body",
             body,
         ],
-        retries=settings.ws_gh_retries,
+        retries=_GH_RETRIES,
     )
     url = result.stdout.strip()
     # URL format: https://github.com/<owner>/<repo>/pull/<number>
@@ -200,38 +203,38 @@ def create_draft_pr(title: str, body: str) -> int:
 
 def mark_pr_ready(pr_number: int) -> None:
     """Mark a draft PR as ready for review."""
-    _run(["gh", "pr", "ready", str(pr_number)], retries=settings.ws_gh_retries)
+    _run(["gh", "pr", "ready", str(pr_number)], retries=_GH_RETRIES)
 
 
 def comment_on_pr(pr_number: int, body: str) -> None:
     """Add a comment to a PR."""
-    _run(["gh", "pr", "comment", str(pr_number), "--body", body], retries=settings.ws_gh_retries)
+    _run(["gh", "pr", "comment", str(pr_number), "--body", body], retries=_GH_RETRIES)
 
 
 def comment_on_issue(issue_number: int, body: str) -> None:
     """Add a comment to an issue."""
     _run(
         ["gh", "issue", "comment", str(issue_number), "--body", body],
-        retries=settings.ws_gh_retries,
+        retries=_GH_RETRIES,
     )
 
 
 def close_issue(issue_number: int) -> None:
     """Close a GitHub issue."""
-    _run(["gh", "issue", "close", str(issue_number)], retries=settings.ws_gh_retries)
+    _run(["gh", "issue", "close", str(issue_number)], retries=_GH_RETRIES)
 
 
 def edit_pr_body(pr_number: int, body: str) -> None:
     """Update a PR's body text."""
     _run(
         ["gh", "pr", "edit", str(pr_number), "--body", body],
-        retries=settings.ws_gh_retries,
+        retries=_GH_RETRIES,
     )
 
 
 def close_pr(pr_number: int) -> None:
     """Close a GitHub PR."""
-    _run(["gh", "pr", "close", str(pr_number)], retries=settings.ws_gh_retries)
+    _run(["gh", "pr", "close", str(pr_number)], retries=_GH_RETRIES)
 
 
 def get_main_branch() -> str:

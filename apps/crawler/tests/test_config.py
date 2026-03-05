@@ -22,10 +22,7 @@ class TestSettings:
         assert s.crawler_batch_limit == 500
         assert s.crawler_poll_interval == 30
 
-    def test_database_url_required(self, monkeypatch):
+    def test_database_url_defaults_to_empty(self, monkeypatch):
         monkeypatch.delenv("DATABASE_URL", raising=False)
-        import pytest
-        from pydantic import ValidationError
-
-        with pytest.raises(ValidationError):
-            Settings(_env_file=None)
+        s = Settings(_env_file=None)
+        assert s.database_url == ""

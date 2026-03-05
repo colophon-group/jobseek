@@ -1900,8 +1900,6 @@ class TestPreflight:
         from src.workspace.preflight import run_preflight
 
         _patch_all(monkeypatch, tmp_path)
-        monkeypatch.setattr("src.config.settings.ws_preflight_enabled", True)
-        monkeypatch.setattr("src.config.settings.ws_preflight_check_branch", True)
 
         # Branch exists but is not checked out
         def mock_run(args, **kwargs):
@@ -1925,8 +1923,6 @@ class TestPreflight:
         from src.workspace.preflight import run_preflight
 
         _patch_all(monkeypatch, tmp_path)
-        monkeypatch.setattr("src.config.settings.ws_preflight_enabled", True)
-        monkeypatch.setattr("src.config.settings.ws_preflight_check_branch", True)
 
         def mock_run(args, **kwargs):
             result = MagicMock()
@@ -1945,25 +1941,13 @@ class TestPreflight:
         issues = run_preflight(ws_obj)
         assert not issues
 
-    def test_preflight_disabled(self, tmp_path, monkeypatch):
-        from src.workspace.preflight import run_preflight
-
-        _patch_all(monkeypatch, tmp_path)
-        monkeypatch.setattr("src.config.settings.ws_preflight_enabled", False)
-
-        ws_obj = Workspace(slug="test", branch="add-company/test")
-        issues = run_preflight(ws_obj)
-        assert not issues
-
     def test_preflight_no_branch_check_when_disabled(self, tmp_path, monkeypatch):
         from src.workspace.preflight import run_preflight
 
         _patch_all(monkeypatch, tmp_path)
-        monkeypatch.setattr("src.config.settings.ws_preflight_enabled", True)
-        monkeypatch.setattr("src.config.settings.ws_preflight_check_branch", False)
 
         ws_obj = Workspace(slug="test", branch="add-company/test")
-        issues = run_preflight(ws_obj)
+        issues = run_preflight(ws_obj, check_branch=False)
         assert not issues
 
 
@@ -2312,7 +2296,7 @@ class TestStaleProbeDetection:
         }
         save_board("test", board)
 
-        monkeypatch.setattr("src.config.settings.ws_preflight_enabled", False)
+        monkeypatch.setattr("src.workspace.preflight.run_preflight", lambda *a, **kw: [])
 
         with patch("src.workspace.commands.crawl.save_board"):
             runner = CliRunner()
@@ -2332,7 +2316,7 @@ class TestStaleProbeDetection:
         }
         save_board("test", board)
 
-        monkeypatch.setattr("src.config.settings.ws_preflight_enabled", False)
+        monkeypatch.setattr("src.workspace.preflight.run_preflight", lambda *a, **kw: [])
 
         with patch("src.workspace.commands.crawl.save_board"):
             runner = CliRunner()
@@ -2359,7 +2343,7 @@ class TestMonitorRegression:
         board.active_config = "greenhouse"
         save_board("test", board)
 
-        monkeypatch.setattr("src.config.settings.ws_preflight_enabled", False)
+        monkeypatch.setattr("src.workspace.preflight.run_preflight", lambda *a, **kw: [])
 
         # Mock monitor_one to return 0 jobs
         @dataclass
@@ -2409,7 +2393,7 @@ class TestMonitorRegression:
         board.active_config = "greenhouse"
         save_board("test", board)
 
-        monkeypatch.setattr("src.config.settings.ws_preflight_enabled", False)
+        monkeypatch.setattr("src.workspace.preflight.run_preflight", lambda *a, **kw: [])
 
         @dataclass
         class FakeResult:
@@ -2457,9 +2441,6 @@ class TestPreflightBranchMissing:
         set_active_slug("test")
         save_board("test", Board(alias="a", slug="test-a", url="https://test.com/jobs"))
 
-        monkeypatch.setattr("src.config.settings.ws_preflight_enabled", True)
-        monkeypatch.setattr("src.config.settings.ws_preflight_check_branch", True)
-
         # Mock git to show branch doesn't exist
         mock_result = MagicMock()
         mock_result.stdout = ""  # Branch not in list
@@ -2480,9 +2461,6 @@ class TestPreflightBranchMissing:
         save_workspace(Workspace(slug="test", branch="add-company/test", active_board="a"))
         set_active_slug("test")
         save_board("test", Board(alias="a", slug="test-a", url="https://test.com/jobs"))
-
-        monkeypatch.setattr("src.config.settings.ws_preflight_enabled", True)
-        monkeypatch.setattr("src.config.settings.ws_preflight_check_branch", True)
 
         # Mock: branch list shows the branch, current branch matches
         def mock_run(args, **kwargs):

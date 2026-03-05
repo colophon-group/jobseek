@@ -11,7 +11,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 
-from src.config import settings
+_FILE_LOCK_TIMEOUT = 10.0
 
 
 @contextmanager
@@ -29,7 +29,7 @@ def file_lock(path: Path, *, timeout: float | None = None) -> Generator[None, No
         Unused for now — ``flock`` blocks indefinitely.  Reserved for
         future non-blocking implementation.
     """
-    _ = timeout or settings.ws_file_lock_timeout  # noqa: F841 — reserved
+    _ = timeout or _FILE_LOCK_TIMEOUT  # noqa: F841 — reserved
 
     lock_path = path.with_suffix(path.suffix + ".lock")
     lock_path.parent.mkdir(parents=True, exist_ok=True)
