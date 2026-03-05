@@ -11,5 +11,11 @@
   "devDependencies": {
     "turbo": "^2"
   },
-  "packageManager": "pnpm@10.30.0"
+  "packageManager": "pnpm@10.30.0",
+  "pnpm": {
+    "overrides": {
+      "esbuild": ">=0.25.0",
+      "minimatch": ">=10.2.3"
+    }
+  }
 }
