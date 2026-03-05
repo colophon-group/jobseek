@@ -533,6 +533,11 @@ def _execute_submit_step(
                 board_kwargs["scraper_config"] = json.dumps(b.scraper_config)
             board_add(ws.slug, **board_kwargs)
 
+        # Sort CSVs by slug to minimize merge conflicts
+        from src.csvtool import sort_csvs
+
+        sort_csvs()
+
     elif step_key == "validated":
         errors = validate_csvs()
         if errors:

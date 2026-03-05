@@ -22,6 +22,20 @@ from src.workspace.errors import (
 _SLUG_RE = SLUG_RE
 
 
+def sort_csvs() -> None:
+    """Sort companies.csv by slug and boards.csv by company_slug + board_slug."""
+    companies_path = DATA_DIR / "companies.csv"
+    boards_path = DATA_DIR / "boards.csv"
+
+    headers, rows = _read_csv(companies_path)
+    rows.sort(key=lambda r: r.get("slug", ""))
+    _write_csv(companies_path, headers, rows)
+
+    b_headers, b_rows = _read_csv(boards_path)
+    b_rows.sort(key=lambda r: (r.get("company_slug", ""), r.get("board_slug", "")))
+    _write_csv(boards_path, b_headers, b_rows)
+
+
 def _company_slugs(path: Path) -> set[str]:
     """Return the set of slugs in companies.csv."""
     _, rows = _read_csv(path)
