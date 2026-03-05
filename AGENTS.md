@@ -93,6 +93,8 @@ pnpm compile      # Compile .po to .js catalogs
 
 This is the primary task agents perform. Use the `ws` CLI tool for the workspace-driven flow.
 
+**Do NOT explore the codebase.** This file and the `ws` CLI are your complete interface. Do not read source code in `src/`, `docs/`, or other directories. Do not launch exploration agents to understand the repo structure. Follow the steps below sequentially — everything you need is documented here.
+
 ### Setup
 
 ```bash
@@ -116,6 +118,14 @@ If already present, comment and close the issue.
 **Check 1 — Real company**: web search confirms the company exists and is operating.
 **Check 2 — Public careers page**: find the careers/jobs URL by checking the company's own website (look for "Careers" or "Jobs" links). Do not rely solely on web search results — they may be stale or point to the wrong ATS. Fetch the company's careers page directly to discover the current board URL.
 **Check 3 — At least one listing visible**: the career page shows job postings.
+
+**Check 4 — Multiple boards**: while on the careers page, look for region/language selectors, country-specific subpages, or links to separate ATS instances. Common patterns:
+- Language/region switcher on the careers page (e.g., EN | DE | FR tabs)
+- Separate URLs per region (`/en/careers`, `/de/careers`, `/us/jobs`, `/eu/jobs`)
+- Multiple ATS boards (e.g., Greenhouse for engineering + Lever for sales)
+- "See jobs in [other country]" links
+
+Note all distinct board URLs found — these will be configured as separate boards in Step 4. The issue may only reference one URL, but that does not mean it's the only board.
 
 **On any failure**, reject with reason key (`not-a-company`, `company-not-found`, `no-job-board`, `no-open-positions`):
 
@@ -155,6 +165,23 @@ ws probe monitor
 ```
 
 `add board` auto-prefixes the alias with the company slug (`careers` → `stripe-careers`) and auto-activates the board. `probe monitor` tries all monitor types and reports results.
+
+#### Multiple boards
+
+If Step 1 identified multiple career pages (regional, departmental, or separate ATS instances), add each as a separate board and configure them independently:
+
+```bash
+ws add board careers-us --url "https://company.com/us/careers"
+ws probe monitor
+# ... configure first board fully (Steps 5–8) ...
+
+ws add board careers-de --url "https://company.com/de/careers"
+ws use --board company-careers-de
+ws probe monitor
+# ... configure second board ...
+```
+
+**Do not skip boards that were discovered in Step 1.** The issue URL is a starting point, not a scope constraint. If one board's listings are a strict superset of another's (verified by comparing job counts and sampling titles), the subset board can be skipped — document this in `--verdict-notes`.
 
 ### 4b. API Discovery Fallback (when probes return 0 jobs)
 
@@ -260,11 +287,25 @@ ws run scraper
 
 Check the extraction quality table. If fields are missing, iterate with a different type or config.
 
-### 6b. Verify Extraction Quality
+### 7. Verify Extraction Quality
 
-Before submitting, verify that extracted content is **complete and correct**, not just populated. A field counting N/N does not mean the data is right — completeness requires actual content verification:
+**This step applies to ALL monitor types, including rich API monitors.** Do not skip it.
 
-- Read the content samples in `ws run scraper` output. A populated field is not necessarily a correct field — verify the actual text makes sense and isn't truncated, garbled, or generic. For example, locations showing "+2 more" means incomplete data even if the field counts as populated.
+Before submitting, verify that extracted content is **complete and correct**, not just populated. A field counting N/N does not mean the data is right — completeness requires actual content verification.
+
+**For API monitors** (ashby, greenhouse, lever, etc.): Inspect the monitor run artifacts. Read 3–5 job entries from the artifacts directory and verify that:
+- Titles are real job titles (not garbled, truncated, or placeholder text)
+- Descriptions contain meaningful content (not empty HTML or boilerplate)
+- Locations are actual place names (not codes, IDs, or "+2 more" truncations)
+
+```bash
+# Example: inspect API monitor output
+cat .workspace/<slug>/artifacts/*/monitor/run-*/jobs.json | python3 -m json.tool | head -80
+```
+
+**For scraper-based monitors**: Read the content samples in `ws run scraper` output. A populated field is not necessarily a correct field — verify the actual text makes sense and isn't truncated, garbled, or generic. For example, locations showing "+2 more" means incomplete data even if the field counts as populated.
+
+**For all types**:
 - If extracted content looks incomplete, investigate the page source for better data sources. Don't apply regex cleanup to broken data — find where the complete data lives. Reliability comes from extracting complete data at the source, not patching partial data downstream.
 - Check for additional mappable fields in the raw data source (same data source, no additional requests): `employment_type`, `date_posted`, `job_location_type`, team/department (as `metadata.*`), `base_salary`, `qualifications`, `responsibilities`. See [docs/08-job-data-fields.md](docs/08-job-data-fields.md) for accepted formats and values for each field.
 
@@ -277,7 +318,7 @@ Before submitting, verify that extracted content is **complete and correct**, no
 
 Run `ws run scraper` again after config changes to verify new fields appear and content quality is correct.
 
-### 7. Record Feedback
+### 8. Record Feedback
 
 After testing, record extraction quality feedback. This is **mandatory before submit**. Every config must have feedback with `--verdict-notes` explaining the outcome — these notes appear in the PR's "Configurations evaluated" table.
 
@@ -308,9 +349,14 @@ ws run monitor
 # ...test again, then ws feedback
 ```
 
-### 8. Submit
+### 9. Submit
 
 `ws submit` handles: CSV write, validation, commit, push, crawl stats comment, mark PR ready, transcript comment. Submit runs quality gates — feedback must be recorded with a `good` or `acceptable` verdict.
+
+**Pre-submit checklist**:
+- All boards discovered in Step 1 are configured (or explicitly documented as subsets in `--verdict-notes`)
+- Extracted content was manually verified (Step 7) — not just stats
+- Each board has passing feedback recorded
 
 ```bash
 ws submit --summary "..."
@@ -325,7 +371,7 @@ The `--summary` should focus on **difficulties, roadblocks, or unexpected behavi
 - `"Auto-detect returned lever but token was wrong; had to extract correct token from page source."` — detection worked but config needed manual adjustment
 - `"Tried sitemap (0 jobs — sitemap only has blog posts), then dom monitor worked. JSON-LD scraper missing locations, switched to dom scraper with render: false."` — multiple iterations needed
 
-### 9. Escalate to Code Changes (when needed)
+### 10. Escalate to Code Changes (when needed)
 
 If no existing monitor/scraper type works after exhausting config options:
 
@@ -354,7 +400,11 @@ ws probe monitor
 ws select monitor greenhouse
 ws run monitor
 
-# Feedback + submit
+# MANDATORY: Verify extracted content — do NOT skip this even for API monitors
+# Read 3–5 jobs and check titles, descriptions, locations are real content
+cat .workspace/stripe/artifacts/careers/monitor/run-*/jobs.json | python3 -m json.tool | head -80
+
+# Feedback + submit (only after verifying content)
 ws feedback --title clean --description clean --verdict good \
   --verdict-notes "Greenhouse API, 138 jobs, all fields clean"
 ws submit --summary "Straightforward greenhouse config, 138 jobs"
@@ -416,7 +466,7 @@ When choosing between monitor/scraper configurations, optimize in this order:
 - **Always prefer `render: false`** when content loads without JavaScript. Only use `render: true` when static fetch produces empty or incomplete results.
 - **API monitors are most resilient** — Ashby/Greenhouse/Lever/Personio/SmartRecruiters APIs are stable and return rich data. Always use them when detected.
 - **json-ld scraper is more resilient than dom** — schema.org markup is standardized. Try json-ld before dom for any URL-only monitor.
-- **Multi-board companies**: configure all career pages unless one board's listings are a strict superset of another's. When in doubt, configure both.
+- **Multi-board companies**: configure **all** career pages discovered in Step 1 — regional boards (EN/DE/FR), country-specific pages (/us/jobs, /eu/jobs), and separate ATS instances. Skip a board only if its listings are a verified strict subset of another board (compare counts + sample titles). The issue URL is a starting point for discovery, not a scope constraint. When in doubt, configure both.
 - **Low quality after exhausting config options**: if extraction quality remains poor after trying all applicable monitor/scraper combinations, escalate to code changes (`ws del`, then `fix-crawler/` branch). Document what was tried.
 - **api_sniffer bridges the gap** — when no known ATS API exists but the site loads data via internal APIs, api_sniffer captures those APIs. With `fields` auto-mapped it acts like an API monitor (scraper skipped). More resilient than dom for API-driven sites. After selecting, inspect the auto-filled `api_url` for page size parameters (e.g. `result_limit=10`, `per_page=20`) and increase them if the API allows (e.g. `result_limit=100`). Update `pagination.increment` to match. This reduces the number of requests needed. For public JSON APIs that don't need browser cookies (e.g. WordPress sites returning HTML fragments in JSON), manually configure `api_url` + `json_path` to use plain HTTP mode (no Playwright). Set `"browser": true` only when the API requires cookies/auth context established by navigating the page first.
 - **api_sniffer HTML string mode** — when an API returns HTML fragments inside JSON (e.g. WordPress `get-jobs.php`, PHP endpoints), set `json_path` to the field containing the HTML string. api_sniffer detects that the content is a string (not a list) and extracts URLs via `url_regex` (or default href matching). Combine with `pagination` and `total_path` to crawl all pages. This replaces complex inline JS `evaluate` scripts. Example: `{"api_url": "https://example.com/get-jobs.php", "json_path": "postings.jobs", "total_path": "postings.size", "url_regex": "href=\"(/jobs/\\?id=\\d+)\"", "pagination": {"param_name": "page", ...}}`. See `ws help monitor api_sniffer` for full config reference.
@@ -461,9 +511,11 @@ When choosing between monitor/scraper configurations, optimize in this order:
 
 ### Never
 - Skip verification of monitor count against website
+- Submit feedback without verifying actual extracted content (N/N stats are not enough — read the data)
 - Submit a PR with known extraction failures
 - Skip the test crawl step
 - Add companies with broken or invalid board URLs
+- Explore the codebase or read source code — follow AGENTS.md and use the `ws` CLI
 - Process more than one issue per agent run
 - Push directly to main
 - Commit secrets, API keys, or credentials

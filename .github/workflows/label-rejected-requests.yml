@@ -21,4 +21,6 @@ jobs:
           REASON=$(echo "$BODY" | grep -oP '<!-- validation-failed: \K[a-z-]+')
           if [ -n "$REASON" ]; then
             gh issue edit "$ISSUE" -R "$REPO" --add-label "$REASON"
+            gh issue close "$ISSUE" -R "$REPO" \
+              --comment "Closed: rejected as **$REASON** by automated validation."
           fi

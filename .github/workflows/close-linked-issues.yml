@@ -1,0 +1,36 @@
+name: Close linked issues on merge
+
+# GitHub does not auto-close issues when a PR is merged by github-actions[bot]
+# via GITHUB_TOKEN (e.g. auto-merge). This workflow explicitly closes any issues
+# referenced with "Closes #N" in the PR body after merge.
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  close-issues:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: read
+
+    steps:
+      - name: Close linked company-request issues
+        run: |
+          ISSUES=$(gh pr view "$PR" --repo "$REPO" --json closingIssuesReferences --jq '.closingIssuesReferences[].number')
+          for ISSUE in $ISSUES; do
+            LABELS=$(gh issue view "$ISSUE" --repo "$REPO" --json labels --jq '.labels[].name')
+            if echo "$LABELS" | grep -q '^company-request$'; then
+              echo "Closing company-request issue #$ISSUE"
+              gh issue close "$ISSUE" --repo "$REPO" \
+                --comment "Closed via #$PR (auto-merged by GitHub Actions)."
+            else
+              echo "Skipping issue #$ISSUE (not a company-request)"
+            fi
+          done
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
