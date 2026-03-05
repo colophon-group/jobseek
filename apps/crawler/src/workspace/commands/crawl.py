@@ -451,6 +451,8 @@ def probe_deep(slug: str | None, board_alias: str | None, current_jobs: int):
     n_jobs = current_jobs or 200
 
     async def _run():
+        from urllib.parse import urljoin
+
         from playwright.async_api import async_playwright
 
         from src.core.monitors import get_can_handle
@@ -460,7 +462,8 @@ def probe_deep(slug: str | None, board_alias: str | None, current_jobs: int):
         try:
             async with async_playwright() as pw:
                 can_handle = get_can_handle("api_sniffer")
-                metadata = await can_handle(board.url, http, pw=pw)
+                diag: dict = {}
+                metadata = await can_handle(board.url, http, pw=pw, diagnostics=diag)
                 # Test plain httpx access to detected api_url
                 httpx_ok = False
                 if metadata and metadata.get("api_url"):
@@ -472,11 +475,30 @@ def probe_deep(slug: str | None, board_alias: str | None, current_jobs: int):
                         metadata["api_url"],
                     )
                     httpx_ok = data is not None
-                return metadata, httpx_ok
+
+                # Probe CMS candidate endpoints
+                cms_results: list[dict] = []
+                cms_info = diag.get("cms")
+                if cms_info and not metadata:
+                    from src.core.monitors.api_sniffer import http_fetch as _http_fetch
+
+                    for candidate_path in cms_info.get("candidates", []):
+                        candidate_url = urljoin(board.url, candidate_path)
+                        resp = await _http_fetch(http, "GET", candidate_url)
+                        if resp is not None:
+                            # Count items if it's a list
+                            item_count = len(resp) if isinstance(resp, list) else None
+                            cms_results.append({
+                                "url": candidate_url,
+                                "items": item_count,
+                                "type": type(resp).__name__,
+                            })
+
+                return metadata, httpx_ok, diag, cms_results
         finally:
             await http.aclose()
 
-    metadata, httpx_ok = asyncio.run(_run())
+    metadata, httpx_ok, diagnostics, cms_results = asyncio.run(_run())
 
     # Save artifact
     from src.workspace.artifacts import deep_probe_run_dir, save_probe
@@ -489,6 +511,8 @@ def probe_deep(slug: str | None, board_alias: str | None, current_jobs: int):
                 "name": "api_sniffer",
                 "detected": metadata is not None,
                 "metadata": metadata,
+                "diagnostics": diagnostics,
+                "cms_results": cms_results,
             }
         ],
     )
@@ -555,6 +579,70 @@ def probe_deep(slug: str | None, board_alias: str | None, current_jobs: int):
         out.next_step("ws select monitor api_sniffer")
     else:
         out.warn("deep", "api_sniffer not detected — no XHR/fetch API found")
+
+        # Show captured exchanges for debugging
+        exchanges = diagnostics.get("exchanges", [])
+        if exchanges:
+            out.plain("deep", "")
+            out.plain("deep", f"Captured {len(exchanges)} XHR/fetch exchange(s):")
+            out.table(
+                ["Method", "Status", "Phase", "Arrays", "Items", "URL"],
+                [
+                    [
+                        ex["method"],
+                        str(ex["status"]),
+                        ex["phase"],
+                        str(ex["arrays"]),
+                        str(ex["best_items"]),
+                        ex["url"][:80],
+                    ]
+                    for ex in exchanges
+                ],
+            )
+        else:
+            out.plain("deep", "No XHR/fetch exchanges captured during page load.")
+
+        # Show script URL discoveries
+        script_urls = diagnostics.get("script_urls", [])
+        if script_urls:
+            out.plain("deep", "")
+            out.plain("deep", f"Found {len(script_urls)} API URL(s) in page scripts:")
+            for su in script_urls:
+                out.plain("deep", f"  {su['url']}")
+                out.plain("deep", f"    context: {su['context']}")
+            out.plain("deep", "")
+            # Suggest probing the first URL
+            first_url = script_urls[0]["url"]
+            out.next_step(f"ws probe api {first_url}")
+
+        # Show CMS detection and probe results
+        cms_info = diagnostics.get("cms")
+        if cms_info:
+            out.plain("deep", "")
+            out.plain("deep", f"CMS detected: {cms_info['cms']}")
+            if cms_results:
+                out.plain("deep", f"  {len(cms_results)} endpoint(s) responded:")
+                out.table(
+                    ["URL", "Type", "Items"],
+                    [
+                        [
+                            cr["url"],
+                            cr["type"],
+                            str(cr["items"]) if cr["items"] is not None else "?",
+                        ]
+                        for cr in cms_results
+                    ],
+                )
+                # Suggest probing the best hit
+                best = next(
+                    (cr for cr in cms_results if cr["items"] and cr["items"] > 0),
+                    cms_results[0] if cms_results else None,
+                )
+                if best:
+                    out.next_step(f"ws probe api {best['url']}")
+            else:
+                out.plain("deep", "  No candidate endpoints responded.")
+
         action_log.append_to_list(board.log, "probe deep", False, "api_sniffer not detected")
         save_board(slug, board)
 
@@ -1185,6 +1273,7 @@ def run_scraper(slug: str | None, board_alias: str | None, urls: tuple[str, ...]
     }
     save_quality(run_dir, quality)
     board.scraper_run["quality"] = {f: v for f, v in quality_totals.items()}
+    board.scraper_run["count"] = total
 
     out.plain("artifacts", f"Saved: {run_dir}")
 
@@ -1411,7 +1500,7 @@ _IMPORTANT_FIELDS = ("locations", "employment_type", "job_location_type")
     type=click.Choice(("good", "acceptable", "poor", "unusable")),
     help="Overall verdict",
 )
-@click.option("--verdict-notes", default="", help="Verdict notes")
+@click.option("--verdict-notes", required=True, help="Brief comment on this config's outcome")
 def feedback_cmd(
     name: str | None,
     slug: str | None,
@@ -1448,7 +1537,8 @@ def feedback_cmd(
     # Gather run quality data for auto-population
     run = cfg.get("run") or {}
     scraper_run = cfg.get("scraper_run") or {}
-    total = run.get("jobs", 0) or scraper_run.get("count", 0)
+    monitor_total = run.get("jobs", 0)
+    scraper_total = scraper_run.get("count", 0)
     run_quality = run.get("quality") or {}
     scraper_quality = scraper_run.get("quality") or {}
     coverage_data = {**run_quality, **scraper_quality}
@@ -1477,6 +1567,11 @@ def feedback_cmd(
     fields_fb: dict[str, dict] = {}
     for field_name in _FEEDBACK_FIELDS:
         count = coverage_data.get(field_name, 0)
+        # Use the total from whichever source provided this field's data
+        if field_name in scraper_quality:
+            total = scraper_total or monitor_total
+        else:
+            total = monitor_total or scraper_total
         coverage = f"{count}/{total}" if total else "0/0"
 
         # Determine quality: explicit > auto-populate

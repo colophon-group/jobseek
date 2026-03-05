@@ -31,6 +31,7 @@ from src.shared.api_sniff import (
     auto_map_fields,
     capture_exchanges,
     clean_headers,
+    detect_cms,
     detect_job_list,
     extract_items,
     extract_urls,
@@ -41,6 +42,7 @@ from src.shared.api_sniff import (
     find_url_field,
     infer_pagination,
     paginate_all,
+    scan_page_scripts,
     set_body_param,
     set_url_param,
     trigger_interactions,
@@ -76,11 +78,20 @@ def _merge_params(url: str, params: dict) -> str:
 # ---------------------------------------------------------------------------
 
 
-async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | None:
+async def can_handle(
+    url: str,
+    client: httpx.AsyncClient,
+    pw=None,
+    diagnostics: dict | None = None,
+) -> dict | None:
     """Detect whether *url* loads job data via XHR/fetch APIs.
 
     Returns a metadata dict suitable for use as monitor_config, or None
     if no job-list API is detected.  Requires Playwright (*pw*).
+
+    When *diagnostics* is provided, it is populated with exchange summaries,
+    script URL discoveries, and CMS detection results — even when detection
+    fails.  This allows callers to show diagnostic output to the user.
     """
     if pw is None:
         return None
@@ -98,8 +109,38 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
             await dismiss_overlays(page)
             await trigger_interactions(page, exchanges)
 
+            # Scan page scripts and detect CMS while page is still open
+            if diagnostics is not None:
+                try:
+                    diagnostics["script_urls"] = await scan_page_scripts(page)
+                except Exception:
+                    log.debug("api_sniffer.scan_scripts_failed", exc_info=True)
+                    diagnostics["script_urls"] = []
+
+                try:
+                    diagnostics["cms"] = await detect_cms(page)
+                except Exception:
+                    log.debug("api_sniffer.detect_cms_failed", exc_info=True)
+                    diagnostics["cms"] = None
+
             result = detect_job_list(exchanges, url)
             if result is None:
+                # Populate exchange diagnostics even on failure
+                if diagnostics is not None:
+                    diagnostics["exchanges"] = [
+                        {
+                            "method": ex.method,
+                            "url": ex.url[:120],
+                            "status": ex.status,
+                            "phase": ex.phase,
+                            "arrays": len(find_arrays(ex.body) if ex.body else []),
+                            "best_items": max(
+                                (len(items) for _, items in (find_arrays(ex.body) if ex.body else [])),
+                                default=0,
+                            ),
+                        }
+                        for ex in exchanges
+                    ]
                 return None
 
             ex = result.candidate.exchange

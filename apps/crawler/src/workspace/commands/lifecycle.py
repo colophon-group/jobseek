@@ -429,46 +429,53 @@ def _build_pr_body(ws: Workspace, boards: list[Board]) -> str:
                 lines.append(f" — {notes}")
             lines.append("")
 
-    # Configs comparison (collapsed)
-    all_configs = []
-    for b in boards:
-        for name, cfg in (b.configs or {}).items():
-            cfg_status = cfg.get("status", "?")
-            mtype = cfg.get("monitor_type", "?")
-            stype = cfg.get("scraper_type") or "—"
-            cost = cfg.get("cost", {})
-            mon_cost = cost.get("monitor_per_cycle")
-            cost_str = f"~{mon_cost}s" if mon_cost is not None else "—"
-            jobs = cfg.get("run", {}).get("jobs", "?") if cfg.get("run") else "—"
-            fb = cfg.get("feedback")
-            fb_verdict = fb.get("verdict", "") if fb else ""
-            rejection = cfg.get("rejection_reason", "")
-            # Build status cell
-            if name == b.active_config:
-                status_cell = "**selected**"
-            elif rejection:
-                status_cell = f"rejected: {rejection}"
-            else:
-                status_cell = cfg_status
-            # Build notes
-            notes = fb_verdict if fb_verdict else ""
-            all_configs.append((name, mtype, stype, jobs, cost_str, status_cell, notes))
-
-    if len(all_configs) > 1:
+    # Configs comparison (collapsed), grouped by board
+    any_configs = any(len(b.configs or {}) > 1 for b in boards)
+    if any_configs:
         lines.append("<details>")
         lines.append("<summary>Configurations evaluated</summary>")
         lines.append("")
-        lines.append("| # | Config | Monitor | Scraper | Jobs | Cost | Status | Notes |")
-        lines.append("|---|--------|---------|---------|------|------|--------|-------|")
-        for i, (name, mtype, stype, jobs, cost_str, status_cell, notes) in enumerate(  # noqa: E501
-            all_configs,
-            1,
-        ):
-            lines.append(
-                f"| {i} | {name} | `{mtype}` | {stype}"
-                f" | {jobs} | {cost_str} | {status_cell} | {notes} |"
-            )
-        lines.append("")
+        for b in boards:
+            board_configs = b.configs or {}
+            if len(board_configs) <= 1:
+                continue
+            lines.append(f"#### `{b.slug}`")
+            lines.append("")
+            lines.append("| # | Config | Monitor | Scraper | Jobs | Cost | Status | Notes |")
+            lines.append("|---|--------|---------|---------|------|------|--------|-------|")
+            for i, (name, cfg) in enumerate(board_configs.items(), 1):
+                cfg_status = cfg.get("status", "?")
+                mtype = cfg.get("monitor_type", "?")
+                stype = cfg.get("scraper_type") or "—"
+                cost = cfg.get("cost", {})
+                mon_cost = cost.get("monitor_per_cycle")
+                cost_str = f"~{mon_cost}s" if mon_cost is not None else "—"
+                jobs = cfg.get("run", {}).get("jobs", "?") if cfg.get("run") else "—"
+                fb = cfg.get("feedback")
+                fb_verdict = fb.get("verdict", "") if fb else ""
+                fb_notes = fb.get("verdict_notes", "") if fb else ""
+                rejection = cfg.get("rejection_reason", "")
+                # Build status cell
+                if name == b.active_config:
+                    status_cell = "**selected**"
+                elif rejection:
+                    status_cell = "rejected"
+                else:
+                    status_cell = cfg_status
+                # Build notes — show verdict + notes or rejection reason
+                if fb_notes:
+                    notes = f"{fb_verdict}: {fb_notes}" if fb_verdict else fb_notes
+                elif rejection:
+                    notes = rejection
+                elif fb_verdict:
+                    notes = fb_verdict
+                else:
+                    notes = ""
+                lines.append(
+                    f"| {i} | {name} | `{mtype}` | {stype}"
+                    f" | {jobs} | {cost_str} | {status_cell} | {notes} |"
+                )
+            lines.append("")
         lines.append("</details>")
         lines.append("")
 
@@ -541,7 +548,7 @@ def _execute_submit_step(
     elif step_key == "validated":
         errors = validate_csvs()
         if errors:
-            raise CsvToolError(f"CSV validation failed: {'; '.join(errors[:3])}")
+            raise CsvToolError(f"CSV validation failed: {'; '.join(str(e) for e in errors[:3])}")
 
     elif step_key == "committed":
         if not git.has_uncommitted_changes(["data/"]):

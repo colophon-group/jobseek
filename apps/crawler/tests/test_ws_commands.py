@@ -1150,6 +1150,8 @@ class TestFeedback:
                 "clean",
                 "--verdict",
                 "good",
+                "--verdict-notes",
+                "All fields clean, 10 jobs",
             ],
         )
         assert result.exit_code == 0
@@ -1160,6 +1162,7 @@ class TestFeedback:
         board = load_board("test", "careers")
         fb = board.configs["gh-api"]["feedback"]
         assert fb["verdict"] == "good"
+        assert fb["verdict_notes"] == "All fields clean, 10 jobs"
         assert fb["fields"]["title"]["quality"] == "clean"
         assert fb["fields"]["description"]["quality"] == "clean"
         assert fb["fields"]["locations"]["quality"] == "clean"
@@ -1181,6 +1184,8 @@ class TestFeedback:
                 "clean",
                 "--verdict",
                 "good",
+                "--verdict-notes",
+                "Default config test",
             ],
         )
         assert result.exit_code == 0
@@ -1208,6 +1213,8 @@ class TestFeedback:
                 "clean",
                 "--verdict",
                 "good",
+                "--verdict-notes",
+                "Auto-absent test",
             ],
         )
         assert result.exit_code == 0
@@ -1271,6 +1278,8 @@ class TestFeedback:
                 "noisy",
                 "--verdict",
                 "poor",
+                "--verdict-notes",
+                "Titles noisy, locations incomplete",
             ],
         )
         assert result.exit_code == 0
@@ -1302,6 +1311,8 @@ class TestFeedback:
                 "clean",
                 "--verdict",
                 "good",
+                "--verdict-notes",
+                "Test missing locations flag",
             ],
         )
         assert result.exit_code != 0

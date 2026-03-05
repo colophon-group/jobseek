@@ -251,6 +251,20 @@ dom — Link Extraction (fallback)
     actions      Browser action pipeline (see: ws help actions)
     url_filter   Regex filter for discovered URLs (see: ws help monitor sitemap)
 
+  Pagination (multi-page career sites):
+    {"render": false, "url_filter": "/jobs/", "pagination": {"param_name": "page", "max_pages": 15}}
+
+    pagination.param_name   Query parameter name (required)
+    pagination.start        First page's param value (default: 1)
+    pagination.increment    Step per page (default: 1)
+    pagination.max_pages    Hard limit (default: 50, system cap: 200)
+    pagination.browser      If true, fetch via page.evaluate(fetch(...)) inside
+                            Playwright context — preserves cookies (default: false)
+
+    Fetching starts at start + increment (page 1 is the board URL itself).
+    Stops when: no new links found, fetch fails, or max_pages reached.
+    Works with both render: false (httpx) and render: true (Playwright).
+
   Discovery:   Extracts all <a href> links, filters for URLs containing
                job/career/position/posting/opening/role/vacancy keywords.
 
@@ -835,15 +849,29 @@ Browser Action Pipeline — pre-extraction actions for Playwright
     {"action": "dismiss_overlays"}
         Remove common cookie/consent banners (8 built-in selectors)
 
+    {"action": "repeat", "selector": "button.load-more", "max": 50, "wait_ms": 2000}
+        Click an element repeatedly until no new <a href> links appear.
+        Stops when: selector disappears, no new links after click, or max reached.
+        Default timeout: 300s (vs normal action's 10s).
+        Options:
+          selector   CSS selector to click (required)
+          max        Max iterations (default: 50)
+          wait_ms    Ms to wait after each click (default: 2000)
+        Use for "Load More" / "Show More" buttons on infinite-scroll pages.
+
   Per-action timeout:
     {"action": "click", "selector": ".btn", "timeout": 5}
         Override default 10s timeout (value in seconds)
 
-  Example pipeline:
+  Example pipelines:
     "actions": [
       {"action": "dismiss_overlays"},
       {"action": "click", "selector": "button[data-load-all]"},
       {"action": "wait", "ms": 2000}
+    ]
+
+    "actions": [
+      {"action": "repeat", "selector": "button.load-more", "max": 30, "wait_ms": 1500}
     ]"""
 
 ARTIFACTS = """\

@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from src.shared.browser import (
+    _REPEAT_TIMEOUT,
     ACTION_TIMEOUT,
     DEFAULT_TIMEOUT,
     DEFAULT_USER_AGENT,
@@ -352,3 +353,65 @@ class TestRender:
         with patch("playwright.async_api.async_playwright", return_value=mock_async_pw):
             html = await render("https://example.com", None)
         assert html == "<html></html>"
+
+
+# ---------------------------------------------------------------------------
+# TestRepeatAction
+# ---------------------------------------------------------------------------
+
+
+class TestRepeatAction:
+    async def test_repeat_stops_when_no_new_links(self):
+        """Same link count before and after click → stops after 1 iteration."""
+        page = _make_page()
+        # evaluate returns same count both times (before=10, after=10)
+        page.evaluate = AsyncMock(side_effect=[10, 10])
+        with patch.object(asyncio, "sleep", new_callable=AsyncMock):
+            await run_actions(page, [{"action": "repeat", "selector": "button.more"}])
+        # 2 evaluate calls: before + after
+        assert page.evaluate.await_count == 2
+        # Click happened once
+        page.locator.return_value.first.click.assert_awaited_once()
+
+    async def test_repeat_stops_at_max(self):
+        """Stops at max iterations even when new links keep appearing."""
+        page = _make_page()
+        # Each pair of evaluate calls: before=N, after=N+5 (always new links)
+        counts = []
+        for i in range(5):
+            counts.extend([10 + i * 5, 15 + i * 5])
+        page.evaluate = AsyncMock(side_effect=counts)
+        with patch.object(asyncio, "sleep", new_callable=AsyncMock):
+            await run_actions(
+                page, [{"action": "repeat", "selector": "button.more", "max": 3}]
+            )
+        # 3 iterations × 2 evaluate calls = 6
+        assert page.evaluate.await_count == 6
+        assert page.locator.return_value.first.click.await_count == 3
+
+    async def test_repeat_stops_when_selector_gone(self):
+        """Stops when the selector element disappears."""
+        page = _make_page()
+        page.evaluate = AsyncMock(return_value=10)
+        # First iteration: element exists → count() == 0 on second
+        page.locator.return_value.first.count = AsyncMock(side_effect=[0])
+        with patch.object(asyncio, "sleep", new_callable=AsyncMock):
+            await run_actions(page, [{"action": "repeat", "selector": "button.more"}])
+        # Only 1 evaluate (before count), then selector gone → no click
+        assert page.evaluate.await_count == 1
+        page.locator.return_value.first.click.assert_not_awaited()
+
+    async def test_repeat_default_timeout(self):
+        """Repeat actions use _REPEAT_TIMEOUT (300s) by default."""
+        assert _REPEAT_TIMEOUT == 300.0
+
+    async def test_repeat_uses_custom_wait_ms(self):
+        """wait_ms parameter controls sleep duration between clicks."""
+        page = _make_page()
+        # 1 iteration: before=10, after=10 (stops)
+        page.evaluate = AsyncMock(side_effect=[10, 10])
+        with patch.object(asyncio, "sleep", new_callable=AsyncMock) as mock_sleep:
+            await run_actions(
+                page, [{"action": "repeat", "selector": "button.more", "wait_ms": 500}]
+            )
+            mock_sleep.assert_awaited_once_with(0.5)

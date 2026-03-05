@@ -1130,3 +1130,129 @@ async def extract_urls_via_dom_crossref(
         urls.append(full_url)
 
     return urls
+
+
+# ---------------------------------------------------------------------------
+# Page script scanning — discovers API URLs hidden in inline JS
+# ---------------------------------------------------------------------------
+
+# Patterns that suggest an API endpoint in JS source
+_SCRIPT_URL_RE = re.compile(
+    r"""(?:"""
+    # fetch("...") or fetch('...')
+    r"""fetch\s*\(\s*["']([^"']+)["']"""
+    r"""|"""
+    # $.ajax/get/post("...") or jQuery.ajax({url: "..."})
+    r"""\$\.(?:ajax|get|post|getJSON)\s*\(\s*["']([^"']+)["']"""
+    r"""|"""
+    # url: "..." inside ajax config objects
+    r"""url\s*:\s*["']([^"']+)["']"""
+    r""")""",
+    re.IGNORECASE,
+)
+
+# Simpler pattern for URL-like strings that contain job/career/API markers
+_API_URL_STRING_RE = re.compile(
+    r"""["']((?:https?://[^"'\s]+|/[^"'\s]+)"""
+    r"""(?:\.php|/api/|/wp-json/|/jobs|/careers|/positions|/openings|/vacancies)"""
+    r"""[^"'\s]*)["']""",
+    re.IGNORECASE,
+)
+
+# Noise patterns to filter out (analytics, CDN, etc.)
+_SCRIPT_URL_NOISE = re.compile(
+    r"google|analytics|facebook|sentry|segment|amplitude|mixpanel|hotjar"
+    r"|newrelic|cloudwatch|doubleclick|googlesyndication|googletagmanager"
+    r"|gtag|pixel|tracking|beacon|fonts\.|cdn\.|static\.|assets\.",
+    re.IGNORECASE,
+)
+
+
+async def scan_page_scripts(page) -> list[dict]:
+    """Scan inline ``<script>`` tags for API URL patterns.
+
+    Returns ``[{"url": ..., "context": ...}, ...]`` where *context* is the
+    matching source line (truncated) for human review.
+    """
+    scripts: list[str] = await page.evaluate("""() => {
+        return [...document.querySelectorAll('script:not([src])')].map(s => s.textContent);
+    }""")
+
+    seen: set[str] = set()
+    results: list[dict] = []
+
+    for script_text in scripts:
+        if not script_text or len(script_text) < 10:
+            continue
+
+        # Try explicit fetch/ajax patterns
+        for match in _SCRIPT_URL_RE.finditer(script_text):
+            url = match.group(1) or match.group(2) or match.group(3)
+            if not url or url in seen or _SCRIPT_URL_NOISE.search(url):
+                continue
+            seen.add(url)
+            start = max(0, match.start() - 20)
+            end = min(len(script_text), match.end() + 20)
+            context = script_text[start:end].replace("\n", " ").strip()
+            results.append({"url": url, "context": context[:120]})
+
+        # Try URL-like strings with job/API markers
+        for match in _API_URL_STRING_RE.finditer(script_text):
+            url = match.group(1)
+            if not url or url in seen or _SCRIPT_URL_NOISE.search(url):
+                continue
+            seen.add(url)
+            start = max(0, match.start() - 20)
+            end = min(len(script_text), match.end() + 20)
+            context = script_text[start:end].replace("\n", " ").strip()
+            results.append({"url": url, "context": context[:120]})
+
+    return results
+
+
+# ---------------------------------------------------------------------------
+# CMS detection — identifies WordPress and suggests candidate API endpoints
+# ---------------------------------------------------------------------------
+
+# WordPress markers in page HTML
+_WP_MARKERS = (
+    "wp-content",
+    "wp-includes",
+    "wp-json",
+    'name="generator" content="WordPress',
+)
+
+# Common WordPress job endpoint paths to probe
+_WP_CANDIDATE_PATHS = (
+    "/wp-json/wp/v2/jobs",
+    "/wp-json/wp/v2/job_listing",
+    "/wp-json/wp/v2/job-listings",
+    "/wp-json/wp/v2/job-listing?per_page=100",
+    "/wp-json/wp/v2/posts?categories=jobs",
+    "/wp-admin/admin-ajax.php?action=get_jobs",
+    "/wp-admin/admin-ajax.php?action=nopriv_get_job_listings",
+    "/get-jobs.php",
+)
+
+
+async def detect_cms(page) -> dict | None:
+    """Detect CMS type from page content.
+
+    Currently detects WordPress.  Returns ``{"cms": "wordpress",
+    "candidates": [...]}`` or ``None``.
+    """
+    try:
+        html = await page.content()
+    except Exception:
+        return None
+
+    html_lower = html.lower()
+    is_wp = any(marker.lower() in html_lower for marker in _WP_MARKERS)
+
+    if is_wp:
+        return {
+            "cms": "wordpress",
+            "candidates": list(_WP_CANDIDATE_PATHS),
+        }
+
+    return None

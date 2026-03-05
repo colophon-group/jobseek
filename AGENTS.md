@@ -47,7 +47,7 @@ ws select monitor <type> [--as <name>] [--config JSON]
 ws run monitor                         # Test crawl
 ws select scraper <type> [--config JSON]
 ws run scraper [--url URL ...]         # Test scrape sample pages
-ws feedback [<config>] --title clean --description clean --verdict good  # Record quality
+ws feedback [<config>] --title clean --description clean --verdict good --verdict-notes "..."
 ws select config <name>                # Re-activate a previously tested config
 ws reject-config <name> --reason "..." # Mark a config as rejected
 ws submit [--summary "..."] [--force]  # Validate, commit, push, post stats + transcript
@@ -156,6 +156,23 @@ ws probe monitor
 
 `add board` auto-prefixes the alias with the company slug (`careers` → `stripe-careers`) and auto-activates the board. `probe monitor` tries all monitor types and reports results.
 
+### 4b. API Discovery Fallback (when probes return 0 jobs)
+
+If `ws probe monitor` and `ws probe deep` both return 0 jobs, the site may load data via APIs that the probes didn't trigger. Before falling back to DOM workarounds, inspect the page source for API URL patterns:
+
+```bash
+curl -s "<board-url>" -o /tmp/page.html
+grep -oE 'fetch\(["'"'"'][^"'"'"']+|\.ajax\(["'"'"'][^"'"'"']+|\.php|/api/|/wp-json/' /tmp/page.html
+```
+
+Look for: `fetch("...")`, `$.ajax(...)`, `.php` endpoints, `/api/` paths, `/wp-json/` routes. If you find a candidate URL, probe it:
+
+```bash
+ws probe api <discovered-url>
+```
+
+`ws probe deep` now also scans page scripts automatically and reports discovered URLs. Check its output for script URL discoveries and CMS detection results before trying other approaches.
+
 ### 5. Select and Test Monitor
 
 ```bash
@@ -172,7 +189,17 @@ ws run monitor
 
 After the test crawl, compare the job count against the website's displayed total. If counts don't match, iterate. Use `ws select config <name>` to switch back to a previously tested configuration.
 
-**Zero jobs**: Step 1 confirmed listings exist, so 0 results indicates misconfiguration. Debug systematically — try different monitor types, check API tokens, verify the URL.
+**Zero jobs**: Step 1 confirmed listings exist, so 0 results indicates misconfiguration. Debug systematically — try different monitor types, check API tokens, verify the URL. See Step 4b for API discovery fallback.
+
+**Multi-page career sites**: When listings are spread across `?page=1`, `?page=2`, etc., use `pagination` config on the DOM monitor instead of writing inline JS evaluate scripts:
+```json
+{"render": false, "url_filter": "/jobs/", "pagination": {"param_name": "page", "max_pages": 15}}
+```
+
+**"Load More" buttons**: When a page has a "Load More" / "Show More" button, use the `repeat` action with `render: true`:
+```json
+{"render": true, "actions": [{"action": "repeat", "selector": "button.load-more", "max": 30, "wait_ms": 2000}]}
+```
 
 ### 6. Select and Test Scraper (non-API monitors only)
 
@@ -252,11 +279,17 @@ Run `ws run scraper` again after config changes to verify new fields appear and 
 
 ### 7. Record Feedback
 
-After testing, record extraction quality feedback. This is **mandatory before submit**.
+After testing, record extraction quality feedback. This is **mandatory before submit**. Every config must have feedback with `--verdict-notes` explaining the outcome — these notes appear in the PR's "Configurations evaluated" table.
 
 ```bash
-ws feedback --title clean --description clean --verdict good
+ws feedback --title clean --description clean --verdict good \
+  --verdict-notes "Greenhouse API, 138 jobs, all fields clean"
 ```
+
+The `--verdict-notes` should be a brief comment (one sentence) explaining what happened with this config. Examples:
+- `"Greenhouse API, 138 jobs, all fields clean"` — straightforward success
+- `"Sitemap found 200 URLs but only 40 were jobs, rest were blog posts"` — partial success
+- `"DOM scraper with render:false, titles and descriptions clean but locations missing"` — acceptable with caveats
 
 Quality values per field: `clean` (correct), `noisy` (partially correct), `unusable` (wrong data), `absent` (field not extracted).
 
@@ -322,7 +355,8 @@ ws select monitor greenhouse
 ws run monitor
 
 # Feedback + submit
-ws feedback --title clean --description clean --verdict good
+ws feedback --title clean --description clean --verdict good \
+  --verdict-notes "Greenhouse API, 138 jobs, all fields clean"
 ws submit --summary "Straightforward greenhouse config, 138 jobs"
 ```
 

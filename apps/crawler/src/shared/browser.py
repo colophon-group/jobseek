@@ -101,6 +101,7 @@ async def navigate(
 
 
 ACTION_TIMEOUT = 10.0  # seconds
+_REPEAT_TIMEOUT = 300.0  # seconds — repeat actions get a longer default
 
 
 async def run_actions(page, actions: list[dict]) -> None:
@@ -111,8 +112,9 @@ async def run_actions(page, actions: list[dict]) -> None:
     a warning and execution continues with the next action.
     """
     for action in actions:
-        timeout = action.get("timeout", ACTION_TIMEOUT)
         kind = action.get("action")
+        default_timeout = _REPEAT_TIMEOUT if kind == "repeat" else ACTION_TIMEOUT
+        timeout = action.get("timeout", default_timeout)
         try:
             await asyncio.wait_for(_execute_action(page, action, kind), timeout=timeout)
         except TimeoutError:
@@ -144,8 +146,31 @@ async def _execute_action(page, action: dict, kind: str | None) -> None:
         await page.evaluate(script)
     elif kind == "dismiss_overlays":
         await dismiss_overlays(page)
+    elif kind == "repeat":
+        await _execute_repeat(page, action)
     else:
         log.warning("browser.action.unknown", action=kind)
+
+
+async def _execute_repeat(page, action: dict) -> None:
+    """Click an element repeatedly until no new links appear or selector is gone."""
+    selector = action["selector"]
+    max_iter = action.get("max", 50)
+    wait_ms = action.get("wait_ms", 2000)
+
+    for i in range(max_iter):
+        before = await page.evaluate("() => document.querySelectorAll('a[href]').length")
+        loc = page.locator(selector).first
+        if await loc.count() == 0:
+            log.info("browser.repeat.selector_gone", iteration=i)
+            break
+        await loc.click()
+        await asyncio.sleep(wait_ms / 1000)
+        after = await page.evaluate("() => document.querySelectorAll('a[href]').length")
+        if after <= before:
+            log.info("browser.repeat.no_new_links", iteration=i + 1, links=after)
+            break
+        log.debug("browser.repeat.click", iteration=i + 1, new=after - before, total=after)
 
 
 async def dismiss_overlays(page) -> None:
