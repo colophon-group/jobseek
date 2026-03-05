@@ -1,6 +1,6 @@
 [project]
 name = "jobseek-crawler"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Job listing monitor and extraction crawler"
 requires-python = ">=3.12"
 dependencies = [
@@ -14,6 +14,7 @@ dependencies = [
     "polars>=1.38.1",
     "jmespath>=1.0",
     "upstash-redis>=1.6.0",
+    "Pillow>=10.0",
 ]
 
 [project.scripts]
@@ -43,6 +44,10 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 
 [tool.ruff.lint.isort]
 required-imports = ["from __future__ import annotations"]
+
+[tool.hatch.version]
+path = "VERSION"
+pattern = "(?P<version>.+)"
 
 [build-system]
 requires = ["hatchling"]

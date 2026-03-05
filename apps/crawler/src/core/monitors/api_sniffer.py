@@ -16,6 +16,7 @@ establish cookies/auth context, then replays the API via in-browser fetch.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import re
 from math import ceil
@@ -36,11 +37,12 @@ from src.shared.api_sniff import (
     extract_items,
     extract_urls,
     extract_urls_via_dom_crossref,
-    fetch_json,
     find_arrays,
     find_total_count,
     find_url_field,
     infer_pagination,
+    make_browser_fetcher,
+    make_http_fetcher,
     paginate_all,
     scan_page_scripts,
     set_body_param,
@@ -62,6 +64,33 @@ _HTTP_MAX_PAGES = 200  # higher limit for plain httpx (no Playwright overhead)
 _DEFAULT_WAIT = "load"
 _DEFAULT_TIMEOUT = 20_000
 _DEFAULT_SETTLE = 3  # seconds to wait after navigation for XHRs to complete
+
+
+def _derive_url_match(api_url: str) -> str | None:
+    """Derive an ``api_url_match`` glob from a URL with rotating-token segments.
+
+    Replaces path segments that look like rotating tokens (contain mixed
+    alphanumeric chars + separators, e.g. ``apigw-x0cceuow60``) with ``*``.
+    Returns ``None`` if no token-like segment is found.
+
+    Called during ``can_handle`` (probe) so the pattern is stored in config.
+    """
+    parsed = urlparse(api_url)
+    segments = parsed.path.strip("/").split("/")
+    has_token = False
+    pattern_segments = []
+    for seg in segments:
+        is_versioned = bool(re.match(r"^v\d+$", seg, re.I))
+        has_mixed = bool(re.search(r"[a-z]", seg, re.I)) and bool(re.search(r"\d", seg))
+        has_separator = bool(re.search(r"[-_]", seg)) and len(seg) > 8
+        if not is_versioned and (has_mixed and has_separator):
+            pattern_segments.append("*")
+            has_token = True
+        else:
+            pattern_segments.append(seg)
+    if not has_token:
+        return None
+    return f"{parsed.netloc}/{'/'.join(pattern_segments)}"
 
 
 def _merge_params(url: str, params: dict) -> str:
@@ -177,6 +206,11 @@ async def can_handle(
 
             base_url = urlunparse(parsed_url._replace(query=""))
 
+            # Derive api_url_match for URLs with token-like path segments.
+            # Stored in config so that _discover_live_url can re-capture the
+            # URL at runtime if the token rotates.
+            api_url_match = _derive_url_match(base_url)
+
             # Build metadata
             meta: dict = {
                 "api_url": base_url,
@@ -186,6 +220,8 @@ async def can_handle(
                 "score": result.candidate.score,
                 "browser": True,
             }
+            if api_url_match:
+                meta["api_url_match"] = api_url_match
             if clean_params:
                 meta["params"] = clean_params
             if result.url_field:
@@ -268,16 +304,21 @@ async def discover(
     board_url = board["board_url"]
     api_url = metadata.get("api_url")
 
-    # Plain HTTP mode — no Playwright needed
+    # Plain HTTP mode — no Playwright needed (pw passed for api_url_match fallback)
     if api_url and not metadata.get("browser"):
-        return await _discover_http(board, client, metadata)
+        return await _discover_http(board, client, metadata, pw=pw)
+
+    if api_url:
+        # Replay mode — browser preferred, HTTP fallback
+        if pw is not None:
+            return await _discover_replay(board_url, metadata, pw, client=client)
+        else:
+            log.warning("api_sniffer.no_playwright_fallback_http", board_url=board_url)
+            return await _discover_http(board, client, metadata, pw=pw)
 
     if pw is None:
         log.error("api_sniffer.no_playwright", board_url=board_url)
         return set()
-
-    if api_url:
-        return await _discover_replay(board_url, metadata, pw)
     return await _discover_auto(board_url, metadata, pw)
 
 
@@ -393,6 +434,7 @@ async def _discover_http(
     board: dict,
     client: httpx.AsyncClient,
     config: dict,
+    pw=None,
 ) -> list[DiscoveredJob] | set[str]:
     """Discover jobs via plain httpx — no Playwright needed.
 
@@ -406,6 +448,10 @@ async def _discover_http(
     response (largest array-of-dicts, or longest HTML string with links).
     Also auto-detects *total_path*, *url_field*, and *fields* when not
     explicitly configured.
+
+    If the initial fetch fails and ``api_url_match`` is configured with
+    *pw* available, opens a browser to discover the live URL and retries
+    via HTTP.
     """
     board_url = board["board_url"]
     api_url = config["api_url"]
@@ -426,7 +472,42 @@ async def _discover_http(
     headers = clean_headers(request_headers)
 
     # -- first page --------------------------------------------------------
+    api_url_match = config.get("api_url_match")
     data = await http_fetch(client, method, api_url, headers, post_data)
+
+    if data is None and api_url_match and pw is not None:
+        # Stored URL may be stale (rotating token).  Open browser to discover
+        # the live URL, then retry via plain HTTP.
+        from src.shared.browser import BROWSER_KEYS, open_page
+
+        wait = config.get("wait", _DEFAULT_WAIT)
+        timeout = config.get("timeout", _DEFAULT_TIMEOUT)
+        settle = config.get("settle", _DEFAULT_SETTLE)
+        browser_config = {k: v for k, v in config.items() if k in BROWSER_KEYS}
+
+        route_params = config.get("route_params")
+        async with open_page(pw, browser_config) as page:
+            fresh_url, captured_data = await _discover_live_url(
+                page,
+                board_url,
+                api_url,
+                api_url_match,
+                wait,
+                timeout,
+                settle,
+                route_params=route_params,
+            )
+        if captured_data is not None:
+            # Use the response the page's own JS already fetched
+            log.info("api_sniffer.using_captured_response", url=fresh_url[:80])
+            api_url = fresh_url
+            data = captured_data
+        elif fresh_url != api_url:
+            # URL changed but no response captured — retry via HTTP
+            log.info("api_sniffer.http_retry_live_url", old=api_url[:80], new=fresh_url[:80])
+            api_url = fresh_url
+            data = await http_fetch(client, method, api_url, headers, post_data)
+
     if data is None:
         return list() if fields_map else set()
 
@@ -527,53 +608,36 @@ async def _discover_http(
 
     # -- list/items mode ---------------------------------------------------
     if isinstance(content, list):
+        from src.shared.api_sniff import ArrayCandidate, Exchange, JobListResult, PaginationInfo
+
         items = [item for item in content if isinstance(item, dict)]
 
         if pagination_config and items:
-            page_size = len(items)
-            pag_param = pagination_config["param_name"]
-            pag_start = pagination_config.get("start_value", 0)
-            pag_increment = pagination_config.get("increment", 1)
-            pag_location = pagination_config.get("location", "query")
-
-            max_pages_limit = _HTTP_MAX_PAGES
-            if total and page_size > 0:
-                max_pages_limit = min(ceil(total / page_size), _HTTP_MAX_PAGES)
-
-            current_value = pag_start + pag_increment
-            pages_fetched = 1
-
-            while pages_fetched < max_pages_limit:
-                if pag_location == "query":
-                    fetch_url = set_url_param(api_url, pag_param, current_value)
-                    fetch_body = post_data
-                else:
-                    fetch_url = api_url
-                    fetch_body = set_body_param(post_data, pag_param, current_value)
-
-                page_data = await http_fetch(
-                    client,
-                    method,
-                    fetch_url,
-                    headers,
-                    fetch_body,
-                )
-                if page_data is None:
-                    break
-
-                page_content = resolve_path(page_data, json_path) if json_path else page_data
-                if not isinstance(page_content, list):
-                    break
-                page_items = [i for i in page_content if isinstance(i, dict)]
-                if not page_items:
-                    break
-
-                items.extend(page_items)
-                if len(page_items) < page_size:
-                    break
-
-                pages_fetched += 1
-                current_value += pag_increment
+            pag = PaginationInfo(
+                param_name=pagination_config["param_name"],
+                style=pagination_config.get("style", "page"),
+                start_value=pagination_config.get("start_value", 0),
+                increment=pagination_config.get("increment", 1),
+                location=pagination_config.get("location", "query"),
+            )
+            ex = Exchange(
+                method=method,
+                url=api_url,
+                request_headers=request_headers,
+                post_data=post_data,
+                status=200,
+                body=data,
+                content_type="application/json",
+                phase="load",
+            )
+            cand = ArrayCandidate(exchange=ex, json_path=json_path or "$", items=items)
+            job_result = JobListResult(
+                candidate=cand,
+                url_field=url_field,
+                total_count=total,
+                pagination=pag,
+            )
+            items = await paginate_all(make_http_fetcher(client), job_result, _HTTP_MAX_PAGES)
 
         if len(items) > MAX_ITEMS:
             log.warning("api_sniffer.truncated", total=len(items), cap=MAX_ITEMS)
@@ -615,14 +679,107 @@ async def _discover_http(
     return list() if fields_map else set()
 
 
+async def _discover_live_url(
+    page,
+    board_url: str,
+    api_url: str,
+    api_url_match: str,
+    wait: str,
+    timeout: int,
+    settle: float,
+    route_params: dict[str, str] | None = None,
+) -> tuple[str, object | None]:
+    """Navigate and capture the live API URL + response matching *api_url_match*.
+
+    When APIs use rotating tokens in the URL (e.g. ``gateway.example.com/TOKEN/v1/jobs``),
+    the stored ``api_url`` goes stale. This helper navigates the page, intercepts
+    responses matching the glob, and returns ``(updated_api_url, response_json)``.
+
+    When *route_params* is provided, matching requests are intercepted via
+    ``page.route()`` and their query parameters are overridden before the
+    page's own JS sends them.  This lets us e.g. increase ``pageSize`` to
+    fetch all items in one request — using the page's native request
+    mechanism (bypasses bot protection that blocks injected ``fetch()``).
+
+    Falls back to ``(api_url, None)`` if no match.
+    """
+    from fnmatch import fnmatch
+
+    from src.shared.browser import navigate
+
+    live_response = None  # Playwright Response object
+
+    def _on_response(resp):
+        nonlocal live_response
+        if live_response:
+            return
+        parsed = urlparse(resp.url)
+        if fnmatch(f"{parsed.netloc}{parsed.path}", api_url_match):
+            live_response = resp
+
+    page.on("response", _on_response)
+
+    # Optionally modify the page's own outgoing requests
+    if route_params:
+
+        async def _modify_request(route):
+            parsed = urlparse(route.request.url)
+            params = parse_qs(parsed.query, keep_blank_values=True)
+            for k, v in route_params.items():
+                params[k] = [str(v)]
+            new_query = urlencode(params, doseq=True)
+            new_url = urlunparse(parsed._replace(query=new_query))
+            log.debug("api_sniffer.route_modified", params=route_params)
+            await route.continue_(url=new_url)
+
+        # Convert fnmatch glob to a Playwright glob (** prefix for protocol+host)
+        await page.route(f"**/{api_url_match.split('/', 1)[-1]}*", _modify_request)
+
+    try:
+        await navigate(page, board_url, {"wait": wait, "timeout": timeout})
+    except Exception:
+        log.warning("api_sniffer.navigation_failed", board_url=board_url, exc_info=True)
+    await asyncio.sleep(settle)
+
+    if live_response:
+        live_url = live_response.url
+        live_base = urlunparse(urlparse(live_url)._replace(query=""))
+        stored_base = urlunparse(urlparse(api_url)._replace(query=""))
+        updated_url = api_url
+        if live_base != stored_base:
+            log.info(
+                "api_sniffer.live_url_updated",
+                stored=stored_base[:80],
+                live=live_base[:80],
+            )
+            updated_url = api_url.replace(stored_base, live_base)
+
+        # Try to read the response body (already available, page's JS fetched it)
+        try:
+            data = await live_response.json()
+            log.info("api_sniffer.live_response_captured", url=live_url[:80])
+            return updated_url, data
+        except Exception:
+            log.debug("api_sniffer.live_response_read_failed", exc_info=True)
+            return updated_url, None
+
+    return api_url, None
+
+
 async def _discover_replay(
     board_url: str,
     config: dict,
     pw,
+    client=None,
 ) -> list[DiscoveredJob] | set[str]:
-    """Replay a stored API call, optionally paginating."""
+    """Replay a stored API call, optionally paginating.
+
+    Supports HTTP fallback: if the in-browser fetch fails and *client* is
+    provided, retries with plain httpx.  Browser config keys (``headless``,
+    ``user_agent``) are forwarded to Playwright.
+    """
     from src.shared.api_sniff import ArrayCandidate, Exchange, JobListResult, PaginationInfo
-    from src.shared.browser import navigate, open_page
+    from src.shared.browser import BROWSER_KEYS, navigate, open_page
 
     api_url = config["api_url"]
     params = config.get("params")
@@ -636,27 +793,86 @@ async def _discover_replay(
     request_headers = config.get("request_headers", {})
     fields_map: dict[str, str] = config.get("fields") or {}
     pagination_config = config.get("pagination")
+    api_url_match = config.get("api_url_match")
+    route_params = config.get("route_params")
 
     wait = config.get("wait", _DEFAULT_WAIT)
     timeout = config.get("timeout", _DEFAULT_TIMEOUT)
     settle = config.get("settle", _DEFAULT_SETTLE)
 
-    async with open_page(pw, {}) as page:
-        # Navigate to board_url to establish cookies/auth context
-        try:
-            await navigate(page, board_url, {"wait": wait, "timeout": timeout})
-        except Exception:
-            log.warning("api_sniffer.navigation_failed", board_url=board_url, exc_info=True)
+    browser_config = {k: v for k, v in config.items() if k in BROWSER_KEYS}
 
-        await asyncio.sleep(settle)
+    async with open_page(pw, browser_config) as page:
+        # route_params requires upfront navigation to intercept the page's
+        # own request and modify its params.  Otherwise, navigate just to
+        # establish cookies, then try the stored URL via replay first.
+        captured_data = None
+        if api_url_match and route_params:
+            api_url, captured_data = await _discover_live_url(
+                page,
+                board_url,
+                api_url,
+                api_url_match,
+                wait,
+                timeout,
+                settle,
+                route_params=route_params,
+            )
+        else:
+            # Navigate to board_url to establish cookies/auth context
+            try:
+                await navigate(page, board_url, {"wait": wait, "timeout": timeout})
+            except Exception:
+                log.warning("api_sniffer.navigation_failed", board_url=board_url, exc_info=True)
+            await asyncio.sleep(settle)
 
-        # Replay the API call
+        # Replay the API call — try browser first, fall back to HTTP
         headers = clean_headers(request_headers)
-        try:
-            data = await fetch_json(page, method, api_url, headers, post_data)
-        except Exception:
-            log.error("api_sniffer.replay_failed", api_url=api_url, exc_info=True)
-            return list() if fields_map else set()
+        fetch_fn = make_browser_fetcher(page)
+        using_http = False
+        data = captured_data  # may already have data from route_params capture
+        if data is None:
+            try:
+                data = await fetch_fn(method, api_url, headers, post_data)
+            except Exception:
+                # Stored URL may be stale — try live URL discovery
+                if api_url_match:
+                    log.info("api_sniffer.retry_with_live_url", pattern=api_url_match)
+                    fresh_url, fresh_data = await _discover_live_url(
+                        page,
+                        board_url,
+                        api_url,
+                        api_url_match,
+                        wait,
+                        timeout,
+                        settle,
+                        route_params=route_params,
+                    )
+                    if fresh_data is not None:
+                        api_url = fresh_url
+                        data = fresh_data
+                    elif fresh_url != api_url:
+                        api_url = fresh_url
+                        with contextlib.suppress(Exception):
+                            data = await fetch_fn(method, api_url, headers, post_data)
+
+            if data is None and client is not None:
+                log.warning(
+                    "api_sniffer.browser_fetch_failed_fallback_http",
+                    api_url=api_url,
+                    exc_info=not using_http,
+                )
+                fetch_fn = make_http_fetcher(client)
+                using_http = True
+                try:
+                    data = await fetch_fn(method, api_url, headers, post_data)
+                except Exception:
+                    log.error("api_sniffer.http_fallback_failed", api_url=api_url, exc_info=True)
+                    return list() if fields_map else set()
+
+            if data is None:
+                log.error("api_sniffer.replay_failed", api_url=api_url, exc_info=True)
+                return list() if fields_map else set()
 
         items = extract_items(data, json_path)
         if not items:
@@ -682,8 +898,6 @@ async def _discover_replay(
                 content_type="application/json",
                 phase="load",
             )
-            from src.shared.api_sniff import find_total_count
-
             total_count = find_total_count(data, json_path)
             cand = ArrayCandidate(exchange=ex, json_path=json_path, items=items)
             job_result = JobListResult(
@@ -692,7 +906,8 @@ async def _discover_replay(
                 total_count=total_count,
                 pagination=pag,
             )
-            items = await paginate_all(page, job_result, MAX_PAGES)
+            max_pg = _HTTP_MAX_PAGES if using_http else MAX_PAGES
+            items = await paginate_all(fetch_fn, job_result, max_pg)
 
         # Cap
         if len(items) > MAX_ITEMS:
@@ -702,20 +917,22 @@ async def _discover_replay(
         # Build URL map via DOM cross-ref if no url_field and no url_template
         url_map: dict[str, str] | None = None
         if not url_field and not url_template:
-            from src.shared.api_sniff import ID_FIELDS as _ID_FIELDS
+            try:
+                from src.shared.api_sniff import ID_FIELDS as _ID_FIELDS
 
-            dom_urls = await extract_urls_via_dom_crossref(page, items, board_url)
-            if dom_urls:
-                # Build id → url map
-                id_f = None
-                for key in items[0]:
-                    if _ID_FIELDS.match(key):
-                        id_f = key
-                        break
-                if id_f:
-                    url_map = {}
-                    for item, u in zip(items, dom_urls, strict=False):
-                        url_map[str(item.get(id_f, ""))] = u
+                dom_urls = await extract_urls_via_dom_crossref(page, items, board_url)
+                if dom_urls:
+                    id_f = None
+                    for key in items[0]:
+                        if _ID_FIELDS.match(key):
+                            id_f = key
+                            break
+                    if id_f:
+                        url_map = {}
+                        for item, u in zip(items, dom_urls, strict=False):
+                            url_map[str(item.get(id_f, ""))] = u
+            except Exception:
+                log.debug("api_sniffer.dom_crossref_degraded", exc_info=True)
 
         if fields_map:
             return _extract_rich(
@@ -734,7 +951,10 @@ async def _discover_replay(
         if not urls and url_map:
             return set(url_map.values())
         if not urls:
-            urls = await extract_urls_via_dom_crossref(page, items, board_url)
+            try:
+                urls = await extract_urls_via_dom_crossref(page, items, board_url)
+            except Exception:
+                log.debug("api_sniffer.dom_crossref_degraded", exc_info=True)
         return set(urls)
 
 
@@ -744,7 +964,7 @@ async def _discover_auto(
     pw,
 ) -> list[DiscoveredJob] | set[str]:
     """Full auto-discover: capture exchanges, detect, paginate."""
-    from src.shared.browser import dismiss_overlays, navigate, open_page
+    from src.shared.browser import BROWSER_KEYS, dismiss_overlays, navigate, open_page
 
     fields_map: dict[str, str] = config.get("fields") or {}
 
@@ -752,7 +972,9 @@ async def _discover_auto(
     timeout = config.get("timeout", _DEFAULT_TIMEOUT)
     settle = config.get("settle", _DEFAULT_SETTLE)
 
-    async with open_page(pw, {}) as page:
+    browser_config = {k: v for k, v in config.items() if k in BROWSER_KEYS}
+
+    async with open_page(pw, browser_config) as page:
         page_host = urlparse(board_url).netloc
         exchanges = await capture_exchanges(page, page_host)
 
@@ -777,7 +999,7 @@ async def _discover_auto(
             page_size,
         )
 
-        items = await paginate_all(page, result, MAX_PAGES)
+        items = await paginate_all(make_browser_fetcher(page), result, MAX_PAGES)
 
         if len(items) > MAX_ITEMS:
             items = items[:MAX_ITEMS]

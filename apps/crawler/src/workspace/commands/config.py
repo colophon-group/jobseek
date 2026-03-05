@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import click
 
 from src.shared.constants import SLUG_RE
@@ -27,12 +30,16 @@ from src.workspace.state import (
 @click.option("--website", help="Company homepage URL")
 @click.option("--logo-url", help="Logo image URL")
 @click.option("--icon-url", help="Icon image URL")
+@click.option("--logo-candidate", type=int, help="Select logo by candidate number")
+@click.option("--icon-candidate", type=int, help="Select icon by candidate number")
 def set_(
     slug: str | None,
     name: str | None,
     website: str | None,
     logo_url: str | None,
     icon_url: str | None,
+    logo_candidate: int | None,
+    icon_candidate: int | None,
 ):
     """Set company metadata in workspace."""
     slug = resolve_slug(slug)
@@ -50,19 +57,37 @@ def set_(
         ws.website = website
         updates.append(f"website={website!r}")
         _check_url("website", website)
+
+    # Resolve candidates to URLs
+    if logo_candidate is not None:
+        logo_url = _resolve_candidate(slug, logo_candidate, "logo")
+    if icon_candidate is not None:
+        icon_url = _resolve_candidate(slug, icon_candidate, "icon")
+
     if logo_url is not None:
         ws.logo_url = logo_url
         updates.append("logo_url")
-        _check_image("logo_url", logo_url)
+        _check_image("logo_url", logo_url, slug)
     if icon_url is not None:
         ws.icon_url = icon_url
         updates.append("icon_url")
-        _check_image("icon_url", icon_url)
+        _check_image("icon_url", icon_url, slug)
 
     if not updates:
         out.die("Nothing to set. Provide at least one --option.")
 
     save_workspace(ws)
+
+    # Auto-discover logo candidates when website is set but no logo/icon provided
+    effective_website = website or ws.website
+    if (
+        logo_url is None
+        and icon_url is None
+        and logo_candidate is None
+        and icon_candidate is None
+        and effective_website
+    ):
+        _discover_and_show_candidates(slug, effective_website)
 
     action_log.append(
         ws_log_path(slug),
@@ -71,6 +96,94 @@ def set_(
         f"Set {', '.join(updates)}",
     )
     out.info("workspace", f"Set {', '.join(updates)}")
+
+
+def _resolve_candidate(slug: str, index: int, role: str) -> str:
+    """Resolve a candidate index to a URL from candidates.json."""
+    from src.workspace.state import ws_dir
+
+    candidates_path = ws_dir(slug) / "artifacts" / "company" / "logo-candidates" / "candidates.json"
+    if not candidates_path.exists():
+        out.die(
+            "No logo candidates found. Run 'ws set --website <url>' first to discover candidates."
+        )
+
+    candidates = json.loads(candidates_path.read_text())
+
+    # Find candidate by index
+    for c in candidates:
+        if c["index"] == index:
+            if c.get("embedded"):
+                # For embedded SVGs, use the artifact path as the URL
+                artifact_path = c.get("artifact_path", "")
+                if artifact_path:
+                    out.info(role, f"Selected candidate #{index} (embedded SVG): {artifact_path}")
+                    return artifact_path
+                out.die(f"Candidate #{index} has no artifact path")
+            url = c.get("url", "")
+            if url:
+                out.info(role, f"Selected candidate #{index}: {url}")
+                return url
+            out.die(f"Candidate #{index} has no URL")
+
+    out.die(f"Candidate #{index} not found. Available: {[c['index'] for c in candidates]}")
+    return ""  # unreachable
+
+
+def _discover_and_show_candidates(slug: str, website: str) -> None:
+    """Fetch homepage, discover logo candidates, download, and display table."""
+    import httpx
+
+    from src.workspace.logo_discover import discover_logos, download_candidates
+    from src.workspace.state import ws_dir
+
+    out.info("logos", "Discovering logo candidates...")
+
+    try:
+        resp = httpx.get(website, follow_redirects=True, timeout=10)
+        if resp.status_code >= 400:
+            out.warn("logos", f"Homepage returned HTTP {resp.status_code}")
+            return
+    except Exception as e:
+        out.warn("logos", f"Could not fetch homepage: {e}")
+        return
+
+    candidates = discover_logos(resp.text, str(resp.url))
+    if not candidates:
+        out.warn("logos", "No candidates found")
+        return
+
+    # Download and save artifacts
+    artifact_dir = ws_dir(slug) / "artifacts" / "company" / "logo-candidates"
+    successful = download_candidates(candidates, artifact_dir)
+
+    if not successful:
+        out.warn("logos", "No candidates could be downloaded")
+        return
+
+    out.info("logos", f"Found {len(successful)} candidate(s):")
+    print()
+
+    # Display table
+    rows = []
+    for i, c in enumerate(successful, 1):
+        rows.append(
+            [
+                str(i),
+                c.role,
+                f"{c.score:.2f}",
+                ", ".join(c.sources),
+                c.artifact_path or "",
+            ]
+        )
+
+    out.table(["#", "Role", "Score", "Sources", "File"], rows)
+    print()
+
+    out.plain("logos", "Verify candidates visually, then select:")
+    out.plain("logos", "  ws set --logo-candidate 1 --icon-candidate 2")
+    out.plain("logos", "Or provide your own URLs:")
+    out.plain("logos", "  ws set --logo-url <url> --icon-url <url>")
 
 
 def _check_url(label: str, url: str) -> None:
@@ -91,20 +204,103 @@ def _check_url(label: str, url: str) -> None:
         out.warn(label, f"Could not reach: {e}")
 
 
-def _check_image(label: str, url: str) -> None:
-    """Advisory image probe — check content type and size."""
+def _check_image(label: str, url: str, slug: str) -> None:
+    """Download image, convert to PNG, and save as workspace artifact."""
+    # Handle local file paths (e.g., embedded SVG artifact paths)
+    if url.startswith("/") or url.startswith("."):
+        path = Path(url)
+        if path.exists():
+            data = path.read_bytes()
+            ct = "image/svg+xml" if path.suffix == ".svg" else "image/png"
+            out.info(label, f"Local file: {path.name}, {len(data):,} bytes")
+            png_path = save_image_to_path(slug, label, data, ct)
+            if png_path:
+                out.info(label, f"Saved: {png_path}")
+            return
+        out.warn(label, f"File not found: {url}")
+        return
+
     try:
         import httpx
 
         resp = httpx.get(url, follow_redirects=True, timeout=10)
         ct = resp.headers.get("content-type", "")
         size = len(resp.content)
-        if "image" in ct or "svg" in ct:
-            out.info(label, f"{ct}, {size:,} bytes")
-        else:
+        if not ("image" in ct or "svg" in ct):
             out.warn(label, f"Not an image: {ct}, {size:,} bytes")
+            return
+
+        out.info(label, f"{ct}, {size:,} bytes")
+
+        # Save as PNG artifact for visual verification
+        png_path = save_image_to_path(slug, label, resp.content, ct)
+        if png_path:
+            out.info(label, f"Saved: {png_path}")
     except Exception as e:
         out.warn(label, f"Could not fetch: {e}")
+
+
+def save_image_to_path(slug: str, label: str, data: bytes, content_type: str) -> Path | None:
+    """Convert image data to PNG and save under workspace artifacts.
+
+    Args:
+        slug: Workspace slug.
+        label: Image label ("logo_url" or "icon_url") — used to derive filename.
+        data: Raw image bytes.
+        content_type: HTTP content-type header value.
+
+    Returns:
+        Path to saved file, or None on failure.
+    """
+    from src.workspace.state import ws_dir
+
+    artifact_dir = ws_dir(slug) / "artifacts" / "company"
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+
+    # label is "logo_url" or "icon_url" → filename "logo.png" or "icon.png"
+    name = label.replace("_url", "")
+    png_path = artifact_dir / f"{name}.png"
+
+    try:
+        import io
+
+        from PIL import Image
+
+        img = Image.open(io.BytesIO(data))
+        # Convert to RGBA to handle transparency, then save as PNG
+        if img.mode not in ("RGBA", "RGB"):
+            img = img.convert("RGBA")
+        img.save(png_path, "PNG")
+        return png_path
+    except ImportError:
+        # Pillow not installed — save raw file with original extension
+        ext = _ext_from_content_type(content_type)
+        raw_path = artifact_dir / f"{name}{ext}"
+        raw_path.write_bytes(data)
+        out.warn(label, "Pillow not installed — saved raw file (no PNG conversion)")
+        return raw_path
+    except Exception as e:
+        out.warn(label, f"PNG conversion failed: {e}")
+        # Still save the raw bytes as fallback
+        ext = _ext_from_content_type(content_type)
+        raw_path = artifact_dir / f"{name}{ext}"
+        raw_path.write_bytes(data)
+        return raw_path
+
+
+def _ext_from_content_type(ct: str) -> str:
+    """Map content-type to file extension."""
+    ct = ct.lower().split(";")[0].strip()
+    mapping = {
+        "image/png": ".png",
+        "image/jpeg": ".jpg",
+        "image/gif": ".gif",
+        "image/svg+xml": ".svg",
+        "image/webp": ".webp",
+        "image/x-icon": ".ico",
+        "image/vnd.microsoft.icon": ".ico",
+    }
+    return mapping.get(ct, ".bin")
 
 
 @click.command(name="board")

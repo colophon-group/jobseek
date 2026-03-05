@@ -10,9 +10,9 @@ import time
 
 import click
 
-from src.core.monitors import api_monitor_types, is_rich_monitor
 from src.workspace import log as action_log
 from src.workspace import output as out
+from src.workspace._compat import api_monitor_types, is_rich_monitor
 from src.workspace.state import (
     load_board,
     load_workspace,
