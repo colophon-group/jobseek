@@ -82,9 +82,7 @@ def _or_none(val: str | None) -> str | None:
     return val if val else None
 
 
-async def sync_companies(
-    conn: asyncpg.Connection, companies: pl.DataFrame, dry_run: bool
-) -> None:
+async def sync_companies(conn: asyncpg.Connection, companies: pl.DataFrame, dry_run: bool) -> None:
     """Batch upsert companies."""
     if len(companies) == 0:
         return
@@ -152,14 +150,16 @@ async def sync_boards(
         log.info("sync.boards.dry_run", count=len(board_urls), skipped=skipped)
         return
 
+    if not board_urls:
+        log.info("sync.boards.all_skipped", skipped=skipped)
+        return
+
     await conn.execute(
         _UPSERT_BOARDS, company_slugs, board_slugs, board_urls, crawler_types, metadatas
     )
     log.info("sync.boards.upserted", count=len(board_urls), skipped=skipped)
 
-    # Disable boards not in CSV
-    if board_urls:
-        await conn.execute(_DISABLE_REMOVED_BOARDS, board_urls)
+    await conn.execute(_DISABLE_REMOVED_BOARDS, board_urls)
 
 
 async def run_sync(dry_run: bool = False) -> None:

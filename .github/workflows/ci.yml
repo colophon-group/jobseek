@@ -15,13 +15,13 @@ jobs:
     name: Lint Web
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: pnpm/action-setup@v4
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
@@ -32,13 +32,13 @@ jobs:
     name: Lint Crawler
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version: "3.13"
 
       - run: uv sync --group dev
         working-directory: apps/crawler
@@ -53,13 +53,13 @@ jobs:
     name: Test Web
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: pnpm/action-setup@v4
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
@@ -70,16 +70,77 @@ jobs:
     name: Test Crawler
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version: "3.13"
 
       - run: uv sync --group dev
         working-directory: apps/crawler
 
       - run: uv run pytest tests/ -v
         working-directory: apps/crawler
+
+  deploy:
+    name: Deploy
+    needs: [lint-web, lint-crawler, test-web, test-crawler]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm dlx vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+
+      - run: pnpm dlx vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+      - run: pnpm dlx vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+  post-deploy:
+    name: Post-Deploy
+    needs: [deploy]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+        working-directory: apps/web
+
+      - run: pnpm db:migrate
+        working-directory: apps/web
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - uses: astral-sh/setup-uv@v7
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - run: uv sync
+        working-directory: apps/crawler
+
+      - run: uv run python -m src.sync
+        working-directory: apps/crawler
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}

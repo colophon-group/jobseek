@@ -116,12 +116,8 @@ class TestPaginateUrls:
         """Pages with different job links get merged."""
         initial = {"https://example.com/jobs/1"}
         pages = {
-            "https://example.com/careers?p=2": _html_with_links(
-                "https://example.com/jobs/2"
-            ),
-            "https://example.com/careers?p=3": _html_with_links(
-                "https://example.com/jobs/3"
-            ),
+            "https://example.com/careers?p=2": _html_with_links("https://example.com/jobs/2"),
+            "https://example.com/careers?p=3": _html_with_links("https://example.com/jobs/3"),
         }
         with patch(_FETCH_PATCH, new=_make_fetch(pages)):
             result = await _paginate_urls(

@@ -1,4 +1,7 @@
 {
   "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
-  "buildCommand": "cd ../.. && pnpm turbo run build --filter=@jobseek/web"
+  "buildCommand": "cd ../.. && pnpm turbo run build --filter=@jobseek/web",
+  "git": {
+    "deploymentEnabled": false
+  }
 }

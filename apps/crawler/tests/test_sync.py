@@ -8,8 +8,8 @@ import pytest
 
 from src.sync import (
     _DISABLE_REMOVED_BOARDS,
-    _GET_COMPANY_ID,
-    _UPSERT_BOARD,
+    _UPSERT_BOARDS,
+    _UPSERT_COMPANIES,
     _load_boards,
     _load_companies,
     run_sync,
@@ -19,6 +19,17 @@ from src.sync import (
 
 _COMPANY_COLS = ["slug", "name", "website", "logo_url", "icon_url"]
 _COMPANY_SCHEMA = {c: pl.Utf8 for c in _COMPANY_COLS}
+
+_BOARD_COLS = [
+    "company_slug",
+    "board_slug",
+    "board_url",
+    "monitor_type",
+    "monitor_config",
+    "scraper_type",
+    "scraper_config",
+]
+_BOARD_SCHEMA = {c: pl.Utf8 for c in _BOARD_COLS}
 
 
 class TestLoadCompanies:
@@ -73,15 +84,7 @@ class TestLoadBoards:
         monkeypatch.setattr("src.sync.DATA_DIR", tmp_path)
 
         df = _load_boards()
-        expected_columns = {
-            "company_slug",
-            "board_slug",
-            "board_url",
-            "monitor_type",
-            "monitor_config",
-            "scraper_type",
-            "scraper_config",
-        }
+        expected_columns = set(_BOARD_COLS)
         assert set(df.columns) == expected_columns
 
 
@@ -93,7 +96,6 @@ class TestLoadBoards:
 @pytest.fixture
 def mock_conn():
     conn = AsyncMock()
-    conn.fetchrow = AsyncMock()
     conn.execute = AsyncMock()
     conn.transaction.return_value.__aenter__ = AsyncMock()
     conn.transaction.return_value.__aexit__ = AsyncMock(return_value=False)
@@ -126,18 +128,7 @@ def sample_boards():
             "scraper_type": [""],
             "scraper_config": [""],
         },
-        schema_overrides={
-            c: pl.Utf8
-            for c in [
-                "company_slug",
-                "board_slug",
-                "board_url",
-                "monitor_type",
-                "monitor_config",
-                "scraper_type",
-                "scraper_config",
-            ]
-        },
+        schema_overrides=_BOARD_SCHEMA,
     )
 
 
@@ -148,38 +139,32 @@ def sample_boards():
 
 class TestSyncCompanies:
     async def test_upserts_companies(self, mock_conn, sample_companies):
-        """Two companies -> fetchrow called twice, returns correct slug->id mapping."""
-        mock_conn.fetchrow.side_effect = [
-            {"slug": "acme", "id": "uuid-1"},
-            {"slug": "globex", "id": "uuid-2"},
-        ]
+        """Two companies -> single batch execute call."""
+        await sync_companies(mock_conn, sample_companies, dry_run=False)
 
-        result = await sync_companies(mock_conn, sample_companies, dry_run=False)
-
-        assert mock_conn.fetchrow.call_count == 2
-        assert result == {"acme": "uuid-1", "globex": "uuid-2"}
+        mock_conn.execute.assert_called_once()
+        call_args = mock_conn.execute.call_args[0]
+        assert call_args[0] == _UPSERT_COMPANIES
+        assert call_args[1] == ["acme", "globex"]  # slugs
+        assert call_args[2] == ["Acme Corp", "Globex Inc"]  # names
 
     async def test_dry_run_skips_sql(self, mock_conn, sample_companies):
-        """dry_run=True -> fetchrow NOT called, returns empty dict."""
-        result = await sync_companies(mock_conn, sample_companies, dry_run=True)
-
-        mock_conn.fetchrow.assert_not_called()
-        assert result == {}
+        """dry_run=True -> execute NOT called."""
+        await sync_companies(mock_conn, sample_companies, dry_run=True)
+        mock_conn.execute.assert_not_called()
 
     async def test_empty_dataframe(self, mock_conn):
-        """0 rows -> fetchrow NOT called, returns empty dict."""
+        """0 rows -> execute NOT called."""
         empty = pl.DataFrame(
             {"slug": [], "name": [], "website": [], "logo_url": [], "icon_url": []},
             schema_overrides=_COMPANY_SCHEMA,
         )
 
-        result = await sync_companies(mock_conn, empty, dry_run=False)
-
-        mock_conn.fetchrow.assert_not_called()
-        assert result == {}
+        await sync_companies(mock_conn, empty, dry_run=False)
+        mock_conn.execute.assert_not_called()
 
     async def test_empty_strings_become_none(self, mock_conn):
-        """logo_url="" -> None passed to fetchrow."""
+        """logo_url="" -> None in the arrays passed to execute."""
         df = pl.DataFrame(
             {
                 "slug": ["acme"],
@@ -190,14 +175,12 @@ class TestSyncCompanies:
             },
             schema_overrides=_COMPANY_SCHEMA,
         )
-        mock_conn.fetchrow.return_value = {"slug": "acme", "id": "uuid-1"}
 
         await sync_companies(mock_conn, df, dry_run=False)
 
-        call_args = mock_conn.fetchrow.call_args
-        # positional args: (sql, slug, name, website, logo_url, icon_url)
-        assert call_args[0][4] is None  # logo_url
-        assert call_args[0][5] is None  # icon_url
+        call_args = mock_conn.execute.call_args[0]
+        assert call_args[4] == [None]  # logos
+        assert call_args[5] == [None]  # icons
 
 
 # ---------------------------------------------------------------------------
@@ -207,105 +190,66 @@ class TestSyncCompanies:
 
 class TestSyncBoards:
     async def test_upserts_boards(self, mock_conn, sample_boards):
-        """Board with company in slug_to_id -> fetchrow called with correct args."""
-        slug_to_id = {"acme": "uuid-1"}
-        mock_conn.fetchrow.return_value = {
-            "id": "board-uuid-1",
-            "board_url": "https://acme.com/careers",
-        }
+        """Board -> single batch execute for upsert + one for disable."""
+        await sync_boards(mock_conn, sample_boards, dry_run=False)
 
-        await sync_boards(mock_conn, sample_boards, slug_to_id, dry_run=False)
+        assert mock_conn.execute.call_count == 2
 
-        # Should have called fetchrow once for the upsert (not for company lookup)
-        assert mock_conn.fetchrow.call_count == 1
-        call_args = mock_conn.fetchrow.call_args[0]
-        assert call_args[0] == _UPSERT_BOARD
-        assert call_args[1] == "uuid-1"  # company_id
-        assert call_args[2] == "acme-careers"  # board_slug
-        assert call_args[3] == "https://acme.com/careers"  # board_url
-        assert call_args[4] == "greenhouse"  # monitor_type
-        assert json.loads(call_args[5]) == {"token": "acme"}  # metadata (re-serialized JSON)
+        # First call: upsert
+        upsert_call = mock_conn.execute.call_args_list[0][0]
+        assert upsert_call[0] == _UPSERT_BOARDS
+        assert upsert_call[1] == ["acme"]  # company_slugs
+        assert upsert_call[2] == ["acme-careers"]  # board_slugs
+        assert upsert_call[3] == ["https://acme.com/careers"]  # board_urls
+        assert upsert_call[4] == ["greenhouse"]  # crawler_types
+        assert json.loads(upsert_call[5][0]) == {"token": "acme"}  # metadatas
 
-        # Should have called execute for _DISABLE_REMOVED_BOARDS
-        mock_conn.execute.assert_called_once_with(
-            _DISABLE_REMOVED_BOARDS, ["https://acme.com/careers"]
+        # Second call: disable removed
+        disable_call = mock_conn.execute.call_args_list[1][0]
+        assert disable_call[0] == _DISABLE_REMOVED_BOARDS
+        assert disable_call[1] == ["https://acme.com/careers"]
+
+    async def test_invalid_json_skips_row(self, mock_conn):
+        """monitor_config has invalid JSON -> row skipped, valid rows still upserted."""
+        boards = pl.DataFrame(
+            {
+                "company_slug": ["acme", "globex"],
+                "board_slug": ["acme-careers", "globex-jobs"],
+                "board_url": ["https://acme.com/careers", "https://globex.com/jobs"],
+                "monitor_type": ["greenhouse", "lever"],
+                "monitor_config": ["{invalid json}", "{}"],
+                "scraper_type": ["", ""],
+                "scraper_config": ["", ""],
+            },
+            schema_overrides=_BOARD_SCHEMA,
         )
 
-    async def test_company_lookup_from_db(self, mock_conn, sample_boards):
-        """company_slug not in slug_to_id -> falls back to conn.fetchrow(_GET_COMPANY_ID)."""
-        slug_to_id = {}  # company not in mapping
-        mock_conn.fetchrow.side_effect = [
-            # First call: _GET_COMPANY_ID lookup
-            {"id": "uuid-from-db"},
-            # Second call: _UPSERT_BOARD
-            {"id": "board-uuid-1", "board_url": "https://acme.com/careers"},
-        ]
+        await sync_boards(mock_conn, boards, dry_run=False)
 
-        await sync_boards(mock_conn, sample_boards, slug_to_id, dry_run=False)
+        # Upsert should only include the valid row
+        upsert_call = mock_conn.execute.call_args_list[0][0]
+        assert upsert_call[1] == ["globex"]
+        assert upsert_call[3] == ["https://globex.com/jobs"]
 
-        # First call should be the company lookup
-        first_call = mock_conn.fetchrow.call_args_list[0]
-        assert first_call[0][0] == _GET_COMPANY_ID
-        assert first_call[0][1] == "acme"
-
-        # Second call should be the board upsert with the looked-up company_id
-        second_call = mock_conn.fetchrow.call_args_list[1]
-        assert second_call[0][0] == _UPSERT_BOARD
-        assert second_call[0][1] == "uuid-from-db"
-
-    async def test_missing_company_skips(self, mock_conn, sample_boards):
-        """Company not in mapping and not in DB -> logs error, skips."""
-        slug_to_id = {}
-        # Company lookup returns None (not found)
-        mock_conn.fetchrow.return_value = None
-
-        await sync_boards(mock_conn, sample_boards, slug_to_id, dry_run=False)
-
-        # fetchrow called once for the company lookup, NOT for upsert
-        assert mock_conn.fetchrow.call_count == 1
-        assert mock_conn.fetchrow.call_args[0][0] == _GET_COMPANY_ID
-
-        # _DISABLE_REMOVED_BOARDS should still be called (board_url was appended before skip)
-        mock_conn.execute.assert_called_once_with(
-            _DISABLE_REMOVED_BOARDS, ["https://acme.com/careers"]
-        )
-
-    async def test_invalid_json_skips(self, mock_conn):
-        """monitor_config has invalid JSON -> logs error, skips."""
+    async def test_all_invalid_json_skips_upsert(self, mock_conn):
+        """All rows have invalid JSON -> no upsert, no disable."""
         boards = pl.DataFrame(
             {
                 "company_slug": ["acme"],
                 "board_slug": ["acme-careers"],
                 "board_url": ["https://acme.com/careers"],
                 "monitor_type": ["greenhouse"],
-                "monitor_config": ["{invalid json}"],
+                "monitor_config": ["{bad}"],
                 "scraper_type": [""],
                 "scraper_config": [""],
             },
-            schema_overrides={
-                c: pl.Utf8
-                for c in [
-                    "company_slug",
-                    "board_slug",
-                    "board_url",
-                    "monitor_type",
-                    "monitor_config",
-                    "scraper_type",
-                    "scraper_config",
-                ]
-            },
+            schema_overrides=_BOARD_SCHEMA,
         )
-        slug_to_id = {"acme": "uuid-1"}
 
-        await sync_boards(mock_conn, boards, slug_to_id, dry_run=False)
+        await sync_boards(mock_conn, boards, dry_run=False)
 
-        # No upsert call (only the disable call)
-        # fetchrow should not be called since company was in slug_to_id
-        # and the invalid JSON causes a skip before the upsert
-        mock_conn.fetchrow.assert_not_called()
-
-        # _DISABLE_REMOVED_BOARDS still called (url was appended before JSON parsing)
-        mock_conn.execute.assert_called_once()
+        # No board_urls collected -> no execute calls
+        mock_conn.execute.assert_not_called()
 
     async def test_valid_json_parsed(self, mock_conn):
         """monitor_config='{"key":"value"}' -> parsed and re-serialized to metadata."""
@@ -319,40 +263,17 @@ class TestSyncBoards:
                 "scraper_type": [""],
                 "scraper_config": [""],
             },
-            schema_overrides={
-                c: pl.Utf8
-                for c in [
-                    "company_slug",
-                    "board_slug",
-                    "board_url",
-                    "monitor_type",
-                    "monitor_config",
-                    "scraper_type",
-                    "scraper_config",
-                ]
-            },
+            schema_overrides=_BOARD_SCHEMA,
         )
-        slug_to_id = {"acme": "uuid-1"}
-        mock_conn.fetchrow.return_value = {
-            "id": "board-uuid-1",
-            "board_url": "https://acme.com/careers",
-        }
 
-        await sync_boards(mock_conn, boards, slug_to_id, dry_run=False)
+        await sync_boards(mock_conn, boards, dry_run=False)
 
-        call_args = mock_conn.fetchrow.call_args[0]
-        metadata = call_args[5]
-        assert json.loads(metadata) == {"key": "value"}
+        upsert_call = mock_conn.execute.call_args_list[0][0]
+        assert json.loads(upsert_call[5][0]) == {"key": "value"}
 
     async def test_dry_run_skips_sql(self, mock_conn, sample_boards):
-        """dry_run=True -> upsert NOT called (but board_url still appended)."""
-        slug_to_id = {"acme": "uuid-1"}
-
-        await sync_boards(mock_conn, sample_boards, slug_to_id, dry_run=True)
-
-        # No fetchrow calls (company was in slug_to_id, and dry_run skips upsert)
-        mock_conn.fetchrow.assert_not_called()
-        # No execute calls (dry_run skips _DISABLE_REMOVED_BOARDS)
+        """dry_run=True -> execute NOT called."""
+        await sync_boards(mock_conn, sample_boards, dry_run=True)
         mock_conn.execute.assert_not_called()
 
     async def test_disables_removed_boards(self, mock_conn):
@@ -367,28 +288,17 @@ class TestSyncBoards:
                 "scraper_type": ["", ""],
                 "scraper_config": ["", ""],
             },
-            schema_overrides={
-                c: pl.Utf8
-                for c in [
-                    "company_slug",
-                    "board_slug",
-                    "board_url",
-                    "monitor_type",
-                    "monitor_config",
-                    "scraper_type",
-                    "scraper_config",
-                ]
-            },
+            schema_overrides=_BOARD_SCHEMA,
         )
-        slug_to_id = {"acme": "uuid-1"}
-        mock_conn.fetchrow.return_value = {"id": "board-uuid", "board_url": "x"}
 
-        await sync_boards(mock_conn, boards, slug_to_id, dry_run=False)
+        await sync_boards(mock_conn, boards, dry_run=False)
 
-        mock_conn.execute.assert_called_once_with(
-            _DISABLE_REMOVED_BOARDS,
-            ["https://acme.com/careers", "https://acme.com/internships"],
-        )
+        disable_call = mock_conn.execute.call_args_list[1][0]
+        assert disable_call[0] == _DISABLE_REMOVED_BOARDS
+        assert set(disable_call[1]) == {
+            "https://acme.com/careers",
+            "https://acme.com/internships",
+        }
 
 
 # ---------------------------------------------------------------------------
@@ -410,27 +320,8 @@ class TestRunSync:
             schema_overrides=_COMPANY_SCHEMA,
         )
         mock_load_boards.return_value = pl.DataFrame(
-            {
-                "company_slug": [],
-                "board_slug": [],
-                "board_url": [],
-                "monitor_type": [],
-                "monitor_config": [],
-                "scraper_type": [],
-                "scraper_config": [],
-            },
-            schema_overrides={
-                c: pl.Utf8
-                for c in [
-                    "company_slug",
-                    "board_slug",
-                    "board_url",
-                    "monitor_type",
-                    "monitor_config",
-                    "scraper_type",
-                    "scraper_config",
-                ]
-            },
+            {c: [] for c in _BOARD_COLS},
+            schema_overrides=_BOARD_SCHEMA,
         )
 
         await run_sync(dry_run=False)
@@ -475,25 +366,13 @@ class TestRunSync:
                 "scraper_type": [""],
                 "scraper_config": [""],
             },
-            schema_overrides={
-                c: pl.Utf8
-                for c in [
-                    "company_slug",
-                    "board_slug",
-                    "board_url",
-                    "monitor_type",
-                    "monitor_config",
-                    "scraper_type",
-                    "scraper_config",
-                ]
-            },
+            schema_overrides=_BOARD_SCHEMA,
         )
         mock_load_companies.return_value = companies_df
         mock_load_boards.return_value = boards_df
 
         # Set up pool + connection mock with proper async context managers
         mock_conn = MagicMock()
-        # conn.transaction() must return a sync value that is an async CM
         mock_txn_cm = AsyncMock()
         mock_conn.transaction.return_value = mock_txn_cm
 
@@ -505,12 +384,10 @@ class TestRunSync:
         mock_pool.acquire.return_value = mock_acquire_cm
         mock_create_pool.return_value = mock_pool
 
-        mock_sync_companies.return_value = {"acme": "uuid-1"}
-
         await run_sync(dry_run=False)
 
         mock_sync_companies.assert_called_once_with(mock_conn, companies_df, False)
-        mock_sync_boards.assert_called_once_with(mock_conn, boards_df, {"acme": "uuid-1"}, False)
+        mock_sync_boards.assert_called_once_with(mock_conn, boards_df, False)
         mock_close_pool.assert_called_once()
 
     @patch("src.sync.setup_logging")
@@ -540,32 +417,12 @@ class TestRunSync:
             schema_overrides=_COMPANY_SCHEMA,
         )
         mock_load_boards.return_value = pl.DataFrame(
-            {
-                "company_slug": ["acme"],
-                "board_slug": ["acme-careers"],
-                "board_url": ["https://acme.com/careers"],
-                "monitor_type": ["greenhouse"],
-                "monitor_config": ["{}"],
-                "scraper_type": [""],
-                "scraper_config": [""],
-            },
-            schema_overrides={
-                c: pl.Utf8
-                for c in [
-                    "company_slug",
-                    "board_slug",
-                    "board_url",
-                    "monitor_type",
-                    "monitor_config",
-                    "scraper_type",
-                    "scraper_config",
-                ]
-            },
+            {c: ["x"] for c in _BOARD_COLS},
+            schema_overrides=_BOARD_SCHEMA,
         )
 
-        # Set up pool + connection mock with proper async context managers
+        # Set up pool + connection mock
         mock_conn = MagicMock()
-        # conn.transaction() must return a sync value that is an async CM
         mock_txn_cm = AsyncMock()
         mock_conn.transaction.return_value = mock_txn_cm
 
@@ -577,11 +434,9 @@ class TestRunSync:
         mock_pool.acquire.return_value = mock_acquire_cm
         mock_create_pool.return_value = mock_pool
 
-        # sync_companies raises an error
         mock_sync_companies.side_effect = RuntimeError("DB connection failed")
 
         with pytest.raises(RuntimeError, match="DB connection failed"):
             await run_sync(dry_run=False)
 
-        # close_pool should still be called despite the error
         mock_close_pool.assert_called_once()
