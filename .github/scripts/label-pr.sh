@@ -17,7 +17,7 @@ set -euo pipefail
 : "${REPO:?REPO is required}"
 
 ALLOWED_FILES="apps/crawler/data/companies.csv apps/crawler/data/boards.csv"
-VALID_MONITOR_TYPES="ashby|greenhouse|lever|sitemap|nextdata|dom|api_sniffer"
+VALID_MONITOR_TYPES="ashby|greenhouse|hireology|lever|personio|pinpoint|recruitee|rippling|rss|smartrecruiters|workable|workday|sitemap|nextdata|dom|api_sniffer"
 VALID_SCRAPER_TYPES="json-ld|dom|nextdata|embedded|api_sniffer"
 SLUG_RE='^[a-z0-9]+(-[a-z0-9]+)*$'
 URL_RE='^https?://'
