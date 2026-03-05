@@ -2,9 +2,16 @@
 
 from __future__ import annotations
 
+import json
+from unittest.mock import AsyncMock
+
+import pytest
+
 from src.shared.api_sniff import (
     ArrayCandidate,
     Exchange,
+    JobListResult,
+    PaginationInfo,
     auto_map_fields,
     detect_job_list,
     extract_items,
@@ -13,6 +20,9 @@ from src.shared.api_sniff import (
     find_total_count,
     find_url_field,
     infer_pagination,
+    make_browser_fetcher,
+    make_http_fetcher,
+    paginate_all,
     score_candidate,
     set_body_param,
     set_url_param,
@@ -363,3 +373,134 @@ class TestExtractItems:
 
     def test_no_arrays(self):
         assert extract_items({"key": "value"}, "key") == []
+
+
+class TestFetchFactories:
+    @pytest.mark.asyncio
+    async def test_make_browser_fetcher_delegates_to_page(self):
+        """make_browser_fetcher delegates to fetch_json via page.evaluate."""
+        items = [{"title": "Dev"}, {"title": "PM"}, {"title": "QA"}]
+        mock_page = AsyncMock()
+        mock_page.evaluate = AsyncMock(return_value=json.dumps({"jobs": items}))
+
+        fetch_fn = make_browser_fetcher(mock_page)
+        result = await fetch_fn("GET", "https://example.com/api", {}, None)
+
+        assert result == {"jobs": items}
+        mock_page.evaluate.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_make_http_fetcher_delegates_to_client(self):
+        """make_http_fetcher delegates to httpx client.request."""
+        from unittest.mock import MagicMock
+
+        items = [{"title": "Dev"}, {"title": "PM"}, {"title": "QA"}]
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"jobs": items}
+        mock_resp.raise_for_status.return_value = None
+
+        mock_client = AsyncMock()
+        mock_client.request = AsyncMock(return_value=mock_resp)
+
+        fetch_fn = make_http_fetcher(mock_client)
+        result = await fetch_fn("GET", "https://example.com/api", {}, None)
+
+        assert result == {"jobs": items}
+        mock_client.request.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_make_http_fetcher_raises_on_error(self):
+        """make_http_fetcher raises on HTTP error (matches fetch_json behavior)."""
+        from unittest.mock import MagicMock
+
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status.side_effect = Exception("404 Not Found")
+
+        mock_client = AsyncMock()
+        mock_client.request = AsyncMock(return_value=mock_resp)
+
+        fetch_fn = make_http_fetcher(mock_client)
+        with pytest.raises(Exception, match="404"):
+            await fetch_fn("GET", "https://example.com/api", {}, None)
+
+    @pytest.mark.asyncio
+    async def test_make_http_fetcher_post_with_body(self):
+        """make_http_fetcher passes body for POST requests."""
+        from unittest.mock import MagicMock
+
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"jobs": []}
+        mock_resp.raise_for_status.return_value = None
+
+        mock_client = AsyncMock()
+        mock_client.request = AsyncMock(return_value=mock_resp)
+
+        fetch_fn = make_http_fetcher(mock_client)
+        await fetch_fn("POST", "https://example.com/api", {}, '{"offset": 0}')
+
+        call_kwargs = mock_client.request.call_args
+        assert call_kwargs[1]["content"] == '{"offset": 0}'
+
+
+class TestPaginateAllWithFetchFn:
+    @pytest.mark.asyncio
+    async def test_paginate_with_callable(self):
+        """paginate_all works with any FetchJsonFn callable."""
+        page1_items = [{"title": f"Job {i}"} for i in range(10)]
+        page2_items = [{"title": f"Job {i}"} for i in range(10, 15)]
+
+        call_count = 0
+
+        async def mock_fetch(method, url, headers, body):
+            nonlocal call_count
+            call_count += 1
+            # First call is the page-size probe (returns same items)
+            # Second call is page 2
+            if "offset=10" in url or call_count >= 2:
+                return {"jobs": page2_items, "total": 15}
+            return {"jobs": page1_items, "total": 15}
+
+        ex = _make_exchange(
+            url="https://example.com/api/jobs?offset=0&limit=10",
+            body={"jobs": page1_items, "total": 15},
+        )
+        pag = PaginationInfo(
+            param_name="offset",
+            style="offset",
+            start_value=0,
+            increment=10,
+            location="query",
+        )
+        cand = ArrayCandidate(exchange=ex, json_path="jobs", items=page1_items)
+        result = JobListResult(
+            candidate=cand,
+            url_field=None,
+            total_count=15,
+            pagination=pag,
+        )
+
+        items = await paginate_all(mock_fetch, result, max_pages=5)
+        assert len(items) >= 10  # At least page 1
+
+    @pytest.mark.asyncio
+    async def test_paginate_no_pagination(self):
+        """paginate_all returns items as-is when no pagination info."""
+        page1_items = [{"title": f"Job {i}"} for i in range(5)]
+
+        async def mock_fetch(method, url, headers, body):
+            raise AssertionError("Should not be called")
+
+        ex = _make_exchange(
+            url="https://example.com/api/jobs",
+            body={"jobs": page1_items},
+        )
+        cand = ArrayCandidate(exchange=ex, json_path="jobs", items=page1_items)
+        result = JobListResult(
+            candidate=cand,
+            url_field=None,
+            total_count=5,
+            pagination=None,
+        )
+
+        items = await paginate_all(mock_fetch, result, max_pages=5)
+        assert len(items) == 5

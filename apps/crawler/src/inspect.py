@@ -9,13 +9,18 @@ from __future__ import annotations
 import json
 import time
 
-import polars as pl
-import structlog
-
-from src.core.monitors import all_monitor_types
 from src.shared.constants import DATA_DIR, SLUG_RE, URL_RE
+from src.shared.csv_io import read_csv
+from src.workspace._compat import all_monitor_types
 
-log = structlog.get_logger()
+try:
+    import structlog
+
+    log = structlog.get_logger()
+except ImportError:
+    import logging
+
+    log = logging.getLogger(__name__)
 
 # Re-export for backward compatibility
 _SLUG_RE = SLUG_RE
@@ -50,19 +55,19 @@ def validate_csvs() -> list[ValidationError]:
         return errors
 
     # Load CSVs
-    companies = pl.read_csv(companies_path, infer_schema_length=0)
-    boards = pl.read_csv(boards_path, infer_schema_length=0)
+    company_headers, company_rows = read_csv(companies_path)
+    board_headers, board_rows = read_csv(boards_path)
 
     # Validate companies
     required_company_cols = {"slug", "name", "website"}
-    actual_cols = set(companies.columns)
+    actual_cols = set(company_headers)
     missing = required_company_cols - actual_cols
     if missing:
         errors.append(ValidationError("companies.csv", None, f"Missing columns: {missing}"))
         return errors
 
     slugs: set[str] = set()
-    for i, row in enumerate(companies.iter_rows(named=True), start=2):
+    for i, row in enumerate(company_rows, start=2):
         slug = row.get("slug", "")
         name = row.get("name", "")
         website = row.get("website", "")
@@ -83,7 +88,7 @@ def validate_csvs() -> list[ValidationError]:
 
     # Validate boards
     required_board_cols = {"company_slug", "board_slug", "board_url", "monitor_type"}
-    actual_cols = set(boards.columns)
+    actual_cols = set(board_headers)
     missing = required_board_cols - actual_cols
     if missing:
         errors.append(ValidationError("boards.csv", None, f"Missing columns: {missing}"))
@@ -102,7 +107,7 @@ def validate_csvs() -> list[ValidationError]:
     board_urls: set[str] = set()
     board_slugs: set[str] = set()
 
-    for i, row in enumerate(boards.iter_rows(named=True), start=2):
+    for i, row in enumerate(board_rows, start=2):
         company_slug = row.get("company_slug", "")
         board_slug = row.get("board_slug") or ""
         board_url = row.get("board_url", "")

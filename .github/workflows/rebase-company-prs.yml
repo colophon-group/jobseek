@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "apps/crawler/data/**"
+      - "apps/crawler/VERSION"
 
 concurrency:
   group: rebase-company-prs
@@ -66,7 +67,7 @@ jobs:
 
             # Check if conflicts are only in data files
             conflicted=$(git diff --name-only --diff-filter=U)
-            non_data=$(echo "$conflicted" | grep -v '^apps/crawler/data/' || true)
+            non_data=$(echo "$conflicted" | grep -v '^apps/crawler/data/' | grep -v '^apps/crawler/VERSION$' || true)
 
             if [ -n "$non_data" ]; then
               echo "::warning::PR #$pr has non-data conflicts, skipping: $non_data"
@@ -75,9 +76,18 @@ jobs:
               continue
             fi
 
-            # Auto-resolve: CSVs are append-only, so keep main + add PR's new rows
-            echo "Resolving data conflicts..."
+            # Auto-resolve conflicts
+            echo "Resolving conflicts..."
             for file in $conflicted; do
+              if [[ "$file" == "apps/crawler/VERSION" ]]; then
+                # VERSION: take main's version (highest) and bump patch
+                git checkout --ours "$file"
+                current=$(cat "$file" | tr -d '[:space:]')
+                IFS='.' read -r major minor patch <<< "$current"
+                echo "${major}.${minor}.$((patch + 1))" > "$file"
+                git add "$file"
+                continue
+              fi
               if [[ "$file" == *.csv ]]; then
                 # Take main's version (HEAD during rebase = main)
                 git checkout --ours "$file"

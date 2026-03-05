@@ -30,7 +30,14 @@ def run_preflight(
 
     Returns a list of issues found.  Callers decide how to handle them
     (warnings are printed, criticals may abort).
+
+    Skips all checks in local mode (``WS_LOCAL=1``).
     """
+    import os
+
+    if os.environ.get("WS_LOCAL", "").strip() in ("1", "true", "yes"):
+        return []
+
     if check_branch is None:
         check_branch = True
 

@@ -15,3 +15,4 @@ locales/*.js
 __pycache__/
 /apps/crawler/tmp/
 /apps/crawler/.workspace/
+/apps/crawler/ws-package/.venv/

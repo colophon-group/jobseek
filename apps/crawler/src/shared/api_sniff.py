@@ -11,12 +11,46 @@ import asyncio
 import contextlib
 import json
 import re
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from urllib.parse import parse_qs, urlencode, urljoin, urlparse, urlunparse
 
 import structlog
 
 log = structlog.get_logger()
+
+# ---------------------------------------------------------------------------
+# Transport abstraction
+# ---------------------------------------------------------------------------
+
+FetchJsonFn = Callable[[str, str, dict, str | None], Awaitable[object]]
+"""(method, url, headers, body) -> parsed JSON. Raises on error."""
+
+
+def make_browser_fetcher(page) -> FetchJsonFn:
+    """Create a FetchJsonFn that executes fetch() inside the browser context."""
+
+    async def _fetch(method: str, url: str, headers: dict, body: str | None) -> object:
+        return await fetch_json(page, method, url, headers, body)
+
+    return _fetch
+
+
+def make_http_fetcher(client) -> FetchJsonFn:
+    """Create a FetchJsonFn that uses httpx for plain HTTP requests."""
+
+    async def _fetch(method: str, url: str, headers: dict, body: str | None) -> object:
+        req_headers = {**headers, "Accept": "application/json"}
+        kw: dict = {"headers": req_headers, "timeout": 30}
+        if method.upper() == "POST" and body:
+            kw["content"] = body
+            kw["headers"].setdefault("content-type", "application/json")
+        resp = await client.request(method.upper(), url, **kw)
+        resp.raise_for_status()
+        return resp.json()
+
+    return _fetch
+
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -913,11 +947,11 @@ async def fetch_json(
 
 
 async def paginate_all(
-    page,
+    fetch_fn: FetchJsonFn,
     result: JobListResult,
     max_pages: int,
 ) -> list[dict]:
-    """Replay the API via page.evaluate(fetch(...)) with incremented params."""
+    """Fetch all pages of a paginated API using the given transport function."""
     pag = result.pagination
     ex = result.candidate.exchange
     all_items = list(result.candidate.items)
@@ -947,7 +981,7 @@ async def paginate_all(
             probe_body = set_body_param(probe_body, pag.param_name, pag.start_value)
 
         try:
-            data = await fetch_json(page, ex.method, probe_url, headers, probe_body)
+            data = await fetch_fn(ex.method, probe_url, headers, probe_body)
             probe_items = extract_items(data, result.candidate.json_path)
             if len(probe_items) > page_size:
                 log.debug(
@@ -1008,7 +1042,7 @@ async def paginate_all(
         )
 
         try:
-            data = await fetch_json(page, ex.method, fetch_url, headers, fetch_body)
+            data = await fetch_fn(ex.method, fetch_url, headers, fetch_body)
             items = extract_items(data, result.candidate.json_path)
 
             if not items:

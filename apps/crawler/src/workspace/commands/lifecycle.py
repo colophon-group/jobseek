@@ -3,15 +3,16 @@
 from __future__ import annotations
 
 import json
+import os
 from datetime import UTC, datetime
 
 import click
 
-from src.core.monitors import is_rich_monitor
 from src.shared.constants import DATA_DIR, SLUG_RE
 from src.shared.csv_io import read_csv
 from src.workspace import log as action_log
 from src.workspace import output as out
+from src.workspace._compat import is_rich_monitor
 from src.workspace.errors import CsvToolError, GitError, GitHubApiError
 from src.workspace.state import (
     Board,
@@ -30,12 +31,21 @@ from src.workspace.state import (
 )
 
 
+def is_local_mode() -> bool:
+    """Check if running in local-only mode (no git/GitHub interactions).
+
+    Set ``WS_LOCAL=1`` to enable. Useful for debugging and testing configs
+    without creating branches, PRs, or pushing to GitHub.
+    """
+    return os.environ.get("WS_LOCAL", "").strip() in ("1", "true", "yes")
+
+
 @click.command()
 @click.argument("slug")
 @click.option("--issue", required=True, type=int, help="GitHub issue number")
 def new(slug: str, issue: int):
     """Create workspace + stub CSV row + branch + draft PR."""
-    from src.workspace import git
+    local = is_local_mode()
 
     # Validate slug format
     if not SLUG_RE.match(slug):
@@ -52,24 +62,32 @@ def new(slug: str, issue: int):
     if workspace_exists(slug):
         out.die(f"Workspace {slug!r} already exists")
 
-    # Check gh auth
-    if not git.check_gh_auth():
-        out.die("GitHub CLI not authenticated. Run: gh auth login")
-    out.info("github", "gh authenticated")
-    out.info("workspace", f"Slug {slug!r} is valid, not in companies.csv")
-
-    # Check for existing PRs
-    existing = git.check_existing_prs(issue)
-    if existing:
-        pr = existing[0]
-        out.error("github", f"Open PR #{pr['number']} already exists for issue #{issue}")
-        out.die(f"PR #{pr['number']}: {pr['title']}")
-    out.info("github", f"No open PRs for issue #{issue}")
-
-    # Create branch
     branch = f"add-company/{slug}"
-    git.create_branch(branch)
-    out.plain("git", f"Created branch {branch}")
+    pr_number: int | None = None
+
+    if local:
+        out.warn("workspace", "Local mode — skipping git/GitHub operations")
+        out.info("workspace", f"Slug {slug!r} is valid, not in companies.csv")
+    else:
+        from src.workspace import git
+
+        # Check gh auth
+        if not git.check_gh_auth():
+            out.die("GitHub CLI not authenticated. Run: gh auth login")
+        out.info("github", "gh authenticated")
+        out.info("workspace", f"Slug {slug!r} is valid, not in companies.csv")
+
+        # Check for existing PRs
+        existing = git.check_existing_prs(issue)
+        if existing:
+            pr = existing[0]
+            out.error("github", f"Open PR #{pr['number']} already exists for issue #{issue}")
+            out.die(f"PR #{pr['number']}: {pr['title']}")
+        out.info("github", f"No open PRs for issue #{issue}")
+
+        # Create branch
+        git.create_branch(branch)
+        out.plain("git", f"Created branch {branch}")
 
     # Add stub CSV row
     from src.csvtool import company_add
@@ -77,20 +95,23 @@ def new(slug: str, issue: int):
     company_add(slug)
     out.plain("csv", "Added stub row to companies.csv")
 
-    # Commit and push
-    git.add_files(["data/companies.csv"])
-    git.commit(f"Add {slug}")
-    out.plain("git", f'Committed: "Add {slug}"')
+    if not local:
+        from src.workspace import git
 
-    git.push(branch, set_upstream=True)
-    out.plain("git", f"Pushed to origin/{branch}")
+        # Commit and push
+        git.add_files(["data/companies.csv"])
+        git.commit(f"Add {slug}")
+        out.plain("git", f'Committed: "Add {slug}"')
 
-    # Create draft PR
-    pr_number = git.create_draft_pr(
-        title=f"Add {slug}",
-        body=f"Closes #{issue}",
-    )
-    out.info("github", f'Created draft PR #{pr_number} — "Add {slug}" (closes #{issue})')
+        git.push(branch, set_upstream=True)
+        out.plain("git", f"Pushed to origin/{branch}")
+
+        # Create draft PR
+        pr_number = git.create_draft_pr(
+            title=f"Add {slug}",
+            body=f"Closes #{issue}",
+        )
+        out.info("github", f'Created draft PR #{pr_number} — "Add {slug}" (closes #{issue})')
 
     # Create workspace
     ws = Workspace(
@@ -106,12 +127,11 @@ def new(slug: str, issue: int):
     set_active_slug(slug)
 
     # Log
-    action_log.append(
-        ws_log_path(slug),
-        "new",
-        True,
-        f"Created workspace, branch {branch}, draft PR #{pr_number}",
-    )
+    if local:
+        log_msg = "Created workspace (local mode)"
+    else:
+        log_msg = f"Created workspace, branch {branch}, draft PR #{pr_number}"
+    action_log.append(ws_log_path(slug), "new", True, log_msg)
 
     out.plain("workspace", f"State: created (active: {slug})")
     out.next_step('ws set --name "..." --website "..."')
@@ -180,7 +200,7 @@ def use(slug: str | None, board: str | None, company_opt: str | None, board_opt:
 @click.option("--message", required=True, help="Human-readable explanation")
 def reject(slug: str | None, issue: int | None, reason: str, message: str):
     """Comment + close an issue as rejected."""
-    from src.workspace import git
+    local = is_local_mode()
 
     # Resolve slug from active workspace if not given explicitly
     if not slug:
@@ -199,10 +219,17 @@ def reject(slug: str | None, issue: int | None, reason: str, message: str):
         f"If this was closed in error, reopen the issue with additional context."
     )
 
-    git.comment_on_issue(issue, body)
-    git.close_issue(issue)
-    out.info("github", f"Commented on issue #{issue} (validation-failed: {reason})")
-    out.info("github", f"Closed issue #{issue}")
+    if local:
+        out.warn("github", "Local mode — skipping issue comment and close")
+        out.plain("github", f"Would comment on issue #{issue}: {reason}")
+        out.plain("github", f"Would close issue #{issue}")
+    else:
+        from src.workspace import git
+
+        git.comment_on_issue(issue, body)
+        git.close_issue(issue)
+        out.info("github", f"Commented on issue #{issue} (validation-failed: {reason})")
+        out.info("github", f"Closed issue #{issue}")
 
     if slug and workspace_exists(slug):
         action_log.append(
@@ -218,8 +245,8 @@ def reject(slug: str | None, issue: int | None, reason: str, message: str):
 def del_(slug: str | None):
     """Remove workspace + CSV rows + close PR + delete branch."""
     from src.csvtool import company_del
-    from src.workspace import git
 
+    local = is_local_mode()
     slug = resolve_slug(slug)
 
     if not workspace_exists(slug):
@@ -229,11 +256,16 @@ def del_(slug: str | None):
 
     # Close PR if it exists
     if ws.pr:
-        try:
-            git.close_pr(ws.pr)
-            out.info("github", f"Closed PR #{ws.pr}")
-        except GitHubApiError:
-            out.warn("github", f"Could not close PR #{ws.pr}")
+        if local:
+            out.warn("github", f"Local mode — skipping PR #{ws.pr} close")
+        else:
+            from src.workspace import git
+
+            try:
+                git.close_pr(ws.pr)
+                out.info("github", f"Closed PR #{ws.pr}")
+            except GitHubApiError:
+                out.warn("github", f"Could not close PR #{ws.pr}")
 
     # Delete CSV rows
     try:
@@ -244,8 +276,13 @@ def del_(slug: str | None):
 
     # Delete branch
     if ws.branch:
-        git.delete_branch(ws.branch, remote=True)
-        out.info("git", f"Deleted branch {ws.branch}")
+        if local:
+            out.warn("git", f"Local mode — skipping branch {ws.branch} deletion")
+        else:
+            from src.workspace import git
+
+            git.delete_branch(ws.branch, remote=True)
+            out.info("git", f"Deleted branch {ws.branch}")
 
     # Delete workspace directory
     delete_workspace(slug)
@@ -573,7 +610,8 @@ def _execute_submit_step(
     """Execute a single submit step. Raises on failure."""
     from src.csvtool import board_add, company_add
     from src.inspect import validate_csvs
-    from src.workspace import git
+
+    local = is_local_mode()
 
     if step_key == "csv_written":
         # Write company details
@@ -616,6 +654,10 @@ def _execute_submit_step(
             raise CsvToolError(f"CSV validation failed: {'; '.join(str(e) for e in errors[:3])}")
 
     elif step_key == "committed":
+        if local:
+            return  # Local mode — skip git commit
+        from src.workspace import git
+
         if not git.has_uncommitted_changes(["data/"]):
             return  # Nothing to commit — already done
         git.add_files(["data/"])
@@ -625,22 +667,38 @@ def _execute_submit_step(
         git.commit(commit_msg)
 
     elif step_key == "pushed":
+        if local:
+            return  # Local mode — skip push
+        from src.workspace import git
+
         if not git.is_ahead_of_remote():
             return  # Already pushed
         git.push()
 
     elif step_key == "pr_body_updated":
+        if local:
+            return  # Local mode — skip PR body update
+        from src.workspace import git
+
         if ws.pr and boards:
             pr_body = _build_pr_body(ws, boards)
             git.edit_pr_body(ws.pr, pr_body)
 
     elif step_key == "stats_posted":
+        if local:
+            return  # Local mode — skip stats posting
+        from src.workspace import git
+
         if ws.pr and boards:
             board_data = {b.alias: b.to_dict() for b in boards}
             stats_comment = action_log.format_crawl_stats(board_data)
             git.comment_on_pr(ws.pr, stats_comment)
 
     elif step_key == "transcript_posted":
+        if local:
+            return  # Local mode — skip transcript posting
+        from src.workspace import git
+
         if ws.pr:
             ws_log = action_log.read(ws_log_path(ws.slug))
             board_logs = {b.alias: b.log for b in boards}
@@ -655,10 +713,18 @@ def _execute_submit_step(
             git.comment_on_pr(ws.pr, transcript_comment)
 
     elif step_key == "pr_ready":
+        if local:
+            return  # Local mode — skip PR ready
+        from src.workspace import git
+
         if ws.pr:
             git.mark_pr_ready(ws.pr)
 
     elif step_key == "issue_completed":
+        if local:
+            return  # Local mode — skip issue comment
+        from src.workspace import git
+
         if ws.issue:
             total_jobs = sum((b.monitor_run or {}).get("jobs", 0) for b in boards)
             display_name = ws.name or ws.slug
@@ -735,12 +801,11 @@ def submit(slug: str | None, summary: str | None, force: bool):
     ws.last_error = {}
     save_workspace(ws)
 
-    action_log.append(
-        ws_log_path(slug),
-        "submit",
-        True,
-        f"CSV updated, validated, committed, pushed, PR #{ws.pr} ready",
-    )
+    if is_local_mode():
+        log_msg = "CSV updated, validated (local mode — git/PR steps skipped)"
+    else:
+        log_msg = f"CSV updated, validated, committed, pushed, PR #{ws.pr} ready"
+    action_log.append(ws_log_path(slug), "submit", True, log_msg)
 
     out.info("workspace", "Submit complete")
 
@@ -771,6 +836,9 @@ _NEXT_STEPS: list[tuple[str | None, str]] = [
 
 def _check_environment(ws: Workspace) -> list[tuple[str, str, str]]:
     """Check environment health. Returns [(code, message, severity), ...]."""
+    if is_local_mode():
+        return []  # Skip all git/gh checks in local mode
+
     from src.workspace import git
 
     issues: list[tuple[str, str, str]] = []

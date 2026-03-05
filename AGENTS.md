@@ -149,22 +149,83 @@ ws new stripe --issue 42
 
 ### 3. Research and Set Company Details
 
+**Step 1 — Set name and website** (triggers auto-discovery of logo candidates):
+
 ```bash
-ws set --name "Stripe" --website "https://stripe.com" \
-  --logo-url "https://stripe.com/img/logo.svg" \
+ws set --name "Stripe" --website "https://stripe.com"
+```
+
+When `--website` is provided without `--logo-url` or `--icon-url`, `ws set` automatically fetches the homepage, discovers logo/icon candidates using heuristics (JSON-LD, OG image, apple-touch-icon, header/nav images, inline SVGs, favicon), and downloads them as artifacts:
+
+    .workspace/<slug>/artifacts/company/logo-candidates/
+      candidate-1.png   # e.g. JSON-LD Organization logo
+      candidate-2.png   # e.g. apple-touch-icon
+      candidate-3.svg   # e.g. inline SVG from header
+      ...
+      candidates.json   # Metadata for --logo-candidate/--icon-candidate
+
+The output shows a ranked table of candidates with scores, sources, and file paths.
+
+**Step 2 — Visually verify and select candidates:**
+
+Read each candidate artifact and confirm it's a real logo/icon (not a banner, hero image, or unrelated graphic). Then select by candidate number:
+
+```bash
+ws set --logo-candidate 1 --icon-candidate 2
+```
+
+This resolves the candidate's URL from `candidates.json` and downloads + saves the final `logo.png` / `icon.png` artifacts.
+
+**Alternative — provide URLs directly** (skips auto-discovery):
+
+```bash
+ws set --logo-url "https://stripe.com/img/logo.svg" \
   --icon-url "https://www.google.com/s2/favicons?domain=stripe.com&sz=128"
 ```
 
-URLs must be reachable — submit blocks on unreachable logo/icon URLs. Prefer logos hosted on the company's own website (OG image, press/brand page, or page source) to ensure they stay up-to-date.
+URLs must be reachable — submit blocks on unreachable logo/icon URLs. Prefer logos hosted on the company's own website to ensure they stay up-to-date.
+
+**You must visually verify the final files.** Read each PNG and confirm:
+- **Logo**: Is this the company's actual logo or brand mark? Reject generic images, banners, photos, hero images, or unrelated graphics.
+- **Icon**: Is this a recognizable favicon/icon for the company? Should be a small square image.
+
+If either image is wrong, re-run `ws set` with a different `--logo-candidate`/`--icon-candidate` or provide your own `--logo-url`/`--icon-url`.
 
 ### 4. Add Board and Probe Monitors
 
 ```bash
 ws add board careers --url "https://boards.greenhouse.io/stripe"
+```
+
+`add board` auto-prefixes the alias with the company slug (`careers` → `stripe-careers`) and auto-activates the board.
+
+#### Skip probing when ATS is obvious
+
+If the board URL matches a **known ATS domain**, skip `ws probe monitor` and go directly to Step 5 — the monitor type is obvious:
+
+| URL pattern | Monitor |
+|---|---|
+| `boards.greenhouse.io/<token>` or `job-boards.greenhouse.io/<token>` | `greenhouse` |
+| `jobs.lever.co/<token>` | `lever` |
+| `jobs.ashbyhq.com/<token>` | `ashby` |
+| `<company>.recruitee.com` | `recruitee` |
+| `apply.workable.com/<token>` | `workable` |
+| `<company>.jobs.personio.com` or `.personio.de` | `personio` |
+| `<company>.pinpointhq.com` | `pinpoint` |
+| `careers.smartrecruiters.com/<token>` or `<company>.mysmartrecruiters.com` | `smartrecruiters` |
+| `<company>.wd1.myworkdayjobs.com` (wd1–wd5) | `workday` |
+| `<company>.rippling.com/careers` | `rippling` |
+| `<company>.hireology.com` | `hireology` |
+
+All of these are **rich API monitors** — they return full data and the scraper step is auto-skipped.
+
+#### Otherwise, probe
+
+```bash
 ws probe monitor -n 138   # 138 jobs visible on the careers page
 ```
 
-`add board` auto-prefixes the alias with the company slug (`careers` → `stripe-careers`) and auto-activates the board. `probe monitor` tries all monitor types and reports results.
+`probe monitor` tries all monitor types and reports results.
 
 #### Multiple boards
 
@@ -172,13 +233,8 @@ If Step 1 identified multiple career pages (regional, departmental, or separate 
 
 ```bash
 ws add board careers-us --url "https://company.com/us/careers"
-ws probe monitor -n 50    # 50 jobs on US page
-# ... configure first board fully (Steps 5–8) ...
-
 ws add board careers-de --url "https://company.com/de/careers"
 ws use --board company-careers-de
-ws probe monitor -n 30    # 30 jobs on DE page
-# ... configure second board ...
 ```
 
 **Do not skip boards that were discovered in Step 1.** The issue URL is a starting point, not a scope constraint. If one board's listings are a strict superset of another's (verified by comparing job counts and sampling titles), the subset board can be skipped — document this in `--verdict-notes`.
@@ -232,9 +288,35 @@ After the test crawl, compare the job count against the website's displayed tota
 
 API monitors (`greenhouse`, `hireology`, `lever`, `ashby`, `personio`, `pinpoint`, `recruitee`, `rippling`, `rss`, `smartrecruiters`, `workable`, `workday`) return full data — `ws run monitor` prints "Skipping scraper" and auto-marks scraper steps as done. `api_sniffer` with auto-mapped `fields` also skips the scraper step.
 
-For URL-only monitors (`sitemap`, `dom`, `api_sniffer` without `fields`), follow this checklist **in order**:
+For URL-only monitors (`sitemap`, `dom`, `api_sniffer` without `fields`), you need a scraper.
 
-#### Step 1: Probe all scraper types
+#### Scraper types (in preference order)
+
+Pick the **first type that works** — higher in the list = more resilient, less config:
+
+| # | Type | What it does | Config needed | Best when |
+|---|------|-------------|---------------|-----------|
+| 1 | `json-ld` | Parses `<script type="application/ld+json">` JobPosting schema | None | Page has schema.org markup (very common on ATS pages) |
+| 2 | `nextdata` | Extracts from Next.js `__NEXT_DATA__` JSON | `path` + `fields` | Site is built with Next.js |
+| 3 | `embedded` | Extracts from `<script>` blocks, JS variables, or callback patterns | `pattern`/`script_id`/`variable` + `path` + `fields` | Page has JSON embedded in HTML |
+| 4 | `api_sniffer` | Captures XHR/fetch JSON via Playwright | Minimal (auto-mapped) | SPA that loads job data via API calls |
+| 5 | `dom` | Step-based extraction walking HTML elements | `steps` array (complex) | No structured data; last resort |
+
+#### Skip probing when the choice is obvious
+
+You do **not** need to run `ws probe scraper` when:
+
+- **Job URLs are on a known ATS domain** (greenhouse.io, lever.co, ashbyhq.com, etc.) → use `json-ld` directly. ATS job pages almost always have JSON-LD markup.
+- **You already know the page has JSON-LD** from validation → use `json-ld`
+- **Monitor was `nextdata`** → use `nextdata` scraper
+- **Probe results from monitor step showed embedded data** → use `embedded`
+
+```bash
+ws select scraper json-ld
+ws run scraper
+```
+
+#### Otherwise, probe first
 
 ```bash
 ws probe scraper
@@ -242,12 +324,9 @@ ws probe scraper
 
 This tries all scraper types with heuristic auto-config against sample URLs and shows a quality comparison. The probe runs against all available sample URLs (up to 10).
 
-#### Step 2: Evaluate probe results — do NOT blindly follow "Next:"
+**Do NOT blindly follow "Next:" suggestions.** If required fields show 0/N, the heuristic config is wrong — not necessarily the scraper type. A detected pattern (e.g., `AF_initDataCallback`, NextData) is a strong signal even when the auto-generated field mapping fails.
 
-- If required fields show 0/N for the best scraper, the **heuristic config** is wrong — not necessarily the scraper type. A detected pattern (e.g., `AF_initDataCallback`, NextData) is a strong signal even when the auto-generated field mapping fails.
-- For dom scraper, inspect `flat.json` to verify DOM element order before writing steps. Steps must follow DOM order (the cursor only moves forward) — wrong order silently skips fields.
-
-#### Step 3: If probe detects a pattern but fields are 0/N, investigate the raw data
+#### If probe detects a pattern but fields are 0/N, investigate the raw data
 
 **Do not skip this step.** When the probe detects embedded data (AF_initDataCallback, NextData, script tags) but the heuristic field mapping fails, the data is there — you just need to map it manually.
 
@@ -256,27 +335,16 @@ This tries all scraper types with heuristic auto-config against sample URLs and 
 3. Write a small Python script to parse and print the structure, identifying which array indices or object keys contain title, description, locations, etc.
 4. Configure the `embedded` scraper with the correct `pattern`, `path`, and `fields` based on what you found. Run `ws help scraper embedded` for config format and examples (it explicitly covers Google Wiz/AF_initDataCallback, NextData, and other patterns).
 
-#### Step 4: If no embedded data, check for JSON-LD
+#### DOM scraper (last resort)
 
-If the page has `<script type="application/ld+json">` with JobPosting schema:
-
-```bash
-ws select scraper json-ld
-ws run scraper
-```
-
-JSON-LD is more resilient than DOM scraping — try it first.
-
-#### Step 5: If no structured data, try DOM scraper (render: false first)
-
-**Always prefer `render: false`** — only use `render: true` when static fetch produces empty or incomplete results. Check if the data exists in the static HTML before assuming JS rendering is needed.
+**Always prefer `render: false`** — only use `render: true` when static fetch produces empty or incomplete results.
 
 ```bash
 ws select scraper dom --config '{"render": false, "steps": [...]}'
 ws run scraper
 ```
 
-#### Step 6: Only then try render: true
+For dom scraper, inspect `flat.json` to verify DOM element order before writing steps. Steps must follow DOM order (the cursor only moves forward) — wrong order silently skips fields.
 
 If static DOM extraction produces empty results and no embedded data exists:
 
@@ -393,10 +461,10 @@ alias ws='uv run ws'
 # Claim (sets active workspace — no need to repeat the slug after this)
 ws new stripe --issue 42
 
-# Configure
-ws set --name "Stripe" --website "https://stripe.com" \
-  --logo-url "https://stripe.com/img/logo.svg" \
-  --icon-url "https://www.google.com/s2/favicons?domain=stripe.com&sz=128"
+# Configure — set name + website (auto-discovers logo candidates)
+ws set --name "Stripe" --website "https://stripe.com"
+# Visually verify candidate artifacts, then select
+ws set --logo-candidate 1 --icon-candidate 2
 
 # Board + monitor
 ws add board careers --url "https://boards.greenhouse.io/stripe"
