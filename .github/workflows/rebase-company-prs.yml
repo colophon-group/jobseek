@@ -1,0 +1,102 @@
+name: Auto-rebase company PRs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/crawler/data/**"
+
+concurrency:
+  group: rebase-company-prs
+  cancel-in-progress: true
+
+jobs:
+  rebase:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Rebase open company PRs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          # Find open PRs on add-company/* branches
+          mapfile -t entries < <(
+            gh pr list --state open --json number,headRefName \
+              --jq '.[] | select(.headRefName | startswith("add-company/")) | "\(.number) \(.headRefName)"'
+          )
+
+          if [ ${#entries[@]} -eq 0 ]; then
+            echo "No open company PRs"
+            exit 0
+          fi
+
+          for entry in "${entries[@]}"; do
+            pr=$(echo "$entry" | awk '{print $1}')
+            branch=$(echo "$entry" | awk '{print $2}')
+            echo "::group::PR #$pr ($branch)"
+
+            git checkout "$branch" 2>/dev/null || { echo "::warning::Branch $branch not found"; echo "::endgroup::"; continue; }
+
+            # Already up to date?
+            if git merge-base --is-ancestor origin/main HEAD 2>/dev/null; then
+              echo "Already up to date"
+              echo "::endgroup::"
+              continue
+            fi
+
+            # Try clean rebase first
+            if git rebase origin/main 2>/dev/null; then
+              echo "Clean rebase"
+              git push --force-with-lease origin "$branch"
+              echo "::endgroup::"
+              continue
+            fi
+
+            # Check if conflicts are only in data files
+            conflicted=$(git diff --name-only --diff-filter=U)
+            non_data=$(echo "$conflicted" | grep -v '^apps/crawler/data/' || true)
+
+            if [ -n "$non_data" ]; then
+              echo "::warning::PR #$pr has non-data conflicts, skipping: $non_data"
+              git rebase --abort
+              echo "::endgroup::"
+              continue
+            fi
+
+            # Auto-resolve: CSVs are append-only, so keep main + add PR's new rows
+            echo "Resolving data conflicts..."
+            for file in $conflicted; do
+              if [[ "$file" == *.csv ]]; then
+                # Take main's version (HEAD during rebase = main)
+                git checkout --ours "$file"
+                # Append rows from PR's commit that aren't already in main
+                git show REBASE_HEAD:"$file" | while IFS= read -r line; do
+                  if ! grep -qxF "$line" "$file"; then
+                    echo "$line" >> "$file"
+                  fi
+                done
+              else
+                # Non-CSV data files (README.md etc): take main's version
+                git checkout --ours "$file"
+              fi
+              git add "$file"
+            done
+
+            GIT_EDITOR=true git rebase --continue
+
+            echo "Resolved and pushing"
+            git push --force-with-lease origin "$branch"
+            echo "::endgroup::"
+          done
