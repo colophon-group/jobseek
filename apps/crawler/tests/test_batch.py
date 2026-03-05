@@ -276,9 +276,7 @@ class TestProcessOneBoard:
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one")
-    async def test_gone_jobs_in_diff(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
-    ):
+    async def test_gone_jobs_in_diff(self, mock_monitor, mock_get_redis, mock_pool, mock_http):
         """DIFF_URLS returns 'gone' rows -> they trigger cache invalidation."""
         pool, conn = mock_pool
         url1 = "https://example.com/job/1"
@@ -345,9 +343,7 @@ class TestProcessOneBoard:
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one")
-    async def test_error_records_failure(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
-    ):
+    async def test_error_records_failure(self, mock_monitor, mock_get_redis, mock_pool, mock_http):
         """monitor_one raises -> _RECORD_FAILURE called with truncated error."""
         pool, conn = mock_pool
         long_error = "x" * 1000
@@ -356,9 +352,7 @@ class TestProcessOneBoard:
 
         await _process_one_board(board, pool, mock_http)
 
-        failure_calls = [
-            c for c in conn.execute.await_args_list if c.args[0] == _RECORD_FAILURE
-        ]
+        failure_calls = [c for c in conn.execute.await_args_list if c.args[0] == _RECORD_FAILURE]
         assert len(failure_calls) == 1
         error_arg = failure_calls[0].args[2]
         assert len(error_arg) <= 500
@@ -557,9 +551,7 @@ class TestProcessOneScrape:
 
     @patch("src.batch.queue_fail", new_callable=AsyncMock)
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
-    async def test_failure_calls_queue_fail(
-        self, mock_scrape, mock_fail, mock_pool, mock_http
-    ):
+    async def test_failure_calls_queue_fail(self, mock_scrape, mock_fail, mock_pool, mock_http):
         """scrape_one raises -> queue_fail -> False."""
         pool, conn = mock_pool
         mock_scrape.side_effect = RuntimeError("scrape error")

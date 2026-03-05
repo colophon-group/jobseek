@@ -124,9 +124,7 @@ class TestParseJobLocationType:
         assert _parse_job_location_type({"remote": True, "hybrid": True}) == "remote"
 
     def test_false_values(self):
-        result = _parse_job_location_type(
-            {"remote": False, "hybrid": False, "on_site": False}
-        )
+        result = _parse_job_location_type({"remote": False, "hybrid": False, "on_site": False})
         assert result is None
 
 
@@ -144,23 +142,17 @@ class TestParseSalary:
         assert result == {"currency": "EUR", "min": 50000, "max": 70000, "unit": "year"}
 
     def test_hourly(self):
-        offer = {
-            "salary": {"min": 20, "max": 30, "currency": "USD", "period": "hourly"}
-        }
+        offer = {"salary": {"min": 20, "max": 30, "currency": "USD", "period": "hourly"}}
         result = _parse_salary(offer)
         assert result["unit"] == "hour"
 
     def test_monthly(self):
-        offer = {
-            "salary": {"min": 4000, "max": 6000, "currency": "GBP", "period": "monthly"}
-        }
+        offer = {"salary": {"min": 4000, "max": 6000, "currency": "GBP", "period": "monthly"}}
         result = _parse_salary(offer)
         assert result["unit"] == "month"
 
     def test_weekly(self):
-        offer = {
-            "salary": {"min": 1000, "max": 1500, "currency": "USD", "period": "weekly"}
-        }
+        offer = {"salary": {"min": 1000, "max": 1500, "currency": "USD", "period": "weekly"}}
         result = _parse_salary(offer)
         assert result["unit"] == "week"
 
@@ -175,9 +167,7 @@ class TestParseSalary:
         assert _parse_salary({"salary": "50000"}) is None
 
     def test_min_only(self):
-        offer = {
-            "salary": {"min": 40000, "max": None, "currency": "CHF", "period": ""}
-        }
+        offer = {"salary": {"min": 40000, "max": None, "currency": "CHF", "period": ""}}
         result = _parse_salary(offer)
         assert result == {"currency": "CHF", "min": 40000, "max": None, "unit": "year"}
 

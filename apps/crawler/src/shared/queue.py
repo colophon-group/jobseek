@@ -87,7 +87,7 @@ async def fail(item: QueueItem, error: str) -> None:
         log.warning("queue.dead", url=item.url, retries=item.retries, error=error)
     else:
         # Exponential backoff: 30s, 60s, 120s, ...
-        retry_at = time.time() + (30 * (2 ** item.retries))
+        retry_at = time.time() + (30 * (2**item.retries))
         await redis.zadd(RETRY_KEY, {item.serialize(): retry_at})
         log.debug("queue.retry_scheduled", url=item.url, retry=item.retries)
 
@@ -121,10 +121,7 @@ async def recover_stale(timeout: int = VISIBILITY_TIMEOUT) -> int:
         return 0
 
     now = time.time()
-    stale_keys = [
-        url for url, claimed_at in active.items()
-        if now - float(claimed_at) > timeout
-    ]
+    stale_keys = [url for url, claimed_at in active.items() if now - float(claimed_at) > timeout]
 
     if stale_keys:
         await redis.hdel(ACTIVE_KEY, *stale_keys)

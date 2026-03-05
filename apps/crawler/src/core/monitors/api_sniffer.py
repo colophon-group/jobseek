@@ -242,7 +242,7 @@ async def discover(
 # ---------------------------------------------------------------------------
 
 _DEFAULT_HREF_RE = re.compile(r'href=["\']([^"\'#][^"\']*)["\']')
-_HTML_WITH_LINKS_RE = re.compile(r'<[a-z][\s\S]*?href=', re.IGNORECASE)
+_HTML_WITH_LINKS_RE = re.compile(r"<[a-z][\s\S]*?href=", re.IGNORECASE)
 
 
 def score_array(path: str, items: list[dict], api_url: str) -> int:
@@ -275,7 +275,8 @@ def score_array(path: str, items: list[dict], api_url: str) -> int:
 
 
 def pick_best_array(
-    arrays: list[tuple[str, list[dict]]], api_url: str,
+    arrays: list[tuple[str, list[dict]]],
+    api_url: str,
 ) -> tuple[str, list[dict]]:
     """Pick the best candidate array from *arrays* using job-list scoring."""
     return max(arrays, key=lambda x: (score_array(x[0], x[1], api_url), len(x[1])))
@@ -291,11 +292,7 @@ def find_html_strings(obj: object, path: str = "") -> list[tuple[str, str]]:
     if isinstance(obj, dict):
         for key, val in obj.items():
             child = f"{path}.{key}" if path else key
-            if (
-                isinstance(val, str)
-                and len(val) > 100
-                and _HTML_WITH_LINKS_RE.search(val)
-            ):
+            if isinstance(val, str) and len(val) > 100 and _HTML_WITH_LINKS_RE.search(val):
                 results.append((child, val))
             elif isinstance(val, (dict, list)):
                 results.extend(find_html_strings(val, child))
@@ -455,7 +452,11 @@ async def _discover_http(
                     fetch_body = set_body_param(post_data, pag_param, current_value)
 
                 page_data = await http_fetch(
-                    client, method, fetch_url, headers, fetch_body,
+                    client,
+                    method,
+                    fetch_url,
+                    headers,
+                    fetch_body,
                 )
                 if page_data is None:
                     break
@@ -507,7 +508,11 @@ async def _discover_http(
                     fetch_body = set_body_param(post_data, pag_param, current_value)
 
                 page_data = await http_fetch(
-                    client, method, fetch_url, headers, fetch_body,
+                    client,
+                    method,
+                    fetch_url,
+                    headers,
+                    fetch_body,
                 )
                 if page_data is None:
                     break

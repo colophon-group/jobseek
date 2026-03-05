@@ -28,6 +28,7 @@ MAX_JOBS = 10_000
 
 # ── Preset definitions ──────────────────────────────────────────────────
 
+
 @dataclass(frozen=True)
 class _Preset:
     feed_paths: list[str]
@@ -68,6 +69,7 @@ _TITLE_LOCATION_RE = re.compile(r"\s*\([^)]+,\s*[^)]+\)\s*$")
 
 
 # ── Item parsers ────────────────────────────────────────────────────────
+
 
 def _text(item: ET.Element, tag: str) -> str | None:
     """Get text content of a child element."""
@@ -253,6 +255,7 @@ _PARSERS: dict[str, type[None] | object] = {
 
 # ── Feed URL helpers ────────────────────────────────────────────────────
 
+
 def _build_feed_url(board_url: str, path: str) -> str:
     """Build a feed URL from a board URL and feed path."""
     parsed = urlparse(board_url)
@@ -270,6 +273,7 @@ def _add_pagination(url: str, offset: int, per_page: int) -> str:
 
 
 # ── Feed fetching ───────────────────────────────────────────────────────
+
 
 async def _fetch_all_items(
     feed_url: str,
@@ -345,9 +349,8 @@ async def _probe_feed(
 
 # ── Discover ────────────────────────────────────────────────────────────
 
-async def discover(
-    board: dict, client: httpx.AsyncClient, pw=None
-) -> list[DiscoveredJob]:
+
+async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[DiscoveredJob]:
     """Fetch job listings from an RSS feed."""
     board_url = board["board_url"]
     metadata = board.get("metadata") or {}
@@ -389,9 +392,8 @@ async def discover(
 
 # ── Can Handle (auto-detection) ─────────────────────────────────────────
 
-async def can_handle(
-    url: str, client: httpx.AsyncClient | None = None, pw=None
-) -> dict | None:
+
+async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None) -> dict | None:
     """Detect RSS-based ATS: HTML scan for preset markers → feed probe."""
     if client is None:
         return None

@@ -195,9 +195,7 @@ class TestParseJob:
         assert result.metadata == {"department": "Sales"}
 
     def test_department_list(self):
-        result = _parse_job(
-            {"shortcode": "X", "department": ["Eng", "Product"]}, "acme"
-        )
+        result = _parse_job({"shortcode": "X", "department": ["Eng", "Product"]}, "acme")
         assert result.metadata == {"department": "Eng, Product"}
 
     def test_no_metadata(self):

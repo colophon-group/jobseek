@@ -166,8 +166,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
     slug = metadata.get("slug") or _slug_from_url(board_url)
     if not slug:
         raise ValueError(
-            f"Cannot derive Personio slug from board URL {board_url!r} "
-            "and no slug in metadata"
+            f"Cannot derive Personio slug from board URL {board_url!r} and no slug in metadata"
         )
 
     url = _api_url(slug)

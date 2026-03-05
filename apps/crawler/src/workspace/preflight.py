@@ -48,19 +48,23 @@ def run_preflight(
             # Check if expected branch exists locally
             result = git._run(["git", "branch", "--list", ws.branch], check=False)
             if ws.branch not in result.stdout:
-                issues.append(PreflightIssue(
-                    "branch_missing",
-                    f"Branch {ws.branch!r} not found locally",
-                    "critical",
-                ))
+                issues.append(
+                    PreflightIssue(
+                        "branch_missing",
+                        f"Branch {ws.branch!r} not found locally",
+                        "critical",
+                    )
+                )
             else:
                 current = git.current_branch()
                 if current != ws.branch:
-                    issues.append(PreflightIssue(
-                        "wrong_branch",
-                        f"On branch {current!r}, expected {ws.branch!r}",
-                        "warning",
-                    ))
+                    issues.append(
+                        PreflightIssue(
+                            "wrong_branch",
+                            f"On branch {current!r}, expected {ws.branch!r}",
+                            "warning",
+                        )
+                    )
         except Exception:
             pass  # Don't break commands if git fails
 

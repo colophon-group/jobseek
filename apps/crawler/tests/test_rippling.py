@@ -26,9 +26,7 @@ class TestSlugFromUrl:
         assert _slug_from_url("https://ats.us1.rippling.com/acme-corp/jobs") == "acme-corp"
 
     def test_us1_with_locale(self):
-        assert (
-            _slug_from_url("https://ats.us1.rippling.com/fr-FR/acme-corp/jobs") == "acme-corp"
-        )
+        assert _slug_from_url("https://ats.us1.rippling.com/fr-FR/acme-corp/jobs") == "acme-corp"
 
     def test_ignored_slug(self):
         assert _slug_from_url("https://ats.rippling.com/api/jobs") is None
@@ -38,9 +36,7 @@ class TestSlugFromUrl:
         assert _slug_from_url("https://example.com/careers") is None
 
     def test_with_trailing_path(self):
-        assert (
-            _slug_from_url("https://ats.rippling.com/acme/jobs/some-job-id") == "acme"
-        )
+        assert _slug_from_url("https://ats.rippling.com/acme/jobs/some-job-id") == "acme"
 
 
 class TestParseSalary:
@@ -52,9 +48,7 @@ class TestParseSalary:
         assert result == {"currency": "USD", "min": 50000, "max": 80000, "unit": "year"}
 
     def test_hourly_frequency(self):
-        pay_ranges = [
-            {"rangeStart": 25, "rangeEnd": 50, "currency": "USD", "frequency": "HOURLY"}
-        ]
+        pay_ranges = [{"rangeStart": 25, "rangeEnd": 50, "currency": "USD", "frequency": "HOURLY"}]
         result = _parse_salary(pay_ranges)
         assert result["unit"] == "hour"
 

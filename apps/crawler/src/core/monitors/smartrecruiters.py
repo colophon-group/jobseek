@@ -229,7 +229,9 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
         if len(posting_ids) >= MAX_JOBS:
             log.warning(
                 "smartrecruiters.truncated",
-                token=token, total=len(posting_ids), cap=MAX_JOBS,
+                token=token,
+                total=len(posting_ids),
+                cap=MAX_JOBS,
             )
             posting_ids = posting_ids[:MAX_JOBS]
             break

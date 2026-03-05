@@ -30,6 +30,7 @@ def _make_item(xml_str: str) -> ET.Element:
 
 # ── _text ────────────────────────────────────────────────────────────────
 
+
 class TestText:
     def test_child_with_text(self):
         item = _make_item("<title>Engineer</title>")
@@ -50,6 +51,7 @@ class TestText:
 
 # ── _g (Google Base namespace) ───────────────────────────────────────────
 
+
 class TestG:
     def test_basic(self):
         item = _make_item(f'<g:location xmlns:g="{_G_NS}">Berlin</g:location>')
@@ -66,6 +68,7 @@ class TestG:
 
 # ── _tt (Teamtailor namespace) ───────────────────────────────────────────
 
+
 class TestTt:
     def test_basic(self):
         item = _make_item(f'<tt:department xmlns:tt="{_TT_NS}">Sales</tt:department>')
@@ -81,6 +84,7 @@ class TestTt:
 
 
 # ── _parse_sf_item (SuccessFactors) ──────────────────────────────────────
+
 
 class TestParseSfItem:
     def test_basic_item(self):
@@ -150,6 +154,7 @@ class TestParseSfItem:
 
 # ── _tt_location_string ──────────────────────────────────────────────────
 
+
 class TestTtLocationString:
     def test_name_preferred(self):
         xml = f"""
@@ -197,6 +202,7 @@ class TestTtLocationString:
 
 
 # ── _parse_tt_item (Teamtailor) ──────────────────────────────────────────
+
 
 class TestParseTtItem:
     def test_full_item(self):
@@ -285,6 +291,7 @@ class TestParseTtItem:
 
 # ── _parse_generic_item ──────────────────────────────────────────────────
 
+
 class TestParseGenericItem:
     def test_basic_item(self):
         xml = """
@@ -323,6 +330,7 @@ class TestParseGenericItem:
 
 # ── _build_feed_url ──────────────────────────────────────────────────────
 
+
 class TestBuildFeedUrl:
     def test_basic(self):
         result = _build_feed_url("https://jobs.example.com/careers", "/googlefeed.xml")
@@ -338,6 +346,7 @@ class TestBuildFeedUrl:
 
 
 # ── _add_pagination ──────────────────────────────────────────────────────
+
 
 class TestAddPagination:
     def test_adds_params(self):
@@ -358,6 +367,7 @@ class TestAddPagination:
 
 
 # ── discover ─────────────────────────────────────────────────────────────
+
 
 def _rss_xml(items_xml: str) -> str:
     return f"""<?xml version="1.0" encoding="UTF-8"?>
@@ -475,6 +485,7 @@ class TestDiscover:
 
 
 # ── can_handle ───────────────────────────────────────────────────────────
+
 
 class TestCanHandle:
     async def test_returns_none_without_client(self):

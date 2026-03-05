@@ -127,7 +127,10 @@ _MONITOR_PROBE_HINTS: dict[str, str] = {
 @click.argument("slug", required=False)
 @click.option("--board", "-b", "board_alias", default=None, help="Target board alias")
 @click.option(
-    "--current-jobs", "-n", type=int, default=0,
+    "--current-jobs",
+    "-n",
+    type=int,
+    default=0,
     help="Estimated job count for cost scoring",
 )
 def probe_monitors(slug: str | None, board_alias: str | None, current_jobs: int):
@@ -190,14 +193,8 @@ def probe_monitors(slug: str | None, board_alias: str | None, current_jobs: int)
     ]
     threshold = min(detected_url_only_costs) if detected_url_only_costs else 1.5
 
-    high = [
-        e for e in scored
-        if e[1] is not None and e[3] is not None and e[3] <= threshold
-    ]
-    low = [
-        e for e in scored
-        if e[1] is not None and (e[3] is None or e[3] > threshold)
-    ]
+    high = [e for e in scored if e[1] is not None and e[3] is not None and e[3] <= threshold]
+    low = [e for e in scored if e[1] is not None and (e[3] is None or e[3] > threshold)]
     undetected = [e for e in scored if e[1] is None]
 
     # Print with priority split (only when --current-jobs is given and there are detections)
@@ -441,7 +438,10 @@ def probe_scraper(slug: str | None, board_alias: str | None, urls: tuple[str, ..
 @click.argument("slug", required=False)
 @click.option("--board", "-b", "board_alias", default=None, help="Target board alias")
 @click.option(
-    "--current-jobs", "-n", type=int, default=0,
+    "--current-jobs",
+    "-n",
+    type=int,
+    default=0,
     help="Estimated job count for cost scoring",
 )
 def probe_deep(slug: str | None, board_alias: str | None, current_jobs: int):
@@ -467,7 +467,8 @@ def probe_deep(slug: str | None, board_alias: str | None, current_jobs: int):
                     from src.core.monitors.api_sniffer import http_fetch
 
                     data = await http_fetch(
-                        http, metadata.get("method", "GET"),
+                        http,
+                        metadata.get("method", "GET"),
                         metadata["api_url"],
                     )
                     httpx_ok = data is not None
@@ -481,34 +482,41 @@ def probe_deep(slug: str | None, board_alias: str | None, current_jobs: int):
     from src.workspace.artifacts import deep_probe_run_dir, save_probe
 
     probe_dir = deep_probe_run_dir(slug, board.alias)
-    save_probe(probe_dir, [{
-        "name": "api_sniffer",
-        "detected": metadata is not None,
-        "metadata": metadata,
-    }])
+    save_probe(
+        probe_dir,
+        [
+            {
+                "name": "api_sniffer",
+                "detected": metadata is not None,
+                "metadata": metadata,
+            }
+        ],
+    )
     out.plain("artifacts", f"Saved: {probe_dir}")
 
     if metadata:
         rich = bool(metadata.get("fields"))
         mon_pw = _estimate_monitor_cost(
-            "api_sniffer", n_jobs, {**metadata, "browser": True},
+            "api_sniffer",
+            n_jobs,
+            {**metadata, "browser": True},
         )
         mon_httpx = (
             _estimate_monitor_cost(
-                "api_sniffer", n_jobs, {**metadata, "browser": False},
-            ) if httpx_ok else None
+                "api_sniffer",
+                n_jobs,
+                {**metadata, "browser": False},
+            )
+            if httpx_ok
+            else None
         )
         init_load = 0.0 if rich else _estimate_initial_load(n_jobs)
 
-        rich_str = (
-            "rich" if rich
-            else f"URL-only (+scraper ~{init_load:.0f}s initial)"
-        )
-        items = metadata.get('items', '?')
+        rich_str = "rich" if rich else f"URL-only (+scraper ~{init_load:.0f}s initial)"
+        items = metadata.get("items", "?")
         out.info(
             "deep",
-            f"api_sniffer   OK  {items} items"
-            f"  ~{mon_pw:.1f}s/cycle (PW)  {rich_str}",
+            f"api_sniffer   OK  {items} items  ~{mon_pw:.1f}s/cycle (PW)  {rich_str}",
         )
         out.plain("deep", f"  api_url: {metadata.get('api_url', '?')}")
         if metadata.get("fields"):
@@ -521,8 +529,7 @@ def probe_deep(slug: str | None, board_alias: str | None, current_jobs: int):
         if httpx_ok and mon_httpx is not None:
             out.plain(
                 "deep",
-                f"  httpx test: OK accessible"
-                f" (~{mon_httpx:.1f}s/cycle without Playwright)",
+                f"  httpx test: OK accessible (~{mon_httpx:.1f}s/cycle without Playwright)",
             )
         elif httpx_ok is False:
             out.plain("deep", "  httpx test: failed (Playwright required)")
@@ -536,9 +543,11 @@ def probe_deep(slug: str | None, board_alias: str | None, current_jobs: int):
         detection["httpx_accessible"] = httpx_ok
         detection["rich"] = rich
         board.detections["api_sniffer"] = detection
-        items = metadata.get('items', '?')
+        items = metadata.get("items", "?")
         action_log.append_to_list(
-            board.log, "probe deep", True,
+            board.log,
+            "probe deep",
+            True,
             f"api_sniffer detected, {items} items",
         )
         save_board(slug, board)
@@ -580,11 +589,10 @@ def probe_api(url: str, slug: str | None, board_alias: str | None):
     if "json" in content_type:
         data = resp.json()
         (probe_dir / "response.json").write_text(json.dumps(data, indent=2, default=str))
-        ct = content_type.split(';')[0]
+        ct = content_type.split(";")[0]
         out.info(
             "probe",
-            f"Fetched {resp.status_code} ({ct}, "
-            f"{len(resp.content):,} bytes)",
+            f"Fetched {resp.status_code} ({ct}, {len(resp.content):,} bytes)",
         )
 
         # Analyze JSON structure
@@ -629,11 +637,10 @@ def probe_api(url: str, slug: str | None, board_alias: str | None):
             out.warn("probe", "No arrays found in JSON response")
     else:
         (probe_dir / "response.html").write_bytes(resp.content)
-        ct = content_type.split(';')[0]
+        ct = content_type.split(";")[0]
         out.info(
             "probe",
-            f"Fetched {resp.status_code} ({ct}, "
-            f"{len(resp.content):,} bytes)",
+            f"Fetched {resp.status_code} ({ct}, {len(resp.content):,} bytes)",
         )
         out.plain(
             "probe",
@@ -718,9 +725,17 @@ def select_monitor(
 
     # Clean up probe/internal data from config
     _internal_keys = {
-        "_probe", "monitor_per_cycle", "initial_load", "cost_est",
-        "cost_est_pw", "cost_est_httpx", "rich", "httpx_accessible",
-        "jobs", "urls", "count",
+        "_probe",
+        "monitor_per_cycle",
+        "initial_load",
+        "cost_est",
+        "cost_est_pw",
+        "cost_est_httpx",
+        "rich",
+        "httpx_accessible",
+        "jobs",
+        "urls",
+        "count",
     }
     clean_config = {k: v for k, v in config.items() if k not in _internal_keys}
 
@@ -743,7 +758,9 @@ def select_monitor(
     board.active_config = name
 
     action_log.append_to_list(
-        board.log, "select monitor", True,
+        board.log,
+        "select monitor",
+        True,
         f"Selected monitor: {type_} (as {name!r})",
     )
     save_board(slug, board)
@@ -1000,8 +1017,10 @@ def run_monitor(slug: str | None, board_alias: str | None):
 @click.option("--board", "-b", "board_alias", default=None, help="Target board alias")
 @click.option("--config", "config_json", help="Scraper config JSON")
 def select_scraper(
-    slug_or_type: str, type_: str | None,
-    board_alias: str | None, config_json: str | None,
+    slug_or_type: str,
+    type_: str | None,
+    board_alias: str | None,
+    config_json: str | None,
 ):
     """Set scraper type for the active board."""
     slug, type_ = resolve_two_args(slug_or_type, type_)
@@ -1299,7 +1318,7 @@ def select_config(name: str, slug: str | None, board_alias: str | None):
 
     cfg = board.configs[name]
     if cfg.get("status") == "rejected":
-        reason = cfg.get('rejection_reason', '')
+        reason = cfg.get("rejection_reason", "")
         out.warn("config", f"Config {name!r} was previously rejected: {reason}")
 
     board.active_config = name
@@ -1422,9 +1441,7 @@ def feedback_cmd(
     if not name:
         name = board.active_config
     if not name or name not in board.configs:
-        out.die(
-            f"Config {name!r} not found. Available: {', '.join(board.configs) or 'none'}"
-        )
+        out.die(f"Config {name!r} not found. Available: {', '.join(board.configs) or 'none'}")
 
     cfg = board.configs[name]
 
@@ -1511,9 +1528,9 @@ def feedback_cmd(
         "important": _tier_summary(_IMPORTANT_FIELDS),
         "optional": _tier_summary(
             tuple(
-                f for f in _FEEDBACK_FIELDS
-                if f not in _REQUIRED_FIELDS
-                and f not in _IMPORTANT_FIELDS
+                f
+                for f in _FEEDBACK_FIELDS
+                if f not in _REQUIRED_FIELDS and f not in _IMPORTANT_FIELDS
             )
         ),
         "verdict": verdict,
@@ -1522,7 +1539,9 @@ def feedback_cmd(
 
     cfg["feedback"] = feedback_data
     action_log.append_to_list(
-        board.log, "feedback", True,
+        board.log,
+        "feedback",
+        True,
         f"Feedback for {name!r}: verdict={verdict}",
     )
     save_board(slug, board)
@@ -1533,8 +1552,8 @@ def feedback_cmd(
         ("Important", _IMPORTANT_FIELDS),
     ]:
         tier = feedback_data.get(tier_name.lower(), {})
-        cov = tier.get('coverage', '?')
-        qual = tier.get('quality', '?')
+        cov = tier.get("coverage", "?")
+        qual = tier.get("quality", "?")
         out.plain("feedback", f"  {tier_name}: {cov} ({qual})")
     if verdict in ("good", "acceptable"):
         out.next_step("ws submit")

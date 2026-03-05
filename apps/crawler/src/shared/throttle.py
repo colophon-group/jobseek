@@ -16,14 +16,16 @@ log = structlog.get_logger()
 _DEFAULT_DELAY = 2.0
 _API_DELAY = 0.5  # Known ATS APIs with higher rate limits
 
-_KNOWN_ATS_HOSTS = frozenset({
-    "boards-api.greenhouse.io",
-    "api.lever.co",
-    "api.ashbyhq.com",
-    "api.smartrecruiters.com",
-    "api.hireology.com",
-    "api.rippling.com",
-})
+_KNOWN_ATS_HOSTS = frozenset(
+    {
+        "boards-api.greenhouse.io",
+        "api.lever.co",
+        "api.ashbyhq.com",
+        "api.smartrecruiters.com",
+        "api.hireology.com",
+        "api.rippling.com",
+    }
+)
 
 
 def _delay_for_host(hostname: str) -> float:

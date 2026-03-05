@@ -28,9 +28,7 @@ CONCURRENCY = 10
 _API_BASE = "https://api.rippling.com/platform/api/ats/v1/board"
 
 # Matches ats.rippling.com or ats.us1.rippling.com, with optional locale prefix
-_URL_RE = re.compile(
-    r"ats\.(?:\w+\.)?rippling\.com/(?:[a-z]{2}-[A-Z]{2}/)?([\w-]+)/jobs"
-)
+_URL_RE = re.compile(r"ats\.(?:\w+\.)?rippling\.com/(?:[a-z]{2}-[A-Z]{2}/)?([\w-]+)/jobs")
 
 _PAGE_PATTERNS = [
     re.compile(r"ats\.(?:\w+\.)?rippling\.com/(?:[a-z]{2}-[A-Z]{2}/)?([\w-]+)/jobs"),

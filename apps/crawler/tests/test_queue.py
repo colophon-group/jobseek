@@ -131,8 +131,10 @@ class TestFail:
         mock_redis.hdel = AsyncMock()
         mock_redis.zadd = AsyncMock()
         item = QueueItem(
-            job_posting_id="1", url="https://example.com/job",
-            retries=0, board_id="b1",
+            job_posting_id="1",
+            url="https://example.com/job",
+            retries=0,
+            board_id="b1",
         )
         await fail(item, "some error")
         # retries incremented to 1, which is < MAX_RETRIES (3)
@@ -188,9 +190,11 @@ class TestRecoverStale:
 
     @pytest.mark.asyncio
     async def test_no_stale_recent_timestamps(self, mock_redis):
-        mock_redis.hgetall = AsyncMock(return_value={
-            "https://example.com/job": str(time.time()),
-        })
+        mock_redis.hgetall = AsyncMock(
+            return_value={
+                "https://example.com/job": str(time.time()),
+            }
+        )
         result = await recover_stale()
         assert result == 0
 
@@ -198,10 +202,12 @@ class TestRecoverStale:
     async def test_recovers_old_items(self, mock_redis):
         mock_redis.hdel = AsyncMock()
         old_time = str(time.time() - 600)  # 10 minutes ago, beyond 5-minute timeout
-        mock_redis.hgetall = AsyncMock(return_value={
-            "https://example.com/job1": old_time,
-            "https://example.com/job2": old_time,
-        })
+        mock_redis.hgetall = AsyncMock(
+            return_value={
+                "https://example.com/job1": old_time,
+                "https://example.com/job2": old_time,
+            }
+        )
         result = await recover_stale()
         assert result == 2
         mock_redis.hdel.assert_awaited_once()

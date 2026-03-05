@@ -510,9 +510,7 @@ class TestRunSync:
         await run_sync(dry_run=False)
 
         mock_sync_companies.assert_called_once_with(mock_conn, companies_df, False)
-        mock_sync_boards.assert_called_once_with(
-            mock_conn, boards_df, {"acme": "uuid-1"}, False
-        )
+        mock_sync_boards.assert_called_once_with(mock_conn, boards_df, {"acme": "uuid-1"}, False)
         mock_close_pool.assert_called_once()
 
     @patch("src.sync.setup_logging")

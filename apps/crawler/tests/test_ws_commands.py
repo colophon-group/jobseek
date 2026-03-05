@@ -1110,9 +1110,7 @@ class TestRejectConfig:
     def test_reject_nonexistent(self, tmp_path, monkeypatch):
         self._setup(tmp_path, monkeypatch)
         runner = CliRunner()
-        result = runner.invoke(
-            ws, ["reject-config", "nonexistent", "test", "--reason", "Bad"]
-        )
+        result = runner.invoke(ws, ["reject-config", "nonexistent", "test", "--reason", "Bad"])
         assert result.exit_code != 0
 
 
@@ -1320,8 +1318,11 @@ class TestQualityGates:
         monkeypatch.setattr(crawl_mod, "_url_reachable", lambda url: True)
 
         ws_obj = Workspace(
-            slug="test", name="Test", website="https://test.com",
-            logo_url="x", icon_url="x",
+            slug="test",
+            name="Test",
+            website="https://test.com",
+            logo_url="x",
+            icon_url="x",
         )
         board = Board(alias="careers", slug="test-careers", url="https://test.com/jobs")
         board.configs["gh-api"] = {
@@ -1343,13 +1344,16 @@ class TestQualityGates:
         monkeypatch.setattr(crawl_mod, "_url_reachable", lambda url: False)
 
         ws_obj = Workspace(
-            slug="test", name="Test", website="https://test.com",
+            slug="test",
+            name="Test",
+            website="https://test.com",
             logo_url="https://bad.com/logo.png",
             icon_url="https://bad.com/icon.png",
         )
         board = Board(alias="careers", slug="test-careers", url="https://test.com/jobs")
         board.configs["gh"] = {
-            "status": "tested", "run": {"jobs": 10},
+            "status": "tested",
+            "run": {"jobs": 10},
             "feedback": {"verdict": "good"},
         }
         board.active_config = "gh"
@@ -1371,7 +1375,8 @@ class TestQualityGates:
         ws_obj = Workspace(slug="test", website="https://test.com")
         board = Board(alias="careers", slug="test-careers", url="https://test.com/jobs")
         board.configs["gh"] = {
-            "status": "tested", "run": {"jobs": 10},
+            "status": "tested",
+            "run": {"jobs": 10},
             "feedback": {"verdict": "good"},
         }
         board.active_config = "gh"
@@ -1569,8 +1574,12 @@ def _setup_submittable_workspace(tmp_path, monkeypatch):
     _setup_csvs(tmp_path, companies="test,,,, \n")
 
     ws_obj = Workspace(
-        slug="test", name="Test Corp", website="https://test.com",
-        issue=1, pr=10, branch="add-company/test",
+        slug="test",
+        name="Test Corp",
+        website="https://test.com",
+        issue=1,
+        pr=10,
+        branch="add-company/test",
     )
     save_workspace(ws_obj)
     set_active_slug("test")
@@ -1720,14 +1729,21 @@ class TestSubmitLastError:
         from src.workspace.errors import GitCommandError
 
         with ExitStack() as stack:
-            stack.enter_context(patch(
-                "src.workspace.git.has_uncommitted_changes",
-                return_value=True,
-            ))
+            stack.enter_context(
+                patch(
+                    "src.workspace.git.has_uncommitted_changes",
+                    return_value=True,
+                )
+            )
             stack.enter_context(patch("src.workspace.git.add_files"))
-            stack.enter_context(patch("src.workspace.git.commit", side_effect=GitCommandError(
-                cmd=["git", "commit"], returncode=1, stderr="nothing to commit"
-            )))
+            stack.enter_context(
+                patch(
+                    "src.workspace.git.commit",
+                    side_effect=GitCommandError(
+                        cmd=["git", "commit"], returncode=1, stderr="nothing to commit"
+                    ),
+                )
+            )
 
             runner = CliRunner()
             result = runner.invoke(ws, ["submit", "test"])
@@ -1761,8 +1777,11 @@ class TestBuildPrBody:
         from src.workspace.commands.lifecycle import _build_pr_body
 
         ws_obj = Workspace(
-            slug="test", name="Test Corp",
-            website="https://test.com", issue=1, pr=10,
+            slug="test",
+            name="Test Corp",
+            website="https://test.com",
+            issue=1,
+            pr=10,
         )
         board = Board(alias="careers", slug="test-careers", url="https://test.com/jobs")
         board.configs["greenhouse"] = {
@@ -1953,8 +1972,14 @@ class TestResume:
 
     def test_resume_ready_workspace(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
-        ws_obj = Workspace(slug="test", name="Test Corp", website="https://test.com",
-                           issue=1, pr=10, branch="add-company/test")
+        ws_obj = Workspace(
+            slug="test",
+            name="Test Corp",
+            website="https://test.com",
+            issue=1,
+            pr=10,
+            branch="add-company/test",
+        )
         save_workspace(ws_obj)
         set_active_slug("test")
 
@@ -1972,13 +1997,18 @@ class TestResume:
 
         # Mock git calls (resume checks environment)
         with ExitStack() as stack:
-            stack.enter_context(patch("src.workspace.git._run", return_value=MagicMock(
-                stdout="  add-company/test\n", returncode=0
-            )))
-            stack.enter_context(patch(
-                "src.workspace.git.current_branch",
-                return_value="add-company/test",
-            ))
+            stack.enter_context(
+                patch(
+                    "src.workspace.git._run",
+                    return_value=MagicMock(stdout="  add-company/test\n", returncode=0),
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "src.workspace.git.current_branch",
+                    return_value="add-company/test",
+                )
+            )
 
             runner = CliRunner()
             result = runner.invoke(ws, ["resume", "test"])
@@ -1990,8 +2020,9 @@ class TestResume:
 
     def test_resume_no_config(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
-        ws_obj = Workspace(slug="test", name="Test Corp", website="https://test.com",
-                           branch="add-company/test")
+        ws_obj = Workspace(
+            slug="test", name="Test Corp", website="https://test.com", branch="add-company/test"
+        )
         save_workspace(ws_obj)
         set_active_slug("test")
 
@@ -1999,13 +2030,18 @@ class TestResume:
         save_board("test", board)
 
         with ExitStack() as stack:
-            stack.enter_context(patch("src.workspace.git._run", return_value=MagicMock(
-                stdout="  add-company/test\n", returncode=0
-            )))
-            stack.enter_context(patch(
-                "src.workspace.git.current_branch",
-                return_value="add-company/test",
-            ))
+            stack.enter_context(
+                patch(
+                    "src.workspace.git._run",
+                    return_value=MagicMock(stdout="  add-company/test\n", returncode=0),
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "src.workspace.git.current_branch",
+                    return_value="add-company/test",
+                )
+            )
 
             runner = CliRunner()
             result = runner.invoke(ws, ["resume", "test"])
@@ -2016,8 +2052,9 @@ class TestResume:
 
     def test_resume_shows_last_error(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
-        ws_obj = Workspace(slug="test", name="Test", website="https://test.com",
-                           branch="add-company/test")
+        ws_obj = Workspace(
+            slug="test", name="Test", website="https://test.com", branch="add-company/test"
+        )
         ws_obj.last_error = {
             "command": "submit",
             "step": "pushed",
@@ -2039,13 +2076,18 @@ class TestResume:
         save_board("test", board)
 
         with ExitStack() as stack:
-            stack.enter_context(patch("src.workspace.git._run", return_value=MagicMock(
-                stdout="  add-company/test\n", returncode=0
-            )))
-            stack.enter_context(patch(
-                "src.workspace.git.current_branch",
-                return_value="add-company/test",
-            ))
+            stack.enter_context(
+                patch(
+                    "src.workspace.git._run",
+                    return_value=MagicMock(stdout="  add-company/test\n", returncode=0),
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "src.workspace.git.current_branch",
+                    return_value="add-company/test",
+                )
+            )
 
             runner = CliRunner()
             result = runner.invoke(ws, ["resume", "test"])
@@ -2056,19 +2098,25 @@ class TestResume:
 
     def test_resume_no_boards(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
-        ws_obj = Workspace(slug="test", name="Test", website="https://test.com",
-                           branch="add-company/test")
+        ws_obj = Workspace(
+            slug="test", name="Test", website="https://test.com", branch="add-company/test"
+        )
         save_workspace(ws_obj)
         set_active_slug("test")
 
         with ExitStack() as stack:
-            stack.enter_context(patch("src.workspace.git._run", return_value=MagicMock(
-                stdout="  add-company/test\n", returncode=0
-            )))
-            stack.enter_context(patch(
-                "src.workspace.git.current_branch",
-                return_value="add-company/test",
-            ))
+            stack.enter_context(
+                patch(
+                    "src.workspace.git._run",
+                    return_value=MagicMock(stdout="  add-company/test\n", returncode=0),
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "src.workspace.git.current_branch",
+                    return_value="add-company/test",
+                )
+            )
 
             runner = CliRunner()
             result = runner.invoke(ws, ["resume", "test"])
@@ -2106,8 +2154,11 @@ class TestStatusEnhanced:
     def test_status_shows_config_info(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
         ws_obj = Workspace(
-            slug="test", name="Test Corp",
-            website="https://test.com", issue=1, pr=10,
+            slug="test",
+            name="Test Corp",
+            website="https://test.com",
+            issue=1,
+            pr=10,
         )
         save_workspace(ws_obj)
         set_active_slug("test")
@@ -2183,6 +2234,7 @@ class TestYamlCorruption:
         ws_yaml_path("test").write_text(": : : invalid yaml {{{\n")
 
         import pytest
+
         with pytest.raises(WorkspaceStateError, match="Corrupt workspace YAML"):
             load_workspace("test")
 
@@ -2192,6 +2244,7 @@ class TestYamlCorruption:
         ws_yaml_path("test").write_text("just a string\n")
 
         import pytest
+
         with pytest.raises(WorkspaceStateError, match="expected mapping"):
             load_workspace("test")
 
@@ -2202,6 +2255,7 @@ class TestYamlCorruption:
         board_yaml_path("test", "a").write_text("{{invalid\n")
 
         import pytest
+
         with pytest.raises(WorkspaceStateError, match="Corrupt board YAML"):
             load_board("test", "a")
 
@@ -2212,6 +2266,7 @@ class TestYamlCorruption:
         board_yaml_path("test", "a").write_text("42\n")
 
         import pytest
+
         with pytest.raises(WorkspaceStateError, match="expected mapping"):
             load_board("test", "a")
 
@@ -2235,6 +2290,7 @@ class TestYamlCorruption:
         ws_yaml_path("beta").write_text("{{invalid\n")
 
         from src.workspace.state import list_workspaces
+
         workspaces = list_workspaces()
         assert len(workspaces) == 1
         assert workspaces[0].slug == "alpha"
@@ -2315,15 +2371,19 @@ class TestMonitorRegression:
         fake = FakeResult(urls=set(), jobs_by_url=None, filtered_count=0)
 
         with ExitStack() as stack:
-            stack.enter_context(patch(
-                "src.workspace.commands.crawl.asyncio.run",
-                return_value=(fake, 1.0, []),
-            ))
+            stack.enter_context(
+                patch(
+                    "src.workspace.commands.crawl.asyncio.run",
+                    return_value=(fake, 1.0, []),
+                )
+            )
             stack.enter_context(patch("src.workspace.commands.crawl.save_board"))
-            stack.enter_context(patch(
-                "src.workspace.artifacts.monitor_run_dir",
-                return_value=tmp_path / "run",
-            ))
+            stack.enter_context(
+                patch(
+                    "src.workspace.artifacts.monitor_run_dir",
+                    return_value=tmp_path / "run",
+                )
+            )
             stack.enter_context(patch("src.workspace.artifacts.capture_structlog", return_value=[]))
             stack.enter_context(patch("src.workspace.artifacts.save_http_log"))
             stack.enter_context(patch("src.workspace.artifacts.save_events"))
@@ -2360,15 +2420,19 @@ class TestMonitorRegression:
         fake = FakeResult(urls=set(), jobs_by_url=None, filtered_count=0)
 
         with ExitStack() as stack:
-            stack.enter_context(patch(
-                "src.workspace.commands.crawl.asyncio.run",
-                return_value=(fake, 1.0, []),
-            ))
+            stack.enter_context(
+                patch(
+                    "src.workspace.commands.crawl.asyncio.run",
+                    return_value=(fake, 1.0, []),
+                )
+            )
             stack.enter_context(patch("src.workspace.commands.crawl.save_board"))
-            stack.enter_context(patch(
-                "src.workspace.artifacts.monitor_run_dir",
-                return_value=tmp_path / "run",
-            ))
+            stack.enter_context(
+                patch(
+                    "src.workspace.artifacts.monitor_run_dir",
+                    return_value=tmp_path / "run",
+                )
+            )
             stack.enter_context(patch("src.workspace.artifacts.capture_structlog", return_value=[]))
             stack.enter_context(patch("src.workspace.artifacts.save_http_log"))
             stack.enter_context(patch("src.workspace.artifacts.save_events"))
@@ -2448,8 +2512,11 @@ class TestResumeMergedPr:
     def test_resume_shows_merged_pr(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
         ws_obj = Workspace(
-            slug="test", branch="add-company/test", pr=42,
-            name="Test", website="https://test.com",
+            slug="test",
+            branch="add-company/test",
+            pr=42,
+            name="Test",
+            website="https://test.com",
         )
         save_workspace(ws_obj)
         set_active_slug("test")
@@ -2464,6 +2531,7 @@ class TestResumeMergedPr:
                 result.stdout = "add-company/test\n"
             elif "pr" in args and "view" in args:
                 import json as j
+
                 result.stdout = j.dumps({"state": "MERGED"})
             else:
                 result.stdout = ""

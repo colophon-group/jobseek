@@ -18,8 +18,7 @@ from src.core.monitors.smartrecruiters import (
 class TestTokenFromUrl:
     def test_api_url(self):
         assert (
-            _token_from_url("https://api.smartrecruiters.com/v1/companies/acme/postings")
-            == "acme"
+            _token_from_url("https://api.smartrecruiters.com/v1/companies/acme/postings") == "acme"
         )
 
     def test_jobs_subdomain(self):
@@ -29,9 +28,7 @@ class TestTokenFromUrl:
         assert _token_from_url("https://careers.smartrecruiters.com/acme-corp") == "acme-corp"
 
     def test_with_path(self):
-        assert (
-            _token_from_url("https://careers.smartrecruiters.com/acme/job/123") == "acme"
-        )
+        assert _token_from_url("https://careers.smartrecruiters.com/acme/job/123") == "acme"
 
     def test_ignored_token(self):
         assert _token_from_url("https://api.smartrecruiters.com/v1/companies/api/x") is None
@@ -148,9 +145,7 @@ class TestParseSalary:
 
     def test_both_none_returns_none(self):
         posting = {
-            "compensation": {
-                "salary": {"min": None, "max": None, "currency": "USD", "period": ""}
-            }
+            "compensation": {"salary": {"min": None, "max": None, "currency": "USD", "period": ""}}
         }
         assert _parse_salary(posting) is None
 
@@ -273,8 +268,12 @@ class TestDiscover:
         def handler(request):
             url = str(request.url)
             method = request.method
-            if (method == "GET" and "/postings" in url
-                    and "limit=" in url and "postings/" not in url):
+            if (
+                method == "GET"
+                and "/postings" in url
+                and "limit=" in url
+                and "postings/" not in url
+            ):
                 return httpx.Response(
                     200,
                     json={
@@ -397,7 +396,7 @@ class TestDiscover:
                     return httpx.Response(
                         200,
                         json={
-                            "content": [{"id": f"p{100+i}"} for i in range(50)],
+                            "content": [{"id": f"p{100 + i}"} for i in range(50)],
                             "totalFound": 150,
                         },
                     )

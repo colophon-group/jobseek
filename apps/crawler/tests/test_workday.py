@@ -20,9 +20,7 @@ from src.core.monitors.workday import (
 
 class TestParseComponents:
     def test_standard_url(self):
-        result = _parse_components(
-            "https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite"
-        )
+        result = _parse_components("https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite")
         assert result == ("nvidia", "wd5", "NVIDIAExternalCareerSite")
 
     def test_with_locale_prefix(self):
@@ -32,18 +30,14 @@ class TestParseComponents:
         assert result == ("nvidia", "wd5", "NVIDIAExternalCareerSite")
 
     def test_hyphenated_company(self):
-        result = _parse_components(
-            "https://my-company.wd1.myworkdayjobs.com/External"
-        )
+        result = _parse_components("https://my-company.wd1.myworkdayjobs.com/External")
         assert result == ("my-company", "wd1", "External")
 
     def test_non_matching_url(self):
         assert _parse_components("https://example.com/careers") is None
 
     def test_with_trailing_slash(self):
-        result = _parse_components(
-            "https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite/"
-        )
+        result = _parse_components("https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite/")
         assert result == ("nvidia", "wd5", "NVIDIAExternalCareerSite")
 
 
@@ -71,10 +65,7 @@ class TestApiDetailUrl:
 class TestJobUrl:
     def test_basic(self):
         result = _job_url("nvidia", "wd5", "ExtSite", "/Senior-Engineer/JR001")
-        assert (
-            result
-            == "https://nvidia.wd5.myworkdayjobs.com/ExtSite/Senior-Engineer/JR001"
-        )
+        assert result == "https://nvidia.wd5.myworkdayjobs.com/ExtSite/Senior-Engineer/JR001"
 
 
 class TestParseJobLocationType:
@@ -324,9 +315,7 @@ class TestDiscover:
 
 class TestCanHandle:
     async def test_workday_url_match(self):
-        result = await can_handle(
-            "https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite"
-        )
+        result = await can_handle("https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite")
         assert result is not None
         assert result["company"] == "nvidia"
         assert result["wd_instance"] == "wd5"
@@ -344,9 +333,7 @@ class TestCanHandle:
             )
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            result = await can_handle(
-                "https://nvidia.wd5.myworkdayjobs.com/ExtSite", client
-            )
+            result = await can_handle("https://nvidia.wd5.myworkdayjobs.com/ExtSite", client)
             assert result is not None
             assert result["jobs"] == 42
 
@@ -361,7 +348,7 @@ class TestCanHandle:
             # Place the Workday URL at the end of the text so the regex's $ anchor works
             return httpx.Response(
                 200,
-                text='<html>Apply at https://acme.wd1.myworkdayjobs.com/Careers',
+                text="<html>Apply at https://acme.wd1.myworkdayjobs.com/Careers",
             )
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:

@@ -191,9 +191,7 @@ class Board:
             "scraper_type": scraper.get("type"),
             "scraper_config": scraper.get("config") or {},
             "status": (
-                "tested"
-                if monitor_run
-                else ("selected" if monitor.get("type") else "detected")
+                "tested" if monitor_run else ("selected" if monitor.get("type") else "detected")
             ),
             "rich": monitor_run.get("has_rich_data", False),
             "run": monitor_run if monitor_run else {},
@@ -251,8 +249,7 @@ class Workspace:
     def submitted(self) -> bool:
         """All critical submit steps completed."""
         return all(
-            self.submit_state.get(k)
-            for k in ("csv_written", "validated", "committed", "pushed")
+            self.submit_state.get(k) for k in ("csv_written", "validated", "committed", "pushed")
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -358,8 +355,7 @@ def load_workspace(slug: str) -> Workspace:
         raise WorkspaceStateError(f"Corrupt workspace YAML for {slug!r}: {e}") from e
     if not isinstance(data, dict):
         raise WorkspaceStateError(
-            f"Invalid workspace YAML for {slug!r}: "
-            f"expected mapping, got {type(data).__name__}"
+            f"Invalid workspace YAML for {slug!r}: expected mapping, got {type(data).__name__}"
         )
     return Workspace.from_dict(data)
 
@@ -370,7 +366,9 @@ def save_board(slug: str, board: Board) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with file_lock(path):
         content = yaml.dump(
-            board.to_dict(), default_flow_style=False, sort_keys=False,
+            board.to_dict(),
+            default_flow_style=False,
+            sort_keys=False,
         )
         _atomic_write(path, content)
 
@@ -388,8 +386,7 @@ def load_board(slug: str, alias: str) -> Board:
         raise WorkspaceStateError(f"Corrupt board YAML for {alias!r}: {e}") from e
     if not isinstance(data, dict):
         raise WorkspaceStateError(
-            f"Invalid board YAML for {alias!r}: "
-            f"expected mapping, got {type(data).__name__}"
+            f"Invalid board YAML for {alias!r}: expected mapping, got {type(data).__name__}"
         )
     return Board.from_dict(data)
 

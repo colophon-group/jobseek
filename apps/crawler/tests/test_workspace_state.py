@@ -104,8 +104,10 @@ class TestWorkspace:
             "created_at": "2026-03-03T14:22:00Z",
             "git": {"branch": "add-company/test", "issue": 42, "pr": 7},
             "company": {
-                "name": "Test", "website": "https://test.com",
-                "logo_url": "", "icon_url": "",
+                "name": "Test",
+                "website": "https://test.com",
+                "logo_url": "",
+                "icon_url": "",
             },
             "active_board": "careers",
             "progress": {
@@ -193,7 +195,9 @@ class TestActiveWorkspace:
 
 class TestBoard:
     def test_to_dict_roundtrip(self):
-        board = Board(alias="careers", slug="stripe-careers", url="https://boards.greenhouse.io/stripe")
+        board = Board(
+            alias="careers", slug="stripe-careers", url="https://boards.greenhouse.io/stripe"
+        )
         board.monitor_type = "greenhouse"
         board.monitor_config = {"token": "stripe"}
         d = board.to_dict()
