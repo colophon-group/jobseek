@@ -677,8 +677,8 @@ class TestRunScraperOutput:
         assert "No titles extracted" in result.output
         assert "ws select scraper dom" in result.output
 
-    def test_all_titles_suggests_submit(self, tmp_path, monkeypatch):
-        """When all titles extracted, suggest ws submit."""
+    def test_all_titles_suggests_feedback(self, tmp_path, monkeypatch):
+        """When all titles extracted, suggest ws feedback."""
         self._setup_board_with_monitor(tmp_path, monkeypatch)
 
         from src.core.scrapers import JobContent
@@ -700,7 +700,7 @@ class TestRunScraperOutput:
             runner = CliRunner()
             result = runner.invoke(ws, ["run", "scraper", "test"])
 
-        assert "ws submit" in result.output
+        assert "ws feedback" in result.output
         assert "No titles" not in result.output
 
     def test_optional_fields_shown(self, tmp_path, monkeypatch):
