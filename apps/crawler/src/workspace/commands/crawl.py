@@ -488,11 +488,13 @@ def probe_deep(slug: str | None, board_alias: str | None, current_jobs: int):
                         if resp is not None:
                             # Count items if it's a list
                             item_count = len(resp) if isinstance(resp, list) else None
-                            cms_results.append({
-                                "url": candidate_url,
-                                "items": item_count,
-                                "type": type(resp).__name__,
-                            })
+                            cms_results.append(
+                                {
+                                    "url": candidate_url,
+                                    "items": item_count,
+                                    "type": type(resp).__name__,
+                                }
+                            )
 
                 return metadata, httpx_ok, diag, cms_results
         finally:
