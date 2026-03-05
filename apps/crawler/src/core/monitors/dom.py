@@ -62,7 +62,9 @@ class _LinkExtractor(HTMLParser):
 
 
 def _extract_links_static(
-    html: str, base_url: str, url_matcher: re.Pattern | None = None,
+    html: str,
+    base_url: str,
+    url_matcher: re.Pattern | None = None,
 ) -> set[str]:
     """Parse ``<a href>`` links from raw HTML and filter for job URLs.
 
@@ -91,7 +93,9 @@ def _extract_links_static(
 
 
 async def _extract_links_rendered(
-    page, metadata: dict, url_matcher: re.Pattern | None = None,
+    page,
+    metadata: dict,
+    url_matcher: re.Pattern | None = None,
 ) -> set[str]:
     """Navigate, run actions, and extract job links from a Playwright page."""
     board_url = metadata["_board_url"]
@@ -231,7 +235,12 @@ async def dom_discover(board: dict, client: httpx.AsyncClient = None, pw=None) -
                 if pagination:
                     browser_page = page if pagination.get("browser") else None
                     urls = await _paginate_urls(
-                        board_url, pagination, urls, client, browser_page, url_matcher,
+                        board_url,
+                        pagination,
+                        urls,
+                        client,
+                        browser_page,
+                        url_matcher,
                     )
         else:
             try:
@@ -247,7 +256,12 @@ async def dom_discover(board: dict, client: httpx.AsyncClient = None, pw=None) -
                 if pagination:
                     browser_page = page if pagination.get("browser") else None
                     urls = await _paginate_urls(
-                        board_url, pagination, urls, client, browser_page, url_matcher,
+                        board_url,
+                        pagination,
+                        urls,
+                        client,
+                        browser_page,
+                        url_matcher,
                     )
     else:
         from src.core.monitors import fetch_page_text
@@ -259,7 +273,11 @@ async def dom_discover(board: dict, client: httpx.AsyncClient = None, pw=None) -
         urls = _extract_links_static(html, board_url, url_matcher)
         if pagination:
             urls = await _paginate_urls(
-                board_url, pagination, urls, client, url_matcher=url_matcher,
+                board_url,
+                pagination,
+                urls,
+                client,
+                url_matcher=url_matcher,
             )
 
     if len(urls) > MAX_URLS:

@@ -382,9 +382,7 @@ class TestRepeatAction:
             counts.extend([10 + i * 5, 15 + i * 5])
         page.evaluate = AsyncMock(side_effect=counts)
         with patch.object(asyncio, "sleep", new_callable=AsyncMock):
-            await run_actions(
-                page, [{"action": "repeat", "selector": "button.more", "max": 3}]
-            )
+            await run_actions(page, [{"action": "repeat", "selector": "button.more", "max": 3}])
         # 3 iterations × 2 evaluate calls = 6
         assert page.evaluate.await_count == 6
         assert page.locator.return_value.first.click.await_count == 3
