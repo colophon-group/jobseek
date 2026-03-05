@@ -71,6 +71,9 @@ def _api_list_url(company: str, wd_instance: str, site: str) -> str:
 
 
 def _api_detail_url(company: str, wd_instance: str, site: str, external_path: str) -> str:
+    # external_path may already start with /job/ (e.g. /job/City/Title_ID)
+    if external_path.startswith("/job/"):
+        return f"{_api_base(company, wd_instance)}/{site}{external_path}"
     return f"{_api_base(company, wd_instance)}/{site}/job{external_path}"
 
 
@@ -103,10 +106,11 @@ def _parse_job(
 
     title = info.get("title")
     external_path = info.get("externalPath")
-    if not external_path:
+    url = info.get("externalUrl")
+    if not url and external_path:
+        url = _job_url(company, wd_instance, site, external_path)
+    if not url:
         return None
-
-    url = info.get("externalUrl") or _job_url(company, wd_instance, site, external_path)
     description = info.get("jobDescription")
 
     # Locations

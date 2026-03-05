@@ -10,7 +10,9 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
-      id-token: write  # OIDC for trusted publishing
+      id-token: write       # OIDC for trusted publishing
+      contents: read        # checkout
+      attestations: write   # publish attestations
     environment:
       name: pypi
       url: https://pypi.org/p/jobseek-crawler-setup
@@ -32,3 +34,4 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: apps/crawler/ws-package/dist/
+          verbose: true
