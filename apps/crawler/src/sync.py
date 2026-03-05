@@ -30,29 +30,30 @@ log = structlog.get_logger()
 
 DATA_DIR = Path(__file__).parent.parent / "data"
 
-_UPSERT_COMPANY = """
+_UPSERT_COMPANIES = """
 INSERT INTO company (slug, name, website, logo, icon)
-VALUES ($1, $2, $3, $4, $5)
+SELECT * FROM unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::text[])
 ON CONFLICT (slug) DO UPDATE SET
     name = COALESCE(EXCLUDED.name, company.name),
     website = COALESCE(EXCLUDED.website, company.website),
     logo = COALESCE(EXCLUDED.logo, company.logo),
     icon = COALESCE(EXCLUDED.icon, company.icon),
     updated_at = now()
-RETURNING id, slug
 """
 
-_UPSERT_BOARD = """
+_UPSERT_BOARDS = """
 INSERT INTO job_board (company_id, board_slug, board_url, crawler_type, metadata,
                        next_check_at)
-VALUES ($1, $2, $3, $4, $5::jsonb,
-        now() + (random() * 3600) * interval '1 second')
+SELECT c.id, b.board_slug, b.board_url, b.crawler_type, b.metadata::jsonb,
+       now() + (random() * 3600) * interval '1 second'
+FROM unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::text[])
+  AS b(company_slug, board_slug, board_url, crawler_type, metadata)
+JOIN company c ON c.slug = b.company_slug
 ON CONFLICT (board_url) DO UPDATE SET
     board_slug = COALESCE(EXCLUDED.board_slug, job_board.board_slug),
     crawler_type = EXCLUDED.crawler_type,
     metadata = EXCLUDED.metadata,
     updated_at = now()
-RETURNING id, board_url
 """
 
 _DISABLE_REMOVED_BOARDS = """
@@ -60,10 +61,6 @@ UPDATE job_board
 SET is_enabled = false, updated_at = now()
 WHERE board_url NOT IN (SELECT unnest($1::text[]))
   AND is_enabled = true
-"""
-
-_GET_COMPANY_ID = """
-SELECT id FROM company WHERE slug = $1
 """
 
 
@@ -81,71 +78,56 @@ def _load_boards() -> pl.DataFrame:
     return df
 
 
+def _or_none(val: str | None) -> str | None:
+    return val if val else None
+
+
 async def sync_companies(
     conn: asyncpg.Connection, companies: pl.DataFrame, dry_run: bool
-) -> dict[str, str]:
-    """Upsert companies, return slug -> id mapping."""
-    slug_to_id: dict[str, str] = {}
+) -> None:
+    """Batch upsert companies."""
+    if len(companies) == 0:
+        return
+
+    slugs: list[str] = []
+    names: list[str] = []
+    websites: list[str | None] = []
+    logos: list[str | None] = []
+    icons: list[str | None] = []
 
     for row in companies.iter_rows(named=True):
-        slug = row["slug"]
-        name = row["name"]
-        website = row.get("website") or None
-        logo_url = row.get("logo_url") or None
-        icon_url = row.get("icon_url") or None
+        slugs.append(row["slug"])
+        names.append(row["name"])
+        websites.append(_or_none(row.get("website")))
+        logos.append(_or_none(row.get("logo_url")))
+        icons.append(_or_none(row.get("icon_url")))
 
-        if dry_run:
-            log.info("sync.company.dry_run", slug=slug, name=name)
-            continue
+    if dry_run:
+        log.info("sync.companies.dry_run", count=len(slugs))
+        return
 
-        result = await conn.fetchrow(
-            _UPSERT_COMPANY,
-            slug,
-            name,
-            website,
-            logo_url,
-            icon_url,
-        )
-        slug_to_id[result["slug"]] = str(result["id"])
-        log.info("sync.company.upserted", slug=slug)
-
-    return slug_to_id
+    await conn.execute(_UPSERT_COMPANIES, slugs, names, websites, logos, icons)
+    log.info("sync.companies.upserted", count=len(slugs))
 
 
 async def sync_boards(
     conn: asyncpg.Connection,
     boards: pl.DataFrame,
-    slug_to_id: dict[str, str],
     dry_run: bool,
 ) -> None:
-    """Upsert boards and disable boards removed from CSV."""
-    all_board_urls: list[str] = []
+    """Batch upsert boards and disable boards removed from CSV."""
+    if len(boards) == 0:
+        return
+
+    company_slugs: list[str] = []
+    board_slugs: list[str | None] = []
+    board_urls: list[str] = []
+    crawler_types: list[str] = []
+    metadatas: list[str | None] = []
+    skipped = 0
 
     for row in boards.iter_rows(named=True):
-        company_slug = row["company_slug"]
-        board_slug = row.get("board_slug") or None
-        board_url = row["board_url"]
-        monitor_type = row["monitor_type"]
         monitor_config_str = row.get("monitor_config") or None
-
-        all_board_urls.append(board_url)
-
-        # Get company_id
-        company_id = slug_to_id.get(company_slug)
-        if not company_id:
-            # Look up in DB (company may have been synced in a previous run)
-            result = await conn.fetchrow(_GET_COMPANY_ID, company_slug)
-            if result:
-                company_id = str(result["id"])
-            else:
-                log.error(
-                    "sync.board.missing_company",
-                    company_slug=company_slug,
-                    board_url=board_url,
-                )
-                continue
-
-        # Parse monitor_config JSON
         metadata: str | None = None
         if monitor_config_str:
             try:
@@ -154,28 +136,30 @@ async def sync_boards(
             except json.JSONDecodeError:
                 log.error(
                     "sync.board.invalid_config",
-                    board_url=board_url,
+                    board_url=row["board_url"],
                     config=monitor_config_str,
                 )
+                skipped += 1
                 continue
 
-        if dry_run:
-            log.info("sync.board.dry_run", board_url=board_url, monitor_type=monitor_type)
-            continue
+        company_slugs.append(row["company_slug"])
+        board_slugs.append(_or_none(row.get("board_slug")))
+        board_urls.append(row["board_url"])
+        crawler_types.append(row["monitor_type"])
+        metadatas.append(metadata)
 
-        await conn.fetchrow(
-            _UPSERT_BOARD,
-            company_id,
-            board_slug,
-            board_url,
-            monitor_type,
-            metadata,
-        )
-        log.info("sync.board.upserted", board_url=board_url, monitor_type=monitor_type)
+    if dry_run:
+        log.info("sync.boards.dry_run", count=len(board_urls), skipped=skipped)
+        return
+
+    await conn.execute(
+        _UPSERT_BOARDS, company_slugs, board_slugs, board_urls, crawler_types, metadatas
+    )
+    log.info("sync.boards.upserted", count=len(board_urls), skipped=skipped)
 
     # Disable boards not in CSV
-    if not dry_run and all_board_urls:
-        await conn.execute(_DISABLE_REMOVED_BOARDS, all_board_urls)
+    if board_urls:
+        await conn.execute(_DISABLE_REMOVED_BOARDS, board_urls)
 
 
 async def run_sync(dry_run: bool = False) -> None:
@@ -191,8 +175,8 @@ async def run_sync(dry_run: bool = False) -> None:
     pool = await create_pool()
     try:
         async with pool.acquire() as conn, conn.transaction():
-            slug_to_id = await sync_companies(conn, companies, dry_run)
-            await sync_boards(conn, boards, slug_to_id, dry_run)
+            await sync_companies(conn, companies, dry_run)
+            await sync_boards(conn, boards, dry_run)
 
         log.info(
             "sync.complete",

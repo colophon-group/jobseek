@@ -1,11 +1,7 @@
 name: Sync CSVs to DB
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "apps/crawler/data/companies.csv"
-      - "apps/crawler/data/boards.csv"
+  deployment_status:
 
 concurrency:
   group: sync-csv
@@ -14,6 +10,9 @@ concurrency:
 jobs:
   sync:
     name: Sync
+    if: >-
+      github.event.deployment_status.state == 'success' &&
+      github.event.deployment_status.environment == 'Production'
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -24,6 +23,21 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+        working-directory: apps/web
+
+      - run: pnpm db:migrate
+        working-directory: apps/web
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
       - run: uv sync
         working-directory: apps/crawler

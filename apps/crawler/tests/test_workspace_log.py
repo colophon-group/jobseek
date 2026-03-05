@@ -78,6 +78,7 @@ class TestFormatCrawlStats:
     def test_basic_stats(self):
         boards = {
             "careers": {
+                "slug": "test-careers",
                 "active_config": "sitemap",
                 "configs": {
                     "sitemap": {
@@ -85,21 +86,27 @@ class TestFormatCrawlStats:
                         "scraper_type": "json-ld",
                         "run": {"jobs": 138, "time": 4.2},
                         "scraper_run": {"avg_time": 1.1},
+                        "cost": {"monitor_per_cycle": 4.2},
+                        "feedback": {"verdict": "good"},
                     },
                 },
             }
         }
         stats = format_crawl_stats(boards)
         assert "<!-- crawl-stats" in stats
-        assert "| Jobs | 138 |" in stats
-        assert "| Monitor | `sitemap`" in stats
-        assert "4.2s" in stats
-        assert "| Scraper | `json-ld`" in stats
-        assert "1.1s" in stats
+        # Per-board row with slug, monitor, jobs, cost, verdict columns
+        assert "test-careers" in stats
+        assert "`sitemap`" in stats
+        assert "138" in stats
+        assert "~4.2s" in stats
+        assert "**good**" in stats
+        # Table header
+        assert "| Board |" in stats
 
     def test_api_monitor_no_scraper(self):
         boards = {
             "careers": {
+                "slug": "test-careers",
                 "active_config": "greenhouse",
                 "configs": {
                     "greenhouse": {
@@ -110,13 +117,13 @@ class TestFormatCrawlStats:
             }
         }
         stats = format_crawl_stats(boards)
-        assert "| Monitor | `greenhouse`" in stats
-        # No scraper row when scraper_type is None
-        assert "Scraper" not in stats
+        assert "`greenhouse`" in stats
+        assert "50" in stats
 
     def test_verdict_in_metrics_table(self):
         boards = {
             "careers": {
+                "slug": "test-careers",
                 "active_config": "sitemap",
                 "configs": {
                     "sitemap": {
@@ -138,8 +145,46 @@ class TestFormatCrawlStats:
             }
         }
         stats = format_crawl_stats(boards)
-        # Verdict now appears as a row in the metrics table
-        assert "| Verdict | **acceptable** |" in stats
+        # Verdict appears in the board row
+        assert "**acceptable**" in stats
         # Field coverage is NOT in the stats comment (lives in PR body only)
         assert "Field Coverage" not in stats
         assert "Required" not in stats
+
+    def test_multi_board_total_row(self):
+        boards = {
+            "careers": {
+                "slug": "kpmg-careers",
+                "active_config": "dom",
+                "configs": {
+                    "dom": {
+                        "monitor_type": "dom",
+                        "run": {"jobs": 56, "time": 12.0},
+                        "cost": {"monitor_per_cycle": 12.0},
+                        "feedback": {"verdict": "good"},
+                    },
+                },
+            },
+            "fr": {
+                "slug": "kpmg-fr",
+                "active_config": "dom",
+                "configs": {
+                    "dom": {
+                        "monitor_type": "dom",
+                        "run": {"jobs": 217, "time": 5.0},
+                        "cost": {"monitor_per_cycle": 5.0},
+                        "feedback": {"verdict": "acceptable"},
+                    },
+                },
+            },
+        }
+        stats = format_crawl_stats(boards)
+        # Both boards appear as rows
+        assert "kpmg-careers" in stats
+        assert "kpmg-fr" in stats
+        # Total row with summed jobs
+        assert "**Total**" in stats
+        assert "**273**" in stats
+        # JSON marker has summed values
+        assert '"jobs": 273' in stats
+        assert '"monitor_time": 17.0' in stats

@@ -88,77 +88,48 @@ def _get_active_cfg(board: dict[str, Any]) -> dict[str, Any]:
 
 
 def format_crawl_stats(boards: dict[str, dict[str, Any]]) -> str:
-    """Generate crawl stats comment from board run data.
+    """Generate crawl stats comment with per-board rows.
 
-    Returns the full markdown comment including the hidden JSON marker,
-    field coverage tiers, and verdict from feedback.
+    Returns the full markdown comment including the hidden JSON marker.
+    Each board gets its own row; a Total row is appended for multi-board.
 
-    Reads from the v2 board structure where run data, monitor/scraper
-    type, cost, and feedback are inside ``configs[active_config]``.
+    The ``<!-- crawl-stats {json} -->`` marker contains ``jobs`` (int)
+    and ``monitor_time`` (float, sum across boards) for CI label-pr.sh.
     """
     import json
 
     total_jobs = 0
-    max_monitor_time = 0.0
-    max_scraper_time = 0.0
-    monitor_type = None
-    scraper_type = None
-    configs_tried = 0
-    verdict = None
+    total_monitor_time = 0.0
+    rows: list[str] = []
 
-    for _alias, board in boards.items():
+    for alias, board in boards.items():
         cfg = _get_active_cfg(board)
         mr = cfg.get("run") or {}
-        sr = cfg.get("scraper_run") or {}
-        total_jobs += mr.get("jobs", 0)
-        max_monitor_time = max(max_monitor_time, mr.get("time", 0.0))
-        max_scraper_time = max(max_scraper_time, sr.get("avg_time", 0.0))
-        monitor_type = cfg.get("monitor_type") or monitor_type
-        scraper_type = cfg.get("scraper_type") or scraper_type
+        jobs = mr.get("jobs", 0)
+        mon_time = mr.get("time", 0.0)
+        total_jobs += jobs
+        total_monitor_time += mon_time
 
-        # Count configs tried
-        configs_tried += len(board.get("configs") or {})
+        mtype = cfg.get("monitor_type", "?")
 
-        # Get feedback from active config
-        fb = cfg.get("feedback")
-        if fb:
-            verdict = fb.get("verdict")
+        # Cost
+        cost = (cfg.get("cost") or {}).get("monitor_per_cycle")
+        cost_str = f"~{cost}s" if cost is not None else "—"
 
-    # Cost from active config
-    cost_str = None
-    for _alias, board in boards.items():
-        cfg = _get_active_cfg(board)
-        cost = cfg.get("cost", {})
-        mon = cost.get("monitor_per_cycle")
-        if mon is not None:
-            from src.core.monitors import is_rich_monitor
+        # Verdict
+        fb = cfg.get("feedback") or {}
+        verdict = fb.get("verdict")
+        verdict_str = f"**{verdict}**" if verdict else "—"
 
-            m_type = cfg.get("monitor_type")
-            m_config = cfg.get("monitor_config")
-            if is_rich_monitor(m_type, m_config):
-                cost_str = f"~{mon}s (API — no scraper)"
-            else:
-                cost_str = f"~{mon}s/cycle + scraper"
+        slug = board.get("slug", alias)
+        rows.append(f"| {slug} | `{mtype}` | {jobs} | {cost_str} | {verdict_str} |")
 
-    stats = {
-        "jobs": total_jobs,
-        "monitor_time": max_monitor_time,
-        "scraper_time": max_scraper_time,
-    }
-    stats_json = json.dumps({k: v for k, v in stats.items() if v is not None})
+    # Total row for multi-board
+    if len(boards) > 1:
+        rows.append(f"| **Total** | | **{total_jobs}** | | |")
 
-    rows = [
-        f"| Jobs | {total_jobs} |",
-        f"| Monitor | `{monitor_type}` · {max_monitor_time}s (measured) |",
-    ]
-    if scraper_type:
-        rows.append(f"| Scraper | `{scraper_type}` · {max_scraper_time}s |")
-    if cost_str:
-        rows.append(f"| Cost/cycle | {cost_str} |")
-    if configs_tried > 1:
-        rows.append(f"| Configs tried | {configs_tried} |")
-    if verdict:
-        rows.append(f"| Verdict | **{verdict}** |")
+    stats_json = json.dumps({"jobs": total_jobs, "monitor_time": total_monitor_time})
 
+    header = "| Board | Monitor | Jobs | Cost | Verdict |\n|---|---|---|---|---|"
     table = "\n".join(rows)
-    return f"<!-- crawl-stats {stats_json} -->\n| Metric | Value |\n|---|---|\n{table}"
+    return f"<!-- crawl-stats {stats_json} -->\n{header}\n{table}"

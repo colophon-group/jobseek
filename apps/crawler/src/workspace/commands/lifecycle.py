@@ -369,65 +369,130 @@ def validate():
         out.info("validate", "CSV validation passed")
 
 
+_MAX_INLINE_CONFIG = 60
+
+
+def _row(label: str, cells: list[str]) -> str:
+    """Build a markdown table row: | label | cell1 | cell2 | ..."""
+    return f"| {label} | " + " | ".join(cells) + " |"
+
+
+def _short_config(config: dict) -> str:
+    """Inline JSON if short, otherwise '*(configured)*'."""
+    if not config:
+        return ""
+    s = json.dumps(config)
+    if len(s) <= _MAX_INLINE_CONFIG:
+        return f" · `{s}`"
+    return " *(configured)*"
+
+
 def _build_pr_body(ws: Workspace, boards: list[Board]) -> str:
-    """Build enriched PR body with company info, board configs, and quality data."""
+    """Build enriched PR body with company info as a columnar table.
+
+    Each board becomes a column. Metadata, field quality, and verdict
+    are all in the same table.
+    """
+    from src.workspace.log import _format_field_quality
+
     lines = [f"Closes #{ws.issue}", ""]
 
     display_name = ws.name or ws.slug
     lines.append(f"## {display_name}")
+    if ws.website:
+        lines.append(ws.website)
     lines.append("")
 
+    slugs = [b.slug for b in boards]
+    n = len(boards)
+
+    # Table header
+    lines.append(_row("", slugs))
+    lines.append("|---" + "|---" * n + "|")
+
+    # URL row
+    lines.append(_row("URL", [b.url for b in boards]))
+
+    # Monitor row
+    monitor_cells = []
     for b in boards:
-        lines.append("| | |")
-        lines.append("|---|---|")
-        if ws.website:
-            lines.append(f"| Website | {ws.website} |")
-        lines.append(f"| Board | `{b.slug}` — {b.url} |")
+        cell = f"`{b.monitor_type}`" if b.monitor_type else "?"
+        cell += _short_config(b.monitor_config)
+        monitor_cells.append(cell)
+    lines.append(_row("Monitor", monitor_cells))
 
-        monitor_cfg = ""
-        if b.monitor_config:
-            monitor_cfg = f" · `{json.dumps(b.monitor_config)}`"
-        lines.append(f"| Monitor | `{b.monitor_type}`{monitor_cfg} |")
-
+    # Scraper row
+    scraper_cells = []
+    for b in boards:
         if is_rich_monitor(b.monitor_type, b.monitor_config):
-            lines.append("| Scraper | *(API — not needed)* |")
+            scraper_cells.append("*(API)*")
         elif b.scraper_type:
-            scraper_cfg = ""
-            if b.scraper_config:
-                scraper_cfg = f" · `{json.dumps(b.scraper_config)}`"
-            lines.append(f"| Scraper | `{b.scraper_type}`{scraper_cfg} |")
+            cell = f"`{b.scraper_type}`"
+            cell += _short_config(b.scraper_config)
+            scraper_cells.append(cell)
+        else:
+            scraper_cells.append("—")
+    lines.append(_row("Scraper", scraper_cells))
 
+    # Jobs row
+    job_cells = []
+    for b in boards:
         job_count = (b.monitor_run or {}).get("jobs", "?")
-        lines.append(f"| Jobs | {job_count} |")
+        job_cells.append(str(job_count))
+    lines.append(_row("Jobs", job_cells))
 
-        # Show cost if available
+    # Cost row (only if any board has cost data)
+    cost_cells = []
+    any_cost = False
+    for b in boards:
         cfg = (b.configs or {}).get(b.active_config or "")
-        if cfg and cfg.get("cost"):
-            cost = cfg["cost"]
-            mon = cost.get("monitor_per_cycle")
-            if mon is not None:
-                lines.append(f"| Cost | ~{mon}s/cycle |")
+        cost = (cfg or {}).get("cost", {})
+        mon = cost.get("monitor_per_cycle") if cost else None
+        if mon is not None:
+            cost_cells.append(f"~{mon}s/cycle")
+            any_cost = True
+        else:
+            cost_cells.append("—")
+    if any_cost:
+        lines.append(_row("Cost", cost_cells))
 
-        lines.append("")
+    # Field quality rows — union of all boards' feedback fields
+    all_fields: list[str] = []
+    seen: set[str] = set()
+    for b in boards:
+        cfg = (b.configs or {}).get(b.active_config or "")
+        fb = (cfg or {}).get("feedback") or {}
+        for field_name in fb.get("fields", {}):
+            if field_name not in seen:
+                all_fields.append(field_name)
+                seen.add(field_name)
 
-        # Extraction quality from feedback
-        if cfg and cfg.get("feedback"):
-            fb = cfg["feedback"]
-            verdict = fb.get("verdict", "?")
-            lines.append("### Extraction Quality")
-            lines.append("")
-            lines.append("| Field | Quality |")
-            lines.append("|-------|---------|")
-            from src.workspace.log import _format_field_quality
+    for field_name in all_fields:
+        cells = []
+        for b in boards:
+            cfg = (b.configs or {}).get(b.active_config or "")
+            fb = (cfg or {}).get("feedback") or {}
+            quality = fb.get("fields", {}).get(field_name)
+            cells.append(_format_field_quality(quality) if quality else "—")
+        lines.append(_row(field_name, cells))
 
-            for field_name, quality in fb.get("fields", {}).items():
-                lines.append(f"| {field_name} | {_format_field_quality(quality)} |")
-            notes = fb.get("notes", "")
-            lines.append("")
-            lines.append(f"**Verdict**: {verdict}")
+    # Verdict row
+    verdict_cells = []
+    for b in boards:
+        cfg = (b.configs or {}).get(b.active_config or "")
+        fb = (cfg or {}).get("feedback") or {}
+        verdict = fb.get("verdict")
+        notes = fb.get("notes", "") or fb.get("verdict_notes", "")
+        if verdict:
+            cell = f"**{verdict}**"
             if notes:
-                lines.append(f" — {notes}")
-            lines.append("")
+                cell += f" — {notes}"
+            verdict_cells.append(cell)
+        else:
+            verdict_cells.append("—")
+    lines.append(_row("**Verdict**", verdict_cells))
+
+    lines.append("")
 
     # Configs comparison (collapsed), grouped by board
     any_configs = any(len(b.configs or {}) > 1 for b in boards)

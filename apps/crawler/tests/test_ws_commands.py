@@ -1814,8 +1814,13 @@ class TestBuildPrBody:
         body = _build_pr_body(ws_obj, [board])
         assert "Closes #1" in body
         assert "Test Corp" in body
-        assert "Extraction Quality" in body
+        # Board slug as column header
+        assert "test-careers" in body
+        # Field quality rows in the table
         assert "title" in body and "clean" in body
+        # Verdict row
+        assert "**good**" in body
+        # Configs evaluated section (>1 config)
         assert "Configurations evaluated" in body
         assert "**selected**" in body
         assert "rejected" in body
@@ -1835,6 +1840,63 @@ class TestBuildPrBody:
         body = _build_pr_body(ws_obj, [board])
         assert "Configurations evaluated" not in body
 
+    def test_multi_board_horizontal(self, tmp_path, monkeypatch):
+        from src.workspace.commands.lifecycle import _build_pr_body
+
+        ws_obj = Workspace(
+            slug="kpmg",
+            name="KPMG",
+            website="https://kpmg.com",
+            issue=42,
+            pr=99,
+        )
+        board1 = Board(alias="careers", slug="kpmg-careers", url="https://jobs.kpmg.ch")
+        board1.configs["dom"] = {
+            "monitor_type": "dom",
+            "monitor_config": {},
+            "status": "tested",
+            "run": {"jobs": 56},
+            "cost": {"monitor_per_cycle": 12.0},
+            "feedback": {
+                "verdict": "good",
+                "fields": {"title": "clean", "description": "clean"},
+            },
+        }
+        board1.active_config = "dom"
+        board1.monitor_run = {"jobs": 56}
+
+        board2 = Board(alias="fr", slug="kpmg-fr", url="https://kpmg.fr/emplois")
+        board2.configs["dom"] = {
+            "monitor_type": "dom",
+            "monitor_config": {},
+            "status": "tested",
+            "run": {"jobs": 217},
+            "cost": {"monitor_per_cycle": 5.0},
+            "feedback": {
+                "verdict": "acceptable",
+                "verdict_notes": "Locations noisy",
+                "fields": {
+                    "title": "clean",
+                    "description": "clean",
+                    "locations": {"coverage": "200/217", "quality": "noisy"},
+                },
+            },
+        }
+        board2.active_config = "dom"
+        board2.monitor_run = {"jobs": 217}
+
+        body = _build_pr_body(ws_obj, [board1, board2])
+        # Both board slugs appear as column headers
+        assert "kpmg-careers" in body
+        assert "kpmg-fr" in body
+        # Single table — both boards' data in the same table
+        assert "| URL |" in body or "URL" in body
+        # Verdicts in same row
+        assert "**good**" in body
+        assert "**acceptable**" in body
+        # Locations field from board2
+        assert "200/217 (noisy)" in body
+
 
 class TestFormatCrawlStats:
     """Test enriched crawl stats comment."""
@@ -1844,6 +1906,7 @@ class TestFormatCrawlStats:
 
         boards = {
             "careers": {
+                "slug": "test-careers",
                 "active_config": "greenhouse",
                 "configs": {
                     "greenhouse": {
@@ -1865,8 +1928,8 @@ class TestFormatCrawlStats:
             },
         }
         result = format_crawl_stats(boards)
-        # Verdict is a row in the metrics table
-        assert "| Verdict | **acceptable** |" in result
+        # Verdict appears in the board row
+        assert "**acceptable**" in result
         # Field coverage is NOT in stats comment (only in PR body)
         assert "Field Coverage" not in result
         assert "Required" not in result
@@ -1876,6 +1939,7 @@ class TestFormatCrawlStats:
 
         boards = {
             "careers": {
+                "slug": "test-careers",
                 "active_config": "greenhouse",
                 "configs": {
                     "greenhouse": {
