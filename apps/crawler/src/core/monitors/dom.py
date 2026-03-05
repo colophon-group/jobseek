@@ -29,7 +29,11 @@ log = structlog.get_logger()
 MAX_URLS = 10_000
 _MAX_PAGINATION_PAGES = 200
 
-_JOB_KEYWORDS = frozenset({"job", "career", "position", "posting", "opening", "role", "vacancy"})
+_JOB_KEYWORDS = frozenset({
+    "job", "career", "position", "posting", "opening", "role", "vacancy",
+    # Non-English career page keywords
+    "emploi", "offre", "stelle", "vacature", "empleo", "lavoro", "vaga",
+})
 
 
 def _build_url_matcher(url_filter) -> re.Pattern | None:

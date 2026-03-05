@@ -17,6 +17,31 @@ from src.core.scrapers import JobContent, register
 
 log = structlog.get_logger()
 
+_CTRL_REPLACEMENTS = {"\n": "\\n", "\r": "\\r", "\t": "\\t"}
+
+
+def _escape_control_chars_in_strings(raw: str) -> str:
+    """Escape control characters that appear inside JSON string values only."""
+    out: list[str] = []
+    in_string = False
+    escape = False
+    for ch in raw:
+        if escape:
+            out.append(ch)
+            escape = False
+            continue
+        if ch == "\\":
+            escape = True
+            out.append(ch)
+            continue
+        if ch == '"':
+            in_string = not in_string
+        if in_string and ord(ch) < 0x20:
+            out.append(_CTRL_REPLACEMENTS.get(ch, ""))
+            continue
+        out.append(ch)
+    return "".join(out)
+
 
 class _JsonLdExtractor(HTMLParser):
     """Extracts JSON-LD blocks from HTML."""
@@ -47,7 +72,14 @@ class _JsonLdExtractor(HTMLParser):
                     parsed = json.loads(raw)
                     self.results.append(parsed)
                 except json.JSONDecodeError:
-                    pass
+                    # Some sites emit literal control chars (newlines, tabs)
+                    # inside JSON string values — escape them and retry.
+                    cleaned = _escape_control_chars_in_strings(raw)
+                    try:
+                        parsed = json.loads(cleaned)
+                        self.results.append(parsed)
+                    except json.JSONDecodeError:
+                        pass
 
 
 def _find_job_posting(data: dict | list) -> dict | None:
