@@ -47,7 +47,11 @@ async def throttle_domain(url: str) -> None:
 
     delay = _delay_for_host(hostname)
     key = f"throttle:{hostname}"
-    redis = get_redis()
+    try:
+        redis = get_redis()
+    except Exception:
+        await asyncio.sleep(delay)
+        return
 
     if redis is None:
         return
