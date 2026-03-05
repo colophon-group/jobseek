@@ -2,7 +2,7 @@ company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scrap
 cloudflare,cloudflare-careers,https://boards.greenhouse.io/cloudflare,greenhouse,"{""token"": ""cloudflare""}",,
 deepjudge,deepjudge-careers,https://jobs.ashbyhq.com/deepjudge,ashby,"{""token"": ""deepjudge""}",,
 deepmind,deepmind-careers,https://deepmind.google/about/careers/,greenhouse,"{""token"": ""deepmind""}",,
-elevenlabs,elevenlabs-careers,https://jobs.ashbyhq.com/elevenlabs,ashby,"{""token"": ""elevenlabs"", ""jobs"": 99}",,
+elevenlabs,elevenlabs-careers,https://jobs.ashbyhq.com/elevenlabs,ashby,"{""token"": ""elevenlabs""}",,
 exa-ai,exa-ai-careers,https://jobs.ashbyhq.com/exa,ashby,,,
 google,google-careers,https://www.google.com/about/careers/applications/jobs/results/,sitemap,"{""sitemap_url"": ""https://www.google.com/about/careers/applications/jobs/sitemap.xml"", ""urls"": 3984}",embedded,"{""pattern"": ""AF_initDataCallback\\(\\{key:\\s*'ds:0'.*?data:"", ""path"": ""[0]"", ""fields"": {""title"": ""[1]"", ""description"": ""[10][1]"", ""locations"": ""[9][*][0]"", ""qualifications"": ""[4][1]"", ""responsibilities"": ""[3][1]""}}"
 kpmg,kpmg-at,https://bewerbung.kpmg.at,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://bewerbung.kpmg.at/googlefeed.xml""}",,
