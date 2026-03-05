@@ -68,7 +68,7 @@
     "eslint": "^9.39.3",
     "happy-dom": "^20.7.0",
     "postgres": "^3.4.8",
-    "svgo": "^4.0.0",
+    "svgo": "^4.0.1",
     "tsx": "^4.21.0",
     "typescript": "^5",
     "typescript-eslint": "^8.56.1",
