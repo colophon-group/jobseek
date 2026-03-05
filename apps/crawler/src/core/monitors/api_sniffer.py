@@ -135,7 +135,10 @@ async def can_handle(
                             "phase": ex.phase,
                             "arrays": len(find_arrays(ex.body) if ex.body else []),
                             "best_items": max(
-                                (len(items) for _, items in (find_arrays(ex.body) if ex.body else [])),
+                                (
+                                    len(items)
+                                    for _, items in (find_arrays(ex.body) if ex.body else [])
+                                ),
                                 default=0,
                             ),
                         }

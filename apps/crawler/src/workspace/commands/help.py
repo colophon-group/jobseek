@@ -550,6 +550,26 @@ api_sniffer — XHR/Fetch API Capture (Playwright)
       auto-mapping may miss fields or map wrong keys.
     URL-only (no fields):   Returns set[str], needs scraper.
       URLs derived from url_field, url_template, or DOM cross-reference.
+    HTML string mode:       When json_path resolves to a string (not a list),
+      the content is treated as an HTML fragment. URLs are extracted via
+      url_regex (or default href matching). Pagination fetches additional
+      pages and extracts URLs from each HTML string.
+      Use for APIs that return HTML fragments inside JSON (e.g. WordPress
+      get-jobs.php, PHP endpoints returning rendered HTML in a JSON wrapper).
+
+      Example (WordPress PHP API returning HTML in JSON):
+        {
+          "api_url": "https://example.com/get-jobs.php",
+          "params": {"ajax": "1"},
+          "json_path": "postings.jobs",
+          "total_path": "postings.size",
+          "url_regex": "href=\"(/jobdetail/\\?jobId=\\d+)\"",
+          "pagination": {"param_name": "spage", "style": "page",
+                         "start_value": 1, "increment": 1, "location": "query"}
+        }
+
+      url_regex    Regex with one capture group to extract URLs from the HTML
+                   string. Default: matches all href attribute values.
 
   Detection:  ws probe shows "API sniffer — N items, total: M, score: S at <url>"
   Zero jobs?  Verify api_url is correct, check if cookies/auth context is needed
