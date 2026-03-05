@@ -130,8 +130,8 @@ _MONITOR_PROBE_HINTS: dict[str, str] = {
     "--current-jobs",
     "-n",
     type=int,
-    default=0,
-    help="Estimated job count for cost scoring",
+    required=True,
+    help="Number of jobs visible on the website (check the careers page)",
 )
 def probe_monitors(slug: str | None, board_alias: str | None, current_jobs: int):
     """Probe all monitor types for the active board's URL."""
@@ -441,8 +441,8 @@ def probe_scraper(slug: str | None, board_alias: str | None, urls: tuple[str, ..
     "--current-jobs",
     "-n",
     type=int,
-    default=0,
-    help="Estimated job count for cost scoring",
+    required=True,
+    help="Number of jobs visible on the website (check the careers page)",
 )
 def probe_deep(slug: str | None, board_alias: str | None, current_jobs: int):
     """Playwright-based api_sniffer detection with cost scoring."""
@@ -1098,7 +1098,7 @@ def run_monitor(slug: str | None, board_alias: str | None):
         else:
             out.next_step("ws select scraper json-ld")
     else:
-        out.next_step("ws submit")
+        out.next_step("ws feedback")
 
 
 @click.command(name="scraper")
@@ -1387,9 +1387,9 @@ def run_scraper(slug: str | None, board_alias: str | None, urls: tuple[str, ...]
         if descs_found < total:
             parts.append(f"{descs_found}/{total} descriptions")
         out.warn("scraper", f"{', '.join(parts)} — check scraper config or try a different type")
-        out.next_step("ws submit")
+        out.next_step("ws feedback")
     else:
-        out.next_step("ws submit")
+        out.next_step("ws feedback")
 
 
 # ── Config management commands ─────────────────────────────────────────

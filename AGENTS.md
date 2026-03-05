@@ -39,9 +39,9 @@ ws new <slug> --issue <N>              # Create workspace + branch + draft PR (s
 ws use <slug>                          # Switch active workspace (multi-workspace only)
 ws set --name "..." --website "..." --logo-url "..." --icon-url "..."
 ws add board <alias> --url <board-url>
-ws probe monitor                       # Probe all monitor types for active board
+ws probe monitor -n <N>                # Probe all monitor types (N = job count from website)
 ws probe scraper                       # Probe all scraper types against sample URLs
-ws probe deep                          # Playwright-based api_sniffer detection
+ws probe deep -n <N>                   # Playwright-based api_sniffer detection
 ws probe api <url>                     # Analyze API endpoint for api_sniffer config
 ws select monitor <type> [--as <name>] [--config JSON]
 ws run monitor                         # Test crawl
@@ -117,7 +117,7 @@ If already present, comment and close the issue.
 
 **Check 1 — Real company**: web search confirms the company exists and is operating.
 **Check 2 — Public careers page**: find the careers/jobs URL by checking the company's own website (look for "Careers" or "Jobs" links). Do not rely solely on web search results — they may be stale or point to the wrong ATS. Fetch the company's careers page directly to discover the current board URL.
-**Check 3 — At least one listing visible**: the career page shows job postings.
+**Check 3 — At least one listing visible**: the career page shows job postings. **Count the total number of jobs displayed** (or noted on the page) — you will need this for `ws probe monitor -n <count>`. If the page is JS-rendered and WebFetch shows 0 listings, use the job count from web search results (e.g., LinkedIn, Glassdoor) as an approximation. Do **not** manually inspect the page source, parse `__NEXT_DATA__`, or reverse-engineer API endpoints — `ws probe monitor` and `ws probe deep` handle this automatically.
 
 **Check 4 — Multiple boards**: while on the careers page, look for region/language selectors, country-specific subpages, or links to separate ATS instances. Common patterns:
 - Language/region switcher on the careers page (e.g., EN | DE | FR tabs)
@@ -161,7 +161,7 @@ URLs must be reachable — submit blocks on unreachable logo/icon URLs. Prefer l
 
 ```bash
 ws add board careers --url "https://boards.greenhouse.io/stripe"
-ws probe monitor
+ws probe monitor -n 138   # 138 jobs visible on the careers page
 ```
 
 `add board` auto-prefixes the alias with the company slug (`careers` → `stripe-careers`) and auto-activates the board. `probe monitor` tries all monitor types and reports results.
@@ -172,12 +172,12 @@ If Step 1 identified multiple career pages (regional, departmental, or separate 
 
 ```bash
 ws add board careers-us --url "https://company.com/us/careers"
-ws probe monitor
+ws probe monitor -n 50    # 50 jobs on US page
 # ... configure first board fully (Steps 5–8) ...
 
 ws add board careers-de --url "https://company.com/de/careers"
 ws use --board company-careers-de
-ws probe monitor
+ws probe monitor -n 30    # 30 jobs on DE page
 # ... configure second board ...
 ```
 
@@ -185,7 +185,7 @@ ws probe monitor
 
 ### 4b. API Discovery Fallback (when probes return 0 jobs)
 
-If `ws probe monitor` and `ws probe deep` both return 0 jobs, the site may load data via APIs that the probes didn't trigger. Before falling back to DOM workarounds, inspect the page source for API URL patterns:
+If `ws probe monitor -n <N>` and `ws probe deep -n <N>` both return 0 jobs, the site may load data via APIs that the probes didn't trigger. Before falling back to DOM workarounds, inspect the page source for API URL patterns:
 
 ```bash
 curl -s "<board-url>" -o /tmp/page.html
@@ -323,9 +323,13 @@ Run `ws run scraper` again after config changes to verify new fields appear and 
 After testing, record extraction quality feedback. This is **mandatory before submit**. Every config must have feedback with `--verdict-notes` explaining the outcome — these notes appear in the PR's "Configurations evaluated" table.
 
 ```bash
-ws feedback --title clean --description clean --verdict good \
-  --verdict-notes "Greenhouse API, 138 jobs, all fields clean"
+ws feedback --title clean --description clean \
+  --locations clean --employment-type clean \
+  --job-location-type clean --date-posted clean \
+  --verdict good --verdict-notes "Greenhouse API, 138 jobs, all fields clean"
 ```
+
+The CLI requires explicit quality for every field that has coverage > 0. For API monitors, this typically means all of `--title`, `--description`, `--locations`, `--employment-type`, `--job-location-type`, `--date-posted`. Omit flags only for fields with 0 coverage.
 
 The `--verdict-notes` should be a brief comment (one sentence) explaining what happened with this config. Examples:
 - `"Greenhouse API, 138 jobs, all fields clean"` — straightforward success
@@ -396,7 +400,7 @@ ws set --name "Stripe" --website "https://stripe.com" \
 
 # Board + monitor
 ws add board careers --url "https://boards.greenhouse.io/stripe"
-ws probe monitor
+ws probe monitor -n 138   # 138 jobs visible on the careers page
 ws select monitor greenhouse
 ws run monitor
 
@@ -405,8 +409,10 @@ ws run monitor
 cat .workspace/stripe/artifacts/careers/monitor/run-*/jobs.json | python3 -m json.tool | head -80
 
 # Feedback + submit (only after verifying content)
-ws feedback --title clean --description clean --verdict good \
-  --verdict-notes "Greenhouse API, 138 jobs, all fields clean"
+ws feedback --title clean --description clean \
+  --locations clean --employment-type clean \
+  --job-location-type clean --date-posted clean \
+  --verdict good --verdict-notes "Greenhouse API, 138 jobs, all fields clean"
 ws submit --summary "Straightforward greenhouse config, 138 jobs"
 ```
 
