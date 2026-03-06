@@ -12,6 +12,16 @@ from urllib.parse import urljoin
 
 import httpx
 
+# Browser-like headers for logo fetching — many sites block default httpx UA
+_LOGO_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/*,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+}
+
 
 @dataclass
 class LogoCandidate:
@@ -318,14 +328,27 @@ def discover_logos(html: str, base_url: str) -> list[LogoCandidate]:
     # Sort by score descending
     deduped.sort(key=lambda c: c.score, reverse=True)
 
-    # Append Google favicon fallback
+    # Append API-based fallbacks (these don't require scraping the homepage)
     from urllib.parse import urlparse
 
     domain = urlparse(base_url).netloc
     if domain:
-        favicon_url = f"https://www.google.com/s2/favicons?domain={domain}&sz=128"
-        # Don't add if we already have it
         existing_urls = {c.url for c in deduped}
+
+        # DuckDuckGo icon API — higher-resolution than Google favicon
+        ddg_url = f"https://icons.duckduckgo.com/ip3/{domain}.ico"
+        if ddg_url not in existing_urls:
+            deduped.append(
+                LogoCandidate(
+                    url=ddg_url,
+                    sources=["duckduckgo-icon-api"],
+                    role="icon",
+                    score=0.45,
+                )
+            )
+
+        # Google Favicon API — reliable last resort
+        favicon_url = f"https://www.google.com/s2/favicons?domain={domain}&sz=128"
         if favicon_url not in existing_urls:
             deduped.append(
                 LogoCandidate(
@@ -430,7 +453,7 @@ def download_candidates(
 def _fetch_image(url: str, timeout: float) -> tuple[bytes | None, str]:
     """Fetch image bytes and content-type."""
     try:
-        resp = httpx.get(url, follow_redirects=True, timeout=timeout)
+        resp = httpx.get(url, headers=_LOGO_HEADERS, follow_redirects=True, timeout=timeout)
         ct = resp.headers.get("content-type", "")
         if resp.status_code >= 400:
             return None, ct

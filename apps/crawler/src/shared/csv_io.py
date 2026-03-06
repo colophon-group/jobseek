@@ -21,7 +21,7 @@ def read_csv(path: Path) -> tuple[list[str], list[dict[str, str]]]:
 
 def write_csv(path: Path, headers: list[str], rows: list[dict[str, str]]) -> None:
     """Write rows back to a CSV file."""
-    with open(path, "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=headers)
+    with open(path, "w", newline="\n") as f:
+        writer = csv.DictWriter(f, fieldnames=headers, lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)

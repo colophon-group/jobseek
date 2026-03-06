@@ -107,8 +107,8 @@ def update_csv(url_map: dict[str, dict[str, str]]) -> None:
                 row.update(url_map[slug])
             rows.append(row)
 
-    with open(csv_path, "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
+    with open(csv_path, "w", newline="\n") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames, lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
 

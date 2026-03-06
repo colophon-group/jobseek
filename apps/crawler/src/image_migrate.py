@@ -131,8 +131,8 @@ def main() -> None:
     http.close()
 
     if not dry_run and updated > 0:
-        with open(csv_path, "w", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
+        with open(csv_path, "w", newline="\n") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames, lineterminator="\n")
             writer.writeheader()
             writer.writerows(rows)
         print(f"\nUpdated {updated} URL(s) in companies.csv")

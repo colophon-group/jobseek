@@ -335,8 +335,9 @@ class TestFiltering:
         </body></html>
         """
         cs = _discover(html)
-        # Should only have google-favicon fallback
-        non_fallback = [c for c in cs if "google-favicon-api" not in c.sources]
+        # Should only have API-based fallbacks (duckduckgo + google-favicon)
+        api_sources = {"google-favicon-api", "duckduckgo-icon-api"}
+        non_fallback = [c for c in cs if not api_sources.intersection(c.sources)]
         assert len(non_fallback) == 0
 
 
@@ -344,13 +345,18 @@ class TestFiltering:
 
 
 class TestFallback:
-    def test_empty_html_only_google_fallback(self):
+    def test_empty_html_only_api_fallbacks(self):
         cs = _discover("<html><head></head><body></body></html>")
-        assert len(cs) == 1
-        assert cs[0].sources == ["google-favicon-api"]
+        assert len(cs) == 2
+        # DuckDuckGo first (higher score), then Google favicon
+        assert cs[0].sources == ["duckduckgo-icon-api"]
         assert cs[0].role == "icon"
-        assert cs[0].score == 0.40
-        assert "s2/favicons" in cs[0].url
+        assert cs[0].score == 0.45
+        assert "icons.duckduckgo.com" in cs[0].url
+        assert cs[1].sources == ["google-favicon-api"]
+        assert cs[1].role == "icon"
+        assert cs[1].score == 0.40
+        assert "s2/favicons" in cs[1].url
 
     def test_google_fallback_always_present(self):
         html = """

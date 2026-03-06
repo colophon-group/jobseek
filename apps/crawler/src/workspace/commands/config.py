@@ -197,21 +197,30 @@ def _discover_and_show_candidates(slug: str, website: str) -> None:
     """Fetch homepage, discover logo candidates, download, and display table."""
     import httpx
 
-    from src.workspace.logo_discover import discover_logos, download_candidates
+    from src.workspace.logo_discover import (
+        _LOGO_HEADERS,
+        discover_logos,
+        download_candidates,
+    )
     from src.workspace.state import ws_dir
 
     out.info("logos", "Discovering logo candidates...")
 
+    html = ""
+    final_url = website
     try:
-        resp = httpx.get(website, follow_redirects=True, timeout=10)
+        resp = httpx.get(website, headers=_LOGO_HEADERS, follow_redirects=True, timeout=10)
         if resp.status_code >= 400:
-            out.warn("logos", f"Homepage returned HTTP {resp.status_code}")
-            return
+            out.warn(
+                "logos", f"Homepage returned HTTP {resp.status_code} — using API-based fallbacks"
+            )
+        else:
+            html = resp.text
+            final_url = str(resp.url)
     except Exception as e:
-        out.warn("logos", f"Could not fetch homepage: {e}")
-        return
+        out.warn("logos", f"Could not fetch homepage: {e} — using API-based fallbacks")
 
-    candidates = discover_logos(resp.text, str(resp.url))
+    candidates = discover_logos(html, final_url)
     if not candidates:
         out.warn("logos", "No candidates found")
         return
@@ -254,7 +263,9 @@ def _check_url(label: str, url: str) -> None:
     try:
         import httpx
 
-        resp = httpx.head(url, follow_redirects=True, timeout=10)
+        from src.workspace.logo_discover import _LOGO_HEADERS
+
+        resp = httpx.head(url, headers=_LOGO_HEADERS, follow_redirects=True, timeout=10)
         if resp.status_code < 400:
             final = str(resp.url)
             if final != url:
@@ -286,7 +297,9 @@ def _check_image(label: str, url: str, slug: str) -> None:
     try:
         import httpx
 
-        resp = httpx.get(url, follow_redirects=True, timeout=10)
+        from src.workspace.logo_discover import _LOGO_HEADERS
+
+        resp = httpx.get(url, headers=_LOGO_HEADERS, follow_redirects=True, timeout=10)
         ct = resp.headers.get("content-type", "")
         size = len(resp.content)
         if not ("image" in ct or "svg" in ct):
