@@ -333,6 +333,10 @@ def save_image_to_path(slug: str, label: str, data: bytes, content_type: str) ->
     original_path = artifact_dir / f"{name}_original{ext}"
     original_path.write_bytes(data)
 
+    # SVGs don't need PNG conversion — agents can read them directly
+    if ext == ".svg":
+        return original_path
+
     try:
         import io
 
@@ -345,7 +349,6 @@ def save_image_to_path(slug: str, label: str, data: bytes, content_type: str) ->
         img.save(png_path, "PNG")
         return png_path
     except ImportError:
-        # Pillow not installed — original is already saved above
         out.warn(label, "Pillow not installed — saved raw file (no PNG conversion)")
         return original_path
     except Exception as e:

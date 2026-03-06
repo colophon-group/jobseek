@@ -239,6 +239,7 @@ dependencies = [
     { name = "httpx" },
     { name = "jmespath" },
     { name = "pillow" },
+    { name = "playwright" },
     { name = "polars" },
     { name = "pydantic-settings" },
     { name = "python-dotenv" },
@@ -249,7 +250,6 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "playwright" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "ruff" },
@@ -263,6 +263,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.28" },
     { name = "jmespath", specifier = ">=1.0" },
     { name = "pillow", specifier = ">=10.0" },
+    { name = "playwright", specifier = ">=1.58.0" },
     { name = "polars", specifier = ">=1.38.1" },
     { name = "pydantic-settings", specifier = ">=2.7" },
     { name = "python-dotenv", specifier = ">=1.0" },
@@ -273,7 +274,6 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "playwright", specifier = ">=1.58.0" },
     { name = "pytest", specifier = ">=8.0" },
     { name = "pytest-asyncio", specifier = ">=0.25" },
     { name = "ruff", specifier = ">=0.15.4" },

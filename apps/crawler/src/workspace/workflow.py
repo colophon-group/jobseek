@@ -134,7 +134,7 @@ class WorkflowState:
 
 # ── Gate verification ────────────────────────────────────────────────
 
-from src.workspace._compat import _RICH_MONITORS  # noqa: E402
+from src.workspace._compat import _RICH_MONITORS, detect_ats_from_url  # noqa: E402
 
 
 def _config_tested(board: Board) -> bool:
@@ -183,7 +183,9 @@ def _has_feedback(board: Board) -> bool:
 
 GLOBAL_GATES: dict[str, Any] = {
     "company_complete": lambda ws, boards: bool(ws.name and ws.website and ws.branch),
-    "all_boards_added": lambda ws, boards: len(boards) > 0 and all(b.detections for b in boards),
+    "all_boards_added": lambda ws, boards: (
+        len(boards) > 0 and all(b.detections or detect_ats_from_url(b.url) for b in boards)
+    ),
     "submitted": lambda ws, boards: ws.submit_state.get("pr_ready", False),
 }
 

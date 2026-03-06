@@ -9,6 +9,9 @@ dependencies = [
     "pyyaml>=6.0",
     "httpx>=0.28",
     "Pillow>=10.0",
+    "structlog>=24.4",
+    "jmespath>=1.0",
+    "playwright>=1.58.0",
 ]
 
 [project.scripts]
@@ -25,9 +28,8 @@ packages = ["src"]
 # Workspace CLI and supporting modules
 "../src/__init__.py" = "src/__init__.py"
 "../src/workspace/" = "src/workspace/"
-"../src/shared/__init__.py" = "src/shared/__init__.py"
-"../src/shared/constants.py" = "src/shared/constants.py"
-"../src/shared/csv_io.py" = "src/shared/csv_io.py"
+"../src/shared/" = "src/shared/"
+"../src/core/" = "src/core/"
 "../src/csvtool.py" = "src/csvtool.py"
 "../src/inspect.py" = "src/inspect.py"
 

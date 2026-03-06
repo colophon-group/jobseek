@@ -193,6 +193,27 @@ class TestGates:
         passed, _ = check_gate(step, ws, boards)
         assert passed
 
+    def test_all_boards_added_known_ats_no_detections(self, workspace):
+        """Known ATS board passes gate even without probe detections."""
+        slug, ws, ws_root = workspace
+        board = Board(
+            alias="careers",
+            slug="test-wf-careers",
+            url="https://jobs.ashbyhq.com/TestCo",
+            detections={},
+        )
+        save_board(slug, board)
+        step = StepDef(
+            id="add_boards",
+            title="",
+            instructions="",
+            gate_type="state",
+            gate_check="all_boards_added",
+            phase="global",
+        )
+        passed, _ = check_gate(step, ws, [board])
+        assert passed
+
     def test_no_boards(self, workspace):
         slug, ws, ws_root = workspace
         step = StepDef(
