@@ -49,24 +49,6 @@ ws add board careers-de --url "https://company.com/de/careers"
 If one board's listings are a strict superset of another's (verified by comparing job counts
 and sampling titles), the subset board can be skipped — document this in feedback `--verdict-notes` later.
 
-## Probe each board
-
-For boards that don't match a known ATS domain, run the monitor probe:
-
-```bash
-ws probe monitor -n <job-count>
-```
-
-If there are multiple boards, switch and probe each:
-
-```bash
-ws use --board <alias>
-ws probe monitor -n <job-count>
-```
-
-Known ATS boards (greenhouse, lever, ashby, etc.) don't need probing — the next step
-will select the monitor directly.
-
 ## When done
 
 ```bash

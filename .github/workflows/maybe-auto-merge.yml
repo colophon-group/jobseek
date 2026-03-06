@@ -14,8 +14,24 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Check for pending images
+        id: images
+        run: |
+          FILES=$(gh pr diff "$PR" --repo "$REPO" --name-only)
+          if echo "$FILES" | grep -q '^apps/crawler/data/images/'; then
+            echo "pending=true" >> "$GITHUB_OUTPUT"
+            echo "Images pending — upload-company-images workflow will handle labeling"
+          else
+            echo "pending=false" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+
       - name: Label PR
         id: label
+        if: steps.images.outputs.pending == 'false'
         run: .github/scripts/label-pr.sh
         env:
           GH_TOKEN: ${{ github.token }}
@@ -23,7 +39,7 @@ jobs:
           REPO: ${{ github.repository }}
 
       - name: Enable auto-merge
-        if: contains(steps.label.outputs.labels, 'auto-merge')
+        if: steps.images.outputs.pending == 'false' && contains(steps.label.outputs.labels, 'auto-merge')
         run: |
           gh pr merge "$PR" --repo "$REPO" --auto --rebase
         env:

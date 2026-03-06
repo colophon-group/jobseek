@@ -1,8 +1,9 @@
 """Upload company images from data/images/ to Cloudflare R2 and update CSVs.
 
-Run by CI after merge to main. Reads image files committed by ``ws submit``,
-uploads them to R2, writes the public URLs into ``companies.csv``, and deletes
-the local image directories so the repo stays clean.
+Run by CI on pull requests (upload-company-images workflow). Reads image files
+committed by ``ws submit``, uploads them to R2, writes the public URLs into
+``companies.csv``, and deletes the local image directories so the repo stays
+clean.
 
 Environment variables:
     R2_ENDPOINT_URL  — S3-compatible API endpoint

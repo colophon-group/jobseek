@@ -39,6 +39,12 @@ while IFS= read -r f; do
       break
     fi
   done
+  # Allow image files under data/images/
+  if [ "$MATCH" != "true" ]; then
+    case "$f" in
+      apps/crawler/data/images/*) MATCH=true ;;
+    esac
+  fi
   if [ "$MATCH" != "true" ]; then
     echo "::warning::Unexpected file: $f"
     CONFIG_ONLY=false
@@ -48,8 +54,10 @@ done <<< "$FILES"
 # --- Check diff size and content ---
 
 DIFF=$(gh pr diff "$PR" --repo "$REPO")
-ADDED_LINES=$(echo "$DIFF" | grep -c '^+[^+]' || true)
-echo "Added lines: $ADDED_LINES (max $MAX_ADDED_LINES)"
+# Count added lines only in CSV files (exclude images and other binary/text assets)
+CSV_DIFF=$(gh pr diff "$PR" --repo "$REPO" -- apps/crawler/data/companies.csv apps/crawler/data/boards.csv 2>/dev/null || echo "$DIFF")
+ADDED_LINES=$(echo "$CSV_DIFF" | grep -c '^+[^+]' || true)
+echo "Added lines (CSVs only): $ADDED_LINES (max $MAX_ADDED_LINES)"
 
 DIFF_OK=true
 

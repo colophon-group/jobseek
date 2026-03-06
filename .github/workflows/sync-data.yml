@@ -1,4 +1,4 @@
-name: Sync data to DB + R2
+name: Sync data to DB
 
 on:
   push:
@@ -6,7 +6,6 @@ on:
     paths:
       - "apps/crawler/data/companies.csv"
       - "apps/crawler/data/boards.csv"
-      - "apps/crawler/data/images/**"
 
 concurrency:
   group: sync-csv
@@ -44,25 +43,7 @@ jobs:
       - run: uv sync
         working-directory: apps/crawler
 
-      - name: Upload images to R2
-        working-directory: apps/crawler
-        run: uv run python -m src.image_sync
-        env:
-          R2_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
-          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          R2_BUCKET: ${{ vars.R2_BUCKET }}
-          R2_DOMAIN_URL: ${{ vars.R2_DOMAIN_URL }}
-
       - run: uv run python -m src.sync
         working-directory: apps/crawler
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-
-      - name: Commit R2 URL updates
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add apps/crawler/data/
-          git diff --cached --quiet || git commit -m "Update logo/icon URLs to R2 [skip ci]"
-          git push
