@@ -97,9 +97,12 @@ def new(slug: str, issue: int, reset: bool):
             out.die(f"PR #{pr['number']}: {pr['title']}")
         out.info("github", f"No open PRs for issue #{issue}")
 
-        # Create branch
-        git.create_branch(branch)
-        out.plain("git", f"Created branch {branch}")
+        # Create branch from latest origin/main to avoid inheriting
+        # commits from a previously submitted company branch
+        git.fetch()
+        main = git.get_main_branch()
+        git.create_branch(branch, start_point=f"origin/{main}")
+        out.plain("git", f"Created branch {branch} (from origin/{main})")
 
     # Add stub CSV row
     from src.csvtool import company_add
@@ -702,9 +705,16 @@ def _execute_submit_step(
             return  # Local mode — skip git commit
         from src.workspace import git
 
-        if not git.has_uncommitted_changes(["apps/crawler/data/"]):
+        # Stage only this company's files to avoid committing leftover
+        # data from a previously submitted company branch
+        commit_paths = [
+            "apps/crawler/data/companies.csv",
+            "apps/crawler/data/boards.csv",
+            f"apps/crawler/data/images/{ws.slug}/",
+        ]
+        if not git.has_uncommitted_changes(commit_paths):
             return  # Nothing to commit — already done
-        git.add_files(["apps/crawler/data/"])
+        git.add_files(commit_paths)
         commit_msg = f"Configure {ws.name or ws.slug}"
         if ws.issue:
             commit_msg += f"\n\nCloses #{ws.issue}"

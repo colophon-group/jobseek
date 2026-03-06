@@ -1085,10 +1085,48 @@ def run_monitor(slug: str | None, board_alias: str | None):
     if result.urls:
         sample = next(iter(result.urls))
         out.plain("monitor", f"Sample: {sample}")
+
+    # Content samples for rich monitors — show actual values for quality verification
     if result.jobs_by_url:
-        sample_job = next(iter(result.jobs_by_url.values()))
-        if sample_job.title:
-            out.plain("monitor", f"Sample title: {sample_job.title}")
+        sample_jobs = list(result.jobs_by_url.values())[:5]
+        _SAMPLE_FIELDS = [
+            "title",
+            "locations",
+            "description",
+            "employment_type",
+            "job_location_type",
+            "date_posted",
+            "base_salary",
+            "qualifications",
+            "responsibilities",
+            "skills",
+            "metadata",
+        ]
+        print()
+        out.plain("monitor", "Extracted content:")
+        for field_name in _SAMPLE_FIELDS:
+            values = []
+            for job in sample_jobs:
+                val = getattr(job, field_name, None)
+                if val is None:
+                    values.append("\u2014")
+                elif isinstance(val, str):
+                    if len(val) > 120:
+                        values.append(val[:60] + " \u2026 " + val[-40:])
+                    else:
+                        values.append(val)
+                elif isinstance(val, list):
+                    values.append(", ".join(str(v)[:60] for v in val[:5]))
+                elif isinstance(val, dict):
+                    values.append(json.dumps(val)[:120])
+                else:
+                    values.append(str(val)[:120])
+
+            if all(v == "\u2014" for v in values):
+                continue
+            out.plain("monitor", f"  {field_name}:")
+            for i, v in enumerate(values):
+                out.plain("monitor", f"    [{i}] {v}")
 
     action_log.append_to_list(
         board.log,

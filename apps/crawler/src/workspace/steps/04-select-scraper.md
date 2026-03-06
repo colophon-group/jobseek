@@ -38,6 +38,9 @@ ws select scraper json-ld
 ws run scraper
 ```
 
+After `ws run scraper`, read the "Extracted content:" output — it shows actual field
+values for sample jobs. Verify quality before proceeding to feedback.
+
 ## When in doubt, probe first
 
 ```bash

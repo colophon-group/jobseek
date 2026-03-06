@@ -8,15 +8,14 @@
 
 ## Verify extracted content
 
-### For API monitors
+Both `ws run monitor` (rich/API monitors) and `ws run scraper` print "Extracted content:"
+with actual field values for sample jobs. **Read these samples** — they are the primary
+verification tool. Re-run the command if you need to see them again:
 
 ```bash
-cat {artifact_path}/monitor/run-*/jobs.json | python3 -m json.tool | head -80
+ws run monitor    # for rich/API monitors
+ws run scraper    # for scraper-based monitors
 ```
-
-### For scraper-based monitors
-
-Read the content samples in `ws run scraper` output.
 
 ### For all types, verify:
 

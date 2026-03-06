@@ -309,9 +309,21 @@ def is_ahead_of_remote(branch: str | None = None) -> bool:
     return int(result.stdout.strip()) > 0
 
 
-def create_branch(name: str) -> None:
-    """Create and checkout a new branch."""
-    _run(["git", "checkout", "-b", name])
+def create_branch(name: str, start_point: str | None = None) -> None:
+    """Create and checkout a new branch.
+
+    When *start_point* is given (e.g. ``origin/main``), the branch is
+    created from that ref instead of the current HEAD.
+    """
+    args = ["git", "checkout", "-b", name]
+    if start_point:
+        args.append(start_point)
+    _run(args)
+
+
+def fetch() -> None:
+    """Fetch latest from origin."""
+    _run(["git", "fetch", "origin"], retries=_GIT_RETRIES)
 
 
 def checkout(name: str) -> None:

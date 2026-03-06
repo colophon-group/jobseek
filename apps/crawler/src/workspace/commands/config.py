@@ -258,6 +258,62 @@ def _discover_and_show_candidates(slug: str, website: str) -> None:
     out.plain("logos", "  ws set --logo-url <url> --icon-url <url>")
 
 
+@click.command(name="logos")
+@click.argument("slug", required=False)
+def logos(slug: str | None):
+    """Show logo/icon candidates and current selection."""
+    slug = resolve_slug(slug)
+    if not workspace_exists(slug):
+        out.die(f"Workspace {slug!r} not found")
+
+    ws = load_workspace(slug)
+
+    # Current selection
+    if ws.logo_url or ws.icon_url:
+        out.info("logos", "Current selection:")
+        if ws.logo_url:
+            out.plain("logos", f"  logo: {ws.logo_url}")
+        if ws.icon_url:
+            out.plain("logos", f"  icon: {ws.icon_url}")
+        print()
+
+    # Candidates from last discovery
+    from src.workspace.state import ws_dir
+
+    candidates_path = ws_dir(slug) / "artifacts" / "company" / "logo-candidates" / "candidates.json"
+    if not candidates_path.exists():
+        out.warn("logos", "No candidates discovered yet. Run: ws set --website <url>")
+        return
+
+    candidates = json.loads(candidates_path.read_text())
+    if not candidates:
+        out.warn("logos", "No candidates found")
+        return
+
+    out.info("logos", f"{len(candidates)} candidate(s):")
+    print()
+
+    rows = []
+    for c in candidates:
+        rows.append(
+            [
+                str(c["index"]),
+                c.get("role", "?"),
+                f"{c.get('score', 0):.2f}",
+                ", ".join(c.get("sources", [])),
+                c.get("artifact_path", ""),
+            ]
+        )
+
+    out.table(["#", "Role", "Score", "Sources", "File"], rows)
+    print()
+
+    out.plain("logos", "Select:")
+    out.plain("logos", "  ws set --logo-candidate 1 --icon-candidate 2")
+    out.plain("logos", "Or provide URLs:")
+    out.plain("logos", "  ws set --logo-url <url> --icon-url <url>")
+
+
 def _check_url(label: str, url: str) -> None:
     """Advisory URL reachability check."""
     try:

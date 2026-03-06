@@ -29,11 +29,17 @@ ws select monitor sitemap --as sitemap-filtered --config '{{"url_filter": "/jobs
 ws run monitor
 ```
 
-## Verify the count
+## Verify the results
 
-After the test crawl, **compare the job count against the website's displayed total**.
-If the count is lower, the monitor may need pagination config or a different type —
-run `ws task troubleshoot 'fewer jobs'`.
+After `ws run monitor`, check **both** the count and the content:
+
+1. **Count** — compare the job count against the website's displayed total.
+   If the count is lower, the monitor may need pagination config or a different type —
+   run `ws task troubleshoot 'fewer jobs'`.
+2. **Content** — `ws run monitor` prints "Extracted content:" with sample field values
+   for rich monitors. Read these samples and verify titles are real job titles,
+   descriptions contain meaningful content, and locations are actual place names.
+   Populated fields are NOT necessarily correct — verify the text makes sense.
 
 ## If the probe returned 0 jobs
 
