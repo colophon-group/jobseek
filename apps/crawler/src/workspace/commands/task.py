@@ -55,10 +55,25 @@ def task(ctx, issue: int | None):
     if ctx.invoked_subcommand is not None:
         return
 
-    # No active workspace + --issue → pre-verification flow
-    if issue is not None and get_active_slug() is None:
-        _pre_verify(issue)
-        return
+    # --issue → check if it matches active workspace, otherwise pre-verify
+    if issue is not None:
+        active = get_active_slug()
+        if active:
+            try:
+                ws = load_workspace(active)
+                if str(ws.issue) == str(issue):
+                    # Same issue — fall through to show current step
+                    pass
+                else:
+                    # Different issue — start fresh
+                    _pre_verify(issue)
+                    return
+            except FileNotFoundError:
+                _pre_verify(issue)
+                return
+        else:
+            _pre_verify(issue)
+            return
 
     # Active workspace → show current step
     slug = resolve_slug(None)
