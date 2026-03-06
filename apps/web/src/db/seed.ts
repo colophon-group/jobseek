@@ -46,29 +46,34 @@ async function main() {
       title: "Senior Frontend Engineer",
       description: "Build amazing user interfaces with React and Next.js.",
       locations: ["Berlin, Germany"],
+      sourceUrl: "https://acme.example.com/jobs/senior-frontend-engineer",
     },
     {
       companyId: acme.id,
       title: "Backend Developer",
       description: "Design and implement scalable APIs.",
       locations: ["Remote"],
+      sourceUrl: "https://acme.example.com/jobs/backend-developer",
     },
     {
       companyId: globex.id,
       title: "Product Manager",
       locations: ["Munich, Germany"],
+      sourceUrl: "https://globex.example.com/jobs/product-manager",
     },
     {
       companyId: globex.id,
       title: "DevOps Engineer",
       description: "Manage CI/CD pipelines and cloud infrastructure.",
       locations: ["Vienna, Austria"],
+      sourceUrl: "https://globex.example.com/jobs/devops-engineer",
     },
     {
       companyId: initech.id,
       title: "Full Stack Developer",
       description: "Work across the entire stack with TypeScript.",
       locations: ["Zurich, Switzerland"],
+      sourceUrl: "https://initech.example.com/jobs/full-stack-developer",
     },
   ]);
 
