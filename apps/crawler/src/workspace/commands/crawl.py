@@ -831,6 +831,8 @@ def select_monitor(
         "jobs",
         "urls",
         "count",
+        "coverage",
+        "domain",
     }
     clean_config = {k: v for k, v in config.items() if k not in _internal_keys}
 
@@ -899,6 +901,22 @@ _SCRAPER_QUALITY_FIELDS = [
 
 # Core fields always shown in terminal output
 _CORE_FIELDS = ("title", "description", "locations")
+
+# Fields that live inside the ``extras`` dict rather than as direct attributes
+_EXTRAS_FIELDS = {"skills", "responsibilities", "qualifications", "valid_through"}
+
+
+def _get_field(obj: object, field: str) -> object:
+    """Get a quality/display field value from a job object.
+
+    For fields in ``_EXTRAS_FIELDS``, looks inside the ``extras`` dict.
+    """
+    if field in _EXTRAS_FIELDS:
+        extras = getattr(obj, "extras", None)
+        if isinstance(extras, dict):
+            return extras.get(field)
+        return None
+    return getattr(obj, field, None)
 
 
 @click.command(name="monitor")
@@ -996,7 +1014,7 @@ def run_monitor(slug: str | None, board_alias: str | None):
         total = len(jobs)
         quality = {"total": total, "fields": {}}
         for field in _MONITOR_QUALITY_FIELDS:
-            count = sum(1 for j in jobs if getattr(j, field, None))
+            count = sum(1 for j in jobs if _get_field(j, field))
             pct = round(count / total * 100) if total else 0
             quality["fields"][field] = {"count": count, "pct": pct}
         save_quality(run_dir, quality)
@@ -1073,12 +1091,25 @@ def run_monitor(slug: str | None, board_alias: str | None):
             ]
             if optional_parts:
                 out.plain("monitor", f"Optional: {', '.join(optional_parts)}")
-        # API monitors skip scraper (including api_sniffer with fields)
-        if is_rich_monitor(board.monitor_type, board.monitor_config):
+        # API monitors skip scraper when descriptions cover most jobs
+        statically_rich = is_rich_monitor(board.monitor_type, board.monitor_config)
+        desc_count = quality["fields"].get("description", {}).get("count", 0) if quality else 0
+        desc_pct = (desc_count / quality["total"] * 100) if quality and quality["total"] else 0
+        # Statically-rich monitors always skip; others need ≥80% description coverage
+        if statically_rich or desc_pct >= 80:
             out.plain("monitor", "Skipping scraper — monitor returns full job data")
-            # Mark config as rich so derived progress knows scraper is not needed
             board._ensure_cfg()["rich"] = True
             save_board(slug, board)
+        elif has_rich and desc_pct > 0:
+            out.warn(
+                "monitor",
+                f"Only {desc_count}/{quality['total']} jobs have descriptions — scraper needed",
+            )
+        elif has_rich:
+            out.warn(
+                "monitor",
+                "Monitor returned structured data but no descriptions — scraper needed",
+            )
     else:
         out.plain("monitor", "Rich data: no (URLs only, needs scraper)")
 
@@ -1107,7 +1138,7 @@ def run_monitor(slug: str | None, board_alias: str | None):
         for field_name in _SAMPLE_FIELDS:
             values = []
             for job in sample_jobs:
-                val = getattr(job, field_name, None)
+                val = _get_field(job, field_name)
                 if val is None:
                     values.append("\u2014")
                 elif isinstance(val, str):
@@ -1300,7 +1331,7 @@ def run_scraper(slug: str | None, board_alias: str | None, urls: tuple[str, ...]
     for url, content, _ in results:
         url_fields = {}
         for field in _SCRAPER_QUALITY_FIELDS:
-            present = bool(getattr(content, field, None))
+            present = bool(_get_field(content, field))
             url_fields[field] = present
             if present:
                 quality_totals[field] += 1
@@ -1386,7 +1417,7 @@ def run_scraper(slug: str | None, board_alias: str | None, urls: tuple[str, ...]
         for field_name in _SAMPLE_FIELDS:
             values = []
             for _, content, _ in results:
-                val = getattr(content, field_name, None)
+                val = _get_field(content, field_name)
                 if val is None:
                     values.append("\u2014")
                 elif isinstance(val, str):

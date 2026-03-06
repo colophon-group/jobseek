@@ -157,6 +157,7 @@ def _map_to_job_content(raw: dict[str, str | list[str] | None]) -> JobContent:
     """Map extraction result dict to a ``JobContent`` dataclass."""
     kwargs: dict[str, object] = {}
     metadata: dict[str, object] = {}
+    extras: dict[str, object] = {}
 
     for key, value in raw.items():
         if value is None:
@@ -169,18 +170,21 @@ def _map_to_job_content(raw: dict[str, str | list[str] | None]) -> JobContent:
             "employment_type",
             "job_location_type",
             "date_posted",
-            "valid_through",
         ):
             kwargs[key] = value
         elif key == "location" or key == "locations":
             kwargs["locations"] = [value] if isinstance(value, str) else value
         elif key in ("qualifications", "responsibilities", "skills"):
-            kwargs[key] = [value] if isinstance(value, str) else value
+            extras[key] = [value] if isinstance(value, str) else value
+        elif key == "valid_through":
+            extras["valid_through"] = value
         else:
             metadata[key] = value
 
     if metadata:
         kwargs["metadata"] = metadata
+    if extras:
+        kwargs["extras"] = extras
 
     return JobContent(**kwargs)
 

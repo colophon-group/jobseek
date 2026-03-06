@@ -7,7 +7,6 @@ import {
   integer,
   timestamp,
   index,
-  uniqueIndex,
   jsonb,
 } from "drizzle-orm/pg-core";
 
@@ -176,6 +175,8 @@ export const jobPosting = pgTable(
     boardId: uuid("board_id").references(() => jobBoard.id, {
       onDelete: "set null",
     }),
+
+    // ── Content (display version — English when available) ──
     title: text("title"),
     /** HTML fragment preserving original page structure (p, ul/li, h3, etc.). */
     description: text("description"),
@@ -183,47 +184,46 @@ export const jobPosting = pgTable(
     employmentType: text("employment_type"),
     jobLocationType: text("job_location_type"),
     baseSalary: jsonb("base_salary"),
-    skills: text("skills").array(),
     datePosted: timestamp("date_posted", { withTimezone: true }),
-    validThrough: timestamp("valid_through", { withTimezone: true }),
-    responsibilities: text("responsibilities").array(),
-    qualifications: text("qualifications").array(),
+
+    // ── Language ──
+    /** ISO 639-1 code of the display content (e.g. "en", "de"). */
+    language: text("language"),
+    /** All language versions keyed by locale: {"en": {title, description, locations}, ...} */
+    localizations: jsonb("localizations"),
+
+    // ── Extended fields (populated when available) ──
+    /** Optional structured data: skills, responsibilities, qualifications, validThrough, etc. */
+    extras: jsonb("extras"),
+
+    // ── Identity & lifecycle ──
+    sourceUrl: text("source_url").unique().notNull(),
+    status: text("status", { enum: ["active", "delisted"] })
+      .default("active")
+      .notNull(),
     metadata: jsonb("metadata").default({}),
-    fetchMethod: text("fetch_method"),
-    latestVersionId: uuid("latest_version_id"),
-    sourceUrl: text("source_url").unique(),
-    status: text("status").default("active").notNull(),
-    firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).defaultNow(),
+    firstSeenAt: timestamp("first_seen_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
     delistedAt: timestamp("delisted_at", { withTimezone: true }),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
   },
   (table) => [
-    index("idx_jp_locations").using("gin", table.locations),
-    index("idx_jp_skills").using("gin", table.skills),
+    index("idx_jp_company").on(table.companyId),
+    index("idx_jp_board").on(table.boardId),
     index("idx_jp_employment_type").on(table.employmentType),
+    index("idx_jp_language").on(table.language),
     index("idx_jp_status_active").on(table.status).where(sql`status = 'active'`),
-    index("idx_jp_last_seen_active").on(table.lastSeenAt).where(sql`status = 'active'`),
-    index("idx_jp_valid_through").on(table.validThrough).where(sql`valid_through IS NOT NULL`),
-  ],
-);
-
-export const jobPostingVersion = pgTable(
-  "job_posting_version",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    jobPostingId: uuid("job_posting_id")
-      .notNull()
-      .references(() => jobPosting.id, { onDelete: "cascade" }),
-    content: jsonb("content").notNull(),
-    contentHash: text("content_hash").notNull(),
-    fetchMethod: text("fetch_method").notNull(),
-    fetchedAt: timestamp("fetched_at", { withTimezone: true }).defaultNow().notNull(),
-  },
-  (table) => [
-    index("idx_jpv_posting_fetched").on(table.jobPostingId, table.fetchedAt),
-    uniqueIndex("idx_jpv_posting_hash").on(table.jobPostingId, table.contentHash),
+    index("idx_jp_last_seen_active")
+      .on(table.lastSeenAt)
+      .where(sql`status = 'active'`),
+    index("idx_jp_locations").using("gin", table.locations),
   ],
 );
 

@@ -9,6 +9,7 @@ from src.core.monitors import DiscoveredJob
 from src.core.monitors.personio import (
     _parse_description,
     _parse_employment_type,
+    _parse_html_listings,
     _parse_job,
     _slug_from_url,
     can_handle,
@@ -256,6 +257,42 @@ class TestParseJob:
         result = _parse_job(el, "my-company")
         assert result.url == "https://my-company.jobs.personio.de/job/42"
 
+    def test_url_uses_com_domain(self):
+        xml = "<position><id>42</id></position>"
+        el = ET.fromstring(xml)
+        result = _parse_job(el, "my-company", domain="com")
+        assert result.url == "https://my-company.jobs.personio.com/job/42"
+
+
+class TestParseHtmlListings:
+    def test_parses_rsc_payload(self):
+        html = (
+            '<script>self.__next_f.push([1,"'
+            '5:[\\"$\\",\\"$L13\\",null,{'
+            '"jobs":[{"id":"100","name":"Engineer","main_office":"Berlin",'
+            '"schedule":"full-time","employment_type":"permanent",'
+            '"created_at":"2024-01-15T00:00:00Z","department":"Eng"},'
+            '{"id":"200","name":"Designer","main_office":"Munich",'
+            '"schedule":"part-time","employment_type":"intern",'
+            '"created_at":"2024-02-01T00:00:00Z"}],'
+            '"subdomain":"acme"'
+            '}]"])</script>'
+        )
+        jobs = _parse_html_listings(html, "acme", "com")
+        assert len(jobs) == 2
+        assert jobs[0].title == "Engineer"
+        assert jobs[0].url == "https://acme.jobs.personio.com/job/100"
+        assert jobs[0].locations == ["Berlin"]
+        assert jobs[0].employment_type == "Full-time"
+        assert jobs[0].date_posted == "2024-01-15T00:00:00Z"
+        assert jobs[0].description is None
+        assert jobs[1].title == "Designer"
+        assert jobs[1].employment_type == "Intern"
+
+    def test_no_jobs_returns_empty(self):
+        html = "<html>no rsc data here</html>"
+        assert _parse_html_listings(html, "acme", "de") == []
+
 
 class TestDiscover:
     async def test_returns_jobs(self):
@@ -357,27 +394,138 @@ class TestDiscover:
             assert len(jobs) == 1
             assert jobs[0].title == "Has ID"
 
-    async def test_http_error_raises(self):
+    async def test_backfills_descriptions_from_german(self):
+        """discover() backfills missing descriptions from the German XML feed."""
+        en_xml = """<?xml version="1.0" encoding="UTF-8"?>
+        <workzag-jobs>
+            <position>
+                <id>1</id><name>Engineer</name>
+                <jobDescriptions>
+                    <jobDescription><value>EN desc</value></jobDescription>
+                </jobDescriptions>
+            </position>
+            <position>
+                <id>2</id><name>Designer</name>
+                <jobDescriptions></jobDescriptions>
+            </position>
+        </workzag-jobs>"""
+
+        de_xml = """<?xml version="1.0" encoding="UTF-8"?>
+        <workzag-jobs>
+            <position>
+                <id>1</id><name>Ingenieur</name>
+                <jobDescriptions></jobDescriptions>
+            </position>
+            <position>
+                <id>2</id><name>Designer</name>
+                <jobDescriptions>
+                    <jobDescription><value>DE Beschreibung</value></jobDescription>
+                </jobDescriptions>
+            </position>
+        </workzag-jobs>"""
+
         def handler(request):
-            return httpx.Response(500)
+            url = str(request.url)
+            if "language=de" in url:
+                return httpx.Response(200, text=de_xml)
+            if "/xml" in url:
+                return httpx.Response(200, text=en_xml)
+            return httpx.Response(404)
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             board = {
                 "board_url": "https://acme.jobs.personio.de",
                 "metadata": {"slug": "acme"},
             }
-            with pytest.raises(httpx.HTTPStatusError):
+            jobs = await discover(board, client)
+            assert len(jobs) == 2
+            # Job 1: has EN description, should keep it
+            assert jobs[0].description is not None
+            assert "EN desc" in jobs[0].description
+            # Job 2: missing EN description, backfilled from DE
+            assert jobs[1].description is not None
+            assert "DE Beschreibung" in jobs[1].description
+
+    async def test_html_fallback_when_xml_404(self):
+        """discover() falls back to HTML parsing when XML feed is unavailable."""
+        html_body = (
+            '<html><script>self.__next_f.push([1,"'
+            '5:["$","$L13",null,{'
+            '"jobs":[{"id":"99","name":"Fallback Job","main_office":"Zurich",'
+            '"schedule":"full-time","employment_type":"permanent",'
+            '"created_at":"2024-03-01T00:00:00Z"}],'
+            '"subdomain":"acme"'
+            '}]"])</script></html>'
+        )
+
+        def handler(request):
+            url = str(request.url)
+            if "/xml" in url:
+                return httpx.Response(404)
+            return httpx.Response(200, text=html_body)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://acme.jobs.personio.de",
+                "metadata": {"slug": "acme"},
+            }
+            jobs = await discover(board, client)
+            assert len(jobs) == 1
+            assert jobs[0].title == "Fallback Job"
+            assert jobs[0].locations == ["Zurich"]
+            assert jobs[0].description is None
+
+    async def test_com_board_url_tries_com_first(self):
+        """Board URL on .com should try .com XML before .de."""
+        xml_body = """<?xml version="1.0" encoding="UTF-8"?>
+        <workzag-jobs>
+            <position><id>1</id><name>ComJob</name></position>
+        </workzag-jobs>"""
+        requested_urls = []
+
+        def handler(request):
+            requested_urls.append(str(request.url))
+            url = str(request.url)
+            if "personio.com/xml" in url:
+                return httpx.Response(200, text=xml_body)
+            return httpx.Response(404)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://acme.jobs.personio.com",
+                "metadata": {"slug": "acme"},
+            }
+            jobs = await discover(board, client)
+            assert len(jobs) == 1
+            assert jobs[0].url == "https://acme.jobs.personio.com/job/1"
+            # Should have tried .com first (not .de)
+            assert "personio.com/xml" in requested_urls[0]
+
+    async def test_all_sources_fail_raises(self):
+        def handler(request):
+            # XML returns 500, HTML returns no jobs
+            url = str(request.url)
+            if "/xml" in url:
+                return httpx.Response(500)
+            return httpx.Response(200, text="<html>no data</html>")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://acme.jobs.personio.de",
+                "metadata": {"slug": "acme"},
+            }
+            with pytest.raises(ValueError, match="Personio feed unavailable"):
                 await discover(board, client)
 
 
 class TestCanHandle:
     async def test_personio_url_de(self):
         result = await can_handle("https://acme.jobs.personio.de")
-        assert result == {"slug": "acme"}
+        assert result == {"slug": "acme", "domain": "de"}
 
     async def test_personio_url_com(self):
         result = await can_handle("https://acme.jobs.personio.com")
-        assert result == {"slug": "acme"}
+        assert result == {"slug": "acme", "domain": "com"}
 
     async def test_non_personio_url_no_client(self):
         result = await can_handle("https://example.com/careers")
@@ -406,7 +554,7 @@ class TestCanHandle:
     async def test_no_match(self):
         def handler(request):
             url = str(request.url)
-            if "personio.de/xml" in url:
+            if "/xml" in url:
                 return httpx.Response(404)
             return httpx.Response(200, text="<html>no personio refs</html>")
 
@@ -429,4 +577,57 @@ class TestCanHandle:
             result = await can_handle("https://acme.jobs.personio.de", client)
             assert result is not None
             assert result["slug"] == "acme"
+            assert result["domain"] == "de"
             assert result["jobs"] == 3
+            # Language auto-discovery included
+            assert "language" in result
+            assert "coverage" in result
+
+    async def test_xml_down_still_detects(self):
+        """When XML feed is 404, can_handle still returns the slug (HTML fallback)."""
+
+        def handler(request):
+            return httpx.Response(404)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle("https://acme.jobs.personio.com", client)
+            assert result is not None
+            assert result["slug"] == "acme"
+            assert result["domain"] == "com"
+
+    async def test_language_auto_discovery(self):
+        """can_handle probes EN/DE coverage and picks the best language."""
+        en_xml = """<?xml version="1.0" encoding="UTF-8"?>
+        <workzag-jobs>
+            <position><id>1</id><name>A</name>
+                <jobDescriptions><jobDescription><value>EN</value></jobDescription></jobDescriptions>
+            </position>
+            <position><id>2</id><name>B</name>
+                <jobDescriptions></jobDescriptions>
+            </position>
+        </workzag-jobs>"""
+
+        de_xml = """<?xml version="1.0" encoding="UTF-8"?>
+        <workzag-jobs>
+            <position><id>1</id><name>A</name>
+                <jobDescriptions><jobDescription><value>DE</value></jobDescription></jobDescriptions>
+            </position>
+            <position><id>2</id><name>B</name>
+                <jobDescriptions><jobDescription><value>DE desc</value>
+                </jobDescription></jobDescriptions>
+            </position>
+        </workzag-jobs>"""
+
+        def handler(request):
+            url = str(request.url)
+            if "language=de" in url:
+                return httpx.Response(200, text=de_xml)
+            return httpx.Response(200, text=en_xml)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle("https://acme.jobs.personio.de", client)
+            assert result is not None
+            # DE has more descriptions (2/2 vs 1/2), so should be primary
+            assert result["language"] == "de"
+            assert result["coverage"]["en"]["descriptions"] == 1
+            assert result["coverage"]["de"]["descriptions"] == 2

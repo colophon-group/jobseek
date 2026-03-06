@@ -183,66 +183,53 @@ Examples:
 | Greenhouse | Not available | — |
 | Workday | Not available | — |
 
-#### `skills` — Required skills
-
-| Property | Value |
-|----------|-------|
-| Type | `list[str]` |
-| Format | Array of plain-text skill names |
-| DB column | `job_posting.skills` (text[]) |
-
-```python
-["Python", "PostgreSQL", "AWS", "Docker"]
-```
-
-Rarely populated by API monitors. More commonly extracted via JSON-LD (`skills` field) or scraper field mappings.
-
-#### `responsibilities` — Job responsibilities
-
-| Property | Value |
-|----------|-------|
-| Type | `list[str]` |
-| Format | Array of plain-text strings, one per bullet point |
-| DB column | `job_posting.responsibilities` (text[]) |
-
-```python
-["Design microservices architecture", "Lead technical interviews", "Mentor junior engineers"]
-```
-
-Not a single concatenated string. Each array element is one responsibility. No HTML — plain text only.
-
-| Source | Field |
-|--------|-------|
-| Recruitee | `requirements` (parsed into bullets) |
-| Pinpoint | `key_responsibilities` |
-| JSON-LD | `responsibilities` (converted to list if string) |
-
-#### `qualifications` — Required qualifications
-
-| Property | Value |
-|----------|-------|
-| Type | `list[str]` |
-| Format | Array of plain-text strings, one per bullet point |
-| DB column | `job_posting.qualifications` (text[]) |
-
-```python
-["BS in Computer Science", "5+ years Python experience", "AWS certification"]
-```
-
-| Source | Field |
-|--------|-------|
-| Personio | Extracted from description |
-| JSON-LD | `qualifications` or `educationRequirements` (converted to list) |
-
-#### `valid_through` — Expiration date
+#### `language` — Content language
 
 | Property | Value |
 |----------|-------|
 | Type | `str` |
-| Format | ISO 8601 date string |
-| DB column | `job_posting.valid_through` (timestamptz) |
+| Format | ISO 639-1 code (e.g. `"en"`, `"de"`, `"fr"`) |
+| DB column | `job_posting.language` (text) |
 
-Only present in `JobContent` (scrapers), not in `DiscoveredJob` (monitors). Extracted from JSON-LD `validThrough`. Not commonly populated by most ATS systems.
+Detected automatically from the description using lingua-py, or provided by the monitor (Greenhouse API, Personio). When a monitor already knows the language, detection is skipped.
+
+#### `localizations` — All language versions
+
+| Property | Value |
+|----------|-------|
+| Type | `dict` |
+| Format | JSONB keyed by locale, each containing `{title, description, locations}` |
+| DB column | `job_posting.localizations` (jsonb) |
+
+```python
+{
+    "en": {"title": "Software Engineer", "description": "<p>...</p>", "locations": ["Berlin"]},
+    "de": {"title": "Softwareentwickler", "description": "<p>...</p>", "locations": ["Berlin"]}
+}
+```
+
+Top-level `title`/`description`/`locations` always hold the English version when available. Frontend selects user's locale from `localizations` at display time.
+
+Currently only populated by the Personio monitor (fetches per-language XML feeds).
+
+#### `extras` — Structured supplementary data
+
+| Property | Value |
+|----------|-------|
+| Type | `dict` |
+| Format | Free-form JSONB with well-known optional keys |
+| DB column | `job_posting.extras` (jsonb) |
+
+Holds structured data that doesn't warrant its own column. Common keys:
+
+| Key | Type | Sources | Notes |
+|-----|------|---------|-------|
+| `skills` | `list[str]` | JSON-LD, field mappings | `["Python", "PostgreSQL"]` |
+| `responsibilities` | `list[str]` or `str` | JSON-LD, api_sniffer, embedded | One item per bullet |
+| `qualifications` | `list[str]` or `str` | JSON-LD, api_sniffer, embedded | Falls back to `educationRequirements` |
+| `valid_through` | `str` | JSON-LD | ISO 8601 date |
+
+**Description enrichment:** When `responsibilities`, `qualifications`, or `skills` are in `extras`, they are automatically appended to the description HTML (as `<h3>` + `<ul>` sections) unless they already appear in the description text. This keeps descriptions self-contained while preserving structured access via `extras`.
 
 #### `metadata` — ATS-specific fields
 
@@ -298,11 +285,11 @@ The JSON-LD scraper (`json-ld`) maps [schema.org/JobPosting](https://schema.org/
 | `employmentType` | → | `employment_type` | Direct |
 | `jobLocationType` | → | `job_location_type` | Direct |
 | `datePosted` | → | `date_posted` | Direct |
-| `validThrough` | → | `valid_through` | Direct |
+| `validThrough` | → | `extras.valid_through` | Direct |
 | `baseSalary` | → | `base_salary` | Extracts `currency`, `value.minValue`, `value.maxValue`, `value.unitText` |
-| `skills` | → | `skills` | Converted to list if string |
-| `responsibilities` | → | `responsibilities` | Converted to list if string |
-| `qualifications` | → | `qualifications` | Falls back to `educationRequirements` |
+| `skills` | → | `extras.skills` | Converted to list if string |
+| `responsibilities` | → | `extras.responsibilities` | Converted to list if string; also appended to description |
+| `qualifications` | → | `extras.qualifications` | Falls back to `educationRequirements`; also appended to description |
 
 ### Location Extraction from JSON-LD
 
@@ -368,7 +355,8 @@ The `nextdata`, `embedded`, and `api_sniffer` scrapers use a `fields` config to 
 
 Where `<our_field>` is one of:
 - `title`, `description`, `locations`, `employment_type`, `job_location_type`
-- `date_posted`, `base_salary`, `skills`, `responsibilities`, `qualifications`
+- `date_posted`, `base_salary`
+- `skills`, `responsibilities`, `qualifications`, `valid_through` — stored in `extras` JSONB
 - `metadata.<key>` — extracted into the metadata dict under the given key
 
 And `<source_path>` is a dot-path with optional array indexing:
@@ -427,14 +415,13 @@ These heuristics often need manual correction — a detected pattern with wrong 
 | Field | Type | Priority | DB Type | HTML? | Notes |
 |-------|------|----------|---------|-------|-------|
 | `title` | `str` | Required | text | No | Plain text |
-| `description` | `str` | Required | text | **Yes** | Preserve structure |
+| `description` | `str` | Required | text | **Yes** | Preserve structure; enriched with extras |
 | `locations` | `list[str]` | Important | text[] | No | One string per location |
 | `employment_type` | `str` | Important | text | No | No normalization |
 | `job_location_type` | `str` | Important | text | No | `remote`/`hybrid`/`onsite` |
 | `date_posted` | `str` | Optional | timestamptz | No | ISO 8601 preferred |
 | `base_salary` | `dict` | Optional | jsonb | No | `{currency, min, max, unit}` |
-| `skills` | `list[str]` | Optional | text[] | No | One per element |
-| `responsibilities` | `list[str]` | Optional | text[] | No | One per bullet |
-| `qualifications` | `list[str]` | Optional | text[] | No | One per bullet |
-| `valid_through` | `str` | Optional | timestamptz | No | Scraper only |
+| `language` | `str` | Auto | text | No | ISO 639-1; detected or monitor-provided |
+| `localizations` | `dict` | Optional | jsonb | No | Keyed by locale |
+| `extras` | `dict` | Optional | jsonb | No | `{skills, responsibilities, qualifications, valid_through}` |
 | `metadata` | `dict` | Optional | jsonb | No | Free-form, ATS-specific |

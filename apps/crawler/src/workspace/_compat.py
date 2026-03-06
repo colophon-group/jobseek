@@ -13,10 +13,10 @@ from __future__ import annotations
 _RICH_MONITORS: frozenset[str] = frozenset(
     {
         "ashby",
+        "dvinci",
         "greenhouse",
         "hireology",
         "lever",
-        "personio",
         "pinpoint",
         "recruitee",
         "rippling",
@@ -27,7 +27,12 @@ _RICH_MONITORS: frozenset[str] = frozenset(
     }
 )
 
+# Personio is conditionally rich: XML feed provides descriptions,
+# but the HTML fallback does not.  Richness is determined at runtime
+# by ws run monitor based on actual description coverage.
+
 _ALL_MONITOR_TYPES: frozenset[str] = _RICH_MONITORS | {
+    "personio",
     "sitemap",
     "nextdata",
     "dom",
@@ -67,7 +72,7 @@ def detect_ats_from_url(url: str) -> str | None:
     # Suffix-based patterns
     if host.endswith(".recruitee.com"):
         return "recruitee"
-    if host.endswith(".jobs.personio.com") or host.endswith(".jobs.personio.de"):
+    if ".jobs.personio." in host:
         return "personio"
     if host.endswith(".pinpointhq.com"):
         return "pinpoint"
@@ -79,6 +84,16 @@ def detect_ats_from_url(url: str) -> str | None:
         return "rippling"
     if host.endswith(".hireology.com"):
         return "hireology"
+    if host.endswith(".dvinci-hr.com"):
+        return "dvinci"
+
+    # Teamtailor — career sites on *.teamtailor.com
+    if host.endswith(".teamtailor.com"):
+        return "rss"
+
+    # SAP SuccessFactors — career{N}.successfactors.eu / .com
+    if ".successfactors." in host:
+        return "rss"
 
     return None
 

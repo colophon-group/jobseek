@@ -721,7 +721,7 @@ class TestRunScraperOutput:
                 locations=["NYC"],
                 employment_type="FULL_TIME",
                 date_posted="2026-01-01",
-                skills=["Python", "SQL"],
+                extras={"skills": ["Python", "SQL"]},
             ),
             JobContent(title="Designer", description="<p>Hi</p>", locations=["SF"]),
         ]

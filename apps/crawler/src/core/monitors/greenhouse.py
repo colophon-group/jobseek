@@ -58,6 +58,7 @@ def _parse_job(job: dict) -> DiscoveredJob | None:
         description=job.get("content"),
         locations=locations or None,
         date_posted=job.get("first_published"),
+        language=job.get("language"),
         metadata=metadata or None,
     )
 

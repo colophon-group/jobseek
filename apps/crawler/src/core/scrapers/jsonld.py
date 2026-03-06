@@ -189,6 +189,22 @@ def _parse_posting(posting: dict) -> JobContent:
         # Keep HTML description as-is (same as greenhouse/lever)
         pass
 
+    extras: dict = {}
+    skills = _text_or_list(posting.get("skills"))
+    if skills:
+        extras["skills"] = skills
+    responsibilities = _text_or_list(posting.get("responsibilities"))
+    if responsibilities:
+        extras["responsibilities"] = responsibilities
+    qualifications = _text_or_list(
+        posting.get("qualifications") or posting.get("educationRequirements")
+    )
+    if qualifications:
+        extras["qualifications"] = qualifications
+    valid_through = posting.get("validThrough")
+    if valid_through:
+        extras["valid_through"] = valid_through
+
     return JobContent(
         title=posting.get("title") or posting.get("name"),
         description=description,
@@ -196,13 +212,8 @@ def _parse_posting(posting: dict) -> JobContent:
         employment_type=posting.get("employmentType"),
         job_location_type=posting.get("jobLocationType"),
         date_posted=posting.get("datePosted"),
-        valid_through=posting.get("validThrough"),
         base_salary=_extract_salary(posting),
-        skills=_text_or_list(posting.get("skills")),
-        responsibilities=_text_or_list(posting.get("responsibilities")),
-        qualifications=_text_or_list(
-            posting.get("qualifications") or posting.get("educationRequirements")
-        ),
+        extras=extras or None,
     )
 
 

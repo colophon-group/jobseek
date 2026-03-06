@@ -148,6 +148,13 @@
       "when": 1772396065761,
       "tag": "0020_curved_jane_foster",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1772823938543,
+      "tag": "0021_thick_millenium_guard",
+      "breakpoints": true
     }
   ]
 }

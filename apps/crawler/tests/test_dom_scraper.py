@@ -187,8 +187,8 @@ class TestDomScraper:
         }
         with _patch_playwright(page):
             result = await scrape("https://example.com/job/1", config, httpx.AsyncClient())
-        assert result.qualifications is not None
-        assert isinstance(result.qualifications, list)
+        assert result.extras is not None
+        assert isinstance(result.extras.get("qualifications"), list)
 
     async def test_browser_config_passed(self):
         """wait/timeout forwarded to navigate."""

@@ -12,6 +12,21 @@ ws select monitor <type>
 ws run monitor
 ```
 
+## If `ws run monitor` fails or returns errors
+
+**Do not stop on errors.** Follow this recovery flow:
+
+1. **Read the error message** — it often suggests the fix (wrong domain, missing feed, etc.)
+2. **Try `ws probe monitor -n <N>`** to discover what actually works for this board
+3. **Try alternative monitor types** — ATS detection is a hint, not a guarantee.
+   Some ATS providers have multiple API versions or regional variants.
+4. **Check `ws help monitor <type>`** for config options and troubleshooting
+5. **Run `ws task troubleshoot '<error summary>'`** for escalation guidance
+
+A known ATS URL does not guarantee the expected API is available. APIs change,
+feeds get deprecated, and regional variants may use different endpoints.
+Always verify with `ws run monitor` and fall back to probing if it fails.
+
 ## Otherwise, select based on probe results
 
 `ws probe monitor` (from the previous step) tried all types. Select the best detected

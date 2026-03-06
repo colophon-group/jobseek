@@ -32,6 +32,7 @@ Monitor Types (cheapest first):
   Type              Cost    Returns         Scraper needed?
   ────────────────────────────────────────────────────────
   ashby             10      Full job data   No (skipped)
+  dvinci            10      Full job data   No (skipped)
   greenhouse        10      Full job data   No (skipped)
   hireology         10      Full job data   No (skipped)
   lever             10      Full job data   No (skipped)
@@ -41,7 +42,7 @@ Monitor Types (cheapest first):
   workable          10      Full job data   No (skipped)
   workday           10      Full job data   No (skipped)
   pinpoint          10      Full job data   No (skipped)
-  personio          10      Full job data   No (skipped)
+  personio          10      Full or partial If no descriptions (HTML fallback)
   successfactors    10      Full job data   No (skipped)
   nextdata          20      URLs or full    If URL-only
   sitemap        50      URL set         Yes
@@ -75,7 +76,8 @@ Scraper Types:
   api_sniffer    Playwright  Optional (fields)  SPA/XHR job pages
 
   API monitors (greenhouse, lever, ashby, recruitee, rippling, workday, pinpoint,
-  personio, successfactors) skip the scraper step entirely.
+  successfactors) skip the scraper step entirely.
+  personio skips scraper when XML feed is available; HTML fallback needs scraper.
   api_sniffer scraper is auto-probed via Playwright in ws probe scraper.
 
   Probe first: ws probe scraper tries all types automatically against
@@ -101,6 +103,30 @@ Field importance:
   ws probe scraper                  Run scraper probe
   ws help scraper <type>            Detailed config reference
   ws help steps                     DOM scraper step format"""
+
+MONITOR_DVINCI = """\
+dvinci — d.vinci ATS (Public JSON API, no auth)
+
+  API:      GET https://{slug}.dvinci-hr.com/jobPublication/list.json
+  Returns:  Full job data (title, HTML description, locations, employment_type,
+            date_posted, base_salary)
+            metadata: contract_period, reference, categories, department
+  Scraper:  Not needed (API returns full data, scraper step is skipped)
+  Cap:      10,000 jobs
+  Note:     API is fully public — no authentication required.
+            Primarily DACH region (Germany, Austria, Switzerland).
+
+  Config:
+    {"slug": "at-careers"}
+
+    slug     Customer subdomain. Auto-filled by ws probe from:
+             1. Direct URL ({slug}.dvinci-hr.com)
+             2. Page HTML scan for d.vinci markers (dvinciVersion meta,
+                ng-app="dvinci.apps.Dvinci", DvinciData variable)
+             No blind slug probe — subdomains are custom names.
+
+  Detection:  ws probe shows "d.vinci API — slug: X, N jobs"
+  Zero jobs?  Verify slug — try the API URL directly in a browser"""
 
 MONITOR_GREENHOUSE = """\
 greenhouse — Greenhouse Public API
@@ -391,27 +417,39 @@ pinpoint — Pinpoint HQ Postings API
   Zero jobs?  Verify slug — try the API URL directly in a browser"""
 
 MONITOR_PERSONIO = """\
-personio — Personio Public XML Feed
+personio — Personio XML Feed + HTML Fallback
 
-  API:      GET https://{slug}.jobs.personio.de/xml?language=en
-  Returns:  Full job data (title, HTML description, locations, employment_type,
-            date_posted)
+  API:      GET https://{slug}.jobs.personio.{de,com}/xml?language={language}
+  Fallback: Parses RSC-embedded JSON from the HTML listing page
+  Returns:  Full job data via XML (title, HTML description, locations,
+            employment_type, date_posted).
+            Via HTML fallback: all fields except description.
             metadata: department, subcompany, recruitingCategory, seniority,
             yearsOfExperience, occupation, occupationCategory, keywords
-  Scraper:  Not needed (API returns full data, scraper step is skipped)
+  Scraper:  Not needed when XML available with descriptions (skipped).
+            When HTML fallback is used or descriptions are missing, scraper needed.
   Cap:      10,000 jobs
-  Note:     Single XML request — returns all jobs, no pagination
+  Note:     Tries both .personio.de and .personio.com domains automatically.
+            Some tenants only serve .com and/or have no XML feed.
+            Many tenants have descriptions in only one language (e.g. DE only).
+            The monitor auto-backfills from other languages.
 
   Config:
-    {"slug": "sennder"}
+    {"slug": "acme"}
+    {"slug": "acme", "language": "de", "backfill_languages": ["en"]}
 
-    slug     Company subdomain. Auto-filled by ws probe from:
-             1. Direct URL ({slug}.jobs.personio.de)
-             2. Inline HTML scan for jobs.personio.de references
-             3. Slug-based API probe (derives slug from domain)
+    slug                Company subdomain. Auto-filled by ws probe.
+    language            Primary XML feed language (default: "en").
+                        Auto-discovered: ws probe checks EN and DE coverage
+                        and picks the language with the most descriptions.
+    backfill_languages  List of fallback languages to fill in missing
+                        descriptions (default: ["de"]). Set to [] to disable.
+                        Auto-discovered from coverage analysis.
 
   Detection:  ws probe shows "Personio XML — slug: X, N jobs"
-  Zero jobs?  Verify slug — try the XML URL directly in a browser"""
+              or "Personio HTML — slug: X, N jobs" (fallback)
+              Also shows language coverage (e.g. "en: 11/19 desc, de: 13/19 desc")
+  Zero jobs?  Verify slug — try the listing page in a browser"""
 
 MONITOR_SUCCESSFACTORS = """\
 successfactors — SAP SuccessFactors Career Site Builder (CSB)
@@ -1042,6 +1080,7 @@ Troubleshooting:
 # ── Lookup tables ────────────────────────────────────────────────────────
 
 MONITOR_CARDS: dict[str, str] = {
+    "dvinci": MONITOR_DVINCI,
     "greenhouse": MONITOR_GREENHOUSE,
     "hireology": MONITOR_HIREOLOGY,
     "lever": MONITOR_LEVER,

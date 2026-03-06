@@ -190,6 +190,7 @@ def _extract_with_mapping(obj: dict, fields_map: dict[str, str]) -> JobContent:
     """Extract using explicit field mapping."""
     kwargs: dict = {}
     metadata_fields: dict = {}
+    extras: dict = {}
 
     for target, spec in fields_map.items():
         value = extract_field(obj, spec)
@@ -200,14 +201,15 @@ def _extract_with_mapping(obj: dict, fields_map: dict[str, str]) -> JobContent:
         elif target == "locations":
             kwargs["locations"] = value if isinstance(value, list) else [value]
         elif target in ("skills", "responsibilities", "qualifications"):
-            kwargs[target] = value if isinstance(value, list) else [value]
+            extras[target] = value if isinstance(value, list) else [value]
+        elif target == "valid_through":
+            extras["valid_through"] = value
         elif target in (
             "title",
             "description",
             "employment_type",
             "job_location_type",
             "date_posted",
-            "valid_through",
         ):
             kwargs[target] = value
         else:
@@ -215,6 +217,8 @@ def _extract_with_mapping(obj: dict, fields_map: dict[str, str]) -> JobContent:
 
     if metadata_fields:
         kwargs["metadata"] = metadata_fields
+    if extras:
+        kwargs["extras"] = extras
 
     return JobContent(**kwargs)
 

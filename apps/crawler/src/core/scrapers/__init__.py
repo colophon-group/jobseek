@@ -8,6 +8,7 @@ when the monitor returns URL-only results (sitemap, dom). API monitors
 from __future__ import annotations
 
 import asyncio
+import re
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
@@ -24,8 +25,6 @@ class JobContent:
     Text fields use **HTML** to preserve document structure (headings,
     paragraphs, lists).  ``description`` is an HTML fragment — the same
     format that API monitors (Greenhouse, Lever) already produce.
-    ``responsibilities`` and ``qualifications`` are arrays of plain-text
-    strings (one item per bullet point).
     """
 
     title: str | None = None
@@ -36,14 +35,76 @@ class JobContent:
     employment_type: str | None = None
     job_location_type: str | None = None
     date_posted: str | None = None
-    valid_through: str | None = None
     base_salary: dict | None = None
-    skills: list[str] | None = None
-    #: Plain-text strings, one per bullet point.
-    responsibilities: list[str] | None = None
-    #: Plain-text strings, one per bullet point.
-    qualifications: list[str] | None = None
+    #: ISO 639-1 language code (e.g. "en", "de"). Detected or scraper-provided.
+    language: str | None = None
+    #: Optional structured data (skills, responsibilities, qualifications,
+    #: validThrough, etc.)
+    extras: dict | None = None
     metadata: dict | None = None
+
+
+_TAG_RE = re.compile(r"<[^>]+>")
+
+
+def _plain(html: str) -> str:
+    """Strip HTML tags and collapse whitespace."""
+    return _TAG_RE.sub(" ", html).strip()
+
+
+def enrich_description(obj: object) -> None:
+    """Append structured extras (responsibilities, qualifications, skills) to description.
+
+    When scrapers extract these as separate structured data, they should also
+    appear in the description HTML so it remains self-contained.  Skips any
+    section whose text content already appears in the existing description.
+    Mutates *obj* in place.
+    """
+    if not obj.extras:
+        return
+
+    desc_plain = _plain(obj.description).lower() if obj.description else ""
+
+    sections: list[str] = []
+    for key, heading in [
+        ("responsibilities", "Responsibilities"),
+        ("qualifications", "Qualifications"),
+        ("skills", "Skills"),
+    ]:
+        items = obj.extras.get(key)
+        if not items:
+            continue
+
+        if isinstance(items, str):
+            # Check if the string content is already in the description
+            snippet = _plain(items).lower()
+            if desc_plain and snippet and snippet[:80] in desc_plain:
+                continue
+            sections.append(f"<h3>{heading}</h3>\n{items}")
+        elif isinstance(items, list):
+            # Check if the first non-trivial item is already in the description
+            for item in items:
+                snippet = _plain(str(item)).lower()
+                if len(snippet) >= 10:
+                    if desc_plain and snippet[:80] in desc_plain:
+                        break  # already present — skip whole section
+                    else:
+                        li = "".join(f"<li>{it}</li>" for it in items)
+                        sections.append(f"<h3>{heading}</h3>\n<ul>{li}</ul>")
+                    break
+            else:
+                # All items too short to check — append anyway
+                li = "".join(f"<li>{it}</li>" for it in items)
+                sections.append(f"<h3>{heading}</h3>\n<ul>{li}</ul>")
+
+    if not sections:
+        return
+
+    extra_html = "\n".join(sections)
+    if obj.description:
+        obj.description = obj.description + "\n" + extra_html
+    else:
+        obj.description = extra_html
 
 
 ScrapeFunc = Callable[..., Awaitable[JobContent]]
@@ -101,11 +162,7 @@ _QUALITY_FIELDS = [
     "employment_type",
     "job_location_type",
     "date_posted",
-    "valid_through",
     "base_salary",
-    "skills",
-    "responsibilities",
-    "qualifications",
 ]
 
 

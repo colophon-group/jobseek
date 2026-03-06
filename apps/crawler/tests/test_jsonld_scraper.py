@@ -256,11 +256,12 @@ class TestParsePosting:
         assert result.employment_type == "FULL_TIME"
         assert result.job_location_type == "TELECOMMUTE"
         assert result.date_posted == "2024-01-01"
-        assert result.valid_through == "2024-12-31"
         assert result.base_salary is not None
-        assert result.skills == ["Python", "SQL"]
-        assert result.responsibilities == ["Build software"]
-        assert result.qualifications == ["CS degree"]
+        assert result.extras is not None
+        assert result.extras["valid_through"] == "2024-12-31"
+        assert result.extras["skills"] == ["Python", "SQL"]
+        assert result.extras["responsibilities"] == ["Build software"]
+        assert result.extras["qualifications"] == ["CS degree"]
 
     def test_uses_name_fallback(self):
         posting = {"name": "Designer"}
@@ -275,7 +276,8 @@ class TestParsePosting:
     def test_education_requirements_fallback(self):
         posting = {"educationRequirements": "Bachelor's degree"}
         result = _parse_posting(posting)
-        assert result.qualifications == ["Bachelor's degree"]
+        assert result.extras is not None
+        assert result.extras["qualifications"] == ["Bachelor's degree"]
 
     def test_minimal_posting(self):
         result = _parse_posting({})

@@ -1101,6 +1101,7 @@ def _extract_rich(
 
         kwargs: dict[str, object] = {"url": url}
         metadata_fields: dict[str, object] = {}
+        extras: dict[str, object] = {}
 
         for target, spec in fields_map.items():
             value = extract_field(item, spec)
@@ -1119,7 +1120,9 @@ def _extract_rich(
             elif target == "locations":
                 kwargs["locations"] = value if isinstance(value, list) else [value]
             elif target in ("skills", "responsibilities", "qualifications"):
-                kwargs[target] = value if isinstance(value, list) else [value]
+                extras[target] = value if isinstance(value, list) else [value]
+            elif target == "valid_through":
+                extras["valid_through"] = value
             elif target == "base_salary":
                 # Attempt to parse as dict if it's a string
                 if isinstance(value, str):
@@ -1136,6 +1139,8 @@ def _extract_rich(
 
         if metadata_fields:
             kwargs["metadata"] = metadata_fields
+        if extras:
+            kwargs["extras"] = extras
 
         jobs.append(DiscoveredJob(**kwargs))
 

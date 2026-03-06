@@ -80,7 +80,7 @@ def set_(
 
     save_workspace(ws)
 
-    # Auto-discover logo candidates when website is set but no logo/icon provided
+    # Auto-discover logos + career pages when website is set but no logo/icon provided
     effective_website = website or ws.website
     if (
         logo_url is None
@@ -89,7 +89,7 @@ def set_(
         and icon_candidate is None
         and effective_website
     ):
-        _discover_and_show_candidates(slug, effective_website)
+        _discover_and_show_all(slug, effective_website)
 
     action_log.append(
         ws_log_path(slug),
@@ -193,32 +193,31 @@ def _resolve_candidate(slug: str, index: int, role: str) -> str:
     return ""  # unreachable
 
 
-def _discover_and_show_candidates(slug: str, website: str) -> None:
-    """Fetch homepage, discover logo candidates, download, and display table."""
+def _fetch_homepage(website: str) -> tuple[str, str]:
+    """Fetch homepage with browser-like headers. Returns (html, final_url)."""
     import httpx
 
-    from src.workspace.logo_discover import (
-        _LOGO_HEADERS,
-        discover_logos,
-        download_candidates,
-    )
-    from src.workspace.state import ws_dir
-
-    out.info("logos", "Discovering logo candidates...")
+    from src.workspace.logo_discover import _LOGO_HEADERS
 
     html = ""
     final_url = website
     try:
         resp = httpx.get(website, headers=_LOGO_HEADERS, follow_redirects=True, timeout=10)
         if resp.status_code >= 400:
-            out.warn(
-                "logos", f"Homepage returned HTTP {resp.status_code} — using API-based fallbacks"
-            )
+            out.warn("fetch", f"Homepage returned HTTP {resp.status_code} — using fallbacks")
         else:
             html = resp.text
             final_url = str(resp.url)
     except Exception as e:
-        out.warn("logos", f"Could not fetch homepage: {e} — using API-based fallbacks")
+        out.warn("fetch", f"Could not fetch homepage: {e} — using fallbacks")
+
+    return html, final_url
+
+
+def _show_logo_results(slug: str, html: str, final_url: str) -> None:
+    """Discover logos from HTML, download artifacts, and display table."""
+    from src.workspace.logo_discover import discover_logos, download_candidates
+    from src.workspace.state import ws_dir
 
     candidates = discover_logos(html, final_url)
     if not candidates:
@@ -256,6 +255,75 @@ def _discover_and_show_candidates(slug: str, website: str) -> None:
     out.plain("logos", "  ws set --logo-candidate 1 --icon-candidate 2")
     out.plain("logos", "Or provide your own URLs:")
     out.plain("logos", "  ws set --logo-url <url> --icon-url <url>")
+
+
+def _show_career_results(slug: str, html: str, final_url: str, homepage_url: str) -> None:
+    """Discover career pages from HTML + blind probes, display results."""
+    import asyncio
+
+    from src.workspace.career_discover import discover_career_pages
+
+    async def _run():
+        import httpx
+
+        from src.workspace.logo_discover import _LOGO_HEADERS
+
+        client = httpx.AsyncClient(
+            headers=_LOGO_HEADERS,
+            follow_redirects=True,
+            timeout=httpx.Timeout(30.0),
+            limits=httpx.Limits(max_connections=20, max_keepalive_connections=10),
+        )
+        try:
+            return await discover_career_pages(homepage_url, html, client)
+        finally:
+            await client.aclose()
+
+    out.info("careers", "Discovering career pages...")
+    candidates = asyncio.run(_run())
+
+    if not candidates:
+        out.warn("careers", "No boards detected")
+        return
+
+    out.info("careers", f"Found {len(candidates)} board(s):")
+    print()
+
+    rows = []
+    for i, c in enumerate(candidates, 1):
+        # Truncate URL for display
+        display_url = c.url
+        if len(display_url) > 55:
+            display_url = display_url[:52] + "..."
+        rows.append(
+            [
+                str(i),
+                c.monitor_type,
+                display_url,
+                c.source,
+            ]
+        )
+
+    out.table(["#", "Monitor", "URL", "Source"], rows)
+    print()
+
+    # Show "To add" suggestion for the top candidate
+    top = candidates[0]
+    out.plain("careers", f'To add:  ws add board careers --url "{top.url}"')
+
+
+def _discover_and_show_all(slug: str, website: str) -> None:
+    """Unified discovery: fetch homepage once, discover logos + career pages."""
+    html, final_url = _fetch_homepage(website)
+    _show_logo_results(slug, html, final_url)
+    print()
+    _show_career_results(slug, html, final_url, website)
+
+
+def _discover_and_show_candidates(slug: str, website: str) -> None:
+    """Fetch homepage, discover logo candidates, download, and display table."""
+    html, final_url = _fetch_homepage(website)
+    _show_logo_results(slug, html, final_url)
 
 
 @click.command(name="logos")
@@ -312,6 +380,21 @@ def logos(slug: str | None):
     out.plain("logos", "  ws set --logo-candidate 1 --icon-candidate 2")
     out.plain("logos", "Or provide URLs:")
     out.plain("logos", "  ws set --logo-url <url> --icon-url <url>")
+
+
+@click.command(name="discover")
+@click.argument("slug", required=False)
+def discover(slug: str | None):
+    """Discover logos and career pages from company homepage."""
+    slug = resolve_slug(slug)
+    if not workspace_exists(slug):
+        out.die(f"Workspace {slug!r} not found")
+
+    ws = load_workspace(slug)
+    if not ws.website:
+        out.die("No website set. Run: ws set --website <url>")
+
+    _discover_and_show_all(slug, ws.website)
 
 
 def _check_url(label: str, url: str) -> None:

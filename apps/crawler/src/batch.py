@@ -24,7 +24,9 @@ import structlog
 from src.core.monitor import monitor_one
 from src.core.monitors import api_monitor_types
 from src.core.scrape import scrape_one
+from src.core.scrapers import enrich_description
 from src.shared.dedup import filter_unseen, mark_seen
+from src.shared.langdetect import detect_language
 from src.shared.queue import QueueItem, dequeue, enqueue, recover_stale, requeue_retries
 from src.shared.queue import complete as queue_complete
 from src.shared.queue import fail as queue_fail
@@ -127,8 +129,8 @@ WHERE id = $1
 _INSERT_RICH_JOB = """
 INSERT INTO job_posting
     (company_id, board_id, title, description, locations,
-     employment_type, job_location_type, base_salary, skills,
-     date_posted, responsibilities, qualifications, metadata,
+     employment_type, job_location_type, base_salary,
+     date_posted, language, localizations, extras, metadata,
      source_url, status, first_seen_at, last_seen_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
         $14, 'active', now(), now())
@@ -138,8 +140,8 @@ _UPDATE_RELISTED_CONTENT = """
 UPDATE job_posting
 SET title = $2, description = $3, locations = $4,
     employment_type = $5, job_location_type = $6, base_salary = $7,
-    skills = $8, date_posted = $9, responsibilities = $10,
-    qualifications = $11, metadata = $12, updated_at = now()
+    date_posted = $8, language = $9, localizations = $10,
+    extras = $11, metadata = $12, updated_at = now()
 WHERE id = $1
 """
 
@@ -160,8 +162,8 @@ _UPDATE_JOB_CONTENT = """
 UPDATE job_posting
 SET title = $2, description = $3, locations = $4,
     employment_type = $5, job_location_type = $6, base_salary = $7,
-    skills = $8, date_posted = $9, responsibilities = $10,
-    qualifications = $11, metadata = $12, updated_at = now()
+    date_posted = $8, language = $9, extras = $10,
+    metadata = $11, updated_at = now()
 WHERE id = $1
 """
 
@@ -251,6 +253,13 @@ async def _process_one_board(
             # Rich data path
             if result.jobs_by_url:
                 new_jobs = [result.jobs_by_url[u] for u in new_urls if u in result.jobs_by_url]
+
+                # Enrich descriptions + detect language for jobs that don't already have it
+                for j in new_jobs:
+                    enrich_description(j)
+                    if not j.language and j.description:
+                        j.language = detect_language(j.description)
+
                 if new_jobs:
                     await conn.executemany(
                         _INSERT_RICH_JOB,
@@ -264,10 +273,10 @@ async def _process_one_board(
                                 j.employment_type,
                                 j.job_location_type,
                                 _jsonb(j.base_salary),
-                                j.skills,
                                 j.date_posted,
-                                j.responsibilities,
-                                j.qualifications,
+                                j.language,
+                                _jsonb(j.localizations),
+                                _jsonb(j.extras),
                                 _jsonb(j.metadata),
                                 j.url,
                             )
@@ -280,6 +289,12 @@ async def _process_one_board(
                     if item["url"] in result.jobs_by_url
                 ]
                 if relisted_pairs:
+                    # Enrich descriptions + detect language for relisted jobs too
+                    for _, j in relisted_pairs:
+                        enrich_description(j)
+                        if not j.language and j.description:
+                            j.language = detect_language(j.description)
+
                     await conn.executemany(
                         _UPDATE_RELISTED_CONTENT,
                         [
@@ -291,10 +306,10 @@ async def _process_one_board(
                                 j.employment_type,
                                 j.job_location_type,
                                 _jsonb(j.base_salary),
-                                j.skills,
                                 j.date_posted,
-                                j.responsibilities,
-                                j.qualifications,
+                                j.language,
+                                _jsonb(j.localizations),
+                                _jsonb(j.extras),
                                 _jsonb(j.metadata),
                             )
                             for pid, j in relisted_pairs
@@ -415,6 +430,11 @@ async def _process_one_scrape(
     try:
         content = await scrape_one(item.url, scraper_type, scraper_config, http)
 
+        # Detect language if not already set
+        language = content.language
+        if not language and content.description:
+            language = detect_language(content.description)
+
         async with pool.acquire() as conn:
             await conn.execute(
                 _UPDATE_JOB_CONTENT,
@@ -425,10 +445,9 @@ async def _process_one_scrape(
                 content.employment_type,
                 content.job_location_type,
                 _jsonb(content.base_salary),
-                content.skills,
                 content.date_posted,
-                content.responsibilities,
-                content.qualifications,
+                language,
+                _jsonb(content.extras),
                 _jsonb(content.metadata),
             )
 

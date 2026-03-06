@@ -142,9 +142,7 @@ def _discovered_job(url="https://example.com/job/1", **kw):
         "job_location_type": "onsite",
         "date_posted": "2025-01-01",
         "base_salary": None,
-        "skills": None,
-        "responsibilities": None,
-        "qualifications": None,
+        "extras": None,
         "metadata": None,
     }
     defaults.update(kw)
@@ -160,9 +158,7 @@ def _job_content(**kw):
         "job_location_type": "onsite",
         "date_posted": "2025-01-01",
         "base_salary": None,
-        "skills": None,
-        "responsibilities": None,
-        "qualifications": None,
+        "extras": None,
         "metadata": None,
     }
     defaults.update(kw)
@@ -580,9 +576,7 @@ class TestProcessOneScrape:
             job_location_type="hybrid",
             date_posted="2025-06-01",
             base_salary={"currency": "GBP", "min": 80000, "max": 120000, "unit": "YEAR"},
-            skills=["Python", "SQL"],
-            responsibilities=["Lead team", "Write code"],
-            qualifications=["5 years exp"],
+            extras={"skills": ["Python", "SQL"], "responsibilities": ["Lead team"]},
             metadata={"team": "Platform"},
         )
         mock_scrape.return_value = content
@@ -601,11 +595,12 @@ class TestProcessOneScrape:
         # base_salary is passed through _jsonb
         expected_salary = {"currency": "GBP", "min": 80000, "max": 120000, "unit": "YEAR"}
         assert json.loads(call_args[7]) == expected_salary
-        assert call_args[8] == ["Python", "SQL"]  # skills
-        assert call_args[9] == "2025-06-01"  # date_posted
-        assert call_args[10] == ["Lead team", "Write code"]  # responsibilities
-        assert call_args[11] == ["5 years exp"]  # qualifications
-        assert json.loads(call_args[12]) == {"team": "Platform"}  # metadata
+        assert call_args[8] == "2025-06-01"  # date_posted
+        # language (detected or None)
+        # call_args[9] is language
+        expected_extras = {"skills": ["Python", "SQL"], "responsibilities": ["Lead team"]}
+        assert json.loads(call_args[10]) == expected_extras  # extras
+        assert json.loads(call_args[11]) == {"team": "Platform"}  # metadata
 
 
 # ── TestScrapePipeline ───────────────────────────────────────────────

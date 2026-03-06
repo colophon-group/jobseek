@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from src.core.scrapers import JobContent, get_scraper
+from src.core.scrapers import JobContent, enrich_description, get_scraper
 from src.shared.throttle import throttle_domain
 
 if TYPE_CHECKING:
@@ -61,4 +61,5 @@ async def scrape_one(
 
     content = await scraper(url, scraper_config or {}, http, pw=pw, artifact_dir=artifact_dir)
 
+    enrich_description(content)
     return content

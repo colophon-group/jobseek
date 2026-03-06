@@ -39,11 +39,12 @@ class DiscoveredJob:
     job_location_type: str | None = None
     date_posted: str | None = None
     base_salary: dict | None = None
-    skills: list[str] | None = None
-    #: Plain-text strings, one per bullet point.
-    responsibilities: list[str] | None = None
-    #: Plain-text strings, one per bullet point.
-    qualifications: list[str] | None = None
+    #: ISO 639-1 language code (e.g. "en", "de"). Detected or monitor-provided.
+    language: str | None = None
+    #: All language versions: {"en": {"title": ..., "description": ..., "locations": [...]}, ...}
+    localizations: dict | None = None
+    #: Optional structured data (skills, responsibilities, qualifications, etc.)
+    extras: dict | None = None
     metadata: dict | None = None
 
 
@@ -218,6 +219,12 @@ def _build_comment(name: str, metadata: dict) -> str:
         if urls is not None:
             return f"DOM \u2014 {urls} job links found (static)"
         return "DOM \u2014 link extraction"
+    if name == "dvinci":
+        slug = metadata.get("slug", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"d.vinci API \u2014 slug: {slug}, {jobs} jobs"
+        return f"d.vinci API \u2014 slug: {slug}"
     if name == "smartrecruiters":
         token = metadata.get("token", "?")
         jobs = metadata.get("jobs")
@@ -348,6 +355,7 @@ from src.core.monitors import (  # noqa: E402
     api_sniffer,  # noqa: F401
     ashby,  # noqa: F401
     dom,  # noqa: F401
+    dvinci,  # noqa: F401
     greenhouse,  # noqa: F401
     hireology,  # noqa: F401
     lever,  # noqa: F401
