@@ -21,14 +21,6 @@ this unlocks source code access so you can propose a fix.
 
 ---
 
-## Already configured?
-
-```bash
-grep -q "^<slug>," data/companies.csv
-```
-
-If the slug exists, comment and close the issue.
-
 ## Is this a real company with a public careers page?
 
 Use web research to confirm:
