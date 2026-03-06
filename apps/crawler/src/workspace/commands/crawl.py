@@ -246,7 +246,8 @@ def probe_monitors(slug: str | None, board_alias: str | None, current_jobs: int)
         if best_jobs is not None and best_jobs == 0:
             out.warn(
                 "probe",
-                f"{best_name} detected but returned 0 jobs — verify the board URL is correct",
+                f"{best_name} detected but returned 0 jobs — verify the board URL is correct. "
+                "Try: ws task troubleshoot 'zero jobs'",
             )
         else:
             out.next_step(f"ws select monitor {best_name}")
@@ -580,7 +581,11 @@ def probe_deep(slug: str | None, board_alias: str | None, current_jobs: int):
 
         out.next_step("ws select monitor api_sniffer")
     else:
-        out.warn("deep", "api_sniffer not detected — no XHR/fetch API found")
+        out.warn(
+            "deep",
+            "api_sniffer not detected — no XHR/fetch API found. "
+            "Try: ws task troubleshoot 'zero jobs'",
+        )
 
         # Show captured exchanges for debugging
         exchanges = diagnostics.get("exchanges", [])
@@ -1008,7 +1013,8 @@ def run_monitor(slug: str | None, board_alias: str | None):
     if job_count == 0:
         out.warn(
             "monitor",
-            f"0 jobs in {elapsed:.1f}s \u2014 check board URL or try a different monitor type",
+            f"0 jobs in {elapsed:.1f}s \u2014 check board URL or try a different monitor type. "
+            "Try: ws task troubleshoot 'zero jobs'",
         )
         if prev_jobs > 0:
             out.warn(
@@ -1375,10 +1381,18 @@ def run_scraper(slug: str | None, board_alias: str | None, urls: tuple[str, ...]
     # Quality-aware next step
     alt_scraper = "dom" if board.scraper_type != "dom" else "json-ld"
     if titles_found == 0:
-        out.warn("scraper", "No titles extracted \u2014 try a different scraper type")
+        out.warn(
+            "scraper",
+            "No titles extracted \u2014 try a different scraper type. "
+            "Try: ws task troubleshoot 'empty fields'",
+        )
         out.next_step(f"ws select scraper {alt_scraper}")
     elif descs_found == 0:
-        out.warn("scraper", "No descriptions extracted \u2014 try a different scraper type")
+        out.warn(
+            "scraper",
+            "No descriptions extracted \u2014 try a different scraper type. "
+            "Try: ws task troubleshoot 'empty fields'",
+        )
         out.next_step(f"ws select scraper {alt_scraper}")
     elif titles_found < total or descs_found < total:
         parts = []
@@ -1663,17 +1677,6 @@ def feedback_cmd(
 # ── Quality gates ──────────────────────────────────────────────────────
 
 
-def _url_reachable(url: str) -> bool:
-    """Check if a URL is reachable (2xx/3xx). Returns False on error."""
-    try:
-        import httpx
-
-        resp = httpx.head(url, follow_redirects=True, timeout=10)
-        return resp.status_code < 400
-    except Exception:
-        return False
-
-
 def run_quality_gates(
     ws,
     boards: list,
@@ -1714,13 +1717,15 @@ def run_quality_gates(
         elif fb.get("verdict") == "poor":
             blockers.append(f"Board {b.alias}: verdict is poor (use --force)")
 
-    if not ws.logo_url:
-        warnings.append("No logo URL set")
-    elif not _url_reachable(ws.logo_url):
-        blockers.append(f"logo_url unreachable: {ws.logo_url}")
-    if not ws.icon_url:
-        warnings.append("No icon URL set")
-    elif not _url_reachable(ws.icon_url):
-        blockers.append(f"icon_url unreachable: {ws.icon_url}")
+    # Check for image artifacts (original files saved by ws set)
+    from src.workspace.state import ws_dir
+
+    artifacts = ws_dir(ws.slug) / "artifacts" / "company"
+    has_logo = bool(list(artifacts.glob("logo_original.*"))) if artifacts.exists() else False
+    has_icon = bool(list(artifacts.glob("icon_original.*"))) if artifacts.exists() else False
+    if not has_logo:
+        warnings.append("No logo image artifact found")
+    if not has_icon:
+        warnings.append("No icon image artifact found")
 
     return blockers, warnings

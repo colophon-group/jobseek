@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from src.shared.constants import DATA_DIR, SLUG_RE
+from src.shared.constants import SLUG_RE, get_data_dir
 from src.shared.csv_io import read_csv as _read_csv
 from src.shared.csv_io import write_csv as _write_csv
 from src.workspace.errors import (
@@ -24,8 +24,8 @@ _SLUG_RE = SLUG_RE
 
 def sort_csvs() -> None:
     """Sort companies.csv by slug and boards.csv by company_slug + board_slug."""
-    companies_path = DATA_DIR / "companies.csv"
-    boards_path = DATA_DIR / "boards.csv"
+    companies_path = get_data_dir() / "companies.csv"
+    boards_path = get_data_dir() / "boards.csv"
 
     headers, rows = _read_csv(companies_path)
     rows.sort(key=lambda r: r.get("slug", ""))
@@ -54,7 +54,7 @@ def company_add(
     if not _SLUG_RE.match(slug):
         raise InvalidSlugError(f"Invalid slug format: {slug!r}")
 
-    companies_path = DATA_DIR / "companies.csv"
+    companies_path = get_data_dir() / "companies.csv"
     headers, rows = _read_csv(companies_path)
 
     target = None
@@ -105,8 +105,8 @@ def company_add(
 
 def company_del(slug: str) -> None:
     """Remove a company and all its boards."""
-    companies_path = DATA_DIR / "companies.csv"
-    boards_path = DATA_DIR / "boards.csv"
+    companies_path = get_data_dir() / "companies.csv"
+    boards_path = get_data_dir() / "boards.csv"
 
     headers, rows = _read_csv(companies_path)
     original_len = len(rows)
@@ -139,8 +139,8 @@ def board_add(
     scraper_config: str | None = None,
 ) -> None:
     """Add a new board or update an existing one."""
-    companies_path = DATA_DIR / "companies.csv"
-    boards_path = DATA_DIR / "boards.csv"
+    companies_path = get_data_dir() / "companies.csv"
+    boards_path = get_data_dir() / "boards.csv"
 
     if slug not in _company_slugs(companies_path):
         raise SlugNotFoundError(f"Slug {slug!r} not found in companies.csv")
@@ -208,7 +208,7 @@ def board_add(
 
 def board_del(slug: str, *, board_url: str | None = None) -> None:
     """Remove a board row."""
-    boards_path = DATA_DIR / "boards.csv"
+    boards_path = get_data_dir() / "boards.csv"
     headers, rows = _read_csv(boards_path)
 
     if board_url:

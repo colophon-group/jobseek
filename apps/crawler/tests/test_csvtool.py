@@ -21,7 +21,8 @@ class TestCompanyAdd:
     def _setup(self, tmp_path, monkeypatch, companies="", boards=""):
         (tmp_path / "companies.csv").write_text(COMPANIES_HEADER + companies)
         (tmp_path / "boards.csv").write_text(BOARDS_HEADER + boards)
-        monkeypatch.setattr("src.csvtool.DATA_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.csvtool.get_data_dir", lambda: tmp_path)
 
     def test_add_stub(self, tmp_path, monkeypatch):
         self._setup(tmp_path, monkeypatch)
@@ -77,7 +78,8 @@ class TestCompanyDel:
     def _setup(self, tmp_path, monkeypatch, companies="", boards=""):
         (tmp_path / "companies.csv").write_text(COMPANIES_HEADER + companies)
         (tmp_path / "boards.csv").write_text(BOARDS_HEADER + boards)
-        monkeypatch.setattr("src.csvtool.DATA_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.csvtool.get_data_dir", lambda: tmp_path)
 
     def test_delete_company(self, tmp_path, monkeypatch):
         self._setup(tmp_path, monkeypatch, companies="test-co,Test,,,\n")
@@ -140,7 +142,8 @@ class TestBoardAdd:
     def _setup(self, tmp_path, monkeypatch, companies="", boards=""):
         (tmp_path / "companies.csv").write_text(COMPANIES_HEADER + companies)
         (tmp_path / "boards.csv").write_text(BOARDS_HEADER + boards)
-        monkeypatch.setattr("src.csvtool.DATA_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.csvtool.get_data_dir", lambda: tmp_path)
 
     def test_add_board(self, tmp_path, monkeypatch):
         self._setup(tmp_path, monkeypatch, companies="test-co,Test,,,\n")
@@ -227,7 +230,8 @@ class TestBoardDel:
     def _setup(self, tmp_path, monkeypatch, companies="", boards=""):
         (tmp_path / "companies.csv").write_text(COMPANIES_HEADER + companies)
         (tmp_path / "boards.csv").write_text(BOARDS_HEADER + boards)
-        monkeypatch.setattr("src.csvtool.DATA_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.csvtool.get_data_dir", lambda: tmp_path)
 
     def test_delete_specific_board(self, tmp_path, monkeypatch):
         self._setup(

@@ -5,6 +5,7 @@ description = "Job listing monitor and extraction crawler"
 requires-python = ">=3.12"
 dependencies = [
     "asyncpg>=0.30",
+    "boto3>=1.35",
     "click>=8.1",
     "httpx>=0.28",
     "pydantic-settings>=2.7",

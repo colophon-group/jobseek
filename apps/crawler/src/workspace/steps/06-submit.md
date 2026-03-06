@@ -4,7 +4,7 @@
 
 Before submitting, verify:
 
-- [ ] All boards discovered in validation are configured (or documented as subsets in `--verdict-notes`)
+- [ ] All boards discovered earlier are configured (or documented as subsets in `--verdict-notes`)
 - [ ] Extracted content was manually verified — not just stats
 - [ ] Each board has passing feedback recorded (`good` or `acceptable`)
 
@@ -24,7 +24,7 @@ Use `--force` to submit despite a `poor` verdict (not for `unusable`).
 
 ## If submit fails
 
-Use `ws resume` to diagnose issues — it supports checkpoint-based retry.
+Run `ws resume` to diagnose and retry.
 
 ## When done
 

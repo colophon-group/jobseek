@@ -18,11 +18,13 @@ Available topics:
   steps             DOM scraper step key reference
   actions           Browser action pipeline
   artifacts         Debug artifacts saved by ws commands
-  troubleshooting   Common failures + what to try
 
 Commands:
   ws probe monitor   Probe all monitor types for active board
-  ws probe scraper   Probe all scraper types against sample URLs"""
+  ws probe scraper   Probe all scraper types against sample URLs
+
+Troubleshooting:
+  ws task troubleshoot <query>   Search the knowledge base"""
 
 MONITORS = """\
 Monitor Types (cheapest first):
@@ -1035,8 +1037,7 @@ Troubleshooting:
 
   Nothing works after trying all types:
     → Document what was tried and the specific failure
-    → ws del, then propose code changes on fix-crawler/ branch
-    → See AGENTS.md "Escalate to Code Changes" section"""
+    → ws task fail --reason "..." to enter coding mode"""
 
 # ── Lookup tables ────────────────────────────────────────────────────────
 

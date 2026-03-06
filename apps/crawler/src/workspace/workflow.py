@@ -99,7 +99,7 @@ class WorkflowState:
     Persisted as ``workflow`` key in workspace.yaml.
     """
 
-    current_step: str = "validate"
+    current_step: str = "setup"
     current_board: str | None = None  # alias of the board being configured
     completed_boards: list[str] = field(default_factory=list)
     reflections: list[dict[str, str]] = field(default_factory=list)
@@ -123,7 +123,7 @@ class WorkflowState:
         if not data:
             return cls()
         return cls(
-            current_step=data.get("current_step", "validate"),
+            current_step=data.get("current_step", "setup"),
             current_board=data.get("current_board"),
             completed_boards=data.get("completed_boards") or [],
             reflections=data.get("reflections") or [],

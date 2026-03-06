@@ -54,7 +54,8 @@ class TestWorkspace:
         assert ws.submitted is False
 
     def test_save_and_load(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("src.workspace.state.WORKSPACE_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path)
         ws = Workspace(slug="test", name="Test Co")
         save_workspace(ws)
         loaded = load_workspace("test")
@@ -62,20 +63,23 @@ class TestWorkspace:
         assert loaded.name == "Test Co"
 
     def test_workspace_exists(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("src.workspace.state.WORKSPACE_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path)
         assert not workspace_exists("test")
         save_workspace(Workspace(slug="test"))
         assert workspace_exists("test")
 
     def test_delete_workspace(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("src.workspace.state.WORKSPACE_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path)
         save_workspace(Workspace(slug="test"))
         assert workspace_exists("test")
         delete_workspace("test")
         assert not workspace_exists("test")
 
     def test_list_workspaces(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("src.workspace.state.WORKSPACE_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path)
         save_workspace(Workspace(slug="alpha"))
         save_workspace(Workspace(slug="beta"))
         wss = list_workspaces()
@@ -138,54 +142,63 @@ class TestWorkspace:
 
 class TestActiveWorkspace:
     def test_no_active_by_default(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("src.workspace.state.WORKSPACE_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path)
         assert get_active_slug() is None
 
     def test_set_and_get(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("src.workspace.state.WORKSPACE_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path)
         save_workspace(Workspace(slug="stripe"))
         set_active_slug("stripe")
         assert get_active_slug() == "stripe"
 
     def test_clear(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("src.workspace.state.WORKSPACE_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path)
         save_workspace(Workspace(slug="stripe"))
         set_active_slug("stripe")
         clear_active_slug()
         assert get_active_slug() is None
 
     def test_returns_none_for_deleted_workspace(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("src.workspace.state.WORKSPACE_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path)
         save_workspace(Workspace(slug="stripe"))
         set_active_slug("stripe")
         delete_workspace("stripe")
         assert get_active_slug() is None
 
     def test_resolve_slug_explicit(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("src.workspace.state.WORKSPACE_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path)
         assert resolve_slug("stripe") == "stripe"
 
     def test_resolve_slug_from_active(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("src.workspace.state.WORKSPACE_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path)
         save_workspace(Workspace(slug="stripe"))
         set_active_slug("stripe")
         assert resolve_slug(None) == "stripe"
 
     def test_resolve_slug_no_active_dies(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("src.workspace.state.WORKSPACE_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path)
         import pytest
 
         with pytest.raises(SystemExit):
             resolve_slug(None)
 
     def test_resolve_two_args_both(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("src.workspace.state.WORKSPACE_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path)
         slug, val = resolve_two_args("stripe", "greenhouse")
         assert slug == "stripe"
         assert val == "greenhouse"
 
     def test_resolve_two_args_one_with_active(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("src.workspace.state.WORKSPACE_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path)
         save_workspace(Workspace(slug="stripe"))
         set_active_slug("stripe")
         slug, val = resolve_two_args("greenhouse", None)
@@ -208,7 +221,8 @@ class TestBoard:
         assert b2.monitor_config == {"token": "stripe"}
 
     def test_save_and_load(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("src.workspace.state.WORKSPACE_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path)
         board = Board(alias="careers", slug="test-careers", url="https://test.com/jobs")
         save_board("test", board)
         loaded = load_board("test", "careers")
@@ -216,7 +230,8 @@ class TestBoard:
         assert loaded.url == "https://test.com/jobs"
 
     def test_list_boards(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("src.workspace.state.WORKSPACE_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path)
         save_board("test", Board(alias="a", slug="test-a", url="https://a.com"))
         save_board("test", Board(alias="b", slug="test-b", url="https://b.com"))
         boards = list_boards("test")
@@ -235,7 +250,8 @@ class TestBoard:
         assert b2.scraper_run["avg_time"] == 1.0
 
     def test_yaml_format_v2(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("src.workspace.state.WORKSPACE_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path)
         board = Board(alias="careers", slug="test-careers", url="https://test.com/jobs")
         board.monitor_type = "greenhouse"
         board.monitor_config = {"token": "test"}
@@ -351,7 +367,8 @@ class TestBoard:
 
     def test_atomic_write(self, tmp_path, monkeypatch):
         """save_board uses atomic write (file exists after save)."""
-        monkeypatch.setattr("src.workspace.state.WORKSPACE_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path)
         board = Board(alias="careers", slug="test-careers", url="https://test.com")
         save_board("test", board)
         path = tmp_path / "test" / "boards" / "careers.yaml"
@@ -362,7 +379,8 @@ class TestBoard:
 
 class TestUpdateWorkspace:
     def test_read_modify_write(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("src.workspace.state.WORKSPACE_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path)
         save_workspace(Workspace(slug="test", name="Before"))
         with update_workspace("test") as ws:
             ws.name = "After"
@@ -370,7 +388,8 @@ class TestUpdateWorkspace:
         assert loaded.name == "After"
 
     def test_changes_persisted_on_exit(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("src.workspace.state.WORKSPACE_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path)
         save_workspace(Workspace(slug="test", active_board="old"))
         with update_workspace("test") as ws:
             ws.active_board = "new"
@@ -381,7 +400,8 @@ class TestUpdateWorkspace:
         """If the body raises, changes are not persisted."""
         import pytest
 
-        monkeypatch.setattr("src.workspace.state.WORKSPACE_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path)
         save_workspace(Workspace(slug="test", name="Original"))
         with pytest.raises(ValueError, match="boom"), update_workspace("test") as ws:
             ws.name = "Changed"
@@ -392,14 +412,16 @@ class TestUpdateWorkspace:
 
 class TestFileLocking:
     def test_save_board_creates_lock_file(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("src.workspace.state.WORKSPACE_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path)
         board = Board(alias="careers", slug="test-careers", url="https://test.com")
         save_board("test", board)
         lock = tmp_path / "test" / "boards" / "careers.yaml.lock"
         assert lock.exists()
 
     def test_save_workspace_creates_lock_file(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("src.workspace.state.WORKSPACE_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path)
         save_workspace(Workspace(slug="test"))
         lock = tmp_path / "test" / "workspace.yaml.lock"
         assert lock.exists()

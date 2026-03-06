@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import time
 
-from src.shared.constants import DATA_DIR, SLUG_RE, URL_RE
+from src.shared.constants import SLUG_RE, URL_RE, get_data_dir
 from src.shared.csv_io import read_csv
 from src.workspace._compat import all_monitor_types
 
@@ -43,8 +43,8 @@ def validate_csvs() -> list[ValidationError]:
     """Validate companies.csv and boards.csv. Returns list of errors."""
     errors: list[ValidationError] = []
 
-    companies_path = DATA_DIR / "companies.csv"
-    boards_path = DATA_DIR / "boards.csv"
+    companies_path = get_data_dir() / "companies.csv"
+    boards_path = get_data_dir() / "boards.csv"
 
     if not companies_path.exists():
         errors.append(ValidationError("companies.csv", None, "File not found"))

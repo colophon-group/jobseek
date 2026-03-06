@@ -60,7 +60,7 @@ auto-generated field mapping fails.
 2. Search for the detected pattern in the raw HTML
 3. Write a small Python script to parse and print the structure
 4. Configure the `embedded` scraper with correct `pattern`, `path`, and `fields`
-5. Run `ws help scraper embedded` for config format and examples
+5. Run `ws help scraper embedded` for config format
 
 ## DOM scraper (last resort)
 
@@ -73,12 +73,11 @@ ws run scraper
 
 For dom scraper, inspect `flat.json` to verify DOM element order before writing steps.
 Steps must follow DOM order (forward-only cursor) — wrong order silently skips fields.
+Run `ws help scraper dom` for step format and `ws help steps` for the step key reference.
 
 {rejected_configs}
 
 ## When done
-
-The gate auto-checks: scraper must be selected and tested.
 
 ```bash
 ws task next --notes "<scraper type chosen, extraction stats, any issues>"

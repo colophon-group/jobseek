@@ -24,8 +24,8 @@ def workspace(tmp_path, monkeypatch):
     """Create a temporary workspace directory and return the slug."""
     slug = "test-wf"
     ws_root = tmp_path / ".workspace"
-    monkeypatch.setattr("src.shared.constants.WORKSPACE_DIR", ws_root)
-    monkeypatch.setattr("src.workspace.state.WORKSPACE_DIR", ws_root)
+    monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: ws_root)
+    monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: ws_root)
 
     ws = Workspace(
         slug=slug,
@@ -91,15 +91,14 @@ def board_second(workspace):
 class TestStepDefs:
     def test_all_steps_loaded(self):
         steps = _all_step_defs()
-        assert len(steps) == 8
-        assert steps[0].id == "validate"
+        assert len(steps) == 7
+        assert steps[0].id == "setup"
         assert steps[-1].id == "reflect"
 
     def test_phases(self):
         steps = _all_step_defs()
         phases = [s.phase for s in steps]
         assert phases == [
-            "global",
             "global",
             "global",
             "per_board",
@@ -118,7 +117,7 @@ class TestStepDefs:
 class TestWorkflowState:
     def test_default(self):
         wf = WorkflowState()
-        assert wf.current_step == "validate"
+        assert wf.current_step == "setup"
         assert wf.current_board is None
         assert wf.completed_boards == []
         assert wf.reflections == []
@@ -235,7 +234,7 @@ class TestGates:
 
     def test_manual_gate_never_auto_passes(self, workspace, board_careers):
         slug, ws, ws_root = workspace
-        step = StepDef(id="validate", title="", instructions="", gate_type="manual", phase="global")
+        step = StepDef(id="reflect", title="", instructions="", gate_type="manual", phase="final")
         passed, _ = check_gate(step, ws, [board_careers])
         assert not passed
 
@@ -278,13 +277,13 @@ class TestSkipConditions:
 class TestAdvance:
     def test_advance_through_global(self, workspace, board_careers):
         slug, ws, ws_root = workspace
-        wf = WorkflowState(current_step="validate")
+        wf = WorkflowState(current_step="setup")
         _save_wf_to_disk(slug, wf)
 
-        # Advance from validate (manual gate)
-        next_step, msg = advance(slug, "Verified company")
+        # Advance from setup (state gate — company_complete)
+        next_step, msg = advance(slug, "Company configured")
         assert next_step is not None
-        assert next_step.id == "setup"
+        assert next_step.id == "add_boards"
 
     def test_advance_blocks_on_failed_gate(self, workspace):
         slug, ws, ws_root = workspace
@@ -323,18 +322,18 @@ class TestAdvance:
 
     def test_records_reflections(self, workspace, board_careers):
         slug, ws, ws_root = workspace
-        wf = WorkflowState(current_step="validate")
+        wf = WorkflowState(current_step="setup")
         _save_wf_to_disk(slug, wf)
 
-        advance(slug, "Found careers page with 50 jobs")
+        advance(slug, "Company configured with logos")
         wf = _load_wf_from_disk(slug)
         assert len(wf.reflections) == 1
-        assert wf.reflections[0]["step"] == "validate"
-        assert "50 jobs" in wf.reflections[0]["notes"]
+        assert wf.reflections[0]["step"] == "setup"
+        assert "logos" in wf.reflections[0]["notes"]
 
     def test_none_notes_recorded(self, workspace, board_careers):
         slug, ws, ws_root = workspace
-        wf = WorkflowState(current_step="validate")
+        wf = WorkflowState(current_step="setup")
         _save_wf_to_disk(slug, wf)
 
         advance(slug, "none")

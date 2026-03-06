@@ -41,11 +41,16 @@ def _setup_csvs(tmp_path, companies="", boards=""):
 
 
 def _patch_all(monkeypatch, tmp_path):
-    """Patch DATA_DIR and WORKSPACE_DIR for testing."""
-    monkeypatch.setattr("src.shared.constants.DATA_DIR", tmp_path)
-    monkeypatch.setattr("src.workspace.state.WORKSPACE_DIR", tmp_path / ".ws")
-    monkeypatch.setattr("src.csvtool.DATA_DIR", tmp_path)
-    monkeypatch.setattr("src.inspect.DATA_DIR", tmp_path)
+    """Patch path getters for testing."""
+    ws_dir = tmp_path / ".ws"
+    _data = lambda: tmp_path  # noqa: E731
+    _ws = lambda: ws_dir  # noqa: E731
+    monkeypatch.setattr("src.shared.constants.get_data_dir", _data)
+    monkeypatch.setattr("src.shared.constants.get_workspace_dir", _ws)
+    monkeypatch.setattr("src.csvtool.get_data_dir", _data)
+    monkeypatch.setattr("src.inspect.get_data_dir", _data)
+    monkeypatch.setattr("src.workspace.commands.lifecycle.get_data_dir", _data)
+    monkeypatch.setattr("src.workspace.state.get_workspace_dir", _ws)
 
 
 class TestValidate:
@@ -1322,19 +1327,23 @@ class TestFeedback:
 class TestQualityGates:
     """Test quality gate checks."""
 
-    def test_all_gates_pass(self, monkeypatch):
-        from src.workspace.commands import crawl as crawl_mod
+    def test_all_gates_pass(self, tmp_path, monkeypatch):
         from src.workspace.commands.crawl import run_quality_gates
 
-        monkeypatch.setattr(crawl_mod, "_url_reachable", lambda url: True)
+        monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: tmp_path / ".ws")
+        monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path / ".ws")
 
         ws_obj = Workspace(
             slug="test",
             name="Test",
             website="https://test.com",
-            logo_url="x",
-            icon_url="x",
         )
+        # Create image artifacts
+        art_dir = tmp_path / ".ws" / "test" / "artifacts" / "company"
+        art_dir.mkdir(parents=True)
+        (art_dir / "logo_original.svg").write_text("<svg></svg>")
+        (art_dir / "icon_original.png").write_bytes(b"\x89PNG")
+
         board = Board(alias="careers", slug="test-careers", url="https://test.com/jobs")
         board.configs["gh-api"] = {
             "monitor_type": "greenhouse",
@@ -1348,19 +1357,18 @@ class TestQualityGates:
         assert blockers == []
         assert warnings == []
 
-    def test_unreachable_logo_blocks(self, monkeypatch):
-        from src.workspace.commands import crawl as crawl_mod
+    def test_missing_image_artifacts_warns(self, tmp_path, monkeypatch):
         from src.workspace.commands.crawl import run_quality_gates
 
-        monkeypatch.setattr(crawl_mod, "_url_reachable", lambda url: False)
+        monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: tmp_path / ".ws")
+        monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path / ".ws")
 
         ws_obj = Workspace(
             slug="test",
             name="Test",
             website="https://test.com",
-            logo_url="https://bad.com/logo.png",
-            icon_url="https://bad.com/icon.png",
         )
+        # No image artifacts created
         board = Board(alias="careers", slug="test-careers", url="https://test.com/jobs")
         board.configs["gh"] = {
             "status": "tested",
@@ -1369,9 +1377,9 @@ class TestQualityGates:
         }
         board.active_config = "gh"
 
-        blockers, _ = run_quality_gates(ws_obj, [board])
-        assert any("logo_url unreachable" in b for b in blockers)
-        assert any("icon_url unreachable" in b for b in blockers)
+        _, warnings = run_quality_gates(ws_obj, [board])
+        assert any("logo" in w.lower() for w in warnings)
+        assert any("icon" in w.lower() for w in warnings)
 
     def test_no_boards(self):
         from src.workspace.commands.crawl import run_quality_gates
@@ -1436,8 +1444,11 @@ class TestQualityGates:
         blockers, _ = run_quality_gates(ws_obj, [board])
         assert any("poor" in b for b in blockers)
 
-    def test_missing_icons_warns(self):
+    def test_missing_icons_warns(self, tmp_path, monkeypatch):
         from src.workspace.commands.crawl import run_quality_gates
+
+        monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: tmp_path / ".ws")
+        monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path / ".ws")
 
         ws_obj = Workspace(slug="test", name="Test", website="https://test.com")
         board = Board(alias="careers", slug="test-careers", url="https://test.com/jobs")

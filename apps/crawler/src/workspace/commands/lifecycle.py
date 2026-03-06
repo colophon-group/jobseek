@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 from datetime import UTC, datetime
 
 import click
 
-from src.shared.constants import DATA_DIR, SLUG_RE
+from src.shared.constants import SLUG_RE, get_data_dir
 from src.shared.csv_io import read_csv
 from src.workspace import log as action_log
 from src.workspace import output as out
@@ -43,16 +44,27 @@ def is_local_mode() -> bool:
 @click.command()
 @click.argument("slug")
 @click.option("--issue", required=True, type=int, help="GitHub issue number")
-def new(slug: str, issue: int):
+@click.option("--reset", is_flag=True, help="Purge managed clone and re-clone from scratch")
+def new(slug: str, issue: int, reset: bool):
     """Create workspace + stub CSV row + branch + draft PR."""
     local = is_local_mode()
+
+    # Ensure we have a repo clone when running in pip-installed mode
+    if not local:
+        from src.shared.constants import get_repo_root, set_repo_root
+
+        if get_repo_root() is None or reset:
+            from src.workspace.git import ensure_clone
+
+            repo_root = ensure_clone(reset=reset)
+            set_repo_root(repo_root)
 
     # Validate slug format
     if not SLUG_RE.match(slug):
         out.die(f"Invalid slug format: {slug!r}")
 
     # Check if already in companies.csv
-    companies_path = DATA_DIR / "companies.csv"
+    companies_path = get_data_dir() / "companies.csv"
     if companies_path.exists():
         _, rows = read_csv(companies_path)
         if any(r["slug"] == slug for r in rows):
@@ -99,7 +111,7 @@ def new(slug: str, issue: int):
         from src.workspace import git
 
         # Commit and push
-        git.add_files(["data/companies.csv"])
+        git.add_files(["apps/crawler/data/companies.csv"])
         git.commit(f"Add {slug}")
         out.plain("git", f'Committed: "Add {slug}"')
 
@@ -440,6 +452,30 @@ def _build_pr_body(ws: Workspace, boards: list[Board]) -> str:
         lines.append(ws.website)
     lines.append("")
 
+    # Logo & Icon preview (images committed to data/images/<slug>/)
+    img_dir = get_data_dir() / "images" / ws.slug
+    if img_dir.exists():
+        from src.workspace import git
+
+        try:
+            repo = git.repo_name_with_owner()
+            branch = ws.branch or git.current_branch()
+            img_base = (
+                f"https://raw.githubusercontent.com/{repo}/{branch}"
+                f"/apps/crawler/data/images/{ws.slug}"
+            )
+            logo_files = list(img_dir.glob("logo.*"))
+            icon_files = list(img_dir.glob("icon.*"))
+            if logo_files or icon_files:
+                lines.append("| Logo | Icon |")
+                lines.append("|------|------|")
+                logo_cell = f"![logo]({img_base}/{logo_files[0].name})" if logo_files else "—"
+                icon_cell = f"![icon]({img_base}/{icon_files[0].name})" if icon_files else "—"
+                lines.append(f"| {logo_cell} | {icon_cell} |")
+                lines.append("")
+        except Exception:
+            pass  # Skip image preview if git info unavailable
+
     slugs = [b.slug for b in boards]
     n = len(boards)
 
@@ -614,18 +650,26 @@ def _execute_submit_step(
     local = is_local_mode()
 
     if step_key == "csv_written":
-        # Write company details
+        # Write company details (logo_url/icon_url left empty — CI fills from R2)
         kwargs = {}
         if ws.name:
             kwargs["name"] = ws.name
         if ws.website:
             kwargs["website"] = ws.website
-        if ws.logo_url:
-            kwargs["logo_url"] = ws.logo_url
-        if ws.icon_url:
-            kwargs["icon_url"] = ws.icon_url
         if kwargs:
             company_add(ws.slug, **kwargs)
+
+        # Copy original image artifacts to data/images/<slug>/ for git commit
+        from src.workspace.state import ws_dir
+
+        artifacts = ws_dir(ws.slug) / "artifacts" / "company"
+        img_dir = get_data_dir() / "images" / ws.slug
+        for role in ("logo", "icon"):
+            originals = list(artifacts.glob(f"{role}_original.*"))
+            if originals:
+                img_dir.mkdir(parents=True, exist_ok=True)
+                src = originals[0]
+                shutil.copy2(src, img_dir / f"{role}{src.suffix}")
 
         # Write board configs
         for b in boards:
@@ -658,9 +702,9 @@ def _execute_submit_step(
             return  # Local mode — skip git commit
         from src.workspace import git
 
-        if not git.has_uncommitted_changes(["data/"]):
+        if not git.has_uncommitted_changes(["apps/crawler/data/"]):
             return  # Nothing to commit — already done
-        git.add_files(["data/"])
+        git.add_files(["apps/crawler/data/"])
         commit_msg = f"Configure {ws.name or ws.slug}"
         if ws.issue:
             commit_msg += f"\n\nCloses #{ws.issue}"

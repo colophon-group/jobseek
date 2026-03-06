@@ -241,7 +241,11 @@ def _check_image(label: str, url: str, slug: str) -> None:
 
 
 def save_image_to_path(slug: str, label: str, data: bytes, content_type: str) -> Path | None:
-    """Convert image data to PNG and save under workspace artifacts.
+    """Save original image and a PNG preview under workspace artifacts.
+
+    Saves two files:
+    - ``{name}_original.{ext}`` — original bytes in original format (for R2 upload)
+    - ``{name}.png`` — PNG rasterization for agent visual verification
 
     Args:
         slug: Workspace slug.
@@ -250,16 +254,21 @@ def save_image_to_path(slug: str, label: str, data: bytes, content_type: str) ->
         content_type: HTTP content-type header value.
 
     Returns:
-        Path to saved file, or None on failure.
+        Path to saved PNG preview file, or None on failure.
     """
     from src.workspace.state import ws_dir
 
     artifact_dir = ws_dir(slug) / "artifacts" / "company"
     artifact_dir.mkdir(parents=True, exist_ok=True)
 
-    # label is "logo_url" or "icon_url" → filename "logo.png" or "icon.png"
+    # label is "logo_url" or "icon_url" → filename "logo" or "icon"
     name = label.replace("_url", "")
+    ext = _ext_from_content_type(content_type)
     png_path = artifact_dir / f"{name}.png"
+
+    # Always save the original bytes in original format
+    original_path = artifact_dir / f"{name}_original{ext}"
+    original_path.write_bytes(data)
 
     try:
         import io
@@ -273,19 +282,12 @@ def save_image_to_path(slug: str, label: str, data: bytes, content_type: str) ->
         img.save(png_path, "PNG")
         return png_path
     except ImportError:
-        # Pillow not installed — save raw file with original extension
-        ext = _ext_from_content_type(content_type)
-        raw_path = artifact_dir / f"{name}{ext}"
-        raw_path.write_bytes(data)
+        # Pillow not installed — original is already saved above
         out.warn(label, "Pillow not installed — saved raw file (no PNG conversion)")
-        return raw_path
+        return original_path
     except Exception as e:
         out.warn(label, f"PNG conversion failed: {e}")
-        # Still save the raw bytes as fallback
-        ext = _ext_from_content_type(content_type)
-        raw_path = artifact_dir / f"{name}{ext}"
-        raw_path.write_bytes(data)
-        return raw_path
+        return original_path
 
 
 def _ext_from_content_type(ct: str) -> str:

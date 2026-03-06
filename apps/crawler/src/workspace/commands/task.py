@@ -1,13 +1,16 @@
 """Task-driven workflow commands.
 
+Entry point: ``ws task --issue <N>`` fetches the issue and starts the workflow.
+
 Agents interact with the workflow exclusively through these commands:
-- ``ws task``                  — show current task instructions
-- ``ws task next --notes ...`` — reflect, verify gate, advance
-- ``ws task status``           — show workflow progress
-- ``ws task complete``         — mark workflow as done (final step only)
-- ``ws task fail --reason ...``— mark step as failed, unlock exploration mode
-- ``ws task troubleshoot``     — search the troubleshooting KB
-- ``ws task learn``            — add a KB entry from experience
+- ``ws task --issue <N>``         — fetch issue, pre-verify, start workflow
+- ``ws task``                     — show current task instructions
+- ``ws task next --notes ...``    — reflect, verify gate, advance
+- ``ws task status``              — show workflow progress
+- ``ws task complete``            — mark workflow as done (final step only)
+- ``ws task fail --reason ...``   — mark step as failed, unlock exploration mode
+- ``ws task troubleshoot``        — search the troubleshooting KB
+- ``ws task learn``               — add a KB entry from experience
 """
 
 from __future__ import annotations
@@ -16,6 +19,7 @@ import click
 
 from src.workspace import output as out
 from src.workspace.state import (
+    get_active_slug,
     list_boards,
     load_workspace,
     resolve_slug,
@@ -37,29 +41,32 @@ from src.workspace.workflow import (
 
 
 @click.group(invoke_without_command=True)
-@click.option("--issue", type=int, default=None, help="GitHub issue number (first run only)")
+@click.option("--issue", type=int, default=None, help="GitHub issue number")
 @click.pass_context
 def task(ctx, issue: int | None):
-    """Show current task instructions.
+    """Show current task instructions or start a new workflow.
 
-    On first run with --issue, initializes the workflow.
-    Without subcommand, displays the current task.
+    With --issue and no active workspace: fetches the issue from GitHub
+    and prints pre-verification instructions. The agent decides whether
+    to proceed (ws new <slug> --issue <N>) or reject (ws reject --issue <N>).
+
+    Without --issue (active workspace): displays the current step.
     """
     if ctx.invoked_subcommand is not None:
         return
 
-    # If --issue provided and no active workspace, hint to use ws new first
-    if issue is not None:
-        out.plain("task", f"Issue #{issue} noted.")
-        out.plain("task", "Starting workflow — your first task is below.")
-        print()
+    # No active workspace + --issue → pre-verification flow
+    if issue is not None and get_active_slug() is None:
+        _pre_verify(issue)
+        return
 
+    # Active workspace → show current step
     slug = resolve_slug(None)
 
     try:
         wf = _load_wf_from_disk(slug)
     except FileNotFoundError:
-        out.die(f"Workspace {slug!r} not found. Run: ws new <slug> --issue <N>")
+        out.die(f"Workspace {slug!r} not found. Run: ws task --issue <N>")
         return
 
     if wf.failed:
@@ -73,7 +80,7 @@ def task(ctx, issue: int | None):
     try:
         step, ws, boards, wf, board = resolve_current_step(slug)
     except FileNotFoundError:
-        out.die(f"Workspace {slug!r} not found. Run: ws new <slug> --issue <N>")
+        out.die(f"Workspace {slug!r} not found. Run: ws task --issue <N>")
         return
 
     # Build context and render
@@ -85,6 +92,41 @@ def task(ctx, issue: int | None):
 
     # Print instructions
     print(instructions)
+
+
+def _pre_verify(issue: int) -> None:
+    """Fetch issue from GitHub and render 00-pre-verify.md with context."""
+    from pathlib import Path
+
+    from src.workspace.git import check_gh_auth, fetch_issue
+
+    if not check_gh_auth():
+        out.die("GitHub CLI not authenticated. Run: gh auth login")
+        return
+
+    out.info("task", f"Fetching issue #{issue}...")
+
+    try:
+        data = fetch_issue(issue)
+    except Exception as exc:
+        out.die(f"Failed to fetch issue #{issue}: {exc}")
+        return
+
+    title = data.get("title", "(no title)")
+    body = data.get("body", "").strip() or "(no body)"
+
+    # Load and render the pre-verify template
+    template_path = Path(__file__).parent.parent / "steps" / "00-pre-verify.md"
+    template = template_path.read_text()
+    rendered = template.format(
+        issue=issue,
+        issue_title=title,
+        issue_body=body,
+    )
+
+    out.plain("task", "Step 0/7: Pre-verify the request")
+    print()
+    print(rendered)
 
 
 @task.command(name="next")
@@ -287,18 +329,13 @@ def _print_step_header(step, wf: WorkflowState, boards: list) -> None:
 
 
 def _print_failed(wf: WorkflowState) -> None:
-    """Print failure info and exploration mode instructions."""
-    out.error("task", f"Workflow failed at step '{wf.current_step}'")
-    out.error("task", f"Reason: {wf.fail_reason}")
-    print()
-    print("  === EXPLORATION MODE ===")
-    print()
-    print("  The guided workflow could not complete this step.")
-    print("  You are now authorized to:")
-    print()
-    print("  1. Clone the repo and read source code")
-    print("  2. Create a fix-crawler/ branch with code + config changes")
-    print("  3. Or reject: ws reject --reason needs-code-change --message '...'")
-    print()
-    print("  This is the ONLY path that allows source code access.")
-    print()
+    """Print failure info and coding mode instructions."""
+    from pathlib import Path
+
+    template_path = Path(__file__).parent.parent / "steps" / "fail-mode.md"
+    template = template_path.read_text()
+    rendered = template.format(
+        failed_step=wf.current_step,
+        fail_reason=wf.fail_reason,
+    )
+    print(rendered)

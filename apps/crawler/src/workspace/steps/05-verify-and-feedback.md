@@ -4,9 +4,9 @@
 
 **This step applies to ALL monitor types, including rich API monitors.** Do not skip it.
 
-## Verify extracted content
+**Rule:** Do **not** record feedback without verifying actual extracted content — N/N stats are not enough, you must read the data.
 
-N/N stats are not enough — **read the actual data**.
+## Verify extracted content
 
 ### For API monitors
 
@@ -71,8 +71,6 @@ ws reject-config <name> --reason "Locations missing, titles truncated"
 Then go back and try a different config — use `ws task fail` if all options are exhausted.
 
 ## When done
-
-The gate auto-checks: feedback must be recorded with `good` or `acceptable` verdict.
 
 ```bash
 ws task next --notes "<verdict, quality summary, any concerns>"

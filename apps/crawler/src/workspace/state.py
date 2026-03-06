@@ -20,7 +20,7 @@ from typing import Any
 
 import yaml
 
-from src.shared.constants import WORKSPACE_DIR
+from src.shared.constants import get_workspace_dir
 from src.workspace.filelock import file_lock
 
 # ── Atomic file write ──────────────────────────────────────────────────
@@ -298,7 +298,7 @@ class Workspace:
 
 def ws_dir(slug: str) -> Path:
     """Return the workspace directory for a given slug."""
-    return WORKSPACE_DIR / slug
+    return get_workspace_dir() / slug
 
 
 def ws_yaml_path(slug: str) -> Path:
@@ -421,10 +421,11 @@ def list_workspaces() -> list[Workspace]:
     """
     from src.workspace.errors import WorkspaceStateError
 
-    if not WORKSPACE_DIR.exists():
+    ws_root = get_workspace_dir()
+    if not ws_root.exists():
         return []
     workspaces = []
-    for p in sorted(WORKSPACE_DIR.iterdir()):
+    for p in sorted(ws_root.iterdir()):
         yaml_path = p / "workspace.yaml"
         if yaml_path.exists():
             try:
@@ -455,7 +456,7 @@ def delete_workspace(slug: str) -> None:
 
 
 def _active_path() -> Path:
-    return WORKSPACE_DIR / "active"
+    return get_workspace_dir() / "active"
 
 
 def get_active_slug() -> str | None:

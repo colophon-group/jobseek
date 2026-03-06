@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import os
+import subprocess
 import sys
+from pathlib import Path
 
 import click
 
@@ -127,7 +130,49 @@ run_group.add_command(run_monitor, name="monitor")
 run_group.add_command(run_scraper, name="scraper")
 
 
+def _detect_repo_root() -> Path | None:
+    """Detect the jobseek repo root in priority order.
+
+    1. ``WS_REPO_ROOT`` env var (explicit override)
+    2. CWD inside a git repo that contains ``apps/crawler/data/``
+    3. Managed clone at ``~/.jobseek/repo/``
+    """
+    # 1. Env var override
+    env = os.environ.get("WS_REPO_ROOT")
+    if env:
+        p = Path(env)
+        if (p / "apps" / "crawler" / "data").exists():
+            return p
+
+    # 2. CWD inside repo
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        root = Path(result.stdout.strip())
+        if (root / "apps" / "crawler" / "data").exists():
+            return root
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        pass
+
+    # 3. Managed clone
+    managed = Path.home() / ".jobseek" / "repo"
+    if (managed / "apps" / "crawler" / "data").exists():
+        return managed
+
+    return None
+
+
 def main():
+    from src.shared.constants import set_repo_root
+
+    repo_root = _detect_repo_root()
+    if repo_root:
+        set_repo_root(repo_root)
+
     try:
         ws(standalone_mode=False)
     except click.exceptions.Exit:

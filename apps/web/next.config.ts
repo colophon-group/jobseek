@@ -7,6 +7,9 @@ const nextConfig: NextConfig = {
     // Vercel purges its CDN cache on every deploy, so stale images only persist
     // in individual browser caches until the TTL expires.
     minimumCacheTTL: 604800,
+    remotePatterns: [
+      { hostname: "jobseek-assets.colophon-group.org" },
+    ],
   },
   headers: async () => [
     {

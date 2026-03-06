@@ -25,19 +25,22 @@ class TestValidateCsvs:
             "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
             "stripe,stripe-careers,https://boards.greenhouse.io/stripe,greenhouse,,,\n",
         )
-        monkeypatch.setattr("src.inspect.DATA_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
         errors = validate_csvs()
         assert len(errors) == 0
 
     def test_missing_companies_file(self, tmp_path, monkeypatch):
-        monkeypatch.setattr("src.inspect.DATA_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
         errors = validate_csvs()
         assert len(errors) == 1
         assert "File not found" in str(errors[0])
 
     def test_missing_boards_file(self, tmp_path, monkeypatch):
         (tmp_path / "companies.csv").write_text("slug,name,website\ntest,Test,https://test.com\n")
-        monkeypatch.setattr("src.inspect.DATA_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
         errors = validate_csvs()
         assert len(errors) == 1
         assert "boards.csv" in str(errors[0])
@@ -48,7 +51,8 @@ class TestValidateCsvs:
             "slug,name,website,logo_url,icon_url\nINVALID_SLUG,Test,https://test.com,,\n",
             "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n",
         )
-        monkeypatch.setattr("src.inspect.DATA_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
         errors = validate_csvs()
         assert any("Invalid slug format" in str(e) for e in errors)
 
@@ -58,7 +62,8 @@ class TestValidateCsvs:
             "slug,name,website,logo_url,icon_url\ntest,Test,https://test.com,,\ntest,Test2,https://test2.com,,\n",
             "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n",
         )
-        monkeypatch.setattr("src.inspect.DATA_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
         errors = validate_csvs()
         assert any("Duplicate slug" in str(e) for e in errors)
 
@@ -68,7 +73,8 @@ class TestValidateCsvs:
             "slug,name,website,logo_url,icon_url\n,Test,https://test.com,,\n",
             "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n",
         )
-        monkeypatch.setattr("src.inspect.DATA_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
         errors = validate_csvs()
         assert any("Empty slug" in str(e) for e in errors)
 
@@ -78,7 +84,8 @@ class TestValidateCsvs:
             "slug,name,website,logo_url,icon_url\ntest,,https://test.com,,\n",
             "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n",
         )
-        monkeypatch.setattr("src.inspect.DATA_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
         errors = validate_csvs()
         assert any("Empty name" in str(e) for e in errors)
 
@@ -88,7 +95,8 @@ class TestValidateCsvs:
             "slug,name,website,logo_url,icon_url\ntest,Test,not-a-url,,\n",
             "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n",
         )
-        monkeypatch.setattr("src.inspect.DATA_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
         errors = validate_csvs()
         assert any("Invalid URL" in str(e) for e in errors)
 
@@ -99,7 +107,8 @@ class TestValidateCsvs:
             "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
             "nonexistent,nonexistent-careers,https://example.com,greenhouse,,,\n",
         )
-        monkeypatch.setattr("src.inspect.DATA_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
         errors = validate_csvs()
         assert any("not in companies.csv" in str(e) for e in errors)
 
@@ -110,7 +119,8 @@ class TestValidateCsvs:
             "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
             "test,test-careers,https://example.com,unknown_type,,,\n",
         )
-        monkeypatch.setattr("src.inspect.DATA_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
         errors = validate_csvs()
         assert any("Invalid monitor_type" in str(e) for e in errors)
 
@@ -121,7 +131,8 @@ class TestValidateCsvs:
             "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
             "test,test-careers,https://example.com,sitemap,,,\n",
         )
-        monkeypatch.setattr("src.inspect.DATA_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
         errors = validate_csvs()
         assert any("requires a scraper_type" in str(e) for e in errors)
 
@@ -132,7 +143,8 @@ class TestValidateCsvs:
             "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
             "test,test-careers,https://example.com,dom,,,\n",
         )
-        monkeypatch.setattr("src.inspect.DATA_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
         errors = validate_csvs()
         assert any("requires a scraper_type" in str(e) for e in errors)
 
@@ -143,7 +155,8 @@ class TestValidateCsvs:
             "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
             "test,test-careers,https://example.com,sitemap,,bad_scraper,\n",
         )
-        monkeypatch.setattr("src.inspect.DATA_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
         errors = validate_csvs()
         assert any("Invalid scraper_type" in str(e) for e in errors)
 
@@ -154,7 +167,8 @@ class TestValidateCsvs:
             "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
             "test,test-careers,https://example.com,greenhouse,not-json,,\n",
         )
-        monkeypatch.setattr("src.inspect.DATA_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
         errors = validate_csvs()
         assert any("Invalid monitor_config JSON" in str(e) for e in errors)
 
@@ -165,7 +179,8 @@ class TestValidateCsvs:
             "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
             "test,test-careers,https://example.com,sitemap,,json-ld,not-json\n",
         )
-        monkeypatch.setattr("src.inspect.DATA_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
         errors = validate_csvs()
         assert any("Invalid scraper_config JSON" in str(e) for e in errors)
 
@@ -177,7 +192,8 @@ class TestValidateCsvs:
             "test,test-careers,https://example.com,greenhouse,,,\n"
             "test,test-eng,https://example.com,greenhouse,,,\n",
         )
-        monkeypatch.setattr("src.inspect.DATA_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
         errors = validate_csvs()
         assert any("Duplicate board_url" in str(e) for e in errors)
 
@@ -188,7 +204,8 @@ class TestValidateCsvs:
             "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
             "test,test-careers,,greenhouse,,,\n",
         )
-        monkeypatch.setattr("src.inspect.DATA_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
         errors = validate_csvs()
         assert any("Empty board_url" in str(e) for e in errors)
 
@@ -199,7 +216,8 @@ class TestValidateCsvs:
             "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
             "test,test-careers,not-a-url,greenhouse,,,\n",
         )
-        monkeypatch.setattr("src.inspect.DATA_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
         errors = validate_csvs()
         assert any("Invalid board_url" in str(e) for e in errors)
 
@@ -210,7 +228,8 @@ class TestValidateCsvs:
             "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
             'test,test-careers,https://example.com,greenhouse,"{""token"":""test""}",,\n',
         )
-        monkeypatch.setattr("src.inspect.DATA_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
         errors = validate_csvs()
         assert len(errors) == 0
 
@@ -224,7 +243,8 @@ class TestValidateCsvs:
             "stripe,stripe-careers,https://boards.greenhouse.io/stripe,greenhouse,,,\n"
             "meta,meta-careers,https://meta.com/careers,sitemap,,json-ld,\n",
         )
-        monkeypatch.setattr("src.inspect.DATA_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
         errors = validate_csvs()
         assert len(errors) == 0
 
@@ -235,7 +255,8 @@ class TestValidateCsvs:
             "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
             "test,,https://example.com,greenhouse,,,\n",
         )
-        monkeypatch.setattr("src.inspect.DATA_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
         errors = validate_csvs()
         assert any("Empty board_slug" in str(e) for e in errors)
 
@@ -246,7 +267,8 @@ class TestValidateCsvs:
             "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
             "test,INVALID_SLUG,https://example.com,greenhouse,,,\n",
         )
-        monkeypatch.setattr("src.inspect.DATA_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
         errors = validate_csvs()
         assert any("Invalid board_slug format" in str(e) for e in errors)
 
@@ -258,6 +280,7 @@ class TestValidateCsvs:
             "test,test-careers,https://example.com,greenhouse,,,\n"
             "test,test-careers,https://example2.com,greenhouse,,,\n",
         )
-        monkeypatch.setattr("src.inspect.DATA_DIR", tmp_path)
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
         errors = validate_csvs()
         assert any("Duplicate board_slug" in str(e) for e in errors)

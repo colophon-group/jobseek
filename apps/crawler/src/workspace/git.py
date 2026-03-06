@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import subprocess
 import time
 from pathlib import Path
@@ -11,6 +12,208 @@ from src.workspace.errors import GitCommandError, GitHubApiError
 _GIT_RETRIES = 2
 _GH_RETRIES = 2
 _RETRY_DELAY = 2.0
+
+_DEFAULT_REPO = "colophon-group/jobseek"
+
+
+def _repo_cwd() -> Path | None:
+    """Return the repo root for use as subprocess cwd."""
+    from src.shared.constants import get_repo_root
+
+    return get_repo_root()
+
+
+def _gh_repo_flag() -> list[str]:
+    """Return ['--repo', 'owner/repo'] when no repo root is available."""
+    from src.shared.constants import get_repo_root
+
+    if get_repo_root() is None:
+        repo = os.environ.get("WS_REPO", _DEFAULT_REPO)
+        return ["--repo", repo]
+    return []
+
+
+_MANAGED_REPO = Path.home() / ".jobseek" / "repo"
+
+
+def _managed_repo_url() -> str:
+    return os.environ.get(
+        "WS_REPO_URL",
+        "https://github.com/colophon-group/jobseek.git",
+    )
+
+
+def purge_clone() -> None:
+    """Remove the managed clone entirely."""
+    import shutil
+
+    if _MANAGED_REPO.exists():
+        shutil.rmtree(_MANAGED_REPO)
+
+
+def _resolve_csv_conflicts(cwd: Path) -> bool:
+    """Resolve CSV merge conflicts by accepting both sides and re-sorting.
+
+    Returns True if conflicts were resolved, False if non-CSV conflicts remain.
+    """
+    # List conflicted files
+    result = _run(
+        ["git", "diff", "--name-only", "--diff-filter=U"],
+        cwd=cwd,
+        check=False,
+    )
+    conflicted = [f.strip() for f in result.stdout.strip().splitlines() if f.strip()]
+    if not conflicted:
+        return True
+
+    csv_files = {"apps/crawler/data/companies.csv", "apps/crawler/data/boards.csv"}
+    non_csv = [f for f in conflicted if f not in csv_files]
+    if non_csv:
+        return False  # Code conflicts — cannot auto-resolve
+
+    # For each CSV conflict: accept both sides (union merge) then re-sort
+    from src.shared.csv_io import read_csv as _read_csv
+    from src.shared.csv_io import write_csv as _write_csv
+
+    for csv_rel in conflicted:
+        csv_path = cwd / csv_rel
+
+        # Read ours and theirs, merge rows by deduplicating on key
+        # Use git to get clean versions
+        ours = _run(["git", "show", f":2:{csv_rel}"], cwd=cwd, check=False)
+        theirs = _run(["git", "show", f":3:{csv_rel}"], cwd=cwd, check=False)
+
+        if ours.returncode != 0 or theirs.returncode != 0:
+            return False
+
+        # Write ours to a temp file, read it, then merge theirs
+        import tempfile
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
+            f.write(ours.stdout)
+            ours_path = Path(f.name)
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
+            f.write(theirs.stdout)
+            theirs_path = Path(f.name)
+
+        try:
+            headers, ours_rows = _read_csv(ours_path)
+            _, theirs_rows = _read_csv(theirs_path)
+
+            # Determine key field
+            if "slug" in headers:
+                key_field = "slug"
+            elif "company_slug" in headers:
+                key_field = "board_slug"
+            else:
+                return False
+
+            # Merge: theirs wins on conflict, both kept otherwise
+            merged: dict[str, dict] = {}
+            for row in ours_rows:
+                merged[row.get(key_field, "")] = row
+            for row in theirs_rows:
+                merged[row.get(key_field, "")] = row
+
+            rows = list(merged.values())
+
+            # Sort like sort_csvs does
+            if "slug" in headers:
+                rows.sort(key=lambda r: r.get("slug", ""))
+            else:
+                rows.sort(key=lambda r: (r.get("company_slug", ""), r.get("board_slug", "")))
+
+            _write_csv(csv_path, headers, rows)
+        finally:
+            ours_path.unlink(missing_ok=True)
+            theirs_path.unlink(missing_ok=True)
+
+        _run(["git", "add", csv_rel], cwd=cwd)
+
+    return True
+
+
+def ensure_clone(*, reset: bool = False) -> Path:
+    """Ensure repo is cloned at ~/.jobseek/repo/ with latest main.
+
+    When *reset* is True, the managed clone is purged and re-cloned from
+    scratch.  Otherwise an existing clone is updated to the latest
+    ``origin/main``, with CSV-only merge conflicts auto-resolved by
+    union-merging and re-sorting (matching ``sort_csvs()``).  Non-CSV
+    conflicts cause an error directing the user to ``--reset``.
+
+    Returns the repo root path.
+    """
+    managed = _MANAGED_REPO
+    repo_url = _managed_repo_url()
+
+    if reset:
+        purge_clone()
+
+    if (managed / "apps" / "crawler" / "data").exists():
+        _run(["git", "fetch", "origin"], cwd=managed)
+        main = get_main_branch_remote(cwd=managed)
+
+        # Ensure on main, discarding any leftover index state
+        _run(["git", "checkout", main], cwd=managed, check=False)
+        _run(["git", "reset", "--hard", f"origin/{main}"], cwd=managed)
+        return managed
+
+    # Fresh clone
+    managed.parent.mkdir(parents=True, exist_ok=True)
+    subprocess.run(
+        ["git", "clone", repo_url, str(managed)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return managed
+
+
+def sync_branch_with_main(branch: str) -> None:
+    """Rebase *branch* onto latest main, auto-resolving CSV conflicts.
+
+    Called after ``ensure_clone()`` when the workspace already has a
+    feature branch.  Fetches, rebases, and if CSV conflicts appear they
+    are resolved the same way the submit workflow does it (union-merge +
+    sort).  Non-CSV conflicts abort with a message pointing to
+    ``--reset``.
+    """
+    from src.workspace.errors import WorkspaceError
+
+    cwd = _repo_cwd()
+    main = get_main_branch_remote(cwd=cwd)
+
+    _run(["git", "fetch", "origin"], cwd=cwd)
+    _run(["git", "checkout", branch], cwd=cwd)
+
+    result = _run(
+        ["git", "rebase", f"origin/{main}"],
+        cwd=cwd,
+        check=False,
+    )
+    if result.returncode == 0:
+        return  # Clean rebase
+
+    # Rebase paused on conflicts — try to resolve
+    if _resolve_csv_conflicts(cwd):
+        cont = _run(["git", "rebase", "--continue"], cwd=cwd, check=False)
+        if cont.returncode == 0:
+            return
+        # May be more conflict commits; loop
+        for _ in range(20):  # safety bound
+            if not _resolve_csv_conflicts(cwd):
+                break
+            cont = _run(["git", "rebase", "--continue"], cwd=cwd, check=False)
+            if cont.returncode == 0:
+                return
+
+    # Could not resolve — abort and error out
+    _run(["git", "rebase", "--abort"], cwd=cwd, check=False)
+    raise WorkspaceError(
+        "Non-CSV merge conflicts detected in the managed clone. "
+        "Run with --reset to purge and re-clone."
+    )
 
 
 def _is_retryable(e: GitCommandError | GitHubApiError) -> bool:
@@ -32,10 +235,14 @@ def _run(
 ) -> subprocess.CompletedProcess[str]:
     """Run a subprocess command and return the result.
 
+    When *cwd* is not given, defaults to the detected repo root (if any).
     When *check* is True, ``CalledProcessError`` is translated into
     ``GitCommandError`` (for ``git``) or ``GitHubApiError`` (for ``gh``).
     Transient failures are retried up to *retries* times.
     """
+    if cwd is None:
+        cwd = _repo_cwd()
+
     last_err: GitCommandError | GitHubApiError | None = None
 
     for attempt in range(1 + retries):
@@ -159,6 +366,7 @@ def check_existing_prs(issue_number: int) -> list[dict[str, str]]:
             "gh",
             "pr",
             "list",
+            *_gh_repo_flag(),
             "--state",
             "open",
             "--search",
@@ -214,14 +422,36 @@ def comment_on_pr(pr_number: int, body: str) -> None:
 def comment_on_issue(issue_number: int, body: str) -> None:
     """Add a comment to an issue."""
     _run(
-        ["gh", "issue", "comment", str(issue_number), "--body", body],
+        ["gh", "issue", "comment", str(issue_number), *_gh_repo_flag(), "--body", body],
         retries=_GH_RETRIES,
     )
 
 
+def fetch_issue(issue_number: int) -> dict:
+    """Fetch a GitHub issue's title, body, and labels.
+
+    Returns dict with 'title', 'body', 'labels' keys.
+    """
+    import json
+
+    result = _run(
+        [
+            "gh",
+            "issue",
+            "view",
+            str(issue_number),
+            *_gh_repo_flag(),
+            "--json",
+            "title,body,labels,url",
+        ],
+        retries=_GH_RETRIES,
+    )
+    return json.loads(result.stdout)
+
+
 def close_issue(issue_number: int) -> None:
     """Close a GitHub issue."""
-    _run(["gh", "issue", "close", str(issue_number)], retries=_GH_RETRIES)
+    _run(["gh", "issue", "close", str(issue_number), *_gh_repo_flag()], retries=_GH_RETRIES)
 
 
 def edit_pr_body(pr_number: int, body: str) -> None:
@@ -237,10 +467,22 @@ def close_pr(pr_number: int) -> None:
     _run(["gh", "pr", "close", str(pr_number)], retries=_GH_RETRIES)
 
 
+def repo_name_with_owner() -> str:
+    """Return 'owner/repo' for the current GitHub repository."""
+    result = _run(["gh", "repo", "view", "--json", "nameWithOwner", "-q", ".nameWithOwner"])
+    return result.stdout.strip()
+
+
 def get_main_branch() -> str:
     """Detect the default branch (main or master)."""
+    return get_main_branch_remote()
+
+
+def get_main_branch_remote(*, cwd: Path | None = None) -> str:
+    """Detect the default branch (main or master), with explicit *cwd*."""
     result = _run(
         ["git", "symbolic-ref", "refs/remotes/origin/HEAD"],
+        cwd=cwd,
         check=False,
     )
     if result.returncode == 0:
