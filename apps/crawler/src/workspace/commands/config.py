@@ -8,6 +8,7 @@ from pathlib import Path
 import click
 
 from src.shared.constants import SLUG_RE
+from src.shared.csv_io import read_csv
 from src.workspace import log as action_log
 from src.workspace import output as out
 from src.workspace.state import (
@@ -54,6 +55,7 @@ def set_(
         ws.name = name
         updates.append(f"name={name!r}")
     if website is not None:
+        _check_duplicate_website(website, slug)
         ws.website = website
         updates.append(f"website={website!r}")
         _check_url("website", website)
@@ -96,6 +98,67 @@ def set_(
         f"Set {', '.join(updates)}",
     )
     out.info("workspace", f"Set {', '.join(updates)}")
+
+
+def _normalize_url(url: str) -> str:
+    """Normalize a URL for dedup comparison: lowercase scheme+host, strip trailing slash."""
+    from urllib.parse import urlparse, urlunparse
+
+    parsed = urlparse(url)
+    return urlunparse(
+        (
+            parsed.scheme.lower(),
+            parsed.netloc.lower(),
+            parsed.path.rstrip("/") or "/",
+            parsed.params,
+            parsed.query,
+            "",  # drop fragment
+        )
+    )
+
+
+def _check_duplicate_website(website: str, current_slug: str) -> None:
+    """Error if another company already uses this website URL."""
+    from src.shared.constants import get_data_dir
+
+    companies_path = get_data_dir() / "companies.csv"
+    if not companies_path.exists():
+        return
+
+    normalized = _normalize_url(website)
+    _, rows = read_csv(companies_path)
+    for row in rows:
+        if row["slug"] == current_slug:
+            continue
+        existing = row.get("website", "")
+        if existing and _normalize_url(existing) == normalized:
+            out.die(
+                f"Website URL already used by company {row['slug']!r}"
+                f" ({row.get('name', '')}).\n"
+                f"This is likely a duplicate. Use a different URL."
+            )
+
+
+def _check_duplicate_board_url(board_url: str, current_slug: str) -> None:
+    """Error if another board already uses this URL."""
+    from src.shared.constants import get_data_dir
+
+    boards_path = get_data_dir() / "boards.csv"
+    if not boards_path.exists():
+        return
+
+    normalized = _normalize_url(board_url)
+    _, rows = read_csv(boards_path)
+    for row in rows:
+        if row.get("company_slug") == current_slug:
+            continue
+        existing = row.get("board_url", "")
+        if existing and _normalize_url(existing) == normalized:
+            out.die(
+                f"Board URL already used by {row['board_slug']!r}"
+                f" (company: {row['company_slug']!r}).\n"
+                f"This is likely a duplicate. Use a different URL."
+            )
 
 
 def _resolve_candidate(slug: str, index: int, role: str) -> str:
@@ -329,6 +392,8 @@ def add_board(slug_or_alias: str, alias: str | None, url: str):
 
     if not SLUG_RE.match(board_slug):
         out.die(f"Invalid board slug: {board_slug!r}")
+
+    _check_duplicate_board_url(url, slug)
 
     ws = load_workspace(slug)
     board = Board(alias=alias, slug=board_slug, url=url)

@@ -36,6 +36,10 @@ def main() -> int:
     if not crawler_changes:
         return 0
 
+    # VERSION already staged means we bumped on a previous attempt — don't bump again
+    if str(VERSION_PATH) in staged:
+        return 0
+
     if not VERSION_PATH.exists():
         print(f"WARNING: {VERSION_PATH} not found, skipping version bump")
         return 0
@@ -52,7 +56,9 @@ def main() -> int:
 
     subprocess.run(["git", "add", str(VERSION_PATH)], check=True)
     print(f"Bumped version: {version} -> {new_version}")
-    return 0
+    # Return 1 so pre-commit aborts the commit — the staged VERSION file
+    # will be included when the user re-runs git commit.
+    return 1
 
 
 if __name__ == "__main__":
