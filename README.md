@@ -8,20 +8,19 @@ Open issues labeled [`company-request`](https://github.com/colophon-group/jobsee
 
 ### Quick start
 
+```
+pip install jobseek-crawler-setup
+```
+
 Pick an open issue, then hand your agent this prompt:
 
 ```
-Clone https://github.com/colophon-group/jobseek.git and resolve
-issue #<NUMBER> by following the instructions in AGENTS.md.
+Run `ws task --issue <NUMBER>` and follow the printed instructions.
 ```
-
-The agent will research the company, detect the right monitor type, test-crawl the board, add CSV rows, validate, and open a PR.
 
 ### Requirements
 
 The agent environment needs:
 - `git`, `gh` (GitHub CLI, authenticated)
-- Python 3.12+ with [`uv`](https://docs.astral.sh/uv/)
+- Python 3.12+
 - Web access (to research companies and fetch career pages)
-
-Full instructions are in [`AGENTS.md`](./AGENTS.md). Architecture docs are in [`docs/`](./docs/).
