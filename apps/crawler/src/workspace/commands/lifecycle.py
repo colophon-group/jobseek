@@ -45,7 +45,12 @@ def is_local_mode() -> bool:
 @click.option("--issue", required=True, type=int, help="GitHub issue number")
 @click.option("--reset", is_flag=True, help="Purge managed clone and re-clone from scratch")
 def new(slug: str, issue: int, reset: bool):
-    """Create workspace + stub CSV row + branch + draft PR."""
+    """Create workspace + stub CSV row + branch + draft PR.
+
+    Idempotent: if a previous run partially succeeded, leftover state
+    (workspace dir, worktree, local/remote branch) is cleaned up
+    automatically on retry.
+    """
     local = is_local_mode()
 
     # Ensure we have a repo clone when running in pip-installed mode
@@ -62,16 +67,25 @@ def new(slug: str, issue: int, reset: bool):
     if not SLUG_RE.match(slug):
         out.die(f"Invalid slug format: {slug!r}")
 
-    # Check if already in companies.csv
+    # Clean up leftover workspace from a previous failed attempt
+    if workspace_exists(slug):
+        import contextlib
+
+        from src.csvtool import company_del
+
+        out.warn("workspace", f"Cleaning up leftover workspace {slug!r}")
+        with contextlib.suppress(CsvToolError):
+            company_del(slug)
+        delete_workspace(slug)
+        if get_active_slug() == slug:
+            clear_active_slug()
+
+    # Check if already in companies.csv (after cleanup)
     companies_path = get_data_dir() / "companies.csv"
     if companies_path.exists():
         _, rows = read_csv(companies_path)
         if any(r["slug"] == slug for r in rows):
             out.die(f"Slug {slug!r} already exists in companies.csv")
-
-    # Check if workspace already exists
-    if workspace_exists(slug):
-        out.die(f"Workspace {slug!r} already exists")
 
     branch = f"add-company/{slug}"
     pr_number: int | None = None
@@ -88,19 +102,22 @@ def new(slug: str, issue: int, reset: bool):
         out.info("github", "gh authenticated")
         out.info("workspace", f"Slug {slug!r} is valid, not in companies.csv")
 
-        # Check for existing PRs
+        # Reuse existing PR if one was created by a previous attempt
         existing = git.check_existing_prs(issue)
         if existing:
-            pr = existing[0]
-            out.error("github", f"Open PR #{pr['number']} already exists for issue #{issue}")
-            out.die(f"PR #{pr['number']}: {pr['title']}")
-        out.info("github", f"No open PRs for issue #{issue}")
+            pr_number = existing[0]["number"]
+            out.info("github", f"Reusing existing PR #{pr_number} for issue #{issue}")
 
         # Create a worktree for this workspace so multiple agents
         # can work on different companies concurrently.
+        # create_worktree handles stale worktrees and local branches.
         git.fetch()
         main = git.get_main_branch()
         worktree_path = git.worktrees_dir() / slug
+
+        # Clean up stale remote branch (previous push that wasn't merged)
+        git.delete_remote_branch(branch)
+
         git.create_worktree(branch, worktree_path, start_point=f"origin/{main}")
         set_repo_root(worktree_path)
         out.plain("git", f"Created worktree at {worktree_path} (branch {branch})")
@@ -122,12 +139,13 @@ def new(slug: str, issue: int, reset: bool):
         git.push(branch, set_upstream=True)
         out.plain("git", f"Pushed to origin/{branch}")
 
-        # Create draft PR
-        pr_number = git.create_draft_pr(
-            title=f"Add {slug}",
-            body=f"Closes #{issue}",
-        )
-        out.info("github", f'Created draft PR #{pr_number} — "Add {slug}" (closes #{issue})')
+        # Create draft PR (unless reusing one from a previous attempt)
+        if not pr_number:
+            pr_number = git.create_draft_pr(
+                title=f"Add {slug}",
+                body=f"Closes #{issue}",
+            )
+            out.info("github", f'Created draft PR #{pr_number} — "Add {slug}" (closes #{issue})')
 
     # Create workspace
     worktree_str = "" if local else str(git.worktrees_dir() / slug)

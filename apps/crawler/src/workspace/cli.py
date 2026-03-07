@@ -175,6 +175,11 @@ def _pivot_to_worktree() -> None:
     is findable, then re-points repo_root to the worktree for CSV/git
     operations.  This lets multiple agents work concurrently on
     different workspaces without clashing.
+
+    If the worktree directory is missing (deleted externally), prints a
+    warning but does not abort — read-only commands (status, resume)
+    can still work from the managed clone.  Write commands will fail
+    at the git/CSV layer with a clear error.
     """
     from src.shared.constants import set_repo_root
     from src.workspace.state import get_active_slug, load_workspace
@@ -190,6 +195,12 @@ def _pivot_to_worktree() -> None:
         wt = Path(ws_obj.worktree)
         if (wt / "apps" / "crawler" / "data").exists():
             set_repo_root(wt)
+        else:
+            print(
+                f"Warning: worktree for {slug!r} not found at {wt}. "
+                f"Run 'ws del {slug}' and recreate, or 'ws new {slug} --issue N' to retry.",
+                file=sys.stderr,
+            )
 
 
 def main():

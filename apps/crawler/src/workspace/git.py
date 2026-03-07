@@ -143,32 +143,46 @@ def ensure_clone(*, reset: bool = False) -> Path:
     union-merging and re-sorting (matching ``sort_csvs()``).  Non-CSV
     conflicts cause an error directing the user to ``--reset``.
 
+    Uses a file lock to prevent races when multiple agents call this
+    concurrently.
+
     Returns the repo root path.
     """
+    import fcntl
+
     managed = _MANAGED_REPO
     repo_url = _managed_repo_url()
 
-    if reset:
-        purge_clone()
+    lock_path = managed.parent / "repo.lock"
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    lock_file = open(lock_path, "w")  # noqa: SIM115
+    try:
+        fcntl.flock(lock_file, fcntl.LOCK_EX)
 
-    if (managed / "apps" / "crawler" / "data").exists():
-        _run(["git", "fetch", "origin"], cwd=managed)
-        main = get_main_branch_remote(cwd=managed)
+        if reset:
+            purge_clone()
 
-        # Ensure on main, discarding any leftover index state
-        _run(["git", "checkout", main], cwd=managed, check=False)
-        _run(["git", "reset", "--hard", f"origin/{main}"], cwd=managed)
+        if (managed / "apps" / "crawler" / "data").exists():
+            _run(["git", "fetch", "origin"], cwd=managed)
+            main = get_main_branch_remote(cwd=managed)
+
+            # Ensure on main, discarding any leftover index state
+            _run(["git", "checkout", main], cwd=managed, check=False)
+            _run(["git", "reset", "--hard", f"origin/{main}"], cwd=managed)
+            return managed
+
+        # Fresh clone
+        managed.parent.mkdir(parents=True, exist_ok=True)
+        subprocess.run(
+            ["git", "clone", repo_url, str(managed)],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
         return managed
-
-    # Fresh clone
-    managed.parent.mkdir(parents=True, exist_ok=True)
-    subprocess.run(
-        ["git", "clone", repo_url, str(managed)],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    return managed
+    finally:
+        fcntl.flock(lock_file, fcntl.LOCK_UN)
+        lock_file.close()
 
 
 def sync_branch_with_main(branch: str) -> None:
@@ -228,8 +242,28 @@ def worktrees_dir() -> Path:
 
 
 def create_worktree(branch: str, path: Path, start_point: str = "origin/main") -> None:
-    """Create a git worktree at *path* on a new *branch* from *start_point*."""
+    """Create a git worktree at *path* on *branch* from *start_point*.
+
+    If *branch* already exists (leftover from a previous run), the
+    existing branch is reused and reset to *start_point*.
+    If *path* already exists, the old worktree is removed first.
+    """
+    # Clean up stale worktree at this path
+    if path.exists():
+        remove_worktree(path)
+
     path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Check if branch already exists
+    result = _run(
+        ["git", "branch", "--list", branch],
+        cwd=_MANAGED_REPO,
+        check=False,
+    )
+    if branch in result.stdout:
+        # Delete the stale branch, then create fresh
+        _run(["git", "branch", "-D", branch], cwd=_MANAGED_REPO, check=False)
+
     _run(
         ["git", "worktree", "add", str(path), "-b", branch, start_point],
         cwd=_MANAGED_REPO,
@@ -385,7 +419,12 @@ def delete_branch(name: str, remote: bool = True) -> None:
     # Delete local (force)
     _run(["git", "branch", "-D", name], check=False)
     if remote:
-        _run(["git", "push", "origin", "--delete", name], check=False)
+        delete_remote_branch(name)
+
+
+def delete_remote_branch(name: str) -> None:
+    """Delete a remote branch (no-op if it doesn't exist)."""
+    _run(["git", "push", "origin", "--delete", name], check=False)
 
 
 # ── GitHub CLI operations ───────────────────────────────────────────────
