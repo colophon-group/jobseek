@@ -304,6 +304,10 @@ def del_(slug: str | None):
 
             if ws.worktree:
                 git.remove_worktree(Path(ws.worktree))
+                # Pivot back to managed clone so git commands work
+                from src.shared.constants import set_repo_root
+
+                set_repo_root(git.managed_repo())
                 out.info("git", f"Removed worktree {ws.worktree}")
             git.delete_branch(ws.branch, remote=True)
             out.info("git", f"Deleted branch {ws.branch}")

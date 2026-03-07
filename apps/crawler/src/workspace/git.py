@@ -217,6 +217,11 @@ def sync_branch_with_main(branch: str) -> None:
     )
 
 
+def managed_repo() -> Path:
+    """Return the managed clone directory."""
+    return _MANAGED_REPO
+
+
 def worktrees_dir() -> Path:
     """Return the worktrees directory."""
     return _WORKTREES_DIR
