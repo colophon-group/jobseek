@@ -22,7 +22,6 @@ from src.workspace.state import (
     delete_workspace,
     get_active_slug,
     list_boards,
-    list_workspaces,
     load_workspace,
     resolve_slug,
     save_workspace,
@@ -404,19 +403,7 @@ def status(slug: str | None):
 
         print()
     else:
-        workspaces = list_workspaces()
-        if not workspaces:
-            print("No workspaces found.")
-            return
-        active = get_active_slug()
-        print()
-        for ws in workspaces:
-            submitted = "\u2713" if ws.submitted else " "
-            issue_str = f"#{ws.issue}" if ws.issue else ""
-            pr_str = f"PR #{ws.pr}" if ws.pr else ""
-            marker = " *" if ws.slug == active else ""
-            print(f"  [{submitted}] {ws.slug}{marker:<20} {issue_str:<8} {pr_str}")
-        print()
+        out.die("No active workspace. Provide a slug or run: ws new <slug> --issue N")
 
 
 @click.command()
