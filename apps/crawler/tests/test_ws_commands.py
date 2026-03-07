@@ -96,7 +96,7 @@ class TestStatus:
         _patch_all(monkeypatch, tmp_path)
         runner = CliRunner()
         result = runner.invoke(ws, ["status"])
-        assert "No workspaces found" in result.output
+        assert "No active workspace" in result.output
 
     def test_with_workspace(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
@@ -117,15 +117,14 @@ class TestStatus:
         # Should show detail view for active workspace, not list view
         assert "#42" in result.output
 
-    def test_list_workspaces(self, tmp_path, monkeypatch):
+    def test_no_active_workspace(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
         save_workspace(Workspace(slug="alpha"))
         save_workspace(Workspace(slug="beta"))
         runner = CliRunner()
-        # No active workspace — shows list
+        # No active workspace — error, not a listing
         result = runner.invoke(ws, ["status"])
-        assert "alpha" in result.output
-        assert "beta" in result.output
+        assert "No active workspace" in result.output
 
 
 class TestSet:

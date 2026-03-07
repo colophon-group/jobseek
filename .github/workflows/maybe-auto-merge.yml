@@ -13,6 +13,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Check for pending images
         id: images
@@ -38,10 +40,68 @@ jobs:
           PR: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
 
-      - name: Enable auto-merge
+      - name: Rebase and resolve CSV conflicts
+        id: rebase
         if: steps.images.outputs.pending == 'false' && contains(steps.label.outputs.labels, 'auto-merge')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
         run: |
-          gh pr merge "$PR" --repo "$REPO" --auto --rebase
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          BRANCH=$(gh pr view "$PR" --repo "$REPO" --json headRefName -q .headRefName)
+          git checkout "$BRANCH"
+
+          # Already up to date — nothing to do
+          if git merge-base --is-ancestor origin/main HEAD 2>/dev/null; then
+            echo "Already up to date"
+            echo "rebased=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Try clean rebase first
+          if git rebase origin/main 2>/dev/null; then
+            echo "Clean rebase"
+            git push --force-with-lease origin "$BRANCH"
+            echo "rebased=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Conflicts — resolve CSV files (the only kind possible for auto-merge PRs)
+          conflicted=$(git diff --name-only --diff-filter=U)
+
+          for file in $conflicted; do
+            if [[ "$file" == "apps/crawler/VERSION" ]]; then
+              git checkout --ours "$file"
+              current=$(cat "$file" | tr -d '[:space:]')
+              IFS='.' read -r major minor patch <<< "$current"
+              echo "${major}.${minor}.$((patch + 1))" > "$file"
+            elif [[ "$file" == *.csv ]]; then
+              # Union merge: take main's version, append new rows from PR
+              git checkout --ours "$file"
+              git show REBASE_HEAD:"$file" | while IFS= read -r line; do
+                if ! grep -qxF "$line" "$file"; then
+                  echo "$line" >> "$file"
+                fi
+              done
+            else
+              git checkout --ours "$file"
+            fi
+            git add "$file"
+          done
+
+          GIT_EDITOR=true git rebase --continue
+          git push --force-with-lease origin "$BRANCH"
+          echo "rebased=true" >> "$GITHUB_OUTPUT"
+
+      - name: Merge
+        if: steps.rebase.outputs.rebased == 'true'
+        run: |
+          gh pr merge "$PR" --repo "$REPO" --rebase
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
