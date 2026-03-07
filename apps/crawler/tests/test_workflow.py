@@ -14,6 +14,7 @@ from src.workspace.workflow import (
     advance,
     build_context,
     check_gate,
+    resolve_current_step,
     search_kb,
     should_skip,
 )
@@ -360,6 +361,47 @@ class TestAdvance:
         advance(slug, "none")
         wf = _load_wf_from_disk(slug)
         assert wf.reflections[0]["notes"] == "none"
+
+    def test_advance_repairs_missing_current_board(self, workspace, board_careers):
+        slug, ws, ws_root = workspace
+        wf = WorkflowState(current_step="select_monitor", current_board="deleted-board")
+        _save_wf_to_disk(slug, wf)
+
+        next_step, msg = advance(slug, "monitor tested")
+        assert msg == ""
+        assert next_step is not None
+        assert next_step.id == "verify_and_feedback"
+
+        wf = _load_wf_from_disk(slug)
+        assert wf.current_board == "careers"
+
+    def test_advance_repairs_none_current_board(self, workspace, board_careers):
+        slug, ws, ws_root = workspace
+        wf = WorkflowState(current_step="select_monitor", current_board=None)
+        _save_wf_to_disk(slug, wf)
+
+        next_step, msg = advance(slug, "monitor tested")
+        assert msg == ""
+        assert next_step is not None
+        assert next_step.id == "verify_and_feedback"
+
+        wf = _load_wf_from_disk(slug)
+        assert wf.current_board == "careers"
+
+
+class TestStepResolution:
+    def test_resolve_current_step_repairs_missing_board(self, workspace, board_careers):
+        slug, ws, ws_root = workspace
+        wf = WorkflowState(current_step="select_monitor", current_board="missing")
+        _save_wf_to_disk(slug, wf)
+
+        step, _ws, _boards, _wf, board = resolve_current_step(slug)
+        assert step.id == "select_monitor"
+        assert board is not None
+        assert board.alias == "careers"
+
+        repaired = _load_wf_from_disk(slug)
+        assert repaired.current_board == "careers"
 
 
 class TestContextInjection:

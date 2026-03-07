@@ -7,6 +7,10 @@ Find all career page URLs for this company and register each as a board.
 The career page must show at least one job posting.
 **Count the total number of jobs displayed** — you will need this for `ws probe monitor -n <count>`.
 
+If the page is only a marketing/landing page with a "View jobs" link, do not use the
+landing URL as the board. Follow the link and use the actual listings URL (for example
+`jobs.lever.co/<company>` or `boards.greenhouse.io/<company>`).
+
 If the page is JS-rendered and shows 0 listings, use the job count from web search results
 (e.g., LinkedIn, Glassdoor) as an approximation. If there are genuinely no open positions,
 reject with `ws reject --reason no-open-positions --message "..."`.
@@ -26,6 +30,7 @@ Starting from the company's careers page, look for:
 
 The issue URL is a starting point, not a scope constraint.
 **Note ALL distinct board URLs found.**
+Only add URLs that are actual listing boards (or listings feeds), not informational pages.
 
 ## Add each board
 

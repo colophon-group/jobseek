@@ -2,6 +2,10 @@
 
 **Board {board_progress}**: `{board_url}`
 
+Before selecting a monitor, confirm this URL is an actual listings board.
+If it is only a landing page that links to jobs elsewhere, go back to Step 2,
+add the real listings URL as a board, and continue on that board.
+
 ## Known ATS? Select directly
 
 If the board URL matches a known ATS (see the table in the previous step), select it
@@ -22,6 +26,9 @@ ws run monitor
    Some ATS providers have multiple API versions or regional variants.
 4. **Check `ws help monitor <type>`** for config options and troubleshooting
 5. **Run `ws task troubleshoot '<error summary>'`** for escalation guidance
+
+If the error indicates token/ID extraction failed from a non-ATS URL, the board URL is
+likely wrong for that monitor. Add/select the real ATS board URL first, then retry.
 
 A known ATS URL does not guarantee the expected API is available. APIs change,
 feeds get deprecated, and regional variants may use different endpoints.

@@ -199,6 +199,43 @@ class TestAddBoard:
         assert "already prefixed" in result.output
 
 
+class TestDelBoard:
+    def test_del_board_repairs_workflow_pointer(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        ws_obj = Workspace(slug="test", active_board="careers")
+        save_workspace(ws_obj)
+        save_board("test", Board(alias="careers", slug="test-careers", url="https://test.com/jobs"))
+        save_board(
+            "test",
+            Board(
+                alias="careers-lever", slug="test-careers-lever", url="https://jobs.lever.co/test"
+            ),
+        )
+
+        from src.workspace.workflow import WorkflowState, _load_wf_from_disk, _save_wf_to_disk
+
+        _save_wf_to_disk(
+            "test",
+            WorkflowState(
+                current_step="select_monitor",
+                current_board="careers",
+                completed_boards=["careers"],
+            ),
+        )
+
+        runner = CliRunner()
+        result = runner.invoke(ws, ["del", "test", "board", "test", "careers"])
+        assert result.exit_code == 0
+        assert "Removed board 'careers'" in result.output
+
+        updated_ws = load_workspace("test")
+        assert updated_ws.active_board == "careers-lever"
+
+        wf = _load_wf_from_disk("test")
+        assert wf.current_board == "careers-lever"
+        assert "careers" not in wf.completed_boards
+
+
 class TestUseBoard:
     def test_use_slug_and_board(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
@@ -1793,6 +1830,36 @@ class TestSubmitLastError:
 
 class TestBuildPrBody:
     """Test PR body generation."""
+
+    def test_image_preview_uses_commit_sha_url(self, tmp_path, monkeypatch):
+        from src.workspace.commands.lifecycle import _build_pr_body
+
+        _patch_all(monkeypatch, tmp_path)
+        ws_obj = Workspace(
+            slug="test", name="Test Corp", website="https://test.com", issue=1, pr=10
+        )
+        board = Board(alias="careers", slug="test-careers", url="https://test.com/jobs")
+
+        img_dir = tmp_path / "images" / "test"
+        img_dir.mkdir(parents=True)
+        (img_dir / "logo.png").write_bytes(b"PNG")
+        (img_dir / "icon.svg").write_text("<svg></svg>")
+
+        monkeypatch.setattr(
+            "src.workspace.git.repo_name_with_owner", lambda: "colophon-group/jobseek"
+        )
+        monkeypatch.setattr("src.workspace.git.current_commit", lambda: "abc123def")
+
+        body = _build_pr_body(ws_obj, [board])
+
+        assert (
+            "https://raw.githubusercontent.com/colophon-group/jobseek/abc123def/"
+            "apps/crawler/data/images/test/logo.png"
+        ) in body
+        assert (
+            "https://raw.githubusercontent.com/colophon-group/jobseek/abc123def/"
+            "apps/crawler/data/images/test/icon.svg"
+        ) in body
 
     def test_includes_quality_and_configs(self, tmp_path, monkeypatch):
         from src.workspace.commands.lifecycle import _build_pr_body

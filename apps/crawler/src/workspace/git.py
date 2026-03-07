@@ -348,6 +348,12 @@ def current_branch() -> str:
     return result.stdout.strip()
 
 
+def current_commit() -> str:
+    """Return the current git commit SHA."""
+    result = _run(["git", "rev-parse", "HEAD"])
+    return result.stdout.strip()
+
+
 def has_uncommitted_changes(paths: list[str] | None = None) -> bool:
     """Check if there are staged or unstaged changes (optionally scoped to paths)."""
     args = ["git", "status", "--porcelain"]

@@ -28,6 +28,8 @@ Run `ws resume` to diagnose and retry.
 
 ## When done
 
+`ws submit` does not auto-advance the task workflow. Advance it explicitly:
+
 ```bash
 ws task next --notes "<any issues during submit, or 'none'>"
 ```

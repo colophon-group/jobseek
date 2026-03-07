@@ -38,6 +38,7 @@ All workspace commands use the `ws` CLI tool (`alias ws='uv run ws'`). See AGENT
    - URL validation is advisory — values are always saved
 
 4. **Add board and probe monitors**: `ws add board <alias> --url <board-url>` then `ws probe`
+   - The board URL must be the actual listings source (ATS board/feed), not a marketing careers landing page
    - Probe tries all monitor types and reports results with suggested configs
    - See [04 — Monitors and Scrapers](./04-monitors-and-scrapers.md) for details
 
@@ -57,6 +58,7 @@ All workspace commands use the `ws` CLI tool (`alias ws='uv run ws'`). See AGENT
 
 7. **Record feedback**: `ws feedback --title clean --description clean --verdict good`
    - Mandatory before submit — quality gates enforce this
+   - `description` is expected to be HTML; markup alone is not a quality issue
    - Verdict options: `good`, `acceptable`, `poor` (submit with `--force`), `unusable` (cannot submit)
    - If verdict is `poor` or `unusable`: `ws reject-config <name> --reason "..."` and try another config
 
@@ -70,7 +72,8 @@ All workspace commands use the `ws` CLI tool (`alias ws='uv run ws'`). See AGENT
 9. **Submit**: `ws submit [--summary "..."] [--force]` — runs quality gates, writes CSV,
    validates, commits, pushes, posts crawl stats + transcript on PR, marks PR ready, posts
    completion on issue. Submit is checkpoint-based — if it fails partway, use `ws resume` to
-   diagnose and re-run. CI handles labeling and merging (see [05 — Auto-Merge](./05-auto-merge.md)).
+   diagnose and re-run. Then advance task state with `ws task next --notes "..."`
+   (and later `ws task complete`). CI handles labeling and merging (see [05 — Auto-Merge](./05-auto-merge.md)).
 
 ## Verification and Iteration
 

@@ -25,6 +25,7 @@ jobs:
         with:
           ref: ${{ github.head_ref || github.ref }}
           token: ${{ github.token }}
+          fetch-depth: 0
 
       - uses: astral-sh/setup-uv@v7
 
@@ -55,6 +56,7 @@ jobs:
 
       - name: Post image preview comment
         if: github.event_name == 'pull_request'
+        continue-on-error: true
         uses: actions/github-script@v7
         with:
           script: |

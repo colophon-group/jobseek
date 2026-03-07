@@ -601,3 +601,17 @@ def del_board(slug_or_alias: str, alias: str | None):
             out.plain("board", f"Active board switched to: {ws.active_board}")
         else:
             out.plain("board", "No boards remaining")
+
+    # Keep task workflow pointer consistent after board removal.
+    from src.workspace.workflow import _load_wf_from_disk, _save_wf_to_disk
+
+    wf = _load_wf_from_disk(slug)
+    changed = False
+    if wf.current_board == alias:
+        wf.current_board = ws.active_board or None
+        changed = True
+    if alias in wf.completed_boards:
+        wf.completed_boards = [a for a in wf.completed_boards if a != alias]
+        changed = True
+    if changed:
+        _save_wf_to_disk(slug, wf)

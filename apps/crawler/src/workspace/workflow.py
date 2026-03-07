@@ -350,6 +350,33 @@ def _load_wf_from_disk(slug: str) -> WorkflowState:
     return WorkflowState.from_dict(data)
 
 
+def _resolve_active_board(
+    wf: WorkflowState,
+    boards: list[Board],
+) -> tuple[Board | None, str | None]:
+    """Resolve a valid current board for per-board steps.
+
+    Self-heals stale state when ``wf.current_board`` points to a deleted board.
+    Preference order:
+    1) existing current_board (if still present)
+    2) next uncompleted board
+    3) first available board
+    """
+    if not boards:
+        return None, None
+
+    by_alias = {b.alias: b for b in boards}
+    if wf.current_board and wf.current_board in by_alias:
+        return by_alias[wf.current_board], wf.current_board
+
+    next_board = _next_uncompleted_board(boards, wf.completed_boards)
+    if next_board:
+        return next_board, next_board.alias
+
+    fallback = boards[0]
+    return fallback, fallback.alias
+
+
 def resolve_current_step(
     slug: str,
 ) -> tuple[StepDef, Workspace, list[Board], WorkflowState, Board | None]:
@@ -372,11 +399,11 @@ def resolve_current_step(
 
     # Resolve the active board for per_board steps
     board: Board | None = None
-    if step.phase == "per_board" and wf.current_board:
-        for b in boards:
-            if b.alias == wf.current_board:
-                board = b
-                break
+    if step.phase == "per_board":
+        board, resolved_alias = _resolve_active_board(wf, boards)
+        if resolved_alias != wf.current_board:
+            wf.current_board = resolved_alias
+            _save_wf_to_disk(slug, wf)
 
     return step, ws, boards, wf, board
 
@@ -401,16 +428,19 @@ def advance(slug: str, notes: str) -> tuple[StepDef | None, str]:
 
     # Resolve active board
     board: Board | None = None
-    if current.phase == "per_board" and wf.current_board:
-        for b in boards:
-            if b.alias == wf.current_board:
-                board = b
-                break
+    repaired_board_pointer = False
+    if current.phase == "per_board":
+        board, resolved_alias = _resolve_active_board(wf, boards)
+        if resolved_alias != wf.current_board:
+            wf.current_board = resolved_alias
+            repaired_board_pointer = True
 
     # Check the gate
     if current.gate_type == "state":
         passed, reason = check_gate(current, ws, boards, board)
         if not passed:
+            if repaired_board_pointer:
+                _save_wf_to_disk(slug, wf)
             return current, f"Cannot advance: {reason}"
 
     # Record reflection
@@ -480,23 +510,33 @@ def _find_next(
     if current.phase == "per_board":
         # Try next per-board step for current board
         idx = next((i for i, s in enumerate(per_board_steps) if s.id == current.id), -1)
-        current_board = None
-        if wf.current_board:
-            for b in boards:
-                if b.alias == wf.current_board:
-                    current_board = b
-                    break
+        by_alias = {b.alias: b for b in boards}
+        current_alias = wf.current_board if wf.current_board in by_alias else None
+
+        if current_alias is None:
+            fallback_board = _next_uncompleted_board(boards, wf.completed_boards)
+            if fallback_board is None:
+                if final_steps:
+                    return final_steps[0], None
+                return None, None
+            current_alias = fallback_board.alias
+
+        current_board = by_alias.get(current_alias)
+        if current_board is None:
+            if final_steps:
+                return final_steps[0], None
+            return None, None
 
         # Look for next applicable step in this board
         for next_idx in range(idx + 1, len(per_board_steps)):
             candidate = per_board_steps[next_idx]
             if current_board and should_skip(candidate, current_board):
                 continue
-            return candidate, wf.current_board
+            return candidate, current_alias
 
         # Finished this board — mark it completed, find next board
-        if wf.current_board and wf.current_board not in wf.completed_boards:
-            wf.completed_boards.append(wf.current_board)
+        if current_alias and current_alias not in wf.completed_boards:
+            wf.completed_boards.append(current_alias)
 
         next_board = _next_uncompleted_board(boards, wf.completed_boards)
         if next_board:

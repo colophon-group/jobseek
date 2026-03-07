@@ -21,6 +21,7 @@ ws run scraper    # for scraper-based monitors
 
 - **Titles** are real job titles (not garbled, truncated, or placeholder text)
 - **Descriptions** contain meaningful content (not empty HTML or boilerplate)
+  HTML markup is expected for this field; do not mark it noisy just because tags are present
 - **Locations** are actual place names (not codes, IDs, or "+2 more" truncations)
 - A populated field is NOT necessarily correct — verify actual text makes sense
 

@@ -480,9 +480,9 @@ def _build_pr_body(ws: Workspace, boards: list[Board]) -> str:
 
         try:
             repo = git.repo_name_with_owner()
-            branch = ws.branch or git.current_branch()
+            commit = git.current_commit()
             img_base = (
-                f"https://raw.githubusercontent.com/{repo}/{branch}"
+                f"https://raw.githubusercontent.com/{repo}/{commit}"
                 f"/apps/crawler/data/images/{ws.slug}"
             )
             logo_files = list(img_dir.glob("logo.*"))
@@ -880,6 +880,7 @@ def submit(slug: str | None, summary: str | None, force: bool):
     action_log.append(ws_log_path(slug), "submit", True, log_msg)
 
     out.info("workspace", "Submit complete")
+    out.next_step('ws task next --notes "<any issues during submit, or none>"')
 
 
 # ── Resume ────────────────────────────────────────────────────────────
