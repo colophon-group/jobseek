@@ -34,6 +34,7 @@ def _gh_repo_flag() -> list[str]:
 
 
 _MANAGED_REPO = Path.home() / ".jobseek" / "repo"
+_WORKTREES_DIR = Path.home() / ".jobseek" / "worktrees"
 
 
 def _managed_repo_url() -> str:
@@ -213,6 +214,31 @@ def sync_branch_with_main(branch: str) -> None:
     raise WorkspaceError(
         "Non-CSV merge conflicts detected in the managed clone. "
         "Run with --reset to purge and re-clone."
+    )
+
+
+def worktrees_dir() -> Path:
+    """Return the worktrees directory."""
+    return _WORKTREES_DIR
+
+
+def create_worktree(branch: str, path: Path, start_point: str = "origin/main") -> None:
+    """Create a git worktree at *path* on a new *branch* from *start_point*."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    _run(
+        ["git", "worktree", "add", str(path), "-b", branch, start_point],
+        cwd=_MANAGED_REPO,
+    )
+
+
+def remove_worktree(path: Path) -> None:
+    """Remove a git worktree."""
+    if not path.exists():
+        return
+    _run(
+        ["git", "worktree", "remove", str(path), "--force"],
+        cwd=_MANAGED_REPO,
+        check=False,
     )
 
 

@@ -242,6 +242,9 @@ class Workspace:
     # Submit checkpoint for idempotent retry
     submit_state: dict[str, Any] = field(default_factory=dict)
 
+    # Worktree path (empty = legacy single-checkout mode)
+    worktree: str = ""
+
     # Last error from workspace-level commands
     last_error: dict[str, Any] = field(default_factory=dict)
 
@@ -253,15 +256,18 @@ class Workspace:
         )
 
     def to_dict(self) -> dict[str, Any]:
+        git: dict[str, Any] = {
+            "branch": self.branch,
+            "issue": self.issue,
+            "pr": self.pr,
+        }
+        if self.worktree:
+            git["worktree"] = self.worktree
         return {
             "version": 2,
             "slug": self.slug,
             "created_at": self.created_at,
-            "git": {
-                "branch": self.branch,
-                "issue": self.issue,
-                "pr": self.pr,
-            },
+            "git": git,
             "company": {
                 "name": self.name,
                 "website": self.website,
@@ -283,6 +289,7 @@ class Workspace:
             branch=git.get("branch", ""),
             issue=git.get("issue"),
             pr=git.get("pr"),
+            worktree=git.get("worktree", ""),
             name=company.get("name", ""),
             website=company.get("website", ""),
             logo_url=company.get("logo_url", ""),
@@ -455,12 +462,39 @@ def delete_workspace(slug: str) -> None:
 # ── Active workspace ──────────────────────────────────────────────────
 
 
+def _tty_suffix() -> str | None:
+    """Return a TTY-based suffix to scope the active pointer per terminal.
+
+    This lets multiple agents in separate terminals each have their own
+    active workspace without clobbering each other.
+    """
+    import os
+
+    try:
+        tty = os.ttyname(0)  # e.g. /dev/ttys003
+        return tty.rsplit("/", 1)[-1]
+    except (OSError, AttributeError):
+        return None
+
+
 def _active_path() -> Path:
+    suffix = _tty_suffix()
+    if suffix:
+        return get_workspace_dir() / f"active.{suffix}"
     return get_workspace_dir() / "active"
 
 
 def get_active_slug() -> str | None:
-    """Return the active workspace slug, or None if not set."""
+    """Return the active workspace slug, or None if not set.
+
+    Checks ``WS_ACTIVE`` env var first (allows concurrent agents in
+    separate terminals), then falls back to the ``active`` file.
+    """
+    import os
+
+    env = os.environ.get("WS_ACTIVE", "").strip()
+    if env and workspace_exists(env):
+        return env
     path = _active_path()
     if path.exists():
         slug = path.read_text().strip()

@@ -97,12 +97,14 @@ def new(slug: str, issue: int, reset: bool):
             out.die(f"PR #{pr['number']}: {pr['title']}")
         out.info("github", f"No open PRs for issue #{issue}")
 
-        # Create branch from latest origin/main to avoid inheriting
-        # commits from a previously submitted company branch
+        # Create a worktree for this workspace so multiple agents
+        # can work on different companies concurrently.
         git.fetch()
         main = git.get_main_branch()
-        git.create_branch(branch, start_point=f"origin/{main}")
-        out.plain("git", f"Created branch {branch} (from origin/{main})")
+        worktree_path = git.worktrees_dir() / slug
+        git.create_worktree(branch, worktree_path, start_point=f"origin/{main}")
+        set_repo_root(worktree_path)
+        out.plain("git", f"Created worktree at {worktree_path} (branch {branch})")
 
     # Add stub CSV row
     from src.csvtool import company_add
@@ -129,12 +131,14 @@ def new(slug: str, issue: int, reset: bool):
         out.info("github", f'Created draft PR #{pr_number} — "Add {slug}" (closes #{issue})')
 
     # Create workspace
+    worktree_str = "" if local else str(git.worktrees_dir() / slug)
     ws = Workspace(
         slug=slug,
         created_at=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         branch=branch,
         issue=issue,
         pr=pr_number,
+        worktree=worktree_str,
     )
     save_workspace(ws)
 
@@ -289,13 +293,18 @@ def del_(slug: str | None):
     except CsvToolError:
         out.warn("csv", f"Company {slug!r} not found in CSV (may not have been added)")
 
-    # Delete branch
+    # Remove worktree and delete branch
     if ws.branch:
         if local:
             out.warn("git", f"Local mode — skipping branch {ws.branch} deletion")
         else:
+            from pathlib import Path
+
             from src.workspace import git
 
+            if ws.worktree:
+                git.remove_worktree(Path(ws.worktree))
+                out.info("git", f"Removed worktree {ws.worktree}")
             git.delete_branch(ws.branch, remote=True)
             out.info("git", f"Deleted branch {ws.branch}")
 

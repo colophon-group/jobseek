@@ -183,6 +183,14 @@ async def fetch_page_text(
 
 def _build_comment(name: str, metadata: dict) -> str:
     """Build a human-readable comment from probe metadata."""
+    if name == "bite":
+        key = metadata.get("key", "?")
+        customer = metadata.get("customer")
+        jobs = metadata.get("jobs")
+        label = f"customer: {customer}" if customer else f"key: {key[:12]}..."
+        if jobs is not None:
+            return f"BITE API \u2014 {label}, {jobs} jobs"
+        return f"BITE API \u2014 {label}"
     if name == "ashby":
         token = metadata.get("token", "?")
         jobs = metadata.get("jobs")
@@ -231,6 +239,27 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"SmartRecruiters API \u2014 token: {token}, {jobs} jobs"
         return f"SmartRecruiters API \u2014 token: {token}"
+    if name == "softgarden":
+        slug = metadata.get("slug", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"Softgarden \u2014 slug: {slug}, {jobs} jobs"
+        return f"Softgarden \u2014 slug: {slug}"
+    if name == "umantis":
+        cname = metadata.get("cname")
+        cid = metadata.get("customer_id", "?")
+        region = metadata.get("region", "")
+        jobs = metadata.get("jobs")
+        label = f"CNAME: {cname}" if cname else f"ID: {cid}" + (f" ({region})" if region else "")
+        if jobs is not None:
+            return f"Umantis \u2014 {label}, {jobs} jobs"
+        return f"Umantis \u2014 {label}"
+    if name == "traffit":
+        slug = metadata.get("slug", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"TRAFFIT API \u2014 slug: {slug}, {jobs} jobs"
+        return f"TRAFFIT API \u2014 slug: {slug}"
     if name == "recruitee":
         slug = metadata.get("slug", "?")
         api_base = metadata.get("api_base", "")
@@ -354,6 +383,7 @@ async def probe_all_monitors(
 from src.core.monitors import (  # noqa: E402
     api_sniffer,  # noqa: F401
     ashby,  # noqa: F401
+    bite,  # noqa: F401
     dom,  # noqa: F401
     dvinci,  # noqa: F401
     greenhouse,  # noqa: F401
@@ -367,6 +397,9 @@ from src.core.monitors import (  # noqa: E402
     rss,  # noqa: F401
     sitemap,  # noqa: F401
     smartrecruiters,  # noqa: F401
+    softgarden,  # noqa: F401
+    traffit,  # noqa: F401
+    umantis,  # noqa: F401
     workable,  # noqa: F401
     workday,  # noqa: F401
 )

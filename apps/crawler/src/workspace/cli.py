@@ -168,12 +168,39 @@ def _detect_repo_root() -> Path | None:
     return None
 
 
+def _pivot_to_worktree() -> None:
+    """If the active workspace has a worktree, pivot repo_root to it.
+
+    Called after initial repo root detection so that .workspace/ state
+    is findable, then re-points repo_root to the worktree for CSV/git
+    operations.  This lets multiple agents work concurrently on
+    different workspaces without clashing.
+    """
+    from src.shared.constants import set_repo_root
+    from src.workspace.state import get_active_slug, load_workspace
+
+    slug = get_active_slug()
+    if not slug:
+        return
+    try:
+        ws_obj = load_workspace(slug)
+    except FileNotFoundError:
+        return
+    if ws_obj.worktree:
+        wt = Path(ws_obj.worktree)
+        if (wt / "apps" / "crawler" / "data").exists():
+            set_repo_root(wt)
+
+
 def main():
     from src.shared.constants import set_repo_root
 
     repo_root = _detect_repo_root()
     if repo_root:
         set_repo_root(repo_root)
+
+    # Late-init: pivot to the active workspace's worktree (if any)
+    _pivot_to_worktree()
 
     try:
         ws(standalone_mode=False)

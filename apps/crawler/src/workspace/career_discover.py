@@ -97,6 +97,12 @@ _ATS_URL_RE = re.compile(
     r"|[\w-]+\.wd\d+\.myworkdayjobs\.com(?:/[\w-]+)?"
     # d.vinci
     r"|[\w-]+\.dvinci-hr\.com"
+    # Softgarden
+    r"|[\w-]+\.softgarden\.io"
+    # TRAFFIT
+    r"|[\w-]+\.traffit\.com"
+    # Umantis
+    r"|recruitingapp-\d+(?:\.\w+)?\.umantis\.com"
     # Teamtailor
     r"|(?:career|jobs?)\.[\w-]+\.teamtailor\.com"
     # SAP SuccessFactors

@@ -13,6 +13,7 @@ from __future__ import annotations
 _RICH_MONITORS: frozenset[str] = frozenset(
     {
         "ashby",
+        "bite",
         "dvinci",
         "greenhouse",
         "hireology",
@@ -22,6 +23,8 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "rippling",
         "rss",
         "smartrecruiters",
+        "softgarden",
+        "traffit",
         "workable",
         "workday",
     }
@@ -33,6 +36,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
 
 _ALL_MONITOR_TYPES: frozenset[str] = _RICH_MONITORS | {
     "personio",
+    "umantis",
     "sitemap",
     "nextdata",
     "dom",
@@ -86,6 +90,14 @@ def detect_ats_from_url(url: str) -> str | None:
         return "hireology"
     if host.endswith(".dvinci-hr.com"):
         return "dvinci"
+    if host.endswith(".softgarden.io"):
+        return "softgarden"
+    if host.endswith(".traffit.com"):
+        return "traffit"
+
+    # Umantis — recruitingapp-{ID}[.de|.ch].umantis.com
+    if host.endswith(".umantis.com"):
+        return "umantis"
 
     # Teamtailor — career sites on *.teamtailor.com
     if host.endswith(".teamtailor.com"):

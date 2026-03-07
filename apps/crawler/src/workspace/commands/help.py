@@ -32,6 +32,7 @@ Monitor Types (cheapest first):
   Type              Cost    Returns         Scraper needed?
   ────────────────────────────────────────────────────────
   ashby             10      Full job data   No (skipped)
+  bite              10      Full job data   No (skipped)
   dvinci            10      Full job data   No (skipped)
   greenhouse        10      Full job data   No (skipped)
   hireology         10      Full job data   No (skipped)
@@ -39,6 +40,9 @@ Monitor Types (cheapest first):
   recruitee         10      Full job data   No (skipped)
   rippling          10      Full job data   No (skipped)
   smartrecruiters   10      Full job data   No (skipped)
+  softgarden        10      Full job data   No (skipped)
+  traffit           10      Full job data   No (skipped)
+  umantis           15      URL set         Yes
   workable          10      Full job data   No (skipped)
   workday           10      Full job data   No (skipped)
   pinpoint          10      Full job data   No (skipped)
@@ -103,6 +107,36 @@ Field importance:
   ws probe scraper                  Run scraper probe
   ws help scraper <type>            Detailed config reference
   ws help steps                     DOM scraper step format"""
+
+MONITOR_BITE = """\
+bite — BITE GmbH ATS (Job Search API, widget key auth)
+
+  Search: POST https://jobs.b-ite.com/api/v1/postings/search
+  Detail: GET  https://jobs.b-ite.com/jobposting/{hash}/json
+  Returns:  Full job data (title, HTML description, locations, employment_type,
+            date_posted, base_salary)
+            metadata: reference, employer
+  Scraper:  Not needed (API returns full data, scraper step is skipped)
+  Cap:      10,000 jobs
+  Note:     N+1 API calls (1 paginated search + N detail requests, concurrency=10).
+            Requires a 40-char hex "Job Listing Key" embedded in widget JS.
+            Key is extracted from listing JS at cs-assets.b-ite.com.
+            6,500+ customers in DACH. Pitchman portals (multi-employer
+            aggregators like jobs.drk.de) are NOT handled — out of scope.
+
+  Config:
+    {"key": "9d6d3e33a4d7cc7c319d0ccb38cf695f6c3c4172"}
+    {"key": "...", "locale": "en", "channel": 0}
+
+    key       40-char hex API key. Auto-filled by ws probe from:
+              1. Page HTML scan for data-bite-jobs-api-listing widget attribute
+              2. Listing JS fetch from cs-assets.b-ite.com/{customer}/jobs-api/
+              3. Key extraction from createClient({key: ...}) pattern
+    locale    API locale for job content (default: "de")
+    channel   API channel parameter (default: 0)
+
+  Detection:  ws probe shows "BITE API — customer: X, N jobs"
+  Zero jobs?  Verify key — the listing JS may have changed format"""
 
 MONITOR_DVINCI = """\
 dvinci — d.vinci ATS (Public JSON API, no auth)
@@ -370,6 +404,92 @@ smartrecruiters — SmartRecruiters Posting API
 
   Detection:  ws probe shows "SmartRecruiters API — token: X, N jobs"
   Zero jobs?  Verify token — try the API URL directly in a browser"""
+
+MONITOR_SOFTGARDEN = """\
+softgarden — Softgarden ATS (HTML scraping, no auth)
+
+  Listing:  GET https://{slug}.softgarden.io
+  Detail:   GET https://{slug}.softgarden.io/job/{id}?l=en
+  Returns:  Full job data (title, HTML description, locations, employment_type,
+            date_posted, base_salary) via JSON-LD on detail pages
+  Scraper:  Not needed (JSON-LD returns full data, scraper step is skipped)
+  Cap:      10,000 jobs
+  Note:     N+1 HTTP calls (1 listing + N detail pages, concurrency=10).
+            Listing page embeds job IDs in inline JavaScript.
+            Detail pages contain JSON-LD JobPosting schema.
+            Zero-value salaries (0/0) are automatically skipped.
+            Largest uncovered ATS in DACH (~2,000+ customers).
+
+  Config:
+    {"slug": "hapaglloyd"}
+    {"slug": "hapaglloyd", "job_url_pattern": "{base}/job/{id}?l=de"}
+
+    slug             Customer subdomain. Auto-filled by ws probe from:
+                     1. Direct URL ({slug}.softgarden.io)
+                     2. Page HTML scan for Softgarden markers
+                        (softgarden.io/assets/, tracker.softgarden.de,
+                        matomo.softgarden.io, powered by softgarden)
+                     No blind slug probe — subdomains are custom names.
+    job_url_pattern  URL pattern for detail pages (optional).
+                     Default: {base}/job/{id}?l=en
+                     Change ?l=de for German-language pages.
+
+  Detection:  ws probe shows "Softgarden — slug: X, N jobs"
+  Zero jobs?  Verify slug — visit https://{slug}.softgarden.io directly"""
+
+MONITOR_TRAFFIT = """\
+traffit — TRAFFIT ATS (Public JSON API, no auth)
+
+  API:      GET https://{slug}.traffit.com/public/job_posts/published
+  Headers:  X-Request-Page-Size, X-Request-Current-Page (pagination)
+  Returns:  Full job data (title, HTML description, locations, employment_type,
+            job_location_type, date_posted, base_salary, language)
+            extras: requirements, responsibilities, benefits (HTML)
+            metadata: reference, department
+  Scraper:  Not needed (API returns full data, scraper step is skipped)
+  Cap:      10,000 jobs
+  Note:     API is fully public — no authentication required.
+            Primarily Poland/CEE region.
+
+  Config:
+    {"slug": "mycompany"}
+
+    slug     Customer subdomain. Auto-filled by ws probe from:
+             1. Direct URL ({slug}.traffit.com)
+             2. Page HTML scan for TRAFFIT markers (cdn3.traffit.com,
+                traffit-an-list, data-name="traffit")
+             No blind slug probe — subdomains are custom names.
+
+  Detection:  ws probe shows "TRAFFIT API — slug: X, N jobs"
+  Zero jobs?  Verify slug — try the API URL directly in a browser"""
+
+MONITOR_UMANTIS = """\
+umantis — Umantis ATS (Haufe Group / Abacus)
+
+  Listing:  GET https://recruitingapp-{ID}[.de].umantis.com/Jobs/All
+  Returns:  URL set only (needs scraper)
+  Cap:      10,000 URLs
+  Note:     Paginated HTML listing pages (10 per page).
+            Pagination via tc{tableNr}=p{page} query params.
+            1,000+ customers in DACH (Switzerland, Germany, Austria).
+            Each customer has a unique HTML template on detail pages —
+            no shared structured data (no JSON-LD).
+
+  Config:
+    {"customer_id": "2698"}
+    {"customer_id": "5181", "region": "de"}
+
+    customer_id  Numeric customer ID from URL. Auto-filled by ws probe from:
+                 1. Direct URL (recruitingapp-{ID}[.de].umantis.com)
+                 2. Page HTML scan for Umantis markers
+                 No blind probe — customer IDs are numeric, not derivable.
+    region       Subdomain region: "" for .umantis.com, "de" for
+                 .de.umantis.com. Auto-filled from URL.
+    listing_path Override listing page path (default: /Jobs/All)
+
+  Detection:  ws probe shows "Umantis — ID: X, N jobs"
+  Zero jobs?  Verify customer_id — visit the listing URL directly
+  Pair with:  json-ld (try first) or dom scraper"""
 
 MONITOR_RIPPLING = """\
 rippling — Rippling ATS Job Board API
@@ -1080,6 +1200,7 @@ Troubleshooting:
 # ── Lookup tables ────────────────────────────────────────────────────────
 
 MONITOR_CARDS: dict[str, str] = {
+    "bite": MONITOR_BITE,
     "dvinci": MONITOR_DVINCI,
     "greenhouse": MONITOR_GREENHOUSE,
     "hireology": MONITOR_HIREOLOGY,
@@ -1088,6 +1209,9 @@ MONITOR_CARDS: dict[str, str] = {
     "recruitee": MONITOR_RECRUITEE,
     "rippling": MONITOR_RIPPLING,
     "smartrecruiters": MONITOR_SMARTRECRUITERS,
+    "softgarden": MONITOR_SOFTGARDEN,
+    "traffit": MONITOR_TRAFFIT,
+    "umantis": MONITOR_UMANTIS,
     "workable": MONITOR_WORKABLE,
     "workday": MONITOR_WORKDAY,
     "pinpoint": MONITOR_PINPOINT,
