@@ -43,7 +43,9 @@ jobs:
 
       - name: Rebase and resolve CSV conflicts
         id: rebase
-        if: steps.images.outputs.pending == 'false' && contains(steps.label.outputs.labels, 'auto-merge')
+        if: >-
+          steps.images.outputs.pending == 'true'
+          || contains(steps.label.outputs.labels, 'auto-merge')
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
@@ -100,7 +102,7 @@ jobs:
           echo "rebased=true" >> "$GITHUB_OUTPUT"
 
       - name: Merge
-        if: steps.rebase.outputs.rebased == 'true'
+        if: steps.rebase.outputs.rebased == 'true' && steps.images.outputs.pending == 'false'
         run: |
           gh pr merge "$PR" --repo "$REPO" --rebase
         env:
@@ -109,7 +111,7 @@ jobs:
           REPO: ${{ github.repository }}
 
       - name: Close linked company-request issues
-        if: steps.rebase.outputs.rebased == 'true'
+        if: steps.rebase.outputs.rebased == 'true' && steps.images.outputs.pending == 'false'
         run: .github/scripts/close-linked-company-request-issues.sh
         env:
           GH_TOKEN: ${{ github.token }}
