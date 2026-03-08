@@ -41,3 +41,5 @@ twitch,twitch-careers,https://job-boards.greenhouse.io/twitch,greenhouse,"{""tok
 unlimit,unlimit-careers-lever,https://jobs.lever.co/unlimit,lever,,,
 white-circle,white-circle-careers,https://jobs.ashbyhq.com/whitecircle,ashby,"{""token"": ""whitecircle""}",,
 zalando,zalando-workday,https://zalando.wd3.myworkdayjobs.com/ZalandoSiteWD,workday,,,
+playnvoice,playnvoice-careers,https://join.com/companies/playnvoice,sitemap,"{""sitemap_url"": ""https://join.com/companies/playnvoice/sitemap.xml"", ""url_filter"": ""/companies/playnvoice/\d+-""}",json-ld,
+vivid-money,vivid-money-careers,https://careers.vivid.money,personio,"{""slug"": ""vivid"", ""language"": ""en""}",,
