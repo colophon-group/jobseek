@@ -1,4 +1,5 @@
 slug,name,website,logo_url,icon_url
+brainrocket,BrainRocket,https://www.brainrocket.com,,
 cloudflare,Cloudflare,https://www.cloudflare.com,https://jobseek-assets.colophon-group.org/companies/cloudflare/logo.svg,https://jobseek-assets.colophon-group.org/companies/cloudflare/icon.png
 constructor-tech,Constructor,https://constructor.tech,https://jobseek-assets.colophon-group.org/companies/constructor-tech/logo.svg,https://jobseek-assets.colophon-group.org/companies/constructor-tech/icon.ico
 databricks,Databricks,https://www.databricks.com,https://jobseek-assets.colophon-group.org/companies/databricks/logo.png,https://jobseek-assets.colophon-group.org/companies/databricks/icon.png
@@ -27,4 +28,3 @@ twitch,Twitch,https://www.twitch.tv,https://jobseek-assets.colophon-group.org/co
 unlimit,Unlimit,https://www.unlimit.com,https://jobseek-assets.colophon-group.org/companies/unlimit/logo.svg,https://jobseek-assets.colophon-group.org/companies/unlimit/icon.png
 white-circle,White Circle,https://whitecircle.ai,https://jobseek-assets.colophon-group.org/companies/white-circle/logo.svg,https://jobseek-assets.colophon-group.org/companies/white-circle/icon.png
 zalando,Zalando,https://corporate.zalando.com,https://jobseek-assets.colophon-group.org/companies/zalando/logo.svg,https://jobseek-assets.colophon-group.org/companies/zalando/icon.png
-brainrocket,,,,
