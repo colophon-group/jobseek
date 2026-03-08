@@ -135,7 +135,26 @@ jobs:
 
       - name: Enable auto-merge
         if: github.event_name == 'pull_request' && contains(steps.label.outputs.labels, 'auto-merge')
-        run: gh pr merge "$PR" --repo "$REPO" --auto --rebase
+        run: |
+          set -euo pipefail
+
+          # Preferred path: let GitHub auto-merge once requirements are met.
+          output=$(gh pr merge "$PR" --repo "$REPO" --auto --rebase 2>&1) && {
+            echo "$output"
+            exit 0
+          }
+          status=$?
+          echo "$output"
+
+          # Fallback: some repos don't have branch protection, so --auto is unsupported.
+          # In that case, wait for checks to finish and merge directly.
+          if echo "$output" | grep -q "Protected branch rules not configured"; then
+            gh pr checks "$PR" --repo "$REPO" --watch --fail-fast
+            gh pr merge "$PR" --repo "$REPO" --rebase
+            exit 0
+          fi
+
+          exit "$status"
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
