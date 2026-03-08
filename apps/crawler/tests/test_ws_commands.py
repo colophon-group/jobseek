@@ -6,6 +6,7 @@ Mocks git/gh operations since these tests run without a real repo.
 
 from __future__ import annotations
 
+import json
 from contextlib import ExitStack
 from dataclasses import dataclass
 from types import SimpleNamespace
@@ -219,6 +220,105 @@ class TestSet:
         assert result.exit_code == 0
         board = load_board("test", "careers")
         assert board.job_link_pattern == r"^https?://test\.com/jobs/"
+
+    def test_set_logo_candidate_prefers_png_artifact(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(Workspace(slug="test"))
+
+        candidates_dir = tmp_path / ".ws" / "test" / "artifacts" / "company" / "logo-candidates"
+        candidates_dir.mkdir(parents=True, exist_ok=True)
+
+        original_path = candidates_dir / "candidate-1.svg"
+        png_path = candidates_dir / "candidate-1.png"
+        original_path.write_text("<svg></svg>")
+        png_path.write_bytes(b"png-preview")
+        (candidates_dir / "candidates.json").write_text(
+            json.dumps(
+                [
+                    {
+                        "index": 1,
+                        "url": "https://cdn.example.com/logo.svg",
+                        "artifact_path": str(original_path),
+                        "original_artifact_path": str(original_path),
+                        "png_artifact_path": str(png_path),
+                        "embedded": True,
+                    }
+                ]
+            )
+        )
+
+        monkeypatch.setattr("src.workspace.commands.config._check_image", lambda *_args: None)
+
+        runner = CliRunner()
+        result = runner.invoke(ws, ["set", "test", "--logo-candidate", "1"])
+        assert result.exit_code == 0
+        assert "Manual visual inspection required" in result.output
+
+        workspace = load_workspace("test")
+        assert workspace.logo_url == str(png_path)
+
+    def test_set_icon_candidate_falls_back_to_original_artifact(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(Workspace(slug="test"))
+
+        candidates_dir = tmp_path / ".ws" / "test" / "artifacts" / "company" / "logo-candidates"
+        candidates_dir.mkdir(parents=True, exist_ok=True)
+
+        original_path = candidates_dir / "candidate-1.svg"
+        missing_png_path = candidates_dir / "candidate-1.png"
+        original_path.write_text("<svg></svg>")
+        (candidates_dir / "candidates.json").write_text(
+            json.dumps(
+                [
+                    {
+                        "index": 1,
+                        "url": "https://cdn.example.com/icon.svg",
+                        "artifact_path": str(original_path),
+                        "original_artifact_path": str(original_path),
+                        "png_artifact_path": str(missing_png_path),
+                        "embedded": True,
+                    }
+                ]
+            )
+        )
+
+        monkeypatch.setattr("src.workspace.commands.config._check_image", lambda *_args: None)
+
+        runner = CliRunner()
+        result = runner.invoke(ws, ["set", "test", "--icon-candidate", "1"])
+        assert result.exit_code == 0
+
+        workspace = load_workspace("test")
+        assert workspace.icon_url == str(original_path)
+
+    def test_set_logo_candidate_uses_url_when_no_local_artifact(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(Workspace(slug="test"))
+
+        candidates_dir = tmp_path / ".ws" / "test" / "artifacts" / "company" / "logo-candidates"
+        candidates_dir.mkdir(parents=True, exist_ok=True)
+        (candidates_dir / "candidates.json").write_text(
+            json.dumps(
+                [
+                    {
+                        "index": 1,
+                        "url": "https://cdn.example.com/logo.png",
+                        "artifact_path": "",
+                        "original_artifact_path": "",
+                        "png_artifact_path": "",
+                    }
+                ]
+            )
+        )
+
+        monkeypatch.setattr("src.workspace.commands.config._check_image", lambda *_args: None)
+
+        runner = CliRunner()
+        result = runner.invoke(ws, ["set", "test", "--logo-candidate", "1"])
+        assert result.exit_code == 0
+
+        workspace = load_workspace("test")
+        assert workspace.logo_url == "https://cdn.example.com/logo.png"
 
 
 class TestAddBoard:

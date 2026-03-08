@@ -478,15 +478,22 @@ async def _blind_probe_all(
     """Probe all ATS APIs with a candidate slug."""
     from src.core.monitors import _build_comment, get_can_handle
 
+    def _jobs_count(value: object) -> int | None:
+        try:
+            return int(value)  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            return None
+
     async def _probe_one(name: str, url: str) -> CareerPageCandidate | None:
         try:
             handler = get_can_handle(name)
             result = await asyncio.wait_for(handler(url, client), timeout=15.0)
             if result is None:
                 return None
-            # For blind probes, require actual API verification — not just URL pattern match.
-            # Successful API calls include "jobs" in metadata; URL-only matches don't.
-            if "jobs" not in result:
+            # For blind probes, require an actually populated board to avoid
+            # speculative URL matches that return zero jobs.
+            jobs = _jobs_count(result.get("jobs"))
+            if jobs is None or jobs <= 0:
                 return None
             comment = _build_comment(name, result)
             return CareerPageCandidate(

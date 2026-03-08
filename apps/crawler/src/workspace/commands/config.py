@@ -112,6 +112,9 @@ def set_(
 
     save_workspace(ws)
 
+    if logo_url is not None or icon_url is not None:
+        _show_final_logo_inspection_reminder(slug)
+
     # Auto-discover brand assets + career pages when website is set but no logo/icon provided
     effective_website = website or ws.website
     if (
@@ -209,18 +212,22 @@ def _resolve_candidate(slug: str, index: int, role: str) -> str:
     # Find candidate by index
     for c in candidates:
         if c["index"] == index:
-            if c.get("embedded"):
-                # For embedded SVGs, use the artifact path as the URL
-                artifact_path = c.get("artifact_path", "")
-                if artifact_path:
-                    out.info(role, f"Selected candidate #{index} (embedded SVG): {artifact_path}")
-                    return artifact_path
-                out.die(f"Candidate #{index} has no artifact path")
+            png_artifact_path = str(c.get("png_artifact_path", "") or "")
+            original_artifact_path = str(
+                c.get("original_artifact_path", "") or c.get("artifact_path", "")
+            )
+            for label, path in (
+                ("PNG preview", png_artifact_path),
+                ("original artifact", original_artifact_path),
+            ):
+                if path and Path(path).exists():
+                    out.info(role, f"Selected candidate #{index} ({label}): {path}")
+                    return path
             url = c.get("url", "")
             if url:
                 out.info(role, f"Selected candidate #{index}: {url}")
                 return url
-            out.die(f"Candidate #{index} has no URL")
+            out.die(f"Candidate #{index} has no reachable artifact path or URL")
 
     out.die(f"Candidate #{index} not found. Available: {[c['index'] for c in candidates]}")
     return ""  # unreachable
@@ -296,6 +303,33 @@ def _candidate_paths(candidate: object) -> tuple[str, str]:
     return original, png
 
 
+def _show_candidate_inspection_reminder(candidate_dir: Path) -> None:
+    """Nudge agents to manually inspect PNG candidate previews."""
+    out.warn(
+        "logos",
+        "Manual visual inspection required: ws can rank/download candidates but cannot verify "
+        "brand correctness.",
+    )
+    out.plain("logos", "Inspect PNG previews before selecting candidates:")
+    out.plain("logos", f"  {candidate_dir}")
+    out.plain("logos", "  Use candidate-*.png files for visual checks.")
+
+
+def _show_final_logo_inspection_reminder(slug: str) -> None:
+    """Nudge agents to verify final logo/icon artifacts after ws set."""
+    from src.workspace.state import ws_dir
+
+    artifact_dir = ws_dir(slug) / "artifacts" / "company"
+    out.warn(
+        "logos",
+        "Manual visual inspection required: ws cannot confirm that selected assets are the "
+        "correct full logo and minified icon.",
+    )
+    out.plain("logos", "Verify final PNG artifacts before continuing:")
+    out.plain("logos", f"  {artifact_dir / 'logo.png'}")
+    out.plain("logos", f"  {artifact_dir / 'icon.png'}")
+
+
 def _show_logo_results(slug: str, html: str, final_url: str) -> None:
     """Discover logos from HTML, download artifacts, and display table."""
     from src.workspace.logo_discover import discover_logos, download_candidates
@@ -339,6 +373,7 @@ def _show_logo_results(slug: str, html: str, final_url: str) -> None:
         "logos",
         "Note: each candidate stores the original artifact and a PNG preview side-by-side.",
     )
+    _show_candidate_inspection_reminder(artifact_dir)
     print()
 
     out.plain("logos", "Verify candidates visually, then select (logo=full, icon=minified):")
@@ -475,6 +510,7 @@ def logos(slug: str | None):
         "logos",
         "Note: each candidate stores the original artifact and a PNG preview side-by-side.",
     )
+    _show_candidate_inspection_reminder(candidates_path.parent)
     print()
 
     out.plain("logos", "Select (logo=full, icon=minified):")

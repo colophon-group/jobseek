@@ -30,7 +30,7 @@ meta,meta-careers,https://www.metacareers.com/jobs,sitemap,,json-ld,
 nexthink,nexthink-careers,https://nexthink.com/company/careers/jobs,smartrecruiters,"{""token"": ""nexthink""}",,
 notion,notion-careers,https://jobs.ashbyhq.com/notion,ashby,"{""token"": ""notion""}",,
 perplexity-ai,perplexity-ai-careers,https://jobs.ashbyhq.com/perplexity,ashby,,,
-playnvoice,playnvoice-careers,https://join.com/companies/playnvoice,sitemap,"{""sitemap_url"": ""https://join.com/companies/playnvoice/sitemap.xml"", ""url_filter"": ""/companies/playnvoice/\\d+-""}",json-ld,
+playnvoice,playnvoice-careers,https://join.com/companies/playnvoice,join,"{""slug"": ""playnvoice"", ""description_paths"": [""props.pageProps.initialState.job.schemaDescription"", ""props.pageProps.initialState.job.unifiedDescription"", ""props.pageProps.initialState.job.description""]}",,
 proton,proton-careers,https://proton.me/careers,greenhouse,"{""token"": ""proton""}",,
 revolut,revolut-careers,https://www.revolut.com/careers/,nextdata,"{""path"": ""props.pageProps.positions"", ""url_template"": ""https://www.revolut.com/careers/apply/{id}"", ""render"": true}",nextdata,"{""path"": ""props.pageProps.position"", ""render"": true, ""fields"": {""title"": ""text"", ""description"": ""description"", ""locations"": ""locations[].name"", ""job_location_type"": ""locations[].type"", ""metadata.team"": ""team""}}"
 sonarsource,sonarsource-careers-lever,https://jobs.lever.co/sonarsource,lever,,,

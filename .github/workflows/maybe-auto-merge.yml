@@ -2,10 +2,12 @@ name: Maybe auto-merge
 
 on:
   pull_request:
-    types: [ready_for_review]
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
 
 jobs:
   label-and-merge:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     permissions:
       contents: write

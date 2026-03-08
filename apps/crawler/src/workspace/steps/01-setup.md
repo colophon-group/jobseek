@@ -18,6 +18,8 @@ ws set --name "<Company Name>" --website "<homepage URL>"
 
 **Visually verify each candidate artifact.** Read each file and confirm whether it's a
 real brand asset (not a banner, hero image, or unrelated graphic).
+Do not assume `ws` can evaluate this for you: it can discover/download candidates,
+but only manual visual inspection can confirm brand correctness.
 Candidate artifacts are saved as both the original file and a PNG preview in
 `artifacts/company/logo-candidates/`.
 

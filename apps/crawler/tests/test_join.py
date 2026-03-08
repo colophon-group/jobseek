@@ -37,6 +37,19 @@ def _join_page(items: list[dict], page: int = 1, page_count: int = 1) -> dict:
     }
 
 
+def _join_detail_page(job: dict) -> dict:
+    """Build a JOIN detail-page __NEXT_DATA__ blob."""
+    return {
+        "props": {
+            "pageProps": {
+                "initialState": {
+                    "job": job,
+                }
+            }
+        }
+    }
+
+
 SAMPLE_JOBS = [
     {
         "id": 101,
@@ -218,6 +231,72 @@ class TestDiscover:
         assert len(result) == 3
         titles = {j.title for j in result}
         assert titles == {"Job A", "Job B", "Job C"}
+
+    async def test_enriches_description_from_detail_page(self):
+        list_data = _join_page(SAMPLE_JOBS[:1])
+        detail_data = _join_detail_page({"schemaDescription": "<p>Build reliable systems.</p>"})
+
+        def handler(request: httpx.Request):
+            if request.url.path == "/companies/acme":
+                return httpx.Response(200, text=_html(list_data))
+            if request.url.path == "/companies/acme/101-software-engineer":
+                return httpx.Response(200, text=_html(detail_data))
+            return httpx.Response(404, text="")
+
+        board = {
+            "board_url": "https://join.com/companies/acme",
+            "metadata": {"slug": "acme"},
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await discover(board, client)
+
+        assert len(result) == 1
+        assert result[0].description == "<p>Build reliable systems.</p>"
+
+    async def test_enriches_plain_text_description_from_detail_page(self):
+        list_data = _join_page(SAMPLE_JOBS[:1])
+        detail_data = _join_detail_page({"description": "Line one\n\nLine two"})
+
+        def handler(request: httpx.Request):
+            if request.url.path == "/companies/acme":
+                return httpx.Response(200, text=_html(list_data))
+            if request.url.path == "/companies/acme/101-software-engineer":
+                return httpx.Response(200, text=_html(detail_data))
+            return httpx.Response(404, text="")
+
+        board = {
+            "board_url": "https://join.com/companies/acme",
+            "metadata": {"slug": "acme"},
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await discover(board, client)
+
+        assert len(result) == 1
+        assert result[0].description == "<p>Line one</p><p>Line two</p>"
+
+    async def test_custom_description_path_from_metadata(self):
+        list_data = _join_page(SAMPLE_JOBS[:1])
+        detail_data = _join_detail_page({"customDescription": "<p>Custom path description.</p>"})
+
+        def handler(request: httpx.Request):
+            if request.url.path == "/companies/acme":
+                return httpx.Response(200, text=_html(list_data))
+            if request.url.path == "/companies/acme/101-software-engineer":
+                return httpx.Response(200, text=_html(detail_data))
+            return httpx.Response(404, text="")
+
+        board = {
+            "board_url": "https://join.com/companies/acme",
+            "metadata": {
+                "slug": "acme",
+                "description_path": "props.pageProps.initialState.job.customDescription",
+            },
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await discover(board, client)
+
+        assert len(result) == 1
+        assert result[0].description == "<p>Custom path description.</p>"
 
 
 # ---------------------------------------------------------------------------

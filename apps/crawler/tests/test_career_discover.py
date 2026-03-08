@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
+
 from src.workspace.career_discover import (
     CareerPageCandidate,
+    _blind_probe_all,
     _dedup_candidates,
     _extract_links,
     _hubness_allows_candidate,
@@ -645,3 +648,27 @@ class TestHubnessRequirement:
             inferred_pattern=None,
             jobs_hint_n=0,
         )
+
+
+class TestBlindProbeFiltering:
+    def test_blind_probe_excludes_zero_jobs(self, monkeypatch):
+        async def _fake_handler(_url, _client):
+            return {"token": "acme", "jobs": 0}
+
+        monkeypatch.setattr("src.core.monitors.get_can_handle", lambda _name: _fake_handler)
+        monkeypatch.setattr("src.core.monitors._build_comment", lambda _name, _result: "ok")
+
+        candidates = asyncio.run(_blind_probe_all("acme", client=None))  # type: ignore[arg-type]
+        assert candidates == []
+
+    def test_blind_probe_keeps_positive_jobs(self, monkeypatch):
+        async def _fake_handler(_url, _client):
+            return {"token": "acme", "jobs": 3}
+
+        monkeypatch.setattr("src.core.monitors.get_can_handle", lambda _name: _fake_handler)
+        monkeypatch.setattr("src.core.monitors._build_comment", lambda _name, _result: "ok")
+
+        candidates = asyncio.run(_blind_probe_all("acme", client=None))  # type: ignore[arg-type]
+        assert len(candidates) >= 1
+        assert all(c.source == "blind_probe" for c in candidates)
+        assert all(c.monitor_config.get("jobs") == 3 for c in candidates)
