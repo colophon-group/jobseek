@@ -17,6 +17,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "dvinci",
         "greenhouse",
         "hireology",
+        "join",
         "lever",
         "pinpoint",
         "recruitee",
@@ -95,6 +96,10 @@ def detect_ats_from_url(url: str) -> str | None:
     if host.endswith(".traffit.com"):
         return "traffit"
 
+    # JOIN — join.com/companies/{slug}
+    if host in ("join.com", "www.join.com"):
+        return "join"
+
     # Umantis — recruitingapp-{ID}[.de|.ch].umantis.com
     if host.endswith(".umantis.com"):
         return "umantis"
@@ -117,5 +122,5 @@ def is_rich_monitor(monitor_type: str, config: dict | None = None) -> bool:
     api_sniffer is rich only when ``fields`` is present in config.
     """
     return monitor_type in _RICH_MONITORS or (
-        monitor_type == "api_sniffer" and bool((config or {}).get("fields"))
+        monitor_type in ("api_sniffer", "nextdata") and bool((config or {}).get("fields"))
     )

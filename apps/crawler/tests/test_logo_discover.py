@@ -2,7 +2,16 @@
 
 from __future__ import annotations
 
-from src.workspace.logo_discover import LogoCandidate, _dedup_candidates, discover_logos
+import io
+import json
+
+import src.workspace.logo_discover as logo_discover
+from src.workspace.logo_discover import (
+    LogoCandidate,
+    _dedup_candidates,
+    discover_logos,
+    download_candidates,
+)
 
 BASE = "https://example.com"
 
@@ -429,3 +438,71 @@ class TestEmbeddedSvg:
         assert len(svgs) >= 1
         assert "<g>" in svgs[0].embedded_svg
         assert "<path" in svgs[0].embedded_svg
+
+
+class TestDownloadCandidates:
+    def test_svg_url_stores_original_and_png_preview(self, tmp_path, monkeypatch):
+        candidate = LogoCandidate(
+            url="https://example.com/logo.svg",
+            sources=["json-ld:Organization"],
+            role="logo",
+            score=0.9,
+        )
+        svg_bytes = b'<svg xmlns="http://www.w3.org/2000/svg" width="120" height="40"></svg>'
+
+        monkeypatch.setattr(
+            logo_discover,
+            "_fetch_image",
+            lambda *_args, **_kwargs: (svg_bytes, "image/svg+xml"),
+        )
+
+        def _mock_svg_to_png(_svg_markup: str, png_path):
+            from PIL import Image
+
+            Image.new("RGBA", (120, 40), (0, 0, 0, 0)).save(png_path, "PNG")
+            return png_path
+
+        monkeypatch.setattr(logo_discover, "_try_svg_to_png", _mock_svg_to_png)
+
+        successful = download_candidates([candidate], tmp_path)
+        assert len(successful) == 1
+        saved = successful[0]
+        assert saved.original_artifact_path and saved.original_artifact_path.endswith(".svg")
+        assert saved.png_artifact_path and saved.png_artifact_path.endswith(".png")
+        assert saved.width == 120
+        assert saved.height == 40
+        assert saved.aspect_ratio == 3.0
+        assert saved.is_square is False
+
+    def test_candidates_json_includes_technical_fields(self, tmp_path, monkeypatch):
+        from PIL import Image
+
+        buf = io.BytesIO()
+        Image.new("RGBA", (16, 16), (255, 0, 0, 128)).save(buf, "PNG")
+        png_bytes = buf.getvalue()
+
+        monkeypatch.setattr(
+            logo_discover,
+            "_fetch_image",
+            lambda *_args, **_kwargs: (png_bytes, "image/png"),
+        )
+
+        candidate = LogoCandidate(
+            url="https://example.com/icon.png",
+            sources=["icon"],
+            role="icon",
+            score=0.6,
+        )
+        _ = download_candidates([candidate], tmp_path)
+        payload = json.loads((tmp_path / "candidates.json").read_text())
+        assert len(payload) == 1
+        entry = payload[0]
+        assert "original_artifact_path" in entry
+        assert "png_artifact_path" in entry
+        assert "filename" in entry
+        assert "file_size_bytes" in entry
+        assert "width" in entry and entry["width"] == 16
+        assert "height" in entry and entry["height"] == 16
+        assert "aspect_ratio" in entry and entry["aspect_ratio"] == 1.0
+        assert "is_square" in entry and entry["is_square"] is True
+        assert "has_transparency" in entry

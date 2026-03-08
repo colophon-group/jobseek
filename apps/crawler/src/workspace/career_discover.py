@@ -23,6 +23,8 @@ class CareerPageCandidate:
     link_text: str | None = None  # Anchor text if from homepage link
     link_href: str | None = None  # Original href before redirect
     comment: str = ""  # Human-readable summary
+    job_link_hub: int | None = None  # Number of likely job-detail links on the page
+    job_link_pattern: str | None = None  # Inferred regex pattern for job links
 
 
 # ── Constants ──────────────────────────────────────────────────────────
@@ -354,8 +356,14 @@ async def _probe_link(
         if resp.status_code >= 400:
             return []
         final_url = str(resp.url)
+        page_html = resp.text or ""
     except Exception:
         return []
+
+    from src.workspace.job_links import analyze_job_links
+
+    link_analysis = analyze_job_links(final_url, page_html)
+    hub_links = link_analysis.job_links_total
 
     # Fast path: final URL is a known ATS domain
     ats_type = detect_ats_from_url(final_url)
@@ -380,6 +388,20 @@ async def _probe_link(
     for name, metadata, comment in results:
         if metadata is not None:
             source = "redirect" if link.url != final_url else "homepage_link"
+            jobs_hint = metadata.get("jobs") or metadata.get("urls") or metadata.get("count") or 0
+            try:
+                jobs_hint_n = int(jobs_hint)
+            except (TypeError, ValueError):
+                jobs_hint_n = 0
+
+            if not _hubness_allows_candidate(
+                source=source,
+                hub_links=hub_links,
+                inferred_pattern=link_analysis.pattern,
+                jobs_hint_n=jobs_hint_n,
+            ):
+                continue
+
             candidates.append(
                 CareerPageCandidate(
                     url=final_url,
@@ -390,9 +412,29 @@ async def _probe_link(
                     link_text=link.text,
                     link_href=link.url if link.url != final_url else None,
                     comment=comment,
+                    job_link_hub=hub_links,
+                    job_link_pattern=link_analysis.pattern,
                 )
             )
     return candidates
+
+
+def _hubness_allows_candidate(
+    *,
+    source: str,
+    hub_links: int,
+    inferred_pattern: str | None,
+    jobs_hint_n: int,
+) -> bool:
+    """Require homepage/redirect pages to look like job hubs unless metadata is strong."""
+    from src.workspace.job_links import MIN_HUB_LINKS
+
+    if source not in ("homepage_link", "redirect"):
+        return True
+    has_hub_signal = hub_links >= MIN_HUB_LINKS and bool(inferred_pattern)
+    if has_hub_signal:
+        return True
+    return jobs_hint_n >= MIN_HUB_LINKS
 
 
 async def _probe_specific_monitor(

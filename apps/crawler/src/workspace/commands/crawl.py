@@ -1793,8 +1793,8 @@ def run_quality_gates(
     has_logo = bool(list(artifacts.glob("logo_original.*"))) if artifacts.exists() else False
     has_icon = bool(list(artifacts.glob("icon_original.*"))) if artifacts.exists() else False
     if not has_logo:
-        warnings.append("No logo image artifact found")
+        warnings.append("No full logo image artifact found (logo_url)")
     if not has_icon:
-        warnings.append("No icon image artifact found")
+        warnings.append("No minified square logo image artifact found (icon_url)")
 
     return blockers, warnings

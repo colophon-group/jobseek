@@ -21,8 +21,10 @@ from src.workspace import output as out
 from src.workspace.state import (
     get_active_slug,
     list_boards,
+    list_workspaces,
     load_workspace,
     resolve_slug,
+    set_active_slug,
 )
 from src.workspace.workflow import (
     WorkflowState,
@@ -55,25 +57,32 @@ def task(ctx, issue: int | None):
     if ctx.invoked_subcommand is not None:
         return
 
-    # --issue → check if it matches active workspace, otherwise pre-verify
+    # --issue:
+    # - continue in active workspace when it matches
+    # - otherwise bind to an existing workspace with the same issue (if unique)
+    # - otherwise render pre-verify for a new workflow
     if issue is not None:
         active = get_active_slug()
         if active:
             try:
                 ws = load_workspace(active)
-                if str(ws.issue) == str(issue):
-                    # Same issue — fall through to show current step
-                    pass
-                else:
-                    # Different issue — start fresh
-                    _pre_verify(issue)
-                    return
+                if str(ws.issue) != str(issue):
+                    active = None
             except FileNotFoundError:
+                active = None
+
+        if not active:
+            matches = [w.slug for w in list_workspaces() if str(w.issue) == str(issue)]
+            if len(matches) == 1:
+                set_active_slug(matches[0])
+                out.info("task", f"Using existing workspace {matches[0]!r} for issue #{issue}")
+            elif len(matches) > 1:
+                choices = ", ".join(repr(s) for s in matches)
+                out.die(f"Multiple workspaces match issue #{issue}: {choices}. Run: ws use <slug>")
+                return
+            else:
                 _pre_verify(issue)
                 return
-        else:
-            _pre_verify(issue)
-            return
 
     # Active workspace → show current step
     slug = resolve_slug(None)

@@ -11,6 +11,11 @@ If the page is only a marketing/landing page with a "View jobs" link, do not use
 landing URL as the board. Follow the link and use the actual listings URL (for example
 `jobs.lever.co/<company>` or `boards.greenhouse.io/<company>`).
 
+`ws add board` now checks outgoing links on the board URL and tries to infer a
+job-link pattern. A real board usually behaves like a **job link hub** (multiple
+job-detail links following a consistent pattern). If pattern inference fails, treat
+that as a strong signal that the URL may be a marketing page.
+
 If the page is JS-rendered and shows 0 listings, use the job count from web search results
 (e.g., LinkedIn, Glassdoor) as an approximation. If there are genuinely no open positions,
 reject with `ws reject --reason no-open-positions --message "..."`.
@@ -36,6 +41,13 @@ Only add URLs that are actual listing boards (or listings feeds), not informatio
 
 ```bash
 ws add board <alias> --url "<board-url>"
+ws add board <alias> --url "<board-url>" --job-link-pattern "<regex>"   # optional override
+```
+
+If auto-inference fails after adding, set the pattern manually:
+
+```bash
+ws set --board <alias> --job-link-pattern "<regex>"
 ```
 
 **Alias naming conventions:**

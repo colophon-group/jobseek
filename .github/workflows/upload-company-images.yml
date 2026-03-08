@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: write
+  issues: write
   pull-requests: write
 
 concurrency:
@@ -88,7 +89,7 @@ jobs:
 
             if (addedSlugs.size === 0) return;
 
-            let body = '## Company images\n\n| Company | Logo | Icon |\n|---------|------|------|\n';
+            let body = '## Company images\n\n| Company | Full Logo | Minified Logo |\n|---------|-----------|----------------|\n';
             for (const row of lines.slice(1)) {
               const fields = row.split(',');
               const slug = fields[slugIdx];
@@ -134,6 +135,7 @@ jobs:
           REPO: ${{ github.repository }}
 
       - name: Enable auto-merge
+        id: merge
         if: github.event_name == 'pull_request' && contains(steps.label.outputs.labels, 'auto-merge')
         run: |
           set -euo pipefail
@@ -141,6 +143,8 @@ jobs:
           # Preferred path: let GitHub auto-merge once requirements are met.
           output=$(gh pr merge "$PR" --repo "$REPO" --auto --rebase 2>&1) && {
             echo "$output"
+            merged=$(gh pr view "$PR" --repo "$REPO" --json merged --jq '.merged')
+            echo "merged=$merged" >> "$GITHUB_OUTPUT"
             exit 0
           }
           status=$?
@@ -151,10 +155,20 @@ jobs:
           if echo "$output" | grep -q "Protected branch rules not configured"; then
             gh pr checks "$PR" --repo "$REPO" --watch --fail-fast
             gh pr merge "$PR" --repo "$REPO" --rebase
+            echo "merged=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
+          echo "merged=false" >> "$GITHUB_OUTPUT"
           exit "$status"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+
+      - name: Close linked company-request issues
+        if: github.event_name == 'pull_request' && steps.merge.outputs.merged == 'true'
+        run: .github/scripts/close-linked-company-request-issues.sh
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}

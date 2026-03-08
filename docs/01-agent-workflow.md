@@ -34,7 +34,9 @@ All workspace commands use the `ws` CLI tool (`alias ws='uv run ws'`). See AGENT
    subsequent commands auto-resolve the slug.
 
 3. **Set company details**: `ws set --name "..." --website "..." --logo-url "..." --icon-url "..."`
-   - Agent researches: official name, homepage, logo URL, favicon/icon URL
+   - Agent researches: official name, homepage, full primary logo URL, and minified square logo/icon URL
+   - Use direct image file URLs (not pages containing images), brand-correct assets only
+   - Prefer transparent-background assets for both logo and icon when available
    - URL validation is advisory — values are always saved
 
 4. **Add board and probe monitors**: `ws add board <alias> --url <board-url>` then `ws probe`

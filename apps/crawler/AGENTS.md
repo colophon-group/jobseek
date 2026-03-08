@@ -86,7 +86,8 @@ alias ws='uv run ws'
 ws new <slug> --issue <N>              # Create workspace + branch + draft PR (sets active)
 ws use <slug>                          # Switch active workspace (multi-workspace only)
 ws set --name "..." --website "..."
-ws add board <alias> --url <board-url>
+ws set --board <alias> --job-link-pattern "<regex>"  # Optional manual job-link filter
+ws add board <alias> --url <board-url> [--job-link-pattern "<regex>"]
 ws probe monitor -n <N>                # Probe all monitor types (N = job count from website)
 ws probe scraper                       # Probe all scraper types against sample URLs
 ws probe deep -n <N>                   # Playwright-based api_sniffer detection

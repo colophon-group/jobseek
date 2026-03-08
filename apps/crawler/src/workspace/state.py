@@ -54,6 +54,7 @@ class Board:
     alias: str
     slug: str  # {company_slug}-{alias}
     url: str
+    job_link_pattern: str = ""
 
     active_config: str | None = None
     detections: dict[str, Any] = field(default_factory=dict)
@@ -155,6 +156,8 @@ class Board:
             "detections": self.detections,
             "configs": self.configs,
         }
+        if self.job_link_pattern:
+            d["job_link_pattern"] = self.job_link_pattern
         if self.log:
             d["log"] = self.log
         return d
@@ -171,6 +174,7 @@ class Board:
             alias=data["alias"],
             slug=data["slug"],
             url=data["url"],
+            job_link_pattern=data.get("job_link_pattern", ""),
             active_config=data.get("active_config"),
             detections=data.get("detections") or {},
             configs=data.get("configs") or {},
@@ -208,6 +212,7 @@ class Board:
             alias=data["alias"],
             slug=data["slug"],
             url=data["url"],
+            job_link_pattern="",
             active_config=active_config,
             configs=configs,
             detections={},
@@ -477,26 +482,89 @@ def _tty_suffix() -> str | None:
         return None
 
 
+def _sanitize_suffix(value: str) -> str | None:
+    """Return a filesystem-safe suffix token."""
+    import re
+
+    cleaned = re.sub(r"[^A-Za-z0-9_.-]+", "-", value).strip("-._")
+    if not cleaned:
+        return None
+    return cleaned[:64]
+
+
+def _non_tty_suffix() -> str | None:
+    """Return a stable suffix for non-interactive sessions.
+
+    Priority:
+    1. ``WS_ACTIVE_SCOPE`` explicit override
+    2. Known session identifiers from agent/CI environments
+    3. Hash of (parent PID + current working directory)
+    """
+    import hashlib
+    import os
+
+    explicit = _sanitize_suffix(os.environ.get("WS_ACTIVE_SCOPE", "").strip())
+    if explicit:
+        return f"scope-{explicit}"
+
+    for key in (
+        "CODEX_SESSION_ID",
+        "CODEX_TASK_ID",
+        "CLAUDE_SESSION_ID",
+        "CLAUDECODE_SESSION_ID",
+        "GITHUB_RUN_ID",
+        "GITHUB_JOB",
+        "CI_JOB_ID",
+        "BUILDKITE_BUILD_ID",
+    ):
+        value = _sanitize_suffix(os.environ.get(key, "").strip())
+        if value:
+            return f"{key.lower()}-{value}"
+
+    ppid = str(os.getppid())
+    cwd = os.environ.get("PWD", "").strip()
+    if not cwd:
+        with contextlib.suppress(Exception):
+            cwd = os.getcwd()
+    digest = hashlib.sha1(f"{ppid}:{cwd}".encode()).hexdigest()[:12]
+    return f"proc-{digest}"
+
+
+def _legacy_active_path() -> Path:
+    return get_workspace_dir() / "active"
+
+
 def _active_path() -> Path:
     suffix = _tty_suffix()
     if suffix:
         return get_workspace_dir() / f"active.{suffix}"
-    return get_workspace_dir() / "active"
+    suffix = _non_tty_suffix()
+    if suffix:
+        return get_workspace_dir() / f"active.{suffix}"
+    return _legacy_active_path()
 
 
 def get_active_slug() -> str | None:
     """Return the active workspace slug, or None if not set.
 
     Checks ``WS_ACTIVE`` env var first (allows concurrent agents in
-    separate terminals), then falls back to the ``active`` file.
+    separate terminals), then checks the session-scoped active file.
+    As a compatibility fallback, also checks the legacy ``active`` file.
     """
     import os
 
     env = os.environ.get("WS_ACTIVE", "").strip()
     if env and workspace_exists(env):
         return env
-    path = _active_path()
-    if path.exists():
+
+    paths = [_active_path()]
+    legacy = _legacy_active_path()
+    if legacy not in paths:
+        paths.append(legacy)
+
+    for path in paths:
+        if not path.exists():
+            continue
         slug = path.read_text().strip()
         if slug and workspace_exists(slug):
             return slug

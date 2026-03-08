@@ -81,6 +81,9 @@ export function AppHeader() {
       })}
     >
       {user?.image ? (
+        // User avatars come from arbitrary OAuth providers.
+        // next/image remote host allowlist would block many of them.
+        // eslint-disable-next-line @next/next/no-img-element
         <img src={user.image} alt="" className="size-8 rounded-full object-cover" />
       ) : (
         getInitials(user?.name ?? user?.email ?? "?")
@@ -199,6 +202,8 @@ export function AppHeader() {
                 <button className="flex flex-1 flex-col items-center gap-0.5 py-1.5 transition-colors cursor-pointer">
                   <span className="flex size-6 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-contrast">
                     {user.image ? (
+                      // User avatars come from arbitrary OAuth providers.
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img src={user.image} alt="" className="size-6 rounded-full object-cover" />
                     ) : (
                       getInitials(user.name ?? user.email ?? "?")

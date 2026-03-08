@@ -64,8 +64,10 @@ jobs:
                On failure: ws reject --issue ${{ steps.select.outputs.selected }} --reason <key> --message "..."
             3. Claim: ws new <slug> --issue ${{ steps.select.outputs.selected }}
                (checks for existing PRs, creates branch + stub CSV + draft PR, sets active workspace)
-            4. Research the company — find name, website, logo, icon, career page URL
+            4. Research the company — find name, website, full primary logo, minified square logo/icon, career page URL
             5. Set details: ws set --name "..." --website "..." --logo-url "..." --icon-url "..."
+               (logo-url = full primary logo, icon-url = minified square logo/icon;
+               use direct image file URLs; assets must be brand-correct; transparent background preferred)
             6. Add board + probe: ws add board <alias> --url <board-url> && ws probe monitor -n <count>
             7. Select + test monitor: ws select monitor <type> && ws run monitor
                If 0 jobs but validation passed, it's a monitor misconfiguration — debug systematically

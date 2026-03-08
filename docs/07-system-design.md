@@ -523,8 +523,8 @@ Managed by CSV sync. Source of truth: `data/companies.csv`.
 | slug       | text   | Unique                   |
 | name       | text   |                          |
 | website    | text   |                          |
-| logo       | text   | Direct image URL         |
-| icon       | text   | Favicon URL              |
+| logo       | text   | Full primary logo URL    |
+| icon       | text   | Minified square logo URL |
 | created_at | timestamp |                       |
 | updated_at | timestamp |                       |
 

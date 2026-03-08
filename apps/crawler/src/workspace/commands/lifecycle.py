@@ -238,14 +238,27 @@ def reject(slug: str | None, issue: int | None, reason: str, message: str):
     """Comment + close an issue as rejected."""
     local = is_local_mode()
 
-    # Resolve slug from active workspace if not given explicitly
-    if not slug:
-        slug = get_active_slug()
+    ws: Workspace | None = None
 
-    # Determine issue number
-    if slug and workspace_exists(slug):
+    # Explicit slug: validate it and use its linked issue when --issue omitted.
+    if slug is not None:
+        if not workspace_exists(slug):
+            out.die(f"Workspace {slug!r} not found")
         ws = load_workspace(slug)
-        issue = ws.issue
+        if issue is None:
+            issue = ws.issue
+        elif ws.issue and ws.issue != issue:
+            out.die(f"--issue {issue} does not match workspace {slug!r} (linked issue #{ws.issue})")
+
+    # No explicit slug and no explicit issue: derive from active workspace.
+    elif issue is None:
+        active = get_active_slug()
+        if active and workspace_exists(active):
+            slug = active
+            ws = load_workspace(active)
+            issue = ws.issue
+
+    # If --issue is provided without slug, keep it authoritative.
     if not issue:
         out.die("Provide --issue or a workspace slug with a linked issue")
 
@@ -267,7 +280,7 @@ def reject(slug: str | None, issue: int | None, reason: str, message: str):
         out.info("github", f"Commented on issue #{issue} (validation-failed: {reason})")
         out.info("github", f"Closed issue #{issue}")
 
-    if slug and workspace_exists(slug):
+    if ws is not None:
         action_log.append(
             ws_log_path(slug),
             "reject",
@@ -473,7 +486,7 @@ def _build_pr_body(ws: Workspace, boards: list[Board]) -> str:
         lines.append(ws.website)
     lines.append("")
 
-    # Logo & Icon preview (images committed to data/images/<slug>/)
+    # Full + minified logo preview (images committed to data/images/<slug>/)
     img_dir = get_data_dir() / "images" / ws.slug
     if img_dir.exists():
         from src.workspace import git
@@ -488,10 +501,12 @@ def _build_pr_body(ws: Workspace, boards: list[Board]) -> str:
             logo_files = list(img_dir.glob("logo.*"))
             icon_files = list(img_dir.glob("icon.*"))
             if logo_files or icon_files:
-                lines.append("| Logo | Icon |")
-                lines.append("|------|------|")
-                logo_cell = f"![logo]({img_base}/{logo_files[0].name})" if logo_files else "—"
-                icon_cell = f"![icon]({img_base}/{icon_files[0].name})" if icon_files else "—"
+                lines.append("| Full Logo | Minified Logo |")
+                lines.append("|-----------|----------------|")
+                logo_cell = f"![full-logo]({img_base}/{logo_files[0].name})" if logo_files else "—"
+                icon_cell = (
+                    f"![minified-logo]({img_base}/{icon_files[0].name})" if icon_files else "—"
+                )
                 lines.append(f"| {logo_cell} | {icon_cell} |")
                 lines.append("")
         except Exception:
@@ -671,7 +686,7 @@ def _execute_submit_step(
     local = is_local_mode()
 
     if step_key == "csv_written":
-        # Write company details (logo_url/icon_url left empty — CI fills from R2)
+        # Write company details (logo_url/icon_url for full/minified are filled by CI from R2)
         kwargs = {}
         if ws.name:
             kwargs["name"] = ws.name

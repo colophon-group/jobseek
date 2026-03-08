@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from contextlib import ExitStack
 from dataclasses import dataclass
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 from click.testing import CliRunner
@@ -51,6 +52,24 @@ def _patch_all(monkeypatch, tmp_path):
     monkeypatch.setattr("src.inspect.get_data_dir", _data)
     monkeypatch.setattr("src.workspace.commands.lifecycle.get_data_dir", _data)
     monkeypatch.setattr("src.workspace.state.get_workspace_dir", _ws)
+
+    # Keep CLI tests deterministic/offline: board link analysis is exercised
+    # in dedicated tests via targeted monkeypatching.
+    monkeypatch.setattr(
+        "src.workspace.commands.config._inspect_board_job_links",
+        lambda url, provided_pattern: SimpleNamespace(
+            board_url=url,
+            final_url=url,
+            fetch_mode="http",
+            outgoing_links_total=0,
+            job_links_total=0,
+            matched_outgoing_links=0,
+            matched_job_links=0,
+            pattern=provided_pattern,
+            pattern_source="provided" if provided_pattern else None,
+            warnings=[],
+        ),
+    )
 
 
 class TestValidate:
@@ -164,6 +183,43 @@ class TestSet:
         result = runner.invoke(ws, ["set", "test"])
         assert result.exit_code != 0
 
+    def test_set_board_job_link_pattern(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(Workspace(slug="test", active_board="careers"))
+        save_board("test", Board(alias="careers", slug="test-careers", url="https://test.com/jobs"))
+
+        monkeypatch.setattr(
+            "src.workspace.commands.config._inspect_board_job_links",
+            lambda url, provided_pattern: SimpleNamespace(
+                board_url=url,
+                final_url=url,
+                fetch_mode="http",
+                outgoing_links_total=12,
+                job_links_total=6,
+                matched_outgoing_links=6,
+                matched_job_links=6,
+                pattern=provided_pattern,
+                pattern_source="provided",
+                warnings=[],
+            ),
+        )
+
+        runner = CliRunner()
+        result = runner.invoke(
+            ws,
+            [
+                "set",
+                "test",
+                "--board",
+                "careers",
+                "--job-link-pattern",
+                r"^https?://test\.com/jobs/",
+            ],
+        )
+        assert result.exit_code == 0
+        board = load_board("test", "careers")
+        assert board.job_link_pattern == r"^https?://test\.com/jobs/"
+
 
 class TestAddBoard:
     def test_add_board(self, tmp_path, monkeypatch):
@@ -197,6 +253,33 @@ class TestAddBoard:
         )
         assert result.exit_code == 0
         assert "already prefixed" in result.output
+
+    def test_add_board_stores_inferred_job_link_pattern(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(Workspace(slug="test"))
+        monkeypatch.setattr(
+            "src.workspace.commands.config._inspect_board_job_links",
+            lambda url, provided_pattern: SimpleNamespace(
+                board_url=url,
+                final_url=url,
+                fetch_mode="http",
+                outgoing_links_total=20,
+                job_links_total=8,
+                matched_outgoing_links=8,
+                matched_job_links=8,
+                pattern=r"^https?://test\.com/jobs/",
+                pattern_source="inferred",
+                warnings=[],
+            ),
+        )
+
+        runner = CliRunner()
+        result = runner.invoke(
+            ws, ["add", "board", "test", "careers", "--url", "https://test.com/jobs"]
+        )
+        assert result.exit_code == 0
+        board = load_board("test", "careers")
+        assert board.job_link_pattern == r"^https?://test\.com/jobs/"
 
 
 class TestDelBoard:
@@ -374,6 +457,87 @@ class TestReject:
             )
             assert result.exit_code == 0
             mock_close.assert_called_once_with(42)
+
+    def test_reject_explicit_issue_not_overridden_by_active_workspace(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(Workspace(slug="active-ws", issue=38))
+        set_active_slug("active-ws")
+        runner = CliRunner()
+
+        with (
+            patch("src.workspace.git.comment_on_issue"),
+            patch("src.workspace.git.close_issue") as mock_close,
+        ):
+            result = runner.invoke(
+                ws,
+                [
+                    "reject",
+                    "--issue",
+                    "39",
+                    "--reason",
+                    "no-open-positions",
+                    "--message",
+                    "No listings found",
+                ],
+            )
+            assert result.exit_code == 0
+            mock_close.assert_called_once_with(39)
+
+    def test_reject_slug_issue_mismatch_fails_fast(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(Workspace(slug="test", issue=38))
+        runner = CliRunner()
+
+        with (
+            patch("src.workspace.git.comment_on_issue") as mock_comment,
+            patch("src.workspace.git.close_issue") as mock_close,
+        ):
+            result = runner.invoke(
+                ws,
+                [
+                    "reject",
+                    "test",
+                    "--issue",
+                    "39",
+                    "--reason",
+                    "no-open-positions",
+                    "--message",
+                    "No listings found",
+                ],
+            )
+            assert result.exit_code != 0
+            assert "does not match workspace" in result.output
+            mock_comment.assert_not_called()
+            mock_close.assert_not_called()
+
+
+class TestTaskIssueBinding:
+    def test_task_issue_binds_to_matching_workspace(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(Workspace(slug="swissquote-bank", issue=38, branch="add-company/swissquote"))
+        save_workspace(Workspace(slug="playnvoice", issue=39, branch="add-company/playnvoice"))
+        set_active_slug("swissquote-bank")
+
+        runner = CliRunner()
+        result = runner.invoke(ws, ["task", "--issue", "39"])
+
+        assert result.exit_code == 0
+        assert "Using existing workspace 'playnvoice' for issue #39" in result.output
+        assert get_active_slug() == "playnvoice"
+        assert "Step 1/7" in result.output
+
+    def test_task_issue_fails_on_ambiguous_workspace_matches(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(Workspace(slug="alpha", issue=39, branch="add-company/alpha"))
+        save_workspace(Workspace(slug="beta", issue=39, branch="add-company/beta"))
+        save_workspace(Workspace(slug="other", issue=38, branch="add-company/other"))
+        set_active_slug("other")
+
+        runner = CliRunner()
+        result = runner.invoke(ws, ["task", "--issue", "39"])
+
+        assert result.exit_code != 0
+        assert "Multiple workspaces match issue #39" in result.output
 
 
 class TestDel:

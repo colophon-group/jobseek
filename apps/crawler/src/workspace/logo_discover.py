@@ -36,6 +36,15 @@ class LogoCandidate:
     is_svg: bool = False
     embedded_svg: str | None = None  # Raw SVG markup for inline SVGs
     artifact_path: str | None = None  # Set after download
+    original_artifact_path: str | None = None
+    png_artifact_path: str | None = None
+    filename: str | None = None
+    content_type: str | None = None
+    file_size_bytes: int | None = None
+    aspect_ratio: float | None = None
+    is_square: bool | None = None
+    has_transparency: bool | None = None
+    ocr_text: str | None = None
 
 
 # ── HTMLParser-based extractor ─────────────────────────────────────────
@@ -415,10 +424,21 @@ def download_candidates(
             if candidate.embedded_svg:
                 # Save raw SVG
                 svg_path = artifact_dir / f"candidate-{i}.svg"
-                svg_path.write_text(candidate.embedded_svg)
+                svg_markup = candidate.embedded_svg
+                svg_bytes = svg_markup.encode("utf-8")
+                svg_path.write_bytes(svg_bytes)
                 candidate.artifact_path = str(svg_path)
+                candidate.original_artifact_path = str(svg_path)
+                candidate.filename = svg_path.name
+                candidate.content_type = "image/svg+xml"
+                candidate.file_size_bytes = len(svg_bytes)
+                _set_svg_dimensions(candidate, svg_markup)
                 # Try to rasterize to PNG
-                _try_svg_to_png(candidate.embedded_svg, artifact_dir / f"candidate-{i}.png")
+                png_path = artifact_dir / f"candidate-{i}.png"
+                saved_png = _try_svg_to_png(svg_markup, png_path)
+                if saved_png:
+                    candidate.png_artifact_path = str(saved_png)
+                    _populate_tech_from_image_path(candidate, saved_png)
                 successful.append(candidate)
             elif candidate.url:
                 data, content_type = _fetch_image(candidate.url, timeout)
@@ -428,18 +448,36 @@ def download_candidates(
                 ext = _ext_from_content_type(content_type)
                 orig_path = artifact_dir / f"candidate-{i}{ext}"
                 orig_path.write_bytes(data)
-                # Save PNG copy (unless already PNG)
+                candidate.artifact_path = str(orig_path)
+                candidate.original_artifact_path = str(orig_path)
+                candidate.filename = orig_path.name
+                candidate.content_type = content_type
+                candidate.file_size_bytes = len(data)
+
+                # Save PNG copy for all non-PNG formats.
                 png_path = artifact_dir / f"candidate-{i}.png"
                 if ext == ".png":
-                    candidate.artifact_path = str(orig_path)
+                    candidate.png_artifact_path = str(orig_path)
+                    _populate_tech_from_image_bytes(candidate, data)
+                elif ext == ".svg":
+                    saved = _try_svg_bytes_to_png(data, png_path)
+                    if saved:
+                        candidate.png_artifact_path = str(saved)
+                        _populate_tech_from_image_path(candidate, saved)
+                    else:
+                        _set_svg_dimensions(candidate, data.decode("utf-8", errors="ignore"))
                 else:
                     saved = _save_as_png(data, png_path)
-                    candidate.artifact_path = str(saved if saved else orig_path)
-                    if not saved:
-                        # PNG conversion failed, use original
-                        candidate.artifact_path = str(orig_path)
-                if ext == ".png":
-                    candidate.artifact_path = str(orig_path)
+                    if saved:
+                        candidate.png_artifact_path = str(saved)
+                        _populate_tech_from_image_path(candidate, saved)
+                    else:
+                        _populate_tech_from_image_bytes(candidate, data)
+
+                if candidate.aspect_ratio is None and candidate.width and candidate.height:
+                    candidate.aspect_ratio = round(candidate.width / candidate.height, 3)
+                if candidate.is_square is None and candidate.width and candidate.height:
+                    candidate.is_square = candidate.width == candidate.height
                 successful.append(candidate)
         except Exception:
             continue
@@ -476,6 +514,11 @@ def _save_as_png(data: bytes, png_path: Path) -> Path | None:
         return None
 
 
+def _try_svg_bytes_to_png(svg_bytes: bytes, png_path: Path) -> Path | None:
+    """Try to rasterize SVG bytes to PNG."""
+    return _try_svg_to_png(svg_bytes.decode("utf-8", errors="ignore"), png_path)
+
+
 def _try_svg_to_png(svg_markup: str, png_path: Path) -> Path | None:
     """Try to rasterize SVG to PNG. Returns path on success, None on failure."""
     try:
@@ -485,6 +528,107 @@ def _try_svg_to_png(svg_markup: str, png_path: Path) -> Path | None:
         return png_path
     except Exception:
         return None
+
+
+def _set_svg_dimensions(candidate: LogoCandidate, svg_markup: str) -> None:
+    """Populate size metadata for SVG markup using width/height or viewBox."""
+    width = _parse_svg_dimension(svg_markup, "width")
+    height = _parse_svg_dimension(svg_markup, "height")
+
+    if width is None or height is None:
+        viewbox = re.search(
+            r'viewBox=["\']\s*[-+]?\d*\.?\d+\s+[-+]?\d*\.?\d+\s+([-+]?\d*\.?\d+)\s+([-+]?\d*\.?\d+)\s*["\']',
+            svg_markup,
+            re.IGNORECASE,
+        )
+        if viewbox:
+            if width is None:
+                width = _to_int(viewbox.group(1))
+            if height is None:
+                height = _to_int(viewbox.group(2))
+
+    if width and height:
+        candidate.width = width
+        candidate.height = height
+        candidate.aspect_ratio = round(width / height, 3)
+        candidate.is_square = width == height
+
+
+def _parse_svg_dimension(svg_markup: str, name: str) -> int | None:
+    """Extract numeric width/height from SVG attributes."""
+    m = re.search(rf'{name}=["\']\s*([-+]?\d*\.?\d+)(?:px)?\s*["\']', svg_markup, re.IGNORECASE)
+    if not m:
+        return None
+    return _to_int(m.group(1))
+
+
+def _to_int(value: str) -> int | None:
+    """Convert a numeric string to a rounded positive int."""
+    try:
+        parsed = int(round(float(value)))
+        return parsed if parsed > 0 else None
+    except Exception:
+        return None
+
+
+def _populate_tech_from_image_path(candidate: LogoCandidate, image_path: Path) -> None:
+    """Populate dimensions, transparency, and OCR from an image file."""
+    try:
+        with _open_image(image_path.read_bytes()) as img:
+            _populate_tech_from_image(candidate, img)
+    except Exception:
+        return
+
+
+def _populate_tech_from_image_bytes(candidate: LogoCandidate, image_bytes: bytes) -> None:
+    """Populate dimensions, transparency, and OCR from image bytes."""
+    try:
+        with _open_image(image_bytes) as img:
+            _populate_tech_from_image(candidate, img)
+    except Exception:
+        return
+
+
+def _open_image(image_bytes: bytes):
+    """Open image bytes as a Pillow image context."""
+    from PIL import Image
+
+    img = Image.open(io.BytesIO(image_bytes))
+    img.load()
+    return img
+
+
+def _populate_tech_from_image(candidate: LogoCandidate, img) -> None:
+    """Populate candidate technical fields from a Pillow image."""
+    rgba = img.convert("RGBA") if img.mode != "RGBA" else img
+
+    candidate.width = rgba.width
+    candidate.height = rgba.height
+    if rgba.height:
+        candidate.aspect_ratio = round(rgba.width / rgba.height, 3)
+    candidate.is_square = rgba.width == rgba.height
+    alpha = rgba.getchannel("A")
+    min_alpha, _ = alpha.getextrema()
+    candidate.has_transparency = min_alpha < 255
+    candidate.ocr_text = _extract_ocr_text(rgba)
+
+
+def _extract_ocr_text(img) -> str | None:
+    """Best-effort OCR for candidate diagnostics."""
+    try:
+        import pytesseract  # type: ignore[import-untyped]
+    except Exception:
+        return None
+
+    try:
+        raw = pytesseract.image_to_string(img.convert("L"), config="--psm 6")
+    except Exception:
+        return None
+
+    cleaned = re.sub(r"\s+", " ", raw).strip()
+    if not cleaned:
+        return None
+    return cleaned[:80]
 
 
 def _ext_from_content_type(ct: str) -> str:
@@ -513,6 +657,17 @@ def _save_candidates_json(candidates: list[LogoCandidate], artifact_dir: Path) -
             "role": c.role,
             "score": c.score,
             "artifact_path": c.artifact_path,
+            "original_artifact_path": c.original_artifact_path,
+            "png_artifact_path": c.png_artifact_path,
+            "filename": c.filename,
+            "content_type": c.content_type,
+            "file_size_bytes": c.file_size_bytes,
+            "width": c.width,
+            "height": c.height,
+            "aspect_ratio": c.aspect_ratio,
+            "is_square": c.is_square,
+            "has_transparency": c.has_transparency,
+            "ocr_text": c.ocr_text,
         }
         if c.embedded_svg:
             entry["embedded"] = True

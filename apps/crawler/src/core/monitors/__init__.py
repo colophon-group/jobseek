@@ -105,7 +105,7 @@ def is_rich_monitor(monitor_type: str, config: dict | None = None) -> bool:
     api_sniffer is rich only when ``fields`` is present in config.
     """
     return monitor_type in api_monitor_types() or (
-        monitor_type == "api_sniffer" and bool((config or {}).get("fields"))
+        monitor_type in ("api_sniffer", "nextdata") and bool((config or {}).get("fields"))
     )
 
 
@@ -209,6 +209,12 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"Lever API \u2014 token: {token}, {jobs} jobs"
         return f"Lever API \u2014 token: {token}"
+    if name == "join":
+        slug = metadata.get("slug", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"JOIN \u2014 slug: {slug}, {jobs} jobs"
+        return f"JOIN \u2014 slug: {slug}"
     if name == "nextdata":
         path = metadata.get("path", "?")
         count = metadata.get("count")
@@ -388,6 +394,7 @@ from src.core.monitors import (  # noqa: E402
     dvinci,  # noqa: F401
     greenhouse,  # noqa: F401
     hireology,  # noqa: F401
+    join,  # noqa: F401
     lever,  # noqa: F401
     nextdata,  # noqa: F401
     personio,  # noqa: F401

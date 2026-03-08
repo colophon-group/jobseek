@@ -205,6 +205,36 @@ class TestActiveWorkspace:
         assert slug == "stripe"
         assert val == "greenhouse"
 
+    def test_non_tty_scope_writes_scoped_active_file(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path)
+        monkeypatch.setenv("WS_ACTIVE_SCOPE", "agent-1")
+        save_workspace(Workspace(slug="stripe"))
+
+        def _no_tty(_fd):
+            raise OSError
+
+        monkeypatch.setattr("os.ttyname", _no_tty)
+        set_active_slug("stripe")
+
+        assert (tmp_path / "active.scope-agent-1").exists()
+        assert not (tmp_path / "active").exists()
+        assert get_active_slug() == "stripe"
+
+    def test_non_tty_scope_reads_legacy_active_as_fallback(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path)
+        monkeypatch.setenv("WS_ACTIVE_SCOPE", "agent-2")
+        save_workspace(Workspace(slug="stripe"))
+
+        def _no_tty(_fd):
+            raise OSError
+
+        monkeypatch.setattr("os.ttyname", _no_tty)
+        (tmp_path / "active").write_text("stripe")
+
+        assert get_active_slug() == "stripe"
+
 
 class TestBoard:
     def test_to_dict_roundtrip(self):
@@ -262,6 +292,19 @@ class TestBoard:
         assert data["active_config"] == "greenhouse"
         assert data["configs"]["greenhouse"]["monitor_type"] == "greenhouse"
         assert data["configs"]["greenhouse"]["monitor_config"]["token"] == "test"
+
+    def test_job_link_pattern_roundtrip(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path)
+        board = Board(
+            alias="careers",
+            slug="test-careers",
+            url="https://test.com/jobs",
+            job_link_pattern=r"^https?://test\.com/jobs/",
+        )
+        save_board("test", board)
+        loaded = load_board("test", "careers")
+        assert loaded.job_link_pattern == r"^https?://test\.com/jobs/"
 
     def test_v1_migration(self):
         """v1 board YAML (with monitor/scraper dicts) loads correctly."""

@@ -17,8 +17,8 @@ meta,Meta,https://meta.com,https://...,https://...
 | `slug` | Yes | Primary key. Lowercase, URL-safe. Generated from company name. |
 | `name` | Yes | Display name (official or commonly known). |
 | `website` | Yes | Company homepage URL. |
-| `logo_url` | No | Direct URL to company logo image file. |
-| `icon_url` | No | Direct URL to favicon/icon image file. |
+| `logo_url` | No | Direct URL to the company's full (primary) logo image file. |
+| `icon_url` | No | Direct URL to the company's minified square logo/icon image file. |
 
 ### Rules
 
@@ -26,6 +26,10 @@ meta,Meta,https://meta.com,https://...,https://...
 - `slug` format: lowercase alphanumeric + hyphens, no leading/trailing hyphens
 - `website` must be a valid URL with scheme (https preferred)
 - `logo_url` and `icon_url` should point to actual image files, not pages containing images
+- `logo_url` should be the brand's preferred full mark (wordmark/lockup when available)
+- `icon_url` should be a square (1:1) minified mark suitable for compact UI
+- `logo_url` and `icon_url` should be brand-correct assets for that company (no generic or unrelated graphics)
+- transparent backgrounds are preferred for both logo and icon when available
 - Git history provides `created_at` / `updated_at` timestamps — no need for CSV columns
 
 ## data/boards.csv

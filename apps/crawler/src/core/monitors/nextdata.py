@@ -7,11 +7,24 @@ app-specific JSON structure to ``DiscoveredJob`` fields.
 Supports two modes:
 - **Rich mode** (``fields`` configured): returns ``list[DiscoveredJob]``
 - **URL-only mode** (no ``fields``): returns ``set[str]``
+
+Pagination
+----------
+When the ``pagination`` config key is present, the monitor fetches multiple
+pages and merges the results.  Config shape::
+
+    "pagination": {
+        "path": "props.pageProps.data.pagination",  # jmespath to pagination object
+        "page_count": "pageCount",                  # field within that object
+        "page_param": "page"                        # query-string parameter (default "page")
+    }
 """
 
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 import structlog
 
@@ -25,6 +38,7 @@ if TYPE_CHECKING:
 log = structlog.get_logger()
 
 MAX_URLS = 10_000
+_MAX_CONCURRENT_PAGES = 5
 
 # Common paths where Next.js apps store job listings.
 _COMMON_PATHS = [
@@ -34,6 +48,7 @@ _COMMON_PATHS = [
     "props.pageProps.allJobs",
     "props.pageProps.data.positions",
     "props.pageProps.data.jobs",
+    "props.pageProps.initialState.jobs.items",
 ]
 
 # Backward-compatible aliases for test imports
@@ -71,6 +86,77 @@ def _build_url(
         return url_template.format_map(variables)
     except (KeyError, IndexError, ValueError):
         return None
+
+
+def _add_query_param(url: str, param: str, value: int) -> str:
+    """Add or replace a query parameter in a URL."""
+    parsed = urlparse(url)
+    params = parse_qs(parsed.query, keep_blank_values=True)
+    params[param] = [str(value)]
+    new_query = urlencode(params, doseq=True)
+    return urlunparse(parsed._replace(query=new_query))
+
+
+def _resolve_field(item: dict, spec: str | dict) -> str | list[str] | None:
+    """Extract a field value, optionally applying a value map.
+
+    *spec* is either a jmespath string or a dict ``{"path": "...", "map": {...}}``.
+    """
+    if isinstance(spec, str):
+        return extract_field(item, spec)
+    path = spec.get("path", "")
+    value = extract_field(item, path)
+    if value is None:
+        return None
+    value_map = spec.get("map")
+    if value_map:
+        if isinstance(value, list):
+            return [value_map.get(v, v) for v in value] or None
+        return value_map.get(value, value)
+    return value
+
+
+def _extract_salary(item: dict, cfg: dict) -> dict | None:
+    """Build a ``base_salary`` dict from per-item fields.
+
+    Config shape::
+
+        {
+            "min": "salaryAmountFrom.amount",
+            "max": "salaryAmountTo.amount",
+            "currency": "salaryAmountFrom.currency",
+            "unit": "salaryFrequency",
+            "divisor": 100,
+            "unit_map": {"PER_YEAR": "year", ...}
+        }
+    """
+    divisor = cfg.get("divisor", 1)
+    unit_map = cfg.get("unit_map", {})
+    salary: dict = {}
+
+    for key in ("min", "max", "currency", "unit"):
+        path = cfg.get(key)
+        if not path:
+            continue
+        raw = resolve_path(item, path)
+        if raw is None:
+            continue
+
+        if key in ("min", "max"):
+            try:
+                val = float(raw) / divisor
+                salary[key] = int(val) if val == int(val) else val
+            except (ValueError, TypeError):
+                continue
+        elif key == "unit":
+            salary[key] = unit_map.get(str(raw), str(raw))
+        else:
+            salary[key] = str(raw)
+
+    # Require at least one of min/max to be meaningful
+    if not salary or ("min" not in salary and "max" not in salary):
+        return None
+    return salary
 
 
 # ---------------------------------------------------------------------------
@@ -154,10 +240,12 @@ async def discover(
         log.error("nextdata.missing_url_template", board_url=board_url)
         return set()
 
-    fields_map: dict[str, str] = metadata.get("fields") or {}
+    fields_map: dict[str, str | dict] = metadata.get("fields") or {}
     slug_fields: list[str] | None = metadata.get("slug_fields")
     render = metadata.get("render", False)
     actions = metadata.get("actions")
+    pagination_cfg: dict | None = metadata.get("pagination")
+    base_salary_cfg: dict | None = metadata.get("base_salary")
 
     if not render and actions:
         log.warning(
@@ -185,13 +273,27 @@ async def discover(
         log.warning("nextdata.path_not_list", board_url=board_url, path=path)
         return list() if fields_map else set()
 
+    # Pagination: fetch remaining pages and merge
+    if pagination_cfg:
+        items = await _fetch_remaining_pages(
+            items,
+            data,
+            board_url,
+            render,
+            client,
+            path,
+            pagination_cfg,
+            pw=pw,
+            actions=actions,
+        )
+
     # Cap items
     if len(items) > MAX_URLS:
         log.warning("nextdata.truncated", total=len(items), cap=MAX_URLS)
         items = items[:MAX_URLS]
 
     if fields_map:
-        return _extract_rich(items, url_template, slug_fields, fields_map)
+        return _extract_rich(items, url_template, slug_fields, fields_map, base_salary_cfg)
     return _extract_urls(items, url_template, slug_fields)
 
 
@@ -217,11 +319,78 @@ async def _fetch_html(
     return await fetch_page_text(url, client)
 
 
+async def _fetch_remaining_pages(
+    first_page_items: list,
+    data: dict,
+    board_url: str,
+    render: bool,
+    client: httpx.AsyncClient,
+    path: str,
+    pagination_cfg: dict,
+    pw=None,
+    actions: list[dict] | None = None,
+) -> list:
+    """Fetch pages 2..N and merge items with the first page."""
+    pagination_path = pagination_cfg.get("path")
+    page_count_field = pagination_cfg.get("page_count")
+    page_param = pagination_cfg.get("page_param", "page")
+
+    if not pagination_path or not page_count_field:
+        return first_page_items
+
+    pagination_data = resolve_path(data, pagination_path)
+    if not isinstance(pagination_data, dict):
+        return first_page_items
+
+    raw_count = resolve_path(pagination_data, page_count_field)
+    if raw_count is None:
+        return first_page_items
+    try:
+        page_count = int(raw_count)
+    except (ValueError, TypeError):
+        return first_page_items
+
+    if page_count <= 1:
+        return first_page_items
+
+    log.info(
+        "nextdata.paginating",
+        board_url=board_url,
+        page_count=page_count,
+        first_page_items=len(first_page_items),
+    )
+
+    sem = asyncio.Semaphore(_MAX_CONCURRENT_PAGES)
+
+    async def _fetch_page(page_num: int) -> list:
+        async with sem:
+            page_url = _add_query_param(board_url, page_param, page_num)
+            html = await _fetch_html(page_url, render, client, pw=pw, actions=actions)
+            if not html:
+                log.warning("nextdata.page_fetch_failed", page=page_num)
+                return []
+            page_data = extract_next_data(html)
+            if not page_data:
+                return []
+            items = resolve_path(page_data, path)
+            return items if isinstance(items, list) else []
+
+    tasks = [_fetch_page(p) for p in range(2, page_count + 1)]
+    results = await asyncio.gather(*tasks)
+
+    all_items = list(first_page_items)
+    for page_items in results:
+        all_items.extend(page_items)
+
+    return all_items
+
+
 def _extract_rich(
     items: list[dict],
     url_template: str,
     slug_fields: list[str] | None,
-    fields_map: dict[str, str],
+    fields_map: dict[str, str | dict],
+    base_salary_cfg: dict | None = None,
 ) -> list[DiscoveredJob]:
     """Extract ``DiscoveredJob`` objects using the field mapping."""
     jobs: list[DiscoveredJob] = []
@@ -236,7 +405,7 @@ def _extract_rich(
         metadata_fields: dict[str, object] = {}
 
         for target, spec in fields_map.items():
-            value = extract_field(item, spec)
+            value = _resolve_field(item, spec)
             if value is None:
                 continue
             if target.startswith("metadata."):
@@ -253,6 +422,11 @@ def _extract_rich(
                 kwargs["locations"] = value if isinstance(value, list) else [value]
             else:
                 metadata_fields[target] = value
+
+        if base_salary_cfg:
+            salary = _extract_salary(item, base_salary_cfg)
+            if salary:
+                kwargs["base_salary"] = salary
 
         if metadata_fields:
             kwargs["metadata"] = metadata_fields

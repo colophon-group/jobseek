@@ -6,6 +6,7 @@ from src.workspace.career_discover import (
     CareerPageCandidate,
     _dedup_candidates,
     _extract_links,
+    _hubness_allows_candidate,
     _scan_ats_urls_in_html,
 )
 
@@ -610,3 +611,37 @@ class TestMixedExtraction:
         links = _extract(html)
         greenhouse_links = [lnk for lnk in links if "boards.greenhouse.io/acme" in lnk.url]
         assert len(greenhouse_links) == 1
+
+
+class TestHubnessRequirement:
+    def test_homepage_candidate_requires_pattern_or_jobs_hint(self):
+        assert not _hubness_allows_candidate(
+            source="homepage_link",
+            hub_links=2,
+            inferred_pattern=None,
+            jobs_hint_n=0,
+        )
+
+    def test_homepage_candidate_allowed_with_pattern(self):
+        assert _hubness_allows_candidate(
+            source="homepage_link",
+            hub_links=2,
+            inferred_pattern=r"^https?://example.com/jobs/",
+            jobs_hint_n=0,
+        )
+
+    def test_homepage_candidate_allowed_with_monitor_jobs_hint(self):
+        assert _hubness_allows_candidate(
+            source="homepage_link",
+            hub_links=1,
+            inferred_pattern=None,
+            jobs_hint_n=10,
+        )
+
+    def test_blind_probe_candidate_not_subject_to_hubness_gate(self):
+        assert _hubness_allows_candidate(
+            source="blind_probe",
+            hub_links=0,
+            inferred_pattern=None,
+            jobs_hint_n=0,
+        )

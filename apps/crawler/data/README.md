@@ -13,8 +13,13 @@ Company registry. One row per company.
 | `slug` | Yes | Unique URL-safe identifier (e.g. `stripe`). Primary key. |
 | `name` | Yes | Display name (e.g. `Stripe`). |
 | `website` | Yes | Company homepage URL. |
-| `logo_url` | No | Direct URL to logo image file. |
-| `icon_url` | No | Direct URL to favicon/icon image file. |
+| `logo_url` | No | Direct URL to the company's full (primary) logo image file. |
+| `icon_url` | No | Direct URL to the company's minified square logo/icon image file. |
+
+Image guidelines:
+- Use direct image file URLs (not pages containing images).
+- `logo_url` should be the brand's full primary mark; `icon_url` should be a square minified mark.
+- Prefer transparent-background assets when available.
 
 ### boards.csv
 
