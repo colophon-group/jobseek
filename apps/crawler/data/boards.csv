@@ -34,6 +34,7 @@ perplexity-ai,perplexity-ai-careers,https://jobs.ashbyhq.com/perplexity,ashby,,,
 playnvoice,playnvoice-careers,https://join.com/companies/playnvoice,join,"{""slug"": ""playnvoice"", ""description_paths"": [""props.pageProps.initialState.job.schemaDescription"", ""props.pageProps.initialState.job.unifiedDescription"", ""props.pageProps.initialState.job.description""]}",,
 proton,proton-careers,https://proton.me/careers,greenhouse,"{""token"": ""proton""}",,
 revolut,revolut-careers,https://www.revolut.com/careers/,nextdata,"{""path"": ""props.pageProps.positions"", ""url_template"": ""https://www.revolut.com/careers/apply/{id}"", ""render"": true}",nextdata,"{""path"": ""props.pageProps.position"", ""render"": true, ""fields"": {""title"": ""text"", ""description"": ""description"", ""locations"": ""locations[].name"", ""job_location_type"": ""locations[].type"", ""metadata.team"": ""team""}}"
+semrush,semrush-careers,https://careers.semrush.com/,recruitee,"{""slug"": ""semrush"", ""api_base"": ""https://semrush.recruitee.com""}",,
 sonarsource,sonarsource-careers-lever,https://jobs.lever.co/sonarsource,lever,,,
 stripe,stripe-careers,https://stripe.com/jobs/search,greenhouse,,,
 swissquote-bank,swissquote-bank-careers,https://careers.smartrecruiters.com/Swissquote,smartrecruiters,,,
@@ -41,5 +42,3 @@ twitch,twitch-careers,https://job-boards.greenhouse.io/twitch,greenhouse,"{""tok
 unlimit,unlimit-careers-lever,https://jobs.lever.co/unlimit,lever,,,
 white-circle,white-circle-careers,https://jobs.ashbyhq.com/whitecircle,ashby,"{""token"": ""whitecircle""}",,
 zalando,zalando-workday,https://zalando.wd3.myworkdayjobs.com/ZalandoSiteWD,workday,,,
-playnvoice,playnvoice-careers,https://join.com/companies/playnvoice,sitemap,"{""sitemap_url"": ""https://join.com/companies/playnvoice/sitemap.xml"", ""url_filter"": ""/companies/playnvoice/\d+-""}",json-ld,
-vivid-money,vivid-money-careers,https://careers.vivid.money,personio,"{""slug"": ""vivid"", ""language"": ""en""}",,
