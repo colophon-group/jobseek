@@ -1,5 +1,6 @@
 slug,name,website,logo_url,icon_url
 cloudflare,Cloudflare,https://www.cloudflare.com,https://jobseek-assets.colophon-group.org/companies/cloudflare/logo.svg,https://jobseek-assets.colophon-group.org/companies/cloudflare/icon.png
+constructor-tech,Constructor,https://constructor.tech,,
 databricks,Databricks,https://www.databricks.com,https://jobseek-assets.colophon-group.org/companies/databricks/logo.png,https://jobseek-assets.colophon-group.org/companies/databricks/icon.png
 deepjudge,DeepJudge,https://www.deepjudge.ai,https://jobseek-assets.colophon-group.org/companies/deepjudge/logo.svg,https://jobseek-assets.colophon-group.org/companies/deepjudge/icon.png
 deepmind,Google DeepMind,https://deepmind.google,https://jobseek-assets.colophon-group.org/companies/deepmind/logo.png,https://jobseek-assets.colophon-group.org/companies/deepmind/icon.png
@@ -24,4 +25,3 @@ swissquote-bank,Swissquote Bank,https://www.swissquote.com,https://jobseek-asset
 twitch,Twitch,https://www.twitch.tv,https://jobseek-assets.colophon-group.org/companies/twitch/logo.jpg,https://jobseek-assets.colophon-group.org/companies/twitch/icon.png
 white-circle,White Circle,https://whitecircle.ai,https://jobseek-assets.colophon-group.org/companies/white-circle/logo.svg,https://jobseek-assets.colophon-group.org/companies/white-circle/icon.png
 zalando,Zalando,https://corporate.zalando.com,https://jobseek-assets.colophon-group.org/companies/zalando/logo.svg,https://jobseek-assets.colophon-group.org/companies/zalando/icon.png
-constructor-tech,,,,
