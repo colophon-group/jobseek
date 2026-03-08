@@ -1,5 +1,6 @@
 company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config
 cloudflare,cloudflare-careers,https://boards.greenhouse.io/cloudflare,greenhouse,"{""token"": ""cloudflare""}",,
+databricks,databricks-careers,https://www.databricks.com/company/careers,greenhouse,"{""token"": ""databricks""}",,
 deepjudge,deepjudge-careers,https://jobs.ashbyhq.com/deepjudge,ashby,"{""token"": ""deepjudge""}",,
 deepmind,deepmind-careers,https://deepmind.google/about/careers/,greenhouse,"{""token"": ""deepmind""}",,
 elevenlabs,elevenlabs-careers,https://jobs.ashbyhq.com/elevenlabs,ashby,"{""token"": ""elevenlabs""}",,
