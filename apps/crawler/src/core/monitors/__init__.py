@@ -191,6 +191,12 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"BITE API \u2014 {label}, {jobs} jobs"
         return f"BITE API \u2014 {label}"
+    if name == "breezy":
+        portal_url = metadata.get("portal_url", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"Breezy \u2014 {portal_url}, {jobs} jobs"
+        return f"Breezy \u2014 {portal_url}"
     if name == "ashby":
         token = metadata.get("token", "?")
         jobs = metadata.get("jobs")
@@ -390,6 +396,7 @@ from src.core.monitors import (  # noqa: E402
     api_sniffer,  # noqa: F401
     ashby,  # noqa: F401
     bite,  # noqa: F401
+    breezy,  # noqa: F401
     dom,  # noqa: F401
     dvinci,  # noqa: F401
     greenhouse,  # noqa: F401

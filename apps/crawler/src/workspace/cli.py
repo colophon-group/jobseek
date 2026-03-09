@@ -90,13 +90,35 @@ probe_group.add_command(probe_api, name="api")
 # ── `ws del` group ──────────────────────────────────────────────────────
 
 
-@ws.group(name="del", invoke_without_command=True)
+class _DeleteGroup(click.Group):
+    """Delete group that supports `ws del board <alias>` shorthand.
+
+    Click normally parses `board` as the optional `[SLUG]` positional.
+    If that happens and the next token is not a known subcommand, reinterpret
+    it as the `board` subcommand argument.
+    """
+
+    def resolve_command(self, ctx, args):
+        slug = ctx.params.get("slug")
+        if slug == "board" and args:
+            cmd = self.get_command(ctx, "board")
+            if cmd is not None:
+                return "board", cmd, args
+        return super().resolve_command(ctx, args)
+
+
+@ws.group(
+    name="del",
+    cls=_DeleteGroup,
+    invoke_without_command=True,
+)
 @click.argument("slug", required=False)
 @click.pass_context
 def del_group(ctx, slug):
     """Delete a workspace or its resources."""
     if ctx.invoked_subcommand is None:
-        # Resolve slug from active workspace if not provided
+        if slug == "board":
+            raise click.UsageError("Usage: ws del board <alias-or-board_slug>")
         if slug is None:
             from src.workspace.state import resolve_slug
 

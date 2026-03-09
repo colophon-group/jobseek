@@ -14,6 +14,7 @@ from src.workspace.state import (
     list_workspaces,
     load_board,
     load_workspace,
+    resolve_board_alias,
     resolve_slug,
     resolve_two_args,
     save_board,
@@ -204,6 +205,24 @@ class TestActiveWorkspace:
         slug, val = resolve_two_args("greenhouse", None)
         assert slug == "stripe"
         assert val == "greenhouse"
+
+    def test_resolve_board_alias_from_alias(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path)
+        save_workspace(Workspace(slug="stripe"))
+        save_board(
+            "stripe", Board(alias="careers", slug="stripe-careers", url="https://x.com/jobs")
+        )
+        assert resolve_board_alias("stripe", "careers") == "careers"
+
+    def test_resolve_board_alias_from_board_slug(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path)
+        save_workspace(Workspace(slug="stripe"))
+        save_board(
+            "stripe", Board(alias="careers", slug="stripe-careers", url="https://x.com/jobs")
+        )
+        assert resolve_board_alias("stripe", "stripe-careers") == "careers"
 
     def test_non_tty_scope_writes_scoped_active_file(self, tmp_path, monkeypatch):
         monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: tmp_path)

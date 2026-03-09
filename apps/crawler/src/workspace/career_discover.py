@@ -85,7 +85,7 @@ _CAREER_TEXT_RE = re.compile(
 _ATS_URL_RE = re.compile(
     r"https?://("
     r"boards\.greenhouse\.io/[\w-]+"
-    r"|job-boards\.greenhouse\.io/[\w-]+"
+    r"|job-boards(?:\.[\w-]+)?\.greenhouse\.io/[\w-]+"
     r"|jobs\.ashbyhq\.com/[\w-]+"
     r"|jobs\.lever\.co/[\w-]+"
     r"|[\w-]+\.recruitee\.com"
@@ -94,6 +94,7 @@ _ATS_URL_RE = re.compile(
     r"|(?:jobs|careers)\.smartrecruiters\.com/[\w-]+"
     r"|[\w-]+\.mysmartrecruiters\.com"
     r"|apply\.workable\.com/[\w-]+"
+    r"|[\w-]+\.breezy\.hr"
     r"|ats(?:\.[\w]+)?\.rippling\.com/[\w-]+"
     r"|careers\.hireology\.com/[\w-]+"
     r"|[\w-]+\.wd\d+\.myworkdayjobs\.com(?:/[\w-]+)?"

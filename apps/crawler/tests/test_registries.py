@@ -25,6 +25,10 @@ class TestMonitorRegistry:
         names = [m.name for m in monitor_registry]
         assert "lever" in names
 
+    def test_breezy_registered(self):
+        names = [m.name for m in monitor_registry]
+        assert "breezy" in names
+
     def test_sitemap_registered(self):
         names = [m.name for m in monitor_registry]
         assert "sitemap" in names
@@ -170,6 +174,11 @@ class TestDetectMonitorType:
         result = await detect_monitor_type("https://jobs.lever.co/stripe", None)
         assert result is not None
         assert result[0] == "lever"
+
+    async def test_detects_breezy_url(self):
+        result = await detect_monitor_type("https://acme.breezy.hr", None)
+        assert result is not None
+        assert result[0] == "breezy"
 
     async def test_no_match_returns_none(self):
         def handler(request):

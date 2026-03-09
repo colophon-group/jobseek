@@ -9,6 +9,7 @@ dependencies = [
     "pyyaml>=6.0",
     "httpx>=0.28",
     "Pillow>=10.0",
+    "cairosvg>=2.7",
     "structlog>=24.4",
     "jmespath>=1.0",
     "playwright>=1.58.0",

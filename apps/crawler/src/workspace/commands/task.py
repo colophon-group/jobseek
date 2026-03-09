@@ -159,6 +159,8 @@ def task_next(notes: str):
     """Record reflection, verify gate, and advance to next step."""
     slug = resolve_slug(None)
     wf = _load_wf_from_disk(slug)
+    prev_step_id = wf.current_step
+    prev_board_alias = wf.current_board
 
     if wf.failed:
         out.die("Workflow is in failed state. Use 'ws task fail' info or start over.")
@@ -197,6 +199,17 @@ def task_next(notes: str):
 
     ctx_vars = build_context(ws, boards, wf, board)
     instructions = render_step(next_step, ctx_vars)
+
+    skipped_steps = _skipped_steps_between(
+        prev_step_id,
+        next_step.id,
+        prev_board_alias,
+        boards,
+    )
+    for title, reason in skipped_steps:
+        out.info("task", f"Skipped step: {title} ({reason})")
+    if skipped_steps:
+        print()
 
     print()
     _print_step_header(next_step, wf, boards)
@@ -363,3 +376,42 @@ def _print_failed(wf: WorkflowState) -> None:
         fail_reason=wf.fail_reason,
     )
     print(rendered)
+
+
+def _skip_reason(skip_when: str | None) -> str:
+    if skip_when == "rich_monitor":
+        return "active monitor is rich"
+    return skip_when or "condition met"
+
+
+def _skipped_steps_between(
+    prev_step_id: str,
+    next_step_id: str,
+    board_alias: str | None,
+    boards: list,
+) -> list[tuple[str, str]]:
+    """Return skipped per-board step titles between two step ids."""
+    if not board_alias:
+        return []
+
+    board = next((b for b in boards if b.alias == board_alias), None)
+    if board is None:
+        return []
+
+    all_steps = _all_step_defs()
+    step_ids = [s.id for s in all_steps]
+    if prev_step_id not in step_ids or next_step_id not in step_ids:
+        return []
+
+    start = step_ids.index(prev_step_id)
+    end = step_ids.index(next_step_id)
+    if end <= start + 1:
+        return []
+
+    skipped: list[tuple[str, str]] = []
+    for step in all_steps[start + 1 : end]:
+        if step.phase != "per_board":
+            continue
+        if step.skip_when and should_skip(step, board):
+            skipped.append((step.title, _skip_reason(step.skip_when)))
+    return skipped

@@ -1,13 +1,15 @@
 name: Maybe auto-merge
 
 on:
-  pull_request:
+  pull_request_target:
     branches: [main]
     types: [opened, reopened, synchronize, ready_for_review]
 
 jobs:
   label-and-merge:
-    if: github.event.pull_request.draft == false
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository
+      && github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     permissions:
       contents: write

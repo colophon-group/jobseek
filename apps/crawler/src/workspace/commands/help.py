@@ -10,6 +10,7 @@ INDEX = """\
 Usage: ws help <topic>
 
 Available topics:
+  board             Board command quick reference (add/use/del/patterns)
   monitors          Monitor type overview + decision tree
   scrapers          Scraper type overview + field importance
   monitor <type>    Per-type reference (greenhouse, lever, ashby, sitemap, dom, ...)
@@ -26,6 +27,37 @@ Commands:
 Troubleshooting:
   ws task troubleshoot <query>   Search the knowledge base"""
 
+BOARD = """\
+Board Command Reference:
+
+  Identifiers:
+    alias       Short board name used by ws commands (e.g. careers, careers-gh)
+    board_slug  Full slug stored in CSV/workspace (e.g. stripe-careers-gh)
+
+  Most ws commands expect alias. If you pass board_slug, ws will try to
+  resolve it back to alias automatically.
+
+  Add:
+    ws add board <alias> --url "<board-url>"
+    ws add board careers-gh --url "https://job-boards.eu.greenhouse.io/acme"
+
+  Use:
+    ws use --board <alias-or-board_slug>
+    ws use <company> <alias-or-board_slug>
+
+  Remove:
+    ws del board <alias-or-board_slug>
+    ws del <company> board <alias-or-board_slug>
+
+  Job-link pattern:
+    ws set --board <alias-or-board_slug> --job-link-pattern "<regex>"
+
+  Tips:
+    - Single board alias: careers
+    - Multi-board aliases: careers-us, careers-de, careers-gh
+    - Prefer real listings board URLs over marketing landing pages
+"""
+
 MONITORS = """\
 Monitor Types (cheapest first):
 
@@ -33,6 +65,7 @@ Monitor Types (cheapest first):
   ────────────────────────────────────────────────────────
   ashby             10      Full job data   No (skipped)
   bite              10      Full job data   No (skipped)
+  breezy            10      Full job data   No (skipped)
   dvinci            10      Full job data   No (skipped)
   greenhouse        10      Full job data   No (skipped)
   hireology         10      Full job data   No (skipped)
@@ -79,7 +112,7 @@ Scraper Types:
   dom            Static/PW   Yes (steps)      Custom HTML structure
   api_sniffer    Playwright  Optional (fields)  SPA/XHR job pages
 
-  API monitors (greenhouse, lever, ashby, recruitee, rippling, workday, pinpoint,
+  API monitors (greenhouse, lever, ashby, breezy, recruitee, rippling, workday, pinpoint,
   successfactors) skip the scraper step entirely.
   personio skips scraper when XML feed is available; HTML fallback needs scraper.
   api_sniffer scraper is auto-probed via Playwright in ws probe scraper.
@@ -162,6 +195,34 @@ dvinci — d.vinci ATS (Public JSON API, no auth)
   Detection:  ws probe shows "d.vinci API — slug: X, N jobs"
   Zero jobs?  Verify slug — try the API URL directly in a browser"""
 
+MONITOR_BREEZY = """\
+breezy — Breezy HR Public Listing + Detail Pages
+
+  Listing:  GET https://{portal}/json
+  Detail:   GET https://{portal}/p/{friendly_id}
+  Returns:  Full job data (title, HTML description, locations, employment_type,
+            job_location_type, date_posted, base_salary)
+            metadata: department, company, company_slug, id
+  Scraper:  Not needed (monitor extracts full content, scraper step is skipped)
+  Cap:      10,000 jobs
+  Note:     N+1 calls (1 listing + N detail pages, concurrency=10).
+            Description extraction prefers JSON-LD JobPosting and falls back
+            to the rendered HTML description block for boards without JSON-LD.
+
+  Config:
+    {"portal_url": "https://acme.breezy.hr"}
+    {"slug": "acme"}  # shorthand for https://{slug}.breezy.hr
+
+    portal_url  Optional explicit Breezy portal URL/origin.
+                Useful for custom domain pages embedding a Breezy board.
+                Auto-filled by ws probe when detected.
+    slug        Optional Breezy slug shorthand.
+
+  Detection:  ws probe shows "Breezy — https://{portal}, N jobs"
+  Zero jobs?  Valid board with no open postings still returns 0 jobs.
+  False positives:  Redirects to marketing.breezy.hr are rejected unless
+                    /json validates as a real listing endpoint."""
+
 MONITOR_GREENHOUSE = """\
 greenhouse — Greenhouse Public API
 
@@ -176,8 +237,9 @@ greenhouse — Greenhouse Public API
 
     token    Board identifier. Auto-filled by ws probe from:
              1. Direct URL (boards.greenhouse.io/{token})
-             2. Inline JS scan for Greenhouse API references
-             3. Slug-based API probe (derives slug from domain)
+             2. Regional board URL (job-boards.<region>.greenhouse.io/{token})
+             3. Inline JS scan for Greenhouse API references / urlToken
+             4. Slug-based API probe (derives slug from domain)
 
   Detection:  ws probe shows "Greenhouse API — token: X, N jobs"
   Zero jobs?  Verify token — try the API URL directly in a browser"""
@@ -1201,6 +1263,7 @@ Troubleshooting:
 
 MONITOR_CARDS: dict[str, str] = {
     "bite": MONITOR_BITE,
+    "breezy": MONITOR_BREEZY,
     "dvinci": MONITOR_DVINCI,
     "greenhouse": MONITOR_GREENHOUSE,
     "hireology": MONITOR_HIREOLOGY,
@@ -1232,6 +1295,7 @@ SCRAPER_CARDS: dict[str, str] = {
 }
 
 TOPIC_MAP: dict[str, str] = {
+    "board": BOARD,
     "monitors": MONITORS,
     "scrapers": SCRAPERS,
     "fields": FIELDS,

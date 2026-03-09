@@ -46,17 +46,21 @@ Fetches from the Greenhouse public JSON API.
 
 **API**: `GET https://boards-api.greenhouse.io/v1/boards/{token}/jobs?content=true`
 
-**Detection**: Three tiers:
+**Detection**: Four tiers:
 1. Direct URL match (`boards.greenhouse.io/{token}`)
-2. Page HTML scan for Greenhouse API references in inline JS
-3. Slug-based API probe (derive slug from domain, hit the API)
+2. Regional board URL match (`job-boards.<region>.greenhouse.io/{token}`)
+3. Page HTML scan for Greenhouse API references / `urlToken` in inline JS
+4. Slug-based API probe (derive slug from domain, hit the API)
 
 **Config**:
 ```json
 {"token": "stripe"}
 ```
 
-The token is the board identifier. For direct Greenhouse URLs it's extracted from the URL. For custom domains, detection finds it in the page HTML or probes by company slug.
+The token is the board identifier. For direct or regional Greenhouse URLs it's
+extracted from the URL path. For custom domains, detection finds it in page HTML
+or probes by company slug. If probe picks the wrong token, set it manually:
+`ws select monitor greenhouse --config '{"token":"<token>"}'`.
 
 **Returns**: Full job data — title, HTML description, locations (from location + offices), departments, education, date posted. Cap: 10,000 jobs.
 

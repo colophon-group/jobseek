@@ -23,6 +23,7 @@ from src.workspace.state import (
     get_active_slug,
     list_boards,
     load_workspace,
+    resolve_board_alias,
     resolve_slug,
     save_workspace,
     set_active_slug,
@@ -209,13 +210,16 @@ def use(slug: str | None, board: str | None, company_opt: str | None, board_opt:
         ws_slug = target_slug or resolve_slug(None)
         if not workspace_exists(ws_slug):
             out.die(f"Workspace {ws_slug!r} not found")
-        path = board_yaml_path(ws_slug, target_board)
+        resolved_alias = resolve_board_alias(ws_slug, target_board)
+        path = board_yaml_path(ws_slug, resolved_alias)
         if not path.exists():
             out.die(f"Board {target_board!r} not found in workspace {ws_slug!r}")
         ws_obj = load_workspace(ws_slug)
-        ws_obj.active_board = target_board
+        ws_obj.active_board = resolved_alias
         save_workspace(ws_obj)
-        out.info("board", f"Active board: {ws_slug}-{target_board}")
+        if resolved_alias != target_board:
+            out.warn("board", f"Resolved {target_board!r} to alias {resolved_alias!r}")
+        out.info("board", f"Active board: {ws_slug}-{resolved_alias} (alias: {resolved_alias})")
 
 
 @click.command()
@@ -744,6 +748,7 @@ def _execute_submit_step(
             "apps/crawler/data/companies.csv",
             "apps/crawler/data/boards.csv",
             f"apps/crawler/data/images/{ws.slug}/",
+            "apps/crawler/src/workspace/kb/",
         ]
         if not git.has_uncommitted_changes(commit_paths):
             return  # Nothing to commit — already done

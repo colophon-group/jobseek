@@ -83,7 +83,7 @@ Agents should not blindly trust the first test crawl result. The workflow includ
 
 **Monitor verification**: After `ws run monitor`, cross-reference the crawled job count with what the career page displays. Many sites show a total like "247 open positions" — if the monitor only found 50, something is wrong. Common causes:
 - The sitemap doesn't include all job URLs → try `dom` or `nextdata` monitor instead
-- The API token is wrong or returns a different subset → try alternative API slugs
+- The API token is wrong or returns a different subset → try alternative API slugs or set token explicitly (e.g. `ws select monitor greenhouse --config '{"token":"<token>"}'`)
 - Pagination isn't working → check pagination config
 - The monitor type is wrong entirely → re-run `ws probe` or try manually
 

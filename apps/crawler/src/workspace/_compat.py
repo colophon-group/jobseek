@@ -14,6 +14,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
     {
         "ashby",
         "bite",
+        "breezy",
         "dvinci",
         "greenhouse",
         "hireology",
@@ -60,10 +61,12 @@ def detect_ats_from_url(url: str) -> str | None:
     from urllib.parse import urlparse
 
     parsed = urlparse(url)
-    host = parsed.netloc.lower()
+    host = (parsed.hostname or "").lower()
 
     # Exact host prefixes
-    if host in ("boards.greenhouse.io", "job-boards.greenhouse.io"):
+    if host in ("boards.greenhouse.io", "job-boards.greenhouse.io") or (
+        host.startswith("job-boards.") and host.endswith(".greenhouse.io")
+    ):
         return "greenhouse"
     if host == "jobs.lever.co":
         return "lever"
@@ -73,6 +76,8 @@ def detect_ats_from_url(url: str) -> str | None:
         return "workable"
     if host == "careers.smartrecruiters.com":
         return "smartrecruiters"
+    if host.endswith(".breezy.hr"):
+        return "breezy"
 
     # Suffix-based patterns
     if host.endswith(".recruitee.com"):

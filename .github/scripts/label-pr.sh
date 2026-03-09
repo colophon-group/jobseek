@@ -43,6 +43,7 @@ while IFS= read -r f; do
   if [ "$MATCH" != "true" ]; then
     case "$f" in
       apps/crawler/data/images/*) MATCH=true ;;
+      apps/crawler/src/workspace/kb/*.md) MATCH=true ;;
     esac
   fi
   if [ "$MATCH" != "true" ]; then
@@ -134,7 +135,7 @@ while IFS= read -r line; do
       DIFF_OK=false
     fi
   fi
-done < <(echo "$DIFF" | grep '^+[^+]' || true)
+done < <(echo "$CSV_DIFF" | grep '^+[^+]' || true)
 
 # --- Parse crawl-stats comment ---
 

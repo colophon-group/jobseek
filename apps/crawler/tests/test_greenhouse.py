@@ -118,6 +118,29 @@ class TestTokenFromUrl:
     def test_embed_ignored(self):
         assert _token_from_url("https://boards.greenhouse.io/embed") is None
 
+    def test_embed_for_param(self):
+        assert (
+            _token_from_url("https://boards.greenhouse.io/embed/job_board?for=acme-co") == "acme-co"
+        )
+
+    def test_regional_job_boards_url(self):
+        assert (
+            _token_from_url("https://job-boards.eu.greenhouse.io/brainrocketltd")
+            == "brainrocketltd"
+        )
+
+    def test_regional_job_boards_with_path(self):
+        assert (
+            _token_from_url("https://job-boards.eu.greenhouse.io/brainrocketltd/jobs/123")
+            == "brainrocketltd"
+        )
+
+    def test_boards_api_url(self):
+        assert (
+            _token_from_url("https://boards-api.greenhouse.io/v1/boards/stripe/jobs?content=true")
+            == "stripe"
+        )
+
     def test_no_match(self):
         assert _token_from_url("https://example.com/careers") is None
 
@@ -202,6 +225,19 @@ class TestDiscover:
             jobs = await discover(board, client)
             assert len(jobs) == 0
 
+    async def test_token_from_regional_board_url(self):
+        def handler(request):
+            assert "brainrocketltd" in str(request.url)
+            return httpx.Response(200, json={"jobs": []})
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://job-boards.eu.greenhouse.io/brainrocketltd",
+                "metadata": {},
+            }
+            jobs = await discover(board, client)
+            assert len(jobs) == 0
+
     async def test_skips_jobs_without_url(self):
         def handler(request):
             return httpx.Response(
@@ -240,6 +276,10 @@ class TestCanHandle:
     async def test_greenhouse_url(self):
         result = await can_handle("https://boards.greenhouse.io/stripe")
         assert result == {"token": "stripe"}
+
+    async def test_greenhouse_regional_url(self):
+        result = await can_handle("https://job-boards.eu.greenhouse.io/brainrocketltd")
+        assert result == {"token": "brainrocketltd"}
 
     async def test_non_greenhouse_url_no_client(self):
         result = await can_handle("https://example.com/careers")

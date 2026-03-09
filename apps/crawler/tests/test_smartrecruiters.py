@@ -479,3 +479,34 @@ class TestCanHandle:
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             result = await can_handle("https://www.example.com/careers", client)
             assert result is None
+
+    async def test_redirect_to_generic_smartrecruiters_page_rejected(self):
+        def handler(request):
+            host = (request.url.host or "").lower()
+            if host == "careers.smartrecruiters.com":
+                return httpx.Response(
+                    302,
+                    headers={"Location": "https://www.smartrecruiters.com/careers/"},
+                )
+            if host == "www.smartrecruiters.com":
+                return httpx.Response(200, text="<html>SmartRecruiters careers landing</html>")
+            if host == "api.smartrecruiters.com":
+                return httpx.Response(404)
+            return httpx.Response(404)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle("https://careers.smartrecruiters.com/acme", client)
+            assert result is None
+
+    async def test_no_blind_slug_probe_without_smartrecruiters_signal(self):
+        def handler(request):
+            host = (request.url.host or "").lower()
+            path = request.url.path
+            if host == "api.smartrecruiters.com" and "/companies/example/postings" in path:
+                # A valid token exists, but input page has no SR signal.
+                return httpx.Response(200, json={"totalFound": 7, "content": []})
+            return httpx.Response(200, text="<html>plain careers page</html>")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle("https://www.example.com/careers", client)
+            assert result is None

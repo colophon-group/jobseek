@@ -13,7 +13,9 @@ a different company's jobs.
 ## Solution
 1. Inspect the board URL page source for the correct token/board ID
 2. Check for redirects — the actual ATS board may be on a different subdomain
-3. For Greenhouse: look for `data-board-token` or `Grnhse.Settings.boardToken` in page source
+3. For Greenhouse: look for `data-board-token`, `Grnhse.Settings.boardToken`, or
+   `urlToken` in page source. On regional hosts like
+   `job-boards.eu.greenhouse.io/<token>`, token is the first path segment.
 4. For Lever: the token is the path segment after `jobs.lever.co/`
 5. Manually set the correct token:
    ```bash

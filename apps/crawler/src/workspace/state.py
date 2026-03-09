@@ -610,3 +610,33 @@ def resolve_two_args(first: str, second: str | None) -> tuple[str, str]:
     if second is not None:
         return first, second
     return resolve_slug(None), first
+
+
+def resolve_board_alias(slug: str, alias_or_slug: str) -> str:
+    """Resolve board identifier to an alias.
+
+    Accepts either board alias (``careers``) or board slug
+    (``<company>-careers``). Returns the alias candidate even when unresolved,
+    so callers can keep existing "not found" error behavior.
+    """
+    candidate = (alias_or_slug or "").strip()
+    if not candidate:
+        return candidate
+
+    # Exact alias match (normal case).
+    if board_yaml_path(slug, candidate).exists():
+        return candidate
+
+    # Common confusion: passing full board slug where alias is expected.
+    prefix = f"{slug}-"
+    if candidate.startswith(prefix):
+        alias = candidate.removeprefix(prefix)
+        if alias and board_yaml_path(slug, alias).exists():
+            return alias
+
+    # Fallback: match persisted board.slug values.
+    for board in list_boards(slug):
+        if board.slug == candidate:
+            return board.alias
+
+    return candidate

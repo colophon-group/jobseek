@@ -118,6 +118,17 @@ class TestStatus:
         result = runner.invoke(ws, ["status"])
         assert "No active workspace" in result.output
 
+
+class TestHelp:
+    def test_help_board_topic(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        runner = CliRunner()
+        result = runner.invoke(ws, ["help", "board"])
+        assert result.exit_code == 0
+        assert "Board Command Reference" in result.output
+        assert "ws add board" in result.output
+        assert "ws del board" in result.output
+
     def test_with_workspace(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
         ws_obj = Workspace(slug="test", issue=42, pr=10, name="Test")
@@ -383,6 +394,18 @@ class TestAddBoard:
 
 
 class TestDelBoard:
+    def test_del_board_accepts_full_board_slug(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(Workspace(slug="test", active_board="careers"))
+        set_active_slug("test")
+        save_board("test", Board(alias="careers", slug="test-careers", url="https://test.com/jobs"))
+
+        runner = CliRunner()
+        result = runner.invoke(ws, ["del", "board", "test-careers"])
+        assert result.exit_code == 0
+        assert "Resolved 'test-careers' to alias 'careers'" in result.output
+        assert "Removed board 'careers'" in result.output
+
     def test_del_board_repairs_workflow_pointer(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
         ws_obj = Workspace(slug="test", active_board="careers")
@@ -446,6 +469,22 @@ class TestUseBoard:
         runner = CliRunner()
         result = runner.invoke(ws, ["use", "--board", "b"])
         assert result.exit_code == 0
+        assert "Active board: test-b" in result.output
+
+        ws_obj = load_workspace("test")
+        assert ws_obj.active_board == "b"
+
+    def test_use_board_flag_accepts_board_slug(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(Workspace(slug="test"))
+        save_board("test", Board(alias="a", slug="test-a", url="https://a.com"))
+        save_board("test", Board(alias="b", slug="test-b", url="https://b.com"))
+        set_active_slug("test")
+
+        runner = CliRunner()
+        result = runner.invoke(ws, ["use", "--board", "test-b"])
+        assert result.exit_code == 0
+        assert "Resolved 'test-b' to alias 'b'" in result.output
         assert "Active board: test-b" in result.output
 
         ws_obj = load_workspace("test")
@@ -638,6 +677,39 @@ class TestTaskIssueBinding:
 
         assert result.exit_code != 0
         assert "Multiple workspaces match issue #39" in result.output
+
+
+class TestTaskNext:
+    def test_task_next_reports_skipped_scraper_for_rich_monitor(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(
+            Workspace(slug="test", branch="add-company/test", name="Test", website="https://x")
+        )
+        set_active_slug("test")
+
+        board = Board(alias="careers", slug="test-careers", url="https://boards.greenhouse.io/test")
+        board.configs["greenhouse"] = {
+            "monitor_type": "greenhouse",
+            "status": "tested",
+            "rich": True,
+            "run": {"jobs": 10, "has_rich_data": True},
+        }
+        board.active_config = "greenhouse"
+        save_board("test", board)
+
+        from src.workspace.workflow import WorkflowState, _save_wf_to_disk
+
+        _save_wf_to_disk(
+            "test",
+            WorkflowState(current_step="select_monitor", current_board="careers"),
+        )
+
+        runner = CliRunner()
+        result = runner.invoke(ws, ["task", "next", "--notes", "none"])
+
+        assert result.exit_code == 0
+        assert "Skipped step: Select and test scraper (active monitor is rich)" in result.output
+        assert "Step 5/7: Verify quality and record feedback" in result.output
 
 
 class TestDel:
@@ -850,6 +922,30 @@ class TestRunMonitorOutput:
 
         assert "\u2713" in result.output  # Checkmark symbol
         assert "2 jobs" in result.output
+
+    def test_monitor_failure_shows_recovery_guidance(self, tmp_path, monkeypatch):
+        self._setup_monitor_board(tmp_path, monkeypatch, monitor_type="greenhouse")
+
+        stack, mock_asyncio = _enter_monitor_patches(tmp_path)
+        with stack:
+
+            def _fail(coro):
+                coro.close()
+                raise ValueError(
+                    "Cannot derive Greenhouse token from board URL "
+                    "'https://test.com/jobs' and no token in metadata"
+                )
+
+            mock_asyncio.run.side_effect = _fail
+            runner = CliRunner()
+            result = runner.invoke(ws, ["run", "monitor", "test"])
+
+        assert result.exit_code != 0
+        assert "Run failed:" in result.output
+        assert "ws probe monitor -n <current-job-count>" in result.output
+        assert "ws help monitor greenhouse" in result.output
+        assert "ws select monitor greenhouse --config" in result.output
+        assert "Traceback" not in result.output
 
     def test_nextdata_suggests_nextdata_scraper(self, tmp_path, monkeypatch):
         """nextdata monitor should suggest nextdata scraper, not json-ld."""
@@ -2090,6 +2186,25 @@ class TestSubmitLastError:
         assert result.exit_code == 0
         ws_reloaded = load_workspace("test")
         assert not ws_reloaded.last_error
+
+    def test_submit_stages_kb_directory(self, tmp_path, monkeypatch):
+        _setup_submittable_workspace(tmp_path, monkeypatch)
+
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "src.workspace.git.has_uncommitted_changes",
+                    return_value=True,
+                )
+            )
+            add_files = stack.enter_context(patch("src.workspace.git.add_files"))
+            stack.enter_context(patch("src.workspace.git._run"))
+            runner = CliRunner()
+            result = runner.invoke(ws, ["submit", "test"])
+
+        assert result.exit_code == 0
+        staged_paths = add_files.call_args[0][0]
+        assert "apps/crawler/src/workspace/kb/" in staged_paths
 
 
 class TestBuildPrBody:

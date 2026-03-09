@@ -134,6 +134,19 @@ async def _save_raw(
                     (artifact_dir / "response.json").write_text(
                         json.dumps(resp.json(), indent=2, default=str)
                     )
+        elif monitor_type == "breezy":
+            portal_url = monitor_config.get("portal_url")
+            if not portal_url:
+                slug = monitor_config.get("slug", "")
+                if slug:
+                    portal_url = f"https://{slug}.breezy.hr"
+            if portal_url:
+                api_url = f"{portal_url.rstrip('/')}/json"
+                resp = await http.get(api_url, follow_redirects=True)
+                if resp.status_code == 200:
+                    (artifact_dir / "response.json").write_text(
+                        json.dumps(resp.json(), indent=2, default=str)
+                    )
         elif monitor_type == "hireology":
             slug = monitor_config.get("slug", "")
             if slug:

@@ -14,11 +14,12 @@ from __future__ import annotations
 
 import asyncio
 import re
+from urllib.parse import urlparse
 
 import httpx
 import structlog
 
-from src.core.monitors import DiscoveredJob, fetch_page_text, register, slugs_from_url
+from src.core.monitors import DiscoveredJob, register, slugs_from_url
 
 log = structlog.get_logger()
 
@@ -33,6 +34,17 @@ _PAGE_PATTERNS = [
 ]
 
 _IGNORE_TOKENS = frozenset({"api", "v1", "js", "css", "assets", "postings", "companies"})
+
+
+def _has_smartrecruiters_signal(url: str, html: str | None) -> bool:
+    """Return True when URL or page HTML indicates SmartRecruiters presence."""
+    host = (urlparse(url).hostname or "").lower()
+    if "smartrecruiters.com" in host:
+        return True
+    if not html:
+        return False
+    lowered = html.lower()
+    return "smartrecruiters.com" in lowered or "smartrecruiters" in lowered
 
 
 def _token_from_url(board_url: str) -> str | None:
@@ -297,16 +309,45 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
     """Detect SmartRecruiters: URL pattern -> page HTML scan -> slug-based API probe."""
     token = _token_from_url(url)
     if token:
-        if client is not None:
-            count = await _fetch_job_count(token, client)
-            if count is not None:
-                return {"token": token, "jobs": count}
-        return {"token": token}
+        if client is None:
+            return {"token": token}
+
+        # Validate direct SmartRecruiters URLs against the API and final redirect URL.
+        final_url = url
+        html: str | None = None
+        try:
+            resp = await client.get(url, follow_redirects=True)
+            final_url = str(resp.url)
+            if resp.status_code == 200:
+                html = resp.text
+        except Exception:
+            pass
+
+        final_token = _token_from_url(final_url)
+        if final_token:
+            token = final_token
+        elif not _has_smartrecruiters_signal(final_url, html):
+            return None
+
+        count = await _fetch_job_count(token, client)
+        if count is None:
+            return None
+        return {"token": token, "jobs": count}
 
     if client is None:
         return None
 
-    html = await fetch_page_text(url, client)
+    final_url = url
+    html: str | None = None
+    try:
+        resp = await client.get(url, follow_redirects=True)
+        final_url = str(resp.url)
+        if resp.status_code == 200:
+            html = resp.text
+    except Exception:
+        pass
+
+    signal = _has_smartrecruiters_signal(final_url, html)
     if html:
         for pattern in _PAGE_PATTERNS:
             match = pattern.search(html)
@@ -315,10 +356,11 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
                 if found not in _IGNORE_TOKENS:
                     log.info("smartrecruiters.detected_in_page", url=url, board_token=found)
                     count = await _fetch_job_count(found, client)
-                    result: dict = {"token": found}
                     if count is not None:
-                        result["jobs"] = count
-                    return result
+                        return {"token": found, "jobs": count}
+
+    if not signal:
+        return None
 
     for slug in slugs_from_url(url):
         found, count = await _probe_token(slug, client)

@@ -17,6 +17,7 @@ from src.workspace.state import (
     list_boards,
     load_board,
     load_workspace,
+    resolve_board_alias,
     resolve_slug,
     resolve_two_args,
     save_board,
@@ -92,18 +93,19 @@ def set_(
             out.die(
                 "No active board. Provide --board <alias> or run: ws use --board <alias> first."
             )
+        resolved_alias = resolve_board_alias(slug, alias)
         try:
-            board = load_board(slug, alias)
+            board = load_board(slug, resolved_alias)
         except FileNotFoundError:
             out.die(f"Board {alias!r} not found in workspace {slug!r}")
         board.job_link_pattern = job_link_pattern
         save_board(slug, board)
-        updates.append(f"job_link_pattern[{alias}]")
+        updates.append(f"job_link_pattern[{resolved_alias}]")
 
         analysis = _inspect_board_job_links(board.url, job_link_pattern)
         _report_job_link_analysis(
             analysis,
-            alias=alias,
+            alias=resolved_alias,
             provided_pattern=True,
         )
 
@@ -860,7 +862,7 @@ def add_board(
     )
     if board.job_link_pattern:
         out.plain("board", f"Job link pattern: {board.job_link_pattern}")
-    out.plain("board", f"Active board: {board_slug}")
+    out.plain("board", f"Active board: {board_slug} (alias: {alias})")
     out.next_step("ws probe monitor")
 
 
@@ -870,20 +872,23 @@ def add_board(
 def del_board(slug_or_alias: str, alias: str | None):
     """Remove a board from workspace."""
     slug, alias = resolve_two_args(slug_or_alias, alias)
+    resolved_alias = resolve_board_alias(slug, alias)
 
     if not workspace_exists(slug):
         out.die(f"Workspace {slug!r} not found")
 
-    path = board_yaml_path(slug, alias)
+    path = board_yaml_path(slug, resolved_alias)
     if not path.exists():
         out.die(f"Board {alias!r} not found in workspace {slug!r}")
 
     path.unlink()
-    out.info("board", f"Removed board {alias!r}")
+    if resolved_alias != alias:
+        out.warn("board", f"Resolved {alias!r} to alias {resolved_alias!r}")
+    out.info("board", f"Removed board {resolved_alias!r}")
 
     # Switch active board if needed
     ws = load_workspace(slug)
-    if ws.active_board == alias:
+    if ws.active_board == resolved_alias:
         remaining = list_boards(slug)
         ws.active_board = remaining[0].alias if remaining else ""
         save_workspace(ws)
@@ -897,11 +902,11 @@ def del_board(slug_or_alias: str, alias: str | None):
 
     wf = _load_wf_from_disk(slug)
     changed = False
-    if wf.current_board == alias:
+    if wf.current_board == resolved_alias:
         wf.current_board = ws.active_board or None
         changed = True
-    if alias in wf.completed_boards:
-        wf.completed_boards = [a for a in wf.completed_boards if a != alias]
+    if resolved_alias in wf.completed_boards:
+        wf.completed_boards = [a for a in wf.completed_boards if a != resolved_alias]
         changed = True
     if changed:
         _save_wf_to_disk(slug, wf)

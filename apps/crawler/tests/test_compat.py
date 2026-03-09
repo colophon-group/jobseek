@@ -7,6 +7,7 @@ from src.core.monitors import api_monitor_types as core_api
 from src.core.monitors import is_rich_monitor as core_is_rich
 from src.workspace._compat import all_monitor_types as compat_all
 from src.workspace._compat import api_monitor_types as compat_api
+from src.workspace._compat import detect_ats_from_url
 from src.workspace._compat import is_rich_monitor as compat_is_rich
 
 
@@ -36,3 +37,11 @@ def test_is_rich_monitor_consistency():
     assert compat_is_rich("api_sniffer", cfg) == core_is_rich("api_sniffer", cfg)
     assert compat_is_rich("api_sniffer", {}) == core_is_rich("api_sniffer", {})
     assert compat_is_rich("api_sniffer", None) == core_is_rich("api_sniffer", None)
+
+
+def test_detect_ats_greenhouse_regional_host():
+    assert detect_ats_from_url("https://job-boards.eu.greenhouse.io/brainrocketltd") == "greenhouse"
+
+
+def test_detect_ats_breezy_host():
+    assert detect_ats_from_url("https://acme.breezy.hr") == "breezy"

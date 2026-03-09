@@ -7,6 +7,7 @@ Returns full job data — title, HTML description, locations, departments, etc.
 from __future__ import annotations
 
 import re
+from urllib.parse import parse_qs, urlparse
 
 import httpx
 import structlog
@@ -18,8 +19,11 @@ log = structlog.get_logger()
 MAX_JOBS = 10_000
 
 _PAGE_PATTERNS = [
-    re.compile(r"boards-api\.greenhouse\.io/v1/boards/(\w+)"),
-    re.compile(r"boards\.greenhouse\.io/(?:embed/job_board\?for=)?(\w+)"),
+    re.compile(r"boards-api\.greenhouse\.io/v1/boards/([\w-]+)"),
+    re.compile(r"boards\.greenhouse\.io/(?:embed/job_board\?for=)?([\w-]+)"),
+    re.compile(r"job-boards(?:\.[\w-]+)?\.greenhouse\.io/([\w-]+)"),
+    re.compile(r'"urlToken":"([\w-]+)"'),
+    re.compile(r"boardToken[\"']?\s*[:=]\s*[\"']([\w-]+)[\"']", re.IGNORECASE),
 ]
 
 _IGNORE_TOKENS = frozenset({"embed", "v1", "api", "js", "css", "assets"})
@@ -64,9 +68,36 @@ def _parse_job(job: dict) -> DiscoveredJob | None:
 
 
 def _token_from_url(board_url: str) -> str | None:
-    match = re.search(r"boards\.greenhouse\.io/(\w+)", board_url)
-    if match and match.group(1) not in _IGNORE_TOKENS:
-        return match.group(1)
+    parsed = urlparse(board_url)
+    host = (parsed.hostname or "").lower()
+    parts = [part for part in parsed.path.split("/") if part]
+    query = parse_qs(parsed.query)
+
+    def _clean(token: str | None) -> str | None:
+        if not token:
+            return None
+        token = token.strip()
+        if not token:
+            return None
+        return token if token not in _IGNORE_TOKENS else None
+
+    if host == "boards-api.greenhouse.io":
+        if len(parts) >= 3 and parts[0] == "v1" and parts[1] == "boards":
+            return _clean(parts[2])
+        return None
+
+    if host == "boards.greenhouse.io":
+        if parts and parts[0] == "embed":
+            return _clean(query.get("for", [None])[0])
+        if parts:
+            return _clean(parts[0])
+        return None
+
+    if re.fullmatch(r"job-boards(?:\.[\w-]+)?\.greenhouse\.io", host):
+        if parts:
+            return _clean(parts[0])
+        return _clean(query.get("url_token", [None])[0] or query.get("for", [None])[0])
+
     return None
 
 

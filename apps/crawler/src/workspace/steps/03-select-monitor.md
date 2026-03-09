@@ -30,6 +30,15 @@ ws run monitor
 If the error indicates token/ID extraction failed from a non-ATS URL, the board URL is
 likely wrong for that monitor. Add/select the real ATS board URL first, then retry.
 
+If the URL is a regional Greenhouse board like
+`https://job-boards.eu.greenhouse.io/<token>`, the token is the first path segment.
+If auto-detection still misses it, set it explicitly:
+
+```bash
+ws select monitor greenhouse --config '{"token":"<token>"}'
+ws run monitor
+```
+
 A known ATS URL does not guarantee the expected API is available. APIs change,
 feeds get deprecated, and regional variants may use different endpoints.
 Always verify with `ws run monitor` and fall back to probing if it fails.

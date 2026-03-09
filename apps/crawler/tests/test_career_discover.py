@@ -300,6 +300,17 @@ class TestAtsEmbed:
         assert len(ats) >= 1
         assert any("boards.greenhouse.io/acme" in lnk.url for lnk in ats)
 
+    def test_greenhouse_regional_link(self):
+        html = """
+        <html><head></head><body>
+        <a href="https://job-boards.eu.greenhouse.io/brainrocketltd">Jobs at BrainRocket</a>
+        </body></html>
+        """
+        links = _extract(html)
+        ats = [lnk for lnk in links if lnk.source == "ats_embed"]
+        assert len(ats) >= 1
+        assert any("job-boards.eu.greenhouse.io/brainrocketltd" in lnk.url for lnk in ats)
+
     def test_lever_link(self):
         html = """
         <html><head></head><body>
@@ -398,6 +409,17 @@ class TestAtsEmbed:
         ats = [lnk for lnk in links if lnk.source == "ats_embed"]
         assert len(ats) >= 1
         assert any("apply.workable.com/acme" in lnk.url for lnk in ats)
+
+    def test_breezy_domain(self):
+        html = """
+        <html><head></head><body>
+        <a href="https://acme.breezy.hr/">Careers</a>
+        </body></html>
+        """
+        links = _extract(html)
+        ats = [lnk for lnk in links if lnk.source == "ats_embed"]
+        assert len(ats) >= 1
+        assert any("acme.breezy.hr" in lnk.url for lnk in ats)
 
     def test_pinpoint_domain(self):
         html = """

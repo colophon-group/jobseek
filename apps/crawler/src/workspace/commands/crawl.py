@@ -16,6 +16,7 @@ from src.workspace._compat import api_monitor_types, is_rich_monitor
 from src.workspace.state import (
     load_board,
     load_workspace,
+    resolve_board_alias,
     resolve_slug,
     resolve_two_args,
     save_board,
@@ -45,7 +46,10 @@ def _resolve_board(slug: str, board_alias: str | None = None):
     alias = board_alias or ws.active_board
     if not alias:
         out.die("No active board. Provide --board or run: ws add board <alias> --url <url>")
-    board = load_board(slug, alias)
+    resolved_alias = resolve_board_alias(slug, alias)
+    if resolved_alias != alias:
+        out.warn("board", f"Resolved {alias!r} to alias {resolved_alias!r}")
+    board = load_board(slug, resolved_alias)
     return ws, board
 
 
@@ -752,6 +756,7 @@ _MONITOR_CONFIG_HINTS = {
     "greenhouse": "Requires: token (auto-filled from probe)",
     "lever": "Requires: token (auto-filled from probe)",
     "hireology": "Requires: slug (auto-filled from probe)",
+    "breezy": "Optional: portal_url or slug (auto-filled from probe)",
     "recruitee": "Requires: slug or api_base (auto-filled from probe)",
     "rippling": "Requires: slug (auto-filled from probe)",
     "rss": "Optional: preset, feed_url (auto-filled from probe)",
@@ -966,7 +971,25 @@ def run_monitor(slug: str | None, board_alias: str | None):
         finally:
             await http.aclose()
 
-    result, elapsed, http_log = asyncio.run(_run())
+    try:
+        result, elapsed, http_log = asyncio.run(_run())
+    except Exception as exc:
+        detail = str(exc).strip() or exc.__class__.__name__
+        out.error("monitor", f"Run failed: {detail}")
+        out.plain("monitor", f"Monitor: {board.monitor_type} | Board: {board.url}")
+        out.plain("monitor", "Try:")
+        out.plain("monitor", "  ws probe monitor -n <current-job-count>")
+        out.plain("monitor", f"  ws help monitor {board.monitor_type}")
+
+        if "Cannot derive" in detail and ("token" in detail.lower() or "slug" in detail.lower()):
+            key = "token" if "token" in detail.lower() else "slug"
+            out.plain(
+                "monitor",
+                f'  ws select monitor {board.monitor_type} --config \'{{"{key}": "..."}}\'',
+            )
+
+        out.plain("monitor", "  ws task troubleshoot 'monitor failed'")
+        raise SystemExit(1) from exc
 
     # Save HTTP log and structlog events
     save_http_log(run_dir, http_log)
