@@ -12,6 +12,7 @@ exa-ai,exa-ai-careers,https://jobs.ashbyhq.com/exa,ashby,,,
 figma,figma-careers,https://boards.greenhouse.io/figma,greenhouse,"{""token"": ""figma""}",,
 glovo,glovo-careers,https://careers.glovoapp.com/jobs-at-glovo/,sitemap,"{""sitemap_url"": ""https://careers.glovoapp.com/sitemap_index.xml"", ""url_filter"": ""/job/""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""p"", ""attr"": ""class=address"", ""field"": ""locations""}, {""tag"": ""p"", ""attr"": ""class=jobtype"", ""field"": ""employment_type"", ""optional"": true}, {""text"": ""Job Description"", ""field"": ""description"", ""offset"": 1, ""stop"": ""Qualifications"", ""html"": true}]}"
 google,google-careers,https://www.google.com/about/careers/applications/jobs/results/,sitemap,"{""sitemap_url"": ""https://www.google.com/about/careers/applications/jobs/sitemap.xml"", ""urls"": 3984}",embedded,"{""pattern"": ""AF_initDataCallback\\(\\{key:\\s*'ds:0'.*?data:"", ""path"": ""[0]"", ""fields"": {""title"": ""[1]"", ""description"": ""[10][1]"", ""locations"": ""[9][*][0]"", ""qualifications"": ""[4][1]"", ""responsibilities"": ""[3][1]""}}"
+hypermasters,hypermasters-careers,https://careers.hypemasters.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.hypemasters.com/jobs.rss""}",,
 incode,incode-careers-gh,https://job-boards.greenhouse.io/incode,greenhouse,,,
 jetbrains,jetbrains-careers,https://boards.greenhouse.io/jetbrains,greenhouse,,,
 kodland,kodland-careers,https://kodland.pinpointhq.com,pinpoint,"{""slug"": ""kodland""}",,
