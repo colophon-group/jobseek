@@ -508,6 +508,7 @@ def _non_tty_suffix() -> str | None:
         return f"scope-{explicit}"
 
     for key in (
+        "TERM_SESSION_ID",
         "CODEX_SESSION_ID",
         "CODEX_TASK_ID",
         "CLAUDE_SESSION_ID",

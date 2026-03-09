@@ -1,5 +1,6 @@
 import { Trans } from "@lingui/react/macro";
 import { Construction, Building2, Briefcase } from "lucide-react";
+import { siteConfig } from "@/content/config";
 import { initI18nForPage } from "@/lib/i18n";
 import { getStats } from "@/lib/actions/stats";
 import { CompanyRequestForm } from "./company-request-form";
@@ -64,7 +65,7 @@ export default async function AppPage({ params }: Props) {
       </div>
 
       <a
-        href="https://www.linkedin.com/company/jobseek-the-aggregator/"
+        href={siteConfig.social.linkedin.href}
         target="_blank"
         rel="noopener noreferrer"
         className="mt-10 inline-flex items-center justify-center whitespace-nowrap rounded-full font-semibold border border-primary bg-primary text-primary-contrast transition-opacity hover:opacity-90 px-5 py-2"

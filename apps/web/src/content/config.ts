@@ -35,6 +35,10 @@ export const siteConfig = {
   repoUrl: "https://github.com/colophon-group/jobseek",
   creator: "Viktor Shcherbakov",
 
+  social: {
+    linkedin: { href: "https://www.linkedin.com/company/jseek/", external: true },
+  },
+
   logo: {
     src: "/js_logo_black_circle.svg",
     width: 500,

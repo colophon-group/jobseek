@@ -840,6 +840,20 @@ def submit(slug: str | None, summary: str | None, force: bool):
         out.die(f"Workspace {slug!r} not found")
 
     ws = load_workspace(slug)
+
+    # Ensure we're operating in the correct worktree. _pivot_to_worktree()
+    # in main() may have failed if the active-slug file couldn't be found
+    # (e.g. ppid changed between CLI invocations under Claude Code).
+    if ws.worktree and not is_local_mode():
+        from pathlib import Path
+
+        from src.shared.constants import get_repo_root, set_repo_root
+
+        wt = Path(ws.worktree)
+        current_root = get_repo_root()
+        if current_root and current_root != wt and (wt / "apps" / "crawler" / "data").exists():
+            set_repo_root(wt)
+
     boards = list_boards(slug)
 
     # Quality gates

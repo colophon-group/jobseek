@@ -11,6 +11,11 @@ describe("siteConfig", () => {
     expect(siteConfig.domain).toBeDefined();
   });
 
+  it("has LinkedIn URL in social config", () => {
+    expect(siteConfig.social.linkedin.href).toBeDefined();
+    expect(typeof siteConfig.social.linkedin.href).toBe("string");
+  });
+
   it("all nav routes have href strings", () => {
     for (const [key, value] of Object.entries(siteConfig.nav)) {
       expect(value.href, `nav.${key} should have href`).toBeDefined();
