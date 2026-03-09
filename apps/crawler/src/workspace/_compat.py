@@ -16,6 +16,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "bite",
         "breezy",
         "dvinci",
+        "gem",
         "greenhouse",
         "hireology",
         "join",
@@ -72,6 +73,8 @@ def detect_ats_from_url(url: str) -> str | None:
         return "lever"
     if host == "jobs.ashbyhq.com":
         return "ashby"
+    if host == "jobs.gem.com":
+        return "gem"
     if host == "apply.workable.com":
         return "workable"
     if host == "careers.smartrecruiters.com":

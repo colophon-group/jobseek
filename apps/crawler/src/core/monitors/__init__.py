@@ -221,6 +221,12 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"Ashby API \u2014 token: {token}, {jobs} jobs"
         return f"Ashby API \u2014 token: {token}"
+    if name == "gem":
+        token = metadata.get("token", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"Gem API \u2014 slug: {token}, {jobs} jobs"
+        return f"Gem API \u2014 slug: {token}"
     if name == "greenhouse":
         token = metadata.get("token", "?")
         jobs = metadata.get("jobs")
@@ -417,6 +423,7 @@ from src.core.monitors import (  # noqa: E402
     breezy,  # noqa: F401
     dom,  # noqa: F401
     dvinci,  # noqa: F401
+    gem,  # noqa: F401
     greenhouse,  # noqa: F401
     hireology,  # noqa: F401
     join,  # noqa: F401

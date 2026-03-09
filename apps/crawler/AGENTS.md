@@ -21,6 +21,7 @@ src/
 │   │   ├── __init__.py    # Registry + DiscoveredJob dataclass
 │   │   ├── api_sniffer.py # API capture (httpx for public APIs, Playwright for browser-dependent)
 │   │   ├── ashby.py       # Ashby Job Board API
+│   │   ├── gem.py         # Gem ATS Job Board API
 │   │   ├── greenhouse.py  # Greenhouse JSON API
 │   │   ├── hireology.py   # Hireology Careers API
 │   │   ├── lever.py       # Lever Postings API

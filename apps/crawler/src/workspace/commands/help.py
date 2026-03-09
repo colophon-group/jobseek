@@ -71,6 +71,7 @@ Monitor Types (cheapest first):
   bite              10      Full job data   No (skipped)
   breezy            10      Full job data   No (skipped)
   dvinci            10      Full job data   No (skipped)
+  gem               10      Full job data   No (skipped)
   greenhouse        10      Full job data   No (skipped)
   hireology         10      Full job data   No (skipped)
   lever             10      Full job data   No (skipped)
@@ -131,9 +132,9 @@ Scraper Types:
   dom            Static/PW   Yes (steps)      Custom HTML structure
   api_sniffer    Playwright  Optional (fields)  SPA/XHR job pages
 
-  Rich monitors (join, ashby, bite, breezy, dvinci, greenhouse, hireology, lever,
-  pinpoint, recruitee, rippling, rss, smartrecruiters, softgarden, traffit, workable,
-  workday) skip the scraper step entirely.
+  Rich monitors (join, ashby, bite, breezy, dvinci, gem, greenhouse, hireology,
+  lever, pinpoint, recruitee, rippling, rss, smartrecruiters, softgarden, traffit,
+  workable, workday) skip the scraper step entirely.
   rss supports ATS presets like successfactors and teamtailor.
   personio skips scraper when XML feed is available; HTML fallback needs scraper.
   api_sniffer scraper is auto-probed via Playwright in ws probe scraper.
@@ -247,6 +248,28 @@ breezy — Breezy HR Public Listing + Detail Pages
   Zero jobs?  Valid board with no open postings still returns 0 jobs.
   False positives:  Redirects to marketing.breezy.hr are rejected unless
                     /json validates as a real listing endpoint."""
+
+MONITOR_GEM = """\
+gem — Gem ATS Job Board API
+
+  API:      GET https://api.gem.com/job_board/v0/{slug}/job_posts/
+  Returns:  Full job data (title, HTML description, locations, employment_type,
+            job_location_type, date_posted)
+            metadata: department
+  Scraper:  Not needed (API returns full data, scraper step is skipped)
+  Cap:      10,000 jobs
+  Note:     Single API call — no pagination, no auth needed
+
+  Config:
+    {"token": "caffeine-ai"}
+
+    token    Board slug from jobs.gem.com/{slug}. Auto-filled by ws probe from:
+             1. Direct URL (jobs.gem.com/{slug})
+             2. Inline HTML scan for jobs.gem.com or __GEM_TRACKING_CONTEXT__
+             3. Slug-based API probe (derives slug from domain)
+
+  Detection:  ws probe shows "Gem API — slug: {token}, N jobs"
+  Zero jobs?  Verify slug — try the API URL directly in a browser"""
 
 MONITOR_GREENHOUSE = """\
 greenhouse — Greenhouse Public API
@@ -1394,6 +1417,7 @@ MONITOR_CARDS: dict[str, str] = {
     "bite": MONITOR_BITE,
     "breezy": MONITOR_BREEZY,
     "dvinci": MONITOR_DVINCI,
+    "gem": MONITOR_GEM,
     "greenhouse": MONITOR_GREENHOUSE,
     "hireology": MONITOR_HIREOLOGY,
     "join": MONITOR_JOIN,
