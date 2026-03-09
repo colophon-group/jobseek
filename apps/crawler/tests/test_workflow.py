@@ -14,6 +14,8 @@ from src.workspace.workflow import (
     advance,
     build_context,
     check_gate,
+    create_kb_entry,
+    render_step,
     resolve_current_step,
     search_kb,
     should_skip,
@@ -421,6 +423,44 @@ class TestContextInjection:
         assert "1/1" in ctx["board_progress"]
 
 
+class TestStepRendering:
+    def test_render_step_keeps_literal_braces(self, workspace):
+        slug, ws, ws_root = workspace
+        wf = WorkflowState()
+        step = next(s for s in _all_step_defs() if s.id == "select_scraper")
+        ctx = build_context(ws, [], wf)
+        ctx.update(
+            {
+                "board_url": "https://test.com/jobs",
+                "board_progress": "1/1: test-wf-careers",
+                "rejected_configs": "",
+            }
+        )
+
+        rendered = render_step(step, ctx)
+        assert "--config '{...}'" in rendered
+
+
+class TestKBStorage:
+    def test_create_kb_entry_writes_to_repo_kb_when_repo_root_is_set(self, tmp_path, monkeypatch):
+        repo_root = tmp_path / "repo"
+        kb_dir = repo_root / "apps" / "crawler" / "src" / "workspace" / "kb"
+        kb_dir.mkdir(parents=True)
+
+        monkeypatch.setattr("src.workspace.workflow.get_repo_root", lambda: repo_root)
+
+        path = create_kb_entry(
+            slug="test",
+            step="select_monitor",
+            symptom="Monitor returns non-job URLs",
+            solution="Set url_filter to /job/",
+            tags="monitor,sitemap,url-filter",
+        )
+
+        assert path.exists()
+        assert path.parent == kb_dir
+
+
 class TestKBSearch:
     def test_search_finds_match(self):
         results = search_kb("sitemap")
@@ -434,6 +474,32 @@ class TestKBSearch:
     def test_token_search(self):
         results = search_kb("zero jobs probe")
         assert len(results) > 0
+
+    def test_search_reads_repo_kb_when_repo_root_is_set(self, tmp_path, monkeypatch):
+        repo_root = tmp_path / "repo"
+        kb_dir = repo_root / "apps" / "crawler" / "src" / "workspace" / "kb"
+        kb_dir.mkdir(parents=True)
+        (kb_dir / "repo-only-entry.md").write_text(
+            """---
+step: select_monitor
+symptom: Repo-only unique symptom
+tags: [repo, unique]
+---
+# Repo-only unique symptom
+
+## Problem
+Unique monitor issue
+
+## Solution
+Unique fix
+"""
+        )
+
+        monkeypatch.setattr("src.workspace.workflow.get_repo_root", lambda: repo_root)
+
+        results = search_kb("repo-only unique symptom")
+        assert len(results) == 1
+        assert results[0]["path"] == "repo-only-entry.md"
 
 
 class TestLocalMode:

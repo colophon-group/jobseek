@@ -18,6 +18,7 @@ from __future__ import annotations
 import click
 
 from src.workspace import output as out
+from src.workspace.errors import GitError
 from src.workspace.state import (
     get_active_slug,
     list_boards,
@@ -279,6 +280,11 @@ def task_complete():
     if wf.current_step != "reflect":
         out.die(f"Can only complete from the 'reflect' step. Current step: {wf.current_step}")
 
+    try:
+        _persist_kb_updates_if_needed(slug)
+    except GitError as exc:
+        out.die(f"Failed to persist KB updates: {exc}")
+
     wf.current_step = "done"
     _save_wf_to_disk(slug, wf)
     out.info("task", "Workflow complete! Nice work.")
@@ -345,6 +351,33 @@ def task_learn(step: str, symptom: str, solution: str, tags: str):
 
 
 # ── Display helpers ──────────────────────────────────────────────────
+
+
+def _persist_kb_updates_if_needed(slug: str) -> None:
+    """Commit/push KB updates created during reflection after submit."""
+    from src.workspace.commands.lifecycle import is_local_mode
+
+    if is_local_mode():
+        return
+
+    ws = load_workspace(slug)
+    if not ws.submit_state.get("pushed"):
+        return
+
+    from src.workspace import git
+
+    kb_path = "apps/crawler/src/workspace/kb/"
+    if not git.has_uncommitted_changes([kb_path]):
+        return
+
+    git.add_files([kb_path])
+    commit_msg = f"Add KB reflections for {ws.slug}"
+    if ws.issue:
+        commit_msg += f"\n\nRefs #{ws.issue}"
+    git.commit(commit_msg)
+    if git.is_ahead_of_remote():
+        git.push()
+    out.info("kb", "Committed and pushed KB updates.")
 
 
 def _print_step_header(step, wf: WorkflowState, boards: list) -> None:

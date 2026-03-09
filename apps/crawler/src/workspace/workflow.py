@@ -13,6 +13,7 @@ from typing import Any
 
 import yaml
 
+from src.shared.constants import get_repo_root
 from src.workspace.state import (
     Board,
     Workspace,
@@ -305,14 +306,11 @@ def build_context(
 def render_step(step: StepDef, ctx: dict[str, str]) -> str:
     """Load and render a step's markdown with context variables."""
     raw = _load_step_markdown(step.instructions)
-    # Use str.format_map with a defaultdict-like fallback for missing keys
-    try:
-        return raw.format_map(ctx)
-    except KeyError:
-        # Fallback: replace what we can, leave the rest
-        for k, v in ctx.items():
-            raw = raw.replace("{" + k + "}", v)
-        return raw
+    # Replace only known placeholders and keep literal braces unchanged.
+    # Step docs include examples like '{...}' that should not be formatted.
+    for k, v in ctx.items():
+        raw = raw.replace("{" + k + "}", v)
+    return raw
 
 
 # ── Workflow navigation ──────────────────────────────────────────────
@@ -577,12 +575,22 @@ def _next_uncompleted_board(boards: list[Board], completed: list[str]) -> Board 
 # ── KB search ────────────────────────────────────────────────────────
 
 
+def _kb_dir() -> Path:
+    """Return KB directory in the active repo/worktree when available."""
+    repo_root = get_repo_root()
+    if repo_root is not None:
+        candidate = repo_root / "apps" / "crawler" / "src" / "workspace" / "kb"
+        if (repo_root / "apps" / "crawler").exists() or candidate.exists():
+            return candidate
+    return _pkg_path() / "kb"
+
+
 def search_kb(query: str) -> list[dict[str, Any]]:
     """Search the troubleshooting knowledge base for matching entries.
 
     Returns list of dicts with keys: path, symptom, tags, body.
     """
-    kb_dir = _pkg_path() / "kb"
+    kb_dir = _kb_dir()
     if not kb_dir.exists():
         return []
 
@@ -629,8 +637,7 @@ def create_kb_entry(slug: str, step: str, symptom: str, solution: str, tags: str
     New entries are stored in the workspace's local kb/ dir and can be
     committed alongside CSV changes on submit.
     """
-    # Create in the package kb dir for now (will be committed with the code)
-    kb_dir = _pkg_path() / "kb"
+    kb_dir = _kb_dir()
     kb_dir.mkdir(parents=True, exist_ok=True)
 
     # Generate filename from symptom

@@ -770,6 +770,61 @@ class TestTaskNext:
         assert "Step 5/7: Verify quality and record feedback" in result.output
 
 
+class TestTaskComplete:
+    def test_task_complete_commits_kb_updates_after_submit(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        ws_obj = Workspace(slug="test", issue=42, branch="add-company/test")
+        ws_obj.submit_state = {
+            "csv_written": True,
+            "validated": True,
+            "committed": True,
+            "pushed": True,
+            "pr_ready": True,
+        }
+        save_workspace(ws_obj)
+        set_active_slug("test")
+
+        from src.workspace.workflow import WorkflowState, _load_wf_from_disk, _save_wf_to_disk
+
+        _save_wf_to_disk("test", WorkflowState(current_step="reflect"))
+
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "src.workspace.commands.lifecycle.is_local_mode",
+                    return_value=False,
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "src.workspace.git.has_uncommitted_changes",
+                    return_value=True,
+                )
+            )
+            add_files = stack.enter_context(patch("src.workspace.git.add_files"))
+            commit = stack.enter_context(patch("src.workspace.git.commit"))
+            stack.enter_context(
+                patch(
+                    "src.workspace.git.is_ahead_of_remote",
+                    return_value=True,
+                )
+            )
+            push = stack.enter_context(patch("src.workspace.git.push"))
+
+            runner = CliRunner()
+            result = runner.invoke(ws, ["task", "complete"])
+
+        assert result.exit_code == 0
+        assert "Committed and pushed KB updates." in result.output
+        add_files.assert_called_once_with(["apps/crawler/src/workspace/kb/"])
+        assert "Add KB reflections for test" in commit.call_args[0][0]
+        assert "Refs #42" in commit.call_args[0][0]
+        push.assert_called_once()
+
+        wf = _load_wf_from_disk("test")
+        assert wf.current_step == "done"
+
+
 class TestDel:
     def test_del_workspace(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
