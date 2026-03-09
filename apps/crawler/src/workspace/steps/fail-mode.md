@@ -9,6 +9,7 @@ Before writing code, confirm configuration exploration is exhausted:
 - For plausible monitor/scraper types, at least one concrete config variant was tried
 - Type switching was not done after the first failed/incomplete run unless there was a hard mismatch
 - Attempts and failure reasons were recorded
+- Evidence trail is clear (observation, method, interpretation)
 
 ## Steps
 

@@ -2,6 +2,13 @@
 
 Find all career page URLs for this company and register each as a board.
 
+Treat discovery output as signals, not directives. For each board candidate,
+capture:
+
+1. Observation (counts, links, references)
+2. How observed (homepage traversal, rendered page, probe)
+3. Likely meaning (primary board, stale board, or uncertain)
+
 ## Verify listings exist
 
 The career page must show at least one job posting.
@@ -16,14 +23,16 @@ job-link pattern. A real board usually behaves like a **job link hub** (multiple
 job-detail links following a consistent pattern). If pattern inference fails, treat
 that as a strong signal that the URL may be a marketing page.
 
+`ws` discovery also stores traversal evidence under workspace state. Use this
+to distinguish directly referenced boards from blind guesses.
+
 If the page is JS-rendered and shows 0 listings, use the job count from web search results
 (e.g., LinkedIn, Glassdoor) as an approximation. If there are genuinely no open positions,
 reject with `ws reject --reason no-open-positions --message "..."`.
 Careers page behind auth → reject with `ws reject --reason no-job-board --message "..."`.
 Small companies with 1–3 jobs are valid — proceed.
 
-Do **not** manually inspect page source, parse `__NEXT_DATA__`, or reverse-engineer API endpoints —
-the crawler tooling handles this automatically.
+Manual source inspection is optional in this phase; start with crawler evidence first.
 
 ## Discover board URLs
 
@@ -37,6 +46,9 @@ The issue URL is a starting point, not a scope constraint.
 **Note ALL distinct board URLs found.**
 Only add URLs that are actual listing boards (or listings feeds), not informational pages.
 
+Prefer directly referenced board URLs over unreferenced slug guesses unless
+the latter has stronger corroborating evidence.
+
 ## Add each board
 
 ```bash
@@ -49,6 +61,18 @@ If auto-inference fails after adding, set the pattern manually:
 ```bash
 ws set --board <alias> --job-link-pattern "<regex>"
 ```
+
+## Pattern safety check (required when setting regex manually)
+
+If you set `--job-link-pattern` manually:
+
+1. Start broad enough to include URL variants (numeric suffixes, trailing slash, query params).
+   Prefer optional endings over exact-string matches.
+2. Re-run detection and compare against expected site count:
+   `ws probe monitor -n <count>` then `ws run monitor`
+3. If count drops after adding the pattern, the regex is too strict.
+   Widen it before moving to Step 3.
+4. Spot-check that each visible posting has a matching URL in monitor output (`jobs.json`).
 
 **Alias naming conventions:**
 - Single board: `careers`

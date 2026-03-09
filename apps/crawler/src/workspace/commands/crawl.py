@@ -255,8 +255,6 @@ def probe_monitors(slug: str | None, board_alias: str | None, current_jobs: int)
                 "Try: ws task troubleshoot 'zero jobs'",
             )
             out.plain("probe", f"Config reference: ws help monitor {best_name}")
-        else:
-            out.next_step(f"ws select monitor {best_name}")
     else:
         out.warn(
             "probe",
@@ -368,7 +366,6 @@ def probe_scraper(slug: str | None, board_alias: str | None, urls: tuple[str, ..
     # Print results
     print()
     best_name = None
-    best_config = None
     best_meta = None
 
     for name, metadata, comment in results:
@@ -388,7 +385,6 @@ def probe_scraper(slug: str | None, board_alias: str | None, urls: tuple[str, ..
             # Track best
             if best_name is None:
                 best_name = name
-                best_config = config
                 best_meta = metadata
         else:
             symbol = "\u2717"
@@ -416,11 +412,6 @@ def probe_scraper(slug: str | None, board_alias: str | None, urls: tuple[str, ..
             out.plain("probe", "  Inspect page source for embedded JSON → ws help scraper embedded")
             out.plain("probe", "  Or try manual dom config → ws help steps")
         else:
-            if best_config:
-                out.next_step(f"ws select scraper {best_name} --config '{json.dumps(best_config)}'")
-            else:
-                out.next_step(f"ws select scraper {best_name}")
-
             # Heuristic warning for non-json-ld
             if best_name != "json-ld":
                 out.warn("probe", "Heuristic config \u2014 verify fields, check for unmapped data")
@@ -584,8 +575,6 @@ def probe_deep(slug: str | None, board_alias: str | None, current_jobs: int):
             f"api_sniffer detected, {items} items",
         )
         save_board(slug, board)
-
-        out.next_step("ws select monitor api_sniffer")
     else:
         out.warn(
             "deep",
@@ -624,9 +613,6 @@ def probe_deep(slug: str | None, board_alias: str | None, current_jobs: int):
                 out.plain("deep", f"  {su['url']}")
                 out.plain("deep", f"    context: {su['context']}")
             out.plain("deep", "")
-            # Suggest probing the first URL
-            first_url = script_urls[0]["url"]
-            out.next_step(f"ws probe api {first_url}")
 
         # Show CMS detection and probe results
         cms_info = diagnostics.get("cms")
@@ -646,13 +632,6 @@ def probe_deep(slug: str | None, board_alias: str | None, current_jobs: int):
                         for cr in cms_results
                     ],
                 )
-                # Suggest probing the best hit
-                best = next(
-                    (cr for cr in cms_results if cr["items"] and cr["items"] > 0),
-                    cms_results[0] if cms_results else None,
-                )
-                if best:
-                    out.next_step(f"ws probe api {best['url']}")
             else:
                 out.plain("deep", "  No candidate endpoints responded.")
 
@@ -733,7 +712,6 @@ def probe_api(url: str, slug: str | None, board_alias: str | None):
                 suggested["url_field"] = url_field
 
             out.plain("probe", f"Suggested config: {json.dumps(suggested)}")
-            out.next_step(f"ws select monitor api_sniffer --config '{json.dumps(suggested)}'")
         else:
             out.warn("probe", "No arrays found in JSON response")
     else:
@@ -901,7 +879,6 @@ def select_monitor(
         out.plain("monitor", f"Config: {json.dumps(clean_config)}")
     elif type_ in _MONITOR_CONFIG_HINTS:
         out.plain("monitor", f"Config: {_MONITOR_CONFIG_HINTS[type_]}")
-    out.next_step("ws run monitor")
 
 
 # Fields checked in quality reports for DiscoveredJob (monitor rich data)
@@ -1227,14 +1204,6 @@ def run_monitor(slug: str | None, board_alias: str | None):
     )
     save_board(slug, board)
 
-    if not has_rich:
-        if board.monitor_type == "nextdata":
-            out.next_step("ws select scraper nextdata")
-        else:
-            out.next_step("ws select scraper json-ld")
-    else:
-        out.next_step("ws feedback")
-
 
 @click.command(name="scraper")
 @click.argument("slug_or_type")
@@ -1288,7 +1257,6 @@ def select_scraper(
         out.plain("scraper", f"Config: {json.dumps(config)}")
     elif type_ in _SCRAPER_CONFIG_HINTS:
         out.plain("scraper", f"Config: {_SCRAPER_CONFIG_HINTS[type_]}")
-    out.next_step("ws run scraper")
 
 
 @click.command(name="scraper")
@@ -1533,7 +1501,6 @@ def run_scraper(slug: str | None, board_alias: str | None, urls: tuple[str, ...]
         out.plain("scraper", f"Config reference: ws help scraper {board.scraper_type}")
         out.plain("scraper", f"Try: ws select scraper {board.scraper_type} --config '{{...}}'")
         out.plain("scraper", f"If still failing: ws select scraper {alt_scraper}")
-        out.next_step(f"ws help scraper {board.scraper_type}")
     elif descs_found == 0:
         out.warn(
             "scraper",
@@ -1544,7 +1511,6 @@ def run_scraper(slug: str | None, board_alias: str | None, urls: tuple[str, ...]
         out.plain("scraper", f"Config reference: ws help scraper {board.scraper_type}")
         out.plain("scraper", f"Try: ws select scraper {board.scraper_type} --config '{{...}}'")
         out.plain("scraper", f"If still failing: ws select scraper {alt_scraper}")
-        out.next_step(f"ws help scraper {board.scraper_type}")
     elif titles_found < total or descs_found < total:
         parts = []
         if titles_found < total:
@@ -1553,9 +1519,6 @@ def run_scraper(slug: str | None, board_alias: str | None, urls: tuple[str, ...]
             parts.append(f"{descs_found}/{total} descriptions")
         out.warn("scraper", f"{', '.join(parts)} — check scraper config or try a different type")
         out.plain("scraper", f"Config reference: ws help scraper {board.scraper_type}")
-        out.next_step("ws feedback")
-    else:
-        out.next_step("ws feedback")
 
 
 # ── Config management commands ─────────────────────────────────────────
@@ -1585,10 +1548,6 @@ def select_config(name: str, slug: str | None, board_alias: str | None):
     out.info("config", f"Active config: {name!r} ({cfg.get('monitor_type', '?')})")
     status = cfg.get("status", "unknown")
     out.plain("config", f"Status: {status}")
-    if status == "tested":
-        out.next_step("ws feedback" if not cfg.get("feedback") else "ws submit")
-    else:
-        out.next_step("ws run monitor")
 
 
 @click.command(name="reject-config")
@@ -1618,8 +1577,6 @@ def reject_config(name: str, slug: str | None, board_alias: str | None, reason: 
     remaining = [n for n, c in board.configs.items() if c.get("status") != "rejected"]
     if remaining:
         out.plain("config", f"Available configs: {', '.join(remaining)}")
-    else:
-        out.next_step("ws select monitor <type>")
 
 
 # ── Feedback command ───────────────────────────────────────────────────
@@ -1818,9 +1775,7 @@ def feedback_cmd(
         cov = tier.get("coverage", "?")
         qual = tier.get("quality", "?")
         out.plain("feedback", f"  {tier_name}: {cov} ({qual})")
-    if verdict in ("good", "acceptable"):
-        out.next_step("ws submit")
-    elif verdict == "poor":
+    if verdict == "poor":
         out.warn("feedback", "Verdict is poor — submit requires --force")
     else:
         out.warn("feedback", "Verdict is unusable — cannot submit")

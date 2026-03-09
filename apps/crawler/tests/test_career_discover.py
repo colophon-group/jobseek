@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import asyncio
 
+import yaml
+
 from src.workspace.career_discover import (
     CareerPageCandidate,
     _blind_probe_all,
@@ -747,7 +749,62 @@ class TestDiscoverFollowups:
             )
         )
 
-        assert ("https://careers.accelclub.com", True) in seen_calls
-        assert ("https://careers.accelclub.com/jobs", False) in seen_calls
+        assert any(url == "https://careers.accelclub.com/jobs" for url, _ in seen_calls)
+        assert any(collect for _, collect in seen_calls)
         assert len(candidates) == 1
         assert candidates[0].url == "https://careers.accelclub.com/jobs"
+
+    def test_discovery_writes_state_file(self, tmp_path, monkeypatch):
+        seen_calls: list[str] = []
+
+        async def _fake_probe_link(link, _client, *, collect_followups=False):
+            seen_calls.append(link.url)
+            return _ProbeLinkResult(
+                candidates=[
+                    CareerPageCandidate(
+                        url=link.url,
+                        source="homepage_link",
+                        monitor_type="dom",
+                        monitor_config={"urls": 4},
+                        score=0.55,
+                        comment="DOM",
+                        job_link_hub=4,
+                        job_link_pattern=r"^https://example.com/jobs/",
+                    )
+                ],
+                page={
+                    "requested_url": link.url,
+                    "final_url": link.url,
+                    "source": link.source,
+                    "status_code": 200,
+                    "fetch_ok": True,
+                    "outgoing_links": 8,
+                    "likely_job_links": 4,
+                    "job_link_pattern": r"^https://example.com/jobs/",
+                    "detected_monitors": ["dom"],
+                },
+            )
+
+        async def _fake_blind_probe(_slug, _client):
+            return []
+
+        monkeypatch.setattr("src.workspace.career_discover._probe_link", _fake_probe_link)
+        monkeypatch.setattr("src.workspace.career_discover._blind_probe_all", _fake_blind_probe)
+        monkeypatch.setattr("src.core.monitors.slugs_from_url", lambda _url: [])
+
+        state_path = tmp_path / "discovery.state.yaml"
+        candidates = asyncio.run(
+            discover_career_pages(
+                "https://example.com",
+                '<html><head></head><body><a href="/jobs">Jobs</a></body></html>',
+                client=None,  # type: ignore[arg-type]
+                state_path=state_path,
+            )
+        )
+
+        assert candidates
+        assert state_path.exists()
+        data = yaml.safe_load(state_path.read_text()) or {}
+        assert isinstance(data.get("pages"), list)
+        assert isinstance(data.get("candidates"), list)
+        assert any(url.endswith("/careers") for url in seen_calls)

@@ -125,6 +125,28 @@ uv run python -m src.sync
 uv run pytest tests/
 ```
 
+## Crawler Setup Agent Instruction Sources
+
+For agents running the guided setup workflow (`ws task --issue ...`), behavior is driven by runtime instruction files:
+
+- Step content: `src/workspace/steps/*.md`
+- Workflow sequence and gates: `src/workspace/workflow.yaml`
+- `ws help` command text: `src/workspace/commands/help.py`
+- Troubleshooting KB used by `ws task troubleshoot`: `src/workspace/kb/*.md`
+
+To change crawler setup agent behavior, edit those files. AGENTS/docs updates alone do not affect the runtime instruction stream.
+
+## Decision Mindset
+
+Use `ws` output as evidence, not as an instruction oracle.
+
+- Prefer reasoning from observations (what was found), method (how it was found), and interpretation (what it likely means).
+- Treat auto-detected monitor/scraper suggestions as hypotheses that require verification.
+- Prefer directly referenced board evidence over unreferenced slug guesses.
+- When signals conflict, explain the conflict and why one signal is stronger.
+
+See [docs/agents.md](../../docs/agents.md) for the full mindset reference.
+
 ## Adding a New Monitor Type
 
 1. Create `src/core/monitors/<name>.py`
@@ -146,13 +168,13 @@ See [docs/08-job-data-fields.md](../../docs/08-job-data-fields.md) for the compl
 
 When evaluating scraper probe results and extraction output:
 
-- **Do not blindly follow "Next:" suggestions** — if required fields show 0/N, the heuristic config is wrong. A scraper that can't extract titles or descriptions will never produce complete data.
-- **SPA warning means probe results are unreliable** — check the page source for embedded structured data (script tags, inline JSON) before trying `render: true`. The data may exist in a format the probe doesn't test.
-- **DOM order matters** — for dom scraper, inspect `flat.json` before writing steps. Steps must follow DOM order (forward-only cursor). Wrong order silently skips fields, undermining reliability.
-- **N/N does not mean correct** — verify actual content in `ws run scraper` output. Truncated locations ("+2 more"), garbled text, or generic placeholders count as populated but are not complete. Completeness requires the actual values to be correct.
-- **Don't patch broken data** — if extracted content is incomplete, find the complete data source instead of applying regex cleanup. Reliability comes from extracting complete data at the source.
-- **Verify content quality before submitting** — read the content samples, not just the stats. A field showing N/N with wrong content is worse than one showing 0/N (which at least signals a problem).
-- **Check field formats** — `locations` must be `list[str]` (not objects), `description` must be HTML, `base_salary` must be `{currency, min, max, unit}` dict, `job_location_type` should be `"remote"`/`"hybrid"`/`"onsite"`. See the [field reference](../../docs/08-job-data-fields.md) for details.
+- Read "Next:" suggestions as one interpretation of current evidence, not as a required action.
+- Check evidence provenance: static HTML, rendered DOM, embedded JSON, API capture can disagree.
+- Verify content quality from samples, not only N/N counts.
+- For DOM extraction, verify step order in `flat.json` (forward cursor behavior can hide misses).
+- Prefer extracting complete upstream data over post-processing partial/garbled text.
+- Validate field formats (`locations`, HTML `description`, salary structure, location type values).
+- If evidence is ambiguous, capture one more validating signal before choosing a final config.
 
 ## Proposing Code Changes
 

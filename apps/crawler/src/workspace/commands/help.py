@@ -18,6 +18,7 @@ Available topics:
   fields            Job data fields — types, formats, importance
   steps             DOM scraper step key reference
   actions           Browser action pipeline
+  feedback          Feedback command — verdicts, per-field quality, examples
   artifacts         Debug artifacts saved by ws commands
 
 Commands:
@@ -56,6 +57,8 @@ Board Command Reference:
     - Single board alias: careers
     - Multi-board aliases: careers-us, careers-de, careers-gh
     - Prefer real listings board URLs over marketing landing pages
+    - If setting job-link-pattern manually, start broad and include URL variants
+      (numeric suffixes, query params), then tighten only after count checks
 """
 
 MONITORS = """\
@@ -87,21 +90,31 @@ Monitor Types (cheapest first):
   api_sniffer       80      URLs or full    If URL-only (no fields)
   dom               100     URL set         Yes
 
-Decision tree (after ws probe monitor):
-  1. Detected rich monitor (join/greenhouse/lever/rss/etc)?  → Use it (no scraper needed)
-  2. Detected nextdata?                                       → monitor: nextdata
-  3. Detected umantis or sitemap?                             → monitor: detected type,
-                                                                scraper: json-ld (or embedded)
-  4. Detected api_sniffer?                                    → Use it (check if fields auto-mapped)
-  5. Nothing detected?                                        → monitor: dom, scraper: dom
+Interpretation guide (after ws probe monitor):
+  1. Rich monitor detected (join/greenhouse/lever/rss/etc):
+     strong signal, but validate sample content and coverage.
+  2. nextdata / api_sniffer detected:
+     inspect mapped fields before accepting.
+  3. URL-only monitors (sitemap/umantis/dom):
+     compare discovered count with visible listings and validate filters.
+  4. Nothing detected:
+     gather more evidence (rendered probe/deep probe) before deciding.
 
 Config-first policy:
   Before switching monitor type, iterate config on the current plausible type:
   ws help monitor <type>  →  ws select monitor <type> --as <name> --config '{...}'  → ws run monitor
 
+Evidence note:
+  Probe suggestions are hypotheses. Prefer directly referenced site evidence
+  over blind slug guesses when they conflict.
+
 All monitors support url_filter to include/exclude URLs by regex:
   "url_filter": "/jobs/"                          Include only
   "url_filter": {"include": "/jobs/", "exclude": "/blog/"}
+
+Regex safety:
+  Start broad, then tighten after validating count against the site.
+  Include common URL variants (numeric suffixes, trailing slash, query params).
 
   ws probe monitor                  Run monitor probe
   ws help monitor <type>            Detailed config reference
@@ -126,8 +139,8 @@ Scraper Types:
   api_sniffer scraper is auto-probed via Playwright in ws probe scraper.
 
   Probe first: ws probe scraper tries all types automatically against
-  sample URLs. Heuristic configs are a starting point — refine based
-  on probe quality stats.
+  sample URLs. Heuristic configs are starting evidence, not final truth.
+  Confirm with extracted sample content.
 
   Try json-ld first — many sites embed JobPosting structured data for SEO.
   If json-ld returns empty fields, check page source for embedded JSON data
@@ -145,7 +158,7 @@ Field importance:
   Optional     employment_type, date_posted, base_salary, skills,
                qualifications, responsibilities, valid_through
 
-  Titles and descriptions must be N/N — 0/N on either = do not submit.
+  Titles and descriptions should reach full coverage before submit.
   Missing locations acceptable only if job_location_type is set (remote-only).
   See: ws help fields                  Full field reference
 
@@ -414,6 +427,8 @@ dom — Link Extraction (fallback)
     headless     Run headless (default: true)
     actions      Browser action pipeline (see: ws help actions)
     url_filter   Regex filter for discovered URLs (see: ws help monitor sitemap)
+                 Keep patterns broad enough to include URL variants
+                 (numeric suffixes, trailing slash, query params)
 
   Pagination (multi-page career sites):
     {
@@ -482,7 +497,7 @@ recruitee — Recruitee Careers Site API
     slug       Company slug for {slug}.recruitee.com. Auto-filled by ws probe from:
                1. Direct URL ({slug}.recruitee.com)
                2. Inline HTML scan for recruitee markers
-               3. Slug-based API probe (derives slug from domain)
+               3. Explicit blind-probe mode only (domain-derived slug guess)
     api_base   Full base URL for custom domains. Auto-filled when detected
                via HTML scan (e.g. karriere.herta.de → https://karriere.herta.de).
 
@@ -729,7 +744,7 @@ workable — Workable Posting API
     token    Company slug. Auto-filled by ws probe from:
              1. Direct URL (apply.workable.com/{token})
              2. Inline HTML scan for Workable references
-             3. Slug-based API probe (derives slug from domain)
+             3. Explicit blind-probe mode only (domain-derived slug guess)
 
   Detection:  ws probe shows "Workable API — token: X, N jobs"
   Zero jobs?  Verify token — try the API URL directly in a browser"""
@@ -1307,6 +1322,8 @@ Troubleshooting:
     → For paginated monitors, raise max_pages first so it significantly
       overshoots expected pages, then re-run before switching type
     → Do not optimize for low page caps — completeness comes first
+    → If using url_filter/job-link-pattern, test without it (or with a broader
+      regex) to catch over-strict filters that drop valid variants
     → sitemap may not list all jobs — try dom or nextdata
     → greenhouse/lever may need a different token
 
@@ -1330,6 +1347,46 @@ Troubleshooting:
   Nothing works after trying all types:
     → Document what was tried and the specific failure
     → ws task fail --reason "..." to enter coding mode"""
+
+FEEDBACK = """\
+Feedback Command Reference:
+
+  ws feedback [<config>] --verdict <verdict> --verdict-notes "..."
+
+  Records extraction quality feedback for the active (or named) scraper
+  configuration.  Feedback is MANDATORY before ws submit.
+
+  Verdicts:
+    good        All required + important fields extracted cleanly
+    acceptable  Required fields clean; some important fields noisy/absent
+    poor        Submit requires --force; significant quality issues
+    unusable    Cannot submit at all
+
+  Per-field quality options (override auto-populated values):
+    --title <q>              Required field
+    --description <q>        Required field
+    --locations <q>          Important field (--locations-notes "...")
+    --employment-type <q>    Important field (--employment-type-notes "...")
+    --job-location-type <q>  Important field (--job-location-type-notes "...")
+    --date-posted <q>        Optional field
+    --base-salary <q>        Optional field
+    --skills <q>             Optional field
+    --qualifications <q>     Optional field
+    --responsibilities <q>   Optional field
+    --valid-through <q>      Optional field
+
+  Quality values: clean, noisy, unusable, absent
+
+  Auto-population:
+    Field quality is auto-populated from ws run monitor / ws run scraper
+    coverage data.  Pass explicit --<field> options only to override.
+
+  Examples:
+    ws feedback --verdict good --verdict-notes "All fields extracted cleanly"
+    ws feedback my-cfg --verdict acceptable --verdict-notes "Locations noisy" \\
+        --locations noisy --locations-notes "Missing city for some postings"
+    ws feedback --verdict poor --verdict-notes "Description truncated" \\
+        --description unusable"""
 
 # ── Lookup tables ────────────────────────────────────────────────────────
 
@@ -1376,6 +1433,7 @@ TOPIC_MAP: dict[str, str] = {
     "actions": ACTIONS,
     "artifacts": ARTIFACTS,
     "troubleshooting": TROUBLESHOOTING,
+    "feedback": FEEDBACK,
 }
 
 

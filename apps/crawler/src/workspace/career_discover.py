@@ -5,10 +5,13 @@ from __future__ import annotations
 import asyncio
 import re
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from html.parser import HTMLParser
+from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
 import httpx
+import yaml
 
 
 @dataclass
@@ -129,8 +132,24 @@ _BLIND_PROBE_TEMPLATES: dict[str, str] = {
 }
 
 # Maximum career links to follow from homepage
-_MAX_LINKS = 10
-_MAX_FOLLOWUP_LINKS = 8
+_MAX_LINKS = 18
+_MAX_FOLLOWUP_LINKS = 18
+_MAX_TRAVERSAL_DEPTH = 2
+_MAX_TRAVERSED_PAGES = 36
+
+_SEED_CAREER_PATHS = (
+    "/careers",
+    "/jobs",
+    "/job/open",
+    "/open-positions",
+    "/vacancies",
+    "/join-us",
+    "/en/careers",
+    "/en/jobs",
+    "/de/karriere",
+    "/fr/carrieres",
+    "/es/empleo",
+)
 
 
 # ── Intermediate data ─────────────────────────────────────────────────
@@ -153,6 +172,7 @@ class _ProbeLinkResult:
 
     candidates: list[CareerPageCandidate] = field(default_factory=list)
     followup_links: list[_ExtractedLink] = field(default_factory=list)
+    page: dict | None = None
 
 
 # ── HTMLParser-based extractor ─────────────────────────────────────────
@@ -360,6 +380,134 @@ def _scan_ats_urls_in_html(html: str) -> list[_ExtractedLink]:
     return found
 
 
+def _host(url: str) -> str:
+    return (urlparse(url).hostname or "").lower().removeprefix("www.")
+
+
+def _root_domain(host: str) -> str:
+    parts = host.split(".")
+    if len(parts) >= 2:
+        return ".".join(parts[-2:])
+    return host
+
+
+def _same_site(url_a: str, url_b: str) -> bool:
+    host_a = _host(url_a)
+    host_b = _host(url_b)
+    if not host_a or not host_b:
+        return False
+    if host_a == host_b:
+        return True
+    return _root_domain(host_a) == _root_domain(host_b)
+
+
+def _seed_links(homepage_url: str) -> list[_ExtractedLink]:
+    """Generate deterministic same-site discovery seeds for deeper traversal."""
+    out: list[_ExtractedLink] = []
+    for path in _SEED_CAREER_PATHS:
+        out.append(
+            _ExtractedLink(
+                url=urljoin(homepage_url, path),
+                source="seed_path",
+                context="body",
+                text=path,
+                base_score=0.45,
+            )
+        )
+    return out
+
+
+def _jobs_hint_from_metadata(metadata: dict | None) -> int:
+    if not metadata:
+        return 0
+    for key in ("jobs", "urls", "count"):
+        value = metadata.get(key)
+        try:
+            n = int(value)
+        except (TypeError, ValueError):
+            continue
+        if n > 0:
+            return n
+    return 0
+
+
+def _rerank_candidates(candidates: list[CareerPageCandidate], homepage_url: str) -> None:
+    """Adjust candidate scores using traversal evidence and provenance."""
+    for c in candidates:
+        score = c.score
+        same_site = _same_site(homepage_url, c.url)
+        if same_site:
+            score += 0.12
+        else:
+            score -= 0.08
+
+        if c.source == "blind_probe":
+            score -= 0.30
+        elif c.source == "ats_embed":
+            score -= 0.10
+        elif c.source == "seed_path":
+            score += 0.05
+
+        if c.job_link_pattern:
+            score += 0.08
+        if c.job_link_hub:
+            score += min(0.12, c.job_link_hub / 120.0)
+
+        jobs_hint = _jobs_hint_from_metadata(c.monitor_config)
+        if jobs_hint > 0:
+            score += min(0.10, jobs_hint / 500.0)
+
+        c.score = max(0.0, min(1.0, score))
+
+
+def _save_discovery_state(
+    path: Path,
+    *,
+    homepage_url: str,
+    seed_links: list[_ExtractedLink],
+    pages: list[dict],
+    candidates: list[CareerPageCandidate],
+) -> None:
+    """Persist traversal evidence so later commands can reuse context."""
+    try:
+        data = {
+            "version": 1,
+            "generated_at": datetime.now(UTC).isoformat(),
+            "homepage_url": homepage_url,
+            "seed_links": [
+                {
+                    "url": link.url,
+                    "source": link.source,
+                    "context": link.context,
+                    "score": round(link.base_score, 4),
+                    "text": link.text,
+                }
+                for link in seed_links
+            ],
+            "pages": pages,
+            "candidates": [
+                {
+                    "url": c.url,
+                    "source": c.source,
+                    "monitor_type": c.monitor_type,
+                    "score": round(c.score, 4),
+                    "jobs_hint": _jobs_hint_from_metadata(c.monitor_config),
+                    "job_link_hub": c.job_link_hub,
+                    "job_link_pattern": c.job_link_pattern,
+                    "same_site_as_homepage": _same_site(homepage_url, c.url),
+                    "monitor_config": c.monitor_config,
+                    "comment": c.comment,
+                }
+                for c in candidates
+            ],
+        }
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(yaml.safe_dump(data, sort_keys=False))
+    except Exception:
+        # Discovery state is advisory; don't fail board discovery if writing fails.
+        return
+
+
 # ── Phase 2: Probe career links ───────────────────────────────────────
 
 
@@ -377,11 +525,35 @@ async def _probe_link(
     try:
         resp = await client.get(link.url, follow_redirects=True)
         if resp.status_code >= 400:
-            return _ProbeLinkResult()
+            return _ProbeLinkResult(
+                page={
+                    "requested_url": link.url,
+                    "final_url": str(resp.url),
+                    "source": link.source,
+                    "status_code": resp.status_code,
+                    "fetch_ok": False,
+                    "outgoing_links": 0,
+                    "likely_job_links": 0,
+                    "job_link_pattern": None,
+                    "detected_monitors": [],
+                }
+            )
         final_url = str(resp.url)
         page_html = resp.text or ""
     except Exception:
-        return _ProbeLinkResult()
+        return _ProbeLinkResult(
+            page={
+                "requested_url": link.url,
+                "final_url": link.url,
+                "source": link.source,
+                "status_code": None,
+                "fetch_ok": False,
+                "outgoing_links": 0,
+                "likely_job_links": 0,
+                "job_link_pattern": None,
+                "detected_monitors": [],
+            }
+        )
 
     followups: list[_ExtractedLink] = []
     if collect_followups and link.source != "ats_embed":
@@ -396,38 +568,55 @@ async def _probe_link(
     link_analysis = analyze_job_links(final_url, page_html)
     hub_links = link_analysis.job_links_total
 
+    page_info = {
+        "requested_url": link.url,
+        "final_url": final_url,
+        "source": link.source,
+        "status_code": 200,
+        "fetch_ok": True,
+        "outgoing_links": link_analysis.outgoing_links_total,
+        "likely_job_links": hub_links,
+        "job_link_pattern": link_analysis.pattern,
+        "detected_monitors": [],
+    }
+
     # Fast path: final URL is a known ATS domain
     ats_type = detect_ats_from_url(final_url)
     if ats_type:
-        return _ProbeLinkResult(
-            candidates=await _probe_specific_monitor(ats_type, final_url, link, client)
-        )
+        ats_candidates = await _probe_specific_monitor(ats_type, final_url, link, client)
+        for candidate in ats_candidates:
+            candidate.job_link_hub = hub_links
+            candidate.job_link_pattern = link_analysis.pattern
+        if ats_candidates:
+            page_info["detected_monitors"] = [ats_type]
+        return _ProbeLinkResult(candidates=ats_candidates, page=page_info)
 
     # For ATS embeds that didn't resolve to an ATS domain after redirect,
     # try the original URL
     if link.source == "ats_embed":
         ats_type = detect_ats_from_url(link.url)
         if ats_type:
-            return _ProbeLinkResult(
-                candidates=await _probe_specific_monitor(ats_type, link.url, link, client)
-            )
-        return _ProbeLinkResult()
+            ats_candidates = await _probe_specific_monitor(ats_type, link.url, link, client)
+            for candidate in ats_candidates:
+                candidate.job_link_hub = hub_links
+                candidate.job_link_pattern = link_analysis.pattern
+            if ats_candidates:
+                page_info["detected_monitors"] = [ats_type]
+            return _ProbeLinkResult(candidates=ats_candidates, page=page_info)
+        return _ProbeLinkResult(page=page_info)
 
     # Slow path: probe all monitors on the career page
     try:
         results = await probe_all_monitors(final_url, client, timeout=15.0)
     except Exception:
-        return _ProbeLinkResult(followup_links=followups)
+        return _ProbeLinkResult(followup_links=followups, page=page_info)
 
     candidates = []
+    page_info["detected_monitors"] = [name for name, metadata, _ in results if metadata is not None]
     for name, metadata, comment in results:
         if metadata is not None:
             source = "redirect" if link.url != final_url else "homepage_link"
-            jobs_hint = metadata.get("jobs") or metadata.get("urls") or metadata.get("count") or 0
-            try:
-                jobs_hint_n = int(jobs_hint)
-            except (TypeError, ValueError):
-                jobs_hint_n = 0
+            jobs_hint_n = _jobs_hint_from_metadata(metadata)
 
             if not _hubness_allows_candidate(
                 source=source,
@@ -452,8 +641,8 @@ async def _probe_link(
                 )
             )
     if candidates:
-        return _ProbeLinkResult(candidates=candidates)
-    return _ProbeLinkResult(followup_links=followups)
+        return _ProbeLinkResult(candidates=candidates, page=page_info)
+    return _ProbeLinkResult(followup_links=followups, page=page_info)
 
 
 def _hubness_allows_candidate(
@@ -466,7 +655,7 @@ def _hubness_allows_candidate(
     """Require homepage/redirect pages to look like job hubs unless metadata is strong."""
     from src.workspace.job_links import MIN_HUB_LINKS
 
-    if source not in ("homepage_link", "redirect"):
+    if source not in ("homepage_link", "redirect", "seed_path"):
         return True
     has_hub_signal = hub_links >= MIN_HUB_LINKS and bool(inferred_pattern)
     if has_hub_signal:
@@ -513,7 +702,7 @@ async def _blind_probe_all(
     client: httpx.AsyncClient,
 ) -> list[CareerPageCandidate]:
     """Probe all ATS APIs with a candidate slug."""
-    from src.core.monitors import _build_comment, get_can_handle
+    from src.core.monitors import _build_comment, get_can_handle, slug_guess_mode
 
     def _jobs_count(value: object) -> int | None:
         try:
@@ -544,12 +733,12 @@ async def _blind_probe_all(
         except Exception:
             return None
 
-    tasks = [
-        _probe_one(name, template.format(slug=slug))
-        for name, template in _BLIND_PROBE_TEMPLATES.items()
-    ]
-
-    results = await asyncio.gather(*tasks)
+    with slug_guess_mode(True):
+        tasks = [
+            _probe_one(name, template.format(slug=slug))
+            for name, template in _BLIND_PROBE_TEMPLATES.items()
+        ]
+        results = await asyncio.gather(*tasks)
     return [r for r in results if r is not None]
 
 
@@ -575,6 +764,8 @@ async def discover_career_pages(
     homepage_url: str,
     homepage_html: str,
     client: httpx.AsyncClient,
+    *,
+    state_path: Path | None = None,
 ) -> list[CareerPageCandidate]:
     """Discover career pages from homepage HTML + blind slug probes.
 
@@ -587,53 +778,110 @@ async def discover_career_pages(
     Returns only confirmed detections, ranked by score descending.
     """
     from src.core.monitors import slugs_from_url
+    from src.workspace.job_links import analyze_job_links
 
-    # Phase 1: Extract career links from HTML
-    links = _extract_links(homepage_html, homepage_url)[:_MAX_LINKS]
+    # Phase 1: Extract direct links + deterministic same-site seeds
+    links = _merge_links(_extract_links(homepage_html, homepage_url), _seed_links(homepage_url))[
+        :_MAX_LINKS
+    ]
 
-    # Phase 2: Probe career links (all concurrently)
-    link_tasks = [_probe_link(link, client, collect_followups=True) for link in links]
-
-    # Phase 3: Blind slug probes (concurrent with Phase 2)
+    # Start blind probes immediately so they run while traversal is in progress.
     slugs = slugs_from_url(homepage_url)
-    blind_tasks = [_blind_probe_all(slug, client) for slug in slugs]
-
-    # Run Phase 2 + Phase 3 together
-    first_round = await asyncio.gather(*link_tasks, *blind_tasks, return_exceptions=True)
+    blind_task = (
+        asyncio.gather(*[_blind_probe_all(slug, client) for slug in slugs], return_exceptions=True)
+        if slugs
+        else None
+    )
 
     candidates: list[CareerPageCandidate] = []
-    followup_links: list[_ExtractedLink] = []
-    blind_offset = len(link_tasks)
+    pages: list[dict] = []
 
-    for result in first_round[:blind_offset]:
-        if isinstance(result, _ProbeLinkResult):
-            candidates.extend(result.candidates)
-            followup_links.extend(result.followup_links)
-    for result in first_round[blind_offset:]:
-        if isinstance(result, list):
-            candidates.extend(result)
+    homepage_analysis = analyze_job_links(homepage_url, homepage_html)
+    pages.append(
+        {
+            "requested_url": homepage_url,
+            "final_url": homepage_url,
+            "source": "homepage",
+            "depth": 0,
+            "status_code": 200,
+            "fetch_ok": True,
+            "outgoing_links": homepage_analysis.outgoing_links_total,
+            "likely_job_links": homepage_analysis.job_links_total,
+            "job_link_pattern": homepage_analysis.pattern,
+            "detected_monitors": [],
+        }
+    )
 
-    # Phase 3: One-hop expansion from unresolved career pages
-    seen_urls = {link.url for link in links}
-    next_hop: list[_ExtractedLink] = []
-    for link in _merge_links(followup_links):
-        if link.url in seen_urls:
-            continue
-        seen_urls.add(link.url)
-        next_hop.append(link)
-        if len(next_hop) >= _MAX_FOLLOWUP_LINKS:
+    frontier = links
+    seen_urls = {homepage_url}
+    depth = 0
+
+    while frontier and depth <= _MAX_TRAVERSAL_DEPTH and len(pages) < _MAX_TRAVERSED_PAGES:
+        batch: list[_ExtractedLink] = []
+        for link in frontier:
+            if link.url in seen_urls:
+                continue
+            seen_urls.add(link.url)
+            batch.append(link)
+            if len(pages) + len(batch) >= _MAX_TRAVERSED_PAGES:
+                break
+
+        if not batch:
             break
 
-    if next_hop:
-        second_round = await asyncio.gather(
-            *[_probe_link(link, client) for link in next_hop],
+        collect_followups = depth < _MAX_TRAVERSAL_DEPTH
+        batch_results = await asyncio.gather(
+            *[_probe_link(link, client, collect_followups=collect_followups) for link in batch],
             return_exceptions=True,
         )
-        for result in second_round:
-            if isinstance(result, _ProbeLinkResult):
-                candidates.extend(result.candidates)
+
+        followup_links: list[_ExtractedLink] = []
+        for result in batch_results:
+            if not isinstance(result, _ProbeLinkResult):
+                continue
+            candidates.extend(result.candidates)
+            if result.page is not None:
+                page_info = dict(result.page)
+                page_info["depth"] = depth
+                pages.append(page_info)
+            if collect_followups:
+                followup_links.extend(result.followup_links)
+
+        if not collect_followups:
+            break
+
+        next_frontier: list[_ExtractedLink] = []
+        for link in _merge_links(followup_links):
+            if link.url in seen_urls:
+                continue
+            # Prefer internal traversal; allow ATS embeds for evidence.
+            if link.source != "ats_embed" and not _same_site(homepage_url, link.url):
+                continue
+            next_frontier.append(link)
+            if len(next_frontier) >= _MAX_FOLLOWUP_LINKS:
+                break
+
+        frontier = next_frontier
+        depth += 1
+
+    if blind_task is not None:
+        blind_results = await blind_task
+        for result in blind_results:
+            if isinstance(result, list):
+                candidates.extend(result)
 
     # Dedup and sort by score descending
     deduped = _dedup_candidates(candidates)
+    _rerank_candidates(deduped, homepage_url)
     deduped.sort(key=lambda c: c.score, reverse=True)
+
+    if state_path is not None:
+        _save_discovery_state(
+            state_path,
+            homepage_url=homepage_url,
+            seed_links=links,
+            pages=pages,
+            candidates=deduped,
+        )
+
     return deduped

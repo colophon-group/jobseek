@@ -2,6 +2,9 @@
 
 **Board {board_progress}**: `{board_url}`
 
+Mindset: monitor detection is a hypothesis. Decide using evidence quality and
+coverage, not by taking the first suggestion.
+
 Before selecting a monitor, confirm this URL is an actual listings board.
 If it is only a landing page that links to jobs elsewhere, go back to Step 2,
 add the real listings URL as a board, and continue on that board.
@@ -61,7 +64,7 @@ ws select monitor sitemap --as sitemap-filtered --config '{{"url_filter": "/jobs
 ws run monitor
 ```
 
-## Configuration-first loop (mandatory before switching type)
+## Configuration-first loop (strong default)
 
 If the chosen monitor is plausible but results are wrong (0 jobs, low count, or missing
 required fields), iterate config for the **same monitor type** before changing types.
@@ -75,7 +78,7 @@ Only switch to another monitor type when:
 - the current type is clearly a mismatch for the board, or
 - at least one targeted config iteration for that type still fails.
 
-Before changing monitor type, enforce this gate:
+Before changing monitor type, use this evidence gate:
 - Do not switch after the first failed/incomplete run unless there is a hard mismatch
   (wrong platform/domain, unsupported endpoint, or explicit non-detection).
 - For a plausible monitor, try at least one concrete config variant first:
@@ -95,15 +98,29 @@ Where to look for config details and debugging context:
 After `ws run monitor`, check **both** the count and the content:
 
 1. **Count** — compare the job count against the website's displayed total.
-   If the count is lower, the monitor may need pagination config or a different type —
+   If the count is **lower**, the monitor may need pagination config or a different type —
    run `ws task troubleshoot 'fewer jobs'`.
    For paginated monitors (`dom`, `api_sniffer`), set `max_pages` to a value
    that significantly overshoots the expected real page count, then rely on
    "stop when no new jobs" behavior. Avoid conservative caps that undercount jobs.
+   If the count is **higher** than the visible page total, that is normal and expected —
+   APIs often include unlisted, regional, or hidden postings not shown in the default
+   careers page view. As long as the extracted content is clean (real titles, real
+   descriptions), the higher count is correct. **Do not reject a monitor for returning
+   more jobs than the page shows.**
 2. **Content** — `ws run monitor` prints "Extracted content:" with sample field values
    for rich monitors. Read these samples and verify titles are real job titles,
    descriptions contain meaningful content, and locations are actual place names.
    Populated fields are NOT necessarily correct — verify the text makes sense.
+3. **Filter safety** — if using `url_filter` or manual `job_link_pattern`, validate
+   regex coverage before accepting the config:
+   - Run a baseline without restrictive filtering (or with a broad include), then
+     compare with the filtered run.
+   - The filtered run must still match expected listing count.
+   - Include common URL variants in regexes: optional numeric suffixes,
+     trailing slash, and query params.
+   - If one visible posting is missing, treat the regex as too strict and widen it
+     before continuing.
 
 ## If the probe returned 0 jobs
 
@@ -113,17 +130,22 @@ the escalation path (deep probe, API discovery, dom fallback).
 
 ## How to choose between options
 
-When multiple monitors are detected, prefer in this order:
+When multiple monitors are detected, this order is a heuristic for interpreting evidence:
 
-1. **Coverage** — all jobs must be discovered. Full coverage always wins.
+1. **Coverage** — all jobs must be discovered. A monitor returning more jobs than the
+   page shows is a *superset*, not a problem — prefer it over a page-matching monitor.
 2. **Required fields** — title and description must extract for every job.
 3. **Resilience** — rich monitors > nextdata/api_sniffer > sitemap/umantis > dom.
    Avoid relying on elements that vary between job postings or change on redesign
    (CSS classes, DOM structure). Simpler configs over complex ones.
+   An api_sniffer or rich API monitor that works is almost always better than dom —
+   it is faster, cheaper, and immune to frontend redesigns.
 4. **Important fields** — locations and job_location_type when available.
 5. **Speed/cost** — among equivalent configs, prefer cheaper and `render: false`.
 
 Run `ws help monitor <type>` for config details on any specific monitor type.
+If signals conflict, explain why one signal is stronger (for example, direct site
+references and coverage parity vs blind slug detections).
 
 {rejected_configs}
 

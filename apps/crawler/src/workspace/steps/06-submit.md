@@ -22,6 +22,8 @@ The `--summary` should focus on **difficulties encountered**, not just restate t
 
 Use `--force` to submit despite a `poor` verdict (not for `unusable`).
 
+Write the summary as evidence + interpretation (not just command history).
+
 ## If submit fails
 
 Run `ws resume` to diagnose and retry.

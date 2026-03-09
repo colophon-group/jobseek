@@ -171,7 +171,6 @@ def new(slug: str, issue: int, reset: bool):
     action_log.append(ws_log_path(slug), "new", True, log_msg)
 
     out.plain("workspace", f"State: created (active: {slug})")
-    out.next_step('ws set --name "..." --website "..."')
 
 
 @click.command()
@@ -919,31 +918,9 @@ def submit(slug: str | None, summary: str | None, force: bool):
     action_log.append(ws_log_path(slug), "submit", True, log_msg)
 
     out.info("workspace", "Submit complete")
-    out.next_step('ws task next --notes "<any issues during submit, or none>"')
 
 
 # ── Resume ────────────────────────────────────────────────────────────
-
-
-# Priority-ordered: first matching issue determines the "Next:" suggestion.
-_NEXT_STEPS: list[tuple[str | None, str]] = [
-    ("branch_missing", "Branch not found — recreate with: git checkout -b {branch}"),
-    ("wrong_branch", "git checkout {branch}"),
-    ("pr_merged", "PR is already merged — workspace is complete"),
-    ("pr_closed", "PR is closed — reopen or create a new workspace"),
-    ("no_name", 'ws set --name "..." --website "..."'),
-    ("no_website", 'ws set --name "..." --website "..."'),
-    ("no_boards", "ws add board <alias> --url <url>"),
-    ("no_config", "ws probe monitor --current-jobs N"),
-    ("config_rejected", "ws probe monitor --current-jobs N"),
-    ("config_missing", "ws probe monitor --current-jobs N"),
-    ("not_tested", "ws run monitor"),
-    ("zero_jobs", "ws select monitor <type> --as <name>"),
-    ("no_feedback", 'ws feedback "<config-name>"'),
-    ("unusable", "ws select monitor <type> --as <name>"),
-    ("poor_quality", "ws submit --force  # or try another config"),
-    (None, "ws submit"),
-]
 
 
 def _check_environment(ws: Workspace) -> list[tuple[str, str, str]]:
@@ -1136,15 +1113,4 @@ def resume(slug: str | None):
         print(f"    Error: {err}")
         print(f"    At: {at}")
 
-    # Next step suggestion
-    issue_codes = {c for c, _, _ in all_issues}
-    next_cmd = None
-    for code, suggestion in _NEXT_STEPS:
-        if code is None or code in issue_codes:
-            next_cmd = suggestion.format(branch=ws.branch or "?")
-            break
-
-    print()
-    if next_cmd:
-        out.next_step(next_cmd)
     print()

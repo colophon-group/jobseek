@@ -9,6 +9,8 @@ Monitors discover which jobs exist on a board. They return either:
 from __future__ import annotations
 
 import asyncio
+import contextlib
+import contextvars
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -70,6 +72,7 @@ class MonitorType:
 
 
 _REGISTRY: list[MonitorType] = []
+_ALLOW_SLUG_GUESS = contextvars.ContextVar("allow_slug_guess", default=False)
 
 
 def register(
@@ -91,6 +94,21 @@ def register(
         )
     )
     _REGISTRY.sort(key=lambda m: m.cost)
+
+
+@contextlib.contextmanager
+def slug_guess_mode(enabled: bool):
+    """Temporarily control whether monitor can_handle may use slug guessing."""
+    token = _ALLOW_SLUG_GUESS.set(enabled)
+    try:
+        yield
+    finally:
+        _ALLOW_SLUG_GUESS.reset(token)
+
+
+def slug_guess_allowed() -> bool:
+    """Return whether monitor probes may use slug-based fallback guessing."""
+    return bool(_ALLOW_SLUG_GUESS.get())
 
 
 def api_monitor_types() -> frozenset[str]:

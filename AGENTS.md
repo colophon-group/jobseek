@@ -49,6 +49,20 @@ pnpm extract      # Extract i18n strings to .po
 pnpm compile      # Compile .po to .js catalogs
 ```
 
+## Crawler Setup Agent Instruction Sources
+
+For the `ws task --issue ...` crawler setup flow, instructions are loaded from runtime sources, not from AGENTS docs.
+
+- Step instructions: `apps/crawler/src/workspace/steps/*.md`
+- Step order/gates: `apps/crawler/src/workspace/workflow.yaml`
+- `ws help` guidance: `apps/crawler/src/workspace/commands/help.py`
+- Troubleshooting guidance surfaced by `ws task troubleshoot`: `apps/crawler/src/workspace/kb/*.md`
+
+If you want crawler setup agents to behave differently, modify the files above.
+Do not rely on `AGENTS.md` or `docs/` alone for those behavior changes.
+
+Developer guidance for agent reasoning style lives in [docs/agents.md](docs/agents.md).
+
 ## Git Workflow
 
 - Branch naming: `add-company/<slug>` for company additions, `fix-crawler/<description>` for code changes

@@ -407,7 +407,12 @@ def _show_career_results(slug: str, html: str, final_url: str, homepage_url: str
     """Discover career pages from HTML + blind probes, display results."""
     import asyncio
 
+    import yaml
+
     from src.workspace.career_discover import discover_career_pages
+    from src.workspace.state import ws_dir
+
+    state_path = ws_dir(slug) / "discovery.state.yaml"
 
     async def _run():
         import httpx
@@ -421,7 +426,7 @@ def _show_career_results(slug: str, html: str, final_url: str, homepage_url: str
             limits=httpx.Limits(max_connections=20, max_keepalive_connections=10),
         )
         try:
-            return await discover_career_pages(homepage_url, html, client)
+            return await discover_career_pages(homepage_url, html, client, state_path=state_path)
         finally:
             await client.aclose()
 
@@ -433,6 +438,22 @@ def _show_career_results(slug: str, html: str, final_url: str, homepage_url: str
         return
 
     out.info("careers", f"Found {len(candidates)} board(s):")
+    if state_path.exists():
+        try:
+            state = yaml.safe_load(state_path.read_text()) or {}
+            pages = state.get("pages") or []
+            pages_with_job_links = sum(
+                1 for page in pages if int(page.get("likely_job_links") or 0) > 0
+            )
+            out.info(
+                "careers",
+                (
+                    f"Traversal evidence: {len(pages)} pages inspected, "
+                    f"{pages_with_job_links} pages looked like job-link hubs."
+                ),
+            )
+        except Exception:
+            pass
     print()
 
     rows = []
@@ -455,9 +476,21 @@ def _show_career_results(slug: str, html: str, final_url: str, homepage_url: str
     out.table(["#", "Monitor", "URL", "Source", "JobLinks"], rows)
     print()
 
-    # Show "To add" suggestion for the top candidate
+    # Show an evidence summary instead of a prescriptive command.
     top = candidates[0]
-    out.plain("careers", f'To add:  ws add board careers --url "{top.url}"')
+    out.plain(
+        "careers",
+        (f"Top signal: {top.url} ({top.monitor_type}, source={top.source}, score={top.score:.2f})"),
+    )
+    if top.source == "blind_probe":
+        out.warn(
+            "careers",
+            "Top signal came from blind ATS probing rather than direct site references.",
+        )
+    out.plain(
+        "careers",
+        "Interpretation: treat this as a hypothesis and verify visible listings/count parity.",
+    )
 
 
 def _discover_and_show_all(slug: str, website: str) -> None:
@@ -815,6 +848,51 @@ def _report_job_link_analysis(analysis, *, alias: str, provided_pattern: bool) -
         )
 
 
+def _show_discovery_evidence(slug: str, board_url: str) -> None:
+    """Show how the board URL appeared during previous career discovery traversal."""
+    import yaml
+
+    from src.workspace.state import ws_dir
+
+    state_path = ws_dir(slug) / "discovery.state.yaml"
+    if not state_path.exists():
+        return
+
+    try:
+        state = yaml.safe_load(state_path.read_text()) or {}
+        candidates = state.get("candidates") or []
+    except Exception:
+        return
+
+    normalized = _normalize_url(board_url)
+    match = None
+    for candidate in candidates:
+        url = candidate.get("url")
+        if isinstance(url, str) and _normalize_url(url) == normalized:
+            match = candidate
+            break
+
+    if not match:
+        return
+
+    source = str(match.get("source", "unknown"))
+    score = match.get("score")
+    jobs_hint = match.get("jobs_hint")
+    same_site = bool(match.get("same_site_as_homepage"))
+
+    out.info(
+        "board",
+        "Discovery evidence: "
+        f"source={source}, score={score}, jobs_hint={jobs_hint}, same_site={same_site}",
+    )
+    if source == "blind_probe":
+        out.warn(
+            "board",
+            "This URL came from blind probing (not a direct site reference). "
+            "Validate board relevance carefully.",
+        )
+
+
 @click.command(name="board")
 @click.argument("slug_or_alias")
 @click.argument("alias", required=False)
@@ -884,10 +962,10 @@ def add_board(
         alias=alias,
         provided_pattern=job_link_pattern is not None,
     )
+    _show_discovery_evidence(slug, url)
     if board.job_link_pattern:
         out.plain("board", f"Job link pattern: {board.job_link_pattern}")
     out.plain("board", f"Active board: {board_slug} (alias: {alias})")
-    out.next_step("ws probe monitor")
 
 
 @click.command(name="board")

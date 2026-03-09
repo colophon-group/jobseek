@@ -29,8 +29,7 @@ def plain(category: str, msg: str) -> None:
 
 
 def next_step(cmd: str) -> None:
-    """Print a 'Next:' hint."""
-    print(f"  {'':>{_CAT_WIDTH}}Next: {cmd}")
+    """No-op — next steps are tracked by the task system."""
 
 
 def table(headers: list[str], rows: list[list[str]]) -> None:

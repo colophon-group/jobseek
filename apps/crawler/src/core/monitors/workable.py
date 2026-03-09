@@ -18,7 +18,13 @@ import re
 import httpx
 import structlog
 
-from src.core.monitors import DiscoveredJob, fetch_page_text, register, slugs_from_url
+from src.core.monitors import (
+    DiscoveredJob,
+    fetch_page_text,
+    register,
+    slug_guess_allowed,
+    slugs_from_url,
+)
 
 log = structlog.get_logger()
 
@@ -310,14 +316,15 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
                         result["jobs"] = count
                     return result
 
-    for slug in slugs_from_url(url):
-        found, count = await _probe_slug(slug, client)
-        if found:
-            log.info("workable.detected_by_probe", url=url, board_token=slug)
-            result = {"token": slug}
-            if count is not None:
-                result["jobs"] = count
-            return result
+    if slug_guess_allowed():
+        for slug in slugs_from_url(url):
+            found, count = await _probe_slug(slug, client)
+            if found:
+                log.info("workable.detected_by_probe", url=url, board_token=slug)
+                result = {"token": slug}
+                if count is not None:
+                    result["jobs"] = count
+                return result
 
     return None
 

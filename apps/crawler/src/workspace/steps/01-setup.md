@@ -1,5 +1,8 @@
 # Step: Claim Issue and Configure Company
 
+Use an evidence-first style: for each logo/icon decision, note what you saw,
+where you saw it, and why it is likely the correct brand asset.
+
 ## 1. Claim the issue
 
 ```bash
@@ -23,13 +26,13 @@ but only manual visual inspection can confirm brand correctness.
 Candidate artifacts are saved as both the original file and a PNG preview in
 `artifacts/company/logo-candidates/`.
 
-Then select by candidate number:
+After visual checks, select by candidate number:
 
 ```bash
 ws set --logo-candidate 1 --icon-candidate 2 --logo-type wordmark
 ```
 
-If none of the candidates are good, find a better image on the company's website
+If candidate evidence is weak, find a better image on the company's website
 (press page, about page, footer) and provide the URL directly:
 
 ```bash

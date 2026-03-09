@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from src.core.monitors import DiscoveredJob
+from src.core.monitors import DiscoveredJob, slug_guess_mode
 from src.core.monitors.recruitee import (
     _api_base_from_url,
     _parse_job,
@@ -512,3 +512,16 @@ class TestCanHandle:
             assert result["slug"] == "acme"
             assert result["jobs"] == 2
             assert result["api_base"] == "https://acme.recruitee.com"
+
+    async def test_slug_guess_mode_enables_probe_fallback(self):
+        def handler(request):
+            url = str(request.url)
+            if "example.recruitee.com/api/offers" in url:
+                return httpx.Response(200, json={"offers": [{"id": 1}]})
+            return httpx.Response(200, text="<html>no recruitee refs</html>")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with slug_guess_mode(True):
+                result = await can_handle("https://www.example.com/careers", client)
+            assert result is not None
+            assert result.get("slug") == "example"

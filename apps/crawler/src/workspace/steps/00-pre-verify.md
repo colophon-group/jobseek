@@ -11,6 +11,9 @@ If something goes wrong, run `ws task troubleshoot <query>` to search the knowle
 If you get stuck on any step, run `ws task fail --reason "..."` to enter coding mode —
 this unlocks source code access so you can propose a fix.
 
+Interpret `ws` output as evidence. Record what was observed, how it was observed,
+and what it likely means before deciding.
+
 **Rule:** Do **not** explore the codebase or read source code — use `ws` commands and `ws help` exclusively.
 
 ## Issue
@@ -37,7 +40,7 @@ If there's no public careers page, reject with `no-job-board`.
 ws reject --issue {issue} --reason <key> --message "..."
 ```
 
-## If valid — create the workspace
+## If valid — create the workspace hypothesis context
 
 Choose a slug (lowercase, hyphens, e.g. `stripe`, `deep-judge`):
 

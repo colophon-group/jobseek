@@ -1060,29 +1060,6 @@ class TestRunMonitorOutput:
         assert "ws select monitor greenhouse --config" in result.output
         assert "Traceback" not in result.output
 
-    def test_nextdata_suggests_nextdata_scraper(self, tmp_path, monkeypatch):
-        """nextdata monitor should suggest nextdata scraper, not json-ld."""
-        self._setup_monitor_board(tmp_path, monkeypatch, monitor_type="nextdata")
-
-        @dataclass
-        class FakeResult:
-            urls: set[str]
-            jobs_by_url: dict | None
-            filtered_count: int = 0
-
-        fake_result = FakeResult(
-            urls={"https://test.com/jobs/1"},
-            jobs_by_url=None,
-        )
-
-        stack, mock_asyncio = _enter_monitor_patches(tmp_path)
-        with stack:
-            mock_asyncio.run.return_value = (fake_result, 1.0, [])
-            runner = CliRunner()
-            result = runner.invoke(ws, ["run", "monitor", "test"])
-
-        assert "ws select scraper nextdata" in result.output
-
     def test_rich_data_quality_with_optional_fields(self, tmp_path, monkeypatch):
         """Rich data should show quality including optional fields."""
         self._setup_monitor_board(tmp_path, monkeypatch, monitor_type="greenhouse")
@@ -1190,32 +1167,6 @@ class TestRunScraperOutput:
 
         assert "No titles extracted" in result.output
         assert "ws select scraper dom" in result.output
-
-    def test_all_titles_suggests_feedback(self, tmp_path, monkeypatch):
-        """When all titles extracted, suggest ws feedback."""
-        self._setup_board_with_monitor(tmp_path, monkeypatch)
-
-        from src.core.scrapers import JobContent
-
-        contents = [
-            JobContent(title="Engineer", description="<p>Hi</p>", locations=["NYC"]),
-            JobContent(title="Designer", description="<p>Hi</p>", locations=["SF"]),
-        ]
-
-        stack, mock_asyncio = _enter_scraper_patches(tmp_path)
-        with stack:
-            mock_asyncio.run.return_value = (
-                [
-                    ("https://test.com/jobs/1", contents[0], 0.5),
-                    ("https://test.com/jobs/2", contents[1], 0.3),
-                ],
-                [],
-            )
-            runner = CliRunner()
-            result = runner.invoke(ws, ["run", "scraper", "test"])
-
-        assert "ws feedback" in result.output
-        assert "No titles" not in result.output
 
     def test_optional_fields_shown(self, tmp_path, monkeypatch):
         """Optional fields with data should be shown in output."""
@@ -1386,69 +1337,6 @@ class TestProbeScraperQualityGate:
         ws_obj = load_workspace("test")
         ws_obj.active_board = "careers"
         save_workspace(ws_obj)
-
-    def test_next_step_suppressed_on_zero_titles(self, tmp_path, monkeypatch):
-        """0/N titles should suppress Next: and show warning."""
-        self._setup_board_with_monitor(tmp_path, monkeypatch)
-
-        # Probe results: best scraper has 0 titles
-        fake_results = [
-            (
-                "json-ld",
-                {
-                    "config": {},
-                    "total": 1,
-                    "titles": 0,
-                    "descriptions": 1,
-                    "locations": 0,
-                    "fields": {"description": 1},
-                },
-                "0/1 titles, 1/1 desc, 0/1 locations",
-            ),
-            ("nextdata", None, "Not detected"),
-            ("dom", None, "Not detected"),
-            ("api_sniffer", None, "Skipped \u2014 Playwright not available"),
-        ]
-
-        stack, mock_asyncio = _enter_probe_scraper_patches(tmp_path)
-        with stack:
-            mock_asyncio.run.return_value = (fake_results, False)
-            runner = CliRunner()
-            result = runner.invoke(ws, ["probe", "scraper", "test"])
-
-        assert "Next:" not in result.output
-        assert "0/N titles" in result.output or "heuristic config is wrong" in result.output
-
-    def test_next_step_shown_when_fields_ok(self, tmp_path, monkeypatch):
-        """When required fields are populated, Next: should be shown."""
-        self._setup_board_with_monitor(tmp_path, monkeypatch)
-
-        fake_results = [
-            (
-                "json-ld",
-                {
-                    "config": {},
-                    "total": 1,
-                    "titles": 1,
-                    "descriptions": 1,
-                    "locations": 1,
-                    "fields": {"title": 1, "description": 1, "locations": 1},
-                },
-                "1/1 titles, 1/1 desc, 1/1 locations",
-            ),
-            ("nextdata", None, "Not detected"),
-            ("dom", None, "Not detected"),
-            ("api_sniffer", None, "Skipped \u2014 Playwright not available"),
-        ]
-
-        stack, mock_asyncio = _enter_probe_scraper_patches(tmp_path)
-        with stack:
-            mock_asyncio.run.return_value = (fake_results, False)
-            runner = CliRunner()
-            result = runner.invoke(ws, ["probe", "scraper", "test"])
-
-        assert "Next:" in result.output
-        assert "ws select scraper json-ld" in result.output
 
     def test_spa_warning_shown(self, tmp_path, monkeypatch):
         """SPA suspect should show warning in probe output."""
@@ -2644,7 +2532,6 @@ class TestResume:
         assert result.exit_code == 0
         assert "Test Corp" in result.output
         assert "Ready" in result.output
-        assert "ws submit" in result.output
 
     def test_resume_no_config(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
@@ -2676,7 +2563,6 @@ class TestResume:
 
         assert result.exit_code == 0
         assert "no config selected" in result.output
-        assert "ws probe monitor" in result.output
 
     def test_resume_shows_last_error(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
@@ -2751,29 +2637,6 @@ class TestResume:
 
         assert result.exit_code == 0
         assert "No boards configured" in result.output
-        assert "ws add board" in result.output
-
-
-class TestNextStepLogic:
-    """Test next step suggestion priority."""
-
-    def test_next_steps_priority_order(self):
-        from src.workspace.commands.lifecycle import _NEXT_STEPS
-
-        codes = [c for c, _ in _NEXT_STEPS]
-        # None sentinel (meaning "all good") should be last
-        assert codes[-1] is None
-        # branch issues should be first
-        assert codes[0] == "branch_missing"
-
-    def test_no_issues_suggests_submit(self):
-        from src.workspace.commands.lifecycle import _NEXT_STEPS
-
-        issue_codes: set[str] = set()
-        for code, suggestion in _NEXT_STEPS:
-            if code is None or code in issue_codes:
-                assert "ws submit" in suggestion
-                break
 
 
 class TestStatusEnhanced:

@@ -55,8 +55,14 @@ done <<< "$FILES"
 # --- Check diff size and content ---
 
 DIFF=$(gh pr diff "$PR" --repo "$REPO")
-# Count added lines only in CSV files (exclude images and other binary/text assets)
-CSV_DIFF=$(gh pr diff "$PR" --repo "$REPO" -- apps/crawler/data/companies.csv apps/crawler/data/boards.csv 2>/dev/null || echo "$DIFF")
+# Count/validate only CSV hunks so non-CSV assets (e.g. KB markdown) don't affect CSV checks.
+CSV_DIFF=$(echo "$DIFF" | awk '
+  BEGIN { in_csv = 0 }
+  /^diff --git / {
+    in_csv = ($0 ~ /^diff --git a\/apps\/crawler\/data\/(companies|boards)\.csv b\/apps\/crawler\/data\/(companies|boards)\.csv$/)
+  }
+  in_csv { print }
+')
 ADDED_LINES=$(echo "$CSV_DIFF" | grep -c '^+[^+]' || true)
 echo "Added lines (CSVs only): $ADDED_LINES (max $MAX_ADDED_LINES)"
 
@@ -90,14 +96,14 @@ while IFS= read -r line; do
   PARSED=$(parse_csv_line "$content")
   FIELD_COUNT=$(echo "$PARSED" | awk -F'\t' '{print NF}')
 
-  if [ "$FIELD_COUNT" -ne 5 ] && [ "$FIELD_COUNT" -ne 7 ]; then
+  if [ "$FIELD_COUNT" -ne 6 ] && [ "$FIELD_COUNT" -ne 7 ]; then
     echo "::warning::Unexpected field count ($FIELD_COUNT): $content"
     DIFF_OK=false
     continue
   fi
 
-  if [ "$FIELD_COUNT" -eq 5 ]; then
-    # companies.csv: slug,name,website,logo_url,icon_url
+  if [ "$FIELD_COUNT" -eq 6 ]; then
+    # companies.csv: slug,name,website,logo_url,icon_url,logo_type
     SLUG=$(echo "$PARSED" | cut -d$'\t' -f1)
     WEBSITE=$(echo "$PARSED" | cut -d$'\t' -f3)
 

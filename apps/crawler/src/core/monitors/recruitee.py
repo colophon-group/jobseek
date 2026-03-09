@@ -13,7 +13,13 @@ from urllib.parse import urlparse
 import httpx
 import structlog
 
-from src.core.monitors import DiscoveredJob, fetch_page_text, register, slugs_from_url
+from src.core.monitors import (
+    DiscoveredJob,
+    fetch_page_text,
+    register,
+    slug_guess_allowed,
+    slugs_from_url,
+)
 
 log = structlog.get_logger()
 
@@ -280,16 +286,17 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
                         result["jobs"] = count
                     return result
 
-    # 3. Slug-based probe as fallback
-    for slug in slugs_from_url(url):
-        api_base = f"https://{slug}.recruitee.com"
-        found, count = await _probe_api(api_base, client)
-        if found:
-            log.info("recruitee.detected_by_probe", url=url, slug=slug)
-            result = {"slug": slug, "api_base": api_base}
-            if count is not None:
-                result["jobs"] = count
-            return result
+    # 3. Slug-based probe as fallback (explicit blind-probe mode only)
+    if slug_guess_allowed():
+        for slug in slugs_from_url(url):
+            api_base = f"https://{slug}.recruitee.com"
+            found, count = await _probe_api(api_base, client)
+            if found:
+                log.info("recruitee.detected_by_probe", url=url, slug=slug)
+                result = {"slug": slug, "api_base": api_base}
+                if count is not None:
+                    result["jobs"] = count
+                return result
 
     return None
 

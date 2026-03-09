@@ -24,6 +24,11 @@ uses a custom CMS" with no general lesson).
 - "Probe detects greenhouse but token is wrong" → "Extract token from page source"
 - "API returns paginated results with small page size" → "Increase result_limit parameter"
 
+Prefer entries that include:
+- what was observed
+- how it was observed
+- why the solution likely generalizes
+
 ## When done
 
 ```bash

@@ -6,6 +6,9 @@
 
 **Rule:** Do **not** record feedback without verifying actual extracted content — N/N stats are not enough, you must read the data.
 
+Frame feedback as interpreted evidence: what was extracted, how it was checked,
+and what that likely means for production reliability.
+
 ## Verify extracted content
 
 Both `ws run monitor` (rich/API monitors) and `ws run scraper` print "Extracted content:"

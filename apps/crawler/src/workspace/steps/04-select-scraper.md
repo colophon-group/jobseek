@@ -3,11 +3,12 @@
 **Board {board_progress}**: `{board_url}`
 
 The monitor returns URLs only — you need a scraper to extract job details from each page.
+Use the table below as a prior, then validate against actual extraction evidence.
 
-## Scraper types (in preference order)
+## Scraper types (evidence-oriented preference order)
 
-Pick the **first type that works**. Types higher in the list are more resilient and require
-less configuration:
+Types higher in the list are often more resilient and require less configuration,
+but final choice should follow observed extraction quality:
 
 | # | Type | What it does | Config | Best when |
 |---|------|-------------|--------|-----------|
@@ -22,7 +23,7 @@ less configuration:
 - `render: false` > `render: true` — only render when static HTML is empty
 - If job URLs point to a **known ATS domain** (greenhouse.io, lever.co, ashbyhq.com, etc.), start with `json-ld` — ATS job pages almost always have JSON-LD markup
 
-## Skip probing when the choice is obvious
+## Skip probing when evidence is already strong
 
 You do **not** need to run `ws probe scraper` if you can determine the scraper type from context:
 
@@ -41,7 +42,7 @@ ws run scraper
 After `ws run scraper`, read the "Extracted content:" output — it shows actual field
 values for sample jobs. Verify quality before proceeding to feedback.
 
-## Configuration-first loop (mandatory before switching type)
+## Configuration-first loop (strong default before switching type)
 
 If a scraper type is plausible but extraction is incomplete, iterate config for the
 **same scraper type** before switching to another type.
@@ -55,7 +56,7 @@ Only switch scraper type when:
 - there is clear evidence the current type cannot extract the page structure, or
 - at least one targeted config iteration still fails.
 
-Before changing scraper type, enforce this gate:
+Before changing scraper type, apply this evidence gate:
 - Do not switch after the first failed/incomplete run unless there is a hard mismatch.
 - For a plausible scraper, try at least one concrete config variant first.
 - Keep attempts explicit and reversible:
@@ -69,7 +70,7 @@ Where to look for config details:
 - `ws help actions` (rendered extraction)
 - `ws help artifacts` (sample HTML/JSON, quality report, flat DOM)
 
-## When in doubt, probe first
+## When uncertainty is high, probe first
 
 ```bash
 ws probe scraper

@@ -2,7 +2,7 @@
 
 Entry point: ``ws task --issue <N>`` fetches the issue and starts the workflow.
 
-Agents interact with the workflow exclusively through these commands:
+Crawler setup agents interact with the workflow exclusively through these commands:
 - ``ws task --issue <N>``         — fetch issue, pre-verify, start workflow
 - ``ws task``                     — show current task instructions
 - ``ws task next --notes ...``    — reflect, verify gate, advance
@@ -11,6 +11,14 @@ Agents interact with the workflow exclusively through these commands:
 - ``ws task fail --reason ...``   — mark step as failed, unlock exploration mode
 - ``ws task troubleshoot``        — search the troubleshooting KB
 - ``ws task learn``               — add a KB entry from experience
+
+Instruction sources available to crawler setup agents:
+- Step markdown rendered from ``apps/crawler/src/workspace/steps/`` via ``workflow.yaml``
+- ``ws help`` topic text defined in ``apps/crawler/src/workspace/commands/help.py``
+- KB entries in ``apps/crawler/src/workspace/kb/`` accessed via ``ws task troubleshoot``
+
+Developer docs (for example AGENTS.md and docs/) are not part of the runtime
+instruction stream unless explicitly copied into the sources above.
 """
 
 from __future__ import annotations

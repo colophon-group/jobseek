@@ -41,7 +41,12 @@ def _load_workflow() -> dict[str, Any]:
 
 
 def _load_step_markdown(instructions: str) -> str:
-    """Load a step markdown file relative to the package directory."""
+    """Load a step markdown file relative to the package directory.
+
+    This markdown is part of the crawler setup agent's runtime instruction stream.
+    Keep behavior guidance in step files (and ws help / KB), not only in
+    developer-facing docs.
+    """
     path = _pkg_path() / instructions
     if not path.exists():
         return f"(Step instructions not found: {instructions})"
