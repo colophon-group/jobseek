@@ -250,9 +250,11 @@ def probe_monitors(slug: str | None, board_alias: str | None, current_jobs: int)
         if best_jobs is not None and best_jobs == 0:
             out.warn(
                 "probe",
-                f"{best_name} detected but returned 0 jobs — verify the board URL is correct. "
+                f"{best_name} detected but returned 0 jobs — verify board URL, "
+                "then iterate its config before switching type. "
                 "Try: ws task troubleshoot 'zero jobs'",
             )
+            out.plain("probe", f"Config reference: ws help monitor {best_name}")
         else:
             out.next_step(f"ws select monitor {best_name}")
     else:
@@ -753,13 +755,25 @@ def probe_api(url: str, slug: str | None, board_alias: str | None):
 
 
 _MONITOR_CONFIG_HINTS = {
-    "greenhouse": "Requires: token (auto-filled from probe)",
-    "lever": "Requires: token (auto-filled from probe)",
-    "hireology": "Requires: slug (auto-filled from probe)",
+    "join": "Optional: slug (auto-derived from join.com URL), description_path(s)",
+    "ashby": "Requires: token (auto-filled from probe)",
+    "bite": "Requires: key (auto-filled from probe)",
     "breezy": "Optional: portal_url or slug (auto-filled from probe)",
+    "dvinci": "Requires: slug (auto-filled from probe)",
+    "greenhouse": "Requires: token (auto-filled from probe)",
+    "hireology": "Requires: slug (auto-filled from probe)",
+    "lever": "Requires: token (auto-filled from probe)",
+    "pinpoint": "Requires: slug (auto-filled from probe)",
     "recruitee": "Requires: slug or api_base (auto-filled from probe)",
     "rippling": "Requires: slug (auto-filled from probe)",
+    "smartrecruiters": "Requires: token (auto-filled from probe)",
+    "softgarden": "Requires: slug. Optional: job_url_pattern",
+    "traffit": "Requires: slug (auto-filled from probe)",
+    "workable": "Requires: token (auto-filled from probe)",
+    "workday": "Requires: company, wd_instance, site (auto-filled from probe)",
+    "personio": "Requires: slug. Optional: language, backfill_languages",
     "rss": "Optional: preset, feed_url (auto-filled from probe)",
+    "umantis": "Requires: customer_id. Optional: region, listing_path",
     "sitemap": "Optional: sitemap_url, url_filter (regex to include/exclude URLs)",
     "nextdata": "Requires: path, url_template. Optional: fields, render, actions, url_filter",
     "dom": "Optional: render, actions, wait, timeout, url_filter",
@@ -791,6 +805,7 @@ def select_monitor(
     """Set monitor type for the active board."""
     slug, type_ = resolve_two_args(slug_or_type, type_)
     ws, board = _resolve_board(slug, board_alias)
+    prev_monitor_type = board.monitor_type
 
     # Stale probe detection: warn if board URL changed since probe ran
     probe_meta = board.detections.get("_meta", {})
@@ -808,6 +823,20 @@ def select_monitor(
         get_discoverer(type_)
     except ValueError as e:
         out.die(str(e))
+
+    # Nudge config-first exploration when switching monitor types.
+    if prev_monitor_type and prev_monitor_type != type_:
+        out.warn(
+            "monitor",
+            f"Switching monitor type: {prev_monitor_type} -> {type_}. "
+            "Prefer iterating config on the current type first unless this is a hard mismatch.",
+        )
+        out.plain("monitor", f"Config reference: ws help monitor {prev_monitor_type}")
+        out.plain(
+            "monitor",
+            "Try: ws select monitor "
+            f"{prev_monitor_type} --as {prev_monitor_type}-alt --config '{{...}}'",
+        )
 
     config = {}
     if config_json:
@@ -1054,9 +1083,17 @@ def run_monitor(slug: str | None, board_alias: str | None):
     if job_count == 0:
         out.warn(
             "monitor",
-            f"0 jobs in {elapsed:.1f}s \u2014 check board URL or try a different monitor type. "
+            f"0 jobs in {elapsed:.1f}s \u2014 check board URL, "
+            "then iterate monitor config before switching type. "
             "Try: ws task troubleshoot 'zero jobs'",
         )
+        if board.monitor_type:
+            out.plain("monitor", f"Config reference: ws help monitor {board.monitor_type}")
+            out.plain(
+                "monitor",
+                "Try: ws select monitor "
+                f"{board.monitor_type} --as {board.monitor_type}-alt --config '{{...}}'",
+            )
         if prev_jobs > 0:
             out.warn(
                 "monitor",
@@ -1213,6 +1250,7 @@ def select_scraper(
     """Set scraper type for the active board."""
     slug, type_ = resolve_two_args(slug_or_type, type_)
     ws, board = _resolve_board(slug, board_alias)
+    prev_scraper_type = board.scraper_type
 
     # Validate type against registry
     from src.core.scrapers import get_scraper
@@ -1221,6 +1259,19 @@ def select_scraper(
         get_scraper(type_)
     except ValueError as e:
         out.die(str(e))
+
+    # Nudge config-first exploration when switching scraper types.
+    if prev_scraper_type and prev_scraper_type != type_:
+        out.warn(
+            "scraper",
+            f"Switching scraper type: {prev_scraper_type} -> {type_}. "
+            "Prefer iterating config on the current type first unless this is a hard mismatch.",
+        )
+        out.plain("scraper", f"Config reference: ws help scraper {prev_scraper_type}")
+        out.plain(
+            "scraper",
+            f"Try: ws select scraper {prev_scraper_type} --config '{{...}}'",
+        )
 
     config = json.loads(config_json) if config_json else {}
 
@@ -1475,17 +1526,25 @@ def run_scraper(slug: str | None, board_alias: str | None, urls: tuple[str, ...]
     if titles_found == 0:
         out.warn(
             "scraper",
-            "No titles extracted \u2014 try a different scraper type. "
+            "No titles extracted — iterate current scraper config first; "
+            "switch type only if needed. "
             "Try: ws task troubleshoot 'empty fields'",
         )
-        out.next_step(f"ws select scraper {alt_scraper}")
+        out.plain("scraper", f"Config reference: ws help scraper {board.scraper_type}")
+        out.plain("scraper", f"Try: ws select scraper {board.scraper_type} --config '{{...}}'")
+        out.plain("scraper", f"If still failing: ws select scraper {alt_scraper}")
+        out.next_step(f"ws help scraper {board.scraper_type}")
     elif descs_found == 0:
         out.warn(
             "scraper",
-            "No descriptions extracted \u2014 try a different scraper type. "
+            "No descriptions extracted — iterate current scraper config first; "
+            "switch type only if needed. "
             "Try: ws task troubleshoot 'empty fields'",
         )
-        out.next_step(f"ws select scraper {alt_scraper}")
+        out.plain("scraper", f"Config reference: ws help scraper {board.scraper_type}")
+        out.plain("scraper", f"Try: ws select scraper {board.scraper_type} --config '{{...}}'")
+        out.plain("scraper", f"If still failing: ws select scraper {alt_scraper}")
+        out.next_step(f"ws help scraper {board.scraper_type}")
     elif titles_found < total or descs_found < total:
         parts = []
         if titles_found < total:
@@ -1493,6 +1552,7 @@ def run_scraper(slug: str | None, board_alias: str | None, urls: tuple[str, ...]
         if descs_found < total:
             parts.append(f"{descs_found}/{total} descriptions")
         out.warn("scraper", f"{', '.join(parts)} — check scraper config or try a different type")
+        out.plain("scraper", f"Config reference: ws help scraper {board.scraper_type}")
         out.next_step("ws feedback")
     else:
         out.next_step("ws feedback")

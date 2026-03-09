@@ -7,7 +7,7 @@ from pathlib import Path
 
 import click
 
-from src.shared.constants import SLUG_RE
+from src.shared.constants import LOGO_TYPES, SLUG_RE
 from src.shared.csv_io import read_csv
 from src.workspace import log as action_log
 from src.workspace import output as out
@@ -36,6 +36,11 @@ from src.workspace.state import (
     "--icon-url",
     help="Minified square logo/icon image URL (direct file; transparent preferred)",
 )
+@click.option(
+    "--logo-type",
+    type=click.Choice(LOGO_TYPES, case_sensitive=False),
+    help="Full-logo label: wordmark, wordmark+icon, or icon",
+)
 @click.option("--logo-candidate", type=int, help="Select full-logo candidate number")
 @click.option("--icon-candidate", type=int, help="Select minified-logo candidate number")
 @click.option("--board", "board_alias", help="Board alias for board-scoped settings")
@@ -49,6 +54,7 @@ def set_(
     website: str | None,
     logo_url: str | None,
     icon_url: str | None,
+    logo_type: str | None,
     logo_candidate: int | None,
     icon_candidate: int | None,
     board_alias: str | None,
@@ -86,6 +92,9 @@ def set_(
         ws.icon_url = icon_url
         updates.append("icon_url")
         _check_image("icon_url", icon_url, slug)
+    if logo_type is not None:
+        ws.logo_type = logo_type
+        updates.append(f"logo_type={logo_type}")
 
     if job_link_pattern is not None:
         alias = board_alias or ws.active_board
@@ -122,6 +131,7 @@ def set_(
     if (
         logo_url is None
         and icon_url is None
+        and logo_type is None
         and logo_candidate is None
         and icon_candidate is None
         and job_link_pattern is None
@@ -330,6 +340,10 @@ def _show_final_logo_inspection_reminder(slug: str) -> None:
     out.plain("logos", "Verify final PNG artifacts before continuing:")
     out.plain("logos", f"  {artifact_dir / 'logo.png'}")
     out.plain("logos", f"  {artifact_dir / 'icon.png'}")
+    out.plain(
+        "logos",
+        f"Label the selected full logo type: ws set {slug} --logo-type <{'|'.join(LOGO_TYPES)}>",
+    )
 
 
 def _show_logo_results(slug: str, html: str, final_url: str) -> None:
@@ -379,10 +393,14 @@ def _show_logo_results(slug: str, html: str, final_url: str) -> None:
     print()
 
     out.plain("logos", "Verify candidates visually, then select (logo=full, icon=minified):")
-    out.plain("logos", "  ws set --logo-candidate 1 --icon-candidate 2")
+    out.plain("logos", "  ws set --logo-candidate 1 --icon-candidate 2 --logo-type wordmark")
     out.plain("logos", "Or provide your own URLs (logo_url=full, icon_url=minified square):")
-    out.plain("logos", "  ws set --logo-url <url> --icon-url <url>")
+    out.plain("logos", "  ws set --logo-url <url> --icon-url <url> --logo-type wordmark")
     out.plain("logos", "Rules: direct image URLs, brand-correct assets, transparent preferred.")
+    out.plain(
+        "logos",
+        f"Label full-logo type with --logo-type: {' | '.join(LOGO_TYPES)}",
+    )
 
 
 def _show_career_results(slug: str, html: str, final_url: str, homepage_url: str) -> None:
@@ -473,6 +491,8 @@ def logos(slug: str | None):
             out.plain("logos", f"  full_logo (logo_url): {ws.logo_url}")
         if ws.icon_url:
             out.plain("logos", f"  minified_logo (icon_url): {ws.icon_url}")
+        if ws.logo_type:
+            out.plain("logos", f"  full_logo_type (logo_type): {ws.logo_type}")
         print()
 
     # Candidates from last discovery
@@ -516,10 +536,14 @@ def logos(slug: str | None):
     print()
 
     out.plain("logos", "Select (logo=full, icon=minified):")
-    out.plain("logos", "  ws set --logo-candidate 1 --icon-candidate 2")
+    out.plain("logos", "  ws set --logo-candidate 1 --icon-candidate 2 --logo-type wordmark")
     out.plain("logos", "Or provide URLs (logo_url=full, icon_url=minified square):")
-    out.plain("logos", "  ws set --logo-url <url> --icon-url <url>")
+    out.plain("logos", "  ws set --logo-url <url> --icon-url <url> --logo-type wordmark")
     out.plain("logos", "Rules: direct image URLs, brand-correct assets, transparent preferred.")
+    out.plain(
+        "logos",
+        f"Label full-logo type with --logo-type: {' | '.join(LOGO_TYPES)}",
+    )
 
 
 @click.command(name="discover")

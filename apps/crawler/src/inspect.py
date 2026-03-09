@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import time
 
-from src.shared.constants import SLUG_RE, URL_RE, get_data_dir
+from src.shared.constants import LOGO_TYPES, SLUG_RE, URL_RE, get_data_dir
 from src.shared.csv_io import read_csv
 from src.workspace._compat import all_monitor_types
 
@@ -71,6 +71,7 @@ def validate_csvs() -> list[ValidationError]:
         slug = row.get("slug", "")
         name = row.get("name", "")
         website = row.get("website", "")
+        logo_type = (row.get("logo_type") or "").strip()
 
         if not slug:
             errors.append(ValidationError("companies.csv", i, "Empty slug"))
@@ -85,6 +86,14 @@ def validate_csvs() -> list[ValidationError]:
 
         if website and not _URL_RE.match(website):
             errors.append(ValidationError("companies.csv", i, f"Invalid URL: {website!r}"))
+        if logo_type and logo_type not in LOGO_TYPES:
+            errors.append(
+                ValidationError(
+                    "companies.csv",
+                    i,
+                    f"Invalid logo_type: {logo_type!r} (expected one of {', '.join(LOGO_TYPES)})",
+                )
+            )
 
     # Validate boards
     required_board_cols = {"company_slug", "board_slug", "board_url", "monitor_type"}

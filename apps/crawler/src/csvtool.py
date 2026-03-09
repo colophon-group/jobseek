@@ -49,6 +49,7 @@ def company_add(
     website: str | None = None,
     logo_url: str | None = None,
     icon_url: str | None = None,
+    logo_type: str | None = None,
 ) -> None:
     """Add a new company or update an existing one."""
     if not _SLUG_RE.match(slug):
@@ -75,6 +76,8 @@ def company_add(
             new_row["logo_url"] = logo_url
         if icon_url is not None:
             new_row["icon_url"] = icon_url
+        if logo_type is not None:
+            new_row["logo_type"] = logo_type
         rows.append(new_row)
         _write_csv(companies_path, headers, rows)
 
@@ -92,6 +95,8 @@ def company_add(
             updates["logo_url"] = logo_url
         if icon_url is not None:
             updates["icon_url"] = icon_url
+        if logo_type is not None:
+            updates["logo_type"] = logo_type
 
         if not updates:
             raise NothingToUpdateError(f"Company {slug!r} already exists, nothing to update")

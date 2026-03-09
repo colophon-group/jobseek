@@ -5,9 +5,9 @@ CSV files are the source of truth for company and board configuration. The datab
 ## data/companies.csv
 
 ```csv
-slug,name,website,logo_url,icon_url
-stripe,Stripe,https://stripe.com,https://stripe.com/img/logo.svg,https://stripe.com/favicon.ico
-meta,Meta,https://meta.com,https://...,https://...
+slug,name,website,logo_url,icon_url,logo_type
+stripe,Stripe,https://stripe.com,https://stripe.com/img/logo.svg,https://stripe.com/favicon.ico,wordmark
+meta,Meta,https://meta.com,https://...,https://...,wordmark+icon
 ```
 
 ### Fields
@@ -19,6 +19,7 @@ meta,Meta,https://meta.com,https://...,https://...
 | `website` | Yes | Company homepage URL. |
 | `logo_url` | No | Direct URL to the company's full (primary) logo image file. |
 | `icon_url` | No | Direct URL to the company's minified square logo/icon image file. |
+| `logo_type` | No | Label for the selected full logo: `wordmark`, `wordmark+icon`, or `icon`. |
 
 ### Rules
 
@@ -27,6 +28,7 @@ meta,Meta,https://meta.com,https://...,https://...
 - `website` must be a valid URL with scheme (https preferred)
 - `logo_url` and `icon_url` should point to actual image files, not pages containing images
 - `logo_url` should be the brand's preferred full mark (wordmark/lockup when available)
+- `logo_type` should match the selected full logo variant: `wordmark`, `wordmark+icon`, or `icon`
 - `icon_url` should be a square (1:1) minified mark suitable for compact UI
 - `logo_url` and `icon_url` should be brand-correct assets for that company (no generic or unrelated graphics)
 - transparent backgrounds are preferred for both logo and icon when available

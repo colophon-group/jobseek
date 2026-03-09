@@ -17,7 +17,7 @@ from src.sync import (
     sync_companies,
 )
 
-_COMPANY_COLS = ["slug", "name", "website", "logo_url", "icon_url"]
+_COMPANY_COLS = ["slug", "name", "website", "logo_url", "icon_url", "logo_type"]
 _COMPANY_SCHEMA = {c: pl.Utf8 for c in _COMPANY_COLS}
 
 _BOARD_COLS = [
@@ -34,7 +34,7 @@ _BOARD_SCHEMA = {c: pl.Utf8 for c in _BOARD_COLS}
 
 class TestLoadCompanies:
     def test_loads_csv(self, tmp_path, monkeypatch):
-        csv_content = "slug,name,website,logo_url,icon_url\nacme,Acme Corp,https://acme.com,https://acme.com/logo.png,https://acme.com/icon.png\n"
+        csv_content = "slug,name,website,logo_url,icon_url,logo_type\nacme,Acme Corp,https://acme.com,https://acme.com/logo.png,https://acme.com/icon.png,wordmark\n"
         csv_file = tmp_path / "companies.csv"
         csv_file.write_text(csv_content)
         monkeypatch.setattr("src.sync.DATA_DIR", tmp_path)
@@ -47,13 +47,15 @@ class TestLoadCompanies:
         assert df["website"][0] == "https://acme.com"
 
     def test_columns(self, tmp_path, monkeypatch):
-        csv_content = "slug,name,website,logo_url,icon_url\nacme,Acme Corp,https://acme.com,,\n"
+        csv_content = (
+            "slug,name,website,logo_url,icon_url,logo_type\nacme,Acme Corp,https://acme.com,,,\n"
+        )
         csv_file = tmp_path / "companies.csv"
         csv_file.write_text(csv_content)
         monkeypatch.setattr("src.sync.DATA_DIR", tmp_path)
 
         df = _load_companies()
-        expected_columns = {"slug", "name", "website", "logo_url", "icon_url"}
+        expected_columns = {"slug", "name", "website", "logo_url", "icon_url", "logo_type"}
         assert set(df.columns) == expected_columns
 
 
@@ -111,6 +113,7 @@ def sample_companies():
             "website": ["https://acme.com", "https://globex.com"],
             "logo_url": ["", "https://globex.com/logo.png"],
             "icon_url": ["", ""],
+            "logo_type": ["", "wordmark+icon"],
         },
         schema_overrides=_COMPANY_SCHEMA,
     )
@@ -156,7 +159,14 @@ class TestSyncCompanies:
     async def test_empty_dataframe(self, mock_conn):
         """0 rows -> execute NOT called."""
         empty = pl.DataFrame(
-            {"slug": [], "name": [], "website": [], "logo_url": [], "icon_url": []},
+            {
+                "slug": [],
+                "name": [],
+                "website": [],
+                "logo_url": [],
+                "icon_url": [],
+                "logo_type": [],
+            },
             schema_overrides=_COMPANY_SCHEMA,
         )
 
@@ -172,6 +182,7 @@ class TestSyncCompanies:
                 "website": ["https://acme.com"],
                 "logo_url": [""],
                 "icon_url": [""],
+                "logo_type": [""],
             },
             schema_overrides=_COMPANY_SCHEMA,
         )
@@ -181,6 +192,7 @@ class TestSyncCompanies:
         call_args = mock_conn.execute.call_args[0]
         assert call_args[4] == [None]  # logos
         assert call_args[5] == [None]  # icons
+        assert call_args[6] == [None]  # logo_types
 
 
 # ---------------------------------------------------------------------------
@@ -316,7 +328,14 @@ class TestRunSync:
     ):
         """Both CSVs empty -> pool not created."""
         mock_load_companies.return_value = pl.DataFrame(
-            {"slug": [], "name": [], "website": [], "logo_url": [], "icon_url": []},
+            {
+                "slug": [],
+                "name": [],
+                "website": [],
+                "logo_url": [],
+                "icon_url": [],
+                "logo_type": [],
+            },
             schema_overrides=_COMPANY_SCHEMA,
         )
         mock_load_boards.return_value = pl.DataFrame(
@@ -353,6 +372,7 @@ class TestRunSync:
                 "website": ["https://acme.com"],
                 "logo_url": [""],
                 "icon_url": [""],
+                "logo_type": [""],
             },
             schema_overrides=_COMPANY_SCHEMA,
         )
@@ -413,6 +433,7 @@ class TestRunSync:
                 "website": ["https://acme.com"],
                 "logo_url": [""],
                 "icon_url": [""],
+                "logo_type": [""],
             },
             schema_overrides=_COMPANY_SCHEMA,
         )

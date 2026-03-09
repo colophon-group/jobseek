@@ -155,6 +155,13 @@
       "when": 1772823938543,
       "tag": "0021_thick_millenium_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1773032118873,
+      "tag": "0022_orange_doomsday",
+      "breakpoints": true
     }
   ]
 }

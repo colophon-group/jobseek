@@ -524,6 +524,7 @@ Managed by CSV sync. Source of truth: `data/companies.csv`.
 | name       | text   |                          |
 | website    | text   |                          |
 | logo       | text   | Full primary logo URL    |
+| logo_type  | text   | Full logo label (`wordmark`, `wordmark+icon`, `icon`) |
 | icon       | text   | Minified square logo URL |
 | created_at | timestamp |                       |
 | updated_at | timestamp |                       |

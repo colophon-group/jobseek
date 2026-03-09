@@ -15,10 +15,12 @@ Company registry. One row per company.
 | `website` | Yes | Company homepage URL. |
 | `logo_url` | No | Direct URL to the company's full (primary) logo image file. |
 | `icon_url` | No | Direct URL to the company's minified square logo/icon image file. |
+| `logo_type` | No | Full-logo label: `wordmark`, `wordmark+icon`, or `icon`. |
 
 Image guidelines:
 - Use direct image file URLs (not pages containing images).
 - `logo_url` should be the brand's full primary mark; `icon_url` should be a square minified mark.
+- Label the selected full logo via `logo_type` (`wordmark`, `wordmark+icon`, `icon`).
 - Prefer transparent-background assets when available.
 
 ### boards.csv
@@ -58,7 +60,7 @@ Keep rows sorted by slug. JSON configs use standard CSV quoting (wrap in double 
 
 companies.csv:
 ```
-stripe,Stripe,https://stripe.com,https://stripe.com/img/logo.svg,https://stripe.com/favicon.ico
+stripe,Stripe,https://stripe.com,https://stripe.com/img/logo.svg,https://stripe.com/favicon.ico,wordmark
 ```
 
 boards.csv:

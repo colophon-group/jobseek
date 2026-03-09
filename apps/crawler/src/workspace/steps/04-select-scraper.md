@@ -11,14 +11,14 @@ less configuration:
 
 | # | Type | What it does | Config | Best when |
 |---|------|-------------|--------|-----------|
-| 1 | `json-ld` | Parses `<script type="application/ld+json">` JobPosting schema | Zero-config | Page has schema.org markup (very common on ATS-hosted pages) |
+| 1 | `json-ld` | Parses `<script type="application/ld+json">` JobPosting schema | Zero-config (`render` optional) | Page has schema.org markup (very common on ATS-hosted pages) |
 | 2 | `nextdata` | Extracts from Next.js `__NEXT_DATA__` JSON | `path` + `fields` | Site is built with Next.js |
 | 3 | `embedded` | Extracts from `<script>` blocks, JS variables, or callback patterns | `pattern`/`script_id`/`variable` + `path` + `fields` | Page has structured JSON embedded in HTML (AF_initDataCallback, window.__DATA__, etc.) |
 | 4 | `api_sniffer` | Captures XHR/fetch JSON responses via Playwright | Minimal (auto-mapped `fields`) | Page is a SPA that loads job data via API calls |
 | 5 | `dom` | Step-based extraction walking flattened HTML elements | `steps` array (complex) | No structured data available; last resort |
 
 **Key rules:**
-- `json-ld` > `embedded`/`nextdata` > `dom` for resilience
+- `json-ld` > `embedded`/`nextdata` > `api_sniffer` > `dom` for resilience
 - `render: false` > `render: true` — only render when static HTML is empty
 - If job URLs point to a **known ATS domain** (greenhouse.io, lever.co, ashbyhq.com, etc.), start with `json-ld` — ATS job pages almost always have JSON-LD markup
 
@@ -40,6 +40,34 @@ ws run scraper
 
 After `ws run scraper`, read the "Extracted content:" output — it shows actual field
 values for sample jobs. Verify quality before proceeding to feedback.
+
+## Configuration-first loop (mandatory before switching type)
+
+If a scraper type is plausible but extraction is incomplete, iterate config for the
+**same scraper type** before switching to another type.
+
+1. Read type docs: `ws help scraper <type>`
+2. Adjust config (fields/path/pattern/steps/render/actions) and re-run:
+   `ws select scraper <type> --config '{...}'` then `ws run scraper`
+3. Verify required fields (title + description) and content quality
+
+Only switch scraper type when:
+- there is clear evidence the current type cannot extract the page structure, or
+- at least one targeted config iteration still fails.
+
+Before changing scraper type, enforce this gate:
+- Do not switch after the first failed/incomplete run unless there is a hard mismatch.
+- For a plausible scraper, try at least one concrete config variant first.
+- Keep attempts explicit and reversible:
+  - `ws select scraper <type> --config '{...}'`
+  - `ws task next --notes "<config tried + why it failed>"`
+
+Where to look for config details:
+- `ws help scraper <type>`
+- `ws help fields`
+- `ws help steps` (dom)
+- `ws help actions` (rendered extraction)
+- `ws help artifacts` (sample HTML/JSON, quality report, flat DOM)
 
 ## When in doubt, probe first
 

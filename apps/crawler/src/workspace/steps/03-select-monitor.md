@@ -8,8 +8,9 @@ add the real listings URL as a board, and continue on that board.
 
 ## Known ATS? Select directly
 
-If the board URL matches a known ATS (see the table in the previous step), select it
-directly — no probing needed:
+If the board URL clearly matches a known ATS/feed (for example Greenhouse, Lever,
+Ashby, Workday, JOIN, SuccessFactors/Teamtailor via `rss`), select that monitor directly —
+no probing needed:
 
 ```bash
 ws select monitor <type>
@@ -60,6 +61,35 @@ ws select monitor sitemap --as sitemap-filtered --config '{{"url_filter": "/jobs
 ws run monitor
 ```
 
+## Configuration-first loop (mandatory before switching type)
+
+If the chosen monitor is plausible but results are wrong (0 jobs, low count, or missing
+required fields), iterate config for the **same monitor type** before changing types.
+
+1. Read the type docs: `ws help monitor <type>`
+2. Apply a concrete config change with `--as <name>` (keep previous attempts)
+3. Re-run: `ws run monitor`
+4. Compare count + extracted content again
+
+Only switch to another monitor type when:
+- the current type is clearly a mismatch for the board, or
+- at least one targeted config iteration for that type still fails.
+
+Before changing monitor type, enforce this gate:
+- Do not switch after the first failed/incomplete run unless there is a hard mismatch
+  (wrong platform/domain, unsupported endpoint, or explicit non-detection).
+- For a plausible monitor, try at least one concrete config variant first:
+  `ws select monitor <type> --as <name> --config '{...}'`
+- Record rejected attempts and reasons:
+  `ws reject-config <name> --reason "<why it failed>"`
+
+Where to look for config details and debugging context:
+- `ws help monitor <type>`
+- `ws help monitors`
+- `ws help actions` (for `render: true` flows)
+- `ws help artifacts` (what files to inspect after each run)
+- `ws help troubleshooting` / `ws task troubleshoot '<symptom>'`
+
 ## Verify the results
 
 After `ws run monitor`, check **both** the count and the content:
@@ -67,6 +97,9 @@ After `ws run monitor`, check **both** the count and the content:
 1. **Count** — compare the job count against the website's displayed total.
    If the count is lower, the monitor may need pagination config or a different type —
    run `ws task troubleshoot 'fewer jobs'`.
+   For paginated monitors (`dom`, `api_sniffer`), set `max_pages` to a value
+   that significantly overshoots the expected real page count, then rely on
+   "stop when no new jobs" behavior. Avoid conservative caps that undercount jobs.
 2. **Content** — `ws run monitor` prints "Extracted content:" with sample field values
    for rich monitors. Read these samples and verify titles are real job titles,
    descriptions contain meaningful content, and locations are actual place names.
@@ -84,9 +117,9 @@ When multiple monitors are detected, prefer in this order:
 
 1. **Coverage** — all jobs must be discovered. Full coverage always wins.
 2. **Required fields** — title and description must extract for every job.
-3. **Resilience** — API > sitemap > dom. Avoid relying on elements that vary between
-   job postings or change on redesign (CSS classes, DOM structure). Simpler configs
-   over complex ones.
+3. **Resilience** — rich monitors > nextdata/api_sniffer > sitemap/umantis > dom.
+   Avoid relying on elements that vary between job postings or change on redesign
+   (CSS classes, DOM structure). Simpler configs over complex ones.
 4. **Important fields** — locations and job_location_type when available.
 5. **Speed/cost** — among equivalent configs, prefer cheaper and `render: false`.
 

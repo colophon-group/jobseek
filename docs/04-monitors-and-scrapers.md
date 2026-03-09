@@ -377,6 +377,9 @@ Monitor implementations are adapted from the current crawler:
 3. `greenhouse`/`lever`: API may require a different token
    → Try alternative slugs derived from the URL or page HTML
 4. `dom` monitor: try `render: true` if the page needs JavaScript to show all links
+5. Paginated boards (`dom` / `api_sniffer`): set `max_pages` so it clearly
+   overshoots the expected real page count, then rely on early stop when no
+   new jobs appear. Avoid conservative caps that silently undercount listings.
 
 ### Monitor returns zero jobs
 

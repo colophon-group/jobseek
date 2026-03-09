@@ -12,7 +12,7 @@ Everything in this phase is additive. Nothing existing breaks.
 - `docs/` — architecture documentation (this directory)
 - `AGENTS.md` — provider-agnostic agent instructions
 - `CLAUDE.md` — one-line `@AGENTS.md` import for Claude Code
-- `data/companies.csv` — updated schema (slug, name, website, logo_url, icon_url)
+- `data/companies.csv` — updated schema (slug, name, website, logo_url, icon_url, logo_type)
 - `data/boards.csv` — new board config file
 - `src/core/` — pure business logic module
   - `src/core/monitors/` — monitor implementations (adapted from crawler_types/)

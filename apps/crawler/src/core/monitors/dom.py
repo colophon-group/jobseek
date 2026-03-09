@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 log = structlog.get_logger()
 
 MAX_URLS = 10_000
-_MAX_PAGINATION_PAGES = 200
+_MAX_PAGINATION_PAGES = 10_000
 
 _JOB_KEYWORDS = frozenset({"job", "career", "position", "posting", "opening", "role", "vacancy"})
 
@@ -150,7 +150,7 @@ async def _paginate_urls(
     param_name = pagination["param_name"]
     start = pagination.get("start", 1)
     increment = pagination.get("increment", 1)
-    max_pages = min(pagination.get("max_pages", 50), _MAX_PAGINATION_PAGES)
+    max_pages = min(pagination.get("max_pages", _MAX_PAGINATION_PAGES), _MAX_PAGINATION_PAGES)
     use_browser = pagination.get("browser", False) and page is not None
 
     all_urls = set(initial_urls)

@@ -240,6 +240,7 @@ class Workspace:
     website: str = ""
     logo_url: str = ""
     icon_url: str = ""
+    logo_type: str = ""
 
     # Active board alias
     active_board: str = ""
@@ -278,6 +279,7 @@ class Workspace:
                 "website": self.website,
                 "logo_url": self.logo_url,
                 "icon_url": self.icon_url,
+                "logo_type": self.logo_type,
             },
             "active_board": self.active_board,
             "submit_state": self.submit_state,
@@ -299,6 +301,7 @@ class Workspace:
             website=company.get("website", ""),
             logo_url=company.get("logo_url", ""),
             icon_url=company.get("icon_url", ""),
+            logo_type=company.get("logo_type", ""),
             active_board=data.get("active_board", ""),
             submit_state=data.get("submit_state") or {},
             last_error=data.get("last_error") or {},

@@ -19,6 +19,8 @@ parameters and increase them:
 - `limit=25` → `limit=100`
 
 Update `pagination.increment` to match the new page size.
+If `pagination.max_pages` is set, make it greatly overshoot expected pages so
+pagination does not stop early before full coverage.
 
 ```bash
 ws select monitor api_sniffer --config '{"api_url": "...&limit=100", "pagination": {"increment": 100, ...}}'

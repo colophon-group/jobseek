@@ -376,6 +376,7 @@ def status(slug: str | None):
         print(f"  PR:      #{ws.pr}" if ws.pr else "  PR:      (none)")
         print(f"  Name:    {ws.name or '(not set)'}")
         print(f"  Website: {ws.website or '(not set)'}")
+        print(f"  LogoType: {ws.logo_type or '(not set)'}")
         print()
 
         if boards:
@@ -488,6 +489,8 @@ def _build_pr_body(ws: Workspace, boards: list[Board]) -> str:
     lines.append(f"## {display_name}")
     if ws.website:
         lines.append(ws.website)
+    if ws.logo_type:
+        lines.append(f"logo_type: {ws.logo_type}")
     lines.append("")
 
     # Full + minified logo preview (images committed to data/images/<slug>/)
@@ -696,6 +699,8 @@ def _execute_submit_step(
             kwargs["name"] = ws.name
         if ws.website:
             kwargs["website"] = ws.website
+        if ws.logo_type:
+            kwargs["logo_type"] = ws.logo_type
         if kwargs:
             company_add(ws.slug, **kwargs)
 
@@ -1089,6 +1094,8 @@ def resume(slug: str | None):
         print(f"    OK Name: {ws.name}")
     if ws.website:
         print(f"    OK Website: {ws.website}")
+    if ws.logo_type:
+        print(f"    OK Logo type: {ws.logo_type}")
     for _code, msg, _severity in ws_issues:
         print(f"    !! {msg}")
     all_issues.extend(ws_issues)

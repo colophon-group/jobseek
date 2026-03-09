@@ -33,8 +33,9 @@ All workspace commands use the `ws` CLI tool (`alias ws='uv run ws'`). See AGENT
    seeds stub company row, opens draft PR. Sets the active workspace so all
    subsequent commands auto-resolve the slug.
 
-3. **Set company details**: `ws set --name "..." --website "..." --logo-url "..." --icon-url "..."`
+3. **Set company details**: `ws set --name "..." --website "..." --logo-url "..." --icon-url "..." --logo-type <wordmark|wordmark+icon|icon>`
    - Agent researches: official name, homepage, full primary logo URL, and minified square logo/icon URL
+   - Label the selected full logo via `--logo-type` (`wordmark`, `wordmark+icon`, or `icon`)
    - Use direct image file URLs (not pages containing images), brand-correct assets only
    - Prefer transparent-background assets for both logo and icon when available
    - URL validation is advisory — values are always saved
@@ -48,7 +49,7 @@ All workspace commands use the `ws` CLI tool (`alias ws='uv run ws'`). See AGENT
    - Use `--as <name>` to try multiple configurations under different names
    - Check the career page for a displayed job count (e.g. "Showing 247 open positions")
    - Compare crawled count against the website's count (should be within ~10%)
-   - If there's a significant gap, iterate: `ws select monitor <other-type> --as <name>`, `ws run monitor`
+   - If there's a significant gap, iterate config for the same type first (`ws help monitor <type>` + `--as <name>`) before switching monitor type
    - Use `ws select config <name>` to switch back to a previously tested config
    - If 0 jobs returned but validation passed in step 1, it's a monitor misconfiguration — debug systematically
    - See "Verification and Iteration" below for details
@@ -56,7 +57,7 @@ All workspace commands use the `ws` CLI tool (`alias ws='uv run ws'`). See AGENT
 6. **Select and test scraper** (non-API monitors only): `ws select scraper <type>` then `ws run scraper`
    - API monitors (greenhouse, lever, ashby, etc.) return full data and auto-skip this step
    - Verify extraction on 2–3 sample job URLs (title, location, description)
-   - If extraction fails, iterate: revise config or try a different scraper type
+   - If extraction fails, revise config first (`ws help scraper <type>`) and switch scraper type only after targeted config attempts fail
 
 7. **Record feedback**: `ws feedback --title clean --description clean --verdict good`
    - Mandatory before submit — quality gates enforce this
@@ -81,16 +82,26 @@ All workspace commands use the `ws` CLI tool (`alias ws='uv run ws'`). See AGENT
 
 Agents should not blindly trust the first test crawl result. The workflow includes verification loops to catch incomplete configurations early.
 
+Before switching monitor/scraper type, check config references:
+- `ws help monitor <type>` / `ws help scraper <type>`
+- `ws help fields`, `ws help steps`, `ws help actions`
+- `ws help artifacts` (which debug files to inspect)
+- `ws help troubleshooting` or `ws task troubleshoot '<symptom>'`
+
 **Monitor verification**: After `ws run monitor`, cross-reference the crawled job count with what the career page displays. Many sites show a total like "247 open positions" — if the monitor only found 50, something is wrong. Common causes:
-- The sitemap doesn't include all job URLs → try `dom` or `nextdata` monitor instead
-- The API token is wrong or returns a different subset → try alternative API slugs or set token explicitly (e.g. `ws select monitor greenhouse --config '{"token":"<token>"}'`)
-- Pagination isn't working → check pagination config
-- The monitor type is wrong entirely → re-run `ws probe` or try manually
+- The sitemap includes only a subset → first tune `sitemap_url` / `url_filter`, then switch to `dom` or `nextdata` if still incomplete
+- The API token/slug is wrong → set it explicitly (e.g. `ws select monitor greenhouse --config '{"token":"<token>"}'`)
+- Pagination isn't working → update monitor pagination config and re-run
+  - Set `max_pages` to significantly overshoot expected pages to preserve
+    completeness; rely on "stop when no new jobs" behavior instead of
+    conservative limits
+- The monitor type is wrong entirely → re-run `ws probe` and then switch
 
 **Scraper verification**: After `ws run scraper`, check the extraction quality table. Verify that title, location, and description extract correctly. If fields are empty or garbled:
-- CSS selectors may be wrong → inspect the page HTML, try different selectors
-- JSON-LD may be partial → switch from `json-ld` to `html` scraper
-- Page may need JS to render → switch from `html` to `dom` scraper
+- Field mapping/path may be wrong → inspect artifacts (`sample-*.html`, `sample-*.json`, `flat.json`) and adjust config
+- JSON-LD may be partial → try `embedded` or `nextdata`
+- Page may need JS to render → enable `render: true`/actions before switching type
+- DOM steps may be out of order → inspect `flat.json` and fix step order
 
 The goal is to iterate until the configuration is verified, not to submit on the first attempt.
 

@@ -31,13 +31,14 @@ log = structlog.get_logger()
 DATA_DIR = Path(__file__).parent.parent / "data"
 
 _UPSERT_COMPANIES = """
-INSERT INTO company (slug, name, website, logo, icon)
-SELECT * FROM unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::text[])
+INSERT INTO company (slug, name, website, logo, icon, logo_type)
+SELECT * FROM unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::text[], $6::text[])
 ON CONFLICT (slug) DO UPDATE SET
     name = COALESCE(EXCLUDED.name, company.name),
     website = COALESCE(EXCLUDED.website, company.website),
     logo = COALESCE(EXCLUDED.logo, company.logo),
     icon = COALESCE(EXCLUDED.icon, company.icon),
+    logo_type = COALESCE(EXCLUDED.logo_type, company.logo_type),
     updated_at = now()
 """
 
@@ -92,6 +93,7 @@ async def sync_companies(conn: asyncpg.Connection, companies: pl.DataFrame, dry_
     websites: list[str | None] = []
     logos: list[str | None] = []
     icons: list[str | None] = []
+    logo_types: list[str | None] = []
 
     for row in companies.iter_rows(named=True):
         slugs.append(row["slug"])
@@ -99,12 +101,13 @@ async def sync_companies(conn: asyncpg.Connection, companies: pl.DataFrame, dry_
         websites.append(_or_none(row.get("website")))
         logos.append(_or_none(row.get("logo_url")))
         icons.append(_or_none(row.get("icon_url")))
+        logo_types.append(_or_none(row.get("logo_type")))
 
     if dry_run:
         log.info("sync.companies.dry_run", count=len(slugs))
         return
 
-    await conn.execute(_UPSERT_COMPANIES, slugs, names, websites, logos, icons)
+    await conn.execute(_UPSERT_COMPANIES, slugs, names, websites, logos, icons, logo_types)
     log.info("sync.companies.upserted", count=len(slugs))
 
 

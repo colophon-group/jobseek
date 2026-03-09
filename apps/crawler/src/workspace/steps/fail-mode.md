@@ -5,6 +5,11 @@ The guided workflow could not complete step **{failed_step}**:
 
 You are now authorized to read source code and propose a fix.
 
+Before writing code, confirm configuration exploration is exhausted:
+- For plausible monitor/scraper types, at least one concrete config variant was tried
+- Type switching was not done after the first failed/incomplete run unless there was a hard mismatch
+- Attempts and failure reasons were recorded
+
 ## Steps
 
 1. Clean up the failed workspace: `ws del`

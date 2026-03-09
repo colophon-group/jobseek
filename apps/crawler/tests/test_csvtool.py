@@ -11,7 +11,7 @@ from src.workspace.errors import (
     SlugNotFoundError,
 )
 
-COMPANIES_HEADER = "slug,name,website,logo_url,icon_url\n"
+COMPANIES_HEADER = "slug,name,website,logo_url,icon_url,logo_type\n"
 BOARDS_HEADER = (
     "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
 )
@@ -54,6 +54,12 @@ class TestCompanyAdd:
         assert rows[0]["name"] == "Test"
         assert rows[0]["website"] == "https://test.com"
         assert rows[0]["logo_url"] == "https://test.com/logo.svg"
+
+    def test_sets_logo_type(self, tmp_path, monkeypatch):
+        self._setup(tmp_path, monkeypatch)
+        company_add("test-co", logo_type="wordmark")
+        _, rows = _read_csv(tmp_path / "companies.csv")
+        assert rows[0]["logo_type"] == "wordmark"
 
     def test_invalid_slug(self, tmp_path, monkeypatch):
         self._setup(tmp_path, monkeypatch)

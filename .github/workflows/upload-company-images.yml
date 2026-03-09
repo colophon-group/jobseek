@@ -55,12 +55,33 @@ jobs:
           R2_DOMAIN_URL: ${{ vars.R2_DOMAIN_URL }}
 
       - name: Commit R2 URLs and image cleanup
+        env:
+          BRANCH: ${{ github.head_ref || github.ref_name }}
         run: |
+          set -euo pipefail
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add apps/crawler/data/
-          git diff --cached --quiet || git commit -m "Upload images to R2"
-          git push
+
+          if git diff --cached --quiet; then
+            echo "No R2 URL or image cleanup changes to commit"
+            exit 0
+          fi
+
+          git commit -m "Upload images to R2"
+
+          # maybe-auto-merge can rebase/force-push the same PR branch in parallel.
+          # Rebase this commit on top of the latest remote branch before pushing.
+          git fetch origin "$BRANCH"
+          git rebase "origin/$BRANCH"
+
+          # Retry once in case branch moved again between fetch and push.
+          git push --force-with-lease origin "HEAD:$BRANCH" || {
+            git fetch origin "$BRANCH"
+            git rebase "origin/$BRANCH"
+            git push --force-with-lease origin "HEAD:$BRANCH"
+          }
 
       - name: Post image preview comment
         if: github.event_name != 'workflow_dispatch'

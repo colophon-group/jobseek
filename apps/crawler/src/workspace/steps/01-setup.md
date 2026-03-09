@@ -26,18 +26,19 @@ Candidate artifacts are saved as both the original file and a PNG preview in
 Then select by candidate number:
 
 ```bash
-ws set --logo-candidate 1 --icon-candidate 2
+ws set --logo-candidate 1 --icon-candidate 2 --logo-type wordmark
 ```
 
 If none of the candidates are good, find a better image on the company's website
 (press page, about page, footer) and provide the URL directly:
 
 ```bash
-ws set --logo-url "<direct full-logo URL>" --icon-url "<direct square-logo URL>"
+ws set --logo-url "<direct full-logo URL>" --icon-url "<direct square-logo URL>" --logo-type wordmark
 ```
 
 Use direct image file URLs (not HTML pages). Transparent background is preferred
 for both assets when available.
+Set `--logo-type` to match the full logo variant: `wordmark`, `wordmark+icon`, or `icon`.
 
 ## 4. Verify final images
 
@@ -46,6 +47,7 @@ for both assets when available.
 - **Logo (`logo_url`)**: Is this the company's preferred full primary logo
   (wordmark/lockup when available)? Reject generic images, banners, photos,
   hero images, or unrelated graphics.
+- **Logo Type (`logo_type`)**: Label the full logo as `wordmark`, `wordmark+icon`, or `icon`.
 - **Icon (`icon_url`)**: Is this a recognizable minified square logo/icon for
   compact UI (typically a logomark or initials)?
 - **Background**: Prefer transparent-background assets for both `logo_url` and

@@ -85,7 +85,10 @@ class TestUpdateCsv:
     def test_updates_matching_slugs(self, tmp_path, monkeypatch):
         csv_path = tmp_path / "companies.csv"
         with open(csv_path, "w", newline="") as f:
-            w = csv.DictWriter(f, fieldnames=["slug", "name", "website", "logo_url", "icon_url"])
+            w = csv.DictWriter(
+                f,
+                fieldnames=["slug", "name", "website", "logo_url", "icon_url", "logo_type"],
+            )
             w.writeheader()
             w.writerow(
                 {
@@ -94,6 +97,7 @@ class TestUpdateCsv:
                     "website": "https://acme.com",
                     "logo_url": "",
                     "icon_url": "",
+                    "logo_type": "wordmark",
                 }
             )
             w.writerow(
@@ -103,6 +107,7 @@ class TestUpdateCsv:
                     "website": "https://other.com",
                     "logo_url": "https://old.com/logo.png",
                     "icon_url": "",
+                    "logo_type": "",
                 }
             )
 

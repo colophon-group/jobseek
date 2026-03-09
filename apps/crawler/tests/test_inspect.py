@@ -21,7 +21,7 @@ class TestValidateCsvs:
     def test_valid_csvs(self, tmp_path, monkeypatch):
         self._write_csvs(
             tmp_path,
-            "slug,name,website,logo_url,icon_url\nstripe,Stripe,https://stripe.com,,\n",
+            "slug,name,website,logo_url,icon_url,logo_type\nstripe,Stripe,https://stripe.com,,\n",
             "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
             "stripe,stripe-careers,https://boards.greenhouse.io/stripe,greenhouse,,,\n",
         )
@@ -48,7 +48,7 @@ class TestValidateCsvs:
     def test_invalid_slug_format(self, tmp_path, monkeypatch):
         self._write_csvs(
             tmp_path,
-            "slug,name,website,logo_url,icon_url\nINVALID_SLUG,Test,https://test.com,,\n",
+            "slug,name,website,logo_url,icon_url,logo_type\nINVALID_SLUG,Test,https://test.com,,\n",
             "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n",
         )
         monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
@@ -59,7 +59,7 @@ class TestValidateCsvs:
     def test_duplicate_slug(self, tmp_path, monkeypatch):
         self._write_csvs(
             tmp_path,
-            "slug,name,website,logo_url,icon_url\ntest,Test,https://test.com,,\ntest,Test2,https://test2.com,,\n",
+            "slug,name,website,logo_url,icon_url,logo_type\ntest,Test,https://test.com,,\ntest,Test2,https://test2.com,,\n",
             "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n",
         )
         monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
@@ -70,7 +70,7 @@ class TestValidateCsvs:
     def test_empty_slug(self, tmp_path, monkeypatch):
         self._write_csvs(
             tmp_path,
-            "slug,name,website,logo_url,icon_url\n,Test,https://test.com,,\n",
+            "slug,name,website,logo_url,icon_url,logo_type\n,Test,https://test.com,,\n",
             "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n",
         )
         monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
@@ -81,7 +81,7 @@ class TestValidateCsvs:
     def test_empty_name(self, tmp_path, monkeypatch):
         self._write_csvs(
             tmp_path,
-            "slug,name,website,logo_url,icon_url\ntest,,https://test.com,,\n",
+            "slug,name,website,logo_url,icon_url,logo_type\ntest,,https://test.com,,\n",
             "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n",
         )
         monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
@@ -92,7 +92,7 @@ class TestValidateCsvs:
     def test_invalid_website_url(self, tmp_path, monkeypatch):
         self._write_csvs(
             tmp_path,
-            "slug,name,website,logo_url,icon_url\ntest,Test,not-a-url,,\n",
+            "slug,name,website,logo_url,icon_url,logo_type\ntest,Test,not-a-url,,,\n",
             "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n",
         )
         monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
@@ -100,10 +100,32 @@ class TestValidateCsvs:
         errors = validate_csvs()
         assert any("Invalid URL" in str(e) for e in errors)
 
+    def test_invalid_logo_type(self, tmp_path, monkeypatch):
+        self._write_csvs(
+            tmp_path,
+            "slug,name,website,logo_url,icon_url,logo_type\ntest,Test,https://test.com,,,lockup\n",
+            "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n",
+        )
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
+        errors = validate_csvs()
+        assert any("Invalid logo_type" in str(e) for e in errors)
+
+    def test_valid_logo_type(self, tmp_path, monkeypatch):
+        self._write_csvs(
+            tmp_path,
+            "slug,name,website,logo_url,icon_url,logo_type\ntest,Test,https://test.com,,,wordmark+icon\n",
+            "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n",
+        )
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
+        errors = validate_csvs()
+        assert len(errors) == 0
+
     def test_board_references_missing_company(self, tmp_path, monkeypatch):
         self._write_csvs(
             tmp_path,
-            "slug,name,website,logo_url,icon_url\nstripe,Stripe,https://stripe.com,,\n",
+            "slug,name,website,logo_url,icon_url,logo_type\nstripe,Stripe,https://stripe.com,,\n",
             "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
             "nonexistent,nonexistent-careers,https://example.com,greenhouse,,,\n",
         )
@@ -115,7 +137,7 @@ class TestValidateCsvs:
     def test_invalid_monitor_type(self, tmp_path, monkeypatch):
         self._write_csvs(
             tmp_path,
-            "slug,name,website,logo_url,icon_url\ntest,Test,https://test.com,,\n",
+            "slug,name,website,logo_url,icon_url,logo_type\ntest,Test,https://test.com,,\n",
             "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
             "test,test-careers,https://example.com,unknown_type,,,\n",
         )
@@ -127,7 +149,7 @@ class TestValidateCsvs:
     def test_url_only_monitor_requires_scraper(self, tmp_path, monkeypatch):
         self._write_csvs(
             tmp_path,
-            "slug,name,website,logo_url,icon_url\ntest,Test,https://test.com,,\n",
+            "slug,name,website,logo_url,icon_url,logo_type\ntest,Test,https://test.com,,\n",
             "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
             "test,test-careers,https://example.com,sitemap,,,\n",
         )
@@ -139,7 +161,7 @@ class TestValidateCsvs:
     def test_dom_monitor_requires_scraper(self, tmp_path, monkeypatch):
         self._write_csvs(
             tmp_path,
-            "slug,name,website,logo_url,icon_url\ntest,Test,https://test.com,,\n",
+            "slug,name,website,logo_url,icon_url,logo_type\ntest,Test,https://test.com,,\n",
             "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
             "test,test-careers,https://example.com,dom,,,\n",
         )
@@ -151,7 +173,7 @@ class TestValidateCsvs:
     def test_invalid_scraper_type(self, tmp_path, monkeypatch):
         self._write_csvs(
             tmp_path,
-            "slug,name,website,logo_url,icon_url\ntest,Test,https://test.com,,\n",
+            "slug,name,website,logo_url,icon_url,logo_type\ntest,Test,https://test.com,,\n",
             "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
             "test,test-careers,https://example.com,sitemap,,bad_scraper,\n",
         )
@@ -163,7 +185,7 @@ class TestValidateCsvs:
     def test_invalid_monitor_config_json(self, tmp_path, monkeypatch):
         self._write_csvs(
             tmp_path,
-            "slug,name,website,logo_url,icon_url\ntest,Test,https://test.com,,\n",
+            "slug,name,website,logo_url,icon_url,logo_type\ntest,Test,https://test.com,,\n",
             "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
             "test,test-careers,https://example.com,greenhouse,not-json,,\n",
         )
@@ -175,7 +197,7 @@ class TestValidateCsvs:
     def test_invalid_scraper_config_json(self, tmp_path, monkeypatch):
         self._write_csvs(
             tmp_path,
-            "slug,name,website,logo_url,icon_url\ntest,Test,https://test.com,,\n",
+            "slug,name,website,logo_url,icon_url,logo_type\ntest,Test,https://test.com,,\n",
             "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
             "test,test-careers,https://example.com,sitemap,,json-ld,not-json\n",
         )
@@ -187,7 +209,7 @@ class TestValidateCsvs:
     def test_duplicate_board_url(self, tmp_path, monkeypatch):
         self._write_csvs(
             tmp_path,
-            "slug,name,website,logo_url,icon_url\ntest,Test,https://test.com,,\n",
+            "slug,name,website,logo_url,icon_url,logo_type\ntest,Test,https://test.com,,\n",
             "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
             "test,test-careers,https://example.com,greenhouse,,,\n"
             "test,test-eng,https://example.com,greenhouse,,,\n",
@@ -200,7 +222,7 @@ class TestValidateCsvs:
     def test_empty_board_url(self, tmp_path, monkeypatch):
         self._write_csvs(
             tmp_path,
-            "slug,name,website,logo_url,icon_url\ntest,Test,https://test.com,,\n",
+            "slug,name,website,logo_url,icon_url,logo_type\ntest,Test,https://test.com,,\n",
             "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
             "test,test-careers,,greenhouse,,,\n",
         )
@@ -212,7 +234,7 @@ class TestValidateCsvs:
     def test_invalid_board_url(self, tmp_path, monkeypatch):
         self._write_csvs(
             tmp_path,
-            "slug,name,website,logo_url,icon_url\ntest,Test,https://test.com,,\n",
+            "slug,name,website,logo_url,icon_url,logo_type\ntest,Test,https://test.com,,\n",
             "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
             "test,test-careers,not-a-url,greenhouse,,,\n",
         )
@@ -224,7 +246,7 @@ class TestValidateCsvs:
     def test_valid_json_config(self, tmp_path, monkeypatch):
         self._write_csvs(
             tmp_path,
-            "slug,name,website,logo_url,icon_url\ntest,Test,https://test.com,,\n",
+            "slug,name,website,logo_url,icon_url,logo_type\ntest,Test,https://test.com,,\n",
             "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
             'test,test-careers,https://example.com,greenhouse,"{""token"":""test""}",,\n',
         )
@@ -236,7 +258,7 @@ class TestValidateCsvs:
     def test_multiple_companies_and_boards(self, tmp_path, monkeypatch):
         self._write_csvs(
             tmp_path,
-            "slug,name,website,logo_url,icon_url\n"
+            "slug,name,website,logo_url,icon_url,logo_type\n"
             "stripe,Stripe,https://stripe.com,,\n"
             "meta,Meta,https://meta.com,,\n",
             "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
@@ -251,7 +273,7 @@ class TestValidateCsvs:
     def test_empty_board_slug(self, tmp_path, monkeypatch):
         self._write_csvs(
             tmp_path,
-            "slug,name,website,logo_url,icon_url\ntest,Test,https://test.com,,\n",
+            "slug,name,website,logo_url,icon_url,logo_type\ntest,Test,https://test.com,,\n",
             "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
             "test,,https://example.com,greenhouse,,,\n",
         )
@@ -263,7 +285,7 @@ class TestValidateCsvs:
     def test_invalid_board_slug_format(self, tmp_path, monkeypatch):
         self._write_csvs(
             tmp_path,
-            "slug,name,website,logo_url,icon_url\ntest,Test,https://test.com,,\n",
+            "slug,name,website,logo_url,icon_url,logo_type\ntest,Test,https://test.com,,\n",
             "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
             "test,INVALID_SLUG,https://example.com,greenhouse,,,\n",
         )
@@ -275,7 +297,7 @@ class TestValidateCsvs:
     def test_duplicate_board_slug(self, tmp_path, monkeypatch):
         self._write_csvs(
             tmp_path,
-            "slug,name,website,logo_url,icon_url\ntest,Test,https://test.com,,\n",
+            "slug,name,website,logo_url,icon_url,logo_type\ntest,Test,https://test.com,,\n",
             "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
             "test,test-careers,https://example.com,greenhouse,,,\n"
             "test,test-careers,https://example2.com,greenhouse,,,\n",

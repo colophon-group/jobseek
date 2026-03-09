@@ -31,7 +31,7 @@ from src.workspace.state import (
     ws_yaml_path,
 )
 
-COMPANIES_HEADER = "slug,name,website,logo_url,icon_url\n"
+COMPANIES_HEADER = "slug,name,website,logo_url,icon_url,logo_type\n"
 BOARDS_HEADER = (
     "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
 )
@@ -129,6 +129,36 @@ class TestHelp:
         assert "ws add board" in result.output
         assert "ws del board" in result.output
 
+    def test_help_monitor_cards_match_known_monitor_types(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        from src.workspace._compat import all_monitor_types
+        from src.workspace.commands.help import MONITOR_CARDS
+
+        assert set(MONITOR_CARDS) == set(all_monitor_types())
+
+    def test_help_scraper_cards_match_registered_scrapers(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        from src.core.scrapers import _REGISTRY
+        from src.workspace.commands.help import SCRAPER_CARDS
+
+        assert set(SCRAPER_CARDS) == set(_REGISTRY)
+
+    def test_help_monitor_join_and_rss_topics(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        runner = CliRunner()
+
+        join_result = runner.invoke(ws, ["help", "monitor", "join"])
+        assert join_result.exit_code == 0
+        assert "JOIN" in join_result.output
+
+        rss_result = runner.invoke(ws, ["help", "monitor", "rss"])
+        assert rss_result.exit_code == 0
+        assert "RSS 2.0 Feed Monitor" in rss_result.output
+
+        legacy_result = runner.invoke(ws, ["help", "monitor", "successfactors"])
+        assert legacy_result.exit_code != 0
+        assert "Unknown monitor type" in legacy_result.output
+
     def test_with_workspace(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
         ws_obj = Workspace(slug="test", issue=42, pr=10, name="Test")
@@ -181,6 +211,34 @@ class TestSet:
         assert result.exit_code == 0
         loaded = load_workspace("test")
         assert loaded.name == "Test Corp"
+
+    def test_set_logo_type(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(Workspace(slug="test"))
+        runner = CliRunner()
+        result = runner.invoke(ws, ["set", "test", "--logo-type", "wordmark+icon"])
+        assert result.exit_code == 0
+        loaded = load_workspace("test")
+        assert loaded.logo_type == "wordmark+icon"
+
+    def test_set_logo_type_invalid(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(Workspace(slug="test"))
+        runner = CliRunner()
+        result = runner.invoke(ws, ["set", "test", "--logo-type", "lockup"])
+        assert result.exit_code != 0
+        assert "Invalid value for '--logo-type'" in result.output
+
+    def test_set_logo_type_does_not_trigger_discovery(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(Workspace(slug="test", website="https://test.com"))
+        monkeypatch.setattr(
+            "src.workspace.commands.config._discover_and_show_all",
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("unexpected discovery")),
+        )
+        runner = CliRunner()
+        result = runner.invoke(ws, ["set", "test", "--logo-type", "wordmark"])
+        assert result.exit_code == 0
 
     def test_set_no_workspace(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)

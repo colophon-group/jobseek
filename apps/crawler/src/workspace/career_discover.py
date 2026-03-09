@@ -130,6 +130,7 @@ _BLIND_PROBE_TEMPLATES: dict[str, str] = {
 
 # Maximum career links to follow from homepage
 _MAX_LINKS = 10
+_MAX_FOLLOWUP_LINKS = 8
 
 
 # ── Intermediate data ─────────────────────────────────────────────────
@@ -144,6 +145,14 @@ class _ExtractedLink:
     context: str  # "nav" | "header" | "footer" | "body"
     text: str | None
     base_score: float
+
+
+@dataclass
+class _ProbeLinkResult:
+    """Result of probing one extracted link."""
+
+    candidates: list[CareerPageCandidate] = field(default_factory=list)
+    followup_links: list[_ExtractedLink] = field(default_factory=list)
 
 
 # ── HTMLParser-based extractor ─────────────────────────────────────────
@@ -324,6 +333,17 @@ def _extract_links(html: str, base_url: str) -> list[_ExtractedLink]:
     return sorted(by_url.values(), key=lambda lnk: lnk.base_score, reverse=True)
 
 
+def _merge_links(*groups: list[_ExtractedLink]) -> list[_ExtractedLink]:
+    """Merge link groups by URL and keep the highest-score entry per URL."""
+    by_url: dict[str, _ExtractedLink] = {}
+    for group in groups:
+        for link in group:
+            current = by_url.get(link.url)
+            if current is None or link.base_score > current.base_score:
+                by_url[link.url] = link
+    return sorted(by_url.values(), key=lambda lnk: lnk.base_score, reverse=True)
+
+
 def _scan_ats_urls_in_html(html: str) -> list[_ExtractedLink]:
     """Find ATS URLs anywhere in raw HTML source (scripts, comments, etc.)."""
     found: list[_ExtractedLink] = []
@@ -346,7 +366,9 @@ def _scan_ats_urls_in_html(html: str) -> list[_ExtractedLink]:
 async def _probe_link(
     link: _ExtractedLink,
     client: httpx.AsyncClient,
-) -> list[CareerPageCandidate]:
+    *,
+    collect_followups: bool = False,
+) -> _ProbeLinkResult:
     """Follow a career link, probe for monitor type, return candidates."""
     from src.core.monitors import probe_all_monitors
     from src.workspace._compat import detect_ats_from_url
@@ -355,11 +377,19 @@ async def _probe_link(
     try:
         resp = await client.get(link.url, follow_redirects=True)
         if resp.status_code >= 400:
-            return []
+            return _ProbeLinkResult()
         final_url = str(resp.url)
         page_html = resp.text or ""
     except Exception:
-        return []
+        return _ProbeLinkResult()
+
+    followups: list[_ExtractedLink] = []
+    if collect_followups and link.source != "ats_embed":
+        followups = [
+            child
+            for child in _extract_links(page_html, final_url)
+            if child.url not in (link.url, final_url)
+        ]
 
     from src.workspace.job_links import analyze_job_links
 
@@ -369,21 +399,25 @@ async def _probe_link(
     # Fast path: final URL is a known ATS domain
     ats_type = detect_ats_from_url(final_url)
     if ats_type:
-        return await _probe_specific_monitor(ats_type, final_url, link, client)
+        return _ProbeLinkResult(
+            candidates=await _probe_specific_monitor(ats_type, final_url, link, client)
+        )
 
     # For ATS embeds that didn't resolve to an ATS domain after redirect,
     # try the original URL
     if link.source == "ats_embed":
         ats_type = detect_ats_from_url(link.url)
         if ats_type:
-            return await _probe_specific_monitor(ats_type, link.url, link, client)
-        return []
+            return _ProbeLinkResult(
+                candidates=await _probe_specific_monitor(ats_type, link.url, link, client)
+            )
+        return _ProbeLinkResult()
 
     # Slow path: probe all monitors on the career page
     try:
         results = await probe_all_monitors(final_url, client, timeout=15.0)
     except Exception:
-        return []
+        return _ProbeLinkResult(followup_links=followups)
 
     candidates = []
     for name, metadata, comment in results:
@@ -417,7 +451,9 @@ async def _probe_link(
                     job_link_pattern=link_analysis.pattern,
                 )
             )
-    return candidates
+    if candidates:
+        return _ProbeLinkResult(candidates=candidates)
+    return _ProbeLinkResult(followup_links=followups)
 
 
 def _hubness_allows_candidate(
@@ -542,10 +578,11 @@ async def discover_career_pages(
 ) -> list[CareerPageCandidate]:
     """Discover career pages from homepage HTML + blind slug probes.
 
-    Three-phase algorithm:
+    Four-phase algorithm:
     1. Extract career links from homepage HTML (zero extra HTTP requests)
     2. Follow career links + probe monitors (all concurrently)
-    3. Blind slug probes against all ATS APIs (concurrent with Phase 2)
+    3. One-hop expansion: probe career links found on unresolved career pages
+    4. Blind slug probes against all ATS APIs (concurrent with step 2)
 
     Returns only confirmed detections, ranked by score descending.
     """
@@ -555,20 +592,46 @@ async def discover_career_pages(
     links = _extract_links(homepage_html, homepage_url)[:_MAX_LINKS]
 
     # Phase 2: Probe career links (all concurrently)
-    link_tasks = [_probe_link(link, client) for link in links]
+    link_tasks = [_probe_link(link, client, collect_followups=True) for link in links]
 
     # Phase 3: Blind slug probes (concurrent with Phase 2)
     slugs = slugs_from_url(homepage_url)
     blind_tasks = [_blind_probe_all(slug, client) for slug in slugs]
 
     # Run Phase 2 + Phase 3 together
-    all_results = await asyncio.gather(*link_tasks, *blind_tasks, return_exceptions=True)
+    first_round = await asyncio.gather(*link_tasks, *blind_tasks, return_exceptions=True)
 
-    # Collect candidates
     candidates: list[CareerPageCandidate] = []
-    for result in all_results:
+    followup_links: list[_ExtractedLink] = []
+    blind_offset = len(link_tasks)
+
+    for result in first_round[:blind_offset]:
+        if isinstance(result, _ProbeLinkResult):
+            candidates.extend(result.candidates)
+            followup_links.extend(result.followup_links)
+    for result in first_round[blind_offset:]:
         if isinstance(result, list):
             candidates.extend(result)
+
+    # Phase 3: One-hop expansion from unresolved career pages
+    seen_urls = {link.url for link in links}
+    next_hop: list[_ExtractedLink] = []
+    for link in _merge_links(followup_links):
+        if link.url in seen_urls:
+            continue
+        seen_urls.add(link.url)
+        next_hop.append(link)
+        if len(next_hop) >= _MAX_FOLLOWUP_LINKS:
+            break
+
+    if next_hop:
+        second_round = await asyncio.gather(
+            *[_probe_link(link, client) for link in next_hop],
+            return_exceptions=True,
+        )
+        for result in second_round:
+            if isinstance(result, _ProbeLinkResult):
+                candidates.extend(result.candidates)
 
     # Dedup and sort by score descending
     deduped = _dedup_candidates(candidates)

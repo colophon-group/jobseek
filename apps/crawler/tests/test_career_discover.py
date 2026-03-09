@@ -9,8 +9,11 @@ from src.workspace.career_discover import (
     _blind_probe_all,
     _dedup_candidates,
     _extract_links,
+    _ExtractedLink,
     _hubness_allows_candidate,
+    _ProbeLinkResult,
     _scan_ats_urls_in_html,
+    discover_career_pages,
 )
 
 BASE = "https://example.com"
@@ -694,3 +697,57 @@ class TestBlindProbeFiltering:
         assert len(candidates) >= 1
         assert all(c.source == "blind_probe" for c in candidates)
         assert all(c.monitor_config.get("jobs") == 3 for c in candidates)
+
+
+class TestDiscoverFollowups:
+    def test_discovers_jobs_child_via_one_hop_expansion(self, monkeypatch):
+        seen_calls: list[tuple[str, bool]] = []
+
+        async def _fake_probe_link(link, _client, *, collect_followups=False):
+            seen_calls.append((link.url, collect_followups))
+            if link.url == "https://careers.accelclub.com":
+                return _ProbeLinkResult(
+                    followup_links=[
+                        _ExtractedLink(
+                            url="https://careers.accelclub.com/jobs",
+                            source="career_link",
+                            context="body",
+                            text="Jobs",
+                            base_score=0.55,
+                        )
+                    ]
+                )
+            if link.url == "https://careers.accelclub.com/jobs":
+                return _ProbeLinkResult(
+                    candidates=[
+                        CareerPageCandidate(
+                            url=link.url,
+                            source="homepage_link",
+                            monitor_type="dom",
+                            monitor_config={"urls": 12},
+                            score=0.50,
+                            comment="DOM",
+                        )
+                    ]
+                )
+            return _ProbeLinkResult()
+
+        async def _fake_blind_probe(_slug, _client):
+            return []
+
+        monkeypatch.setattr("src.workspace.career_discover._probe_link", _fake_probe_link)
+        monkeypatch.setattr("src.workspace.career_discover._blind_probe_all", _fake_blind_probe)
+        monkeypatch.setattr("src.core.monitors.slugs_from_url", lambda _url: [])
+
+        candidates = asyncio.run(
+            discover_career_pages(
+                "https://careers.accelclub.com",
+                '<html><head></head><body><a href="https://careers.accelclub.com">Careers</a></body></html>',
+                client=None,  # type: ignore[arg-type]
+            )
+        )
+
+        assert ("https://careers.accelclub.com", True) in seen_calls
+        assert ("https://careers.accelclub.com/jobs", False) in seen_calls
+        assert len(candidates) == 1
+        assert candidates[0].url == "https://careers.accelclub.com/jobs"

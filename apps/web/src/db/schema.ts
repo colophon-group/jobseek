@@ -127,6 +127,7 @@ export const company = pgTable("company", {
   slug: text("slug").unique().notNull(),
   logo: text("logo"),
   icon: text("icon"),
+  logoType: text("logo_type", { enum: ["wordmark", "wordmark+icon", "icon"] }),
   website: text("website"),
   description: text("description"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

@@ -13,7 +13,7 @@ Available topics:
   board             Board command quick reference (add/use/del/patterns)
   monitors          Monitor type overview + decision tree
   scrapers          Scraper type overview + field importance
-  monitor <type>    Per-type reference (greenhouse, lever, ashby, sitemap, dom, ...)
+  monitor <type>    Per-type reference (join, greenhouse, lever, rss, sitemap, dom, ...)
   scraper <type>    Per-type reference (json-ld, nextdata, embedded, dom, api_sniffer)
   fields            Job data fields — types, formats, importance
   steps             DOM scraper step key reference
@@ -63,6 +63,7 @@ Monitor Types (cheapest first):
 
   Type              Cost    Returns         Scraper needed?
   ────────────────────────────────────────────────────────
+  join              9       Full job data   No (skipped)
   ashby             10      Full job data   No (skipped)
   bite              10      Full job data   No (skipped)
   breezy            10      Full job data   No (skipped)
@@ -70,28 +71,33 @@ Monitor Types (cheapest first):
   greenhouse        10      Full job data   No (skipped)
   hireology         10      Full job data   No (skipped)
   lever             10      Full job data   No (skipped)
+  pinpoint          10      Full job data   No (skipped)
   recruitee         10      Full job data   No (skipped)
   rippling          10      Full job data   No (skipped)
+  rss               10      Full job data   No (skipped)
   smartrecruiters   10      Full job data   No (skipped)
   softgarden        10      Full job data   No (skipped)
   traffit           10      Full job data   No (skipped)
-  umantis           15      URL set         Yes
   workable          10      Full job data   No (skipped)
   workday           10      Full job data   No (skipped)
-  pinpoint          10      Full job data   No (skipped)
-  personio          10      Full or partial If no descriptions (HTML fallback)
-  successfactors    10      Full job data   No (skipped)
+  personio          10      Full/partial    If descriptions missing (fallback)
+  umantis           15      URL set         Yes
   nextdata          20      URLs or full    If URL-only
-  sitemap        50      URL set         Yes
-  api_sniffer    80      URLs or full    If URL-only (no fields)
-  dom            100     URL set         Yes
+  sitemap           50      URL set         Yes
+  api_sniffer       80      URLs or full    If URL-only (no fields)
+  dom               100     URL set         Yes
 
 Decision tree (after ws probe monitor):
-  1. Detected known ATS API (greenhouse/lever/ashby/etc)?  → Use it (no scraper needed)
-  2. Detected nextdata?                → monitor: nextdata
-  3. Detected sitemap?                 → monitor: sitemap, scraper: json-ld (or embedded)
-  4. Detected api_sniffer?             → Use it (check if fields auto-mapped)
-  5. Nothing detected?                 → monitor: dom, scraper: dom
+  1. Detected rich monitor (join/greenhouse/lever/rss/etc)?  → Use it (no scraper needed)
+  2. Detected nextdata?                                       → monitor: nextdata
+  3. Detected umantis or sitemap?                             → monitor: detected type,
+                                                                scraper: json-ld (or embedded)
+  4. Detected api_sniffer?                                    → Use it (check if fields auto-mapped)
+  5. Nothing detected?                                        → monitor: dom, scraper: dom
+
+Config-first policy:
+  Before switching monitor type, iterate config on the current plausible type:
+  ws help monitor <type>  →  ws select monitor <type> --as <name> --config '{...}'  → ws run monitor
 
 All monitors support url_filter to include/exclude URLs by regex:
   "url_filter": "/jobs/"                          Include only
@@ -106,14 +112,16 @@ Scraper Types:
 
   Type           Fetch       Config needed?   Best for
   ───────────────────────────────────────────────────────────
-  json-ld        Static      No               Sites with schema.org/JobPosting
+  json-ld        Static/PW   No (optional render)  Sites with schema.org/JobPosting
   nextdata       Static/PW   Yes (fields)     Next.js sites with __NEXT_DATA__
   embedded       Static/PW   Yes (fields)     JS-embedded JSON (script tags, variables)
   dom            Static/PW   Yes (steps)      Custom HTML structure
   api_sniffer    Playwright  Optional (fields)  SPA/XHR job pages
 
-  API monitors (greenhouse, lever, ashby, breezy, recruitee, rippling, workday, pinpoint,
-  successfactors) skip the scraper step entirely.
+  Rich monitors (join, ashby, bite, breezy, dvinci, greenhouse, hireology, lever,
+  pinpoint, recruitee, rippling, rss, smartrecruiters, softgarden, traffit, workable,
+  workday) skip the scraper step entirely.
+  rss supports ATS presets like successfactors and teamtailor.
   personio skips scraper when XML feed is available; HTML fallback needs scraper.
   api_sniffer scraper is auto-probed via Playwright in ws probe scraper.
 
@@ -124,6 +132,10 @@ Scraper Types:
   Try json-ld first — many sites embed JobPosting structured data for SEO.
   If json-ld returns empty fields, check page source for embedded JSON data
   (script tags, JS variables) → try embedded scraper. Fall back to dom last.
+
+Config-first policy:
+  Before switching scraper type, iterate config on the current plausible type:
+  ws help scraper <type>  →  ws select scraper <type> --config '{...}'  → ws run scraper
 
 Field importance:
   Required     title — every job must have a title
@@ -289,6 +301,34 @@ lever — Lever Postings API
   Detection:  ws probe shows "Lever API — token: X, N jobs"
   Zero jobs?  Verify token — try the API URL directly in a browser"""
 
+MONITOR_JOIN = """\
+join — JOIN (join.com) Next.js Monitor
+
+  Source:    Next.js __NEXT_DATA__ on join.com/companies/{slug}
+  Returns:   Full job data (title, locations, employment_type, date_posted,
+             job_location_type, base_salary, metadata) + detail-page descriptions
+  Scraper:   Not needed (monitor returns full data, scraper step is skipped)
+  Cap:       10,000 jobs
+  Note:      Pre-configured nextdata monitor for JOIN.
+             Listing pages contain jobs at:
+             props.pageProps.initialState.jobs.items
+             JOIN paginates by ?page=N (typically 5 jobs per page).
+
+  Config:
+    {"slug": "acme"}
+    {"slug": "acme", "description_paths": ["props.pageProps.initialState.job.schemaDescription"]}
+
+    slug               Company slug from URL path /companies/{slug}.
+                       Auto-filled by ws probe and auto-derived from URL.
+    description_paths  Optional list of fallback paths for detail-page
+                       description extraction from __NEXT_DATA__.
+    description_path   Backward-compatible single-path variant.
+
+  Detection:  ws probe shows "JOIN — slug: X, N jobs"
+              Requires join.com URL + detectable __NEXT_DATA__ job list.
+  Zero jobs?  Verify board URL is join.com/companies/{slug} and not a
+              marketing landing page."""
+
 MONITOR_SITEMAP = """\
 sitemap — XML Sitemap Parser
 
@@ -376,17 +416,24 @@ dom — Link Extraction (fallback)
     url_filter   Regex filter for discovered URLs (see: ws help monitor sitemap)
 
   Pagination (multi-page career sites):
-    {"render": false, "url_filter": "/jobs/", "pagination": {"param_name": "page", "max_pages": 15}}
+    {
+      "render": false,
+      "url_filter": "/jobs/",
+      "pagination": {"param_name": "page", "max_pages": 10000}
+    }
 
     pagination.param_name   Query parameter name (required)
     pagination.start        First page's param value (default: 1)
     pagination.increment    Step per page (default: 1)
-    pagination.max_pages    Hard limit (default: 50, system cap: 200)
+    pagination.max_pages    Hard limit (default: 10000, system cap: 10000)
+                            Set this to a value that greatly overshoots the
+                            expected real page count; low caps silently undercount.
     pagination.browser      If true, fetch via page.evaluate(fetch(...)) inside
                             Playwright context — preserves cookies (default: false)
 
     Fetching starts at start + increment (page 1 is the board URL itself).
     Stops when: no new links found, fetch fails, or max_pages reached.
+    High max_pages is usually safe: small boards terminate early via "no new links".
     Works with both render: false (httpx) and render: true (Playwright).
 
   Discovery:   Extracts all <a href> links, filters for URLs containing
@@ -633,29 +680,35 @@ personio — Personio XML Feed + HTML Fallback
               Also shows language coverage (e.g. "en: 11/19 desc, de: 13/19 desc")
   Zero jobs?  Verify slug — try the listing page in a browser"""
 
-MONITOR_SUCCESSFACTORS = """\
-successfactors — SAP SuccessFactors Career Site Builder (CSB)
+MONITOR_RSS = """\
+rss — RSS 2.0 Feed Monitor (presets: successfactors, teamtailor, generic)
 
-  Feed:     GET https://{domain}/googlefeed.xml
-  Format:   RSS 2.0 with Google Base namespace extensions
-  Returns:  Full job data (title, HTML description, locations)
-            metadata: id, employer, job_function, expiration_date
+  Feed:     GET {feed_url}
+  Returns:  Full job data (title, HTML description, locations, date_posted)
+            metadata: id and preset-specific fields
   Scraper:  Not needed (feed returns full data, scraper step is skipped)
   Cap:      10,000 jobs
-  Note:     Single request — returns all jobs, no pagination
+  Note:     One monitor type with multiple ATS presets:
+            - successfactors: /googlefeed.xml (Google Base namespace)
+            - teamtailor: /jobs.rss (offset-paginated)
+            - generic: standard RSS 2.0 (manual feed URL)
 
   Config:
-    {"feed_url": "https://jobs.sap.com/googlefeed.xml"}
+    {"preset": "successfactors", "feed_url": "https://jobs.sap.com/googlefeed.xml"}
+    {"preset": "teamtailor", "feed_url": "https://company.teamtailor.com/jobs.rss"}
+    {"preset": "generic", "feed_url": "https://example.com/jobs.rss"}
 
-    feed_url   RSS feed URL. Auto-filled by ws probe.
-               Derived from board URL: {origin}/googlefeed.xml
+    preset     Feed parser preset. Auto-detected when possible.
+               Defaults to "generic" when not set.
+    feed_url   RSS URL. For known presets, ws probe can auto-fill this from
+               the board URL; for generic feeds set it explicitly.
 
-  Detection:  ws probe shows "SuccessFactors RSS — {feed_url}, N jobs"
-              Detected via page HTML markers (successfactors.eu, rmkcdn CDN,
-              jobs2web.com references) or blind /googlefeed.xml probe.
-  Zero jobs?  Verify the feed URL directly in a browser.
-              Some sites serve /sitemap.xml as a proper sitemap — use
-              /googlefeed.xml which is always the RSS feed."""
+  Detection:  ws probe shows labels like:
+              "SuccessFactors RSS — <feed_url>, N jobs"
+              "Teamtailor RSS — <feed_url>, N jobs"
+              "RSS (generic) — <feed_url>, N jobs"
+  Zero jobs?  Verify feed_url directly in a browser and confirm it returns
+              job items (not an empty feed or non-RSS endpoint)."""
 
 MONITOR_WORKABLE = """\
 workable — Workable Posting API
@@ -810,12 +863,18 @@ api_sniffer — XHR/Fetch API Capture (Playwright)
 SCRAPER_JSONLD = """\
 json-ld — Schema.org JobPosting Extractor
 
-  Fetch:    Static HTTP only (no render/actions support)
-  Config:   None needed
+  Fetch:    Static HTTP (default) or Playwright (render: true)
+  Config:   No field mapping needed
 
   Parses <script type="application/ld+json"> blocks for JobPosting data.
   Handles @graph arrays and nested structures automatically.
   Uses the first JSON-LD block that contains a JobPosting.
+
+  Optional runtime config:
+    render    Use Playwright (default: false)
+    actions   Browser action pipeline (auto-enables render)
+    wait      Navigation wait strategy (Playwright only)
+    timeout   Navigation timeout in ms (Playwright only)
 
   Fields extracted (from schema.org properties):
     title          ← title or name
@@ -1225,6 +1284,16 @@ Debug Artifacts — files saved by ws commands
 TROUBLESHOOTING = """\
 Troubleshooting:
 
+  Configuration exploration policy (before switching type):
+    → Do not switch monitor/scraper type after the first bad run unless there is
+      a hard mismatch (wrong platform/domain, unsupported endpoint, explicit non-detection)
+    → For a plausible type, try at least one concrete config variant and re-run
+    → Preserve attempts with named configs when available:
+      ws select monitor <type> --as <name> --config '{...}'
+      ws select config <name>
+      ws reject-config <name> --reason "..."
+    → Record what was tried and why it failed before changing type
+
   Monitor returns 0 jobs:
     greenhouse/lever  Verify token — open the API URL directly in browser
     sitemap           Sitemap may only have blog/page URLs, not jobs → try dom
@@ -1235,6 +1304,9 @@ Troubleshooting:
 
   Monitor returns fewer jobs than expected:
     → Compare against website's displayed total ("Showing N positions")
+    → For paginated monitors, raise max_pages first so it significantly
+      overshoots expected pages, then re-run before switching type
+    → Do not optimize for low page caps — completeness comes first
     → sitemap may not list all jobs — try dom or nextdata
     → greenhouse/lever may need a different token
 
@@ -1267,6 +1339,7 @@ MONITOR_CARDS: dict[str, str] = {
     "dvinci": MONITOR_DVINCI,
     "greenhouse": MONITOR_GREENHOUSE,
     "hireology": MONITOR_HIREOLOGY,
+    "join": MONITOR_JOIN,
     "lever": MONITOR_LEVER,
     "ashby": MONITOR_ASHBY,
     "recruitee": MONITOR_RECRUITEE,
@@ -1279,7 +1352,7 @@ MONITOR_CARDS: dict[str, str] = {
     "workday": MONITOR_WORKDAY,
     "pinpoint": MONITOR_PINPOINT,
     "personio": MONITOR_PERSONIO,
-    "successfactors": MONITOR_SUCCESSFACTORS,
+    "rss": MONITOR_RSS,
     "sitemap": MONITOR_SITEMAP,
     "nextdata": MONITOR_NEXTDATA,
     "dom": MONITOR_DOM,

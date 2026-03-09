@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import src.core.monitors.dom as dom_module
 from src.core.monitors.dom import (
-    _MAX_PAGINATION_PAGES,
     _build_url_matcher,
     _extract_links_static,
     _fetch_via_page,
@@ -187,9 +187,9 @@ class TestPaginateUrls:
         assert call_count == 3
         assert len(result) == 4
 
-    async def test_system_cap(self):
+    async def test_system_cap(self, monkeypatch):
         """max_pages is capped at _MAX_PAGINATION_PAGES."""
-        assert _MAX_PAGINATION_PAGES == 200
+        monkeypatch.setattr(dom_module, "_MAX_PAGINATION_PAGES", 7)
         initial = set()
         call_count = 0
 
@@ -205,8 +205,8 @@ class TestPaginateUrls:
                 initial,
                 MagicMock(),
             )
-        # Should be capped at 200 - 1 = 199 fetches (pages 2..200)
-        assert call_count <= _MAX_PAGINATION_PAGES
+        # Patched cap is 7, so pages 2..7 are fetched.
+        assert call_count == 6
 
     async def test_start_and_increment(self):
         """Custom start and increment produce correct URL params."""
