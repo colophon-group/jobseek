@@ -25,6 +25,7 @@ from src.workspace.state import (
     load_workspace,
     resolve_board_alias,
     resolve_slug,
+    save_board,
     save_workspace,
     set_active_slug,
     workspace_exists,
@@ -41,12 +42,37 @@ def is_local_mode() -> bool:
     return os.environ.get("WS_LOCAL", "").strip() in ("1", "true", "yes")
 
 
+def _load_existing_company(slug: str) -> dict[str, str]:
+    """Load existing company data from companies.csv."""
+    companies_path = get_data_dir() / "companies.csv"
+    if not companies_path.exists():
+        return {}
+    _, rows = read_csv(companies_path)
+    for r in rows:
+        if r["slug"] == slug:
+            return r
+    return {}
+
+
+def _load_existing_boards(slug: str) -> list[dict[str, str]]:
+    """Load existing board rows from boards.csv for a company."""
+    boards_path = get_data_dir() / "boards.csv"
+    if not boards_path.exists():
+        return []
+    _, rows = read_csv(boards_path)
+    return [r for r in rows if r.get("company_slug") == slug]
+
+
 @click.command()
 @click.argument("slug")
 @click.option("--issue", type=int, default=None, help="GitHub issue number")
+@click.option("--reconfig", is_flag=True, help="Reconfigure an existing company")
 @click.option("--reset", is_flag=True, help="Purge managed clone and re-clone from scratch")
-def new(slug: str, issue: int | None, reset: bool):
+def new(slug: str, issue: int | None, reconfig: bool, reset: bool):
     """Create workspace + stub CSV row + branch + draft PR.
+
+    With --reconfig, creates a workspace for an existing company to
+    re-probe and update its monitor/scraper configuration.
 
     Idempotent: if a previous run partially succeeded, leftover state
     (workspace dir, worktree, local/remote branch) is cleaned up
@@ -72,28 +98,38 @@ def new(slug: str, issue: int | None, reset: bool):
     if workspace_exists(slug):
         import contextlib
 
-        from src.csvtool import company_del
-
         out.warn("workspace", f"Cleaning up leftover workspace {slug!r}")
-        with contextlib.suppress(CsvToolError):
-            company_del(slug)
+        if not reconfig:
+            from src.csvtool import company_del
+
+            with contextlib.suppress(CsvToolError):
+                company_del(slug)
         delete_workspace(slug)
         if get_active_slug() == slug:
             clear_active_slug()
 
-    # Check if already in companies.csv (after cleanup)
+    # Check companies.csv
     companies_path = get_data_dir() / "companies.csv"
+    slug_in_csv = False
     if companies_path.exists():
         _, rows = read_csv(companies_path)
-        if any(r["slug"] == slug for r in rows):
-            out.die(f"Slug {slug!r} already exists in companies.csv")
+        slug_in_csv = any(r["slug"] == slug for r in rows)
 
-    branch = f"add-company/{slug}"
+    if reconfig:
+        if not slug_in_csv:
+            out.die(
+                f"Slug {slug!r} not found in companies.csv (--reconfig requires existing company)"
+            )
+    elif slug_in_csv:
+        out.die(f"Slug {slug!r} already exists in companies.csv")
+
+    branch = f"fix-crawler/{slug}" if reconfig else f"add-company/{slug}"
     pr_number: int | None = None
+    pr_title = f"Reconfigure {slug}" if reconfig else f"Add {slug}"
 
     if local:
         out.warn("workspace", "Local mode — skipping git/GitHub operations")
-        out.info("workspace", f"Slug {slug!r} is valid, not in companies.csv")
+        out.info("workspace", f"Slug {slug!r} is valid")
     else:
         from src.workspace import git
 
@@ -101,7 +137,7 @@ def new(slug: str, issue: int | None, reset: bool):
         if not git.check_gh_auth():
             out.die("GitHub CLI not authenticated. Run: gh auth login")
         out.info("github", "gh authenticated")
-        out.info("workspace", f"Slug {slug!r} is valid, not in companies.csv")
+        out.info("workspace", f"Slug {slug!r} is valid")
 
         # Reuse existing PR if one was created by a previous attempt
         if issue:
@@ -124,32 +160,34 @@ def new(slug: str, issue: int | None, reset: bool):
         set_repo_root(worktree_path)
         out.plain("git", f"Created worktree at {worktree_path} (branch {branch})")
 
-    # Add stub CSV row
-    from src.csvtool import company_add
+    if not reconfig:
+        # Add stub CSV row for new companies
+        from src.csvtool import company_add
 
-    company_add(slug)
-    out.plain("csv", "Added stub row to companies.csv")
+        company_add(slug)
+        out.plain("csv", "Added stub row to companies.csv")
 
     if not local:
         from src.workspace import git
 
-        # Commit and push
-        git.add_files(["apps/crawler/data/companies.csv"])
-        git.commit(f"Add {slug}")
-        out.plain("git", f'Committed: "Add {slug}"')
+        if not reconfig:
+            # Commit and push stub row
+            git.add_files(["apps/crawler/data/companies.csv"])
+            git.commit(f"Add {slug}")
+            out.plain("git", f'Committed: "Add {slug}"')
 
-        git.push(branch, set_upstream=True)
-        out.plain("git", f"Pushed to origin/{branch}")
+            git.push(branch, set_upstream=True)
+            out.plain("git", f"Pushed to origin/{branch}")
 
         # Create draft PR (unless reusing one from a previous attempt)
         if not pr_number:
             pr_body = f"Closes #{issue}" if issue else ""
             pr_number = git.create_draft_pr(
-                title=f"Add {slug}",
+                title=pr_title,
                 body=pr_body,
             )
             issue_ref = f" (closes #{issue})" if issue else ""
-            out.info("github", f'Created draft PR #{pr_number} — "Add {slug}"{issue_ref}')
+            out.info("github", f'Created draft PR #{pr_number} — "{pr_title}"{issue_ref}')
 
     # Create workspace
     worktree_str = "" if local else str(git.worktrees_dir() / slug)
@@ -161,7 +199,39 @@ def new(slug: str, issue: int | None, reset: bool):
         pr=pr_number,
         worktree=worktree_str,
     )
+
+    # Pre-populate from existing CSV data when reconfiguring
+    if reconfig:
+        company_data = _load_existing_company(slug)
+        if company_data:
+            ws.name = company_data.get("name", "")
+            ws.website = company_data.get("website", "")
+            ws.logo_url = company_data.get("logo_url", "")
+            ws.icon_url = company_data.get("icon_url", "")
+            ws.logo_type = company_data.get("logo_type", "")
+            out.info("reconfig", f"Loaded company: {ws.name or slug}")
+
     save_workspace(ws)
+
+    # Pre-populate boards when reconfiguring
+    if reconfig:
+        existing_boards = _load_existing_boards(slug)
+        for brow in existing_boards:
+            board_slug = brow.get("board_slug", "")
+            alias = (
+                board_slug.removeprefix(f"{slug}-")
+                if board_slug.startswith(f"{slug}-")
+                else board_slug
+            )
+            board = Board(
+                alias=alias,
+                slug=board_slug,
+                url=brow.get("board_url", ""),
+            )
+            save_board(slug, board)
+            ws.active_board = alias
+            out.info("reconfig", f"Loaded board: {alias} — {board.url}")
+        save_workspace(ws)
 
     # Set as active workspace
     set_active_slug(slug)
@@ -169,6 +239,8 @@ def new(slug: str, issue: int | None, reset: bool):
     # Log
     if local:
         log_msg = "Created workspace (local mode)"
+    elif reconfig:
+        log_msg = f"Created reconfig workspace, branch {branch}, draft PR #{pr_number}"
     else:
         log_msg = f"Created workspace, branch {branch}, draft PR #{pr_number}"
     action_log.append(ws_log_path(slug), "new", True, log_msg)
