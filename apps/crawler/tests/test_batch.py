@@ -769,10 +769,9 @@ class TestProcessOneScrape:
         pool, conn = mock_pool
         mock_scrape.side_effect = [_job_content(title=None), _job_content(title="Fallback Title")]
         item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+        config = {"fallback": {"type": "dom", "config": {"render": True}}}
 
-        ok, _duration = await _process_one_scrape(
-            item, pool, mock_http, "json-ld", None, "dom", {"render": True}
-        )
+        ok, _duration = await _process_one_scrape(item, pool, mock_http, "json-ld", config)
 
         assert ok is True
         assert mock_scrape.await_count == 2
@@ -787,10 +786,9 @@ class TestProcessOneScrape:
         pool, conn = mock_pool
         mock_scrape.return_value = _job_content(title="Primary Title")
         item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+        config = {"fallback": {"type": "dom", "config": {"render": True}}}
 
-        ok, _duration = await _process_one_scrape(
-            item, pool, mock_http, "json-ld", None, "dom", {"render": True}
-        )
+        ok, _duration = await _process_one_scrape(item, pool, mock_http, "json-ld", config)
 
         assert ok is True
         assert mock_scrape.await_count == 1
@@ -801,10 +799,9 @@ class TestProcessOneScrape:
         pool, conn = mock_pool
         mock_scrape.return_value = _job_content(title=None)
         item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+        config = {"fallback": {"type": "dom", "config": {"render": True}}}
 
-        ok, _duration = await _process_one_scrape(
-            item, pool, mock_http, "json-ld", None, "dom", {"render": True}
-        )
+        ok, _duration = await _process_one_scrape(item, pool, mock_http, "json-ld", config)
 
         assert ok is False
         assert mock_scrape.await_count == 2
@@ -908,17 +905,15 @@ class TestScrapePipeline:
         assert call_args[4] == {"render": False}
 
     @patch("src.batch._process_one_scrape", new_callable=AsyncMock)
-    async def test_passes_fallback_config(self, mock_process, mock_pool, mock_http):
-        """Fallback scraper settings should be passed through to _process_one_scrape."""
+    async def test_passes_fallback_in_config(self, mock_process, mock_pool, mock_http):
+        """Fallback chain inside scraper_config should be passed through."""
         pool, _ = mock_pool
         mock_process.return_value = (True, 1.0)
         items = [ScrapeItem(job_posting_id="jp-1", url="https://alpha.com/job/1", board_id="b-1")]
         board_scrapers = {
             "b-1": BoardScraperConfig(
                 scraper_type="json-ld",
-                scraper_config=None,
-                fallback_scraper_type="dom",
-                fallback_scraper_config={"render": True},
+                scraper_config={"fallback": {"type": "dom", "config": {"render": True}}},
             )
         }
 
@@ -927,9 +922,7 @@ class TestScrapePipeline:
         assert result.succeeded == 1
         call_args = mock_process.await_args
         assert call_args.args[3] == "json-ld"
-        assert call_args.args[4] is None
-        assert call_args.args[5] == "dom"
-        assert call_args.args[6] == {"render": True}
+        assert call_args.args[4] == {"fallback": {"type": "dom", "config": {"render": True}}}
 
 
 class TestLoadBoardScrapers:
@@ -944,8 +937,6 @@ class TestLoadBoardScrapers:
         cfg = result["b-1"]
         assert cfg.scraper_type == "dom"
         assert cfg.scraper_config == {"render": False}
-        assert cfg.fallback_scraper_type is None
-        assert cfg.fallback_scraper_config is None
 
     async def test_falls_back_on_invalid_scraper(self, mock_pool):
         pool, _ = mock_pool
@@ -959,15 +950,17 @@ class TestLoadBoardScrapers:
         assert cfg.scraper_type == "json-ld"
         assert cfg.scraper_config is None
 
-    async def test_loads_fallback_from_metadata(self, mock_pool):
+    async def test_loads_fallback_from_scraper_config(self, mock_pool):
+        """Fallback chain is preserved inside scraper_config."""
         pool, _ = mock_pool
         pool.fetch.return_value = [
             {
                 "id": "b-1",
                 "metadata": {
                     "scraper_type": "json-ld",
-                    "fallback_scraper_type": "dom",
-                    "fallback_scraper_config": {"render": True},
+                    "scraper_config": {
+                        "fallback": {"type": "dom", "config": {"render": True}},
+                    },
                 },
             }
         ]
@@ -976,28 +969,8 @@ class TestLoadBoardScrapers:
 
         cfg = result["b-1"]
         assert cfg.scraper_type == "json-ld"
-        assert cfg.fallback_scraper_type == "dom"
-        assert cfg.fallback_scraper_config == {"render": True}
-
-    async def test_ignores_invalid_fallback_scraper(self, mock_pool):
-        pool, _ = mock_pool
-        pool.fetch.return_value = [
-            {
-                "id": "b-1",
-                "metadata": {
-                    "scraper_type": "json-ld",
-                    "fallback_scraper_type": "nope",
-                    "fallback_scraper_config": {"x": 1},
-                },
-            }
-        ]
-
-        result = await _load_board_scrapers(pool, {"b-1"})
-
-        cfg = result["b-1"]
-        assert cfg.scraper_type == "json-ld"
-        assert cfg.fallback_scraper_type is None
-        assert cfg.fallback_scraper_config is None
+        assert cfg.scraper_config["fallback"]["type"] == "dom"
+        assert cfg.scraper_config["fallback"]["config"] == {"render": True}
 
 
 # ── TestProcessScrapeBatch ───────────────────────────────────────────

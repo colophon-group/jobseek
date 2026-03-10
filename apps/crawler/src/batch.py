@@ -483,12 +483,10 @@ def _parse_update_count(result: object) -> int:
 
 @dataclass
 class BoardScraperConfig:
-    """Primary and optional fallback scraper settings for a board."""
+    """Scraper settings for a board (fallback chain lives inside scraper_config)."""
 
     scraper_type: str
     scraper_config: dict | None
-    fallback_scraper_type: str | None = None
-    fallback_scraper_config: dict | None = None
 
 
 async def _load_board_scrapers(
@@ -521,27 +519,9 @@ async def _load_board_scrapers(
             scraper_type = "json-ld"
             scraper_config = None
 
-        fallback_type = metadata.get("fallback_scraper_type")
-        fallback_config = metadata.get("fallback_scraper_config")
-        if fallback_type:
-            if not isinstance(fallback_config, dict):
-                fallback_config = None
-            try:
-                get_scraper(fallback_type)
-            except Exception:
-                log.warning(
-                    "batch.scrape.invalid_fallback_scraper_type",
-                    board_id=board_id,
-                    fallback_scraper_type=fallback_type,
-                )
-                fallback_type = None
-                fallback_config = None
-
         resolved[board_id] = BoardScraperConfig(
             scraper_type=scraper_type,
             scraper_config=scraper_config,
-            fallback_scraper_type=fallback_type,
-            fallback_scraper_config=fallback_config,
         )
 
     return resolved
@@ -703,14 +683,10 @@ async def claim_scrape_work(
 
         scraper_type = "json-ld"
         scraper_config: dict | None = None
-        fallback_scraper_type: str | None = None
-        fallback_scraper_config: dict | None = None
         if board_id and board_id in board_scrapers:
             cfg = board_scrapers[board_id]
             scraper_type = cfg.scraper_type
             scraper_config = cfg.scraper_config
-            fallback_scraper_type = cfg.fallback_scraper_type
-            fallback_scraper_config = cfg.fallback_scraper_config
 
         item = ScrapeItem(
             job_posting_id=str(row["id"]),
@@ -728,8 +704,6 @@ async def claim_scrape_work(
                     http,
                     scraper_type,
                     scraper_config,
-                    fallback_scraper_type,
-                    fallback_scraper_config,
                 ),
             )
         )
@@ -998,24 +972,27 @@ async def _process_one_scrape(
     http: httpx.AsyncClient,
     scraper_type: str,
     scraper_config: dict | None,
-    fallback_scraper_type: str | None = None,
-    fallback_scraper_config: dict | None = None,
 ) -> tuple[bool, float]:
     """Run a scrape for a single job posting. Returns (success, duration_s)."""
     t0 = monotonic()
     try:
+        cfg = scraper_config or {}
         content = await scrape_one(item.url, scraper_type, scraper_config, http)
 
-        if not content.title and fallback_scraper_type:
+        # Walk the fallback chain embedded in scraper_config
+        current_cfg = cfg
+        while not content.title and "fallback" in current_cfg:
+            fb = current_cfg["fallback"]
+            fb_type = fb["type"]
+            fb_cfg = fb.get("config") or {}
             log.info(
                 "batch.scrape.fallback",
                 url=item.url,
                 primary=scraper_type,
-                fallback=fallback_scraper_type,
+                fallback=fb_type,
             )
-            content = await scrape_one(
-                item.url, fallback_scraper_type, fallback_scraper_config, http
-            )
+            content = await scrape_one(item.url, fb_type, fb_cfg, http)
+            current_cfg = fb_cfg
 
         if not content.title:
             raise ValueError("scrape returned empty content (no title)")
@@ -1078,14 +1055,10 @@ async def _scrape_pipeline(
         try:
             scraper_type = "json-ld"
             scraper_config: dict | None = None
-            fallback_scraper_type: str | None = None
-            fallback_scraper_config: dict | None = None
             if board_scrapers and item.board_id in board_scrapers:
                 cfg = board_scrapers[item.board_id]
                 scraper_type = cfg.scraper_type
                 scraper_config = cfg.scraper_config
-                fallback_scraper_type = cfg.fallback_scraper_type
-                fallback_scraper_config = cfg.fallback_scraper_config
 
             ok, elapsed = await _process_one_scrape(
                 item,
@@ -1093,8 +1066,6 @@ async def _scrape_pipeline(
                 http,
                 scraper_type,
                 scraper_config,
-                fallback_scraper_type,
-                fallback_scraper_config,
             )
             result.durations.append(elapsed)
             if ok:

@@ -214,25 +214,27 @@ def validate_csvs() -> list[ValidationError]:
             except json.JSONDecodeError:
                 errors.append(ValidationError("boards.csv", i, "Invalid scraper_config JSON"))
 
-        fallback_scraper_type = row.get("fallback_scraper_type") or ""
-        fallback_scraper_config = row.get("fallback_scraper_config") or ""
-
-        if fallback_scraper_type and fallback_scraper_type not in valid_scraper_types:
-            errors.append(
-                ValidationError(
-                    "boards.csv",
-                    i,
-                    f"Invalid fallback_scraper_type: {fallback_scraper_type!r}",
-                )
-            )
-
-        if fallback_scraper_config:
+        # Validate fallback chain inside scraper_config
+        if scraper_config:
             try:
-                json.loads(fallback_scraper_config)
+                sc_obj = json.loads(scraper_config)
+                fb = sc_obj.get("fallback") if isinstance(sc_obj, dict) else None
+                depth = 0
+                while isinstance(fb, dict) and depth < 10:
+                    fb_type = fb.get("type", "")
+                    if fb_type and fb_type not in valid_scraper_types:
+                        errors.append(
+                            ValidationError(
+                                "boards.csv",
+                                i,
+                                f"Invalid fallback scraper type: {fb_type!r}",
+                            )
+                        )
+                    fb_cfg = fb.get("config")
+                    fb = fb_cfg.get("fallback") if isinstance(fb_cfg, dict) else None
+                    depth += 1
             except json.JSONDecodeError:
-                errors.append(
-                    ValidationError("boards.csv", i, "Invalid fallback_scraper_config JSON")
-                )
+                pass  # Already reported above
 
     return errors
 

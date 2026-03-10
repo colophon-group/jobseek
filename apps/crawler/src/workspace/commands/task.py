@@ -324,11 +324,21 @@ def task_complete():
     except GitError:
         out.warn("kb", "Could not push KB updates — completing workflow anyway.")
 
+    # Mark PR ready for review (after KB push so auto-merge won't race)
+    from src.workspace.commands.lifecycle import is_local_mode
+
+    ws = load_workspace(slug)
+    if ws.pr and not is_local_mode():
+        from src.workspace.git import mark_pr_ready
+
+        try:
+            mark_pr_ready(ws.pr)
+            out.info("github", f"PR #{ws.pr} marked ready for review")
+        except Exception:
+            out.warn("github", f"Could not mark PR #{ws.pr} ready — do it manually")
+
     wf.current_step = "done"
     _save_wf_to_disk(slug, wf)
-
-    # Remove claim comment
-    ws = load_workspace(slug)
     if ws.issue:
         from src.workspace.git import unclaim_issue
 

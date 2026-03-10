@@ -769,7 +769,6 @@ SUBMIT_STEPS: list[tuple[str, str, bool]] = [
     ("pr_body_updated", "Update PR body", False),
     ("stats_posted", "Post crawl stats on PR", False),
     ("transcript_posted", "Post transcript on PR", False),
-    ("pr_ready", "Mark PR ready for review", False),
     ("issue_completed", "Post completion on issue", False),
 ]
 

@@ -120,13 +120,12 @@ while IFS= read -r line; do
     fi
   fi
 
-  if [ "$FIELD_COUNT" -eq 9 ]; then
-    # boards.csv: company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config,fallback_scraper_type,fallback_scraper_config
+  if [ "$FIELD_COUNT" -eq 7 ]; then
+    # boards.csv: company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config
     SLUG=$(echo "$PARSED" | cut -d$'\t' -f1)
     BOARD_URL=$(echo "$PARSED" | cut -d$'\t' -f3)
     MONITOR=$(echo "$PARSED" | cut -d$'\t' -f4)
     SCRAPER=$(echo "$PARSED" | cut -d$'\t' -f6)
-    FALLBACK_SCRAPER=$(echo "$PARSED" | cut -d$'\t' -f8)
 
     if ! echo "$SLUG" | grep -qE "$SLUG_RE"; then
       echo "::warning::Invalid company_slug: $SLUG"
@@ -142,10 +141,6 @@ while IFS= read -r line; do
     fi
     if [ -n "$SCRAPER" ] && ! echo "$SCRAPER" | grep -qE "^($VALID_SCRAPER_TYPES)$"; then
       echo "::warning::Invalid scraper_type: $SCRAPER"
-      DIFF_OK=false
-    fi
-    if [ -n "$FALLBACK_SCRAPER" ] && ! echo "$FALLBACK_SCRAPER" | grep -qE "^($VALID_SCRAPER_TYPES)$"; then
-      echo "::warning::Invalid fallback_scraper_type: $FALLBACK_SCRAPER"
       DIFF_OK=false
     fi
   fi

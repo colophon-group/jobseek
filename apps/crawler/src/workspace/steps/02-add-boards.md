@@ -43,6 +43,11 @@ Starting from the company's careers page, look for:
 - "See jobs in [other country]" links
 
 The issue URL is a starting point, not a scope constraint.
+**The user's country in the issue is where the request came from, not a geographic
+filter.** Always use the company's full/global job board URL — never restrict to a
+single country or region via query parameters (e.g., `?location=switzerland`).
+If the board has a region picker, use the unfiltered base URL so the crawler
+captures all listings.
 **Note ALL distinct board URLs found.**
 Only add URLs that are actual listing boards (or listings feeds), not informational pages.
 
