@@ -63,6 +63,7 @@ revolut,revolut-careers,https://www.revolut.com/careers/,nextdata,"{""path"": ""
 semrush,semrush-careers,https://careers.semrush.com/,recruitee,"{""slug"": ""semrush"", ""api_base"": ""https://semrush.recruitee.com""}",,,,
 servers-com,servers-com-careers-apply,https://servers-com.breezy.hr/apply,dom,"{""render"": true, ""url_filter"": ""^https?://(?:www\\.)?servers-com\\.breezy\\.hr/p(?:/|\\?|$)""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""li"", ""attr"": ""class=location"", ""field"": ""locations"", ""regex"": ""([A-Za-z .-]+,\\s*[A-Z]{2})""}, {""tag"": ""p"", ""field"": ""description"", ""stop"": ""%BUTTON_APPLY_TO_POSITION%"", ""html"": true}], ""render"": false}",,
 sonarsource,sonarsource-careers-lever,https://jobs.lever.co/sonarsource,lever,,,,,
+specitec,specitec-careers,https://careers.specitec.com/jobs,rss,"{""preset"": ""teamtailor""}",,,,
 stripe,stripe-careers,https://stripe.com/jobs/search,greenhouse,"{""token"": ""stripe""}",,,,
 swissquote-bank,swissquote-bank-careers,https://careers.smartrecruiters.com/Swissquote,smartrecruiters,,,,,
 twitch,twitch-careers,https://job-boards.greenhouse.io/twitch,greenhouse,"{""token"": ""twitch""}",,,,
