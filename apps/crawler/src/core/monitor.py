@@ -90,6 +90,44 @@ def _apply_url_filter(result: MonitorResult, config: dict) -> MonitorResult:
     )
 
 
+def _apply_url_transform(result: MonitorResult, config: dict) -> MonitorResult:
+    """Rewrite URLs using url_transform {find, replace} from config."""
+    transform = config.get("url_transform")
+    if not transform:
+        return result
+    find = transform.get("find", "")
+    replace = transform.get("replace", "")
+    if not find:
+        return result
+
+    try:
+        pattern = re.compile(find)
+    except re.error as e:
+        structlog.get_logger().warning("monitor.url_transform_invalid", error=str(e))
+        return result
+
+    new_urls: set[str] = set()
+    url_map: dict[str, str] = {}  # old -> new
+    for url in result.urls:
+        new_url = pattern.sub(replace, url)
+        new_urls.add(new_url)
+        url_map[url] = new_url
+
+    new_jobs = None
+    if result.jobs_by_url is not None:
+        new_jobs = {}
+        for old_url, job in result.jobs_by_url.items():
+            new_url = url_map.get(old_url, old_url)
+            job.url = new_url
+            new_jobs[new_url] = job
+
+    return MonitorResult(
+        urls=new_urls,
+        jobs_by_url=new_jobs,
+        new_sitemap_url=result.new_sitemap_url,
+    )
+
+
 async def _save_raw(
     artifact_dir: Path,
     board_url: str,
@@ -252,6 +290,7 @@ async def monitor_one(
             kept=len(result.urls),
             removed=result.filtered_count,
         )
+    result = _apply_url_transform(result, config)
 
     if artifact_dir is not None:
         artifact_dir.mkdir(parents=True, exist_ok=True)

@@ -21,4 +21,15 @@ Common filter patterns:
 - `/positions/` for some ATS systems
 - `/vacancies/` for EU-style sites
 
+## URL rewriting
+
+If the sitemap lists URLs that are not the public job pages (e.g. authenticated
+portal paths, redirect URLs), use `url_transform` to rewrite them:
+
+```bash
+ws select monitor sitemap --config '{"url_transform": {"find": "/profile/job_details/", "replace": "/jobs/"}}'
+```
+
+`url_transform` uses regex find/replace and is applied after `url_filter`.
+
 If no consistent URL pattern exists, switch to dom or api_sniffer monitor.

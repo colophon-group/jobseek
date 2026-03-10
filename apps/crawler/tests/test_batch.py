@@ -16,8 +16,9 @@ from src.batch import (
     _RECORD_SCRAPE_SUCCESS,
     _UPDATE_JOB_CONTENT,
     _UPDATE_METADATA,
-    _UPDATE_RELISTED_CONTENT,
+    _UPDATE_RICH_CONTENT,
     BatchResult,
+    BoardScraperConfig,
     ScrapeItem,
     _coerce_datetime,
     _coerce_text,
@@ -356,7 +357,7 @@ class TestProcessOneBoard:
     async def test_relisted_jobs_content_update(
         self, mock_monitor, mock_get_redis, mock_pool, mock_http
     ):
-        """Rich data with relisted rows -> _UPDATE_RELISTED_CONTENT called."""
+        """Rich data with relisted rows -> _UPDATE_RICH_CONTENT called."""
         pool, conn = mock_pool
         url1 = "https://example.com/job/1"
         job1 = _discovered_job(url=url1)
@@ -373,7 +374,7 @@ class TestProcessOneBoard:
 
         conn.executemany.assert_awaited()
         call_args = conn.executemany.await_args_list
-        assert any(c.args[0] == _UPDATE_RELISTED_CONTENT for c in call_args)
+        assert any(c.args[0] == _UPDATE_RICH_CONTENT for c in call_args)
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one")
@@ -747,6 +748,67 @@ class TestProcessOneScrape:
         assert update_calls[0].args[3] == "<p>Hi</p>"
 
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_fallback_on_empty_primary(self, mock_scrape, mock_pool, mock_http):
+        """Primary returns no title, fallback succeeds -> True."""
+        pool, conn = mock_pool
+        mock_scrape.side_effect = [_job_content(title=None), _job_content(title="Fallback Title")]
+        item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+
+        result = await _process_one_scrape(
+            item, pool, mock_http, "json-ld", None, "dom", {"render": True}
+        )
+
+        assert result is True
+        assert mock_scrape.await_count == 2
+        # First call: primary scraper
+        assert mock_scrape.await_args_list[0].args[1] == "json-ld"
+        # Second call: fallback scraper
+        assert mock_scrape.await_args_list[1].args[1] == "dom"
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_no_fallback_when_primary_succeeds(self, mock_scrape, mock_pool, mock_http):
+        """Primary has title -> fallback is not called."""
+        pool, conn = mock_pool
+        mock_scrape.return_value = _job_content(title="Primary Title")
+        item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+
+        result = await _process_one_scrape(
+            item, pool, mock_http, "json-ld", None, "dom", {"render": True}
+        )
+
+        assert result is True
+        assert mock_scrape.await_count == 1
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_both_scrapers_fail(self, mock_scrape, mock_pool, mock_http):
+        """Primary and fallback both return empty -> records failure."""
+        pool, conn = mock_pool
+        mock_scrape.return_value = _job_content(title=None)
+        item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+
+        result = await _process_one_scrape(
+            item, pool, mock_http, "json-ld", None, "dom", {"render": True}
+        )
+
+        assert result is False
+        assert mock_scrape.await_count == 2
+        execute_calls = conn.execute.await_args_list
+        failure_calls = [c for c in execute_calls if c.args[0] == _RECORD_SCRAPE_FAILURE]
+        assert len(failure_calls) == 1
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_no_fallback_without_config(self, mock_scrape, mock_pool, mock_http):
+        """No fallback configured -> does not retry on empty primary."""
+        pool, conn = mock_pool
+        mock_scrape.return_value = _job_content(title=None)
+        item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+
+        result = await _process_one_scrape(item, pool, mock_http, "json-ld", None)
+
+        assert result is False
+        assert mock_scrape.await_count == 1
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
     async def test_non_scalar_fields_are_normalized(self, mock_scrape, mock_pool, mock_http):
         """List-based fields are normalized before SQL writes."""
         pool, conn = mock_pool
@@ -817,7 +879,9 @@ class TestScrapePipeline:
         pool, _ = mock_pool
         mock_process.return_value = True
         items = [ScrapeItem(job_posting_id="jp-1", url="https://alpha.com/job/1", board_id="b-1")]
-        board_scrapers = {"b-1": ("dom", {"render": False})}
+        board_scrapers = {
+            "b-1": BoardScraperConfig(scraper_type="dom", scraper_config={"render": False})
+        }
 
         result = await _scrape_pipeline(items, pool, mock_http, board_scrapers)
 
@@ -825,6 +889,30 @@ class TestScrapePipeline:
         call_args = mock_process.await_args.args
         assert call_args[3] == "dom"
         assert call_args[4] == {"render": False}
+
+    @patch("src.batch._process_one_scrape", new_callable=AsyncMock)
+    async def test_passes_fallback_config(self, mock_process, mock_pool, mock_http):
+        """Fallback scraper settings should be passed through to _process_one_scrape."""
+        pool, _ = mock_pool
+        mock_process.return_value = True
+        items = [ScrapeItem(job_posting_id="jp-1", url="https://alpha.com/job/1", board_id="b-1")]
+        board_scrapers = {
+            "b-1": BoardScraperConfig(
+                scraper_type="json-ld",
+                scraper_config=None,
+                fallback_scraper_type="dom",
+                fallback_scraper_config={"render": True},
+            )
+        }
+
+        result = await _scrape_pipeline(items, pool, mock_http, board_scrapers)
+
+        assert result == 1
+        call_args = mock_process.await_args
+        assert call_args.args[3] == "json-ld"
+        assert call_args.args[4] is None
+        assert call_args.args[5] == "dom"
+        assert call_args.args[6] == {"render": True}
 
 
 class TestLoadBoardScrapers:
@@ -836,7 +924,11 @@ class TestLoadBoardScrapers:
 
         result = await _load_board_scrapers(pool, {"b-1"})
 
-        assert result == {"b-1": ("dom", {"render": False})}
+        cfg = result["b-1"]
+        assert cfg.scraper_type == "dom"
+        assert cfg.scraper_config == {"render": False}
+        assert cfg.fallback_scraper_type is None
+        assert cfg.fallback_scraper_config is None
 
     async def test_falls_back_on_invalid_scraper(self, mock_pool):
         pool, _ = mock_pool
@@ -846,7 +938,49 @@ class TestLoadBoardScrapers:
 
         result = await _load_board_scrapers(pool, {"b-1"})
 
-        assert result == {"b-1": ("json-ld", None)}
+        cfg = result["b-1"]
+        assert cfg.scraper_type == "json-ld"
+        assert cfg.scraper_config is None
+
+    async def test_loads_fallback_from_metadata(self, mock_pool):
+        pool, _ = mock_pool
+        pool.fetch.return_value = [
+            {
+                "id": "b-1",
+                "metadata": {
+                    "scraper_type": "json-ld",
+                    "fallback_scraper_type": "dom",
+                    "fallback_scraper_config": {"render": True},
+                },
+            }
+        ]
+
+        result = await _load_board_scrapers(pool, {"b-1"})
+
+        cfg = result["b-1"]
+        assert cfg.scraper_type == "json-ld"
+        assert cfg.fallback_scraper_type == "dom"
+        assert cfg.fallback_scraper_config == {"render": True}
+
+    async def test_ignores_invalid_fallback_scraper(self, mock_pool):
+        pool, _ = mock_pool
+        pool.fetch.return_value = [
+            {
+                "id": "b-1",
+                "metadata": {
+                    "scraper_type": "json-ld",
+                    "fallback_scraper_type": "nope",
+                    "fallback_scraper_config": {"x": 1},
+                },
+            }
+        ]
+
+        result = await _load_board_scrapers(pool, {"b-1"})
+
+        cfg = result["b-1"]
+        assert cfg.scraper_type == "json-ld"
+        assert cfg.fallback_scraper_type is None
+        assert cfg.fallback_scraper_config is None
 
 
 # ── TestProcessScrapeBatch ───────────────────────────────────────────
@@ -869,8 +1003,13 @@ class TestProcessScrapeBatch:
         """Items with different hostnames -> multiple pipelines."""
         pool, _ = mock_pool
 
-        def _row(id, url, board_id):
-            data = {"id": id, "source_url": url, "board_id": board_id}
+        def _row(id, url, board_id, scrape_domain=None):
+            data = {
+                "id": id,
+                "source_url": url,
+                "board_id": board_id,
+                "scrape_domain": scrape_domain,
+            }
             row = MagicMock()
             row.__getitem__ = lambda self, key: data[key]
             return row
@@ -878,9 +1017,9 @@ class TestProcessScrapeBatch:
         # First fetch: claim job postings; Second fetch: load board scrapers
         pool.fetch.side_effect = [
             [
-                _row("jp-1", "https://alpha.com/job/1", "b-1"),
-                _row("jp-2", "https://beta.com/job/1", "b-2"),
-                _row("jp-3", "https://alpha.com/job/2", "b-1"),
+                _row("jp-1", "https://alpha.com/job/1", "b-1", "alpha.com"),
+                _row("jp-2", "https://beta.com/job/1", "b-2", "beta.com"),
+                _row("jp-3", "https://alpha.com/job/2", "b-1", "alpha.com"),
             ],
             [],  # no board scraper overrides
         ]
@@ -898,8 +1037,13 @@ class TestProcessScrapeBatch:
         """Mix of success/failure -> correct BatchResult."""
         pool, _ = mock_pool
 
-        def _row(id, url, board_id):
-            data = {"id": id, "source_url": url, "board_id": board_id}
+        def _row(id, url, board_id, scrape_domain=None):
+            data = {
+                "id": id,
+                "source_url": url,
+                "board_id": board_id,
+                "scrape_domain": scrape_domain,
+            }
             row = MagicMock()
             row.__getitem__ = lambda self, key: data[key]
             return row
@@ -907,9 +1051,9 @@ class TestProcessScrapeBatch:
         # First fetch: claim; Second fetch: board scrapers
         pool.fetch.side_effect = [
             [
-                _row("jp-1", "https://alpha.com/job/1", "b-1"),
-                _row("jp-2", "https://alpha.com/job/2", "b-1"),
-                _row("jp-3", "https://beta.com/job/1", "b-2"),
+                _row("jp-1", "https://alpha.com/job/1", "b-1", "alpha.com"),
+                _row("jp-2", "https://alpha.com/job/2", "b-1", "alpha.com"),
+                _row("jp-3", "https://beta.com/job/1", "b-2", "beta.com"),
             ],
             [],  # no board scraper overrides
         ]

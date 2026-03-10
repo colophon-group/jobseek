@@ -1,7 +1,7 @@
 """Language detection for job posting descriptions.
 
-Uses lingua-py restricted to European languages for high-precision detection.
-The detector is initialized once and cached for reuse across calls.
+Uses lingua-py for high-precision detection. The detector is initialized
+once and cached for reuse across calls.
 """
 
 from __future__ import annotations
@@ -11,8 +11,8 @@ from functools import lru_cache
 
 from lingua import Language, LanguageDetector, LanguageDetectorBuilder
 
-# Western, Northern + Eastern Europe; expand as scraper audience grows.
 _SUPPORTED = (
+    # Western, Northern + Eastern Europe
     Language.ENGLISH,
     Language.GERMAN,
     Language.FRENCH,
@@ -31,6 +31,19 @@ _SUPPORTED = (
     Language.ROMANIAN,
     Language.BULGARIAN,
     Language.CROATIAN,
+    Language.GREEK,
+    Language.TURKISH,
+    # CJK + Asian
+    Language.JAPANESE,
+    Language.CHINESE,
+    Language.KOREAN,
+    Language.VIETNAMESE,
+    Language.THAI,
+    Language.INDONESIAN,
+    Language.MALAY,
+    # Middle East
+    Language.ARABIC,
+    Language.HEBREW,
 )
 
 _CODE_MAP: dict[Language, str] = {
@@ -52,6 +65,17 @@ _CODE_MAP: dict[Language, str] = {
     Language.ROMANIAN: "ro",
     Language.BULGARIAN: "bg",
     Language.CROATIAN: "hr",
+    Language.GREEK: "el",
+    Language.TURKISH: "tr",
+    Language.JAPANESE: "ja",
+    Language.CHINESE: "zh",
+    Language.KOREAN: "ko",
+    Language.VIETNAMESE: "vi",
+    Language.THAI: "th",
+    Language.INDONESIAN: "id",
+    Language.MALAY: "ms",
+    Language.ARABIC: "ar",
+    Language.HEBREW: "he",
 }
 
 _TAG_RE = re.compile(r"<[^>]+>")

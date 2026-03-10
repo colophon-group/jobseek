@@ -113,6 +113,10 @@ All monitors support url_filter to include/exclude URLs by regex:
   "url_filter": "/jobs/"                          Include only
   "url_filter": {"include": "/jobs/", "exclude": "/blog/"}
 
+All monitors support url_transform to rewrite discovered URLs:
+  "url_transform": {"find": "/profile/job_details/", "replace": "/jobs/"}
+  Uses regex find/replace. Applied after url_filter.
+
 Regex safety:
   Start broad, then tighten after validating count against the site.
   Include common URL variants (numeric suffixes, trailing slash, query params).
@@ -166,6 +170,30 @@ Field importance:
   ws probe scraper                  Run scraper probe
   ws help scraper <type>            Detailed config reference
   ws help steps                     DOM scraper step format"""
+
+MONITOR_AMAZON = """\
+amazon — Amazon Jobs API
+
+  API:      GET https://www.amazon.jobs/en/search.json?result_limit=100&offset=N
+  Returns:  Full job data (title, HTML description, locations, employment_type,
+            date_posted, base_salary)
+            metadata: id_icims, job_category, job_family, business_category,
+            company_name
+  Scraper:  Not needed (API returns full data, scraper step is skipped)
+  Cap:      50,000 jobs (API caps at 10k per query; auto-partitions by country)
+
+  Config:
+    {}                                         All jobs worldwide
+    {"country": "DEU"}                         Single country (ISO 3166-1 alpha-3)
+    {"category": "software-development"}       Single job category
+    {"business_category": "amazon-web-services"}  Single team/division
+
+  Notes:
+    - Max 100 results per page, max 10,000 per query (offset >= 10000 errors)
+    - When total exceeds 10k, the monitor partitions by country code
+    - Country codes: ISO 3166-1 alpha-3 (USA, DEU, GBR, IND, JPN, etc.)
+    - No date-range filter available; sort=recent orders by creation date
+    - Job URL constructed from job_path field in API response"""
 
 MONITOR_BITE = """\
 bite — BITE GmbH ATS (Job Search API, widget key auth)
@@ -386,6 +414,11 @@ sitemap — XML Sitemap Parser
                  Dict:   include + exclude —
                    "url_filter": {"include": "/jobs/", "exclude": "/blog/"}
 
+  url_transform  Regex find/replace to rewrite discovered URLs:
+                   "url_transform": {"find": "/profile/job_details/", "replace": "/jobs/"}
+                   Use when the sitemap lists non-public or redirect URLs that
+                   need mapping to the canonical public job page.
+
   Detection:     ws probe shows "Sitemap — N URLs at <url>"
   Fewer URLs?    Sitemap may not list all job pages — try dom monitor
   UTM params:    Automatically stripped from discovered URLs
@@ -419,6 +452,7 @@ nextdata — Next.js __NEXT_DATA__ Discovery
     render        If true, use Playwright to render page (default: false)
     actions       Browser action pipeline (auto-enables render)
     url_filter    Regex filter for discovered URLs (see: ws help monitor sitemap)
+    url_transform Regex find/replace to rewrite URLs (see: ws help monitor sitemap)
 
   Detection:  ws probe shows "__NEXT_DATA__ — N items at <path>"
               If "(render)" shown, page needs Playwright to load data.
@@ -451,6 +485,7 @@ dom — Link Extraction (fallback)
     actions      Browser action pipeline (see: ws help actions)
     url_filter   Regex filter for discovered URLs (see: ws help monitor sitemap)
                  Keep patterns broad enough to include URL variants
+    url_transform Regex find/replace to rewrite URLs (see: ws help monitor sitemap)
                  (numeric suffixes, trailing slash, query params)
 
   Pagination (multi-page career sites):
@@ -1414,6 +1449,7 @@ Feedback Command Reference:
 # ── Lookup tables ────────────────────────────────────────────────────────
 
 MONITOR_CARDS: dict[str, str] = {
+    "amazon": MONITOR_AMAZON,
     "bite": MONITOR_BITE,
     "breezy": MONITOR_BREEZY,
     "dvinci": MONITOR_DVINCI,

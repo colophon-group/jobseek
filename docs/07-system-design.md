@@ -115,7 +115,8 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 2. Call `discover(board, http, pw=pw)`
 3. Normalize result into `MonitorResult`
 4. Apply `url_filter` (include/exclude regex from config)
-5. Optionally save raw artifacts for debugging
+5. Apply `url_transform` (regex find/replace rewrite from config)
+6. Optionally save raw artifacts for debugging
 
 ### All Monitor Types
 

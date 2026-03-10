@@ -515,6 +515,61 @@ def comment_on_issue(issue_number: int, body: str) -> None:
     )
 
 
+def fetch_oldest_open_issue(label: str = "company-request") -> int | None:
+    """Return the issue number of the oldest open issue with the given label.
+
+    Skips issues that already have an open ``add-company/`` or
+    ``fix-crawler/`` PR linked via "Closes #N".  Returns ``None`` when no
+    eligible issue exists.
+    """
+    result = _run(
+        [
+            "gh",
+            "issue",
+            "list",
+            *_gh_repo_flag(),
+            "--label",
+            label,
+            "--state",
+            "open",
+            "--json",
+            "number",
+            "--jq",
+            ".[].number",
+        ],
+        retries=_GH_RETRIES,
+    )
+    numbers = sorted(int(n) for n in result.stdout.strip().splitlines() if n.strip())
+    if not numbers:
+        return None
+
+    for num in numbers:
+        # Check for open PRs linked to this issue
+        pr_result = _run(
+            [
+                "gh",
+                "pr",
+                "list",
+                *_gh_repo_flag(),
+                "--state",
+                "open",
+                "--search",
+                f"Closes #{num}",
+                "--json",
+                "number,headRefName",
+                "--jq",
+                '[.[] | select(.headRefName | startswith("add-company/")'
+                ' or startswith("fix-crawler/"))] | length',
+            ],
+            retries=_GH_RETRIES,
+        )
+        active_pr_count = int(pr_result.stdout.strip() or "0")
+        if active_pr_count == 0:
+            return num
+
+    return None
+
+
 def fetch_issue(issue_number: int) -> dict:
     """Fetch a GitHub issue's title, body, and labels.
 

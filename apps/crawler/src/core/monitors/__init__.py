@@ -201,6 +201,11 @@ async def fetch_page_text(
 
 def _build_comment(name: str, metadata: dict) -> str:
     """Build a human-readable comment from probe metadata."""
+    if name == "amazon":
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"Amazon Jobs API \u2014 {jobs} jobs"
+        return "Amazon Jobs API"
     if name == "bite":
         key = metadata.get("key", "?")
         customer = metadata.get("customer")
@@ -417,6 +422,7 @@ async def probe_all_monitors(
 
 # Import modules to trigger registration
 from src.core.monitors import (  # noqa: E402
+    amazon,  # noqa: F401
     api_sniffer,  # noqa: F401
     ashby,  # noqa: F401
     bite,  # noqa: F401

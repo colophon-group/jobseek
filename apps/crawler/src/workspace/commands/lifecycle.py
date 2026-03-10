@@ -43,9 +43,9 @@ def is_local_mode() -> bool:
 
 @click.command()
 @click.argument("slug")
-@click.option("--issue", required=True, type=int, help="GitHub issue number")
+@click.option("--issue", type=int, default=None, help="GitHub issue number")
 @click.option("--reset", is_flag=True, help="Purge managed clone and re-clone from scratch")
-def new(slug: str, issue: int, reset: bool):
+def new(slug: str, issue: int | None, reset: bool):
     """Create workspace + stub CSV row + branch + draft PR.
 
     Idempotent: if a previous run partially succeeded, leftover state
@@ -104,10 +104,11 @@ def new(slug: str, issue: int, reset: bool):
         out.info("workspace", f"Slug {slug!r} is valid, not in companies.csv")
 
         # Reuse existing PR if one was created by a previous attempt
-        existing = git.check_existing_prs(issue)
-        if existing:
-            pr_number = existing[0]["number"]
-            out.info("github", f"Reusing existing PR #{pr_number} for issue #{issue}")
+        if issue:
+            existing = git.check_existing_prs(issue)
+            if existing:
+                pr_number = existing[0]["number"]
+                out.info("github", f"Reusing existing PR #{pr_number} for issue #{issue}")
 
         # Create a worktree for this workspace so multiple agents
         # can work on different companies concurrently.
@@ -142,11 +143,13 @@ def new(slug: str, issue: int, reset: bool):
 
         # Create draft PR (unless reusing one from a previous attempt)
         if not pr_number:
+            pr_body = f"Closes #{issue}" if issue else ""
             pr_number = git.create_draft_pr(
                 title=f"Add {slug}",
-                body=f"Closes #{issue}",
+                body=pr_body,
             )
-            out.info("github", f'Created draft PR #{pr_number} — "Add {slug}" (closes #{issue})')
+            issue_ref = f" (closes #{issue})" if issue else ""
+            out.info("github", f'Created draft PR #{pr_number} — "Add {slug}"{issue_ref}')
 
     # Create workspace
     worktree_str = "" if local else str(git.worktrees_dir() / slug)
@@ -482,7 +485,7 @@ def _build_pr_body(ws: Workspace, boards: list[Board]) -> str:
     """
     from src.workspace.log import _format_field_quality
 
-    lines = [f"Closes #{ws.issue}", ""]
+    lines = [f"Closes #{ws.issue}", ""] if ws.issue else [""]
 
     display_name = ws.name or ws.slug
     lines.append(f"## {display_name}")

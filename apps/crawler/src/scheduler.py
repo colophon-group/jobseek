@@ -14,7 +14,7 @@ import uuid
 
 import structlog
 
-from src.batch import process_monitor_batch, process_scrape_batch
+from src.batch import process_monitor_batch, process_scrape_batch, run_single_board
 from src.config import settings
 from src.db import close_pool, create_pool
 from src.shared.http import create_http_client
@@ -41,6 +41,16 @@ def parse_args() -> argparse.Namespace:
         "--scrape-only",
         action="store_true",
         help="Only run scrape batches (no monitoring)",
+    )
+    parser.add_argument(
+        "--board",
+        type=str,
+        help="Process a single board by slug (monitor + scrape, ignores schedule)",
+    )
+    parser.add_argument(
+        "--force-rescrape",
+        action="store_true",
+        help="With --board: scrape all active jobs, not only due ones",
     )
     return parser.parse_args()
 
@@ -123,7 +133,9 @@ async def run() -> None:
     http = create_http_client()
 
     try:
-        if args.once:
+        if args.board:
+            await run_single_board(pool, http, args.board, force_rescrape=args.force_rescrape)
+        elif args.once:
             await run_once(pool, http, monitor=do_monitor, scrape=do_scrape)
         else:
             shutdown_event = asyncio.Event()

@@ -298,8 +298,9 @@ async def scrape(
             from src.shared.browser import render as browser_render
 
             browser_config = {}
-            if actions:
-                browser_config["actions"] = actions
+            for key in ("wait", "timeout", "actions"):
+                if config.get(key) is not None:
+                    browser_config[key] = config[key]
             html = await browser_render(url, config=browser_config, pw=pw)
         except Exception:
             log.warning("embedded_scraper.render_failed", url=url, exc_info=True)

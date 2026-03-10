@@ -201,6 +201,35 @@ async def sync_boards(
                 skipped += 1
                 continue
 
+        fallback_scraper_type = _or_none(row.get("fallback_scraper_type"))
+        fallback_scraper_config_str = row.get("fallback_scraper_config") or None
+
+        if fallback_scraper_type:
+            metadata_obj["fallback_scraper_type"] = fallback_scraper_type
+
+        if fallback_scraper_config_str:
+            try:
+                fallback_cfg = json.loads(fallback_scraper_config_str)
+                if not isinstance(fallback_cfg, dict):
+                    raise ValueError("fallback_scraper_config must be a JSON object")
+                metadata_obj["fallback_scraper_config"] = fallback_cfg
+            except json.JSONDecodeError:
+                log.error(
+                    "sync.board.invalid_fallback_scraper_config",
+                    board_url=row["board_url"],
+                    config=fallback_scraper_config_str,
+                )
+                skipped += 1
+                continue
+            except ValueError:
+                log.error(
+                    "sync.board.invalid_fallback_scraper_config",
+                    board_url=row["board_url"],
+                    config=fallback_scraper_config_str,
+                )
+                skipped += 1
+                continue
+
         metadata: str | None = json.dumps(metadata_obj) if metadata_obj else None
 
         company_slugs.append(row["company_slug"])

@@ -255,8 +255,19 @@ async def discover(
         )
         render = True
 
+    wait: str | None = metadata.get("wait")
+    timeout: int | None = metadata.get("timeout")
+
     # Fetch the page
-    html = await _fetch_html(board_url, render, client, pw=pw, actions=actions)
+    html = await _fetch_html(
+        board_url,
+        render,
+        client,
+        pw=pw,
+        actions=actions,
+        wait=wait,
+        timeout=timeout,
+    )
     if not html:
         log.warning("nextdata.fetch_failed", board_url=board_url)
         return list() if fields_map else set()
@@ -285,6 +296,8 @@ async def discover(
             pagination_cfg,
             pw=pw,
             actions=actions,
+            wait=wait,
+            timeout=timeout,
         )
 
     # Cap items
@@ -303,6 +316,8 @@ async def _fetch_html(
     client: httpx.AsyncClient,
     pw=None,
     actions: list[dict] | None = None,
+    wait: str | None = None,
+    timeout: int | None = None,
 ) -> str | None:
     """Fetch page HTML via httpx or Playwright."""
     if render:
@@ -312,6 +327,10 @@ async def _fetch_html(
             browser_config: dict = {}
             if actions:
                 browser_config["actions"] = actions
+            if wait:
+                browser_config["wait"] = wait
+            if timeout is not None:
+                browser_config["timeout"] = timeout
             return await browser_render(url, config=browser_config, pw=pw)
         except Exception:
             log.warning("nextdata.render_failed", url=url, exc_info=True)
@@ -329,6 +348,8 @@ async def _fetch_remaining_pages(
     pagination_cfg: dict,
     pw=None,
     actions: list[dict] | None = None,
+    wait: str | None = None,
+    timeout: int | None = None,
 ) -> list:
     """Fetch pages 2..N and merge items with the first page."""
     pagination_path = pagination_cfg.get("path")
@@ -365,7 +386,15 @@ async def _fetch_remaining_pages(
     async def _fetch_page(page_num: int) -> list:
         async with sem:
             page_url = _add_query_param(board_url, page_param, page_num)
-            html = await _fetch_html(page_url, render, client, pw=pw, actions=actions)
+            html = await _fetch_html(
+                page_url,
+                render,
+                client,
+                pw=pw,
+                actions=actions,
+                wait=wait,
+                timeout=timeout,
+            )
             if not html:
                 log.warning("nextdata.page_fetch_failed", page=page_num)
                 return []

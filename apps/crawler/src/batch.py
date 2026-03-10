@@ -90,13 +90,13 @@ touched AS (
   WHERE job_posting.board_id = $2
     AND job_posting.status = 'active'
     AND job_posting.source_url = d.url
-  RETURNING job_posting.source_url
+  RETURNING job_posting.id, job_posting.source_url
 ),
 relisted AS (
   UPDATE job_posting
   SET status = 'active', delisted_at = NULL, delist_reason = NULL,
       relisted_at = now(), missing_count = 0,
-      last_seen_at = now(), updated_at = now()
+      last_seen_at = now(), next_scrape_at = now(), updated_at = now()
   FROM discovered d
   WHERE job_posting.board_id = $2
     AND job_posting.status = 'delisted'
@@ -135,6 +135,8 @@ new_urls AS (
     ON jp.source_url = d.url AND jp.board_id = $2
   WHERE jp.id IS NULL
 )
+SELECT 'touched' AS action, id::text, source_url AS url FROM touched
+UNION ALL
 SELECT 'relisted' AS action, id::text, source_url AS url FROM relisted
 UNION ALL
 SELECT 'gone', id::text, source_url FROM gone
@@ -236,7 +238,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
         $14, 'active', now(), now())
 """
 
-_UPDATE_RELISTED_CONTENT = """
+_UPDATE_RICH_CONTENT = """
 UPDATE job_posting
 SET title = $2, description = $3, locations = $4,
     employment_type = $5, job_location_type = $6, base_salary = $7,
@@ -271,20 +273,35 @@ WHERE id = $1
 """
 
 _FETCH_DUE_JOB_POSTINGS = """
-UPDATE job_posting
-SET lease_owner   = $2,
-    leased_until  = now() + interval '10 minutes'
-WHERE id IN (
-    SELECT id FROM job_posting
+WITH candidates AS (
+    SELECT id, scrape_domain, next_scrape_at
+    FROM job_posting
     WHERE status = 'active'
       AND next_scrape_at IS NOT NULL
       AND next_scrape_at <= now()
       AND (leased_until IS NULL OR leased_until < now())
-    ORDER BY next_scrape_at
-    LIMIT $1
     FOR UPDATE SKIP LOCKED
+),
+ranked AS (
+    SELECT id,
+           row_number() OVER (
+               PARTITION BY scrape_domain
+               ORDER BY next_scrape_at
+           ) AS domain_rank,
+           next_scrape_at
+    FROM candidates
 )
-RETURNING id, source_url, board_id
+UPDATE job_posting
+SET lease_owner   = $2,
+    leased_until  = now() + interval '10 minutes'
+FROM (
+    SELECT id AS rid
+    FROM ranked
+    ORDER BY domain_rank, next_scrape_at
+    LIMIT $1
+) pick
+WHERE job_posting.id = pick.rid
+RETURNING job_posting.id, source_url, board_id, scrape_domain
 """
 
 _RECORD_SCRAPE_SUCCESS = """
@@ -292,7 +309,11 @@ UPDATE job_posting
 SET scrape_failures  = 0,
     last_scrape_error = NULL,
     last_scraped_at  = now(),
-    next_scrape_at   = now() + (scrape_interval_hours || ' hours')::interval,
+    next_scrape_at   = CASE
+        WHEN status = 'active'
+        THEN now() + (scrape_interval_hours || ' hours')::interval
+        ELSE NULL
+    END,
     lease_owner      = NULL,
     leased_until     = NULL,
     updated_at       = now()
@@ -443,16 +464,26 @@ def _parse_update_count(result: object) -> int:
     return 0
 
 
+@dataclass
+class BoardScraperConfig:
+    """Primary and optional fallback scraper settings for a board."""
+
+    scraper_type: str
+    scraper_config: dict | None
+    fallback_scraper_type: str | None = None
+    fallback_scraper_config: dict | None = None
+
+
 async def _load_board_scrapers(
     pool: asyncpg.Pool,
     board_ids: set[str],
-) -> dict[str, tuple[str, dict | None]]:
+) -> dict[str, BoardScraperConfig]:
     """Load scraper type/config by board id from job_board metadata."""
     if not board_ids:
         return {}
 
     rows = await pool.fetch(_FETCH_BOARD_SCRAPERS, list(board_ids))
-    resolved: dict[str, tuple[str, dict | None]] = {}
+    resolved: dict[str, BoardScraperConfig] = {}
 
     for row in rows:
         board_id = row["id"]
@@ -473,7 +504,28 @@ async def _load_board_scrapers(
             scraper_type = "json-ld"
             scraper_config = None
 
-        resolved[board_id] = (scraper_type, scraper_config)
+        fallback_type = metadata.get("fallback_scraper_type")
+        fallback_config = metadata.get("fallback_scraper_config")
+        if fallback_type:
+            if not isinstance(fallback_config, dict):
+                fallback_config = None
+            try:
+                get_scraper(fallback_type)
+            except Exception:
+                log.warning(
+                    "batch.scrape.invalid_fallback_scraper_type",
+                    board_id=board_id,
+                    fallback_scraper_type=fallback_type,
+                )
+                fallback_type = None
+                fallback_config = None
+
+        resolved[board_id] = BoardScraperConfig(
+            scraper_type=scraper_type,
+            scraper_config=scraper_config,
+            fallback_scraper_type=fallback_type,
+            fallback_scraper_config=fallback_config,
+        )
 
     return resolved
 
@@ -565,6 +617,7 @@ async def _process_one_board(
 
             new_urls: list[str] = []
             relisted: list[dict] = []
+            touched: list[dict] = []
             gone: list[dict] = []
 
             for row in rows:
@@ -573,6 +626,8 @@ async def _process_one_board(
                     new_urls.append(row["url"])
                 elif action == "relisted":
                     relisted.append({"id": row["id"], "url": row["url"]})
+                elif action == "touched":
+                    touched.append({"id": row["id"], "url": row["url"]})
                 elif action == "gone":
                     gone.append({"id": row["id"], "url": row["url"]})
 
@@ -610,21 +665,21 @@ async def _process_one_board(
                             for j in new_jobs
                         ],
                     )
-                relisted_pairs = [
+                # Update content for relisted and existing active jobs
+                update_pairs = [
                     (item["id"], result.jobs_by_url[item["url"]])
-                    for item in relisted
+                    for item in relisted + touched
                     if item["url"] in result.jobs_by_url
                 ]
-                if relisted_pairs:
-                    # Enrich descriptions + detect language for relisted jobs too
-                    for _, j in relisted_pairs:
+                if update_pairs:
+                    for _, j in update_pairs:
                         j.description = normalize_description_html(j.description)
                         enrich_description(j)
                         if not j.language and j.description:
                             j.language = detect_language(j.description)
 
                     await conn.executemany(
-                        _UPDATE_RELISTED_CONTENT,
+                        _UPDATE_RICH_CONTENT,
                         [
                             (
                                 pid,
@@ -640,7 +695,7 @@ async def _process_one_board(
                                 _jsonb(j.extras),
                                 _jsonb(j.metadata),
                             )
-                            for pid, j in relisted_pairs
+                            for pid, j in update_pairs
                         ],
                     )
 
@@ -740,10 +795,27 @@ async def _process_one_scrape(
     http: httpx.AsyncClient,
     scraper_type: str,
     scraper_config: dict | None,
+    fallback_scraper_type: str | None = None,
+    fallback_scraper_config: dict | None = None,
 ) -> bool:
     """Run a scrape for a single job posting. Returns True on success."""
     try:
         content = await scrape_one(item.url, scraper_type, scraper_config, http)
+
+        if not content.title and fallback_scraper_type:
+            log.info(
+                "batch.scrape.fallback",
+                url=item.url,
+                primary=scraper_type,
+                fallback=fallback_scraper_type,
+            )
+            content = await scrape_one(
+                item.url, fallback_scraper_type, fallback_scraper_config, http
+            )
+
+        if not content.title:
+            raise ValueError("scrape returned empty content (no title)")
+
         content.description = normalize_description_html(content.description)
 
         # Detect language if not already set
@@ -788,7 +860,7 @@ async def _scrape_pipeline(
     items: list[ScrapeItem],
     pool: asyncpg.Pool,
     http: httpx.AsyncClient,
-    board_scrapers: dict[str, tuple[str, dict | None]] | None = None,
+    board_scrapers: dict[str, BoardScraperConfig] | None = None,
 ) -> int:
     """Process scrape items for one domain serially.
 
@@ -799,10 +871,24 @@ async def _scrape_pipeline(
         try:
             scraper_type = "json-ld"
             scraper_config: dict | None = None
+            fallback_scraper_type: str | None = None
+            fallback_scraper_config: dict | None = None
             if board_scrapers and item.board_id in board_scrapers:
-                scraper_type, scraper_config = board_scrapers[item.board_id]
+                cfg = board_scrapers[item.board_id]
+                scraper_type = cfg.scraper_type
+                scraper_config = cfg.scraper_config
+                fallback_scraper_type = cfg.fallback_scraper_type
+                fallback_scraper_config = cfg.fallback_scraper_config
 
-            if await _process_one_scrape(item, pool, http, scraper_type, scraper_config):
+            if await _process_one_scrape(
+                item,
+                pool,
+                http,
+                scraper_type,
+                scraper_config,
+                fallback_scraper_type,
+                fallback_scraper_config,
+            ):
                 succeeded += 1
         except Exception:
             log.exception("batch.scrape.pipeline_error", url=item.url)
@@ -837,11 +923,11 @@ async def process_scrape_batch(
     board_ids = {item.board_id for item in items if item.board_id}
     board_scrapers = await _load_board_scrapers(pool, board_ids)
 
-    # Group by target hostname
+    # Group by scrape domain
     groups: defaultdict[str, list[ScrapeItem]] = defaultdict(list)
-    for item in items:
-        host = urlparse(item.url).hostname or "unknown"
-        groups[host].append(item)
+    for item, row in zip(items, rows, strict=True):
+        domain = row["scrape_domain"] or urlparse(item.url).hostname or "unknown"
+        groups[domain].append(item)
 
     log.info("batch.scrape.start", items=len(items), domains=len(groups))
 
@@ -853,3 +939,91 @@ async def process_scrape_batch(
 
     succeeded = sum(t.result() for t in tasks)
     return BatchResult(processed=len(items), succeeded=succeeded, failed=len(items) - succeeded)
+
+
+# ── Single Board ──────────────────────────────────────────────────────
+
+_FETCH_BOARD_BY_SLUG = """
+SELECT * FROM job_board WHERE board_slug = $1
+"""
+
+_FETCH_BOARD_SCRAPE_ITEMS = """
+SELECT id, source_url, board_id, scrape_domain
+FROM job_posting
+WHERE board_id = $1
+  AND status = 'active'
+  AND next_scrape_at IS NOT NULL
+  AND next_scrape_at <= now()
+"""
+
+_FETCH_BOARD_ALL_ACTIVE = """
+SELECT id, source_url, board_id, scrape_domain
+FROM job_posting
+WHERE board_id = $1
+  AND status = 'active'
+"""
+
+
+async def run_single_board(
+    pool: asyncpg.Pool,
+    http: httpx.AsyncClient,
+    board_slug: str,
+    *,
+    force_rescrape: bool = False,
+) -> None:
+    """Process a single board end-to-end: monitor then scrape.
+
+    Bypasses scheduling — fetches the board directly by slug and processes
+    all due scrape items for that board after the monitor run.
+    When *force_rescrape* is True, scrapes all active jobs regardless of schedule.
+    """
+    board = await pool.fetchrow(_FETCH_BOARD_BY_SLUG, board_slug)
+    if not board:
+        log.error("single_board.not_found", board_slug=board_slug)
+        return
+
+    board_id = str(board["id"])
+    log.info("single_board.monitor.start", board_slug=board_slug, board_id=board_id)
+
+    # Monitor
+    await _process_one_board(board, pool, http)
+
+    # Scrape items for this board
+    query = _FETCH_BOARD_ALL_ACTIVE if force_rescrape else _FETCH_BOARD_SCRAPE_ITEMS
+    rows = await pool.fetch(query, board["id"])
+    if not rows:
+        log.info("single_board.scrape.none_due", board_slug=board_slug)
+        return
+
+    items = [
+        ScrapeItem(
+            job_posting_id=str(row["id"]),
+            url=row["source_url"],
+            board_id=board_id,
+        )
+        for row in rows
+    ]
+
+    board_scrapers = await _load_board_scrapers(pool, {board_id})
+
+    groups: defaultdict[str, list[ScrapeItem]] = defaultdict(list)
+    for item, row in zip(items, rows, strict=True):
+        domain = row["scrape_domain"] or urlparse(item.url).hostname or "unknown"
+        groups[domain].append(item)
+
+    log.info("single_board.scrape.start", board_slug=board_slug, items=len(items))
+
+    tasks: list[asyncio.Task[int]] = []
+    async with asyncio.TaskGroup() as tg:
+        for group_items in groups.values():
+            tasks.append(tg.create_task(_scrape_pipeline(group_items, pool, http, board_scrapers)))
+
+    succeeded = sum(t.result() for t in tasks)
+    failed = len(items) - succeeded
+    log.info(
+        "single_board.complete",
+        board_slug=board_slug,
+        scraped=len(items),
+        succeeded=succeeded,
+        failed=failed,
+    )
