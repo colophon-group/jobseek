@@ -9,6 +9,7 @@ constructor-tech,constructor-tech-careers-gh,https://job-boards.greenhouse.io/co
 databricks,databricks-careers,https://www.databricks.com/company/careers,greenhouse,"{""token"": ""databricks""}",,,,
 deepjudge,deepjudge-careers,https://jobs.ashbyhq.com/deepjudge,ashby,"{""token"": ""deepjudge""}",,,,
 deepmind,deepmind-careers,https://deepmind.google/about/careers/,greenhouse,"{""token"": ""deepmind""}",,,,
+dphi-space,dphi-space-careers,https://www.dphispace.com/careers,dom,,dom,"{""render"": true, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""div"", ""attr"": ""class=text-gray-600"", ""field"": ""locations""}, {""tag"": ""p"", ""attr"": ""class=text-gray-700"", ""field"": ""description"", ""html"": true, ""stop_count"": 100}]}",,
 elevenlabs,elevenlabs-careers,https://jobs.ashbyhq.com/elevenlabs,ashby,"{""token"": ""elevenlabs""}",,,,
 exa-ai,exa-ai-careers,https://jobs.ashbyhq.com/exa,ashby,,,,,
 figma,figma-careers,https://boards.greenhouse.io/figma,greenhouse,"{""token"": ""figma""}",,,,
