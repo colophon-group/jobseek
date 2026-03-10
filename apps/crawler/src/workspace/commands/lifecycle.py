@@ -176,12 +176,12 @@ def new(slug: str, issue: int | None, reconfig: bool, reset: bool):
             git.commit(f"Add {slug}")
             out.plain("git", f'Committed: "Add {slug}"')
 
-        # Push branch (needed before creating PR)
-        git.push(branch, set_upstream=True)
-        out.plain("git", f"Pushed to origin/{branch}")
+            # Push branch (needed before creating PR)
+            git.push(branch, set_upstream=True)
+            out.plain("git", f"Pushed to origin/{branch}")
 
-        # Create draft PR (unless reusing one from a previous attempt)
-        if not pr_number:
+        # Create draft PR (unless reusing one or deferring for reconfig)
+        if not pr_number and not reconfig:
             pr_body = f"Closes #{issue}" if issue else ""
             pr_number = git.create_draft_pr(
                 title=pr_title,
@@ -853,9 +853,19 @@ def _execute_submit_step(
             return  # Local mode — skip push
         from src.workspace import git
 
-        if not git.is_ahead_of_remote():
-            return  # Already pushed
-        git.push()
+        git.push(ws.branch, set_upstream=True)
+
+        # Create PR if it doesn't exist yet (e.g. reconfig deferred PR creation)
+        if not ws.pr:
+            pr_title = (
+                f"Reconfigure {ws.name or ws.slug}"
+                if ws.branch.startswith("fix-crawler/")
+                else f"Add {ws.name or ws.slug}"
+            )
+            pr_body = f"Closes #{ws.issue}" if ws.issue else ""
+            ws.pr = git.create_draft_pr(title=pr_title, body=pr_body)
+            save_workspace(ws)
+            out.info("github", f"Created draft PR #{ws.pr}")
 
     elif step_key == "pr_body_updated":
         if local:
