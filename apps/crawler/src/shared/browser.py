@@ -41,7 +41,7 @@ OVERLAY_SELECTORS = (
 
 # Browser config keys recognised by open_page / navigate / run_actions.
 # Used by scrapers and monitors to separate browser keys from other config.
-BROWSER_KEYS = frozenset({"wait", "timeout", "user_agent", "headless", "actions"})
+BROWSER_KEYS = frozenset({"wait", "timeout", "user_agent", "headless", "actions", "warmup_url"})
 
 # ---------------------------------------------------------------------------
 # Public API
@@ -64,12 +64,16 @@ async def open_page(
     config = config or {}
     headless = config.get("headless", True)
     user_agent = config.get("user_agent", DEFAULT_USER_AGENT)
+    warmup_url = config.get("warmup_url")
 
     browser = await pw.chromium.launch(headless=headless)
     context = None
     try:
         context = await browser.new_context(user_agent=user_agent)
         page = await context.new_page()
+        if warmup_url:
+            log.debug("browser.warmup", url=warmup_url)
+            await page.goto(warmup_url, wait_until="domcontentloaded", timeout=DEFAULT_TIMEOUT)
         yield page
     finally:
         if context:
