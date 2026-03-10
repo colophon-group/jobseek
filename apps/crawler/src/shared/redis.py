@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import os
+from typing import TYPE_CHECKING, Any
 
-_client: "Redis | None" = None
+if TYPE_CHECKING:
+    from upstash_redis.asyncio import Redis
+
+_client: Any = None
 _checked = False
 
 
-def get_redis() -> "Redis | None":
+def get_redis() -> Redis | None:
     """Return the shared async Redis client, creating it on first call.
 
     Resolves credentials from environment first, then ``src.config.settings``.

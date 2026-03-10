@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import sys
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -16,50 +18,63 @@ def _reset_cache(monkeypatch):
     monkeypatch.setattr(redis_module, "_checked", False)
 
 
-def test_get_redis_uses_settings_when_env_missing(monkeypatch):
+@pytest.fixture()
+def _mock_settings(monkeypatch):
+    """Inject a fake src.config module with a settings object."""
+    fake_settings = SimpleNamespace(
+        upstash_redis_rest_url="https://example.upstash.io",
+        upstash_redis_rest_token="token-123",
+    )
+    fake_config = SimpleNamespace(settings=fake_settings)
+    monkeypatch.setitem(sys.modules, "src.config", fake_config)
+    return fake_settings
+
+
+@pytest.fixture()
+def _mock_redis_class(monkeypatch):
+    """Inject a fake upstash_redis.asyncio module with a Redis constructor."""
+    redis_ctor = MagicMock(return_value=object())
+    fake_asyncio_mod = SimpleNamespace(Redis=redis_ctor)
+    monkeypatch.setitem(sys.modules, "upstash_redis", SimpleNamespace())
+    monkeypatch.setitem(sys.modules, "upstash_redis.asyncio", fake_asyncio_mod)
+    return redis_ctor
+
+
+def test_get_redis_uses_settings_when_env_missing(
+    monkeypatch, _mock_settings, _mock_redis_class
+):
     monkeypatch.delenv("UPSTASH_REDIS_REST_URL", raising=False)
     monkeypatch.delenv("UPSTASH_REDIS_REST_TOKEN", raising=False)
-    monkeypatch.setattr(
-        redis_module.settings, "upstash_redis_rest_url", "https://example.upstash.io"
-    )
-    monkeypatch.setattr(redis_module.settings, "upstash_redis_rest_token", "token-123")
-
-    redis_ctor = MagicMock(return_value=object())
-    monkeypatch.setattr(redis_module, "Redis", redis_ctor)
 
     client = redis_module.get_redis()
 
     assert client is not None
-    redis_ctor.assert_called_once_with(url="https://example.upstash.io", token="token-123")
+    _mock_redis_class.assert_called_once_with(
+        url="https://example.upstash.io", token="token-123"
+    )
 
 
-def test_get_redis_prefers_env_over_settings(monkeypatch):
+def test_get_redis_prefers_env_over_settings(
+    monkeypatch, _mock_settings, _mock_redis_class
+):
     monkeypatch.setenv("UPSTASH_REDIS_REST_URL", "https://env.upstash.io")
     monkeypatch.setenv("UPSTASH_REDIS_REST_TOKEN", "env-token")
-    monkeypatch.setattr(
-        redis_module.settings, "upstash_redis_rest_url", "https://settings.upstash.io"
-    )
-    monkeypatch.setattr(redis_module.settings, "upstash_redis_rest_token", "settings-token")
-
-    redis_ctor = MagicMock(return_value=object())
-    monkeypatch.setattr(redis_module, "Redis", redis_ctor)
 
     client = redis_module.get_redis()
 
     assert client is not None
-    redis_ctor.assert_called_once_with(url="https://env.upstash.io", token="env-token")
+    _mock_redis_class.assert_called_once_with(
+        url="https://env.upstash.io", token="env-token"
+    )
 
 
-def test_get_redis_returns_none_when_unconfigured(monkeypatch):
+def test_get_redis_returns_none_when_unconfigured(monkeypatch, _mock_redis_class):
     monkeypatch.delenv("UPSTASH_REDIS_REST_URL", raising=False)
     monkeypatch.delenv("UPSTASH_REDIS_REST_TOKEN", raising=False)
-    monkeypatch.setattr(redis_module.settings, "upstash_redis_rest_url", "")
-    monkeypatch.setattr(redis_module.settings, "upstash_redis_rest_token", "")
-
-    redis_ctor = MagicMock(return_value=object())
-    monkeypatch.setattr(redis_module, "Redis", redis_ctor)
+    # Remove src.config from modules so the lazy import fails gracefully
+    monkeypatch.delitem(sys.modules, "src.config", raising=False)
 
     client = redis_module.get_redis()
 
     assert client is None
-    redis_ctor.assert_not_called()
+    _mock_redis_class.assert_not_called()
