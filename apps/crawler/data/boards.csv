@@ -11,6 +11,7 @@ deepjudge,deepjudge-careers,https://jobs.ashbyhq.com/deepjudge,ashby,"{""token""
 deepmind,deepmind-careers,https://deepmind.google/about/careers/,greenhouse,"{""token"": ""deepmind""}",,
 dphi-space,dphi-space-careers,https://www.dphispace.com/careers,dom,,dom,"{""render"": true, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""div"", ""attr"": ""class=text-gray-600"", ""field"": ""locations""}, {""tag"": ""p"", ""attr"": ""class=text-gray-700"", ""field"": ""description"", ""html"": true, ""stop_count"": 100}]}"
 elevenlabs,elevenlabs-careers,https://jobs.ashbyhq.com/elevenlabs,ashby,"{""token"": ""elevenlabs""}",,
+ethon-ai,ethon-ai-careers,https://ethonai.recruitee.com,recruitee,,,
 exa-ai,exa-ai-careers,https://jobs.ashbyhq.com/exa,ashby,,,
 figma,figma-careers,https://boards.greenhouse.io/figma,greenhouse,"{""token"": ""figma""}",,
 glovo,glovo-careers,https://careers.glovoapp.com/jobs-at-glovo/,sitemap,"{""sitemap_url"": ""https://careers.glovoapp.com/sitemap_index.xml"", ""url_filter"": ""/job/""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""p"", ""attr"": ""class=address"", ""field"": ""locations""}, {""tag"": ""p"", ""attr"": ""class=jobtype"", ""field"": ""employment_type"", ""optional"": true}, {""text"": ""Job Description"", ""field"": ""description"", ""offset"": 1, ""stop"": ""Apply shortlist"", ""html"": true}]}"
