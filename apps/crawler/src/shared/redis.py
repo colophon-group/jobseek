@@ -12,7 +12,7 @@ _client: Any = None
 _checked = False
 
 
-def get_redis() -> Redis | None:
+def get_redis() -> "Redis | None":
     """Return the shared async Redis client, creating it on first call.
 
     Resolves credentials from environment first, then ``src.config.settings``.
