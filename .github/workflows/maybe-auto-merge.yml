@@ -79,35 +79,50 @@ jobs:
           fi
 
           # Conflicts — resolve CSV files (the only kind possible for auto-merge PRs)
-          conflicted=$(git diff --name-only --diff-filter=U)
+          # Loop handles multi-commit rebases where successive commits conflict
+          while true; do
+            conflicted=$(git diff --name-only --diff-filter=U)
+            [ -z "$conflicted" ] && break
 
-          for file in $conflicted; do
-            if [[ "$file" == "apps/crawler/VERSION" ]]; then
-              git checkout --ours "$file"
-              current=$(cat "$file" | tr -d '[:space:]')
-              IFS='.' read -r major minor patch <<< "$current"
-              echo "${major}.${minor}.$((patch + 1))" > "$file"
-            elif [[ "$file" == *.csv ]]; then
-              # Union merge: take main's version, append new rows from PR
-              git checkout --ours "$file"
-              git show REBASE_HEAD:"$file" | while IFS= read -r line; do
-                if ! grep -qxF "$line" "$file"; then
-                  echo "$line" >> "$file"
-                fi
-              done
-            else
-              git checkout --ours "$file"
+            for file in $conflicted; do
+              if [[ "$file" == "apps/crawler/VERSION" ]]; then
+                git checkout --ours "$file"
+                current=$(cat "$file" | tr -d '[:space:]')
+                IFS='.' read -r major minor patch <<< "$current"
+                echo "${major}.${minor}.$((patch + 1))" > "$file"
+              elif [[ "$file" == *.csv ]]; then
+                # Union merge: take main's version, then apply PR's changes
+                git checkout --ours "$file"
+                git show REBASE_HEAD:"$file" | while IFS= read -r line; do
+                  if ! grep -qxF "$line" "$file"; then
+                    echo "$line" >> "$file"
+                  fi
+                done
+              else
+                git checkout --ours "$file"
+              fi
+              git add "$file"
+            done
+
+            if GIT_EDITOR=true git rebase --continue 2>/dev/null; then
+              break
             fi
-            git add "$file"
           done
 
-          GIT_EDITOR=true git rebase --continue
           git push --force-with-lease origin "$BRANCH"
           echo "rebased=true" >> "$GITHUB_OUTPUT"
 
       - name: Merge
         if: steps.rebase.outputs.rebased == 'true' && steps.images.outputs.pending == 'false'
         run: |
+          # Retry merge — GitHub needs time to update mergeability after force-push
+          for i in 1 2 3; do
+            if gh pr merge "$PR" --repo "$REPO" --rebase 2>/dev/null; then
+              exit 0
+            fi
+            echo "Merge attempt $i failed, waiting..."
+            sleep 5
+          done
           gh pr merge "$PR" --repo "$REPO" --rebase
         env:
           GH_TOKEN: ${{ github.token }}
