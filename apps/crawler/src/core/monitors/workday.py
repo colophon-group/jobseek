@@ -31,11 +31,13 @@ log = structlog.get_logger()
 
 MAX_JOBS = 10_000
 PAGE_SIZE = 20
-CONCURRENCY = 5
+CONCURRENCY = 3
 _API_RESULT_CAP = 2000  # Workday caps list results at 2000 per query
-_DETAIL_DELAY = 0.2  # Seconds between detail requests (per-slot)
+_DETAIL_DELAY = 0.3  # Seconds between detail requests (per-slot)
 _RETRY_ATTEMPTS = 3
 _RETRY_BACKOFF = (5.0, 15.0, 30.0)  # Backoff per attempt on 429
+_DETAIL_PHASE_TIMEOUT = 300  # 5 min max for all detail fetches
+_GLOBAL_BACKOFF = 10.0  # All slots pause when any slot hits 429
 
 # Matches Workday board URLs, optionally with locale prefix (e.g. /en-US/)
 _URL_RE = re.compile(
@@ -158,12 +160,25 @@ async def _fetch_detail(
     external_path: str,
     client: httpx.AsyncClient,
     semaphore: asyncio.Semaphore,
+    backoff_lock: asyncio.Lock,
+    backoff_until: list[float],
 ) -> dict | None:
-    """Fetch a single posting's detail with rate limiting and retry on 429."""
+    """Fetch a single posting's detail with rate limiting and retry on 429.
+
+    Uses a shared ``backoff_until`` (mutable list with one float element) so
+    that when *any* slot hits a 429 all other slots pause too, preventing a
+    thundering-herd of retries.
+    """
     async with semaphore:
         url = _api_detail_url(company, wd_instance, site, external_path)
         for attempt in range(_RETRY_ATTEMPTS):
             try:
+                # Respect global backoff set by another slot
+                now = asyncio.get_event_loop().time()
+                wait = backoff_until[0] - now
+                if wait > 0:
+                    await asyncio.sleep(wait)
+
                 await asyncio.sleep(_DETAIL_DELAY)
                 resp = await client.get(url)
                 if resp.status_code == 429:
@@ -174,6 +189,11 @@ async def _fetch_detail(
                         attempt=attempt + 1,
                         backoff_s=backoff,
                     )
+                    # Set global backoff so all slots pause
+                    async with backoff_lock:
+                        resume_at = asyncio.get_event_loop().time() + _GLOBAL_BACKOFF
+                        if resume_at > backoff_until[0]:
+                            backoff_until[0] = resume_at
                     await asyncio.sleep(backoff)
                     continue
                 if resp.status_code != 200:
@@ -353,18 +373,42 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
     external_paths = await _api_list(company, wd_instance, site, client)
     log.info("workday.listed", company=company, site=site, postings=len(external_paths))
 
-    # Step 2: Fetch details concurrently
+    # Step 2: Fetch details concurrently with shared backoff + timeout
     semaphore = asyncio.Semaphore(CONCURRENCY)
+    backoff_lock = asyncio.Lock()
+    backoff_until: list[float] = [0.0]
     tasks = [
-        _fetch_detail(company, wd_instance, site, path, client, semaphore)
+        _fetch_detail(
+            company,
+            wd_instance,
+            site,
+            path,
+            client,
+            semaphore,
+            backoff_lock,
+            backoff_until,
+        )
         for path in external_paths
     ]
-    detail_results = await asyncio.gather(*tasks)
+    try:
+        detail_results = await asyncio.wait_for(
+            asyncio.gather(*tasks, return_exceptions=True),
+            timeout=_DETAIL_PHASE_TIMEOUT,
+        )
+    except TimeoutError:
+        log.warning(
+            "workday.detail_phase_timeout",
+            company=company,
+            site=site,
+            postings=len(external_paths),
+            timeout_s=_DETAIL_PHASE_TIMEOUT,
+        )
+        detail_results = []
 
-    # Step 3: Parse into DiscoveredJobs
+    # Step 3: Parse into DiscoveredJobs (skip exceptions from gather)
     jobs: list[DiscoveredJob] = []
     for detail in detail_results:
-        if detail is None:
+        if detail is None or isinstance(detail, BaseException):
             continue
         parsed_job = _parse_job(detail, company, wd_instance, site)
         if parsed_job:
