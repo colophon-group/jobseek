@@ -33,12 +33,14 @@ Use web research to confirm:
 Research tips:
 - Do not assume a specific country or geography unless the issue explicitly says so.
 - If the company website is down, check LinkedIn or other sources before rejecting — "website unavailable" is different from "company not found".
+- **Search in the company's language**, not just English. Many companies host careers pages in their local language (e.g., "carrières", "Karriere", "carreras", "lavora con noi"). Try `<company> carrières` or `<company> Karriere` early — don't exhaust dozens of English-only searches first.
+- **Stop after 5 searches.** If you haven't found a careers page by then, reject with `no-job-board` and note what you tried.
 
 Do not use crawler tooling at this stage. If the issue URL is missing or ambiguous,
 check the company's own website for a "Careers" or "Jobs" link.
 
 If the company doesn't exist or can't be identified, reject with `not-a-company` or `company-not-found`.
-If there's no public careers page, reject with `no-job-board`.
+If there's no public careers page and the user cannot provide a URL, reject with `no-job-board`.
 
 ```bash
 ws reject --issue {issue} --reason <key> --message "..."
