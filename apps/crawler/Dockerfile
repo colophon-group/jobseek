@@ -23,9 +23,11 @@ RUN uv sync --frozen --no-dev --no-install-project
 COPY src/ src/
 COPY data/ data/
 
-# Install the project itself, then download the matching browser binary
-RUN uv sync --frozen --no-dev
-RUN uv run playwright install --only-shell chromium
+# Install the project itself, then download the matching browser binary.
+# --no-sync in playwright install prevents uv from re-syncing (adding dev deps).
+RUN uv sync --frozen --no-dev \
+    && uv run --no-sync playwright install --only-shell chromium
 
-# Default to scheduler; override with fly.toml [processes]
-CMD ["uv", "run", "scheduler"]
+# --no-sync: environment is fully set up at build time, skip runtime re-sync
+# (without this, uv re-adds dev deps like ruff/pytest at startup)
+CMD ["uv", "run", "--no-sync", "scheduler"]
