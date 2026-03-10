@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     crawler_batch_limit: int = 200
     crawler_poll_interval: int = 15
+    crawler_max_concurrent: int = 20
 
     model_config = SettingsConfigDict(env_file=(".env", ".env.local"), extra="ignore")
 

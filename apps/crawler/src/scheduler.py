@@ -1,7 +1,8 @@
 """Scheduler — Layer 3.
 
 Environment-specific entry point that calls the batch processor on a schedule.
-Default: Fly.io poll loop. Also supports one-shot mode for CLI / CI.
+Default: continuous worker pool. Also supports one-shot mode for CLI / CI
+and the legacy poll loop (run_poll_loop, kept for rollback).
 """
 
 from __future__ import annotations
@@ -14,7 +15,14 @@ import uuid
 
 import structlog
 
-from src.batch import process_monitor_batch, process_scrape_batch, run_single_board
+from src.batch import (
+    WorkItem,
+    claim_monitor_work,
+    claim_scrape_work,
+    process_monitor_batch,
+    process_scrape_batch,
+    run_single_board,
+)
 from src.config import settings
 from src.db import close_pool, create_pool
 from src.shared.http import create_http_client
@@ -73,6 +81,146 @@ def _batch_log_kwargs(result) -> dict:
     return info
 
 
+# ── Worker Pool ──────────────────────────────────────────────────────
+
+
+class WorkerPool:
+    """Bounded async worker pool with per-domain exclusion.
+
+    Asyncio is single-threaded so set operations between await points are
+    atomic — no locks needed.
+    """
+
+    def __init__(self, max_concurrent: int) -> None:
+        self._semaphore = asyncio.Semaphore(max_concurrent)
+        self._max = max_concurrent
+        self._domains_inflight: set[str] = set()
+        self._tasks: set[asyncio.Task] = set()
+        self.total_submitted = 0
+        self.succeeded = 0
+        self.failed = 0
+
+    @property
+    def free_slots(self) -> int:
+        return self._semaphore._value
+
+    @property
+    def inflight_domains(self) -> list[str]:
+        return list(self._domains_inflight)
+
+    @property
+    def active_count(self) -> int:
+        return self._max - self._semaphore._value
+
+    def submit(self, item: WorkItem) -> None:
+        """Schedule a work item. Caller must check free_slots > 0 first."""
+        self.total_submitted += 1
+        self._domains_inflight.add(item.domain)
+        task = asyncio.get_event_loop().create_task(self._run(item))
+        self._tasks.add(task)
+        task.add_done_callback(self._tasks.discard)
+
+    async def _run(self, item: WorkItem) -> None:
+        await self._semaphore.acquire()
+        try:
+            ok, _elapsed = await item.run()
+            if ok:
+                self.succeeded += 1
+            else:
+                self.failed += 1
+        except Exception:
+            self.failed += 1
+            log.exception("pool.task_error", domain=item.domain, kind=item.kind)
+        finally:
+            self._domains_inflight.discard(item.domain)
+            self._semaphore.release()
+
+    async def drain(self) -> None:
+        """Wait for all in-flight tasks to complete."""
+        if self._tasks:
+            await asyncio.gather(*self._tasks, return_exceptions=True)
+
+
+# ── Continuous Loop ──────────────────────────────────────────────────
+
+
+async def run_continuous_loop(
+    pool,
+    http,
+    shutdown_event: asyncio.Event,
+    *,
+    monitor: bool = True,
+    scrape: bool = True,
+    worker_id: str = "",
+    max_concurrent: int = 0,
+) -> None:
+    """Continuous worker pool scheduler.
+
+    Claims 1 item per domain, submits to a bounded pool, and refills as
+    slots free up. Monitors get priority; scrapes fill remaining capacity.
+    """
+    worker_id = worker_id or WORKER_ID
+    max_concurrent = max_concurrent or settings.crawler_max_concurrent
+    max_interval = settings.crawler_poll_interval
+    idle_interval = 1.0
+
+    wp = WorkerPool(max_concurrent)
+    log.info(
+        "pool.starting",
+        max_concurrent=max_concurrent,
+        monitor=monitor,
+        scrape=scrape,
+    )
+
+    while not shutdown_event.is_set():
+        work_found = False
+
+        # Phase 1: monitors (priority)
+        if monitor and wp.free_slots > 0:
+            items = await claim_monitor_work(
+                pool, http, wp.free_slots, worker_id, wp.inflight_domains
+            )
+            for item in items:
+                wp.submit(item)
+                work_found = True
+
+        # Phase 2: scrapes (fill remaining)
+        if scrape and wp.free_slots > 0:
+            items = await claim_scrape_work(
+                pool, http, wp.free_slots, worker_id, wp.inflight_domains
+            )
+            for item in items:
+                wp.submit(item)
+                work_found = True
+
+        if work_found or wp.active_count > 0:
+            if wp.active_count > 0:
+                log.debug(
+                    "pool.status",
+                    active=wp.active_count,
+                    succeeded=wp.succeeded,
+                    failed=wp.failed,
+                )
+            idle_interval = 1.0
+        else:
+            idle_interval = min(idle_interval * 2, max_interval)
+
+        with contextlib.suppress(TimeoutError):
+            await asyncio.wait_for(shutdown_event.wait(), timeout=idle_interval)
+
+    log.info("pool.draining", active=wp.active_count)
+    await wp.drain()
+    log.info(
+        "pool.stopped",
+        total_submitted=wp.total_submitted,
+        succeeded=wp.succeeded,
+        failed=wp.failed,
+    )
+
+
+# ── One-shot mode ────────────────────────────────────────────────────
+
+
 async def run_once(
     pool,
     http,
@@ -90,6 +238,9 @@ async def run_once(
     if scrape:
         result = await process_scrape_batch(pool, http, limit=limit, worker_id=WORKER_ID)
         log.info("scheduler.scrape_batch", **_batch_log_kwargs(result))
+
+
+# ── Legacy poll loop (kept for rollback) ─────────────────────────────
 
 
 async def run_poll_loop(
@@ -131,6 +282,9 @@ async def run_poll_loop(
             await asyncio.wait_for(shutdown_event.wait(), timeout=idle_interval)
 
 
+# ── Entry point ──────────────────────────────────────────────────────
+
+
 async def run() -> None:
     args = parse_args()
     setup_logging(settings.log_level)
@@ -140,11 +294,12 @@ async def run() -> None:
 
     log.info(
         "scheduler.starting",
-        mode="once" if args.once else "poll",
+        mode="once" if args.once else "pool",
         monitor=do_monitor,
         scrape=do_scrape,
         batch_limit=settings.crawler_batch_limit,
         poll_interval=settings.crawler_poll_interval,
+        max_concurrent=settings.crawler_max_concurrent,
     )
 
     pool = await create_pool()
@@ -161,7 +316,7 @@ async def run() -> None:
             for sig in (signal.SIGTERM, signal.SIGINT):
                 loop.add_signal_handler(sig, lambda: shutdown_event.set())
 
-            await run_poll_loop(
+            await run_continuous_loop(
                 pool,
                 http,
                 shutdown_event,

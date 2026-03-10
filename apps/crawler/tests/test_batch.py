@@ -8,6 +8,8 @@ import pytest
 
 from src.batch import (
     _BATCH_UPDATE_RICH_CONTENT,
+    _CLAIM_MONITORS,
+    _CLAIM_SCRAPES,
     _CREATE_RICH_UPDATES_TEMP,
     _DELIST_BOARD_POSTINGS,
     _INSERT_RICH_JOB,
@@ -31,6 +33,8 @@ from src.batch import (
     _process_one_scrape,
     _scrape_pipeline,
     _throttle_key,
+    claim_monitor_work,
+    claim_scrape_work,
     process_monitor_batch,
     process_scrape_batch,
 )
@@ -1099,3 +1103,161 @@ class TestProcessScrapeBatch:
         call_args = pool.fetch.await_args.args
         assert call_args[1] == 200  # limit
         assert call_args[2] == "test-w"  # worker_id
+
+
+# ── TestClaimMonitorWork ─────────────────────────────────────────────
+
+
+def _mock_board_row(**overrides):
+    """Create a dict-like mock for a CLAIM_MONITORS result row."""
+    defaults = {
+        "id": "board-1",
+        "company_id": "company-1",
+        "board_url": "https://example.com/jobs",
+        "crawler_type": "greenhouse",
+        "throttle_key": "greenhouse",
+        "metadata": None,
+    }
+    defaults.update(overrides)
+    record = MagicMock()
+    record.__getitem__ = lambda self, key: defaults[key]
+    return record
+
+
+class TestClaimMonitorWork:
+    async def test_empty_result(self, mock_pool, mock_http):
+        """No due boards → empty list."""
+        pool, _ = mock_pool
+        pool.fetch.return_value = []
+        items = await claim_monitor_work(pool, mock_http, 10, "w", [])
+        assert items == []
+
+    async def test_correct_domain(self, mock_pool, mock_http):
+        """WorkItem.domain comes from throttle_key."""
+        pool, _ = mock_pool
+        pool.fetch.return_value = [_mock_board_row(throttle_key="greenhouse")]
+        items = await claim_monitor_work(pool, mock_http, 10, "w", [])
+        assert len(items) == 1
+        assert items[0].domain == "greenhouse"
+        assert items[0].kind == "monitor"
+
+    async def test_exclude_domains_passed(self, mock_pool, mock_http):
+        """Exclude domains list is passed as $3 to the query."""
+        pool, _ = mock_pool
+        pool.fetch.return_value = []
+        await claim_monitor_work(pool, mock_http, 5, "w1", ["greenhouse", "lever"])
+        call_args = pool.fetch.await_args.args
+        assert call_args[0] == _CLAIM_MONITORS
+        assert call_args[1] == 5
+        assert call_args[2] == "w1"
+        assert call_args[3] == ["greenhouse", "lever"]
+
+    async def test_limit_zero_noop(self, mock_pool, mock_http):
+        """limit=0 returns empty without querying."""
+        pool, _ = mock_pool
+        items = await claim_monitor_work(pool, mock_http, 0, "w", [])
+        assert items == []
+        pool.fetch.assert_not_awaited()
+
+    @patch("src.batch._process_one_board", new_callable=AsyncMock)
+    async def test_run_calls_process_one_board(self, mock_process, mock_pool, mock_http):
+        """WorkItem.run() calls _process_one_board with correct args."""
+        pool, _ = mock_pool
+        board_row = _mock_board_row()
+        pool.fetch.return_value = [board_row]
+        mock_process.return_value = (True, 1.0)
+
+        items = await claim_monitor_work(pool, mock_http, 10, "w", [])
+        result = await items[0].run()
+
+        assert result == (True, 1.0)
+        mock_process.assert_awaited_once_with(board_row, pool, mock_http)
+
+
+# ── TestClaimScrapeWork ──────────────────────────────────────────────
+
+
+def _mock_scrape_row(**overrides):
+    """Create a dict-like mock for a CLAIM_SCRAPES result row."""
+    defaults = {
+        "id": "jp-1",
+        "source_url": "https://example.com/jobs/1",
+        "board_id": "board-1",
+        "scrape_domain": "example.com",
+    }
+    defaults.update(overrides)
+    record = MagicMock()
+    record.__getitem__ = lambda self, key: defaults[key]
+    return record
+
+
+class TestClaimScrapeWork:
+    @patch("src.batch._load_board_scrapers", new_callable=AsyncMock)
+    async def test_empty_result(self, mock_scrapers, mock_pool, mock_http):
+        """No due postings → empty list."""
+        pool, _ = mock_pool
+        pool.fetch.return_value = []
+        items = await claim_scrape_work(pool, mock_http, 10, "w", [])
+        assert items == []
+        mock_scrapers.assert_not_awaited()
+
+    @patch("src.batch._load_board_scrapers", new_callable=AsyncMock)
+    async def test_correct_domain(self, mock_scrapers, mock_pool, mock_http):
+        """WorkItem.domain comes from scrape_domain."""
+        pool, _ = mock_pool
+        pool.fetch.return_value = [_mock_scrape_row(scrape_domain="example.com")]
+        mock_scrapers.return_value = {}
+        items = await claim_scrape_work(pool, mock_http, 10, "w", [])
+        assert len(items) == 1
+        assert items[0].domain == "example.com"
+        assert items[0].kind == "scrape"
+
+    @patch("src.batch._load_board_scrapers", new_callable=AsyncMock)
+    async def test_null_scrape_domain_fallback(self, mock_scrapers, mock_pool, mock_http):
+        """NULL scrape_domain falls back to urlparse hostname."""
+        pool, _ = mock_pool
+        pool.fetch.return_value = [
+            _mock_scrape_row(
+                scrape_domain=None,
+                source_url="https://careers.acme.com/job/42",
+            )
+        ]
+        mock_scrapers.return_value = {}
+        items = await claim_scrape_work(pool, mock_http, 10, "w", [])
+        assert items[0].domain == "careers.acme.com"
+
+    @patch("src.batch._load_board_scrapers", new_callable=AsyncMock)
+    async def test_exclude_domains_passed(self, mock_scrapers, mock_pool, mock_http):
+        """Exclude domains list is passed as $3 to the query."""
+        pool, _ = mock_pool
+        pool.fetch.return_value = []
+        await claim_scrape_work(pool, mock_http, 5, "w1", ["example.com"])
+        call_args = pool.fetch.await_args.args
+        assert call_args[0] == _CLAIM_SCRAPES
+        assert call_args[1] == 5
+        assert call_args[2] == "w1"
+        assert call_args[3] == ["example.com"]
+
+    @patch("src.batch._load_board_scrapers", new_callable=AsyncMock)
+    async def test_limit_zero_noop(self, mock_scrapers, mock_pool, mock_http):
+        """limit=0 returns empty without querying."""
+        pool, _ = mock_pool
+        items = await claim_scrape_work(pool, mock_http, 0, "w", [])
+        assert items == []
+        pool.fetch.assert_not_awaited()
+        mock_scrapers.assert_not_awaited()
+
+    @patch("src.batch._load_board_scrapers", new_callable=AsyncMock)
+    async def test_board_scrapers_loaded(self, mock_scrapers, mock_pool, mock_http):
+        """Board scrapers are loaded for all claimed items."""
+        pool, _ = mock_pool
+        pool.fetch.return_value = [
+            _mock_scrape_row(board_id="b1"),
+            _mock_scrape_row(id="jp-2", board_id="b2", source_url="https://other.com/j"),
+        ]
+        mock_scrapers.return_value = {
+            "b1": BoardScraperConfig(scraper_type="dom", scraper_config={"sel": "h1"}),
+        }
+        items = await claim_scrape_work(pool, mock_http, 10, "w", [])
+        assert len(items) == 2
+        mock_scrapers.assert_awaited_once_with(pool, {"b1", "b2"})

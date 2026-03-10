@@ -12,8 +12,10 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import functools
 import json
 from collections import defaultdict
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, time
 from email.utils import parsedate_to_datetime
@@ -579,6 +581,165 @@ class BatchResult:
     duration_s: float = 0.0
     slow_items: int = 0
     item_durations: list[float] = field(default_factory=list)
+
+
+@dataclass
+class WorkItem:
+    """A single unit of work for the continuous worker pool."""
+
+    domain: str
+    kind: str  # "monitor" | "scrape"
+    run: Callable[[], Awaitable[tuple[bool, float]]]
+
+
+# ── Claim Queries (Worker Pool) ──────────────────────────────────────
+
+_CLAIM_MONITORS = """
+WITH ranked AS (
+  SELECT id,
+         row_number() OVER (
+           PARTITION BY throttle_key
+           ORDER BY next_check_at, id
+         ) AS domain_rank
+  FROM job_board
+  WHERE is_enabled = true
+    AND board_status IN ('active', 'suspect')
+    AND next_check_at <= now()
+    AND (leased_until IS NULL OR leased_until < now())
+    AND throttle_key != ALL($3::text[])
+),
+picked AS (
+  SELECT id
+  FROM ranked
+  WHERE domain_rank = 1
+  ORDER BY id
+  LIMIT $1
+  FOR UPDATE SKIP LOCKED
+)
+UPDATE job_board b
+SET lease_owner = $2, leased_until = now() + interval '10 minutes',
+    last_checked_at = now(),
+    next_check_at = now() + (check_interval_minutes || ' minutes')::interval
+FROM picked WHERE b.id = picked.id
+RETURNING b.*
+"""
+
+_CLAIM_SCRAPES = """
+WITH candidates AS (
+    SELECT id, scrape_domain, next_scrape_at,
+           (title IS NULL AND description IS NULL)::int AS needs_initial_scrape
+    FROM job_posting
+    WHERE status = 'active'
+      AND next_scrape_at IS NOT NULL
+      AND next_scrape_at <= now()
+      AND (leased_until IS NULL OR leased_until < now())
+      AND (scrape_domain IS NULL OR scrape_domain != ALL($3::text[]))
+    FOR UPDATE SKIP LOCKED
+),
+ranked AS (
+    SELECT id,
+           row_number() OVER (
+               PARTITION BY scrape_domain
+               ORDER BY needs_initial_scrape DESC, next_scrape_at
+           ) AS domain_rank,
+           needs_initial_scrape, next_scrape_at
+    FROM candidates
+)
+UPDATE job_posting
+SET lease_owner = $2, leased_until = now() + interval '10 minutes'
+FROM (
+    SELECT id AS rid
+    FROM ranked
+    WHERE domain_rank = 1
+    ORDER BY needs_initial_scrape DESC, next_scrape_at
+    LIMIT $1
+) pick
+WHERE job_posting.id = pick.rid
+RETURNING job_posting.id, source_url, board_id, scrape_domain
+"""
+
+
+async def claim_monitor_work(
+    pool: asyncpg.Pool,
+    http: httpx.AsyncClient,
+    limit: int,
+    worker_id: str,
+    exclude_domains: list[str],
+) -> list[WorkItem]:
+    """Claim due boards (1 per domain) and return WorkItems."""
+    if limit <= 0:
+        return []
+
+    rows = await pool.fetch(_CLAIM_MONITORS, limit, worker_id, exclude_domains)
+    items: list[WorkItem] = []
+    for board in rows:
+        domain = board["throttle_key"]
+        items.append(
+            WorkItem(
+                domain=domain,
+                kind="monitor",
+                run=functools.partial(_process_one_board, board, pool, http),
+            )
+        )
+    return items
+
+
+async def claim_scrape_work(
+    pool: asyncpg.Pool,
+    http: httpx.AsyncClient,
+    limit: int,
+    worker_id: str,
+    exclude_domains: list[str],
+) -> list[WorkItem]:
+    """Claim due job postings (1 per domain) and return WorkItems."""
+    if limit <= 0:
+        return []
+
+    rows = await pool.fetch(_CLAIM_SCRAPES, limit, worker_id, exclude_domains)
+    if not rows:
+        return []
+
+    board_ids = {str(row["board_id"]) for row in rows if row["board_id"]}
+    board_scrapers = await _load_board_scrapers(pool, board_ids)
+
+    items: list[WorkItem] = []
+    for row in rows:
+        domain = row["scrape_domain"] or urlparse(row["source_url"]).hostname or "unknown"
+        board_id = str(row["board_id"]) if row["board_id"] else ""
+
+        scraper_type = "json-ld"
+        scraper_config: dict | None = None
+        fallback_scraper_type: str | None = None
+        fallback_scraper_config: dict | None = None
+        if board_id and board_id in board_scrapers:
+            cfg = board_scrapers[board_id]
+            scraper_type = cfg.scraper_type
+            scraper_config = cfg.scraper_config
+            fallback_scraper_type = cfg.fallback_scraper_type
+            fallback_scraper_config = cfg.fallback_scraper_config
+
+        item = ScrapeItem(
+            job_posting_id=str(row["id"]),
+            url=row["source_url"],
+            board_id=board_id,
+        )
+        items.append(
+            WorkItem(
+                domain=domain,
+                kind="scrape",
+                run=functools.partial(
+                    _process_one_scrape,
+                    item,
+                    pool,
+                    http,
+                    scraper_type,
+                    scraper_config,
+                    fallback_scraper_type,
+                    fallback_scraper_config,
+                ),
+            )
+        )
+    return items
 
 
 # ── Monitor Batch ────────────────────────────────────────────────────
