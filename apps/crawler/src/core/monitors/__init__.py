@@ -416,8 +416,12 @@ async def probe_all_monitors(
         except Exception as exc:
             return monitor.name, None, f"Error: {exc}"
 
-    tasks = [_probe_one(m) for m in _REGISTRY]
+    tasks = [_probe_one(m) for m in _REGISTRY if m.name not in _PROBE_SKIP]
     return list(await asyncio.gather(*tasks))
+
+
+# Company-specific monitors excluded from generic probing.
+_PROBE_SKIP: frozenset[str] = frozenset({"amazon"})
 
 
 # Import modules to trigger registration

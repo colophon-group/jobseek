@@ -176,8 +176,9 @@ def new(slug: str, issue: int | None, reconfig: bool, reset: bool):
             git.commit(f"Add {slug}")
             out.plain("git", f'Committed: "Add {slug}"')
 
-            git.push(branch, set_upstream=True)
-            out.plain("git", f"Pushed to origin/{branch}")
+        # Push branch (needed before creating PR)
+        git.push(branch, set_upstream=True)
+        out.plain("git", f"Pushed to origin/{branch}")
 
         # Create draft PR (unless reusing one from a previous attempt)
         if not pr_number:
@@ -232,6 +233,16 @@ def new(slug: str, issue: int | None, reconfig: bool, reset: bool):
             ws.active_board = alias
             out.info("reconfig", f"Loaded board: {alias} — {board.url}")
         save_workspace(ws)
+
+    # For reconfig, advance workflow past setup/add_boards (already satisfied)
+    if reconfig and existing_boards:
+        from src.workspace.workflow import WorkflowState, _save_wf_to_disk
+
+        wf = WorkflowState(
+            current_step="select_monitor",
+            current_board=existing_boards[0].get("board_slug", "").removeprefix(f"{slug}-"),
+        )
+        _save_wf_to_disk(slug, wf)
 
     # Set as active workspace
     set_active_slug(slug)
