@@ -71,6 +71,7 @@ stripe,stripe-careers,https://stripe.com/jobs/search,greenhouse,"{""token"": ""s
 swissquote-bank,swissquote-bank-careers,https://careers.smartrecruiters.com/Swissquote,smartrecruiters,,,
 twitch,twitch-careers,https://job-boards.greenhouse.io/twitch,greenhouse,"{""token"": ""twitch""}",,
 unlimit,unlimit-careers-lever,https://jobs.lever.co/unlimit,lever,,,
+valtech,valtech-careers,https://www.valtech.com/career/jobs/,greenhouse,"{""token"": ""valtech""}",,
 vivid-money,vivid-money-careers,https://careers.vivid.money,personio,"{""slug"": ""vivid"", ""language"": ""en""}",,
 white-circle,white-circle-careers,https://jobs.ashbyhq.com/whitecircle,ashby,"{""token"": ""whitecircle""}",,
 zalando,zalando-workday,https://zalando.wd3.myworkdayjobs.com/ZalandoSiteWD,workday,,,
