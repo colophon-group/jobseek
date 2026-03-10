@@ -31,8 +31,11 @@ log = structlog.get_logger()
 
 MAX_JOBS = 10_000
 PAGE_SIZE = 20
-CONCURRENCY = 10
+CONCURRENCY = 5
 _API_RESULT_CAP = 2000  # Workday caps list results at 2000 per query
+_DETAIL_DELAY = 0.2  # Seconds between detail requests (per-slot)
+_RETRY_ATTEMPTS = 3
+_RETRY_BACKOFF = (5.0, 15.0, 30.0)  # Backoff per attempt on 429
 
 # Matches Workday board URLs, optionally with locale prefix (e.g. /en-US/)
 _URL_RE = re.compile(
@@ -156,22 +159,36 @@ async def _fetch_detail(
     client: httpx.AsyncClient,
     semaphore: asyncio.Semaphore,
 ) -> dict | None:
-    """Fetch a single posting's detail, respecting the concurrency semaphore."""
+    """Fetch a single posting's detail with rate limiting and retry on 429."""
     async with semaphore:
-        try:
-            url = _api_detail_url(company, wd_instance, site, external_path)
-            resp = await client.get(url)
-            if resp.status_code != 200:
-                log.warning(
-                    "workday.detail_failed",
-                    external_path=external_path,
-                    status=resp.status_code,
-                )
+        url = _api_detail_url(company, wd_instance, site, external_path)
+        for attempt in range(_RETRY_ATTEMPTS):
+            try:
+                await asyncio.sleep(_DETAIL_DELAY)
+                resp = await client.get(url)
+                if resp.status_code == 429:
+                    backoff = _RETRY_BACKOFF[min(attempt, len(_RETRY_BACKOFF) - 1)]
+                    log.warning(
+                        "workday.detail_rate_limited",
+                        external_path=external_path,
+                        attempt=attempt + 1,
+                        backoff_s=backoff,
+                    )
+                    await asyncio.sleep(backoff)
+                    continue
+                if resp.status_code != 200:
+                    log.warning(
+                        "workday.detail_failed",
+                        external_path=external_path,
+                        status=resp.status_code,
+                    )
+                    return None
+                return resp.json()
+            except Exception as exc:
+                log.warning("workday.detail_error", external_path=external_path, error=str(exc))
                 return None
-            return resp.json()
-        except Exception as exc:
-            log.warning("workday.detail_error", external_path=external_path, error=str(exc))
-            return None
+        log.warning("workday.detail_exhausted", external_path=external_path)
+        return None
 
 
 async def _paginate_query(
@@ -187,13 +204,24 @@ async def _paginate_query(
 
     while True:
         payload = {**body, "limit": PAGE_SIZE, "offset": offset}
-        resp = await client.post(
-            list_url,
-            json=payload,
-            headers={"Content-Type": "application/json"},
-        )
-        resp.raise_for_status()
-        data = resp.json()
+        data = None
+        for attempt in range(_RETRY_ATTEMPTS):
+            resp = await client.post(
+                list_url,
+                json=payload,
+                headers={"Content-Type": "application/json"},
+            )
+            if resp.status_code == 429:
+                backoff = _RETRY_BACKOFF[min(attempt, len(_RETRY_BACKOFF) - 1)]
+                log.warning("workday.list_rate_limited", offset=offset, backoff_s=backoff)
+                await asyncio.sleep(backoff)
+                continue
+            resp.raise_for_status()
+            data = resp.json()
+            break
+        if data is None:
+            log.warning("workday.list_exhausted", offset=offset)
+            break
 
         if offset == 0:
             total = data.get("total", 0)
