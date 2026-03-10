@@ -321,8 +321,8 @@ def task_complete():
 
     try:
         _persist_kb_updates_if_needed(slug)
-    except GitError as exc:
-        out.die(f"Failed to persist KB updates: {exc}")
+    except GitError:
+        out.warn("kb", "Could not push KB updates — completing workflow anyway.")
 
     wf.current_step = "done"
     _save_wf_to_disk(slug, wf)
@@ -423,7 +423,12 @@ def _persist_kb_updates_if_needed(slug: str) -> None:
         commit_msg += f"\n\nRefs #{ws.issue}"
     git.commit(commit_msg)
     if git.is_ahead_of_remote():
-        git.push()
+        try:
+            git.fetch()
+            git.push()
+        except GitError:
+            out.warn("kb", "Could not push KB updates (remote branch changed). Committed locally.")
+            return
     out.info("kb", "Committed and pushed KB updates.")
 
 
