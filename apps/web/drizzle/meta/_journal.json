@@ -162,6 +162,20 @@
       "when": 1773032118873,
       "tag": "0022_orange_doomsday",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1773099403608,
+      "tag": "0023_nervous_sunfire",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1773101085244,
+      "tag": "0024_numerous_valeria_richards",
+      "breakpoints": true
     }
   ]
 }

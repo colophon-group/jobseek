@@ -1,20 +1,28 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from src.batch import (
+    _DELIST_BOARD_POSTINGS,
     _INSERT_RICH_JOB,
     _INSERT_URL_ONLY_JOBS,
+    _RECORD_EMPTY_CHECK,
     _RECORD_FAILURE,
-    _RECORD_SUCCESS,
+    _RECORD_SCRAPE_FAILURE,
+    _RECORD_SCRAPE_SUCCESS,
     _UPDATE_JOB_CONTENT,
     _UPDATE_METADATA,
     _UPDATE_RELISTED_CONTENT,
     BatchResult,
+    ScrapeItem,
+    _coerce_datetime,
+    _coerce_text,
     _jsonb,
+    _load_board_scrapers,
     _monitor_pipeline,
     _process_one_board,
     _process_one_scrape,
@@ -26,7 +34,6 @@ from src.batch import (
 from src.core.monitor import MonitorResult
 from src.core.monitors import DiscoveredJob, api_monitor_types
 from src.core.scrapers import JobContent
-from src.shared.queue import QueueItem
 
 
 class TestJsonb:
@@ -42,6 +49,23 @@ class TestJsonb:
 
     def test_with_empty_dict(self):
         assert _jsonb({}) == "{}"
+
+
+class TestTypeCoercion:
+    def test_coerce_datetime_from_iso_z(self):
+        parsed = _coerce_datetime("2026-02-17T16:12:35Z")
+        assert parsed is not None
+        assert parsed.isoformat() == "2026-02-17T16:12:35+00:00"
+
+    def test_coerce_datetime_from_rfc2822(self):
+        parsed = _coerce_datetime("Fri, 06 Feb 2026 16:31:18 +0400")
+        assert parsed is not None
+        assert parsed.isoformat() == "2026-02-06T16:31:18+04:00"
+
+    def test_coerce_text_list_to_csv(self):
+        assert (
+            _coerce_text(["Temporary positions", "Full-time"]) == "Temporary positions, Full-time"
+        )
 
 
 class TestBatchResult:
@@ -111,6 +135,8 @@ def mock_pool():
     """Return (pool, conn) where pool.acquire() yields conn inside a transaction."""
     pool = AsyncMock()
     conn = AsyncMock()
+    conn.execute = AsyncMock(return_value="UPDATE 1")
+    pool.fetch = AsyncMock(return_value=[])
 
     # pool.acquire() must be a sync call returning an async context manager
     acq_cm = AsyncMock()
@@ -187,19 +213,38 @@ def _inserted_row(row_id, source_url):
 class TestProcessOneBoard:
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one")
-    async def test_empty_result_records_success(
+    async def test_empty_result_records_empty_check(
         self, mock_monitor, mock_get_redis, mock_pool, mock_http
     ):
-        """Monitor returns empty urls -> _RECORD_SUCCESS called, no transaction."""
+        """Monitor returns empty urls -> _RECORD_EMPTY_CHECK called, no transaction."""
         pool, conn = mock_pool
         mock_monitor.return_value = MonitorResult(urls=set())
+        # _RECORD_EMPTY_CHECK now uses RETURNING, so conn.fetch returns rows
+        conn.fetch.return_value = [{"board_status": "active"}]
         board = _mock_board()
 
         await _process_one_board(board, pool, mock_http)
 
-        conn.execute.assert_awaited_once_with(_RECORD_SUCCESS, "board-1")
-        conn.fetch.assert_not_awaited()
+        conn.fetch.assert_awaited_once_with(_RECORD_EMPTY_CHECK, "board-1")
         mock_get_redis.assert_not_called()
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one")
+    async def test_empty_result_board_gone_delists_postings(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """Board transitions to 'gone' after repeated empties -> delist all postings."""
+        pool, conn = mock_pool
+        mock_monitor.return_value = MonitorResult(urls=set())
+        # Simulate board transitioning to gone
+        conn.fetch.return_value = [{"board_status": "gone"}]
+        board = _mock_board()
+
+        await _process_one_board(board, pool, mock_http)
+
+        # Both _RECORD_EMPTY_CHECK (via fetch) and _DELIST_BOARD_POSTINGS (via execute) called
+        conn.fetch.assert_awaited_once_with(_RECORD_EMPTY_CHECK, "board-1")
+        conn.execute.assert_awaited_once_with(_DELIST_BOARD_POSTINGS, "board-1")
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one")
@@ -231,21 +276,44 @@ class TestProcessOneBoard:
         assert any(c.args[0] == _INSERT_RICH_JOB for c in call_args)
 
     @patch("src.batch.get_redis")
-    @patch("src.batch.mark_seen")
-    @patch("src.batch.enqueue")
-    @patch("src.batch.filter_unseen")
     @patch("src.batch.monitor_one")
-    async def test_url_only_inserts_stubs_and_enqueues(
+    async def test_rich_data_normalizes_escaped_description(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """Escaped HTML from rich monitors is normalized before DB insert."""
+        pool, conn = mock_pool
+        url1 = "https://example.com/job/1"
+        job1 = _discovered_job(
+            url=url1,
+            description="&lt;p class=&quot;Lexical__paragraph&quot;&gt;Hello&lt;/p&gt;",
+        )
+        mock_monitor.return_value = MonitorResult(
+            urls={url1},
+            jobs_by_url={url1: job1},
+        )
+        conn.fetch.return_value = [_diff_row("new", url=url1)]
+        board = _mock_board()
+
+        await _process_one_board(board, pool, mock_http)
+
+        insert_calls = [
+            c for c in conn.executemany.await_args_list if c.args[0] == _INSERT_RICH_JOB
+        ]
+        assert len(insert_calls) == 1
+        payload = insert_calls[0].args[1]
+        assert len(payload) == 1
+        assert payload[0][3] == "<p>Hello</p>"
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one")
+    async def test_url_only_inserts_stubs_for_scrape(
         self,
         mock_monitor,
-        mock_filter_unseen,
-        mock_enqueue,
-        mock_mark_seen,
         mock_get_redis,
         mock_pool,
         mock_http,
     ):
-        """Monitor returns urls only (jobs_by_url=None) -> INSERT_URL_ONLY_JOBS + enqueue."""
+        """Monitor returns urls only (jobs_by_url=None) -> INSERT_URL_ONLY_JOBS."""
         pool, conn = mock_pool
         url1 = "https://example.com/job/1"
         mock_monitor.return_value = MonitorResult(urls={url1}, jobs_by_url=None)
@@ -255,7 +323,6 @@ class TestProcessOneBoard:
             # Second fetch call: INSERT_URL_ONLY_JOBS
             [_inserted_row("jp-1", url1)],
         ]
-        mock_filter_unseen.return_value = [url1]
         board = _mock_board()
 
         await _process_one_board(board, pool, mock_http)
@@ -264,11 +331,6 @@ class TestProcessOneBoard:
         assert conn.fetch.await_count == 2
         second_fetch = conn.fetch.await_args_list[1]
         assert second_fetch.args[0] == _INSERT_URL_ONLY_JOBS
-        # enqueue was called
-        mock_enqueue.assert_awaited_once()
-        items = mock_enqueue.await_args.args[0]
-        assert len(items) == 1
-        assert items[0].url == url1
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one")
@@ -354,16 +416,26 @@ class TestProcessOneBoard:
         assert len(error_arg) <= 500
 
     @patch("src.batch.get_redis")
-    @patch("src.batch.mark_seen")
-    @patch("src.batch.enqueue")
-    @patch("src.batch.filter_unseen")
+    @patch("src.batch.monitor_one")
+    async def test_error_records_exception_type_when_message_is_blank(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """Exceptions with empty str() should still record useful error text."""
+        pool, conn = mock_pool
+        mock_monitor.side_effect = RuntimeError()
+        board = _mock_board()
+
+        await _process_one_board(board, pool, mock_http)
+
+        failure_calls = [c for c in conn.execute.await_args_list if c.args[0] == _RECORD_FAILURE]
+        assert len(failure_calls) == 1
+        assert failure_calls[0].args[2] == "RuntimeError"
+
+    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one")
     async def test_stats_cache_invalidated_on_changes(
         self,
         mock_monitor,
-        mock_filter_unseen,
-        mock_enqueue,
-        mock_mark_seen,
         mock_get_redis,
         mock_pool,
         mock_http,
@@ -376,7 +448,6 @@ class TestProcessOneBoard:
             [_diff_row("new", url=url1)],
             [_inserted_row("jp-1", url1)],
         ]
-        mock_filter_unseen.return_value = [url1]
         board = _mock_board()
 
         mock_redis = AsyncMock()
@@ -416,6 +487,7 @@ class TestMonitorPipeline:
         """3 boards, all succeed -> returns 3."""
         pool, _ = mock_pool
         boards = [_mock_board(id=f"b-{i}") for i in range(3)]
+        mock_process.return_value = True
 
         result = await _monitor_pipeline(boards, pool, mock_http)
 
@@ -427,7 +499,18 @@ class TestMonitorPipeline:
         """3 boards, 1 raises in _process_one_board -> returns 2."""
         pool, _ = mock_pool
         boards = [_mock_board(id=f"b-{i}") for i in range(3)]
-        mock_process.side_effect = [None, RuntimeError("fail"), None]
+        mock_process.side_effect = [True, RuntimeError("fail"), True]
+
+        result = await _monitor_pipeline(boards, pool, mock_http)
+
+        assert result == 2
+
+    @patch("src.batch._process_one_board", new_callable=AsyncMock)
+    async def test_counts_false_return_as_failure(self, mock_process, mock_pool, mock_http):
+        """_process_one_board False result should count as failed."""
+        pool, _ = mock_pool
+        boards = [_mock_board(id=f"b-{i}") for i in range(3)]
+        mock_process.side_effect = [True, False, True]
 
         result = await _monitor_pipeline(boards, pool, mock_http)
 
@@ -520,52 +603,92 @@ class TestProcessMonitorBatch:
         call_sizes = sorted(len(bl) for bl in call_board_lists)
         assert call_sizes == [1, 2]
 
+    @patch("src.batch._monitor_pipeline", new_callable=AsyncMock)
+    async def test_worker_id_passed_to_fetch(self, mock_pipeline, mock_pool, mock_http):
+        """worker_id is passed as $2 to the claim query."""
+        pool, _ = mock_pool
+        pool.fetch.return_value = []
+
+        await process_monitor_batch(pool, mock_http, worker_id="test-w")
+
+        pool.fetch.assert_awaited_once()
+        call_args = pool.fetch.await_args.args
+        assert call_args[1] == 200  # limit
+        assert call_args[2] == "test-w"  # worker_id
+
 
 # ── TestProcessOneScrape ─────────────────────────────────────────────
 
 
 class TestProcessOneScrape:
-    @patch("src.batch.queue_complete", new_callable=AsyncMock)
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
-    async def test_success_updates_and_completes(
-        self, mock_scrape, mock_complete, mock_pool, mock_http
-    ):
-        """scrape_one returns content -> UPDATE + queue_complete -> True."""
+    async def test_success_updates_and_records(self, mock_scrape, mock_pool, mock_http):
+        """scrape_one returns content -> UPDATE + _RECORD_SCRAPE_SUCCESS -> True."""
         pool, conn = mock_pool
         content = _job_content()
         mock_scrape.return_value = content
-        item = QueueItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+        item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
 
         result = await _process_one_scrape(item, pool, mock_http, "json-ld", None)
 
         assert result is True
-        # Verify UPDATE_JOB_CONTENT was called
-        conn.execute.assert_awaited_once()
-        assert conn.execute.await_args.args[0] == _UPDATE_JOB_CONTENT
-        # queue_complete was called
-        mock_complete.assert_awaited_once_with(item)
+        # Verify UPDATE_JOB_CONTENT and RECORD_SCRAPE_SUCCESS were called
+        execute_calls = conn.execute.await_args_list
+        assert any(c.args[0] == _UPDATE_JOB_CONTENT for c in execute_calls)
+        assert any(c.args[0] == _RECORD_SCRAPE_SUCCESS for c in execute_calls)
 
-    @patch("src.batch.queue_fail", new_callable=AsyncMock)
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
-    async def test_failure_calls_queue_fail(self, mock_scrape, mock_fail, mock_pool, mock_http):
-        """scrape_one raises -> queue_fail -> False."""
+    async def test_missing_job_posting_id_records_failure(self, mock_scrape, mock_pool, mock_http):
+        """UPDATE 0 must record scrape failure instead of silently dropping it."""
         pool, conn = mock_pool
-        mock_scrape.side_effect = RuntimeError("scrape error")
-        item = QueueItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+        conn.execute.return_value = "UPDATE 0"
+        mock_scrape.return_value = _job_content()
+        item = ScrapeItem(
+            job_posting_id="jp-missing", url="https://example.com/job/1", board_id="b-1"
+        )
 
         result = await _process_one_scrape(item, pool, mock_http, "json-ld", None)
 
         assert result is False
-        mock_fail.assert_awaited_once()
-        call_args = mock_fail.await_args
-        assert call_args.args[0] == item
-        assert "scrape error" in call_args.args[1]
+        execute_calls = conn.execute.await_args_list
+        failure_calls = [c for c in execute_calls if c.args[0] == _RECORD_SCRAPE_FAILURE]
+        assert len(failure_calls) == 1
+        assert "job_posting_not_found:jp-missing" in failure_calls[0].args[2]
 
-    @patch("src.batch.queue_complete", new_callable=AsyncMock)
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
-    async def test_content_fields_passed_correctly(
-        self, mock_scrape, mock_complete, mock_pool, mock_http
+    async def test_failure_records_scrape_failure(self, mock_scrape, mock_pool, mock_http):
+        """scrape_one raises -> _RECORD_SCRAPE_FAILURE -> False."""
+        pool, conn = mock_pool
+        mock_scrape.side_effect = RuntimeError("scrape error")
+        item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+
+        result = await _process_one_scrape(item, pool, mock_http, "json-ld", None)
+
+        assert result is False
+        execute_calls = conn.execute.await_args_list
+        failure_calls = [c for c in execute_calls if c.args[0] == _RECORD_SCRAPE_FAILURE]
+        assert len(failure_calls) == 1
+        assert "scrape error" in failure_calls[0].args[2]
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_failure_uses_exception_type_on_blank_error(
+        self, mock_scrape, mock_pool, mock_http
     ):
+        """Scrape failure should receive non-empty fallback text when str(exc) is blank."""
+        pool, conn = mock_pool
+        mock_scrape.side_effect = RuntimeError()
+        item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+
+        result = await _process_one_scrape(item, pool, mock_http, "json-ld", None)
+
+        assert result is False
+        execute_calls = conn.execute.await_args_list
+        failure_calls = [c for c in execute_calls if c.args[0] == _RECORD_SCRAPE_FAILURE]
+        assert len(failure_calls) == 1
+        assert failure_calls[0].args[2] == "RuntimeError"
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_content_fields_passed_correctly(self, mock_scrape, mock_pool, mock_http):
         """Verify all JobContent fields are passed to UPDATE_JOB_CONTENT."""
         pool, conn = mock_pool
         content = _job_content(
@@ -580,12 +703,14 @@ class TestProcessOneScrape:
             metadata={"team": "Platform"},
         )
         mock_scrape.return_value = content
-        item = QueueItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+        item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
 
         await _process_one_scrape(item, pool, mock_http, "json-ld", None)
 
-        call_args = conn.execute.await_args.args
-        assert call_args[0] == _UPDATE_JOB_CONTENT
+        # Find the UPDATE_JOB_CONTENT call
+        update_calls = [c for c in conn.execute.await_args_list if c.args[0] == _UPDATE_JOB_CONTENT]
+        assert len(update_calls) == 1
+        call_args = update_calls[0].args
         assert call_args[1] == "jp-1"  # job_posting_id
         assert call_args[2] == "Senior Engineer"  # title
         assert call_args[3] == "<p>Description</p>"  # description
@@ -595,12 +720,52 @@ class TestProcessOneScrape:
         # base_salary is passed through _jsonb
         expected_salary = {"currency": "GBP", "min": 80000, "max": 120000, "unit": "YEAR"}
         assert json.loads(call_args[7]) == expected_salary
-        assert call_args[8] == "2025-06-01"  # date_posted
+        assert call_args[8] is not None
+        assert call_args[8].isoformat() == "2025-06-01T00:00:00+00:00"  # date_posted
         # language (detected or None)
         # call_args[9] is language
         expected_extras = {"skills": ["Python", "SQL"], "responsibilities": ["Lead team"]}
         assert json.loads(call_args[10]) == expected_extras  # extras
         assert json.loads(call_args[11]) == {"team": "Platform"}  # metadata
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_normalizes_escaped_description_before_update(
+        self, mock_scrape, mock_pool, mock_http
+    ):
+        """Escaped description markup is normalized before SQL update."""
+        pool, conn = mock_pool
+        content = _job_content(
+            description="&lt;p class=&quot;Lexical__paragraph&quot;&gt;Hi&lt;/p&gt;"
+        )
+        mock_scrape.return_value = content
+        item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+
+        await _process_one_scrape(item, pool, mock_http, "json-ld", None)
+
+        update_calls = [c for c in conn.execute.await_args_list if c.args[0] == _UPDATE_JOB_CONTENT]
+        assert len(update_calls) == 1
+        assert update_calls[0].args[3] == "<p>Hi</p>"
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_non_scalar_fields_are_normalized(self, mock_scrape, mock_pool, mock_http):
+        """List-based fields are normalized before SQL writes."""
+        pool, conn = mock_pool
+        content = _job_content(
+            employment_type=["Temporary positions", "Full-time"],
+            date_posted="Fri, 06 Feb 2026 16:31:18 +0400",
+        )
+        mock_scrape.return_value = content
+        item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+
+        await _process_one_scrape(item, pool, mock_http, "json-ld", None)
+
+        update_calls = [c for c in conn.execute.await_args_list if c.args[0] == _UPDATE_JOB_CONTENT]
+        assert len(update_calls) == 1
+        call_args = update_calls[0].args
+        assert call_args[5] == "Temporary positions, Full-time"
+        assert call_args[8] is not None
+        assert call_args[8].tzinfo is not None
+        assert call_args[8].astimezone(UTC).isoformat() == "2026-02-06T12:31:18+00:00"
 
 
 # ── TestScrapePipeline ───────────────────────────────────────────────
@@ -613,7 +778,7 @@ class TestScrapePipeline:
         pool, _ = mock_pool
         mock_process.return_value = True
         items = [
-            QueueItem(job_posting_id=f"jp-{i}", url=f"https://example.com/job/{i}", board_id="b-1")
+            ScrapeItem(job_posting_id=f"jp-{i}", url=f"https://example.com/job/{i}", board_id="b-1")
             for i in range(3)
         ]
 
@@ -628,7 +793,7 @@ class TestScrapePipeline:
         pool, _ = mock_pool
         mock_process.side_effect = [True, False, True]
         items = [
-            QueueItem(job_posting_id=f"jp-{i}", url=f"https://example.com/job/{i}", board_id="b-1")
+            ScrapeItem(job_posting_id=f"jp-{i}", url=f"https://example.com/job/{i}", board_id="b-1")
             for i in range(3)
         ]
 
@@ -646,21 +811,53 @@ class TestScrapePipeline:
         assert result == 0
         mock_process.assert_not_awaited()
 
+    @patch("src.batch._process_one_scrape", new_callable=AsyncMock)
+    async def test_uses_board_specific_scraper(self, mock_process, mock_pool, mock_http):
+        """Board-specific scraper settings should be passed through."""
+        pool, _ = mock_pool
+        mock_process.return_value = True
+        items = [ScrapeItem(job_posting_id="jp-1", url="https://alpha.com/job/1", board_id="b-1")]
+        board_scrapers = {"b-1": ("dom", {"render": False})}
+
+        result = await _scrape_pipeline(items, pool, mock_http, board_scrapers)
+
+        assert result == 1
+        call_args = mock_process.await_args.args
+        assert call_args[3] == "dom"
+        assert call_args[4] == {"render": False}
+
+
+class TestLoadBoardScrapers:
+    async def test_loads_scraper_from_metadata(self, mock_pool):
+        pool, _ = mock_pool
+        pool.fetch.return_value = [
+            {"id": "b-1", "metadata": {"scraper_type": "dom", "scraper_config": {"render": False}}}
+        ]
+
+        result = await _load_board_scrapers(pool, {"b-1"})
+
+        assert result == {"b-1": ("dom", {"render": False})}
+
+    async def test_falls_back_on_invalid_scraper(self, mock_pool):
+        pool, _ = mock_pool
+        pool.fetch.return_value = [
+            {"id": "b-1", "metadata": {"scraper_type": "nope", "scraper_config": {"x": 1}}}
+        ]
+
+        result = await _load_board_scrapers(pool, {"b-1"})
+
+        assert result == {"b-1": ("json-ld", None)}
+
 
 # ── TestProcessScrapeBatch ───────────────────────────────────────────
 
 
 class TestProcessScrapeBatch:
     @patch("src.batch._scrape_pipeline", new_callable=AsyncMock)
-    @patch("src.batch.dequeue", new_callable=AsyncMock)
-    @patch("src.batch.recover_stale", new_callable=AsyncMock)
-    @patch("src.batch.requeue_retries", new_callable=AsyncMock)
-    async def test_empty_queue(
-        self, mock_requeue, mock_recover, mock_dequeue, mock_pipeline, mock_pool, mock_http
-    ):
-        """dequeue returns [] -> BatchResult(0,0,0)."""
+    async def test_empty_queue(self, mock_pipeline, mock_pool, mock_http):
+        """No due postings -> BatchResult(0,0,0)."""
         pool, _ = mock_pool
-        mock_dequeue.return_value = []
+        pool.fetch.return_value = []
 
         result = await process_scrape_batch(pool, mock_http)
 
@@ -668,40 +865,25 @@ class TestProcessScrapeBatch:
         mock_pipeline.assert_not_awaited()
 
     @patch("src.batch._scrape_pipeline", new_callable=AsyncMock)
-    @patch("src.batch.dequeue", new_callable=AsyncMock)
-    @patch("src.batch.recover_stale", new_callable=AsyncMock)
-    @patch("src.batch.requeue_retries", new_callable=AsyncMock)
-    async def test_calls_maintenance_first(
-        self, mock_requeue, mock_recover, mock_dequeue, mock_pipeline, mock_pool, mock_http
-    ):
-        """Verify requeue_retries and recover_stale called before dequeue."""
-        pool, _ = mock_pool
-        mock_dequeue.return_value = []
-
-        call_order = []
-        mock_requeue.side_effect = lambda: call_order.append("requeue")
-        mock_recover.side_effect = lambda: call_order.append("recover")
-        mock_dequeue.side_effect = lambda limit: (call_order.append("dequeue"), [])[1]
-
-        await process_scrape_batch(pool, mock_http)
-
-        assert call_order == ["requeue", "recover", "dequeue"]
-
-    @patch("src.batch._scrape_pipeline", new_callable=AsyncMock)
-    @patch("src.batch.dequeue", new_callable=AsyncMock)
-    @patch("src.batch.recover_stale", new_callable=AsyncMock)
-    @patch("src.batch.requeue_retries", new_callable=AsyncMock)
-    async def test_groups_by_hostname(
-        self, mock_requeue, mock_recover, mock_dequeue, mock_pipeline, mock_pool, mock_http
-    ):
+    async def test_groups_by_hostname(self, mock_pipeline, mock_pool, mock_http):
         """Items with different hostnames -> multiple pipelines."""
         pool, _ = mock_pool
-        items = [
-            QueueItem(job_posting_id="jp-1", url="https://alpha.com/job/1", board_id="b-1"),
-            QueueItem(job_posting_id="jp-2", url="https://beta.com/job/1", board_id="b-2"),
-            QueueItem(job_posting_id="jp-3", url="https://alpha.com/job/2", board_id="b-1"),
+
+        def _row(id, url, board_id):
+            data = {"id": id, "source_url": url, "board_id": board_id}
+            row = MagicMock()
+            row.__getitem__ = lambda self, key: data[key]
+            return row
+
+        # First fetch: claim job postings; Second fetch: load board scrapers
+        pool.fetch.side_effect = [
+            [
+                _row("jp-1", "https://alpha.com/job/1", "b-1"),
+                _row("jp-2", "https://beta.com/job/1", "b-2"),
+                _row("jp-3", "https://alpha.com/job/2", "b-1"),
+            ],
+            [],  # no board scraper overrides
         ]
-        mock_dequeue.return_value = items
         mock_pipeline.side_effect = [2, 1]
 
         result = await process_scrape_batch(pool, mock_http)
@@ -712,20 +894,25 @@ class TestProcessScrapeBatch:
         assert mock_pipeline.await_count == 2
 
     @patch("src.batch._scrape_pipeline", new_callable=AsyncMock)
-    @patch("src.batch.dequeue", new_callable=AsyncMock)
-    @patch("src.batch.recover_stale", new_callable=AsyncMock)
-    @patch("src.batch.requeue_retries", new_callable=AsyncMock)
-    async def test_returns_correct_counts(
-        self, mock_requeue, mock_recover, mock_dequeue, mock_pipeline, mock_pool, mock_http
-    ):
+    async def test_returns_correct_counts(self, mock_pipeline, mock_pool, mock_http):
         """Mix of success/failure -> correct BatchResult."""
         pool, _ = mock_pool
-        items = [
-            QueueItem(job_posting_id="jp-1", url="https://alpha.com/job/1", board_id="b-1"),
-            QueueItem(job_posting_id="jp-2", url="https://alpha.com/job/2", board_id="b-1"),
-            QueueItem(job_posting_id="jp-3", url="https://beta.com/job/1", board_id="b-2"),
+
+        def _row(id, url, board_id):
+            data = {"id": id, "source_url": url, "board_id": board_id}
+            row = MagicMock()
+            row.__getitem__ = lambda self, key: data[key]
+            return row
+
+        # First fetch: claim; Second fetch: board scrapers
+        pool.fetch.side_effect = [
+            [
+                _row("jp-1", "https://alpha.com/job/1", "b-1"),
+                _row("jp-2", "https://alpha.com/job/2", "b-1"),
+                _row("jp-3", "https://beta.com/job/1", "b-2"),
+            ],
+            [],  # no board scraper overrides
         ]
-        mock_dequeue.return_value = items
         # alpha group: 1 of 2 succeed; beta group: 0 of 1 succeed
         mock_pipeline.side_effect = [1, 0]
 
@@ -734,3 +921,16 @@ class TestProcessScrapeBatch:
         assert result.processed == 3
         assert result.succeeded == 1
         assert result.failed == 2
+
+    @patch("src.batch._scrape_pipeline", new_callable=AsyncMock)
+    async def test_worker_id_passed_to_fetch(self, mock_pipeline, mock_pool, mock_http):
+        """worker_id is passed as $2 to the job claim query."""
+        pool, _ = mock_pool
+        pool.fetch.return_value = []
+
+        await process_scrape_batch(pool, mock_http, worker_id="test-w")
+
+        pool.fetch.assert_awaited_once()
+        call_args = pool.fetch.await_args.args
+        assert call_args[1] == 200  # limit
+        assert call_args[2] == "test-w"  # worker_id

@@ -155,14 +155,33 @@ export const jobBoard = pgTable(
     consecutiveFailures: integer("consecutive_failures").default(0).notNull(),
     lastError: text("last_error"),
     isEnabled: boolean("is_enabled").default(true).notNull(),
+
+    // ── Scheduler fields ──
+    boardStatus: text("board_status", {
+      enum: ["active", "suspect", "gone", "disabled"],
+    })
+      .default("active")
+      .notNull(),
+    throttleKey: text("throttle_key"),
+    leaseOwner: text("lease_owner"),
+    leasedUntil: timestamp("leased_until", { withTimezone: true }),
+    emptyCheckCount: integer("empty_check_count").default(0).notNull(),
+    lastNonEmptyAt: timestamp("last_non_empty_at", { withTimezone: true }),
+    goneAt: timestamp("gone_at", { withTimezone: true }),
+
     metadata: jsonb("metadata").default({}),
 
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
-    index("idx_jb_next_check").on(table.nextCheckAt),
     index("idx_jb_company").on(table.companyId),
+    index("idx_jb_due").on(table.nextCheckAt, table.throttleKey).where(
+      sql`board_status IN ('active', 'suspect') AND is_enabled = true`,
+    ),
+    index("idx_jb_lease").on(table.leasedUntil).where(
+      sql`leased_until IS NOT NULL`,
+    ),
   ],
 );
 
@@ -208,6 +227,20 @@ export const jobPosting = pgTable(
       .notNull(),
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
     delistedAt: timestamp("delisted_at", { withTimezone: true }),
+    delistReason: text("delist_reason"),
+    relistedAt: timestamp("relisted_at", { withTimezone: true }),
+
+    // ── Scrape scheduler fields ──
+    nextScrapeAt: timestamp("next_scrape_at", { withTimezone: true }),
+    lastScrapedAt: timestamp("last_scraped_at", { withTimezone: true }),
+    scrapeIntervalHours: integer("scrape_interval_hours").default(24).notNull(),
+    leaseOwner: text("lease_owner"),
+    leasedUntil: timestamp("leased_until", { withTimezone: true }),
+    scrapeFailures: integer("scrape_failures").default(0).notNull(),
+    lastScrapeError: text("last_scrape_error"),
+    missingCount: integer("missing_count").default(0).notNull(),
+    scrapeDomain: text("scrape_domain"),
+
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -225,6 +258,12 @@ export const jobPosting = pgTable(
       .on(table.lastSeenAt)
       .where(sql`status = 'active'`),
     index("idx_jp_locations").using("gin", table.locations),
+    index("idx_jp_next_scrape").on(table.nextScrapeAt).where(
+      sql`status = 'active' AND next_scrape_at IS NOT NULL`,
+    ),
+    index("idx_jp_lease").on(table.leasedUntil).where(
+      sql`leased_until IS NOT NULL`,
+    ),
   ],
 );
 
@@ -262,23 +301,3 @@ export const companyRequest = pgTable(
   ],
 );
 
-export const jobUrlQueue = pgTable(
-  "job_url_queue",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    jobPostingId: uuid("job_posting_id")
-      .notNull()
-      .references(() => jobPosting.id, { onDelete: "cascade" }),
-    url: text("url").notNull().unique(),
-    status: text("status").notNull().default("pending"),
-    retries: integer("retries").default(0),
-    maxRetries: integer("max_retries").default(3),
-    errorMessage: text("error_message"),
-    lockedUntil: timestamp("locked_until", { withTimezone: true }),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-  },
-  (table) => [
-    index("idx_juq_pending").on(table.status, table.createdAt).where(sql`status = 'pending'`),
-  ],
-);

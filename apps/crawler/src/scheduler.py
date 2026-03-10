@@ -10,6 +10,7 @@ import argparse
 import asyncio
 import contextlib
 import signal
+import uuid
 
 import structlog
 
@@ -20,6 +21,8 @@ from src.shared.http import create_http_client
 from src.shared.logging import setup_logging
 
 log = structlog.get_logger()
+
+WORKER_ID = uuid.uuid4().hex[:8]
 
 
 def parse_args() -> argparse.Namespace:
@@ -53,11 +56,11 @@ async def run_once(
     limit = settings.crawler_batch_limit
 
     if monitor:
-        result = await process_monitor_batch(pool, http, limit=limit)
+        result = await process_monitor_batch(pool, http, limit=limit, worker_id=WORKER_ID)
         log.info("scheduler.monitor_batch", **vars(result))
 
     if scrape:
-        result = await process_scrape_batch(pool, http, limit=limit)
+        result = await process_scrape_batch(pool, http, limit=limit, worker_id=WORKER_ID)
         log.info("scheduler.scrape_batch", **vars(result))
 
 
@@ -83,13 +86,13 @@ async def run_poll_loop(
         did_work = False
 
         if monitor:
-            result = await process_monitor_batch(pool, http, limit=limit)
+            result = await process_monitor_batch(pool, http, limit=limit, worker_id=WORKER_ID)
             if result.processed > 0:
                 did_work = True
                 log.info("scheduler.monitor_batch", **vars(result))
 
         if scrape:
-            result = await process_scrape_batch(pool, http, limit=limit)
+            result = await process_scrape_batch(pool, http, limit=limit, worker_id=WORKER_ID)
             if result.processed > 0:
                 did_work = True
                 log.info("scheduler.scrape_batch", **vars(result))

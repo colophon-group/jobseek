@@ -26,6 +26,8 @@ log = structlog.get_logger()
 MAX_JOBS = 10_000
 PAGE_SIZE = 100
 CONCURRENCY = 10
+DETAIL_MAX_ATTEMPTS = 3
+DETAIL_RETRY_BASE_SEC = 0.3
 
 _PAGE_PATTERNS = [
     re.compile(r"api\.smartrecruiters\.com/v1/companies/([\w-]+)"),
@@ -184,19 +186,45 @@ async def _fetch_detail(
 ) -> dict | None:
     """Fetch a single posting's detail, respecting the concurrency semaphore."""
     async with semaphore:
-        try:
-            resp = await client.get(_api_detail_url(token, posting_id))
-            if resp.status_code != 200:
-                log.warning(
-                    "smartrecruiters.detail_failed",
-                    posting_id=posting_id,
-                    status=resp.status_code,
-                )
-                return None
-            return resp.json()
-        except Exception as exc:
-            log.warning("smartrecruiters.detail_error", posting_id=posting_id, error=str(exc))
-            return None
+        for attempt in range(1, DETAIL_MAX_ATTEMPTS + 1):
+            try:
+                resp = await client.get(_api_detail_url(token, posting_id))
+                if resp.status_code != 200:
+                    # 404/410 are common for stale IDs from list endpoints.
+                    level = "info" if resp.status_code in (404, 410) else "warning"
+                    getattr(log, level)(
+                        "smartrecruiters.detail_failed",
+                        posting_id=posting_id,
+                        status=resp.status_code,
+                        attempt=attempt,
+                    )
+                    return None
+                try:
+                    return resp.json()
+                except ValueError as exc:
+                    if attempt >= DETAIL_MAX_ATTEMPTS:
+                        log.warning(
+                            "smartrecruiters.detail_invalid_json",
+                            posting_id=posting_id,
+                            status=resp.status_code,
+                            error_type=exc.__class__.__name__,
+                            error=str(exc),
+                        )
+                        return None
+            except Exception as exc:
+                if attempt >= DETAIL_MAX_ATTEMPTS:
+                    log.warning(
+                        "smartrecruiters.detail_error",
+                        posting_id=posting_id,
+                        attempt=attempt,
+                        error_type=exc.__class__.__name__,
+                        error=str(exc),
+                    )
+                    return None
+
+            await asyncio.sleep(DETAIL_RETRY_BASE_SEC * attempt)
+
+        return None
 
 
 async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[DiscoveredJob]:

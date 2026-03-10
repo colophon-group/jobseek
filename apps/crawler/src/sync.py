@@ -15,6 +15,7 @@ import asyncio
 import json
 from pathlib import Path
 from typing import TYPE_CHECKING
+from urllib.parse import urlparse
 
 import polars as pl
 import structlog
@@ -23,8 +24,11 @@ if TYPE_CHECKING:
     import asyncpg
 
 from src.config import settings
+from src.core.monitors import api_monitor_types
 from src.db import close_pool, create_pool
 from src.shared.logging import setup_logging
+
+_API_MONITOR_TYPES = api_monitor_types()
 
 log = structlog.get_logger()
 
@@ -44,22 +48,29 @@ ON CONFLICT (slug) DO UPDATE SET
 
 _UPSERT_BOARDS = """
 INSERT INTO job_board (company_id, board_slug, board_url, crawler_type, metadata,
-                       next_check_at)
+                       next_check_at, throttle_key)
 SELECT c.id, b.board_slug, b.board_url, b.crawler_type, b.metadata::jsonb,
-       now() + (random() * 3600) * interval '1 second'
-FROM unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::text[])
-  AS b(company_slug, board_slug, board_url, crawler_type, metadata)
+       now() + (random() * 3600) * interval '1 second',
+       b.throttle_key
+FROM unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::text[], $6::text[])
+  AS b(company_slug, board_slug, board_url, crawler_type, metadata, throttle_key)
 JOIN company c ON c.slug = b.company_slug
 ON CONFLICT (board_url) DO UPDATE SET
     board_slug = COALESCE(EXCLUDED.board_slug, job_board.board_slug),
     crawler_type = EXCLUDED.crawler_type,
     metadata = EXCLUDED.metadata,
+    throttle_key = EXCLUDED.throttle_key,
+    is_enabled = true,
+    board_status = CASE
+        WHEN job_board.board_status = 'disabled' THEN 'active'
+        ELSE job_board.board_status
+    END,
     updated_at = now()
 """
 
 _DISABLE_REMOVED_BOARDS = """
 UPDATE job_board
-SET is_enabled = false, updated_at = now()
+SET is_enabled = false, board_status = 'disabled', updated_at = now()
 WHERE board_url NOT IN (SELECT unnest($1::text[]))
   AND is_enabled = true
 """
@@ -81,6 +92,13 @@ def _load_boards() -> pl.DataFrame:
 
 def _or_none(val: str | None) -> str | None:
     return val if val else None
+
+
+def _compute_throttle_key(monitor_type: str, board_url: str) -> str:
+    """Compute rate-limit grouping key from monitor type and board URL."""
+    if monitor_type in _API_MONITOR_TYPES:
+        return monitor_type
+    return urlparse(board_url).hostname or board_url
 
 
 async def sync_companies(conn: asyncpg.Connection, companies: pl.DataFrame, dry_run: bool) -> None:
@@ -125,15 +143,21 @@ async def sync_boards(
     board_urls: list[str] = []
     crawler_types: list[str] = []
     metadatas: list[str | None] = []
+    throttle_keys: list[str] = []
     skipped = 0
 
     for row in boards.iter_rows(named=True):
         monitor_config_str = row.get("monitor_config") or None
-        metadata: str | None = None
+        scraper_type = _or_none(row.get("scraper_type"))
+        scraper_config_str = row.get("scraper_config") or None
+        metadata_obj: dict = {}
+
         if monitor_config_str:
             try:
                 parsed = json.loads(monitor_config_str)
-                metadata = json.dumps(parsed)
+                if not isinstance(parsed, dict):
+                    raise ValueError("monitor_config must be a JSON object")
+                metadata_obj.update(parsed)
             except json.JSONDecodeError:
                 log.error(
                     "sync.board.invalid_config",
@@ -142,12 +166,49 @@ async def sync_boards(
                 )
                 skipped += 1
                 continue
+            except ValueError:
+                log.error(
+                    "sync.board.invalid_config",
+                    board_url=row["board_url"],
+                    config=monitor_config_str,
+                )
+                skipped += 1
+                continue
+
+        if scraper_type:
+            metadata_obj["scraper_type"] = scraper_type
+
+        if scraper_config_str:
+            try:
+                scraper_cfg = json.loads(scraper_config_str)
+                if not isinstance(scraper_cfg, dict):
+                    raise ValueError("scraper_config must be a JSON object")
+                metadata_obj["scraper_config"] = scraper_cfg
+            except json.JSONDecodeError:
+                log.error(
+                    "sync.board.invalid_scraper_config",
+                    board_url=row["board_url"],
+                    config=scraper_config_str,
+                )
+                skipped += 1
+                continue
+            except ValueError:
+                log.error(
+                    "sync.board.invalid_scraper_config",
+                    board_url=row["board_url"],
+                    config=scraper_config_str,
+                )
+                skipped += 1
+                continue
+
+        metadata: str | None = json.dumps(metadata_obj) if metadata_obj else None
 
         company_slugs.append(row["company_slug"])
         board_slugs.append(_or_none(row.get("board_slug")))
         board_urls.append(row["board_url"])
         crawler_types.append(row["monitor_type"])
         metadatas.append(metadata)
+        throttle_keys.append(_compute_throttle_key(row["monitor_type"], row["board_url"]))
 
     if dry_run:
         log.info("sync.boards.dry_run", count=len(board_urls), skipped=skipped)
@@ -158,7 +219,13 @@ async def sync_boards(
         return
 
     await conn.execute(
-        _UPSERT_BOARDS, company_slugs, board_slugs, board_urls, crawler_types, metadatas
+        _UPSERT_BOARDS,
+        company_slugs,
+        board_slugs,
+        board_urls,
+        crawler_types,
+        metadatas,
+        throttle_keys,
     )
     log.info("sync.boards.upserted", count=len(board_urls), skipped=skipped)
 

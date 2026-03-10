@@ -215,6 +215,7 @@ class TestSyncBoards:
         assert upsert_call[3] == ["https://acme.com/careers"]  # board_urls
         assert upsert_call[4] == ["greenhouse"]  # crawler_types
         assert json.loads(upsert_call[5][0]) == {"token": "acme"}  # metadatas
+        assert upsert_call[6] == ["greenhouse"]  # throttle_keys (API type -> type name)
 
         # Second call: disable removed
         disable_call = mock_conn.execute.call_args_list[1][0]
@@ -242,6 +243,7 @@ class TestSyncBoards:
         upsert_call = mock_conn.execute.call_args_list[0][0]
         assert upsert_call[1] == ["globex"]
         assert upsert_call[3] == ["https://globex.com/jobs"]
+        assert upsert_call[6] == ["lever"]  # throttle_key for API type
 
     async def test_all_invalid_json_skips_upsert(self, mock_conn):
         """All rows have invalid JSON -> no upsert, no disable."""
@@ -282,6 +284,47 @@ class TestSyncBoards:
 
         upsert_call = mock_conn.execute.call_args_list[0][0]
         assert json.loads(upsert_call[5][0]) == {"key": "value"}
+
+    async def test_scraper_fields_embedded_in_metadata(self, mock_conn):
+        boards = pl.DataFrame(
+            {
+                "company_slug": ["acme"],
+                "board_slug": ["acme-careers"],
+                "board_url": ["https://acme.com/careers"],
+                "monitor_type": ["dom"],
+                "monitor_config": ['{"url_filter": "/jobs/"}'],
+                "scraper_type": ["dom"],
+                "scraper_config": ['{"render": true}'],
+            },
+            schema_overrides=_BOARD_SCHEMA,
+        )
+
+        await sync_boards(mock_conn, boards, dry_run=False)
+
+        upsert_call = mock_conn.execute.call_args_list[0][0]
+        assert json.loads(upsert_call[5][0]) == {
+            "url_filter": "/jobs/",
+            "scraper_type": "dom",
+            "scraper_config": {"render": True},
+        }
+
+    async def test_invalid_scraper_json_skips_row(self, mock_conn):
+        boards = pl.DataFrame(
+            {
+                "company_slug": ["acme"],
+                "board_slug": ["acme-careers"],
+                "board_url": ["https://acme.com/careers"],
+                "monitor_type": ["dom"],
+                "monitor_config": ["{}"],
+                "scraper_type": ["dom"],
+                "scraper_config": ["{bad}"],
+            },
+            schema_overrides=_BOARD_SCHEMA,
+        )
+
+        await sync_boards(mock_conn, boards, dry_run=False)
+
+        mock_conn.execute.assert_not_called()
 
     async def test_dry_run_skips_sql(self, mock_conn, sample_boards):
         """dry_run=True -> execute NOT called."""
