@@ -68,6 +68,8 @@ servers-com,servers-com-careers-apply,https://servers-com.breezy.hr/apply,dom,"{
 sonarsource,sonarsource-careers-lever,https://jobs.lever.co/sonarsource,lever,,,
 specitec,specitec-careers,https://careers.specitec.com/jobs,rss,"{""preset"": ""teamtailor""}",,
 stripe,stripe-careers,https://stripe.com/jobs/search,greenhouse,"{""token"": ""stripe""}",,
+swisscom,swisscom-careers,https://swisscom.wd103.myworkdayjobs.com/en-US/SwisscomExternalCareers,workday,,,
+swisscom,swisscom-careers-rotterdam,https://swisscom.recruitee.com,recruitee,,,
 swissquote-bank,swissquote-bank-careers,https://careers.smartrecruiters.com/Swissquote,smartrecruiters,,,
 twitch,twitch-careers,https://job-boards.greenhouse.io/twitch,greenhouse,"{""token"": ""twitch""}",,
 unlimit,unlimit-careers-lever,https://jobs.lever.co/unlimit,lever,,,
