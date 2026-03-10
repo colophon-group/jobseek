@@ -79,6 +79,7 @@ stripe,stripe-careers,https://stripe.com/jobs/search,greenhouse,"{""token"": ""s
 swisscom,swisscom-careers,https://swisscom.wd103.myworkdayjobs.com/en-US/SwisscomExternalCareers,workday,,,
 swisscom,swisscom-careers-rotterdam,https://swisscom.recruitee.com,recruitee,,,
 swissquote-bank,swissquote-bank-careers,https://careers.smartrecruiters.com/Swissquote,smartrecruiters,,,
+tethys-robotics,tethys-robotics-careers,https://www.tethys-robotics.ch/company/jobs,dom,"{""url_filter"": ""emea2\\.softfactors\\.com/job-opening/"", ""url_transform"": {""find"": ""https://emea2\\.softfactors\\.com/job-opening/rgum-([^#/]+).*"", ""replace"": ""https://jobs.ethz.ch/job/view/JOPG_ethz_\\1""}}",dom,"{""render"": false, ""steps"": [{""tag"": ""h1"", ""attr"": ""id=job-title"", ""field"": ""title""}, {""tag"": ""h4"", ""field"": ""locations"", ""regex"": ""\\d+(?:-\\d+)?%,\\s*(.+?),""}, {""tag"": ""h4"", ""from"": 0, ""field"": ""employment_type"", ""regex"": "",\\s*([^,]+)\\s*$""}, {""tag"": ""p"", ""field"": ""description"", ""stop_tag"": ""section"", ""html"": true}]}"
 toloka,toloka-careers,https://toloka.ai/careers,greenhouse,"{""token"": ""toloka""}",,
 twitch,twitch-careers,https://job-boards.greenhouse.io/twitch,greenhouse,"{""token"": ""twitch""}",,
 uniqlo,uniqlo-careers-eu-grad,https://fastretailing.wd3.myworkdayjobs.com/graduates_eu_Uniqlo,workday,,,
