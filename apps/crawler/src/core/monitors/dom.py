@@ -280,6 +280,10 @@ async def dom_discover(board: dict, client: httpx.AsyncClient = None, pw=None) -
                 url_matcher=url_matcher,
             )
 
+    # Exclude the board URL itself — it's the listing page, not a job
+    normalized_board = board_url.rstrip("/")
+    urls = {u for u in urls if u.rstrip("/") != normalized_board}
+
     if len(urls) > MAX_URLS:
         log.warning("dom.truncated", total=len(urls), cap=MAX_URLS)
         urls = set(sorted(urls)[:MAX_URLS])

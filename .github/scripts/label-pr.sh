@@ -17,7 +17,7 @@ set -euo pipefail
 : "${REPO:?REPO is required}"
 
 ALLOWED_FILES="apps/crawler/data/companies.csv apps/crawler/data/boards.csv apps/crawler/VERSION"
-VALID_MONITOR_TYPES="ashby|greenhouse|hireology|lever|personio|pinpoint|recruitee|rippling|rss|smartrecruiters|workable|workday|sitemap|nextdata|dom|api_sniffer"
+VALID_MONITOR_TYPES="amazon|ashby|gem|greenhouse|hireology|join|lever|personio|pinpoint|recruitee|rippling|rss|smartrecruiters|workable|workday|sitemap|nextdata|dom|api_sniffer"
 VALID_SCRAPER_TYPES="json-ld|dom|nextdata|embedded|api_sniffer"
 SLUG_RE='^[a-z0-9]+(-[a-z0-9]+)*$'
 URL_RE='^https?://'
@@ -63,8 +63,11 @@ CSV_DIFF=$(echo "$DIFF" | awk '
   }
   in_csv { print }
 ')
-ADDED_LINES=$(echo "$CSV_DIFF" | grep -c '^+[^+]' || true)
-echo "Added lines (CSVs only): $ADDED_LINES (max $MAX_ADDED_LINES)"
+RAW_ADDED=$(echo "$CSV_DIFF" | grep -c '^+[^+]' || true)
+RAW_REMOVED=$(echo "$CSV_DIFF" | grep -c '^-[^-]' || true)
+ADDED_LINES=$((RAW_ADDED - RAW_REMOVED))
+[ "$ADDED_LINES" -lt 0 ] && ADDED_LINES=0
+echo "Net added lines (CSVs only): $ADDED_LINES (max $MAX_ADDED_LINES)"
 
 DIFF_OK=true
 
@@ -96,7 +99,7 @@ while IFS= read -r line; do
   PARSED=$(parse_csv_line "$content")
   FIELD_COUNT=$(echo "$PARSED" | awk -F'\t' '{print NF}')
 
-  if [ "$FIELD_COUNT" -ne 6 ] && [ "$FIELD_COUNT" -ne 7 ]; then
+  if [ "$FIELD_COUNT" -ne 6 ] && [ "$FIELD_COUNT" -ne 9 ]; then
     echo "::warning::Unexpected field count ($FIELD_COUNT): $content"
     DIFF_OK=false
     continue
@@ -117,12 +120,13 @@ while IFS= read -r line; do
     fi
   fi
 
-  if [ "$FIELD_COUNT" -eq 7 ]; then
-    # boards.csv: company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config
+  if [ "$FIELD_COUNT" -eq 9 ]; then
+    # boards.csv: company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config,fallback_scraper_type,fallback_scraper_config
     SLUG=$(echo "$PARSED" | cut -d$'\t' -f1)
     BOARD_URL=$(echo "$PARSED" | cut -d$'\t' -f3)
     MONITOR=$(echo "$PARSED" | cut -d$'\t' -f4)
     SCRAPER=$(echo "$PARSED" | cut -d$'\t' -f6)
+    FALLBACK_SCRAPER=$(echo "$PARSED" | cut -d$'\t' -f8)
 
     if ! echo "$SLUG" | grep -qE "$SLUG_RE"; then
       echo "::warning::Invalid company_slug: $SLUG"
@@ -138,6 +142,10 @@ while IFS= read -r line; do
     fi
     if [ -n "$SCRAPER" ] && ! echo "$SCRAPER" | grep -qE "^($VALID_SCRAPER_TYPES)$"; then
       echo "::warning::Invalid scraper_type: $SCRAPER"
+      DIFF_OK=false
+    fi
+    if [ -n "$FALLBACK_SCRAPER" ] && ! echo "$FALLBACK_SCRAPER" | grep -qE "^($VALID_SCRAPER_TYPES)$"; then
+      echo "::warning::Invalid fallback_scraper_type: $FALLBACK_SCRAPER"
       DIFF_OK=false
     fi
   fi
@@ -187,7 +195,12 @@ if [ "$STATS_FOUND" = "true" ]; then
   fi
 fi
 
-# --- Apply labels ---
+# --- Apply labels (remove stale ones first) ---
+
+ALL_DECISION_LABELS="auto-merge review-code review-size review-load"
+for L in $ALL_DECISION_LABELS; do
+  gh pr edit "$PR" --repo "$REPO" --remove-label "$L" 2>/dev/null || true
+done
 
 IFS=',' read -ra LABEL_ARR <<< "$LABELS"
 for L in "${LABEL_ARR[@]}"; do
