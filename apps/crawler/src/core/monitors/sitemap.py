@@ -148,54 +148,52 @@ async def _parse_robots_sitemaps(
 async def _resolve_sitemap_index(
     root: ET.Element,
     client: httpx.AsyncClient,
-) -> ET.Element | None:
+) -> list[ET.Element]:
+    """Fetch all child sitemaps from a sitemap index.
+
+    Returns a list of parsed XML roots (one per child sitemap that was
+    successfully fetched).  Prefers job-related children when present.
+    """
     children = _extract_child_sitemaps(root)
     if not children:
-        return None
+        return []
     job_children = [u for u in children if _is_job_related(u)]
-    target = job_children[0] if job_children else children[0]
-    log.debug("sitemap.index_resolved", target=target, total_children=len(children))
-    return await _try_fetch_xml(target, client)
+    targets = job_children if job_children else children
+    log.debug("sitemap.index_resolved", targets=len(targets), total_children=len(children))
+    results: list[ET.Element] = []
+    for target in targets:
+        child_root = await _try_fetch_xml(target, client)
+        if child_root is not None:
+            results.append(child_root)
+    return results
 
 
 async def _discover_sitemap(
     board_url: str,
     client: httpx.AsyncClient,
-) -> tuple[str, ET.Element]:
+) -> tuple[str, list[ET.Element]]:
     """Try multiple strategies to find and fetch the sitemap XML.
 
-    Returns (sitemap_url, parsed_xml_root).
+    Returns (sitemap_url, parsed_xml_roots).  When the sitemap is an index,
+    all child sitemaps are fetched and returned so that URLs from every
+    sub-sitemap are included.
     Raises SitemapDiscoveryError if nothing works.
     """
-    for candidate in _walk_up_candidates(board_url):
-        root = await _try_fetch_xml(candidate, client)
-        if root is not None:
-            if _is_sitemap_index(root):
-                child_root = await _resolve_sitemap_index(root, client)
-                if child_root is not None:
-                    return candidate, child_root
-            else:
-                return candidate, root
+    all_candidates = (
+        _walk_up_candidates(board_url)
+        + _common_nonstandard_candidates(board_url)
+        + await _parse_robots_sitemaps(board_url, client)
+    )
 
-    for candidate in _common_nonstandard_candidates(board_url):
+    for candidate in all_candidates:
         root = await _try_fetch_xml(candidate, client)
         if root is not None:
             if _is_sitemap_index(root):
-                child_root = await _resolve_sitemap_index(root, client)
-                if child_root is not None:
-                    return candidate, child_root
+                children = await _resolve_sitemap_index(root, client)
+                if children:
+                    return candidate, children
             else:
-                return candidate, root
-
-    for candidate in await _parse_robots_sitemaps(board_url, client):
-        root = await _try_fetch_xml(candidate, client)
-        if root is not None:
-            if _is_sitemap_index(root):
-                child_root = await _resolve_sitemap_index(root, client)
-                if child_root is not None:
-                    return candidate, child_root
-            else:
-                return candidate, root
+                return candidate, [root]
 
     raise SitemapDiscoveryError(f"No sitemap found for {board_url}")
 
@@ -218,22 +216,25 @@ async def discover(
         root = await _try_fetch_xml(cached_sitemap, client)
         if root is None:
             log.warning("sitemap.cache_miss", cached=cached_sitemap)
-            sitemap_url, root = await _discover_sitemap(board["board_url"], client)
+            sitemap_url, roots = await _discover_sitemap(board["board_url"], client)
             new_sitemap_url = sitemap_url
         else:
             if _is_sitemap_index(root):
-                child_root = await _resolve_sitemap_index(root, client)
-                if child_root is None:
+                roots = await _resolve_sitemap_index(root, client)
+                if not roots:
                     raise SitemapParseError(
                         f"Sitemap index at {cached_sitemap} has no usable children"
                     )
-                root = child_root
+            else:
+                roots = [root]
     else:
-        sitemap_url, root = await _discover_sitemap(board["board_url"], client)
+        sitemap_url, roots = await _discover_sitemap(board["board_url"], client)
         new_sitemap_url = sitemap_url
         log.info("sitemap.discovered", board_url=board["board_url"], sitemap_url=sitemap_url)
 
-    urls = _extract_urls(root)
+    urls: list[str] = []
+    for r in roots:
+        urls.extend(_extract_urls(r))
 
     if len(urls) > MAX_URLS:
         log.warning("sitemap.truncated", total=len(urls), cap=MAX_URLS)
@@ -245,8 +246,8 @@ async def discover(
 async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None) -> dict | None:
     """Try to discover a sitemap — if found, return its URL and URL count as metadata."""
     try:
-        sitemap_url, root = await _discover_sitemap(url, client)
-        url_count = len(_extract_urls(root))
+        sitemap_url, roots = await _discover_sitemap(url, client)
+        url_count = sum(len(_extract_urls(r)) for r in roots)
         return {"sitemap_url": sitemap_url, "urls": url_count}
     except SitemapDiscoveryError:
         return None
