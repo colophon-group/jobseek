@@ -99,7 +99,7 @@ while IFS= read -r line; do
   PARSED=$(parse_csv_line "$content")
   FIELD_COUNT=$(echo "$PARSED" | awk -F'\t' '{print NF}')
 
-  if [ "$FIELD_COUNT" -ne 6 ] && [ "$FIELD_COUNT" -ne 9 ]; then
+  if [ "$FIELD_COUNT" -ne 6 ] && [ "$FIELD_COUNT" -ne 7 ]; then
     echo "::warning::Unexpected field count ($FIELD_COUNT): $content"
     DIFF_OK=false
     continue
@@ -146,6 +146,90 @@ while IFS= read -r line; do
   fi
 done < <(echo "$CSV_DIFF" | grep '^+[^+]' || true)
 
+# --- Check PR completeness (full file inspection) ---
+
+INCOMPLETE=false
+
+COMPLETENESS=$(python3 - "$PR" "$REPO" <<'PYEOF'
+import csv, io, json, subprocess, sys
+
+pr, repo = sys.argv[1], sys.argv[2]
+
+branch = subprocess.check_output(
+    ["gh", "pr", "view", pr, "--repo", repo, "--json", "headRefName", "-q", ".headRefName"],
+    text=True,
+).strip()
+
+def get_raw(ref, path):
+    try:
+        return subprocess.check_output(
+            ["gh", "api", f"repos/{repo}/contents/{path}",
+             "-H", "Accept: application/vnd.github.raw+json",
+             "-f", f"ref={ref}"],
+            text=True, stderr=subprocess.DEVNULL,
+        )
+    except Exception:
+        return ""
+
+def parse_csv(text):
+    if not text.strip():
+        return []
+    return list(csv.DictReader(io.StringIO(text)))
+
+pr_companies = parse_csv(get_raw(branch, "apps/crawler/data/companies.csv"))
+pr_boards = parse_csv(get_raw(branch, "apps/crawler/data/boards.csv"))
+main_companies = parse_csv(get_raw("main", "apps/crawler/data/companies.csv"))
+
+main_slugs = {r["slug"] for r in main_companies}
+new_slugs = {r["slug"] for r in pr_companies if r["slug"] not in main_slugs}
+
+if not new_slugs:
+    print("ok")
+    sys.exit(0)
+
+issues = []
+for slug in sorted(new_slugs):
+    co = next((r for r in pr_companies if r["slug"] == slug), None)
+    if not co:
+        continue
+
+    if not co.get("name", "").strip():
+        issues.append(f"{slug}: missing name")
+    if not co.get("website", "").strip():
+        issues.append(f"{slug}: missing website")
+    if not co.get("logo_url", "").strip():
+        issues.append(f"{slug}: missing logo_url")
+    if not co.get("icon_url", "").strip():
+        issues.append(f"{slug}: missing icon_url")
+
+    boards = [r for r in pr_boards if r.get("company_slug") == slug]
+    if not boards:
+        issues.append(f"{slug}: no boards configured")
+    else:
+        for b in boards:
+            alias = b.get("board_slug", "?")
+            if not b.get("board_url", "").strip():
+                issues.append(f"{slug}/{alias}: missing board_url")
+            if not b.get("monitor_type", "").strip():
+                issues.append(f"{slug}/{alias}: missing monitor_type")
+
+if issues:
+    for i in issues:
+        print(f"incomplete:{i}")
+else:
+    print("ok")
+PYEOF
+)
+
+while IFS= read -r line; do
+  case "$line" in
+    incomplete:*)
+      echo "::warning::Incomplete: ${line#incomplete:}"
+      INCOMPLETE=true
+      ;;
+  esac
+done <<< "$COMPLETENESS"
+
 # --- Parse crawl-stats comment ---
 
 STATS_FOUND=false
@@ -170,7 +254,9 @@ fi
 
 LABELS=""
 
-if [ "$CONFIG_ONLY" != "true" ]; then
+if [ "$INCOMPLETE" = "true" ]; then
+  LABELS="incomplete"
+elif [ "$CONFIG_ONLY" != "true" ]; then
   LABELS="review-code"
 elif [ "$DIFF_OK" != "true" ]; then
   LABELS="review-code"
@@ -192,7 +278,7 @@ fi
 
 # --- Apply labels (remove stale ones first) ---
 
-ALL_DECISION_LABELS="auto-merge review-code review-size review-load"
+ALL_DECISION_LABELS="auto-merge review-code review-size review-load incomplete"
 for L in $ALL_DECISION_LABELS; do
   gh pr edit "$PR" --repo "$REPO" --remove-label "$L" 2>/dev/null || true
 done
