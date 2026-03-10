@@ -370,6 +370,8 @@ def reject(slug: str | None, issue: int | None, reason: str, message: str):
         out.info("github", f"Commented on issue #{issue} (validation-failed: {reason})")
         out.info("github", f"Closed issue #{issue}")
 
+    out.info("task", "Done. Do not pick another issue — stop here.")
+
     if ws is not None:
         action_log.append(
             ws_log_path(slug),

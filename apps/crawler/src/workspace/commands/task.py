@@ -334,7 +334,7 @@ def task_complete():
 
         unclaim_issue(ws.issue)
 
-    out.info("task", "Workflow complete! Nice work.")
+    out.info("task", "Workflow complete! Nice work. Do not pick another issue — stop here.")
 
     # Print summary of reflections
     non_none = [r for r in wf.reflections if r.get("notes", "none") != "none"]

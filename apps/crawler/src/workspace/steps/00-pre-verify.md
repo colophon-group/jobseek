@@ -30,6 +30,10 @@ Use web research to confirm:
 1. The company exists and is currently operating
 2. It has a public-facing careers or jobs page
 
+Research tips:
+- Do not assume a specific country or geography unless the issue explicitly says so.
+- If the company website is down, check LinkedIn or other sources before rejecting — "website unavailable" is different from "company not found".
+
 Do not use crawler tooling at this stage. If the issue URL is missing or ambiguous,
 check the company's own website for a "Careers" or "Jobs" link.
 
@@ -49,3 +53,5 @@ ws new <slug> --issue {issue}
 ```
 
 Then run `ws task` for the next step.
+
+**Important:** Process only this one issue. After completing or rejecting it, stop — do not pick another issue.
