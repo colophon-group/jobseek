@@ -8,10 +8,9 @@ WORKDIR /app
 COPY pyproject.toml uv.lock VERSION ./
 RUN uv sync --frozen --no-dev --no-install-project
 
-# Copy source, data, and scripts
+# Copy source and data
 COPY src/ src/
 COPY data/ data/
-COPY scripts/ scripts/
 
 # Install the project itself
 RUN uv sync --frozen --no-dev
