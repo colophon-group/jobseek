@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import collections
 import contextlib
 import signal
 import uuid
@@ -85,20 +86,29 @@ def _batch_log_kwargs(result) -> dict:
 
 
 class WorkerPool:
-    """Bounded async worker pool with per-domain exclusion.
+    """Bounded async worker pool with per-domain queuing.
 
-    Asyncio is single-threaded so set operations between await points are
-    atomic — no locks needed.
+    Items for the same domain run serially (politeness). Items for different
+    domains run concurrently up to *max_concurrent*. When an item finishes,
+    the next queued item for that domain starts immediately — no claim tick
+    delay.
+
+    Asyncio is single-threaded so set/deque operations between await points
+    are atomic — no locks needed.
     """
+
+    _ITEM_TIMEOUT = 300  # 5 minutes per job
 
     def __init__(self, max_concurrent: int) -> None:
         self._semaphore = asyncio.Semaphore(max_concurrent)
         self._max = max_concurrent
         self._domains_inflight: set[str] = set()
+        self._domain_queues: dict[str, collections.deque[WorkItem]] = {}
         self._tasks: set[asyncio.Task] = set()
         self.total_submitted = 0
         self.succeeded = 0
         self.failed = 0
+        self.timed_out = 0
 
     @property
     def free_slots(self) -> int:
@@ -112,33 +122,69 @@ class WorkerPool:
     def active_count(self) -> int:
         return self._max - self._semaphore._value
 
+    @property
+    def queued_count(self) -> int:
+        return sum(len(q) for q in self._domain_queues.values())
+
     def submit(self, item: WorkItem) -> None:
-        """Schedule a work item. Caller must check free_slots > 0 first."""
+        """Schedule a work item.
+
+        If the domain already has an in-flight task, the item is queued and
+        will start automatically when the current one finishes — without
+        consuming an extra semaphore slot.
+        """
         self.total_submitted += 1
-        self._domains_inflight.add(item.domain)
-        task = asyncio.get_event_loop().create_task(self._run(item))
-        self._tasks.add(task)
-        task.add_done_callback(self._tasks.discard)
+        if item.domain in self._domains_inflight:
+            queue = self._domain_queues.get(item.domain)
+            if queue is None:
+                queue = collections.deque()
+                self._domain_queues[item.domain] = queue
+            queue.append(item)
+        else:
+            self._domains_inflight.add(item.domain)
+            task = asyncio.get_event_loop().create_task(self._run(item))
+            self._tasks.add(task)
+            task.add_done_callback(self._tasks.discard)
 
     async def _run(self, item: WorkItem) -> None:
+        """Acquire a semaphore slot and process items for this domain serially."""
         await self._semaphore.acquire()
+        current: WorkItem | None = item
         try:
-            ok, _elapsed = await item.run()
-            if ok:
-                self.succeeded += 1
-            else:
-                self.failed += 1
-        except Exception:
-            self.failed += 1
-            log.exception("pool.task_error", domain=item.domain, kind=item.kind)
+            while current is not None:
+                try:
+                    ok, _elapsed = await asyncio.wait_for(current.run(), timeout=self._ITEM_TIMEOUT)
+                    if ok:
+                        self.succeeded += 1
+                    else:
+                        self.failed += 1
+                except TimeoutError:
+                    self.failed += 1
+                    self.timed_out += 1
+                    log.error(
+                        "pool.task_timeout",
+                        domain=current.domain,
+                        kind=current.kind,
+                        timeout_s=self._ITEM_TIMEOUT,
+                    )
+                except Exception:
+                    self.failed += 1
+                    log.exception("pool.task_error", domain=current.domain, kind=current.kind)
+                # Pop next queued item for this domain (if any)
+                current = None
+                queue = self._domain_queues.get(item.domain)
+                if queue:
+                    current = queue.popleft()
+                    if not queue:
+                        del self._domain_queues[item.domain]
         finally:
             self._domains_inflight.discard(item.domain)
             self._semaphore.release()
 
     async def drain(self) -> None:
-        """Wait for all in-flight tasks to complete."""
-        if self._tasks:
-            await asyncio.gather(*self._tasks, return_exceptions=True)
+        """Wait for all in-flight tasks (including queued chains) to complete."""
+        while self._tasks:
+            await asyncio.gather(*list(self._tasks), return_exceptions=True)
 
 
 # ── Continuous Loop ──────────────────────────────────────────────────
@@ -156,8 +202,10 @@ async def run_continuous_loop(
 ) -> None:
     """Continuous worker pool scheduler.
 
-    Claims 1 item per domain, submits to a bounded pool, and refills as
-    slots free up. Monitors get priority; scrapes fill remaining capacity.
+    Claims items interleaved across domains, submits to a bounded pool with
+    per-domain queuing. When a domain's current item finishes, the next
+    queued item starts immediately. Monitors get priority; scrapes fill
+    remaining capacity.
     """
     worker_id = worker_id or WORKER_ID
     max_concurrent = max_concurrent or settings.crawler_max_concurrent
@@ -174,33 +222,35 @@ async def run_continuous_loop(
 
     while not shutdown_event.is_set():
         work_found = False
+        monitors_claimed = 0
+        scrapes_claimed = 0
 
         # Phase 1: monitors (priority)
         if monitor and wp.free_slots > 0:
-            items = await claim_monitor_work(
-                pool, http, wp.free_slots, worker_id, wp.inflight_domains
-            )
+            items = await claim_monitor_work(pool, http, wp.free_slots, worker_id)
+            monitors_claimed = len(items)
             for item in items:
                 wp.submit(item)
                 work_found = True
 
         # Phase 2: scrapes (fill remaining)
         if scrape and wp.free_slots > 0:
-            items = await claim_scrape_work(
-                pool, http, wp.free_slots, worker_id, wp.inflight_domains
-            )
+            items = await claim_scrape_work(pool, http, wp.free_slots, worker_id)
+            scrapes_claimed = len(items)
             for item in items:
                 wp.submit(item)
                 work_found = True
 
         if work_found or wp.active_count > 0:
-            if wp.active_count > 0:
-                log.debug(
-                    "pool.status",
-                    active=wp.active_count,
-                    succeeded=wp.succeeded,
-                    failed=wp.failed,
-                )
+            log.info(
+                "pool.tick",
+                monitors_claimed=monitors_claimed,
+                scrapes_claimed=scrapes_claimed,
+                active=wp.active_count,
+                queued=wp.queued_count,
+                succeeded=wp.succeeded,
+                failed=wp.failed,
+            )
             idle_interval = 1.0
         else:
             idle_interval = min(idle_interval * 2, max_interval)
@@ -208,7 +258,7 @@ async def run_continuous_loop(
         with contextlib.suppress(TimeoutError):
             await asyncio.wait_for(shutdown_event.wait(), timeout=idle_interval)
 
-    log.info("pool.draining", active=wp.active_count)
+    log.info("pool.draining", active=wp.active_count, queued=wp.queued_count)
     await wp.drain()
     log.info(
         "pool.stopped",

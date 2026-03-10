@@ -118,6 +118,98 @@ class TestWorkerPool:
         assert wp.failed == 2
         assert wp.total_submitted == 3
 
+    async def test_domain_queuing(self):
+        """Items for the same domain are queued and run serially."""
+        wp = WorkerPool(5)
+        order = []
+
+        async def make_run(label):
+            async def _run():
+                order.append(label)
+                await asyncio.sleep(0.01)
+                return (True, 0.01)
+
+            return _run
+
+        for i in range(3):
+            run_fn = await make_run(f"item-{i}")
+            wp.submit(WorkItem(domain="same.com", kind="scrape", run=run_fn))
+
+        assert wp.queued_count == 2  # 1 running, 2 queued
+        await wp.drain()
+        assert wp.succeeded == 3
+        assert order == ["item-0", "item-1", "item-2"]  # serial order
+
+    async def test_queued_items_dont_consume_slots(self):
+        """Queued items for in-flight domains don't take extra semaphore slots."""
+        wp = WorkerPool(2)
+        # Submit 3 items for same domain + 1 for a different domain
+        wp.submit(_slow_work_item(domain="a.com", delay=0.05))
+        wp.submit(_slow_work_item(domain="a.com", delay=0.05))
+        wp.submit(_slow_work_item(domain="a.com", delay=0.05))
+        wp.submit(_slow_work_item(domain="b.com", delay=0.05))
+
+        await asyncio.sleep(0.01)
+        # a.com uses 1 slot (2 queued), b.com uses 1 slot → 0 free
+        assert wp.active_count == 2
+        assert wp.queued_count == 2
+
+        await wp.drain()
+        assert wp.succeeded == 4
+
+    async def test_queue_drains_on_drain(self):
+        """drain() processes all queued items, not just in-flight tasks."""
+        wp = WorkerPool(5)
+        for _i in range(5):
+            wp.submit(_slow_work_item(domain="q.com", delay=0.01))
+
+        assert wp.queued_count == 4
+        await wp.drain()
+        assert wp.succeeded == 5
+        assert wp.queued_count == 0
+
+    async def test_failed_item_doesnt_break_queue_chain(self):
+        """A failing item in the chain doesn't prevent subsequent items."""
+        wp = WorkerPool(5)
+        wp.submit(_failing_work_item(domain="chain.com"))
+        wp.submit(_work_item(domain="chain.com"))
+        wp.submit(_work_item(domain="chain.com"))
+
+        await wp.drain()
+        assert wp.failed == 1
+        assert wp.succeeded == 2
+
+    async def test_timeout_kills_stuck_job(self):
+        """A job exceeding _ITEM_TIMEOUT is cancelled and counted as failed."""
+        wp = WorkerPool(5)
+        wp._ITEM_TIMEOUT = 0.05  # 50ms for test speed
+
+        async def hang():
+            await asyncio.sleep(999)
+            return (True, 999.0)
+
+        wp.submit(WorkItem(domain="stuck.com", kind="scrape", run=hang))
+        await wp.drain()
+        assert wp.failed == 1
+        assert wp.timed_out == 1
+        assert wp.succeeded == 0
+
+    async def test_timeout_doesnt_break_queue_chain(self):
+        """A timed-out item doesn't prevent subsequent queued items."""
+        wp = WorkerPool(5)
+        wp._ITEM_TIMEOUT = 0.05
+
+        async def hang():
+            await asyncio.sleep(999)
+            return (True, 999.0)
+
+        wp.submit(WorkItem(domain="d.com", kind="scrape", run=hang))
+        wp.submit(_work_item(domain="d.com"))
+
+        await wp.drain()
+        assert wp.timed_out == 1
+        assert wp.succeeded == 1
+
 
 # ── TestRunContinuousLoop ────────────────────────────────────────────
 
@@ -189,9 +281,6 @@ class TestRunContinuousLoop:
 
         await run_continuous_loop(pool, http, shutdown, max_concurrent=2, worker_id="t")
 
-        # On first iteration scrapes should not have been called because
-        # all slots were filled by monitors. On second iteration (shutdown),
-        # monitors returns [] and slots are free again.
         # At least monitors were called
         assert mock_monitors.call_count >= 1
 
@@ -279,38 +368,39 @@ class TestRunContinuousLoop:
 
     @patch("src.scheduler.claim_scrape_work", new_callable=AsyncMock)
     @patch("src.scheduler.claim_monitor_work", new_callable=AsyncMock)
-    async def test_exclude_domains_passed(self, mock_monitors, mock_scrapes):
-        """In-flight domains are passed as exclude list to claim functions.
-
-        After monitors submit a busy.com item, the scrape claim in the
-        SAME iteration should see busy.com in the exclude list.
-        """
+    async def test_queued_items_process_without_reclaim(self, mock_monitors, mock_scrapes):
+        """Items queued for the same domain process without a new claim tick."""
         shutdown = asyncio.Event()
         pool = AsyncMock()
         http = AsyncMock()
-        monitor_iteration = 0
-        scrape_excludes = []
+        processed = []
 
-        async def monitors_side(*a, **kw):
-            nonlocal monitor_iteration
-            monitor_iteration += 1
-            if monitor_iteration == 1:
-                # Return a slow item so it stays in-flight for the scrape call
-                return [_slow_work_item(domain="busy.com", delay=5.0)]
+        async def make_run(label):
+            async def _run():
+                processed.append(label)
+                return (True, 0.01)
+
+            return _run
+
+        iteration = 0
+
+        async def claim_batch(*a, **kw):
+            nonlocal iteration
+            iteration += 1
+            if iteration == 1:
+                # Return 3 items for the same domain — 1 runs, 2 queued
+                items = []
+                for i in range(3):
+                    run_fn = await make_run(f"m-{i}")
+                    items.append(WorkItem(domain="same.com", kind="monitor", run=run_fn))
+                return items
             shutdown.set()
             return []
 
-        async def scrapes_side(*a, **kw):
-            # a = (pool, http, limit, worker_id, exclude_domains)
-            if len(a) >= 5:
-                scrape_excludes.append(list(a[4]))
-            return []
-
-        mock_monitors.side_effect = monitors_side
-        mock_scrapes.side_effect = scrapes_side
+        mock_monitors.side_effect = claim_batch
+        mock_scrapes.return_value = []
 
         await run_continuous_loop(pool, http, shutdown, max_concurrent=5, worker_id="t")
 
-        # The scrape call in the first iteration should see busy.com excluded
-        assert len(scrape_excludes) >= 1
-        assert "busy.com" in scrape_excludes[0]
+        # All 3 should have processed, even though only 1 claim tick returned them
+        assert len(processed) == 3

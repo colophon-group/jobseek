@@ -606,13 +606,11 @@ WITH ranked AS (
     AND board_status IN ('active', 'suspect')
     AND next_check_at <= now()
     AND (leased_until IS NULL OR leased_until < now())
-    AND throttle_key != ALL($3::text[])
 ),
 picked AS (
   SELECT id
   FROM ranked
-  WHERE domain_rank = 1
-  ORDER BY id
+  ORDER BY domain_rank, id
   LIMIT $1
   FOR UPDATE SKIP LOCKED
 )
@@ -633,7 +631,6 @@ WITH candidates AS (
       AND next_scrape_at IS NOT NULL
       AND next_scrape_at <= now()
       AND (leased_until IS NULL OR leased_until < now())
-      AND (scrape_domain IS NULL OR scrape_domain != ALL($3::text[]))
     FOR UPDATE SKIP LOCKED
 ),
 ranked AS (
@@ -650,8 +647,7 @@ SET lease_owner = $2, leased_until = now() + interval '10 minutes'
 FROM (
     SELECT id AS rid
     FROM ranked
-    WHERE domain_rank = 1
-    ORDER BY needs_initial_scrape DESC, next_scrape_at
+    ORDER BY domain_rank, needs_initial_scrape DESC, next_scrape_at
     LIMIT $1
 ) pick
 WHERE job_posting.id = pick.rid
@@ -664,13 +660,12 @@ async def claim_monitor_work(
     http: httpx.AsyncClient,
     limit: int,
     worker_id: str,
-    exclude_domains: list[str],
 ) -> list[WorkItem]:
-    """Claim due boards (1 per domain) and return WorkItems."""
+    """Claim due boards (interleaved across domains) and return WorkItems."""
     if limit <= 0:
         return []
 
-    rows = await pool.fetch(_CLAIM_MONITORS, limit, worker_id, exclude_domains)
+    rows = await pool.fetch(_CLAIM_MONITORS, limit, worker_id)
     items: list[WorkItem] = []
     for board in rows:
         domain = board["throttle_key"]
@@ -689,13 +684,12 @@ async def claim_scrape_work(
     http: httpx.AsyncClient,
     limit: int,
     worker_id: str,
-    exclude_domains: list[str],
 ) -> list[WorkItem]:
-    """Claim due job postings (1 per domain) and return WorkItems."""
+    """Claim due job postings (interleaved across domains) and return WorkItems."""
     if limit <= 0:
         return []
 
-    rows = await pool.fetch(_CLAIM_SCRAPES, limit, worker_id, exclude_domains)
+    rows = await pool.fetch(_CLAIM_SCRAPES, limit, worker_id)
     if not rows:
         return []
 
