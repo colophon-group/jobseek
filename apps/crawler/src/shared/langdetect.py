@@ -84,9 +84,7 @@ _TAG_RE = re.compile(r"<[^>]+>")
 @lru_cache(maxsize=1)
 def _get_detector() -> LanguageDetector:
     """Build and cache a language detector restricted to supported languages."""
-    return (
-        LanguageDetectorBuilder.from_languages(*_SUPPORTED).with_preloaded_language_models().build()
-    )
+    return LanguageDetectorBuilder.from_languages(*_SUPPORTED).with_low_accuracy_mode().build()
 
 
 def detect_language(description: str) -> str | None:

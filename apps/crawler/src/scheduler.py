@@ -55,6 +55,24 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def _batch_log_kwargs(result) -> dict:
+    """Build log kwargs from a BatchResult, adding p50/p99 when items were processed."""
+    info: dict = {
+        "processed": result.processed,
+        "succeeded": result.succeeded,
+        "failed": result.failed,
+        "duration_s": result.duration_s,
+    }
+    if result.slow_items:
+        info["slow_items"] = result.slow_items
+    if result.item_durations:
+        durations = sorted(result.item_durations)
+        info["p50_s"] = round(durations[len(durations) // 2], 2)
+        info["p99_s"] = round(durations[int(len(durations) * 0.99)], 2)
+        info["max_s"] = round(durations[-1], 2)
+    return info
+
+
 async def run_once(
     pool,
     http,
@@ -67,11 +85,11 @@ async def run_once(
 
     if monitor:
         result = await process_monitor_batch(pool, http, limit=limit, worker_id=WORKER_ID)
-        log.info("scheduler.monitor_batch", **vars(result))
+        log.info("scheduler.monitor_batch", **_batch_log_kwargs(result))
 
     if scrape:
         result = await process_scrape_batch(pool, http, limit=limit, worker_id=WORKER_ID)
-        log.info("scheduler.scrape_batch", **vars(result))
+        log.info("scheduler.scrape_batch", **_batch_log_kwargs(result))
 
 
 async def run_poll_loop(
@@ -99,13 +117,13 @@ async def run_poll_loop(
             result = await process_monitor_batch(pool, http, limit=limit, worker_id=WORKER_ID)
             if result.processed > 0:
                 did_work = True
-                log.info("scheduler.monitor_batch", **vars(result))
+                log.info("scheduler.monitor_batch", **_batch_log_kwargs(result))
 
         if scrape:
             result = await process_scrape_batch(pool, http, limit=limit, worker_id=WORKER_ID)
             if result.processed > 0:
                 did_work = True
-                log.info("scheduler.scrape_batch", **vars(result))
+                log.info("scheduler.scrape_batch", **_batch_log_kwargs(result))
 
         idle_interval = 1.0 if did_work else min(idle_interval * 2, max_interval)
 

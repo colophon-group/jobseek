@@ -15,6 +15,7 @@ from src.shared.browser import (
     DEFAULT_WAIT,
     OVERLAY_SELECTORS,
     VALID_WAIT_STRATEGIES,
+    _resolve_placeholders,
     dismiss_overlays,
     navigate,
     open_page,
@@ -413,3 +414,44 @@ class TestRepeatAction:
                 page, [{"action": "repeat", "selector": "button.more", "wait_ms": 500}]
             )
             mock_sleep.assert_awaited_once_with(0.5)
+
+
+# ---------------------------------------------------------------------------
+# TestResolvePlaceholders
+# ---------------------------------------------------------------------------
+
+
+class TestResolvePlaceholders:
+    def test_uuid_replaced(self):
+        cookies = [{"name": "datr", "value": "{uuid}", "domain": ".example.com"}]
+        result = _resolve_placeholders(cookies)
+        assert result[0]["value"] != "{uuid}"
+        assert len(result[0]["value"]) == 32  # hex uuid without dashes
+
+    def test_uuid_unique_per_cookie(self):
+        cookies = [
+            {"name": "a", "value": "{uuid}"},
+            {"name": "b", "value": "{uuid}"},
+        ]
+        result = _resolve_placeholders(cookies)
+        assert result[0]["value"] != result[1]["value"]
+
+    def test_no_placeholder_unchanged(self):
+        cookies = [{"name": "x", "value": "static", "domain": ".example.com"}]
+        result = _resolve_placeholders(cookies)
+        assert result[0]["value"] == "static"
+
+    def test_original_not_mutated(self):
+        cookie = {"name": "datr", "value": "{uuid}"}
+        _resolve_placeholders([cookie])
+        assert cookie["value"] == "{uuid}"
+
+    def test_empty_list(self):
+        assert _resolve_placeholders([]) == []
+
+    def test_partial_placeholder(self):
+        cookies = [{"name": "x", "value": "prefix-{uuid}-suffix"}]
+        result = _resolve_placeholders(cookies)
+        assert result[0]["value"].startswith("prefix-")
+        assert result[0]["value"].endswith("-suffix")
+        assert "{uuid}" not in result[0]["value"]

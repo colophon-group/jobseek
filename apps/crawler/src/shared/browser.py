@@ -9,6 +9,7 @@ in boards.csv — no schema change needed.
 from __future__ import annotations
 
 import asyncio
+import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -46,6 +47,22 @@ BROWSER_KEYS = frozenset(
 )
 
 # ---------------------------------------------------------------------------
+# Config placeholders
+# ---------------------------------------------------------------------------
+
+
+def _resolve_placeholders(cookies: list[dict]) -> list[dict]:
+    """Replace ``{uuid}`` in cookie values with a fresh random UUID."""
+    resolved = []
+    for cookie in cookies:
+        value = cookie.get("value")
+        if isinstance(value, str) and "{uuid}" in value:
+            cookie = {**cookie, "value": value.replace("{uuid}", uuid.uuid4().hex)}
+        resolved.append(cookie)
+    return resolved
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
@@ -74,7 +91,7 @@ async def open_page(
     try:
         context = await browser.new_context(user_agent=user_agent)
         if cookies:
-            await context.add_cookies(cookies)
+            await context.add_cookies(_resolve_placeholders(cookies))
         page = await context.new_page()
         if warmup_url:
             log.debug("browser.warmup", url=warmup_url)

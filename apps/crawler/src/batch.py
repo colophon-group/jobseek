@@ -14,9 +14,10 @@ import asyncio
 import contextlib
 import json
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, time
 from email.utils import parsedate_to_datetime
+from time import monotonic
 from urllib.parse import urlparse
 
 import asyncpg
@@ -238,13 +239,25 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
         $14, 'active', now(), now())
 """
 
-_UPDATE_RICH_CONTENT = """
-UPDATE job_posting
-SET title = $2, description = $3, locations = $4,
-    employment_type = $5, job_location_type = $6, base_salary = $7,
-    date_posted = $8, language = $9, localizations = $10,
-    extras = $11, metadata = $12, updated_at = now()
-WHERE id = $1
+_CREATE_RICH_UPDATES_TEMP = """
+CREATE TEMP TABLE _rich_updates (
+    id uuid, title text, description text, locations text[],
+    employment_type text, job_location_type text, base_salary jsonb,
+    date_posted timestamptz, language text, localizations jsonb,
+    extras jsonb, metadata jsonb
+) ON COMMIT DROP
+"""
+
+_BATCH_UPDATE_RICH_CONTENT = """
+UPDATE job_posting AS jp
+SET title = u.title, description = u.description, locations = u.locations,
+    employment_type = u.employment_type, job_location_type = u.job_location_type,
+    base_salary = u.base_salary, date_posted = u.date_posted,
+    language = u.language, localizations = u.localizations,
+    extras = u.extras, metadata = u.metadata,
+    updated_at = now()
+FROM _rich_updates u
+WHERE jp.id = u.id
 """
 
 _INSERT_URL_ONLY_JOBS = """
@@ -274,7 +287,8 @@ WHERE id = $1
 
 _FETCH_DUE_JOB_POSTINGS = """
 WITH candidates AS (
-    SELECT id, scrape_domain, next_scrape_at
+    SELECT id, scrape_domain, next_scrape_at,
+           (title IS NULL AND description IS NULL)::int AS needs_initial_scrape
     FROM job_posting
     WHERE status = 'active'
       AND next_scrape_at IS NOT NULL
@@ -286,8 +300,9 @@ ranked AS (
     SELECT id,
            row_number() OVER (
                PARTITION BY scrape_domain
-               ORDER BY next_scrape_at
+               ORDER BY needs_initial_scrape DESC, next_scrape_at
            ) AS domain_rank,
+           needs_initial_scrape,
            next_scrape_at
     FROM candidates
 )
@@ -297,7 +312,7 @@ SET lease_owner   = $2,
 FROM (
     SELECT id AS rid
     FROM ranked
-    ORDER BY domain_rank, next_scrape_at
+    ORDER BY domain_rank, needs_initial_scrape DESC, next_scrape_at
     LIMIT $1
 ) pick
 WHERE job_posting.id = pick.rid
@@ -552,11 +567,18 @@ class ScrapeItem:
     board_id: str = ""
 
 
+_SLOW_MONITOR_SECONDS = 30.0
+_SLOW_SCRAPE_SECONDS = 15.0
+
+
 @dataclass
 class BatchResult:
     processed: int = 0
     succeeded: int = 0
     failed: int = 0
+    duration_s: float = 0.0
+    slow_items: int = 0
+    item_durations: list[float] = field(default_factory=list)
 
 
 # ── Monitor Batch ────────────────────────────────────────────────────
@@ -566,14 +588,15 @@ async def _process_one_board(
     board: asyncpg.Record,
     pool: asyncpg.Pool,
     http: httpx.AsyncClient,
-) -> bool:
-    """Run a full monitor cycle for a single board."""
+) -> tuple[bool, float]:
+    """Run a full monitor cycle for a single board. Returns (success, duration_s)."""
     board_id = str(board["id"])
     company_id = str(board["company_id"])
     board_url = board["board_url"]
     crawler_type = board["crawler_type"]
 
     board_log = log.bind(board_id=board_id, board_url=board_url, crawler_type=crawler_type)
+    t0 = monotonic()
 
     try:
         # Build monitor config from board metadata
@@ -584,14 +607,15 @@ async def _process_one_board(
         result = await monitor_one(board_url, crawler_type, metadata, http)
 
         if not result.urls:
-            board_log.warning("batch.monitor.empty")
+            elapsed = monotonic() - t0
+            board_log.warning("batch.monitor.empty", duration_s=round(elapsed, 2))
             async with pool.acquire() as conn:
                 rows = await conn.fetch(_RECORD_EMPTY_CHECK, board_id)
                 # If board transitioned to 'gone', delist all its active postings
                 if rows and rows[0]["board_status"] == "gone":
                     await conn.execute(_DELIST_BOARD_POSTINGS, board_id)
                     board_log.warning("batch.monitor.board_gone")
-            return True
+            return True, elapsed
 
         async with pool.acquire() as conn, conn.transaction():
             # Persist newly discovered sitemap URL
@@ -678,9 +702,10 @@ async def _process_one_board(
                         if not j.language and j.description:
                             j.language = detect_language(j.description)
 
-                    await conn.executemany(
-                        _UPDATE_RICH_CONTENT,
-                        [
+                    await conn.execute(_CREATE_RICH_UPDATES_TEMP)
+                    await conn.copy_records_to_table(
+                        "_rich_updates",
+                        records=[
                             (
                                 pid,
                                 _coerce_text(j.title),
@@ -698,6 +723,7 @@ async def _process_one_board(
                             for pid, j in update_pairs
                         ],
                     )
+                    await conn.execute(_BATCH_UPDATE_RICH_CONTENT)
 
             # URL-only path — insert stubs with next_scrape_at for Postgres scheduler
             if result.jobs_by_url is None and new_urls:
@@ -711,46 +737,56 @@ async def _process_one_board(
 
             await conn.execute(_RECORD_SUCCESS_NONEMPTY, board_id)
 
+        elapsed = monotonic() - t0
         board_log.info(
             "batch.monitor.success",
             discovered=len(result.urls),
             new=len(new_urls),
             relisted=len(relisted),
             gone=len(gone),
+            duration_s=round(elapsed, 2),
         )
+        if elapsed >= _SLOW_MONITOR_SECONDS:
+            board_log.warning("batch.monitor.slow", duration_s=round(elapsed, 2))
 
         # Invalidate stats cache when job counts change
         if new_urls or gone:
             with contextlib.suppress(Exception):
                 await get_redis().delete("cache:platform-stats")
-        return True
+        return True, elapsed
 
     except Exception as exc:
+        elapsed = monotonic() - t0
         error_msg = _error_message(exc)
-        board_log.exception("batch.monitor.error", error=error_msg)
+        board_log.exception("batch.monitor.error", error=error_msg, duration_s=round(elapsed, 2))
         with contextlib.suppress(Exception):
             async with pool.acquire() as conn:
                 await conn.execute(_RECORD_FAILURE, board_id, error_msg)
-        return False
+        return False, elapsed
+
+
+@dataclass
+class _PipelineResult:
+    succeeded: int = 0
+    durations: list[float] = field(default_factory=list)
 
 
 async def _monitor_pipeline(
     boards: list[asyncpg.Record],
     pool: asyncpg.Pool,
     http: httpx.AsyncClient,
-) -> int:
-    """Process boards for one rate-limit domain serially.
-
-    Returns count of boards that completed without error.
-    """
-    succeeded = 0
+) -> _PipelineResult:
+    """Process boards for one rate-limit domain serially."""
+    result = _PipelineResult()
     for board in boards:
         try:
-            if await _process_one_board(board, pool, http):
-                succeeded += 1
+            ok, elapsed = await _process_one_board(board, pool, http)
+            result.durations.append(elapsed)
+            if ok:
+                result.succeeded += 1
         except Exception:
             log.exception("batch.monitor.pipeline_error", board_id=str(board["id"]))
-    return succeeded
+    return result
 
 
 async def process_monitor_batch(
@@ -764,6 +800,7 @@ async def process_monitor_batch(
     Boards sharing a rate-limit domain (same ATS API or hostname) run
     serially to respect politeness.  Different domains run concurrently.
     """
+    t0 = monotonic()
     boards = await pool.fetch(_FETCH_DUE_BOARDS, limit, worker_id)
 
     if not boards:
@@ -777,13 +814,24 @@ async def process_monitor_batch(
     log.info("batch.monitor.start", boards=len(boards), domains=len(groups))
 
     # Run domain pipelines concurrently
-    tasks: list[asyncio.Task[int]] = []
+    tasks: list[asyncio.Task[_PipelineResult]] = []
     async with asyncio.TaskGroup() as tg:
         for group_boards in groups.values():
             tasks.append(tg.create_task(_monitor_pipeline(group_boards, pool, http)))
 
-    succeeded = sum(t.result() for t in tasks)
-    return BatchResult(processed=len(boards), succeeded=succeeded, failed=len(boards) - succeeded)
+    pipeline_results = [t.result() for t in tasks]
+    succeeded = sum(r.succeeded for r in pipeline_results)
+    all_durations = [d for r in pipeline_results for d in r.durations]
+    elapsed = monotonic() - t0
+
+    return BatchResult(
+        processed=len(boards),
+        succeeded=succeeded,
+        failed=len(boards) - succeeded,
+        duration_s=round(elapsed, 2),
+        slow_items=sum(1 for d in all_durations if d >= _SLOW_MONITOR_SECONDS),
+        item_durations=all_durations,
+    )
 
 
 # ── Scrape Batch ─────────────────────────────────────────────────────
@@ -797,8 +845,9 @@ async def _process_one_scrape(
     scraper_config: dict | None,
     fallback_scraper_type: str | None = None,
     fallback_scraper_config: dict | None = None,
-) -> bool:
-    """Run a scrape for a single job posting. Returns True on success."""
+) -> tuple[bool, float]:
+    """Run a scrape for a single job posting. Returns (success, duration_s)."""
+    t0 = monotonic()
     try:
         content = await scrape_one(item.url, scraper_type, scraper_config, http)
 
@@ -844,16 +893,22 @@ async def _process_one_scrape(
 
         async with pool.acquire() as conn:
             await conn.execute(_RECORD_SCRAPE_SUCCESS, item.job_posting_id)
-        log.debug("batch.scrape.success", url=item.url, title=content.title)
-        return True
+        elapsed = monotonic() - t0
+        log.debug(
+            "batch.scrape.success", url=item.url, title=content.title, duration_s=round(elapsed, 2)
+        )
+        if elapsed >= _SLOW_SCRAPE_SECONDS:
+            log.warning("batch.scrape.slow", url=item.url, duration_s=round(elapsed, 2))
+        return True, elapsed
 
     except Exception as exc:
+        elapsed = monotonic() - t0
         error_msg = _error_message(exc)
-        log.error("batch.scrape.error", url=item.url, error=error_msg)
+        log.error("batch.scrape.error", url=item.url, error=error_msg, duration_s=round(elapsed, 2))
         with contextlib.suppress(Exception):
             async with pool.acquire() as conn:
                 await conn.execute(_RECORD_SCRAPE_FAILURE, item.job_posting_id, error_msg)
-        return False
+        return False, elapsed
 
 
 async def _scrape_pipeline(
@@ -861,12 +916,9 @@ async def _scrape_pipeline(
     pool: asyncpg.Pool,
     http: httpx.AsyncClient,
     board_scrapers: dict[str, BoardScraperConfig] | None = None,
-) -> int:
-    """Process scrape items for one domain serially.
-
-    Returns count of items that completed successfully.
-    """
-    succeeded = 0
+) -> _PipelineResult:
+    """Process scrape items for one domain serially."""
+    result = _PipelineResult()
     for item in items:
         try:
             scraper_type = "json-ld"
@@ -880,7 +932,7 @@ async def _scrape_pipeline(
                 fallback_scraper_type = cfg.fallback_scraper_type
                 fallback_scraper_config = cfg.fallback_scraper_config
 
-            if await _process_one_scrape(
+            ok, elapsed = await _process_one_scrape(
                 item,
                 pool,
                 http,
@@ -888,11 +940,13 @@ async def _scrape_pipeline(
                 scraper_config,
                 fallback_scraper_type,
                 fallback_scraper_config,
-            ):
-                succeeded += 1
+            )
+            result.durations.append(elapsed)
+            if ok:
+                result.succeeded += 1
         except Exception:
             log.exception("batch.scrape.pipeline_error", url=item.url)
-    return succeeded
+    return result
 
 
 async def process_scrape_batch(
@@ -932,13 +986,25 @@ async def process_scrape_batch(
     log.info("batch.scrape.start", items=len(items), domains=len(groups))
 
     # Run domain pipelines concurrently
-    tasks: list[asyncio.Task[int]] = []
+    t0 = monotonic()
+    tasks: list[asyncio.Task[_PipelineResult]] = []
     async with asyncio.TaskGroup() as tg:
         for group_items in groups.values():
             tasks.append(tg.create_task(_scrape_pipeline(group_items, pool, http, board_scrapers)))
 
-    succeeded = sum(t.result() for t in tasks)
-    return BatchResult(processed=len(items), succeeded=succeeded, failed=len(items) - succeeded)
+    pipeline_results = [t.result() for t in tasks]
+    succeeded = sum(r.succeeded for r in pipeline_results)
+    all_durations = [d for r in pipeline_results for d in r.durations]
+    elapsed = monotonic() - t0
+
+    return BatchResult(
+        processed=len(items),
+        succeeded=succeeded,
+        failed=len(items) - succeeded,
+        duration_s=round(elapsed, 2),
+        slow_items=sum(1 for d in all_durations if d >= _SLOW_SCRAPE_SECONDS),
+        item_durations=all_durations,
+    )
 
 
 # ── Single Board ──────────────────────────────────────────────────────
@@ -986,7 +1052,10 @@ async def run_single_board(
     log.info("single_board.monitor.start", board_slug=board_slug, board_id=board_id)
 
     # Monitor
-    await _process_one_board(board, pool, http)
+    _ok, monitor_duration = await _process_one_board(board, pool, http)
+    log.info(
+        "single_board.monitor.done", board_slug=board_slug, duration_s=round(monitor_duration, 2)
+    )
 
     # Scrape items for this board
     query = _FETCH_BOARD_ALL_ACTIVE if force_rescrape else _FETCH_BOARD_SCRAPE_ITEMS
@@ -1013,17 +1082,21 @@ async def run_single_board(
 
     log.info("single_board.scrape.start", board_slug=board_slug, items=len(items))
 
-    tasks: list[asyncio.Task[int]] = []
+    t0 = monotonic()
+    tasks: list[asyncio.Task[_PipelineResult]] = []
     async with asyncio.TaskGroup() as tg:
         for group_items in groups.values():
             tasks.append(tg.create_task(_scrape_pipeline(group_items, pool, http, board_scrapers)))
 
-    succeeded = sum(t.result() for t in tasks)
+    pipeline_results = [t.result() for t in tasks]
+    succeeded = sum(r.succeeded for r in pipeline_results)
     failed = len(items) - succeeded
+    scrape_duration = monotonic() - t0
     log.info(
         "single_board.complete",
         board_slug=board_slug,
         scraped=len(items),
         succeeded=succeeded,
         failed=failed,
+        scrape_duration_s=round(scrape_duration, 2),
     )
