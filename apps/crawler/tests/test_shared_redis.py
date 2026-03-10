@@ -40,32 +40,24 @@ def _mock_redis_class(monkeypatch):
     return redis_ctor
 
 
-def test_get_redis_uses_settings_when_env_missing(
-    monkeypatch, _mock_settings, _mock_redis_class
-):
+def test_get_redis_uses_settings_when_env_missing(monkeypatch, _mock_settings, _mock_redis_class):
     monkeypatch.delenv("UPSTASH_REDIS_REST_URL", raising=False)
     monkeypatch.delenv("UPSTASH_REDIS_REST_TOKEN", raising=False)
 
     client = redis_module.get_redis()
 
     assert client is not None
-    _mock_redis_class.assert_called_once_with(
-        url="https://example.upstash.io", token="token-123"
-    )
+    _mock_redis_class.assert_called_once_with(url="https://example.upstash.io", token="token-123")
 
 
-def test_get_redis_prefers_env_over_settings(
-    monkeypatch, _mock_settings, _mock_redis_class
-):
+def test_get_redis_prefers_env_over_settings(monkeypatch, _mock_settings, _mock_redis_class):
     monkeypatch.setenv("UPSTASH_REDIS_REST_URL", "https://env.upstash.io")
     monkeypatch.setenv("UPSTASH_REDIS_REST_TOKEN", "env-token")
 
     client = redis_module.get_redis()
 
     assert client is not None
-    _mock_redis_class.assert_called_once_with(
-        url="https://env.upstash.io", token="env-token"
-    )
+    _mock_redis_class.assert_called_once_with(url="https://env.upstash.io", token="env-token")
 
 
 def test_get_redis_returns_none_when_unconfigured(monkeypatch, _mock_redis_class):
