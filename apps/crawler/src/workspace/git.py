@@ -515,12 +515,67 @@ def comment_on_issue(issue_number: int, body: str) -> None:
     )
 
 
+_CLAIM_MARKER = "<!-- ws-claim -->"
+_CLAIM_BODY = f"{_CLAIM_MARKER}\nWorking on it"
+
+
+def _get_claim_comment_ids(issue_number: int) -> list[int]:
+    """Return IDs of claim comments on an issue."""
+    import json
+
+    result = _run(
+        [
+            "gh",
+            "api",
+            f"repos/{_resolve_repo()}/issues/{issue_number}/comments",
+        ],
+        check=False,
+    )
+    if result.returncode != 0 or not result.stdout.strip():
+        return []
+    try:
+        comments = json.loads(result.stdout)
+    except (json.JSONDecodeError, TypeError):
+        return []
+    return [c["id"] for c in comments if c.get("body", "").startswith(_CLAIM_MARKER)]
+
+
+def is_issue_claimed(issue_number: int) -> bool:
+    """Check if an issue has an active claim comment."""
+    return len(_get_claim_comment_ids(issue_number)) > 0
+
+
+def claim_issue(issue_number: int) -> None:
+    """Add a claim comment to an issue."""
+    comment_on_issue(issue_number, _CLAIM_BODY)
+
+
+def unclaim_issue(issue_number: int) -> None:
+    """Remove all claim comments from an issue."""
+    for comment_id in _get_claim_comment_ids(issue_number):
+        _run(
+            [
+                "gh",
+                "api",
+                "--method",
+                "DELETE",
+                f"repos/{_resolve_repo()}/issues/comments/{comment_id}",
+            ],
+            check=False,
+        )
+
+
+def _resolve_repo() -> str:
+    """Return 'owner/repo' from env or default."""
+    return os.environ.get("WS_REPO", _DEFAULT_REPO)
+
+
 def fetch_oldest_open_issue(label: str = "company-request") -> int | None:
     """Return the issue number of the oldest open issue with the given label.
 
     Skips issues that already have an open ``add-company/`` or
-    ``fix-crawler/`` PR linked via "Closes #N".  Returns ``None`` when no
-    eligible issue exists.
+    ``fix-crawler/`` PR linked via "Closes #N", and issues with an
+    active claim comment.  Returns ``None`` when no eligible issue exists.
     """
     result = _run(
         [
@@ -532,6 +587,10 @@ def fetch_oldest_open_issue(label: str = "company-request") -> int | None:
             label,
             "--state",
             "open",
+            "--search",
+            "sort:created-asc",
+            "--limit",
+            "20",
             "--json",
             "number",
             "--jq",
@@ -539,11 +598,15 @@ def fetch_oldest_open_issue(label: str = "company-request") -> int | None:
         ],
         retries=_GH_RETRIES,
     )
-    numbers = sorted(int(n) for n in result.stdout.strip().splitlines() if n.strip())
+    numbers = [int(n) for n in result.stdout.strip().splitlines() if n.strip()]
     if not numbers:
         return None
 
     for num in numbers:
+        # Skip claimed issues
+        if is_issue_claimed(num):
+            continue
+
         # Check for open PRs linked to this issue
         pr_result = _run(
             [

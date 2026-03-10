@@ -1775,10 +1775,10 @@ def feedback_cmd(
         cov = tier.get("coverage", "?")
         qual = tier.get("quality", "?")
         out.plain("feedback", f"  {tier_name}: {cov} ({qual})")
-    if verdict == "poor":
-        out.warn("feedback", "Verdict is poor — submit requires --force")
-    else:
+    if verdict == "unusable":
         out.warn("feedback", "Verdict is unusable — cannot submit")
+    elif verdict == "poor":
+        out.warn("feedback", "Verdict is poor — submit requires --force")
 
 
 # ── Quality gates ──────────────────────────────────────────────────────

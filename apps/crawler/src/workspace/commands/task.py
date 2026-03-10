@@ -82,7 +82,7 @@ def task(ctx, issue: int | None, pick_next: bool):
             out.die("Cannot use --issue and --pick together.")
             return
 
-        from src.workspace.git import check_gh_auth, fetch_oldest_open_issue
+        from src.workspace.git import check_gh_auth, claim_issue, fetch_oldest_open_issue
 
         if not check_gh_auth():
             out.die("GitHub CLI not authenticated. Run: gh auth login")
@@ -94,6 +94,8 @@ def task(ctx, issue: int | None, pick_next: bool):
             out.info("task", "No open company-request issues without an active PR.")
             return
         out.info("task", f"Selected issue #{issue}")
+        claim_issue(issue)
+        out.info("task", f"Claimed issue #{issue}")
 
     # --issue:
     # - continue in active workspace when it matches
@@ -324,6 +326,14 @@ def task_complete():
 
     wf.current_step = "done"
     _save_wf_to_disk(slug, wf)
+
+    # Remove claim comment
+    ws = load_workspace(slug)
+    if ws.issue:
+        from src.workspace.git import unclaim_issue
+
+        unclaim_issue(ws.issue)
+
     out.info("task", "Workflow complete! Nice work.")
 
     # Print summary of reflections

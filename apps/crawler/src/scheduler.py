@@ -98,6 +98,7 @@ class WorkerPool:
     """
 
     _ITEM_TIMEOUT = 300  # 5 minutes per job
+    _QUEUE_PER_DOMAIN = 2  # max queued items behind a running domain
 
     def __init__(self, max_concurrent: int) -> None:
         self._semaphore = asyncio.Semaphore(max_concurrent)
@@ -126,16 +127,30 @@ class WorkerPool:
     def queued_count(self) -> int:
         return sum(len(q) for q in self._domain_queues.values())
 
-    def submit(self, item: WorkItem) -> None:
-        """Schedule a work item.
+    @property
+    def claim_budget(self) -> int:
+        """How many items the loop should claim this tick.
+
+        Accounts for free semaphore slots (new domains) plus remaining
+        queue capacity across in-flight domains.
+        """
+        queue_room = max(
+            0,
+            len(self._domains_inflight) * self._QUEUE_PER_DOMAIN - self.queued_count,
+        )
+        return self.free_slots + queue_room
+
+    def submit(self, item: WorkItem) -> bool:
+        """Schedule a work item. Returns False if the domain queue is full.
 
         If the domain already has an in-flight task, the item is queued and
         will start automatically when the current one finishes — without
         consuming an extra semaphore slot.
         """
-        self.total_submitted += 1
         if item.domain in self._domains_inflight:
             queue = self._domain_queues.get(item.domain)
+            if queue is not None and len(queue) >= self._QUEUE_PER_DOMAIN:
+                return False
             if queue is None:
                 queue = collections.deque()
                 self._domain_queues[item.domain] = queue
@@ -145,6 +160,8 @@ class WorkerPool:
             task = asyncio.get_event_loop().create_task(self._run(item))
             self._tasks.add(task)
             task.add_done_callback(self._tasks.discard)
+        self.total_submitted += 1
+        return True
 
     async def _run(self, item: WorkItem) -> None:
         """Acquire a semaphore slot and process items for this domain serially."""
@@ -226,20 +243,22 @@ async def run_continuous_loop(
         scrapes_claimed = 0
 
         # Phase 1: monitors (priority)
-        if monitor and wp.free_slots > 0:
-            items = await claim_monitor_work(pool, http, wp.free_slots, worker_id)
+        budget = wp.claim_budget
+        if monitor and budget > 0:
+            items = await claim_monitor_work(pool, http, budget, worker_id)
             monitors_claimed = len(items)
             for item in items:
-                wp.submit(item)
-                work_found = True
+                if wp.submit(item):
+                    work_found = True
 
         # Phase 2: scrapes (fill remaining)
-        if scrape and wp.free_slots > 0:
-            items = await claim_scrape_work(pool, http, wp.free_slots, worker_id)
+        budget = wp.claim_budget
+        if scrape and budget > 0:
+            items = await claim_scrape_work(pool, http, budget, worker_id)
             scrapes_claimed = len(items)
             for item in items:
-                wp.submit(item)
-                work_found = True
+                if wp.submit(item):
+                    work_found = True
 
         if work_found or wp.active_count > 0:
             log.info(

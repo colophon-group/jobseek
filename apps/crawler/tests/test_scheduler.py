@@ -160,12 +160,12 @@ class TestWorkerPool:
     async def test_queue_drains_on_drain(self):
         """drain() processes all queued items, not just in-flight tasks."""
         wp = WorkerPool(5)
-        for _i in range(5):
+        for _i in range(3):
             wp.submit(_slow_work_item(domain="q.com", delay=0.01))
 
-        assert wp.queued_count == 4
+        assert wp.queued_count == 2  # 1 running + 2 queued (cap=2)
         await wp.drain()
-        assert wp.succeeded == 5
+        assert wp.succeeded == 3
         assert wp.queued_count == 0
 
     async def test_failed_item_doesnt_break_queue_chain(self):
@@ -178,6 +178,36 @@ class TestWorkerPool:
         await wp.drain()
         assert wp.failed == 1
         assert wp.succeeded == 2
+
+    async def test_queue_cap_rejects_excess(self):
+        """submit() returns False when per-domain queue is full."""
+        wp = WorkerPool(5)
+        assert wp.submit(_slow_work_item(domain="d.com", delay=0.1))  # runs
+        assert wp.submit(_slow_work_item(domain="d.com", delay=0.1))  # queued (1)
+        assert wp.submit(_slow_work_item(domain="d.com", delay=0.1))  # queued (2)
+        assert not wp.submit(_slow_work_item(domain="d.com", delay=0.1))  # rejected
+        assert wp.queued_count == 2
+        assert wp.total_submitted == 3  # rejected item not counted
+        await wp.drain()
+
+    async def test_claim_budget(self):
+        """claim_budget accounts for free slots + queue room."""
+        wp = WorkerPool(5)
+        assert wp.claim_budget == 5  # all free, no domains
+
+        # Start 2 domains
+        wp.submit(_slow_work_item(domain="a.com", delay=0.1))
+        wp.submit(_slow_work_item(domain="b.com", delay=0.1))
+        await asyncio.sleep(0.01)
+        # free_slots=3, 2 domains × 2 queue cap = 4 room, budget = 3+4 = 7
+        assert wp.claim_budget == 7
+
+        # Fill a.com queue
+        wp.submit(_slow_work_item(domain="a.com", delay=0.1))
+        wp.submit(_slow_work_item(domain="a.com", delay=0.1))
+        # free_slots=3, queue_room = 2*2 - 2 = 2, budget = 3+2 = 5
+        assert wp.claim_budget == 5
+        await wp.drain()
 
     async def test_timeout_kills_stuck_job(self):
         """A job exceeding _ITEM_TIMEOUT is cancelled and counted as failed."""

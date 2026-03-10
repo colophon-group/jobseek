@@ -365,6 +365,7 @@ def reject(slug: str | None, issue: int | None, reason: str, message: str):
         from src.workspace import git
 
         git.comment_on_issue(issue, body)
+        git.unclaim_issue(issue)
         git.close_issue(issue)
         out.info("github", f"Commented on issue #{issue} (validation-failed: {reason})")
         out.info("github", f"Closed issue #{issue}")
@@ -391,6 +392,12 @@ def del_(slug: str | None):
         out.die(f"Workspace {slug!r} not found")
 
     ws = load_workspace(slug)
+
+    # Remove claim comment if issue is linked
+    if ws.issue and not local:
+        from src.workspace import git as _git
+
+        _git.unclaim_issue(ws.issue)
 
     # Close PR if it exists
     if ws.pr:
