@@ -105,11 +105,13 @@ async function _fetchPostingDetail(
     const descLocale = row.locales?.[0] ?? "en";
     const url = `${r2Domain.replace(/\/$/, "")}/job/${postingId}/${descLocale}/latest.html`;
     try {
-      const resp = await fetch(url, { next: { revalidate: 300 } });
+      const resp = await fetch(url, { cache: "no-store" });
       if (resp.ok) {
         descriptionHtml = await resp.text();
+        console.log(`[R2] OK ${url} (${descriptionHtml.length} chars)`);
       } else {
-        console.warn(`[R2] ${resp.status} for ${url}`);
+        const body = await resp.text().catch(() => "");
+        console.warn(`[R2] ${resp.status} for ${url} headers=${JSON.stringify(Object.fromEntries(resp.headers))} body=${body.slice(0, 200)}`);
       }
     } catch (err) {
       console.error(`[R2] fetch error for ${url}:`, err);
