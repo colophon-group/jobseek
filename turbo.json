@@ -15,7 +15,9 @@
         "LINKEDIN_CLIENT_SECRET",
         "RESEND_API_KEY",
         "DATABASE_URL",
-        "DATABASE_URL_UNPOOLED"
+        "DATABASE_URL_UNPOOLED",
+        "UPSTASH_REDIS_REST_URL",
+        "UPSTASH_REDIS_REST_TOKEN"
       ]
     },
     "dev": {
