@@ -81,7 +81,7 @@ def upload_images() -> dict[str, dict[str, str]]:
                 key,
                 ExtraArgs={
                     "ContentType": content_type,
-                    "CacheControl": "public, max-age=604800",
+                    "CacheControl": "public, max-age=31536000, immutable",
                 },
             )
             urls[f"{role}_url"] = f"{public_base}/{key}"

@@ -3,15 +3,25 @@ import withBundleAnalyzer from "@next/bundle-analyzer";
 
 const nextConfig: NextConfig = {
   images: {
-    // Cache optimized images (/_next/image) for 1 week instead of default 60s.
-    // Vercel purges its CDN cache on every deploy, so stale images only persist
-    // in individual browser caches until the TTL expires.
-    minimumCacheTTL: 604800,
+    // Cache optimized images for 1 year. Company logos rarely change, and
+    // Vercel purges its CDN cache on every deploy anyway.
+    minimumCacheTTL: 31536000,
     remotePatterns: [
       { hostname: "jobseek-assets.colophon-group.org" },
     ],
   },
   headers: async () => [
+    {
+      // Optimized remote images (company logos) — cache aggressively.
+      // Logos rarely change; Vercel CDN is purged on deploy.
+      source: "/_next/image",
+      headers: [
+        {
+          key: "Cache-Control",
+          value: "public, max-age=31536000, stale-while-revalidate=604800, immutable",
+        },
+      ],
+    },
     {
       // Fonts never change between deploys — cache for 1 year
       source: "/fonts/:path*",

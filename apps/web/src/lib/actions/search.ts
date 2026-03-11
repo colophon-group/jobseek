@@ -18,6 +18,7 @@ export interface PostingDetail {
   sourceUrl: string;
   firstSeenAt: string;
   descriptionHtml: string | null;
+  descriptionUrl: string | null;
 }
 
 export async function getPostingDetail(params: {
@@ -98,26 +99,12 @@ async function _fetchPostingDetail(
       .filter((l) => l.name !== "");
   }
 
-  // Fetch description from R2
+  // Build R2 description URL for client-side fetch
   const r2Domain = process.env.R2_DOMAIN_URL;
-  let descriptionHtml: string | null = null;
+  let descriptionUrl: string | null = null;
   if (r2Domain) {
     const descLocale = row.locales?.[0] ?? "en";
-    const url = `${r2Domain.replace(/\/$/, "")}/job/${postingId}/${descLocale}/latest.html`;
-    try {
-      const resp = await fetch(url, { cache: "no-store" });
-      if (resp.ok) {
-        descriptionHtml = await resp.text();
-        console.log(`[R2] OK ${url} (${descriptionHtml.length} chars)`);
-      } else {
-        const body = await resp.text().catch(() => "");
-        console.warn(`[R2] ${resp.status} for ${url} headers=${JSON.stringify(Object.fromEntries(resp.headers))} body=${body.slice(0, 200)}`);
-      }
-    } catch (err) {
-      console.error(`[R2] fetch error for ${url}:`, err);
-    }
-  } else {
-    console.warn("[R2] R2_DOMAIN_URL is not set");
+    descriptionUrl = `${r2Domain.replace(/\/$/, "")}/job/${postingId}/${descLocale}/latest.html`;
   }
 
   return {
@@ -134,7 +121,8 @@ async function _fetchPostingDetail(
     employmentType: row.employment_type,
     sourceUrl: row.source_url,
     firstSeenAt: new Date(row.first_seen_at).toISOString(),
-    descriptionHtml,
+    descriptionHtml: null,
+    descriptionUrl,
   };
 }
 

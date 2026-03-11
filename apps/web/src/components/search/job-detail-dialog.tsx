@@ -30,9 +30,20 @@ export function JobDetailPanel({ postingId, onClose }: JobDetailPanelProps) {
     const locale = document.documentElement.lang || "en";
 
     getPostingDetail({ postingId, locale })
-      .then((d) => {
-        if (d) setDetail(d);
-        else setError(true);
+      .then(async (d) => {
+        if (!d) { setError(true); return; }
+        // Fetch description client-side to avoid Cloudflare challenge
+        if (d.descriptionUrl && !d.descriptionHtml) {
+          try {
+            const resp = await fetch(d.descriptionUrl);
+            if (resp.ok) {
+              d.descriptionHtml = await resp.text();
+            }
+          } catch {
+            // Description is optional, continue without it
+          }
+        }
+        setDetail(d);
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
