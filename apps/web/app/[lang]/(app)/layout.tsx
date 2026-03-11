@@ -1,4 +1,7 @@
 import type { ReactNode } from "react";
+
+export const dynamic = "force-dynamic";
+
 import { getSession } from "@/lib/sessionCache";
 import { getPreferences } from "@/lib/actions/preferences";
 import { SessionProvider } from "@/components/SessionProvider";
