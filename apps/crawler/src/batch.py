@@ -48,6 +48,10 @@ _API_MONITOR_TYPES = api_monitor_types()
 # Lazy-loaded location resolver singleton
 _location_resolver: LocationResolver | None = None
 
+# Max R2 backfill uploads per board run (touched postings without hashes).
+# Prevents huge first-time runs from timing out. Backfill completes incrementally.
+_R2_BACKFILL_LIMIT = 500
+
 
 async def _get_location_resolver(pool: asyncpg.Pool) -> LocationResolver:
     """Get or create the location resolver singleton."""
@@ -1108,7 +1112,16 @@ async def _process_one_board(
                         records=records,
                     )
                     await conn.execute(_BATCH_UPDATE_RICH_CONTENT)
+
+                    # R2 work for updated postings:
+                    # - With existing hash: always check for content changes
+                    # - Without hash (backfill): cap to avoid overwhelming R2
+                    backfill_count = 0
                     for pid, j, existing_hash in update_triples:
+                        if existing_hash is None:
+                            backfill_count += 1
+                            if backfill_count > _R2_BACKFILL_LIMIT:
+                                continue
                         r2_work.append(
                             (
                                 str(pid),
@@ -1127,6 +1140,12 @@ async def _process_one_board(
                                 ),
                                 existing_hash,
                             )
+                        )
+                    if backfill_count > _R2_BACKFILL_LIMIT:
+                        board_log.info(
+                            "batch.r2_backfill.capped",
+                            total=backfill_count,
+                            limit=_R2_BACKFILL_LIMIT,
                         )
 
             # URL-only path — insert stubs with next_scrape_at for Postgres scheduler

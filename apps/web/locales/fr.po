@@ -13,18 +13,6 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
-#. Success message after submitting a company request
-#. js-lingui-explicit-id
-#: app/[lang]/(app)/app/company-request-form.tsx:38
-#~ msgid "app.home.request.success"
-#~ msgstr ""
-
-#. Error when user is not logged in
-#. js-lingui-explicit-id
-#: app/[lang]/(app)/app/company-request-form.tsx:17
-#~ msgid "app.home.request.error.unauthorized"
-#~ msgstr ""
-
 #. CC right 1
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:80
@@ -59,15 +47,33 @@ msgstr "Compte"
 
 #. Account bottom bar label
 #. js-lingui-explicit-id
-#: src/components/AppHeader.tsx:208
+#: src/components/AppHeader.tsx:237
 msgid "app.header.nav.account"
 msgstr "Compte"
 
 #. Aria label for user avatar menu
 #. js-lingui-explicit-id
-#: src/components/AppHeader.tsx:77
+#: src/components/AppHeader.tsx:113
 msgid "app.header.avatar.label"
 msgstr "Menu du compte"
+
+#. Active matches label on company card
+#. js-lingui-explicit-id
+#: src/components/search/company-card.tsx:119
+msgid "search.card.active"
+msgstr "actif"
+
+#. Placeholder in the add keyword input
+#. js-lingui-explicit-id
+#: src/components/search/keyword-pills.tsx:27
+msgid "search.keywords.addPlaceholder"
+msgstr "Ajouter un mot-clé..."
+
+#. Placeholder in the add location input
+#. js-lingui-explicit-id
+#: src/components/search/location-pills.tsx:158
+msgid "search.locations.addPlaceholder"
+msgstr "Ajouter un lieu..."
 
 #. Feature: alerts you drive title
 #. js-lingui-explicit-id
@@ -123,16 +129,16 @@ msgstr "Suivi des candidatures"
 msgid "indexing.ingestion.s3.body"
 msgstr "En dernier recours, nous analysons directement les pages carrières, en privilégiant le tri du plus récent au plus ancien et en nous arrêtant dès que des offres déjà indexées réapparaissent, plutôt que de parcourir chaque page."
 
-#. Link back to sign-in after failed verification
-#. js-lingui-explicit-id
-#: app/[lang]/verify-email/page.tsx:68
-msgid "auth.verify.error.backToSignIn"
-msgstr "Retour à la connexion"
-
 #. Link back to sign-in from reset password
 #. js-lingui-explicit-id
 #: app/[lang]/reset-password/page.tsx:42
 msgid "auth.resetPassword.backToSignIn"
+msgstr "Retour à la connexion"
+
+#. Link back to sign-in after failed verification
+#. js-lingui-explicit-id
+#: app/[lang]/verify-email/page.tsx:68
+msgid "auth.verify.error.backToSignIn"
 msgstr "Retour à la connexion"
 
 #. Link text for browsing the repo
@@ -155,7 +161,7 @@ msgstr "En utilisant Job Seek, tu acceptes ces conditions. Voici un résumé en 
 
 #. Cancel delete button
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:379
+#: src/components/settings/AccountSettings.tsx:387
 msgid "settings.account.delete.cancel"
 msgstr "Annuler"
 
@@ -221,9 +227,9 @@ msgstr "Bientôt disponible"
 
 #. Label for the company counter on the app home page
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/app/page.tsx:35
+#: app/[lang]/(app)/app/progress/page.tsx:36
 msgid "app.home.stats.companies"
-msgstr ""
+msgstr "Entreprises suivies"
 
 #. Feature: company alerts title
 #. js-lingui-explicit-id
@@ -233,7 +239,7 @@ msgstr "Alertes entreprises"
 
 #. Confirm delete button
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:372
+#: src/components/settings/AccountSettings.tsx:380
 msgid "settings.account.delete.confirm"
 msgstr "Confirmer la suppression"
 
@@ -245,15 +251,21 @@ msgstr "Confirmer le mot de passe"
 
 #. Connect social account button
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:322
+#: src/components/settings/AccountSettings.tsx:330
 msgid "settings.account.socials.connect"
 msgstr "Connecter"
 
 #. Connected accounts section heading
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:298
+#: src/components/settings/AccountSettings.tsx:305
 msgid "settings.account.socials.title"
 msgstr "Comptes connectés"
+
+#. Footer link to contact email
+#. js-lingui-explicit-id
+#: src/components/Footer.tsx:41
+msgid "common.footer.contact"
+msgstr "Contact"
 
 #. TOC: Contact
 #. js-lingui-explicit-id
@@ -265,12 +277,6 @@ msgstr "Contact"
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:96
 msgid "license.contact.title"
-msgstr "Contact"
-
-#. Footer link to contact email
-#. js-lingui-explicit-id
-#: src/components/Footer.tsx:41
-msgid "common.footer.contact"
 msgstr "Contact"
 
 #. Table of contents heading
@@ -353,19 +359,19 @@ msgstr "Sombre"
 
 #. Delete account section heading
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:355
+#: src/components/settings/AccountSettings.tsx:363
 msgid "settings.account.delete.title"
 msgstr "Supprimer le compte"
 
 #. Delete account button
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:365
+#: src/components/settings/AccountSettings.tsx:373
 msgid "settings.account.delete.button"
 msgstr "Supprimer mon compte"
 
 #. Delete button while loading
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:371
+#: src/components/settings/AccountSettings.tsx:379
 msgid "settings.account.delete.deleting"
 msgstr "Suppression…"
 
@@ -375,9 +381,15 @@ msgstr "Suppression…"
 msgid "common.cookies.details"
 msgstr "Détails"
 
+#. Subtext encouraging user to request a company when no results found
+#. js-lingui-explicit-id
+#: src/components/search/request-company.tsx:40
+msgid "search.zero.subtext"
+msgstr "Vous n'avez pas trouvé l'entreprise recherchée ?"
+
 #. Disconnect social account button
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:321
+#: src/components/settings/AccountSettings.tsx:329
 msgid "settings.account.socials.disconnect"
 msgstr "Déconnecter"
 
@@ -400,10 +412,14 @@ msgid "home.features.s2.description"
 msgstr "Tu ne trouves pas ton entreprise préférée dans le flux ? Colle le lien de sa page carrières et on commence à la scraper pour toi — pas de scripts, pas de tableurs, pas d'attente au support."
 
 #. Placeholder for the company request input field
+#. Placeholder for the company request input field
+#. Placeholder for the company request input field
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/app/company-request-form.tsx:45
+#: app/[lang]/(app)/app/progress/company-request-form.tsx:45
+#: src/components/search/request-company.tsx:55
 msgid "app.home.request.placeholder"
-msgstr ""
+msgstr "ex. Stripe, ou https://boards.greenhouse.io/stripe"
 
 #. Email input label
 #. js-lingui-explicit-id
@@ -453,11 +469,25 @@ msgstr "Tout ce qu'il te faut pour garder une longueur d'avance"
 msgid "settings.account.email.error"
 msgstr "Échec du changement d'e-mail"
 
+#. Error when linking social account fails
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:281
+msgid "settings.account.socials.connectError"
+msgstr "Échec de la connexion du compte"
+
 #. Generic account deletion error
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:346
+#: src/components/settings/AccountSettings.tsx:354
 msgid "settings.account.delete.error"
 msgstr "Échec de la suppression du compte"
+
+#. Error when unlinking social account fails
+#. Error when unlinking social account fails
+#. js-lingui-explicit-id
+#: src/components/settings/AccountSettings.tsx:292
+#: src/components/settings/AccountSettings.tsx:297
+msgid "settings.account.socials.disconnectError"
+msgstr "Échec de la déconnexion du compte"
 
 #. Error when resending verification email fails
 #. js-lingui-explicit-id
@@ -502,6 +532,12 @@ msgstr "Trouve les postes pertinents plus vite"
 msgid "home.hero.title"
 msgstr "Trouve les bons postes plus vite."
 
+#. Follow button on company card (disabled for MVP)
+#. js-lingui-explicit-id
+#: src/components/search/company-card.tsx:111
+msgid "search.card.follow"
+msgstr "Suivre"
+
 #. Feature: company alerts description
 #. js-lingui-explicit-id
 #: src/components/Features.tsx:131
@@ -510,7 +546,7 @@ msgstr "Suis les employeurs qui t'intéressent et reçois une notification dès 
 
 #. Link to follow Job Seek on LinkedIn
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/app/page.tsx:72
+#: app/[lang]/(app)/app/progress/page.tsx:73
 msgid "app.home.followLinkedIn"
 msgstr "Suivez-nous sur LinkedIn"
 
@@ -586,7 +622,7 @@ msgstr "Masquer le mot de passe"
 
 #. Home nav icon tooltip
 #. js-lingui-explicit-id
-#: src/components/AppHeader.tsx:55
+#: src/components/AppHeader.tsx:91
 msgid "app.header.nav.home"
 msgstr "Accueil"
 
@@ -649,6 +685,12 @@ msgstr "Si tu constates une activité inattendue de notre robot d'indexation ou 
 msgid "indexing.outreach.body"
 msgstr "Si tu remarques un comportement inhabituel de notre robot, préfères que nous n'indexions pas ton contenu, ou as des suggestions pour améliorer nos mesures de protection, n'hésite pas à nous contacter."
 
+#. Yearly matches label on company card
+#. js-lingui-explicit-id
+#: src/components/search/company-card.tsx:121
+msgid "search.card.yearCount"
+msgstr "au cours de la dernière année"
+
 #. Indexing page eyebrow
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:45
@@ -656,16 +698,24 @@ msgid "indexing.hero.eyebrow"
 msgstr "Politique d'indexation"
 
 #. Error when company request input is too long
+#. Error when company request input is too long
+#. Error when company request input is too long
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/app/company-request-form.tsx:16
+#: app/[lang]/(app)/app/progress/company-request-form.tsx:16
+#: src/components/search/request-company.tsx:17
 msgid "app.home.request.error.tooLong"
-msgstr ""
+msgstr "L'entrée est trop longue."
 
+#. Error when company request input is too short
+#. Error when company request input is too short
 #. Error when company request input is too short
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/app/company-request-form.tsx:15
+#: app/[lang]/(app)/app/progress/company-request-form.tsx:15
+#: src/components/search/request-company.tsx:16
 msgid "app.home.request.error.tooShort"
-msgstr ""
+msgstr "L'entrée est trop courte."
 
 #. Heading when reset link is invalid
 #. js-lingui-explicit-id
@@ -685,11 +735,17 @@ msgstr "Lien de vérification invalide"
 msgid "license.toc.data"
 msgstr "Données d'emploi (CC BY-NC 4.0)"
 
+#. Job detail panel title
+#. js-lingui-explicit-id
+#: src/components/search/job-detail-dialog.tsx:48
+msgid "search.detail.title"
+msgstr "Détails de l'offre"
+
 #. Label for the job postings counter on the app home page
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/app/page.tsx:44
+#: app/[lang]/(app)/app/progress/page.tsx:45
 msgid "app.home.stats.jobPostings"
-msgstr ""
+msgstr "Offres d'emploi"
 
 #. Indexing page description
 #. js-lingui-explicit-id
@@ -699,7 +755,7 @@ msgstr "Job Seek est un moteur de recherche pour les candidats actifs comme pour
 
 #. Main app page subtitle explaining the app is being built
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/app/page.tsx:25
+#: app/[lang]/(app)/app/progress/page.tsx:26
 msgid "app.home.subtitle"
 msgstr "Job Seek est en cours de développement. Restez à l'écoute pour les mises à jour !"
 
@@ -727,16 +783,22 @@ msgstr "Fini la routine des 50 onglets"
 msgid "settings.general.language.title"
 msgstr "Langue"
 
-#. Last updated date label
+#. Heading shown when no search query is entered
 #. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:28
-msgid "privacy.hero.lastUpdated"
-msgstr "Dernière mise à jour :"
+#: src/components/search/empty-state.tsx:8
+msgid "search.empty.heading"
+msgstr "Plus grandes entreprises"
 
 #. Last updated date label
 #. js-lingui-explicit-id
 #: src/components/TermsContent.tsx:28
 msgid "terms.hero.lastUpdated"
+msgstr "Dernière mise à jour :"
+
+#. Last updated date label
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:28
+msgid "privacy.hero.lastUpdated"
 msgstr "Dernière mise à jour :"
 
 #. Hero secondary call-to-action
@@ -779,12 +841,18 @@ msgstr "Conditions de licence du code applicatif de Job Seek (MIT) et des donné
 msgid "settings.theme.light"
 msgstr "Clair"
 
+#. Locations heading in job detail
+#. js-lingui-explicit-id
+#: src/components/search/job-detail-dialog.tsx:111
+msgid "search.detail.locations"
+msgstr "Lieux"
+
 #. Login button label
 #. Login button label
 #. Login button label
 #. js-lingui-explicit-id
-#: src/components/AppHeader.tsx:174
-#: src/components/AppHeader.tsx:220
+#: src/components/AppHeader.tsx:201
+#: src/components/AppHeader.tsx:249
 #: src/components/settings/AccountSettings.tsx:38
 msgid "common.auth.login"
 msgstr "Se connecter"
@@ -797,7 +865,7 @@ msgstr "Note où tu as postulé, le statut, les contacts et les prochaines étap
 
 #. Connected accounts section description
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:301
+#: src/components/settings/AccountSettings.tsx:308
 msgid "settings.account.socials.description"
 msgstr "Gère tes comptes sociaux liés."
 
@@ -843,6 +911,18 @@ msgstr "Nouveau mot de passe"
 msgid "license.data.r2"
 msgstr "Aucune redistribution ou revente commerciale sans autorisation."
 
+#. Heading when search returns no results
+#. js-lingui-explicit-id
+#: src/components/search/zero-results.tsx:14
+msgid "search.zero.heading"
+msgstr "Aucun résultat trouvé pour « {query} »"
+
+#. Empty state message when no jobs are saved
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/app/saved/saved-page.tsx:72
+msgid "saved.empty"
+msgstr "Aucune offre sauvegardée. Sauvegardez des offres depuis les résultats de recherche pour les retrouver ici."
+
 #. MIT right 3
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:60
@@ -850,8 +930,12 @@ msgid "license.code.r3"
 msgstr "Aucune garantie — utilisation à tes risques et périls."
 
 #. Warning shown when the request was saved in DB but GitHub issue creation failed
+#. Warning shown when the request was saved in DB but GitHub issue creation failed
+#. Warning shown when the request was saved in DB but GitHub issue creation failed
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/app/company-request-form.tsx:91
+#: app/[lang]/(app)/app/progress/company-request-form.tsx:91
+#: src/components/search/request-company.tsx:101
 msgid "app.home.request.issueWarning"
 msgstr "Remarque : Nous n'avons pas pu créer un ticket de suivi, mais votre demande a été enregistrée."
 
@@ -1003,9 +1087,9 @@ msgstr "Les mots de passe ne correspondent pas"
 
 #. Description below the heading explaining users can request a company
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/app/page.tsx:58
+#: app/[lang]/(app)/app/progress/page.tsx:59
 msgid "app.home.request.description"
-msgstr ""
+msgstr "Entrez un nom d'entreprise ou l'URL d'une page carrières et nous commencerons à suivre leurs offres d'emploi."
 
 #. Feature: paste a link title
 #. js-lingui-explicit-id
@@ -1021,15 +1105,19 @@ msgstr "par mois"
 
 #. Delete account section description
 #. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:358
+#: src/components/settings/AccountSettings.tsx:366
 msgid "settings.account.delete.description"
 msgstr "Supprime définitivement ton compte et toutes les données associées. Cette action est irréversible."
 
 #. Error when company request input is empty
+#. Error when company request input is empty
+#. Error when company request input is empty
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/app/company-request-form.tsx:14
+#: app/[lang]/(app)/app/progress/company-request-form.tsx:14
+#: src/components/search/request-company.tsx:15
 msgid "app.home.request.error.empty"
-msgstr ""
+msgstr "Veuillez entrer un nom d'entreprise ou une URL."
 
 #. Error when email field is empty
 #. js-lingui-explicit-id
@@ -1050,10 +1138,14 @@ msgid "settings.account.password.newRequired"
 msgstr "Saisis un mot de passe"
 
 #. Error when company request input has no alphanumeric characters
+#. Error when company request input has no alphanumeric characters
+#. Error when company request input has no alphanumeric characters
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/app/company-request-form.tsx:17
+#: app/[lang]/(app)/app/progress/company-request-form.tsx:17
+#: src/components/search/request-company.tsx:18
 msgid "app.home.request.error.invalid"
-msgstr ""
+msgstr "Veuillez entrer un nom d'entreprise ou une URL valide."
 
 #. Error when required fields are empty
 #. js-lingui-explicit-id
@@ -1072,6 +1164,12 @@ msgstr "Connecte-toi pour gérer les paramètres de ton compte."
 #: src/components/Features.tsx:189
 msgid "home.features.s2.p1.description"
 msgstr "Indique-nous n'importe quelle page carrières ou tableau d'offres Notion et Job Seek le reproduit dans ton espace de travail en quelques minutes."
+
+#. Posting not found message
+#. js-lingui-explicit-id
+#: src/components/search/job-detail-dialog.tsx:63
+msgid "search.detail.notFound"
+msgstr "Offre non trouvée."
 
 #. Pricing section eyebrow
 #. js-lingui-explicit-id
@@ -1136,16 +1234,16 @@ msgstr "Domaine public"
 msgid "license.contactCta"
 msgstr "Des questions sur les licences ou l'utilisation commerciale ? Écris-nous."
 
-#. Privacy contact call to action
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:66
-msgid "privacy.contact.description"
-msgstr "Des questions ? Écris-nous."
-
 #. Terms contact call to action
 #. js-lingui-explicit-id
 #: src/components/TermsContent.tsx:54
 msgid "terms.contact.description"
+msgstr "Des questions ? Écris-nous."
+
+#. Privacy contact call to action
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx:66
+msgid "privacy.contact.description"
 msgstr "Des questions ? Écris-nous."
 
 #. Link to full CC license
@@ -1184,15 +1282,35 @@ msgstr "Redistribue tes modifications, à condition d'inclure la mention MIT."
 msgid "common.footer.text"
 msgstr "Publié sous licence MIT. Les données d'emploi sont sous CC BY-NC 4.0."
 
+#. Aria label for removing a keyword pill
+#. js-lingui-explicit-id
+#: src/components/search/keyword-pills.tsx:44
+msgid "search.keywords.remove"
+msgstr "Supprimer le mot-clé"
+
+#. Aria label for removing a location pill
+#. js-lingui-explicit-id
+#: src/components/search/location-pills.tsx:183
+msgid "search.locations.remove"
+msgstr "Supprimer le lieu"
+
+#. Success message after submitting a company request, with link to GitHub issue for tracking
+#. Success message after submitting a company request, with link to GitHub issue for tracking
 #. Success message after submitting a company request, with link to GitHub issue for tracking
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/app/company-request-form.tsx:65
+#: app/[lang]/(app)/app/progress/company-request-form.tsx:65
+#: src/components/search/request-company.tsx:75
 msgid "app.home.request.success.withIssue"
 msgstr "Demande soumise ! Suivez la progression ici :"
 
 #. Success message when request was saved but GitHub issue could not be created
+#. Success message when request was saved but GitHub issue could not be created
+#. Success message when request was saved but GitHub issue could not be created
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/app/company-request-form.tsx:70
+#: app/[lang]/(app)/app/progress/company-request-form.tsx:70
+#: src/components/search/request-company.tsx:80
 msgid "app.home.request.success.noIssue"
 msgstr "Demande soumise ! Nous commencerons bientôt à suivre cette entreprise."
 
@@ -1246,9 +1364,15 @@ msgstr "Enregistre tes filtres pour des recherches rapides sans tout retaper à 
 
 #. Saved items nav icon tooltip
 #. js-lingui-explicit-id
-#: src/components/AppHeader.tsx:56
+#: src/components/AppHeader.tsx:92
 msgid "app.header.nav.saved"
 msgstr "Enregistrés"
+
+#. Title of the saved jobs page
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/app/saved/saved-page.tsx:86
+msgid "saved.title"
+msgstr "Offres sauvegardées"
 
 #. Free feature: saved searches
 #. js-lingui-explicit-id
@@ -1276,13 +1400,13 @@ msgstr "Enregistrement…"
 
 #. Search nav icon tooltip
 #. js-lingui-explicit-id
-#: src/components/AppHeader.tsx:58
+#: src/components/AppHeader.tsx:94
 msgid "app.header.nav.search"
 msgstr "Recherche"
 
 #. Placeholder text in app header search bar
 #. js-lingui-explicit-id
-#: src/components/AppHeader.tsx:135
+#: src/components/AppHeader.tsx:73
 msgid "app.header.searchPlaceholder"
 msgstr "Rechercher…"
 
@@ -1348,7 +1472,7 @@ msgstr "Paramètres"
 
 #. Settings nav icon tooltip
 #. js-lingui-explicit-id
-#: src/components/AppHeader.tsx:57
+#: src/components/AppHeader.tsx:93
 msgid "app.header.nav.settings"
 msgstr "Paramètres"
 
@@ -1378,7 +1502,7 @@ msgstr "Se connecter"
 
 #. Sign out dropdown menu item
 #. js-lingui-explicit-id
-#: src/components/AppHeader.tsx:107
+#: src/components/AppHeader.tsx:146
 msgid "app.header.signOut"
 msgstr "Se déconnecter"
 
@@ -1431,10 +1555,14 @@ msgid "error.title"
 msgstr "Une erreur est survenue"
 
 #. Generic error when company request fails
+#. Generic error when company request fails
+#. Generic error when company request fails
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/app/company-request-form.tsx:18
+#: app/[lang]/(app)/app/progress/company-request-form.tsx:18
+#: src/components/search/request-company.tsx:19
 msgid "app.home.request.error.unknown"
-msgstr ""
+msgstr "Une erreur s'est produite. Veuillez réessayer."
 
 #. Free tier CTA
 #. js-lingui-explicit-id
@@ -1449,16 +1577,24 @@ msgid "home.features.s2.eyebrow"
 msgstr "Garde le contrôle"
 
 #. Submit button for the company request form
+#. Submit button for the company request form
+#. Submit button for the company request form
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/app/company-request-form.tsx:57
+#: app/[lang]/(app)/app/progress/company-request-form.tsx:57
+#: src/components/search/request-company.tsx:67
 msgid "app.home.request.submit"
-msgstr ""
+msgstr "Envoyer"
 
+#. Submit button while request is in progress
+#. Submit button while request is in progress
 #. Submit button while request is in progress
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/app/company-request-form.tsx:56
+#: app/[lang]/(app)/app/progress/company-request-form.tsx:56
+#: src/components/search/request-company.tsx:66
 msgid "app.home.request.submitting"
-msgstr ""
+msgstr "Envoi en cours..."
 
 #. Free feature: subscribe to companies
 #. js-lingui-explicit-id
@@ -1543,14 +1679,14 @@ msgstr "Le service est fourni tel quel, sans garantie."
 
 #. Short version section title
 #. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:40
-msgid "privacy.short.title"
+#: src/components/TermsContent.tsx:40
+msgid "terms.short.title"
 msgstr "En bref"
 
 #. Short version section title
 #. js-lingui-explicit-id
-#: src/components/TermsContent.tsx:40
-msgid "terms.short.title"
+#: src/components/PrivacyPolicyContent.tsx:40
+msgid "privacy.short.title"
 msgstr "En bref"
 
 #. Theme settings section heading
@@ -1591,7 +1727,7 @@ msgstr "Réessayer"
 
 #. Main app page heading
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/app/page.tsx:20
+#: app/[lang]/(app)/app/progress/page.tsx:21
 msgid "app.home.title"
 msgstr "En développement actif"
 
@@ -1642,6 +1778,12 @@ msgstr "Échec de la vérification"
 #: app/[lang]/verify-email/page.tsx:48
 msgid "auth.verify.loading"
 msgstr "Vérification de ton e-mail…"
+
+#. Link to original job posting
+#. js-lingui-explicit-id
+#: src/components/search/job-detail-dialog.tsx:136
+msgid "search.detail.viewOriginal"
+msgstr "Voir l'offre originale"
 
 #. What the service does
 #. js-lingui-explicit-id
@@ -1711,9 +1853,9 @@ msgstr "Content de te revoir"
 
 #. Heading above the company request input on the app home page
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/app/page.tsx:53
+#: app/[lang]/(app)/app/progress/page.tsx:54
 msgid "app.home.request.heading"
-msgstr ""
+msgstr "Quelle entreprise devons-nous suivre ?"
 
 #. Account deletion
 #. js-lingui-explicit-id
