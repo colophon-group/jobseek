@@ -26,8 +26,11 @@ import asyncpg
 import httpx
 import structlog
 
+from src.core.description_store import content_hash, upload_description, upload_posting
+from src.core.enum_normalize import normalize_employment_type
+from src.core.location_resolve import LocationResolver
 from src.core.monitor import monitor_one
-from src.core.monitors import api_monitor_types
+from src.core.monitors import api_monitor_types, is_rich_monitor
 from src.core.scrape import scrape_one
 from src.core.scrapers import enrich_description, get_scraper
 from src.shared.html_normalize import normalize_description_html
@@ -41,6 +44,41 @@ log = structlog.get_logger()
 
 # API monitor types share a single API host per type (throttle-domain keys).
 _API_MONITOR_TYPES = api_monitor_types()
+
+# Lazy-loaded location resolver singleton
+_location_resolver: LocationResolver | None = None
+
+
+async def _get_location_resolver(pool: asyncpg.Pool) -> LocationResolver:
+    """Get or create the location resolver singleton."""
+    global _location_resolver
+    if _location_resolver is None:
+        _location_resolver = LocationResolver()
+        await _location_resolver.load(pool)
+        log.info("batch.location_resolver.loaded", entries=len(_location_resolver._entries))
+    return _location_resolver
+
+
+def _resolve_locations(
+    resolver: LocationResolver,
+    locations: list[str] | None,
+    job_location_type: str | None,
+    posting_language: str | None = None,
+) -> tuple[list[int] | None, list[str] | None]:
+    """Resolve locations to parallel arrays of (location_ids, location_types)."""
+    results = resolver.resolve(locations, job_location_type, posting_language)
+    if not results:
+        return None, None
+
+    # Build parallel arrays — only entries with location_ids
+    loc_ids = []
+    loc_types = []
+    for r in results:
+        if r.location_id is not None:
+            loc_ids.append(r.location_id)
+            loc_types.append(r.location_type)
+
+    return loc_ids or None, loc_types or None
 
 
 # ── SQL Queries ──────────────────────────────────────────────────────
@@ -91,43 +129,34 @@ touched AS (
   SET last_seen_at = now(), missing_count = 0
   FROM discovered d
   WHERE job_posting.board_id = $2
-    AND job_posting.status = 'active'
+    AND job_posting.is_active = true
     AND job_posting.source_url = d.url
-  RETURNING job_posting.id, job_posting.source_url
+  RETURNING job_posting.id, job_posting.source_url, job_posting.description_r2_hash
 ),
 relisted AS (
   UPDATE job_posting
-  SET status = 'active', delisted_at = NULL, delist_reason = NULL,
-      relisted_at = now(), missing_count = 0,
-      last_seen_at = now(), next_scrape_at = now(), updated_at = now()
+  SET is_active = true, missing_count = 0,
+      last_seen_at = now(),
+      next_scrape_at = CASE WHEN $4::boolean THEN NULL ELSE now() END
   FROM discovered d
   WHERE job_posting.board_id = $2
-    AND job_posting.status = 'delisted'
+    AND job_posting.is_active = false
     AND job_posting.source_url = d.url
-  RETURNING job_posting.id, job_posting.source_url
+  RETURNING job_posting.id, job_posting.source_url, job_posting.description_r2_hash
 ),
 gone AS (
   UPDATE job_posting
   SET missing_count = missing_count + 1,
-      status = CASE
-          WHEN missing_count + 1 >= $3 THEN 'delisted'
-          ELSE status
-      END,
-      delisted_at = CASE
-          WHEN missing_count + 1 >= $3 THEN now()
-          ELSE delisted_at
-      END,
-      delist_reason = CASE
-          WHEN missing_count + 1 >= $3 THEN 'missing_from_board'
-          ELSE delist_reason
+      is_active = CASE
+          WHEN missing_count + 1 >= $3 THEN false
+          ELSE is_active
       END,
       next_scrape_at = CASE
           WHEN missing_count + 1 >= $3 THEN NULL
           ELSE next_scrape_at
-      END,
-      updated_at = now()
+      END
   WHERE job_posting.board_id = $2
-    AND job_posting.status = 'active'
+    AND job_posting.is_active = true
     AND job_posting.source_url NOT IN (SELECT url FROM discovered)
   RETURNING job_posting.id, job_posting.source_url
 ),
@@ -138,13 +167,13 @@ new_urls AS (
     ON jp.source_url = d.url AND jp.board_id = $2
   WHERE jp.id IS NULL
 )
-SELECT 'touched' AS action, id::text, source_url AS url FROM touched
+SELECT 'touched' AS action, id::text, source_url AS url, description_r2_hash FROM touched
 UNION ALL
-SELECT 'relisted' AS action, id::text, source_url AS url FROM relisted
+SELECT 'relisted' AS action, id::text, source_url AS url, description_r2_hash FROM relisted
 UNION ALL
-SELECT 'gone', id::text, source_url FROM gone
+SELECT 'gone', id::text, source_url, NULL::bigint FROM gone
 UNION ALL
-SELECT 'new', NULL, url FROM new_urls
+SELECT 'new', NULL, url, NULL::bigint FROM new_urls
 """
 
 # Delist threshold: API monitors are authoritative (1 miss = delist),
@@ -154,10 +183,8 @@ _DELIST_THRESHOLD_FRAGILE = 2
 
 _DELIST_BOARD_POSTINGS = """
 UPDATE job_posting
-SET status = 'delisted', delisted_at = now(),
-    delist_reason = 'board_gone', next_scrape_at = NULL,
-    updated_at = now()
-WHERE board_id = $1 AND status = 'active'
+SET is_active = false, next_scrape_at = NULL
+WHERE board_id = $1 AND is_active = true
 """
 
 _RECORD_BOARD_GONE = """
@@ -233,40 +260,42 @@ WHERE id = $1
 
 _INSERT_RICH_JOB = """
 INSERT INTO job_posting
-    (company_id, board_id, title, description, locations,
-     employment_type, job_location_type, base_salary,
-     date_posted, language, localizations, extras, metadata,
-     source_url, status, first_seen_at, last_seen_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
-        $14, 'active', now(), now())
+    (company_id, board_id,
+     employment_type, source_url,
+     first_seen_at, last_seen_at,
+     is_active, titles, locales,
+     location_ids, location_types)
+VALUES ($1, $2, $3, $4,
+        now(), now(),
+        true, $5, $6,
+        $7, $8)
+RETURNING id
 """
 
 _CREATE_RICH_UPDATES_TEMP = """
 CREATE TEMP TABLE _rich_updates (
-    id uuid, title text, description text, locations text[],
-    employment_type text, job_location_type text, base_salary jsonb,
-    date_posted timestamptz, language text, localizations jsonb,
-    extras jsonb, metadata jsonb
+    id uuid,
+    employment_type text,
+    titles text[], locales text[],
+    location_ids integer[], location_types text[]
 ) ON COMMIT DROP
 """
 
 _BATCH_UPDATE_RICH_CONTENT = """
 UPDATE job_posting AS jp
-SET title = u.title, description = u.description, locations = u.locations,
-    employment_type = u.employment_type, job_location_type = u.job_location_type,
-    base_salary = u.base_salary, date_posted = u.date_posted,
-    language = u.language, localizations = u.localizations,
-    extras = u.extras, metadata = u.metadata,
-    updated_at = now()
+SET employment_type = u.employment_type,
+    titles = u.titles, locales = u.locales,
+    location_ids = u.location_ids, location_types = u.location_types
 FROM _rich_updates u
 WHERE jp.id = u.id
 """
 
 _INSERT_URL_ONLY_JOBS = """
-INSERT INTO job_posting (company_id, board_id, source_url, status,
-                         first_seen_at, last_seen_at, next_scrape_at, scrape_domain)
-SELECT $1, $2, u.url, 'active', now(), now(), now(),
-       split_part(split_part(u.url, '://', 2), '/', 1)
+INSERT INTO job_posting (company_id, board_id, source_url,
+                         first_seen_at, last_seen_at, next_scrape_at,
+                         is_active, titles, locales)
+SELECT $1, $2, u.url, now(), now(), now(),
+       true, '{}', '{}'
 FROM unnest($3::text[]) AS u(url)
 RETURNING id, source_url
 """
@@ -280,19 +309,30 @@ WHERE id = $1
 
 _UPDATE_JOB_CONTENT = """
 UPDATE job_posting
-SET title = $2, description = $3, locations = $4,
-    employment_type = $5, job_location_type = $6, base_salary = $7,
-    date_posted = $8, language = $9, extras = $10,
-    metadata = $11, updated_at = now()
+SET employment_type = $2,
+    titles = $3, locales = $4,
+    location_ids = $5, location_types = $6,
+    description_r2_hash = $7,
+    to_be_enriched = CASE
+        WHEN description_r2_hash IS DISTINCT FROM $7 THEN true
+        ELSE to_be_enriched
+    END
 WHERE id = $1
+"""
+
+_SET_R2_HASH = """
+UPDATE job_posting
+SET description_r2_hash = $2, to_be_enriched = true
+WHERE id = $1::uuid
 """
 
 _FETCH_DUE_JOB_POSTINGS = """
 WITH candidates AS (
-    SELECT id, scrape_domain, next_scrape_at,
-           (title IS NULL AND description IS NULL)::int AS needs_initial_scrape
+    SELECT id, split_part(split_part(source_url, '://', 2), '/', 1) AS domain,
+           next_scrape_at,
+           (titles = '{}')::int AS needs_initial_scrape
     FROM job_posting
-    WHERE status = 'active'
+    WHERE is_active = true
       AND next_scrape_at IS NOT NULL
       AND next_scrape_at <= now()
       AND (leased_until IS NULL OR leased_until < now())
@@ -301,7 +341,7 @@ WITH candidates AS (
 ranked AS (
     SELECT id,
            row_number() OVER (
-               PARTITION BY scrape_domain
+               PARTITION BY domain
                ORDER BY needs_initial_scrape DESC, next_scrape_at
            ) AS domain_rank,
            needs_initial_scrape,
@@ -309,8 +349,7 @@ ranked AS (
     FROM candidates
 )
 UPDATE job_posting
-SET lease_owner   = $2,
-    leased_until  = now() + interval '10 minutes'
+SET leased_until  = now() + interval '10 minutes'
 FROM (
     SELECT id AS rid
     FROM ranked
@@ -318,42 +357,47 @@ FROM (
     LIMIT $1
 ) pick
 WHERE job_posting.id = pick.rid
-RETURNING job_posting.id, source_url, board_id, scrape_domain
+RETURNING job_posting.id, source_url, board_id,
+          split_part(split_part(source_url, '://', 2), '/', 1) AS scrape_domain,
+          description_r2_hash
 """
 
 _RECORD_SCRAPE_SUCCESS = """
-UPDATE job_posting
+UPDATE job_posting jp
 SET scrape_failures  = 0,
-    last_scrape_error = NULL,
     last_scraped_at  = now(),
     next_scrape_at   = CASE
-        WHEN status = 'active'
-        THEN now() + (scrape_interval_hours || ' hours')::interval
+        WHEN jp.is_active
+        THEN now() + (COALESCE(
+            (SELECT scrape_interval_hours FROM job_board WHERE id = jp.board_id),
+            24
+        ) || ' hours')::interval
         ELSE NULL
     END,
-    lease_owner      = NULL,
-    leased_until     = NULL,
-    updated_at       = now()
-WHERE id = $1
+    leased_until     = NULL
+WHERE jp.id = $1
 """
 
 _RECORD_SCRAPE_FAILURE = """
 UPDATE job_posting
 SET scrape_failures   = scrape_failures + 1,
-    last_scrape_error = $2,
     last_scraped_at   = now(),
     next_scrape_at    = CASE
         WHEN scrape_failures + 1 >= 3 THEN NULL
         ELSE now() + (30 * pow(2, scrape_failures)) * interval '1 minute'
     END,
-    lease_owner  = NULL,
-    leased_until = NULL,
-    updated_at   = now()
+    leased_until = NULL
 WHERE id = $1
 """
 
+_CLEAR_SCRAPE_FOR_RICH = """
+UPDATE job_posting
+SET next_scrape_at = NULL, leased_until = NULL
+WHERE id = ANY($1::uuid[])
+"""
+
 _FETCH_BOARD_SCRAPERS = """
-SELECT id::text AS id, metadata
+SELECT id::text AS id, metadata, crawler_type
 FROM job_board
 WHERE id::text = ANY($1::text[])
 """
@@ -481,6 +525,141 @@ def _parse_update_count(result: object) -> int:
     return 0
 
 
+def _build_titles(title: str | None, localizations: dict | None) -> list[str]:
+    """Build titles array from primary title + localizations."""
+    titles: list[str] = []
+    if title:
+        titles.append(title)
+    if localizations and isinstance(localizations, dict):
+        for loc_data in localizations.values():
+            if isinstance(loc_data, dict):
+                loc_title = loc_data.get("title")
+                if loc_title and loc_title not in titles:
+                    titles.append(loc_title)
+    return titles
+
+
+def _build_locales(language: str | None, localizations: dict | None) -> list[str]:
+    """Build locales array from primary language + localization keys."""
+    locales: list[str] = []
+    primary = language or "en"
+    locales.append(primary)
+    if localizations and isinstance(localizations, dict):
+        for locale in localizations:
+            if locale not in locales:
+                locales.append(locale)
+    return locales
+
+
+def _build_r2_extras(
+    *,
+    title: str | None,
+    locations: list[str] | None,
+    extras: dict | None,
+    metadata: dict | None,
+    date_posted: object | None,
+    base_salary: dict | None,
+    employment_type: str | None,
+    job_location_type: str | None,
+) -> dict:
+    """Build the merged extras dict for R2 upload."""
+    merged: dict = {}
+    if extras and isinstance(extras, dict):
+        merged.update(extras)
+    # Explicit fields overwrite anything from extras
+    if title is not None:
+        merged["title"] = title
+    if locations:
+        merged["locations"] = locations
+    if metadata and isinstance(metadata, dict):
+        merged["metadata"] = metadata
+    if date_posted is not None:
+        dt = _coerce_datetime(date_posted)
+        if dt is not None:
+            merged["date_posted"] = dt.isoformat()
+    if base_salary is not None:
+        merged["base_salary"] = base_salary
+    if employment_type is not None:
+        merged["raw_employment_type"] = employment_type
+    if job_location_type is not None:
+        merged["raw_job_location_type"] = job_location_type
+    return merged
+
+
+def _compute_r2_hash(description: str | None, merged_extras: dict) -> int:
+    """Compute a combined hash of all R2-bound content."""
+    parts = description or ""
+    if merged_extras:
+        parts += "\0" + json.dumps(merged_extras, sort_keys=True, ensure_ascii=False)
+    return content_hash(parts)
+
+
+async def _upload_to_r2(
+    posting_id: str,
+    *,
+    title: str | None,
+    description: str | None,
+    language: str | None,
+    locations: list[str] | None,
+    localizations: dict | None,
+    extras: dict | None,
+    metadata: dict | None,
+    date_posted: object | None,
+    base_salary: dict | None,
+    employment_type: str | None,
+    job_location_type: str | None,
+    current_hash: int | None = None,
+) -> int | None:
+    """Upload description and merged extras to R2. Best-effort, errors are logged.
+
+    Returns the new description_r2_hash (caller should persist in DB),
+    or None if no description was provided.
+    """
+    if not description:
+        return None
+
+    try:
+        locale = language or "en"
+
+        merged = _build_r2_extras(
+            title=title,
+            locations=locations,
+            extras=extras,
+            metadata=metadata,
+            date_posted=date_posted,
+            base_salary=base_salary,
+            employment_type=employment_type,
+            job_location_type=job_location_type,
+        )
+
+        new_hash = _compute_r2_hash(description, merged)
+
+        # Fast path: nothing changed — skip all R2 API calls
+        if current_hash is not None and current_hash == new_hash:
+            return new_hash
+
+        # Upload primary description + extras (tracks diffs in history)
+        await asyncio.to_thread(upload_posting, posting_id, locale, description, merged)
+
+        # Upload localizations (secondary locales, description only)
+        if localizations and isinstance(localizations, dict):
+            for loc_locale, loc_data in localizations.items():
+                if loc_locale == locale:
+                    continue
+                loc_desc = None
+                if isinstance(loc_data, dict):
+                    loc_desc = loc_data.get("description")
+                elif isinstance(loc_data, str):
+                    loc_desc = loc_data
+                if loc_desc:
+                    await asyncio.to_thread(upload_description, posting_id, loc_locale, loc_desc)
+
+        return new_hash
+    except Exception:
+        log.exception("batch.r2_upload.error", posting_id=posting_id)
+        return None
+
+
 @dataclass
 class BoardScraperConfig:
     """Scraper settings for a board (fallback chain lives inside scraper_config)."""
@@ -489,21 +668,38 @@ class BoardScraperConfig:
     scraper_config: dict | None
 
 
+@dataclass
+class _BoardScraperInfo:
+    """Scraper info plus whether the board is a rich monitor (no scraping needed)."""
+
+    scrapers: dict[str, BoardScraperConfig]
+    rich_board_ids: set[str]  # boards from rich monitors with no explicit scraper
+
+
 async def _load_board_scrapers(
     pool: asyncpg.Pool,
     board_ids: set[str],
-) -> dict[str, BoardScraperConfig]:
+) -> _BoardScraperInfo:
     """Load scraper type/config by board id from job_board metadata."""
     if not board_ids:
-        return {}
+        return _BoardScraperInfo(scrapers={}, rich_board_ids=set())
 
     rows = await pool.fetch(_FETCH_BOARD_SCRAPERS, list(board_ids))
     resolved: dict[str, BoardScraperConfig] = {}
+    rich_board_ids: set[str] = set()
 
     for row in rows:
         board_id = row["id"]
         metadata = _parse_metadata(row["metadata"])
-        scraper_type = metadata.get("scraper_type") or "json-ld"
+        crawler_type = row["crawler_type"]
+        explicit_scraper = metadata.get("scraper_type")
+
+        # Rich monitors without an explicit scraper don't need scraping
+        if not explicit_scraper and is_rich_monitor(crawler_type, metadata):
+            rich_board_ids.add(board_id)
+            continue
+
+        scraper_type = explicit_scraper or "json-ld"
         scraper_config = metadata.get("scraper_config")
         if not isinstance(scraper_config, dict):
             scraper_config = None
@@ -524,7 +720,7 @@ async def _load_board_scrapers(
             scraper_config=scraper_config,
         )
 
-    return resolved
+    return _BoardScraperInfo(scrapers=resolved, rich_board_ids=rich_board_ids)
 
 
 def _throttle_key(board: asyncpg.Record) -> str:
@@ -547,6 +743,7 @@ class ScrapeItem:
     job_posting_id: str
     url: str
     board_id: str = ""
+    description_r2_hash: int | None = None
 
 
 _SLOW_MONITOR_SECONDS = 30.0
@@ -604,10 +801,11 @@ RETURNING b.*
 
 _CLAIM_SCRAPES = """
 WITH candidates AS (
-    SELECT id, scrape_domain, next_scrape_at,
-           (title IS NULL AND description IS NULL)::int AS needs_initial_scrape
+    SELECT id, split_part(split_part(source_url, '://', 2), '/', 1) AS domain,
+           next_scrape_at,
+           (titles = '{}')::int AS needs_initial_scrape
     FROM job_posting
-    WHERE status = 'active'
+    WHERE is_active = true
       AND next_scrape_at IS NOT NULL
       AND next_scrape_at <= now()
       AND (leased_until IS NULL OR leased_until < now())
@@ -616,14 +814,14 @@ WITH candidates AS (
 ranked AS (
     SELECT id,
            row_number() OVER (
-               PARTITION BY scrape_domain
+               PARTITION BY domain
                ORDER BY needs_initial_scrape DESC, next_scrape_at
            ) AS domain_rank,
            needs_initial_scrape, next_scrape_at
     FROM candidates
 )
 UPDATE job_posting
-SET lease_owner = $2, leased_until = now() + interval '10 minutes'
+SET leased_until = now() + interval '10 minutes'
 FROM (
     SELECT id AS rid
     FROM ranked
@@ -631,7 +829,9 @@ FROM (
     LIMIT $1
 ) pick
 WHERE job_posting.id = pick.rid
-RETURNING job_posting.id, source_url, board_id, scrape_domain
+RETURNING job_posting.id, source_url, board_id,
+          split_part(split_part(source_url, '://', 2), '/', 1) AS scrape_domain,
+          description_r2_hash
 """
 
 
@@ -669,29 +869,43 @@ async def claim_scrape_work(
     if limit <= 0:
         return []
 
-    rows = await pool.fetch(_CLAIM_SCRAPES, limit, worker_id)
+    rows = await pool.fetch(_CLAIM_SCRAPES, limit)
     if not rows:
         return []
 
     board_ids = {str(row["board_id"]) for row in rows if row["board_id"]}
-    board_scrapers = await _load_board_scrapers(pool, board_ids)
+    info = await _load_board_scrapers(pool, board_ids)
+
+    # Clear next_scrape_at for postings from rich monitors (they shouldn't be scraped)
+    rich_posting_ids = [
+        str(row["id"]) for row in rows if str(row["board_id"]) in info.rich_board_ids
+    ]
+    if rich_posting_ids:
+        await pool.execute(_CLEAR_SCRAPE_FOR_RICH, rich_posting_ids)
+        log.info("batch.scrape.cleared_rich", count=len(rich_posting_ids))
 
     items: list[WorkItem] = []
     for row in rows:
         domain = row["scrape_domain"] or urlparse(row["source_url"]).hostname or "unknown"
         board_id = str(row["board_id"]) if row["board_id"] else ""
 
+        # Skip rich-monitor postings
+        if board_id in info.rich_board_ids:
+            continue
+
         scraper_type = "json-ld"
         scraper_config: dict | None = None
-        if board_id and board_id in board_scrapers:
-            cfg = board_scrapers[board_id]
+        if board_id and board_id in info.scrapers:
+            cfg = info.scrapers[board_id]
             scraper_type = cfg.scraper_type
             scraper_config = cfg.scraper_config
 
+        r2_hash = row["description_r2_hash"]
         item = ScrapeItem(
             job_posting_id=str(row["id"]),
             url=row["source_url"],
             board_id=board_id,
+            description_r2_hash=int(r2_hash) if r2_hash is not None else None,
         )
         items.append(
             WorkItem(
@@ -746,6 +960,9 @@ async def _process_one_board(
                     board_log.warning("batch.monitor.board_gone")
             return True, elapsed
 
+        # Collect R2 work to run after DB transaction
+        r2_work: list[tuple[str, dict, int | None]] = []
+
         async with pool.acquire() as conn, conn.transaction():
             # Persist newly discovered sitemap URL
             if result.new_sitemap_url:
@@ -761,11 +978,13 @@ async def _process_one_board(
                 if crawler_type in _API_MONITOR_TYPES
                 else _DELIST_THRESHOLD_FRAGILE
             )
+            is_rich = result.jobs_by_url is not None
             rows = await conn.fetch(
                 _DIFF_URLS,
                 list(result.urls),
                 board_id,
                 delist_threshold,
+                is_rich,
             )
 
             new_urls: list[str] = []
@@ -778,9 +997,23 @@ async def _process_one_board(
                 if action == "new":
                     new_urls.append(row["url"])
                 elif action == "relisted":
-                    relisted.append({"id": row["id"], "url": row["url"]})
+                    r2h = row["description_r2_hash"]
+                    relisted.append(
+                        {
+                            "id": row["id"],
+                            "url": row["url"],
+                            "r2_hash": int(r2h) if r2h is not None else None,
+                        }
+                    )
                 elif action == "touched":
-                    touched.append({"id": row["id"], "url": row["url"]})
+                    r2h = row["description_r2_hash"]
+                    touched.append(
+                        {
+                            "id": row["id"],
+                            "url": row["url"],
+                            "r2_hash": int(r2h) if r2h is not None else None,
+                        }
+                    )
                 elif action == "gone":
                     gone.append({"id": row["id"], "url": row["url"]})
 
@@ -795,64 +1028,106 @@ async def _process_one_board(
                     if not j.language and j.description:
                         j.language = detect_language(j.description)
 
+                # Resolve locations
+                loc_resolver = await _get_location_resolver(pool)
+
                 if new_jobs:
-                    await conn.executemany(
-                        _INSERT_RICH_JOB,
-                        [
-                            (
-                                company_id,
-                                board_id,
-                                _coerce_text(j.title),
-                                _coerce_text(j.description),
-                                _coerce_locations(j.locations),
-                                _coerce_text(j.employment_type),
-                                _coerce_text(j.job_location_type),
-                                _jsonb(j.base_salary),
-                                _coerce_datetime(j.date_posted),
-                                _coerce_text(j.language),
-                                _jsonb(j.localizations),
-                                _jsonb(j.extras),
-                                _jsonb(j.metadata),
-                                j.url,
+                    for j in new_jobs:
+                        loc_ids, loc_types = _resolve_locations(
+                            loc_resolver,
+                            _coerce_locations(j.locations),
+                            _coerce_text(j.job_location_type),
+                            _coerce_text(j.language),
+                        )
+                        row = await conn.fetchrow(
+                            _INSERT_RICH_JOB,
+                            company_id,
+                            board_id,
+                            normalize_employment_type(_coerce_text(j.employment_type)),
+                            j.url,
+                            _build_titles(_coerce_text(j.title), j.localizations),
+                            _build_locales(_coerce_text(j.language), j.localizations),
+                            loc_ids,
+                            loc_types,
+                        )
+                        if row:
+                            r2_work.append(
+                                (
+                                    str(row["id"]),
+                                    dict(
+                                        title=_coerce_text(j.title),
+                                        description=_coerce_text(j.description),
+                                        language=_coerce_text(j.language),
+                                        locations=_coerce_locations(j.locations),
+                                        localizations=j.localizations,
+                                        extras=j.extras,
+                                        metadata=j.metadata,
+                                        date_posted=j.date_posted,
+                                        base_salary=j.base_salary,
+                                        employment_type=_coerce_text(j.employment_type),
+                                        job_location_type=_coerce_text(j.job_location_type),
+                                    ),
+                                    None,
+                                )
                             )
-                            for j in new_jobs
-                        ],
-                    )
+
                 # Update content for relisted and existing active jobs
-                update_pairs = [
-                    (item["id"], result.jobs_by_url[item["url"]])
+                update_triples = [
+                    (item["id"], result.jobs_by_url[item["url"]], item.get("r2_hash"))
                     for item in relisted + touched
                     if item["url"] in result.jobs_by_url
                 ]
-                if update_pairs:
-                    for _, j in update_pairs:
+                if update_triples:
+                    for _, j, _ in update_triples:
                         j.description = normalize_description_html(j.description)
                         enrich_description(j)
                         if not j.language and j.description:
                             j.language = detect_language(j.description)
 
                     await conn.execute(_CREATE_RICH_UPDATES_TEMP)
-                    await conn.copy_records_to_table(
-                        "_rich_updates",
-                        records=[
+                    records = []
+                    for pid, j, _ in update_triples:
+                        loc_ids, loc_types = _resolve_locations(
+                            loc_resolver,
+                            _coerce_locations(j.locations),
+                            _coerce_text(j.job_location_type),
+                            _coerce_text(j.language),
+                        )
+                        records.append(
                             (
                                 pid,
-                                _coerce_text(j.title),
-                                _coerce_text(j.description),
-                                _coerce_locations(j.locations),
-                                _coerce_text(j.employment_type),
-                                _coerce_text(j.job_location_type),
-                                _jsonb(j.base_salary),
-                                _coerce_datetime(j.date_posted),
-                                _coerce_text(j.language),
-                                _jsonb(j.localizations),
-                                _jsonb(j.extras),
-                                _jsonb(j.metadata),
+                                normalize_employment_type(_coerce_text(j.employment_type)),
+                                _build_titles(_coerce_text(j.title), j.localizations),
+                                _build_locales(_coerce_text(j.language), j.localizations),
+                                loc_ids,
+                                loc_types,
                             )
-                            for pid, j in update_pairs
-                        ],
+                        )
+                    await conn.copy_records_to_table(
+                        "_rich_updates",
+                        records=records,
                     )
                     await conn.execute(_BATCH_UPDATE_RICH_CONTENT)
+                    for pid, j, existing_hash in update_triples:
+                        r2_work.append(
+                            (
+                                str(pid),
+                                dict(
+                                    title=_coerce_text(j.title),
+                                    description=_coerce_text(j.description),
+                                    language=_coerce_text(j.language),
+                                    locations=_coerce_locations(j.locations),
+                                    localizations=j.localizations,
+                                    extras=j.extras,
+                                    metadata=j.metadata,
+                                    date_posted=j.date_posted,
+                                    base_salary=j.base_salary,
+                                    employment_type=_coerce_text(j.employment_type),
+                                    job_location_type=_coerce_text(j.job_location_type),
+                                ),
+                                existing_hash,
+                            )
+                        )
 
             # URL-only path — insert stubs with next_scrape_at for Postgres scheduler
             if result.jobs_by_url is None and new_urls:
@@ -865,6 +1140,32 @@ async def _process_one_board(
                 board_log.info("batch.inserted_for_scrape", count=len(inserted))
 
             await conn.execute(_RECORD_SUCCESS_NONEMPTY, board_id)
+
+        # R2 uploads after transaction — concurrent to avoid timeout for large boards
+        if r2_work:
+            r2_semaphore = asyncio.Semaphore(20)
+
+            async def _do_upload(
+                pid: str, kw: dict, cur_hash: int | None
+            ) -> tuple[str, int] | None:
+                async with r2_semaphore:
+                    new_hash = await _upload_to_r2(pid, current_hash=cur_hash, **kw)
+                    if new_hash is not None and new_hash != cur_hash:
+                        return (pid, new_hash)
+                    return None
+
+            results = await asyncio.gather(
+                *[_do_upload(pid, kw, eh) for pid, kw, eh in r2_work],
+                return_exceptions=True,
+            )
+            hashes_to_persist = [r for r in results if isinstance(r, tuple)]
+            r2_errors = sum(1 for r in results if isinstance(r, Exception))
+            if r2_errors:
+                board_log.warning("batch.r2_upload.failures", count=r2_errors, total=len(r2_work))
+            if hashes_to_persist:
+                async with pool.acquire() as conn:
+                    for posting_id, new_hash in hashes_to_persist:
+                        await conn.execute(_SET_R2_HASH, posting_id, new_hash)
 
         elapsed = monotonic() - t0
         board_log.info(
@@ -1004,20 +1305,48 @@ async def _process_one_scrape(
         if not language and content.description:
             language = detect_language(content.description)
 
+        title_text = _coerce_text(content.title)
+        desc_text = _coerce_text(content.description)
+        lang_text = _coerce_text(language)
+        raw_emp_type = _coerce_text(content.employment_type)
+        norm_emp_type = normalize_employment_type(raw_emp_type)
+
+        # Resolve locations
+        loc_resolver = await _get_location_resolver(pool)
+        loc_ids, loc_types = _resolve_locations(
+            loc_resolver,
+            _coerce_locations(content.locations),
+            _coerce_text(content.job_location_type),
+            posting_language=lang_text,
+        )
+
+        # R2 upload (best-effort, before DB write)
+        new_r2_hash = await _upload_to_r2(
+            item.job_posting_id,
+            title=title_text,
+            description=desc_text,
+            language=lang_text,
+            locations=_coerce_locations(content.locations),
+            localizations=None,
+            extras=content.extras,
+            metadata=content.metadata,
+            date_posted=content.date_posted,
+            base_salary=content.base_salary,
+            employment_type=raw_emp_type,
+            job_location_type=_coerce_text(content.job_location_type),
+            current_hash=item.description_r2_hash,
+        )
+
         async with pool.acquire() as conn:
             update_result = await conn.execute(
                 _UPDATE_JOB_CONTENT,
                 item.job_posting_id,
-                _coerce_text(content.title),
-                _coerce_text(content.description),
-                _coerce_locations(content.locations),
-                _coerce_text(content.employment_type),
-                _coerce_text(content.job_location_type),
-                _jsonb(content.base_salary),
-                _coerce_datetime(content.date_posted),
-                _coerce_text(language),
-                _jsonb(content.extras),
-                _jsonb(content.metadata),
+                norm_emp_type,
+                _build_titles(title_text, None),
+                _build_locales(lang_text, None),
+                loc_ids,
+                loc_types,
+                new_r2_hash,
             )
 
         if _parse_update_count(update_result) != 1:
@@ -1039,7 +1368,7 @@ async def _process_one_scrape(
         log.error("batch.scrape.error", url=item.url, error=error_msg, duration_s=round(elapsed, 2))
         with contextlib.suppress(Exception):
             async with pool.acquire() as conn:
-                await conn.execute(_RECORD_SCRAPE_FAILURE, item.job_posting_id, error_msg)
+                await conn.execute(_RECORD_SCRAPE_FAILURE, item.job_posting_id)
         return False, elapsed
 
 
@@ -1086,27 +1415,44 @@ async def process_scrape_batch(
     Items targeting the same hostname run serially (respecting per-domain
     throttle).  Different hostnames run concurrently.
     """
-    rows = await pool.fetch(_FETCH_DUE_JOB_POSTINGS, limit, worker_id)
+    rows = await pool.fetch(_FETCH_DUE_JOB_POSTINGS, limit)
 
     if not rows:
         return BatchResult()
 
-    items = [
+    all_items = [
         ScrapeItem(
             job_posting_id=str(row["id"]),
             url=row["source_url"],
             board_id=str(row["board_id"]) if row["board_id"] else "",
+            description_r2_hash=int(row["description_r2_hash"])
+            if row["description_r2_hash"] is not None
+            else None,
         )
         for row in rows
     ]
 
-    board_ids = {item.board_id for item in items if item.board_id}
-    board_scrapers = await _load_board_scrapers(pool, board_ids)
+    board_ids = {item.board_id for item in all_items if item.board_id}
+    info = await _load_board_scrapers(pool, board_ids)
+
+    # Clear next_scrape_at for postings from rich monitors
+    rich_posting_ids = [
+        item.job_posting_id for item in all_items if item.board_id in info.rich_board_ids
+    ]
+    if rich_posting_ids:
+        await pool.execute(_CLEAR_SCRAPE_FOR_RICH, rich_posting_ids)
+        log.info("batch.scrape.cleared_rich", count=len(rich_posting_ids))
+
+    # Filter out rich-monitor postings
+    items = [item for item in all_items if item.board_id not in info.rich_board_ids]
+
+    if not items:
+        return BatchResult()
 
     # Group by scrape domain
     groups: defaultdict[str, list[ScrapeItem]] = defaultdict(list)
-    for item, row in zip(items, rows, strict=True):
-        domain = row["scrape_domain"] or urlparse(item.url).hostname or "unknown"
+    for item in items:
+        domain = urlparse(item.url).hostname or "unknown"
         groups[domain].append(item)
 
     log.info("batch.scrape.start", items=len(items), domains=len(groups))
@@ -1116,7 +1462,7 @@ async def process_scrape_batch(
     tasks: list[asyncio.Task[_PipelineResult]] = []
     async with asyncio.TaskGroup() as tg:
         for group_items in groups.values():
-            tasks.append(tg.create_task(_scrape_pipeline(group_items, pool, http, board_scrapers)))
+            tasks.append(tg.create_task(_scrape_pipeline(group_items, pool, http, info.scrapers)))
 
     pipeline_results = [t.result() for t in tasks]
     succeeded = sum(r.succeeded for r in pipeline_results)
@@ -1140,19 +1486,23 @@ SELECT * FROM job_board WHERE board_slug = $1
 """
 
 _FETCH_BOARD_SCRAPE_ITEMS = """
-SELECT id, source_url, board_id, scrape_domain
+SELECT id, source_url, board_id,
+       split_part(split_part(source_url, '://', 2), '/', 1) AS scrape_domain,
+       description_r2_hash
 FROM job_posting
 WHERE board_id = $1
-  AND status = 'active'
+  AND is_active = true
   AND next_scrape_at IS NOT NULL
   AND next_scrape_at <= now()
 """
 
 _FETCH_BOARD_ALL_ACTIVE = """
-SELECT id, source_url, board_id, scrape_domain
+SELECT id, source_url, board_id,
+       split_part(split_part(source_url, '://', 2), '/', 1) AS scrape_domain,
+       description_r2_hash
 FROM job_posting
 WHERE board_id = $1
-  AND status = 'active'
+  AND is_active = true
 """
 
 
@@ -1195,11 +1545,18 @@ async def run_single_board(
             job_posting_id=str(row["id"]),
             url=row["source_url"],
             board_id=board_id,
+            description_r2_hash=int(row["description_r2_hash"])
+            if row["description_r2_hash"] is not None
+            else None,
         )
         for row in rows
     ]
 
-    board_scrapers = await _load_board_scrapers(pool, {board_id})
+    info = await _load_board_scrapers(pool, {board_id})
+
+    if board_id in info.rich_board_ids:
+        log.info("single_board.scrape.skip_rich", board_slug=board_slug)
+        return
 
     groups: defaultdict[str, list[ScrapeItem]] = defaultdict(list)
     for item, row in zip(items, rows, strict=True):
@@ -1212,7 +1569,7 @@ async def run_single_board(
     tasks: list[asyncio.Task[_PipelineResult]] = []
     async with asyncio.TaskGroup() as tg:
         for group_items in groups.values():
-            tasks.append(tg.create_task(_scrape_pipeline(group_items, pool, http, board_scrapers)))
+            tasks.append(tg.create_task(_scrape_pipeline(group_items, pool, http, info.scrapers)))
 
     pipeline_results = [t.result() for t in tasks]
     succeeded = sum(r.succeeded for r in pipeline_results)

@@ -109,6 +109,46 @@
   --code-border: rgba(255, 255, 255, 0.15);
 }
 
+/* ── Job description typography ── */
+.job-description h1,
+.job-description h2,
+.job-description h3,
+.job-description h4 {
+  font-weight: 600;
+  margin-top: 1.25em;
+  margin-bottom: 0.5em;
+  line-height: 1.3;
+}
+.job-description h1 { font-size: 1.25em; }
+.job-description h2 { font-size: 1.125em; }
+.job-description h3 { font-size: 1em; }
+.job-description p {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+.job-description ul,
+.job-description ol {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+  padding-left: 1.5em;
+}
+.job-description ul { list-style-type: disc; }
+.job-description ol { list-style-type: decimal; }
+.job-description li { margin-top: 0.2em; margin-bottom: 0.2em; }
+.job-description a { color: var(--info-color); text-decoration: underline; }
+.job-description strong, .job-description b { font-weight: 600; }
+.job-description hr { border-color: var(--divider); margin: 1em 0; }
+.job-description blockquote {
+  border-left: 3px solid var(--divider);
+  padding-left: 0.75em;
+  color: var(--muted);
+  margin: 0.5em 0;
+}
+.job-description table { border-collapse: collapse; width: 100%; margin: 0.5em 0; }
+.job-description th, .job-description td { border: 1px solid var(--divider); padding: 0.35em 0.6em; text-align: left; }
+.job-description th { font-weight: 600; }
+.job-description *:first-child { margin-top: 0; }
+
 /* ── Tooltip animation ── */
 @keyframes tooltip-in {
   from { opacity: 0; transform: scale(0.96); }

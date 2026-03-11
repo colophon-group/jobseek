@@ -16,3 +16,5 @@ __pycache__/
 /apps/crawler/tmp/
 /apps/crawler/.workspace/
 /apps/crawler/ws-package/.venv/
+/apps/crawler/data/geonames/
+.vercel

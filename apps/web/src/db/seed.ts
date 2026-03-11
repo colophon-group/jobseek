@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
-import { neon } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-http";
+import postgres from "postgres";
+import { drizzle } from "drizzle-orm/postgres-js";
 import { company, jobPosting } from "./schema";
 
 const url = process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL;
@@ -9,7 +9,8 @@ if (!url) {
   throw new Error("DATABASE_URL_UNPOOLED or DATABASE_URL must be set");
 }
 
-const db = drizzle(neon(url));
+const sql = postgres(url);
+const db = drizzle(sql);
 
 async function main() {
   console.log("Seeding database...");
@@ -43,36 +44,32 @@ async function main() {
   await db.insert(jobPosting).values([
     {
       companyId: acme.id,
-      title: "Senior Frontend Engineer",
-      description: "Build amazing user interfaces with React and Next.js.",
-      locations: ["Berlin, Germany"],
+      titles: ["Senior Frontend Engineer"],
+      locales: ["en"],
       sourceUrl: "https://acme.example.com/jobs/senior-frontend-engineer",
     },
     {
       companyId: acme.id,
-      title: "Backend Developer",
-      description: "Design and implement scalable APIs.",
-      locations: ["Remote"],
+      titles: ["Backend Developer"],
+      locales: ["en"],
       sourceUrl: "https://acme.example.com/jobs/backend-developer",
     },
     {
       companyId: globex.id,
-      title: "Product Manager",
-      locations: ["Munich, Germany"],
+      titles: ["Product Manager"],
+      locales: ["en"],
       sourceUrl: "https://globex.example.com/jobs/product-manager",
     },
     {
       companyId: globex.id,
-      title: "DevOps Engineer",
-      description: "Manage CI/CD pipelines and cloud infrastructure.",
-      locations: ["Vienna, Austria"],
+      titles: ["DevOps Engineer"],
+      locales: ["en"],
       sourceUrl: "https://globex.example.com/jobs/devops-engineer",
     },
     {
       companyId: initech.id,
-      title: "Full Stack Developer",
-      description: "Work across the entire stack with TypeScript.",
-      locations: ["Zurich, Switzerland"],
+      titles: ["Full Stack Developer"],
+      locales: ["en"],
       sourceUrl: "https://initech.example.com/jobs/full-stack-developer",
     },
   ]);
@@ -82,6 +79,7 @@ async function main() {
   // requires real Better Auth users. Create subscriptions after sign-up.
 
   console.log("Seed complete.");
+  await sql.end();
 }
 
 main().catch((err) => {

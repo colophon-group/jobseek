@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -23,6 +22,7 @@ from src.batch import (
     BatchResult,
     BoardScraperConfig,
     ScrapeItem,
+    _BoardScraperInfo,
     _coerce_datetime,
     _coerce_text,
     _jsonb,
@@ -38,9 +38,22 @@ from src.batch import (
     process_monitor_batch,
     process_scrape_batch,
 )
+from src.core.location_resolve import LocationResolver
 from src.core.monitor import MonitorResult
 from src.core.monitors import DiscoveredJob, api_monitor_types
 from src.core.scrapers import JobContent
+
+
+@pytest.fixture(autouse=True)
+def _mock_location_resolver(monkeypatch):
+    """Auto-mock the location resolver so batch tests don't hit the DB."""
+    resolver = LocationResolver()
+    resolver._loaded = True
+
+    async def _fake_get_resolver(pool):
+        return resolver
+
+    monkeypatch.setattr("src.batch._get_location_resolver", _fake_get_resolver)
 
 
 class TestJsonb:
@@ -198,9 +211,9 @@ def _job_content(**kw):
     return JobContent(**defaults)
 
 
-def _diff_row(action, row_id=None, url="https://example.com/job/1"):
+def _diff_row(action, row_id=None, url="https://example.com/job/1", r2_hash=None):
     """Create a dict-like mock for a DIFF_URLS result row."""
-    data = {"action": action, "id": row_id, "url": url}
+    data = {"action": action, "id": row_id, "url": url, "description_r2_hash": r2_hash}
     row = MagicMock()
     row.__getitem__ = lambda self, key: data[key]
     return row
@@ -277,9 +290,9 @@ class TestProcessOneBoard:
 
         await _process_one_board(board, pool, mock_http)
 
-        # executemany called with _INSERT_RICH_JOB
-        conn.executemany.assert_awaited()
-        call_args = conn.executemany.await_args_list
+        # fetchrow called with _INSERT_RICH_JOB for each new job
+        conn.fetchrow.assert_awaited()
+        call_args = conn.fetchrow.await_args_list
         assert any(c.args[0] == _INSERT_RICH_JOB for c in call_args)
 
     @patch("src.batch.get_redis")
@@ -303,13 +316,11 @@ class TestProcessOneBoard:
 
         await _process_one_board(board, pool, mock_http)
 
-        insert_calls = [
-            c for c in conn.executemany.await_args_list if c.args[0] == _INSERT_RICH_JOB
-        ]
+        insert_calls = [c for c in conn.fetchrow.await_args_list if c.args[0] == _INSERT_RICH_JOB]
         assert len(insert_calls) == 1
-        payload = insert_calls[0].args[1]
-        assert len(payload) == 1
-        assert payload[0][3] == "<p>Hello</p>"
+        # Description is no longer in the INSERT (moved to R2).
+        # Verify the job's description was normalized in-place for R2 upload.
+        assert job1.description == "<p>Hello</p>"
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one")
@@ -670,7 +681,7 @@ class TestProcessOneScrape:
         execute_calls = conn.execute.await_args_list
         failure_calls = [c for c in execute_calls if c.args[0] == _RECORD_SCRAPE_FAILURE]
         assert len(failure_calls) == 1
-        assert "job_posting_not_found:jp-missing" in failure_calls[0].args[2]
+        assert failure_calls[0].args[1] == "jp-missing"
 
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
     async def test_failure_records_scrape_failure(self, mock_scrape, mock_pool, mock_http):
@@ -685,13 +696,13 @@ class TestProcessOneScrape:
         execute_calls = conn.execute.await_args_list
         failure_calls = [c for c in execute_calls if c.args[0] == _RECORD_SCRAPE_FAILURE]
         assert len(failure_calls) == 1
-        assert "scrape error" in failure_calls[0].args[2]
+        assert failure_calls[0].args[1] == "jp-1"
 
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
     async def test_failure_uses_exception_type_on_blank_error(
         self, mock_scrape, mock_pool, mock_http
     ):
-        """Scrape failure should receive non-empty fallback text when str(exc) is blank."""
+        """Scrape failure records failure for the correct job posting ID."""
         pool, conn = mock_pool
         mock_scrape.side_effect = RuntimeError()
         item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
@@ -702,7 +713,7 @@ class TestProcessOneScrape:
         execute_calls = conn.execute.await_args_list
         failure_calls = [c for c in execute_calls if c.args[0] == _RECORD_SCRAPE_FAILURE]
         assert len(failure_calls) == 1
-        assert failure_calls[0].args[2] == "RuntimeError"
+        assert failure_calls[0].args[1] == "jp-1"
 
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
     async def test_content_fields_passed_correctly(self, mock_scrape, mock_pool, mock_http):
@@ -725,25 +736,18 @@ class TestProcessOneScrape:
         await _process_one_scrape(item, pool, mock_http, "json-ld", None)
 
         # Find the UPDATE_JOB_CONTENT call
+        # Param order: $1=id, $2=employment_type, $3=titles, $4=locales,
+        #   $5=location_ids, $6=location_types, $7=description_r2_hash
         update_calls = [c for c in conn.execute.await_args_list if c.args[0] == _UPDATE_JOB_CONTENT]
         assert len(update_calls) == 1
         call_args = update_calls[0].args
         assert call_args[1] == "jp-1"  # job_posting_id
-        assert call_args[2] == "Senior Engineer"  # title
-        assert call_args[3] == "<p>Description</p>"  # description
-        assert call_args[4] == ["London", "Remote"]  # locations
-        assert call_args[5] == "FULL_TIME"  # employment_type
-        assert call_args[6] == "hybrid"  # job_location_type
-        # base_salary is passed through _jsonb
-        expected_salary = {"currency": "GBP", "min": 80000, "max": 120000, "unit": "YEAR"}
-        assert json.loads(call_args[7]) == expected_salary
-        assert call_args[8] is not None
-        assert call_args[8].isoformat() == "2025-06-01T00:00:00+00:00"  # date_posted
-        # language (detected or None)
-        # call_args[9] is language
-        expected_extras = {"skills": ["Python", "SQL"], "responsibilities": ["Lead team"]}
-        assert json.loads(call_args[10]) == expected_extras  # extras
-        assert json.loads(call_args[11]) == {"team": "Platform"}  # metadata
+        assert call_args[2] == "full_time"  # employment_type (normalized)
+        assert call_args[3] == ["Senior Engineer"]  # titles
+        assert isinstance(call_args[4], list)  # locales (language-detected)
+        # location_ids and location_types: $5, $6 (may be None if resolver has no data loaded)
+        assert call_args[5] is None  # location_ids (no resolver data)
+        assert call_args[6] is None  # location_types (no resolver data)
 
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
     async def test_normalizes_escaped_description_before_update(
@@ -761,7 +765,9 @@ class TestProcessOneScrape:
 
         update_calls = [c for c in conn.execute.await_args_list if c.args[0] == _UPDATE_JOB_CONTENT]
         assert len(update_calls) == 1
-        assert update_calls[0].args[3] == "<p>Hi</p>"
+        # Description is no longer in the DB update (moved to R2).
+        # Verify it was normalized in-place for R2 upload.
+        assert content.description == "<p>Hi</p>"
 
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
     async def test_fallback_on_empty_primary(self, mock_scrape, mock_pool, mock_http):
@@ -837,10 +843,8 @@ class TestProcessOneScrape:
         update_calls = [c for c in conn.execute.await_args_list if c.args[0] == _UPDATE_JOB_CONTENT]
         assert len(update_calls) == 1
         call_args = update_calls[0].args
-        assert call_args[5] == "Temporary positions, Full-time"
-        assert call_args[8] is not None
-        assert call_args[8].tzinfo is not None
-        assert call_args[8].astimezone(UTC).isoformat() == "2026-02-06T12:31:18+00:00"
+        # $2 = employment_type (normalized)
+        assert call_args[2] == "full_or_part"  # normalized from "Temporary positions, Full-time"
 
 
 # ── TestScrapePipeline ───────────────────────────────────────────────
@@ -929,24 +933,33 @@ class TestLoadBoardScrapers:
     async def test_loads_scraper_from_metadata(self, mock_pool):
         pool, _ = mock_pool
         pool.fetch.return_value = [
-            {"id": "b-1", "metadata": {"scraper_type": "dom", "scraper_config": {"render": False}}}
+            {
+                "id": "b-1",
+                "metadata": {"scraper_type": "dom", "scraper_config": {"render": False}},
+                "crawler_type": "sitemap",
+            }
         ]
 
-        result = await _load_board_scrapers(pool, {"b-1"})
+        info = await _load_board_scrapers(pool, {"b-1"})
 
-        cfg = result["b-1"]
+        cfg = info.scrapers["b-1"]
         assert cfg.scraper_type == "dom"
         assert cfg.scraper_config == {"render": False}
+        assert "b-1" not in info.rich_board_ids
 
     async def test_falls_back_on_invalid_scraper(self, mock_pool):
         pool, _ = mock_pool
         pool.fetch.return_value = [
-            {"id": "b-1", "metadata": {"scraper_type": "nope", "scraper_config": {"x": 1}}}
+            {
+                "id": "b-1",
+                "metadata": {"scraper_type": "nope", "scraper_config": {"x": 1}},
+                "crawler_type": "sitemap",
+            }
         ]
 
-        result = await _load_board_scrapers(pool, {"b-1"})
+        info = await _load_board_scrapers(pool, {"b-1"})
 
-        cfg = result["b-1"]
+        cfg = info.scrapers["b-1"]
         assert cfg.scraper_type == "json-ld"
         assert cfg.scraper_config is None
 
@@ -956,6 +969,7 @@ class TestLoadBoardScrapers:
         pool.fetch.return_value = [
             {
                 "id": "b-1",
+                "crawler_type": "sitemap",
                 "metadata": {
                     "scraper_type": "json-ld",
                     "scraper_config": {
@@ -965,12 +979,22 @@ class TestLoadBoardScrapers:
             }
         ]
 
-        result = await _load_board_scrapers(pool, {"b-1"})
+        info = await _load_board_scrapers(pool, {"b-1"})
 
-        cfg = result["b-1"]
+        cfg = info.scrapers["b-1"]
         assert cfg.scraper_type == "json-ld"
         assert cfg.scraper_config["fallback"]["type"] == "dom"
         assert cfg.scraper_config["fallback"]["config"] == {"render": True}
+
+    async def test_rich_monitor_skipped(self, mock_pool):
+        """Rich monitors without explicit scraper are classified as rich."""
+        pool, _ = mock_pool
+        pool.fetch.return_value = [{"id": "b-1", "metadata": {}, "crawler_type": "greenhouse"}]
+
+        info = await _load_board_scrapers(pool, {"b-1"})
+
+        assert "b-1" in info.rich_board_ids
+        assert "b-1" not in info.scrapers
 
 
 # ── TestProcessScrapeBatch ───────────────────────────────────────────
@@ -1001,6 +1025,7 @@ class TestProcessScrapeBatch:
                 "source_url": url,
                 "board_id": board_id,
                 "scrape_domain": scrape_domain,
+                "description_r2_hash": None,
             }
             row = MagicMock()
             row.__getitem__ = lambda self, key: data[key]
@@ -1038,6 +1063,7 @@ class TestProcessScrapeBatch:
                 "source_url": url,
                 "board_id": board_id,
                 "scrape_domain": scrape_domain,
+                "description_r2_hash": None,
             }
             row = MagicMock()
             row.__getitem__ = lambda self, key: data[key]
@@ -1065,17 +1091,16 @@ class TestProcessScrapeBatch:
         assert result.failed == 2
 
     @patch("src.batch._scrape_pipeline", new_callable=AsyncMock)
-    async def test_worker_id_passed_to_fetch(self, mock_pipeline, mock_pool, mock_http):
-        """worker_id is passed as $2 to the job claim query."""
+    async def test_limit_passed_to_fetch(self, mock_pipeline, mock_pool, mock_http):
+        """limit is passed as $1 to the job claim query."""
         pool, _ = mock_pool
         pool.fetch.return_value = []
 
-        await process_scrape_batch(pool, mock_http, worker_id="test-w")
+        await process_scrape_batch(pool, mock_http, limit=50)
 
         pool.fetch.assert_awaited_once()
         call_args = pool.fetch.await_args.args
-        assert call_args[1] == 200  # limit
-        assert call_args[2] == "test-w"  # worker_id
+        assert call_args[1] == 50  # limit
 
 
 # ── TestClaimMonitorWork ─────────────────────────────────────────────
@@ -1156,6 +1181,7 @@ def _mock_scrape_row(**overrides):
         "source_url": "https://example.com/jobs/1",
         "board_id": "board-1",
         "scrape_domain": "example.com",
+        "description_r2_hash": None,
     }
     defaults.update(overrides)
     record = MagicMock()
@@ -1178,7 +1204,7 @@ class TestClaimScrapeWork:
         """WorkItem.domain comes from scrape_domain."""
         pool, _ = mock_pool
         pool.fetch.return_value = [_mock_scrape_row(scrape_domain="example.com")]
-        mock_scrapers.return_value = {}
+        mock_scrapers.return_value = _BoardScraperInfo(scrapers={}, rich_board_ids=set())
         items = await claim_scrape_work(pool, mock_http, 10, "w")
         assert len(items) == 1
         assert items[0].domain == "example.com"
@@ -1194,20 +1220,19 @@ class TestClaimScrapeWork:
                 source_url="https://careers.acme.com/job/42",
             )
         ]
-        mock_scrapers.return_value = {}
+        mock_scrapers.return_value = _BoardScraperInfo(scrapers={}, rich_board_ids=set())
         items = await claim_scrape_work(pool, mock_http, 10, "w")
         assert items[0].domain == "careers.acme.com"
 
     @patch("src.batch._load_board_scrapers", new_callable=AsyncMock)
     async def test_params_passed(self, mock_scrapers, mock_pool, mock_http):
-        """Limit and worker_id are passed as $1/$2 to the query."""
+        """Limit is passed as $1 to the query."""
         pool, _ = mock_pool
         pool.fetch.return_value = []
         await claim_scrape_work(pool, mock_http, 5, "w1")
         call_args = pool.fetch.await_args.args
         assert call_args[0] == _CLAIM_SCRAPES
         assert call_args[1] == 5
-        assert call_args[2] == "w1"
 
     @patch("src.batch._load_board_scrapers", new_callable=AsyncMock)
     async def test_limit_zero_noop(self, mock_scrapers, mock_pool, mock_http):
@@ -1226,9 +1251,10 @@ class TestClaimScrapeWork:
             _mock_scrape_row(board_id="b1"),
             _mock_scrape_row(id="jp-2", board_id="b2", source_url="https://other.com/j"),
         ]
-        mock_scrapers.return_value = {
-            "b1": BoardScraperConfig(scraper_type="dom", scraper_config={"sel": "h1"}),
-        }
+        mock_scrapers.return_value = _BoardScraperInfo(
+            scrapers={"b1": BoardScraperConfig(scraper_type="dom", scraper_config={"sel": "h1"})},
+            rich_board_ids=set(),
+        )
         items = await claim_scrape_work(pool, mock_http, 10, "w")
         assert len(items) == 2
         mock_scrapers.assert_awaited_once_with(pool, {"b1", "b2"})

@@ -1,0 +1,21 @@
+-- Phase 5: Drop old columns (run AFTER Phase 5 verification + Neon snapshot)
+ALTER TABLE job_posting DROP COLUMN search_vector;
+ALTER TABLE job_posting DROP COLUMN description;
+ALTER TABLE job_posting DROP COLUMN localizations;
+ALTER TABLE job_posting DROP COLUMN extras;
+ALTER TABLE job_posting DROP COLUMN metadata;
+ALTER TABLE job_posting DROP COLUMN date_posted;
+ALTER TABLE job_posting DROP COLUMN base_salary;
+ALTER TABLE job_posting DROP COLUMN created_at;
+ALTER TABLE job_posting DROP COLUMN updated_at;
+ALTER TABLE job_posting DROP COLUMN scrape_domain;
+ALTER TABLE job_posting DROP COLUMN last_scrape_error;
+ALTER TABLE job_posting DROP COLUMN scrape_interval_hours;
+ALTER TABLE job_posting DROP COLUMN lease_owner;
+ALTER TABLE job_posting DROP COLUMN delisted_at;
+ALTER TABLE job_posting DROP COLUMN delist_reason;
+ALTER TABLE job_posting DROP COLUMN relisted_at;
+ALTER TABLE job_posting DROP COLUMN job_location_type;
+ALTER TABLE job_posting DROP COLUMN status;
+ALTER TABLE job_posting DROP COLUMN title;
+ALTER TABLE job_posting DROP COLUMN language;

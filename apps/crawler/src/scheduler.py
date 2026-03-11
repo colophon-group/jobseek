@@ -14,9 +14,13 @@ import contextlib
 import signal
 import uuid
 
+import dotenv
 import structlog
 
-from src.batch import (
+dotenv.load_dotenv(".env.local")
+dotenv.load_dotenv(".env")
+
+from src.batch import (  # noqa: E402
     WorkItem,
     claim_monitor_work,
     claim_scrape_work,
@@ -24,10 +28,10 @@ from src.batch import (
     process_scrape_batch,
     run_single_board,
 )
-from src.config import settings
-from src.db import close_pool, create_pool
-from src.shared.http import create_http_client
-from src.shared.logging import setup_logging
+from src.config import settings  # noqa: E402
+from src.db import close_pool, create_pool  # noqa: E402
+from src.shared.http import create_http_client  # noqa: E402
+from src.shared.logging import setup_logging  # noqa: E402
 
 log = structlog.get_logger()
 

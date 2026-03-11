@@ -40,6 +40,8 @@ def workspace(tmp_path, monkeypatch):
         website="https://test.com",
         logo_url="https://test.com/logo.png",
         icon_url="https://test.com/icon.png",
+        description="Test company description",
+        industry=1,
     )
     save_workspace(ws)
 

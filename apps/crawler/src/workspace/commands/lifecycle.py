@@ -794,6 +794,18 @@ def _execute_submit_step(
             kwargs["website"] = ws.website
         if ws.logo_type:
             kwargs["logo_type"] = ws.logo_type
+        if ws.description:
+            kwargs["description"] = ws.description
+        if ws.industry is not None:
+            kwargs["industry"] = ws.industry
+        if ws.employee_count_range is not None:
+            kwargs["employee_count_range"] = ws.employee_count_range
+        if ws.founded_year is not None:
+            kwargs["founded_year"] = ws.founded_year
+        if ws.enrichment_extras:
+            import json as _json
+
+            kwargs["extras"] = _json.dumps(ws.enrichment_extras)
         if kwargs:
             company_add(ws.slug, **kwargs)
 

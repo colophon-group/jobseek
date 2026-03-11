@@ -556,9 +556,10 @@ async def _discover_http(
 
         if pagination_config and all_urls:
             page_size = pagination_config.get("page_size", len(all_urls))
-            max_pages = _HTTP_MAX_PAGES
+            page_cap = pagination_config.get("max_pages", _HTTP_MAX_PAGES)
+            max_pages = page_cap
             if total and page_size:
-                max_pages = min(ceil(total / page_size), _HTTP_MAX_PAGES)
+                max_pages = min(ceil(total / page_size), page_cap)
 
             pag_param = pagination_config["param_name"]
             pag_start = pagination_config.get("start_value", 0)
@@ -637,7 +638,8 @@ async def _discover_http(
                 total_count=total,
                 pagination=pag,
             )
-            items = await paginate_all(make_http_fetcher(client), job_result, _HTTP_MAX_PAGES)
+            page_cap = pagination_config.get("max_pages", _HTTP_MAX_PAGES)
+            items = await paginate_all(make_http_fetcher(client), job_result, page_cap)
 
         if len(items) > MAX_ITEMS:
             log.warning("api_sniffer.truncated", total=len(items), cap=MAX_ITEMS)
@@ -906,7 +908,8 @@ async def _discover_replay(
                 total_count=total_count,
                 pagination=pag,
             )
-            max_pg = _HTTP_MAX_PAGES if using_http else MAX_PAGES
+            default_cap = _HTTP_MAX_PAGES if using_http else MAX_PAGES
+            max_pg = pagination_config.get("max_pages", default_cap)
             items = await paginate_all(fetch_fn, job_result, max_pg)
 
         # Cap

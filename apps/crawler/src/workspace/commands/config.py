@@ -4,6 +4,10 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.workspace.state import Workspace
 
 import click
 
@@ -48,6 +52,10 @@ from src.workspace.state import (
     "--job-link-pattern",
     help="Regex pattern matching job-detail links on the selected board",
 )
+@click.option("--description", help="Company description (overrides auto-enrichment)")
+@click.option("--industry", type=int, help="Industry ID (see: ws help industries)")
+@click.option("--employee-count-range", type=int, help="Employee count range bucket (1-8)")
+@click.option("--founded-year", type=int, help="Year company was founded")
 def set_(
     slug: str | None,
     name: str | None,
@@ -59,6 +67,10 @@ def set_(
     icon_candidate: int | None,
     board_alias: str | None,
     job_link_pattern: str | None,
+    description: str | None,
+    industry: int | None,
+    employee_count_range: int | None,
+    founded_year: int | None,
 ):
     """Set company metadata in workspace."""
     slug = resolve_slug(slug)
@@ -95,6 +107,20 @@ def set_(
     if logo_type is not None:
         ws.logo_type = logo_type
         updates.append(f"logo_type={logo_type}")
+
+    # Enrichment fields (manual override)
+    if description is not None:
+        ws.description = description
+        updates.append("description")
+    if industry is not None:
+        ws.industry = industry
+        updates.append(f"industry={industry}")
+    if employee_count_range is not None:
+        ws.employee_count_range = employee_count_range
+        updates.append(f"employee_count_range={employee_count_range}")
+    if founded_year is not None:
+        ws.founded_year = founded_year
+        updates.append(f"founded_year={founded_year}")
 
     if job_link_pattern is not None:
         alias = board_alias or ws.active_board
@@ -138,6 +164,20 @@ def set_(
         and effective_website
     ):
         _discover_and_show_all(slug, effective_website)
+
+    # Auto-enrich company metadata when we have name + website
+    # and enrichment fields weren't explicitly set in this call
+    effective_name = ws.name
+    if (
+        effective_website
+        and effective_name
+        and description is None
+        and industry is None
+        and not ws.description
+        and not ws.industry
+    ):
+        _auto_enrich(ws)
+        save_workspace(ws)
 
     action_log.append(
         ws_log_path(slug),
@@ -490,6 +530,96 @@ def _show_career_results(slug: str, html: str, final_url: str, homepage_url: str
     out.plain(
         "careers",
         "Interpretation: treat this as a hypothesis and verify visible listings/count parity.",
+    )
+
+
+def _auto_enrich(ws: Workspace) -> None:
+    """Auto-enrich company metadata from JSON-LD and Wikidata."""
+    import asyncio
+
+    out.info("enrich", "Fetching company metadata from homepage + Wikidata...")
+    try:
+        meta = asyncio.run(_run_enrichment(ws.website, ws.name))
+    except Exception as e:
+        out.warn("enrich", f"Auto-enrichment failed: {e}")
+        _show_enrichment_manual_hint()
+        return
+
+    # Apply results to workspace (don't overwrite existing values)
+    if meta.description and not ws.description:
+        ws.description = meta.description
+    if meta.industry_id is not None and ws.industry is None:
+        ws.industry = meta.industry_id
+    if meta.employee_count_range is not None and ws.employee_count_range is None:
+        ws.employee_count_range = meta.employee_count_range
+    if meta.founded_year is not None and ws.founded_year is None:
+        ws.founded_year = meta.founded_year
+    if meta.extras:
+        ws.enrichment_extras = meta.extras
+
+    # Display results
+    _show_enrichment_results(ws, meta)
+
+    # Prompt for missing required fields
+    missing = []
+    if not ws.description:
+        missing.append("description")
+    if ws.industry is None:
+        missing.append("industry")
+    if missing:
+        out.warn(
+            "enrich",
+            f"Required fields still missing: {', '.join(missing)}. "
+            f"Fill manually with: ws set --{' --'.join(missing)} <value>",
+        )
+        if "industry" in missing:
+            out.plain("enrich", "Use 'ws help industries' to see available industry IDs.")
+
+
+async def _run_enrichment(website: str, name: str):
+    """Run the enrichment pipeline."""
+    import httpx
+
+    from src.core.company_enrich import enrich_company
+
+    async with httpx.AsyncClient() as http:
+        return await enrich_company(website, name, http)
+
+
+def _show_enrichment_results(ws: Workspace, meta) -> None:
+    """Display enrichment results."""
+    from src.core.company_enrich import get_industry_name, range_to_label
+
+    tier_desc = {"A": "full", "B": "partial", "C": "nothing found"}
+    out.info("enrich", f"Tier {meta.tier} ({tier_desc.get(meta.tier, '?')})")
+
+    if ws.description:
+        desc_preview = ws.description[:80] + ("..." if len(ws.description) > 80 else "")
+        out.plain("enrich", f"  description: {desc_preview}")
+    if ws.industry is not None:
+        name = get_industry_name(ws.industry)
+        out.plain("enrich", f"  industry: {ws.industry} — {name}")
+    elif meta.industry_raw:
+        out.warn("enrich", f"  industry: raw={meta.industry_raw!r} — no match in industries.csv")
+    if ws.employee_count_range is not None:
+        out.plain("enrich", f"  employees: {range_to_label(ws.employee_count_range)}")
+    if ws.founded_year is not None:
+        out.plain("enrich", f"  founded: {ws.founded_year}")
+    if meta.hq_location_name:
+        out.plain("enrich", f"  hq: {meta.hq_location_name}")
+    if meta.wikidata_id:
+        out.plain("enrich", f"  wikidata: {meta.wikidata_id}")
+
+
+def _show_enrichment_manual_hint() -> None:
+    """Show hint for manual enrichment after failure."""
+    out.plain(
+        "enrich",
+        "Fill required fields manually:\n"
+        '  ws set --description "<company description>"\n'
+        "  ws set --industry <id>  (see: ws help industries)\n"
+        "Optional:\n"
+        "  ws set --employee-count-range <1-8> --founded-year <YYYY>",
     )
 
 

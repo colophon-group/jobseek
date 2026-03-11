@@ -30,9 +30,6 @@ importers:
       '@lingui/react':
         specifier: ^5
         version: 5.9.1(@lingui/babel-plugin-lingui-macro@5.9.1(babel-plugin-macros@3.1.0)(typescript@5.9.3))(babel-plugin-macros@3.1.0)(react@19.2.4)
-      '@neondatabase/serverless':
-        specifier: ^1.0.2
-        version: 1.0.2
       '@octokit/auth-app':
         specifier: ^8.2.0
         version: 8.2.0
@@ -81,6 +78,9 @@ importers:
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      postgres:
+        specifier: ^3.4.8
+        version: 3.4.8
       react:
         specifier: ^19
         version: 19.2.4
@@ -157,9 +157,6 @@ importers:
       happy-dom:
         specifier: ^20.7.0
         version: 20.7.0
-      postgres:
-        specifier: ^3.4.8
-        version: 3.4.8
       svgo:
         specifier: ^4.0.1
         version: 4.0.1
@@ -4377,8 +4374,9 @@ snapshots:
 
   '@neondatabase/serverless@1.0.2':
     dependencies:
-      '@types/node': 22.19.11
+      '@types/node': 22.19.13
       '@types/pg': 8.16.0
+    optional: true
 
   '@next/bundle-analyzer@16.1.6':
     dependencies:
@@ -5071,9 +5069,10 @@ snapshots:
 
   '@types/pg@8.16.0':
     dependencies:
-      '@types/node': 22.19.11
+      '@types/node': 22.19.13
       pg-protocol: 1.11.0
       pg-types: 2.2.0
+    optional: true
 
   '@types/react-dom@19.2.3(@types/react@19.2.14)':
     dependencies:
@@ -6297,9 +6296,11 @@ snapshots:
 
   pathe@2.0.3: {}
 
-  pg-int8@1.0.1: {}
+  pg-int8@1.0.1:
+    optional: true
 
-  pg-protocol@1.11.0: {}
+  pg-protocol@1.11.0:
+    optional: true
 
   pg-types@2.2.0:
     dependencies:
@@ -6308,6 +6309,7 @@ snapshots:
       postgres-bytea: 1.0.1
       postgres-date: 1.0.7
       postgres-interval: 1.2.0
+    optional: true
 
   picocolors@1.1.1: {}
 
@@ -6331,15 +6333,19 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
-  postgres-array@2.0.0: {}
+  postgres-array@2.0.0:
+    optional: true
 
-  postgres-bytea@1.0.1: {}
+  postgres-bytea@1.0.1:
+    optional: true
 
-  postgres-date@1.0.7: {}
+  postgres-date@1.0.7:
+    optional: true
 
   postgres-interval@1.2.0:
     dependencies:
       xtend: 4.0.2
+    optional: true
 
   postgres@3.4.8: {}
 
@@ -6909,7 +6915,8 @@ snapshots:
 
   ws@8.19.0: {}
 
-  xtend@4.0.2: {}
+  xtend@4.0.2:
+    optional: true
 
   yallist@3.1.1: {}
 

@@ -14,7 +14,9 @@ These must extract for every job (N/N in `ws run scraper` output). 0/N on either
 |----------|-------|
 | Type | `str` |
 | Format | Plain text (no HTML) |
-| DB column | `job_posting.title` (text) |
+| DB column | `job_posting.title` (text) / `job_posting.titles` (text[]) |
+
+Stored in both `title` (legacy single value) and `titles[]` (new, parallel to `locales[]`). After R2 migration completes, `title` will be dropped; use `titles[1]`.
 
 Examples: `"Senior Software Engineer"`, `"Marketing Manager — EMEA"`
 
@@ -24,9 +26,12 @@ Examples: `"Senior Software Engineer"`, `"Marketing Manager — EMEA"`
 |----------|-------|
 | Type | `str` |
 | Format | **HTML fragment** (not a full document) |
-| DB column | `job_posting.description` (text) |
+| DB column | `job_posting.description` (text) — *being migrated to R2* |
+| R2 path | `job/{posting_id}/{locale}/latest.html` |
 
 Must preserve original structure (`<p>`, `<ul><li>`, `<h3>`, etc.). API monitors return HTML natively. DOM scraper steps use `html: true` to preserve structure.
+
+During the R2 migration, descriptions are stored in both the DB column and R2. After migration, the DB column will be dropped and descriptions served from R2.
 
 ```html
 <p>We're looking for a talented engineer...</p>
@@ -76,16 +81,16 @@ How each source builds locations:
 | Property | Value |
 |----------|-------|
 | Type | `str` |
-| Format | Single string, no normalization |
+| Format | Normalized enum value |
 | DB column | `job_posting.employment_type` (text) |
 
-Common values (varies by ATS, stored as-is):
+Normalized values (applied by `enum_normalize.normalize_employment_type()`):
 
 ```
-Full-time    Part-time    Contract    Intern    Temp    Volunteer
+full_time    part_time    contract    internship    full_or_part
 ```
 
-Some APIs return variant forms like `FullTime` or `FULL_TIME`. No normalization is applied.
+Raw values from each ATS are mapped to these normalized forms. The original value is preserved in R2 extras as `raw_employment_type`.
 
 | Source | Field |
 |--------|-------|
@@ -189,9 +194,9 @@ Examples:
 |----------|-------|
 | Type | `str` |
 | Format | ISO 639-1 code (e.g. `"en"`, `"de"`, `"fr"`) |
-| DB column | `job_posting.language` (text) |
+| DB column | `job_posting.language` (text) / `job_posting.locales` (text[]) |
 
-Detected automatically from the description using lingua-py, or provided by the monitor (Greenhouse API, Personio). When a monitor already knows the language, detection is skipped.
+Detected automatically from the description using lingua-py, or provided by the monitor (Greenhouse API, Personio). When a monitor already knows the language, detection is skipped. Stored in both `language` (legacy) and `locales[]` (new array of all available locales).
 
 #### `localizations` — All language versions
 
@@ -417,7 +422,7 @@ These heuristics often need manual correction — a detected pattern with wrong 
 | `title` | `str` | Required | text | No | Plain text |
 | `description` | `str` | Required | text | **Yes** | Preserve structure; enriched with extras |
 | `locations` | `list[str]` | Important | text[] | No | One string per location |
-| `employment_type` | `str` | Important | text | No | No normalization |
+| `employment_type` | `str` | Important | text | No | Normalized: `full_time`, `part_time`, `contract`, `internship`, `full_or_part` |
 | `job_location_type` | `str` | Important | text | No | `remote`/`hybrid`/`onsite` |
 | `date_posted` | `str` | Optional | timestamptz | No | ISO 8601 preferred |
 | `base_salary` | `dict` | Optional | jsonb | No | `{currency, min, max, unit}` |

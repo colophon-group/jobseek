@@ -78,13 +78,14 @@ async def process_monitor_batch(pool, http, limit=10) -> BatchResult:
 
 ```python
 async def process_scrape_batch(pool, http, limit=10) -> BatchResult:
-    """Claim due URLs from queue, run scrape_one for each, write results to DB."""
+    """Claim due postings for scraping, run scrape_one for each, write results to DB."""
 ```
 
-1. Claims pending URLs from `job_url_queue` using `FOR UPDATE SKIP LOCKED`
-2. Runs `scrape_one()` for each URL concurrently
-3. Updates `job_posting` rows with extracted content
-4. Records success/failure per URL
+1. Claims postings where `next_scrape_at <= now()` using `FOR UPDATE SKIP LOCKED`
+2. Groups by target hostname for domain-parallel execution
+3. Runs `scrape_one()` for each URL, updates `job_posting` with extracted content
+4. Uploads descriptions + extras to R2 (outside DB transaction)
+5. Records success/failure, applies exponential backoff on failure
 
 ### Concurrency Control
 
@@ -155,17 +156,27 @@ apps/crawler/src/
 │   │   ├── jsonld.py            # JSON-LD extractor
 │   │   ├── html.py              # CSS selector-based extraction
 │   │   └── browser.py           # Playwright-based extraction
+│   ├── description_store.py     # R2 upload/diff-track (descriptions + extras)
+│   ├── enum_normalize.py        # employment_type + job_location_type normalizers
+│   ├── location_resolve.py      # Location → GeoNames ID resolution
 │   ├── monitor.py               # monitor_one() dispatcher
 │   └── scrape.py                # scrape_one() dispatcher
 ├── batch.py                     # Batch processor (Layer 2)
 ├── scheduler.py                 # Scheduler (Layer 3)
 ├── sync.py                      # CSV → DB sync
-├── validate.py                  # CSV validation
+├── inspect.py                   # CSV validation + diagnostics
 ├── db.py                        # DB connection pool
-├── config.py                    # Settings
+├── config.py                    # Settings (pydantic-settings)
+├── scripts/                     # One-off migration scripts
+│   ├── migrate_descriptions_to_r2.py
+│   ├── backfill_locations.py
+│   └── seed_geonames.py
 └── shared/
+    ├── api_sniff.py             # API sniffing utilities
     ├── http.py                  # HTTP client factory
     ├── logging.py               # Structured logging
+    ├── constants.py             # DATA_DIR, WORKSPACE_DIR, etc.
+    ├── csv_io.py                # CSV read/write utilities
     └── slug.py                  # Slugify utility
 ```
 
@@ -175,17 +186,24 @@ apps/crawler/src/
 Scheduler
   → process_monitor_batch()
     → claim due boards (SQL: FOR UPDATE SKIP LOCKED)
+    → group by rate-limit domain (_throttle_key)
+    → asyncio.TaskGroup: one pipeline per domain (serial within)
     → for each board:
         → monitor_one(board_config, http) → MonitorResult
-        → diff against known postings (SQL: CTE)
+        → diff against known postings (SQL: CTE — new/touched/relisted/gone)
         → if rich data: insert full job_posting rows
-        → if URLs only: insert placeholders + enqueue to job_url_queue
+        → if URLs only: insert URL stubs + schedule for scraping
+        → upload descriptions + extras to R2 (after DB transaction)
+        → persist description_r2_hash for change detection
     → record success/failure per board
 
   → process_scrape_batch()
-    → claim due URLs from job_url_queue (SQL: FOR UPDATE SKIP LOCKED)
-    → for each URL:
+    → claim due postings (SQL: FOR UPDATE SKIP LOCKED, next_scrape_at <= now())
+    → group by target hostname
+    → asyncio.TaskGroup: one pipeline per hostname (serial within)
+    → for each posting:
         → scrape_one(url, scraper_config, http) → JobContent
         → update job_posting with extracted content
-    → record success/failure per URL
+        → upload descriptions + extras to R2
+    → record success/failure per posting
 ```

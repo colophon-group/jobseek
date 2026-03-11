@@ -365,11 +365,18 @@ class TestRunSync:
     @patch("src.sync.setup_logging")
     @patch("src.sync._load_boards")
     @patch("src.sync._load_companies")
+    @patch("src.sync._load_industries")
     @patch("src.sync.create_pool")
     async def test_empty_csvs_returns_early(
-        self, mock_create_pool, mock_load_companies, mock_load_boards, mock_setup_logging
+        self,
+        mock_create_pool,
+        mock_load_industries,
+        mock_load_companies,
+        mock_load_boards,
+        mock_setup_logging,
     ):
         """Both CSVs empty -> pool not created."""
+        mock_load_industries.return_value = pl.DataFrame()
         mock_load_companies.return_value = pl.DataFrame(
             {
                 "slug": [],
@@ -393,21 +400,26 @@ class TestRunSync:
     @patch("src.sync.setup_logging")
     @patch("src.sync._load_boards")
     @patch("src.sync._load_companies")
+    @patch("src.sync._load_industries")
     @patch("src.sync.close_pool")
     @patch("src.sync.create_pool")
     @patch("src.sync.sync_boards")
     @patch("src.sync.sync_companies")
+    @patch("src.sync.sync_industries")
     async def test_normal_flow(
         self,
+        mock_sync_industries,
         mock_sync_companies,
         mock_sync_boards,
         mock_create_pool,
         mock_close_pool,
+        mock_load_industries,
         mock_load_companies,
         mock_load_boards,
         mock_setup_logging,
     ):
-        """Calls sync_companies then sync_boards in transaction."""
+        """Calls sync_industries, sync_companies, then sync_boards in transaction."""
+        industries_df = pl.DataFrame()
         companies_df = pl.DataFrame(
             {
                 "slug": ["acme"],
@@ -431,6 +443,7 @@ class TestRunSync:
             },
             schema_overrides=_BOARD_SCHEMA,
         )
+        mock_load_industries.return_value = industries_df
         mock_load_companies.return_value = companies_df
         mock_load_boards.return_value = boards_df
 
@@ -449,6 +462,7 @@ class TestRunSync:
 
         await run_sync(dry_run=False)
 
+        mock_sync_industries.assert_called_once_with(mock_conn, industries_df, False)
         mock_sync_companies.assert_called_once_with(mock_conn, companies_df, False)
         mock_sync_boards.assert_called_once_with(mock_conn, boards_df, False)
         mock_close_pool.assert_called_once()
@@ -456,19 +470,24 @@ class TestRunSync:
     @patch("src.sync.setup_logging")
     @patch("src.sync._load_boards")
     @patch("src.sync._load_companies")
+    @patch("src.sync._load_industries")
     @patch("src.sync.close_pool")
     @patch("src.sync.create_pool")
+    @patch("src.sync.sync_industries")
     @patch("src.sync.sync_companies")
     async def test_closes_pool_on_error(
         self,
         mock_sync_companies,
+        mock_sync_industries,
         mock_create_pool,
         mock_close_pool,
+        mock_load_industries,
         mock_load_companies,
         mock_load_boards,
         mock_setup_logging,
     ):
         """sync_companies raises -> close_pool still called."""
+        mock_load_industries.return_value = pl.DataFrame()
         mock_load_companies.return_value = pl.DataFrame(
             {
                 "slug": ["acme"],

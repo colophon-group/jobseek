@@ -20,6 +20,7 @@ Available topics:
   actions           Browser action pipeline
   feedback          Feedback command — verdicts, per-field quality, examples
   artifacts         Debug artifacts saved by ws commands
+  industries        Industry IDs for company enrichment
 
 Commands:
   ws probe monitor   Probe all monitor types for active board
@@ -1484,6 +1485,28 @@ SCRAPER_CARDS: dict[str, str] = {
     "api_sniffer": SCRAPER_API_SNIFFER,
 }
 
+
+def _show_industries() -> None:
+    """Display industry IDs from data/industries.csv."""
+    from src.core.company_enrich import _load_industries
+
+    industries = _load_industries()
+    if not industries:
+        print("No industries found in data/industries.csv")
+        return
+
+    print("Industry IDs for company enrichment")
+    print("Use with: ws set --industry <id>\n")
+    print(f"  {'ID':>3}  Name")
+    print(f"  {'──':>3}  {'─' * 30}")
+    for ind in industries:
+        print(f"  {ind['id']:>3}  {ind['name']}")
+
+    print("\nEmployee count range buckets (for --employee-count-range):")
+    print("  1: 1-10       2: 11-50      3: 51-200     4: 201-500")
+    print("  5: 501-1,000  6: 1,001-5,000  7: 5,001-10,000  8: 10,001+")
+
+
 TOPIC_MAP: dict[str, str] = {
     "board": BOARD,
     "monitors": MONITORS,
@@ -1532,6 +1555,11 @@ def help_cmd(topic: str | None, subtype: str | None) -> None:
             print(f"  Valid types: {', '.join(SCRAPER_CARDS)}")
             raise SystemExit(1)
         print(SCRAPER_CARDS[subtype])
+        return
+
+    # Dynamic topics
+    if topic == "industries":
+        _show_industries()
         return
 
     # Simple topic lookup

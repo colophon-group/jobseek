@@ -242,6 +242,13 @@ class Workspace:
     icon_url: str = ""
     logo_type: str = ""
 
+    # Company enrichment (auto-filled from JSON-LD/Wikidata, manual override via ws set)
+    description: str = ""
+    industry: int | None = None
+    employee_count_range: int | None = None
+    founded_year: int | None = None
+    enrichment_extras: dict[str, Any] = field(default_factory=dict)
+
     # Active board alias
     active_board: str = ""
 
@@ -280,6 +287,11 @@ class Workspace:
                 "logo_url": self.logo_url,
                 "icon_url": self.icon_url,
                 "logo_type": self.logo_type,
+                "description": self.description,
+                "industry": self.industry,
+                "employee_count_range": self.employee_count_range,
+                "founded_year": self.founded_year,
+                "enrichment_extras": self.enrichment_extras or None,
             },
             "active_board": self.active_board,
             "submit_state": self.submit_state,
@@ -302,6 +314,11 @@ class Workspace:
             logo_url=company.get("logo_url", ""),
             icon_url=company.get("icon_url", ""),
             logo_type=company.get("logo_type", ""),
+            description=company.get("description", ""),
+            industry=company.get("industry"),
+            employee_count_range=company.get("employee_count_range"),
+            founded_year=company.get("founded_year"),
+            enrichment_extras=company.get("enrichment_extras") or {},
             active_board=data.get("active_board", ""),
             submit_state=data.get("submit_state") or {},
             last_error=data.get("last_error") or {},

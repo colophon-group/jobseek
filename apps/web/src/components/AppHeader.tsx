@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Trans } from "@lingui/react/macro";
 import { useLingui } from "@lingui/react/macro";
 import * as Tooltip from "@radix-ui/react-tooltip";
@@ -42,6 +44,40 @@ function BottomBarLink({ href, label, children }: { href: string; label: string;
       {children}
       <span className="text-[10px] leading-tight">{label}</span>
     </Link>
+  );
+}
+
+function HeaderSearchBar() {
+  const { t } = useLingui();
+  const lp = useLocalePath();
+  const router = useRouter();
+  const [value, setValue] = useState("");
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        const trimmed = value.trim();
+        if (trimmed) {
+          setValue("");
+          router.push(lp(`/app?q=${encodeURIComponent(trimmed)}`));
+        }
+      }}
+      className="hidden flex-1 items-center gap-2 rounded-md border border-border-soft bg-surface px-3 py-1.5 md:flex md:max-w-md"
+    >
+      <Search size={16} className="shrink-0 text-muted" />
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder={t({
+          id: "app.header.searchPlaceholder",
+          comment: "Placeholder text in app header search bar",
+          message: "Search...",
+        })}
+        className="w-full bg-transparent text-sm outline-none placeholder:text-muted"
+      />
+    </form>
   );
 }
 
@@ -130,19 +166,7 @@ export function AppHeader() {
           </Link>
 
           {/* Search bar (desktop only) */}
-          <div className="hidden flex-1 items-center gap-2 rounded-md border border-border-soft bg-surface px-3 py-1.5 md:flex md:max-w-md">
-            <Search size={16} className="shrink-0 text-muted" />
-            <input
-              type="text"
-              readOnly
-              placeholder={t({
-                id: "app.header.searchPlaceholder",
-                comment: "Placeholder text in app header search bar",
-                message: "Search...",
-              })}
-              className="w-full bg-transparent text-sm outline-none placeholder:text-muted"
-            />
-          </div>
+          <HeaderSearchBar />
 
           {/* Spacer pushes right-side items to the edge */}
           <div className="flex-1" />
@@ -152,7 +176,7 @@ export function AppHeader() {
             <NavIcon href={appHref} label={homeLabel}>
               <Home size={18} />
             </NavIcon>
-            <NavIcon href={appHref} label={savedLabel}>
+            <NavIcon href={lp("/app/saved")} label={savedLabel}>
               <Bookmark size={18} />
             </NavIcon>
             <NavIcon href={lp(siteConfig.nav.settings.href)} label={settingsLabel}>
@@ -189,7 +213,7 @@ export function AppHeader() {
         <BottomBarLink href={appHref} label={searchLabel}>
           <Search size={20} />
         </BottomBarLink>
-        <BottomBarLink href={appHref} label={savedLabel}>
+        <BottomBarLink href={lp("/app/saved")} label={savedLabel}>
           <Bookmark size={20} />
         </BottomBarLink>
         <BottomBarLink href={lp(siteConfig.nav.settings.href)} label={settingsLabel}>

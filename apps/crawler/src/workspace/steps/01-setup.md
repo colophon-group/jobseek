@@ -59,6 +59,24 @@ Set `--logo-type` to match the full logo variant: `wordmark`, `wordmark+icon`, o
 If either image is wrong, re-run `ws set` with a different `--logo-candidate`/`--icon-candidate`
 or provide your own `--logo-url`/`--icon-url`.
 
+## 5. Verify company enrichment
+
+Setting the website auto-fetches company metadata (description, industry, employee count,
+founded year) from JSON-LD and Wikidata. Check the enrichment output.
+
+If **description** or **industry** are missing (required), fill them manually:
+
+```bash
+ws set --description "One-sentence company description"
+ws set --industry <id>
+```
+
+Use `ws help industries` to see available industry IDs. Optional fields:
+
+```bash
+ws set --employee-count-range <1-8> --founded-year <YYYY>
+```
+
 ## When done
 
 ```bash

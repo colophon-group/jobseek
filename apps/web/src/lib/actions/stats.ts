@@ -17,7 +17,7 @@ export async function getStats() {
         db
           .select({ count: sql<number>`count(*)` })
           .from(jobPosting)
-          .where(sql`${jobPosting.status} = 'active'`),
+          .where(sql`${jobPosting.isActive} = true`),
       ]);
       return {
         companyCount: Number(companyRow.count),

@@ -34,15 +34,34 @@ log = structlog.get_logger()
 
 DATA_DIR = Path(__file__).parent.parent / "data"
 
+_UPSERT_INDUSTRIES = """
+INSERT INTO industry (id, name)
+SELECT * FROM unnest($1::smallint[], $2::text[])
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name
+"""
+
 _UPSERT_COMPANIES = """
-INSERT INTO company (slug, name, website, logo, icon, logo_type)
-SELECT * FROM unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::text[], $6::text[])
+INSERT INTO company (slug, name, website, logo, icon, logo_type,
+                     description, industry, employee_count_range,
+                     founded_year, extras)
+SELECT * FROM unnest($1::text[], $2::text[], $3::text[], $4::text[],
+                     $5::text[], $6::text[], $7::text[], $8::smallint[],
+                     $9::smallint[], $10::smallint[], $11::jsonb[])
 ON CONFLICT (slug) DO UPDATE SET
     name = COALESCE(EXCLUDED.name, company.name),
     website = COALESCE(EXCLUDED.website, company.website),
     logo = COALESCE(EXCLUDED.logo, company.logo),
     icon = COALESCE(EXCLUDED.icon, company.icon),
     logo_type = COALESCE(EXCLUDED.logo_type, company.logo_type),
+    description = COALESCE(EXCLUDED.description, company.description),
+    industry = COALESCE(EXCLUDED.industry, company.industry),
+    employee_count_range = COALESCE(EXCLUDED.employee_count_range, company.employee_count_range),
+    founded_year = COALESCE(EXCLUDED.founded_year, company.founded_year),
+    extras = CASE
+        WHEN EXCLUDED.extras IS NOT NULL AND EXCLUDED.extras != '{}'::jsonb
+        THEN EXCLUDED.extras
+        ELSE COALESCE(company.extras, '{}'::jsonb)
+    END,
     updated_at = now()
 """
 
@@ -101,6 +120,46 @@ def _compute_throttle_key(monitor_type: str, board_url: str) -> str:
     return urlparse(board_url).hostname or board_url
 
 
+def _int_or_none(val: str | None) -> int | None:
+    if not val:
+        return None
+    try:
+        return int(val)
+    except (ValueError, TypeError):
+        return None
+
+
+def _load_industries() -> pl.DataFrame:
+    path = DATA_DIR / "industries.csv"
+    if not path.exists():
+        return pl.DataFrame()
+    df = pl.read_csv(path, infer_schema_length=0)
+    log.info("sync.loaded_industries", count=len(df), path=str(path))
+    return df
+
+
+async def sync_industries(
+    conn: asyncpg.Connection, industries: pl.DataFrame, dry_run: bool
+) -> None:
+    """Batch upsert industries."""
+    if len(industries) == 0:
+        return
+
+    ids: list[int] = []
+    names: list[str] = []
+
+    for row in industries.iter_rows(named=True):
+        ids.append(int(row["id"]))
+        names.append(row["name"])
+
+    if dry_run:
+        log.info("sync.industries.dry_run", count=len(ids))
+        return
+
+    await conn.execute(_UPSERT_INDUSTRIES, ids, names)
+    log.info("sync.industries.upserted", count=len(ids))
+
+
 async def sync_companies(conn: asyncpg.Connection, companies: pl.DataFrame, dry_run: bool) -> None:
     """Batch upsert companies."""
     if len(companies) == 0:
@@ -112,6 +171,11 @@ async def sync_companies(conn: asyncpg.Connection, companies: pl.DataFrame, dry_
     logos: list[str | None] = []
     icons: list[str | None] = []
     logo_types: list[str | None] = []
+    descriptions: list[str | None] = []
+    industries: list[int | None] = []
+    employee_ranges: list[int | None] = []
+    founded_years: list[int | None] = []
+    extras_list: list[str | None] = []
 
     for row in companies.iter_rows(named=True):
         slugs.append(row["slug"])
@@ -120,12 +184,38 @@ async def sync_companies(conn: asyncpg.Connection, companies: pl.DataFrame, dry_
         logos.append(_or_none(row.get("logo_url")))
         icons.append(_or_none(row.get("icon_url")))
         logo_types.append(_or_none(row.get("logo_type")))
+        descriptions.append(_or_none(row.get("description")))
+        industries.append(_int_or_none(row.get("industry")))
+        employee_ranges.append(_int_or_none(row.get("employee_count_range")))
+        founded_years.append(_int_or_none(row.get("founded_year")))
+        extras_raw = _or_none(row.get("extras"))
+        # Validate JSON
+        if extras_raw:
+            try:
+                json.loads(extras_raw)
+            except json.JSONDecodeError:
+                log.error("sync.company.invalid_extras", slug=row["slug"], extras=extras_raw)
+                extras_raw = None
+        extras_list.append(extras_raw)
 
     if dry_run:
         log.info("sync.companies.dry_run", count=len(slugs))
         return
 
-    await conn.execute(_UPSERT_COMPANIES, slugs, names, websites, logos, icons, logo_types)
+    await conn.execute(
+        _UPSERT_COMPANIES,
+        slugs,
+        names,
+        websites,
+        logos,
+        icons,
+        logo_types,
+        descriptions,
+        industries,
+        employee_ranges,
+        founded_years,
+        extras_list,
+    )
     log.info("sync.companies.upserted", count=len(slugs))
 
 
@@ -235,6 +325,7 @@ async def sync_boards(
 async def run_sync(dry_run: bool = False) -> None:
     setup_logging(settings.log_level)
 
+    industries = _load_industries()
     companies = _load_companies()
     boards = _load_boards()
 
@@ -245,11 +336,13 @@ async def run_sync(dry_run: bool = False) -> None:
     pool = await create_pool()
     try:
         async with pool.acquire() as conn, conn.transaction():
+            await sync_industries(conn, industries, dry_run)
             await sync_companies(conn, companies, dry_run)
             await sync_boards(conn, boards, dry_run)
 
         log.info(
             "sync.complete",
+            industries=len(industries),
             companies=len(companies),
             boards=len(boards),
             dry_run=dry_run,

@@ -40,6 +40,9 @@ src/
 │   │   ├── nextdata.py    # Next.js data extractor (thin wrapper for embedded)
 │   │   ├── embedded.py    # Generalized embedded JSON extractor
 │   │   └── dom.py         # Step-based extraction (static or Playwright)
+│   ├── description_store.py # R2 upload/diff-track for descriptions + extras
+│   ├── enum_normalize.py  # employment_type + job_location_type normalizers
+│   ├── location_resolve.py # Location → GeoNames ID resolution
 │   ├── monitor.py         # monitor_one() dispatcher
 │   └── scrape.py          # scrape_one() dispatcher
 ├── workspace/             # Workspace CLI (ws command)
@@ -65,8 +68,12 @@ src/
 │   ├── http.py            # httpx client factory
 │   ├── logging.py         # structlog config
 │   └── slug.py            # slugify utility
-├── batch.py               # Batch processor
+├── batch.py               # Batch processor (R2 uploads, enum normalization)
 ├── scheduler.py           # Scheduler (entry point)
+├── scripts/               # One-off migration and utility scripts
+│   ├── migrate_descriptions_to_r2.py  # Bulk R2 upload (run before dropping columns)
+│   ├── backfill_locations.py          # Backfill location_ids from GeoNames
+│   └── seed_geonames.py              # Seed location tables from GeoNames data
 ├── sync.py                # CSV → DB sync
 ├── inspect.py             # CSV validation + diagnostic library
 ├── csvtool.py             # CSV management library

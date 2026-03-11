@@ -12,6 +12,18 @@ class Settings(BaseSettings):
     crawler_poll_interval: int = 15
     crawler_max_concurrent: int = 20
 
+    # Enrichment (disabled by default — empty provider means skip)
+    enrich_provider: str = ""
+    enrich_model: str = ""
+    enrich_api_key: str = ""
+    enrich_batch_size: int = 500
+    enrich_min_batch_size: int = 10
+    enrich_max_wait_minutes: int = 60
+    enrich_poll_interval: int = 300
+    enrich_daily_spend_cap_usd: float = 5.0
+    enrich_input_price_per_m: float = 0.10
+    enrich_output_price_per_m: float = 0.40
+
     model_config = SettingsConfigDict(env_file=(".env", ".env.local"), extra="ignore")
 
 

@@ -2025,11 +2025,10 @@ class TestSubmitStepRegistry:
     def test_submit_step_list_exists(self):
         from src.workspace.commands.lifecycle import SUBMIT_STEPS
 
-        assert len(SUBMIT_STEPS) == 9
+        assert len(SUBMIT_STEPS) == 8
         keys = [k for k, _, _ in SUBMIT_STEPS]
         assert "csv_written" in keys
         assert "pushed" in keys
-        assert "pr_ready" in keys
         assert "issue_completed" in keys
 
     def test_critical_steps_are_first(self):

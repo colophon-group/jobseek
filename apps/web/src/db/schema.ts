@@ -1,12 +1,19 @@
 import { sql } from "drizzle-orm";
 import {
   pgTable,
+  pgEnum,
   uuid,
   text,
   boolean,
+  smallint,
   integer,
+  bigint,
+  real,
+  numeric,
   timestamp,
   index,
+  uniqueIndex,
+  primaryKey,
   jsonb,
 } from "drizzle-orm/pg-core";
 
@@ -106,6 +113,63 @@ export const userPreferences = pgTable("user_preferences", {
     .notNull(),
 });
 
+// ── Location tables (GeoNames-seeded hierarchy) ─────────────────────
+
+export const locationTypeEnum = pgEnum("location_type", [
+  "macro",
+  "country",
+  "region",
+  "city",
+]);
+
+export const location = pgTable(
+  "location",
+  {
+    id: integer("id").primaryKey(),
+    parentId: integer("parent_id"),
+    type: locationTypeEnum("type").notNull(),
+    population: integer("population"),
+    lat: real("lat"),
+    lng: real("lng"),
+  },
+  (table) => [
+    index("idx_loc_parent").on(table.parentId),
+    index("idx_loc_type").on(table.type),
+  ],
+);
+
+export const locationName = pgTable(
+  "location_name",
+  {
+    locationId: integer("location_id")
+      .notNull()
+      .references(() => location.id, { onDelete: "cascade" }),
+    locale: text("locale").notNull(),
+    name: text("name").notNull(),
+    isDisplay: boolean("is_display").default(false).notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.locationId, table.locale, table.name] }),
+    index("idx_locname_lower").on(sql`lower(name)`, table.locale),
+    index("idx_locname_display")
+      .on(table.locationId, table.locale)
+      .where(sql`is_display = true`),
+  ],
+);
+
+export const locationMacroMember = pgTable(
+  "location_macro_member",
+  {
+    macroId: integer("macro_id")
+      .notNull()
+      .references(() => location.id, { onDelete: "cascade" }),
+    countryId: integer("country_id")
+      .notNull()
+      .references(() => location.id, { onDelete: "cascade" }),
+  },
+  (table) => [primaryKey({ columns: [table.macroId, table.countryId] })],
+);
+
 // ── App-specific tables ──────────────────────────────────────────────
 
 export const subscription = pgTable("subscription", {
@@ -121,6 +185,11 @@ export const subscription = pgTable("subscription", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const industry = pgTable("industry", {
+  id: smallint("id").primaryKey(),
+  name: text("name").notNull().unique(),
+});
+
 export const company = pgTable("company", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
@@ -130,6 +199,11 @@ export const company = pgTable("company", {
   logoType: text("logo_type", { enum: ["wordmark", "wordmark+icon", "icon"] }),
   website: text("website"),
   description: text("description"),
+  industry: smallint("industry").references(() => industry.id),
+  employeeCountRange: smallint("employee_count_range"),
+  foundedYear: smallint("founded_year"),
+  hqLocationId: integer("hq_location_id"),
+  extras: jsonb("extras").default({}),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -170,6 +244,7 @@ export const jobBoard = pgTable(
     goneAt: timestamp("gone_at", { withTimezone: true }),
 
     metadata: jsonb("metadata").default({}),
+    scrapeIntervalHours: integer("scrape_interval_hours").default(24).notNull(),
 
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
@@ -196,74 +271,68 @@ export const jobPosting = pgTable(
       onDelete: "set null",
     }),
 
-    // ── Content (display version — English when available) ──
-    title: text("title"),
-    /** HTML fragment preserving original page structure (p, ul/li, h3, etc.). */
-    description: text("description"),
-    locations: text("locations").array(),
+    // ── Core fields ──
+    isActive: boolean("is_active").default(true).notNull(),
+    locales: text("locales").array().notNull().default([]),
+    titles: text("titles").array().notNull().default([]),
+    locationIds: integer("location_ids").array(),
+    locationTypes: text("location_types").array(),
+    descriptionR2Hash: bigint("description_r2_hash", { mode: "bigint" }),
+
     employmentType: text("employment_type"),
-    jobLocationType: text("job_location_type"),
-    baseSalary: jsonb("base_salary"),
-    datePosted: timestamp("date_posted", { withTimezone: true }),
-
-    // ── Language ──
-    /** ISO 639-1 code of the display content (e.g. "en", "de"). */
-    language: text("language"),
-    /** All language versions keyed by locale: {"en": {title, description, locations}, ...} */
-    localizations: jsonb("localizations"),
-
-    // ── Extended fields (populated when available) ──
-    /** Optional structured data: skills, responsibilities, qualifications, validThrough, etc. */
-    extras: jsonb("extras"),
 
     // ── Identity & lifecycle ──
     sourceUrl: text("source_url").unique().notNull(),
-    status: text("status", { enum: ["active", "delisted"] })
-      .default("active")
-      .notNull(),
-    metadata: jsonb("metadata").default({}),
     firstSeenAt: timestamp("first_seen_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
-    delistedAt: timestamp("delisted_at", { withTimezone: true }),
-    delistReason: text("delist_reason"),
-    relistedAt: timestamp("relisted_at", { withTimezone: true }),
 
     // ── Scrape scheduler fields ──
     nextScrapeAt: timestamp("next_scrape_at", { withTimezone: true }),
     lastScrapedAt: timestamp("last_scraped_at", { withTimezone: true }),
-    scrapeIntervalHours: integer("scrape_interval_hours").default(24).notNull(),
-    leaseOwner: text("lease_owner"),
     leasedUntil: timestamp("leased_until", { withTimezone: true }),
     scrapeFailures: integer("scrape_failures").default(0).notNull(),
-    lastScrapeError: text("last_scrape_error"),
     missingCount: integer("missing_count").default(0).notNull(),
-    scrapeDomain: text("scrape_domain"),
 
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .defaultNow()
-      .notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .defaultNow()
-      .notNull(),
+    // ── Enrichment fields ──
+    enrichment: jsonb("enrichment"),
+    toBeEnriched: boolean("to_be_enriched").default(true).notNull(),
+    enrichVersion: integer("enrich_version").default(0).notNull(),
+    lastEnrichedAt: timestamp("last_enriched_at", { withTimezone: true }),
   },
   (table) => [
     index("idx_jp_company").on(table.companyId),
     index("idx_jp_board").on(table.boardId),
-    index("idx_jp_employment_type").on(table.employmentType),
-    index("idx_jp_language").on(table.language),
-    index("idx_jp_status_active").on(table.status).where(sql`status = 'active'`),
-    index("idx_jp_last_seen_active")
-      .on(table.lastSeenAt)
-      .where(sql`status = 'active'`),
-    index("idx_jp_locations").using("gin", table.locations),
+    index("idx_jp_active").on(table.isActive).where(sql`is_active = true`),
+    index("idx_jp_location_ids").using("gin", table.locationIds),
     index("idx_jp_next_scrape").on(table.nextScrapeAt).where(
-      sql`status = 'active' AND next_scrape_at IS NOT NULL`,
+      sql`is_active = true AND next_scrape_at IS NOT NULL`,
     ),
     index("idx_jp_lease").on(table.leasedUntil).where(
       sql`leased_until IS NOT NULL`,
     ),
+    index("idx_jp_to_be_enriched").on(table.toBeEnriched).where(
+      sql`is_active = true AND to_be_enriched = true`,
+    ),
+  ],
+);
+
+export const savedJob = pgTable(
+  "saved_job",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    jobPostingId: uuid("job_posting_id")
+      .notNull()
+      .references(() => jobPosting.id, { onDelete: "cascade" }),
+    savedAt: timestamp("saved_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("idx_sj_user_posting").on(table.userId, table.jobPostingId),
+    index("idx_sj_user_saved_at").on(table.userId, table.savedAt),
   ],
 );
 
@@ -281,9 +350,11 @@ export const companyRequest = pgTable(
       .default("pending"),
     resolvedCompanyId: uuid("resolved_company_id").references(
       () => company.id,
+      { onDelete: "set null" },
     ),
     resolvedJobBoardId: uuid("resolved_job_board_id").references(
       () => jobBoard.id,
+      { onDelete: "set null" },
     ),
     retries: integer("retries").notNull().default(0),
     maxRetries: integer("max_retries").notNull().default(3),
@@ -300,4 +371,30 @@ export const companyRequest = pgTable(
     index("idx_cr_status").on(table.status).where(sql`status = 'pending'`),
   ],
 );
+
+// ── Enrichment batch tracking ───────────────────────────────────────
+
+export const enrichBatch = pgTable("enrich_batch", {
+  id: text("id").primaryKey(),
+  provider: text("provider").notNull(),
+  model: text("model").notNull(),
+  status: text("status", {
+    enum: ["submitted", "completed", "failed", "expired"],
+  })
+    .default("submitted")
+    .notNull(),
+  itemCount: integer("item_count").notNull(),
+  postingIds: uuid("posting_ids").array().notNull(),
+  submittedAt: timestamp("submitted_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  inputTokens: integer("input_tokens"),
+  outputTokens: integer("output_tokens"),
+  estimatedCostUsd: numeric("estimated_cost_usd", {
+    precision: 10,
+    scale: 4,
+  }),
+  error: text("error"),
+});
 

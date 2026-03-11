@@ -50,6 +50,11 @@ def company_add(
     logo_url: str | None = None,
     icon_url: str | None = None,
     logo_type: str | None = None,
+    description: str | None = None,
+    industry: int | None = None,
+    employee_count_range: int | None = None,
+    founded_year: int | None = None,
+    extras: str | None = None,
 ) -> None:
     """Add a new company or update an existing one."""
     if not _SLUG_RE.match(slug):
@@ -57,6 +62,29 @@ def company_add(
 
     companies_path = get_data_dir() / "companies.csv"
     headers, rows = _read_csv(companies_path)
+
+    # Build updates dict from all non-None arguments
+    field_map: dict[str, str] = {}
+    if name is not None:
+        field_map["name"] = name
+    if website is not None:
+        field_map["website"] = website
+    if logo_url is not None:
+        field_map["logo_url"] = logo_url
+    if icon_url is not None:
+        field_map["icon_url"] = icon_url
+    if logo_type is not None:
+        field_map["logo_type"] = logo_type
+    if description is not None:
+        field_map["description"] = description
+    if industry is not None:
+        field_map["industry"] = str(industry)
+    if employee_count_range is not None:
+        field_map["employee_count_range"] = str(employee_count_range)
+    if founded_year is not None:
+        field_map["founded_year"] = str(founded_year)
+    if extras is not None:
+        field_map["extras"] = extras
 
     target = None
     for row in rows:
@@ -68,16 +96,7 @@ def company_add(
         # Create new row
         new_row = {col: "" for col in headers}
         new_row["slug"] = slug
-        if name is not None:
-            new_row["name"] = name
-        if website is not None:
-            new_row["website"] = website
-        if logo_url is not None:
-            new_row["logo_url"] = logo_url
-        if icon_url is not None:
-            new_row["icon_url"] = icon_url
-        if logo_type is not None:
-            new_row["logo_type"] = logo_type
+        new_row.update(field_map)
         rows.append(new_row)
         _write_csv(companies_path, headers, rows)
 
@@ -86,25 +105,13 @@ def company_add(
         print(f"Added company {slug!r}{extra}")
     else:
         # Update existing row
-        updates: dict[str, str] = {}
-        if name is not None:
-            updates["name"] = name
-        if website is not None:
-            updates["website"] = website
-        if logo_url is not None:
-            updates["logo_url"] = logo_url
-        if icon_url is not None:
-            updates["icon_url"] = icon_url
-        if logo_type is not None:
-            updates["logo_type"] = logo_type
-
-        if not updates:
+        if not field_map:
             raise NothingToUpdateError(f"Company {slug!r} already exists, nothing to update")
 
-        target.update(updates)
+        target.update(field_map)
         _write_csv(companies_path, headers, rows)
 
-        fields = ", ".join(f"{k}={v!r}" for k, v in updates.items())
+        fields = ", ".join(f"{k}={v!r}" for k, v in field_map.items())
         print(f"Updated company {slug!r}: {fields}")
 
 

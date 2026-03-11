@@ -10,6 +10,7 @@ Current design of all major subsystems across the crawler and web apps.
 - [Crawler: Batch Processor](#crawler-batch-processor)
 - [Crawler: Scheduler](#crawler-scheduler)
 - [Crawler: Redis Integration](#crawler-redis-integration)
+- [Crawler: R2 Description Store](#crawler-r2-description-store)
 - [Crawler: CSV Sync](#crawler-csv-sync)
 - [Web: Authentication](#web-authentication)
 - [Web: Session Caching](#web-session-caching)
@@ -30,6 +31,7 @@ Current design of all major subsystems across the crawler and web apps.
 | Redis            | Upstash                 | REST-based, serverless-compatible          |
 | Email            | Resend                  | Transactional emails (verification, reset) |
 | GitHub           | GitHub App (Octokit)    | Issue creation for company requests        |
+| Object Storage   | Cloudflare R2            | Job descriptions, extras, version history         |
 | Auth             | Better Auth (self-hosted) | Email/password + OAuth (GitHub, Google, LinkedIn) |
 
 ### Environment Variables
@@ -53,6 +55,13 @@ RESEND_API_KEY                   # Email
 CRAWLER_BATCH_LIMIT              # Max boards/URLs per batch (default: 200)
 CRAWLER_POLL_INTERVAL            # Max idle interval in seconds (default: 15)
 LOG_LEVEL                        # structlog level (default: INFO)
+
+# Cloudflare R2 (crawler)
+R2_ENDPOINT_URL                  # S3-compatible endpoint
+R2_ACCESS_KEY_ID                 # R2 API token key ID
+R2_SECRET_ACCESS_KEY             # R2 API token secret
+R2_BUCKET                        # Bucket name (e.g. jobseek-assets)
+R2_DOMAIN_URL                    # Public CDN URL (e.g. https://jobseek-assets.example.com)
 ```
 
 ---
@@ -258,9 +267,11 @@ async def process_monitor_batch(pool, http, limit=200) -> BatchResult
    - **gone**: active jobs no longer in discovered set → set `status = 'delisted'`
    - **new**: URLs not in DB at all
 3. For **rich data** (API monitors): insert new jobs with full content directly
-4. For **URL-only** monitors: insert URL stubs, deduplicate via Redis, enqueue to Redis scrape queue
-5. Record success/failure on the board row (exponential backoff on failure, auto-disable after 5 consecutive failures)
-6. Invalidate `cache:platform-stats` in Redis
+4. For **URL-only** monitors: insert URL stubs, schedule for scraping via `next_scrape_at`
+5. Upload descriptions + extras to R2 (after DB transaction commits, via `asyncio.to_thread`)
+6. Persist `description_r2_hash` for future change detection
+7. Record success/failure on the board row (exponential backoff on failure, auto-disable after 5 consecutive failures)
+8. Invalidate `cache:platform-stats` in Redis
 
 ### Scrape Batch
 
@@ -268,18 +279,16 @@ async def process_monitor_batch(pool, http, limit=200) -> BatchResult
 async def process_scrape_batch(pool, http, limit=200) -> BatchResult
 ```
 
-1. `requeue_retries()` — move due retry items back to main queue
-2. `recover_stale()` — recover items stuck beyond 5-minute visibility timeout
-3. `dequeue(limit)` — pop items from Redis queue
-4. **Group by hostname**: `urlparse(item.url).hostname` → `defaultdict[str, list]`
-5. **Run pipelines**: `asyncio.TaskGroup` launches one `_scrape_pipeline()` per hostname; each pipeline processes its items serially
+1. **Claim postings**: `UPDATE ... WHERE is_active AND next_scrape_at <= now() ... FOR UPDATE SKIP LOCKED` — claims postings due for scraping
+2. **Group by hostname**: `urlparse(source_url).hostname` → `defaultdict[str, list]`
+3. **Run pipelines**: `asyncio.TaskGroup` launches one `_scrape_pipeline()` per hostname; each pipeline processes its items serially
 
-**Per URL** (`_process_one_scrape`):
+**Per posting** (`_process_one_scrape`):
 
 1. Call `scrape_one(url, scraper_type, config, http)`
 2. Update `job_posting` row with extracted content
-3. Mark complete (remove from Redis active set)
-4. On failure: retry with exponential backoff (30s, 60s, 120s) or move to dead queue after 3 retries
+3. Upload description + extras to R2
+4. On failure: exponential backoff (interval doubles, capped at 24h)
 
 ### Board Scheduling
 
@@ -335,17 +344,14 @@ src/shared/throttle.py    # Per-domain request throttling (string)
 
 | Key Pattern            | Type       | TTL      | Purpose                         |
 |------------------------|------------|----------|---------------------------------|
-| `queue:scrape`         | List       | None     | Main scrape queue               |
-| `queue:scrape:retry`   | Sorted Set | None     | Scheduled retries (score = due timestamp) |
-| `queue:scrape:dead`    | List       | None     | Failed items (3+ retries)       |
-| `queue:scrape:active`  | Hash       | None     | In-flight tracking (url → timestamp) |
-| `dedup:urls`           | Set        | 7 days   | Cross-instance URL dedup        |
 | `throttle:{hostname}`  | String     | 10s      | Last request time per domain    |
 | `cache:platform-stats` | String     | 6 hours  | Platform stats (invalidated by crawler) |
 | `session:{token}`      | String     | 5 min    | Session cache (web app)         |
 | `rl:auth`              | (Ratelimit)| Auto     | Auth endpoint rate limit        |
 | `rl:pw-reset`          | (Ratelimit)| Auto     | Password reset rate limit       |
 | `rl:company-req`       | (Ratelimit)| Auto     | Company request rate limit      |
+
+> **Note**: The scrape queue previously used Redis lists/sets but has been migrated to Postgres-based scheduling via `next_scrape_at` + `FOR UPDATE SKIP LOCKED` on `job_posting`.
 
 ### Domain Throttling
 
@@ -358,6 +364,53 @@ KNOWN_ATS_HOSTS = {
     "api.smartrecruiters.com", "api.hireology.com", "api.rippling.com",
 }
 ```
+
+---
+
+## Crawler: R2 Description Store
+
+Job descriptions and structured extras are stored on Cloudflare R2 (S3-compatible). This offloads large text from Postgres and enables versioned history tracking.
+
+```
+src/core/description_store.py    # R2 upload/diff module
+```
+
+### R2 Layout
+
+```
+job/{posting_id}/{locale}/latest.html    — current description (HTML)
+job/{posting_id}/{locale}/history.json   — version history + current extras
+```
+
+### history.json Structure
+
+```json
+{
+  "current_extras": { "title": "...", "locations": [...], "metadata": {...}, ... },
+  "versions": [
+    { "timestamp": "2025-03-11T...", "diff": "--- new\n+++ old\n...", "extras": { "title": "old title" } },
+    ...
+  ]
+}
+```
+
+- `current_extras`: latest snapshot of all structured fields (title, locations, metadata, date_posted, base_salary, raw_employment_type, raw_job_location_type)
+- `versions`: reverse-chronological list of changes. Each entry contains:
+  - `diff`: reverse unified diff (only if description HTML changed)
+  - `extras`: dict of `{field: previous_value}` for changed fields (`null` = field was newly added)
+
+### Change Detection
+
+A `description_r2_hash` column (signed int64, truncated SHA-256) is stored on `job_posting`. Before uploading, the crawler computes the hash of `description + "\0" + json.dumps(extras)` and compares it to the stored hash. If unchanged, the R2 upload is skipped entirely.
+
+### Upload Flow
+
+R2 uploads happen **outside** the DB transaction to avoid holding connections during I/O:
+
+1. DB transaction: insert/update rows, collect R2 work items
+2. Commit transaction, release DB connection
+3. `asyncio.to_thread(upload_posting, ...)` for each item (boto3 is synchronous)
+4. Persist new `description_r2_hash` values in a separate DB call
 
 ---
 
@@ -547,35 +600,50 @@ Managed by CSV sync. Source of truth: `data/boards.csv`.
 | consecutive_failures    | int       | Default 0, auto-disable at 5            |
 | last_error              | text      |                                          |
 | is_enabled              | boolean   | Default true                             |
+| scrape_interval_hours   | int       | Default 24, per-board scrape frequency   |
 | metadata                | jsonb     | Monitor + scraper config merged          |
 
 #### `job_posting`
 
 See [08 — Job Data Fields](./08-job-data-fields.md) for field types, formats, and accepted values.
 
-| Column            | Type        | Notes                               |
-|-------------------|-------------|--------------------------------------|
-| id                | uuid        | PK                                   |
-| company_id        | uuid        | FK → company                         |
-| board_id          | uuid        | FK → job_board                       |
-| title             | text        | Plain text                           |
-| description       | text        | HTML fragment                        |
-| locations         | text[]      | One string per location              |
-| employment_type   | text        | e.g. "Full-time", "Contract"         |
-| job_location_type | text        | "remote" / "hybrid" / "onsite"       |
-| base_salary       | jsonb       | `{currency, min, max, unit}`         |
-| skills            | text[]      | One per element                      |
-| date_posted       | timestamp   | ISO 8601                             |
-| responsibilities  | text[]      | One per bullet                       |
-| qualifications    | text[]      | One per bullet                       |
-| metadata          | jsonb       | ATS-specific (department, team, etc.)|
-| source_url        | text        | Unique                               |
-| status            | text        | `active` or `delisted`               |
-| first_seen_at     | timestamp   |                                      |
-| last_seen_at      | timestamp   |                                      |
-| delisted_at       | timestamp   |                                      |
+**New columns** (R2 migration — dual-write period, old columns kept for compatibility):
 
-Indexes: status (partial, where active), last_seen_at (partial, where active), locations (GIN), skills (GIN).
+| Column              | Type        | Notes                                              |
+|---------------------|-------------|----------------------------------------------------|
+| id                  | uuid        | PK                                                 |
+| company_id          | uuid        | FK → company                                       |
+| board_id            | uuid        | FK → job_board (nullable)                          |
+| is_active           | boolean     | **New** — replaces `status` (`true` = active)      |
+| locales             | text[]      | **New** — e.g. `["en", "de"]`                      |
+| titles              | text[]      | **New** — parallel to locales                      |
+| location_ids        | integer[]   | **New** — FK refs to `location` table (nullable)   |
+| location_types      | text[]      | **New** — normalized location type tags (nullable) |
+| description_r2_hash | bigint      | **New** — SHA-256 truncated to int64, change detect |
+| title               | text        | *Legacy* — single display title                    |
+| description         | text        | *Legacy* — HTML (being moved to R2)                |
+| locations           | text[]      | One string per location                            |
+| employment_type     | text        | Normalized: `full_time`, `part_time`, `contract`, `internship`, `full_or_part` |
+| job_location_type   | text        | `remote` / `hybrid` / `onsite`                     |
+| base_salary         | jsonb       | `{currency, min, max, unit}`                       |
+| date_posted         | timestamptz |                                                    |
+| language            | text        | *Legacy* — ISO 639-1 code                         |
+| localizations       | jsonb       | *Legacy* — all locale versions                     |
+| extras              | jsonb       | *Legacy* — structured supplementary data           |
+| metadata            | jsonb       | *Legacy* — ATS-specific fields                     |
+| source_url          | text        | Unique                                             |
+| status              | text        | *Legacy* — `active` or `delisted`                  |
+| first_seen_at       | timestamptz |                                                    |
+| last_seen_at        | timestamptz |                                                    |
+| next_scrape_at      | timestamptz | Postgres-based scrape scheduling                   |
+| last_scraped_at     | timestamptz |                                                    |
+| scrape_failures     | integer     | Exponential backoff counter                        |
+| missing_count       | integer     | Consecutive monitor misses                         |
+| leased_until        | timestamptz | Work-claiming lock                                 |
+
+*Legacy* columns will be dropped after R2 migration is verified. Content served from R2: `job/{id}/{locale}/latest.html` and `job/{id}/{locale}/history.json`.
+
+Indexes: `is_active` (partial), `location_ids` (GIN), `locations` (GIN), `next_scrape_at` (partial, where active).
 
 #### Auth Tables (Better Auth)
 
@@ -587,10 +655,12 @@ Indexes: status (partial, where active), last_seen_at (partial, where active), l
 #### Other Tables
 
 - `user_preferences` — 1:1 with user (theme, locale, cookie consent, timestamps for conflict resolution)
+- `location` — GeoNames-seeded location hierarchy (macro/country/region/city)
+- `location_name` — Locale-specific location names (composite PK: location_id + locale)
+- `location_macro_member` — Macro-region membership (e.g. EU countries)
 - `subscription` — User subscription plans (free/unlimited)
+- `saved_job` — User-saved job postings (unique per user + posting)
 - `company_request` — User-submitted company requests (with GitHub issue tracking)
-- `job_posting_version` — Content snapshots with hash (for change detection)
-- `job_url_queue` — Legacy Postgres scrape queue (replaced by Redis queue, kept for schema compatibility)
 
 ---
 
@@ -614,22 +684,23 @@ scheduler.py (poll loop)
   │     │           ├── Run monitor_one() → MonitorResult
   │     │           ├── Diff URLs (single SQL: new / relisted / gone / touched)
   │     │           ├── [Rich data]  → INSERT job_posting with full content
-  │     │           ├── [URL-only]   → INSERT stubs → Redis dedup → enqueue
+  │     │           ├── [URL-only]   → INSERT stubs → schedule scrape (next_scrape_at)
+  │     │           ├── Upload descriptions + extras to R2 (after tx commit)
+  │     │           ├── Persist description_r2_hash
   │     │           ├── Record success/failure on job_board
   │     │           └── Invalidate cache:platform-stats
   │     └── Return BatchResult(processed, succeeded, failed)
   │
   └── process_scrape_batch(limit=200)
         │
-        ├── Requeue due retries (queue:scrape:retry → queue:scrape)
-        ├── Recover stale items (queue:scrape:active > 5 min)
-        ├── Dequeue items from Redis (queue:scrape)
+        ├── Claim due postings (next_scrape_at <= now(), FOR UPDATE SKIP LOCKED)
         ├── Group by target hostname
         ├── asyncio.TaskGroup: one pipeline per hostname
         │     └── Serial within each pipeline:
         │           ├── Run scrape_one() → JobContent
         │           ├── UPDATE job_posting with extracted content
-        │           └── Mark complete / schedule retry / move to dead queue
+        │           ├── Upload to R2 + persist hash
+        │           └── Record success / apply backoff on failure
         └── Return BatchResult(processed, succeeded, failed)
 ```
 

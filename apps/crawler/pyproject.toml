@@ -23,7 +23,11 @@ dependencies = [
 
 [project.scripts]
 scheduler = "src.scheduler:main"
+enricher = "src.enricher:main"
 ws = "src.workspace.cli:main"
+
+[project.optional-dependencies]
+enrich = ["openai>=1.0", "anthropic>=0.40", "google-genai>=1.0"]
 
 [dependency-groups]
 dev = [
