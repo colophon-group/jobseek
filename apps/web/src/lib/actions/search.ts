@@ -108,10 +108,14 @@ async function _fetchPostingDetail(
       const resp = await fetch(url, { next: { revalidate: 300 } });
       if (resp.ok) {
         descriptionHtml = await resp.text();
+      } else {
+        console.warn(`[R2] ${resp.status} for ${url}`);
       }
-    } catch {
-      // R2 unavailable — description stays null
+    } catch (err) {
+      console.error(`[R2] fetch error for ${url}:`, err);
     }
+  } else {
+    console.warn("[R2] R2_DOMAIN_URL is not set");
   }
 
   return {
