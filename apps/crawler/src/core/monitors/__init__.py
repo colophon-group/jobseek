@@ -427,6 +427,7 @@ _PROBE_SKIP: frozenset[str] = frozenset({"amazon"})
 # Import modules to trigger registration
 from src.core.monitors import (  # noqa: E402
     amazon,  # noqa: F401
+    apify_meta,  # noqa: F401
     api_sniffer,  # noqa: F401
     ashby,  # noqa: F401
     bite,  # noqa: F401
