@@ -167,18 +167,69 @@ function extractFromHtml(html: string): Partial<JobData> {
 // Detail page scraper (best-effort)
 // ---------------------------------------------------------------------------
 
+/**
+ * Walk a parsed GraphQL response and return the first node that looks like
+ * a job-detail payload (has a non-empty "description" field).
+ */
+function findDetailNode(obj: unknown): Record<string, unknown> | null {
+    if (typeof obj !== 'object' || obj === null) return null;
+    if (Array.isArray(obj)) {
+        for (const item of obj) {
+            const r = findDetailNode(item);
+            if (r) return r;
+        }
+        return null;
+    }
+    const rec = obj as Record<string, unknown>;
+    if (typeof rec['description'] === 'string' && rec['description'].length > 20) return rec;
+    for (const val of Object.values(rec)) {
+        const r = findDetailNode(val);
+        if (r) return r;
+    }
+    return null;
+}
+
 async function scrapeDetail(context: BrowserContext, url: string): Promise<Partial<JobData>> {
     const page = await context.newPage();
+    let graphqlData: Partial<JobData> | null = null;
+
+    // Primary: intercept the GraphQL response on the detail page (Meta is a SPA;
+    // the description lives in a network response, not in the initial HTML).
+    page.on('response', async (resp) => {
+        if (!resp.url().includes('/graphql')) return;
+        try {
+            const text = await resp.text();
+            // Quick pre-filter to avoid parsing every GraphQL response.
+            if (!text.includes('description')) return;
+            const parsed = JSON.parse(text);
+            const node = findDetailNode(parsed);
+            if (!node) return;
+            const candidate: Partial<JobData> = {};
+            if (typeof node['description'] === 'string') candidate.description = node['description'] as string;
+            if (typeof node['responsibilities'] === 'string') candidate.responsibilities = node['responsibilities'] as string;
+            if (typeof node['qualifications'] === 'string') candidate.qualifications = node['qualifications'] as string;
+            if (typeof node['employment_type'] === 'string') candidate.employmentType = node['employment_type'] as string;
+            if (typeof node['date_posted'] === 'string') candidate.datePosted = node['date_posted'] as string;
+            if (typeof node['valid_through'] === 'string') candidate.validThrough = node['valid_through'] as string;
+            if (candidate.description && !graphqlData) {
+                graphqlData = candidate;
+            }
+        } catch { /* ignore */ }
+    });
+
     try {
-        const resp = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+        const resp = await page.goto(url, { waitUntil: 'networkidle', timeout: 45_000 });
         if (!resp || !resp.ok()) return {};
 
+        // Return GraphQL-captured data if we got it.
+        if (graphqlData) return graphqlData;
+
+        // Fallback: extract from JSON-LD in rendered HTML.
         const html = await page.content();
         if (html.length < 500 || html.includes('Not Logged In')) return {};
-
         return extractFromHtml(html);
     } catch {
-        return {};
+        return graphqlData ?? {};
     } finally {
         await page.close();
     }
