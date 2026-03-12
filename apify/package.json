@@ -1,0 +1,21 @@
+{
+    "name": "meta-careers-scraper",
+    "version": "1.0.0",
+    "description": "Apify actor to scrape job listings from Meta Careers (metacareers.com)",
+    "type": "module",
+    "main": "dist/main.js",
+    "scripts": {
+        "start": "node dist/main.js",
+        "build": "tsc --build",
+        "dev": "tsx src/main.ts"
+    },
+    "dependencies": {
+        "apify": "^3.2.2",
+        "crawlee": "^3.10.1"
+    },
+    "devDependencies": {
+        "@types/node": "^20.14.0",
+        "tsx": "^4.15.0",
+        "typescript": "^5.4.5"
+    }
+}
