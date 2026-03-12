@@ -11,7 +11,8 @@
     },
     "dependencies": {
         "apify": "^3.2.2",
-        "crawlee": "^3.10.1"
+        "crawlee": "^3.10.1",
+        "playwright": "^1.58.2"
     },
     "devDependencies": {
         "@types/node": "^20.14.0",
