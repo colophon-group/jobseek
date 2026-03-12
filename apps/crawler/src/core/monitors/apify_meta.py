@@ -37,13 +37,19 @@ def _map_job(item: dict) -> DiscoveredJob | None:
     if not url:
         return None
 
-    metadata: dict = {}
+    item_metadata: dict = {}
     teams = item.get("teams") or []
     sub_teams = item.get("subTeams") or []
     if teams:
-        metadata["teams"] = teams
+        item_metadata["teams"] = teams
     if sub_teams:
-        metadata["sub_teams"] = sub_teams
+        item_metadata["sub_teams"] = sub_teams
+
+    extras: dict = {}
+    if item.get("responsibilities"):
+        extras["responsibilities"] = item["responsibilities"]
+    if item.get("qualifications"):
+        extras["qualifications"] = item["qualifications"]
 
     return DiscoveredJob(
         url=url,
@@ -52,7 +58,8 @@ def _map_job(item: dict) -> DiscoveredJob | None:
         locations=item.get("locations") or None,
         employment_type=item.get("employmentType"),
         date_posted=item.get("datePosted"),
-        metadata=metadata or None,
+        extras=extras or None,
+        metadata=item_metadata or None,
     )
 
 
@@ -66,13 +73,14 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
         raise ValueError(f"apify_meta monitor requires actor_id in board metadata for {board['board_url']!r}")
 
     max_jobs = int(metadata.get("max_jobs", 0))
+    fetch_descriptions = bool(metadata.get("fetch_descriptions", True))
 
     # Start the actor run
-    run_input: dict = {}
+    run_input: dict = {"fetchDescriptions": fetch_descriptions}
     if max_jobs:
         run_input["maxJobs"] = max_jobs
 
-    log.info("apify_meta.starting", actor_id=actor_id, max_jobs=max_jobs or "all")
+    log.info("apify_meta.starting", actor_id=actor_id, max_jobs=max_jobs or "all", fetch_descriptions=fetch_descriptions)
     resp = await client.post(
         f"{_APIFY_BASE}/acts/{actor_id}/runs",
         headers=_headers(),
