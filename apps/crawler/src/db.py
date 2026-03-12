@@ -7,10 +7,18 @@ from src.config import settings
 _pool: asyncpg.Pool | None = None
 
 
+async def _init_connection(conn: asyncpg.Connection) -> None:
+    await conn.execute("SET idle_in_transaction_session_timeout = '5min'")
+
+
 async def create_pool() -> asyncpg.Pool:
     global _pool
     if _pool is None:
-        _pool = await asyncpg.create_pool(settings.database_url, statement_cache_size=0)
+        _pool = await asyncpg.create_pool(
+            settings.database_url,
+            statement_cache_size=0,
+            init=_init_connection,
+        )
     return _pool
 
 
