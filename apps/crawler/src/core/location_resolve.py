@@ -1,7 +1,8 @@
-"""In-memory location resolver — matches free-form location strings to GeoNames IDs.
+"""Location resolver — matches free-form location strings to GeoNames IDs.
 
-Loads all locations + names from DB into memory (~8MB), then resolves
-raw location strings to structured (location_id, location_type) pairs.
+Loads core-locale names (en/de/fr/it) into memory, with async DB fallback
+for non-core locales.  Resolves raw location strings to structured
+(location_id, location_type) pairs.
 
 Usage:
     resolver = LocationResolver()
@@ -16,8 +17,41 @@ import unicodedata
 from dataclasses import dataclass
 
 import asyncpg
+import structlog
 
 from src.core.enum_normalize import _JOB_LOCATION_TYPE_MAP
+
+log = structlog.get_logger()
+
+# Locales loaded eagerly into memory.  Non-core locale names are fetched
+# from the DB on demand and cached for the process lifetime.
+_CORE_LOCALES = ("en", "de", "fr", "it", "alt", "")
+
+
+class _NameIndex(dict):
+    """Dict that tracks ``.get()`` misses for async DB backfill.
+
+    After ``start_tracking()`` is called, any ``.get()`` for a key not
+    present records the key in ``misses``.  The resolver batch-queries
+    those against the DB and populates the dict so subsequent lookups hit.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._tracking: bool = False
+        self.misses: set[str] = set()
+        self._negative: set[str] = set()
+
+    def start_tracking(self) -> None:
+        self._tracking = True
+
+    def get(self, key, default=None):  # type: ignore[override]
+        if key in self:
+            return super().__getitem__(key)
+        if self._tracking and key and key not in self._negative:
+            self.misses.add(key)
+        return default
+
 
 # ── Types ────────────────────────────────────────────────────────────
 
@@ -541,19 +575,51 @@ _OFFICE_SUFFIX_RE = re.compile(r"\s+(?:HQ|Office|Campus|Branch|Headquarters)\s*$
 
 
 class LocationResolver:
-    """In-memory location resolver backed by GeoNames data."""
+    """Location resolver backed by GeoNames data.
+
+    Core-locale names (en/de/fr/it) are loaded eagerly into memory.
+    Non-core locale names are fetched from the DB on cache miss and
+    kept for the process lifetime.
+    """
 
     def __init__(self) -> None:
         self._entries: dict[int, _LocationEntry] = {}
         # name (lowercase) → list of location IDs
-        self._name_to_ids: dict[str, list[int]] = {}
+        self._name_to_ids: _NameIndex | dict[str, list[int]] = _NameIndex()
         # location ID → English display name (original case)
         self._id_to_name: dict[int, str] = {}
+        self._pool: asyncpg.Pool | None = None
         self._loaded = False
         self._posting_language: str | None = None
 
+    def _index_name(self, name: str, loc_id: int) -> None:
+        """Index a single lowercased name with all lookup variants."""
+        self._name_to_ids.setdefault(name, []).append(loc_id)
+        stripped = _strip_accents(name)
+        if stripped != name:
+            self._name_to_ids.setdefault(stripped, []).append(loc_id)
+        for variant in (name, stripped):
+            no_the = _THE_PREFIX_RE.sub("", variant)
+            if no_the != variant:
+                self._name_to_ids.setdefault(no_the, []).append(loc_id)
+            no_city = _CITY_SUFFIX_RE.sub("", variant)
+            if no_city != variant:
+                self._name_to_ids.setdefault(no_city, []).append(loc_id)
+
+    def _dedup_ids(self, keys: set[str] | None = None) -> None:
+        """Deduplicate ID lists.  When *keys* is None, dedup all entries."""
+        items = ((k, self._name_to_ids[k]) for k in keys) if keys else self._name_to_ids.items()
+        for key, ids in items:
+            if len(ids) > 1:
+                self._name_to_ids[key] = list(dict.fromkeys(ids))
+
     async def load(self, pool: asyncpg.Pool) -> None:
-        """Load all locations + names from DB into memory."""
+        """Load locations + core-locale names from DB into memory."""
+        import gc
+
+        self._pool = pool
+
+        # Phase 1: location entries
         async with pool.acquire() as conn:
             loc_rows = await conn.fetch(
                 "SELECT id, parent_id, type::text AS type, "
@@ -561,17 +627,6 @@ class LocationResolver:
                 "COALESCE(languages, '{}') AS languages "
                 "FROM location"
             )
-            name_rows = await conn.fetch(
-                "SELECT location_id, lower(name) AS name FROM location_name"
-            )
-            # English display names (original case) for reverse mapping.
-            # Prefer is_display=true names; fall back to any en name.
-            en_name_rows = await conn.fetch(
-                "SELECT location_id, name, "
-                "COALESCE(is_display, false) AS is_display "
-                "FROM location_name WHERE locale = 'en'"
-            )
-
         for row in loc_rows:
             self._entries[row["id"]] = _LocationEntry(
                 id=row["id"],
@@ -580,32 +635,29 @@ class LocationResolver:
                 population=row["population"],
                 languages=tuple(row["languages"]),
             )
+        del loc_rows
+        gc.collect()
 
+        # Phase 2: core-locale name index
+        async with pool.acquire() as conn:
+            name_rows = await conn.fetch(
+                "SELECT location_id, lower(name) AS name FROM location_name WHERE locale = ANY($1)",
+                list(_CORE_LOCALES),
+            )
         for row in name_rows:
-            name = row["name"]
-            loc_id = row["location_id"]
-            # Index under the original (lowercased) name
-            self._name_to_ids.setdefault(name, []).append(loc_id)
-            # Also index accent-stripped variant
-            stripped = _strip_accents(name)
-            if stripped != name:
-                self._name_to_ids.setdefault(stripped, []).append(loc_id)
-            # Also index without "The " prefix: "the netherlands" → "netherlands"
-            for variant in (name, stripped):
-                no_the = _THE_PREFIX_RE.sub("", variant)
-                if no_the != variant:
-                    self._name_to_ids.setdefault(no_the, []).append(loc_id)
-                # Also index without " City" suffix: "makati city" → "makati"
-                no_city = _CITY_SUFFIX_RE.sub("", variant)
-                if no_city != variant:
-                    self._name_to_ids.setdefault(no_city, []).append(loc_id)
+            self._index_name(row["name"], row["location_id"])
+        del name_rows
+        gc.collect()
 
-        # Deduplicate ID lists (same ID added multiple times from different locales)
-        for key in self._name_to_ids:
-            ids = self._name_to_ids[key]
-            if len(ids) > 1:
-                self._name_to_ids[key] = list(dict.fromkeys(ids))
+        self._dedup_ids()
 
+        # Phase 3: English display names for reverse lookup
+        async with pool.acquire() as conn:
+            en_name_rows = await conn.fetch(
+                "SELECT location_id, name, "
+                "COALESCE(is_display, false) AS is_display "
+                "FROM location_name WHERE locale = 'en'"
+            )
         # Build reverse mapping: location_id → English display name.
         # First pass: set any en name. Second pass: override with is_display.
         for row in en_name_rows:
@@ -614,8 +666,56 @@ class LocationResolver:
         for row in en_name_rows:
             if row["is_display"]:
                 self._id_to_name[row["location_id"]] = row["name"]
+        del en_name_rows
+        gc.collect()
 
         self._loaded = True
+
+        # Enable miss tracking now that the core index is built.
+        if isinstance(self._name_to_ids, _NameIndex):
+            self._name_to_ids.start_tracking()
+
+    async def backfill_misses(self) -> bool:
+        """Batch-query the DB for names not found in the core-locale cache.
+
+        Populates ``_name_to_ids`` with results so subsequent ``resolve()``
+        calls hit in memory.  Returns True if new names were added.
+        """
+        idx = self._name_to_ids
+        if not isinstance(idx, _NameIndex) or not self._pool or not idx.misses:
+            return False
+
+        missed = list(idx.misses)
+        idx.misses.clear()
+
+        async with self._pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT location_id, lower(name) AS name "
+                "FROM location_name WHERE lower(name) = ANY($1::text[])",
+                missed,
+            )
+
+        if not rows:
+            idx._negative.update(missed)
+            return False
+
+        matched_keys: set[str] = set()
+        new_keys: set[str] = set()
+        before_keys = set(self._name_to_ids)
+        for row in rows:
+            matched_keys.add(row["name"])
+            self._index_name(row["name"], row["location_id"])
+        new_keys = set(self._name_to_ids) - before_keys
+
+        self._dedup_ids(new_keys)
+        idx._negative.update(set(missed) - matched_keys)
+
+        log.info(
+            "location_resolver.backfill",
+            queried=len(missed),
+            matched=len(matched_keys),
+        )
+        return True
 
     def display_name(self, location_id: int) -> str | None:
         """Return the English display name for a location ID, or None."""

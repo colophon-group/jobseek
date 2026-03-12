@@ -13,6 +13,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import functools
+import gc
 import json
 from collections import defaultdict
 from collections.abc import Awaitable, Callable
@@ -63,14 +64,23 @@ async def _get_location_resolver(pool: asyncpg.Pool) -> LocationResolver:
     return _location_resolver
 
 
-def _resolve_locations(
+async def _resolve_locations(
     resolver: LocationResolver,
     locations: list[str] | None,
     job_location_type: str | None,
     posting_language: str | None = None,
 ) -> tuple[list[int] | None, list[str] | None]:
-    """Resolve locations to parallel arrays of (location_ids, location_types)."""
+    """Resolve locations to parallel arrays of (location_ids, location_types).
+
+    Uses the in-memory core-locale cache first.  On cache misses (non-core
+    locale names), batch-queries the DB and retries.
+    """
     results = resolver.resolve(locations, job_location_type, posting_language)
+
+    # DB fallback for non-core locale names (rare path)
+    if await resolver.backfill_misses():
+        results = resolver.resolve(locations, job_location_type, posting_language)
+
     if not results:
         return None, None
 
@@ -1037,7 +1047,7 @@ async def _process_one_board(
 
                 if new_jobs:
                     for j in new_jobs:
-                        loc_ids, loc_types = _resolve_locations(
+                        loc_ids, loc_types = await _resolve_locations(
                             loc_resolver,
                             _coerce_locations(j.locations),
                             _coerce_text(j.job_location_type),
@@ -1091,7 +1101,7 @@ async def _process_one_board(
                     await conn.execute(_CREATE_RICH_UPDATES_TEMP)
                     records = []
                     for pid, j, _ in update_triples:
-                        loc_ids, loc_types = _resolve_locations(
+                        loc_ids, loc_types = await _resolve_locations(
                             loc_resolver,
                             _coerce_locations(j.locations),
                             _coerce_text(j.job_location_type),
@@ -1202,6 +1212,11 @@ async def _process_one_board(
         if new_urls or gone:
             with contextlib.suppress(Exception):
                 await get_redis().delete("cache:platform-stats")
+
+        # Free large temporaries (jobs_by_url, r2_work) before next item
+        del result
+        gc.collect()
+
         return True, elapsed
 
     except Exception as exc:
@@ -1332,7 +1347,7 @@ async def _process_one_scrape(
 
         # Resolve locations
         loc_resolver = await _get_location_resolver(pool)
-        loc_ids, loc_types = _resolve_locations(
+        loc_ids, loc_types = await _resolve_locations(
             loc_resolver,
             _coerce_locations(content.locations),
             _coerce_text(content.job_location_type),

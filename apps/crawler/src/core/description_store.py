@@ -28,9 +28,7 @@ import os
 import struct
 from datetime import UTC, datetime
 
-import boto3
 import structlog
-from botocore.exceptions import ClientError
 
 log = structlog.get_logger()
 
@@ -47,6 +45,8 @@ _client = None
 def _s3():
     global _client
     if _client is None:
+        import boto3
+
         _client = boto3.client(
             "s3",
             endpoint_url=os.environ["R2_ENDPOINT_URL"],
@@ -67,6 +67,8 @@ def _prefix(posting_id: str) -> str:
 
 def get_object(key: str) -> str | None:
     """Download an object as UTF-8 text. Returns None if not found."""
+    from botocore.exceptions import ClientError
+
     try:
         resp = _s3().get_object(Bucket=_bucket(), Key=key)
         return resp["Body"].read().decode("utf-8")
