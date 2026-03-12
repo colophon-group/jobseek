@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     crawler_poll_interval: int = 15
     crawler_max_concurrent: int = 20
 
+    apify_token: str = ""
+
     # Enrichment (disabled by default — empty provider means skip)
     enrich_provider: str = ""
     enrich_model: str = ""
