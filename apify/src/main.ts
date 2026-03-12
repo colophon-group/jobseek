@@ -43,6 +43,11 @@ interface GraphQLJob {
     locations: string[];
     teams: string[];
     sub_teams: string[];
+    // Meta may include remote/work-type fields under various names
+    remote_type?: string;
+    location_type?: string;
+    workplace_type?: string;
+    [key: string]: unknown;
 }
 
 interface JobData {
@@ -56,6 +61,7 @@ interface JobData {
     responsibilities?: string;
     qualifications?: string;
     employmentType?: string;
+    jobLocationType?: string;
     datePosted?: string;
     validThrough?: string;
     company: string;
@@ -82,6 +88,10 @@ async function captureJobListing(context: BrowserContext, maxJobs: number, searc
             if (Array.isArray(jobs) && jobs.length > captured.length) {
                 captured = jobs;
                 log.info(`GraphQL snapshot: ${jobs.length} jobs`);
+                // Log all keys from first job once so we can see what fields Meta exposes
+                if (jobs.length > 0) {
+                    log.info(`GraphQL job fields: ${Object.keys(jobs[0]).join(', ')}`);
+                }
             }
         } catch { /* ignore parse errors */ }
     });
@@ -150,11 +160,23 @@ function extractFromHtml(html: string): Partial<JobData> {
         try {
             const p = findJobPosting(JSON.parse(raw));
             if (!p) continue;
+            // Normalise jobLocationType: schema.org uses "TELECOMMUTE" for remote;
+            // Meta may also emit "REMOTE", "HYBRID", or "ON_SITE".
+            const rawLocType = p['jobLocationType'] as string | undefined;
+            let jobLocationType: string | undefined;
+            if (rawLocType) {
+                const u = rawLocType.toUpperCase();
+                if (u.includes('TELECOMMUTE') || u.includes('REMOTE')) jobLocationType = 'REMOTE';
+                else if (u.includes('HYBRID')) jobLocationType = 'HYBRID';
+                else if (u.includes('ON') || u.includes('SITE') || u.includes('OFFICE')) jobLocationType = 'ON_SITE';
+                else jobLocationType = rawLocType;
+            }
             return {
                 description: p['description'] as string | undefined,
                 responsibilities: p['responsibilities'] as string | undefined,
                 qualifications: (p['qualifications'] ?? p['educationRequirements']) as string | undefined,
                 employmentType: p['employmentType'] as string | undefined,
+                jobLocationType,
                 datePosted: p['datePosted'] as string | undefined,
                 validThrough: p['validThrough'] as string | undefined,
             };
@@ -211,6 +233,15 @@ async function scrapeDetail(context: BrowserContext, url: string): Promise<Parti
             if (typeof node['employment_type'] === 'string') candidate.employmentType = node['employment_type'] as string;
             if (typeof node['date_posted'] === 'string') candidate.datePosted = node['date_posted'] as string;
             if (typeof node['valid_through'] === 'string') candidate.validThrough = node['valid_through'] as string;
+            // remote_type, job_location_type, or similar field names used by Meta GraphQL
+            const locType = (node['remote_type'] ?? node['job_location_type'] ?? node['jobLocationType']) as string | undefined;
+            if (locType) {
+                const u = locType.toUpperCase();
+                if (u.includes('REMOTE') || u.includes('TELECOMMUTE')) candidate.jobLocationType = 'REMOTE';
+                else if (u.includes('HYBRID')) candidate.jobLocationType = 'HYBRID';
+                else if (u.includes('ON') || u.includes('SITE') || u.includes('OFFICE')) candidate.jobLocationType = 'ON_SITE';
+                else candidate.jobLocationType = locType;
+            }
             if (candidate.description && !graphqlData) {
                 graphqlData = candidate;
             }
@@ -245,7 +276,7 @@ async function main() {
     const input = ((await Actor.getInput()) ?? {}) as Input;
     const maxJobs = input.maxJobs ?? 0;
     const searchQuery = input.searchQuery ?? '';
-    const fetchDescriptions = input.fetchDescriptions ?? false;
+    const fetchDescriptions = input.fetchDescriptions ?? true;
 
     log.info('Starting Meta Careers scraper', { maxJobs, searchQuery, fetchDescriptions });
 
@@ -273,6 +304,22 @@ async function main() {
             const gj = graphqlJobs[i];
             const url = `https://www.metacareers.com/profile/job_details/${gj.id}`;
 
+            // Infer jobLocationType from GraphQL listing fields or location strings
+            const rawWorkplaceType = (gj.remote_type ?? gj.location_type ?? gj.workplace_type) as string | undefined;
+            let listingLocType: string | undefined;
+            if (rawWorkplaceType) {
+                const u = rawWorkplaceType.toUpperCase();
+                if (u.includes('REMOTE') || u.includes('TELECOMMUTE')) listingLocType = 'REMOTE';
+                else if (u.includes('HYBRID')) listingLocType = 'HYBRID';
+                else if (u.includes('ON') || u.includes('SITE') || u.includes('OFFICE')) listingLocType = 'ON_SITE';
+                else listingLocType = rawWorkplaceType;
+            } else {
+                // Fall back: check if "Remote" appears in location strings
+                const locsLower = gj.locations.map((l) => l.toLowerCase());
+                if (locsLower.some((l) => l.includes('remote'))) listingLocType = 'REMOTE';
+                else if (locsLower.some((l) => l.includes('hybrid'))) listingLocType = 'HYBRID';
+            }
+
             const base: JobData = {
                 url,
                 jobId: gj.id,
@@ -280,6 +327,7 @@ async function main() {
                 locations: gj.locations,
                 teams: gj.teams,
                 subTeams: gj.sub_teams,
+                jobLocationType: listingLocType,
                 company: 'Meta',
             };
 
@@ -291,7 +339,20 @@ async function main() {
                 await new Promise((r) => setTimeout(r, 600));
             }
 
-            const job: JobData = { ...base, ...extra };
+            // Determine jobLocationType: detail page > listing inference > description text > ON_SITE default
+            let jobLocationType = extra.jobLocationType ?? base.jobLocationType;
+            if (!jobLocationType) {
+                const searchText = [
+                    extra.description ?? '',
+                    extra.responsibilities ?? '',
+                    gj.title,
+                ].join(' ').toLowerCase();
+                if (searchText.includes('remote')) jobLocationType = 'REMOTE';
+                else if (searchText.includes('hybrid')) jobLocationType = 'HYBRID';
+                else if (gj.locations.length > 0) jobLocationType = 'ON_SITE';
+            }
+
+            const job: JobData = { ...base, ...extra, jobLocationType };
             await Actor.pushData(job);
 
             if (!fetchDescriptions) {
