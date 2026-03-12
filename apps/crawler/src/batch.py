@@ -363,7 +363,8 @@ ranked AS (
     FROM candidates
 )
 UPDATE job_posting
-SET leased_until  = now() + interval '10 minutes'
+SET leased_until = now() + interval '10 minutes',
+    lease_owner = $2
 FROM (
     SELECT id AS rid
     FROM ranked
@@ -388,7 +389,8 @@ SET scrape_failures  = 0,
         ) || ' hours')::interval
         ELSE NULL
     END,
-    leased_until     = NULL
+    leased_until     = NULL,
+    lease_owner      = NULL
 WHERE jp.id = $1
 """
 
@@ -400,13 +402,14 @@ SET scrape_failures   = scrape_failures + 1,
         WHEN scrape_failures + 1 >= 3 THEN NULL
         ELSE now() + (30 * pow(2, scrape_failures)) * interval '1 minute'
     END,
-    leased_until = NULL
+    leased_until = NULL,
+    lease_owner = NULL
 WHERE id = $1
 """
 
 _CLEAR_SCRAPE_FOR_RICH = """
 UPDATE job_posting
-SET next_scrape_at = NULL, leased_until = NULL
+SET next_scrape_at = NULL, leased_until = NULL, lease_owner = NULL
 WHERE id = ANY($1::uuid[])
 """
 
@@ -835,7 +838,8 @@ ranked AS (
     FROM candidates
 )
 UPDATE job_posting
-SET leased_until = now() + interval '10 minutes'
+SET leased_until = now() + interval '10 minutes',
+    lease_owner = $2
 FROM (
     SELECT id AS rid
     FROM ranked
@@ -883,7 +887,7 @@ async def claim_scrape_work(
     if limit <= 0:
         return []
 
-    rows = await pool.fetch(_CLAIM_SCRAPES, limit)
+    rows = await pool.fetch(_CLAIM_SCRAPES, limit, worker_id)
     if not rows:
         return []
 
@@ -1449,7 +1453,7 @@ async def process_scrape_batch(
     Items targeting the same hostname run serially (respecting per-domain
     throttle).  Different hostnames run concurrently.
     """
-    rows = await pool.fetch(_FETCH_DUE_JOB_POSTINGS, limit)
+    rows = await pool.fetch(_FETCH_DUE_JOB_POSTINGS, limit, worker_id)
 
     if not rows:
         return BatchResult()

@@ -580,7 +580,7 @@ async def _run_enrichment(website: str, name: str):
     """Run the enrichment pipeline."""
     import httpx
 
-    from src.core.company_enrich import enrich_company
+    from src.core.enrich.company import enrich_company
 
     async with httpx.AsyncClient() as http:
         return await enrich_company(website, name, http)
@@ -588,7 +588,7 @@ async def _run_enrichment(website: str, name: str):
 
 def _show_enrichment_results(ws: Workspace, meta) -> None:
     """Display enrichment results."""
-    from src.core.company_enrich import get_industry_name, range_to_label
+    from src.core.enrich.company import get_industry_name, range_to_label
 
     tier_desc = {"A": "full", "B": "partial", "C": "nothing found"}
     out.info("enrich", f"Tier {meta.tier} ({tier_desc.get(meta.tier, '?')})")

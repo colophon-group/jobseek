@@ -20,15 +20,15 @@ from time import monotonic
 import structlog
 
 from src.config import settings
-from src.core.enrich import ENRICH_VERSION
-from src.core.llm_providers import create_provider
-from src.db import close_pool, create_pool
-from src.enrich_batch import (
+from src.core.enrich.batch import (
     check_daily_budget,
     collect_completed_batches,
     prepare_batch,
     submit_batch,
 )
+from src.core.enrich.job import ENRICH_VERSION
+from src.core.enrich.providers import create_provider
+from src.db import close_pool, create_pool
 from src.shared.logging import setup_logging
 
 log = structlog.get_logger()

@@ -15,13 +15,13 @@ import structlog
 
 from src.config import settings
 from src.core.description_store import get_description_html
-from src.core.enrich import (
+from src.core.enrich.job import (
     ENRICH_VERSION,
     SYSTEM_PROMPT,
     EnrichmentResult,
     build_user_message,
 )
-from src.core.llm_providers import BatchProvider, BatchRequest
+from src.core.enrich.providers import BatchProvider, BatchRequest
 
 log = structlog.get_logger()
 

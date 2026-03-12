@@ -35,7 +35,8 @@ from src.shared.logging import setup_logging  # noqa: E402
 
 log = structlog.get_logger()
 
-WORKER_ID = uuid.uuid4().hex[:8]
+_rand = uuid.uuid4().hex[:8]
+WORKER_ID = f"{settings.worker_id_prefix}-{_rand}" if settings.worker_id_prefix else _rand
 
 
 def parse_args() -> argparse.Namespace:

@@ -51,15 +51,15 @@ class BatchProvider(Protocol):
 def create_provider(provider: str, model: str, api_key: str) -> BatchProvider:
     """Factory. Lazily imports the appropriate SDK."""
     if provider == "openai":
-        from src.core.llm_providers.openai import OpenAIBatchProvider
+        from src.core.enrich.providers.openai import OpenAIBatchProvider
 
         return OpenAIBatchProvider(model=model, api_key=api_key)
     elif provider == "anthropic":
-        from src.core.llm_providers.anthropic import AnthropicBatchProvider
+        from src.core.enrich.providers.anthropic import AnthropicBatchProvider
 
         return AnthropicBatchProvider(model=model, api_key=api_key)
     elif provider == "gemini":
-        from src.core.llm_providers.gemini import GeminiBatchProvider
+        from src.core.enrich.providers.gemini import GeminiBatchProvider
 
         return GeminiBatchProvider(model=model, api_key=api_key)
     else:

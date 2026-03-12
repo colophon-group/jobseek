@@ -1488,7 +1488,7 @@ SCRAPER_CARDS: dict[str, str] = {
 
 def _show_industries() -> None:
     """Display industry IDs from data/industries.csv."""
-    from src.core.company_enrich import _load_industries
+    from src.core.enrich.company import _load_industries
 
     industries = _load_industries()
     if not industries:
