@@ -27,23 +27,17 @@ class TestUploadImages:
         monkeypatch.setenv("R2_DOMAIN_URL", "https://assets.example.com")
 
         mock_client = MagicMock()
-        with (
-            patch("src.image_sync.boto3") as mock_boto3,
-            patch("src.image_sync.process_icon", return_value=b"fake-webp") as mock_process,
-        ):
+        with patch("src.image_sync.boto3") as mock_boto3:
             mock_boto3.client.return_value = mock_client
             result = upload_images()
 
         assert result == {
             "acme": {
                 "logo_url": "https://assets.example.com/companies/acme/logo.svg",
-                "icon_url": "https://assets.example.com/companies/acme/icon.webp",
+                "icon_url": "https://assets.example.com/companies/acme/icon.png",
             }
         }
-        # Logo uploaded via upload_file, icon via put_object (after processing)
-        assert mock_client.upload_file.call_count == 1
-        assert mock_client.put_object.call_count == 1
-        mock_process.assert_called_once()
+        assert mock_client.upload_file.call_count == 2
 
     def test_only_logo(self, tmp_path, monkeypatch):
         images_dir = tmp_path / "images"
