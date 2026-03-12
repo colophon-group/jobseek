@@ -1,0 +1,41 @@
+{
+    "title": "Meta Careers Scraper Input",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+        "maxJobs": {
+            "title": "Max Jobs",
+            "type": "integer",
+            "description": "Maximum number of job pages to scrape. Set to 0 to scrape all jobs found in the sitemap.",
+            "default": 0,
+            "minimum": 0,
+            "editor": "number"
+        },
+        "searchQuery": {
+            "title": "Search Query",
+            "type": "string",
+            "description": "Filter job URLs by keyword (matched against the URL path). Leave empty to scrape all jobs.",
+            "default": "",
+            "editor": "textfield"
+        },
+        "proxyConfiguration": {
+            "title": "Proxy Configuration",
+            "type": "object",
+            "description": "Apify proxy configuration. Residential proxies are recommended for Meta.",
+            "editor": "proxy",
+            "prefill": {
+                "useApifyProxy": true,
+                "apifyProxyGroups": ["RESIDENTIAL"]
+            }
+        },
+        "maxConcurrency": {
+            "title": "Max Concurrency",
+            "type": "integer",
+            "description": "Maximum number of parallel browser tabs. Keep low to avoid rate limiting.",
+            "default": 3,
+            "minimum": 1,
+            "maximum": 10,
+            "editor": "number"
+        }
+    }
+}
