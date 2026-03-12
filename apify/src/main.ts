@@ -1,28 +1,31 @@
 /**
  * Meta Careers Scraper — Apify Actor
  *
- * Discovers job postings from https://www.metacareers.com via sitemap,
- * then scrapes each job page using Playwright with JSON-LD extraction
- * and a DOM-based fallback.
+ * Strategy:
+ *   1. Load metacareers.com/jobsearch with Playwright
+ *   2. Intercept the GraphQL response that returns the full job listing
+ *   3. For each job, optionally load the detail page to capture description
+ *      (falls back gracefully if the detail page is gated)
  *
  * Output schema (Apify Dataset):
- *   url          — canonical job URL
- *   jobId        — numeric ID extracted from URL
- *   title        — job title
- *   description  — full job description (may contain HTML)
- *   locations    — array of location strings
- *   employmentType — e.g. "FULL_TIME"
- *   jobLocationType — e.g. "TELECOMMUTE"
- *   datePosted   — ISO date string
- *   validThrough — ISO date string (expiry)
- *   company      — hiring organisation name
- *   team         — department / team name (from URL slug)
- *   salary       — { currency, min, max, unit } or null
+ *   url         — job detail URL
+ *   jobId       — numeric ID
+ *   title       — job title
+ *   locations   — array of "City, ST" strings
+ *   teams       — department / team names
+ *   subTeams    — sub-team names
+ *   description — job description (when detail page is accessible)
+ *   responsibilities — responsibilities text (when accessible)
+ *   qualifications   — qualifications text (when accessible)
+ *   employmentType   — from JSON-LD (when accessible)
+ *   datePosted       — ISO date (when accessible)
+ *   validThrough     — ISO date (when accessible)
+ *   company     — always "Meta"
  */
 
-import { Actor, ProxyConfiguration } from 'apify';
-import { PlaywrightCrawler, RequestQueue } from 'crawlee';
-import type { Page } from 'playwright';
+import { Actor } from 'apify';
+import { log } from 'crawlee';
+import { chromium, type Browser, type BrowserContext } from 'playwright';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -31,390 +34,226 @@ import type { Page } from 'playwright';
 interface Input {
     maxJobs?: number;
     searchQuery?: string;
-    proxyConfiguration?: Parameters<typeof Actor.createProxyConfiguration>[0];
-    maxConcurrency?: number;
+    fetchDescriptions?: boolean;
+}
+
+interface GraphQLJob {
+    id: string;
+    title: string;
+    locations: string[];
+    teams: string[];
+    sub_teams: string[];
 }
 
 interface JobData {
     url: string;
-    jobId?: string;
-    title?: string;
+    jobId: string;
+    title: string;
+    locations: string[];
+    teams: string[];
+    subTeams: string[];
     description?: string;
-    locations?: string[];
+    responsibilities?: string;
+    qualifications?: string;
     employmentType?: string;
-    jobLocationType?: string;
     datePosted?: string;
     validThrough?: string;
-    company?: string;
-    team?: string;
-    salary?: SalaryData | null;
-    extractionMethod?: 'json-ld' | 'dom';
-}
-
-interface SalaryData {
-    currency?: string;
-    min?: number;
-    max?: number;
-    unit?: string;
+    company: string;
 }
 
 // ---------------------------------------------------------------------------
-// Constants
+// GraphQL intercept — captures job listing from the search page
 // ---------------------------------------------------------------------------
 
-const SITEMAP_URL = 'https://www.metacareers.com/jobsearch/sitemap.xml';
+async function captureJobListing(context: BrowserContext, maxJobs: number, searchQuery: string): Promise<GraphQLJob[]> {
+    const page = await context.newPage();
+    let captured: GraphQLJob[] = [];
 
-/**
- * Cookies that allow access to metacareers.com job pages without a Facebook
- * login wall. These are generic bypass cookies; rotate them if pages 403.
- */
-const META_COOKIES = [
-    { name: 'datr', value: 'tNnoaBnoBZfeeR27JuTrMm1O', domain: '.metacareers.com', path: '/' },
-    { name: 'ps_l', value: '1', domain: '.metacareers.com', path: '/' },
-    { name: 'ps_n', value: '1', domain: '.metacareers.com', path: '/' },
-] as const;
+    page.on('response', async (resp) => {
+        if (!resp.url().includes('/graphql')) return;
+        try {
+            const text = await resp.text();
+            if (!text.includes('all_jobs')) return;
 
-// ---------------------------------------------------------------------------
-// Sitemap helpers
-// ---------------------------------------------------------------------------
-
-/** Fetch the sitemap XML and return all job detail URLs. */
-async function fetchJobUrls(searchQuery: string): Promise<string[]> {
-    const res = await fetch(SITEMAP_URL, {
-        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ApifyBot/1.0)' },
+            const data = JSON.parse(text) as {
+                data?: { job_search_with_featured_jobs?: { all_jobs?: GraphQLJob[] } };
+            };
+            const jobs = data?.data?.job_search_with_featured_jobs?.all_jobs;
+            if (Array.isArray(jobs) && jobs.length > captured.length) {
+                captured = jobs;
+                log.info(`GraphQL snapshot: ${jobs.length} jobs`);
+            }
+        } catch { /* ignore parse errors */ }
     });
-    if (!res.ok) throw new Error(`Sitemap fetch failed: ${res.status} ${res.statusText}`);
 
-    const xml = await res.text();
+    log.info('Loading https://www.metacareers.com/jobsearch …');
+    await page.goto('https://www.metacareers.com/jobsearch', {
+        waitUntil: 'networkidle',
+        timeout: 60_000,
+    });
 
-    // Extract <loc> values — no need for a full XML parser
-    const urls: string[] = [];
-    for (const match of xml.matchAll(/<loc>\s*(https?:\/\/[^<]+)\s*<\/loc>/g)) {
-        const url = match[1].trim();
-        if (!url.includes('job_details')) continue;
-        if (searchQuery && !url.toLowerCase().includes(searchQuery.toLowerCase())) continue;
-        urls.push(url);
+    await page.close();
+
+    // Filter by searchQuery if provided
+    if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        captured = captured.filter(
+            (j) =>
+                j.title.toLowerCase().includes(q) ||
+                j.teams.some((t) => t.toLowerCase().includes(q)) ||
+                j.locations.some((l) => l.toLowerCase().includes(q)),
+        );
+        log.info(`After search filter "${searchQuery}": ${captured.length} jobs`);
     }
 
-    return urls;
+    if (maxJobs > 0) {
+        captured = captured.slice(0, maxJobs);
+        log.info(`Capped to ${captured.length} jobs`);
+    }
+
+    return captured;
 }
 
 // ---------------------------------------------------------------------------
-// JSON-LD extraction
+// JSON-LD extraction helpers
 // ---------------------------------------------------------------------------
 
-interface JsonLdBlock {
+interface JsonLdNode {
     '@type'?: string | string[];
-    '@graph'?: JsonLdBlock[];
+    '@graph'?: JsonLdNode[];
     [key: string]: unknown;
 }
 
 function findJobPosting(data: unknown): Record<string, unknown> | null {
     if (Array.isArray(data)) {
         for (const item of data) {
-            const found = findJobPosting(item);
-            if (found) return found;
+            const r = findJobPosting(item);
+            if (r) return r;
         }
         return null;
     }
     if (typeof data !== 'object' || data === null) return null;
-
-    const obj = data as JsonLdBlock;
-    const type = obj['@type'];
-    const typeStr = Array.isArray(type) ? type.join(' ') : String(type ?? '');
-    if (typeStr.includes('JobPosting')) return obj as Record<string, unknown>;
-
+    const obj = data as JsonLdNode;
+    const t = obj['@type'];
+    const ts = Array.isArray(t) ? t.join(' ') : String(t ?? '');
+    if (ts.includes('JobPosting')) return obj as Record<string, unknown>;
     if (Array.isArray(obj['@graph'])) return findJobPosting(obj['@graph']);
     return null;
 }
 
-/** Extract all <script type="application/ld+json"> blocks and find a JobPosting. */
-async function extractJsonLd(page: Page): Promise<Record<string, unknown> | null> {
-    const scripts = await page.$$eval(
-        'script[type="application/ld+json"]',
-        (els) => els.map((el) => el.textContent ?? ''),
-    );
-
-    for (const raw of scripts) {
+function extractFromHtml(html: string): Partial<JobData> {
+    const blocks = [
+        ...html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi),
+    ];
+    for (const [, raw] of blocks) {
         if (!raw.trim()) continue;
         try {
-            const data = JSON.parse(raw) as unknown;
-            const posting = findJobPosting(data);
-            if (posting) return posting;
-        } catch {
-            // Attempt to repair common control-char issues
-            try {
-                const cleaned = raw.replace(/[\x00-\x1F]/g, (c) =>
-                    c === '\n' ? '\\n' : c === '\r' ? '\\r' : c === '\t' ? '\\t' : '',
-                );
-                const data = JSON.parse(cleaned) as unknown;
-                const posting = findJobPosting(data);
-                if (posting) return posting;
-            } catch {
-                // ignore
-            }
-        }
+            const p = findJobPosting(JSON.parse(raw));
+            if (!p) continue;
+            return {
+                description: p['description'] as string | undefined,
+                responsibilities: p['responsibilities'] as string | undefined,
+                qualifications: (p['qualifications'] ?? p['educationRequirements']) as string | undefined,
+                employmentType: p['employmentType'] as string | undefined,
+                datePosted: p['datePosted'] as string | undefined,
+                validThrough: p['validThrough'] as string | undefined,
+            };
+        } catch { /* skip */ }
     }
-    return null;
+    return {};
 }
 
-function parseLocations(jobLocation: unknown): string[] | undefined {
-    if (!jobLocation) return undefined;
-    const items = Array.isArray(jobLocation) ? jobLocation : [jobLocation];
-    const locations: string[] = [];
+// ---------------------------------------------------------------------------
+// Detail page scraper (best-effort)
+// ---------------------------------------------------------------------------
 
-    for (const loc of items) {
-        if (typeof loc === 'string') {
-            locations.push(loc);
-            continue;
-        }
-        if (typeof loc !== 'object' || loc === null) continue;
-        const l = loc as Record<string, unknown>;
+async function scrapeDetail(context: BrowserContext, url: string): Promise<Partial<JobData>> {
+    const page = await context.newPage();
+    try {
+        const resp = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+        if (!resp || !resp.ok()) return {};
 
-        const name = l['name'];
-        if (typeof name === 'string' && name) {
-            locations.push(name);
-            continue;
-        }
+        const html = await page.content();
+        if (html.length < 500 || html.includes('Not Logged In')) return {};
 
-        const address = l['address'];
-        if (typeof address === 'object' && address !== null) {
-            const a = address as Record<string, unknown>;
-            const parts = ['addressLocality', 'addressRegion', 'addressCountry']
-                .map((k) => (typeof a[k] === 'string' ? a[k] : (a[k] as Record<string, unknown>)?.['name']))
-                .filter(Boolean) as string[];
-            if (parts.length) locations.push(parts.join(', '));
-        }
+        return extractFromHtml(html);
+    } catch {
+        return {};
+    } finally {
+        await page.close();
     }
-    return locations.length ? locations : undefined;
-}
-
-function parseSalary(baseSalary: unknown): SalaryData | null {
-    if (typeof baseSalary !== 'object' || baseSalary === null) return null;
-    const bs = baseSalary as Record<string, unknown>;
-    const currency = typeof bs['currency'] === 'string' ? bs['currency'] : undefined;
-    const value = bs['value'];
-
-    if (typeof value === 'number') return { currency, min: value, max: value };
-    if (typeof value === 'object' && value !== null) {
-        const v = value as Record<string, unknown>;
-        return {
-            currency,
-            min: typeof v['minValue'] === 'number' ? v['minValue'] : undefined,
-            max: typeof v['maxValue'] === 'number' ? v['maxValue'] : undefined,
-            unit: typeof v['unitText'] === 'string' ? v['unitText'].toLowerCase() : undefined,
-        };
-    }
-    return null;
-}
-
-function jsonLdToJobData(posting: Record<string, unknown>, url: string): Partial<JobData> {
-    return {
-        title: (posting['title'] ?? posting['name']) as string | undefined,
-        description: posting['description'] as string | undefined,
-        locations: parseLocations(posting['jobLocation']) ?? undefined,
-        employmentType: posting['employmentType'] as string | undefined,
-        jobLocationType: posting['jobLocationType'] as string | undefined,
-        datePosted: posting['datePosted'] as string | undefined,
-        validThrough: posting['validThrough'] as string | undefined,
-        company:
-            typeof posting['hiringOrganization'] === 'object' && posting['hiringOrganization'] !== null
-                ? ((posting['hiringOrganization'] as Record<string, unknown>)['name'] as string | undefined)
-                : typeof posting['hiringOrganization'] === 'string'
-                  ? posting['hiringOrganization']
-                  : 'Meta',
-        salary: parseSalary(posting['baseSalary']),
-        extractionMethod: 'json-ld',
-    };
-}
-
-// ---------------------------------------------------------------------------
-// DOM extraction fallback
-// ---------------------------------------------------------------------------
-
-/**
- * Minimal DOM scrape: grab the <h1> title and the description block that
- * appears between "Apply now" and "Apply for this job" landmark texts.
- */
-async function extractDom(page: Page): Promise<Partial<JobData>> {
-    // Remove aria-hidden so hidden content becomes accessible
-    await page.evaluate(() => {
-        document.querySelectorAll<Element>('[aria-hidden]').forEach((el) =>
-            el.removeAttribute('aria-hidden'),
-        );
-    });
-
-    const title = await page.$eval('h1', (el) => el.textContent?.trim()).catch(() => undefined);
-
-    const description = await page
-        .evaluate((): string | undefined => {
-            // Walk the text nodes looking for the block between "Apply now" and "Apply for this job"
-            const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-            const parts: string[] = [];
-            let capturing = false;
-            let node: Node | null;
-
-            while ((node = walker.nextNode())) {
-                const text = node.textContent?.trim() ?? '';
-                if (!capturing && text === 'Apply now') {
-                    capturing = true;
-                    continue;
-                }
-                if (capturing && text === 'Apply for this job') break;
-                if (capturing && text) parts.push(text);
-            }
-            return parts.length ? parts.join('\n') : undefined;
-        })
-        .catch(() => undefined);
-
-    // Also try extracting from common description container selectors
-    const descriptionHtml =
-        description ??
-        (await page
-            .$eval('[data-testid="job-description"], .job-description, [class*="jobDescription"]', (el) =>
-                el.innerHTML.trim(),
-            )
-            .catch(() => undefined));
-
-    return { title, description: descriptionHtml, extractionMethod: 'dom' };
-}
-
-// ---------------------------------------------------------------------------
-// URL metadata helpers
-// ---------------------------------------------------------------------------
-
-/** Pull the numeric job ID from the URL path. */
-function extractJobId(url: string): string | undefined {
-    const m = url.match(/\/(\d{15,})/);
-    return m ? m[1] : undefined;
-}
-
-/** Guess team/department from the URL slug segment. */
-function extractTeam(url: string): string | undefined {
-    // e.g. /jobs/2345678901234567/software-engineer-ads-backend/
-    const m = url.match(/\/jobs\/\d+\/([^/?#]+)/);
-    if (!m) return undefined;
-    return m[1]
-        .replace(/-/g, ' ')
-        .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 // ---------------------------------------------------------------------------
 // Actor entry point
 // ---------------------------------------------------------------------------
 
-await Actor.init();
+async function main() {
+    await Actor.init();
 
-const input = ((await Actor.getInput()) ?? {}) as Input;
-const maxJobs = input.maxJobs ?? 0;
-const searchQuery = input.searchQuery ?? '';
-const maxConcurrency = Math.max(1, Math.min(input.maxConcurrency ?? 3, 10));
+    const input = ((await Actor.getInput()) ?? {}) as Input;
+    const maxJobs = input.maxJobs ?? 0;
+    const searchQuery = input.searchQuery ?? '';
+    const fetchDescriptions = input.fetchDescriptions ?? false;
 
-// Set up proxy
-let proxyConfiguration: ProxyConfiguration | undefined;
-if (input.proxyConfiguration) {
-    proxyConfiguration = await Actor.createProxyConfiguration(input.proxyConfiguration);
-}
+    log.info('Starting Meta Careers scraper', { maxJobs, searchQuery, fetchDescriptions });
 
-// Discover job URLs from sitemap
-Actor.log.info('Fetching Meta careers sitemap…', { sitemapUrl: SITEMAP_URL });
-let jobUrls = await fetchJobUrls(searchQuery);
-Actor.log.info(`Found ${jobUrls.length} job URLs`, { filtered: !!searchQuery });
-
-if (maxJobs > 0) {
-    jobUrls = jobUrls.slice(0, maxJobs);
-    Actor.log.info(`Capped to ${jobUrls.length} jobs`);
-}
-
-if (!jobUrls.length) {
-    Actor.log.warning('No job URLs matched — exiting.');
-    await Actor.exit();
-}
-
-// Enqueue all job URLs
-const requestQueue = await RequestQueue.open();
-for (const url of jobUrls) {
-    await requestQueue.addRequest({ url });
-}
-
-// Crawl
-const crawler = new PlaywrightCrawler({
-    requestQueue,
-    proxyConfiguration,
-    maxConcurrency,
-    // Give each page up to 90 s to load (metacareers is slow)
-    navigationTimeoutSecs: 90,
-    requestHandlerTimeoutSecs: 120,
-
-    launchContext: {
-        launchOptions: {
-            headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox'],
-        },
-    },
-
-    preNavigationHooks: [
-        async ({ page }) => {
-            // Inject bypass cookies before navigating
-            await page.context().addCookies(
-                META_COOKIES.map((c) => ({
-                    ...c,
-                    expires: -1,
-                    httpOnly: false,
-                    secure: true,
-                    sameSite: 'Lax' as const,
-                })),
-            );
-        },
-    ],
-
-    async requestHandler({ request, page }) {
-        const url = request.url;
-        Actor.log.info('Scraping', { url });
-
-        // Wait for the page to settle
-        await page.waitForLoadState('networkidle', { timeout: 30_000 }).catch(() => {
-            Actor.log.debug('networkidle timeout, continuing anyway', { url });
+    let browser: Browser | null = null;
+    try {
+        browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
+        const context = await browser.newContext({
+            userAgent:
+                'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         });
 
-        const base: JobData = {
-            url,
-            jobId: extractJobId(url),
-            team: extractTeam(url),
-        };
+        // Step 1: capture the job listing via GraphQL intercept
+        const graphqlJobs = await captureJobListing(context, maxJobs, searchQuery);
 
-        // --- Attempt 1: JSON-LD ---
-        const posting = await extractJsonLd(page);
-        if (posting) {
-            const data: JobData = { ...base, ...jsonLdToJobData(posting, url) };
-            if (data.title) {
-                Actor.log.info('Extracted via JSON-LD', { title: data.title });
-                await Actor.pushData(data);
-                return;
+        if (!graphqlJobs.length) {
+            log.warning('No jobs captured from GraphQL — exiting.');
+            await Actor.exit();
+            return;
+        }
+
+        log.info(`Processing ${graphqlJobs.length} jobs…`);
+
+        // Step 2: for each job, optionally fetch detail page; push to dataset
+        for (let i = 0; i < graphqlJobs.length; i++) {
+            const gj = graphqlJobs[i];
+            const url = `https://www.metacareers.com/profile/job_details/${gj.id}`;
+
+            const base: JobData = {
+                url,
+                jobId: gj.id,
+                title: gj.title,
+                locations: gj.locations,
+                teams: gj.teams,
+                subTeams: gj.sub_teams,
+                company: 'Meta',
+            };
+
+            let extra: Partial<JobData> = {};
+            if (fetchDescriptions) {
+                log.info(`[${i + 1}/${graphqlJobs.length}] Fetching detail: ${gj.title}`);
+                extra = await scrapeDetail(context, url);
+                // polite delay
+                await new Promise((r) => setTimeout(r, 600));
+            }
+
+            const job: JobData = { ...base, ...extra };
+            await Actor.pushData(job);
+
+            if (!fetchDescriptions) {
+                log.info(`[${i + 1}/${graphqlJobs.length}] ${gj.title} @ ${gj.locations.join(', ')}`);
             }
         }
 
-        // --- Attempt 2: DOM fallback ---
-        Actor.log.debug('JSON-LD extraction failed, trying DOM fallback', { url });
-        const domData = await extractDom(page);
-        const data: JobData = { ...base, ...domData };
+        log.info('All jobs pushed to dataset.');
+    } finally {
+        await browser?.close();
+    }
 
-        if (data.title || data.description) {
-            Actor.log.info('Extracted via DOM', { title: data.title });
-            await Actor.pushData(data);
-        } else {
-            Actor.log.warning('No data extracted', { url });
-            // Still push a stub so operators can investigate
-            await Actor.pushData({ ...base, extractionMethod: 'none' });
-        }
-    },
+    await Actor.exit();
+}
 
-    failedRequestHandler({ request, error }) {
-        Actor.log.error('Request failed', { url: request.url, error: String(error) });
-    },
-});
-
-await crawler.run();
-
-Actor.log.info('Scraping complete.');
-await Actor.exit();
+main();
