@@ -57,6 +57,7 @@ def _map_job(item: dict) -> DiscoveredJob | None:
         description=item.get("description"),
         locations=item.get("locations") or None,
         employment_type=item.get("employmentType"),
+        job_location_type=item.get("jobLocationType"),
         date_posted=item.get("datePosted"),
         extras=extras or None,
         metadata=item_metadata or None,
