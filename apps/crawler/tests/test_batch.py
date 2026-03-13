@@ -802,7 +802,7 @@ class TestProcessOneScrape:
 
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
     async def test_both_scrapers_fail(self, mock_scrape, mock_pool, mock_http):
-        """Primary and fallback both return empty -> success (no retry)."""
+        """Primary and fallback both return empty -> failure (backoff)."""
         pool, conn = mock_pool
         mock_scrape.return_value = _job_content(title=None)
         item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
@@ -810,42 +810,42 @@ class TestProcessOneScrape:
 
         ok, _duration = await _process_one_scrape(item, pool, mock_http, "json-ld", config)
 
-        assert ok is True  # success = don't retry, posting stays as URL stub
+        assert ok is False  # failure triggers backoff
         assert mock_scrape.await_count == 2
         execute_calls = conn.execute.await_args_list
-        success_calls = [c for c in execute_calls if c.args[0] == _RECORD_SCRAPE_SUCCESS]
-        assert len(success_calls) == 1
+        failure_calls = [c for c in execute_calls if c.args[0] == _RECORD_SCRAPE_FAILURE]
+        assert len(failure_calls) == 1
 
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
     async def test_no_fallback_without_config(self, mock_scrape, mock_pool, mock_http):
-        """No fallback configured + empty title -> success (URL stub), no content write."""
+        """No fallback configured + empty title -> failure (backoff)."""
         pool, conn = mock_pool
         mock_scrape.return_value = _job_content(title=None)
         item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
 
         ok, _duration = await _process_one_scrape(item, pool, mock_http, "json-ld", None)
 
-        assert ok is True
+        assert ok is False
         assert mock_scrape.await_count == 1
         execute_calls = conn.execute.await_args_list
-        success_calls = [c for c in execute_calls if c.args[0] == _RECORD_SCRAPE_SUCCESS]
-        assert len(success_calls) == 1
+        failure_calls = [c for c in execute_calls if c.args[0] == _RECORD_SCRAPE_FAILURE]
+        assert len(failure_calls) == 1
 
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
     async def test_garbage_title_treated_as_empty(self, mock_scrape, mock_pool, mock_http):
-        """Garbage titles (auth walls, etc.) -> success with no content write."""
+        """Garbage titles (auth walls, etc.) -> failure (backoff), no content write."""
         pool, conn = mock_pool
         mock_scrape.return_value = _job_content(title="Not Logged In", description="<p>junk</p>")
         item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
 
         ok, _duration = await _process_one_scrape(item, pool, mock_http, "json-ld", None)
 
-        assert ok is True
+        assert ok is False
         execute_calls = conn.execute.await_args_list
-        # Should record success, NOT write content
-        success_calls = [c for c in execute_calls if c.args[0] == _RECORD_SCRAPE_SUCCESS]
+        # Should record failure, NOT write content
+        failure_calls = [c for c in execute_calls if c.args[0] == _RECORD_SCRAPE_FAILURE]
         content_calls = [c for c in execute_calls if c.args[0] == _UPDATE_JOB_CONTENT]
-        assert len(success_calls) == 1
+        assert len(failure_calls) == 1
         assert len(content_calls) == 0
 
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
