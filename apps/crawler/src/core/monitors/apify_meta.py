@@ -71,7 +71,9 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
     metadata = board.get("metadata") or {}
     actor_id = metadata.get("actor_id")
     if not actor_id:
-        raise ValueError(f"apify_meta monitor requires actor_id in board metadata for {board['board_url']!r}")
+        raise ValueError(
+            f"apify_meta monitor requires actor_id in board metadata for {board['board_url']!r}"
+        )
 
     max_jobs = int(metadata.get("max_jobs", 0))
     fetch_descriptions = bool(metadata.get("fetch_descriptions", True))
@@ -81,7 +83,12 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
     if max_jobs:
         run_input["maxJobs"] = max_jobs
 
-    log.info("apify_meta.starting", actor_id=actor_id, max_jobs=max_jobs or "all", fetch_descriptions=fetch_descriptions)
+    log.info(
+        "apify_meta.starting",
+        actor_id=actor_id,
+        max_jobs=max_jobs or "all",
+        fetch_descriptions=fetch_descriptions,
+    )
     resp = await client.post(
         f"{_APIFY_BASE}/acts/{actor_id}/runs",
         headers=_headers(),
