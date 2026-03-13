@@ -688,8 +688,8 @@ async def _upload_to_r2(
         if current_hash is not None and current_hash == new_hash:
             return new_hash
 
-        # Upload with one retry on transient network errors
-        for attempt in range(2):
+        # Upload with retries on transient network errors
+        for attempt in range(3):
             try:
                 # Upload primary description + extras (tracks diffs in history)
                 await upload_posting(posting_id, locale, description, merged)
@@ -708,10 +708,15 @@ async def _upload_to_r2(
                             await upload_description(posting_id, loc_locale, loc_desc)
 
                 return new_hash
-            except (httpx.TimeoutException, httpx.ConnectError):
+            except (
+                httpx.TimeoutException,
+                httpx.ConnectError,
+                httpx.ReadError,
+                httpx.RemoteProtocolError,
+            ):
                 if attempt == 0:
                     log.warning("batch.r2_upload.retry", posting_id=posting_id)
-                    await asyncio.sleep(1)
+                    await asyncio.sleep(2)
                 else:
                     raise
 
