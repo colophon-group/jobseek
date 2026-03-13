@@ -2,32 +2,26 @@
 
 Public API:
   List:   GET https://api.smartrecruiters.com/v1/companies/{id}/postings?limit=100&offset=0
-  Detail: GET https://api.smartrecruiters.com/v1/companies/{id}/postings/{postingId}
 
-The list endpoint returns metadata (title, location, department) but not the
-job description.  The detail endpoint adds ``jobAd`` (description, qualifications,
-etc.) and ``compensation``.  So the monitor fetches each posting individually
-for full data (N+1 calls, with concurrency).
+The list endpoint returns posting IDs and metadata.  The monitor constructs
+posting URLs from the token + ID and returns a URL set.  Detail fetching
+is handled by the scraper on the daily schedule.
 """
 
 from __future__ import annotations
 
-import asyncio
 import re
 from urllib.parse import urlparse
 
 import httpx
 import structlog
 
-from src.core.monitors import DiscoveredJob, register, slugs_from_url
+from src.core.monitors import register, slugs_from_url
 
 log = structlog.get_logger()
 
 MAX_JOBS = 10_000
 PAGE_SIZE = 100
-CONCURRENCY = 10
-DETAIL_MAX_ATTEMPTS = 3
-DETAIL_RETRY_BASE_SEC = 0.3
 
 _PAGE_PATTERNS = [
     re.compile(r"api\.smartrecruiters\.com/v1/companies/([\w-]+)"),
@@ -64,174 +58,15 @@ def _api_list_url(token: str) -> str:
     return f"https://api.smartrecruiters.com/v1/companies/{token}/postings"
 
 
-def _api_detail_url(token: str, posting_id: str) -> str:
-    return f"https://api.smartrecruiters.com/v1/companies/{token}/postings/{posting_id}"
+def _posting_url(token: str, posting_id: str) -> str:
+    """Build a canonical posting URL from token + ID."""
+    return f"https://jobs.smartrecruiters.com/{token}/{posting_id}"
 
 
-def _build_description(job_ad: dict) -> str | None:
-    """Combine jobAd sections into a single HTML description."""
-    if not job_ad:
-        return None
-    sections = job_ad.get("sections", {})
-    parts: list[str] = []
-    for key in ("companyDescription", "jobDescription", "qualifications", "additionalInformation"):
-        section = sections.get(key)
-        if isinstance(section, dict):
-            title = section.get("title", "")
-            text = section.get("text", "")
-            if text:
-                if title:
-                    parts.append(f"<h3>{title}</h3>\n{text}")
-                else:
-                    parts.append(text)
-    return "\n".join(parts) if parts else None
+async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> set[str]:
+    """Fetch job listing URLs from the SmartRecruiters public API.
 
-
-def _build_location(loc: dict) -> str | None:
-    """Build a human-readable location string."""
-    if not loc:
-        return None
-    # Prefer fullLocation if available
-    full = loc.get("fullLocation")
-    if full:
-        return full
-    # Build from parts
-    parts = [loc.get("city"), loc.get("region"), loc.get("country")]
-    filtered = [p for p in parts if p]
-    return ", ".join(filtered) if filtered else None
-
-
-def _parse_salary(posting: dict) -> dict | None:
-    """Extract salary from the compensation field if available."""
-    comp = posting.get("compensation")
-    if not comp:
-        return None
-    salary = comp.get("salary")
-    if not salary:
-        return None
-    sal_min = salary.get("min")
-    sal_max = salary.get("max")
-    if sal_min is None and sal_max is None:
-        return None
-    currency = salary.get("currency")
-    period = salary.get("period", "")
-    unit = "year"
-    if "hour" in period.lower():
-        unit = "hour"
-    elif "month" in period.lower():
-        unit = "month"
-    return {"currency": currency, "min": sal_min, "max": sal_max, "unit": unit}
-
-
-def _parse_job(posting: dict) -> DiscoveredJob | None:
-    """Map a detail API response to a DiscoveredJob."""
-    url = posting.get("postingUrl")
-    if not url:
-        # Fallback: build from ref or id
-        ref = posting.get("ref")
-        if ref:
-            url = ref
-        else:
-            return None
-
-    title = posting.get("name")
-    description = _build_description(posting.get("jobAd", {}))
-
-    # Location
-    loc = posting.get("location", {})
-    location_str = _build_location(loc)
-    locations = [location_str] if location_str else None
-
-    # Remote detection
-    job_location_type = None
-    if loc.get("remote"):
-        job_location_type = "remote"
-    elif loc.get("hybrid"):
-        job_location_type = "hybrid"
-
-    # Employment type
-    employment = posting.get("typeOfEmployment")
-    employment_type = employment.get("label") if isinstance(employment, dict) else None
-
-    # Metadata
-    metadata: dict = {}
-    dept = posting.get("department")
-    if isinstance(dept, dict) and dept.get("label"):
-        metadata["department"] = dept["label"]
-    func = posting.get("function")
-    if isinstance(func, dict) and func.get("label"):
-        metadata["function"] = func["label"]
-    exp = posting.get("experienceLevel")
-    if isinstance(exp, dict) and exp.get("label"):
-        metadata["experienceLevel"] = exp["label"]
-
-    return DiscoveredJob(
-        url=url,
-        title=title,
-        description=description,
-        locations=locations,
-        employment_type=employment_type,
-        job_location_type=job_location_type,
-        date_posted=posting.get("releasedDate"),
-        base_salary=_parse_salary(posting),
-        metadata=metadata or None,
-    )
-
-
-async def _fetch_detail(
-    token: str,
-    posting_id: str,
-    client: httpx.AsyncClient,
-    semaphore: asyncio.Semaphore,
-) -> dict | None:
-    """Fetch a single posting's detail, respecting the concurrency semaphore."""
-    async with semaphore:
-        for attempt in range(1, DETAIL_MAX_ATTEMPTS + 1):
-            try:
-                resp = await client.get(_api_detail_url(token, posting_id))
-                if resp.status_code != 200:
-                    # 404/410 are common for stale IDs from list endpoints.
-                    level = "info" if resp.status_code in (404, 410) else "warning"
-                    getattr(log, level)(
-                        "smartrecruiters.detail_failed",
-                        posting_id=posting_id,
-                        status=resp.status_code,
-                        attempt=attempt,
-                    )
-                    return None
-                try:
-                    return resp.json()
-                except ValueError as exc:
-                    if attempt >= DETAIL_MAX_ATTEMPTS:
-                        log.warning(
-                            "smartrecruiters.detail_invalid_json",
-                            posting_id=posting_id,
-                            status=resp.status_code,
-                            error_type=exc.__class__.__name__,
-                            error=str(exc),
-                        )
-                        return None
-            except Exception as exc:
-                if attempt >= DETAIL_MAX_ATTEMPTS:
-                    log.warning(
-                        "smartrecruiters.detail_error",
-                        posting_id=posting_id,
-                        attempt=attempt,
-                        error_type=exc.__class__.__name__,
-                        error=str(exc),
-                    )
-                    return None
-
-            await asyncio.sleep(DETAIL_RETRY_BASE_SEC * attempt)
-
-        return None
-
-
-async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[DiscoveredJob]:
-    """Fetch job listings from the SmartRecruiters public API.
-
-    Paginates the list endpoint, then fetches each posting's detail
-    concurrently to get full descriptions.
+    Paginates the list endpoint and constructs posting URLs from token + ID.
     """
     metadata = board.get("metadata") or {}
     token = metadata.get("token") or _token_from_url(board["board_url"])
@@ -242,8 +77,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
             "and no token in metadata"
         )
 
-    # Step 1: Paginate list endpoint to collect all posting IDs
-    posting_ids: list[str] = []
+    urls: set[str] = set()
     offset = 0
 
     while True:
@@ -258,7 +92,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
         for item in content:
             pid = item.get("id")
             if pid:
-                posting_ids.append(str(pid))
+                urls.add(_posting_url(token, str(pid)))
 
         total_found = data.get("totalFound", 0)
         offset += PAGE_SIZE
@@ -266,33 +100,17 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
         if offset >= total_found or len(content) < PAGE_SIZE:
             break
 
-        if len(posting_ids) >= MAX_JOBS:
+        if len(urls) >= MAX_JOBS:
             log.warning(
                 "smartrecruiters.truncated",
                 token=token,
-                total=len(posting_ids),
+                total=len(urls),
                 cap=MAX_JOBS,
             )
-            posting_ids = posting_ids[:MAX_JOBS]
             break
 
-    log.info("smartrecruiters.listed", token=token, postings=len(posting_ids))
-
-    # Step 2: Fetch details concurrently
-    semaphore = asyncio.Semaphore(CONCURRENCY)
-    tasks = [_fetch_detail(token, pid, client, semaphore) for pid in posting_ids]
-    detail_results = await asyncio.gather(*tasks)
-
-    # Step 3: Parse into DiscoveredJobs
-    jobs: list[DiscoveredJob] = []
-    for detail in detail_results:
-        if detail is None:
-            continue
-        parsed = _parse_job(detail)
-        if parsed:
-            jobs.append(parsed)
-
-    return jobs
+    log.info("smartrecruiters.listed", token=token, postings=len(urls))
+    return urls
 
 
 async def _probe_token(token: str, client: httpx.AsyncClient) -> tuple[bool, int | None]:
@@ -402,4 +220,4 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
     return None
 
 
-register("smartrecruiters", discover, cost=10, can_handle=can_handle, rich=True)
+register("smartrecruiters", discover, cost=10, can_handle=can_handle, rich=False)

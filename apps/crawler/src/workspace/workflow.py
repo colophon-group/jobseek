@@ -140,8 +140,6 @@ class WorkflowState:
 
 # ── Gate verification ────────────────────────────────────────────────
 
-from src.workspace._compat import _RICH_MONITORS  # noqa: E402
-
 
 def _config_tested(board: Board) -> bool:
     """Active config has been selected and tested with >0 jobs."""
@@ -154,26 +152,28 @@ def _config_tested(board: Board) -> bool:
     return (run.get("jobs") or 0) > 0
 
 
-def _is_rich(board: Board) -> bool:
-    """Active monitor is a rich API type (scraper skipped)."""
+def _scraper_auto_configured(board: Board) -> bool:
+    """Scraper was auto-configured by the monitor — skip manual selection."""
     cfg = board._active_cfg()
     if not cfg:
         return False
-    mtype = cfg.get("monitor_type", "")
-    # Check explicit rich flag from run
-    if cfg.get("rich") or (cfg.get("run") or {}).get("has_rich_data"):
-        return True
-    return mtype in _RICH_MONITORS
+    scraper = cfg.get("scraper_type")
+    return scraper is not None
 
 
 def _scraper_done(board: Board) -> bool:
-    """Scraper has been selected and tested (or skipped for rich monitors)."""
-    if _is_rich(board):
-        return True
+    """Scraper has been selected and tested (or auto-configured)."""
     cfg = board._active_cfg()
     if not cfg:
         return False
-    return bool(cfg.get("scraper_type")) and bool(cfg.get("scraper_run"))
+    scraper = cfg.get("scraper_type")
+    if not scraper:
+        return False
+    # Auto-configured scrapers (skip, workday) don't need a test run
+    if scraper in ("skip",):
+        return True
+    # Manually or auto-selected scrapers need a test run
+    return bool(cfg.get("scraper_run"))
 
 
 def _has_feedback(board: Board) -> bool:
@@ -202,7 +202,7 @@ PER_BOARD_GATES: dict[str, Any] = {
 }
 
 SKIP_CONDITIONS: dict[str, Any] = {
-    "rich_monitor": _is_rich,
+    "scraper_auto_configured": _scraper_auto_configured,
 }
 
 

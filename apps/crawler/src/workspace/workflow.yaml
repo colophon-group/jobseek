@@ -37,7 +37,7 @@ per_board_steps:
   - id: select_scraper
     title: "Select and test scraper"
     instructions: steps/04-select-scraper.md
-    skip_when: rich_monitor
+    skip_when: scraper_auto_configured
     gate:
       type: state
       check: scraper_tested

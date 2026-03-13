@@ -60,19 +60,21 @@ meta,meta-careers,https://www.metacareers.com/jobs,sitemap,"{""sitemap_url"":""h
 - `board_slug` must be unique across all rows and match slug format
 - `board_url` must be unique across all rows
 - `monitor_config` and `scraper_config` are JSON strings (use `""` for quotes inside CSV)
-- **Rich monitors** (all API types: ashby, greenhouse, hireology, lever, personio, pinpoint, recruitee, rippling, rss, smartrecruiters, workable, workday; also `api_sniffer` with auto-mapped `fields`) return full job data — `scraper_type` is empty
-- **URL-only monitors** (`sitemap`, `dom`, `nextdata`, `api_sniffer` without `fields`) return URLs only — `scraper_type` is required
+- **Rich monitors** (ashby, amazon, dvinci, gem, greenhouse, hireology, lever, pinpoint, recruitee, rss, traffit; also `api_sniffer`/`nextdata` with `fields`) return full job data — `scraper_type` is empty
+- **URL-only monitors with auto-scraper** (bite, breezy, join, rippling, smartrecruiters, softgarden, workable, workday) return URLs only — `scraper_type` is auto-configured and can be left empty in the CSV
+- **URL-only monitors without auto-scraper** (`sitemap`, `dom`, `nextdata`, `api_sniffer` without `fields`) return URLs only — `scraper_type` must be set explicitly
 
 ### Monitor + Scraper Pairing
 
 | Monitor Type | Returns | Scraper Needed? | Typical Scraper |
 |-------------|---------|-----------------|-----------------|
-| API monitors (greenhouse, lever, ashby, etc.) | Full job data | No | *(empty)* |
-| `api_sniffer` with `fields` | Full job data | No | *(empty)* |
-| `sitemap` | URLs only | Yes | `json-ld` or `dom` |
-| `nextdata` | URLs only | Yes | `nextdata` or `json-ld` |
-| `dom` | URLs only | Yes | `json-ld`, `dom`, or `embedded` |
-| `api_sniffer` without `fields` | URLs only | Yes | `json-ld`, `dom`, or `embedded` |
+| Rich monitors (greenhouse, lever, ashby, etc.) | Full job data | No | *(empty)* |
+| `api_sniffer`/`nextdata` with `fields` | Full job data | No | *(empty)* |
+| URL-only with auto-scraper (workday, rippling, etc.) | URLs only | Auto-configured | *(empty or override)* |
+| `sitemap` | URLs only | Yes (manual) | `json-ld` or `dom` |
+| `nextdata` without `fields` | URLs only | Yes (manual) | `nextdata` or `json-ld` |
+| `dom` | URLs only | Yes (manual) | `json-ld`, `dom`, or `embedded` |
+| `api_sniffer` without `fields` | URLs only | Yes (manual) | `json-ld`, `dom`, or `embedded` |
 
 > **Note:** During workspace development, multiple configurations can be tested and stored as named configs in the workspace YAML. At submit time, only the active config is written to the CSV row.
 

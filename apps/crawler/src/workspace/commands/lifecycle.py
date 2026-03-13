@@ -13,7 +13,6 @@ from src.shared.constants import SLUG_RE, get_data_dir
 from src.shared.csv_io import read_csv
 from src.workspace import log as action_log
 from src.workspace import output as out
-from src.workspace._compat import is_rich_monitor
 from src.workspace.errors import CsvToolError, GitError, GitHubApiError
 from src.workspace.state import (
     Board,
@@ -634,8 +633,8 @@ def _build_pr_body(ws: Workspace, boards: list[Board]) -> str:
     # Scraper row
     scraper_cells = []
     for b in boards:
-        if is_rich_monitor(b.monitor_type, b.monitor_config):
-            scraper_cells.append("*(API)*")
+        if b.scraper_type == "skip":
+            scraper_cells.append("*(auto)*")
         elif b.scraper_type:
             cell = f"`{b.scraper_type}`"
             cell += _short_config(b.scraper_config)

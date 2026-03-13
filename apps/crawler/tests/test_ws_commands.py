@@ -749,7 +749,7 @@ class TestTaskNext:
         board.configs["greenhouse"] = {
             "monitor_type": "greenhouse",
             "status": "tested",
-            "rich": True,
+            "scraper_type": "skip",
             "run": {"jobs": 10, "has_rich_data": True},
         }
         board.active_config = "greenhouse"
@@ -766,7 +766,7 @@ class TestTaskNext:
         result = runner.invoke(ws, ["task", "next", "--notes", "none"])
 
         assert result.exit_code == 0
-        assert "Skipped step: Select and test scraper (active monitor is rich)" in result.output
+        assert "Skipped step: Select and test scraper" in result.output
         assert "Step 5/7: Verify quality and record feedback" in result.output
 
 

@@ -146,6 +146,14 @@ def upload_posting(
     history = json.loads(history_raw) if history_raw else {"versions": []}
     existing_extras: dict = history.get("current_extras", {})
 
+    # Carry forward metadata from previous extras when the new upload
+    # doesn't provide it.  Monitors produce metadata (e.g. employer,
+    # expiration_date) but scrapers typically don't — without this,
+    # each scrape would "remove" metadata and each monitor would "add"
+    # it back, creating spurious history churn.
+    if "metadata" not in extras and "metadata" in existing_extras:
+        extras = {**extras, "metadata": existing_extras["metadata"]}
+
     desc_changed = existing_html is not None and existing_html != html
     extras_changed_fields = _extras_diff(existing_extras, extras)
     is_first = existing_html is None

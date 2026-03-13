@@ -31,7 +31,7 @@ from src.core.description_store import content_hash, upload_description, upload_
 from src.core.enum_normalize import normalize_employment_type
 from src.core.location_resolve import LocationResolver
 from src.core.monitor import monitor_one
-from src.core.monitors import api_monitor_types, is_rich_monitor
+from src.core.monitors import api_monitor_types
 from src.core.scrape import scrape_one
 from src.core.scrapers import enrich_description, get_scraper
 from src.shared.html_normalize import normalize_description_html
@@ -52,6 +52,28 @@ _location_resolver: LocationResolver | None = None
 # Max R2 backfill uploads per board run (touched postings without hashes).
 # Prevents huge first-time runs from timing out. Backfill completes incrementally.
 _R2_BACKFILL_LIMIT = 500
+
+# Titles that indicate a broken scrape (auth wall, CAPTCHA, etc.)
+_GARBAGE_TITLES = frozenset(
+    s.lower()
+    for s in (
+        "Not Logged In",
+        "Log in to Career Profile",
+        "Access Denied",
+        "Just a moment...",
+        "Page Not Found",
+        "404",
+        "403 Forbidden",
+        "Sign In",
+        "Login",
+        "Redirecting",
+    )
+)
+
+
+def _is_garbage_title(title: str) -> bool:
+    """Return True if the title is a known broken-scrape artifact."""
+    return title.strip().lower() in _GARBAGE_TITLES
 
 
 async def _get_location_resolver(pool: asyncpg.Pool) -> LocationResolver:
@@ -723,15 +745,23 @@ async def _load_board_scrapers(
         crawler_type = row["crawler_type"]
         explicit_scraper = metadata.get("scraper_type")
 
-        # Rich monitors without an explicit scraper don't need scraping
-        if not explicit_scraper and is_rich_monitor(crawler_type, metadata):
-            rich_board_ids.add(board_id)
-            continue
+        # Determine scraper: explicit > auto-configured > default (json-ld)
+        if not explicit_scraper:
+            # Check if monitor auto-configures a scraper
+            from src.workspace._compat import auto_scraper_type
 
-        scraper_type = explicit_scraper or "json-ld"
+            auto = auto_scraper_type(crawler_type, metadata)
+            if auto and auto[0] == "skip":
+                rich_board_ids.add(board_id)
+                continue
+            scraper_type = auto[0] if auto else "json-ld"
+            auto_config = auto[1] if auto else None
+        else:
+            scraper_type = explicit_scraper
+            auto_config = None
         scraper_config = metadata.get("scraper_config")
         if not isinstance(scraper_config, dict):
-            scraper_config = None
+            scraper_config = auto_config
 
         try:
             get_scraper(scraper_type)
@@ -1364,8 +1394,14 @@ async def _process_one_scrape(
             content = await scrape_one(item.url, fb_type, fb_cfg, http)
             current_cfg = fb_cfg
 
-        if not content.title:
-            raise ValueError("scrape returned empty content (no title)")
+        if not content.title or _is_garbage_title(content.title):
+            # No usable content — record success (don't retry) but skip DB/R2 writes.
+            # The posting stays as a URL stub with empty title/description.
+            if content.title:
+                log.info("batch.scrape.garbage_title", url=item.url, title=content.title)
+            async with pool.acquire() as conn:
+                await conn.execute(_RECORD_SCRAPE_SUCCESS, item.job_posting_id)
+            return True, monotonic() - t0
 
         content.description = normalize_description_html(content.description)
 

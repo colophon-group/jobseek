@@ -250,22 +250,71 @@
     {
       "idx": 35,
       "version": "7",
+      "when": 1773523200001,
+      "tag": "0038_drop_triggers_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1773523200002,
+      "tag": "0039_drop_old_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1773523200003,
+      "tag": "0040_new_indexes_smallint",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
       "when": 1773609600000,
       "tag": "0041_add_enrichment",
       "breakpoints": true
     },
     {
-      "idx": 36,
+      "idx": 39,
+      "version": "7",
+      "when": 1773609600001,
+      "tag": "0042_add_location_languages",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1773609600002,
+      "tag": "0043_add_company_enrichment",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1773609600003,
+      "tag": "0044_add_location_name_is_display",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
       "version": "7",
       "when": 1773696000000,
       "tag": "0045_location_name_composite_pk",
       "breakpoints": true
     },
     {
-      "idx": 37,
+      "idx": 43,
       "version": "7",
       "when": 1773696000001,
       "tag": "0046_drop_locations_column",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1773696000002,
+      "tag": "0047_add_posting_lease_owner",
       "breakpoints": true
     }
   ]

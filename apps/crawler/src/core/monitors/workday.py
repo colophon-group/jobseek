@@ -1,20 +1,24 @@
 """Workday Job Board API monitor.
 
-Public API:
-  List:   POST https://{company}.{wd_instance}.myworkdayjobs.com/wday/cxs/{company}/{site}/jobs
-  Detail: GET  https://{company}.{wd_instance}.myworkdayjobs.com/wday/cxs/{company}/{site}/job/{externalPath}
+Discovers job URLs via the Workday list API.  Does **not** fetch individual
+job details — that is handled by the ``workday`` scraper which hits the
+detail endpoint on a daily scrape schedule.
 
-The list endpoint returns metadata (title, locationsText, postedOn) but not the
-full job description.  The detail endpoint adds ``jobDescription`` (HTML),
-``location``, ``additionalLocations``, ``timeType``, ``remoteType``, etc.
-So the monitor fetches each posting individually for full data (N+1 calls,
-with concurrency).
+Public API:
+  List: POST https://{company}.{wd_instance}.myworkdayjobs.com/wday/cxs/{company}/{site}/jobs
 
 Max ``limit`` per request is **20** (higher values return 400).
 
 The API caps results at **2000** per query.  When `total` reaches 2000 the
 monitor automatically splits into per-facet queries (e.g. by job category)
 so that each sub-query stays below the cap, then deduplicates.
+
+Multi-site discovery
+--------------------
+Workday tenants expose all their job board sites in ``robots.txt`` as
+``Sitemap:`` entries.  By default the monitor discovers **all** sites for
+the tenant and aggregates jobs from every site in a single run.  To monitor
+only the configured site, set ``"all_sites": false`` in board metadata.
 """
 
 from __future__ import annotations
@@ -25,19 +29,18 @@ import re
 import httpx
 import structlog
 
-from src.core.monitors import DiscoveredJob, fetch_page_text, register
+from src.core.monitors import fetch_page_text, register
 
 log = structlog.get_logger()
 
 MAX_JOBS = 10_000
 PAGE_SIZE = 20
-CONCURRENCY = 3
+_LIST_CONCURRENCY = 5  # Parallel site listing during multi-site discovery
 _API_RESULT_CAP = 2000  # Workday caps list results at 2000 per query
-_DETAIL_DELAY = 0.3  # Seconds between detail requests (per-slot)
 _RETRY_ATTEMPTS = 3
 _RETRY_BACKOFF = (5.0, 15.0, 30.0)  # Backoff per attempt on 429
-_DETAIL_PHASE_TIMEOUT = 300  # 5 min max for all detail fetches
-_GLOBAL_BACKOFF = 10.0  # All slots pause when any slot hits 429
+
+_SITEMAP_RE = re.compile(r"myworkdayjobs\.com/([^/]+)/siteMap")
 
 # Matches Workday board URLs, optionally with locale prefix (e.g. /en-US/)
 _URL_RE = re.compile(
@@ -75,140 +78,11 @@ def _api_list_url(company: str, wd_instance: str, site: str) -> str:
     return f"{_api_base(company, wd_instance)}/{site}/jobs"
 
 
-def _api_detail_url(company: str, wd_instance: str, site: str, external_path: str) -> str:
-    # external_path may already start with /job/ (e.g. /job/City/Title_ID)
-    if external_path.startswith("/job/"):
-        return f"{_api_base(company, wd_instance)}/{site}{external_path}"
-    return f"{_api_base(company, wd_instance)}/{site}/job{external_path}"
-
-
 def _job_url(company: str, wd_instance: str, site: str, external_path: str) -> str:
     return f"https://{company}.{wd_instance}.myworkdayjobs.com/{site}{external_path}"
 
 
-def _parse_job_location_type(remote_type: str | None) -> str | None:
-    """Map Workday remoteType to normalized job_location_type."""
-    if not remote_type:
-        return None
-    lower = remote_type.lower()
-    if "remote" in lower:
-        return "remote"
-    if "flexible" in lower or "hybrid" in lower:
-        return "hybrid"
-    return None
-
-
-def _parse_job(
-    detail_data: dict,
-    company: str,
-    wd_instance: str,
-    site: str,
-) -> DiscoveredJob | None:
-    """Map a detail API response to a DiscoveredJob."""
-    info = detail_data.get("jobPostingInfo")
-    if not info:
-        return None
-
-    title = info.get("title")
-    external_path = info.get("externalPath")
-    url = info.get("externalUrl")
-    if not url and external_path:
-        url = _job_url(company, wd_instance, site, external_path)
-    if not url:
-        return None
-    description = info.get("jobDescription")
-
-    # Locations
-    locations: list[str] = []
-    primary = info.get("location")
-    if primary and isinstance(primary, str):
-        locations.append(primary)
-    additional = info.get("additionalLocations")
-    if isinstance(additional, list):
-        for loc in additional:
-            if isinstance(loc, str) and loc and loc not in locations:
-                locations.append(loc)
-
-    # Employment type
-    employment_type = info.get("timeType")
-
-    # Date posted
-    date_posted = info.get("startDate")
-
-    # Metadata
-    metadata: dict = {}
-    job_req_id = info.get("jobReqId")
-    if job_req_id:
-        metadata["jobReqId"] = job_req_id
-
-    return DiscoveredJob(
-        url=url,
-        title=title,
-        description=description,
-        locations=locations or None,
-        employment_type=employment_type,
-        job_location_type=_parse_job_location_type(info.get("remoteType")),
-        date_posted=date_posted,
-        metadata=metadata or None,
-    )
-
-
-async def _fetch_detail(
-    company: str,
-    wd_instance: str,
-    site: str,
-    external_path: str,
-    client: httpx.AsyncClient,
-    semaphore: asyncio.Semaphore,
-    backoff_lock: asyncio.Lock,
-    backoff_until: list[float],
-) -> dict | None:
-    """Fetch a single posting's detail with rate limiting and retry on 429.
-
-    Uses a shared ``backoff_until`` (mutable list with one float element) so
-    that when *any* slot hits a 429 all other slots pause too, preventing a
-    thundering-herd of retries.
-    """
-    async with semaphore:
-        url = _api_detail_url(company, wd_instance, site, external_path)
-        for attempt in range(_RETRY_ATTEMPTS):
-            try:
-                # Respect global backoff set by another slot
-                now = asyncio.get_event_loop().time()
-                wait = backoff_until[0] - now
-                if wait > 0:
-                    await asyncio.sleep(wait)
-
-                await asyncio.sleep(_DETAIL_DELAY)
-                resp = await client.get(url)
-                if resp.status_code == 429:
-                    backoff = _RETRY_BACKOFF[min(attempt, len(_RETRY_BACKOFF) - 1)]
-                    log.warning(
-                        "workday.detail_rate_limited",
-                        external_path=external_path,
-                        attempt=attempt + 1,
-                        backoff_s=backoff,
-                    )
-                    # Set global backoff so all slots pause
-                    async with backoff_lock:
-                        resume_at = asyncio.get_event_loop().time() + _GLOBAL_BACKOFF
-                        if resume_at > backoff_until[0]:
-                            backoff_until[0] = resume_at
-                    await asyncio.sleep(backoff)
-                    continue
-                if resp.status_code != 200:
-                    log.warning(
-                        "workday.detail_failed",
-                        external_path=external_path,
-                        status=resp.status_code,
-                    )
-                    return None
-                return resp.json()
-            except Exception as exc:
-                log.warning("workday.detail_error", external_path=external_path, error=str(exc))
-                return None
-        log.warning("workday.detail_exhausted", external_path=external_path)
-        return None
+# ── List pagination ──────────────────────────────────────────────────
 
 
 async def _paginate_query(
@@ -349,11 +223,66 @@ async def _api_list(
     return all_paths
 
 
-async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[DiscoveredJob]:
-    """Fetch job listings from the Workday public API.
+# ── Multi-site discovery ─────────────────────────────────────────────
 
-    Paginates the list endpoint, then fetches each posting's detail
-    concurrently to get full descriptions.
+
+async def _discover_sites(company: str, wd_instance: str, client: httpx.AsyncClient) -> list[str]:
+    """Discover all job board sites for a Workday tenant via robots.txt."""
+    url = f"https://{company}.{wd_instance}.myworkdayjobs.com/robots.txt"
+    try:
+        resp = await client.get(url)
+        if resp.status_code != 200:
+            log.warning("workday.robots_failed", company=company, status=resp.status_code)
+            return []
+    except Exception as exc:
+        log.warning("workday.robots_error", company=company, error=str(exc))
+        return []
+
+    sites: list[str] = []
+    for line in resp.text.splitlines():
+        if line.startswith("Sitemap:"):
+            m = _SITEMAP_RE.search(line)
+            if m:
+                sites.append(m.group(1))
+    return sites
+
+
+async def _list_all_sites(
+    company: str,
+    wd_instance: str,
+    sites: list[str],
+    client: httpx.AsyncClient,
+) -> list[tuple[str, str]]:
+    """List jobs from all sites concurrently. Returns (site, path) pairs."""
+    sem = asyncio.Semaphore(_LIST_CONCURRENCY)
+
+    async def _list_one(site: str) -> list[tuple[str, str]]:
+        async with sem:
+            paths = await _api_list(company, wd_instance, site, client)
+            return [(site, p) for p in paths]
+
+    results = await asyncio.gather(*[_list_one(s) for s in sites], return_exceptions=True)
+
+    site_paths: list[tuple[str, str]] = []
+    for i, result in enumerate(results):
+        if isinstance(result, BaseException):
+            log.warning("workday.site_list_error", site=sites[i], error=str(result))
+        else:
+            site_paths.extend(result)
+    return site_paths[:MAX_JOBS]
+
+
+# ── Main discover entry point ────────────────────────────────────────
+
+
+async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> set[str]:
+    """Discover job URLs from the Workday list API.
+
+    By default discovers all sites for the tenant via robots.txt and
+    aggregates URLs from every site.  Set ``"all_sites": false`` in board
+    metadata to monitor only the configured site.
+
+    Returns a set of job URLs (no detail fetching — that's the scraper's job).
     """
     metadata = board.get("metadata") or {}
     company = metadata.get("company")
@@ -369,52 +298,31 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
             )
         company, wd_instance, site = parsed
 
-    # Step 1: Paginate list endpoint to collect all external paths
-    external_paths = await _api_list(company, wd_instance, site, client)
-    log.info("workday.listed", company=company, site=site, postings=len(external_paths))
+    all_sites = metadata.get("all_sites", True)
 
-    # Step 2: Fetch details concurrently with shared backoff + timeout
-    semaphore = asyncio.Semaphore(CONCURRENCY)
-    backoff_lock = asyncio.Lock()
-    backoff_until: list[float] = [0.0]
-    tasks = [
-        _fetch_detail(
-            company,
-            wd_instance,
-            site,
-            path,
-            client,
-            semaphore,
-            backoff_lock,
-            backoff_until,
-        )
-        for path in external_paths
-    ]
-    try:
-        detail_results = await asyncio.wait_for(
-            asyncio.gather(*tasks, return_exceptions=True),
-            timeout=_DETAIL_PHASE_TIMEOUT,
-        )
-    except TimeoutError:
-        log.warning(
-            "workday.detail_phase_timeout",
+    if all_sites:
+        sites = await _discover_sites(company, wd_instance, client)
+        if not sites:
+            log.warning("workday.no_sites_discovered", company=company, fallback=site)
+            sites = [site]
+
+        site_paths = await _list_all_sites(company, wd_instance, sites, client)
+        log.info(
+            "workday.listed_all",
             company=company,
-            site=site,
-            postings=len(external_paths),
-            timeout_s=_DETAIL_PHASE_TIMEOUT,
+            sites_total=len(sites),
+            sites_with_jobs=len({s for s, _ in site_paths}),
+            postings=len(site_paths),
         )
-        detail_results = []
+    else:
+        paths = await _api_list(company, wd_instance, site, client)
+        site_paths = [(site, p) for p in paths]
+        log.info("workday.listed", company=company, site=site, postings=len(site_paths))
 
-    # Step 3: Parse into DiscoveredJobs (skip exceptions from gather)
-    jobs: list[DiscoveredJob] = []
-    for detail in detail_results:
-        if detail is None or isinstance(detail, BaseException):
-            continue
-        parsed_job = _parse_job(detail, company, wd_instance, site)
-        if parsed_job:
-            jobs.append(parsed_job)
+    return {_job_url(company, wd_instance, s, p) for s, p in site_paths}
 
-    return jobs
+
+# ── Detection (used by ws probe) ─────────────────────────────────────
 
 
 async def _fetch_job_count(
@@ -499,4 +407,4 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
     return None
 
 
-register("workday", discover, cost=10, can_handle=can_handle, rich=True)
+register("workday", discover, cost=10, can_handle=can_handle, rich=False)

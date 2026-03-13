@@ -65,35 +65,42 @@ Board Command Reference:
 MONITORS = """\
 Monitor Types (cheapest first):
 
-  Type              Cost    Returns         Scraper needed?
-  ────────────────────────────────────────────────────────
-  join              9       Full job data   No (skipped)
-  ashby             10      Full job data   No (skipped)
-  bite              10      Full job data   No (skipped)
-  breezy            10      Full job data   No (skipped)
-  dvinci            10      Full job data   No (skipped)
-  gem               10      Full job data   No (skipped)
-  greenhouse        10      Full job data   No (skipped)
-  hireology         10      Full job data   No (skipped)
-  lever             10      Full job data   No (skipped)
-  pinpoint          10      Full job data   No (skipped)
-  recruitee         10      Full job data   No (skipped)
-  rippling          10      Full job data   No (skipped)
-  rss               10      Full job data   No (skipped)
-  smartrecruiters   10      Full job data   No (skipped)
-  softgarden        10      Full job data   No (skipped)
-  traffit           10      Full job data   No (skipped)
-  workable          10      Full job data   No (skipped)
-  workday           10      Full job data   No (skipped)
-  personio          10      Full/partial    If descriptions missing (fallback)
-  umantis           15      URL set         Yes
-  nextdata          20      URLs or full    If URL-only
-  sitemap           50      URL set         Yes
-  api_sniffer       80      URLs or full    If URL-only (no fields)
-  dom               100     URL set         Yes
+  Type              Cost    Scraper
+  ──────────────────────────────────────────
+  join              9       auto (nextdata)
+  ashby             10      auto (skip)
+  bite              10      auto (bite)
+  breezy            10      auto (json-ld)
+  dvinci            10      auto (skip)
+  gem               10      auto (skip)
+  greenhouse        10      auto (skip)
+  hireology         10      auto (skip)
+  lever             10      auto (skip)
+  pinpoint          10      auto (skip)
+  recruitee         10      auto (skip)
+  rippling          10      auto (rippling)
+  rss               10      auto (skip)
+  smartrecruiters   10      auto (smartrecruiters)
+  softgarden        10      auto (json-ld)
+  traffit           10      auto (skip)
+  workable          10      auto (workable)
+  workday           10      auto (workday)
+  personio          10      auto or manual
+  umantis           15      manual
+  nextdata          20      auto or manual
+  sitemap           50      manual
+  api_sniffer       80      auto or manual
+  dom               100     manual
+
+  Scraper column:
+    auto (skip)     — monitor returns full data, scraper step is skipped
+    auto (smartrecruiters) — dedicated scraper is auto-configured
+    auto (workday)  — dedicated scraper is auto-configured
+    auto or manual  — depends on config/coverage; system decides after ws run monitor
+    manual          — you must select and test a scraper in the next step
 
 Interpretation guide (after ws probe monitor):
-  1. Rich monitor detected (join/greenhouse/lever/rss/etc):
+  1. API monitor detected (join/greenhouse/lever/rss/workday/etc):
      strong signal, but validate sample content and coverage.
   2. nextdata / api_sniffer detected:
      inspect mapped fields before accepting.
@@ -136,12 +143,13 @@ Scraper Types:
   embedded       Static/PW   Yes (fields)     JS-embedded JSON (script tags, variables)
   dom            Static/PW   Yes (steps)      Custom HTML structure
   api_sniffer    Playwright  Optional (fields)  SPA/XHR job pages
+  workable       API         No               Workable job pages (auto-configured)
+  workday        API         No               Workday job pages (auto-configured)
 
-  Rich monitors (join, ashby, bite, breezy, dvinci, gem, greenhouse, hireology,
-  lever, pinpoint, recruitee, rippling, rss, smartrecruiters, softgarden, traffit,
-  workable, workday) skip the scraper step entirely.
-  rss supports ATS presets like successfactors and teamtailor.
-  personio skips scraper when XML feed is available; HTML fallback needs scraper.
+  Many monitors auto-configure the scraper — ws select monitor will tell you
+  if the scraper step is skipped. You only reach this step when manual
+  selection is needed.
+
   api_sniffer scraper is auto-probed via Playwright in ws probe scraper.
 
   Probe first: ws probe scraper tries all types automatically against
@@ -200,14 +208,10 @@ MONITOR_BITE = """\
 bite — BITE GmbH ATS (Job Search API, widget key auth)
 
   Search: POST https://jobs.b-ite.com/api/v1/postings/search
-  Detail: GET  https://jobs.b-ite.com/jobposting/{hash}/json
-  Returns:  Full job data (title, HTML description, locations, employment_type,
-            date_posted, base_salary)
-            metadata: reference, employer
-  Scraper:  Not needed (API returns full data, scraper step is skipped)
+  Returns:  Job URLs only (https://{domain}/jobposting/{hash})
+  Scraper:  Auto-configured (bite) — fetches details on daily scrape schedule
   Cap:      10,000 jobs
-  Note:     N+1 API calls (1 paginated search + N detail requests, concurrency=10).
-            Requires a 40-char hex "Job Listing Key" embedded in widget JS.
+  Note:     Requires a 40-char hex "Job Listing Key" embedded in widget JS.
             Key is extracted from listing JS at cs-assets.b-ite.com.
             6,500+ customers in DACH. Pitchman portals (multi-employer
             aggregators like jobs.drk.de) are NOT handled — out of scope.
@@ -220,7 +224,7 @@ bite — BITE GmbH ATS (Job Search API, widget key auth)
               1. Page HTML scan for data-bite-jobs-api-listing widget attribute
               2. Listing JS fetch from cs-assets.b-ite.com/{customer}/jobs-api/
               3. Key extraction from createClient({key: ...}) pattern
-    locale    API locale for job content (default: "de")
+    locale    API locale for job content (default: "de") — passed to scraper
     channel   API channel parameter (default: 0)
 
   Detection:  ws probe shows "BITE API — customer: X, N jobs"
@@ -251,18 +255,14 @@ dvinci — d.vinci ATS (Public JSON API, no auth)
   Zero jobs?  Verify slug — try the API URL directly in a browser"""
 
 MONITOR_BREEZY = """\
-breezy — Breezy HR Public Listing + Detail Pages
+breezy — Breezy HR Public Listing Endpoint
 
   Listing:  GET https://{portal}/json
-  Detail:   GET https://{portal}/p/{friendly_id}
-  Returns:  Full job data (title, HTML description, locations, employment_type,
-            job_location_type, date_posted, base_salary)
-            metadata: department, company, company_slug, id
-  Scraper:  Not needed (monitor extracts full content, scraper step is skipped)
+  Returns:  Job detail URLs (built from listing JSON)
+  Scraper:  Auto-configured (json-ld) — extracts JSON-LD JobPosting from detail pages
   Cap:      10,000 jobs
-  Note:     N+1 calls (1 listing + N detail pages, concurrency=10).
-            Description extraction prefers JSON-LD JobPosting and falls back
-            to the rendered HTML description block for boards without JSON-LD.
+  Note:     Single HTTP call to listing endpoint.
+            Detail URLs built as https://{portal}/p/{friendly_id}.
 
   Config:
     {"portal_url": "https://acme.breezy.hr"}
@@ -370,9 +370,8 @@ MONITOR_JOIN = """\
 join — JOIN (join.com) Next.js Monitor
 
   Source:    Next.js __NEXT_DATA__ on join.com/companies/{slug}
-  Returns:   Full job data (title, locations, employment_type, date_posted,
-             job_location_type, base_salary, metadata) + detail-page descriptions
-  Scraper:   Not needed (monitor returns full data, scraper step is skipped)
+  Returns:   Job URLs (scraper fetches details separately on daily schedule)
+  Scraper:   Auto-configured (nextdata) — config needed in board CSV
   Cap:       10,000 jobs
   Note:      Pre-configured nextdata monitor for JOIN.
              Listing pages contain jobs at:
@@ -381,13 +380,9 @@ join — JOIN (join.com) Next.js Monitor
 
   Config:
     {"slug": "acme"}
-    {"slug": "acme", "description_paths": ["props.pageProps.initialState.job.schemaDescription"]}
 
     slug               Company slug from URL path /companies/{slug}.
                        Auto-filled by ws probe and auto-derived from URL.
-    description_paths  Optional list of fallback paths for detail-page
-                       description extraction from __NEXT_DATA__.
-    description_path   Backward-compatible single-path variant.
 
   Detection:  ws probe shows "JOIN — slug: X, N jobs"
               Requires join.com URL + detectable __NEXT_DATA__ job list.
@@ -566,16 +561,12 @@ recruitee — Recruitee Careers Site API
                    The API is at https://{custom-domain}/api/offers."""
 
 MONITOR_SMARTRECRUITERS = """\
-smartrecruiters — SmartRecruiters Posting API
+smartrecruiters — SmartRecruiters Posting API (URL-only)
 
   API:      GET https://api.smartrecruiters.com/v1/companies/{token}/postings?limit=100&offset=0
-            GET https://api.smartrecruiters.com/v1/companies/{token}/postings/{id}  (detail)
-  Returns:  Full job data (title, HTML description, locations, employment_type,
-            job_location_type, date_posted, base_salary)
-            metadata: department, function, experienceLevel
-  Scraper:  Not needed (API returns full data, scraper step is skipped)
+  Returns:  URL set only — constructs URLs as https://jobs.smartrecruiters.com/{token}/{posting_id}
+  Scraper:  Auto-configured (smartrecruiters) — fetches details on daily schedule
   Cap:      10,000 jobs
-  Note:     N+1 API calls (1 list + N detail requests, concurrency=10)
 
   Config:
     {"token": "smartrecruiters"}
@@ -592,15 +583,12 @@ MONITOR_SOFTGARDEN = """\
 softgarden — Softgarden ATS (HTML scraping, no auth)
 
   Listing:  GET https://{slug}.softgarden.io
-  Detail:   GET https://{slug}.softgarden.io/job/{id}?l=en
-  Returns:  Full job data (title, HTML description, locations, employment_type,
-            date_posted, base_salary) via JSON-LD on detail pages
-  Scraper:  Not needed (JSON-LD returns full data, scraper step is skipped)
+  Returns:  Job detail URLs (built from inline JS job IDs)
+  Scraper:  Auto-configured (json-ld) — extracts JSON-LD JobPosting from detail pages
   Cap:      10,000 jobs
-  Note:     N+1 HTTP calls (1 listing + N detail pages, concurrency=10).
+  Note:     Single HTTP call to listing page.
             Listing page embeds job IDs in inline JavaScript.
-            Detail pages contain JSON-LD JobPosting schema.
-            Zero-value salaries (0/0) are automatically skipped.
+            Detail URLs built as https://{slug}.softgarden.io/job/{id}?l=en.
             Largest uncovered ATS in DACH (~2,000+ customers).
 
   Config:
@@ -678,13 +666,10 @@ MONITOR_RIPPLING = """\
 rippling — Rippling ATS Job Board API
 
   API:      GET https://api.rippling.com/platform/api/ats/v1/board/{slug}/jobs
-            GET https://api.rippling.com/platform/api/ats/v1/board/{slug}/jobs/{uuid}  (detail)
-  Returns:  Full job data (title, HTML description, locations, employment_type,
-            date_posted, base_salary)
-            metadata: department, base_department, company
-  Scraper:  Not needed (API returns full data, scraper step is skipped)
+  Returns:  Job posting URLs (https://ats.rippling.com/{slug}/jobs/{uuid})
+  Scraper:  Auto-configured (rippling) — detail API fetches full data daily
   Cap:      10,000 jobs
-  Note:     N+1 API calls (1 list + N detail requests, concurrency=10)
+  Note:     Single API call — returns all jobs, no pagination
 
   Config:
     {"slug": "rippling"}
@@ -788,14 +773,13 @@ MONITOR_WORKABLE = """\
 workable — Workable Posting API
 
   API:      POST https://apply.workable.com/api/v3/accounts/{token}/jobs
-            GET  https://apply.workable.com/api/v2/accounts/{token}/jobs/{shortcode}  (detail)
-  Returns:  Full job data (title, HTML description, locations, employment_type,
-            job_location_type, date_posted)
-            metadata: department
-  Scraper:  Not needed (API returns full data, scraper step is skipped)
+  Returns:  Job URLs (scraper fetches details separately on daily schedule)
+  Scraper:  Auto-configured (workable) — no manual selection needed
   Cap:      10,000 jobs
-  Note:     N+1 API calls (1 list + N detail requests, concurrency=10)
-            List endpoint uses cursor pagination (token in POST body)
+  Note:     Monitor discovers URLs only via the list API (lightweight, hourly).
+            A dedicated workable scraper fetches full details (title, description,
+            locations, etc.) from the detail API on a daily schedule.
+            List endpoint uses cursor pagination (token in POST body).
 
   Config:
     {"token": "neowork"}
@@ -812,16 +796,18 @@ MONITOR_WORKDAY = """\
 workday — Workday Job Board API
 
   API:      POST https://{company}.{wd_instance}.myworkdayjobs.com/wday/cxs/{company}/{site}/jobs
-            GET  https://{company}.{wd_instance}.myworkdayjobs.com/wday/cxs/{company}/{site}/job/{externalPath}
-  Returns:  Full job data (title, HTML description, locations, employment_type,
-            job_location_type, date_posted)
-            metadata: jobReqId
-  Scraper:  Not needed (API returns full data, scraper step is skipped)
+  Returns:  Job URLs (scraper fetches details separately on daily schedule)
+  Scraper:  Auto-configured (workday) — no manual selection needed
   Cap:      10,000 jobs
-  Note:     N+1 API calls (1 list + N detail requests, concurrency=10)
-            Max page size is 20 (API returns 400 for higher values)
+  Note:     Monitor discovers URLs only via the list API (lightweight, hourly).
+            A dedicated workday scraper fetches full details (title, description,
+            locations, etc.) from the detail API on a daily schedule.
+            Max page size is 20 (API returns 400 for higher values).
             API caps results at 2000 per query — automatically splits by
-            facet (e.g. job category) for companies with >2000 listings
+            facet (e.g. job category) for companies with >2000 listings.
+            Multi-site: discovers all tenant job sites via robots.txt and
+            aggregates jobs from every site. Set "all_sites": false to
+            monitor only the configured site.
 
   Config:
     {"company": "nvidia", "wd_instance": "wd5", "site": "NVIDIAExternalCareerSite"}
@@ -831,6 +817,8 @@ workday — Workday Job Board API
                   2. Inline HTML scan for Workday markers
     wd_instance   Workday instance (e.g. wd1, wd5). Auto-filled from URL.
     site          Career site identifier. Auto-filled from URL path.
+    all_sites     Discover all tenant sites via robots.txt (default: true).
+                  Set false to monitor only the configured site.
 
   URL format:   https://{company}.wd{N}.myworkdayjobs.com/{site}
                 May include locale prefix: /en-US/{site} (stripped automatically)
@@ -1477,12 +1465,85 @@ MONITOR_CARDS: dict[str, str] = {
     "api_sniffer": MONITOR_API_SNIFFER,
 }
 
+SCRAPER_SMARTRECRUITERS = """\
+smartrecruiters — SmartRecruiters Detail API scraper
+
+  API:      GET https://api.smartrecruiters.com/v1/companies/{token}/postings/{posting_id}
+  Returns:  title, HTML description, locations, employment_type,
+            job_location_type, date_posted, base_salary,
+            metadata (department, function, experienceLevel)
+  Config:   None needed — token from board config, posting_id parsed from URL
+  Note:     Auto-configured when selecting the smartrecruiters monitor.
+            Runs on the daily scrape schedule (not every monitor cycle).
+"""
+
+SCRAPER_WORKABLE = """\
+workable — Workable Detail API scraper
+
+  API:      GET https://apply.workable.com/api/v2/accounts/{slug}/jobs/{shortcode}
+  Returns:  title, HTML description, locations, employment_type,
+            job_location_type, date_posted, metadata (department)
+  Config:   None needed — parses the job URL to derive API parameters
+  Note:     Auto-configured when selecting the workable monitor.
+            Runs on the daily scrape schedule (not every monitor cycle).
+"""
+
+SCRAPER_WORKDAY = """\
+workday — Workday Detail API scraper
+
+  API:      GET https://{company}.{wd_instance}.myworkdayjobs.com/wday/cxs/{company}/{site}/job/{path}
+  Returns:  title, HTML description, locations, employment_type,
+            job_location_type, date_posted, metadata (jobReqId)
+  Config:   None needed — parses the job URL to derive API parameters
+  Note:     Auto-configured when selecting the workday monitor.
+            Runs on the daily scrape schedule (not every monitor cycle).
+"""
+
+SCRAPER_RIPPLING = """\
+rippling — Rippling Detail API scraper
+
+  API:      GET https://api.rippling.com/platform/api/ats/v1/board/{slug}/jobs/{uuid}
+  Returns:  title, HTML description, locations, employment_type,
+            job_location_type, date_posted, base_salary,
+            metadata (department, base_department, company)
+  Config:   None needed — slug from board config, uuid parsed from URL
+  Note:     Auto-configured when selecting the rippling monitor.
+            Runs on the daily scrape schedule (not every monitor cycle).
+"""
+
+SCRAPER_BITE = """\
+bite — BITE GmbH ATS Detail API scraper
+
+  API:      GET https://jobs.b-ite.com/jobposting/{hash}/json?locale={locale}&contentRendered=true
+  Returns:  title, HTML description, locations, employment_type,
+            date_posted, base_salary, language,
+            metadata (reference, employer)
+  Config:   locale from board config (default: "de") — used for API query param
+            and language field
+  Note:     Auto-configured when selecting the bite monitor.
+            Runs on the daily scrape schedule (not every monitor cycle).
+            Hash (40-42 char hex) is extracted from the job URL.
+"""
+
+SCRAPER_SKIP = """\
+skip — Placeholder scraper (auto-configured)
+
+  Monitors that return full job data auto-configure this scraper to signal
+  that the scraper step should be skipped. Never selected manually.
+"""
+
 SCRAPER_CARDS: dict[str, str] = {
     "json-ld": SCRAPER_JSONLD,
     "nextdata": SCRAPER_NEXTDATA,
     "embedded": SCRAPER_EMBEDDED,
     "dom": SCRAPER_DOM,
     "api_sniffer": SCRAPER_API_SNIFFER,
+    "skip": SCRAPER_SKIP,
+    "bite": SCRAPER_BITE,
+    "rippling": SCRAPER_RIPPLING,
+    "smartrecruiters": SCRAPER_SMARTRECRUITERS,
+    "workable": SCRAPER_WORKABLE,
+    "workday": SCRAPER_WORKDAY,
 }
 
 

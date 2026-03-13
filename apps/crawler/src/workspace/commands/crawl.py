@@ -12,7 +12,7 @@ import click
 
 from src.workspace import log as action_log
 from src.workspace import output as out
-from src.workspace._compat import api_monitor_types, is_rich_monitor
+from src.workspace._compat import api_monitor_types, auto_scraper_type
 from src.workspace.state import (
     load_board,
     load_workspace,
@@ -288,11 +288,12 @@ def probe_scraper(slug: str | None, board_alias: str | None, urls: tuple[str, ..
     slug = resolve_slug(slug)
     ws, board = _resolve_board(slug, board_alias)
 
-    # Guard: API monitors don't need scrapers
-    if is_rich_monitor(board.monitor_type, board.monitor_config):
+    # Guard: scraper already auto-configured by monitor
+    auto = board.scraper_type
+    if auto and auto in ("skip",):
         out.warn(
             "scraper",
-            f"Monitor '{board.monitor_type}' returns full data \u2014 scraper not needed",
+            f"Scraper auto-configured ({auto}) \u2014 no manual selection needed",
         )
         return
 
@@ -853,9 +854,9 @@ def select_monitor(
 
     # Create named config entry with cost estimate
     mon_est = _estimate_monitor_cost(type_, 200, clean_config)
-    rich = is_rich_monitor(type_, clean_config)
-    init_load = 0.0 if rich else _estimate_initial_load(200)
-    board.configs[name] = {
+    auto = auto_scraper_type(type_, clean_config)
+    init_load = 0.0 if auto else _estimate_initial_load(200)
+    cfg_entry: dict = {
         "monitor_type": type_,
         "monitor_config": clean_config,
         "status": "selected",
@@ -864,6 +865,10 @@ def select_monitor(
             "initial_load": round(init_load, 2),
         },
     }
+    # Auto-configure scraper when the monitor determines it
+    if auto:
+        cfg_entry["scraper_type"] = auto[0]
+    board.configs[name] = cfg_entry
     board.active_config = name
 
     action_log.append_to_list(
@@ -879,6 +884,8 @@ def select_monitor(
         out.plain("monitor", f"Config: {json.dumps(clean_config)}")
     elif type_ in _MONITOR_CONFIG_HINTS:
         out.plain("monitor", f"Config: {_MONITOR_CONFIG_HINTS[type_]}")
+    if auto:
+        out.info("monitor", f"Scraper auto-configured: {auto[0]}")
 
 
 # Fields checked in quality reports for DiscoveredJob (monitor rich data)
@@ -1128,14 +1135,20 @@ def run_monitor(slug: str | None, board_alias: str | None):
             ]
             if optional_parts:
                 out.plain("monitor", f"Optional: {', '.join(optional_parts)}")
-        # API monitors skip scraper when descriptions cover most jobs
-        statically_rich = is_rich_monitor(board.monitor_type, board.monitor_config)
+        # Auto-configure scraper based on description coverage
         desc_count = quality["fields"].get("description", {}).get("count", 0) if quality else 0
         desc_pct = (desc_count / quality["total"] * 100) if quality and quality["total"] else 0
-        # Statically-rich monitors always skip; others need ≥80% description coverage
-        if statically_rich or desc_pct >= 80:
-            out.plain("monitor", "Skipping scraper — monitor returns full job data")
-            board._ensure_cfg()["rich"] = True
+        cfg = board._ensure_cfg()
+        if cfg.get("scraper_type"):
+            # Already auto-configured at select time
+            out.plain(
+                "monitor",
+                f"Scraper: auto-configured ({cfg['scraper_type']})",
+            )
+        elif desc_pct >= 80:
+            # Dynamically rich — auto-configure skip
+            cfg["scraper_type"] = "skip"
+            out.plain("monitor", "Scraper: auto-configured (skip)")
             save_board(slug, board)
         elif has_rich and desc_pct > 0:
             out.warn(
@@ -1148,7 +1161,14 @@ def run_monitor(slug: str | None, board_alias: str | None):
                 "Monitor returned structured data but no descriptions — scraper needed",
             )
     else:
-        out.plain("monitor", "Rich data: no (URLs only, needs scraper)")
+        cfg = board._ensure_cfg()
+        if cfg.get("scraper_type"):
+            out.plain(
+                "monitor",
+                f"Scraper: auto-configured ({cfg['scraper_type']})",
+            )
+        else:
+            out.plain("monitor", "Scraper: manual selection needed")
 
     if result.urls:
         sample = next(iter(result.urls))
