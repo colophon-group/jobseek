@@ -18,24 +18,18 @@ from src.core.scrapers import JobContent, register
 
 log = structlog.get_logger()
 
-# Matches SmartRecruiters job URLs — extracts posting_id from path
+# Matches SmartRecruiters job URLs — extracts token and posting_id from path
 # e.g. https://jobs.smartrecruiters.com/Nexthink/743999106810286
 #      https://jobs.smartrecruiters.com/Nexthink/743999106810286-senior-software-engineer
-_JOB_URL_RE = re.compile(r"(?:jobs|careers)\.smartrecruiters\.com/[\w-]+/([\w-]+)")
+_JOB_URL_RE = re.compile(r"(?:jobs|careers)\.smartrecruiters\.com/([\w-]+)/([\w-]+)")
 
 
-def _extract_posting_id(url: str) -> str | None:
-    """Extract posting_id from a SmartRecruiters job URL.
-
-    After URL normalization, URLs are /{token}/{posting_id} (bare numeric ID).
-    Pre-migration URLs may have /{token}/{posting_id}-seo-slug — the full
-    second path segment is used as posting_id either way, since the API
-    accepts both forms.
-    """
+def _parse_job_url(url: str) -> tuple[str | None, str | None]:
+    """Extract (token, posting_id) from a SmartRecruiters job URL."""
     match = _JOB_URL_RE.search(url)
     if not match:
-        return None
-    return match.group(1)
+        return None, None
+    return match.group(1), match.group(2)
 
 
 def _detail_url(token: str, posting_id: str) -> str:
@@ -143,14 +137,9 @@ def _parse_detail(posting: dict) -> JobContent:
 
 async def scrape(url: str, config: dict, http: httpx.AsyncClient, **kwargs) -> JobContent:
     """Fetch job details from the SmartRecruiters detail API."""
-    posting_id = _extract_posting_id(url)
-    if not posting_id:
+    token, posting_id = _parse_job_url(url)
+    if not token or not posting_id:
         log.warning("smartrecruiters_scraper.unparseable_url", url=url)
-        return JobContent()
-
-    token = config.get("token")
-    if not token:
-        log.warning("smartrecruiters_scraper.no_token", url=url)
         return JobContent()
 
     api_url = _detail_url(token, posting_id)

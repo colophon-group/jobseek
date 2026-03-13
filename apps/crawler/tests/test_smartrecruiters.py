@@ -12,8 +12,8 @@ from src.core.scrapers import JobContent
 from src.core.scrapers.smartrecruiters import (
     _build_description,
     _build_location,
-    _extract_posting_id,
     _parse_detail,
+    _parse_job_url,
     _parse_salary,
     scrape,
 )
@@ -252,21 +252,21 @@ class TestCanHandle:
 # ── Scraper tests ────────────────────────────────────────────────────────
 
 
-class TestExtractPostingId:
+class TestParseJobUrl:
     def test_bare_id(self):
         url = "https://jobs.smartrecruiters.com/Nexthink/743999106810286"
-        assert _extract_posting_id(url) == "743999106810286"
+        assert _parse_job_url(url) == ("Nexthink", "743999106810286")
 
     def test_id_with_slug(self):
         url = "https://jobs.smartrecruiters.com/Nexthink/743999106810286-senior-software-engineer"
-        assert _extract_posting_id(url) == "743999106810286-senior-software-engineer"
+        assert _parse_job_url(url) == ("Nexthink", "743999106810286-senior-software-engineer")
 
     def test_careers_subdomain(self):
         url = "https://careers.smartrecruiters.com/AcmeCorp/123456789"
-        assert _extract_posting_id(url) == "123456789"
+        assert _parse_job_url(url) == ("AcmeCorp", "123456789")
 
     def test_non_matching(self):
-        assert _extract_posting_id("https://example.com/job/123") is None
+        assert _parse_job_url("https://example.com/job/123") == (None, None)
 
 
 class TestBuildDescription:
@@ -504,7 +504,7 @@ class TestScrape:
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             result = await scrape(
                 "https://jobs.smartrecruiters.com/Nexthink/743999106810286",
-                {"token": "Nexthink"},
+                {},
                 client,
             )
             assert result.title == "Senior Engineer"
@@ -515,14 +515,16 @@ class TestScrape:
     async def test_unparseable_url(self):
         transport = httpx.MockTransport(lambda r: httpx.Response(200))
         async with httpx.AsyncClient(transport=transport) as client:
-            result = await scrape("https://example.com/job/123", {"token": "acme"}, client)
+            result = await scrape("https://example.com/job/123", {}, client)
             assert result.title is None
 
-    async def test_no_token(self):
-        transport = httpx.MockTransport(lambda r: httpx.Response(200))
+    async def test_token_derived_from_url(self):
+        """Token is extracted from URL path — no config needed."""
+        posting = {"name": "Test Job", "jobAd": {"sections": {}}}
+        transport = httpx.MockTransport(lambda r: httpx.Response(200, json=posting))
         async with httpx.AsyncClient(transport=transport) as client:
             result = await scrape("https://jobs.smartrecruiters.com/acme/123", {}, client)
-            assert result.title is None
+            assert result.title == "Test Job"
 
     async def test_detail_404(self):
         def handler(request):
@@ -531,7 +533,7 @@ class TestScrape:
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             result = await scrape(
                 "https://jobs.smartrecruiters.com/acme/123",
-                {"token": "acme"},
+                {},
                 client,
             )
             assert result.title is None
