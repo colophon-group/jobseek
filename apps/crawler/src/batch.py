@@ -1395,13 +1395,12 @@ async def _process_one_scrape(
             current_cfg = fb_cfg
 
         if not content.title or _is_garbage_title(content.title):
-            # No usable content — record success (don't retry) but skip DB/R2 writes.
-            # The posting stays as a URL stub with empty title/description.
+            # No usable content — record as failure so backoff kicks in.
             if content.title:
                 log.info("batch.scrape.garbage_title", url=item.url, title=content.title)
             async with pool.acquire() as conn:
-                await conn.execute(_RECORD_SCRAPE_SUCCESS, item.job_posting_id)
-            return True, monotonic() - t0
+                await conn.execute(_RECORD_SCRAPE_FAILURE, item.job_posting_id)
+            return False, monotonic() - t0
 
         content.description = normalize_description_html(content.description)
 
@@ -1453,11 +1452,8 @@ async def _process_one_scrape(
                 loc_types,
                 new_r2_hash,
             )
-
-        if _parse_update_count(update_result) != 1:
-            raise RuntimeError(f"job_posting_not_found:{item.job_posting_id}")
-
-        async with pool.acquire() as conn:
+            if _parse_update_count(update_result) != 1:
+                raise RuntimeError(f"job_posting_not_found:{item.job_posting_id}")
             await conn.execute(_RECORD_SCRAPE_SUCCESS, item.job_posting_id)
         elapsed = monotonic() - t0
         log.debug(

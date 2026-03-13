@@ -316,6 +316,13 @@
       "when": 1773696000002,
       "tag": "0047_add_posting_lease_owner",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1773696000003,
+      "tag": "0048_replace_board_index",
+      "breakpoints": true
     }
   ]
 }
