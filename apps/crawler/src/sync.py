@@ -84,6 +84,15 @@ ON CONFLICT (board_url) DO UPDATE SET
         WHEN job_board.board_status = 'disabled' THEN 'active'
         ELSE job_board.board_status
     END,
+    consecutive_failures = CASE
+        WHEN job_board.board_status != 'disabled' THEN 0
+        ELSE job_board.consecutive_failures
+    END,
+    next_check_at = CASE
+        WHEN job_board.board_status != 'disabled'
+        THEN now() + (random() * 600) * interval '1 second'
+        ELSE job_board.next_check_at
+    END,
     updated_at = now()
 """
 

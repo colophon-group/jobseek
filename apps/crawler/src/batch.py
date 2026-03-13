@@ -1247,7 +1247,7 @@ async def _process_one_board(
 
         # R2 uploads after transaction — concurrent to avoid timeout for large boards
         if r2_work:
-            r2_semaphore = asyncio.Semaphore(20)
+            r2_semaphore = asyncio.Semaphore(10)
 
             async def _do_upload(
                 pid: str, kw: dict, cur_hash: int | None
