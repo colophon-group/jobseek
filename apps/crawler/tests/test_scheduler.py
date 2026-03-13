@@ -179,34 +179,31 @@ class TestWorkerPool:
         assert wp.failed == 1
         assert wp.succeeded == 2
 
-    async def test_queue_cap_rejects_excess(self):
-        """submit() returns False when per-domain queue is full."""
+    async def test_submit_always_accepts(self):
+        """submit() always accepts — items queue behind in-flight domains."""
         wp = WorkerPool(5)
-        assert wp.submit(_slow_work_item(domain="d.com", delay=0.1))  # runs
-        assert wp.submit(_slow_work_item(domain="d.com", delay=0.1))  # queued (1)
-        assert wp.submit(_slow_work_item(domain="d.com", delay=0.1))  # queued (2)
-        assert not wp.submit(_slow_work_item(domain="d.com", delay=0.1))  # rejected
-        assert wp.queued_count == 2
-        assert wp.total_submitted == 3  # rejected item not counted
+        wp.submit(_slow_work_item(domain="d.com", delay=0.1))  # runs
+        wp.submit(_slow_work_item(domain="d.com", delay=0.1))  # queued (1)
+        wp.submit(_slow_work_item(domain="d.com", delay=0.1))  # queued (2)
+        wp.submit(_slow_work_item(domain="d.com", delay=0.1))  # queued (3)
+        assert wp.queued_count == 3
+        assert wp.total_submitted == 4
         await wp.drain()
 
     async def test_claim_budget(self):
-        """claim_budget accounts for free slots + queue room."""
+        """claim_budget equals free concurrency slots."""
         wp = WorkerPool(5)
-        assert wp.claim_budget == 5  # all free, no domains
+        assert wp.claim_budget == 5  # all free
 
         # Start 2 domains
         wp.submit(_slow_work_item(domain="a.com", delay=0.1))
         wp.submit(_slow_work_item(domain="b.com", delay=0.1))
         await asyncio.sleep(0.01)
-        # free_slots=3, 2 domains × 2 queue cap = 4 room, budget = 3+4 = 7
-        assert wp.claim_budget == 7
+        assert wp.claim_budget == 3  # 2 slots used
 
-        # Fill a.com queue
+        # Queuing behind a.com doesn't change budget (shares slot)
         wp.submit(_slow_work_item(domain="a.com", delay=0.1))
-        wp.submit(_slow_work_item(domain="a.com", delay=0.1))
-        # free_slots=3, queue_room = 2*2 - 2 = 2, budget = 3+2 = 5
-        assert wp.claim_budget == 5
+        assert wp.claim_budget == 3
         await wp.drain()
 
     async def test_timeout_kills_stuck_job(self):

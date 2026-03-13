@@ -103,7 +103,6 @@ class WorkerPool:
     """
 
     _ITEM_TIMEOUT = 300  # 5 minutes per job
-    _QUEUE_PER_DOMAIN = 2  # max queued items behind a running domain
 
     def __init__(self, max_concurrent: int) -> None:
         self._semaphore = asyncio.Semaphore(max_concurrent)
@@ -133,20 +132,22 @@ class WorkerPool:
         return sum(len(q) for q in self._domain_queues.values())
 
     @property
+    def saturated_domains(self) -> list[str]:
+        """Domains with more than 2 queued items — skip claiming more for these."""
+        return [d for d, q in self._domain_queues.items() if len(q) > 2]
+
+    @property
     def claim_budget(self) -> int:
         """How many items the loop should claim this tick.
 
-        Accounts for free semaphore slots (new domains) plus remaining
-        queue capacity across in-flight domains.
+        Conservative: only claim as many as free concurrency slots.
+        Claimed items always get accepted by submit() — either starting
+        immediately or queuing behind their domain's in-flight task.
         """
-        queue_room = max(
-            0,
-            len(self._domains_inflight) * self._QUEUE_PER_DOMAIN - self.queued_count,
-        )
-        return self.free_slots + queue_room
+        return self.free_slots
 
-    def submit(self, item: WorkItem) -> bool:
-        """Schedule a work item. Returns False if the domain queue is full.
+    def submit(self, item: WorkItem) -> None:
+        """Schedule a work item.
 
         If the domain already has an in-flight task, the item is queued and
         will start automatically when the current one finishes — without
@@ -154,8 +155,6 @@ class WorkerPool:
         """
         if item.domain in self._domains_inflight:
             queue = self._domain_queues.get(item.domain)
-            if queue is not None and len(queue) >= self._QUEUE_PER_DOMAIN:
-                return False
             if queue is None:
                 queue = collections.deque()
                 self._domain_queues[item.domain] = queue
@@ -166,7 +165,6 @@ class WorkerPool:
             self._tasks.add(task)
             task.add_done_callback(self._tasks.discard)
         self.total_submitted += 1
-        return True
 
     async def _run(self, item: WorkItem) -> None:
         """Acquire a semaphore slot and process items for this domain serially."""
@@ -249,21 +247,23 @@ async def run_continuous_loop(
 
         # Phase 1: monitors (priority)
         budget = wp.claim_budget
+        skip = wp.saturated_domains
         if monitor and budget > 0:
-            items = await claim_monitor_work(pool, http, budget, worker_id)
+            items = await claim_monitor_work(pool, http, budget, worker_id, skip)
             monitors_claimed = len(items)
             for item in items:
-                if wp.submit(item):
-                    work_found = True
+                wp.submit(item)
+                work_found = True
 
         # Phase 2: scrapes (fill remaining)
         budget = wp.claim_budget
+        skip = wp.saturated_domains
         if scrape and budget > 0:
-            items = await claim_scrape_work(pool, http, budget, worker_id)
+            items = await claim_scrape_work(pool, http, budget, worker_id, skip)
             scrapes_claimed = len(items)
             for item in items:
-                if wp.submit(item):
-                    work_found = True
+                wp.submit(item)
+                work_found = True
 
         if work_found or wp.active_count > 0:
             log.info(

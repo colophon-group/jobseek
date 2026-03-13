@@ -134,6 +134,18 @@ SET lease_owner = NULL, leased_until = NULL
 WHERE id = $1
 """
 
+_RELEASE_BOARD_LEASES = """
+UPDATE job_board
+SET lease_owner = NULL, leased_until = NULL
+WHERE id = ANY($1::uuid[])
+"""
+
+_RELEASE_POSTING_LEASES = """
+UPDATE job_posting
+SET lease_owner = NULL, leased_until = NULL
+WHERE id = ANY($1::uuid[])
+"""
+
 _DIFF_URLS = """
 WITH discovered AS (
   SELECT unnest($1::text[]) AS url
@@ -784,6 +796,7 @@ class WorkItem:
     domain: str
     kind: str  # "monitor" | "scrape"
     run: Callable[[], Awaitable[tuple[bool, float]]]
+    id: str = ""  # board ID or posting ID — used for lease release
 
 
 # ── Claim Queries (Worker Pool) ──────────────────────────────────────
@@ -800,6 +813,7 @@ WITH ranked AS (
     AND board_status IN ('active', 'suspect')
     AND next_check_at <= now()
     AND (leased_until IS NULL OR leased_until < now())
+    AND throttle_key != ALL($3::text[])
 ),
 picked AS (
   SELECT id
@@ -826,6 +840,7 @@ WITH candidates AS (
       AND next_scrape_at IS NOT NULL
       AND next_scrape_at <= now()
       AND (leased_until IS NULL OR leased_until < now())
+      AND split_part(split_part(source_url, '://', 2), '/', 1) != ALL($3::text[])
     FOR UPDATE SKIP LOCKED
 ),
 ranked AS (
@@ -858,12 +873,13 @@ async def claim_monitor_work(
     http: httpx.AsyncClient,
     limit: int,
     worker_id: str,
+    exclude_domains: list[str] | None = None,
 ) -> list[WorkItem]:
     """Claim due boards (interleaved across domains) and return WorkItems."""
     if limit <= 0:
         return []
 
-    rows = await pool.fetch(_CLAIM_MONITORS, limit, worker_id)
+    rows = await pool.fetch(_CLAIM_MONITORS, limit, worker_id, exclude_domains or [])
     items: list[WorkItem] = []
     for board in rows:
         domain = board["throttle_key"]
@@ -872,6 +888,7 @@ async def claim_monitor_work(
                 domain=domain,
                 kind="monitor",
                 run=functools.partial(_process_one_board, board, pool, http),
+                id=str(board["id"]),
             )
         )
     return items
@@ -882,12 +899,13 @@ async def claim_scrape_work(
     http: httpx.AsyncClient,
     limit: int,
     worker_id: str,
+    exclude_domains: list[str] | None = None,
 ) -> list[WorkItem]:
     """Claim due job postings (interleaved across domains) and return WorkItems."""
     if limit <= 0:
         return []
 
-    rows = await pool.fetch(_CLAIM_SCRAPES, limit, worker_id)
+    rows = await pool.fetch(_CLAIM_SCRAPES, limit, worker_id, exclude_domains or [])
     if not rows:
         return []
 
@@ -937,9 +955,22 @@ async def claim_scrape_work(
                     scraper_type,
                     scraper_config,
                 ),
+                id=str(row["id"]),
             )
         )
     return items
+
+
+async def release_rejected(pool: asyncpg.Pool, items: list[WorkItem]) -> None:
+    """Release leases for WorkItems that were not accepted by the pool."""
+    board_ids = [i.id for i in items if i.kind == "monitor" and i.id]
+    posting_ids = [i.id for i in items if i.kind == "scrape" and i.id]
+    if board_ids:
+        await pool.execute(_RELEASE_BOARD_LEASES, board_ids)
+        log.info("batch.release_rejected.boards", count=len(board_ids))
+    if posting_ids:
+        await pool.execute(_RELEASE_POSTING_LEASES, posting_ids)
+        log.info("batch.release_rejected.postings", count=len(posting_ids))
 
 
 # ── Monitor Batch ────────────────────────────────────────────────────
