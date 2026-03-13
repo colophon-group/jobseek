@@ -30,6 +30,15 @@ from src.batch import (  # noqa: E402
 )
 from src.config import settings  # noqa: E402
 from src.db import close_pool, create_pool  # noqa: E402
+from src.metrics import (  # noqa: E402
+    db_pool_idle,
+    db_pool_size,
+    start_metrics_server,
+    task_duration_seconds,
+    tasks_active,
+    tasks_queued,
+    tasks_total,
+)
 from src.shared.http import create_http_client  # noqa: E402
 from src.shared.logging import setup_logging  # noqa: E402
 
@@ -173,14 +182,18 @@ class WorkerPool:
         try:
             while current is not None:
                 try:
-                    ok, _elapsed = await asyncio.wait_for(current.run(), timeout=self._ITEM_TIMEOUT)
+                    ok, elapsed = await asyncio.wait_for(current.run(), timeout=self._ITEM_TIMEOUT)
+                    task_duration_seconds.labels(kind=current.kind).observe(elapsed)
                     if ok:
                         self.succeeded += 1
+                        tasks_total.labels(kind=current.kind, status="succeeded").inc()
                     else:
                         self.failed += 1
+                        tasks_total.labels(kind=current.kind, status="failed").inc()
                 except TimeoutError:
                     self.failed += 1
                     self.timed_out += 1
+                    tasks_total.labels(kind=current.kind, status="timed_out").inc()
                     log.error(
                         "pool.task_timeout",
                         domain=current.domain,
@@ -189,6 +202,7 @@ class WorkerPool:
                     )
                 except Exception:
                     self.failed += 1
+                    tasks_total.labels(kind=current.kind, status="failed").inc()
                     log.exception("pool.task_error", domain=current.domain, kind=current.kind)
                 # Pop next queued item for this domain (if any)
                 current = None
@@ -201,8 +215,19 @@ class WorkerPool:
             self._domains_inflight.discard(item.domain)
             self._semaphore.release()
 
-    async def drain(self) -> None:
-        """Wait for all in-flight tasks (including queued chains) to complete."""
+    async def drain(self, timeout: float = 50) -> None:
+        """Wait for in-flight tasks, cancelling stragglers after *timeout* seconds."""
+        if not self._tasks:
+            return
+        try:
+            await asyncio.wait_for(self._drain_all(), timeout=timeout)
+        except TimeoutError:
+            log.warning("pool.drain_timeout", remaining=len(self._tasks), timeout_s=timeout)
+            for t in list(self._tasks):
+                t.cancel()
+            await asyncio.gather(*list(self._tasks), return_exceptions=True)
+
+    async def _drain_all(self) -> None:
         while self._tasks:
             await asyncio.gather(*list(self._tasks), return_exceptions=True)
 
@@ -264,6 +289,11 @@ async def run_continuous_loop(
             for item in items:
                 wp.submit(item)
                 work_found = True
+
+        tasks_active.set(wp.active_count)
+        tasks_queued.set(wp.queued_count)
+        db_pool_size.set(pool.get_size())
+        db_pool_idle.set(pool.get_idle_size())
 
         if work_found or wp.active_count > 0:
             log.info(
@@ -375,6 +405,10 @@ async def run() -> None:
         poll_interval=settings.crawler_poll_interval,
         max_concurrent=settings.crawler_max_concurrent,
     )
+
+    if not args.once and not args.board:
+        start_metrics_server(settings.metrics_port)
+        log.info("metrics.started", port=settings.metrics_port)
 
     pool = await create_pool()
     http = create_http_client()

@@ -6,7 +6,6 @@ submits batches, collects results, and persists enrichment data.
 
 from __future__ import annotations
 
-import asyncio
 import json
 from datetime import UTC, datetime
 
@@ -47,7 +46,7 @@ RETURNING id, titles[1] AS title, locales[1] AS locale,
 
 async def _fetch_html(posting_id: str, locale: str) -> str | None:
     """Fetch the latest HTML description from R2."""
-    return await asyncio.to_thread(get_description_html, posting_id, locale)
+    return await get_description_html(posting_id, locale)
 
 
 async def prepare_batch(

@@ -690,7 +690,7 @@ async def _upload_to_r2(
             return new_hash
 
         # Upload primary description + extras (tracks diffs in history)
-        await asyncio.to_thread(upload_posting, posting_id, locale, description, merged)
+        await upload_posting(posting_id, locale, description, merged)
 
         # Upload localizations (secondary locales, description only)
         if localizations and isinstance(localizations, dict):
@@ -703,7 +703,7 @@ async def _upload_to_r2(
                 elif isinstance(loc_data, str):
                     loc_desc = loc_data
                 if loc_desc:
-                    await asyncio.to_thread(upload_description, posting_id, loc_locale, loc_desc)
+                    await upload_description(posting_id, loc_locale, loc_desc)
 
         return new_hash
     except Exception:

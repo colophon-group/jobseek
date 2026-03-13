@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from src.batch import WorkItem
 from src.scheduler import WorkerPool, run_continuous_loop
@@ -26,6 +26,14 @@ def _slow_work_item(domain="slow.com", kind="monitor", delay=0.05, result=(True,
         return result
 
     return WorkItem(domain=domain, kind=kind, run=_run)
+
+
+def _mock_pool():
+    """Create a mock asyncpg pool with metrics-compatible stubs."""
+    pool = MagicMock()
+    pool.get_size.return_value = 0
+    pool.get_idle_size.return_value = 0
+    return pool
 
 
 def _failing_work_item(domain="fail.com", kind="monitor"):
@@ -260,7 +268,7 @@ class TestRunContinuousLoop:
         mock_scrapes.side_effect = track_scrapes
 
         shutdown = asyncio.Event()
-        pool = AsyncMock()
+        pool = _mock_pool()
         http = AsyncMock()
 
         # Run one iteration then shutdown
@@ -287,7 +295,7 @@ class TestRunContinuousLoop:
     async def test_pool_full_skips_scrapes(self, mock_monitors, mock_scrapes):
         """When monitors fill all slots, scrapes are not claimed."""
         shutdown = asyncio.Event()
-        pool = AsyncMock()
+        pool = _mock_pool()
         http = AsyncMock()
         iteration = 0
 
@@ -316,7 +324,7 @@ class TestRunContinuousLoop:
     async def test_scrapes_fill_remaining(self, mock_monitors, mock_scrapes):
         """Scrapes fill slots left after monitors."""
         shutdown = asyncio.Event()
-        pool = AsyncMock()
+        pool = _mock_pool()
         http = AsyncMock()
         iteration = 0
 
@@ -341,7 +349,7 @@ class TestRunContinuousLoop:
     async def test_idle_backoff(self, mock_monitors, mock_scrapes):
         """When no work is found, loop backs off (doesn't busy-wait)."""
         shutdown = asyncio.Event()
-        pool = AsyncMock()
+        pool = _mock_pool()
         http = AsyncMock()
         iteration = 0
 
@@ -365,7 +373,7 @@ class TestRunContinuousLoop:
     async def test_shutdown_drains(self, mock_monitors, mock_scrapes):
         """Shutdown signal causes drain of in-flight tasks."""
         shutdown = asyncio.Event()
-        pool = AsyncMock()
+        pool = _mock_pool()
         http = AsyncMock()
         completed = []
 
@@ -398,7 +406,7 @@ class TestRunContinuousLoop:
     async def test_queued_items_process_without_reclaim(self, mock_monitors, mock_scrapes):
         """Items queued for the same domain process without a new claim tick."""
         shutdown = asyncio.Event()
-        pool = AsyncMock()
+        pool = _mock_pool()
         http = AsyncMock()
         processed = []
 

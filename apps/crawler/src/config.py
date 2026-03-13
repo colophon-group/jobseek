@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     crawler_batch_limit: int = 200
     crawler_poll_interval: int = 15
     crawler_max_concurrent: int = 20
+    metrics_port: int = 9091
 
     # Enrichment (disabled by default — empty provider means skip)
     enrich_provider: str = ""
