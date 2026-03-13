@@ -1,7 +1,7 @@
 """Location resolver — matches free-form location strings to GeoNames IDs.
 
-Loads core-locale names (en/de/fr/it) into memory, with async DB fallback
-for non-core locales.  Resolves raw location strings to structured
+Loads GeoNames data from Postgres into a local SQLite database for fast,
+low-memory lookups.  Resolves raw location strings to structured
 (location_id, location_type) pairs.
 
 Usage:
@@ -13,6 +13,7 @@ Usage:
 from __future__ import annotations
 
 import re
+import sqlite3
 import unicodedata
 from dataclasses import dataclass
 
@@ -27,30 +28,27 @@ log = structlog.get_logger()
 # from the DB on demand and cached for the process lifetime.
 _CORE_LOCALES = ("en", "de", "fr", "it", "alt", "")
 
+_SCHEMA = """
+CREATE TABLE IF NOT EXISTS entry (
+    id          INTEGER PRIMARY KEY,
+    parent_id   INTEGER,
+    loc_type    TEXT NOT NULL,
+    population  INTEGER NOT NULL DEFAULT 0,
+    languages   TEXT NOT NULL DEFAULT ''
+);
+CREATE TABLE IF NOT EXISTS name_index (
+    name        TEXT NOT NULL,
+    location_id INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS display_name (
+    location_id INTEGER PRIMARY KEY,
+    name        TEXT NOT NULL
+);
+"""
 
-class _NameIndex(dict):
-    """Dict that tracks ``.get()`` misses for async DB backfill.
-
-    After ``start_tracking()`` is called, any ``.get()`` for a key not
-    present records the key in ``misses``.  The resolver batch-queries
-    those against the DB and populates the dict so subsequent lookups hit.
-    """
-
-    def __init__(self) -> None:
-        super().__init__()
-        self._tracking: bool = False
-        self.misses: set[str] = set()
-        self._negative: set[str] = set()
-
-    def start_tracking(self) -> None:
-        self._tracking = True
-
-    def get(self, key, default=None):  # type: ignore[override]
-        if key in self:
-            return super().__getitem__(key)
-        if self._tracking and key and key not in self._negative:
-            self.misses.add(key)
-        return default
+_INDEXES = """
+CREATE INDEX IF NOT EXISTS idx_name ON name_index(name);
+"""
 
 
 # ── Types ────────────────────────────────────────────────────────────
@@ -565,9 +563,12 @@ _THE_PREFIX_RE = re.compile(r"^the\s+", re.IGNORECASE)
 _CITY_SUFFIX_RE = re.compile(r"\s+city$", re.IGNORECASE)
 
 
+_COMBINING_RE = re.compile(r"[\u0300-\u036f]+")
+
+
 def _strip_accents(s: str) -> str:
     """Remove diacritics/accents: 'São Paulo' → 'Sao Paulo', 'Zürich' → 'Zurich'."""
-    return "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn")
+    return _COMBINING_RE.sub("", unicodedata.normalize("NFD", s))
 
 
 # Trailing office/HQ/campus suffix: "Zurich HQ", "Singapore Office"
@@ -575,49 +576,93 @@ _OFFICE_SUFFIX_RE = re.compile(r"\s+(?:HQ|Office|Campus|Branch|Headquarters)\s*$
 
 
 class LocationResolver:
-    """Location resolver backed by GeoNames data.
+    """Location resolver backed by a local SQLite database.
 
-    Core-locale names (en/de/fr/it) are loaded eagerly into memory.
-    Non-core locale names are fetched from the DB on cache miss and
-    kept for the process lifetime.
+    GeoNames data is pulled from Postgres and stored in SQLite for fast,
+    low-memory lookups.  Non-core locale names are fetched from Postgres
+    on cache miss and added to SQLite.
     """
 
     def __init__(self) -> None:
-        self._entries: dict[int, _LocationEntry] = {}
-        # name (lowercase) → list of location IDs
-        self._name_to_ids: _NameIndex | dict[str, list[int]] = _NameIndex()
-        # location ID → English display name (original case)
-        self._id_to_name: dict[int, str] = {}
+        self._db: sqlite3.Connection | None = None
+        self._entry_cache: dict[int, _LocationEntry | None] = {}
         self._pool: asyncpg.Pool | None = None
         self._loaded = False
+        self._tracking = False
+        self._misses: set[str] = set()
+        self._negative: set[str] = set()
         self._posting_language: str | None = None
 
-    def _index_name(self, name: str, loc_id: int) -> None:
-        """Index a single lowercased name with all lookup variants."""
-        self._name_to_ids.setdefault(name, []).append(loc_id)
+    def _init_db(self, path: str = ":memory:") -> None:
+        """Create SQLite schema. Use ':memory:' for tests."""
+        self._db = sqlite3.connect(path, check_same_thread=False)
+        self._db.executescript(_SCHEMA)
+
+    @property
+    def entry_count(self) -> int:
+        if self._db is None:
+            return 0
+        row = self._db.execute("SELECT COUNT(*) FROM entry").fetchone()
+        return row[0] if row else 0
+
+    def _get_entry(self, loc_id: int) -> _LocationEntry | None:
+        """Look up a location entry, with per-instance cache."""
+        cached = self._entry_cache.get(loc_id)
+        if cached is not None:
+            return cached
+        if loc_id in self._entry_cache:  # cached as None
+            return None
+        assert self._db is not None
+        row = self._db.execute(
+            "SELECT id, parent_id, loc_type, population, languages FROM entry WHERE id = ?",
+            (loc_id,),
+        ).fetchone()
+        if not row:
+            self._entry_cache[loc_id] = None
+            return None
+        entry = _LocationEntry(
+            id=row[0],
+            parent_id=row[1],
+            loc_type=row[2],
+            population=row[3],
+            languages=tuple(row[4].split(",")) if row[4] else (),
+        )
+        self._entry_cache[loc_id] = entry
+        return entry
+
+    def _lookup_name(self, key: str) -> list[int]:
+        """Look up name→location IDs from SQLite, tracking misses for backfill."""
+        assert self._db is not None
+        rows = self._db.execute(
+            "SELECT location_id FROM name_index WHERE name = ?", (key,)
+        ).fetchall()
+        if rows:
+            return [r[0] for r in rows]
+        if self._tracking and key and key not in self._negative:
+            self._misses.add(key)
+        return []
+
+    @staticmethod
+    def _name_variants(name: str) -> list[str]:
+        """Return all index variants for a lowercased name."""
+        variants = [name]
         stripped = _strip_accents(name)
         if stripped != name:
-            self._name_to_ids.setdefault(stripped, []).append(loc_id)
-        for variant in (name, stripped):
-            no_the = _THE_PREFIX_RE.sub("", variant)
-            if no_the != variant:
-                self._name_to_ids.setdefault(no_the, []).append(loc_id)
-            no_city = _CITY_SUFFIX_RE.sub("", variant)
-            if no_city != variant:
-                self._name_to_ids.setdefault(no_city, []).append(loc_id)
-
-    def _dedup_ids(self, keys: set[str] | None = None) -> None:
-        """Deduplicate ID lists.  When *keys* is None, dedup all entries."""
-        items = ((k, self._name_to_ids[k]) for k in keys) if keys else self._name_to_ids.items()
-        for key, ids in items:
-            if len(ids) > 1:
-                self._name_to_ids[key] = list(dict.fromkeys(ids))
+            variants.append(stripped)
+        for base in (name, stripped) if stripped != name else (name,):
+            # Names are already lowercased — use string ops instead of regex
+            if base.startswith("the "):
+                variants.append(base[4:])
+            if base.endswith(" city"):
+                variants.append(base[:-5])
+        return variants
 
     async def load(self, pool: asyncpg.Pool) -> None:
-        """Load locations + core-locale names from DB into memory."""
-        import gc
-
+        """Pull GeoNames data from Postgres into a local SQLite database."""
         self._pool = pool
+        self._init_db()
+        assert self._db is not None
+        cur = self._db.cursor()
 
         # Phase 1: location entries
         async with pool.acquire() as conn:
@@ -627,66 +672,81 @@ class LocationResolver:
                 "COALESCE(languages, '{}') AS languages "
                 "FROM location"
             )
-        for row in loc_rows:
-            self._entries[row["id"]] = _LocationEntry(
-                id=row["id"],
-                parent_id=row["parent_id"],
-                loc_type=row["type"],
-                population=row["population"],
-                languages=tuple(row["languages"]),
-            )
+        cur.executemany(
+            "INSERT OR REPLACE INTO entry (id, parent_id, loc_type, population, languages) "
+            "VALUES (?, ?, ?, ?, ?)",
+            [
+                (
+                    row["id"],
+                    row["parent_id"],
+                    row["type"],
+                    row["population"],
+                    ",".join(row["languages"]),
+                )
+                for row in loc_rows
+            ],
+        )
         del loc_rows
-        gc.collect()
 
-        # Phase 2: core-locale name index
+        # Phase 2: core-locale name index (with variants)
         async with pool.acquire() as conn:
             name_rows = await conn.fetch(
                 "SELECT location_id, lower(name) AS name FROM location_name WHERE locale = ANY($1)",
                 list(_CORE_LOCALES),
             )
+        name_pairs: list[tuple[str, int]] = []
+        seen: set[tuple[str, int]] = set()
         for row in name_rows:
-            self._index_name(row["name"], row["location_id"])
-        del name_rows
-        gc.collect()
+            loc_id = row["location_id"]
+            for variant in self._name_variants(row["name"]):
+                pair = (variant, loc_id)
+                if pair not in seen:
+                    seen.add(pair)
+                    name_pairs.append(pair)
+        cur.executemany(
+            "INSERT INTO name_index (name, location_id) VALUES (?, ?)",
+            name_pairs,
+        )
+        del name_rows, name_pairs, seen
 
-        self._dedup_ids()
-
-        # Phase 3: English display names for reverse lookup
+        # Phase 3: English display names
         async with pool.acquire() as conn:
             en_name_rows = await conn.fetch(
                 "SELECT location_id, name, "
                 "COALESCE(is_display, false) AS is_display "
                 "FROM location_name WHERE locale = 'en'"
             )
-        # Build reverse mapping: location_id → English display name.
-        # First pass: set any en name. Second pass: override with is_display.
+        # First pass: any en name. Second pass: override with is_display.
+        display: dict[int, str] = {}
         for row in en_name_rows:
-            if row["location_id"] not in self._id_to_name:
-                self._id_to_name[row["location_id"]] = row["name"]
+            if row["location_id"] not in display:
+                display[row["location_id"]] = row["name"]
         for row in en_name_rows:
             if row["is_display"]:
-                self._id_to_name[row["location_id"]] = row["name"]
-        del en_name_rows
-        gc.collect()
+                display[row["location_id"]] = row["name"]
+        cur.executemany(
+            "INSERT OR REPLACE INTO display_name (location_id, name) VALUES (?, ?)",
+            list(display.items()),
+        )
+        del en_name_rows, display
 
+        # Create indexes after bulk insert and commit
+        self._db.executescript(_INDEXES)
+        self._db.commit()
         self._loaded = True
-
-        # Enable miss tracking now that the core index is built.
-        if isinstance(self._name_to_ids, _NameIndex):
-            self._name_to_ids.start_tracking()
+        self._tracking = True
 
     async def backfill_misses(self) -> bool:
-        """Batch-query the DB for names not found in the core-locale cache.
+        """Batch-query Postgres for names not found in SQLite.
 
-        Populates ``_name_to_ids`` with results so subsequent ``resolve()``
-        calls hit in memory.  Returns True if new names were added.
+        Inserts results into SQLite so subsequent ``resolve()`` calls hit.
+        Returns True if new names were added.
         """
-        idx = self._name_to_ids
-        if not isinstance(idx, _NameIndex) or not self._pool or not idx.misses:
+        if not self._pool or not self._misses or self._db is None:
             return False
 
-        missed = list(idx.misses)
-        idx.misses.clear()
+        missed = list(self._misses)
+        self._misses.clear()
 
         async with self._pool.acquire() as conn:
             rows = await conn.fetch(
@@ -696,19 +756,22 @@ class LocationResolver:
             )
 
         if not rows:
-            idx._negative.update(missed)
+            self._negative.update(missed)
             return False
 
         matched_keys: set[str] = set()
-        new_keys: set[str] = set()
-        before_keys = set(self._name_to_ids)
+        name_pairs: list[tuple[str, int]] = []
         for row in rows:
             matched_keys.add(row["name"])
-            self._index_name(row["name"], row["location_id"])
-        new_keys = set(self._name_to_ids) - before_keys
+            for variant in self._name_variants(row["name"]):
+                name_pairs.append((variant, row["location_id"]))
 
-        self._dedup_ids(new_keys)
-        idx._negative.update(set(missed) - matched_keys)
+        self._db.executemany(
+            "INSERT OR IGNORE INTO name_index (name, location_id) VALUES (?, ?)",
+            name_pairs,
+        )
+        self._db.commit()
+        self._negative.update(set(missed) - matched_keys)
 
         log.info(
             "location_resolver.backfill",
@@ -719,7 +782,11 @@ class LocationResolver:
 
     def display_name(self, location_id: int) -> str | None:
         """Return the English display name for a location ID, or None."""
-        return self._id_to_name.get(location_id)
+        assert self._db is not None
+        row = self._db.execute(
+            "SELECT name FROM display_name WHERE location_id = ?", (location_id,)
+        ).fetchone()
+        return row[0] if row else None
 
     def resolve(
         self,
@@ -921,24 +988,24 @@ class LocationResolver:
             text = alias
 
         key = text.lower()
-        ids = self._name_to_ids.get(key)
+        ids = self._lookup_name(key)
         # Try accent-stripped fallback
         if not ids:
-            ids = self._name_to_ids.get(_strip_accents(key))
+            ids = self._lookup_name(_strip_accents(key))
         # Try "The " prefix stripped from input ("The Netherlands" → "Netherlands")
         if not ids:
             no_the = _THE_PREFIX_RE.sub("", key)
             if no_the != key:
-                ids = self._name_to_ids.get(no_the)
+                ids = self._lookup_name(no_the)
                 if not ids:
-                    ids = self._name_to_ids.get(_strip_accents(no_the))
+                    ids = self._lookup_name(_strip_accents(no_the))
         # Try " City" suffix stripped from input ("Singapore City" → "Singapore")
         if not ids:
             no_city = _CITY_SUFFIX_RE.sub("", key)
             if no_city != key:
-                ids = self._name_to_ids.get(no_city)
+                ids = self._lookup_name(no_city)
                 if not ids:
-                    ids = self._name_to_ids.get(_strip_accents(no_city))
+                    ids = self._lookup_name(_strip_accents(no_city))
         if not ids:
             return None
 
@@ -950,19 +1017,19 @@ class LocationResolver:
         countries = [
             lid
             for lid in ids
-            if self._entries.get(lid) and self._entries[lid].loc_type == "country"
+            if self._get_entry(lid) and self._get_entry(lid).loc_type == "country"
         ]
         if countries:
             return self._best_by_population(countries)
 
         # Disambiguate city vs region sharing a name:
         cities = [
-            lid for lid in ids if self._entries.get(lid) and self._entries[lid].loc_type == "city"
+            lid for lid in ids if self._get_entry(lid) and self._get_entry(lid).loc_type == "city"
         ]
         regions = [
             lid
             for lid in ids
-            if self._entries.get(lid) and self._entries[lid].loc_type in ("region", "macro")
+            if self._get_entry(lid) and self._get_entry(lid).loc_type in ("region", "macro")
         ]
         if cities and regions:
             # City inside its namesake region → prefer city (more specific)
@@ -974,8 +1041,8 @@ class LocationResolver:
             if cities_in_region:
                 best_cir = self._best_by_population(cities_in_region)
                 best_reg = self._best_by_population(regions)
-                cir_pop = self._entries[best_cir].population if best_cir else 0
-                reg_pop = self._entries[best_reg].population if best_reg else 0
+                cir_pop = self._get_entry(best_cir).population if best_cir else 0
+                reg_pop = self._get_entry(best_reg).population if best_reg else 0
                 # If the best region is overwhelmingly larger, the region
                 # is the more notable entity (Montana US state 1.1M vs
                 # Montana Bulgarian city 47k). But Geneva city (201k)
@@ -987,8 +1054,8 @@ class LocationResolver:
             # → prefer whichever has higher population
             best_city = self._best_by_population(cities)
             best_region = self._best_by_population(regions)
-            city_pop = self._entries[best_city].population if best_city else 0
-            region_pop = self._entries[best_region].population if best_region else 0
+            city_pop = self._get_entry(best_city).population if best_city else 0
+            region_pop = self._get_entry(best_region).population if best_region else 0
             return best_city if city_pop >= region_pop else best_region
 
         if cities:
@@ -1050,18 +1117,18 @@ class LocationResolver:
         # Check aliases first (US, UK, etc.)
         alias = _CITY_ALIASES.get(token.lower())
         if alias:
-            ids.extend(self._name_to_ids.get(alias.lower(), []))
+            ids.extend(self._lookup_name(alias.lower()))
             if ids:
                 return ids
 
         # Collect candidates from both US state and ISO2 interpretations
         if upper in _US_STATE_ABBREV:
             full_name = _US_STATE_ABBREV[upper]
-            ids.extend(self._name_to_ids.get(full_name.lower(), []))
+            ids.extend(self._lookup_name(full_name.lower()))
 
         if upper in _ISO2_TO_COUNTRY:
             country_name = _ISO2_TO_COUNTRY[upper]
-            country_ids = self._name_to_ids.get(country_name.lower(), [])
+            country_ids = self._lookup_name(country_name.lower())
             # Avoid duplicates
             existing = set(ids)
             ids.extend(cid for cid in country_ids if cid not in existing)
@@ -1072,7 +1139,7 @@ class LocationResolver:
         """Resolve a single token to all candidate location IDs."""
         alias = _CITY_ALIASES.get(token.lower())
         if alias:
-            ids = self._name_to_ids.get(alias.lower(), [])
+            ids = self._lookup_name(alias.lower())
             if ids:
                 return ids
 
@@ -1083,13 +1150,13 @@ class LocationResolver:
 
         if len(token) == 3 and upper in _ISO3_TO_COUNTRY:
             country_name = _ISO3_TO_COUNTRY[upper]
-            ids = self._name_to_ids.get(country_name.lower(), [])
+            ids = self._lookup_name(country_name.lower())
             if ids:
                 return ids
 
-        ids = self._name_to_ids.get(token.lower(), [])
+        ids = self._lookup_name(token.lower())
         if not ids:
-            ids = self._name_to_ids.get(_strip_accents(token.lower()), [])
+            ids = self._lookup_name(_strip_accents(token.lower()))
         return ids
 
     def _match_multi_tokens(self, tokens: list[str]) -> list[int]:
@@ -1120,13 +1187,13 @@ class LocationResolver:
             ctx_entries = [
                 lid
                 for lid in ids
-                if self._entries.get(lid)
-                and self._entries[lid].loc_type in ("country", "region", "macro")
+                if self._get_entry(lid)
+                and self._get_entry(lid).loc_type in ("country", "region", "macro")
             ]
             city_entries = [
                 lid
                 for lid in ids
-                if self._entries.get(lid) and self._entries[lid].loc_type == "city"
+                if self._get_entry(lid) and self._get_entry(lid).loc_type == "city"
             ]
 
             if not ctx_set:
@@ -1172,13 +1239,13 @@ class LocationResolver:
                 t_ctx = [
                     lid
                     for lid in ids
-                    if self._entries.get(lid)
-                    and self._entries[lid].loc_type in ("country", "region", "macro")
+                    if self._get_entry(lid)
+                    and self._get_entry(lid).loc_type in ("country", "region", "macro")
                 ]
                 t_city = [
                     lid
                     for lid in ids
-                    if self._entries.get(lid) and self._entries[lid].loc_type == "city"
+                    if self._get_entry(lid) and self._get_entry(lid).loc_type == "city"
                 ]
                 if t_ctx and not t_city:
                     pure_ctx.update(t_ctx)
@@ -1237,8 +1304,8 @@ class LocationResolver:
         ctx_regions = [
             lid
             for lid in target_ids
-            if self._entries.get(lid)
-            and self._entries[lid].loc_type in ("country", "region", "macro")
+            if self._get_entry(lid)
+            and self._get_entry(lid).loc_type in ("country", "region", "macro")
             and self._is_descendant_of_any(lid, ctx_set)
         ]
         if ctx_regions:
@@ -1256,7 +1323,7 @@ class LocationResolver:
         best_spec = -1
         best_pop = -1
         for lid in ctx_set:
-            entry = self._entries.get(lid)
+            entry = self._get_entry(lid)
             if not entry:
                 continue
             spec = _SPEC.get(entry.loc_type, 0)
@@ -1274,13 +1341,13 @@ class LocationResolver:
         the target IS the region (e.g. "Missouri, USA" → Missouri state).
         """
         cities = [
-            lid for lid in ids if self._entries.get(lid) and self._entries[lid].loc_type == "city"
+            lid for lid in ids if self._get_entry(lid) and self._get_entry(lid).loc_type == "city"
         ]
         regions = [
             lid
             for lid in ids
-            if self._entries.get(lid)
-            and self._entries[lid].loc_type in ("country", "region", "macro")
+            if self._get_entry(lid)
+            and self._get_entry(lid).loc_type in ("country", "region", "macro")
         ]
 
         if cities and regions:
@@ -1315,13 +1382,13 @@ class LocationResolver:
             right_ids = self._get_token_ids(right)
             if not right_ids:
                 right_key = right.lower()
-                right_ids = self._name_to_ids.get(right_key, [])
+                right_ids = self._lookup_name(right_key)
                 if not right_ids:
-                    right_ids = self._name_to_ids.get(_strip_accents(right_key), [])
+                    right_ids = self._lookup_name(_strip_accents(right_key))
 
             context_ids: set[int] = set()
             for loc_id in right_ids:
-                entry = self._entries.get(loc_id)
+                entry = self._get_entry(loc_id)
                 if entry and entry.loc_type in ("country", "region", "macro"):
                     context_ids.add(loc_id)
 
@@ -1331,9 +1398,9 @@ class LocationResolver:
             # Look up left part
             left = " ".join(words[:split_pos])
             left_key = left.lower()
-            left_ids = self._name_to_ids.get(left_key, [])
+            left_ids = self._lookup_name(left_key)
             if not left_ids:
-                left_ids = self._name_to_ids.get(_strip_accents(left_key), [])
+                left_ids = self._lookup_name(_strip_accents(left_key))
 
             if not left_ids:
                 continue
@@ -1354,7 +1421,7 @@ class LocationResolver:
         current = loc_id
         depth = 0
         while current is not None and depth < 5:
-            entry = self._entries.get(current)
+            entry = self._get_entry(current)
             if entry is None:
                 return False
             if entry.parent_id in ancestor_ids:
@@ -1381,7 +1448,7 @@ class LocationResolver:
             lang_match = [
                 lid
                 for lid in ids
-                if self._entries.get(lid) and lang in self._entries[lid].languages
+                if self._get_entry(lid) and lang in self._get_entry(lid).languages
             ]
             if lang_match and len(lang_match) < len(ids):
                 # Language narrows the candidates — use only matching ones
@@ -1391,7 +1458,7 @@ class LocationResolver:
         best_pop = -1
         best_rank = -1
         for loc_id in ids:
-            entry = self._entries.get(loc_id)
+            entry = self._get_entry(loc_id)
             if not entry:
                 continue
             rank = _TYPE_RANK.get(entry.loc_type, 0)

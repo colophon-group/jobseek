@@ -48,6 +48,7 @@ from src.core.scrapers import JobContent
 def _mock_location_resolver(monkeypatch):
     """Auto-mock the location resolver so batch tests don't hit the DB."""
     resolver = LocationResolver()
+    resolver._init_db(":memory:")
     resolver._loaded = True
 
     async def _fake_get_resolver(pool):

@@ -13,7 +13,6 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import functools
-import gc
 import json
 from collections import defaultdict
 from collections.abc import Awaitable, Callable
@@ -82,7 +81,7 @@ async def _get_location_resolver(pool: asyncpg.Pool) -> LocationResolver:
     if _location_resolver is None:
         _location_resolver = LocationResolver()
         await _location_resolver.load(pool)
-        log.info("batch.location_resolver.loaded", entries=len(_location_resolver._entries))
+        log.info("batch.location_resolver.loaded", entries=_location_resolver.entry_count)
     return _location_resolver
 
 
@@ -689,23 +688,34 @@ async def _upload_to_r2(
         if current_hash is not None and current_hash == new_hash:
             return new_hash
 
-        # Upload primary description + extras (tracks diffs in history)
-        await upload_posting(posting_id, locale, description, merged)
+        # Upload with one retry on transient network errors
+        for attempt in range(2):
+            try:
+                # Upload primary description + extras (tracks diffs in history)
+                await upload_posting(posting_id, locale, description, merged)
 
-        # Upload localizations (secondary locales, description only)
-        if localizations and isinstance(localizations, dict):
-            for loc_locale, loc_data in localizations.items():
-                if loc_locale == locale:
-                    continue
-                loc_desc = None
-                if isinstance(loc_data, dict):
-                    loc_desc = loc_data.get("description")
-                elif isinstance(loc_data, str):
-                    loc_desc = loc_data
-                if loc_desc:
-                    await upload_description(posting_id, loc_locale, loc_desc)
+                # Upload localizations (secondary locales, description only)
+                if localizations and isinstance(localizations, dict):
+                    for loc_locale, loc_data in localizations.items():
+                        if loc_locale == locale:
+                            continue
+                        loc_desc = None
+                        if isinstance(loc_data, dict):
+                            loc_desc = loc_data.get("description")
+                        elif isinstance(loc_data, str):
+                            loc_desc = loc_data
+                        if loc_desc:
+                            await upload_description(posting_id, loc_locale, loc_desc)
 
-        return new_hash
+                return new_hash
+            except (httpx.TimeoutException, httpx.ConnectError):
+                if attempt == 0:
+                    log.warning("batch.r2_upload.retry", posting_id=posting_id)
+                    await asyncio.sleep(1)
+                else:
+                    raise
+
+        return new_hash  # unreachable, keeps type checker happy
     except Exception:
         log.exception("batch.r2_upload.error", posting_id=posting_id)
         return None
@@ -1280,7 +1290,6 @@ async def _process_one_board(
 
         # Free large temporaries (jobs_by_url, r2_work) before next item
         del result
-        gc.collect()
 
         return True, elapsed
 

@@ -31,8 +31,7 @@ from urllib.parse import quote
 
 import httpx
 import structlog
-from botocore.auth import SigV4Auth
-from botocore.awsrequest import AWSRequest
+from botocore.auth import S3SigV4Auth
 from botocore.credentials import Credentials
 
 log = structlog.get_logger()
@@ -45,17 +44,17 @@ def content_hash(data: str) -> int:
 
 
 _http: httpx.AsyncClient | None = None
-_signer: SigV4Auth | None = None
+_signer: S3SigV4Auth | None = None
 
 
-def _get_signer() -> SigV4Auth:
+def _get_signer() -> S3SigV4Auth:
     global _signer
     if _signer is None:
         creds = Credentials(
             access_key=os.environ["R2_ACCESS_KEY_ID"],
             secret_key=os.environ["R2_SECRET_ACCESS_KEY"],
         )
-        _signer = SigV4Auth(creds, "s3", "auto")
+        _signer = S3SigV4Auth(creds, "s3", "auto")
     return _signer
 
 
@@ -85,9 +84,11 @@ def _object_url(key: str) -> str:
     return f"{_endpoint()}/{_bucket()}/{quote(key, safe='/')}"
 
 
-def _sign(method: str, url: str, headers: dict, body: bytes | None = None) -> dict:
-    """Sign a request using SigV4 and return the signed headers."""
-    req = AWSRequest(method=method, url=url, headers=headers, data=body or b"")
+def _sign(method: str, url: str, headers: dict, data: bytes = b"") -> dict:
+    """Sign a request using S3 SigV4 and return the signed headers."""
+    from botocore.awsrequest import AWSRequest
+
+    req = AWSRequest(method=method, url=url, headers=headers, data=data)
     _get_signer().add_auth(req)
     return dict(req.headers)
 
@@ -95,7 +96,7 @@ def _sign(method: str, url: str, headers: dict, body: bytes | None = None) -> di
 async def get_object(key: str) -> str | None:
     """Download an object as UTF-8 text. Returns None if not found."""
     url = _object_url(key)
-    headers = _sign("GET", url, {"Host": httpx.URL(url).host})
+    headers = _sign("GET", url, {})
     resp = await _get_http().get(url, headers=headers)
     if resp.status_code == 404:
         return None
@@ -110,7 +111,6 @@ async def _put_object(key: str, body: str, content_type: str = "text/html") -> N
         "PUT",
         url,
         {
-            "Host": httpx.URL(url).host,
             "Content-Type": content_type,
             "Cache-Control": "public, max-age=86400",
         },
