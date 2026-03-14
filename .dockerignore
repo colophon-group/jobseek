@@ -1,0 +1,12 @@
+.git
+node_modules
+**/node_modules
+**/.next
+**/dist
+**/build
+**/.turbo
+**/.pytest_cache
+**/.ruff_cache
+**/__pycache__
+**/*.pyc
+supabase
