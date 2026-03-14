@@ -1,0 +1,17 @@
+supabase_access_token      = "paste-a-supabase-personal-access-token"
+production_project_ref     = "rbjzdlsdovasviziflbp"
+organization_id            = "snxalgdyhaqyyicgujna"
+production_project_name    = "job-seek"
+production_database_password = "replace-with-the-current-production-db-password"
+production_region          = "eu-central-1"
+staging_branch_name        = "staging"
+# staging_region           = "eu-central-1"
+
+# Optional: once you import supabase_settings.production, populate these with the
+# exact serialized JSON from `terraform state show supabase_settings.production`.
+# production_api_settings_json      = jsonencode({})
+# production_auth_settings_json     = jsonencode({})
+# production_database_settings_json = jsonencode({})
+# production_network_settings_json  = jsonencode({})
+# production_pooler_settings_json   = jsonencode({})
+# production_storage_settings_json  = jsonencode({})
