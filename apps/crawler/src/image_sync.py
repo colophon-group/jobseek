@@ -21,7 +21,7 @@ import sys
 from io import BytesIO
 
 import boto3
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 
 from src.shared.constants import DATA_DIR
 
@@ -58,6 +58,34 @@ def process_icon(path: str) -> bytes:
         return buffer.getvalue()
 
 
+def upload_icon(client, bucket: str, slug: str, img_file) -> tuple[str, str]:
+    """Upload an icon, preferring WebP but falling back to the source asset."""
+    try:
+        key = f"companies/{slug}/icon.webp"
+        client.put_object(
+            Bucket=bucket,
+            Key=key,
+            Body=process_icon(str(img_file)),
+            ContentType="image/webp",
+            CacheControl="public, max-age=31536000, immutable",
+        )
+        return key, "image/webp"
+    except (OSError, UnidentifiedImageError):
+        ext = img_file.suffix.lower()
+        content_type = CONTENT_TYPES.get(ext, "application/octet-stream")
+        key = f"companies/{slug}/icon{ext}"
+        client.upload_file(
+            str(img_file),
+            bucket,
+            key,
+            ExtraArgs={
+                "ContentType": content_type,
+                "CacheControl": "public, max-age=31536000, immutable",
+            },
+        )
+        return key, content_type
+
+
 def upload_images() -> dict[str, dict[str, str]]:
     """Upload images from data/images/<slug>/ to R2.
 
@@ -84,15 +112,7 @@ def upload_images() -> dict[str, dict[str, str]]:
                 continue
             img_file = files[0]
             if role == "icon":
-                key = f"companies/{slug}/icon.webp"
-                client.put_object(
-                    Bucket=bucket,
-                    Key=key,
-                    Body=process_icon(str(img_file)),
-                    ContentType="image/webp",
-                    CacheControl="public, max-age=31536000, immutable",
-                )
-                content_type = "image/webp"
+                key, content_type = upload_icon(client, bucket, slug, img_file)
             else:
                 ext = img_file.suffix.lower()
                 content_type = CONTENT_TYPES.get(ext, "application/octet-stream")
