@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     crawler_max_concurrent: int = 20
     metrics_port: int = 9091
 
+    apify_token: str = ""
+
     # Enrichment (disabled by default — empty provider means skip)
     enrich_provider: str = ""
     enrich_model: str = ""

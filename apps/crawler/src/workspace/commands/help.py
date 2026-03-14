@@ -65,42 +65,36 @@ Board Command Reference:
 MONITORS = """\
 Monitor Types (cheapest first):
 
-  Type              Cost    Scraper
-  ──────────────────────────────────────────
-  join              9       auto (nextdata)
-  ashby             10      auto (skip)
-  bite              10      auto (bite)
-  breezy            10      auto (json-ld)
-  dvinci            10      auto (skip)
-  gem               10      auto (skip)
-  greenhouse        10      auto (skip)
-  hireology         10      auto (skip)
-  lever             10      auto (skip)
-  pinpoint          10      auto (skip)
-  recruitee         10      auto (skip)
-  rippling          10      auto (rippling)
-  rss               10      auto (skip)
-  smartrecruiters   10      auto (smartrecruiters)
-  softgarden        10      auto (json-ld)
-  traffit           10      auto (skip)
-  workable          10      auto (workable)
-  workday           10      auto (workday)
-  personio          10      auto or manual
-  umantis           15      manual
-  nextdata          20      auto or manual
-  sitemap           50      manual
-  api_sniffer       80      auto or manual
-  dom               100     manual
-
-  Scraper column:
-    auto (skip)     — monitor returns full data, scraper step is skipped
-    auto (smartrecruiters) — dedicated scraper is auto-configured
-    auto (workday)  — dedicated scraper is auto-configured
-    auto or manual  — depends on config/coverage; system decides after ws run monitor
-    manual          — you must select and test a scraper in the next step
+  Type              Cost    Returns         Scraper needed?
+  ────────────────────────────────────────────────────────
+  join              9       Full job data   No (skipped)
+  apify_meta        10      Full job data   No (skipped)
+  ashby             10      Full job data   No (skipped)
+  bite              10      Full job data   No (skipped)
+  breezy            10      Full job data   No (skipped)
+  dvinci            10      Full job data   No (skipped)
+  gem               10      Full job data   No (skipped)
+  greenhouse        10      Full job data   No (skipped)
+  hireology         10      Full job data   No (skipped)
+  lever             10      Full job data   No (skipped)
+  pinpoint          10      Full job data   No (skipped)
+  recruitee         10      Full job data   No (skipped)
+  rippling          10      Full job data   No (skipped)
+  rss               10      Full job data   No (skipped)
+  smartrecruiters   10      Full job data   No (skipped)
+  softgarden        10      Full job data   No (skipped)
+  traffit           10      Full job data   No (skipped)
+  workable          10      Full job data   No (skipped)
+  workday           10      Full job data   No (skipped)
+  personio          10      Full/partial    If descriptions missing (fallback)
+  umantis           15      URL set         Yes
+  nextdata          20      URLs or full    If URL-only
+  sitemap           50      URL set         Yes
+  api_sniffer       80      URLs or full    If URL-only (no fields)
+  dom               100     URL set         Yes
 
 Interpretation guide (after ws probe monitor):
-  1. API monitor detected (join/greenhouse/lever/rss/workday/etc):
+  1. Rich monitor detected (join/greenhouse/lever/rss/etc):
      strong signal, but validate sample content and coverage.
   2. nextdata / api_sniffer detected:
      inspect mapped fields before accepting.
@@ -388,6 +382,36 @@ join — JOIN (join.com) Next.js Monitor
               Requires join.com URL + detectable __NEXT_DATA__ job list.
   Zero jobs?  Verify board URL is join.com/companies/{slug} and not a
               marketing landing page."""
+
+MONITOR_APIFY_META = """\
+apify_meta — Apify-backed Meta Careers monitor
+
+  Source:    Existing Apify actor run for a Meta Careers scraper actor
+  Returns:   Full job data (title, HTML description, locations,
+             employment_type, job_location_type, date_posted)
+             extras: responsibilities, qualifications
+             metadata: teams, sub_teams
+  Scraper:   Not needed (monitor returns full data, scraper step is skipped)
+  Cap:       Controlled by the Apify actor / dataset
+  Note:      Starts the configured Apify actor, waits for completion, then
+             maps the resulting dataset into canonical DiscoveredJob records.
+
+  Config:
+    {"actor_id": "myuser/meta-careers-scraper"}
+    {"actor_id": "myuser/meta-careers-scraper", "max_jobs": 250}
+    {"actor_id": "myuser/meta-careers-scraper", "fetch_descriptions": false}
+
+    actor_id            Required Apify actor ID.
+    max_jobs            Optional limit passed to the actor. 0 means all jobs.
+    fetch_descriptions  Whether the actor should fetch descriptions
+                        (default: true).
+
+  Environment:
+    APIFY_TOKEN         Required. Used to start and poll the actor run.
+
+  Detection:  Not auto-detected by ws probe. Use when a board is explicitly
+              backed by an Apify actor and you want rich monitor output.
+  Zero jobs?  Verify actor_id and inspect the actor's latest dataset in Apify."""
 
 MONITOR_SITEMAP = """\
 sitemap — XML Sitemap Parser
@@ -1439,6 +1463,7 @@ Feedback Command Reference:
 
 MONITOR_CARDS: dict[str, str] = {
     "amazon": MONITOR_AMAZON,
+    "apify_meta": MONITOR_APIFY_META,
     "bite": MONITOR_BITE,
     "breezy": MONITOR_BREEZY,
     "dvinci": MONITOR_DVINCI,

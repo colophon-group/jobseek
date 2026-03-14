@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 import withBundleAnalyzer from "@next/bundle-analyzer";
+import path from "node:path";
 
 const nextConfig: NextConfig = {
+  output: "standalone",
+  outputFileTracingRoot: path.join(__dirname, "../.."),
   images: {
     // Cache optimized images for 1 year. Company logos rarely change, and
     // Vercel purges its CDN cache on every deploy anyway.

@@ -1,0 +1,15 @@
+{
+    "actorSpecification": 1,
+    "name": "meta-careers-scraper",
+    "title": "Meta Careers Scraper",
+    "description": "Scrapes job listings from Meta Careers (metacareers.com) using sitemap discovery and Playwright rendering with JSON-LD and DOM extraction.",
+    "version": "0.0",
+    "buildTag": "latest",
+    "defaultRunOptions": {
+        "build": "latest",
+        "timeoutSecs": 3600,
+        "memoryMbytes": 4096
+    },
+    "input": "./input_schema.json",
+    "dockerfile": "../Dockerfile"
+}

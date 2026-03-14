@@ -18,8 +18,10 @@ import csv
 import os
 import shutil
 import sys
+from io import BytesIO
 
 import boto3
+from PIL import Image, UnidentifiedImageError
 
 from src.shared.constants import DATA_DIR
 
@@ -44,6 +46,44 @@ def _s3_client():
         aws_access_key_id=os.environ["R2_ACCESS_KEY_ID"],
         aws_secret_access_key=os.environ["R2_SECRET_ACCESS_KEY"],
     )
+
+
+def process_icon(path: str) -> bytes:
+    """Convert an icon image to WebP bytes for consistent lightweight delivery."""
+    with Image.open(path) as image:
+        if image.mode not in ("RGB", "RGBA"):
+            image = image.convert("RGBA")
+        buffer = BytesIO()
+        image.save(buffer, format="WEBP")
+        return buffer.getvalue()
+
+
+def upload_icon(client, bucket: str, slug: str, img_file) -> tuple[str, str]:
+    """Upload an icon, preferring WebP but falling back to the source asset."""
+    try:
+        key = f"companies/{slug}/icon.webp"
+        client.put_object(
+            Bucket=bucket,
+            Key=key,
+            Body=process_icon(str(img_file)),
+            ContentType="image/webp",
+            CacheControl="public, max-age=31536000, immutable",
+        )
+        return key, "image/webp"
+    except (OSError, UnidentifiedImageError):
+        ext = img_file.suffix.lower()
+        content_type = CONTENT_TYPES.get(ext, "application/octet-stream")
+        key = f"companies/{slug}/icon{ext}"
+        client.upload_file(
+            str(img_file),
+            bucket,
+            key,
+            ExtraArgs={
+                "ContentType": content_type,
+                "CacheControl": "public, max-age=31536000, immutable",
+            },
+        )
+        return key, content_type
 
 
 def upload_images() -> dict[str, dict[str, str]]:
@@ -71,19 +111,21 @@ def upload_images() -> dict[str, dict[str, str]]:
             if not files:
                 continue
             img_file = files[0]
-            ext = img_file.suffix.lower()
-            content_type = CONTENT_TYPES.get(ext, "application/octet-stream")
-            key = f"companies/{slug}/{role}{ext}"
-
-            client.upload_file(
-                str(img_file),
-                bucket,
-                key,
-                ExtraArgs={
-                    "ContentType": content_type,
-                    "CacheControl": "public, max-age=31536000, immutable",
-                },
-            )
+            if role == "icon":
+                key, content_type = upload_icon(client, bucket, slug, img_file)
+            else:
+                ext = img_file.suffix.lower()
+                content_type = CONTENT_TYPES.get(ext, "application/octet-stream")
+                key = f"companies/{slug}/{role}{ext}"
+                client.upload_file(
+                    str(img_file),
+                    bucket,
+                    key,
+                    ExtraArgs={
+                        "ContentType": content_type,
+                        "CacheControl": "public, max-age=31536000, immutable",
+                    },
+                )
             urls[f"{role}_url"] = f"{public_base}/{key}"
             print(f"  Uploaded {key} ({content_type})")
 
