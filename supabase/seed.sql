@@ -1,0 +1,2 @@
+-- Seed placeholder for local Supabase resets.
+-- Keep empty by default; app sync pipelines populate runtime data.

@@ -1,0 +1,15 @@
+app = 'jobseek-staging'
+primary_region = 'fra'
+kill_timeout = 60
+
+[processes]
+  app = 'uv run --no-sync scheduler'
+
+[metrics]
+  port = 9091
+  path = '/metrics'
+
+[[vm]]
+  cpu_kind = 'shared'
+  cpus = 1
+  memory_mb = 512
