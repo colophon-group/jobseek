@@ -137,7 +137,6 @@ export function SearchPage({
         });
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const hasMore = companies.length < totalCompanies;
@@ -180,16 +179,6 @@ export function SearchPage({
       setTotalCompanies(result.totalCompanies);
     });
   }
-
-  const handleAddKeyword = useCallback(
-    (keyword: string) => {
-      const updated = [...keywords, keyword];
-      setKeywords(updated);
-      updateUrl(updated, locations);
-      runSearch(updated, locations);
-    },
-    [keywords, locations, language, pathname],
-  );
 
   const handleRemoveKeyword = useCallback(
     (keyword: string) => {

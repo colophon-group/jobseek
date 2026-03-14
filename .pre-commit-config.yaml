@@ -8,6 +8,13 @@ repos:
         files: ^apps/crawler/
   - repo: local
     hooks:
+      - id: web-lint
+        name: ESLint (web)
+        language: system
+        entry: pnpm --dir apps/web lint
+        files: ^apps/web/.*\.(js|jsx|ts|tsx)$
+        pass_filenames: false
+        stages: [pre-commit]
       - id: bump-ws-version
         name: Bump ws-cli version
         language: python
