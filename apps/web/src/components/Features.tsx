@@ -1,7 +1,7 @@
 "use client";
 
 import type { ElementType, CSSProperties } from "react";
-import { Trans } from "@lingui/react/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { siteConfig } from "@/content/config";
 import { ThemedImage } from "@/components/ThemedImage";
 import { eyebrowClass, sectionHeadingClass } from "@/lib/styles";
@@ -96,6 +96,7 @@ function ImageWrapper({
 }
 
 function FeatureSection1() {
+  const { t } = useLingui();
   const cfg = siteConfig.features.sections[0];
   const mediaWidth = cfg.screenshot.width;
 
@@ -145,7 +146,7 @@ function FeatureSection1() {
         </div>
         <div className="flex flex-1 justify-start lg:justify-end" style={{ minHeight: 400 }}>
           <ImageWrapper mediaWidth={mediaWidth} inverted={false}>
-            <ThemedImage darkSrc={cfg.screenshot.dark} lightSrc={cfg.screenshot.light} alt="Job Seek dashboard showing tracked applications and company alerts" width={cfg.screenshot.width} height={cfg.screenshot.height} />
+            <ThemedImage darkSrc={cfg.screenshot.dark} lightSrc={cfg.screenshot.light} alt={t({ id: "home.features.s1.screenshot.alt", comment: "Alt text for feature section 1 screenshot", message: "Job Seek dashboard showing tracked applications and company alerts" })} width={cfg.screenshot.width} height={cfg.screenshot.height} />
           </ImageWrapper>
         </div>
       </div>
@@ -154,6 +155,7 @@ function FeatureSection1() {
 }
 
 function FeatureSection2() {
+  const { t } = useLingui();
   const cfg = siteConfig.features.sections[1];
   const mediaWidth = cfg.screenshot.width;
 
@@ -203,7 +205,7 @@ function FeatureSection2() {
         </div>
         <div className="flex flex-1 justify-start" style={{ minHeight: 400 }}>
           <ImageWrapper mediaWidth={mediaWidth} inverted={true}>
-            <ThemedImage darkSrc={cfg.screenshot.dark} lightSrc={cfg.screenshot.light} alt="Job Seek interface for submitting company links and configuring custom alerts" width={cfg.screenshot.width} height={cfg.screenshot.height} />
+            <ThemedImage darkSrc={cfg.screenshot.dark} lightSrc={cfg.screenshot.light} alt={t({ id: "home.features.s2.screenshot.alt", comment: "Alt text for feature section 2 screenshot", message: "Job Seek interface for submitting company links and configuring custom alerts" })} width={cfg.screenshot.width} height={cfg.screenshot.height} />
           </ImageWrapper>
         </div>
       </div>

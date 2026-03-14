@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { Building2, Bookmark, Loader2 } from "lucide-react";
-import { Trans } from "@lingui/react/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { timeAgoShort } from "@/lib/time";
 import { getSavedJobs, type SavedJobEntry } from "@/lib/actions/saved-jobs";
 import { useSavedJobs } from "@/components/SavedJobsProvider";
@@ -19,6 +19,7 @@ export function SavedPage({
   initialJobs: SavedJobEntry[];
   initialTotal: number;
 }) {
+  const { t } = useLingui();
   const searchParams = useSearchParams();
   const [jobs, setJobs] = useState(initialJobs);
   const [_total, setTotal] = useState(initialTotal);
@@ -157,7 +158,7 @@ export function SavedPage({
                 toggle(entry.posting.id);
               }}
               className="shrink-0 cursor-pointer text-muted transition-opacity hover:opacity-70"
-              aria-label={isSaved(entry.posting.id) ? "Unsave job" : "Save job"}
+              aria-label={isSaved(entry.posting.id) ? t({ id: "saved.unsave.ariaLabel", comment: "Aria label for unsave button", message: "Unsave job" }) : t({ id: "saved.save.ariaLabel", comment: "Aria label for save button", message: "Save job" })}
             >
               <Bookmark
                 size={14}

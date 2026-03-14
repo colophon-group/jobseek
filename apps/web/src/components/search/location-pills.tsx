@@ -23,12 +23,15 @@ interface LocationPillsProps {
   userLng?: number;
 }
 
-const TYPE_LABELS: Record<string, string> = {
-  macro: "Region",
-  country: "Country",
-  region: "Region",
-  city: "City",
-};
+function useTypeLabels() {
+  const { t } = useLingui();
+  return {
+    macro: t({ id: "location.type.region", comment: "Location type label for macro-regions", message: "Region" }),
+    country: t({ id: "location.type.country", comment: "Location type label for countries", message: "Country" }),
+    region: t({ id: "location.type.region", comment: "Location type label for regions", message: "Region" }),
+    city: t({ id: "location.type.city", comment: "Location type label for cities", message: "City" }),
+  };
+}
 
 export function LocationPills({
   locations,
@@ -39,6 +42,7 @@ export function LocationPills({
   userLng: serverLng,
 }: LocationPillsProps) {
   const { t } = useLingui();
+  const typeLabels = useTypeLabels();
   const [inputValue, setInputValue] = useState("");
   const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -251,7 +255,7 @@ export function LocationPills({
                     <span className="text-muted">, {s.parentName}</span>
                   )}
                   <span className="ml-1.5 text-xs text-muted">
-                    {TYPE_LABELS[s.type]}
+                    {typeLabels[s.type]}
                   </span>
                 </div>
               </li>
