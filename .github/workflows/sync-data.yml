@@ -6,6 +6,7 @@ on:
     paths:
       - "apps/crawler/data/companies.csv"
       - "apps/crawler/data/boards.csv"
+  workflow_dispatch:
 
 concurrency:
   group: sync-csv
