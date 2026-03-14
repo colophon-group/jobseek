@@ -474,8 +474,8 @@ def _print_failed(wf: WorkflowState) -> None:
 
 
 def _skip_reason(skip_when: str | None) -> str:
-    if skip_when == "rich_monitor":
-        return "active monitor is rich"
+    if skip_when == "scraper_auto_configured":
+        return "scraper auto-configured by monitor"
     return skip_when or "condition met"
 
 

@@ -6,7 +6,6 @@ submits batches, collects results, and persists enrichment data.
 
 from __future__ import annotations
 
-import asyncio
 import json
 from datetime import UTC, datetime
 
@@ -15,13 +14,13 @@ import structlog
 
 from src.config import settings
 from src.core.description_store import get_description_html
-from src.core.enrich import (
+from src.core.enrich.job import (
     ENRICH_VERSION,
     SYSTEM_PROMPT,
     EnrichmentResult,
     build_user_message,
 )
-from src.core.llm_providers import BatchProvider, BatchRequest
+from src.core.enrich.providers import BatchProvider, BatchRequest
 
 log = structlog.get_logger()
 
@@ -47,7 +46,7 @@ RETURNING id, titles[1] AS title, locales[1] AS locale,
 
 async def _fetch_html(posting_id: str, locale: str) -> str | None:
     """Fetch the latest HTML description from R2."""
-    return await asyncio.to_thread(get_description_html, posting_id, locale)
+    return await get_description_html(posting_id, locale)
 
 
 async def prepare_batch(

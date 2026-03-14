@@ -303,7 +303,7 @@ export const jobPosting = pgTable(
   },
   (table) => [
     index("idx_jp_company").on(table.companyId),
-    index("idx_jp_board").on(table.boardId),
+    index("idx_jp_board_url").on(table.boardId, table.sourceUrl),
     index("idx_jp_active").on(table.isActive).where(sql`is_active = true`),
     index("idx_jp_location_ids").using("gin", table.locationIds),
     index("idx_jp_next_scrape").on(table.nextScrapeAt).where(

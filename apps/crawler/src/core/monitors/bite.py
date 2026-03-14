@@ -4,11 +4,9 @@ Public JSON API at jobs.b-ite.com — requires a "Job Listing Key" (40-char hex)
 that is embedded in widget listing JavaScript on career pages.
 
 Search:  POST https://jobs.b-ite.com/api/v1/postings/search
-Detail:  GET  https://jobs.b-ite.com/jobposting/{hash}/json?locale={locale}&contentRendered=true
 
-The search endpoint returns listings without descriptions.  The detail
-endpoint returns rendered HTML content, employer info, employment types,
-and salary.  N+1 monitor: 1 search (paginated) + N detail fetches.
+The search endpoint returns job URLs. Detail fetching is handled by the
+BITE scraper (``src/core/scrapers/bite``).
 
 Key extraction:
   Career pages embed ``data-bite-jobs-api-listing="customer:listing"``
@@ -23,22 +21,19 @@ They are NOT handled by this monitor.
 
 from __future__ import annotations
 
-import asyncio
 import re
 
 import httpx
 import structlog
 
-from src.core.monitors import DiscoveredJob, fetch_page_text, register
+from src.core.monitors import fetch_page_text, register
 
 log = structlog.get_logger()
 
 MAX_JOBS = 10_000
-CONCURRENCY = 10
 PAGE_SIZE = 100
 
 _SEARCH_URL = "https://jobs.b-ite.com/api/v1/postings/search"
-_DETAIL_URL = "https://jobs.b-ite.com/jobposting/{hash}/json"
 
 _KEY_RE = re.compile(r'"([0-9a-f]{40})"')
 
@@ -52,16 +47,6 @@ _PAGE_MARKERS = [
     re.compile(r"cdn\.pitchman\.b-ite\.com"),
     re.compile(r"data-bite-jobs-api-listing"),
 ]
-
-_EMPLOYMENT_TYPE_MAP: dict[str, str] = {
-    "full_time": "full-time",
-    "part_time": "part-time",
-    "temporary": "temporary",
-    "contract": "contract",
-    "internship": "internship",
-    "mini_job": "part-time",
-    "volunteer": "volunteer",
-}
 
 
 # ── Key extraction ───────────────────────────────────────────────────────
@@ -124,155 +109,13 @@ async def _extract_key_from_html(
     return None, customer
 
 
-# ── Parsing ──────────────────────────────────────────────────────────────
-
-
-def _extract_hash_from_url(url: str) -> str | None:
-    """Extract job hash from a BITE job posting URL."""
-    m = re.search(r"/jobposting/([a-f0-9]{40,42})", url)
-    return m.group(1) if m else None
-
-
-def _build_location(address: dict | None) -> list[str] | None:
-    """Build location string from address object."""
-    if not address:
-        return None
-    city = address.get("city")
-    country = address.get("country")
-    if not city:
-        return None
-    if country:
-        return [f"{city}, {country.upper()}"]
-    return [city]
-
-
-def _normalize_employment_type(emp_types: list | None) -> str | None:
-    """Normalize employment type from detail endpoint."""
-    if not emp_types:
-        return None
-    for raw in emp_types:
-        mapped = _EMPLOYMENT_TYPE_MAP.get(raw)
-        if mapped:
-            return mapped
-    return None
-
-
-def _parse_salary(detail: dict) -> dict | None:
-    """Extract salary from detail endpoint baseSalary."""
-    base = detail.get("baseSalary")
-    if not isinstance(base, dict):
-        return None
-    currency = base.get("currency")
-    if not currency:
-        return None
-    unit_raw = (base.get("unitText") or "").upper()
-    unit = "month"  # BITE default
-    if "YEAR" in unit_raw:
-        unit = "year"
-    elif "HOUR" in unit_raw:
-        unit = "hour"
-    elif "WEEK" in unit_raw:
-        unit = "week"
-
-    min_val = base.get("minValue")
-    max_val = base.get("maxValue")
-    if min_val is None and max_val is None:
-        return None
-    return {"currency": currency, "min": min_val, "max": max_val, "unit": unit}
-
-
-def _parse_detail(detail: dict, url: str) -> DiscoveredJob | None:
-    """Parse a detail endpoint response into a DiscoveredJob."""
-    title = detail.get("title")
-    if not title:
-        return None
-
-    # Description from rendered HTML content
-    description = None
-    content = detail.get("content")
-    if isinstance(content, dict):
-        html_block = content.get("html")
-        if isinstance(html_block, dict):
-            description = html_block.get("rendered")
-        elif isinstance(html_block, str):
-            description = html_block
-
-    # Location
-    locations = _build_location(detail.get("address"))
-
-    # Employment type
-    employment_type = _normalize_employment_type(detail.get("employmentType"))
-
-    # Date posted
-    date_posted = None
-    for date_field in ("activatedAt", "createdAt", "startAt"):
-        raw = detail.get(date_field)
-        if raw and isinstance(raw, str):
-            date_posted = raw.split("T")[0] if "T" in raw else raw
-            break
-
-    # Salary
-    base_salary = _parse_salary(detail)
-
-    # Metadata
-    metadata: dict = {}
-    identification = detail.get("identification")
-    if identification:
-        metadata["reference"] = identification
-    employer = detail.get("employer")
-    if isinstance(employer, dict):
-        emp_name = employer.get("name")
-        if emp_name:
-            metadata["employer"] = emp_name
-
-    return DiscoveredJob(
-        url=url,
-        title=title,
-        description=description,
-        locations=locations,
-        employment_type=employment_type,
-        date_posted=date_posted,
-        base_salary=base_salary,
-        language=detail.get("locale"),
-        metadata=metadata or None,
-    )
-
-
-# ── Detail fetching ─────────────────────────────────────────────────────
-
-
-async def _fetch_detail(
-    job_hash: str,
-    job_url: str,
-    locale: str,
-    client: httpx.AsyncClient,
-    semaphore: asyncio.Semaphore,
-) -> DiscoveredJob | None:
-    """Fetch a single job's detail, respecting the concurrency semaphore."""
-    async with semaphore:
-        try:
-            detail_url = (
-                _DETAIL_URL.format(hash=job_hash) + f"?locale={locale}&contentRendered=true"
-            )
-            resp = await client.get(detail_url)
-            if resp.status_code != 200:
-                log.warning("bite.detail_failed", hash=job_hash, status=resp.status_code)
-                return None
-            return _parse_detail(resp.json(), job_url)
-        except Exception as exc:
-            log.warning("bite.detail_error", hash=job_hash, error=str(exc))
-            return None
-
-
 # ── Discovery ────────────────────────────────────────────────────────────
 
 
-async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[DiscoveredJob]:
-    """Discover jobs from a BITE board.
+async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> set[str]:
+    """Discover job URLs from a BITE board.
 
-    1. POST search with key + pagination → collect job URLs and hashes
-    2. Fetch detail for each job concurrently (semaphore=10)
-    3. Parse into DiscoveredJob
+    POST search with key + pagination → collect job URLs.
     """
     metadata = board.get("metadata") or {}
     key = metadata.get("key")
@@ -285,8 +128,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
     locale = metadata.get("locale", "de")
     channel = metadata.get("channel", 0)
 
-    # Step 1: Paginated search to collect all job URLs
-    job_entries: list[tuple[str, str]] = []  # (hash, url)
+    urls: set[str] = set()
     offset = 0
 
     while True:
@@ -308,44 +150,26 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
 
         for p in postings:
             url = p.get("url")
-            if not url:
-                continue
-            job_hash = _extract_hash_from_url(url)
-            if job_hash:
-                job_entries.append((job_hash, url))
+            if url:
+                urls.add(url)
 
         page_info = data.get("page", {})
         total = page_info.get("total", 0)
         offset += len(postings)
 
-        if offset >= total or len(job_entries) >= MAX_JOBS:
+        if offset >= total or len(urls) >= MAX_JOBS:
             break
 
-    if not job_entries:
+    if not urls:
         log.info("bite.no_jobs", key=key[:8] + "...")
-        return []
+        return set()
 
-    if len(job_entries) > MAX_JOBS:
-        log.warning("bite.truncated", total=len(job_entries), cap=MAX_JOBS)
-        job_entries = job_entries[:MAX_JOBS]
+    if len(urls) > MAX_JOBS:
+        log.warning("bite.truncated", total=len(urls), cap=MAX_JOBS)
 
-    log.info("bite.listed", key=key[:8] + "...", jobs=len(job_entries))
+    log.info("bite.listed", key=key[:8] + "...", jobs=len(urls))
 
-    # Step 2: Fetch details concurrently
-    semaphore = asyncio.Semaphore(CONCURRENCY)
-    tasks = [
-        _fetch_detail(job_hash, job_url, locale, client, semaphore)
-        for job_hash, job_url in job_entries
-    ]
-    results = await asyncio.gather(*tasks)
-
-    # Step 3: Collect parsed jobs
-    jobs: list[DiscoveredJob] = []
-    for result in results:
-        if result is not None:
-            jobs.append(result)
-
-    return jobs
+    return urls
 
 
 # ── Probing ──────────────────────────────────────────────────────────────
@@ -413,4 +237,4 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
     return None
 
 
-register("bite", discover, cost=10, can_handle=can_handle, rich=True)
+register("bite", discover, cost=10, can_handle=can_handle, rich=False)

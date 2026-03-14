@@ -179,7 +179,8 @@ export class PostgresSearchProvider implements SearchProvider {
           jp.location_ids, jp.location_types,
           ${tsvecFor("jp")} AS vec
         FROM job_posting jp
-        WHERE (${matchOr("jp", keywords)})
+        WHERE jp.titles[1] IS NOT NULL AND jp.titles[1] != ''
+          AND (${matchOr("jp", keywords)})
           AND (${language} = ANY(jp.locales) OR jp.locales = '{}')
           AND (${locationFilter("jp", locationIds)})
       ),
@@ -256,7 +257,8 @@ export class PostgresSearchProvider implements SearchProvider {
           COUNT(*) FILTER (WHERE jp.is_active) AS active_matches,
           COUNT(*) AS year_matches
         FROM job_posting jp
-        WHERE (${language} = ANY(jp.locales) OR jp.locales = '{}')
+        WHERE jp.titles[1] IS NOT NULL AND jp.titles[1] != ''
+          AND (${language} = ANY(jp.locales) OR jp.locales = '{}')
           AND (${locationFilter("jp", locationIds)})
         GROUP BY jp.company_id
         HAVING COUNT(*) FILTER (WHERE jp.is_active) > 0
@@ -287,6 +289,7 @@ export class PostgresSearchProvider implements SearchProvider {
           jp2.location_ids, jp2.location_types
         FROM job_posting jp2
         WHERE jp2.company_id = tc.company_id
+          AND jp2.titles[1] IS NOT NULL AND jp2.titles[1] != ''
           AND (${language} = ANY(jp2.locales) OR jp2.locales = '{}')
           AND (${locationFilter("jp2", locationIds)})
         ORDER BY jp2.first_seen_at DESC
@@ -337,6 +340,7 @@ export class PostgresSearchProvider implements SearchProvider {
             ${tsvecFor("jp")} AS vec
           FROM job_posting jp
           WHERE jp.company_id = ${companyId}
+            AND jp.titles[1] IS NOT NULL AND jp.titles[1] != ''
             AND (${matchOr("jp", keywords)})
             AND (${language} = ANY(jp.locales) OR jp.locales = '{}')
             AND (${locationFilter("jp", locationIds)})
@@ -352,6 +356,7 @@ export class PostgresSearchProvider implements SearchProvider {
           jp.location_ids, jp.location_types
         FROM job_posting jp
         WHERE jp.company_id = ${companyId}
+          AND jp.titles[1] IS NOT NULL AND jp.titles[1] != ''
           AND (${language} = ANY(jp.locales) OR jp.locales = '{}')
           AND (${locationFilter("jp", locationIds)})
         ORDER BY jp.first_seen_at DESC

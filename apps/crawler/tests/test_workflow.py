@@ -67,7 +67,7 @@ def board_careers(workspace):
                 "monitor_type": "greenhouse",
                 "monitor_config": {"token": "test"},
                 "status": "tested",
-                "rich": True,
+                "scraper_type": "skip",
                 "run": {"jobs": 50, "time": 2.0, "has_rich_data": True},
                 "scraper_run": {},
                 "feedback": {"verdict": "good", "verdict_notes": "All clean"},
@@ -116,7 +116,7 @@ class TestStepDefs:
     def test_skip_when(self):
         steps = _all_step_defs()
         scraper_step = next(s for s in steps if s.id == "select_scraper")
-        assert scraper_step.skip_when == "rich_monitor"
+        assert scraper_step.skip_when == "scraper_auto_configured"
 
 
 class TestWorkflowState:
@@ -266,19 +266,19 @@ class TestGates:
 
 
 class TestSkipConditions:
-    def test_rich_monitor_skips_scraper(self, board_careers):
+    def test_auto_configured_scraper_skips(self, board_careers):
         step = StepDef(
             id="select_scraper",
             title="",
             instructions="",
             gate_type="state",
             gate_check="scraper_tested",
-            skip_when="rich_monitor",
+            skip_when="scraper_auto_configured",
             phase="per_board",
         )
         assert should_skip(step, board_careers)
 
-    def test_non_rich_monitor(self):
+    def test_no_scraper_does_not_skip(self):
         board = Board(
             alias="careers",
             slug="test-careers",
@@ -294,7 +294,7 @@ class TestSkipConditions:
             instructions="",
             gate_type="state",
             gate_check="scraper_tested",
-            skip_when="rich_monitor",
+            skip_when="scraper_auto_configured",
             phase="per_board",
         )
         assert not should_skip(step, board)
@@ -337,13 +337,13 @@ class TestAdvance:
         wf = _load_wf_from_disk(slug)
         assert wf.current_board == "careers-de"
 
-    def test_rich_monitor_skips_scraper(self, workspace, board_careers):
+    def test_auto_scraper_skips_step(self, workspace, board_careers):
         slug, ws, ws_root = workspace
         wf = WorkflowState(current_step="select_monitor", current_board="careers")
         _save_wf_to_disk(slug, wf)
 
         next_step, msg = advance(slug, "greenhouse 50 jobs")
-        # Should skip scraper and go to verify
+        # Should skip scraper (auto-configured) and go to verify
         assert next_step.id == "verify_and_feedback"
 
     def test_records_reflections(self, workspace, board_careers):

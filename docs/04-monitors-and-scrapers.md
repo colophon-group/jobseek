@@ -6,12 +6,23 @@ Monitors discover which jobs exist on a board. Scrapers extract details from ind
 
 Monitors fall into two categories:
 
-- **Rich monitors** return complete `DiscoveredJob` data (title, description, locations, etc.) in a single request. The batch processor inserts this directly — no scraper step is needed. All API monitors are rich.
-- **URL-only monitors** return a set of job page URLs. Each URL is then scraped individually to extract job details.
+- **Rich monitors** return complete `DiscoveredJob` data (title, description, locations, etc.) in a single request. The batch processor inserts this directly — no scraper step is needed.
+- **URL-only monitors** return a set of job page URLs. Each URL is then scraped individually to extract job details. Most URL-only monitors auto-configure their scraper (see `auto_scraper_type()` in `_compat.py`).
 
 Cost implications:
 - **Rich**: cost = one monitor invocation per cycle (~0.5–2s). No scraper cost.
 - **URL-only**: cost = one monitor invocation + N × scraper cost per new job. First run scrapes all existing jobs (initial load: N × 0.3–4s depending on scraper type). Steady-state cost is low since only new jobs need scraping.
+
+### Why no N+1 monitors
+
+An earlier design had monitors that listed jobs (1 call) then fetched each detail page (N calls) in the same hourly cycle — the "N+1 pattern". This was removed because:
+
+1. **Wasted requests**: Monitors run hourly but job details rarely change. Fetching N detail pages every hour wastes ~24× the necessary requests.
+2. **Rate-limit risk**: Hammering detail endpoints hourly triggers rate-limiting and IP blocks.
+3. **Slow cycles**: A board with 500 jobs takes minutes to poll instead of seconds.
+4. **Fragile coupling**: Monitor failures (e.g. one detail page 404) could break the entire discovery cycle.
+
+The fix: monitors return URLs only (1 cheap call), scrapers fetch details on a daily schedule (N calls, amortized). This is enforced by design — `register()` accepts `rich=True` (single-call full data) or `rich=False` (URL set). There is no mechanism for a monitor to make per-job detail requests. If a new ATS needs per-job detail fetching, implement it as a scraper, not inside the monitor.
 
 ## Monitors
 
@@ -19,26 +30,34 @@ A monitor takes a board config and returns either **full job data** (rich monito
 
 ### Monitor Types
 
-| Type | Kind | Returns | When to Use |
-|------|------|---------|-------------|
-| `ashby` | Rich | Full job data | Ashby ATS |
-| `greenhouse` | Rich | Full job data | Greenhouse ATS |
-| `hireology` | Rich | Full job data | Hireology ATS |
-| `lever` | Rich | Full job data | Lever ATS |
-| `personio` | Rich | Full job data | Personio XML feed |
-| `pinpoint` | Rich | Full job data | Pinpoint ATS |
-| `recruitee` | Rich | Full job data | Recruitee ATS |
-| `rippling` | Rich | Full job data | Rippling ATS |
-| `rss` | Rich | Full job data | RSS 2.0 feeds (SuccessFactors, Teamtailor, etc.) |
-| `smartrecruiters` | Rich | Full job data | SmartRecruiters ATS |
-| `workable` | Rich | Full job data | Workable ATS |
-| `workday` | Rich | Full job data | Workday ATS |
-| `api_sniffer` | Rich* | Full or URLs | XHR/fetch capture (*rich when `fields` auto-mapped) |
-| `sitemap` | URL-only | URL set | Site has an XML sitemap with job URLs |
-| `nextdata` | URL-only | URL set | Next.js site with `__NEXT_DATA__` |
-| `dom` | URL-only | URL set | Last resort — link extraction from page HTML |
+| Type | Kind | Auto-scraper | When to Use |
+|------|------|-------------|-------------|
+| `amazon` | Rich | skip | Amazon Jobs |
+| `ashby` | Rich | skip | Ashby ATS |
+| `dvinci` | Rich | skip | d.vinci ATS |
+| `gem` | Rich | skip | Gem ATS |
+| `greenhouse` | Rich | skip | Greenhouse ATS |
+| `hireology` | Rich | skip | Hireology ATS |
+| `lever` | Rich | skip | Lever ATS |
+| `pinpoint` | Rich | skip | Pinpoint ATS |
+| `recruitee` | Rich | skip | Recruitee ATS |
+| `rss` | Rich | skip | RSS 2.0 feeds (SuccessFactors, Teamtailor, etc.) |
+| `traffit` | Rich | skip | Traffit ATS |
+| `personio` | Rich* | — | Personio (*rich via XML feed, HTML fallback needs scraper) |
+| `bite` | URL-only | bite | b-ite.com ATS |
+| `breezy` | URL-only | json-ld (+dom fallback) | Breezy HR |
+| `join` | URL-only | nextdata | JOIN (join.com) |
+| `rippling` | URL-only | rippling | Rippling ATS |
+| `smartrecruiters` | URL-only | smartrecruiters | SmartRecruiters ATS |
+| `softgarden` | URL-only | json-ld | Softgarden ATS |
+| `workable` | URL-only | workable | Workable ATS |
+| `workday` | URL-only | workday | Workday ATS |
+| `api_sniffer` | Rich* | skip/— | XHR/fetch capture (*rich when `fields` configured) |
+| `nextdata` | URL-only* | skip/— | Next.js `__NEXT_DATA__` (*rich when `fields` configured) |
+| `sitemap` | URL-only | — | Site has an XML sitemap with job URLs |
+| `dom` | URL-only | — | Last resort — link extraction from page HTML |
 
-Always prefer rich monitors. API monitors are the best case — they return complete job data in a single request, no scraper needed.
+Rich monitors return complete job data in a single request — no scraper needed. URL-only monitors with auto-scrapers need no manual scraper selection; the scraper is configured automatically. Monitors marked "—" require manual scraper selection.
 
 ### greenhouse
 

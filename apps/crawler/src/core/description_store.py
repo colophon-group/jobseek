@@ -27,10 +27,12 @@ import json
 import os
 import struct
 from datetime import UTC, datetime
+from urllib.parse import quote
 
-import boto3
+import httpx
 import structlog
-from botocore.exceptions import ClientError
+from botocore.auth import S3SigV4Auth
+from botocore.credentials import Credentials
 
 log = structlog.get_logger()
 
@@ -41,19 +43,32 @@ def content_hash(data: str) -> int:
     return struct.unpack(">q", digest[:8])[0]
 
 
-_client = None
+_http: httpx.AsyncClient | None = None
+_signer: S3SigV4Auth | None = None
 
 
-def _s3():
-    global _client
-    if _client is None:
-        _client = boto3.client(
-            "s3",
-            endpoint_url=os.environ["R2_ENDPOINT_URL"],
-            aws_access_key_id=os.environ["R2_ACCESS_KEY_ID"],
-            aws_secret_access_key=os.environ["R2_SECRET_ACCESS_KEY"],
+def _get_signer() -> S3SigV4Auth:
+    global _signer
+    if _signer is None:
+        creds = Credentials(
+            access_key=os.environ["R2_ACCESS_KEY_ID"],
+            secret_key=os.environ["R2_SECRET_ACCESS_KEY"],
         )
-    return _client
+        _signer = S3SigV4Auth(creds, "s3", "auto")
+    return _signer
+
+
+def _get_http() -> httpx.AsyncClient:
+    global _http
+    if _http is None:
+        _http = httpx.AsyncClient(
+            timeout=httpx.Timeout(connect=10.0, read=30.0, write=30.0, pool=20.0),
+        )
+    return _http
+
+
+def _endpoint() -> str:
+    return os.environ["R2_ENDPOINT_URL"].rstrip("/")
 
 
 def _bucket() -> str:
@@ -65,25 +80,44 @@ def _prefix(posting_id: str) -> str:
     return f"job/{posting_id}"
 
 
-def get_object(key: str) -> str | None:
+def _object_url(key: str) -> str:
+    return f"{_endpoint()}/{_bucket()}/{quote(key, safe='/')}"
+
+
+def _sign(method: str, url: str, headers: dict, data: bytes = b"") -> dict:
+    """Sign a request using S3 SigV4 and return the signed headers."""
+    from botocore.awsrequest import AWSRequest
+
+    req = AWSRequest(method=method, url=url, headers=headers, data=data)
+    _get_signer().add_auth(req)
+    return dict(req.headers)
+
+
+async def get_object(key: str) -> str | None:
     """Download an object as UTF-8 text. Returns None if not found."""
-    try:
-        resp = _s3().get_object(Bucket=_bucket(), Key=key)
-        return resp["Body"].read().decode("utf-8")
-    except ClientError as e:
-        if e.response["Error"]["Code"] == "NoSuchKey":
-            return None
-        raise
+    url = _object_url(key)
+    headers = _sign("GET", url, {})
+    resp = await _get_http().get(url, headers=headers)
+    if resp.status_code == 404:
+        return None
+    resp.raise_for_status()
+    return resp.text
 
 
-def _put_object(key: str, body: str, content_type: str = "text/html") -> None:
-    _s3().put_object(
-        Bucket=_bucket(),
-        Key=key,
-        Body=body.encode("utf-8"),
-        ContentType=content_type,
-        CacheControl="public, max-age=86400",
+async def _put_object(key: str, body: str, content_type: str = "text/html") -> None:
+    url = _object_url(key)
+    data = body.encode("utf-8")
+    headers = _sign(
+        "PUT",
+        url,
+        {
+            "Content-Type": content_type,
+            "Cache-Control": "public, max-age=86400",
+        },
+        data,
     )
+    resp = await _get_http().put(url, headers=headers, content=data)
+    resp.raise_for_status()
 
 
 def _compute_reverse_diff(new_html: str, old_html: str) -> str:
@@ -116,7 +150,7 @@ def _extras_diff(old: dict, new: dict) -> dict:
     return changed
 
 
-def upload_posting(
+async def upload_posting(
     posting_id: str,
     locale: str,
     html: str,
@@ -137,12 +171,20 @@ def upload_posting(
     latest_key = f"{prefix}/{locale}/latest.html"
     history_key = f"{prefix}/{locale}/history.json"
 
-    existing_html = get_object(latest_key)
+    existing_html = await get_object(latest_key)
 
     # Load previous extras from the first history entry's snapshot
-    history_raw = get_object(history_key)
+    history_raw = await get_object(history_key)
     history = json.loads(history_raw) if history_raw else {"versions": []}
     existing_extras: dict = history.get("current_extras", {})
+
+    # Carry forward metadata from previous extras when the new upload
+    # doesn't provide it.  Monitors produce metadata (e.g. employer,
+    # expiration_date) but scrapers typically don't — without this,
+    # each scrape would "remove" metadata and each monitor would "add"
+    # it back, creating spurious history churn.
+    if "metadata" not in extras and "metadata" in existing_extras:
+        extras = {**extras, "metadata": existing_extras["metadata"]}
 
     desc_changed = existing_html is not None and existing_html != html
     extras_changed_fields = _extras_diff(existing_extras, extras)
@@ -154,7 +196,7 @@ def upload_posting(
     if is_first:
         # First upload — create history with current extras snapshot
         history = {"versions": [], "current_extras": extras}
-        _put_object(history_key, json.dumps(history), "application/json")
+        await _put_object(history_key, json.dumps(history), "application/json")
         log.info("description_store.created", posting_id=posting_id, locale=locale)
     else:
         entry: dict = {"timestamp": datetime.now(UTC).isoformat()}
@@ -165,7 +207,7 @@ def upload_posting(
 
         history["versions"].insert(0, entry)
         history["current_extras"] = extras
-        _put_object(history_key, json.dumps(history), "application/json")
+        await _put_object(history_key, json.dumps(history), "application/json")
         log.info(
             "description_store.updated",
             posting_id=posting_id,
@@ -175,10 +217,10 @@ def upload_posting(
         )
 
     if is_first or desc_changed:
-        _put_object(latest_key, html)
+        await _put_object(latest_key, html)
 
 
-def upload_description(
+async def upload_description(
     posting_id: str,
     locale: str,
     html: str,
@@ -191,14 +233,14 @@ def upload_description(
     latest_key = f"{prefix}/{locale}/latest.html"
     history_key = f"{prefix}/{locale}/history.json"
 
-    existing = get_object(latest_key)
+    existing = await get_object(latest_key)
 
     if existing is not None and existing == html:
         return
 
     if existing is not None:
         diff = _compute_reverse_diff(html, existing)
-        history_raw = get_object(history_key)
+        history_raw = await get_object(history_key)
         history = json.loads(history_raw) if history_raw else {"versions": []}
         history["versions"].insert(
             0,
@@ -207,7 +249,7 @@ def upload_description(
                 "diff": diff,
             },
         )
-        _put_object(history_key, json.dumps(history), "application/json")
+        await _put_object(history_key, json.dumps(history), "application/json")
         log.info(
             "description_store.updated",
             posting_id=posting_id,
@@ -215,16 +257,16 @@ def upload_description(
             diff_len=len(diff),
         )
     else:
-        _put_object(history_key, json.dumps({"versions": []}), "application/json")
+        await _put_object(history_key, json.dumps({"versions": []}), "application/json")
         log.info("description_store.created", posting_id=posting_id, locale=locale)
 
-    _put_object(latest_key, html)
+    await _put_object(latest_key, html)
 
 
-def get_description_html(posting_id: str, locale: str) -> str | None:
+async def get_description_html(posting_id: str, locale: str) -> str | None:
     """Fetch the latest HTML description from R2. Returns None if not found."""
     key = f"{_prefix(posting_id)}/{locale}/latest.html"
-    return get_object(key)
+    return await get_object(key)
 
 
 def get_description_url(posting_id: str, locale: str) -> str:

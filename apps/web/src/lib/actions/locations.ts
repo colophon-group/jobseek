@@ -43,6 +43,7 @@ async function _querySuggestions(params: {
     population: number;
     lat: number | null;
     lng: number | null;
+    match_rank: number;
   }>(sql`
     WITH active_locs AS (
       WITH RECURSIVE job_locs AS (
@@ -60,21 +61,40 @@ async function _querySuggestions(params: {
       SELECT lm.macro_id FROM ancestors a
       JOIN location_macro_member lm ON lm.country_id = a.id
     ),
-    matches AS (
-      SELECT DISTINCT ON (l.id) l.id, l.type, l.population, l.lat, l.lng, l.parent_id
+    prefix_matches AS (
+      SELECT DISTINCT ON (l.id) l.id, l.type, l.population, l.lat, l.lng, l.parent_id,
+             1 AS match_rank
       FROM location_name ln
       JOIN location l ON l.id = ln.location_id
       JOIN active_locs al ON al.id = l.id
       WHERE ln.locale = ${locale}
         AND lower(ln.name) LIKE ${q + "%"}
       ORDER BY l.id
+    ),
+    fuzzy_matches AS (
+      SELECT DISTINCT ON (l.id) l.id, l.type, l.population, l.lat, l.lng, l.parent_id,
+             2 AS match_rank
+      FROM location_name ln
+      JOIN location l ON l.id = ln.location_id
+      JOIN active_locs al ON al.id = l.id
+      WHERE ln.locale = ${locale}
+        AND length(${q}) >= 3
+        AND similarity(lower(ln.name), ${q}) > 0.25
+        AND l.id NOT IN (SELECT id FROM prefix_matches)
+      ORDER BY l.id, similarity(lower(ln.name), ${q}) DESC
+    ),
+    matches AS (
+      SELECT * FROM prefix_matches
+      UNION ALL
+      SELECT * FROM fuzzy_matches
     )
     SELECT m.id,
       dn.name,
       m.type::text AS type,
       pdn.name AS parent_name,
       COALESCE(m.population, 0) AS population,
-      m.lat, m.lng
+      m.lat, m.lng,
+      m.match_rank
     FROM matches m
     JOIN location_name dn
       ON dn.location_id = m.id AND dn.locale = ${locale} AND dn.is_display = true
@@ -82,7 +102,7 @@ async function _querySuggestions(params: {
       ON pdn.location_id = m.parent_id AND pdn.locale = ${locale} AND pdn.is_display = true
   `);
 
-  type Row = { id: number; name: string; type: string; parent_name: string | null; population: number; lat: number | null; lng: number | null };
+  type Row = { id: number; name: string; type: string; parent_name: string | null; population: number; lat: number | null; lng: number | null; match_rank: number };
   const all = rows as unknown as Row[];
 
   // Sort: nearby locations by distance, then far locations by population
@@ -95,6 +115,7 @@ async function _querySuggestions(params: {
         : Infinity,
     }))
     .sort((a, b) => {
+      if (a.match_rank !== b.match_rank) return a.match_rank - b.match_rank;
       const nearA = a.dist < NEAR_KM;
       const nearB = b.dist < NEAR_KM;
       if (nearA && nearB) return a.dist - b.dist;

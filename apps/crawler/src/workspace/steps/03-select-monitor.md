@@ -135,10 +135,10 @@ When multiple monitors are detected, this order is a heuristic for interpreting 
 1. **Coverage** — all jobs must be discovered. A monitor returning more jobs than the
    page shows is a *superset*, not a problem — prefer it over a page-matching monitor.
 2. **Required fields** — title and description must extract for every job.
-3. **Resilience** — rich monitors > nextdata/api_sniffer > sitemap/umantis > dom.
+3. **Resilience** — API monitors > nextdata/api_sniffer > sitemap/umantis > dom.
    Avoid relying on elements that vary between job postings or change on redesign
    (CSS classes, DOM structure). Simpler configs over complex ones.
-   An api_sniffer or rich API monitor that works is almost always better than dom —
+   An api_sniffer or API monitor that works is almost always better than dom —
    it is faster, cheaper, and immune to frontend redesigns.
 4. **Important fields** — locations and job_location_type when available.
 5. **Speed/cost** — among equivalent configs, prefer cheaper and `render: false`.

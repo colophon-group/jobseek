@@ -8,9 +8,11 @@ class Settings(BaseSettings):
     upstash_redis_rest_url: str = ""
     upstash_redis_rest_token: str = ""
     log_level: str = "INFO"
+    worker_id_prefix: str = ""
     crawler_batch_limit: int = 200
     crawler_poll_interval: int = 15
     crawler_max_concurrent: int = 20
+    metrics_port: int = 9091
 
     apify_token: str = ""
 

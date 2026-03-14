@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from src.batch import WorkItem
 from src.scheduler import WorkerPool, run_continuous_loop
@@ -26,6 +26,14 @@ def _slow_work_item(domain="slow.com", kind="monitor", delay=0.05, result=(True,
         return result
 
     return WorkItem(domain=domain, kind=kind, run=_run)
+
+
+def _mock_pool():
+    """Create a mock asyncpg pool with metrics-compatible stubs."""
+    pool = MagicMock()
+    pool.get_size.return_value = 0
+    pool.get_idle_size.return_value = 0
+    return pool
 
 
 def _failing_work_item(domain="fail.com", kind="monitor"):
@@ -179,34 +187,31 @@ class TestWorkerPool:
         assert wp.failed == 1
         assert wp.succeeded == 2
 
-    async def test_queue_cap_rejects_excess(self):
-        """submit() returns False when per-domain queue is full."""
+    async def test_submit_always_accepts(self):
+        """submit() always accepts — items queue behind in-flight domains."""
         wp = WorkerPool(5)
-        assert wp.submit(_slow_work_item(domain="d.com", delay=0.1))  # runs
-        assert wp.submit(_slow_work_item(domain="d.com", delay=0.1))  # queued (1)
-        assert wp.submit(_slow_work_item(domain="d.com", delay=0.1))  # queued (2)
-        assert not wp.submit(_slow_work_item(domain="d.com", delay=0.1))  # rejected
-        assert wp.queued_count == 2
-        assert wp.total_submitted == 3  # rejected item not counted
+        wp.submit(_slow_work_item(domain="d.com", delay=0.1))  # runs
+        wp.submit(_slow_work_item(domain="d.com", delay=0.1))  # queued (1)
+        wp.submit(_slow_work_item(domain="d.com", delay=0.1))  # queued (2)
+        wp.submit(_slow_work_item(domain="d.com", delay=0.1))  # queued (3)
+        assert wp.queued_count == 3
+        assert wp.total_submitted == 4
         await wp.drain()
 
     async def test_claim_budget(self):
-        """claim_budget accounts for free slots + queue room."""
+        """claim_budget equals free concurrency slots."""
         wp = WorkerPool(5)
-        assert wp.claim_budget == 5  # all free, no domains
+        assert wp.claim_budget == 5  # all free
 
         # Start 2 domains
         wp.submit(_slow_work_item(domain="a.com", delay=0.1))
         wp.submit(_slow_work_item(domain="b.com", delay=0.1))
         await asyncio.sleep(0.01)
-        # free_slots=3, 2 domains × 2 queue cap = 4 room, budget = 3+4 = 7
-        assert wp.claim_budget == 7
+        assert wp.claim_budget == 3  # 2 slots used
 
-        # Fill a.com queue
+        # Queuing behind a.com doesn't change budget (shares slot)
         wp.submit(_slow_work_item(domain="a.com", delay=0.1))
-        wp.submit(_slow_work_item(domain="a.com", delay=0.1))
-        # free_slots=3, queue_room = 2*2 - 2 = 2, budget = 3+2 = 5
-        assert wp.claim_budget == 5
+        assert wp.claim_budget == 3
         await wp.drain()
 
     async def test_timeout_kills_stuck_job(self):
@@ -263,7 +268,7 @@ class TestRunContinuousLoop:
         mock_scrapes.side_effect = track_scrapes
 
         shutdown = asyncio.Event()
-        pool = AsyncMock()
+        pool = _mock_pool()
         http = AsyncMock()
 
         # Run one iteration then shutdown
@@ -290,7 +295,7 @@ class TestRunContinuousLoop:
     async def test_pool_full_skips_scrapes(self, mock_monitors, mock_scrapes):
         """When monitors fill all slots, scrapes are not claimed."""
         shutdown = asyncio.Event()
-        pool = AsyncMock()
+        pool = _mock_pool()
         http = AsyncMock()
         iteration = 0
 
@@ -319,7 +324,7 @@ class TestRunContinuousLoop:
     async def test_scrapes_fill_remaining(self, mock_monitors, mock_scrapes):
         """Scrapes fill slots left after monitors."""
         shutdown = asyncio.Event()
-        pool = AsyncMock()
+        pool = _mock_pool()
         http = AsyncMock()
         iteration = 0
 
@@ -344,7 +349,7 @@ class TestRunContinuousLoop:
     async def test_idle_backoff(self, mock_monitors, mock_scrapes):
         """When no work is found, loop backs off (doesn't busy-wait)."""
         shutdown = asyncio.Event()
-        pool = AsyncMock()
+        pool = _mock_pool()
         http = AsyncMock()
         iteration = 0
 
@@ -368,7 +373,7 @@ class TestRunContinuousLoop:
     async def test_shutdown_drains(self, mock_monitors, mock_scrapes):
         """Shutdown signal causes drain of in-flight tasks."""
         shutdown = asyncio.Event()
-        pool = AsyncMock()
+        pool = _mock_pool()
         http = AsyncMock()
         completed = []
 
@@ -401,7 +406,7 @@ class TestRunContinuousLoop:
     async def test_queued_items_process_without_reclaim(self, mock_monitors, mock_scrapes):
         """Items queued for the same domain process without a new claim tick."""
         shutdown = asyncio.Event()
-        pool = AsyncMock()
+        pool = _mock_pool()
         http = AsyncMock()
         processed = []
 

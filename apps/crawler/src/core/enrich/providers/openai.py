@@ -5,7 +5,7 @@ from __future__ import annotations
 import io
 import json
 
-from src.core.llm_providers import BatchRequest, LLMUsage
+from src.core.enrich.providers import BatchRequest, LLMUsage
 
 
 class OpenAIBatchProvider:

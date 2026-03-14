@@ -1,15 +1,12 @@
-"""Tests for LocationResolver — in-memory location matching engine."""
+"""Tests for LocationResolver — SQLite-backed location matching engine."""
 
 from __future__ import annotations
 
 import pytest
 
 from src.core.location_resolve import (
-    _CITY_SUFFIX_RE,
-    _THE_PREFIX_RE,
     LocationResolver,
     _LocationEntry,
-    _strip_accents,
 )
 
 
@@ -19,28 +16,36 @@ def _build_resolver(
 ) -> LocationResolver:
     """Build a LocationResolver from test data without DB.
 
-    Mirrors the index-building logic of LocationResolver.load():
-    adds accent-stripped, "The"-prefix-stripped, and "City"-suffix-stripped variants.
+    Populates an in-memory SQLite database with test entries and names,
+    mirroring the variant-expansion logic of LocationResolver.load().
     """
     resolver = LocationResolver()
-    for entry in entries:
-        resolver._entries[entry.id] = entry
+    resolver._init_db(":memory:")
+    assert resolver._db is not None
+
+    # Insert entries
+    resolver._db.executemany(
+        "INSERT INTO entry (id, parent_id, loc_type, population, languages) VALUES (?, ?, ?, ?, ?)",
+        [(e.id, e.parent_id, e.loc_type, e.population, ",".join(e.languages)) for e in entries],
+    )
+
+    # Insert name variants
+    seen: set[tuple[str, int]] = set()
+    name_pairs: list[tuple[str, int]] = []
     for loc_id, locale_names in names.items():
         for _locale, name in locale_names.items():
-            key = name.lower()
-            resolver._name_to_ids.setdefault(key, []).append(loc_id)
-            # Accent-stripped variant
-            stripped = _strip_accents(key)
-            if stripped != key:
-                resolver._name_to_ids.setdefault(stripped, []).append(loc_id)
-            # "The " prefix and " City" suffix variants
-            for variant in (key, stripped):
-                no_the = _THE_PREFIX_RE.sub("", variant)
-                if no_the != variant:
-                    resolver._name_to_ids.setdefault(no_the, []).append(loc_id)
-                no_city = _CITY_SUFFIX_RE.sub("", variant)
-                if no_city != variant:
-                    resolver._name_to_ids.setdefault(no_city, []).append(loc_id)
+            for variant in LocationResolver._name_variants(name.lower()):
+                pair = (variant, loc_id)
+                if pair not in seen:
+                    seen.add(pair)
+                    name_pairs.append(pair)
+    resolver._db.executemany(
+        "INSERT INTO name_index (name, location_id) VALUES (?, ?)",
+        name_pairs,
+    )
+
+    resolver._db.executescript("CREATE INDEX IF NOT EXISTS idx_name ON name_index(name);")
+    resolver._db.commit()
     resolver._loaded = True
     return resolver
 

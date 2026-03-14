@@ -3,12 +3,8 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from src.core.monitors import DiscoveredJob
 from src.core.monitors.breezy import (
     _breezy_portal_from_url,
-    _parse_detail,
-    _parse_locations,
-    _parse_salary_text,
     can_handle,
     discover,
 )
@@ -27,92 +23,8 @@ class TestPortalDetection:
         assert _breezy_portal_from_url("https://example.com/careers") is None
 
 
-class TestParsingHelpers:
-    def test_parse_locations_prefers_locations_array(self):
-        opening = {
-            "locations": [
-                {"name": "Berlin, DE"},
-                {"city": "Berlin", "country": {"id": "DE"}},
-                {"name": "Berlin, DE"},
-            ],
-            "location": {"name": "Fallback"},
-        }
-        assert _parse_locations(opening) == ["Berlin, DE"]
-
-    def test_parse_locations_fallback(self):
-        opening = {"location": {"city": "Stockholm", "country": {"id": "SE"}}}
-        assert _parse_locations(opening) == ["Stockholm, SE"]
-
-    def test_parse_salary_text(self):
-        salary = _parse_salary_text("$75.00 - $95.00 / hr")
-        assert salary == {"currency": "USD", "min": 75, "max": 95, "unit": "hour"}
-
-    def test_parse_salary_text_k_suffix(self):
-        salary = _parse_salary_text("$60k - $90k")
-        assert salary == {"currency": "USD", "min": 60000, "max": 90000, "unit": "year"}
-
-    def test_parse_detail_prefers_jsonld(self):
-        html = """
-        <html>
-          <head>
-            <script type="application/ld+json">
-              {
-                "@context": "https://schema.org",
-                "@type": "JobPosting",
-                "description": "<p>JSON-LD description</p>",
-                "employmentType": "FULL_TIME",
-                "datePosted": "2026-03-01",
-                "jobLocationType": "TELECOMMUTE",
-                "jobLocation": {
-                  "@type": "Place",
-                  "address": {
-                    "@type": "PostalAddress",
-                    "addressLocality": "Berlin",
-                    "addressRegion": "BE",
-                    "addressCountry": "DE"
-                  }
-                },
-                "baseSalary": {
-                  "@type": "MonetaryAmount",
-                  "currency": "EUR",
-                  "value": {
-                    "@type": "QuantitativeValue",
-                    "unitText": "YEAR",
-                    "minValue": 100000,
-                    "maxValue": 120000
-                  }
-                }
-              }
-            </script>
-          </head>
-          <body><div class="description"><p>HTML fallback</p></div></body>
-        </html>
-        """
-        detail = _parse_detail(html)
-        assert detail["description"] == "<p>JSON-LD description</p>"
-        assert detail["employment_type"] == "Full-time"
-        assert detail["job_location_type"] == "remote"
-        assert detail["date_posted"] == "2026-03-01"
-        assert detail["locations"] == ["Berlin, BE, DE"]
-        assert detail["base_salary"] == {
-            "currency": "EUR",
-            "min": 100000,
-            "max": 120000,
-            "unit": "year",
-        }
-
-    def test_parse_detail_html_fallback(self):
-        html = """
-        <html><body>
-          <div class="description"><p>Fallback description</p><ul><li>A</li></ul></div>
-        </body></html>
-        """
-        detail = _parse_detail(html)
-        assert detail["description"] == "<p>Fallback description</p><ul><li>A</li></ul>"
-
-
 class TestDiscover:
-    async def test_discover_merges_listing_and_detail_fields(self):
+    async def test_returns_urls(self):
         listing = [
             {
                 "id": "abc",
@@ -139,73 +51,21 @@ class TestDiscover:
             },
         ]
 
-        detail_jsonld = """
-        <html><head><script type="application/ld+json">
-          {
-            "@context":"https://schema.org",
-            "@type":"JobPosting",
-            "description":"<p>Build and scale platforms.</p>",
-            "employmentType":"FULL_TIME",
-            "datePosted":"2026-03-01",
-            "baseSalary":{
-              "@type":"MonetaryAmount",
-              "currency":"USD",
-              "value":{
-                "@type":"QuantitativeValue",
-                "unitText":"YEAR",
-                "minValue":100000,
-                "maxValue":120000
-              }
-            }
-          }
-        </script></head><body><div class="description"><p>Fallback</p></div></body></html>
-        """
-        detail_html = """
-        <html><body>
-          <div class="description"><p>Help customers solve issues.</p></div>
-        </body></html>
-        """
-
         def handler(request: httpx.Request) -> httpx.Response:
             host = request.url.host
             path = request.url.path
             if host == "acme.breezy.hr" and path == "/json":
                 return httpx.Response(200, json=listing)
-            if host == "acme.breezy.hr" and path == "/p/abc-platform-engineer":
-                return httpx.Response(200, text=detail_jsonld)
-            if host == "acme.breezy.hr" and path == "/p/def-support-specialist":
-                return httpx.Response(200, text=detail_html)
             return httpx.Response(404)
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             board = {"board_url": "https://acme.breezy.hr", "metadata": {}}
-            jobs = await discover(board, client)
+            urls = await discover(board, client)
 
-        assert len(jobs) == 2
-        assert all(isinstance(j, DiscoveredJob) for j in jobs)
-
-        by_url = {job.url: job for job in jobs}
-        first = by_url["https://acme.breezy.hr/p/abc-platform-engineer"]
-        assert first.title == "Platform Engineer"
-        assert first.description == "<p>Build and scale platforms.</p>"
-        assert first.employment_type == "Full-time"
-        assert first.date_posted == "2026-03-01"
-        assert first.base_salary == {
-            "currency": "USD",
-            "min": 100000,
-            "max": 120000,
-            "unit": "year",
-        }
-        assert first.metadata is not None
-        assert first.metadata["department"] == "Engineering"
-        assert first.metadata["company"] == "Acme"
-
-        second = by_url["https://acme.breezy.hr/p/def-support-specialist"]
-        assert second.title == "Support Specialist"
-        assert second.description == "<p>Help customers solve issues.</p>"
-        assert second.job_location_type == "remote"
-        assert second.employment_type == "Part-time"
-        assert second.base_salary == {"currency": "USD", "min": 30, "max": 40, "unit": "hour"}
+        assert isinstance(urls, set)
+        assert len(urls) == 2
+        assert "https://acme.breezy.hr/p/abc-platform-engineer" in urls
+        assert "https://acme.breezy.hr/p/def-support-specialist" in urls
 
     async def test_discover_requires_portal_derivation(self):
         transport = httpx.MockTransport(lambda request: httpx.Response(200))

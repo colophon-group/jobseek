@@ -3,16 +3,22 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from src.core.monitors import DiscoveredJob
 from src.core.monitors.rippling import (
-    _parse_employment_type,
-    _parse_job,
-    _parse_job_location_type,
-    _parse_salary,
     _slug_from_url,
     can_handle,
     discover,
 )
+from src.core.scrapers.rippling import (
+    JobContent,
+    _extract_job_params,
+    _parse_detail,
+    _parse_employment_type,
+    _parse_job_location_type,
+    _parse_salary,
+    scrape,
+)
+
+# ── Monitor tests ────────────────────────────────────────────────────────
 
 
 class TestSlugFromUrl:
@@ -37,6 +43,150 @@ class TestSlugFromUrl:
 
     def test_with_trailing_path(self):
         assert _slug_from_url("https://ats.rippling.com/acme/jobs/some-job-id") == "acme"
+
+
+class TestDiscover:
+    async def test_returns_urls(self):
+        def handler(request):
+            return httpx.Response(
+                200,
+                json=[
+                    {"uuid": "aaa"},
+                    {"uuid": "bbb"},
+                ],
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://ats.rippling.com/acme/jobs",
+                "metadata": {"slug": "acme"},
+            }
+            urls = await discover(board, client)
+            assert isinstance(urls, set)
+            assert len(urls) == 2
+            assert "https://ats.rippling.com/acme/jobs/aaa" in urls
+            assert "https://ats.rippling.com/acme/jobs/bbb" in urls
+
+    async def test_empty_response(self):
+        def handler(request):
+            return httpx.Response(200, json=[])
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://ats.rippling.com/acme/jobs",
+                "metadata": {"slug": "acme"},
+            }
+            urls = await discover(board, client)
+            assert len(urls) == 0
+
+    async def test_no_slug_raises(self):
+        transport = httpx.MockTransport(lambda r: httpx.Response(200))
+        async with httpx.AsyncClient(transport=transport) as client:
+            board = {"board_url": "https://example.com/careers", "metadata": {}}
+            with pytest.raises(ValueError, match="Cannot derive Rippling"):
+                await discover(board, client)
+
+    async def test_slug_from_metadata(self):
+        def handler(request):
+            assert "myslug" in str(request.url)
+            return httpx.Response(200, json=[])
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {"board_url": "https://example.com/careers", "metadata": {"slug": "myslug"}}
+            urls = await discover(board, client)
+            assert len(urls) == 0
+
+    async def test_slug_from_board_url(self):
+        def handler(request):
+            assert "testco" in str(request.url)
+            return httpx.Response(200, json=[])
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://ats.rippling.com/testco/jobs",
+                "metadata": {},
+            }
+            urls = await discover(board, client)
+            assert len(urls) == 0
+
+    async def test_http_error_raises(self):
+        def handler(request):
+            return httpx.Response(500)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://ats.rippling.com/acme/jobs",
+                "metadata": {"slug": "acme"},
+            }
+            with pytest.raises(httpx.HTTPStatusError):
+                await discover(board, client)
+
+
+class TestCanHandle:
+    async def test_rippling_url_match(self):
+        result = await can_handle("https://ats.rippling.com/acme/jobs")
+        assert result is not None
+        assert result["slug"] == "acme"
+
+    async def test_non_matching_url_no_client(self):
+        result = await can_handle("https://example.com/careers")
+        assert result is None
+
+    async def test_url_match_with_client_probe(self):
+        def handler(request):
+            return httpx.Response(200, json=[{"uuid": "1"}, {"uuid": "2"}])
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle("https://ats.rippling.com/acme/jobs", client)
+            assert result is not None
+            assert result["slug"] == "acme"
+            assert result["jobs"] == 2
+
+    async def test_detects_in_page_html(self):
+        def handler(request):
+            url = str(request.url)
+            if "api.rippling.com" in url:
+                return httpx.Response(200, json=[{"uuid": "1"}])
+            return httpx.Response(
+                200,
+                text='<html><script src="https://ats.rippling.com/myco/jobs"></script></html>',
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle("https://example.com/careers", client)
+            assert result is not None
+            assert result["slug"] == "myco"
+
+    async def test_no_match(self):
+        def handler(request):
+            url = str(request.url)
+            if "api.rippling.com" in url:
+                return httpx.Response(404)
+            return httpx.Response(200, text="<html>no rippling refs</html>")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle("https://www.example.com/careers", client)
+            assert result is None
+
+
+# ── Scraper tests ────────────────────────────────────────────────────────
+
+
+class TestExtractJobParams:
+    def test_standard_url(self):
+        result = _extract_job_params("https://ats.rippling.com/acme-corp/jobs/abc-123")
+        assert result == ("acme-corp", "abc-123")
+
+    def test_us1_subdomain(self):
+        result = _extract_job_params("https://ats.us1.rippling.com/acme/jobs/xyz-456")
+        assert result == ("acme", "xyz-456")
+
+    def test_with_locale_prefix(self):
+        result = _extract_job_params("https://ats.rippling.com/en-US/acme/jobs/def-789")
+        assert result == ("acme", "def-789")
+
+    def test_non_matching_url(self):
+        assert _extract_job_params("https://example.com/jobs/123") is None
 
 
 class TestParseSalary:
@@ -113,10 +263,9 @@ class TestParseEmploymentType:
         assert _parse_employment_type({"label": "", "id": "Custom"}) == "Custom"
 
 
-class TestParseJob:
+class TestParseDetail:
     def test_full_detail(self):
         detail = {
-            "url": "https://ats.rippling.com/acme/jobs/123",
             "name": "Software Engineer",
             "description": {"company": "<p>About Acme</p>", "role": "<p>Build stuff</p>"},
             "workLocations": ["San Francisco", "Remote"],
@@ -128,9 +277,8 @@ class TestParseJob:
                 {"rangeStart": 100000, "rangeEnd": 150000, "currency": "USD", "frequency": "ANNUAL"}
             ],
         }
-        result = _parse_job(detail)
-        assert result is not None
-        assert result.url == "https://ats.rippling.com/acme/jobs/123"
+        result = _parse_detail(detail)
+        assert isinstance(result, JobContent)
         assert result.title == "Software Engineer"
         assert "<p>About Acme</p>" in result.description
         assert "<p>Build stuff</p>" in result.description
@@ -143,217 +291,109 @@ class TestParseJob:
         assert result.metadata["base_department"] == "Tech"
         assert result.metadata["company"] == "Acme Corp"
 
-    def test_missing_url_returns_none(self):
-        assert _parse_job({}) is None
-        assert _parse_job({"name": "No URL"}) is None
-
     def test_dual_description(self):
         detail = {
-            "url": "https://example.com/job",
             "description": {"company": "Company info", "role": "Role info"},
         }
-        result = _parse_job(detail)
+        result = _parse_detail(detail)
         assert result.description == "Company info\nRole info"
 
     def test_only_role_description(self):
         detail = {
-            "url": "https://example.com/job",
             "description": {"role": "Role only"},
         }
-        result = _parse_job(detail)
+        result = _parse_detail(detail)
         assert result.description == "Role only"
 
     def test_no_description(self):
-        detail = {"url": "https://example.com/job"}
-        result = _parse_job(detail)
+        result = _parse_detail({})
         assert result.description is None
 
     def test_work_locations(self):
         detail = {
-            "url": "https://example.com/job",
             "workLocations": ["NYC", "LA"],
         }
-        result = _parse_job(detail)
+        result = _parse_detail(detail)
         assert result.locations == ["NYC", "LA"]
 
     def test_empty_work_locations(self):
         detail = {
-            "url": "https://example.com/job",
             "workLocations": [],
         }
-        result = _parse_job(detail)
+        result = _parse_detail(detail)
         assert result.locations is None
 
     def test_metadata_department_dict(self):
         detail = {
-            "url": "https://example.com/job",
             "department": {"name": "Sales", "base_department": "Sales"},
         }
-        result = _parse_job(detail)
+        result = _parse_detail(detail)
         # base_department == name, so only department is set
         assert result.metadata == {"department": "Sales"}
 
     def test_no_metadata(self):
-        detail = {"url": "https://example.com/job"}
-        result = _parse_job(detail)
+        result = _parse_detail({})
         assert result.metadata is None
 
 
-class TestDiscover:
-    async def test_returns_jobs(self):
+class TestScrape:
+    async def test_full_scrape(self):
         def handler(request):
-            url = str(request.url)
-            if url.endswith("/jobs"):
-                # List endpoint returns UUIDs
-                return httpx.Response(
-                    200,
-                    json=[
-                        {"uuid": "aaa"},
-                        {"uuid": "bbb"},
-                    ],
-                )
-            if "/jobs/aaa" in url:
-                return httpx.Response(
-                    200,
-                    json={
-                        "url": "https://ats.rippling.com/acme/jobs/aaa",
-                        "name": "Engineer",
-                        "description": {"role": "Build things"},
-                    },
-                )
-            if "/jobs/bbb" in url:
-                return httpx.Response(
-                    200,
-                    json={
-                        "url": "https://ats.rippling.com/acme/jobs/bbb",
-                        "name": "Designer",
-                        "description": {"role": "Design things"},
-                    },
-                )
-            return httpx.Response(404)
-
-        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            board = {
-                "board_url": "https://ats.rippling.com/acme/jobs",
-                "metadata": {"slug": "acme"},
-            }
-            jobs = await discover(board, client)
-            assert len(jobs) == 2
-            assert all(isinstance(j, DiscoveredJob) for j in jobs)
-
-    async def test_empty_response(self):
-        def handler(request):
-            return httpx.Response(200, json=[])
-
-        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            board = {
-                "board_url": "https://ats.rippling.com/acme/jobs",
-                "metadata": {"slug": "acme"},
-            }
-            jobs = await discover(board, client)
-            assert len(jobs) == 0
-
-    async def test_no_slug_raises(self):
-        transport = httpx.MockTransport(lambda r: httpx.Response(200))
-        async with httpx.AsyncClient(transport=transport) as client:
-            board = {"board_url": "https://example.com/careers", "metadata": {}}
-            with pytest.raises(ValueError, match="Cannot derive Rippling"):
-                await discover(board, client)
-
-    async def test_slug_from_metadata(self):
-        def handler(request):
-            assert "myslug" in str(request.url)
-            return httpx.Response(200, json=[])
-
-        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            board = {"board_url": "https://example.com/careers", "metadata": {"slug": "myslug"}}
-            jobs = await discover(board, client)
-            assert len(jobs) == 0
-
-    async def test_slug_from_board_url(self):
-        def handler(request):
-            assert "testco" in str(request.url)
-            return httpx.Response(200, json=[])
-
-        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            board = {
-                "board_url": "https://ats.rippling.com/testco/jobs",
-                "metadata": {},
-            }
-            jobs = await discover(board, client)
-            assert len(jobs) == 0
-
-    async def test_skips_jobs_without_url(self):
-        def handler(request):
-            url = str(request.url)
-            if url.endswith("/jobs"):
-                return httpx.Response(200, json=[{"uuid": "x"}])
-            # Detail has no url field
-            return httpx.Response(200, json={"name": "No URL"})
-
-        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            board = {
-                "board_url": "https://ats.rippling.com/acme/jobs",
-                "metadata": {"slug": "acme"},
-            }
-            jobs = await discover(board, client)
-            assert len(jobs) == 0
-
-    async def test_http_error_raises(self):
-        def handler(request):
-            return httpx.Response(500)
-
-        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            board = {
-                "board_url": "https://ats.rippling.com/acme/jobs",
-                "metadata": {"slug": "acme"},
-            }
-            with pytest.raises(httpx.HTTPStatusError):
-                await discover(board, client)
-
-
-class TestCanHandle:
-    async def test_rippling_url_match(self):
-        result = await can_handle("https://ats.rippling.com/acme/jobs")
-        assert result is not None
-        assert result["slug"] == "acme"
-
-    async def test_non_matching_url_no_client(self):
-        result = await can_handle("https://example.com/careers")
-        assert result is None
-
-    async def test_url_match_with_client_probe(self):
-        def handler(request):
-            return httpx.Response(200, json=[{"uuid": "1"}, {"uuid": "2"}])
-
-        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            result = await can_handle("https://ats.rippling.com/acme/jobs", client)
-            assert result is not None
-            assert result["slug"] == "acme"
-            assert result["jobs"] == 2
-
-    async def test_detects_in_page_html(self):
-        def handler(request):
-            url = str(request.url)
-            if "api.rippling.com" in url:
-                return httpx.Response(200, json=[{"uuid": "1"}])
             return httpx.Response(
                 200,
-                text='<html><script src="https://ats.rippling.com/myco/jobs"></script></html>',
+                json={
+                    "url": "https://ats.rippling.com/acme/jobs/aaa",
+                    "name": "Engineer",
+                    "description": {"role": "<p>Build things</p>"},
+                    "employmentType": {"label": "SALARIED_FT"},
+                    "createdOn": "2024-06-01",
+                },
             )
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            result = await can_handle("https://example.com/careers", client)
-            assert result is not None
-            assert result["slug"] == "myco"
+            result = await scrape(
+                "https://ats.rippling.com/acme/jobs/aaa",
+                {"slug": "acme"},
+                client,
+            )
+            assert result.title == "Engineer"
+            assert result.description == "<p>Build things</p>"
+            assert result.employment_type == "Full-time"
 
-    async def test_no_match(self):
+    async def test_unparseable_url(self):
+        transport = httpx.MockTransport(lambda r: httpx.Response(200))
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await scrape("https://example.com/bad", {}, client)
+            assert result.title is None
+
+    async def test_detail_failed(self):
         def handler(request):
-            url = str(request.url)
-            if "api.rippling.com" in url:
-                return httpx.Response(404)
-            return httpx.Response(200, text="<html>no rippling refs</html>")
+            return httpx.Response(404)
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            result = await can_handle("https://www.example.com/careers", client)
-            assert result is None
+            result = await scrape(
+                "https://ats.rippling.com/acme/jobs/aaa",
+                {"slug": "acme"},
+                client,
+            )
+            assert result.title is None
+
+    async def test_config_slug_overrides_url_slug(self):
+        """Config slug should be preferred over slug extracted from URL."""
+        captured_urls: list[str] = []
+
+        def handler(request):
+            captured_urls.append(str(request.url))
+            return httpx.Response(
+                200,
+                json={"name": "Test", "description": {"role": "test"}},
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            await scrape(
+                "https://ats.rippling.com/url-slug/jobs/aaa",
+                {"slug": "config-slug"},
+                client,
+            )
+            assert "config-slug" in captured_urls[0]
+            assert "url-slug" not in captured_urls[0]

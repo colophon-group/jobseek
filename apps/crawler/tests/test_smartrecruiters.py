@@ -3,16 +3,22 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from src.core.monitors import DiscoveredJob
 from src.core.monitors.smartrecruiters import (
-    _build_description,
-    _build_location,
-    _parse_job,
-    _parse_salary,
     _token_from_url,
     can_handle,
     discover,
 )
+from src.core.scrapers import JobContent
+from src.core.scrapers.smartrecruiters import (
+    _build_description,
+    _build_location,
+    _parse_detail,
+    _parse_job_url,
+    _parse_salary,
+    scrape,
+)
+
+# ── Monitor tests ────────────────────────────────────────────────────────
 
 
 class TestTokenFromUrl:
@@ -36,6 +42,231 @@ class TestTokenFromUrl:
 
     def test_non_matching_url(self):
         assert _token_from_url("https://example.com/careers") is None
+
+
+class TestDiscover:
+    async def test_returns_urls(self):
+        def handler(request):
+            return httpx.Response(
+                200,
+                json={
+                    "content": [
+                        {"id": "post1"},
+                        {"id": "post2"},
+                    ],
+                    "totalFound": 2,
+                },
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://careers.smartrecruiters.com/acme",
+                "metadata": {"token": "acme"},
+            }
+            urls = await discover(board, client)
+            assert isinstance(urls, set)
+            assert len(urls) == 2
+            assert "https://jobs.smartrecruiters.com/acme/post1" in urls
+            assert "https://jobs.smartrecruiters.com/acme/post2" in urls
+
+    async def test_empty_response(self):
+        def handler(request):
+            return httpx.Response(
+                200,
+                json={"content": [], "totalFound": 0},
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://careers.smartrecruiters.com/acme",
+                "metadata": {"token": "acme"},
+            }
+            urls = await discover(board, client)
+            assert isinstance(urls, set)
+            assert len(urls) == 0
+
+    async def test_no_token_raises(self):
+        transport = httpx.MockTransport(lambda r: httpx.Response(200))
+        async with httpx.AsyncClient(transport=transport) as client:
+            board = {"board_url": "https://example.com/careers", "metadata": {}}
+            with pytest.raises(ValueError, match="Cannot derive SmartRecruiters"):
+                await discover(board, client)
+
+    async def test_token_from_metadata(self):
+        def handler(request):
+            assert "mytoken" in str(request.url)
+            return httpx.Response(
+                200,
+                json={"content": [], "totalFound": 0},
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://example.com/careers",
+                "metadata": {"token": "mytoken"},
+            }
+            urls = await discover(board, client)
+            assert len(urls) == 0
+
+    async def test_token_from_board_url(self):
+        def handler(request):
+            assert "testco" in str(request.url)
+            return httpx.Response(
+                200,
+                json={"content": [], "totalFound": 0},
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://careers.smartrecruiters.com/testco",
+                "metadata": {},
+            }
+            urls = await discover(board, client)
+            assert len(urls) == 0
+
+    async def test_pagination(self):
+        call_count = 0
+
+        def handler(request):
+            nonlocal call_count
+            url = str(request.url)
+            if "offset=0" in url or "offset" not in url:
+                call_count += 1
+                return httpx.Response(
+                    200,
+                    json={
+                        "content": [{"id": f"p{i}"} for i in range(100)],
+                        "totalFound": 150,
+                    },
+                )
+            else:
+                call_count += 1
+                return httpx.Response(
+                    200,
+                    json={
+                        "content": [{"id": f"p{100 + i}"} for i in range(50)],
+                        "totalFound": 150,
+                    },
+                )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://careers.smartrecruiters.com/acme",
+                "metadata": {"token": "acme"},
+            }
+            urls = await discover(board, client)
+            assert len(urls) == 150
+            assert call_count == 2  # Two pages
+
+    async def test_http_error_raises(self):
+        def handler(request):
+            return httpx.Response(500)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://careers.smartrecruiters.com/acme",
+                "metadata": {"token": "acme"},
+            }
+            with pytest.raises(httpx.HTTPStatusError):
+                await discover(board, client)
+
+
+class TestCanHandle:
+    async def test_smartrecruiters_url_match(self):
+        result = await can_handle("https://careers.smartrecruiters.com/acme")
+        assert result is not None
+        assert result["token"] == "acme"
+
+    async def test_non_matching_url_no_client(self):
+        result = await can_handle("https://example.com/careers")
+        assert result is None
+
+    async def test_url_match_with_client(self):
+        def handler(request):
+            return httpx.Response(200, json={"totalFound": 42, "content": []})
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle("https://careers.smartrecruiters.com/acme", client)
+            assert result is not None
+            assert result["token"] == "acme"
+            assert result["jobs"] == 42
+
+    async def test_detects_in_page_html(self):
+        def handler(request):
+            url = str(request.url)
+            if "api.smartrecruiters.com" in url:
+                return httpx.Response(200, json={"totalFound": 5, "content": []})
+            return httpx.Response(
+                200,
+                text='<html><script src="https://careers.smartrecruiters.com/myco/widget"></script></html>',
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle("https://www.example.com/careers", client)
+            assert result is not None
+            assert result["token"] == "myco"
+
+    async def test_no_match(self):
+        def handler(request):
+            url = str(request.url)
+            if "api.smartrecruiters.com" in url:
+                return httpx.Response(404)
+            return httpx.Response(200, text="<html>no smartrecruiters</html>")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle("https://www.example.com/careers", client)
+            assert result is None
+
+    async def test_redirect_to_generic_smartrecruiters_page_rejected(self):
+        def handler(request):
+            host = (request.url.host or "").lower()
+            if host == "careers.smartrecruiters.com":
+                return httpx.Response(
+                    302,
+                    headers={"Location": "https://www.smartrecruiters.com/careers/"},
+                )
+            if host == "www.smartrecruiters.com":
+                return httpx.Response(200, text="<html>SmartRecruiters careers landing</html>")
+            if host == "api.smartrecruiters.com":
+                return httpx.Response(404)
+            return httpx.Response(404)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle("https://careers.smartrecruiters.com/acme", client)
+            assert result is None
+
+    async def test_no_blind_slug_probe_without_smartrecruiters_signal(self):
+        def handler(request):
+            host = (request.url.host or "").lower()
+            path = request.url.path
+            if host == "api.smartrecruiters.com" and "/companies/example/postings" in path:
+                # A valid token exists, but input page has no SR signal.
+                return httpx.Response(200, json={"totalFound": 7, "content": []})
+            return httpx.Response(200, text="<html>plain careers page</html>")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle("https://www.example.com/careers", client)
+            assert result is None
+
+
+# ── Scraper tests ────────────────────────────────────────────────────────
+
+
+class TestParseJobUrl:
+    def test_bare_id(self):
+        url = "https://jobs.smartrecruiters.com/Nexthink/743999106810286"
+        assert _parse_job_url(url) == ("Nexthink", "743999106810286")
+
+    def test_id_with_slug(self):
+        url = "https://jobs.smartrecruiters.com/Nexthink/743999106810286-senior-software-engineer"
+        assert _parse_job_url(url) == ("Nexthink", "743999106810286-senior-software-engineer")
+
+    def test_careers_subdomain(self):
+        url = "https://careers.smartrecruiters.com/AcmeCorp/123456789"
+        assert _parse_job_url(url) == ("AcmeCorp", "123456789")
+
+    def test_non_matching(self):
+        assert _parse_job_url("https://example.com/job/123") == (None, None)
 
 
 class TestBuildDescription:
@@ -159,10 +390,9 @@ class TestParseSalary:
         assert _parse_salary({"compensation": None}) is None
 
 
-class TestParseJob:
+class TestParseDetail:
     def test_full_posting(self):
         posting = {
-            "postingUrl": "https://jobs.smartrecruiters.com/acme/job/123",
             "name": "Software Engineer",
             "jobAd": {
                 "sections": {
@@ -179,9 +409,8 @@ class TestParseJob:
                 "salary": {"min": 100000, "max": 150000, "currency": "USD", "period": "yearly"}
             },
         }
-        result = _parse_job(posting)
-        assert result is not None
-        assert result.url == "https://jobs.smartrecruiters.com/acme/job/123"
+        result = _parse_detail(posting)
+        assert isinstance(result, JobContent)
         assert result.title == "Software Engineer"
         assert "<p>Build</p>" in result.description
         assert result.locations == ["NYC, NY, US"]
@@ -193,55 +422,43 @@ class TestParseJob:
         assert result.metadata["function"] == "Software Development"
         assert result.metadata["experienceLevel"] == "Mid-Senior"
 
-    def test_ref_fallback_url(self):
-        posting = {
-            "ref": "https://api.smartrecruiters.com/v1/companies/acme/postings/456",
-            "name": "Designer",
-        }
-        result = _parse_job(posting)
-        assert result is not None
-        assert result.url == "https://api.smartrecruiters.com/v1/companies/acme/postings/456"
-
-    def test_no_url_returns_none(self):
-        assert _parse_job({"name": "No URL"}) is None
-
     def test_remote_location(self):
         posting = {
-            "postingUrl": "https://example.com/job",
+            "name": "Remote Job",
             "location": {"remote": True},
         }
-        result = _parse_job(posting)
+        result = _parse_detail(posting)
         assert result.job_location_type == "remote"
 
     def test_hybrid_location(self):
         posting = {
-            "postingUrl": "https://example.com/job",
+            "name": "Hybrid Job",
             "location": {"hybrid": True},
         }
-        result = _parse_job(posting)
+        result = _parse_detail(posting)
         assert result.job_location_type == "hybrid"
 
     def test_employment_type_label(self):
         posting = {
-            "postingUrl": "https://example.com/job",
+            "name": "Part-time",
             "typeOfEmployment": {"label": "Part-time"},
         }
-        result = _parse_job(posting)
+        result = _parse_detail(posting)
         assert result.employment_type == "Part-time"
 
     def test_no_employment_type(self):
-        posting = {"postingUrl": "https://example.com/job"}
-        result = _parse_job(posting)
+        posting = {"name": "Job"}
+        result = _parse_detail(posting)
         assert result.employment_type is None
 
     def test_metadata_dicts(self):
         posting = {
-            "postingUrl": "https://example.com/job",
+            "name": "Job",
             "department": {"label": "Sales"},
             "function": {"label": "Account Management"},
             "experienceLevel": {"label": "Junior"},
         }
-        result = _parse_job(posting)
+        result = _parse_detail(posting)
         assert result.metadata == {
             "department": "Sales",
             "function": "Account Management",
@@ -249,264 +466,74 @@ class TestParseJob:
         }
 
     def test_no_metadata(self):
-        posting = {"postingUrl": "https://example.com/job"}
-        result = _parse_job(posting)
+        posting = {"name": "Job"}
+        result = _parse_detail(posting)
         assert result.metadata is None
 
     def test_metadata_with_empty_labels(self):
         posting = {
-            "postingUrl": "https://example.com/job",
+            "name": "Job",
             "department": {"label": ""},
             "function": {"label": ""},
         }
-        result = _parse_job(posting)
+        result = _parse_detail(posting)
         assert result.metadata is None
 
 
-class TestDiscover:
-    async def test_returns_jobs(self):
+class TestScrape:
+    async def test_full_scrape(self):
         def handler(request):
             url = str(request.url)
-            method = request.method
-            if (
-                method == "GET"
-                and "/postings" in url
-                and "limit=" in url
-                and "postings/" not in url
-            ):
+            if "/postings/743999106810286" in url:
                 return httpx.Response(
                     200,
                     json={
-                        "content": [
-                            {"id": "post1"},
-                            {"id": "post2"},
-                        ],
-                        "totalFound": 2,
-                    },
-                )
-            if method == "GET" and "/postings/post1" in url:
-                return httpx.Response(
-                    200,
-                    json={
-                        "postingUrl": "https://jobs.smartrecruiters.com/acme/post1",
-                        "name": "Engineer",
+                        "name": "Senior Engineer",
                         "jobAd": {
                             "sections": {
-                                "jobDescription": {"text": "<p>Build</p>"},
+                                "jobDescription": {"title": "Role", "text": "<p>Build things</p>"},
                             }
                         },
-                    },
-                )
-            if method == "GET" and "/postings/post2" in url:
-                return httpx.Response(
-                    200,
-                    json={
-                        "postingUrl": "https://jobs.smartrecruiters.com/acme/post2",
-                        "name": "Designer",
-                        "jobAd": {
-                            "sections": {
-                                "jobDescription": {"text": "<p>Design</p>"},
-                            }
-                        },
+                        "location": {"fullLocation": "Lausanne, Switzerland"},
+                        "typeOfEmployment": {"label": "Full-time"},
+                        "releasedDate": "2024-06-01",
                     },
                 )
             return httpx.Response(404)
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            board = {
-                "board_url": "https://careers.smartrecruiters.com/acme",
-                "metadata": {"token": "acme"},
-            }
-            jobs = await discover(board, client)
-            assert len(jobs) == 2
-            assert all(isinstance(j, DiscoveredJob) for j in jobs)
-
-    async def test_empty_response(self):
-        def handler(request):
-            return httpx.Response(
-                200,
-                json={"content": [], "totalFound": 0},
+            result = await scrape(
+                "https://jobs.smartrecruiters.com/Nexthink/743999106810286",
+                {},
+                client,
             )
+            assert result.title == "Senior Engineer"
+            assert "<p>Build things</p>" in result.description
+            assert result.locations == ["Lausanne, Switzerland"]
+            assert result.employment_type == "Full-time"
 
-        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            board = {
-                "board_url": "https://careers.smartrecruiters.com/acme",
-                "metadata": {"token": "acme"},
-            }
-            jobs = await discover(board, client)
-            assert len(jobs) == 0
-
-    async def test_no_token_raises(self):
+    async def test_unparseable_url(self):
         transport = httpx.MockTransport(lambda r: httpx.Response(200))
         async with httpx.AsyncClient(transport=transport) as client:
-            board = {"board_url": "https://example.com/careers", "metadata": {}}
-            with pytest.raises(ValueError, match="Cannot derive SmartRecruiters"):
-                await discover(board, client)
+            result = await scrape("https://example.com/job/123", {}, client)
+            assert result.title is None
 
-    async def test_token_from_metadata(self):
+    async def test_token_derived_from_url(self):
+        """Token is extracted from URL path — no config needed."""
+        posting = {"name": "Test Job", "jobAd": {"sections": {}}}
+        transport = httpx.MockTransport(lambda r: httpx.Response(200, json=posting))
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await scrape("https://jobs.smartrecruiters.com/acme/123", {}, client)
+            assert result.title == "Test Job"
+
+    async def test_detail_404(self):
         def handler(request):
-            assert "mytoken" in str(request.url)
-            return httpx.Response(
-                200,
-                json={"content": [], "totalFound": 0},
-            )
-
-        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            board = {
-                "board_url": "https://example.com/careers",
-                "metadata": {"token": "mytoken"},
-            }
-            jobs = await discover(board, client)
-            assert len(jobs) == 0
-
-    async def test_token_from_board_url(self):
-        def handler(request):
-            assert "testco" in str(request.url)
-            return httpx.Response(
-                200,
-                json={"content": [], "totalFound": 0},
-            )
-
-        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            board = {
-                "board_url": "https://careers.smartrecruiters.com/testco",
-                "metadata": {},
-            }
-            jobs = await discover(board, client)
-            assert len(jobs) == 0
-
-    async def test_pagination(self):
-        call_count = 0
-
-        def handler(request):
-            nonlocal call_count
-            url = str(request.url)
-            method = request.method
-            if method == "GET" and "/postings" in url and "postings/" not in url:
-                call_count += 1
-                if "offset=0" in url or "offset" not in url:
-                    return httpx.Response(
-                        200,
-                        json={
-                            "content": [{"id": f"p{i}"} for i in range(100)],
-                            "totalFound": 150,
-                        },
-                    )
-                else:
-                    return httpx.Response(
-                        200,
-                        json={
-                            "content": [{"id": f"p{100 + i}"} for i in range(50)],
-                            "totalFound": 150,
-                        },
-                    )
-            # Detail endpoints — return valid posting
-            if method == "GET" and "/postings/" in url:
-                posting_id = url.split("/postings/")[-1].split("?")[0]
-                return httpx.Response(
-                    200,
-                    json={
-                        "postingUrl": f"https://example.com/{posting_id}",
-                        "name": f"Job {posting_id}",
-                    },
-                )
             return httpx.Response(404)
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            board = {
-                "board_url": "https://careers.smartrecruiters.com/acme",
-                "metadata": {"token": "acme"},
-            }
-            jobs = await discover(board, client)
-            assert len(jobs) == 150
-            assert call_count == 2  # Two pages
-
-    async def test_http_error_raises(self):
-        def handler(request):
-            return httpx.Response(500)
-
-        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            board = {
-                "board_url": "https://careers.smartrecruiters.com/acme",
-                "metadata": {"token": "acme"},
-            }
-            with pytest.raises(httpx.HTTPStatusError):
-                await discover(board, client)
-
-
-class TestCanHandle:
-    async def test_smartrecruiters_url_match(self):
-        result = await can_handle("https://careers.smartrecruiters.com/acme")
-        assert result is not None
-        assert result["token"] == "acme"
-
-    async def test_non_matching_url_no_client(self):
-        result = await can_handle("https://example.com/careers")
-        assert result is None
-
-    async def test_url_match_with_client(self):
-        def handler(request):
-            return httpx.Response(200, json={"totalFound": 42, "content": []})
-
-        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            result = await can_handle("https://careers.smartrecruiters.com/acme", client)
-            assert result is not None
-            assert result["token"] == "acme"
-            assert result["jobs"] == 42
-
-    async def test_detects_in_page_html(self):
-        def handler(request):
-            url = str(request.url)
-            if "api.smartrecruiters.com" in url:
-                return httpx.Response(200, json={"totalFound": 5, "content": []})
-            return httpx.Response(
-                200,
-                text='<html><script src="https://careers.smartrecruiters.com/myco/widget"></script></html>',
+            result = await scrape(
+                "https://jobs.smartrecruiters.com/acme/123",
+                {},
+                client,
             )
-
-        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            result = await can_handle("https://www.example.com/careers", client)
-            assert result is not None
-            assert result["token"] == "myco"
-
-    async def test_no_match(self):
-        def handler(request):
-            url = str(request.url)
-            if "api.smartrecruiters.com" in url:
-                return httpx.Response(404)
-            return httpx.Response(200, text="<html>no smartrecruiters</html>")
-
-        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            result = await can_handle("https://www.example.com/careers", client)
-            assert result is None
-
-    async def test_redirect_to_generic_smartrecruiters_page_rejected(self):
-        def handler(request):
-            host = (request.url.host or "").lower()
-            if host == "careers.smartrecruiters.com":
-                return httpx.Response(
-                    302,
-                    headers={"Location": "https://www.smartrecruiters.com/careers/"},
-                )
-            if host == "www.smartrecruiters.com":
-                return httpx.Response(200, text="<html>SmartRecruiters careers landing</html>")
-            if host == "api.smartrecruiters.com":
-                return httpx.Response(404)
-            return httpx.Response(404)
-
-        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            result = await can_handle("https://careers.smartrecruiters.com/acme", client)
-            assert result is None
-
-    async def test_no_blind_slug_probe_without_smartrecruiters_signal(self):
-        def handler(request):
-            host = (request.url.host or "").lower()
-            path = request.url.path
-            if host == "api.smartrecruiters.com" and "/companies/example/postings" in path:
-                # A valid token exists, but input page has no SR signal.
-                return httpx.Response(200, json={"totalFound": 7, "content": []})
-            return httpx.Response(200, text="<html>plain careers page</html>")
-
-        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            result = await can_handle("https://www.example.com/careers", client)
-            assert result is None
+            assert result.title is None

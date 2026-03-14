@@ -129,27 +129,35 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 
 ### All Monitor Types
 
-| Cost | Type              | Return   | Method                                  |
-|------|-------------------|----------|-----------------------------------------|
-| 10   | `greenhouse`      | Rich     | Greenhouse JSON API                     |
-| 10   | `lever`           | Rich     | Lever Postings API                      |
-| 10   | `ashby`           | Rich     | Ashby Job Board API                     |
-| 10   | `hireology`       | Rich     | Hireology Careers API                   |
-| 10   | `personio`        | Rich     | Personio XML Feed                       |
-| 10   | `pinpoint`        | Rich     | Pinpoint API                            |
-| 10   | `recruitee`       | Rich     | Recruitee Careers API                   |
-| 10   | `rippling`        | Rich     | Rippling ATS API                        |
-| 10   | `smartrecruiters` | Rich     | SmartRecruiters API                     |
-| 10   | `rss`             | Rich     | RSS 2.0 feed (SuccessFactors, Teamtailor, generic) |
-| 10   | `workable`        | Rich     | Workable API                            |
-| 10   | `workday`         | Rich     | Workday Job Board API                   |
-| 20   | `nextdata`        | URL-only | Next.js `__NEXT_DATA__` extraction      |
-| 50   | `sitemap`         | URL-only | XML sitemap parsing (auto-discovery)    |
-| 80   | `api_sniffer`     | URL-only | Playwright XHR/fetch capture            |
-| 100  | `dom`             | URL-only | Static/Playwright DOM link extraction   |
+| Cost | Type              | Return   | Auto-scraper | Method                                  |
+|------|-------------------|----------|-------------|-----------------------------------------|
+| 9    | `join`            | URL-only | nextdata    | JOIN (join.com) Next.js data            |
+| 10   | `amazon`          | Rich     | skip        | Amazon Jobs                             |
+| 10   | `ashby`           | Rich     | skip        | Ashby Job Board API                     |
+| 10   | `bite`            | URL-only | bite        | b-ite.com ATS API                       |
+| 10   | `breezy`          | URL-only | json-ld     | Breezy HR listing endpoint              |
+| 10   | `dvinci`          | Rich     | skip        | d.vinci ATS API                         |
+| 10   | `gem`             | Rich     | skip        | Gem ATS API                             |
+| 10   | `greenhouse`      | Rich     | skip        | Greenhouse JSON API                     |
+| 10   | `hireology`       | Rich     | skip        | Hireology Careers API                   |
+| 10   | `lever`           | Rich     | skip        | Lever Postings API                      |
+| 10   | `personio`        | Rich*    | —           | Personio XML Feed (*HTML fallback needs scraper) |
+| 10   | `pinpoint`        | Rich     | skip        | Pinpoint API                            |
+| 10   | `recruitee`       | Rich     | skip        | Recruitee Careers API                   |
+| 10   | `rippling`        | URL-only | rippling    | Rippling ATS API                        |
+| 10   | `rss`             | Rich     | skip        | RSS 2.0 feed (SuccessFactors, Teamtailor, generic) |
+| 10   | `smartrecruiters` | URL-only | smartrecruiters | SmartRecruiters API                 |
+| 10   | `softgarden`      | URL-only | json-ld     | Softgarden ATS                          |
+| 10   | `traffit`         | Rich     | skip        | Traffit ATS API                         |
+| 10   | `workable`        | URL-only | workable    | Workable API                            |
+| 10   | `workday`         | URL-only | workday     | Workday Job Board API                   |
+| 20   | `nextdata`        | URL-only | —           | Next.js `__NEXT_DATA__` extraction      |
+| 50   | `sitemap`         | URL-only | —           | XML sitemap parsing (auto-discovery)    |
+| 80   | `api_sniffer`     | URL-only | —           | Playwright XHR/fetch capture            |
+| 100  | `dom`             | URL-only | —           | Static/Playwright DOM link extraction   |
 
 **Rich monitors** return `list[DiscoveredJob]` with full job content — no scraper needed.
-**URL-only monitors** return `set[str]` — URLs are enqueued for scraping.
+**URL-only monitors** return `set[str]` — URLs are enqueued for scraping. Most have auto-configured scrapers (see `auto_scraper_type()` in `_compat.py`); monitors marked "—" require manual scraper selection.
 
 ### Auto-Detection
 

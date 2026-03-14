@@ -30,12 +30,22 @@ from src.batch import (  # noqa: E402
 )
 from src.config import settings  # noqa: E402
 from src.db import close_pool, create_pool  # noqa: E402
+from src.metrics import (  # noqa: E402
+    db_pool_idle,
+    db_pool_size,
+    start_metrics_server,
+    task_duration_seconds,
+    tasks_active,
+    tasks_queued,
+    tasks_total,
+)
 from src.shared.http import create_http_client  # noqa: E402
 from src.shared.logging import setup_logging  # noqa: E402
 
 log = structlog.get_logger()
 
-WORKER_ID = uuid.uuid4().hex[:8]
+_rand = uuid.uuid4().hex[:8]
+WORKER_ID = f"{settings.worker_id_prefix}-{_rand}" if settings.worker_id_prefix else _rand
 
 
 def parse_args() -> argparse.Namespace:
@@ -102,7 +112,6 @@ class WorkerPool:
     """
 
     _ITEM_TIMEOUT = 300  # 5 minutes per job
-    _QUEUE_PER_DOMAIN = 2  # max queued items behind a running domain
 
     def __init__(self, max_concurrent: int) -> None:
         self._semaphore = asyncio.Semaphore(max_concurrent)
@@ -132,20 +141,22 @@ class WorkerPool:
         return sum(len(q) for q in self._domain_queues.values())
 
     @property
+    def saturated_domains(self) -> list[str]:
+        """Domains with more than 2 queued items — skip claiming more for these."""
+        return [d for d, q in self._domain_queues.items() if len(q) > 2]
+
+    @property
     def claim_budget(self) -> int:
         """How many items the loop should claim this tick.
 
-        Accounts for free semaphore slots (new domains) plus remaining
-        queue capacity across in-flight domains.
+        Conservative: only claim as many as free concurrency slots.
+        Claimed items always get accepted by submit() — either starting
+        immediately or queuing behind their domain's in-flight task.
         """
-        queue_room = max(
-            0,
-            len(self._domains_inflight) * self._QUEUE_PER_DOMAIN - self.queued_count,
-        )
-        return self.free_slots + queue_room
+        return self.free_slots
 
-    def submit(self, item: WorkItem) -> bool:
-        """Schedule a work item. Returns False if the domain queue is full.
+    def submit(self, item: WorkItem) -> None:
+        """Schedule a work item.
 
         If the domain already has an in-flight task, the item is queued and
         will start automatically when the current one finishes — without
@@ -153,8 +164,6 @@ class WorkerPool:
         """
         if item.domain in self._domains_inflight:
             queue = self._domain_queues.get(item.domain)
-            if queue is not None and len(queue) >= self._QUEUE_PER_DOMAIN:
-                return False
             if queue is None:
                 queue = collections.deque()
                 self._domain_queues[item.domain] = queue
@@ -165,7 +174,6 @@ class WorkerPool:
             self._tasks.add(task)
             task.add_done_callback(self._tasks.discard)
         self.total_submitted += 1
-        return True
 
     async def _run(self, item: WorkItem) -> None:
         """Acquire a semaphore slot and process items for this domain serially."""
@@ -174,14 +182,18 @@ class WorkerPool:
         try:
             while current is not None:
                 try:
-                    ok, _elapsed = await asyncio.wait_for(current.run(), timeout=self._ITEM_TIMEOUT)
+                    ok, elapsed = await asyncio.wait_for(current.run(), timeout=self._ITEM_TIMEOUT)
+                    task_duration_seconds.labels(kind=current.kind).observe(elapsed)
                     if ok:
                         self.succeeded += 1
+                        tasks_total.labels(kind=current.kind, status="succeeded").inc()
                     else:
                         self.failed += 1
+                        tasks_total.labels(kind=current.kind, status="failed").inc()
                 except TimeoutError:
                     self.failed += 1
                     self.timed_out += 1
+                    tasks_total.labels(kind=current.kind, status="timed_out").inc()
                     log.error(
                         "pool.task_timeout",
                         domain=current.domain,
@@ -190,6 +202,7 @@ class WorkerPool:
                     )
                 except Exception:
                     self.failed += 1
+                    tasks_total.labels(kind=current.kind, status="failed").inc()
                     log.exception("pool.task_error", domain=current.domain, kind=current.kind)
                 # Pop next queued item for this domain (if any)
                 current = None
@@ -202,8 +215,19 @@ class WorkerPool:
             self._domains_inflight.discard(item.domain)
             self._semaphore.release()
 
-    async def drain(self) -> None:
-        """Wait for all in-flight tasks (including queued chains) to complete."""
+    async def drain(self, timeout: float = 50) -> None:
+        """Wait for in-flight tasks, cancelling stragglers after *timeout* seconds."""
+        if not self._tasks:
+            return
+        try:
+            await asyncio.wait_for(self._drain_all(), timeout=timeout)
+        except TimeoutError:
+            log.warning("pool.drain_timeout", remaining=len(self._tasks), timeout_s=timeout)
+            for t in list(self._tasks):
+                t.cancel()
+            await asyncio.gather(*list(self._tasks), return_exceptions=True)
+
+    async def _drain_all(self) -> None:
         while self._tasks:
             await asyncio.gather(*list(self._tasks), return_exceptions=True)
 
@@ -248,21 +272,28 @@ async def run_continuous_loop(
 
         # Phase 1: monitors (priority)
         budget = wp.claim_budget
+        skip = wp.saturated_domains
         if monitor and budget > 0:
-            items = await claim_monitor_work(pool, http, budget, worker_id)
+            items = await claim_monitor_work(pool, http, budget, worker_id, skip)
             monitors_claimed = len(items)
             for item in items:
-                if wp.submit(item):
-                    work_found = True
+                wp.submit(item)
+                work_found = True
 
         # Phase 2: scrapes (fill remaining)
         budget = wp.claim_budget
+        skip = wp.saturated_domains
         if scrape and budget > 0:
-            items = await claim_scrape_work(pool, http, budget, worker_id)
+            items = await claim_scrape_work(pool, http, budget, worker_id, skip)
             scrapes_claimed = len(items)
             for item in items:
-                if wp.submit(item):
-                    work_found = True
+                wp.submit(item)
+                work_found = True
+
+        tasks_active.set(wp.active_count)
+        tasks_queued.set(wp.queued_count)
+        db_pool_size.set(pool.get_size())
+        db_pool_idle.set(pool.get_idle_size())
 
         if work_found or wp.active_count > 0:
             log.info(
@@ -374,6 +405,10 @@ async def run() -> None:
         poll_interval=settings.crawler_poll_interval,
         max_concurrent=settings.crawler_max_concurrent,
     )
+
+    if not args.once and not args.board:
+        start_metrics_server(settings.metrics_port)
+        log.info("metrics.started", port=settings.metrics_port)
 
     pool = await create_pool()
     http = create_http_client()

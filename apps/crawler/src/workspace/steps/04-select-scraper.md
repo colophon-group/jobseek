@@ -30,6 +30,7 @@ You do **not** need to run `ws probe scraper` if you can determine the scraper t
 - **Job URLs are on a known ATS domain** (greenhouse.io, lever.co, etc.) → use `json-ld`
 - **You already know the page has JSON-LD** (saw it during validation) → use `json-ld`
 - **Monitor was `nextdata`** → use `nextdata` scraper with matching config
+- **Monitor was `workday`** → scraper was auto-configured, you should not be at this step
 - **Probe results from monitor step already showed embedded data** → use `embedded`
 
 In these cases, go directly to select and test:

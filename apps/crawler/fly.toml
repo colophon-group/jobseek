@@ -1,23 +1,15 @@
-# fly.toml app configuration file generated for jobseek on 2026-03-10T06:21:12Z
-#
-# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
-#
-
 app = 'jobseek'
 primary_region = 'fra'
+kill_timeout = 60
 
-[build]
+[processes]
+  app = 'uv run --no-sync scheduler'
 
-[http_service]
-  internal_port = 8080
-  force_https = true
-  auto_stop_machines = 'stop'
-  auto_start_machines = true
-  min_machines_running = 1
-  processes = ['app']
+[metrics]
+  port = 9091
+  path = "/metrics"
 
 [[vm]]
-  memory = '1gb'
   cpu_kind = 'shared'
   cpus = 1
   memory_mb = 512

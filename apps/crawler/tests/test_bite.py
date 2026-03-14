@@ -5,16 +5,19 @@ import json
 import httpx
 import pytest
 
-from src.core.monitors import DiscoveredJob
 from src.core.monitors.bite import (
+    _extract_key_from_js,
+    can_handle,
+    discover,
+)
+from src.core.scrapers import JobContent
+from src.core.scrapers.bite import (
     _build_location,
     _extract_hash_from_url,
-    _extract_key_from_js,
     _normalize_employment_type,
     _parse_detail,
     _parse_salary,
-    can_handle,
-    discover,
+    scrape,
 )
 
 # ── Key extraction ───────────────────────────────────────────────────────
@@ -39,7 +42,7 @@ class TestExtractKeyFromJs:
         assert _extract_key_from_js(js) is None
 
 
-# ── Hash extraction ──────────────────────────────────────────────────────
+# ── Hash extraction (scraper) ───────────────────────────────────────────
 
 
 class TestExtractHashFromUrl:
@@ -55,7 +58,7 @@ class TestExtractHashFromUrl:
         assert _extract_hash_from_url("https://example.com/careers") is None
 
 
-# ── Location ─────────────────────────────────────────────────────────────
+# ── Location (scraper) ──────────────────────────────────────────────────
 
 
 class TestBuildLocation:
@@ -75,7 +78,7 @@ class TestBuildLocation:
         assert _build_location({}) is None
 
 
-# ── Employment type ──────────────────────────────────────────────────────
+# ── Employment type (scraper) ───────────────────────────────────────────
 
 
 class TestNormalizeEmploymentType:
@@ -98,7 +101,7 @@ class TestNormalizeEmploymentType:
         assert _normalize_employment_type([]) is None
 
 
-# ── Salary ───────────────────────────────────────────────────────────────
+# ── Salary (scraper) ────────────────────────────────────────────────────
 
 
 class TestParseSalary:
@@ -139,7 +142,7 @@ class TestParseSalary:
         assert _parse_salary({"baseSalary": None}) is None
 
 
-# ── Detail parsing ───────────────────────────────────────────────────────
+# ── Detail parsing (scraper) ────────────────────────────────────────────
 
 
 class TestParseDetail:
@@ -160,9 +163,8 @@ class TestParseDetail:
             "employer": {"name": "Acme GmbH"},
             "locale": "de",
         }
-        result = _parse_detail(detail, "https://example.com/jobposting/abc123")
-        assert result is not None
-        assert result.url == "https://example.com/jobposting/abc123"
+        result = _parse_detail(detail, "de")
+        assert isinstance(result, JobContent)
         assert result.title == "Software Developer (m/f/d)"
         assert result.description == "<p>Build cool stuff</p>"
         assert result.locations == ["Munich, DE"]
@@ -174,24 +176,35 @@ class TestParseDetail:
         assert result.metadata["employer"] == "Acme GmbH"
 
     def test_no_title(self):
-        assert _parse_detail({}, "https://example.com/job") is None
+        result = _parse_detail({}, "de")
+        assert result.title is None
 
     def test_html_string_content(self):
         detail = {
             "title": "Test",
             "content": {"html": "<p>Direct HTML</p>"},
         }
-        result = _parse_detail(detail, "https://example.com/job")
+        result = _parse_detail(detail, "de")
         assert result.description == "<p>Direct HTML</p>"
 
     def test_no_content(self):
         detail = {"title": "Test"}
-        result = _parse_detail(detail, "https://example.com/job")
-        assert result is not None
+        result = _parse_detail(detail, "de")
+        assert result.title == "Test"
         assert result.description is None
 
+    def test_locale_fallback(self):
+        detail = {"title": "Test"}
+        result = _parse_detail(detail, "en")
+        assert result.language == "en"
 
-# ── Discover ─────────────────────────────────────────────────────────────
+    def test_locale_from_detail(self):
+        detail = {"title": "Test", "locale": "fr"}
+        result = _parse_detail(detail, "de")
+        assert result.language == "fr"
+
+
+# ── Monitor discover ────────────────────────────────────────────────────
 
 
 def _search_response(postings, total=None):
@@ -204,17 +217,8 @@ def _search_response(postings, total=None):
     }
 
 
-def _detail_response(title="Test Job", description="<p>Desc</p>"):
-    return {
-        "title": title,
-        "content": {"html": {"rendered": description}},
-        "address": {"city": "Berlin", "country": "de"},
-        "createdAt": "2025-06-01T00:00:00Z",
-    }
-
-
 class TestDiscover:
-    async def test_returns_jobs(self):
+    async def test_returns_urls(self):
         search_data = _search_response(
             [
                 {
@@ -229,11 +233,8 @@ class TestDiscover:
         )
 
         def handler(request):
-            url = str(request.url)
-            if "postings/search" in url:
+            if "postings/search" in str(request.url):
                 return httpx.Response(200, json=search_data)
-            if "/jobposting/" in url and "/json" in url:
-                return httpx.Response(200, json=_detail_response())
             return httpx.Response(404)
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
@@ -241,9 +242,15 @@ class TestDiscover:
                 "board_url": "https://example.com/careers",
                 "metadata": {"key": "a" * 40},
             }
-            jobs = await discover(board, client)
-            assert len(jobs) == 2
-            assert all(isinstance(j, DiscoveredJob) for j in jobs)
+            urls = await discover(board, client)
+            assert isinstance(urls, set)
+            assert len(urls) == 2
+            assert (
+                "https://example.com/jobposting/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa0" in urls
+            )
+            assert (
+                "https://example.com/jobposting/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb0" in urls
+            )
 
     async def test_empty_results(self):
         def handler(request):
@@ -254,8 +261,9 @@ class TestDiscover:
                 "board_url": "https://example.com/careers",
                 "metadata": {"key": "a" * 40},
             }
-            jobs = await discover(board, client)
-            assert len(jobs) == 0
+            urls = await discover(board, client)
+            assert isinstance(urls, set)
+            assert len(urls) == 0
 
     async def test_no_key_raises(self):
         transport = httpx.MockTransport(lambda r: httpx.Response(200))
@@ -263,37 +271,6 @@ class TestDiscover:
             board = {"board_url": "https://example.com/careers", "metadata": {}}
             with pytest.raises(ValueError, match="requires a 'key'"):
                 await discover(board, client)
-
-    async def test_failed_detail_skipped(self):
-        search_data = _search_response(
-            [
-                {
-                    "url": "https://example.com/jobposting/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa0",
-                },
-                {
-                    "url": "https://example.com/jobposting/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb0",
-                },
-            ]
-        )
-
-        def handler(request):
-            url = str(request.url)
-            if "postings/search" in url:
-                return httpx.Response(200, json=search_data)
-            if "aaaa" in url:
-                return httpx.Response(500)
-            if "bbbb" in url:
-                return httpx.Response(200, json=_detail_response("Good Job"))
-            return httpx.Response(404)
-
-        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            board = {
-                "board_url": "https://example.com/careers",
-                "metadata": {"key": "a" * 40},
-            }
-            jobs = await discover(board, client)
-            assert len(jobs) == 1
-            assert jobs[0].title == "Good Job"
 
     async def test_pagination(self):
         page1 = {
@@ -324,8 +301,6 @@ class TestDiscover:
                 body = json.loads(request.content)
                 offset = body.get("page", {}).get("offset", 0)
                 return httpx.Response(200, json=page1 if offset == 0 else page2)
-            if "/jobposting/" in url and "/json" in url:
-                return httpx.Response(200, json=_detail_response())
             return httpx.Response(404)
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
@@ -333,8 +308,8 @@ class TestDiscover:
                 "board_url": "https://example.com/careers",
                 "metadata": {"key": "a" * 40},
             }
-            jobs = await discover(board, client)
-            assert len(jobs) == 2
+            urls = await discover(board, client)
+            assert len(urls) == 2
             assert call_count["search"] == 2
 
 
@@ -389,3 +364,99 @@ class TestCanHandle:
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             result = await can_handle("https://example.com/careers", client)
             assert result is None
+
+
+# ── Scraper scrape ──────────────────────────────────────────────────────
+
+
+class TestScrape:
+    async def test_full_scrape(self):
+        detail_json = {
+            "title": "Software Developer (m/f/d)",
+            "content": {"html": {"rendered": "<p>Build cool stuff</p>"}},
+            "address": {"city": "Munich", "country": "de"},
+            "employmentType": ["full_time"],
+            "createdAt": "2025-01-15T10:00:00.000Z",
+            "baseSalary": {
+                "currency": "EUR",
+                "unitText": "YEAR",
+                "minValue": 60000,
+                "maxValue": 90000,
+            },
+            "identification": "REF-123",
+            "employer": {"name": "Acme GmbH"},
+            "locale": "de",
+        }
+
+        def handler(request):
+            url = str(request.url)
+            assert "/jobposting/" in url
+            assert "locale=de" in url
+            assert "contentRendered=true" in url
+            return httpx.Response(200, json=detail_json)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape(
+                "https://example.com/jobposting/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa0",
+                {"locale": "de"},
+                client,
+            )
+            assert isinstance(result, JobContent)
+            assert result.title == "Software Developer (m/f/d)"
+            assert result.description == "<p>Build cool stuff</p>"
+            assert result.locations == ["Munich, DE"]
+            assert result.employment_type == "full-time"
+            assert result.date_posted == "2025-01-15"
+            assert result.base_salary["currency"] == "EUR"
+            assert result.language == "de"
+            assert result.metadata["reference"] == "REF-123"
+            assert result.metadata["employer"] == "Acme GmbH"
+
+    async def test_unparseable_url_returns_empty(self):
+        transport = httpx.MockTransport(lambda r: httpx.Response(200))
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await scrape("https://example.com/not-bite", {}, client)
+            assert isinstance(result, JobContent)
+            assert result.title is None
+
+    async def test_api_error_returns_empty(self):
+        def handler(request):
+            return httpx.Response(500)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape(
+                "https://example.com/jobposting/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa0",
+                {},
+                client,
+            )
+            assert isinstance(result, JobContent)
+            assert result.title is None
+
+    async def test_locale_from_config(self):
+        def handler(request):
+            url = str(request.url)
+            assert "locale=en" in url
+            return httpx.Response(200, json={"title": "Test"})
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape(
+                "https://example.com/jobposting/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa0",
+                {"locale": "en"},
+                client,
+            )
+            assert result.title == "Test"
+            assert result.language == "en"
+
+    async def test_default_locale(self):
+        def handler(request):
+            url = str(request.url)
+            assert "locale=de" in url
+            return httpx.Response(200, json={"title": "Test"})
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape(
+                "https://example.com/jobposting/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa0",
+                {},
+                client,
+            )
+            assert result.title == "Test"

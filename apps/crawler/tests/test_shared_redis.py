@@ -63,8 +63,8 @@ def test_get_redis_prefers_env_over_settings(monkeypatch, _mock_settings, _mock_
 def test_get_redis_returns_none_when_unconfigured(monkeypatch, _mock_redis_class):
     monkeypatch.delenv("UPSTASH_REDIS_REST_URL", raising=False)
     monkeypatch.delenv("UPSTASH_REDIS_REST_TOKEN", raising=False)
-    # Remove src.config from modules so the lazy import fails gracefully
-    monkeypatch.delitem(sys.modules, "src.config", raising=False)
+    # Replace src.config with a fake module missing 'settings' so the import fails
+    monkeypatch.setitem(sys.modules, "src.config", SimpleNamespace())
 
     client = redis_module.get_redis()
 

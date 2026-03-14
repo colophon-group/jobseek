@@ -15,23 +15,15 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "amazon",
         "apify_meta",
         "ashby",
-        "bite",
-        "breezy",
         "dvinci",
         "gem",
         "greenhouse",
         "hireology",
-        "join",
         "lever",
         "pinpoint",
         "recruitee",
-        "rippling",
         "rss",
-        "smartrecruiters",
-        "softgarden",
         "traffit",
-        "workable",
-        "workday",
     }
 )
 
@@ -40,8 +32,16 @@ _RICH_MONITORS: frozenset[str] = frozenset(
 # by ws run monitor based on actual description coverage.
 
 _ALL_MONITOR_TYPES: frozenset[str] = _RICH_MONITORS | {
+    "bite",
+    "breezy",
+    "join",
     "personio",
+    "rippling",
+    "smartrecruiters",
+    "softgarden",
     "umantis",
+    "workable",
+    "workday",
     "sitemap",
     "nextdata",
     "dom",
@@ -125,11 +125,76 @@ def detect_ats_from_url(url: str) -> str | None:
     return None
 
 
+_BREEZY_SCRAPER_CONFIG: dict = {
+    "fallback": {
+        "type": "dom",
+        "config": {
+            "render": False,
+            "steps": [
+                {"tag": "h1", "field": "title"},
+                {
+                    "tag": "li",
+                    "attr": "class=location",
+                    "field": "locations",
+                    "regex": r"([A-Za-z .-]+,\s*[A-Z]{2})",
+                },
+                {
+                    "tag": "p",
+                    "field": "description",
+                    "stop": "%BUTTON_APPLY_TO_POSITION%",
+                    "html": True,
+                },
+            ],
+        },
+    },
+}
+
+
+def auto_scraper_type(
+    monitor_type: str,
+    config: dict | None = None,
+) -> tuple[str, dict | None] | None:
+    """Return the auto-configured scraper (type, config) for a monitor, or None.
+
+    Some monitors automatically determine the scraper:
+    - Rich monitors (greenhouse, lever, etc.) → ("skip", None)
+    - Workday → ("workday", None)
+    - Breezy → ("json-ld", {fallback dom config})
+    - api_sniffer/nextdata with ``fields`` → ("skip", None)
+
+    Returns None when manual scraper selection is needed.
+    """
+    if monitor_type in _RICH_MONITORS:
+        return ("skip", None)
+    if monitor_type == "join":
+        return ("nextdata", None)
+    if monitor_type == "breezy":
+        return ("json-ld", _BREEZY_SCRAPER_CONFIG)
+    if monitor_type == "bite":
+        return ("bite", None)
+    if monitor_type == "rippling":
+        return ("rippling", None)
+    if monitor_type == "smartrecruiters":
+        return ("smartrecruiters", None)
+    if monitor_type == "workable":
+        return ("workable", None)
+    if monitor_type == "workday":
+        return ("workday", None)
+    if monitor_type == "softgarden":
+        return ("json-ld", None)
+    if monitor_type in ("api_sniffer", "nextdata") and bool((config or {}).get("fields")):
+        return ("skip", None)
+    return None
+
+
 def is_rich_monitor(monitor_type: str, config: dict | None = None) -> bool:
     """Check if a monitor type returns rich data (scraper not needed).
 
     Statically-rich monitors (greenhouse, lever, etc.) always return True.
     api_sniffer is rich only when ``fields`` is present in config.
+
+    Note: this is narrower than ``auto_scraper_type``. Workday has an
+    auto-configured scraper but is NOT rich (monitor returns URLs only).
     """
     return monitor_type in _RICH_MONITORS or (
         monitor_type in ("api_sniffer", "nextdata") and bool((config or {}).get("fields"))

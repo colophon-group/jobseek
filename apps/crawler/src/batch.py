@@ -30,7 +30,7 @@ from src.core.description_store import content_hash, upload_description, upload_
 from src.core.enum_normalize import normalize_employment_type
 from src.core.location_resolve import LocationResolver
 from src.core.monitor import monitor_one
-from src.core.monitors import api_monitor_types, is_rich_monitor
+from src.core.monitors import api_monitor_types
 from src.core.scrape import scrape_one
 from src.core.scrapers import enrich_description, get_scraper
 from src.shared.html_normalize import normalize_description_html
@@ -52,6 +52,28 @@ _location_resolver: LocationResolver | None = None
 # Prevents huge first-time runs from timing out. Backfill completes incrementally.
 _R2_BACKFILL_LIMIT = 500
 
+# Titles that indicate a broken scrape (auth wall, CAPTCHA, etc.)
+_GARBAGE_TITLES = frozenset(
+    s.lower()
+    for s in (
+        "Not Logged In",
+        "Log in to Career Profile",
+        "Access Denied",
+        "Just a moment...",
+        "Page Not Found",
+        "404",
+        "403 Forbidden",
+        "Sign In",
+        "Login",
+        "Redirecting",
+    )
+)
+
+
+def _is_garbage_title(title: str) -> bool:
+    """Return True if the title is a known broken-scrape artifact."""
+    return title.strip().lower() in _GARBAGE_TITLES
+
 
 async def _get_location_resolver(pool: asyncpg.Pool) -> LocationResolver:
     """Get or create the location resolver singleton."""
@@ -59,18 +81,27 @@ async def _get_location_resolver(pool: asyncpg.Pool) -> LocationResolver:
     if _location_resolver is None:
         _location_resolver = LocationResolver()
         await _location_resolver.load(pool)
-        log.info("batch.location_resolver.loaded", entries=len(_location_resolver._entries))
+        log.info("batch.location_resolver.loaded", entries=_location_resolver.entry_count)
     return _location_resolver
 
 
-def _resolve_locations(
+async def _resolve_locations(
     resolver: LocationResolver,
     locations: list[str] | None,
     job_location_type: str | None,
     posting_language: str | None = None,
 ) -> tuple[list[int] | None, list[str] | None]:
-    """Resolve locations to parallel arrays of (location_ids, location_types)."""
+    """Resolve locations to parallel arrays of (location_ids, location_types).
+
+    Uses the in-memory core-locale cache first.  On cache misses (non-core
+    locale names), batch-queries the DB and retries.
+    """
     results = resolver.resolve(locations, job_location_type, posting_language)
+
+    # DB fallback for non-core locale names (rare path)
+    if await resolver.backfill_misses():
+        results = resolver.resolve(locations, job_location_type, posting_language)
+
     if not results:
         return None, None
 
@@ -122,6 +153,18 @@ _RELEASE_BOARD_LEASE = """
 UPDATE job_board
 SET lease_owner = NULL, leased_until = NULL
 WHERE id = $1
+"""
+
+_RELEASE_BOARD_LEASES = """
+UPDATE job_board
+SET lease_owner = NULL, leased_until = NULL
+WHERE id = ANY($1::uuid[])
+"""
+
+_RELEASE_POSTING_LEASES = """
+UPDATE job_posting
+SET lease_owner = NULL, leased_until = NULL
+WHERE id = ANY($1::uuid[])
 """
 
 _DIFF_URLS = """
@@ -353,7 +396,8 @@ ranked AS (
     FROM candidates
 )
 UPDATE job_posting
-SET leased_until  = now() + interval '10 minutes'
+SET leased_until = now() + interval '10 minutes',
+    lease_owner = $2
 FROM (
     SELECT id AS rid
     FROM ranked
@@ -378,7 +422,8 @@ SET scrape_failures  = 0,
         ) || ' hours')::interval
         ELSE NULL
     END,
-    leased_until     = NULL
+    leased_until     = NULL,
+    lease_owner      = NULL
 WHERE jp.id = $1
 """
 
@@ -390,13 +435,14 @@ SET scrape_failures   = scrape_failures + 1,
         WHEN scrape_failures + 1 >= 3 THEN NULL
         ELSE now() + (30 * pow(2, scrape_failures)) * interval '1 minute'
     END,
-    leased_until = NULL
+    leased_until = NULL,
+    lease_owner = NULL
 WHERE id = $1
 """
 
 _CLEAR_SCRAPE_FOR_RICH = """
 UPDATE job_posting
-SET next_scrape_at = NULL, leased_until = NULL
+SET next_scrape_at = NULL, leased_until = NULL, lease_owner = NULL
 WHERE id = ANY($1::uuid[])
 """
 
@@ -642,23 +688,39 @@ async def _upload_to_r2(
         if current_hash is not None and current_hash == new_hash:
             return new_hash
 
-        # Upload primary description + extras (tracks diffs in history)
-        await asyncio.to_thread(upload_posting, posting_id, locale, description, merged)
+        # Upload with retries on transient network errors
+        for attempt in range(3):
+            try:
+                # Upload primary description + extras (tracks diffs in history)
+                await upload_posting(posting_id, locale, description, merged)
 
-        # Upload localizations (secondary locales, description only)
-        if localizations and isinstance(localizations, dict):
-            for loc_locale, loc_data in localizations.items():
-                if loc_locale == locale:
-                    continue
-                loc_desc = None
-                if isinstance(loc_data, dict):
-                    loc_desc = loc_data.get("description")
-                elif isinstance(loc_data, str):
-                    loc_desc = loc_data
-                if loc_desc:
-                    await asyncio.to_thread(upload_description, posting_id, loc_locale, loc_desc)
+                # Upload localizations (secondary locales, description only)
+                if localizations and isinstance(localizations, dict):
+                    for loc_locale, loc_data in localizations.items():
+                        if loc_locale == locale:
+                            continue
+                        loc_desc = None
+                        if isinstance(loc_data, dict):
+                            loc_desc = loc_data.get("description")
+                        elif isinstance(loc_data, str):
+                            loc_desc = loc_data
+                        if loc_desc:
+                            await upload_description(posting_id, loc_locale, loc_desc)
 
-        return new_hash
+                return new_hash
+            except (
+                httpx.TimeoutException,
+                httpx.ConnectError,
+                httpx.ReadError,
+                httpx.RemoteProtocolError,
+            ):
+                if attempt == 0:
+                    log.warning("batch.r2_upload.retry", posting_id=posting_id)
+                    await asyncio.sleep(2)
+                else:
+                    raise
+
+        return new_hash  # unreachable, keeps type checker happy
     except Exception:
         log.exception("batch.r2_upload.error", posting_id=posting_id)
         return None
@@ -698,15 +760,23 @@ async def _load_board_scrapers(
         crawler_type = row["crawler_type"]
         explicit_scraper = metadata.get("scraper_type")
 
-        # Rich monitors without an explicit scraper don't need scraping
-        if not explicit_scraper and is_rich_monitor(crawler_type, metadata):
-            rich_board_ids.add(board_id)
-            continue
+        # Determine scraper: explicit > auto-configured > default (json-ld)
+        if not explicit_scraper:
+            # Check if monitor auto-configures a scraper
+            from src.workspace._compat import auto_scraper_type
 
-        scraper_type = explicit_scraper or "json-ld"
+            auto = auto_scraper_type(crawler_type, metadata)
+            if auto and auto[0] == "skip":
+                rich_board_ids.add(board_id)
+                continue
+            scraper_type = auto[0] if auto else "json-ld"
+            auto_config = auto[1] if auto else None
+        else:
+            scraper_type = explicit_scraper
+            auto_config = None
         scraper_config = metadata.get("scraper_config")
         if not isinstance(scraper_config, dict):
-            scraper_config = None
+            scraper_config = auto_config
 
         try:
             get_scraper(scraper_type)
@@ -771,6 +841,7 @@ class WorkItem:
     domain: str
     kind: str  # "monitor" | "scrape"
     run: Callable[[], Awaitable[tuple[bool, float]]]
+    id: str = ""  # board ID or posting ID — used for lease release
 
 
 # ── Claim Queries (Worker Pool) ──────────────────────────────────────
@@ -787,6 +858,7 @@ WITH ranked AS (
     AND board_status IN ('active', 'suspect')
     AND next_check_at <= now()
     AND (leased_until IS NULL OR leased_until < now())
+    AND throttle_key != ALL($3::text[])
 ),
 picked AS (
   SELECT id
@@ -813,6 +885,7 @@ WITH candidates AS (
       AND next_scrape_at IS NOT NULL
       AND next_scrape_at <= now()
       AND (leased_until IS NULL OR leased_until < now())
+      AND split_part(split_part(source_url, '://', 2), '/', 1) != ALL($3::text[])
     FOR UPDATE SKIP LOCKED
 ),
 ranked AS (
@@ -825,7 +898,8 @@ ranked AS (
     FROM candidates
 )
 UPDATE job_posting
-SET leased_until = now() + interval '10 minutes'
+SET leased_until = now() + interval '10 minutes',
+    lease_owner = $2
 FROM (
     SELECT id AS rid
     FROM ranked
@@ -844,12 +918,13 @@ async def claim_monitor_work(
     http: httpx.AsyncClient,
     limit: int,
     worker_id: str,
+    exclude_domains: list[str] | None = None,
 ) -> list[WorkItem]:
     """Claim due boards (interleaved across domains) and return WorkItems."""
     if limit <= 0:
         return []
 
-    rows = await pool.fetch(_CLAIM_MONITORS, limit, worker_id)
+    rows = await pool.fetch(_CLAIM_MONITORS, limit, worker_id, exclude_domains or [])
     items: list[WorkItem] = []
     for board in rows:
         domain = board["throttle_key"]
@@ -858,6 +933,7 @@ async def claim_monitor_work(
                 domain=domain,
                 kind="monitor",
                 run=functools.partial(_process_one_board, board, pool, http),
+                id=str(board["id"]),
             )
         )
     return items
@@ -868,12 +944,13 @@ async def claim_scrape_work(
     http: httpx.AsyncClient,
     limit: int,
     worker_id: str,
+    exclude_domains: list[str] | None = None,
 ) -> list[WorkItem]:
     """Claim due job postings (interleaved across domains) and return WorkItems."""
     if limit <= 0:
         return []
 
-    rows = await pool.fetch(_CLAIM_SCRAPES, limit)
+    rows = await pool.fetch(_CLAIM_SCRAPES, limit, worker_id, exclude_domains or [])
     if not rows:
         return []
 
@@ -923,9 +1000,22 @@ async def claim_scrape_work(
                     scraper_type,
                     scraper_config,
                 ),
+                id=str(row["id"]),
             )
         )
     return items
+
+
+async def release_rejected(pool: asyncpg.Pool, items: list[WorkItem]) -> None:
+    """Release leases for WorkItems that were not accepted by the pool."""
+    board_ids = [i.id for i in items if i.kind == "monitor" and i.id]
+    posting_ids = [i.id for i in items if i.kind == "scrape" and i.id]
+    if board_ids:
+        await pool.execute(_RELEASE_BOARD_LEASES, board_ids)
+        log.info("batch.release_rejected.boards", count=len(board_ids))
+    if posting_ids:
+        await pool.execute(_RELEASE_POSTING_LEASES, posting_ids)
+        log.info("batch.release_rejected.postings", count=len(posting_ids))
 
 
 # ── Monitor Batch ────────────────────────────────────────────────────
@@ -1037,7 +1127,7 @@ async def _process_one_board(
 
                 if new_jobs:
                     for j in new_jobs:
-                        loc_ids, loc_types = _resolve_locations(
+                        loc_ids, loc_types = await _resolve_locations(
                             loc_resolver,
                             _coerce_locations(j.locations),
                             _coerce_text(j.job_location_type),
@@ -1091,7 +1181,7 @@ async def _process_one_board(
                     await conn.execute(_CREATE_RICH_UPDATES_TEMP)
                     records = []
                     for pid, j, _ in update_triples:
-                        loc_ids, loc_types = _resolve_locations(
+                        loc_ids, loc_types = await _resolve_locations(
                             loc_resolver,
                             _coerce_locations(j.locations),
                             _coerce_text(j.job_location_type),
@@ -1162,7 +1252,7 @@ async def _process_one_board(
 
         # R2 uploads after transaction — concurrent to avoid timeout for large boards
         if r2_work:
-            r2_semaphore = asyncio.Semaphore(20)
+            r2_semaphore = asyncio.Semaphore(10)
 
             async def _do_upload(
                 pid: str, kw: dict, cur_hash: int | None
@@ -1202,6 +1292,10 @@ async def _process_one_board(
         if new_urls or gone:
             with contextlib.suppress(Exception):
                 await get_redis().delete("cache:platform-stats")
+
+        # Free large temporaries (jobs_by_url, r2_work) before next item
+        del result
+
         return True, elapsed
 
     except Exception as exc:
@@ -1314,8 +1408,13 @@ async def _process_one_scrape(
             content = await scrape_one(item.url, fb_type, fb_cfg, http)
             current_cfg = fb_cfg
 
-        if not content.title:
-            raise ValueError("scrape returned empty content (no title)")
+        if not content.title or _is_garbage_title(content.title):
+            # No usable content — record as failure so backoff kicks in.
+            if content.title:
+                log.info("batch.scrape.garbage_title", url=item.url, title=content.title)
+            async with pool.acquire() as conn:
+                await conn.execute(_RECORD_SCRAPE_FAILURE, item.job_posting_id)
+            return False, monotonic() - t0
 
         content.description = normalize_description_html(content.description)
 
@@ -1332,7 +1431,7 @@ async def _process_one_scrape(
 
         # Resolve locations
         loc_resolver = await _get_location_resolver(pool)
-        loc_ids, loc_types = _resolve_locations(
+        loc_ids, loc_types = await _resolve_locations(
             loc_resolver,
             _coerce_locations(content.locations),
             _coerce_text(content.job_location_type),
@@ -1367,11 +1466,8 @@ async def _process_one_scrape(
                 loc_types,
                 new_r2_hash,
             )
-
-        if _parse_update_count(update_result) != 1:
-            raise RuntimeError(f"job_posting_not_found:{item.job_posting_id}")
-
-        async with pool.acquire() as conn:
+            if _parse_update_count(update_result) != 1:
+                raise RuntimeError(f"job_posting_not_found:{item.job_posting_id}")
             await conn.execute(_RECORD_SCRAPE_SUCCESS, item.job_posting_id)
         elapsed = monotonic() - t0
         log.debug(
@@ -1434,7 +1530,7 @@ async def process_scrape_batch(
     Items targeting the same hostname run serially (respecting per-domain
     throttle).  Different hostnames run concurrently.
     """
-    rows = await pool.fetch(_FETCH_DUE_JOB_POSTINGS, limit)
+    rows = await pool.fetch(_FETCH_DUE_JOB_POSTINGS, limit, worker_id)
 
     if not rows:
         return BatchResult()
