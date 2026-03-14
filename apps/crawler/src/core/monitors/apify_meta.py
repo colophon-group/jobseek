@@ -24,7 +24,7 @@ from src.core.monitors import DiscoveredJob, register
 log = structlog.get_logger()
 
 _APIFY_BASE = "https://api.apify.com/v2"
-_POLL_INTERVAL = 5.0   # seconds between run-status polls
+_POLL_INTERVAL = 5.0  # seconds between run-status polls
 _RUN_TIMEOUT = 3600.0  # max seconds to wait for actor run
 
 
