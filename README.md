@@ -30,3 +30,5 @@ The agent environment needs:
 Supabase project configuration is tracked under `supabase/`, with DB SQL sourced from `apps/web/drizzle/*.sql`.
 
 See `docs/10-supabase-iac.md` for setup and deploy workflow.
+
+Staging planning (Fly.io + Supabase, no deploy steps): `docs/11-staging-env.md`.
