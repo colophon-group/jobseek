@@ -68,6 +68,7 @@ Monitor Types (cheapest first):
   Type              Cost    Returns         Scraper needed?
   ────────────────────────────────────────────────────────
   join              9       Full job data   No (skipped)
+  apify_meta        10      Full job data   No (skipped)
   ashby             10      Full job data   No (skipped)
   bite              10      Full job data   No (skipped)
   breezy            10      Full job data   No (skipped)
@@ -393,6 +394,36 @@ join — JOIN (join.com) Next.js Monitor
               Requires join.com URL + detectable __NEXT_DATA__ job list.
   Zero jobs?  Verify board URL is join.com/companies/{slug} and not a
               marketing landing page."""
+
+MONITOR_APIFY_META = """\
+apify_meta — Apify-backed Meta Careers monitor
+
+  Source:    Existing Apify actor run for a Meta Careers scraper actor
+  Returns:   Full job data (title, HTML description, locations,
+             employment_type, job_location_type, date_posted)
+             extras: responsibilities, qualifications
+             metadata: teams, sub_teams
+  Scraper:   Not needed (monitor returns full data, scraper step is skipped)
+  Cap:       Controlled by the Apify actor / dataset
+  Note:      Starts the configured Apify actor, waits for completion, then
+             maps the resulting dataset into canonical DiscoveredJob records.
+
+  Config:
+    {"actor_id": "myuser/meta-careers-scraper"}
+    {"actor_id": "myuser/meta-careers-scraper", "max_jobs": 250}
+    {"actor_id": "myuser/meta-careers-scraper", "fetch_descriptions": false}
+
+    actor_id            Required Apify actor ID.
+    max_jobs            Optional limit passed to the actor. 0 means all jobs.
+    fetch_descriptions  Whether the actor should fetch descriptions
+                        (default: true).
+
+  Environment:
+    APIFY_TOKEN         Required. Used to start and poll the actor run.
+
+  Detection:  Not auto-detected by ws probe. Use when a board is explicitly
+              backed by an Apify actor and you want rich monitor output.
+  Zero jobs?  Verify actor_id and inspect the actor's latest dataset in Apify."""
 
 MONITOR_SITEMAP = """\
 sitemap — XML Sitemap Parser
@@ -1451,6 +1482,7 @@ Feedback Command Reference:
 
 MONITOR_CARDS: dict[str, str] = {
     "amazon": MONITOR_AMAZON,
+    "apify_meta": MONITOR_APIFY_META,
     "bite": MONITOR_BITE,
     "breezy": MONITOR_BREEZY,
     "dvinci": MONITOR_DVINCI,
