@@ -1,8 +1,8 @@
 {
     "actorSpecification": 1,
-    "name": "meta-careers-scraper",
-    "title": "Meta Careers Scraper",
-    "description": "Scrapes job listings from Meta Careers (metacareers.com) using sitemap discovery and Playwright rendering with JSON-LD and DOM extraction.",
+    "name": "tesla-careers-scraper",
+    "title": "Tesla Careers Scraper",
+    "description": "Scrapes job listings from Tesla Careers (tesla.com/careers/search) via browser network interception and script extraction fallback.",
     "version": "0.0",
     "buildTag": "latest",
     "defaultRunOptions": {

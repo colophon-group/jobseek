@@ -1,12 +1,12 @@
 {
-    "title": "Meta Careers Scraper Input",
+    "title": "Tesla Careers Scraper Input",
     "type": "object",
     "schemaVersion": 1,
     "properties": {
         "maxJobs": {
             "title": "Max Jobs",
             "type": "integer",
-            "description": "Maximum number of job pages to scrape. Set to 0 to scrape all jobs found in the sitemap.",
+            "description": "Maximum number of jobs to return. Set to 0 to return all captured jobs.",
             "default": 0,
             "minimum": 0,
             "editor": "number"
@@ -14,28 +14,35 @@
         "searchQuery": {
             "title": "Search Query",
             "type": "string",
-            "description": "Filter job URLs by keyword (matched against the URL path). Leave empty to scrape all jobs.",
+            "description": "Filter jobs by keyword in title, team, or description.",
             "default": "",
             "editor": "textfield"
+        },
+        "locationQuery": {
+            "title": "Location Query",
+            "type": "string",
+            "description": "Filter jobs by location text (e.g., Zurich, Berlin, Austin).",
+            "default": "",
+            "editor": "textfield"
+        },
+        "maxWaitForJobsSecs": {
+            "title": "Max Wait (seconds)",
+            "type": "integer",
+            "description": "Maximum time to wait for Tesla jobs network responses before fallback parsing.",
+            "default": 45,
+            "minimum": 5,
+            "maximum": 180,
+            "editor": "number"
         },
         "proxyConfiguration": {
             "title": "Proxy Configuration",
             "type": "object",
-            "description": "Apify proxy configuration. Residential proxies are recommended for Meta.",
+            "description": "Apify proxy configuration. Residential proxies are recommended for Tesla.",
             "editor": "proxy",
             "prefill": {
                 "useApifyProxy": true,
                 "apifyProxyGroups": ["RESIDENTIAL"]
             }
-        },
-        "maxConcurrency": {
-            "title": "Max Concurrency",
-            "type": "integer",
-            "description": "Maximum number of parallel browser tabs. Keep low to avoid rate limiting.",
-            "default": 3,
-            "minimum": 1,
-            "maximum": 10,
-            "editor": "number"
         }
     }
 }

@@ -1,371 +1,268 @@
-/**
- * Meta Careers Scraper — Apify Actor
- *
- * Strategy:
- *   1. Load metacareers.com/jobsearch with Playwright
- *   2. Intercept the GraphQL response that returns the full job listing
- *   3. For each job, optionally load the detail page to capture description
- *      (falls back gracefully if the detail page is gated)
- *
- * Output schema (Apify Dataset):
- *   url         — job detail URL
- *   jobId       — numeric ID
- *   title       — job title
- *   locations   — array of "City, ST" strings
- *   teams       — department / team names
- *   subTeams    — sub-team names
- *   description — job description (when detail page is accessible)
- *   responsibilities — responsibilities text (when accessible)
- *   qualifications   — qualifications text (when accessible)
- *   employmentType   — from JSON-LD (when accessible)
- *   datePosted       — ISO date (when accessible)
- *   validThrough     — ISO date (when accessible)
- *   company     — always "Meta"
- */
-
 import { Actor } from 'apify';
 import { log } from 'crawlee';
-import { chromium, type Browser, type BrowserContext } from 'playwright';
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
+import { chromium, type Browser, type BrowserContext, type Response } from 'playwright';
 
 interface Input {
     maxJobs?: number;
     searchQuery?: string;
+    locationQuery?: string;
     fetchDescriptions?: boolean;
+    maxWaitForJobsSecs?: number;
+    proxyConfiguration?: {
+        useApifyProxy?: boolean;
+        apifyProxyGroups?: string[];
+        proxyUrls?: string[];
+    };
 }
 
-interface GraphQLJob {
-    id: string;
-    title: string;
-    locations: string[];
-    teams: string[];
-    sub_teams: string[];
-    // Meta may include remote/work-type fields under various names
-    remote_type?: string;
-    location_type?: string;
-    workplace_type?: string;
-    [key: string]: unknown;
-}
-
-interface JobData {
-    url: string;
+interface TeslaJob {
     jobId: string;
     title: string;
+    url: string;
     locations: string[];
     teams: string[];
-    subTeams: string[];
-    description?: string;
-    responsibilities?: string;
-    qualifications?: string;
     employmentType?: string;
-    jobLocationType?: string;
-    datePosted?: string;
-    validThrough?: string;
-    company: string;
+    description?: string;
+    requirements?: string[];
+    postedAt?: string;
+    company: 'Tesla';
+    source: string;
 }
 
-// ---------------------------------------------------------------------------
-// GraphQL intercept — captures job listing from the search page
-// ---------------------------------------------------------------------------
+function text(v: unknown): string | undefined {
+    if (typeof v === 'string') {
+        const t = v.trim();
+        return t.length ? t : undefined;
+    }
+    if (typeof v === 'number') return String(v);
+    return undefined;
+}
 
-async function captureJobListing(context: BrowserContext, maxJobs: number, searchQuery: string): Promise<GraphQLJob[]> {
+function normalizeLocation(raw: Record<string, unknown>): string[] {
+    const candidates: string[] = [];
+    const direct = [raw.location, raw.city, raw.state, raw.country, raw.region]
+        .map(text)
+        .filter(Boolean) as string[];
+
+    if (direct.length) candidates.push(direct.join(', '));
+
+    const nestedLocation = raw.location as Record<string, unknown> | undefined;
+    if (nestedLocation && typeof nestedLocation === 'object') {
+        const nested = [nestedLocation.city, nestedLocation.state, nestedLocation.country, nestedLocation.name]
+            .map(text)
+            .filter(Boolean) as string[];
+        if (nested.length) candidates.push(nested.join(', '));
+    }
+
+    const all = [...new Set(candidates.map((x) => x.replace(/\s+/g, ' ').trim()).filter(Boolean))];
+    return all.length ? all : ['Unknown'];
+}
+
+function splitListField(value: unknown): string[] {
+    if (!value) return [];
+    if (Array.isArray(value)) {
+        return value
+            .map(text)
+            .filter(Boolean) as string[];
+    }
+    const s = text(value);
+    if (!s) return [];
+    return s
+        .split(/\||,|\u2022|\n|\//g)
+        .map((x) => x.trim())
+        .filter(Boolean);
+}
+
+function deriveUrl(jobId: string, maybeUrl?: string): string {
+    if (maybeUrl && /^https?:\/\//.test(maybeUrl)) return maybeUrl;
+    if (maybeUrl && maybeUrl.startsWith('/')) return `https://www.tesla.com${maybeUrl}`;
+    return `https://www.tesla.com/careers/search/job/${jobId}`;
+}
+
+function toJob(raw: Record<string, unknown>): TeslaJob | null {
+    const jobId = text(raw.id ?? raw.job_id ?? raw.req_id ?? raw.requisitionId ?? raw.external_id);
+    const title = text(raw.title ?? raw.name ?? raw.job_title);
+    if (!jobId || !title) return null;
+
+    const url = deriveUrl(jobId, text(raw.url ?? raw.absolute_url ?? raw.path));
+    const locations = normalizeLocation(raw);
+    const teams = splitListField(raw.team ?? raw.department ?? raw.dept ?? raw.business_unit ?? raw.organization);
+
+    return {
+        jobId,
+        title,
+        url,
+        locations,
+        teams,
+        employmentType: text(raw.employment_type ?? raw.type ?? raw.schedule),
+        description: text(raw.description ?? raw.job_description ?? raw.summary),
+        requirements: splitListField(raw.qualifications ?? raw.requirements),
+        postedAt: text(raw.date_posted ?? raw.created_at ?? raw.postedAt),
+        company: 'Tesla',
+        source: 'tesla.com',
+    };
+}
+
+function collectPossibleJobs(payload: unknown): TeslaJob[] {
+    const out: TeslaJob[] = [];
+
+    function walk(node: unknown): void {
+        if (!node) return;
+        if (Array.isArray(node)) {
+            for (const item of node) walk(item);
+            return;
+        }
+        if (typeof node !== 'object') return;
+
+        const rec = node as Record<string, unknown>;
+        const maybe = toJob(rec);
+        if (maybe) out.push(maybe);
+
+        for (const value of Object.values(rec)) {
+            if (typeof value === 'object' && value !== null) walk(value);
+        }
+    }
+
+    walk(payload);
+
+    const dedup = new Map<string, TeslaJob>();
+    for (const j of out) dedup.set(j.jobId, j);
+    return [...dedup.values()];
+}
+
+async function maybeParseJsonResponse(resp: Response): Promise<TeslaJob[]> {
+    try {
+        const ct = resp.headers()['content-type'] ?? '';
+        const url = resp.url();
+        if (!url.includes('tesla.com')) return [];
+
+        const looksLikeJobsEndpoint =
+            url.includes('/api/') ||
+            url.includes('/graphql') ||
+            url.includes('/search') ||
+            ct.includes('application/json');
+
+        if (!looksLikeJobsEndpoint) return [];
+
+        const body = await resp.text();
+        if (!body || body.length < 2) return [];
+        const parsed = JSON.parse(body) as unknown;
+        return collectPossibleJobs(parsed);
+    } catch {
+        return [];
+    }
+}
+
+async function extractFromPageScripts(context: BrowserContext): Promise<TeslaJob[]> {
     const page = await context.newPage();
-    let captured: GraphQLJob[] = [];
+    await page.goto('https://www.tesla.com/careers/search/?site=US', {
+        waitUntil: 'domcontentloaded',
+        timeout: 90_000,
+    });
 
-    page.on('response', async (resp) => {
-        if (!resp.url().includes('/graphql')) return;
+    const scripts = await page.locator('script').allTextContents();
+    const found: TeslaJob[] = [];
+
+    for (const raw of scripts) {
+        const textBlock = raw.trim();
+        if (!textBlock) continue;
+        if (!textBlock.includes('job') && !textBlock.includes('career') && !textBlock.includes('requisition')) continue;
+
         try {
-            const text = await resp.text();
-            if (!text.includes('all_jobs')) return;
+            const parsed = JSON.parse(textBlock) as unknown;
+            found.push(...collectPossibleJobs(parsed));
+        } catch {
+            // many script tags are JS, not JSON
+        }
+    }
 
-            const data = JSON.parse(text) as {
-                data?: { job_search_with_featured_jobs?: { all_jobs?: GraphQLJob[] } };
-            };
-            const jobs = data?.data?.job_search_with_featured_jobs?.all_jobs;
-            if (Array.isArray(jobs) && jobs.length > captured.length) {
-                captured = jobs;
-                log.info(`GraphQL snapshot: ${jobs.length} jobs`);
-                // Log all keys from first job once so we can see what fields Meta exposes
-                if (jobs.length > 0) {
-                    log.info(`GraphQL job fields: ${Object.keys(jobs[0]).join(', ')}`);
-                }
-            }
-        } catch { /* ignore parse errors */ }
+    await page.close();
+    const dedup = new Map(found.map((j) => [j.jobId, j]));
+    return [...dedup.values()];
+}
+
+function applyFilters(jobs: TeslaJob[], input: Input): TeslaJob[] {
+    let filtered = jobs;
+
+    if (input.searchQuery?.trim()) {
+        const q = input.searchQuery.toLowerCase();
+        filtered = filtered.filter((j) => {
+            const blob = `${j.title} ${j.teams.join(' ')} ${j.description ?? ''}`.toLowerCase();
+            return blob.includes(q);
+        });
+    }
+
+    if (input.locationQuery?.trim()) {
+        const q = input.locationQuery.toLowerCase();
+        filtered = filtered.filter((j) => j.locations.some((loc) => loc.toLowerCase().includes(q)));
+    }
+
+    const maxJobs = Math.max(0, input.maxJobs ?? 0);
+    if (maxJobs > 0) filtered = filtered.slice(0, maxJobs);
+
+    return filtered;
+}
+
+await Actor.init();
+
+const input = (await Actor.getInput<Input>()) ?? {};
+const maxWaitMs = Math.max(5, input.maxWaitForJobsSecs ?? 45) * 1000;
+const proxyConfiguration = await Actor.createProxyConfiguration(input.proxyConfiguration ?? {
+    useApifyProxy: true,
+    apifyProxyGroups: ['RESIDENTIAL'],
+});
+const proxyInfo = await proxyConfiguration?.newProxyInfo();
+
+let browser: Browser | undefined;
+
+try {
+    browser = await chromium.launch({ headless: true });
+
+    const context = await browser.newContext({
+        proxy: proxyInfo?.url ? { server: proxyInfo.url } : undefined,
+        userAgent:
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        locale: 'en-US',
     });
 
-    log.info('Loading https://www.metacareers.com/jobsearch …');
-    await page.goto('https://www.metacareers.com/jobsearch', {
-        waitUntil: 'networkidle',
-        timeout: 60_000,
+    const collected = new Map<string, TeslaJob>();
+
+    context.on('response', async (resp) => {
+        const jobs = await maybeParseJsonResponse(resp);
+        if (!jobs.length) return;
+        for (const j of jobs) collected.set(j.jobId, j);
+        log.info(`Captured ${jobs.length} Tesla jobs from ${resp.url()}`);
     });
+
+    const page = await context.newPage();
+    log.info('Opening Tesla Careers search page…');
+    await page.goto('https://www.tesla.com/careers/search/?site=US', {
+        waitUntil: 'domcontentloaded',
+        timeout: 90_000,
+    });
+
+    const started = Date.now();
+    while (Date.now() - started < maxWaitMs) {
+        if (collected.size >= (input.maxJobs && input.maxJobs > 0 ? input.maxJobs : 50)) break;
+        await page.waitForTimeout(1_000);
+    }
 
     await page.close();
 
-    // Filter by searchQuery if provided
-    if (searchQuery) {
-        const q = searchQuery.toLowerCase();
-        captured = captured.filter(
-            (j) =>
-                j.title.toLowerCase().includes(q) ||
-                j.teams.some((t) => t.toLowerCase().includes(q)) ||
-                j.locations.some((l) => l.toLowerCase().includes(q)),
-        );
-        log.info(`After search filter "${searchQuery}": ${captured.length} jobs`);
+    if (collected.size === 0) {
+        log.warning('No jobs captured from network responses; trying inline script extraction…');
+        const fallbackJobs = await extractFromPageScripts(context);
+        for (const j of fallbackJobs) collected.set(j.jobId, j);
     }
 
-    if (maxJobs > 0) {
-        captured = captured.slice(0, maxJobs);
-        log.info(`Capped to ${captured.length} jobs`);
+    const jobs = applyFilters([...collected.values()], input);
+
+    for (const job of jobs) {
+        await Actor.pushData(job);
     }
 
-    return captured;
-}
-
-// ---------------------------------------------------------------------------
-// JSON-LD extraction helpers
-// ---------------------------------------------------------------------------
-
-interface JsonLdNode {
-    '@type'?: string | string[];
-    '@graph'?: JsonLdNode[];
-    [key: string]: unknown;
-}
-
-function findJobPosting(data: unknown): Record<string, unknown> | null {
-    if (Array.isArray(data)) {
-        for (const item of data) {
-            const r = findJobPosting(item);
-            if (r) return r;
-        }
-        return null;
-    }
-    if (typeof data !== 'object' || data === null) return null;
-    const obj = data as JsonLdNode;
-    const t = obj['@type'];
-    const ts = Array.isArray(t) ? t.join(' ') : String(t ?? '');
-    if (ts.includes('JobPosting')) return obj as Record<string, unknown>;
-    if (Array.isArray(obj['@graph'])) return findJobPosting(obj['@graph']);
-    return null;
-}
-
-function extractFromHtml(html: string): Partial<JobData> {
-    const blocks = [
-        ...html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi),
-    ];
-    for (const [, raw] of blocks) {
-        if (!raw.trim()) continue;
-        try {
-            const p = findJobPosting(JSON.parse(raw));
-            if (!p) continue;
-            // Normalise jobLocationType: schema.org uses "TELECOMMUTE" for remote;
-            // Meta may also emit "REMOTE", "HYBRID", or "ON_SITE".
-            const rawLocType = p['jobLocationType'] as string | undefined;
-            let jobLocationType: string | undefined;
-            if (rawLocType) {
-                const u = rawLocType.toUpperCase();
-                if (u.includes('TELECOMMUTE') || u.includes('REMOTE')) jobLocationType = 'REMOTE';
-                else if (u.includes('HYBRID')) jobLocationType = 'HYBRID';
-                else if (u.includes('ON') || u.includes('SITE') || u.includes('OFFICE')) jobLocationType = 'ON_SITE';
-                else jobLocationType = rawLocType;
-            }
-            return {
-                description: p['description'] as string | undefined,
-                responsibilities: p['responsibilities'] as string | undefined,
-                qualifications: (p['qualifications'] ?? p['educationRequirements']) as string | undefined,
-                employmentType: p['employmentType'] as string | undefined,
-                jobLocationType,
-                datePosted: p['datePosted'] as string | undefined,
-                validThrough: p['validThrough'] as string | undefined,
-            };
-        } catch { /* skip */ }
-    }
-    return {};
-}
-
-// ---------------------------------------------------------------------------
-// Detail page scraper (best-effort)
-// ---------------------------------------------------------------------------
-
-/**
- * Walk a parsed GraphQL response and return the first node that looks like
- * a job-detail payload (has a non-empty "description" field).
- */
-function findDetailNode(obj: unknown): Record<string, unknown> | null {
-    if (typeof obj !== 'object' || obj === null) return null;
-    if (Array.isArray(obj)) {
-        for (const item of obj) {
-            const r = findDetailNode(item);
-            if (r) return r;
-        }
-        return null;
-    }
-    const rec = obj as Record<string, unknown>;
-    if (typeof rec['description'] === 'string' && rec['description'].length > 20) return rec;
-    for (const val of Object.values(rec)) {
-        const r = findDetailNode(val);
-        if (r) return r;
-    }
-    return null;
-}
-
-async function scrapeDetail(context: BrowserContext, url: string): Promise<Partial<JobData>> {
-    const page = await context.newPage();
-    let graphqlData: Partial<JobData> | null = null;
-
-    // Primary: intercept the GraphQL response on the detail page (Meta is a SPA;
-    // the description lives in a network response, not in the initial HTML).
-    page.on('response', async (resp) => {
-        if (!resp.url().includes('/graphql')) return;
-        try {
-            const text = await resp.text();
-            // Quick pre-filter to avoid parsing every GraphQL response.
-            if (!text.includes('description')) return;
-            const parsed = JSON.parse(text);
-            const node = findDetailNode(parsed);
-            if (!node) return;
-            const candidate: Partial<JobData> = {};
-            if (typeof node['description'] === 'string') candidate.description = node['description'] as string;
-            if (typeof node['responsibilities'] === 'string') candidate.responsibilities = node['responsibilities'] as string;
-            if (typeof node['qualifications'] === 'string') candidate.qualifications = node['qualifications'] as string;
-            if (typeof node['employment_type'] === 'string') candidate.employmentType = node['employment_type'] as string;
-            if (typeof node['date_posted'] === 'string') candidate.datePosted = node['date_posted'] as string;
-            if (typeof node['valid_through'] === 'string') candidate.validThrough = node['valid_through'] as string;
-            // remote_type, job_location_type, or similar field names used by Meta GraphQL
-            const locType = (node['remote_type'] ?? node['job_location_type'] ?? node['jobLocationType']) as string | undefined;
-            if (locType) {
-                const u = locType.toUpperCase();
-                if (u.includes('REMOTE') || u.includes('TELECOMMUTE')) candidate.jobLocationType = 'REMOTE';
-                else if (u.includes('HYBRID')) candidate.jobLocationType = 'HYBRID';
-                else if (u.includes('ON') || u.includes('SITE') || u.includes('OFFICE')) candidate.jobLocationType = 'ON_SITE';
-                else candidate.jobLocationType = locType;
-            }
-            if (candidate.description && !graphqlData) {
-                graphqlData = candidate;
-            }
-        } catch { /* ignore */ }
-    });
-
-    try {
-        const resp = await page.goto(url, { waitUntil: 'networkidle', timeout: 45_000 });
-        if (!resp || !resp.ok()) return {};
-
-        // Return GraphQL-captured data if we got it.
-        if (graphqlData) return graphqlData;
-
-        // Fallback: extract from JSON-LD in rendered HTML.
-        const html = await page.content();
-        if (html.length < 500 || html.includes('Not Logged In')) return {};
-        return extractFromHtml(html);
-    } catch {
-        return graphqlData ?? {};
-    } finally {
-        await page.close();
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Actor entry point
-// ---------------------------------------------------------------------------
-
-async function main() {
-    await Actor.init();
-
-    const input = ((await Actor.getInput()) ?? {}) as Input;
-    const maxJobs = input.maxJobs ?? 0;
-    const searchQuery = input.searchQuery ?? '';
-    const fetchDescriptions = input.fetchDescriptions ?? true;
-
-    log.info('Starting Meta Careers scraper', { maxJobs, searchQuery, fetchDescriptions });
-
-    let browser: Browser | null = null;
-    try {
-        browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
-        const context = await browser.newContext({
-            userAgent:
-                'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        });
-
-        // Step 1: capture the job listing via GraphQL intercept
-        const graphqlJobs = await captureJobListing(context, maxJobs, searchQuery);
-
-        if (!graphqlJobs.length) {
-            log.warning('No jobs captured from GraphQL — exiting.');
-            await Actor.exit();
-            return;
-        }
-
-        log.info(`Processing ${graphqlJobs.length} jobs…`);
-
-        // Step 2: for each job, optionally fetch detail page; push to dataset
-        for (let i = 0; i < graphqlJobs.length; i++) {
-            const gj = graphqlJobs[i];
-            const url = `https://www.metacareers.com/profile/job_details/${gj.id}`;
-
-            // Infer jobLocationType from GraphQL listing fields or location strings
-            const rawWorkplaceType = (gj.remote_type ?? gj.location_type ?? gj.workplace_type) as string | undefined;
-            let listingLocType: string | undefined;
-            if (rawWorkplaceType) {
-                const u = rawWorkplaceType.toUpperCase();
-                if (u.includes('REMOTE') || u.includes('TELECOMMUTE')) listingLocType = 'REMOTE';
-                else if (u.includes('HYBRID')) listingLocType = 'HYBRID';
-                else if (u.includes('ON') || u.includes('SITE') || u.includes('OFFICE')) listingLocType = 'ON_SITE';
-                else listingLocType = rawWorkplaceType;
-            } else {
-                // Fall back: check if "Remote" appears in location strings
-                const locsLower = gj.locations.map((l) => l.toLowerCase());
-                if (locsLower.some((l) => l.includes('remote'))) listingLocType = 'REMOTE';
-                else if (locsLower.some((l) => l.includes('hybrid'))) listingLocType = 'HYBRID';
-            }
-
-            const base: JobData = {
-                url,
-                jobId: gj.id,
-                title: gj.title,
-                locations: gj.locations,
-                teams: gj.teams,
-                subTeams: gj.sub_teams,
-                jobLocationType: listingLocType,
-                company: 'Meta',
-            };
-
-            let extra: Partial<JobData> = {};
-            if (fetchDescriptions) {
-                log.info(`[${i + 1}/${graphqlJobs.length}] Fetching detail: ${gj.title}`);
-                extra = await scrapeDetail(context, url);
-                // polite delay
-                await new Promise((r) => setTimeout(r, 600));
-            }
-
-            // Determine jobLocationType: detail page > listing inference > description text > ON_SITE default
-            let jobLocationType = extra.jobLocationType ?? base.jobLocationType;
-            if (!jobLocationType) {
-                const searchText = [
-                    extra.description ?? '',
-                    extra.responsibilities ?? '',
-                    gj.title,
-                ].join(' ').toLowerCase();
-                if (searchText.includes('remote')) jobLocationType = 'REMOTE';
-                else if (searchText.includes('hybrid')) jobLocationType = 'HYBRID';
-                else if (gj.locations.length > 0) jobLocationType = 'ON_SITE';
-            }
-
-            const job: JobData = { ...base, ...extra, jobLocationType };
-            await Actor.pushData(job);
-
-            if (!fetchDescriptions) {
-                log.info(`[${i + 1}/${graphqlJobs.length}] ${gj.title} @ ${gj.locations.join(', ')}`);
-            }
-        }
-
-        log.info('All jobs pushed to dataset.');
-    } finally {
-        await browser?.close();
-    }
-
+    log.info(`Done. Pushed ${jobs.length} Tesla jobs.`);
+} finally {
+    await browser?.close();
     await Actor.exit();
 }
-
-main();
