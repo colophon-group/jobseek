@@ -24,3 +24,9 @@ The agent environment needs:
 - `git`, `gh` (GitHub CLI, authenticated)
 - Python 3.12+
 - Web access (to research companies and fetch career pages)
+
+## Supabase (Infra-as-Code)
+
+Supabase project configuration is tracked under `supabase/`, with DB SQL sourced from `apps/web/drizzle/*.sql`.
+
+See `docs/10-supabase-iac.md` for setup and deploy workflow.
