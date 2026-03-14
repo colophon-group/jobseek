@@ -9,6 +9,15 @@ import { company, jobBoard, jobPosting } from "@/db/schema";
 const APIFY_BASE_URL = "https://api.apify.com/v2";
 const META_BOARD_SLUG = "meta-careers";
 
+function apifyDebug(message: string, details?: Record<string, unknown>): void {
+  if (details) {
+    console.info("APIFY_DEBUG", message, details);
+    return;
+  }
+
+  console.info("APIFY_DEBUG", message);
+}
+
 export class MetaApifyImportError extends Error {
   constructor(
     message: string,
@@ -121,14 +130,27 @@ export type MetaApifyImportDeps = {
 export async function importLatestMetaApifyRun(
   deps: MetaApifyImportDeps = createDefaultDeps(),
 ): Promise<MetaApifyImportResult> {
+  apifyDebug("import started");
   const board = await deps.getBoardConfig();
   if (!board) {
     throw new MetaApifyImportError(`Job board ${META_BOARD_SLUG} was not found`, 404);
   }
+  apifyDebug("board resolved", {
+    boardSlug: board.boardSlug,
+    actorId: board.actorId,
+  });
 
   const dataset = await deps.getLatestDataset(board.actorId);
   const { jobs, skippedMissingUrl } = mapApifyDatasetItems(dataset.items);
   const existing = await deps.getExistingPostings(jobs.map((job) => job.url));
+  apifyDebug("dataset loaded", {
+    runId: dataset.runId,
+    datasetId: dataset.datasetId,
+    fetchedItems: dataset.items.length,
+    mappedJobs: jobs.length,
+    skippedMissingUrl,
+    existingPostings: existing.size,
+  });
 
   let inserted = 0;
   let updated = 0;
@@ -200,7 +222,7 @@ export async function importLatestMetaApifyRun(
     existing.set(job.url, { id: postingId, descriptionR2Hash: currentHash });
   }
 
-  return {
+  const result = {
     boardSlug: board.boardSlug,
     actorId: dataset.actorId,
     runId: dataset.runId,
@@ -212,6 +234,9 @@ export async function importLatestMetaApifyRun(
     r2Uploaded,
     r2Unchanged,
   };
+
+  apifyDebug("import completed", result);
+  return result;
 }
 
 export function mapApifyDatasetItems(items: unknown[]): {
@@ -383,9 +408,11 @@ async function getLatestDataset(actorId: string): Promise<LatestApifyDataset> {
   }
 
   const runsPayload = (await runsResponse.json()) as {
-    data?: Array<Record<string, unknown>>;
+    data?: {
+      items?: Array<Record<string, unknown>>;
+    };
   };
-  const run = runsPayload.data?.[0];
+  const run = runsPayload.data?.items?.[0];
   const runId = asNonEmptyString(run?.id);
   const datasetId = asNonEmptyString(run?.defaultDatasetId);
 
