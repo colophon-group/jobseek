@@ -6,6 +6,7 @@ import { cached } from "@/lib/cache";
 
 export interface LocationSuggestion {
   id: number;
+  slug: string;
   name: string;
   type: "macro" | "country" | "region" | "city";
   parentName: string | null;
@@ -37,6 +38,7 @@ async function _querySuggestions(params: {
   const rows = await db.execute<{
     [key: string]: unknown;
     id: number;
+    slug: string;
     name: string;
     type: string;
     parent_name: string | null;
@@ -89,6 +91,7 @@ async function _querySuggestions(params: {
       SELECT * FROM fuzzy_matches
     )
     SELECT m.id,
+      loc.slug,
       dn.name,
       m.type::text AS type,
       pdn.name AS parent_name,
@@ -96,13 +99,20 @@ async function _querySuggestions(params: {
       m.lat, m.lng,
       m.match_rank
     FROM matches m
-    JOIN location_name dn
-      ON dn.location_id = m.id AND dn.locale = ${locale} AND dn.is_display = true
-    LEFT JOIN location_name pdn
-      ON pdn.location_id = m.parent_id AND pdn.locale = ${locale} AND pdn.is_display = true
+    JOIN location loc ON loc.id = m.id
+    JOIN LATERAL (
+      SELECT name FROM location_name
+      WHERE location_id = m.id AND locale IN (${locale}, 'en') AND is_display = true
+      ORDER BY (locale = ${locale})::int DESC LIMIT 1
+    ) dn ON true
+    LEFT JOIN LATERAL (
+      SELECT name FROM location_name
+      WHERE location_id = m.parent_id AND locale IN (${locale}, 'en') AND is_display = true
+      ORDER BY (locale = ${locale})::int DESC LIMIT 1
+    ) pdn ON true
   `);
 
-  type Row = { id: number; name: string; type: string; parent_name: string | null; population: number; lat: number | null; lng: number | null; match_rank: number };
+  type Row = { id: number; slug: string; name: string; type: string; parent_name: string | null; population: number; lat: number | null; lng: number | null; match_rank: number };
   const all = rows as unknown as Row[];
 
   // Sort: nearby locations by distance, then far locations by population
@@ -126,6 +136,7 @@ async function _querySuggestions(params: {
 
   return sorted.map((r) => ({
     id: r.id,
+    slug: r.slug,
     name: r.name,
     type: r.type as LocationSuggestion["type"],
     parentName: r.parent_name,
@@ -162,6 +173,66 @@ export async function expandLocationIds(locationId: number): Promise<number[]> {
     },
     { ttl: 86400 },
   );
+}
+
+export interface ResolvedLocation {
+  id: number;
+  slug: string;
+  name: string;
+  type: string;
+  parentName: string | null;
+}
+
+export async function resolveLocationSlugs(
+  slugs: string[],
+  locale: string,
+): Promise<Map<string, ResolvedLocation>> {
+  if (slugs.length === 0) return new Map();
+  const key = `loc-resolve-slugs:${slugs.sort().join(",")}:${locale}`;
+  // Cache as a plain record (Map doesn't survive JSON serialization in Redis)
+  const record = await cached(
+    key,
+    async () => {
+      const pgArray = `{${slugs.join(",")}}`;
+      const rows = await db.execute<{
+        [key: string]: unknown;
+        id: number;
+        slug: string;
+        type: string;
+        name: string;
+        parent_name: string | null;
+      }>(sql`
+        SELECT l.id, l.slug, l.type::text AS type,
+          ln.name,
+          pln.name AS parent_name
+        FROM location l
+        JOIN LATERAL (
+          SELECT name FROM location_name
+          WHERE location_id = l.id AND locale IN (${locale}, 'en') AND is_display = true
+          ORDER BY (locale = ${locale})::int DESC LIMIT 1
+        ) ln ON true
+        LEFT JOIN LATERAL (
+          SELECT name FROM location_name
+          WHERE location_id = l.parent_id AND locale IN (${locale}, 'en') AND is_display = true
+          ORDER BY (locale = ${locale})::int DESC LIMIT 1
+        ) pln ON true
+        WHERE l.slug = ANY(${pgArray}::text[])
+      `);
+      const result: Record<string, ResolvedLocation> = {};
+      for (const r of rows as unknown as { id: number; slug: string; type: string; name: string; parent_name: string | null }[]) {
+        result[r.slug] = {
+          id: r.id,
+          slug: r.slug,
+          name: r.name,
+          type: r.type,
+          parentName: r.parent_name,
+        };
+      }
+      return result;
+    },
+    { ttl: 3600 },
+  );
+  return new Map(Object.entries(record));
 }
 
 function _haversineKm(

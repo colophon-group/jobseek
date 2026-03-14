@@ -13,7 +13,7 @@ export interface PostingDetail {
   id: string;
   title: string | null;
   company: { id: string; name: string; slug: string; logo: string | null; icon: string | null };
-  locations: { name: string; type: string }[];
+  locations: { name: string; type: string; geoType?: string }[];
   employmentType: string | null;
   sourceUrl: string;
   firstSeenAt: string;
@@ -73,29 +73,36 @@ async function _fetchPostingDetail(
   if (!row) return null;
 
   // Resolve location display names
-  let locations: { name: string; type: string }[] = [];
+  let locations: { name: string; type: string; geoType?: string }[] = [];
   if (row.location_ids && row.location_ids.length > 0) {
     const pgArray = `{${row.location_ids.join(",")}}`;
     const locRows = await db.execute<{
       [key: string]: unknown;
       location_id: number;
       name: string;
+      type: string;
     }>(sql`
-      SELECT location_id, name
-      FROM location_name
-      WHERE location_id = ANY(${pgArray}::integer[])
-        AND locale = ${locale}
-        AND is_display = true
+      SELECT DISTINCT ON (ln.location_id) ln.location_id, ln.name, l.type::text
+      FROM location_name ln
+      JOIN location l ON l.id = ln.location_id
+      WHERE ln.location_id = ANY(${pgArray}::integer[])
+        AND ln.locale IN (${locale}, 'en')
+        AND ln.is_display = true
+      ORDER BY ln.location_id, (ln.locale = ${locale})::int DESC
     `);
-    const nameMap = new Map<number, string>();
-    for (const r of locRows as unknown as { location_id: number; name: string }[]) {
-      nameMap.set(r.location_id, r.name);
+    const nameMap = new Map<number, { name: string; geoType: string }>();
+    for (const r of locRows as unknown as { location_id: number; name: string; type: string }[]) {
+      nameMap.set(r.location_id, { name: r.name, geoType: r.type });
     }
     locations = row.location_ids
-      .map((id, i) => ({
-        name: nameMap.get(id) ?? "",
-        type: row.location_types?.[i] ?? "onsite",
-      }))
+      .map((id, i) => {
+        const resolved = nameMap.get(id);
+        return {
+          name: resolved?.name ?? "",
+          type: row.location_types?.[i] ?? "onsite",
+          geoType: resolved?.geoType,
+        };
+      })
       .filter((l) => l.name !== "");
   }
 

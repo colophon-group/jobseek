@@ -4,11 +4,13 @@ import { useEffect, useRef } from "react";
 import { CompanyCard } from "./company-card";
 import { RequestCompanyPrompt } from "./request-company";
 import type { SearchResultCompany } from "@/lib/search";
+import type { SerializableLocation } from "@/lib/search/query-params";
 
 interface SearchResultsProps {
   companies: SearchResultCompany[];
   keywords: string[];
   locationIds?: number[];
+  locations?: SerializableLocation[];
   hasMore: boolean;
   onLoadMore: () => void;
   isLoadingMore: boolean;
@@ -19,6 +21,7 @@ export function SearchResults({
   companies,
   keywords,
   locationIds,
+  locations,
   hasMore,
   onLoadMore,
   isLoadingMore,
@@ -48,7 +51,7 @@ export function SearchResults({
     <div className="space-y-3">
       {companies.map((result) => (
         <div key={`${result.company.id}-${keywords.join(",")}`}>
-          <CompanyCard result={result} keywords={keywords} locationIds={locationIds} onShowPosting={onShowPosting} />
+          <CompanyCard result={result} keywords={keywords} locationIds={locationIds} locations={locations} onShowPosting={onShowPosting} />
         </div>
       ))}
       {hasMore && <div ref={sentinelRef} className="h-1" />}

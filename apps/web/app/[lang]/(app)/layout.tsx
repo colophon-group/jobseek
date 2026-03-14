@@ -5,11 +5,14 @@ export const dynamic = "force-dynamic";
 import { getSession } from "@/lib/sessionCache";
 import { getPreferences } from "@/lib/actions/preferences";
 import { getSavedJobIds } from "@/lib/actions/saved-jobs";
+import { getFollowedCompanyIds } from "@/lib/actions/followed-companies";
 import { SessionProvider } from "@/components/SessionProvider";
 import { SavedJobsProvider } from "@/components/SavedJobsProvider";
+import { FollowedCompaniesProvider } from "@/components/FollowedCompaniesProvider";
 import { AppHeader } from "@/components/AppHeader";
 import { CookieBanner } from "@/components/CookieBanner";
 import { PreferencesInitializer } from "@/components/PreferencesInitializer";
+import { SearchStateProvider } from "@/components/SearchStateProvider";
 
 type Props = {
   params: Promise<{ lang: string }>;
@@ -20,14 +23,17 @@ export default async function AppLayout({ params, children }: Props) {
   const { lang: _lang } = await params;
   const session = await getSession();
 
-  const [prefs, savedIds] = await Promise.all([
+  const [prefs, savedIds, followedIds] = await Promise.all([
     session ? getPreferences() : null,
     session ? getSavedJobIds() : [],
+    session ? getFollowedCompanyIds() : [],
   ]);
 
   return (
     <SessionProvider user={session?.user ?? null}>
       <SavedJobsProvider initialIds={savedIds ?? []}>
+      <FollowedCompaniesProvider initialIds={followedIds ?? []}>
+      <SearchStateProvider>
         <div className="flex min-h-dvh flex-col">
           {prefs && (
             <PreferencesInitializer
@@ -46,6 +52,8 @@ export default async function AppLayout({ params, children }: Props) {
             </main>
           </div>
         </div>
+      </SearchStateProvider>
+      </FollowedCompaniesProvider>
       </SavedJobsProvider>
     </SessionProvider>
   );

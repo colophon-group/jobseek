@@ -28,26 +28,34 @@ interface RawSearchRow {
 /**
  * Resolve location IDs to display names in a single batch query.
  */
+interface ResolvedLoc {
+  name: string;
+  geoType: "city" | "region" | "country" | "macro";
+}
+
 async function resolveLocationNames(
   ids: number[],
   locale: string,
-): Promise<Map<number, string>> {
+): Promise<Map<number, ResolvedLoc>> {
   if (ids.length === 0) return new Map();
   const pgArray = `{${ids.join(",")}}`;
   const rows = await db.execute<{
     [key: string]: unknown;
     location_id: number;
     name: string;
+    type: string;
   }>(sql`
-    SELECT location_id, name
-    FROM location_name
-    WHERE location_id = ANY(${pgArray}::integer[])
-      AND locale = ${locale}
-      AND is_display = true
+    SELECT DISTINCT ON (ln.location_id) ln.location_id, ln.name, l.type::text
+    FROM location_name ln
+    JOIN location l ON l.id = ln.location_id
+    WHERE ln.location_id = ANY(${pgArray}::integer[])
+      AND ln.locale IN (${locale}, 'en')
+      AND ln.is_display = true
+    ORDER BY ln.location_id, (ln.locale = ${locale})::int DESC
   `);
-  const map = new Map<number, string>();
-  for (const r of rows as unknown as { location_id: number; name: string }[]) {
-    map.set(r.location_id, r.name);
+  const map = new Map<number, ResolvedLoc>();
+  for (const r of rows as unknown as { location_id: number; name: string; type: string }[]) {
+    map.set(r.location_id, { name: r.name, geoType: r.type as ResolvedLoc["geoType"] });
   }
   return map;
 }
@@ -58,22 +66,26 @@ async function resolveLocationNames(
 function buildPostingLocations(
   locationIds: number[] | null,
   locationTypes: string[] | null,
-  nameMap: Map<number, string>,
+  nameMap: Map<number, ResolvedLoc>,
   filterIds?: Set<number>,
 ): PostingLocation[] {
   if (!locationIds || locationIds.length === 0) return [];
   const locs: PostingLocation[] = [];
   for (let i = 0; i < locationIds.length; i++) {
-    const name = nameMap.get(locationIds[i]);
-    if (name) {
-      locs.push({ name, type: locationTypes?.[i] ?? "onsite" });
+    const resolved = nameMap.get(locationIds[i]);
+    if (resolved) {
+      locs.push({
+        name: resolved.name,
+        type: locationTypes?.[i] ?? "onsite",
+        geoType: resolved.geoType,
+      });
     }
   }
   if (filterIds && filterIds.size > 0) {
     // Move locations matching the filter to the front
     locs.sort((a, b) => {
-      const aMatch = [...filterIds].some((fid) => nameMap.get(fid) === a.name);
-      const bMatch = [...filterIds].some((fid) => nameMap.get(fid) === b.name);
+      const aMatch = [...filterIds].some((fid) => nameMap.get(fid)?.name === a.name);
+      const bMatch = [...filterIds].some((fid) => nameMap.get(fid)?.name === b.name);
       if (aMatch && !bMatch) return -1;
       if (!aMatch && bMatch) return 1;
       return 0;
@@ -84,7 +96,7 @@ function buildPostingLocations(
 
 function groupRows(
   rows: RawSearchRow[],
-  nameMap: Map<number, string>,
+  nameMap: Map<number, ResolvedLoc>,
   filterLocationIds?: number[],
 ): SearchResponse {
   if (rows.length === 0) return { companies: [], totalCompanies: 0 };
@@ -386,5 +398,111 @@ export class PostgresSearchProvider implements SearchProvider {
         filterSet,
       ),
     }));
+  }
+
+  async loadPostingsWithCounts(params: {
+    companyId: string;
+    keywords: string[];
+    locationIds?: number[];
+    language: string;
+    offset: number;
+    limit: number;
+  }): Promise<{ postings: SearchResultPosting[]; activeCount: number; yearCount: number }> {
+    const { companyId, keywords, language, offset, limit, locationIds } = params;
+
+    interface CountRow {
+      [key: string]: unknown;
+      active_count: number;
+      year_count: number;
+    }
+
+    interface PostingRow {
+      [key: string]: unknown;
+      id: string;
+      title: string | null;
+      first_seen_at: Date;
+      keyword_count: number;
+      location_ids: number[] | null;
+      location_types: string[] | null;
+    }
+
+    // Counts query
+    const countRows = await db.execute<CountRow>(sql`
+      SELECT
+        COUNT(*) FILTER (WHERE jp.is_active) AS active_count,
+        COUNT(*) AS year_count
+      FROM job_posting jp
+      WHERE jp.company_id = ${companyId}
+        AND jp.titles[1] IS NOT NULL AND jp.titles[1] != ''
+        AND (${language} = ANY(jp.locales) OR jp.locales = '{}')
+        ${keywords.length > 0 ? sql`AND (${matchOr("jp", keywords)})` : sql``}
+        AND (${locationFilter("jp", locationIds)})
+    `);
+    const counts = (countRows as unknown as CountRow[])[0];
+    const activeCount = Number(counts?.active_count ?? 0);
+    const yearCount = Number(counts?.year_count ?? 0);
+
+    // Postings query (same as loadPostings)
+    let rawRows: PostingRow[];
+
+    if (keywords.length > 0) {
+      const rows = await db.execute<PostingRow>(sql`
+        SELECT sub.id, sub.title, sub.first_seen_at,
+          (${keywordCountFromVec("sub.vec", keywords)}) AS keyword_count,
+          sub.location_ids, sub.location_types
+        FROM (
+          SELECT jp.id, jp.titles[1] AS title, jp.first_seen_at,
+            jp.location_ids, jp.location_types,
+            ${tsvecFor("jp")} AS vec
+          FROM job_posting jp
+          WHERE jp.company_id = ${companyId}
+            AND jp.titles[1] IS NOT NULL AND jp.titles[1] != ''
+            AND (${matchOr("jp", keywords)})
+            AND (${language} = ANY(jp.locales) OR jp.locales = '{}')
+            AND (${locationFilter("jp", locationIds)})
+        ) sub
+        ORDER BY keyword_count DESC, sub.first_seen_at DESC
+        LIMIT ${limit} OFFSET ${offset}
+      `);
+      rawRows = rows as unknown as PostingRow[];
+    } else {
+      const rows = await db.execute<PostingRow>(sql`
+        SELECT jp.id, jp.titles[1] AS title, jp.first_seen_at,
+          0 AS keyword_count,
+          jp.location_ids, jp.location_types
+        FROM job_posting jp
+        WHERE jp.company_id = ${companyId}
+          AND jp.titles[1] IS NOT NULL AND jp.titles[1] != ''
+          AND (${language} = ANY(jp.locales) OR jp.locales = '{}')
+          AND (${locationFilter("jp", locationIds)})
+        ORDER BY jp.first_seen_at DESC
+        LIMIT ${limit} OFFSET ${offset}
+      `);
+      rawRows = rows as unknown as PostingRow[];
+    }
+
+    const allLocIds = new Set<number>();
+    for (const r of rawRows) {
+      if (r.location_ids) for (const id of r.location_ids) allLocIds.add(id);
+    }
+    const nameMap = await resolveLocationNames([...allLocIds], language);
+    const filterSet = locationIds && locationIds.length > 0
+      ? new Set(locationIds)
+      : undefined;
+
+    const postings = rawRows.map((r) => ({
+      id: r.id,
+      title: r.title,
+      firstSeenAt: new Date(r.first_seen_at),
+      relevanceScore: Number(r.keyword_count),
+      locations: buildPostingLocations(
+        r.location_ids,
+        r.location_types,
+        nameMap,
+        filterSet,
+      ),
+    }));
+
+    return { postings, activeCount, yearCount };
   }
 }

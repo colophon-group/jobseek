@@ -1,8 +1,6 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Trans } from "@lingui/react/macro";
 import { useLingui } from "@lingui/react/macro";
 import * as Tooltip from "@radix-ui/react-tooltip";
@@ -14,6 +12,7 @@ import { useLocalePath } from "@/lib/useLocalePath";
 import { useAuth } from "@/lib/useAuth";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/Button";
+import { SearchBar } from "@/components/search/search-bar";
 
 const tooltipContentClass =
   "z-50 rounded-md bg-tooltip-bg px-2.5 py-1 text-xs text-white data-[state=delayed-open]:animate-[tooltip-in_150ms_ease] data-[state=instant-open]:animate-[tooltip-in_150ms_ease] data-[state=closed]:animate-[tooltip-out_100ms_ease_forwards]";
@@ -44,40 +43,6 @@ function BottomBarLink({ href, label, children }: { href: string; label: string;
       {children}
       <span className="text-[10px] leading-tight">{label}</span>
     </Link>
-  );
-}
-
-function HeaderSearchBar() {
-  const { t } = useLingui();
-  const lp = useLocalePath();
-  const router = useRouter();
-  const [value, setValue] = useState("");
-
-  return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        const trimmed = value.trim();
-        if (trimmed) {
-          setValue("");
-          router.push(lp(`/app?q=${encodeURIComponent(trimmed)}`));
-        }
-      }}
-      className="hidden flex-1 items-center gap-2 rounded-md border border-border-soft bg-surface px-3 py-1.5 md:flex md:max-w-md"
-    >
-      <Search size={16} className="shrink-0 text-muted" />
-      <input
-        type="text"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        placeholder={t({
-          id: "app.header.searchPlaceholder",
-          comment: "Placeholder text in app header search bar",
-          message: "Search...",
-        })}
-        className="w-full bg-transparent text-sm outline-none placeholder:text-muted"
-      />
-    </form>
   );
 }
 
@@ -166,7 +131,7 @@ export function AppHeader() {
           </Link>
 
           {/* Search bar (desktop only) */}
-          <HeaderSearchBar />
+          <SearchBar className="hidden flex-1 md:block md:max-w-md" />
 
           {/* Spacer pushes right-side items to the edge */}
           <div className="flex-1" />

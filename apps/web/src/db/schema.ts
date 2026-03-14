@@ -128,6 +128,7 @@ export const location = pgTable(
     id: integer("id").primaryKey(),
     parentId: integer("parent_id"),
     type: locationTypeEnum("type").notNull(),
+    slug: text("slug").unique(),
     population: integer("population"),
     lat: real("lat"),
     lng: real("lng"),
@@ -333,6 +334,24 @@ export const savedJob = pgTable(
   (table) => [
     uniqueIndex("idx_sj_user_posting").on(table.userId, table.jobPostingId),
     index("idx_sj_user_saved_at").on(table.userId, table.savedAt),
+  ],
+);
+
+export const followedCompany = pgTable(
+  "followed_company",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => company.id, { onDelete: "cascade" }),
+    followedAt: timestamp("followed_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("idx_fc_user_company").on(table.userId, table.companyId),
+    index("idx_fc_user_followed_at").on(table.userId, table.followedAt),
   ],
 );
 

@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { headers } from "next/headers";
 import { initI18nForPage } from "@/lib/i18n";
 import { searchJobs, listTopCompanies } from "@/lib/actions/search";
+import { resolveLocationSlugs } from "@/lib/actions/locations";
 import { SearchPage } from "./search-page";
 import type { SelectedLocation } from "@/components/search/location-pills";
 
@@ -12,19 +13,24 @@ type Props = {
   searchParams: Promise<{ q?: string; loc?: string; show?: string }>;
 };
 
-function parseLocations(loc: string | undefined): SelectedLocation[] {
+async function parseLocations(
+  loc: string | undefined,
+  locale: string,
+): Promise<SelectedLocation[]> {
   if (!loc) return [];
-  return loc
-    .split(";")
-    .map((entry) => {
-      const [idStr, name, type, parentName] = entry.split(":");
-      const id = Number(idStr);
-      if (!id || !name) return null;
+  const slugs = loc.split(",").map((s) => s.trim()).filter(Boolean);
+  if (slugs.length === 0) return [];
+  const resolved = await resolveLocationSlugs(slugs, locale);
+  return slugs
+    .map((slug) => {
+      const r = resolved.get(slug);
+      if (!r) return null;
       return {
-        id,
-        name,
-        type: (type || "city") as SelectedLocation["type"],
-        parentName: parentName || null,
+        id: r.id,
+        slug: r.slug,
+        name: r.name,
+        type: r.type as SelectedLocation["type"],
+        parentName: r.parentName,
       };
     })
     .filter((l): l is SelectedLocation => l !== null);
@@ -39,7 +45,7 @@ export default async function AppPage({ params, searchParams }: Props) {
         .map((s) => s.trim())
         .filter(Boolean)
     : [];
-  const locations = parseLocations(loc);
+  const locations = await parseLocations(loc, locale);
   const locationIds =
     locations.length > 0 ? locations.map((l) => l.id) : undefined;
 
@@ -65,7 +71,7 @@ export default async function AppPage({ params, searchParams }: Props) {
   const userLng = parseFloat(h.get("x-vercel-ip-longitude") ?? "");
 
   return (
-    <div className="py-8">
+    <div>
       <Suspense>
         <SearchPage
           key={`${keywords.join(",")}-${locations.map((l) => l.id).join(",")}`}

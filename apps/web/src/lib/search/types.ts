@@ -1,6 +1,7 @@
 export interface PostingLocation {
   name: string;
   type: string;
+  geoType?: "city" | "region" | "country" | "macro";
 }
 
 export interface SearchResultPosting {
@@ -47,4 +48,13 @@ export interface SearchProvider {
     offset: number;
     limit: number;
   }): Promise<SearchResultPosting[]>;
+
+  loadPostingsWithCounts(params: {
+    companyId: string;
+    keywords: string[];
+    locationIds?: number[];
+    language: string;
+    offset: number;
+    limit: number;
+  }): Promise<{ postings: SearchResultPosting[]; activeCount: number; yearCount: number }>;
 }

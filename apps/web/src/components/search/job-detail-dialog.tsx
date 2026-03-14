@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { Building2, ExternalLink, MapPin, X } from "lucide-react";
 import { Trans } from "@lingui/react/macro";
+import { useLocalePath } from "@/lib/useLocalePath";
 import { getPostingDetail } from "@/lib/actions/search";
 import type { PostingDetail } from "@/lib/actions/search";
 import { SaveButton } from "@/components/search/save-button";
@@ -82,11 +84,12 @@ export function JobDetailPanel({ postingId, onClose }: JobDetailPanelProps) {
 
 function DetailContent({ detail }: { detail: PostingDetail }) {
   const { company } = detail;
+  const lp = useLocalePath();
 
   return (
     <div className="space-y-4">
       {/* Company header */}
-      <div className="flex items-center gap-3">
+      <Link href={lp(`/company/${company.slug}`)} className="flex items-center gap-3 transition-opacity hover:opacity-80">
         {company.icon ? (
           <Image
             src={company.icon}
@@ -101,7 +104,7 @@ function DetailContent({ detail }: { detail: PostingDetail }) {
           </div>
         )}
         <span className="text-sm font-semibold">{company.name}</span>
-      </div>
+      </Link>
 
       {/* Job title */}
       <h2 className="text-base font-bold leading-snug">{detail.title ?? "—"}</h2>
@@ -126,6 +129,11 @@ function DetailContent({ detail }: { detail: PostingDetail }) {
               <li key={i} className="flex items-center gap-1.5 text-sm">
                 <MapPin size={12} className="shrink-0 text-muted" />
                 <span>{loc.name}</span>
+                {loc.geoType && loc.geoType !== "city" && (
+                  <span className="rounded bg-border-soft px-1.5 py-0.5 text-[10px] capitalize text-muted">
+                    {loc.geoType}
+                  </span>
+                )}
                 {loc.type !== "onsite" && (
                   <span className="rounded bg-border-soft px-1.5 py-0.5 text-[10px] capitalize text-muted">
                     {loc.type}

@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
+import { useSearchParams } from "next/navigation";
 import { Building2, Bookmark, Loader2 } from "lucide-react";
 import { Trans } from "@lingui/react/macro";
 import { timeAgoShort } from "@/lib/time";
 import { getSavedJobs, type SavedJobEntry } from "@/lib/actions/saved-jobs";
 import { useSavedJobs } from "@/components/SavedJobsProvider";
+import { JobDetailPanel } from "@/components/search/job-detail-dialog";
 
 const BATCH = 20;
 
@@ -17,13 +19,37 @@ export function SavedPage({
   initialJobs: SavedJobEntry[];
   initialTotal: number;
 }) {
+  const searchParams = useSearchParams();
   const [jobs, setJobs] = useState(initialJobs);
   const [_total, setTotal] = useState(initialTotal);
   const [isLoading, setIsLoading] = useState(false);
   const [exhausted, setExhausted] = useState(initialJobs.length >= initialTotal);
+  const [showPostingId, setShowPostingId] = useState<string | null>(
+    searchParams.get("show"),
+  );
   const scrollRef = useRef<HTMLDivElement>(null);
   const loadingRef = useRef(false);
   const { isSaved, toggle } = useSavedJobs();
+
+  function updateUrl(showId: string | null) {
+    const url = new URL(window.location.href);
+    if (showId) {
+      url.searchParams.set("show", showId);
+    } else {
+      url.searchParams.delete("show");
+    }
+    window.history.replaceState(null, "", url.toString());
+  }
+
+  function handleOpenPosting(postingId: string) {
+    setShowPostingId(postingId);
+    updateUrl(postingId);
+  }
+
+  function handleClosePosting() {
+    setShowPostingId(null);
+    updateUrl(null);
+  }
 
   // Keep unsaved jobs visible until reload/navigation so the user can re-save
   const visibleJobs = jobs;
@@ -80,7 +106,7 @@ export function SavedPage({
     );
   }
 
-  return (
+  const listColumn = (
     <div>
       <h1 className="mb-4 text-lg font-semibold">
         <Trans id="saved.title" comment="Title of the saved jobs page">
@@ -90,9 +116,13 @@ export function SavedPage({
 
       <div ref={scrollRef} className="space-y-1">
         {visibleJobs.map((entry) => (
-          <div
+          <button
             key={entry.id}
-            className="flex items-center gap-3 rounded-md px-2 py-2 transition-colors hover:bg-border-soft"
+            type="button"
+            onClick={() => handleOpenPosting(entry.posting.id)}
+            className={`flex w-full items-center gap-3 rounded-md px-2 py-2 text-left transition-colors hover:bg-border-soft ${
+              showPostingId === entry.posting.id ? "bg-border-soft" : ""
+            }`}
           >
             {/* Company icon */}
             {entry.company.icon ? (
@@ -114,19 +144,18 @@ export function SavedPage({
               {entry.company.name}
             </span>
 
-            {/* Job title (links to source) */}
-            <a
-              href={entry.posting.sourceUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="min-w-0 flex-1 truncate text-sm hover:underline"
-            >
+            {/* Job title */}
+            <span className="min-w-0 flex-1 truncate text-sm">
               {entry.posting.title ?? "—"}
-            </a>
+            </span>
 
             {/* Save/unsave toggle */}
-            <button
-              onClick={() => toggle(entry.posting.id)}
+            <span
+              role="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggle(entry.posting.id);
+              }}
               className="shrink-0 cursor-pointer text-muted transition-opacity hover:opacity-70"
               aria-label={isSaved(entry.posting.id) ? "Unsave job" : "Save job"}
             >
@@ -134,7 +163,7 @@ export function SavedPage({
                 size={14}
                 className={isSaved(entry.posting.id) ? "fill-current" : ""}
               />
-            </button>
+            </span>
 
             {/* Time since posted */}
             <span
@@ -143,7 +172,7 @@ export function SavedPage({
             >
               {timeAgoShort(entry.posting.firstSeenAt)}
             </span>
-          </div>
+          </button>
         ))}
 
         {!exhausted && (
@@ -153,6 +182,28 @@ export function SavedPage({
             )}
           </div>
         )}
+      </div>
+    </div>
+  );
+
+  if (!showPostingId) {
+    return listColumn;
+  }
+
+  return (
+    <div className="flex gap-5">
+      <div className="min-w-0 flex-1">{listColumn}</div>
+      <div className="hidden w-[420px] shrink-0 lg:block">
+        <JobDetailPanel postingId={showPostingId} onClose={handleClosePosting} />
+      </div>
+      {/* On small screens, show as an overlay */}
+      <div className="fixed inset-0 z-50 bg-black/40 lg:hidden" onClick={handleClosePosting}>
+        <div
+          className="absolute inset-y-0 right-0 w-full max-w-lg bg-surface shadow-xl"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <JobDetailPanel postingId={showPostingId} onClose={handleClosePosting} />
+        </div>
       </div>
     </div>
   );

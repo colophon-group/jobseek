@@ -7,7 +7,7 @@ import { Trans } from "@lingui/react/macro";
 import { useLingui } from "@lingui/react/macro";
 import { locales, type Locale } from "@/lib/i18n";
 import { updatePreferences } from "@/lib/actions/preferences";
-import { flags, localeLabels } from "@/components/flags";
+import { LocaleFlag, localeLabels } from "@/components/flags";
 import { localPrefs } from "@/lib/preference-timestamps";
 
 /* ── Component ── */
@@ -81,7 +81,6 @@ export function GeneralSettings() {
         </p>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {locales.map((locale) => {
-            const Flag = flags[locale];
             const isActive = locale === currentLocale;
             return (
               <button
@@ -93,7 +92,7 @@ export function GeneralSettings() {
                     : "border-divider bg-surface hover:bg-border-soft"
                 }`}
               >
-                <Flag width={20} height={15} className="shrink-0" aria-hidden />
+                <LocaleFlag locale={locale} size={20} className="shrink-0" />
                 <span>{localeLabels[locale]}</span>
               </button>
             );

@@ -6,7 +6,7 @@ import { locales, type Locale } from "@/lib/i18n";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { Globe } from "lucide-react";
-import { flags, localeLabels } from "@/components/flags";
+import { LocaleFlag, localeLabels } from "@/components/flags";
 import { updatePreferences } from "@/lib/actions/preferences";
 import { localPrefs } from "@/lib/preference-timestamps";
 
@@ -74,7 +74,7 @@ export function LocaleSwitcher({ className }: LocaleSwitcherProps) {
                   className={`flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-border-soft ${locale === currentLocale ? "font-semibold" : ""}`}
                   onSelect={() => handleSelect(locale)}
                 >
-                  {(() => { const Flag = flags[locale]; return <Flag width={20} height={15} className="block" aria-hidden />; })()}
+                  <LocaleFlag locale={locale} size={20} className="block" />
                   <span>{localeLabels[locale]}</span>
                 </DropdownMenu.Item>
               ))}

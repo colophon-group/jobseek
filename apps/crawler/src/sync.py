@@ -75,6 +75,7 @@ FROM unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::text[], $6::text
   AS b(company_slug, board_slug, board_url, crawler_type, metadata, throttle_key)
 JOIN company c ON c.slug = b.company_slug
 ON CONFLICT (board_url) DO UPDATE SET
+    company_id = EXCLUDED.company_id,
     board_slug = COALESCE(EXCLUDED.board_slug, job_board.board_slug),
     crawler_type = EXCLUDED.crawler_type,
     metadata = EXCLUDED.metadata,

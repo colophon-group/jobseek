@@ -2,12 +2,16 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { Building2, Loader2 } from "lucide-react";
 import { Trans } from "@lingui/react/macro";
 import { useParams } from "next/navigation";
 import { timeAgoShort } from "@/lib/time";
 import { loadMorePostings } from "@/lib/actions/search";
 import { SaveButton } from "@/components/search/save-button";
+import { FollowButton } from "@/components/search/follow-button";
+import { buildFilteredPath } from "@/lib/search/query-params";
+import type { SerializableLocation } from "@/lib/search/query-params";
 import type { SearchResultCompany, SearchResultPosting } from "@/lib/search";
 
 const POSTINGS_BATCH = 20;
@@ -16,13 +20,20 @@ interface CompanyCardProps {
   result: SearchResultCompany;
   keywords: string[];
   locationIds?: number[];
+  locations?: SerializableLocation[];
   onShowPosting?: (postingId: string) => void;
 }
 
-export function CompanyCard({ result, keywords, locationIds, onShowPosting }: CompanyCardProps) {
+export function CompanyCard({ result, keywords, locationIds, locations, onShowPosting }: CompanyCardProps) {
   const params = useParams();
   const locale = (params.lang as string) ?? "en";
   const { company, activeMatches, yearMatches } = result;
+
+  const companyHref = buildFilteredPath(
+    `/${locale}/company/${company.slug}`,
+    keywords,
+    locations ?? [],
+  );
 
   const [extraPostings, setExtraPostings] = useState<SearchResultPosting[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -90,28 +101,23 @@ export function CompanyCard({ result, keywords, locationIds, onShowPosting }: Co
     <div className="rounded-md border border-divider bg-surface p-4">
       {/* Header */}
       <div className="flex items-center gap-3">
-        {company.icon ? (
-          <Image
-            src={company.icon}
-            alt={company.name}
-            width={32}
-            height={32}
-            className="size-8 shrink-0 rounded"
-          />
-        ) : (
-          <div className="flex size-8 shrink-0 items-center justify-center rounded bg-border-soft text-muted">
-            <Building2 size={18} />
-          </div>
-        )}
-        <span className="text-sm font-semibold">{company.name}</span>
-        <button
-          disabled
-          className="ml-auto rounded-full border border-border-soft px-3 py-0.5 text-xs text-muted opacity-50 cursor-not-allowed"
-        >
-          <Trans id="search.card.follow" comment="Follow button on company card (disabled for MVP)">
-            Follow
-          </Trans>
-        </button>
+        <Link href={companyHref} className="flex items-center gap-3 transition-opacity hover:opacity-80">
+          {company.icon ? (
+            <Image
+              src={company.icon}
+              alt={company.name}
+              width={32}
+              height={32}
+              className="size-8 shrink-0 rounded"
+            />
+          ) : (
+            <div className="flex size-8 shrink-0 items-center justify-center rounded bg-border-soft text-muted">
+              <Building2 size={18} />
+            </div>
+          )}
+          <span className="text-sm font-semibold">{company.name}</span>
+        </Link>
+        <FollowButton companyId={company.id} />
       </div>
 
       {/* Stats */}
@@ -137,7 +143,7 @@ export function CompanyCard({ result, keywords, locationIds, onShowPosting }: Co
           >
             <span className="min-w-0 flex-1 truncate text-sm">{posting.title ?? "—"}</span>
             {posting.locations.length > 0 && (
-              <span className="shrink-0 text-xs text-muted">
+              <span className={`shrink-0 text-xs text-muted ${posting.locations[0].geoType && posting.locations[0].geoType !== "city" ? "italic" : ""}`}>
                 {posting.locations[0].name}
                 {posting.locations.length > 1 && ` +${posting.locations.length - 1}`}
               </span>

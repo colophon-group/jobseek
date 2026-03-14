@@ -8,6 +8,7 @@ import type { LocationSuggestion } from "@/lib/actions/locations";
 
 export interface SelectedLocation {
   id: number;
+  slug: string;
   name: string;
   type: LocationSuggestion["type"];
   parentName: string | null;
@@ -93,6 +94,7 @@ export function LocationPills({
     (suggestion: LocationSuggestion) => {
       onAdd({
         id: suggestion.id,
+        slug: suggestion.slug,
         name: suggestion.name,
         type: suggestion.type,
         parentName: suggestion.parentName,

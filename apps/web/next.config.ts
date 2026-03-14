@@ -33,6 +33,13 @@ const nextConfig: NextConfig = {
       ],
     },
     {
+      // Flag SVGs never change — cache for 1 year
+      source: "/flags/:path*",
+      headers: [
+        { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+      ],
+    },
+    {
       // Static images and SVGs — cache for 1 week
       source: "/publicdomain/:path*",
       headers: [

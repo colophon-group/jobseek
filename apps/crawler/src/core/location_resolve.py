@@ -954,6 +954,20 @@ class LocationResolver:
                 if eid is not None:
                     return [eid]
 
+        # For short strings (2-3 chars), check ISO country codes before name index
+        # to avoid e.g. "BRA" → Bra (Italy) instead of Brazil
+        if len(geo_str) in (2, 3) and geo_str.isalpha():
+            upper = geo_str.upper()
+            country_name = None
+            if len(geo_str) == 3:
+                country_name = _ISO3_TO_COUNTRY.get(upper)
+            if not country_name and len(geo_str) == 2:
+                country_name = _ISO2_TO_COUNTRY.get(upper)
+            if country_name:
+                result = self._exact_match(country_name)
+                if result is not None:
+                    return [result]
+
         # First try full string exact match
         full_match = self._exact_match(geo_str)
         if full_match is not None:
