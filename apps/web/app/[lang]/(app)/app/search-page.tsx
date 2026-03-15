@@ -114,6 +114,13 @@ export function SearchPage({
         updateUrl(keywordsRef.current, updated);
         runSearch(keywordsRef.current, updated);
       },
+      submitSearch: (nextKeywords, nextLocations) => {
+        setKeywords(nextKeywords);
+        setLocations(nextLocations);
+        setShowPostingId(null);
+        updateUrl(nextKeywords, nextLocations, null);
+        runSearch(nextKeywords, nextLocations);
+      },
       getLocations: () => locationsRef.current,
       getKeywords: () => keywordsRef.current,
     });
@@ -200,6 +207,17 @@ export function SearchPage({
     [keywords, locations, language, pathname],
   );
 
+  const handleSubmitSearch = useCallback(
+    (nextKeywords: string[], nextLocations: SelectedLocation[]) => {
+      setKeywords(nextKeywords);
+      setLocations(nextLocations);
+      setShowPostingId(null);
+      updateUrl(nextKeywords, nextLocations, null);
+      runSearch(nextKeywords, nextLocations);
+    },
+    [language, pathname],
+  );
+
   const handleRemoveLocation = useCallback(
     (locationId: number) => {
       const updated = locations.filter((l) => l.id !== locationId);
@@ -246,6 +264,7 @@ export function SearchPage({
         <div className="md:hidden">
           <SearchBar
             onAddLocation={handleAddLocation}
+            onSubmitSearch={handleSubmitSearch}
             locale={language}
             keywords={keywords}
             locations={locations}

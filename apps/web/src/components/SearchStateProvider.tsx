@@ -30,6 +30,7 @@ export function buildCacheKey(
 /** Live callbacks the search page registers so the header SearchBar can interact directly. */
 export interface SearchPageActions {
   addLocation: (location: SelectedLocation) => void;
+  submitSearch: (keywords: string[], locations: SelectedLocation[]) => void;
   getLocations: () => SelectedLocation[];
   getKeywords: () => string[];
 }

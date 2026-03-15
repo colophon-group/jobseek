@@ -9,6 +9,7 @@ import { suggestLocations } from "@/lib/actions/locations";
 import type { LocationSuggestion } from "@/lib/actions/locations";
 import { suggestCompanies } from "@/lib/actions/company";
 import type { CompanySuggestion } from "@/lib/actions/company";
+import { parseSearchFilters } from "@/lib/actions/search-input";
 import type { SelectedLocation } from "@/components/search/location-pills";
 import { buildFilteredPath } from "@/lib/search/query-params";
 import { useSearchStateStore } from "@/components/SearchStateProvider";
@@ -21,6 +22,7 @@ type SuggestionItem =
 interface SearchBarProps {
   /** Direct callback for location adds (used on the search page for mobile). */
   onAddLocation?: (location: SelectedLocation) => void;
+  onSubmitSearch?: (keywords: string[], locations: SelectedLocation[]) => void;
   locale?: string;
   keywords?: string[];
   locations?: SelectedLocation[];
@@ -31,6 +33,7 @@ interface SearchBarProps {
 
 export function SearchBar({
   onAddLocation,
+  onSubmitSearch,
   locale: localeProp,
   keywords: keywordsProp,
   locations: locationsProp,
@@ -169,16 +172,45 @@ export function SearchBar({
     [onAddLocation, getPageActions, router, lp, currentKeywords, currentLocationSlugs, keywordsProp, locationsProp],
   );
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!isOpen || allSuggestions.length === 0) return;
+  const submitFreeTextSearch = useCallback(async () => {
+    const input = inputValue.trim();
+    if (!input) return;
 
+    const parsed = await parseSearchFilters({
+      q: input,
+      locale: lang,
+      userLat,
+      userLng,
+    });
+
+    if (onSubmitSearch) {
+      onSubmitSearch(parsed.keywords, parsed.locations);
+    } else {
+      const pageActions = getPageActions();
+      if (pageActions) {
+        pageActions.submitSearch(parsed.keywords, parsed.locations);
+      } else {
+        router.push(buildFilteredPath(lp("/app"), parsed.keywords, parsed.locations));
+      }
+    }
+
+    setInputValue("");
+    setLocationResults([]);
+    setCompanyResults([]);
+    setIsOpen(false);
+    setActiveIndex(-1);
+  }, [inputValue, lang, userLat, userLng, onSubmitSearch, getPageActions, router, lp]);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "ArrowDown") {
+      if (!isOpen || allSuggestions.length === 0) return;
       e.preventDefault();
       isKeyboardNav.current = true;
       setActiveIndex((prev) =>
         prev < allSuggestions.length - 1 ? prev + 1 : 0,
       );
     } else if (e.key === "ArrowUp") {
+      if (!isOpen || allSuggestions.length === 0) return;
       e.preventDefault();
       isKeyboardNav.current = true;
       setActiveIndex((prev) =>
@@ -188,6 +220,8 @@ export function SearchBar({
       e.preventDefault();
       if (activeIndex >= 0 && activeIndex < allSuggestions.length) {
         selectItem(allSuggestions[activeIndex]);
+      } else {
+        void submitFreeTextSearch();
       }
     } else if (e.key === "Escape") {
       setIsOpen(false);

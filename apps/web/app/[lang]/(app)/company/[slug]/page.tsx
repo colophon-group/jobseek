@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import type { Metadata } from "next";
 import { initI18nForPage } from "@/lib/i18n";
 import { getCompanyBySlug, getCompanyPostings, getCompanyTopLocations } from "@/lib/actions/company";
-import { resolveLocationSlugs } from "@/lib/actions/locations";
+import { parseSearchFilters } from "@/lib/actions/search-input";
 import { CompanyPage } from "./company-page";
 import type { FilterItem } from "@/components/search/filter-bar";
 
@@ -28,24 +28,16 @@ async function parseFilters(
   q: string | undefined,
   loc: string | undefined,
   locale: string,
+  userLat?: number,
+  userLng?: number,
 ): Promise<FilterItem[]> {
+  const parsed = await parseSearchFilters({ q, loc, locale, userLat, userLng });
   const filters: FilterItem[] = [];
-  if (loc) {
-    const slugs = loc.split(",").map((s) => s.trim()).filter(Boolean);
-    if (slugs.length > 0) {
-      const resolved = await resolveLocationSlugs(slugs, locale);
-      for (const slug of slugs) {
-        const r = resolved.get(slug);
-        if (r) {
-          filters.push({ kind: "location", id: r.id, slug: r.slug, name: r.name, type: r.type });
-        }
-      }
-    }
+  for (const location of parsed.locations) {
+    filters.push({ kind: "location", id: location.id, slug: location.slug, name: location.name, type: location.type });
   }
-  if (q) {
-    for (const kw of q.split(",").map((s) => s.trim()).filter(Boolean)) {
-      filters.push({ kind: "keyword", value: kw });
-    }
+  for (const keyword of parsed.keywords) {
+    filters.push({ kind: "keyword", value: keyword });
   }
   return filters;
 }
@@ -58,11 +50,14 @@ export default async function CompanyPageRoute({ params, searchParams }: Props) 
   const company = await getCompanyBySlug(slug, locale);
   if (!company) notFound();
 
-  const initialFilters = await parseFilters(q, loc, locale);
+  const h = await headers();
+  const userLat = parseFloat(h.get("x-vercel-ip-latitude") ?? "");
+  const userLng = parseFloat(h.get("x-vercel-ip-longitude") ?? "");
+  const parsedUserLat = Number.isFinite(userLat) ? userLat : undefined;
+  const parsedUserLng = Number.isFinite(userLng) ? userLng : undefined;
+  const initialFilters = await parseFilters(q, loc, locale, parsedUserLat, parsedUserLng);
   const keywords = initialFilters.filter((f) => f.kind === "keyword").map((f) => f.value);
-  const locationIds = initialFilters
-    .filter((f) => f.kind === "location")
-    .map((f) => f.id);
+  const locationIds = initialFilters.filter((f) => f.kind === "location").map((f) => f.id);
 
   const [postingsResult, topLocationsResult] = await Promise.all([
     getCompanyPostings({
@@ -78,10 +73,6 @@ export default async function CompanyPageRoute({ params, searchParams }: Props) 
   const topLocations = topLocationsResult.locations;
   const totalLocationCount = topLocationsResult.totalCount;
 
-  const h = await headers();
-  const userLat = parseFloat(h.get("x-vercel-ip-latitude") ?? "");
-  const userLng = parseFloat(h.get("x-vercel-ip-longitude") ?? "");
-
   return (
     <CompanyPage
       company={company}
@@ -93,8 +84,8 @@ export default async function CompanyPageRoute({ params, searchParams }: Props) 
       topLocations={topLocations}
       totalLocationCount={totalLocationCount}
       language={locale}
-      userLat={Number.isFinite(userLat) ? userLat : undefined}
-      userLng={Number.isFinite(userLng) ? userLng : undefined}
+      userLat={parsedUserLat}
+      userLng={parsedUserLng}
     />
   );
 }

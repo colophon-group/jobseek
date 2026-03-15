@@ -2,9 +2,8 @@ import { Suspense } from "react";
 import { headers } from "next/headers";
 import { initI18nForPage } from "@/lib/i18n";
 import { searchJobs, listTopCompanies } from "@/lib/actions/search";
-import { resolveLocationSlugs } from "@/lib/actions/locations";
+import { parseSearchFilters } from "@/lib/actions/search-input";
 import { SearchPage } from "./search-page";
-import type { SelectedLocation } from "@/components/search/location-pills";
 
 const PAGE_SIZE = 10;
 
@@ -13,46 +12,27 @@ type Props = {
   searchParams: Promise<{ q?: string; loc?: string; show?: string }>;
 };
 
-async function parseLocations(
-  loc: string | undefined,
-  locale: string,
-): Promise<SelectedLocation[]> {
-  if (!loc) return [];
-  const slugs = loc.split(",").map((s) => s.trim()).filter(Boolean);
-  if (slugs.length === 0) return [];
-  const resolved = await resolveLocationSlugs(slugs, locale);
-  return slugs
-    .map((slug) => {
-      const r = resolved.get(slug);
-      if (!r) return null;
-      return {
-        id: r.id,
-        slug: r.slug,
-        name: r.name,
-        type: r.type as SelectedLocation["type"],
-        parentName: r.parentName,
-      };
-    })
-    .filter((l): l is SelectedLocation => l !== null);
-}
-
 export default async function AppPage({ params, searchParams }: Props) {
   const locale = await initI18nForPage(params);
   const { q, loc } = await searchParams;
-  const keywords = q
-    ? q
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean)
-    : [];
-  const locations = await parseLocations(loc, locale);
+  const h = await headers();
+  const userLat = parseFloat(h.get("x-vercel-ip-latitude") ?? "");
+  const userLng = parseFloat(h.get("x-vercel-ip-longitude") ?? "");
+  const parsed = await parseSearchFilters({
+    q,
+    loc,
+    locale,
+    userLat: Number.isFinite(userLat) ? userLat : undefined,
+    userLng: Number.isFinite(userLng) ? userLng : undefined,
+  });
+
   const locationIds =
-    locations.length > 0 ? locations.map((l) => l.id) : undefined;
+    parsed.locations.length > 0 ? parsed.locations.map((l) => l.id) : undefined;
 
   const result =
-    keywords.length > 0
+    parsed.keywords.length > 0
       ? await searchJobs({
-          keywords,
+          keywords: parsed.keywords,
           locationIds,
           language: locale,
           offset: 0,
@@ -65,20 +45,15 @@ export default async function AppPage({ params, searchParams }: Props) {
           limit: PAGE_SIZE,
         });
 
-  // Read geo headers for proximity-aware suggestions
-  const h = await headers();
-  const userLat = parseFloat(h.get("x-vercel-ip-latitude") ?? "");
-  const userLng = parseFloat(h.get("x-vercel-ip-longitude") ?? "");
-
   return (
     <div>
       <Suspense>
         <SearchPage
-          key={`${keywords.join(",")}-${locations.map((l) => l.id).join(",")}`}
+          key={`${parsed.keywords.join(",")}-${parsed.locations.map((l) => l.id).join(",")}`}
           initialCompanies={result.companies}
           initialTotalCompanies={result.totalCompanies}
-          initialKeywords={keywords}
-          initialLocations={locations}
+          initialKeywords={parsed.keywords}
+          initialLocations={parsed.locations}
           language={locale}
           userLat={Number.isFinite(userLat) ? userLat : undefined}
           userLng={Number.isFinite(userLng) ? userLng : undefined}
