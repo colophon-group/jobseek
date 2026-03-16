@@ -1,0 +1,35 @@
+{
+  "actorSpecification": 1,
+  "name": "github-signal-actor",
+  "title": "GitHub Organization Signal Parser",
+  "description": "Detects engineering team growth via new repos, stack changes, and external contributors",
+  "version": "1.0",
+  "input": {
+    "title": "Input",
+    "description": "GitHub org handles and authentication settings.",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+      "githubOrgs": {
+        "type": "array",
+        "title": "GitHub organizations",
+        "description": "List of GitHub org names to monitor.",
+        "editor": "json",
+        "default": []
+      },
+      "githubToken": {
+        "type": "string",
+        "title": "GitHub token",
+        "description": "GitHub personal access token for authenticated API requests.",
+        "editor": "textfield"
+      },
+      "lookbackDays": {
+        "type": "integer",
+        "title": "Days to look back",
+        "description": "Only include GitHub activity observed within this many days.",
+        "editor": "number",
+        "default": 14
+      }
+    }
+  }
+}

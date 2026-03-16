@@ -1,0 +1,59 @@
+{
+  "actorSpecification": 1,
+  "name": "email-drafter-actor",
+  "title": "Outreach Email Drafter",
+  "description": "Drafts personalized cold outreach emails using Claude, grounded in hiring signals",
+  "version": "1.0",
+  "input": {
+    "title": "Input",
+    "description": "Email drafter configuration, signal context, and sender profile.",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+      "signal": {
+        "type": "object",
+        "title": "Hiring signal",
+        "description": "Signal object that explains why the company is a strong outreach target.",
+        "editor": "json"
+      },
+      "contact": {
+        "type": "object",
+        "title": "Contact",
+        "description": "Resolved contact record that will receive the outreach email.",
+        "editor": "json"
+      },
+      "userProfile": {
+        "type": "object",
+        "title": "Sender profile",
+        "description": "Profile details used to personalize the draft email.",
+        "editor": "schemaBased",
+        "properties": {
+          "skills": {
+            "type": "array",
+            "title": "Skills",
+            "description": "List of skills relevant to the outreach target.",
+            "editor": "json"
+          },
+          "background": {
+            "type": "string",
+            "title": "Background",
+            "description": "Short professional summary of the sender.",
+            "editor": "textarea"
+          },
+          "pastWins": {
+            "type": "array",
+            "title": "Past wins",
+            "description": "Concrete accomplishments to reference in outreach.",
+            "editor": "json"
+          }
+        }
+      },
+      "anthropicApiKey": {
+        "type": "string",
+        "title": "Anthropic API Key",
+        "description": "Anthropic API key used to generate the outreach draft.",
+        "editor": "textfield"
+      }
+    }
+  }
+}

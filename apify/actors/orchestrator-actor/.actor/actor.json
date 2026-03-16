@@ -1,0 +1,73 @@
+{
+  "actorSpecification": 1,
+  "name": "orchestrator-actor",
+  "title": "Hiring Signal Orchestrator",
+  "description": "Reads all signals, scores them with Claude, applies decay, and triggers enrichment actors",
+  "version": "1.0",
+  "input": {
+    "title": "Input",
+    "description": "Scoring thresholds, credentials, and user profile for the discovery pipeline.",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+      "anthropicApiKey": {
+        "type": "string",
+        "title": "Anthropic API Key",
+        "description": "Anthropic API key used to score signals and draft outreach.",
+        "editor": "textfield"
+      },
+      "userProfile": {
+        "type": "object",
+        "title": "User profile",
+        "description": "Skills, background, and wins used to personalize scoring and drafts.",
+        "editor": "schemaBased",
+        "properties": {
+          "skills": {
+            "type": "array",
+            "title": "Skills",
+            "description": "List of relevant technical or domain skills.",
+            "editor": "json"
+          },
+          "background": {
+            "type": "string",
+            "title": "Professional background",
+            "description": "Short summary of the user's background.",
+            "editor": "textarea"
+          },
+          "pastWins": {
+            "type": "array",
+            "title": "Past wins",
+            "description": "Specific accomplishments to reference in outreach.",
+            "editor": "json"
+          }
+        }
+      },
+      "scoreThreshold": {
+        "type": "integer",
+        "title": "Score threshold",
+        "description": "Signals below this score will not trigger contact lookup or draft generation.",
+        "editor": "number",
+        "default": 7
+      },
+      "hunterApiKey": {
+        "type": "string",
+        "title": "Hunter.io API Key",
+        "description": "Hunter.io API key used by the contact finder actor.",
+        "editor": "textfield"
+      },
+      "apolloApiKey": {
+        "type": "string",
+        "title": "Apollo.io API Key",
+        "description": "Apollo.io API key used as a fallback by the contact finder actor.",
+        "editor": "textfield"
+      },
+      "lookbackDays": {
+        "type": "integer",
+        "title": "Days to look back",
+        "description": "Only process signals that are newer than this many days.",
+        "editor": "number",
+        "default": 7
+      }
+    }
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "actorSpecification": 1,
+  "name": "contact-finder-actor",
+  "title": "Contact Finder",
+  "description": "Finds relevant contacts at companies using Hunter.io and Apollo.io APIs",
+  "version": "1.0",
+  "input": {
+    "title": "Input",
+    "description": "Contact finder configuration and the signal to enrich.",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+      "signal": {
+        "type": "object",
+        "title": "Hiring signal",
+        "description": "Signal object that identifies the company and context for contact lookup.",
+        "editor": "json"
+      },
+      "hunterApiKey": {
+        "type": "string",
+        "title": "Hunter.io API Key",
+        "description": "Hunter.io API key used for company domain and person lookup.",
+        "editor": "textfield"
+      },
+      "apolloApiKey": {
+        "type": "string",
+        "title": "Apollo.io API Key",
+        "description": "Apollo.io API key used as a fallback contact source.",
+        "editor": "textfield"
+      },
+      "targetRoles": {
+        "type": "array",
+        "title": "Target roles",
+        "description": "Ordered list of target job titles to search for at the company.",
+        "editor": "json",
+        "default": ["VP Engineering", "CTO", "Head of Engineering"]
+      }
+    }
+  }
+}

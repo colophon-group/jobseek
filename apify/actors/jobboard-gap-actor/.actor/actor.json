@@ -1,0 +1,33 @@
+{
+  "actorSpecification": 1,
+  "name": "jobboard-gap-actor",
+  "title": "Job Board Gap Detector",
+  "description": "Identifies departments where peer companies are hiring but target is not",
+  "version": "1.0",
+  "input": {
+    "title": "Input",
+    "description": "Target companies, peers, and LinkedIn authentication for gap analysis.",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+      "targetCompanies": {
+        "type": "array",
+        "title": "Target companies",
+        "description": "Companies to analyze for hiring gaps.",
+        "editor": "json"
+      },
+      "peerCompanies": {
+        "type": "array",
+        "title": "Peer companies",
+        "description": "Competitor or peer companies to compare against.",
+        "editor": "json"
+      },
+      "linkedinCookies": {
+        "type": "string",
+        "title": "LinkedIn cookies",
+        "description": "LinkedIn authentication cookies passed through to the upstream scraper.",
+        "editor": "textfield"
+      }
+    }
+  }
+}

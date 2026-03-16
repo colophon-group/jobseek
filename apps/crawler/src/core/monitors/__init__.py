@@ -445,6 +445,7 @@ from src.core.monitors import (  # noqa: E402
     recruitee,  # noqa: F401
     rippling,  # noqa: F401
     rss,  # noqa: F401
+    signals,  # noqa: F401
     sitemap,  # noqa: F401
     smartrecruiters,  # noqa: F401
     softgarden,  # noqa: F401
