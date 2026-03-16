@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     metrics_port: int = 9091
 
     apify_token: str = ""
+    anthropic_api_key: str = ""
 
     # Enrichment (disabled by default — empty provider means skip)
     enrich_provider: str = ""

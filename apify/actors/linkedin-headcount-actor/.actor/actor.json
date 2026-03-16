@@ -1,0 +1,29 @@
+{
+  "actorSpecification": 1,
+  "name": "linkedin-headcount-actor",
+  "title": "LinkedIn Headcount Growth Detector",
+  "description": "Tracks LinkedIn company headcount over time and emits signals when growth exceeds a threshold",
+  "version": "1.0",
+  "input": {
+    "title": "Input",
+    "description": "LinkedIn company URLs and threshold settings for headcount growth detection.",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+      "companyUrls": {
+        "type": "array",
+        "title": "Company URLs",
+        "description": "List of LinkedIn company profile URLs to monitor.",
+        "editor": "json",
+        "default": []
+      },
+      "minHeadcountDeltaPct": {
+        "type": "integer",
+        "title": "Minimum headcount delta percentage",
+        "description": "Minimum percentage growth to trigger a signal.",
+        "editor": "number",
+        "default": 10
+      }
+    }
+  }
+}

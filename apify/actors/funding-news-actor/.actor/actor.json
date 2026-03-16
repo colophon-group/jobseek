@@ -1,0 +1,42 @@
+{
+  "actorSpecification": 1,
+  "name": "funding-news-actor",
+  "title": "Funding News Signal Parser",
+  "description": "Parses funding announcements from RSS feeds and Crunchbase to detect growth signals",
+  "version": "1.0",
+  "input": {
+    "title": "Input",
+    "description": "Funding source filters and lookback settings.",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+      "crunchbaseApiKey": {
+        "type": "string",
+        "title": "Crunchbase API Key",
+        "description": "Crunchbase API key used to query funding round data.",
+        "editor": "textfield"
+      },
+      "minRoundAmountUsd": {
+        "type": "integer",
+        "title": "Minimum round amount (USD)",
+        "description": "Ignore rounds below this USD amount.",
+        "editor": "number",
+        "default": 10000000
+      },
+      "roundTypes": {
+        "type": "array",
+        "title": "Round types",
+        "description": "Funding round types that should generate signals.",
+        "editor": "json",
+        "default": ["series_b", "series_c", "series_d", "series_e"]
+      },
+      "lookbackDays": {
+        "type": "integer",
+        "title": "Days to look back",
+        "description": "Only include funding news published within this many days.",
+        "editor": "number",
+        "default": 7
+      }
+    }
+  }
+}
