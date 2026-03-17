@@ -1,6 +1,5 @@
 "use client";
 
-import { LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export default function LogoutButton() {
@@ -19,17 +18,17 @@ export default function LogoutButton() {
         alignItems: "center",
         gap: 8,
         width: "100%",
-        padding: "0.45rem 0.65rem",
-        borderRadius: 7,
+        padding: "0.45rem 0.6rem",
+        borderRadius: 8,
         border: "none",
         background: "transparent",
         color: "var(--text-muted)",
         cursor: "pointer",
         fontSize: 13.5,
+        letterSpacing: -0.1,
         textAlign: "left",
       }}
     >
-      <LogOut size={15} />
       Sign out
     </button>
   );

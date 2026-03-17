@@ -4,17 +4,26 @@ import { eq, desc } from "drizzle-orm";
 import Link from "next/link";
 import SignalTypeBadge from "@/components/SignalTypeBadge";
 import ScoreBadge from "@/components/ScoreBadge";
-import { Inbox, Send, Archive, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 type DraftStatus = "pending_review" | "sent" | "archived";
 
-const TABS: { label: string; value: DraftStatus; icon: React.ComponentType<{ size?: number; strokeWidth?: number }> }[] = [
-  { label: "Inbox", value: "pending_review", icon: Inbox },
-  { label: "Sent", value: "sent", icon: Send },
-  { label: "Archived", value: "archived", icon: Archive },
+const TABS: { label: string; value: DraftStatus; dot: string }[] = [
+  { label: "Inbox", value: "pending_review", dot: "var(--dot-blue)" },
+  { label: "Sent", value: "sent", dot: "var(--dot-green)" },
+  { label: "Archived", value: "archived", dot: "var(--dot-gray)" },
 ];
+
+const SIGNAL_DOT: Record<string, string> = {
+  funding:    "var(--dot-orange)",
+  sec_filing: "var(--dot-blue)",
+  twitter:    "var(--dot-indigo)",
+  headcount:  "var(--dot-green)",
+  github:     "var(--dot-purple)",
+  job_gap:    "var(--dot-red)",
+};
 
 export default async function OutreachPage({
   searchParams,
@@ -47,50 +56,77 @@ export default async function OutreachPage({
 
   return (
     <div>
-      {/* Header */}
-      <div style={{ marginBottom: "1.75rem" }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", letterSpacing: -0.5, marginBottom: 4 }}>
+      {/* Page header */}
+      <div style={{ marginBottom: "2rem" }}>
+        <p
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: 1.4,
+            textTransform: "uppercase",
+            color: "var(--text-muted)",
+            marginBottom: 6,
+          }}
+        >
           Outreach
-        </h1>
-        <p style={{ color: "var(--text-muted)", fontSize: 13.5 }}>
-          AI-drafted emails ready to send. Review, personalise, and reach out.
         </p>
+        <h1
+          style={{
+            fontSize: 28,
+            fontWeight: 700,
+            color: "var(--text)",
+            letterSpacing: -0.8,
+            margin: 0,
+          }}
+        >
+          Drafts
+        </h1>
       </div>
 
-      {/* Tabs */}
+      {/* Tabs — pill style */}
       <div
         style={{
-          display: "flex",
+          display: "inline-flex",
           gap: 4,
-          marginBottom: "1.25rem",
           background: "var(--surface)",
-          border: "1px solid var(--border)",
-          borderRadius: 10,
+          borderRadius: 12,
           padding: 4,
-          width: "fit-content",
+          boxShadow: "var(--card-shadow)",
+          marginBottom: "1.5rem",
         }}
       >
-        {TABS.map(({ label, value, icon: Icon }) => {
+        {TABS.map(({ label, value, dot }) => {
           const active = activeTab === value;
           return (
             <Link
               key={value}
               href={`/outreach?tab=${value}`}
               style={{
-                display: "flex",
+                display: "inline-flex",
                 alignItems: "center",
                 gap: 6,
-                padding: "0.4rem 0.9rem",
+                padding: "0.4rem 1rem",
+                borderRadius: 9,
                 fontSize: 13,
                 fontWeight: active ? 600 : 400,
                 color: active ? "var(--text)" : "var(--text-muted)",
-                background: active ? "var(--surface-2)" : "transparent",
-                borderRadius: 7,
+                background: active ? "var(--background)" : "transparent",
+                boxShadow: active ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
                 textDecoration: "none",
-                transition: "background 0.1s",
+                letterSpacing: -0.1,
+                transition: "all 0.15s",
               }}
             >
-              <Icon size={13} strokeWidth={active ? 2.5 : 2} />
+              <span
+                style={{
+                  display: "inline-block",
+                  width: 7,
+                  height: 7,
+                  borderRadius: "50%",
+                  background: active ? dot : "var(--dot-gray)",
+                  opacity: active ? 1 : 0.5,
+                }}
+              />
               {label}
             </Link>
           );
@@ -102,34 +138,39 @@ export default async function OutreachPage({
         <div
           style={{
             background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: 12,
-            padding: "4rem",
+            borderRadius: "var(--radius)",
+            boxShadow: "var(--card-shadow)",
+            padding: "5rem",
             textAlign: "center",
-            color: "var(--text-muted)",
           }}
         >
-          <Inbox size={32} color="#e2e8f0" style={{ marginBottom: 12 }} />
-          <div style={{ fontWeight: 600, color: "var(--text)", marginBottom: 6 }}>All clear</div>
-          <div style={{ fontSize: 13 }}>No drafts in {activeTab.replace("_", " ")}.</div>
+          <div
+            style={{
+              width: 9,
+              height: 9,
+              borderRadius: "50%",
+              background: "var(--dot-gray)",
+              margin: "0 auto 1.25rem",
+            }}
+          />
+          <div style={{ fontWeight: 600, fontSize: 16, color: "var(--text)", marginBottom: 5 }}>
+            All clear
+          </div>
+          <div style={{ color: "var(--text-muted)", fontSize: 13.5 }}>
+            No drafts in {activeTab.replace("_", " ")}.
+          </div>
         </div>
       ) : (
         <div
           style={{
             background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: 12,
+            borderRadius: "var(--radius)",
+            boxShadow: "var(--card-shadow)",
             overflow: "hidden",
           }}
         >
           {drafts.map((d, i) => {
-            const initials = (d.companyName ?? "?")
-              .split(" ")
-              .slice(0, 2)
-              .map((w: string) => w[0])
-              .join("")
-              .toUpperCase();
-
+            const dot = SIGNAL_DOT[d.signalType] ?? "var(--dot-gray)";
             return (
               <Link
                 key={d.id}
@@ -140,37 +181,46 @@ export default async function OutreachPage({
                   style={{
                     display: "flex",
                     alignItems: "center",
-                    gap: "1rem",
-                    padding: "0.9rem 1.1rem",
-                    borderBottom: i < drafts.length - 1 ? "1px solid var(--border)" : "none",
+                    gap: "1.25rem",
+                    padding: "1rem 1.5rem",
+                    borderBottom:
+                      i < drafts.length - 1 ? "1px solid rgba(0,0,0,0.05)" : "none",
+                    transition: "background 0.12s",
                     cursor: "pointer",
-                    transition: "background 0.1s",
                   }}
-                  className="hover:bg-slate-50"
+                  className="hover:bg-black/[0.02]"
                 >
-                  {/* Company avatar */}
-                  <div
+                  {/* Dot */}
+                  <span
                     style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: 9,
-                      background: "var(--accent-light)",
-                      color: "var(--accent-text)",
-                      fontSize: 12,
-                      fontWeight: 700,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
+                      display: "inline-block",
+                      width: 9,
+                      height: 9,
+                      borderRadius: "50%",
+                      background: dot,
                       flexShrink: 0,
                     }}
-                  >
-                    {initials}
-                  </div>
+                  />
 
-                  {/* Main content */}
+                  {/* Content */}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 3 }}>
-                      <span style={{ fontWeight: 600, color: "var(--text)", fontSize: 13.5 }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        marginBottom: 3,
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontWeight: 600,
+                          fontSize: 14,
+                          color: "var(--text)",
+                          letterSpacing: -0.2,
+                        }}
+                      >
                         {d.companyName ?? "—"}
                       </span>
                       <SignalTypeBadge type={d.signalType} />
@@ -179,30 +229,36 @@ export default async function OutreachPage({
                     <div
                       style={{
                         color: "var(--text-muted)",
-                        fontSize: 12.5,
+                        fontSize: 13,
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
+                        letterSpacing: -0.1,
                       }}
                     >
                       {d.subject}
                     </div>
                   </div>
 
-                  {/* Right side */}
-                  <div style={{ textAlign: "right", flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3 }}>
-                    <div style={{ color: "var(--text)", fontSize: 12.5, fontWeight: 500 }}>
+                  {/* Right */}
+                  <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)", letterSpacing: -0.1 }}>
                       {d.contactName}
                     </div>
                     {d.contactTitle && (
-                      <div style={{ color: "var(--text-muted)", fontSize: 11.5 }}>{d.contactTitle}</div>
+                      <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 2 }}>
+                        {d.contactTitle}
+                      </div>
                     )}
-                    <div style={{ color: "var(--text-muted)", fontSize: 11 }}>
-                      {new Date(d.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                    <div style={{ fontSize: 11, color: "var(--text-subtle)", marginTop: 3 }}>
+                      {new Date(d.createdAt).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                      })}
                     </div>
                   </div>
 
-                  <ChevronRight size={14} color="var(--border-strong)" />
+                  <ChevronRight size={14} color="var(--text-subtle)" strokeWidth={1.5} />
                 </div>
               </Link>
             );

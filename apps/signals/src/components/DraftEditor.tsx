@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Save, Send, Archive } from "lucide-react";
 
 interface Props {
   id: string;
@@ -48,7 +47,7 @@ export default function DraftEditor({ id, subject, body, status }: Props) {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div>
         <label style={labelStyle}>Subject line</label>
         <input
@@ -66,31 +65,13 @@ export default function DraftEditor({ id, subject, body, status }: Props) {
           value={editBody}
           onChange={(e) => setEditBody(e.target.value)}
           rows={16}
-          style={{ ...inputStyle, resize: "vertical", lineHeight: 1.6 }}
+          style={{ ...inputStyle, resize: "vertical", lineHeight: 1.65 }}
           placeholder="Email body…"
         />
       </div>
 
       <div style={{ display: "flex", gap: 8, paddingTop: 4, flexWrap: "wrap" }}>
-        <button
-          onClick={save}
-          disabled={saving}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            background: "var(--surface-2)",
-            border: "1px solid var(--border)",
-            borderRadius: 8,
-            padding: "0.5rem 1rem",
-            color: "var(--text)",
-            cursor: saving ? "not-allowed" : "pointer",
-            fontSize: 13,
-            fontWeight: 500,
-            opacity: saving ? 0.6 : 1,
-          }}
-        >
-          <Save size={13} />
+        <button onClick={save} disabled={saving} style={secondaryBtnStyle(saving)}>
           {saving ? "Saving…" : "Save draft"}
         </button>
 
@@ -102,18 +83,18 @@ export default function DraftEditor({ id, subject, body, status }: Props) {
               display: "inline-flex",
               alignItems: "center",
               gap: 6,
-              background: "#dcfce7",
-              border: "1px solid #bbf7d0",
-              borderRadius: 8,
-              padding: "0.5rem 1rem",
-              color: "#15803d",
+              background: "rgba(52,199,89,0.12)",
+              border: "none",
+              borderRadius: 9,
+              padding: "0.55rem 1.1rem",
+              color: "#1a8c3f",
               cursor: actionLoading ? "not-allowed" : "pointer",
-              fontSize: 13,
+              fontSize: 13.5,
               fontWeight: 600,
+              letterSpacing: -0.1,
               opacity: actionLoading ? 0.6 : 1,
             }}
           >
-            <Send size={13} />
             {actionLoading === "sent" ? "Marking…" : "Mark as Sent"}
           </button>
         )}
@@ -123,21 +104,18 @@ export default function DraftEditor({ id, subject, body, status }: Props) {
             onClick={() => changeStatus("archived")}
             disabled={!!actionLoading}
             style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              background: "transparent",
-              border: "1px solid var(--border)",
-              borderRadius: 8,
-              padding: "0.5rem 1rem",
+              background: "rgba(0,0,0,0.05)",
+              border: "none",
+              borderRadius: 9,
+              padding: "0.55rem 1.1rem",
               color: "var(--text-muted)",
               cursor: actionLoading ? "not-allowed" : "pointer",
-              fontSize: 13,
+              fontSize: 13.5,
               fontWeight: 500,
+              letterSpacing: -0.1,
               opacity: actionLoading ? 0.6 : 1,
             }}
           >
-            <Archive size={13} />
             {actionLoading === "archived" ? "Archiving…" : "Archive"}
           </button>
         )}
@@ -148,22 +126,38 @@ export default function DraftEditor({ id, subject, body, status }: Props) {
 
 const labelStyle: React.CSSProperties = {
   display: "block",
-  fontSize: 11,
+  fontSize: 10.5,
   fontWeight: 600,
   color: "var(--text-muted)",
   marginBottom: 6,
   textTransform: "uppercase",
-  letterSpacing: 0.5,
+  letterSpacing: 1,
 };
 
 const inputStyle: React.CSSProperties = {
-  background: "var(--surface-2)",
-  border: "1.5px solid var(--border)",
-  borderRadius: 8,
-  padding: "0.6rem 0.8rem",
+  background: "var(--background)",
+  border: "none",
+  borderRadius: 10,
+  padding: "0.65rem 0.9rem",
   color: "var(--text)",
-  fontSize: 13.5,
+  fontSize: 14,
   width: "100%",
   outline: "none",
   fontFamily: "inherit",
+  letterSpacing: -0.1,
 };
+
+function secondaryBtnStyle(disabled: boolean): React.CSSProperties {
+  return {
+    background: "rgba(0,0,0,0.05)",
+    border: "none",
+    borderRadius: 9,
+    padding: "0.55rem 1.1rem",
+    color: "var(--text-secondary)",
+    cursor: disabled ? "not-allowed" : "pointer",
+    fontSize: 13.5,
+    fontWeight: 500,
+    letterSpacing: -0.1,
+    opacity: disabled ? 0.6 : 1,
+  };
+}

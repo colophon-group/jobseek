@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Zap } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -24,7 +23,7 @@ export default function LoginPage() {
     if (res.ok) {
       router.push("/signals");
     } else {
-      setError("Invalid password. Try again.");
+      setError("Incorrect password.");
       setLoading(false);
     }
   }
@@ -40,53 +39,60 @@ export default function LoginPage() {
         padding: "1.5rem",
       }}
     >
-      <div style={{ width: "100%", maxWidth: 380 }}>
-        {/* Logo */}
-        <div style={{ textAlign: "center", marginBottom: "2.5rem" }}>
+      <div style={{ width: "100%", maxWidth: 360, textAlign: "center" }}>
+        {/* Logo dot */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            marginBottom: "2.5rem",
+          }}
+        >
           <div
             style={{
-              width: 48,
-              height: 48,
-              background: "var(--accent)",
-              borderRadius: 14,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              margin: "0 auto 1rem",
-              boxShadow: "0 4px 16px rgba(99,102,241,0.3)",
+              width: 40,
+              height: 40,
+              background: "linear-gradient(145deg, #0071e3 0%, #5e5ce6 100%)",
+              borderRadius: 13,
+              marginBottom: "1.1rem",
+              boxShadow: "0 4px 20px rgba(0,113,227,0.3)",
+            }}
+          />
+          <p
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              letterSpacing: 1.4,
+              textTransform: "uppercase",
+              color: "var(--text-muted)",
+              margin: "0 0 6px",
             }}
           >
-            <Zap size={24} color="white" fill="white" />
-          </div>
+            Intelligence
+          </p>
           <h1
             style={{
-              fontSize: 24,
+              fontSize: 30,
               fontWeight: 700,
               color: "var(--text)",
-              letterSpacing: -0.5,
-              margin: "0 0 6px",
+              letterSpacing: -0.8,
+              margin: 0,
             }}
           >
             Signals
           </h1>
-          <p style={{ color: "var(--text-muted)", fontSize: 14, margin: 0 }}>
-            AI-powered hiring intelligence
-          </p>
         </div>
 
         {/* Card */}
         <div
           style={{
             background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: 14,
+            borderRadius: "var(--radius)",
+            boxShadow: "var(--card-shadow)",
             padding: "2rem",
-            boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
           }}
         >
-          <p style={{ color: "var(--text-muted)", fontSize: 13, marginBottom: "1.25rem", textAlign: "center" }}>
-            Enter your password to continue
-          </p>
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <input
               type="password"
@@ -96,43 +102,44 @@ export default function LoginPage() {
               required
               autoFocus
               style={{
-                background: "var(--surface-2)",
-                border: "1.5px solid var(--border)",
-                borderRadius: 8,
-                padding: "0.65rem 0.875rem",
+                background: "var(--background)",
+                border: "none",
+                borderRadius: 10,
+                padding: "0.75rem 1rem",
                 color: "var(--text)",
                 outline: "none",
                 width: "100%",
-                fontSize: 14,
+                fontSize: 15,
+                textAlign: "center",
+                letterSpacing: 2,
               }}
             />
             {error && (
-              <p
+              <div
                 style={{
-                  color: "#dc2626",
                   fontSize: 13,
-                  background: "#fee2e2",
-                  border: "1px solid #fecaca",
-                  borderRadius: 7,
-                  padding: "0.5rem 0.75rem",
-                  margin: 0,
+                  color: "var(--dot-red)",
+                  padding: "0.5rem",
+                  background: "rgba(255,59,48,0.08)",
+                  borderRadius: 8,
                 }}
               >
                 {error}
-              </p>
+              </div>
             )}
             <button
               type="submit"
               disabled={loading}
               style={{
-                background: loading ? "#818cf8" : "var(--accent)",
+                background: loading ? "#6aade8" : "var(--accent)",
                 color: "#fff",
                 border: "none",
-                borderRadius: 8,
-                padding: "0.65rem 1rem",
+                borderRadius: 10,
+                padding: "0.75rem",
                 cursor: loading ? "not-allowed" : "pointer",
-                fontSize: 14,
+                fontSize: 15,
                 fontWeight: 600,
+                letterSpacing: -0.2,
                 transition: "background 0.15s",
               }}
             >
@@ -141,7 +148,7 @@ export default function LoginPage() {
           </form>
         </div>
 
-        <p style={{ textAlign: "center", color: "var(--text-muted)", fontSize: 12, marginTop: "1.5rem" }}>
+        <p style={{ color: "var(--text-subtle)", fontSize: 12, marginTop: "1.5rem" }}>
           Signals · Zurich Hack 2025
         </p>
       </div>

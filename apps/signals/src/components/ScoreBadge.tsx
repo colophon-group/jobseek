@@ -1,19 +1,20 @@
 export default function ScoreBadge({ score }: { score: number }) {
-  const color =
-    score >= 8 ? { bg: "#dcfce7", text: "#15803d", border: "#bbf7d0" }
-    : score >= 6 ? { bg: "#fef9c3", text: "#a16207", border: "#fef08a" }
-    : { bg: "#fee2e2", text: "#991b1b", border: "#fecaca" };
+  const style =
+    score >= 8
+      ? { bg: "rgba(52,199,89,0.12)",   text: "#1a8c3f" }
+      : score >= 6
+      ? { bg: "rgba(255,159,10,0.12)",  text: "#b45309" }
+      : { bg: "rgba(255,59,48,0.1)",    text: "#cc2a22" };
 
   return (
     <span
       style={{
-        background: color.bg,
-        color: color.text,
-        border: `1px solid ${color.border}`,
+        background: style.bg,
+        color: style.text,
         fontSize: 11,
         fontWeight: 700,
         padding: "2px 7px",
-        borderRadius: 99,
+        borderRadius: 6,
         fontVariantNumeric: "tabular-nums",
         whiteSpace: "nowrap",
       }}

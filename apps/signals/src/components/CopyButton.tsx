@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Copy, Check } from "lucide-react";
 
 export default function CopyButton({ email }: { email: string }) {
   const [copied, setCopied] = useState(false);
@@ -20,20 +19,20 @@ export default function CopyButton({ email }: { email: string }) {
         display: "inline-flex",
         alignItems: "center",
         gap: 6,
-        background: copied ? "#dcfce7" : "var(--surface-2)",
-        border: `1px solid ${copied ? "#bbf7d0" : "var(--border)"}`,
+        background: copied ? "rgba(52,199,89,0.12)" : "var(--background)",
+        border: "none",
         borderRadius: 8,
-        padding: "0.4rem 0.75rem",
-        color: copied ? "#15803d" : "var(--text-muted)",
+        padding: "0.4rem 0.8rem",
+        color: copied ? "#1a8c3f" : "var(--text-muted)",
         cursor: "pointer",
         fontSize: 12.5,
         fontWeight: 500,
+        letterSpacing: -0.1,
         transition: "all 0.15s",
         whiteSpace: "nowrap",
       }}
     >
-      {copied ? <Check size={13} /> : <Copy size={13} />}
-      {copied ? "Copied!" : email}
+      {copied ? "✓ Copied" : email}
     </button>
   );
 }

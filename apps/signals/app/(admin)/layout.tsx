@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import LogoutButton from "@/components/LogoutButton";
-import { Zap, Mail, BarChart3, LogOut } from "lucide-react";
+import { BarChart3, Mail } from "lucide-react";
 
 const NAV = [
   { href: "/signals", label: "Signals", icon: BarChart3 },
@@ -18,9 +18,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Sidebar */}
       <aside
         style={{
-          width: 240,
-          background: "var(--surface)",
-          borderRight: "1px solid var(--border)",
+          width: 220,
+          background: "rgba(255,255,255,0.72)",
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
+          borderRight: "1px solid rgba(0,0,0,0.06)",
           display: "flex",
           flexDirection: "column",
           flexShrink: 0,
@@ -29,42 +31,45 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           height: "100vh",
         }}
       >
-        {/* Logo */}
-        <div
-          style={{
-            padding: "1.25rem 1.25rem 1rem",
-            borderBottom: "1px solid var(--border)",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        {/* Brand */}
+        <div style={{ padding: "1.5rem 1.25rem 1rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div
               style={{
-                width: 30,
-                height: 30,
-                background: "var(--accent)",
+                width: 28,
+                height: 28,
+                background: "linear-gradient(145deg, #0071e3 0%, #5e5ce6 100%)",
                 borderRadius: 8,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
                 flexShrink: 0,
+                boxShadow: "0 2px 8px rgba(0,113,227,0.35)",
+              }}
+            />
+            <span
+              style={{
+                fontWeight: 600,
+                fontSize: 15,
+                color: "var(--text)",
+                letterSpacing: -0.3,
               }}
             >
-              <Zap size={16} color="white" fill="white" />
-            </div>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text)", letterSpacing: -0.3 }}>
-                Signals
-              </div>
-              <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 1 }}>
-                AI hiring intelligence
-              </div>
-            </div>
+              Signals
+            </span>
           </div>
         </div>
 
         {/* Nav */}
-        <nav style={{ padding: "0.75rem 0.75rem", flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
-          <div style={{ fontSize: 10, fontWeight: 600, color: "var(--text-muted)", letterSpacing: 1, textTransform: "uppercase", padding: "0.25rem 0.5rem", marginBottom: 4 }}>
+        <nav style={{ padding: "0 0.75rem", flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
+          <div
+            style={{
+              fontSize: 10,
+              fontWeight: 600,
+              color: "var(--text-subtle)",
+              letterSpacing: 1.2,
+              textTransform: "uppercase",
+              padding: "0.5rem 0.5rem 0.4rem",
+              marginBottom: 2,
+            }}
+          >
             Workspace
           </div>
           {NAV.map(({ href, label, icon: Icon }) => {
@@ -77,17 +82,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   display: "flex",
                   alignItems: "center",
                   gap: 9,
-                  padding: "0.45rem 0.65rem",
-                  borderRadius: 7,
-                  color: active ? "var(--accent-text)" : "var(--text-muted)",
-                  background: active ? "var(--accent-light)" : "transparent",
+                  padding: "0.5rem 0.6rem",
+                  borderRadius: 9,
+                  color: active ? "var(--accent)" : "var(--text-muted)",
+                  background: active ? "rgba(0,113,227,0.08)" : "transparent",
                   textDecoration: "none",
                   fontSize: 13.5,
                   fontWeight: active ? 600 : 400,
-                  transition: "background 0.1s, color 0.1s",
+                  letterSpacing: -0.1,
+                  transition: "background 0.15s, color 0.15s",
                 }}
               >
-                <Icon size={15} strokeWidth={active ? 2.5 : 2} />
+                <Icon size={15} strokeWidth={active ? 2.2 : 1.8} />
                 {label}
               </Link>
             );
@@ -101,7 +107,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </aside>
 
       {/* Main */}
-      <main style={{ flex: 1, padding: "2rem 2.5rem", overflowY: "auto", maxWidth: "calc(100vw - 240px)" }}>
+      <main
+        style={{
+          flex: 1,
+          padding: "2.5rem 3rem",
+          overflowY: "auto",
+        }}
+      >
         {children}
       </main>
     </div>

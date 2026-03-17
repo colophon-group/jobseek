@@ -7,14 +7,13 @@ import DraftEditor from "@/components/DraftEditor";
 import SignalTypeBadge from "@/components/SignalTypeBadge";
 import ScoreBadge from "@/components/ScoreBadge";
 import CopyEmailClientButton from "@/components/CopyButton";
-import { ArrowLeft, ExternalLink, User } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
-const STATUS_STYLE: Record<string, { bg: string; text: string; border: string; label: string }> = {
-  pending_review: { bg: "#eef2ff", text: "#4338ca", border: "#c7d2fe", label: "Pending review" },
-  sent:           { bg: "#dcfce7", text: "#15803d", border: "#bbf7d0", label: "Sent" },
-  archived:       { bg: "#f1f5f9", text: "#475569", border: "#e2e8f0", label: "Archived" },
+const STATUS_STYLE: Record<string, { bg: string; text: string; label: string }> = {
+  pending_review: { bg: "rgba(0,113,227,0.1)",  text: "#0064cc", label: "Pending review" },
+  sent:           { bg: "rgba(52,199,89,0.12)",  text: "#1a8c3f", label: "Sent" },
+  archived:       { bg: "rgba(0,0,0,0.06)",      text: "#6e6e73", label: "Archived" },
 };
 
 export default async function DraftPage({
@@ -44,7 +43,7 @@ export default async function DraftPage({
   const statusStyle = STATUS_STYLE[draft.status] ?? STATUS_STYLE.pending_review;
 
   return (
-    <div style={{ maxWidth: 740 }}>
+    <div style={{ maxWidth: 700 }}>
       {/* Back */}
       <Link
         href="/outreach"
@@ -52,111 +51,92 @@ export default async function DraftPage({
           display: "inline-flex",
           alignItems: "center",
           gap: 5,
-          color: "var(--text-muted)",
+          color: "var(--accent)",
           textDecoration: "none",
-          fontSize: 13,
-          marginBottom: "1.25rem",
+          fontSize: 13.5,
+          fontWeight: 500,
+          marginBottom: "1.5rem",
+          letterSpacing: -0.1,
         }}
       >
-        <ArrowLeft size={14} />
-        Back to Outreach
+        ← Outreach
       </Link>
 
-      {/* Company + signal header */}
+      {/* Company + signal */}
       <div
         style={{
           background: "var(--surface)",
-          border: "1px solid var(--border)",
-          borderRadius: 12,
-          padding: "1.25rem 1.5rem",
+          borderRadius: "var(--radius)",
+          boxShadow: "var(--card-shadow)",
+          padding: "1.5rem",
           marginBottom: "1rem",
         }}
       >
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
-              <span style={{ fontWeight: 700, fontSize: 18, color: "var(--text)" }}>
-                {companyName ?? meta.company_name ?? "Unknown company"}
-              </span>
-              <SignalTypeBadge type={signal.signalType} />
-              <ScoreBadge score={signal.score} />
-              <span
-                style={{
-                  fontSize: 11,
-                  padding: "2px 9px",
-                  borderRadius: 99,
-                  background: statusStyle.bg,
-                  color: statusStyle.text,
-                  border: `1px solid ${statusStyle.border}`,
-                  fontWeight: 600,
-                }}
-              >
-                {statusStyle.label}
-              </span>
-            </div>
-            <p style={{ color: "var(--text-muted)", fontSize: 13, lineHeight: 1.55, margin: 0 }}>
-              {signal.signalText}
-            </p>
-          </div>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+          <h2
+            style={{
+              fontWeight: 700,
+              fontSize: 20,
+              color: "var(--text)",
+              letterSpacing: -0.5,
+              margin: 0,
+            }}
+          >
+            {companyName ?? meta.company_name ?? "Unknown"}
+          </h2>
+          <SignalTypeBadge type={signal.signalType} />
+          <ScoreBadge score={signal.score} />
+          <span
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              padding: "2px 9px",
+              borderRadius: 6,
+              background: statusStyle.bg,
+              color: statusStyle.text,
+            }}
+          >
+            {statusStyle.label}
+          </span>
         </div>
 
+        <p style={{ color: "var(--text-muted)", fontSize: 13.5, lineHeight: 1.55, margin: 0 }}>
+          {signal.signalText}
+        </p>
+
         {(meta.source_url || meta.careers_url) && (
-          <div style={{ display: "flex", gap: 10, marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
+          <div
+            style={{
+              display: "flex",
+              gap: 12,
+              marginTop: 14,
+              paddingTop: 14,
+              borderTop: "1px solid rgba(0,0,0,0.06)",
+            }}
+          >
             {meta.source_url && (
-              <a
-                href={meta.source_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 5,
-                  color: "var(--accent-text)",
-                  textDecoration: "none",
-                  fontSize: 12.5,
-                  fontWeight: 500,
-                  background: "var(--accent-light)",
-                  padding: "4px 10px",
-                  borderRadius: 7,
-                }}
-              >
-                <ExternalLink size={12} />
-                View news
+              <a href={meta.source_url} target="_blank" rel="noopener noreferrer"
+                style={{ color: "var(--accent)", fontSize: 13, fontWeight: 500, textDecoration: "none", letterSpacing: -0.1 }}>
+                View news ↗
               </a>
             )}
             {meta.careers_url && (
-              <a
-                href={meta.careers_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 5,
-                  color: "#15803d",
-                  textDecoration: "none",
-                  fontSize: 12.5,
-                  fontWeight: 500,
-                  background: "#dcfce7",
-                  padding: "4px 10px",
-                  borderRadius: 7,
-                }}
-              >
-                <ExternalLink size={12} />
-                Careers page
+              <a href={meta.careers_url} target="_blank" rel="noopener noreferrer"
+                style={{ color: "var(--dot-green)", fontSize: 13, fontWeight: 500, textDecoration: "none", letterSpacing: -0.1 }}>
+                Careers page ↗
               </a>
             )}
           </div>
         )}
       </div>
 
-      {/* Contact card */}
+      {/* Contact */}
       <div
         style={{
           background: "var(--surface)",
-          border: "1px solid var(--border)",
-          borderRadius: 12,
-          padding: "1rem 1.25rem",
+          borderRadius: "var(--radius)",
+          boxShadow: "var(--card-shadow)",
+          padding: "1rem 1.5rem",
           marginBottom: "1rem",
           display: "flex",
           alignItems: "center",
@@ -165,20 +145,22 @@ export default async function DraftPage({
       >
         <div
           style={{
-            width: 38,
-            height: 38,
-            borderRadius: 10,
-            background: "var(--surface-2)",
+            width: 36,
+            height: 36,
+            borderRadius: "50%",
+            background: "var(--background)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            fontSize: 14,
+            color: "var(--text-muted)",
             flexShrink: 0,
           }}
         >
-          <User size={18} color="var(--text-muted)" />
+          {(draft.contactName?.[0] ?? "?").toUpperCase()}
         </div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 600, color: "var(--text)", fontSize: 14 }}>
+          <div style={{ fontWeight: 600, color: "var(--text)", fontSize: 14, letterSpacing: -0.2 }}>
             {draft.contactName}
           </div>
           {draft.contactTitle && (
@@ -190,13 +172,13 @@ export default async function DraftPage({
         {draft.contactEmail && <CopyEmailClientButton email={draft.contactEmail} />}
       </div>
 
-      {/* Editor */}
+      {/* Draft editor */}
       <div
         style={{
           background: "var(--surface)",
-          border: "1px solid var(--border)",
-          borderRadius: 12,
-          padding: "1.25rem 1.5rem",
+          borderRadius: "var(--radius)",
+          boxShadow: "var(--card-shadow)",
+          padding: "1.5rem",
         }}
       >
         <DraftEditor
