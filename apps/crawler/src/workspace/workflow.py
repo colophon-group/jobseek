@@ -196,7 +196,7 @@ GLOBAL_GATES: dict[str, Any] = {
         and ws.industry is not None
     ),
     "all_boards_added": lambda ws, boards: len(boards) > 0,
-    "submitted": lambda ws, boards: ws.submit_state.get("pr_ready", False),
+    "submitted": lambda ws, boards: ws.submitted,
 }
 
 PER_BOARD_GATES: dict[str, Any] = {

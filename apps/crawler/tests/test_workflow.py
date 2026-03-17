@@ -258,6 +258,26 @@ class TestGates:
         passed, _ = check_gate(step, ws, [board_careers], board_careers)
         assert passed
 
+    def test_submitted_gate_uses_submit_checkpoints(self, workspace, board_careers):
+        slug, ws, ws_root = workspace
+        ws.submit_state = {
+            "csv_written": True,
+            "validated": True,
+            "committed": True,
+            "pushed": True,
+        }
+        save_workspace(ws)
+        step = StepDef(
+            id="submit",
+            title="",
+            instructions="",
+            gate_type="state",
+            gate_check="submitted",
+            phase="final",
+        )
+        passed, _ = check_gate(step, ws, [board_careers])
+        assert passed
+
     def test_manual_gate_never_auto_passes(self, workspace, board_careers):
         slug, ws, ws_root = workspace
         step = StepDef(id="reflect", title="", instructions="", gate_type="manual", phase="final")
