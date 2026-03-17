@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0f0f0f;
+  --surface: #1a1a1a;
+  --surface-2: #242424;
+  --border: #2e2e2e;
+  --text: #e8e8e8;
+  --text-muted: #888;
+  --accent: #6366f1;
+  --accent-hover: #4f52d4;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--text);
+  font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, monospace;
+  font-size: 14px;
+}
