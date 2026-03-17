@@ -23,6 +23,9 @@ ENV HOSTNAME=0.0.0.0
 COPY --from=builder /app/apps/signals/.next/standalone ./
 COPY --from=builder /app/apps/signals/.next/static ./apps/signals/.next/static
 
+# proxy-agent is dynamically required by apify-client and not traced by Next.js standalone
+RUN npm install proxy-agent@6.5.0 --no-save
+
 EXPOSE 3000
 
 CMD ["node", "apps/signals/server.js"]

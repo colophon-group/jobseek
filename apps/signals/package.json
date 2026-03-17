@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "apify-client": "^2",
+    "proxy-agent": "^6",
     "drizzle-orm": "^0.45",
     "jose": "^5",
     "lucide-react": "^0.475",
