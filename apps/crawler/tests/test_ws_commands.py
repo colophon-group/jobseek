@@ -52,6 +52,7 @@ def _patch_all(monkeypatch, tmp_path):
     monkeypatch.setattr("src.csvtool.get_data_dir", _data)
     monkeypatch.setattr("src.inspect.get_data_dir", _data)
     monkeypatch.setattr("src.workspace.commands.lifecycle.get_data_dir", _data)
+    monkeypatch.setattr("src.workspace.commands.taxonomy.get_data_dir", _data)
     monkeypatch.setattr("src.workspace.state.get_workspace_dir", _ws)
 
     # Keep CLI tests deterministic/offline: board link analysis is exercised
@@ -158,6 +159,22 @@ class TestHelp:
         legacy_result = runner.invoke(ws, ["help", "monitor", "successfactors"])
         assert legacy_result.exit_code != 0
         assert "Unknown monitor type" in legacy_result.output
+
+    def test_help_industries_uses_repo_data_and_supports_legacy_schema(
+        self, tmp_path, monkeypatch
+    ):
+        _patch_all(monkeypatch, tmp_path)
+        (tmp_path / "industries.csv").write_text(
+            "id,name,keywords\n1,Technology,\"software,AI\"\n", encoding="utf-8"
+        )
+
+        runner = CliRunner()
+        result = runner.invoke(ws, ["help", "industries"])
+
+        assert result.exit_code == 0
+        assert "Industry Taxonomy" in result.output
+        assert "Technology" in result.output
+        assert "No industries found" not in result.output
 
     def test_with_workspace(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
@@ -449,6 +466,20 @@ class TestAddBoard:
         assert result.exit_code == 0
         board = load_board("test", "careers")
         assert board.job_link_pattern == r"^https?://test\.com/jobs/"
+
+
+class TestTaxonomy:
+    def test_taxonomy_search_uses_repo_data(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        (tmp_path / "industries.csv").write_text(
+            "id,name,keywords\n1,Technology,\"software,AI\"\n", encoding="utf-8"
+        )
+
+        runner = CliRunner()
+        result = runner.invoke(ws, ["taxonomy", "search", "industries", "AI"])
+
+        assert result.exit_code == 0
+        assert "Technology" in result.output
 
 
 class TestDelBoard:

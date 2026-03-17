@@ -7,7 +7,7 @@ import re
 import click
 import polars as pl
 
-from src.shared.constants import DATA_DIR
+from src.shared.constants import get_data_dir
 
 
 def _detect_format(df: pl.DataFrame) -> str:
@@ -24,7 +24,7 @@ def _detect_format(df: pl.DataFrame) -> str:
 
 def _load_taxonomy(name: str) -> tuple[pl.DataFrame, str]:
     """Load a taxonomy CSV by name and detect its format."""
-    path = DATA_DIR / f"{name}.csv"
+    path = get_data_dir() / f"{name}.csv"
     if not path.exists():
         raise click.ClickException(f"Taxonomy file not found: {path}")
     df = pl.read_csv(path, infer_schema_length=0)

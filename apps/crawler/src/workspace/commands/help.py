@@ -1578,9 +1578,9 @@ def _show_occupations() -> None:
     """Display occupation taxonomy from data/occupations.csv."""
     import polars as pl
 
-    from src.shared.constants import DATA_DIR
+    from src.shared.constants import get_data_dir
 
-    path = DATA_DIR / "occupations.csv"
+    path = get_data_dir() / "occupations.csv"
     if not path.exists():
         print("No occupations found in data/occupations.csv")
         return
@@ -1607,9 +1607,9 @@ def _show_seniority() -> None:
     """Display seniority taxonomy from data/seniority.csv."""
     import polars as pl
 
-    from src.shared.constants import DATA_DIR
+    from src.shared.constants import get_data_dir
 
-    path = DATA_DIR / "seniority.csv"
+    path = get_data_dir() / "seniority.csv"
     if not path.exists():
         print("No seniority levels found in data/seniority.csv")
         return
@@ -1636,24 +1636,27 @@ def _show_industries() -> None:
     """Display industry taxonomy from data/industries.csv."""
     import polars as pl
 
-    from src.shared.constants import DATA_DIR
+    from src.shared.constants import get_data_dir
 
-    path = DATA_DIR / "industries.csv"
+    path = get_data_dir() / "industries.csv"
     if not path.exists():
         print("No industries found in data/industries.csv")
         return
 
     df = pl.read_csv(path, infer_schema_length=0)
+    name_header = "EN" if "en" in df.columns else "Name"
+    name_col = "en" if "en" in df.columns else "name"
+    de_col = "de" if "de" in df.columns else None
     print("Industry Taxonomy")
     print("Managed in data/industries.csv — set per company with: ws set --industry <id>\n")
-    print(f"  {'ID':>3}  {'EN':<30} {'DE':<30}")
+    print(f"  {'ID':>3}  {name_header:<30} {'DE':<30}")
     print(f"  {'──':>3}  {'─' * 30} {'─' * 30}")
 
     for row in df.iter_rows(named=True):
         ind_id = row["id"]
-        en = row.get("en", "")
-        de = row.get("de", "")
-        print(f"  {ind_id:>3}  {en:<30} {de:<30}")
+        name = row.get(name_col, "")
+        de = row.get(de_col, "") if de_col else ""
+        print(f"  {ind_id:>3}  {name:<30} {de:<30}")
 
     print(f"\n  {len(df)} industries total")
     print("\n  CLI: ws taxonomy search industries <query>")
