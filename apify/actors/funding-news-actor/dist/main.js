@@ -118,6 +118,7 @@ async function parseCrunchbase(apiKey, minAmount, roundTypes2, lookbackDays2, ca
         signal_type: "funding",
         signal_text: signalText,
         source_url: sourceUrl,
+        careers_url: `https://${domain}/careers`,
         date: new Date(announcedOn).toISOString(),
         raw: {
           investment_type: investmentType,
@@ -245,6 +246,7 @@ async function parseRssFeeds(lookbackDays2) {
           signal_type: "funding",
           signal_text: signalText,
           source_url: item.link ?? feed.url,
+          careers_url: `https://${domain}/careers`,
           date: articleDate,
           raw: {
             feed: feed.name,

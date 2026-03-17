@@ -296,6 +296,8 @@ Processing qualifying signal: ${signal.company} (score: ${finalScore})`);
     signal_type: signal.signal_type,
     signal_text: signal.signal_text,
     signal_date: signal.date,
+    source_url: signal.source_url,
+    careers_url: signal.careers_url,
     final_score: finalScore,
     scoring_reasoning: reasoning,
     contact,

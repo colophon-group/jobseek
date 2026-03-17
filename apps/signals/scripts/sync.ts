@@ -94,6 +94,7 @@ async function syncRecord(record: ApifyOutreachRecord): Promise<"inserted" | "sk
       metadata: {
         company_name: record.signal_company,
         source_url: record.source_url ?? null,
+        careers_url: record.careers_url ?? null,
       },
     });
   }

@@ -42,6 +42,8 @@ export interface Signal {
   signal_text: string;
   /** URL to the original source (article, filing, tweet, LinkedIn page, etc.) */
   source_url: string;
+  /** Best-effort careers page URL, e.g. "https://stripe.com/jobs" */
+  careers_url?: string;
   /** ISO 8601 date string of when the signal occurred */
   date: string;
   /** Full source payload — structure varies by signal_type (see individual actors for shape) */

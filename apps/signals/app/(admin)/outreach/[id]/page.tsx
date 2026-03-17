@@ -68,16 +68,28 @@ export default async function DraftPage({
         <div style={{ color: "var(--text-muted)", fontSize: 12, lineHeight: 1.6 }}>
           {signal.signalText}
         </div>
-        {meta.source_url && (
-          <a
-            href={meta.source_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: "var(--accent)", fontSize: 12, textDecoration: "none" }}
-          >
-            View source ↗
-          </a>
-        )}
+        <div style={{ display: "flex", gap: 12, marginTop: 4 }}>
+          {meta.source_url && (
+            <a
+              href={meta.source_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: "var(--accent)", fontSize: 12, textDecoration: "none" }}
+            >
+              View news ↗
+            </a>
+          )}
+          {meta.careers_url && (
+            <a
+              href={meta.careers_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: "#4ade80", fontSize: 12, textDecoration: "none" }}
+            >
+              Careers page ↗
+            </a>
+          )}
+        </div>
       </div>
 
       {/* Contact */}

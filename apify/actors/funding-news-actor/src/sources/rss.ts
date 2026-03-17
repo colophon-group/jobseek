@@ -151,6 +151,7 @@ export async function parseRssFeeds(lookbackDays: number): Promise<Signal[]> {
           signal_type: 'funding',
           signal_text: signalText,
           source_url: item.link ?? feed.url,
+          careers_url: `https://${domain}/careers`,
           date: articleDate,
           raw: {
             feed: feed.name,

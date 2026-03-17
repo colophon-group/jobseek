@@ -160,6 +160,7 @@ export async function parseCrunchbase(
         signal_type: 'funding',
         signal_text: signalText,
         source_url: sourceUrl,
+        careers_url: `https://${domain}/careers`,
         date: new Date(announcedOn).toISOString(),
         raw: {
           investment_type: investmentType,

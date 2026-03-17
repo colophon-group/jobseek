@@ -30,6 +30,8 @@ export interface ApifyOutreachRecord {
   created_at: string;
   // source url from the original signal
   source_url?: string;
+  // careers page url
+  careers_url?: string;
 }
 
 export async function fetchOutreachDataset(

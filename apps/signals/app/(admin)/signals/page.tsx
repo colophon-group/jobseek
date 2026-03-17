@@ -51,7 +51,7 @@ export default async function SignalsPage() {
                 <Th>Score</Th>
                 <Th>Signal</Th>
                 <Th>Date</Th>
-                <Th>Source</Th>
+                <Th>Links</Th>
               </tr>
             </thead>
             <tbody>
@@ -99,18 +99,33 @@ export default async function SignalsPage() {
                       </span>
                     </Td>
                     <Td>
-                      {meta.source_url ? (
-                        <a
-                          href={meta.source_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{ color: "var(--accent)", textDecoration: "none" }}
-                        >
-                          ↗
-                        </a>
-                      ) : (
-                        <span style={{ color: "var(--border)" }}>—</span>
-                      )}
+                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        {meta.source_url ? (
+                          <a
+                            href={meta.source_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="News source"
+                            style={{ color: "var(--accent)", textDecoration: "none", fontSize: 12 }}
+                          >
+                            News ↗
+                          </a>
+                        ) : null}
+                        {meta.careers_url ? (
+                          <a
+                            href={meta.careers_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Careers page"
+                            style={{ color: "#4ade80", textDecoration: "none", fontSize: 12 }}
+                          >
+                            Careers ↗
+                          </a>
+                        ) : null}
+                        {!meta.source_url && !meta.careers_url && (
+                          <span style={{ color: "var(--border)" }}>—</span>
+                        )}
+                      </div>
                     </Td>
                   </tr>
                 );
