@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Save, Send, Archive } from "lucide-react";
 
 interface Props {
   id: string;
@@ -46,61 +47,51 @@ export default function DraftEditor({ id, subject, body, status }: Props) {
     }
   }
 
-  const inputStyle: React.CSSProperties = {
-    background: "var(--surface)",
-    border: "1px solid var(--border)",
-    borderRadius: 6,
-    padding: "0.5rem 0.75rem",
-    color: "var(--text)",
-    fontSize: 13,
-    width: "100%",
-    outline: "none",
-    fontFamily: "inherit",
-    resize: "vertical" as const,
-  };
-
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div>
-        <label style={{ display: "block", fontSize: 11, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.5 }}>
-          Subject
-        </label>
+        <label style={labelStyle}>Subject line</label>
         <input
           type="text"
           value={editSubject}
           onChange={(e) => setEditSubject(e.target.value)}
-          style={{ ...inputStyle, resize: undefined }}
+          style={inputStyle}
+          placeholder="Email subject…"
         />
       </div>
 
       <div>
-        <label style={{ display: "block", fontSize: 11, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.5 }}>
-          Body
-        </label>
+        <label style={labelStyle}>Email body</label>
         <textarea
           value={editBody}
           onChange={(e) => setEditBody(e.target.value)}
-          rows={14}
-          style={inputStyle}
+          rows={16}
+          style={{ ...inputStyle, resize: "vertical", lineHeight: 1.6 }}
+          placeholder="Email body…"
         />
       </div>
 
-      <div style={{ display: "flex", gap: 8, paddingTop: 4 }}>
+      <div style={{ display: "flex", gap: 8, paddingTop: 4, flexWrap: "wrap" }}>
         <button
           onClick={save}
           disabled={saving}
           style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
             background: "var(--surface-2)",
             border: "1px solid var(--border)",
-            borderRadius: 6,
-            padding: "0.4rem 1rem",
+            borderRadius: 8,
+            padding: "0.5rem 1rem",
             color: "var(--text)",
             cursor: saving ? "not-allowed" : "pointer",
             fontSize: 13,
+            fontWeight: 500,
             opacity: saving ? 0.6 : 1,
           }}
         >
-          {saving ? "Saving…" : "Save"}
+          <Save size={13} />
+          {saving ? "Saving…" : "Save draft"}
         </button>
 
         {status !== "sent" && (
@@ -108,16 +99,21 @@ export default function DraftEditor({ id, subject, body, status }: Props) {
             onClick={() => changeStatus("sent")}
             disabled={!!actionLoading}
             style={{
-              background: "#16a34a22",
-              border: "1px solid #16a34a44",
-              borderRadius: 6,
-              padding: "0.4rem 1rem",
-              color: "#4ade80",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              background: "#dcfce7",
+              border: "1px solid #bbf7d0",
+              borderRadius: 8,
+              padding: "0.5rem 1rem",
+              color: "#15803d",
               cursor: actionLoading ? "not-allowed" : "pointer",
               fontSize: 13,
+              fontWeight: 600,
               opacity: actionLoading ? 0.6 : 1,
             }}
           >
+            <Send size={13} />
             {actionLoading === "sent" ? "Marking…" : "Mark as Sent"}
           </button>
         )}
@@ -127,16 +123,21 @@ export default function DraftEditor({ id, subject, body, status }: Props) {
             onClick={() => changeStatus("archived")}
             disabled={!!actionLoading}
             style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
               background: "transparent",
               border: "1px solid var(--border)",
-              borderRadius: 6,
-              padding: "0.4rem 1rem",
+              borderRadius: 8,
+              padding: "0.5rem 1rem",
               color: "var(--text-muted)",
               cursor: actionLoading ? "not-allowed" : "pointer",
               fontSize: 13,
+              fontWeight: 500,
               opacity: actionLoading ? 0.6 : 1,
             }}
           >
+            <Archive size={13} />
             {actionLoading === "archived" ? "Archiving…" : "Archive"}
           </button>
         )}
@@ -144,3 +145,25 @@ export default function DraftEditor({ id, subject, body, status }: Props) {
     </div>
   );
 }
+
+const labelStyle: React.CSSProperties = {
+  display: "block",
+  fontSize: 11,
+  fontWeight: 600,
+  color: "var(--text-muted)",
+  marginBottom: 6,
+  textTransform: "uppercase",
+  letterSpacing: 0.5,
+};
+
+const inputStyle: React.CSSProperties = {
+  background: "var(--surface-2)",
+  border: "1.5px solid var(--border)",
+  borderRadius: 8,
+  padding: "0.6rem 0.8rem",
+  color: "var(--text)",
+  fontSize: 13.5,
+  width: "100%",
+  outline: "none",
+  fontFamily: "inherit",
+};

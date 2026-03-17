@@ -1,19 +1,38 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0f0f0f;
-  --surface: #1a1a1a;
-  --surface-2: #242424;
-  --border: #2e2e2e;
-  --text: #e8e8e8;
-  --text-muted: #888;
+  --background: #f8fafc;
+  --surface: #ffffff;
+  --surface-2: #f1f5f9;
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --text: #0f172a;
+  --text-muted: #64748b;
   --accent: #6366f1;
-  --accent-hover: #4f52d4;
+  --accent-hover: #4f46e5;
+  --accent-light: #eef2ff;
+  --accent-text: #4338ca;
+  --green: #16a34a;
+  --green-light: #dcfce7;
+  --green-text: #15803d;
+  --red: #dc2626;
+  --red-light: #fee2e2;
+  --yellow-light: #fef9c3;
+  --yellow-text: #a16207;
+}
+
+* {
+  box-sizing: border-box;
 }
 
 body {
   background-color: var(--background);
   color: var(--text);
-  font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, monospace;
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
   font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+input, textarea, button {
+  font-family: inherit;
 }
