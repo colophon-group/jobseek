@@ -6,6 +6,7 @@ import { getSearchProvider } from "@/lib/search";
 import type { SearchResultPosting } from "@/lib/search";
 import { cached } from "@/lib/cache";
 import { expandLocationIds } from "@/lib/actions/locations";
+import { expandOccupationIds } from "@/lib/actions/taxonomy";
 
 // ── Company suggestions (search bar autocomplete) ───────────────────
 
@@ -86,10 +87,10 @@ export async function getCompanyBySlug(
   locale: string,
 ): Promise<CompanyDetail | null> {
   const key = `company-slug:${slug}:${locale}`;
-  return cached(key, () => _fetchCompanyBySlug(slug), { ttl: 600 });
+  return cached(key, () => _fetchCompanyBySlug(slug, locale), { ttl: 600 });
 }
 
-async function _fetchCompanyBySlug(slug: string): Promise<CompanyDetail | null> {
+async function _fetchCompanyBySlug(slug: string, locale: string): Promise<CompanyDetail | null> {
   const rows = await db.execute<{
     [key: string]: unknown;
     id: string;
@@ -102,12 +103,20 @@ async function _fetchCompanyBySlug(slug: string): Promise<CompanyDetail | null> 
     employee_count_range: number | null;
     founded_year: number | null;
   }>(sql`
-    SELECT c.id, c.name, c.slug, c.icon, c.website, c.description,
-      i.name AS industry_name,
+    SELECT c.id, c.name, c.slug, c.icon, c.website,
+      COALESCE(cd.description, c.description) AS description,
+      COALESCE(ind_name.name, i.name) AS industry_name,
       c.employee_count_range,
       c.founded_year
     FROM company c
     LEFT JOIN industry i ON i.id = c.industry
+    LEFT JOIN company_description cd
+      ON cd.company_id = c.id AND cd.locale = ${locale}
+    LEFT JOIN LATERAL (
+      SELECT name FROM industry_name
+      WHERE industry_id = c.industry AND locale IN (${locale}, 'en') AND is_display = true
+      ORDER BY (locale = ${locale})::int DESC LIMIT 1
+    ) ind_name ON c.industry IS NOT NULL
     WHERE c.slug = ${slug}
   `);
 
@@ -139,18 +148,33 @@ export async function getCompanyPostings(params: {
   companyId: string;
   keywords: string[];
   locationIds?: number[];
-  language: string;
+  occupationIds?: number[];
+  seniorityIds?: number[];
+  technologyIds?: number[];
+  salaryMinEur?: number;
+  salaryMaxEur?: number;
+  experienceMin?: number;
+  experienceMax?: number;
+  languages: string[];
+  locale: string;
   offset: number;
   limit: number;
 }): Promise<{ postings: SearchResultPosting[]; activeCount: number; yearCount: number }> {
   const sortedKw = [...params.keywords].sort();
   const sortedLoc = [...(params.locationIds ?? [])].sort();
-  const key = `company-postings:${params.companyId}:${sortedKw.join(",")}:${sortedLoc.join(",")}:${params.language}:${params.offset}:${params.limit}`;
+  const sortedOcc = [...(params.occupationIds ?? [])].sort();
+  const sortedSen = [...(params.seniorityIds ?? [])].sort();
+  const sortedTech = [...(params.technologyIds ?? [])].sort();
+  const sortedLangs = [...params.languages].sort();
+  const key = `company-postings:${params.companyId}:${sortedKw.join(",")}:${sortedLoc.join(",")}:${sortedOcc.join(",")}:${sortedSen.join(",")}:${sortedTech.join(",")}:${sortedLangs.join(",")}:${params.salaryMinEur ?? ""}:${params.salaryMaxEur ?? ""}:${params.experienceMin ?? ""}:${params.experienceMax ?? ""}:${params.locale}:${params.offset}:${params.limit}`;
   return cached(
     key,
     async () => {
-      const expandedIds = await resolveLocationIds(params.locationIds);
-      return getSearchProvider().loadPostingsWithCounts({ ...params, locationIds: expandedIds });
+      const [expandedLocs, expandedOccs] = await Promise.all([
+        resolveLocationIds(params.locationIds),
+        resolveOccupationIds(params.occupationIds),
+      ]);
+      return getSearchProvider().loadPostingsWithCounts({ ...params, locationIds: expandedLocs, occupationIds: expandedOccs });
     },
     { ttl: 300 },
   );
@@ -453,5 +477,13 @@ async function resolveLocationIds(
 ): Promise<number[] | undefined> {
   if (!locationIds || locationIds.length === 0) return undefined;
   const expanded = await Promise.all(locationIds.map(expandLocationIds));
+  return [...new Set(expanded.flat())];
+}
+
+async function resolveOccupationIds(
+  occupationIds?: number[],
+): Promise<number[] | undefined> {
+  if (!occupationIds || occupationIds.length === 0) return undefined;
+  const expanded = await Promise.all(occupationIds.map(expandOccupationIds));
   return [...new Set(expanded.flat())];
 }

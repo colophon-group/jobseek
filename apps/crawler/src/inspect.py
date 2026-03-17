@@ -236,6 +236,68 @@ def validate_csvs() -> list[ValidationError]:
             except json.JSONDecodeError:
                 pass  # Already reported above
 
+    # Validate occupation_domains.csv
+    domains_path = get_data_dir() / "occupation_domains.csv"
+    domain_slugs: set[str] = set()
+    if domains_path.exists():
+        dom_headers, dom_rows = read_csv(domains_path)
+        required_dom_cols = {"slug", "en"}
+        if not required_dom_cols.issubset(set(dom_headers)):
+            errors.append(
+                ValidationError(
+                    "occupation_domains.csv",
+                    None,
+                    f"Missing columns: {required_dom_cols - set(dom_headers)}",
+                )
+            )
+        else:
+            for i, row in enumerate(dom_rows, start=2):
+                dom_slug = row.get("slug", "")
+                if not dom_slug:
+                    errors.append(ValidationError("occupation_domains.csv", i, "Empty slug"))
+                elif not _SLUG_RE.match(dom_slug):
+                    errors.append(
+                        ValidationError("occupation_domains.csv", i, f"Invalid slug: {dom_slug!r}")
+                    )
+                elif dom_slug in domain_slugs:
+                    errors.append(
+                        ValidationError(
+                            "occupation_domains.csv", i, f"Duplicate slug: {dom_slug!r}"
+                        )
+                    )
+                domain_slugs.add(dom_slug)
+
+    # Validate occupations.csv domain references
+    occ_path = get_data_dir() / "occupations.csv"
+    if occ_path.exists() and domain_slugs:
+        occ_headers, occ_rows = read_csv(occ_path)
+        if "domain" in occ_headers:
+            for i, row in enumerate(occ_rows, start=2):
+                domain_ref = (row.get("domain") or "").strip()
+                if domain_ref and domain_ref not in domain_slugs:
+                    errors.append(
+                        ValidationError(
+                            "occupations.csv",
+                            i,
+                            f"domain {domain_ref!r} not in occupation_domains.csv",
+                        )
+                    )
+
+    # Validate company_descriptions.csv
+    descs_path = get_data_dir() / "company_descriptions.csv"
+    if descs_path.exists():
+        desc_headers, desc_rows = read_csv(descs_path)
+        for i, row in enumerate(desc_rows, start=2):
+            desc_slug = row.get("slug", "")
+            if desc_slug and desc_slug not in slugs:
+                errors.append(
+                    ValidationError(
+                        "company_descriptions.csv",
+                        i,
+                        f"slug {desc_slug!r} not in companies.csv",
+                    )
+                )
+
     return errors
 
 

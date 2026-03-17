@@ -1,17 +1,17 @@
 "use client";
 
-import { useState, useCallback, useTransition, useRef, useEffect } from "react";
+import { useState, useCallback, useTransition, useRef, useEffect, useMemo } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { X, MapPin } from "lucide-react";
-import { SearchBar } from "@/components/search/search-bar";
+
 import type { SelectedLocation } from "@/components/search/location-pills";
 import { SearchResults } from "@/components/search/search-results";
 import { ZeroResults } from "@/components/search/zero-results";
 import { SkeletonCards } from "@/components/search/skeleton-card";
 import { JobDetailPanel } from "@/components/search/job-detail-dialog";
-import { searchJobs, listTopCompanies } from "@/lib/actions/search";
+import { SearchToolbar } from "@/components/search/search-toolbar";
+import { searchJobs, listTopCompanies, getCurrencyRates, type CurrencyRate } from "@/lib/actions/search";
 import { buildFilteredPath } from "@/lib/search/query-params";
-import type { SearchResultCompany } from "@/lib/search";
+import type { SearchResultCompany, HistogramFilters } from "@/lib/search";
 import {
   useSearchStateStore,
   buildCacheKey,
@@ -19,12 +19,27 @@ import {
 
 const PAGE_SIZE = 10;
 
+type TaxonomyItem = { id: number; slug: string; name: string };
+
 interface SearchPageProps {
   initialCompanies: SearchResultCompany[];
   initialTotalCompanies: number;
   initialKeywords: string[];
   initialLocations: SelectedLocation[];
-  language: string;
+  initialOccupations: TaxonomyItem[];
+  initialSeniorities: TaxonomyItem[];
+  initialTechnologies: TaxonomyItem[];
+  initialSalaryCurrency?: string;
+  initialSalaryMin?: number;
+  initialSalaryMax?: number;
+  initialExperienceMin?: number;
+  initialExperienceMax?: number;
+  locale: string;
+  displayCurrency: string;
+  /** Raw preference: [] = default, ["*"] = all, ["en","de"] = specific */
+  jobLanguages: string[];
+  /** Resolved language filter for search queries */
+  languages: string[];
   userLat?: number;
   userLng?: number;
 }
@@ -34,7 +49,18 @@ export function SearchPage({
   initialTotalCompanies,
   initialKeywords,
   initialLocations,
-  language,
+  initialOccupations,
+  initialSeniorities,
+  initialTechnologies,
+  initialSalaryCurrency,
+  initialSalaryMin,
+  initialSalaryMax,
+  initialExperienceMin,
+  initialExperienceMax,
+  locale,
+  displayCurrency,
+  jobLanguages,
+  languages,
   userLat,
   userLng,
 }: SearchPageProps) {
@@ -42,15 +68,15 @@ export function SearchPage({
   const searchParams = useSearchParams();
   const { get: getSearchState, set: setSearchState, setPageActions } = useSearchStateStore();
 
-  // Restore from context if we have a cached snapshot.
-  // Restore when: (a) URL has no filters (navigated back without explicit intent),
-  // or (b) URL filters match the cached snapshot exactly.
   const cached = getSearchState();
   const currentCacheKey = buildCacheKey(
     initialKeywords,
     initialLocations.map((l) => l.id),
+    initialOccupations.map((o) => o.id),
+    initialSeniorities.map((s) => s.id),
+    initialTechnologies.map((t) => t.id),
   );
-  const hasUrlFilters = initialKeywords.length > 0 || initialLocations.length > 0;
+  const hasUrlFilters = initialKeywords.length > 0 || initialLocations.length > 0 || initialOccupations.length > 0 || initialSeniorities.length > 0 || initialTechnologies.length > 0;
   const shouldRestore =
     cached !== null &&
     (cached.cacheKey === currentCacheKey || !hasUrlFilters);
@@ -61,6 +87,37 @@ export function SearchPage({
   const [locations, setLocations] = useState<SelectedLocation[]>(
     shouldRestore ? cached.locations : initialLocations,
   );
+  const [occupations, setOccupations] = useState<TaxonomyItem[]>(
+    shouldRestore ? cached.occupations : initialOccupations,
+  );
+  const [seniorities, setSeniorities] = useState<TaxonomyItem[]>(
+    shouldRestore ? cached.seniorities : initialSeniorities,
+  );
+  const [technologies, setTechnologies] = useState<TaxonomyItem[]>(
+    shouldRestore ? cached.technologies : initialTechnologies,
+  );
+  const [salaryCurrency, setSalaryCurrency] = useState(
+    shouldRestore ? cached.salaryCurrency : (initialSalaryCurrency ?? displayCurrency),
+  );
+  const [salaryMin, setSalaryMin] = useState<number | undefined>(
+    shouldRestore ? cached.salaryMinEur : initialSalaryMin,
+  );
+  const [salaryMax, setSalaryMax] = useState<number | undefined>(
+    shouldRestore ? cached.salaryMaxEur : initialSalaryMax,
+  );
+  const [experienceMin, setExperienceMin] = useState<number | undefined>(
+    shouldRestore ? cached.experienceMin : initialExperienceMin,
+  );
+  const [experienceMax, setExperienceMax] = useState<number | undefined>(
+    shouldRestore ? cached.experienceMax : initialExperienceMax,
+  );
+
+  // Currency rates for EUR conversion (fetched lazily)
+  const [currencyRates, setCurrencyRates] = useState<CurrencyRate[]>([]);
+  useEffect(() => {
+    getCurrencyRates().then(setCurrencyRates);
+  }, []);
+
   const [showPostingId, setShowPostingId] = useState<string | null>(
     searchParams.get("show") ?? (shouldRestore ? cached.showPostingId : null),
   );
@@ -74,17 +131,41 @@ export function SearchPage({
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const loadingRef = useRef(false);
 
-  // Refs to hold current values for the unmount cleanup
+  // Refs for all filter state — single source of truth for updateUrl/runSearch
   const keywordsRef = useRef(keywords);
   const locationsRef = useRef(locations);
+  const occupationsRef = useRef(occupations);
+  const senioritiesRef = useRef(seniorities);
+  const technologiesRef = useRef(technologies);
+  const salaryCurrencyRef = useRef(salaryCurrency);
+  const salaryMinRef = useRef(salaryMin);
+  const salaryMaxRef = useRef(salaryMax);
+  const experienceMinRef = useRef(experienceMin);
+  const experienceMaxRef = useRef(experienceMax);
   const companiesRef = useRef(companies);
   const totalCompaniesRef = useRef(totalCompanies);
   const showPostingIdRef = useRef(showPostingId);
   keywordsRef.current = keywords;
   locationsRef.current = locations;
+  occupationsRef.current = occupations;
+  senioritiesRef.current = seniorities;
+  technologiesRef.current = technologies;
+  salaryCurrencyRef.current = salaryCurrency;
+  salaryMinRef.current = salaryMin;
+  salaryMaxRef.current = salaryMax;
+  experienceMinRef.current = experienceMin;
+  experienceMaxRef.current = experienceMax;
   companiesRef.current = companies;
   totalCompaniesRef.current = totalCompanies;
   showPostingIdRef.current = showPostingId;
+
+  /** Convert a salary amount from the user's display currency to EUR. */
+  function toEur(amount: number | undefined): number | undefined {
+    if (amount == null) return undefined;
+    const rate = currencyRates.find((r) => r.currency === salaryCurrencyRef.current);
+    if (!rate) return amount; // fallback: assume EUR
+    return Math.round(amount * rate.toEur);
+  }
 
   // Save state to context on unmount
   useEffect(() => {
@@ -92,6 +173,14 @@ export function SearchPage({
       setSearchState({
         keywords: keywordsRef.current,
         locations: locationsRef.current,
+        occupations: occupationsRef.current,
+        seniorities: senioritiesRef.current,
+        technologies: technologiesRef.current,
+        salaryMinEur: salaryMinRef.current,
+        salaryMaxEur: salaryMaxRef.current,
+        salaryCurrency: salaryCurrencyRef.current,
+        experienceMin: experienceMinRef.current,
+        experienceMax: experienceMaxRef.current,
         companies: companiesRef.current,
         totalCompanies: totalCompaniesRef.current,
         showPostingId: showPostingIdRef.current,
@@ -99,6 +188,9 @@ export function SearchPage({
         cacheKey: buildCacheKey(
           keywordsRef.current,
           locationsRef.current.map((l) => l.id),
+          occupationsRef.current.map((o) => o.id),
+          senioritiesRef.current.map((s) => s.id),
+          technologiesRef.current.map((t) => t.id),
         ),
       });
       setPageActions(null);
@@ -111,30 +203,60 @@ export function SearchPage({
       addLocation: (loc) => {
         const updated = [...locationsRef.current, loc];
         setLocations(updated);
-        updateUrl(keywordsRef.current, updated);
-        runSearch(keywordsRef.current, updated);
+        locationsRef.current = updated;
+        updateUrl();
+        runSearch();
       },
-      submitSearch: (nextKeywords, nextLocations) => {
-        setKeywords(nextKeywords);
-        setLocations(nextLocations);
+      addOccupation: (occ) => {
+        const updated = [...occupationsRef.current, occ];
+        setOccupations(updated);
+        occupationsRef.current = updated;
+        updateUrl();
+        runSearch();
+      },
+      addSeniority: (sen) => {
+        const updated = [...senioritiesRef.current, sen];
+        setSeniorities(updated);
+        senioritiesRef.current = updated;
+        updateUrl();
+        runSearch();
+      },
+      addTechnology: (tech) => {
+        const updated = [...technologiesRef.current, tech];
+        setTechnologies(updated);
+        technologiesRef.current = updated;
+        updateUrl();
+        runSearch();
+      },
+      submitSearch: (nextKeywords, nextLocations, nextOccupations, nextSeniorities, nextTechnologies) => {
+        setKeywords(nextKeywords); keywordsRef.current = nextKeywords;
+        setLocations(nextLocations); locationsRef.current = nextLocations;
+        if (nextOccupations) { setOccupations(nextOccupations); occupationsRef.current = nextOccupations; }
+        if (nextSeniorities) { setSeniorities(nextSeniorities); senioritiesRef.current = nextSeniorities; }
+        if (nextTechnologies) { setTechnologies(nextTechnologies); technologiesRef.current = nextTechnologies; }
         setShowPostingId(null);
-        updateUrl(nextKeywords, nextLocations, null);
-        runSearch(nextKeywords, nextLocations);
+        updateUrl(null);
+        runSearch();
       },
       getLocations: () => locationsRef.current,
       getKeywords: () => keywordsRef.current,
+      getOccupations: () => occupationsRef.current,
+      getSeniorities: () => senioritiesRef.current,
+      getTechnologies: () => technologiesRef.current,
     });
   }, [setPageActions]);
 
   // Restore scroll position and sync URL on mount when restoring from cache
   useEffect(() => {
     if (shouldRestore) {
-      // Sync URL to reflect restored filters
       const url = buildFilteredPath(
         pathname,
         cached.keywords,
         cached.locations,
         cached.showPostingId ? { show: cached.showPostingId } : undefined,
+        cached.occupations,
+        cached.seniorities,
+        cached.technologies,
       );
       window.history.replaceState(null, "", url);
 
@@ -147,38 +269,83 @@ export function SearchPage({
   }, []);
 
   const hasMore = companies.length < totalCompanies;
-  const hasFilters = keywords.length > 0 || locations.length > 0;
+  const hasFilters = keywords.length > 0 || locations.length > 0 || occupations.length > 0 || seniorities.length > 0 || technologies.length > 0 || salaryMin != null || salaryMax != null || experienceMin != null || experienceMax != null;
 
-  function updateUrl(kws: string[], locs: SelectedLocation[], showId?: string | null) {
-    const url = buildFilteredPath(pathname, kws, locs, showId ? { show: showId } : undefined);
+  /** Sync URL to current ref state. */
+  function updateUrl(showId?: string | null) {
+    const extra: Record<string, string> = {};
+    if (showId) extra.show = showId;
+    if (salaryMinRef.current || salaryMaxRef.current) {
+      extra.sal = `${salaryMinRef.current ?? ""}-${salaryMaxRef.current ?? ""}`;
+    }
+    if (salaryCurrencyRef.current && salaryCurrencyRef.current !== "EUR") {
+      extra.salcur = salaryCurrencyRef.current;
+    }
+    if (experienceMinRef.current || experienceMaxRef.current) {
+      extra.exp = `${experienceMinRef.current ?? ""}-${experienceMaxRef.current ?? ""}`;
+    }
+    const url = buildFilteredPath(
+      pathname,
+      keywordsRef.current,
+      locationsRef.current,
+      Object.keys(extra).length > 0 ? extra : undefined,
+      occupationsRef.current,
+      senioritiesRef.current,
+      technologiesRef.current,
+    );
     window.history.replaceState(null, "", url);
   }
 
   function handleOpenPosting(postingId: string) {
     setShowPostingId(postingId);
-    updateUrl(keywords, locations, postingId);
+    updateUrl(postingId);
   }
 
   function handleClosePosting() {
     setShowPostingId(null);
-    updateUrl(keywords, locations, null);
+    updateUrl(null);
   }
 
-  function runSearch(kws: string[], locs: SelectedLocation[]) {
-    const locationIds = locs.map((l) => l.id);
+  /** Run a search using current ref state. */
+  function runSearch() {
+    const kws = keywordsRef.current;
+    const locationIds = locationsRef.current.map((l) => l.id);
+    const occupationIds = occupationsRef.current.map((o) => o.id);
+    const seniorityIds = senioritiesRef.current.map((s) => s.id);
+    const technologyIds = technologiesRef.current.map((t) => t.id);
+    const salMinEur = toEur(salaryMinRef.current);
+    const salMaxEur = toEur(salaryMaxRef.current);
+    const expMin = experienceMinRef.current;
+    const expMax = experienceMaxRef.current;
     startSearch(async () => {
       const result =
         kws.length > 0
           ? await searchJobs({
               keywords: kws,
               locationIds,
-              language,
+              occupationIds: occupationIds.length > 0 ? occupationIds : undefined,
+              seniorityIds: seniorityIds.length > 0 ? seniorityIds : undefined,
+              technologyIds: technologyIds.length > 0 ? technologyIds : undefined,
+              salaryMinEur: salMinEur,
+              salaryMaxEur: salMaxEur,
+              experienceMin: expMin,
+              experienceMax: expMax,
+              languages,
+              locale,
               offset: 0,
               limit: PAGE_SIZE,
             })
           : await listTopCompanies({
               locationIds,
-              language,
+              occupationIds: occupationIds.length > 0 ? occupationIds : undefined,
+              seniorityIds: seniorityIds.length > 0 ? seniorityIds : undefined,
+              technologyIds: technologyIds.length > 0 ? technologyIds : undefined,
+              salaryMinEur: salMinEur,
+              salaryMaxEur: salMaxEur,
+              experienceMin: expMin,
+              experienceMax: expMax,
+              languages,
+              locale,
               offset: 0,
               limit: PAGE_SIZE,
             });
@@ -191,42 +358,156 @@ export function SearchPage({
     (keyword: string) => {
       const updated = keywords.filter((k) => k !== keyword);
       setKeywords(updated);
-      updateUrl(updated, locations);
-      runSearch(updated, locations);
+      keywordsRef.current = updated;
+      updateUrl();
+      runSearch();
     },
-    [keywords, locations, language, pathname],
+    [keywords],
   );
 
   const handleAddLocation = useCallback(
     (location: SelectedLocation) => {
       const updated = [...locations, location];
       setLocations(updated);
-      updateUrl(keywords, updated);
-      runSearch(keywords, updated);
+      locationsRef.current = updated;
+      updateUrl();
+      runSearch();
     },
-    [keywords, locations, language, pathname],
+    [locations],
+  );
+
+  const handleAddOccupation = useCallback(
+    (occ: TaxonomyItem) => {
+      const updated = [...occupations, occ];
+      setOccupations(updated);
+      occupationsRef.current = updated;
+      updateUrl();
+      runSearch();
+    },
+    [occupations],
+  );
+
+  const handleAddSeniority = useCallback(
+    (sen: TaxonomyItem) => {
+      const updated = [...seniorities, sen];
+      setSeniorities(updated);
+      senioritiesRef.current = updated;
+      updateUrl();
+      runSearch();
+    },
+    [seniorities],
   );
 
   const handleSubmitSearch = useCallback(
-    (nextKeywords: string[], nextLocations: SelectedLocation[]) => {
-      setKeywords(nextKeywords);
-      setLocations(nextLocations);
+    (nextKeywords: string[], nextLocations: SelectedLocation[], nextOccs?: TaxonomyItem[], nextSens?: TaxonomyItem[], nextTechs?: TaxonomyItem[]) => {
+      setKeywords(nextKeywords); keywordsRef.current = nextKeywords;
+      setLocations(nextLocations); locationsRef.current = nextLocations;
+      if (nextOccs) { setOccupations(nextOccs); occupationsRef.current = nextOccs; }
+      if (nextSens) { setSeniorities(nextSens); senioritiesRef.current = nextSens; }
+      if (nextTechs) { setTechnologies(nextTechs); technologiesRef.current = nextTechs; }
       setShowPostingId(null);
-      updateUrl(nextKeywords, nextLocations, null);
-      runSearch(nextKeywords, nextLocations);
+      updateUrl(null);
+      runSearch();
     },
-    [language, pathname],
+    [],
   );
 
   const handleRemoveLocation = useCallback(
     (locationId: number) => {
       const updated = locations.filter((l) => l.id !== locationId);
       setLocations(updated);
-      updateUrl(keywords, updated);
-      runSearch(keywords, updated);
+      locationsRef.current = updated;
+      updateUrl();
+      runSearch();
     },
-    [keywords, locations, language, pathname],
+    [locations],
   );
+
+  const handleRemoveOccupation = useCallback(
+    (occId: number) => {
+      const updated = occupations.filter((o) => o.id !== occId);
+      setOccupations(updated);
+      occupationsRef.current = updated;
+      updateUrl();
+      runSearch();
+    },
+    [occupations],
+  );
+
+  const handleRemoveSeniority = useCallback(
+    (senId: number) => {
+      const updated = seniorities.filter((s) => s.id !== senId);
+      setSeniorities(updated);
+      senioritiesRef.current = updated;
+      updateUrl();
+      runSearch();
+    },
+    [seniorities],
+  );
+
+  const handleAddTechnology = useCallback(
+    (tech: TaxonomyItem) => {
+      const updated = [...technologies, tech];
+      setTechnologies(updated);
+      technologiesRef.current = updated;
+      updateUrl();
+      runSearch();
+    },
+    [technologies],
+  );
+
+  const handleRemoveTechnology = useCallback(
+    (techId: number) => {
+      const updated = technologies.filter((t) => t.id !== techId);
+      setTechnologies(updated);
+      technologiesRef.current = updated;
+      updateUrl();
+      runSearch();
+    },
+    [technologies],
+  );
+
+  const handleSalaryChange = useCallback(
+    (currency: string, min: number | undefined, max: number | undefined) => {
+      setSalaryCurrency(currency);
+      setSalaryMin(min);
+      setSalaryMax(max);
+      salaryCurrencyRef.current = currency;
+      salaryMinRef.current = min;
+      salaryMaxRef.current = max;
+      updateUrl();
+      runSearch();
+    },
+    [],
+  );
+
+  const handleExperienceChange = useCallback(
+    (min: number | undefined, max: number | undefined) => {
+      setExperienceMin(min);
+      setExperienceMax(max);
+      experienceMinRef.current = min;
+      experienceMaxRef.current = max;
+      updateUrl();
+      runSearch();
+    },
+    [],
+  );
+
+  const handleClearAll = useCallback(() => {
+    setKeywords([]); keywordsRef.current = [];
+    setLocations([]); locationsRef.current = [];
+    setOccupations([]); occupationsRef.current = [];
+    setSeniorities([]); senioritiesRef.current = [];
+    setTechnologies([]); technologiesRef.current = [];
+    setSalaryCurrency(displayCurrency); salaryCurrencyRef.current = displayCurrency;
+    setSalaryMin(undefined); salaryMinRef.current = undefined;
+    setSalaryMax(undefined); salaryMaxRef.current = undefined;
+    setExperienceMin(undefined); experienceMinRef.current = undefined;
+    setExperienceMax(undefined); experienceMaxRef.current = undefined;
+    setShowPostingId(null);
+    updateUrl(null);
+    runSearch();
+  }, [displayCurrency]);
 
   const handleLoadMore = useCallback(() => {
     if (loadingRef.current) return;
@@ -235,10 +516,15 @@ export function SearchPage({
 
     const offset = companies.length;
     const locationIds = locations.map((l) => l.id);
+    const occupationIds = occupations.length > 0 ? occupations.map((o) => o.id) : undefined;
+    const seniorityIds = seniorities.length > 0 ? seniorities.map((s) => s.id) : undefined;
+    const technologyIds = technologies.length > 0 ? technologies.map((t) => t.id) : undefined;
+    const salMinEur = toEur(salaryMin);
+    const salMaxEur = toEur(salaryMax);
     const fetcher =
       keywords.length > 0
-        ? searchJobs({ keywords, locationIds, language, offset, limit: PAGE_SIZE })
-        : listTopCompanies({ locationIds, language, offset, limit: PAGE_SIZE });
+        ? searchJobs({ keywords, locationIds, occupationIds, seniorityIds, technologyIds, salaryMinEur: salMinEur, salaryMaxEur: salMaxEur, experienceMin, experienceMax, languages, locale, offset, limit: PAGE_SIZE })
+        : listTopCompanies({ locationIds, occupationIds, seniorityIds, technologyIds, salaryMinEur: salMinEur, salaryMaxEur: salMaxEur, experienceMin, experienceMax, languages, locale, offset, limit: PAGE_SIZE });
 
     fetcher
       .then((result) => {
@@ -255,59 +541,49 @@ export function SearchPage({
         loadingRef.current = false;
         setIsLoadingMore(false);
       });
-  }, [companies.length, keywords, locations, language]);
+  }, [companies.length, keywords, locations, occupations, seniorities, technologies, languages, locale, salaryMin, salaryMax, experienceMin, experienceMax]);
+
+  const histogramFilters: HistogramFilters = useMemo(() => ({
+    keywords: keywords.length > 0 ? keywords : undefined,
+    locationIds: locations.length > 0 ? locations.map((l) => l.id) : undefined,
+    occupationIds: occupations.length > 0 ? occupations.map((o) => o.id) : undefined,
+    seniorityIds: seniorities.length > 0 ? seniorities.map((s) => s.id) : undefined,
+    technologyIds: technologies.length > 0 ? technologies.map((t) => t.id) : undefined,
+    languages: languages.length > 0 ? languages : undefined,
+  }), [keywords, locations, occupations, seniorities, technologies, languages]);
 
   const searchColumn = (
     <div className="space-y-6">
-      <div className="space-y-3">
-        {/* Mobile-only: search bar is in the header on desktop */}
-        <div className="md:hidden">
-          <SearchBar
-            onAddLocation={handleAddLocation}
-            onSubmitSearch={handleSubmitSearch}
-            locale={language}
-            keywords={keywords}
-            locations={locations}
-            userLat={userLat}
-            userLng={userLng}
-          />
-        </div>
-        {(keywords.length > 0 || locations.length > 0) && (
-          <div className="flex flex-wrap items-center gap-2">
-            {keywords.map((kw) => (
-              <span
-                key={kw}
-                className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary"
-              >
-                {kw}
-                <button
-                  onClick={() => handleRemoveKeyword(kw)}
-                  className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer"
-                >
-                  <X size={12} />
-                </button>
-              </span>
-            ))}
-            {locations.map((loc) => (
-              <span
-                key={loc.id}
-                className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary"
-              >
-                <MapPin size={12} className="shrink-0" />
-                {loc.parentName && loc.type !== "country" && loc.type !== "macro"
-                  ? `${loc.name}, ${loc.parentName}`
-                  : loc.name}
-                <button
-                  onClick={() => handleRemoveLocation(loc.id)}
-                  className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer"
-                >
-                  <X size={12} />
-                </button>
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
+      <SearchToolbar
+        locale={locale}
+        userLat={userLat}
+        userLng={userLng}
+        keywords={keywords}
+        locations={locations}
+        occupations={occupations}
+        seniorities={seniorities}
+        technologies={technologies}
+        salaryCurrency={salaryCurrency}
+        salaryMin={salaryMin}
+        salaryMax={salaryMax}
+        experienceMin={experienceMin}
+        experienceMax={experienceMax}
+        jobLanguages={jobLanguages}
+        onRemoveKeyword={handleRemoveKeyword}
+        onAddLocation={handleAddLocation}
+        onRemoveLocation={handleRemoveLocation}
+        onAddOccupation={handleAddOccupation}
+        onRemoveOccupation={handleRemoveOccupation}
+        onAddSeniority={handleAddSeniority}
+        onRemoveSeniority={handleRemoveSeniority}
+        onAddTechnology={handleAddTechnology}
+        onRemoveTechnology={handleRemoveTechnology}
+        onSalaryChange={handleSalaryChange}
+        onExperienceChange={handleExperienceChange}
+        histogramFilters={histogramFilters}
+        onClearAll={handleClearAll}
+        onSubmitSearch={handleSubmitSearch}
+      />
 
       {isSearching ? (
         <SkeletonCards count={3} />
@@ -319,10 +595,15 @@ export function SearchPage({
           keywords={keywords}
           locationIds={locations.map((l) => l.id)}
           locations={locations}
+          occupations={occupations}
+          seniorities={seniorities}
+          technologies={technologies}
+          languages={languages}
           hasMore={hasMore}
           onLoadMore={handleLoadMore}
           isLoadingMore={isLoadingMore}
           onShowPosting={handleOpenPosting}
+          selectedPostingId={showPostingId}
         />
       )}
     </div>

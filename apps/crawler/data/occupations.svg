@@ -1,0 +1,313 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1680" font-family="system-ui, -apple-system, sans-serif" font-size="12">
+  <style>
+    .header { font-size: 18px; font-weight: 700; fill: #1a1a2e; }
+    .subheader { font-size: 11px; fill: #6b7280; }
+    .parent { fill: #1e3a5f; font-weight: 600; font-size: 13px; }
+    .child { fill: #2563eb; font-size: 12px; }
+    .alias { fill: #9ca3af; font-size: 10px; }
+    .box-parent { fill: #f0f4ff; stroke: #bfdbfe; stroke-width: 1; rx: 6; }
+    .box-child { fill: #fafbff; stroke: #dbeafe; stroke-width: 1; rx: 4; }
+    .box-standalone { fill: #f8fafc; stroke: #e2e8f0; stroke-width: 1; rx: 6; }
+    .connector { stroke: #93c5fd; stroke-width: 1.5; fill: none; }
+    .group-label { font-size: 10px; font-weight: 600; fill: #94a3b8; letter-spacing: 1px; }
+  </style>
+
+  <text x="40" y="36" class="header">Occupations Taxonomy</text>
+  <text x="40" y="54" class="subheader">66 occupations across 8 domains | parent-child hierarchy shown with connectors</text>
+
+  <!-- ═══ ENGINEERING ═══ -->
+  <text x="40" y="88" class="group-label">ENGINEERING</text>
+
+  <!-- Software Engineer (parent) -->
+  <rect x="40" y="98" width="260" height="36" class="box-parent"/>
+  <text x="56" y="121" class="parent">Software Engineer</text>
+  <text x="200" y="121" class="alias">Developer, SDE, SWE</text>
+
+  <!-- Children -->
+  <path d="M 56 134 L 56 148 L 80 148" class="connector"/>
+  <rect x="80" y="138" width="220" height="28" class="box-child"/>
+  <text x="94" y="157" class="child">Frontend Developer</text>
+  <text x="210" y="157" class="alias">UI Engineer</text>
+
+  <path d="M 56 134 L 56 176 L 80 176" class="connector"/>
+  <rect x="80" y="168" width="220" height="28" class="box-child"/>
+  <text x="94" y="187" class="child">Backend Developer</text>
+  <text x="215" y="187" class="alias">API Dev</text>
+
+  <path d="M 56 134 L 56 206 L 80 206" class="connector"/>
+  <rect x="80" y="198" width="220" height="28" class="box-child"/>
+  <text x="94" y="217" class="child">Fullstack Developer</text>
+  <text x="224" y="217" class="alias">Full Stack</text>
+
+  <path d="M 56 134 L 56 236 L 80 236" class="connector"/>
+  <rect x="80" y="228" width="220" height="28" class="box-child"/>
+  <text x="94" y="247" class="child">Mobile Developer</text>
+  <text x="213" y="247" class="alias">App Dev</text>
+
+  <path d="M 56 134 L 56 266 L 80 266" class="connector"/>
+  <rect x="80" y="258" width="220" height="28" class="box-child"/>
+  <text x="94" y="277" class="child">Embedded Engineer</text>
+  <text x="220" y="277" class="alias">Firmware</text>
+
+  <path d="M 56 134 L 56 296 L 80 296" class="connector"/>
+  <rect x="80" y="288" width="220" height="28" class="box-child"/>
+  <text x="94" y="307" class="child">Game Developer</text>
+
+  <path d="M 56 134 L 56 326 L 80 326" class="connector"/>
+  <rect x="80" y="318" width="220" height="28" class="box-child"/>
+  <text x="94" y="337" class="child">AI Engineer</text>
+  <text x="175" y="337" class="alias">AI Agent Architect</text>
+
+  <path d="M 56 134 L 56 356 L 80 356" class="connector"/>
+  <rect x="80" y="348" width="220" height="28" class="box-child"/>
+  <text x="94" y="367" class="child">Research Engineer</text>
+  <text x="218" y="367" class="alias">AI Researcher</text>
+
+  <!-- DevOps (parent) -->
+  <rect x="340" y="98" width="240" height="36" class="box-parent"/>
+  <text x="356" y="121" class="parent">DevOps Engineer</text>
+  <text x="468" y="121" class="alias">SRE, Platform</text>
+
+  <path d="M 356 134 L 356 148 L 380 148" class="connector"/>
+  <rect x="380" y="138" width="200" height="28" class="box-child"/>
+  <text x="394" y="157" class="child">Release Engineer</text>
+  <text x="504" y="157" class="alias">CI/CD</text>
+
+  <!-- Project Manager (parent) -->
+  <rect x="340" y="180" width="240" height="36" class="box-parent"/>
+  <text x="356" y="203" class="parent">Project Manager</text>
+  <text x="466" y="203" class="alias">Program Mgr</text>
+
+  <path d="M 356 216 L 356 230 L 380 230" class="connector"/>
+  <rect x="380" y="220" width="200" height="28" class="box-child"/>
+  <text x="394" y="239" class="child">Technical Program Manager</text>
+
+  <path d="M 356 216 L 356 258 L 380 258" class="connector"/>
+  <rect x="380" y="250" width="200" height="28" class="box-child"/>
+  <text x="394" y="269" class="child">Scrum Master</text>
+  <text x="488" y="269" class="alias">Agile Coach</text>
+
+  <!-- Designer (parent) -->
+  <rect x="340" y="294" width="240" height="36" class="box-parent"/>
+  <text x="356" y="317" class="parent">Designer</text>
+  <text x="416" y="317" class="alias">UX, UI, Product</text>
+
+  <path d="M 356 330 L 356 344 L 380 344" class="connector"/>
+  <rect x="380" y="334" width="200" height="28" class="box-child"/>
+  <text x="394" y="353" class="child">UX Researcher</text>
+
+  <!-- Standalone engineering -->
+  <text x="640" y="88" class="group-label">DATA &amp; ML</text>
+
+  <rect x="640" y="98" width="230" height="28" class="box-standalone"/>
+  <text x="656" y="117" class="parent">Data Engineer</text>
+  <text x="756" y="117" class="alias">ETL, Analytics Eng</text>
+
+  <rect x="640" y="132" width="230" height="28" class="box-standalone"/>
+  <text x="656" y="151" class="parent">Data Scientist</text>
+  <text x="756" y="151" class="alias">Applied Scientist</text>
+
+  <rect x="640" y="166" width="230" height="28" class="box-standalone"/>
+  <text x="656" y="185" class="parent">ML Engineer</text>
+  <text x="740" y="185" class="alias">Machine Learning, Deep Learning</text>
+
+  <rect x="640" y="200" width="230" height="28" class="box-standalone"/>
+  <text x="656" y="219" class="parent">Data Analyst</text>
+  <text x="740" y="219" class="alias">BI Analyst, Reporting</text>
+
+  <text x="640" y="254" class="group-label">SECURITY &amp; INFRASTRUCTURE</text>
+
+  <rect x="640" y="264" width="230" height="28" class="box-standalone"/>
+  <text x="656" y="283" class="parent">QA Engineer</text>
+  <text x="736" y="283" class="alias">SDET, Test Engineer</text>
+
+  <rect x="640" y="298" width="230" height="28" class="box-standalone"/>
+  <text x="656" y="317" class="parent">Security Engineer</text>
+  <text x="768" y="317" class="alias">AppSec, SIEM</text>
+
+  <rect x="640" y="332" width="230" height="28" class="box-standalone"/>
+  <text x="656" y="351" class="parent">Solutions Architect</text>
+  <text x="784" y="351" class="alias">Cloud Arch</text>
+
+  <rect x="640" y="366" width="230" height="28" class="box-standalone"/>
+  <text x="656" y="385" class="parent">Database Administrator</text>
+
+  <rect x="640" y="400" width="230" height="28" class="box-standalone"/>
+  <text x="656" y="419" class="parent">Network Engineer</text>
+
+  <rect x="640" y="434" width="230" height="28" class="box-standalone"/>
+  <text x="656" y="453" class="parent">Systems Administrator</text>
+
+  <!-- ═══ BUSINESS ═══ -->
+  <text x="40" y="410" class="group-label">MANAGEMENT &amp; BUSINESS</text>
+
+  <rect x="40" y="420" width="260" height="28" class="box-standalone"/>
+  <text x="56" y="439" class="parent">Product Manager</text>
+  <text x="168" y="439" class="alias">PM, Product Owner</text>
+
+  <rect x="40" y="454" width="260" height="28" class="box-standalone"/>
+  <text x="56" y="473" class="parent">Engineering Manager</text>
+  <text x="198" y="473" class="alias">Dev Manager</text>
+
+  <rect x="40" y="488" width="260" height="28" class="box-standalone"/>
+  <text x="56" y="507" class="parent">Business Analyst</text>
+  <text x="168" y="507" class="alias">BA, Requirements</text>
+
+  <rect x="40" y="522" width="260" height="28" class="box-standalone"/>
+  <text x="56" y="541" class="parent">Consultant</text>
+  <text x="124" y="541" class="alias">Strategy, IT, Management</text>
+
+  <!-- ═══ SALES & CUSTOMER ═══ -->
+  <text x="340" y="410" class="group-label">SALES &amp; CUSTOMER</text>
+
+  <rect x="340" y="420" width="240" height="28" class="box-standalone"/>
+  <text x="356" y="439" class="parent">Sales Engineer</text>
+  <text x="452" y="439" class="alias">Pre-sales, SE</text>
+
+  <!-- Account Executive (parent) -->
+  <rect x="340" y="454" width="240" height="36" class="box-parent"/>
+  <text x="356" y="477" class="parent">Account Executive</text>
+  <text x="480" y="477" class="alias">AE, BDR</text>
+
+  <path d="M 356 490 L 356 504 L 380 504" class="connector"/>
+  <rect x="380" y="494" width="200" height="28" class="box-child"/>
+  <text x="394" y="513" class="child">Sales Manager</text>
+
+  <rect x="340" y="530" width="240" height="28" class="box-standalone"/>
+  <text x="356" y="549" class="parent">Customer Success Manager</text>
+
+  <rect x="340" y="564" width="240" height="28" class="box-standalone"/>
+  <text x="356" y="583" class="parent">Customer Engineer</text>
+
+  <rect x="340" y="598" width="240" height="28" class="box-standalone"/>
+  <text x="356" y="617" class="parent">Support Engineer</text>
+
+  <!-- ═══ CORPORATE FUNCTIONS ═══ -->
+  <text x="40" y="580" class="group-label">CORPORATE FUNCTIONS</text>
+
+  <!-- Marketing (parent) -->
+  <rect x="40" y="590" width="260" height="36" class="box-parent"/>
+  <text x="56" y="613" class="parent">Marketing Manager</text>
+  <text x="192" y="613" class="alias">Growth, Digital</text>
+
+  <path d="M 56 626 L 56 640 L 80 640" class="connector"/>
+  <rect x="80" y="630" width="220" height="28" class="box-child"/>
+  <text x="94" y="649" class="child">Content Strategist</text>
+  <text x="210" y="649" class="alias">Copywriter</text>
+
+  <!-- HR (parent) -->
+  <rect x="40" y="670" width="260" height="36" class="box-parent"/>
+  <text x="56" y="693" class="parent">HR Manager</text>
+  <text x="140" y="693" class="alias">People Ops, HRBP</text>
+
+  <path d="M 56 706 L 56 720 L 80 720" class="connector"/>
+  <rect x="80" y="710" width="220" height="28" class="box-child"/>
+  <text x="94" y="729" class="child">Recruiter</text>
+  <text x="158" y="729" class="alias">Talent Acquisition</text>
+
+  <!-- Finance (parent) -->
+  <rect x="40" y="750" width="260" height="36" class="box-parent"/>
+  <text x="56" y="773" class="parent">Finance Manager</text>
+  <text x="178" y="773" class="alias">FP&amp;A, Controller</text>
+
+  <path d="M 56 786 L 56 800 L 80 800" class="connector"/>
+  <rect x="80" y="790" width="220" height="28" class="box-child"/>
+  <text x="94" y="809" class="child">Accountant</text>
+
+  <path d="M 56 786 L 56 828 L 80 828" class="connector"/>
+  <rect x="80" y="820" width="220" height="28" class="box-child"/>
+  <text x="94" y="839" class="child">Auditor</text>
+  <text x="150" y="839" class="alias">Internal/External Audit</text>
+
+  <path d="M 56 786 L 56 858 L 80 858" class="connector"/>
+  <rect x="80" y="850" width="220" height="28" class="box-child"/>
+  <text x="94" y="869" class="child">Tax Advisor</text>
+  <text x="170" y="869" class="alias">Transfer Pricing, M&amp;A Tax</text>
+
+  <!-- Legal (parent) -->
+  <rect x="340" y="670" width="240" height="36" class="box-parent"/>
+  <text x="356" y="693" class="parent">Legal Counsel</text>
+  <text x="452" y="693" class="alias">In-house, Jurist</text>
+
+  <path d="M 356 706 L 356 720 L 380 720" class="connector"/>
+  <rect x="380" y="710" width="200" height="28" class="box-child"/>
+  <text x="394" y="729" class="child">Compliance Officer</text>
+
+  <rect x="340" y="750" width="240" height="28" class="box-standalone"/>
+  <text x="356" y="769" class="parent">Risk Manager</text>
+  <text x="444" y="769" class="alias">FinCrime, Credit</text>
+
+  <!-- ═══ OPERATIONS ═══ -->
+  <text x="640" y="500" class="group-label">OPERATIONS &amp; FACILITIES</text>
+
+  <!-- Operations Manager (parent) -->
+  <rect x="640" y="510" width="260" height="36" class="box-parent"/>
+  <text x="656" y="533" class="parent">Operations Manager</text>
+  <text x="800" y="533" class="alias">Ops, Chief of Staff</text>
+
+  <path d="M 656 546 L 656 560 L 680 560" class="connector"/>
+  <rect x="680" y="550" width="220" height="28" class="box-child"/>
+  <text x="694" y="569" class="child">Supply Chain Manager</text>
+
+  <path d="M 656 546 L 656 588 L 680 588" class="connector"/>
+  <rect x="680" y="580" width="220" height="28" class="box-child"/>
+  <text x="694" y="599" class="child">Facilities Manager</text>
+
+  <path d="M 656 546 L 656 618 L 680 618" class="connector"/>
+  <rect x="680" y="610" width="220" height="28" class="box-child"/>
+  <text x="694" y="629" class="child">Warehouse Associate</text>
+
+  <path d="M 656 546 L 656 648 L 680 648" class="connector"/>
+  <rect x="680" y="640" width="220" height="28" class="box-child"/>
+  <text x="694" y="659" class="child">Loss Prevention Specialist</text>
+
+  <!-- Standalone ops -->
+  <rect x="640" y="680" width="260" height="28" class="box-standalone"/>
+  <text x="656" y="699" class="parent">Data Center Technician</text>
+
+  <rect x="640" y="714" width="260" height="28" class="box-standalone"/>
+  <text x="656" y="733" class="parent">Data Center Manager</text>
+
+  <rect x="640" y="748" width="260" height="28" class="box-standalone"/>
+  <text x="656" y="767" class="parent">Maintenance Technician</text>
+
+  <rect x="640" y="782" width="260" height="28" class="box-standalone"/>
+  <text x="656" y="801" class="parent">Automation Engineer</text>
+  <text x="796" y="801" class="alias">Robotics</text>
+
+  <rect x="640" y="816" width="260" height="28" class="box-standalone"/>
+  <text x="656" y="835" class="parent">EHS Specialist</text>
+  <text x="760" y="835" class="alias">WHS, Safety</text>
+
+  <rect x="640" y="850" width="260" height="28" class="box-standalone"/>
+  <text x="656" y="869" class="parent">Construction Manager</text>
+
+  <rect x="640" y="884" width="260" height="28" class="box-standalone"/>
+  <text x="656" y="903" class="parent">Electrical Engineer</text>
+
+  <rect x="640" y="918" width="260" height="28" class="box-standalone"/>
+  <text x="656" y="937" class="parent">Mechanical Engineer</text>
+
+  <!-- ═══ OTHER ═══ -->
+  <text x="40" y="920" class="group-label">OTHER SPECIALTIES</text>
+
+  <rect x="40" y="930" width="240" height="28" class="box-standalone"/>
+  <text x="56" y="949" class="parent">Pharmacist</text>
+
+  <rect x="40" y="964" width="240" height="28" class="box-standalone"/>
+  <text x="56" y="983" class="parent">Medical Representative</text>
+
+  <rect x="40" y="998" width="240" height="28" class="box-standalone"/>
+  <text x="56" y="1017" class="parent">Executive Assistant</text>
+  <text x="194" y="1017" class="alias">EA, Office Mgr</text>
+
+  <rect x="40" y="1032" width="240" height="28" class="box-standalone"/>
+  <text x="56" y="1051" class="parent">Technical Writer</text>
+
+  <rect x="40" y="1066" width="240" height="28" class="box-standalone"/>
+  <text x="56" y="1085" class="parent">Data Annotator</text>
+  <text x="166" y="1085" class="alias">ML Data Associate</text>
+
+  <rect x="40" y="1100" width="240" height="28" class="box-standalone"/>
+  <text x="56" y="1119" class="parent">Quality Manager</text>
+</svg>

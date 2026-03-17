@@ -11,7 +11,7 @@ import { loadMorePostings } from "@/lib/actions/search";
 import { SaveButton } from "@/components/search/save-button";
 import { FollowButton } from "@/components/search/follow-button";
 import { buildFilteredPath } from "@/lib/search/query-params";
-import type { SerializableLocation } from "@/lib/search/query-params";
+import type { SerializableLocation, SerializableOccupation, SerializableSeniority, SerializableTechnology } from "@/lib/search/query-params";
 import type { SearchResultCompany, SearchResultPosting } from "@/lib/search";
 
 const POSTINGS_BATCH = 20;
@@ -21,10 +21,15 @@ interface CompanyCardProps {
   keywords: string[];
   locationIds?: number[];
   locations?: SerializableLocation[];
+  occupations?: SerializableOccupation[];
+  seniorities?: SerializableSeniority[];
+  technologies?: SerializableTechnology[];
+  languages?: string[];
   onShowPosting?: (postingId: string) => void;
+  selectedPostingId?: string | null;
 }
 
-export function CompanyCard({ result, keywords, locationIds, locations, onShowPosting }: CompanyCardProps) {
+export function CompanyCard({ result, keywords, locationIds, locations, occupations, seniorities, technologies, languages, onShowPosting, selectedPostingId }: CompanyCardProps) {
   const params = useParams();
   const locale = (params.lang as string) ?? "en";
   const { company, activeMatches, yearMatches } = result;
@@ -33,6 +38,10 @@ export function CompanyCard({ result, keywords, locationIds, locations, onShowPo
     `/${locale}/company/${company.slug}`,
     keywords,
     locations ?? [],
+    undefined,
+    occupations,
+    seniorities,
+    technologies,
   );
 
   const [extraPostings, setExtraPostings] = useState<SearchResultPosting[]>([]);
@@ -64,7 +73,8 @@ export function CompanyCard({ result, keywords, locationIds, locations, onShowPo
       companyId: company.id,
       keywords,
       locationIds,
-      language: locale,
+      languages: languages ?? [locale],
+      locale,
       offset: offsetRef.current,
       limit: POSTINGS_BATCH,
     })
@@ -81,7 +91,7 @@ export function CompanyCard({ result, keywords, locationIds, locations, onShowPo
         setIsLoading(false);
         loadingRef.current = false;
       });
-  }, [company.id, keywords, locationIds, locale]);
+  }, [company.id, keywords, locationIds, languages, locale]);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -131,7 +141,7 @@ export function CompanyCard({ result, keywords, locationIds, locations, onShowPo
       <hr className="my-3 border-divider" />
 
       {/* Scrollable posting list */}
-      <div ref={scrollRef} className="max-h-[196px] overflow-y-auto">
+      <div ref={scrollRef} className="max-h-[196px] overflow-y-auto scrollbar-hide">
         {allPostings.map((posting) => (
           <div
             key={posting.id}
@@ -139,7 +149,7 @@ export function CompanyCard({ result, keywords, locationIds, locations, onShowPo
             tabIndex={0}
             onClick={() => onShowPosting?.(posting.id)}
             onKeyDown={(e) => { if (e.key === "Enter") onShowPosting?.(posting.id); }}
-            className="flex cursor-pointer items-center gap-2 rounded px-1 py-1.5 transition-colors hover:bg-border-soft"
+            className={`flex cursor-pointer items-center gap-2 rounded px-1 py-1.5 transition-colors ${posting.id === selectedPostingId ? "bg-primary/10" : "hover:bg-border-soft"}`}
           >
             <span className="min-w-0 flex-1 truncate text-sm">{posting.title ?? "—"}</span>
             {posting.locations.length > 0 && (

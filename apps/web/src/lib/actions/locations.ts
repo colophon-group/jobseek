@@ -235,6 +235,191 @@ export async function resolveLocationSlugs(
   return new Map(Object.entries(record));
 }
 
+// ── All locations grouped by country / region (global) ───────────────
+
+export interface GlobalLocationGroup {
+  countryId: number;
+  countrySlug: string;
+  countryName: string;
+  countryCount: number;
+  regions: {
+    regionId: number;
+    regionSlug: string;
+    regionName: string;
+    regionCount: number;
+    locations: { id: number; slug: string; name: string; type: string; count: number }[];
+  }[];
+}
+
+export async function getGlobalLocationsGrouped(
+  locale: string,
+  filters?: { companyId?: string; keywords?: string[]; occupationIds?: number[]; seniorityIds?: number[]; technologyIds?: number[]; languages?: string[] },
+): Promise<GlobalLocationGroup[]> {
+  const fKey = filters ? JSON.stringify(filters) : "";
+  const key = `global-locs-grouped:${locale}:${fKey}`;
+  return cached(key, () => _fetchGlobalLocationsGrouped(locale, filters), { ttl: 3600 });
+}
+
+async function _fetchGlobalLocationsGrouped(
+  locale: string,
+  filters?: { companyId?: string; keywords?: string[]; occupationIds?: number[]; seniorityIds?: number[]; technologyIds?: number[]; languages?: string[] },
+): Promise<GlobalLocationGroup[]> {
+  const f = filters;
+  const hasKeywords = f?.keywords && f.keywords.length > 0;
+  const rows = await db.execute<{
+    [key: string]: unknown;
+    location_id: number;
+    loc_slug: string;
+    loc_type: string;
+    loc_name: string;
+    cnt: number;
+    region_id: number | null;
+    region_slug: string | null;
+    region_name: string | null;
+    country_id: number | null;
+    country_slug: string | null;
+    country_name: string | null;
+  }>(sql`
+    WITH active_locs AS (
+      SELECT unnest(jp.location_ids) AS location_id
+      FROM job_posting jp
+      WHERE jp.is_active = true
+        AND jp.location_ids IS NOT NULL
+        AND jp.titles[1] IS NOT NULL AND jp.titles[1] != ''
+        ${f?.companyId ? sql`AND jp.company_id = ${f.companyId}` : sql``}
+        ${hasKeywords ? sql`AND (${sql.join(f!.keywords!.map(k => sql`jp.titles[1] ~* ${`\\m${k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\M`}`), sql` OR `)})` : sql``}
+        ${f?.occupationIds && f.occupationIds.length > 0 ? sql`AND jp.occupation_id = ANY(${`{${f.occupationIds.join(",")}}`}::integer[])` : sql``}
+        ${f?.seniorityIds && f.seniorityIds.length > 0 ? sql`AND jp.seniority_id = ANY(${`{${f.seniorityIds.join(",")}}`}::integer[])` : sql``}
+        ${f?.technologyIds && f.technologyIds.length > 0 ? sql`AND jp.technology_ids && ${`{${f.technologyIds.join(",")}}`}::integer[]` : sql``}
+        ${f?.languages && f.languages.length > 0 ? sql`AND (jp.locales && ${`{${f.languages.join(",")}}`}::text[] OR jp.locales = '{}')` : sql``}
+    ),
+    loc_counts AS (
+      SELECT al.location_id, COUNT(*)::int AS cnt
+      FROM active_locs al GROUP BY al.location_id
+    ),
+    hierarchy AS (
+      SELECT lc.location_id, lc.cnt,
+        l.type::text AS loc_type, l.slug AS loc_slug,
+        CASE
+          WHEN l.type = 'region' THEN l.id
+          WHEN l.type = 'city' AND p.type = 'region' THEN p.id
+          ELSE NULL
+        END AS region_id,
+        CASE
+          WHEN l.type = 'country' THEN l.id
+          WHEN p.type = 'country' THEN p.id
+          WHEN gp.type = 'country' THEN gp.id
+          ELSE NULL
+        END AS country_id
+      FROM loc_counts lc
+      JOIN location l ON l.id = lc.location_id
+      LEFT JOIN location p ON p.id = l.parent_id
+      LEFT JOIN location gp ON gp.id = p.parent_id
+    )
+    SELECT
+      h.location_id, h.loc_slug, h.loc_type, h.cnt,
+      ln.name AS loc_name,
+      h.region_id,
+      rl.slug AS region_slug,
+      rn.name AS region_name,
+      h.country_id,
+      cl.slug AS country_slug,
+      cn.name AS country_name
+    FROM hierarchy h
+    JOIN LATERAL (
+      SELECT name FROM location_name
+      WHERE location_id = h.location_id AND locale IN (${locale}, 'en') AND is_display = true
+      ORDER BY (locale = ${locale})::int DESC LIMIT 1
+    ) ln ON true
+    LEFT JOIN location rl ON rl.id = h.region_id
+    LEFT JOIN LATERAL (
+      SELECT name FROM location_name
+      WHERE location_id = h.region_id AND locale IN (${locale}, 'en') AND is_display = true
+      ORDER BY (locale = ${locale})::int DESC LIMIT 1
+    ) rn ON true
+    LEFT JOIN location cl ON cl.id = h.country_id
+    LEFT JOIN LATERAL (
+      SELECT name FROM location_name
+      WHERE location_id = h.country_id AND locale IN (${locale}, 'en') AND is_display = true
+      ORDER BY (locale = ${locale})::int DESC LIMIT 1
+    ) cn ON true
+    ORDER BY cn.name NULLS LAST, rn.name NULLS LAST, h.cnt DESC
+  `);
+
+  type Row = {
+    location_id: number; loc_slug: string; loc_type: string; loc_name: string; cnt: number;
+    region_id: number | null; region_slug: string | null; region_name: string | null;
+    country_id: number | null; country_slug: string | null; country_name: string | null;
+  };
+  const all = rows as unknown as Row[];
+
+  // Build country → region → city hierarchy
+  const countries = new Map<number, GlobalLocationGroup>();
+  const directCountryCount = new Map<number, number>();
+  const directRegionCount = new Map<number, number>();
+
+  for (const r of all) {
+    const cid = r.country_id ?? 0;
+    let country = countries.get(cid);
+    if (!country) {
+      country = {
+        countryId: cid,
+        countrySlug: r.country_slug ?? "",
+        countryName: r.country_name ?? "Other",
+        countryCount: 0,
+        regions: [],
+      };
+      countries.set(cid, country);
+    }
+
+    if (r.loc_type === "country") {
+      directCountryCount.set(cid, r.cnt);
+      continue;
+    }
+    if (r.loc_type === "region") {
+      directRegionCount.set(r.location_id, r.cnt);
+      continue;
+    }
+
+    // City: find or create region group
+    const rid = r.region_id ?? 0;
+    let region = country.regions.find((rg) => rg.regionId === rid);
+    if (!region) {
+      region = {
+        regionId: rid,
+        regionSlug: r.region_slug ?? "",
+        regionName: r.region_name ?? "",
+        regionCount: 0,
+        locations: [],
+      };
+      country.regions.push(region);
+    }
+
+    region.locations.push({
+      id: r.location_id,
+      slug: r.loc_slug,
+      name: r.loc_name,
+      type: r.loc_type,
+      count: r.cnt,
+    });
+  }
+
+  // Aggregate counts bottom-up
+  for (const country of countries.values()) {
+    let countryTotal = directCountryCount.get(country.countryId) ?? 0;
+    for (const region of country.regions) {
+      const cityTotal = region.locations.reduce((sum, l) => sum + l.count, 0);
+      region.regionCount = cityTotal + (directRegionCount.get(region.regionId) ?? 0);
+      countryTotal += region.regionCount;
+    }
+    country.countryCount = countryTotal;
+    // Sort regions by count desc
+    country.regions.sort((a, b) => b.regionCount - a.regionCount);
+  }
+
+  return [...countries.values()].filter((g) => g.regions.some((r) => r.locations.length > 0));
+}
+
 function _haversineKm(
   lat1: number, lng1: number,
   lat2: number, lng2: number,

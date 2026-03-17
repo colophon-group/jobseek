@@ -1,11 +1,12 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 import { db } from "@/db";
 import { account, userPreferences } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { getSession, getSessionUserId } from "@/lib/sessionCache";
+import { cached } from "@/lib/cache";
 
 const PASSWORD_RESET_COOLDOWN_SECONDS = 60;
 
@@ -26,6 +27,8 @@ export async function updatePreferences(
   data: {
     theme?: "light" | "dark";
     locale?: "en" | "de" | "fr" | "it";
+    jobLanguages?: string[];
+    displayCurrency?: string;
     cookieConsent?: boolean;
     themeUpdatedAt?: string;
     localeUpdatedAt?: string;
@@ -48,6 +51,14 @@ export async function updatePreferences(
 
     if (data.cookieConsent !== undefined) {
       set.cookieConsent = data.cookieConsent;
+    }
+
+    if (data.jobLanguages !== undefined) {
+      set.jobLanguages = data.jobLanguages;
+    }
+
+    if (data.displayCurrency !== undefined) {
+      set.displayCurrency = data.displayCurrency;
     }
 
     // Theme: only update if incoming timestamp >= existing, or no existing timestamp
@@ -86,6 +97,8 @@ export async function updatePreferences(
       userId,
       theme: data.theme ?? "light",
       locale: data.locale ?? "en",
+      jobLanguages: data.jobLanguages ?? [],
+      displayCurrency: data.displayCurrency ?? "EUR",
       cookieConsent: data.cookieConsent ?? false,
       themeUpdatedAt: data.themeUpdatedAt ? new Date(data.themeUpdatedAt) : new Date(),
       localeUpdatedAt: data.localeUpdatedAt ? new Date(data.localeUpdatedAt) : new Date(),
@@ -179,4 +192,36 @@ export async function getAccountPageData() {
     accounts: accounts.map((a) => ({ providerId: a.providerId, accountId: a.accountId })),
     hasPassword: accounts.some((a) => a.providerId === "credential"),
   };
+}
+
+export interface AvailableLanguage {
+  code: string;
+  count: number;
+}
+
+/**
+ * Returns distinct language codes from active job postings with counts, sorted by count desc.
+ * Cached for 1 hour since this changes slowly.
+ */
+export async function getAvailableJobLanguages(): Promise<AvailableLanguage[]> {
+  return cached(
+    "available-job-languages-v2",
+    async () => {
+      const rows = await db.execute<{ [key: string]: unknown; locale: string; cnt: number }>(sql`
+        SELECT locale, COUNT(*)::int AS cnt
+        FROM (
+          SELECT unnest(locales) AS locale
+          FROM job_posting
+          WHERE is_active = true AND array_length(locales, 1) > 0
+        ) sub
+        GROUP BY locale
+        ORDER BY cnt DESC
+      `);
+      return (rows as unknown as { locale: string; cnt: number }[]).map((r) => ({
+        code: r.locale,
+        count: r.cnt,
+      }));
+    },
+    { ttl: 3600 },
+  );
 }

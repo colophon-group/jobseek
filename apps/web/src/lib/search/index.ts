@@ -4,6 +4,9 @@ export type {
   SearchResponse,
   SearchResultCompany,
   SearchResultPosting,
+  HistogramFilters,
+  SalaryBucket,
+  ExperienceBucket,
 } from "./types";
 export { PostgresSearchProvider } from "./postgres";
 

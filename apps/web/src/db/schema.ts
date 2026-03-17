@@ -103,6 +103,8 @@ export const userPreferences = pgTable("user_preferences", {
   locale: text("locale", { enum: ["en", "de", "fr", "it"] })
     .default("en")
     .notNull(),
+  jobLanguages: text("job_languages").array().notNull().default([]),
+  displayCurrency: text("display_currency").default("EUR").notNull(),
   cookieConsent: boolean("cookie_consent").default(false).notNull(),
   themeUpdatedAt: timestamp("theme_updated_at"),
   localeUpdatedAt: timestamp("locale_updated_at"),
@@ -171,25 +173,207 @@ export const locationMacroMember = pgTable(
   (table) => [primaryKey({ columns: [table.macroId, table.countryId] })],
 );
 
+// ── Occupation domain tables (taxonomy-managed) ─────────────────────
+
+export const occupationDomain = pgTable("occupation_domain", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  slug: text("slug").notNull().unique(),
+});
+
+export const occupationDomainName = pgTable(
+  "occupation_domain_name",
+  {
+    domainId: integer("domain_id")
+      .notNull()
+      .references(() => occupationDomain.id, { onDelete: "cascade" }),
+    locale: text("locale").notNull(),
+    name: text("name").notNull(),
+    isDisplay: boolean("is_display").default(true).notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.domainId, table.locale, table.name] }),
+    index("idx_domname_lower").on(sql`lower(name)`, table.locale),
+    index("idx_domname_display")
+      .on(table.domainId, table.locale)
+      .where(sql`is_display = true`),
+  ],
+);
+
+// ── Occupation tables (taxonomy-managed) ─────────────────────────────
+
+export const occupation = pgTable(
+  "occupation",
+  {
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    slug: text("slug").notNull().unique(),
+    parentId: integer("parent_id"),
+    domainId: integer("domain_id").references(() => occupationDomain.id),
+  },
+  (table) => [
+    index("idx_occupation_parent")
+      .on(table.parentId)
+      .where(sql`parent_id IS NOT NULL`),
+    index("idx_occupation_domain")
+      .on(table.domainId)
+      .where(sql`domain_id IS NOT NULL`),
+  ],
+);
+
+export const occupationName = pgTable(
+  "occupation_name",
+  {
+    occupationId: integer("occupation_id")
+      .notNull()
+      .references(() => occupation.id, { onDelete: "cascade" }),
+    locale: text("locale").notNull(),
+    name: text("name").notNull(),
+    isDisplay: boolean("is_display").default(true).notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.occupationId, table.locale, table.name] }),
+    index("idx_occname_lower").on(sql`lower(name)`, table.locale),
+    index("idx_occname_display")
+      .on(table.occupationId, table.locale)
+      .where(sql`is_display = true`),
+  ],
+);
+
+// ── Seniority tables (taxonomy-managed) ──────────────────────────────
+
+export const seniority = pgTable("seniority", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  slug: text("slug").notNull().unique(),
+});
+
+export const seniorityName = pgTable(
+  "seniority_name",
+  {
+    seniorityId: integer("seniority_id")
+      .notNull()
+      .references(() => seniority.id, { onDelete: "cascade" }),
+    locale: text("locale").notNull(),
+    name: text("name").notNull(),
+    isDisplay: boolean("is_display").default(true).notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.seniorityId, table.locale, table.name] }),
+    index("idx_senname_lower").on(sql`lower(name)`, table.locale),
+    index("idx_senname_display")
+      .on(table.seniorityId, table.locale)
+      .where(sql`is_display = true`),
+  ],
+);
+
+// ── Technology table (taxonomy-managed) ──────────────────────────────
+
+export const technology = pgTable("technology", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  slug: text("slug").notNull().unique(),
+  name: text("name"),
+  category: text("category"),
+});
+
+// ── Taxonomy miss tracking ──────────────────────────────────────────
+
+export const taxonomyMiss = pgTable(
+  "taxonomy_miss",
+  {
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    taxonomy: text("taxonomy").notNull(),
+    rawValue: text("raw_value").notNull(),
+    sampleValue: text("sample_value").notNull(),
+    hitCount: integer("hit_count").notNull().default(1),
+    firstSeenAt: timestamp("first_seen_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    status: text("status", { enum: ["pending", "resolved", "discarded"] })
+      .default("pending")
+      .notNull(),
+    resolvedTo: text("resolved_to"),
+  },
+  (table) => [
+    uniqueIndex("idx_tm_taxonomy_raw").on(table.taxonomy, table.rawValue),
+    index("idx_tm_pending")
+      .on(table.taxonomy, table.hitCount)
+      .where(sql`status = 'pending'`),
+  ],
+);
+
+// ── Currency rate table (ECB daily rates) ────────────────────────────
+
+export const currencyRate = pgTable("currency_rate", {
+  currency: text("currency").primaryKey(),
+  toEur: numeric("to_eur", { precision: 10, scale: 6 }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 // ── App-specific tables ──────────────────────────────────────────────
 
-export const subscription = pgTable("subscription", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  userId: text("user_id")
-    .notNull()
-    .references(() => user.id, { onDelete: "cascade" }),
-  plan: text("plan", { enum: ["free", "unlimited"] }).notNull(),
-  status: text("status", { enum: ["active", "cancelled", "expired"] }).notNull(),
-  startsAt: timestamp("starts_at").notNull(),
-  endsAt: timestamp("ends_at"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+export const subscription = pgTable(
+  "subscription",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    plan: text("plan", { enum: ["free", "unlimited"] }).notNull(),
+    status: text("status", { enum: ["active", "cancelled", "expired"] }).notNull(),
+    stripeCustomerId: text("stripe_customer_id"),
+    stripeSubscriptionId: text("stripe_subscription_id"),
+    startsAt: timestamp("starts_at").notNull(),
+    endsAt: timestamp("ends_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("idx_sub_user").on(table.userId),
+    uniqueIndex("idx_sub_stripe_customer")
+      .on(table.stripeCustomerId)
+      .where(sql`stripe_customer_id IS NOT NULL`),
+    uniqueIndex("idx_sub_stripe_subscription")
+      .on(table.stripeSubscriptionId)
+      .where(sql`stripe_subscription_id IS NOT NULL`),
+  ],
+);
 
 export const industry = pgTable("industry", {
   id: smallint("id").primaryKey(),
   name: text("name").notNull().unique(),
 });
+
+export const industryName = pgTable(
+  "industry_name",
+  {
+    industryId: smallint("industry_id")
+      .notNull()
+      .references(() => industry.id, { onDelete: "cascade" }),
+    locale: text("locale").notNull(),
+    name: text("name").notNull(),
+    isDisplay: boolean("is_display").default(true).notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.industryId, table.locale, table.name] }),
+    index("idx_indname_lower").on(sql`lower(name)`, table.locale),
+    index("idx_indname_display")
+      .on(table.industryId, table.locale)
+      .where(sql`is_display = true`),
+  ],
+);
+
+export const companyDescription = pgTable(
+  "company_description",
+  {
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => company.id, { onDelete: "cascade" }),
+    locale: text("locale").notNull(),
+    description: text("description").notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.companyId, table.locale] })],
+);
 
 export const company = pgTable("company", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -203,7 +387,6 @@ export const company = pgTable("company", {
   industry: smallint("industry").references(() => industry.id),
   employeeCountRange: smallint("employee_count_range"),
   foundedYear: smallint("founded_year"),
-  hqLocationId: integer("hq_location_id"),
   extras: jsonb("extras").default({}),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -296,6 +479,20 @@ export const jobPosting = pgTable(
     scrapeFailures: integer("scrape_failures").default(0).notNull(),
     missingCount: integer("missing_count").default(0).notNull(),
 
+    // ── Salary & experience ──
+    salaryMin: integer("salary_min"),
+    salaryMax: integer("salary_max"),
+    salaryCurrency: text("salary_currency"),
+    salaryPeriod: text("salary_period"),
+    salaryEur: integer("salary_eur"),
+    experienceMin: integer("experience_min"),
+    experienceMax: integer("experience_max"),
+
+    // ── Taxonomy FKs ──
+    occupationId: integer("occupation_id").references(() => occupation.id),
+    seniorityId: integer("seniority_id").references(() => seniority.id),
+    technologyIds: integer("technology_ids").array(),
+
     // ── Enrichment fields ──
     enrichment: jsonb("enrichment"),
     toBeEnriched: boolean("to_be_enriched").default(true).notNull(),
@@ -313,9 +510,24 @@ export const jobPosting = pgTable(
     index("idx_jp_lease").on(table.leasedUntil).where(
       sql`leased_until IS NOT NULL`,
     ),
+    index("idx_jp_occupation")
+      .on(table.occupationId)
+      .where(sql`occupation_id IS NOT NULL`),
+    index("idx_jp_seniority")
+      .on(table.seniorityId)
+      .where(sql`seniority_id IS NOT NULL`),
+    index("idx_jp_technology_ids")
+      .using("gin", table.technologyIds)
+      .where(sql`technology_ids IS NOT NULL`),
     index("idx_jp_to_be_enriched").on(table.toBeEnriched).where(
       sql`is_active = true AND to_be_enriched = true`,
     ),
+    index("idx_jp_salary_eur")
+      .on(table.salaryEur)
+      .where(sql`salary_eur IS NOT NULL`),
+    index("idx_jp_experience_min")
+      .on(table.experienceMin)
+      .where(sql`experience_min IS NOT NULL`),
   ],
 );
 

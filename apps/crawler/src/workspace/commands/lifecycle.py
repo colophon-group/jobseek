@@ -470,6 +470,20 @@ def status(slug: str | None):
         print(f"  Name:    {ws.name or '(not set)'}")
         print(f"  Website: {ws.website or '(not set)'}")
         print(f"  LogoType: {ws.logo_type or '(not set)'}")
+
+        # Enrichment
+        from src.shared.constants import DISPLAY_LOCALES
+
+        desc_status = "  ".join(
+            f"{loc} {'✓' if ws.descriptions.get(loc) else '✗'}" for loc in DISPLAY_LOCALES
+        )
+        print(f"  Description: {desc_status}")
+        if ws.industry is not None:
+            print(f"  Industry: {ws.industry}")
+        if ws.employee_count_range is not None:
+            print(f"  Employees: {ws.employee_count_range}")
+        if ws.founded_year is not None:
+            print(f"  Founded: {ws.founded_year}")
         print()
 
         if boards:
@@ -793,8 +807,12 @@ def _execute_submit_step(
             kwargs["website"] = ws.website
         if ws.logo_type:
             kwargs["logo_type"] = ws.logo_type
-        if ws.description:
-            kwargs["description"] = ws.description
+        if ws.descriptions:
+            from src.csvtool import company_description_set
+
+            for locale, text in ws.descriptions.items():
+                if text:
+                    company_description_set(ws.slug, locale, text)
         if ws.industry is not None:
             kwargs["industry"] = ws.industry
         if ws.employee_count_range is not None:
@@ -856,6 +874,8 @@ def _execute_submit_step(
         commit_paths = [
             "apps/crawler/data/companies.csv",
             "apps/crawler/data/boards.csv",
+            "apps/crawler/data/company_descriptions.csv",
+            "apps/crawler/data/industries.csv",
             f"apps/crawler/data/images/{ws.slug}/",
             "apps/crawler/src/workspace/kb/",
         ]
@@ -1090,11 +1110,22 @@ def _check_environment(ws: Workspace) -> list[tuple[str, str, str]]:
 
 def _check_workspace_completeness(ws: Workspace, boards: list[Board]) -> list[tuple[str, str, str]]:
     """Check workspace data completeness."""
+    from src.shared.constants import DISPLAY_LOCALES
+
     issues: list[tuple[str, str, str]] = []
     if not ws.name:
         issues.append(("no_name", "Company name not set", "warning"))
     if not ws.website:
         issues.append(("no_website", "Company website not set", "warning"))
+    missing_locales = [loc for loc in DISPLAY_LOCALES if not ws.descriptions.get(loc)]
+    if missing_locales:
+        issues.append(
+            (
+                "missing_descriptions",
+                f"Missing description locales: {', '.join(missing_locales)}",
+                "warning",
+            )
+        )
     if not boards:
         issues.append(("no_boards", "No boards configured", "critical"))
     return issues

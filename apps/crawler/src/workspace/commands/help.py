@@ -21,6 +21,8 @@ Available topics:
   feedback          Feedback command — verdicts, per-field quality, examples
   artifacts         Debug artifacts saved by ws commands
   industries        Industry IDs for company enrichment
+  occupations       Occupation taxonomy — slugs, display names, alias counts
+  seniority         Seniority levels — slugs, display names, alias counts
 
 Commands:
   ws probe monitor   Probe all monitor types for active board
@@ -1572,21 +1574,90 @@ SCRAPER_CARDS: dict[str, str] = {
 }
 
 
-def _show_industries() -> None:
-    """Display industry IDs from data/industries.csv."""
-    from src.core.enrich.company import _load_industries
+def _show_occupations() -> None:
+    """Display occupation taxonomy from data/occupations.csv."""
+    import polars as pl
 
-    industries = _load_industries()
-    if not industries:
+    from src.shared.constants import DATA_DIR
+
+    path = DATA_DIR / "occupations.csv"
+    if not path.exists():
+        print("No occupations found in data/occupations.csv")
+        return
+
+    df = pl.read_csv(path, infer_schema_length=0)
+    print("Occupation Taxonomy")
+    print("Managed in data/occupations.csv — enricher outputs free-text, resolver maps to slug\n")
+    print(f"  {'Slug':<35} {'EN':<25} {'Aliases':>7}")
+    print(f"  {'─' * 35} {'─' * 25} {'─' * 7}")
+
+    for row in df.iter_rows(named=True):
+        slug = row["slug"]
+        en = row.get("en", "")
+        aliases_raw = row.get("aliases", "")
+        alias_count = len([a for a in aliases_raw.split("|") if a.strip()]) if aliases_raw else 0
+        print(f"  {slug:<35} {en:<25} {alias_count:>7}")
+
+    print(f"\n  {len(df)} occupations total")
+    print("\n  CLI: ws taxonomy search occupations <query>")
+    print("       ws taxonomy validate occupations")
+
+
+def _show_seniority() -> None:
+    """Display seniority taxonomy from data/seniority.csv."""
+    import polars as pl
+
+    from src.shared.constants import DATA_DIR
+
+    path = DATA_DIR / "seniority.csv"
+    if not path.exists():
+        print("No seniority levels found in data/seniority.csv")
+        return
+
+    df = pl.read_csv(path, infer_schema_length=0)
+    print("Seniority Taxonomy")
+    print("Managed in data/seniority.csv — detected from title patterns\n")
+    print(f"  {'Slug':<15} {'EN':<20} {'Aliases':>7}")
+    print(f"  {'─' * 15} {'─' * 20} {'─' * 7}")
+
+    for row in df.iter_rows(named=True):
+        slug = row["slug"]
+        en = row.get("en", "")
+        aliases_raw = row.get("aliases", "")
+        alias_count = len([a for a in aliases_raw.split("|") if a.strip()]) if aliases_raw else 0
+        print(f"  {slug:<15} {en:<20} {alias_count:>7}")
+
+    print(f"\n  {len(df)} seniority levels total")
+    print("\n  CLI: ws taxonomy search seniority <query>")
+    print("       ws taxonomy validate seniority")
+
+
+def _show_industries() -> None:
+    """Display industry taxonomy from data/industries.csv."""
+    import polars as pl
+
+    from src.shared.constants import DATA_DIR
+
+    path = DATA_DIR / "industries.csv"
+    if not path.exists():
         print("No industries found in data/industries.csv")
         return
 
-    print("Industry IDs for company enrichment")
-    print("Use with: ws set --industry <id>\n")
-    print(f"  {'ID':>3}  Name")
-    print(f"  {'──':>3}  {'─' * 30}")
-    for ind in industries:
-        print(f"  {ind['id']:>3}  {ind['name']}")
+    df = pl.read_csv(path, infer_schema_length=0)
+    print("Industry Taxonomy")
+    print("Managed in data/industries.csv — set per company with: ws set --industry <id>\n")
+    print(f"  {'ID':>3}  {'EN':<30} {'DE':<30}")
+    print(f"  {'──':>3}  {'─' * 30} {'─' * 30}")
+
+    for row in df.iter_rows(named=True):
+        ind_id = row["id"]
+        en = row.get("en", "")
+        de = row.get("de", "")
+        print(f"  {ind_id:>3}  {en:<30} {de:<30}")
+
+    print(f"\n  {len(df)} industries total")
+    print("\n  CLI: ws taxonomy search industries <query>")
+    print("       ws taxonomy validate industries")
 
     print("\nEmployee count range buckets (for --employee-count-range):")
     print("  1: 1-10       2: 11-50      3: 51-200     4: 201-500")
@@ -1644,6 +1715,12 @@ def help_cmd(topic: str | None, subtype: str | None) -> None:
         return
 
     # Dynamic topics
+    if topic == "occupations":
+        _show_occupations()
+        return
+    if topic == "seniority":
+        _show_seniority()
+        return
     if topic == "industries":
         _show_industries()
         return

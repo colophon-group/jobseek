@@ -1734,6 +1734,12 @@ class TestQualityGates:
             slug="test",
             name="Test",
             website="https://test.com",
+            descriptions={
+                "en": "A test company",
+                "de": "Ein Testunternehmen",
+                "fr": "Une entreprise test",
+                "it": "Un'azienda test",
+            },
         )
         # Create image artifacts
         art_dir = tmp_path / ".ws" / "test" / "artifacts" / "company"
@@ -1999,6 +2005,12 @@ def _setup_submittable_workspace(tmp_path, monkeypatch):
         issue=1,
         pr=10,
         branch="add-company/test",
+        descriptions={
+            "en": "A test company",
+            "de": "Ein Testunternehmen",
+            "fr": "Une entreprise test",
+            "it": "Un'azienda test",
+        },
     )
     save_workspace(ws_obj)
     set_active_slug("test")
@@ -2113,7 +2125,19 @@ class TestSubmitForce:
         _patch_all(monkeypatch, tmp_path)
         _setup_csvs(tmp_path, companies="test,,,,\n")
 
-        ws_obj = Workspace(slug="test", name="Test", website="https://test.com", issue=1, pr=10)
+        ws_obj = Workspace(
+            slug="test",
+            name="Test",
+            website="https://test.com",
+            issue=1,
+            pr=10,
+            descriptions={
+                "en": "A test company",
+                "de": "Ein Testunternehmen",
+                "fr": "Une entreprise test",
+                "it": "Un'azienda test",
+            },
+        )
         save_workspace(ws_obj)
         set_active_slug("test")
 

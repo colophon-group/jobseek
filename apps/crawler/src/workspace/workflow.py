@@ -189,7 +189,11 @@ def _has_feedback(board: Board) -> bool:
 
 GLOBAL_GATES: dict[str, Any] = {
     "company_complete": lambda ws, boards: bool(
-        ws.name and ws.website and ws.branch and ws.description and ws.industry is not None
+        ws.name
+        and ws.website
+        and ws.branch
+        and ws.descriptions.get("en")
+        and ws.industry is not None
     ),
     "all_boards_added": lambda ws, boards: len(boards) > 0,
     "submitted": lambda ws, boards: ws.submit_state.get("pr_ready", False),

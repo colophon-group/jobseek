@@ -2,10 +2,14 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db";
 import type {
   PostingLocation,
+  SearchFilters,
   SearchProvider,
   SearchResponse,
   SearchResultCompany,
   SearchResultPosting,
+  HistogramFilters,
+  SalaryBucket,
+  ExperienceBucket,
 } from "./types";
 
 interface RawSearchRow {
@@ -142,29 +146,36 @@ function groupRows(
   return { companies: Array.from(map.values()), totalCompanies };
 }
 
-// Must match the GIN index expression (titles[1] + employment_type)
-function tsvecFor(alias: string) {
-  return sql.raw(`(
-    setweight(to_tsvector('simple'::regconfig, coalesce(${alias}.titles[1], '')), 'A') ||
-    setweight(to_tsvector('simple'::regconfig, coalesce(${alias}.employment_type, '')), 'D')
-  )`);
+/** Escape PostgreSQL regex special characters */
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-/** Build OR condition — uses the GIN index for fast filtering */
+/** Build a word-boundary regex pattern for a keyword.
+ *  Uses \m (word start) / \M (word end) so "Rust" matches but "Trust" doesn't. */
+function wordPattern(keyword: string): string {
+  const escaped = escapeRegex(keyword);
+  const startBound = /^\w/.test(keyword) ? "\\m" : "";
+  const endBound = /\w$/.test(keyword) ? "\\M" : "";
+  return `${startBound}${escaped}${endBound}`;
+}
+
+/** Build OR condition — word-boundary regex for matching keywords in titles */
 function matchOr(alias: string, keywords: string[]) {
   return sql.join(
-    keywords.map((k) => sql`${tsvecFor(alias)} @@ plainto_tsquery('simple'::regconfig, ${k})`),
+    keywords.map((k) => {
+      return sql`${sql.raw(alias)}.titles[1] ~* ${wordPattern(k)}`;
+    }),
     sql` OR `,
   );
 }
 
-/** Count keyword hits against a pre-computed tsvector column (no regexp_replace) */
-function keywordCountFromVec(vecRef: string, keywords: string[]) {
-  const col = sql.raw(vecRef);
+/** Count keyword hits via word-boundary regex matching */
+function keywordCountExpr(_vecRef: string, titleRef: string, keywords: string[]) {
   return sql.join(
-    keywords.map(
-      (k) => sql`CASE WHEN ${col} @@ plainto_tsquery('simple'::regconfig, ${k}) THEN 1 ELSE 0 END`,
-    ),
+    keywords.map((k) => {
+      return sql`CASE WHEN ${sql.raw(titleRef)} ~* ${wordPattern(k)} THEN 1 ELSE 0 END`;
+    }),
     sql` + `,
   );
 }
@@ -175,32 +186,78 @@ function locationFilter(alias: string, locationIds?: number[]) {
   return sql`${sql.raw(alias)}.location_ids && ${pgArray}::integer[]`;
 }
 
+function occupationFilter(alias: string, occupationIds?: number[]) {
+  if (!occupationIds || occupationIds.length === 0) return sql`true`;
+  const pgArray = `{${occupationIds.join(",")}}`;
+  return sql`${sql.raw(alias)}.occupation_id = ANY(${pgArray}::integer[])`;
+}
+
+function seniorityFilter(alias: string, seniorityIds?: number[]) {
+  if (!seniorityIds || seniorityIds.length === 0) return sql`true`;
+  const pgArray = `{${seniorityIds.join(",")}}`;
+  return sql`${sql.raw(alias)}.seniority_id = ANY(${pgArray}::integer[])`;
+}
+
+function technologyFilter(alias: string, technologyIds?: number[]) {
+  if (!technologyIds || technologyIds.length === 0) return sql`true`;
+  const pgArray = `{${technologyIds.join(",")}}`;
+  return sql`${sql.raw(alias)}.technology_ids && ${pgArray}::integer[]`;
+}
+
+/** Filter by job language(s). Empty array = no filter (all languages). */
+function languageFilter(alias: string, languages: string[]) {
+  if (languages.length === 0) return sql`true`;
+  const pgArray = `{${languages.join(",")}}`;
+  return sql`(${sql.raw(alias)}.locales && ${pgArray}::text[] OR ${sql.raw(alias)}.locales = '{}')`;
+}
+
+/** Filter by salary range (EUR-normalized). Uses the pre-computed salary_eur column. */
+function salaryFilter(alias: string, minEur?: number, maxEur?: number) {
+  if (minEur == null && maxEur == null) return sql`true`;
+  if (minEur != null && maxEur != null) {
+    return sql`${sql.raw(alias)}.salary_eur BETWEEN ${minEur} AND ${maxEur}`;
+  }
+  if (minEur != null) {
+    return sql`${sql.raw(alias)}.salary_eur >= ${minEur}`;
+  }
+  return sql`${sql.raw(alias)}.salary_eur <= ${maxEur!}`;
+}
+
+/** Filter by experience range. Jobs without stated requirements are NOT excluded by maxYears. */
+function experienceFilter(alias: string, minYears?: number, maxYears?: number) {
+  if (minYears == null && maxYears == null) return sql`true`;
+  if (minYears != null && maxYears != null) {
+    return sql`(${sql.raw(alias)}.experience_min IS NULL OR (${sql.raw(alias)}.experience_min >= ${minYears} AND ${sql.raw(alias)}.experience_min <= ${maxYears}))`;
+  }
+  if (minYears != null) {
+    return sql`(${sql.raw(alias)}.experience_min IS NULL OR ${sql.raw(alias)}.experience_min >= ${minYears})`;
+  }
+  return sql`(${sql.raw(alias)}.experience_min IS NULL OR ${sql.raw(alias)}.experience_min <= ${maxYears!})`;
+}
+
 export class PostgresSearchProvider implements SearchProvider {
-  async search(params: {
+  async search(params: SearchFilters & {
     keywords: string[];
-    locationIds?: number[];
-    language: string;
     offset: number;
     limit: number;
   }): Promise<SearchResponse> {
-    const { keywords, language, offset, limit, locationIds } = params;
+    const { keywords, languages, locale, offset, limit, locationIds, occupationIds, seniorityIds, technologyIds, salaryMinEur, salaryMaxEur, experienceMin, experienceMax } = params;
 
     const rows = await db.execute<RawSearchRow>(sql`
-      WITH filtered AS (
+      WITH posting_matches AS (
         SELECT jp.id, jp.company_id, jp.titles[1] AS title, jp.first_seen_at, jp.is_active,
           jp.location_ids, jp.location_types,
-          ${tsvecFor("jp")} AS vec
+          (${keywordCountExpr("", "jp.titles[1]", keywords)}) AS keyword_count
         FROM job_posting jp
         WHERE jp.titles[1] IS NOT NULL AND jp.titles[1] != ''
           AND (${matchOr("jp", keywords)})
-          AND (${language} = ANY(jp.locales) OR jp.locales = '{}')
+          AND (${languageFilter("jp", languages)})
           AND (${locationFilter("jp", locationIds)})
-      ),
-      posting_matches AS (
-        SELECT f.id, f.company_id, f.title, f.first_seen_at, f.is_active,
-          f.location_ids, f.location_types,
-          (${keywordCountFromVec("f.vec", keywords)}) AS keyword_count
-        FROM filtered f
+          AND (${occupationFilter("jp", occupationIds)})
+          AND (${seniorityFilter("jp", seniorityIds)})
+          AND (${technologyFilter("jp", technologyIds)})
+          AND (${salaryFilter("jp", salaryMinEur, salaryMaxEur)})
+          AND (${experienceFilter("jp", experienceMin, experienceMax)})
       ),
       matched_companies AS (
         SELECT
@@ -250,17 +307,15 @@ export class PostgresSearchProvider implements SearchProvider {
     for (const r of rawRows) {
       if (r.location_ids) for (const id of r.location_ids) allLocIds.add(id);
     }
-    const nameMap = await resolveLocationNames([...allLocIds], language);
+    const nameMap = await resolveLocationNames([...allLocIds], locale);
     return groupRows(rawRows, nameMap, locationIds);
   }
 
-  async listTopCompanies(params: {
-    locationIds?: number[];
-    language: string;
+  async listTopCompanies(params: SearchFilters & {
     offset: number;
     limit: number;
   }): Promise<SearchResponse> {
-    const { language, offset, limit, locationIds } = params;
+    const { languages, locale, offset, limit, locationIds, occupationIds, seniorityIds, technologyIds, salaryMinEur, salaryMaxEur, experienceMin, experienceMax } = params;
 
     const rows = await db.execute<RawSearchRow>(sql`
       WITH all_companies AS (
@@ -270,8 +325,13 @@ export class PostgresSearchProvider implements SearchProvider {
           COUNT(*) AS year_matches
         FROM job_posting jp
         WHERE jp.titles[1] IS NOT NULL AND jp.titles[1] != ''
-          AND (${language} = ANY(jp.locales) OR jp.locales = '{}')
+          AND (${languageFilter("jp", languages)})
           AND (${locationFilter("jp", locationIds)})
+          AND (${occupationFilter("jp", occupationIds)})
+          AND (${seniorityFilter("jp", seniorityIds)})
+          AND (${technologyFilter("jp", technologyIds)})
+          AND (${salaryFilter("jp", salaryMinEur, salaryMaxEur)})
+          AND (${experienceFilter("jp", experienceMin, experienceMax)})
         GROUP BY jp.company_id
         HAVING COUNT(*) FILTER (WHERE jp.is_active) > 0
       ),
@@ -302,8 +362,13 @@ export class PostgresSearchProvider implements SearchProvider {
         FROM job_posting jp2
         WHERE jp2.company_id = tc.company_id
           AND jp2.titles[1] IS NOT NULL AND jp2.titles[1] != ''
-          AND (${language} = ANY(jp2.locales) OR jp2.locales = '{}')
+          AND (${languageFilter("jp2", languages)})
           AND (${locationFilter("jp2", locationIds)})
+          AND (${occupationFilter("jp2", occupationIds)})
+          AND (${seniorityFilter("jp2", seniorityIds)})
+          AND (${technologyFilter("jp2", technologyIds)})
+          AND (${salaryFilter("jp2", salaryMinEur, salaryMaxEur)})
+          AND (${experienceFilter("jp2", experienceMin, experienceMax)})
         ORDER BY jp2.first_seen_at DESC
         LIMIT 10
       ) p ON true
@@ -315,19 +380,17 @@ export class PostgresSearchProvider implements SearchProvider {
     for (const r of rawRows) {
       if (r.location_ids) for (const id of r.location_ids) allLocIds.add(id);
     }
-    const nameMap = await resolveLocationNames([...allLocIds], language);
+    const nameMap = await resolveLocationNames([...allLocIds], locale);
     return groupRows(rawRows, nameMap, locationIds);
   }
 
-  async loadPostings(params: {
+  async loadPostings(params: SearchFilters & {
     companyId: string;
     keywords: string[];
-    locationIds?: number[];
-    language: string;
     offset: number;
     limit: number;
   }): Promise<SearchResultPosting[]> {
-    const { companyId, keywords, language, offset, limit, locationIds } = params;
+    const { companyId, keywords, languages, locale, offset, limit, locationIds, occupationIds, seniorityIds, technologyIds, salaryMinEur, salaryMaxEur, experienceMin, experienceMax } = params;
 
     interface PostingRow {
       [key: string]: unknown;
@@ -343,21 +406,21 @@ export class PostgresSearchProvider implements SearchProvider {
 
     if (keywords.length > 0) {
       const rows = await db.execute<PostingRow>(sql`
-        SELECT sub.id, sub.title, sub.first_seen_at,
-          (${keywordCountFromVec("sub.vec", keywords)}) AS keyword_count,
-          sub.location_ids, sub.location_types
-        FROM (
-          SELECT jp.id, jp.titles[1] AS title, jp.first_seen_at,
-            jp.location_ids, jp.location_types,
-            ${tsvecFor("jp")} AS vec
-          FROM job_posting jp
-          WHERE jp.company_id = ${companyId}
-            AND jp.titles[1] IS NOT NULL AND jp.titles[1] != ''
-            AND (${matchOr("jp", keywords)})
-            AND (${language} = ANY(jp.locales) OR jp.locales = '{}')
-            AND (${locationFilter("jp", locationIds)})
-        ) sub
-        ORDER BY keyword_count DESC, sub.first_seen_at DESC
+        SELECT jp.id, jp.titles[1] AS title, jp.first_seen_at,
+          (${keywordCountExpr("", "jp.titles[1]", keywords)}) AS keyword_count,
+          jp.location_ids, jp.location_types
+        FROM job_posting jp
+        WHERE jp.company_id = ${companyId}
+          AND jp.titles[1] IS NOT NULL AND jp.titles[1] != ''
+          AND (${matchOr("jp", keywords)})
+          AND (${languageFilter("jp", languages)})
+          AND (${locationFilter("jp", locationIds)})
+          AND (${occupationFilter("jp", occupationIds)})
+          AND (${seniorityFilter("jp", seniorityIds)})
+          AND (${technologyFilter("jp", technologyIds)})
+          AND (${salaryFilter("jp", salaryMinEur, salaryMaxEur)})
+          AND (${experienceFilter("jp", experienceMin, experienceMax)})
+        ORDER BY keyword_count DESC, jp.first_seen_at DESC
         LIMIT ${limit} OFFSET ${offset}
       `);
       rawRows = rows as unknown as PostingRow[];
@@ -369,8 +432,13 @@ export class PostgresSearchProvider implements SearchProvider {
         FROM job_posting jp
         WHERE jp.company_id = ${companyId}
           AND jp.titles[1] IS NOT NULL AND jp.titles[1] != ''
-          AND (${language} = ANY(jp.locales) OR jp.locales = '{}')
+          AND (${languageFilter("jp", languages)})
           AND (${locationFilter("jp", locationIds)})
+          AND (${occupationFilter("jp", occupationIds)})
+          AND (${seniorityFilter("jp", seniorityIds)})
+          AND (${technologyFilter("jp", technologyIds)})
+          AND (${salaryFilter("jp", salaryMinEur, salaryMaxEur)})
+          AND (${experienceFilter("jp", experienceMin, experienceMax)})
         ORDER BY jp.first_seen_at DESC
         LIMIT ${limit} OFFSET ${offset}
       `);
@@ -381,7 +449,7 @@ export class PostgresSearchProvider implements SearchProvider {
     for (const r of rawRows) {
       if (r.location_ids) for (const id of r.location_ids) allLocIds.add(id);
     }
-    const nameMap = await resolveLocationNames([...allLocIds], language);
+    const nameMap = await resolveLocationNames([...allLocIds], locale);
     const filterSet = locationIds && locationIds.length > 0
       ? new Set(locationIds)
       : undefined;
@@ -400,15 +468,13 @@ export class PostgresSearchProvider implements SearchProvider {
     }));
   }
 
-  async loadPostingsWithCounts(params: {
+  async loadPostingsWithCounts(params: SearchFilters & {
     companyId: string;
     keywords: string[];
-    locationIds?: number[];
-    language: string;
     offset: number;
     limit: number;
   }): Promise<{ postings: SearchResultPosting[]; activeCount: number; yearCount: number }> {
-    const { companyId, keywords, language, offset, limit, locationIds } = params;
+    const { companyId, keywords, languages, locale, offset, limit, locationIds, occupationIds, seniorityIds, technologyIds, salaryMinEur, salaryMaxEur, experienceMin, experienceMax } = params;
 
     interface CountRow {
       [key: string]: unknown;
@@ -434,9 +500,14 @@ export class PostgresSearchProvider implements SearchProvider {
       FROM job_posting jp
       WHERE jp.company_id = ${companyId}
         AND jp.titles[1] IS NOT NULL AND jp.titles[1] != ''
-        AND (${language} = ANY(jp.locales) OR jp.locales = '{}')
+        AND (${languageFilter("jp", languages)})
         ${keywords.length > 0 ? sql`AND (${matchOr("jp", keywords)})` : sql``}
         AND (${locationFilter("jp", locationIds)})
+        AND (${occupationFilter("jp", occupationIds)})
+        AND (${seniorityFilter("jp", seniorityIds)})
+        AND (${technologyFilter("jp", technologyIds)})
+        AND (${salaryFilter("jp", salaryMinEur, salaryMaxEur)})
+        AND (${experienceFilter("jp", experienceMin, experienceMax)})
     `);
     const counts = (countRows as unknown as CountRow[])[0];
     const activeCount = Number(counts?.active_count ?? 0);
@@ -447,21 +518,21 @@ export class PostgresSearchProvider implements SearchProvider {
 
     if (keywords.length > 0) {
       const rows = await db.execute<PostingRow>(sql`
-        SELECT sub.id, sub.title, sub.first_seen_at,
-          (${keywordCountFromVec("sub.vec", keywords)}) AS keyword_count,
-          sub.location_ids, sub.location_types
-        FROM (
-          SELECT jp.id, jp.titles[1] AS title, jp.first_seen_at,
-            jp.location_ids, jp.location_types,
-            ${tsvecFor("jp")} AS vec
-          FROM job_posting jp
-          WHERE jp.company_id = ${companyId}
-            AND jp.titles[1] IS NOT NULL AND jp.titles[1] != ''
-            AND (${matchOr("jp", keywords)})
-            AND (${language} = ANY(jp.locales) OR jp.locales = '{}')
-            AND (${locationFilter("jp", locationIds)})
-        ) sub
-        ORDER BY keyword_count DESC, sub.first_seen_at DESC
+        SELECT jp.id, jp.titles[1] AS title, jp.first_seen_at,
+          (${keywordCountExpr("", "jp.titles[1]", keywords)}) AS keyword_count,
+          jp.location_ids, jp.location_types
+        FROM job_posting jp
+        WHERE jp.company_id = ${companyId}
+          AND jp.titles[1] IS NOT NULL AND jp.titles[1] != ''
+          AND (${matchOr("jp", keywords)})
+          AND (${languageFilter("jp", languages)})
+          AND (${locationFilter("jp", locationIds)})
+          AND (${occupationFilter("jp", occupationIds)})
+          AND (${seniorityFilter("jp", seniorityIds)})
+          AND (${technologyFilter("jp", technologyIds)})
+          AND (${salaryFilter("jp", salaryMinEur, salaryMaxEur)})
+          AND (${experienceFilter("jp", experienceMin, experienceMax)})
+        ORDER BY keyword_count DESC, jp.first_seen_at DESC
         LIMIT ${limit} OFFSET ${offset}
       `);
       rawRows = rows as unknown as PostingRow[];
@@ -473,8 +544,13 @@ export class PostgresSearchProvider implements SearchProvider {
         FROM job_posting jp
         WHERE jp.company_id = ${companyId}
           AND jp.titles[1] IS NOT NULL AND jp.titles[1] != ''
-          AND (${language} = ANY(jp.locales) OR jp.locales = '{}')
+          AND (${languageFilter("jp", languages)})
           AND (${locationFilter("jp", locationIds)})
+          AND (${occupationFilter("jp", occupationIds)})
+          AND (${seniorityFilter("jp", seniorityIds)})
+          AND (${technologyFilter("jp", technologyIds)})
+          AND (${salaryFilter("jp", salaryMinEur, salaryMaxEur)})
+          AND (${experienceFilter("jp", experienceMin, experienceMax)})
         ORDER BY jp.first_seen_at DESC
         LIMIT ${limit} OFFSET ${offset}
       `);
@@ -485,7 +561,7 @@ export class PostgresSearchProvider implements SearchProvider {
     for (const r of rawRows) {
       if (r.location_ids) for (const id of r.location_ids) allLocIds.add(id);
     }
-    const nameMap = await resolveLocationNames([...allLocIds], language);
+    const nameMap = await resolveLocationNames([...allLocIds], locale);
     const filterSet = locationIds && locationIds.length > 0
       ? new Set(locationIds)
       : undefined;
@@ -504,5 +580,59 @@ export class PostgresSearchProvider implements SearchProvider {
     }));
 
     return { postings, activeCount, yearCount };
+  }
+
+  async getSalaryHistogram(filters?: HistogramFilters): Promise<SalaryBucket[]> {
+    const f = filters ?? {};
+    const hasKeywords = f.keywords && f.keywords.length > 0;
+    const rows = await db.execute<{ [key: string]: unknown; bucket: number; cnt: number }>(sql`
+      SELECT
+        width_bucket(jp.salary_eur, 0, 300000, 30) AS bucket,
+        COUNT(*)::int AS cnt
+      FROM job_posting jp
+      WHERE jp.is_active = true
+        AND jp.salary_eur IS NOT NULL AND jp.salary_eur > 0
+        AND jp.titles[1] IS NOT NULL AND jp.titles[1] != ''
+        ${f.companyId ? sql`AND jp.company_id = ${f.companyId}` : sql``}
+        ${hasKeywords ? sql`AND (${matchOr("jp", f.keywords!)})` : sql``}
+        AND (${locationFilter("jp", f.locationIds)})
+        AND (${occupationFilter("jp", f.occupationIds)})
+        AND (${seniorityFilter("jp", f.seniorityIds)})
+        AND (${technologyFilter("jp", f.technologyIds)})
+        AND (${languageFilter("jp", f.languages ?? [])})
+      GROUP BY bucket
+      ORDER BY bucket
+    `);
+    const bucketWidth = 10000;
+    return (rows as unknown as { bucket: number; cnt: number }[]).map((r) => ({
+      min: (r.bucket - 1) * bucketWidth,
+      max: r.bucket * bucketWidth,
+      count: r.cnt,
+    }));
+  }
+
+  async getExperienceHistogram(filters?: HistogramFilters): Promise<ExperienceBucket[]> {
+    const f = filters ?? {};
+    const hasKeywords = f.keywords && f.keywords.length > 0;
+    const rows = await db.execute<{ [key: string]: unknown; years: number; cnt: number }>(sql`
+      SELECT jp.experience_min AS years, COUNT(*)::int AS cnt
+      FROM job_posting jp
+      WHERE jp.is_active = true
+        AND jp.experience_min IS NOT NULL
+        AND jp.titles[1] IS NOT NULL AND jp.titles[1] != ''
+        ${f.companyId ? sql`AND jp.company_id = ${f.companyId}` : sql``}
+        ${hasKeywords ? sql`AND (${matchOr("jp", f.keywords!)})` : sql``}
+        AND (${locationFilter("jp", f.locationIds)})
+        AND (${occupationFilter("jp", f.occupationIds)})
+        AND (${seniorityFilter("jp", f.seniorityIds)})
+        AND (${technologyFilter("jp", f.technologyIds)})
+        AND (${languageFilter("jp", f.languages ?? [])})
+      GROUP BY jp.experience_min
+      ORDER BY jp.experience_min
+    `);
+    return (rows as unknown as { years: number; cnt: number }[]).map((r) => ({
+      years: r.years,
+      count: r.cnt,
+    }));
   }
 }

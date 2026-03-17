@@ -35,11 +35,55 @@ def sort_csvs() -> None:
     b_rows.sort(key=lambda r: (r.get("company_slug", ""), r.get("board_slug", "")))
     _write_csv(boards_path, b_headers, b_rows)
 
+    descs_path = get_data_dir() / "company_descriptions.csv"
+    if descs_path.exists():
+        d_headers, d_rows = _read_csv(descs_path)
+        d_rows.sort(key=lambda r: r.get("slug", ""))
+        _write_csv(descs_path, d_headers, d_rows)
+
 
 def _company_slugs(path: Path) -> set[str]:
     """Return the set of slugs in companies.csv."""
     _, rows = _read_csv(path)
     return {r["slug"] for r in rows}
+
+
+def company_description_set(slug: str, locale: str, description: str) -> None:
+    """Set a company description in company_descriptions.csv."""
+    if not _SLUG_RE.match(slug):
+        raise InvalidSlugError(f"Invalid slug format: {slug!r}")
+
+    descs_path = get_data_dir() / "company_descriptions.csv"
+
+    if descs_path.exists():
+        headers, rows = _read_csv(descs_path)
+    else:
+        headers = ["slug", locale]
+        rows = []
+
+    # Ensure locale column exists
+    if locale not in headers:
+        headers.append(locale)
+        for row in rows:
+            row[locale] = ""
+
+    # Find or create row
+    target = None
+    for row in rows:
+        if row["slug"] == slug:
+            target = row
+            break
+
+    if target is None:
+        new_row = {col: "" for col in headers}
+        new_row["slug"] = slug
+        new_row[locale] = description
+        rows.append(new_row)
+    else:
+        target[locale] = description
+
+    _write_csv(descs_path, headers, rows)
+    print(f"Set {locale} description for {slug!r}")
 
 
 def company_add(
@@ -50,7 +94,6 @@ def company_add(
     logo_url: str | None = None,
     icon_url: str | None = None,
     logo_type: str | None = None,
-    description: str | None = None,
     industry: int | None = None,
     employee_count_range: int | None = None,
     founded_year: int | None = None,
@@ -75,8 +118,6 @@ def company_add(
         field_map["icon_url"] = icon_url
     if logo_type is not None:
         field_map["logo_type"] = logo_type
-    if description is not None:
-        field_map["description"] = description
     if industry is not None:
         field_map["industry"] = str(industry)
     if employee_count_range is not None:

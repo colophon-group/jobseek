@@ -24,37 +24,67 @@ export interface SearchResponse {
   totalCompanies: number;
 }
 
+export interface SearchFilters {
+  locationIds?: number[];
+  occupationIds?: number[];
+  seniorityIds?: number[];
+  technologyIds?: number[];
+  salaryMinEur?: number;
+  salaryMaxEur?: number;
+  experienceMin?: number;
+  experienceMax?: number;
+  languages: string[];
+  locale: string;
+}
+
+export interface HistogramFilters {
+  companyId?: string;
+  keywords?: string[];
+  locationIds?: number[];
+  occupationIds?: number[];
+  seniorityIds?: number[];
+  technologyIds?: number[];
+  languages?: string[];
+}
+
+export interface SalaryBucket {
+  min: number;
+  max: number;
+  count: number;
+}
+
+export interface ExperienceBucket {
+  years: number;
+  count: number;
+}
+
 export interface SearchProvider {
-  search(params: {
+  search(params: SearchFilters & {
     keywords: string[];
-    locationIds?: number[];
-    language: string;
     offset: number;
     limit: number;
   }): Promise<SearchResponse>;
 
-  listTopCompanies(params: {
-    locationIds?: number[];
-    language: string;
+  listTopCompanies(params: SearchFilters & {
     offset: number;
     limit: number;
   }): Promise<SearchResponse>;
 
-  loadPostings(params: {
+  loadPostings(params: SearchFilters & {
     companyId: string;
     keywords: string[];
-    locationIds?: number[];
-    language: string;
     offset: number;
     limit: number;
   }): Promise<SearchResultPosting[]>;
 
-  loadPostingsWithCounts(params: {
+  loadPostingsWithCounts(params: SearchFilters & {
     companyId: string;
     keywords: string[];
-    locationIds?: number[];
-    language: string;
     offset: number;
     limit: number;
   }): Promise<{ postings: SearchResultPosting[]; activeCount: number; yearCount: number }>;
+
+  getSalaryHistogram(filters?: HistogramFilters): Promise<SalaryBucket[]>;
+
+  getExperienceHistogram(filters?: HistogramFilters): Promise<ExperienceBucket[]>;
 }

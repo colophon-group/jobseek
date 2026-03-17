@@ -14,6 +14,7 @@ WORKSPACE_DIR = Path(__file__).parent.parent.parent / ".workspace"
 SLUG_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 URL_RE = re.compile(r"^https?://[^\s/]+")
 LOGO_TYPES = ("wordmark", "wordmark+icon", "icon")
+DISPLAY_LOCALES: tuple[str, ...] = ("en", "de", "fr", "it")
 
 # ── Dynamic repo root (set at CLI startup) ────────────────────────────
 

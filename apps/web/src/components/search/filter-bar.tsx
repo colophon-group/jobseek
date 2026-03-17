@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { X, MapPin, Search, ChevronDown, ChevronUp, Globe } from "lucide-react";
+import { X, MapPin, Search, ChevronDown, ChevronUp, Globe, Briefcase, BarChart3 } from "lucide-react";
 import { useLingui, Trans } from "@lingui/react/macro";
 import { suggestLocations } from "@/lib/actions/locations";
 import type { LocationSuggestion } from "@/lib/actions/locations";
@@ -9,6 +9,8 @@ import { LocationModal } from "./location-modal";
 
 export type FilterItem =
   | { kind: "location"; id: number; slug: string; name: string; type: string }
+  | { kind: "occupation"; id: number; slug: string; name: string }
+  | { kind: "seniority"; id: number; slug: string; name: string }
   | { kind: "keyword"; value: string };
 
 interface FilterBarProps {
@@ -102,6 +104,10 @@ export function FilterBar({
     (filter: FilterItem) => {
       if (filter.kind === "location") {
         onFiltersChange(filters.filter((f) => !(f.kind === "location" && f.id === filter.id)));
+      } else if (filter.kind === "occupation") {
+        onFiltersChange(filters.filter((f) => !(f.kind === "occupation" && f.id === filter.id)));
+      } else if (filter.kind === "seniority") {
+        onFiltersChange(filters.filter((f) => !(f.kind === "seniority" && f.id === filter.id)));
       } else {
         onFiltersChange(filters.filter((f) => !(f.kind === "keyword" && f.value === filter.value)));
       }
@@ -189,6 +195,8 @@ export function FilterBar({
   const showModal = (totalLocationCount ?? 0) > 15 && !!companyId;
 
   const keywordFilters = filters.filter((f) => f.kind === "keyword");
+  const occupationFilters = filters.filter((f): f is FilterItem & { kind: "occupation" } => f.kind === "occupation");
+  const seniorityFilters = filters.filter((f): f is FilterItem & { kind: "seniority" } => f.kind === "seniority");
 
   // Non-suggested location filters (added via search input)
   const extraLocationFilters = filters.filter(
@@ -208,25 +216,27 @@ export function FilterBar({
     });
   }, [suggestedLocations, activeLocationIds]);
 
-  // All pill items: keyword pills + extra location pills + suggested location pills
-  // Selected items (keywords, extra locations, active suggested) come first naturally
-  // since keyword/extra pills are always "active" and suggested are sorted active-first.
-  const totalPillCount = keywordFilters.length + extraLocationFilters.length + sortedSuggested.length;
+  // All pill items: keyword pills + occupation pills + seniority pills + extra location pills + suggested location pills
+  const totalPillCount = keywordFilters.length + occupationFilters.length + seniorityFilters.length + extraLocationFilters.length + sortedSuggested.length;
   const canExpand = totalPillCount > COLLAPSED_COUNT;
 
   // Build the combined ordered pill list for truncation
   type PillItem =
     | { type: "keyword"; filter: FilterItem & { kind: "keyword" } }
+    | { type: "occupation"; filter: FilterItem & { kind: "occupation" } }
+    | { type: "seniority"; filter: FilterItem & { kind: "seniority" } }
     | { type: "extraLoc"; filter: FilterItem & { kind: "location" } }
     | { type: "suggested"; loc: { id: number; slug: string; name: string; type: string; count: number }; isActive: boolean };
 
   const allPills = useMemo((): PillItem[] => {
     const items: PillItem[] = [];
+    for (const f of occupationFilters) items.push({ type: "occupation", filter: f });
+    for (const f of seniorityFilters) items.push({ type: "seniority", filter: f });
     for (const f of keywordFilters) items.push({ type: "keyword", filter: f });
     for (const f of extraLocationFilters) items.push({ type: "extraLoc", filter: f });
     for (const loc of sortedSuggested) items.push({ type: "suggested", loc, isActive: activeLocationIds.has(loc.id) });
     return items;
-  }, [keywordFilters, extraLocationFilters, sortedSuggested, activeLocationIds]);
+  }, [keywordFilters, occupationFilters, seniorityFilters, extraLocationFilters, sortedSuggested, activeLocationIds]);
 
   const visiblePills = expanded ? allPills : allPills.slice(0, COLLAPSED_COUNT);
   const hiddenCount = allPills.length - visiblePills.length;
@@ -241,12 +251,46 @@ export function FilterBar({
               return (
                 <span
                   key={`kw-${pill.filter.value}`}
-                  className="inline-flex items-center gap-1 rounded-full bg-accent/10 px-3 py-1 text-sm text-accent"
+                  className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary"
                 >
                   {pill.filter.value}
                   <button
                     onClick={() => removeFilter(pill.filter)}
-                    className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-accent/20 cursor-pointer"
+                    className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer"
+                  >
+                    <X size={12} />
+                  </button>
+                </span>
+              );
+            }
+            if (pill.type === "occupation") {
+              return (
+                <span
+                  key={`occ-${pill.filter.id}`}
+                  className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary"
+                >
+                  <Briefcase size={12} className="shrink-0" />
+                  {pill.filter.name}
+                  <button
+                    onClick={() => removeFilter(pill.filter)}
+                    className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer"
+                  >
+                    <X size={12} />
+                  </button>
+                </span>
+              );
+            }
+            if (pill.type === "seniority") {
+              return (
+                <span
+                  key={`sen-${pill.filter.id}`}
+                  className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary"
+                >
+                  <BarChart3 size={12} className="shrink-0" />
+                  {pill.filter.name}
+                  <button
+                    onClick={() => removeFilter(pill.filter)}
+                    className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-primary/20 cursor-pointer"
                   >
                     <X size={12} />
                   </button>

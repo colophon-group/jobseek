@@ -57,6 +57,17 @@ def _mock_location_resolver(monkeypatch):
     monkeypatch.setattr("src.batch._get_location_resolver", _fake_get_resolver)
 
 
+@pytest.fixture(autouse=True)
+def _mock_currency_rates(monkeypatch):
+    """Auto-mock currency rates so batch tests don't hit the DB."""
+    rates = {"EUR": 1.0, "USD": 0.87, "GBP": 1.17, "CHF": 1.04}
+
+    async def _fake_get_rates(pool):
+        return rates
+
+    monkeypatch.setattr("src.batch._get_currency_rates", _fake_get_rates)
+
+
 class TestJsonb:
     def test_with_dict(self):
         assert _jsonb({"key": "value"}) == '{"key": "value"}'

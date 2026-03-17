@@ -1821,6 +1821,15 @@ def run_quality_gates(
     if not ws.website:
         blockers.append("Company website not set")
 
+    from src.shared.constants import DISPLAY_LOCALES
+
+    missing_locales = [loc for loc in DISPLAY_LOCALES if not ws.descriptions.get(loc)]
+    if missing_locales:
+        blockers.append(
+            f"Missing description locales: {', '.join(missing_locales)}. "
+            f'Fill with: ws set --description "..." --description-locale <locale>'
+        )
+
     for b in boards:
         if not b.active_config:
             blockers.append(f"Board {b.alias}: no config selected")

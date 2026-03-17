@@ -344,6 +344,97 @@
       "when": 1773955200000,
       "tag": "0051_add_followed_company",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1774041600000,
+      "tag": "0052_add_job_languages_pref",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1774128000000,
+      "tag": "0053_add_occupation",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1774214400000,
+      "tag": "0054_add_seniority",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1774300800000,
+      "tag": "0055_add_industry_name",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1774387200000,
+      "tag": "0056_add_company_description",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1774473600000,
+      "tag": "0057_add_taxonomy_search_index",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1774560000000,
+      "tag": "0058_add_occupation_parent",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1774646400000,
+      "tag": "0059_add_stripe_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1774732800000,
+      "tag": "0060_add_taxonomy_miss",
+      "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1774819200000,
+      "tag": "0061_add_occupation_domain",
+      "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1774905600000,
+      "tag": "0062_drop_hq_location_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1774992000000,
+      "tag": "0063_add_salary_experience",
+      "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1775078400000,
+      "tag": "0064_add_technology_name_category",
+      "breakpoints": true
     }
   ]
 }

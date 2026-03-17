@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/Button";
 import { SearchBar } from "@/components/search/search-bar";
 
 const tooltipContentClass =
-  "z-50 rounded-md bg-tooltip-bg px-2.5 py-1 text-xs text-white data-[state=delayed-open]:animate-[tooltip-in_150ms_ease] data-[state=instant-open]:animate-[tooltip-in_150ms_ease] data-[state=closed]:animate-[tooltip-out_100ms_ease_forwards]";
+  "z-50 rounded-md bg-tooltip-bg backdrop-blur-md px-2.5 py-1 text-xs text-white data-[state=delayed-open]:animate-[tooltip-in_150ms_ease] data-[state=instant-open]:animate-[tooltip-in_150ms_ease] data-[state=closed]:animate-[tooltip-out_100ms_ease_forwards]";
 
 const iconBtnClass =
   "inline-flex items-center justify-center rounded-md p-1.5 text-foreground hover:bg-border-soft transition-colors cursor-pointer";

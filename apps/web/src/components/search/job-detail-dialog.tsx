@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Building2, ExternalLink, MapPin, X } from "lucide-react";
+import { Building2, ChevronDown, MapPin, X } from "lucide-react";
 import { Trans } from "@lingui/react/macro";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { getPostingDetail } from "@/lib/actions/search";
@@ -89,22 +89,32 @@ function DetailContent({ detail }: { detail: PostingDetail }) {
   return (
     <div className="space-y-4">
       {/* Company header */}
-      <Link href={lp(`/company/${company.slug}`)} className="flex items-center gap-3 transition-opacity hover:opacity-80">
-        {company.icon ? (
-          <Image
-            src={company.icon}
-            alt={company.name}
-            width={36}
-            height={36}
-            className="size-9 shrink-0 rounded"
-          />
-        ) : (
-          <div className="flex size-9 shrink-0 items-center justify-center rounded bg-border-soft text-muted">
-            <Building2 size={20} />
-          </div>
-        )}
-        <span className="text-sm font-semibold">{company.name}</span>
-      </Link>
+      <div className="flex items-center gap-3">
+        <Link href={lp(`/company/${company.slug}`)} className="flex items-center gap-3 transition-opacity hover:opacity-80">
+          {company.icon ? (
+            <Image
+              src={company.icon}
+              alt={company.name}
+              width={36}
+              height={36}
+              className="size-9 shrink-0 rounded"
+            />
+          ) : (
+            <div className="flex size-9 shrink-0 items-center justify-center rounded bg-border-soft text-muted">
+              <Building2 size={20} />
+            </div>
+          )}
+          <span className="text-sm font-semibold">{company.name}</span>
+        </Link>
+        <a
+          href={detail.sourceUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-primary bg-primary px-4 py-1.5 text-sm font-semibold text-primary-contrast transition-opacity hover:opacity-90"
+        >
+          <Trans id="search.detail.apply" comment="Apply button linking to original job posting">Apply</Trans>
+        </a>
+      </div>
 
       {/* Job title */}
       <h2 className="text-base font-bold leading-snug">{detail.title ?? "—"}</h2>
@@ -120,41 +130,8 @@ function DetailContent({ detail }: { detail: PostingDetail }) {
 
       {/* Locations */}
       {detail.locations.length > 0 && (
-        <div className="space-y-1">
-          <p className="text-[10px] font-medium uppercase tracking-wider text-muted">
-            <Trans id="search.detail.locations" comment="Locations heading in job detail">Locations</Trans>
-          </p>
-          <ul className="space-y-0.5">
-            {detail.locations.map((loc, i) => (
-              <li key={i} className="flex items-center gap-1.5 text-sm">
-                <MapPin size={12} className="shrink-0 text-muted" />
-                <span>{loc.name}</span>
-                {loc.geoType && loc.geoType !== "city" && (
-                  <span className="rounded bg-border-soft px-1.5 py-0.5 text-[10px] capitalize text-muted">
-                    {loc.geoType}
-                  </span>
-                )}
-                {loc.type !== "onsite" && (
-                  <span className="rounded bg-border-soft px-1.5 py-0.5 text-[10px] capitalize text-muted">
-                    {loc.type}
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
+        <LocationList locations={detail.locations} />
       )}
-
-      {/* Source link */}
-      <a
-        href={detail.sourceUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center gap-1.5 text-sm text-accent hover:underline"
-      >
-        <Trans id="search.detail.viewOriginal" comment="Link to original job posting">View original posting</Trans>
-        <ExternalLink size={12} />
-      </a>
 
       {/* Description */}
       {detail.descriptionHtml && (
@@ -165,6 +142,54 @@ function DetailContent({ detail }: { detail: PostingDetail }) {
             dangerouslySetInnerHTML={{ __html: detail.descriptionHtml }}
           />
         </>
+      )}
+    </div>
+  );
+}
+
+const LOCATIONS_COLLAPSED = 3;
+
+function LocationList({ locations }: { locations: PostingDetail["locations"] }) {
+  const [expanded, setExpanded] = useState(false);
+  const collapsible = locations.length > LOCATIONS_COLLAPSED;
+  const visible = collapsible && !expanded ? locations.slice(0, LOCATIONS_COLLAPSED) : locations;
+
+  function formatLocation(loc: PostingDetail["locations"][number]) {
+    if (loc.parentName) return `${loc.name}, ${loc.parentName}`;
+    return loc.name;
+  }
+
+  return (
+    <div className="space-y-1">
+      <p className="text-[10px] font-medium uppercase tracking-wider text-muted">
+        <Trans id="search.detail.locations" comment="Locations heading in job detail">Locations</Trans>
+      </p>
+      <ul className="space-y-0.5">
+        {visible.map((loc, i) => (
+          <li key={i} className="flex items-center gap-1.5 text-sm">
+            <MapPin size={12} className="shrink-0 text-muted" />
+            <span>{formatLocation(loc)}</span>
+            {loc.type !== "onsite" && (
+              <span className="rounded bg-border-soft px-1.5 py-0.5 text-[10px] capitalize text-muted">
+                {loc.type}
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+      {collapsible && !expanded && (
+        <button
+          onClick={() => setExpanded(true)}
+          className="flex cursor-pointer items-center gap-1 text-xs text-muted transition-colors hover:text-foreground"
+        >
+          <ChevronDown size={12} />
+          <Trans
+            id="search.detail.showMoreLocations"
+            comment="Button to show remaining collapsed locations"
+          >
+            {locations.length - LOCATIONS_COLLAPSED} more
+          </Trans>
+        </button>
       )}
     </div>
   );

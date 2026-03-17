@@ -13,12 +13,6 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
-#. Placeholder text in app header search bar
-#. js-lingui-explicit-id
-#: src/components/AppHeader.tsx:73
-#~ msgid "app.header.searchPlaceholder"
-#~ msgstr "Suche…"
-
 #. CC right 1
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:80
@@ -48,9 +42,28 @@ msgstr "(öffnet in neuem Tab)"
 #. Employee count range on company page
 #. js-lingui-explicit-id
 #. placeholder {0}: EMPLOYEE_RANGE_LABELS[company.employeeCountRange]
-#: app/[lang]/(app)/company/[slug]/company-page.tsx:180
+#: app/[lang]/(app)/company/[slug]/company-page.tsx:515
 msgid "company.page.employees"
 msgstr "{0} Mitarbeitende"
+
+#. Button to show remaining collapsed locations
+#. js-lingui-explicit-id
+#. placeholder {0}: locations.length - LOCATIONS_COLLAPSED
+#: src/components/search/job-detail-dialog.tsx:186
+msgid "search.detail.showMoreLocations"
+msgstr "{0} weitere"
+
+#. Free plan price display
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx:203
+msgid "settings.billing.plan.freePrice"
+msgstr "0 $ / Monat"
+
+#. Pro plan price display
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx:209
+msgid "settings.billing.plan.proPrice"
+msgstr "10 $ / Monat"
 
 #. Account bottom bar label
 #. js-lingui-explicit-id
@@ -72,13 +85,13 @@ msgstr "Kontomenü"
 
 #. Active postings count on company page
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/company/[slug]/company-page.tsx:253
+#: app/[lang]/(app)/company/[slug]/company-page.tsx:588
 msgid "company.page.active"
 msgstr "aktiv"
 
 #. Active matches label on company card
 #. js-lingui-explicit-id
-#: src/components/search/company-card.tsx:125
+#: src/components/search/company-card.tsx:135
 msgid "search.card.active"
 msgstr "aktiv"
 
@@ -90,7 +103,7 @@ msgstr "Stichwort hinzufügen..."
 
 #. Placeholder for the company page filter search bar
 #. js-lingui-explicit-id
-#: src/components/search/filter-bar.tsx:63
+#: src/components/search/filter-bar.tsx:65
 msgid "company.page.filterPlaceholder"
 msgstr "Standort- oder Stichwortfilter hinzufügen…"
 
@@ -112,6 +125,18 @@ msgstr "Benachrichtigungen, die du steuerst"
 msgid "privacy.short.r5"
 msgstr "Alle Daten werden bei Übertragung und Speicherung verschlüsselt."
 
+#. Title for the all-languages modal in settings
+#. js-lingui-explicit-id
+#: src/components/settings/JobLanguageModal.tsx:55
+msgid "settings.jobLanguages.modal.title"
+msgstr "Alle Sprachen"
+
+#. All languages option
+#. js-lingui-explicit-id
+#: src/components/settings/GeneralSettings.tsx:230
+msgid "settings.general.jobLanguages.all"
+msgstr "Alle Sprachen"
+
 #. Title for the all-locations modal on company page
 #. js-lingui-explicit-id
 #: src/components/search/location-modal.tsx:112
@@ -120,15 +145,21 @@ msgstr "Alle Standorte"
 
 #. Button to open all-locations modal on company page
 #. js-lingui-explicit-id
-#: src/components/search/filter-bar.tsx:297
+#: src/components/search/filter-bar.tsx:341
 msgid "company.page.allLocations"
 msgstr "Alle Standorte"
 
 #. Link to sign-in page from sign-up
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:196
+#: src/components/AuthForm.tsx:203
 msgid "auth.signUp.hasAccount"
 msgstr "Bereits ein Konto? <0>Anmelden</0>"
+
+#. Any experience level
+#. js-lingui-explicit-id
+#: src/components/search/experience-modal.tsx:169
+msgid "search.experienceModal.any"
+msgstr "Beliebig"
 
 #. MIT license section title
 #. js-lingui-explicit-id
@@ -160,11 +191,35 @@ msgstr "Bewerbungstracker"
 msgid "home.features.s1.p2.title"
 msgstr "Bewerbungstracker"
 
+#. Apply button linking to original job posting
+#. js-lingui-explicit-id
+#: src/components/search/job-detail-dialog.tsx:115
+msgid "search.detail.apply"
+msgstr "Bewerben"
+
+#. Apply salary filter
+#. js-lingui-explicit-id
+#: src/components/search/salary-modal.tsx:314
+msgid "search.salaryModal.apply"
+msgstr "Anwenden"
+
+#. Apply experience filter
+#. js-lingui-explicit-id
+#: src/components/search/experience-modal.tsx:246
+msgid "search.experienceModal.apply"
+msgstr "Anwenden"
+
 #. Step 3 body
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:131
 msgid "indexing.ingestion.s3.body"
 msgstr "Als letztes Mittel parsen wir die Karriereseiten selbst, bevorzugen dabei die neuesten Einträge zuerst und stoppen, sobald bereits indexierte Stellen wieder auftauchen, anstatt jede Seite zu durchsuchen."
+
+#. Link back to sign-in from reset password
+#. js-lingui-explicit-id
+#: app/[lang]/reset-password/page.tsx:42
+msgid "auth.resetPassword.backToSignIn"
+msgstr "Zurück zur Anmeldung"
 
 #. Link back to sign-in after failed verification
 #. js-lingui-explicit-id
@@ -172,10 +227,16 @@ msgstr "Als letztes Mittel parsen wir die Karriereseiten selbst, bevorzugen dabe
 msgid "auth.verify.error.backToSignIn"
 msgstr "Zurück zur Anmeldung"
 
-#. Link back to sign-in from reset password
+#. Link back to sign-in from forgot password
 #. js-lingui-explicit-id
-#: app/[lang]/reset-password/page.tsx:42
-msgid "auth.resetPassword.backToSignIn"
+#: app/[lang]/(auth)/forgot-password/page.tsx:68
+msgid "auth.forgotPassword.backToSignIn"
+msgstr "Zurück zur Anmeldung"
+
+#. Back to sign-in link from forgot password form
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/forgot-password/page.tsx:110
+msgid "auth.forgotPassword.backLink"
 msgstr "Zurück zur Anmeldung"
 
 #. Link text for browsing the repo
@@ -202,6 +263,12 @@ msgstr "Mit der Nutzung von Job Seek stimmst du diesen Bedingungen zu. Hier eine
 msgid "settings.account.delete.cancel"
 msgstr "Abbrechen"
 
+#. Link to change language settings
+#. js-lingui-explicit-id
+#: src/components/search/language-note.tsx:33
+msgid "search.languageNote.change"
+msgstr "ändern"
+
 #. Change email section heading
 #. js-lingui-explicit-id
 #: src/components/settings/AccountSettings.tsx:225
@@ -226,11 +293,29 @@ msgstr "Ändere dein Passwort über einen sicheren E-Mail-Link."
 msgid "auth.verify.checkEmail.title"
 msgstr "E-Mail überprüfen"
 
+#. Heading after reset email is sent
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/forgot-password/page.tsx:58
+msgid "auth.forgotPassword.sent.title"
+msgstr "E-Mail prüfen"
+
 #. Theme settings description
 #. js-lingui-explicit-id
-#: src/components/settings/GeneralSettings.tsx:50
+#: src/components/settings/GeneralSettings.tsx:156
 msgid "settings.general.theme.description"
 msgstr "Wähle das Erscheinungsbild von Job Seek."
+
+#. Display currency settings description
+#. js-lingui-explicit-id
+#: src/components/settings/GeneralSettings.tsx:301
+msgid "settings.general.currency.description"
+msgstr "Wählen Sie die Währung für Gehaltsfilter und Anzeige."
+
+#. Plan section description
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx:196
+msgid "settings.billing.plan.description"
+msgstr "Wählen Sie den Plan, der zu Ihnen passt."
 
 #. Pricing section heading
 #. js-lingui-explicit-id
@@ -238,13 +323,25 @@ msgstr "Wähle das Erscheinungsbild von Job Seek."
 msgid "home.pricing.title"
 msgstr "Wähle den passenden Plan"
 
+#. Job languages settings description
+#. js-lingui-explicit-id
+#: src/components/settings/GeneralSettings.tsx:215
+msgid "settings.general.jobLanguages.description"
+msgstr "Wähle aus, in welchen Sprachen du Stellenanzeigen sehen möchtest."
+
 #. Location type label for cities
 #. Location type label for cities
 #. js-lingui-explicit-id
-#: src/components/search/filter-bar.tsx:32
+#: src/components/search/filter-bar.tsx:34
 #: src/components/search/location-pills.tsx:32
 msgid "location.type.city"
 msgstr "Stadt"
+
+#. Button to clear all active search filters
+#. js-lingui-explicit-id
+#: src/components/search/search-toolbar.tsx:261
+msgid "search.filters.clearAll"
+msgstr "Alle löschen"
 
 #. Step 2 title
 #. js-lingui-explicit-id
@@ -272,7 +369,7 @@ msgstr "Demnächst verfügbar"
 
 #. Section header for company suggestions in search bar
 #. js-lingui-explicit-id
-#: src/components/search/search-bar.tsx:300
+#: src/components/search/search-bar.tsx:581
 msgid "search.bar.companies"
 msgstr "Unternehmen"
 
@@ -332,14 +429,14 @@ msgstr "Kontakt"
 
 #. Table of contents heading
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:18
-msgid "license.toc.title"
+#: src/components/HowWeIndexContent.tsx:23
+msgid "indexing.toc.title"
 msgstr "Inhalt"
 
 #. Table of contents heading
 #. js-lingui-explicit-id
-#: src/components/HowWeIndexContent.tsx:23
-msgid "indexing.toc.title"
+#: src/components/LicenseContent.tsx:18
+msgid "license.toc.title"
 msgstr "Inhalt"
 
 #. Button to continue to app after verification
@@ -381,7 +478,7 @@ msgstr "Den Code für jeden Zweck kopieren und ändern, einschließlich kommerzi
 #. Location type label for countries
 #. Location type label for countries
 #. js-lingui-explicit-id
-#: src/components/search/filter-bar.tsx:30
+#: src/components/search/filter-bar.tsx:32
 #: src/components/search/location-pills.tsx:30
 msgid "location.type.country"
 msgstr "Land"
@@ -406,13 +503,19 @@ msgstr "Konto erstellen"
 
 #. Sign-up button while loading
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:184
+#: src/components/AuthForm.tsx:191
 msgid "auth.signUp.button.loading"
 msgstr "Konto wird erstellt…"
 
+#. Badge on current plan card
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx:65
+msgid "settings.billing.currentPlan"
+msgstr "Aktuell"
+
 #. Dark theme option
 #. js-lingui-explicit-id
-#: src/components/settings/GeneralSettings.tsx:28
+#: src/components/settings/GeneralSettings.tsx:89
 msgid "settings.theme.dark"
 msgstr "Dunkel"
 
@@ -452,9 +555,15 @@ msgstr "Haben Sie das gesuchte Unternehmen nicht gefunden?"
 msgid "settings.account.socials.disconnect"
 msgstr "Trennen"
 
+#. Display currency settings section heading
+#. js-lingui-explicit-id
+#: src/components/settings/GeneralSettings.tsx:298
+msgid "settings.general.currency.title"
+msgstr "Anzeigewährung"
+
 #. Link to sign-up page from sign-in
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:203
+#: src/components/AuthForm.tsx:210
 msgid "auth.signIn.noAccount"
 msgstr "Noch kein Konto? <0>Registrieren</0>"
 
@@ -481,7 +590,9 @@ msgid "app.home.request.placeholder"
 msgstr "z.B. Stripe, oder https://boards.greenhouse.io/stripe"
 
 #. Email input label
+#. Email input label
 #. js-lingui-explicit-id
+#: app/[lang]/(auth)/forgot-password/page.tsx:93
 #: src/components/AuthForm.tsx:164
 msgid "auth.field.email"
 msgstr "E-Mail"
@@ -492,11 +603,23 @@ msgstr "E-Mail"
 msgid "home.pricing.pro.f4"
 msgstr "E-Mail-Benachrichtigungen & Updates"
 
+#. Pro plan feature: alerts
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx:154
+msgid "settings.billing.pro.f2"
+msgstr "E-Mail-Benachrichtigungen bei neuen Stellen"
+
 #. Heading when email is successfully verified
 #. js-lingui-explicit-id
 #: app/[lang]/verify-email/page.tsx:82
 msgid "auth.verify.success.title"
 msgstr "E-Mail bestätigt"
+
+#. Forgot password page subtitle
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/forgot-password/page.tsx:84
+msgid "auth.forgotPassword.subtitle"
+msgstr "Geben Sie Ihre E-Mail-Adresse ein und wir senden Ihnen einen Link zum Zurücksetzen."
 
 #. Reset password page subtitle
 #. js-lingui-explicit-id
@@ -516,11 +639,29 @@ msgstr "Auch nach der Entdeckung rufen wir Stellendetailseiten mit einem strikte
 msgid "indexing.assurances.i1.body"
 msgstr "Jedes Wiederholungsfenster nutzt exponentielles Backoff, damit wir einen Server nie überlasten, und wir brechen ab, wenn ein Host weiterhin Timeouts liefert."
 
+#. Pro plan feature: everything free
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx:155
+msgid "settings.billing.pro.f3"
+msgstr "Alles aus dem kostenlosen Plan"
+
 #. Feature section 1 eyebrow text
 #. js-lingui-explicit-id
 #: src/components/Features.tsx:119
 msgid "home.features.s1.eyebrow"
 msgstr "Alles, was du brauchst, um vorne zu bleiben"
+
+#. Title for experience filter modal
+#. js-lingui-explicit-id
+#: src/components/search/experience-modal.tsx:186
+msgid "search.experienceModal.title"
+msgstr "Erfahrung"
+
+#. Label for experience filter in advanced search
+#. js-lingui-explicit-id
+#: src/components/search/advanced-search-panel.tsx:171
+msgid "search.advanced.experience"
+msgstr "Erfahrung"
 
 #. Generic email change error
 #. js-lingui-explicit-id
@@ -580,6 +721,18 @@ msgstr "Passwort konnte nicht gesetzt werden"
 msgid "common.nav.features"
 msgstr "Funktionen"
 
+#. Toggle button for advanced search filters panel
+#. js-lingui-explicit-id
+#: src/components/search/advanced-search-panel.tsx:138
+msgid "search.advanced.toggle"
+msgstr "Filter"
+
+#. Button to open modal with all languages
+#. js-lingui-explicit-id
+#: src/components/settings/GeneralSettings.tsx:279
+msgid "settings.general.jobLanguages.findMore"
+msgstr "Weitere finden"
+
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/page.tsx:18
 msgid "home.meta.title"
@@ -593,7 +746,7 @@ msgstr "Relevante Stellen schneller finden."
 
 #. Follow button on company card
 #. js-lingui-explicit-id
-#: src/components/search/follow-button.tsx:41
+#: src/components/search/follow-button.tsx:55
 msgid "search.card.follow"
 msgstr "Folgen"
 
@@ -603,15 +756,27 @@ msgstr "Folgen"
 msgid "home.features.s1.p1.description"
 msgstr "Folge Wunscharbeitgebern und werde benachrichtigt, wenn neue Stellen erscheinen."
 
+#. Free plan feature: follow limit
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx:147
+msgid "settings.billing.free.f1"
+msgstr "Bis zu 5 Unternehmen folgen"
+
 #. Link to follow Job Seek on LinkedIn
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/app/progress/page.tsx:73
 msgid "app.home.followLinkedIn"
 msgstr "Folge uns auf LinkedIn"
 
+#. Followed companies usage label
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx:105
+msgid "settings.billing.usage.followedCompanies"
+msgstr "Verfolgte Unternehmen"
+
 #. Following button on company card (user is following this company)
 #. js-lingui-explicit-id
-#: src/components/search/follow-button.tsx:37
+#: src/components/search/follow-button.tsx:51
 msgid "search.card.following"
 msgstr "Abonniert"
 
@@ -633,10 +798,22 @@ msgstr "Für aktive Jobsuchende, die unbegrenzte Reichweite und schnellere Einbl
 msgid "home.pricing.free.period"
 msgstr "Für immer"
 
+#. Forgot password page heading
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/forgot-password/page.tsx:79
+msgid "auth.forgotPassword.title"
+msgstr "Passwort vergessen?"
+
+#. Forgot password link on sign-in page
+#. js-lingui-explicit-id
+#: src/components/AuthForm.tsx:184
+msgid "auth.signIn.forgotPassword"
+msgstr "Passwort vergessen?"
+
 #. Founded year on company page
 #. js-lingui-explicit-id
 #. placeholder {0}: company.foundedYear
-#: app/[lang]/(app)/company/[slug]/company-page.tsx:187
+#: app/[lang]/(app)/company/[slug]/company-page.tsx:522
 msgid "company.page.founded"
 msgstr "Gegründet {0}"
 
@@ -645,6 +822,18 @@ msgstr "Gegründet {0}"
 #: src/components/Pricing.tsx:32
 msgid "home.pricing.free.name"
 msgstr "Kostenlos"
+
+#. Free plan name
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx:202
+msgid "settings.billing.plan.free"
+msgstr "Kostenlos"
+
+#. Free plan feature: search
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx:148
+msgid "settings.billing.free.f2"
+msgstr "Vollständige Jobsuche"
 
 #. General settings nav link
 #. js-lingui-explicit-id
@@ -739,6 +928,12 @@ msgstr "Wie wir Stellenanzeigen finden und verarbeiten"
 msgid "indexing.meta.title"
 msgstr "So indexieren wir"
 
+#. Description after reset email is sent
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/forgot-password/page.tsx:63
+msgid "auth.forgotPassword.sent.description"
+msgstr "Falls ein Konto mit dieser E-Mail-Adresse existiert, haben wir einen Link zum Zurücksetzen des Passworts gesendet."
+
 #. Step 2 body
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:123
@@ -759,13 +954,13 @@ msgstr "Wenn du ungewöhnliches Crawler-Verhalten bemerkst, es vorziehst, dass w
 
 #. Year postings count on company page
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/company/[slug]/company-page.tsx:255
+#: app/[lang]/(app)/company/[slug]/company-page.tsx:590
 msgid "company.page.yearCount"
 msgstr "im letzten Jahr"
 
 #. Yearly matches label on company card
 #. js-lingui-explicit-id
-#: src/components/search/company-card.tsx:127
+#: src/components/search/company-card.tsx:137
 msgid "search.card.yearCount"
 msgstr "im letzten Jahr"
 
@@ -819,6 +1014,12 @@ msgstr "Stellendaten (CC BY-NC 4.0)"
 msgid "search.detail.title"
 msgstr "Stellendetails"
 
+#. Job languages settings section heading
+#. js-lingui-explicit-id
+#: src/components/settings/GeneralSettings.tsx:212
+msgid "settings.general.jobLanguages.title"
+msgstr "Stellensprachen"
+
 #. Label for the job postings counter on the app home page
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/app/progress/page.tsx:45
@@ -869,7 +1070,7 @@ msgstr "Schluss mit der 50-Tab-Routine"
 
 #. Language settings section heading
 #. js-lingui-explicit-id
-#: src/components/settings/GeneralSettings.tsx:77
+#: src/components/settings/GeneralSettings.tsx:183
 msgid "settings.general.language.title"
 msgstr "Sprache"
 
@@ -896,6 +1097,18 @@ msgstr "Zuletzt aktualisiert:"
 #: src/components/Hero.tsx:40
 msgid "home.hero.secondaryCta"
 msgstr "Mehr erfahren"
+
+#. Section header for seniority suggestions in search bar
+#. js-lingui-explicit-id
+#: src/components/search/search-bar.tsx:471
+msgid "search.bar.level"
+msgstr "Stufe"
+
+#. Label for seniority/level filter in advanced search
+#. js-lingui-explicit-id
+#: src/components/search/advanced-search-panel.tsx:154
+msgid "search.advanced.level"
+msgstr "Stufe"
 
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/license/page.tsx:14
@@ -927,22 +1140,35 @@ msgstr "Lizenzbedingungen für den Job-Seek-Anwendungscode (MIT) und die Stellen
 
 #. Light theme option
 #. js-lingui-explicit-id
-#: src/components/settings/GeneralSettings.tsx:27
+#: src/components/settings/GeneralSettings.tsx:88
 msgid "settings.theme.light"
 msgstr "Hell"
 
-#. Locations heading in job detail
+#. Manage subscription button loading state
 #. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:125
-msgid "search.detail.locations"
-msgstr "Standorte"
+#: src/components/settings/BillingSettings.tsx:238
+msgid "settings.billing.managing"
+msgstr "Wird geladen\\u2026"
+
+#. Label for location filter in advanced search
+#. js-lingui-explicit-id
+#: src/components/search/advanced-search-panel.tsx:146
+msgid "search.advanced.location"
+msgstr "Standort"
 
 #. Section header for location suggestions in search bar
 #. js-lingui-explicit-id
-#: src/components/search/search-bar.tsx:263
+#: src/components/search/search-bar.tsx:541
 msgid "search.bar.locations"
 msgstr "Standorte"
 
+#. Locations heading in job detail
+#. js-lingui-explicit-id
+#: src/components/search/job-detail-dialog.tsx:165
+msgid "search.detail.locations"
+msgstr "Standorte"
+
+#. Login button label
 #. Login button label
 #. Login button label
 #. Login button label
@@ -950,6 +1176,7 @@ msgstr "Standorte"
 #: src/components/AppHeader.tsx:166
 #: src/components/AppHeader.tsx:214
 #: src/components/settings/AccountSettings.tsx:38
+#: src/components/settings/BillingSettings.tsx:32
 msgid "common.auth.login"
 msgstr "Anmelden"
 
@@ -959,6 +1186,12 @@ msgstr "Anmelden"
 msgid "home.features.s1.p2.description"
 msgstr "Erfasse, wo du dich beworben hast, Status, Kontakte und nächste Schritte."
 
+#. Manage subscription button label
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx:239
+msgid "settings.billing.manage"
+msgstr "Abo verwalten"
+
 #. Connected accounts section description
 #. js-lingui-explicit-id
 #: src/components/settings/AccountSettings.tsx:308
@@ -967,7 +1200,7 @@ msgstr "Verwalte deine verknüpften Social-Media-Konten."
 
 #. Expand location pill list to show all
 #. js-lingui-explicit-id
-#: src/components/search/filter-bar.tsx:311
+#: src/components/search/filter-bar.tsx:355
 msgid "company.page.showMore"
 msgstr "mehr"
 
@@ -1013,6 +1246,18 @@ msgstr "Neues Passwort"
 msgid "license.data.r2"
 msgstr "Keine kommerzielle Weiterverbreitung oder Weiterverkauf ohne Genehmigung."
 
+#. No languages match search in all-languages modal
+#. js-lingui-explicit-id
+#: src/components/settings/JobLanguageModal.tsx:91
+msgid "settings.jobLanguages.modal.noResults"
+msgstr "Keine Sprachen entsprechen deiner Suche."
+
+#. No locations match search in location modal
+#. js-lingui-explicit-id
+#: src/components/search/location-search-modal.tsx:134
+msgid "search.locationModal.noResults"
+msgstr "Keine Standorte gefunden."
+
 #. No locations match search in all-locations modal
 #. js-lingui-explicit-id
 #: src/components/search/location-modal.tsx:149
@@ -1021,7 +1266,7 @@ msgstr "Keine Standorte entsprechen Ihrer Suche."
 
 #. No postings found message on company page
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/company/[slug]/company-page.tsx:280
+#: app/[lang]/(app)/company/[slug]/company-page.tsx:636
 msgid "company.page.noResults"
 msgstr "Keine passenden Stellenanzeigen gefunden."
 
@@ -1031,11 +1276,29 @@ msgstr "Keine passenden Stellenanzeigen gefunden."
 msgid "search.zero.heading"
 msgstr "Keine Ergebnisse für „{query}\" gefunden"
 
+#. No occupations match search in occupation modal
+#. js-lingui-explicit-id
+#: src/components/search/occupation-modal.tsx:175
+msgid "search.occupationModal.noResults"
+msgstr "Keine Berufe gefunden."
+
 #. Empty state message when no jobs are saved
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/app/saved/saved-page.tsx:99
 msgid "saved.empty"
 msgstr "Noch keine gespeicherten Stellen. Speichern Sie Stellen aus den Suchergebnissen, um sie hier zu finden."
+
+#. No seniority levels available
+#. js-lingui-explicit-id
+#: src/components/search/seniority-modal.tsx:75
+msgid "search.seniorityModal.noResults"
+msgstr "Keine Erfahrungsstufen verfügbar."
+
+#. No technologies available or matching search
+#. js-lingui-explicit-id
+#: src/components/search/technology-modal.tsx:111
+msgid "search.technologyModal.noResults"
+msgstr "Keine Technologien gefunden."
 
 #. MIT right 3
 #. js-lingui-explicit-id
@@ -1052,6 +1315,12 @@ msgstr "Keine Gewährleistung — Nutzung auf eigenes Risiko."
 #: src/components/search/request-company.tsx:101
 msgid "app.home.request.issueWarning"
 msgstr "Hinweis: Wir konnten kein Tracking-Issue erstellen, aber Ihre Anfrage wurde gespeichert."
+
+#. Dismiss upgrade banner button
+#. js-lingui-explicit-id
+#: src/components/UpgradeBanner.tsx:55
+msgid "plans.followLimit.ok"
+msgstr "Ok"
 
 #. Cookie banner accept button
 #. js-lingui-explicit-id
@@ -1127,26 +1396,26 @@ msgstr "Unsere Haltung zur Automatisierung"
 
 #. TOC: Overview
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:22
-msgid "license.toc.overview"
-msgstr "Überblick"
-
-#. TOC: Overview
-#. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:27
 msgid "indexing.toc.overview"
 msgstr "Überblick"
 
-#. Table of contents aria label
+#. TOC: Overview
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:19
-msgid "license.toc.ariaLabel"
-msgstr "Seiteninhalt"
+#: src/components/LicenseContent.tsx:22
+msgid "license.toc.overview"
+msgstr "Überblick"
 
 #. Table of contents aria label
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:24
 msgid "indexing.toc.ariaLabel"
+msgstr "Seiteninhalt"
+
+#. Table of contents aria label
+#. js-lingui-explicit-id
+#: src/components/LicenseContent.tsx:19
+msgid "license.toc.ariaLabel"
 msgstr "Seiteninhalt"
 
 #. Heading shown on the 404 page
@@ -1223,6 +1492,12 @@ msgstr "pro Monat"
 msgid "settings.account.delete.description"
 msgstr "Lösche dein Konto und alle zugehörigen Daten dauerhaft. Diese Aktion kann nicht rückgängig gemacht werden."
 
+#. Plan section heading in billing settings
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx:191
+msgid "settings.billing.plan.title"
+msgstr "Abo"
+
 #. Error when company request input is empty
 #. Error when company request input is empty
 #. Error when company request input is empty
@@ -1261,6 +1536,12 @@ msgstr "Bitte gib ein Passwort ein"
 msgid "app.home.request.error.invalid"
 msgstr "Bitte geben Sie einen gültigen Firmennamen oder eine URL ein."
 
+#. Error when email field is empty
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/forgot-password/page.tsx:27
+msgid "auth.forgotPassword.error.required"
+msgstr "Bitte geben Sie Ihre E-Mail-Adresse ein"
+
 #. Error when required fields are empty
 #. js-lingui-explicit-id
 #: src/components/AuthForm.tsx:45
@@ -1272,6 +1553,12 @@ msgstr "Bitte fülle alle Felder aus"
 #: src/components/settings/AccountSettings.tsx:33
 msgid "settings.account.loginRequired"
 msgstr "Bitte melde dich an, um deine Kontoeinstellungen zu verwalten."
+
+#. Message when user must log in to see billing settings
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx:27
+msgid "settings.billing.loginRequired"
+msgstr "Bitte melden Sie sich an, um Ihre Abrechnungseinstellungen zu verwalten."
 
 #. Feature: paste a link description
 #. js-lingui-explicit-id
@@ -1285,18 +1572,18 @@ msgstr "Verweise uns auf eine beliebige Karriereseite oder ein Notion-Jobboard u
 msgid "search.detail.notFound"
 msgstr "Stelle nicht gefunden."
 
-#. Pricing section eyebrow
-#. js-lingui-explicit-id
-#: src/components/Pricing.tsx:101
-msgid "home.pricing.eyebrow"
-msgstr "Preise"
-
 #. Nav link: Pricing
 #. Nav link: Pricing
 #. js-lingui-explicit-id
 #: src/components/Header.tsx:61
 #: src/components/MobileMenu.tsx:86
 msgid "common.nav.pricing"
+msgstr "Preise"
+
+#. Pricing section eyebrow
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx:101
+msgid "home.pricing.eyebrow"
 msgstr "Preise"
 
 #. Privacy policy page eyebrow
@@ -1326,6 +1613,12 @@ msgstr "Datenschutzrichtlinie"
 #. js-lingui-explicit-id
 #: src/components/Pricing.tsx:68
 msgid "home.pricing.pro.name"
+msgstr "Pro"
+
+#. Pro plan name
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx:208
+msgid "settings.billing.plan.pro"
 msgstr "Pro"
 
 #. Nav link: Product
@@ -1395,8 +1688,8 @@ msgstr "Deine Änderungen weiterverbreiten, solange du den MIT-Hinweis beifügst
 #. Location type label for regions
 #. Location type label for regions
 #. js-lingui-explicit-id
-#: src/components/search/filter-bar.tsx:29
 #: src/components/search/filter-bar.tsx:31
+#: src/components/search/filter-bar.tsx:33
 #: src/components/search/location-pills.tsx:29
 #: src/components/search/location-pills.tsx:31
 msgid "location.type.region"
@@ -1458,6 +1751,18 @@ msgstr "Erneut senden in {cooldown}s"
 msgid "auth.verify.resend"
 msgstr "Bestätigungs-E-Mail erneut senden"
 
+#. Reset salary filter
+#. js-lingui-explicit-id
+#: src/components/search/salary-modal.tsx:308
+msgid "search.salaryModal.reset"
+msgstr "Zurücksetzen"
+
+#. Reset experience filter
+#. js-lingui-explicit-id
+#: src/components/search/experience-modal.tsx:240
+msgid "search.experienceModal.reset"
+msgstr "Zurücksetzen"
+
 #. Reset password submit button
 #. js-lingui-explicit-id
 #: app/[lang]/reset-password/page.tsx:153
@@ -1482,6 +1787,30 @@ msgstr "Respektvolles Tempo."
 msgid "indexing.assurances.i2.title"
 msgstr "Robots, Attribution und TDM-Reservation."
 
+#. Label for role/occupation filter in advanced search
+#. js-lingui-explicit-id
+#: src/components/search/advanced-search-panel.tsx:150
+msgid "search.advanced.role"
+msgstr "Beruf"
+
+#. Section header for occupation suggestions in search bar
+#. js-lingui-explicit-id
+#: src/components/search/search-bar.tsx:436
+msgid "search.bar.roles"
+msgstr "Berufe"
+
+#. Label for salary filter in advanced search
+#. js-lingui-explicit-id
+#: src/components/search/advanced-search-panel.tsx:165
+msgid "search.advanced.salary"
+msgstr "Gehalt"
+
+#. Title for salary filter modal
+#. js-lingui-explicit-id
+#: src/components/search/salary-modal.tsx:240
+msgid "search.salaryModal.title"
+msgstr "Gehaltsspanne"
+
 #. Aria label for save button
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/app/saved/saved-page.tsx:161
@@ -1493,6 +1822,12 @@ msgstr "Job speichern"
 #: src/components/search/save-button.tsx:21
 msgid "search.save.save"
 msgstr "Job speichern"
+
+#. Free plan feature: save jobs
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx:149
+msgid "settings.billing.free.f3"
+msgstr "Jobs speichern"
 
 #. Feature: saved searches description
 #. js-lingui-explicit-id
@@ -1542,6 +1877,25 @@ msgstr "Speichern…"
 msgid "app.header.nav.search"
 msgstr "Suche"
 
+#. Placeholder for search bar when on company page
+#. js-lingui-explicit-id
+#. placeholder {0}: company.name
+#: app/[lang]/(app)/company/[slug]/company-page.tsx:154
+msgid "company.page.searchPlaceholder"
+msgstr "Suchen bei {0}..."
+
+#. Placeholder for search input in all-languages modal
+#. js-lingui-explicit-id
+#: src/components/settings/JobLanguageModal.tsx:77
+msgid "settings.jobLanguages.modal.searchPlaceholder"
+msgstr "Sprachen suchen…"
+
+#. Placeholder for search input in global location modal
+#. js-lingui-explicit-id
+#: src/components/search/location-search-modal.tsx:116
+msgid "search.locationModal.searchPlaceholder"
+msgstr "Standorte suchen..."
+
 #. Placeholder for search input in all-locations modal
 #. js-lingui-explicit-id
 #: src/components/search/location-modal.tsx:131
@@ -1550,19 +1904,49 @@ msgstr "Standorte suchen…"
 
 #. Back to search results link on company page
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/company/[slug]/company-page.tsx:202
+#: app/[lang]/(app)/company/[slug]/company-page.tsx:537
 msgid "company.page.backToSearch"
 msgstr "Suchergebnisse"
 
+#. Placeholder for search input in occupation modal
+#. js-lingui-explicit-id
+#: src/components/search/occupation-modal.tsx:157
+msgid "search.occupationModal.searchPlaceholder"
+msgstr "Berufe suchen..."
+
 #. Placeholder for the main search bar
 #. js-lingui-explicit-id
-#: src/components/search/search-bar.tsx:219
+#: src/components/search/search-bar.tsx:382
 msgid "search.bar.placeholder"
 msgstr "Suchen…"
 
+#. Title for the seniority level selection modal
+#. js-lingui-explicit-id
+#: src/components/search/seniority-modal.tsx:56
+msgid "search.seniorityModal.title"
+msgstr "Stufe auswählen"
+
+#. Title for the global location selection modal
+#. js-lingui-explicit-id
+#: src/components/search/location-search-modal.tsx:97
+msgid "search.locationModal.title"
+msgstr "Standort auswählen"
+
+#. Title for the occupation selection modal
+#. js-lingui-explicit-id
+#: src/components/search/occupation-modal.tsx:138
+msgid "search.occupationModal.title"
+msgstr "Beruf auswählen"
+
+#. Title for the technology selection modal
+#. js-lingui-explicit-id
+#: src/components/search/technology-modal.tsx:78
+msgid "search.technologyModal.title"
+msgstr "Technologien auswählen"
+
 #. Language settings description
 #. js-lingui-explicit-id
-#: src/components/settings/GeneralSettings.tsx:80
+#: src/components/settings/GeneralSettings.tsx:186
 msgid "settings.general.language.description"
 msgstr "Wähle deine bevorzugte Sprache."
 
@@ -1571,6 +1955,12 @@ msgstr "Wähle deine bevorzugte Sprache."
 #: src/components/HowWeIndexContent.tsx:137
 msgid "indexing.ingestion.s4.title"
 msgstr "Selektive Speicherung."
+
+#. Send reset link submit button
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/forgot-password/page.tsx:104
+msgid "auth.forgotPassword.button.submit"
+msgstr "Link senden"
 
 #. Reset password button
 #. js-lingui-explicit-id
@@ -1583,6 +1973,12 @@ msgstr "Link senden"
 #: app/[lang]/(auth)/check-email/page.tsx:96
 msgid "auth.verify.resending"
 msgstr "Wird gesendet…"
+
+#. Send reset link button while loading
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/forgot-password/page.tsx:103
+msgid "auth.forgotPassword.button.loading"
+msgstr "Wird gesendet..."
 
 #. Reset password button while loading
 #. js-lingui-explicit-id
@@ -1628,7 +2024,7 @@ msgstr "Einstellungen"
 
 #. Collapse location pill list
 #. js-lingui-explicit-id
-#: src/components/search/filter-bar.tsx:306
+#: src/components/search/filter-bar.tsx:350
 msgid "company.page.showLess"
 msgstr "Weniger anzeigen"
 
@@ -1637,6 +2033,24 @@ msgstr "Weniger anzeigen"
 #: src/components/ui/FormField.tsx:36
 msgid "form.password.show"
 msgstr "Passwort anzeigen"
+
+#. Note showing jobs in specific languages
+#. js-lingui-explicit-id
+#: src/components/search/language-note.tsx:61
+msgid "search.languageNote.specific"
+msgstr "Stellen auf {shownNames}"
+
+#. Note showing jobs in specific languages with overflow count
+#. js-lingui-explicit-id
+#: src/components/search/language-note.tsx:54
+msgid "search.languageNote.withMore"
+msgstr "Stellen auf {shownNames} und {remaining} weiteren"
+
+#. Note showing jobs in all languages
+#. js-lingui-explicit-id
+#: src/components/search/language-note.tsx:42
+msgid "search.languageNote.all"
+msgstr "Stellen in allen Sprachen"
 
 #. Button to go to sign-in after reset
 #. js-lingui-explicit-id
@@ -1652,7 +2066,7 @@ msgstr "Anmelden"
 
 #. Sign-in submit button
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:188
+#: src/components/AuthForm.tsx:195
 msgid "auth.signIn.button.submit"
 msgstr "Anmelden"
 
@@ -1664,7 +2078,7 @@ msgstr "Abmelden"
 
 #. Sign-up submit button
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:185
+#: src/components/AuthForm.tsx:192
 msgid "auth.signUp.button.submit"
 msgstr "Registrieren"
 
@@ -1682,7 +2096,7 @@ msgstr "Registrierung fehlgeschlagen"
 
 #. Sign-in button while loading
 #. js-lingui-explicit-id
-#: src/components/AuthForm.tsx:187
+#: src/components/AuthForm.tsx:194
 msgid "auth.signIn.button.loading"
 msgstr "Anmeldung läuft…"
 
@@ -1709,6 +2123,12 @@ msgstr "Zum Inhalt springen"
 #: app/[lang]/error.tsx:15
 msgid "error.title"
 msgstr "Etwas ist schiefgelaufen"
+
+#. Generic forgot password error
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/forgot-password/page.tsx:43
+msgid "auth.forgotPassword.error.generic"
+msgstr "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut."
 
 #. Generic error when company request fails
 #. Generic error when company request fails
@@ -1769,6 +2189,12 @@ msgstr "Abonniere Updates von Unternehmen, verfolge Bewerbungen und verpasse kei
 msgid "home.hero.description"
 msgstr "Abonniere Updates von Unternehmen, verfolge Bewerbungen und verpasse keine neuen Stellen. Entwickelt, damit du die Kontrolle behältst — nicht damit ein Bot deine Entscheidungen trifft."
 
+#. Subscription settings nav link
+#. js-lingui-explicit-id
+#: src/components/settings/SettingsNav.tsx:31
+msgid "settings.nav.billing"
+msgstr "Abonnement"
+
 #. Aria label for switching to dark mode
 #. js-lingui-explicit-id
 #: src/components/ThemeToggleButton.tsx:26
@@ -1780,6 +2206,18 @@ msgstr "Zum dunklen Modus wechseln"
 #: src/components/ThemeToggleButton.tsx:25
 msgid "common.theme.switchToLight"
 msgstr "Zum hellen Modus wechseln"
+
+#. Section header for technology suggestions in search bar
+#. js-lingui-explicit-id
+#: src/components/search/search-bar.tsx:506
+msgid "search.bar.technologies"
+msgstr "Technologien"
+
+#. Label for technology filter in advanced search
+#. js-lingui-explicit-id
+#: src/components/search/advanced-search-panel.tsx:159
+msgid "search.advanced.technology"
+msgstr "Technologie"
 
 #. Terms page eyebrow
 #. js-lingui-explicit-id
@@ -1847,7 +2285,7 @@ msgstr "Die Kurzfassung"
 
 #. Theme settings section heading
 #. js-lingui-explicit-id
-#: src/components/settings/GeneralSettings.tsx:47
+#: src/components/settings/GeneralSettings.tsx:153
 msgid "settings.general.theme.title"
 msgstr "Design"
 
@@ -1893,6 +2331,18 @@ msgstr "In aktiver Entwicklung"
 msgid "privacy.rights.intro"
 msgstr "Nach DSGVO kannst du eine Kopie deiner Daten anfordern, sie korrigieren oder löschen lassen, sie exportieren oder der Verarbeitung widersprechen. Löschst du dein Konto, werden alle Daten innerhalb von 30 Tagen gelöscht."
 
+#. Unlimited usage label
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx:111
+msgid "settings.billing.usage.unlimited"
+msgstr "Unbegrenzt"
+
+#. Pro plan feature: unlimited follows
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx:153
+msgid "settings.billing.pro.f1"
+msgstr "Unbegrenzt Unternehmen folgen"
+
 #. Pro feature: unlimited subscriptions
 #. js-lingui-explicit-id
 #: src/components/Pricing.tsx:80
@@ -1923,6 +2373,30 @@ msgstr "E-Mail aktualisieren"
 msgid "settings.account.email.description"
 msgstr "Aktualisiere die mit deinem Konto verknüpfte E-Mail-Adresse."
 
+#. Link to upgrade to Pro plan
+#. js-lingui-explicit-id
+#: src/components/UpgradeBanner.tsx:63
+msgid "plans.followLimit.upgrade"
+msgstr "Auf Pro upgraden"
+
+#. Upgrade button label
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx:228
+msgid "settings.billing.upgrade"
+msgstr "Auf Pro upgraden"
+
+#. Upgrading button loading state
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx:227
+msgid "settings.billing.upgrading"
+msgstr "Upgrade l\\u00e4uft\\u2026"
+
+#. Usage section heading in billing settings
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx:93
+msgid "settings.billing.usage.title"
+msgstr "Nutzung"
+
 #. Success message after email change request
 #. js-lingui-explicit-id
 #: src/components/settings/AccountSettings.tsx:217
@@ -1946,12 +2420,6 @@ msgstr "Bestätigung fehlgeschlagen"
 #: app/[lang]/verify-email/page.tsx:48
 msgid "auth.verify.loading"
 msgstr "E-Mail wird bestätigt…"
-
-#. Link to original job posting
-#. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:155
-msgid "search.detail.viewOriginal"
-msgstr "Originalanzeige ansehen"
 
 #. What the service does
 #. js-lingui-explicit-id
@@ -2025,6 +2493,16 @@ msgstr "Willkommen zurück"
 msgid "app.home.request.heading"
 msgstr "Welches Unternehmen sollen wir verfolgen?"
 
+#. Years abbreviation
+#. Years abbreviation
+#. Years abbreviation
+#. js-lingui-explicit-id
+#: src/components/search/experience-modal.tsx:170
+#: src/components/search/experience-modal.tsx:171
+#: src/components/search/experience-modal.tsx:172
+msgid "search.experienceModal.years"
+msgstr "Jahre"
+
 #. Account deletion
 #. js-lingui-explicit-id
 #: src/components/TermsContent.tsx:47
@@ -2060,6 +2538,30 @@ msgstr "Du musst mindestens 16 Jahre alt sein, um Job Seek zu nutzen."
 #: src/components/settings/AccountSettings.tsx:85
 msgid "settings.account.password.setDescription"
 msgstr "Du hast dich mit einem Social-Media-Konto angemeldet. Setze ein Passwort, um E-Mail-Änderungen und zusätzliche Sicherheit zu ermöglichen."
+
+#. Banner shown when user hits free plan follow limit
+#. js-lingui-explicit-id
+#: src/components/UpgradeBanner.tsx:42
+msgid "plans.followLimit.banner"
+msgstr "Sie folgen {followCount} von {followMax} Unternehmen im kostenlosen Plan."
+
+#. Tooltip when follow limit is reached
+#. js-lingui-explicit-id
+#: src/components/search/follow-button.tsx:22
+msgid "plans.followLimit.reached"
+msgstr "Sie haben das Folge-Limit des kostenlosen Plans erreicht"
+
+#. Warning when follow limit is reached
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx:126
+msgid "settings.billing.usage.limitReached"
+msgstr "Sie haben Ihr Folge-Limit erreicht. Upgraden Sie, um mehr Unternehmen zu folgen."
+
+#. Usage section description
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx:98
+msgid "settings.billing.usage.description"
+msgstr "Ihre aktuelle Ressourcennutzung in diesem Plan."
 
 #. Description after successful email verification
 #. js-lingui-explicit-id

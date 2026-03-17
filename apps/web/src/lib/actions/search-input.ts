@@ -1,6 +1,8 @@
 "use server";
 
 import { resolveLocationSlugs, suggestLocations, type LocationSuggestion } from "@/lib/actions/locations";
+import { resolveOccupationSlugs, resolveSenioritySlugs, suggestOccupations, suggestSeniorities, suggestTechnologies, resolveTechnologySlugs } from "@/lib/actions/taxonomy";
+import type { TaxonomySuggestion } from "@/lib/actions/taxonomy";
 import type { SelectedLocation } from "@/components/search/location-pills";
 
 export type ParsedSearchLocation = SelectedLocation;
@@ -8,6 +10,9 @@ export type ParsedSearchLocation = SelectedLocation;
 export interface ParsedSearchFilters {
   keywords: string[];
   locations: ParsedSearchLocation[];
+  occupations: { id: number; slug: string; name: string }[];
+  seniorities: { id: number; slug: string; name: string }[];
+  technologies: { id: number; slug: string; name: string }[];
 }
 
 function uniqCaseInsensitive(values: string[]): string[] {
@@ -31,20 +36,22 @@ function normalizeLocationText(value: string): string {
     .replace(/[^\p{L}\p{N}]+/gu, "");
 }
 
-export function tokenizeSearchInput(input: string): string[] {
-  const tokens = input
+function splitIntoSegments(input: string): string[] {
+  return input
     .split(/[,\n\r\t/|]+|-+/)
     .map((part) => part.trim())
     .filter(Boolean);
+}
 
-  return uniqCaseInsensitive(tokens);
+function splitIntoWords(segment: string): string[] {
+  return segment.split(/\s+/).filter(Boolean);
 }
 
 function exactLocationMatch(
-  token: string,
+  text: string,
   suggestions: LocationSuggestion[],
 ): LocationSuggestion | null {
-  const normalizedToken = normalizeLocationText(token);
+  const normalizedToken = normalizeLocationText(text);
 
   for (const suggestion of suggestions) {
     const candidates = [
@@ -61,9 +68,66 @@ function exactLocationMatch(
   return null;
 }
 
+function exactTaxonomyMatch(
+  text: string,
+  suggestions: TaxonomySuggestion[],
+): TaxonomySuggestion | null {
+  const normalizedToken = text.toLowerCase().trim();
+  for (const suggestion of suggestions) {
+    if (
+      suggestion.name.toLowerCase() === normalizedToken ||
+      suggestion.slug === normalizedToken ||
+      (suggestion.matchedName && suggestion.matchedName.toLowerCase() === normalizedToken)
+    ) {
+      return suggestion;
+    }
+  }
+  return null;
+}
+
+/**
+ * Check if word at index `i` is part of a multi-word occupation pair/triplet
+ * with adjacent unconsumed words. If so, defer the single-word match so Pass 3
+ * can match the more specific occupation (e.g. "Backend Developer" instead of
+ * generic "Developer" → Software Engineer).
+ */
+function wordInMultiWordOccupation(
+  words: string[],
+  i: number,
+  consumed: boolean[],
+  occMap: Map<string, TaxonomySuggestion[]>,
+): boolean {
+  if (i > 0 && !consumed[i - 1]) {
+    const pair = `${words[i - 1]} ${words[i]}`;
+    if (exactTaxonomyMatch(pair, occMap.get(pair) ?? [])) return true;
+  }
+  if (i < words.length - 1 && !consumed[i + 1]) {
+    const pair = `${words[i]} ${words[i + 1]}`;
+    if (exactTaxonomyMatch(pair, occMap.get(pair) ?? [])) return true;
+  }
+  if (words.length <= 10) {
+    if (i < words.length - 2 && !consumed[i + 1] && !consumed[i + 2]) {
+      const t = `${words[i]} ${words[i + 1]} ${words[i + 2]}`;
+      if (exactTaxonomyMatch(t, occMap.get(t) ?? [])) return true;
+    }
+    if (i > 0 && i < words.length - 1 && !consumed[i - 1] && !consumed[i + 1]) {
+      const t = `${words[i - 1]} ${words[i]} ${words[i + 1]}`;
+      if (exactTaxonomyMatch(t, occMap.get(t) ?? [])) return true;
+    }
+    if (i > 1 && !consumed[i - 1] && !consumed[i - 2]) {
+      const t = `${words[i - 2]} ${words[i - 1]} ${words[i]}`;
+      if (exactTaxonomyMatch(t, occMap.get(t) ?? [])) return true;
+    }
+  }
+  return false;
+}
+
 export async function parseSearchFilters(params: {
   q?: string;
   loc?: string;
+  occ?: string;
+  sen?: string;
+  tech?: string;
   locale: string;
   userLat?: number;
   userLng?: number;
@@ -77,9 +141,47 @@ export async function parseSearchFilters(params: {
       )
     : [];
 
-  const resolvedExplicitLocs = explicitLocSlugs.length > 0
-    ? await resolveLocationSlugs(explicitLocSlugs, params.locale)
-    : new Map();
+  const explicitOccSlugs = params.occ
+    ? uniqCaseInsensitive(
+        params.occ
+          .split(",")
+          .map((slug) => slug.trim())
+          .filter(Boolean),
+      )
+    : [];
+
+  const explicitSenSlugs = params.sen
+    ? uniqCaseInsensitive(
+        params.sen
+          .split(",")
+          .map((slug) => slug.trim())
+          .filter(Boolean),
+      )
+    : [];
+
+  const explicitTechSlugs = params.tech
+    ? uniqCaseInsensitive(
+        params.tech
+          .split(",")
+          .map((slug) => slug.trim())
+          .filter(Boolean),
+      )
+    : [];
+
+  const [resolvedExplicitLocs, resolvedOccs, resolvedSens, resolvedTechs] = await Promise.all([
+    explicitLocSlugs.length > 0
+      ? resolveLocationSlugs(explicitLocSlugs, params.locale)
+      : Promise.resolve(new Map()),
+    explicitOccSlugs.length > 0
+      ? resolveOccupationSlugs(explicitOccSlugs, params.locale)
+      : Promise.resolve(new Map()),
+    explicitSenSlugs.length > 0
+      ? resolveSenioritySlugs(explicitSenSlugs, params.locale)
+      : Promise.resolve(new Map()),
+    explicitTechSlugs.length > 0
+      ? resolveTechnologySlugs(explicitTechSlugs)
+      : Promise.resolve(new Map()),
+  ]);
 
   const locations: ParsedSearchLocation[] = explicitLocSlugs
     .map((slug) => resolvedExplicitLocs.get(slug))
@@ -92,45 +194,184 @@ export async function parseSearchFilters(params: {
       parentName: location.parentName,
     }));
 
+  const occupations: { id: number; slug: string; name: string }[] = explicitOccSlugs
+    .map((slug) => resolvedOccs.get(slug))
+    .filter((o): o is NonNullable<typeof o> => o !== undefined);
+
+  const seniorities: { id: number; slug: string; name: string }[] = explicitSenSlugs
+    .map((slug) => resolvedSens.get(slug))
+    .filter((s): s is NonNullable<typeof s> => s !== undefined);
+
+  const technologies: { id: number; slug: string; name: string }[] = explicitTechSlugs
+    .map((slug) => resolvedTechs.get(slug))
+    .filter((t): t is NonNullable<typeof t> => t !== undefined);
+
   const locationIds = new Set(locations.map((location) => location.id));
-  const tokens = params.q ? tokenizeSearchInput(params.q) : [];
-  if (tokens.length === 0) {
-    return { keywords: [], locations };
+  const occupationIds = new Set(occupations.map((o) => o.id));
+  const seniorityIds = new Set(seniorities.map((s) => s.id));
+  const technologyIds = new Set(technologies.map((t) => t.id));
+
+  // --- Word-level tokenization ---
+  const segments = params.q ? splitIntoSegments(params.q) : [];
+  const segmentWords = segments.map(splitIntoWords);
+
+  // Collect unique single words and all candidates (singles + pairs + triplets)
+  const singleSet = new Set<string>();
+  const allCandidateSet = new Set<string>();
+  for (const words of segmentWords) {
+    for (const w of words) {
+      singleSet.add(w);
+      allCandidateSet.add(w);
+    }
+    for (let i = 0; i < words.length - 1; i++) {
+      allCandidateSet.add(`${words[i]} ${words[i + 1]}`);
+    }
+    if (words.length <= 10) {
+      for (let i = 0; i < words.length - 2; i++) {
+        allCandidateSet.add(`${words[i]} ${words[i + 1]} ${words[i + 2]}`);
+      }
+    }
+  }
+  const singles = [...singleSet];
+  const allCandidates = [...allCandidateSet];
+  if (singles.length === 0) {
+    return { keywords: [], locations, occupations, seniorities, technologies };
   }
 
-  const suggestionLists = await Promise.all(
-    tokens.map((token) =>
-      suggestLocations({
-        query: token,
-        locale: params.locale,
-        userLat: params.userLat,
-        userLng: params.userLng,
-      }),
+  // All three suggest batches run in parallel. Locations use an expensive
+  // recursive CTE but are only queried for singles. Occupations are queried for
+  // ALL candidates (singles + pairs + triplets) for multi-word matching.
+  const [senResults, locResults, occResults, techResults] = await Promise.all([
+    Promise.all(
+      singles.map((c) => suggestSeniorities({ query: c, locale: params.locale })),
     ),
-  );
+    Promise.all(
+      singles.map((c) =>
+        suggestLocations({
+          query: c,
+          locale: params.locale,
+          userLat: params.userLat,
+          userLng: params.userLng,
+        }),
+      ),
+    ),
+    Promise.all(
+      allCandidates.map((c) => suggestOccupations({ query: c, locale: params.locale })),
+    ),
+    Promise.all(
+      singles.map((c) => suggestTechnologies({ query: c, locale: params.locale })),
+    ),
+  ]);
+
+  // Build lookup maps
+  const locMap = new Map<string, LocationSuggestion[]>();
+  const occMap = new Map<string, TaxonomySuggestion[]>();
+  const senMap = new Map<string, TaxonomySuggestion[]>();
+  const techMap = new Map<string, TaxonomySuggestion[]>();
+  singles.forEach((c, i) => {
+    locMap.set(c, locResults[i]);
+    senMap.set(c, senResults[i]);
+    techMap.set(c, techResults[i]);
+  });
+  allCandidates.forEach((c, i) => {
+    occMap.set(c, occResults[i]);
+  });
 
   const keywords: string[] = [];
 
-  tokens.forEach((token, index) => {
-    const match = exactLocationMatch(token, suggestionLists[index]);
-    if (!match) {
-      keywords.push(token);
-      return;
-    }
-    if (locationIds.has(match.id)) return;
+  for (const words of segmentWords) {
+    const consumed = new Array<boolean>(words.length).fill(false);
 
-    locationIds.add(match.id);
-    locations.push({
-      id: match.id,
-      slug: match.slug,
-      name: match.name,
-      type: match.type as SelectedLocation["type"],
-      parentName: match.parentName,
-    });
-  });
+    // --- Pass 2: Single-word matching (seniority → location → occupation) ---
+    for (let i = 0; i < words.length; i++) {
+      if (consumed[i]) continue;
+      const word = words[i];
+
+      const senMatch = exactTaxonomyMatch(word, senMap.get(word) ?? []);
+      if (senMatch) {
+        if (!seniorityIds.has(senMatch.id)) {
+          seniorityIds.add(senMatch.id);
+          seniorities.push({ id: senMatch.id, slug: senMatch.slug, name: senMatch.name });
+        }
+        consumed[i] = true;
+        continue;
+      }
+
+      const techMatch = exactTaxonomyMatch(word, techMap.get(word) ?? []);
+      if (techMatch) {
+        if (!technologyIds.has(techMatch.id)) {
+          technologyIds.add(techMatch.id);
+          technologies.push({ id: techMatch.id, slug: techMatch.slug, name: techMatch.name });
+        }
+        consumed[i] = true;
+        continue;
+      }
+
+      const locMatch = exactLocationMatch(word, locMap.get(word) ?? []);
+      if (locMatch) {
+        if (!locationIds.has(locMatch.id)) {
+          locationIds.add(locMatch.id);
+          locations.push({
+            id: locMatch.id, slug: locMatch.slug, name: locMatch.name,
+            type: locMatch.type as SelectedLocation["type"], parentName: locMatch.parentName,
+          });
+        }
+        consumed[i] = true;
+        continue;
+      }
+
+      // Defer if this word is part of a multi-word occupation (e.g. "Backend Developer")
+      // so Pass 3 can match the specific child instead of the generic parent.
+      const occMatch = exactTaxonomyMatch(word, occMap.get(word) ?? []);
+      if (occMatch && !wordInMultiWordOccupation(words, i, consumed, occMap)) {
+        if (!occupationIds.has(occMatch.id)) {
+          occupationIds.add(occMatch.id);
+          occupations.push({ id: occMatch.id, slug: occMatch.slug, name: occMatch.name });
+        }
+        consumed[i] = true;
+        continue;
+      }
+    }
+
+    // --- Pass 3: Multi-word occupation fallback (triplets then pairs, only ALL-unmatched) ---
+    if (words.length <= 10) {
+      for (let i = 0; i < words.length - 2; i++) {
+        if (consumed[i] || consumed[i + 1] || consumed[i + 2]) continue;
+        const triplet = `${words[i]} ${words[i + 1]} ${words[i + 2]}`;
+        const match = exactTaxonomyMatch(triplet, occMap.get(triplet) ?? []);
+        if (match) {
+          if (!occupationIds.has(match.id)) {
+            occupationIds.add(match.id);
+            occupations.push({ id: match.id, slug: match.slug, name: match.name });
+          }
+          consumed[i] = consumed[i + 1] = consumed[i + 2] = true;
+        }
+      }
+    }
+    for (let i = 0; i < words.length - 1; i++) {
+      if (consumed[i] || consumed[i + 1]) continue;
+      const pair = `${words[i]} ${words[i + 1]}`;
+      const match = exactTaxonomyMatch(pair, occMap.get(pair) ?? []);
+      if (match) {
+        if (!occupationIds.has(match.id)) {
+          occupationIds.add(match.id);
+          occupations.push({ id: match.id, slug: match.slug, name: match.name });
+        }
+        consumed[i] = consumed[i + 1] = true;
+      }
+    }
+
+    // Remaining unmatched words → keywords
+    for (let i = 0; i < words.length; i++) {
+      if (!consumed[i]) keywords.push(words[i]);
+    }
+  }
 
   return {
-    keywords,
+    keywords: uniqCaseInsensitive(keywords),
     locations,
+    occupations,
+    seniorities,
+    technologies,
   };
 }

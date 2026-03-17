@@ -243,7 +243,7 @@ class Workspace:
     logo_type: str = ""
 
     # Company enrichment (auto-filled from JSON-LD/Wikidata, manual override via ws set)
-    description: str = ""
+    descriptions: dict[str, str] = field(default_factory=dict)
     industry: int | None = None
     employee_count_range: int | None = None
     founded_year: int | None = None
@@ -287,7 +287,7 @@ class Workspace:
                 "logo_url": self.logo_url,
                 "icon_url": self.icon_url,
                 "logo_type": self.logo_type,
-                "description": self.description,
+                "descriptions": self.descriptions or None,
                 "industry": self.industry,
                 "employee_count_range": self.employee_count_range,
                 "founded_year": self.founded_year,
@@ -302,6 +302,11 @@ class Workspace:
     def from_dict(cls, data: dict[str, Any]) -> Workspace:
         git = data.get("git") or {}
         company = data.get("company") or {}
+        # Backward compat: migrate old single-string "description" to "descriptions" dict
+        old_desc = company.get("description", "")
+        new_descs = company.get("descriptions") or {}
+        if old_desc and not new_descs:
+            new_descs = {"en": old_desc}
         return cls(
             slug=data["slug"],
             created_at=data.get("created_at", ""),
@@ -314,7 +319,7 @@ class Workspace:
             logo_url=company.get("logo_url", ""),
             icon_url=company.get("icon_url", ""),
             logo_type=company.get("logo_type", ""),
-            description=company.get("description", ""),
+            descriptions=new_descs,
             industry=company.get("industry"),
             employee_count_range=company.get("employee_count_range"),
             founded_year=company.get("founded_year"),

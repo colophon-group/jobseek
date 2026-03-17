@@ -4,7 +4,7 @@ LLM-based structured data extraction from job posting descriptions. Runs as a ba
 
 ## Overview
 
-The enricher reads job description HTML from R2, sends it through an LLM batch API, and writes structured fields back to the `job_posting.enrichment` JSONB column. It extracts information that scrapers cannot reliably determine from raw HTML — seniority, education requirements, visa policy, and benefit categorization.
+The enricher reads job description HTML from R2, sends it through an LLM batch API, and writes structured fields back to the `job_posting.enrichment` JSONB column. It extracts information that scrapers cannot reliably determine from raw HTML — seniority, education requirements, work permit policy, and benefit categorization.
 
 ## Extracted Fields
 
@@ -50,13 +50,29 @@ Years of experience requirement. Object with `min` and `max` (integers, either c
 | "5 years" | `{"min": 5, "max": 5}` |
 | Not mentioned | `null` |
 
-### `visa_sponsorship`
+### `occupation`
 
-Whether the employer offers visa/work permit sponsorship.
+Canonical job function/role in English, without seniority qualifiers. The enricher guesses a free-text English title; a **separate resolution agent** maps it to an `occupation_id` FK via the `occupations.csv` taxonomy.
+
+- Strips seniority: "Senior", "Junior", "Lead", "Staff", "Principal", "Head of", "VP of"
+- Strips gender markers: (m/f/d), :in, etc.
+- Always English regardless of posting language
+
+| Input title | Output |
+|---|---|
+| "Senior Software Engineer" | `"Software Engineer"` |
+| "Junior Data Analyst (m/f/d)" | `"Data Analyst"` |
+| "Werkstudent:in Frontend-Entwicklung" | `"Frontend Developer"` |
+
+The `occupation_id` column on `job_posting` is populated by the resolver, not the enricher.
+
+### `work_permit_support`
+
+Whether the employer offers to support work authorization (visa sponsorship, work permit assistance, etc.).
 
 | Value | Meaning |
 |---|---|
-| `yes` | Explicitly offered ("we sponsor visas", "visa support available") |
+| `yes` | Explicitly offered ("we sponsor visas", "work permit assistance", "Arbeitsbewilligung wird unterstützt") |
 | `no` | Requires existing authorization ("must have work permit", "valid work authorization required") |
 | `null` | Not mentioned |
 
@@ -141,12 +157,13 @@ Enrichment data is stored in `job_posting.enrichment` as JSONB:
 
 ```json
 {
-  "v": 2,
+  "v": 4,
   "extracted_at": "2026-03-11T12:00:00+00:00",
   "seniority": "senior",
   "education": "bachelor",
   "experience": {"min": 5, "max": null},
-  "visa_sponsorship": null,
+  "occupation": "Software Engineer",
+  "work_permit_support": null,
   "technologies": ["Python", "PostgreSQL", "Kubernetes"],
   "keywords": ["backend engineer", "fintech", "payments"],
   "benefits": ["equity", "bonus", "flexible_hours", "education_budget"]
@@ -163,6 +180,7 @@ The `v` field tracks the schema version. When the schema changes, `ENRICH_VERSIO
 | Locations | `job_posting.location_ids` (GeoNames-backed) |
 | Salary | R2 extras (scraper-extracted); no DB column yet |
 | Industry | `company.industry` (Wikidata-backed FK) |
+| Occupation (resolved) | `job_posting.occupation_id` (taxonomy FK, set by resolver agent) |
 | Employment type | `job_posting.employment_type` (scraper-extracted, normalized) |
 
 ## Commands

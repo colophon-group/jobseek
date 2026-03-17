@@ -36,6 +36,7 @@ from src.workspace.commands.lifecycle import (
     validate,
 )
 from src.workspace.commands.task import task
+from src.workspace.commands.taxonomy import taxonomy_group
 from src.workspace.errors import WorkspaceError
 
 
@@ -60,6 +61,7 @@ ws.add_command(discover)
 ws.add_command(feedback_cmd, name="feedback")
 ws.add_command(reject_config, name="reject-config")
 ws.add_command(task, name="task")
+ws.add_command(taxonomy_group, name="taxonomy")
 
 
 # ── `ws add` group ──────────────────────────────────────────────────────

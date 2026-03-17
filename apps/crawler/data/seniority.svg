@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 200" font-family="system-ui, -apple-system, sans-serif" font-size="12">
+  <style>
+    .header { font-size: 18px; font-weight: 700; fill: #1a1a2e; }
+    .subheader { font-size: 11px; fill: #6b7280; }
+    .level { font-weight: 600; font-size: 12px; fill: #fff; }
+    .aliases { fill: #6b7280; font-size: 9.5px; }
+    .arrow { stroke: #cbd5e1; stroke-width: 1.5; fill: none; marker-end: url(#arrowhead); }
+    .ic { fill: #10b981; rx: 6; }   /* individual contributor green */
+    .mgmt { fill: #6366f1; rx: 6; } /* management purple */
+    .both { fill: #f59e0b; rx: 6; } /* both amber */
+    .track-label { font-size: 9px; font-weight: 600; fill: #94a3b8; letter-spacing: 1px; }
+  </style>
+  <defs>
+    <marker id="arrowhead" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto">
+      <polygon points="0 0, 6 2, 0 4" fill="#cbd5e1"/>
+    </marker>
+  </defs>
+
+  <text x="30" y="30" class="header">Seniority Levels</text>
+  <text x="30" y="46" class="subheader">9 levels | Career progression from intern to executive</text>
+
+  <!-- Track labels -->
+  <text x="30" y="72" class="track-label">INDIVIDUAL CONTRIBUTOR</text>
+  <text x="706" y="72" class="track-label">MANAGEMENT</text>
+
+  <!-- Level boxes -->
+  <rect x="30"  y="82" width="82"  height="32" class="ic"/>
+  <text x="46"  y="103" class="level">Intern</text>
+
+  <line x1="112" y1="98" x2="126" y2="98" class="arrow"/>
+
+  <rect x="128" y="82" width="82"  height="32" class="ic"/>
+  <text x="136" y="103" class="level">Entry Level</text>
+
+  <line x1="210" y1="98" x2="224" y2="98" class="arrow"/>
+
+  <rect x="226" y="82" width="82"  height="32" class="ic"/>
+  <text x="240" y="103" class="level">Mid Level</text>
+
+  <line x1="308" y1="98" x2="322" y2="98" class="arrow"/>
+
+  <rect x="324" y="82" width="82"  height="32" class="ic"/>
+  <text x="346"  y="103" class="level">Senior</text>
+
+  <line x1="406" y1="98" x2="420" y2="98" class="arrow"/>
+
+  <rect x="422" y="82" width="66"  height="32" class="ic"/>
+  <text x="440"  y="103" class="level">Lead</text>
+
+  <line x1="488" y1="98" x2="502" y2="98" class="arrow"/>
+
+  <rect x="504" y="82" width="66"  height="32" class="ic"/>
+  <text x="522"  y="103" class="level">Staff</text>
+
+  <line x1="570" y1="98" x2="584" y2="98" class="arrow"/>
+
+  <rect x="586" y="82" width="82"  height="32" class="ic"/>
+  <text x="600" y="103" class="level">Principal</text>
+
+  <line x1="668" y1="98" x2="682" y2="98" class="arrow"/>
+
+  <rect x="684" y="82" width="82"  height="32" class="mgmt"/>
+  <text x="700" y="103" class="level">Director</text>
+
+  <line x1="766" y1="98" x2="780" y2="98" class="arrow"/>
+
+  <rect x="782" y="82" width="86"  height="32" class="mgmt"/>
+  <text x="796"  y="103" class="level">Executive</text>
+
+  <!-- Aliases row -->
+  <text x="30"  y="132" class="aliases">Internship, Werkstudent,</text>
+  <text x="30"  y="143" class="aliases">Trainee, Apprentice</text>
+
+  <text x="128" y="132" class="aliases">Junior, Jr,</text>
+  <text x="128" y="143" class="aliases">Graduate Program</text>
+
+  <text x="226" y="132" class="aliases">(default)</text>
+
+  <text x="324" y="132" class="aliases">Sr</text>
+
+  <text x="422" y="132" class="aliases">Team Lead,</text>
+  <text x="422" y="143" class="aliases">Tech Lead</text>
+
+  <text x="504" y="132" class="aliases">Staff Engineer,</text>
+  <text x="504" y="143" class="aliases">Staff Scientist</text>
+
+  <text x="586" y="132" class="aliases">Distinguished</text>
+
+  <text x="684" y="132" class="aliases">VP, Head of</text>
+
+  <text x="782" y="132" class="aliases">CEO, CTO, CFO,</text>
+  <text x="782" y="143" class="aliases">Managing Director</text>
+
+  <!-- Legend -->
+  <rect x="30" y="166" width="10" height="10" rx="2" fill="#10b981"/>
+  <text x="44" y="175" class="aliases" style="fill: #374151">Individual Contributor</text>
+  <rect x="150" y="166" width="10" height="10" rx="2" fill="#6366f1"/>
+  <text x="164" y="175" class="aliases" style="fill: #374151">Management</text>
+</svg>

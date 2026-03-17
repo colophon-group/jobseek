@@ -52,7 +52,12 @@ from src.workspace.state import (
     "--job-link-pattern",
     help="Regex pattern matching job-detail links on the selected board",
 )
-@click.option("--description", help="Company description (overrides auto-enrichment)")
+@click.option("--description", help="Company description text for a locale")
+@click.option(
+    "--description-locale",
+    default="en",
+    help="Locale for --description (default: en)",
+)
 @click.option("--industry", type=int, help="Industry ID (see: ws help industries)")
 @click.option("--employee-count-range", type=int, help="Employee count range bucket (1-8)")
 @click.option("--founded-year", type=int, help="Year company was founded")
@@ -68,6 +73,7 @@ def set_(
     board_alias: str | None,
     job_link_pattern: str | None,
     description: str | None,
+    description_locale: str,
     industry: int | None,
     employee_count_range: int | None,
     founded_year: int | None,
@@ -110,8 +116,15 @@ def set_(
 
     # Enrichment fields (manual override)
     if description is not None:
-        ws.description = description
-        updates.append("description")
+        from src.shared.constants import DISPLAY_LOCALES
+
+        if description_locale not in DISPLAY_LOCALES:
+            out.die(
+                f"Invalid locale {description_locale!r}. "
+                f"Valid locales: {', '.join(DISPLAY_LOCALES)}"
+            )
+        ws.descriptions[description_locale] = description
+        updates.append(f"description[{description_locale}]")
     if industry is not None:
         ws.industry = industry
         updates.append(f"industry={industry}")
@@ -173,7 +186,7 @@ def set_(
         and effective_name
         and description is None
         and industry is None
-        and not ws.description
+        and not ws.descriptions.get("en")
         and not ws.industry
     ):
         _auto_enrich(ws)
@@ -546,8 +559,8 @@ def _auto_enrich(ws: Workspace) -> None:
         return
 
     # Apply results to workspace (don't overwrite existing values)
-    if meta.description and not ws.description:
-        ws.description = meta.description
+    if meta.description and not ws.descriptions.get("en"):
+        ws.descriptions["en"] = meta.description
     if meta.industry_id is not None and ws.industry is None:
         ws.industry = meta.industry_id
     if meta.employee_count_range is not None and ws.employee_count_range is None:
@@ -562,7 +575,7 @@ def _auto_enrich(ws: Workspace) -> None:
 
     # Prompt for missing required fields
     missing = []
-    if not ws.description:
+    if not ws.descriptions.get("en"):
         missing.append("description")
     if ws.industry is None:
         missing.append("industry")
@@ -574,6 +587,24 @@ def _auto_enrich(ws: Workspace) -> None:
         )
         if "industry" in missing:
             out.plain("enrich", "Use 'ws help industries' to see available industry IDs.")
+
+    # Remind about non-en locales even when en was auto-filled
+    from src.shared.constants import DISPLAY_LOCALES
+
+    missing_locales = [
+        loc for loc in DISPLAY_LOCALES if loc != "en" and not ws.descriptions.get(loc)
+    ]
+    if ws.descriptions.get("en") and missing_locales:
+        out.warn(
+            "enrich",
+            f"Auto-enrichment only fills English. "
+            f"Still need: {', '.join(missing_locales)}. "
+            f"Translate the English description for each locale:\n"
+            + "\n".join(
+                f'  ws set --description "..." --description-locale {loc}'
+                for loc in missing_locales
+            ),
+        )
 
 
 async def _run_enrichment(website: str, name: str):
@@ -593,20 +624,24 @@ def _show_enrichment_results(ws: Workspace, meta) -> None:
     tier_desc = {"A": "full", "B": "partial", "C": "nothing found"}
     out.info("enrich", f"Tier {meta.tier} ({tier_desc.get(meta.tier, '?')})")
 
-    if ws.description:
-        desc_preview = ws.description[:80] + ("..." if len(ws.description) > 80 else "")
+    en_desc = ws.descriptions.get("en")
+    if en_desc:
+        desc_preview = en_desc[:80] + ("..." if len(en_desc) > 80 else "")
         out.plain("enrich", f"  description: {desc_preview}")
     if ws.industry is not None:
         name = get_industry_name(ws.industry)
         out.plain("enrich", f"  industry: {ws.industry} — {name}")
     elif meta.industry_raw:
         out.warn("enrich", f"  industry: raw={meta.industry_raw!r} — no match in industries.csv")
+        out.plain(
+            "enrich",
+            "  Search: ws taxonomy search industries <query>\n"
+            "  Or add: ws taxonomy add industries --en ... --de ... --fr ... --it ...",
+        )
     if ws.employee_count_range is not None:
         out.plain("enrich", f"  employees: {range_to_label(ws.employee_count_range)}")
     if ws.founded_year is not None:
         out.plain("enrich", f"  founded: {ws.founded_year}")
-    if meta.hq_location_name:
-        out.plain("enrich", f"  hq: {meta.hq_location_name}")
     if meta.wikidata_id:
         out.plain("enrich", f"  wikidata: {meta.wikidata_id}")
 
@@ -616,7 +651,10 @@ def _show_enrichment_manual_hint() -> None:
     out.plain(
         "enrich",
         "Fill required fields manually:\n"
-        '  ws set --description "<company description>"\n'
+        '  ws set --description "English description"\n'
+        '  ws set --description "German description" --description-locale de\n'
+        '  ws set --description "French description" --description-locale fr\n'
+        '  ws set --description "Italian description" --description-locale it\n'
         "  ws set --industry <id>  (see: ws help industries)\n"
         "Optional:\n"
         "  ws set --employee-count-range <1-8> --founded-year <YYYY>",

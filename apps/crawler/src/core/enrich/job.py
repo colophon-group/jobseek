@@ -13,7 +13,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-ENRICH_VERSION = 2
+ENRICH_VERSION = 4
 
 MAX_INPUT_CHARS = 60_000  # ~15K tokens
 
@@ -40,7 +40,7 @@ Education = Literal[
     "doctorate",
 ]
 
-VisaSponsorship = Literal["yes", "no"]
+WorkPermitSupport = Literal["yes", "no"]
 
 Benefit = Literal[
     "equity",
@@ -84,7 +84,8 @@ class EnrichmentResult(BaseModel):
     seniority: Seniority | None = None
     education: Education | None = None
     experience: Experience | None = None
-    visa_sponsorship: VisaSponsorship | None = None
+    occupation: str | None = None
+    work_permit_support: WorkPermitSupport | None = None
     technologies: list[str] | None = None
     keywords: list[str] | None = None
     benefits: list[Benefit] | None = None
@@ -128,9 +129,20 @@ experience — Integer years only.
   "1-2 years" → {"min": 1, "max": 2}.
   If only a single number, set both min and max to that value.
 
-visa_sponsorship — "yes" only if explicitly offered ("we sponsor visas", \
-"visa support available"). "Must have existing work authorization" or \
-"valid work permit required" → "no". If not mentioned → null.
+occupation — The canonical job function/role in English, without seniority qualifiers. \
+Strip "Senior", "Junior", "Lead", "Staff", "Principal", "Head of", "VP of", etc. \
+Strip gender markers like (m/f/d), :in, etc. \
+Examples: "Software Engineer" not "Senior Software Engineer". \
+"Data Analyst" not "Junior Data Analyst (m/f/d)". \
+"Frontend Developer" not "Werkstudent:in Frontend-Entwicklung". \
+Always use the English canonical name regardless of posting language.
+
+work_permit_support — "yes" only if the employer explicitly offers to support \
+work authorization ("we sponsor visas", "visa support available", \
+"work permit assistance", "Arbeitsbewilligung wird unterstützt", \
+"aide au permis de travail", "supporto per il permesso di lavoro"). \
+"Must have existing work authorization" or "valid work permit required" → "no". \
+If not mentioned → null.
 
 technologies — Specific named tools, frameworks, and languages only. \
 Use proper casing (e.g. "PostgreSQL" not "postgres", "React" not "react"). \

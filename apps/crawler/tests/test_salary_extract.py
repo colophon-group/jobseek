@@ -1,0 +1,239 @@
+"""Tests for salary extraction heuristics."""
+
+from __future__ import annotations
+
+from src.core.salary_extract import SalaryRange, extract_salary, extract_salary_unified
+
+
+class TestAmazonFormat:
+    def test_annual_usd(self):
+        html = "<p>USA, WA, Redmond - 137,300.00 - 185,700.00 USD annually</p>"
+        result = extract_salary(html)
+        assert len(result) == 1
+        assert result[0] == SalaryRange(min=137300, max=185700, currency="USD", period="yearly")
+
+    def test_annual_cad(self):
+        html = "<p>CAN, ON, Toronto - 114,800.00 - 191,800.00 CAD annually</p>"
+        result = extract_salary(html)
+        assert len(result) == 1
+        assert result[0] == SalaryRange(min=114800, max=191800, currency="CAD", period="yearly")
+
+    def test_hourly(self):
+        html = "<p>USA, NV, Sparks - 27.00 - 48.00 USD hourly</p>"
+        result = extract_salary(html)
+        assert len(result) == 1
+        assert result[0] == SalaryRange(min=2700, max=4800, currency="USD", period="hourly")
+
+    def test_multiple_locations(self):
+        html = (
+            "<p>USA, CO, Denver - 153,600.00 - 207,800.00 USD annually<br>"
+            "USA, NM, Virtual Location - New Mexico - 138,200.00 - 187,000.00 USD annually</p>"
+        )
+        result = extract_salary(html)
+        assert len(result) == 2
+
+    def test_unified_picks_widest(self):
+        html = (
+            "<p>USA, CO, Denver - 153,600.00 - 207,800.00 USD annually<br>"
+            "USA, NM, Virtual Location - New Mexico - 138,200.00 - 187,000.00 USD annually</p>"
+        )
+        result = extract_salary_unified(html)
+        assert result is not None
+        assert result.min == 138200
+        assert result.max == 207800
+
+
+class TestDollarRange:
+    def test_google_style(self):
+        html = (
+            "<p>The US base salary range for this full-time position"
+            " is $174,000-$252,000 + bonus + equity + benefits.</p>"
+        )
+        result = extract_salary(html)
+        assert len(result) == 1
+        assert result[0] == SalaryRange(min=174000, max=252000, currency="USD", period="yearly")
+
+    def test_spaced_range(self):
+        html = "<p>The base salary range is $100,000 - $130,000/annual</p>"
+        result = extract_salary(html)
+        assert len(result) >= 1
+        r = result[0]
+        assert r.min == 100000
+        assert r.max == 130000
+
+    def test_em_dash(self):
+        html = "<p>The salary range for this position is $102,000—$210,000 USD</p>"
+        result = extract_salary(html)
+        assert len(result) == 1
+        assert result[0].min == 102000
+        assert result[0].max == 210000
+
+    def test_no_comma(self):
+        html = "<p>Pay range: $115600 - $246900</p>"
+        result = extract_salary(html)
+        assert len(result) == 1
+        assert result[0].min == 115600
+        assert result[0].max == 246900
+
+
+class TestSingleDollar:
+    def test_annually(self):
+        html = "<p>Salary: $105,000 Annually</p>"
+        result = extract_salary(html)
+        assert len(result) == 1
+        assert result[0].min == 105000
+        assert result[0].max is None
+        assert result[0].period == "yearly"
+
+    def test_per_year(self):
+        html = "<p>Base salary $120,000 per year</p>"
+        result = extract_salary(html)
+        assert len(result) >= 1
+        r = [x for x in result if x.max is None]
+        assert any(x.min == 120000 for x in r)
+
+    def test_hourly(self):
+        html = "<p>Rate: $107.40/hr</p>"
+        result = extract_salary(html)
+        assert len(result) == 1
+        assert result[0].min == 10740
+        assert result[0].period == "hourly"
+
+
+class TestEUR:
+    def test_salary_from_eur(self):
+        html = "<p><b>Salary:</b> From 1800 EUR/month</p>"
+        result = extract_salary(html)
+        assert len(result) == 1
+        assert result[0].min == 1800
+        assert result[0].currency == "EUR"
+        assert result[0].period == "monthly"
+
+    def test_gehalt_eur(self):
+        html = "<p>Das Mindestgehalt liegt bei mindestens EUR 46.000 brutto jährlich</p>"
+        result = extract_salary(html)
+        assert len(result) == 1
+        assert result[0].min == 46000
+        assert result[0].period == "yearly"
+
+    def test_eur_monthly_intern(self):
+        html = "<p>For this position we offer a monthly salary of EUR 1507 gross per month.</p>"
+        result = extract_salary(html)
+        assert len(result) == 1
+        assert result[0].min == 1507
+        assert result[0].period == "monthly"
+
+
+class TestGBP:
+    def test_range(self):
+        html = "<p>Salary: £25,500 – £28,000 dependent on programme and location.</p>"
+        result = extract_salary(html)
+        assert len(result) == 1
+        assert result[0] == SalaryRange(min=25500, max=28000, currency="GBP", period="yearly")
+
+    def test_hourly(self):
+        html = "<p>Pay: £12.85 per hour</p>"
+        result = extract_salary(html)
+        assert len(result) == 1
+        assert result[0].min == 1285
+        assert result[0].period == "hourly"
+
+
+class TestFalsePositives:
+    """These must return empty — 0 false positives is the goal."""
+
+    def test_revenue(self):
+        html = "<p>Our company generates $781M in annual revenue.</p>"
+        assert extract_salary(html) == []
+
+    def test_funding(self):
+        html = "<p>We raised $35 million in Series B funding.</p>"
+        assert extract_salary(html) == []
+
+    def test_company_valuation(self):
+        html = "<p>market cap of $11B</p>"
+        assert extract_salary(html) == []
+
+    def test_transport_compensation_eur(self):
+        html = "<p>Transport compensation - 300 euros net per month.</p>"
+        assert extract_salary(html) == []
+
+    def test_referral_bonus_eur(self):
+        html = (
+            "<p>you can receive a reward from 300 to 1000 EUR,"
+            " depending on the seniority of the candidate</p>"
+        )
+        assert extract_salary(html) == []
+
+    def test_gym_benefit(self):
+        html = "<p>£40 for gym and fitness memberships monthly.</p>"
+        assert extract_salary(html) == []
+
+    def test_billion_revenue(self):
+        html = "<p>deals ranging from £50m to over £5bn and our clients include...</p>"
+        assert extract_salary(html) == []
+
+    def test_small_amounts(self):
+        html = "<p>Salary: $500 per week</p>"
+        assert extract_salary(html) == []
+
+    def test_no_salary_info(self):
+        html = (
+            "<p>We are looking for a software engineer to join our"
+            " team. 5+ years of experience required.</p>"
+        )
+        assert extract_salary(html) == []
+
+    def test_eur_benefit_not_salary(self):
+        html = "<p>Essenszuschuss i. H. v. bis zu 112,50 EUR</p>"
+        assert extract_salary(html) == []
+
+    def test_newborn_bonus_not_salary(self):
+        html = "<li>Newborn bonus (€500 per child)</li>"
+        assert extract_salary(html) == []
+
+    def test_referral_reward_not_salary(self):
+        html = "<p>you can receive a reward from 300 to 1000 EUR, depending on the seniority</p>"
+        assert extract_salary(html) == []
+
+
+class TestKSuffix:
+    def test_dollar_k_range(self):
+        html = "<p>Base salary range: $85K-$120K + equity + benefits</p>"
+        result = extract_salary(html)
+        assert len(result) == 1
+        assert result[0].min == 85000
+        assert result[0].max == 120000
+
+    def test_dollar_k_range_lowercase(self):
+        html = "<p>Salary: $90k - $130k annually</p>"
+        result = extract_salary(html)
+        assert len(result) == 1
+        assert result[0].min == 90000
+        assert result[0].max == 130000
+
+
+class TestCHF:
+    def test_chf_apostrophe_range(self):
+        html = "<p>Lohn: CHF 120'000 - 150'000 brutto jährlich</p>"
+        result = extract_salary(html)
+        assert len(result) == 1
+        assert result[0] == SalaryRange(min=120000, max=150000, currency="CHF", period="yearly")
+
+    def test_chf_monthly(self):
+        html = "<p>Gehalt: CHF 8'500 pro Monat brutto</p>"
+        result = extract_salary(html)
+        assert len(result) == 1
+        assert result[0].min == 8500
+        assert result[0].currency == "CHF"
+        assert result[0].period == "monthly"
+
+
+class TestEURBonus:
+    """EUR salary lines that mention bonus should NOT be disqualified."""
+
+    def test_salary_plus_bonus(self):
+        html = "<p><b>Salary:</b> From 3000 EUR/month + bonus</p>"
+        result = extract_salary(html)
+        assert len(result) == 1
+        assert result[0].min == 3000

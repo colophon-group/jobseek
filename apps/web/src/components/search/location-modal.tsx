@@ -225,14 +225,14 @@ export function LocationModal({
                                       <button
                                         key={loc.id}
                                         onClick={() => toggleLocation(loc)}
-                                        className={`inline-flex cursor-pointer items-center gap-1 rounded-full px-2.5 py-0.5 text-xs transition-colors ${
+                                        className={`inline-flex cursor-pointer items-center gap-1 rounded-full px-3 py-1 text-sm transition-colors ${
                                           active
                                             ? "bg-primary/10 text-primary"
                                             : "border border-border-soft text-muted hover:border-primary/30 hover:text-foreground"
                                         }`}
                                       >
                                         {loc.name}
-                                        <span className={`text-[10px] ${active ? "text-primary/70" : "text-muted"}`}>
+                                        <span className={`text-xs ${active ? "text-primary/70" : "text-muted"}`}>
                                           ({loc.count})
                                         </span>
                                       </button>
@@ -253,14 +253,14 @@ export function LocationModal({
                                 <button
                                   key={loc.id}
                                   onClick={() => toggleLocation(loc)}
-                                  className={`inline-flex cursor-pointer items-center gap-1 rounded-full px-2.5 py-0.5 text-xs transition-colors ${
+                                  className={`inline-flex cursor-pointer items-center gap-1 rounded-full px-3 py-1 text-sm transition-colors ${
                                     active
                                       ? "bg-primary/10 text-primary"
                                       : "border border-border-soft text-muted hover:border-primary/30 hover:text-foreground"
                                   }`}
                                 >
                                   {loc.name}
-                                  <span className={`text-[10px] ${active ? "text-primary/70" : "text-muted"}`}>
+                                  <span className={`text-xs ${active ? "text-primary/70" : "text-muted"}`}>
                                     ({loc.count})
                                   </span>
                                 </button>

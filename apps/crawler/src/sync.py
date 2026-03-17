@@ -25,6 +25,7 @@ if TYPE_CHECKING:
 
 from src.config import settings
 from src.core.monitors import api_monitor_types
+from src.core.occupation_resolve import match_occupation
 from src.db import close_pool, create_pool
 from src.shared.logging import setup_logging
 
@@ -34,26 +35,126 @@ log = structlog.get_logger()
 
 DATA_DIR = Path(__file__).parent.parent / "data"
 
+_UPSERT_OCCUPATION_DOMAINS = """
+INSERT INTO occupation_domain (slug)
+SELECT * FROM unnest($1::text[])
+ON CONFLICT (slug) DO NOTHING
+"""
+
+_UPSERT_OCCUPATION_DOMAIN_NAMES = """
+INSERT INTO occupation_domain_name (domain_id, locale, name, is_display)
+SELECT d.id, n.locale, n.name, n.is_display
+FROM unnest($1::text[], $2::text[], $3::text[], $4::boolean[])
+  AS n(slug, locale, name, is_display)
+JOIN occupation_domain d ON d.slug = n.slug
+ON CONFLICT (domain_id, locale, name) DO UPDATE SET
+  is_display = EXCLUDED.is_display
+"""
+
+_SET_OCCUPATION_DOMAINS = """
+UPDATE occupation o
+SET domain_id = d.id
+FROM unnest($1::text[], $2::text[]) AS m(occ_slug, domain_slug)
+JOIN occupation_domain d ON d.slug = m.domain_slug
+WHERE o.slug = m.occ_slug
+  AND o.domain_id IS DISTINCT FROM d.id
+"""
+
+_UPSERT_OCCUPATIONS = """
+INSERT INTO occupation (slug)
+SELECT * FROM unnest($1::text[])
+ON CONFLICT (slug) DO NOTHING
+"""
+
+_SET_OCCUPATION_PARENTS = """
+UPDATE occupation c
+SET parent_id = p.id
+FROM unnest($1::text[], $2::text[]) AS m(child_slug, parent_slug)
+JOIN occupation p ON p.slug = m.parent_slug
+WHERE c.slug = m.child_slug
+  AND c.parent_id IS DISTINCT FROM p.id
+"""
+
+_CLEAR_OCCUPATION_PARENTS = """
+UPDATE occupation
+SET parent_id = NULL
+WHERE parent_id IS NOT NULL
+  AND slug != ALL($1::text[])
+"""
+
+_UPSERT_OCCUPATION_NAMES = """
+INSERT INTO occupation_name (occupation_id, locale, name, is_display)
+SELECT o.id, n.locale, n.name, n.is_display
+FROM unnest($1::text[], $2::text[], $3::text[], $4::boolean[])
+  AS n(slug, locale, name, is_display)
+JOIN occupation o ON o.slug = n.slug
+ON CONFLICT (occupation_id, locale, name) DO UPDATE SET
+  is_display = EXCLUDED.is_display
+"""
+
+_DELETE_STALE_OCCUPATION_NAMES = """
+DELETE FROM occupation_name otn
+WHERE NOT EXISTS (
+  SELECT 1 FROM unnest($1::text[], $2::text[], $3::text[])
+    AS n(slug, locale, name)
+  JOIN occupation o ON o.slug = n.slug
+  WHERE o.id = otn.occupation_id AND otn.locale = n.locale AND otn.name = n.name
+)
+"""
+
+_UPSERT_SENIORITY = """
+INSERT INTO seniority (slug)
+SELECT * FROM unnest($1::text[])
+ON CONFLICT (slug) DO NOTHING
+"""
+
+_UPSERT_SENIORITY_NAMES = """
+INSERT INTO seniority_name (seniority_id, locale, name, is_display)
+SELECT s.id, n.locale, n.name, n.is_display
+FROM unnest($1::text[], $2::text[], $3::text[], $4::boolean[])
+  AS n(slug, locale, name, is_display)
+JOIN seniority s ON s.slug = n.slug
+ON CONFLICT (seniority_id, locale, name) DO UPDATE SET
+  is_display = EXCLUDED.is_display
+"""
+
+_UPSERT_TECHNOLOGIES = """
+INSERT INTO technology (slug, name, category)
+SELECT * FROM unnest($1::text[], $2::text[], $3::text[])
+ON CONFLICT (slug) DO UPDATE SET
+  name = COALESCE(EXCLUDED.name, technology.name),
+  category = COALESCE(EXCLUDED.category, technology.category)
+"""
+
 _UPSERT_INDUSTRIES = """
 INSERT INTO industry (id, name)
 SELECT * FROM unnest($1::smallint[], $2::text[])
 ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name
 """
 
+_UPSERT_INDUSTRY_NAMES = """
+INSERT INTO industry_name (industry_id, locale, name, is_display)
+SELECT i.id, n.locale, n.name, n.is_display
+FROM unnest($1::smallint[], $2::text[], $3::text[], $4::boolean[])
+  AS n(industry_id, locale, name, is_display)
+JOIN industry i ON i.id = n.industry_id
+ON CONFLICT (industry_id, locale, name) DO UPDATE SET
+  is_display = EXCLUDED.is_display
+"""
+
 _UPSERT_COMPANIES = """
 INSERT INTO company (slug, name, website, logo, icon, logo_type,
-                     description, industry, employee_count_range,
+                     industry, employee_count_range,
                      founded_year, extras)
 SELECT * FROM unnest($1::text[], $2::text[], $3::text[], $4::text[],
-                     $5::text[], $6::text[], $7::text[], $8::smallint[],
-                     $9::smallint[], $10::smallint[], $11::jsonb[])
+                     $5::text[], $6::text[], $7::smallint[],
+                     $8::smallint[], $9::smallint[], $10::jsonb[])
 ON CONFLICT (slug) DO UPDATE SET
     name = COALESCE(EXCLUDED.name, company.name),
     website = COALESCE(EXCLUDED.website, company.website),
     logo = COALESCE(EXCLUDED.logo, company.logo),
     icon = COALESCE(EXCLUDED.icon, company.icon),
     logo_type = COALESCE(EXCLUDED.logo_type, company.logo_type),
-    description = COALESCE(EXCLUDED.description, company.description),
     industry = COALESCE(EXCLUDED.industry, company.industry),
     employee_count_range = COALESCE(EXCLUDED.employee_count_range, company.employee_count_range),
     founded_year = COALESCE(EXCLUDED.founded_year, company.founded_year),
@@ -63,6 +164,16 @@ ON CONFLICT (slug) DO UPDATE SET
         ELSE COALESCE(company.extras, '{}'::jsonb)
     END,
     updated_at = now()
+"""
+
+_UPSERT_COMPANY_DESCRIPTIONS = """
+INSERT INTO company_description (company_id, locale, description)
+SELECT c.id, d.locale, d.description
+FROM unnest($1::text[], $2::text[], $3::text[])
+  AS d(slug, locale, description)
+JOIN company c ON c.slug = d.slug
+ON CONFLICT (company_id, locale) DO UPDATE SET
+  description = EXCLUDED.description
 """
 
 _UPSERT_BOARDS = """
@@ -139,6 +250,33 @@ def _int_or_none(val: str | None) -> int | None:
         return None
 
 
+def _load_occupation_domains() -> pl.DataFrame:
+    path = DATA_DIR / "occupation_domains.csv"
+    if not path.exists():
+        return pl.DataFrame()
+    df = pl.read_csv(path, infer_schema_length=0)
+    log.info("sync.loaded_occupation_domains", count=len(df), path=str(path))
+    return df
+
+
+def _load_occupations() -> pl.DataFrame:
+    path = DATA_DIR / "occupations.csv"
+    if not path.exists():
+        return pl.DataFrame()
+    df = pl.read_csv(path, infer_schema_length=0)
+    log.info("sync.loaded_occupations", count=len(df), path=str(path))
+    return df
+
+
+def _load_seniority() -> pl.DataFrame:
+    path = DATA_DIR / "seniority.csv"
+    if not path.exists():
+        return pl.DataFrame()
+    df = pl.read_csv(path, infer_schema_length=0)
+    log.info("sync.loaded_seniority", count=len(df), path=str(path))
+    return df
+
+
 def _load_industries() -> pl.DataFrame:
     path = DATA_DIR / "industries.csv"
     if not path.exists():
@@ -148,26 +286,413 @@ def _load_industries() -> pl.DataFrame:
     return df
 
 
+def _load_company_descriptions() -> pl.DataFrame:
+    path = DATA_DIR / "company_descriptions.csv"
+    if not path.exists():
+        return pl.DataFrame()
+    df = pl.read_csv(path, infer_schema_length=0)
+    log.info("sync.loaded_company_descriptions", count=len(df), path=str(path))
+    return df
+
+
+def _load_technologies() -> pl.DataFrame:
+    path = DATA_DIR / "technologies.csv"
+    if not path.exists():
+        return pl.DataFrame()
+    df = pl.read_csv(path, infer_schema_length=0)
+    log.info("sync.loaded_technologies", count=len(df), path=str(path))
+    return df
+
+
+async def sync_technologies(
+    conn: asyncpg.Connection, technologies: pl.DataFrame, dry_run: bool
+) -> None:
+    """Upsert technology slugs, names, and categories."""
+    if len(technologies) == 0:
+        return
+
+    slugs = technologies["slug"].to_list()
+    names = (
+        technologies["name"].to_list() if "name" in technologies.columns else [None] * len(slugs)
+    )
+    categories = (
+        technologies["category"].to_list()
+        if "category" in technologies.columns
+        else [None] * len(slugs)
+    )
+
+    if dry_run:
+        log.info("sync.technologies.dry_run", slugs=len(slugs))
+        return
+
+    await conn.execute(_UPSERT_TECHNOLOGIES, slugs, names, categories)
+    log.info("sync.technologies.upserted", slugs=len(slugs))
+
+
+async def resolve_pending_misses(conn: asyncpg.Connection) -> None:
+    """Resolve taxonomy misses that now match after CSV updates.
+
+    For each pending miss, re-attempt matching. If successful:
+    - Mark the miss as resolved
+    - Backfill the FK on matching job_posting rows
+    """
+    pending = await conn.fetch(
+        "SELECT id, taxonomy, raw_value FROM taxonomy_miss WHERE status = 'pending'"
+    )
+    if not pending:
+        return
+
+    # Load current ID maps
+    occ_rows = await conn.fetch("SELECT id, slug FROM occupation")
+    occ_ids = {r["slug"]: r["id"] for r in occ_rows}
+
+    sen_rows = await conn.fetch("SELECT id, slug FROM seniority")
+    sen_ids = {r["slug"]: r["id"] for r in sen_rows}
+
+    tech_rows = await conn.fetch("SELECT id, slug FROM technology")
+    tech_ids = {r["slug"]: r["id"] for r in tech_rows}
+
+    # Build tech name -> slug map from CSV
+    tech_csv = _load_technologies()
+    tech_name_to_slug: dict[str, str] = {}
+    if len(tech_csv) > 0:
+        for row in tech_csv.iter_rows(named=True):
+            name = row.get("name", "")
+            if name:
+                tech_name_to_slug[name.strip().lower()] = row["slug"]
+
+    resolved_count = 0
+
+    for miss in pending:
+        miss_id = miss["id"]
+        taxonomy = miss["taxonomy"]
+        raw_value = miss["raw_value"]
+
+        if taxonomy == "occupation":
+            slug = match_occupation(raw_value)
+            if slug and slug in occ_ids:
+                fk_id = occ_ids[slug]
+                # Backfill postings with this occupation string
+                await conn.execute(
+                    """
+                    UPDATE job_posting
+                    SET occupation_id = $1
+                    WHERE lower(enrichment->>'occupation') = $2
+                      AND occupation_id IS NULL
+                    """,
+                    fk_id,
+                    raw_value,
+                )
+                await conn.execute(
+                    "UPDATE taxonomy_miss SET status = 'resolved', resolved_to = $1 WHERE id = $2",
+                    slug,
+                    miss_id,
+                )
+                resolved_count += 1
+
+        elif taxonomy == "seniority":
+            # raw_value is the slug the LLM returned
+            if raw_value in sen_ids:
+                fk_id = sen_ids[raw_value]
+                await conn.execute(
+                    """
+                    UPDATE job_posting
+                    SET seniority_id = $1
+                    WHERE enrichment->>'seniority' = $2
+                      AND seniority_id IS NULL
+                    """,
+                    fk_id,
+                    raw_value,
+                )
+                await conn.execute(
+                    "UPDATE taxonomy_miss SET status = 'resolved', resolved_to = $1 WHERE id = $2",
+                    raw_value,
+                    miss_id,
+                )
+                resolved_count += 1
+
+        elif taxonomy == "technology":
+            slug = tech_name_to_slug.get(raw_value)
+            if slug and slug in tech_ids:
+                fk_id = tech_ids[slug]
+                # Append technology ID to matching postings
+                await conn.execute(
+                    """
+                    UPDATE job_posting
+                    SET technology_ids = array_append(technology_ids, $1)
+                    WHERE id IN (
+                        SELECT jp.id
+                        FROM job_posting jp,
+                             jsonb_array_elements_text(jp.enrichment->'technologies') AS t
+                        WHERE lower(t) = $2
+                          AND (jp.technology_ids IS NULL OR NOT jp.technology_ids @> ARRAY[$1])
+                    )
+                    """,
+                    fk_id,
+                    raw_value,
+                )
+                await conn.execute(
+                    "UPDATE taxonomy_miss SET status = 'resolved', resolved_to = $1 WHERE id = $2",
+                    slug,
+                    miss_id,
+                )
+                resolved_count += 1
+
+    if resolved_count:
+        log.info("sync.resolve_misses.resolved", count=resolved_count, total=len(pending))
+
+
+async def sync_occupation_domains(
+    conn: asyncpg.Connection, domains: pl.DataFrame, dry_run: bool
+) -> None:
+    """Upsert occupation domain slugs and their localized names."""
+    if len(domains) == 0:
+        return
+
+    locales = ["en", "de", "fr", "it"]
+    slugs: list[str] = []
+    name_slugs: list[str] = []
+    name_locales: list[str] = []
+    name_values: list[str] = []
+    name_is_display: list[bool] = []
+
+    for row in domains.iter_rows(named=True):
+        slug = row["slug"]
+        slugs.append(slug)
+        for locale in locales:
+            name = row.get(locale)
+            if name and name.strip():
+                name_slugs.append(slug)
+                name_locales.append(locale)
+                name_values.append(name.strip())
+                name_is_display.append(True)
+
+    if dry_run:
+        log.info("sync.occupation_domains.dry_run", slugs=len(slugs), names=len(name_slugs))
+        return
+
+    await conn.execute(_UPSERT_OCCUPATION_DOMAINS, slugs)
+    if name_slugs:
+        await conn.execute(
+            _UPSERT_OCCUPATION_DOMAIN_NAMES, name_slugs, name_locales, name_values, name_is_display
+        )
+    log.info("sync.occupation_domains.upserted", slugs=len(slugs), names=len(name_slugs))
+
+
+async def sync_occupations(
+    conn: asyncpg.Connection, occupations: pl.DataFrame, dry_run: bool
+) -> None:
+    """Upsert occupation slugs and their display names."""
+    if len(occupations) == 0:
+        return
+
+    locales = ["en", "de", "fr", "it"]
+    slugs: list[str] = []
+    name_slugs: list[str] = []
+    name_locales: list[str] = []
+    name_values: list[str] = []
+    name_is_display: list[bool] = []
+
+    for row in occupations.iter_rows(named=True):
+        slug = row["slug"]
+        slugs.append(slug)
+
+        for locale in locales:
+            name = row.get(locale)
+            if name and name.strip():
+                name_slugs.append(slug)
+                name_locales.append(locale)
+                name_values.append(name.strip())
+                name_is_display.append(True)
+
+        # Parse pipe-separated aliases
+        aliases_raw = row.get("aliases")
+        if aliases_raw and aliases_raw.strip():
+            for alias in aliases_raw.split("|"):
+                alias = alias.strip()
+                if alias:
+                    name_slugs.append(slug)
+                    name_locales.append("*")
+                    name_values.append(alias)
+                    name_is_display.append(False)
+
+    # Collect parent relationships
+    child_slugs: list[str] = []
+    parent_slugs: list[str] = []
+    for row in occupations.iter_rows(named=True):
+        parent = row.get("parent")
+        if parent and parent.strip():
+            child_slugs.append(row["slug"])
+            parent_slugs.append(parent.strip())
+
+    # Collect domain relationships
+    domain_occ_slugs: list[str] = []
+    domain_slugs: list[str] = []
+    for row in occupations.iter_rows(named=True):
+        domain = row.get("domain")
+        if domain and domain.strip():
+            domain_occ_slugs.append(row["slug"])
+            domain_slugs.append(domain.strip())
+
+    if dry_run:
+        log.info(
+            "sync.occupations.dry_run",
+            slugs=len(slugs),
+            names=len(name_slugs),
+            parents=len(child_slugs),
+            domains=len(domain_occ_slugs),
+        )
+        return
+
+    await conn.execute(_UPSERT_OCCUPATIONS, slugs)
+    if name_slugs:
+        await conn.execute(
+            _UPSERT_OCCUPATION_NAMES, name_slugs, name_locales, name_values, name_is_display
+        )
+        # Remove stale names no longer in CSV (e.g. removed aliases)
+        deleted = await conn.execute(
+            _DELETE_STALE_OCCUPATION_NAMES, name_slugs, name_locales, name_values
+        )
+        log.info("sync.occupations.deleted_stale_names", deleted=deleted)
+    # Set parent relationships (must run after all slugs are inserted)
+    if child_slugs:
+        await conn.execute(_SET_OCCUPATION_PARENTS, child_slugs, parent_slugs)
+        await conn.execute(_CLEAR_OCCUPATION_PARENTS, child_slugs)
+    else:
+        # No parents in CSV — clear all
+        await conn.execute("UPDATE occupation SET parent_id = NULL WHERE parent_id IS NOT NULL")
+    # Set domain relationships (must run after domains are synced)
+    if domain_occ_slugs:
+        await conn.execute(_SET_OCCUPATION_DOMAINS, domain_occ_slugs, domain_slugs)
+    log.info(
+        "sync.occupations.upserted",
+        slugs=len(slugs),
+        names=len(name_slugs),
+        parents=len(child_slugs),
+        domains=len(domain_occ_slugs),
+    )
+
+
+async def sync_seniority(
+    conn: asyncpg.Connection, seniority_df: pl.DataFrame, dry_run: bool
+) -> None:
+    """Upsert seniority slugs and their display names."""
+    if len(seniority_df) == 0:
+        return
+
+    locales = ["en", "de", "fr", "it"]
+    slugs: list[str] = []
+    name_slugs: list[str] = []
+    name_locales: list[str] = []
+    name_values: list[str] = []
+    name_is_display: list[bool] = []
+
+    for row in seniority_df.iter_rows(named=True):
+        slug = row["slug"]
+        slugs.append(slug)
+
+        for locale in locales:
+            name = row.get(locale)
+            if name and name.strip():
+                name_slugs.append(slug)
+                name_locales.append(locale)
+                name_values.append(name.strip())
+                name_is_display.append(True)
+
+        # Parse pipe-separated aliases
+        aliases_raw = row.get("aliases")
+        if aliases_raw and aliases_raw.strip():
+            for alias in aliases_raw.split("|"):
+                alias = alias.strip()
+                if alias:
+                    name_slugs.append(slug)
+                    name_locales.append("*")
+                    name_values.append(alias)
+                    name_is_display.append(False)
+
+    if dry_run:
+        log.info("sync.seniority.dry_run", slugs=len(slugs), names=len(name_slugs))
+        return
+
+    await conn.execute(_UPSERT_SENIORITY, slugs)
+    if name_slugs:
+        await conn.execute(
+            _UPSERT_SENIORITY_NAMES, name_slugs, name_locales, name_values, name_is_display
+        )
+    log.info("sync.seniority.upserted", slugs=len(slugs), names=len(name_slugs))
+
+
 async def sync_industries(
     conn: asyncpg.Connection, industries: pl.DataFrame, dry_run: bool
 ) -> None:
-    """Batch upsert industries."""
+    """Batch upsert industries and their localized names."""
     if len(industries) == 0:
         return
 
+    locales = ["en", "de", "fr", "it"]
     ids: list[int] = []
     names: list[str] = []
+    name_ids: list[int] = []
+    name_locales: list[str] = []
+    name_values: list[str] = []
+    name_is_display: list[bool] = []
 
     for row in industries.iter_rows(named=True):
-        ids.append(int(row["id"]))
-        names.append(row["name"])
+        ind_id = int(row["id"])
+        # Use 'en' as the canonical name in the industry table
+        en_name = row.get("en") or row.get("name", "")
+        ids.append(ind_id)
+        names.append(en_name)
+
+        for locale in locales:
+            val = row.get(locale)
+            if val and val.strip():
+                name_ids.append(ind_id)
+                name_locales.append(locale)
+                name_values.append(val.strip())
+                name_is_display.append(True)
 
     if dry_run:
-        log.info("sync.industries.dry_run", count=len(ids))
+        log.info("sync.industries.dry_run", count=len(ids), names=len(name_ids))
         return
 
     await conn.execute(_UPSERT_INDUSTRIES, ids, names)
-    log.info("sync.industries.upserted", count=len(ids))
+    if name_ids:
+        await conn.execute(
+            _UPSERT_INDUSTRY_NAMES, name_ids, name_locales, name_values, name_is_display
+        )
+    log.info("sync.industries.upserted", count=len(ids), names=len(name_ids))
+
+
+async def sync_company_descriptions(
+    conn: asyncpg.Connection, descriptions: pl.DataFrame, dry_run: bool
+) -> None:
+    """Upsert company descriptions from company_descriptions.csv."""
+    if len(descriptions) == 0:
+        return
+
+    # CSV format: slug,en (more locales can be added as columns)
+    locales = [c for c in descriptions.columns if c != "slug"]
+    slugs: list[str] = []
+    desc_locales: list[str] = []
+    desc_values: list[str] = []
+
+    for row in descriptions.iter_rows(named=True):
+        slug = row["slug"]
+        for locale in locales:
+            val = row.get(locale)
+            if val and val.strip():
+                slugs.append(slug)
+                desc_locales.append(locale)
+                desc_values.append(val.strip())
+
+    if dry_run:
+        log.info("sync.company_descriptions.dry_run", count=len(slugs))
+        return
+
+    if slugs:
+        await conn.execute(_UPSERT_COMPANY_DESCRIPTIONS, slugs, desc_locales, desc_values)
+    log.info("sync.company_descriptions.upserted", count=len(slugs))
 
 
 async def sync_companies(conn: asyncpg.Connection, companies: pl.DataFrame, dry_run: bool) -> None:
@@ -181,7 +706,6 @@ async def sync_companies(conn: asyncpg.Connection, companies: pl.DataFrame, dry_
     logos: list[str | None] = []
     icons: list[str | None] = []
     logo_types: list[str | None] = []
-    descriptions: list[str | None] = []
     industries: list[int | None] = []
     employee_ranges: list[int | None] = []
     founded_years: list[int | None] = []
@@ -194,7 +718,6 @@ async def sync_companies(conn: asyncpg.Connection, companies: pl.DataFrame, dry_
         logos.append(_or_none(row.get("logo_url")))
         icons.append(_or_none(row.get("icon_url")))
         logo_types.append(_or_none(row.get("logo_type")))
-        descriptions.append(_or_none(row.get("description")))
         industries.append(_int_or_none(row.get("industry")))
         employee_ranges.append(_int_or_none(row.get("employee_count_range")))
         founded_years.append(_int_or_none(row.get("founded_year")))
@@ -220,7 +743,6 @@ async def sync_companies(conn: asyncpg.Connection, companies: pl.DataFrame, dry_
         logos,
         icons,
         logo_types,
-        descriptions,
         industries,
         employee_ranges,
         founded_years,
@@ -335,8 +857,13 @@ async def sync_boards(
 async def run_sync(dry_run: bool = False) -> None:
     setup_logging(settings.log_level)
 
+    occupation_domains = _load_occupation_domains()
+    occupations = _load_occupations()
+    seniority_df = _load_seniority()
+    technologies = _load_technologies()
     industries = _load_industries()
     companies = _load_companies()
+    company_descs = _load_company_descriptions()
     boards = _load_boards()
 
     if len(companies) == 0 and len(boards) == 0:
@@ -346,14 +873,26 @@ async def run_sync(dry_run: bool = False) -> None:
     pool = await create_pool()
     try:
         async with pool.acquire() as conn, conn.transaction():
+            await sync_occupation_domains(conn, occupation_domains, dry_run)
+            await sync_occupations(conn, occupations, dry_run)
+            await sync_seniority(conn, seniority_df, dry_run)
+            await sync_technologies(conn, technologies, dry_run)
             await sync_industries(conn, industries, dry_run)
             await sync_companies(conn, companies, dry_run)
+            await sync_company_descriptions(conn, company_descs, dry_run)
             await sync_boards(conn, boards, dry_run)
+            if not dry_run:
+                await resolve_pending_misses(conn)
 
         log.info(
             "sync.complete",
+            occupation_domains=len(occupation_domains),
+            occupations=len(occupations),
+            seniority=len(seniority_df),
+            technologies=len(technologies),
             industries=len(industries),
             companies=len(companies),
+            company_descriptions=len(company_descs),
             boards=len(boards),
             dry_run=dry_run,
         )

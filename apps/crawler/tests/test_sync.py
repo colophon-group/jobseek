@@ -10,11 +10,14 @@ from src.sync import (
     _DISABLE_REMOVED_BOARDS,
     _UPSERT_BOARDS,
     _UPSERT_COMPANIES,
+    _UPSERT_OCCUPATION_DOMAIN_NAMES,
+    _UPSERT_OCCUPATION_DOMAINS,
     _load_boards,
     _load_companies,
     run_sync,
     sync_boards,
     sync_companies,
+    sync_occupation_domains,
 )
 
 _COMPANY_COLS = ["slug", "name", "website", "logo_url", "icon_url", "logo_type"]
@@ -133,6 +136,48 @@ def sample_boards():
         },
         schema_overrides=_BOARD_SCHEMA,
     )
+
+
+# ---------------------------------------------------------------------------
+# TestSyncOccupationDomains
+# ---------------------------------------------------------------------------
+
+
+class TestSyncOccupationDomains:
+    async def test_upserts_domains(self, mock_conn):
+        """Domains -> upsert slugs + upsert names."""
+        df = pl.DataFrame(
+            {
+                "slug": ["software-engineering", "data-ai"],
+                "en": ["Software Engineering", "Data & AI"],
+                "de": ["Softwareentwicklung", "Daten & KI"],
+                "fr": ["Génie logiciel", "Données & IA"],
+                "it": ["Ingegneria del software", "Dati & IA"],
+            },
+            schema_overrides={c: pl.Utf8 for c in ["slug", "en", "de", "fr", "it"]},
+        )
+        await sync_occupation_domains(mock_conn, df, dry_run=False)
+
+        assert mock_conn.execute.call_count == 2
+        # First call: upsert slugs
+        call0 = mock_conn.execute.call_args_list[0][0]
+        assert call0[0] == _UPSERT_OCCUPATION_DOMAINS
+        assert call0[1] == ["software-engineering", "data-ai"]
+        # Second call: upsert names
+        call1 = mock_conn.execute.call_args_list[1][0]
+        assert call1[0] == _UPSERT_OCCUPATION_DOMAIN_NAMES
+
+    async def test_dry_run_skips_sql(self, mock_conn):
+        df = pl.DataFrame(
+            {"slug": ["test"], "en": ["Test"], "de": [""], "fr": [""], "it": [""]},
+            schema_overrides={c: pl.Utf8 for c in ["slug", "en", "de", "fr", "it"]},
+        )
+        await sync_occupation_domains(mock_conn, df, dry_run=True)
+        mock_conn.execute.assert_not_called()
+
+    async def test_empty_dataframe(self, mock_conn):
+        await sync_occupation_domains(mock_conn, pl.DataFrame(), dry_run=False)
+        mock_conn.execute.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -364,19 +409,34 @@ class TestSyncBoards:
 class TestRunSync:
     @patch("src.sync.setup_logging")
     @patch("src.sync._load_boards")
+    @patch("src.sync._load_company_descriptions")
     @patch("src.sync._load_companies")
     @patch("src.sync._load_industries")
+    @patch("src.sync._load_technologies")
+    @patch("src.sync._load_seniority")
+    @patch("src.sync._load_occupations")
+    @patch("src.sync._load_occupation_domains")
     @patch("src.sync.create_pool")
     async def test_empty_csvs_returns_early(
         self,
         mock_create_pool,
+        mock_load_occupation_domains,
+        mock_load_occupations,
+        mock_load_seniority,
+        mock_load_technologies,
         mock_load_industries,
         mock_load_companies,
+        mock_load_company_descriptions,
         mock_load_boards,
         mock_setup_logging,
     ):
         """Both CSVs empty -> pool not created."""
+        mock_load_occupation_domains.return_value = pl.DataFrame()
+        mock_load_occupations.return_value = pl.DataFrame()
+        mock_load_seniority.return_value = pl.DataFrame()
+        mock_load_technologies.return_value = pl.DataFrame()
         mock_load_industries.return_value = pl.DataFrame()
+        mock_load_company_descriptions.return_value = pl.DataFrame()
         mock_load_companies.return_value = pl.DataFrame(
             {
                 "slug": [],
@@ -399,27 +459,54 @@ class TestRunSync:
 
     @patch("src.sync.setup_logging")
     @patch("src.sync._load_boards")
+    @patch("src.sync._load_company_descriptions")
     @patch("src.sync._load_companies")
     @patch("src.sync._load_industries")
+    @patch("src.sync._load_technologies")
+    @patch("src.sync._load_seniority")
+    @patch("src.sync._load_occupations")
+    @patch("src.sync._load_occupation_domains")
     @patch("src.sync.close_pool")
     @patch("src.sync.create_pool")
+    @patch("src.sync.resolve_pending_misses")
     @patch("src.sync.sync_boards")
+    @patch("src.sync.sync_company_descriptions")
     @patch("src.sync.sync_companies")
     @patch("src.sync.sync_industries")
+    @patch("src.sync.sync_technologies")
+    @patch("src.sync.sync_seniority")
+    @patch("src.sync.sync_occupations")
+    @patch("src.sync.sync_occupation_domains")
     async def test_normal_flow(
         self,
+        mock_sync_occupation_domains,
+        mock_sync_occupations,
+        mock_sync_seniority,
+        mock_sync_technologies,
         mock_sync_industries,
         mock_sync_companies,
+        mock_sync_company_descriptions,
         mock_sync_boards,
+        mock_resolve_pending_misses,
         mock_create_pool,
         mock_close_pool,
+        mock_load_occupation_domains,
+        mock_load_occupations,
+        mock_load_seniority,
+        mock_load_technologies,
         mock_load_industries,
         mock_load_companies,
+        mock_load_company_descriptions,
         mock_load_boards,
         mock_setup_logging,
     ):
-        """Calls sync_industries, sync_companies, then sync_boards in transaction."""
+        """Calls all sync functions in order within a transaction."""
+        occupation_domains_df = pl.DataFrame()
+        occupations_df = pl.DataFrame()
+        seniority_df = pl.DataFrame()
+        technologies_df = pl.DataFrame()
         industries_df = pl.DataFrame()
+        company_descs_df = pl.DataFrame()
         companies_df = pl.DataFrame(
             {
                 "slug": ["acme"],
@@ -443,8 +530,13 @@ class TestRunSync:
             },
             schema_overrides=_BOARD_SCHEMA,
         )
+        mock_load_occupation_domains.return_value = occupation_domains_df
+        mock_load_occupations.return_value = occupations_df
+        mock_load_seniority.return_value = seniority_df
+        mock_load_technologies.return_value = technologies_df
         mock_load_industries.return_value = industries_df
         mock_load_companies.return_value = companies_df
+        mock_load_company_descriptions.return_value = company_descs_df
         mock_load_boards.return_value = boards_df
 
         # Set up pool + connection mock with proper async context managers
@@ -462,32 +554,63 @@ class TestRunSync:
 
         await run_sync(dry_run=False)
 
+        mock_sync_occupation_domains.assert_called_once_with(
+            mock_conn, occupation_domains_df, False
+        )
+        mock_sync_occupations.assert_called_once_with(mock_conn, occupations_df, False)
+        mock_sync_seniority.assert_called_once_with(mock_conn, seniority_df, False)
+        mock_sync_technologies.assert_called_once_with(mock_conn, technologies_df, False)
         mock_sync_industries.assert_called_once_with(mock_conn, industries_df, False)
         mock_sync_companies.assert_called_once_with(mock_conn, companies_df, False)
+        mock_sync_company_descriptions.assert_called_once_with(mock_conn, company_descs_df, False)
         mock_sync_boards.assert_called_once_with(mock_conn, boards_df, False)
+        mock_resolve_pending_misses.assert_called_once_with(mock_conn)
         mock_close_pool.assert_called_once()
 
     @patch("src.sync.setup_logging")
     @patch("src.sync._load_boards")
+    @patch("src.sync._load_company_descriptions")
     @patch("src.sync._load_companies")
     @patch("src.sync._load_industries")
+    @patch("src.sync._load_technologies")
+    @patch("src.sync._load_seniority")
+    @patch("src.sync._load_occupations")
+    @patch("src.sync._load_occupation_domains")
     @patch("src.sync.close_pool")
     @patch("src.sync.create_pool")
+    @patch("src.sync.sync_occupation_domains")
+    @patch("src.sync.sync_occupations")
+    @patch("src.sync.sync_seniority")
+    @patch("src.sync.sync_technologies")
     @patch("src.sync.sync_industries")
     @patch("src.sync.sync_companies")
     async def test_closes_pool_on_error(
         self,
         mock_sync_companies,
         mock_sync_industries,
+        mock_sync_technologies,
+        mock_sync_seniority,
+        mock_sync_occupations,
+        mock_sync_occupation_domains,
         mock_create_pool,
         mock_close_pool,
+        mock_load_occupation_domains,
+        mock_load_occupations,
+        mock_load_seniority,
+        mock_load_technologies,
         mock_load_industries,
         mock_load_companies,
+        mock_load_company_descriptions,
         mock_load_boards,
         mock_setup_logging,
     ):
         """sync_companies raises -> close_pool still called."""
+        mock_load_occupation_domains.return_value = pl.DataFrame()
+        mock_load_occupations.return_value = pl.DataFrame()
+        mock_load_seniority.return_value = pl.DataFrame()
+        mock_load_technologies.return_value = pl.DataFrame()
         mock_load_industries.return_value = pl.DataFrame()
+        mock_load_company_descriptions.return_value = pl.DataFrame()
         mock_load_companies.return_value = pl.DataFrame(
             {
                 "slug": ["acme"],

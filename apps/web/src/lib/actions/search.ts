@@ -3,9 +3,10 @@
 import { sql } from "drizzle-orm";
 import { db } from "@/db";
 import { getSearchProvider } from "@/lib/search";
-import type { SearchResponse, SearchResultPosting } from "@/lib/search";
+import type { SearchResponse, SearchResultPosting, HistogramFilters } from "@/lib/search";
 import { cached } from "@/lib/cache";
 import { expandLocationIds } from "@/lib/actions/locations";
+import { expandOccupationIds } from "@/lib/actions/taxonomy";
 
 // ── Posting detail ──────────────────────────────────────────────────
 
@@ -13,7 +14,7 @@ export interface PostingDetail {
   id: string;
   title: string | null;
   company: { id: string; name: string; slug: string; logo: string | null; icon: string | null };
-  locations: { name: string; type: string; geoType?: string }[];
+  locations: { name: string; type: string; geoType?: string; parentName?: string }[];
   employmentType: string | null;
   sourceUrl: string;
   firstSeenAt: string;
@@ -73,7 +74,7 @@ async function _fetchPostingDetail(
   if (!row) return null;
 
   // Resolve location display names
-  let locations: { name: string; type: string; geoType?: string }[] = [];
+  let locations: { name: string; type: string; geoType?: string; parentName?: string }[] = [];
   if (row.location_ids && row.location_ids.length > 0) {
     const pgArray = `{${row.location_ids.join(",")}}`;
     const locRows = await db.execute<{
@@ -81,8 +82,15 @@ async function _fetchPostingDetail(
       location_id: number;
       name: string;
       type: string;
+      parent_name: string | null;
     }>(sql`
-      SELECT DISTINCT ON (ln.location_id) ln.location_id, ln.name, l.type::text
+      SELECT DISTINCT ON (ln.location_id) ln.location_id, ln.name, l.type::text,
+        (SELECT pn.name FROM location_name pn
+         WHERE pn.location_id = l.parent_id
+           AND pn.locale IN (${locale}, 'en')
+           AND pn.is_display = true
+         ORDER BY (pn.locale = ${locale})::int DESC
+         LIMIT 1) AS parent_name
       FROM location_name ln
       JOIN location l ON l.id = ln.location_id
       WHERE ln.location_id = ANY(${pgArray}::integer[])
@@ -90,9 +98,9 @@ async function _fetchPostingDetail(
         AND ln.is_display = true
       ORDER BY ln.location_id, (ln.locale = ${locale})::int DESC
     `);
-    const nameMap = new Map<number, { name: string; geoType: string }>();
-    for (const r of locRows as unknown as { location_id: number; name: string; type: string }[]) {
-      nameMap.set(r.location_id, { name: r.name, geoType: r.type });
+    const nameMap = new Map<number, { name: string; geoType: string; parentName?: string }>();
+    for (const r of locRows as unknown as { location_id: number; name: string; type: string; parent_name: string | null }[]) {
+      nameMap.set(r.location_id, { name: r.name, geoType: r.type, parentName: r.parent_name ?? undefined });
     }
     locations = row.location_ids
       .map((id, i) => {
@@ -101,6 +109,7 @@ async function _fetchPostingDetail(
           name: resolved?.name ?? "",
           type: row.location_types?.[i] ?? "onsite",
           geoType: resolved?.geoType,
+          parentName: resolved?.parentName,
         };
       })
       .filter((l) => l.name !== "");
@@ -141,21 +150,46 @@ async function resolveLocationIds(
   return [...new Set(expanded.flat())];
 }
 
+async function resolveOccupationIds(
+  occupationIds?: number[],
+): Promise<number[] | undefined> {
+  if (!occupationIds || occupationIds.length === 0) return undefined;
+  const expanded = await Promise.all(occupationIds.map(expandOccupationIds));
+  return [...new Set(expanded.flat())];
+}
+
 export async function searchJobs(params: {
   keywords: string[];
   locationIds?: number[];
-  language: string;
+  occupationIds?: number[];
+  seniorityIds?: number[];
+  technologyIds?: number[];
+  salaryMinEur?: number;
+  salaryMaxEur?: number;
+  experienceMin?: number;
+  experienceMax?: number;
+  languages: string[];
+  locale: string;
   offset: number;
   limit: number;
 }): Promise<SearchResponse> {
   const sortedKw = [...params.keywords].sort();
   const sortedLoc = [...(params.locationIds ?? [])].sort();
-  const key = `search:${sortedKw.join(",")}:${sortedLoc.join(",")}:${params.language}:${params.offset}:${params.limit}`;
+  const sortedOcc = [...(params.occupationIds ?? [])].sort();
+  const sortedSen = [...(params.seniorityIds ?? [])].sort();
+  const sortedTech = [...(params.technologyIds ?? [])].sort().join(",");
+  const sortedLangs = [...params.languages].sort();
+  const salKey = `${params.salaryMinEur ?? ""}:${params.salaryMaxEur ?? ""}`;
+  const expKey = `${params.experienceMax ?? ""}`;
+  const key = `search:${sortedKw.join(",")}:${sortedLoc.join(",")}:${sortedOcc.join(",")}:${sortedSen.join(",")}:${sortedTech}:${sortedLangs.join(",")}:${salKey}:${expKey}:${params.locale}:${params.offset}:${params.limit}`;
   return cached(
     key,
     async () => {
-      const expandedIds = await resolveLocationIds(params.locationIds);
-      return getSearchProvider().search({ ...params, locationIds: expandedIds });
+      const [expandedLocs, expandedOccs] = await Promise.all([
+        resolveLocationIds(params.locationIds),
+        resolveOccupationIds(params.occupationIds),
+      ]);
+      return getSearchProvider().search({ ...params, locationIds: expandedLocs, occupationIds: expandedOccs });
     },
     { ttl: 300 },
   );
@@ -163,38 +197,181 @@ export async function searchJobs(params: {
 
 export async function listTopCompanies(params: {
   locationIds?: number[];
-  language: string;
+  occupationIds?: number[];
+  seniorityIds?: number[];
+  technologyIds?: number[];
+  salaryMinEur?: number;
+  salaryMaxEur?: number;
+  experienceMin?: number;
+  experienceMax?: number;
+  languages: string[];
+  locale: string;
   offset: number;
   limit: number;
 }): Promise<SearchResponse> {
   const sortedLoc = [...(params.locationIds ?? [])].sort();
-  const key = `top-companies:${sortedLoc.join(",")}:${params.language}:${params.offset}:${params.limit}`;
+  const sortedOcc = [...(params.occupationIds ?? [])].sort();
+  const sortedSen = [...(params.seniorityIds ?? [])].sort();
+  const sortedTech = [...(params.technologyIds ?? [])].sort().join(",");
+  const sortedLangs = [...params.languages].sort();
+  const salKey = `${params.salaryMinEur ?? ""}:${params.salaryMaxEur ?? ""}`;
+  const expKey = `${params.experienceMax ?? ""}`;
+  const key = `top-companies:${sortedLoc.join(",")}:${sortedOcc.join(",")}:${sortedSen.join(",")}:${sortedTech}:${sortedLangs.join(",")}:${salKey}:${expKey}:${params.locale}:${params.offset}:${params.limit}`;
   return cached(
     key,
     async () => {
-      const expandedIds = await resolveLocationIds(params.locationIds);
-      return getSearchProvider().listTopCompanies({ ...params, locationIds: expandedIds });
+      const [expandedLocs, expandedOccs] = await Promise.all([
+        resolveLocationIds(params.locationIds),
+        resolveOccupationIds(params.occupationIds),
+      ]);
+      return getSearchProvider().listTopCompanies({ ...params, locationIds: expandedLocs, occupationIds: expandedOccs });
     },
     { ttl: 600 },
   );
 }
 
+// ── Currency rates for salary filter ────────────────────────────────
+
+export interface CurrencyRate {
+  currency: string;
+  toEur: number;
+}
+
+export async function getCurrencyRates(): Promise<CurrencyRate[]> {
+  return cached(
+    "currency-rates",
+    async () => {
+      try {
+        const rows = await db.execute<{ [key: string]: unknown; currency: string; to_eur: string }>(
+          sql`SELECT currency, to_eur FROM currency_rate ORDER BY currency`,
+        );
+        return (rows as unknown as { currency: string; to_eur: string }[]).map((r) => ({
+          currency: r.currency,
+          toEur: parseFloat(r.to_eur),
+        }));
+      } catch {
+        // Table may not exist yet (migration not run)
+        return [{ currency: "EUR", toEur: 1 }];
+      }
+    },
+    { ttl: 3600 },
+  );
+}
+
+export type { SalaryBucket, ExperienceBucket } from "@/lib/search/types";
+import type { SalaryBucket, ExperienceBucket } from "@/lib/search/types";
+
+/**
+ * Returns salary_eur distribution across fixed EUR buckets for the histogram.
+ * Accepts optional filters to scope to a company / keyword / location context.
+ */
+export async function getSalaryHistogram(filters?: HistogramFilters): Promise<SalaryBucket[]> {
+  const f = filters ?? {};
+  const keyParts = [
+    "salary-histogram",
+    f.companyId ?? "",
+    [...(f.keywords ?? [])].sort().join(","),
+    [...(f.locationIds ?? [])].sort().join(","),
+    [...(f.occupationIds ?? [])].sort().join(","),
+    [...(f.seniorityIds ?? [])].sort().join(","),
+    [...(f.technologyIds ?? [])].sort().join(","),
+    [...(f.languages ?? [])].sort().join(","),
+  ];
+  const key = keyParts.join(":");
+  return cached(
+    key,
+    async () => {
+      try {
+        const [expandedLocs, expandedOccs] = await Promise.all([
+          resolveLocationIds(f.locationIds),
+          resolveOccupationIds(f.occupationIds),
+        ]);
+        return getSearchProvider().getSalaryHistogram({
+          ...f,
+          locationIds: expandedLocs,
+          occupationIds: expandedOccs,
+        });
+      } catch {
+        return [];
+      }
+    },
+    { ttl: 3600 },
+  );
+}
+
+/**
+ * Returns experience_min distribution for the histogram.
+ * Accepts optional filters to scope to a company / keyword / location context.
+ */
+export async function getExperienceHistogram(filters?: HistogramFilters): Promise<ExperienceBucket[]> {
+  const f = filters ?? {};
+  const keyParts = [
+    "experience-histogram",
+    f.companyId ?? "",
+    [...(f.keywords ?? [])].sort().join(","),
+    [...(f.locationIds ?? [])].sort().join(","),
+    [...(f.occupationIds ?? [])].sort().join(","),
+    [...(f.seniorityIds ?? [])].sort().join(","),
+    [...(f.technologyIds ?? [])].sort().join(","),
+    [...(f.languages ?? [])].sort().join(","),
+  ];
+  const key = keyParts.join(":");
+  return cached(
+    key,
+    async () => {
+      try {
+        const [expandedLocs, expandedOccs] = await Promise.all([
+          resolveLocationIds(f.locationIds),
+          resolveOccupationIds(f.occupationIds),
+        ]);
+        return getSearchProvider().getExperienceHistogram({
+          ...f,
+          locationIds: expandedLocs,
+          occupationIds: expandedOccs,
+        });
+      } catch {
+        return [];
+      }
+    },
+    { ttl: 3600 },
+  );
+}
+
+// ── Load more postings ─────────────────────────────────────────────
+
 export async function loadMorePostings(params: {
   companyId: string;
   keywords: string[];
   locationIds?: number[];
-  language: string;
+  occupationIds?: number[];
+  seniorityIds?: number[];
+  technologyIds?: number[];
+  salaryMinEur?: number;
+  salaryMaxEur?: number;
+  experienceMin?: number;
+  experienceMax?: number;
+  languages: string[];
+  locale: string;
   offset: number;
   limit: number;
 }): Promise<SearchResultPosting[]> {
   const sortedKw = [...params.keywords].sort();
   const sortedLoc = [...(params.locationIds ?? [])].sort();
-  const key = `postings:${params.companyId}:${sortedKw.join(",")}:${sortedLoc.join(",")}:${params.language}:${params.offset}:${params.limit}`;
+  const sortedOcc = [...(params.occupationIds ?? [])].sort();
+  const sortedSen = [...(params.seniorityIds ?? [])].sort();
+  const sortedTech = [...(params.technologyIds ?? [])].sort().join(",");
+  const sortedLangs = [...params.languages].sort();
+  const salKey = `${params.salaryMinEur ?? ""}:${params.salaryMaxEur ?? ""}`;
+  const expKey = `${params.experienceMin ?? ""}:${params.experienceMax ?? ""}`;
+  const key = `postings:${params.companyId}:${sortedKw.join(",")}:${sortedLoc.join(",")}:${sortedOcc.join(",")}:${sortedSen.join(",")}:${sortedTech}:${sortedLangs.join(",")}:${salKey}:${expKey}:${params.locale}:${params.offset}:${params.limit}`;
   return cached(
     key,
     async () => {
-      const expandedIds = await resolveLocationIds(params.locationIds);
-      return getSearchProvider().loadPostings({ ...params, locationIds: expandedIds });
+      const [expandedLocs, expandedOccs] = await Promise.all([
+        resolveLocationIds(params.locationIds),
+        resolveOccupationIds(params.occupationIds),
+      ]);
+      return getSearchProvider().loadPostings({ ...params, locationIds: expandedLocs, occupationIds: expandedOccs });
     },
     { ttl: 300 },
   );

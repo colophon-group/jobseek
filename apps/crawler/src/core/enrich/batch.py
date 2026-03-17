@@ -21,6 +21,7 @@ from src.core.enrich.job import (
     build_user_message,
 )
 from src.core.enrich.providers import BatchProvider, BatchRequest
+from src.core.enrich.taxonomy import TaxonomyMiss, resolve_taxonomy
 
 log = structlog.get_logger()
 
@@ -176,6 +177,30 @@ async def collect_completed_batches(pool: asyncpg.Pool, provider: BatchProvider)
     return completed
 
 
+async def _upsert_taxonomy_misses(pool: asyncpg.Pool, misses: list[TaxonomyMiss]) -> None:
+    """Batch upsert taxonomy misses. Increments hit_count for pending entries."""
+    if not misses:
+        return
+
+    taxonomies = [m.taxonomy for m in misses]
+    raw_values = [m.raw_value for m in misses]
+    sample_values = [m.sample_value for m in misses]
+
+    await pool.execute(
+        """
+        INSERT INTO taxonomy_miss (taxonomy, raw_value, sample_value)
+        SELECT * FROM unnest($1::text[], $2::text[], $3::text[])
+        ON CONFLICT (taxonomy, raw_value) DO UPDATE SET
+            hit_count = taxonomy_miss.hit_count + 1,
+            last_seen_at = now()
+        WHERE taxonomy_miss.status = 'pending'
+        """,
+        taxonomies,
+        raw_values,
+        sample_values,
+    )
+
+
 async def _persist_results(
     pool: asyncpg.Pool,
     results: list[tuple[str, dict | None, object | None]],
@@ -184,6 +209,10 @@ async def _persist_results(
     """Write enrichment data to job_posting rows."""
     total_input = total_output = 0
     succeeded = 0
+    occupation_resolved = 0
+    seniority_resolved = 0
+    technology_resolved = 0
+    all_misses: list[TaxonomyMiss] = []
     now_iso = datetime.now(UTC).isoformat()
 
     for custom_id, parsed, usage in results:
@@ -199,6 +228,18 @@ async def _persist_results(
                 )
                 continue
 
+            # Resolve taxonomy FKs
+            tax = await resolve_taxonomy(pool, parsed)
+            if tax.occupation_id is not None:
+                occupation_resolved += 1
+            if tax.seniority_id is not None:
+                seniority_resolved += 1
+            if tax.technology_ids:
+                technology_resolved += 1
+            all_misses.extend(tax.misses)
+
+            tech_ids = tax.technology_ids or None
+
             enrichment = {"v": ENRICH_VERSION, "extracted_at": now_iso, **parsed}
             await pool.execute(
                 """
@@ -206,12 +247,18 @@ async def _persist_results(
                 SET enrichment = $2::jsonb,
                     enrich_version = $3,
                     last_enriched_at = now(),
-                    to_be_enriched = false
+                    to_be_enriched = false,
+                    occupation_id = COALESCE($4, occupation_id),
+                    seniority_id = COALESCE($5, seniority_id),
+                    technology_ids = COALESCE($6, technology_ids)
                 WHERE id = $1::uuid
                 """,
                 custom_id,
                 json.dumps(enrichment),
                 ENRICH_VERSION,
+                tax.occupation_id,
+                tax.seniority_id,
+                tech_ids,
             )
             succeeded += 1
         else:
@@ -224,6 +271,9 @@ async def _persist_results(
         if usage:
             total_input += usage.input_tokens
             total_output += usage.output_tokens
+
+    # Batch upsert taxonomy misses
+    await _upsert_taxonomy_misses(pool, all_misses)
 
     await pool.execute(
         """
@@ -242,6 +292,10 @@ async def _persist_results(
         batch_id=batch_id,
         succeeded=succeeded,
         total=len(results),
+        occupation_resolved=occupation_resolved,
+        seniority_resolved=seniority_resolved,
+        technology_resolved=technology_resolved,
+        taxonomy_misses=len(all_misses),
         input_tokens=total_input,
         output_tokens=total_output,
     )

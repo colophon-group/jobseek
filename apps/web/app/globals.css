@@ -31,6 +31,7 @@
   --color-code-bg: var(--code-bg);
   --color-code-border: var(--code-border);
   --color-tooltip-bg: var(--tooltip-bg);
+  --color-tooltip-warning-bg: var(--tooltip-warning-bg);
 
   --font-sans: "JetBrains Mono", "Inter", "Helvetica Neue", Arial, sans-serif;
 
@@ -75,7 +76,8 @@
 
   --code-bg: rgba(24, 24, 27, 0.07);
   --code-border: rgba(24, 24, 27, 0.15);
-  --tooltip-bg: rgba(97, 97, 97, 0.92);
+  --tooltip-bg: rgba(97, 97, 97, 0.7);
+  --tooltip-warning-bg: rgba(180, 83, 9, 0.7);
 }
 
 /* ── Dark ── */
@@ -107,6 +109,8 @@
 
   --code-bg: rgba(255, 255, 255, 0.07);
   --code-border: rgba(255, 255, 255, 0.15);
+  --tooltip-bg: rgba(60, 60, 60, 0.7);
+  --tooltip-warning-bg: rgba(251, 146, 60, 0.7);
 }
 
 /* ── Job description typography ── */
@@ -149,6 +153,10 @@
 .job-description th { font-weight: 600; }
 .job-description *:first-child { margin-top: 0; }
 
+/* ── Scrollbar hide (keeps scroll, hides scrollbar) ── */
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+
 /* ── Tooltip animation ── */
 @keyframes tooltip-in {
   from { opacity: 0; transform: scale(0.96); }
@@ -161,6 +169,14 @@
 
 /* ── Base reset (inside @layer so Tailwind utilities can override) ── */
 @layer base {
+  html {
+    scrollbar-gutter: stable;
+  }
+
+  body[data-scroll-locked] {
+    margin-right: 0 !important;
+  }
+
   body {
     background: var(--background);
     color: var(--foreground);

@@ -169,18 +169,6 @@ def _extract_from_jsonld(org: dict) -> dict:
     elif isinstance(same_as, list):
         result["same_as"] = [s for s in same_as if isinstance(s, str)]
 
-    address = org.get("address")
-    if isinstance(address, dict):
-        parts = []
-        for key in ("addressLocality", "addressRegion", "addressCountry"):
-            v = address.get(key)
-            if isinstance(v, str) and v.strip():
-                parts.append(v.strip())
-        if parts:
-            result["hq_location_name"] = ", ".join(parts)
-    elif isinstance(address, str) and address.strip():
-        result["hq_location_name"] = address.strip()
-
     return result
 
 
@@ -198,7 +186,6 @@ _PROPS = {
     "P571": "inception",  # founding date
     "P1128": "employees",  # number of employees
     "P452": "industry",  # industry (entity ref → needs label)
-    "P159": "hq",  # HQ location (entity ref → needs label)
     "P749": "parent",  # parent org (entity ref → needs label)
     "P414": "ticker",  # stock ticker (string)
     "P1448": "legal_name",  # official name (monolingual text)
@@ -414,10 +401,6 @@ async def _extract_from_wikidata(http: httpx.AsyncClient, qid: str) -> dict:
     if industry_qid and industry_qid.startswith("Q"):
         qids_to_resolve.add(industry_qid)
 
-    hq_qid = _get_claim_value(claims, "P159")
-    if hq_qid and hq_qid.startswith("Q"):
-        qids_to_resolve.add(hq_qid)
-
     parent_qid = _get_claim_value(claims, "P749")
     if parent_qid and parent_qid.startswith("Q"):
         qids_to_resolve.add(parent_qid)
@@ -429,11 +412,6 @@ async def _extract_from_wikidata(http: httpx.AsyncClient, qid: str) -> dict:
         label = labels.get(industry_qid)
         if label:
             result["industry_raw"] = label
-
-    if hq_qid:
-        label = labels.get(hq_qid)
-        if label:
-            result["hq_location_name"] = label
 
     if parent_qid:
         label = labels.get(parent_qid)
@@ -464,12 +442,10 @@ def _load_industries() -> list[dict]:
     with open(path, encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for row in reader:
-            keywords = [k.strip().lower() for k in row.get("keywords", "").split(",") if k.strip()]
             rows.append(
                 {
                     "id": int(row["id"]),
-                    "name": row["name"],
-                    "keywords": keywords,
+                    "name": row.get("en") or row.get("name", ""),
                 }
             )
     _INDUSTRIES = rows
@@ -477,23 +453,23 @@ def _load_industries() -> list[dict]:
 
 
 def match_industry(raw_label: str) -> int | None:
-    """Match a raw industry label to an industry ID via keyword matching."""
+    """Match a raw industry label to an industry ID via name matching."""
     if not raw_label:
         return None
 
     industries = _load_industries()
     label_lower = raw_label.lower()
 
-    # Exact name match first
+    # Exact name match
     for ind in industries:
         if ind["name"].lower() == label_lower:
             return ind["id"]
 
-    # Keyword match
+    # Substring match (label contains industry name or vice versa)
     for ind in industries:
-        for kw in ind["keywords"]:
-            if kw in label_lower or label_lower in kw:
-                return ind["id"]
+        name_lower = ind["name"].lower()
+        if name_lower in label_lower or label_lower in name_lower:
+            return ind["id"]
 
     return None
 
@@ -555,7 +531,6 @@ class CompanyMeta:
     industry_raw: str | None = None
     employee_count_range: int | None = None
     founded_year: int | None = None
-    hq_location_name: str | None = None
     same_as: list[str] = field(default_factory=list)
     parent_org_name: str | None = None
     legal_name: str | None = None
@@ -667,14 +642,6 @@ async def enrich_company(
         meta.sources["employee_count_range"] = (
             "wikidata" if wiki_data.get("employee_count") else "jsonld"
         )
-
-    # HQ location: Wikidata > JSON-LD
-    if wiki_data.get("hq_location_name"):
-        meta.hq_location_name = wiki_data["hq_location_name"]
-        meta.sources["hq_location_name"] = "wikidata"
-    elif jsonld_data.get("hq_location_name"):
-        meta.hq_location_name = jsonld_data["hq_location_name"]
-        meta.sources["hq_location_name"] = "jsonld"
 
     # sameAs: merge JSON-LD + Wikidata, deduplicate
     all_same_as: list[str] = []

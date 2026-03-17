@@ -64,10 +64,16 @@ or provide your own `--logo-url`/`--icon-url`.
 Setting the website auto-fetches company metadata (description, industry, employee count,
 founded year) from JSON-LD and Wikidata. Check the enrichment output.
 
-If **description** or **industry** are missing (required), fill them manually:
+If **description** or **industry** are missing (required), fill them manually.
+
+Descriptions must be provided in all four locales (en, de, fr, it).
+Write a one-sentence company description, then translate it for each locale:
 
 ```bash
-ws set --description "One-sentence company description"
+ws set --description "English description"
+ws set --description "German description" --description-locale de
+ws set --description "French description" --description-locale fr
+ws set --description "Italian description" --description-locale it
 ws set --industry <id>
 ```
 

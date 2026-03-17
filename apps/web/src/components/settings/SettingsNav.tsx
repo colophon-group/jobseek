@@ -26,6 +26,11 @@ export function SettingsNav() {
       label: t({ id: "settings.nav.account", comment: "Account settings nav link", message: "Account" }),
       exact: false,
     },
+    {
+      href: lp("/app/settings/billing"),
+      label: t({ id: "settings.nav.billing", comment: "Subscription settings nav link", message: "Subscription" }),
+      exact: false,
+    },
   ];
 
   function isActive(href: string, exact: boolean) {

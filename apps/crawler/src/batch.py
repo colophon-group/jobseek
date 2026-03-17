@@ -28,11 +28,16 @@ import structlog
 
 from src.core.description_store import content_hash, upload_description, upload_posting
 from src.core.enum_normalize import normalize_employment_type
+from src.core.experience_extract import extract_experience
 from src.core.location_resolve import LocationResolver
 from src.core.monitor import monitor_one
 from src.core.monitors import api_monitor_types
+from src.core.occupation_resolve import load_occupation_ids, match_occupation
+from src.core.salary_extract import extract_salary_unified
 from src.core.scrape import scrape_one
 from src.core.scrapers import enrich_description, get_scraper
+from src.core.seniority_resolve import load_seniority_ids, match_seniority
+from src.core.technology_resolve import load_technology_ids, match_technologies
 from src.shared.html_normalize import normalize_description_html
 from src.shared.langdetect import detect_language
 from src.shared.redis import get_redis
@@ -45,8 +50,12 @@ log = structlog.get_logger()
 # API monitor types share a single API host per type (throttle-domain keys).
 _API_MONITOR_TYPES = api_monitor_types()
 
-# Lazy-loaded location resolver singleton
+# Lazy-loaded singletons (populated once per batch run)
 _location_resolver: LocationResolver | None = None
+_technology_id_map: dict[str, int] | None = None
+_occupation_id_map: dict[str, int] | None = None
+_seniority_id_map: dict[str, int] | None = None
+_currency_rates: dict[str, float] | None = None
 
 # Max R2 backfill uploads per board run (touched postings without hashes).
 # Prevents huge first-time runs from timing out. Backfill completes incrementally.
@@ -83,6 +92,140 @@ async def _get_location_resolver(pool: asyncpg.Pool) -> LocationResolver:
         await _location_resolver.load(pool)
         log.info("batch.location_resolver.loaded", entries=_location_resolver.entry_count)
     return _location_resolver
+
+
+async def _get_technology_ids(pool: asyncpg.Pool) -> dict[str, int]:
+    """Get or load the technology slug -> id mapping."""
+    global _technology_id_map
+    if _technology_id_map is None:
+        _technology_id_map = await load_technology_ids(pool)
+        log.info("batch.technology_ids.loaded", count=len(_technology_id_map))
+    return _technology_id_map
+
+
+async def _get_occupation_ids(pool: asyncpg.Pool) -> dict[str, int]:
+    """Get or load the occupation slug -> id mapping."""
+    global _occupation_id_map
+    if _occupation_id_map is None:
+        _occupation_id_map = await load_occupation_ids(pool)
+        log.info("batch.occupation_ids.loaded", count=len(_occupation_id_map))
+    return _occupation_id_map
+
+
+async def _get_seniority_ids(pool: asyncpg.Pool) -> dict[str, int]:
+    """Get or load the seniority slug -> id mapping."""
+    global _seniority_id_map
+    if _seniority_id_map is None:
+        _seniority_id_map = await load_seniority_ids(pool)
+        log.info("batch.seniority_ids.loaded", count=len(_seniority_id_map))
+    return _seniority_id_map
+
+
+def _resolve_occupation_seniority(
+    titles: list[str] | str | None,
+    occ_ids: dict[str, int],
+    sen_ids: dict[str, int],
+) -> tuple[int | None, int | None]:
+    """Resolve occupation_id and seniority_id from job title(s).
+
+    Tries each title individually and returns the first match for each.
+    This handles multilingual titles correctly (e.g. German title may
+    match seniority while English title matches occupation).
+    """
+    if not titles:
+        return None, None
+    if isinstance(titles, str):
+        titles = [titles]
+
+    occ_id: int | None = None
+    sen_id: int | None = None
+    for title in titles:
+        if not title or not isinstance(title, str):
+            continue
+        title = title.strip()
+        if not title:
+            continue
+        if occ_id is None:
+            slug = match_occupation(title)
+            if slug:
+                occ_id = occ_ids.get(slug)
+        if sen_id is None:
+            slug = match_seniority(title)
+            if slug:
+                sen_id = sen_ids.get(slug)
+        if occ_id is not None and sen_id is not None:
+            break
+    return occ_id, sen_id
+
+
+def _resolve_technology_ids(description: str | None, tech_ids: dict[str, int]) -> list[int] | None:
+    """Extract technology IDs from description text. Returns None if no matches."""
+    if not description:
+        return None
+    slugs = match_technologies(description)
+    if not slugs:
+        return None
+    ids = sorted({tech_ids[s] for s in slugs if s in tech_ids})
+    return ids or None
+
+
+async def _get_currency_rates(pool: asyncpg.Pool) -> dict[str, float]:
+    """Get or load the currency -> to_eur rate mapping."""
+    global _currency_rates
+    if _currency_rates is None:
+        async with pool.acquire() as conn:
+            rows = await conn.fetch("SELECT currency, to_eur FROM currency_rate")
+        _currency_rates = {r["currency"]: float(r["to_eur"]) for r in rows}
+        log.info("batch.currency_rates.loaded", count=len(_currency_rates))
+    return _currency_rates
+
+
+def _extract_salary_fields(
+    html: str | None,
+    rates: dict[str, float],
+) -> tuple[int | None, int | None, str | None, str | None, int | None]:
+    """Extract and normalize salary from HTML.
+
+    Returns (salary_min, salary_max, salary_currency, salary_period, salary_eur).
+    salary_min/max are annual-normalized in original currency.
+    salary_eur is pre-computed for fast index-based filtering; refreshed daily
+    by refresh_currency_rates.py when exchange rates change.
+    """
+    if not html:
+        return None, None, None, None, None
+    sr = extract_salary_unified(html)
+    if sr is None:
+        return None, None, None, None, None
+
+    # Normalize to annual
+    if sr.period == "hourly":
+        # min/max are in cents for hourly
+        min_annual = round(sr.min / 100 * 2080)
+        max_annual = round(sr.max / 100 * 2080) if sr.max is not None else None
+    elif sr.period == "monthly":
+        min_annual = sr.min * 12
+        max_annual = sr.max * 12 if sr.max is not None else None
+    else:
+        min_annual = sr.min
+        max_annual = sr.max
+
+    to_eur = rates.get(sr.currency, 0)
+    salary_eur = round(min_annual * to_eur) if to_eur > 0 else None
+
+    return min_annual, max_annual, sr.currency, sr.period, salary_eur
+
+
+def _extract_experience_fields(html: str | None) -> tuple[int | None, int | None]:
+    """Extract experience requirement from HTML.
+
+    Returns (experience_min, experience_max). max is None for open-ended ("5+ years").
+    """
+    if not html:
+        return None, None
+    result = extract_experience(html)
+    if result is None:
+        return None, None
+    return result.min_years, result.max_years
 
 
 async def _resolve_locations(
@@ -311,11 +454,17 @@ INSERT INTO job_posting
      employment_type, source_url,
      first_seen_at, last_seen_at,
      is_active, titles, locales,
-     location_ids, location_types)
+     location_ids, location_types,
+     salary_min, salary_max, salary_currency, salary_period, salary_eur,
+     experience_min, experience_max, technology_ids,
+     occupation_id, seniority_id)
 VALUES ($1, $2, $3, $4,
         now(), now(),
         true, $5, $6,
-        $7, $8)
+        $7, $8,
+        $9, $10, $11, $12, $13,
+        $14, $15, $16,
+        $17, $18)
 RETURNING id
 """
 
@@ -324,7 +473,12 @@ CREATE TEMP TABLE _rich_updates (
     id uuid,
     employment_type text,
     titles text[], locales text[],
-    location_ids integer[], location_types text[]
+    location_ids integer[], location_types text[],
+    salary_min integer, salary_max integer,
+    salary_currency text, salary_period text, salary_eur integer,
+    experience_min integer, experience_max integer,
+    technology_ids integer[],
+    occupation_id integer, seniority_id integer
 ) ON COMMIT DROP
 """
 
@@ -332,7 +486,14 @@ _BATCH_UPDATE_RICH_CONTENT = """
 UPDATE job_posting AS jp
 SET employment_type = u.employment_type,
     titles = u.titles, locales = u.locales,
-    location_ids = u.location_ids, location_types = u.location_types
+    location_ids = u.location_ids, location_types = u.location_types,
+    salary_min = u.salary_min, salary_max = u.salary_max,
+    salary_currency = u.salary_currency, salary_period = u.salary_period,
+    salary_eur = u.salary_eur,
+    experience_min = u.experience_min, experience_max = u.experience_max,
+    technology_ids = COALESCE(u.technology_ids, jp.technology_ids),
+    occupation_id = COALESCE(u.occupation_id, jp.occupation_id),
+    seniority_id = COALESCE(u.seniority_id, jp.seniority_id)
 FROM _rich_updates u
 WHERE jp.id = u.id
 """
@@ -360,6 +521,12 @@ SET employment_type = $2,
     titles = $3, locales = $4,
     location_ids = $5, location_types = $6,
     description_r2_hash = $7,
+    technology_ids = COALESCE($8, technology_ids),
+    salary_min = $9, salary_max = $10,
+    salary_currency = $11, salary_period = $12, salary_eur = $13,
+    experience_min = $14, experience_max = $15,
+    occupation_id = COALESCE($16, occupation_id),
+    seniority_id = COALESCE($17, seniority_id),
     to_be_enriched = CASE
         WHEN description_r2_hash IS DISTINCT FROM $7 THEN true
         ELSE to_be_enriched
@@ -369,7 +536,9 @@ WHERE id = $1
 
 _SET_R2_HASH = """
 UPDATE job_posting
-SET description_r2_hash = $2, to_be_enriched = true
+SET description_r2_hash = $2,
+    technology_ids = COALESCE($3, technology_ids),
+    to_be_enriched = true
 WHERE id = $1::uuid
 """
 
@@ -1124,6 +1293,10 @@ async def _process_one_board(
 
                 # Resolve locations
                 loc_resolver = await _get_location_resolver(pool)
+                rates = await _get_currency_rates(pool)
+                tech_id_map = await _get_technology_ids(pool)
+                occ_ids = await _get_occupation_ids(pool)
+                sen_ids = await _get_seniority_ids(pool)
 
                 if new_jobs:
                     for j in new_jobs:
@@ -1133,16 +1306,33 @@ async def _process_one_board(
                             _coerce_text(j.job_location_type),
                             _coerce_text(j.language),
                         )
+                        desc_text = _coerce_text(j.description)
+                        s_min, s_max, s_cur, s_per, s_eur = _extract_salary_fields(desc_text, rates)
+                        exp_min, exp_max = _extract_experience_fields(desc_text)
+                        t_ids = _resolve_technology_ids(desc_text, tech_id_map)
+                        title_text = _coerce_text(j.title)
+                        all_titles = _build_titles(title_text, j.localizations)
+                        occ_id, sen_id = _resolve_occupation_seniority(all_titles, occ_ids, sen_ids)
                         row = await conn.fetchrow(
                             _INSERT_RICH_JOB,
                             company_id,
                             board_id,
                             normalize_employment_type(_coerce_text(j.employment_type)),
                             j.url,
-                            _build_titles(_coerce_text(j.title), j.localizations),
+                            all_titles,
                             _build_locales(_coerce_text(j.language), j.localizations),
                             loc_ids,
                             loc_types,
+                            s_min,
+                            s_max,
+                            s_cur,
+                            s_per,
+                            s_eur,
+                            exp_min,
+                            exp_max,
+                            t_ids,
+                            occ_id,
+                            sen_id,
                         )
                         if row:
                             r2_work.append(
@@ -1187,14 +1377,31 @@ async def _process_one_board(
                             _coerce_text(j.job_location_type),
                             _coerce_text(j.language),
                         )
+                        desc_text = _coerce_text(j.description)
+                        s_min, s_max, s_cur, s_per, s_eur = _extract_salary_fields(desc_text, rates)
+                        exp_min, exp_max = _extract_experience_fields(desc_text)
+                        t_ids = _resolve_technology_ids(desc_text, tech_id_map)
+                        title_text = _coerce_text(j.title)
+                        all_titles = _build_titles(title_text, j.localizations)
+                        occ_id, sen_id = _resolve_occupation_seniority(all_titles, occ_ids, sen_ids)
                         records.append(
                             (
                                 pid,
                                 normalize_employment_type(_coerce_text(j.employment_type)),
-                                _build_titles(_coerce_text(j.title), j.localizations),
+                                all_titles,
                                 _build_locales(_coerce_text(j.language), j.localizations),
                                 loc_ids,
                                 loc_types,
+                                s_min,
+                                s_max,
+                                s_cur,
+                                s_per,
+                                s_eur,
+                                exp_min,
+                                exp_max,
+                                t_ids,
+                                occ_id,
+                                sen_id,
                             )
                         )
                     await conn.copy_records_to_table(
@@ -1256,11 +1463,11 @@ async def _process_one_board(
 
             async def _do_upload(
                 pid: str, kw: dict, cur_hash: int | None
-            ) -> tuple[str, int] | None:
+            ) -> tuple[str, int, str | None] | None:
                 async with r2_semaphore:
                     new_hash = await _upload_to_r2(pid, current_hash=cur_hash, **kw)
                     if new_hash is not None and new_hash != cur_hash:
-                        return (pid, new_hash)
+                        return (pid, new_hash, kw.get("description"))
                     return None
 
             results = await asyncio.gather(
@@ -1272,9 +1479,11 @@ async def _process_one_board(
             if r2_errors:
                 board_log.warning("batch.r2_upload.failures", count=r2_errors, total=len(r2_work))
             if hashes_to_persist:
+                tech_id_map = await _get_technology_ids(pool)
                 async with pool.acquire() as conn:
-                    for posting_id, new_hash in hashes_to_persist:
-                        await conn.execute(_SET_R2_HASH, posting_id, new_hash)
+                    for posting_id, new_hash, desc in hashes_to_persist:
+                        tech_ids = _resolve_technology_ids(desc, tech_id_map)
+                        await conn.execute(_SET_R2_HASH, posting_id, new_hash, tech_ids)
 
         elapsed = monotonic() - t0
         board_log.info(
@@ -1438,6 +1647,20 @@ async def _process_one_scrape(
             posting_language=lang_text,
         )
 
+        # Resolve technologies from description
+        tech_id_map = await _get_technology_ids(pool)
+        tech_ids = _resolve_technology_ids(desc_text, tech_id_map)
+
+        # Resolve occupation + seniority from title
+        occ_ids = await _get_occupation_ids(pool)
+        sen_ids = await _get_seniority_ids(pool)
+        occ_id, sen_id = _resolve_occupation_seniority(title_text, occ_ids, sen_ids)
+
+        # Extract salary + experience from description
+        rates = await _get_currency_rates(pool)
+        s_min, s_max, s_cur, s_per, s_eur = _extract_salary_fields(desc_text, rates)
+        exp_min, exp_max = _extract_experience_fields(desc_text)
+
         # R2 upload (best-effort, before DB write)
         new_r2_hash = await _upload_to_r2(
             item.job_posting_id,
@@ -1465,6 +1688,16 @@ async def _process_one_scrape(
                 loc_ids,
                 loc_types,
                 new_r2_hash,
+                tech_ids,
+                s_min,
+                s_max,
+                s_cur,
+                s_per,
+                s_eur,
+                exp_min,
+                exp_max,
+                occ_id,
+                sen_id,
             )
             if _parse_update_count(update_result) != 1:
                 raise RuntimeError(f"job_posting_not_found:{item.job_posting_id}")

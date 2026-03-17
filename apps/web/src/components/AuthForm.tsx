@@ -176,8 +176,15 @@ export function AuthForm({ mode }: AuthFormProps) {
           autoComplete={isSignUp ? "new-password" : "current-password"}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="mb-6"
+          className={isSignUp ? "mb-6" : "mb-2"}
         />
+        {!isSignUp && (
+          <div className="mb-6 text-right">
+            <Link href={lp("/forgot-password")} prefetch={false} className="text-sm text-muted hover:text-foreground transition-colors">
+              <Trans id="auth.signIn.forgotPassword" comment="Forgot password link on sign-in page">Forgot password?</Trans>
+            </Link>
+          </div>
+        )}
         <Button type="submit" disabled={loading} className="w-full">
           {isSignUp
             ? (loading

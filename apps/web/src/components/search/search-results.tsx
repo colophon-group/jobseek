@@ -4,17 +4,22 @@ import { useEffect, useRef } from "react";
 import { CompanyCard } from "./company-card";
 import { RequestCompanyPrompt } from "./request-company";
 import type { SearchResultCompany } from "@/lib/search";
-import type { SerializableLocation } from "@/lib/search/query-params";
+import type { SerializableLocation, SerializableOccupation, SerializableSeniority, SerializableTechnology } from "@/lib/search/query-params";
 
 interface SearchResultsProps {
   companies: SearchResultCompany[];
   keywords: string[];
   locationIds?: number[];
   locations?: SerializableLocation[];
+  occupations?: SerializableOccupation[];
+  seniorities?: SerializableSeniority[];
+  technologies?: SerializableTechnology[];
+  languages?: string[];
   hasMore: boolean;
   onLoadMore: () => void;
   isLoadingMore: boolean;
   onShowPosting?: (postingId: string) => void;
+  selectedPostingId?: string | null;
 }
 
 export function SearchResults({
@@ -22,10 +27,15 @@ export function SearchResults({
   keywords,
   locationIds,
   locations,
+  occupations,
+  seniorities,
+  technologies,
+  languages,
   hasMore,
   onLoadMore,
   isLoadingMore,
   onShowPosting,
+  selectedPostingId,
 }: SearchResultsProps) {
   const sentinelRef = useRef<HTMLDivElement>(null);
 
@@ -51,7 +61,7 @@ export function SearchResults({
     <div className="space-y-3">
       {companies.map((result) => (
         <div key={`${result.company.id}-${keywords.join(",")}`}>
-          <CompanyCard result={result} keywords={keywords} locationIds={locationIds} locations={locations} onShowPosting={onShowPosting} />
+          <CompanyCard result={result} keywords={keywords} locationIds={locationIds} locations={locations} occupations={occupations} seniorities={seniorities} technologies={technologies} languages={languages} onShowPosting={onShowPosting} selectedPostingId={selectedPostingId} />
         </div>
       ))}
       {hasMore && <div ref={sentinelRef} className="h-1" />}

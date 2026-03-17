@@ -1,0 +1,187 @@
+slug,name,category,patterns,flags
+python,Python,language,Python,
+javascript,JavaScript,language,JavaScript,
+typescript,TypeScript,language,TypeScript,
+java,Java,language,Java,cs
+golang,Go,language,Golang|Go lang,
+ruby,Ruby,language,Ruby on Rails|Ruby,cs
+php,PHP,language,PHP,cs
+scala,Scala,language,Scala,cs
+kotlin,Kotlin,language,Kotlin,cs
+swift,Swift,language,Swift,cs
+objective-c,Objective-C,language,Objective-C|Objective C,
+rust,Rust,language,Rust,cs
+r-lang,R,language,R programming|R language|R Studio|RStudio|R Shiny|tidyverse|ggplot2|dplyr,
+cplusplus,C++,language,C++,
+csharp,C#,language,C#|C sharp,
+dart,Dart,language,Dart,cs
+elixir,Elixir,language,Elixir,cs
+haskell,Haskell,language,Haskell,cs
+clojure,Clojure,language,Clojure|ClojureScript,
+perl,Perl,language,Perl,cs
+lua,Lua,language,Lua,cs
+groovy,Groovy,language,Groovy,cs
+sql,SQL,database,SQL,
+plsql,PL/SQL,database,PL/SQL,
+graphql,GraphQL,database,GraphQL,
+react,React,frontend,React|React.js|ReactJS,cs
+angular,Angular,frontend,Angular|AngularJS,cs
+vue,Vue.js,frontend,Vue.js|VueJS|Vuejs,
+svelte,Svelte,frontend,Svelte|SvelteKit,
+nextjs,Next.js,frontend,Next.js|NextJS|Nextjs,
+nuxtjs,Nuxt.js,frontend,Nuxt.js|NuxtJS|Nuxtjs,
+ember,Ember.js,frontend,Ember.js|EmberJS,
+html-css,HTML/CSS,frontend,HTML|CSS,cs
+sass,Sass/SCSS,frontend,Sass|SCSS,cs
+tailwind,Tailwind CSS,frontend,Tailwind,
+bootstrap-css,Bootstrap,frontend,Bootstrap,cs
+jquery,jQuery,frontend,jQuery,
+webpack,Webpack,frontend,Webpack,
+vite,Vite,frontend,Vite,cs
+nodejs,Node.js,backend,Node.js|NodeJS|Nodejs,
+express,Express.js,backend,Express.js|ExpressJS,
+django,Django,backend,Django,
+flask,Flask,backend,Flask,cs
+fastapi,FastAPI,backend,FastAPI,
+ruby-on-rails,Ruby on Rails,backend,Ruby on Rails|Rails,cs
+spring-boot,Spring Boot,backend,Spring Boot,
+spring-framework,Spring Framework,backend,Spring MVC|Spring Security|Spring Cloud|Spring Data|Spring Framework|Spring Batch|Spring WebFlux,
+dotnet,.NET,backend,.NET|ASP.NET|.NET Core|.NET Framework,
+laravel,Laravel,backend,Laravel,
+symfony,Symfony,backend,Symfony,
+nestjs,NestJS,backend,NestJS|Nest.js,
+gin,Gin,backend,Gin,cs
+actix,Actix,backend,Actix,
+graphql-api,GraphQL API,backend,GraphQL API|Apollo GraphQL|Apollo Server|Apollo Client,
+grpc,gRPC,backend,gRPC,
+postgresql,PostgreSQL,database,PostgreSQL|Postgres,
+mysql,MySQL,database,MySQL|MariaDB,
+mongodb,MongoDB,database,MongoDB,
+redis,Redis,database,Redis,cs
+elasticsearch,Elasticsearch,database,Elasticsearch|Elastic Search|OpenSearch,
+cassandra,Cassandra,database,Cassandra,cs
+dynamodb,DynamoDB,database,DynamoDB,
+couchbase,Couchbase,database,Couchbase,
+neo4j,Neo4j,database,Neo4j,
+sqlite,SQLite,database,SQLite,
+oracle-db,Oracle Database,database,Oracle Cloud|Oracle DB|Oracle Database|Oracle EBS|Oracle ERP|Oracle HCM|Oracle Fusion|Oracle Cerner|Oracle RAC|Oracle WebLogic|Oracle APEX|Oracle Financials|PL/SQL,
+mssql,SQL Server,database,SQL Server|MSSQL|T-SQL,
+snowflake,Snowflake,database,Snowflake,cs
+aws,AWS,cloud,AWS|Amazon Web Services,
+azure,Azure,cloud,Azure,cs
+gcp,Google Cloud,cloud,Google Cloud|GCP,
+aws-lambda,AWS Lambda,cloud,AWS Lambda,
+s3,Amazon S3,cloud,Amazon S3,
+ec2,Amazon EC2,cloud,Amazon EC2,
+cloudflare,Cloudflare,cloud,Cloudflare Workers|Cloudflare CDN|Cloudflare WAF|Cloudflare Pages|Cloudflare R2|Cloudflare D1|Cloudflare Zero Trust|Cloudflare Tunnel|Cloudflare Stream,
+docker,Docker,devops,Docker,cs
+kubernetes,Kubernetes,devops,Kubernetes|K8s,
+terraform,Terraform,devops,Terraform,
+ansible,Ansible,devops,Ansible,cs
+puppet,Puppet,devops,Puppet,cs
+chef,Chef,devops,Chef Infra|Chef Automate|Chef Habitat|Chef cookbook|Chef recipe|Chef Server,
+helm,Helm,devops,Helm,cs
+jenkins,Jenkins,devops,Jenkins,cs
+github-actions,GitHub Actions,devops,GitHub Actions,
+gitlab-ci,GitLab CI,devops,GitLab CI,
+circleci,CircleCI,devops,CircleCI|Circle CI,
+argo,ArgoCD,devops,ArgoCD|Argo CD,
+prometheus,Prometheus,devops,Prometheus,cs
+grafana,Grafana,devops,Grafana,cs
+datadog,Datadog,devops,Datadog,
+splunk,Splunk,devops,Splunk,cs
+nginx,Nginx,devops,Nginx,
+kafka,Apache Kafka,data,Kafka,cs
+spark,Apache Spark,data,Spark,cs
+hadoop,Hadoop,data,Hadoop,
+airflow,Apache Airflow,data,Airflow,cs
+dbt,dbt,data,dbt,
+databricks,Databricks,data,Databricks,
+flink,Apache Flink,data,Flink,cs
+tableau,Tableau,data,Tableau,
+power-bi,Power BI,data,Power BI,
+looker,Looker,data,Looker,cs
+tensorflow,TensorFlow,ml,TensorFlow,
+pytorch,PyTorch,ml,PyTorch,
+scikit-learn,scikit-learn,ml,scikit-learn|sklearn,
+pandas,pandas,ml,pandas|Pandas,
+numpy,NumPy,ml,NumPy|numpy,
+keras,Keras,ml,Keras,cs
+huggingface,Hugging Face,ml,Hugging Face|HuggingFace|Transformers library,
+opencv,OpenCV,ml,OpenCV,
+mlflow,MLflow,ml,MLflow,
+langchain,LangChain,ml,LangChain,
+react-native,React Native,mobile,React Native,
+flutter,Flutter,mobile,Flutter,cs
+android-sdk,Android SDK,mobile,Android SDK|Android Studio,
+ios-sdk,iOS SDK,mobile,iOS SDK|Xcode|UIKit|SwiftUI,
+selenium,Selenium,testing,Selenium,
+cypress,Cypress,testing,Cypress,cs
+playwright-test,Playwright,testing,Playwright,cs
+jest,Jest,testing,Jest,cs
+pytest-tool,pytest,testing,pytest,
+workday-tech,Workday,enterprise,Workday HCM|Workday Finance|Workday Integration|Workday Studio|Workday Adaptive|Workday Prism|Workday Extend|Workday Report,
+sap,SAP,enterprise,SAP,
+salesforce,Salesforce,enterprise,Salesforce CRM|Salesforce Lightning|Salesforce Admin|Salesforce Developer|Salesforce Service Cloud|Salesforce Sales Cloud|Salesforce Marketing Cloud|Salesforce Commerce Cloud|Salesforce CPQ|Salesforce Pardot|Salesforce integration|SFDC|SOQL|Visualforce,
+servicenow,ServiceNow,enterprise,ServiceNow,
+jira,Jira,tools,Jira,cs
+confluence,Confluence,tools,Confluence,cs
+git,Git,tools,Git|GitHub|GitLab|Bitbucket,cs
+figma,Figma,tools,Figma,cs
+linux,Linux,tools,Linux|Ubuntu|Debian|CentOS|RHEL|Red Hat,
+rabbitmq,RabbitMQ,data,RabbitMQ,
+celery,Celery,data,Celery,cs
+excel,Excel,tools,Excel,cs
+sharepoint,SharePoint,tools,SharePoint,
+matlab,MATLAB,tools,MATLAB,
+autocad,AutoCAD,tools,AutoCAD,
+solidworks,SolidWorks,tools,SolidWorks,
+postman,Postman,tools,Postman,cs
+qlik,Qlik,data,Qlik,cs
+bash,Bash,language,Bash,cs
+powershell,PowerShell,language,PowerShell,
+abap,ABAP,language,ABAP,
+redshift,Amazon Redshift,database,Redshift,cs
+bigquery,BigQuery,database,BigQuery,
+hive,Apache Hive,database,Hive,cs
+cloudformation,CloudFormation,cloud,CloudFormation,
+ecs,Amazon ECS,cloud,ECS,cs
+eks,Amazon EKS,cloud,EKS,cs
+dynatrace,Dynatrace,devops,Dynatrace,
+new-relic,New Relic,devops,New Relic,
+elk-stack,ELK Stack,devops,ELK,cs
+kibana,Kibana,devops,Kibana,cs
+dynamics-365,Dynamics 365,enterprise,Dynamics 365,
+redux,Redux,frontend,Redux,cs
+alteryx,Alteryx,data,Alteryx,cs
+sas,SAS,data,SAS,cs
+jax,JAX,ml,JAX,cs
+delta-lake,Delta Lake,data,Delta Lake,
+bedrock,Amazon Bedrock,cloud,Bedrock,cs
+bazel,Bazel,tools,Bazel,cs
+vertex-ai,Vertex AI,cloud,Vertex AI,
+sagemaker,SageMaker,cloud,SageMaker,cs
+iceberg,Apache Iceberg,data,Iceberg,cs
+trino,Trino,data,Trino,cs
+gradle,Gradle,tools,Gradle,cs
+maven,Maven,tools,Maven,cs
+openai,OpenAI,ml,OpenAI,
+gemini,Gemini,ml,Gemini,cs
+kinesis,Amazon Kinesis,cloud,Kinesis,cs
+cloudwatch,CloudWatch,cloud,CloudWatch,
+aws-glue,AWS Glue,cloud,AWS Glue,
+sqs,Amazon SQS,cloud,SQS,cs
+azure-data-factory,Azure Data Factory,cloud,Azure Data Factory,
+azure-functions,Azure Functions,cloud,Azure Functions,
+vmware,VMware,cloud,VMware,
+netsuite,NetSuite,enterprise,NetSuite,
+okta,Okta,enterprise,Okta,cs
+coupa,Coupa,enterprise,Coupa,cs
+anaplan,Anaplan,enterprise,Anaplan,cs
+hibernate,Hibernate,backend,Hibernate,cs
+istio,Istio,devops,Istio,cs
+cmake,CMake,tools,CMake,
+firebase,Firebase,mobile,Firebase,cs
+jetpack-compose,Jetpack Compose,mobile,Jetpack Compose,
+kubeflow,Kubeflow,ml,Kubeflow,
+opentelemetry,OpenTelemetry,devops,OpenTelemetry,

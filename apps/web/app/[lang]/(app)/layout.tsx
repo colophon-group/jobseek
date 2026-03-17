@@ -6,6 +6,7 @@ import { getSession } from "@/lib/sessionCache";
 import { getPreferences } from "@/lib/actions/preferences";
 import { getSavedJobIds } from "@/lib/actions/saved-jobs";
 import { getFollowedCompanyIds } from "@/lib/actions/followed-companies";
+import { getUserPlan, PLAN_LIMITS } from "@/lib/plans";
 import { SessionProvider } from "@/components/SessionProvider";
 import { SavedJobsProvider } from "@/components/SavedJobsProvider";
 import { FollowedCompaniesProvider } from "@/components/FollowedCompaniesProvider";
@@ -13,6 +14,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { CookieBanner } from "@/components/CookieBanner";
 import { PreferencesInitializer } from "@/components/PreferencesInitializer";
 import { SearchStateProvider } from "@/components/SearchStateProvider";
+import { UpgradeBanner } from "@/components/UpgradeBanner";
 
 type Props = {
   params: Promise<{ lang: string }>;
@@ -23,16 +25,19 @@ export default async function AppLayout({ params, children }: Props) {
   const { lang: _lang } = await params;
   const session = await getSession();
 
-  const [prefs, savedIds, followedIds] = await Promise.all([
+  const [prefs, savedIds, followedIds, plan] = await Promise.all([
     session ? getPreferences() : null,
     session ? getSavedJobIds() : [],
     session ? getFollowedCompanyIds() : [],
+    session ? getUserPlan(session.user.id) : ("free" as const),
   ]);
+
+  const maxFollowed = PLAN_LIMITS[plan].maxFollowedCompanies;
 
   return (
     <SessionProvider user={session?.user ?? null}>
       <SavedJobsProvider initialIds={savedIds ?? []}>
-      <FollowedCompaniesProvider initialIds={followedIds ?? []}>
+      <FollowedCompaniesProvider initialIds={followedIds ?? []} maxFollowed={maxFollowed}>
       <SearchStateProvider>
         <div className="flex min-h-dvh flex-col">
           {prefs && (
@@ -47,6 +52,7 @@ export default async function AppLayout({ params, children }: Props) {
           <AppHeader />
           <div className="flex min-h-0 flex-1 flex-col md:pt-12">
             <CookieBanner aboveBottomBar serverConsent={prefs?.cookieConsent} />
+            <UpgradeBanner aboveBottomBar />
             <main className="mx-auto w-full max-w-[1200px] px-4 py-8 pb-20 md:pb-8">
               {children}
             </main>
