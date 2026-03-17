@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from src.inspect import ValidationError, validate_csvs
 
 
@@ -181,6 +183,19 @@ class TestValidateCsvs:
         monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
         errors = validate_csvs()
         assert any("Invalid scraper_type" in str(e) for e in errors)
+
+    @pytest.mark.parametrize("scraper_type", ["skip", "workday"])
+    def test_registered_scraper_types_are_valid(self, tmp_path, monkeypatch, scraper_type):
+        self._write_csvs(
+            tmp_path,
+            "slug,name,website,logo_url,icon_url,logo_type\ntest,Test,https://test.com,,\n",
+            "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
+            f"test,test-careers,https://example.com,greenhouse,,{scraper_type},\n",
+        )
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
+        errors = validate_csvs()
+        assert not any("Invalid scraper_type" in str(e) for e in errors)
 
     def test_invalid_monitor_config_json(self, tmp_path, monkeypatch):
         self._write_csvs(
