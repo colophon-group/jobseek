@@ -1,2 +1,6 @@
 node_modules/
 .git/
+src/
+tsconfig.json
+test-local.mjs
+*.map

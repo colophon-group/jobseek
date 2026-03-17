@@ -21,17 +21,40 @@ import { Signal } from '../../../../shared/types';
 
 /** Feed definitions — add more feeds here to expand coverage */
 const RSS_FEEDS = [
+  // General startup/venture
   {
     name: 'TechCrunch Venture',
     url: 'https://techcrunch.com/category/startups/feed/',
   },
   {
-    name: 'VentureBeat Business',
-    url: 'https://venturebeat.com/category/business/feed/',
-  },
-  {
     name: 'Crunchbase News',
     url: 'https://news.crunchbase.com/feed/',
+  },
+  // EU-focused tech/startup coverage
+  {
+    name: 'Sifted EU',
+    url: 'https://sifted.eu/feed',
+  },
+  {
+    name: 'EU Startups',
+    url: 'https://eu-startups.com/feed/',
+  },
+  {
+    name: 'Tech EU',
+    url: 'https://tech.eu/feed/',
+  },
+  // Crypto / Blockchain / Web3
+  {
+    name: 'The Block',
+    url: 'https://www.theblock.co/rss.xml',
+  },
+  {
+    name: 'CoinTelegraph',
+    url: 'https://cointelegraph.com/rss',
+  },
+  {
+    name: 'Decrypt',
+    url: 'https://decrypt.co/feed',
   },
 ];
 
@@ -50,6 +73,8 @@ const FUNDING_PATTERNS = {
   amount: [
     /\$(\d+(?:\.\d+)?)\s*(billion|million|[BM])\b/i,
     /raises?\s+\$(\d+(?:\.\d+)?)\s*(billion|million|[BM])/i,
+    /(?:EUR|€)\s*(\d+(?:\.\d+)?)\s*(billion|million|[BM])\b/i,
+    /(\d+(?:\.\d+)?)\s*(?:million|billion)\s*(?:euro|EUR|dollars?|USD)/i,
   ],
   roundType: [
     /(seed|pre-seed|series\s+[a-g]|series[a-g]|growth|late.stage|bridge|ipo|spac)/i,
@@ -155,8 +180,8 @@ export async function parseRssFeeds(lookbackDays: number): Promise<Signal[]> {
 function extractFundingInfo(
   text: string
 ): { company: string; amountFormatted: string | null; roundType: string | null } | null {
-  // Guard: must contain funding-related verbs to be worth processing
-  const fundingVerbs = /\b(raises?|secures?|lands?|closes?|funding|funded|investment|raised|announced)\b/i;
+  // Guard: must contain funding-related verbs or crypto financing terms to be worth processing
+  const fundingVerbs = /\b(raises?|secures?|lands?|closes?|funding|funded|investment|raised|announced|backs?|token sale|token round|seed round|series|pre-seed)\b/i;
   if (!fundingVerbs.test(text)) return null;
 
   // --- Extract company name ---

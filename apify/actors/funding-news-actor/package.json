@@ -4,7 +4,7 @@
   "main": "dist/main.js",
   "scripts": {
     "start": "node dist/main.js",
-    "build": "esbuild src/main.ts --bundle --outfile=dist/main.js --platform=node --target=node20 --format=esm --packages=external",
+    "build": "npx esbuild src/main.ts --bundle --outfile=dist/main.js --platform=node --target=node20 --format=esm --packages=external",
     "dev": "ts-node src/main.ts"
   },
   "dependencies": {

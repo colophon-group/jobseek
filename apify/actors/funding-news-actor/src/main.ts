@@ -38,6 +38,8 @@ interface FundingActorInput {
   minRoundAmountUsd?: number;
   roundTypes?: string[];
   lookbackDays?: number;
+  /** Crunchbase category slugs to filter by (e.g. ['blockchain', 'artificial-intelligence']) */
+  fundingCategories?: string[];
 }
 
 await Actor.init();
@@ -45,12 +47,13 @@ await Actor.init();
 const input = (await Actor.getInput<FundingActorInput>()) ?? {};
 const {
   crunchbaseApiKey,
-  minRoundAmountUsd = 10_000_000,
-  roundTypes = ['series_b', 'series_c', 'series_d', 'series_e'],
-  lookbackDays = 7,
+  minRoundAmountUsd = 1_000_000,
+  roundTypes = ['seed', 'pre_seed', 'series_a', 'series_b', 'series_c', 'series_d', 'series_e'],
+  lookbackDays = 14,
+  fundingCategories,
 } = input;
 
-console.log(`Starting funding-news-actor with lookbackDays=${lookbackDays}, minRoundAmountUsd=${minRoundAmountUsd}`);
+console.log(`Starting funding-news-actor with lookbackDays=${lookbackDays}, minRoundAmountUsd=${minRoundAmountUsd}, categories=${JSON.stringify(fundingCategories ?? [])}`);
 
 const allSignals: Signal[] = [];
 
@@ -58,7 +61,7 @@ const allSignals: Signal[] = [];
 if (crunchbaseApiKey) {
   console.log('Fetching signals from Crunchbase...');
   try {
-    const crunchbaseSignals = await parseCrunchbase(crunchbaseApiKey, minRoundAmountUsd, roundTypes, lookbackDays);
+    const crunchbaseSignals = await parseCrunchbase(crunchbaseApiKey, minRoundAmountUsd, roundTypes, lookbackDays, fundingCategories);
     console.log(`Got ${crunchbaseSignals.length} signals from Crunchbase`);
     allSignals.push(...crunchbaseSignals);
   } catch (err) {

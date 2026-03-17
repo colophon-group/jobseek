@@ -21,21 +21,28 @@
         "title": "Minimum round amount (USD)",
         "description": "Ignore rounds below this USD amount.",
         "editor": "number",
-        "default": 10000000
+        "default": 1000000
       },
       "roundTypes": {
         "type": "array",
         "title": "Round types",
         "description": "Funding round types that should generate signals.",
         "editor": "json",
-        "default": ["series_b", "series_c", "series_d", "series_e"]
+        "default": ["seed", "pre_seed", "series_a", "series_b", "series_c", "series_d", "series_e"]
       },
       "lookbackDays": {
         "type": "integer",
         "title": "Days to look back",
         "description": "Only include funding news published within this many days.",
         "editor": "number",
-        "default": 7
+        "default": 14
+      },
+      "fundingCategories": {
+        "type": "array",
+        "title": "Funding categories",
+        "description": "Crunchbase category slugs to filter by (e.g. ['blockchain', 'artificial-intelligence']). Leave empty for all categories.",
+        "editor": "json",
+        "default": []
       }
     }
   }

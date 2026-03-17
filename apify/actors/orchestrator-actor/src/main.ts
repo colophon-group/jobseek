@@ -25,6 +25,12 @@ interface OrchestratorInput {
   crunchbaseApiKey?: string;
   githubToken?: string;
   actorNamespace?: string;
+  /** Crunchbase category slugs to filter funding rounds (e.g. ['blockchain', 'artificial-intelligence']) */
+  fundingCategories?: string[];
+  /** Minimum funding round amount in USD (default: 1M) */
+  minFundingAmountUsd?: number;
+  /** Funding round types to include (default: seed through series_e) */
+  fundingRoundTypes?: string[];
 }
 
 interface ContactFinderOutput {
@@ -41,10 +47,10 @@ const input = (await Actor.getInput<OrchestratorInput>()) ?? {} as OrchestratorI
 const {
   anthropicApiKey,
   userProfile,
-  scoreThreshold = MIN_SIGNAL_SCORE,
+  scoreThreshold = 4,
   hunterApiKey = '',
   apolloApiKey = '',
-  lookbackDays = 7,
+  lookbackDays = 14,
   runIngestionActors = true,
   secCompanies = [],
   githubOrgs = [],
@@ -57,6 +63,9 @@ const {
   crunchbaseApiKey = '',
   githubToken = '',
   actorNamespace = 'golanger',
+  fundingCategories,
+  minFundingAmountUsd = 1_000_000,
+  fundingRoundTypes = ['seed', 'pre_seed', 'series_a', 'series_b', 'series_c', 'series_d', 'series_e'],
 } = input;
 
 if (!userProfile?.skills || !userProfile?.background) {
@@ -82,6 +91,9 @@ const allSignals = runIngestionActors
       linkedinCookies,
       crunchbaseApiKey,
       githubToken,
+      fundingCategories,
+      minFundingAmountUsd,
+      fundingRoundTypes,
     })
   : [];
 console.log(`Loaded ${allSignals.length} raw signals from source actors`);
@@ -237,6 +249,9 @@ interface SourceRunInput {
   linkedinCookies: string;
   crunchbaseApiKey: string;
   githubToken: string;
+  fundingCategories?: string[];
+  minFundingAmountUsd: number;
+  fundingRoundTypes: string[];
 }
 
 async function collectSignalsFromSourceActors(input: SourceRunInput): Promise<Signal[]> {
@@ -244,6 +259,9 @@ async function collectSignalsFromSourceActors(input: SourceRunInput): Promise<Si
   await collectActorOutput('funding-news-actor', {
       crunchbaseApiKey: input.crunchbaseApiKey,
       lookbackDays: input.lookbackDays,
+      minRoundAmountUsd: input.minFundingAmountUsd,
+      roundTypes: input.fundingRoundTypes,
+      fundingCategories: input.fundingCategories,
     }, allSignals, input.accountUsername);
 
   await collectActorOutput('sec-edgar-actor', {

@@ -40,22 +40,55 @@ interface CrunchbaseSearchResponse {
  * Fetches funding rounds from Crunchbase that match the given filters.
  *
  * @param apiKey       - Crunchbase API key (user_key)
- * @param minAmount    - Minimum round size in USD (e.g. 10_000_000 for $10M)
- * @param roundTypes   - Array of Crunchbase investment_type slugs, e.g. ['series_b', 'series_c']
+ * @param minAmount    - Minimum round size in USD (e.g. 1_000_000 for $1M)
+ * @param roundTypes   - Array of Crunchbase investment_type slugs, e.g. ['seed', 'series_a', 'series_b']
  * @param lookbackDays - How many days back to search (filters on `announced_on`)
+ * @param categories   - Optional Crunchbase category slugs to filter by (e.g. ['blockchain', 'artificial-intelligence'])
  * @returns Array of Signal objects with signal_type = 'funding'
  */
 export async function parseCrunchbase(
   apiKey: string,
   minAmount: number,
   roundTypes: string[],
-  lookbackDays: number
+  lookbackDays: number,
+  categories?: string[]
 ): Promise<Signal[]> {
   const signals: Signal[] = [];
 
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - lookbackDays);
   const startDateStr = startDate.toISOString().split('T')[0]; // 'YYYY-MM-DD'
+
+  const queryPredicates: Array<Record<string, unknown>> = [
+    {
+      type: 'predicate',
+      field_id: 'announced_on',
+      operator_id: 'gte',
+      values: [startDateStr],
+    },
+    {
+      type: 'predicate',
+      field_id: 'investment_type',
+      operator_id: 'includes',
+      values: roundTypes,
+    },
+    {
+      type: 'predicate',
+      field_id: 'money_raised',
+      operator_id: 'gte',
+      values: [minAmount],
+    },
+  ];
+
+  // Optional: filter by company categories (e.g. blockchain, artificial-intelligence)
+  if (categories && categories.length > 0) {
+    queryPredicates.push({
+      type: 'predicate',
+      field_id: 'funded_organization_categories',
+      operator_id: 'includes',
+      values: categories,
+    });
+  }
 
   const requestBody = {
     field_ids: [
@@ -67,26 +100,7 @@ export async function parseCrunchbase(
       'funded_organization_location',
       'short_description',
     ],
-    query: [
-      {
-        type: 'predicate',
-        field_id: 'announced_on',
-        operator_id: 'gte',
-        values: [startDateStr],
-      },
-      {
-        type: 'predicate',
-        field_id: 'investment_type',
-        operator_id: 'includes',
-        values: roundTypes,
-      },
-      {
-        type: 'predicate',
-        field_id: 'money_raised',
-        operator_id: 'gte',
-        values: [minAmount],
-      },
-    ],
+    query: queryPredicates,
     order: [{ field_id: 'announced_on', sort: 'desc' }],
     limit: 100, // Crunchbase max per page
   };
