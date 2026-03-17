@@ -37,6 +37,9 @@ importers:
       postgres:
         specifier: ^3
         version: 3.4.8
+      proxy-agent:
+        specifier: ^6
+        version: 6.5.0
       react:
         specifier: ^19
         version: 19.2.4
@@ -173,7 +176,7 @@ importers:
         version: 5.9.1(typescript@5.9.3)
       '@lingui/loader':
         specifier: ^5.9.1
-        version: 5.9.1(babel-plugin-macros@3.1.0)(typescript@5.9.3)(webpack@5.105.2(esbuild@0.25.12))
+        version: 5.9.1(babel-plugin-macros@3.1.0)(typescript@5.9.3)(webpack@5.105.2)
       '@next/bundle-analyzer':
         specifier: ^16.1.6
         version: 16.1.6
@@ -5429,12 +5432,12 @@ snapshots:
     transitivePeerDependencies:
       - typescript
 
-  '@lingui/loader@5.9.1(babel-plugin-macros@3.1.0)(typescript@5.9.3)(webpack@5.105.2(esbuild@0.25.12))':
+  '@lingui/loader@5.9.1(babel-plugin-macros@3.1.0)(typescript@5.9.3)(webpack@5.105.2)':
     dependencies:
       '@babel/runtime': 7.28.6
       '@lingui/cli': 5.9.1(babel-plugin-macros@3.1.0)(typescript@5.9.3)
       '@lingui/conf': 5.9.1(typescript@5.9.3)
-      webpack: 5.105.2(esbuild@0.25.12)
+      webpack: 5.105.2
     transitivePeerDependencies:
       - babel-plugin-macros
       - supports-color
@@ -8318,15 +8321,13 @@ snapshots:
 
   tapable@2.3.0: {}
 
-  terser-webpack-plugin@5.3.17(esbuild@0.25.12)(webpack@5.105.2(esbuild@0.25.12)):
+  terser-webpack-plugin@5.3.17(webpack@5.105.2):
     dependencies:
       '@jridgewell/trace-mapping': 0.3.31
       jest-worker: 27.5.1
       schema-utils: 4.3.3
       terser: 5.46.0
-      webpack: 5.105.2(esbuild@0.25.12)
-    optionalDependencies:
-      esbuild: 0.25.12
+      webpack: 5.105.2
 
   terser@5.46.0:
     dependencies:
@@ -8554,7 +8555,7 @@ snapshots:
 
   webpack-sources@3.3.4: {}
 
-  webpack@5.105.2(esbuild@0.25.12):
+  webpack@5.105.2:
     dependencies:
       '@types/eslint-scope': 3.7.7
       '@types/estree': 1.0.8
@@ -8578,7 +8579,7 @@ snapshots:
       neo-async: 2.6.2
       schema-utils: 4.3.3
       tapable: 2.3.0
-      terser-webpack-plugin: 5.3.17(esbuild@0.25.12)(webpack@5.105.2(esbuild@0.25.12))
+      terser-webpack-plugin: 5.3.17(webpack@5.105.2)
       watchpack: 2.5.1
       webpack-sources: 3.3.4
     transitivePeerDependencies:
