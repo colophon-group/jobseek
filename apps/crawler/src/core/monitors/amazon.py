@@ -386,6 +386,64 @@ async def _partition_by_category(
     return all_jobs
 
 
+async def _partition_by_category_stream(
+    client: httpx.AsyncClient,
+    base_params: dict,
+    initial_jobs: list[DiscoveredJob],
+    initial_total: int,
+    category_slugs: list[str],
+):
+    """Streaming variant of _partition_by_category — yields per-category batches.
+
+    Same logic but yields after each category so the caller can pulse heartbeats.
+    """
+    country = base_params.get("country", "?")
+    log.info(
+        "amazon.partitioning_by_category",
+        country=country,
+        initial_total=initial_total,
+    )
+
+    seen_urls: set[str] = set()
+
+    # Seed with what we already have from the capped query
+    seed_batch: list[DiscoveredJob] = []
+    for job in initial_jobs:
+        seen_urls.add(job.url)
+        seed_batch.append(job)
+    if seed_batch:
+        yield seed_batch
+
+    for slug in category_slugs:
+        params = {**base_params, "category[]": slug}
+        cat_jobs, cat_total = await _paginate_query(client, params)
+
+        if cat_total == 0:
+            continue
+
+        new_jobs: list[DiscoveredJob] = []
+        for job in cat_jobs:
+            if job.url not in seen_urls:
+                seen_urls.add(job.url)
+                new_jobs.append(job)
+
+        if new_jobs:
+            log.info(
+                "amazon.category",
+                country=country,
+                category=slug,
+                total=cat_total,
+                new=len(new_jobs),
+            )
+            yield new_jobs
+
+    log.info(
+        "amazon.category_partition_done",
+        country=country,
+        jobs=len(seen_urls),
+    )
+
+
 async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[DiscoveredJob]:
     """Fetch job listings from the Amazon Jobs API.
 
@@ -521,8 +579,10 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
             yield jobs
             return
         category_slugs = await _fetch_category_slugs(client)
-        result = await _partition_by_category(client, base_params, jobs, total, category_slugs)
-        yield result
+        async for batch in _partition_by_category_stream(
+            client, base_params, jobs, total, category_slugs
+        ):
+            yield batch
         return
 
     # Extract country codes from the initial results
@@ -550,35 +610,48 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
         if country_total == 0:
             continue
 
-        # Country itself hit the cap — split further by category
+        # Country itself hit the cap — stream per-category batches
         if country_total >= _API_RESULT_CAP:
             if category_slugs is None:
                 category_slugs = await _fetch_category_slugs(client)
-            country_jobs = await _partition_by_category(
-                client,
-                params,
-                country_jobs,
-                country_total,
-                category_slugs,
+            async for batch in _partition_by_category_stream(
+                client, params, country_jobs, country_total, category_slugs
+            ):
+                new_jobs: list[DiscoveredJob] = []
+                for job in batch:
+                    if job.url not in seen_urls:
+                        seen_urls.add(job.url)
+                        new_jobs.append(job)
+                if new_jobs:
+                    total_jobs += len(new_jobs)
+                    yield new_jobs
+                if total_jobs >= MAX_JOBS:
+                    break
+
+            log.info(
+                "amazon.country",
+                country=country_code,
+                total=country_total,
+                new="(streamed)",
+            )
+        else:
+            # Dedup and yield batch for this country
+            new_jobs: list[DiscoveredJob] = []
+            for job in country_jobs:
+                if job.url not in seen_urls:
+                    seen_urls.add(job.url)
+                    new_jobs.append(job)
+
+            log.info(
+                "amazon.country",
+                country=country_code,
+                total=country_total,
+                new=len(new_jobs),
             )
 
-        # Dedup and yield batch for this country
-        new_jobs: list[DiscoveredJob] = []
-        for job in country_jobs:
-            if job.url not in seen_urls:
-                seen_urls.add(job.url)
-                new_jobs.append(job)
-
-        log.info(
-            "amazon.country",
-            country=country_code,
-            total=country_total,
-            new=len(new_jobs),
-        )
-
-        if new_jobs:
-            total_jobs += len(new_jobs)
-            yield new_jobs
+            if new_jobs:
+                total_jobs += len(new_jobs)
+                yield new_jobs
 
         if total_jobs >= MAX_JOBS:
             log.warning("amazon.truncated", total=total_jobs, cap=MAX_JOBS)

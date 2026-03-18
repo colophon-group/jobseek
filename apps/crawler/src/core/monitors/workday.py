@@ -89,8 +89,16 @@ async def _paginate_query(
     list_url: str,
     body: dict,
     client: httpx.AsyncClient,
+    *,
+    cap_abort: int = 0,
 ) -> tuple[list[str], int, list[dict]]:
-    """Paginate a single list query. Returns (paths, total, facets)."""
+    """Paginate a single list query. Returns (paths, total, facets).
+
+    When *cap_abort* > 0 and ``total >= cap_abort`` after the first page,
+    return immediately with only the first page's results.  This avoids
+    fetching up to 100 pages that will be discarded when the caller is
+    only interested in the total and facets for splitting.
+    """
     paths: list[str] = []
     total = 0
     facets: list[dict] = []
@@ -129,6 +137,11 @@ async def _paginate_query(
 
         offset += len(postings)
         if not postings or offset >= total:
+            break
+
+        # Early abort: we only needed total + facets from the first page
+        if cap_abort and total >= cap_abort:
+            log.info("workday.cap_abort", total=total, cap=cap_abort, fetched=len(paths))
             break
 
         if len(paths) >= MAX_JOBS:
@@ -184,8 +197,8 @@ async def _api_list_stream(
     """Yield batches of externalPaths, splitting by facet if the 2000 cap is hit."""
     list_url = _api_list_url(company, wd_instance, site)
 
-    # First, try unfaceted query
-    paths, total, facets = await _paginate_query(list_url, {}, client)
+    # First, try unfaceted query (abort early if over cap — we only need facets)
+    paths, total, facets = await _paginate_query(list_url, {}, client, cap_abort=_API_RESULT_CAP)
 
     if total < _API_RESULT_CAP:
         # Under the cap — we got everything
