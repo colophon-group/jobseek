@@ -21,6 +21,7 @@ databricks,databricks-careers,https://www.databricks.com/company/careers,greenho
 deepjudge,deepjudge-careers,https://jobs.ashbyhq.com/deepjudge,ashby,"{""token"": ""deepjudge""}",,
 deepmind,deepmind-careers,https://deepmind.google/about/careers/,greenhouse,"{""token"": ""deepmind""}",,
 depoly,depoly-careers,https://depoly.jobs.personio.com,personio,"{""slug"": ""depoly"", ""language"": ""en""}",skip,
+disney,disney-careers,https://disney.wd5.myworkdayjobs.com/disneycareer,workday,"{""company"": ""disney"", ""wd_instance"": ""wd5"", ""site"": ""disneycareer""}",json-ld,
 dphi-space,dphi-space-careers,https://www.dphispace.com/careers,dom,,dom,"{""render"": true, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""div"", ""attr"": ""class=text-gray-600"", ""field"": ""locations""}, {""tag"": ""p"", ""attr"": ""class=text-gray-700"", ""field"": ""description"", ""html"": true, ""stop_count"": 100}]}"
 elevenlabs,elevenlabs-careers,https://jobs.ashbyhq.com/elevenlabs,ashby,"{""token"": ""elevenlabs""}",,
 esri,esri-careers,https://job-boards.greenhouse.io/esri,greenhouse,"{""token"": ""esri""}",skip,
