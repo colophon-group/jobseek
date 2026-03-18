@@ -29,9 +29,7 @@ def _make_pdf(text: str) -> bytes:
     page = writer.pages[0]
 
     stream = DecodedStreamObject()
-    stream.set_data(
-        f"BT /F1 12 Tf 72 720 Td ({text}) Tj ET".encode()
-    )
+    stream.set_data(f"BT /F1 12 Tf 72 720 Td ({text}) Tj ET".encode())
 
     font_dict = DictionaryObject(
         {
@@ -41,11 +39,7 @@ def _make_pdf(text: str) -> bytes:
         }
     )
     resources = DictionaryObject(
-        {
-            NameObject("/Font"): DictionaryObject(
-                {NameObject("/F1"): font_dict}
-            )
-        }
+        {NameObject("/Font"): DictionaryObject({NameObject("/F1"): font_dict})}
     )
     page[NameObject("/Resources")] = resources
     page[NameObject("/Contents")] = writer._add_object(stream)
@@ -169,9 +163,7 @@ class TestScrape:
             return httpx.Response(200, content=pdf_bytes)
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            result = await scrape(
-                "https://example.com/Marketing_Intern.pdf", {}, client
-            )
+            result = await scrape("https://example.com/Marketing_Intern.pdf", {}, client)
             assert result.title == "Marketing Intern"
 
     async def test_title_source_text(self):
@@ -203,9 +195,7 @@ class TestScrape:
             return httpx.Response(200, content=empty_pdf)
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            result = await scrape(
-                "https://example.com/Marketing_Intern.pdf", {}, client
-            )
+            result = await scrape("https://example.com/Marketing_Intern.pdf", {}, client)
             assert result.title == "Marketing Intern"
 
     async def test_saves_artifact(self, tmp_path):
@@ -215,9 +205,7 @@ class TestScrape:
             return httpx.Response(200, content=pdf_bytes)
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            await scrape(
-                "https://example.com/job.pdf", {}, client, artifact_dir=tmp_path
-            )
+            await scrape("https://example.com/job.pdf", {}, client, artifact_dir=tmp_path)
             assert (tmp_path / "source.pdf").exists()
 
     async def test_http_error_raises(self):

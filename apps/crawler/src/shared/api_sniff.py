@@ -673,15 +673,13 @@ def _set_multipart_param(body_str: str, param: str, value: object) -> str:
         + re.escape(param)
         + r'"\r\n\r\n'
         + r"(.*?)"
-        + r"(?=\r\n" + re.escape(boundary) + r")",
+        + r"(?=\r\n"
+        + re.escape(boundary)
+        + r")",
         re.DOTALL,
     )
     replacement = (
-        boundary
-        + '\r\nContent-Disposition: form-data; name="'
-        + param
-        + '"\r\n\r\n'
-        + str(value)
+        boundary + '\r\nContent-Disposition: form-data; name="' + param + '"\r\n\r\n' + str(value)
     )
     new_body, count = pattern.subn(replacement, body_str, count=1)
     return new_body if count else body_str
@@ -698,7 +696,9 @@ def _get_multipart_param(body_str: str, param: str) -> str | None:
         + re.escape(param)
         + r'"\r\n\r\n'
         + r"(.*?)"
-        + r"(?=\r\n" + re.escape(boundary) + r")",
+        + r"(?=\r\n"
+        + re.escape(boundary)
+        + r")",
         re.DOTALL,
     )
     match = pattern.search(body_str)
