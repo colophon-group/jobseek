@@ -65,13 +65,17 @@ def _load_existing_boards(slug: str) -> list[dict[str, str]]:
 @click.command()
 @click.argument("slug")
 @click.option("--issue", type=int, default=None, help="GitHub issue number")
+@click.option("--pr", "pr_opt", type=int, default=None, help="Attach to existing PR number")
 @click.option("--reconfig", is_flag=True, help="Reconfigure an existing company")
 @click.option("--reset", is_flag=True, help="Purge managed clone and re-clone from scratch")
-def new(slug: str, issue: int | None, reconfig: bool, reset: bool):
+def new(slug: str, issue: int | None, pr_opt: int | None, reconfig: bool, reset: bool):
     """Create workspace + stub CSV row + branch + draft PR.
 
     With --reconfig, creates a workspace for an existing company to
     re-probe and update its monitor/scraper configuration.
+
+    With --pr N, attaches to an existing pull request instead of
+    creating a new one.
 
     Idempotent: if a previous run partially succeeded, leftover state
     (workspace dir, worktree, local/remote branch) is cleaned up
@@ -138,8 +142,14 @@ def new(slug: str, issue: int | None, reconfig: bool, reset: bool):
         out.info("github", "gh authenticated")
         out.info("workspace", f"Slug {slug!r} is valid")
 
-        # Reuse existing PR if one was created by a previous attempt
-        if issue:
+        # Attach to explicit PR or reuse one from a previous attempt
+        if pr_opt:
+            pr_number = pr_opt
+            pr_branch = git.get_pr_branch(pr_number)
+            if pr_branch:
+                branch = pr_branch
+            out.info("github", f"Attaching to existing PR #{pr_number} (branch {branch})")
+        elif issue:
             existing = git.check_existing_prs(issue)
             if existing:
                 pr_number = existing[0]["number"]
@@ -149,13 +159,16 @@ def new(slug: str, issue: int | None, reconfig: bool, reset: bool):
         # can work on different companies concurrently.
         # create_worktree handles stale worktrees and local branches.
         git.fetch()
-        main = git.get_main_branch()
         worktree_path = git.worktrees_dir() / slug
 
-        # Clean up stale remote branch (previous push that wasn't merged)
-        git.delete_remote_branch(branch)
-
-        git.create_worktree(branch, worktree_path, start_point=f"origin/{main}")
+        if pr_opt:
+            # Attach to existing PR branch — don't delete remote, start from it
+            git.create_worktree(branch, worktree_path, start_point=f"origin/{branch}")
+        else:
+            main = git.get_main_branch()
+            # Clean up stale remote branch (previous push that wasn't merged)
+            git.delete_remote_branch(branch)
+            git.create_worktree(branch, worktree_path, start_point=f"origin/{main}")
         set_repo_root(worktree_path)
         out.plain("git", f"Created worktree at {worktree_path} (branch {branch})")
 

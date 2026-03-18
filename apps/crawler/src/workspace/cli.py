@@ -10,7 +10,7 @@ from pathlib import Path
 import click
 
 from src.workspace import output as out
-from src.workspace.commands.config import add_board, del_board, discover, logos, set_
+from src.workspace.commands.config import add_board, add_boards, del_board, discover, logos, set_
 from src.workspace.commands.crawl import (
     feedback_cmd,
     probe_api,
@@ -73,6 +73,7 @@ def add_group():
 
 
 add_group.add_command(add_board, name="board")
+add_group.add_command(add_boards, name="boards")
 
 
 # ── `ws probe` group ────────────────────────────────────────────────────

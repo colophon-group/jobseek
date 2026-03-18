@@ -43,8 +43,9 @@ headers. These reveal regional career page variants. Interpret the results:
 
 - **Many career-path variants + distinct hosts** → separate regional boards are
   needed (e.g. Accenture with 55 region-specific APIs)
-- **Many career-path variants + same host** → likely a centralized ATS that
-  serves all regions from one endpoint; one board usually suffices
+- **Many career-path variants + same host** → may be a centralized ATS (one
+  board) or separate regional data behind one domain (separate boards needed)
+  — probe one region to check
 - **Few or zero career-path variants** → ignore hreflang; use other discovery signals
 
 The discovery output shows an "Hreflang regional variants" summary with counts

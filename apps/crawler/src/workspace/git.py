@@ -472,6 +472,31 @@ def check_existing_prs(issue_number: int) -> list[dict[str, str]]:
         return []
 
 
+def get_pr_branch(pr_number: int) -> str | None:
+    """Return the head branch name for a given PR number, or None on failure."""
+    import json
+
+    result = _run(
+        [
+            "gh",
+            "pr",
+            "view",
+            str(pr_number),
+            *_gh_repo_flag(),
+            "--json",
+            "headRefName",
+        ],
+        check=False,
+    )
+    if result.returncode != 0 or not result.stdout.strip():
+        return None
+    try:
+        data = json.loads(result.stdout)
+        return data.get("headRefName")
+    except (json.JSONDecodeError, TypeError):
+        return None
+
+
 def create_draft_pr(title: str, body: str) -> int:
     """Create a draft PR and return its number.
 
