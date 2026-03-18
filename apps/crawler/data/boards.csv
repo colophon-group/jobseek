@@ -21,6 +21,7 @@ comparis,comparis-careers,https://comparis-ch.jobs.personio.de,personio,"{""slug
 constructor-tech,constructor-tech-careers-gh,https://job-boards.greenhouse.io/constructortech,greenhouse,,,
 corintis,corintis-careers,https://careers.corintis.com/jobs,rss,"{""preset"": ""teamtailor""}",,
 cradle,cradle-careers,https://jobs.ashbyhq.com/cradlebio,ashby,"{""token"": ""cradlebio""}",skip,
+daedalean,daedalean-careers,https://jobs.lever.co/daedalean,lever,"{""token"": ""daedalean""}",skip,
 databricks,databricks-careers,https://www.databricks.com/company/careers,greenhouse,"{""token"": ""databricks""}",,
 deepjudge,deepjudge-careers,https://jobs.ashbyhq.com/deepjudge,ashby,"{""token"": ""deepjudge""}",,
 deepmind,deepmind-careers,https://deepmind.google/about/careers/,greenhouse,"{""token"": ""deepmind""}",,
