@@ -17,4 +17,6 @@ __pycache__/
 /apps/crawler/.workspace/
 /apps/crawler/ws-package/.venv/
 /apps/crawler/data/geonames/
+/apps/crawler/data/desc_cache.db
+/apps/crawler/data/dual_lang_results.json
 .vercel
