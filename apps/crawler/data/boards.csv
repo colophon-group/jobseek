@@ -13,6 +13,7 @@ chipmind,chipmind-careers,https://www.chipmind.ai/careers,dom,,dom,"{""steps"": 
 cloudflare,cloudflare-careers,https://boards.greenhouse.io/cloudflare,greenhouse,"{""token"": ""cloudflare""}",,
 constructor-tech,constructor-tech-careers-gh,https://job-boards.greenhouse.io/constructortech,greenhouse,,,
 corintis,corintis-careers,https://careers.corintis.com/jobs,rss,"{""preset"": ""teamtailor""}",,
+cradle,cradle-careers,https://jobs.ashbyhq.com/cradlebio,ashby,"{""token"": ""cradlebio""}",skip,
 databricks,databricks-careers,https://www.databricks.com/company/careers,greenhouse,"{""token"": ""databricks""}",,
 deepjudge,deepjudge-careers,https://jobs.ashbyhq.com/deepjudge,ashby,"{""token"": ""deepjudge""}",,
 deepmind,deepmind-careers,https://deepmind.google/about/careers/,greenhouse,"{""token"": ""deepmind""}",,
