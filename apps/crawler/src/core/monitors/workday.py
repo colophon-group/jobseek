@@ -169,6 +169,19 @@ async def _api_list(
     client: httpx.AsyncClient,
 ) -> list[str]:
     """Collect all externalPaths, splitting by facet if the 2000 cap is hit."""
+    paths: list[str] = []
+    async for batch in _api_list_stream(company, wd_instance, site, client):
+        paths.extend(batch)
+    return paths
+
+
+async def _api_list_stream(
+    company: str,
+    wd_instance: str,
+    site: str,
+    client: httpx.AsyncClient,
+):
+    """Yield batches of externalPaths, splitting by facet if the 2000 cap is hit."""
     list_url = _api_list_url(company, wd_instance, site)
 
     # First, try unfaceted query
@@ -176,7 +189,8 @@ async def _api_list(
 
     if total < _API_RESULT_CAP:
         # Under the cap — we got everything
-        return paths[:MAX_JOBS]
+        yield paths[:MAX_JOBS]
+        return
 
     # Hit the cap — split by facet to get all jobs
     split = _pick_split_facet(facets)
@@ -187,7 +201,8 @@ async def _api_list(
             site=site,
             total=total,
         )
-        return paths[:MAX_JOBS]
+        yield paths[:MAX_JOBS]
+        return
 
     facet_param, facet_ids = split
     log.info(
@@ -199,28 +214,32 @@ async def _api_list(
     )
 
     seen: set[str] = set()
-    all_paths: list[str] = []
+    total_count = 0
 
     for facet_id in facet_ids:
         body = {"appliedFacets": {facet_param: [facet_id]}}
         sub_paths, sub_total, _ = await _paginate_query(list_url, body, client)
+        new_paths: list[str] = []
         for p in sub_paths:
             if p not in seen:
                 seen.add(p)
-                all_paths.append(p)
+                new_paths.append(p)
+        total_count += len(new_paths)
 
-        if len(all_paths) >= MAX_JOBS:
+        if new_paths:
+            yield new_paths
+
+        if total_count >= MAX_JOBS:
             log.warning(
                 "workday.truncated",
                 company=company,
                 site=site,
-                total=len(all_paths),
+                total=total_count,
                 cap=MAX_JOBS,
             )
-            return all_paths[:MAX_JOBS]
+            return
 
-    log.info("workday.faceted_total", company=company, site=site, jobs=len(all_paths))
-    return all_paths
+    log.info("workday.faceted_total", company=company, site=site, jobs=total_count)
 
 
 # ── Multi-site discovery ─────────────────────────────────────────────
@@ -272,6 +291,29 @@ async def _list_all_sites(
     return site_paths[:MAX_JOBS]
 
 
+async def _list_all_sites_stream(
+    company: str,
+    wd_instance: str,
+    sites: list[str],
+    client: httpx.AsyncClient,
+):
+    """Yield (site, path) batches per site for heartbeat-aware streaming."""
+    sem = asyncio.Semaphore(_LIST_CONCURRENCY)
+    total_count = 0
+
+    for site in sites:
+        async with sem:
+            try:
+                async for batch in _api_list_stream(company, wd_instance, site, client):
+                    pairs = [(site, p) for p in batch]
+                    total_count += len(pairs)
+                    yield pairs
+                    if total_count >= MAX_JOBS:
+                        return
+            except Exception as exc:
+                log.warning("workday.site_list_error", site=site, error=str(exc))
+
+
 # ── Main discover entry point ────────────────────────────────────────
 
 
@@ -320,6 +362,51 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> set[str]:
         log.info("workday.listed", company=company, site=site, postings=len(site_paths))
 
     return {_job_url(company, wd_instance, s, p) for s, p in site_paths}
+
+
+async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
+    """Yield URL batches so the caller can pulse heartbeats on large boards.
+
+    Same logic as discover() but yields intermediate sets of URLs after
+    each site or facet sub-query completes, preventing worker pool timeouts.
+    """
+    metadata = board.get("metadata") or {}
+    company = metadata.get("company")
+    wd_instance = metadata.get("wd_instance")
+    site = metadata.get("site")
+
+    if not (company and wd_instance and site):
+        parsed = _parse_components(board["board_url"])
+        if not parsed:
+            raise ValueError(
+                f"Cannot parse Workday components from board URL {board['board_url']!r} "
+                "and no company/wd_instance/site in metadata"
+            )
+        company, wd_instance, site = parsed
+
+    all_sites = metadata.get("all_sites", True)
+
+    if all_sites:
+        sites = await _discover_sites(company, wd_instance, client)
+        if not sites:
+            log.warning("workday.no_sites_discovered", company=company, fallback=site)
+            sites = [site]
+
+        total_urls = 0
+        async for batch in _list_all_sites_stream(company, wd_instance, sites, client):
+            urls = {_job_url(company, wd_instance, s, p) for s, p in batch}
+            total_urls += len(urls)
+            yield urls
+
+        log.info("workday.stream_done", company=company, total=total_urls)
+    else:
+        total_urls = 0
+        async for batch in _api_list_stream(company, wd_instance, site, client):
+            urls = {_job_url(company, wd_instance, site, p) for p in batch}
+            total_urls += len(urls)
+            yield urls
+
+        log.info("workday.stream_done", company=company, site=site, total=total_urls)
 
 
 # ── Detection (used by ws probe) ─────────────────────────────────────
@@ -407,4 +494,4 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
     return None
 
 
-register("workday", discover, cost=10, can_handle=can_handle, rich=False)
+register("workday", discover, cost=10, can_handle=can_handle, rich=False, stream=discover_stream)

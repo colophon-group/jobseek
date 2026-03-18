@@ -251,7 +251,7 @@ export class PostgresSearchProvider implements SearchProvider {
           jp.location_ids, jp.location_types,
           (${keywordCountExpr("", "jp.titles[1]", keywords)}) AS keyword_count
         FROM job_posting jp
-        WHERE (jp.is_active = true OR jp.first_seen_at >= now() - interval '1 year')
+        WHERE jp.is_active = true
           AND jp.titles[1] IS NOT NULL AND jp.titles[1] != ''
           AND (${matchOr("jp", keywords)})
           AND (${languageFilter("jp", languages)})
@@ -328,7 +328,7 @@ export class PostgresSearchProvider implements SearchProvider {
           COUNT(*) FILTER (WHERE jp.is_active) AS active_matches,
           COUNT(*) FILTER (WHERE jp.first_seen_at >= now() - interval '1 year') AS year_matches
         FROM job_posting jp
-        WHERE (jp.is_active = true OR jp.first_seen_at >= now() - interval '1 year')
+        WHERE jp.is_active = true
           AND jp.titles[1] IS NOT NULL AND jp.titles[1] != ''
           AND (${languageFilter("jp", languages)})
           AND (${locationFilter("jp", locationIds)})
@@ -366,7 +366,7 @@ export class PostgresSearchProvider implements SearchProvider {
           jp2.location_ids, jp2.location_types
         FROM job_posting jp2
         WHERE jp2.company_id = tc.company_id
-          AND (jp2.is_active = true OR jp2.first_seen_at >= now() - interval '1 year')
+          AND jp2.is_active = true
           AND jp2.titles[1] IS NOT NULL AND jp2.titles[1] != ''
           AND (${languageFilter("jp2", languages)})
           AND (${locationFilter("jp2", locationIds)})
@@ -375,7 +375,7 @@ export class PostgresSearchProvider implements SearchProvider {
           AND (${technologyFilter("jp2", technologyIds)})
           AND (${salaryFilter("jp2", salaryMinEur, salaryMaxEur)})
           AND (${experienceFilter("jp2", experienceMin, experienceMax)})
-        ORDER BY jp2.is_active DESC, jp2.first_seen_at DESC
+        ORDER BY jp2.first_seen_at DESC
         LIMIT 10
       ) p ON true
       ORDER BY tc.active_matches DESC, tc.year_matches DESC
@@ -418,7 +418,7 @@ export class PostgresSearchProvider implements SearchProvider {
           jp.location_ids, jp.location_types
         FROM job_posting jp
         WHERE jp.company_id = ${companyId}
-          AND (jp.is_active = true OR jp.first_seen_at >= now() - interval '1 year')
+          AND jp.is_active = true
           AND jp.titles[1] IS NOT NULL AND jp.titles[1] != ''
           AND (${matchOr("jp", keywords)})
           AND (${languageFilter("jp", languages)})
@@ -428,7 +428,7 @@ export class PostgresSearchProvider implements SearchProvider {
           AND (${technologyFilter("jp", technologyIds)})
           AND (${salaryFilter("jp", salaryMinEur, salaryMaxEur)})
           AND (${experienceFilter("jp", experienceMin, experienceMax)})
-        ORDER BY keyword_count DESC, jp.is_active DESC, jp.first_seen_at DESC, jp.id
+        ORDER BY keyword_count DESC, jp.first_seen_at DESC, jp.id
         LIMIT ${limit} OFFSET ${offset}
       `);
       rawRows = rows as unknown as PostingRow[];
@@ -439,7 +439,7 @@ export class PostgresSearchProvider implements SearchProvider {
           jp.location_ids, jp.location_types
         FROM job_posting jp
         WHERE jp.company_id = ${companyId}
-          AND (jp.is_active = true OR jp.first_seen_at >= now() - interval '1 year')
+          AND jp.is_active = true
           AND jp.titles[1] IS NOT NULL AND jp.titles[1] != ''
           AND (${languageFilter("jp", languages)})
           AND (${locationFilter("jp", locationIds)})
@@ -448,7 +448,7 @@ export class PostgresSearchProvider implements SearchProvider {
           AND (${technologyFilter("jp", technologyIds)})
           AND (${salaryFilter("jp", salaryMinEur, salaryMaxEur)})
           AND (${experienceFilter("jp", experienceMin, experienceMax)})
-        ORDER BY jp.is_active DESC, jp.first_seen_at DESC, jp.id
+        ORDER BY jp.first_seen_at DESC, jp.id
         LIMIT ${limit} OFFSET ${offset}
       `);
       rawRows = rows as unknown as PostingRow[];
@@ -467,7 +467,7 @@ export class PostgresSearchProvider implements SearchProvider {
       id: r.id,
       title: r.title,
       firstSeenAt: new Date(r.first_seen_at),
-      isActive: Boolean(r.is_active),
+      isActive: true,
       relevanceScore: Number(r.keyword_count),
       locations: buildPostingLocations(
         r.location_ids,
@@ -510,7 +510,7 @@ export class PostgresSearchProvider implements SearchProvider {
         COUNT(*) FILTER (WHERE jp.first_seen_at >= now() - interval '1 year') AS year_count
       FROM job_posting jp
       WHERE jp.company_id = ${companyId}
-        AND (jp.is_active = true OR jp.first_seen_at >= now() - interval '1 year')
+        AND jp.is_active = true
         AND jp.titles[1] IS NOT NULL AND jp.titles[1] != ''
         AND (${languageFilter("jp", languages)})
         ${keywords.length > 0 ? sql`AND (${matchOr("jp", keywords)})` : sql``}
@@ -535,7 +535,7 @@ export class PostgresSearchProvider implements SearchProvider {
           jp.location_ids, jp.location_types
         FROM job_posting jp
         WHERE jp.company_id = ${companyId}
-          AND (jp.is_active = true OR jp.first_seen_at >= now() - interval '1 year')
+          AND jp.is_active = true
           AND jp.titles[1] IS NOT NULL AND jp.titles[1] != ''
           AND (${matchOr("jp", keywords)})
           AND (${languageFilter("jp", languages)})
@@ -545,7 +545,7 @@ export class PostgresSearchProvider implements SearchProvider {
           AND (${technologyFilter("jp", technologyIds)})
           AND (${salaryFilter("jp", salaryMinEur, salaryMaxEur)})
           AND (${experienceFilter("jp", experienceMin, experienceMax)})
-        ORDER BY keyword_count DESC, jp.is_active DESC, jp.first_seen_at DESC, jp.id
+        ORDER BY keyword_count DESC, jp.first_seen_at DESC, jp.id
         LIMIT ${limit} OFFSET ${offset}
       `);
       rawRows = rows as unknown as PostingRow[];
@@ -556,7 +556,7 @@ export class PostgresSearchProvider implements SearchProvider {
           jp.location_ids, jp.location_types
         FROM job_posting jp
         WHERE jp.company_id = ${companyId}
-          AND (jp.is_active = true OR jp.first_seen_at >= now() - interval '1 year')
+          AND jp.is_active = true
           AND jp.titles[1] IS NOT NULL AND jp.titles[1] != ''
           AND (${languageFilter("jp", languages)})
           AND (${locationFilter("jp", locationIds)})
@@ -565,7 +565,7 @@ export class PostgresSearchProvider implements SearchProvider {
           AND (${technologyFilter("jp", technologyIds)})
           AND (${salaryFilter("jp", salaryMinEur, salaryMaxEur)})
           AND (${experienceFilter("jp", experienceMin, experienceMax)})
-        ORDER BY jp.is_active DESC, jp.first_seen_at DESC, jp.id
+        ORDER BY jp.first_seen_at DESC, jp.id
         LIMIT ${limit} OFFSET ${offset}
       `);
       rawRows = rows as unknown as PostingRow[];
@@ -584,7 +584,7 @@ export class PostgresSearchProvider implements SearchProvider {
       id: r.id,
       title: r.title,
       firstSeenAt: new Date(r.first_seen_at),
-      isActive: Boolean(r.is_active),
+      isActive: true,
       relevanceScore: Number(r.keyword_count),
       locations: buildPostingLocations(
         r.location_ids,

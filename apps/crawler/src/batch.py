@@ -1385,11 +1385,10 @@ async def _process_one_board_streaming(
                     return (pid, new_hash, kw.get("description"))
                 return None
 
-        is_rich = True  # streaming is only used for rich monitors
-
         async for result in monitor_one_stream(board_url, crawler_type, metadata, http):
             batch_count += 1
             all_urls.update(result.urls)
+            is_rich = result.jobs_by_url is not None
 
             # Pulse heartbeat + extend DB lease
             extender.pulse()

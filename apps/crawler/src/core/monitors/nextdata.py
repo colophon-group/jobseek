@@ -358,6 +358,161 @@ async def discover(
     return _extract_urls(items, url_template, slug_fields)
 
 
+# How many pages to fetch per streaming batch before yielding.
+_STREAM_BATCH_PAGES = 10
+
+
+async def discover_stream(
+    board: dict,
+    client: httpx.AsyncClient,
+    pw=None,
+):
+    """Yield job batches so the caller can pulse heartbeats on large boards.
+
+    Non-paginated boards yield a single batch.  Paginated boards yield the
+    first page immediately, then groups of ``_STREAM_BATCH_PAGES`` pages.
+    """
+    metadata = board.get("metadata") or {}
+    board_url = board["board_url"]
+
+    path = metadata.get("path")
+    url_template = metadata.get("url_template")
+    if not path or not url_template:
+        return
+
+    source: str = metadata.get("source", "nextdata")
+    fields_map: dict[str, str | dict] = metadata.get("fields") or {}
+    slug_fields: list[str] | None = metadata.get("slug_fields")
+    render = metadata.get("render", False)
+    actions = metadata.get("actions")
+    pagination_cfg: dict | None = metadata.get("pagination")
+    base_salary_cfg: dict | None = metadata.get("base_salary")
+
+    if not render and actions:
+        render = True
+
+    wait: str | None = metadata.get("wait")
+    timeout: int | None = metadata.get("timeout")
+
+    html = await _fetch_html(
+        board_url,
+        render,
+        client,
+        pw=pw,
+        actions=actions,
+        wait=wait,
+        timeout=timeout,
+    )
+    if not html:
+        return
+
+    data = extract_embedded_json(html, source)
+    if not data:
+        return
+
+    items = resolve_path(data, path)
+    if not isinstance(items, list):
+        return
+
+    # No pagination — single yield
+    if not pagination_cfg:
+        if fields_map:
+            yield _extract_rich(items, url_template, slug_fields, fields_map, base_salary_cfg)
+        else:
+            yield _extract_urls(items, url_template, slug_fields)
+        return
+
+    # Determine page count
+    page_count = _resolve_page_count(data, pagination_cfg)
+    if page_count is None or page_count <= 1:
+        if fields_map:
+            yield _extract_rich(items, url_template, slug_fields, fields_map, base_salary_cfg)
+        else:
+            yield _extract_urls(items, url_template, slug_fields)
+        return
+
+    # Yield first page immediately
+    if fields_map:
+        yield _extract_rich(items, url_template, slug_fields, fields_map, base_salary_cfg)
+    else:
+        yield _extract_urls(items, url_template, slug_fields)
+
+    page_param = pagination_cfg.get("page_param", "page")
+    sem = asyncio.Semaphore(_MAX_CONCURRENT_PAGES)
+
+    async def _fetch_page(page_num: int) -> list:
+        async with sem:
+            page_url = _add_query_param(board_url, page_param, page_num)
+            page_html = await _fetch_html(
+                page_url,
+                render,
+                client,
+                pw=pw,
+                actions=actions,
+                wait=wait,
+                timeout=timeout,
+            )
+            if not page_html:
+                return []
+            page_data = extract_embedded_json(page_html, source)
+            if not page_data:
+                return []
+            page_items = resolve_path(page_data, path)
+            return page_items if isinstance(page_items, list) else []
+
+    # Fetch remaining pages in batches of _STREAM_BATCH_PAGES
+    remaining = list(range(2, page_count + 1))
+    for i in range(0, len(remaining), _STREAM_BATCH_PAGES):
+        chunk = remaining[i : i + _STREAM_BATCH_PAGES]
+        results = await asyncio.gather(*[_fetch_page(p) for p in chunk])
+        batch_items: list = []
+        for page_items in results:
+            batch_items.extend(page_items)
+        if batch_items:
+            if fields_map:
+                yield _extract_rich(
+                    batch_items, url_template, slug_fields, fields_map, base_salary_cfg
+                )
+            else:
+                yield _extract_urls(batch_items, url_template, slug_fields)
+
+
+def _resolve_page_count(data: dict, pagination_cfg: dict) -> int | None:
+    """Extract page count from first-page data."""
+    pagination_path = pagination_cfg.get("path")
+    page_count_field = pagination_cfg.get("page_count")
+    total_records_field = pagination_cfg.get("total_records")
+    page_size = pagination_cfg.get("page_size")
+
+    if not pagination_path:
+        return None
+    if not page_count_field and not (total_records_field and page_size):
+        return None
+
+    pagination_data = resolve_path(data, pagination_path)
+    if not isinstance(pagination_data, dict):
+        return None
+
+    if page_count_field:
+        raw_count = resolve_path(pagination_data, page_count_field)
+        if raw_count is None:
+            return None
+        try:
+            return int(raw_count)
+        except (ValueError, TypeError):
+            return None
+    else:
+        raw_total = resolve_path(pagination_data, total_records_field)
+        if raw_total is None:
+            return None
+        try:
+            import math
+
+            return math.ceil(int(raw_total) / int(page_size))
+        except (ValueError, TypeError):
+            return None
+
+
 async def _fetch_html(
     url: str,
     render: bool,
@@ -547,4 +702,4 @@ def _extract_urls(
     return urls
 
 
-register("nextdata", discover, cost=20, can_handle=can_handle)
+register("nextdata", discover, cost=20, can_handle=can_handle, stream=discover_stream)
