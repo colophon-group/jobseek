@@ -1,6 +1,7 @@
 company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config
 accel-club,accel-club-careers,https://careers.accelclub.com/jobs/,api_sniffer,"{""api_url"": ""https://jobdesk-api.accelclub.pro/v1/vacancies/"", ""method"": ""GET"", ""json_path"": ""results"", ""url_field"": ""url"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""locations[].name"", ""job_location_type"": ""location_types[0]"", ""employment_type"": ""employment_types[0]"", ""metadata.team"": ""team.name""}}",,
 acronis,acronis-careers-jobs,https://www.acronis.com/en/careers/jobs/,workday,"{""company"": ""acronis"", ""wd_instance"": ""wd502"", ""site"": ""acronis_careers""}",,
+adobe,adobe-careers,https://adobe.wd5.myworkdayjobs.com/external_experienced,workday,,workday,
 adyen,adyen-careers,https://job-boards.greenhouse.io/adyen,greenhouse,"{""token"": ""adyen""}",skip,
 amazon,amazon-careers,https://www.amazon.jobs/en/search,amazon,,,
 ami,ami-careers,https://jobs.ashbyhq.com/ami,ashby,,skip,

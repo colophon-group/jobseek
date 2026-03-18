@@ -1,6 +1,7 @@
 slug,name,website,logo_url,icon_url,logo_type,industry,employee_count_range,founded_year,extras
 accel-club,Accel Club,https://www.accelclub.co,https://jobseek-assets.colophon-group.org/companies/accel-club/logo.png,https://jobseek-assets.colophon-group.org/companies/accel-club/icon.png,,5,3,2021,
 acronis,Acronis,https://www.acronis.com/,https://jobseek-assets.colophon-group.org/companies/acronis/logo.png,https://jobseek-assets.colophon-group.org/companies/acronis/icon.png,,1,6,2003,
+adobe,Adobe,https://www.adobe.com,,,icon,1,8,1982,"{""sameAs"": [""https://www.linkedin.com/company/adobe"", ""https://github.com/adobe"", ""https://twitter.com/Adobe""], ""legalName"": ""Adobe Inc."", ""tickerSymbol"": ""Q82059"", ""wikidataId"": ""Q11463""}"
 adyen,Adyen,https://www.adyen.com,https://jobseek-assets.colophon-group.org/companies/adyen/logo.png,https://jobseek-assets.colophon-group.org/companies/adyen/icon.webp,wordmark,2,6,2006,"{""sameAs"": [""https://en.wikipedia.org/wiki/Adyen"", ""https://www.linkedin.com/company/adyen"", ""https://twitter.com/adyen""], ""legalName"": ""Adyen N.V."", ""tickerSymbol"": ""Q478720"", ""wikidataId"": ""Q4686934""}"
 amazon,Amazon,https://www.amazon.com,https://jobseek-assets.colophon-group.org/companies/amazon/logo.svg,https://jobseek-assets.colophon-group.org/companies/amazon/icon.png,,1,8,1994,
 ami,AMI,https://ami.com,https://jobseek-assets.colophon-group.org/companies/ami/logo.png,https://jobseek-assets.colophon-group.org/companies/ami/icon.webp,wordmark+icon,1,2,,
