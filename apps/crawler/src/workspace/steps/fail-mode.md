@@ -14,11 +14,14 @@ Before writing code, confirm configuration exploration is exhausted:
 ## Steps
 
 1. Clean up the failed workspace: `ws del`
-2. Clone the repo into a separate working copy (do NOT use `~/.jobseek/repo/` — that belongs to `ws`):
+2. Clone the repo into a **private, randomized** working copy (do NOT use `~/.jobseek/repo/` — that belongs to `ws`):
    ```bash
-   git clone https://github.com/colophon-group/jobseek.git /tmp/jobseek-fix
-   cd /tmp/jobseek-fix/apps/crawler
+   WORKDIR="/tmp/jobseek-fix-$(openssl rand -hex 4)"
+   git clone https://github.com/colophon-group/jobseek.git "$WORKDIR"
+   cd "$WORKDIR/apps/crawler"
    ```
+   **Important:** Always randomize the clone path. Multiple agents may run concurrently —
+   a fixed path like `/tmp/jobseek-fix` will cause agents to overwrite each other's work.
 3. Identify the root cause in the source code (`src/core/monitors/`, `src/core/scrapers/`, `src/workspace/`)
 4. Create a `fix-crawler/<description>` branch
 5. Make the minimal code change that fixes the issue
