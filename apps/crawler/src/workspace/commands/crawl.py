@@ -127,6 +127,155 @@ _MONITOR_PROBE_HINTS: dict[str, str] = {
 }
 
 
+# ── Probe result processing (shared by single-board and all-boards) ───
+
+
+def _score_probe_results(
+    results: list[tuple[str, dict | None, str]], current_jobs: int
+) -> list[tuple[str, dict | None, str, float | None, float, bool]]:
+    """Compute cost scores and classify probe results.
+
+    Returns list of (name, metadata, comment, monitor_cost, initial_load, rich).
+    """
+    n_jobs = current_jobs or 200
+    scored: list[tuple[str, dict | None, str, float | None, float, bool]] = []
+    for name, metadata, comment in results:
+        if metadata is not None:
+            rich = name in api_monitor_types() or (
+                name == "api_sniffer" and bool((metadata or {}).get("fields"))
+            )
+            mon_cost = _estimate_monitor_cost(name, n_jobs, metadata)
+            init_load = 0.0 if rich else _estimate_initial_load(n_jobs)
+            scored.append((name, metadata, comment, mon_cost, init_load, rich))
+        else:
+            scored.append((name, metadata, comment, None, 0.0, False))
+    return scored
+
+
+def _store_detections(board, scored):
+    """Store probe detections with cost estimates on board object."""
+    board.detections["_meta"] = {"url": board.url}
+    for name, metadata, _comment, mon_cost, init_load, rich in scored:
+        if metadata is not None:
+            detection = dict(metadata)
+            if mon_cost is not None:
+                detection["monitor_per_cycle"] = round(mon_cost, 2)
+                detection["initial_load"] = round(init_load, 2)
+                detection["rich"] = rich
+            board.detections[name] = detection
+
+
+def _process_probe_results(slug, board, results, current_jobs):
+    """Score probe results, store detections on board, save, and return scored list."""
+    from src.workspace.artifacts import probe_run_dir, save_probe
+
+    probe_dir = probe_run_dir(slug, board.alias)
+    save_probe(
+        probe_dir,
+        [
+            {
+                "name": name,
+                "detected": metadata is not None,
+                "metadata": metadata,
+                "comment": comment,
+            }
+            for name, metadata, comment in results
+        ],
+    )
+
+    scored = _score_probe_results(results, current_jobs)
+    _store_detections(board, scored)
+
+    summary_parts = []
+    for name, metadata, *_ in scored:
+        symbol = "\u2713" if metadata is not None else "\u2717"
+        summary_parts.append(f"{name} {symbol}")
+    summary = ", ".join(summary_parts)
+    action_log.append_to_list(board.log, "probe monitor", True, summary)
+    save_board(slug, board)
+    return scored
+
+
+def _print_probe_results(scored, current_jobs):
+    """Print formatted probe results to terminal."""
+    n_jobs = current_jobs or 200
+
+    # Determine priority threshold
+    detected_url_only_costs = [
+        s for _, m, _, s, _il, r in scored if m is not None and not r and s is not None
+    ]
+    threshold = min(detected_url_only_costs) if detected_url_only_costs else 1.5
+
+    high = [e for e in scored if e[1] is not None and e[3] is not None and e[3] <= threshold]
+    low = [e for e in scored if e[1] is not None and (e[3] is None or e[3] > threshold)]
+    undetected = [e for e in scored if e[1] is None]
+
+    use_priority_split = current_jobs > 0 and (high or low)
+
+    def _print_entry(name, metadata, comment, mon_cost, init_load, rich):
+        symbol = "\u2713" if metadata is not None else "\u2717"
+        cost_str = f"~{mon_cost:.1f}s/cycle" if mon_cost is not None else ""
+        if rich:
+            kind_str = "rich"
+        elif metadata is not None:
+            kind_str = f"URL-only (+scraper ~{init_load:.0f}s initial)" if init_load else "URL-only"
+        else:
+            kind_str = ""
+        parts = [f"{name:<14}{symbol}  {comment}"]
+        if cost_str:
+            parts.append(f"  {cost_str}  {kind_str}")
+        out.plain("probe", "  ".join(parts))
+        if metadata is not None and name in _MONITOR_PROBE_HINTS:
+            out.plain("probe", f"  {_MONITOR_PROBE_HINTS[name]}")
+        if metadata is not None and name == "api_sniffer" and metadata.get("alternatives"):
+            for alt in metadata["alternatives"]:
+                total_str = f", total: {alt['total']}" if alt.get("total") else ""
+                out.plain(
+                    "probe",
+                    f"  Also: {alt['items']} items, score: {alt['score']}{total_str} "
+                    f"at {alt['url'][:100]}",
+                )
+
+    if use_priority_split:
+        if high:
+            out.plain("probe", f"-- High priority (<={threshold:.1f}s/cycle at N={n_jobs}) --")
+            for entry in high:
+                _print_entry(*entry)
+            print()
+        if low:
+            out.plain("probe", f"-- Low priority (>{threshold:.1f}s/cycle at N={n_jobs}) --")
+            for entry in low:
+                _print_entry(*entry)
+            print()
+        if undetected:
+            for entry in undetected:
+                _print_entry(*entry)
+    else:
+        for entry in scored:
+            _print_entry(*entry)
+
+    # Suggest best detected monitor
+    detected_scored = [(n, m, c, s, il, r) for n, m, c, s, il, r in scored if m is not None]
+    if detected_scored:
+        detected_scored.sort(key=lambda x: (not x[5], x[3] if x[3] is not None else float("inf")))
+        best_name, best_meta, _, _, _, _ = detected_scored[0]
+        best_jobs = best_meta.get("jobs", best_meta.get("urls", best_meta.get("count")))
+        if best_jobs is not None and best_jobs == 0:
+            out.warn(
+                "probe",
+                f"{best_name} detected but returned 0 jobs — verify board URL, "
+                "then iterate its config before switching type. "
+                "Try: ws task troubleshoot 'zero jobs'",
+            )
+            out.plain("probe", f"Config reference: ws help monitor {best_name}")
+    else:
+        out.warn(
+            "probe",
+            "No monitors detected. Check the board URL or try "
+            "ws select monitor dom --config '{\"render\": true}'",
+        )
+
+
 @click.command(name="monitor")
 @click.argument("slug", required=False)
 @click.option("--board", "-b", "board_alias", default=None, help="Target board alias")
@@ -137,9 +286,15 @@ _MONITOR_PROBE_HINTS: dict[str, str] = {
     required=True,
     help="Number of jobs visible on the website (check the careers page)",
 )
-def probe_monitors(slug: str | None, board_alias: str | None, current_jobs: int):
+@click.option("--all-boards", is_flag=True, default=False, help="Probe all boards sequentially")
+def probe_monitors(slug: str | None, board_alias: str | None, current_jobs: int, all_boards: bool):
     """Probe all monitor types for the active board's URL."""
     slug = resolve_slug(slug)
+
+    if all_boards:
+        _probe_all_boards(slug, current_jobs)
+        return
+
     ws, board = _resolve_board(slug, board_alias)
 
     async def _run():
@@ -176,116 +331,94 @@ def probe_monitors(slug: str | None, board_alias: str | None, current_jobs: int)
     )
     out.plain("artifacts", f"Saved: {probe_dir}")
 
-    # Compute cost scores and classify results
-    # Each entry: (name, metadata, comment, monitor_cost, initial_load, rich)
-    n_jobs = current_jobs or 200  # Default estimate for cost scoring
-    scored: list[tuple[str, dict | None, str, float | None, float, bool]] = []
-    for name, metadata, comment in results:
-        if metadata is not None:
-            rich = name in api_monitor_types() or (
-                name == "api_sniffer" and bool((metadata or {}).get("fields"))
-            )
-            mon_cost = _estimate_monitor_cost(name, n_jobs, metadata)
-            init_load = 0.0 if rich else _estimate_initial_load(n_jobs)
-            scored.append((name, metadata, comment, mon_cost, init_load, rich))
-        else:
-            scored.append((name, metadata, comment, None, 0.0, False))
+    scored = _score_probe_results(results, current_jobs)
 
-    # Determine priority threshold: monitor cost of cheapest detected URL-only, or 1.5
-    detected_url_only_costs = [
-        s for _, m, _, s, _il, r in scored if m is not None and not r and s is not None
-    ]
-    threshold = min(detected_url_only_costs) if detected_url_only_costs else 1.5
+    _print_probe_results(scored, current_jobs)
 
-    high = [e for e in scored if e[1] is not None and e[3] is not None and e[3] <= threshold]
-    low = [e for e in scored if e[1] is not None and (e[3] is None or e[3] > threshold)]
-    undetected = [e for e in scored if e[1] is None]
-
-    # Print with priority split (only when --current-jobs is given and there are detections)
-    probe_summary_parts = []
-    use_priority_split = current_jobs > 0 and (high or low)
-
-    def _print_entry(name, metadata, comment, mon_cost, init_load, rich):
-        symbol = "\u2713" if metadata is not None else "\u2717"
-        cost_str = f"~{mon_cost:.1f}s/cycle" if mon_cost is not None else ""
-        if rich:
-            kind_str = "rich"
-        elif metadata is not None:
-            kind_str = f"URL-only (+scraper ~{init_load:.0f}s initial)" if init_load else "URL-only"
-        else:
-            kind_str = ""
-        parts = [f"{name:<14}{symbol}  {comment}"]
-        if cost_str:
-            parts.append(f"  {cost_str}  {kind_str}")
-        out.plain("probe", "  ".join(parts))
-        if metadata is not None and name in _MONITOR_PROBE_HINTS:
-            out.plain("probe", f"  {_MONITOR_PROBE_HINTS[name]}")
-        # Surface alternative api_sniffer endpoints
-        if metadata is not None and name == "api_sniffer" and metadata.get("alternatives"):
-            for alt in metadata["alternatives"]:
-                total_str = f", total: {alt['total']}" if alt.get("total") else ""
-                out.plain(
-                    "probe",
-                    f"  Also: {alt['items']} items, score: {alt['score']}{total_str} "
-                    f"at {alt['url'][:100]}",
-                )
-        probe_summary_parts.append(f"{name} {symbol}")
-
-    if use_priority_split:
-        if high:
-            out.plain("probe", f"-- High priority (<={threshold:.1f}s/cycle at N={n_jobs}) --")
-            for entry in high:
-                _print_entry(*entry)
-            print()
-        if low:
-            out.plain("probe", f"-- Low priority (>{threshold:.1f}s/cycle at N={n_jobs}) --")
-            for entry in low:
-                _print_entry(*entry)
-            print()
-        if undetected:
-            for entry in undetected:
-                _print_entry(*entry)
-    else:
-        for entry in scored:
-            _print_entry(*entry)
-
-    # Suggest best detected monitor (prefer rich, then cheapest monitor cost)
-    detected_scored = [(n, m, c, s, il, r) for n, m, c, s, il, r in scored if m is not None]
-    if detected_scored:
-        # Rich monitors sort before URL-only; within each group sort by monitor cost
-        detected_scored.sort(key=lambda x: (not x[5], x[3] if x[3] is not None else float("inf")))
-        best_name, best_meta, _, _, _, _ = detected_scored[0]
-        best_jobs = best_meta.get("jobs", best_meta.get("urls", best_meta.get("count")))
-        if best_jobs is not None and best_jobs == 0:
-            out.warn(
-                "probe",
-                f"{best_name} detected but returned 0 jobs — verify board URL, "
-                "then iterate its config before switching type. "
-                "Try: ws task troubleshoot 'zero jobs'",
-            )
-            out.plain("probe", f"Config reference: ws help monitor {best_name}")
-    else:
-        out.warn(
-            "probe",
-            "No monitors detected. Check the board URL or try "
-            "ws select monitor dom --config '{\"render\": true}'",
-        )
-
-    # Store probe detections with cost estimates and metadata
-    board.detections["_meta"] = {"url": board.url}
-    for name, metadata, _comment, mon_cost, init_load, rich in scored:
-        if metadata is not None:
-            detection = dict(metadata)
-            if mon_cost is not None:
-                detection["monitor_per_cycle"] = round(mon_cost, 2)
-                detection["initial_load"] = round(init_load, 2)
-                detection["rich"] = rich
-            board.detections[name] = detection
+    _store_detections(board, scored)
 
     # Log
-    summary = ", ".join(probe_summary_parts)
+    summary_parts = []
+    for name, metadata, *_ in scored:
+        symbol = "\u2713" if metadata is not None else "\u2717"
+        summary_parts.append(f"{name} {symbol}")
+    summary = ", ".join(summary_parts)
     action_log.append_to_list(board.log, "probe monitor", True, summary)
     save_board(slug, board)
+
+
+def _probe_all_boards(slug: str, current_jobs: int) -> None:
+    """Probe all boards sequentially, sharing one browser instance."""
+    from src.workspace.state import list_boards as _list_boards
+
+    if not workspace_exists(slug):
+        out.die(f"Workspace {slug!r} not found")
+
+    boards = _list_boards(slug)
+    if not boards:
+        out.die("No boards found. Add boards first: ws add boards")
+
+    SAME_HOST_DELAY = 3.0
+
+    async def _run():
+        from playwright.async_api import async_playwright
+
+        from src.core.monitors import probe_all_monitors
+        from src.shared.http import create_http_client
+
+        http = create_http_client()
+        try:
+            async with async_playwright() as pw:
+                all_results = {}
+                for i, board in enumerate(boards):
+                    out.info(
+                        "probe",
+                        f"[{i + 1}/{len(boards)}] Probing {board.alias} ({board.url})",
+                    )
+                    try:
+                        all_results[board.alias] = await probe_all_monitors(board.url, http, pw=pw)
+                    except Exception as e:
+                        out.warn("probe", f"  Failed: {e}")
+                        all_results[board.alias] = []
+                    if i < len(boards) - 1:
+                        await asyncio.sleep(SAME_HOST_DELAY)
+                return all_results
+        finally:
+            await http.aclose()
+
+    all_results = asyncio.run(_run())
+
+    # Process each board's results
+    summary_rows: list[tuple[str, str, int, float | None, bool]] = []
+    for board in boards:
+        results = all_results.get(board.alias, [])
+        scored = _process_probe_results(slug, board, results, current_jobs)
+
+        # Find best detected monitor for summary
+        detected = [(n, m, c, s, il, r) for n, m, c, s, il, r in scored if m is not None]
+        if detected:
+            detected.sort(key=lambda x: (not x[5], x[3] if x[3] is not None else float("inf")))
+            best_name, best_meta, _, best_cost, _, best_rich = detected[0]
+            best_items = best_meta.get("jobs", best_meta.get("urls", best_meta.get("count", 0)))
+            summary_rows.append((board.alias, best_name, best_items or 0, best_cost, best_rich))
+        else:
+            summary_rows.append((board.alias, "(none)", 0, None, False))
+
+    # Print summary table
+    print()
+    out.info("probe", f"Batch probe complete — {len(boards)} boards")
+    print()
+    out.plain(
+        "probe",
+        f"{'Board':<24} {'Monitor':<16} {'Items':>6} {'Score':>6} {'Rich':<4}",
+    )
+    for alias, monitor, items, cost, rich in summary_rows:
+        cost_str = f"{cost:.1f}s" if cost is not None else "—"
+        rich_str = "yes" if rich else "no"
+        out.plain(
+            "probe",
+            f"{alias:<24} {monitor:<16} {items:>6} {cost_str:>6} {rich_str:<4}",
+        )
 
 
 @click.command(name="scraper")

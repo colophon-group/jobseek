@@ -3081,3 +3081,231 @@ class TestResumeMergedPr:
 
         assert result.exit_code == 0
         assert "already merged" in result.output
+
+
+def _write_discovery_state(tmp_path, slug, hreflang_links, homepage_url="https://acme.com"):
+    """Write a minimal discovery.state.yaml with hreflang data."""
+    import yaml as _yaml
+
+    ws_state_dir = tmp_path / ".ws" / slug
+    ws_state_dir.mkdir(parents=True, exist_ok=True)
+    state = {
+        "version": 1,
+        "homepage_url": homepage_url,
+        "hreflang": {
+            "total": len(hreflang_links),
+            "career_filtered": len(hreflang_links),
+            "links": hreflang_links,
+        },
+    }
+    (ws_state_dir / "discovery.state.yaml").write_text(_yaml.dump(state, default_flow_style=False))
+
+
+class TestAddBoards:
+    def test_add_boards_from_hreflang(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        _setup_csvs(tmp_path)
+        save_workspace(Workspace(slug="test"))
+        set_active_slug("test")
+        _write_discovery_state(
+            tmp_path,
+            "test",
+            [
+                {"url": "https://acme.com/en/careers", "hreflang": "en-US"},
+                {"url": "https://acme.com/de/karriere", "hreflang": "de-DE"},
+                {"url": "https://acme.com/fr/carrieres", "hreflang": "fr-FR"},
+                {"url": "https://acme.com/careers", "hreflang": "x-default"},
+            ],
+        )
+
+        runner = CliRunner()
+        result = runner.invoke(ws, ["add", "boards"])
+        assert result.exit_code == 0
+        assert "Created 3 boards" in result.output
+
+        boards = list_boards("test")
+        aliases = {b.alias for b in boards}
+        assert aliases == {"careers-en-us", "careers-de-de", "careers-fr-fr"}
+
+        # Active board set to last created
+        ws_obj = load_workspace("test")
+        assert ws_obj.active_board == "careers-fr-fr"
+
+    def test_add_boards_skips_existing(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        _setup_csvs(tmp_path)
+        save_workspace(Workspace(slug="test"))
+        set_active_slug("test")
+        save_board(
+            "test",
+            Board(
+                alias="careers-en-us", slug="test-careers-en-us", url="https://acme.com/en/careers"
+            ),
+        )
+
+        _write_discovery_state(
+            tmp_path,
+            "test",
+            [
+                {"url": "https://acme.com/en/careers", "hreflang": "en-US"},
+                {"url": "https://acme.com/de/karriere", "hreflang": "de-DE"},
+            ],
+        )
+
+        runner = CliRunner()
+        result = runner.invoke(ws, ["add", "boards"])
+        assert result.exit_code == 0
+        assert "Created 1 boards" in result.output
+        assert "skipped-duplicate" in result.output
+
+        boards = list_boards("test")
+        assert len(boards) == 2
+
+    def test_add_boards_only_filter(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        _setup_csvs(tmp_path)
+        save_workspace(Workspace(slug="test"))
+        set_active_slug("test")
+        _write_discovery_state(
+            tmp_path,
+            "test",
+            [
+                {"url": "https://acme.com/en/careers", "hreflang": "en-US"},
+                {"url": "https://acme.com/de/karriere", "hreflang": "de-DE"},
+                {"url": "https://acme.com/fr/carrieres", "hreflang": "fr-FR"},
+            ],
+        )
+
+        runner = CliRunner()
+        result = runner.invoke(ws, ["add", "boards", "--only", "en-US,de-DE"])
+        assert result.exit_code == 0
+        assert "Created 2 boards" in result.output
+
+        boards = list_boards("test")
+        aliases = {b.alias for b in boards}
+        assert aliases == {"careers-en-us", "careers-de-de"}
+
+    def test_add_boards_exclude_filter(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        _setup_csvs(tmp_path)
+        save_workspace(Workspace(slug="test"))
+        set_active_slug("test")
+        _write_discovery_state(
+            tmp_path,
+            "test",
+            [
+                {"url": "https://acme.com/en/careers", "hreflang": "en-US"},
+                {"url": "https://acme.com/de/karriere", "hreflang": "de-DE"},
+                {"url": "https://acme.com/fr/carrieres", "hreflang": "fr-FR"},
+            ],
+        )
+
+        runner = CliRunner()
+        result = runner.invoke(ws, ["add", "boards", "--exclude", "fr-FR"])
+        assert result.exit_code == 0
+        assert "Created 2 boards" in result.output
+
+        boards = list_boards("test")
+        aliases = {b.alias for b in boards}
+        assert aliases == {"careers-en-us", "careers-de-de"}
+
+    def test_add_boards_no_discovery_state(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        _setup_csvs(tmp_path)
+        save_workspace(Workspace(slug="test"))
+        set_active_slug("test")
+
+        runner = CliRunner()
+        result = runner.invoke(ws, ["add", "boards"])
+        assert result.exit_code != 0
+        assert "No discovery state found" in result.output
+
+
+class TestProbeAllBoards:
+    def test_probe_all_boards_calls_each(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        _setup_csvs(tmp_path)
+        save_workspace(Workspace(slug="test"))
+        set_active_slug("test")
+        save_board(
+            "test",
+            Board(alias="careers-us", slug="test-careers-us", url="https://acme.com/us/careers"),
+        )
+        save_board(
+            "test",
+            Board(alias="careers-de", slug="test-careers-de", url="https://acme.com/de/karriere"),
+        )
+        save_board(
+            "test",
+            Board(alias="careers-fr", slug="test-careers-fr", url="https://acme.com/fr/carrieres"),
+        )
+
+        probed_urls = []
+
+        import src.workspace.commands.crawl as crawl_mod
+
+        def patched_probe_all(slug, current_jobs):
+            from src.workspace import output as _out
+
+            boards_list = list_boards(slug)
+            for b in boards_list:
+                probed_urls.append(b.url)
+                results = [
+                    ("greenhouse", {"jobs": 10, "token": "acme"}, "Greenhouse API — 10 jobs")
+                ]
+                crawl_mod._process_probe_results(slug, b, results, current_jobs)
+
+            _out.info("probe", f"Batch probe complete — {len(boards_list)} boards")
+
+        monkeypatch.setattr(crawl_mod, "_probe_all_boards", patched_probe_all)
+
+        runner = CliRunner()
+        result = runner.invoke(ws, ["probe", "monitor", "-n", "10", "--all-boards"])
+        assert result.exit_code == 0
+        assert len(probed_urls) == 3
+        assert "https://acme.com/us/careers" in probed_urls
+        assert "https://acme.com/de/karriere" in probed_urls
+        assert "https://acme.com/fr/carrieres" in probed_urls
+
+    def test_probe_all_boards_stores_detections(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        _setup_csvs(tmp_path)
+        save_workspace(Workspace(slug="test"))
+        set_active_slug("test")
+        save_board(
+            "test",
+            Board(alias="careers-us", slug="test-careers-us", url="https://acme.com/us/careers"),
+        )
+        save_board(
+            "test",
+            Board(alias="careers-de", slug="test-careers-de", url="https://acme.com/de/karriere"),
+        )
+
+        import src.workspace.commands.crawl as crawl_mod
+
+        def patched_probe_all(slug, current_jobs):
+            from src.workspace import output as _out
+
+            boards_list = list_boards(slug)
+            for b in boards_list:
+                results = [
+                    ("greenhouse", {"jobs": 42, "token": "acme"}, "Greenhouse API — 42 jobs"),
+                    ("dom", None, "Not detected"),
+                ]
+                crawl_mod._process_probe_results(slug, b, results, current_jobs)
+
+            _out.info("probe", f"Batch probe complete — {len(boards_list)} boards")
+
+        monkeypatch.setattr(crawl_mod, "_probe_all_boards", patched_probe_all)
+
+        runner = CliRunner()
+        result = runner.invoke(ws, ["probe", "monitor", "-n", "42", "--all-boards"])
+        assert result.exit_code == 0
+
+        board_us = load_board("test", "careers-us")
+        assert "greenhouse" in board_us.detections
+        assert board_us.detections["greenhouse"]["jobs"] == 42
+
+        board_de = load_board("test", "careers-de")
+        assert "greenhouse" in board_de.detections
+        assert board_de.detections["greenhouse"]["jobs"] == 42
