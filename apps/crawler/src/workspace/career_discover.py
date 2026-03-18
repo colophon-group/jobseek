@@ -160,10 +160,19 @@ class _ExtractedLink:
     """Intermediate link extracted from homepage HTML."""
 
     url: str
-    source: str  # "career_link" | "ats_embed"
-    context: str  # "nav" | "header" | "footer" | "body"
+    source: str  # "career_link" | "ats_embed" | "hreflang"
+    context: str  # "nav" | "header" | "footer" | "body" | "head"
     text: str | None
     base_score: float
+
+
+@dataclass
+class _HreflangLink:
+    """Raw hreflang alternate link from <head>."""
+
+    url: str
+    hreflang: str  # "en-US", "de-DE", "x-default"
+    source_page: str
 
 
 @dataclass
@@ -172,6 +181,7 @@ class _ProbeLinkResult:
 
     candidates: list[CareerPageCandidate] = field(default_factory=list)
     followup_links: list[_ExtractedLink] = field(default_factory=list)
+    hreflang_links: list[_HreflangLink] = field(default_factory=list)
     page: dict | None = None
 
 
@@ -186,6 +196,7 @@ class _CareerLinkExtractor(HTMLParser):
         self.base_url = base_url
         self._base_host = (urlparse(base_url).hostname or "").lower().removeprefix("www.")
         self.links: list[_ExtractedLink] = []
+        self.hreflang_links: list[_HreflangLink] = []
         self._ats_urls: set[str] = set()
 
         # Context tracking
@@ -245,8 +256,22 @@ class _CareerLinkExtractor(HTMLParser):
         elif tag_l == "footer":
             self._in_footer = True
 
-        # Skip head content
+        # Head content: extract hreflang links, skip everything else
         if self._in_head:
+            if tag_l == "link":
+                rel = a.get("rel", "").lower()
+                href = a.get("href")
+                hreflang = a.get("hreflang", "").strip()
+                if "alternate" in rel and hreflang and href:
+                    resolved = self._resolve(href)
+                    if resolved:
+                        self.hreflang_links.append(
+                            _HreflangLink(
+                                url=resolved,
+                                hreflang=hreflang,
+                                source_page=self.base_url,
+                            )
+                        )
             return
 
         # Check all attribute values for ATS URLs
@@ -328,21 +353,46 @@ class _CareerLinkExtractor(HTMLParser):
 # ── Phase 1: Link extraction ──────────────────────────────────────────
 
 
-def _extract_links(html: str, base_url: str) -> list[_ExtractedLink]:
-    """Extract career links and ATS embeds from homepage HTML.
+def _filter_career_hreflang(hreflang_links: list[_HreflangLink]) -> list[_ExtractedLink]:
+    """Convert hreflang links to extracted links, keeping only career-path or ATS URLs."""
+    result: list[_ExtractedLink] = []
+    seen: set[str] = set()
+    for hl in hreflang_links:
+        if hl.url in seen:
+            continue
+        seen.add(hl.url)
+        parsed = urlparse(hl.url)
+        is_career = bool(_CAREER_PATH_RE.search(parsed.path))
+        is_ats = bool(_ATS_URL_RE.search(hl.url))
+        if is_career or is_ats:
+            result.append(
+                _ExtractedLink(
+                    url=hl.url,
+                    source="hreflang",
+                    context="head",
+                    text=hl.hreflang,
+                    base_score=0.70,
+                )
+            )
+    return result
 
-    Returns links sorted by score descending, deduplicated by URL.
+
+def _extract_links_with_hreflang(
+    html: str, base_url: str
+) -> tuple[list[_ExtractedLink], list[_HreflangLink]]:
+    """Extract career links, ATS embeds, and raw hreflang from HTML.
+
+    Returns (merged links sorted by score, raw hreflang links).
     """
-    # Structured extraction via HTMLParser
     parser = _CareerLinkExtractor(base_url)
     parser.feed(html)
 
-    # Also scan raw HTML for ATS URLs (catches scripts, comments, etc.)
     raw_ats = _scan_ats_urls_in_html(html)
+    hreflang_career = _filter_career_hreflang(parser.hreflang_links)
 
     # Merge and dedup by URL (keep highest score)
     by_url: dict[str, _ExtractedLink] = {}
-    for link in parser.links + raw_ats:
+    for link in parser.links + raw_ats + hreflang_career:
         if link.url in by_url:
             existing = by_url[link.url]
             if link.base_score > existing.base_score:
@@ -350,7 +400,17 @@ def _extract_links(html: str, base_url: str) -> list[_ExtractedLink]:
         else:
             by_url[link.url] = link
 
-    return sorted(by_url.values(), key=lambda lnk: lnk.base_score, reverse=True)
+    links = sorted(by_url.values(), key=lambda lnk: lnk.base_score, reverse=True)
+    return links, parser.hreflang_links
+
+
+def _extract_links(html: str, base_url: str) -> list[_ExtractedLink]:
+    """Extract career links and ATS embeds from homepage HTML.
+
+    Returns links sorted by score descending, deduplicated by URL.
+    """
+    links, _ = _extract_links_with_hreflang(html, base_url)
+    return links
 
 
 def _merge_links(*groups: list[_ExtractedLink]) -> list[_ExtractedLink]:
@@ -447,6 +507,8 @@ def _rerank_candidates(candidates: list[CareerPageCandidate], homepage_url: str)
             score -= 0.10
         elif c.source == "seed_path":
             score += 0.05
+        elif c.source == "hreflang":
+            score += 0.02
 
         if c.job_link_pattern:
             score += 0.08
@@ -467,9 +529,21 @@ def _save_discovery_state(
     seed_links: list[_ExtractedLink],
     pages: list[dict],
     candidates: list[CareerPageCandidate],
+    hreflang_links: list[_HreflangLink] | None = None,
 ) -> None:
     """Persist traversal evidence so later commands can reuse context."""
     try:
+        # Deduplicate hreflang by URL
+        deduped_hreflang: list[_HreflangLink] = []
+        if hreflang_links:
+            seen: set[str] = set()
+            for hl in hreflang_links:
+                if hl.url not in seen:
+                    seen.add(hl.url)
+                    deduped_hreflang.append(hl)
+
+        career_filtered = _filter_career_hreflang(deduped_hreflang)
+
         data = {
             "version": 1,
             "generated_at": datetime.now(UTC).isoformat(),
@@ -500,6 +574,18 @@ def _save_discovery_state(
                 }
                 for c in candidates
             ],
+            "hreflang": {
+                "total": len(deduped_hreflang),
+                "career_filtered": len(career_filtered),
+                "links": [
+                    {
+                        "url": hl.url,
+                        "hreflang": hl.hreflang,
+                        "source_page": hl.source_page,
+                    }
+                    for hl in deduped_hreflang
+                ],
+            },
         }
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(yaml.safe_dump(data, sort_keys=False))
@@ -556,12 +642,10 @@ async def _probe_link(
         )
 
     followups: list[_ExtractedLink] = []
+    page_hreflang: list[_HreflangLink] = []
     if collect_followups and link.source != "ats_embed":
-        followups = [
-            child
-            for child in _extract_links(page_html, final_url)
-            if child.url not in (link.url, final_url)
-        ]
+        all_links, page_hreflang = _extract_links_with_hreflang(page_html, final_url)
+        followups = [child for child in all_links if child.url not in (link.url, final_url)]
 
     from src.workspace.job_links import analyze_job_links
 
@@ -589,7 +673,9 @@ async def _probe_link(
             candidate.job_link_pattern = link_analysis.pattern
         if ats_candidates:
             page_info["detected_monitors"] = [ats_type]
-        return _ProbeLinkResult(candidates=ats_candidates, page=page_info)
+        return _ProbeLinkResult(
+            candidates=ats_candidates, hreflang_links=page_hreflang, page=page_info
+        )
 
     # For ATS embeds that didn't resolve to an ATS domain after redirect,
     # try the original URL
@@ -609,7 +695,9 @@ async def _probe_link(
     try:
         results = await probe_all_monitors(final_url, client, timeout=15.0)
     except Exception:
-        return _ProbeLinkResult(followup_links=followups, page=page_info)
+        return _ProbeLinkResult(
+            followup_links=followups, hreflang_links=page_hreflang, page=page_info
+        )
 
     candidates = []
     page_info["detected_monitors"] = [name for name, metadata, _ in results if metadata is not None]
@@ -641,8 +729,8 @@ async def _probe_link(
                 )
             )
     if candidates:
-        return _ProbeLinkResult(candidates=candidates, page=page_info)
-    return _ProbeLinkResult(followup_links=followups, page=page_info)
+        return _ProbeLinkResult(candidates=candidates, hreflang_links=page_hreflang, page=page_info)
+    return _ProbeLinkResult(followup_links=followups, hreflang_links=page_hreflang, page=page_info)
 
 
 def _hubness_allows_candidate(
@@ -781,9 +869,9 @@ async def discover_career_pages(
     from src.workspace.job_links import analyze_job_links
 
     # Phase 1: Extract direct links + deterministic same-site seeds
-    links = _merge_links(_extract_links(homepage_html, homepage_url), _seed_links(homepage_url))[
-        :_MAX_LINKS
-    ]
+    homepage_links, homepage_hreflang = _extract_links_with_hreflang(homepage_html, homepage_url)
+    links = _merge_links(homepage_links, _seed_links(homepage_url))[:_MAX_LINKS]
+    all_hreflang: list[_HreflangLink] = list(homepage_hreflang)
 
     # Start blind probes immediately so they run while traversal is in progress.
     slugs = slugs_from_url(homepage_url)
@@ -844,6 +932,8 @@ async def discover_career_pages(
                 page_info = dict(result.page)
                 page_info["depth"] = depth
                 pages.append(page_info)
+            if result.hreflang_links:
+                all_hreflang.extend(result.hreflang_links)
             if collect_followups:
                 followup_links.extend(result.followup_links)
 
@@ -882,6 +972,7 @@ async def discover_career_pages(
             seed_links=links,
             pages=pages,
             candidates=deduped,
+            hreflang_links=all_hreflang,
         )
 
     return deduped

@@ -11,7 +11,10 @@ from src.workspace.career_discover import (
     _blind_probe_all,
     _dedup_candidates,
     _extract_links,
+    _extract_links_with_hreflang,
     _ExtractedLink,
+    _filter_career_hreflang,
+    _HreflangLink,
     _hubness_allows_candidate,
     _ProbeLinkResult,
     _scan_ats_urls_in_html,
@@ -567,8 +570,8 @@ class TestUrlResolution:
 
 
 class TestFiltering:
-    def test_head_links_ignored(self):
-        """Links in <head> should not be extracted."""
+    def test_head_canonical_link_ignored(self):
+        """Canonical links in <head> (no hreflang) should not be extracted."""
         html = """
         <html><head>
         <link rel="canonical" href="https://example.com/careers">
@@ -808,3 +811,194 @@ class TestDiscoverFollowups:
         assert isinstance(data.get("pages"), list)
         assert isinstance(data.get("candidates"), list)
         assert any(url.endswith("/careers") for url in seen_calls)
+
+
+# ── Hreflang extraction ──────────────────────────────────────────
+
+
+class TestHreflangExtraction:
+    def test_career_path_hreflang_extracted(self):
+        """Hreflang links with career paths should be extracted."""
+        html = """
+        <html><head>
+        <link rel="alternate" hreflang="de-DE" href="https://example.com/de/karriere">
+        <link rel="alternate" hreflang="fr-FR" href="https://example.com/fr/carrieres">
+        </head><body></body></html>
+        """
+        links = _extract(html)
+        hreflang = [lnk for lnk in links if lnk.source == "hreflang"]
+        assert len(hreflang) == 2
+        urls = {lnk.url for lnk in hreflang}
+        assert "https://example.com/de/karriere" in urls
+        assert "https://example.com/fr/carrieres" in urls
+
+    def test_non_career_path_hreflang_filtered_out(self):
+        """Hreflang links without career paths should not appear in extracted links."""
+        html = """
+        <html><head>
+        <link rel="alternate" hreflang="de-DE" href="https://example.com/de/about">
+        <link rel="alternate" hreflang="fr-FR" href="https://example.com/fr/products">
+        </head><body></body></html>
+        """
+        links = _extract(html)
+        hreflang = [lnk for lnk in links if lnk.source == "hreflang"]
+        assert len(hreflang) == 0
+
+    def test_ats_domain_hreflang_extracted(self):
+        """Hreflang links pointing to ATS domains should be extracted regardless of path.
+
+        Note: ATS URLs in raw HTML are also found by _scan_ats_urls_in_html (score 0.90),
+        which wins the dedup over hreflang (0.70). The URL is still extracted — just as
+        ats_embed source. We verify the hreflang filter itself recognizes it.
+        """
+        html = """
+        <html><head>
+        <link rel="alternate" hreflang="en-US" href="https://boards.greenhouse.io/acme">
+        </head><body></body></html>
+        """
+        links = _extract(html)
+        # The URL is present (found by both hreflang and raw ATS scan; ATS wins dedup)
+        ats = [lnk for lnk in links if "boards.greenhouse.io/acme" in lnk.url]
+        assert len(ats) == 1
+        # Verify the filter function itself recognizes ATS hreflang
+        hl = [
+            _HreflangLink(
+                url="https://boards.greenhouse.io/acme", hreflang="en-US", source_page=BASE
+            )
+        ]
+        filtered = _filter_career_hreflang(hl)
+        assert len(filtered) == 1
+        assert filtered[0].source == "hreflang"
+
+    def test_dedup_body_link_wins_over_hreflang(self):
+        """Nav career link (0.85) should win over hreflang (0.70) for same URL."""
+        html = """
+        <html><head>
+        <link rel="alternate" hreflang="en" href="https://example.com/careers">
+        </head><body>
+        <nav><a href="/careers">Careers</a></nav>
+        </body></html>
+        """
+        links = _extract(html)
+        careers = [lnk for lnk in links if lnk.url == "https://example.com/careers"]
+        assert len(careers) == 1
+        assert careers[0].base_score == 0.85
+        assert careers[0].source == "career_link"
+
+    def test_hreflang_score_and_context(self):
+        """Hreflang links should have score 0.70 and context 'head'."""
+        html = """
+        <html><head>
+        <link rel="alternate" hreflang="es-ES" href="https://example.com/es/empleo">
+        </head><body></body></html>
+        """
+        links = _extract(html)
+        hreflang = [lnk for lnk in links if lnk.source == "hreflang"]
+        assert len(hreflang) == 1
+        assert hreflang[0].base_score == 0.70
+        assert hreflang[0].context == "head"
+
+    def test_hreflang_text_is_language_code(self):
+        """Hreflang link text should be the language code."""
+        html = """
+        <html><head>
+        <link rel="alternate" hreflang="pt-BR" href="https://example.com/pt/vagas">
+        </head><body></body></html>
+        """
+        links = _extract(html)
+        hreflang = [lnk for lnk in links if lnk.source == "hreflang"]
+        assert len(hreflang) == 1
+        assert hreflang[0].text == "pt-BR"
+
+    def test_x_default_with_career_path_included(self):
+        """x-default hreflang with career path should be extracted."""
+        html = """
+        <html><head>
+        <link rel="alternate" hreflang="x-default" href="https://example.com/careers">
+        </head><body></body></html>
+        """
+        links = _extract(html)
+        hreflang = [lnk for lnk in links if lnk.source == "hreflang"]
+        assert len(hreflang) == 1
+        assert hreflang[0].text == "x-default"
+
+    def test_non_alternate_head_links_still_ignored(self):
+        """Stylesheet and canonical links in head should still be ignored."""
+        html = """
+        <html><head>
+        <link rel="stylesheet" href="https://example.com/styles.css">
+        <link rel="canonical" href="https://example.com/careers">
+        <link rel="alternate" hreflang="de" href="https://example.com/de/karriere">
+        </head><body></body></html>
+        """
+        links = _extract(html)
+        assert len(links) == 1
+        assert links[0].source == "hreflang"
+        assert "karriere" in links[0].url
+
+
+class TestFilterCareerHreflang:
+    def test_career_path_kept(self):
+        """Links with career path should pass through the filter."""
+        hl = [_HreflangLink(url="https://example.com/careers", hreflang="en", source_page=BASE)]
+        result = _filter_career_hreflang(hl)
+        assert len(result) == 1
+        assert result[0].source == "hreflang"
+        assert result[0].base_score == 0.70
+
+    def test_non_career_path_removed(self):
+        """Links without career path should be filtered out."""
+        hl = [_HreflangLink(url="https://example.com/about", hreflang="en", source_page=BASE)]
+        result = _filter_career_hreflang(hl)
+        assert len(result) == 0
+
+    def test_ats_url_kept(self):
+        """ATS domain URLs should pass even without career path."""
+        hl = [
+            _HreflangLink(
+                url="https://boards.greenhouse.io/acme",
+                hreflang="en",
+                source_page=BASE,
+            )
+        ]
+        result = _filter_career_hreflang(hl)
+        assert len(result) == 1
+
+    def test_dedup_by_url(self):
+        """Duplicate URLs should be deduplicated."""
+        hl = [
+            _HreflangLink(url="https://example.com/careers", hreflang="en", source_page=BASE),
+            _HreflangLink(url="https://example.com/careers", hreflang="en-US", source_page=BASE),
+        ]
+        result = _filter_career_hreflang(hl)
+        assert len(result) == 1
+
+    def test_multilingual_career_paths(self):
+        """Various language career paths should be recognized."""
+        hl = [
+            _HreflangLink(url="https://example.com/de/karriere", hreflang="de", source_page=BASE),
+            _HreflangLink(url="https://example.com/nl/vacatures", hreflang="nl", source_page=BASE),
+            _HreflangLink(
+                url="https://example.com/sv/lediga-jobb", hreflang="sv", source_page=BASE
+            ),
+        ]
+        result = _filter_career_hreflang(hl)
+        assert len(result) == 3
+
+
+class TestHreflangRawExtraction:
+    def test_raw_hreflang_from_extract_with_hreflang(self):
+        """_extract_links_with_hreflang should return raw hreflang links."""
+        html = """
+        <html><head>
+        <link rel="alternate" hreflang="de-DE" href="https://example.com/de/about">
+        <link rel="alternate" hreflang="en-US" href="https://example.com/en/careers">
+        </head><body></body></html>
+        """
+        links, raw_hreflang = _extract_links_with_hreflang(html, BASE)
+        # Raw hreflang should contain both (including non-career)
+        assert len(raw_hreflang) == 2
+        # Only career-path one should appear in extracted links
+        hreflang_links = [lnk for lnk in links if lnk.source == "hreflang"]
+        assert len(hreflang_links) == 1
+        assert "careers" in hreflang_links[0].url

@@ -545,6 +545,53 @@ def _show_career_results(slug: str, html: str, final_url: str, homepage_url: str
         "Interpretation: treat this as a hypothesis and verify visible listings/count parity.",
     )
 
+    # Hreflang summary
+    if state_path.exists():
+        try:
+            state = yaml.safe_load(state_path.read_text()) or {}
+            hreflang = state.get("hreflang") or {}
+            total = hreflang.get("total", 0)
+            career_count = hreflang.get("career_filtered", 0)
+            if total > 0:
+                hl_links = hreflang.get("links") or []
+                regions = sorted({hl.get("hreflang", "") for hl in hl_links if hl.get("hreflang")})
+                preview = ", ".join(regions[:10])
+                more = f" (+{len(regions) - 10} more)" if len(regions) > 10 else ""
+                print()
+                out.info(
+                    "careers",
+                    f"Hreflang regional variants: {total} declared, "
+                    f"{career_count} with career paths.",
+                )
+                if regions:
+                    out.plain("careers", f"  Regions: {preview}{more}")
+
+                # Centralized ATS noise detection
+                if career_count > 3:
+                    from urllib.parse import urlparse as _urlparse
+
+                    from src.workspace.career_discover import (  # noqa: I001
+                        _ATS_URL_RE,
+                        _CAREER_PATH_RE,
+                    )
+
+                    career_hosts = set()
+                    for hl in hl_links:
+                        u = hl.get("url", "")
+                        if not u:
+                            continue
+                        parsed = _urlparse(u)
+                        if _CAREER_PATH_RE.search(parsed.path) or _ATS_URL_RE.search(u):
+                            career_hosts.add(parsed.hostname)
+                    if len(career_hosts) == 1:
+                        out.warn(
+                            "careers",
+                            "All career hreflang URLs share the same host — "
+                            "likely a centralized ATS (one board may suffice).",
+                        )
+        except Exception:
+            pass
+
 
 def _auto_enrich(ws: Workspace) -> None:
     """Auto-enrich company metadata from JSON-LD and Wikidata."""
@@ -1059,6 +1106,18 @@ def _show_discovery_evidence(slug: str, board_url: str) -> None:
             "This URL came from blind probing (not a direct site reference). "
             "Validate board relevance carefully.",
         )
+
+    # Check if board URL appears in hreflang links
+    hreflang = state.get("hreflang") or {}
+    hl_links = hreflang.get("links") or []
+    for hl in hl_links:
+        hl_url = hl.get("url", "")
+        if isinstance(hl_url, str) and _normalize_url(hl_url) == normalized:
+            out.plain(
+                "board",
+                f"Also declared as hreflang alternate for: {hl.get('hreflang', '?')}",
+            )
+            break
 
 
 @click.command(name="board")
