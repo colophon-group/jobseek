@@ -81,6 +81,7 @@ pwc,pwc-careers-us-phenom,https://jobs-us.pwc.com/us/en/search-results,sitemap,"
 pwc,pwc-careers-workday,https://pwc.wd3.myworkdayjobs.com/Global_Experienced_Careers,workday,"{""company"": ""pwc"", ""wd_instance"": ""wd3"", ""site"": ""Global_Experienced_Careers""}",,
 revolut,revolut-careers,https://www.revolut.com/careers/,nextdata,"{""path"": ""props.pageProps.positions"", ""url_template"": ""https://www.revolut.com/careers/position/{slug}-{id}/"", ""slug_fields"": [""text""], ""render"": true, ""wait"": ""domcontentloaded""}",nextdata,"{""path"": ""props.pageProps.position"", ""render"": true, ""wait"": ""domcontentloaded"", ""fields"": {""title"": ""text"", ""description"": ""description"", ""locations"": ""locations[].name"", ""job_location_type"": ""locations[].type"", ""metadata.team"": ""team""}}"
 rivr,rivr-careers,https://jobs.lever.co/rivr,lever,,,
+roche,roche-careers,https://roche.wd3.myworkdayjobs.com/roche-ext,workday,"{""company"": ""roche"", ""wd_instance"": ""wd3"", ""site"": ""roche-ext""}",workday,
 rolex,rolex-careers,https://www.carrieres-rolex.com/Rolex/go/Toutes-nos-offres-Rolex/2901501?q=&department=&facility=&shifttype=,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://www.carrieres-rolex.com/googlefeed.xml""}",,
 semrush,semrush-careers,https://careers.semrush.com/,recruitee,"{""slug"": ""semrush"", ""api_base"": ""https://semrush.recruitee.com""}",,
 servers-com,servers-com-careers-apply,https://servers-com.breezy.hr/,breezy,,,
