@@ -77,6 +77,7 @@ rolex,rolex-careers,https://www.carrieres-rolex.com/Rolex/go/Toutes-nos-offres-R
 semrush,semrush-careers,https://careers.semrush.com/,recruitee,"{""slug"": ""semrush"", ""api_base"": ""https://semrush.recruitee.com""}",,
 servers-com,servers-com-careers-apply,https://servers-com.breezy.hr/,breezy,,,
 sonarsource,sonarsource-careers-lever,https://jobs.lever.co/sonarsource,lever,,,
+sony,sony-careers,https://sonyglobal.wd1.myworkdayjobs.com/SonyGlobalCareers,workday,"{""company"": ""sonyglobal"", ""wd_instance"": ""wd1"", ""site"": ""SonyGlobalCareers""}",json-ld,
 specitec,specitec-careers,https://careers.specitec.com/jobs,rss,"{""preset"": ""teamtailor""}",,
 stripe,stripe-careers,https://stripe.com/jobs/search,greenhouse,"{""token"": ""stripe""}",,
 swisscom,swisscom-careers,https://swisscom.wd103.myworkdayjobs.com/en-US/SwisscomExternalCareers,workday,,,
