@@ -21,6 +21,7 @@ deepmind,deepmind-careers,https://deepmind.google/about/careers/,greenhouse,"{""
 depoly,depoly-careers,https://depoly.jobs.personio.com,personio,"{""slug"": ""depoly"", ""language"": ""en""}",skip,
 dphi-space,dphi-space-careers,https://www.dphispace.com/careers,dom,,dom,"{""render"": true, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""div"", ""attr"": ""class=text-gray-600"", ""field"": ""locations""}, {""tag"": ""p"", ""attr"": ""class=text-gray-700"", ""field"": ""description"", ""html"": true, ""stop_count"": 100}]}"
 elevenlabs,elevenlabs-careers,https://jobs.ashbyhq.com/elevenlabs,ashby,"{""token"": ""elevenlabs""}",,
+esri,esri-careers,https://job-boards.greenhouse.io/esri,greenhouse,"{""token"": ""esri""}",skip,
 ethon-ai,ethon-ai-careers,https://ethonai.recruitee.com,recruitee,,,
 exa-ai,exa-ai-careers,https://jobs.ashbyhq.com/exa,ashby,,,
 expedia-group,expedia-group-careers,https://expedia.wd108.myworkdayjobs.com/search,workday,"{""company"": ""expedia"", ""wd_instance"": ""wd108"", ""site"": ""search""}",workday,
