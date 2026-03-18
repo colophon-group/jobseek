@@ -85,6 +85,7 @@ roche,roche-careers,https://roche.wd3.myworkdayjobs.com/roche-ext,workday,"{""co
 rolex,rolex-careers,https://www.carrieres-rolex.com/Rolex/go/Toutes-nos-offres-Rolex/2901501?q=&department=&facility=&shifttype=,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://www.carrieres-rolex.com/googlefeed.xml""}",,
 semrush,semrush-careers,https://careers.semrush.com/,recruitee,"{""slug"": ""semrush"", ""api_base"": ""https://semrush.recruitee.com""}",,
 servers-com,servers-com-careers-apply,https://servers-com.breezy.hr/,breezy,,,
+snyk,snyk-careers,https://snyk.wd103.myworkdayjobs.com/External,workday,"{""company"": ""snyk"", ""wd_instance"": ""wd103"", ""site"": ""External""}",workday,
 sonarsource,sonarsource-careers-lever,https://jobs.lever.co/sonarsource,lever,,,
 sony,sony-careers,https://sonyglobal.wd1.myworkdayjobs.com/SonyGlobalCareers,workday,"{""company"": ""sonyglobal"", ""wd_instance"": ""wd1"", ""site"": ""SonyGlobalCareers""}",json-ld,
 specitec,specitec-careers,https://careers.specitec.com/jobs,rss,"{""preset"": ""teamtailor""}",,
