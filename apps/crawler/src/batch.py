@@ -39,7 +39,7 @@ from src.core.scrapers import enrich_description, get_scraper
 from src.core.seniority_resolve import load_seniority_ids, match_seniority
 from src.core.technology_resolve import load_technology_ids, match_technologies
 from src.shared.html_normalize import normalize_description_html
-from src.shared.langdetect import detect_language
+from src.shared.langdetect import detect_all_languages, detect_language
 from src.shared.redis import get_redis
 
 log = structlog.get_logger()
@@ -852,8 +852,13 @@ def _build_titles(title: str | None, localizations: dict | None) -> list[str]:
     return titles
 
 
-def _build_locales(language: str | None, localizations: dict | None) -> list[str]:
-    """Build locales array from primary language + localization keys."""
+def _build_locales(
+    language: str | None,
+    localizations: dict | None,
+    *,
+    detected_languages: list[str] | None = None,
+) -> list[str]:
+    """Build locales array from primary language + localization keys + detected."""
     locales: list[str] = []
     primary = language or "en"
     locales.append(primary)
@@ -861,6 +866,10 @@ def _build_locales(language: str | None, localizations: dict | None) -> list[str
         for locale in localizations:
             if locale not in locales:
                 locales.append(locale)
+    if detected_languages:
+        for lang in detected_languages:
+            if lang not in locales:
+                locales.append(lang)
     return locales
 
 
@@ -1466,6 +1475,9 @@ async def _process_one_board_streaming(
                             occ_id, sen_id = _resolve_occupation_seniority(
                                 all_titles, occ_ids, sen_ids
                             )
+                            detected_langs = (
+                                detect_all_languages(j.description) if j.description else []
+                            )
                             row = await conn.fetchrow(
                                 _INSERT_RICH_JOB,
                                 company_id,
@@ -1473,7 +1485,11 @@ async def _process_one_board_streaming(
                                 normalize_employment_type(_coerce_text(j.employment_type)),
                                 j.url,
                                 all_titles,
-                                _build_locales(_coerce_text(j.language), j.localizations),
+                                _build_locales(
+                                    _coerce_text(j.language),
+                                    j.localizations,
+                                    detected_languages=detected_langs,
+                                ),
                                 loc_ids,
                                 loc_types,
                                 s_min,
@@ -1541,12 +1557,19 @@ async def _process_one_board_streaming(
                             occ_id, sen_id = _resolve_occupation_seniority(
                                 all_titles, occ_ids, sen_ids
                             )
+                            detected_langs = (
+                                detect_all_languages(j.description) if j.description else []
+                            )
                             records.append(
                                 (
                                     pid,
                                     normalize_employment_type(_coerce_text(j.employment_type)),
                                     all_titles,
-                                    _build_locales(_coerce_text(j.language), j.localizations),
+                                    _build_locales(
+                                        _coerce_text(j.language),
+                                        j.localizations,
+                                        detected_languages=detected_langs,
+                                    ),
                                     loc_ids,
                                     loc_types,
                                     s_min,
@@ -1803,6 +1826,9 @@ async def _process_one_board(
                         title_text = _coerce_text(j.title)
                         all_titles = _build_titles(title_text, j.localizations)
                         occ_id, sen_id = _resolve_occupation_seniority(all_titles, occ_ids, sen_ids)
+                        detected_langs = (
+                            detect_all_languages(j.description) if j.description else []
+                        )
                         row = await conn.fetchrow(
                             _INSERT_RICH_JOB,
                             company_id,
@@ -1810,7 +1836,11 @@ async def _process_one_board(
                             normalize_employment_type(_coerce_text(j.employment_type)),
                             j.url,
                             all_titles,
-                            _build_locales(_coerce_text(j.language), j.localizations),
+                            _build_locales(
+                                _coerce_text(j.language),
+                                j.localizations,
+                                detected_languages=detected_langs,
+                            ),
                             loc_ids,
                             loc_types,
                             s_min,
@@ -1874,12 +1904,19 @@ async def _process_one_board(
                         title_text = _coerce_text(j.title)
                         all_titles = _build_titles(title_text, j.localizations)
                         occ_id, sen_id = _resolve_occupation_seniority(all_titles, occ_ids, sen_ids)
+                        detected_langs = (
+                            detect_all_languages(j.description) if j.description else []
+                        )
                         records.append(
                             (
                                 pid,
                                 normalize_employment_type(_coerce_text(j.employment_type)),
                                 all_titles,
-                                _build_locales(_coerce_text(j.language), j.localizations),
+                                _build_locales(
+                                    _coerce_text(j.language),
+                                    j.localizations,
+                                    detected_languages=detected_langs,
+                                ),
                                 loc_ids,
                                 loc_types,
                                 s_min,
@@ -2129,6 +2166,8 @@ async def _process_one_scrape(
         if not language and content.description:
             language = detect_language(content.description)
 
+        detected_langs = detect_all_languages(content.description) if content.description else []
+
         title_text = _coerce_text(content.title)
         desc_text = _coerce_text(content.description)
         lang_text = _coerce_text(language)
@@ -2181,7 +2220,7 @@ async def _process_one_scrape(
                 item.job_posting_id,
                 norm_emp_type,
                 _build_titles(title_text, None),
-                _build_locales(lang_text, None),
+                _build_locales(lang_text, None, detected_languages=detected_langs),
                 loc_ids,
                 loc_types,
                 new_r2_hash,
