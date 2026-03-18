@@ -21,6 +21,7 @@ dependencies = [
     "fast-langdetect>=0.3",
     "prometheus-client>=0.21",
     "selectolax>=0.4.7",
+    "pypdf>=4.0",
 ]
 
 [project.scripts]

@@ -144,3 +144,4 @@ warner-music,warner-music-careers-workday,https://wmg.wd1.myworkdayjobs.com/WMGG
 white-circle,white-circle-careers,https://jobs.ashbyhq.com/whitecircle,ashby,"{""token"": ""whitecircle""}",,
 wise,wise-careers,https://wise.jobs/,smartrecruiters,"{""token"": ""wise""}",smartrecruiters,
 zalando,zalando-workday,https://zalando.wd3.myworkdayjobs.com/ZalandoSiteWD,workday,,,
+bloom-biorenewables,bloom-biorenewables-careers,https://www.bloombiorenewables.com/company,dom,"{""render"": true, ""url_filter"": ""cdn\\.prod\\.website-files\\.com/628b7a4e032635973ac7105e/.*\\.pdf""}",pdf,

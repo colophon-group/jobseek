@@ -561,7 +561,7 @@ class TestProbeScrapers:
         )
 
         names = [r[0] for r in results]
-        assert names == ["json-ld", "nextdata", "embedded", "dom", "api_sniffer"]
+        assert names == ["json-ld", "nextdata", "embedded", "pdf", "dom", "api_sniffer"]
 
     async def test_spa_detection(self):
         """Pages with very little text content should set spa_suspect=True."""
@@ -683,4 +683,4 @@ class TestProbeScrapersPw:
         )
 
         names = [r[0] for r in results]
-        assert names == ["json-ld", "nextdata", "embedded", "dom", "api_sniffer"]
+        assert names == ["json-ld", "nextdata", "embedded", "pdf", "dom", "api_sniffer"]
