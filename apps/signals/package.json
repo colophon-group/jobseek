@@ -6,8 +6,7 @@
     "dev": "next dev --port 3001",
     "build": "next build",
     "start": "next start",
-    "sync": "tsx scripts/sync.ts",
-    "lint": "next lint"
+    "sync": "tsx scripts/sync.ts"
   },
   "dependencies": {
     "apify-client": "^2",
@@ -15,7 +14,7 @@
     "drizzle-orm": "^0.45",
     "jose": "^5",
     "lucide-react": "^0.475",
-    "next": "^15",
+    "next": "^16.1.7",
     "postgres": "^3",
     "react": "^19",
     "react-dom": "^19",

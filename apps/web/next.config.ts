@@ -73,6 +73,14 @@ const nextConfig: NextConfig = {
       ],
     },
   ],
+  turbopack: {
+    rules: {
+      "*.po": {
+        loaders: ["@lingui/loader"],
+        as: "*.js",
+      },
+    },
+  },
   webpack: (config) => {
     config.module.rules.push({
       test: /\.po$/,

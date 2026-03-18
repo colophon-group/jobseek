@@ -16,7 +16,8 @@
     "overrides": {
       "esbuild": ">=0.25.0",
       "flatted": ">=3.4.0",
-      "minimatch": ">=10.2.3"
+      "minimatch": ">=10.2.3",
+      "fast-xml-parser": ">=5.5.6"
     }
   }
 }
