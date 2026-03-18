@@ -114,10 +114,15 @@ while IFS= read -r line; do
   PARSED=$(parse_csv_line "$content")
   FIELD_COUNT=$(echo "$PARSED" | awk -F'\t' '{print NF}')
 
-  if [ "$FIELD_COUNT" -ne 7 ] && [ "$FIELD_COUNT" -ne 10 ]; then
-    # 7 = boards.csv, 10 = companies.csv (slug,name,website,logo_url,icon_url,logo_type,industry,employee_count_range,founded_year,extras)
+  if [ "$FIELD_COUNT" -ne 5 ] && [ "$FIELD_COUNT" -ne 7 ] && [ "$FIELD_COUNT" -ne 10 ]; then
+    # 5 = company_descriptions.csv, 7 = boards.csv, 10 = companies.csv
     echo "::warning::Unexpected field count ($FIELD_COUNT): $content"
     DIFF_OK=false
+    continue
+  fi
+
+  # company_descriptions.csv (slug,en,de,fr,it) — no further validation needed
+  if [ "$FIELD_COUNT" -eq 5 ]; then
     continue
   fi
 
