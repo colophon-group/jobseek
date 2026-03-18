@@ -15,7 +15,7 @@
     "drizzle-orm": "^0.45",
     "jose": "^5",
     "lucide-react": "^0.475",
-    "next": "^15",
+    "next": "^16",
     "postgres": "^3",
     "react": "^19",
     "react-dom": "^19",
