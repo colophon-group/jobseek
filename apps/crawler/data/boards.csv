@@ -86,6 +86,7 @@ tethys-robotics,tethys-robotics-careers,https://www.tethys-robotics.ch/company/j
 toloka,toloka-careers,https://toloka.ai/careers,greenhouse,"{""token"": ""toloka""}",,
 twitch,twitch-careers,https://job-boards.greenhouse.io/twitch,greenhouse,"{""token"": ""twitch""}",,
 uniqlo,uniqlo-careers-workday,https://fastretailing.wd3.myworkdayjobs.com/graduates_eu_Uniqlo,workday,,,
+universal-music,universal-music-careers,https://umusic.wd5.myworkdayjobs.com/UMGUS,workday,"{""company"": ""umusic"", ""wd_instance"": ""wd5"", ""site"": ""UMGUS""}",json-ld,
 unlimit,unlimit-careers-lever,https://jobs.lever.co/unlimit,lever,,,
 valtech,valtech-careers,https://www.valtech.com/career/jobs/,greenhouse,"{""token"": ""valtech""}",,
 vivid-money,vivid-money-careers,https://careers.vivid.money,personio,"{""slug"": ""vivid"", ""language"": ""en""}",,
