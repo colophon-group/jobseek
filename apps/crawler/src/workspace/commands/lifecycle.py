@@ -124,7 +124,16 @@ def new(slug: str, issue: int | None, pr_opt: int | None, reconfig: bool, reset:
                 f"Slug {slug!r} not found in companies.csv (--reconfig requires existing company)"
             )
     elif slug_in_csv:
-        out.die(f"Slug {slug!r} already exists in companies.csv")
+        # Orphaned CSV row from a previous failed attempt (workspace YAML
+        # was already cleaned up above but CSV row survived).  Clean it up
+        # and continue instead of dying.
+        import contextlib
+
+        from src.csvtool import company_del
+
+        out.warn("csv", f"Slug {slug!r} found in CSV without workspace — cleaning up orphaned row")
+        with contextlib.suppress(CsvToolError):
+            company_del(slug)
 
     branch = f"fix-crawler/{slug}" if reconfig else f"add-company/{slug}"
     pr_number: int | None = None
@@ -175,9 +184,21 @@ def new(slug: str, issue: int | None, pr_opt: int | None, reconfig: bool, reset:
     if not reconfig:
         # Add stub CSV row for new companies
         from src.csvtool import company_add
+        from src.workspace.errors import NothingToUpdateError
 
-        company_add(slug)
-        out.plain("csv", "Added stub row to companies.csv")
+        try:
+            company_add(slug)
+            out.plain("csv", "Added stub row to companies.csv")
+        except NothingToUpdateError:
+            # Slug already present in worktree CSV from a previous attempt
+            out.warn("csv", f"Slug {slug!r} already in worktree CSV — continuing")
+        except Exception:
+            # Clean up worktree before re-raising unexpected errors
+            if not local:
+                from src.workspace import git as _git
+
+                _git.remove_worktree(worktree_path)
+            raise
 
     if not local:
         from src.workspace import git
@@ -424,19 +445,22 @@ def del_(slug: str | None):
     local = is_local_mode()
     slug = resolve_slug(slug)
 
-    if not workspace_exists(slug):
-        out.die(f"Workspace {slug!r} not found")
-
-    ws = load_workspace(slug)
+    ws: Workspace | None = None
+    if workspace_exists(slug):
+        ws = load_workspace(slug)
+    else:
+        out.warn(
+            "workspace", f"Workspace YAML for {slug!r} not found — attempting best-effort cleanup"
+        )
 
     # Remove claim comment if issue is linked
-    if ws.issue and not local:
+    if ws and ws.issue and not local:
         from src.workspace import git as _git
 
         _git.unclaim_issue(ws.issue)
 
     # Close PR if it exists
-    if ws.pr:
+    if ws and ws.pr:
         if local:
             out.warn("github", f"Local mode — skipping PR #{ws.pr} close")
         else:
@@ -456,23 +480,30 @@ def del_(slug: str | None):
         out.warn("csv", f"Company {slug!r} not found in CSV (may not have been added)")
 
     # Remove worktree and delete branch
-    if ws.branch:
-        if local:
-            out.warn("git", f"Local mode — skipping branch {ws.branch} deletion")
-        else:
-            from pathlib import Path
+    branch = ws.branch if ws else f"add-company/{slug}"
+    if not local:
+        from pathlib import Path
 
-            from src.workspace import git
+        from src.workspace import git
 
-            if ws.worktree:
-                git.remove_worktree(Path(ws.worktree))
+        worktree_path = Path(ws.worktree) if (ws and ws.worktree) else git.worktrees_dir() / slug
+        if worktree_path.exists():
+            try:
+                git.remove_worktree(worktree_path)
                 # Pivot back to managed clone so git commands work
                 from src.shared.constants import set_repo_root
 
                 set_repo_root(git.managed_repo())
-                out.info("git", f"Removed worktree {ws.worktree}")
-            git.delete_branch(ws.branch, remote=True)
-            out.info("git", f"Deleted branch {ws.branch}")
+                out.info("git", f"Removed worktree {worktree_path}")
+            except (GitError, OSError) as exc:
+                out.warn("git", f"Could not remove worktree {worktree_path}: {exc}")
+        try:
+            git.delete_branch(branch, remote=True)
+            out.info("git", f"Deleted branch {branch}")
+        except GitError:
+            out.warn("git", f"Could not delete branch {branch}")
+    else:
+        out.warn("git", f"Local mode — skipping branch {branch} deletion")
 
     # Delete workspace directory
     delete_workspace(slug)
