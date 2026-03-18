@@ -26,6 +26,7 @@ google,google-careers,https://www.google.com/about/careers/applications/jobs/res
 hypermasters,hypermasters-careers,https://careers.hypemasters.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.hypemasters.com/jobs.rss""}",,
 incode,incode-careers-gh,https://job-boards.greenhouse.io/incode,greenhouse,,,
 instories,instories-careers,https://wantapply.com/company/instories,dom,"{""render"": true, ""wait"": ""domcontentloaded"", ""timeout"": 60000, ""url_filter"": ""-at-instories(?:-[0-9]+)?(?:\\?|$)"", ""actions"": [{""action"": ""dismiss_overlays""}, {""action"": ""wait"", ""ms"": 5000}, {""action"": ""evaluate"", ""script"": ""window.scrollTo(0, document.body.scrollHeight)""}, {""action"": ""wait"", ""ms"": 2000}]}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""h1"", ""offset"": 1, ""field"": ""locations"", ""from"": 0}, {""tag"": ""p"", ""field"": ""description"", ""stop"": ""Published on"", ""html"": true}, {""text"": ""Published on:"", ""field"": ""date_posted"", ""regex"": ""Published on:\\s*(.*)""}]}"
+isomorphic-labs,isomorphic-labs-careers,https://job-boards.greenhouse.io/isomorphiclabs,greenhouse,"{""token"": ""isomorphiclabs""}",skip,
 jetbrains,jetbrains-careers,https://boards.greenhouse.io/jetbrains,greenhouse,,,
 julius-baer,julius-baer-careers,https://juliusbaer.wd3.myworkdayjobs.com/External,workday,,,
 kodland,kodland-careers,https://kodland.pinpointhq.com,pinpoint,"{""slug"": ""kodland""}",,
