@@ -12,8 +12,12 @@ from src.shared.api_sniff import (
     Exchange,
     JobListResult,
     PaginationInfo,
+    _get_multipart_param,
+    _is_multipart,
+    _set_multipart_param,
     auto_map_fields,
     detect_job_list,
+    detect_size_param,
     extract_items,
     extract_urls,
     find_arrays,
@@ -355,6 +359,114 @@ class TestSetBodyParam:
 
         parsed = json.loads(result)
         assert parsed["paging"]["offset"] == 20
+
+    def test_multipart_set_value(self):
+        body = (
+            "------WebKitFormBoundary123\r\n"
+            'Content-Disposition: form-data; name="startIndex"\r\n'
+            "\r\n"
+            "0\r\n"
+            "------WebKitFormBoundary123\r\n"
+            'Content-Disposition: form-data; name="maxResultSize"\r\n'
+            "\r\n"
+            "12\r\n"
+            "------WebKitFormBoundary123--\r\n"
+        )
+        result = set_body_param(body, "startIndex", 24)
+        assert '"startIndex"\r\n\r\n24\r\n' in result
+        # Other fields unchanged
+        assert '"maxResultSize"\r\n\r\n12\r\n' in result
+
+    def test_multipart_preserves_other_fields(self):
+        body = (
+            "------Boundary\r\n"
+            'Content-Disposition: form-data; name="offset"\r\n'
+            "\r\n"
+            "0\r\n"
+            "------Boundary\r\n"
+            'Content-Disposition: form-data; name="country"\r\n'
+            "\r\n"
+            "USA\r\n"
+            "------Boundary--\r\n"
+        )
+        result = set_body_param(body, "offset", 50)
+        assert '"offset"\r\n\r\n50\r\n' in result
+        assert '"country"\r\n\r\nUSA\r\n' in result
+
+    def test_multipart_missing_param_returns_unchanged(self):
+        body = (
+            "------Boundary\r\n"
+            'Content-Disposition: form-data; name="offset"\r\n'
+            "\r\n"
+            "0\r\n"
+            "------Boundary--\r\n"
+        )
+        result = set_body_param(body, "nonexistent", 10)
+        assert result == body
+
+    def test_json_fallback_still_works(self):
+        result = set_body_param('{"offset": 0}', "offset", 20)
+        parsed = json.loads(result)
+        assert parsed["offset"] == 20
+
+
+class TestMultipartHelpers:
+    def test_is_multipart(self):
+        assert _is_multipart("------WebKitFormBoundary123\r\n")
+        assert not _is_multipart('{"json": true}')
+        assert not _is_multipart("")
+        assert not _is_multipart(None)
+
+    def test_get_multipart_param(self):
+        body = (
+            "------Boundary\r\n"
+            'Content-Disposition: form-data; name="startIndex"\r\n'
+            "\r\n"
+            "0\r\n"
+            "------Boundary\r\n"
+            'Content-Disposition: form-data; name="maxResultSize"\r\n'
+            "\r\n"
+            "12\r\n"
+            "------Boundary--\r\n"
+        )
+        assert _get_multipart_param(body, "startIndex") == "0"
+        assert _get_multipart_param(body, "maxResultSize") == "12"
+        assert _get_multipart_param(body, "missing") is None
+
+    def test_set_multipart_param(self):
+        body = (
+            "------Boundary\r\n"
+            'Content-Disposition: form-data; name="startIndex"\r\n'
+            "\r\n"
+            "0\r\n"
+            "------Boundary--\r\n"
+        )
+        result = _set_multipart_param(body, "startIndex", 100)
+        assert _get_multipart_param(result, "startIndex") == "100"
+
+
+class TestDetectSizeParamMultipart:
+    def test_multipart_size_param(self):
+        body = (
+            "------Boundary\r\n"
+            'Content-Disposition: form-data; name="pageSize"\r\n'
+            "\r\n"
+            "12\r\n"
+            "------Boundary--\r\n"
+        )
+        result = detect_size_param("https://example.com/api", body)
+        assert result == ("pageSize", "body", 12)
+
+    def test_multipart_no_size_param(self):
+        body = (
+            "------Boundary\r\n"
+            'Content-Disposition: form-data; name="country"\r\n'
+            "\r\n"
+            "USA\r\n"
+            "------Boundary--\r\n"
+        )
+        result = detect_size_param("https://example.com/api", body)
+        assert result is None
 
 
 class TestExtractItems:
