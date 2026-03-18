@@ -119,6 +119,7 @@ tether,tether-careers,https://tether.recruitee.com,recruitee,"{""slug"": ""tethe
 tethys-robotics,tethys-robotics-careers,https://www.tethys-robotics.ch/company/jobs,dom,"{""url_filter"": ""emea2\\.softfactors\\.com/job-opening/"", ""url_transform"": {""find"": ""https://emea2\\.softfactors\\.com/job-opening/rgum-([^#/]+).*"", ""replace"": ""https://jobs.ethz.ch/job/view/JOPG_ethz_\\1""}}",dom,"{""render"": false, ""steps"": [{""tag"": ""h1"", ""attr"": ""id=job-title"", ""field"": ""title""}, {""tag"": ""h4"", ""field"": ""locations"", ""regex"": ""\\d+(?:-\\d+)?%,\\s*(.+?),""}, {""tag"": ""h4"", ""from"": 0, ""field"": ""employment_type"", ""regex"": "",\\s*([^,]+)\\s*$""}, {""tag"": ""p"", ""field"": ""description"", ""stop_tag"": ""section"", ""html"": true}]}"
 thomson-reuters,thomson-reuters-careers,https://thomsonreuters.wd5.myworkdayjobs.com/External_Career_Site,workday,"{""company"": ""thomsonreuters"", ""wd_instance"": ""wd5"", ""site"": ""External_Career_Site""}",workday,
 toloka,toloka-careers,https://toloka.ai/careers,greenhouse,"{""token"": ""toloka""}",,
+tracebit,tracebit-careers,https://jobs.ashbyhq.com/tracebit,ashby,,skip,
 twine,twine-careers,https://jobs.ashbyhq.com/twine,ashby,"{""token"": ""twine""}",skip,
 twitch,twitch-careers,https://job-boards.greenhouse.io/twitch,greenhouse,"{""token"": ""twitch""}",,
 uniqlo,uniqlo-careers-workday,https://fastretailing.wd3.myworkdayjobs.com/graduates_eu_Uniqlo,workday,,,
