@@ -12,6 +12,7 @@ brainrocket,brainrocket-careers-gh,https://job-boards.eu.greenhouse.io/brainrock
 caffeine-ai,caffeine-ai-careers,https://jobs.gem.com/caffeine-ai,gem,"{""token"": ""caffeine-ai""}",skip,
 chipmind,chipmind-careers,https://www.chipmind.ai/careers,dom,,dom,"{""steps"": [{""tag"": ""h1"", ""attr"": ""class=topcard__title"", ""field"": ""title""}, {""tag"": ""div"", ""attr"": ""class=topcard__flavor-row"", ""field"": ""locations"", ""regex"": ""([A-Z]\\w*,\\s+.+)$""}, {""text"": ""About"", ""field"": ""description"", ""html"": true, ""stop"": ""Show more""}, {""text"": ""Employment type"", ""offset"": 1, ""field"": ""employment_type""}]}"
 cloudflare,cloudflare-careers,https://boards.greenhouse.io/cloudflare,greenhouse,"{""token"": ""cloudflare""}",,
+comparis,comparis-careers,https://comparis-ch.jobs.personio.de,personio,"{""slug"": ""comparis-ch"", ""language"": ""en""}",skip,
 constructor-tech,constructor-tech-careers-gh,https://job-boards.greenhouse.io/constructortech,greenhouse,,,
 corintis,corintis-careers,https://careers.corintis.com/jobs,rss,"{""preset"": ""teamtailor""}",,
 cradle,cradle-careers,https://jobs.ashbyhq.com/cradlebio,ashby,"{""token"": ""cradlebio""}",skip,
