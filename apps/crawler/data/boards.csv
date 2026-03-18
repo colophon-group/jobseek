@@ -106,6 +106,7 @@ twine,twine-careers,https://jobs.ashbyhq.com/twine,ashby,"{""token"": ""twine""}
 twitch,twitch-careers,https://job-boards.greenhouse.io/twitch,greenhouse,"{""token"": ""twitch""}",,
 uniqlo,uniqlo-careers-workday,https://fastretailing.wd3.myworkdayjobs.com/graduates_eu_Uniqlo,workday,,,
 unlimit,unlimit-careers-lever,https://jobs.lever.co/unlimit,lever,,,
+upvest,upvest-careers,https://jobs.ashbyhq.com/upvest,ashby,,skip,
 valtech,valtech-careers,https://www.valtech.com/career/jobs/,greenhouse,"{""token"": ""valtech""}",,
 vercel,vercel-careers,https://job-boards.greenhouse.io/vercel,greenhouse,"{""token"": ""vercel""}",skip,
 vivid-money,vivid-money-careers,https://careers.vivid.money,personio,"{""slug"": ""vivid"", ""language"": ""en""}",,
