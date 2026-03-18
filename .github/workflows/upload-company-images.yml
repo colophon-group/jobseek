@@ -181,7 +181,9 @@ jobs:
           # Fallback: some repos don't have branch protection, so --auto is unsupported.
           # In that case, wait for checks to finish and merge directly.
           if echo "$output" | grep -q "Protected branch rules not configured"; then
-            gh pr checks "$PR" --repo "$REPO" --watch --fail-fast
+            # gh pr checks exits non-zero when no checks exist (e.g. push via
+            # github.token doesn't trigger workflows). Safe to merge directly.
+            gh pr checks "$PR" --repo "$REPO" --watch --fail-fast || true
             gh pr merge "$PR" --repo "$REPO" --rebase
             echo "merged=true" >> "$GITHUB_OUTPUT"
             exit 0
