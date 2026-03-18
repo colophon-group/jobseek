@@ -895,6 +895,7 @@ def _execute_submit_step(
         # Stage only this company's files to avoid committing leftover
         # data from a previously submitted company branch
         img_path = f"apps/crawler/data/images/{ws.slug}/"
+        img_abs = get_data_dir() / "images" / ws.slug
         commit_paths = [
             "apps/crawler/data/companies.csv",
             "apps/crawler/data/boards.csv",
@@ -902,7 +903,7 @@ def _execute_submit_step(
             "apps/crawler/data/industries.csv",
             "apps/crawler/src/workspace/kb/",
         ]
-        if os.path.isdir(img_path):
+        if img_abs.is_dir():
             commit_paths.append(img_path)
         if not git.has_uncommitted_changes(commit_paths):
             return  # Nothing to commit — already done
