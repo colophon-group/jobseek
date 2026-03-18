@@ -18,6 +18,7 @@ _API_DELAY = 0.5  # Known ATS APIs with higher rate limits
 
 _KNOWN_ATS_HOSTS = frozenset(
     {
+        "apply.workable.com",
         "boards-api.greenhouse.io",
         "api.lever.co",
         "api.ashbyhq.com",

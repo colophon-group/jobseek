@@ -125,7 +125,7 @@ class ScraperType:
 _REGISTRY: dict[str, ScraperType] = {}
 
 # Display order for probe results
-_PROBE_ORDER = ["json-ld", "nextdata", "embedded", "dom", "api_sniffer"]
+_PROBE_ORDER = ["json-ld", "nextdata", "embedded", "pdf", "dom", "api_sniffer"]
 
 
 def register(
@@ -303,6 +303,7 @@ from src.core.scrapers import (  # noqa: E402
     embedded,  # noqa: F401
     jsonld,  # noqa: F401
     nextdata,  # noqa: F401
+    pdf,  # noqa: F401
     rippling,  # noqa: F401
     skip,  # noqa: F401
     smartrecruiters,  # noqa: F401

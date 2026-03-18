@@ -11,6 +11,7 @@ scrape schedule.
 
 from __future__ import annotations
 
+import asyncio
 import re
 
 import httpx
@@ -26,6 +27,8 @@ from src.core.monitors import (
 log = structlog.get_logger()
 
 MAX_JOBS = 10_000
+_RETRY_ATTEMPTS = 4
+_RETRY_BACKOFF = (5.0, 15.0, 30.0, 60.0)
 
 _PAGE_PATTERNS = [
     re.compile(r"apply\.workable\.com/([\w-]+)"),
@@ -59,9 +62,21 @@ async def _api_list(slug: str, client: httpx.AsyncClient) -> set[str]:
     body: dict = {"query": "", "location": [], "department": [], "worktype": []}
 
     while True:
-        resp = await client.post(_api_list_url(slug), json=body)
-        resp.raise_for_status()
-        data = resp.json()
+        data = None
+        for attempt in range(_RETRY_ATTEMPTS):
+            resp = await client.post(_api_list_url(slug), json=body)
+            if resp.status_code == 429:
+                backoff = _RETRY_BACKOFF[min(attempt, len(_RETRY_BACKOFF) - 1)]
+                log.warning("workable.rate_limited", slug=slug, backoff_s=backoff)
+                await asyncio.sleep(backoff)
+                continue
+            resp.raise_for_status()
+            data = resp.json()
+            break
+
+        if data is None:
+            log.warning("workable.retries_exhausted", slug=slug, collected=len(urls))
+            break
 
         results = data.get("results", [])
         for item in results:

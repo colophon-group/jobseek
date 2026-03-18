@@ -140,6 +140,51 @@ class TestDiscover:
             assert len(urls) == 2
             assert call_count == 2
 
+    async def test_retries_on_429(self, monkeypatch):
+        import src.core.monitors.workable as wmod
+
+        monkeypatch.setattr(wmod, "_RETRY_BACKOFF", (0.0, 0.0, 0.0, 0.0))
+
+        call_count = 0
+
+        def handler(request):
+            nonlocal call_count
+            call_count += 1
+            if call_count <= 2:
+                return httpx.Response(429)
+            return httpx.Response(
+                200,
+                json={
+                    "results": [{"shortcode": "SC1"}],
+                    "nextPage": None,
+                },
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://apply.workable.com/testco",
+                "metadata": {"token": "testco"},
+            }
+            urls = await discover(board, client)
+            assert len(urls) == 1
+            assert call_count == 3
+
+    async def test_exhausted_retries_returns_empty(self, monkeypatch):
+        import src.core.monitors.workable as wmod
+
+        monkeypatch.setattr(wmod, "_RETRY_BACKOFF", (0.0, 0.0, 0.0, 0.0))
+
+        def handler(request):
+            return httpx.Response(429)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://apply.workable.com/testco",
+                "metadata": {"token": "testco"},
+            }
+            urls = await discover(board, client)
+            assert len(urls) == 0
+
 
 class TestCanHandle:
     async def test_workable_url_match(self):

@@ -654,8 +654,66 @@ def set_url_param(url: str, param: str, value: object) -> str:
     return urlunparse(parsed._replace(query=urlencode(qs, doseq=True)))
 
 
+def _parse_multipart_boundary(body_str: str) -> str | None:
+    """Extract boundary from a multipart/form-data body string."""
+    # Boundaries start with -- followed by the boundary token
+    match = re.match(r"^(------?[\w]+)", body_str)
+    return match.group(1) if match else None
+
+
+def _set_multipart_param(body_str: str, param: str, value: object) -> str:
+    """Set a single field in a multipart/form-data body string."""
+    boundary = _parse_multipart_boundary(body_str)
+    if not boundary:
+        return body_str
+    # Match the field: boundary + Content-Disposition with name="param" + blank line + value
+    pattern = re.compile(
+        re.escape(boundary)
+        + r'\r\nContent-Disposition: form-data; name="'
+        + re.escape(param)
+        + r'"\r\n\r\n'
+        + r"(.*?)"
+        + r"(?=\r\n"
+        + re.escape(boundary)
+        + r")",
+        re.DOTALL,
+    )
+    replacement = (
+        boundary + '\r\nContent-Disposition: form-data; name="' + param + '"\r\n\r\n' + str(value)
+    )
+    new_body, count = pattern.subn(replacement, body_str, count=1)
+    return new_body if count else body_str
+
+
+def _get_multipart_param(body_str: str, param: str) -> str | None:
+    """Read a single field value from a multipart/form-data body string."""
+    boundary = _parse_multipart_boundary(body_str)
+    if not boundary:
+        return None
+    pattern = re.compile(
+        re.escape(boundary)
+        + r'\r\nContent-Disposition: form-data; name="'
+        + re.escape(param)
+        + r'"\r\n\r\n'
+        + r"(.*?)"
+        + r"(?=\r\n"
+        + re.escape(boundary)
+        + r")",
+        re.DOTALL,
+    )
+    match = pattern.search(body_str)
+    return match.group(1) if match else None
+
+
+def _is_multipart(body_str: str) -> bool:
+    """Check if a body string looks like multipart/form-data."""
+    return body_str.startswith("----") if body_str else False
+
+
 def set_body_param(body_str: str, param: str, value: object) -> str:
-    """Set a single field in a JSON POST body."""
+    """Set a single field in a POST body (JSON or multipart/form-data)."""
+    if _is_multipart(body_str):
+        return _set_multipart_param(body_str, param, value)
     try:
         body = json.loads(body_str)
     except (json.JSONDecodeError, TypeError):
@@ -678,17 +736,26 @@ def detect_size_param(url: str, post_data: str | None) -> tuple[str, str, int] |
             except (ValueError, TypeError):
                 pass
     if post_data:
-        try:
-            body = json.loads(post_data)
-            if isinstance(body, dict):
-                for param in SIZE_PARAMS:
-                    if param in body:
-                        try:
-                            return (param, "body", int(body[param]))
-                        except (ValueError, TypeError):
-                            pass
-        except (json.JSONDecodeError, TypeError):
-            pass
+        if _is_multipart(post_data):
+            for param in SIZE_PARAMS:
+                val = _get_multipart_param(post_data, param)
+                if val is not None:
+                    try:
+                        return (param, "body", int(val))
+                    except (ValueError, TypeError):
+                        pass
+        else:
+            try:
+                body = json.loads(post_data)
+                if isinstance(body, dict):
+                    for param in SIZE_PARAMS:
+                        if param in body:
+                            try:
+                                return (param, "body", int(body[param]))
+                            except (ValueError, TypeError):
+                                pass
+            except (json.JSONDecodeError, TypeError):
+                pass
     return None
 
 
