@@ -60,6 +60,7 @@ kpmg,kpmg-us,https://www.kpmguscareers.com/job-search/,api_sniffer,"{""api_url""
 kraken,kraken-careers,https://jobs.ashbyhq.com/kraken.com,ashby,"{""token"": ""kraken.com""}",,
 lakera,lakera-careers,https://jobs.ashbyhq.com/lakera.ai,ashby,"{""token"": ""lakera.ai""}",,
 lightpanda,lightpanda-careers,https://lightpanda.io/jobs,dom,"{""url_filter"": ""/jobs/.+""}",json-ld,
+lightricks,lightricks-careers,https://boards.greenhouse.io/lightricks,greenhouse,"{""token"": ""lightricks""}",skip,
 logitech,logitech-careers,https://logitech.wd5.myworkdayjobs.com/Logitech,workday,,workday,
 luxoft,luxoft-careers,https://career.luxoft.com/jobs,dom,"{""url_filter"": ""^https?://career\\.luxoft\\.com/jobs/[^/?#]+-[0-9]+$"", ""pagination"": {""param_name"": ""page"", ""max_pages"": 121}}",json-ld,
 lyceum,lyceum-careers,https://lyceum-technology.jobs.personio.com,personio,"{""slug"": ""lyceum-technology""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""h2"", ""attr"": ""class=detail-block-title"", ""field"": ""description"", ""html"": true, ""stop"": ""Apply for this job""}], ""render"": true, ""wait"": ""networkidle""}"
