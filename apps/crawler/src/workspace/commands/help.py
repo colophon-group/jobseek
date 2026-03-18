@@ -1582,6 +1582,19 @@ bite — BITE GmbH ATS Detail API scraper
             Hash (40-42 char hex) is extracted from the job URL.
 """
 
+SCRAPER_PDF = """\
+pdf — PDF document scraper
+
+  Downloads PDF files and extracts text content using pypdf.
+  Used for companies that host job descriptions as PDF files
+  (e.g. on Webflow CDN) rather than HTML pages.
+
+  Returns:  title, HTML description
+  Config:   title_source ("url" or "text"), title_pattern (regex)
+  Note:     Typically paired with a dom monitor using url_filter to
+            discover PDF links on the careers page.
+"""
+
 SCRAPER_SKIP = """\
 skip — Placeholder scraper (auto-configured)
 
@@ -1595,6 +1608,7 @@ SCRAPER_CARDS: dict[str, str] = {
     "embedded": SCRAPER_EMBEDDED,
     "dom": SCRAPER_DOM,
     "api_sniffer": SCRAPER_API_SNIFFER,
+    "pdf": SCRAPER_PDF,
     "skip": SCRAPER_SKIP,
     "bite": SCRAPER_BITE,
     "rippling": SCRAPER_RIPPLING,
