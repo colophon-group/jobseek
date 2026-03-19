@@ -124,6 +124,7 @@ miromind-ai,miromind-ai-careers,https://www.miromind.ai/career,sitemap,"{""url_f
 mistral-ai,mistral-ai-careers,https://jobs.lever.co/mistral,lever,"{""token"": ""mistral""}",skip,
 modal,modal-careers,https://jobs.ashbyhq.com/modal,ashby,,skip,
 monzo,monzo-careers,https://job-boards.greenhouse.io/monzo,greenhouse,"{""token"": ""monzo""}",skip,
+muse-group,muse-group-careers,https://www.mu.se/vacancies,sitemap,"{""url_filter"": ""/vacancies/""}",dom,"{""render"": false, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""attr"": ""class=vacancy__location-label"", ""field"": ""locations""}, {""attr"": ""class=vacancy__team""}, {""tag"": ""p"", ""field"": ""description"", ""html"": true, ""stop"": ""Muse Group empowers""}]}"
 nabla,nabla-careers,https://jobs.ashbyhq.com/nabla,ashby,"{""token"": ""nabla""}",skip,
 nauticus-robotics,nauticus-robotics-careers-sr,https://jobs.smartrecruiters.com/nauticusrobotics,smartrecruiters,"{""token"": ""nauticusrobotics""}",smartrecruiters,
 nebius,nebius-careers,https://job-boards.greenhouse.io/nebius,greenhouse,"{""token"": ""nebius""}",skip,
