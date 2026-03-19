@@ -109,7 +109,15 @@ class TestFindJobPosting:
             "Description": "A role",
             "DatePosted": "2026-01-01",
             "ValidThrough": "2026-06-01",
-            "jobLocation": [{"@type": "Place", "Address": {"@type": "PostalAddress", "addressLocality": "Geneva"}}],
+            "jobLocation": [
+                {
+                    "@type": "Place",
+                    "Address": {
+                        "@type": "PostalAddress",
+                        "addressLocality": "Geneva",
+                    },
+                }
+            ],
         }
         result = _find_job_posting(data)
         assert result["title"] == "Manager"

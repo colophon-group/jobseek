@@ -93,10 +93,7 @@ def _normalize_keys(data):
     if isinstance(data, dict):
         out = {}
         for key, value in data.items():
-            if key.startswith("@"):
-                nk = key
-            else:
-                nk = key[0].lower() + key[1:] if key else key
+            nk = key if key.startswith("@") else (key[0].lower() + key[1:] if key else key)
             out[nk] = _normalize_keys(value)
         return out
     if isinstance(data, list):
