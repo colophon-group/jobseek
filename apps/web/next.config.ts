@@ -15,7 +15,8 @@ const nextConfig: NextConfig = {
   },
   redirects: async () => [
     { source: "/:lang(en|de|fr|it)/app", destination: "/:lang/explore", permanent: true },
-    { source: "/:lang(en|de|fr|it)/app/saved", destination: "/:lang/saved", permanent: true },
+    { source: "/:lang(en|de|fr|it)/app/saved", destination: "/:lang/my-jobs", permanent: true },
+    { source: "/:lang(en|de|fr|it)/saved", destination: "/:lang/my-jobs", permanent: true },
     { source: "/:lang(en|de|fr|it)/app/settings/:path*", destination: "/:lang/settings/:path*", permanent: true },
     { source: "/:lang(en|de|fr|it)/app/watchlists", destination: "/:lang/watchlists", permanent: true },
     { source: "/:lang(en|de|fr|it)/app/progress", destination: "/:lang/progress", permanent: true },

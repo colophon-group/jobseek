@@ -162,9 +162,20 @@ export const savedJob = pgTable("saved_job", {
 	userId: text("user_id").notNull(),
 	jobPostingId: uuid("job_posting_id").notNull(),
 	savedAt: timestamp("saved_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	status: text().default('saved').notNull(),
+	statusChangedAt: timestamp("status_changed_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	appliedAt: timestamp("applied_at", { withTimezone: true, mode: 'string' }),
+	rejectedAt: timestamp("rejected_at", { withTimezone: true, mode: 'string' }),
+	offeredAt: timestamp("offered_at", { withTimezone: true, mode: 'string' }),
+	salaryMinOverride: integer("salary_min_override"),
+	salaryMaxOverride: integer("salary_max_override"),
+	salaryCurrencyOverride: text("salary_currency_override"),
+	salaryPeriodOverride: text("salary_period_override"),
 }, (table) => [
 	uniqueIndex("idx_sj_user_posting").using("btree", table.userId.asc().nullsLast().op("text_ops"), table.jobPostingId.asc().nullsLast().op("text_ops")),
 	index("idx_sj_user_saved_at").using("btree", table.userId.asc().nullsLast().op("timestamptz_ops"), table.savedAt.asc().nullsLast().op("timestamptz_ops")),
+	index("idx_sj_user_status").using("btree", table.userId.asc().nullsLast(), table.status.asc().nullsLast()),
+	index("idx_sj_user_status_changed").using("btree", table.userId.asc().nullsLast(), table.statusChangedAt.asc().nullsLast()),
 	foreignKey({
 			columns: [table.jobPostingId],
 			foreignColumns: [jobPosting.id],
@@ -174,6 +185,22 @@ export const savedJob = pgTable("saved_job", {
 			columns: [table.userId],
 			foreignColumns: [user.id],
 			name: "saved_job_user_id_user_id_fk"
+		}).onDelete("cascade"),
+]);
+
+export const applicationInterview = pgTable("application_interview", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	savedJobId: uuid("saved_job_id").notNull(),
+	round: smallint().notNull(),
+	type: text().notNull(),
+	scheduledAt: timestamp("scheduled_at", { withTimezone: true, mode: 'string' }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("idx_ai_saved_job_round").using("btree", table.savedJobId.asc().nullsLast(), table.round.asc().nullsLast()),
+	foreignKey({
+			columns: [table.savedJobId],
+			foreignColumns: [savedJob.id],
+			name: "application_interview_saved_job_id_saved_job_id_fk"
 		}).onDelete("cascade"),
 ]);
 
