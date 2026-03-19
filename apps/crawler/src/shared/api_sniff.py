@@ -257,6 +257,17 @@ class JobListResult:
 # ---------------------------------------------------------------------------
 
 
+_JMESPATH_SAFE_KEY = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def _quote_key(key: str) -> str:
+    """Quote a dict key for use in a jmespath expression if it contains special chars."""
+    if _JMESPATH_SAFE_KEY.match(key):
+        return key
+    escaped = key.replace("\\", "\\\\").replace('"', '\\"')
+    return f'"{escaped}"'
+
+
 def find_arrays(obj: object, path: str = "") -> list[tuple[str, list[dict]]]:
     """Recursively find arrays of 3+ dicts in any JSON structure."""
     results: list[tuple[str, list[dict]]] = []
@@ -266,7 +277,8 @@ def find_arrays(obj: object, path: str = "") -> list[tuple[str, list[dict]]]:
             results.append((path or "$", dicts))
     if isinstance(obj, dict):
         for key, val in obj.items():
-            child_path = f"{path}.{key}" if path else key
+            qkey = _quote_key(key)
+            child_path = f"{path}.{qkey}" if path else qkey
             results.extend(find_arrays(val, child_path))
     return results
 
@@ -886,12 +898,16 @@ async def capture_exchanges(page, page_host: str) -> list[Exchange]:
             body = json.loads(text)
         except Exception:
             return
+        try:
+            post_data = req.post_data
+        except Exception:
+            post_data = None
         exchanges.append(
             Exchange(
                 method=req.method,
                 url=req.url,
                 request_headers=dict(req.headers),
-                post_data=req.post_data,
+                post_data=post_data,
                 status=resp.status,
                 body=body,
                 content_type=ct,

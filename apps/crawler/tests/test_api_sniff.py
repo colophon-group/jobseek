@@ -89,6 +89,38 @@ class TestFindArrays:
         result = find_arrays(data)
         assert result[0][0] == "a.b.c"
 
+    def test_keys_with_dashes_are_quoted(self):
+        """UUID-style keys (e.g. Notion block IDs) must be quoted for jmespath."""
+        data = {
+            "recordMap": {
+                "block": {
+                    "e0a99c30-d063-4f03-b0b9-af095f6b593b": {
+                        "items": [{"id": 1}, {"id": 2}, {"id": 3}]
+                    }
+                }
+            }
+        }
+        result = find_arrays(data)
+        assert len(result) == 1
+        assert result[0][0] == 'recordMap.block."e0a99c30-d063-4f03-b0b9-af095f6b593b".items'
+
+    def test_quoted_path_works_with_jmespath(self):
+        """Quoted paths must be valid jmespath that resolves correctly."""
+        import jmespath
+
+        data = {
+            "data": {
+                "my-key": {
+                    "jobs": [{"title": "A"}, {"title": "B"}, {"title": "C"}]
+                }
+            }
+        }
+        result = find_arrays(data)
+        path = result[0][0]
+        # The path should be valid jmespath and resolve to the original array
+        resolved = jmespath.search(path, data)
+        assert resolved == [{"title": "A"}, {"title": "B"}, {"title": "C"}]
+
 
 class TestFindUrlField:
     def test_by_name(self):
