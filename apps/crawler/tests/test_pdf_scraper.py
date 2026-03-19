@@ -208,6 +208,42 @@ class TestScrape:
             await scrape("https://example.com/job.pdf", {}, client, artifact_dir=tmp_path)
             assert (tmp_path / "source.pdf").exists()
 
+    async def test_title_pattern_applied_to_text(self):
+        """title_pattern is applied to raw PDF text when title_source='text'."""
+        pdf_bytes = _make_pdf("Company Inc\nis looking for\nResearch Engineer\n[ref: 123]")
+
+        def handler(request):
+            return httpx.Response(200, content=pdf_bytes)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape(
+                "https://example.com/job.pdf",
+                {
+                    "title_source": "text",
+                    "title_pattern": r"is looking for\s*\n\s*(.+?)\s*\n",
+                },
+                client,
+            )
+            assert result.title == "Research Engineer"
+
+    async def test_title_pattern_no_match_falls_back(self):
+        """When title_pattern doesn't match text, falls back to heading heuristic."""
+        pdf_bytes = _make_pdf("Software Engineer\nGreat role description")
+
+        def handler(request):
+            return httpx.Response(200, content=pdf_bytes)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape(
+                "https://example.com/job.pdf",
+                {
+                    "title_source": "text",
+                    "title_pattern": r"NOMATCH (.+)",
+                },
+                client,
+            )
+            assert result.title == "Software Engineer"
+
     async def test_http_error_raises(self):
         def handler(request):
             return httpx.Response(404)
