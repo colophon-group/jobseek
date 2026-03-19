@@ -171,3 +171,66 @@ class TestNextdataScraper:
         async with httpx.AsyncClient(transport=_mock_transport(SAMPLE_HTML)) as client:
             result = await scrape("https://example.com/job/1", config, client)
         assert result == JobContent()
+
+
+# ---------------------------------------------------------------------------
+# RSC flight payload scraper tests
+# ---------------------------------------------------------------------------
+
+
+def _html_with_rsc_data(data: dict) -> str:
+    """Build HTML with RSC flight payload."""
+    rsc_array = ["$", "$L10", None, data]
+    rsc_json = json.dumps(rsc_array)
+    rsc_line = f"7:{rsc_json}\n"
+    escaped = rsc_line.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
+    return f'<html><body><script>self.__next_f.push([1,"{escaped}"])</script></body></html>'
+
+
+RSC_JOB = {
+    "job": {
+        "title": "Software Engineer",
+        "aboutRole": "Build our platform.",
+        "location": "Zurich",
+        "type": "Full-time",
+    }
+}
+
+RSC_HTML = _html_with_rsc_data(RSC_JOB)
+
+RSC_CONFIG = {
+    "source": "rsc",
+    "path": "job",
+    "fields": {
+        "title": "title",
+        "description": "aboutRole",
+        "locations": "location",
+        "employment_type": "type",
+    },
+}
+
+
+class TestRscScraper:
+    async def test_basic_extraction(self):
+        """RSC flight payload data extracted correctly."""
+        async with httpx.AsyncClient(transport=_mock_transport(RSC_HTML)) as client:
+            result = await scrape("https://example.com/jobs/swe", RSC_CONFIG, client)
+        assert result.title == "Software Engineer"
+        assert result.description == "Build our platform."
+        assert result.locations == ["Zurich"]
+        assert result.employment_type == "Full-time"
+
+    async def test_no_rsc_data(self):
+        """Page without RSC payload → empty JobContent."""
+        html = "<html><body>No RSC here</body></html>"
+        async with httpx.AsyncClient(transport=_mock_transport(html)) as client:
+            result = await scrape("https://example.com/jobs/swe", RSC_CONFIG, client)
+        assert result == JobContent()
+
+    async def test_inject_script_id_skipped(self):
+        """source: rsc config must NOT get script_id injected."""
+        from src.core.scrapers.nextdata import _inject_script_id
+
+        result = _inject_script_id(RSC_CONFIG)
+        assert "script_id" not in result
+        assert result.get("source") == "rsc"

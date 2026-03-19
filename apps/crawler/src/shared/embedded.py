@@ -158,6 +158,12 @@ def parse_embedded(html: str, config: dict) -> object | None:
 
     Returns parsed JSON or None.
     """
+    source = config.get("source")
+    if source == "rsc":
+        from src.shared.nextdata import extract_rsc_data
+
+        return extract_rsc_data(html)
+
     script_id = config.get("script_id")
     if script_id:
         content = extract_script_by_id(html, script_id)
