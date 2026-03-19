@@ -513,22 +513,25 @@ export function SearchPage({
     runSearch();
   }, [displayCurrency]);
 
-  const handleLoadMore = useCallback(() => {
+  function handleLoadMore() {
     if (loadingRef.current) return;
     loadingRef.current = true;
     setIsLoadingMore(true);
 
-    const offset = companies.length;
-    const locationIds = locations.map((l) => l.id);
-    const occupationIds = occupations.length > 0 ? occupations.map((o) => o.id) : undefined;
-    const seniorityIds = seniorities.length > 0 ? seniorities.map((s) => s.id) : undefined;
-    const technologyIds = technologies.length > 0 ? technologies.map((t) => t.id) : undefined;
-    const salMinEur = toEur(salaryMin);
-    const salMaxEur = toEur(salaryMax);
+    const offset = companiesRef.current.length;
+    const kws = keywordsRef.current;
+    const locationIds = locationsRef.current.map((l) => l.id);
+    const occupationIds = occupationsRef.current.length > 0 ? occupationsRef.current.map((o) => o.id) : undefined;
+    const seniorityIds = senioritiesRef.current.length > 0 ? senioritiesRef.current.map((s) => s.id) : undefined;
+    const technologyIds = technologiesRef.current.length > 0 ? technologiesRef.current.map((t) => t.id) : undefined;
+    const salMinEur = toEur(salaryMinRef.current);
+    const salMaxEur = toEur(salaryMaxRef.current);
+    const expMin = experienceMinRef.current;
+    const expMax = experienceMaxRef.current;
     const fetcher =
-      keywords.length > 0
-        ? searchJobs({ keywords, locationIds, occupationIds, seniorityIds, technologyIds, salaryMinEur: salMinEur, salaryMaxEur: salMaxEur, experienceMin, experienceMax, languages, locale, offset, limit: PAGE_SIZE })
-        : listTopCompanies({ locationIds, occupationIds, seniorityIds, technologyIds, salaryMinEur: salMinEur, salaryMaxEur: salMaxEur, experienceMin, experienceMax, languages, locale, offset, limit: PAGE_SIZE });
+      kws.length > 0
+        ? searchJobs({ keywords: kws, locationIds, occupationIds, seniorityIds, technologyIds, salaryMinEur: salMinEur, salaryMaxEur: salMaxEur, experienceMin: expMin, experienceMax: expMax, languages, locale, offset, limit: PAGE_SIZE })
+        : listTopCompanies({ locationIds, occupationIds, seniorityIds, technologyIds, salaryMinEur: salMinEur, salaryMaxEur: salMaxEur, experienceMin: expMin, experienceMax: expMax, languages, locale, offset, limit: PAGE_SIZE });
 
     fetcher
       .then((result) => {
@@ -545,7 +548,7 @@ export function SearchPage({
         loadingRef.current = false;
         setIsLoadingMore(false);
       });
-  }, [companies.length, keywords, locations, occupations, seniorities, technologies, languages, locale, salaryMin, salaryMax, experienceMin, experienceMax]);
+  }
 
   const histogramFilters: HistogramFilters = useMemo(() => ({
     keywords: keywords.length > 0 ? keywords : undefined,
