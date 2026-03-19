@@ -45,6 +45,7 @@ from src.shared.nextdata import (
     extract_field,
     extract_next_data,
     extract_react_router_data,
+    extract_rsc_data,
     resolve_path,
 )
 from src.shared.slug import slugify
@@ -73,6 +74,17 @@ _REACT_ROUTER_PATHS = [
     "loaderData.search.searchResults",
     "loaderData.root.jobs",
     "loaderData.routes.jobs",
+]
+
+# Common paths where RSC flight payloads store job listings.
+# RSC data dicts are extracted flat (no props.pageProps wrapper).
+_RSC_PATHS = [
+    "positions",
+    "jobs",
+    "openings",
+    "allJobs",
+    "data.positions",
+    "data.jobs",
 ]
 
 # Backward-compatible aliases for test imports
@@ -230,6 +242,15 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
                 log.info("nextdata.detected", url=url, source="reactrouter", path=path, count=count)
                 return {"source": "reactrouter", "path": path, "count": count}
 
+        # Try RSC flight payload (Next.js App Router)
+        data = extract_rsc_data(html)
+        if data:
+            result = _find_jobs_path(data, _RSC_PATHS)
+            if result:
+                path, count = result
+                log.info("nextdata.detected", url=url, source="rsc", path=path, count=count)
+                return {"source": "rsc", "path": path, "count": count}
+
     # Fall back to Playwright (client-rendered)
     try:
         from src.shared.browser import render as browser_render
@@ -238,6 +259,7 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
         for source, extractor, paths in [
             ("nextdata", extract_next_data, _COMMON_PATHS),
             ("reactrouter", extract_react_router_data, _REACT_ROUTER_PATHS),
+            ("rsc", extract_rsc_data, _RSC_PATHS),
         ]:
             data = extractor(rendered_html)
             if data:

@@ -17,7 +17,7 @@ from src.core.monitors.nextdata import (
     can_handle,
     discover,
 )
-from src.shared.nextdata import extract_react_router_data
+from src.shared.nextdata import extract_react_router_data, extract_rsc_data
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -1204,3 +1204,124 @@ class TestTotalRecordsPagination:
         async with httpx.AsyncClient(transport=transport) as client:
             result = await discover(BOARD_REACT_ROUTER_PAGINATED, client)
         assert len(result) == 5
+
+
+# ---------------------------------------------------------------------------
+# RSC flight payload tests
+# ---------------------------------------------------------------------------
+
+
+def _html_with_rsc_data(data: dict) -> str:
+    """Build HTML with RSC flight payload containing *data*.
+
+    Mimics Next.js App Router output: data is placed inside
+    ``self.__next_f.push([1,"<id>:<RSC array>"])`` with proper escaping.
+    """
+    # Build the RSC array: ["$","$L10",null,{...data...}]
+    rsc_array = ["$", "$L10", None, data]
+    rsc_json = json.dumps(rsc_array)
+    # RSC line: "7:" + json
+    rsc_line = f"7:{rsc_json}\n"
+    # Escape for embedding inside a JS string: quote → \", backslash → \\, newline → \n
+    escaped = rsc_line.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
+    return f'<html><body><script>self.__next_f.push([1,"{escaped}"])</script></body></html>'
+
+
+RSC_JOB_DATA = {
+    "job": {
+        "slug": "software-engineer",
+        "title": "Software Engineer",
+        "location": "Zurich (On-site)/Remote",
+        "type": "Full-time",
+        "aboutRole": "We are hiring Software Engineers to build our platform.",
+        "responsibilities": ["Design systems", "Write code"],
+        "minimumQualifications": ["3+ years experience"],
+    }
+}
+
+RSC_HTML = _html_with_rsc_data(RSC_JOB_DATA)
+
+
+class TestExtractRscData:
+    def test_valid_html(self):
+        data = extract_rsc_data(RSC_HTML)
+        assert data is not None
+        assert "job" in data
+        assert data["job"]["title"] == "Software Engineer"
+
+    def test_no_push_calls(self):
+        assert extract_rsc_data("<html><body>Nothing</body></html>") is None
+
+    def test_multiple_chunks(self):
+        """Data spread across multiple push calls is merged."""
+        chunk1 = {"meta": {"version": 1}}
+        chunk2 = {"job": {"title": "Engineer"}}
+        html = _html_with_rsc_data(chunk1) + _html_with_rsc_data(chunk2)
+        # Replace second script to use a different line id
+        html = html.replace(
+            'self.__next_f.push([1,"7:',
+            'self.__next_f.push([1,"8:',
+            1,  # only replace second occurrence
+        )
+        data = extract_rsc_data(html)
+        assert data is not None
+        assert data["meta"] == {"version": 1}
+        assert data["job"]["title"] == "Engineer"
+
+    def test_plain_dict_payload(self):
+        """Handles payloads that are plain dicts (not RSC arrays)."""
+        payload = {"title": "Test Job"}
+        rsc_line = f"5:{json.dumps(payload)}\n"
+        escaped = rsc_line.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
+        html = f'<html><script>self.__next_f.push([1,"{escaped}"])</script></html>'
+        data = extract_rsc_data(html)
+        assert data is not None
+        assert data["title"] == "Test Job"
+
+
+BOARD_RSC = {
+    "board_url": "https://example.com/jobs",
+    "metadata": {
+        "source": "rsc",
+        "path": "jobs",
+        "url_template": "https://example.com/jobs/{slug}",
+        "fields": {
+            "title": "title",
+            "locations": "location",
+        },
+    },
+}
+
+
+class TestRscDiscover:
+    async def test_returns_rich_jobs(self):
+        rsc_data = {
+            "jobs": [
+                {"title": "Engineer", "slug": "engineer", "location": ["NYC"]},
+                {"title": "Designer", "slug": "designer", "location": ["London"]},
+            ]
+        }
+        html = _html_with_rsc_data(rsc_data)
+        async with httpx.AsyncClient(transport=_mock_transport(html)) as client:
+            result = await discover(BOARD_RSC, client)
+        assert isinstance(result, list)
+        assert len(result) == 2
+
+    async def test_job_fields_mapped(self):
+        rsc_data = {
+            "jobs": [
+                {"title": "Engineer", "slug": "engineer", "location": ["NYC", "SF"]},
+            ]
+        }
+        html = _html_with_rsc_data(rsc_data)
+        async with httpx.AsyncClient(transport=_mock_transport(html)) as client:
+            result = await discover(BOARD_RSC, client)
+        eng = result[0]
+        assert eng.title == "Engineer"
+        assert eng.locations == ["NYC", "SF"]
+
+    async def test_no_data_returns_empty(self):
+        html = "<html><body>No RSC data</body></html>"
+        async with httpx.AsyncClient(transport=_mock_transport(html)) as client:
+            result = await discover(BOARD_RSC, client)
+        assert result == []
