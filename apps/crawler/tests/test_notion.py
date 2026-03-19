@@ -10,6 +10,7 @@ import pytest
 from src.core.monitors.notion import (
     _extract_child_pages,
     _extract_title,
+    _find_page_by_slug,
     _page_url,
     _parse_notion_url,
     can_handle,
@@ -22,8 +23,9 @@ from src.core.monitors.notion import (
 
 SUBDOMAIN = "acme"
 SPACE_ID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
-PAGE_ID = "11111111-2222-3333-4444-555555555555"
-HOME_PAGE_ID = "66666666-7777-8888-9999-aaaaaaaaaaaa"
+# These IDs are internal to the mock API — the user never configures them.
+_URL_PAGE_ID = "11111111-2222-3333-4444-555555555555"
+_HOME_PAGE_ID = "66666666-7777-8888-9999-aaaaaaaaaaaa"
 
 JOB_PAGES = [
     {"id": "aaa11111-1111-1111-1111-111111111111", "type": "page", "title": "Software Engineer"},
@@ -70,6 +72,34 @@ def _make_public_page_data(space_id=SPACE_ID, public_home=None):
     }
 
 
+def _make_handler(
+    *,
+    public_data=None,
+    chunks: dict | None = None,
+    default_chunk=None,
+):
+    """Build an httpx mock handler for Notion API calls.
+
+    Args:
+        public_data: Response for getPublicPageData.
+        chunks: Mapping of page_id -> chunk response for loadPageChunk.
+        default_chunk: Fallback chunk response for any loadPageChunk call.
+    """
+    def handler(request):
+        url = str(request.url)
+        body = json.loads(request.content) if request.content else {}
+        if "getPublicPageData" in url:
+            return httpx.Response(200, json=public_data or {})
+        if "loadPageChunk" in url:
+            req_page = body.get("page", {}).get("id", "")
+            if chunks and req_page in chunks:
+                return httpx.Response(200, json=chunks[req_page])
+            if default_chunk:
+                return httpx.Response(200, json=default_chunk)
+        return httpx.Response(404)
+    return handler
+
+
 # ---------------------------------------------------------------------------
 # Unit tests — URL parsing
 # ---------------------------------------------------------------------------
@@ -77,51 +107,46 @@ def _make_public_page_data(space_id=SPACE_ID, public_home=None):
 
 class TestParseNotionUrl:
     def test_standard_url_with_slug(self):
-        sub, pid = _parse_notion_url(
+        sub, hint = _parse_notion_url(
             "https://acme.notion.site/Job-Board-11111111222233334444555555555555"
         )
         assert sub == "acme"
-        assert pid == "11111111-2222-3333-4444-555555555555"
+        assert hint == "11111111-2222-3333-4444-555555555555"
 
-    def test_url_without_slug(self):
-        sub, pid = _parse_notion_url(
+    def test_url_without_title_slug(self):
+        sub, hint = _parse_notion_url(
             "https://acme.notion.site/11111111222233334444555555555555"
         )
         assert sub == "acme"
-        assert pid == "11111111-2222-3333-4444-555555555555"
-
-    def test_url_with_dashed_uuid(self):
-        sub, pid = _parse_notion_url(
-            "https://acme.notion.site/11111111-2222-3333-4444-555555555555"
-        )
-        assert sub == "acme"
-        # Dashes are stripped then re-formatted
-        assert pid == "11111111-2222-3333-4444-555555555555"
+        assert hint == "11111111-2222-3333-4444-555555555555"
 
     def test_root_url(self):
-        sub, pid = _parse_notion_url("https://acme.notion.site/")
+        sub, hint = _parse_notion_url("https://acme.notion.site/")
         assert sub == "acme"
-        assert pid is None
+        assert hint is None
 
     def test_non_notion_url(self):
-        sub, pid = _parse_notion_url("https://example.com/careers")
+        sub, hint = _parse_notion_url("https://example.com/careers")
         assert sub is None
-        assert pid is None
+        assert hint is None
 
     def test_hyphenated_subdomain(self):
-        sub, pid = _parse_notion_url(
+        sub, hint = _parse_notion_url(
             "https://my-company.notion.site/aabbccdd11223344aabbccdd11223344"
         )
         assert sub == "my-company"
-        assert pid is not None
+        assert hint is not None
 
-    def test_path_with_subpath(self):
-        sub, pid = _parse_notion_url(
-            "https://acme.notion.site/job-posts"
-        )
+    def test_slug_without_hex_id(self):
+        """A path like /job-posts has no 32 hex chars — returns raw slug."""
+        sub, hint = _parse_notion_url("https://acme.notion.site/job-posts")
         assert sub == "acme"
-        # "job-posts" has no 32 hex chars
-        assert pid is None
+        assert hint == "job-posts"
+
+    def test_slug_with_subpath(self):
+        sub, hint = _parse_notion_url("https://acme.notion.site/careers/openings")
+        assert sub == "acme"
+        assert hint == "openings"
 
 
 class TestPageUrl:
@@ -144,6 +169,28 @@ class TestExtractTitle:
         assert _extract_title({"properties": {}}) == ""
 
 
+class TestFindPageBySlug:
+    def test_finds_matching_page(self):
+        chunk = _make_chunk_response("root", [
+            {"id": "aaa", "type": "page", "title": "Job Posts"},
+            {"id": "bbb", "type": "page", "title": "About Us"},
+        ])
+        assert _find_page_by_slug(chunk, "job-posts") == "aaa"
+
+    def test_returns_none_when_no_match(self):
+        chunk = _make_chunk_response("root", [
+            {"id": "aaa", "type": "page", "title": "About Us"},
+        ])
+        assert _find_page_by_slug(chunk, "careers") is None
+
+    def test_matches_collection_view_page(self):
+        chunk = _make_chunk_response("root", [])
+        chunk["recordMap"]["block"].update(
+            _make_block("cvp1", block_type="collection_view_page", title="Job Posts")
+        )
+        assert _find_page_by_slug(chunk, "job-posts") == "cvp1"
+
+
 # ---------------------------------------------------------------------------
 # Unit tests — child page extraction
 # ---------------------------------------------------------------------------
@@ -151,8 +198,8 @@ class TestExtractTitle:
 
 class TestExtractChildPages:
     def test_extracts_child_pages(self):
-        data = _make_chunk_response(PAGE_ID, JOB_PAGES)
-        pages = _extract_child_pages(data, PAGE_ID)
+        data = _make_chunk_response(_URL_PAGE_ID, JOB_PAGES)
+        pages = _extract_child_pages(data, _URL_PAGE_ID)
         assert len(pages) == 3
         titles = {p["title"] for p in pages}
         assert titles == {"Software Engineer", "Product Manager", "Data Analyst"}
@@ -162,8 +209,8 @@ class TestExtractChildPages:
             *JOB_PAGES,
             {"id": "ddd44444-4444-4444-4444-444444444444", "type": "text", "title": "Not a page"},
         ]
-        data = _make_chunk_response(PAGE_ID, children)
-        pages = _extract_child_pages(data, PAGE_ID)
+        data = _make_chunk_response(_URL_PAGE_ID, children)
+        pages = _extract_child_pages(data, _URL_PAGE_ID)
         assert len(pages) == 3
 
     def test_skips_deleted_pages(self):
@@ -171,30 +218,27 @@ class TestExtractChildPages:
             *JOB_PAGES,
             {"id": "eee55555-5555-5555-5555-555555555555", "type": "page", "title": "Deleted", "alive": False},
         ]
-        data = _make_chunk_response(PAGE_ID, children)
-        pages = _extract_child_pages(data, PAGE_ID)
+        data = _make_chunk_response(_URL_PAGE_ID, children)
+        pages = _extract_child_pages(data, _URL_PAGE_ID)
         assert len(pages) == 3
 
     def test_empty_page(self):
-        data = _make_chunk_response(PAGE_ID, [])
-        pages = _extract_child_pages(data, PAGE_ID)
+        data = _make_chunk_response(_URL_PAGE_ID, [])
+        pages = _extract_child_pages(data, _URL_PAGE_ID)
         assert pages == []
 
     def test_include_nested(self):
-        """Grandchild pages are included when include_nested=True."""
         grandchild_id = "fff66666-6666-6666-6666-666666666666"
         child_id = JOB_PAGES[0]["id"]
 
-        data = _make_chunk_response(PAGE_ID, JOB_PAGES)
-        # Add grandchild content to first child
+        data = _make_chunk_response(_URL_PAGE_ID, JOB_PAGES)
         child_block = data["recordMap"]["block"][child_id]["value"]["value"]
         child_block["content"] = [grandchild_id]
-        # Add grandchild block
         data["recordMap"]["block"].update(
             _make_block(grandchild_id, title="Nested Job", parent_id=child_id)
         )
 
-        pages = _extract_child_pages(data, PAGE_ID, include_nested=True)
+        pages = _extract_child_pages(data, _URL_PAGE_ID, include_nested=True)
         assert len(pages) == 4
         assert any(p["title"] == "Nested Job" for p in pages)
 
@@ -202,14 +246,14 @@ class TestExtractChildPages:
         grandchild_id = "fff66666-6666-6666-6666-666666666666"
         child_id = JOB_PAGES[0]["id"]
 
-        data = _make_chunk_response(PAGE_ID, JOB_PAGES)
+        data = _make_chunk_response(_URL_PAGE_ID, JOB_PAGES)
         child_block = data["recordMap"]["block"][child_id]["value"]["value"]
         child_block["content"] = [grandchild_id]
         data["recordMap"]["block"].update(
             _make_block(grandchild_id, title="Nested Job", parent_id=child_id)
         )
 
-        pages = _extract_child_pages(data, PAGE_ID, include_nested=False)
+        pages = _extract_child_pages(data, _URL_PAGE_ID, include_nested=False)
         assert len(pages) == 3
 
 
@@ -221,52 +265,47 @@ class TestExtractChildPages:
 class TestCanHandle:
     @pytest.mark.asyncio
     async def test_detects_notion_site_with_jobs(self):
-        chunk = _make_chunk_response(PAGE_ID, JOB_PAGES)
-        public_data = _make_public_page_data()
-
-        def handler(request):
-            url = str(request.url)
-            if "getPublicPageData" in url:
-                return httpx.Response(200, json=public_data)
-            if "loadPageChunk" in url:
-                return httpx.Response(200, json=chunk)
-            return httpx.Response(404)
-
-        board_url = f"https://{SUBDOMAIN}.notion.site/Job-Board-{PAGE_ID.replace('-', '')}"
+        """Board URL with page ID that directly has job sub-pages."""
+        handler = _make_handler(
+            public_data=_make_public_page_data(),
+            default_chunk=_make_chunk_response(_URL_PAGE_ID, JOB_PAGES),
+        )
+        board_url = f"https://{SUBDOMAIN}.notion.site/Careers-{_URL_PAGE_ID.replace('-', '')}"
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             result = await can_handle(board_url, client)
 
         assert result is not None
-        assert result["page_id"] == PAGE_ID
-        assert result["space_id"] == SPACE_ID
         assert result["jobs"] == 3
 
     @pytest.mark.asyncio
     async def test_falls_back_to_public_home_page(self):
-        """When the URL's page has no children, probe checks publicHomePage."""
-        empty_chunk = _make_chunk_response(PAGE_ID, [])
-        home_chunk = _make_chunk_response(HOME_PAGE_ID, JOB_PAGES)
-        public_data = _make_public_page_data(public_home=HOME_PAGE_ID)
-
-        def handler(request):
-            url = str(request.url)
-            body = json.loads(request.content)
-            if "getPublicPageData" in url:
-                return httpx.Response(200, json=public_data)
-            if "loadPageChunk" in url:
-                req_page = body["page"]["id"]
-                if req_page == PAGE_ID:
-                    return httpx.Response(200, json=empty_chunk)
-                if req_page == HOME_PAGE_ID:
-                    return httpx.Response(200, json=home_chunk)
-            return httpx.Response(404)
-
-        board_url = f"https://{SUBDOMAIN}.notion.site/careers-{PAGE_ID.replace('-', '')}"
+        """URL page has no children — probe finds them via publicHomePage."""
+        handler = _make_handler(
+            public_data=_make_public_page_data(public_home=_HOME_PAGE_ID),
+            chunks={
+                _URL_PAGE_ID: _make_chunk_response(_URL_PAGE_ID, []),
+                _HOME_PAGE_ID: _make_chunk_response(_HOME_PAGE_ID, JOB_PAGES),
+            },
+        )
+        board_url = f"https://{SUBDOMAIN}.notion.site/careers-{_URL_PAGE_ID.replace('-', '')}"
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             result = await can_handle(board_url, client)
 
         assert result is not None
-        assert result["page_id"] == HOME_PAGE_ID
+        assert result["jobs"] == 3
+
+    @pytest.mark.asyncio
+    async def test_slug_url_resolves_via_home_page(self):
+        """A URL like /job-posts (no hex ID) resolves through publicHomePage."""
+        handler = _make_handler(
+            public_data=_make_public_page_data(public_home=_HOME_PAGE_ID),
+            default_chunk=_make_chunk_response(_HOME_PAGE_ID, JOB_PAGES),
+        )
+        board_url = f"https://{SUBDOMAIN}.notion.site/job-posts"
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle(board_url, client)
+
+        assert result is not None
         assert result["jobs"] == 3
 
     @pytest.mark.asyncio
@@ -277,27 +316,18 @@ class TestCanHandle:
 
     @pytest.mark.asyncio
     async def test_returns_none_when_no_child_pages(self):
-        empty_chunk = _make_chunk_response(PAGE_ID, [])
-        public_data = _make_public_page_data()
-
-        def handler(request):
-            url = str(request.url)
-            if "getPublicPageData" in url:
-                return httpx.Response(200, json=public_data)
-            if "loadPageChunk" in url:
-                return httpx.Response(200, json=empty_chunk)
-            return httpx.Response(404)
-
-        board_url = f"https://{SUBDOMAIN}.notion.site/{PAGE_ID.replace('-', '')}"
+        handler = _make_handler(
+            public_data=_make_public_page_data(),
+            default_chunk=_make_chunk_response(_URL_PAGE_ID, []),
+        )
+        board_url = f"https://{SUBDOMAIN}.notion.site/{_URL_PAGE_ID.replace('-', '')}"
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             result = await can_handle(board_url, client)
         assert result is None
 
     @pytest.mark.asyncio
     async def test_returns_none_when_api_fails(self):
-        def handler(request):
-            return httpx.Response(500)
-
+        handler = lambda r: httpx.Response(500)
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             result = await can_handle(f"https://{SUBDOMAIN}.notion.site/abc", client)
         assert result is None
@@ -310,15 +340,15 @@ class TestCanHandle:
 
 class TestDiscover:
     @pytest.mark.asyncio
-    async def test_returns_job_urls(self):
-        chunk = _make_chunk_response(PAGE_ID, JOB_PAGES)
-
-        def handler(request):
-            return httpx.Response(200, json=chunk)
-
+    async def test_returns_job_urls_from_url_page(self):
+        """Jobs found directly under the URL's page."""
+        handler = _make_handler(
+            public_data=_make_public_page_data(),
+            default_chunk=_make_chunk_response(_URL_PAGE_ID, JOB_PAGES),
+        )
         board = {
-            "board_url": f"https://{SUBDOMAIN}.notion.site/{PAGE_ID.replace('-', '')}",
-            "metadata": {"page_id": PAGE_ID},
+            "board_url": f"https://{SUBDOMAIN}.notion.site/{_URL_PAGE_ID.replace('-', '')}",
+            "metadata": {},
         }
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             urls = await discover(board, client)
@@ -329,55 +359,49 @@ class TestDiscover:
             assert expected in urls
 
     @pytest.mark.asyncio
-    async def test_uses_page_id_from_url_when_not_in_config(self):
-        chunk = _make_chunk_response(PAGE_ID, JOB_PAGES)
-        requested_ids = []
-
-        def handler(request):
-            body = json.loads(request.content)
-            requested_ids.append(body["page"]["id"])
-            return httpx.Response(200, json=chunk)
-
+    async def test_falls_back_to_home_page(self):
+        """URL page is empty — discovers jobs via publicHomePage."""
+        handler = _make_handler(
+            public_data=_make_public_page_data(public_home=_HOME_PAGE_ID),
+            chunks={
+                _URL_PAGE_ID: _make_chunk_response(_URL_PAGE_ID, []),
+                _HOME_PAGE_ID: _make_chunk_response(_HOME_PAGE_ID, JOB_PAGES),
+            },
+        )
         board = {
-            "board_url": f"https://{SUBDOMAIN}.notion.site/Careers-{PAGE_ID.replace('-', '')}",
+            "board_url": f"https://{SUBDOMAIN}.notion.site/{_URL_PAGE_ID.replace('-', '')}",
             "metadata": {},
         }
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             urls = await discover(board, client)
 
         assert len(urls) == 3
-        assert requested_ids[0] == PAGE_ID
 
     @pytest.mark.asyncio
-    async def test_config_page_id_takes_precedence(self):
-        """page_id in config overrides the one parsed from the URL."""
-        chunk = _make_chunk_response(HOME_PAGE_ID, JOB_PAGES)
-        requested_ids = []
-
-        def handler(request):
-            body = json.loads(request.content)
-            requested_ids.append(body["page"]["id"])
-            return httpx.Response(200, json=chunk)
-
+    async def test_slug_url_discovers_jobs(self):
+        """A slug URL like /job-posts resolves and finds jobs."""
+        handler = _make_handler(
+            public_data=_make_public_page_data(public_home=_HOME_PAGE_ID),
+            default_chunk=_make_chunk_response(_HOME_PAGE_ID, JOB_PAGES),
+        )
         board = {
-            "board_url": f"https://{SUBDOMAIN}.notion.site/{PAGE_ID.replace('-', '')}",
-            "metadata": {"page_id": HOME_PAGE_ID},
+            "board_url": f"https://{SUBDOMAIN}.notion.site/job-posts",
+            "metadata": {},
         }
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            await discover(board, client)
+            urls = await discover(board, client)
 
-        assert requested_ids[0] == HOME_PAGE_ID
+        assert len(urls) == 3
 
     @pytest.mark.asyncio
     async def test_empty_page_returns_empty_set(self):
-        chunk = _make_chunk_response(PAGE_ID, [])
-
-        def handler(request):
-            return httpx.Response(200, json=chunk)
-
+        handler = _make_handler(
+            public_data=_make_public_page_data(),
+            default_chunk=_make_chunk_response(_URL_PAGE_ID, []),
+        )
         board = {
-            "board_url": f"https://{SUBDOMAIN}.notion.site/{PAGE_ID.replace('-', '')}",
-            "metadata": {"page_id": PAGE_ID},
+            "board_url": f"https://{SUBDOMAIN}.notion.site/{_URL_PAGE_ID.replace('-', '')}",
+            "metadata": {},
         }
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             urls = await discover(board, client)
@@ -389,19 +413,20 @@ class TestDiscover:
         grandchild_id = "fff66666-6666-6666-6666-666666666666"
         child_id = JOB_PAGES[0]["id"]
 
-        chunk = _make_chunk_response(PAGE_ID, JOB_PAGES)
+        chunk = _make_chunk_response(_URL_PAGE_ID, JOB_PAGES)
         child_block = chunk["recordMap"]["block"][child_id]["value"]["value"]
         child_block["content"] = [grandchild_id]
         chunk["recordMap"]["block"].update(
             _make_block(grandchild_id, title="Nested Job", parent_id=child_id)
         )
 
-        def handler(request):
-            return httpx.Response(200, json=chunk)
-
+        handler = _make_handler(
+            public_data=_make_public_page_data(),
+            default_chunk=chunk,
+        )
         board = {
-            "board_url": f"https://{SUBDOMAIN}.notion.site/{PAGE_ID.replace('-', '')}",
-            "metadata": {"page_id": PAGE_ID, "include_nested": True},
+            "board_url": f"https://{SUBDOMAIN}.notion.site/{_URL_PAGE_ID.replace('-', '')}",
+            "metadata": {"include_nested": True},
         }
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             urls = await discover(board, client)
@@ -416,8 +441,17 @@ class TestDiscover:
                 await discover(board, client)
 
     @pytest.mark.asyncio
-    async def test_raises_when_no_page_id(self):
-        board = {"board_url": "https://acme.notion.site/", "metadata": {}}
-        async with httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(200))) as client:
-            with pytest.raises(ValueError, match="Cannot determine page_id"):
-                await discover(board, client)
+    async def test_no_config_needed(self):
+        """The only required input is the board URL — no metadata config."""
+        handler = _make_handler(
+            public_data=_make_public_page_data(public_home=_HOME_PAGE_ID),
+            default_chunk=_make_chunk_response(_HOME_PAGE_ID, JOB_PAGES),
+        )
+        board = {
+            "board_url": f"https://{SUBDOMAIN}.notion.site/job-posts",
+            # No metadata at all
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            urls = await discover(board, client)
+
+        assert len(urls) == 3
