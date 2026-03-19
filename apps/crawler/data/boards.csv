@@ -124,6 +124,7 @@ microsoft,microsoft-careers2,https://apply.careers.microsoft.com/careers,sitemap
 migros,migros-careers,https://jobs.migros.ch/de/unsere-unternehmen/migros-gruppe/offene-stellen,sitemap,"{""url_filter"": {""include"": ""/unsere-unternehmen/job/"", ""exclude"": ""/job/galaxus/""}}",json-ld,
 mimic,mimic-careers,https://jobs.gem.com/mimicrobotics-com,gem,"{""token"": ""mimicrobotics-com""}",skip,
 miromind-ai,miromind-ai-careers,https://www.miromind.ai/career,sitemap,"{""url_filter"": ""/career/""}",dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 60000, ""actions"": [{""action"": ""wait"", ""ms"": 3000}], ""steps"": [{""tag"": ""h2"", ""field"": ""title""}, {""tag"": ""h6"", ""field"": ""locations""}, {""text"": ""Apply Now""}, {""tag"": ""p"", ""field"": ""description"", ""stop"": ""Apply Now"", ""html"": true}]}"
+muse-group,muse-group-careers,https://www.mu.se/vacancies,sitemap,"{""url_filter"": ""/vacancies/""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""attr"": ""class=vacancy__location-label"", ""field"": ""locations""}, {""tag"": ""p"", ""field"": ""description"", ""html"": true, ""stop"": ""Muse Group empowers""}]}"
 mistral-ai,mistral-ai-careers,https://jobs.lever.co/mistral,lever,"{""token"": ""mistral""}",skip,
 modal,modal-careers,https://jobs.ashbyhq.com/modal,ashby,,skip,
 monzo,monzo-careers,https://job-boards.greenhouse.io/monzo,greenhouse,"{""token"": ""monzo""}",skip,

@@ -1552,27 +1552,33 @@ def run_scraper(slug: str | None, board_alias: str | None, urls: tuple[str, ...]
 
         http, http_log = create_logging_http_client()
         results = []
+        skipped: list[tuple[str, str]] = []
         try:
             async with async_playwright() as pw:
                 for i, url in enumerate(target_urls):
                     job_id = f"sample-{i}"
                     start = time.monotonic()
-                    content = await scrape_one(
-                        url,
-                        board.scraper_type,
-                        board.scraper_config or None,
-                        http,
-                        artifact_dir=run_dir,
-                        job_id=job_id,
-                        pw=pw,
-                    )
+                    try:
+                        content = await scrape_one(
+                            url,
+                            board.scraper_type,
+                            board.scraper_config or None,
+                            http,
+                            artifact_dir=run_dir,
+                            job_id=job_id,
+                            pw=pw,
+                        )
+                    except Exception as exc:
+                        skipped.append((url, str(exc)))
+                        log.warning("scraper.url_error", url=url, error=str(exc))
+                        continue
                     elapsed = time.monotonic() - start
                     results.append((url, content, elapsed))
-            return results, http_log
+            return results, http_log, skipped
         finally:
             await http.aclose()
 
-    results, http_log = asyncio.run(_run())
+    results, http_log, skipped = asyncio.run(_run())
 
     # Save HTTP log and structlog events
     save_http_log(run_dir, http_log)
@@ -1665,6 +1671,12 @@ def run_scraper(slug: str | None, board_alias: str | None, urls: tuple[str, ...]
             for url, c, e in results
         ],
     )
+    if skipped:
+        print()
+        out.warn("scraper", f"{len(skipped)} URL(s) skipped due to errors:")
+        for skip_url, skip_err in skipped:
+            short_err = skip_err.split("\n")[0][:80]
+            out.plain("scraper", f"  {skip_url} — {short_err}")
     print()
 
     # Core stats
