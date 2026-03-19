@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useRef, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Building2, Loader2 } from "lucide-react";
@@ -8,6 +8,7 @@ import { Trans } from "@lingui/react/macro";
 import { useParams } from "next/navigation";
 import { timeAgoShort } from "@/lib/time";
 import { loadMorePostings } from "@/lib/actions/search";
+import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
 import { SaveButton } from "@/components/search/save-button";
 import { StarButton } from "@/components/search/star-button";
 import { buildFilteredPath } from "@/lib/search/query-params";
@@ -64,7 +65,7 @@ export function CompanyCard({ result, keywords, locationIds, locations, occupati
   const hasMoreRef = useRef(hasMore);
   hasMoreRef.current = hasMore;
 
-  const handleLoadMore = useCallback(() => {
+  function handleLoadMore() {
     if (loadingRef.current || !hasMoreRef.current) return;
     loadingRef.current = true;
     setIsLoading(true);
@@ -91,21 +92,9 @@ export function CompanyCard({ result, keywords, locationIds, locations, occupati
         setIsLoading(false);
         loadingRef.current = false;
       });
-  }, [company.id, keywords, locationIds, languages, locale]);
+  }
 
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-
-    const onScroll = () => {
-      if (!hasMoreRef.current || loadingRef.current) return;
-      const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 50;
-      if (nearBottom) handleLoadMore();
-    };
-
-    el.addEventListener("scroll", onScroll, { passive: true });
-    return () => el.removeEventListener("scroll", onScroll);
-  }, [handleLoadMore]);
+  const sentinelRef = useInfiniteScroll({ hasMore, isLoading, onLoadMore: handleLoadMore, root: scrollRef, rootMargin: "50px" });
 
   return (
     <div className="rounded-md border border-divider bg-surface p-4">
@@ -171,9 +160,10 @@ export function CompanyCard({ result, keywords, locationIds, locations, occupati
             </span>
           </div>
         ))}
-        {hasMore && (
+        {hasMore && <div ref={sentinelRef} className="h-1" />}
+        {isLoading && (
           <div className="flex h-6 items-center justify-center">
-            {isLoading && <Loader2 size={12} className="animate-spin text-muted" />}
+            <Loader2 size={12} className="animate-spin text-muted" />
           </div>
         )}
       </div>

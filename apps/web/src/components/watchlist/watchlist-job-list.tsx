@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { Building2, Bookmark, Loader2 } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -11,6 +11,7 @@ import {
 } from "@/lib/actions/watchlists";
 import { useSavedJobs } from "@/components/SavedJobsProvider";
 import { JobDetailPanel } from "@/components/search/job-detail-dialog";
+import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
 
 const BATCH = 20;
 
@@ -67,7 +68,6 @@ export function WatchlistJobList({
   const [isLoading, setIsLoading] = useState(false);
   const [exhausted, setExhausted] = useState(initialPostings.length >= initialTotal);
   const [showPostingId, setShowPostingId] = useState<string | null>(null);
-  const sentinelRef = useRef<HTMLDivElement>(null);
   const loadingRef = useRef(false);
   const filtersRef = useRef(filters);
   filtersRef.current = filters;
@@ -99,7 +99,7 @@ export function WatchlistJobList({
       });
   }, [filtersKey]);
 
-  const handleLoadMore = useCallback(() => {
+  function handleLoadMore() {
     if (loadingRef.current || exhausted) return;
     loadingRef.current = true;
     setIsLoading(true);
@@ -123,23 +123,9 @@ export function WatchlistJobList({
         setIsLoading(false);
         loadingRef.current = false;
       });
-  }, [postings.length, exhausted]);
+  }
 
-  // IntersectionObserver sentinel for infinite scroll
-  useEffect(() => {
-    const sentinel = sentinelRef.current;
-    if (!sentinel || exhausted) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) handleLoadMore();
-      },
-      { rootMargin: "200px" },
-    );
-
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [handleLoadMore, exhausted]);
+  const sentinelRef = useInfiniteScroll({ hasMore: !exhausted, isLoading, onLoadMore: handleLoadMore });
 
   function handleOpenPosting(postingId: string) {
     setShowPostingId(postingId);

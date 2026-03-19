@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import Image from "next/image";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X, Search, Building2, Loader2, Check, ChevronDown } from "lucide-react";
@@ -11,6 +11,7 @@ import {
   type CompanyListEntry,
   type IndustrySuggestion,
 } from "@/lib/actions/company";
+import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
 import { RequestCompanyPrompt } from "@/components/search/request-company";
 import { useStarredCompanies } from "@/components/StarredCompaniesProvider";
 
@@ -57,7 +58,6 @@ export function CompanySearchModal({
   const [exhausted, setExhausted] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const inputRef = useRef<HTMLInputElement>(null);
-  const sentinelRef = useRef<HTMLDivElement>(null);
   const loadingRef = useRef(false);
 
   // Industry selector state
@@ -148,7 +148,7 @@ export function CompanySearchModal({
   }, [query, selectedIndustry, open]);
 
   // Load more
-  const handleLoadMore = useCallback(() => {
+  function handleLoadMore() {
     if (loadingRef.current || exhausted) return;
     loadingRef.current = true;
     setLoadingMore(true);
@@ -176,23 +176,9 @@ export function CompanySearchModal({
         setLoadingMore(false);
         loadingRef.current = false;
       });
-  }, [companies.length, exhausted, query, selectedIndustry, locale, watchlistFilters]);
+  }
 
-  // IntersectionObserver sentinel
-  useEffect(() => {
-    const sentinel = sentinelRef.current;
-    if (!sentinel || exhausted) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) handleLoadMore();
-      },
-      { rootMargin: "200px" },
-    );
-
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [handleLoadMore, exhausted]);
+  const sentinelRef = useInfiniteScroll({ hasMore: !exhausted, isLoading: loadingMore, onLoadMore: handleLoadMore });
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>

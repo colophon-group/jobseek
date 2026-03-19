@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import { CompanyCard } from "./company-card";
 import { RequestCompanyPrompt } from "./request-company";
 import type { SearchResultCompany } from "@/lib/search";
 import type { SerializableLocation, SerializableOccupation, SerializableSeniority, SerializableTechnology } from "@/lib/search/query-params";
+import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
 
 interface SearchResultsProps {
   companies: SearchResultCompany[];
@@ -37,25 +37,7 @@ export function SearchResults({
   onShowPosting,
   selectedPostingId,
 }: SearchResultsProps) {
-  const sentinelRef = useRef<HTMLDivElement>(null);
-
-  // Infinite scroll sentinel
-  useEffect(() => {
-    const sentinel = sentinelRef.current;
-    if (!sentinel || !hasMore) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          onLoadMore();
-        }
-      },
-      { rootMargin: "200px" },
-    );
-
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [hasMore, onLoadMore]);
+  const sentinelRef = useInfiniteScroll({ hasMore, isLoading: isLoadingMore, onLoadMore });
 
   return (
     <div className="space-y-3">
