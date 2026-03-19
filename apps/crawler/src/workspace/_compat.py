@@ -12,6 +12,7 @@ from __future__ import annotations
 
 _RICH_MONITORS: frozenset[str] = frozenset(
     {
+        "accenture",
         "amazon",
         "apify_meta",
         "ashby",
