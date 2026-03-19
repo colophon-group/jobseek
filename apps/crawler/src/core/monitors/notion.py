@@ -403,7 +403,10 @@ def _apply_row_filters(
                 if not skip:
                     filtered.append(r)
             result = filtered
-            log.info("notion.property_exclude", rules=exclude_props, before=before, after=len(result))
+            log.info(
+                "notion.property_exclude",
+                rules=exclude_props, before=before, after=len(result),
+            )
 
         if include_props:
             before = len(result)
@@ -417,7 +420,10 @@ def _apply_row_filters(
                 if match:
                     filtered.append(r)
             result = filtered
-            log.info("notion.property_include", rules=include_props, before=before, after=len(result))
+            log.info(
+                "notion.property_include",
+                rules=include_props, before=before, after=len(result),
+            )
 
     return result
 

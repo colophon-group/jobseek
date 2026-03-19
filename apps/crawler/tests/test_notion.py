@@ -217,7 +217,10 @@ class TestExtractChildPages:
     def test_skips_deleted_pages(self):
         children = [
             *JOB_PAGES,
-            {"id": "eee55555-5555-5555-5555-555555555555", "type": "page", "title": "Deleted", "alive": False},
+            {
+                "id": "eee55555-5555-5555-5555-555555555555",
+                "type": "page", "title": "Deleted", "alive": False,
+            },
         ]
         data = _make_chunk_response(_URL_PAGE_ID, children)
         pages = _extract_child_pages(data, _URL_PAGE_ID)
@@ -459,7 +462,10 @@ class TestCanHandle:
 
     @pytest.mark.asyncio
     async def test_returns_none_for_non_notion(self):
-        async with httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(404))) as client:
+        def _h(r):
+            return httpx.Response(404)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(_h)) as client:
             result = await can_handle("https://example.com/careers", client)
         assert result is None
 
@@ -476,7 +482,8 @@ class TestCanHandle:
 
     @pytest.mark.asyncio
     async def test_returns_none_when_api_fails(self):
-        handler = lambda r: httpx.Response(500)
+        def handler(r):
+            return httpx.Response(500)
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             result = await can_handle(f"https://{SUBDOMAIN}.notion.site/abc", client)
         assert result is None
@@ -585,7 +592,10 @@ class TestDiscover:
     @pytest.mark.asyncio
     async def test_raises_for_non_notion_url(self):
         board = {"board_url": "https://example.com/careers", "metadata": {}}
-        async with httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(200))) as client:
+        def _h(r):
+            return httpx.Response(200)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(_h)) as client:
             with pytest.raises(ValueError, match="Not a Notion site"):
                 await discover(board, client)
 
