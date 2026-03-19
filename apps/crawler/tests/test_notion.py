@@ -324,6 +324,10 @@ class TestDiscoverWithCollection:
             "view_ids": [VIEW_ID],
         }}}
 
+        row_blocks = {}
+        for rid in ROW_IDS:
+            row_blocks.update(_make_block(rid, title=f"Job {rid[:8]}"))
+
         query_response = {
             "result": {
                 "type": "reducer",
@@ -334,7 +338,7 @@ class TestDiscoverWithCollection:
                     }
                 },
             },
-            "recordMap": {"block": {}},
+            "recordMap": {"block": row_blocks},
         }
 
         def handler(request):
@@ -382,10 +386,13 @@ class TestDiscoverWithCollection:
                 call_count[0] += 1
                 rows = [f"row{call_count[0]}a000-0000-0000-0000-000000000000",
                         f"row{call_count[0]}b000-0000-0000-0000-000000000000"]
+                row_blocks = {}
+                for rid in rows:
+                    row_blocks.update(_make_block(rid, title=f"Job {rid[:8]}"))
                 return httpx.Response(200, json={
                     "result": {"type": "reducer", "reducerResults": {
                         "collection_group_results": {"type": "results", "blockIds": rows}}},
-                    "recordMap": {"block": {}},
+                    "recordMap": {"block": row_blocks},
                 })
             return httpx.Response(404)
 

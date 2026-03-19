@@ -162,8 +162,8 @@ async def _query_collection(
     collection_id: str,
     view_id: str,
     space_id: str,
-) -> list[str]:
-    """Query a Notion collection and return row block IDs."""
+) -> list[dict]:
+    """Query a Notion collection and return rows as [{"id": ..., "title": ...}]."""
     data = await _api_post(client, subdomain, "queryCollection", {
         "source": {
             "type": "collection",
@@ -188,12 +188,20 @@ async def _query_collection(
     })
     if not data:
         return []
-    return (
+    block_ids = (
         data.get("result", {})
         .get("reducerResults", {})
         .get("collection_group_results", {})
         .get("blockIds", [])
     )
+    blocks = data.get("recordMap", {}).get("block", {})
+    rows: list[dict] = []
+    for rid in block_ids:
+        b = blocks.get(rid, {})
+        val = b.get("value", {}).get("value") or b.get("value", {})
+        title = _extract_title(val)
+        rows.append({"id": rid, "title": title})
+    return rows
 
 
 # ---------------------------------------------------------------------------
@@ -399,7 +407,7 @@ async def _find_job_pages(
 
                 all_rows: list[dict] = []
                 for i, cv in enumerate(cvs):
-                    row_ids = await _query_collection(
+                    rows = await _query_collection(
                         client, subdomain,
                         cv["collection_id"], cv["view_id"], space_id,
                     )
@@ -407,9 +415,12 @@ async def _find_job_pages(
                         "notion.collection_query",
                         index=i,
                         collection_id=cv["collection_id"],
-                        rows=len(row_ids),
+                        rows=len(rows),
+                        titles=[r["title"] for r in rows],
                     )
-                    all_rows.extend({"id": rid, "title": ""} for rid in row_ids)
+                    # Filter out rows with empty titles (placeholders/garbage)
+                    rows = [r for r in rows if r["title"].strip()]
+                    all_rows.extend(rows)
 
                 if all_rows:
                     log.info(
