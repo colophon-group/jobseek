@@ -11,12 +11,17 @@ site's public home page, searching for both child pages and embedded
 database views.
 
 Config (``board.metadata``):
-    include_nested  If true, also include grandchild pages (default: false).
-    url_filter      Regex or {"include": ..., "exclude": ...} to filter result
-                    URLs — same semantics as the dom/sitemap monitors.
+    include_nested    If true, also include grandchild pages (default: false).
+    url_filter        Regex or {"include": ..., "exclude": ...} to filter result
+                      URLs — same semantics as the dom/sitemap monitors.
     collection_index  Zero-based index of which collection_view to use when a
-                    page has multiple databases (default: all).  Use this when
-                    only one of several databases on the page holds job posts.
+                      page has multiple databases (default: all).
+    title_exclude     Regex pattern — exclude rows whose title matches.
+                      Example: "Stay up to date|Coming soon"
+    property_filter   Filter collection rows by property values.
+                      {"exclude": {"Department": "Archived"}} or
+                      {"include": {"Status": "Open"}}
+                      Property names are matched case-insensitively.
 """
 
 from __future__ import annotations
@@ -163,7 +168,11 @@ async def _query_collection(
     view_id: str,
     space_id: str,
 ) -> list[dict]:
-    """Query a Notion collection and return rows as [{"id": ..., "title": ...}]."""
+    """Query a Notion collection and return rows.
+
+    Each row dict has ``id``, ``title``, and ``properties`` (a dict of
+    human-readable property name → string value).
+    """
     data = await _api_post(client, subdomain, "queryCollection", {
         "source": {
             "type": "collection",
@@ -194,13 +203,35 @@ async def _query_collection(
         .get("collection_group_results", {})
         .get("blockIds", [])
     )
+
+    # Build schema map: prop_id -> prop_name
+    schema_map: dict[str, str] = {}
+    for _cid, cdata in data.get("recordMap", {}).get("collection", {}).items():
+        cval = cdata.get("value", {}).get("value") or cdata.get("value", {})
+        for prop_id, prop in cval.get("schema", {}).items():
+            if prop.get("name") and prop_id != "title":
+                schema_map[prop_id] = prop["name"]
+
     blocks = data.get("recordMap", {}).get("block", {})
     rows: list[dict] = []
     for rid in block_ids:
         b = blocks.get(rid, {})
         val = b.get("value", {}).get("value") or b.get("value", {})
         title = _extract_title(val)
-        rows.append({"id": rid, "title": title})
+        raw_props = val.get("properties", {})
+
+        # Map internal prop IDs to human-readable names
+        named_props: dict[str, str] = {}
+        for prop_id, prop_name in schema_map.items():
+            raw = raw_props.get(prop_id)
+            if raw and isinstance(raw, list):
+                value = "".join(
+                    seg[0] for seg in raw if isinstance(seg, list) and seg
+                )
+                if value.strip():
+                    named_props[prop_name] = value
+
+        rows.append({"id": rid, "title": title, "properties": named_props})
     return rows
 
 
@@ -339,6 +370,58 @@ def _extract_title(val: dict) -> str:
 # ---------------------------------------------------------------------------
 
 
+def _apply_row_filters(
+    rows: list[dict],
+    *,
+    title_exclude: str | None = None,
+    property_filter: dict | None = None,
+) -> list[dict]:
+    """Filter collection rows by title pattern and/or property values."""
+    result = rows
+
+    if title_exclude:
+        pat = re.compile(title_exclude, re.IGNORECASE)
+        before = len(result)
+        result = [r for r in result if not pat.search(r["title"])]
+        log.info("notion.title_exclude", pattern=title_exclude, before=before, after=len(result))
+
+    if property_filter:
+        exclude_props = property_filter.get("exclude", {})
+        include_props = property_filter.get("include", {})
+
+        if exclude_props:
+            before = len(result)
+            filtered = []
+            for r in result:
+                props = r.get("properties", {})
+                skip = False
+                for prop_name, prop_val in exclude_props.items():
+                    actual = props.get(prop_name, "")
+                    if actual.lower() == prop_val.lower():
+                        skip = True
+                        break
+                if not skip:
+                    filtered.append(r)
+            result = filtered
+            log.info("notion.property_exclude", rules=exclude_props, before=before, after=len(result))
+
+        if include_props:
+            before = len(result)
+            filtered = []
+            for r in result:
+                props = r.get("properties", {})
+                match = all(
+                    props.get(pn, "").lower() == pv.lower()
+                    for pn, pv in include_props.items()
+                )
+                if match:
+                    filtered.append(r)
+            result = filtered
+            log.info("notion.property_include", rules=include_props, before=before, after=len(result))
+
+    return result
+
+
 async def _find_job_pages(
     client: httpx.AsyncClient,
     subdomain: str,
@@ -346,6 +429,8 @@ async def _find_job_pages(
     *,
     include_nested: bool = False,
     collection_index: int | None = None,
+    title_exclude: str | None = None,
+    property_filter: dict | None = None,
 ) -> list[dict]:
     """Resolve the board URL and return job pages.
 
@@ -423,6 +508,12 @@ async def _find_job_pages(
                     all_rows.extend(rows)
 
                 if all_rows:
+                    # Apply title/property filters
+                    all_rows = _apply_row_filters(
+                        all_rows,
+                        title_exclude=title_exclude,
+                        property_filter=property_filter,
+                    )
                     log.info(
                         "notion.strategy",
                         strategy="collection",
@@ -471,11 +562,15 @@ async def discover(
     include_nested = metadata.get("include_nested", False)
     collection_index = metadata.get("collection_index")
     url_filter = metadata.get("url_filter")
+    title_exclude = metadata.get("title_exclude")
+    property_filter = metadata.get("property_filter")
 
     pages = await _find_job_pages(
         client, subdomain, path_hint,
         include_nested=include_nested,
         collection_index=collection_index,
+        title_exclude=title_exclude,
+        property_filter=property_filter,
     )
     if not pages:
         log.warning("notion.no_pages_found", board_url=board_url)
