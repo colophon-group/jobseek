@@ -11,7 +11,6 @@ import asyncio
 import httpx
 import structlog
 
-from src.config import settings
 from src.core.monitors import register
 
 log = structlog.get_logger()
@@ -22,6 +21,8 @@ _RUN_TIMEOUT = 7200.0  # Orchestrator can take a while as it calls many sub-acto
 
 
 def _headers() -> dict[str, str]:
+    from src.config import settings
+
     return {"Authorization": f"Bearer {settings.apify_token}"}
 
 
@@ -31,6 +32,8 @@ async def discover_signals(board: dict, client: httpx.AsyncClient, pw=None) -> l
     Instead, it processes signals and outreach drafts directly into the DB.
     It returns an empty list to satisfy the monitor interface.
     """
+    from src.config import settings
+
     if not settings.apify_token:
         log.warning("signals.disabled", reason="APIFY_TOKEN not set")
         return []

@@ -18,7 +18,6 @@ import asyncio
 import httpx
 import structlog
 
-from src.config import settings
 from src.core.monitors import DiscoveredJob, register
 
 log = structlog.get_logger()
@@ -29,6 +28,8 @@ _RUN_TIMEOUT = 3600.0  # max seconds to wait for actor run
 
 
 def _headers() -> dict[str, str]:
+    from src.config import settings
+
     return {"Authorization": f"Bearer {settings.apify_token}"}
 
 
@@ -65,6 +66,8 @@ def _map_job(item: dict) -> DiscoveredJob | None:
 
 
 async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[DiscoveredJob]:
+    from src.config import settings
+
     if not settings.apify_token:
         raise RuntimeError("APIFY_TOKEN is not set — cannot run apify_meta monitor")
 
