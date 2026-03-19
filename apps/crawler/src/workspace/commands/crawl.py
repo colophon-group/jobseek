@@ -23,6 +23,27 @@ from src.workspace.state import (
     workspace_exists,
 )
 
+_SUSPICIOUS_ROUND_THRESHOLDS = {1000, 5000, 10000, 50000, 100000}
+
+
+def _warn_suspicious_count(count: int, category: str) -> None:
+    """Warn when a job count looks like a server-side cap or is unusually high."""
+    if count <= 0:
+        return
+    if count in _SUSPICIOUS_ROUND_THRESHOLDS:
+        out.warn(
+            category,
+            f"Exactly {count} jobs — likely a server-side cap (real count may be higher). "
+            "Verify against the website.",
+        )
+    elif count >= 5000:
+        out.warn(
+            category,
+            f"{count} jobs is unusually high — verify this isn't inflated by "
+            "duplicates, test data, or missing filters. "
+            "If legitimate, set max_items/max_pages with ~50% headroom for growth.",
+        )
+
 
 def _resolve_board(slug: str, board_alias: str | None = None):
     """Resolve board from --board flag or active_board.
@@ -685,6 +706,8 @@ def probe_deep(slug: str | None, board_alias: str | None, current_jobs: int):
             "deep",
             f"api_sniffer   OK  {items} items  ~{mon_pw:.1f}s/cycle (PW)  {rich_str}",
         )
+        if isinstance(items, int):
+            _warn_suspicious_count(items, "deep")
         out.plain("deep", f"  api_url: {metadata.get('api_url', '?')}")
         if metadata.get("fields"):
             fields = (
@@ -1271,6 +1294,9 @@ def run_monitor(slug: str | None, board_alias: str | None):
                 f"API reports {ev['total_count']} total but only {ev['discovered']} discovered "
                 "— likely pagination misconfiguration",
             )
+
+    # Suspicious count warnings
+    _warn_suspicious_count(job_count, "monitor")
 
     # Count verification prompt — completeness matters most
     if job_count > 0:

@@ -667,9 +667,10 @@ async def _discover_http(
             page_cap = pagination_config.get("max_pages", _HTTP_MAX_PAGES)
             items = await paginate_all(make_http_fetcher(client), job_result, page_cap)
 
-        if len(items) > MAX_ITEMS:
-            log.warning("api_sniffer.truncated", total=len(items), cap=MAX_ITEMS)
-            items = items[:MAX_ITEMS]
+        max_items = config.get("max_items", MAX_ITEMS)
+        if len(items) > max_items:
+            log.warning("api_sniffer.truncated", total=len(items), cap=max_items)
+            items = items[:max_items]
 
         log.info("api_sniffer.http_items_done", items=len(items))
 

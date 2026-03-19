@@ -11,6 +11,10 @@ _pool: asyncpg.Pool | None = None
 
 async def _init_connection(conn: asyncpg.Connection) -> None:
     await conn.execute("SET idle_in_transaction_session_timeout = '5min'")
+    # Detect dead clients (OOM kill, network drop) within ~90s
+    await conn.execute("SET tcp_keepalives_idle = 60")
+    await conn.execute("SET tcp_keepalives_interval = 10")
+    await conn.execute("SET tcp_keepalives_count = 3")
 
 
 async def create_pool() -> asyncpg.Pool:
