@@ -75,6 +75,7 @@ isomorphic-labs,isomorphic-labs-careers,https://job-boards.greenhouse.io/isomorp
 jetbrains,jetbrains-careers,https://boards.greenhouse.io/jetbrains,greenhouse,,,
 johnson-and-johnson,johnson-and-johnson-careers,https://jj.wd5.myworkdayjobs.com/JJ,workday,,workday,
 julius-baer,julius-baer-careers,https://juliusbaer.wd3.myworkdayjobs.com/External,workday,,,
+kaiko-ai,kaiko-ai-careers,https://jobs.kaiko.ai/,rss,"{""preset"": ""teamtailor""}",skip,
 kayak,kayak-careers,https://job-boards.greenhouse.io/kayak,greenhouse,"{""token"": ""kayak""}",skip,
 kodland,kodland-careers,https://kodland.pinpointhq.com,pinpoint,"{""slug"": ""kodland""}",,
 kpmg,kpmg-at,https://bewerbung.kpmg.at,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://bewerbung.kpmg.at/googlefeed.xml""}",,
