@@ -1351,7 +1351,30 @@ def run_monitor(slug: str | None, board_alias: str | None):
         desc_count = quality["fields"].get("description", {}).get("count", 0) if quality else 0
         desc_pct = (desc_count / quality["total"] * 100) if quality and quality["total"] else 0
         cfg = board._ensure_cfg()
-        if cfg.get("scraper_type"):
+        if (
+            cfg.get("scraper_type") == "skip"
+            and desc_pct < 80
+            and quality
+            and quality["total"] > 0
+        ):
+            # Rich monitor auto-skipped scraper at select time, but
+            # descriptions are insufficient — override to allow scraper
+            # selection so detail pages can fill in descriptions.
+            cfg.pop("scraper_type", None)
+            save_board(slug, board)
+            if desc_pct > 0:
+                out.warn(
+                    "monitor",
+                    f"Only {desc_count}/{quality['total']} jobs have descriptions"
+                    " — scraper auto-skip overridden",
+                )
+            else:
+                out.warn(
+                    "monitor",
+                    "Monitor returned structured data but no descriptions"
+                    " — scraper auto-skip overridden",
+                )
+        elif cfg.get("scraper_type"):
             # Already auto-configured at select time
             out.plain(
                 "monitor",
