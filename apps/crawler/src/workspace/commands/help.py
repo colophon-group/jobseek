@@ -1518,6 +1518,30 @@ signals — Signals Discovery Monitor
 
 # ── Lookup tables ────────────────────────────────────────────────────────
 
+MONITOR_YCOMBINATOR = """\
+ycombinator — YCombinator Jobs (last resort, HTML scraping)
+
+  ⚠ LAST RESORT — all companies eventually outgrow YC and migrate to a
+    dedicated ATS (Greenhouse, Lever, Ashby, etc.). Only use this monitor
+    when no real ATS board exists for the company.
+
+  Listing:  GET https://www.ycombinator.com/companies/{slug}/jobs
+  Returns:  Job detail URLs (extracted from HTML href attributes)
+  Scraper:  Auto-configured (json-ld) — extracts JSON-LD JobPosting from detail pages
+  Note:     Server-rendered HTML, no pagination observed.
+            Job URLs follow /companies/{slug}/jobs/{alphanumeric_id}-{title-slug}.
+            Cross-company links on the page are filtered out.
+
+  Config:
+    {"slug": "typewise"}
+
+    slug    Company slug on ycombinator.com. Auto-detected from board URL
+            (ycombinator.com/companies/{slug}/jobs).
+
+  Detection:  ws probe shows "YCombinator — slug: X, N jobs
+              (last resort — prefer a dedicated ATS if available)"
+  Zero jobs?  Company may have migrated off YC — check for a real ATS board."""
+
 MONITOR_CARDS: dict[str, str] = {
     "accenture": MONITOR_ACCENTURE,
     "amazon": MONITOR_AMAZON,
@@ -1548,6 +1572,7 @@ MONITOR_CARDS: dict[str, str] = {
     "dom": MONITOR_DOM,
     "api_sniffer": MONITOR_API_SNIFFER,
     "signals": MONITOR_SIGNALS,
+    "ycombinator": MONITOR_YCOMBINATOR,
 }
 
 SCRAPER_SMARTRECRUITERS = """\
