@@ -3309,3 +3309,87 @@ class TestProbeAllBoards:
         board_de = load_board("test", "careers-de")
         assert "greenhouse" in board_de.detections
         assert board_de.detections["greenhouse"]["jobs"] == 42
+
+
+class TestNewIdempotent:
+    """ws new should not fail when slug already exists in CSV from a prior attempt."""
+
+    def _git_mocks(self, stack, tmp_path, *, pr_opt=False):
+        """Set up common git mocks for new() tests. Returns (add_files, commit, push)."""
+        stack.enter_context(
+            patch(
+                "src.workspace.commands.lifecycle.is_local_mode",
+                return_value=False,
+            )
+        )
+        stack.enter_context(patch("src.workspace.git.check_gh_auth", return_value=True))
+        stack.enter_context(patch("src.workspace.git.fetch"))
+        stack.enter_context(
+            patch("src.workspace.git.worktrees_dir", return_value=tmp_path / "worktrees")
+        )
+        stack.enter_context(patch("src.workspace.git.get_main_branch", return_value="main"))
+        stack.enter_context(patch("src.workspace.git.delete_remote_branch"))
+        stack.enter_context(patch("src.workspace.git.create_worktree"))
+        stack.enter_context(patch("src.shared.constants.set_repo_root"))
+        stack.enter_context(patch("src.shared.constants.get_repo_root", return_value=tmp_path))
+        stack.enter_context(patch("src.workspace.git.check_existing_prs", return_value=[]))
+        if pr_opt:
+            stack.enter_context(
+                patch("src.workspace.git.get_pr_branch", return_value="add-company/acme")
+            )
+
+        add_files = stack.enter_context(patch("src.workspace.git.add_files"))
+        commit = stack.enter_context(patch("src.workspace.git.commit"))
+        push = stack.enter_context(patch("src.workspace.git.push"))
+        stack.enter_context(patch("src.workspace.git.create_draft_pr", return_value=99))
+        return add_files, commit, push
+
+    def test_new_skips_commit_when_slug_already_in_csv(self, tmp_path, monkeypatch):
+        """When company_add raises NothingToUpdateError (e.g. --pr reattach to
+        a branch that already has the slug), git.commit must be skipped but
+        git.push should still be called."""
+        _patch_all(monkeypatch, tmp_path)
+        # Empty CSV in the "original" repo — slug only exists in the worktree
+        # CSV (simulated by mocking company_add to raise NothingToUpdateError).
+        _setup_csvs(tmp_path)
+
+        from src.workspace.errors import NothingToUpdateError
+
+        with ExitStack() as stack:
+            add_files, commit, push = self._git_mocks(stack, tmp_path, pr_opt=True)
+            # Simulate the worktree CSV already containing the slug
+            stack.enter_context(
+                patch(
+                    "src.csvtool.company_add",
+                    side_effect=NothingToUpdateError("already exists"),
+                )
+            )
+
+            runner = CliRunner()
+            result = runner.invoke(ws, ["new", "acme", "--issue", "1", "--pr", "42"])
+
+        assert result.exit_code == 0, result.output
+        # company_add raised NothingToUpdateError, so commit must NOT be called
+        add_files.assert_not_called()
+        commit.assert_not_called()
+        # push must still be called (branch needs to exist on remote for PR)
+        push.assert_called_once()
+        # Workspace should be registered
+        assert workspace_exists("acme")
+
+    def test_new_commits_when_csv_actually_changed(self, tmp_path, monkeypatch):
+        """Normal case: slug not in CSV, so commit + push both happen."""
+        _patch_all(monkeypatch, tmp_path)
+        _setup_csvs(tmp_path)  # empty CSV — slug not present
+
+        with ExitStack() as stack:
+            add_files, commit, push = self._git_mocks(stack, tmp_path)
+
+            runner = CliRunner()
+            result = runner.invoke(ws, ["new", "acme", "--issue", "1"])
+
+        assert result.exit_code == 0, result.output
+        # CSV was changed, so commit + push both called
+        add_files.assert_called_once()
+        commit.assert_called_once()
+        push.assert_called_once()

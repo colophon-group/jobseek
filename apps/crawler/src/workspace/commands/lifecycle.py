@@ -181,6 +181,7 @@ def new(slug: str, issue: int | None, pr_opt: int | None, reconfig: bool, reset:
         set_repo_root(worktree_path)
         out.plain("git", f"Created worktree at {worktree_path} (branch {branch})")
 
+    csv_changed = False
     if not reconfig:
         # Add stub CSV row for new companies
         from src.csvtool import company_add
@@ -188,6 +189,7 @@ def new(slug: str, issue: int | None, pr_opt: int | None, reconfig: bool, reset:
 
         try:
             company_add(slug)
+            csv_changed = True
             out.plain("csv", "Added stub row to companies.csv")
         except NothingToUpdateError:
             # Slug already present in worktree CSV from a previous attempt
@@ -204,10 +206,11 @@ def new(slug: str, issue: int | None, pr_opt: int | None, reconfig: bool, reset:
         from src.workspace import git
 
         if not reconfig:
-            # Commit and push stub row
-            git.add_files(["apps/crawler/data/companies.csv"])
-            git.commit(f"Add {slug}")
-            out.plain("git", f'Committed: "Add {slug}"')
+            if csv_changed:
+                # Commit and push stub row
+                git.add_files(["apps/crawler/data/companies.csv"])
+                git.commit(f"Add {slug}")
+                out.plain("git", f'Committed: "Add {slug}"')
 
             # Push branch (needed before creating PR)
             git.push(branch, set_upstream=True)
