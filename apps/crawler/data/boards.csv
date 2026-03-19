@@ -119,7 +119,7 @@ nikon,nikon-careers-us,https://recruiting.paylocity.com/recruiting/jobs/All/15fc
 notion,notion-careers,https://jobs.ashbyhq.com/notion,ashby,"{""token"": ""notion""}",,
 novartis,novartis-careers,https://novartis.wd3.myworkdayjobs.com/Novartis_Careers,workday,"{""company"": ""novartis"", ""wd_instance"": ""wd3"", ""site"": ""Novartis_Careers""}",workday,
 nscale,nscale-careers,https://job-boards.eu.greenhouse.io/nscaleoperationsukltd,greenhouse,"{""token"": ""nscaleoperationsukltd""}",skip,
-nvidia,nvidia-careers,https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite,workday,"{""company"": ""nvidia"", ""wd_instance"": ""wd5"", ""site"": ""NVIDIAExternalCareerSite""}",json-ld,
+nvidia,nvidia-careers,https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite,workday,"{""company"": ""nvidia"", ""wd_instance"": ""wd5"", ""site"": ""NVIDIAExternalCareerSite""}",workday,
 on-running,on-running-careers,https://boards.greenhouse.io/onrunning,greenhouse,"{""token"": ""onrunning""}",skip,
 openai,openai-careers,https://jobs.ashbyhq.com/openai,ashby,"{""token"": ""openai""}",skip,
 oxyle,oxyle-careers,https://oxyle.com/careers,workable,"{""token"": ""oxyle-ag-1""}",workable,

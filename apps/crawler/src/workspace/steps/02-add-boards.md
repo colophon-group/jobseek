@@ -68,6 +68,19 @@ captures all listings.
 **Note ALL distinct board URLs found.**
 Only add URLs that are actual listing boards (or listings feeds), not informational pages.
 
+**Tip — local/regional boards:** If you discover even one locale-specific or
+country-specific board (e.g., `/en-US/`, `/de/careers`, a separate Workday site
+per region), it is very likely there are many more. Enumerate all of them —
+check the region/language switcher, `robots.txt` sitemap entries, and hreflang
+tags exhaustively. Do not stop at the first local board you find.
+
+**Tip — population/function-specific boards:** The same applies to boards
+segmented by audience or job function (e.g., `graduates`, `internships`,
+`experienced`, `engineering`, `sales`). If you find one such board, check for
+all the others — companies that split by population or function almost always
+have several. Look at `robots.txt` sitemap entries, navigation links on the
+careers page, and Workday site lists for the full set.
+
 Prefer directly referenced board URLs over unreferenced slug guesses unless
 the latter has stronger corroborating evidence.
 
