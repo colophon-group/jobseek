@@ -1613,6 +1613,16 @@ async def _process_one_board_streaming(
                                 )
                             )
 
+                # URL-only path — insert stubs with next_scrape_at
+                if result.jobs_by_url is None and new_urls:
+                    inserted = await conn.fetch(
+                        _INSERT_URL_ONLY_JOBS,
+                        company_id,
+                        board_id,
+                        new_urls,
+                    )
+                    board_log.info("batch.inserted_for_scrape", count=len(inserted))
+
             # Fire R2 uploads as background tasks (overlap with next batch)
             for pid, kw, eh in r2_work:
                 r2_tasks.append(asyncio.create_task(_do_upload_bg(pid, kw, eh)))
