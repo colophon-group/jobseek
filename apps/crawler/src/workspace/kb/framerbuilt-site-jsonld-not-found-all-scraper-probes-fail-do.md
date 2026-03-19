@@ -1,6 +1,6 @@
 ---
 step: select_scraper
-symptom: Framer-built site: json-ld not found, all scraper probes fail, DOM elements not present in static HTML
+symptom: "Framer-built site: json-ld not found, all scraper probes fail, DOM elements not present in static HTML"
 tags: ['framer', 'js-rendered', 'dom-scraper', 'render']
 ---
 # Framer-built site: json-ld not found, all scraper probes fail, DOM elements not present in static HTML

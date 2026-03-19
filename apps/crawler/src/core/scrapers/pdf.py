@@ -7,8 +7,11 @@ Config:
     title_source   "url" (default) | "text"
                    "url"  — derive title from the PDF filename
                    "text" — use first short line from PDF text, fall back to URL
-    title_pattern  Optional regex applied to the PDF filename (after URL-decoding
-                   and hash stripping). First capture group becomes the title.
+    title_pattern  Optional regex with a capture group for the title.
+                   When title_source is "url", applied to the PDF filename
+                   (after URL-decoding and hash stripping).
+                   When title_source is "text", applied to the raw PDF text
+                   before falling back to the heading-line heuristic.
 """
 
 from __future__ import annotations
@@ -129,7 +132,13 @@ async def scrape(
     title_pattern = config.get("title_pattern")
 
     if title_source == "text":
-        title = _title_from_text(full_text) or _title_from_url(url, title_pattern)
+        title = None
+        if title_pattern:
+            m = re.search(title_pattern, full_text)
+            if m and m.lastindex:
+                title = m.group(1).strip() or None
+        if not title:
+            title = _title_from_text(full_text) or _title_from_url(url, title_pattern)
     else:
         title = _title_from_url(url, title_pattern)
 
