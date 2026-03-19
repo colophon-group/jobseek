@@ -17,14 +17,18 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       code: ${{ steps.filter.outputs.code }}
+      crawler_code: ${{ steps.filter.outputs.crawler_code }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Check for code changes
         id: filter
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "code=true" >> "$GITHUB_OUTPUT"
+            echo "crawler_code=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           if [ "${{ github.event_name }}" = "push" ]; then
@@ -33,17 +37,20 @@ jobs:
             FILES=$(gh pr diff "${{ github.event.pull_request.number }}" --name-only 2>/dev/null || echo "")
           fi
           CODE=false
+          CRAWLER_CODE=false
           while IFS= read -r f; do
             [ -z "$f" ] && continue
             case "$f" in
               apps/crawler/data/*) ;;
               apps/crawler/VERSION) ;;
               *.md) ;;
-              *) CODE=true; break ;;
+              apps/crawler/*) CODE=true; CRAWLER_CODE=true ;;
+              *) CODE=true ;;
             esac
           done <<< "$FILES"
           echo "code=$CODE" >> "$GITHUB_OUTPUT"
-          echo "Code changes detected: $CODE"
+          echo "crawler_code=$CRAWLER_CODE" >> "$GITHUB_OUTPUT"
+          echo "Code changes detected: $CODE (crawler: $CRAWLER_CODE)"
         env:
           GH_TOKEN: ${{ github.token }}
 
@@ -127,3 +134,31 @@ jobs:
 
       - run: uv run pytest tests/ -v
         working-directory: apps/crawler
+
+  version-check:
+    name: Version bump check
+    needs: changes
+    if: github.event_name == 'pull_request' && needs.changes.outputs.crawler_code == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Check VERSION increased
+        run: |
+          PR_VERSION=$(cat apps/crawler/VERSION | tr -d '[:space:]')
+          MAIN_VERSION=$(git show origin/main:apps/crawler/VERSION | tr -d '[:space:]')
+
+          IFS='.' read -r pr_major pr_minor pr_patch <<< "$PR_VERSION"
+          IFS='.' read -r main_major main_minor main_patch <<< "$MAIN_VERSION"
+
+          pr_num=$((pr_major * 1000000 + pr_minor * 1000 + pr_patch))
+          main_num=$((main_major * 1000000 + main_minor * 1000 + main_patch))
+
+          if [ "$pr_num" -gt "$main_num" ]; then
+            echo "VERSION bumped: ${MAIN_VERSION} → ${PR_VERSION}"
+          else
+            echo "::error::apps/crawler/VERSION must be bumped for crawler code changes (main: ${MAIN_VERSION}, PR: ${PR_VERSION})"
+            exit 1
+          fi
