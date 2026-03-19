@@ -84,6 +84,7 @@ johnson-and-johnson,johnson-and-johnson-careers,https://jj.wd5.myworkdayjobs.com
 julius-baer,julius-baer-careers,https://juliusbaer.wd3.myworkdayjobs.com/External,workday,,,
 kaiko-ai,kaiko-ai-careers,https://jobs.kaiko.ai/,rss,"{""preset"": ""teamtailor""}",skip,
 kayak,kayak-careers,https://job-boards.greenhouse.io/kayak,greenhouse,"{""token"": ""kayak""}",skip,
+klarna,klarna-careers,https://jobs.deel.com/job-boards/klarna,deel,"{""slug"": ""klarna""}",skip,
 kodland,kodland-careers,https://kodland.pinpointhq.com,pinpoint,"{""slug"": ""kodland""}",,
 kpmg,kpmg-at,https://bewerbung.kpmg.at,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://bewerbung.kpmg.at/googlefeed.xml""}",,
 kpmg,kpmg-au,https://careers.smartrecruiters.com/KPMGAustralia1,smartrecruiters,"{""token"": ""KPMGAustralia1""}",,
