@@ -163,6 +163,7 @@ pwc,pwc-careers-uk,https://jobs.pwc.co.uk/uk/en/search-results,sitemap,"{""sitem
 pwc,pwc-careers-us-phenom,https://jobs-us.pwc.com/us/en/search-results,sitemap,"{""sitemap_url"": ""https://jobs-us.pwc.com/us/en/search-results/sitemap.xml"", ""url_filter"": ""/us/en/job/""}",json-ld,
 pwc,pwc-careers-workday,https://pwc.wd3.myworkdayjobs.com/Global_Experienced_Careers,workday,"{""company"": ""pwc"", ""wd_instance"": ""wd3"", ""site"": ""Global_Experienced_Careers""}",,
 relai,relai-careers,https://relai.app/career/,greenhouse,"{""token"": ""technology""}",skip,
+reprisk,reprisk-careers,https://careers.smartrecruiters.com/RepRiskAG,smartrecruiters,,smartrecruiters,
 revolut,revolut-careers,https://www.revolut.com/careers/,nextdata,"{""path"": ""props.pageProps.positions"", ""url_template"": ""https://www.revolut.com/careers/position/{slug}-{id}/"", ""slug_fields"": [""text""], ""render"": true, ""wait"": ""domcontentloaded""}",nextdata,"{""path"": ""props.pageProps.position"", ""render"": true, ""wait"": ""domcontentloaded"", ""fields"": {""title"": ""text"", ""description"": ""description"", ""locations"": ""locations[].name"", ""job_location_type"": ""locations[].type"", ""metadata.team"": ""team""}}"
 rivr,rivr-careers,https://jobs.lever.co/rivr,lever,,,
 roche,roche-careers,https://roche.wd3.myworkdayjobs.com/roche-ext,workday,"{""company"": ""roche"", ""wd_instance"": ""wd3"", ""site"": ""roche-ext""}",workday,
