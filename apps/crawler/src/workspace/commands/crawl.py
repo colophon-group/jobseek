@@ -1353,12 +1353,7 @@ def run_monitor(slug: str | None, board_alias: str | None):
         desc_count = quality["fields"].get("description", {}).get("count", 0) if quality else 0
         desc_pct = (desc_count / quality["total"] * 100) if quality and quality["total"] else 0
         cfg = board._ensure_cfg()
-        if (
-            cfg.get("scraper_type") == "skip"
-            and desc_pct < 80
-            and quality
-            and quality["total"] > 0
-        ):
+        if cfg.get("scraper_type") == "skip" and desc_pct < 80 and quality and quality["total"] > 0:
             # Rich monitor auto-skipped scraper at select time, but
             # descriptions are insufficient — override to allow scraper
             # selection so detail pages can fill in descriptions.
