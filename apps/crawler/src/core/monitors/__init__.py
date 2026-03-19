@@ -376,6 +376,13 @@ def _build_comment(name: str, metadata: dict) -> str:
         if count_str:
             return f"{label} \u2014 {feed_url}, {count_str} jobs"
         return f"{label} \u2014 {feed_url}"
+    if name == "ycombinator":
+        slug = metadata.get("slug", "?")
+        jobs = metadata.get("jobs")
+        warn = " (last resort — prefer a dedicated ATS if available)"
+        if jobs is not None:
+            return f"YCombinator — slug: {slug}, {jobs} jobs{warn}"
+        return f"YCombinator — slug: {slug}{warn}"
     if name == "api_sniffer":
         items = metadata.get("items")
         total = metadata.get("total")
@@ -466,4 +473,5 @@ from src.core.monitors import (  # noqa: E402
     umantis,  # noqa: F401
     workable,  # noqa: F401
     workday,  # noqa: F401
+    ycombinator,  # noqa: F401
 )
