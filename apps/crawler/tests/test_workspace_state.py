@@ -162,13 +162,16 @@ class TestActiveWorkspace:
         clear_active_slug()
         assert get_active_slug() is None
 
-    def test_returns_none_for_deleted_workspace(self, tmp_path, monkeypatch):
+    def test_returns_slug_for_deleted_workspace(self, tmp_path, monkeypatch):
+        """get_active_slug() returns the slug even when workspace YAML is
+        deleted — callers validate with workspace_exists() and produce a
+        slug-specific error which is more useful than 'No active workspace'."""
         monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: tmp_path)
         monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path)
         save_workspace(Workspace(slug="stripe"))
         set_active_slug("stripe")
         delete_workspace("stripe")
-        assert get_active_slug() is None
+        assert get_active_slug() == "stripe"
 
     def test_resolve_slug_explicit(self, tmp_path, monkeypatch):
         monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: tmp_path)

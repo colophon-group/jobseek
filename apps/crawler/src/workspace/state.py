@@ -576,11 +576,17 @@ def get_active_slug() -> str | None:
     Checks ``WS_ACTIVE`` env var first (allows concurrent agents in
     separate terminals), then checks the session-scoped active file.
     As a compatibility fallback, also checks the legacy ``active`` file.
+
+    Note: this deliberately does NOT check ``workspace_exists()``.
+    Callers that need the YAML to exist already call ``workspace_exists()``
+    themselves and produce a slug-specific error message, which is far more
+    useful than the generic "No active workspace" that results when this
+    function returns None.
     """
     import os
 
     env = os.environ.get("WS_ACTIVE", "").strip()
-    if env and workspace_exists(env):
+    if env:
         return env
 
     paths = [_active_path()]
@@ -592,7 +598,7 @@ def get_active_slug() -> str | None:
         if not path.exists():
             continue
         slug = path.read_text().strip()
-        if slug and workspace_exists(slug):
+        if slug:
             return slug
     return None
 

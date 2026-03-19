@@ -541,6 +541,7 @@ class TestRunSync:
 
         # Set up pool + connection mock with proper async context managers
         mock_conn = MagicMock()
+        mock_conn.execute = AsyncMock()
         mock_txn_cm = AsyncMock()
         mock_conn.transaction.return_value = mock_txn_cm
 
@@ -629,6 +630,7 @@ class TestRunSync:
 
         # Set up pool + connection mock
         mock_conn = MagicMock()
+        mock_conn.execute = AsyncMock()
         mock_txn_cm = AsyncMock()
         mock_conn.transaction.return_value = mock_txn_cm
 

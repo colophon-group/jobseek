@@ -165,25 +165,25 @@ def set_(
     if logo_url is not None or icon_url is not None:
         _show_final_logo_inspection_reminder(slug)
 
-    # Auto-discover brand assets + career pages when website is set but no logo/icon provided
-    effective_website = website or ws.website
+    # Auto-discover brand assets + career pages only when website is
+    # explicitly set in THIS call (not carried over from prior state)
     if (
-        logo_url is None
+        website  # Only when website is explicitly set in THIS call
+        and logo_url is None
         and icon_url is None
         and logo_type is None
         and logo_candidate is None
         and icon_candidate is None
         and job_link_pattern is None
-        and effective_website
     ):
-        _discover_and_show_all(slug, effective_website)
+        _discover_and_show_all(slug, website)
 
-    # Auto-enrich company metadata when we have name + website
-    # and enrichment fields weren't explicitly set in this call
-    effective_name = ws.name
+    # Auto-enrich company metadata only when name or website is set in
+    # THIS call, and enrichment fields weren't already populated
     if (
-        effective_website
-        and effective_name
+        (website or name)  # Only when name or website set in THIS call
+        and (website or ws.website)
+        and (name or ws.name)
         and description is None
         and industry is None
         and not ws.descriptions.get("en")
