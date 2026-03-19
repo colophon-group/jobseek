@@ -161,6 +161,7 @@ scandit,scandit-careers,https://boards.greenhouse.io/scandit,greenhouse,"{""toke
 semrush,semrush-careers,https://careers.semrush.com/,recruitee,"{""slug"": ""semrush"", ""api_base"": ""https://semrush.recruitee.com""}",,
 seprify,seprify-careers,https://seprify.com/careers,sitemap,"{""url_filter"": ""/vacancies/""}",dom,"{""render"": false, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""text"": ""Location"", ""offset"": 1, ""field"": ""location"", ""optional"": true}, {""text"": ""Back"", ""offset"": 1, ""field"": ""description"", ""html"": true, ""stop"": ""Cookie Consent""}]}"
 servers-com,servers-com-careers-apply,https://servers-com.breezy.hr/,breezy,,,
+smallpdf,smallpdf-careers,https://smallpdf.com/careers,ashby,"{""token"": ""smallpdf""}",skip,
 snap,snap-careers,https://snapchat.wd1.myworkdayjobs.com/snap,workday,,workday,
 snyk,snyk-careers,https://snyk.wd103.myworkdayjobs.com/External,workday,"{""company"": ""snyk"", ""wd_instance"": ""wd103"", ""site"": ""External""}",workday,
 sonarsource,sonarsource-careers-lever,https://jobs.lever.co/sonarsource,lever,,,
