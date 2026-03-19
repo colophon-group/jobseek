@@ -152,7 +152,9 @@ async def run_actions(page, actions: list[dict]) -> None:
     """
     for action in actions:
         kind = action.get("action")
-        default_timeout = _REPEAT_TIMEOUT if kind == "repeat" else ACTION_TIMEOUT
+        default_timeout = (
+            _REPEAT_TIMEOUT if kind in ("repeat", "paginate_collect") else ACTION_TIMEOUT
+        )
         timeout = action.get("timeout", default_timeout)
         try:
             await asyncio.wait_for(_execute_action(page, action, kind), timeout=timeout)
@@ -187,6 +189,8 @@ async def _execute_action(page, action: dict, kind: str | None) -> None:
         await dismiss_overlays(page)
     elif kind == "repeat":
         await _execute_repeat(page, action)
+    elif kind == "paginate_collect":
+        await _execute_paginate_collect(page, action)
     else:
         log.warning("browser.action.unknown", action=kind)
 
@@ -210,6 +214,79 @@ async def _execute_repeat(page, action: dict) -> None:
             log.info("browser.repeat.no_new_links", iteration=i + 1, links=after)
             break
         log.debug("browser.repeat.click", iteration=i + 1, new=after - before, total=after)
+
+
+async def _execute_paginate_collect(page, action: dict) -> None:
+    """Click through paginated content, collecting links from every page.
+
+    For portals that *replace* page content on navigation (rather than
+    appending), the standard ``repeat`` action only sees the last page.
+    This action visits every page, accumulates all ``<a href>`` URLs, and
+    injects them as hidden elements so the dom monitor's link extractor
+    finds the full set.
+
+    Config keys:
+        next_selector (str): CSS selector for the clickable "next page"
+            element.  Pagination stops when the selector matches nothing.
+        page_size_selector (str): Optional CSS selector for a ``<select>``
+            dropdown that controls items-per-page.
+        page_size (int|str): Value to set on the page-size dropdown.
+        wait_ms (int): Delay in ms after each navigation (default 5000).
+        max_pages (int): Safety cap on pagination clicks (default 50).
+    """
+    next_sel = action.get("next_selector", "li.next:not(.next_disabled) a")
+    ps_selector = action.get("page_size_selector", "")
+    page_size = action.get("page_size", "")
+    wait_ms = action.get("wait_ms", 5000)
+    max_pages = action.get("max_pages", 50)
+
+    total = await page.evaluate(
+        """async ([nextSel, psSel, pageSize, waitMs, maxPages]) => {
+            const delay = ms => new Promise(r => setTimeout(r, ms));
+
+            const getAllLinks = () => Array.from(document.querySelectorAll('a[href]'))
+                .filter(a => a.href.startsWith('http'))
+                .map(a => a.href);
+
+            // Optionally change items-per-page.
+            if (psSel && pageSize) {
+                const sel = document.querySelector(psSel);
+                if (sel) {
+                    sel.value = String(pageSize);
+                    sel.dispatchEvent(new Event('change'));
+                    // SuccessFactors uses juic event bus
+                    if (typeof juic !== 'undefined' && sel.id)
+                        juic.fire(sel.id, '_onChange', new Event('change'));
+                    await delay(waitMs);
+                }
+            }
+
+            // Collect links from all pages.
+            const allLinks = new Set(getAllLinks());
+
+            for (let p = 0; p < maxPages; p++) {
+                const nextEl = document.querySelector(nextSel);
+                if (!nextEl) break;
+                nextEl.click();
+                await delay(waitMs);
+                getAllLinks().forEach(l => allLinks.add(l));
+            }
+
+            // Inject collected links as hidden <a> tags for the dom extractor.
+            const container = document.createElement('div');
+            container.style.display = 'none';
+            allLinks.forEach(href => {
+                const a = document.createElement('a');
+                a.href = href;
+                container.appendChild(a);
+            });
+            document.body.appendChild(container);
+
+            return allLinks.size;
+        }""",
+        [next_sel, ps_selector, str(page_size), wait_ms, max_pages],
+    )
+    log.info("browser.paginate_collect.done", total=total)
 
 
 async def dismiss_overlays(page) -> None:

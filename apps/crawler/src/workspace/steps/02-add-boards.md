@@ -29,7 +29,7 @@ to distinguish directly referenced boards from blind guesses.
 If the page is JS-rendered and shows 0 listings, use the job count from web search results
 (e.g., LinkedIn, Glassdoor) as an approximation. If there are genuinely no open positions,
 reject with `ws reject --reason no-open-positions --message "..."`.
-Careers page behind auth → reject with `ws reject --reason no-job-board --message "..."`.
+Careers page behind auth → fail with `ws task fail --reason "Board requires auth — needs dedicated support"`. Do **not** reject — auth-gated boards are a technical limitation, not an invalid request.
 Small companies with 1–3 jobs are valid — proceed.
 
 Manual source inspection is optional in this phase; start with crawler evidence first.
