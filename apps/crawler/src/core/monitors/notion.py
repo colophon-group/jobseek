@@ -12,6 +12,11 @@ database views.
 
 Config (``board.metadata``):
     include_nested  If true, also include grandchild pages (default: false).
+    url_filter      Regex or {"include": ..., "exclude": ...} to filter result
+                    URLs — same semantics as the dom/sitemap monitors.
+    collection_index  Zero-based index of which collection_view to use when a
+                    page has multiple databases (default: all).  Use this when
+                    only one of several databases on the page holds job posts.
 """
 
 from __future__ import annotations
@@ -70,6 +75,25 @@ def _is_uuid(value: str) -> bool:
 
 def _page_url(subdomain: str, page_id: str) -> str:
     return f"https://{subdomain}.notion.site/{page_id.replace('-', '')}"
+
+
+def _apply_url_filter(urls: set[str], url_filter) -> set[str]:
+    """Apply a url_filter (string regex or {"include": ..., "exclude": ...})."""
+    if not url_filter:
+        return urls
+    if isinstance(url_filter, str):
+        pat = re.compile(url_filter)
+        return {u for u in urls if pat.search(u)}
+    include = url_filter.get("include")
+    exclude = url_filter.get("exclude")
+    result = urls
+    if include:
+        pat = re.compile(include)
+        result = {u for u in result if pat.search(u)}
+    if exclude:
+        pat = re.compile(exclude)
+        result = {u for u in result if not pat.search(u)}
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -182,14 +206,7 @@ async def _resolve_site(
     subdomain: str,
     path_hint: str | None,
 ) -> tuple[str | None, str | None, str | None]:
-    """Resolve a board URL to (page_id, public_home_id, space_id).
-
-    Strategy:
-    1. If path_hint is a UUID, use it as page_id and call getPublicPageData
-       with it to get space info.
-    2. Otherwise (slug or root), call getPublicPageData without a blockId
-       to get the space's home page, then try slug matching.
-    """
+    """Resolve a board URL to (page_id, public_home_id, space_id)."""
     if path_hint and _is_uuid(path_hint):
         public_data = await _get_public_page_data(client, subdomain, path_hint)
         if not public_data or not public_data.get("spaceId"):
@@ -212,7 +229,6 @@ async def _resolve_site(
         return None, None, space_id
 
     if not path_hint:
-        # Root URL — use publicHomePage directly
         return public_home, public_home, space_id
 
     # Slug — try to find matching page in the home page's block tree
@@ -321,6 +337,7 @@ async def _find_job_pages(
     path_hint: str | None,
     *,
     include_nested: bool = False,
+    collection_index: int | None = None,
 ) -> list[dict]:
     """Resolve the board URL and return job pages.
 
@@ -347,20 +364,62 @@ async def _find_job_pages(
         # Strategy 1: direct child pages
         pages = _extract_child_pages(chunk, cand_id, include_nested=include_nested)
         if pages:
+            log.info(
+                "notion.strategy",
+                strategy="subpages",
+                page_id=cand_id,
+                count=len(pages),
+            )
             return pages
 
-        # Strategy 2: collection databases (search ALL blocks, not just children)
+        # Strategy 2: collection databases (search ALL blocks)
         if space_id:
             cvs = _find_all_collection_views(chunk)
-            all_rows: list[dict] = []
-            for cv in cvs:
-                row_ids = await _query_collection(
-                    client, subdomain,
-                    cv["collection_id"], cv["view_id"], space_id,
-                )
-                all_rows.extend({"id": rid, "title": ""} for rid in row_ids)
-            if all_rows:
-                return all_rows
+            if cvs:
+                # Log discovered collections for observability
+                for i, cv in enumerate(cvs):
+                    log.info(
+                        "notion.collection_found",
+                        index=i,
+                        collection_id=cv["collection_id"],
+                        view_id=cv["view_id"],
+                    )
+
+                # Apply collection_index filter if configured
+                if collection_index is not None:
+                    if 0 <= collection_index < len(cvs):
+                        cvs = [cvs[collection_index]]
+                        log.info("notion.collection_index", selected=collection_index)
+                    else:
+                        log.warning(
+                            "notion.collection_index_out_of_range",
+                            index=collection_index,
+                            total=len(cvs),
+                        )
+
+                all_rows: list[dict] = []
+                for i, cv in enumerate(cvs):
+                    row_ids = await _query_collection(
+                        client, subdomain,
+                        cv["collection_id"], cv["view_id"], space_id,
+                    )
+                    log.info(
+                        "notion.collection_query",
+                        index=i,
+                        collection_id=cv["collection_id"],
+                        rows=len(row_ids),
+                    )
+                    all_rows.extend({"id": rid, "title": ""} for rid in row_ids)
+
+                if all_rows:
+                    log.info(
+                        "notion.strategy",
+                        strategy="collection",
+                        page_id=cand_id,
+                        collections=len(cvs),
+                        total_rows=len(all_rows),
+                    )
+                    return all_rows
 
     return []
 
@@ -399,15 +458,25 @@ async def discover(
         raise ValueError(f"Not a Notion site URL: {board_url}")
 
     include_nested = metadata.get("include_nested", False)
+    collection_index = metadata.get("collection_index")
+    url_filter = metadata.get("url_filter")
 
     pages = await _find_job_pages(
-        client, subdomain, path_hint, include_nested=include_nested,
+        client, subdomain, path_hint,
+        include_nested=include_nested,
+        collection_index=collection_index,
     )
     if not pages:
         log.warning("notion.no_pages_found", board_url=board_url)
         return set()
 
     urls = {_page_url(subdomain, p["id"]) for p in pages}
+
+    if url_filter:
+        before = len(urls)
+        urls = _apply_url_filter(urls, url_filter)
+        log.info("notion.url_filter_applied", before=before, after=len(urls))
+
     log.info("notion.discovered", board_url=board_url, jobs=len(urls))
     return urls
 
