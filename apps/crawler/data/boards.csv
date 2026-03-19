@@ -106,6 +106,7 @@ openai,openai-careers,https://jobs.ashbyhq.com/openai,ashby,"{""token"": ""opena
 patek-philippe,patek-philippe-careers,https://careers.patek.com/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.patek.com/googlefeed.xml""}",,
 peec-ai,peec-ai-careers,https://jobs.ashbyhq.com/peec,ashby,,skip,
 perplexity-ai,perplexity-ai-careers,https://jobs.ashbyhq.com/perplexity,ashby,,,
+philip-morris-international,philip-morris-international-careers,https://join.pmicareers.com/gb/en/search-results,sitemap,"{""sitemap_url"": ""https://join.pmicareers.com/gb/en/search-results/sitemap.xml""}",json-ld,
 physical-intelligence,physical-intelligence-careers,https://jobs.ashbyhq.com/physicalintelligence,ashby,"{""token"": ""physicalintelligence""}",skip,
 pinterest,pinterest-careers,https://job-boards.greenhouse.io/pinterestjobadvertisements,greenhouse,"{""token"": ""pinterest""}",skip,
 plaid,plaid-careers,https://jobs.lever.co/plaid,lever,"{""token"": ""plaid""}",skip,
