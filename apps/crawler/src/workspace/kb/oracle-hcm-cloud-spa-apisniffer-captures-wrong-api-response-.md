@@ -1,6 +1,6 @@
 ---
 step: select_monitor
-symptom: Oracle HCM Cloud SPA: api_sniffer captures wrong API response (page template metadata instead of job data), json-ld not present, all scrapers fail on static HTML
+symptom: "Oracle HCM Cloud SPA: api_sniffer captures wrong API response (page template metadata instead of job data), json-ld not present, all scrapers fail on static HTML"
 tags: ['oracle-hcm', 'spa', 'dom-scraper', 'render', 'sitemap']
 ---
 # Oracle HCM Cloud SPA: api_sniffer captures wrong API response (page template metadata instead of job data), json-ld not present, all scrapers fail on static HTML
