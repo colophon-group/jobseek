@@ -210,9 +210,7 @@ class TestScrape:
 
     async def test_title_pattern_applied_to_text(self):
         """title_pattern is applied to raw PDF text when title_source='text'."""
-        pdf_bytes = _make_pdf(
-            "Company Inc\nis looking for\nResearch Engineer\n[ref: 123]"
-        )
+        pdf_bytes = _make_pdf("Company Inc\nis looking for\nResearch Engineer\n[ref: 123]")
 
         def handler(request):
             return httpx.Response(200, content=pdf_bytes)
