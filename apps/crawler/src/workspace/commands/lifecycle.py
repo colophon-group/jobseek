@@ -851,7 +851,6 @@ SUBMIT_STEPS: list[tuple[str, str, bool]] = [
     ("pr_body_updated", "Update PR body", False),
     ("stats_posted", "Post crawl stats on PR", False),
     ("transcript_posted", "Post transcript on PR", False),
-    ("pr_ready", "Mark PR ready for review", False),
     ("issue_completed", "Post completion on issue", False),
 ]
 
@@ -1015,14 +1014,6 @@ def _execute_submit_step(
                 f"</details>"
             )
             git.comment_on_pr(ws.pr, transcript_comment)
-
-    elif step_key == "pr_ready":
-        if local:
-            return  # Local mode — skip PR ready
-        from src.workspace import git
-
-        if ws.pr:
-            git.mark_pr_ready(ws.pr)
 
     elif step_key == "issue_completed":
         if local:
