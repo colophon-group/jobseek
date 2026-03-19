@@ -19,6 +19,7 @@ src/
 ├── core/
 │   ├── monitors/          # Monitor implementations
 │   │   ├── __init__.py    # Registry + DiscoveredJob dataclass
+│   │   ├── accenture.py   # Accenture Career API (dedicated, auto-partitioned)
 │   │   ├── api_sniffer.py # API capture (httpx for public APIs, Playwright for browser-dependent)
 │   │   ├── ashby.py       # Ashby Job Board API
 │   │   ├── gem.py         # Gem ATS Job Board API

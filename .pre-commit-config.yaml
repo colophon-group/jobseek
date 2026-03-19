@@ -15,10 +15,3 @@ repos:
         files: ^apps/web/.*\.(js|jsx|ts|tsx)$
         pass_filenames: false
         stages: [pre-commit]
-      - id: bump-ws-version
-        name: Bump ws-cli version
-        language: python
-        entry: python .github/scripts/bump-version.py
-        files: ^apps/crawler/
-        pass_filenames: false
-        stages: [pre-commit]

@@ -86,10 +86,8 @@ jobs:
 
             for file in $conflicted; do
               if [[ "$file" == "apps/crawler/VERSION" ]]; then
+                # Take main's version — bump happens in the dedicated step before merge
                 git checkout --ours "$file"
-                current=$(cat "$file" | tr -d '[:space:]')
-                IFS='.' read -r major minor patch <<< "$current"
-                echo "${major}.${minor}.$((patch + 1))" > "$file"
               elif [[ "$file" == *.csv ]]; then
                 # Union merge: take main's version, then apply PR's changes
                 git checkout --ours "$file"
@@ -111,6 +109,48 @@ jobs:
 
           git push --force-with-lease origin "$BRANCH"
           echo "rebased=true" >> "$GITHUB_OUTPUT"
+
+      - name: Bump crawler VERSION if code changed
+        id: bump
+        if: steps.rebase.outputs.rebased == 'true' && steps.images.outputs.pending == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          BRANCH=$(gh pr view "$PR" --repo "$REPO" --json headRefName -q .headRefName)
+          git checkout "$BRANCH"
+
+          # Check if PR has crawler code changes (not just data/VERSION/docs)
+          FILES=$(gh pr diff "$PR" --repo "$REPO" --name-only)
+          CODE=false
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            case "$f" in
+              apps/crawler/data/*) ;;
+              apps/crawler/VERSION) ;;
+              *.md) ;;
+              *) if [[ "$f" == apps/crawler/* ]]; then CODE=true; break; fi ;;
+            esac
+          done <<< "$FILES"
+
+          if [ "$CODE" = "false" ]; then
+            echo "No crawler code changes — skipping version bump"
+            exit 0
+          fi
+
+          VERSION_FILE="apps/crawler/VERSION"
+          current=$(cat "$VERSION_FILE" | tr -d '[:space:]')
+          IFS='.' read -r major minor patch <<< "$current"
+          new="${major}.${minor}.$((patch + 1))"
+          echo "$new" > "$VERSION_FILE"
+
+          git add "$VERSION_FILE"
+          git commit -m "Bump ws-cli version: ${current} → ${new}"
+          git push origin "$BRANCH"
+          echo "Bumped version: ${current} → ${new}"
 
       - name: Merge
         if: steps.rebase.outputs.rebased == 'true' && steps.images.outputs.pending == 'false'
