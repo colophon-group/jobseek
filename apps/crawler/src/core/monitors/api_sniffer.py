@@ -128,7 +128,7 @@ async def can_handle(
     from src.shared.browser import dismiss_overlays, navigate, open_page
 
     try:
-        async with open_page(pw, {}) as page:
+        async with open_page(pw, {}, target_url=url) as page:
             page_host = urlparse(url).netloc
             exchanges = await capture_exchanges(page, page_host)
 
@@ -512,7 +512,7 @@ async def _discover_http(
         browser_config = {k: v for k, v in config.items() if k in BROWSER_KEYS}
 
         route_params = config.get("route_params")
-        async with open_page(pw, browser_config) as page:
+        async with open_page(pw, browser_config, target_url=board_url) as page:
             fresh_url, captured_data = await _discover_live_url(
                 page,
                 board_url,
@@ -831,7 +831,7 @@ async def _discover_replay(
 
     browser_config = {k: v for k, v in config.items() if k in BROWSER_KEYS}
 
-    async with open_page(pw, browser_config) as page:
+    async with open_page(pw, browser_config, target_url=board_url) as page:
         # route_params requires upfront navigation to intercept the page's
         # own request and modify its params.  Otherwise, navigate just to
         # establish cookies, then try the stored URL via replay first.
@@ -1004,7 +1004,7 @@ async def _discover_auto(
 
     browser_config = {k: v for k, v in config.items() if k in BROWSER_KEYS}
 
-    async with open_page(pw, browser_config) as page:
+    async with open_page(pw, browser_config, target_url=board_url) as page:
         page_host = urlparse(board_url).netloc
         exchanges = await capture_exchanges(page, page_host)
 

@@ -11,6 +11,7 @@ Current design of all major subsystems across the crawler and web apps.
 - [Crawler: Scheduler](#crawler-scheduler)
 - [Crawler: Redis Integration](#crawler-redis-integration)
 - [Crawler: R2 Description Store](#crawler-r2-description-store)
+- [Crawler: Per-Domain Proxy Layer](#crawler-per-domain-proxy-layer)
 - [Crawler: CSV Sync](#crawler-csv-sync)
 - [Web: Authentication](#web-authentication)
 - [Web: Session Caching](#web-session-caching)
@@ -55,6 +56,7 @@ RESEND_API_KEY                   # Email
 CRAWLER_BATCH_LIMIT              # Max boards/URLs per batch (default: 200)
 CRAWLER_POLL_INTERVAL            # Max idle interval in seconds (default: 15)
 LOG_LEVEL                        # structlog level (default: INFO)
+PROXY_MAP                        # JSON dict mapping hostnames to proxy URLs (optional, default: empty)
 
 # Cloudflare R2 (crawler)
 R2_ENDPOINT_URL                  # S3-compatible endpoint
@@ -419,6 +421,39 @@ R2 uploads happen **outside** the DB transaction to avoid holding connections du
 2. Commit transaction, release DB connection
 3. `asyncio.to_thread(upload_posting, ...)` for each item (boto3 is synchronous)
 4. Persist new `description_r2_hash` values in a separate DB call
+
+---
+
+## Crawler: Per-Domain Proxy Layer
+
+Optional proxy routing for domains that block direct requests (e.g. Workable 429s). Transparent to all monitors and scrapers — no config changes needed per board.
+
+### Configuration
+
+Set `PROXY_MAP` as a JSON dict mapping hostnames to proxy URLs:
+
+```bash
+PROXY_MAP='{"apply.workable.com": "http://user:pass@gate.smartproxy.com:7777"}'
+```
+
+Omit or leave empty for zero behavioral change.
+
+### How It Works
+
+```
+src/shared/proxy.py    # proxy_for_url(), build_httpx_mounts(), build_playwright_proxy()
+```
+
+- **httpx**: `build_httpx_mounts()` returns `{"all://{domain}": AsyncHTTPTransport(proxy=url)}` for each entry. Both `create_http_client()` and `create_logging_http_client()` in `shared/http.py` wire these mounts in automatically.
+- **Playwright**: `open_page()` accepts a `target_url` kwarg. When the target domain has a proxy configured, the browser is launched with `proxy={"server": ..., "username": ..., "password": ...}`.
+
+All existing monitors and scrapers pass `target_url=` to `open_page()`, so Playwright-based requests are routed through the proxy when configured. httpx-based requests are routed via transport mounts.
+
+### Design Decisions
+
+- **Per-domain, not per-board**: Proxy routing is based on hostname from the env var, not on individual board configs. This avoids CSV schema changes.
+- **Orthogonal to throttling**: `shared/throttle.py` rate limits remain in effect regardless of proxy usage.
+- **Lazy import**: `proxy.py` lazy-imports `settings` to avoid circular dependencies at module level.
 
 ---
 

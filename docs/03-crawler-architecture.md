@@ -174,6 +174,7 @@ apps/crawler/src/
 └── shared/
     ├── api_sniff.py             # API sniffing utilities
     ├── http.py                  # HTTP client factory
+    ├── proxy.py                 # Per-domain proxy routing (PROXY_MAP)
     ├── logging.py               # Structured logging
     ├── constants.py             # DATA_DIR, WORKSPACE_DIR, etc.
     ├── csv_io.py                # CSV read/write utilities

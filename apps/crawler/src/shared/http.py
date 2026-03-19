@@ -14,7 +14,10 @@ _CLIENT_DEFAULTS = {
 
 
 def create_http_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(**_CLIENT_DEFAULTS)
+    from src.shared.proxy import build_httpx_mounts
+
+    mounts = build_httpx_mounts()
+    return httpx.AsyncClient(**_CLIENT_DEFAULTS, **({"mounts": mounts} if mounts else {}))
 
 
 def create_logging_http_client() -> tuple[httpx.AsyncClient, list[dict[str, Any]]]:
@@ -45,8 +48,12 @@ def create_logging_http_client() -> tuple[httpx.AsyncClient, list[dict[str, Any]
             }
         )
 
+    from src.shared.proxy import build_httpx_mounts
+
+    mounts = build_httpx_mounts()
     client = httpx.AsyncClient(
         **_CLIENT_DEFAULTS,
         event_hooks={"request": [_on_request], "response": [_on_response]},
+        **({"mounts": mounts} if mounts else {}),
     )
     return client, log_entries
