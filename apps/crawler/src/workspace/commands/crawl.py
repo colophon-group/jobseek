@@ -1001,11 +1001,13 @@ def select_monitor(
         _VALID_PAG_KEYS = {
             "param_name",
             "style",
+            "start",
             "start_value",
             "increment",
             "location",
             "max_pages",
             "page_size",
+            "browser",
         }
         pag_cfg = config["pagination"]
         if isinstance(pag_cfg, dict):

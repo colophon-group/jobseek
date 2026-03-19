@@ -148,7 +148,7 @@ async def _paginate_urls(
     from src.shared.api_sniff import set_url_param
 
     param_name = pagination["param_name"]
-    start = pagination.get("start", 1)
+    start = pagination.get("start", pagination.get("start_value", 1))
     increment = pagination.get("increment", 1)
     max_pages = min(pagination.get("max_pages", _MAX_PAGINATION_PAGES), _MAX_PAGINATION_PAGES)
     use_browser = pagination.get("browser", False) and page is not None
