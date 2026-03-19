@@ -83,15 +83,13 @@ def new(slug: str, issue: int | None, pr_opt: int | None, reconfig: bool, reset:
     """
     local = is_local_mode()
 
-    # Ensure we have a repo clone when running in pip-installed mode
+    # Ensure we have a repo clone with latest main when running in pip-installed mode
     if not local:
-        from src.shared.constants import get_repo_root, set_repo_root
+        from src.shared.constants import set_repo_root
+        from src.workspace.git import ensure_clone
 
-        if get_repo_root() is None or reset:
-            from src.workspace.git import ensure_clone
-
-            repo_root = ensure_clone(reset=reset)
-            set_repo_root(repo_root)
+        repo_root = ensure_clone(reset=reset)
+        set_repo_root(repo_root)
 
     # Validate slug format
     if not SLUG_RE.match(slug):
