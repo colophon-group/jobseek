@@ -535,6 +535,36 @@ nextdata — Next.js __NEXT_DATA__ Discovery
   item before choosing your fields mapping. Map employment_type, date_posted,
   job_location_type, team/department if present — they come at no extra cost."""
 
+MONITOR_NOTION = """\
+notion — Notion Site Job Pages
+
+  Returns:  URL set only (needs scraper)
+  Cost:     Low — two lightweight API calls, no browser rendering.
+
+  Detects public *.notion.site career pages and enumerates job listings
+  via Notion's internal API (/api/v3). Supports two patterns:
+  - Sub-pages: direct child pages of a parent page
+  - Databases: rows in embedded collection_view blocks (gallery, table, board)
+
+  No config required — auto-resolves page structure from the board URL.
+
+  Config:
+    include_nested    Include grandchild pages (default: false)
+    collection_index  Zero-based index to select one database when page
+                      has multiple (default: use all)
+    title_exclude     Regex — exclude rows whose title matches.
+                      Example: "Stay up to date|Coming soon"
+    property_filter   Filter rows by collection property values:
+                      {"exclude": {"Department": "Archived"}}
+                      {"include": {"Status": "Open"}}
+                      Property names matched case-insensitively.
+    url_filter        Regex filter on output URLs (all monitors)
+
+  Detection:   Probe checks for *.notion.site URL, enumerates sub-pages
+               and collection databases via API.
+  Pair with:   notion scraper (extracts title, description, locations,
+               employment_type from page blocks and collection properties)"""
+
 MONITOR_DOM = """\
 dom — Link Extraction (fallback)
 
@@ -1569,6 +1599,7 @@ MONITOR_CARDS: dict[str, str] = {
     "rss": MONITOR_RSS,
     "sitemap": MONITOR_SITEMAP,
     "nextdata": MONITOR_NEXTDATA,
+    "notion": MONITOR_NOTION,
     "dom": MONITOR_DOM,
     "api_sniffer": MONITOR_API_SNIFFER,
     "signals": MONITOR_SIGNALS,
@@ -1655,6 +1686,21 @@ skip — Placeholder scraper (auto-configured)
   that the scraper step should be skipped. Never selected manually.
 """
 
+SCRAPER_NOTION = """\
+notion — Notion Page API scraper
+
+  API:      POST https://{subdomain}.notion.site/api/v3/loadPageChunk
+  Returns:  title, HTML description, locations, employment_type,
+            job_location_type, metadata (team/department)
+  Config:   property_map (optional) — custom mapping of Notion property
+            names to job fields. Default auto-maps common names:
+            Location→locations, Department→metadata.team,
+            Employment Type→employment_type
+  Note:     Auto-configured when selecting the notion monitor.
+            Extracts block content as structured HTML (headings, lists,
+            paragraphs) and collection properties (location, department).
+"""
+
 SCRAPER_CARDS: dict[str, str] = {
     "json-ld": SCRAPER_JSONLD,
     "nextdata": SCRAPER_NEXTDATA,
@@ -1662,6 +1708,7 @@ SCRAPER_CARDS: dict[str, str] = {
     "dom": SCRAPER_DOM,
     "api_sniffer": SCRAPER_API_SNIFFER,
     "pdf": SCRAPER_PDF,
+    "notion": SCRAPER_NOTION,
     "skip": SCRAPER_SKIP,
     "bite": SCRAPER_BITE,
     "rippling": SCRAPER_RIPPLING,

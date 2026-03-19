@@ -48,6 +48,7 @@ _ALL_MONITOR_TYPES: frozenset[str] = _RICH_MONITORS | {
     "ycombinator",
     "sitemap",
     "nextdata",
+    "notion",
     "dom",
     "api_sniffer",
 }

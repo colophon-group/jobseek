@@ -303,6 +303,7 @@ from src.core.scrapers import (  # noqa: E402
     embedded,  # noqa: F401
     jsonld,  # noqa: F401
     nextdata,  # noqa: F401
+    notion,  # noqa: F401
     pdf,  # noqa: F401
     rippling,  # noqa: F401
     skip,  # noqa: F401
