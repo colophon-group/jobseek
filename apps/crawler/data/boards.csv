@@ -125,6 +125,7 @@ nvidia,nvidia-careers,https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerS
 on-running,on-running-careers,https://boards.greenhouse.io/onrunning,greenhouse,"{""token"": ""onrunning""}",skip,
 openai,openai-careers,https://jobs.ashbyhq.com/openai,ashby,"{""token"": ""openai""}",skip,
 oxyle,oxyle-careers,https://oxyle.com/careers,workable,"{""token"": ""oxyle-ag-1""}",workable,
+palta,palta-careers,https://palta.teamtailor.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://palta.teamtailor.com/jobs.rss""}",skip,
 patek-philippe,patek-philippe-careers,https://careers.patek.com/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.patek.com/googlefeed.xml""}",,
 peec-ai,peec-ai-careers,https://jobs.ashbyhq.com/peec,ashby,,skip,
 perplexity-ai,perplexity-ai-careers,https://jobs.ashbyhq.com/perplexity,ashby,,,
