@@ -377,6 +377,7 @@ def use(slug: str | None, board: str | None, company_opt: str | None, board_opt:
             "company-not-found",
             "no-job-board",
             "no-open-positions",
+            "duplicate",
         ]
     ),
 )
@@ -418,11 +419,15 @@ def reject(slug: str | None, issue: int | None, reason: str, message: str):
     if local:
         out.warn("github", "Local mode — skipping issue comment and close")
         out.plain("github", f"Would comment on issue #{issue}: {reason}")
+        if reason == "duplicate":
+            out.plain("github", f"Would add 'duplicate' label to issue #{issue}")
         out.plain("github", f"Would close issue #{issue}")
     else:
         from src.workspace import git
 
         git.comment_on_issue(issue, body)
+        if reason == "duplicate":
+            git.add_label_to_issue(issue, "duplicate")
         git.unclaim_issue(issue)
         git.close_issue(issue)
         out.info("github", f"Commented on issue #{issue} (validation-failed: {reason})")

@@ -41,6 +41,7 @@ check the company's own website for a "Careers" or "Jobs" link.
 
 If the company doesn't exist or can't be identified, reject with `not-a-company` or `company-not-found`.
 If there's no public careers page and the user cannot provide a URL, reject with `no-job-board`.
+If the company already exists in the system (check `companies.csv`), reject with `duplicate`.
 
 ```bash
 ws reject --issue {issue} --reason <key> --message "..."

@@ -680,6 +680,14 @@ def fetch_issue(issue_number: int) -> dict:
     return json.loads(result.stdout)
 
 
+def add_label_to_issue(issue_number: int, label: str) -> None:
+    """Add a label to a GitHub issue."""
+    _run(
+        ["gh", "issue", "edit", str(issue_number), "--add-label", label, *_gh_repo_flag()],
+        retries=_GH_RETRIES,
+    )
+
+
 def close_issue(issue_number: int) -> None:
     """Close a GitHub issue."""
     _run(["gh", "issue", "close", str(issue_number), *_gh_repo_flag()], retries=_GH_RETRIES)

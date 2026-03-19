@@ -138,6 +138,7 @@ patek-philippe,patek-philippe-careers,https://careers.patek.com/,rss,"{""preset"
 peec-ai,peec-ai-careers,https://jobs.ashbyhq.com/peec,ashby,,skip,
 perplexity-ai,perplexity-ai-careers,https://jobs.ashbyhq.com/perplexity,ashby,,,
 philip-morris-international,philip-morris-international-careers,https://join.pmicareers.com/gb/en/search-results,sitemap,"{""sitemap_url"": ""https://join.pmicareers.com/gb/en/search-results/sitemap.xml""}",json-ld,
+pictet-group,pictet-group-careers,https://career012.successfactors.eu/career?company=banquepict&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 60000, ""actions"": [{""action"": ""wait"", ""ms"": 8000}, {""action"": ""paginate_collect"", ""page_size_selector"": "".sfPaginator select"", ""page_size"": 25, ""next_selector"": "".sfPaginator li.next:not(.next_disabled) a""}], ""url_filter"": ""career_job_req_id""}",,
 physical-intelligence,physical-intelligence-careers,https://jobs.ashbyhq.com/physicalintelligence,ashby,"{""token"": ""physicalintelligence""}",skip,
 pinterest,pinterest-careers,https://job-boards.greenhouse.io/pinterestjobadvertisements,greenhouse,"{""token"": ""pinterest""}",skip,
 plaid,plaid-careers,https://jobs.lever.co/plaid,lever,"{""token"": ""plaid""}",skip,
