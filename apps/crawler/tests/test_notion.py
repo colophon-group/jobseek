@@ -54,13 +54,15 @@ def _make_chunk_response(parent_id, children):
     for child in children:
         cid = child["id"]
         child_ids.append(cid)
-        blocks.update(_make_block(
-            cid,
-            block_type=child.get("type", "page"),
-            title=child.get("title", ""),
-            alive=child.get("alive", True),
-            parent_id=parent_id,
-        ))
+        blocks.update(
+            _make_block(
+                cid,
+                block_type=child.get("type", "page"),
+                title=child.get("title", ""),
+                alive=child.get("alive", True),
+                parent_id=parent_id,
+            )
+        )
     blocks.update(_make_block(parent_id, block_type="page", content=child_ids))
     return {"recordMap": {"block": blocks}}
 
@@ -86,6 +88,7 @@ def _make_handler(
         chunks: Mapping of page_id -> chunk response for loadPageChunk.
         default_chunk: Fallback chunk response for any loadPageChunk call.
     """
+
     def handler(request):
         url = str(request.url)
         body = json.loads(request.content) if request.content else {}
@@ -98,6 +101,7 @@ def _make_handler(
             if default_chunk:
                 return httpx.Response(200, json=default_chunk)
         return httpx.Response(404)
+
     return handler
 
 
@@ -115,9 +119,7 @@ class TestParseNotionUrl:
         assert hint == "11111111-2222-3333-4444-555555555555"
 
     def test_url_without_title_slug(self):
-        sub, hint = _parse_notion_url(
-            "https://acme.notion.site/11111111222233334444555555555555"
-        )
+        sub, hint = _parse_notion_url("https://acme.notion.site/11111111222233334444555555555555")
         assert sub == "acme"
         assert hint == "11111111-2222-3333-4444-555555555555"
 
@@ -172,16 +174,22 @@ class TestExtractTitle:
 
 class TestFindPageBySlug:
     def test_finds_matching_page(self):
-        chunk = _make_chunk_response("root", [
-            {"id": "aaa", "type": "page", "title": "Job Posts"},
-            {"id": "bbb", "type": "page", "title": "About Us"},
-        ])
+        chunk = _make_chunk_response(
+            "root",
+            [
+                {"id": "aaa", "type": "page", "title": "Job Posts"},
+                {"id": "bbb", "type": "page", "title": "About Us"},
+            ],
+        )
         assert _find_page_by_slug(chunk, "job-posts") == "aaa"
 
     def test_returns_none_when_no_match(self):
-        chunk = _make_chunk_response("root", [
-            {"id": "aaa", "type": "page", "title": "About Us"},
-        ])
+        chunk = _make_chunk_response(
+            "root",
+            [
+                {"id": "aaa", "type": "page", "title": "About Us"},
+            ],
+        )
         assert _find_page_by_slug(chunk, "careers") is None
 
     def test_matches_collection_view_page(self):
@@ -219,7 +227,9 @@ class TestExtractChildPages:
             *JOB_PAGES,
             {
                 "id": "eee55555-5555-5555-5555-555555555555",
-                "type": "page", "title": "Deleted", "alive": False,
+                "type": "page",
+                "title": "Deleted",
+                "alive": False,
             },
         ]
         data = _make_chunk_response(_URL_PAGE_ID, children)
@@ -266,11 +276,15 @@ class TestFindAllCollectionViews:
         """collection_view as direct child of page."""
         cv_id = "cv111111-1111-1111-1111-111111111111"
         data = _make_chunk_response(_URL_PAGE_ID, [{"id": cv_id, "type": "collection_view"}])
-        data["recordMap"]["block"][cv_id] = {"value": {"value": {
-            "type": "collection_view",
-            "collection_id": "col11111-1111-1111-1111-111111111111",
-            "view_ids": ["view1111-1111-1111-1111-111111111111"],
-        }}}
+        data["recordMap"]["block"][cv_id] = {
+            "value": {
+                "value": {
+                    "type": "collection_view",
+                    "collection_id": "col11111-1111-1111-1111-111111111111",
+                    "view_ids": ["view1111-1111-1111-1111-111111111111"],
+                }
+            }
+        }
         cvs = _find_all_collection_views(data)
         assert len(cvs) == 1
         assert cvs[0]["collection_id"] == "col11111-1111-1111-1111-111111111111"
@@ -281,17 +295,31 @@ class TestFindAllCollectionViews:
         col_id = "column11-1111-1111-1111-111111111111"
         cv_id = "cv222222-2222-2222-2222-222222222222"
         data = _make_chunk_response(_URL_PAGE_ID, [{"id": col_list_id, "type": "column_list"}])
-        data["recordMap"]["block"][col_list_id] = {"value": {"value": {
-            "type": "column_list", "content": [col_id],
-        }}}
-        data["recordMap"]["block"][col_id] = {"value": {"value": {
-            "type": "column", "content": [cv_id],
-        }}}
-        data["recordMap"]["block"][cv_id] = {"value": {"value": {
-            "type": "collection_view",
-            "collection_id": "col22222-2222-2222-2222-222222222222",
-            "view_ids": ["view2222-2222-2222-2222-222222222222"],
-        }}}
+        data["recordMap"]["block"][col_list_id] = {
+            "value": {
+                "value": {
+                    "type": "column_list",
+                    "content": [col_id],
+                }
+            }
+        }
+        data["recordMap"]["block"][col_id] = {
+            "value": {
+                "value": {
+                    "type": "column",
+                    "content": [cv_id],
+                }
+            }
+        }
+        data["recordMap"]["block"][cv_id] = {
+            "value": {
+                "value": {
+                    "type": "collection_view",
+                    "collection_id": "col22222-2222-2222-2222-222222222222",
+                    "view_ids": ["view2222-2222-2222-2222-222222222222"],
+                }
+            }
+        }
         cvs = _find_all_collection_views(data)
         assert len(cvs) == 1
 
@@ -300,11 +328,15 @@ class TestFindAllCollectionViews:
         data = _make_chunk_response(_URL_PAGE_ID, [])
         for i in range(3):
             cv_id = f"cv{i}00000-0000-0000-0000-000000000000"
-            data["recordMap"]["block"][cv_id] = {"value": {"value": {
-                "type": "collection_view",
-                "collection_id": f"col{i}0000-0000-0000-0000-000000000000",
-                "view_ids": [f"view{i}000-0000-0000-0000-000000000000"],
-            }}}
+            data["recordMap"]["block"][cv_id] = {
+                "value": {
+                    "value": {
+                        "type": "collection_view",
+                        "collection_id": f"col{i}0000-0000-0000-0000-000000000000",
+                        "view_ids": [f"view{i}000-0000-0000-0000-000000000000"],
+                    }
+                }
+            }
         cvs = _find_all_collection_views(data)
         assert len(cvs) == 3
 
@@ -321,11 +353,15 @@ class TestDiscoverWithCollection:
         # Build chunk with a collection_view block (no child pages)
         chunk = _make_chunk_response(_URL_PAGE_ID, [])
         cv_id = "cv111111-1111-1111-1111-111111111111"
-        chunk["recordMap"]["block"][cv_id] = {"value": {"value": {
-            "type": "collection_view",
-            "collection_id": COLL_ID,
-            "view_ids": [VIEW_ID],
-        }}}
+        chunk["recordMap"]["block"][cv_id] = {
+            "value": {
+                "value": {
+                    "type": "collection_view",
+                    "collection_id": COLL_ID,
+                    "view_ids": [VIEW_ID],
+                }
+            }
+        }
 
         row_blocks = {}
         for rid in ROW_IDS:
@@ -371,11 +407,15 @@ class TestDiscoverWithCollection:
         chunk = _make_chunk_response(_URL_PAGE_ID, [])
         for i in range(2):
             cv_id = f"cv{i}00000-0000-0000-0000-000000000000"
-            chunk["recordMap"]["block"][cv_id] = {"value": {"value": {
-                "type": "collection_view",
-                "collection_id": f"col{i}0000-0000-0000-0000-000000000000",
-                "view_ids": [f"view{i}000-0000-0000-0000-000000000000"],
-            }}}
+            chunk["recordMap"]["block"][cv_id] = {
+                "value": {
+                    "value": {
+                        "type": "collection_view",
+                        "collection_id": f"col{i}0000-0000-0000-0000-000000000000",
+                        "view_ids": [f"view{i}000-0000-0000-0000-000000000000"],
+                    }
+                }
+            }
 
         call_count = [0]
 
@@ -387,16 +427,25 @@ class TestDiscoverWithCollection:
                 return httpx.Response(200, json=chunk)
             if "queryCollection" in url:
                 call_count[0] += 1
-                rows = [f"row{call_count[0]}a000-0000-0000-0000-000000000000",
-                        f"row{call_count[0]}b000-0000-0000-0000-000000000000"]
+                rows = [
+                    f"row{call_count[0]}a000-0000-0000-0000-000000000000",
+                    f"row{call_count[0]}b000-0000-0000-0000-000000000000",
+                ]
                 row_blocks = {}
                 for rid in rows:
                     row_blocks.update(_make_block(rid, title=f"Job {rid[:8]}"))
-                return httpx.Response(200, json={
-                    "result": {"type": "reducer", "reducerResults": {
-                        "collection_group_results": {"type": "results", "blockIds": rows}}},
-                    "recordMap": {"block": row_blocks},
-                })
+                return httpx.Response(
+                    200,
+                    json={
+                        "result": {
+                            "type": "reducer",
+                            "reducerResults": {
+                                "collection_group_results": {"type": "results", "blockIds": rows}
+                            },
+                        },
+                        "recordMap": {"block": row_blocks},
+                    },
+                )
             return httpx.Response(404)
 
         board = {
@@ -484,6 +533,7 @@ class TestCanHandle:
     async def test_returns_none_when_api_fails(self):
         def handler(r):
             return httpx.Response(500)
+
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             result = await can_handle(f"https://{SUBDOMAIN}.notion.site/abc", client)
         assert result is None
@@ -592,6 +642,7 @@ class TestDiscover:
     @pytest.mark.asyncio
     async def test_raises_for_non_notion_url(self):
         board = {"board_url": "https://example.com/careers", "metadata": {}}
+
         def _h(r):
             return httpx.Response(200)
 

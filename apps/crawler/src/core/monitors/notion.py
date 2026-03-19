@@ -73,9 +73,12 @@ def _to_uuid(raw: str) -> str:
 
 
 def _is_uuid(value: str) -> bool:
-    return bool(re.fullmatch(
-        r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", value,
-    ))
+    return bool(
+        re.fullmatch(
+            r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
+            value,
+        )
+    )
 
 
 def _page_url(subdomain: str, page_id: str) -> str:
@@ -152,13 +155,18 @@ async def _load_page_chunk(
     page_id: str,
     limit: int = 200,
 ) -> dict | None:
-    return await _api_post(client, subdomain, "loadPageChunk", {
-        "page": {"id": page_id},
-        "limit": limit,
-        "cursor": {"stack": []},
-        "chunkNumber": 0,
-        "verticalColumns": False,
-    })
+    return await _api_post(
+        client,
+        subdomain,
+        "loadPageChunk",
+        {
+            "page": {"id": page_id},
+            "limit": limit,
+            "cursor": {"stack": []},
+            "chunkNumber": 0,
+            "verticalColumns": False,
+        },
+    )
 
 
 async def _query_collection(
@@ -173,28 +181,33 @@ async def _query_collection(
     Each row dict has ``id``, ``title``, and ``properties`` (a dict of
     human-readable property name → string value).
     """
-    data = await _api_post(client, subdomain, "queryCollection", {
-        "source": {
-            "type": "collection",
-            "id": collection_id,
-            "spaceId": space_id,
-        },
-        "collectionView": {
-            "id": view_id,
-            "spaceId": space_id,
-        },
-        "loader": {
-            "type": "reducer",
-            "reducers": {
-                "collection_group_results": {
-                    "type": "results",
-                    "limit": 300,
-                }
+    data = await _api_post(
+        client,
+        subdomain,
+        "queryCollection",
+        {
+            "source": {
+                "type": "collection",
+                "id": collection_id,
+                "spaceId": space_id,
             },
-            "searchQuery": "",
-            "userTimeZone": "UTC",
+            "collectionView": {
+                "id": view_id,
+                "spaceId": space_id,
+            },
+            "loader": {
+                "type": "reducer",
+                "reducers": {
+                    "collection_group_results": {
+                        "type": "results",
+                        "limit": 300,
+                    }
+                },
+                "searchQuery": "",
+                "userTimeZone": "UTC",
+            },
         },
-    })
+    )
     if not data:
         return []
     block_ids = (
@@ -225,9 +238,7 @@ async def _query_collection(
         for prop_id, prop_name in schema_map.items():
             raw = raw_props.get(prop_id)
             if raw and isinstance(raw, list):
-                value = "".join(
-                    seg[0] for seg in raw if isinstance(seg, list) and seg
-                )
+                value = "".join(seg[0] for seg in raw if isinstance(seg, list) and seg)
                 if value.strip():
                     named_props[prop_name] = value
 
@@ -349,10 +360,12 @@ def _find_all_collection_views(data: dict) -> list[dict]:
         collection_id = val.get("collection_id")
         view_ids = val.get("view_ids", [])
         if collection_id and view_ids:
-            results.append({
-                "collection_id": collection_id,
-                "view_id": view_ids[0],
-            })
+            results.append(
+                {
+                    "collection_id": collection_id,
+                    "view_id": view_ids[0],
+                }
+            )
 
     return results
 
@@ -405,7 +418,9 @@ def _apply_row_filters(
             result = filtered
             log.info(
                 "notion.property_exclude",
-                rules=exclude_props, before=before, after=len(result),
+                rules=exclude_props,
+                before=before,
+                after=len(result),
             )
 
         if include_props:
@@ -414,15 +429,16 @@ def _apply_row_filters(
             for r in result:
                 props = r.get("properties", {})
                 match = all(
-                    props.get(pn, "").lower() == pv.lower()
-                    for pn, pv in include_props.items()
+                    props.get(pn, "").lower() == pv.lower() for pn, pv in include_props.items()
                 )
                 if match:
                     filtered.append(r)
             result = filtered
             log.info(
                 "notion.property_include",
-                rules=include_props, before=before, after=len(result),
+                rules=include_props,
+                before=before,
+                after=len(result),
             )
 
     return result
@@ -446,7 +462,9 @@ async def _find_job_pages(
     3. Falls back to the site's public home page
     """
     page_id, public_home, space_id = await _resolve_site(
-        client, subdomain, path_hint,
+        client,
+        subdomain,
+        path_hint,
     )
 
     candidates: list[str] = []
@@ -499,8 +517,11 @@ async def _find_job_pages(
                 all_rows: list[dict] = []
                 for i, cv in enumerate(cvs):
                     rows = await _query_collection(
-                        client, subdomain,
-                        cv["collection_id"], cv["view_id"], space_id,
+                        client,
+                        subdomain,
+                        cv["collection_id"],
+                        cv["view_id"],
+                        space_id,
                     )
                     log.info(
                         "notion.collection_query",
@@ -572,7 +593,9 @@ async def discover(
     property_filter = metadata.get("property_filter")
 
     pages = await _find_job_pages(
-        client, subdomain, path_hint,
+        client,
+        subdomain,
+        path_hint,
         include_nested=include_nested,
         collection_index=collection_index,
         title_exclude=title_exclude,

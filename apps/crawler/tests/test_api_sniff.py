@@ -108,13 +108,7 @@ class TestFindArrays:
         """Quoted paths must be valid jmespath that resolves correctly."""
         import jmespath
 
-        data = {
-            "data": {
-                "my-key": {
-                    "jobs": [{"title": "A"}, {"title": "B"}, {"title": "C"}]
-                }
-            }
-        }
+        data = {"data": {"my-key": {"jobs": [{"title": "A"}, {"title": "B"}, {"title": "C"}]}}}
         result = find_arrays(data)
         path = result[0][0]
         # The path should be valid jmespath and resolve to the original array

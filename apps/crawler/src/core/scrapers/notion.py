@@ -65,13 +65,17 @@ async def _load_page_chunk(
 ) -> dict | None:
     url = f"https://{subdomain}.notion.site/api/v3/loadPageChunk"
     try:
-        resp = await client.post(url, json={
-            "page": {"id": page_id},
-            "limit": 200,
-            "cursor": {"stack": []},
-            "chunkNumber": 0,
-            "verticalColumns": False,
-        }, timeout=_API_TIMEOUT)
+        resp = await client.post(
+            url,
+            json={
+                "page": {"id": page_id},
+                "limit": 200,
+                "cursor": {"stack": []},
+                "chunkNumber": 0,
+                "verticalColumns": False,
+            },
+            timeout=_API_TIMEOUT,
+        )
         if resp.status_code != 200:
             return None
         return resp.json()
@@ -253,9 +257,7 @@ def _blocks_to_html(data: dict, page_id: str) -> str:
                 child = blocks.get(child_id, {})
                 child_val = child.get("value", {}).get("value") or child.get("value", {})
                 child_type = child_val.get("type", "")
-                child_text = _render_rich_text(
-                    child_val.get("properties", {}).get("title", [])
-                )
+                child_text = _render_rich_text(child_val.get("properties", {}).get("title", []))
                 if child_type in ("bulleted_list", "numbered_list") and child_text.strip():
                     if not in_list:
                         html_parts.append("<ul>")
@@ -277,9 +279,7 @@ def _extract_title(data: dict, page_id: str) -> str:
     page_val = page_block.get("value", {}).get("value") or page_block.get("value", {})
     title_parts = page_val.get("properties", {}).get("title", [])
     if isinstance(title_parts, list):
-        return "".join(
-            part[0] for part in title_parts if isinstance(part, list) and part
-        )
+        return "".join(part[0] for part in title_parts if isinstance(part, list) and part)
     return ""
 
 
