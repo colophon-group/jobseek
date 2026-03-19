@@ -208,3 +208,4 @@ warner-music,warner-music-careers-workday,https://wmg.wd1.myworkdayjobs.com/WMGG
 white-circle,white-circle-careers,https://jobs.ashbyhq.com/whitecircle,ashby,"{""token"": ""whitecircle""}",,
 wise,wise-careers,https://wise.jobs/,smartrecruiters,"{""token"": ""wise""}",smartrecruiters,
 zalando,zalando-workday,https://zalando.wd3.myworkdayjobs.com/ZalandoSiteWD,workday,,,
+nec-laboratories,nec-laboratories-careers,https://jobs.neclab.eu/jobs/,dom,"{""url_filter"": ""/jobs/get/""}",pdf,"{""title_source"": ""text"", ""title_pattern"": ""is looking for\\s*\\n\\s*(.+?)\\s*\\n""}"
