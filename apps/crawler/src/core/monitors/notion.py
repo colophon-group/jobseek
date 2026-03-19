@@ -1,12 +1,14 @@
 """Notion monitor — enumerate job pages from a public Notion site.
 
-Notion career pages (``*.notion.site``) host job listings as sub-pages of a
-parent page.  This monitor uses Notion's internal API (``/api/v3``) to
-enumerate child pages without browser rendering.
+Notion career pages (``*.notion.site``) host job listings either as
+sub-pages of a parent page or as rows in a Notion database (collection).
+This monitor uses Notion's internal API (``/api/v3``) to enumerate them
+without browser rendering.
 
 No configuration is required — the monitor resolves everything from the
 board URL.  It tries the URL's own page first, then falls back to the
-site's public home page.
+site's public home page, searching for both child pages and embedded
+database views.
 
 Config (``board.metadata``):
     include_nested  If true, also include grandchild pages (default: false).
@@ -47,12 +49,10 @@ def _parse_notion_url(url: str) -> tuple[str | None, str | None]:
     path = parsed.path.strip("/").split("/")[-1] if parsed.path.strip("/") else ""
     if not path:
         return subdomain, None
-    # Try to extract a UUID from the last 32 hex chars
     clean = re.sub(r"[^0-9a-fA-F]", "", path)
     if len(clean) >= 32:
         raw = clean[-32:]
         return subdomain, _to_uuid(raw)
-    # Return the raw slug for resolution via API
     return subdomain, path
 
 
@@ -63,12 +63,12 @@ def _to_uuid(raw: str) -> str:
 
 
 def _is_uuid(value: str) -> bool:
-    """Check if a string looks like a UUID (hex with optional dashes)."""
-    return bool(re.fullmatch(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", value))
+    return bool(re.fullmatch(
+        r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", value,
+    ))
 
 
 def _page_url(subdomain: str, page_id: str) -> str:
-    """Build a public Notion page URL from subdomain and UUID page ID."""
     return f"https://{subdomain}.notion.site/{page_id.replace('-', '')}"
 
 
@@ -85,7 +85,6 @@ async def _api_post(
     endpoint: str,
     payload: dict,
 ) -> dict | None:
-    """POST to a Notion internal API endpoint, return parsed JSON or None."""
     url = f"https://{subdomain}.notion.site/api/v3/{endpoint}"
     try:
         resp = await client.post(url, json=payload, timeout=_API_TIMEOUT)
@@ -99,26 +98,31 @@ async def _api_post(
 async def _get_public_page_data(
     client: httpx.AsyncClient,
     subdomain: str,
-    block_id: str,
+    block_id: str | None = None,
 ) -> dict | None:
-    """Call getPublicPageData to retrieve space info and public home page."""
-    return await _api_post(client, subdomain, "getPublicPageData", {
-        "blockId": block_id,
+    """Call getPublicPageData to retrieve space info and public home page.
+
+    When *block_id* is None, omits it from the payload — this resolves the
+    site's default space/home page via the subdomain alone.
+    """
+    payload: dict = {
         "type": "block-space",
         "name": "page",
         "requestedOnPublicDomain": True,
         "showOriginalLink": False,
         "spaceDomain": subdomain,
-    })
+    }
+    if block_id:
+        payload["blockId"] = block_id
+    return await _api_post(client, subdomain, "getPublicPageData", payload)
 
 
 async def _load_page_chunk(
     client: httpx.AsyncClient,
     subdomain: str,
     page_id: str,
-    limit: int = 100,
+    limit: int = 200,
 ) -> dict | None:
-    """Call loadPageChunk to retrieve page blocks."""
     return await _api_post(client, subdomain, "loadPageChunk", {
         "page": {"id": page_id},
         "limit": limit,
@@ -128,49 +132,101 @@ async def _load_page_chunk(
     })
 
 
-async def _resolve_page_id(
+async def _query_collection(
+    client: httpx.AsyncClient,
+    subdomain: str,
+    collection_id: str,
+    view_id: str,
+    space_id: str,
+) -> list[str]:
+    """Query a Notion collection and return row block IDs."""
+    data = await _api_post(client, subdomain, "queryCollection", {
+        "source": {
+            "type": "collection",
+            "id": collection_id,
+            "spaceId": space_id,
+        },
+        "collectionView": {
+            "id": view_id,
+            "spaceId": space_id,
+        },
+        "loader": {
+            "type": "reducer",
+            "reducers": {
+                "collection_group_results": {
+                    "type": "results",
+                    "limit": 300,
+                }
+            },
+            "searchQuery": "",
+            "userTimeZone": "UTC",
+        },
+    })
+    if not data:
+        return []
+    return (
+        data.get("result", {})
+        .get("reducerResults", {})
+        .get("collection_group_results", {})
+        .get("blockIds", [])
+    )
+
+
+# ---------------------------------------------------------------------------
+# Resolution
+# ---------------------------------------------------------------------------
+
+
+async def _resolve_site(
     client: httpx.AsyncClient,
     subdomain: str,
     path_hint: str | None,
-) -> tuple[str | None, str | None]:
-    """Resolve a URL path to (page_id, public_home_page_id).
+) -> tuple[str | None, str | None, str | None]:
+    """Resolve a board URL to (page_id, public_home_id, space_id).
 
-    *path_hint* is either a UUID already, a slug like ``"job-posts"``, or
-    None for the root.  Returns (None, None) on failure.
+    Strategy:
+    1. If path_hint is a UUID, use it as page_id and call getPublicPageData
+       with it to get space info.
+    2. Otherwise (slug or root), call getPublicPageData without a blockId
+       to get the space's home page, then try slug matching.
     """
-    # If we already have a UUID, use it directly for getPublicPageData
-    probe_id = path_hint if (path_hint and _is_uuid(path_hint)) else "index"
-    public_data = await _get_public_page_data(client, subdomain, probe_id)
-    if not public_data or not public_data.get("spaceId"):
-        return None, None
+    if path_hint and _is_uuid(path_hint):
+        public_data = await _get_public_page_data(client, subdomain, path_hint)
+        if not public_data or not public_data.get("spaceId"):
+            return None, None, None
+        return (
+            path_hint,
+            public_data.get("publicHomePage"),
+            public_data["spaceId"],
+        )
 
+    # Slug or root — resolve via subdomain (no blockId)
+    public_data = await _get_public_page_data(client, subdomain)
+    if not public_data or not public_data.get("spaceId"):
+        return None, None, None
+
+    space_id = public_data["spaceId"]
     public_home = public_data.get("publicHomePage")
 
-    if path_hint and _is_uuid(path_hint):
-        return path_hint, public_home
+    if not public_home:
+        return None, None, space_id
 
-    # For slugs or root, load the public home page and search by slug
-    if public_home:
-        chunk = await _load_page_chunk(client, subdomain, public_home)
-        if chunk and path_hint:
-            # The URL's page might be discoverable from the page chunk —
-            # search all blocks for a page whose slug matches.
-            found = _find_page_by_slug(chunk, path_hint)
-            if found:
-                return found, public_home
-        # Fall through: the public home page itself is a candidate
-        return public_home, public_home
+    if not path_hint:
+        # Root URL — use publicHomePage directly
+        return public_home, public_home, space_id
 
-    return None, None
+    # Slug — try to find matching page in the home page's block tree
+    chunk = await _load_page_chunk(client, subdomain, public_home)
+    if chunk:
+        found = _find_page_by_slug(chunk, path_hint)
+        if found:
+            return found, public_home, space_id
+
+    return public_home, public_home, space_id
 
 
 def _find_page_by_slug(data: dict, slug: str) -> str | None:
-    """Search loadPageChunk blocks for a page matching *slug*.
-
-    Notion page slugs are derived from the title — lowercase, spaces
-    replaced with hyphens.  We also check the canonical block ID embedded
-    in ``<link rel="canonical">`` style page properties.
-    """
+    """Search all blocks for a page whose title matches *slug*."""
     blocks = data.get("recordMap", {}).get("block", {})
     slug_lower = slug.lower().replace(" ", "-")
     for bid, bdata in blocks.items():
@@ -184,16 +240,18 @@ def _find_page_by_slug(data: dict, slug: str) -> str | None:
     return None
 
 
+# ---------------------------------------------------------------------------
+# Content extraction
+# ---------------------------------------------------------------------------
+
+
 def _extract_child_pages(
     data: dict,
     parent_id: str,
     *,
     include_nested: bool = False,
 ) -> list[dict]:
-    """Return child page blocks of *parent_id* from a loadPageChunk response.
-
-    Each returned dict has ``id`` and ``title`` keys.
-    """
+    """Return child page blocks of *parent_id*."""
     blocks = data.get("recordMap", {}).get("block", {})
     parent_block = blocks.get(parent_id, {})
     parent_val = parent_block.get("value", {}).get("value") or parent_block.get("value", {})
@@ -210,7 +268,6 @@ def _extract_child_pages(
         title = _extract_title(val)
         pages.append({"id": cid, "title": title})
 
-        # Optionally include grandchildren
         if include_nested:
             for gcid in val.get("content", []):
                 gc_block = blocks.get(gcid, {})
@@ -221,8 +278,31 @@ def _extract_child_pages(
     return pages
 
 
+def _find_all_collection_views(data: dict) -> list[dict]:
+    """Find ALL collection_view blocks anywhere in the page chunk.
+
+    Searches every block, not just direct children — handles deeply nested
+    collection views inside columns, toggles, callouts, etc.
+    """
+    blocks = data.get("recordMap", {}).get("block", {})
+    results: list[dict] = []
+
+    for _bid, bdata in blocks.items():
+        val = bdata.get("value", {}).get("value") or bdata.get("value", {})
+        if val.get("type") not in ("collection_view", "collection_view_page"):
+            continue
+        collection_id = val.get("collection_id")
+        view_ids = val.get("view_ids", [])
+        if collection_id and view_ids:
+            results.append({
+                "collection_id": collection_id,
+                "view_id": view_ids[0],
+            })
+
+    return results
+
+
 def _extract_title(val: dict) -> str:
-    """Extract plain-text title from a Notion block value."""
     props = val.get("properties", {})
     title_parts = props.get("title", [])
     if isinstance(title_parts, list):
@@ -231,7 +311,7 @@ def _extract_title(val: dict) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Page resolution — try multiple strategies to find job pages
+# Main logic — find job pages via multiple strategies
 # ---------------------------------------------------------------------------
 
 
@@ -241,16 +321,18 @@ async def _find_job_pages(
     path_hint: str | None,
     *,
     include_nested: bool = False,
-) -> tuple[list[dict], str | None]:
-    """Resolve the board URL and return (job_pages, resolved_parent_id).
+) -> list[dict]:
+    """Resolve the board URL and return job pages.
 
-    Tries in order:
-    1. The page identified by the URL (if it has a page ID)
-    2. The site's public home page
+    For each candidate page, tries:
+    1. Direct child pages (sub-page pattern)
+    2. All collection_view blocks on the page → queryCollection (database pattern)
+    3. Falls back to the site's public home page
     """
-    page_id, public_home = await _resolve_page_id(client, subdomain, path_hint)
+    page_id, public_home, space_id = await _resolve_site(
+        client, subdomain, path_hint,
+    )
 
-    # Build candidate list: URL's page first, then public home
     candidates: list[str] = []
     if page_id:
         candidates.append(page_id)
@@ -261,11 +343,26 @@ async def _find_job_pages(
         chunk = await _load_page_chunk(client, subdomain, cand_id)
         if not chunk:
             continue
+
+        # Strategy 1: direct child pages
         pages = _extract_child_pages(chunk, cand_id, include_nested=include_nested)
         if pages:
-            return pages, cand_id
+            return pages
 
-    return [], None
+        # Strategy 2: collection databases (search ALL blocks, not just children)
+        if space_id:
+            cvs = _find_all_collection_views(chunk)
+            all_rows: list[dict] = []
+            for cv in cvs:
+                row_ids = await _query_collection(
+                    client, subdomain,
+                    cv["collection_id"], cv["view_id"], space_id,
+                )
+                all_rows.extend({"id": rid, "title": ""} for rid in row_ids)
+            if all_rows:
+                return all_rows
+
+    return []
 
 
 # ---------------------------------------------------------------------------
@@ -278,12 +375,11 @@ async def can_handle(
     client: httpx.AsyncClient | None = None,
     pw=None,
 ) -> dict | None:
-    """Detect whether *url* is a public Notion site with job sub-pages."""
     subdomain, path_hint = _parse_notion_url(url)
     if not subdomain or not client:
         return None
 
-    pages, _parent = await _find_job_pages(client, subdomain, path_hint)
+    pages = await _find_job_pages(client, subdomain, path_hint)
     if not pages:
         return None
 
@@ -296,7 +392,6 @@ async def discover(
     client: httpx.AsyncClient,
     pw=None,
 ) -> set[str]:
-    """Enumerate job page URLs from a Notion site."""
     metadata = board.get("metadata") or {}
     board_url = board["board_url"]
     subdomain, path_hint = _parse_notion_url(board_url)
@@ -305,7 +400,7 @@ async def discover(
 
     include_nested = metadata.get("include_nested", False)
 
-    pages, parent_id = await _find_job_pages(
+    pages = await _find_job_pages(
         client, subdomain, path_hint, include_nested=include_nested,
     )
     if not pages:

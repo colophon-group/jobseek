@@ -10,6 +10,7 @@ import pytest
 from src.core.monitors.notion import (
     _extract_child_pages,
     _extract_title,
+    _find_all_collection_views,
     _find_page_by_slug,
     _page_url,
     _parse_notion_url,
@@ -255,6 +256,147 @@ class TestExtractChildPages:
 
         pages = _extract_child_pages(data, _URL_PAGE_ID, include_nested=False)
         assert len(pages) == 3
+
+
+class TestFindAllCollectionViews:
+    def test_finds_direct_collection_view(self):
+        """collection_view as direct child of page."""
+        cv_id = "cv111111-1111-1111-1111-111111111111"
+        data = _make_chunk_response(_URL_PAGE_ID, [{"id": cv_id, "type": "collection_view"}])
+        data["recordMap"]["block"][cv_id] = {"value": {"value": {
+            "type": "collection_view",
+            "collection_id": "col11111-1111-1111-1111-111111111111",
+            "view_ids": ["view1111-1111-1111-1111-111111111111"],
+        }}}
+        cvs = _find_all_collection_views(data)
+        assert len(cvs) == 1
+        assert cvs[0]["collection_id"] == "col11111-1111-1111-1111-111111111111"
+
+    def test_finds_deeply_nested_collection_view(self):
+        """collection_view inside a column inside the page (e.g. Entalpic)."""
+        col_list_id = "collist1-1111-1111-1111-111111111111"
+        col_id = "column11-1111-1111-1111-111111111111"
+        cv_id = "cv222222-2222-2222-2222-222222222222"
+        data = _make_chunk_response(_URL_PAGE_ID, [{"id": col_list_id, "type": "column_list"}])
+        data["recordMap"]["block"][col_list_id] = {"value": {"value": {
+            "type": "column_list", "content": [col_id],
+        }}}
+        data["recordMap"]["block"][col_id] = {"value": {"value": {
+            "type": "column", "content": [cv_id],
+        }}}
+        data["recordMap"]["block"][cv_id] = {"value": {"value": {
+            "type": "collection_view",
+            "collection_id": "col22222-2222-2222-2222-222222222222",
+            "view_ids": ["view2222-2222-2222-2222-222222222222"],
+        }}}
+        cvs = _find_all_collection_views(data)
+        assert len(cvs) == 1
+
+    def test_finds_multiple_collection_views(self):
+        """Multiple databases on one page (e.g. Mbrella)."""
+        data = _make_chunk_response(_URL_PAGE_ID, [])
+        for i in range(3):
+            cv_id = f"cv{i}00000-0000-0000-0000-000000000000"
+            data["recordMap"]["block"][cv_id] = {"value": {"value": {
+                "type": "collection_view",
+                "collection_id": f"col{i}0000-0000-0000-0000-000000000000",
+                "view_ids": [f"view{i}000-0000-0000-0000-000000000000"],
+            }}}
+        cvs = _find_all_collection_views(data)
+        assert len(cvs) == 3
+
+
+class TestDiscoverWithCollection:
+    """Test discovery via queryCollection (database pattern)."""
+
+    @pytest.mark.asyncio
+    async def test_discovers_jobs_from_database(self):
+        COLL_ID = "col11111-1111-1111-1111-111111111111"
+        VIEW_ID = "view1111-1111-1111-1111-111111111111"
+        ROW_IDS = ["row11111-1111-1111-1111-111111111111", "row22222-2222-2222-2222-222222222222"]
+
+        # Build chunk with a collection_view block (no child pages)
+        chunk = _make_chunk_response(_URL_PAGE_ID, [])
+        cv_id = "cv111111-1111-1111-1111-111111111111"
+        chunk["recordMap"]["block"][cv_id] = {"value": {"value": {
+            "type": "collection_view",
+            "collection_id": COLL_ID,
+            "view_ids": [VIEW_ID],
+        }}}
+
+        query_response = {
+            "result": {
+                "type": "reducer",
+                "reducerResults": {
+                    "collection_group_results": {
+                        "type": "results",
+                        "blockIds": ROW_IDS,
+                    }
+                },
+            },
+            "recordMap": {"block": {}},
+        }
+
+        def handler(request):
+            url = str(request.url)
+            if "getPublicPageData" in url:
+                return httpx.Response(200, json=_make_public_page_data())
+            if "loadPageChunk" in url:
+                return httpx.Response(200, json=chunk)
+            if "queryCollection" in url:
+                return httpx.Response(200, json=query_response)
+            return httpx.Response(404)
+
+        board = {
+            "board_url": f"https://{SUBDOMAIN}.notion.site/{_URL_PAGE_ID.replace('-', '')}",
+            "metadata": {},
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            urls = await discover(board, client)
+
+        assert len(urls) == 2
+        for rid in ROW_IDS:
+            assert _page_url(SUBDOMAIN, rid) in urls
+
+    @pytest.mark.asyncio
+    async def test_aggregates_multiple_collections(self):
+        """Multiple databases on one page — all rows are aggregated."""
+        chunk = _make_chunk_response(_URL_PAGE_ID, [])
+        for i in range(2):
+            cv_id = f"cv{i}00000-0000-0000-0000-000000000000"
+            chunk["recordMap"]["block"][cv_id] = {"value": {"value": {
+                "type": "collection_view",
+                "collection_id": f"col{i}0000-0000-0000-0000-000000000000",
+                "view_ids": [f"view{i}000-0000-0000-0000-000000000000"],
+            }}}
+
+        call_count = [0]
+
+        def handler(request):
+            url = str(request.url)
+            if "getPublicPageData" in url:
+                return httpx.Response(200, json=_make_public_page_data())
+            if "loadPageChunk" in url:
+                return httpx.Response(200, json=chunk)
+            if "queryCollection" in url:
+                call_count[0] += 1
+                rows = [f"row{call_count[0]}a000-0000-0000-0000-000000000000",
+                        f"row{call_count[0]}b000-0000-0000-0000-000000000000"]
+                return httpx.Response(200, json={
+                    "result": {"type": "reducer", "reducerResults": {
+                        "collection_group_results": {"type": "results", "blockIds": rows}}},
+                    "recordMap": {"block": {}},
+                })
+            return httpx.Response(404)
+
+        board = {
+            "board_url": f"https://{SUBDOMAIN}.notion.site/{_URL_PAGE_ID.replace('-', '')}",
+            "metadata": {},
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            urls = await discover(board, client)
+
+        assert len(urls) == 4  # 2 rows from each of 2 collections
 
 
 # ---------------------------------------------------------------------------
