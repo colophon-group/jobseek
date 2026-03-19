@@ -63,7 +63,8 @@ class TestJsonLdExtractor:
 class TestFindJobPosting:
     def test_direct_match(self):
         data = {"@type": "JobPosting", "title": "Engineer"}
-        assert _find_job_posting(data) == data
+        result = _find_job_posting(data)
+        assert result["title"] == "Engineer"
 
     def test_in_list(self):
         data = [{"@type": "Organization"}, {"@type": "JobPosting", "title": "X"}]
@@ -77,7 +78,8 @@ class TestFindJobPosting:
 
     def test_type_as_list(self):
         data = {"@type": ["JobPosting", "Thing"], "title": "Z"}
-        assert _find_job_posting(data) == data
+        result = _find_job_posting(data)
+        assert result["title"] == "Z"
 
     def test_not_found_dict(self):
         assert _find_job_posting({"@type": "Organization"}) is None
@@ -98,6 +100,24 @@ class TestFindJobPosting:
         }
         result = _find_job_posting(data)
         assert result["title"] == "Nested"
+
+    def test_pascalcase_keys_normalized(self):
+        """CSOD-style PascalCase keys are normalized to camelCase."""
+        data = {
+            "@type": "JobPosting",
+            "Title": "Manager",
+            "Description": "A role",
+            "DatePosted": "2026-01-01",
+            "ValidThrough": "2026-06-01",
+            "jobLocation": [{"@type": "Place", "Address": {"@type": "PostalAddress", "addressLocality": "Geneva"}}],
+        }
+        result = _find_job_posting(data)
+        assert result["title"] == "Manager"
+        assert result["description"] == "A role"
+        assert result["datePosted"] == "2026-01-01"
+        assert result["validThrough"] == "2026-06-01"
+        # Nested keys are also normalized
+        assert result["jobLocation"][0]["address"]["addressLocality"] == "Geneva"
 
 
 class TestExtractLocations:
@@ -376,6 +396,29 @@ class TestScrape:
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             result = await scrape("https://example.com/job", {"render": False}, client)
             assert result.title == "Static"
+
+    async def test_pascalcase_csod_style(self):
+        """CSOD-style PascalCase JSON-LD is extracted correctly."""
+        page_html = """<html><head>
+        <script type="application/ld+json">
+        {"@context":"http://schema.org","@type":"JobPosting",
+         "Title":"Senior Engineer","Description":"<p>Build things</p>",
+         "DatePosted":"2026-01-01","ValidThrough":"2026-06-01",
+         "jobLocation":[{"@type":"Place","Address":{"@type":"PostalAddress",
+         "addressLocality":"Geneva","addressCountry":"CH"}}],
+         "HiringOrganization":{"@type":"Organization","Name":"IATA"}}
+        </script>
+        </head></html>"""
+
+        def handler(request):
+            return httpx.Response(200, text=page_html)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape("https://example.com/job", {}, client)
+            assert result.title == "Senior Engineer"
+            assert result.description == "<p>Build things</p>"
+            assert result.locations == ["Geneva, CH"]
+            assert result.date_posted == "2026-01-01"
 
 
 class TestProbe:

@@ -82,6 +82,28 @@ class _JsonLdExtractor(HTMLParser):
                         pass
 
 
+def _normalize_keys(data):
+    """Lowercase the first character of JSON-LD keys for case-insensitive matching.
+
+    Some ATS providers (e.g. Cornerstone OnDemand) emit PascalCase property names
+    like ``Title`` instead of the schema.org-standard ``title``.  Normalising to
+    camelCase (first char lower) lets the rest of the parser use canonical names.
+    Keys starting with ``@`` are left unchanged.
+    """
+    if isinstance(data, dict):
+        out = {}
+        for key, value in data.items():
+            if key.startswith("@"):
+                nk = key
+            else:
+                nk = key[0].lower() + key[1:] if key else key
+            out[nk] = _normalize_keys(value)
+        return out
+    if isinstance(data, list):
+        return [_normalize_keys(item) for item in data]
+    return data
+
+
 def _find_job_posting(data: dict | list) -> dict | None:
     """Recursively find a JobPosting object in JSON-LD data."""
     if isinstance(data, list):
@@ -94,9 +116,9 @@ def _find_job_posting(data: dict | list) -> dict | None:
     if isinstance(data, dict):
         type_val = data.get("@type", "")
         if isinstance(type_val, str) and "JobPosting" in type_val:
-            return data
+            return _normalize_keys(data)
         if isinstance(type_val, list) and any("JobPosting" in t for t in type_val):
-            return data
+            return _normalize_keys(data)
 
         # Check @graph
         graph = data.get("@graph")
