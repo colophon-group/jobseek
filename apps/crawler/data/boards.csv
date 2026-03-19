@@ -135,6 +135,7 @@ samsung,samsung-careers,https://sec.wd3.myworkdayjobs.com/Samsung_Careers,workda
 sbb,sbb-careers,https://careers.sbb.ch,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.sbb.ch/googlefeed.xml""}",skip,
 scandit,scandit-careers,https://boards.greenhouse.io/scandit,greenhouse,"{""token"": ""scandit""}",skip,
 semrush,semrush-careers,https://careers.semrush.com/,recruitee,"{""slug"": ""semrush"", ""api_base"": ""https://semrush.recruitee.com""}",,
+seprify,seprify-careers,https://seprify.com/careers,sitemap,"{""url_filter"": ""/vacancies/""}",dom,"{""render"": false, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""text"": ""Location"", ""offset"": 1, ""field"": ""location"", ""optional"": true}, {""text"": ""Back"", ""offset"": 1, ""field"": ""description"", ""html"": true, ""stop"": ""Cookie Consent""}]}"
 servers-com,servers-com-careers-apply,https://servers-com.breezy.hr/,breezy,,,
 snap,snap-careers,https://snapchat.wd1.myworkdayjobs.com/snap,workday,,workday,
 snyk,snyk-careers,https://snyk.wd103.myworkdayjobs.com/External,workday,"{""company"": ""snyk"", ""wd_instance"": ""wd103"", ""site"": ""External""}",workday,
