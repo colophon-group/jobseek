@@ -14,8 +14,10 @@ log = structlog.get_logger()
 
 
 def _get_proxy_map() -> dict[str, str]:
-    from src.config import settings
-
+    try:
+        from src.config import settings
+    except Exception:
+        return {}
     return settings.proxy_map
 
 
