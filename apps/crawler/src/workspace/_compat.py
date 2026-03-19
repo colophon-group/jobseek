@@ -45,6 +45,7 @@ _ALL_MONITOR_TYPES: frozenset[str] = _RICH_MONITORS | {
     "umantis",
     "workable",
     "workday",
+    "ycombinator",
     "sitemap",
     "nextdata",
     "dom",
@@ -127,6 +128,13 @@ def detect_ats_from_url(url: str) -> str | None:
     if ".successfactors." in host:
         return "rss"
 
+    if (
+        host in ("ycombinator.com", "www.ycombinator.com")
+        and "/companies/" in parsed.path
+        and "/jobs" in parsed.path
+    ):
+        return "ycombinator"
+
     return None
 
 
@@ -186,6 +194,8 @@ def auto_scraper_type(
     if monitor_type == "workday":
         return ("workday", None)
     if monitor_type == "softgarden":
+        return ("json-ld", None)
+    if monitor_type == "ycombinator":
         return ("json-ld", None)
     if monitor_type in ("api_sniffer", "nextdata") and bool((config or {}).get("fields")):
         return ("skip", None)
