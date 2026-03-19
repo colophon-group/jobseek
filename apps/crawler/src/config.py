@@ -1,10 +1,22 @@
 from __future__ import annotations
 
+import json
+
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     database_url: str = ""
+    proxy_map: dict[str, str] = {}
+
+    @field_validator("proxy_map", mode="before")
+    @classmethod
+    def _parse_proxy_map(cls, v):
+        if isinstance(v, str):
+            return json.loads(v) if v.strip() else {}
+        return v
+
     upstash_redis_rest_url: str = ""
     upstash_redis_rest_token: str = ""
     log_level: str = "INFO"

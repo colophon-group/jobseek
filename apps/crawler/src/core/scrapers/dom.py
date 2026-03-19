@@ -220,7 +220,7 @@ async def scrape(
         browser_config = {k: v for k, v in config.items() if k in BROWSER_KEYS}
 
         async def _render_page(p):
-            async with open_page(p, browser_config) as page:
+            async with open_page(p, browser_config, target_url=url) as page:
                 await navigate(page, url, browser_config)
                 await run_actions(page, browser_config.get("actions", []))
                 return await page.content()

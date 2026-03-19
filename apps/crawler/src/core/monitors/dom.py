@@ -230,7 +230,7 @@ async def dom_discover(board: dict, client: httpx.AsyncClient = None, pw=None) -
         combined = {**metadata, "_board_url": board_url}
 
         if pw is not None:
-            async with open_page(pw, combined) as page:
+            async with open_page(pw, combined, target_url=board_url) as page:
                 urls = await _extract_links_rendered(page, combined, url_matcher)
                 if pagination:
                     browser_page = page if pagination.get("browser") else None
@@ -251,7 +251,10 @@ async def dom_discover(board: dict, client: httpx.AsyncClient = None, pw=None) -
                     "Install with: uv sync --group dev && uv run playwright install chromium"
                 ) from err
 
-            async with async_playwright() as p, open_page(p, combined) as page:
+            async with (
+                async_playwright() as p,
+                open_page(p, combined, target_url=board_url) as page,
+            ):
                 urls = await _extract_links_rendered(page, combined, url_matcher)
                 if pagination:
                     browser_page = page if pagination.get("browser") else None

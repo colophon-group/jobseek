@@ -66,6 +66,7 @@ src/
 │   ├── constants.py       # DATA_DIR, WORKSPACE_DIR, SLUG_RE, URL_RE
 │   ├── csv_io.py          # CSV read/write utilities
 │   ├── http.py            # httpx client factory
+│   ├── proxy.py           # Per-domain proxy routing (PROXY_MAP env var)
 │   ├── logging.py         # structlog config
 │   └── slug.py            # slugify utility
 ├── batch.py               # Batch processor (R2 uploads, enum normalization)
