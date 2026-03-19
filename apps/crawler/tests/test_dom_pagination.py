@@ -228,6 +228,26 @@ class TestPaginateUrls:
         assert "offset=20" in fetched_urls[0]
         assert "offset=40" in fetched_urls[1]
 
+    async def test_start_value_alias(self):
+        """``start_value`` is accepted as an alias for ``start``."""
+        initial = {"https://example.com/jobs/1"}
+        fetched_urls = []
+
+        async def tracking_fetch(url, client, **kwargs):
+            fetched_urls.append(url)
+            return _html_with_links(f"https://example.com/jobs/{len(fetched_urls) + 1}")
+
+        with patch(_FETCH_PATCH, new=tracking_fetch):
+            await _paginate_urls(
+                "https://example.com/careers",
+                {"param_name": "offset", "start_value": 0, "increment": 20, "max_pages": 3},
+                initial,
+                MagicMock(),
+            )
+        # start_value=0, increment=20 -> first fetch at offset=20, second at offset=40
+        assert "offset=20" in fetched_urls[0]
+        assert "offset=40" in fetched_urls[1]
+
 
 # ---------------------------------------------------------------------------
 # _fetch_via_page

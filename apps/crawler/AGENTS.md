@@ -19,6 +19,7 @@ src/
 ├── core/
 │   ├── monitors/          # Monitor implementations
 │   │   ├── __init__.py    # Registry + DiscoveredJob dataclass
+│   │   ├── accenture.py   # Accenture Career API (dedicated, auto-partitioned)
 │   │   ├── api_sniffer.py # API capture (httpx for public APIs, Playwright for browser-dependent)
 │   │   ├── ashby.py       # Ashby Job Board API
 │   │   ├── gem.py         # Gem ATS Job Board API
@@ -66,6 +67,7 @@ src/
 │   ├── constants.py       # DATA_DIR, WORKSPACE_DIR, SLUG_RE, URL_RE
 │   ├── csv_io.py          # CSV read/write utilities
 │   ├── http.py            # httpx client factory
+│   ├── proxy.py           # Per-domain proxy routing (PROXY_MAP env var)
 │   ├── logging.py         # structlog config
 │   └── slug.py            # slugify utility
 ├── batch.py               # Batch processor (R2 uploads, enum normalization)

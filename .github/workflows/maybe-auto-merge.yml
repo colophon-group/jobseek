@@ -86,6 +86,7 @@ jobs:
 
             for file in $conflicted; do
               if [[ "$file" == "apps/crawler/VERSION" ]]; then
+                # Take main's version and bump patch +1 so CI version check passes
                 git checkout --ours "$file"
                 current=$(cat "$file" | tr -d '[:space:]')
                 IFS='.' read -r major minor patch <<< "$current"

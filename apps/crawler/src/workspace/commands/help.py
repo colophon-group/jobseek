@@ -200,6 +200,30 @@ amazon — Amazon Jobs API
     - No date-range filter available; sort=recent orders by creation date
     - Job URL constructed from job_path field in API response"""
 
+MONITOR_ACCENTURE = """\
+accenture — Accenture Career API (dedicated monitor)
+
+  API:      POST /api/accenture/elastic/findjobs (multipart form data)
+            POST /api/accenture/jobsearch/result (FR/BR variant)
+  Returns:  Full job data (title, HTML description, locations,
+            job_location_type, date_posted)
+            metadata: businessArea, careerLevel, guid
+  Scraper:  Not needed (API returns full data, scraper step is skipped)
+  Cap:      50,000 per query; auto-partitions by businessArea then careerLevel
+
+  Config:
+    {"country": "India", "language": "en", "site": "in-en"}
+    {"country": "France", "language": "fr", "site": "fr-fr",
+     "endpoint": "jobsearch/result"}
+
+  Notes:
+    - Launches browser once to get cookies, then uses httpx for speed
+    - Page size 500, pagination ceiling 50k (startIndex >= 50000 returns empty)
+    - totalHits caps at 10k cosmetically; pagination works up to 50k
+    - FR/BR use jobsearch/result endpoint (captured via route interception)
+    - When 50k ceiling is hit, partitions by businessArea (discovered from data)
+    - If a single area also exceeds 50k, sub-partitions by careerLevel"""
+
 MONITOR_BITE = """\
 bite — BITE GmbH ATS (Job Search API, widget key auth)
 
@@ -1495,6 +1519,7 @@ signals — Signals Discovery Monitor
 # ── Lookup tables ────────────────────────────────────────────────────────
 
 MONITOR_CARDS: dict[str, str] = {
+    "accenture": MONITOR_ACCENTURE,
     "amazon": MONITOR_AMAZON,
     "apify_meta": MONITOR_APIFY_META,
     "bite": MONITOR_BITE,

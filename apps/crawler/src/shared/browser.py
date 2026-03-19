@@ -71,6 +71,8 @@ def _resolve_placeholders(cookies: list[dict]) -> list[dict]:
 async def open_page(
     pw,  # AsyncPlaywright
     config: dict | None = None,
+    *,
+    target_url: str | None = None,
 ) -> AsyncIterator:
     """Create browser → context → page.  Yields a Playwright *Page*.
 
@@ -79,6 +81,9 @@ async def open_page(
     navigation.
 
     Config keys consumed: ``user_agent``, ``headless`` (default ``True``).
+
+    When *target_url* is provided and the target domain has a proxy configured
+    (via ``PROXY_MAP``), the browser is launched through that proxy.
     """
     config = config or {}
     headless = config.get("headless", True)
@@ -86,7 +91,15 @@ async def open_page(
     warmup_url = config.get("warmup_url")
     cookies = config.get("cookies")
 
-    browser = await pw.chromium.launch(headless=headless)
+    launch_kwargs: dict = {"headless": headless}
+    if target_url:
+        from src.shared.proxy import build_playwright_proxy
+
+        pw_proxy = build_playwright_proxy(target_url)
+        if pw_proxy:
+            launch_kwargs["proxy"] = pw_proxy
+
+    browser = await pw.chromium.launch(**launch_kwargs)
     context = None
     try:
         context = await browser.new_context(user_agent=user_agent)
@@ -219,14 +232,14 @@ async def render(url: str, config: dict | None = None, pw=None) -> str:
     config = config or {}
 
     if pw is not None:
-        async with open_page(pw, config) as page:
+        async with open_page(pw, config, target_url=url) as page:
             await navigate(page, url, config)
             await run_actions(page, config.get("actions", []))
             return await page.content()
 
     from playwright.async_api import async_playwright
 
-    async with async_playwright() as _pw, open_page(_pw, config) as page:
+    async with async_playwright() as _pw, open_page(_pw, config, target_url=url) as page:
         await navigate(page, url, config)
         await run_actions(page, config.get("actions", []))
         return await page.content()
