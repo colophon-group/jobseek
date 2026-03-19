@@ -1416,6 +1416,9 @@ Troubleshooting:
     → Compare against website's displayed total ("Showing N positions")
     → For paginated monitors, raise max_pages first so it significantly
       overshoots expected pages, then re-run before switching type
+    → Set max_pages and max_items with ~50% headroom above current job
+      count — job volume grows over time and caps should not silently
+      truncate new postings
     → Do not optimize for low page caps — completeness comes first
     → If using url_filter/job-link-pattern, test without it (or with a broader
       regex) to catch over-strict filters that drop valid variants

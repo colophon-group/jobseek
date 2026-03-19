@@ -873,6 +873,7 @@ async def run_sync(dry_run: bool = False) -> None:
     pool = await create_pool()
     try:
         async with pool.acquire() as conn, conn.transaction():
+            await conn.execute("SET lock_timeout = '30s'")
             await sync_occupation_domains(conn, occupation_domains, dry_run)
             await sync_occupations(conn, occupations, dry_run)
             await sync_seniority(conn, seniority_df, dry_run)
