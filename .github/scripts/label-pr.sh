@@ -33,7 +33,19 @@ from src.workspace._compat import all_monitor_types
 print("|".join(sorted(all_monitor_types())))
 PY
 )"
-VALID_SCRAPER_TYPES="json-ld|dom|nextdata|embedded|api_sniffer|skip"
+VALID_SCRAPER_TYPES="$(
+python3 - "$REPO_ROOT" <<'PY'
+import sys
+from pathlib import Path
+
+repo_root = Path(sys.argv[1])
+sys.path.insert(0, str(repo_root / "apps/crawler"))
+
+from src.workspace._compat import all_scraper_types
+
+print("|".join(sorted(all_scraper_types())))
+PY
+)"
 SLUG_RE='^[a-z0-9]+(-[a-z0-9]+)*$'
 URL_RE='^https?://'
 MAX_ADDED_LINES=6
