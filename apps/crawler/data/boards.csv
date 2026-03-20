@@ -54,6 +54,7 @@ deloitte,deloitte-careers,https://apply.deloitte.ch/CHCareers,sitemap,"{""sitema
 depoly,depoly-careers,https://depoly.jobs.personio.com,personio,"{""slug"": ""depoly"", ""language"": ""en""}",skip,
 disney,disney-careers,https://disney.wd5.myworkdayjobs.com/disneycareer,workday,"{""company"": ""disney"", ""wd_instance"": ""wd5"", ""site"": ""disneycareer""}",json-ld,
 dphi-space,dphi-space-careers,https://www.dphispace.com/careers,dom,,dom,"{""render"": true, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""div"", ""attr"": ""class=text-gray-600"", ""field"": ""locations""}, {""tag"": ""p"", ""attr"": ""class=text-gray-700"", ""field"": ""description"", ""html"": true, ""stop_count"": 100}]}"
+dsm-firmenich,dsm-firmenich-careers-ats,https://jobs.dsm-firmenich.com/careers,sitemap,"{""sitemap_url"": ""https://jobs.dsm-firmenich.com/careers/sitemap.xml"", ""url_filter"": ""/careers/job/""}",json-ld,
 efg-international,efg-international-careers,https://fa-eqai-saasfaprod1.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001/jobs,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 60000}",json-ld,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 60000}"
 elevenlabs,elevenlabs-careers,https://jobs.ashbyhq.com/elevenlabs,ashby,"{""token"": ""elevenlabs""}",,
 esri,esri-careers,https://job-boards.greenhouse.io/esri,greenhouse,"{""token"": ""esri""}",skip,
