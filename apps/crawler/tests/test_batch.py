@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 
 from src.batch import (
@@ -22,15 +23,18 @@ from src.batch import (
     BatchResult,
     BoardScraperConfig,
     ScrapeItem,
+    _apply_fallback_chain,
     _BoardScraperInfo,
     _coerce_datetime,
     _coerce_text,
     _jsonb,
     _load_board_scrapers,
+    _merge_fields,
     _monitor_pipeline,
     _PipelineResult,
     _process_one_board,
     _process_one_scrape,
+    _run_fallback_scraper,
     _scrape_pipeline,
     _throttle_key,
     claim_monitor_work,
@@ -877,6 +881,142 @@ class TestProcessOneScrape:
         call_args = update_calls[0].args
         # $2 = employment_type (normalized)
         assert call_args[2] == "full_or_part"  # normalized from "Temporary positions, Full-time"
+
+
+# ── Field-Level Fallback ─────────────────────────────────────────────
+
+
+class TestMergeFields:
+    def test_overrides_specified_fields(self):
+        primary = _job_content(title="Primary", description="<p>short</p>")
+        fallback = _job_content(title="FB Title", description="<p>long desc</p>")
+        merged = _merge_fields(primary, fallback, ["description"])
+        assert merged.title == "Primary"  # not overridden
+        assert merged.description == "<p>long desc</p>"  # overridden
+
+    def test_preserves_primary_when_fallback_none(self):
+        primary = _job_content(description="<p>keep me</p>")
+        fallback = JobContent(description=None)
+        merged = _merge_fields(primary, fallback, ["description"])
+        assert merged.description == "<p>keep me</p>"
+
+    def test_unknown_field_warns_no_crash(self):
+        primary = _job_content()
+        fallback = _job_content()
+        # Should not raise
+        merged = _merge_fields(primary, fallback, ["nonexistent_field"])
+        assert merged.title == primary.title
+
+    def test_multiple_fields(self):
+        primary = _job_content(title="P", description="<p>pd</p>", locations=["NYC"])
+        fallback = _job_content(title="F", description="<p>fd</p>", locations=["London"])
+        merged = _merge_fields(primary, fallback, ["description", "locations"])
+        assert merged.title == "P"
+        assert merged.description == "<p>fd</p>"
+        assert merged.locations == ["London"]
+
+
+class TestApplyFallbackChain:
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    @patch("src.batch._run_fallback_scraper", new_callable=AsyncMock)
+    async def test_field_level_always_runs(self, mock_fb_scraper, mock_scrape, mock_http):
+        """Field-level fallback runs even when primary has title."""
+        primary = _job_content(title="Good Title", description="<p>short</p>")
+        mock_fb_scraper.return_value = _job_content(description="<p>long</p>")
+        cfg = {"fallback": {"type": "dom", "config": {}, "fields": ["description"]}}
+
+        result = await _apply_fallback_chain(primary, "https://x.com/j", "json-ld", cfg, mock_http)
+
+        assert result.title == "Good Title"
+        assert result.description == "<p>long</p>"
+        mock_fb_scraper.assert_awaited_once()
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_full_replacement_only_on_no_title(self, mock_scrape, mock_http):
+        """Full replacement (no fields) only triggers when title is missing."""
+        primary = _job_content(title="Has Title")
+        cfg = {"fallback": {"type": "dom", "config": {}}}
+
+        result = await _apply_fallback_chain(primary, "https://x.com/j", "json-ld", cfg, mock_http)
+
+        assert result.title == "Has Title"
+        mock_scrape.assert_not_awaited()
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    @patch("src.batch._run_fallback_scraper", new_callable=AsyncMock)
+    async def test_mixed_chain(self, mock_fb_scraper, mock_scrape, mock_http):
+        """Field-level first, then full-replacement in nested chain."""
+        primary = _job_content(title=None, description="<p>short</p>")
+        mock_fb_scraper.return_value = _job_content(title=None, description="<p>long</p>")
+        mock_scrape.return_value = _job_content(title="DOM Title", description="<p>dom</p>")
+        cfg = {
+            "fallback": {
+                "type": "dom",
+                "config": {"fallback": {"type": "dom", "config": {"render": True}}},
+                "fields": ["description"],
+            }
+        }
+
+        result = await _apply_fallback_chain(primary, "https://x.com/j", "json-ld", cfg, mock_http)
+
+        # First fallback: field-level merge for description
+        mock_fb_scraper.assert_awaited_once()
+        # Second fallback: full replacement because still no title
+        mock_scrape.assert_awaited_once()
+        assert result.title == "DOM Title"
+
+    @patch("src.batch._run_fallback_scraper", new_callable=AsyncMock)
+    async def test_fallback_none_doesnt_overwrite(self, mock_fb_scraper, mock_http):
+        """Fallback returning None for a listed field doesn't overwrite primary."""
+        primary = _job_content(description="<p>primary desc</p>")
+        mock_fb_scraper.return_value = JobContent(description=None)
+        cfg = {"fallback": {"type": "dom", "config": {}, "fields": ["description"]}}
+
+        result = await _apply_fallback_chain(primary, "https://x.com/j", "json-ld", cfg, mock_http)
+
+        assert result.description == "<p>primary desc</p>"
+
+
+class TestRunFallbackScraper:
+    async def test_uses_parse_html_when_available(self):
+        """Optimization: parse_html is used directly instead of full scrape_one."""
+        html = '<script type="application/ld+json">{"@type":"JobPosting","title":"T"}</script>'
+
+        def handler(request):
+            return httpx.Response(200, text=html)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
+            result = await _run_fallback_scraper("https://example.com/job/1", "json-ld", {}, http)
+            assert result.title == "T"
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_falls_back_to_scrape_one_when_render(self, mock_scrape, mock_http):
+        """When render is required, falls back to full scrape_one."""
+        mock_scrape.return_value = _job_content(title="Rendered")
+        result = await _run_fallback_scraper(
+            "https://example.com/job/1", "json-ld", {"render": True}, mock_http
+        )
+        assert result.title == "Rendered"
+        mock_scrape.assert_awaited_once()
+
+
+class TestProcessOneScrapeFieldFallback:
+    """Integration tests for field-level fallback through _process_one_scrape."""
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    @patch("src.batch._run_fallback_scraper", new_callable=AsyncMock)
+    async def test_field_fallback_through_process(self, mock_fb, mock_scrape, mock_pool, mock_http):
+        """Field-level fallback works end-to-end through _process_one_scrape."""
+        pool, conn = mock_pool
+        mock_scrape.return_value = _job_content(title="Good", description="<p>short</p>")
+        mock_fb.return_value = _job_content(description="<p>long detailed desc</p>")
+        item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+        config = {"fallback": {"type": "dom", "config": {}, "fields": ["description"]}}
+
+        ok, _ = await _process_one_scrape(item, pool, mock_http, "json-ld", config)
+
+        assert ok is True
+        mock_fb.assert_awaited_once()
 
 
 # ── TestScrapePipeline ───────────────────────────────────────────────

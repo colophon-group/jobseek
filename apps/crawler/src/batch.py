@@ -35,7 +35,7 @@ from src.core.monitors import api_monitor_types, get_stream_fn
 from src.core.occupation_resolve import load_occupation_ids, match_occupation
 from src.core.salary_extract import extract_salary_unified
 from src.core.scrape import scrape_one
-from src.core.scrapers import enrich_description, get_scraper
+from src.core.scrapers import JobContent, enrich_description, get_scraper, get_scraper_type
 from src.core.seniority_resolve import load_seniority_ids, match_seniority
 from src.core.technology_resolve import load_technology_ids, match_technologies
 from src.shared.html_normalize import normalize_description_html
@@ -2136,6 +2136,84 @@ async def process_monitor_batch(
 # ── Scrape Batch ─────────────────────────────────────────────────────
 
 
+_JOBCONTENT_FIELDS = frozenset(f.name for f in __import__("dataclasses").fields(JobContent))
+
+
+def _merge_fields(primary: JobContent, fallback: JobContent, fields: list[str]) -> JobContent:
+    """Create a merged JobContent, taking listed fields from fallback if not None."""
+    from dataclasses import replace
+
+    overrides: dict = {}
+    for name in fields:
+        if name not in _JOBCONTENT_FIELDS:
+            log.warning("batch.fallback.unknown_field", field=name)
+            continue
+        fb_val = getattr(fallback, name)
+        if fb_val is not None:
+            overrides[name] = fb_val
+    return replace(primary, **overrides) if overrides else primary
+
+
+async def _run_fallback_scraper(
+    url: str,
+    fb_type: str,
+    fb_cfg: dict,
+    http: httpx.AsyncClient,
+) -> JobContent:
+    """Run a fallback scraper, using parse_html shortcut when possible."""
+    scraper_t = get_scraper_type(fb_type)
+    if scraper_t and scraper_t.parse_html and not fb_cfg.get("render"):
+        resp = await http.get(url, follow_redirects=True)
+        resp.raise_for_status()
+        content = scraper_t.parse_html(resp.text, fb_cfg)
+        enrich_description(content)
+        return content
+    return await scrape_one(url, fb_type, fb_cfg, http)
+
+
+async def _apply_fallback_chain(
+    content: JobContent,
+    url: str,
+    scraper_type: str,
+    cfg: dict,
+    http: httpx.AsyncClient,
+    pw=None,
+) -> JobContent:
+    """Walk the fallback chain, applying field-level or full-replacement fallbacks."""
+    current_cfg = cfg
+    while "fallback" in current_cfg:
+        fb = current_cfg["fallback"]
+        fb_type = fb["type"]
+        fb_cfg = fb.get("config") or {}
+        fields = fb.get("fields")
+
+        if fields:
+            # Field-level merge: always runs
+            log.info(
+                "batch.scrape.fallback.fields",
+                url=url,
+                primary=scraper_type,
+                fallback=fb_type,
+                fields=fields,
+            )
+            fb_content = await _run_fallback_scraper(url, fb_type, fb_cfg, http)
+            content = _merge_fields(content, fb_content, fields)
+        elif not content.title:
+            # Full replacement: only when primary has no title
+            log.info(
+                "batch.scrape.fallback",
+                url=url,
+                primary=scraper_type,
+                fallback=fb_type,
+            )
+            content = await scrape_one(url, fb_type, fb_cfg, http, pw=pw)
+        else:
+            break
+
+        current_cfg = fb_cfg
+    return content
+
+
 async def _process_one_scrape(
     item: ScrapeItem,
     pool: asyncpg.Pool,
@@ -2150,20 +2228,7 @@ async def _process_one_scrape(
         cfg = scraper_config or {}
         content = await scrape_one(item.url, scraper_type, scraper_config, http, pw=pw)
 
-        # Walk the fallback chain embedded in scraper_config
-        current_cfg = cfg
-        while not content.title and "fallback" in current_cfg:
-            fb = current_cfg["fallback"]
-            fb_type = fb["type"]
-            fb_cfg = fb.get("config") or {}
-            log.info(
-                "batch.scrape.fallback",
-                url=item.url,
-                primary=scraper_type,
-                fallback=fb_type,
-            )
-            content = await scrape_one(item.url, fb_type, fb_cfg, http, pw=pw)
-            current_cfg = fb_cfg
+        content = await _apply_fallback_chain(content, item.url, scraper_type, cfg, http, pw=pw)
 
         if not content.title or _is_garbage_title(content.title):
             # No usable content — record as failure so backoff kicks in.

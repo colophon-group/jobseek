@@ -8,11 +8,15 @@ from __future__ import annotations
 
 import json
 import time
+from dataclasses import fields as dc_fields
 
 from src.core.scrapers import _REGISTRY as SCRAPER_REGISTRY
+from src.core.scrapers import JobContent
 from src.shared.constants import LOGO_TYPES, SLUG_RE, URL_RE, get_data_dir
 from src.shared.csv_io import read_csv
 from src.workspace._compat import all_monitor_types
+
+_JOBCONTENT_FIELD_NAMES = frozenset(f.name for f in dc_fields(JobContent))
 
 try:
     import structlog
@@ -226,6 +230,26 @@ def validate_csvs() -> list[ValidationError]:
                                 f"Invalid fallback scraper type: {fb_type!r}",
                             )
                         )
+                    fb_fields = fb.get("fields")
+                    if fb_fields is not None:
+                        if not isinstance(fb_fields, list):
+                            errors.append(
+                                ValidationError(
+                                    "boards.csv",
+                                    i,
+                                    "Fallback 'fields' must be a list",
+                                )
+                            )
+                        else:
+                            for fname in fb_fields:
+                                if fname not in _JOBCONTENT_FIELD_NAMES:
+                                    errors.append(
+                                        ValidationError(
+                                            "boards.csv",
+                                            i,
+                                            f"Invalid fallback field: {fname!r}",
+                                        )
+                                    )
                     fb_cfg = fb.get("config")
                     fb = fb_cfg.get("fallback") if isinstance(fb_cfg, dict) else None
                     depth += 1

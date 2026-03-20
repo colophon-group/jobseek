@@ -157,6 +157,11 @@ def get_scraper(name: str) -> ScrapeFunc:
     raise ValueError(f"Unknown scraper type: {name!r}. Available: {available}")
 
 
+def get_scraper_type(name: str) -> ScraperType | None:
+    """Look up a full ScraperType object by name."""
+    return _REGISTRY.get(name)
+
+
 def scraper_needs_browser(name: str) -> bool:
     """Return True if the scraper requires a Playwright browser."""
     entry = _REGISTRY.get(name)
