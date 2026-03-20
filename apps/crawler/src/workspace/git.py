@@ -615,7 +615,7 @@ def fetch_oldest_open_issue(label: str = "company-request") -> int | None:
             "--search",
             "sort:created-asc",
             "--limit",
-            "20",
+            "100",
             "--json",
             "number",
             "--jq",
