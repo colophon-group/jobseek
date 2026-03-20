@@ -1,15 +1,31 @@
 from __future__ import annotations
 
+import ssl
 import time
 from typing import Any
 
 import httpx
+
+
+def _make_ssl_context() -> ssl.SSLContext:
+    """Create an SSL context compatible with CDNs that mishandle TLS session tickets.
+
+    Some CDNs (notably Akamai) send TLS 1.3 session tickets that cause
+    httpcore's async I/O to hang indefinitely.  Setting ``OP_NO_TICKET``
+    prevents this by disabling session ticket negotiation — the same
+    approach urllib3 uses by default.
+    """
+    ctx = ssl.create_default_context()
+    ctx.options |= ssl.OP_NO_TICKET
+    return ctx
+
 
 _CLIENT_DEFAULTS = {
     "timeout": httpx.Timeout(30.0),
     "follow_redirects": True,
     "limits": httpx.Limits(max_connections=20, max_keepalive_connections=10),
     "headers": {"User-Agent": "jobseek-crawler/0.1"},
+    "verify": _make_ssl_context(),
 }
 
 

@@ -937,6 +937,12 @@ async def _discover_replay(
             )
             default_cap = _HTTP_MAX_PAGES if using_http else MAX_PAGES
             max_pg = pagination_config.get("max_pages", default_cap)
+            # When total_count is known, raise cap to _HTTP_MAX_PAGES so
+            # APIs with small page sizes are not silently truncated.
+            if total_count and max_pg < _HTTP_MAX_PAGES:
+                needed = (total_count + len(items) - 1) // len(items)
+                if needed > max_pg:
+                    max_pg = min(needed, _HTTP_MAX_PAGES)
             items = await paginate_all(fetch_fn, job_result, max_pg)
 
         # Cap
@@ -1075,7 +1081,7 @@ async def _discover_auto(
 
 def _extract_rich(
     items: list[dict],
-    fields_map: dict[str, str],
+    fields_map: dict[str, str | list[str]],
     url_field: str | None,
     url_template: str | None,
     board_url: str,
@@ -1134,7 +1140,16 @@ def _extract_rich(
         extras: dict[str, object] = {}
 
         for target, spec in fields_map.items():
-            value = extract_field(item, spec)
+            if isinstance(spec, list):
+                # Multi-field concatenation: extract each path and join
+                parts: list[str] = []
+                for s in spec:
+                    v = extract_field(item, s)
+                    if v is not None:
+                        parts.append(v if isinstance(v, str) else " ".join(v))
+                value = "\n\n".join(parts) if parts else None
+            else:
+                value = extract_field(item, spec)
             if value is None:
                 continue
             if target.startswith("metadata."):

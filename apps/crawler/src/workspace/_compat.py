@@ -1,11 +1,12 @@
-"""Static monitor type classification for standalone use.
+"""Static monitor/scraper type classification for standalone use.
 
-Mirrors the runtime registry in ``src.core.monitors`` so that workspace
-commands can classify monitor types without importing the full crawler core
-(which pulls in asyncpg, playwright, etc.).
+Mirrors the runtime registries in ``src.core.monitors`` and
+``src.core.scrapers`` so that workspace commands and CI scripts can
+classify types without importing the full crawler core (which pulls
+in asyncpg, playwright, etc.).
 
 A sync test in ``tests/test_compat.py`` asserts these sets stay in sync
-with the actual registry.
+with the actual registries.
 """
 
 from __future__ import annotations
@@ -62,6 +63,30 @@ def api_monitor_types() -> frozenset[str]:
 def all_monitor_types() -> frozenset[str]:
     """Return the set of all known monitor type names."""
     return _ALL_MONITOR_TYPES
+
+
+_ALL_SCRAPER_TYPES: frozenset[str] = frozenset(
+    {
+        "api_sniffer",
+        "bite",
+        "dom",
+        "embedded",
+        "json-ld",
+        "nextdata",
+        "notion",
+        "pdf",
+        "rippling",
+        "skip",
+        "smartrecruiters",
+        "workable",
+        "workday",
+    }
+)
+
+
+def all_scraper_types() -> frozenset[str]:
+    """Return the set of all known scraper type names."""
+    return _ALL_SCRAPER_TYPES
 
 
 def detect_ats_from_url(url: str) -> str | None:
