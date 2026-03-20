@@ -115,6 +115,9 @@ class FlattenParser(HTMLParser):
         self._current_block_tag: str | None = None
         self._current_block_attrs: dict = {}
         self._block_depth = 0
+        # Special <title> capture — works even inside <head> (SKIP_TAGS)
+        self._in_title = False
+        self._title_text: list[str] = []
 
     def _flush_text(self):
         """Flush accumulated text as an element."""
@@ -133,6 +136,10 @@ class FlattenParser(HTMLParser):
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]):
         attr_dict = {k: v or "" for k, v in attrs}
+
+        # Special case: track <title> even inside skipped subtrees (e.g. <head>)
+        if tag == "title":
+            self._in_title = True
 
         # Track skip depth
         if self._skip_depth > 0:
@@ -165,6 +172,9 @@ class FlattenParser(HTMLParser):
             self._block_depth = len(self._stack)
 
     def handle_endtag(self, tag: str):
+        if tag == "title":
+            self._in_title = False
+
         if tag in VOID_TAGS:
             return
 
@@ -199,6 +209,11 @@ class FlattenParser(HTMLParser):
                 self._current_block_attrs = {}
 
     def handle_data(self, data: str):
+        # Capture <title> text even inside skipped subtrees
+        if self._in_title:
+            stripped = data.strip()
+            if stripped:
+                self._title_text.append(stripped)
         if self._skip_depth > 0:
             return
         stripped = data.strip()
@@ -207,6 +222,16 @@ class FlattenParser(HTMLParser):
 
     def finish(self):
         self._flush_text()
+        # Prepend <title> element if captured (even from inside <head>)
+        if self._title_text:
+            title_text = " ".join(self._title_text).strip()
+            title_text = " ".join(title_text.split())  # collapse whitespace
+            if title_text:
+                self.elements.insert(0, {
+                    "tag": "title",
+                    "attrs": {},
+                    "text": title_text,
+                })
 
 
 def flatten(html: str) -> list[dict]:
