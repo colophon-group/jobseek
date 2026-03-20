@@ -10,7 +10,9 @@ from src.shared.http import _make_ssl_context, create_http_client, create_loggin
 class TestSSLContext:
     def test_op_no_ticket_set(self):
         ctx = _make_ssl_context()
-        assert ctx.options & ssl.OP_NO_TICKET, "OP_NO_TICKET must be set to avoid hangs with Akamai CDN"
+        assert ctx.options & ssl.OP_NO_TICKET, (
+            "OP_NO_TICKET must be set to avoid hangs with Akamai CDN"
+        )
 
     def test_verifies_certificates(self):
         ctx = _make_ssl_context()

@@ -101,7 +101,9 @@ class TestFlatten:
         assert els[1]["text"] == "End"
 
     def test_title_tag_captured_inside_head(self):
-        html = "<html><head><title>Job Title Here</title></head><body><div>Content</div></body></html>"
+        html = (
+            "<html><head><title>Job Title Here</title></head><body><div>Content</div></body></html>"
+        )
         els = flatten(html)
         assert len(els) == 2
         assert els[0]["tag"] == "title"
@@ -130,7 +132,10 @@ class TestFlatten:
         assert els[0]["tag"] == "p"
 
     def test_title_tag_usable_in_walk_steps(self):
-        html = "<html><head><title>Software Engineer</title></head><body><p>Description</p></body></html>"
+        html = (
+            "<html><head><title>Software Engineer</title></head>"
+            "<body><p>Description</p></body></html>"
+        )
         els = flatten(html)
         steps = [{"tag": "title", "field": "title"}, {"tag": "p", "field": "desc"}]
         result = walk_steps(els, steps)

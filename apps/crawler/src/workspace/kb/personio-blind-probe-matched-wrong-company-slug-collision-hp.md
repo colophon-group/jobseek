@@ -1,6 +1,6 @@
 ---
 step: add_boards
-symptom: Personio blind probe matched wrong company (slug collision: hpe.jobs.personio.de belonged to Hans Peter Esser GmbH, not Hewlett Packard Enterprise)
+symptom: "Personio blind probe matched wrong company (slug collision: hpe.jobs.personio.de belonged to Hans Peter Esser GmbH, not Hewlett Packard Enterprise)"
 tags: ['personio', 'blind-probe', 'false-positive', 'slug-collision']
 ---
 # Personio blind probe matched wrong company (slug collision: hpe.jobs.personio.de belonged to Hans Peter Esser GmbH, not Hewlett Packard Enterprise)

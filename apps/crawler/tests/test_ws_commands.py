@@ -1164,6 +1164,7 @@ class TestRunScraperOutput:
                     ("https://test.com/jobs/2", contents[1], 0.3),
                 ],
                 [],
+                [],
             )
             runner = CliRunner()
             result = runner.invoke(ws, ["run", "scraper", "test"])
@@ -1189,6 +1190,7 @@ class TestRunScraperOutput:
                     ("https://test.com/jobs/1", contents[0], 0.5),
                     ("https://test.com/jobs/2", contents[1], 0.3),
                 ],
+                [],
                 [],
             )
             runner = CliRunner()
@@ -1223,6 +1225,7 @@ class TestRunScraperOutput:
                     ("https://test.com/jobs/2", contents[1], 0.3),
                 ],
                 [],
+                [],
             )
             runner = CliRunner()
             result = runner.invoke(ws, ["run", "scraper", "test"])
@@ -1250,6 +1253,7 @@ class TestRunScraperOutput:
                     ("https://test.com/jobs/2", contents[1], 0.3),
                 ],
                 [],
+                [],
             )
             runner = CliRunner()
             result = runner.invoke(ws, ["run", "scraper", "test"])
@@ -1276,6 +1280,7 @@ class TestRunScraperOutput:
         with stack:
             mock_asyncio.run.return_value = (
                 [("https://test.com/jobs/1", contents[0], 0.5)],
+                [],
                 [],
             )
             runner = CliRunner()

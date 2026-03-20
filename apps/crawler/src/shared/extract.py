@@ -227,11 +227,14 @@ class FlattenParser(HTMLParser):
             title_text = " ".join(self._title_text).strip()
             title_text = " ".join(title_text.split())  # collapse whitespace
             if title_text:
-                self.elements.insert(0, {
-                    "tag": "title",
-                    "attrs": {},
-                    "text": title_text,
-                })
+                self.elements.insert(
+                    0,
+                    {
+                        "tag": "title",
+                        "attrs": {},
+                        "text": title_text,
+                    },
+                )
 
 
 def flatten(html: str) -> list[dict]:

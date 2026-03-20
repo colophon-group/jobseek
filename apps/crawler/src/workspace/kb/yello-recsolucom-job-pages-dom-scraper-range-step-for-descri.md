@@ -1,6 +1,6 @@
 ---
 step: select_scraper
-symptom: Yello (recsolu.com) job pages: DOM scraper range step for description consumes sidebar elements, making location extraction fail with forward-only cursor
+symptom: "Yello (recsolu.com) job pages: DOM scraper range step for description consumes sidebar elements, making location extraction fail with forward-only cursor"
 tags: ['yello', 'recsolu', 'dom-scraper', 'cursor-reset', 'sidebar-extraction']
 ---
 # Yello (recsolu.com) job pages: DOM scraper range step for description consumes sidebar elements, making location extraction fail with forward-only cursor

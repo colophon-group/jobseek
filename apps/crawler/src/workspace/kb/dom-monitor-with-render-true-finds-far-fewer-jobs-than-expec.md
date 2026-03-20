@@ -1,6 +1,6 @@
 ---
 step: select_monitor
-symptom: DOM monitor with render: true finds far fewer jobs than expected on pages with infinite scroll/lazy loading (79 vs 1037)
+symptom: "DOM monitor with render: true finds far fewer jobs than expected on pages with infinite scroll/lazy loading (79 vs 1037)"
 tags: ['dom', 'sitemap', 'lazy-loading', 'infinite-scroll', 'pagination']
 ---
 # DOM monitor with render: true finds far fewer jobs than expected on pages with infinite scroll/lazy loading (79 vs 1037)
