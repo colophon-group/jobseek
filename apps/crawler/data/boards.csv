@@ -116,6 +116,7 @@ lightly,lightly-careers,https://join.com/companies/lightly,join,,nextdata,"{""pa
 lightpanda,lightpanda-careers,https://lightpanda.io/jobs,dom,"{""url_filter"": ""/jobs/.+""}",json-ld,
 lightricks,lightricks-careers,https://boards.greenhouse.io/lightricks,greenhouse,"{""token"": ""lightricks""}",skip,
 logitech,logitech-careers,https://logitech.wd5.myworkdayjobs.com/Logitech,workday,,workday,
+lombard-odier,lombard-odier-careers,https://lombardodier.wd3.myworkdayjobs.com/Lombard_Odier_Careers,workday,,workday,
 lonza,lonza-careers,https://lonza.wd3.myworkdayjobs.com/Lonza_Careers,workday,,workday,
 lonza,lonza-careers-sr,https://careers.smartrecruiters.com/lonza,smartrecruiters,"{""token"": ""lonza""}",smartrecruiters,
 luxoft,luxoft-careers,https://career.luxoft.com/jobs,dom,"{""url_filter"": ""^https?://career\\.luxoft\\.com/jobs/[^/?#]+-[0-9]+$"", ""pagination"": {""param_name"": ""page"", ""max_pages"": 121}}",json-ld,
