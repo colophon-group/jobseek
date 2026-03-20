@@ -1,8 +1,21 @@
 from __future__ import annotations
 
+import ssl
+
 import httpx
 
-from src.shared.http import create_http_client, create_logging_http_client
+from src.shared.http import _make_ssl_context, create_http_client, create_logging_http_client
+
+
+class TestSSLContext:
+    def test_op_no_ticket_set(self):
+        ctx = _make_ssl_context()
+        assert ctx.options & ssl.OP_NO_TICKET, "OP_NO_TICKET must be set to avoid hangs with Akamai CDN"
+
+    def test_verifies_certificates(self):
+        ctx = _make_ssl_context()
+        assert ctx.verify_mode == ssl.CERT_REQUIRED
+        assert ctx.check_hostname is True
 
 
 class TestCreateHttpClient:
