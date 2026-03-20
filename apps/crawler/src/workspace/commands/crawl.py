@@ -1544,7 +1544,10 @@ def run_scraper(slug: str | None, board_alias: str | None, urls: tuple[str, ...]
     run_dir = scraper_run_dir(slug, board.alias)
     log_events = capture_structlog()
 
+    skipped_urls: list[tuple[str, str]] = []
+
     async def _run():
+        from httpx import HTTPStatusError
         from playwright.async_api import async_playwright
 
         from src.core.scrape import scrape_one
@@ -1557,15 +1560,24 @@ def run_scraper(slug: str | None, board_alias: str | None, urls: tuple[str, ...]
                 for i, url in enumerate(target_urls):
                     job_id = f"sample-{i}"
                     start = time.monotonic()
-                    content = await scrape_one(
-                        url,
-                        board.scraper_type,
-                        board.scraper_config or None,
-                        http,
-                        artifact_dir=run_dir,
-                        job_id=job_id,
-                        pw=pw,
-                    )
+                    try:
+                        content = await scrape_one(
+                            url,
+                            board.scraper_type,
+                            board.scraper_config or None,
+                            http,
+                            artifact_dir=run_dir,
+                            job_id=job_id,
+                            pw=pw,
+                        )
+                    except HTTPStatusError as exc:
+                        log.warning(
+                            "scraper.http_error",
+                            url=url,
+                            status=exc.response.status_code,
+                        )
+                        skipped_urls.append((url, str(exc.response.status_code)))
+                        continue
                     elapsed = time.monotonic() - start
                     results.append((url, content, elapsed))
             return results, http_log
@@ -1666,6 +1678,15 @@ def run_scraper(slug: str | None, board_alias: str | None, urls: tuple[str, ...]
         ],
     )
     print()
+
+    # Report skipped URLs
+    if skipped_urls:
+        out.warn(
+            "scraper",
+            f"Skipped {len(skipped_urls)} URL(s) due to HTTP errors:",
+        )
+        for skipped_url, status in skipped_urls:
+            out.plain("scraper", f"  {status}: {skipped_url}")
 
     # Core stats
     out.info(
