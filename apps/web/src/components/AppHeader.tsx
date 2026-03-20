@@ -5,7 +5,7 @@ import { Trans } from "@lingui/react/macro";
 import { useLingui } from "@lingui/react/macro";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { Compass, Briefcase, Eye, Settings, LogIn, LogOut } from "lucide-react";
+import { Compass, Bookmark, Eye, Settings, LogIn, LogOut } from "lucide-react";
 import { siteConfig } from "@/content/config";
 import { ThemedImage } from "@/components/ThemedImage";
 import { useLocalePath } from "@/lib/useLocalePath";
@@ -53,7 +53,7 @@ export function AppHeader() {
 
   const exploreLabel = t({ id: "app.header.nav.explore", comment: "Explore nav icon tooltip", message: "Explore" });
   const watchlistsLabel = t({ id: "app.header.nav.watchlists", comment: "Watchlists nav icon tooltip", message: "Watchlists" });
-  const myJobsLabel = t({ id: "app.header.nav.myJobs", comment: "My Jobs nav icon tooltip", message: "My Jobs" });
+  const savedLabel = t({ id: "app.header.nav.saved", comment: "Saved items nav icon tooltip", message: "Saved" });
   const settingsLabel = t({ id: "app.header.nav.settings", comment: "Settings nav icon tooltip", message: "Settings" });
 
 
@@ -143,8 +143,8 @@ export function AppHeader() {
             <NavIcon href={lp("/watchlists")} label={watchlistsLabel}>
               <Eye size={18} />
             </NavIcon>
-            <NavIcon href={lp("/my-jobs")} label={myJobsLabel}>
-              <Briefcase size={18} />
+            <NavIcon href={lp("/saved")} label={savedLabel}>
+              <Bookmark size={18} />
             </NavIcon>
             <NavIcon href={lp(siteConfig.nav.settings.href)} label={settingsLabel}>
               <Settings size={18} />
@@ -180,8 +180,8 @@ export function AppHeader() {
         <BottomBarLink href={lp("/watchlists")} label={watchlistsLabel}>
           <Eye size={20} />
         </BottomBarLink>
-        <BottomBarLink href={lp("/my-jobs")} label={myJobsLabel}>
-          <Briefcase size={20} />
+        <BottomBarLink href={lp("/saved")} label={savedLabel}>
+          <Bookmark size={20} />
         </BottomBarLink>
         <BottomBarLink href={lp(siteConfig.nav.settings.href)} label={settingsLabel}>
           <Settings size={20} />

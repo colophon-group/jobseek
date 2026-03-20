@@ -546,59 +546,10 @@ export const savedJob = pgTable(
       .notNull()
       .references(() => jobPosting.id, { onDelete: "cascade" }),
     savedAt: timestamp("saved_at", { withTimezone: true }).defaultNow().notNull(),
-
-    // ── Application tracker fields ──
-    status: text("status", {
-      enum: ["saved", "applied", "interviewing", "offered", "rejected"],
-    })
-      .default("saved")
-      .notNull(),
-    statusChangedAt: timestamp("status_changed_at", { withTimezone: true })
-      .defaultNow()
-      .notNull(),
-    appliedAt: timestamp("applied_at", { withTimezone: true }),
-    rejectedAt: timestamp("rejected_at", { withTimezone: true }),
-    offeredAt: timestamp("offered_at", { withTimezone: true }),
-    salaryMinOverride: integer("salary_min_override"),
-    salaryMaxOverride: integer("salary_max_override"),
-    salaryCurrencyOverride: text("salary_currency_override"),
-    salaryPeriodOverride: text("salary_period_override"),
   },
   (table) => [
     uniqueIndex("idx_sj_user_posting").on(table.userId, table.jobPostingId),
     index("idx_sj_user_saved_at").on(table.userId, table.savedAt),
-    index("idx_sj_user_status").on(table.userId, table.status),
-    index("idx_sj_user_status_changed").on(table.userId, table.statusChangedAt),
-  ],
-);
-
-export const applicationInterview = pgTable(
-  "application_interview",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    savedJobId: uuid("saved_job_id")
-      .notNull()
-      .references(() => savedJob.id, { onDelete: "cascade" }),
-    round: smallint("round").notNull(),
-    type: text("type", {
-      enum: [
-        "phone_screen",
-        "video_call",
-        "technical",
-        "coding",
-        "system_design",
-        "behavioral",
-        "onsite",
-        "panel",
-        "hiring_manager",
-        "other",
-      ],
-    }).notNull(),
-    scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  },
-  (table) => [
-    index("idx_ai_saved_job_round").on(table.savedJobId, table.round),
   ],
 );
 
