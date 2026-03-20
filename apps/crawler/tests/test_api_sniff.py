@@ -173,6 +173,14 @@ class TestFindTotalCount:
     def test_non_dict(self):
         assert find_total_count([1, 2, 3], "$") is None
 
+    def test_total_items(self):
+        body = {"totalItems": 651, "items": [{"id": 1}]}
+        assert find_total_count(body, "items") == 651
+
+    def test_total_items_nested(self):
+        body = {"data": {"totalItems": 42, "jobs": [{"id": 1}]}}
+        assert find_total_count(body, "data.jobs") == 42
+
 
 class TestScoreCandidate:
     def test_high_score_with_url_and_title(self):
