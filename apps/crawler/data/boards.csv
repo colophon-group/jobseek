@@ -205,6 +205,8 @@ spotify,spotify-careers,https://www.lifeatspotify.com/jobs,api_sniffer,"{""api_u
 stmicroelectronics,stmicroelectronics-careers,https://stmicroelectronics.eightfold.ai/careers,sitemap,"{""sitemap_url"": ""https://stmicroelectronics.eightfold.ai/careers/sitemap.xml""}",json-ld,
 straumann,straumann-careers,https://careers.straumann.com/global/en/search-results,sitemap,"{""sitemap_url"": ""https://careers.straumann.com/global/en/search-results/sitemap.xml""}",json-ld,
 stripe,stripe-careers,https://stripe.com/jobs/search,greenhouse,"{""token"": ""stripe""}",,
+swiss-re,swiss-re-careers,https://careers.swissre.com/viewalljobs/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.swissre.com/googlefeed.xml""}",skip,
+swiss-re,swiss-re-careers-corp,https://corporatesolutions.swissre.com/careers/jobSearch.html,dom,,dom,"{""render"": false, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""text"": ""Location"", ""field"": ""location"", ""regex"": ""Locations?:\\s*(.+)""}, {""tag"": ""p"", ""field"": ""description"", ""html"": true, ""stop"": ""Keywords:""}]}"
 swisscom,swisscom-careers,https://swisscom.wd103.myworkdayjobs.com/en-US/SwisscomExternalCareers,workday,,,
 swisscom,swisscom-careers-rotterdam,https://swisscom.recruitee.com,recruitee,,,
 swissquote-bank,swissquote-bank-careers,https://careers.smartrecruiters.com/Swissquote,smartrecruiters,,,
