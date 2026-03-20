@@ -159,6 +159,10 @@ def parse_embedded(html: str, config: dict) -> object | None:
     Returns parsed JSON or None.
     """
     source = config.get("source")
+    if source == "reactrouter":
+        from src.shared.nextdata import extract_react_router_data
+
+        return extract_react_router_data(html)
     if source == "rsc":
         from src.shared.nextdata import extract_rsc_data
 
