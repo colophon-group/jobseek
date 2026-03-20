@@ -2139,12 +2139,13 @@ async def _process_one_scrape(
     http: httpx.AsyncClient,
     scraper_type: str,
     scraper_config: dict | None,
+    pw=None,
 ) -> tuple[bool, float]:
     """Run a scrape for a single job posting. Returns (success, duration_s)."""
     t0 = monotonic()
     try:
         cfg = scraper_config or {}
-        content = await scrape_one(item.url, scraper_type, scraper_config, http)
+        content = await scrape_one(item.url, scraper_type, scraper_config, http, pw=pw)
 
         # Walk the fallback chain embedded in scraper_config
         current_cfg = cfg
@@ -2158,7 +2159,7 @@ async def _process_one_scrape(
                 primary=scraper_type,
                 fallback=fb_type,
             )
-            content = await scrape_one(item.url, fb_type, fb_cfg, http)
+            content = await scrape_one(item.url, fb_type, fb_cfg, http, pw=pw)
             current_cfg = fb_cfg
 
         if not content.title or _is_garbage_title(content.title):
@@ -2277,29 +2278,70 @@ async def _scrape_pipeline(
     board_scrapers: dict[str, BoardScraperConfig] | None = None,
 ) -> _PipelineResult:
     """Process scrape items for one domain serially."""
-    result = _PipelineResult()
-    for item in items:
-        try:
-            scraper_type = "json-ld"
-            scraper_config: dict | None = None
-            if board_scrapers and item.board_id in board_scrapers:
-                cfg = board_scrapers[item.board_id]
-                scraper_type = cfg.scraper_type
-                scraper_config = cfg.scraper_config
+    from src.core.scrapers import scraper_needs_browser
 
-            ok, elapsed = await _process_one_scrape(
-                item,
-                pool,
-                http,
-                scraper_type,
-                scraper_config,
-            )
-            result.durations.append(elapsed)
-            if ok:
-                result.succeeded += 1
+    # Check if any item in this pipeline needs a browser-based scraper
+    need_browser = False
+    for item in items:
+        if not board_scrapers or item.board_id not in board_scrapers:
+            continue
+        if scraper_needs_browser(board_scrapers[item.board_id].scraper_type):
+            need_browser = True
+            break
+
+    return await _run_scrape_items(items, pool, http, board_scrapers, need_browser)
+
+
+async def _run_scrape_items(
+    items: list[ScrapeItem],
+    pool: asyncpg.Pool,
+    http: httpx.AsyncClient,
+    board_scrapers: dict[str, BoardScraperConfig] | None,
+    need_browser: bool,
+) -> _PipelineResult:
+    """Inner scrape loop, optionally wrapped in a shared Playwright context."""
+    pw = None
+    pw_ctx = None
+
+    if need_browser:
+        try:
+            from playwright.async_api import async_playwright
+
+            pw_ctx = async_playwright()
+            pw = await pw_ctx.start()
+            log.info("batch.scrape.playwright_started")
         except Exception:
-            log.exception("batch.scrape.pipeline_error", url=item.url)
-    return result
+            log.warning("batch.scrape.playwright_unavailable", exc_info=True)
+
+    try:
+        result = _PipelineResult()
+        for item in items:
+            try:
+                scraper_type = "json-ld"
+                scraper_config: dict | None = None
+                if board_scrapers and item.board_id in board_scrapers:
+                    cfg = board_scrapers[item.board_id]
+                    scraper_type = cfg.scraper_type
+                    scraper_config = cfg.scraper_config
+
+                ok, elapsed = await _process_one_scrape(
+                    item,
+                    pool,
+                    http,
+                    scraper_type,
+                    scraper_config,
+                    pw=pw,
+                )
+                result.durations.append(elapsed)
+                if ok:
+                    result.succeeded += 1
+            except Exception:
+                log.exception("batch.scrape.pipeline_error", url=item.url)
+        return result
+    finally:
+        if pw_ctx is not None:
+            with contextlib.suppress(Exception):
+                await pw_ctx.__aexit__(None, None, None)
 
 
 async def process_scrape_batch(

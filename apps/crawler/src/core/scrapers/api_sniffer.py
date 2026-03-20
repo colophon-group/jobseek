@@ -381,18 +381,14 @@ async def scrape(
     **kwargs,
 ) -> JobContent:
     """Scrape a single job page by capturing XHR/fetch JSON responses."""
-    if pw is None:
-        log.error("api_sniffer_scraper.no_playwright", url=url)
-        return JobContent()
-
     from src.shared.browser import navigate, open_page
 
-    wait = config.get("wait", _DEFAULT_WAIT)
-    timeout = config.get("timeout", _DEFAULT_TIMEOUT)
-    settle = config.get("settle", _DEFAULT_SETTLE)
+    async def _do_scrape(p):
+        wait = config.get("wait", _DEFAULT_WAIT)
+        timeout = config.get("timeout", _DEFAULT_TIMEOUT)
+        settle = config.get("settle", _DEFAULT_SETTLE)
 
-    try:
-        async with open_page(pw, {}, target_url=url) as page:
+        async with open_page(p, {}, target_url=url) as page:
             page_host = urlparse(url).netloc
             exchanges = await capture_exchanges(page, page_host)
 
@@ -406,9 +402,18 @@ async def scrape(
 
             return _extract_from_object(job_obj, config)
 
+    try:
+        if pw is not None:
+            return await _do_scrape(pw)
+
+        from playwright.async_api import async_playwright
+
+        async with async_playwright() as p:
+            return await _do_scrape(p)
+
     except Exception:
         log.error("api_sniffer_scraper.failed", url=url, exc_info=True)
         return JobContent()
 
 
-register("api_sniffer", scrape, probe_pw=probe_pw)
+register("api_sniffer", scrape, probe_pw=probe_pw, needs_browser=True)

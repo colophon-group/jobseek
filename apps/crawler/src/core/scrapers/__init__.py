@@ -120,6 +120,7 @@ class ScraperType:
     can_handle: CanHandleFunc | None = None
     parse_html: ParseHtmlFunc | None = None
     probe_pw: ProbePwFunc | None = None
+    needs_browser: bool = False
 
 
 _REGISTRY: dict[str, ScraperType] = {}
@@ -135,6 +136,7 @@ def register(
     can_handle: CanHandleFunc | None = None,
     parse_html: ParseHtmlFunc | None = None,
     probe_pw: ProbePwFunc | None = None,
+    needs_browser: bool = False,
 ) -> None:
     """Register a scraper type."""
     _REGISTRY[name] = ScraperType(
@@ -143,6 +145,7 @@ def register(
         can_handle=can_handle,
         parse_html=parse_html,
         probe_pw=probe_pw,
+        needs_browser=needs_browser,
     )
 
 
@@ -152,6 +155,12 @@ def get_scraper(name: str) -> ScrapeFunc:
         return _REGISTRY[name].scrape
     available = list(_REGISTRY.keys())
     raise ValueError(f"Unknown scraper type: {name!r}. Available: {available}")
+
+
+def scraper_needs_browser(name: str) -> bool:
+    """Return True if the scraper requires a Playwright browser."""
+    entry = _REGISTRY.get(name)
+    return entry.needs_browser if entry else False
 
 
 # Quality fields checked in probe results
