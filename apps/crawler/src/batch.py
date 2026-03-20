@@ -1043,6 +1043,9 @@ async def _load_board_scrapers(
                 continue
             scraper_type = auto[0] if auto else "json-ld"
             auto_config = auto[1] if auto else None
+        elif explicit_scraper == "skip":
+            rich_board_ids.add(board_id)
+            continue
         else:
             scraper_type = explicit_scraper
             auto_config = None
