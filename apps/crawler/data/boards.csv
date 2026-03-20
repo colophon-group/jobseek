@@ -190,6 +190,7 @@ revolut,revolut-careers,https://www.revolut.com/careers/,nextdata,"{""path"": ""
 rivr,rivr-careers,https://jobs.lever.co/rivr,lever,,,
 roche,roche-careers,https://roche.wd3.myworkdayjobs.com/roche-ext,workday,"{""company"": ""roche"", ""wd_instance"": ""wd3"", ""site"": ""roche-ext""}",workday,
 rolex,rolex-careers,https://www.carrieres-rolex.com/Rolex/go/Toutes-nos-offres-Rolex/2901501?q=&department=&facility=&shifttype=,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://www.carrieres-rolex.com/googlefeed.xml""}",,
+salesforce,salesforce-careers,https://careers.salesforce.com/en/jobs/,sitemap,"{""url_filter"": ""/en/jobs/""}",json-ld,
 salt,salt-careers,https://www.jobup.ch/masks/salt/list_salt.asp,dom,,json-ld,
 samsung,samsung-careers,https://sec.wd3.myworkdayjobs.com/Samsung_Careers,workday,"{""company"": ""sec"", ""wd_instance"": ""wd3"", ""site"": ""Samsung_Careers""}",workday,
 sap,sap-careers,https://jobs.sap.com/search/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://jobs.sap.com/googlefeed.xml""}",skip,
