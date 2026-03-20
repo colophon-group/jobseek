@@ -1,4 +1,5 @@
 company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config
+abb,abb-workday,https://abb.wd3.myworkdayjobs.com/External_Career_Page,workday,,workday,
 accel-club,accel-club-careers,https://careers.accelclub.com/jobs/,api_sniffer,"{""api_url"": ""https://jobdesk-api.accelclub.pro/v1/vacancies/"", ""method"": ""GET"", ""json_path"": ""results"", ""url_field"": ""url"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""locations[].name"", ""job_location_type"": ""location_types[0]"", ""employment_type"": ""employment_types[0]"", ""metadata.team"": ""team.name""}}",,
 accenture,accenture-careers-au,https://www.accenture.com/au-en/careers/jobsearch,accenture,"{""country"": ""Australia"", ""language"": ""en"", ""site"": ""au-en""}",,
 accenture,accenture-careers-br,https://www.accenture.com/br-pt/careers/jobsearch,accenture,"{""country"": ""Brasil"", ""language"": ""pt"", ""site"": ""br-pt"", ""endpoint"": ""jobsearch/result""}",,
