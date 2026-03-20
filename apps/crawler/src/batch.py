@@ -553,6 +553,26 @@ VALUES ($1, $2, $3, $4,
 RETURNING id
 """
 
+_INSERT_RICH_JOB_ENRICH = """
+INSERT INTO job_posting
+    (company_id, board_id,
+     employment_type, source_url,
+     first_seen_at, last_seen_at, next_scrape_at,
+     is_active, titles, locales,
+     location_ids, location_types,
+     salary_min, salary_max, salary_currency, salary_period, salary_eur,
+     experience_min, experience_max, technology_ids,
+     occupation_id, seniority_id)
+VALUES ($1, $2, $3, $4,
+        now(), now(), now(),
+        true, $5, $6,
+        $7, $8,
+        $9, $10, $11, $12, $13,
+        $14, $15, $16,
+        $17, $18)
+RETURNING id
+"""
+
 _CREATE_RICH_UPDATES_TEMP = """
 CREATE TEMP TABLE _rich_updates (
     id uuid,
@@ -707,6 +727,37 @@ _CLEAR_SCRAPE_FOR_RICH = """
 UPDATE job_posting
 SET next_scrape_at = NULL, leased_until = NULL, lease_owner = NULL
 WHERE id = ANY($1::uuid[])
+"""
+
+_UPDATE_ENRICH_CONTENT = """
+UPDATE job_posting
+SET employment_type = COALESCE($2, employment_type),
+    titles = COALESCE($3, titles),
+    locales = COALESCE($4, locales),
+    location_ids = COALESCE($5, location_ids),
+    location_types = COALESCE($6, location_types),
+    description_r2_hash = COALESCE($7, description_r2_hash),
+    technology_ids = COALESCE($8, technology_ids),
+    salary_min = COALESCE($9, salary_min),
+    salary_max = COALESCE($10, salary_max),
+    salary_currency = COALESCE($11, salary_currency),
+    salary_period = COALESCE($12, salary_period),
+    salary_eur = COALESCE($13, salary_eur),
+    experience_min = COALESCE($14, experience_min),
+    experience_max = COALESCE($15, experience_max),
+    occupation_id = COALESCE($16, occupation_id),
+    seniority_id = COALESCE($17, seniority_id),
+    to_be_enriched = CASE
+        WHEN description_r2_hash IS DISTINCT FROM COALESCE($7, description_r2_hash) THEN true
+        ELSE to_be_enriched
+    END
+WHERE id = $1
+"""
+
+_FETCH_POSTING_FOR_ENRICH = """
+SELECT titles, locales, location_ids, location_types
+FROM job_posting
+WHERE id = $1
 """
 
 _FETCH_BOARD_SCRAPERS = """
@@ -998,6 +1049,17 @@ async def _upload_to_r2(
         return None
 
 
+def _board_has_enrich(metadata: dict) -> list[str] | None:
+    """Extract the ``enrich`` list from ``metadata["scraper_config"]``, or None."""
+    sc = metadata.get("scraper_config")
+    if not isinstance(sc, dict):
+        return None
+    enrich = sc.get("enrich")
+    if isinstance(enrich, list) and enrich:
+        return enrich
+    return None
+
+
 @dataclass
 class BoardScraperConfig:
     """Scraper settings for a board (fallback chain lives inside scraper_config)."""
@@ -1032,6 +1094,8 @@ async def _load_board_scrapers(
         crawler_type = row["crawler_type"]
         explicit_scraper = metadata.get("scraper_type")
 
+        enrich_fields = _board_has_enrich(metadata)
+
         # Determine scraper: explicit > auto-configured > default (json-ld)
         if not explicit_scraper:
             # Check if monitor auto-configures a scraper
@@ -1039,13 +1103,23 @@ async def _load_board_scrapers(
 
             auto = auto_scraper_type(crawler_type, metadata)
             if auto and auto[0] == "skip":
+                if enrich_fields:
+                    # Enrich boards need a scraper — use json-ld as default
+                    scraper_type = "json-ld"
+                    auto_config = None
+                else:
+                    rich_board_ids.add(board_id)
+                    continue
+            else:
+                scraper_type = auto[0] if auto else "json-ld"
+                auto_config = auto[1] if auto else None
+        elif explicit_scraper == "skip":
+            if enrich_fields:
+                scraper_type = "json-ld"
+                auto_config = None
+            else:
                 rich_board_ids.add(board_id)
                 continue
-            scraper_type = auto[0] if auto else "json-ld"
-            auto_config = auto[1] if auto else None
-        elif explicit_scraper == "skip":
-            rich_board_ids.add(board_id)
-            continue
         else:
             scraper_type = explicit_scraper
             auto_config = None
@@ -1372,6 +1446,8 @@ async def _process_one_board_streaming(
         if isinstance(metadata, str):
             metadata = json.loads(metadata)
 
+        enrich_fields = _board_has_enrich(metadata)
+
         # Pre-load lookup tables once
         loc_resolver = await _get_location_resolver(pool)
         rates = await _get_currency_rates(pool)
@@ -1413,11 +1489,12 @@ async def _process_one_board_streaming(
             r2_work: list[tuple[str, dict, int | None]] = []
 
             async with pool.acquire() as conn, conn.transaction():
+                is_rich_no_scrape = is_rich and not enrich_fields
                 rows = await conn.fetch(
                     _DIFF_BATCH,
                     list(result.urls),
                     board_id,
-                    is_rich,
+                    is_rich_no_scrape,
                 )
 
                 new_urls: list[str] = []
@@ -1481,8 +1558,11 @@ async def _process_one_board_streaming(
                             detected_langs = (
                                 detect_all_languages(j.description) if j.description else []
                             )
+                            insert_sql = (
+                                _INSERT_RICH_JOB_ENRICH if enrich_fields else _INSERT_RICH_JOB
+                            )
                             row = await conn.fetchrow(
-                                _INSERT_RICH_JOB,
+                                insert_sql,
                                 company_id,
                                 board_id,
                                 normalize_employment_type(_coerce_text(j.employment_type)),
@@ -1738,6 +1818,8 @@ async def _process_one_board(
 
         result = await monitor_one(board_url, crawler_type, metadata, http)
 
+        enrich_fields = _board_has_enrich(metadata)
+
         if not result.urls:
             elapsed = monotonic() - t0
             board_log.warning("batch.monitor.empty", duration_s=round(elapsed, 2))
@@ -1768,12 +1850,14 @@ async def _process_one_board(
                 else _DELIST_THRESHOLD_FRAGILE
             )
             is_rich = result.jobs_by_url is not None
+            # Rich + enrich → relisted jobs get next_scrape_at = now()
+            is_rich_no_scrape = is_rich and not enrich_fields
             rows = await conn.fetch(
                 _DIFF_URLS,
                 list(result.urls),
                 board_id,
                 delist_threshold,
-                is_rich,
+                is_rich_no_scrape,
             )
 
             new_urls: list[str] = []
@@ -1842,8 +1926,9 @@ async def _process_one_board(
                         detected_langs = (
                             detect_all_languages(j.description) if j.description else []
                         )
+                        insert_sql = _INSERT_RICH_JOB_ENRICH if enrich_fields else _INSERT_RICH_JOB
                         row = await conn.fetchrow(
-                            _INSERT_RICH_JOB,
+                            insert_sql,
                             company_id,
                             board_id,
                             normalize_employment_type(_coerce_text(j.employment_type)),
@@ -2214,6 +2299,162 @@ async def _apply_fallback_chain(
     return content
 
 
+async def _process_one_enrich_scrape(
+    item: ScrapeItem,
+    pool: asyncpg.Pool,
+    http: httpx.AsyncClient,
+    scraper_type: str,
+    scraper_config: dict | None,
+    enrich_fields: list[str],
+    pw=None,
+) -> tuple[bool, float]:
+    """Run a scrape that only enriches specific fields. Returns (success, duration_s)."""
+    t0 = monotonic()
+    try:
+        cfg = scraper_config or {}
+        content = await scrape_one(item.url, scraper_type, scraper_config, http, pw=pw)
+        content = await _apply_fallback_chain(content, item.url, scraper_type, cfg, http, pw=pw)
+
+        # Normalize before checking — normalize can strip degenerate HTML to None
+        content.description = normalize_description_html(content.description)
+
+        # Success check: at least one enriched field is non-empty
+        has_data = any(getattr(content, f, None) is not None for f in enrich_fields)
+        if not has_data:
+            async with pool.acquire() as conn:
+                await conn.execute(_RECORD_SCRAPE_FAILURE, item.job_posting_id)
+            return False, monotonic() - t0
+
+        # Detect language if not already set
+        language = content.language
+        if not language and content.description:
+            language = detect_language(content.description)
+
+        # Compute derived columns only for enriched fields
+        loc_resolver = await _get_location_resolver(pool)
+        tech_id_map = await _get_technology_ids(pool)
+        occ_ids = await _get_occupation_ids(pool)
+        sen_ids = await _get_seniority_ids(pool)
+        rates = await _get_currency_rates(pool)
+
+        # Default all params to None (COALESCE preserves existing)
+        norm_emp_type = None
+        all_titles = None
+        locales = None
+        loc_ids = None
+        loc_types = None
+        new_r2_hash = None
+        tech_ids = None
+        s_min = s_max = s_cur = s_per = s_eur = None
+        exp_min = exp_max = None
+        occ_id = sen_id = None
+
+        if "employment_type" in enrich_fields:
+            norm_emp_type = normalize_employment_type(_coerce_text(content.employment_type))
+
+        if "title" in enrich_fields:
+            title_text = _coerce_text(content.title)
+            all_titles = _build_titles(title_text, None) or None
+            occ_id, sen_id = _resolve_occupation_seniority(all_titles, occ_ids, sen_ids)
+            # Only overwrite locales if we have real language evidence —
+            # _build_locales defaults to ["en"] which would overwrite
+            # richer monitor-sourced locale data via COALESCE.
+            lang_text = _coerce_text(language)
+            if lang_text or content.description:
+                detected_langs = (
+                    detect_all_languages(content.description) if content.description else []
+                )
+                built = _build_locales(lang_text, None, detected_languages=detected_langs)
+                # Only set if we have data beyond the bare "en" default
+                if lang_text or detected_langs:
+                    locales = built
+
+        if "locations" in enrich_fields:
+            lang_text = _coerce_text(language)
+            loc_ids, loc_types = await _resolve_locations(
+                loc_resolver,
+                _coerce_locations(content.locations),
+                _coerce_text(content.job_location_type),
+                posting_language=lang_text,
+            )
+
+        if "description" in enrich_fields:
+            desc_text = _coerce_text(content.description)
+            tech_ids = _resolve_technology_ids(desc_text, tech_id_map)
+            s_min, s_max, s_cur, s_per, s_eur = _extract_salary_fields(desc_text, rates)
+            exp_min, exp_max = _extract_experience_fields(desc_text)
+
+            # Fetch existing posting data for R2 extras
+            existing = await pool.fetchrow(_FETCH_POSTING_FOR_ENRICH, item.job_posting_id)
+            r2_title = None
+            if existing:
+                titles_arr = existing["titles"]
+                if titles_arr:
+                    r2_title = titles_arr[0]
+            r2_title = r2_title or _coerce_text(content.title)
+            r2_locations = _coerce_locations(content.locations)
+
+            new_r2_hash = await _upload_to_r2(
+                item.job_posting_id,
+                title=r2_title,
+                description=desc_text,
+                language=_coerce_text(language),
+                locations=r2_locations,
+                localizations=None,
+                extras=content.extras,
+                metadata=content.metadata,
+                date_posted=content.date_posted,
+                base_salary=content.base_salary,
+                employment_type=_coerce_text(content.employment_type),
+                job_location_type=_coerce_text(content.job_location_type),
+                current_hash=item.description_r2_hash,
+            )
+
+        async with pool.acquire() as conn:
+            await conn.execute(
+                _UPDATE_ENRICH_CONTENT,
+                item.job_posting_id,
+                norm_emp_type,
+                all_titles,
+                locales,
+                loc_ids,
+                loc_types,
+                new_r2_hash,
+                tech_ids,
+                s_min,
+                s_max,
+                s_cur,
+                s_per,
+                s_eur,
+                exp_min,
+                exp_max,
+                occ_id,
+                sen_id,
+            )
+            await conn.execute(_RECORD_SCRAPE_SUCCESS, item.job_posting_id)
+
+        await _flush_location_misses(loc_resolver, pool)
+        elapsed = monotonic() - t0
+        log.debug(
+            "batch.enrich.success",
+            url=item.url,
+            fields=enrich_fields,
+            duration_s=round(elapsed, 2),
+        )
+        return True, elapsed
+
+    except Exception as exc:
+        elapsed = monotonic() - t0
+        error_msg = _error_message(exc)
+        log.error("batch.enrich.error", url=item.url, error=error_msg, duration_s=round(elapsed, 2))
+        if _location_resolver is not None:
+            _location_resolver.drain_location_misses()
+        with contextlib.suppress(Exception):
+            async with pool.acquire() as conn:
+                await conn.execute(_RECORD_SCRAPE_FAILURE, item.job_posting_id)
+        return False, elapsed
+
+
 async def _process_one_scrape(
     item: ScrapeItem,
     pool: asyncpg.Pool,
@@ -2226,6 +2467,14 @@ async def _process_one_scrape(
     t0 = monotonic()
     try:
         cfg = scraper_config or {}
+
+        # Early dispatch for enrich-only scrapes
+        enrich_fields = cfg.get("enrich")
+        if isinstance(enrich_fields, list) and enrich_fields:
+            return await _process_one_enrich_scrape(
+                item, pool, http, scraper_type, scraper_config, enrich_fields, pw=pw
+            )
+
         content = await scrape_one(item.url, scraper_type, scraper_config, http, pw=pw)
 
         content = await _apply_fallback_chain(content, item.url, scraper_type, cfg, http, pw=pw)
