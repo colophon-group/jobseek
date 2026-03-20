@@ -25,6 +25,7 @@ from src.batch import (  # noqa: E402
     WorkItem,
     claim_monitor_work,
     claim_scrape_work,
+    dry_run_single_board,
     process_monitor_batch,
     process_scrape_batch,
     run_single_board,
@@ -75,6 +76,16 @@ def parse_args() -> argparse.Namespace:
         "--force-rescrape",
         action="store_true",
         help="With --board: scrape all active jobs, not only due ones",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="With --board: run monitor + scrape without DB writes (test config changes)",
+    )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="With --dry-run: log all fields for each discovered/scraped job",
     )
     return parser.parse_args()
 
@@ -455,7 +466,9 @@ async def run() -> None:
     http = create_http_client()
 
     try:
-        if args.board:
+        if args.board and args.dry_run:
+            await dry_run_single_board(pool, http, args.board, verbose=args.verbose)
+        elif args.board:
             await run_single_board(pool, http, args.board, force_rescrape=args.force_rescrape)
         elif args.once:
             await run_once(pool, http, monitor=do_monitor, scrape=do_scrape)

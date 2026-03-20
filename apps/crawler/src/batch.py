@@ -2763,6 +2763,151 @@ WHERE board_id = $1
 """
 
 
+async def dry_run_single_board(
+    pool: asyncpg.Pool,
+    http: httpx.AsyncClient,
+    board_slug: str,
+    *,
+    verbose: bool = False,
+    scrape_limit: int = 3,
+) -> None:
+    """Dry-run a single board: monitor + scrape without any DB writes.
+
+    Runs monitor_one() to discover jobs, then scrape_one() on a sample of URLs
+    to show what the scraper would produce.  Useful for testing config changes.
+    """
+    from dataclasses import fields as dc_fields
+
+    board = await pool.fetchrow(_FETCH_BOARD_BY_SLUG, board_slug)
+    if not board:
+        log.error("dry_run.not_found", board_slug=board_slug)
+        return
+    crawler_type = board["crawler_type"]
+    metadata = _parse_metadata(board["metadata"])
+    enrich_fields = _board_has_enrich(metadata)
+
+    log.info(
+        "dry_run.start",
+        board_slug=board_slug,
+        crawler_type=crawler_type,
+        enrich=enrich_fields or "(none)",
+    )
+
+    # ── Monitor ──────────────────────────────────────────────────────
+    result = await monitor_one(board["board_url"], crawler_type, metadata, http)
+
+    is_rich = result.jobs_by_url is not None
+    log.info(
+        "dry_run.monitor.done",
+        urls=len(result.urls),
+        rich=is_rich,
+        enrich=enrich_fields or "(none)",
+    )
+
+    if not result.urls:
+        log.warning("dry_run.monitor.empty")
+        return
+
+    if is_rich and verbose:
+        sample_url = next(iter(result.urls))
+        job = result.jobs_by_url[sample_url]
+        log.info("dry_run.monitor.sample_url", url=sample_url)
+        for f in dc_fields(job):
+            val = getattr(job, f.name)
+            if val is not None:
+                display = val
+                if f.name == "description" and isinstance(val, str) and len(val) > 200:
+                    display = val[:200] + "…"
+                log.info("dry_run.monitor.field", field=f.name, value=display)
+            else:
+                log.info("dry_run.monitor.field", field=f.name, value="(null)")
+
+    if is_rich and enrich_fields:
+        # Show which fields the monitor provides vs what enrich will fill
+        sample_url = next(iter(result.urls))
+        job = result.jobs_by_url[sample_url]
+        provided = [f.name for f in dc_fields(job) if getattr(job, f.name) is not None]
+        missing = [f.name for f in dc_fields(job) if getattr(job, f.name) is None]
+        log.info("dry_run.monitor.field_coverage", provided=provided, missing=missing)
+
+    # ── Scraper ──────────────────────────────────────────────────────
+    # Determine scraper settings (same logic as _load_board_scrapers)
+    explicit_scraper = metadata.get("scraper_type")
+    scraper_config = metadata.get("scraper_config")
+    if not isinstance(scraper_config, dict):
+        scraper_config = None
+
+    if not explicit_scraper or explicit_scraper == "skip":
+        if enrich_fields:
+            scraper_type = "json-ld"
+        else:
+            from src.workspace._compat import auto_scraper_type
+
+            auto = auto_scraper_type(crawler_type, metadata)
+            if auto and auto[0] != "skip":
+                scraper_type = auto[0]
+                scraper_config = scraper_config or auto[1]
+            elif auto and auto[0] == "skip":
+                log.info("dry_run.scraper.skip", reason="rich monitor, no enrich configured")
+                return
+            else:
+                scraper_type = "json-ld"
+    else:
+        scraper_type = explicit_scraper
+
+    log.info(
+        "dry_run.scraper.config",
+        scraper_type=scraper_type,
+        scraper_config=scraper_config,
+        enrich=enrich_fields or "(none)",
+    )
+
+    # Pick sample URLs for scraping
+    sample_urls = list(result.urls)[:scrape_limit]
+    log.info("dry_run.scraper.start", sample_size=len(sample_urls), total=len(result.urls))
+
+    cfg = scraper_config or {}
+    for url in sample_urls:
+        try:
+            content = await scrape_one(url, scraper_type, scraper_config, http)
+            content = await _apply_fallback_chain(content, url, scraper_type, cfg, http)
+            content.description = normalize_description_html(content.description)
+
+            if enrich_fields:
+                has_data = any(getattr(content, f, None) is not None for f in enrich_fields)
+                status = "ok" if has_data else "EMPTY (would fail)"
+            elif content.title:
+                status = "ok"
+            else:
+                status = "EMPTY (no title)"
+
+            log.info(
+                "dry_run.scraper.result",
+                url=url,
+                status=status,
+                title=content.title,
+                description_len=len(content.description) if content.description else 0,
+                locations=content.locations,
+                employment_type=content.employment_type,
+            )
+
+            if verbose:
+                for f in dc_fields(content):
+                    val = getattr(content, f.name)
+                    if val is not None:
+                        display = val
+                        if f.name == "description" and isinstance(val, str) and len(val) > 300:
+                            display = val[:300] + "…"
+                        log.info("dry_run.scraper.field", url=url, field=f.name, value=display)
+                    else:
+                        log.info("dry_run.scraper.field", url=url, field=f.name, value="(null)")
+
+        except Exception as exc:
+            log.error("dry_run.scraper.error", url=url, error=_error_message(exc))
+
+    log.info("dry_run.complete", board_slug=board_slug)
+
+
 async def run_single_board(
     pool: asyncpg.Pool,
     http: httpx.AsyncClient,
