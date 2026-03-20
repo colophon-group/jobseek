@@ -248,3 +248,5 @@ white-circle,white-circle-careers,https://jobs.ashbyhq.com/whitecircle,ashby,"{"
 wise,wise-careers,https://wise.jobs/,smartrecruiters,"{""token"": ""wise""}",smartrecruiters,
 zalando,zalando-workday,https://zalando.wd3.myworkdayjobs.com/ZalandoSiteWD,workday,,,
 zurich-insurance,zurich-insurance-careers,https://careers.zurich.com/search/,rss,"{""preset"": ""successfactors""}",skip,
+infosys,infosys-careers,https://digitalcareers.infosys.com/infosys/global-careers,dom,"{""render"": false, ""pagination"": {""param_name"": ""page"", ""max_pages"": 100}}",dom,"{""render"": false, ""steps"": [{""attr"": ""class=page-headline"", ""field"": ""title""}, {""attr"": ""id=custom_field_work-location"", ""field"": ""locations""}, {""attr"": ""id=custom_field_country"", ""field"": ""metadata.country""}, {""text"": ""Requisition ID"", ""attr"": ""class=field-title""}, {""tag"": ""p"", ""attr"": ""class=field-value""}, {""tag"": ""p"", ""field"": ""description"", ""html"": true, ""stop"": ""Apply now""}]}"
+stryker,stryker-careers,https://careers.stryker.com/jobs,sitemap,"{""url_filter"": ""/job/""}",json-ld,
