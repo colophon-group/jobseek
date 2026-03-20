@@ -68,6 +68,52 @@ class TestExtractRich:
         jobs = _extract_rich(items, fields, None, None, "https://example.com")
         assert len(jobs) == 0
 
+    def test_multi_field_concat(self):
+        items = [
+            {
+                "title": "Engineer",
+                "url": "/jobs/1",
+                "intro": "Join our team.",
+                "tasks": "<ul><li>Build things</li></ul>",
+                "reqs": "<ul><li>5 years exp</li></ul>",
+            },
+        ]
+        fields = {
+            "title": "title",
+            "description": ["intro", "tasks", "reqs"],
+        }
+        jobs = _extract_rich(items, fields, "url", None, "https://example.com")
+        assert len(jobs) == 1
+        assert jobs[0].description == "Join our team.\n\n<ul><li>Build things</li></ul>\n\n<ul><li>5 years exp</li></ul>"
+
+    def test_multi_field_concat_partial(self):
+        """Missing fields are skipped, present ones still concatenated."""
+        items = [
+            {
+                "title": "PM",
+                "url": "/jobs/2",
+                "tasks": "Manage projects",
+            },
+        ]
+        fields = {
+            "title": "title",
+            "description": ["intro", "tasks", "reqs"],
+        }
+        jobs = _extract_rich(items, fields, "url", None, "https://example.com")
+        assert len(jobs) == 1
+        assert jobs[0].description == "Manage projects"
+
+    def test_multi_field_concat_all_missing(self):
+        """When all paths in a list resolve to None, the field is absent."""
+        items = [{"title": "QA", "url": "/jobs/3"}]
+        fields = {
+            "title": "title",
+            "description": ["intro", "tasks"],
+        }
+        jobs = _extract_rich(items, fields, "url", None, "https://example.com")
+        assert len(jobs) == 1
+        assert jobs[0].description is None
+
 
 class TestExtractUrlsFromTemplate:
     def test_basic(self):

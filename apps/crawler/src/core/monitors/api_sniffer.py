@@ -1081,7 +1081,7 @@ async def _discover_auto(
 
 def _extract_rich(
     items: list[dict],
-    fields_map: dict[str, str],
+    fields_map: dict[str, str | list[str]],
     url_field: str | None,
     url_template: str | None,
     board_url: str,
@@ -1140,7 +1140,16 @@ def _extract_rich(
         extras: dict[str, object] = {}
 
         for target, spec in fields_map.items():
-            value = extract_field(item, spec)
+            if isinstance(spec, list):
+                # Multi-field concatenation: extract each path and join
+                parts: list[str] = []
+                for s in spec:
+                    v = extract_field(item, s)
+                    if v is not None:
+                        parts.append(v if isinstance(v, str) else " ".join(v))
+                value = "\n\n".join(parts) if parts else None
+            else:
+                value = extract_field(item, spec)
             if value is None:
                 continue
             if target.startswith("metadata."):
