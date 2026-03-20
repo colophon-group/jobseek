@@ -84,7 +84,9 @@ class TestExtractRich:
         }
         jobs = _extract_rich(items, fields, "url", None, "https://example.com")
         assert len(jobs) == 1
-        assert jobs[0].description == "Join our team.\n\n<ul><li>Build things</li></ul>\n\n<ul><li>5 years exp</li></ul>"
+        assert jobs[0].description == (
+            "Join our team.\n\n<ul><li>Build things</li></ul>\n\n<ul><li>5 years exp</li></ul>"
+        )
 
     def test_multi_field_concat_partial(self):
         """Missing fields are skipped, present ones still concatenated."""
