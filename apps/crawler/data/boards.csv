@@ -130,6 +130,7 @@ lenovo,lenovo-careers,https://jobs.lenovo.com/en_US/careers/SearchJobs,dom,"{""r
 lightly,lightly-careers,https://join.com/companies/lightly,join,,nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""schemaDescription"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 lightpanda,lightpanda-careers,https://lightpanda.io/jobs,dom,"{""url_filter"": ""/jobs/.+""}",json-ld,
 lightricks,lightricks-careers,https://boards.greenhouse.io/lightricks,greenhouse,"{""token"": ""lightricks""}",skip,
+lindt-spruengli,lindt-spruengli-careers-workday,https://lindtspruengli.wd103.myworkdayjobs.com/LindtSpruengliGroupCareers,workday,"{""company"": ""lindtspruengli"", ""wd_instance"": ""wd103"", ""site"": ""LindtSpruengliGroupCareers""}",workday,
 logitech,logitech-careers,https://logitech.wd5.myworkdayjobs.com/Logitech,workday,,workday,
 lombard-odier,lombard-odier-careers,https://lombardodier.wd3.myworkdayjobs.com/Lombard_Odier_Careers,workday,,workday,
 lonza,lonza-careers,https://lonza.wd3.myworkdayjobs.com/Lonza_Careers,workday,,workday,
