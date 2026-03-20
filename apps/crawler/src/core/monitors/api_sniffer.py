@@ -937,6 +937,12 @@ async def _discover_replay(
             )
             default_cap = _HTTP_MAX_PAGES if using_http else MAX_PAGES
             max_pg = pagination_config.get("max_pages", default_cap)
+            # When total_count is known, raise cap to _HTTP_MAX_PAGES so
+            # APIs with small page sizes are not silently truncated.
+            if total_count and max_pg < _HTTP_MAX_PAGES:
+                needed = (total_count + len(items) - 1) // len(items)
+                if needed > max_pg:
+                    max_pg = min(needed, _HTTP_MAX_PAGES)
             items = await paginate_all(fetch_fn, job_result, max_pg)
 
         # Cap
