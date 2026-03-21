@@ -16,6 +16,7 @@ def slugify(name: str) -> str:
     text = text.encode("ascii", "ignore").decode("ascii")
     text = text.lower()
     text = text.replace("&", "and")
+    text = text.replace("+", "plus")
     text = re.sub(r"[^a-z0-9]+", "-", text)
     text = re.sub(r"-{2,}", "-", text)
     return text.strip("-")

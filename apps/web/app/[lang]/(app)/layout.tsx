@@ -3,8 +3,10 @@ import type { ReactNode } from "react";
 export const dynamic = "force-dynamic";
 
 import { getSession } from "@/lib/sessionCache";
+import { isLocale, defaultLocale, loadCatalog, type Locale } from "@/lib/i18n";
+import { LinguiClientProvider } from "@/components/LinguiProvider";
 import { getPreferences } from "@/lib/actions/preferences";
-import { getSavedJobIds } from "@/lib/actions/saved-jobs";
+import { getSavedJobStatuses } from "@/lib/actions/saved-jobs";
 import { getStarredCompanyIds } from "@/lib/actions/starred-companies";
 import { SessionProvider } from "@/components/SessionProvider";
 import { SavedJobsProvider } from "@/components/SavedJobsProvider";
@@ -16,6 +18,7 @@ import { PreferencesInitializer } from "@/components/PreferencesInitializer";
 import { SearchStateProvider } from "@/components/SearchStateProvider";
 import { UpgradeBanner } from "@/components/UpgradeBanner";
 import { WatchlistTipBanner } from "@/components/watchlist/watchlist-tip-banner";
+import { SalaryDisplayProvider } from "@/components/SalaryDisplayProvider";
 
 type Props = {
   params: Promise<{ lang: string }>;
@@ -23,20 +26,24 @@ type Props = {
 };
 
 export default async function AppLayout({ params, children }: Props) {
-  const { lang: _lang } = await params;
+  const { lang } = await params;
+  const locale: Locale = isLocale(lang) ? lang : defaultLocale;
+  const { messages } = await loadCatalog(locale);
   const session = await getSession();
 
-  const [prefs, savedIds, starredIds] = await Promise.all([
+  const [prefs, savedStatuses, starredIds] = await Promise.all([
     session ? getPreferences() : null,
-    session ? getSavedJobIds() : [],
+    session ? getSavedJobStatuses() : [],
     session ? getStarredCompanyIds() : [],
   ]);
 
   return (
+    <LinguiClientProvider locale={locale} messages={messages}>
     <SessionProvider user={session?.user ?? null}>
-      <SavedJobsProvider initialIds={savedIds ?? []}>
+      <SavedJobsProvider initialStatuses={savedStatuses ?? []}>
       <StarredCompaniesProvider initialIds={starredIds ?? []}>
       <SearchStateProvider>
+      <SalaryDisplayProvider displayCurrency={prefs?.displayCurrency ?? null} salaryPeriod={prefs?.salaryPeriod ?? null}>
       <BannerProvider serverDismissed={prefs?.dismissedBanners ?? []}>
         <div className="flex min-h-dvh flex-col">
           {prefs && (
@@ -59,9 +66,11 @@ export default async function AppLayout({ params, children }: Props) {
           </div>
         </div>
       </BannerProvider>
+      </SalaryDisplayProvider>
       </SearchStateProvider>
       </StarredCompaniesProvider>
       </SavedJobsProvider>
     </SessionProvider>
+    </LinguiClientProvider>
   );
 }

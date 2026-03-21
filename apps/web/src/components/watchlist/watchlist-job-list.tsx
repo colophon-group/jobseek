@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
-import { Building2, Bookmark, Loader2 } from "lucide-react";
+import { Building2, Bookmark } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { timeAgoShort } from "@/lib/time";
 import {
@@ -12,6 +12,9 @@ import {
 import { useSavedJobs } from "@/components/SavedJobsProvider";
 import { JobDetailPanel } from "@/components/search/job-detail-dialog";
 import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
+import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
+import { TrackingDot } from "@/components/TrackingDot";
+import { PendingJobIcon } from "@/components/PendingJobWarning";
 
 const BATCH = 20;
 
@@ -65,10 +68,8 @@ export function WatchlistJobList({
   const { t } = useLingui();
   const [postings, setPostings] = useState(initialPostings);
   const [total, setTotal] = useState(initialTotal);
-  const [isLoading, setIsLoading] = useState(false);
   const [exhausted, setExhausted] = useState(initialPostings.length >= initialTotal);
   const [showPostingId, setShowPostingId] = useState<string | null>(null);
-  const loadingRef = useRef(false);
   const filtersRef = useRef(filters);
   filtersRef.current = filters;
   const { isSaved, toggle } = useSavedJobs();
@@ -80,52 +81,31 @@ export function WatchlistJobList({
 
   // Re-fetch when filters change
   useEffect(() => {
-    setIsLoading(true);
-    loadingRef.current = true;
-    getWatchlistPostings({
-      ...filters,
-
-      offset: 0,
-      limit: BATCH,
-    })
+    getWatchlistPostings({ ...filters, offset: 0, limit: BATCH })
       .then(({ postings: p, total: t }) => {
         setPostings(p);
         setTotal(t);
         setExhausted(p.length >= t);
-      })
-      .finally(() => {
-        setIsLoading(false);
-        loadingRef.current = false;
       });
   }, [filtersKey]);
 
-  function handleLoadMore() {
-    if (loadingRef.current || exhausted) return;
-    loadingRef.current = true;
-    setIsLoading(true);
-
-    getWatchlistPostings({
+  async function handleLoadMore() {
+    const { postings: more, total: newTotal } = await getWatchlistPostings({
       ...filtersRef.current,
       offset: postings.length,
       limit: BATCH,
-    })
-      .then(({ postings: more, total: newTotal }) => {
-        setTotal(newTotal);
-        if (more.length > 0) {
-          setPostings((prev) => {
-            const seen = new Set(prev.map((p) => p.id));
-            return [...prev, ...more.filter((p) => !seen.has(p.id))];
-          });
-        }
-        if (more.length < BATCH) setExhausted(true);
-      })
-      .finally(() => {
-        setIsLoading(false);
-        loadingRef.current = false;
+    });
+    setTotal(newTotal);
+    if (more.length > 0) {
+      setPostings((prev) => {
+        const seen = new Set(prev.map((p) => p.id));
+        return [...prev, ...more.filter((p) => !seen.has(p.id))];
       });
+    }
+    if (more.length < BATCH) setExhausted(true);
   }
 
-  const sentinelRef = useInfiniteScroll({ hasMore: !exhausted, isLoading, onLoadMore: handleLoadMore });
+  const { sentinelRef, isLoading } = useInfiniteScroll({ hasMore: !exhausted, load: handleLoadMore });
 
   function handleOpenPosting(postingId: string) {
     setShowPostingId(postingId);
@@ -169,6 +149,7 @@ export function WatchlistJobList({
           showPostingId === entry.id ? "bg-border-soft" : ""
         }`}
       >
+        <TrackingDot postingId={entry.id} />
         {entry.company.icon ? (
           <Image
             src={entry.company.icon}
@@ -191,6 +172,7 @@ export function WatchlistJobList({
           {entry.title ?? "—"}
         </span>
 
+        {!entry.title && <PendingJobIcon />}
         <span
           role="button"
           onClick={(e) => {
@@ -242,34 +224,33 @@ export function WatchlistJobList({
           </div>
         )}
 
-        {!exhausted && <div ref={sentinelRef} className="h-1" />}
-        {isLoading && (
-          <div className="flex h-8 items-center justify-center">
-            <Loader2 size={14} className="animate-spin text-muted" />
-          </div>
-        )}
+        {!exhausted && <InfiniteScrollSentinel sentinelRef={sentinelRef} isLoading={isLoading} />}
       </div>
     </div>
   );
 
-  if (!showPostingId) {
-    return listColumn;
-  }
-
   return (
     <div className="flex gap-5">
       <div className="min-w-0 flex-1">{listColumn}</div>
-      <div className="hidden w-[420px] shrink-0 lg:block">
-        <JobDetailPanel postingId={showPostingId} onClose={handleClosePosting} />
-      </div>
-      <div className="fixed inset-0 z-50 bg-black/40 lg:hidden" onClick={handleClosePosting}>
-        <div
-          className="absolute inset-y-0 right-0 w-full max-w-lg bg-surface shadow-xl"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <JobDetailPanel postingId={showPostingId} onClose={handleClosePosting} />
-        </div>
-      </div>
+      {showPostingId && (
+        <>
+          <div className="hidden w-[420px] shrink-0 lg:block" aria-hidden="true" />
+          <div
+            className="fixed top-[4.5rem] z-40 hidden w-[420px] lg:block"
+            style={{ right: "max(1rem, calc((100vw - 1200px) / 2 + 1rem))", height: "calc(100vh - 5.5rem)" }}
+          >
+            <JobDetailPanel postingId={showPostingId} onClose={handleClosePosting} />
+          </div>
+          <div className="fixed inset-0 z-50 bg-black/40 lg:hidden" onClick={handleClosePosting}>
+            <div
+              className="absolute inset-y-0 right-0 w-full max-w-lg bg-surface shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <JobDetailPanel postingId={showPostingId} onClose={handleClosePosting} />
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -20,6 +20,7 @@ export default async function SettingsPage({ params }: Props) {
     <GeneralSettings
       savedJobLanguages={prefs?.jobLanguages ?? []}
       savedDisplayCurrency={prefs?.displayCurrency ?? "EUR"}
+      savedSalaryPeriod={prefs?.salaryPeriod ?? null}
       availableCurrencies={currencyRates.map((r) => r.currency)}
       availableLanguages={availableLanguages}
       locale={locale}

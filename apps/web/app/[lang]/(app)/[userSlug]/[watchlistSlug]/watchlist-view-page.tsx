@@ -2,8 +2,8 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { X, Loader2, MapPin, Briefcase, BarChart3, Code2, DollarSign, Clock, Building2, ArrowLeft } from "lucide-react";
+import { X, Loader2, MapPin, Briefcase, BarChart3, Code2, DollarSign, Clock, Building2 } from "lucide-react";
+import { BackLink } from "@/components/BackLink";
 import { useLingui } from "@lingui/react/macro";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { useAuth } from "@/lib/useAuth";
@@ -253,14 +253,9 @@ export function WatchlistViewPage({
   return (
     <div className="space-y-6">
       {/* Back link */}
-      <Link
-        href={lp("/watchlists")}
-        prefetch={false}
-        className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-foreground"
-      >
-        <ArrowLeft size={14} />
+      <BackLink href={lp("/watchlists")}>
         {t({ id: "watchlists.view.back", comment: "Back to watchlists link", message: "Watchlists" })}
-      </Link>
+      </BackLink>
 
       {/* Configuration area */}
       <div className="space-y-4 rounded-lg border border-border-soft bg-surface p-4">

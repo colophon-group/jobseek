@@ -112,6 +112,8 @@ export function SearchPage({
     shouldRestore ? cached.experienceMax : initialExperienceMax,
   );
 
+  const [employmentTypes, setEmploymentTypes] = useState<string[]>([]);
+
   // Currency rates for EUR conversion (fetched lazily)
   const [currencyRates, setCurrencyRates] = useState<CurrencyRate[]>([]);
   useEffect(() => {
@@ -128,8 +130,6 @@ export function SearchPage({
     shouldRestore ? cached.totalCompanies : initialTotalCompanies,
   );
   const [isSearching, startSearch] = useTransition();
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const loadingRef = useRef(false);
 
   // Refs for all filter state — single source of truth for updateUrl/runSearch
   const keywordsRef = useRef(keywords);
@@ -137,6 +137,7 @@ export function SearchPage({
   const occupationsRef = useRef(occupations);
   const senioritiesRef = useRef(seniorities);
   const technologiesRef = useRef(technologies);
+  const employmentTypesRef = useRef(employmentTypes);
   const salaryCurrencyRef = useRef(salaryCurrency);
   const salaryMinRef = useRef(salaryMin);
   const salaryMaxRef = useRef(salaryMax);
@@ -150,6 +151,7 @@ export function SearchPage({
   occupationsRef.current = occupations;
   senioritiesRef.current = seniorities;
   technologiesRef.current = technologies;
+  employmentTypesRef.current = employmentTypes;
   salaryCurrencyRef.current = salaryCurrency;
   salaryMinRef.current = salaryMin;
   salaryMaxRef.current = salaryMax;
@@ -243,6 +245,27 @@ export function SearchPage({
       getOccupations: () => occupationsRef.current,
       getSeniorities: () => senioritiesRef.current,
       getTechnologies: () => technologiesRef.current,
+      addEmploymentType: (type: string) => {
+        if (employmentTypesRef.current.includes(type)) return;
+        const updated = [...employmentTypesRef.current, type];
+        setEmploymentTypes(updated);
+        employmentTypesRef.current = updated;
+        updateUrl();
+        runSearch();
+      },
+      setSalaryFilter: (currency: string, min: number | undefined, max: number | undefined) => {
+        setSalaryCurrency(currency); salaryCurrencyRef.current = currency;
+        setSalaryMin(min); salaryMinRef.current = min;
+        setSalaryMax(max); salaryMaxRef.current = max;
+        updateUrl();
+        runSearch();
+      },
+      setExperienceFilter: (min: number | undefined, max: number | undefined) => {
+        setExperienceMin(min); experienceMinRef.current = min;
+        setExperienceMax(max); experienceMaxRef.current = max;
+        updateUrl();
+        runSearch();
+      },
     });
   }, [setPageActions]);
 
@@ -269,7 +292,7 @@ export function SearchPage({
   }, []);
 
   const hasMore = companies.length < totalCompanies;
-  const hasFilters = keywords.length > 0 || locations.length > 0 || occupations.length > 0 || seniorities.length > 0 || technologies.length > 0 || salaryMin != null || salaryMax != null || experienceMin != null || experienceMax != null;
+  const hasFilters = keywords.length > 0 || locations.length > 0 || occupations.length > 0 || seniorities.length > 0 || technologies.length > 0 || employmentTypes.length > 0 || salaryMin != null || salaryMax != null || experienceMin != null || experienceMax != null;
 
   /** Sync URL to current ref state. */
   function updateUrl(showId?: string | null) {
@@ -313,6 +336,7 @@ export function SearchPage({
     const occupationIds = occupationsRef.current.map((o) => o.id);
     const seniorityIds = senioritiesRef.current.map((s) => s.id);
     const technologyIds = technologiesRef.current.map((t) => t.id);
+    const etypes = employmentTypesRef.current;
     const salMinEur = toEur(salaryMinRef.current);
     const salMaxEur = toEur(salaryMaxRef.current);
     const expMin = experienceMinRef.current;
@@ -327,6 +351,7 @@ export function SearchPage({
                 occupationIds: occupationIds.length > 0 ? occupationIds : undefined,
                 seniorityIds: seniorityIds.length > 0 ? seniorityIds : undefined,
                 technologyIds: technologyIds.length > 0 ? technologyIds : undefined,
+                employmentTypes: etypes.length > 0 ? etypes : undefined,
                 salaryMinEur: salMinEur,
                 salaryMaxEur: salMaxEur,
                 experienceMin: expMin,
@@ -341,6 +366,7 @@ export function SearchPage({
                 occupationIds: occupationIds.length > 0 ? occupationIds : undefined,
                 seniorityIds: seniorityIds.length > 0 ? seniorityIds : undefined,
                 technologyIds: technologyIds.length > 0 ? technologyIds : undefined,
+                employmentTypes: etypes.length > 0 ? etypes : undefined,
                 salaryMinEur: salMinEur,
                 salaryMaxEur: salMaxEur,
                 experienceMin: expMin,
@@ -503,6 +529,7 @@ export function SearchPage({
     setOccupations([]); occupationsRef.current = [];
     setSeniorities([]); senioritiesRef.current = [];
     setTechnologies([]); technologiesRef.current = [];
+    setEmploymentTypes([]); employmentTypesRef.current = [];
     setSalaryCurrency(displayCurrency); salaryCurrencyRef.current = displayCurrency;
     setSalaryMin(undefined); salaryMinRef.current = undefined;
     setSalaryMax(undefined); salaryMaxRef.current = undefined;
@@ -513,41 +540,27 @@ export function SearchPage({
     runSearch();
   }, [displayCurrency]);
 
-  function handleLoadMore() {
-    if (loadingRef.current) return;
-    loadingRef.current = true;
-    setIsLoadingMore(true);
-
+  async function handleLoadMore() {
     const offset = companiesRef.current.length;
     const kws = keywordsRef.current;
     const locationIds = locationsRef.current.map((l) => l.id);
     const occupationIds = occupationsRef.current.length > 0 ? occupationsRef.current.map((o) => o.id) : undefined;
     const seniorityIds = senioritiesRef.current.length > 0 ? senioritiesRef.current.map((s) => s.id) : undefined;
     const technologyIds = technologiesRef.current.length > 0 ? technologiesRef.current.map((t) => t.id) : undefined;
+    const etypes = employmentTypesRef.current.length > 0 ? employmentTypesRef.current : undefined;
     const salMinEur = toEur(salaryMinRef.current);
     const salMaxEur = toEur(salaryMaxRef.current);
     const expMin = experienceMinRef.current;
     const expMax = experienceMaxRef.current;
-    const fetcher =
-      kws.length > 0
-        ? searchJobs({ keywords: kws, locationIds, occupationIds, seniorityIds, technologyIds, salaryMinEur: salMinEur, salaryMaxEur: salMaxEur, experienceMin: expMin, experienceMax: expMax, languages, locale, offset, limit: PAGE_SIZE })
-        : listTopCompanies({ locationIds, occupationIds, seniorityIds, technologyIds, salaryMinEur: salMinEur, salaryMaxEur: salMaxEur, experienceMin: expMin, experienceMax: expMax, languages, locale, offset, limit: PAGE_SIZE });
+    const result = kws.length > 0
+      ? await searchJobs({ keywords: kws, locationIds, occupationIds, seniorityIds, technologyIds, employmentTypes: etypes, salaryMinEur: salMinEur, salaryMaxEur: salMaxEur, experienceMin: expMin, experienceMax: expMax, languages, locale, offset, limit: PAGE_SIZE })
+      : await listTopCompanies({ locationIds, occupationIds, seniorityIds, technologyIds, employmentTypes: etypes, salaryMinEur: salMinEur, salaryMaxEur: salMaxEur, experienceMin: expMin, experienceMax: expMax, languages, locale, offset, limit: PAGE_SIZE });
 
-    fetcher
-      .then((result) => {
-        setCompanies((prev) => {
-          const seen = new Set(prev.map((c) => c.company.id));
-          return [
-            ...prev,
-            ...result.companies.filter((c) => !seen.has(c.company.id)),
-          ];
-        });
-        setTotalCompanies(result.totalCompanies);
-      })
-      .finally(() => {
-        loadingRef.current = false;
-        setIsLoadingMore(false);
-      });
+    setCompanies((prev) => {
+      const seen = new Set(prev.map((c) => c.company.id));
+      return [...prev, ...result.companies.filter((c) => !seen.has(c.company.id))];
+    });
+    setTotalCompanies(result.totalCompanies);
   }
 
   const histogramFilters: HistogramFilters = useMemo(() => ({
@@ -585,6 +598,15 @@ export function SearchPage({
         onRemoveSeniority={handleRemoveSeniority}
         onAddTechnology={handleAddTechnology}
         onRemoveTechnology={handleRemoveTechnology}
+        employmentTypes={employmentTypes}
+        onToggleEmploymentType={(type) => {
+          const exists = employmentTypesRef.current.includes(type);
+          const updated = exists ? employmentTypesRef.current.filter((t) => t !== type) : [...employmentTypesRef.current, type];
+          setEmploymentTypes(updated);
+          employmentTypesRef.current = updated;
+          updateUrl();
+          runSearch();
+        }}
         onSalaryChange={handleSalaryChange}
         onExperienceChange={handleExperienceChange}
         histogramFilters={histogramFilters}
@@ -605,10 +627,14 @@ export function SearchPage({
           occupations={occupations}
           seniorities={seniorities}
           technologies={technologies}
+          employmentTypes={employmentTypes}
+          salaryMinEur={toEur(salaryMin)}
+          salaryMaxEur={toEur(salaryMax)}
+          experienceMin={experienceMin}
+          experienceMax={experienceMax}
           languages={languages}
           hasMore={hasMore}
-          onLoadMore={handleLoadMore}
-          isLoadingMore={isLoadingMore}
+          load={handleLoadMore}
           onShowPosting={handleOpenPosting}
           selectedPostingId={showPostingId}
         />
@@ -616,25 +642,31 @@ export function SearchPage({
     </div>
   );
 
-  if (!showPostingId) {
-    return searchColumn;
-  }
-
   return (
     <div className="flex gap-5">
       <div className="min-w-0 flex-1">{searchColumn}</div>
-      <div className="hidden w-[420px] shrink-0 lg:block">
-        <JobDetailPanel postingId={showPostingId} onClose={handleClosePosting} />
-      </div>
-      {/* On small screens, show as an overlay */}
-      <div className="fixed inset-0 z-50 bg-black/40 lg:hidden" onClick={handleClosePosting}>
-        <div
-          className="absolute inset-y-0 right-0 w-full max-w-lg bg-surface shadow-xl"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <JobDetailPanel postingId={showPostingId} onClose={handleClosePosting} />
-        </div>
-      </div>
+      {showPostingId && (
+        <>
+          {/* Spacer reserves flex layout space on desktop */}
+          <div className="hidden w-[420px] shrink-0 lg:block" aria-hidden="true" />
+          {/* Fixed panel — immune to overscroll / layout shifts */}
+          <div
+            className="fixed top-[4.5rem] z-40 hidden w-[420px] lg:block"
+            style={{ right: "max(1rem, calc((100vw - 1200px) / 2 + 1rem))", height: "calc(100vh - 5.5rem)" }}
+          >
+            <JobDetailPanel postingId={showPostingId} onClose={handleClosePosting} />
+          </div>
+          {/* On small screens, show as an overlay */}
+          <div className="fixed inset-0 z-50 bg-black/40 lg:hidden" onClick={handleClosePosting}>
+            <div
+              className="absolute inset-y-0 right-0 w-full max-w-lg bg-surface shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <JobDetailPanel postingId={showPostingId} onClose={handleClosePosting} />
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

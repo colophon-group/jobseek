@@ -12,6 +12,7 @@ import {
   type IndustrySuggestion,
 } from "@/lib/actions/company";
 import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
+import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
 import { RequestCompanyPrompt } from "@/components/search/request-company";
 import { useStarredCompanies } from "@/components/StarredCompaniesProvider";
 
@@ -54,11 +55,9 @@ export function CompanySearchModal({
   const [companies, setCompanies] = useState<CompanyListEntry[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [exhausted, setExhausted] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const inputRef = useRef<HTMLInputElement>(null);
-  const loadingRef = useRef(false);
 
   // Industry selector state
   const [industries, setIndustries] = useState<IndustrySuggestion[]>([]);
@@ -111,7 +110,6 @@ export function CompanySearchModal({
 
   function fetchPage(offset: number) {
     setLoading(true);
-    loadingRef.current = true;
     searchCompaniesForWatchlist({
       query: query || undefined,
       industryId: selectedIndustry?.id,
@@ -133,10 +131,7 @@ export function CompanySearchModal({
         setTotal(t);
         setExhausted(offset + c.length >= t);
       })
-      .finally(() => {
-        setLoading(false);
-        loadingRef.current = false;
-      });
+      .finally(() => setLoading(false));
   }
 
   // Re-search on query or industry change (debounced)
@@ -147,38 +142,27 @@ export function CompanySearchModal({
     return () => clearTimeout(timerRef.current);
   }, [query, selectedIndustry, open]);
 
-  // Load more
-  function handleLoadMore() {
-    if (loadingRef.current || exhausted) return;
-    loadingRef.current = true;
-    setLoadingMore(true);
-
-    searchCompaniesForWatchlist({
-        query: query || undefined,
-        industryId: selectedIndustry?.id,
-        locale,
-        offset: companies.length,
-        limit: BATCH,
-        ...watchlistFilters,
-        starredCompanyIds: starredIds,
-      })
-      .then(({ companies: more, total: newTotal }) => {
-        setTotal(newTotal);
-        if (more.length > 0) {
-          setCompanies((prev) => {
-            const seen = new Set(prev.map((c) => c.id));
-            return [...prev, ...more.filter((c) => !seen.has(c.id))];
-          });
-        }
-        if (more.length < BATCH) setExhausted(true);
-      })
-      .finally(() => {
-        setLoadingMore(false);
-        loadingRef.current = false;
+  async function handleLoadMore() {
+    const { companies: more, total: newTotal } = await searchCompaniesForWatchlist({
+      query: query || undefined,
+      industryId: selectedIndustry?.id,
+      locale,
+      offset: companies.length,
+      limit: BATCH,
+      ...watchlistFilters,
+      starredCompanyIds: starredIds,
+    });
+    setTotal(newTotal);
+    if (more.length > 0) {
+      setCompanies((prev) => {
+        const seen = new Set(prev.map((c) => c.id));
+        return [...prev, ...more.filter((c) => !seen.has(c.id))];
       });
+    }
+    if (more.length < BATCH) setExhausted(true);
   }
 
-  const sentinelRef = useInfiniteScroll({ hasMore: !exhausted, isLoading: loadingMore, onLoadMore: handleLoadMore });
+  const { sentinelRef, isLoading: isLoadingMore } = useInfiniteScroll({ hasMore: !exhausted, load: handleLoadMore });
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -357,12 +341,7 @@ export function CompanySearchModal({
                   );
                 })}
 
-                {!exhausted && <div ref={sentinelRef} className="h-1" />}
-                {loadingMore && (
-                  <div className="flex h-10 items-center justify-center">
-                    <Loader2 size={14} className="animate-spin text-muted" />
-                  </div>
-                )}
+                {!exhausted && <InfiniteScrollSentinel sentinelRef={sentinelRef} isLoading={isLoadingMore} />}
 
                 {/* End of list prompt */}
                 {exhausted && companies.length > 0 && (

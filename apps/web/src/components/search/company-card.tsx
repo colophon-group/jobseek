@@ -3,12 +3,15 @@
 import { useState, useRef, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Building2, Loader2 } from "lucide-react";
+import { Building2 } from "lucide-react";
 import { Trans } from "@lingui/react/macro";
 import { useParams } from "next/navigation";
 import { timeAgoShort } from "@/lib/time";
 import { loadMorePostings } from "@/lib/actions/search";
 import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
+import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
+import { TrackingDot } from "@/components/TrackingDot";
+import { PendingJobIcon } from "@/components/PendingJobWarning";
 import { SaveButton } from "@/components/search/save-button";
 import { StarButton } from "@/components/search/star-button";
 import { buildFilteredPath } from "@/lib/search/query-params";
@@ -25,12 +28,17 @@ interface CompanyCardProps {
   occupations?: SerializableOccupation[];
   seniorities?: SerializableSeniority[];
   technologies?: SerializableTechnology[];
+  employmentTypes?: string[];
+  salaryMinEur?: number;
+  salaryMaxEur?: number;
+  experienceMin?: number;
+  experienceMax?: number;
   languages?: string[];
   onShowPosting?: (postingId: string) => void;
   selectedPostingId?: string | null;
 }
 
-export function CompanyCard({ result, keywords, locationIds, locations, occupations, seniorities, technologies, languages, onShowPosting, selectedPostingId }: CompanyCardProps) {
+export function CompanyCard({ result, keywords, locationIds, locations, occupations, seniorities, technologies, employmentTypes, salaryMinEur, salaryMaxEur, experienceMin, experienceMax, languages, onShowPosting, selectedPostingId }: CompanyCardProps) {
   const params = useParams();
   const locale = (params.lang as string) ?? "en";
   const { company, activeMatches, yearMatches } = result;
@@ -46,10 +54,8 @@ export function CompanyCard({ result, keywords, locationIds, locations, occupati
   );
 
   const [extraPostings, setExtraPostings] = useState<SearchResultPosting[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [exhausted, setExhausted] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const loadingRef = useRef(false);
 
   const allPostings = useMemo(() => {
     const seen = new Set<string>();
@@ -62,39 +68,35 @@ export function CompanyCard({ result, keywords, locationIds, locations, occupati
 
   const hasMore = !exhausted && allPostings.length < yearMatches;
   const offsetRef = useRef(result.postings.length);
-  const hasMoreRef = useRef(hasMore);
-  hasMoreRef.current = hasMore;
 
-  function handleLoadMore() {
-    if (loadingRef.current || !hasMoreRef.current) return;
-    loadingRef.current = true;
-    setIsLoading(true);
-
-    loadMorePostings({
+  async function handleLoadMore() {
+    const more = await loadMorePostings({
       companyId: company.id,
       keywords,
       locationIds,
+      occupationIds: occupations?.map((o) => o.id),
+      seniorityIds: seniorities?.map((s) => s.id),
+      technologyIds: technologies?.map((t) => t.id),
+      employmentTypes,
+      salaryMinEur,
+      salaryMaxEur,
+      experienceMin,
+      experienceMax,
       languages: languages ?? [locale],
       locale,
       offset: offsetRef.current,
       limit: POSTINGS_BATCH,
-    })
-      .then((more) => {
-        offsetRef.current += more.length;
-        if (more.length > 0) {
-          setExtraPostings((prev) => [...prev, ...more]);
-        }
-        if (more.length < POSTINGS_BATCH) {
-          setExhausted(true);
-        }
-      })
-      .finally(() => {
-        setIsLoading(false);
-        loadingRef.current = false;
-      });
+    });
+    offsetRef.current += more.length;
+    if (more.length > 0) {
+      setExtraPostings((prev) => [...prev, ...more]);
+    }
+    if (more.length < POSTINGS_BATCH) {
+      setExhausted(true);
+    }
   }
 
-  const sentinelRef = useInfiniteScroll({ hasMore, isLoading, onLoadMore: handleLoadMore, root: scrollRef, rootMargin: "50px" });
+  const { sentinelRef, isLoading } = useInfiniteScroll({ hasMore, load: handleLoadMore, root: scrollRef, rootMargin: "50px" });
 
   return (
     <div className="rounded-md border border-divider bg-surface p-4">
@@ -140,6 +142,7 @@ export function CompanyCard({ result, keywords, locationIds, locations, occupati
             onKeyDown={(e) => { if (e.key === "Enter") onShowPosting?.(posting.id); }}
             className={`flex cursor-pointer items-center gap-2 rounded px-1 py-1.5 transition-colors ${posting.id === selectedPostingId ? "bg-primary/10" : "hover:bg-border-soft"} ${posting.isActive === false ? "opacity-50" : ""}`}
           >
+            <TrackingDot postingId={posting.id} />
             <span className="min-w-0 flex-1 truncate text-sm">{posting.title ?? "—"}</span>
             {posting.isActive === false && (
               <span className="shrink-0 rounded bg-border-soft px-1 py-0.5 text-[10px] text-muted">
@@ -154,18 +157,14 @@ export function CompanyCard({ result, keywords, locationIds, locations, occupati
                 {posting.locations.length > 1 && ` +${posting.locations.length - 1}`}
               </span>
             )}
+            {!posting.title && <PendingJobIcon />}
             <SaveButton postingId={posting.id} />
             <span suppressHydrationWarning className="w-8 shrink-0 text-left text-[10px] tabular-nums text-muted">
               {timeAgoShort(posting.firstSeenAt)}
             </span>
           </div>
         ))}
-        {hasMore && <div ref={sentinelRef} className="h-1" />}
-        {isLoading && (
-          <div className="flex h-6 items-center justify-center">
-            <Loader2 size={12} className="animate-spin text-muted" />
-          </div>
-        )}
+        {hasMore && <InfiniteScrollSentinel sentinelRef={sentinelRef} isLoading={isLoading} size="sm" />}
       </div>
     </div>
   );

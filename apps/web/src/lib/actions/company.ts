@@ -348,6 +348,7 @@ export async function getCompanyPostings(params: {
   occupationIds?: number[];
   seniorityIds?: number[];
   technologyIds?: number[];
+  employmentTypes?: string[];
   salaryMinEur?: number;
   salaryMaxEur?: number;
   experienceMin?: number;
@@ -362,8 +363,9 @@ export async function getCompanyPostings(params: {
   const sortedOcc = [...(params.occupationIds ?? [])].sort();
   const sortedSen = [...(params.seniorityIds ?? [])].sort();
   const sortedTech = [...(params.technologyIds ?? [])].sort();
+  const sortedEtype = [...(params.employmentTypes ?? [])].sort();
   const sortedLangs = [...params.languages].sort();
-  const key = `company-postings:${params.companyId}:${sortedKw.join(",")}:${sortedLoc.join(",")}:${sortedOcc.join(",")}:${sortedSen.join(",")}:${sortedTech.join(",")}:${sortedLangs.join(",")}:${params.salaryMinEur ?? ""}:${params.salaryMaxEur ?? ""}:${params.experienceMin ?? ""}:${params.experienceMax ?? ""}:${params.locale}:${params.offset}:${params.limit}`;
+  const key = `company-postings:${params.companyId}:${sortedKw.join(",")}:${sortedLoc.join(",")}:${sortedOcc.join(",")}:${sortedSen.join(",")}:${sortedTech.join(",")}:${sortedEtype.join(",")}:${sortedLangs.join(",")}:${params.salaryMinEur ?? ""}:${params.salaryMaxEur ?? ""}:${params.experienceMin ?? ""}:${params.experienceMax ?? ""}:${params.locale}:${params.offset}:${params.limit}`;
   return cached(
     key,
     async () => {

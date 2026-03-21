@@ -25,7 +25,7 @@ export type SavedJobEntry = {
 
 export async function toggleSavedJob(
   jobPostingId: string,
-): Promise<{ saved: boolean }> {
+): Promise<{ saved: boolean; savedJobId?: string }> {
   const userId = await getSessionUserId();
   if (!userId) throw new Error("Not authenticated");
 
@@ -45,20 +45,22 @@ export async function toggleSavedJob(
     return { saved: false };
   }
 
-  await db.insert(savedJob).values({ userId, jobPostingId });
-  return { saved: true };
+  const [row] = await db.insert(savedJob).values({ userId, jobPostingId }).returning({ id: savedJob.id });
+  return { saved: true, savedJobId: row.id };
 }
 
-export async function getSavedJobIds(): Promise<string[]> {
+export type SavedJobStatus = { postingId: string; savedJobId: string; status: string };
+
+export async function getSavedJobStatuses(): Promise<SavedJobStatus[]> {
   const userId = await getSessionUserId();
   if (!userId) return [];
 
   const rows = await db
-    .select({ jobPostingId: savedJob.jobPostingId })
+    .select({ id: savedJob.id, jobPostingId: savedJob.jobPostingId, status: savedJob.status })
     .from(savedJob)
     .where(eq(savedJob.userId, userId));
 
-  return rows.map((r) => r.jobPostingId);
+  return rows.map((r) => ({ postingId: r.jobPostingId, savedJobId: r.id, status: r.status }));
 }
 
 export async function getSavedJobs(params: {

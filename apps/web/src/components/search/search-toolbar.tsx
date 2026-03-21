@@ -1,6 +1,6 @@
 "use client";
 
-import { X, MapPin, Briefcase, BarChart3, DollarSign, Clock, Code2 } from "lucide-react";
+import { X, MapPin, Briefcase, BarChart3, CalendarDays, DollarSign, Clock, Code2 } from "lucide-react";
 import { useLingui } from "@lingui/react/macro";
 import { SearchBar } from "@/components/search/search-bar";
 import { AdvancedSearchPanel } from "@/components/search/advanced-search-panel";
@@ -37,6 +37,8 @@ interface SearchToolbarProps {
   onRemoveSeniority: (id: number) => void;
   onAddTechnology?: (tech: TaxonomyItem) => void;
   onRemoveTechnology?: (id: number) => void;
+  employmentTypes?: string[];
+  onToggleEmploymentType?: (type: string) => void;
   onSalaryChange?: (currency: string, min: number | undefined, max: number | undefined) => void;
   onExperienceChange?: (min: number | undefined, max: number | undefined) => void;
   histogramFilters?: HistogramFilters;
@@ -76,6 +78,8 @@ export function SearchToolbar({
   onRemoveSeniority,
   onAddTechnology,
   onRemoveTechnology,
+  employmentTypes,
+  onToggleEmploymentType,
   onSalaryChange,
   onExperienceChange,
   histogramFilters,
@@ -138,6 +142,8 @@ export function SearchToolbar({
         onRemoveSeniority={onRemoveSeniority}
         onAddTechnology={onAddTechnology}
         onRemoveTechnology={onRemoveTechnology}
+        employmentTypes={employmentTypes}
+        onToggleEmploymentType={onToggleEmploymentType}
         onSalaryChange={onSalaryChange}
         onExperienceChange={onExperienceChange}
         histogramFilters={histogramFilters}
@@ -189,6 +195,21 @@ export function SearchToolbar({
                   <X size={12} />
                 </button>
               )}
+            </span>
+          ))}
+          {onToggleEmploymentType && employmentTypes && employmentTypes.map((et) => (
+            <span
+              key={et}
+              className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm capitalize text-primary"
+            >
+              <CalendarDays size={12} className="shrink-0" />
+              {et.replace(/_/g, " ")}
+              <button
+                onClick={() => onToggleEmploymentType(et)}
+                className="ml-0.5 cursor-pointer rounded-full p-0.5 transition-colors hover:bg-primary/20"
+              >
+                <X size={12} />
+              </button>
             </span>
           ))}
           {onSalaryChange && (salaryMin != null || salaryMax != null) && (

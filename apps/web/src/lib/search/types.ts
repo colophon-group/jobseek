@@ -30,6 +30,7 @@ export interface SearchFilters {
   occupationIds?: number[];
   seniorityIds?: number[];
   technologyIds?: number[];
+  employmentTypes?: string[];
   salaryMinEur?: number;
   salaryMaxEur?: number;
   experienceMin?: number;
