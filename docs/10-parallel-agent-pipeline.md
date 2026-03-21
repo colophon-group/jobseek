@@ -62,19 +62,19 @@ graph TD
     E -->|yields board 1| F[Board 1]
     E -->|yields board 2| G[Board 2]
 
-    subgraph board1 [Board 1 — parallel config testing]
-        F --> F1[Subagent: test config 1]
-        F --> F2[Subagent: test config 2]
-        F --> F3[Subagent: test config 3]
-        F1 --> F4[Pick best + feedback]
+    subgraph board1 [Board 1 — parallel config attempts]
+        F --> F1[Subagent: make<br/>greenhouse + json-ld work]
+        F --> F2[Subagent: make<br/>sitemap + dom work]
+        F --> F3[Subagent: make<br/>api_sniffer work]
+        F1 --> F4[Compare results +<br/>pick best + feedback]
         F2 --> F4
         F3 --> F4
     end
 
-    subgraph board2 [Board 2 — parallel config testing]
-        G --> G1[Subagent: test config 1]
-        G --> G2[Subagent: test config 2]
-        G1 --> G3[Pick best + feedback]
+    subgraph board2 [Board 2 — parallel config attempts]
+        G --> G1[Subagent: make<br/>lever API work]
+        G --> G2[Subagent: make<br/>dom + dom work]
+        G1 --> G3[Compare results +<br/>pick best + feedback]
         G2 --> G3
     end
 
@@ -159,6 +159,128 @@ graph LR
 
 No arrows cross between the green tracks and the blue track — they are fully
 independent until `ws submit` reads both.
+
+## Config Selection Policy
+
+### Required fields are non-negotiable
+
+A config is only acceptable if it extracts **all required fields** cleanly:
+title, location, and description. A config that misses any required field is
+unusable — no exceptions, no "it's close enough". Report failure and try
+another approach rather than accepting incomplete extraction.
+
+### Maximize optional field coverage
+
+After required fields are satisfied, prefer configs that extract the most
+optional fields. Priority order for optional fields:
+
+1. **Important:** employment type, seniority level, department, salary
+2. **Nice-to-have:** posted date, application URL, remote/hybrid flag
+
+A config extracting 6 fields cleanly beats one extracting 3 fields cleanly,
+even if the 3-field config is simpler.
+
+### Minimize monitoring cost
+
+Among configs that meet field requirements, **always prefer the cheapest
+monitor**. Cost is reported by `ws probe monitor` and stored per config.
+
+Preference order (cheapest → most expensive):
+1. API monitors (greenhouse, lever, ashby, etc.) — single HTTP request
+2. Sitemap — single XML fetch
+3. DOM / nextdata — one page load, possibly paginated
+4. api_sniffer (httpx) — multiple API calls
+5. api_sniffer (Playwright) — browser rendering + API interception
+
+A more expensive monitor is only justified when cheaper options fail to
+capture all listings or required fields.
+
+### Failure is better than a bad config
+
+Agents must **reject configs that don't work** rather than accepting them to
+avoid appearing to fail. A submitted config that misses jobs or garbles
+fields will produce bad data in production — that is worse than reporting
+failure and letting a human investigate.
+
+If no config combination works after exhausting options, the correct action
+is `ws task fail --reason "..."`, not `ws feedback --verdict acceptable` on
+a config the agent knows is broken.
+
+## Board Config Subagent Design
+
+### Subagent framing: goal-oriented, not mechanical
+
+When the main agent spawns a subagent to work on a board, it should **not**
+say "test api_sniffer config". Instead, the subagent receives a goal-oriented
+prompt with full context:
+
+> "Make a working config for board X (URL: ...) using the **greenhouse**
+> monitor and **json-ld** scraper. Required fields: title, location,
+> description. The probe detected a greenhouse token `abc123` with
+> ~150 jobs. Previous agents found that this company's greenhouse pages
+> use non-standard JSON-LD — try `render: true` if plain fetch fails.
+> If this combination cannot extract required fields cleanly, report
+> failure with specifics."
+
+Key elements of the subagent prompt:
+- **The board URL and monitor/scraper combination to try**
+- **Required fields that must be extracted** (non-negotiable)
+- **Probe context** (detected tokens, job counts, cost estimates)
+- **Prior knowledge** (what other configs were tried, what failed, KB entries)
+- **Explicit permission to fail** with a clear failure report
+
+### Subagent outputs
+
+Each config-testing subagent reports back one of:
+- **Success:** config name, job count, fields extracted, cost, verdict
+- **Failure:** what was tried, what went wrong, which fields were missing
+
+The main agent collects all reports and picks the best success, or escalates
+if all subagents report failure.
+
+## Quality Standards
+
+### Known anti-patterns to eliminate
+
+Current agents exhibit several bad habits that the parallel pipeline must
+fix, not inherit:
+
+**1. Accepting bad configs to avoid failure.**
+Agents submit configs with `--verdict acceptable` when the extraction is
+clearly broken — missing descriptions, garbled locations, wrong job counts.
+Fix: subagent instructions must explicitly state that failure is an expected
+outcome and carries no penalty. The prompt must say: "If this doesn't work,
+say so. Do not force a passing verdict."
+
+**2. Not finding all boards.**
+Agents discover 1 board and stop, even when the company has regional
+variants (careers-us, careers-de, careers-uk) or multiple ATS platforms.
+Fix: the board discovery subagent must:
+- Check for hreflang links on the careers page
+- Search for regional career domains (company.com/careers, company.de/karriere)
+- Look for multiple ATS platforms (Greenhouse for engineering, Lever for
+  sales, Workday for corporate)
+- Report the total board count and which regions/departments are covered
+
+**3. Not verifying job counts.**
+Agents run `ws run monitor`, see "145 jobs", and move on without checking
+if the careers page says "247 open positions". A 40% gap means the monitor
+is misconfigured. Fix: the subagent prompt must include the expected job
+count from web research. The subagent must compare crawled vs expected and
+flag significant gaps (>15% difference).
+
+**4. Making assumptions instead of verifying.**
+Agents assume a sitemap covers all jobs, assume json-ld has all fields,
+assume the first probe result is correct. Fix: every assumption must be
+verified by running the config and checking the output. The subagent must
+inspect actual extracted content, not just field presence counts.
+
+**5. Taking shortcuts on scraper verification.**
+Agents check that fields are "present" (non-empty) but don't verify the
+content makes sense — a description field containing just a page header,
+a location field with "null", a title with HTML artifacts. Fix: subagents
+must read 2-3 sample extractions and confirm the content is semantically
+correct, not just non-empty.
 
 ## Blockers and Required Changes
 
@@ -265,19 +387,26 @@ Decouple metadata, logos, and board discovery into independent operations.
 
 ### Phase 2: Parallel Config Testing
 
-Enable testing multiple monitor/scraper configs simultaneously per board.
+Enable testing multiple monitor+scraper combinations simultaneously per board.
 
-- [ ] **2.1** Update main agent instructions for board processing: after
-  `ws probe monitor`, spawn N subagents to test the top N candidates in
-  parallel. Each subagent calls `ws select monitor <type> --as <name>` then
-  `ws run monitor --config <name>`.
-- [ ] **2.2** Add a comparison/summary command (e.g. `ws compare configs
+- [ ] **2.1** Write goal-oriented subagent prompt template for board config
+  work. Each subagent receives: board URL, monitor+scraper combination to
+  try, expected job count from web research, required fields, prior context
+  (KB entries, failed configs from other subagents), and explicit permission
+  to report failure. Subagent returns success (with metrics) or failure
+  (with specifics).
+- [ ] **2.2** Update main agent instructions for board processing: after
+  `ws probe monitor`, identify top N viable monitor+scraper combinations,
+  spawn a goal-oriented subagent for each. Main agent collects results,
+  compares, picks the best config that meets all required fields at lowest
+  cost.
+- [ ] **2.3** Add a comparison/summary command (e.g. `ws compare configs
   --board <alias>`) that shows all tested configs side-by-side — job count,
-  cost, fields extracted — so the main agent can pick the best without reading
-  raw YAML.
-- [ ] **2.3** Update scraper testing similarly: after monitor is selected, if
-  scraper is needed, spawn subagents to test top scraper candidates in
-  parallel.
+  cost, fields extracted, verdict — so the main agent can pick the best
+  without reading raw YAML.
+- [ ] **2.4** Add job count verification to subagent prompt: subagent must
+  compare crawled job count against expected count (from web research or
+  probe). Flag gaps >15% as monitor misconfiguration rather than accepting.
 
 ### Phase 3: Polish
 
