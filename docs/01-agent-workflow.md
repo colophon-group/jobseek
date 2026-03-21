@@ -90,6 +90,46 @@ All workspace commands use the `ws` CLI tool (`alias ws='uv run ws'`). See AGENT
    diagnose and re-run. Then advance task state with `ws task next --notes "..."`
    (and later `ws task complete`). CI handles labeling and merging (see [05 — Auto-Merge](./05-auto-merge.md)).
 
+### Parallel Mode (Claude Code with subagents)
+
+When running locally with subagent support, the workflow can be parallelized
+for ~50% faster execution. See [10 — Parallel Agent Pipeline](./10-parallel-agent-pipeline.md)
+for the full design.
+
+Key differences from sequential mode:
+- Company enrichment, logo discovery, and board discovery run as
+  independent background subagents
+- Board config testing spawns parallel subagents per monitor+scraper combo
+- The main agent orchestrates and makes final decisions
+- Sequential mode commands (`ws task next`) are not used; the main agent
+  calls ws commands directly
+- Use `ws run monitor --config <name>` and `ws run scraper --config <name>`
+  to test named configs without active_config races
+
+Prompt templates live in `apps/crawler/src/workspace/steps/parallel/` and
+are rendered with Jinja2 via `render_parallel_prompt()` in `workflow.py`.
+
+### Reconfiguration
+
+To reconfigure an existing company (broken scraper, changed site, user report):
+
+```
+ws new <slug> --reconfig [--start-at <step>]
+```
+
+This pre-loads existing company data and boards from CSV and starts the
+workflow at the specified step. Start-at options:
+
+| Step | Use when |
+|------|----------|
+| `add_boards` | Board URL changed or site fully migrated |
+| `select_monitor` | Monitor broke (default) |
+| `select_scraper` | Only the scraper broke, monitor still works |
+| `verify_and_feedback` | Need to re-verify extraction quality |
+
+Use `ws task back --to <step> --reason "..."` within a reconfig run if you
+discover deeper breakage than expected.
+
 ## Verification and Iteration
 
 Agents should not blindly trust the first test crawl result. The workflow includes verification loops to catch incomplete configurations early.
