@@ -3,49 +3,55 @@ type: case-study
 company: tiktok
 monitor: api_sniffer
 scraper: api_sniffer
-summary: "HTTP-mode api_sniffer with detail API for compensation HTML and salary parsing"
-tags: [api_sniffer, http-mode, detail-api, salary-parse, post-body, id-placeholder]
+summary: "HTTP-mode api_sniffer with detail API for description enrichment and salary parsing"
+tags: [api_sniffer, http-mode, detail-api, salary-parse, post-body, id-placeholder, enrich]
 ---
 # TikTok — HTTP-mode api_sniffer with detail API
 
 ## Setup
-- Monitor: api_sniffer (HTTP mode, POST request to list endpoint)
-- Scraper: api_sniffer (HTTP mode, POST request to detail endpoint with `{id}` placeholder)
+- Monitor: api_sniffer (POST to list endpoint, browser mode with body pagination)
+- Scraper: api_sniffer (POST to detail endpoint with `{id}` placeholder, HTTP mode)
 
 ## Key decisions
-- List API returns description and requirement as separate fields — concatenated in scraper
-- Detail API uses POST with `{id}` placeholder in `post_body` JSON
-- Compensation data is HTML in `job_post_object_value_list[0].field_value`
-- Salary is parseable from the compensation text via `base_salary` field with `parse_salary_text` auto-conversion
-- The `{id}` placeholder in `post_body` is replaced at runtime with each job's ID
+- List API returns titles and locations; description split across `description` and `requirement`
+- Used list spec with `=` constant headers to concatenate: `["=<h3>Responsibilities</h3>", "description", "=<h3>Qualifications</h3>", "requirement"]`
+- `enrich: ["description"]` — monitor has partial descriptions, scraper fetches full ones from detail API
+- Detail API uses POST with `{id}` placeholder in `post_body` JSON, replaced at runtime per job
+- Salary available as `job_post_info.job_post_object_value_list[0].field_value` — parsed automatically by `parse_salary_text` when assigned to `base_salary`
+- Monitor pagination is offset-style in the POST body (`"location": "body"`)
 
 ## Config
 ```json
 {
   "monitor_config": {
-    "api_url": "https://careers.tiktok.com/api/v1/search/job",
+    "api_url": "https://api.lifeattiktok.com/api/v1/public/supplier/search/job/posts",
     "method": "POST",
-    "post_body": "{\"limit\": 100, \"offset\": 0}",
-    "pagination": {"param": "offset", "increment": 100}
+    "json_path": "data.job_post_list",
+    "post_data": "{\"keyword\":\"\",\"limit\":20,\"offset\":0}",
+    "browser": true,
+    "pagination": {"param_name": "offset", "style": "offset", "increment": 20, "location": "body"},
+    "fields": {
+      "title": "title",
+      "description": ["=<h3>Responsibilities</h3>", "description", "=<h3>Qualifications</h3>", "requirement"],
+      "locations": "city_info.en_name"
+    }
   },
   "scraper_config": {
-    "api_url": "https://careers.tiktok.com/api/v1/job/detail/{id}",
+    "enrich": ["description"],
+    "api_url": "https://api.lifeattiktok.com/api/v1/public/supplier/job/posts/detail",
     "method": "POST",
-    "post_body": "{\"job_id\": \"{id}\"}",
+    "post_body": "{\"job_post_id\": \"{id}\"}",
+    "json_path": "data.job_post_detail",
     "fields": {
-      "description": {
-        "list_concat": [
-          {"path": "description"},
-          {"path": "requirement"}
-        ]
-      },
-      "base_salary": {"path": "job_post_object_value_list[0].field_value"}
+      "description": ["=<h3>Responsibilities</h3>", "description", "=<h3>Qualifications</h3>", "requirement"],
+      "base_salary": "job_post_info.job_post_object_value_list[0].field_value"
     }
   }
 }
 ```
 
 ## Lesson
-When a list API splits content across multiple fields (description vs requirement),
-use `list_concat` in the scraper to join them. For compensation data embedded as
-HTML text, `base_salary` with `parse_salary_text` can extract structured salary info.
+When a list API splits content across fields, use a list spec with `=` constant headers
+to concatenate them with section titles. For detail APIs, `{id}` in `post_body` or `api_url`
+is replaced with the job ID extracted from the URL. `enrich` limits scraping to only the
+fields that need enrichment.

@@ -399,9 +399,38 @@ replacing `{field}` placeholders in the template:
       "footerHtml"
     ]
 
+**Value mapping** (`map`) converts a source value through a lookup dict.
+Useful for boolean→enum or code→label conversions:
+
+    "job_location_type": {"path": "homeOffice", "map": {"True": "remote"}}
+    "employment_type": {"path": "type_code", "map": {"FT": "full_time", "PT": "part_time"}}
+
+The `path` is resolved via jmespath; `str(result)` is looked up in `map`.
+Unmapped values produce `null` (not passthrough). For booleans, the map
+key must match `str(True)` / `str(False)` exactly (case-sensitive).
+
 For fallback values (use this OR that), use jmespath's native `||` operator:
 
     "locations": "office.city || `Remote`"
+
+### Field-Level Enrichment (`enrich`)
+
+When a rich monitor (API-based) provides most fields but is missing some
+(typically `description`), use `enrich` in `scraper_config` to scrape
+only the missing fields from detail pages:
+
+```json
+{
+  "scraper_config": {
+    "enrich": ["description"],
+    "fields": { "description": "job_description" }
+  }
+}
+```
+
+The batch processor calls the scraper for each job URL but only stores
+the fields listed in `enrich`. All other fields come from the monitor.
+This avoids full scrape runs while filling gaps in API data.
 
 ### Example
 
