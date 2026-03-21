@@ -29,9 +29,22 @@ graph TD
     N --> O[ws submit]
     O --> P[ws task complete]
 
-    style A fill:#e8e8e8,stroke:#999
-    style O fill:#e8e8e8,stroke:#999
-    style P fill:#e8e8e8,stroke:#999
+    style A fill:#555,stroke:#333,color:#fff
+    style B fill:#555,stroke:#333,color:#fff
+    style C fill:#555,stroke:#333,color:#fff
+    style D fill:#555,stroke:#333,color:#fff
+    style E fill:#555,stroke:#333,color:#fff
+    style F fill:#555,stroke:#333,color:#fff
+    style G fill:#555,stroke:#333,color:#fff
+    style H fill:#555,stroke:#333,color:#fff
+    style I fill:#555,stroke:#333,color:#fff
+    style J fill:#555,stroke:#333,color:#fff
+    style K fill:#555,stroke:#333,color:#fff
+    style L fill:#555,stroke:#333,color:#fff
+    style M fill:#555,stroke:#333,color:#fff
+    style N fill:#555,stroke:#333,color:#fff
+    style O fill:#555,stroke:#333,color:#fff
+    style P fill:#555,stroke:#333,color:#fff
 ```
 
 Every box waits for the previous one. Total wall time is the sum of all steps.
