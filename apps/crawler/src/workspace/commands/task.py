@@ -48,6 +48,7 @@ from src.workspace.workflow import (
     check_gate,
     create_casestudy_entry,
     create_kb_entry,
+    go_back,
     read_kb_entry,
     render_step,
     resolve_current_step,
@@ -257,6 +258,51 @@ def task_next(notes: str):
 
     print()
     _print_step_header(next_step, wf, boards)
+    print(instructions)
+
+
+@task.command(name="back")
+@click.option("--to", "target_step", required=True, help="Step ID to go back to")
+@click.option("--reason", required=True, help="Why backtracking is needed")
+@click.option("--board", "board_alias", default=None, help="Board alias (for per-board steps)")
+def task_back(target_step: str, reason: str, board_alias: str | None):
+    """Move workflow backward to a previous step.
+
+    Does not discard any configs or state — only moves the workflow cursor.
+    The reason is logged to reflections for auditability.
+    """
+    slug = resolve_slug(None)
+    wf = _load_wf_from_disk(slug)
+
+    if wf.failed:
+        out.die("Workflow is in failed state.")
+    if wf.current_step == "done":
+        out.die("Workflow already complete — cannot go back.")
+
+    target, message = go_back(slug, target_step, reason, board_alias)
+
+    if message:
+        out.die(message)
+
+    out.info("task", f"Moved back to step: {target.title}")
+    out.plain("task", f"Reason: {reason}")
+
+    # Show the target step instructions
+    ws = load_workspace(slug)
+    boards = list_boards(slug)
+    wf = _load_wf_from_disk(slug)
+    board = None
+    if target.phase == "per_board" and wf.current_board:
+        for b in boards:
+            if b.alias == wf.current_board:
+                board = b
+                break
+
+    ctx_vars = build_context(ws, boards, wf, board)
+    instructions = render_step(target, ctx_vars)
+
+    print()
+    _print_step_header(target, wf, boards)
     print(instructions)
 
 

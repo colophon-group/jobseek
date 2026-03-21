@@ -483,6 +483,71 @@ def advance(slug: str, notes: str) -> tuple[StepDef | None, str]:
     return next_step, ""
 
 
+def go_back(
+    slug: str,
+    target_step_id: str,
+    reason: str,
+    board_alias: str | None = None,
+) -> tuple[StepDef | None, str]:
+    """Move the workflow cursor backward to a previous step.
+
+    Does not discard configs or state — only changes the workflow position.
+    Logs the reason as a reflection for auditability.
+
+    Returns (target_step_def, message).
+    """
+    boards = list_boards(slug)
+    wf = _load_wf_from_disk(slug)
+
+    all_steps = _all_step_defs()
+    step_map = {s.id: s for s in all_steps}
+
+    target = step_map.get(target_step_id)
+    if not target:
+        valid = ", ".join(s.id for s in all_steps)
+        return None, f"Unknown step: {target_step_id!r}. Valid: {valid}"
+
+    if target_step_id == wf.current_step and (not board_alias or board_alias == wf.current_board):
+        return None, f"Already at step {target_step_id!r}"
+
+    # Log the backtrack as a reflection
+    reflection: dict[str, str] = {
+        "step": wf.current_step,
+        "notes": f"BACKTRACK to {target_step_id}: {reason}",
+    }
+    if wf.current_board:
+        reflection["board"] = wf.current_board
+    wf.reflections.append(reflection)
+
+    # Update workflow position
+    wf.current_step = target_step_id
+
+    if target.phase == "per_board":
+        by_alias = {b.alias: b for b in boards}
+        if board_alias:
+            if board_alias not in by_alias:
+                return None, f"Board {board_alias!r} not found"
+            wf.current_board = board_alias
+            if board_alias in wf.completed_boards:
+                wf.completed_boards.remove(board_alias)
+        elif wf.current_board:
+            if wf.current_board in wf.completed_boards:
+                wf.completed_boards.remove(wf.current_board)
+        else:
+            next_b = _next_uncompleted_board(boards, wf.completed_boards)
+            if next_b:
+                wf.current_board = next_b.alias
+            elif boards:
+                wf.current_board = boards[0].alias
+                if boards[0].alias in wf.completed_boards:
+                    wf.completed_boards.remove(boards[0].alias)
+    else:
+        wf.current_board = None
+
+    _save_wf_to_disk(slug, wf)
+    return target, ""
+
+
 def _find_next(
     current: StepDef,
     wf: WorkflowState,
