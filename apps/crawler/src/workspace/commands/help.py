@@ -70,33 +70,35 @@ Board Command Reference:
 MONITORS = """\
 Monitor Types (cheapest first):
 
-  Type              Cost    Returns         Scraper needed?
-  ────────────────────────────────────────────────────────
-  join              9       Full job data   No (skipped)
-  ashby             10      Full job data   No (skipped)
-  bite              10      Full job data   No (skipped)
-  breezy            10      Full job data   No (skipped)
-  dvinci            10      Full job data   No (skipped)
-  gem               10      Full job data   No (skipped)
-  greenhouse        10      Full job data   No (skipped)
-  hireology         10      Full job data   No (skipped)
-  lever             10      Full job data   No (skipped)
-  pinpoint          10      Full job data   No (skipped)
-  recruitee         10      Full job data   No (skipped)
-  rippling          10      Full job data   No (skipped)
-  rss               10      Full job data   No (skipped)
-  smartrecruiters   10      Full job data   No (skipped)
-  softgarden        10      Full job data   No (skipped)
-  traffit           10      Full job data   No (skipped)
-  workable          10      Full job data   No (skipped)
-  workday           10      Full job data   No (skipped)
-  personio          10      Full/partial    If descriptions missing (fallback)
-  umantis           15      URL set         Yes
-  nextdata          20      URLs or full    If URL-only
-  apify_meta        50      Full job data   No (skipped)
-  sitemap           50      URL set         Yes
-  api_sniffer       80      URLs or full    If URL-only (no fields)
-  dom               100     URL set         Yes
+  Type              Cost    Returns           Scraper needed?
+  ──────────────────────────────────────────────────────────────
+  join              9       Job URLs          Auto-configured
+  ashby             10      Full job data     No (skipped)
+  bite              10      Job URLs          Auto-configured
+  breezy            10      Job URLs          Auto-configured
+  deel              10      Full job data     No (skipped)
+  dvinci            10      Full job data     No (skipped)
+  gem               10      Full job data     No (skipped)
+  greenhouse        10      Full job data     No (skipped)
+  hireology         10      Full job data     No (skipped)
+  lever             10      Full job data     No (skipped)
+  pinpoint          10      Full job data     No (skipped)
+  recruitee         10      Full job data     No (skipped)
+  rippling          10      Job URLs          Auto-configured
+  rss               10      Full job data     No (skipped)
+  smartrecruiters   10      Job URLs          Auto-configured
+  softgarden        10      Job URLs          Auto-configured
+  traffit           10      Full job data     No (skipped)
+  workable          10      Job URLs          Auto-configured
+  workday           10      Job URLs          Auto-configured
+  personio          10      Full/partial      If descriptions missing (fallback)
+  notion            15      Job URLs          Auto-configured
+  umantis           15      URL set           Yes
+  nextdata          20      URLs or full      If URL-only
+  apify_meta        50      Full job data     No (skipped)
+  sitemap           50      URL set           Yes
+  api_sniffer       80      URLs or full      If URL-only (no fields)
+  dom               100     URL set           Yes
 
 Interpretation guide (after ws probe monitor):
   1. Rich monitor detected (join/greenhouse/lever/rss/etc):
@@ -140,8 +142,9 @@ Scraper Types:
   json-ld        Static/PW   No (optional render)  Sites with schema.org/JobPosting
   nextdata       Static/PW   Yes (fields)     Next.js sites with __NEXT_DATA__
   embedded       Static/PW   Yes (fields)     JS-embedded JSON (script tags, variables)
+  pdf            Static      No               PDF job descriptions
   dom            Static/PW   Yes (steps)      Custom HTML structure
-  api_sniffer    Playwright  Optional (fields)  SPA/XHR job pages
+  api_sniffer    HTTP/PW     Optional (fields)  SPA/XHR or direct API
   workable       API         No               Workable job pages (auto-configured)
   workday        API         No               Workday job pages (auto-configured)
 
@@ -167,9 +170,10 @@ Field importance:
   Required     title — every job must have a title
   Required     description — HTML fragment, needed for display
   Important    locations — most jobs have at least one
-  Important    job_location_type — "Remote", "Hybrid", "On-site"
+  Important    job_location_type — "remote", "hybrid", "onsite"
   Optional     employment_type, date_posted, base_salary, skills,
                qualifications, responsibilities, valid_through
+  Auto         language — ISO 639-1, auto-detected or monitor-provided
 
   Titles and descriptions should reach full coverage before submit.
   Missing locations acceptable only if job_location_type is set (remote-only).

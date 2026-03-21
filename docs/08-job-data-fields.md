@@ -471,7 +471,7 @@ When probing, scrapers try to auto-detect field mappings by matching common key 
 | `locations` | `location`, `locations`, `office`, `offices` |
 | `employment_type` | `employmentType`, `employment_type`, `type`, `jobType` |
 | `job_location_type` | `locationType`, `workplaceType`, `remoteType` |
-| `date_posted` | `datePosted`, `date_posted`, `posted_at`, `published_at`, `createdAt` |
+| `date_posted` | `datePosted`, `createdAt`, `publishedAt`, `postedDate` |
 
 These heuristics often need manual correction — a detected pattern with wrong field mapping should be fixed by inspecting the raw data, not by switching scraper types.
 
