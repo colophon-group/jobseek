@@ -29,6 +29,23 @@ Prefer entries that include:
 - how it was observed
 - why the solution likely generalizes
 
+## Contribute case studies
+
+If this board required complex or non-obvious configuration decisions,
+record them as a case study:
+
+```bash
+ws task casestudy --company {slug} \
+  --monitor <type> --scraper <type> \
+  --tags "<relevant tags>" \
+  --summary "<one-line what makes this board interesting>"
+```
+
+Then fill in the key decisions and final config in the generated file.
+
+Case studies differ from KB entries: they are **end-to-end narratives** of how a
+board was configured (what was tried, what worked), not single symptom→solution pairs.
+
 ## When done
 
 ```bash

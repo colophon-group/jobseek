@@ -28,8 +28,10 @@ Commands:
   ws probe monitor   Probe all monitor types for active board
   ws probe scraper   Probe all scraper types against sample URLs
 
-Troubleshooting:
-  ws task troubleshoot <query>   Search the knowledge base"""
+Troubleshooting & case studies:
+  ws task troubleshoot <query>       Search the knowledge base
+  ws task troubleshoot --view <file> View full KB entry (useful for case studies)
+  ws task casestudy --company ...    Record a case study from a complex setup"""
 
 BOARD = """\
 Board Command Reference:
@@ -1075,6 +1077,12 @@ nextdata — Next.js __NEXT_DATA__ Page Extractor
               - Dot notation: "a.b.c"
               - Array index: "items[0].name"
               - Array wildcard: "offices[].name" (extracts from all)
+              List of paths: concatenate multiple sources into one field.
+                "description": ["intro", "sections[*].content", "footer"]
+              Constants (=prefix): literal values for separators or headings.
+                "description": ["intro", "=<h3>Details</h3>", "body"]
+              Template iteration: {"each": "path[*]", "wrap": "<h3>{title}</h3>\\n{body}"}
+                Iterates array of objects, fills {field} placeholders.
               Target fields: title, description, locations, employment_type,
               job_location_type, date_posted, valid_through, qualifications,
               responsibilities, skills. Prefix with "metadata." for extras.
@@ -1111,6 +1119,12 @@ embedded — Generalized Embedded Data Extractor
               - Named keys: "title", "category.name"
               - Array wildcard: "offices[].name"
               - Positional index: "[1]", "[9][*][2]"
+              List of paths: concatenate multiple sources into one field.
+                "description": ["intro", "sections[*].content", "footer"]
+              Constants (=prefix): literal values for separators or headings.
+                "description": ["intro", "=<h3>Details</h3>", "body"]
+              Template iteration: {"each": "path[*]", "wrap": "<h3>{title}</h3>\\n{body}"}
+                Iterates array of objects, fills {field} placeholders.
               Target fields: title, description, locations, employment_type,
               job_location_type, date_posted, valid_through, qualifications,
               responsibilities, skills. Prefix with "metadata." for extras.
@@ -1174,6 +1188,12 @@ api_sniffer — XHR/Fetch API Capture (single page)
     fields    Optional. Dict mapping JobContent fields to JSON response keys.
               Same spec as nextdata: key, nested.key, array[].field.
               If omitted, auto-maps heuristically from captured response.
+              List of paths: concatenate multiple sources into one field.
+                "description": ["intro", "sections[*].content", "footer"]
+              Constants (=prefix): literal values for separators or headings.
+                "description": ["intro", "=<h3>Details</h3>", "body"]
+              Template iteration: {"each": "path[*]", "wrap": "<h3>{title}</h3>\\n{body}"}
+                Iterates array of objects, fills {field} placeholders.
               Target fields: title, description, locations, employment_type,
               job_location_type, date_posted, valid_through, qualifications,
               responsibilities, skills. Prefix with "metadata." for extras.
@@ -1238,6 +1258,15 @@ Job Data Fields — types, formats, importance
       "Quality: 135/138 title, 120/138 description, 125/138 locations"
     ws run scraper shows extraction stats for scraped pages:
       "3/3 titles, 3/3 descriptions, 2/3 locations"
+
+  Tip: If descriptions are shorter than expected (missing sections like
+  "What You'll Do" or "Requirements"), the source data likely splits
+  content across multiple fields. Use a list spec to concatenate:
+    "description": ["introHtml", "sections[*].content", "closingHtml"]
+  Use =prefix constants for HTML headings between sections:
+    "description": ["intro", "=<h3>Requirements</h3>", "requirements"]
+  Use each+wrap for arrays of titled sections:
+    "description": ["intro", {"each": "sections[*]", "wrap": "<h3>{heading}</h3>\\n{body}"}]
     Titles and descriptions must be N/N — 0/N on either = do not submit.
     Missing locations acceptable only if job_location_type is set
     (e.g. remote-only companies). Otherwise iterate on scraper config."""
@@ -1498,7 +1527,14 @@ Troubleshooting:
 
   Nothing works after trying all types:
     → Document what was tried and the specific failure
-    → ws task fail --reason "..." to enter coding mode"""
+    → ws task fail --reason "..." to enter coding mode
+
+  Case studies:
+    The KB also contains case studies — end-to-end narratives of how
+    complex boards were configured.  Search finds them alongside
+    troubleshooting entries.  Use --view to read the full study:
+      ws task troubleshoot "lever description split"
+      ws task troubleshoot --view spotify-api-sniffer-nextdata.md"""
 
 FEEDBACK = """\
 Feedback Command Reference:
