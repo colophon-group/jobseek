@@ -150,11 +150,36 @@ def _extract_cmd_name(ws_cmd_str: str) -> str:
     return m.group(1) if m else ""
 
 
+def _parse_ts(ts_str: str) -> datetime | None:
+    """Parse an ISO timestamp string, returning None on failure."""
+    if not ts_str:
+        return None
+    try:
+        return datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+    except (ValueError, TypeError):
+        return None
+
+
+def _timestamps_match(log_ts: str, transcript_ts: str, tolerance_s: float = 10.0) -> bool:
+    """Check if two ISO timestamps are within tolerance of each other."""
+    a = _parse_ts(log_ts)
+    b = _parse_ts(transcript_ts)
+    if not a or not b:
+        return False
+    return abs((a - b).total_seconds()) <= tolerance_s
+
+
 def discover_transcript(slug: str) -> Path | None:
     """Find the Claude transcript for the most recent ws run of this slug.
 
-    Uses timestamp correlation and command sequence matching between
-    log.yaml and transcript Bash tool_use records.
+    Strategy: match log.yaml timestamps against Bash tool_use timestamps
+    in transcripts. The log records exact timestamps for each ws command;
+    the transcript records timestamps for each tool call. Multiple matching
+    timestamps confirm the correct transcript.
+
+    Note: the ``ws task complete`` call itself may not be in the transcript
+    yet (it's still executing), so we match against the second-to-last
+    log entry (typically ``submit``) and earlier entries.
     """
     log_cmds = _log_ws_commands(slug)
     if not log_cmds:
@@ -163,21 +188,17 @@ def discover_transcript(slug: str) -> Path | None:
     # Get timestamp range from log entries
     first_ts = log_cmds[0][0]
     last_ts = log_cmds[-1][0]
-    if not first_ts or not last_ts:
+    first_dt = _parse_ts(first_ts)
+    last_dt = _parse_ts(last_ts)
+    if not first_dt or not last_dt:
         return None
 
-    try:
-        first_dt = datetime.fromisoformat(first_ts.replace("Z", "+00:00"))
-        last_dt = datetime.fromisoformat(last_ts.replace("Z", "+00:00"))
-    except (ValueError, TypeError):
-        return None
+    # Use the last N log timestamps for matching (skip 'complete' since
+    # it may not be in the transcript yet — it's the currently executing call)
+    match_entries = [(ts, cmd) for ts, cmd in log_cmds if cmd != "complete"]
+    match_timestamps = [ts for ts, _ in match_entries[-6:]]
 
-    # Take last N command names from log for sequence matching
-    last_n_cmds = [cmd for _, cmd in log_cmds[-8:]]
-
-    # Scan all transcripts. Use mtime as a rough filter: the file must have
-    # been modified AFTER the first ws command (with generous 24h padding to
-    # account for session resumption, compaction, etc.)
+    # Scan all transcripts. Rough mtime filter with generous 24h padding.
     cutoff = first_dt - __import__("datetime").timedelta(hours=24)
     candidates: list[tuple[Path, float]] = []
     for t_path in _find_all_transcripts():
@@ -187,46 +208,44 @@ def discover_transcript(slug: str) -> Path | None:
             continue
         if mtime < cutoff:
             continue
-        # Score by closeness to last log entry (prefer most recent)
         candidates.append((t_path, abs((mtime - last_dt).total_seconds())))
 
-    # Sort by closeness to last log timestamp
     candidates.sort(key=lambda x: x[1])
 
-    # Two-pass matching: first quick-check tail of main transcript only,
-    # then full flatten + sequence match on short-listed candidates.
-    shortlisted: list[Path] = []
-    last_cmd = last_n_cmds[-1] if last_n_cmds else ""
+    # Slug pattern for verification
+    slug_re = re.compile(rf"\b{re.escape(slug)}\b")
 
-    for t_path, _ in candidates[:50]:  # limit scan to top 50 by mtime
-        # Quick check: does the tail of the main transcript contain the
-        # last ws command (e.g., "complete" or "submit")?
-        tail = _tail_jsonl(t_path, 300)
+    best_match: tuple[Path, int] | None = None
+
+    for t_path, _ in candidates[:50]:
+        # Extract all Bash tool_use timestamps from the transcript
+        tail = _tail_jsonl(t_path, 500)
         tail_ws = _extract_ws_commands(tail)
-        tail_cmd_names = [_extract_cmd_name(cmd) for _, cmd in tail_ws]
-        if last_cmd and last_cmd in tail_cmd_names:
-            shortlisted.append(t_path)
 
-    # Full sequence match on shortlisted candidates.
-    # Also verify the transcript mentions this specific slug in a ws command.
-    slug_pattern = re.compile(
-        rf"\bws\s+\S+\s+{re.escape(slug)}\b|ws\s+\S+\s+.*\b{re.escape(slug)}\b"
-    )
+        if not tail_ws:
+            continue
 
-    for t_path in shortlisted:
-        flat = _flatten_transcript(t_path)
-        transcript_ws = _extract_ws_commands(flat)
-        transcript_cmd_names = [_extract_cmd_name(cmd) for _, cmd in transcript_ws]
+        # Count how many log timestamps match transcript ws timestamps
+        transcript_timestamps = [ts for ts, _ in tail_ws]
+        hits = sum(
+            1
+            for log_ts in match_timestamps
+            if any(_timestamps_match(log_ts, t_ts) for t_ts in transcript_timestamps)
+        )
 
-        if not _is_subsequence(last_n_cmds, transcript_cmd_names):
+        # Need at least 3 matching timestamps (or all if fewer than 3)
+        min_hits = min(3, len(match_timestamps))
+        if hits < min_hits:
             continue
 
         # Verify slug appears in at least one ws command
-        slug_found = any(slug_pattern.search(cmd) for _, cmd in transcript_ws)
-        if slug_found:
-            return t_path
+        if not any(slug_re.search(cmd) for _, cmd in tail_ws):
+            continue
 
-    return None
+        if best_match is None or hits > best_match[1]:
+            best_match = (t_path, hits)
+
+    return best_match[0] if best_match else None
 
 
 def extract_scoped_trace(transcript_path: Path, slug: str) -> list[dict]:
