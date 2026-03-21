@@ -41,6 +41,7 @@ from src.workspace.errors import WorkspaceError
 
 
 @click.group()
+@click.version_option(package_name="jobseek-crawler")
 def ws():
     """Workspace CLI for managing company additions."""
 
