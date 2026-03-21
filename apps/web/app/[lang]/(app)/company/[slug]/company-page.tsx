@@ -2,8 +2,8 @@
 
 import { useState, useCallback, useTransition, useRef, useEffect, useMemo } from "react";
 import Image from "next/image";
-import Link from "next/link";
-import { ArrowLeft, Building2, Loader2 } from "lucide-react";
+import { Building2, Loader2 } from "lucide-react";
+import { BackLink } from "@/components/BackLink";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { StarButton } from "@/components/search/star-button";
 import { useParams, usePathname, useSearchParams } from "next/navigation";
@@ -12,6 +12,10 @@ import { SaveButton } from "@/components/search/save-button";
 import { JobDetailPanel } from "@/components/search/job-detail-dialog";
 import { SearchToolbar } from "@/components/search/search-toolbar";
 import { getCompanyPostings } from "@/lib/actions/company";
+import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
+import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
+import { TrackingDot } from "@/components/TrackingDot";
+import { PendingJobIcon } from "@/components/PendingJobWarning";
 import { getCurrencyRates, type CurrencyRate } from "@/lib/actions/search";
 import type { CompanyDetail } from "@/lib/actions/company";
 import { buildFilteredPath } from "@/lib/search/query-params";
@@ -100,6 +104,7 @@ export function CompanyPage({
   const [salaryMax, setSalaryMax] = useState<number | undefined>(initialSalaryMax);
   const [experienceMin, setExperienceMin] = useState<number | undefined>(initialExperienceMin);
   const [experienceMax, setExperienceMax] = useState<number | undefined>(initialExperienceMax);
+  const [employmentTypes, setEmploymentTypes] = useState<string[]>([]);
   const [postings, setPostings] = useState<SearchResultPosting[]>(initialPostings);
   const [activeCount, setActiveCount] = useState(initialActiveCount);
   const [yearCount, setYearCount] = useState(initialYearCount);
@@ -107,10 +112,7 @@ export function CompanyPage({
     initialShowPostingId ?? searchParams.get("show"),
   );
   const [isSearching, startSearch] = useTransition();
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [exhausted, setExhausted] = useState(initialPostings.length < PAGE_SIZE);
-  const loadingRef = useRef(false);
-  const sentinelRef = useRef<HTMLDivElement>(null);
 
   // Currency rates for EUR conversion (fetched lazily)
   const [currencyRates, setCurrencyRates] = useState<CurrencyRate[]>([]);
@@ -124,6 +126,7 @@ export function CompanyPage({
   const occupationsRef = useRef(occupations);
   const senioritiesRef = useRef(seniorities);
   const technologiesRef = useRef(technologies);
+  const employmentTypesRef = useRef(employmentTypes);
   const salaryCurrencyRef = useRef(salaryCurrency);
   const salaryMinRef = useRef(salaryMin);
   const salaryMaxRef = useRef(salaryMax);
@@ -134,6 +137,7 @@ export function CompanyPage({
   occupationsRef.current = occupations;
   senioritiesRef.current = seniorities;
   technologiesRef.current = technologies;
+  employmentTypesRef.current = employmentTypes;
   salaryCurrencyRef.current = salaryCurrency;
   salaryMinRef.current = salaryMin;
   salaryMaxRef.current = salaryMax;
@@ -189,6 +193,7 @@ export function CompanyPage({
     const occupationIds = occupationsRef.current.map((o) => o.id);
     const seniorityIds = senioritiesRef.current.map((s) => s.id);
     const technologyIds = technologiesRef.current.map((t) => t.id);
+    const etypes = employmentTypesRef.current;
     const salMinEur = toEur(salaryMinRef.current);
     const salMaxEur = toEur(salaryMaxRef.current);
     const expMin = experienceMinRef.current;
@@ -201,6 +206,7 @@ export function CompanyPage({
         occupationIds: occupationIds.length > 0 ? occupationIds : undefined,
         seniorityIds: seniorityIds.length > 0 ? seniorityIds : undefined,
         technologyIds: technologyIds.length > 0 ? technologyIds : undefined,
+        employmentTypes: etypes.length > 0 ? etypes : undefined,
         salaryMinEur: salMinEur,
         salaryMaxEur: salMaxEur,
         experienceMin: expMin,
@@ -263,6 +269,27 @@ export function CompanyPage({
       getOccupations: () => occupationsRef.current,
       getSeniorities: () => senioritiesRef.current,
       getTechnologies: () => technologiesRef.current,
+      addEmploymentType: (type: string) => {
+        if (employmentTypesRef.current.includes(type)) return;
+        const updated = [...employmentTypesRef.current, type];
+        setEmploymentTypes(updated);
+        employmentTypesRef.current = updated;
+        updateUrl();
+        runSearch();
+      },
+      setSalaryFilter: (currency: string, min: number | undefined, max: number | undefined) => {
+        setSalaryCurrency(currency); salaryCurrencyRef.current = currency;
+        setSalaryMin(min); salaryMinRef.current = min;
+        setSalaryMax(max); salaryMaxRef.current = max;
+        updateUrl();
+        runSearch();
+      },
+      setExperienceFilter: (min: number | undefined, max: number | undefined) => {
+        setExperienceMin(min); experienceMinRef.current = min;
+        setExperienceMax(max); experienceMaxRef.current = max;
+        updateUrl();
+        runSearch();
+      },
       placeholder: searchPlaceholder,
     });
     return () => setPageActions(null);
@@ -429,25 +456,23 @@ export function CompanyPage({
     runSearch();
   }, [displayCurrency]);
 
-  const handleLoadMore = useCallback(() => {
-    if (loadingRef.current || !hasMore) return;
-    loadingRef.current = true;
-    setIsLoadingMore(true);
-
+  async function handleLoadMore() {
     const locationIds = locations.map((l) => l.id);
     const occupationIds = occupations.length > 0 ? occupations.map((o) => o.id) : undefined;
     const seniorityIds = seniorities.length > 0 ? seniorities.map((s) => s.id) : undefined;
     const technologyIds = technologies.length > 0 ? technologies.map((t) => t.id) : undefined;
+    const etypes = employmentTypes.length > 0 ? employmentTypes : undefined;
     const salMinEur = toEur(salaryMin);
     const salMaxEur = toEur(salaryMax);
 
-    getCompanyPostings({
+    const result = await getCompanyPostings({
       companyId: company.id,
       keywords,
       locationIds: locationIds.length > 0 ? locationIds : undefined,
       occupationIds,
       seniorityIds,
       technologyIds,
+      employmentTypes: etypes,
       salaryMinEur: salMinEur,
       salaryMaxEur: salMaxEur,
       experienceMin,
@@ -456,42 +481,19 @@ export function CompanyPage({
       locale: uiLocale,
       offset: postings.length,
       limit: PAGE_SIZE,
-    })
-      .then((result) => {
-        if (result.postings.length > 0) {
-          setPostings((prev) => {
-            const seen = new Set(prev.map((p) => p.id));
-            return [...prev, ...result.postings.filter((p) => !seen.has(p.id))];
-          });
-        }
-        if (result.postings.length < PAGE_SIZE) {
-          setExhausted(true);
-        }
-      })
-      .finally(() => {
-        loadingRef.current = false;
-        setIsLoadingMore(false);
+    });
+    if (result.postings.length > 0) {
+      setPostings((prev) => {
+        const seen = new Set(prev.map((p) => p.id));
+        return [...prev, ...result.postings.filter((p) => !seen.has(p.id))];
       });
-  }, [company.id, keywords, locations, occupations, seniorities, technologies, uiLocale, languages, postings.length, hasMore, salaryMin, salaryMax, experienceMin, experienceMax]);
+    }
+    if (result.postings.length < PAGE_SIZE) {
+      setExhausted(true);
+    }
+  }
 
-  // IntersectionObserver for infinite scroll.
-  // `isSearching` is included so the observer re-attaches after a search
-  // replaces the posting list (the sentinel is unmounted during the search
-  // transition and remounted afterward — without this dep the effect may
-  // not re-run if handleLoadMore's identity happens to stay the same).
-  useEffect(() => {
-    const sentinel = sentinelRef.current;
-    if (!sentinel) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) handleLoadMore();
-      },
-      { rootMargin: "200px" },
-    );
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [handleLoadMore, isSearching]);
+  const { sentinelRef, isLoading: isLoadingMore } = useInfiniteScroll({ hasMore, load: handleLoadMore, observerKey: isSearching });
 
   function handleOpenPosting(postingId: string) {
     setShowPostingId(postingId);
@@ -533,15 +535,11 @@ export function CompanyPage({
   const mainContent = (
     <div className="space-y-4">
       {/* Back to search */}
-      <Link
-        href={searchHref}
-        className="inline-flex items-center gap-1 text-xs text-muted transition-colors hover:text-foreground"
-      >
-        <ArrowLeft size={12} />
+      <BackLink href={searchHref}>
         <Trans id="company.page.backToSearch" comment="Back to search results link on company page">
           Search results
         </Trans>
-      </Link>
+      </BackLink>
 
       {/* Header */}
       <div className="flex items-center gap-3">
@@ -622,6 +620,15 @@ export function CompanyPage({
         onRemoveSeniority={handleRemoveSeniority}
         onAddTechnology={handleAddTechnology}
         onRemoveTechnology={handleRemoveTechnology}
+        employmentTypes={employmentTypes}
+        onToggleEmploymentType={(type) => {
+          const exists = employmentTypesRef.current.includes(type);
+          const updated = exists ? employmentTypesRef.current.filter((t) => t !== type) : [...employmentTypesRef.current, type];
+          setEmploymentTypes(updated);
+          employmentTypesRef.current = updated;
+          updateUrl();
+          runSearch();
+        }}
         onSalaryChange={handleSalaryChange}
         onExperienceChange={handleExperienceChange}
         histogramFilters={histogramFilters}
@@ -652,6 +659,7 @@ export function CompanyPage({
               onKeyDown={(e) => { if (e.key === "Enter") handleOpenPosting(posting.id); }}
               className={`flex cursor-pointer items-center gap-2 rounded px-1 py-1.5 transition-colors ${posting.id === showPostingId ? "bg-primary/10" : "hover:bg-border-soft"} ${posting.isActive === false ? "opacity-50" : ""}`}
             >
+              <TrackingDot postingId={posting.id} />
               <span className="min-w-0 flex-1 truncate text-sm">{posting.title ?? "—"}</span>
               {posting.isActive === false && (
                 <span className="shrink-0 rounded bg-border-soft px-1 py-0.5 text-[10px] text-muted">
@@ -666,41 +674,42 @@ export function CompanyPage({
                   {posting.locations.length > 1 && ` +${posting.locations.length - 1}`}
                 </span>
               )}
+              {!posting.title && <PendingJobIcon />}
               <SaveButton postingId={posting.id} />
               <span suppressHydrationWarning className="w-8 shrink-0 text-left text-[10px] tabular-nums text-muted">
                 {timeAgoShort(posting.firstSeenAt)}
               </span>
             </div>
           ))}
-          {hasMore && (
-            <div ref={sentinelRef} className="flex h-8 items-center justify-center">
-              {isLoadingMore && <Loader2 size={14} className="animate-spin text-muted" />}
-            </div>
-          )}
+          {hasMore && <InfiniteScrollSentinel sentinelRef={sentinelRef} isLoading={isLoadingMore} />}
         </div>
       )}
     </div>
   );
 
-  if (!showPostingId) {
-    return mainContent;
-  }
-
   return (
     <div className="flex gap-5">
       <div className="min-w-0 flex-1">{mainContent}</div>
-      <div className="hidden w-[420px] shrink-0 lg:block">
-        <JobDetailPanel postingId={showPostingId} onClose={handleClosePosting} />
-      </div>
-      {/* On small screens, show as an overlay */}
-      <div className="fixed inset-0 z-50 bg-black/40 lg:hidden" onClick={handleClosePosting}>
-        <div
-          className="absolute inset-y-0 right-0 w-full max-w-lg bg-surface shadow-xl"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <JobDetailPanel postingId={showPostingId} onClose={handleClosePosting} />
-        </div>
-      </div>
+      {showPostingId && (
+        <>
+          <div className="hidden w-[420px] shrink-0 lg:block" aria-hidden="true" />
+          <div
+            className="fixed top-[4.5rem] z-40 hidden w-[420px] lg:block"
+            style={{ right: "max(1rem, calc((100vw - 1200px) / 2 + 1rem))", height: "calc(100vh - 5.5rem)" }}
+          >
+            <JobDetailPanel postingId={showPostingId} onClose={handleClosePosting} />
+          </div>
+          {/* On small screens, show as an overlay */}
+          <div className="fixed inset-0 z-50 bg-black/40 lg:hidden" onClick={handleClosePosting}>
+            <div
+              className="absolute inset-y-0 right-0 w-full max-w-lg bg-surface shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <JobDetailPanel postingId={showPostingId} onClose={handleClosePosting} />
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

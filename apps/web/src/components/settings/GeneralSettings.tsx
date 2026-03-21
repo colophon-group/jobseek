@@ -14,6 +14,7 @@ import { CountryFlag } from "@/components/country-flag";
 import { localPrefs } from "@/lib/preference-timestamps";
 import { getLanguage } from "@/lib/job-languages";
 import { JobLanguageModal } from "@/components/settings/JobLanguageModal";
+import { useSalaryDisplay } from "@/components/SalaryDisplayProvider";
 
 /** How many languages to show inline before the "Find more" button. */
 const INLINE_LIMIT = 12;
@@ -23,12 +24,13 @@ const INLINE_LIMIT = 12;
 interface GeneralSettingsProps {
   savedJobLanguages: string[];
   savedDisplayCurrency: string;
+  savedSalaryPeriod: string | null;
   availableCurrencies: string[];
   availableLanguages: AvailableLanguage[];
   locale: string;
 }
 
-export function GeneralSettings({ savedJobLanguages, savedDisplayCurrency, availableCurrencies, availableLanguages, locale: serverLocale }: GeneralSettingsProps) {
+export function GeneralSettings({ savedJobLanguages, savedDisplayCurrency, savedSalaryPeriod, availableCurrencies, availableLanguages, locale: serverLocale }: GeneralSettingsProps) {
   const { theme, setTheme } = useTheme();
   const { t } = useLingui();
   const router = useRouter();
@@ -44,8 +46,10 @@ export function GeneralSettings({ savedJobLanguages, savedDisplayCurrency, avail
   const [jobLanguages, setJobLanguages] = useState<string[]>(savedJobLanguages);
   const [langModalOpen, setLangModalOpen] = useState(false);
 
-  // Display currency state
+  // Display currency + salary period state
   const [displayCurrency, setDisplayCurrency] = useState(savedDisplayCurrency);
+  const [salaryPeriod, setSalaryPeriod] = useState(savedSalaryPeriod ?? "");
+  const salaryDisplay = useSalaryDisplay();
 
   const isAllLanguages = jobLanguages.includes("*");
   const isDefault = jobLanguages.length === 0;
@@ -292,29 +296,68 @@ export function GeneralSettings({ savedJobLanguages, savedDisplayCurrency, avail
         />
       </section>
 
-      {/* Display Currency */}
+      {/* Salary display */}
       <section>
         <h2 className="mb-1 text-lg font-semibold">
-          <Trans id="settings.general.currency.title" comment="Display currency settings section heading">Display currency</Trans>
+          <Trans id="settings.general.salary.title" comment="Salary display settings section heading">Salary display</Trans>
         </h2>
         <p className="mb-4 text-sm text-muted">
-          <Trans id="settings.general.currency.description" comment="Display currency settings description">
-            Choose the currency for salary filters and display.
+          <Trans id="settings.general.salary.description" comment="Salary display settings description">
+            Choose how salaries are shown across the site.
           </Trans>
         </p>
-        <select
-          value={displayCurrency}
-          onChange={(e) => {
-            const val = e.target.value;
-            setDisplayCurrency(val);
-            void updatePreferences({ displayCurrency: val });
-          }}
-          className="rounded-md border border-divider bg-surface px-4 py-2 text-sm cursor-pointer"
-        >
-          {availableCurrencies.map((c) => (
-            <option key={c} value={c}>{c}</option>
-          ))}
-        </select>
+        <div className="flex flex-wrap gap-3">
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-muted">
+              {t({ id: "settings.general.salary.currencyLabel", comment: "Label for currency selector", message: "Currency" })}
+            </span>
+            <select
+              value={displayCurrency}
+              onChange={(e) => {
+                const val = e.target.value;
+                setDisplayCurrency(val);
+                salaryDisplay.update({ displayCurrency: val });
+                void updatePreferences({ displayCurrency: val });
+              }}
+              className="rounded-md border border-divider bg-surface px-4 py-2 text-sm cursor-pointer"
+            >
+              {availableCurrencies.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-muted">
+              {t({ id: "settings.general.salary.periodLabel", comment: "Label for pay period selector", message: "Pay period" })}
+            </span>
+            <select
+              value={salaryPeriod}
+              onChange={(e) => {
+                const val = e.target.value;
+                setSalaryPeriod(val);
+                salaryDisplay.update({ salaryPeriod: val || null });
+                void updatePreferences({ salaryPeriod: val || null });
+              }}
+              className="rounded-md border border-divider bg-surface px-4 py-2 text-sm cursor-pointer"
+            >
+              <option value="">
+                {t({ id: "settings.general.salary.period.original", comment: "Original pay period option", message: "Original" })}
+              </option>
+              <option value="yearly">
+                {t({ id: "settings.general.salary.period.yearly", comment: "Yearly pay period option", message: "Yearly" })}
+              </option>
+              <option value="monthly">
+                {t({ id: "settings.general.salary.period.monthly", comment: "Monthly pay period option", message: "Monthly" })}
+              </option>
+              <option value="daily">
+                {t({ id: "settings.general.salary.period.daily", comment: "Daily pay period option", message: "Daily" })}
+              </option>
+              <option value="hourly">
+                {t({ id: "settings.general.salary.period.hourly", comment: "Hourly pay period option", message: "Hourly" })}
+              </option>
+            </select>
+          </label>
+        </div>
       </section>
     </div>
   );

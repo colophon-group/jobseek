@@ -206,6 +206,12 @@ function technologyFilter(alias: string, technologyIds?: number[]) {
   return sql`${sql.raw(alias)}.technology_ids && ${pgArray}::integer[]`;
 }
 
+function employmentTypeFilter(alias: string, employmentTypes?: string[]) {
+  if (!employmentTypes || employmentTypes.length === 0) return sql`true`;
+  const pgArray = `{${employmentTypes.join(",")}}`;
+  return sql`${sql.raw(alias)}.employment_type = ANY(${pgArray}::text[])`;
+}
+
 /** Filter by job language(s). Empty array = no filter (all languages). */
 function languageFilter(alias: string, languages: string[]) {
   if (languages.length === 0) return sql`true`;
@@ -243,7 +249,7 @@ export class PostgresSearchProvider implements SearchProvider {
     offset: number;
     limit: number;
   }): Promise<SearchResponse> {
-    const { keywords, languages, locale, offset, limit, locationIds, occupationIds, seniorityIds, technologyIds, salaryMinEur, salaryMaxEur, experienceMin, experienceMax } = params;
+    const { keywords, languages, locale, offset, limit, locationIds, occupationIds, seniorityIds, technologyIds, employmentTypes, salaryMinEur, salaryMaxEur, experienceMin, experienceMax } = params;
 
     const rows = await db.execute<RawSearchRow>(sql`
       WITH posting_matches AS (
@@ -259,6 +265,7 @@ export class PostgresSearchProvider implements SearchProvider {
           AND (${occupationFilter("jp", occupationIds)})
           AND (${seniorityFilter("jp", seniorityIds)})
           AND (${technologyFilter("jp", technologyIds)})
+          AND (${employmentTypeFilter("jp", employmentTypes)})
           AND (${salaryFilter("jp", salaryMinEur, salaryMaxEur)})
           AND (${experienceFilter("jp", experienceMin, experienceMax)})
       ),
@@ -320,7 +327,7 @@ export class PostgresSearchProvider implements SearchProvider {
     offset: number;
     limit: number;
   }): Promise<SearchResponse> {
-    const { languages, locale, offset, limit, locationIds, occupationIds, seniorityIds, technologyIds, salaryMinEur, salaryMaxEur, experienceMin, experienceMax } = params;
+    const { languages, locale, offset, limit, locationIds, occupationIds, seniorityIds, technologyIds, employmentTypes, salaryMinEur, salaryMaxEur, experienceMin, experienceMax } = params;
 
     const rows = await db.execute<RawSearchRow>(sql`
       WITH all_companies AS (
@@ -336,6 +343,7 @@ export class PostgresSearchProvider implements SearchProvider {
           AND (${occupationFilter("jp", occupationIds)})
           AND (${seniorityFilter("jp", seniorityIds)})
           AND (${technologyFilter("jp", technologyIds)})
+          AND (${employmentTypeFilter("jp", employmentTypes)})
           AND (${salaryFilter("jp", salaryMinEur, salaryMaxEur)})
           AND (${experienceFilter("jp", experienceMin, experienceMax)})
         GROUP BY jp.company_id
@@ -375,6 +383,7 @@ export class PostgresSearchProvider implements SearchProvider {
           AND (${occupationFilter("jp2", occupationIds)})
           AND (${seniorityFilter("jp2", seniorityIds)})
           AND (${technologyFilter("jp2", technologyIds)})
+          AND (${employmentTypeFilter("jp2", employmentTypes)})
           AND (${salaryFilter("jp2", salaryMinEur, salaryMaxEur)})
           AND (${experienceFilter("jp2", experienceMin, experienceMax)})
         ORDER BY jp2.first_seen_at DESC
@@ -398,7 +407,7 @@ export class PostgresSearchProvider implements SearchProvider {
     offset: number;
     limit: number;
   }): Promise<SearchResultPosting[]> {
-    const { companyId, keywords, languages, locale, offset, limit, locationIds, occupationIds, seniorityIds, technologyIds, salaryMinEur, salaryMaxEur, experienceMin, experienceMax } = params;
+    const { companyId, keywords, languages, locale, offset, limit, locationIds, occupationIds, seniorityIds, technologyIds, employmentTypes, salaryMinEur, salaryMaxEur, experienceMin, experienceMax } = params;
 
     interface PostingRow {
       [key: string]: unknown;
@@ -428,6 +437,7 @@ export class PostgresSearchProvider implements SearchProvider {
           AND (${occupationFilter("jp", occupationIds)})
           AND (${seniorityFilter("jp", seniorityIds)})
           AND (${technologyFilter("jp", technologyIds)})
+          AND (${employmentTypeFilter("jp", employmentTypes)})
           AND (${salaryFilter("jp", salaryMinEur, salaryMaxEur)})
           AND (${experienceFilter("jp", experienceMin, experienceMax)})
         ORDER BY keyword_count DESC, jp.first_seen_at DESC, jp.id
@@ -448,6 +458,7 @@ export class PostgresSearchProvider implements SearchProvider {
           AND (${occupationFilter("jp", occupationIds)})
           AND (${seniorityFilter("jp", seniorityIds)})
           AND (${technologyFilter("jp", technologyIds)})
+          AND (${employmentTypeFilter("jp", employmentTypes)})
           AND (${salaryFilter("jp", salaryMinEur, salaryMaxEur)})
           AND (${experienceFilter("jp", experienceMin, experienceMax)})
         ORDER BY jp.first_seen_at DESC, jp.id
@@ -486,7 +497,7 @@ export class PostgresSearchProvider implements SearchProvider {
     offset: number;
     limit: number;
   }): Promise<{ postings: SearchResultPosting[]; activeCount: number; yearCount: number }> {
-    const { companyId, keywords, languages, locale, offset, limit, locationIds, occupationIds, seniorityIds, technologyIds, salaryMinEur, salaryMaxEur, experienceMin, experienceMax } = params;
+    const { companyId, keywords, languages, locale, offset, limit, locationIds, occupationIds, seniorityIds, technologyIds, employmentTypes, salaryMinEur, salaryMaxEur, experienceMin, experienceMax } = params;
 
     interface CountRow {
       [key: string]: unknown;
@@ -545,6 +556,7 @@ export class PostgresSearchProvider implements SearchProvider {
           AND (${occupationFilter("jp", occupationIds)})
           AND (${seniorityFilter("jp", seniorityIds)})
           AND (${technologyFilter("jp", technologyIds)})
+          AND (${employmentTypeFilter("jp", employmentTypes)})
           AND (${salaryFilter("jp", salaryMinEur, salaryMaxEur)})
           AND (${experienceFilter("jp", experienceMin, experienceMax)})
         ORDER BY keyword_count DESC, jp.first_seen_at DESC, jp.id
@@ -565,6 +577,7 @@ export class PostgresSearchProvider implements SearchProvider {
           AND (${occupationFilter("jp", occupationIds)})
           AND (${seniorityFilter("jp", seniorityIds)})
           AND (${technologyFilter("jp", technologyIds)})
+          AND (${employmentTypeFilter("jp", employmentTypes)})
           AND (${salaryFilter("jp", salaryMinEur, salaryMaxEur)})
           AND (${experienceFilter("jp", experienceMin, experienceMax)})
         ORDER BY jp.first_seen_at DESC, jp.id

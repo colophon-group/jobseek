@@ -29,6 +29,7 @@ export async function updatePreferences(
     locale?: "en" | "de" | "fr" | "it";
     jobLanguages?: string[];
     displayCurrency?: string;
+    salaryPeriod?: string | null;
     cookieConsent?: boolean;
     dismissBanner?: string;
     themeUpdatedAt?: string;
@@ -67,6 +68,10 @@ export async function updatePreferences(
 
     if (data.displayCurrency !== undefined) {
       set.displayCurrency = data.displayCurrency;
+    }
+
+    if (data.salaryPeriod !== undefined) {
+      set.salaryPeriod = data.salaryPeriod;
     }
 
     // Theme: only update if incoming timestamp >= existing, or no existing timestamp

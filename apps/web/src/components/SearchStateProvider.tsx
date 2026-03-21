@@ -52,6 +52,9 @@ export interface SearchPageActions {
   addOccupation: (occupation: { id: number; slug: string; name: string }) => void;
   addSeniority: (seniority: { id: number; slug: string; name: string }) => void;
   addTechnology?: (technology: { id: number; slug: string; name: string }) => void;
+  addEmploymentType?: (type: string) => void;
+  setSalaryFilter?: (currency: string, min: number | undefined, max: number | undefined) => void;
+  setExperienceFilter?: (min: number | undefined, max: number | undefined) => void;
   submitSearch: (
     keywords: string[],
     locations: SelectedLocation[],

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { SlidersHorizontal, ChevronDown, ChevronUp, MapPin, Briefcase, BarChart3, DollarSign, Clock, Code2 } from "lucide-react";
+import { SlidersHorizontal, ChevronDown, ChevronUp, MapPin, Briefcase, BarChart3, CalendarDays, DollarSign, Clock, Code2 } from "lucide-react";
 import { useLingui } from "@lingui/react/macro";
 import type { SelectedLocation } from "@/components/search/location-pills";
 import { LocationSearchModal } from "./location-search-modal";
@@ -10,6 +10,7 @@ import { SeniorityModal } from "./seniority-modal";
 import { TechnologyModal } from "./technology-modal";
 import { SalaryModal } from "./salary-modal";
 import { ExperienceModal } from "./experience-modal";
+import { EmploymentTypeModal } from "./employment-type-modal";
 import type { HistogramFilters } from "@/lib/search";
 
 type TaxonomyItem = { id: number; slug: string; name: string };
@@ -35,6 +36,8 @@ interface AdvancedSearchPanelProps {
   onRemoveSeniority: (id: number) => void;
   onAddTechnology?: (tech: TaxonomyItem) => void;
   onRemoveTechnology?: (id: number) => void;
+  employmentTypes?: string[];
+  onToggleEmploymentType?: (type: string) => void;
   onSalaryChange?: (currency: string, min: number | undefined, max: number | undefined) => void;
   onExperienceChange?: (min: number | undefined, max: number | undefined) => void;
   histogramFilters?: HistogramFilters;
@@ -59,6 +62,8 @@ export function AdvancedSearchPanel({
   onRemoveSeniority,
   onAddTechnology,
   onRemoveTechnology,
+  employmentTypes,
+  onToggleEmploymentType,
   onSalaryChange,
   onExperienceChange,
   histogramFilters,
@@ -71,6 +76,7 @@ export function AdvancedSearchPanel({
   const [technologyModalOpen, setTechnologyModalOpen] = useState(false);
   const [salaryModalOpen, setSalaryModalOpen] = useState(false);
   const [experienceModalOpen, setExperienceModalOpen] = useState(false);
+  const [employmentTypeModalOpen, setEmploymentTypeModalOpen] = useState(false);
 
   const handleToggleLocation = useCallback(
     (loc: { id: number; slug: string; name: string; type: string; parentName?: string | null }) => {
@@ -151,6 +157,12 @@ export function AdvancedSearchPanel({
             <button onClick={() => setTechnologyModalOpen(true)} className={btnClass}>
               <Code2 size={14} className="shrink-0 text-muted" />
               {t({ id: "search.advanced.technology", comment: "Label for technology filter in advanced search", message: "Technology" })}
+            </button>
+          )}
+          {onToggleEmploymentType && (
+            <button onClick={() => setEmploymentTypeModalOpen(true)} className={btnClass}>
+              <CalendarDays size={14} className="shrink-0 text-muted" />
+              {t({ id: "search.advanced.employmentType", comment: "Label for employment type filter in advanced search", message: "Type" })}
             </button>
           )}
           {onSalaryChange && (
@@ -248,6 +260,14 @@ export function AdvancedSearchPanel({
           max={experienceMax}
           onApply={onExperienceChange}
           histogramFilters={histogramFilters}
+        />
+      )}
+      {onToggleEmploymentType && (
+        <EmploymentTypeModal
+          open={employmentTypeModalOpen}
+          onOpenChange={setEmploymentTypeModalOpen}
+          selected={employmentTypes ?? []}
+          onToggle={onToggleEmploymentType}
         />
       )}
     </div>

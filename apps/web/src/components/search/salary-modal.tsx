@@ -11,6 +11,7 @@ import {
   type SalaryBucket,
 } from "@/lib/actions/search";
 import type { HistogramFilters } from "@/lib/search";
+import { useSalaryDisplay } from "@/components/SalaryDisplayProvider";
 
 // Fixed EUR buckets for the slider — 0 to 300K in 10K steps
 const BUCKET_WIDTH = 10000;
@@ -154,13 +155,18 @@ export function SalaryModal({
   onApply,
   histogramFilters,
 }: SalaryModalProps) {
-  // Data
-  const [rates, setRates] = useState<CurrencyRate[]>([]);
+  const salaryDisplay = useSalaryDisplay();
+
+  // Data — prefer context rates, fetch only histogram
+  const contextRates = salaryDisplay.rates;
+  const [localRates, setLocalRates] = useState<CurrencyRate[]>([]);
+  const rates = contextRates.length > 0 ? contextRates : localRates;
   const [histogram, setHistogram] = useState<SalaryBucket[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Local state (only applied on close/apply)
-  const [currency, setCurrency] = useState(initialCurrency);
+  const preferredCurrency = salaryDisplay.displayCurrency ?? initialCurrency;
+  const [currency, setCurrency] = useState(preferredCurrency);
   const [lowEur, setLowEur] = useState(0);
   const [highEur, setHighEur] = useState(MAX_EUR);
 
@@ -174,7 +180,7 @@ export function SalaryModal({
   // Sync initial props when modal opens
   useEffect(() => {
     if (open) {
-      setCurrency(initialCurrency);
+      setCurrency(initialCurrency || preferredCurrency);
       if (initialMin != null) {
         setLowEur(toEurVal(initialMin, rates.find((r) => r.currency === initialCurrency)?.toEur ?? 1));
       } else {
@@ -191,22 +197,24 @@ export function SalaryModal({
   // Stable key for histogram filters to detect changes
   const filtersKey = useMemo(() => JSON.stringify(histogramFilters ?? {}), [histogramFilters]);
 
-  // Fetch data when modal opens or filters change
+  // Fetch histogram (and rates if needed) when modal opens or filters change
   const prevFiltersKeyRef = useRef(filtersKey);
+  const histogramLoaded = useRef(false);
   useEffect(() => {
     if (!open) return;
     const filtersChanged = prevFiltersKeyRef.current !== filtersKey;
     prevFiltersKeyRef.current = filtersKey;
-    if (rates.length === 0 || filtersChanged) {
+    if (!histogramLoaded.current || filtersChanged) {
+      histogramLoaded.current = true;
       setLoading(true);
       Promise.all([
         rates.length === 0 ? getCurrencyRates() : Promise.resolve(rates),
         getSalaryHistogram(histogramFilters),
       ])
-        .then(([r, h]) => { setRates(r); setHistogram(h); })
+        .then(([r, h]) => { if (r !== rates) setLocalRates(r); setHistogram(h); })
         .finally(() => setLoading(false));
     }
-  }, [open, rates.length, filtersKey]);
+  }, [open, filtersKey]);
 
   const displayLow = fromEur(lowEur, rate);
   const displayHigh = fromEur(highEur, rate);

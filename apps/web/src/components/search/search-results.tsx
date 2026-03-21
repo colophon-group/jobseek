@@ -2,6 +2,7 @@
 
 import { CompanyCard } from "./company-card";
 import { RequestCompanyPrompt } from "./request-company";
+import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
 import type { SearchResultCompany } from "@/lib/search";
 import type { SerializableLocation, SerializableOccupation, SerializableSeniority, SerializableTechnology } from "@/lib/search/query-params";
 import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
@@ -14,10 +15,14 @@ interface SearchResultsProps {
   occupations?: SerializableOccupation[];
   seniorities?: SerializableSeniority[];
   technologies?: SerializableTechnology[];
+  employmentTypes?: string[];
+  salaryMinEur?: number;
+  salaryMaxEur?: number;
+  experienceMin?: number;
+  experienceMax?: number;
   languages?: string[];
   hasMore: boolean;
-  onLoadMore: () => void;
-  isLoadingMore: boolean;
+  load: () => Promise<void>;
   onShowPosting?: (postingId: string) => void;
   selectedPostingId?: string | null;
 }
@@ -30,50 +35,28 @@ export function SearchResults({
   occupations,
   seniorities,
   technologies,
+  employmentTypes,
+  salaryMinEur,
+  salaryMaxEur,
+  experienceMin,
+  experienceMax,
   languages,
   hasMore,
-  onLoadMore,
-  isLoadingMore,
+  load,
   onShowPosting,
   selectedPostingId,
 }: SearchResultsProps) {
-  const sentinelRef = useInfiniteScroll({ hasMore, isLoading: isLoadingMore, onLoadMore });
+  const { sentinelRef, isLoading } = useInfiniteScroll({ hasMore, load });
 
   return (
     <div className="space-y-3">
       {companies.map((result) => (
         <div key={`${result.company.id}-${keywords.join(",")}`}>
-          <CompanyCard result={result} keywords={keywords} locationIds={locationIds} locations={locations} occupations={occupations} seniorities={seniorities} technologies={technologies} languages={languages} onShowPosting={onShowPosting} selectedPostingId={selectedPostingId} />
+          <CompanyCard result={result} keywords={keywords} locationIds={locationIds} locations={locations} occupations={occupations} seniorities={seniorities} technologies={technologies} employmentTypes={employmentTypes} salaryMinEur={salaryMinEur} salaryMaxEur={salaryMaxEur} experienceMin={experienceMin} experienceMax={experienceMax} languages={languages} onShowPosting={onShowPosting} selectedPostingId={selectedPostingId} />
         </div>
       ))}
-      {hasMore && <div ref={sentinelRef} className="h-1" />}
-      {isLoadingMore && <SkeletonCards count={2} />}
+      {hasMore && <InfiniteScrollSentinel sentinelRef={sentinelRef} isLoading={isLoading} />}
       {!hasMore && <RequestCompanyPrompt />}
     </div>
-  );
-}
-
-function SkeletonCards({ count }: { count: number }) {
-  return (
-    <>
-      {Array.from({ length: count }, (_, i) => (
-        <div
-          key={i}
-          className="animate-pulse rounded-md border border-divider bg-surface p-4"
-        >
-          <div className="flex items-center gap-3">
-            <div className="size-8 rounded bg-border-soft" />
-            <div className="h-4 w-32 rounded bg-border-soft" />
-          </div>
-          <div className="mt-3 h-3 w-40 rounded bg-border-soft" />
-          <hr className="my-3 border-divider" />
-          <div className="space-y-2">
-            <div className="h-4 w-full rounded bg-border-soft" />
-            <div className="h-4 w-3/4 rounded bg-border-soft" />
-            <div className="h-4 w-5/6 rounded bg-border-soft" />
-          </div>
-        </div>
-      ))}
-    </>
   );
 }

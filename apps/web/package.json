@@ -24,6 +24,8 @@
     "@lingui/core": "^5",
     "@lingui/macro": "^5",
     "@lingui/react": "^5",
+    "@nivo/core": "^0.99.0",
+    "@nivo/sankey": "^0.99.0",
     "@octokit/auth-app": "^8.2.0",
     "@octokit/rest": "^22.0.1",
     "@radix-ui/react-alert-dialog": "^1.1.15",

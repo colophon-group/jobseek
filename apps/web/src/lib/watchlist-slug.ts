@@ -7,6 +7,8 @@ import { watchlist } from "@/db/schema";
 export function slugifyTitle(title: string): string {
   return title
     .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/\+/g, "plus")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/-{2,}/g, "-")
     .replace(/^-+|-+$/g, "")

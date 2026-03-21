@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { company, followedCompany, user, occupationDomain, occupation, subscription, jobBoard, jobPosting, savedJob, session, companyRequest, account, industry, userPreferences, location, seniority, locationMacroMember, companyDescription, occupationName, seniorityName, occupationDomainName, locationName, industryName } from "./schema";
+import { company, followedCompany, user, occupationDomain, occupation, subscription, jobBoard, jobPosting, savedJob, applicationInterview, session, companyRequest, account, industry, userPreferences, location, seniority, locationMacroMember, companyDescription, occupationName, seniorityName, occupationDomainName, locationName, industryName } from "./schema";
 
 export const starredCompanyRelations = relations(followedCompany, ({one}) => ({
 	company: one(company, {
@@ -71,7 +71,7 @@ export const jobBoardRelations = relations(jobBoard, ({one, many}) => ({
 	jobPostings: many(jobPosting),
 }));
 
-export const savedJobRelations = relations(savedJob, ({one}) => ({
+export const savedJobRelations = relations(savedJob, ({one, many}) => ({
 	jobPosting: one(jobPosting, {
 		fields: [savedJob.jobPostingId],
 		references: [jobPosting.id]
@@ -79,6 +79,14 @@ export const savedJobRelations = relations(savedJob, ({one}) => ({
 	user: one(user, {
 		fields: [savedJob.userId],
 		references: [user.id]
+	}),
+	applicationInterviews: many(applicationInterview),
+}));
+
+export const applicationInterviewRelations = relations(applicationInterview, ({one}) => ({
+	savedJob: one(savedJob, {
+		fields: [applicationInterview.savedJobId],
+		references: [savedJob.id]
 	}),
 }));
 
