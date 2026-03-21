@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import click
 
+from src.workspace import log as action_log
 from src.workspace import output as out
 from src.workspace.errors import GitError
 from src.workspace.state import (
@@ -37,6 +38,7 @@ from src.workspace.state import (
     load_workspace,
     resolve_slug,
     set_active_slug,
+    ws_log_path,
 )
 from src.workspace.workflow import (
     WorkflowState,
@@ -394,6 +396,9 @@ def task_complete():
 
         unclaim_issue(ws.issue)
 
+    # Log completion (timestamp used for transcript discovery)
+    action_log.append(ws_log_path(slug), "complete", True, "Workflow complete")
+
     out.info("task", "Workflow complete! Nice work. Do not pick another issue — stop here.")
 
     # Print summary of reflections
@@ -401,6 +406,19 @@ def task_complete():
     if non_none:
         print()
         out.plain("summary", f"{len(non_none)} reflection(s) recorded during this run.")
+
+    # Export trace (best-effort, don't block completion)
+    try:
+        from src.shared.constants import get_data_dir
+        from src.workspace.trace import export_trace
+
+        trace_path = export_trace(slug, get_data_dir().parent / "traces")
+        if trace_path:
+            out.info("trace", f"Exported: {trace_path}")
+        else:
+            out.plain("trace", "No matching transcript found — export manually if needed")
+    except Exception as exc:
+        out.warn("trace", f"Could not export trace: {exc}")
 
 
 @task.command(name="fail")
