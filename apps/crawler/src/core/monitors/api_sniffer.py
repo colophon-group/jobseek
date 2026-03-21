@@ -847,12 +847,25 @@ async def _discover_replay(
                 route_params=route_params,
             )
         else:
-            # Navigate to board_url to establish cookies/auth context
+            # Navigate to board_url to establish cookies/auth context.
+            # Capture exchanges so we can refresh stale auth headers from
+            # the requests the page's own JS fires during load.
+            api_parsed = urlparse(api_url)
+            nav_exchanges = await capture_exchanges(page, api_parsed.netloc)
             try:
                 await navigate(page, board_url, {"wait": wait, "timeout": timeout})
             except Exception:
                 log.warning("api_sniffer.navigation_failed", board_url=board_url, exc_info=True)
             await asyncio.sleep(settle)
+
+            # If the page hit the same API endpoint, use its fresh headers
+            # (auth tokens / session headers refreshed by the page's JS).
+            for ex in nav_exchanges:
+                ex_parsed = urlparse(ex.url)
+                if ex_parsed.netloc == api_parsed.netloc and ex_parsed.path == api_parsed.path:
+                    request_headers = ex.request_headers
+                    log.info("api_sniffer.headers_refreshed", url=ex.url[:80])
+                    break
 
         # Replay the API call — try browser first, fall back to HTTP
         headers = clean_headers(request_headers)
