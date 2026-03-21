@@ -2604,7 +2604,8 @@ async def _scrape_pipeline(
     for item in items:
         if not board_scrapers or item.board_id not in board_scrapers:
             continue
-        if scraper_needs_browser(board_scrapers[item.board_id].scraper_type):
+        bsc = board_scrapers[item.board_id]
+        if scraper_needs_browser(bsc.scraper_type, bsc.scraper_config):
             need_browser = True
             break
 
