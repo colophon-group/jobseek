@@ -407,7 +407,7 @@ def task_complete():
         print()
         out.plain("summary", f"{len(non_none)} reflection(s) recorded during this run.")
 
-    # Export trace (best-effort, don't block completion)
+    # Export trace and commit to PR branch (best-effort, don't block completion)
     try:
         from src.shared.constants import get_data_dir
         from src.workspace.trace import export_trace
@@ -415,6 +415,17 @@ def task_complete():
         trace_path = export_trace(slug, get_data_dir().parent / "traces")
         if trace_path:
             out.info("trace", f"Exported: {trace_path}")
+            # Commit and push trace to the PR branch (skip in local mode)
+            if ws.pr and not is_local_mode():
+                try:
+                    from src.workspace.git import add_files, commit, push
+
+                    add_files([str(trace_path)])
+                    commit(f"Add agent trace for {slug}")
+                    push(ws.branch)
+                    out.info("trace", "Trace committed and pushed to PR branch")
+                except Exception as git_exc:
+                    out.warn("trace", f"Trace exported but git push failed: {git_exc}")
         else:
             out.plain("trace", "No matching transcript found — export manually if needed")
     except Exception as exc:
