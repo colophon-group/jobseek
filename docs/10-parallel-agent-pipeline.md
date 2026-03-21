@@ -112,29 +112,53 @@ metadata**. No `ws probe`, `ws select`, or `ws run` command reads company
 name, description, industry, or logos. The only convergence point is
 `ws submit`, which writes both company and board data to CSV.
 
-```
-                    ┌─────────────────────────────────────────┐
-                    │         workspace.yaml                   │
-                    │                                         │
-  Track A writes:   │  name, website, descriptions,           │
-                    │  industry, employee_count, founded_year │
-                    │                                         │
-  Track B writes:   │  logo_url, icon_url, logo_type          │
-                    │                                         │
-  Submit reads:     │  ALL of the above → companies.csv       │
-                    └─────────────────────────────────────────┘
+```mermaid
+graph LR
+    subgraph trackA [Track A: Enrich metadata]
+        A1[name, website]
+        A2[descriptions x4]
+        A3[industry, employee_count,<br/>founded_year]
+    end
 
-                    ┌─────────────────────────────────────────┐
-                    │     boards/<alias>.yaml  (per board)     │
-                    │                                         │
-  Board work writes:│  monitor_type, monitor_config,          │
-                    │  scraper_type, scraper_config, feedback  │
-                    │                                         │
-  Submit reads:     │  ALL of the above → boards.csv          │
-                    └─────────────────────────────────────────┘
+    subgraph trackB [Track B: Logos]
+        B1[logo_url, icon_url,<br/>logo_type]
+    end
 
-  No cross-reads between company metadata and board configs.
+    subgraph trackC [Track C + Board work]
+        C1[board URLs]
+        C2[monitor_type,<br/>monitor_config]
+        C3[scraper_type,<br/>scraper_config]
+        C4[feedback verdict]
+    end
+
+    A1 --> WS[workspace.yaml]
+    A2 --> WS
+    A3 --> WS
+    B1 --> WS
+
+    C1 --> BD["boards/{alias}.yaml"]
+    C2 --> BD
+    C3 --> BD
+    C4 --> BD
+
+    WS --> SUB[ws submit]
+    BD --> SUB
+
+    SUB --> CSV1[companies.csv]
+    SUB --> CSV2[boards.csv]
+
+    style trackA fill:#1a7f37,stroke:#116329,color:#fff
+    style trackB fill:#1a7f37,stroke:#116329,color:#fff
+    style trackC fill:#0550ae,stroke:#033d8b,color:#fff
+    style WS fill:#555,stroke:#333,color:#fff
+    style BD fill:#555,stroke:#333,color:#fff
+    style SUB fill:#555,stroke:#333,color:#fff
+    style CSV1 fill:#555,stroke:#333,color:#fff
+    style CSV2 fill:#555,stroke:#333,color:#fff
 ```
+
+No arrows cross between the green tracks and the blue track — they are fully
+independent until `ws submit` reads both.
 
 ## Blockers and Required Changes
 
