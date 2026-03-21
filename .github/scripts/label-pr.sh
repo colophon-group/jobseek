@@ -19,6 +19,14 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
 
+# Only label add-company/* branches — developer branches are reviewed manually
+BRANCH=$(gh pr view "$PR" --repo "$REPO" --json headRefName -q .headRefName)
+if [[ "$BRANCH" != add-company/* ]]; then
+  echo "Skipping label-pr for non-company branch: $BRANCH"
+  echo "labels=" >> "$GITHUB_OUTPUT"
+  exit 0
+fi
+
 ALLOWED_FILES="apps/crawler/data/companies.csv apps/crawler/data/boards.csv apps/crawler/data/company_descriptions.csv apps/crawler/VERSION"
 VALID_MONITOR_TYPES="$(
 python3 - "$REPO_ROOT" <<'PY'
