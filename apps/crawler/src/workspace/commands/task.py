@@ -53,7 +53,6 @@ from src.workspace.workflow import (
     go_back,
     read_kb_entry,
     render_step,
-    resolve_current_step,
     search_kb,
     should_skip,
 )
@@ -131,7 +130,7 @@ def task(ctx, issue: int | None, pick_next: bool):
                 _pre_verify(issue)
                 return
 
-    # Active workspace → show current step
+    # Active workspace → show parallel orchestrator instructions
     slug = resolve_slug(None)
 
     try:
@@ -148,20 +147,24 @@ def task(ctx, issue: int | None, pick_next: bool):
         out.info("task", "Workflow complete! All steps done.")
         return
 
-    try:
-        step, ws, boards, wf, board = resolve_current_step(slug)
-    except FileNotFoundError:
-        out.die(f"Workspace {slug!r} not found. Run: ws task --issue <N>")
-        return
+    ws = load_workspace(slug)
+    boards = list_boards(slug)
 
-    # Build context and render
-    ctx_vars = build_context(ws, boards, wf, board)
-    instructions = render_step(step, ctx_vars)
+    # Render parallel orchestrator
+    from src.workspace.workflow import render_parallel_prompt
 
-    # Print header
-    _print_step_header(step, wf, boards)
+    ctx = {
+        "slug": slug,
+        "issue": str(ws.issue or ""),
+        "website": ws.website or "",
+        "company_name": ws.name or "",
+    }
+    instructions = render_parallel_prompt("orchestrator", ctx)
 
-    # Print instructions
+    out.plain("task", f"Workspace: {slug} | Issue: #{ws.issue or '?'}")
+    if boards:
+        out.plain("task", f"Boards: {', '.join(b.alias for b in boards)}")
+    print()
     print(instructions)
 
 

@@ -1,65 +1,68 @@
-# Parallel Pipeline Orchestrator
+# Parallel Pipeline — {{ slug }}
 
-Workspace: `{{ slug }}` | Issue: #{{ issue }}
-Website: {{ website }}
-{% if company_name %}Company: {{ company_name }}{% endif %}
+## Setup
 
-## Overview
+{% if not company_name %}
+Company details not yet configured. Start by setting name and website:
 
-You are the main agent orchestrating the parallel pipeline. You spawn
-background subagents for independent work and process boards as they
-appear.
+```bash
+ws set --name "..." --website "..." --no-discover
+```
+{% endif %}
 
-## Phase 1: Setup
-
-1. Pre-verify the company request (web research, no crawler tooling)
-2. `ws new {{ slug }} --issue {{ issue }}`
-3. `ws set {{ slug }} --name "..." --website "{{ website }}" --no-discover`
-
-## Phase 2: Spawn parallel tracks
+## Spawn parallel tracks
 
 Launch these as **background subagents** simultaneously:
 
 - **Track A (enrichment):** Fill descriptions (4 locales), industry,
-  employee count, founded year. Fire-and-forget — check before submit.
+  employee count, founded year.
+  Prompt template: `src/workspace/steps/parallel/track-a-enrichment.md`
 - **Track B (logos):** Discover and select logo + icon.
-  Fire-and-forget — check before submit.
-- **Track C (boards):** Find all career boards. Yields boards
-  progressively — start processing each board as it's added.
+  Prompt template: `src/workspace/steps/parallel/track-b-logos.md`
+- **Track C (boards):** Find all career boards — add each with
+  `ws add board`. Work progressively, not all-at-once.
+  Prompt template: `src/workspace/steps/parallel/track-c-boards.md`
 
-## Phase 3: Process boards
+Read each template and render it with context (slug={{ slug }},
+website={{ website }}, etc.) before passing to the subagent.
+Use `from src.workspace.workflow import render_parallel_prompt` to render.
 
-As Track C adds boards, start processing each one:
+Tracks A and B are fire-and-forget — check results before submit.
+Track C yields boards progressively — start processing each board
+as it's added.
+
+## Process boards
+
+As Track C adds boards, process each one:
 
 1. `ws probe monitor -n <expected-job-count> --board <alias>`
-2. Identify top monitor+scraper combinations from probe results
-3. Spawn config-testing subagents for each combination (Phase 3 prompts)
-4. Collect results, pick the best config
-5. `ws feedback --board <alias> ...` with verified quality assessment
+2. Identify top 2-3 monitor+scraper combinations from probe results
+3. Spawn **parallel subagents** to test each combination using the
+   config-tester template: `src/workspace/steps/parallel/config-tester.md`
+   Use `--config <name>` flag on `ws run` to avoid active_config races.
+4. Collect results, compare using config-comparison template:
+   `src/workspace/steps/parallel/config-comparison.md`
+5. Pick the best config: `ws select config <name> --board <alias>`
+6. Record feedback: `ws feedback --board <alias> ...`
 
-If probing reveals something unexpected (missing board, wrong URL,
-better approach), use `ws task back --to <step> --reason "..."` to
-course-correct.
+Run `ws help monitors` and `ws help scrapers` for reference.
 
-## Phase 4: Converge and submit
+## Converge and submit
 
 Before submitting, verify:
-- [ ] Track A completed (all metadata fields set)
-- [ ] Track B completed (logo + icon selected)
-- [ ] All boards configured and feedback recorded
-- [ ] Job counts verified against website
+- All metadata fields set (descriptions x4, industry, logos)
+- All boards configured and feedback recorded
+- Job counts verified against website
 
 ```bash
 ws submit [--summary "..."]
 ws task complete
 ```
 
-## Error handling
+## If something goes wrong
 
-- If a subagent fails, investigate the failure and either re-run it
-  or handle the task manually
-- If Track C finds no boards, investigate the website directly
-- If all config subagents fail for a board, try manually or escalate
-  with `ws task fail --reason "..."`
-- Use `ws task back` if a subagent's findings invalidate earlier decisions
-  (e.g., Track A discovers a different careers domain)
+- Subagent failed → investigate and re-run, or handle manually
+- No boards found → investigate the website directly
+- All configs failed for a board → try manually or `ws task fail --reason "..."`
+- New evidence invalidates earlier decisions → `ws task back --to <step> --reason "..."`
+- Edge cases → `ws task troubleshoot "<query>"`

@@ -49,17 +49,22 @@ pnpm extract      # Extract i18n strings to .po
 pnpm compile      # Compile .po to .js catalogs
 ```
 
-## Crawler Setup Agent Instruction Sources
+## Crawler Setup Workflow (`ws` tool)
 
-For the `ws task --issue ...` crawler setup flow, instructions are loaded from runtime sources, not from AGENTS docs.
+The `ws` CLI is an **agent utility** — it is run exclusively by Claude Code
+agents, not by humans directly. It guides the agent through the company
+setup workflow by rendering instructions, managing state, and enforcing
+quality gates.
 
-- Step instructions: `apps/crawler/src/workspace/steps/*.md`
-- Step order/gates: `apps/crawler/src/workspace/workflow.yaml`
-- `ws help` guidance: `apps/crawler/src/workspace/commands/help.py`
-- Troubleshooting guidance surfaced by `ws task troubleshoot`: `apps/crawler/src/workspace/kb/*.md`
+**Entry point:** `ws task --issue <N>` — fetches the issue, renders
+pre-verification instructions, then (after `ws new`) renders the parallel
+orchestrator which tells the agent to spawn subagents for independent work.
 
-If you want crawler setup agents to behave differently, modify the files above.
-Do not rely on `AGENTS.md` or `docs/` alone for those behavior changes.
+**Instruction sources** (modify these to change agent behavior):
+- Orchestrator + subagent prompts: `apps/crawler/src/workspace/steps/parallel/`
+- `ws help` reference docs: `apps/crawler/src/workspace/commands/help.py`
+- Troubleshooting KB: `apps/crawler/src/workspace/kb/*.md`
+- Workflow gates: `apps/crawler/src/workspace/workflow.yaml`
 
 Developer guidance for agent reasoning style lives in [docs/agents.md](docs/agents.md).
 

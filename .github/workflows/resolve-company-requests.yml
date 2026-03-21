@@ -43,37 +43,41 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           BUDGET_PER_5H: ${{ env.BUDGET_PER_5H }}
 
-      - uses: anthropics/claude-code-action@v1
+      - name: Setup Node.js
         if: >
           steps.select.outputs.selected != '' &&
           steps.budget.outputs.remaining > 0
+        uses: actions/setup-node@v4
         with:
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          prompt: |
-            Resolve issue #${{ steps.select.outputs.selected }} (labeled "company-request").
-            Follow the instructions in AGENTS.md to resolve it.
+          node-version: "22"
 
-            Setup: cd apps/crawler && uv sync && alias ws='uv run ws'
+      - name: Install Claude Code
+        if: >
+          steps.select.outputs.selected != '' &&
+          steps.budget.outputs.remaining > 0
+        run: npm install -g @anthropic-ai/claude-code
 
-            Summary of steps (ws new sets the active workspace — omit the slug on all subsequent commands):
-            1. Read the user request from the issue body
-            2. Validate the request (web research, no crawler tooling):
-               a. Check company isn't already in data/companies.csv
-               b. Confirm the company exists and is currently operating
-               c. Find a public careers page with at least one job listing — count the total number of jobs displayed
-               On failure: ws reject --issue ${{ steps.select.outputs.selected }} --reason <key> --message "..."
-            3. Claim: ws new <slug> --issue ${{ steps.select.outputs.selected }}
-               (checks for existing PRs, creates branch + stub CSV + draft PR, sets active workspace)
-            4. Research the company — find name, website, full primary logo, minified square logo/icon, career page URL
-            5. Set details: ws set --name "..." --website "..." --logo-url "..." --icon-url "..."
-               (logo-url = full primary logo, icon-url = minified square logo/icon;
-               use direct image file URLs; assets must be brand-correct; transparent background preferred)
-            6. Add board + probe: ws add board <alias> --url <board-url> && ws probe monitor -n <count>
-            7. Select + test monitor: ws select monitor <type> && ws run monitor
-               If 0 jobs but validation passed, it's a monitor misconfiguration — debug systematically
-            8. For non-API monitors: ws select scraper <type> && ws run scraper
-            9. Submit: ws submit --summary "..."
-               (validates CSV, commits, pushes, posts crawl stats, marks PR ready, posts transcript)
+      - name: Setup Python and crawler deps
+        if: >
+          steps.select.outputs.selected != '' &&
+          steps.budget.outputs.remaining > 0
+        run: |
+          pip install uv
+          cd apps/crawler && uv sync
 
-            Only process this ONE issue. Do not process any others.
-          claude_args: "--max-turns 25"
+      - name: Resolve issue
+        if: >
+          steps.select.outputs.selected != '' &&
+          steps.budget.outputs.remaining > 0
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd apps/crawler
+          claude --print "Run: ws task --issue ${{ steps.select.outputs.selected }}
+
+          Follow the instructions printed by ws task. The ws tool will guide
+          you through the parallel pipeline: pre-verify, create workspace,
+          spawn subagents for enrichment/logos/boards, test configs, submit.
+
+          Only process this ONE issue. Do not process any others."

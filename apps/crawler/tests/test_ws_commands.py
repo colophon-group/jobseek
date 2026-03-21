@@ -788,7 +788,7 @@ class TestTaskIssueBinding:
         assert result.exit_code == 0
         assert "Using existing workspace 'playnvoice' for issue #39" in result.output
         assert get_active_slug() == "playnvoice"
-        assert "Step 1/7" in result.output
+        assert "Parallel Pipeline" in result.output
 
     def test_task_issue_fails_on_ambiguous_workspace_matches(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
