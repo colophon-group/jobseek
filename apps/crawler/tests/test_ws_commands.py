@@ -1384,6 +1384,178 @@ class TestRunMonitorVerifyPrompt:
         assert "Verify: compare this count" not in result.output
 
 
+class TestRunMonitorNamedConfig:
+    """Tests for ws run monitor --config <name>."""
+
+    def test_named_config_writes_to_correct_entry(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(Workspace(slug="test"))
+        board = Board(
+            alias="careers",
+            slug="test-careers",
+            url="https://test.com/jobs",
+            active_config="sitemap",
+            configs={
+                "sitemap": {
+                    "monitor_type": "sitemap",
+                    "monitor_config": {},
+                    "status": "selected",
+                },
+                "greenhouse": {
+                    "monitor_type": "greenhouse",
+                    "monitor_config": {"token": "abc"},
+                    "status": "selected",
+                },
+            },
+        )
+        save_board("test", board)
+        ws_obj = load_workspace("test")
+        ws_obj.active_board = "careers"
+        save_workspace(ws_obj)
+
+        @dataclass
+        class FakeResult:
+            urls: set[str]
+            jobs_by_url: dict | None
+            filtered_count: int = 0
+
+        fake_result = FakeResult(
+            urls={"https://test.com/jobs/1", "https://test.com/jobs/2"},
+            jobs_by_url=None,
+        )
+
+        stack, mock_asyncio = _enter_monitor_patches(tmp_path)
+        with stack:
+            mock_asyncio.run.return_value = (fake_result, 1.0, [])
+            runner = CliRunner()
+            result = runner.invoke(ws, ["run", "monitor", "test", "--config", "greenhouse"])
+
+        assert result.exit_code == 0
+        board = load_board("test", "careers")
+        assert board.configs["greenhouse"]["status"] == "tested"
+        assert board.configs["greenhouse"]["run"]["jobs"] == 2
+        # Active config should be unchanged
+        assert board.active_config == "sitemap"
+        assert board.configs["sitemap"]["status"] == "selected"
+
+    def test_nonexistent_config_errors(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(Workspace(slug="test"))
+        board = Board(
+            alias="careers",
+            slug="test-careers",
+            url="https://test.com/jobs",
+            active_config="sitemap",
+            configs={"sitemap": {"monitor_type": "sitemap", "status": "selected"}},
+        )
+        save_board("test", board)
+        ws_obj = load_workspace("test")
+        ws_obj.active_board = "careers"
+        save_workspace(ws_obj)
+
+        runner = CliRunner()
+        result = runner.invoke(ws, ["run", "monitor", "test", "--config", "nonexistent"])
+        assert result.exit_code != 0
+        assert "not found" in result.output
+
+
+class TestRunScraperNamedConfig:
+    """Tests for ws run scraper --config <name>."""
+
+    def test_named_config_writes_to_correct_entry(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(Workspace(slug="test"))
+        board = Board(
+            alias="careers",
+            slug="test-careers",
+            url="https://test.com/jobs",
+            active_config="sitemap",
+            configs={
+                "sitemap": {
+                    "monitor_type": "sitemap",
+                    "scraper_type": "json-ld",
+                    "scraper_config": {},
+                    "status": "tested",
+                    "run": {
+                        "jobs": 5,
+                        "sample_urls": [
+                            "https://test.com/jobs/1",
+                            "https://test.com/jobs/2",
+                        ],
+                    },
+                },
+                "alt": {
+                    "monitor_type": "dom",
+                    "scraper_type": "dom",
+                    "scraper_config": {},
+                    "status": "tested",
+                    "run": {
+                        "jobs": 3,
+                        "sample_urls": [
+                            "https://test.com/jobs/3",
+                            "https://test.com/jobs/4",
+                        ],
+                    },
+                },
+            },
+        )
+        save_board("test", board)
+        ws_obj = load_workspace("test")
+        ws_obj.active_board = "careers"
+        save_workspace(ws_obj)
+
+        from src.core.scrapers import JobContent
+
+        fake_content = JobContent(
+            title="Engineer",
+            description="<p>Build things</p>",
+            locations=["NYC"],
+        )
+
+        stack, mock_asyncio = _enter_scraper_patches(tmp_path)
+        with stack:
+            mock_asyncio.run.return_value = (
+                [("https://test.com/jobs/3", fake_content, 0.5)],
+                [],
+                [],
+            )
+            runner = CliRunner()
+            result = runner.invoke(ws, ["run", "scraper", "test", "--config", "alt"])
+
+        assert result.exit_code == 0
+        board = load_board("test", "careers")
+        assert board.configs["alt"]["status"] == "tested"
+        assert board.configs["alt"]["scraper_run"]["count"] == 1
+        # Active config unchanged
+        assert board.active_config == "sitemap"
+
+    def test_nonexistent_config_errors(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(Workspace(slug="test"))
+        board = Board(
+            alias="careers",
+            slug="test-careers",
+            url="https://test.com/jobs",
+            active_config="sitemap",
+            configs={
+                "sitemap": {
+                    "monitor_type": "sitemap",
+                    "scraper_type": "json-ld",
+                    "status": "tested",
+                }
+            },
+        )
+        save_board("test", board)
+        ws_obj = load_workspace("test")
+        ws_obj.active_board = "careers"
+        save_workspace(ws_obj)
+
+        runner = CliRunner()
+        result = runner.invoke(ws, ["run", "scraper", "test", "--config", "nonexistent"])
+        assert result.exit_code != 0
+        assert "not found" in result.output
+
+
 def _enter_probe_scraper_patches(tmp_path) -> tuple[ExitStack, MagicMock]:
     """Enter common patches for probe scraper tests. Returns (stack, mock_asyncio)."""
     stack = ExitStack()
