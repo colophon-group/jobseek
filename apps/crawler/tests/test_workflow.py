@@ -326,18 +326,31 @@ class TestAdvance:
         wf = WorkflowState(current_step="setup")
         _save_wf_to_disk(slug, wf)
 
-        # Advance from setup (state gate — company_complete)
+        # Advance from setup (no gate — company_complete moved to submit)
         next_step, msg = advance(slug, "Company configured")
         assert next_step is not None
         assert next_step.id == "add_boards"
 
-    def test_advance_blocks_on_failed_gate(self, workspace):
+    def test_advance_from_setup_with_incomplete_company(self, workspace, board_careers):
         slug, ws, ws_root = workspace
-        # Remove company name to fail the gate
+        # Remove company metadata — setup gate should still pass
         ws.name = ""
+        ws.descriptions = {}
+        ws.industry = None
         save_workspace(ws)
 
         wf = WorkflowState(current_step="setup")
+        _save_wf_to_disk(slug, wf)
+
+        next_step, msg = advance(slug, "Starting board work before enrichment")
+        assert next_step is not None
+        assert next_step.id == "add_boards"
+        assert msg == ""
+
+    def test_advance_blocks_on_failed_gate(self, workspace):
+        slug, ws, ws_root = workspace
+        # No boards added — all_boards_added gate should fail
+        wf = WorkflowState(current_step="add_boards")
         _save_wf_to_disk(slug, wf)
 
         next_step, msg = advance(slug, "trying to advance")

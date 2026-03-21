@@ -17,7 +17,6 @@ global_steps:
     instructions: steps/01-setup.md
     gate:
       type: state
-      check: company_complete
 
   - id: add_boards
     title: "Discover and add boards"
