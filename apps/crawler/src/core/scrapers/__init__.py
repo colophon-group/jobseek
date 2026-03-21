@@ -43,6 +43,12 @@ class JobContent:
     extras: dict | None = None
     metadata: dict | None = None
 
+    def __post_init__(self):
+        if isinstance(self.base_salary, str):
+            from src.core.salary_extract import parse_salary_text
+
+            self.base_salary = parse_salary_text(self.base_salary)
+
 
 _TAG_RE = re.compile(r"<[^>]+>")
 

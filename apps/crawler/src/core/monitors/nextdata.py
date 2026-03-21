@@ -137,19 +137,10 @@ def _resolve_field(item: dict, spec: str | dict) -> str | list[str] | None:
     """Extract a field value, optionally applying a value map.
 
     *spec* is either a jmespath string or a dict ``{"path": "...", "map": {...}}``.
+    Delegates to :func:`extract_field` which handles all spec types
+    (string, list, dict with path+map).
     """
-    if isinstance(spec, str):
-        return extract_field(item, spec)
-    path = spec.get("path", "")
-    value = extract_field(item, path)
-    if value is None:
-        return None
-    value_map = spec.get("map")
-    if value_map:
-        if isinstance(value, list):
-            return [value_map.get(v, v) for v in value] or None
-        return value_map.get(value, value)
-    return value
+    return extract_field(item, spec)
 
 
 def _extract_salary(item: dict, cfg: dict) -> dict | None:

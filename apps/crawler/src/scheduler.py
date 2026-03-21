@@ -467,7 +467,10 @@ async def run() -> None:
 
     try:
         if args.board and args.dry_run:
-            await dry_run_single_board(pool, http, args.board, verbose=args.verbose)
+            from playwright.async_api import async_playwright
+
+            async with async_playwright() as pw:
+                await dry_run_single_board(pool, http, args.board, verbose=args.verbose, pw=pw)
         elif args.board:
             await run_single_board(pool, http, args.board, force_rescrape=args.force_rescrape)
         elif args.once:

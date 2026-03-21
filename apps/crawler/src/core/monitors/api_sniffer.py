@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import json
 import re
 from math import ceil
 from typing import TYPE_CHECKING
@@ -1154,16 +1153,7 @@ def _extract_rich(
             elif target == "valid_through":
                 extras["valid_through"] = value
             elif target == "base_salary":
-                # Attempt to parse as dict if it's a string
-                if isinstance(value, str):
-                    try:
-                        kwargs["base_salary"] = json.loads(value)
-                    except (json.JSONDecodeError, ValueError):
-                        metadata_fields[target] = value
-                elif isinstance(value, dict):
-                    kwargs["base_salary"] = value
-                else:
-                    metadata_fields[target] = value
+                kwargs["base_salary"] = value
             else:
                 metadata_fields[target] = value
 

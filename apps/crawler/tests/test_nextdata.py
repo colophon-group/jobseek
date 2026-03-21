@@ -148,6 +148,58 @@ class TestExtractField:
         assert _extract_field(item, "locations[].name") is None
 
 
+class TestExtractFieldShared:
+    """Tests for shared extract_field (list specs, constants, templates)."""
+
+    def _extract(self, item, spec):
+        from src.shared.nextdata import extract_field
+
+        return extract_field(item, spec)
+
+    def test_list_spec_concatenates(self):
+        item = {"a": "va", "b": "vb"}
+        assert self._extract(item, ["a", "b"]) == "va\nvb"
+
+    def test_list_spec_flattens_array(self):
+        item = {"items": [{"name": "n1"}, {"name": "n2"}]}
+        assert self._extract(item, ["items[*].name"]) == "n1\nn2"
+
+    def test_list_spec_with_constants(self):
+        item = {"a": "va"}
+        assert self._extract(item, ["=prefix", "a"]) == "prefix\nva"
+
+    def test_list_spec_null_drops_preceding_constant(self):
+        item = {}
+        assert self._extract(item, ["=heading", "null_path"]) is None
+
+    def test_list_spec_null_drops_constant_keeps_rest(self):
+        item = {"exists": "val"}
+        result = self._extract(item, ["=<h3>X</h3>", "missing", "=<h3>Y</h3>", "exists"])
+        assert result == "<h3>Y</h3>\nval"
+
+    def test_list_spec_all_null_returns_none(self):
+        item = {"a": "va"}
+        assert self._extract(item, ["missing1", "missing2"]) is None
+
+    def test_list_spec_constant_only(self):
+        assert self._extract({}, ["=fallback"]) == "fallback"
+
+    def test_list_spec_each_wrap(self):
+        item = {
+            "items": [
+                {"title": "Heading1", "body": "<ul>1</ul>"},
+                {"title": "Heading2", "body": "<ul>2</ul>"},
+            ]
+        }
+        result = self._extract(item, [{"each": "items[*]", "wrap": "<h3>{title}</h3>\n{body}"}])
+        assert result == "<h3>Heading1</h3>\n<ul>1</ul>\n<h3>Heading2</h3>\n<ul>2</ul>"
+
+    def test_list_spec_each_wrap_null_array(self):
+        item = {}
+        result = self._extract(item, [{"each": "missing[*]", "wrap": "<h3>{t}</h3>"}])
+        assert result is None
+
+
 class TestBuildUrl:
     def test_basic_substitution(self):
         item = {"id": "abc-123", "text": "Engineer"}
@@ -510,13 +562,14 @@ class TestResolveField:
         spec = {"path": "workplaceType", "map": {"REMOTE": "remote", "HYBRID": "hybrid"}}
         assert _resolve_field(item, spec) == "remote"
 
-    def test_dict_spec_map_passthrough(self):
-        """Values not in map are passed through unchanged."""
+    def test_dict_spec_map_unmapped_returns_none(self):
+        """Values not in map are dropped (None)."""
         item = {"workplaceType": "UNKNOWN"}
         spec = {"path": "workplaceType", "map": {"REMOTE": "remote"}}
-        assert _resolve_field(item, spec) == "UNKNOWN"
+        assert _resolve_field(item, spec) is None
 
     def test_dict_spec_no_map(self):
+        """Dict spec without map behaves like a plain path."""
         item = {"title": "Engineer"}
         spec = {"path": "title"}
         assert _resolve_field(item, spec) == "Engineer"

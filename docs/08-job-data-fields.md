@@ -370,6 +370,39 @@ And `<source_path>` is a dot-path with optional array indexing:
 - `offices[].name` — array map (extract `name` from each element)
 - `locations[0].city` — array index
 
+### List Concatenation
+
+When a field's content is spread across multiple source paths, use a list
+of specs. Each is resolved independently; results are joined with newlines:
+
+    "description": ["intro", "sections[*].content", "footer"]
+
+**Constant strings** (prefixed with `=`) inject literal values — HTML
+separators, headings, or fallback text:
+
+    "description": [
+      "introHtml",
+      "=<h3>Responsibilities</h3>",
+      "responsibilitiesHtml",
+      "=<h3>Requirements</h3>",
+      "requirementsHtml"
+    ]
+
+Constants before a null jmespath result are dropped (no orphaned headings).
+
+**Template iteration** (`each` + `wrap`) iterates an array of objects,
+replacing `{field}` placeholders in the template:
+
+    "description": [
+      "introHtml",
+      {"each": "sections[*]", "wrap": "<h3>{title}</h3>\n{body}"},
+      "footerHtml"
+    ]
+
+For fallback values (use this OR that), use jmespath's native `||` operator:
+
+    "locations": "office.city || `Remote`"
+
 ### Example
 
 Given source data:

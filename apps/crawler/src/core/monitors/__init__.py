@@ -49,6 +49,12 @@ class DiscoveredJob:
     extras: dict | None = None
     metadata: dict | None = None
 
+    def __post_init__(self):
+        if isinstance(self.base_salary, str):
+            from src.core.salary_extract import parse_salary_text
+
+            self.base_salary = parse_salary_text(self.base_salary)
+
 
 # Discover functions return either set[str] (URL-only), list[DiscoveredJob] (rich),
 # or tuple[set[str], str | None] (URL-only + metadata, e.g. sitemap).

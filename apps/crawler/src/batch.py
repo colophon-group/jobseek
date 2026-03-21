@@ -203,12 +203,12 @@ def _extract_salary_fields(
     html: str | None,
     rates: dict[str, float],
 ) -> tuple[int | None, int | None, str | None, str | None, int | None]:
-    """Extract and normalize salary from HTML.
+    """Extract salary from HTML and store raw values.
 
     Returns (salary_min, salary_max, salary_currency, salary_period, salary_eur).
-    salary_min/max are annual-normalized in original currency.
-    salary_eur is pre-computed for fast index-based filtering; refreshed daily
-    by refresh_currency_rates.py when exchange rates change.
+    salary_min/max are the raw values in the original period and currency.
+    salary_eur is the annualized EUR equivalent for index-based filtering;
+    refreshed daily by refresh_currency_rates.py when exchange rates change.
     """
     if not html:
         return None, None, None, None, None
@@ -216,22 +216,27 @@ def _extract_salary_fields(
     if sr is None:
         return None, None, None, None, None
 
-    # Normalize to annual
+    # Store raw values in original period
     if sr.period == "hourly":
-        # min/max are in cents for hourly
-        min_annual = round(sr.min / 100 * 2080)
-        max_annual = round(sr.max / 100 * 2080) if sr.max is not None else None
-    elif sr.period == "monthly":
-        min_annual = sr.min * 12
-        max_annual = sr.max * 12 if sr.max is not None else None
+        # min/max are in cents internally — convert to dollars
+        sal_min = round(sr.min / 100, 2)
+        sal_max = round(sr.max / 100, 2) if sr.max is not None else None
     else:
-        min_annual = sr.min
-        max_annual = sr.max
+        sal_min = sr.min
+        sal_max = sr.max
+
+    # Annualize only for the EUR filter column
+    if sr.period == "hourly":
+        annual_min = round(sr.min / 100 * 2080)
+    elif sr.period == "monthly":
+        annual_min = sr.min * 12
+    else:
+        annual_min = sr.min
 
     to_eur = rates.get(sr.currency, 0)
-    salary_eur = round(min_annual * to_eur) if to_eur > 0 else None
+    salary_eur = round(annual_min * to_eur) if to_eur > 0 else None
 
-    return min_annual, max_annual, sr.currency, sr.period, salary_eur
+    return sal_min, sal_max, sr.currency, sr.period, salary_eur
 
 
 def _extract_experience_fields(html: str | None) -> tuple[int | None, int | None]:
@@ -2770,11 +2775,15 @@ async def dry_run_single_board(
     *,
     verbose: bool = False,
     scrape_limit: int = 3,
+    pw=None,
 ) -> None:
     """Dry-run a single board: monitor + scrape without any DB writes.
 
     Runs monitor_one() to discover jobs, then scrape_one() on a sample of URLs
     to show what the scraper would produce.  Useful for testing config changes.
+
+    When *pw* is provided, Playwright is available for monitors/scrapers that
+    require browser rendering (e.g. replay-mode api_sniffer, rendered nextdata).
     """
     from dataclasses import fields as dc_fields
 
@@ -2794,7 +2803,7 @@ async def dry_run_single_board(
     )
 
     # ── Monitor ──────────────────────────────────────────────────────
-    result = await monitor_one(board["board_url"], crawler_type, metadata, http)
+    result = await monitor_one(board["board_url"], crawler_type, metadata, http, pw=pw)
 
     is_rich = result.jobs_by_url is not None
     log.info(
@@ -2869,8 +2878,8 @@ async def dry_run_single_board(
     cfg = scraper_config or {}
     for url in sample_urls:
         try:
-            content = await scrape_one(url, scraper_type, scraper_config, http)
-            content = await _apply_fallback_chain(content, url, scraper_type, cfg, http)
+            content = await scrape_one(url, scraper_type, scraper_config, http, pw=pw)
+            content = await _apply_fallback_chain(content, url, scraper_type, cfg, http, pw=pw)
             content.description = normalize_description_html(content.description)
 
             if enrich_fields:
