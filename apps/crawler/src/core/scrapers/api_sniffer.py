@@ -410,10 +410,15 @@ async def _scrape_http(
     headers = clean_headers(request_headers)
     json_path = config.get("json_path")
 
-    # Build request body, substituting {id} from URL path
+    # Substitute {id} from URL path into api_url and post_body
+    if "{id}" in api_url:
+        path = urlparse(url).path.rstrip("/")
+        job_id = path.rsplit("/", 1)[-1]
+        if job_id:
+            api_url = api_url.replace("{id}", job_id)
+
     post_body = config.get("post_body") or config.get("post_data")
     if post_body and "{id}" in post_body:
-        # Extract last path segment as ID
         path = urlparse(url).path.rstrip("/")
         job_id = path.rsplit("/", 1)[-1]
         post_body = post_body.replace("{id}", job_id)

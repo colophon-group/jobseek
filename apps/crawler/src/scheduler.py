@@ -87,7 +87,12 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="With --dry-run: log all fields for each discovered/scraped job",
     )
-    return parser.parse_args()
+    args = parser.parse_args()
+    if args.dry_run and not args.board:
+        parser.error("--dry-run requires --board")
+    if args.verbose and not args.dry_run:
+        parser.error("--verbose requires --dry-run")
+    return args
 
 
 def _batch_log_kwargs(result) -> dict:

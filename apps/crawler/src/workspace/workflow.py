@@ -658,9 +658,12 @@ def read_kb_entry(filename: str) -> str | None:
     """Read the full content of a KB entry by filename.
 
     Returns the full file content, or None if not found.
+    Rejects paths that escape the KB directory.
     """
     kb_dir = _kb_dir()
-    path = kb_dir / filename
+    path = (kb_dir / filename).resolve()
+    if not path.is_relative_to(kb_dir.resolve()):
+        return None
     if not path.exists():
         return None
     return path.read_text()

@@ -216,14 +216,10 @@ def _extract_salary_fields(
     if sr is None:
         return None, None, None, None, None
 
-    # Store raw values in original period
-    if sr.period == "hourly":
-        # min/max are in cents internally — convert to dollars
-        sal_min = round(sr.min / 100, 2)
-        sal_max = round(sr.max / 100, 2) if sr.max is not None else None
-    else:
-        sal_min = sr.min
-        sal_max = sr.max
+    # Store raw values in original period (always integers for DB)
+    # Hourly values are stored in cents (e.g. $25.50/hr → 2550)
+    sal_min = sr.min
+    sal_max = sr.max
 
     # Annualize only for the EUR filter column
     if sr.period == "hourly":
@@ -2249,6 +2245,7 @@ async def _run_fallback_scraper(
     fb_type: str,
     fb_cfg: dict,
     http: httpx.AsyncClient,
+    pw=None,
 ) -> JobContent:
     """Run a fallback scraper, using parse_html shortcut when possible."""
     scraper_t = get_scraper_type(fb_type)
@@ -2258,7 +2255,7 @@ async def _run_fallback_scraper(
         content = scraper_t.parse_html(resp.text, fb_cfg)
         enrich_description(content)
         return content
-    return await scrape_one(url, fb_type, fb_cfg, http)
+    return await scrape_one(url, fb_type, fb_cfg, http, pw=pw)
 
 
 async def _apply_fallback_chain(
@@ -2286,7 +2283,7 @@ async def _apply_fallback_chain(
                 fallback=fb_type,
                 fields=fields,
             )
-            fb_content = await _run_fallback_scraper(url, fb_type, fb_cfg, http)
+            fb_content = await _run_fallback_scraper(url, fb_type, fb_cfg, http, pw=pw)
             content = _merge_fields(content, fb_content, fields)
         elif not content.title:
             # Full replacement: only when primary has no title

@@ -153,6 +153,7 @@ def _extract_concat(item: dict, specs: list) -> str | None:
     """Resolve a list of specs and concatenate results."""
     parts: list[str] = []
     pending_constants: list[str] = []
+    had_data_expr = False  # Track whether any non-constant spec was seen
 
     for s in specs:
         # Constant string (=prefix)
@@ -162,6 +163,7 @@ def _extract_concat(item: dict, specs: list) -> str | None:
 
         # Template dict: {"each": "path[*]", "wrap": "<h3>{text}</h3>\n{content}"}
         if isinstance(s, dict):
+            had_data_expr = True
             each_path = s.get("each", "")
             wrap_tpl = s.get("wrap", "")
             arr = jmespath.search(each_path, item)
@@ -181,6 +183,7 @@ def _extract_concat(item: dict, specs: list) -> str | None:
             continue
 
         # Regular jmespath expression
+        had_data_expr = True
         result = jmespath.search(s, item)
         if result is None:
             pending_constants.clear()
@@ -194,8 +197,10 @@ def _extract_concat(item: dict, specs: list) -> str | None:
         else:
             parts.append(_plain_to_html(str(result)))
 
-    # Trailing constants (after last jmespath) — include them
-    parts.extend(pending_constants)
+    # Trailing constants: include if we have data or if the spec is constants-only.
+    # Skip when data expressions were attempted but all resolved to None.
+    if parts or not had_data_expr:
+        parts.extend(pending_constants)
 
     return "\n".join(parts) if parts else None
 
