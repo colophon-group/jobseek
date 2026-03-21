@@ -282,6 +282,41 @@ a location field with "null", a title with HTML artifacts. Fix: subagents
 must read 2-3 sample extractions and confirm the content is semantically
 correct, not just non-empty.
 
+### Backtracking on new evidence
+
+The current workflow only moves forward. Once a step is "done", the agent
+never revisits it — even when later evidence proves an earlier decision wrong.
+This must change.
+
+Examples of legitimate backtracking triggers:
+
+- **Monitor testing reveals a missing board.** A subagent configuring
+  board 1 notices the API returns jobs from two distinct departments that
+  the board discovery subagent mapped to a single board. The main agent
+  should split the board or add a new one — going back to board discovery.
+- **Scraper output contradicts monitor assumptions.** The monitor reported
+  200 jobs, but scraper extraction shows half the URLs are 404s or redirect
+  to a different site. The monitor config is wrong — go back to monitor
+  selection.
+- **Enrichment subagent finds a different careers domain.** The metadata
+  subagent discovers that the company recently migrated from
+  `jobs.company.com` to `careers.company.com`. Board discovery used the
+  old domain — re-run board discovery with the new URL.
+- **Job count mismatch surfaces late.** The web page says 300 jobs, the
+  monitor found 150, the agent moved on. During feedback, the agent
+  realizes this gap. Go back to monitor selection, don't paper over it.
+- **A config subagent discovers a better approach.** While testing
+  api_sniffer, a subagent finds that the site has a public GraphQL
+  endpoint that returns richer data than the sitemap monitor. The main
+  agent should reconsider the monitor choice, not ignore the finding.
+
+**Implementation:** The workflow engine must support `ws task back --to
+<step> --reason "..."`. The gate system should not prevent revisiting
+completed steps. The reason is logged to reflections so the backtrack is
+auditable. For the parallel pipeline, the main agent is responsible for
+deciding when to backtrack — subagents report findings, the main agent
+acts on them.
+
 ## Blockers and Required Changes
 
 ### 1. Relax `company_complete` gate
@@ -366,6 +401,11 @@ Prerequisite changes that unblock everything else.
   `ws run scraper` in `crawl.py`. Look up the named config from
   `board.configs[name]` instead of `board.active_config`. Write run results
   back to the named config entry.
+- [ ] **0.4** Add `ws task back --to <step> --reason "..."` command. Resets
+  `current_step` (and `current_board` if applicable) in workflow state.
+  Logs the reason to reflections for auditability. Must work for both
+  global and per-board steps. Does not discard any existing configs or
+  state — only moves the workflow cursor backward.
 
 ### Phase 1: Parallel Enrichment Tracks
 
