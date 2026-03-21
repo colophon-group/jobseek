@@ -6,6 +6,7 @@ import asyncio
 import json
 import math
 import random
+import re
 import time
 
 import click
@@ -1230,8 +1231,17 @@ def run_monitor(slug: str | None, board_alias: str | None, config_name: str | No
     # Regression detection: previous run had jobs, now 0
     prev_jobs = (cfg.get("run") or {}).get("jobs", 0)
 
+    # Store description samples for quality gate validation (rich monitors)
+    desc_samples: list[dict] = []
+    if result.jobs_by_url:
+        for job in list(result.jobs_by_url.values())[:5]:
+            desc = getattr(job, "description", None)
+            if desc:
+                plain = re.sub(r"<[^>]+>", "", desc).strip()
+                desc_samples.append({"length": len(plain), "snippet": plain[:200]})
+
     # Store results
-    run_data = {
+    run_data: dict = {
         "jobs": job_count,
         "time": round(elapsed, 1),
         "has_rich_data": has_rich,
@@ -1240,6 +1250,8 @@ def run_monitor(slug: str | None, board_alias: str | None, config_name: str | No
         .datetime.now(__import__("datetime").timezone.utc)
         .strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
+    if desc_samples:
+        run_data["description_samples"] = desc_samples
     cfg["run"] = run_data
 
     # Mark config as tested and record measured cost
@@ -1626,12 +1638,20 @@ def run_scraper(
     times = [e for _, _, e in results]
     avg_time = sum(times) / len(times) if times else 0
 
+    # Store description samples for quality gate validation
+    desc_samples = []
+    for _, content, _ in results:
+        if content.description and len(desc_samples) < 5:
+            plain = re.sub(r"<[^>]+>", "", content.description).strip()
+            desc_samples.append({"length": len(plain), "snippet": plain[:200]})
+
     scraper_run_data = {
         "count": len(results),
         "avg_time": round(avg_time, 1),
         "titles": titles_found,
         "descriptions": descs_found,
         "locations": locations_found,
+        "description_samples": desc_samples,
         "ran_at": __import__("datetime")
         .datetime.now(__import__("datetime").timezone.utc)
         .strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -2078,6 +2098,23 @@ def feedback_cmd(
         cov = tier.get("coverage", "?")
         qual = tier.get("quality", "?")
         out.plain("feedback", f"  {tier_name}: {cov} ({qual})")
+    # Warn if description rated clean but samples are suspiciously short
+    desc_fb = fields_fb.get("description", {})
+    if desc_fb.get("quality") == "clean":
+        scraper_run = cfg.get("scraper_run") or {}
+        run_data_fb = cfg.get("run") or {}
+        samples = (
+            scraper_run.get("description_samples") or run_data_fb.get("description_samples") or []
+        )
+        short = [s for s in samples if s.get("length", 0) < 200]
+        if short and len(short) >= len(samples) // 2:
+            out.warn(
+                "feedback",
+                f"{len(short)}/{len(samples)} sample descriptions are under "
+                f"200 chars — verify they contain real job content, not just "
+                f"titles or boilerplate",
+            )
+
     if verdict == "unusable":
         out.warn("feedback", "Verdict is unusable — cannot submit")
     elif verdict == "poor":
@@ -2135,6 +2172,25 @@ def run_quality_gates(
             blockers.append(f"Board {b.alias}: verdict is unusable")
         elif fb.get("verdict") == "poor":
             blockers.append(f"Board {b.alias}: verdict is poor (use --force)")
+
+        # Check description quality from stored samples
+        scraper_run = cfg.get("scraper_run") or {}
+        run_data = cfg.get("run") or {}
+        desc_samples = (
+            scraper_run.get("description_samples") or run_data.get("description_samples") or []
+        )
+        if desc_samples:
+            short_count = sum(1 for s in desc_samples if s.get("length", 0) < 200)
+            if short_count == len(desc_samples):
+                warnings.append(
+                    f"Board {b.alias}: all {len(desc_samples)} sample descriptions "
+                    f"are under 200 chars — may be trivial (titles, boilerplate)"
+                )
+            elif short_count > len(desc_samples) // 2:
+                warnings.append(
+                    f"Board {b.alias}: {short_count}/{len(desc_samples)} sample "
+                    f"descriptions are under 200 chars"
+                )
 
     # Check for image artifacts (original files saved by ws set).
     # Skip when logos already exist on CDN (reconfig mode — URLs are HTTP).

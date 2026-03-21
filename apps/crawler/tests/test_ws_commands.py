@@ -2125,6 +2125,72 @@ class TestQualityGates:
         blockers, _ = run_quality_gates(ws_obj, [board])
         assert any("0 jobs" in b for b in blockers)
 
+    def test_short_descriptions_warns(self, tmp_path, monkeypatch):
+        from src.workspace.commands.crawl import run_quality_gates
+
+        monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: tmp_path / ".ws")
+        monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path / ".ws")
+
+        ws_obj = Workspace(
+            slug="test",
+            name="Test",
+            website="https://test.com",
+            logo_url="https://cdn.test.com/logo.png",
+            icon_url="https://cdn.test.com/icon.png",
+            descriptions={"en": "A test", "de": "Ein Test", "fr": "Un test", "it": "Un test"},
+        )
+        board = Board(alias="careers", slug="test-careers", url="https://test.com/jobs")
+        board.configs["gh"] = {
+            "monitor_type": "greenhouse",
+            "status": "tested",
+            "run": {"jobs": 50},
+            "scraper_run": {
+                "description_samples": [
+                    {"length": 50, "snippet": "Short desc"},
+                    {"length": 30, "snippet": "Another short"},
+                    {"length": 40, "snippet": "Also short"},
+                ],
+            },
+            "feedback": {"verdict": "good"},
+        }
+        board.active_config = "gh"
+
+        _, warnings = run_quality_gates(ws_obj, [board])
+        assert any("under 200 chars" in w for w in warnings)
+
+    def test_long_descriptions_no_warning(self, tmp_path, monkeypatch):
+        from src.workspace.commands.crawl import run_quality_gates
+
+        monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: tmp_path / ".ws")
+        monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path / ".ws")
+
+        ws_obj = Workspace(
+            slug="test",
+            name="Test",
+            website="https://test.com",
+            logo_url="https://cdn.test.com/logo.png",
+            icon_url="https://cdn.test.com/icon.png",
+            descriptions={"en": "A test", "de": "Ein Test", "fr": "Un test", "it": "Un test"},
+        )
+        board = Board(alias="careers", slug="test-careers", url="https://test.com/jobs")
+        board.configs["gh"] = {
+            "monitor_type": "greenhouse",
+            "status": "tested",
+            "run": {"jobs": 50},
+            "scraper_run": {
+                "description_samples": [
+                    {"length": 500, "snippet": "A" * 200},
+                    {"length": 800, "snippet": "B" * 200},
+                    {"length": 350, "snippet": "C" * 200},
+                ],
+            },
+            "feedback": {"verdict": "good"},
+        }
+        board.active_config = "gh"
+
+        _, warnings = run_quality_gates(ws_obj, [board])
+        assert not any("under 200 chars" in w for w in warnings)
+
 
 # ── Phase 5: Cost Scoring ────────────────────────────────────────────
 

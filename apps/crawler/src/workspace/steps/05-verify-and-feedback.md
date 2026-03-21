@@ -23,7 +23,11 @@ ws run scraper    # for scraper-based monitors
 ### For all types, verify:
 
 - **Titles** are real job titles (not garbled, truncated, or placeholder text)
-- **Descriptions** contain meaningful content (not empty HTML or boilerplate)
+- **Descriptions** must contain substantive structured content — sections like
+  responsibilities, requirements, qualifications, or project context. A
+  description that is just a job title repeated, a one-liner, "apply now"
+  boilerplate, or only a company overview is NOT acceptable and must be rated
+  `unusable` or `noisy`, not `clean`. Read 2-3 sample descriptions fully.
   HTML markup is expected for this field; do not mark it noisy just because tags are present
 - **Locations** are actual place names (not codes, IDs, or "+2 more" truncations)
 - A populated field is NOT necessarily correct — verify actual text makes sense
