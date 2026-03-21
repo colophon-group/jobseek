@@ -56,6 +56,13 @@ def extract_field(item: dict, spec: str | list | dict) -> str | list[str] | None
         an array of objects, replacing ``{field}`` placeholders.
       - Array results are flattened (each element becomes a part).
 
+    **Dict with "concat" + optional "separator"** — like a list spec
+      but with a custom separator (default ``\\n``)::
+
+          {"concat": ["city_info.en_name", "city_info.parent.parent.en_name"],
+           "separator": ", "}
+          → "Warsaw, Poland"
+
     **Dict with "path" + "map"** — value mapping.
       Resolves the jmespath ``path``, stringifies the result, and looks
       it up in ``map``.  Returns the mapped value or ``None``::
@@ -64,6 +71,9 @@ def extract_field(item: dict, spec: str | list | dict) -> str | list[str] | None
     """
     if isinstance(spec, list):
         return _extract_concat(item, spec)
+
+    if isinstance(spec, dict) and "concat" in spec:
+        return _extract_concat(item, spec["concat"], separator=spec.get("separator", "\n"))
 
     if isinstance(spec, dict) and "path" in spec:
         if "map" in spec:
@@ -149,7 +159,7 @@ def _plain_to_html(text: str) -> str:
     return "\n".join(out)
 
 
-def _extract_concat(item: dict, specs: list) -> str | None:
+def _extract_concat(item: dict, specs: list, *, separator: str = "\n") -> str | None:
     """Resolve a list of specs and concatenate results."""
     parts: list[str] = []
     pending_constants: list[str] = []
@@ -202,7 +212,7 @@ def _extract_concat(item: dict, specs: list) -> str | None:
     if parts or not had_data_expr:
         parts.extend(pending_constants)
 
-    return "\n".join(parts) if parts else None
+    return separator.join(parts) if parts else None
 
 
 def extract_next_data(html: str) -> dict | None:
