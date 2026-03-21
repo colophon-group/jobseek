@@ -16,8 +16,10 @@ from src.workspace import log as action_log
 from src.workspace.state import ws_log_path
 
 _CLAUDE_DIR = Path.home() / ".claude" / "projects"
+# Match ws commands at start of line, after && or ;, or after alias assignment
 _WS_CMD_RE = re.compile(
-    r"\bws\s+(new|set|add|del|use|probe|select|run|feedback|submit|validate|task|reject|resume|status|help)\b"
+    r"(?:^|&&|;|\|)\s*(?:uv run )?ws\s+"
+    r"(new|set|add|del|use|probe|select|run|feedback|submit|validate|task|reject|resume|status|help)\b"
 )
 
 
@@ -158,41 +160,70 @@ def discover_transcript(slug: str) -> Path | None:
     if not log_cmds:
         return None
 
-    # Get the complete_ts from log (last entry should be 'complete')
-    complete_ts = log_cmds[-1][0] if log_cmds else ""
-    if not complete_ts:
+    # Get timestamp range from log entries
+    first_ts = log_cmds[0][0]
+    last_ts = log_cmds[-1][0]
+    if not first_ts or not last_ts:
         return None
 
     try:
-        complete_dt = datetime.fromisoformat(complete_ts.replace("Z", "+00:00"))
+        first_dt = datetime.fromisoformat(first_ts.replace("Z", "+00:00"))
+        last_dt = datetime.fromisoformat(last_ts.replace("Z", "+00:00"))
     except (ValueError, TypeError):
         return None
 
     # Take last N command names from log for sequence matching
     last_n_cmds = [cmd for _, cmd in log_cmds[-8:]]
 
-    # Scan all transcripts, rough-filter by mtime
+    # Scan all transcripts. Use mtime as a rough filter: the file must have
+    # been modified AFTER the first ws command (with generous 24h padding to
+    # account for session resumption, compaction, etc.)
+    cutoff = first_dt - __import__("datetime").timedelta(hours=24)
     candidates: list[tuple[Path, float]] = []
     for t_path in _find_all_transcripts():
         try:
             mtime = datetime.fromtimestamp(t_path.stat().st_mtime, tz=UTC)
         except OSError:
             continue
-        if abs((mtime - complete_dt).total_seconds()) > 120:
+        if mtime < cutoff:
             continue
-        candidates.append((t_path, abs((mtime - complete_dt).total_seconds())))
+        # Score by closeness to last log entry (prefer most recent)
+        candidates.append((t_path, abs((mtime - last_dt).total_seconds())))
 
-    # Sort by closeness to complete timestamp
+    # Sort by closeness to last log timestamp
     candidates.sort(key=lambda x: x[1])
 
-    for t_path, _ in candidates:
-        # Flatten main + subagents and extract ws commands
+    # Two-pass matching: first quick-check tail of main transcript only,
+    # then full flatten + sequence match on short-listed candidates.
+    shortlisted: list[Path] = []
+    last_cmd = last_n_cmds[-1] if last_n_cmds else ""
+
+    for t_path, _ in candidates[:50]:  # limit scan to top 50 by mtime
+        # Quick check: does the tail of the main transcript contain the
+        # last ws command (e.g., "complete" or "submit")?
+        tail = _tail_jsonl(t_path, 300)
+        tail_ws = _extract_ws_commands(tail)
+        tail_cmd_names = [_extract_cmd_name(cmd) for _, cmd in tail_ws]
+        if last_cmd and last_cmd in tail_cmd_names:
+            shortlisted.append(t_path)
+
+    # Full sequence match on shortlisted candidates.
+    # Also verify the transcript mentions this specific slug in a ws command.
+    slug_pattern = re.compile(
+        rf"\bws\s+\S+\s+{re.escape(slug)}\b|ws\s+\S+\s+.*\b{re.escape(slug)}\b"
+    )
+
+    for t_path in shortlisted:
         flat = _flatten_transcript(t_path)
         transcript_ws = _extract_ws_commands(flat)
         transcript_cmd_names = [_extract_cmd_name(cmd) for _, cmd in transcript_ws]
 
-        # Check if last N log commands appear as subsequence
-        if _is_subsequence(last_n_cmds, transcript_cmd_names):
+        if not _is_subsequence(last_n_cmds, transcript_cmd_names):
+            continue
+
+        # Verify slug appears in at least one ws command
+        slug_found = any(slug_pattern.search(cmd) for _, cmd in transcript_ws)
+        if slug_found:
             return t_path
 
     return None
