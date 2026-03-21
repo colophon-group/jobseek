@@ -93,8 +93,8 @@ URL_FIELDS = re.compile(
 )
 
 COUNT_FIELDS = re.compile(
-    r"^(total|count|total_?count|total_?results|hits|num_?found|result_?count"
-    r"|size|totalCount|totalResults|totalHits|nbHits)$",
+    r"^(total|count|total_?count|total_?results|total_?items|hits|num_?found|result_?count"
+    r"|size|totalCount|totalResults|totalItems|totalHits|nbHits)$",
     re.IGNORECASE,
 )
 

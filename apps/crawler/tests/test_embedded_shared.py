@@ -232,3 +232,11 @@ class TestParseEmbedded:
         html = '<script id="data">{"a": 1, "b": 2,}</script>'
         result = parse_embedded(html, {"script_id": "data"})
         assert result == {"a": 1, "b": 2}
+
+    def test_reactrouter_source(self):
+        """source=reactrouter delegates to extract_react_router_data."""
+        data = {"loaderData": {"jobDetails": {"title": "Engineer"}}}
+        encoded = json.dumps(json.dumps(data))
+        html = f"window.__staticRouterHydrationData=JSON.parse({encoded});"
+        result = parse_embedded(html, {"source": "reactrouter"})
+        assert result == data

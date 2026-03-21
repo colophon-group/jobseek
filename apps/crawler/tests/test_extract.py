@@ -100,6 +100,48 @@ class TestFlatten:
         assert els[0]["text"] == "Show"
         assert els[1]["text"] == "End"
 
+    def test_title_tag_captured_inside_head(self):
+        html = (
+            "<html><head><title>Job Title Here</title></head><body><div>Content</div></body></html>"
+        )
+        els = flatten(html)
+        assert len(els) == 2
+        assert els[0]["tag"] == "title"
+        assert els[0]["text"] == "Job Title Here"
+        assert els[1]["tag"] == "div"
+        assert els[1]["text"] == "Content"
+
+    def test_title_tag_prepended_at_index_zero(self):
+        html = "<head><title>My Title</title></head><h1>Heading</h1><p>Body</p>"
+        els = flatten(html)
+        assert els[0]["tag"] == "title"
+        assert els[0]["text"] == "My Title"
+        assert els[1]["tag"] == "h1"
+        assert els[2]["tag"] == "p"
+
+    def test_title_tag_whitespace_collapsed(self):
+        html = "<head><title>  Lots   of   spaces  </title></head><p>X</p>"
+        els = flatten(html)
+        assert els[0]["tag"] == "title"
+        assert els[0]["text"] == "Lots of spaces"
+
+    def test_title_tag_empty_not_added(self):
+        html = "<head><title>   </title></head><p>Content</p>"
+        els = flatten(html)
+        assert len(els) == 1
+        assert els[0]["tag"] == "p"
+
+    def test_title_tag_usable_in_walk_steps(self):
+        html = (
+            "<html><head><title>Software Engineer</title></head>"
+            "<body><p>Description</p></body></html>"
+        )
+        els = flatten(html)
+        steps = [{"tag": "title", "field": "title"}, {"tag": "p", "field": "desc"}]
+        result = walk_steps(els, steps)
+        assert result["title"] == "Software Engineer"
+        assert result["desc"] == "Description"
+
 
 class TestNorm:
     def test_smart_quotes_to_ascii(self):
