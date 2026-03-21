@@ -20,6 +20,7 @@ Available topics:
   actions           Browser action pipeline
   feedback          Feedback command — verdicts, per-field quality, examples
   artifacts         Debug artifacts saved by ws commands
+  troubleshooting   Troubleshooting tips + case study reference
   industries        Industry IDs for company enrichment
   occupations       Occupation taxonomy — slugs, display names, alias counts
   seniority         Seniority levels — slugs, display names, alias counts
@@ -28,8 +29,10 @@ Commands:
   ws probe monitor   Probe all monitor types for active board
   ws probe scraper   Probe all scraper types against sample URLs
 
-Troubleshooting:
-  ws task troubleshoot <query>   Search the knowledge base"""
+Troubleshooting & case studies:
+  ws task troubleshoot <query>       Search the knowledge base
+  ws task troubleshoot --view <file> View full KB entry (useful for case studies)
+  ws task casestudy --company ...    Record a case study from a complex setup"""
 
 BOARD = """\
 Board Command Reference:
@@ -67,33 +70,35 @@ Board Command Reference:
 MONITORS = """\
 Monitor Types (cheapest first):
 
-  Type              Cost    Returns         Scraper needed?
-  ────────────────────────────────────────────────────────
-  join              9       Full job data   No (skipped)
-  ashby             10      Full job data   No (skipped)
-  bite              10      Full job data   No (skipped)
-  breezy            10      Full job data   No (skipped)
-  dvinci            10      Full job data   No (skipped)
-  gem               10      Full job data   No (skipped)
-  greenhouse        10      Full job data   No (skipped)
-  hireology         10      Full job data   No (skipped)
-  lever             10      Full job data   No (skipped)
-  pinpoint          10      Full job data   No (skipped)
-  recruitee         10      Full job data   No (skipped)
-  rippling          10      Full job data   No (skipped)
-  rss               10      Full job data   No (skipped)
-  smartrecruiters   10      Full job data   No (skipped)
-  softgarden        10      Full job data   No (skipped)
-  traffit           10      Full job data   No (skipped)
-  workable          10      Full job data   No (skipped)
-  workday           10      Full job data   No (skipped)
-  personio          10      Full/partial    If descriptions missing (fallback)
-  umantis           15      URL set         Yes
-  nextdata          20      URLs or full    If URL-only
-  apify_meta        50      Full job data   No (skipped)
-  sitemap           50      URL set         Yes
-  api_sniffer       80      URLs or full    If URL-only (no fields)
-  dom               100     URL set         Yes
+  Type              Cost    Returns           Scraper needed?
+  ──────────────────────────────────────────────────────────────
+  join              9       Job URLs          Auto-configured
+  ashby             10      Full job data     No (skipped)
+  bite              10      Job URLs          Auto-configured
+  breezy            10      Job URLs          Auto-configured
+  deel              10      Full job data     No (skipped)
+  dvinci            10      Full job data     No (skipped)
+  gem               10      Full job data     No (skipped)
+  greenhouse        10      Full job data     No (skipped)
+  hireology         10      Full job data     No (skipped)
+  lever             10      Full job data     No (skipped)
+  pinpoint          10      Full job data     No (skipped)
+  recruitee         10      Full job data     No (skipped)
+  rippling          10      Job URLs          Auto-configured
+  rss               10      Full job data     No (skipped)
+  smartrecruiters   10      Job URLs          Auto-configured
+  softgarden        10      Job URLs          Auto-configured
+  traffit           10      Full job data     No (skipped)
+  workable          10      Job URLs          Auto-configured
+  workday           10      Job URLs          Auto-configured
+  personio          10      Full/partial      If descriptions missing (fallback)
+  notion            15      Job URLs          Auto-configured
+  umantis           15      URL set           Yes
+  nextdata          20      URLs or full      If URL-only
+  apify_meta        50      Full job data     No (skipped)
+  sitemap           50      URL set           Yes
+  api_sniffer       80      URLs or full      If URL-only (no fields)
+  dom               100     URL set           Yes
 
 Interpretation guide (after ws probe monitor):
   1. Rich monitor detected (join/greenhouse/lever/rss/etc):
@@ -137,8 +142,9 @@ Scraper Types:
   json-ld        Static/PW   No (optional render)  Sites with schema.org/JobPosting
   nextdata       Static/PW   Yes (fields)     Next.js sites with __NEXT_DATA__
   embedded       Static/PW   Yes (fields)     JS-embedded JSON (script tags, variables)
+  pdf            Static      No               PDF job descriptions
   dom            Static/PW   Yes (steps)      Custom HTML structure
-  api_sniffer    Playwright  Optional (fields)  SPA/XHR job pages
+  api_sniffer    HTTP/PW     Optional (fields)  SPA/XHR or direct API
   workable       API         No               Workable job pages (auto-configured)
   workday        API         No               Workday job pages (auto-configured)
 
@@ -164,9 +170,10 @@ Field importance:
   Required     title — every job must have a title
   Required     description — HTML fragment, needed for display
   Important    locations — most jobs have at least one
-  Important    job_location_type — "Remote", "Hybrid", "On-site"
+  Important    job_location_type — "remote", "hybrid", "onsite"
   Optional     employment_type, date_posted, base_salary, skills,
                qualifications, responsibilities, valid_through
+  Auto         language — ISO 639-1, auto-detected or monitor-provided
 
   Titles and descriptions should reach full coverage before submit.
   Missing locations acceptable only if job_location_type is set (remote-only).
@@ -1075,6 +1082,14 @@ nextdata — Next.js __NEXT_DATA__ Page Extractor
               - Dot notation: "a.b.c"
               - Array index: "items[0].name"
               - Array wildcard: "offices[].name" (extracts from all)
+              List of paths: concatenate multiple sources into one field.
+                "description": ["intro", "sections[*].content", "footer"]
+              Constants (=prefix): literal values for separators or headings.
+                "description": ["intro", "=<h3>Details</h3>", "body"]
+              Template iteration: {"each": "path[*]", "wrap": "<h3>{title}</h3>\\n{body}"}
+                Iterates array of objects, fills {field} placeholders.
+              Value mapping: {"path": "type", "map": {"REMOTE": "remote"}}
+                Maps values through a lookup dict. Unmapped values → null.
               Target fields: title, description, locations, employment_type,
               job_location_type, date_posted, valid_through, qualifications,
               responsibilities, skills. Prefix with "metadata." for extras.
@@ -1111,6 +1126,14 @@ embedded — Generalized Embedded Data Extractor
               - Named keys: "title", "category.name"
               - Array wildcard: "offices[].name"
               - Positional index: "[1]", "[9][*][2]"
+              List of paths: concatenate multiple sources into one field.
+                "description": ["intro", "sections[*].content", "footer"]
+              Constants (=prefix): literal values for separators or headings.
+                "description": ["intro", "=<h3>Details</h3>", "body"]
+              Template iteration: {"each": "path[*]", "wrap": "<h3>{title}</h3>\\n{body}"}
+                Iterates array of objects, fills {field} placeholders.
+              Value mapping: {"path": "type", "map": {"REMOTE": "remote"}}
+                Maps values through a lookup dict. Unmapped values → null.
               Target fields: title, description, locations, employment_type,
               job_location_type, date_posted, valid_through, qualifications,
               responsibilities, skills. Prefix with "metadata." for extras.
@@ -1167,38 +1190,68 @@ dom — Step-based Extraction Engine
 SCRAPER_API_SNIFFER = """\
 api_sniffer — XHR/Fetch API Capture (single page)
 
-  Fetch:    Playwright only (opens page, captures XHR/fetch responses)
-  Config:
+  Two modes:
+    Browser mode (default): Playwright opens page, captures XHR/fetch responses.
+    HTTP mode:  Direct httpx request to a known API endpoint — no Playwright.
+                Enable by setting api_url in scraper_config.
+
+  Config (browser mode):
     {"fields": {"title": "name", "description": "content"}}
+
+  Config (HTTP mode):
+    {"api_url": "https://api.example.com/jobs/{id}",
+     "method": "GET", "json_path": "data.job",
+     "fields": {"title": "name", "description": "content"}}
+
+    api_url   API endpoint URL. Supports {id} placeholder (replaced with
+              job ID extracted from the job page URL's last path segment).
+    method    HTTP method: "GET" (default) or "POST".
+    post_body POST request body (JSON string). Supports {id} placeholder.
+    json_path jmespath expression to navigate to the job object in the response.
+    request_headers  Dict of HTTP headers to include in the request.
+    enrich    List of field names to fetch from the detail API when the
+              monitor already provides partial data (e.g. ["description"]).
+              Only those fields are scraped; others come from the monitor.
 
     fields    Optional. Dict mapping JobContent fields to JSON response keys.
               Same spec as nextdata: key, nested.key, array[].field.
               If omitted, auto-maps heuristically from captured response.
+              List of paths: concatenate multiple sources into one field.
+                "description": ["intro", "sections[*].content", "footer"]
+              Constants (=prefix): literal values for separators or headings.
+                "description": ["intro", "=<h3>Details</h3>", "body"]
+              Template iteration: {"each": "path[*]", "wrap": "<h3>{title}</h3>\\n{body}"}
+                Iterates array of objects, fills {field} placeholders.
+              Value mapping: {"path": "type", "map": {"REMOTE": "remote"}}
+                Maps values through a lookup dict. Unmapped values → null.
               Target fields: title, description, locations, employment_type,
               job_location_type, date_posted, valid_through, qualifications,
               responsibilities, skills. Prefix with "metadata." for extras.
-    wait      Navigation wait strategy: "load", "domcontentloaded", or
-              "networkidle". Default: "load". Use "networkidle" for sites
-              where XHRs fire late; avoid it on heavy sites (analytics/ads).
-    timeout   Navigation timeout in ms. Default: 20000.
-    settle    Seconds to wait after navigation for late XHRs. Default: 3.
+    wait      (Browser mode only) Navigation wait strategy: "load",
+              "domcontentloaded", or "networkidle". Default: "load".
+    timeout   (Browser mode only) Navigation timeout in ms. Default: 20000.
+    settle    (Browser mode only) Seconds to wait for late XHRs. Default: 3.
 
   Auto-probed via Playwright in ws probe scraper. Requires Playwright.
   Can also be manually selected: ws select scraper api_sniffer
 
-  How it works:
+  How it works (browser mode):
     1. Opens job page with Playwright
     2. Captures all JSON responses during page load
     3. Finds the best single-job response (dict with title + description keys)
     4. Extracts fields using config mapping or heuristic matching
 
-  When to use:  Job pages are SPAs that load content via XHR/fetch.
-                Typical sign: other scrapers in ws probe scraper find nothing,
-                page source is empty/minimal, but the page renders full content
-                in browser.
+  How it works (HTTP mode):
+    1. Sends request to api_url (with {id} substituted from job URL)
+    2. Navigates response via json_path to the job object
+    3. Extracts fields using config mapping
 
-  Empty result? The page may not load single-job data via XHR — the content
-                may be embedded in the initial HTML via SSR. Try json-ld or dom."""
+  When to use:  Job pages are SPAs that load content via XHR/fetch.
+                Use HTTP mode when the API endpoint is known (faster, no browser).
+                Use browser mode when the endpoint must be discovered at runtime.
+
+  Empty result? Browser mode: page may not load data via XHR — try json-ld/dom.
+                HTTP mode: check api_url, json_path, and request headers."""
 
 FIELDS = """\
 Job Data Fields — types, formats, importance
@@ -1210,8 +1263,8 @@ Job Data Fields — types, formats, importance
     Required     title             str       Plain text job title
     Required     description       str       HTML fragment (<p>, <ul>, <h3>, etc.)
     Important    locations         [str]     List of location strings
-    Important    job_location_type str       "Remote", "Hybrid", "On-site"
-    Optional     employment_type   str       "Full-time", "Part-time", "Contract", etc.
+    Important    job_location_type str       "remote", "hybrid", "onsite"
+    Optional     employment_type   str       "full_time", "part_time", "contract", etc.
     Optional     date_posted       str       ISO 8601 date (YYYY-MM-DD)
     Optional     valid_through     str       ISO 8601 date (scraper only, not in DiscoveredJob)
     Optional     base_salary       dict      {currency, min, max, unit}
@@ -1224,7 +1277,7 @@ Job Data Fields — types, formats, importance
     - description is always HTML, never plain text. API monitors (greenhouse,
       lever) return HTML natively. Scrapers must produce HTML too.
     - locations is a list even for single-location jobs: ["New York, NY"]
-    - base_salary dict: {"currency": "USD", "min": 100000, "max": 150000, "unit": "YEAR"}
+    - base_salary dict: {"currency": "USD", "min": 100000, "max": 150000, "unit": "year"}
     - responsibilities and qualifications are plain-text lists (one item per
       bullet point), NOT HTML.
     - metadata is a catch-all dict for fields that don't fit the schema
@@ -1238,6 +1291,20 @@ Job Data Fields — types, formats, importance
       "Quality: 135/138 title, 120/138 description, 125/138 locations"
     ws run scraper shows extraction stats for scraped pages:
       "3/3 titles, 3/3 descriptions, 2/3 locations"
+
+  Tip: If descriptions are shorter than expected (missing sections like
+  "What You'll Do" or "Requirements"), the source data likely splits
+  content across multiple fields. Use a list spec to concatenate:
+    "description": ["introHtml", "sections[*].content", "closingHtml"]
+  Use =prefix constants for HTML headings between sections:
+    "description": ["intro", "=<h3>Requirements</h3>", "requirements"]
+  Use each+wrap for arrays of titled sections:
+    "description": ["intro", {"each": "sections[*]", "wrap": "<h3>{heading}</h3>\\n{body}"}]
+  Use map spec for value mapping (boolean/enum conversion):
+    "job_location_type": {"path": "homeOffice", "map": {"True": "remote"}}
+    Unmapped values produce null (not passthrough).
+  Use enrich to scrape only specific fields for rich monitors:
+    "enrich": ["description"] — fetches only description from detail pages.
     Titles and descriptions must be N/N — 0/N on either = do not submit.
     Missing locations acceptable only if job_location_type is set
     (e.g. remote-only companies). Otherwise iterate on scraper config."""
@@ -1498,7 +1565,14 @@ Troubleshooting:
 
   Nothing works after trying all types:
     → Document what was tried and the specific failure
-    → ws task fail --reason "..." to enter coding mode"""
+    → ws task fail --reason "..." to enter coding mode
+
+  Case studies:
+    The KB also contains case studies — end-to-end narratives of how
+    complex boards were configured.  Search finds them alongside
+    troubleshooting entries.  Use --view to read the full study:
+      ws task troubleshoot "lever description split"
+      ws task troubleshoot --view spotify-api-sniffer-nextdata.md"""
 
 FEEDBACK = """\
 Feedback Command Reference:

@@ -43,14 +43,47 @@ def resolve_path(data: dict, path: str) -> object:
     return jmespath.search(path, data)
 
 
-def extract_field(item: dict, spec: str) -> str | list[str] | None:
-    """Extract a value from *item* using a jmespath expression.
+def extract_field(item: dict, spec: str | list | dict) -> str | list[str] | None:
+    """Extract a value from *item* using a field spec.
 
-    - Simple key: ``"text"`` -> ``item["text"]``
-    - Nested key: ``"category.name"`` -> ``item["category"]["name"]``
-    - Array unwrap: ``"locations[].name"`` -> ``[loc["name"] for loc in item["locations"]]``
-    - Array index: ``"[1]"`` -> positional access
+    **String** — jmespath expression (unchanged behavior).
+
+    **List** — concatenation of specs (joined with ``\\n``).
+      - Entries prefixed with ``=`` are literal constants.
+      - jmespath entries returning None are skipped, along with
+        any preceding constants (prevents orphaned headings).
+      - Dict entries ``{"each": "<path>", "wrap": "<template>"}`` iterate
+        an array of objects, replacing ``{field}`` placeholders.
+      - Array results are flattened (each element becomes a part).
+
+    **Dict with "concat" + optional "separator"** — like a list spec
+      but with a custom separator (default ``\\n``)::
+
+          {"concat": ["city_info.en_name", "city_info.parent.parent.en_name"],
+           "separator": ", "}
+          → "Warsaw, Poland"
+
+    **Dict with "path" + "map"** — value mapping.
+      Resolves the jmespath ``path``, stringifies the result, and looks
+      it up in ``map``.  Returns the mapped value or ``None``::
+
+          {"path": "homeOffice", "map": {"True": "remote"}}
     """
+    if isinstance(spec, list):
+        return _extract_concat(item, spec)
+
+    if isinstance(spec, dict) and "concat" in spec:
+        return _extract_concat(item, spec["concat"], separator=spec.get("separator", "\n"))
+
+    if isinstance(spec, dict) and "path" in spec:
+        if "map" in spec:
+            return _extract_mapped(item, spec)
+        return extract_field(item, spec["path"])
+
+    # Constant string (=prefix) — return literal value
+    if isinstance(spec, str) and spec.startswith("="):
+        return spec[1:]
+
     result = jmespath.search(spec, item)
     if result is None:
         return None
@@ -58,6 +91,128 @@ def extract_field(item: dict, spec: str) -> str | list[str] | None:
         values = [str(v) for v in result if v is not None]
         return values or None
     return str(result)
+
+
+def _extract_mapped(item: dict, spec: dict) -> str | list[str] | None:
+    """Resolve a path and map the value through a lookup dict."""
+    result = jmespath.search(spec["path"], item)
+    if result is None:
+        return None
+    value_map = spec["map"]
+    if isinstance(result, list):
+        mapped = [str(value_map[str(v)]) for v in result if str(v) in value_map]
+        return mapped or None
+    key = str(result)
+    mapped = value_map.get(key)
+    return str(mapped) if mapped is not None else None
+
+
+_HTML_TAG_RE = re.compile(r"<[a-zA-Z/]")
+
+
+def _plain_to_html(text: str) -> str:
+    """Convert plain text with newlines to HTML.
+
+    - Lines starting with ``- `` become ``<li>`` items grouped in ``<ul>``.
+    - Blank lines become paragraph breaks.
+    - Other newlines become ``<br>``.
+
+    Already-HTML content (contains ``<`` followed by a tag char) is returned
+    unchanged.  Single-line text without newlines is returned as-is.
+    """
+    if _HTML_TAG_RE.search(text):
+        return text
+    if "\n" not in text:
+        return text
+
+    lines = text.split("\n")
+    out: list[str] = []
+    in_list = False
+
+    for line in lines:
+        stripped = line.strip()
+        is_bullet = stripped.startswith("- ")
+
+        if is_bullet:
+            if not in_list:
+                out.append("<ul>")
+                in_list = True
+            out.append(f"<li>{stripped[2:]}</li>")
+        else:
+            if in_list:
+                out.append("</ul>")
+                in_list = False
+            if not stripped:
+                out.append("<br>")
+            else:
+                out.append(stripped + "<br>")
+
+    if in_list:
+        out.append("</ul>")
+
+    # Strip trailing <br> tags
+    while out and out[-1] == "<br>":
+        out.pop()
+    if out and out[-1].endswith("<br>"):
+        out[-1] = out[-1][:-4]
+
+    return "\n".join(out)
+
+
+def _extract_concat(item: dict, specs: list, *, separator: str = "\n") -> str | None:
+    """Resolve a list of specs and concatenate results."""
+    parts: list[str] = []
+    pending_constants: list[str] = []
+    had_data_expr = False  # Track whether any non-constant spec was seen
+
+    for s in specs:
+        # Constant string (=prefix)
+        if isinstance(s, str) and s.startswith("="):
+            pending_constants.append(s[1:])
+            continue
+
+        # Template dict: {"each": "path[*]", "wrap": "<h3>{text}</h3>\n{content}"}
+        if isinstance(s, dict):
+            had_data_expr = True
+            each_path = s.get("each", "")
+            wrap_tpl = s.get("wrap", "")
+            arr = jmespath.search(each_path, item)
+            if not arr or not isinstance(arr, list):
+                pending_constants.clear()
+                continue
+            parts.extend(pending_constants)
+            pending_constants.clear()
+            for obj in arr:
+                if not isinstance(obj, dict):
+                    parts.append(str(obj))
+                    continue
+                rendered = wrap_tpl
+                for key, val in obj.items():
+                    rendered = rendered.replace(f"{{{key}}}", str(val) if val is not None else "")
+                parts.append(rendered)
+            continue
+
+        # Regular jmespath expression
+        had_data_expr = True
+        result = jmespath.search(s, item)
+        if result is None:
+            pending_constants.clear()
+            continue
+
+        parts.extend(pending_constants)
+        pending_constants.clear()
+
+        if isinstance(result, list):
+            parts.extend(_plain_to_html(str(v)) for v in result if v is not None)
+        else:
+            parts.append(_plain_to_html(str(result)))
+
+    # Trailing constants: include if we have data or if the spec is constants-only.
+    # Skip when data expressions were attempted but all resolved to None.
+    if parts or not had_data_expr:
+        parts.extend(pending_constants)
+
+    return separator.join(parts) if parts else None
 
 
 def extract_next_data(html: str) -> dict | None:

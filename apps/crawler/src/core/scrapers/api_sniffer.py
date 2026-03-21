@@ -98,11 +98,17 @@ _DEFAULT_TIMEOUT = 20_000
 _DEFAULT_SETTLE = 3  # seconds to wait after navigation for XHRs to complete
 
 
-def _find_single_job(exchanges: list) -> dict | None:
+def _find_single_job(exchanges: list, *, json_path: str | None = None) -> dict | None:
     """Find the best JSON response containing single-job data.
 
     Looks for a dict with title + description-like keys (not an array of jobs).
+
+    When *json_path* is set (jmespath expression), each response body is
+    navigated via that path before scoring.  This handles APIs that nest
+    the job object under a non-standard key (e.g. ``data.job_post_detail``).
     """
+    import jmespath as _jmespath
+
     candidates: list[tuple[dict, int]] = []
 
     for ex in exchanges:
@@ -110,6 +116,16 @@ def _find_single_job(exchanges: list) -> dict | None:
             continue
 
         body = ex.body
+
+        # When json_path is configured, try navigating each response directly
+        if json_path and isinstance(body, dict):
+            resolved = _jmespath.search(json_path, body)
+            if isinstance(resolved, dict):
+                s = _score_job_object(resolved)
+                if s > 0:
+                    candidates.append((resolved, s + 50))  # strong preference
+                    continue
+
         if isinstance(body, dict):
             score = _score_job_object(body)
             if score > 0:
@@ -210,6 +226,7 @@ def _extract_with_mapping(obj: dict, fields_map: dict[str, str]) -> JobContent:
             "employment_type",
             "job_location_type",
             "date_posted",
+            "base_salary",
         ):
             kwargs[target] = value
         else:
@@ -373,6 +390,57 @@ async def probe_pw(
     return metadata, comment
 
 
+async def _scrape_http(
+    url: str,
+    config: dict,
+    http: httpx.AsyncClient,
+) -> JobContent:
+    """Scrape via direct HTTP call to a detail API endpoint.
+
+    Used when ``api_url`` is configured — no Playwright needed.
+    Constructs the request body from ``post_body`` (with ``{id}``
+    placeholder filled from the job URL) and navigates the response
+    via ``json_path`` before extracting fields.
+    """
+    from src.core.monitors.api_sniffer import clean_headers, http_fetch
+
+    api_url = config["api_url"]
+    method = config.get("method", "GET")
+    request_headers = config.get("request_headers") or config.get("headers") or {}
+    headers = clean_headers(request_headers)
+    json_path = config.get("json_path")
+
+    # Substitute {id} from URL path into api_url and post_body
+    if "{id}" in api_url:
+        path = urlparse(url).path.rstrip("/")
+        job_id = path.rsplit("/", 1)[-1]
+        if job_id:
+            api_url = api_url.replace("{id}", job_id)
+
+    post_body = config.get("post_body") or config.get("post_data")
+    if post_body and "{id}" in post_body:
+        path = urlparse(url).path.rstrip("/")
+        job_id = path.rsplit("/", 1)[-1]
+        post_body = post_body.replace("{id}", job_id)
+
+    data = await http_fetch(http, method, api_url, headers, post_body)
+    if data is None:
+        log.warning("api_sniffer_scraper.http_fetch_failed", url=url)
+        return JobContent()
+
+    # Navigate to job object via json_path
+    if json_path:
+        import jmespath as _jmespath
+
+        data = _jmespath.search(json_path, data)
+
+    if not isinstance(data, dict):
+        log.warning("api_sniffer_scraper.no_job_data", url=url)
+        return JobContent()
+
+    return _extract_from_object(data, config)
+
+
 async def scrape(
     url: str,
     config: dict,
@@ -380,7 +448,17 @@ async def scrape(
     pw=None,
     **kwargs,
 ) -> JobContent:
-    """Scrape a single job page by capturing XHR/fetch JSON responses."""
+    """Scrape a single job page by capturing XHR/fetch JSON responses.
+
+    - **HTTP mode** (config has ``api_url``): direct httpx call — no
+      Playwright needed.  Same pattern as the monitor's HTTP mode.
+    - **Capture mode** (default): opens page in Playwright and captures
+      XHR/fetch JSON responses.
+    """
+    # HTTP mode — direct API call, no browser
+    if config.get("api_url"):
+        return await _scrape_http(url, config, http)
+
     from src.shared.browser import navigate, open_page
 
     async def _do_scrape(p):
@@ -395,7 +473,8 @@ async def scrape(
             await navigate(page, url, {"wait": wait, "timeout": timeout})
             await asyncio.sleep(settle)
 
-            job_obj = _find_single_job(exchanges)
+            json_path = config.get("json_path")
+            job_obj = _find_single_job(exchanges, json_path=json_path)
             if job_obj is None:
                 log.warning("api_sniffer_scraper.no_job_data", url=url)
                 return JobContent()

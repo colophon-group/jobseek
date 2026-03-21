@@ -43,7 +43,7 @@ OVERLAY_SELECTORS = (
 # Browser config keys recognised by open_page / navigate / run_actions.
 # Used by scrapers and monitors to separate browser keys from other config.
 BROWSER_KEYS = frozenset(
-    {"wait", "timeout", "user_agent", "headless", "actions", "warmup_url", "cookies"}
+    {"wait", "timeout", "user_agent", "headless", "stealth", "actions", "warmup_url", "cookies"}
 )
 
 # ---------------------------------------------------------------------------
@@ -92,6 +92,10 @@ async def open_page(
     cookies = config.get("cookies")
 
     launch_kwargs: dict = {"headless": headless}
+    # Chromium's new headless mode (--headless=new) is less detectable by
+    # anti-bot systems like Cloudflare Turnstile.  Enable via stealth: true.
+    if headless and config.get("stealth"):
+        launch_kwargs["args"] = ["--headless=new"]
     if target_url:
         from src.shared.proxy import build_playwright_proxy
 

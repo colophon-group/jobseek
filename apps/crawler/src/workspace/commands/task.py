@@ -10,8 +10,10 @@ Crawler setup agents interact with the workflow exclusively through these comman
 - ``ws task status``              — show workflow progress
 - ``ws task complete``            — mark workflow as done (final step only)
 - ``ws task fail --reason ...``   — mark step as failed, unlock exploration mode
-- ``ws task troubleshoot``        — search the troubleshooting KB
+- ``ws task troubleshoot``        — search the knowledge base
+- ``ws task troubleshoot --view`` — view a full KB entry
 - ``ws task learn``               — add a KB entry from experience
+- ``ws task casestudy``           — record a case study from a complex setup
 
 Instruction sources available to crawler setup agents:
 - Step markdown rendered from ``apps/crawler/src/workspace/steps/`` via ``workflow.yaml``
@@ -44,7 +46,9 @@ from src.workspace.workflow import (
     advance,
     build_context,
     check_gate,
+    create_casestudy_entry,
     create_kb_entry,
+    read_kb_entry,
     render_step,
     resolve_current_step,
     search_kb,
@@ -368,9 +372,22 @@ def task_fail(reason: str):
 
 
 @task.command(name="troubleshoot")
-@click.argument("query")
-def task_troubleshoot(query: str):
-    """Search the troubleshooting knowledge base."""
+@click.argument("query", required=False, default=None)
+@click.option("--view", default=None, help="Print the full content of a KB entry by filename")
+def task_troubleshoot(query: str | None, view: str | None):
+    """Search the knowledge base or view a full entry."""
+    if view:
+        content = read_kb_entry(view)
+        if content is None:
+            out.die(f"KB entry not found: {view}")
+            return
+        print(content)
+        return
+
+    if not query:
+        out.die("Provide a search query or use --view <filename>")
+        return
+
     results = search_kb(query)
 
     if not results:
@@ -382,14 +399,20 @@ def task_troubleshoot(query: str):
     print()
 
     for r in results:
-        print(f"  --- {r['symptom']} ---")
-        print(f"  Step: {r['step']}  Tags: {', '.join(r['tags'])}")
-        # Print first ~10 lines of body
-        lines = r["body"].strip().split("\n")
-        for line in lines[:12]:
-            print(f"  {line}")
-        if len(lines) > 12:
-            print(f"  ... ({len(lines) - 12} more lines)")
+        if r["type"] == "case-study":
+            summary = r.get("summary") or r["path"]
+            print(f"  [case-study] {summary}")
+            print(f"  Tags: {', '.join(r['tags'])}")
+            print(f"  To view full study: ws task troubleshoot --view {r['path']}")
+        else:
+            print(f"  --- {r['symptom']} ---")
+            print(f"  Step: {r['step']}  Tags: {', '.join(r['tags'])}")
+            # Print first ~10 lines of body
+            lines = r["body"].strip().split("\n")
+            for line in lines[:12]:
+                print(f"  {line}")
+            if len(lines) > 12:
+                print(f"  ... ({len(lines) - 12} more lines)")
         print()
 
 
@@ -405,6 +428,24 @@ def task_learn(step: str, symptom: str, solution: str, tags: str):
     out.info("kb", f"Created KB entry: {path.name}")
     out.plain("kb", f"  Symptom: {symptom}")
     out.plain("kb", f"  Tags: {tags}")
+
+
+@task.command(name="casestudy")
+@click.option("--company", required=True, help="Company slug")
+@click.option("--monitor", required=True, help="Monitor type used")
+@click.option("--scraper", required=True, help="Scraper type used")
+@click.option("--tags", required=True, help="Comma-separated tags")
+@click.option(
+    "--summary", required=True, help="One-line summary of what makes this board interesting"
+)
+def task_casestudy(company: str, monitor: str, scraper: str, tags: str, summary: str):
+    """Create a case study from a complex board configuration."""
+    path = create_casestudy_entry(company, monitor, scraper, tags, summary)
+    out.info("kb", f"Created case study: {path.name}")
+    out.plain("kb", f"  Company: {company}")
+    out.plain("kb", f"  Summary: {summary}")
+    out.plain("kb", f"  Tags: {tags}")
+    out.plain("kb", "Fill in the Key decisions and Config sections in the generated file.")
 
 
 # ── Display helpers ──────────────────────────────────────────────────

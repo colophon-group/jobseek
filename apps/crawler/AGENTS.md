@@ -44,6 +44,7 @@ src/
 │   ├── description_store.py # R2 upload/diff-track for descriptions + extras
 │   ├── enum_normalize.py  # employment_type + job_location_type normalizers
 │   ├── location_resolve.py # Location → GeoNames ID resolution
+│   ├── salary_extract.py  # Heuristic salary parsing from HTML (parse_salary_text)
 │   ├── monitor.py         # monitor_one() dispatcher
 │   └── scrape.py          # scrape_one() dispatcher
 ├── workspace/             # Workspace CLI (ws command)
@@ -52,6 +53,7 @@ src/
 │   │   ├── lifecycle.py   # new, reject, del, submit, status, validate, resume
 │   │   ├── config.py      # set, add board, del board
 │   │   ├── crawl.py       # probe, select/run monitor/scraper, feedback
+│   │   ├── task.py        # Workflow: task, troubleshoot, learn, casestudy
 │   │   └── help.py        # Reference docs for monitors, scrapers, config
 │   ├── state.py           # YAML workspace state (v2: named configs)
 │   ├── log.py             # Action log + transcript
@@ -64,18 +66,16 @@ src/
 │   └── url_check.py       # URL validation helpers
 ├── shared/
 │   ├── api_sniff.py       # API sniffing utilities (data classes, scoring, pagination)
+│   ├── browser.py         # Playwright browser launch (stealth, proxy support)
 │   ├── constants.py       # DATA_DIR, WORKSPACE_DIR, SLUG_RE, URL_RE
 │   ├── csv_io.py          # CSV read/write utilities
 │   ├── http.py            # httpx client factory
+│   ├── nextdata.py        # Shared field extraction (extract_field, map, list spec, each+wrap)
 │   ├── proxy.py           # Per-domain proxy routing (PROXY_MAP env var)
 │   ├── logging.py         # structlog config
 │   └── slug.py            # slugify utility
-├── batch.py               # Batch processor (R2 uploads, enum normalization)
-├── scheduler.py           # Scheduler (entry point)
-├── scripts/               # One-off migration and utility scripts
-│   ├── migrate_descriptions_to_r2.py  # Bulk R2 upload (run before dropping columns)
-│   ├── backfill_locations.py          # Backfill location_ids from GeoNames
-│   └── seed_geonames.py              # Seed location tables from GeoNames data
+├── batch.py               # Batch processor (R2 uploads, enum normalization, fallback chain)
+├── scheduler.py           # Scheduler (entry point, --board/--dry-run/--verbose)
 ├── sync.py                # CSV → DB sync
 ├── inspect.py             # CSV validation + diagnostic library
 ├── csvtool.py             # CSV management library
@@ -128,6 +128,9 @@ uv run scheduler
 # Run one batch
 uv run scheduler --once
 
+# Dry-run a single board (monitor + scrape, no DB writes)
+uv run scheduler --board <board_slug> --dry-run [--verbose]
+
 # Sync CSVs to DB
 uv run python -m src.sync
 
@@ -163,6 +166,8 @@ See [docs/agents.md](../../docs/agents.md) for the full mindset reference.
 2. Implement `async def discover(board: dict, client: httpx.AsyncClient) -> list[DiscoveredJob] | set[str]`
 3. Optionally implement `async def can_handle(url: str, client: httpx.AsyncClient) -> dict | None`
 4. Register at module bottom: `register("<name>", discover, cost=<N>, can_handle=can_handle)`
+   - `rich=True` if the monitor returns full job data (scraper step is skipped)
+   - `stream=<async_generator>` for large datasets that yield batches
 5. Import in `src/core/monitors/__init__.py`
 
 ## Adding a New Scraper Type
@@ -170,6 +175,9 @@ See [docs/agents.md](../../docs/agents.md) for the full mindset reference.
 1. Create `src/core/scrapers/<name>.py`
 2. Implement `async def scrape(url: str, config: dict, http: httpx.AsyncClient) -> JobContent`
 3. Register at module bottom: `register("<name>", scrape)`
+   - `can_handle=<func>` for auto-detection in `ws probe scraper`
+   - `parse_html=<func>` for fast HTML-only extraction (avoids HTTP call in fallback chain)
+   - `needs_browser=True` if the scraper requires Playwright
 4. Import in `src/core/scrapers/__init__.py`
 
 ## Scraper Evaluation Guidelines

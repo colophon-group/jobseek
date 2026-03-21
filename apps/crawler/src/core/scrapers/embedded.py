@@ -39,6 +39,7 @@ import structlog
 
 from src.core.scrapers import JobContent, register
 from src.shared.embedded import extract_script_by_id, parse_embedded
+from src.shared.nextdata import extract_field
 
 log = structlog.get_logger()
 
@@ -124,6 +125,7 @@ def _map_to_job_content(raw: dict[str, object]) -> JobContent:
             "employment_type",
             "job_location_type",
             "date_posted",
+            "base_salary",
         ):
             kwargs[key] = value
         elif key == "locations":
@@ -254,14 +256,10 @@ def parse_html(html: str, config: dict) -> JobContent:
     # For dicts, extract fields by name. For lists/scalars, fields use positional jmespath.
     raw: dict[str, object] = {}
     for target, spec in fields_map.items():
-        result = jmespath.search(spec, item)
+        result = extract_field(item, spec)
         if result is None:
             continue
-        if isinstance(result, list):
-            values = [str(v) for v in result if v is not None]
-            raw[target] = values or None
-        else:
-            raw[target] = str(result)
+        raw[target] = result
 
     return _map_to_job_content(raw)
 

@@ -597,9 +597,11 @@ def _kb_dir() -> Path:
 
 
 def search_kb(query: str) -> list[dict[str, Any]]:
-    """Search the troubleshooting knowledge base for matching entries.
+    """Search the knowledge base for matching entries.
 
-    Returns list of dicts with keys: path, symptom, tags, body.
+    Searches both troubleshooting entries and case studies.
+    Returns list of dicts with keys: path, type, symptom, tags, body,
+    and for case studies: summary, company.
     """
     kb_dir = _kb_dir()
     if not kb_dir.exists():
@@ -618,21 +620,31 @@ def search_kb(query: str) -> list[dict[str, Any]]:
         if content.startswith("---"):
             parts = content.split("---", 2)
             if len(parts) >= 3:
-                frontmatter = yaml.safe_load(parts[1]) or {}
+                try:
+                    frontmatter = yaml.safe_load(parts[1]) or {}
+                except yaml.YAMLError:
+                    frontmatter = {}
                 body = parts[2].strip()
 
-        # Search in symptom, tags, and body
+        entry_type = frontmatter.get("type", "troubleshooting")
+
+        # Search in symptom/summary, tags, company, and body
         symptom = frontmatter.get("symptom", "")
+        summary = frontmatter.get("summary", "")
+        company = frontmatter.get("company", "")
         tags = frontmatter.get("tags", [])
         tags_str = " ".join(tags) if isinstance(tags, list) else str(tags)
-        searchable = f"{symptom} {tags_str} {body}".lower()
+        searchable = f"{symptom} {summary} {company} {tags_str} {body}".lower()
 
         # Match if full query is substring OR all tokens appear
         if query_lower in searchable or all(t in searchable for t in query_tokens):
             results.append(
                 {
                     "path": md_path.name,
+                    "type": entry_type,
                     "symptom": symptom,
+                    "summary": summary,
+                    "company": company,
                     "tags": tags,
                     "step": frontmatter.get("step", ""),
                     "body": body,
@@ -640,6 +652,21 @@ def search_kb(query: str) -> list[dict[str, Any]]:
             )
 
     return results
+
+
+def read_kb_entry(filename: str) -> str | None:
+    """Read the full content of a KB entry by filename.
+
+    Returns the full file content, or None if not found.
+    Rejects paths that escape the KB directory.
+    """
+    kb_dir = _kb_dir()
+    path = (kb_dir / filename).resolve()
+    if not path.is_relative_to(kb_dir.resolve()):
+        return None
+    if not path.exists():
+        return None
+    return path.read_text()
 
 
 def create_kb_entry(slug: str, step: str, symptom: str, solution: str, tags: str) -> Path:
@@ -681,6 +708,59 @@ tags: {tag_list}
 
 ## Solution
 {solution}
+"""
+    path.write_text(content)
+    return path
+
+
+def create_casestudy_entry(
+    company: str, monitor: str, scraper: str, tags: str, summary: str
+) -> Path:
+    """Create a new case study KB entry.
+
+    Case studies document end-to-end narratives of how complex boards were
+    configured — what was tried, what worked, and key decisions made.
+    """
+    kb_dir = _kb_dir()
+    kb_dir.mkdir(parents=True, exist_ok=True)
+
+    # Generate filename from company + monitor + scraper
+    filename = f"{company}-{monitor}-{scraper}".lower()
+    filename = "".join(c if c.isalnum() or c == "-" else "-" for c in filename)
+    filename = filename.strip("-")[:60]
+    if not filename:
+        filename = "case-study"
+
+    # Avoid collisions
+    base = filename
+    counter = 1
+    path = kb_dir / f"{filename}.md"
+    while path.exists():
+        filename = f"{base}-{counter}"
+        path = kb_dir / f"{filename}.md"
+        counter += 1
+
+    tag_list = [t.strip() for t in tags.split(",") if t.strip()]
+
+    content = f"""---
+type: case-study
+company: {company}
+monitor: {monitor}
+scraper: {scraper}
+summary: "{summary}"
+tags: {tag_list}
+---
+# {company.title()} — {summary}
+
+## Setup
+- Monitor: {monitor}
+- Scraper: {scraper}
+
+## Key decisions
+<!-- What was non-obvious? What was tried? What worked? -->
+
+## Config
+<!-- Final scraper_config / monitor_config JSON -->
 """
     path.write_text(content)
     return path

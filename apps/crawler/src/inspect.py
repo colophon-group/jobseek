@@ -8,11 +8,15 @@ from __future__ import annotations
 
 import json
 import time
+from dataclasses import fields as dc_fields
 
 from src.core.scrapers import _REGISTRY as SCRAPER_REGISTRY
+from src.core.scrapers import JobContent
 from src.shared.constants import LOGO_TYPES, SLUG_RE, URL_RE, get_data_dir
 from src.shared.csv_io import read_csv
 from src.workspace._compat import all_monitor_types
+
+_JOBCONTENT_FIELD_NAMES = frozenset(f.name for f in dc_fields(JobContent))
 
 try:
     import structlog
@@ -210,10 +214,44 @@ def validate_csvs() -> list[ValidationError]:
             except json.JSONDecodeError:
                 errors.append(ValidationError("boards.csv", i, "Invalid scraper_config JSON"))
 
-        # Validate fallback chain inside scraper_config
+        # Validate fallback chain and enrich inside scraper_config
         if scraper_config:
             try:
                 sc_obj = json.loads(scraper_config)
+                if isinstance(sc_obj, dict):
+                    # Validate enrich key
+                    enrich = sc_obj.get("enrich")
+                    if enrich is not None:
+                        if not isinstance(enrich, list):
+                            errors.append(
+                                ValidationError(
+                                    "boards.csv",
+                                    i,
+                                    "'enrich' must be a list",
+                                )
+                            )
+                        else:
+                            for fname in enrich:
+                                if fname not in _JOBCONTENT_FIELD_NAMES:
+                                    errors.append(
+                                        ValidationError(
+                                            "boards.csv",
+                                            i,
+                                            f"Invalid enrich field: {fname!r}",
+                                        )
+                                    )
+                            # Warn if enrich is used with URL-only monitor
+                            if enrich and monitor_type in url_only_monitors:
+                                errors.append(
+                                    ValidationError(
+                                        "boards.csv",
+                                        i,
+                                        f"'enrich' is unnecessary with URL-only monitor"
+                                        f" {monitor_type!r}"
+                                        " (scraper already runs for all fields)",
+                                    )
+                                )
+
                 fb = sc_obj.get("fallback") if isinstance(sc_obj, dict) else None
                 depth = 0
                 while isinstance(fb, dict) and depth < 10:
@@ -226,6 +264,26 @@ def validate_csvs() -> list[ValidationError]:
                                 f"Invalid fallback scraper type: {fb_type!r}",
                             )
                         )
+                    fb_fields = fb.get("fields")
+                    if fb_fields is not None:
+                        if not isinstance(fb_fields, list):
+                            errors.append(
+                                ValidationError(
+                                    "boards.csv",
+                                    i,
+                                    "Fallback 'fields' must be a list",
+                                )
+                            )
+                        else:
+                            for fname in fb_fields:
+                                if fname not in _JOBCONTENT_FIELD_NAMES:
+                                    errors.append(
+                                        ValidationError(
+                                            "boards.csv",
+                                            i,
+                                            f"Invalid fallback field: {fname!r}",
+                                        )
+                                    )
                     fb_cfg = fb.get("config")
                     fb = fb_cfg.get("fallback") if isinstance(fb_cfg, dict) else None
                     depth += 1

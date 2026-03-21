@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 
 from src.batch import (
@@ -12,25 +13,32 @@ from src.batch import (
     _CREATE_RICH_UPDATES_TEMP,
     _DELIST_BOARD_POSTINGS,
     _INSERT_RICH_JOB,
+    _INSERT_RICH_JOB_ENRICH,
     _INSERT_URL_ONLY_JOBS,
     _RECORD_EMPTY_CHECK,
     _RECORD_FAILURE,
     _RECORD_SCRAPE_FAILURE,
     _RECORD_SCRAPE_SUCCESS,
+    _UPDATE_ENRICH_CONTENT,
     _UPDATE_JOB_CONTENT,
     _UPDATE_METADATA,
     BatchResult,
     BoardScraperConfig,
     ScrapeItem,
+    _apply_fallback_chain,
+    _board_has_enrich,
     _BoardScraperInfo,
     _coerce_datetime,
     _coerce_text,
     _jsonb,
     _load_board_scrapers,
+    _merge_fields,
     _monitor_pipeline,
     _PipelineResult,
     _process_one_board,
+    _process_one_enrich_scrape,
     _process_one_scrape,
+    _run_fallback_scraper,
     _scrape_pipeline,
     _throttle_key,
     claim_monitor_work,
@@ -879,6 +887,142 @@ class TestProcessOneScrape:
         assert call_args[2] == "full_or_part"  # normalized from "Temporary positions, Full-time"
 
 
+# ── Field-Level Fallback ─────────────────────────────────────────────
+
+
+class TestMergeFields:
+    def test_overrides_specified_fields(self):
+        primary = _job_content(title="Primary", description="<p>short</p>")
+        fallback = _job_content(title="FB Title", description="<p>long desc</p>")
+        merged = _merge_fields(primary, fallback, ["description"])
+        assert merged.title == "Primary"  # not overridden
+        assert merged.description == "<p>long desc</p>"  # overridden
+
+    def test_preserves_primary_when_fallback_none(self):
+        primary = _job_content(description="<p>keep me</p>")
+        fallback = JobContent(description=None)
+        merged = _merge_fields(primary, fallback, ["description"])
+        assert merged.description == "<p>keep me</p>"
+
+    def test_unknown_field_warns_no_crash(self):
+        primary = _job_content()
+        fallback = _job_content()
+        # Should not raise
+        merged = _merge_fields(primary, fallback, ["nonexistent_field"])
+        assert merged.title == primary.title
+
+    def test_multiple_fields(self):
+        primary = _job_content(title="P", description="<p>pd</p>", locations=["NYC"])
+        fallback = _job_content(title="F", description="<p>fd</p>", locations=["London"])
+        merged = _merge_fields(primary, fallback, ["description", "locations"])
+        assert merged.title == "P"
+        assert merged.description == "<p>fd</p>"
+        assert merged.locations == ["London"]
+
+
+class TestApplyFallbackChain:
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    @patch("src.batch._run_fallback_scraper", new_callable=AsyncMock)
+    async def test_field_level_always_runs(self, mock_fb_scraper, mock_scrape, mock_http):
+        """Field-level fallback runs even when primary has title."""
+        primary = _job_content(title="Good Title", description="<p>short</p>")
+        mock_fb_scraper.return_value = _job_content(description="<p>long</p>")
+        cfg = {"fallback": {"type": "dom", "config": {}, "fields": ["description"]}}
+
+        result = await _apply_fallback_chain(primary, "https://x.com/j", "json-ld", cfg, mock_http)
+
+        assert result.title == "Good Title"
+        assert result.description == "<p>long</p>"
+        mock_fb_scraper.assert_awaited_once()
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_full_replacement_only_on_no_title(self, mock_scrape, mock_http):
+        """Full replacement (no fields) only triggers when title is missing."""
+        primary = _job_content(title="Has Title")
+        cfg = {"fallback": {"type": "dom", "config": {}}}
+
+        result = await _apply_fallback_chain(primary, "https://x.com/j", "json-ld", cfg, mock_http)
+
+        assert result.title == "Has Title"
+        mock_scrape.assert_not_awaited()
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    @patch("src.batch._run_fallback_scraper", new_callable=AsyncMock)
+    async def test_mixed_chain(self, mock_fb_scraper, mock_scrape, mock_http):
+        """Field-level first, then full-replacement in nested chain."""
+        primary = _job_content(title=None, description="<p>short</p>")
+        mock_fb_scraper.return_value = _job_content(title=None, description="<p>long</p>")
+        mock_scrape.return_value = _job_content(title="DOM Title", description="<p>dom</p>")
+        cfg = {
+            "fallback": {
+                "type": "dom",
+                "config": {"fallback": {"type": "dom", "config": {"render": True}}},
+                "fields": ["description"],
+            }
+        }
+
+        result = await _apply_fallback_chain(primary, "https://x.com/j", "json-ld", cfg, mock_http)
+
+        # First fallback: field-level merge for description
+        mock_fb_scraper.assert_awaited_once()
+        # Second fallback: full replacement because still no title
+        mock_scrape.assert_awaited_once()
+        assert result.title == "DOM Title"
+
+    @patch("src.batch._run_fallback_scraper", new_callable=AsyncMock)
+    async def test_fallback_none_doesnt_overwrite(self, mock_fb_scraper, mock_http):
+        """Fallback returning None for a listed field doesn't overwrite primary."""
+        primary = _job_content(description="<p>primary desc</p>")
+        mock_fb_scraper.return_value = JobContent(description=None)
+        cfg = {"fallback": {"type": "dom", "config": {}, "fields": ["description"]}}
+
+        result = await _apply_fallback_chain(primary, "https://x.com/j", "json-ld", cfg, mock_http)
+
+        assert result.description == "<p>primary desc</p>"
+
+
+class TestRunFallbackScraper:
+    async def test_uses_parse_html_when_available(self):
+        """Optimization: parse_html is used directly instead of full scrape_one."""
+        html = '<script type="application/ld+json">{"@type":"JobPosting","title":"T"}</script>'
+
+        def handler(request):
+            return httpx.Response(200, text=html)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
+            result = await _run_fallback_scraper("https://example.com/job/1", "json-ld", {}, http)
+            assert result.title == "T"
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_falls_back_to_scrape_one_when_render(self, mock_scrape, mock_http):
+        """When render is required, falls back to full scrape_one."""
+        mock_scrape.return_value = _job_content(title="Rendered")
+        result = await _run_fallback_scraper(
+            "https://example.com/job/1", "json-ld", {"render": True}, mock_http
+        )
+        assert result.title == "Rendered"
+        mock_scrape.assert_awaited_once()
+
+
+class TestProcessOneScrapeFieldFallback:
+    """Integration tests for field-level fallback through _process_one_scrape."""
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    @patch("src.batch._run_fallback_scraper", new_callable=AsyncMock)
+    async def test_field_fallback_through_process(self, mock_fb, mock_scrape, mock_pool, mock_http):
+        """Field-level fallback works end-to-end through _process_one_scrape."""
+        pool, conn = mock_pool
+        mock_scrape.return_value = _job_content(title="Good", description="<p>short</p>")
+        mock_fb.return_value = _job_content(description="<p>long detailed desc</p>")
+        item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+        config = {"fallback": {"type": "dom", "config": {}, "fields": ["description"]}}
+
+        ok, _ = await _process_one_scrape(item, pool, mock_http, "json-ld", config)
+
+        assert ok is True
+        mock_fb.assert_awaited_once()
+
+
 # ── TestScrapePipeline ───────────────────────────────────────────────
 
 
@@ -1290,3 +1434,648 @@ class TestClaimScrapeWork:
         items = await claim_scrape_work(pool, mock_http, 10, "w")
         assert len(items) == 2
         mock_scrapers.assert_awaited_once_with(pool, {"b1", "b2"})
+
+
+# ── TestBoardHasEnrich ─────────────────────────────────────────────
+
+
+class TestBoardHasEnrich:
+    def test_with_enrich_list(self):
+        metadata = {"scraper_config": {"enrich": ["description"]}}
+        assert _board_has_enrich(metadata) == ["description"]
+
+    def test_without_enrich(self):
+        metadata = {"scraper_config": {"fallback": {"type": "dom"}}}
+        assert _board_has_enrich(metadata) is None
+
+    def test_empty_enrich(self):
+        metadata = {"scraper_config": {"enrich": []}}
+        assert _board_has_enrich(metadata) is None
+
+    def test_no_scraper_config(self):
+        metadata = {}
+        assert _board_has_enrich(metadata) is None
+
+    def test_scraper_config_not_dict(self):
+        metadata = {"scraper_config": "not a dict"}
+        assert _board_has_enrich(metadata) is None
+
+    def test_enrich_string_rejected(self):
+        """Non-list enrich (string) is rejected by _board_has_enrich."""
+        metadata = {"scraper_config": {"enrich": "description"}}
+        assert _board_has_enrich(metadata) is None
+
+    def test_multiple_fields(self):
+        metadata = {"scraper_config": {"enrich": ["description", "title"]}}
+        assert _board_has_enrich(metadata) == ["description", "title"]
+
+
+# ── TestEnrichmentScrape ───────────────────────────────────────────
+
+
+class TestEnrichmentScrape:
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_enrich_only_updates_enriched_fields(self, mock_scrape, mock_pool, mock_http):
+        """Enrich scrape uses _UPDATE_ENRICH_CONTENT, not _UPDATE_JOB_CONTENT."""
+        pool, conn = mock_pool
+        content = _job_content(description="<p>Long description</p>")
+        mock_scrape.return_value = content
+        pool.fetchrow = AsyncMock(
+            return_value={
+                "titles": ["Existing Title"],
+                "locales": ["en"],
+                "location_ids": None,
+                "location_types": None,
+            }
+        )
+        item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+
+        ok, _ = await _process_one_enrich_scrape(
+            item, pool, mock_http, "json-ld", None, ["description"]
+        )
+
+        assert ok is True
+        execute_calls = conn.execute.await_args_list
+        enrich_calls = [c for c in execute_calls if c.args[0] == _UPDATE_ENRICH_CONTENT]
+        assert len(enrich_calls) == 1
+        content_calls = [c for c in execute_calls if c.args[0] == _UPDATE_JOB_CONTENT]
+        assert len(content_calls) == 0
+        # Verify non-enriched fields are NULL (COALESCE preserves existing)
+        call_args = enrich_calls[0].args
+        assert call_args[2] is None  # employment_type
+        assert call_args[3] is None  # titles
+        assert call_args[4] is None  # locales
+
+    @patch("src.batch._upload_to_r2", new_callable=AsyncMock)
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_description_enrich_triggers_r2_upload(
+        self, mock_scrape, mock_upload, mock_pool, mock_http
+    ):
+        """Description enrichment triggers R2 upload with monitor metadata."""
+        pool, conn = mock_pool
+        mock_scrape.return_value = _job_content(description="<p>Rich desc</p>")
+        mock_upload.return_value = 12345
+        pool.fetchrow = AsyncMock(
+            return_value={
+                "titles": ["Monitor Title"],
+                "locales": ["en"],
+                "location_ids": None,
+                "location_types": None,
+            }
+        )
+        item = ScrapeItem(
+            job_posting_id="jp-1",
+            url="https://example.com/job/1",
+            board_id="b-1",
+            description_r2_hash=None,
+        )
+
+        ok, _ = await _process_one_enrich_scrape(
+            item, pool, mock_http, "json-ld", None, ["description"]
+        )
+
+        assert ok is True
+        mock_upload.assert_awaited_once()
+        # R2 upload uses existing title from DB
+        upload_kwargs = mock_upload.await_args
+        assert upload_kwargs.kwargs.get("title") == "Monitor Title"
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_description_enrich_populates_r2_hash_and_tech(
+        self, mock_scrape, mock_pool, mock_http
+    ):
+        """Description enrichment sets r2_hash and tech_ids in UPDATE params."""
+        pool, conn = mock_pool
+        mock_scrape.return_value = _job_content(description="<p>Build Python APIs</p>")
+        pool.fetchrow = AsyncMock(
+            return_value={
+                "titles": ["Eng"],
+                "locales": ["en"],
+                "location_ids": None,
+                "location_types": None,
+            }
+        )
+        item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+
+        ok, _ = await _process_one_enrich_scrape(
+            item, pool, mock_http, "json-ld", None, ["description"]
+        )
+
+        assert ok is True
+        enrich_calls = [
+            c for c in conn.execute.await_args_list if c.args[0] == _UPDATE_ENRICH_CONTENT
+        ]
+        assert len(enrich_calls) == 1
+        call_args = enrich_calls[0].args
+        # Non-enriched fields remain NULL
+        assert call_args[2] is None  # employment_type
+        assert call_args[3] is None  # titles
+        # description_r2_hash ($7) should be set (non-None) since we uploaded to R2
+        # (it may be None only if upload failed, which isn't the case here with default mock)
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_title_enrich_derives_occupation_seniority(
+        self, mock_scrape, mock_pool, mock_http
+    ):
+        """Title enrichment re-derives occupation + seniority."""
+        pool, conn = mock_pool
+        mock_scrape.return_value = _job_content(title="Senior Software Engineer", description=None)
+        pool.fetchrow = AsyncMock(return_value=None)
+        item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+
+        ok, _ = await _process_one_enrich_scrape(item, pool, mock_http, "json-ld", None, ["title"])
+
+        assert ok is True
+        enrich_calls = [
+            c for c in conn.execute.await_args_list if c.args[0] == _UPDATE_ENRICH_CONTENT
+        ]
+        assert len(enrich_calls) == 1
+        call_args = enrich_calls[0].args
+        # titles should be set
+        assert call_args[3] == ["Senior Software Engineer"]
+        # description-derived fields should be None
+        assert call_args[7] is None  # description_r2_hash
+        assert call_args[8] is None  # technology_ids
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_title_enrich_does_not_overwrite_locales_with_default(
+        self, mock_scrape, mock_pool, mock_http
+    ):
+        """Title enrichment without language evidence must not overwrite locales with ["en"]."""
+        pool, conn = mock_pool
+        # Scraper returns a title but no language and no description
+        mock_scrape.return_value = _job_content(title="Ingenieur", description=None, language=None)
+        pool.fetchrow = AsyncMock(return_value=None)
+        item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+
+        ok, _ = await _process_one_enrich_scrape(item, pool, mock_http, "json-ld", None, ["title"])
+
+        assert ok is True
+        enrich_calls = [
+            c for c in conn.execute.await_args_list if c.args[0] == _UPDATE_ENRICH_CONTENT
+        ]
+        call_args = enrich_calls[0].args
+        # locales ($4) must be None so COALESCE preserves monitor's richer locale data
+        assert call_args[4] is None
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_title_enrich_sets_locales_when_language_detected(
+        self, mock_scrape, mock_pool, mock_http
+    ):
+        """Title enrichment with explicit language sets locales."""
+        pool, conn = mock_pool
+        mock_scrape.return_value = _job_content(title="Ingenieur", description=None, language="de")
+        pool.fetchrow = AsyncMock(return_value=None)
+        item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+
+        ok, _ = await _process_one_enrich_scrape(item, pool, mock_http, "json-ld", None, ["title"])
+
+        assert ok is True
+        enrich_calls = [
+            c for c in conn.execute.await_args_list if c.args[0] == _UPDATE_ENRICH_CONTENT
+        ]
+        call_args = enrich_calls[0].args
+        assert call_args[4] == ["de"]  # locales set from explicit language
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_enrich_succeeds_without_scraper_title(self, mock_scrape, mock_pool, mock_http):
+        """Enrichment succeeds even when scraper returns no title (unlike normal scrape)."""
+        pool, conn = mock_pool
+        mock_scrape.return_value = _job_content(title=None, description="<p>Some desc</p>")
+        pool.fetchrow = AsyncMock(
+            return_value={
+                "titles": ["Monitor Title"],
+                "locales": ["en"],
+                "location_ids": None,
+                "location_types": None,
+            }
+        )
+        item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+
+        ok, _ = await _process_one_enrich_scrape(
+            item, pool, mock_http, "json-ld", None, ["description"]
+        )
+
+        assert ok is True
+        success_calls = [
+            c for c in conn.execute.await_args_list if c.args[0] == _RECORD_SCRAPE_SUCCESS
+        ]
+        assert len(success_calls) == 1
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_enrich_fails_when_no_enriched_data(self, mock_scrape, mock_pool, mock_http):
+        """Enrichment fails when scraper returns no data for any enriched field."""
+        pool, conn = mock_pool
+        mock_scrape.return_value = _job_content(title="Title", description=None, locations=None)
+        pool.fetchrow = AsyncMock(return_value=None)
+        item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+
+        ok, _ = await _process_one_enrich_scrape(
+            item, pool, mock_http, "json-ld", None, ["description"]
+        )
+
+        assert ok is False
+        failure_calls = [
+            c for c in conn.execute.await_args_list if c.args[0] == _RECORD_SCRAPE_FAILURE
+        ]
+        assert len(failure_calls) == 1
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_enrich_fails_when_description_normalized_to_none(
+        self, mock_scrape, mock_pool, mock_http
+    ):
+        """Degenerate description (normalize strips to None) → failure, not infinite success."""
+        pool, conn = mock_pool
+        # Whitespace-only description passes raw check but normalize returns None
+        mock_scrape.return_value = _job_content(title="Title", description="   ")
+        pool.fetchrow = AsyncMock(return_value=None)
+        item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+
+        ok, _ = await _process_one_enrich_scrape(
+            item, pool, mock_http, "json-ld", None, ["description"]
+        )
+
+        assert ok is False
+        failure_calls = [
+            c for c in conn.execute.await_args_list if c.args[0] == _RECORD_SCRAPE_FAILURE
+        ]
+        assert len(failure_calls) == 1
+
+    @patch("src.batch._run_fallback_scraper", new_callable=AsyncMock)
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_enrich_with_fallback_chain(self, mock_scrape, mock_fb, mock_pool, mock_http):
+        """Enrich + fallback chain compose correctly."""
+        pool, conn = mock_pool
+        mock_scrape.return_value = _job_content(title="T", description=None)
+        mock_fb.return_value = _job_content(description="<p>fallback desc</p>")
+        pool.fetchrow = AsyncMock(
+            return_value={
+                "titles": ["T"],
+                "locales": ["en"],
+                "location_ids": None,
+                "location_types": None,
+            }
+        )
+        item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+        config = {
+            "enrich": ["description"],
+            "fallback": {"type": "dom", "config": {}, "fields": ["description"]},
+        }
+
+        ok, _ = await _process_one_enrich_scrape(
+            item, pool, mock_http, "json-ld", config, ["description"]
+        )
+
+        assert ok is True
+        mock_fb.assert_awaited_once()
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_enrich_multiple_fields(self, mock_scrape, mock_pool, mock_http):
+        """Multiple enrich fields populate their derived columns, others stay NULL."""
+        pool, conn = mock_pool
+        mock_scrape.return_value = _job_content(
+            title="Lead Engineer",
+            description="<p>Build things</p>",
+            locations=["Berlin"],
+            employment_type="FULL_TIME",
+        )
+        pool.fetchrow = AsyncMock(
+            return_value={
+                "titles": ["Old"],
+                "locales": ["en"],
+                "location_ids": None,
+                "location_types": None,
+            }
+        )
+        item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+
+        ok, _ = await _process_one_enrich_scrape(
+            item, pool, mock_http, "json-ld", None, ["description", "title"]
+        )
+
+        assert ok is True
+        enrich_calls = [
+            c for c in conn.execute.await_args_list if c.args[0] == _UPDATE_ENRICH_CONTENT
+        ]
+        call_args = enrich_calls[0].args
+        # employment_type NOT enriched → None
+        assert call_args[2] is None
+        # titles enriched → set
+        assert call_args[3] == ["Lead Engineer"]
+        # description_r2_hash enriched → may be set (R2 upload runs)
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_enrich_exception_records_failure(self, mock_scrape, mock_pool, mock_http):
+        """Exception during enrich → _RECORD_SCRAPE_FAILURE, returns False."""
+        pool, conn = mock_pool
+        mock_scrape.side_effect = RuntimeError("network error")
+        item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+
+        ok, _ = await _process_one_enrich_scrape(
+            item, pool, mock_http, "json-ld", None, ["description"]
+        )
+
+        assert ok is False
+        failure_calls = [
+            c for c in conn.execute.await_args_list if c.args[0] == _RECORD_SCRAPE_FAILURE
+        ]
+        assert len(failure_calls) == 1
+        assert failure_calls[0].args[1] == "jp-1"
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_dispatch_from_process_one_scrape(self, mock_scrape, mock_pool, mock_http):
+        """_process_one_scrape dispatches to enrich path when config has enrich."""
+        pool, conn = mock_pool
+        mock_scrape.return_value = _job_content(description="<p>desc</p>")
+        pool.fetchrow = AsyncMock(
+            return_value={
+                "titles": ["T"],
+                "locales": ["en"],
+                "location_ids": None,
+                "location_types": None,
+            }
+        )
+        item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+        config = {"enrich": ["description"]}
+
+        ok, _ = await _process_one_scrape(item, pool, mock_http, "json-ld", config)
+
+        assert ok is True
+        execute_calls = conn.execute.await_args_list
+        enrich_calls = [c for c in execute_calls if c.args[0] == _UPDATE_ENRICH_CONTENT]
+        content_calls = [c for c in execute_calls if c.args[0] == _UPDATE_JOB_CONTENT]
+        assert len(enrich_calls) == 1
+        assert len(content_calls) == 0
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_no_dispatch_without_enrich(self, mock_scrape, mock_pool, mock_http):
+        """_process_one_scrape uses normal path when config has no enrich."""
+        pool, conn = mock_pool
+        mock_scrape.return_value = _job_content()
+        item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+        config = {"fallback": {"type": "dom", "config": {}}}
+
+        ok, _ = await _process_one_scrape(item, pool, mock_http, "json-ld", config)
+
+        assert ok is True
+        execute_calls = conn.execute.await_args_list
+        content_calls = [c for c in execute_calls if c.args[0] == _UPDATE_JOB_CONTENT]
+        enrich_calls = [c for c in execute_calls if c.args[0] == _UPDATE_ENRICH_CONTENT]
+        assert len(content_calls) == 1
+        assert len(enrich_calls) == 0
+
+
+# ── TestMonitorEnrichInsert ────────────────────────────────────────
+
+
+class TestMonitorEnrichInsert:
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one")
+    async def test_rich_enrich_new_jobs_get_next_scrape_at(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """Rich monitor + enrich → new jobs use _INSERT_RICH_JOB_ENRICH (next_scrape_at = now())."""
+        pool, conn = mock_pool
+        url1 = "https://example.com/job/1"
+        job1 = _discovered_job(url=url1)
+        mock_monitor.return_value = MonitorResult(
+            urls={url1},
+            jobs_by_url={url1: job1},
+        )
+        conn.fetch.return_value = [_diff_row("new", url=url1)]
+        board = _mock_board(metadata={"scraper_config": {"enrich": ["description"]}})
+
+        await _process_one_board(board, pool, mock_http)
+
+        call_args = conn.fetchrow.await_args_list
+        insert_sqls = [c.args[0] for c in call_args]
+        assert _INSERT_RICH_JOB_ENRICH in insert_sqls
+        assert _INSERT_RICH_JOB not in insert_sqls
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one")
+    async def test_rich_no_enrich_uses_standard_insert(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """Rich monitor, no enrich → standard _INSERT_RICH_JOB (next_scrape_at = NULL)."""
+        pool, conn = mock_pool
+        url1 = "https://example.com/job/1"
+        job1 = _discovered_job(url=url1)
+        mock_monitor.return_value = MonitorResult(
+            urls={url1},
+            jobs_by_url={url1: job1},
+        )
+        conn.fetch.return_value = [_diff_row("new", url=url1)]
+        board = _mock_board()
+
+        await _process_one_board(board, pool, mock_http)
+
+        call_args = conn.fetchrow.await_args_list
+        insert_sqls = [c.args[0] for c in call_args]
+        assert _INSERT_RICH_JOB in insert_sqls
+        assert _INSERT_RICH_JOB_ENRICH not in insert_sqls
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one")
+    async def test_relisted_on_enrich_board_passes_false_to_diff(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """Enrich board → DIFF_URLS $4 (is_rich_no_scrape) = False."""
+        pool, conn = mock_pool
+        url1 = "https://example.com/job/1"
+        job1 = _discovered_job(url=url1)
+        mock_monitor.return_value = MonitorResult(
+            urls={url1},
+            jobs_by_url={url1: job1},
+        )
+        conn.fetch.return_value = [
+            _diff_row("relisted", row_id="jp-relisted", url=url1),
+        ]
+        board = _mock_board(metadata={"scraper_config": {"enrich": ["description"]}})
+
+        await _process_one_board(board, pool, mock_http)
+
+        # Find the _DIFF_URLS call — it's the one with 5 args (urls, board_id,
+        # delist_threshold, is_rich_no_scrape)
+        diff_call = None
+        for c in conn.fetch.await_args_list:
+            if len(c.args) >= 5 and isinstance(c.args[4], bool):
+                diff_call = c
+                break
+        assert diff_call is not None, "No _DIFF_URLS call found"
+        assert diff_call.args[4] is False  # is_rich_no_scrape = False for enrich boards
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one")
+    async def test_non_enrich_board_passes_true_to_diff(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """Non-enrich rich board → DIFF_URLS $4 (is_rich_no_scrape) = True."""
+        pool, conn = mock_pool
+        url1 = "https://example.com/job/1"
+        job1 = _discovered_job(url=url1)
+        mock_monitor.return_value = MonitorResult(
+            urls={url1},
+            jobs_by_url={url1: job1},
+        )
+        conn.fetch.return_value = [
+            _diff_row("relisted", row_id="jp-relisted", url=url1),
+        ]
+        board = _mock_board()
+
+        await _process_one_board(board, pool, mock_http)
+
+        diff_call = None
+        for c in conn.fetch.await_args_list:
+            if len(c.args) >= 5 and isinstance(c.args[4], bool):
+                diff_call = c
+                break
+        assert diff_call is not None, "No _DIFF_URLS call found"
+        assert diff_call.args[4] is True  # is_rich_no_scrape = True
+
+
+# ── TestLoadBoardScrapersEnrich ────────────────────────────────────
+
+
+class TestLoadBoardScrapersEnrich:
+    async def test_enrich_board_not_in_rich_ids(self, mock_pool):
+        """Board with enrich is NOT added to rich_board_ids."""
+        pool, _ = mock_pool
+        pool.fetch.return_value = [
+            {
+                "id": "b-1",
+                "metadata": {"scraper_config": {"enrich": ["description"]}},
+                "crawler_type": "greenhouse",
+            }
+        ]
+
+        info = await _load_board_scrapers(pool, {"b-1"})
+
+        assert "b-1" not in info.rich_board_ids
+        assert "b-1" in info.scrapers
+        assert info.scrapers["b-1"].scraper_type == "json-ld"
+
+    async def test_explicit_skip_with_enrich_not_in_rich_ids(self, mock_pool):
+        """Explicit scraper_type=skip with enrich → not rich, gets json-ld scraper."""
+        pool, _ = mock_pool
+        pool.fetch.return_value = [
+            {
+                "id": "b-1",
+                "metadata": {
+                    "scraper_type": "skip",
+                    "scraper_config": {"enrich": ["description"]},
+                },
+                "crawler_type": "greenhouse",
+            }
+        ]
+
+        info = await _load_board_scrapers(pool, {"b-1"})
+
+        assert "b-1" not in info.rich_board_ids
+        assert "b-1" in info.scrapers
+        assert info.scrapers["b-1"].scraper_type == "json-ld"
+
+    async def test_rich_monitor_without_enrich_still_skipped(self, mock_pool):
+        """Rich monitor without enrich → still in rich_board_ids."""
+        pool, _ = mock_pool
+        pool.fetch.return_value = [{"id": "b-1", "metadata": {}, "crawler_type": "greenhouse"}]
+
+        info = await _load_board_scrapers(pool, {"b-1"})
+
+        assert "b-1" in info.rich_board_ids
+        assert "b-1" not in info.scrapers
+
+    async def test_explicit_scraper_type_with_enrich(self, mock_pool):
+        """Explicit scraper_type (non-skip) + enrich → uses that scraper type."""
+        pool, _ = mock_pool
+        pool.fetch.return_value = [
+            {
+                "id": "b-1",
+                "metadata": {
+                    "scraper_type": "dom",
+                    "scraper_config": {"enrich": ["description"], "render": False},
+                },
+                "crawler_type": "greenhouse",
+            }
+        ]
+
+        info = await _load_board_scrapers(pool, {"b-1"})
+
+        assert "b-1" not in info.rich_board_ids
+        assert "b-1" in info.scrapers
+        assert info.scrapers["b-1"].scraper_type == "dom"
+        assert info.scrapers["b-1"].scraper_config["enrich"] == ["description"]
+
+    async def test_enrich_config_preserved_in_scraper_config(self, mock_pool):
+        """The enrich key inside scraper_config is preserved for dispatch."""
+        pool, _ = mock_pool
+        pool.fetch.return_value = [
+            {
+                "id": "b-1",
+                "metadata": {
+                    "scraper_config": {
+                        "enrich": ["description"],
+                        "fallback": {"type": "dom", "config": {}},
+                    }
+                },
+                "crawler_type": "greenhouse",
+            }
+        ]
+
+        info = await _load_board_scrapers(pool, {"b-1"})
+
+        cfg = info.scrapers["b-1"]
+        assert cfg.scraper_config["enrich"] == ["description"]
+        assert cfg.scraper_config["fallback"]["type"] == "dom"
+
+
+# ── TestClaimScrapeWorkEnrich ──────────────────────────────────────
+
+
+class TestClaimScrapeWorkEnrich:
+    @patch("src.batch._load_board_scrapers", new_callable=AsyncMock)
+    async def test_enrich_board_not_cleared_as_rich(self, mock_scrapers, mock_pool, mock_http):
+        """Enrich boards are not in rich_board_ids → postings are not cleared."""
+        pool, conn = mock_pool
+        pool.fetch.return_value = [
+            _mock_scrape_row(board_id="b-enrich"),
+        ]
+        mock_scrapers.return_value = _BoardScraperInfo(
+            scrapers={
+                "b-enrich": BoardScraperConfig(
+                    scraper_type="json-ld",
+                    scraper_config={"enrich": ["description"]},
+                )
+            },
+            rich_board_ids=set(),  # enrich board is NOT in rich_board_ids
+        )
+
+        items = await claim_scrape_work(pool, mock_http, 10, "w")
+
+        assert len(items) == 1
+        assert items[0].kind == "scrape"
+        # Verify _CLEAR_SCRAPE_FOR_RICH was NOT called
+        pool.execute.assert_not_awaited()
+
+
+# ── TestEnrichValidation ───────────────────────────────────────────
+
+
+class TestEnrichValidation:
+    def test_valid_enrich_fields_exist(self):
+        from src.inspect import _JOBCONTENT_FIELD_NAMES
+
+        assert "description" in _JOBCONTENT_FIELD_NAMES
+        assert "title" in _JOBCONTENT_FIELD_NAMES
+        assert "locations" in _JOBCONTENT_FIELD_NAMES
+        assert "employment_type" in _JOBCONTENT_FIELD_NAMES
+
+    def test_invalid_field_not_in_set(self):
+        from src.inspect import _JOBCONTENT_FIELD_NAMES
+
+        assert "nonexistent" not in _JOBCONTENT_FIELD_NAMES
+        assert "salary_min" not in _JOBCONTENT_FIELD_NAMES  # derived, not a JobContent field
+
+    def test_enrich_not_list_rejected(self):
+        """Non-list enrich is rejected by _board_has_enrich."""
+        assert _board_has_enrich({"scraper_config": {"enrich": "description"}}) is None

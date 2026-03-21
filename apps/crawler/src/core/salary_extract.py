@@ -635,3 +635,39 @@ def extract_salary_unified(html: str) -> SalaryRange | None:
         currency=best_group[0].currency,
         period=best_group[0].period,
     )
+
+
+_PERIOD_TO_UNIT = {"yearly": "year", "monthly": "month", "hourly": "hour"}
+
+
+def parse_salary_text(text: str) -> dict | None:
+    """Parse a salary string into a ``base_salary`` dict.
+
+    Accepts any text containing salary information (plain text or HTML):
+      ``"$136,800 - $273,600 annually"``
+      ``"€50.000 - €70.000 per year"``
+      ``"$30/hour"``
+
+    Returns ``{"currency": "USD", "min": 136800, "max": 273600, "unit": "year"}``
+    or ``None`` if no salary is found.
+
+    This is a thin wrapper around :func:`extract_salary_unified` that
+    converts the internal ``SalaryRange`` to the standard ``base_salary``
+    dict used by scrapers and monitors.
+    """
+    sr = extract_salary_unified(text)
+    if sr is None:
+        return None
+    sal_min = sr.min
+    sal_max = sr.max
+    # Hourly values are stored in cents internally — convert back
+    if sr.period == "hourly":
+        sal_min = round(sr.min / 100, 2)
+        if sal_max is not None:
+            sal_max = round(sr.max / 100, 2)
+    return {
+        "currency": sr.currency,
+        "min": sal_min,
+        "max": sal_max,
+        "unit": _PERIOD_TO_UNIT.get(sr.period, sr.period),
+    }

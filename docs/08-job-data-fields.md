@@ -370,6 +370,68 @@ And `<source_path>` is a dot-path with optional array indexing:
 - `offices[].name` — array map (extract `name` from each element)
 - `locations[0].city` — array index
 
+### List Concatenation
+
+When a field's content is spread across multiple source paths, use a list
+of specs. Each is resolved independently; results are joined with newlines:
+
+    "description": ["intro", "sections[*].content", "footer"]
+
+**Constant strings** (prefixed with `=`) inject literal values — HTML
+separators, headings, or fallback text:
+
+    "description": [
+      "introHtml",
+      "=<h3>Responsibilities</h3>",
+      "responsibilitiesHtml",
+      "=<h3>Requirements</h3>",
+      "requirementsHtml"
+    ]
+
+Constants before a null jmespath result are dropped (no orphaned headings).
+
+**Template iteration** (`each` + `wrap`) iterates an array of objects,
+replacing `{field}` placeholders in the template:
+
+    "description": [
+      "introHtml",
+      {"each": "sections[*]", "wrap": "<h3>{title}</h3>\n{body}"},
+      "footerHtml"
+    ]
+
+**Value mapping** (`map`) converts a source value through a lookup dict.
+Useful for boolean→enum or code→label conversions:
+
+    "job_location_type": {"path": "homeOffice", "map": {"True": "remote"}}
+    "employment_type": {"path": "type_code", "map": {"FT": "full_time", "PT": "part_time"}}
+
+The `path` is resolved via jmespath; `str(result)` is looked up in `map`.
+Unmapped values produce `null` (not passthrough). For booleans, the map
+key must match `str(True)` / `str(False)` exactly (case-sensitive).
+
+For fallback values (use this OR that), use jmespath's native `||` operator:
+
+    "locations": "office.city || `Remote`"
+
+### Field-Level Enrichment (`enrich`)
+
+When a rich monitor (API-based) provides most fields but is missing some
+(typically `description`), use `enrich` in `scraper_config` to scrape
+only the missing fields from detail pages:
+
+```json
+{
+  "scraper_config": {
+    "enrich": ["description"],
+    "fields": { "description": "job_description" }
+  }
+}
+```
+
+The batch processor calls the scraper for each job URL but only stores
+the fields listed in `enrich`. All other fields come from the monitor.
+This avoids full scrape runs while filling gaps in API data.
+
 ### Example
 
 Given source data:
@@ -409,7 +471,7 @@ When probing, scrapers try to auto-detect field mappings by matching common key 
 | `locations` | `location`, `locations`, `office`, `offices` |
 | `employment_type` | `employmentType`, `employment_type`, `type`, `jobType` |
 | `job_location_type` | `locationType`, `workplaceType`, `remoteType` |
-| `date_posted` | `datePosted`, `date_posted`, `posted_at`, `published_at`, `createdAt` |
+| `date_posted` | `datePosted`, `createdAt`, `publishedAt`, `postedDate` |
 
 These heuristics often need manual correction — a detected pattern with wrong field mapping should be fixed by inspecting the raw data, not by switching scraper types.
 

@@ -43,6 +43,12 @@ class JobContent:
     extras: dict | None = None
     metadata: dict | None = None
 
+    def __post_init__(self):
+        if isinstance(self.base_salary, str):
+            from src.core.salary_extract import parse_salary_text
+
+            self.base_salary = parse_salary_text(self.base_salary)
+
 
 _TAG_RE = re.compile(r"<[^>]+>")
 
@@ -157,10 +163,23 @@ def get_scraper(name: str) -> ScrapeFunc:
     raise ValueError(f"Unknown scraper type: {name!r}. Available: {available}")
 
 
-def scraper_needs_browser(name: str) -> bool:
-    """Return True if the scraper requires a Playwright browser."""
+def get_scraper_type(name: str) -> ScraperType | None:
+    """Look up a full ScraperType object by name."""
+    return _REGISTRY.get(name)
+
+
+def scraper_needs_browser(name: str, config: dict | None = None) -> bool:
+    """Return True if the scraper requires a Playwright browser.
+
+    When *config* is provided, api_sniffer in HTTP mode (``api_url`` set)
+    does not need a browser despite being registered with ``needs_browser=True``.
+    """
     entry = _REGISTRY.get(name)
-    return entry.needs_browser if entry else False
+    if not entry:
+        return False
+    if entry.needs_browser and config and config.get("api_url"):
+        return False
+    return entry.needs_browser
 
 
 # Quality fields checked in probe results

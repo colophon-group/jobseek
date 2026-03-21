@@ -214,6 +214,172 @@ class TestScrape:
 
 
 # ---------------------------------------------------------------------------
+# List spec tests (parse_html with list/constant/template field specs)
+# ---------------------------------------------------------------------------
+
+
+LIST_JOB_DATA = {
+    "title": "Engineer",
+    "introHtml": "<p>Intro</p>",
+    "bodyHtml": "<p>Body</p>",
+    "closingHtml": "<p>Closing</p>",
+    "sections": [
+        {"text": "What You'll Do", "content": "<ul><li>Build</li></ul>"},
+        {"text": "Requirements", "content": "<ul><li>5 years</li></ul>"},
+    ],
+}
+
+LIST_HTML = _script_html("app-data", {"job": LIST_JOB_DATA})
+
+
+class TestListSpecs:
+    def test_list_spec_concatenates_strings(self):
+        config = {
+            "script_id": "app-data",
+            "path": "job",
+            "fields": {
+                "title": "title",
+                "description": ["introHtml", "bodyHtml"],
+            },
+        }
+        result = parse_html(LIST_HTML, config)
+        assert result.title == "Engineer"
+        assert result.description == "<p>Intro</p>\n<p>Body</p>"
+
+    def test_list_spec_with_constants(self):
+        config = {
+            "script_id": "app-data",
+            "path": "job",
+            "fields": {
+                "title": "title",
+                "description": ["introHtml", "=<hr>", "bodyHtml"],
+            },
+        }
+        result = parse_html(LIST_HTML, config)
+        assert result.description == "<p>Intro</p>\n<hr>\n<p>Body</p>"
+
+    def test_list_spec_skips_nulls_drops_preceding_constants(self):
+        config = {
+            "script_id": "app-data",
+            "path": "job",
+            "fields": {
+                "title": "title",
+                "description": [
+                    "=<h3>X</h3>",
+                    "missingField",
+                    "=<h3>Y</h3>",
+                    "bodyHtml",
+                ],
+            },
+        }
+        result = parse_html(LIST_HTML, config)
+        assert result.description == "<h3>Y</h3>\n<p>Body</p>"
+
+    def test_list_spec_all_null_returns_none(self):
+        config = {
+            "script_id": "app-data",
+            "path": "job",
+            "fields": {
+                "title": "title",
+                "description": ["missing1", "missing2"],
+            },
+        }
+        result = parse_html(LIST_HTML, config)
+        assert result.title == "Engineer"
+        assert result.description is None
+
+    def test_list_spec_constant_only(self):
+        config = {
+            "script_id": "app-data",
+            "path": "job",
+            "fields": {
+                "title": "title",
+                "locations": "=Switzerland",
+            },
+        }
+        result = parse_html(LIST_HTML, config)
+        assert result.locations == ["Switzerland"]
+
+    def test_list_spec_each_wrap(self):
+        config = {
+            "script_id": "app-data",
+            "path": "job",
+            "fields": {
+                "title": "title",
+                "description": [
+                    "introHtml",
+                    {"each": "sections[*]", "wrap": "<h3>{text}</h3>\n{content}"},
+                    "closingHtml",
+                ],
+            },
+        }
+        result = parse_html(LIST_HTML, config)
+        expected_parts = [
+            "<p>Intro</p>",
+            "<h3>What You'll Do</h3>\n<ul><li>Build</li></ul>",
+            "<h3>Requirements</h3>\n<ul><li>5 years</li></ul>",
+            "<p>Closing</p>",
+        ]
+        assert result.description == "\n".join(expected_parts)
+
+    def test_list_spec_each_wrap_null_array(self):
+        config = {
+            "script_id": "app-data",
+            "path": "job",
+            "fields": {
+                "title": "title",
+                "description": [
+                    "introHtml",
+                    {"each": "missing[*]", "wrap": "<h3>{t}</h3>"},
+                ],
+            },
+        }
+        result = parse_html(LIST_HTML, config)
+        # missing array skipped, only intro remains
+        assert result.description == "<p>Intro</p>"
+
+    def test_list_spec_flattens_arrays(self):
+        data = {
+            "job": {
+                "title": "Eng",
+                "items": [{"x": "x1"}, {"x": "x2"}],
+            }
+        }
+        html = _script_html("app-data", data)
+        config = {
+            "script_id": "app-data",
+            "path": "job",
+            "fields": {
+                "title": "title",
+                "description": ["items[*].x"],
+            },
+        }
+        result = parse_html(html, config)
+        assert result.description == "x1\nx2"
+
+    def test_mixed_string_and_list_specs(self):
+        """Other fields use string specs while description uses list spec."""
+        config = {
+            "script_id": "app-data",
+            "path": "job",
+            "fields": {
+                "title": "title",
+                "description": ["introHtml", "bodyHtml"],
+            },
+        }
+        result = parse_html(LIST_HTML, config)
+        assert result.title == "Engineer"
+        assert result.description == "<p>Intro</p>\n<p>Body</p>"
+
+    def test_existing_string_spec_unchanged(self):
+        """Existing string-spec behavior is preserved after refactor."""
+        result = parse_html(SCRIPT_HTML, SCRIPT_CONFIG)
+        assert result.title == "Engineer"
+        assert result.description == "<p>Build things</p>"
+        assert result.locations == ["London", "Remote"]
+
+
+# ---------------------------------------------------------------------------
 # can_handle tests
 # ---------------------------------------------------------------------------
 
