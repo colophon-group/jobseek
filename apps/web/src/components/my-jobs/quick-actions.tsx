@@ -2,6 +2,8 @@
 
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { Check, X, Plus, Star } from "lucide-react";
+import { useLingui } from "@lingui/react";
+import { t } from "@lingui/core/macro";
 import { tooltipClass } from "@/components/ui/tooltip-styles";
 import type { ApplicationStatus } from "@/lib/actions/my-jobs";
 
@@ -12,62 +14,70 @@ type Action = {
   className: string;
 };
 
-const actionsByStatus: Record<ApplicationStatus, Action[]> = {
-  saved: [
-    {
-      label: "Mark applied",
-      icon: <Check size={12} />,
-      status: "applied",
-      className: "text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/40",
-    },
-  ],
-  applied: [
-    {
-      label: "Add interview",
-      icon: <Plus size={12} />,
-      status: "interviewing",
-      className:
-        "text-amber-600 hover:bg-amber-100 dark:hover:bg-amber-900/40",
-    },
-    {
-      label: "Mark rejected",
-      icon: <X size={12} />,
-      status: "rejected",
-      className: "text-red-500 hover:bg-red-100 dark:hover:bg-red-900/40",
-    },
-  ],
-  interviewing: [
-    {
-      label: "Add interview",
-      icon: <Plus size={12} />,
-      status: "interviewing",
-      className:
-        "text-amber-600 hover:bg-amber-100 dark:hover:bg-amber-900/40",
-    },
-    {
-      label: "Mark offer",
-      icon: <Star size={12} />,
-      status: "offered",
-      className:
-        "text-green-600 hover:bg-green-100 dark:hover:bg-green-900/40",
-    },
-    {
-      label: "Mark rejected",
-      icon: <X size={12} />,
-      status: "rejected",
-      className: "text-red-500 hover:bg-red-100 dark:hover:bg-red-900/40",
-    },
-  ],
-  offered: [
-    {
-      label: "Mark rejected",
-      icon: <X size={12} />,
-      status: "rejected",
-      className: "text-red-500 hover:bg-red-100 dark:hover:bg-red-900/40",
-    },
-  ],
-  rejected: [],
-};
+function useActionsByStatus(): Record<ApplicationStatus, Action[]> {
+  useLingui();
+  const markApplied = t({ id: "myJobs.action.markApplied", comment: "Quick action tooltip: mark job as applied", message: "Mark applied" });
+  const addInterview = t({ id: "myJobs.action.addInterview", comment: "Quick action tooltip: add interview round", message: "Add interview" });
+  const markRejected = t({ id: "myJobs.action.markRejected", comment: "Quick action tooltip: mark job as rejected", message: "Mark rejected" });
+  const markOffer = t({ id: "myJobs.action.markOffer", comment: "Quick action tooltip: mark job as offered", message: "Mark offer" });
+
+  return {
+    saved: [
+      {
+        label: markApplied,
+        icon: <Check size={12} />,
+        status: "applied",
+        className: "text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/40",
+      },
+    ],
+    applied: [
+      {
+        label: addInterview,
+        icon: <Plus size={12} />,
+        status: "interviewing",
+        className:
+          "text-amber-600 hover:bg-amber-100 dark:hover:bg-amber-900/40",
+      },
+      {
+        label: markRejected,
+        icon: <X size={12} />,
+        status: "rejected",
+        className: "text-red-500 hover:bg-red-100 dark:hover:bg-red-900/40",
+      },
+    ],
+    interviewing: [
+      {
+        label: addInterview,
+        icon: <Plus size={12} />,
+        status: "interviewing",
+        className:
+          "text-amber-600 hover:bg-amber-100 dark:hover:bg-amber-900/40",
+      },
+      {
+        label: markOffer,
+        icon: <Star size={12} />,
+        status: "offered",
+        className:
+          "text-green-600 hover:bg-green-100 dark:hover:bg-green-900/40",
+      },
+      {
+        label: markRejected,
+        icon: <X size={12} />,
+        status: "rejected",
+        className: "text-red-500 hover:bg-red-100 dark:hover:bg-red-900/40",
+      },
+    ],
+    offered: [
+      {
+        label: markRejected,
+        icon: <X size={12} />,
+        status: "rejected",
+        className: "text-red-500 hover:bg-red-100 dark:hover:bg-red-900/40",
+      },
+    ],
+    rejected: [],
+  };
+}
 
 interface QuickActionsProps {
   status: ApplicationStatus;
@@ -80,6 +90,7 @@ export function QuickActions({
   onStatusChange,
   onAddInterview,
 }: QuickActionsProps) {
+  const actionsByStatus = useActionsByStatus();
   const actions = actionsByStatus[status];
   if (actions.length === 0) return null;
 

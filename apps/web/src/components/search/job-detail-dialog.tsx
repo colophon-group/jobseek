@@ -5,6 +5,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { BarChart3, Building2, CalendarDays, ChevronDown, ChevronUp, Clock, Code2, DollarSign, MapPin, X } from "lucide-react";
 import { Trans } from "@lingui/react/macro";
+import { useLingui } from "@lingui/react";
+import { t } from "@lingui/core/macro";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { tooltipClass } from "@/components/ui/tooltip-styles";
 import { useLocalePath } from "@/lib/useLocalePath";
@@ -97,6 +99,8 @@ function DetailContent({ detail }: { detail: PostingDetail }) {
   const lp = useLocalePath();
   const pageActions = usePageActions();
   const salary = useSalaryDisplay();
+  useLingui();
+  const filterByPrefix = t({ id: "search.detail.filterByPrefix", comment: "Tooltip prefix for clickable filter pills, followed by the value name", message: "Filter by" });
   const { getStatus, getSavedJobId, setStatus: setTrackingStatus } = useSavedJobs();
   const trackingStatus = getStatus(detail.id);
   const savedJobId = getSavedJobId(detail.id);
@@ -193,7 +197,7 @@ function DetailContent({ detail }: { detail: PostingDetail }) {
             <FilterPill
               icon={<CalendarDays size={11} />}
               label={detail.employmentType.replace(/_/g, " ")}
-              tooltip={`Filter by ${detail.employmentType.replace(/_/g, " ")}`}
+              tooltip={`${filterByPrefix} ${detail.employmentType.replace(/_/g, " ")}`}
               capitalize
               onClick={pageActions?.addEmploymentType ? () => pageActions.addEmploymentType!(detail.employmentType!) : undefined}
             />
@@ -202,7 +206,7 @@ function DetailContent({ detail }: { detail: PostingDetail }) {
             <FilterPill
               icon={<BarChart3 size={11} />}
               label={detail.seniority.name}
-              tooltip={`Filter by ${detail.seniority.name}`}
+              tooltip={`${filterByPrefix} ${detail.seniority.name}`}
               onClick={pageActions ? () => pageActions.addSeniority(detail.seniority!) : undefined}
             />
           )}
@@ -210,7 +214,7 @@ function DetailContent({ detail }: { detail: PostingDetail }) {
             <FilterPill
               icon={<Clock size={11} />}
               label={formatExperience(detail.experienceMin, detail.experienceMax)}
-              tooltip={`Filter by ${formatExperience(detail.experienceMin, detail.experienceMax)} experience`}
+              tooltip={`${filterByPrefix} ${formatExperience(detail.experienceMin, detail.experienceMax)}`}
               onClick={pageActions?.setExperienceFilter ? () => pageActions.setExperienceFilter!(detail.experienceMin ?? undefined, detail.experienceMax ?? undefined) : undefined}
             />
           )}
@@ -218,7 +222,7 @@ function DetailContent({ detail }: { detail: PostingDetail }) {
             <FilterPill
               icon={<DollarSign size={11} />}
               label={salary.format(detail.salaryMin, detail.salaryMax, detail.salaryCurrency, detail.salaryPeriod)}
-              tooltip="Filter by this salary range"
+              tooltip={t({ id: "search.detail.filterBySalary", comment: "Tooltip for salary filter pill", message: "Filter by this salary range" })}
               onClick={pageActions?.setSalaryFilter ? () => pageActions.setSalaryFilter!(detail.salaryCurrency ?? "EUR", detail.salaryMin ?? undefined, detail.salaryMax ?? undefined) : undefined}
             />
           )}
@@ -283,6 +287,8 @@ const LOCATIONS_COLLAPSED = 3;
 
 function LocationList({ locations, onClickLocation }: { locations: PostingDetail["locations"]; onClickLocation?: (loc: PostingDetail["locations"][number]) => void }) {
   const [expanded, setExpanded] = useState(false);
+  useLingui();
+  const filterByPrefix = t({ id: "search.detail.filterByPrefix", comment: "Tooltip prefix for clickable filter pills, followed by the value name", message: "Filter by" });
   const collapsible = locations.length > LOCATIONS_COLLAPSED;
   const visible = collapsible && !expanded ? locations.slice(0, LOCATIONS_COLLAPSED) : locations;
 
@@ -315,7 +321,7 @@ function LocationList({ locations, onClickLocation }: { locations: PostingDetail
                 </Tooltip.Trigger>
                 <Tooltip.Portal>
                   <Tooltip.Content className={tooltipClass} sideOffset={6}>
-                    Filter by {loc.name}
+                    {filterByPrefix} {loc.name}
                   </Tooltip.Content>
                 </Tooltip.Portal>
               </Tooltip.Root>
@@ -359,6 +365,8 @@ function ExtractedDetails({
   onAddTechnology?: (tech: { id: number; slug: string; name: string }) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  useLingui();
+  const filterByPrefix = t({ id: "search.detail.filterByPrefix", comment: "Tooltip prefix for clickable filter pills, followed by the value name", message: "Filter by" });
 
   return (
     <div className="rounded-md border border-divider bg-surface-alt/50 px-3 py-2">
@@ -402,7 +410,7 @@ function ExtractedDetails({
                       <Tooltip.Trigger asChild>{tag}</Tooltip.Trigger>
                       <Tooltip.Portal>
                         <Tooltip.Content className={tooltipClass} sideOffset={6}>
-                          Filter by {tech.name}
+                          {filterByPrefix} {tech.name}
                         </Tooltip.Content>
                       </Tooltip.Portal>
                     </Tooltip.Root>
@@ -417,25 +425,34 @@ function ExtractedDetails({
   );
 }
 
-const statusBase = {
-  saved: { label: "Not applied", dot: "bg-muted", active: "bg-muted/20 text-foreground" },
-  applied: { label: "Applied", dot: "bg-sky-400 dark:bg-sky-500", active: "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300" },
-  interviewing: { label: "Interviewing", dot: "bg-amber-400 dark:bg-amber-500", active: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" },
-  offered: { label: "Offer", dot: "bg-emerald-400 dark:bg-emerald-500", active: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" },
-  rejected: { label: "Rejected", dot: "bg-rose-400 dark:bg-rose-500", active: "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300" },
+const statusBaseStyles = {
+  saved: { dot: "bg-muted", active: "bg-muted/20 text-foreground" },
+  applied: { dot: "bg-sky-400 dark:bg-sky-500", active: "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300" },
+  interviewing: { dot: "bg-amber-400 dark:bg-amber-500", active: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" },
+  offered: { dot: "bg-emerald-400 dark:bg-emerald-500", active: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" },
+  rejected: { dot: "bg-rose-400 dark:bg-rose-500", active: "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300" },
 };
 
 function StatusSelector({ status, hasInterviews, onChange }: { status: ApplicationStatus; hasInterviews: boolean; onChange: (s: ApplicationStatus) => void }) {
+  useLingui();
+  const statusLabels = {
+    saved: t({ id: "search.tracker.notApplied", comment: "Application tracker status: not applied", message: "Not applied" }),
+    applied: t({ id: "search.tracker.applied", comment: "Application tracker status: applied", message: "Applied" }),
+    interviewing: t({ id: "search.tracker.interviewing", comment: "Application tracker status: interviewing", message: "Interviewing" }),
+    offered: t({ id: "search.tracker.offer", comment: "Application tracker status: offer", message: "Offer" }),
+    rejected: t({ id: "search.tracker.rejected", comment: "Application tracker status: rejected", message: "Rejected" }),
+  };
+
   // Show "Interviewing" instead of "Applied" when interviews exist
   const appliedOption = hasInterviews
-    ? { value: "applied" as ApplicationStatus, ...statusBase.interviewing }
-    : { value: "applied" as ApplicationStatus, ...statusBase.applied };
+    ? { value: "applied" as ApplicationStatus, label: statusLabels.interviewing, ...statusBaseStyles.interviewing }
+    : { value: "applied" as ApplicationStatus, label: statusLabels.applied, ...statusBaseStyles.applied };
 
   const options = [
-    { value: "saved" as ApplicationStatus, ...statusBase.saved },
+    { value: "saved" as ApplicationStatus, label: statusLabels.saved, ...statusBaseStyles.saved },
     appliedOption,
-    { value: "offered" as ApplicationStatus, ...statusBase.offered },
-    { value: "rejected" as ApplicationStatus, ...statusBase.rejected },
+    { value: "offered" as ApplicationStatus, label: statusLabels.offered, ...statusBaseStyles.offered },
+    { value: "rejected" as ApplicationStatus, label: statusLabels.rejected, ...statusBaseStyles.rejected },
   ];
 
   return (

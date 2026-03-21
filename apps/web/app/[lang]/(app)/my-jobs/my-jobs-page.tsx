@@ -5,6 +5,8 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { BarChart3, Briefcase, ChevronDown, ChevronRight } from "lucide-react";
 import { Trans } from "@lingui/react/macro";
+import { useLingui } from "@lingui/react";
+import { t } from "@lingui/core/macro";
 import { useLocalePath } from "@/lib/useLocalePath";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import {
@@ -22,13 +24,16 @@ import { useSavedJobs } from "@/components/SavedJobsProvider";
 const BATCH = 20;
 const LS_KEY = "my-jobs-view";
 
-const statusGroupLabels: Record<ApplicationStatus, string> = {
-  saved: "Saved",
-  applied: "Applied",
-  interviewing: "Interviewing",
-  offered: "Offered",
-  rejected: "Rejected",
-};
+function useStatusGroupLabels(): Record<ApplicationStatus, string> {
+  useLingui();
+  return {
+    saved: t({ id: "myJobs.group.saved", comment: "Status group heading: saved jobs", message: "Saved" }),
+    applied: t({ id: "myJobs.group.applied", comment: "Status group heading: applied jobs", message: "Applied" }),
+    interviewing: t({ id: "myJobs.group.interviewing", comment: "Status group heading: interviewing", message: "Interviewing" }),
+    offered: t({ id: "myJobs.group.offered", comment: "Status group heading: offered", message: "Offered" }),
+    rejected: t({ id: "myJobs.group.rejected", comment: "Status group heading: rejected", message: "Rejected" }),
+  };
+}
 
 const statusGroupOrder: ApplicationStatus[] = ["interviewing", "applied", "offered", "saved", "rejected"];
 
@@ -77,6 +82,7 @@ export function MyJobsPage({
 }) {
   const searchParams = useSearchParams();
   const lp = useLocalePath();
+  const statusGroupLabels = useStatusGroupLabels();
   const [jobs, setJobs] = useState(initialJobs);
   const [total, setTotal] = useState(initialTotal);
   const [exhausted, setExhausted] = useState(
@@ -221,7 +227,7 @@ export function MyJobsPage({
     }
 
     return Array.from(map.entries());
-  }, [jobs, groupBy]);
+  }, [jobs, groupBy, statusGroupLabels]);
 
   if (jobs.length === 0 && !isLoading) {
     return (

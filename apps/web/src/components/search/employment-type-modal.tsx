@@ -4,15 +4,20 @@ import { useMemo } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { Trans } from "@lingui/react/macro";
+import { useLingui } from "@lingui/react";
+import { t } from "@lingui/core/macro";
 
-const EMPLOYMENT_TYPES = [
-  { value: "full_time", label: "Full-time" },
-  { value: "part_time", label: "Part-time" },
-  { value: "contract", label: "Contract" },
-  { value: "internship", label: "Internship" },
-  { value: "temporary", label: "Temporary" },
-  { value: "volunteer", label: "Volunteer" },
-] as const;
+function useEmploymentTypes() {
+  useLingui();
+  return [
+    { value: "full_time", label: t({ id: "search.employmentType.fullTime", comment: "Employment type: full-time", message: "Full-time" }) },
+    { value: "part_time", label: t({ id: "search.employmentType.partTime", comment: "Employment type: part-time", message: "Part-time" }) },
+    { value: "contract", label: t({ id: "search.employmentType.contract", comment: "Employment type: contract", message: "Contract" }) },
+    { value: "internship", label: t({ id: "search.employmentType.internship", comment: "Employment type: internship", message: "Internship" }) },
+    { value: "temporary", label: t({ id: "search.employmentType.temporary", comment: "Employment type: temporary", message: "Temporary" }) },
+    { value: "volunteer", label: t({ id: "search.employmentType.volunteer", comment: "Employment type: volunteer", message: "Volunteer" }) },
+  ] as const;
+}
 
 interface EmploymentTypeModalProps {
   open: boolean;
@@ -27,6 +32,7 @@ export function EmploymentTypeModal({
   selected,
   onToggle,
 }: EmploymentTypeModalProps) {
+  const EMPLOYMENT_TYPES = useEmploymentTypes();
   const selectedSet = useMemo(() => new Set(selected), [selected]);
 
   return (

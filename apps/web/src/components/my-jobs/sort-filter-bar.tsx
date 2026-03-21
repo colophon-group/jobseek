@@ -2,21 +2,29 @@
 
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { ArrowUpDown, ChevronDown, LayoutGrid } from "lucide-react";
+import { useLingui } from "@lingui/react";
+import { t } from "@lingui/core/macro";
 
 export type SortBy = "status_changed_at" | "saved_at" | "status" | "company_name";
 export type GroupBy = "company" | "status";
 
-const sortOptions: { value: SortBy; label: string }[] = [
-  { value: "status_changed_at", label: "Recently updated" },
-  { value: "saved_at", label: "Date saved" },
-  { value: "status", label: "Status" },
-  { value: "company_name", label: "Company" },
-];
+function useSortOptions(): { value: SortBy; label: string }[] {
+  useLingui();
+  return [
+    { value: "status_changed_at", label: t({ id: "myJobs.sort.recentlyUpdated", comment: "Sort option: recently updated", message: "Recently updated" }) },
+    { value: "saved_at", label: t({ id: "myJobs.sort.dateSaved", comment: "Sort option: date saved", message: "Date saved" }) },
+    { value: "status", label: t({ id: "myJobs.sort.status", comment: "Sort option: status", message: "Status" }) },
+    { value: "company_name", label: t({ id: "myJobs.sort.company", comment: "Sort option: company name", message: "Company" }) },
+  ];
+}
 
-const groupOptions: { value: GroupBy; label: string }[] = [
-  { value: "company", label: "Company" },
-  { value: "status", label: "Status" },
-];
+function useGroupOptions(): { value: GroupBy; label: string }[] {
+  useLingui();
+  return [
+    { value: "company", label: t({ id: "myJobs.group.company", comment: "Group by company option", message: "Company" }) },
+    { value: "status", label: t({ id: "myJobs.group.status", comment: "Group by status option", message: "Status" }) },
+  ];
+}
 
 interface SortFilterBarProps {
   sortBy: SortBy;
@@ -31,6 +39,8 @@ export function SortFilterBar({
   groupBy,
   onGroupByChange,
 }: SortFilterBarProps) {
+  const sortOptions = useSortOptions();
+  const groupOptions = useGroupOptions();
   const currentSort = sortOptions.find((o) => o.value === sortBy);
   const currentGroup = groupOptions.find((o) => o.value === groupBy);
 

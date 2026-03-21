@@ -3,25 +3,30 @@
 import { useState, useRef, useEffect } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Trans } from "@lingui/react/macro";
+import { useLingui } from "@lingui/react";
+import { t } from "@lingui/core/macro";
 import {
   INTERVIEW_TYPES,
   type InterviewEntry,
   type InterviewType,
 } from "@/lib/actions/my-jobs-types";
 
-const typeLabels: Record<InterviewType, string> = {
-  interview: "Interview",
-  phone_screen: "Phone Screen",
-  video_call: "Video Call",
-  technical: "Technical",
-  coding: "Coding",
-  system_design: "System Design",
-  behavioral: "Behavioral",
-  onsite: "Onsite",
-  panel: "Panel",
-  hiring_manager: "Hiring Manager",
-  other: "Other",
-};
+function useTypeLabels(): Record<InterviewType, string> {
+  useLingui();
+  return {
+    interview: t({ id: "myJobs.interviewType.interview", comment: "Interview type label: general interview", message: "Interview" }),
+    phone_screen: t({ id: "myJobs.interviewType.phoneScreen", comment: "Interview type label: phone screen", message: "Phone Screen" }),
+    video_call: t({ id: "myJobs.interviewType.videoCall", comment: "Interview type label: video call", message: "Video Call" }),
+    technical: t({ id: "myJobs.interviewType.technical", comment: "Interview type label: technical interview", message: "Technical" }),
+    coding: t({ id: "myJobs.interviewType.coding", comment: "Interview type label: coding challenge", message: "Coding" }),
+    system_design: t({ id: "myJobs.interviewType.systemDesign", comment: "Interview type label: system design", message: "System Design" }),
+    behavioral: t({ id: "myJobs.interviewType.behavioral", comment: "Interview type label: behavioral interview", message: "Behavioral" }),
+    onsite: t({ id: "myJobs.interviewType.onsite", comment: "Interview type label: onsite interview", message: "Onsite" }),
+    panel: t({ id: "myJobs.interviewType.panel", comment: "Interview type label: panel interview", message: "Panel" }),
+    hiring_manager: t({ id: "myJobs.interviewType.hiringManager", comment: "Interview type label: hiring manager round", message: "Hiring Manager" }),
+    other: t({ id: "myJobs.interviewType.other", comment: "Interview type label: other/unspecified", message: "Other" }),
+  };
+}
 
 interface InterviewListProps {
   interviews: InterviewEntry[];
@@ -39,6 +44,7 @@ export function InterviewList({
   onUpdate,
   onDelete,
 }: InterviewListProps) {
+  const typeLabels = useTypeLabels();
   return (
     <div className="space-y-1">
       <h3 className="text-[10px] font-medium uppercase tracking-wider text-muted">
@@ -56,6 +62,7 @@ export function InterviewList({
             <InterviewRow
               key={interview.id}
               interview={interview}
+              typeLabels={typeLabels}
               onUpdate={onUpdate}
               onDelete={onDelete}
             />
@@ -81,10 +88,12 @@ export function InterviewList({
 
 function InterviewRow({
   interview,
+  typeLabels,
   onUpdate,
   onDelete,
 }: {
   interview: InterviewEntry;
+  typeLabels: Record<InterviewType, string>;
   onUpdate: InterviewListProps["onUpdate"];
   onDelete: InterviewListProps["onDelete"];
 }) {
@@ -153,7 +162,7 @@ function InterviewRow({
             className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-xs text-rose-500 transition-colors hover:bg-rose-50 dark:hover:bg-rose-900/20"
           >
             <Trash2 size={11} />
-            Delete
+            <Trans id="myJobs.interview.delete" comment="Delete interview button">Delete</Trans>
           </button>
         </div>
       )}

@@ -7,24 +7,26 @@ import { Trans } from "@lingui/react/macro";
 
 /**
  * Small warning icon for job lists — shown when a posting has no title.
- * Must be rendered inside a Tooltip.Provider.
+ * Includes its own Tooltip.Provider so it can be used anywhere.
  */
 export function PendingJobIcon() {
   return (
-    <Tooltip.Root>
-      <Tooltip.Trigger asChild>
-        <span className="inline-flex shrink-0 text-amber-500">
-          <AlertTriangle size={13} />
-        </span>
-      </Tooltip.Trigger>
-      <Tooltip.Portal>
-        <Tooltip.Content className={tooltipClass} sideOffset={6}>
-          <Trans id="job.pending.tooltip" comment="Tooltip for pending job warning icon">
-            We noticed this job was recently added. Details are being processed.
-          </Trans>
-        </Tooltip.Content>
-      </Tooltip.Portal>
-    </Tooltip.Root>
+    <Tooltip.Provider delayDuration={300}>
+      <Tooltip.Root>
+        <Tooltip.Trigger asChild>
+          <span className="inline-flex shrink-0 text-amber-500">
+            <AlertTriangle size={13} />
+          </span>
+        </Tooltip.Trigger>
+        <Tooltip.Portal>
+          <Tooltip.Content className={tooltipClass} sideOffset={6}>
+            <Trans id="job.pending.tooltip" comment="Tooltip for pending job warning icon">
+              We noticed this job was recently added. Details are being processed.
+            </Trans>
+          </Tooltip.Content>
+        </Tooltip.Portal>
+      </Tooltip.Root>
+    </Tooltip.Provider>
   );
 }
 

@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState, useRef } from "react";
+import { useLingui } from "@lingui/react";
+import { t } from "@lingui/core/macro";
 import type { ActivityDay } from "@/lib/actions/my-jobs-stats";
 
 function formatLocal(d: Date): string {
@@ -37,12 +39,45 @@ function getLevel(count: number): number {
   return 4;
 }
 
-const DAY_LABELS = ["", "Mon", "", "Wed", "", "Fri", ""];
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function useDayLabels(): string[] {
+  useLingui();
+  return [
+    "",
+    t({ id: "myJobs.heatmap.day.mon", comment: "Short Monday label for heatmap", message: "Mon" }),
+    "",
+    t({ id: "myJobs.heatmap.day.wed", comment: "Short Wednesday label for heatmap", message: "Wed" }),
+    "",
+    t({ id: "myJobs.heatmap.day.fri", comment: "Short Friday label for heatmap", message: "Fri" }),
+    "",
+  ];
+}
+
+function useMonthLabels(): string[] {
+  useLingui();
+  return [
+    t({ id: "myJobs.heatmap.month.jan", comment: "Short January label", message: "Jan" }),
+    t({ id: "myJobs.heatmap.month.feb", comment: "Short February label", message: "Feb" }),
+    t({ id: "myJobs.heatmap.month.mar", comment: "Short March label", message: "Mar" }),
+    t({ id: "myJobs.heatmap.month.apr", comment: "Short April label", message: "Apr" }),
+    t({ id: "myJobs.heatmap.month.may", comment: "Short May label", message: "May" }),
+    t({ id: "myJobs.heatmap.month.jun", comment: "Short June label", message: "Jun" }),
+    t({ id: "myJobs.heatmap.month.jul", comment: "Short July label", message: "Jul" }),
+    t({ id: "myJobs.heatmap.month.aug", comment: "Short August label", message: "Aug" }),
+    t({ id: "myJobs.heatmap.month.sep", comment: "Short September label", message: "Sep" }),
+    t({ id: "myJobs.heatmap.month.oct", comment: "Short October label", message: "Oct" }),
+    t({ id: "myJobs.heatmap.month.nov", comment: "Short November label", message: "Nov" }),
+    t({ id: "myJobs.heatmap.month.dec", comment: "Short December label", message: "Dec" }),
+  ];
+}
 
 export function ActivityHeatmap({ data }: { data: ActivityDay[] }) {
   const [tooltip, setTooltip] = useState<{ x: number; y: number; text: string } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const DAY_LABELS = useDayLabels();
+  const MONTHS = useMonthLabels();
+  const noApplications = t({ id: "myJobs.heatmap.tooltipNone", comment: "Heatmap tooltip when no applications on a date", message: "No applications on {date}" });
+  const oneApplication = t({ id: "myJobs.heatmap.tooltipOne", comment: "Heatmap tooltip for 1 application", message: "1 application on {date}" });
+  const multipleApplications = t({ id: "myJobs.heatmap.tooltipMultiple", comment: "Heatmap tooltip for multiple applications", message: "{count} applications on {date}" });
 
   const { grid, monthHeaders } = useMemo(() => {
     const map = new Map(data.map((d) => [d.date, d.count]));
@@ -92,8 +127,10 @@ export function ActivityHeatmap({ data }: { data: ActivityDay[] }) {
     const container = containerRef.current?.getBoundingClientRect();
     if (!container) return;
     const text = cell.count === 0
-      ? `No applications on ${cell.date}`
-      : `${cell.count} application${cell.count > 1 ? "s" : ""} on ${cell.date}`;
+      ? noApplications.replace("{date}", cell.date)
+      : cell.count === 1
+        ? oneApplication.replace("{date}", cell.date)
+        : multipleApplications.replace("{count}", String(cell.count)).replace("{date}", cell.date);
     setTooltip({ x: rect.left - container.left + CELL / 2, y: rect.top - container.top - 4, text });
   }
 

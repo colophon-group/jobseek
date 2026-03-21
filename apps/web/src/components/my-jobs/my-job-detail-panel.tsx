@@ -5,6 +5,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { Building2, X } from "lucide-react";
 import { Trans } from "@lingui/react/macro";
+import { useLingui } from "@lingui/react";
+import { t } from "@lingui/core/macro";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { getPostingDetail } from "@/lib/actions/search";
 import type { PostingDetail } from "@/lib/actions/search";
@@ -26,6 +28,17 @@ import { InterviewList } from "./interview-list";
 import { timeAgoShort } from "@/lib/time";
 import { SaveButton } from "@/components/search/save-button";
 
+function useStatusOptionLabels(): Record<ApplicationStatus, string> {
+  useLingui();
+  return {
+    saved: t({ id: "myJobs.statusOption.saved", comment: "Status option in dropdown: saved", message: "Saved" }),
+    applied: t({ id: "myJobs.statusOption.applied", comment: "Status option in dropdown: applied", message: "Applied" }),
+    interviewing: t({ id: "myJobs.statusOption.interviewing", comment: "Status option in dropdown: interviewing", message: "Interviewing" }),
+    offered: t({ id: "myJobs.statusOption.offered", comment: "Status option in dropdown: offered", message: "Offered" }),
+    rejected: t({ id: "myJobs.statusOption.rejected", comment: "Status option in dropdown: rejected", message: "Rejected" }),
+  };
+}
+
 interface MyJobDetailPanelProps {
   savedJobId: string;
   postingId: string;
@@ -45,6 +58,9 @@ export function MyJobDetailPanel({
   const [jobDetail, setJobDetail] = useState<MyJobDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  useLingui();
+  const statusOptionLabels = useStatusOptionLabels();
+  const changePlaceholder = t({ id: "myJobs.detail.changePlaceholder", comment: "Placeholder in status change dropdown", message: "Change..." });
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -200,13 +216,13 @@ export function MyJobDetailPanel({
                     className="rounded border border-border-soft bg-surface px-1.5 py-0.5 text-xs text-muted"
                   >
                     <option value="">
-                      Change...
+                      {changePlaceholder}
                     </option>
                     {APPLICATION_STATUSES.filter(
                       (s) => s !== jobDetail.status,
                     ).map((s) => (
                       <option key={s} value={s}>
-                        {s.charAt(0).toUpperCase() + s.slice(1)}
+                        {statusOptionLabels[s]}
                       </option>
                     ))}
                   </select>

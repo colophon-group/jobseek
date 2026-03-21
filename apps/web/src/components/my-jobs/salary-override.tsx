@@ -2,6 +2,8 @@
 
 import { useState, useRef } from "react";
 import { Trans } from "@lingui/react/macro";
+import { useLingui } from "@lingui/react";
+import { t } from "@lingui/core/macro";
 
 interface SalaryOverrideProps {
   crawlerSalary: {
@@ -38,6 +40,12 @@ export function SalaryOverride({
     override.period ?? crawlerSalary.period ?? "yearly",
   );
   const saveTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useLingui();
+  const minLabel = t({ id: "myJobs.salary.min", comment: "Minimum salary label", message: "Min" });
+  const maxLabel = t({ id: "myJobs.salary.max", comment: "Maximum salary label", message: "Max" });
+  const yearlyLabel = t({ id: "myJobs.salary.yearly", comment: "Yearly salary period option", message: "Yearly" });
+  const monthlyLabel = t({ id: "myJobs.salary.monthly", comment: "Monthly salary period option", message: "Monthly" });
+  const hourlyLabel = t({ id: "myJobs.salary.hourly", comment: "Hourly salary period option", message: "Hourly" });
 
   function handleChange(
     field: "min" | "max" | "currency" | "period",
@@ -76,7 +84,7 @@ export function SalaryOverride({
       </h3>
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="mb-0.5 block text-[10px] text-muted">Min</label>
+          <label className="mb-0.5 block text-[10px] text-muted">{minLabel}</label>
           <input
             type="number"
             value={min}
@@ -86,7 +94,7 @@ export function SalaryOverride({
           />
         </div>
         <div>
-          <label className="mb-0.5 block text-[10px] text-muted">Max</label>
+          <label className="mb-0.5 block text-[10px] text-muted">{maxLabel}</label>
           <input
             type="number"
             value={max}
@@ -129,9 +137,9 @@ export function SalaryOverride({
             onChange={(e) => handleChange("period", e.target.value)}
             className="w-full rounded border border-border-soft bg-surface px-2 py-1 text-xs"
           >
-            <option value="yearly">Yearly</option>
-            <option value="monthly">Monthly</option>
-            <option value="hourly">Hourly</option>
+            <option value="yearly">{yearlyLabel}</option>
+            <option value="monthly">{monthlyLabel}</option>
+            <option value="hourly">{hourlyLabel}</option>
           </select>
         </div>
       </div>
