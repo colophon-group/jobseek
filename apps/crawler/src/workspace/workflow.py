@@ -324,6 +324,23 @@ def render_step(step: StepDef, ctx: dict[str, str]) -> str:
     return raw
 
 
+def render_parallel_prompt(template_name: str, context: dict[str, Any]) -> str:
+    """Load and render a parallel subagent prompt template with Jinja2.
+
+    Templates live in ``steps/parallel/`` relative to this module's directory.
+    """
+    from jinja2 import Environment, FileSystemLoader
+
+    steps_dir = Path(__file__).parent / "steps"
+    env = Environment(
+        loader=FileSystemLoader(str(steps_dir)),
+        keep_trailing_newline=True,
+        undefined=__import__("jinja2").Undefined,
+    )
+    template = env.get_template(f"parallel/{template_name}.md")
+    return template.render(**context)
+
+
 # ── Workflow navigation ──────────────────────────────────────────────
 
 
