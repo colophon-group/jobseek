@@ -61,6 +61,12 @@ from src.workspace.state import (
 @click.option("--industry", type=int, help="Industry ID (see: ws help industries)")
 @click.option("--employee-count-range", type=int, help="Employee count range bucket (1-8)")
 @click.option("--founded-year", type=int, help="Year company was founded")
+@click.option(
+    "--no-discover",
+    is_flag=True,
+    default=False,
+    help="Skip logo discovery and auto-enrichment when setting website",
+)
 def set_(
     slug: str | None,
     name: str | None,
@@ -77,6 +83,7 @@ def set_(
     industry: int | None,
     employee_count_range: int | None,
     founded_year: int | None,
+    no_discover: bool,
 ):
     """Set company metadata in workspace."""
     slug = resolve_slug(slug)
@@ -169,6 +176,7 @@ def set_(
     # explicitly set in THIS call (not carried over from prior state)
     if (
         website  # Only when website is explicitly set in THIS call
+        and not no_discover
         and logo_url is None
         and icon_url is None
         and logo_type is None
@@ -182,6 +190,7 @@ def set_(
     # THIS call, and enrichment fields weren't already populated
     if (
         (website or name)  # Only when name or website set in THIS call
+        and not no_discover
         and (website or ws.website)
         and (name or ws.name)
         and description is None

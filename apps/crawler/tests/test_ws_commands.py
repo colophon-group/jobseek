@@ -404,6 +404,44 @@ class TestSet:
         workspace = load_workspace("test")
         assert workspace.logo_url == "https://cdn.example.com/logo.png"
 
+    def test_set_website_no_discover_skips_side_effects(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(Workspace(slug="test"))
+
+        monkeypatch.setattr(
+            "src.workspace.commands.config._discover_and_show_all",
+            lambda *a, **kw: (_ for _ in ()).throw(AssertionError("discovery should not run")),
+        )
+        monkeypatch.setattr(
+            "src.workspace.commands.config._auto_enrich",
+            lambda *a, **kw: (_ for _ in ()).throw(AssertionError("enrichment should not run")),
+        )
+
+        runner = CliRunner()
+        result = runner.invoke(ws, ["set", "test", "--website", "https://new.com", "--no-discover"])
+        assert result.exit_code == 0
+        loaded = load_workspace("test")
+        assert loaded.website == "https://new.com"
+
+    def test_set_website_without_no_discover_triggers_discovery(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(Workspace(slug="test"))
+
+        discovered = []
+        monkeypatch.setattr(
+            "src.workspace.commands.config._discover_and_show_all",
+            lambda slug, url: discovered.append((slug, url)),
+        )
+        monkeypatch.setattr(
+            "src.workspace.commands.config._auto_enrich",
+            lambda ws: None,
+        )
+
+        runner = CliRunner()
+        result = runner.invoke(ws, ["set", "test", "--website", "https://new.com"])
+        assert result.exit_code == 0
+        assert len(discovered) == 1
+
 
 class TestAddBoard:
     def test_add_board(self, tmp_path, monkeypatch):
