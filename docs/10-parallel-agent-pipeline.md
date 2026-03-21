@@ -72,17 +72,17 @@ graph TD
 
     H --> I[ws task complete]
 
-    style A fill:#e8e8e8,stroke:#999
-    style H fill:#e8e8e8,stroke:#999
-    style I fill:#e8e8e8,stroke:#999
-    style C fill:#d4edda,stroke:#28a745
-    style D fill:#d4edda,stroke:#28a745
-    style E fill:#d4edda,stroke:#28a745
-    style F1 fill:#cce5ff,stroke:#004085
-    style F2 fill:#cce5ff,stroke:#004085
-    style F3 fill:#cce5ff,stroke:#004085
-    style G1 fill:#cce5ff,stroke:#004085
-    style G2 fill:#cce5ff,stroke:#004085
+    style A fill:#555,stroke:#333,color:#fff
+    style H fill:#555,stroke:#333,color:#fff
+    style I fill:#555,stroke:#333,color:#fff
+    style C fill:#1a7f37,stroke:#116329,color:#fff
+    style D fill:#1a7f37,stroke:#116329,color:#fff
+    style E fill:#1a7f37,stroke:#116329,color:#fff
+    style F1 fill:#0550ae,stroke:#033d8b,color:#fff
+    style F2 fill:#0550ae,stroke:#033d8b,color:#fff
+    style F3 fill:#0550ae,stroke:#033d8b,color:#fff
+    style G1 fill:#0550ae,stroke:#033d8b,color:#fff
+    style G2 fill:#0550ae,stroke:#033d8b,color:#fff
 ```
 
 **Green** = independent subagents running in background.
