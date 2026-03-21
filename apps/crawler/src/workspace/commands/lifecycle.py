@@ -68,7 +68,15 @@ def _load_existing_boards(slug: str) -> list[dict[str, str]]:
 @click.option("--pr", "pr_opt", type=int, default=None, help="Attach to existing PR number")
 @click.option("--reconfig", is_flag=True, help="Reconfigure an existing company")
 @click.option("--reset", is_flag=True, help="Purge managed clone and re-clone from scratch")
-def new(slug: str, issue: int | None, pr_opt: int | None, reconfig: bool, reset: bool):
+@click.option("--start-at", default=None, help="Start workflow at this step (reconfig only)")
+def new(
+    slug: str,
+    issue: int | None,
+    pr_opt: int | None,
+    reconfig: bool,
+    reset: bool,
+    start_at: str | None,
+):
     """Create workspace + stub CSV row + branch + draft PR.
 
     With --reconfig, creates a workspace for an existing company to
@@ -292,13 +300,20 @@ def new(slug: str, issue: int | None, pr_opt: int | None, reconfig: bool, reset:
 
     # For reconfig, advance workflow past setup/add_boards (already satisfied)
     if reconfig and existing_boards:
-        from src.workspace.workflow import WorkflowState, _save_wf_to_disk
+        from src.workspace.workflow import WorkflowState, _all_step_defs, _save_wf_to_disk
+
+        step_id = start_at or "select_monitor"
+        valid_ids = {s.id for s in _all_step_defs()}
+        if step_id not in valid_ids:
+            out.die(f"Unknown step: {step_id!r}. Valid: {', '.join(sorted(valid_ids))}")
 
         wf = WorkflowState(
-            current_step="select_monitor",
+            current_step=step_id,
             current_board=existing_boards[0].get("board_slug", "").removeprefix(f"{slug}-"),
         )
         _save_wf_to_disk(slug, wf)
+    elif start_at:
+        out.warn("new", "--start-at is only used with --reconfig, ignoring")
 
     # Set as active workspace
     set_active_slug(slug)
