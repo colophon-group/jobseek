@@ -1,6 +1,6 @@
 # Parallel Agent Pipeline
 
-RFC for parallelizing the `ws` guided setup workflow.
+Implementation plan for parallelizing the `ws` guided setup workflow.
 
 ## Problem
 
@@ -107,10 +107,10 @@ Wall time drops from the sum of all steps to the length of the critical path
 
 ## Data Dependencies
 
-The key insight: **board configuration is 100% independent of company
-metadata**. No `ws probe`, `ws select`, or `ws run` command reads company
-name, description, industry, or logos. The only convergence point is
-`ws submit`, which writes both company and board data to CSV.
+**Board configuration is 100% independent of company metadata.** No
+`ws probe`, `ws select`, or `ws run` command reads company name, description,
+industry, or logos. The only convergence point is `ws submit`, which writes
+both company and board data to CSV.
 
 ```mermaid
 graph LR
@@ -160,7 +160,9 @@ graph LR
 No arrows cross between the green tracks and the blue track — they are fully
 independent until `ws submit` reads both.
 
-## Config Selection Policy
+---
+
+## Design Principles
 
 ### Required fields are non-negotiable
 
@@ -168,32 +170,6 @@ A config is only acceptable if it extracts **all required fields** cleanly:
 title, location, and description. A config that misses any required field is
 unusable — no exceptions, no "it's close enough". Report failure and try
 another approach rather than accepting incomplete extraction.
-
-### Maximize optional field coverage
-
-After required fields are satisfied, prefer configs that extract the most
-optional fields. Priority order for optional fields:
-
-1. **Important:** employment type, seniority level, department, salary
-2. **Nice-to-have:** posted date, application URL, remote/hybrid flag
-
-A config extracting 6 fields cleanly beats one extracting 3 fields cleanly,
-even if the 3-field config is simpler.
-
-### Minimize monitoring cost
-
-Among configs that meet field requirements, **always prefer the cheapest
-monitor**. Cost is reported by `ws probe monitor` and stored per config.
-
-Preference order (cheapest → most expensive):
-1. API monitors (greenhouse, lever, ashby, etc.) — single HTTP request
-2. Sitemap — single XML fetch
-3. DOM / nextdata — one page load, possibly paginated
-4. api_sniffer (httpx) — multiple API calls
-5. api_sniffer (Playwright) — browser rendering + API interception
-
-A more expensive monitor is only justified when cheaper options fail to
-capture all listings or required fields.
 
 ### Failure is better than a bad config
 
@@ -206,9 +182,88 @@ If no config combination works after exhausting options, the correct action
 is `ws task fail --reason "..."`, not `ws feedback --verdict acceptable` on
 a config the agent knows is broken.
 
+---
+
+## Config Selection Policy
+
+### Monitor preference order
+
+Among configs that meet field requirements, prefer the cheapest and most
+reliable monitor. Rich or partially-rich monitors that return full job data
+save the entire scraper step and are always preferred.
+
+1. **API monitors** (greenhouse, lever, ashby, workday, etc.) — always rich,
+   cheapest, single HTTP call per page
+2. **Sitemap** — cheap URL-only, good coverage for large sites
+3. **api_sniffer (httpx) / nextdata** — similar cost to DOM, but can return
+   **rich or partially-rich data**, more reliable extraction, structured JSON
+   endpoints
+4. **DOM** — URL-only, pagination is fragile, last resort for monitoring
+5. **api_sniffer (Playwright)** — expensive browser rendering, only when
+   httpx cannot reach the API (browser-dependent SPAs)
+
+A more expensive monitor is only justified when cheaper options fail to
+capture all listings or required fields.
+
+### Maximize optional field coverage
+
+After required fields are satisfied, prefer configs that extract the most
+optional fields. Priority order:
+
+1. **Important:** employment type, seniority level, department, salary
+2. **Nice-to-have:** posted date, application URL, remote/hybrid flag
+
+A config extracting 6 fields cleanly beats one extracting 3 fields cleanly,
+even if the 3-field config is simpler.
+
+---
+
+## Quality Enforcement
+
+### Description quality requirements
+
+A valid job description must contain **substantive structured content** —
+sections like responsibilities, requirements, qualifications, or project
+context. The following are NOT acceptable descriptions:
+
+- A single sentence or job title repeated
+- "Apply now" or other boilerplate without actual job content
+- Only a company overview without role-specific information
+- HTML fragments or navigation text extracted by mistake
+
+**This must be enforced programmatically, not just in agent instructions.**
+
+### Enforcement levels
+
+1. **Quality gates** (`run_quality_gates()` in `crawl.py`): Check
+   scraper_run sample descriptions for minimum substance. Descriptions
+   shorter than ~200 characters or lacking structural markers (multiple
+   paragraphs, list items, or section headings) should be flagged as
+   blockers.
+
+2. **Feedback command** (`ws feedback`): Warn when description quality is
+   rated "clean" but stored sample descriptions are suspiciously short or
+   lack structure. The agent must justify the rating.
+
+3. **Subagent instructions**: Every config-testing subagent must read 2-3
+   sample descriptions and confirm they contain real job content — not just
+   verify that the description field is non-empty.
+
+### Semantic verification for all fields
+
+All 11 feedback fields must be verified for **semantic correctness**, not
+just presence. Examples of false positives agents currently accept:
+
+- A location of `"null"` or `"undefined"` — reported as "present"
+- A title containing HTML tags or navigation breadcrumbs
+- An employment type of `"Other"` on every job
+- A description that is identical across all jobs (template, not content)
+
+---
+
 ## Board Config Subagent Design
 
-### Subagent framing: goal-oriented, not mechanical
+### Goal-oriented framing
 
 When the main agent spawns a subagent to work on a board, it should **not**
 say "test api_sniffer config". Instead, the subagent receives a goal-oriented
@@ -216,17 +271,19 @@ prompt with full context:
 
 > "Make a working config for board X (URL: ...) using the **greenhouse**
 > monitor and **json-ld** scraper. Required fields: title, location,
-> description. The probe detected a greenhouse token `abc123` with
-> ~150 jobs. Previous agents found that this company's greenhouse pages
-> use non-standard JSON-LD — try `render: true` if plain fetch fails.
-> If this combination cannot extract required fields cleanly, report
-> failure with specifics."
+> description. The probe detected a greenhouse token `abc123` with ~150 jobs.
+> The careers page shows '247 open positions' — verify the crawled count is
+> within 15% of this. Previous agents found that this company's greenhouse
+> pages use non-standard JSON-LD — try `render: true` if plain fetch fails.
+> If this combination cannot extract required fields cleanly, report failure
+> with specifics."
 
-Key elements of the subagent prompt:
+Key elements of every subagent prompt:
 - **The board URL and monitor/scraper combination to try**
 - **Required fields that must be extracted** (non-negotiable)
+- **Expected job count from web research** (for verification)
 - **Probe context** (detected tokens, job counts, cost estimates)
-- **Prior knowledge** (what other configs were tried, what failed, KB entries)
+- **Prior knowledge** (KB entries, failed configs, reconfig context)
 - **Explicit permission to fail** with a clear failure report
 
 ### Subagent outputs
@@ -238,57 +295,57 @@ Each config-testing subagent reports back one of:
 The main agent collects all reports and picks the best success, or escalates
 if all subagents report failure.
 
-## Quality Standards
+---
 
-### Known anti-patterns to eliminate
+## Reconfiguration Support
 
-Current agents exhibit several bad habits that the parallel pipeline must
-fix, not inherit:
+### Current state
 
-**1. Accepting bad configs to avoid failure.**
-Agents submit configs with `--verdict acceptable` when the extraction is
-clearly broken — missing descriptions, garbled locations, wrong job counts.
-Fix: subagent instructions must explicitly state that failure is an expected
-outcome and carries no penalty. The prompt must say: "If this doesn't work,
-say so. Do not force a passing verdict."
+`ws new <slug> --reconfig` pre-loads existing company data from CSV and
+fast-tracks the workflow to `select_monitor` for the first board
+(`lifecycle.py:293-301`). Company metadata, descriptions, and board URLs
+are all restored from their existing CSV rows.
 
-**2. Not finding all boards.**
-Agents discover 1 board and stop, even when the company has regional
-variants (careers-us, careers-de, careers-uk) or multiple ATS platforms.
-Fix: the board discovery subagent must:
-- Check for hreflang links on the careers page
-- Search for regional career domains (company.com/careers, company.de/karriere)
-- Look for multiple ATS platforms (Greenhouse for engineering, Lever for
-  sales, Workday for corporate)
-- Report the total board count and which regions/departments are covered
+### Reconfig scenarios
 
-**3. Not verifying job counts.**
-Agents run `ws run monitor`, see "145 jobs", and move on without checking
-if the careers page says "247 open positions". A 40% gap means the monitor
-is misconfigured. Fix: the subagent prompt must include the expected job
-count from web research. The subagent must compare crawled vs expected and
-flag significant gaps (>15% difference).
+Not all reconfigurations are the same. The parallel pipeline must support
+targeted re-runs where only the broken component is re-tested:
 
-**4. Making assumptions instead of verifying.**
-Agents assume a sitemap covers all jobs, assume json-ld has all fields,
-assume the first probe result is correct. Fix: every assumption must be
-verified by running the config and checking the output. The subagent must
-inspect actual extracted content, not just field presence counts.
+| Scenario | Skip | Start at | Example |
+|----------|------|----------|---------|
+| Scraper broke | Monitor + enrichment | `select_scraper` | JSON-LD fields renamed after site redesign |
+| Monitor broke | Enrichment | `select_monitor` | API endpoint moved, returns 0 jobs |
+| Board URL changed | Enrichment | `add_boards` | Company migrated from Lever to Greenhouse |
+| Site fully migrated | Nothing | `add_boards` | New domain, new ATS, everything different |
+| Full reconfig | Nothing | `add_boards` | User-reported misconfiguration, unclear what broke |
 
-**5. Taking shortcuts on scraper verification.**
-Agents check that fields are "present" (non-empty) but don't verify the
-content makes sense — a description field containing just a page header,
-a location field with "null", a title with HTML artifacts. Fix: subagents
-must read 2-3 sample extractions and confirm the content is semantically
-correct, not just non-empty.
+**Proposed change:** Add `--start-at <step>` flag to `ws new --reconfig`.
+Currently the start step is hardcoded to `select_monitor`. With `--start-at`,
+agents can target the exact broken component. Default remains
+`select_monitor` for backward compatibility.
 
-### Backtracking on new evidence
+### Parallel pipeline integration
+
+Reconfig subagents must receive existing config as context:
+
+> "Previous monitor was **greenhouse** with token `abc123`, found 200 jobs.
+> Now it returns 0. The board URL hasn't changed. Investigate whether the
+> token is still valid, whether the API endpoint moved, or whether the
+> company switched ATS platforms."
+
+The `ws task back` command enables course correction within a reconfig run —
+e.g., a scraper-only reconfig that discovers the monitor also broke can
+backtrack to `select_monitor` without starting over.
+
+---
+
+## Backtracking on New Evidence
 
 The current workflow only moves forward. Once a step is "done", the agent
-never revisits it — even when later evidence proves an earlier decision wrong.
-This must change.
+never revisits it — even when later evidence proves an earlier decision
+wrong. This must change.
 
-Examples of legitimate backtracking triggers:
+### Backtracking triggers
 
 - **Monitor testing reveals a missing board.** A subagent configuring
   board 1 notices the API returns jobs from two distinct departments that
@@ -309,154 +366,186 @@ Examples of legitimate backtracking triggers:
   api_sniffer, a subagent finds that the site has a public GraphQL
   endpoint that returns richer data than the sitemap monitor. The main
   agent should reconsider the monitor choice, not ignore the finding.
+- **Reconfig discovers deeper breakage.** A scraper-only reconfig reveals
+  the monitor also broke (board URL redirects, API returns errors). Back
+  to monitor selection.
+- **Reconfig finds the board URL changed.** The existing board URL now
+  404s. Back to board discovery to find the new URL.
 
-**Implementation:** The workflow engine must support `ws task back --to
-<step> --reason "..."`. The gate system should not prevent revisiting
-completed steps. The reason is logged to reflections so the backtrack is
-auditable. For the parallel pipeline, the main agent is responsible for
-deciding when to backtrack — subagents report findings, the main agent
-acts on them.
+### Implementation
 
-## Blockers and Required Changes
+`ws task back --to <step> --reason "..." [--board <alias>]`
 
-### 1. Relax `company_complete` gate
+- Does not discard configs or state — only moves the workflow cursor
+- Logs the reason to reflections for auditability
+- For per-board targets: sets `current_board` and removes it from
+  `completed_boards` if it was already completed
+- For global targets: clears `current_board`
+- The main agent decides when to backtrack — subagents report findings
 
-**Status quo:** The `company_complete` gate blocks advancement from step 1
-(setup) to step 2 (add boards). It requires name, website, description (en),
-and industry to all be set.
+---
 
-**Problem:** This prevents board work from starting until metadata enrichment
-is done, even though board probing/configuration never reads these fields.
+## Quality Standards
 
-**Change:** Remove `company_complete` as a gate for `add_boards`. The same
-checks already exist in `run_quality_gates()` at submit time, so nothing is
-lost.
+### Known anti-patterns to eliminate
 
-**Files:** `workflow.yaml`, `workflow.py`
+Current agents exhibit bad habits that the parallel pipeline must fix,
+not inherit:
+
+**1. Accepting bad configs to avoid failure.**
+Agents submit configs with `--verdict acceptable` when the extraction is
+clearly broken — missing descriptions, garbled locations, wrong job counts.
+Fix: subagent prompts must say "failure is expected and carries no penalty."
+
+**2. Not finding all boards.**
+Agents discover 1 board and stop, even when the company has regional
+variants (careers-us, careers-de, careers-uk) or multiple ATS platforms.
+Fix: the board discovery subagent must check hreflang links, regional
+domains, and multiple ATS platforms. Report total board count and coverage.
+
+**3. Not verifying job counts.**
+Agents run `ws run monitor`, see "145 jobs", and move on without checking
+if the careers page says "247 open positions". A 40% gap means the monitor
+is misconfigured. Fix: subagent prompts must include expected job count;
+flag >15% gaps as misconfiguration.
+
+**4. Making assumptions instead of verifying.**
+Agents assume a sitemap covers all jobs, assume json-ld has all fields,
+assume the first probe result is correct. Fix: every assumption verified
+by running the config and checking actual output.
+
+**5. Taking shortcuts on scraper verification.**
+Agents check that fields are "present" (non-empty) but don't verify the
+content makes sense. Fix: subagents must read 2-3 sample extractions and
+confirm semantic correctness, not just non-empty.
+
+**6. Accepting trivial descriptions.**
+Agents accept descriptions that are one-liners, bare titles, or boilerplate.
+A real description has structured sections — responsibilities, requirements,
+qualifications. Fix: enforced programmatically in quality gates (minimum
+length + structural markers), not just in agent judgment.
+
+---
+
+## Required Code Changes
+
+### 0.1 Relax `company_complete` gate
+
+Remove `check: company_complete` from the setup step in `workflow.yaml`.
+Board work doesn't read company metadata. The same validation exists in
+`run_quality_gates()` at submit time.
+
+**Files:** `workflow.yaml`, tests in `test_workflow.py`
 **Effort:** Small
 
-### 2. Add `--no-discover` to `ws set --website`
+### 0.2 Add `--no-discover` to `ws set --website`
 
-**Status quo:** `ws set --website` triggers `_inspect_logo_candidates()` as a
-synchronous side effect — fetching the homepage, extracting images, downloading
-PNGs.
+Add flag to skip `_inspect_logo_candidates()` and `_auto_enrich()` side
+effects. Enables metadata subagent to set website without triggering logo
+I/O.
 
-**Problem:** This couples website-setting with logo discovery. A metadata
-subagent that only needs to set the website field gets blocked by logo I/O.
-
-**Change:** Add `--no-discover` flag that skips the logo discovery side
-effect. The logo subagent calls `ws set --website` without the flag (or a new
-dedicated command) independently.
-
-**Files:** `commands/config.py`
+**Files:** `commands/config.py`, tests in `test_ws_commands.py`
 **Effort:** Small
 
-### 3. Add `--config <name>` to `ws run monitor` and `ws run scraper`
+### 0.3 Add `--config <name>` to `ws run monitor` and `ws run scraper`
 
-**Status quo:** `ws run monitor` always runs `board.active_config`. To test a
-different config, you must first `ws select config <name>` which mutates shared
-board state.
+Run a specific named config without touching `active_config`. Enables
+parallel config testing where multiple subagents test different configs
+on the same board simultaneously.
 
-**Problem:** Two subagents testing different configs for the same board race on
-`active_config`. Agent A selects config-1, agent B selects config-2, agent A
-runs — but now runs config-2 instead of config-1.
-
-**Change:** Add `--config <name>` flag to `ws run monitor` and
-`ws run scraper`. The command runs the named config directly without touching
-`active_config`. After all configs are tested, the main agent picks the winner
-and calls `ws select config <best>`.
-
-**Files:** `commands/crawl.py`
+**Files:** `commands/crawl.py`, tests in `test_ws_commands.py`
 **Effort:** Medium
 
-### 4. New parallel-mode agent instructions
+### 0.4 Add `ws task back` command
 
-**Status quo:** Step instructions (`steps/01-setup.md` through
-`steps/07-reflect.md`) assume a single agent following a linear path.
+`ws task back --to <step> --reason "..." [--board <alias>]`. Moves the
+workflow cursor backward. Logs reason as reflection. Handles board pointer
+and `completed_boards` list. Works in both fresh and reconfig workflows.
 
-**Problem:** A parallel agent needs different instructions: "launch these
-subagents, then process boards as they arrive."
-
-**Change:** Add parallel-mode step instructions (new `.md` files or a new
-prompt template). The main agent follows these instead of the sequential
-`ws task` flow. Sequential mode remains available for simpler agents or
-GitHub Actions.
-
-**Files:** `steps/` (new files), possibly `workflow.yaml`
+**Files:** `workflow.py`, `commands/task.py`, tests in `test_workflow.py`
 **Effort:** Medium
 
-## Implementation Plan
+### 0.5 Description quality check in quality gates
 
-### Phase 0: Groundwork
+Add programmatic validation to `run_quality_gates()`: check scraper_run
+sample descriptions for minimum substance (~200 chars, structural markers).
+Add warning in `ws feedback` when description rated "clean" but samples
+are suspiciously short.
 
-Prerequisite changes that unblock everything else.
+**Files:** `commands/crawl.py`, tests in `test_ws_commands.py`
+**Effort:** Medium
 
-- [ ] **0.1** Relax `company_complete` gate — change `workflow.yaml` so
-  `add_boards` has no gate (or a trivial gate like "slug exists"). Move
-  company completeness check to submit-only.
-- [ ] **0.2** Add `--no-discover` flag to `ws set --website` in `config.py`.
-  When set, skip the `_inspect_logo_candidates()` and
-  `_auto_enrich()` side effects.
-- [ ] **0.3** Add `--config <name>` flag to `ws run monitor` and
-  `ws run scraper` in `crawl.py`. Look up the named config from
-  `board.configs[name]` instead of `board.active_config`. Write run results
-  back to the named config entry.
-- [ ] **0.4** Add `ws task back --to <step> --reason "..."` command. Resets
-  `current_step` (and `current_board` if applicable) in workflow state.
-  Logs the reason to reflections for auditability. Must work for both
-  global and per-board steps. Does not discard any existing configs or
-  state — only moves the workflow cursor backward.
+### 0.6 Reconfig `--start-at <step>` support
 
-### Phase 1: Parallel Enrichment Tracks
+Add `--start-at` option to `ws new --reconfig`. Override the hardcoded
+`current_step="select_monitor"` so agents can target specific reconfig
+scenarios (scraper-only fix, full re-probe, etc.).
 
-Decouple metadata, logos, and board discovery into independent operations.
+**Files:** `commands/lifecycle.py`, tests in `test_ws_commands.py`
+**Effort:** Small
 
-- [ ] **1.1** Write a parallel-mode prompt/instructions for Track A (metadata
-  enrichment). The subagent receives slug + company name + website URL and
-  runs the `ws set` commands for descriptions, industry, employee count,
-  founded year.
-- [ ] **1.2** Write a parallel-mode prompt/instructions for Track B (logo
-  discovery). The subagent receives slug + website URL, runs logo discovery,
-  reviews candidates, and calls `ws set --logo-candidate / --icon-candidate`.
-- [ ] **1.3** Write a parallel-mode prompt/instructions for Track C (board
-  discovery). The subagent receives slug + website URL, researches career
-  pages, and calls `ws add board` for each board found.
-- [ ] **1.4** Write the main agent orchestration prompt: pre-verify, ws new,
-  spawn tracks A/B/C as background subagents, then enter the board processing
-  loop.
+---
 
-### Phase 2: Parallel Config Testing
+## Implementation Phases
 
-Enable testing multiple monitor+scraper combinations simultaneously per board.
+### Phase 0: Code groundwork
 
-- [ ] **2.1** Write goal-oriented subagent prompt template for board config
-  work. Each subagent receives: board URL, monitor+scraper combination to
-  try, expected job count from web research, required fields, prior context
-  (KB entries, failed configs from other subagents), and explicit permission
-  to report failure. Subagent returns success (with metrics) or failure
-  (with specifics).
-- [ ] **2.2** Update main agent instructions for board processing: after
-  `ws probe monitor`, identify top N viable monitor+scraper combinations,
-  spawn a goal-oriented subagent for each. Main agent collects results,
-  compares, picks the best config that meets all required fields at lowest
-  cost.
-- [ ] **2.3** Add a comparison/summary command (e.g. `ws compare configs
-  --board <alias>`) that shows all tested configs side-by-side — job count,
-  cost, fields extracted, verdict — so the main agent can pick the best
-  without reading raw YAML.
-- [ ] **2.4** Add job count verification to subagent prompt: subagent must
-  compare crawled job count against expected count (from web research or
-  probe). Flag gaps >15% as monitor misconfiguration rather than accepting.
+Changes 0.1-0.4. Prerequisite code changes that unblock parallel execution.
+No agent prompt changes yet.
 
-### Phase 3: Polish
+- [ ] **0.1** Relax `company_complete` gate
+- [ ] **0.2** Add `--no-discover` flag to `ws set --website`
+- [ ] **0.3** Add `--config <name>` flag to `ws run monitor/scraper`
+- [ ] **0.4** Add `ws task back` command
 
-- [ ] **3.1** Add `ws task status --parallel` that shows progress across all
-  tracks (enrichment, logos, boards, per-board configs) in a single view.
-- [ ] **3.2** Update `docs/01-agent-workflow.md` to document both sequential
-  and parallel modes.
-- [ ] **3.3** Add timeout/fallback logic: if a subagent doesn't complete
-  within a threshold, the main agent can proceed with defaults or skip
-  optional fields.
+### Phase 1: Quality enforcement
+
+Change 0.5. Programmatic description quality checks. Update step
+instruction `05-verify-and-feedback.md` to be explicit about description
+substance requirements.
+
+- [ ] **0.5** Description quality check in quality gates
+- [ ] Update `steps/05-verify-and-feedback.md` with description quality
+  requirements
+
+### Phase 2: Parallel enrichment tracks
+
+Write subagent prompts for independent background work:
+
+- [ ] **Track A prompt:** metadata enrichment (descriptions x4, industry,
+  employee count, founded year)
+- [ ] **Track B prompt:** logo discovery and selection
+- [ ] **Track C prompt:** board discovery (yields boards progressively)
+- [ ] **Main agent orchestration prompt:** pre-verify → ws new → spawn
+  tracks A/B/C → process boards as they appear → submit
+
+### Phase 3: Parallel config testing
+
+Write goal-oriented subagent prompts for board configuration:
+
+- [ ] **Config subagent prompt template:** board URL, monitor+scraper combo,
+  expected job count, required fields, probe context, prior knowledge,
+  permission to fail
+- [ ] **Main agent board processing flow:** probe → identify top N combos →
+  spawn config subagents → collect results → pick best → feedback
+- [ ] `ws compare configs --board <alias>` summary command
+
+### Phase 4: Reconfig integration
+
+Change 0.6. Make reconfig a first-class parallel workflow:
+
+- [ ] **0.6** `--start-at <step>` flag on `ws new --reconfig`
+- [ ] **Reconfig subagent prompts:** receive existing config as context,
+  investigate what broke, reuse what still works
+- [ ] Verify `ws task back` works within reconfig workflows
+
+### Phase 5: Polish
+
+- [ ] `ws task status --parallel` for multi-track progress view
+- [ ] Update `docs/01-agent-workflow.md` with parallel + reconfig modes
+- [ ] Timeout/fallback logic for subagents
+
+---
 
 ## Expected Impact
 
@@ -464,25 +553,26 @@ Enable testing multiple monitor+scraper combinations simultaneously per board.
 |--------|-----------|----------|-------------|
 | 1-board company | 15-30 min | 8-15 min | ~50% faster |
 | 3-board company | 30-50 min | 15-25 min | ~50% faster |
-| Agent turns used | 20-25 | 10-15 (main) + 5-8 (per subagent) | Better focus per agent |
+| Agent turns used | 20-25 | 10-15 (main) + 5-8 (per subagent) | Better focus |
 
-The biggest wins come from:
-
+Biggest wins:
 1. **Overlapping enrichment with board work** — saves 5-10 min per company
-2. **Parallel config testing** — saves 5-10 min per board when multiple
-   configs need testing
+2. **Parallel config testing** — saves 5-10 min per board
 3. **Progressive board discovery** — saves 3-5 min for multi-board companies
+4. **Reconfig targeting** — saves 10-20 min by skipping unnecessary steps
 
 ## Constraints
 
 - **Only the main agent can spawn subagents.** Subagents cannot delegate
-  further. This limits the parallelism depth to two levels.
-- **Subagents share the filesystem.** The `ws` state files use advisory locks
-  (`fcntl`) for atomic writes, so concurrent `ws set` / `ws add board` calls
-  from different subagents are safe as long as they write to different keys
-  or files.
+  further. Parallelism depth is limited to two levels.
+- **Subagents share the filesystem.** State files use advisory locks
+  (`fcntl`) for atomic writes. Concurrent `ws set` / `ws add board` calls
+  are safe as long as they write to different keys or files.
 - **`active_config` is shared per board.** This is why `--config <name>` is
   needed — without it, parallel config testing is impossible.
 - **Sequential mode must remain functional.** GitHub Actions agents and
-  simpler agent runtimes still use the linear `ws task` flow. Parallel mode
-  is an optimization for capable orchestrators (Claude Code with subagents).
+  simpler runtimes keep using the linear `ws task` flow. Parallel mode is
+  an optimization for capable orchestrators.
+- **Reconfiguration workflows must be supported.** Parallel mode cannot
+  assume a clean slate — subagents may receive pre-existing configs that
+  need investigation, not just blank boards to configure from scratch.
