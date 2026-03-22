@@ -12,21 +12,22 @@ ws set --name "..." --website "..." --no-discover
 
 ## Spawn parallel tracks
 
-Launch these as **background subagents** simultaneously. Prompt
-templates are in the workspace `prompts/` directory — read each one
-and pass it as the subagent's task description.
+Launch these as **background subagents** simultaneously. Read each
+prompt template and pass it as the subagent's task description.
+
+**Prompt templates directory:** `{{ prompts_dir }}/`
 
 - **Track A (enrichment):** Fill descriptions (4 locales), industry,
   employee count, founded year.
-  Read: `prompts/track-a-enrichment.md`
+  Read: `{{ prompts_dir }}/track-a-enrichment.md`
 - **Track B (logos):** Discover and select logo + icon.
-  Read: `prompts/track-b-logos.md`
+  Read: `{{ prompts_dir }}/track-b-logos.md`
 - **Track C (boards):** Find all career boards — add each with
   `ws add board`. Work progressively, not all-at-once.
-  Read: `prompts/track-c-boards.md`
+  Read: `{{ prompts_dir }}/track-c-boards.md`
 
-Render each template with Jinja2 variables (slug={{ slug }},
-website={{ website }}, etc.) before passing to the subagent.
+Replace template variables ({{ "{{" }} slug {{ "}}" }}, {{ "{{" }} website {{ "}}" }}, etc.) with actual values before
+passing to the subagent.
 
 Tracks A and B are fire-and-forget — check results before submit.
 Track C yields boards progressively — start processing each board
@@ -39,10 +40,10 @@ As Track C adds boards, process each one:
 1. `ws probe monitor -n <expected-job-count> --board <alias>`
 2. Identify top 2-3 monitor+scraper combinations from probe results
 3. Spawn **parallel subagents** to test each combination.
-   Read: `prompts/config-tester.md`
+   Read: `{{ prompts_dir }}/config-tester.md`
    Use `--config <name>` flag on `ws run` to avoid active_config races.
 4. Collect results, compare.
-   Read: `prompts/config-comparison.md`
+   Read: `{{ prompts_dir }}/config-comparison.md`
 5. Pick the best config: `ws select config <name> --board <alias>`
 6. Record feedback: `ws feedback --board <alias> ...`
 

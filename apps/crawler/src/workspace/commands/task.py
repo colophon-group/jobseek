@@ -168,6 +168,7 @@ def task(ctx, issue: int | None, pick_next: bool):
         "issue": str(ws.issue or ""),
         "website": ws.website or "",
         "company_name": ws.name or "",
+        "prompts_dir": str(prompts_dir),
     }
     instructions = render_parallel_prompt("orchestrator", ctx)
 
