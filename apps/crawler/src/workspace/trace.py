@@ -218,11 +218,15 @@ def discover_transcript(slug: str) -> Path | None:
     best_match: tuple[Path, int] | None = None
 
     for t_path, _ in candidates[:50]:
-        # Extract all Bash tool_use timestamps from the transcript
-        tail = _tail_jsonl(t_path, 500)
+        # Extract ws commands from transcript tail (large tail for long sessions)
+        tail = _tail_jsonl(t_path, 2000)
         tail_ws = _extract_ws_commands(tail)
 
         if not tail_ws:
+            continue
+
+        # Verify slug appears in at least one ws command
+        if not any(slug_re.search(cmd) for _, cmd in tail_ws):
             continue
 
         # Count how many log timestamps match transcript ws timestamps
@@ -233,19 +237,29 @@ def discover_transcript(slug: str) -> Path | None:
             if any(_timestamps_match(log_ts, t_ts) for t_ts in transcript_timestamps)
         )
 
-        # Need at least 3 matching timestamps (or all if fewer than 3)
-        min_hits = min(3, len(match_timestamps))
-        if hits < min_hits:
-            continue
-
-        # Verify slug appears in at least one ws command
-        if not any(slug_re.search(cmd) for _, cmd in tail_ws):
-            continue
-
-        if best_match is None or hits > best_match[1]:
+        # Need at least 2 matching timestamps (or all if fewer)
+        min_hits = min(2, len(match_timestamps))
+        if hits >= min_hits and (best_match is None or hits > best_match[1]):
             best_match = (t_path, hits)
 
-    return best_match[0] if best_match else None
+    if best_match:
+        return best_match[0]
+
+    # Fallback: mtime closest to complete timestamp + slug in full text.
+    # For long sessions the tail may miss early ws commands.
+    complete_ts = log_cmds[-1][0]
+    complete_dt = _parse_ts(complete_ts)
+    if complete_dt:
+        for t_path, mtime_diff in candidates[:10]:
+            if mtime_diff > 30:  # mtime must be within 30s of complete
+                continue
+            # Quick slug check in last chunk of file
+            tail = _tail_jsonl(t_path, 200)
+            tail_text = " ".join(json.dumps(r.get("message", {})) for r in tail)
+            if slug_re.search(tail_text):
+                return t_path
+
+    return None
 
 
 def extract_scoped_trace(transcript_path: Path, slug: str) -> list[dict]:
