@@ -7,6 +7,7 @@ import FilterBar from './components/FilterBar'
 import TokenChart from './components/TokenChart'
 import UploadZone from './components/UploadZone'
 import TraceSidebar from './components/TraceSidebar'
+import AgentTabs from './components/AgentTabs'
 
 function App() {
   const {
@@ -22,6 +23,9 @@ function App() {
     setSearch,
     loadJsonl,
     filename,
+    agents,
+    activeAgent,
+    setActiveAgent,
     bundles,
     activeBundle,
     activeHeader,
@@ -65,6 +69,14 @@ function App() {
         darkMode={darkMode}
         onToggleDark={toggleDark}
       />
+
+      {isLoaded && agents.length > 1 && (
+        <AgentTabs
+          agents={agents}
+          activeAgent={activeAgent}
+          onSelectAgent={setActiveAgent}
+        />
+      )}
 
       {!isLoaded && serverAttempted ? (
         <UploadZone onLoad={loadJsonl} />

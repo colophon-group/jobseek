@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react'
 import type { TimelineEvent, TraceStats, FilterMode, TraceBundle } from '../types'
-import { parseJsonl, parseTraceBundle, buildTimeline, computeStats, applyFilters } from '../lib/parser'
+import { parseJsonl, parseTraceBundle, buildTimeline, computeStats, applyFilters, extractAgents } from '../lib/parser'
+import type { AgentInfo } from '../lib/parser'
 
 export function useTrace() {
   const [allEvents, setAllEvents] = useState<TimelineEvent[]>([])
@@ -9,6 +10,10 @@ export function useTrace() {
   const [filter, setFilter] = useState<FilterMode>('all')
   const [search, setSearch] = useState('')
   const [filename, setFilename] = useState<string | null>(null)
+
+  // Agent tab state
+  const [agents, setAgents] = useState<AgentInfo[]>([])
+  const [activeAgent, setActiveAgent] = useState<string>('main')
 
   // Bundle state
   const [bundles, setBundles] = useState<TraceBundle[]>([])
@@ -29,6 +34,9 @@ export function useTrace() {
     setSearch('')
     setActiveBundle(index)
     setFilename(null)
+    const agentList = extractAgents(timeline)
+    setAgents(agentList)
+    setActiveAgent('main')
   }, [bundles])
 
   const loadJsonl = useCallback((text: string, name?: string) => {
@@ -53,6 +61,9 @@ export function useTrace() {
     setFilter('all')
     setSearch('')
     setFilename(name ?? null)
+    const agentList = extractAgents(timeline)
+    setAgents(agentList)
+    setActiveAgent('main')
   }, [activateBundle])
 
   const loadFromServer = useCallback(async () => {
@@ -79,10 +90,15 @@ export function useTrace() {
     loadFromServer()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const filtered = useMemo(
-    () => applyFilters(allEvents, filter, search),
-    [allEvents, filter, search]
-  )
+  const filtered = useMemo(() => {
+    // First filter by active agent scope
+    const scopeFiltered = allEvents.filter((e) => {
+      const eventScope = e.scope ?? 'main'
+      return eventScope === activeAgent
+    })
+    // Then apply existing filter/search
+    return applyFilters(scopeFiltered, filter, search)
+  }, [allEvents, filter, search, activeAgent])
 
   const selectedEvent = useMemo(
     () => (selected !== null ? allEvents.find((e) => e.id === selected) ?? null : null),
@@ -106,6 +122,10 @@ export function useTrace() {
     setSearch,
     loadJsonl,
     filename,
+    // Agent tab API
+    agents,
+    activeAgent,
+    setActiveAgent,
     // Bundle API
     bundles,
     activeBundle,

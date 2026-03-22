@@ -333,6 +333,65 @@ export function computeStats(records: TraceRecord[], events: TimelineEvent[]): T
   }
 }
 
+export interface AgentInfo {
+  scope: string        // "main" or "subagent:<id>"
+  agentType: string    // "general-purpose", "Explore", "Plan", etc.
+  label: string        // Display label: "Main Agent" or "Explore (abc...)" etc.
+  eventCount: number
+}
+
+export function extractAgents(events: TimelineEvent[]): AgentInfo[] {
+  // Group events by scope, preserving first-appearance order
+  const scopeOrder: string[] = []
+  const scopeMap = new Map<string, { agentType: string; count: number }>()
+
+  for (const event of events) {
+    const scope = event.scope ?? 'main'
+    const existing = scopeMap.get(scope)
+    if (existing) {
+      existing.count++
+    } else {
+      scopeOrder.push(scope)
+      scopeMap.set(scope, {
+        agentType: event.agentType ?? 'general-purpose',
+        count: 1,
+      })
+    }
+  }
+
+  // Build AgentInfo list: "main" always first, then subagents in first-appearance order
+  const agents: AgentInfo[] = []
+
+  // Always include main, even if no events (shouldn't happen, but be safe)
+  const mainData = scopeMap.get('main')
+  agents.push({
+    scope: 'main',
+    agentType: 'general-purpose',
+    label: 'Main Agent',
+    eventCount: mainData?.count ?? 0,
+  })
+
+  // Subagents in order of first appearance
+  for (const scope of scopeOrder) {
+    if (scope === 'main') continue
+    const data = scopeMap.get(scope)!
+    const agentId = scope.replace('subagent:', '')
+    const truncatedId = agentId.slice(0, 6)
+    const agentType = data.agentType
+    const label = agentType !== 'general-purpose'
+      ? `${agentType} (${truncatedId})`
+      : `Subagent (${truncatedId})`
+    agents.push({
+      scope,
+      agentType,
+      label,
+      eventCount: data.count,
+    })
+  }
+
+  return agents
+}
+
 export function applyFilters(
   events: TimelineEvent[],
   filter: string,
