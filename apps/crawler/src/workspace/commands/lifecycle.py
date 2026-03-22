@@ -657,6 +657,25 @@ def status(slug: str | None):
         else:
             print("  Status: in progress")
 
+        # Background discovery status
+        from src.workspace.state import discovery_status_path
+
+        disc_path = discovery_status_path(slug)
+        if disc_path.exists():
+            try:
+                import yaml
+
+                disc = yaml.safe_load(disc_path.read_text()) or {}
+                logo = disc.get("logo_discovery", "unknown")
+                career = disc.get("career_discovery", "unknown")
+                enrich = disc.get("enrichment", "unknown")
+                print("  Background discovery:")
+                print(f"    Logo discovery:   {logo}")
+                print(f"    Career discovery: {career}")
+                print(f"    Enrichment:       {enrich}")
+            except Exception:
+                pass
+
         # Last error
         if ws.last_error:
             print()

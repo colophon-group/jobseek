@@ -13,6 +13,11 @@ wait for or depend on those tracks.
 
 ## Required fields
 
+Background discovery may have auto-filled some fields from Wikidata.
+Run `ws status` to check. If description (en), industry, or employee
+count are already set, verify they're correct and fill only what's
+missing.
+
 All fields below must be set before submit. Research the company online
 (official website, Wikipedia, press releases) to find accurate data.
 

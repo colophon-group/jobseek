@@ -26,6 +26,10 @@ postings with links to individual jobs, it's a board.
 
 ## Discovery checklist
 
+Background discovery may have found career page candidates. These
+are stored in the workspace and will be shown when you run
+`ws add boards`. Use them as hints to speed up board discovery.
+
 ### 1. Check the main careers page
 
 Visit the company website and find their careers/jobs page. Look for:

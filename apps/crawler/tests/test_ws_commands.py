@@ -427,20 +427,24 @@ class TestSet:
         _patch_all(monkeypatch, tmp_path)
         save_workspace(Workspace(slug="test"))
 
-        discovered = []
+        # Mock shutil.which to return a fake ws binary path
         monkeypatch.setattr(
-            "src.workspace.commands.config._discover_and_show_all",
-            lambda slug, url: discovered.append((slug, url)),
+            "shutil.which", lambda name: "/usr/local/bin/ws" if name == "ws" else None
         )
+
+        popen_calls = []
+        mock_proc = MagicMock()
         monkeypatch.setattr(
-            "src.workspace.commands.config._auto_enrich",
-            lambda ws: None,
+            "subprocess.Popen",
+            lambda *args, **kwargs: popen_calls.append((args, kwargs)) or mock_proc,
         )
 
         runner = CliRunner()
         result = runner.invoke(ws, ["set", "test", "--website", "https://new.com"])
         assert result.exit_code == 0
-        assert len(discovered) == 1
+        assert len(popen_calls) == 1
+        assert "discover-bg" in popen_calls[0][0][0]
+        assert "Background discovery launched" in result.output
 
 
 class TestAddBoard:

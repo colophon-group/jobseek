@@ -172,8 +172,7 @@ def set_(
     if logo_url is not None or icon_url is not None:
         _show_final_logo_inspection_reminder(slug)
 
-    # Auto-discover brand assets + career pages only when website is
-    # explicitly set in THIS call (not carried over from prior state)
+    # Launch background discovery when website is explicitly set in THIS call
     if (
         website  # Only when website is explicitly set in THIS call
         and not no_discover
@@ -184,22 +183,22 @@ def set_(
         and icon_candidate is None
         and job_link_pattern is None
     ):
-        _discover_and_show_all(slug, website)
+        import shutil
+        import subprocess
 
-    # Auto-enrich company metadata only when name or website is set in
-    # THIS call, and enrichment fields weren't already populated
-    if (
-        (website or name)  # Only when name or website set in THIS call
-        and not no_discover
-        and (website or ws.website)
-        and (name or ws.name)
-        and description is None
-        and industry is None
-        and not ws.descriptions.get("en")
-        and not ws.industry
-    ):
-        _auto_enrich(ws)
-        save_workspace(ws)
+        ws_bin = shutil.which("ws")
+        if ws_bin:
+            subprocess.Popen(
+                [ws_bin, "discover-bg", slug],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,
+            )
+            out.info(
+                "discover",
+                "Background discovery launched (logos, career pages, enrichment). "
+                "Run 'ws status' to check progress.",
+            )
 
     action_log.append(
         ws_log_path(slug),
@@ -817,6 +816,131 @@ def discover(slug: str | None):
         out.die("No website set. Run: ws set --website <url>")
 
     _discover_and_show_all(slug, ws.website)
+
+
+@click.command(name="discover-bg", hidden=True)
+@click.argument("slug")
+def discover_bg(slug: str):
+    """Background discovery (internal — launched by ws set --website)."""
+    from datetime import UTC, datetime
+
+    import yaml
+
+    from src.workspace.state import discovery_status_path, ws_dir
+
+    if not workspace_exists(slug):
+        return
+
+    ws = load_workspace(slug)
+    if not ws.website:
+        return
+
+    status_path = discovery_status_path(slug)
+    status: dict = {
+        "started_at": datetime.now(UTC).isoformat(),
+        "logo_discovery": "running",
+        "career_discovery": "running",
+        "enrichment": "running",
+    }
+
+    def _write_status():
+        status_path.parent.mkdir(parents=True, exist_ok=True)
+        status_path.write_text(yaml.dump(status, default_flow_style=False, sort_keys=False))
+
+    _write_status()
+
+    # Phase 0: Fetch homepage once
+    html = ""
+    final_url = ws.website
+    try:
+        import httpx
+
+        from src.workspace.logo_discover import _LOGO_HEADERS
+
+        resp = httpx.get(ws.website, headers=_LOGO_HEADERS, follow_redirects=True, timeout=10)
+        if resp.status_code < 400:
+            html = resp.text
+            final_url = str(resp.url)
+    except Exception:
+        # Homepage fetch failed — mark all phases failed
+        status["logo_discovery"] = "failed"
+        status["career_discovery"] = "failed"
+        status["enrichment"] = "failed"
+        _write_status()
+        return
+
+    # Phase 1: Logo discovery
+    try:
+        from src.workspace.logo_discover import discover_logos, download_candidates
+
+        candidates = discover_logos(html, final_url)
+        if candidates:
+            artifact_dir = ws_dir(slug) / "artifacts" / "company" / "logo-candidates"
+            download_candidates(candidates, artifact_dir)
+        status["logo_discovery"] = "complete"
+    except Exception:
+        status["logo_discovery"] = "failed"
+    _write_status()
+
+    # Phase 2: Career page discovery
+    try:
+        import asyncio
+
+        from src.workspace.career_discover import discover_career_pages
+
+        state_path = ws_dir(slug) / "discovery.state.yaml"
+
+        async def _run_career():
+            import httpx as _httpx
+
+            from src.workspace.logo_discover import _LOGO_HEADERS as _headers
+
+            client = _httpx.AsyncClient(
+                headers=_headers,
+                follow_redirects=True,
+                timeout=_httpx.Timeout(30.0),
+                limits=_httpx.Limits(max_connections=20, max_keepalive_connections=10),
+            )
+            try:
+                return await discover_career_pages(ws.website, html, client, state_path=state_path)
+            finally:
+                await client.aclose()
+
+        asyncio.run(_run_career())
+        status["career_discovery"] = "complete"
+    except Exception:
+        status["career_discovery"] = "failed"
+    _write_status()
+
+    # Phase 3: Enrichment
+    try:
+        import asyncio as _asyncio
+
+        meta = _asyncio.run(_run_enrichment(ws.website, ws.name))
+        # Apply results to workspace (don't overwrite existing values)
+        ws = load_workspace(slug)  # re-read in case another process updated
+        changed = False
+        if meta.description and not ws.descriptions.get("en"):
+            ws.descriptions["en"] = meta.description
+            changed = True
+        if meta.industry_id is not None and ws.industry is None:
+            ws.industry = meta.industry_id
+            changed = True
+        if meta.employee_count_range is not None and ws.employee_count_range is None:
+            ws.employee_count_range = meta.employee_count_range
+            changed = True
+        if meta.founded_year is not None and ws.founded_year is None:
+            ws.founded_year = meta.founded_year
+            changed = True
+        if meta.extras:
+            ws.enrichment_extras = meta.extras
+            changed = True
+        if changed:
+            save_workspace(ws)
+        status["enrichment"] = "complete"
+    except Exception:
+        status["enrichment"] = "failed"
+    _write_status()
 
 
 def _check_url(label: str, url: str) -> None:

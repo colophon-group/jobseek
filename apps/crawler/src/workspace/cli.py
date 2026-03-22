@@ -10,7 +10,15 @@ from pathlib import Path
 import click
 
 from src.workspace import output as out
-from src.workspace.commands.config import add_board, add_boards, del_board, discover, logos, set_
+from src.workspace.commands.config import (
+    add_board,
+    add_boards,
+    del_board,
+    discover,
+    discover_bg,
+    logos,
+    set_,
+)
 from src.workspace.commands.crawl import (
     feedback_cmd,
     probe_api,
@@ -61,6 +69,7 @@ ws.add_command(resume)
 ws.add_command(help_cmd, name="help")
 ws.add_command(logos)
 ws.add_command(discover)
+ws.add_command(discover_bg, name="discover-bg")
 ws.add_command(feedback_cmd, name="feedback")
 ws.add_command(reject_config, name="reject-config")
 ws.add_command(task, name="task")

@@ -354,6 +354,11 @@ def artifacts_dir(slug: str, alias: str) -> Path:
     return ws_dir(slug) / "artifacts" / alias
 
 
+def discovery_status_path(slug: str) -> Path:
+    """Path to the background discovery status file."""
+    return ws_dir(slug) / "discovery_status.yaml"
+
+
 def _merge_dicts(base: dict, overlay: dict) -> dict:
     """Deep-merge overlay onto base. Overlay values always win.
 
