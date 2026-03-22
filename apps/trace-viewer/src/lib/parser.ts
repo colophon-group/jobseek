@@ -1,5 +1,7 @@
 import type {
   TraceRecord,
+  TraceHeader,
+  TraceBundle,
   AssistantRecord,
   UserRecord,
   TimelineEvent,
@@ -26,6 +28,45 @@ export function parseJsonl(text: string): TraceRecord[] {
     }
   }
   return records
+}
+
+export function parseTraceBundle(text: string): TraceBundle[] {
+  const bundles: TraceBundle[] = []
+  let currentHeader: TraceHeader | null = null
+  let currentRecords: TraceRecord[] = []
+
+  const lines = text.split('\n')
+  for (const line of lines) {
+    const trimmed = line.trim()
+    if (!trimmed) continue
+    try {
+      const obj = JSON.parse(trimmed)
+      if (obj._trace_header) {
+        // Start a new bundle: flush any previous one
+        if (currentHeader) {
+          bundles.push({ header: currentHeader, records: currentRecords })
+        }
+        currentHeader = obj as TraceHeader
+        currentRecords = []
+      } else {
+        const record = obj as TraceRecord
+        if (!SKIP_TYPES.has(record.type)) {
+          currentRecords.push(record)
+        }
+      }
+    } catch {
+      // Skip malformed lines
+    }
+  }
+  // Flush the last bundle
+  if (currentHeader) {
+    bundles.push({ header: currentHeader, records: currentRecords })
+  }
+
+  // Sort by date, newest first
+  bundles.sort((a, b) => b.header.date.localeCompare(a.header.date))
+
+  return bundles
 }
 
 function truncate(s: string, maxLen: number): string {

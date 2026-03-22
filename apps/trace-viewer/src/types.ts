@@ -143,3 +143,20 @@ export interface TraceStats {
 }
 
 export type FilterMode = 'all' | 'tools' | 'text' | 'subagents' | 'thinking'
+
+// ---- Trace bundle types (multi-trace JSONL) ----
+
+export interface TraceHeader {
+  _trace_header: true
+  slug: string
+  company_name: string
+  board_slugs: string[]
+  date: string
+  issue: number | null
+  record_count: number
+}
+
+export interface TraceBundle {
+  header: TraceHeader
+  records: TraceRecord[]
+}

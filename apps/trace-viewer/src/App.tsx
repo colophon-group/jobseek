@@ -6,6 +6,7 @@ import DetailPanel from './components/DetailPanel'
 import FilterBar from './components/FilterBar'
 import TokenChart from './components/TokenChart'
 import UploadZone from './components/UploadZone'
+import TraceSidebar from './components/TraceSidebar'
 
 function App() {
   const {
@@ -21,6 +22,12 @@ function App() {
     setSearch,
     loadJsonl,
     filename,
+    bundles,
+    activeBundle,
+    activeHeader,
+    activateBundle,
+    serverLoaded,
+    serverAttempted,
   } = useTrace()
 
   const [darkMode, setDarkMode] = useState(() => {
@@ -44,12 +51,14 @@ function App() {
   )
 
   const isLoaded = stats !== null
+  const hasBundles = bundles.length > 0
 
   return (
     <div className="flex flex-col h-screen" style={{ background: 'var(--background)' }}>
       <TopBar
         stats={stats}
         filename={filename}
+        activeHeader={activeHeader}
         search={search}
         onSearchChange={setSearch}
         onLoad={loadJsonl}
@@ -57,17 +66,25 @@ function App() {
         onToggleDark={toggleDark}
       />
 
-      {!isLoaded ? (
+      {!isLoaded && serverAttempted ? (
         <UploadZone onLoad={loadJsonl} />
+      ) : !isLoaded ? (
+        /* Still loading from server -- show nothing while waiting */
+        <div
+          className="flex items-center justify-center h-full text-sm"
+          style={{ color: 'var(--muted)' }}
+        >
+          Loading traces...
+        </div>
       ) : (
         <div className="flex flex-1 min-h-0">
           {/* Left panel: timeline */}
           <div
             className="flex flex-col"
             style={{
-              width: '45%',
+              width: '40%',
               minWidth: 320,
-              maxWidth: 600,
+              maxWidth: 560,
               borderRight: '1px solid var(--divider)',
             }}
           >
@@ -81,10 +98,20 @@ function App() {
             />
           </div>
 
-          {/* Right panel: detail */}
+          {/* Center panel: detail */}
           <div className="flex-1 min-w-0" style={{ background: 'var(--surface)' }}>
             <DetailPanel event={selectedEvent} />
           </div>
+
+          {/* Right panel: trace explorer sidebar */}
+          {hasBundles && (
+            <TraceSidebar
+              bundles={bundles}
+              activeBundle={activeBundle}
+              onSelectBundle={activateBundle}
+              onUpload={loadJsonl}
+            />
+          )}
         </div>
       )}
     </div>

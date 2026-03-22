@@ -1,6 +1,6 @@
 import React, { useCallback, useRef, useState } from 'react'
 import { Upload, Moon, Sun, Search, X } from 'lucide-react'
-import type { TraceStats } from '../types'
+import type { TraceStats, TraceHeader } from '../types'
 
 function formatDuration(ms: number): string {
   const totalSec = Math.floor(ms / 1000)
@@ -19,6 +19,7 @@ function formatTokens(n: number): string {
 interface TopBarProps {
   stats: TraceStats | null
   filename: string | null
+  activeHeader: TraceHeader | null
   search: string
   onSearchChange: (q: string) => void
   onLoad: (text: string, name: string) => void
@@ -29,6 +30,7 @@ interface TopBarProps {
 const TopBar: React.FC<TopBarProps> = ({
   stats,
   filename,
+  activeHeader,
   search,
   onSearchChange,
   onLoad,
@@ -95,7 +97,7 @@ const TopBar: React.FC<TopBarProps> = ({
         }}
       >
         <Upload size={14} />
-        {filename ? 'Replace' : 'Open JSONL'}
+        {stats ? 'Replace' : 'Open JSONL'}
       </button>
       <input
         ref={fileRef}
@@ -105,12 +107,34 @@ const TopBar: React.FC<TopBarProps> = ({
         className="hidden"
       />
 
-      {/* Filename */}
-      {filename && (
+      {/* Active trace header info */}
+      {activeHeader ? (
+        <div
+          className="flex items-center gap-2 text-xs shrink-0"
+          style={{ color: 'var(--foreground)' }}
+        >
+          <span className="font-bold">{activeHeader.company_name}</span>
+          <span style={{ color: 'var(--muted)' }}>{activeHeader.date}</span>
+          <span
+            className="text-[10px] px-1.5 py-0.5 rounded"
+            style={{ background: 'var(--surface-hover)', color: 'var(--muted)' }}
+          >
+            {activeHeader.board_slugs.join(', ')}
+          </span>
+          {activeHeader.issue && (
+            <span
+              className="text-[10px] px-1.5 py-0.5 rounded"
+              style={{ background: 'var(--surface-hover)', color: 'var(--muted)' }}
+            >
+              #{activeHeader.issue}
+            </span>
+          )}
+        </div>
+      ) : filename ? (
         <span className="text-xs truncate max-w-48" style={{ color: 'var(--muted)' }}>
           {filename}
         </span>
-      )}
+      ) : null}
 
       {/* Stats */}
       {stats && (
