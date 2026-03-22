@@ -150,8 +150,18 @@ def task(ctx, issue: int | None, pick_next: bool):
     ws = load_workspace(slug)
     boards = list_boards(slug)
 
-    # Render parallel orchestrator
+    # Copy prompt templates into workspace so the agent doesn't need codebase access
+    from src.workspace.state import ws_dir
     from src.workspace.workflow import render_parallel_prompt
+
+    prompts_dir = ws_dir(slug) / "prompts"
+    if not prompts_dir.exists():
+        import shutil
+        from pathlib import Path
+
+        src_prompts = Path(__file__).parent.parent / "steps" / "parallel"
+        if src_prompts.is_dir():
+            shutil.copytree(src_prompts, prompts_dir)
 
     ctx = {
         "slug": slug,
