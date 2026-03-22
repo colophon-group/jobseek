@@ -42,6 +42,7 @@ jobs:
             [ -z "$f" ] && continue
             case "$f" in
               apps/crawler/data/*) ;;
+              apps/crawler/traces/*) ;;
               apps/crawler/VERSION) ;;
               *.md) ;;
               apps/crawler/*) CODE=true; CRAWLER_CODE=true ;;
