@@ -12,7 +12,7 @@ from src.core.monitors import register
 
 log = structlog.get_logger()
 
-MAX_URLS = 10_000
+MAX_URLS = 50_000
 NS = "{http://www.sitemaps.org/schemas/sitemap/0.9}"
 
 _JOB_KEYWORDS = ("job", "career", "posting", "position", "vacancy", "opening")
