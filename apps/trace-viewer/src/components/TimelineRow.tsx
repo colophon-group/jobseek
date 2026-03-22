@@ -88,6 +88,9 @@ const TimelineRow: React.FC<TimelineRowProps> = ({ event, isSelected, onClick })
         return (
           <div className="flex items-center gap-1.5">
             <User size={13} style={{ color: 'var(--info)', flexShrink: 0 }} />
+            {event.isSubagent && (
+              <span className="text-[10px] shrink-0" style={{ color: 'var(--muted)' }}>[task]</span>
+            )}
             <span className="truncate">{event.text}</span>
           </div>
         )

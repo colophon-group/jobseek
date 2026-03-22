@@ -48,7 +48,7 @@ const DetailPanel: React.FC<DetailPanelProps> = ({ event }) => {
 
   const renderUserPrompt = () => (
     <div className="space-y-3">
-      <SectionLabel>User Prompt</SectionLabel>
+      <SectionLabel>{event.isSubagent ? 'Subagent Task Description' : 'User Prompt'}</SectionLabel>
       <div
         className="text-xs leading-relaxed"
         dangerouslySetInnerHTML={{ __html: markdownToHtml(event.fullText) }}
