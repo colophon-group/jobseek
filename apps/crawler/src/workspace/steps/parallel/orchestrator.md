@@ -38,17 +38,33 @@ as it's added.
 
 ## Process boards
 
-As Track C adds boards, process each one:
+Use `ws await-board` to block until Track C adds a board, then process
+it immediately. Repeat until no more boards arrive (timeout).
 
-1. `ws probe monitor -n <expected-job-count> --board <alias>`
-2. Identify top 2-3 monitor+scraper combinations from probe results
-3. Spawn **parallel subagents** to test each combination.
+```
+processed=""
+while ws await-board --exclude $processed; do
+    # await-board prints the new board alias
+    # Process it: probe, test configs, feedback
+done
+```
+
+For each new board:
+
+1. `ws await-board --exclude <already-processed-aliases>`
+   — blocks until a new board appears (2s polling, 120s timeout)
+2. `ws probe monitor -n <expected-job-count> --board <alias>`
+3. Identify top 2-3 monitor+scraper combinations from probe results
+4. Spawn **parallel subagents** to test each combination.
    Read: `{{ prompts_dir }}/config-tester.md`
    Use `--config <name>` flag on `ws run` to avoid active_config races.
-4. Collect results, compare.
+5. Collect results, compare.
    Read: `{{ prompts_dir }}/config-comparison.md`
-5. Pick the best config: `ws select config <name> --board <alias>`
-6. Record feedback: `ws feedback --board <alias> ...`
+6. Pick the best config: `ws select config <name> --board <alias>`
+7. Record feedback: `ws feedback --board <alias> ...`
+8. Add this alias to the exclude list and loop back to step 1.
+
+When `ws await-board` times out (exit code 1), all boards are processed.
 
 Run `ws help monitors` and `ws help scrapers` for reference.
 

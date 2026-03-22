@@ -1488,3 +1488,55 @@ def del_board(slug_or_alias: str, alias: str | None):
         changed = True
     if changed:
         _save_wf_to_disk(slug, wf)
+
+
+@click.command(name="await-board")
+@click.argument("slug", required=False)
+@click.option("--timeout", default=120, type=int, help="Max seconds to wait")
+@click.option("--exclude", multiple=True, help="Board aliases already processed")
+def await_board(slug: str | None, timeout: int, exclude: tuple[str, ...]):
+    """Block until a new board appears in the workspace.
+
+    Polls the workspace boards directory every 2 seconds. Returns the
+    alias of the first board not in --exclude. Exits with code 1 on
+    timeout (no new boards found).
+
+    Used by the orchestrator to process boards as they're discovered
+    by a background board-discovery subagent.
+    """
+    import time
+
+    slug = resolve_slug(slug)
+    if not workspace_exists(slug):
+        out.die(f"Workspace {slug!r} not found")
+
+    from src.workspace.state import discovery_status_path
+
+    exclude_set = set(exclude)
+    deadline = time.monotonic() + timeout
+    status_path = discovery_status_path(slug)
+
+    while time.monotonic() < deadline:
+        boards = list_boards(slug)
+        for b in boards:
+            if b.alias not in exclude_set:
+                out.info("await", f"New board: {b.alias} — {b.url}")
+                return
+
+        # Check if board discovery is done — no point waiting further
+        if status_path.exists():
+            import yaml as _yaml
+
+            try:
+                status = _yaml.safe_load(status_path.read_text()) or {}
+            except Exception:
+                status = {}
+            if status.get("career_discovery") in ("complete", "failed"):
+                # Discovery finished and all known boards are excluded
+                out.plain("await", "Board discovery complete — no more boards expected")
+                raise SystemExit(1)
+
+        time.sleep(2)
+
+    out.plain("await", "Timeout — no new boards found")
+    raise SystemExit(1)

@@ -13,6 +13,7 @@ from src.workspace import output as out
 from src.workspace.commands.config import (
     add_board,
     add_boards,
+    await_board,
     del_board,
     discover,
     discover_bg,
@@ -59,6 +60,7 @@ def ws():
 
 ws.add_command(new)
 ws.add_command(search)
+ws.add_command(await_board, name="await-board")
 ws.add_command(use)
 ws.add_command(set_, name="set")
 ws.add_command(submit)
