@@ -55,3 +55,29 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--muted);
 }
+
+/* Markdown rendering */
+.md-h1 { font-size: 1.25rem; font-weight: 700; margin: 0.75rem 0 0.25rem; }
+.md-h2 { font-size: 1.1rem; font-weight: 700; margin: 0.6rem 0 0.2rem; }
+.md-h3 { font-size: 1rem; font-weight: 600; margin: 0.5rem 0 0.2rem; }
+.md-h4, .md-h5, .md-h6 { font-size: 0.875rem; font-weight: 600; margin: 0.4rem 0 0.15rem; }
+.md-p { margin: 0.15rem 0; line-height: 1.5; }
+.md-list { padding-left: 1.25rem; margin: 0.25rem 0; }
+.md-list li { margin: 0.1rem 0; line-height: 1.5; }
+.md-code-block {
+  background: var(--surface-hover);
+  padding: 0.75rem;
+  border-radius: var(--radius);
+  font-size: 0.75rem;
+  overflow-x: auto;
+  margin: 0.5rem 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.md-inline-code {
+  background: var(--surface-hover);
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  font-size: 0.8em;
+}
+.md-link { color: var(--info); text-decoration: underline; }

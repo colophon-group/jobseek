@@ -66,6 +66,7 @@ const AGENT_TYPE_COLORS: Record<string, string> = {
 }
 
 function formatElapsed(ms: number): string {
+  if (!Number.isFinite(ms)) return ''
   const totalSec = Math.floor(ms / 1000)
   const min = Math.floor(totalSec / 60)
   const sec = totalSec % 60

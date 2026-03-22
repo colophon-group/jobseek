@@ -126,14 +126,18 @@ export function buildTimeline(records: TraceRecord[]): TimelineEvent[] {
   const events: TimelineEvent[] = []
   let idCounter = 0
 
-  const startTime = records.length > 0 ? new Date(records[0].timestamp).getTime() : 0
+  // Find first record with a valid timestamp for elapsed time calculation
+  const firstTs = records.find((r) => r.timestamp)?.timestamp
+  const startTime = firstTs ? new Date(firstTs).getTime() : 0
 
   // Build a map of tool_use IDs to their events for pairing with results
   const toolUseMap = new Map<string, TimelineEvent>()
 
   for (const record of records) {
+    if (!record.timestamp) continue
     const ts = new Date(record.timestamp)
-    const elapsedMs = ts.getTime() - startTime
+    const elapsed = ts.getTime() - startTime
+    const elapsedMs = Number.isFinite(elapsed) ? elapsed : 0
     const isSubagent = record._scope?.startsWith('subagent:') ?? false
     const scope = record._scope
     const agentType = record._agentType
@@ -146,11 +150,14 @@ export function buildTimeline(records: TraceRecord[]): TimelineEvent[] {
 
       if (!Array.isArray(content)) continue
 
+      let tokensClaimed = false // only show tokens on first event per message
       for (const block of content) {
         const cb = block as ContentBlock
         if (cb.type === 'text') {
           const text = cb.text.trim()
           if (!text) continue
+          const showTokens = !tokensClaimed
+          tokensClaimed = true
           events.push({
             id: idCounter++,
             kind: 'assistant-text',
@@ -158,9 +165,9 @@ export function buildTimeline(records: TraceRecord[]): TimelineEvent[] {
             elapsedMs,
             text: truncate(text.split('\n')[0], 80),
             fullText: text,
-            outputTokens: usage?.output_tokens,
-            inputTokens: usage?.input_tokens,
-            cacheReadTokens: usage?.cache_read_input_tokens,
+            outputTokens: showTokens ? usage?.output_tokens : undefined,
+            inputTokens: showTokens ? usage?.input_tokens : undefined,
+            cacheReadTokens: showTokens ? usage?.cache_read_input_tokens : undefined,
             model,
             scope,
             agentType,

@@ -1,4 +1,5 @@
 import React from 'react'
+import { markdownToHtml } from '../lib/markdown'
 import type { TimelineEvent } from '../types'
 
 interface DetailPanelProps {
@@ -48,16 +49,10 @@ const DetailPanel: React.FC<DetailPanelProps> = ({ event }) => {
   const renderUserPrompt = () => (
     <div className="space-y-3">
       <SectionLabel>User Prompt</SectionLabel>
-      <pre
-        className="text-xs"
-        style={{
-          whiteSpace: 'pre-wrap',
-          wordBreak: 'break-word',
-          fontFamily: 'var(--font-mono)',
-        }}
-      >
-        {event.fullText}
-      </pre>
+      <div
+        className="text-xs leading-relaxed"
+        dangerouslySetInnerHTML={{ __html: markdownToHtml(event.fullText) }}
+      />
     </div>
   )
 
@@ -82,16 +77,10 @@ const DetailPanel: React.FC<DetailPanelProps> = ({ event }) => {
           </span>
         )}
       </div>
-      <pre
-        className="text-xs"
-        style={{
-          whiteSpace: 'pre-wrap',
-          wordBreak: 'break-word',
-          fontFamily: 'var(--font-mono)',
-        }}
-      >
-        {event.fullText}
-      </pre>
+      <div
+        className="text-xs leading-relaxed"
+        dangerouslySetInnerHTML={{ __html: markdownToHtml(event.fullText) }}
+      />
     </div>
   )
 
@@ -280,7 +269,7 @@ const DetailPanel: React.FC<DetailPanelProps> = ({ event }) => {
         className="flex items-center gap-3 mb-4 pb-2 text-[10px]"
         style={{ borderBottom: '1px solid var(--divider)', color: 'var(--muted)' }}
       >
-        <span>{event.timestamp.toISOString()}</span>
+        <span>{event.timestamp instanceof Date && !isNaN(event.timestamp.getTime()) ? event.timestamp.toISOString() : ''}</span>
         {event.isSubagent && (
           <span
             className="px-1.5 py-0.5 rounded"
