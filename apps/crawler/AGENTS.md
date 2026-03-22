@@ -103,17 +103,29 @@ ws probe scraper                       # Probe all scraper types against sample 
 ws probe deep -n <N>                   # Playwright-based api_sniffer detection
 ws probe api <url>                     # Analyze API endpoint for api_sniffer config
 ws select monitor <type> [--as <name>] # Select monitor (named configs)
-ws run monitor                         # Test crawl
+ws run monitor [--config <name>]        # Test crawl (--config for parallel testing)
 ws select scraper <type> [--config JSON] # Select scraper
-ws run scraper [--url URL ...]         # Test scrape
+ws run scraper [--url URL ...] [--config <name>]  # Test scrape
 ws feedback [<config>] --verdict good  # Record extraction quality (mandatory)
 ws select config <name>                # Re-activate a previously tested config
 ws reject-config <name> --reason "..." # Mark a config as rejected
 ws submit [--summary "..."] [--force]  # Validate, commit, push, post stats
 
+# Search + discovery
+ws search "<query>"                    # Search existing companies by name/slug/website
+ws logos                               # Show discovered logo candidates + current selection
+
+# Parallel mode
+ws await-board [--exclude ALIAS ...]   # Block until new board appears (for parallel pipeline)
+ws boards-done                         # Signal board discovery complete (unblocks await-board)
+ws task back --to <step> --reason "..."  # Backtrack to earlier step on new evidence
+
+# Reconfiguration
+ws new <slug> --reconfig [--start-at <step>]  # Reconfigure existing company
+
 # Utilities
 ws validate                            # Validate CSVs
-ws status                              # Show active workspace (or list all)
+ws status                              # Show active workspace + discovery status
 ws resume                              # Diagnose workspace state + suggest next action
 ws use --board <alias>                 # Switch active board
 ws del                                 # Remove workspace + CSV rows + close PR
