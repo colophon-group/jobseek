@@ -79,7 +79,7 @@ while IFS= read -r f; do
     case "$f" in
       apps/crawler/data/images/*) MATCH=true ;;
       apps/crawler/src/workspace/kb/*.md) MATCH=true ;;
-      apps/crawler/traces/*) MATCH=true ;;
+      apps/crawler/traces/traces.jsonl) MATCH=true ;;
     esac
   fi
   if [ "$MATCH" != "true" ]; then

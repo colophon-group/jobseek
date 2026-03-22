@@ -9,6 +9,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -54,11 +55,21 @@ def main():
 
     elif args.all:
         workspaces = list_workspaces()
+        # Read existing traces to skip already-exported slugs
+        traces_file = output_dir / "traces.jsonl"
+        existing_slugs: set[str] = set()
+        if traces_file.exists():
+            with open(traces_file) as f:
+                for line in f:
+                    try:
+                        d = json.loads(line)
+                        if d.get("_trace_header"):
+                            existing_slugs.add(d.get("slug", ""))
+                    except json.JSONDecodeError:
+                        continue
         exported = 0
         for slug in workspaces:
-            # Skip if trace already exists
-            slug_dir = output_dir / slug
-            if slug_dir.exists() and any(slug_dir.iterdir()):
+            if slug in existing_slugs:
                 continue
             path = export_trace(slug, output_dir)
             if path:

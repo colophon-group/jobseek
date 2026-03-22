@@ -297,8 +297,9 @@ def extract_scoped_trace(transcript_path: Path, slug: str) -> list[dict]:
 
 
 def export_trace(slug: str, output_dir: Path) -> Path | None:
-    """Discover, scope, and export trace for a company slug.
+    """Discover, scope, and export trace to the single traces.jsonl file.
 
+    Appends a header line + scoped records to ``{output_dir}/traces.jsonl``.
     Returns the output path, or None if no matching transcript found.
     """
     transcript_path = discover_transcript(slug)
@@ -309,19 +310,29 @@ def export_trace(slug: str, output_dir: Path) -> Path | None:
     if not scoped:
         return None
 
-    # Write output
-    ts = datetime.now(UTC).strftime("%Y%m%d")
-    slug_dir = output_dir / slug
-    slug_dir.mkdir(parents=True, exist_ok=True)
-    out_path = slug_dir / f"{ts}.jsonl"
+    # Gather metadata for the header
+    from src.workspace.state import list_boards, load_workspace
 
-    # Avoid overwriting — add suffix if exists
-    counter = 1
-    while out_path.exists():
-        counter += 1
-        out_path = slug_dir / f"{ts}-{counter}.jsonl"
+    ws = load_workspace(slug)
+    boards = list_boards(slug)
+    board_slugs = [b.slug for b in boards] if boards else []
 
-    with open(out_path, "w") as f:
+    header = {
+        "_trace_header": True,
+        "slug": slug,
+        "company_name": ws.name or "",
+        "board_slugs": board_slugs,
+        "date": datetime.now(UTC).strftime("%Y-%m-%d"),
+        "issue": ws.issue,
+        "record_count": len(scoped),
+    }
+
+    # Append to single traces.jsonl file
+    output_dir.mkdir(parents=True, exist_ok=True)
+    out_path = output_dir / "traces.jsonl"
+
+    with open(out_path, "a") as f:
+        f.write(json.dumps(header, default=str) + "\n")
         for rec in scoped:
             f.write(json.dumps(rec, default=str) + "\n")
 
