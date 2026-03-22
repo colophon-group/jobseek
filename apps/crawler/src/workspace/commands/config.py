@@ -1490,6 +1490,23 @@ def del_board(slug_or_alias: str, alias: str | None):
         _save_wf_to_disk(slug, wf)
 
 
+@click.command(name="boards-done")
+@click.argument("slug", required=False)
+def boards_done(slug: str | None):
+    """Signal that board discovery is complete.
+
+    Called by the board discovery subagent (Track C) when it has
+    finished adding all boards. This unblocks ws await-board.
+    """
+    from src.workspace.state import ws_dir
+
+    slug = resolve_slug(slug)
+    marker = ws_dir(slug) / "boards" / ".discovery-complete"
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    marker.write_text("")
+    out.info("boards", "Board discovery marked complete")
+
+
 @click.command(name="await-board")
 @click.argument("slug", required=False)
 @click.option("--timeout", default=120, type=int, help="Max seconds to wait")
@@ -1510,11 +1527,8 @@ def await_board(slug: str | None, timeout: int, exclude: tuple[str, ...]):
     if not workspace_exists(slug):
         out.die(f"Workspace {slug!r} not found")
 
-    from src.workspace.state import discovery_status_path
-
     exclude_set = set(exclude)
     deadline = time.monotonic() + timeout
-    status_path = discovery_status_path(slug)
 
     while time.monotonic() < deadline:
         boards = list_boards(slug)
@@ -1523,18 +1537,13 @@ def await_board(slug: str | None, timeout: int, exclude: tuple[str, ...]):
                 out.info("await", f"New board: {b.alias} — {b.url}")
                 return
 
-        # Check if board discovery is done — no point waiting further
-        if status_path.exists():
-            import yaml as _yaml
+        # Check if board discovery subagent signaled completion
+        from src.workspace.state import ws_dir
 
-            try:
-                status = _yaml.safe_load(status_path.read_text()) or {}
-            except Exception:
-                status = {}
-            if status.get("career_discovery") in ("complete", "failed"):
-                # Discovery finished and all known boards are excluded
-                out.plain("await", "Board discovery complete — no more boards expected")
-                raise SystemExit(1)
+        done_marker = ws_dir(slug) / "boards" / ".discovery-complete"
+        if done_marker.exists():
+            out.plain("await", "Board discovery complete — no more boards expected")
+            raise SystemExit(1)
 
         time.sleep(2)
 

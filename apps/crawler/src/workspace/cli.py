@@ -14,6 +14,7 @@ from src.workspace.commands.config import (
     add_board,
     add_boards,
     await_board,
+    boards_done,
     del_board,
     discover,
     discover_bg,
@@ -61,6 +62,7 @@ def ws():
 ws.add_command(new)
 ws.add_command(search)
 ws.add_command(await_board, name="await-board")
+ws.add_command(boards_done, name="boards-done")
 ws.add_command(use)
 ws.add_command(set_, name="set")
 ws.add_command(submit)

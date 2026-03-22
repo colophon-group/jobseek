@@ -67,6 +67,18 @@ For each URL, confirm:
 
 Run `ws help monitors` for the list of auto-detected ATS types.
 
+## Signal completion
+
+When you have finished discovering all boards, signal completion so the
+main agent stops waiting:
+
+```bash
+ws boards-done
+```
+
+This is **required** — the main agent blocks on `ws await-board` until
+you signal done. Do this as your very last action.
+
 ## Report
 
 After discovery, state what you found: total board count, which regions
