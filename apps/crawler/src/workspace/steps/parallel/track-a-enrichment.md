@@ -4,6 +4,7 @@ Workspace: `{{ slug }}` | Issue: #{{ issue }}
 Website: {{ website }}
 {% if company_name %}Company: {{ company_name }}{% endif %}
 
+
 ## Goal
 
 Fill all company metadata fields so the workspace is ready for submit.

@@ -5,6 +5,7 @@ Workspace: `{{ slug }}`
 Config name: `{{ config_name }}`
 Expected jobs: ~{{ expected_jobs }}
 
+
 ## Assignment
 
 Test whether **{{ monitor_type }}**{% if scraper_type and scraper_type != 'skip' %} (monitor) + **{{ scraper_type }}** (scraper){% endif %} can produce a working config for this board. The probe estimated ~{{ expected_jobs }} jobs at ~{{ cost_estimate }}/cycle.

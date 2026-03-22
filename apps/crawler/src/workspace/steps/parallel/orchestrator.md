@@ -26,8 +26,11 @@ prompt template and pass it as the subagent's task description.
   `ws add board`. Work progressively, not all-at-once.
   Read: `{{ prompts_dir }}/track-c-boards.md`
 
-Replace template variables ({{ "{{" }} slug {{ "}}" }}, {{ "{{" }} website {{ "}}" }}, etc.) with actual values before
-passing to the subagent.
+Replace template variables before passing to the subagent:
+- `{{ "{{" }} slug {{ "}}" }}` → `{{ slug }}`
+- `{{ "{{" }} website {{ "}}" }}` → `{{ website }}`
+- `{{ "{{" }} company_name {{ "}}" }}` → `{{ company_name }}`
+- `{{ "{{" }} issue {{ "}}" }}` → `{{ issue }}`
 
 Tracks A and B are fire-and-forget — check results before submit.
 Track C yields boards progressively — start processing each board

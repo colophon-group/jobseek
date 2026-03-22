@@ -3,6 +3,7 @@
 Workspace: `{{ slug }}`
 Website: {{ website }}
 
+
 ## Goal
 
 Find and select a brand-correct full logo and a minified square icon for

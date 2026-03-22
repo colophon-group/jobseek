@@ -4,6 +4,7 @@ Board: `{{ board_alias }}` (`{{ board_url }}`)
 Workspace: `{{ slug }}`
 Starting at: `{{ start_step }}`
 
+
 ## Previous configuration
 
 {% if previous_monitor %}
