@@ -30,6 +30,7 @@ from src.workspace.commands.lifecycle import (
     new,
     reject,
     resume,
+    search,
     status,
     submit,
     use,
@@ -49,6 +50,7 @@ def ws():
 # ── Top-level commands ──────────────────────────────────────────────────
 
 ws.add_command(new)
+ws.add_command(search)
 ws.add_command(use)
 ws.add_command(set_, name="set")
 ws.add_command(submit)

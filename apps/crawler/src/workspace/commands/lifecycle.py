@@ -63,6 +63,41 @@ def _load_existing_boards(slug: str) -> list[dict[str, str]]:
 
 
 @click.command()
+@click.argument("query")
+def search(query: str):
+    """Search existing companies by name, slug, or website.
+
+    Checks if a company already exists before creating a workspace.
+    """
+    companies_path = get_data_dir() / "companies.csv"
+    if not companies_path.exists():
+        out.info("search", "No companies.csv found")
+        return
+
+    _, rows = read_csv(companies_path)
+    q = query.lower()
+    matches = []
+    for r in rows:
+        slug = r.get("slug", "")
+        name = r.get("name", "")
+        website = r.get("website", "")
+        if q in slug.lower() or q in name.lower() or q in website.lower():
+            matches.append(r)
+
+    if not matches:
+        out.info("search", f"No companies matching '{query}'")
+        return
+
+    out.info("search", f"{len(matches)} match(es) for '{query}':")
+    for r in matches:
+        slug = r.get("slug", "?")
+        name = r.get("name", "?")
+        website = r.get("website", "")
+        industry = r.get("industry", "")
+        out.plain("search", f"  {slug} — {name} ({website}) [industry={industry}]")
+
+
+@click.command()
 @click.argument("slug")
 @click.option("--issue", type=int, default=None, help="GitHub issue number")
 @click.option("--pr", "pr_opt", type=int, default=None, help="Attach to existing PR number")

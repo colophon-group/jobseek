@@ -3,18 +3,11 @@
 ## How this works
 
 You will configure a crawler to monitor a company's career page for job postings.
-The `ws` CLI guides you through each step: verify the request, set up the company,
-add career page boards, select and test a monitor/scraper, verify data quality, and submit.
+The `ws` CLI guides you through each step. Run `ws task` at any time to see your
+current instructions.
 
-Run `ws task` at any time to see your current step.
-If something goes wrong, run `ws task troubleshoot <query>` to search the knowledge base.
-If you get stuck on any step, run `ws task fail --reason "..."` to enter coding mode —
-this unlocks source code access so you can propose a fix.
-
-Interpret `ws` output as evidence. Record what was observed, how it was observed,
-and what it likely means before deciding.
-
-**Rule:** Do **not** explore the codebase or read source code — use `ws` commands and `ws help` exclusively.
+**Rule:** Do **not** explore the codebase or read source code — use `ws` commands
+and `ws help` exclusively. All interaction with the system goes through `ws`.
 
 ## Issue
 
@@ -24,7 +17,19 @@ and what it likely means before deciding.
 
 ---
 
-## Is this a real company with a public careers page?
+## Step 1: Check if the company already exists
+
+```bash
+ws search "<company name>"
+```
+
+If found, reject with `duplicate`:
+
+```bash
+ws reject --issue {issue} --reason duplicate --message "Already configured as <slug>"
+```
+
+## Step 2: Verify the company is real and has a careers page
 
 Use web research to confirm:
 1. The company exists and is currently operating
@@ -36,18 +41,14 @@ Research tips:
 - **Search in the company's language**, not just English. Many companies host careers pages in their local language (e.g., "carrières", "Karriere", "carreras", "lavora con noi"). Try `<company> carrières` or `<company> Karriere` early — don't exhaust dozens of English-only searches first.
 - **Stop after 5 searches.** If you haven't found a careers page by then, reject with `no-job-board` and note what you tried.
 
-Do not use crawler tooling at this stage. If the issue URL is missing or ambiguous,
-check the company's own website for a "Careers" or "Jobs" link.
-
 If the company doesn't exist or can't be identified, reject with `not-a-company` or `company-not-found`.
 If there's no public careers page and the user cannot provide a URL, reject with `no-job-board`.
-If the company already exists in the system (check `companies.csv`), reject with `duplicate`.
 
 ```bash
 ws reject --issue {issue} --reason <key> --message "..."
 ```
 
-## If valid — create the workspace hypothesis context
+## Step 3: Create the workspace
 
 Choose a slug (lowercase, hyphens, e.g. `stripe`, `deep-judge`):
 
