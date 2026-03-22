@@ -68,7 +68,7 @@ const DetailPanel: React.FC<DetailPanelProps> = ({ event }) => {
             {event.model}
           </span>
         )}
-        {event.outputTokens && (
+        {event.outputTokens != null && event.outputTokens > 10 && (
           <span
             className="text-[10px] px-1.5 py-0.5 rounded"
             style={{ background: 'var(--surface-hover)', color: 'var(--muted)' }}

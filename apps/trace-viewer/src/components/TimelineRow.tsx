@@ -96,7 +96,7 @@ const TimelineRow: React.FC<TimelineRowProps> = ({ event, isSelected, onClick })
           <div className="flex items-center gap-1.5">
             <MessageSquare size={13} style={{ color: 'var(--foreground)', flexShrink: 0, opacity: 0.6 }} />
             <span className="truncate">{event.text}</span>
-            {event.outputTokens && (
+            {event.outputTokens != null && event.outputTokens > 10 && (
               <span
                 className="text-[10px] px-1 py-0.5 rounded shrink-0"
                 style={{ background: 'var(--surface-hover)', color: 'var(--muted)' }}
