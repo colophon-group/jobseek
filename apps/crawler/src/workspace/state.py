@@ -354,12 +354,45 @@ def artifacts_dir(slug: str, alias: str) -> Path:
     return ws_dir(slug) / "artifacts" / alias
 
 
+def _merge_dicts(base: dict, overlay: dict) -> dict:
+    """Deep-merge overlay onto base. Overlay values always win.
+
+    For nested dicts, merges recursively so that concurrent writers
+    setting different keys in the same dict don't clobber each other
+    (e.g., descriptions["en"] vs descriptions["de"]).
+    """
+    merged = dict(base)
+    for k, v in overlay.items():
+        if isinstance(v, dict) and isinstance(merged.get(k), dict) and v:
+            merged[k] = _merge_dicts(merged[k], v)
+        else:
+            merged[k] = v
+    return merged
+
+
 def save_workspace(ws: Workspace) -> None:
-    """Write workspace.yaml atomically under advisory lock."""
+    """Write workspace.yaml atomically under advisory lock.
+
+    Merges the in-memory workspace onto the current disk state so that
+    concurrent writers (e.g. parallel subagents) don't clobber each
+    other's fields.
+    """
     path = ws_yaml_path(ws.slug)
     path.parent.mkdir(parents=True, exist_ok=True)
     with file_lock(path):
-        _atomic_write(path, yaml.dump(ws.to_dict(), default_flow_style=False, sort_keys=False))
+        # Merge: read current disk state, overlay our changes
+        if path.exists():
+            try:
+                disk_data = yaml.safe_load(path.read_text())
+            except (yaml.YAMLError, OSError):
+                disk_data = None
+            if isinstance(disk_data, dict):
+                merged = _merge_dicts(disk_data, ws.to_dict())
+            else:
+                merged = ws.to_dict()
+        else:
+            merged = ws.to_dict()
+        _atomic_write(path, yaml.dump(merged, default_flow_style=False, sort_keys=False))
 
 
 @contextmanager
