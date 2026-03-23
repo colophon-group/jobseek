@@ -41,9 +41,11 @@ as it's added.
 Use `ws await-board` to block until Track C adds a board, then process
 it immediately. Repeat until no more boards arrive (timeout).
 
+`await-board` automatically tracks which boards it has already returned —
+no need to pass `--exclude` flags.
+
 ```
-processed=""
-while ws await-board --exclude $processed; do
+while ws await-board; do
     # await-board prints the new board alias
     # Process it: probe, test configs, feedback
 done
@@ -51,20 +53,30 @@ done
 
 For each new board:
 
-1. `ws await-board --exclude <already-processed-aliases>`
-   — blocks until a new board appears (2s polling, 120s timeout)
+1. `ws await-board` — blocks until a new board appears (auto-tracks seen boards)
 2. `ws probe monitor -n <expected-job-count> --board <alias>`
-3. Identify top 2-3 monitor+scraper combinations from probe results
-4. Spawn **parallel subagents** to test each combination.
+3. **Decide testing strategy based on probe results:**
+
+   **Fast path (single test, no subagents):** If the probe's top result is a
+   **known stable ATS** — greenhouse, ashby, lever, gem, recruitee, personio,
+   workday, hireology, pinpoint, dvinci, traffit, rss — AND it matched with
+   high confidence (detected via `can_handle`), test it directly yourself.
+   No need to spawn subagents for an obvious choice.
+
+   **Parallel path (2-3 subagents):** If the probe returns multiple plausible
+   options with similar scores, OR the top result is a generic type (sitemap,
+   dom, api_sniffer, nextdata), spawn parallel subagents to test each.
    Read: `{{ prompts_dir }}/config-tester.md`
    Use `--config <name>` flag on `ws run` to avoid active_config races.
-5. Collect results, compare.
-   Read: `{{ prompts_dir }}/config-comparison.md`
-6. Pick the best config: `ws select config <name> --board <alias>`
-7. Record feedback: `ws feedback --board <alias> ...`
-8. Add this alias to the exclude list and loop back to step 1.
 
-When `ws await-board` times out (exit code 1), all boards are processed.
+4. If parallel: collect results, compare.
+   Read: `{{ prompts_dir }}/config-comparison.md`
+5. Pick the best config: `ws select config <name> --board <alias>`
+6. Record feedback: `ws feedback --board <alias> ...`
+7. Loop back to step 1.
+
+When `ws await-board` exits with code 1 (timeout or discovery complete),
+all boards are processed.
 
 Run `ws help monitors` and `ws help scrapers` for reference.
 

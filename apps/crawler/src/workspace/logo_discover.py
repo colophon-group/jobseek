@@ -38,6 +38,7 @@ class LogoCandidate:
     artifact_path: str | None = None  # Set after download
     original_artifact_path: str | None = None
     png_artifact_path: str | None = None
+    jpeg_artifact_path: str | None = None  # JPEG thumbnail for agent viewing
     filename: str | None = None
     content_type: str | None = None
     file_size_bytes: int | None = None
@@ -439,6 +440,11 @@ def download_candidates(
                 if saved_png:
                     candidate.png_artifact_path = str(saved_png)
                     _populate_tech_from_image_path(candidate, saved_png)
+                    # Generate JPEG thumbnail for agent viewing
+                    jpeg_path = artifact_dir / f"candidate-{i}.jpg"
+                    saved_jpeg = _save_jpeg_thumbnail(saved_png, jpeg_path)
+                    if saved_jpeg:
+                        candidate.jpeg_artifact_path = str(saved_jpeg)
                 successful.append(candidate)
             elif candidate.url:
                 data, content_type = _fetch_image(candidate.url, timeout)
@@ -456,14 +462,17 @@ def download_candidates(
 
                 # Save PNG copy for all non-PNG formats.
                 png_path = artifact_dir / f"candidate-{i}.png"
+                raster_source: Path | None = None  # track which file to make JPEG from
                 if ext == ".png":
                     candidate.png_artifact_path = str(orig_path)
                     _populate_tech_from_image_bytes(candidate, data)
+                    raster_source = orig_path
                 elif ext == ".svg":
                     saved = _try_svg_bytes_to_png(data, png_path)
                     if saved:
                         candidate.png_artifact_path = str(saved)
                         _populate_tech_from_image_path(candidate, saved)
+                        raster_source = saved
                     else:
                         _set_svg_dimensions(candidate, data.decode("utf-8", errors="ignore"))
                 else:
@@ -471,8 +480,17 @@ def download_candidates(
                     if saved:
                         candidate.png_artifact_path = str(saved)
                         _populate_tech_from_image_path(candidate, saved)
+                        raster_source = saved
                     else:
                         _populate_tech_from_image_bytes(candidate, data)
+                        raster_source = orig_path
+
+                # Generate JPEG thumbnail for agent viewing (avoids PNG API errors)
+                if raster_source and raster_source.exists():
+                    jpeg_path = artifact_dir / f"candidate-{i}.jpg"
+                    saved_jpeg = _save_jpeg_thumbnail(raster_source, jpeg_path)
+                    if saved_jpeg:
+                        candidate.jpeg_artifact_path = str(saved_jpeg)
 
                 if candidate.aspect_ratio is None and candidate.width and candidate.height:
                     candidate.aspect_ratio = round(candidate.width / candidate.height, 3)
@@ -510,6 +528,26 @@ def _save_as_png(data: bytes, png_path: Path) -> Path | None:
             img = img.convert("RGBA")
         img.save(png_path, "PNG")
         return png_path
+    except Exception:
+        return None
+
+
+def _save_jpeg_thumbnail(source_path: Path, jpeg_path: Path, max_size: int = 400) -> Path | None:
+    """Create a JPEG thumbnail from any image file for agent viewing.
+
+    JPEG is more reliably handled by the Claude API than PNG (avoids
+    "Image format image/png not supported" errors on certain PNG variants).
+    """
+    try:
+        from PIL import Image
+
+        img = Image.open(source_path)
+        img.thumbnail((max_size, max_size))
+        # JPEG requires RGB (no alpha channel)
+        if img.mode != "RGB":
+            img = img.convert("RGB")
+        img.save(jpeg_path, "JPEG", quality=85)
+        return jpeg_path
     except Exception:
         return None
 
@@ -659,6 +697,7 @@ def _save_candidates_json(candidates: list[LogoCandidate], artifact_dir: Path) -
             "artifact_path": c.artifact_path,
             "original_artifact_path": c.original_artifact_path,
             "png_artifact_path": c.png_artifact_path,
+            "jpeg_artifact_path": c.jpeg_artifact_path,
             "filename": c.filename,
             "content_type": c.content_type,
             "file_size_bytes": c.file_size_bytes,

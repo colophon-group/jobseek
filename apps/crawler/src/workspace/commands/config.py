@@ -366,26 +366,30 @@ def _format_candidate_tech(candidate: object) -> str:
     return "; ".join(parts)
 
 
-def _candidate_paths(candidate: object) -> tuple[str, str]:
-    """Return original and PNG artifact paths for a candidate."""
+def _candidate_paths(candidate: object) -> tuple[str, str, str]:
+    """Return original, PNG, and JPEG artifact paths for a candidate."""
     original = str(
         _candidate_value(candidate, "original_artifact_path", "")
         or _candidate_value(candidate, "artifact_path", "")
     )
     png = str(_candidate_value(candidate, "png_artifact_path", "") or "")
-    return original, png
+    jpeg = str(_candidate_value(candidate, "jpeg_artifact_path", "") or "")
+    return original, png, jpeg
 
 
 def _show_candidate_inspection_reminder(candidate_dir: Path) -> None:
-    """Nudge agents to manually inspect PNG candidate previews."""
+    """Nudge agents to manually inspect JPEG candidate previews."""
     out.warn(
         "logos",
         "Manual visual inspection required: ws can rank/download candidates but cannot verify "
         "brand correctness.",
     )
-    out.plain("logos", "Inspect PNG previews before selecting candidates:")
+    out.plain("logos", "Inspect JPEG previews before selecting candidates:")
     out.plain("logos", f"  {candidate_dir}")
-    out.plain("logos", "  Use candidate-*.png files for visual checks.")
+    out.plain(
+        "logos",
+        "  Use candidate-*.jpg files for visual checks (NOT .png — use .jpg to avoid API errors).",
+    )
 
 
 def _show_final_logo_inspection_reminder(slug: str) -> None:
@@ -398,9 +402,16 @@ def _show_final_logo_inspection_reminder(slug: str) -> None:
         "Manual visual inspection required: ws cannot confirm that selected assets are the "
         "correct full logo and minified icon.",
     )
-    out.plain("logos", "Verify final PNG artifacts before continuing:")
-    out.plain("logos", f"  {artifact_dir / 'logo.png'}")
-    out.plain("logos", f"  {artifact_dir / 'icon.png'}")
+    # Prefer JPEG for agent viewing (avoids PNG API errors)
+    logo_preview = artifact_dir / "logo.jpg"
+    icon_preview = artifact_dir / "icon.jpg"
+    if not logo_preview.exists():
+        logo_preview = artifact_dir / "logo.png"
+    if not icon_preview.exists():
+        icon_preview = artifact_dir / "icon.png"
+    out.plain("logos", "Verify final artifacts before continuing:")
+    out.plain("logos", f"  {logo_preview}")
+    out.plain("logos", f"  {icon_preview}")
     out.plain(
         "logos",
         f"Label the selected full logo type: ws set {slug} --logo-type <{'|'.join(LOGO_TYPES)}>",
@@ -431,7 +442,7 @@ def _show_logo_results(slug: str, html: str, final_url: str) -> None:
     # Display table
     rows = []
     for i, c in enumerate(successful, 1):
-        original_path, png_path = _candidate_paths(c)
+        original_path, png_path, jpeg_path = _candidate_paths(c)
         rows.append(
             [
                 str(i),
@@ -439,16 +450,16 @@ def _show_logo_results(slug: str, html: str, final_url: str) -> None:
                 f"{c.score:.2f}",
                 ", ".join(c.sources),
                 original_path,
-                png_path,
+                jpeg_path or png_path,
                 _format_candidate_tech(c),
             ]
         )
 
-    out.table(["#", "Role", "Score", "Sources", "Original", "PNG", "Tech"], rows)
+    out.table(["#", "Role", "Score", "Sources", "Original", "Preview", "Tech"], rows)
     print()
     out.plain(
         "logos",
-        "Note: each candidate stores the original artifact and a PNG preview side-by-side.",
+        "Note: each candidate stores the original artifact and a JPEG preview side-by-side.",
     )
     _show_candidate_inspection_reminder(artifact_dir)
     print()
@@ -770,7 +781,7 @@ def logos(slug: str | None):
 
     rows = []
     for c in candidates:
-        original_path, png_path = _candidate_paths(c)
+        original_path, png_path, jpeg_path = _candidate_paths(c)
         rows.append(
             [
                 str(c["index"]),
@@ -778,16 +789,16 @@ def logos(slug: str | None):
                 f"{c.get('score', 0):.2f}",
                 ", ".join(c.get("sources", [])),
                 original_path,
-                png_path,
+                jpeg_path or png_path,
                 _format_candidate_tech(c),
             ]
         )
 
-    out.table(["#", "Role", "Score", "Sources", "Original", "PNG", "Tech"], rows)
+    out.table(["#", "Role", "Score", "Sources", "Original", "Preview", "Tech"], rows)
     print()
     out.plain(
         "logos",
-        "Note: each candidate stores the original artifact and a PNG preview side-by-side.",
+        "Note: each candidate stores the original artifact and a JPEG preview side-by-side.",
     )
     _show_candidate_inspection_reminder(candidates_path.parent)
     print()
@@ -1036,6 +1047,13 @@ def save_image_to_path(slug: str, label: str, data: bytes, content_type: str) ->
             import cairosvg  # type: ignore[import-untyped]
 
             cairosvg.svg2png(bytestring=data, write_to=str(png_path))
+            # Also save JPEG thumbnail for agent viewing
+            try:
+                from src.workspace.logo_discover import _save_jpeg_thumbnail
+
+                _save_jpeg_thumbnail(png_path, artifact_dir / f"{name}.jpg")
+            except Exception:
+                pass
             return png_path
         except ImportError:
             out.warn(label, "cairosvg not installed — saved raw SVG (no PNG preview)")
@@ -1054,6 +1072,13 @@ def save_image_to_path(slug: str, label: str, data: bytes, content_type: str) ->
         if img.mode not in ("RGBA", "RGB"):
             img = img.convert("RGBA")
         img.save(png_path, "PNG")
+
+        # Also save a JPEG thumbnail for agent viewing (avoids PNG API errors)
+        jpeg_path = artifact_dir / f"{name}.jpg"
+        rgb = img.convert("RGB") if img.mode != "RGB" else img
+        rgb.thumbnail((400, 400))
+        rgb.save(jpeg_path, "JPEG", quality=85)
+
         return png_path
     except ImportError:
         out.warn(label, "Pillow not installed — saved raw file (no PNG conversion)")
@@ -1510,16 +1535,16 @@ def boards_done(slug: str | None):
 @click.command(name="await-board")
 @click.argument("slug", required=False)
 @click.option("--timeout", default=120, type=int, help="Max seconds to wait")
-@click.option("--exclude", multiple=True, help="Board aliases already processed")
+@click.option("--exclude", multiple=True, help="Additional board aliases to exclude (optional)")
 def await_board(slug: str | None, timeout: int, exclude: tuple[str, ...]):
     """Block until a new board appears in the workspace.
 
     Polls the workspace boards directory every 2 seconds. Returns the
-    alias of the first board not in --exclude. Exits with code 1 on
-    timeout (no new boards found).
+    alias of the first board not already seen. Automatically tracks which
+    boards have been returned, so callers don't need --exclude flags.
 
-    Used by the orchestrator to process boards as they're discovered
-    by a background board-discovery subagent.
+    Exits with code 1 on timeout (no new boards found) or when board
+    discovery is marked complete.
     """
     import time
 
@@ -1527,19 +1552,28 @@ def await_board(slug: str | None, timeout: int, exclude: tuple[str, ...]):
     if not workspace_exists(slug):
         out.die(f"Workspace {slug!r} not found")
 
-    exclude_set = set(exclude)
+    from src.workspace.state import ws_dir
+
+    # Auto-track seen boards via a persistent file
+    seen_path = ws_dir(slug) / "boards" / ".boards-seen"
+    seen_path.parent.mkdir(parents=True, exist_ok=True)
+    seen_set = set(seen_path.read_text().splitlines()) if seen_path.exists() else set()
+    # Merge any explicit --exclude flags
+    seen_set.update(exclude)
+
     deadline = time.monotonic() + timeout
 
     while time.monotonic() < deadline:
         boards = list_boards(slug)
         for b in boards:
-            if b.alias not in exclude_set:
+            if b.alias not in seen_set:
+                # Mark as seen before returning
+                seen_set.add(b.alias)
+                seen_path.write_text("\n".join(sorted(seen_set)) + "\n")
                 out.info("await", f"New board: {b.alias} — {b.url}")
                 return
 
         # Check if board discovery subagent signaled completion
-        from src.workspace.state import ws_dir
-
         done_marker = ws_dir(slug) / "boards" / ".discovery-complete"
         if done_marker.exists():
             out.plain("await", "Board discovery complete — no more boards expected")

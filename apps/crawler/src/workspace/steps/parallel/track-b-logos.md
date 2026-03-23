@@ -26,7 +26,10 @@ shows candidate index, role (logo/icon), score, source, and file paths.
 
 ## Step 2: Inspect and select
 
-Look at the PNG previews in the artifacts to verify brand correctness.
+Look at the **JPEG previews** (`candidate-*.jpg`) in the artifacts to verify
+brand correctness. **Do NOT read the PNG files** — some PNG variants cause
+API errors. Always use the `.jpg` thumbnails for visual inspection.
+
 The auto-ranking scores are hints, not reliable decisions — you must
 visually confirm the selected assets are correct.
 

@@ -457,6 +457,22 @@ def task_fail(reason: str):
     wf.fail_reason = reason
     _save_wf_to_disk(slug, wf)
 
+    # Log failure (timestamp used for transcript discovery)
+    action_log.append(ws_log_path(slug), "fail", False, f"Failed: {reason}")
+
+    # Export trace before entering coding mode (best-effort)
+    try:
+        from src.shared.constants import get_data_dir
+        from src.workspace.trace import export_trace
+
+        trace_path = export_trace(slug, get_data_dir().parent / "traces")
+        if trace_path:
+            out.info("trace", f"Exported: {trace_path}")
+        else:
+            out.plain("trace", "No matching transcript found — trace not exported")
+    except Exception as exc:
+        out.warn("trace", f"Could not export trace: {exc}")
+
     _print_failed(wf)
 
 
