@@ -69,7 +69,7 @@ def _make_pw(page: MagicMock | None = None) -> MagicMock:
 
 class TestConstants:
     def test_user_agent_contains_chrome(self):
-        assert "Chrome/120" in DEFAULT_USER_AGENT
+        assert "Chrome/133" in DEFAULT_USER_AGENT
 
     def test_valid_wait_strategies(self):
         assert (

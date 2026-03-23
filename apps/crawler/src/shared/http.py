@@ -14,8 +14,13 @@ def _make_ssl_context() -> ssl.SSLContext:
     httpcore's async I/O to hang indefinitely.  Setting ``OP_NO_TICKET``
     prevents this by disabling session ticket negotiation — the same
     approach urllib3 uses by default.
+
+    Uses certifi's CA bundle instead of the system store for broader
+    coverage of intermediate CA certificates.
     """
-    ctx = ssl.create_default_context()
+    import certifi
+
+    ctx = ssl.create_default_context(cafile=certifi.where())
     ctx.options |= ssl.OP_NO_TICKET
     return ctx
 
@@ -29,10 +34,26 @@ _CLIENT_DEFAULTS = {
 }
 
 
-def create_http_client() -> httpx.AsyncClient:
+def _build_mounts() -> dict | None:
+    """Combine proxy mounts and SSL-skip mounts into a single dict."""
     from src.shared.proxy import build_httpx_mounts
 
-    mounts = build_httpx_mounts()
+    mounts = build_httpx_mounts() or {}
+
+    try:
+        from src.config import settings
+    except Exception:
+        settings = None
+    if settings and settings.ssl_skip_domains:
+        for domain in settings.ssl_skip_domains.split(","):
+            domain = domain.strip()
+            if domain:
+                mounts[f"all://{domain}"] = httpx.AsyncHTTPTransport(verify=False)
+    return mounts or None
+
+
+def create_http_client() -> httpx.AsyncClient:
+    mounts = _build_mounts()
     return httpx.AsyncClient(**_CLIENT_DEFAULTS, **({"mounts": mounts} if mounts else {}))
 
 
@@ -64,9 +85,7 @@ def create_logging_http_client() -> tuple[httpx.AsyncClient, list[dict[str, Any]
             }
         )
 
-    from src.shared.proxy import build_httpx_mounts
-
-    mounts = build_httpx_mounts()
+    mounts = _build_mounts()
     client = httpx.AsyncClient(
         **_CLIENT_DEFAULTS,
         event_hooks={"request": [_on_request], "response": [_on_response]},
