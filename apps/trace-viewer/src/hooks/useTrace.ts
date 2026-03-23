@@ -68,18 +68,53 @@ export function useTrace() {
 
   const loadFromServer = useCallback(async () => {
     try {
-      const resp = await fetch('/api/traces')
-      if (!resp.ok) return
-      const text = await resp.text()
-      const parsed = parseTraceBundle(text)
-      if (parsed.length > 0) {
-        setBundles(parsed)
+      // Fetch trace index from Hugging Face dataset
+      const HF_REPO = 'viktoroo/jobseek-agent-traces'
+      const indexResp = await fetch(
+        `https://huggingface.co/api/datasets/${HF_REPO}/tree/main/traces`
+      )
+      if (!indexResp.ok) return
+      const dirs: { type: string; path: string }[] = await indexResp.json()
+      const slugDirs = dirs.filter((d) => d.type === 'directory')
+
+      // For each company dir, list trace files and fetch latest
+      const allBundles: TraceBundle[] = []
+      const fetches = slugDirs.map(async (dir) => {
+        try {
+          const filesResp = await fetch(
+            `https://huggingface.co/api/datasets/${HF_REPO}/tree/main/${dir.path}`
+          )
+          if (!filesResp.ok) return
+          const files: { type: string; path: string }[] = await filesResp.json()
+          const jsonlFiles = files
+            .filter((f) => f.path.endsWith('.jsonl'))
+            .sort((a, b) => b.path.localeCompare(a.path)) // newest first
+
+          for (const file of jsonlFiles) {
+            const traceResp = await fetch(
+              `https://huggingface.co/datasets/${HF_REPO}/resolve/main/${file.path}`
+            )
+            if (!traceResp.ok) continue
+            const text = await traceResp.text()
+            const parsed = parseTraceBundle(text)
+            allBundles.push(...parsed)
+          }
+        } catch {
+          // skip failed fetches
+        }
+      })
+
+      await Promise.all(fetches)
+
+      if (allBundles.length > 0) {
+        // Sort by date descending
+        allBundles.sort((a, b) => (b.header.date ?? '').localeCompare(a.header.date ?? ''))
+        setBundles(allBundles)
         setServerLoaded(true)
-        // Auto-select first bundle
-        activateBundle(0, parsed)
+        activateBundle(0, allBundles)
       }
     } catch {
-      // Server not available, no-op
+      // HF not available, no-op
     } finally {
       setServerAttempted(true)
     }

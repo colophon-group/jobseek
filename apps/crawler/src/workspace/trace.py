@@ -318,11 +318,10 @@ def extract_scoped_trace(transcript_path: Path, slug: str) -> list[dict]:
     return [r for r in flat if r.get("timestamp", "") >= scope_start or not r.get("timestamp")]
 
 
-def export_trace(slug: str, output_dir: Path) -> Path | None:
-    """Discover, scope, and export trace to the single traces.jsonl file.
+def _build_trace(slug: str) -> tuple[dict, list[dict]] | None:
+    """Discover transcript and build (header, records) for a slug.
 
-    Appends a header line + scoped records to ``{output_dir}/traces.jsonl``.
-    Returns the output path, or None if no matching transcript found.
+    Returns None if no matching transcript found.
     """
     transcript_path = discover_transcript(slug)
     if not transcript_path:
@@ -332,7 +331,6 @@ def export_trace(slug: str, output_dir: Path) -> Path | None:
     if not scoped:
         return None
 
-    # Gather metadata for the header
     from src.workspace.state import list_boards, load_workspace
 
     ws = load_workspace(slug)
@@ -349,6 +347,21 @@ def export_trace(slug: str, output_dir: Path) -> Path | None:
         "record_count": len(scoped),
     }
 
+    return header, scoped
+
+
+def export_trace(slug: str, output_dir: Path) -> Path | None:
+    """Discover, scope, and export trace to the single traces.jsonl file.
+
+    Appends a header line + scoped records to ``{output_dir}/traces.jsonl``.
+    Returns the output path, or None if no matching transcript found.
+    """
+    result = _build_trace(slug)
+    if not result:
+        return None
+
+    header, scoped = result
+
     # Append to single traces.jsonl file
     output_dir.mkdir(parents=True, exist_ok=True)
     out_path = output_dir / "traces.jsonl"
@@ -359,3 +372,42 @@ def export_trace(slug: str, output_dir: Path) -> Path | None:
             f.write(json.dumps(rec, default=str) + "\n")
 
     return out_path
+
+
+_HF_REPO = "viktoroo/jobseek-agent-traces"
+
+
+def upload_trace_to_hf(slug: str) -> str | None:
+    """Discover transcript and upload trace to Hugging Face dataset.
+
+    Uploads as ``traces/{slug}/{date}.jsonl`` to support multiple traces
+    per company (e.g. reconfigurations).
+    Returns the HF URL, or None if no transcript found.
+    """
+    result = _build_trace(slug)
+    if not result:
+        return None
+
+    header, scoped = result
+
+    import io
+
+    buf = io.BytesIO()
+    buf.write((json.dumps(header, default=str) + "\n").encode())
+    for rec in scoped:
+        buf.write((json.dumps(rec, default=str) + "\n").encode())
+    buf.seek(0)
+
+    from huggingface_hub import HfApi
+
+    api = HfApi()
+    date = header["date"]
+    path_in_repo = f"traces/{slug}/{date}.jsonl"
+    api.upload_file(
+        path_or_fileobj=buf,
+        path_in_repo=path_in_repo,
+        repo_id=_HF_REPO,
+        repo_type="dataset",
+        commit_message=f"Add agent trace for {slug}",
+    )
+    return f"https://huggingface.co/datasets/{_HF_REPO}/blob/main/{path_in_repo}"

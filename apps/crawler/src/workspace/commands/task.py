@@ -430,18 +430,9 @@ def task_complete():
     except GitError:
         out.warn("kb", "Could not push KB updates — completing workflow anyway.")
 
-    # Mark PR ready for review (after KB push so auto-merge won't race)
     from src.workspace.commands.lifecycle import is_local_mode
 
     ws = load_workspace(slug)
-    if ws.pr and not is_local_mode():
-        from src.workspace.git import mark_pr_ready
-
-        try:
-            mark_pr_ready(ws.pr)
-            out.info("github", f"PR #{ws.pr} marked ready for review")
-        except Exception:
-            out.warn("github", f"Could not mark PR #{ws.pr} ready — do it manually")
 
     wf.current_step = "done"
     _save_wf_to_disk(slug, wf)
@@ -461,29 +452,28 @@ def task_complete():
         print()
         out.plain("summary", f"{len(non_none)} reflection(s) recorded during this run.")
 
-    # Export trace and commit to PR branch (best-effort, don't block completion)
+    # Upload trace to Hugging Face dataset (best-effort, don't block completion)
     try:
-        from src.shared.constants import get_data_dir
-        from src.workspace.trace import export_trace
+        from src.workspace.trace import upload_trace_to_hf
 
-        trace_path = export_trace(slug, get_data_dir().parent / "traces")
-        if trace_path:
-            out.info("trace", f"Exported: {trace_path}")
-            # Commit and push trace to the PR branch (skip in local mode)
-            if ws.pr and not is_local_mode():
-                try:
-                    from src.workspace.git import add_files, commit, push
-
-                    add_files([str(trace_path)])
-                    commit(f"Add agent trace for {slug}")
-                    push(ws.branch)
-                    out.info("trace", "Trace committed and pushed to PR branch")
-                except Exception as git_exc:
-                    out.warn("trace", f"Trace exported but git push failed: {git_exc}")
+        hf_url = upload_trace_to_hf(slug)
+        if hf_url:
+            out.info("trace", f"Uploaded: {hf_url}")
         else:
             out.plain("trace", "No matching transcript found — export manually if needed")
     except Exception as exc:
-        out.warn("trace", f"Could not export trace: {exc}")
+        out.warn("trace", f"Could not upload trace: {exc}")
+
+    # Mark PR ready for review AFTER trace is pushed so CI auto-merge
+    # includes the trace commit in the squash.
+    if ws.pr and not is_local_mode():
+        from src.workspace.git import mark_pr_ready
+
+        try:
+            mark_pr_ready(ws.pr)
+            out.info("github", f"PR #{ws.pr} marked ready for review")
+        except Exception:
+            out.warn("github", f"Could not mark PR #{ws.pr} ready — do it manually")
 
 
 @task.command(name="fail")

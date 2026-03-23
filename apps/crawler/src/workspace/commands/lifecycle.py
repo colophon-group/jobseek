@@ -1187,16 +1187,6 @@ def submit(slug: str | None, summary: str | None, force: bool):
     else:
         log_msg = f"CSV updated, validated, committed, pushed, PR #{ws.pr} ready"
 
-        # Mark PR ready for review — submit means data is complete
-        if ws.pr:
-            try:
-                from src.workspace.git import mark_pr_ready
-
-                mark_pr_ready(ws.pr)
-                out.info("github", f"PR #{ws.pr} marked ready for review")
-            except Exception:
-                out.warn("github", f"Could not mark PR #{ws.pr} ready — do it manually")
-
     action_log.append(ws_log_path(slug), "submit", True, log_msg)
 
     # Advance workflow to "reflect" so task complete can proceed.
