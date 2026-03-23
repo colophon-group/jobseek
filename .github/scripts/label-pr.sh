@@ -56,8 +56,6 @@ PY
 )"
 SLUG_RE='^[a-z0-9]+(-[a-z0-9]+)*$'
 URL_RE='^https?://'
-MAX_ADDED_LINES=6
-
 # --- Check changed files ---
 
 FILES=$(gh pr diff "$PR" --repo "$REPO" --name-only)
@@ -103,7 +101,26 @@ RAW_ADDED=$(echo "$CSV_DIFF" | grep -c '^+[^+]' || true)
 RAW_REMOVED=$(echo "$CSV_DIFF" | grep -c '^-[^-]' || true)
 ADDED_LINES=$((RAW_ADDED - RAW_REMOVED))
 [ "$ADDED_LINES" -lt 0 ] && ADDED_LINES=0
-echo "Net added lines (CSVs only): $ADDED_LINES (max $MAX_ADDED_LINES)"
+
+# Dynamic limit: 1 company + 1 description + N boards + 1 margin.
+# Count added board rows (7-field CSV lines in boards.csv hunk).
+BOARD_ROWS=$(echo "$CSV_DIFF" | grep '^+[^+]' | python3 -c "
+import csv, io, sys
+n = 0
+for line in sys.stdin:
+    line = line.lstrip('+').strip()
+    if not line or line.startswith('company_slug,'):
+        continue
+    try:
+        row = next(csv.reader(io.StringIO(line)))
+        if len(row) == 7:
+            n += 1
+    except Exception:
+        pass
+print(n)
+")
+MAX_ADDED_LINES=$((BOARD_ROWS + 3))
+echo "Net added lines (CSVs only): $ADDED_LINES (max $MAX_ADDED_LINES, $BOARD_ROWS boards)"
 
 DIFF_OK=true
 
