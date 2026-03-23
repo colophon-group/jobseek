@@ -13,6 +13,7 @@ dependencies = [
     "structlog>=24.4",
     "jmespath>=1.0",
     "playwright>=1.58.0",
+    "huggingface_hub>=0.28",
 ]
 
 [project.scripts]

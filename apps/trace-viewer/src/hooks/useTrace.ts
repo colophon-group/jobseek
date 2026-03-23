@@ -67,51 +67,61 @@ export function useTrace() {
   }, [activateBundle])
 
   const loadFromServer = useCallback(async () => {
+    const HF_REPO = 'viktoroo/jobseek-agent-traces'
+    const HF_BASE = `https://huggingface.co/datasets/${HF_REPO}/resolve/main`
+
     try {
-      // Fetch trace index from Hugging Face dataset
-      const HF_REPO = 'viktoroo/jobseek-agent-traces'
-      const indexResp = await fetch(
-        `https://huggingface.co/api/datasets/${HF_REPO}/tree/main/traces`
+      // Single recursive API call to get all trace file paths
+      const resp = await fetch(
+        `https://huggingface.co/api/datasets/${HF_REPO}/tree/main/traces?recursive=true`
       )
-      if (!indexResp.ok) return
-      const dirs: { type: string; path: string }[] = await indexResp.json()
-      const slugDirs = dirs.filter((d) => d.type === 'directory')
+      if (!resp.ok) return
+      const tree: { type: string; path: string }[] = await resp.json()
+      const traceFiles = tree
+        .filter((f) => f.type === 'file' && f.path.endsWith('.jsonl'))
+        .sort((a, b) => b.path.localeCompare(a.path)) // newest first
 
-      // For each company dir, list trace files and fetch latest
-      const allBundles: TraceBundle[] = []
-      const fetches = slugDirs.map(async (dir) => {
-        try {
-          const filesResp = await fetch(
-            `https://huggingface.co/api/datasets/${HF_REPO}/tree/main/${dir.path}`
-          )
-          if (!filesResp.ok) return
-          const files: { type: string; path: string }[] = await filesResp.json()
-          const jsonlFiles = files
-            .filter((f) => f.path.endsWith('.jsonl'))
-            .sort((a, b) => b.path.localeCompare(a.path)) // newest first
+      if (traceFiles.length === 0) return
 
-          for (const file of jsonlFiles) {
-            const traceResp = await fetch(
-              `https://huggingface.co/datasets/${HF_REPO}/resolve/main/${file.path}`
-            )
-            if (!traceResp.ok) continue
-            const text = await traceResp.text()
-            const parsed = parseTraceBundle(text)
-            allBundles.push(...parsed)
-          }
-        } catch {
-          // skip failed fetches
-        }
+      // Build lightweight index entries (header-only bundles) for the sidebar,
+      // then lazy-load full content when a bundle is activated.
+      const stubs: TraceBundle[] = traceFiles.map((f) => {
+        // Extract slug and date from path: traces/{slug}/{date}.jsonl
+        const parts = f.path.replace('traces/', '').replace('.jsonl', '').split('/')
+        const slug = parts[0] ?? ''
+        const date = parts[1] ?? ''
+        return {
+          header: {
+            _trace_header: true as const,
+            slug,
+            company_name: slug,
+            board_slugs: [],
+            date,
+            issue: null,
+            record_count: 0,
+          },
+          records: [],
+          _hfPath: f.path, // stash for lazy loading
+        } as TraceBundle & { _hfPath: string }
       })
 
-      await Promise.all(fetches)
+      setBundles(stubs)
+      setServerLoaded(true)
+      setServerAttempted(true)
 
-      if (allBundles.length > 0) {
-        // Sort by date descending
-        allBundles.sort((a, b) => (b.header.date ?? '').localeCompare(a.header.date ?? ''))
-        setBundles(allBundles)
-        setServerLoaded(true)
-        activateBundle(0, allBundles)
+      // Eagerly load the first trace
+      if (stubs.length > 0) {
+        const first = stubs[0] as TraceBundle & { _hfPath: string }
+        const traceResp = await fetch(`${HF_BASE}/${first._hfPath}`)
+        if (traceResp.ok) {
+          const text = await traceResp.text()
+          const parsed = parseTraceBundle(text)
+          if (parsed.length > 0) {
+            stubs[0] = { ...parsed[0], _hfPath: first._hfPath } as TraceBundle & { _hfPath: string }
+            setBundles([...stubs])
+            activateBundle(0, stubs)
+          }
+        }
       }
     } catch {
       // HF not available, no-op
@@ -119,6 +129,43 @@ export function useTrace() {
       setServerAttempted(true)
     }
   }, [activateBundle])
+
+  // Lazy-load trace content when a bundle is activated
+  const activateBundleWithFetch = useCallback(async (index: number, bundleList?: TraceBundle[]) => {
+    const list = bundleList ?? bundles
+    if (index < 0 || index >= list.length) return
+
+    const bundle = list[index] as TraceBundle & { _hfPath?: string }
+
+    // Already loaded — just activate
+    if (bundle.records.length > 0) {
+      activateBundle(index, list)
+      return
+    }
+
+    // Need to fetch from HF
+    if (!bundle._hfPath) {
+      activateBundle(index, list)
+      return
+    }
+
+    const HF_REPO = 'viktoroo/jobseek-agent-traces'
+    const HF_BASE = `https://huggingface.co/datasets/${HF_REPO}/resolve/main`
+    try {
+      const resp = await fetch(`${HF_BASE}/${bundle._hfPath}`)
+      if (!resp.ok) return
+      const text = await resp.text()
+      const parsed = parseTraceBundle(text)
+      if (parsed.length > 0) {
+        list[index] = { ...parsed[0], _hfPath: bundle._hfPath } as TraceBundle & { _hfPath: string }
+        setBundles([...list])
+        activateBundle(index, list)
+      }
+    } catch {
+      // fetch failed, activate stub anyway
+      activateBundle(index, list)
+    }
+  }, [bundles, activateBundle])
 
   // Try loading from server on mount
   useEffect(() => {
@@ -165,7 +212,7 @@ export function useTrace() {
     bundles,
     activeBundle,
     activeHeader,
-    activateBundle,
+    activateBundle: activateBundleWithFetch,
     serverLoaded,
     serverAttempted,
   }

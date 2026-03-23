@@ -318,6 +318,21 @@ def extract_scoped_trace(transcript_path: Path, slug: str) -> list[dict]:
     return [r for r in flat if r.get("timestamp", "") >= scope_start or not r.get("timestamp")]
 
 
+def _clean_records(records: list[dict]) -> list[dict]:
+    """Strip Claude Code session metadata from records to reduce noise.
+
+    Removes the ``slug`` field (which contains the worktree name, not the
+    company slug) and other session-level fields that are redundant across
+    every record.
+    """
+    drop_keys = {"slug", "sessionId", "version", "cwd", "entrypoint", "promptId"}
+    cleaned = []
+    for rec in records:
+        out = {k: v for k, v in rec.items() if k not in drop_keys}
+        cleaned.append(out)
+    return cleaned
+
+
 def _build_trace(slug: str) -> tuple[dict, list[dict]] | None:
     """Discover transcript and build (header, records) for a slug.
 
@@ -347,7 +362,7 @@ def _build_trace(slug: str) -> tuple[dict, list[dict]] | None:
         "record_count": len(scoped),
     }
 
-    return header, scoped
+    return header, _clean_records(scoped)
 
 
 def export_trace(slug: str, output_dir: Path) -> Path | None:
@@ -381,9 +396,17 @@ def upload_trace_to_hf(slug: str) -> str | None:
     """Discover transcript and upload trace to Hugging Face dataset.
 
     Uploads as ``traces/{slug}/{date}.jsonl`` to support multiple traces
-    per company (e.g. reconfigurations).
+    per company (e.g. reconfigurations).  If the same slug+date already
+    exists, appends a numeric suffix (``-2``, ``-3``, …).
+
+    Requires ``HF_TOKEN`` environment variable.
     Returns the HF URL, or None if no transcript found.
     """
+    import os
+
+    if not os.environ.get("HF_TOKEN"):
+        raise RuntimeError("HF_TOKEN environment variable not set — cannot upload trace")
+
     result = _build_trace(slug)
     if not result:
         return None
@@ -402,7 +425,20 @@ def upload_trace_to_hf(slug: str) -> str | None:
 
     api = HfApi()
     date = header["date"]
-    path_in_repo = f"traces/{slug}/{date}.jsonl"
+
+    # Check for existing file and add suffix if needed
+    base_path = f"traces/{slug}/{date}"
+    path_in_repo = f"{base_path}.jsonl"
+    try:
+        existing = api.list_repo_tree(_HF_REPO, repo_type="dataset", path_in_repo=f"traces/{slug}")
+        existing_names = {f.path for f in existing if hasattr(f, "path")}
+        n = 2
+        while path_in_repo in existing_names:
+            path_in_repo = f"{base_path}-{n}.jsonl"
+            n += 1
+    except Exception:
+        pass  # directory may not exist yet
+
     api.upload_file(
         path_or_fileobj=buf,
         path_in_repo=path_in_repo,
