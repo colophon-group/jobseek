@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { initI18nForPage } from "@/lib/i18n";
+import { isLocale, defaultLocale, initI18nForPage } from "@/lib/i18n";
 import {
   getWatchlistByUserAndSlug,
   getWatchlistPostings,
@@ -9,6 +9,8 @@ import { getSession } from "@/lib/sessionCache";
 import { getUserPlan, PLAN_LIMITS, canCreateWatchlist } from "@/lib/plans";
 import { resolveLocationSlugs } from "@/lib/actions/locations";
 import { resolveOccupationSlugs, resolveSenioritySlugs, resolveTechnologySlugs } from "@/lib/actions/taxonomy";
+import { siteConfig } from "@/content/config";
+import { buildAlternates } from "@/lib/seo";
 import { WatchlistViewPage } from "./watchlist-view-page";
 
 type Props = {
@@ -16,7 +18,8 @@ type Props = {
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { userSlug, watchlistSlug } = await params;
+  const { userSlug, watchlistSlug, lang } = await params;
+  const locale = isLocale(lang) ? lang : defaultLocale;
   const detail = await getWatchlistByUserAndSlug(userSlug, watchlistSlug);
   if (!detail) return {};
 
@@ -43,7 +46,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     description = parts.length > 0 ? parts.join(" · ") : `Job watchlist by @${ownerLabel}`;
   }
 
-  return { title, description };
+  const path = `/${userSlug}/${watchlistSlug}`;
+  return {
+    title,
+    description,
+    alternates: buildAlternates(path, locale),
+    openGraph: {
+      title,
+      description,
+      url: `${siteConfig.url}/${locale}${path}`,
+      type: "website",
+    },
+  };
 }
 
 export default async function WatchlistRoute({ params }: Props) {

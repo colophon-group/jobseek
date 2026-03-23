@@ -1,11 +1,13 @@
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import type { Metadata } from "next";
-import { initI18nForPage } from "@/lib/i18n";
+import { isLocale, defaultLocale, initI18nForPage } from "@/lib/i18n";
 import { getCompanyBySlug, getCompanyPostings } from "@/lib/actions/company";
 import { getPreferences } from "@/lib/actions/preferences";
 import { parseSearchFilters } from "@/lib/actions/search-input";
 import { resolveJobLanguages } from "@/lib/job-languages";
+import { siteConfig } from "@/content/config";
+import { buildAlternates, JsonLd, formatEmployeeCount } from "@/lib/seo";
 import { CompanyPage } from "./company-page";
 
 const PAGE_SIZE = 20;
@@ -17,11 +19,24 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug, lang } = await params;
-  const company = await getCompanyBySlug(slug, lang);
+  const locale = isLocale(lang) ? lang : defaultLocale;
+  const company = await getCompanyBySlug(slug, locale);
   if (!company) return {};
+
+  const title = `Jobs at ${company.name}`;
+  const description = company.description ?? `Browse open positions at ${company.name}`;
+  const path = `/company/${slug}`;
+
   return {
-    title: `Jobs at ${company.name}`,
-    description: company.description ?? `Browse open positions at ${company.name}`,
+    title,
+    description,
+    alternates: buildAlternates(path, locale),
+    openGraph: {
+      title,
+      description,
+      url: `${siteConfig.url}/${locale}${path}`,
+      type: "website",
+    },
   };
 }
 
@@ -93,7 +108,26 @@ export default async function CompanyPageRoute({ params, searchParams }: Props) 
     limit: PAGE_SIZE,
   });
 
+  const orgJsonLd: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: company.name,
+    ...(company.website && { url: company.website }),
+    ...(company.description && { description: company.description }),
+    ...(company.icon && { logo: company.icon }),
+    ...(company.foundedYear && { foundingDate: String(company.foundedYear) }),
+    ...(company.industryName && { industry: company.industryName }),
+    ...(formatEmployeeCount(company.employeeCountRange) && {
+      numberOfEmployees: {
+        "@type": "QuantitativeValue",
+        value: formatEmployeeCount(company.employeeCountRange),
+      },
+    }),
+  };
+
   return (
+    <>
+    <JsonLd data={orgJsonLd} />
     <CompanyPage
       company={company}
       initialPostings={postingsResult.postings}
@@ -117,5 +151,6 @@ export default async function CompanyPageRoute({ params, searchParams }: Props) 
       userLat={parsedUserLat}
       userLng={parsedUserLng}
     />
+    </>
   );
 }

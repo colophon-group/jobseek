@@ -156,7 +156,19 @@ export const siteConfig = {
   },
 
   seo: {
-    disallow: ["/dashboard", "/sign-in", "/sign-up"],
+    disallow: [
+      "/dashboard",
+      "/sign-in",
+      "/sign-up",
+      "/api/",
+      "/settings",
+      "/my-jobs",
+      "/progress",
+      "/check-email",
+      "/forgot-password",
+      "/reset-password",
+      "/verify-email",
+    ],
     sitemap: [
       { path: "/", changeFrequency: "weekly", priority: 1 },
       { path: "/how-we-index", changeFrequency: "monthly", priority: 0.6 },
