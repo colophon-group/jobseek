@@ -36,6 +36,7 @@ bcg,bcg-careers,https://careers.bcg.com,sitemap,"{""sitemap_url"": ""https://car
 bcv,bcv-jobs,https://jobs.bcv.ch/search/?q=&searchResultView=LIST,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://jobs.bcv.ch/googlefeed.xml""}",skip,
 biogen,biogen-careers,https://biibhr.wd3.myworkdayjobs.com/external,workday,,workday,
 black-forest-labs,black-forest-labs-careers,https://job-boards.greenhouse.io/blackforestlabs,greenhouse,,skip,
+block,block-careers,https://boards-api.greenhouse.io/v1/boards/block/jobs,greenhouse,"{""board_token"": ""block""}",skip,
 bloom-biorenewables,bloom-biorenewables-careers,https://www.bloombiorenewables.com/company,dom,"{""render"": true, ""url_filter"": ""cdn\\.prod\\.website-files\\.com/628b7a4e032635973ac7105e/.*\\.pdf""}",pdf,
 bloom-diy,bloom-diy-careers,https://bloom.diy/careers,dom,,json-ld,
 booking-com,booking-com-careers,https://jobs.booking.com/booking/jobs,dom,"{""render"": true, ""url_filter"": {""include"": ""jobs\\.booking\\.com/booking/jobs/\\d+""}}",json-ld,
