@@ -237,6 +237,9 @@ lombard-odier,lombard-odier-careers,https://lombardodier.wd3.myworkdayjobs.com/L
 lonza,lonza-careers,https://lonza.wd3.myworkdayjobs.com/Lonza_Careers,workday,,workday,
 lonza,lonza-careers-sr,https://careers.smartrecruiters.com/lonza,smartrecruiters,"{""token"": ""lonza""}",smartrecruiters,
 luxoft,luxoft-careers,https://career.luxoft.com/jobs,dom,"{""url_filter"": ""^https?://career\\.luxoft\\.com/jobs/[^/?#]+-[0-9]+$"", ""pagination"": {""param_name"": ""page"", ""max_pages"": 121}}",json-ld,
+lvmh,lvmh-careers,https://www.lvmh.com/en/join-us/our-job-offers,pinpoint,"{""slug"": ""lvmh""}",skip,
+lvmh,lvmh-careers-sr,https://careers.smartrecruiters.com/LVMH2,smartrecruiters,"{""token"": ""LVMH2""}",smartrecruiters,
+lvmh,lvmh-careers-sr-pc,https://careers.smartrecruiters.com/LVMHPerfumesCosmetics,smartrecruiters,"{""token"": ""LVMHPerfumesCosmetics""}",smartrecruiters,
 lyceum,lyceum-careers,https://lyceum-technology.jobs.personio.com,personio,"{""slug"": ""lyceum-technology""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""h2"", ""attr"": ""class=detail-block-title"", ""field"": ""description"", ""html"": true, ""stop"": ""Apply for this job""}], ""render"": true, ""wait"": ""networkidle""}"
 lyft,lyft-careers,https://boards.greenhouse.io/lyft,greenhouse,,skip,
 mayflower,mayflower-careers,https://mayflower.recruitee.com,recruitee,"{""slug"": ""mayflower"", ""api_base"": ""https://mayflower.recruitee.com""}",skip,
