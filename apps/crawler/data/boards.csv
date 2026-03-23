@@ -323,6 +323,7 @@ warner-music,warner-music-careers-workday,https://wmg.wd1.myworkdayjobs.com/WMGG
 wesort-ai,wesort-ai-careers,https://www.wesort.ai/karriere,sitemap,"{""url_filter"": ""(stellenanzeige-|entwicklungsingenieur|initiativbewerbung)""}",dom,"{""render"": true, ""wait"": ""load"", ""timeout"": 60000, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""h2"", ""field"": ""description"", ""stop"": ""Interesse geweckt"", ""html"": true}]}"
 white-circle,white-circle-careers,https://jobs.ashbyhq.com/whitecircle,ashby,"{""token"": ""whitecircle""}",,
 wise,wise-careers,https://wise.jobs/,smartrecruiters,"{""token"": ""wise""}",smartrecruiters,
+x-ai,x-ai-careers,https://job-boards.greenhouse.io/xai,greenhouse,"{""token"": ""xai""}",skip,
 zalando,zalando-workday,https://zalando.wd3.myworkdayjobs.com/ZalandoSiteWD,workday,,,
 zimmer-biomet,zimmer-biomet-careers,https://careers.zimmerbiomet.com/us/en,sitemap,"{""sitemap_url"": ""https://careers.zimmerbiomet.com/us/en/sitemap.xml"", ""url_filter"": ""/job/""}",json-ld,
 zurich-insurance,zurich-insurance-careers,https://careers.zurich.com/search/,rss,"{""preset"": ""successfactors""}",skip,
