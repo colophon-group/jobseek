@@ -13,7 +13,10 @@ export const db = new Proxy({} as PostgresJsDatabase<typeof schema>, {
       if (!process.env.DATABASE_URL) {
         throw new Error("DATABASE_URL is not set");
       }
-      globalForDb._db = drizzle(postgres(process.env.DATABASE_URL), { schema });
+      globalForDb._db = drizzle(
+        postgres(process.env.DATABASE_URL, { max: 3 }),
+        { schema },
+      );
     }
     return Reflect.get(globalForDb._db, prop, receiver);
   },
