@@ -71,6 +71,9 @@ dsm-firmenich,dsm-firmenich-careers-ats,https://jobs.dsm-firmenich.com/careers,s
 dupont,dupont-careers-wd,https://dupont.wd5.myworkdayjobs.com/Jobs,workday,,workday,
 efg-international,efg-international-careers,https://fa-eqai-saasfaprod1.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001/jobs,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 60000}",json-ld,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 60000}"
 elevenlabs,elevenlabs-careers,https://jobs.ashbyhq.com/elevenlabs,ashby,"{""token"": ""elevenlabs""}",,
+endress-hauser,endress-hauser-careers,https://careers.endress.com/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.endress.com/googlefeed.xml""}",skip,
+endress-hauser,endress-hauser-careers-ehs,https://jobs.endress-ehs.com/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://jobs.endress-ehs.com/googlefeed.xml""}",skip,
+endress-hauser,endress-hauser-codewrights,https://www.codewrights.de/de/arbeitgeber,dom,"{""render"": true, ""wait"": ""networkidle"", ""url_filter"": ""/de/arbeitgeber/""}",dom,"{""render"": true, ""wait"": ""networkidle"", ""steps"": [{""tag"": ""title"", ""field"": ""title""}, {""attr"": ""class=demi"", ""field"": ""locations"", ""regex"": ""^([^|]+)"", ""optional"": true}, {""tag"": ""h3"", ""field"": ""description"", ""stop"": ""People & Culture"", ""html"": true}]}"
 esri,esri-careers,https://job-boards.greenhouse.io/esri,greenhouse,"{""token"": ""esri""}",skip,
 ethon-ai,ethon-ai-careers,https://ethonai.recruitee.com,recruitee,,,
 exa-ai,exa-ai-careers,https://jobs.ashbyhq.com/exa,ashby,,,
