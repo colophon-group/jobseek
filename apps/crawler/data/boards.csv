@@ -87,6 +87,7 @@ comparis,comparis-careers,https://comparis-ch.jobs.personio.de,personio,"{""slug
 constructor-tech,constructor-tech-careers-gh,https://job-boards.greenhouse.io/constructortech,greenhouse,,,
 corintis,corintis-careers,https://careers.corintis.com/jobs,rss,"{""preset"": ""teamtailor""}",,
 cradle,cradle-careers,https://jobs.ashbyhq.com/cradlebio,ashby,"{""token"": ""cradlebio""}",skip,
+cravath,cravath-careers,https://careers-cravath.icims.com/jobs/search,dom,,dom,"{""steps"": [{""tag"": ""title"", ""field"": ""locations"", ""regex"": "" in (.+?) \\|""}, {""tag"": ""h1"", ""attr"": ""class=iCIMS_Header"", ""field"": ""title""}, {""tag"": ""h2"", ""text"": ""OVERVIEW"", ""field"": ""description"", ""stop"": ""Apply for this job"", ""html"": true}]}"
 daedalean,daedalean-careers,https://jobs.lever.co/daedalean,lever,"{""token"": ""daedalean""}",skip,
 databricks,databricks-careers,https://www.databricks.com/company/careers,greenhouse,"{""token"": ""databricks""}",,
 deel,deel-careers,https://jobs.ashbyhq.com/deel,ashby,"{""token"": ""deel""}",skip,
