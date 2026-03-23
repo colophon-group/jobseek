@@ -45,29 +45,36 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // ── Company pages ──────────────────────────────────────────────────
   // Only include companies that have at least one active job posting.
+  // Ordered by active posting count so high-content pages are crawled first.
   // If company count exceeds ~500, consider splitting with generateSitemaps().
   const companies = await db.execute<{
     slug: string;
     updated_at: Date;
+    active_count: number;
   }>(sql`
-    SELECT c.slug, c.updated_at
+    SELECT c.slug, c.updated_at,
+      (SELECT count(*) FROM job_posting jp
+       WHERE jp.company_id = c.id AND jp.is_active = true
+      )::int AS active_count
     FROM company c
     WHERE EXISTS (
       SELECT 1 FROM job_posting jp
       WHERE jp.company_id = c.id AND jp.is_active = true
     )
-    ORDER BY c.slug
+    ORDER BY active_count DESC, c.slug
   `);
 
   for (const row of companies) {
     const path = `/company/${row.slug}`;
     const languages = langAlternates(path);
+    // Scale priority: 0.9 for 20+ postings, 0.8 for 5+, 0.7 otherwise
+    const priority = row.active_count >= 20 ? 0.9 : row.active_count >= 5 ? 0.8 : 0.7;
     for (const locale of locales) {
       entries.push({
         url: `${siteConfig.url}/${locale}${path}`,
         lastModified: row.updated_at,
         changeFrequency: "daily",
-        priority: 0.8,
+        priority,
         alternates: { languages },
       });
     }
