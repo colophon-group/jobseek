@@ -31,7 +31,7 @@ from src.core.enum_normalize import normalize_employment_type
 from src.core.experience_extract import extract_experience
 from src.core.location_resolve import LocationResolver
 from src.core.monitor import monitor_one, monitor_one_stream
-from src.core.monitors import api_monitor_types, get_stream_fn
+from src.core.monitors import api_monitor_types, get_stream_fn, monitor_needs_browser
 from src.core.occupation_resolve import load_occupation_ids, match_occupation
 from src.core.salary_extract import extract_salary_unified
 from src.core.scrape import scrape_one
@@ -1817,7 +1817,24 @@ async def _process_one_board(
         if isinstance(metadata, str):
             metadata = json.loads(metadata)
 
-        result = await monitor_one(board_url, crawler_type, metadata, http)
+        # Start Playwright if this monitor needs a browser (e.g. api_sniffer replay)
+        pw = None
+        pw_ctx = None
+        if monitor_needs_browser(crawler_type, metadata):
+            try:
+                from playwright.async_api import async_playwright
+
+                pw_ctx = async_playwright()
+                pw = await pw_ctx.start()
+                board_log.info("batch.monitor.playwright_started")
+            except Exception:
+                board_log.warning("batch.monitor.playwright_unavailable", exc_info=True)
+
+        try:
+            result = await monitor_one(board_url, crawler_type, metadata, http, pw=pw)
+        finally:
+            if pw_ctx:
+                await pw_ctx.stop()
 
         enrich_fields = _board_has_enrich(metadata)
 

@@ -141,6 +141,25 @@ def all_monitor_types() -> frozenset[str]:
     return frozenset(m.name for m in _REGISTRY)
 
 
+def monitor_needs_browser(name: str, config: dict | None = None) -> bool:
+    """Return True if the monitor requires a Playwright browser.
+
+    api_sniffer needs a browser when ``browser`` is set in config or when
+    no ``api_url`` is configured (auto-discover mode).  dom always benefits
+    from a browser but falls back to static HTML.
+    """
+    if name == "api_sniffer":
+        cfg = config or {}
+        # Auto-discover (no api_url) always needs browser
+        if not cfg.get("api_url"):
+            return True
+        # Replay mode (browser: true) needs browser
+        return bool(cfg.get("browser"))
+    if name == "dom":
+        return bool((config or {}).get("render"))
+    return False
+
+
 def get_discoverer(name: str) -> DiscoverFunc:
     """Look up a discover function by monitor type name."""
     for monitor in _REGISTRY:
