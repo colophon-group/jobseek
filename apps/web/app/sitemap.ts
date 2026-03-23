@@ -74,20 +74,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   // ── Public watchlists ─────────────────────────────────────────────
+  // Curated (colophongroup) watchlists get higher priority than user-created ones.
+  const CURATED_USERNAME = "colophongroup";
   const watchlists = await db.execute<{
     user_slug: string;
     watchlist_slug: string;
     updated_at: Date;
+    is_curated: boolean;
   }>(sql`
     SELECT
       COALESCE(u.display_username, u.username) AS user_slug,
       w.slug AS watchlist_slug,
-      w.updated_at
+      w.updated_at,
+      (u.username = ${CURATED_USERNAME}) AS is_curated
     FROM watchlist w
     JOIN "user" u ON u.id = w.user_id
     WHERE w.is_public = true
       AND u.username IS NOT NULL
-    ORDER BY w.updated_at DESC
+    ORDER BY is_curated DESC, w.updated_at DESC
   `);
 
   for (const row of watchlists) {
@@ -97,8 +101,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       entries.push({
         url: `${siteConfig.url}/${locale}${path}`,
         lastModified: row.updated_at,
-        changeFrequency: "weekly",
-        priority: 0.6,
+        changeFrequency: row.is_curated ? "daily" : "weekly",
+        priority: row.is_curated ? 0.8 : 0.6,
         alternates: { languages },
       });
     }
