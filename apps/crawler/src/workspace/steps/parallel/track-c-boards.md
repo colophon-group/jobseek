@@ -14,7 +14,7 @@ adding boards as you discover them rather than waiting to find all of them.
 ## How to add a board
 
 ```bash
-ws add board <alias> --url "<board-url>"
+ws add board {{ slug }} <alias> --url "<board-url>"
 ```
 
 Alias convention: `careers`, `careers-de`, `careers-uk`,
@@ -28,7 +28,7 @@ postings with links to individual jobs, it's a board.
 
 Background discovery may have found career page candidates. These
 are stored in the workspace and will be shown when you run
-`ws add boards`. Use them as hints to speed up board discovery.
+`ws add boards {{ slug }}`. Use them as hints to speed up board discovery.
 
 ### 1. Check the main careers page
 
@@ -42,7 +42,7 @@ Visit the company website and find their careers/jobs page. Look for:
 Look for hreflang links on the careers page:
 
 ```bash
-ws add boards  # batch-creates boards from hreflang discovery
+ws add boards {{ slug }}  # batch-creates boards from hreflang discovery
 ```
 
 Also search for regional career domains manually:
@@ -65,19 +65,25 @@ For each URL, confirm:
 - It shows actual job listings (not "coming soon" or an empty page)
 - It's distinct from other boards (not the same jobs on a different URL)
 
+{% if monitor_table %}
+### Auto-detected ATS types
+
+{{ monitor_table }}
+{% else %}
 Run `ws help monitors` for the list of auto-detected ATS types.
+{% endif %}
 
-## Signal completion
+## Signal completion — MANDATORY
 
-When you have finished discovering all boards, signal completion so the
-main agent stops waiting:
+When you have finished discovering all boards, you **MUST** signal
+completion so the main agent stops waiting:
 
 ```bash
-ws boards-done
+ws boards-done {{ slug }}
 ```
 
-This is **required** — the main agent blocks on `ws await-board` until
-you signal done. Do this as your very last action.
+**This is your final action.** The main agent blocks on `ws await-board`
+until you signal done. Forgetting this will stall the entire pipeline.
 
 ## Report
 

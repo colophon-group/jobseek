@@ -21,7 +21,7 @@ This monitor returns **rich data** (full job objects) — scraper may be auto-sk
 ## Step 1: Select monitor
 
 ```bash
-ws select monitor {{ monitor_type }} --as {{ config_name }} --board {{ board_alias }} --config '{{ monitor_config }}'
+ws select monitor {{ slug }} {{ monitor_type }} --as {{ config_name }} --board {{ board_alias }} --config '{{ monitor_config }}'
 ```
 
 If this fails, check `ws help monitor {{ monitor_type }}` for config options.
@@ -29,7 +29,7 @@ If this fails, check `ws help monitor {{ monitor_type }}` for config options.
 ## Step 2: Run monitor
 
 ```bash
-ws run monitor --board {{ board_alias }} --config {{ config_name }}
+ws run monitor {{ slug }} --board {{ board_alias }} --config {{ config_name }}
 ```
 
 ### Verify job count
@@ -48,8 +48,8 @@ Compare the crawled job count against the expected ~{{ expected_jobs }} jobs.
 ## Step 3: Select and run scraper
 
 ```bash
-ws select scraper {{ scraper_type }} --config '{{ scraper_config }}'
-ws run scraper --board {{ board_alias }} --config {{ config_name }}
+ws select scraper {{ slug }} {{ scraper_type }} --config '{{ scraper_config }}'
+ws run scraper {{ slug }} --board {{ board_alias }} --config {{ config_name }}
 ```
 
 If scraper fails or extracts poorly, check `ws help scraper {{ scraper_type }}`
@@ -74,15 +74,22 @@ config fails — report failure.
 
 ## Step {{ '4' if is_rich else '5' }}: Record feedback
 
+Include ALL fields that appear in the extraction output. Check the run
+output for field counts — every field with count > 0 needs a quality rating.
+
 ```bash
-ws feedback {{ config_name }} --board {{ board_alias }} \
+ws feedback {{ slug }} {{ config_name }} --board {{ board_alias }} \
   --title <quality> --description <quality> --locations <quality> \
   --employment-type <quality> --job-location-type <quality> \
+  --date-posted <quality> --base-salary <quality> \
   --verdict <level> --verdict-notes "<brief explanation>"
 ```
 
 Quality values: `clean`, `noisy`, `unusable`, `absent`
 Verdict: `good`, `acceptable`, `poor`, `unusable`
+
+Use `absent` for fields with 0 coverage. Omit optional fields only
+if they had 0 jobs in the extraction output.
 
 ## Report
 

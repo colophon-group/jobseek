@@ -1377,7 +1377,10 @@ def add_boards(slug: str | None, only_codes: str | None, exclude_codes: str | No
 
     state_path = ws_dir(slug) / "discovery.state.yaml"
     if not state_path.exists():
-        out.die("No discovery state found. Run 'ws discover' first to extract hreflang data.")
+        out.die(
+            "No discovery state found (hreflang not yet extracted). "
+            "To add boards individually: ws add board <alias> --url <url>"
+        )
 
     state = yaml.safe_load(state_path.read_text())
     hl_data = state.get("hreflang") or {}
