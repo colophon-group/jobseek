@@ -214,6 +214,9 @@ def discover_transcript(slug: str) -> Path | None:
 
     # Slug pattern for verification
     slug_re = re.compile(rf"\b{re.escape(slug)}\b")
+    # Pattern to confirm the slug was the PRIMARY target of this session
+    # (not just mentioned in passing via ws task --pick output)
+    primary_re = re.compile(rf"ws\s+(?:new|submit|set|add\s+board)\s+{re.escape(slug)}\b")
 
     best_match: tuple[Path, int] | None = None
 
@@ -225,17 +228,22 @@ def discover_transcript(slug: str) -> Path | None:
         if not tail_ws:
             continue
 
-        # Verify slug appears in ws commands OR in any text content.
-        # Agents often omit the explicit slug (using active workspace),
-        # so also search text output, tool results, etc.
-        slug_found = any(slug_re.search(cmd) for _, cmd in tail_ws)
-        if not slug_found:
-            tail_text = " ".join(
-                json.dumps(r.get("message", {}))
-                for r in tail[-500:]  # last 500 records for speed
+        # Verify the slug was the primary work target in this transcript.
+        # Check for commands that explicitly operate on this slug (ws new/set/submit {slug}).
+        # Fallback: slug appears as active workspace in tool results.
+        primary_match = any(primary_re.search(cmd) for _, cmd in tail_ws)
+        if not primary_match:
+            # Check if the slug appears in ws output (active workspace, status, etc.)
+            tail_text = " ".join(json.dumps(r.get("message", {})) for r in tail[-500:])
+            # Require the slug to appear in workspace status or submit output
+            # (not just in issue titles or search results)
+            workspace_re = re.compile(
+                rf"Workspace:\s*{re.escape(slug)}\b|"
+                rf"branch.*add-company/{re.escape(slug)}\b|"
+                rf"ws submit.*{re.escape(slug)}"
             )
-            slug_found = bool(slug_re.search(tail_text))
-        if not slug_found:
+            primary_match = bool(workspace_re.search(tail_text))
+        if not primary_match:
             continue
 
         # Count how many log timestamps match transcript ws timestamps
@@ -271,51 +279,85 @@ def discover_transcript(slug: str) -> Path | None:
 
 
 def extract_scoped_trace(transcript_path: Path, slug: str) -> list[dict]:
-    """Parse transcript, trim to ws work scope, merge subagent records.
+    """Parse transcript, trim to the target slug's work scope.
 
-    Scoping: include only records from the first ws-related command
-    onward. This excludes personal conversation before ws work.
+    For multi-company sessions (agent works on slug A then slug B),
+    scopes to only the records between ``ws new {slug}`` (or the first
+    ws command referencing this slug) and the next ``ws new {other}``
+    or end of transcript.
     """
     flat = _flatten_transcript(transcript_path)
 
-    # Find first ws-related record
-    first_ws_ts = None
+    slug_re = re.compile(rf"\b{re.escape(slug)}\b")
+    new_cmd_re = re.compile(r"ws\s+new\s+(\S+)")
+
+    # Find scope boundaries by scanning ws commands for slug transitions
+    scope_start = None
+    scope_end = None
+    in_scope = False
+
     for rec in flat:
         if rec.get("type") != "assistant":
             continue
         msg = rec.get("message", {})
         for content in msg.get("content", []):
-            if content.get("type") == "tool_use" and content.get("name") == "Bash":
-                cmd = content.get("input", {}).get("command", "")
-                if _WS_CMD_RE.search(cmd):
-                    first_ws_ts = rec.get("timestamp", "")
+            if content.get("type") != "tool_use" or content.get("name") != "Bash":
+                continue
+            cmd = content.get("input", {}).get("command", "")
+            if not _WS_CMD_RE.search(cmd):
+                continue
+
+            # Check for ws new commands to detect slug transitions
+            new_match = new_cmd_re.search(cmd)
+            if new_match:
+                target = new_match.group(1)
+                if slug_re.search(target):
+                    # Entering this slug's scope
+                    scope_start = rec.get("timestamp", "")
+                    in_scope = True
+                elif in_scope:
+                    # Hit ws new for a DIFFERENT slug — end scope
+                    scope_end = rec.get("timestamp", "")
                     break
-        if first_ws_ts:
-            break
 
-    if not first_ws_ts:
-        return flat  # No ws commands found, return everything
-
-    # Also find the user prompt that preceded the first ws command
-    # by looking for the parentUuid chain
-    first_ws_uuid = None
-    for rec in flat:
-        if rec.get("timestamp") == first_ws_ts and rec.get("type") == "assistant":
-            first_ws_uuid = rec.get("parentUuid")
-            break
-
-    # Find the earliest relevant timestamp
-    scope_start = first_ws_ts
-    if first_ws_uuid:
+    if not scope_start:
+        # No ws new {slug} found — fall back to first ws command mentioning slug
         for rec in flat:
-            if rec.get("uuid") == first_ws_uuid:
-                ts = rec.get("timestamp", "")
-                if ts and ts < scope_start:
-                    scope_start = ts
+            if rec.get("type") != "assistant":
+                continue
+            msg = rec.get("message", {})
+            for content in msg.get("content", []):
+                if content.get("type") == "tool_use" and content.get("name") == "Bash":
+                    cmd = content.get("input", {}).get("command", "")
+                    if _WS_CMD_RE.search(cmd) and slug_re.search(cmd):
+                        scope_start = rec.get("timestamp", "")
+                        break
+            if scope_start:
                 break
 
+    if not scope_start:
+        return flat  # No ws commands found for slug, return everything
+
+    # Include the user prompt preceding the first ws command
+    for rec in flat:
+        if rec.get("timestamp") == scope_start and rec.get("type") == "assistant":
+            parent_uuid = rec.get("parentUuid")
+            if parent_uuid:
+                for r in flat:
+                    if r.get("uuid") == parent_uuid:
+                        ts = r.get("timestamp", "")
+                        if ts and ts < scope_start:
+                            scope_start = ts
+                        break
+            break
+
     # Filter to scoped records
-    return [r for r in flat if r.get("timestamp", "") >= scope_start or not r.get("timestamp")]
+    return [
+        r
+        for r in flat
+        if (r.get("timestamp", "") >= scope_start or not r.get("timestamp"))
+        and (scope_end is None or r.get("timestamp", "") < scope_end)
+    ]
 
 
 def _clean_records(records: list[dict]) -> list[dict]:
