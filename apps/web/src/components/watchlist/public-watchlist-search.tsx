@@ -102,6 +102,9 @@ export function PublicWatchlistSearch() {
             >
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{wl.title}</p>
+                {wl.description && (
+                  <p className="line-clamp-1 text-xs text-muted">{wl.description}</p>
+                )}
                 <p className="text-xs text-muted">
                   @{wl.ownerUsername ?? t({ id: "watchlists.explore.unknownUser", comment: "Fallback username for watchlist owner", message: "user" })} · {wl.activeJobCount} {wl.activeJobCount === 1
                     ? t({ id: "watchlists.explore.jobSingular", comment: "Singular job count in public watchlist", message: "job" })

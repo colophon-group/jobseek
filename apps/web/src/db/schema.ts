@@ -751,6 +751,7 @@ export const watchlist = pgTable(
       .references(() => user.id, { onDelete: "cascade" }),
     slug: text("slug").notNull(),
     title: text("title").notNull(),
+    description: text("description"),
     isPublic: boolean("is_public").default(true).notNull(),
     alertsEnabled: boolean("alerts_enabled").default(false).notNull(),
     filters: jsonb("filters").default({}).notNull(),

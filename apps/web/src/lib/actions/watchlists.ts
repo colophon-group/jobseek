@@ -34,6 +34,7 @@ export type WatchlistSummary = {
   id: string;
   slug: string;
   title: string;
+  description: string | null;
   isPublic: boolean;
   alertsEnabled: boolean;
   companyCount: number;
@@ -46,6 +47,7 @@ export type WatchlistDetail = {
   id: string;
   slug: string;
   title: string;
+  description: string | null;
   isPublic: boolean;
   alertsEnabled: boolean;
   filters: WatchlistFilters;
@@ -83,6 +85,7 @@ export type WatchlistPostingEntry = {
 
 export async function createWatchlist(params: {
   title: string;
+  description?: string;
   companyIds: string[];
   filters?: WatchlistFilters;
   isPublic?: boolean;
@@ -101,6 +104,7 @@ export async function createWatchlist(params: {
       userId,
       slug,
       title: params.title,
+      description: params.description ?? null,
       isPublic: params.isPublic ?? true,
       filters: params.filters ?? {},
     })
@@ -121,6 +125,7 @@ export async function createWatchlist(params: {
 export async function updateWatchlist(params: {
   watchlistId: string;
   title?: string;
+  description?: string | null;
   companyIds?: string[];
   filters?: WatchlistFilters;
   isPublic?: boolean;
@@ -144,6 +149,7 @@ export async function updateWatchlist(params: {
     newSlug = await generateUniqueSlug(userId, params.title);
     updates.slug = newSlug;
   }
+  if (params.description !== undefined) updates.description = params.description;
   if (params.filters !== undefined) updates.filters = params.filters;
   if (params.isPublic !== undefined) updates.isPublic = params.isPublic;
 
@@ -202,6 +208,7 @@ export async function copyWatchlist(
   const [source] = await db
     .select({
       title: watchlist.title,
+      description: watchlist.description,
       filters: watchlist.filters,
       isPublic: watchlist.isPublic,
       userId: watchlist.userId,
@@ -225,6 +232,7 @@ export async function copyWatchlist(
       userId,
       slug,
       title: source.title,
+      description: source.description,
       isPublic: true,
       filters: sourceFilters,
       sourceWatchlistId: watchlistId,
@@ -295,7 +303,7 @@ export async function getUserWatchlists(): Promise<WatchlistSummary[]> {
     company_count: number;
     company_ids: string[];
   }>(sql`
-    SELECT w.id, w.slug, w.title, w.is_public, w.alerts_enabled, w.filters,
+    SELECT w.id, w.slug, w.title, w.description, w.is_public, w.alerts_enabled, w.filters,
            w.last_accessed_at, w.created_at,
            (SELECT count(*)::int FROM watchlist_company wc WHERE wc.watchlist_id = w.id) AS company_count,
            (SELECT coalesce(array_agg(wc.company_id), '{}') FROM watchlist_company wc WHERE wc.watchlist_id = w.id) AS company_ids
@@ -305,7 +313,7 @@ export async function getUserWatchlists(): Promise<WatchlistSummary[]> {
   `);
 
   type Row = {
-    id: string; slug: string; title: string; is_public: boolean;
+    id: string; slug: string; title: string; description: string | null; is_public: boolean;
     alerts_enabled: boolean; filters: WatchlistFilters; last_accessed_at: Date; created_at: Date;
     company_count: number; company_ids: string[];
   };
@@ -321,6 +329,7 @@ export async function getUserWatchlists(): Promise<WatchlistSummary[]> {
     id: r.id,
     slug: r.slug,
     title: r.title,
+    description: r.description,
     isPublic: r.is_public,
     alertsEnabled: r.alerts_enabled,
     companyCount: r.company_count,
@@ -355,6 +364,7 @@ export async function getWatchlistByUserAndSlug(
       id: watchlist.id,
       slug: watchlist.slug,
       title: watchlist.title,
+      description: watchlist.description,
       isPublic: watchlist.isPublic,
       alertsEnabled: watchlist.alertsEnabled,
       filters: watchlist.filters,
@@ -398,6 +408,7 @@ export async function getWatchlistByUserAndSlug(
     id: wl.id,
     slug: wl.slug,
     title: wl.title,
+    description: wl.description,
     isPublic: wl.isPublic,
     alertsEnabled: wl.alertsEnabled,
     filters: (wl.filters ?? {}) as WatchlistFilters,
@@ -473,7 +484,7 @@ async function queryPublicWatchlists(params: {
     company_count: number; company_ids: string[];
     mirror_count: number;
   }>(sql`
-    SELECT w.id, w.slug, w.title, w.is_public, w.alerts_enabled, w.filters,
+    SELECT w.id, w.slug, w.title, w.description, w.is_public, w.alerts_enabled, w.filters,
            w.last_accessed_at, w.created_at,
            u.name AS owner_name, u.username AS owner_username,
            (SELECT count(*)::int FROM watchlist_company wc WHERE wc.watchlist_id = w.id) AS company_count,
@@ -488,7 +499,7 @@ async function queryPublicWatchlists(params: {
   `);
 
   type Row = {
-    id: string; slug: string; title: string; is_public: boolean;
+    id: string; slug: string; title: string; description: string | null; is_public: boolean;
     alerts_enabled: boolean; filters: WatchlistFilters;
     last_accessed_at: Date; created_at: Date;
     owner_name: string; owner_username: string | null;
@@ -508,6 +519,7 @@ async function queryPublicWatchlists(params: {
       id: r.id,
       slug: r.slug,
       title: r.title,
+      description: r.description,
       isPublic: r.is_public,
       alertsEnabled: r.alerts_enabled,
       companyCount: r.company_count,
@@ -531,7 +543,7 @@ export async function searchPublicWatchlists(params: {
   if (!q) return { watchlists: [], total: 0 };
 
   return queryPublicWatchlists({
-    whereClause: sql`w.is_public = true AND w.title ILIKE ${"%" + q + "%"}`,
+    whereClause: sql`w.is_public = true AND (w.title ILIKE ${"%" + q + "%"} OR w.description ILIKE ${"%" + q + "%"})`,
     orderClause: sql`w.created_at DESC`,
     offset: params.offset,
     limit: params.limit,

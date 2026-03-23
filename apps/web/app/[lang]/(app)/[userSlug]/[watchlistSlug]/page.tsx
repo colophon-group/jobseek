@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { initI18nForPage } from "@/lib/i18n";
 import {
   getWatchlistByUserAndSlug,
@@ -13,6 +14,37 @@ import { WatchlistViewPage } from "./watchlist-view-page";
 type Props = {
   params: Promise<{ lang: string; userSlug: string; watchlistSlug: string }>;
 };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { userSlug, watchlistSlug } = await params;
+  const detail = await getWatchlistByUserAndSlug(userSlug, watchlistSlug);
+  if (!detail) return {};
+
+  const ownerLabel = detail.owner.displayUsername ?? detail.owner.username ?? detail.owner.name;
+  const title = `${detail.title} — @${ownerLabel}`;
+
+  let description = detail.description;
+  if (!description) {
+    // Auto-generate from companies/filters
+    const parts: string[] = [];
+    if (detail.companies.length > 0) {
+      const names = detail.companies.slice(0, 3).map((c) => c.name);
+      if (detail.companies.length > 3) {
+        names.push(`${detail.companies.length - 3} more`);
+      }
+      parts.push(`Jobs at ${names.join(", ")}`);
+    }
+    if (detail.filters.occupationSlugs?.length) {
+      parts.push(detail.filters.occupationSlugs.map((s) => s.replace(/-/g, " ")).join(", "));
+    }
+    if (detail.filters.locationSlugs?.length) {
+      parts.push(`in ${detail.filters.locationSlugs.slice(0, 2).map((s) => s.replace(/-/g, " ")).join(", ")}`);
+    }
+    description = parts.length > 0 ? parts.join(" · ") : `Job watchlist by @${ownerLabel}`;
+  }
+
+  return { title, description };
+}
 
 export default async function WatchlistRoute({ params }: Props) {
   const { lang, userSlug, watchlistSlug } = await params;
