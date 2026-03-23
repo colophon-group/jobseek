@@ -365,18 +365,20 @@ export function WatchlistViewPage({
             </div>
           ) : description ? (
             <p
-              className="line-clamp-2 cursor-pointer rounded px-2 py-1 -mx-2 -my-1 text-sm text-muted transition-colors hover:bg-border-soft"
+              className="group/desc line-clamp-2 cursor-pointer rounded px-2 py-1 -mx-2 -my-1 text-sm text-muted transition-colors hover:bg-border-soft flex items-start gap-2"
               onClick={() => setEditingDescription(true)}
               title={t({ id: "watchlists.view.editDescription", comment: "Tooltip for clicking to edit watchlist description", message: "Click to edit description" })}
             >
-              {description}
+              <span className="line-clamp-2">{description}</span>
+              <Pencil size={12} className="mt-0.5 shrink-0 text-muted opacity-0 transition-opacity group-hover/desc:opacity-100" />
             </p>
           ) : (
             <button
               type="button"
               onClick={() => setEditingDescription(true)}
-              className="cursor-pointer text-sm text-muted/60 transition-colors hover:text-muted"
+              className="flex items-center gap-1.5 cursor-pointer text-sm text-muted/60 transition-colors hover:text-muted"
             >
+              <Pencil size={12} />
               {t({ id: "watchlists.view.addDescription", comment: "Link to add a description to the watchlist", message: "Add description" })}
             </button>
           )
@@ -385,7 +387,7 @@ export function WatchlistViewPage({
         ) : null}
 
         {/* Companies */}
-        <div className="space-y-2">
+        <div className="space-y-2 !mt-6">
           {isOwner && (
             <div className="flex items-center gap-2">
               <button
