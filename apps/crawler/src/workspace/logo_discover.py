@@ -492,6 +492,14 @@ def download_candidates(
                     if saved_jpeg:
                         candidate.jpeg_artifact_path = str(saved_jpeg)
 
+                # Gate: non-SVG URL candidates MUST have a valid JPEG
+                # thumbnail. If PIL couldn't produce one, the image data is
+                # corrupt or unreadable — skip it to avoid crashing the
+                # agent when it tries to visually inspect the file.
+                if ext != ".svg" and not candidate.jpeg_artifact_path:
+                    _cleanup_candidate_files(candidate, artifact_dir, i)
+                    continue
+
                 if candidate.aspect_ratio is None and candidate.width and candidate.height:
                     candidate.aspect_ratio = round(candidate.width / candidate.height, 3)
                 if candidate.is_square is None and candidate.width and candidate.height:
@@ -506,16 +514,64 @@ def download_candidates(
     return successful
 
 
+def _cleanup_candidate_files(candidate: LogoCandidate, artifact_dir: Path, index: int) -> None:
+    """Remove artifact files for a rejected candidate."""
+    for suffix in (".png", ".jpg", ".svg", ".ico", ".gif", ".webp"):
+        path = artifact_dir / f"candidate-{index}{suffix}"
+        if path.exists():
+            path.unlink(missing_ok=True)
+
+
 def _fetch_image(url: str, timeout: float) -> tuple[bytes | None, str]:
-    """Fetch image bytes and content-type."""
+    """Fetch image bytes and content-type.
+
+    Validates that the response is actually an image by checking both the
+    Content-Type header and magic bytes. Returns (None, ...) if the response
+    is not a valid image (e.g. HTML error pages served with a 200 status).
+    """
     try:
         resp = httpx.get(url, headers=_LOGO_HEADERS, follow_redirects=True, timeout=timeout)
         ct = resp.headers.get("content-type", "")
         if resp.status_code >= 400:
             return None, ct
-        return resp.content, ct
+        data = resp.content
+        # Reject non-image content types (HTML error pages, redirects, etc.)
+        ct_lower = ct.lower().split(";")[0].strip()
+        if (
+            ct_lower
+            and not ct_lower.startswith("image/")
+            and ct_lower != "application/octet-stream"
+        ):
+            return None, ct
+        # Reject responses that aren't actual images (magic byte check)
+        if not _is_image_data(data):
+            return None, ct
+        return data, ct
     except Exception:
         return None, ""
+
+
+# Known image magic byte signatures
+_IMAGE_SIGNATURES: list[tuple[bytes, ...]] = [
+    (b"\xff\xd8\xff",),  # JPEG
+    (b"\x89PNG\r\n\x1a\n",),  # PNG
+    (b"GIF87a", b"GIF89a"),  # GIF
+    (b"RIFF",),  # WebP (RIFF....WEBP)
+    (b"\x00\x00\x01\x00", b"\x00\x00\x02\x00"),  # ICO / CUR
+    (b"<svg", b"<?xml"),  # SVG (text-based)
+    (b"BM",),  # BMP
+]
+
+
+def _is_image_data(data: bytes) -> bool:
+    """Check if data starts with a known image magic byte signature."""
+    if not data or len(data) < 4:
+        return False
+    for sigs in _IMAGE_SIGNATURES:
+        for sig in sigs:
+            if data[: len(sig)] == sig:
+                return True
+    return False
 
 
 def _save_as_png(data: bytes, png_path: Path) -> Path | None:
@@ -537,18 +593,29 @@ def _save_jpeg_thumbnail(source_path: Path, jpeg_path: Path, max_size: int = 400
 
     JPEG is more reliably handled by the Claude API than PNG (avoids
     "Image format image/png not supported" errors on certain PNG variants).
+
+    Validates the output by re-opening it — if PIL can't read the JPEG back,
+    the file is deleted and None is returned so the candidate is skipped.
     """
     try:
         from PIL import Image
 
         img = Image.open(source_path)
+        img.load()  # Force full decode to catch truncated/corrupt data
+        # Skip tiny images that are likely tracking pixels
+        if img.width < 4 or img.height < 4:
+            return None
         img.thumbnail((max_size, max_size))
         # JPEG requires RGB (no alpha channel)
         if img.mode != "RGB":
             img = img.convert("RGB")
         img.save(jpeg_path, "JPEG", quality=85)
+        # Verify the JPEG is readable
+        verify = Image.open(jpeg_path)
+        verify.load()
         return jpeg_path
     except Exception:
+        jpeg_path.unlink(missing_ok=True)
         return None
 
 
@@ -670,7 +737,14 @@ def _extract_ocr_text(img) -> str | None:
 
 
 def _ext_from_content_type(ct: str) -> str:
-    """Map content-type to file extension."""
+    """Map content-type to file extension.
+
+    Returns a guessed extension based on the content-type header. Falls back
+    to ".png" when the content-type is an image/* type not in the mapping.
+    For non-image content types, still returns ".png" as a default since
+    magic-byte validation in _fetch_image rejects non-image data before we
+    reach this point.
+    """
     ct = ct.lower().split(";")[0].strip()
     mapping = {
         "image/png": ".png",

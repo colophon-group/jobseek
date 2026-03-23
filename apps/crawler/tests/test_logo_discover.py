@@ -9,6 +9,7 @@ import src.workspace.logo_discover as logo_discover
 from src.workspace.logo_discover import (
     LogoCandidate,
     _dedup_candidates,
+    _is_image_data,
     discover_logos,
     download_candidates,
 )
@@ -506,3 +507,81 @@ class TestDownloadCandidates:
         assert "aspect_ratio" in entry and entry["aspect_ratio"] == 1.0
         assert "is_square" in entry and entry["is_square"] is True
         assert "has_transparency" in entry
+
+    def test_html_masquerading_as_image_is_rejected(self, tmp_path, monkeypatch):
+        """HTML served with image content-type should be filtered out."""
+        html_bytes = b"<!DOCTYPE html><html><body>Not an image</body></html>"
+
+        monkeypatch.setattr(
+            logo_discover,
+            "_fetch_image",
+            # Simulate a server that returns HTML with text/html content-type
+            # (our new _fetch_image validation would reject this, but test
+            # the download_candidates gate too by returning it as png data)
+            lambda *_args, **_kwargs: (html_bytes, "image/png"),
+        )
+
+        candidate = LogoCandidate(
+            url="https://example.com/logo.png",
+            sources=["og:image"],
+            role="logo",
+            score=0.75,
+        )
+        successful = download_candidates([candidate], tmp_path)
+        # HTML data can't be converted to JPEG, so candidate should be skipped
+        assert len(successful) == 0
+
+    def test_fetch_image_rejects_html_content_type(self, monkeypatch):
+        """_fetch_image should reject responses with text/html content-type."""
+        import httpx
+
+        class FakeResponse:
+            status_code = 200
+            content = b"<html><body>error page</body></html>"
+            headers = {"content-type": "text/html; charset=utf-8"}
+
+        monkeypatch.setattr(httpx, "get", lambda *a, **kw: FakeResponse())
+        data, ct = logo_discover._fetch_image("https://example.com/logo.png", 5.0)
+        assert data is None
+
+    def test_fetch_image_rejects_non_image_magic_bytes(self, monkeypatch):
+        """_fetch_image should reject data that doesn't have image magic bytes."""
+        import httpx
+
+        class FakeResponse:
+            status_code = 200
+            content = b'{"error": "not found"}'
+            headers = {"content-type": "application/octet-stream"}
+
+        monkeypatch.setattr(httpx, "get", lambda *a, **kw: FakeResponse())
+        data, ct = logo_discover._fetch_image("https://example.com/logo.png", 5.0)
+        assert data is None
+
+
+class TestIsImageData:
+    def test_jpeg_detected(self):
+        assert _is_image_data(b"\xff\xd8\xff\xe0" + b"\x00" * 100)
+
+    def test_png_detected(self):
+        assert _is_image_data(b"\x89PNG\r\n\x1a\n" + b"\x00" * 100)
+
+    def test_gif_detected(self):
+        assert _is_image_data(b"GIF89a" + b"\x00" * 100)
+
+    def test_svg_detected(self):
+        assert _is_image_data(b"<svg " + b"\x00" * 100)
+
+    def test_ico_detected(self):
+        assert _is_image_data(b"\x00\x00\x01\x00" + b"\x00" * 100)
+
+    def test_html_rejected(self):
+        assert not _is_image_data(b"<!DOCTYPE html><html>")
+
+    def test_json_rejected(self):
+        assert not _is_image_data(b'{"error": "not found"}')
+
+    def test_empty_rejected(self):
+        assert not _is_image_data(b"")
+
+    def test_short_data_rejected(self):
+        assert not _is_image_data(b"\xff\xd8")
