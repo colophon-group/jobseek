@@ -1833,8 +1833,8 @@ async def _process_one_board(
         try:
             result = await monitor_one(board_url, crawler_type, metadata, http, pw=pw)
         finally:
-            if pw_ctx:
-                await pw_ctx.stop()
+            if pw:
+                await pw.stop()
 
         enrich_fields = _board_has_enrich(metadata)
 
