@@ -45,6 +45,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     }
     description = parts.length > 0 ? parts.join(" · ") : `Job watchlist by @${ownerLabel}`;
   }
+  const companyCount = detail.companies.length;
+  if (companyCount > 0) {
+    description = `Tracking ${companyCount} ${companyCount === 1 ? "company" : "companies"}. ${description}`;
+  }
 
   const path = `/${userSlug}/${watchlistSlug}`;
   return {

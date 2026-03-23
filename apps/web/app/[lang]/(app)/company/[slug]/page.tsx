@@ -24,7 +24,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!company) return {};
 
   const title = `Jobs at ${company.name}`;
-  const description = company.description ?? `Browse open positions at ${company.name}`;
+  const count = company.activeJobCount;
+  const countText = count > 0 ? `${count} open position${count !== 1 ? "s" : ""}` : "Open positions";
+  const description = company.description
+    ? `${countText} at ${company.name}. ${company.description}`
+    : `${countText} at ${company.name}`;
   const path = `/company/${slug}`;
 
   return {
