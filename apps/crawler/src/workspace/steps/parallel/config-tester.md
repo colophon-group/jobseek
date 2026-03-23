@@ -92,6 +92,12 @@ improved:
 - **Monitor has partial data (titles but no locations)?** Try the `enrich`
   option to scrape only missing fields from detail pages (see `ws help
   scraper api_sniffer`).
+- **Locations absent but all jobs are genuinely in one city/region?**
+  As a **last resort** (after trying json-ld, enrich, and DOM), use
+  `"defaults"` to set a constant: `"defaults": {"locations": ["Zurich, CH"]}`.
+  Only valid when you've verified every job is in that location. Do NOT
+  use defaults to mask extraction failures — always try proper extraction first.
+  Report defaults in verdict-notes so reviewers know.
 
 ## Step {{ '4' if is_rich else '5' }}: Record feedback
 
