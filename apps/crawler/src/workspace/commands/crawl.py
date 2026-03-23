@@ -1184,7 +1184,8 @@ def run_monitor(slug: str | None, board_alias: str | None, config_name: str | No
         from src.core.monitor import monitor_one
         from src.shared.http import create_logging_http_client
 
-        http, http_log = create_logging_http_client()
+        ssl_verify = (board.monitor_config or {}).get("ssl_verify", True)
+        http, http_log = create_logging_http_client(verify=ssl_verify)
         try:
             async with async_playwright() as pw:
                 start = time.monotonic()
@@ -1601,7 +1602,8 @@ def run_scraper(
         from src.core.scrape import scrape_one
         from src.shared.http import create_logging_http_client
 
-        http, http_log = create_logging_http_client()
+        ssl_verify = (board.monitor_config or {}).get("ssl_verify", True)
+        http, http_log = create_logging_http_client(verify=ssl_verify)
         results = []
         skipped: list[tuple[str, str]] = []
         try:
