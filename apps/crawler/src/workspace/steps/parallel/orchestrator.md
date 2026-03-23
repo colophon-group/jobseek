@@ -79,8 +79,13 @@ For each new board:
 
 4. If parallel: collect results, compare using the criteria below.
 5. Pick the best config: `ws select config {{ slug }} <name> --board <alias>`
-6. Record feedback: `ws feedback {{ slug }} --board <alias> ...`
-7. Loop back to step 1.
+6. **Before recording feedback**, check if "acceptable" can become "good":
+   - Absent fields available in JSON-LD? Switch scraper to `json-ld`.
+   - Noisy field values? Use the `map` spec to normalize (`ws help fields`).
+   - Monitor has titles but missing locations? Try `enrich` option.
+   - Scraper coverage < 100%? Tune `timeout`/`wait` before accepting.
+7. Record feedback: `ws feedback {{ slug }} --board <alias> ...`
+8. Loop back to step 1.
 
 When `ws await-board {{ slug }}` exits with code 1 (timeout or discovery complete),
 all boards are processed.
