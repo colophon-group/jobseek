@@ -78,6 +78,8 @@ cd-projekt-red,cd-projekt-red-careers,https://www.cdprojektred.com/en/jobs,smart
 checkout-com,checkout-com-careers,https://checkout.wd3.myworkdayjobs.com/CheckoutCareers,workday,"{""company"": ""checkout"", ""wd_instance"": ""wd3"", ""site"": ""CheckoutCareers""}",workday,
 chipmind,chipmind-careers,https://www.chipmind.ai/careers,dom,,dom,"{""steps"": [{""tag"": ""h1"", ""attr"": ""class=topcard__title"", ""field"": ""title""}, {""tag"": ""div"", ""attr"": ""class=topcard__flavor-row"", ""field"": ""locations"", ""regex"": ""([A-Z]\\w*,\\s+.+)$""}, {""text"": ""About"", ""field"": ""description"", ""html"": true, ""stop"": ""Show more""}, {""text"": ""Employment type"", ""offset"": 1, ""field"": ""employment_type""}]}"
 cisco,cisco-careers,https://cisco.wd5.myworkdayjobs.com/Cisco_Careers,workday,"{""company"": ""cisco"", ""wd_instance"": ""wd5"", ""site"": ""Cisco_Careers""}",workday,
+citigroup,citigroup-eightfold,https://citi.eightfold.ai/careers,sitemap,"{""sitemap_url"": ""https://citi.eightfold.ai/careers/sitemap.xml"", ""url_filter"": ""/careers/job/""}",json-ld,
+citigroup,citigroup-workday,https://citi.wd5.myworkdayjobs.com/en-US/2,workday,"{""company"": ""citi"", ""wd_instance"": ""wd5"", ""site"": ""2""}",workday,
 cloudflare,cloudflare-careers,https://boards.greenhouse.io/cloudflare,greenhouse,"{""token"": ""cloudflare""}",,
 cohere,cohere-careers,https://jobs.ashbyhq.com/cohere,ashby,,skip,
 coinbase,coinbase-careers,https://job-boards.greenhouse.io/coinbase,greenhouse,"{""board_token"": ""coinbase""}",skip,
