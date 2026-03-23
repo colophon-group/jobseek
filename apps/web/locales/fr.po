@@ -371,28 +371,28 @@ msgstr "Postulé"
 msgid "myJobs.status.applied"
 msgstr "Postulé"
 
-#. Status option in dropdown: applied
-#. js-lingui-explicit-id
-#: src/components/my-jobs/my-job-detail-panel.tsx:33
-msgid "myJobs.statusOption.applied"
-msgstr "Postulé"
-
 #. Sankey funnel node: applied
 #. js-lingui-explicit-id
 #: src/components/my-jobs/sankey-funnel.tsx:42
 msgid "myJobs.funnel.applied"
 msgstr "Postulé"
 
-#. Apply salary filter
+#. Status option in dropdown: applied
 #. js-lingui-explicit-id
-#: src/components/search/salary-modal.tsx:320
-msgid "search.salaryModal.apply"
-msgstr "Appliquer"
+#: src/components/my-jobs/my-job-detail-panel.tsx:33
+msgid "myJobs.statusOption.applied"
+msgstr "Postulé"
 
 #. Apply experience filter
 #. js-lingui-explicit-id
 #: src/components/search/experience-modal.tsx:246
 msgid "search.experienceModal.apply"
+msgstr "Appliquer"
+
+#. Apply salary filter
+#. js-lingui-explicit-id
+#: src/components/search/salary-modal.tsx:320
+msgid "search.salaryModal.apply"
 msgstr "Appliquer"
 
 #. Apply button linking to original job posting
@@ -437,12 +437,6 @@ msgstr "Aoû"
 msgid "settings.account.username.available"
 msgstr "Disponible"
 
-#. Link back to sign-in from reset password
-#. js-lingui-explicit-id
-#: app/[lang]/reset-password/page.tsx:42
-msgid "auth.resetPassword.backToSignIn"
-msgstr "Retour à la connexion"
-
 #. Link back to sign-in after failed verification
 #. js-lingui-explicit-id
 #: app/[lang]/verify-email/page.tsx:68
@@ -459,6 +453,12 @@ msgstr "Retour à la connexion"
 #. js-lingui-explicit-id
 #: app/[lang]/(auth)/forgot-password/page.tsx:110
 msgid "auth.forgotPassword.backLink"
+msgstr "Retour à la connexion"
+
+#. Link back to sign-in from reset password
+#. js-lingui-explicit-id
+#: app/[lang]/reset-password/page.tsx:42
+msgid "auth.resetPassword.backToSignIn"
 msgstr "Retour à la connexion"
 
 #. Interview type label: behavioral interview
@@ -755,14 +755,14 @@ msgstr "Contact"
 
 #. Table of contents heading
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:18
-msgid "license.toc.title"
+#: src/components/HowWeIndexContent.tsx:23
+msgid "indexing.toc.title"
 msgstr "Sommaire"
 
 #. Table of contents heading
 #. js-lingui-explicit-id
-#: src/components/HowWeIndexContent.tsx:23
-msgid "indexing.toc.title"
+#: src/components/LicenseContent.tsx:18
+msgid "license.toc.title"
 msgstr "Sommaire"
 
 #. Button to continue to app after verification
@@ -1109,16 +1109,16 @@ msgstr "Alertes e-mail pour les nouvelles offres"
 msgid "home.features.s1.eyebrow"
 msgstr "Tout ce qu'il te faut pour garder une longueur d'avance"
 
-#. Label for experience filter in advanced search
-#. js-lingui-explicit-id
-#: src/components/search/advanced-search-panel.tsx:177
-msgid "search.advanced.experience"
-msgstr "Expérience"
-
 #. Title for experience filter modal
 #. js-lingui-explicit-id
 #: src/components/search/experience-modal.tsx:186
 msgid "search.experienceModal.title"
+msgstr "Expérience"
+
+#. Label for experience filter in advanced search
+#. js-lingui-explicit-id
+#: src/components/search/advanced-search-panel.tsx:177
+msgid "search.advanced.experience"
 msgstr "Expérience"
 
 #. js-lingui-explicit-id
@@ -1605,16 +1605,16 @@ msgstr "Lien de vérification invalide"
 msgid "myJobs.heatmap.month.jan"
 msgstr "Jan"
 
-#. Singular job count in public watchlist
-#. js-lingui-explicit-id
-#: src/components/watchlist/public-watchlist-search.tsx:110
-msgid "watchlists.explore.jobSingular"
-msgstr "offre"
-
 #. Singular job count on watchlist card
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-card.tsx:31
 msgid "watchlists.card.jobSingular"
+msgstr "offre"
+
+#. Singular job count in public watchlist
+#. js-lingui-explicit-id
+#: src/components/watchlist/public-watchlist-search.tsx:110
+msgid "watchlists.explore.jobSingular"
 msgstr "offre"
 
 #. TOC: Job data (CC BY-NC 4.0)
@@ -1682,10 +1682,10 @@ msgstr "Le code source de Job Seek est ouvert sous licence MIT. Les données d'e
 msgid "watchlist.meta.fallback"
 msgstr "Liste d'emplois de @{owner}"
 
-#. Plural job count in public watchlist
+#. Job count label in watchlist view
 #. js-lingui-explicit-id
-#: src/components/watchlist/public-watchlist-search.tsx:111
-msgid "watchlists.explore.jobPlural"
+#: src/components/watchlist/watchlist-job-list.tsx:210
+msgid "watchlists.jobList.jobCount"
 msgstr "offres"
 
 #. Plural job count on watchlist card
@@ -1694,10 +1694,10 @@ msgstr "offres"
 msgid "watchlists.card.jobPlural"
 msgstr "offres"
 
-#. Job count label in watchlist view
+#. Plural job count in public watchlist
 #. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-job-list.tsx:210
-msgid "watchlists.jobList.jobCount"
+#: src/components/watchlist/public-watchlist-search.tsx:111
+msgid "watchlists.explore.jobPlural"
 msgstr "offres"
 
 #. js-lingui-explicit-id
@@ -1788,16 +1788,16 @@ msgstr "Dernière semaine"
 msgid "home.hero.secondaryCta"
 msgstr "En savoir plus"
 
-#. Label for seniority/level filter in advanced search
-#. js-lingui-explicit-id
-#: src/components/search/advanced-search-panel.tsx:154
-msgid "search.advanced.level"
-msgstr "Niveau"
-
 #. Section header for seniority suggestions in search bar
 #. js-lingui-explicit-id
 #: src/components/search/search-bar.tsx:461
 msgid "search.bar.level"
+msgstr "Niveau"
+
+#. Label for seniority/level filter in advanced search
+#. js-lingui-explicit-id
+#: src/components/search/advanced-search-panel.tsx:154
+msgid "search.advanced.level"
 msgstr "Niveau"
 
 #. js-lingui-explicit-id
@@ -1858,16 +1858,16 @@ msgstr "Lieu"
 msgid "search.advanced.location"
 msgstr "Lieu"
 
-#. Locations heading in job detail
-#. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:301
-msgid "search.detail.locations"
-msgstr "Lieux"
-
 #. Section header for location suggestions in search bar
 #. js-lingui-explicit-id
 #: src/components/search/search-bar.tsx:531
 msgid "search.bar.locations"
+msgstr "Lieux"
+
+#. Locations heading in job detail
+#. js-lingui-explicit-id
+#: src/components/search/job-detail-dialog.tsx:301
+msgid "search.detail.locations"
 msgstr "Lieux"
 
 #. Login button label
@@ -2120,16 +2120,16 @@ msgstr "Aucune offre trouvée."
 msgid "settings.jobLanguages.modal.noResults"
 msgstr "Aucune langue ne correspond à votre recherche."
 
-#. No locations match search in all-locations modal
-#. js-lingui-explicit-id
-#: src/components/search/location-modal.tsx:185
-msgid "company.locationModal.noResults"
-msgstr "Aucun lieu ne correspond à votre recherche."
-
 #. No locations match search in location modal
 #. js-lingui-explicit-id
 #: src/components/search/location-search-modal.tsx:170
 msgid "search.locationModal.noResults"
+msgstr "Aucun lieu ne correspond à votre recherche."
+
+#. No locations match search in all-locations modal
+#. js-lingui-explicit-id
+#: src/components/search/location-modal.tsx:185
+msgid "company.locationModal.noResults"
 msgstr "Aucun lieu ne correspond à votre recherche."
 
 #. No postings found message on company page
@@ -2250,16 +2250,16 @@ msgstr "Offre"
 msgid "myJobs.group.offered"
 msgstr "Offre"
 
-#. Status option in dropdown: offered
-#. js-lingui-explicit-id
-#: src/components/my-jobs/my-job-detail-panel.tsx:35
-msgid "myJobs.statusOption.offered"
-msgstr "Offre"
-
 #. Sankey funnel node: offered
 #. js-lingui-explicit-id
 #: src/components/my-jobs/sankey-funnel.tsx:43
 msgid "myJobs.funnel.offered"
+msgstr "Offre"
+
+#. Status option in dropdown: offered
+#. js-lingui-explicit-id
+#: src/components/my-jobs/my-job-detail-panel.tsx:35
+msgid "myJobs.statusOption.offered"
 msgstr "Offre"
 
 #. Cookie banner accept button
@@ -2365,26 +2365,26 @@ msgstr "Notre position sur l'automatisation"
 
 #. TOC: Overview
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:22
-msgid "license.toc.overview"
-msgstr "Aperçu"
-
-#. TOC: Overview
-#. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:27
 msgid "indexing.toc.overview"
 msgstr "Aperçu"
 
-#. Table of contents aria label
+#. TOC: Overview
 #. js-lingui-explicit-id
-#: src/components/LicenseContent.tsx:19
-msgid "license.toc.ariaLabel"
-msgstr "Sommaire de la page"
+#: src/components/LicenseContent.tsx:22
+msgid "license.toc.overview"
+msgstr "Aperçu"
 
 #. Table of contents aria label
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:24
 msgid "indexing.toc.ariaLabel"
+msgstr "Sommaire de la page"
+
+#. Table of contents aria label
+#. js-lingui-explicit-id
+#: src/components/LicenseContent.tsx:19
+msgid "license.toc.ariaLabel"
 msgstr "Sommaire de la page"
 
 #. Heading shown on the 404 page
@@ -2754,16 +2754,16 @@ msgstr "Refusé"
 msgid "myJobs.status.rejected"
 msgstr "Refusé"
 
-#. Status option in dropdown: rejected
-#. js-lingui-explicit-id
-#: src/components/my-jobs/my-job-detail-panel.tsx:36
-msgid "myJobs.statusOption.rejected"
-msgstr "Refusé"
-
 #. Sankey funnel node label prefix: rejected
 #. js-lingui-explicit-id
 #: src/components/my-jobs/sankey-funnel.tsx:45
 msgid "myJobs.funnel.rejected"
+msgstr "Refusé"
+
+#. Status option in dropdown: rejected
+#. js-lingui-explicit-id
+#: src/components/my-jobs/my-job-detail-panel.tsx:36
+msgid "myJobs.statusOption.rejected"
 msgstr "Refusé"
 
 #. Footer license summary text
@@ -2822,16 +2822,16 @@ msgstr "Renvoyer dans {cooldown}s"
 msgid "auth.verify.resend"
 msgstr "Renvoyer l'e-mail de vérification"
 
-#. Reset salary filter
-#. js-lingui-explicit-id
-#: src/components/search/salary-modal.tsx:314
-msgid "search.salaryModal.reset"
-msgstr "Réinitialiser"
-
 #. Reset experience filter
 #. js-lingui-explicit-id
 #: src/components/search/experience-modal.tsx:240
 msgid "search.experienceModal.reset"
+msgstr "Réinitialiser"
+
+#. Reset salary filter
+#. js-lingui-explicit-id
+#: src/components/search/salary-modal.tsx:314
+msgid "search.salaryModal.reset"
 msgstr "Réinitialiser"
 
 #. Reset password submit button
@@ -2942,16 +2942,16 @@ msgstr "Enregistré"
 msgid "myJobs.status.saved"
 msgstr "Enregistré"
 
-#. Status option in dropdown: saved
-#. js-lingui-explicit-id
-#: src/components/my-jobs/my-job-detail-panel.tsx:32
-msgid "myJobs.statusOption.saved"
-msgstr "Enregistré"
-
 #. Sankey funnel node: saved jobs
 #. js-lingui-explicit-id
 #: src/components/my-jobs/sankey-funnel.tsx:41
 msgid "myJobs.funnel.saved"
+msgstr "Enregistré"
+
+#. Status option in dropdown: saved
+#. js-lingui-explicit-id
+#: src/components/my-jobs/my-job-detail-panel.tsx:32
+msgid "myJobs.statusOption.saved"
 msgstr "Enregistré"
 
 #. Free feature: saved searches
@@ -2984,11 +2984,6 @@ msgstr "Enregistrement..."
 msgid "settings.account.email.saving"
 msgstr "Enregistrement…"
 
-#. js-lingui-explicit-id
-#: app/[lang]/(app)/explore/page.tsx:26
-msgid "explore.meta.description"
-msgstr "Recherchez et filtrez les offres d'emploi de centaines d'entreprises."
-
 #. Placeholder for search bar when on company page
 #. js-lingui-explicit-id
 #. placeholder {0}: company.name
@@ -3008,23 +3003,28 @@ msgstr "Rechercher des entreprises..."
 msgid "watchlists.companyModal.searchPlaceholder"
 msgstr "Rechercher des entreprises..."
 
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/explore/page.tsx:26
+msgid "explore.meta.description"
+msgstr "Recherchez des emplois dans des centaines d'entreprises. Créez des listes de suivi pour suivre les nouvelles offres et recevoir des alertes."
+
 #. Placeholder for search input in all-languages modal
 #. js-lingui-explicit-id
 #: src/components/settings/JobLanguageModal.tsx:77
 msgid "settings.jobLanguages.modal.searchPlaceholder"
 msgstr "Rechercher des langues…"
 
-#. Placeholder for search input in all-locations modal
-#. js-lingui-explicit-id
-#: src/components/search/location-modal.tsx:164
-msgid "company.locationModal.searchPlaceholder"
-msgstr "Rechercher des lieux…"
-
 #. Placeholder for search input in global location modal
 #. js-lingui-explicit-id
 #: src/components/search/location-search-modal.tsx:149
 msgid "search.locationModal.searchPlaceholder"
 msgstr "Rechercher des lieux..."
+
+#. Placeholder for search input in all-locations modal
+#. js-lingui-explicit-id
+#: src/components/search/location-modal.tsx:164
+msgid "company.locationModal.searchPlaceholder"
+msgstr "Rechercher des lieux…"
 
 #. Back to search results link on company page
 #. js-lingui-explicit-id
@@ -3188,16 +3188,16 @@ msgstr "Paramètres"
 #~ msgid "settings.billing.usage.unlimited"
 #~ msgstr "Illimité"
 
-#. Collapse location pill list
-#. js-lingui-explicit-id
-#: src/components/search/filter-bar.tsx:350
-msgid "company.page.showLess"
-msgstr "Afficher moins"
-
 #. Button to collapse location list
 #. js-lingui-explicit-id
 #: src/components/search/job-detail-dialog.tsx:344
 msgid "search.detail.showLessLocations"
+msgstr "Afficher moins"
+
+#. Collapse location pill list
+#. js-lingui-explicit-id
+#: src/components/search/filter-bar.tsx:350
+msgid "company.page.showLess"
 msgstr "Afficher moins"
 
 #. Aria label to show password
@@ -3308,12 +3308,6 @@ msgstr "Aller au contenu"
 msgid "error.title"
 msgstr "Une erreur est survenue"
 
-#. Generic forgot password error
-#. js-lingui-explicit-id
-#: app/[lang]/(auth)/forgot-password/page.tsx:43
-msgid "auth.forgotPassword.error.generic"
-msgstr "Une erreur est survenue. Veuillez réessayer."
-
 #. Generic error when company request fails
 #. Generic error when company request fails
 #. Generic error when company request fails
@@ -3323,6 +3317,12 @@ msgstr "Une erreur est survenue. Veuillez réessayer."
 #: src/components/search/request-company.tsx:19
 msgid "app.home.request.error.unknown"
 msgstr "Une erreur s'est produite. Veuillez réessayer."
+
+#. Generic forgot password error
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/forgot-password/page.tsx:43
+msgid "auth.forgotPassword.error.generic"
+msgstr "Une erreur est survenue. Veuillez réessayer."
 
 #. Generic error creating watchlist
 #. js-lingui-explicit-id
@@ -3445,16 +3445,16 @@ msgstr "System Design"
 msgid "myJobs.interviewType.technical"
 msgstr "Technique"
 
-#. Technologies sub-heading in details section
-#. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:386
-msgid "search.detail.technologies"
-msgstr "Technologies"
-
 #. Section header for technology suggestions in search bar
 #. js-lingui-explicit-id
 #: src/components/search/search-bar.tsx:496
 msgid "search.bar.technologies"
+msgstr "Technologies"
+
+#. Technologies sub-heading in details section
+#. js-lingui-explicit-id
+#: src/components/search/job-detail-dialog.tsx:386
+msgid "search.detail.technologies"
 msgstr "Technologies"
 
 #. Add technology filter
