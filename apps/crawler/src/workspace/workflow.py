@@ -715,7 +715,7 @@ def search_kb(query: str) -> list[dict[str, Any]]:
         summary = frontmatter.get("summary", "")
         company = frontmatter.get("company", "")
         tags = frontmatter.get("tags", [])
-        tags_str = " ".join(tags) if isinstance(tags, list) else str(tags)
+        tags_str = " ".join(str(t) for t in tags) if isinstance(tags, list) else str(tags)
         searchable = f"{symptom} {summary} {company} {tags_str} {body}".lower()
 
         # Match if full query is substring OR all tokens appear

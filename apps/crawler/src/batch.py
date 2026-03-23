@@ -2275,6 +2275,31 @@ async def _run_fallback_scraper(
     return await scrape_one(url, fb_type, fb_cfg, http, pw=pw)
 
 
+def _apply_defaults(content: JobContent, cfg: dict) -> JobContent:
+    """Apply constant defaults for fields that are still None after scraping.
+
+    Config example::
+
+        "defaults": {"locations": ["Zurich, Switzerland"], "job_location_type": "onsite"}
+
+    Only fills fields that are ``None`` (or empty list for ``locations``).
+    Useful for regional boards where all jobs share a location, or small
+    companies with a single office.
+    """
+    defaults = cfg.get("defaults")
+    if not defaults or not isinstance(defaults, dict):
+        return content
+
+    for field_name, value in defaults.items():
+        if field_name not in _JOBCONTENT_FIELDS:
+            log.warning("batch.defaults.unknown_field", field=field_name)
+            continue
+        current = getattr(content, field_name)
+        if current is None or (isinstance(current, list) and not current):
+            setattr(content, field_name, value)
+    return content
+
+
 async def _apply_fallback_chain(
     content: JobContent,
     url: str,
@@ -2333,6 +2358,7 @@ async def _process_one_enrich_scrape(
         cfg = scraper_config or {}
         content = await scrape_one(item.url, scraper_type, scraper_config, http, pw=pw)
         content = await _apply_fallback_chain(content, item.url, scraper_type, cfg, http, pw=pw)
+        content = _apply_defaults(content, cfg)
 
         # Normalize before checking — normalize can strip degenerate HTML to None
         content.description = normalize_description_html(content.description)
@@ -2497,6 +2523,7 @@ async def _process_one_scrape(
         content = await scrape_one(item.url, scraper_type, scraper_config, http, pw=pw)
 
         content = await _apply_fallback_chain(content, item.url, scraper_type, cfg, http, pw=pw)
+        content = _apply_defaults(content, cfg)
 
         if not content.title or _is_garbage_title(content.title):
             # No usable content — record as failure so backoff kicks in.
@@ -2895,6 +2922,7 @@ async def dry_run_single_board(
         try:
             content = await scrape_one(url, scraper_type, scraper_config, http, pw=pw)
             content = await _apply_fallback_chain(content, url, scraper_type, cfg, http, pw=pw)
+            content = _apply_defaults(content, cfg)
             content.description = normalize_description_html(content.description)
 
             if enrich_fields:

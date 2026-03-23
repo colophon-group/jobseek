@@ -59,11 +59,15 @@ Large companies often use different ATS systems for different departments:
 
 Search the company name + "jobs" + common ATS domains.
 
-### 4. Verify each board
+### 4. Verify before adding
 
-For each URL, confirm:
-- It shows actual job listings (not "coming soon" or an empty page)
-- It's distinct from other boards (not the same jobs on a different URL)
+**Add only confirmed boards — do not add speculatively.** For each URL:
+- Verify it belongs to the target company (not a subsidiary, partner, or
+  different company with a similar name)
+- Verify it shows actual job listings (not "coming soon" or an empty page)
+- Verify it's distinct from other boards (not a mirror/subset of another
+  board — e.g., WTTJ often mirrors Ashby listings)
+- Do NOT read source code files — use `ws help` and `ws task troubleshoot` instead
 
 {% if monitor_table %}
 ### Auto-detected ATS types

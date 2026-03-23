@@ -47,6 +47,12 @@ Compare the crawled job count against the expected ~{{ expected_jobs }} jobs.
 
 ## Step 3: Select and run scraper
 
+**Scraper priority — always try json-ld first:**
+1. `json-ld` — extracts structured `JobPosting` schema (most career pages have
+   it). Use `render: true` if JS-rendered. Tune `timeout` if coverage < 100%.
+2. `embedded` / `nextdata` — for embedded JSON with field mapping.
+3. `dom` — last resort, step-based CSS extraction.
+
 ```bash
 ws select scraper {{ slug }} {{ scraper_type }} --config '{{ scraper_config }}'
 ws run scraper {{ slug }} --board {{ board_alias }} --config {{ config_name }}
@@ -71,6 +77,27 @@ jobs, verify:
 **Required fields (non-negotiable):** title, location, description.
 If any required field is missing or unusable across all samples, this
 config fails — report failure.
+
+### Improve optional field coverage
+
+Before recording feedback, check if absent or noisy optional fields can be
+improved:
+
+- **`employment_type` / `job_location_type` noisy?** Use the `map` spec to
+  normalize non-standard values (see `ws help fields`):
+  `"employment_type": {"path": "jobType", "map": {"Regular": "full_time"}}`
+- **Fields absent but available in JSON-LD?** Switch scraper to `json-ld` —
+  it often extracts `datePosted`, `employmentType`, `baseSalary`,
+  `jobLocationType` that DOM scrapers miss.
+- **Monitor has partial data (titles but no locations)?** Try the `enrich`
+  option to scrape only missing fields from detail pages (see `ws help
+  scraper api_sniffer`).
+- **Locations absent but all jobs are genuinely in one city/region?**
+  As a **last resort** (after trying json-ld, enrich, and DOM), use
+  `"defaults"` to set a constant: `"defaults": {"locations": ["Zurich, CH"]}`.
+  Only valid when you've verified every job is in that location. Do NOT
+  use defaults to mask extraction failures — always try proper extraction first.
+  Report defaults in verdict-notes so reviewers know.
 
 ## Step {{ '4' if is_rich else '5' }}: Record feedback
 
@@ -111,3 +138,6 @@ After testing, report your result to the main agent. Include:
   monitor/scraper type to see what options are available.
 - **Use `--config {{ config_name }}`** on run commands to avoid conflicts
   with other subagents testing different configs on the same board.
+- **Do NOT read source code** (src/core/monitors/, src/core/scrapers/).
+  Use `ws help monitor <type>` and `ws help scraper <type>` for config
+  reference. If stuck, search the knowledge base: `ws task troubleshoot "<query>"`.
