@@ -10,7 +10,7 @@ import { getUserPlan, PLAN_LIMITS, canCreateWatchlist } from "@/lib/plans";
 import { resolveLocationSlugs } from "@/lib/actions/locations";
 import { resolveOccupationSlugs, resolveSenioritySlugs, resolveTechnologySlugs } from "@/lib/actions/taxonomy";
 import { siteConfig } from "@/content/config";
-import { buildAlternates } from "@/lib/seo";
+import { buildAlternates, JsonLd } from "@/lib/seo";
 import { WatchlistViewPage } from "./watchlist-view-page";
 
 type Props = {
@@ -128,7 +128,20 @@ export default async function WatchlistRoute({ params }: Props) {
     experienceMax: filters.experienceMax,
   });
 
+  const ownerLabel = detail.owner.displayUsername ?? detail.owner.username ?? detail.owner.name;
+  const breadcrumbJsonLd: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: `${siteConfig.url}/${lang}` },
+      { "@type": "ListItem", position: 2, name: `@${ownerLabel}` },
+      { "@type": "ListItem", position: 3, name: detail.title },
+    ],
+  };
+
   return (
+    <>
+    <JsonLd data={breadcrumbJsonLd} />
     <WatchlistViewPage
       detail={detail}
       isOwner={isOwner}
@@ -142,5 +155,6 @@ export default async function WatchlistRoute({ params }: Props) {
       resolvedSeniorities={resolvedSeniorities}
       resolvedTechnologies={resolvedTechnologies}
     />
+    </>
   );
 }

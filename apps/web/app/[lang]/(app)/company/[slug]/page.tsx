@@ -125,9 +125,20 @@ export default async function CompanyPageRoute({ params, searchParams }: Props) 
     }),
   };
 
+  const breadcrumbJsonLd: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: `${siteConfig.url}/${locale}` },
+      { "@type": "ListItem", position: 2, name: "Explore", item: `${siteConfig.url}/${locale}/explore` },
+      { "@type": "ListItem", position: 3, name: company.name },
+    ],
+  };
+
   return (
     <>
     <JsonLd data={orgJsonLd} />
+    <JsonLd data={breadcrumbJsonLd} />
     <CompanyPage
       company={company}
       initialPostings={postingsResult.postings}

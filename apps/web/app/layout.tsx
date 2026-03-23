@@ -14,7 +14,7 @@ export const metadata: Metadata = {
     siteName: "Job Seek",
     locale: "en",
   },
-  twitter: { card: "summary" },
+  twitter: { card: "summary_large_image" },
 };
 
 /**
