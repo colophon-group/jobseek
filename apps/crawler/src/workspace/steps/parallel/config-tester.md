@@ -111,3 +111,6 @@ After testing, report your result to the main agent. Include:
   monitor/scraper type to see what options are available.
 - **Use `--config {{ config_name }}`** on run commands to avoid conflicts
   with other subagents testing different configs on the same board.
+- **Do NOT read source code** (src/core/monitors/, src/core/scrapers/).
+  Use `ws help monitor <type>` and `ws help scraper <type>` for config
+  reference. If stuck, search the knowledge base: `ws task troubleshoot "<query>"`.

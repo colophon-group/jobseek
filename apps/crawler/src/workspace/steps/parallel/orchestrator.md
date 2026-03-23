@@ -56,14 +56,20 @@ done
 For each new board:
 
 1. `ws await-board {{ slug }}` — blocks until a new board appears (auto-tracks seen boards)
-2. `ws probe monitor {{ slug }} -n <expected-job-count> --board <alias>`
+2. **Skip probing if ATS is already confirmed:** If a previous board from this
+   company already identified a specific ATS (e.g., Greenhouse), and the new
+   board URL is on the same ATS domain, skip probing — directly select the same
+   monitor type with the board-specific token.
+   Otherwise: `ws probe monitor {{ slug }} -n <expected-job-count> --board <alias>`
 3. **Decide testing strategy based on probe results:**
 
    **Fast path (single test, no subagents):** If the probe's top result is a
    **known stable ATS** — greenhouse, ashby, lever, gem, recruitee, personio,
    workday, hireology, pinpoint, dvinci, traffit, rss — AND it matched with
    high confidence (detected via `can_handle`), test it directly yourself.
-   No need to spawn subagents for an obvious choice.
+   No need to spawn subagents for an obvious choice. For companies with
+   multiple boards on the same ATS, configure subsequent boards directly
+   without re-probing.
 
    **Parallel path (2-3 subagents):** If the probe returns multiple plausible
    options with similar scores, OR the top result is a generic type (sitemap,
@@ -100,6 +106,19 @@ Before submitting, verify:
 
 ```bash
 ws submit {{ slug }} [--summary "..."]
+```
+
+### Record lessons learned
+
+Before completing, contribute to the knowledge base:
+
+- **Non-obvious problem solved?** Record it so future agents can find it:
+  `ws task learn --step <step> --symptom "..." --solution "..." --tags "..."`
+- **Complex board configuration?** Record a case study:
+  `ws task casestudy --company {{ slug }} --monitor <type> --scraper <type> --tags "..." --summary "..."`
+- Nothing noteworthy? Skip this — only record genuinely reusable lessons.
+
+```bash
 ws task complete
 ```
 

@@ -34,8 +34,10 @@ def _warn_suspicious_count(count: int, category: str) -> None:
     if count in _SUSPICIOUS_ROUND_THRESHOLDS:
         out.warn(
             category,
-            f"Exactly {count} jobs — likely a server-side cap (real count may be higher). "
-            "Verify against the website.",
+            f"ACTION REQUIRED: Exactly {count} jobs — likely a server-side cap "
+            "(real count may be higher). "
+            "Split by category/region facets to get the full count. "
+            "Try: ws task troubleshoot 'server cap'",
         )
     elif count >= 5000:
         out.warn(
@@ -294,7 +296,8 @@ def _print_probe_results(scored, current_jobs):
         out.warn(
             "probe",
             "No monitors detected. Check the board URL or try "
-            "ws select monitor dom --config '{\"render\": true}'",
+            "ws select monitor dom --config '{\"render\": true}'. "
+            "Also try: ws task troubleshoot 'no monitors detected'",
         )
 
 
