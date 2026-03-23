@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import type { Metadata } from "next";
-import { isLocale, defaultLocale, initI18nForPage } from "@/lib/i18n";
+import { getI18n } from "@lingui/react/server";
+import { isLocale, defaultLocale, loadCatalog, initI18nForPage } from "@/lib/i18n";
 import { getCompanyBySlug, getCompanyPostings } from "@/lib/actions/company";
 import { getPreferences } from "@/lib/actions/preferences";
 import { parseSearchFilters } from "@/lib/actions/search-input";
@@ -20,15 +21,36 @@ type Props = {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug, lang } = await params;
   const locale = isLocale(lang) ? lang : defaultLocale;
-  const company = await getCompanyBySlug(slug, locale);
+  const [company, { i18n }] = await Promise.all([
+    getCompanyBySlug(slug, locale),
+    loadCatalog(locale),
+  ]);
   if (!company) return {};
 
-  const title = `Jobs at ${company.name}`;
+  const title = i18n.t({
+    id: "company.meta.title",
+    message: "Jobs at {name}",
+    values: { name: company.name },
+  });
   const count = company.activeJobCount;
-  const countText = count > 0 ? `${count} open position${count !== 1 ? "s" : ""}` : "Open positions";
+  const countText = count > 0
+    ? i18n.t({
+        id: "company.meta.positionCount",
+        message: "{count, plural, one {# open position} other {# open positions}}",
+        values: { count },
+      })
+    : i18n.t({ id: "company.meta.openPositions", message: "Open positions" });
   const description = company.description
-    ? `${countText} at ${company.name}. ${company.description}`
-    : `${countText} at ${company.name}`;
+    ? i18n.t({
+        id: "company.meta.descriptionWithInfo",
+        message: "{countText} at {name}. {description}",
+        values: { countText, name: company.name, description: company.description },
+      })
+    : i18n.t({
+        id: "company.meta.descriptionBasic",
+        message: "{countText} at {name}",
+        values: { countText, name: company.name },
+      });
   const path = `/company/${slug}`;
 
   return {
@@ -129,12 +151,13 @@ export default async function CompanyPageRoute({ params, searchParams }: Props) 
     }),
   };
 
+  const i18n = getI18n()!;
   const breadcrumbJsonLd: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Home", item: `${siteConfig.url}/${locale}` },
-      { "@type": "ListItem", position: 2, name: "Explore", item: `${siteConfig.url}/${locale}/explore` },
+      { "@type": "ListItem", position: 1, name: i18n.t({ id: "breadcrumb.home", message: "Home" }), item: `${siteConfig.url}/${locale}` },
+      { "@type": "ListItem", position: 2, name: i18n.t({ id: "breadcrumb.explore", message: "Explore" }), item: `${siteConfig.url}/${locale}/explore` },
       { "@type": "ListItem", position: 3, name: company.name },
     ],
   };

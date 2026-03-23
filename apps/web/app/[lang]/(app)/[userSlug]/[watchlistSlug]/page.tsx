@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { isLocale, defaultLocale, initI18nForPage } from "@/lib/i18n";
+import { getI18n } from "@lingui/react/server";
+import { isLocale, defaultLocale, loadCatalog, initI18nForPage } from "@/lib/i18n";
 import {
   getWatchlistByUserAndSlug,
   getWatchlistPostings,
@@ -20,7 +21,10 @@ type Props = {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { userSlug, watchlistSlug, lang } = await params;
   const locale = isLocale(lang) ? lang : defaultLocale;
-  const detail = await getWatchlistByUserAndSlug(userSlug, watchlistSlug);
+  const [detail, { i18n }] = await Promise.all([
+    getWatchlistByUserAndSlug(userSlug, watchlistSlug),
+    loadCatalog(locale),
+  ]);
   if (!detail) return {};
 
   const ownerLabel = detail.owner.displayUsername ?? detail.owner.username ?? detail.owner.name;
@@ -33,21 +37,43 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     if (detail.companies.length > 0) {
       const names = detail.companies.slice(0, 3).map((c) => c.name);
       if (detail.companies.length > 3) {
-        names.push(`${detail.companies.length - 3} more`);
+        names.push(i18n.t({
+          id: "watchlist.meta.moreCompanies",
+          message: "{count} more",
+          values: { count: detail.companies.length - 3 },
+        }));
       }
-      parts.push(`Jobs at ${names.join(", ")}`);
+      parts.push(i18n.t({
+        id: "watchlist.meta.jobsAt",
+        message: "Jobs at {names}",
+        values: { names: names.join(", ") },
+      }));
     }
     if (detail.filters.occupationSlugs?.length) {
       parts.push(detail.filters.occupationSlugs.map((s) => s.replace(/-/g, " ")).join(", "));
     }
     if (detail.filters.locationSlugs?.length) {
-      parts.push(`in ${detail.filters.locationSlugs.slice(0, 2).map((s) => s.replace(/-/g, " ")).join(", ")}`);
+      parts.push(i18n.t({
+        id: "watchlist.meta.inLocations",
+        message: "in {locations}",
+        values: { locations: detail.filters.locationSlugs.slice(0, 2).map((s) => s.replace(/-/g, " ")).join(", ") },
+      }));
     }
-    description = parts.length > 0 ? parts.join(" · ") : `Job watchlist by @${ownerLabel}`;
+    description = parts.length > 0
+      ? parts.join(" · ")
+      : i18n.t({
+          id: "watchlist.meta.fallback",
+          message: "Job watchlist by @{owner}",
+          values: { owner: ownerLabel },
+        });
   }
   const companyCount = detail.companies.length;
   if (companyCount > 0) {
-    description = `Tracking ${companyCount} ${companyCount === 1 ? "company" : "companies"}. ${description}`;
+    description = i18n.t({
+      id: "watchlist.meta.tracking",
+      message: "{count, plural, one {Tracking # company} other {Tracking # companies}}. {description}",
+      values: { count: companyCount, description },
+    });
   }
 
   const path = `/${userSlug}/${watchlistSlug}`;
@@ -132,12 +158,13 @@ export default async function WatchlistRoute({ params }: Props) {
     experienceMax: filters.experienceMax,
   });
 
+  const i18n = getI18n()!;
   const ownerLabel = detail.owner.displayUsername ?? detail.owner.username ?? detail.owner.name;
   const breadcrumbJsonLd: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Home", item: `${siteConfig.url}/${lang}` },
+      { "@type": "ListItem", position: 1, name: i18n.t({ id: "breadcrumb.home", message: "Home" }), item: `${siteConfig.url}/${lang}` },
       { "@type": "ListItem", position: 2, name: `@${ownerLabel}` },
       { "@type": "ListItem", position: 3, name: detail.title },
     ],
