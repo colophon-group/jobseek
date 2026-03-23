@@ -290,10 +290,15 @@ def task_back(target_step: str, reason: str, board_alias: str | None):
     slug = resolve_slug(None)
     wf = _load_wf_from_disk(slug)
 
-    if wf.failed:
-        out.die("Workflow is in failed state.")
     if wf.current_step == "done":
         out.die("Workflow already complete — cannot go back.")
+
+    # Allow backtracking from failed state — clears the failure
+    if wf.failed:
+        wf.failed = False
+        wf.fail_reason = ""
+        _save_wf_to_disk(slug, wf)
+        out.info("task", "Cleared failed state")
 
     target, message = go_back(slug, target_step, reason, board_alias)
 

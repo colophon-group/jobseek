@@ -1199,6 +1199,23 @@ def submit(slug: str | None, summary: str | None, force: bool):
 
     action_log.append(ws_log_path(slug), "submit", True, log_msg)
 
+    # Advance workflow to "reflect" so task complete can proceed.
+    # The parallel orchestrator calls submit directly without stepping
+    # through the workflow, leaving the cursor at "setup". A successful
+    # submit means all gates have been satisfied.
+    try:
+        from src.workspace.workflow import _load_wf_from_disk, _save_wf_to_disk
+
+        wf = _load_wf_from_disk(slug)
+        if wf.current_step not in ("reflect", "done") and not wf.failed:
+            wf.current_step = "reflect"
+            # Mark all boards as completed
+            boards = list_boards(slug)
+            wf.completed_boards = [b.alias for b in boards]
+            _save_wf_to_disk(slug, wf)
+    except FileNotFoundError:
+        pass  # No workflow state — agent ran outside task workflow
+
     out.info("workspace", "Submit complete")
 
 
