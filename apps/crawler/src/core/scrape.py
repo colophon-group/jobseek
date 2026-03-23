@@ -51,15 +51,25 @@ async def scrape_one(
     to the scraper to reuse a shared browser process.
     """
     scraper = get_scraper(scraper_type)
+    config = scraper_config or {}
 
     # Per-domain politeness throttle
     await throttle_domain(url)
 
-    if artifact_dir is not None and job_id is not None:
-        artifact_dir.mkdir(parents=True, exist_ok=True)
-        await _save_raw_page(artifact_dir, url, job_id, http)
+    # Use a no-SSL client when the board's cert chain is broken
+    if config.get("skip_ssl"):
+        from src.shared.http import create_nossl_http_client
 
-    content = await scraper(url, scraper_config or {}, http, pw=pw, artifact_dir=artifact_dir)
+        async with create_nossl_http_client() as nossl_http:
+            if artifact_dir is not None and job_id is not None:
+                artifact_dir.mkdir(parents=True, exist_ok=True)
+                await _save_raw_page(artifact_dir, url, job_id, nossl_http)
+            content = await scraper(url, config, nossl_http, pw=pw, artifact_dir=artifact_dir)
+    else:
+        if artifact_dir is not None and job_id is not None:
+            artifact_dir.mkdir(parents=True, exist_ok=True)
+            await _save_raw_page(artifact_dir, url, job_id, http)
+        content = await scraper(url, config, http, pw=pw, artifact_dir=artifact_dir)
 
     enrich_description(content)
     return content

@@ -9,7 +9,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     database_url: str = ""
     proxy_map: dict[str, str] = {}
-    ssl_skip_domains: str = ""
 
     @field_validator("proxy_map", mode="before")
     @classmethod

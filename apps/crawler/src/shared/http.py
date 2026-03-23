@@ -34,27 +34,25 @@ _CLIENT_DEFAULTS = {
 }
 
 
-def _build_mounts() -> dict | None:
-    """Combine proxy mounts and SSL-skip mounts into a single dict."""
+def create_http_client() -> httpx.AsyncClient:
     from src.shared.proxy import build_httpx_mounts
 
-    mounts = build_httpx_mounts() or {}
-
-    try:
-        from src.config import settings
-    except Exception:
-        settings = None
-    if settings and settings.ssl_skip_domains:
-        for domain in settings.ssl_skip_domains.split(","):
-            domain = domain.strip()
-            if domain:
-                mounts[f"all://{domain}"] = httpx.AsyncHTTPTransport(verify=False)
-    return mounts or None
-
-
-def create_http_client() -> httpx.AsyncClient:
-    mounts = _build_mounts()
+    mounts = build_httpx_mounts()
     return httpx.AsyncClient(**_CLIENT_DEFAULTS, **({"mounts": mounts} if mounts else {}))
+
+
+def create_nossl_http_client() -> httpx.AsyncClient:
+    """Create an HTTP client that skips SSL certificate verification.
+
+    Used for boards whose servers have broken certificate chains
+    (e.g. missing intermediate CA).  Enabled per-board via
+    ``skip_ssl: true`` in scraper_config.
+    """
+    defaults = {**_CLIENT_DEFAULTS, "verify": False}
+    from src.shared.proxy import build_httpx_mounts
+
+    mounts = build_httpx_mounts()
+    return httpx.AsyncClient(**defaults, **({"mounts": mounts} if mounts else {}))
 
 
 def create_logging_http_client() -> tuple[httpx.AsyncClient, list[dict[str, Any]]]:
@@ -85,7 +83,9 @@ def create_logging_http_client() -> tuple[httpx.AsyncClient, list[dict[str, Any]
             }
         )
 
-    mounts = _build_mounts()
+    from src.shared.proxy import build_httpx_mounts
+
+    mounts = build_httpx_mounts()
     client = httpx.AsyncClient(
         **_CLIENT_DEFAULTS,
         event_hooks={"request": [_on_request], "response": [_on_response]},
