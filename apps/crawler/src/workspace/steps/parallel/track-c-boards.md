@@ -11,6 +11,12 @@ Find **all** career boards for the company and register them. The main
 agent will start processing boards as you add them — work progressively,
 adding boards as you discover them rather than waiting to find all of them.
 
+> **Scope is global, not locale-specific.** The user's country in the
+> GitHub issue is where the request came from, **not a geographic filter**.
+> Find and register ALL of the company's career boards worldwide. Never
+> restrict to a single country or region. Never add query parameters like
+> `?location=switzerland` to board URLs — use the unfiltered base URL.
+
 ## How to add a board
 
 ```bash
@@ -26,9 +32,8 @@ postings with links to individual jobs, it's a board.
 
 ## Discovery checklist
 
-Background discovery may have found career page candidates. These
-are stored in the workspace and will be shown when you run
-`ws add boards {{ slug }}`. Use them as hints to speed up board discovery.
+Background discovery may have found career page candidates. Check
+`ws status` to see what has been discovered so far.
 
 ### 1. Check the main careers page
 
@@ -39,11 +44,15 @@ Visit the company website and find their careers/jobs page. Look for:
 
 ### 2. Check for regional variants
 
-Look for hreflang links on the careers page:
+Look for hreflang links on the careers page. If discovery found hreflang
+variants, you can batch-create boards from them:
 
 ```bash
 ws add boards {{ slug }}  # batch-creates boards from hreflang discovery
 ```
+
+**`ws add boards` (plural) is ONLY for hreflang batch import.** For all
+other boards, use `ws add board` (singular) with an alias and URL.
 
 Also search for regional career domains manually:
 - `{{ website }}/careers`, `{{ website }}/jobs`
@@ -76,6 +85,19 @@ Search the company name + "jobs" + common ATS domains.
 {% else %}
 Run `ws help monitors` for the list of auto-detected ATS types.
 {% endif %}
+
+### 5. Verify completeness for large companies
+
+**Multinational companies (500+ employees, offices in multiple countries)
+almost certainly have multiple boards.** If you have found only 1 board for
+such a company, your discovery is likely incomplete. Go back and check:
+- Region/language switchers on the careers page
+- `robots.txt` sitemap entries mentioning careers paths
+- Hreflang tags for regional variants
+- Multiple ATS domains (different ATS for different departments)
+
+Do not signal completion with only 1 board unless you have strong evidence
+the company genuinely uses a single centralized board.
 
 ## Signal completion — MANDATORY
 

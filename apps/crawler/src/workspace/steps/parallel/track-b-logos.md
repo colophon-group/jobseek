@@ -12,9 +12,11 @@ configuration.
 
 ## Step 1: Trigger discovery
 
-Background discovery may have already found logo candidates. Run
-`ws logos` to check. If candidates exist, inspect and select from
-them. If discovery is still running, wait a moment and try again.
+Background discovery may have already found logo candidates. Check
+with `ws logos {{ slug }}` (this is the only logo-related command —
+there is no `ws logo-candidates` or similar). If candidates exist,
+inspect and select from them. If discovery is still running, wait a
+moment and try again.
 
 ```bash
 ws set {{ slug }} --website "{{ website }}"

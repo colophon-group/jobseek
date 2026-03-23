@@ -6,6 +6,11 @@ Config name: `{{ config_name }}`
 Expected jobs: ~{{ expected_jobs }}
 
 
+> **STOP — Do NOT read source code files.** Never open files under
+> `src/core/`, `src/shared/`, `src/workspace/`, or any `.py` file.
+> Use `ws help monitor <type>` and `ws help scraper <type>` for config
+> reference. If stuck, use `ws task troubleshoot "<query>"`.
+
 ## Assignment
 
 Test whether **{{ monitor_type }}**{% if scraper_type and scraper_type != 'skip' %} (monitor) + **{{ scraper_type }}** (scraper){% endif %} can produce a working config for this board. The probe estimated ~{{ expected_jobs }} jobs at ~{{ cost_estimate }}/cycle.
@@ -32,6 +37,10 @@ If this fails, check `ws help monitor {{ monitor_type }}` for config options.
 ws run monitor {{ slug }} --board {{ board_alias }} --config {{ config_name }}
 ```
 
+**Important:** The first argument is the workspace slug (`{{ slug }}`),
+NOT the config name. The config name goes in `--config`. Passing a config
+name like `dom-test` as the slug causes "Workspace not found" errors.
+
 ### Verify job count
 
 Compare the crawled job count against the expected ~{{ expected_jobs }} jobs.
@@ -43,6 +52,11 @@ Compare the crawled job count against the expected ~{{ expected_jobs }} jobs.
   URLs are real job pages, not category/tag pages.
 - **0 jobs:** Try `ws task troubleshoot 'zero jobs'` for tips. Do NOT
   proceed — report failure if you cannot fix it.
+- **Suspiciously low for a large company?** If the company has hundreds
+  or thousands of employees but the monitor found fewer than ~10 jobs,
+  something is likely wrong — the monitor may be hitting a filtered view,
+  a regional subset, or a paginated first page only. Investigate before
+  accepting. Report this concern in your feedback verdict-notes.
 {% if not is_rich %}
 
 ## Step 3: Select and run scraper
@@ -138,6 +152,7 @@ After testing, report your result to the main agent. Include:
   monitor/scraper type to see what options are available.
 - **Use `--config {{ config_name }}`** on run commands to avoid conflicts
   with other subagents testing different configs on the same board.
-- **Do NOT read source code** (src/core/monitors/, src/core/scrapers/).
-  Use `ws help monitor <type>` and `ws help scraper <type>` for config
-  reference. If stuck, search the knowledge base: `ws task troubleshoot "<query>"`.
+- **NEVER read source code** — not `src/core/`, `src/shared/`, nor any
+  `.py` files. This is a hard rule. Reading source wastes tokens and does
+  not help configure boards. Use `ws help monitor <type>` and `ws help
+  scraper <type>` for config reference. If stuck: `ws task troubleshoot "<query>"`.

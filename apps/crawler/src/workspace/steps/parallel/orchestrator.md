@@ -20,6 +20,13 @@ Tracks A and B are fire-and-forget — check results before submit.
 Track C yields boards progressively — start processing each board
 as it's added.
 
+> **Scope is global, not locale-specific.** The user's country in the
+> GitHub issue is where the request came from, **not a geographic filter**.
+> Configure ALL of the company's career boards worldwide — do not restrict
+> to a single country or region. Never add query parameters like
+> `?location=switzerland` or `?country=us` to board URLs. Use the
+> unfiltered base URL so the crawler captures all listings.
+
 ### Track A — Enrichment
 
 <track-a>
@@ -108,14 +115,24 @@ Before submitting, verify:
 - All metadata fields set (descriptions x4, industry, logos)
 - All boards configured and feedback recorded
 - Job counts verified against website
+- **Multinational check:** If the company has 500+ employees or offices in
+  multiple countries but only 1 board was configured, discovery is likely
+  incomplete. Investigate the careers page for regional or ATS-specific
+  boards before submitting.
 
 ```bash
 ws submit {{ slug }} [--summary "..."]
 ```
 
-### Record lessons learned
+### Advance through final steps
 
-Before completing, contribute to the knowledge base:
+After submit succeeds, advance to the reflect step:
+
+```bash
+ws task next --notes "<difficulties, key decisions, or 'none'>"
+```
+
+During reflection, contribute to the knowledge base:
 
 - **Non-obvious problem solved?** Record it so future agents can find it:
   `ws task learn --step <step> --symptom "..." --solution "..." --tags "..."`
@@ -123,9 +140,14 @@ Before completing, contribute to the knowledge base:
   `ws task casestudy --company {{ slug }} --monitor <type> --scraper <type> --tags "..." --summary "..."`
 - Nothing noteworthy? Skip this — only record genuinely reusable lessons.
 
+Then complete the workflow:
+
 ```bash
 ws task complete
 ```
+
+**Do NOT call `ws task complete` directly after `ws submit`.** The sequence
+is: `ws submit` → `ws task next` (enters reflect) → `ws task complete`.
 
 ## If something goes wrong
 
