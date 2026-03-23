@@ -218,6 +218,7 @@ lightricks,lightricks-careers,https://boards.greenhouse.io/lightricks,greenhouse
 limula,limula-careers-en,https://apply.workable.com/limula/?lng=en,workable,"{""token"": ""limula""}",workable,
 lindt-spruengli,lindt-spruengli-careers,https://www.lindt-spruengli.com/careers/vacancies,umantis,"{""customer_id"": ""1619""}",dom,"{""render"": false, ""steps"": [{""tag"": ""title"", ""field"": ""title""}, {""tag"": ""h2"", ""field"": ""description"", ""stop"": ""Benefits"", ""html"": true, ""optional"": true}]}"
 lindt-spruengli,lindt-spruengli-careers-workday,https://lindtspruengli.wd103.myworkdayjobs.com/LindtSpruengliGroupCareers,workday,"{""company"": ""lindtspruengli"", ""wd_instance"": ""wd103"", ""site"": ""LindtSpruengliGroupCareers""}",workday,
+linklaters,linklaters-careers,https://linklaters.wd3.myworkdayjobs.com/Linklaters,workday,"{""company"": ""linklaters"", ""wd_instance"": ""wd3"", ""site"": ""Linklaters""}",workday,
 logitech,logitech-careers,https://logitech.wd5.myworkdayjobs.com/Logitech,workday,,workday,
 lombard-odier,lombard-odier-careers,https://lombardodier.wd3.myworkdayjobs.com/Lombard_Odier_Careers,workday,,workday,
 lonza,lonza-careers,https://lonza.wd3.myworkdayjobs.com/Lonza_Careers,workday,,workday,
