@@ -225,8 +225,17 @@ def discover_transcript(slug: str) -> Path | None:
         if not tail_ws:
             continue
 
-        # Verify slug appears in at least one ws command
-        if not any(slug_re.search(cmd) for _, cmd in tail_ws):
+        # Verify slug appears in ws commands OR in any text content.
+        # Agents often omit the explicit slug (using active workspace),
+        # so also search text output, tool results, etc.
+        slug_found = any(slug_re.search(cmd) for _, cmd in tail_ws)
+        if not slug_found:
+            tail_text = " ".join(
+                json.dumps(r.get("message", {}))
+                for r in tail[-500:]  # last 500 records for speed
+            )
+            slug_found = bool(slug_re.search(tail_text))
+        if not slug_found:
             continue
 
         # Count how many log timestamps match transcript ws timestamps
@@ -245,16 +254,15 @@ def discover_transcript(slug: str) -> Path | None:
     if best_match:
         return best_match[0]
 
-    # Fallback: mtime closest to complete timestamp + slug in full text.
+    # Fallback: mtime closest to complete timestamp + slug in any text.
     # For long sessions the tail may miss early ws commands.
     complete_ts = log_cmds[-1][0]
     complete_dt = _parse_ts(complete_ts)
     if complete_dt:
         for t_path, mtime_diff in candidates[:10]:
-            if mtime_diff > 30:  # mtime must be within 30s of complete
+            if mtime_diff > 300:  # mtime within 5 min of complete
                 continue
-            # Quick slug check in last chunk of file
-            tail = _tail_jsonl(t_path, 200)
+            tail = _tail_jsonl(t_path, 500)
             tail_text = " ".join(json.dumps(r.get("message", {})) for r in tail)
             if slug_re.search(tail_text):
                 return t_path
