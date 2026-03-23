@@ -54,6 +54,7 @@ corintis,corintis-careers,https://careers.corintis.com/jobs,rss,"{""preset"": ""
 cradle,cradle-careers,https://jobs.ashbyhq.com/cradlebio,ashby,"{""token"": ""cradlebio""}",skip,
 daedalean,daedalean-careers,https://jobs.lever.co/daedalean,lever,"{""token"": ""daedalean""}",skip,
 databricks,databricks-careers,https://www.databricks.com/company/careers,greenhouse,"{""token"": ""databricks""}",,
+deel,deel-careers,https://jobs.ashbyhq.com/deel,ashby,"{""token"": ""deel""}",skip,
 deepjudge,deepjudge-careers,https://jobs.ashbyhq.com/deepjudge,ashby,"{""token"": ""deepjudge""}",,
 deepmind,deepmind-careers,https://deepmind.google/about/careers/,greenhouse,"{""token"": ""deepmind""}",,
 deepsense-ai,deepsense-ai-careers,https://deepsense.ai/careers/,dom,"{""url_filter"": ""/careers/[a-z]""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""attr"": ""class=taxonomy-location"", ""field"": ""locations"", ""optional"": true, ""from"": 0}, {""attr"": ""class=taxonomy-operating-mode"", ""field"": ""job_location_type"", ""optional"": true, ""from"": 0}, {""tag"": ""h2"", ""field"": ""description"", ""html"": true, ""stop_tag"": ""footer"", ""from"": 0}]}"
