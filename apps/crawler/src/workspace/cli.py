@@ -50,8 +50,38 @@ from src.workspace.commands.task import task
 from src.workspace.commands.taxonomy import taxonomy_group
 from src.workspace.errors import WorkspaceError
 
+# Common agent typos → correct command
+_COMMAND_ALIASES: dict[str, str] = {
+    "show": "status",
+    "list": "status",
+    "advance": "task next --notes",
+    "remove": "del",
+    "switch": "use",
+    "boards": "add boards",
+    "config": "select config",
+    "configs": "select config",
+    "test": "run",
+}
 
-@click.group()
+
+class _WsGroup(click.Group):
+    """Click group with did-you-mean suggestions for unknown commands."""
+
+    def resolve_command(self, ctx: click.Context, args: list[str]) -> tuple:  # type: ignore[override]
+        try:
+            return super().resolve_command(ctx, args)
+        except click.UsageError as e:
+            if args:
+                attempted = args[0]
+                suggestion = _COMMAND_ALIASES.get(attempted)
+                if suggestion:
+                    raise click.UsageError(
+                        f"No such command {attempted!r}. Did you mean: ws {suggestion}"
+                    ) from e
+            raise
+
+
+@click.group(cls=_WsGroup)
 @click.version_option(package_name="jobseek-crawler")
 def ws():
     """Workspace CLI for managing company additions."""

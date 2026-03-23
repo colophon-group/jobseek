@@ -150,10 +150,10 @@ def task(ctx, issue: int | None, pick_next: bool):
     ws = load_workspace(slug)
     boards = list_boards(slug)
 
-    # Copy prompt templates into workspace so the agent doesn't need codebase access
     from src.workspace.state import ws_dir
     from src.workspace.workflow import render_parallel_prompt
 
+    # Copy prompt templates into workspace as fallback
     prompts_dir = ws_dir(slug) / "prompts"
     if not prompts_dir.exists():
         import shutil
@@ -163,12 +163,41 @@ def task(ctx, issue: int | None, pick_next: bool):
         if src_prompts.is_dir():
             shutil.copytree(src_prompts, prompts_dir)
 
-    ctx = {
+    # Build context with pre-rendered subagent prompts inlined
+    base_ctx = {
         "slug": slug,
         "issue": str(ws.issue or ""),
         "website": ws.website or "",
         "company_name": ws.name or "",
         "prompts_dir": str(prompts_dir),
+    }
+
+    # Embed industry table in track-a
+    industry_table = _get_industry_table()
+    track_a_ctx = {**base_ctx, "industry_table": industry_table}
+    track_a_prompt = render_parallel_prompt("track-a-enrichment", track_a_ctx)
+
+    # Embed monitor type list in track-c
+    from src.workspace.commands.help import MONITORS
+
+    monitor_table = MONITORS.split("Interpretation guide")[0].strip()
+    track_c_ctx = {**base_ctx, "monitor_table": monitor_table}
+    track_c_prompt = render_parallel_prompt("track-c-boards", track_c_ctx)
+
+    # Track B — no extra embedding needed
+    track_b_prompt = render_parallel_prompt("track-b-logos", base_ctx)
+
+    # Config tester / comparison — read raw templates (board-specific vars not yet known)
+    config_tester_raw = _read_raw_template("config-tester.md")
+    config_comparison_raw = _read_raw_template("config-comparison.md")
+
+    ctx = {
+        **base_ctx,
+        "track_a_prompt": track_a_prompt,
+        "track_b_prompt": track_b_prompt,
+        "track_c_prompt": track_c_prompt,
+        "config_tester_raw": config_tester_raw,
+        "config_comparison_raw": config_comparison_raw,
     }
     instructions = render_parallel_prompt("orchestrator", ctx)
 
@@ -215,7 +244,13 @@ def _pre_verify(issue: int) -> None:
 
 
 @task.command(name="next")
-@click.option("--notes", required=True, help="Reflection notes for this step (or 'none')")
+@click.option(
+    "--notes",
+    "--reflection",
+    "--reflect",
+    required=True,
+    help="Reflection notes for this step (or 'none')",
+)
 def task_next(notes: str):
     """Record reflection, verify gate, and advance to next step."""
     slug = resolve_slug(None)
@@ -556,6 +591,40 @@ def task_casestudy(company: str, monitor: str, scraper: str, tags: str, summary:
     out.plain("kb", f"  Summary: {summary}")
     out.plain("kb", f"  Tags: {tags}")
     out.plain("kb", "Fill in the Key decisions and Config sections in the generated file.")
+
+
+# ── Prompt helpers ───────────────────────────────────────────────────
+
+
+def _get_industry_table() -> str:
+    """Build a compact industry ID table for embedding in prompts."""
+    import csv
+
+    from src.shared.constants import get_data_dir
+
+    path = get_data_dir() / "industries.csv"
+    if not path.exists():
+        return ""
+    with open(path) as f:
+        reader = csv.DictReader(f)
+        rows = list(reader)
+    if not rows:
+        return ""
+    lines = [f"{'ID':>3}  {'Name':<30}"]
+    lines.append(f"{'──':>3}  {'─' * 30}")
+    for r in rows:
+        lines.append(f"{r['id']:>3}  {r.get('en') or r.get('name', ''):<30}")
+    return "\n".join(lines)
+
+
+def _read_raw_template(name: str) -> str:
+    """Read a parallel step template as raw text (no rendering)."""
+    from pathlib import Path
+
+    path = Path(__file__).parent.parent / "steps" / "parallel" / name
+    if path.exists():
+        return path.read_text()
+    return ""
 
 
 # ── Display helpers ──────────────────────────────────────────────────

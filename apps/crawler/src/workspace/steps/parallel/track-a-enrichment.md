@@ -37,7 +37,13 @@ Use `--no-discover` to skip logo discovery side effects.
 
 ### Industry
 
+{% if industry_table %}
+Select the correct industry ID from the table below:
+
+{{ industry_table }}
+{% else %}
 Run `ws help industries` to find the correct industry ID from the taxonomy.
+{% endif %}
 
 ```bash
 ws set {{ slug }} --industry <id> --no-discover

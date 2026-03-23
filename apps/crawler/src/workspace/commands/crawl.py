@@ -2040,8 +2040,16 @@ def feedback_cmd(
         if field_name in fields_fb:
             continue
         count = coverage_data.get(field_name, 0)
+        if field_name in scraper_quality:
+            total = scraper_total or monitor_total
+        else:
+            total = monitor_total or scraper_total
         if count > 0 or field_name in _REQUIRED_FIELDS:
-            missing_explicit.append(f"--{field_name.replace('_', '-')}")
+            flag = f"--{field_name.replace('_', '-')}"
+            if count > 0:
+                missing_explicit.append(f"{flag} ({count}/{total} jobs)")
+            else:
+                missing_explicit.append(flag)
     if missing_explicit:
         out.die(
             "Explicit quality required for: "
