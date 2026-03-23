@@ -265,6 +265,7 @@ sanofi,sanofi-careers-opella,https://sanofi.wd3.myworkdayjobs.com/OpellaCareers,
 sap,sap-careers,https://jobs.sap.com/search/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://jobs.sap.com/googlefeed.xml""}",skip,
 sbb,sbb-careers,https://careers.sbb.ch,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.sbb.ch/googlefeed.xml""}",skip,
 scandit,scandit-careers,https://boards.greenhouse.io/scandit,greenhouse,"{""token"": ""scandit""}",skip,
+schindler,schindler-careers,https://job.schindler.com/search/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://job.schindler.com/googlefeed.xml""}",skip,
 semrush,semrush-careers,https://careers.semrush.com/,recruitee,"{""slug"": ""semrush"", ""api_base"": ""https://semrush.recruitee.com""}",,
 seprify,seprify-careers,https://seprify.com/careers,sitemap,"{""url_filter"": ""/vacancies/""}",dom,"{""render"": false, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""text"": ""Location"", ""offset"": 1, ""field"": ""location"", ""optional"": true}, {""text"": ""Back"", ""offset"": 1, ""field"": ""description"", ""html"": true, ""stop"": ""Cookie Consent""}]}"
 servers-com,servers-com-careers-apply,https://servers-com.breezy.hr/,breezy,,,
