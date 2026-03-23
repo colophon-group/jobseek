@@ -229,6 +229,7 @@ logitech,logitech-careers,https://logitech.wd5.myworkdayjobs.com/Logitech,workda
 lombard-odier,lombard-odier-careers,https://lombardodier.wd3.myworkdayjobs.com/Lombard_Odier_Careers,workday,,workday,
 lonza,lonza-careers,https://lonza.wd3.myworkdayjobs.com/Lonza_Careers,workday,,workday,
 lonza,lonza-careers-sr,https://careers.smartrecruiters.com/lonza,smartrecruiters,"{""token"": ""lonza""}",smartrecruiters,
+louis-vuitton,louis-vuitton-careers,https://jobs.louisvuitton.com/en/search-page,dom,"{""render"": false, ""url_filter"": ""/job/"", ""pagination"": {""param_name"": ""page"", ""max_pages"": 100}}",json-ld,
 luxoft,luxoft-careers,https://career.luxoft.com/jobs,dom,"{""url_filter"": ""^https?://career\\.luxoft\\.com/jobs/[^/?#]+-[0-9]+$"", ""pagination"": {""param_name"": ""page"", ""max_pages"": 121}}",json-ld,
 lyceum,lyceum-careers,https://lyceum-technology.jobs.personio.com,personio,"{""slug"": ""lyceum-technology""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""h2"", ""attr"": ""class=detail-block-title"", ""field"": ""description"", ""html"": true, ""stop"": ""Apply for this job""}], ""render"": true, ""wait"": ""networkidle""}"
 lyft,lyft-careers,https://boards.greenhouse.io/lyft,greenhouse,,skip,
