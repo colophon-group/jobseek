@@ -1136,8 +1136,8 @@ def submit(slug: str | None, summary: str | None, force: bool):
     for w in warnings:
         out.warn("submit", w)
     if blockers:
-        poor_only = all("poor" in b for b in blockers)
-        if not force or not poor_only:
+        forceable = all("poor" in b or "0 jobs found" in b for b in blockers)
+        if not force or not forceable:
             for b in blockers:
                 out.error("submit", b)
             out.die("Quality gates failed. Fix issues or use --force.")
