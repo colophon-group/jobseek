@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { X, Loader2, MapPin, Briefcase, BarChart3, Code2, DollarSign, Clock, Building2 } from "lucide-react";
+import { X, Loader2, MapPin, Briefcase, BarChart3, Code2, DollarSign, Clock, Building2, Pencil } from "lucide-react";
 import { BackLink } from "@/components/BackLink";
 import { useLingui } from "@lingui/react/macro";
 import { useLocalePath } from "@/lib/useLocalePath";
@@ -284,11 +284,12 @@ export function WatchlistViewPage({
               </div>
             ) : (
               <h1
-                className={`text-xl font-semibold ${isOwner ? "cursor-pointer rounded px-2 py-1 -mx-2 -my-1 transition-colors hover:bg-border-soft" : ""}`}
+                className={`group/title text-xl font-semibold ${isOwner ? "cursor-pointer rounded px-2 py-1 -mx-2 -my-1 transition-colors hover:bg-border-soft" : ""}`}
                 onClick={isOwner ? () => setEditingTitle(true) : undefined}
                 title={isOwner ? t({ id: "watchlists.view.editTitle", comment: "Tooltip for clicking to edit watchlist title", message: "Click to rename" }) : undefined}
               >
                 {title}
+                {isOwner && <Pencil size={14} className="ml-2 inline-block text-muted opacity-0 transition-opacity group-hover/title:opacity-100" />}
               </h1>
             )}
             <p className="mt-0.5 text-sm text-muted">
