@@ -29,7 +29,7 @@ export default async function LocaleLayout({ children, params }: Props) {
         name: "Job Seek",
         url: siteConfig.url,
         logo: `${siteConfig.url}${siteConfig.logo.src}`,
-        sameAs: [siteConfig.social.linkedin.href],
+        sameAs: [siteConfig.social.linkedin.href, siteConfig.repoUrl],
       }} />
       <JsonLd data={{
         "@context": "https://schema.org",
