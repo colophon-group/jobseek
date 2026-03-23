@@ -88,6 +88,12 @@ galaxus,galaxus-careers,https://jobs.migros.ch/en/our-companies/galaxus/vacancie
 genestack,genestack-careers,https://genestack.com/company/careers/,breezy,"{""portal_url"": ""https://genestack-ltd.breezy.hr"", ""slug"": ""genestack-ltd""}",json-ld,
 genpeach-ai,genpeach-ai-careers,https://jobs.ashbyhq.com/genpeach,ashby,"{""token"": ""genpeach""}",skip,
 givaudan,givaudan-careers,https://jobs.givaudan.com/search/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://jobs.givaudan.com/googlefeed.xml""}",skip,
+glencore,glencore-careers,https://www.glencore.com/careers/jobs,api_sniffer,,skip,
+glencore,glencore-careers-astron-workday,https://glencore.wd3.myworkdayjobs.com/astronenergy,workday,"{""company"": ""glencore"", ""wd_instance"": ""wd3"", ""site"": ""astronenergy""}",workday,
+glencore,glencore-careers-coal-workday,https://gcaa.wd3.myworkdayjobs.com/GCAA_Careers,workday,"{""company"": ""gcaa"", ""wd_instance"": ""wd3"", ""site"": ""GCAA_Careers""}",workday,
+glencore,glencore-careers-copper,https://careers.glencorecopper.com/search/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.glencorecopper.com/googlefeed.xml""}",skip,
+glencore,glencore-careers-evr,https://jobs.lever.co/evr,lever,"{""token"": ""evr""}",skip,
+glencore,glencore-careers-uk-wx,https://job-boards.eu.greenhouse.io/glencoreukwx,greenhouse,"{""token"": ""glencoreukwx""}",skip,
 glovo,glovo-careers,https://careers.glovoapp.com/jobs-at-glovo/,sitemap,"{""sitemap_url"": ""https://careers.glovoapp.com/sitemap_index.xml"", ""url_filter"": ""/job/""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""p"", ""attr"": ""class=address"", ""field"": ""locations""}, {""tag"": ""p"", ""attr"": ""class=jobtype"", ""field"": ""employment_type"", ""optional"": true}, {""text"": ""Job Description"", ""field"": ""description"", ""offset"": 1, ""stop"": ""Apply shortlist"", ""html"": true}]}"
 google,google-careers,https://www.google.com/about/careers/applications/jobs/results/,sitemap,"{""sitemap_url"": ""https://www.google.com/about/careers/applications/jobs/sitemap.xml"", ""urls"": 3984}",embedded,"{""pattern"": ""AF_initDataCallback\\(\\{key:\\s*'ds:0'.*?data:"", ""path"": ""[0]"", ""fields"": {""title"": ""[1]"", ""description"": ""[10][1]"", ""locations"": ""[9][*][0]"", ""qualifications"": ""[4][1]"", ""responsibilities"": ""[3][1]""}}"
 h-company,h-company-careers,https://jobs.ashbyhq.com/hcompany,ashby,"{""token"": ""hcompany""}",skip,
