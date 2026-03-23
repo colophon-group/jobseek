@@ -101,6 +101,8 @@ deloitte,deloitte-careers-global,https://applyglobal.deloitte.com,rss,"{""preset
 deloitte,deloitte-careers-uk,https://apply.deloitte.co.uk/UKCareers,sitemap,"{""sitemap_url"": ""https://apply.deloitte.co.uk/UKCareers/sitemap.xml"", ""url_filter"": ""/UKCareers/JobDetail/""}",json-ld,
 deloitte,deloitte-careers-us,https://apply.deloitte.com/en_US/careers/SearchJobs,dom,"{""url_filter"": ""/careers/JobDetail/"", ""render"": true, ""pagination"": {""param_name"": ""jobOffset"", ""start"": 0, ""increment"": 10, ""max_pages"": 100}}",json-ld,
 depoly,depoly-careers,https://depoly.jobs.personio.com,personio,"{""slug"": ""depoly"", ""language"": ""en""}",skip,
+deutsche-bank,deutsche-bank-dws,https://db.wd3.myworkdayjobs.com/en-US/DWSWebsite,workday,"{""company"": ""db"", ""wd_instance"": ""wd3"", ""site"": ""DWSWebsite"", ""all_sites"": false}",workday,
+deutsche-bank,deutsche-bank-main,https://db.wd3.myworkdayjobs.com/en-US/DBWebsite,workday,"{""company"": ""db"", ""wd_instance"": ""wd3"", ""site"": ""DBWebsite"", ""all_sites"": false}",workday,
 disney,disney-careers,https://disney.wd5.myworkdayjobs.com/disneycareer,workday,"{""company"": ""disney"", ""wd_instance"": ""wd5"", ""site"": ""disneycareer""}",json-ld,
 doordash,doordash-careers,https://job-boards.greenhouse.io/doordashusa,greenhouse,"{""token"": ""doordashusa""}",skip,
 doordash,doordash-careers-au,https://job-boards.greenhouse.io/doordashaustralia,greenhouse,"{""token"": ""doordashaustralia""}",skip,
