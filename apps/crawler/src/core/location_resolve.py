@@ -585,7 +585,6 @@ class LocationResolver:
 
     def __init__(self) -> None:
         self._db: sqlite3.Connection | None = None
-        self._entry_cache: dict[int, _LocationEntry | None] = {}
         self._pool: asyncpg.Pool | None = None
         self._loaded = False
         self._tracking = False
@@ -613,29 +612,21 @@ class LocationResolver:
         return row[0] if row else 0
 
     def _get_entry(self, loc_id: int) -> _LocationEntry | None:
-        """Look up a location entry, with per-instance cache."""
-        cached = self._entry_cache.get(loc_id)
-        if cached is not None:
-            return cached
-        if loc_id in self._entry_cache:  # cached as None
-            return None
+        """Look up a location entry from the in-memory SQLite database."""
         assert self._db is not None
         row = self._db.execute(
             "SELECT id, parent_id, loc_type, population, languages FROM entry WHERE id = ?",
             (loc_id,),
         ).fetchone()
         if not row:
-            self._entry_cache[loc_id] = None
             return None
-        entry = _LocationEntry(
+        return _LocationEntry(
             id=row[0],
             parent_id=row[1],
             loc_type=row[2],
             population=row[3],
             languages=tuple(row[4].split(",")) if row[4] else (),
         )
-        self._entry_cache[loc_id] = entry
-        return entry
 
     def _lookup_name(self, key: str) -> list[int]:
         """Look up name→location IDs from SQLite, tracking misses for backfill."""
