@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -13,6 +13,13 @@ from src.core.monitors.api_sniffer import (
     _extract_urls_from_template,
     discover,
 )
+
+
+@pytest.fixture(autouse=True)
+def _zero_settle():
+    """Eliminate 3-second settle sleeps in tests."""
+    with patch("src.core.monitors.api_sniffer._DEFAULT_SETTLE", 0):
+        yield
 
 
 class TestExtractRich:

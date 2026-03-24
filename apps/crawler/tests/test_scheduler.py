@@ -31,8 +31,8 @@ def _slow_work_item(domain="slow.com", kind="monitor", delay=0.05, result=(True,
 def _mock_pool():
     """Create a mock asyncpg pool with metrics-compatible stubs."""
     pool = MagicMock()
-    pool.get_size.return_value = 0
-    pool.get_idle_size.return_value = 0
+    pool.get_size.return_value = 10
+    pool.get_idle_size.return_value = 10
     return pool
 
 
