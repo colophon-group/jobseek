@@ -1,0 +1,217 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Job Seek API",
+    "version": "1.0.0",
+    "description": "Public API for AI agents to search jobs, companies, watchlists, and taxonomies on jseek.co. Rate limited to 30 requests per minute per IP."
+  },
+  "servers": [{ "url": "https://jseek.co" }],
+  "paths": {
+    "/api/v1/search": {
+      "get": {
+        "operationId": "searchJobs",
+        "summary": "Search jobs across companies",
+        "description": "Returns up to 5 companies with their top 3 job postings matching the filters. Use the same query params as the explore page.",
+        "parameters": [
+          { "name": "q", "in": "query", "schema": { "type": "string" }, "description": "Keywords (free text)" },
+          { "name": "loc", "in": "query", "schema": { "type": "string" }, "description": "Location slugs, comma-separated" },
+          { "name": "occ", "in": "query", "schema": { "type": "string" }, "description": "Occupation slugs, comma-separated" },
+          { "name": "sen", "in": "query", "schema": { "type": "string" }, "description": "Seniority slugs, comma-separated" },
+          { "name": "tech", "in": "query", "schema": { "type": "string" }, "description": "Technology slugs, comma-separated" },
+          { "name": "sal", "in": "query", "schema": { "type": "string" }, "description": "Salary range in EUR, format: min-max (e.g. 80000-150000)" },
+          { "name": "salcur", "in": "query", "schema": { "type": "string" }, "description": "Salary currency code (e.g. USD, EUR)" },
+          { "name": "exp", "in": "query", "schema": { "type": "string" }, "description": "Experience range in years, format: min-max (e.g. 3-10)" },
+          { "name": "locale", "in": "query", "schema": { "type": "string", "default": "en" }, "description": "Response language (en, de, fr, it)" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "companies": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": { "type": "string" },
+                          "slug": { "type": "string" },
+                          "icon": { "type": "string", "nullable": true },
+                          "url": { "type": "string" },
+                          "activeJobs": { "type": "integer" },
+                          "topPostings": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "title": { "type": "string", "nullable": true },
+                                "location": { "type": "string", "nullable": true },
+                                "url": { "type": "string" }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "totalCompanies": { "type": "integer" },
+                    "moreAt": { "type": "string", "description": "Link to full results on jseek.co" }
+                  }
+                }
+              }
+            }
+          },
+          "429": { "description": "Rate limit exceeded" }
+        }
+      }
+    },
+    "/api/v1/taxonomies": {
+      "get": {
+        "operationId": "getTaxonomies",
+        "summary": "List supported filter values",
+        "description": "Returns all valid slugs for a taxonomy type. Use these slugs in search filters.",
+        "parameters": [
+          { "name": "type", "in": "query", "required": true, "schema": { "type": "string", "enum": ["seniority", "occupations", "technologies", "industries"] } },
+          { "name": "locale", "in": "query", "schema": { "type": "string", "default": "en" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Taxonomy items",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": { "type": "string" },
+                    "items": { "type": "array" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies": {
+      "get": {
+        "operationId": "searchCompanies",
+        "summary": "Search companies by name",
+        "description": "Returns up to 10 companies matching the query. Use company slugs in watchlist creation.",
+        "parameters": [
+          { "name": "q", "in": "query", "required": true, "schema": { "type": "string" }, "description": "Company name query (min 2 chars)" },
+          { "name": "locale", "in": "query", "schema": { "type": "string", "default": "en" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Matching companies",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "companies": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": { "type": "string" },
+                          "slug": { "type": "string" },
+                          "icon": { "type": "string", "nullable": true },
+                          "url": { "type": "string" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/watchlists": {
+      "get": {
+        "operationId": "searchWatchlists",
+        "summary": "Search public watchlists",
+        "description": "Returns up to 10 public watchlists. Without query, returns most popular.",
+        "parameters": [
+          { "name": "q", "in": "query", "schema": { "type": "string" }, "description": "Search query for watchlist title/description" },
+          { "name": "locale", "in": "query", "schema": { "type": "string", "default": "en" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Matching watchlists",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "watchlists": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "title": { "type": "string" },
+                          "description": { "type": "string", "nullable": true },
+                          "owner": { "type": "string" },
+                          "companyCount": { "type": "integer" },
+                          "url": { "type": "string" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/watchlist/create": {
+      "get": {
+        "operationId": "createWatchlistLink",
+        "summary": "Generate a prefilled watchlist creation link",
+        "description": "Returns a URL that opens the watchlist creation page with filters, title, and description prefilled. The user must log in to save. Also returns a preview with matching job/company counts so the agent can verify the filters are useful before handing off.",
+        "parameters": [
+          { "name": "title", "in": "query", "required": true, "schema": { "type": "string" }, "description": "Watchlist title" },
+          { "name": "description", "in": "query", "schema": { "type": "string" }, "description": "Watchlist description" },
+          { "name": "q", "in": "query", "schema": { "type": "string" } },
+          { "name": "loc", "in": "query", "schema": { "type": "string" } },
+          { "name": "occ", "in": "query", "schema": { "type": "string" } },
+          { "name": "sen", "in": "query", "schema": { "type": "string" } },
+          { "name": "tech", "in": "query", "schema": { "type": "string" } },
+          { "name": "sal", "in": "query", "schema": { "type": "string" } },
+          { "name": "salcur", "in": "query", "schema": { "type": "string" } },
+          { "name": "exp", "in": "query", "schema": { "type": "string" } },
+          { "name": "companies", "in": "query", "schema": { "type": "string" }, "description": "Company slugs, comma-separated" },
+          { "name": "locale", "in": "query", "schema": { "type": "string", "default": "en" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Prefilled watchlist link with preview",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "url": { "type": "string", "description": "Link to open watchlist creation with prefilled fields" },
+                    "preview": {
+                      "type": "object",
+                      "properties": {
+                        "title": { "type": "string" },
+                        "description": { "type": "string", "nullable": true },
+                        "matchingCompanies": { "type": "integer" },
+                        "matchingJobs": { "type": "integer" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

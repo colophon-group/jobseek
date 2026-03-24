@@ -22,3 +22,10 @@ export const companyRequestLimiter = new Ratelimit({
   limiter: Ratelimit.slidingWindow(5, "3600 s"),
   prefix: "rl:company-req",
 });
+
+/** Public API (AI agents): 30 requests per 60 seconds per IP. */
+export const apiLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(30, "60 s"),
+  prefix: "rl:api",
+});
