@@ -139,11 +139,14 @@ async function run() {
       for (const theme of THEMES) {
         const page = await context.newPage();
 
-        // Pre-set theme before navigation
-        await page.addInitScript((t) => {
+        // Pre-set theme and locale before navigation to prevent
+        // PreferencesInitializer from redirecting to the user's saved locale
+        await page.addInitScript(({ t, loc }) => {
           localStorage.setItem("theme", t);
           localStorage.setItem("cookie-consent", "1");
-        }, theme);
+          localStorage.setItem("pref-locale", loc);
+          localStorage.setItem("pref-locale-updated-at", new Date().toISOString());
+        }, { t: theme, loc: locale });
 
         console.log(`  ${locale}/${feature.name}-${theme} → ${url}`);
 
@@ -152,10 +155,21 @@ async function run() {
           await setTheme(page, theme);
           await waitForHydration(page);
 
+          // Wait for locale redirect to settle (PreferencesInitializer)
+          await page.waitForTimeout(500);
+          await page.waitForLoadState("networkidle");
+
           // Click Ok on cookie banner if it still appears
           const okBtn = page.locator('button:has-text("Ok")').first();
           if (await okBtn.isVisible({ timeout: 300 }).catch(() => false)) {
             await okBtn.click();
+            await page.waitForTimeout(300);
+          }
+
+          // Wait for job detail panel to load (for my-jobs page)
+          if (url.includes("show=")) {
+            await page.waitForSelector('text="View posting"', { timeout: 5_000 }).catch(() => {});
+            await page.waitForLoadState("networkidle");
             await page.waitForTimeout(300);
           }
 
