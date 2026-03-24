@@ -30,8 +30,8 @@ export type PublicDomainAsset = {
 };
 
 export const siteConfig = {
-  url: "https://jobseek.com",
-  domain: "jobseek.com",
+  url: "https://jseek.co",
+  domain: "jseek.co",
   repoUrl: "https://github.com/colophon-group/jobseek",
   creator: "Viktor Shcherbakov",
 

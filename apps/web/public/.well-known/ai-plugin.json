@@ -1,0 +1,16 @@
+{
+  "schema_version": "v1",
+  "name_for_human": "Job Seek",
+  "name_for_model": "jobseek",
+  "description_for_human": "Monitor company career pages, get alerts on new job postings, and track applications.",
+  "description_for_model": "Job Seek is a job aggregator that monitors company career pages. Users can browse jobs by company, create watchlists, filter by location/occupation/seniority, and get alerts when new positions are posted. The explore page at /explore allows searching all indexed jobs. Company pages at /company/{slug} show all open positions for a specific company. The site is free to use with optional paid plans for advanced features.",
+  "auth": { "type": "none" },
+  "api": {
+    "type": "openapi",
+    "url": "https://jseek.co/api/openapi.json",
+    "is_user_authenticated": false
+  },
+  "logo_url": "https://jseek.co/js_logo_black_circle.svg",
+  "contact_email": "business@colophon-group.org",
+  "legal_info_url": "https://jseek.co/en/terms"
+}
