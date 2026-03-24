@@ -76,8 +76,8 @@ export const siteConfig = {
     sections: [
       {
         screenshot: {
-          light: "/js_missing_screenshot_black.png",
-          dark: "/js_missing_screenshot_white.png",
+          light: "/screenshots/{lang}/feature1-light.png",
+          dark: "/screenshots/{lang}/feature1-dark.png",
           width: 1200,
           height: 630,
         },
@@ -85,8 +85,8 @@ export const siteConfig = {
       },
       {
         screenshot: {
-          light: "/js_missing_screenshot_black.png",
-          dark: "/js_missing_screenshot_white.png",
+          light: "/screenshots/{lang}/feature2-light.png",
+          dark: "/screenshots/{lang}/feature2-dark.png",
           width: 1200,
           height: 630,
         },
