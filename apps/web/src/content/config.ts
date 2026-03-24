@@ -160,6 +160,15 @@ export const siteConfig = {
     },
   },
 
+  about: {
+    hero: {
+      art: {
+        assetKey: "adam_tills_the_soil" as const,
+        focus: { x: 0, y: 30 },
+      },
+    },
+  },
+
   homepageArt: {
     assetKey: "the_miser" as const,
     focus: { x: 45, y: 40 },
@@ -277,5 +286,17 @@ export const publicDomainAssets: Record<string, PublicDomainAsset> = {
     author: "Hans Holbein",
     date: "1523-5",
     crop: { left: 50, top: 37, bottom: 183 },
+  },
+  adam_tills_the_soil: {
+    href: "/publicdomain/master/adam_tills_the_soil.jpg",
+    light: "/publicdomain/adam_tills_the_soil_dark.png",
+    dark: "/publicdomain/adam_tills_the_soil_light.png",
+    height: 696,
+    width: 550,
+    alt: "Adam Tills the Soil by Hans Holbein",
+    link: "https://pdimagearchive.org/images/402db071-bd53-4a89-b612-b1711d14ab4d/",
+    title: "Adam Tills the Soil",
+    author: "Hans Holbein",
+    date: "1523-5",
   },
 };

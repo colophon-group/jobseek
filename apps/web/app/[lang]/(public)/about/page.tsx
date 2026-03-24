@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { getI18n } from "@lingui/react/server";
 import { initI18nForPage, isLocale, defaultLocale, loadCatalog } from "@/lib/i18n";
-import { siteConfig } from "@/content/config";
-import { buildAlternates } from "@/lib/seo";
+import { siteConfig, publicDomainAssets } from "@/content/config";
+import { buildAlternates, JsonLd } from "@/lib/seo";
+import { AboutContent } from "./about-content";
 
 type Props = {
   params: Promise<{ lang: string }>;
@@ -27,12 +29,27 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function AboutPage({ params }: Props) {
-  await initI18nForPage(params);
+  const locale = await initI18nForPage(params);
+  const i18n = getI18n()!;
+  const art = publicDomainAssets[siteConfig.about.hero.art.assetKey];
 
   return (
-    <div className="mx-auto max-w-[720px] px-4 py-16">
-      <h1 className="text-3xl font-bold">About</h1>
-      <p className="mt-4 text-muted">Coming soon.</p>
-    </div>
+    <>
+      <JsonLd data={{
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        name: i18n._({ id: "about.meta.title", message: "About" }),
+        description: i18n._({ id: "about.meta.description", message: "About Job Seek — the job search engine that scrapes career pages directly." }),
+        url: `${siteConfig.url}/${locale}/about`,
+        inLanguage: locale,
+        isPartOf: { "@type": "WebSite", url: siteConfig.url },
+      }} />
+      <AboutContent
+        art={art}
+        artFocus={siteConfig.about.hero.art.focus}
+        contactEmail={siteConfig.indexing.contactEmail}
+        ossRepoUrl={siteConfig.indexing.ossRepoUrl}
+      />
+    </>
   );
 }
