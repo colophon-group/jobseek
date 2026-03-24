@@ -434,6 +434,7 @@ pwc,pwc-careers-us-phenom,https://jobs-us.pwc.com/us/en/search-results,sitemap,"
 pwc,pwc-careers-workday,https://pwc.wd3.myworkdayjobs.com/Global_Experienced_Careers,workday,"{""company"": ""pwc"", ""wd_instance"": ""wd3"", ""site"": ""Global_Experienced_Careers""}",,
 recraft,recraft-careers,https://jobs.ashbyhq.com/recraft,ashby,"{""token"": ""recraft""}",skip,
 reddit,reddit-careers,https://boards.greenhouse.io/reddit,greenhouse,,skip,
+reflection-ai,reflection-ai-careers,https://jobs.ashbyhq.com/reflectionai,ashby,"{""token"": ""reflectionai""}",skip,
 relai,relai-careers,https://relai.app/career/,greenhouse,"{""token"": ""technology""}",skip,
 reprisk,reprisk-careers,https://careers.smartrecruiters.com/RepRiskAG,smartrecruiters,,smartrecruiters,
 revolut,revolut-careers,https://www.revolut.com/careers/,nextdata,"{""path"": ""props.pageProps.positions"", ""url_template"": ""https://www.revolut.com/careers/position/{slug}-{id}/"", ""slug_fields"": [""text""], ""render"": true, ""stealth"": true, ""wait"": ""domcontentloaded"", ""fields"": {""title"": ""text"", ""locations"": ""locations[].name"", ""metadata.team"": ""team""}}",nextdata,"{""path"": ""props.pageProps.position"", ""render"": true, ""wait"": ""domcontentloaded"", ""fields"": {""title"": ""text"", ""description"": ""description"", ""locations"": ""locations[].name"", ""job_location_type"": ""locations[].type"", ""metadata.team"": ""team""}}"
