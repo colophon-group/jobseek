@@ -22,6 +22,7 @@ import { buildFilteredPath } from "@/lib/search/query-params";
 import type { SearchResultPosting, HistogramFilters } from "@/lib/search";
 import type { SelectedLocation } from "@/components/search/location-pills";
 import { useSearchStateStore } from "@/components/SearchStateProvider";
+import { withUtmSource } from "@/lib/utm";
 
 const PAGE_SIZE = 20;
 
@@ -558,7 +559,7 @@ export function CompanyPage({
         )}
         {company.website ? (
           <a
-            href={company.website}
+            href={withUtmSource(company.website)}
             target="_blank"
             rel="noopener noreferrer"
             className="text-lg font-semibold hover:underline"
