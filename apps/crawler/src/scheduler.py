@@ -28,6 +28,7 @@ from src.batch import (  # noqa: E402
     dry_run_single_board,
     process_monitor_batch,
     process_scrape_batch,
+    release_rejected,
     run_single_board,
 )
 from src.config import settings  # noqa: E402
@@ -205,6 +206,40 @@ class WorkerPool:
             budget = min(budget, self._db_pool.get_idle_size())
         return budget
 
+    def accept(self, items: list[WorkItem]) -> tuple[list[WorkItem], list[WorkItem]]:
+        """Partition claimed items by pool capacity.
+
+        Returns (accepted, rejected).  HTTP items are accepted up to
+        ``http_free`` slots; browser items up to ``browser_free`` slots.
+        Items that queue behind an already-inflight domain don't consume
+        a slot, so they are always accepted.
+
+        Rejected items should have their DB leases released immediately
+        so they become claimable again on the next tick.
+        """
+        http_budget = self.http_free
+        browser_budget = self.browser_free
+        accepted: list[WorkItem] = []
+        rejected: list[WorkItem] = []
+        for item in items:
+            # Items queuing behind an in-flight domain share its slot
+            if item.domain in self._domains_inflight:
+                accepted.append(item)
+                continue
+            if item.needs_browser:
+                if browser_budget > 0:
+                    browser_budget -= 1
+                    accepted.append(item)
+                else:
+                    rejected.append(item)
+            else:
+                if http_budget > 0:
+                    http_budget -= 1
+                    accepted.append(item)
+                else:
+                    rejected.append(item)
+        return accepted, rejected
+
     def submit(self, item: WorkItem) -> None:
         """Schedule a work item.
 
@@ -378,6 +413,9 @@ async def run_continuous_loop(
             skip = wp.saturated_domains
             if monitor and budget > 0:
                 items = await claim_monitor_work(pool, http, budget, worker_id, skip)
+                items, rejected = wp.accept(items)
+                if rejected:
+                    await release_rejected(pool, rejected)
                 monitors_claimed = len(items)
                 for item in items:
                     wp.submit(item)
@@ -388,6 +426,9 @@ async def run_continuous_loop(
             skip = wp.saturated_domains
             if scrape and budget > 0:
                 items = await claim_scrape_work(pool, http, budget, worker_id, skip)
+                items, rejected = wp.accept(items)
+                if rejected:
+                    await release_rejected(pool, rejected)
                 scrapes_claimed = len(items)
                 for item in items:
                     wp.submit(item)

@@ -328,7 +328,8 @@ WHERE id = $1
 
 _RELEASE_BOARD_LEASES = """
 UPDATE job_board
-SET lease_owner = NULL, leased_until = NULL
+SET lease_owner = NULL, leased_until = NULL,
+    next_check_at = now()
 WHERE id = ANY($1::uuid[])
 """
 
