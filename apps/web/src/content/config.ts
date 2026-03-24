@@ -298,5 +298,6 @@ export const publicDomainAssets: Record<string, PublicDomainAsset> = {
     title: "Adam Tills the Soil",
     author: "Hans Holbein",
     date: "1523-5",
+    crop: { left: 28, top: 70, bottom: 14 },
   },
 };
