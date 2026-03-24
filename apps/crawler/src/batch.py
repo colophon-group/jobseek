@@ -1521,10 +1521,11 @@ async def _process_one_board_streaming(
             all_urls.update(result.urls)
             is_rich = result.jobs_by_url is not None
 
-            # Pulse heartbeat + extend DB lease
+            # Pulse heartbeat + extend DB lease (shielded to avoid
+            # destroying the pool connection on task cancellation)
             extender.pulse()
             with contextlib.suppress(Exception):
-                await pool.execute(_EXTEND_BOARD_LEASE, board_id)
+                await asyncio.shield(pool.execute(_EXTEND_BOARD_LEASE, board_id))
 
             if not result.urls:
                 continue
