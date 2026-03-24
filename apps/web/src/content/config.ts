@@ -53,9 +53,10 @@ export const siteConfig = {
   },
 
   nav: {
-    product: { href: "/" },
+    about: { href: "/about" },
     features: { href: "/#features" },
     pricing: { href: "/#pricing" },
+    faq: { href: "/faq" },
     company: { href: "/how-we-index" },
     license: { href: "/license" },
     login: { href: "/sign-in" },
@@ -180,6 +181,8 @@ export const siteConfig = {
     ],
     sitemap: [
       { path: "/", changeFrequency: "weekly", priority: 1 },
+      { path: "/about", changeFrequency: "monthly", priority: 0.7 },
+      { path: "/faq", changeFrequency: "monthly", priority: 0.7 },
       { path: "/how-we-index", changeFrequency: "monthly", priority: 0.6 },
       { path: "/license", changeFrequency: "monthly", priority: 0.5 },
       { path: "/privacy-policy", changeFrequency: "monthly", priority: 0.5 },

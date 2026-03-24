@@ -72,8 +72,8 @@ export function MobileMenu({ open, onCloseAction }: MobileMenuProps) {
             <nav className="mt-6">
               <ul className="flex flex-col">
                 <li>
-                  <Link href={lp(siteConfig.nav.product.href)} prefetch={false} onClick={onCloseAction} className="block rounded-md px-3 py-2.5 transition-colors hover:bg-border-soft" aria-current={ariaCurrent(lp(siteConfig.nav.product.href))}>
-                    <Trans id="common.nav.product" comment="Nav link: Product">Product</Trans>
+                  <Link href={lp(siteConfig.nav.about.href)} onClick={onCloseAction} className="block rounded-md px-3 py-2.5 transition-colors hover:bg-border-soft" aria-current={ariaCurrent(lp(siteConfig.nav.about.href))}>
+                    <Trans id="common.nav.about" comment="Nav link: About">About</Trans>
                   </Link>
                 </li>
                 <li>
@@ -87,8 +87,13 @@ export function MobileMenu({ open, onCloseAction }: MobileMenuProps) {
                   </Link>
                 </li>
                 <li>
+                  <Link href={lp(siteConfig.nav.faq.href)} onClick={onCloseAction} className="block rounded-md px-3 py-2.5 transition-colors hover:bg-border-soft" aria-current={ariaCurrent(lp(siteConfig.nav.faq.href))}>
+                    <Trans id="common.nav.faq" comment="Nav link: FAQ">FAQ</Trans>
+                  </Link>
+                </li>
+                <li>
                   <Link href={lp(siteConfig.nav.company.href)} onClick={onCloseAction} className="block rounded-md px-3 py-2.5 transition-colors hover:bg-border-soft" aria-current={ariaCurrent(lp(siteConfig.nav.company.href))}>
-                    <Trans id="common.nav.company" comment="Nav link: How do we index jobs?">How do we index jobs?</Trans>
+                    <Trans id="common.nav.company" comment="Nav link: Job indexing">Job indexing</Trans>
                   </Link>
                 </li>
               </ul>
