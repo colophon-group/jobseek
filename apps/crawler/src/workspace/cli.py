@@ -50,34 +50,27 @@ from src.workspace.commands.task import task
 from src.workspace.commands.taxonomy import taxonomy_group
 from src.workspace.errors import WorkspaceError
 
-# Common agent typos → correct command
+# Common agent typos → resolved command name (must be a registered top-level command)
 _COMMAND_ALIASES: dict[str, str] = {
     "show": "status",
     "list": "status",
-    "advance": "task next --notes",
     "remove": "del",
+    "rm": "del",
     "switch": "use",
-    "boards": "add boards",
-    "config": "select config",
-    "configs": "select config",
-    "test": "run",
 }
 
 
 class _WsGroup(click.Group):
-    """Click group with did-you-mean suggestions for unknown commands."""
+    """Click group that silently resolves common aliases and suggests
+    corrections for unknown commands."""
 
     def resolve_command(self, ctx: click.Context, args: list[str]) -> tuple:  # type: ignore[override]
+        # Silently resolve known aliases to the real command
+        if args and args[0] in _COMMAND_ALIASES:
+            args[0] = _COMMAND_ALIASES[args[0]]
         try:
             return super().resolve_command(ctx, args)
-        except click.UsageError as e:
-            if args:
-                attempted = args[0]
-                suggestion = _COMMAND_ALIASES.get(attempted)
-                if suggestion:
-                    raise click.UsageError(
-                        f"No such command {attempted!r}. Did you mean: ws {suggestion}"
-                    ) from e
+        except click.UsageError:
             raise
 
 

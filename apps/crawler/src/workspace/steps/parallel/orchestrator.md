@@ -99,7 +99,9 @@ all boards are processed.
 
 ### Config tester template
 
-Fill in the `{variables}` and pass to a subagent:
+Fill in the `{variables}` and pass to a subagent.
+**Remind every subagent: do NOT read source code files (src/core/, src/shared/, any .py).
+Use only `ws` commands and `ws help`.**
 
 <config-tester-template>
 {{ config_tester_raw }}

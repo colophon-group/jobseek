@@ -41,6 +41,13 @@ ws run monitor {{ slug }} --board {{ board_alias }} --config {{ config_name }}
 NOT the config name. The config name goes in `--config`. Passing a config
 name like `dom-test` as the slug causes "Workspace not found" errors.
 
+### If you get HTTP 403/406 errors
+
+Many career sites block non-browser requests. Common fixes:
+- Add `"render": true` to the monitor config (uses a real browser)
+- Try a different monitor type — `dom` with `render: true` bypasses most blocks
+- Run `ws task troubleshoot 'http 403'` for site-specific workarounds
+
 ### Verify job count
 
 Compare the crawled job count against the expected ~{{ expected_jobs }} jobs.
