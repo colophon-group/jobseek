@@ -16,10 +16,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const locale = isLocale(lang) ? lang : defaultLocale;
   const { i18n } = await loadCatalog(locale);
 
-  const title = i18n._({ id: "home.meta.title", message: "Find Relevant Roles Faster" });
+  const title = i18n._({ id: "home.meta.title", message: "Find Roles Before They Hit the Big Boards" });
   const description = i18n._({
     id: "home.meta.description",
-    message: "Subscribe to updates from companies, track applications, and never miss new openings.",
+    message: "Search jobs scraped directly from company career pages. Filter by seniority, tech stack, salary, and location, then track every application in one place.",
   });
 
   return {

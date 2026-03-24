@@ -5,15 +5,15 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { siteConfig } from "@/content/config";
 import { ThemedImage } from "@/components/ThemedImage";
 import { eyebrowClass, sectionHeadingClass } from "@/lib/styles";
-import { Bell, CircleCheck, Bookmark, Bug, Globe, Megaphone } from "lucide-react";
+import { Globe, SlidersHorizontal, Bell, GitGraph, ClipboardList, BarChart3 } from "lucide-react";
 
 const iconMap: Record<string, ElementType> = {
-  notifications: Bell,
-  check_circle: CircleCheck,
-  bookmark: Bookmark,
-  bug: Bug,
-  travel_explore: Globe,
-  campaign: Megaphone,
+  source: Globe,
+  filters: SlidersHorizontal,
+  alerts: Bell,
+  tracking: GitGraph,
+  interviews: ClipboardList,
+  stats: BarChart3,
 };
 
 const CONTAINER_MAX = 1200;
@@ -126,37 +126,37 @@ function FeatureSection1() {
           <div className="flex flex-col gap-4">
             <div>
               <span className={eyebrowClass}>
-                <Trans id="home.features.s1.eyebrow" comment="Feature section 1 eyebrow text">Everything you need to stay ahead</Trans>
+                <Trans id="home.features.s1.eyebrow" comment="Feature section 1 eyebrow text">Search with precision</Trans>
               </span>
               <h2 className={`mt-2 ${sectionHeadingClass}`}>
-                <Trans id="home.features.s1.title" comment="Feature section 1 heading">Built for active job seekers</Trans>
+                <Trans id="home.features.s1.title" comment="Feature section 1 heading">Every filter a job seeker actually needs</Trans>
               </h2>
               <p className="mt-4 text-muted">
-                <Trans id="home.features.s1.description" comment="Feature section 1 description">Track roles, get notified when companies post something new, and keep your pipeline clean.</Trans>
+                <Trans id="home.features.s1.description" comment="Feature section 1 description">Search across hundreds of companies scraped directly from their career pages. Filter by seniority, tech stack, salary range, location, and language — all at once.</Trans>
               </p>
             </div>
             <dl className="mt-8 flex flex-col gap-6">
               <PointBlock
                 icon={cfg.pointIcons[0]}
-                title={<Trans id="home.features.s1.p1.title" comment="Feature: company alerts title">Company alerts</Trans>}
-                description={<Trans id="home.features.s1.p1.description" comment="Feature: company alerts description">Follow target employers and get notified when they add new roles.</Trans>}
+                title={<Trans id="home.features.s1.p1.title" comment="Feature: direct from source title">Direct from the source</Trans>}
+                description={<Trans id="home.features.s1.p1.description" comment="Feature: direct from source description">We scrape career pages from Workday, Greenhouse, Lever, and more — roles show up here before they hit the big aggregators.</Trans>}
               />
               <PointBlock
                 icon={cfg.pointIcons[1]}
-                title={<Trans id="home.features.s1.p2.title" comment="Feature: application tracker title">Application tracker</Trans>}
-                description={<Trans id="home.features.s1.p2.description" comment="Feature: application tracker description">Log where you applied, status, contacts, and next steps.</Trans>}
+                title={<Trans id="home.features.s1.p2.title" comment="Feature: multi-dimensional filters title">Multi-dimensional filters</Trans>}
+                description={<Trans id="home.features.s1.p2.description" comment="Feature: multi-dimensional filters description">Combine seniority, technologies, salary, location, and job language in a single query. No more sifting through noise.</Trans>}
               />
               <PointBlock
                 icon={cfg.pointIcons[2]}
-                title={<Trans id="home.features.s1.p3.title" comment="Feature: saved searches title">Saved searches</Trans>}
-                description={<Trans id="home.features.s1.p3.description" comment="Feature: saved searches description">Save your filters for quick scans without retyping everything.</Trans>}
+                title={<Trans id="home.features.s1.p3.title" comment="Feature: watchlists and alerts title">Watchlists and alerts</Trans>}
+                description={<Trans id="home.features.s1.p3.description" comment="Feature: watchlists and alerts description">Save any search as a watchlist and get email alerts when new roles match your criteria.</Trans>}
               />
             </dl>
           </div>
         </div>
         <div className="flex flex-1 justify-start lg:justify-end" style={{ minHeight: 400 }}>
           <ImageWrapper mediaWidth={mediaWidth} inverted={false}>
-            <ThemedImage darkSrc={src.dark} lightSrc={src.light} alt={t({ id: "home.features.s1.screenshot.alt", comment: "Alt text for feature section 1 screenshot", message: "Job Seek dashboard showing tracked applications and company alerts" })} width={cfg.screenshot.width} height={cfg.screenshot.height} />
+            <ThemedImage darkSrc={src.dark} lightSrc={src.light} alt={t({ id: "home.features.s1.screenshot.alt", comment: "Alt text for feature section 1 screenshot", message: "Job Seek search results filtered by role and location" })} width={cfg.screenshot.width} height={cfg.screenshot.height} />
           </ImageWrapper>
         </div>
       </div>
@@ -186,37 +186,37 @@ function FeatureSection2() {
           <div className="flex flex-col gap-4">
             <div>
               <span className={eyebrowClass}>
-                <Trans id="home.features.s2.eyebrow" comment="Feature section 2 eyebrow text">Stay in control</Trans>
+                <Trans id="home.features.s2.eyebrow" comment="Feature section 2 eyebrow text">Track your pipeline</Trans>
               </span>
               <h2 className={`mt-2 ${sectionHeadingClass}`}>
-                <Trans id="home.features.s2.title" comment="Feature section 2 heading">The first job aggregator that puts you behind the wheel</Trans>
+                <Trans id="home.features.s2.title" comment="Feature section 2 heading">From saved role to signed offer, all in one place</Trans>
               </h2>
               <p className="mt-4 text-muted">
-                <Trans id="home.features.s2.description" comment="Feature section 2 description">{"Don't see your favourite company in the feed? Paste its careers link and we'll start scraping it for you\u2014no scripts, no spreadsheets, no waiting in support queues."}</Trans>
+                <Trans id="home.features.s2.description" comment="Feature section 2 description">Save any role you find, move it through your pipeline as you apply and interview, and see where every application stands at a glance.</Trans>
               </p>
             </div>
             <dl className="mt-8 flex flex-col gap-6">
               <PointBlock
                 icon={cfg.pointIcons[0]}
-                title={<Trans id="home.features.s2.p1.title" comment="Feature: paste a link title">Paste a link, kick off a crawl</Trans>}
-                description={<Trans id="home.features.s2.p1.description" comment="Feature: paste a link description">Point us at any careers page or Notion job board and Job Seek mirrors it in your workspace within minutes.</Trans>}
+                title={<Trans id="home.features.s2.p1.title" comment="Feature: status tracking title">Status tracking</Trans>}
+                description={<Trans id="home.features.s2.p1.description" comment="Feature: status tracking description">Move each role from saved to applied, interviewing, offered, or rejected. Always know where you stand.</Trans>}
               />
               <PointBlock
                 icon={cfg.pointIcons[1]}
-                title={<Trans id="home.features.s2.p2.title" comment="Feature: kill tab routine title">Kill the 50-tab routine</Trans>}
-                description={<Trans id="home.features.s2.p2.description" comment="Feature: kill tab routine description">Park every interesting startup in one dashboard instead of juggling Chrome windows and bookmarks.</Trans>}
+                title={<Trans id="home.features.s2.p2.title" comment="Feature: interview log title">Interview log</Trans>}
+                description={<Trans id="home.features.s2.p2.description" comment="Feature: interview log description">Record each interview round with date, type, and notes so nothing slips through the cracks.</Trans>}
               />
               <PointBlock
                 icon={cfg.pointIcons[2]}
-                title={<Trans id="home.features.s2.p3.title" comment="Feature: alerts you drive title">Alerts you actually drive</Trans>}
-                description={<Trans id="home.features.s2.p3.description" comment="Feature: alerts you drive description">Set the cadence per company so you hear about fresh openings without doom-scrolling job sites all day.</Trans>}
+                title={<Trans id="home.features.s2.p3.title" comment="Feature: application stats title">Application stats</Trans>}
+                description={<Trans id="home.features.s2.p3.description" comment="Feature: application stats description">See your funnel, conversion rates, and activity heatmap to understand what is working.</Trans>}
               />
             </dl>
           </div>
         </div>
         <div className="flex flex-1 justify-start" style={{ minHeight: 400 }}>
           <ImageWrapper mediaWidth={mediaWidth} inverted={true}>
-            <ThemedImage darkSrc={src.dark} lightSrc={src.light} alt={t({ id: "home.features.s2.screenshot.alt", comment: "Alt text for feature section 2 screenshot", message: "Job Seek interface for submitting company links and configuring custom alerts" })} width={cfg.screenshot.width} height={cfg.screenshot.height} />
+            <ThemedImage darkSrc={src.dark} lightSrc={src.light} alt={t({ id: "home.features.s2.screenshot.alt", comment: "Alt text for feature section 2 screenshot", message: "Job Seek application tracker showing saved jobs and interview details" })} width={cfg.screenshot.width} height={cfg.screenshot.height} />
           </ImageWrapper>
         </div>
       </div>

@@ -81,7 +81,7 @@ export const siteConfig = {
           width: 1200,
           height: 630,
         },
-        pointIcons: ["notifications", "check_circle", "bookmark"] as const,
+        pointIcons: ["source", "filters", "alerts"] as const,
       },
       {
         screenshot: {
@@ -90,7 +90,7 @@ export const siteConfig = {
           width: 1200,
           height: 630,
         },
-        pointIcons: ["bug", "travel_explore", "campaign"] as const,
+        pointIcons: ["tracking", "interviews", "stats"] as const,
       },
     ],
   },
