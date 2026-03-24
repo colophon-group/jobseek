@@ -51,8 +51,8 @@ export function Header({ onOpenMobileAction }: HeaderProps) {
             to avoid wasted edge requests. "How do we index" and CTA buttons
             keep prefetch enabled — those are cross-page hot paths. */}
         <nav className="hidden items-center gap-5 lg:flex">
-          <Link href={lp(siteConfig.nav.product.href)} prefetch={false} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.product.href))}>
-            <Trans id="common.nav.product" comment="Nav link: Product">Product</Trans>
+          <Link href={lp(siteConfig.nav.about.href)} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.about.href))}>
+            <Trans id="common.nav.about" comment="Nav link: About">About</Trans>
           </Link>
           <Link href={lp(siteConfig.nav.features.href)} prefetch={false} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.features.href))}>
             <Trans id="common.nav.features" comment="Nav link: Features">Features</Trans>
@@ -60,8 +60,11 @@ export function Header({ onOpenMobileAction }: HeaderProps) {
           <Link href={lp(siteConfig.nav.pricing.href)} prefetch={false} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.pricing.href))}>
             <Trans id="common.nav.pricing" comment="Nav link: Pricing">Pricing</Trans>
           </Link>
+          <Link href={lp(siteConfig.nav.faq.href)} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.faq.href))}>
+            <Trans id="common.nav.faq" comment="Nav link: FAQ">FAQ</Trans>
+          </Link>
           <Link href={lp(siteConfig.nav.company.href)} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.company.href))}>
-            <Trans id="common.nav.company" comment="Nav link: How do we index jobs?">How do we index jobs?</Trans>
+            <Trans id="common.nav.company" comment="Nav link: Job indexing">Job indexing</Trans>
           </Link>
         </nav>
 

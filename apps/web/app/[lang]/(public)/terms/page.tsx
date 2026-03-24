@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
+import { getI18n } from "@lingui/react/server";
 import { initI18nForPage, isLocale, defaultLocale, loadCatalog } from "@/lib/i18n";
 import { siteConfig } from "@/content/config";
-import { buildAlternates } from "@/lib/seo";
+import { buildAlternates, JsonLd } from "@/lib/seo";
 import { TermsContent } from "@/components/TermsContent";
 
 type Props = {
@@ -28,6 +29,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function TermsPage({ params }: Props) {
-  await initI18nForPage(params);
-  return <TermsContent />;
+  const locale = await initI18nForPage(params);
+  return (
+    <>
+      <JsonLd data={{
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        name: getI18n()!._({ id: "terms.meta.title", message: "Terms of Service" }),
+        description: getI18n()!._({ id: "terms.meta.description", message: "Terms of Service for the Job Seek application." }),
+        url: `${siteConfig.url}/${locale}/terms`,
+        inLanguage: locale,
+        isPartOf: { "@type": "WebSite", url: siteConfig.url },
+        lastReviewed: siteConfig.terms.lastUpdated,
+      }} />
+      <TermsContent />
+    </>
+  );
 }

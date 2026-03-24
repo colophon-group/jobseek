@@ -22,6 +22,7 @@ import {
   type InterviewType,
 } from "@/lib/actions/my-jobs-types";
 import { StatusBadge } from "./status-badge";
+import { withUtmSource } from "@/lib/utm";
 import { InterviewList } from "./interview-list";
 import { timeAgoShort } from "@/lib/time";
 import { SaveButton } from "@/components/search/save-button";
@@ -285,7 +286,7 @@ function PostingContent({ detail }: { detail: PostingDetail }) {
           <span className="text-sm font-semibold">{company.name}</span>
         </Link>
         <a
-          href={detail.sourceUrl}
+          href={withUtmSource(detail.sourceUrl)}
           target="_blank"
           rel="noopener noreferrer"
           className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-primary bg-primary px-4 py-1.5 text-sm font-semibold text-primary-contrast transition-opacity hover:opacity-90"

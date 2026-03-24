@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
+import { getI18n } from "@lingui/react/server";
 import { initI18nForPage, isLocale, defaultLocale, loadCatalog } from "@/lib/i18n";
 import { siteConfig } from "@/content/config";
-import { buildAlternates } from "@/lib/seo";
+import { buildAlternates, JsonLd } from "@/lib/seo";
 import { HowWeIndexContent } from "@/components/HowWeIndexContent";
 
 type Props = {
@@ -28,6 +29,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function HowWeIndexPage({ params }: Props) {
-  await initI18nForPage(params);
-  return <HowWeIndexContent />;
+  const locale = await initI18nForPage(params);
+  return (
+    <>
+      <JsonLd data={{
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        name: getI18n()!._({ id: "indexing.meta.title", message: "How We Index" }),
+        description: getI18n()!._({ id: "indexing.meta.description", message: "How Job Seek discovers, crawls, and indexes job postings — and the safeguards we follow." }),
+        url: `${siteConfig.url}/${locale}/how-we-index`,
+        inLanguage: locale,
+        isPartOf: { "@type": "WebSite", url: siteConfig.url },
+      }} />
+      <HowWeIndexContent />
+    </>
+  );
 }

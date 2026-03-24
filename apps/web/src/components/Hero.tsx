@@ -22,14 +22,14 @@ export function Hero() {
       <div className="flex flex-col items-stretch gap-12 md:flex-row md:gap-20">
         <div className="flex flex-1 flex-col gap-6">
           <span className="text-xs font-semibold uppercase tracking-wider text-muted">
-            <Trans id="home.hero.eyebrow" comment="Hero eyebrow text above the title">Keep your hand on the job market pulse.</Trans>
+            <Trans id="home.hero.eyebrow" comment="Hero eyebrow text above the title">Job search on your terms.</Trans>
           </span>
           <h1 className="text-3xl font-bold md:text-4xl">
-            <Trans id="home.hero.title" comment="Main heading on the landing page">Find relevant roles faster.</Trans>
+            <Trans id="home.hero.title" comment="Main heading on the landing page">Find roles before they hit the big boards.</Trans>
           </h1>
           <p className="text-muted">
             <Trans id="home.hero.description" comment="Hero description paragraph">
-              Subscribe to updates from companies, track applications, and never miss new openings. Designed to keep you in control, not hand your decisions to a bot.
+              We scrape career pages directly so you see openings the moment they go live. Filter by seniority, tech stack, salary, and location across hundreds of companies, then track every application in one place.
             </Trans>
           </p>
           <div className="flex flex-col gap-4 pt-4 sm:flex-row">

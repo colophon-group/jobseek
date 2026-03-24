@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
+import { getI18n } from "@lingui/react/server";
 import { initI18nForPage, isLocale, defaultLocale, loadCatalog } from "@/lib/i18n";
 import { siteConfig } from "@/content/config";
-import { buildAlternates } from "@/lib/seo";
+import { buildAlternates, JsonLd } from "@/lib/seo";
 import { LicenseContent } from "@/components/LicenseContent";
 
 type Props = {
@@ -28,6 +29,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function LicensePage({ params }: Props) {
-  await initI18nForPage(params);
-  return <LicenseContent />;
+  const locale = await initI18nForPage(params);
+  return (
+    <>
+      <JsonLd data={{
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        name: getI18n()!._({ id: "license.meta.title", message: "License" }),
+        description: getI18n()!._({ id: "license.meta.description", message: "Licensing terms for Job Seek application code (MIT) and job data (CC BY-NC 4.0)." }),
+        url: `${siteConfig.url}/${locale}/license`,
+        inLanguage: locale,
+        isPartOf: { "@type": "WebSite", url: siteConfig.url },
+      }} />
+      <LicenseContent />
+    </>
+  );
 }

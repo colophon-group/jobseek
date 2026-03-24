@@ -94,11 +94,22 @@ export function SearchBar({
   const userLat = serverLat ?? browserGeo?.lat;
   const userLng = serverLng ?? browserGeo?.lng;
 
-  // Request browser geolocation once if server didn't provide coords
+  // Request browser geolocation once per session if server didn't provide coords
   useEffect(() => {
     if (serverLat != null || !navigator.geolocation) return;
+    const cached = sessionStorage.getItem("browser-geo");
+    if (cached) {
+      setBrowserGeo(JSON.parse(cached));
+      return;
+    }
+    if (sessionStorage.getItem("browser-geo-asked")) return;
+    sessionStorage.setItem("browser-geo-asked", "1");
     navigator.geolocation.getCurrentPosition(
-      (pos) => setBrowserGeo({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      (pos) => {
+        const geo = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        sessionStorage.setItem("browser-geo", JSON.stringify(geo));
+        setBrowserGeo(geo);
+      },
       () => {},
       { maximumAge: 600_000, timeout: 5_000 },
     );

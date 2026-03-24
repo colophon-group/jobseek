@@ -53,9 +53,10 @@ export const siteConfig = {
   },
 
   nav: {
-    product: { href: "/" },
+    about: { href: "/about" },
     features: { href: "/#features" },
     pricing: { href: "/#pricing" },
+    faq: { href: "/faq" },
     company: { href: "/how-we-index" },
     license: { href: "/license" },
     login: { href: "/sign-in" },
@@ -76,21 +77,30 @@ export const siteConfig = {
     sections: [
       {
         screenshot: {
-          light: "/js_missing_screenshot_black.png",
-          dark: "/js_missing_screenshot_white.png",
+          light: "/screenshots/{lang}/feature1-light.png",
+          dark: "/screenshots/{lang}/feature1-dark.png",
           width: 1200,
           height: 630,
         },
-        pointIcons: ["notifications", "check_circle", "bookmark"] as const,
+        pointIcons: ["source", "filters", "alerts"] as const,
       },
       {
         screenshot: {
-          light: "/js_missing_screenshot_black.png",
-          dark: "/js_missing_screenshot_white.png",
+          light: "/screenshots/{lang}/feature2-light.png",
+          dark: "/screenshots/{lang}/feature2-dark.png",
           width: 1200,
           height: 630,
         },
-        pointIcons: ["bug", "travel_explore", "campaign"] as const,
+        pointIcons: ["tracking", "interviews", "stats"] as const,
+      },
+      {
+        screenshot: {
+          light: "/screenshots/{lang}/feature3-light.png",
+          dark: "/screenshots/{lang}/feature3-dark.png",
+          width: 1200,
+          height: 630,
+        },
+        pointIcons: ["curate", "companies", "share"] as const,
       },
     ],
   },
@@ -150,6 +160,15 @@ export const siteConfig = {
     },
   },
 
+  about: {
+    hero: {
+      art: {
+        assetKey: "adam_tills_the_soil" as const,
+        focus: { x: 0, y: 30 },
+      },
+    },
+  },
+
   homepageArt: {
     assetKey: "the_miser" as const,
     focus: { x: 45, y: 40 },
@@ -171,6 +190,8 @@ export const siteConfig = {
     ],
     sitemap: [
       { path: "/", changeFrequency: "weekly", priority: 1 },
+      { path: "/about", changeFrequency: "monthly", priority: 0.7 },
+      { path: "/faq", changeFrequency: "monthly", priority: 0.7 },
       { path: "/how-we-index", changeFrequency: "monthly", priority: 0.6 },
       { path: "/license", changeFrequency: "monthly", priority: 0.5 },
       { path: "/privacy-policy", changeFrequency: "monthly", priority: 0.5 },
@@ -265,5 +286,18 @@ export const publicDomainAssets: Record<string, PublicDomainAsset> = {
     author: "Hans Holbein",
     date: "1523-5",
     crop: { left: 50, top: 37, bottom: 183 },
+  },
+  adam_tills_the_soil: {
+    href: "/publicdomain/master/adam_tills_the_soil.jpg",
+    light: "/publicdomain/adam_tills_the_soil_dark.png",
+    dark: "/publicdomain/adam_tills_the_soil_light.png",
+    height: 696,
+    width: 550,
+    alt: "Adam Tills the Soil by Hans Holbein",
+    link: "https://pdimagearchive.org/images/402db071-bd53-4a89-b612-b1711d14ab4d/",
+    title: "Adam Tills the Soil",
+    author: "Hans Holbein",
+    date: "1523-5",
+    crop: { left: 55, top: 70, bottom: 14, right: 17 },
   },
 };

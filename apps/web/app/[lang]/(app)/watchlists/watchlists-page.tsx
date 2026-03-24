@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, Loader2, LogIn } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { useAuth } from "@/lib/useAuth";
-import type { WatchlistSummary } from "@/lib/actions/watchlists";
+import type { WatchlistSummary, WatchlistFilters } from "@/lib/actions/watchlists";
 import { createWatchlist } from "@/lib/actions/watchlists";
 import { WatchlistCard, CreateWatchlistCard } from "@/components/watchlist/watchlist-card";
 import { PublicWatchlistSearch } from "@/components/watchlist/public-watchlist-search";
@@ -25,9 +25,10 @@ export function WatchlistsPage({
   const router = useRouter();
   const lp = useLocalePath();
   const { user, isLoggedIn } = useAuth();
+  const searchParams = useSearchParams();
   const [creating, setCreating] = useState(false);
 
-  async function handleCreate() {
+  async function handleCreate(prefill?: { title?: string; description?: string; filters?: WatchlistFilters }) {
     if (creating || !isLoggedIn) return;
     if (limitReached) {
       router.push(lp("/settings"));
@@ -36,8 +37,10 @@ export function WatchlistsPage({
     setCreating(true);
     try {
       const result = await createWatchlist({
-        title: "New watchlist",
+        title: prefill?.title || "New watchlist",
+        description: prefill?.description,
         companyIds: [],
+        filters: prefill?.filters,
       });
       if ("slug" in result && (username ?? user?.username)) {
         router.push(lp(`/${username ?? user?.username}/${result.slug}`));
@@ -48,6 +51,45 @@ export function WatchlistsPage({
       setCreating(false);
     }
   }
+
+  // Auto-create watchlist from URL params (e.g. from /api/v1/watchlist/create)
+  useEffect(() => {
+    const title = searchParams.get("title");
+    if (!title || !isLoggedIn || limitReached) return;
+
+    const q = searchParams.get("q");
+    const loc = searchParams.get("loc");
+    const occ = searchParams.get("occ");
+    const sen = searchParams.get("sen");
+    const tech = searchParams.get("tech");
+    const sal = searchParams.get("sal");
+    const exp = searchParams.get("exp");
+    const salcur = searchParams.get("salcur");
+
+    const filters: WatchlistFilters = {};
+    if (q) filters.keywords = q.split(",").filter(Boolean);
+    if (loc) filters.locationSlugs = loc.split(",").filter(Boolean);
+    if (occ) filters.occupationSlugs = occ.split(",").filter(Boolean);
+    if (sen) filters.senioritySlugs = sen.split(",").filter(Boolean);
+    if (tech) filters.technologySlugs = tech.split(",").filter(Boolean);
+    if (salcur) filters.salaryCurrency = salcur;
+    if (sal) {
+      const [minStr, maxStr] = sal.split("-");
+      if (minStr) filters.salaryMin = parseInt(minStr, 10);
+      if (maxStr) filters.salaryMax = parseInt(maxStr, 10);
+    }
+    if (exp) {
+      const [minStr, maxStr] = exp.split("-");
+      if (minStr) filters.experienceMin = parseInt(minStr, 10);
+      if (maxStr) filters.experienceMax = parseInt(maxStr, 10);
+    }
+
+    handleCreate({
+      title,
+      description: searchParams.get("description") ?? undefined,
+      filters: Object.keys(filters).length > 0 ? filters : undefined,
+    });
+  }, []);
 
   return (
     <div className="space-y-8">
@@ -89,7 +131,7 @@ export function WatchlistsPage({
             </p>
             <button
               type="button"
-              onClick={handleCreate}
+              onClick={() => handleCreate()}
               disabled={creating}
               className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-contrast transition-opacity hover:opacity-90 disabled:opacity-50 cursor-pointer"
             >

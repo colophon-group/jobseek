@@ -38,12 +38,12 @@ function FreeTier() {
             </span>
           </div>
           <p className="mt-2 text-muted">
-            <Trans id="home.pricing.free.description" comment="Free tier description">Test Job Seek with enough headroom to be up to date with your dream companies.</Trans>
+            <Trans id="home.pricing.free.description" comment="Free tier description">Full search, one watchlist, and a built-in application tracker to manage your pipeline.</Trans>
           </p>
           <ul className="mt-4 flex-1 space-y-2">
-            <FeatureItem><Trans id="home.pricing.free.f1" comment="Free feature: subscribe to companies">Subscribe to up to 5 companies</Trans></FeatureItem>
-            <FeatureItem><Trans id="home.pricing.free.f2" comment="Free feature: application tracker">Application tracker</Trans></FeatureItem>
-            <FeatureItem><Trans id="home.pricing.free.f3" comment="Free feature: saved searches">Saved searches</Trans></FeatureItem>
+            <FeatureItem><Trans id="home.pricing.free.f1" comment="Free feature: full search">Search across all companies and filters</Trans></FeatureItem>
+            <FeatureItem><Trans id="home.pricing.free.f2" comment="Free feature: one watchlist">1 watchlist</Trans></FeatureItem>
+            <FeatureItem><Trans id="home.pricing.free.f3" comment="Free feature: application tracker">Application tracker with interview log</Trans></FeatureItem>
           </ul>
         </div>
         <div className="px-6 pb-6">
@@ -74,13 +74,12 @@ function ProTier() {
             </span>
           </div>
           <p className="mt-2 text-muted">
-            <Trans id="home.pricing.pro.description" comment="Pro tier description">For active job seekers who need unlimited reach and faster insight.</Trans>
+            <Trans id="home.pricing.pro.description" comment="Pro tier description">Unlimited watchlists with email alerts so you never miss an opening.</Trans>
           </p>
           <ul className="mt-4 flex-1 space-y-2">
-            <FeatureItem><Trans id="home.pricing.pro.f1" comment="Pro feature: unlimited subscriptions">Unlimited company subscriptions</Trans></FeatureItem>
-            <FeatureItem><Trans id="home.pricing.pro.f2" comment="Pro feature: application tracker">Application tracker</Trans></FeatureItem>
-            <FeatureItem><Trans id="home.pricing.pro.f3" comment="Pro feature: saved searches">Saved searches</Trans></FeatureItem>
-            <FeatureItem><Trans id="home.pricing.pro.f4" comment="Pro feature: email alerts">Email alerts & updates</Trans></FeatureItem>
+            <FeatureItem><Trans id="home.pricing.pro.f0" comment="Pro feature: includes free">Everything in Free</Trans></FeatureItem>
+            <FeatureItem><Trans id="home.pricing.pro.f1" comment="Pro feature: unlimited watchlists">Unlimited watchlists</Trans></FeatureItem>
+            <FeatureItem><Trans id="home.pricing.pro.f2" comment="Pro feature: email alerts">Email alerts on new matches</Trans></FeatureItem>
           </ul>
         </div>
         <div className="px-6 pb-6">

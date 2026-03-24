@@ -62,6 +62,26 @@ msgstr ""
 #~ msgid "saved.unsave.ariaLabel"
 #~ msgstr "Unsave job"
 
+#. Pro feature: email alerts
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx:83
+#~ msgid "home.pricing.pro.f4"
+#~ msgstr "Email alerts & updates"
+
+#. Pro feature: saved searches
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx:82
+#~ msgid "home.pricing.pro.f3"
+#~ msgstr "Saved searches"
+
+#. Nav link: Product
+#. Nav link: Product
+#. js-lingui-explicit-id
+#: src/components/Header.tsx:55
+#: src/components/MobileMenu.tsx:76
+#~ msgid "common.nav.product"
+#~ msgstr "Product"
+
 #. CC right 1
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx:80
@@ -91,7 +111,7 @@ msgstr "(opens in new tab)"
 #. Employee count range on company page
 #. js-lingui-explicit-id
 #. placeholder {0}: EMPLOYEE_RANGE_LABELS[company.employeeCountRange]
-#: app/[lang]/(app)/company/[slug]/company-page.tsx:521
+#: app/[lang]/(app)/company/[slug]/company-page.tsx:522
 msgid "company.page.employees"
 msgstr "{0} employees"
 
@@ -105,7 +125,7 @@ msgstr "{0} more"
 #. Button to show remaining collapsed locations
 #. js-lingui-explicit-id
 #. placeholder {0}: locations.length - LOCATIONS_COLLAPSED
-#: src/components/search/job-detail-dialog.tsx:348
+#: src/components/search/job-detail-dialog.tsx:349
 msgid "search.detail.showMoreLocations"
 msgstr "{0} more"
 
@@ -158,6 +178,43 @@ msgstr "$10 / month"
 msgid "myJobs.heatmap.tooltipOne"
 msgstr "1 application on {date}"
 
+#. Free feature: one watchlist
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx:45
+msgid "home.pricing.free.f2"
+msgstr "1 watchlist"
+
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/faq/page.tsx:58
+msgid "faq.a.whatIsWatchlist"
+msgstr "A watchlist is a saved search with optional company filtering. Pick the companies you care about, set your filters (role, location, seniority, salary), and get a live feed of matching jobs. You can share watchlists publicly or keep them private."
+
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/about/page.tsx:17
+#: app/[lang]/(public)/about/page.tsx:39
+msgid "about.meta.title"
+msgstr "About"
+
+#. About page eyebrow
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/about/about-content.tsx:24
+msgid "about.eyebrow"
+msgstr "About"
+
+#. Nav link: About
+#. Nav link: About
+#. js-lingui-explicit-id
+#: src/components/Header.tsx:55
+#: src/components/MobileMenu.tsx:76
+msgid "common.nav.about"
+msgstr "About"
+
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/about/page.tsx:18
+#: app/[lang]/(public)/about/page.tsx:40
+msgid "about.meta.description"
+msgstr "About Job Seek — the job search engine that scrapes career pages directly."
+
 #. Account bottom bar label
 #. js-lingui-explicit-id
 #: src/components/AppHeader.tsx:204
@@ -178,7 +235,7 @@ msgstr "Account menu"
 
 #. Active postings count on company page
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/company/[slug]/company-page.tsx:590
+#: app/[lang]/(app)/company/[slug]/company-page.tsx:591
 msgid "company.page.active"
 msgstr "active"
 
@@ -226,15 +283,9 @@ msgstr "Add location or keyword filter..."
 
 #. Placeholder in the add location input
 #. js-lingui-explicit-id
-#: src/components/search/location-pills.tsx:164
+#: src/components/search/location-pills.tsx:175
 msgid "search.locations.addPlaceholder"
 msgstr "Add location..."
-
-#. Feature: alerts you drive title
-#. js-lingui-explicit-id
-#: src/components/Features.tsx:200
-msgid "home.features.s2.p3.title"
-msgstr "Alerts you actually drive"
 
 #. Encryption
 #. js-lingui-explicit-id
@@ -317,35 +368,29 @@ msgstr "Application code (MIT)"
 msgid "myJobs.viewStats"
 msgstr "Application stats"
 
+#. Feature: application stats title
+#. js-lingui-explicit-id
+#: src/components/Features.tsx:216
+msgid "home.features.s2.p3.title"
+msgstr "Application stats"
+
 #. Stats page title
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/my-jobs/stats/stats-page.tsx:38
 msgid "myJobs.stats.title"
 msgstr "Application Stats"
 
-#. Free feature: application tracker
-#. js-lingui-explicit-id
-#: src/components/Pricing.tsx:45
-msgid "home.pricing.free.f2"
-msgstr "Application tracker"
-
-#. Pro feature: application tracker
-#. js-lingui-explicit-id
-#: src/components/Pricing.tsx:81
-msgid "home.pricing.pro.f2"
-msgstr "Application tracker"
-
-#. Feature: application tracker title
-#. js-lingui-explicit-id
-#: src/components/Features.tsx:136
-msgid "home.features.s1.p2.title"
-msgstr "Application tracker"
-
 #. Application tracker section heading in job detail
 #. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:244
+#: src/components/search/job-detail-dialog.tsx:245
 msgid "search.detail.applicationTracker"
 msgstr "Application tracker"
+
+#. Free feature: application tracker
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx:46
+msgid "home.pricing.free.f3"
+msgstr "Application tracker with interview log"
 
 #. Subtitle showing total applications in past year
 #. js-lingui-explicit-id
@@ -365,6 +410,12 @@ msgstr "Applied"
 msgid "myJobs.status.applied"
 msgstr "Applied"
 
+#. Application tracker status: applied
+#. js-lingui-explicit-id
+#: src/components/search/job-detail-dialog.tsx:439
+msgid "search.tracker.applied"
+msgstr "Applied"
+
 #. Sankey funnel node: applied
 #. js-lingui-explicit-id
 #: src/components/my-jobs/sankey-funnel.tsx:42
@@ -373,14 +424,8 @@ msgstr "Applied"
 
 #. Status option in dropdown: applied
 #. js-lingui-explicit-id
-#: src/components/my-jobs/my-job-detail-panel.tsx:33
+#: src/components/my-jobs/my-job-detail-panel.tsx:34
 msgid "myJobs.statusOption.applied"
-msgstr "Applied"
-
-#. Application tracker status: applied
-#. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:438
-msgid "search.tracker.applied"
 msgstr "Applied"
 
 #. Apply salary filter
@@ -389,16 +434,16 @@ msgstr "Applied"
 msgid "search.salaryModal.apply"
 msgstr "Apply"
 
+#. Apply button linking to original job posting
+#. js-lingui-explicit-id
+#: src/components/my-jobs/my-job-detail-panel.tsx:294
+msgid "search.detail.apply"
+msgstr "Apply"
+
 #. Apply experience filter
 #. js-lingui-explicit-id
 #: src/components/search/experience-modal.tsx:246
 msgid "search.experienceModal.apply"
-msgstr "Apply"
-
-#. Apply button linking to original job posting
-#. js-lingui-explicit-id
-#: src/components/my-jobs/my-job-detail-panel.tsx:293
-msgid "search.detail.apply"
 msgstr "Apply"
 
 #. Short April label
@@ -437,16 +482,16 @@ msgstr "Aug"
 msgid "settings.account.username.available"
 msgstr "Available"
 
-#. Link back to sign-in after failed verification
-#. js-lingui-explicit-id
-#: app/[lang]/verify-email/page.tsx:68
-msgid "auth.verify.error.backToSignIn"
-msgstr "Back to sign in"
-
 #. Link back to sign-in from reset password
 #. js-lingui-explicit-id
 #: app/[lang]/reset-password/page.tsx:42
 msgid "auth.resetPassword.backToSignIn"
+msgstr "Back to sign in"
+
+#. Link back to sign-in after failed verification
+#. js-lingui-explicit-id
+#: app/[lang]/verify-email/page.tsx:68
+msgid "auth.verify.error.backToSignIn"
 msgstr "Back to sign in"
 
 #. Link back to sign-in from forgot password
@@ -473,17 +518,22 @@ msgstr "Behavioral"
 msgid "indexing.oss.browseRepo"
 msgstr "Browse the repository at"
 
-#. Feature section 1 heading
+#. About page heading
 #. js-lingui-explicit-id
-#: src/components/Features.tsx:122
-msgid "home.features.s1.title"
-msgstr "Built for active job seekers"
+#: app/[lang]/(public)/about/about-content.tsx:25
+msgid "about.title"
+msgstr "Built by job seekers, for job seekers"
 
 #. Terms page description
 #. js-lingui-explicit-id
 #: src/components/TermsContent.tsx:23
 msgid "terms.hero.description"
 msgstr "By using Job Seek you agree to these terms. Here’s a plain-language overview."
+
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/faq/page.tsx:69
+msgid "faq.q.optOut"
+msgstr "Can I opt out of Jobseek indexing my company?"
 
 #. Cancel delete watchlist
 #. js-lingui-explicit-id
@@ -529,7 +579,7 @@ msgstr "Change your password via a secure email link."
 
 #. Placeholder in status change dropdown
 #. js-lingui-explicit-id
-#: src/components/my-jobs/my-job-detail-panel.tsx:61
+#: src/components/my-jobs/my-job-detail-panel.tsx:62
 msgid "myJobs.detail.changePlaceholder"
 msgstr "Change..."
 
@@ -571,7 +621,7 @@ msgstr "Choose the plan that works for you."
 
 #. Pricing section heading
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:104
+#: src/components/Pricing.tsx:103
 msgid "home.pricing.title"
 msgstr "Choose the right plan for you"
 
@@ -605,7 +655,7 @@ msgstr "Clear all"
 #. Button to clear all active search filters
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/[userSlug]/[watchlistSlug]/watchlist-view-page.tsx:536
-#: src/components/search/search-toolbar.tsx:282
+#: src/components/search/search-toolbar.tsx:283
 msgid "search.filters.clearAll"
 msgstr "Clear all"
 
@@ -641,7 +691,7 @@ msgstr "Close menu"
 
 #. Label for inactive/closed job postings on company page
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/company/[slug]/company-page.tsx:666
+#: app/[lang]/(app)/company/[slug]/company-page.tsx:667
 msgid "company.page.closed"
 msgstr "Closed"
 
@@ -663,6 +713,18 @@ msgstr "Coding"
 msgid "license.data.title"
 msgstr "Collection of job postings (CC BY-NC 4.0)"
 
+#. Feature: multi-dimensional filters description
+#. js-lingui-explicit-id
+#: src/components/Features.tsx:152
+msgid "home.features.s1.p2.description"
+msgstr "Combine seniority, technologies, salary, location, and job language in a single query. No more sifting through noise."
+
+#. Feature: focused search description
+#. js-lingui-explicit-id
+#: src/components/Features.tsx:267
+msgid "home.features.s3.p1.description"
+msgstr "Combine specific companies with role filters to zero in on exactly the positions you want."
+
 #. Pro tier CTA — disabled until subscriptions launch
 #. js-lingui-explicit-id
 #: src/components/Pricing.tsx:61
@@ -677,7 +739,7 @@ msgstr "Companies"
 
 #. Section header for company suggestions in search bar
 #. js-lingui-explicit-id
-#: src/components/search/search-bar.tsx:571
+#: src/components/search/search-bar.tsx:582
 msgid "search.bar.companies"
 msgstr "Companies"
 
@@ -704,12 +766,6 @@ msgstr "Company"
 #: src/components/my-jobs/sort-filter-bar.tsx:23
 msgid "myJobs.group.company"
 msgstr "Company"
-
-#. Feature: company alerts title
-#. js-lingui-explicit-id
-#: src/components/Features.tsx:131
-msgid "home.features.s1.p1.title"
-msgstr "Company alerts"
 
 #. Confirm delete button
 #. js-lingui-explicit-id
@@ -815,6 +871,12 @@ msgstr "Copy and modify the code for any purpose, including commercial products.
 msgid "location.type.country"
 msgstr "Country"
 
+#. Link to open-source crawler repo
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/about/about-content.tsx:62
+msgid "about.link.crawler"
+msgstr "Crawler source code"
+
 #. TOC: Crawling assurances
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:28
@@ -839,6 +901,12 @@ msgstr "Create"
 msgid "watchlists.create.submit"
 msgstr "Create"
 
+#. Tooltip explaining save search creates a watchlist
+#. js-lingui-explicit-id
+#: src/components/search/save-search-button.tsx:103
+msgid "search.saveSearch.tooltip"
+msgstr "Create a watchlist from your current filters"
+
 #. Sign-up page heading
 #. js-lingui-explicit-id
 #: src/components/AuthForm.tsx:149
@@ -847,7 +915,7 @@ msgstr "Create an account"
 
 #. Button to create first watchlist
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/watchlists/watchlists-page.tsx:97
+#: app/[lang]/(app)/watchlists/watchlists-page.tsx:139
 msgid "watchlists.page.createFirst"
 msgstr "Create watchlist"
 
@@ -862,6 +930,12 @@ msgstr "Create watchlist"
 #: src/components/AuthForm.tsx:201
 msgid "auth.signUp.button.loading"
 msgstr "Creating account..."
+
+#. Feature section 3 heading
+#. js-lingui-explicit-id
+#: src/components/Features.tsx:257
+msgid "home.features.s3.title"
+msgstr "Curate a watchlist for any niche"
 
 #. Label for currency selector
 #. js-lingui-explicit-id
@@ -961,7 +1035,7 @@ msgstr "Details"
 
 #. Collapsible section heading for extracted job details
 #. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:376
+#: src/components/search/job-detail-dialog.tsx:377
 msgid "search.detail.details"
 msgstr "Details"
 
@@ -970,6 +1044,12 @@ msgstr "Details"
 #: src/components/search/request-company.tsx:40
 msgid "search.zero.subtext"
 msgstr "Did not find the company you were looking for?"
+
+#. Feature: direct from source title
+#. js-lingui-explicit-id
+#: src/components/Features.tsx:146
+msgid "home.features.s1.p1.title"
+msgstr "Direct from the source"
 
 #. Disable alerts tooltip
 #. js-lingui-explicit-id
@@ -989,6 +1069,11 @@ msgstr "Disconnect"
 msgid "watchlists.explore.publicTitle"
 msgstr "Discover public watchlists"
 
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/faq/page.tsx:77
+msgid "faq.q.dataPrivacy"
+msgstr "Does Jobseek sell my data?"
+
 #. Link to sign-up page from sign-in
 #. js-lingui-explicit-id
 #: src/components/AuthForm.tsx:220
@@ -1000,12 +1085,6 @@ msgstr "Don't have an account? <0>Sign up</0>"
 #: src/components/TermsContent.tsx:45
 msgid "terms.short.r3"
 msgstr "Don’t scrape the service, submit automated applications, or abuse the platform."
-
-#. Feature section 2 description
-#. js-lingui-explicit-id
-#: src/components/Features.tsx:184
-msgid "home.features.s2.description"
-msgstr "Don't see your favourite company in the feed? Paste its careers link and we'll start scraping it for you—no scripts, no spreadsheets, no waiting in support queues."
 
 #. Placeholder for the company request input field
 #. Placeholder for the company request input field
@@ -1031,12 +1110,6 @@ msgstr "Edit"
 msgid "auth.field.email"
 msgstr "Email"
 
-#. Pro feature: email alerts
-#. js-lingui-explicit-id
-#: src/components/Pricing.tsx:83
-msgid "home.pricing.pro.f4"
-msgstr "Email alerts & updates"
-
 #. Reason shown in upgrade modal when trying to enable alerts
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-action-bar.tsx:139
@@ -1048,6 +1121,12 @@ msgstr "Email alerts are a paid feature. Upgrade to get notified when new jobs m
 #: src/components/settings/BillingSettings.tsx:97
 msgid "settings.billing.pro.f1"
 msgstr "Unlimited company follows"
+
+#. Pro feature: email alerts
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx:82
+msgid "home.pricing.pro.f2"
+msgstr "Email alerts on new matches"
 
 #. Email or username input label for sign-in
 #. js-lingui-explicit-id
@@ -1091,11 +1170,23 @@ msgstr "Enter your new password below."
 msgid "indexing.assurances.i3.body"
 msgstr "Even after discovery we retrieve job detail pages at a strict limit of one request per site per minute."
 
+#. Feature section 1 heading
+#. js-lingui-explicit-id
+#: src/components/Features.tsx:137
+msgid "home.features.s1.title"
+msgstr "Every filter a job seeker actually needs"
+
 #. Assurance 1 body
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:68
 msgid "indexing.assurances.i1.body"
 msgstr "Every retry window uses exponential backoff so we never hammer an origin, and we bail if a host keeps timing out."
+
+#. Pro feature: includes free
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx:80
+msgid "home.pricing.pro.f0"
+msgstr "Everything in Free"
 
 #. Pro plan feature: everything free
 #. js-lingui-explicit-id
@@ -1103,22 +1194,23 @@ msgstr "Every retry window uses exponential backoff so we never hammer an origin
 msgid "settings.billing.pro.f2"
 msgstr "Email alerts for new postings"
 
-#. Feature section 1 eyebrow text
+#. FAQ page description
 #. js-lingui-explicit-id
-#: src/components/Features.tsx:119
-msgid "home.features.s1.eyebrow"
-msgstr "Everything you need to stay ahead"
-
-#. Title for experience filter modal
-#. js-lingui-explicit-id
-#: src/components/search/experience-modal.tsx:186
-msgid "search.experienceModal.title"
-msgstr "Experience"
+#. placeholder {0}: siteConfig.indexing.contactEmail
+#: app/[lang]/(public)/faq/faq-content.tsx:45
+msgid "faq.description"
+msgstr "Everything you need to know about Job Seek. Can't find what you're looking for? Email us at <0>{0}</0>."
 
 #. Label for experience filter in advanced search
 #. js-lingui-explicit-id
 #: src/components/search/advanced-search-panel.tsx:177
 msgid "search.advanced.experience"
+msgstr "Experience"
+
+#. Title for experience filter modal
+#. js-lingui-explicit-id
+#: src/components/search/experience-modal.tsx:186
+msgid "search.experienceModal.title"
 msgstr "Experience"
 
 #. js-lingui-explicit-id
@@ -1193,6 +1285,19 @@ msgstr "Failed to set password"
 msgid "settings.account.username.error"
 msgstr "Failed to update username"
 
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/faq/page.tsx:17
+msgid "faq.meta.title"
+msgstr "FAQ"
+
+#. Nav link: FAQ
+#. Nav link: FAQ
+#. js-lingui-explicit-id
+#: src/components/Header.tsx:64
+#: src/components/MobileMenu.tsx:91
+msgid "common.nav.faq"
+msgstr "FAQ"
+
 #. Nav link: Features
 #. Nav link: Features
 #. js-lingui-explicit-id
@@ -1217,15 +1322,15 @@ msgstr "Filter"
 #. Tooltip prefix for clickable filter pills, followed by the value name
 #. Tooltip prefix for clickable filter pills, followed by the value name
 #. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:101
-#: src/components/search/job-detail-dialog.tsx:289
-#: src/components/search/job-detail-dialog.tsx:367
+#: src/components/search/job-detail-dialog.tsx:102
+#: src/components/search/job-detail-dialog.tsx:290
+#: src/components/search/job-detail-dialog.tsx:368
 msgid "search.detail.filterByPrefix"
 msgstr "Filter by"
 
 #. Tooltip for salary filter pill
 #. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:223
+#: src/components/search/job-detail-dialog.tsx:224
 msgid "search.detail.filterBySalary"
 msgstr "Filter by this salary range"
 
@@ -1260,21 +1365,21 @@ msgid "settings.general.jobLanguages.findMore"
 msgstr "Find more"
 
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/page.tsx:19
+#: app/[lang]/(public)/page.tsx:20
 msgid "home.meta.title"
-msgstr "Find Relevant Roles Faster"
+msgstr "Find Roles Before They Hit the Big Boards"
 
 #. Main heading on the landing page
 #. js-lingui-explicit-id
 #: src/components/Hero.tsx:28
 msgid "home.hero.title"
-msgstr "Find relevant roles faster."
+msgstr "Find roles before they hit the big boards."
 
-#. Feature: company alerts description
+#. Feature: focused search title
 #. js-lingui-explicit-id
-#: src/components/Features.tsx:132
-msgid "home.features.s1.p1.description"
-msgstr "Follow target employers and get notified when they add new roles."
+#: src/components/Features.tsx:266
+msgid "home.features.s3.p1.title"
+msgstr "Focused search"
 
 #. Link to follow Job Seek on LinkedIn
 #. js-lingui-explicit-id
@@ -1287,12 +1392,6 @@ msgstr "Follow us on LinkedIn"
 #: src/components/Footer.tsx:31
 msgid "common.footer.ariaLabel"
 msgstr "Footer"
-
-#. Pro tier description
-#. js-lingui-explicit-id
-#: src/components/Pricing.tsx:77
-msgid "home.pricing.pro.description"
-msgstr "For active job seekers who need unlimited reach and faster insight."
 
 #. Free tier period
 #. js-lingui-explicit-id
@@ -1315,7 +1414,7 @@ msgstr "Forgot password?"
 #. Founded year on company page
 #. js-lingui-explicit-id
 #. placeholder {0}: company.foundedYear
-#: app/[lang]/(app)/company/[slug]/company-page.tsx:528
+#: app/[lang]/(app)/company/[slug]/company-page.tsx:529
 msgid "company.page.founded"
 msgstr "Founded {0}"
 
@@ -1331,17 +1430,50 @@ msgstr "Free"
 msgid "settings.billing.plan.free"
 msgstr "Free"
 
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/faq/page.tsx:54
+msgid "faq.a.freeVsPro"
+msgstr "Free gives you full search across all companies, one watchlist, and the application tracker with interview logging. Pro adds unlimited watchlists and email alerts when new roles match your criteria."
+
+#. FAQ page heading
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/faq/faq-content.tsx:42
+msgid "faq.title"
+msgstr "Frequently asked questions"
+
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/faq/page.tsx:18
+msgid "faq.meta.description"
+msgstr "Frequently asked questions about Job Seek — pricing, crawling, privacy, and more."
+
 #. Short Friday label for heatmap
 #. js-lingui-explicit-id
 #: src/components/my-jobs/activity-heatmap.tsx:49
 msgid "myJobs.heatmap.day.fri"
 msgstr "Fri"
 
+#. Feature section 2 heading
+#. js-lingui-explicit-id
+#: src/components/Features.tsx:197
+msgid "home.features.s2.title"
+msgstr "From saved role to signed offer, all in one place"
+
 #. Free plan feature: search
 #. js-lingui-explicit-id
 #: src/components/settings/BillingSettings.tsx:92
 msgid "settings.billing.free.f2"
 msgstr "Full job search"
+
+#. js-lingui-explicit-id
+#: app/[lang]/layout.tsx:76
+msgid "app.schema.offer.free"
+msgstr "Full search, 1 watchlist, application tracker"
+
+#. Free tier description
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx:41
+msgid "home.pricing.free.description"
+msgstr "Full search, one watchlist, and a built-in application tracker to manage your pipeline."
 
 #. Employment type: full-time
 #. js-lingui-explicit-id
@@ -1354,6 +1486,12 @@ msgstr "Full-time"
 #: src/components/settings/SettingsNav.tsx:21
 msgid "settings.nav.general"
 msgstr "General"
+
+#. Link to contact email
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/about/about-content.tsx:74
+msgid "about.link.contact"
+msgstr "Get in touch"
 
 #. Hero primary call-to-action
 #. Hero primary call-to-action
@@ -1431,23 +1569,30 @@ msgstr "Hourly"
 msgid "myJobs.salary.hourly"
 msgstr "Hourly"
 
-#. Nav link: How do we index jobs?
-#. Nav link: How do we index jobs?
 #. js-lingui-explicit-id
-#: src/components/Header.tsx:64
-#: src/components/MobileMenu.tsx:91
-msgid "common.nav.company"
-msgstr "How do we index jobs?"
+#: app/[lang]/(public)/faq/page.tsx:49
+msgid "faq.q.requestCompany"
+msgstr "How do I request a company that isn't listed?"
 
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/privacy-policy/page.tsx:17
+#: app/[lang]/(public)/faq/page.tsx:65
+msgid "faq.q.crawlingPolicy"
+msgstr "How does the crawler behave on my company's website?"
+
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/privacy-policy/page.tsx:18
 msgid "privacy.meta.description"
 msgstr "How Job Seek collects, uses, and protects your personal data."
 
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/how-we-index/page.tsx:17
+#: app/[lang]/(public)/how-we-index/page.tsx:18
 msgid "indexing.meta.description"
 msgstr "How Job Seek discovers, crawls, and indexes job postings — and the safeguards we follow."
+
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/faq/page.tsx:41
+msgid "faq.q.howOftenUpdated"
+msgstr "How often are job listings updated?"
 
 #. TOC: How postings enter the index
 #. js-lingui-explicit-id
@@ -1468,7 +1613,7 @@ msgid "indexing.hero.title"
 msgstr "How we find and process job postings"
 
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/how-we-index/page.tsx:16
+#: app/[lang]/(public)/how-we-index/page.tsx:17
 msgid "indexing.meta.title"
 msgstr "How We Index"
 
@@ -1503,7 +1648,7 @@ msgstr "in {locations}"
 
 #. Year postings count on company page
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/company/[slug]/company-page.tsx:592
+#: app/[lang]/(app)/company/[slug]/company-page.tsx:593
 msgid "company.page.yearCount"
 msgstr "in the last year"
 
@@ -1545,6 +1690,12 @@ msgstr "Input is too long."
 msgid "app.home.request.error.tooShort"
 msgstr "Input is too short."
 
+#. About paragraph 2: how it works
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/about/about-content.tsx:38
+msgid "about.p2"
+msgstr "Instead of waiting for companies to push roles to third-party job boards, we go straight to the source. Our crawler monitors career pages from Workday, Greenhouse, Lever, and over a dozen other platforms, so roles show up here the moment they go live. No middleman, no delay."
+
 #. Employment type: internship
 #. js-lingui-explicit-id
 #: src/components/search/employment-type-modal.tsx:14
@@ -1556,6 +1707,12 @@ msgstr "Internship"
 #: src/components/my-jobs/interview-list.tsx:15
 msgid "myJobs.interviewType.interview"
 msgstr "Interview"
+
+#. Feature: interview log title
+#. js-lingui-explicit-id
+#: src/components/Features.tsx:211
+msgid "home.features.s2.p2.title"
+msgstr "Interview log"
 
 #. Status group heading: interviewing
 #. js-lingui-explicit-id
@@ -1569,16 +1726,16 @@ msgstr "Interviewing"
 msgid "myJobs.status.interviewing"
 msgstr "Interviewing"
 
-#. Status option in dropdown: interviewing
-#. js-lingui-explicit-id
-#: src/components/my-jobs/my-job-detail-panel.tsx:34
-msgid "myJobs.statusOption.interviewing"
-msgstr "Interviewing"
-
 #. Application tracker status: interviewing
 #. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:439
+#: src/components/search/job-detail-dialog.tsx:440
 msgid "search.tracker.interviewing"
+msgstr "Interviewing"
+
+#. Status option in dropdown: interviewing
+#. js-lingui-explicit-id
+#: src/components/my-jobs/my-job-detail-panel.tsx:35
+msgid "myJobs.statusOption.interviewing"
 msgstr "Interviewing"
 
 #. Interviews section heading
@@ -1599,6 +1756,16 @@ msgstr "Invalid reset link"
 msgid "auth.verify.error.invalidLink"
 msgstr "Invalid verification link"
 
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/faq/page.tsx:73
+msgid "faq.q.openSource"
+msgstr "Is the crawler open source?"
+
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/faq/page.tsx:61
+msgid "faq.q.trackerLimit"
+msgstr "Is there a limit to how many jobs I can track?"
+
 #. Short January label
 #. js-lingui-explicit-id
 #: src/components/my-jobs/activity-heatmap.tsx:57
@@ -1618,7 +1785,7 @@ msgid "watchlists.explore.jobSingular"
 msgstr "job"
 
 #. js-lingui-explicit-id
-#: app/[lang]/layout.tsx:56
+#: app/[lang]/layout.tsx:66
 msgid "app.schema.description"
 msgstr "Job aggregator that monitors company career pages. Subscribe to company updates, track applications, and get alerts on new openings."
 
@@ -1628,17 +1795,31 @@ msgstr "Job aggregator that monitors company career pages. Subscribe to company 
 msgid "license.toc.data"
 msgstr "Job data (CC BY-NC 4.0)"
 
+#. Job detail panel title
+#. js-lingui-explicit-id
+#: src/components/search/job-detail-dialog.tsx:72
+msgid "search.detail.title"
+msgstr "Job Details"
+
 #. Job detail panel title in My Jobs
 #. js-lingui-explicit-id
-#: src/components/my-jobs/my-job-detail-panel.tsx:158
+#: src/components/my-jobs/my-job-detail-panel.tsx:159
 msgid "myJobs.detail.title"
 msgstr "Job Details"
 
-#. Job detail panel title
+#. Nav link: Job indexing
+#. Nav link: Job indexing
 #. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:71
-msgid "search.detail.title"
-msgstr "Job Details"
+#: src/components/Header.tsx:67
+#: src/components/MobileMenu.tsx:96
+msgid "common.nav.company"
+msgstr "Job indexing"
+
+#. Link to how we index page
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/about/about-content.tsx:66
+msgid "about.link.indexing"
+msgstr "Job indexing policy"
 
 #. Job languages settings section heading
 #. js-lingui-explicit-id
@@ -1652,17 +1833,27 @@ msgstr "Job languages"
 msgid "app.home.stats.jobPostings"
 msgstr "Job Postings"
 
-#. Alt text for feature section 1 screenshot
 #. js-lingui-explicit-id
-#: src/components/Features.tsx:149
-msgid "home.features.s1.screenshot.alt"
-msgstr "Job Seek dashboard showing tracked applications and company alerts"
+#: app/[lang]/layout.tsx:32
+msgid "app.schema.org.description"
+msgstr "Job search engine that scrapes career pages directly from company websites. Built by Colophon Group in Switzerland."
+
+#. Hero eyebrow text above the title
+#. js-lingui-explicit-id
+#: src/components/Hero.tsx:25
+msgid "home.hero.eyebrow"
+msgstr "Job search on your terms."
 
 #. Alt text for feature section 2 screenshot
 #. js-lingui-explicit-id
-#: src/components/Features.tsx:208
+#: src/components/Features.tsx:224
 msgid "home.features.s2.screenshot.alt"
-msgstr "Job Seek interface for submitting company links and configuring custom alerts"
+msgstr "Job Seek application tracker showing saved jobs and interview details"
+
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/faq/page.tsx:38
+msgid "faq.a.whatIsJobseek"
+msgstr "Job Seek is a job search engine that scrapes career pages directly from company websites. Roles appear here before they hit large aggregators like LinkedIn or Indeed."
 
 #. Indexing page description
 #. js-lingui-explicit-id
@@ -1675,6 +1866,24 @@ msgstr "Job Seek is a search engine for both active candidates and professionals
 #: app/[lang]/(app)/progress/page.tsx:26
 msgid "app.home.subtitle"
 msgstr "Job Seek is being actively built. Stay tuned for updates!"
+
+#. About paragraph 1: who we are
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/about/about-content.tsx:26
+msgid "about.p1"
+msgstr "Job Seek is built by Colophon Group, a small team of developers based in Switzerland. We started it because we were tired of the same problem every job seeker faces: juggling dozens of browser tabs, missing new postings because an aggregator was slow to pick them up, and drowning in algorithmic noise that optimizes for clicks rather than relevance."
+
+#. Alt text for feature section 1 screenshot
+#. js-lingui-explicit-id
+#: src/components/Features.tsx:164
+msgid "home.features.s1.screenshot.alt"
+msgstr "Job Seek search results filtered by role and location"
+
+#. Alt text for feature section 3 screenshot
+#. js-lingui-explicit-id
+#: src/components/Features.tsx:284
+msgid "home.features.s3.screenshot.alt"
+msgstr "Job Seek watchlist showing curated robotics engineering roles in Zurich"
 
 #. License page description
 #. js-lingui-explicit-id
@@ -1727,23 +1936,11 @@ msgstr "Jul"
 msgid "myJobs.heatmap.month.jun"
 msgstr "Jun"
 
-#. Hero eyebrow text above the title
-#. js-lingui-explicit-id
-#: src/components/Hero.tsx:25
-msgid "home.hero.eyebrow"
-msgstr "Keep your hand on the job market pulse."
-
 #. Add keyword filter
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-filter-editor.tsx:132
 msgid "watchlists.filters.keyword"
 msgstr "Keyword"
-
-#. Feature: kill tab routine title
-#. js-lingui-explicit-id
-#: src/components/Features.tsx:195
-msgid "home.features.s2.p2.title"
-msgstr "Kill the 50-tab routine"
 
 #. Language settings section heading
 #. js-lingui-explicit-id
@@ -1771,14 +1968,14 @@ msgstr "Last hour"
 
 #. Last updated date label
 #. js-lingui-explicit-id
-#: src/components/TermsContent.tsx:28
-msgid "terms.hero.lastUpdated"
+#: src/components/PrivacyPolicyContent.tsx:28
+msgid "privacy.hero.lastUpdated"
 msgstr "Last updated:"
 
 #. Last updated date label
 #. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:28
-msgid "privacy.hero.lastUpdated"
+#: src/components/TermsContent.tsx:28
+msgid "terms.hero.lastUpdated"
 msgstr "Last updated:"
 
 #. Time range option: last week
@@ -1795,7 +1992,7 @@ msgstr "Learn more"
 
 #. Section header for seniority suggestions in search bar
 #. js-lingui-explicit-id
-#: src/components/search/search-bar.tsx:461
+#: src/components/search/search-bar.tsx:472
 msgid "search.bar.level"
 msgstr "Level"
 
@@ -1806,8 +2003,14 @@ msgid "search.advanced.level"
 msgstr "Level"
 
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/license/page.tsx:16
+#: app/[lang]/(public)/license/page.tsx:17
 msgid "license.meta.title"
+msgstr "License"
+
+#. Link to license page
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/about/about-content.tsx:70
+msgid "about.link.license"
 msgstr "License"
 
 #. Footer link to license page
@@ -1829,7 +2032,7 @@ msgid "license.hero.eyebrow"
 msgstr "Licensing"
 
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/license/page.tsx:17
+#: app/[lang]/(public)/license/page.tsx:18
 msgid "license.meta.description"
 msgstr "Licensing terms for Job Seek application code (MIT) and job data (CC BY-NC 4.0)."
 
@@ -1865,13 +2068,13 @@ msgstr "Location"
 
 #. Section header for location suggestions in search bar
 #. js-lingui-explicit-id
-#: src/components/search/search-bar.tsx:531
+#: src/components/search/search-bar.tsx:542
 msgid "search.bar.locations"
 msgstr "Locations"
 
 #. Locations heading in job detail
 #. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:301
+#: src/components/search/job-detail-dialog.tsx:302
 msgid "search.detail.locations"
 msgstr "Locations"
 
@@ -1881,7 +2084,7 @@ msgstr "Locations"
 #. Login button label
 #. Login button label
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/watchlists/watchlists-page.tsx:75
+#: app/[lang]/(app)/watchlists/watchlists-page.tsx:117
 #: src/components/AppHeader.tsx:168
 #: src/components/AppHeader.tsx:216
 #: src/components/settings/AccountSettings.tsx:39
@@ -1889,11 +2092,17 @@ msgstr "Locations"
 msgid "common.auth.login"
 msgstr "Log in"
 
-#. Feature: application tracker description
+#. Tooltip when user needs to log in to save search
 #. js-lingui-explicit-id
-#: src/components/Features.tsx:137
-msgid "home.features.s1.p2.description"
-msgstr "Log where you applied, status, contacts, and next steps."
+#: src/components/search/save-search-button.tsx:108
+msgid "search.saveSearch.tooltipLogin"
+msgstr "Log in to save this search as a watchlist"
+
+#. Feature: share watchlists description
+#. js-lingui-explicit-id
+#: src/components/Features.tsx:277
+msgid "home.features.s3.p3.description"
+msgstr "Make a watchlist public and share the link with friends, communities, or your network."
 
 #. Make watchlist private tooltip
 #. js-lingui-explicit-id
@@ -1987,6 +2196,12 @@ msgstr "Mirror any public watchlist to make it your own — tweak companies, adj
 msgid "watchlists.explore.mirrorPlural"
 msgstr "mirrors"
 
+#. Feature: request companies description
+#. js-lingui-explicit-id
+#: src/components/Features.tsx:272
+msgid "home.features.s3.p2.description"
+msgstr "Missing a company? Paste its careers page URL and we start indexing it for you."
+
 #. Short Monday label for heatmap
 #. js-lingui-explicit-id
 #: src/components/my-jobs/activity-heatmap.tsx:45
@@ -1994,7 +2209,7 @@ msgid "myJobs.heatmap.day.mon"
 msgstr "Mon"
 
 #. js-lingui-explicit-id
-#: app/[lang]/layout.tsx:66
+#: app/[lang]/layout.tsx:88
 msgid "app.schema.feature.monitor"
 msgstr "Monitor company career pages"
 
@@ -2016,8 +2231,20 @@ msgstr "Monthly"
 msgid "company.page.showMore"
 msgstr "more"
 
+#. Feature: status tracking description
 #. js-lingui-explicit-id
-#: app/[lang]/layout.tsx:68
+#: src/components/Features.tsx:207
+msgid "home.features.s2.p1.description"
+msgstr "Move each role from saved to applied, interviewing, offered, or rejected. Always know where you stand."
+
+#. Feature: multi-dimensional filters title
+#. js-lingui-explicit-id
+#: src/components/Features.tsx:151
+msgid "home.features.s1.p2.title"
+msgstr "Multi-dimensional filters"
+
+#. js-lingui-explicit-id
+#: app/[lang]/layout.tsx:90
 msgid "app.schema.feature.languages"
 msgstr "Multi-language support"
 
@@ -2149,7 +2376,7 @@ msgstr "No locations match your search."
 
 #. No postings found message on company page
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/company/[slug]/company-page.tsx:647
+#: app/[lang]/(app)/company/[slug]/company-page.tsx:648
 msgid "company.page.noResults"
 msgstr "No matching postings found."
 
@@ -2203,20 +2430,30 @@ msgstr "No watchlists found."
 
 #. Empty state when user has no watchlists
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/watchlists/watchlists-page.tsx:82
+#: app/[lang]/(app)/watchlists/watchlists-page.tsx:124
 msgid "watchlists.page.empty"
 msgstr "No watchlists yet. Create one to track jobs from your favorite companies."
+
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/faq/page.tsx:62
+msgid "faq.a.trackerLimit"
+msgstr "No. The application tracker has no hard limit — save as many jobs as you want and move them through your pipeline."
+
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/faq/page.tsx:78
+msgid "faq.a.dataPrivacy"
+msgstr "No. We don't sell, rent, or share your data for marketing. Cookies are session-only with no ads or tracking. You can delete your account and all data is wiped within 30 days."
+
+#. Application tracker status: not applied
+#. js-lingui-explicit-id
+#: src/components/search/job-detail-dialog.tsx:438
+msgid "search.tracker.notApplied"
+msgstr "Not applied"
 
 #. Sankey funnel node: not applied
 #. js-lingui-explicit-id
 #: src/components/my-jobs/sankey-funnel.tsx:44
 msgid "myJobs.funnel.notApplied"
-msgstr "Not applied"
-
-#. Application tracker status: not applied
-#. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:437
-msgid "search.tracker.notApplied"
 msgstr "Not applied"
 
 #. Warning shown when the request was saved in DB but GitHub issue creation failed
@@ -2255,7 +2492,7 @@ msgstr "Offer"
 
 #. Application tracker status: offer
 #. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:440
+#: src/components/search/job-detail-dialog.tsx:441
 msgid "search.tracker.offer"
 msgstr "Offer"
 
@@ -2273,7 +2510,7 @@ msgstr "Offered"
 
 #. Status option in dropdown: offered
 #. js-lingui-explicit-id
-#: src/components/my-jobs/my-job-detail-panel.tsx:35
+#: src/components/my-jobs/my-job-detail-panel.tsx:36
 msgid "myJobs.statusOption.offered"
 msgstr "Offered"
 
@@ -2309,7 +2546,7 @@ msgstr "Onsite"
 
 #. Aria label for mobile menu button
 #. js-lingui-explicit-id
-#: src/components/Header.tsx:79
+#: src/components/Header.tsx:82
 msgid "common.header.openMenu"
 msgstr "Open main menu"
 
@@ -2414,12 +2651,6 @@ msgstr "Page not found"
 msgid "myJobs.interviewType.panel"
 msgstr "Panel"
 
-#. Feature: kill tab routine description
-#. js-lingui-explicit-id
-#: src/components/Features.tsx:196
-msgid "home.features.s2.p2.description"
-msgstr "Park every interesting startup in one dashboard instead of juggling Chrome windows and bookmarks."
-
 #. Employment type: part-time
 #. js-lingui-explicit-id
 #: src/components/search/employment-type-modal.tsx:12
@@ -2470,12 +2701,6 @@ msgstr "Passwords do not match"
 msgid "app.home.request.description"
 msgstr "Enter a company name or careers page URL and we'll start tracking their job postings."
 
-#. Feature: paste a link title
-#. js-lingui-explicit-id
-#: src/components/Features.tsx:190
-msgid "home.features.s2.p1.title"
-msgstr "Paste a link, kick off a crawl"
-
 #. Label for pay period selector
 #. js-lingui-explicit-id
 #: src/components/settings/GeneralSettings.tsx:331
@@ -2511,6 +2736,12 @@ msgstr "Permanently delete your account and all associated data. This action can
 #: src/components/my-jobs/interview-list.tsx:16
 msgid "myJobs.interviewType.phoneScreen"
 msgstr "Phone Screen"
+
+#. Feature section 3 description
+#. js-lingui-explicit-id
+#: src/components/Features.tsx:260
+msgid "home.features.s3.description"
+msgstr "Pick the companies you care about, set your filters, and get a live feed of matching roles. Share it publicly or keep it private."
 
 #. Plan section heading in billing settings
 #. js-lingui-explicit-id
@@ -2592,27 +2823,21 @@ msgstr "Please log in to manage your account settings."
 msgid "settings.billing.loginRequired"
 msgstr "Please log in to manage your billing settings."
 
-#. Feature: paste a link description
-#. js-lingui-explicit-id
-#: src/components/Features.tsx:191
-msgid "home.features.s2.p1.description"
-msgstr "Point us at any careers page or Notion job board and Job Seek mirrors it in your workspace within minutes."
-
 #. Posting not found message
 #. js-lingui-explicit-id
-#: src/components/my-jobs/my-job-detail-panel.tsx:178
-msgid "myJobs.detail.notFound"
+#: src/components/search/job-detail-dialog.tsx:87
+msgid "search.detail.notFound"
 msgstr "Posting not found."
 
 #. Posting not found message
 #. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:86
-msgid "search.detail.notFound"
+#: src/components/my-jobs/my-job-detail-panel.tsx:179
+msgid "myJobs.detail.notFound"
 msgstr "Posting not found."
 
 #. Pricing section eyebrow
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:101
+#: src/components/Pricing.tsx:100
 msgid "home.pricing.eyebrow"
 msgstr "Pricing"
 
@@ -2643,7 +2868,7 @@ msgid "privacy.hero.title"
 msgstr "Privacy at Job Seek"
 
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/privacy-policy/page.tsx:16
+#: app/[lang]/(public)/privacy-policy/page.tsx:17
 msgid "privacy.meta.title"
 msgstr "Privacy Policy"
 
@@ -2665,14 +2890,6 @@ msgstr "Pro"
 msgid "settings.billing.plan.pro"
 msgstr "Pro"
 
-#. Nav link: Product
-#. Nav link: Product
-#. js-lingui-explicit-id
-#: src/components/Header.tsx:55
-#: src/components/MobileMenu.tsx:76
-msgid "common.nav.product"
-msgstr "Product"
-
 #. Checkbox label to make watchlist public
 #. js-lingui-explicit-id
 #: src/components/watchlist/create-watchlist-dialog.tsx:133
@@ -2691,16 +2908,16 @@ msgstr "Public Domain"
 msgid "license.contactCta"
 msgstr "Questions about licensing or commercial use? Email us."
 
-#. Terms contact call to action
-#. js-lingui-explicit-id
-#: src/components/TermsContent.tsx:54
-msgid "terms.contact.description"
-msgstr "Questions? Email us."
-
 #. Privacy contact call to action
 #. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx:66
 msgid "privacy.contact.description"
+msgstr "Questions? Email us."
+
+#. Terms contact call to action
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx:54
+msgid "terms.contact.description"
 msgstr "Questions? Email us."
 
 #. Link to full CC license
@@ -2728,7 +2945,7 @@ msgid "terms.fullTermsLink"
 msgstr "Read the full Terms of Service"
 
 #. js-lingui-explicit-id
-#: app/[lang]/layout.tsx:67
+#: app/[lang]/layout.tsx:89
 msgid "app.schema.feature.alerts"
 msgstr "Real-time job posting alerts"
 
@@ -2737,6 +2954,12 @@ msgstr "Real-time job posting alerts"
 #: src/components/my-jobs/sort-filter-bar.tsx:13
 msgid "myJobs.sort.recentlyUpdated"
 msgstr "Recently updated"
+
+#. Feature: interview log description
+#. js-lingui-explicit-id
+#: src/components/Features.tsx:212
+msgid "home.features.s2.p2.description"
+msgstr "Record each interview round with date, type, and notes so nothing slips through the cracks."
 
 #. MIT right 2
 #. js-lingui-explicit-id
@@ -2768,6 +2991,12 @@ msgstr "Rejected"
 msgid "myJobs.status.rejected"
 msgstr "Rejected"
 
+#. Application tracker status: rejected
+#. js-lingui-explicit-id
+#: src/components/search/job-detail-dialog.tsx:442
+msgid "search.tracker.rejected"
+msgstr "Rejected"
+
 #. Sankey funnel node label prefix: rejected
 #. js-lingui-explicit-id
 #: src/components/my-jobs/sankey-funnel.tsx:45
@@ -2776,14 +3005,8 @@ msgstr "Rejected"
 
 #. Status option in dropdown: rejected
 #. js-lingui-explicit-id
-#: src/components/my-jobs/my-job-detail-panel.tsx:36
+#: src/components/my-jobs/my-job-detail-panel.tsx:37
 msgid "myJobs.statusOption.rejected"
-msgstr "Rejected"
-
-#. Application tracker status: rejected
-#. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:441
-msgid "search.tracker.rejected"
 msgstr "Rejected"
 
 #. Footer license summary text
@@ -2800,9 +3023,15 @@ msgstr "Remove keyword"
 
 #. Aria label for removing a location pill
 #. js-lingui-explicit-id
-#: src/components/search/location-pills.tsx:189
+#: src/components/search/location-pills.tsx:200
 msgid "search.locations.remove"
 msgstr "Remove location"
+
+#. Feature: request companies title
+#. js-lingui-explicit-id
+#: src/components/Features.tsx:271
+msgid "home.features.s3.p2.title"
+msgstr "Request any company"
 
 #. Success message after submitting a company request, with link to GitHub issue for tracking
 #. Success message after submitting a company request, with link to GitHub issue for tracking
@@ -2886,7 +3115,7 @@ msgstr "Role"
 
 #. Section header for occupation suggestions in search bar
 #. js-lingui-explicit-id
-#: src/components/search/search-bar.tsx:426
+#: src/components/search/search-bar.tsx:437
 msgid "search.bar.roles"
 msgstr "Roles"
 
@@ -2920,6 +3149,18 @@ msgstr "Salary display"
 msgid "search.salaryModal.title"
 msgstr "Salary range"
 
+#. Feature section 2 description
+#. js-lingui-explicit-id
+#: src/components/Features.tsx:200
+msgid "home.features.s2.description"
+msgstr "Save any role you find, move it through your pipeline as you apply and interview, and see where every application stands at a glance."
+
+#. Feature: watchlists and alerts description
+#. js-lingui-explicit-id
+#: src/components/Features.tsx:157
+msgid "home.features.s1.p3.description"
+msgstr "Save any search as a watchlist and get email alerts when new roles match your criteria."
+
 #. Save job aria label
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-job-list.tsx:186
@@ -2944,11 +3185,11 @@ msgstr "Save jobs"
 msgid "myJobs.stats.empty"
 msgstr "Save some jobs and track your applications to see stats here."
 
-#. Feature: saved searches description
+#. Button label to save current search as a watchlist
 #. js-lingui-explicit-id
-#: src/components/Features.tsx:142
-msgid "home.features.s1.p3.description"
-msgstr "Save your filters for quick scans without retyping everything."
+#: src/components/search/save-search-button.tsx:96
+msgid "search.saveSearch.label"
+msgstr "Save this search"
 
 #. Status group heading: saved jobs
 #. js-lingui-explicit-id
@@ -2970,27 +3211,9 @@ msgstr "Saved"
 
 #. Status option in dropdown: saved
 #. js-lingui-explicit-id
-#: src/components/my-jobs/my-job-detail-panel.tsx:32
+#: src/components/my-jobs/my-job-detail-panel.tsx:33
 msgid "myJobs.statusOption.saved"
 msgstr "Saved"
-
-#. Free feature: saved searches
-#. js-lingui-explicit-id
-#: src/components/Pricing.tsx:46
-msgid "home.pricing.free.f3"
-msgstr "Saved searches"
-
-#. Pro feature: saved searches
-#. js-lingui-explicit-id
-#: src/components/Pricing.tsx:82
-msgid "home.pricing.pro.f3"
-msgstr "Saved searches"
-
-#. Feature: saved searches title
-#. js-lingui-explicit-id
-#: src/components/Features.tsx:141
-msgid "home.features.s1.p3.title"
-msgstr "Saved searches"
 
 #. Username save button while loading
 #. js-lingui-explicit-id
@@ -3004,10 +3227,22 @@ msgstr "Saving..."
 msgid "settings.account.email.saving"
 msgstr "Saving..."
 
+#. Free feature: full search
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx:44
+msgid "home.pricing.free.f1"
+msgstr "Search across all companies and filters"
+
+#. Feature section 1 description
+#. js-lingui-explicit-id
+#: src/components/Features.tsx:140
+msgid "home.features.s1.description"
+msgstr "Search across hundreds of companies scraped directly from their career pages. Filter by seniority, tech stack, salary range, location, and language — all at once."
+
 #. Placeholder for search bar when on company page
 #. js-lingui-explicit-id
 #. placeholder {0}: company.name
-#: app/[lang]/(app)/company/[slug]/company-page.tsx:158
+#: app/[lang]/(app)/company/[slug]/company-page.tsx:159
 msgid "company.page.searchPlaceholder"
 msgstr "Search at {0}..."
 
@@ -3027,6 +3262,11 @@ msgstr "Search companies..."
 #: app/[lang]/(app)/explore/page.tsx:26
 msgid "explore.meta.description"
 msgstr "Search and filter job openings across hundreds of companies."
+
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/page.tsx:21
+msgid "home.meta.description"
+msgstr "Search jobs scraped directly from company career pages. Filter by seniority, tech stack, salary, and location, then track every application in one place."
 
 #. Placeholder for search input in all-languages modal
 #. js-lingui-explicit-id
@@ -3048,7 +3288,7 @@ msgstr "Search locations..."
 
 #. Back to search results link on company page
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/company/[slug]/company-page.tsx:539
+#: app/[lang]/(app)/company/[slug]/company-page.tsx:540
 msgid "company.page.backToSearch"
 msgstr "Search results"
 
@@ -3064,9 +3304,15 @@ msgstr "Search roles..."
 msgid "watchlists.explore.searchPlaceholder"
 msgstr "Search watchlists..."
 
+#. Feature section 1 eyebrow text
+#. js-lingui-explicit-id
+#: src/components/Features.tsx:134
+msgid "home.features.s1.eyebrow"
+msgstr "Search with precision"
+
 #. Placeholder for the main search bar
 #. js-lingui-explicit-id
-#: src/components/search/search-bar.tsx:372
+#: src/components/search/search-bar.tsx:383
 msgid "search.bar.placeholder"
 msgstr "Search..."
 
@@ -3075,6 +3321,12 @@ msgstr "Search..."
 
 #~ msgid "search.card.following"
 #~ msgstr "Following"
+
+#. Feature: application stats description
+#. js-lingui-explicit-id
+#: src/components/Features.tsx:217
+msgid "home.features.s2.p3.description"
+msgstr "See your funnel, conversion rates, and activity heatmap to understand what is working."
 
 #. Title for the seniority level selection modal
 #. js-lingui-explicit-id
@@ -3166,12 +3418,6 @@ msgstr "Set new password"
 msgid "settings.account.password.set"
 msgstr "Set password"
 
-#. Feature: alerts you drive description
-#. js-lingui-explicit-id
-#: src/components/Features.tsx:201
-msgid "home.features.s2.p3.description"
-msgstr "Set the cadence per company so you hear about fresh openings without doom-scrolling job sites all day."
-
 #. Set password button while loading
 #. js-lingui-explicit-id
 #: src/components/settings/AccountSettings.tsx:106
@@ -3208,16 +3454,22 @@ msgstr "Settings"
 #~ msgid "settings.billing.usage.unlimited"
 #~ msgstr "Unlimited"
 
+#. Feature: share watchlists title
+#. js-lingui-explicit-id
+#: src/components/Features.tsx:276
+msgid "home.features.s3.p3.title"
+msgstr "Share with anyone"
+
+#. Button to collapse location list
+#. js-lingui-explicit-id
+#: src/components/search/job-detail-dialog.tsx:345
+msgid "search.detail.showLessLocations"
+msgstr "Show less"
+
 #. Collapse location pill list
 #. js-lingui-explicit-id
 #: src/components/search/filter-bar.tsx:350
 msgid "company.page.showLess"
-msgstr "Show less"
-
-#. Button to collapse location list
-#. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:344
-msgid "search.detail.showLessLocations"
 msgstr "Show less"
 
 #. Aria label to show password
@@ -3264,7 +3516,7 @@ msgstr "Sign in"
 
 #. Prompt for non-logged-in users to sign in to create watchlists
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/watchlists/watchlists-page.tsx:66
+#: app/[lang]/(app)/watchlists/watchlists-page.tsx:108
 msgid "watchlists.page.loginPrompt"
 msgstr "Sign in to create and manage your own watchlists."
 
@@ -3306,7 +3558,7 @@ msgstr "Signing in..."
 
 #. Pricing section description
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:107
+#: src/components/Pricing.tsx:106
 msgid "home.pricing.description"
 msgstr "Simple, transparent pricing. Start for free and upgrade when you get serious about your job search."
 
@@ -3328,12 +3580,6 @@ msgstr "Skip to content"
 msgid "error.title"
 msgstr "Something went wrong"
 
-#. Generic forgot password error
-#. js-lingui-explicit-id
-#: app/[lang]/(auth)/forgot-password/page.tsx:43
-msgid "auth.forgotPassword.error.generic"
-msgstr "Something went wrong. Please try again."
-
 #. Generic error when company request fails
 #. Generic error when company request fails
 #. Generic error when company request fails
@@ -3342,6 +3588,12 @@ msgstr "Something went wrong. Please try again."
 #: app/[lang]/(app)/progress/company-request-form.tsx:18
 #: src/components/search/request-company.tsx:19
 msgid "app.home.request.error.unknown"
+msgstr "Something went wrong. Please try again."
+
+#. Generic forgot password error
+#. js-lingui-explicit-id
+#: app/[lang]/(auth)/forgot-password/page.tsx:43
+msgid "auth.forgotPassword.error.generic"
 msgstr "Something went wrong. Please try again."
 
 #. Generic error creating watchlist
@@ -3388,15 +3640,15 @@ msgstr "Status"
 
 #. Status section heading
 #. js-lingui-explicit-id
-#: src/components/my-jobs/my-job-detail-panel.tsx:195
+#: src/components/my-jobs/my-job-detail-panel.tsx:196
 msgid "myJobs.detail.status"
 msgstr "Status"
 
-#. Feature section 2 eyebrow text
+#. Feature: status tracking title
 #. js-lingui-explicit-id
-#: src/components/Features.tsx:178
-msgid "home.features.s2.eyebrow"
-msgstr "Stay in control"
+#: src/components/Features.tsx:206
+msgid "home.features.s2.p1.title"
+msgstr "Status tracking"
 
 #. Submit button for the company request form
 #. Submit button for the company request form
@@ -3418,28 +3670,17 @@ msgstr "Submit"
 msgid "app.home.request.submitting"
 msgstr "Submitting..."
 
-#. Free feature: subscribe to companies
-#. js-lingui-explicit-id
-#: src/components/Pricing.tsx:44
-msgid "home.pricing.free.f1"
-msgstr "Subscribe to up to 5 companies"
-
-#. js-lingui-explicit-id
-#: app/[lang]/(public)/page.tsx:20
-msgid "home.meta.description"
-msgstr "Subscribe to updates from companies, track applications, and never miss new openings."
-
-#. Hero description paragraph
-#. js-lingui-explicit-id
-#: src/components/Hero.tsx:31
-msgid "home.hero.description"
-msgstr "Subscribe to updates from companies, track applications, and never miss new openings. Designed to keep you in control, not hand your decisions to a bot."
-
 #. Subscription settings nav link
 #. js-lingui-explicit-id
 #: src/components/settings/SettingsNav.tsx:31
 msgid "settings.nav.billing"
 msgstr "Subscription"
+
+#. FAQ page eyebrow
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/faq/faq-content.tsx:39
+msgid "faq.eyebrow"
+msgstr "Support"
 
 #. Aria label for switching to dark mode
 #. js-lingui-explicit-id
@@ -3467,13 +3708,13 @@ msgstr "Technical"
 
 #. Section header for technology suggestions in search bar
 #. js-lingui-explicit-id
-#: src/components/search/search-bar.tsx:496
+#: src/components/search/search-bar.tsx:507
 msgid "search.bar.technologies"
 msgstr "Technologies"
 
 #. Technologies sub-heading in details section
 #. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:386
+#: src/components/search/job-detail-dialog.tsx:387
 msgid "search.detail.technologies"
 msgstr "Technologies"
 
@@ -3508,7 +3749,7 @@ msgid "common.footer.termsLink"
 msgstr "Terms"
 
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/terms/page.tsx:16
+#: app/[lang]/(public)/terms/page.tsx:17
 msgid "terms.meta.title"
 msgstr "Terms of Service"
 
@@ -3519,21 +3760,25 @@ msgid "terms.hero.title"
 msgstr "Terms of Service"
 
 #. js-lingui-explicit-id
-#: app/[lang]/(public)/terms/page.tsx:17
+#: app/[lang]/(public)/terms/page.tsx:18
 msgid "terms.meta.description"
 msgstr "Terms of Service for the Job Seek application."
 
-#. Free tier description
+#. About transparency paragraph
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:41
-msgid "home.pricing.free.description"
-msgstr "Test Job Seek with enough headroom to be up to date with your dream companies."
+#: app/[lang]/(public)/about/about-content.tsx:54
+msgid "about.transparency.p1"
+msgstr "The crawler code is open source so anyone can audit how we collect data. We respect robots.txt, honor TDM-Reservation headers, and limit ourselves to one request per site per minute. Every outbound link includes utm_source=jobseek so employers know where their traffic comes from."
 
-#. Feature section 2 heading
 #. js-lingui-explicit-id
-#: src/components/Features.tsx:181
-msgid "home.features.s2.title"
-msgstr "The first job aggregator that puts you behind the wheel"
+#: app/[lang]/(public)/faq/page.tsx:42
+msgid "faq.a.howOftenUpdated"
+msgstr "The crawler discovers new postings on an hourly cycle and refreshes job details daily. Most roles appear within hours of being published on a company's careers page."
+
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/faq/page.tsx:82
+msgid "faq.a.languages"
+msgstr "The interface is available in English, German, French, and Italian. You can also filter job postings by the language they were written in."
 
 #. Body text on the 404 page
 #. js-lingui-explicit-id
@@ -3549,14 +3794,14 @@ msgstr "The service is provided as-is — no warranties."
 
 #. Short version section title
 #. js-lingui-explicit-id
-#: src/components/TermsContent.tsx:40
-msgid "terms.short.title"
+#: src/components/PrivacyPolicyContent.tsx:40
+msgid "privacy.short.title"
 msgstr "The short version"
 
 #. Short version section title
 #. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx:40
-msgid "privacy.short.title"
+#: src/components/TermsContent.tsx:40
+msgid "terms.short.title"
 msgstr "The short version"
 
 #. Theme settings section heading
@@ -3595,17 +3840,23 @@ msgstr "This will permanently delete this watchlist and all its settings. This a
 msgid "watchlists.jobList.today"
 msgstr "Today"
 
-#. Feature section 1 description
+#. Feature section 2 eyebrow text
 #. js-lingui-explicit-id
-#: src/components/Features.tsx:125
-msgid "home.features.s1.description"
-msgstr "Track roles, get notified when companies post something new, and keep your pipeline clean."
+#: src/components/Features.tsx:194
+msgid "home.features.s2.eyebrow"
+msgstr "Track your pipeline"
 
 #. Open-source section body
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:188
 msgid "indexing.oss.body"
 msgstr "Transparency matters, so the code for our job link collection service and extraction pipeline is open source."
+
+#. About transparency section heading
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/about/about-content.tsx:50
+msgid "about.transparency.title"
+msgstr "Transparent by default"
 
 #. Button to retry loading the page after an error
 #. js-lingui-explicit-id
@@ -3637,11 +3888,22 @@ msgstr "Under Active Development"
 msgid "privacy.rights.intro"
 msgstr "Under GDPR you can ask for a copy of your data, have it corrected or deleted, export it, or object to processing. Delete your account and everything is wiped within 30 days."
 
-#. Pro feature: unlimited subscriptions
+#. Pro feature: unlimited watchlists
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx:80
+#: src/components/Pricing.tsx:81
 msgid "home.pricing.pro.f1"
-msgstr "Unlimited company subscriptions"
+msgstr "Unlimited watchlists"
+
+#. Pro tier description
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx:77
+msgid "home.pricing.pro.description"
+msgstr "Unlimited watchlists with email alerts so you never miss an opening."
+
+#. js-lingui-explicit-id
+#: app/[lang]/layout.tsx:84
+msgid "app.schema.offer.pro"
+msgstr "Unlimited watchlists, email alerts on new matches"
 
 #. Unsave job aria label
 #. js-lingui-explicit-id
@@ -3696,6 +3958,11 @@ msgstr "Upgrade to Pro"
 #: src/components/settings/BillingSettings.tsx:170
 msgid "settings.billing.upgrading"
 msgstr "Upgrading…"
+
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/faq/page.tsx:50
+msgid "faq.a.requestCompany"
+msgstr "Use the request form on the explore page — paste a careers page URL or company name and we'll start indexing it. You can track progress via the issue number we return."
 
 #. Fallback username for watchlist owner
 #. js-lingui-explicit-id
@@ -3753,7 +4020,7 @@ msgstr "Video Call"
 
 #. Link to the original job posting
 #. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx:183
+#: src/components/search/job-detail-dialog.tsx:184
 msgid "search.detail.viewPosting"
 msgstr "View posting"
 
@@ -3771,7 +4038,7 @@ msgstr "Watchlist limit reached"
 
 #. Title of the watchlists exploration page
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/watchlists/watchlists-page.tsx:57
+#: app/[lang]/(app)/watchlists/watchlists-page.tsx:99
 msgid "watchlists.page.title"
 msgstr "Watchlists"
 
@@ -3787,8 +4054,14 @@ msgstr "Watchlists"
 msgid "app.header.nav.watchlists"
 msgstr "Watchlists"
 
+#. Feature: watchlists and alerts title
 #. js-lingui-explicit-id
-#: app/[lang]/layout.tsx:69
+#: src/components/Features.tsx:156
+msgid "home.features.s1.p3.title"
+msgstr "Watchlists and alerts"
+
+#. js-lingui-explicit-id
+#: app/[lang]/layout.tsx:91
 msgid "app.schema.feature.watchlists"
 msgstr "Watchlists and application tracking"
 
@@ -3797,6 +4070,12 @@ msgstr "Watchlists and application tracking"
 #: src/components/TermsContent.tsx:44
 msgid "terms.short.r2"
 msgstr "We aggregate public job postings. We do not guarantee they are accurate or up to date."
+
+#. About paragraph 3: philosophy
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/about/about-content.tsx:43
+msgid "about.p3"
+msgstr "We believe job search should be driven by the person searching, not by an algorithm. That means no auto-apply bots, no engagement-optimized feeds, and no selling your data. You choose the companies, you define the filters, you track your own pipeline. The tool stays out of the way."
 
 #. Privacy policy page description
 #. js-lingui-explicit-id
@@ -3809,6 +4088,11 @@ msgstr "We collect only what we need, we don’t sell your data, and you can del
 #: src/components/PrivacyPolicyContent.tsx:44
 msgid "privacy.short.r2"
 msgstr "We don’t sell, rent, or share your data for marketing."
+
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/faq/page.tsx:46
+msgid "faq.a.whichAts"
+msgstr "We integrate with Workday, Greenhouse, Lever, Ashby, Rippling, SmartRecruiters, Workable, and over a dozen other platforms. We also parse sitemaps and JSON APIs from any careers page."
 
 #. Step 1 body
 #. js-lingui-explicit-id
@@ -3839,6 +4123,23 @@ msgstr "We noticed this job was recently added. Some details may still be proces
 #: src/components/HowWeIndexContent.tsx:177
 msgid "indexing.automation.body"
 msgstr "We oppose handing hiring or job-search decisions over to black-box automation — whether on the employer or applicant side. Every outbound link we share includes <0>utm_source=jobseek</0> so recruiters recognise the traffic, and we continuously review usage patterns plus enforce friction to deter scripted applications."
+
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/faq/page.tsx:66
+msgid "faq.a.crawlingPolicy"
+msgstr "We respect robots.txt and TDM-Reservation headers, limit requests to one per site per minute, and use exponential backoff. All requests identify themselves via User-Agent. See our Job Indexing page for full details."
+
+#. Hero description paragraph
+#. js-lingui-explicit-id
+#: src/components/Hero.tsx:31
+msgid "home.hero.description"
+msgstr "We scrape career pages directly so you see openings the moment they go live. Filter by seniority, tech stack, salary, and location across hundreds of companies, then track every application in one place."
+
+#. Feature: direct from source description
+#. js-lingui-explicit-id
+#: src/components/Features.tsx:147
+msgid "home.features.s1.p1.description"
+msgstr "We scrape career pages from Workday, Greenhouse, Lever, and more — roles show up here before they hit the big aggregators."
 
 #. Description telling user a verification link was sent
 #. js-lingui-explicit-id
@@ -3876,11 +4177,36 @@ msgstr "Wed"
 msgid "auth.signIn.subtitle"
 msgstr "Welcome back"
 
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/faq/page.tsx:57
+msgid "faq.q.whatIsWatchlist"
+msgstr "What is a watchlist?"
+
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/faq/page.tsx:37
+msgid "faq.q.whatIsJobseek"
+msgstr "What is Job Seek?"
+
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/faq/page.tsx:53
+msgid "faq.q.freeVsPro"
+msgstr "What's the difference between Free and Pro?"
+
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/faq/page.tsx:45
+msgid "faq.q.whichAts"
+msgstr "Which ATS platforms do you support?"
+
 #. Heading above the company request input on the app home page
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/progress/page.tsx:54
 msgid "app.home.request.heading"
 msgstr "Which company should we track?"
+
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/faq/page.tsx:81
+msgid "faq.q.languages"
+msgstr "Which languages does Jobseek support?"
 
 #. Yearly pay period option
 #. js-lingui-explicit-id
@@ -3903,6 +4229,16 @@ msgstr "Yearly"
 #: src/components/search/experience-modal.tsx:172
 msgid "search.experienceModal.years"
 msgstr "years"
+
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/faq/page.tsx:70
+msgid "faq.a.optOut"
+msgstr "Yes. Email us and we'll stop crawling your careers site immediately and remove your postings from the index."
+
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/faq/page.tsx:74
+msgid "faq.a.openSource"
+msgstr "Yes. The crawler and extraction pipeline are fully open source on GitHub. The application code is MIT licensed; job data is CC BY-NC 4.0."
 
 #. Date divider label for yesterday
 #. js-lingui-explicit-id
@@ -3963,6 +4299,12 @@ msgstr "You've reached your watchlist limit. Upgrade your plan to create more wa
 #: src/components/watchlist/watchlist-action-bar.tsx:93
 msgid "upgrade.reason.mirrorLimit"
 msgstr "You've reached your watchlist limit. Upgrade your plan to mirror more watchlists."
+
+#. Feature section 3 eyebrow text
+#. js-lingui-explicit-id
+#: src/components/Features.tsx:254
+msgid "home.features.s3.eyebrow"
+msgstr "Your companies, your rules"
 
 #. Description after successful email verification
 #. js-lingui-explicit-id

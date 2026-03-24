@@ -13,6 +13,7 @@ import type { PostingDetail } from "@/lib/actions/search";
 import { SaveButton } from "@/components/search/save-button";
 import { useSavedJobs } from "@/components/SavedJobsProvider";
 import { PendingJobBanner } from "@/components/PendingJobWarning";
+import { withUtmSource } from "@/lib/utm";
 
 import { InterviewList } from "@/components/my-jobs/interview-list";
 import { updateJobStatus, getMyJobDetail, addInterview, updateInterview, deleteInterview } from "@/lib/actions/my-jobs";
@@ -175,7 +176,7 @@ function DetailContent({ detail }: { detail: PostingDetail }) {
           <span suppressHydrationWarning className="text-[10px] tabular-nums text-muted">{timeAgoShort(detail.firstSeenAt)}</span>
           <SaveButton postingId={detail.id} />
           <a
-            href={detail.sourceUrl}
+            href={withUtmSource(detail.sourceUrl)}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 rounded-full border border-primary bg-primary px-3 py-1 text-xs font-semibold text-primary-contrast transition-opacity hover:opacity-90"
