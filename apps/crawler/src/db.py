@@ -21,7 +21,9 @@ async def _init_connection(conn: asyncpg.Connection) -> None:
 async def create_pool() -> asyncpg.Pool:
     global _pool
     if _pool is None:
-        max_size = settings.crawler_db_pool_max or settings.crawler_max_concurrent
+        max_size = settings.crawler_db_pool_max or (
+            settings.crawler_max_concurrent + settings.crawler_max_browser
+        )
         _pool = await asyncpg.create_pool(
             settings.database_url,
             min_size=1,
