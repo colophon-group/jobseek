@@ -523,9 +523,7 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
                             follow_redirects=True,
                             verify=False,
                         ) as insecure:
-                            count = await _fetch_job_count(
-                                company, wd_instance, site, insecure
-                            )
+                            count = await _fetch_job_count(company, wd_instance, site, insecure)
                         if count is not None:
                             result["jobs"] = count
                             result["ssl_verify"] = False

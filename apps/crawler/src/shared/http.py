@@ -39,7 +39,9 @@ def create_http_client(*, verify: bool = True) -> httpx.AsyncClient:
     return httpx.AsyncClient(**kwargs, **({"mounts": mounts} if mounts else {}))
 
 
-def create_logging_http_client(*, verify: bool = True) -> tuple[httpx.AsyncClient, list[dict[str, Any]]]:
+def create_logging_http_client(
+    *, verify: bool = True
+) -> tuple[httpx.AsyncClient, list[dict[str, Any]]]:
     """Create an HTTP client that logs request/response metadata.
 
     Returns (client, log_entries) where log_entries is populated as
