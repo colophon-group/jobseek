@@ -173,13 +173,17 @@ def scraper_needs_browser(name: str, config: dict | None = None) -> bool:
 
     When *config* is provided, api_sniffer in HTTP mode (``api_url`` set)
     does not need a browser despite being registered with ``needs_browser=True``.
+    The ``dom`` scraper needs a browser when ``render`` is true in config.
     """
     entry = _REGISTRY.get(name)
     if not entry:
         return False
     if entry.needs_browser and config and config.get("api_url"):
         return False
-    return entry.needs_browser
+    if entry.needs_browser:
+        return True
+    # dom scraper uses Playwright when render is enabled
+    return name == "dom" and bool(config and config.get("render"))
 
 
 # Quality fields checked in probe results

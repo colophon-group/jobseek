@@ -28,6 +28,7 @@ from src.batch import (  # noqa: E402
     dry_run_single_board,
     process_monitor_batch,
     process_scrape_batch,
+    release_rejected,
     run_single_board,
 )
 from src.config import settings  # noqa: E402
@@ -120,9 +121,14 @@ class WorkerPool:
     """Bounded async worker pool with per-domain queuing.
 
     Items for the same domain run serially (politeness). Items for different
-    domains run concurrently up to *max_concurrent*. When an item finishes,
-    the next queued item for that domain starts immediately — no claim tick
-    delay.
+    domains run concurrently up to *max_concurrent* (HTTP) or *max_browser*
+    (Playwright). When an item finishes, the next queued item for that domain
+    starts immediately — no claim tick delay.
+
+    Two separate semaphores prevent browser (Playwright) work from starving
+    lightweight HTTP work. Items are routed to the appropriate semaphore based
+    on their ``needs_browser`` flag. If a domain queue contains a mix, the
+    semaphore is swapped between items.
 
     Asyncio is single-threaded so set/deque operations between await points
     are atomic — no locks needed.
@@ -130,9 +136,11 @@ class WorkerPool:
 
     _ITEM_TIMEOUT = 300  # 5 minutes per job
 
-    def __init__(self, max_concurrent: int, db_pool=None) -> None:
-        self._semaphore = asyncio.Semaphore(max_concurrent)
-        self._max = max_concurrent
+    def __init__(self, max_concurrent: int, max_browser: int = 3, db_pool=None) -> None:
+        self._http_sem = asyncio.Semaphore(max_concurrent)
+        self._browser_sem = asyncio.Semaphore(max_browser)
+        self._max_http = max_concurrent
+        self._max_browser = max_browser
         self._db_pool = db_pool
         self._domains_inflight: set[str] = set()
         self._domain_queues: dict[str, collections.deque[WorkItem]] = {}
@@ -142,9 +150,20 @@ class WorkerPool:
         self.failed = 0
         self.timed_out = 0
 
+    def _sem_for(self, item: WorkItem) -> asyncio.Semaphore:
+        return self._browser_sem if item.needs_browser else self._http_sem
+
     @property
     def free_slots(self) -> int:
-        return self._semaphore._value
+        return self._http_sem._value + self._browser_sem._value
+
+    @property
+    def http_free(self) -> int:
+        return self._http_sem._value
+
+    @property
+    def browser_free(self) -> int:
+        return self._browser_sem._value
 
     @property
     def inflight_domains(self) -> list[str]:
@@ -152,7 +171,17 @@ class WorkerPool:
 
     @property
     def active_count(self) -> int:
-        return self._max - self._semaphore._value
+        return (self._max_http - self._http_sem._value) + (
+            self._max_browser - self._browser_sem._value
+        )
+
+    @property
+    def http_active(self) -> int:
+        return self._max_http - self._http_sem._value
+
+    @property
+    def browser_active(self) -> int:
+        return self._max_browser - self._browser_sem._value
 
     @property
     def queued_count(self) -> int:
@@ -177,6 +206,40 @@ class WorkerPool:
             budget = min(budget, self._db_pool.get_idle_size())
         return budget
 
+    def accept(self, items: list[WorkItem]) -> tuple[list[WorkItem], list[WorkItem]]:
+        """Partition claimed items by pool capacity.
+
+        Returns (accepted, rejected).  HTTP items are accepted up to
+        ``http_free`` slots; browser items up to ``browser_free`` slots.
+        Items that queue behind an already-inflight domain don't consume
+        a slot, so they are always accepted.
+
+        Rejected items should have their DB leases released immediately
+        so they become claimable again on the next tick.
+        """
+        http_budget = self.http_free
+        browser_budget = self.browser_free
+        accepted: list[WorkItem] = []
+        rejected: list[WorkItem] = []
+        for item in items:
+            # Items queuing behind an in-flight domain share its slot
+            if item.domain in self._domains_inflight:
+                accepted.append(item)
+                continue
+            if item.needs_browser:
+                if browser_budget > 0:
+                    browser_budget -= 1
+                    accepted.append(item)
+                else:
+                    rejected.append(item)
+            else:
+                if http_budget > 0:
+                    http_budget -= 1
+                    accepted.append(item)
+                else:
+                    rejected.append(item)
+        return accepted, rejected
+
     def submit(self, item: WorkItem) -> None:
         """Schedule a work item.
 
@@ -198,11 +261,24 @@ class WorkerPool:
         self.total_submitted += 1
 
     async def _run(self, item: WorkItem) -> None:
-        """Acquire a semaphore slot and process items for this domain serially."""
-        await self._semaphore.acquire()
+        """Acquire the appropriate semaphore slot and process items for this domain serially.
+
+        Browser items use ``_browser_sem``; HTTP items use ``_http_sem``.
+        If the browser need changes between items in the same domain queue,
+        the old semaphore is released and the new one acquired.
+        """
+        sem = self._sem_for(item)
+        await sem.acquire()
         current: WorkItem | None = item
         try:
             while current is not None:
+                # Swap semaphore if browser need changed
+                new_sem = self._sem_for(current)
+                if new_sem is not sem:
+                    sem.release()
+                    sem = new_sem
+                    await sem.acquire()
+
                 try:
                     ok, elapsed = await self._run_with_heartbeat(current)
                     task_duration_seconds.labels(kind=current.kind).observe(elapsed)
@@ -238,7 +314,7 @@ class WorkerPool:
                         del self._domain_queues[item.domain]
         finally:
             self._domains_inflight.discard(item.domain)
-            self._semaphore.release()
+            sem.release()
 
     async def _run_with_heartbeat(self, item: WorkItem) -> tuple[bool, float]:
         """Run a work item, using heartbeat-aware timeout if a DeadlineExtender is set."""
@@ -299,6 +375,7 @@ async def run_continuous_loop(
     scrape: bool = True,
     worker_id: str = "",
     max_concurrent: int = 0,
+    max_browser: int = 0,
 ) -> None:
     """Continuous worker pool scheduler.
 
@@ -306,16 +383,21 @@ async def run_continuous_loop(
     per-domain queuing. When a domain's current item finishes, the next
     queued item starts immediately. Monitors get priority; scrapes fill
     remaining capacity.
+
+    Browser (Playwright) work is capped separately by *max_browser* to
+    prevent Chromium instances from starving lightweight HTTP work.
     """
     worker_id = worker_id or WORKER_ID
     max_concurrent = max_concurrent or settings.crawler_max_concurrent
+    max_browser = max_browser or settings.crawler_max_browser
     max_interval = settings.crawler_poll_interval
     idle_interval = 1.0
 
-    wp = WorkerPool(max_concurrent, db_pool=pool)
+    wp = WorkerPool(max_concurrent, max_browser=max_browser, db_pool=pool)
     log.info(
         "pool.starting",
         max_concurrent=max_concurrent,
+        max_browser=max_browser,
         monitor=monitor,
         scrape=scrape,
     )
@@ -331,6 +413,9 @@ async def run_continuous_loop(
             skip = wp.saturated_domains
             if monitor and budget > 0:
                 items = await claim_monitor_work(pool, http, budget, worker_id, skip)
+                items, rejected = wp.accept(items)
+                if rejected:
+                    await release_rejected(pool, rejected)
                 monitors_claimed = len(items)
                 for item in items:
                     wp.submit(item)
@@ -341,6 +426,9 @@ async def run_continuous_loop(
             skip = wp.saturated_domains
             if scrape and budget > 0:
                 items = await claim_scrape_work(pool, http, budget, worker_id, skip)
+                items, rejected = wp.accept(items)
+                if rejected:
+                    await release_rejected(pool, rejected)
                 scrapes_claimed = len(items)
                 for item in items:
                     wp.submit(item)
@@ -363,6 +451,7 @@ async def run_continuous_loop(
                 monitors_claimed=monitors_claimed,
                 scrapes_claimed=scrapes_claimed,
                 active=wp.active_count,
+                browser_active=wp.browser_active,
                 queued=wp.queued_count,
                 db_idle=pool.get_idle_size(),
                 succeeded=wp.succeeded,
@@ -467,6 +556,7 @@ async def run() -> None:
         batch_limit=settings.crawler_batch_limit,
         poll_interval=settings.crawler_poll_interval,
         max_concurrent=settings.crawler_max_concurrent,
+        max_browser=settings.crawler_max_browser,
     )
 
     if not args.once and not args.board:

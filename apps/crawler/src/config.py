@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     crawler_batch_limit: int = 200
     crawler_poll_interval: int = 15
     crawler_max_concurrent: int = 20
+    crawler_max_browser: int = 3  # separate cap for browser (Playwright) work
     crawler_db_pool_max: int = 0  # 0 = match crawler_max_concurrent
     metrics_port: int = 9091
 
