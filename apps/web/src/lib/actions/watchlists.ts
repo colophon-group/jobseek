@@ -106,7 +106,7 @@ export async function createWatchlist(params: {
       title: params.title,
       description: params.description ?? null,
       isPublic: params.isPublic ?? true,
-      filters: params.filters ?? {},
+      filters: { anyCompany: true, ...params.filters },
     })
     .returning({ id: watchlist.id });
 

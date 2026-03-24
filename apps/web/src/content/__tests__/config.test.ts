@@ -24,7 +24,7 @@ describe("siteConfig", () => {
   });
 
   it("nav has expected routes", () => {
-    expect(siteConfig.nav.product).toBeDefined();
+    expect(siteConfig.nav.about).toBeDefined();
     expect(siteConfig.nav.features).toBeDefined();
     expect(siteConfig.nav.pricing).toBeDefined();
     expect(siteConfig.nav.login).toBeDefined();

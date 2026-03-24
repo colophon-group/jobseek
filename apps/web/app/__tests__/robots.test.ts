@@ -9,19 +9,24 @@ describe("robots", () => {
 
   it("allows all user agents", () => {
     const result = robots();
-    expect(result.rules).toHaveProperty("userAgent", "*");
+    const rules = Array.isArray(result.rules) ? result.rules : [result.rules];
+    const wildcard = rules.find((r) => r.userAgent === "*");
+    expect(wildcard).toBeDefined();
   });
 
   it("allows root path", () => {
     const result = robots();
-    expect(result.rules).toHaveProperty("allow", "/");
+    const rules = Array.isArray(result.rules) ? result.rules : [result.rules];
+    const wildcard = rules.find((r) => r.userAgent === "*");
+    expect(wildcard?.allow).toContain("/");
   });
 
   it("disallows dashboard and auth pages", () => {
     const result = robots();
-    const rules = result.rules;
-    expect(rules).toBeDefined();
-    const disallow = (rules as { disallow: string[] }).disallow;
+    const rules = Array.isArray(result.rules) ? result.rules : [result.rules];
+    const wildcard = rules.find((r) => r.userAgent === "*");
+    expect(wildcard).toBeDefined();
+    const disallow = wildcard!.disallow as string[];
     expect(disallow).toContain("/dashboard");
     expect(disallow).toContain("/sign-in");
     expect(disallow).toContain("/sign-up");

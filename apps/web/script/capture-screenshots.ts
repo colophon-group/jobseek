@@ -5,7 +5,9 @@
  *   npx tsx script/capture-screenshots.ts [--base-url http://localhost:3000]
  *
  * Prerequisites:
- *   - A running Next.js dev/preview server (defaults to http://localhost:3000)
+ *   - A running Next.js **production** server (defaults to http://localhost:3000)
+ *     Run: pnpm build && pnpm start
+ *     (Dev mode adds overlays that pollute screenshots)
  *   - Playwright browsers installed:  npx playwright install chromium
  *   - Database seeded with data so pages have content to show
  *   - LOGIN_UI / PWD_UI set in .env.local (for authenticated pages)
@@ -115,13 +117,9 @@ async function run() {
     deviceScaleFactor: 2,
   });
 
-  // Dismiss cookie banner and hide Next.js dev indicator globally
+  // Dismiss cookie banner globally
   await context.addInitScript(() => {
     localStorage.setItem("cookie-consent", "1");
-    // Hide the Next.js dev mode indicator (floating circle)
-    const style = document.createElement("style");
-    style.textContent = `[data-nextjs-toast], nextjs-portal { display: none !important; }`;
-    document.head.appendChild(style);
   });
 
   // Log in once — session cookies persist across all pages in this context
@@ -156,7 +154,7 @@ async function run() {
         console.log(`  ${locale}/${feature.name}-${theme} → ${url}`);
 
         try {
-          await page.goto(url, { waitUntil: "networkidle", timeout: 30_000 });
+          await page.goto(url, { waitUntil: "networkidle", timeout: 60_000 });
           await setTheme(page, theme);
           await waitForHydration(page);
 
@@ -177,6 +175,14 @@ async function run() {
             await page.waitForLoadState("networkidle");
             await page.waitForTimeout(300);
           }
+
+          // Remove Next.js dev indicator (circle with N logo in bottom-left)
+          await page.evaluate(() => {
+            document.querySelectorAll("nextjs-portal, next-dev-overlay, [data-nextjs-toast], [data-nextjs-dialog-overlay]").forEach((el) => el.remove());
+            document.querySelectorAll("body > div").forEach((el) => {
+              if (el.shadowRoot) el.remove();
+            });
+          });
 
           const outPath = join(localeDir, `${feature.name}-${theme}.png`);
           await page.screenshot({ path: outPath, type: "png" });

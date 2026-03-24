@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bookmark, Loader2 } from "lucide-react";
+import { Eye, Loader2 } from "lucide-react";
 import { useLingui } from "@lingui/react/macro";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { tooltipClass } from "@/components/ui/tooltip-styles";
@@ -112,6 +112,7 @@ export function SaveSearchButton({
       });
 
   return (
+    <Tooltip.Provider delayDuration={0} skipDelayDuration={300}>
     <Tooltip.Root>
       <Tooltip.Trigger asChild>
         <button
@@ -119,7 +120,7 @@ export function SaveSearchButton({
           disabled={saving}
           className="inline-flex shrink-0 cursor-pointer items-center gap-1 text-xs text-primary transition-colors hover:text-primary/80 disabled:opacity-50"
         >
-          {saving ? <Loader2 size={12} className="animate-spin" /> : <Bookmark size={12} />}
+          {saving ? <Loader2 size={12} className="animate-spin" /> : <Eye size={12} />}
           {label}
         </button>
       </Tooltip.Trigger>
@@ -130,5 +131,6 @@ export function SaveSearchButton({
         </Tooltip.Content>
       </Tooltip.Portal>
     </Tooltip.Root>
+    </Tooltip.Provider>
   );
 }

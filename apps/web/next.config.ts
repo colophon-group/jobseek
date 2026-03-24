@@ -74,6 +74,7 @@ const nextConfig: NextConfig = {
       ],
     },
   ],
+  devIndicators: false,
   turbopack: {
     rules: {
       "*.po": {

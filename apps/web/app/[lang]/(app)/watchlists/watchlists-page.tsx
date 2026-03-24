@@ -131,7 +131,7 @@ export function WatchlistsPage({
             </p>
             <button
               type="button"
-              onClick={handleCreate}
+              onClick={() => handleCreate()}
               disabled={creating}
               className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-contrast transition-opacity hover:opacity-90 disabled:opacity-50 cursor-pointer"
             >
