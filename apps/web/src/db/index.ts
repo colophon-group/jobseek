@@ -14,7 +14,7 @@ export const db = new Proxy({} as PostgresJsDatabase<typeof schema>, {
         throw new Error("DATABASE_URL is not set");
       }
       globalForDb._db = drizzle(
-        postgres(process.env.DATABASE_URL, { max: 3 }),
+        postgres(process.env.DATABASE_URL, { max: 1, idle_timeout: 20, max_lifetime: 300, prepare: false }),
         { schema },
       );
     }

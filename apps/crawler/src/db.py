@@ -30,6 +30,7 @@ async def create_pool() -> asyncpg.Pool:
             max_size=max_size,
             command_timeout=60,
             statement_cache_size=0,
+            max_inactive_connection_lifetime=300.0,
             init=_init_connection,
         )
     return _pool
