@@ -3,7 +3,7 @@
   "info": {
     "title": "Job Seek API",
     "version": "1.0.0",
-    "description": "Public API for AI agents to search jobs, companies, watchlists, and taxonomies on jseek.co. Rate limited to 30 requests per minute per IP."
+    "description": "Public API for AI agents to search jobs, companies, watchlists, and taxonomies on jseek.co. Rate limited to 30 requests per minute per IP.\n\nIMPORTANT: Filter parameters (loc, occ, sen, tech) require exact slugs, NOT freetext. Use /api/v1/resolve to convert freetext to slugs first, or /api/v1/taxonomies to list all valid slugs. Passing freetext like loc=Zurich will NOT work — use loc=zurich (the slug)."
   },
   "servers": [{ "url": "https://jseek.co" }],
   "paths": {
@@ -11,13 +11,13 @@
       "get": {
         "operationId": "searchJobs",
         "summary": "Search jobs across companies",
-        "description": "Returns up to 5 companies with their top 3 job postings matching the filters. Use the same query params as the explore page.",
+        "description": "Returns up to 5 companies with their top 3 job postings matching the filters. Only 'q' accepts freetext. All other filter params (loc, occ, sen, tech) require exact slugs — use /api/v1/resolve to convert freetext to slugs first.",
         "parameters": [
-          { "name": "q", "in": "query", "schema": { "type": "string" }, "description": "Keywords (free text)" },
-          { "name": "loc", "in": "query", "schema": { "type": "string" }, "description": "Location slugs, comma-separated" },
-          { "name": "occ", "in": "query", "schema": { "type": "string" }, "description": "Occupation slugs, comma-separated" },
-          { "name": "sen", "in": "query", "schema": { "type": "string" }, "description": "Seniority slugs, comma-separated" },
-          { "name": "tech", "in": "query", "schema": { "type": "string" }, "description": "Technology slugs, comma-separated" },
+          { "name": "q", "in": "query", "schema": { "type": "string" }, "description": "Keywords (free text search)" },
+          { "name": "loc", "in": "query", "schema": { "type": "string" }, "description": "Location slugs, comma-separated (exact slugs only, use /resolve to look up)" },
+          { "name": "occ", "in": "query", "schema": { "type": "string" }, "description": "Occupation slugs, comma-separated (exact slugs only, use /resolve to look up)" },
+          { "name": "sen", "in": "query", "schema": { "type": "string" }, "description": "Seniority slugs, comma-separated (exact slugs only, use /resolve to look up)" },
+          { "name": "tech", "in": "query", "schema": { "type": "string" }, "description": "Technology slugs, comma-separated (exact slugs only, use /resolve to look up)" },
           { "name": "sal", "in": "query", "schema": { "type": "string" }, "description": "Salary range in EUR, format: min-max (e.g. 80000-150000)" },
           { "name": "salcur", "in": "query", "schema": { "type": "string" }, "description": "Salary currency code (e.g. USD, EUR)" },
           { "name": "exp", "in": "query", "schema": { "type": "string" }, "description": "Experience range in years, format: min-max (e.g. 3-10)" },
@@ -69,8 +69,8 @@
     "/api/v1/taxonomies": {
       "get": {
         "operationId": "getTaxonomies",
-        "summary": "List supported filter values",
-        "description": "Returns all valid slugs for a taxonomy type. Use these slugs in search filters.",
+        "summary": "List all values for a taxonomy type",
+        "description": "Returns all valid slugs for a taxonomy type. Use these exact slugs in filter params. For locations, use /api/v1/resolve instead (too many to enumerate).",
         "parameters": [
           { "name": "type", "in": "query", "required": true, "schema": { "type": "string", "enum": ["seniority", "occupations", "technologies", "industries"] } },
           { "name": "locale", "in": "query", "schema": { "type": "string", "default": "en" } }
@@ -203,6 +203,47 @@
                         "description": { "type": "string", "nullable": true },
                         "matchingCompanies": { "type": "integer" },
                         "matchingJobs": { "type": "integer" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/resolve": {
+      "get": {
+        "operationId": "resolveSlug",
+        "summary": "Convert freetext to taxonomy slugs",
+        "description": "Resolves freetext input (e.g. 'Zurich', 'machine learning', 'senior') to the exact slugs needed for filter params. ALWAYS call this before using loc/occ/sen/tech params in other endpoints — freetext does NOT work in filters, only exact slugs do.",
+        "parameters": [
+          { "name": "type", "in": "query", "required": true, "schema": { "type": "string", "enum": ["locations", "occupations", "seniority", "technologies", "industries"] }, "description": "Which taxonomy to search" },
+          { "name": "q", "in": "query", "required": true, "schema": { "type": "string" }, "description": "Freetext query (min 2 chars)" },
+          { "name": "locale", "in": "query", "schema": { "type": "string", "default": "en" }, "description": "Response language" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Matching slugs for the query",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": { "type": "string" },
+                    "query": { "type": "string" },
+                    "matches": {
+                      "type": "array",
+                      "maxItems": 10,
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "slug": { "type": "string", "description": "Use this value in filter params" },
+                          "name": { "type": "string", "description": "Human-readable name" },
+                          "type": { "type": "string", "description": "For locations: macro, country, region, or city" },
+                          "parentName": { "type": "string", "nullable": true, "description": "For locations: parent region/country" }
+                        }
                       }
                     }
                   }
