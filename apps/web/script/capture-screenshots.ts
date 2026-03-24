@@ -38,8 +38,8 @@ const HEIGHT = 630;
  * hydration, and takes a viewport-sized screenshot at 2× device scale.
  */
 const FEATURES: { path: string; name: string }[] = [
-  { path: "/explore", name: "feature1" },
-  { path: "/company/stripe", name: "feature2" },
+  { path: "/explore?q=software+engineer&loc=Switzerland", name: "feature1" },
+  { path: "/company/amazon", name: "feature2" },
 ];
 
 async function setTheme(page: Page, theme: "light" | "dark") {
@@ -89,7 +89,7 @@ async function run() {
         // Pre-set theme and dismiss cookie consent before navigation
         await page.addInitScript((t) => {
           localStorage.setItem("theme", t);
-          localStorage.setItem("cookie-consent", "accepted");
+          localStorage.setItem("cookie-consent", "1");
         }, theme);
 
         console.log(`  ${locale}/${feature.name}-${theme} → ${url}`);
@@ -98,11 +98,6 @@ async function run() {
           await page.goto(url, { waitUntil: "networkidle", timeout: 30_000 });
           await setTheme(page, theme);
           await waitForHydration(page);
-
-          // Hide any remaining banners/modals via CSS
-          await page.addStyleTag({
-            content: `[role="banner"], [data-banner], .cookie-banner { display: none !important; }`,
-          });
 
           const outPath = join(localeDir, `${feature.name}-${theme}.png`);
           await page.screenshot({ path: outPath, type: "png" });
