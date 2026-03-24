@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
     }
     case "industries": {
       const data = await suggestIndustries({ query: "", locale });
-      items = data.map((i) => ({ id: i.id, slug: i.slug, name: i.name }));
+      items = data.map((i) => ({ id: i.id, name: i.name }));
       break;
     }
   }
