@@ -87,11 +87,23 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="With --dry-run: log all fields for each discovered/scraped job",
     )
+    parser.add_argument(
+        "--http-only",
+        action="store_true",
+        help="Only process HTTP work (skip browser/Playwright tasks)",
+    )
+    parser.add_argument(
+        "--browser-only",
+        action="store_true",
+        help="Only process browser/Playwright work (skip HTTP tasks)",
+    )
     args = parser.parse_args()
     if args.dry_run and not args.board:
         parser.error("--dry-run requires --board")
     if args.verbose and not args.dry_run:
         parser.error("--verbose requires --dry-run")
+    if args.http_only and args.browser_only:
+        parser.error("--http-only and --browser-only are mutually exclusive")
     return args
 
 
@@ -341,6 +353,8 @@ async def run_continuous_loop(
     worker_id: str = "",
     max_concurrent: int = 0,
     max_browser: int = 0,
+    http_only: bool = False,
+    browser_only: bool = False,
 ) -> None:
     """Continuous worker pool scheduler.
 
@@ -351,10 +365,20 @@ async def run_continuous_loop(
 
     Browser (Playwright) work is capped separately by *max_browser* to
     prevent Chromium instances from starving lightweight HTTP work.
+
+    When *http_only* is set, browser phases (2 and 4) are skipped and
+    ``max_browser`` is forced to 0.  When *browser_only* is set, HTTP
+    phases (1 and 3) are skipped and ``max_concurrent`` is forced to 0.
+    This allows running separate worker instances for HTTP and browser work.
     """
     worker_id = worker_id or WORKER_ID
     max_concurrent = max_concurrent or settings.crawler_max_concurrent
     max_browser = max_browser or settings.crawler_max_browser
+
+    if http_only:
+        max_browser = 0
+    if browser_only:
+        max_concurrent = 0
     max_interval = settings.crawler_poll_interval
     idle_interval = 1.0
 
@@ -365,6 +389,8 @@ async def run_continuous_loop(
         max_browser=max_browser,
         monitor=monitor,
         scrape=scrape,
+        http_only=http_only,
+        browser_only=browser_only,
     )
 
     while not shutdown_event.is_set():
@@ -376,40 +402,58 @@ async def run_continuous_loop(
             skip = wp.saturated_domains
 
             # Phase 1: HTTP monitors (priority)
-            budget = wp.http_free
-            if monitor and budget > 0:
-                items = await claim_monitor_work(pool, http, budget, worker_id, skip)
-                monitors_claimed += len(items)
-                for item in items:
-                    wp.submit(item)
-                    work_found = True
+            if not browser_only:
+                budget = wp.http_free
+                if monitor and budget > 0:
+                    items = await claim_monitor_work(pool, http, budget, worker_id, skip)
+                    monitors_claimed += len(items)
+                    for item in items:
+                        wp.submit(item)
+                        work_found = True
 
             # Phase 2: browser monitors
-            budget = wp.browser_free
-            if monitor and budget > 0:
-                items = await claim_monitor_work(pool, http, budget, worker_id, skip, browser=True)
-                monitors_claimed += len(items)
-                for item in items:
-                    wp.submit(item)
-                    work_found = True
+            if not http_only:
+                budget = wp.browser_free
+                if monitor and budget > 0:
+                    items = await claim_monitor_work(
+                        pool,
+                        http,
+                        budget,
+                        worker_id,
+                        skip,
+                        browser=True,
+                    )
+                    monitors_claimed += len(items)
+                    for item in items:
+                        wp.submit(item)
+                        work_found = True
 
             # Phase 3: HTTP scrapes (fill remaining)
-            budget = wp.http_free
-            if scrape and budget > 0:
-                items = await claim_scrape_work(pool, http, budget, worker_id, skip)
-                scrapes_claimed += len(items)
-                for item in items:
-                    wp.submit(item)
-                    work_found = True
+            if not browser_only:
+                budget = wp.http_free
+                if scrape and budget > 0:
+                    items = await claim_scrape_work(pool, http, budget, worker_id, skip)
+                    scrapes_claimed += len(items)
+                    for item in items:
+                        wp.submit(item)
+                        work_found = True
 
             # Phase 4: browser scrapes (fill remaining)
-            budget = wp.browser_free
-            if scrape and budget > 0:
-                items = await claim_scrape_work(pool, http, budget, worker_id, skip, browser=True)
-                scrapes_claimed += len(items)
-                for item in items:
-                    wp.submit(item)
-                    work_found = True
+            if not http_only:
+                budget = wp.browser_free
+                if scrape and budget > 0:
+                    items = await claim_scrape_work(
+                        pool,
+                        http,
+                        budget,
+                        worker_id,
+                        skip,
+                        browser=True,
+                    )
+                    scrapes_claimed += len(items)
+                    for item in items:
+                        wp.submit(item)
+                        work_found = True
         except (TimeoutError, OSError, asyncpg.PostgresError) as exc:
             log.warning("pool.claim_error", error=str(exc))
             # Back off and retry on the next tick
@@ -525,15 +569,23 @@ async def run() -> None:
     do_monitor = not args.scrape_only
     do_scrape = not args.monitor_only
 
+    mode_label = "once" if args.once else "pool"
+    if args.http_only:
+        mode_label += " (http-only)"
+    elif args.browser_only:
+        mode_label += " (browser-only)"
+
     log.info(
         "scheduler.starting",
-        mode="once" if args.once else "pool",
+        mode=mode_label,
         monitor=do_monitor,
         scrape=do_scrape,
         batch_limit=settings.crawler_batch_limit,
         poll_interval=settings.crawler_poll_interval,
         max_concurrent=settings.crawler_max_concurrent,
         max_browser=settings.crawler_max_browser,
+        http_only=args.http_only,
+        browser_only=args.browser_only,
     )
 
     if not args.once and not args.board:
@@ -565,6 +617,8 @@ async def run() -> None:
                 shutdown_event,
                 monitor=do_monitor,
                 scrape=do_scrape,
+                http_only=args.http_only,
+                browser_only=args.browser_only,
             )
     finally:
         log.info("scheduler.shutting_down")

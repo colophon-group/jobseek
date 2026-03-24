@@ -3,7 +3,7 @@ primary_region = 'fra'
 kill_timeout = 60
 
 [processes]
-  app = 'uv run --no-sync scheduler'
+  app = 'uv run --no-sync scheduler --http-only'
 
 [metrics]
   port = 9091
@@ -12,4 +12,4 @@ kill_timeout = 60
 [[vm]]
   cpu_kind = 'shared'
   cpus = 1
-  memory_mb = 1024
+  memory_mb = 512

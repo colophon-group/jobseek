@@ -1,0 +1,14 @@
+.venv/
+.ruff_cache/
+.pytest_cache/
+.idea/
+.workspace/
+.claude/
+tmp/
+tests/
+scripts/
+dist/
+traces/
+*.md
+.env*
+!.env.example

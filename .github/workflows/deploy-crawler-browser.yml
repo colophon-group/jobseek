@@ -1,0 +1,69 @@
+name: Deploy Crawler (Browser Worker)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/crawler/**'
+      - '.github/workflows/deploy-crawler-browser.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read VERSION
+        id: version
+        run: echo "version=$(cat apps/crawler/VERSION | tr -d '[:space:]')" >> "$GITHUB_OUTPUT"
+
+      - name: Set up QEMU (for ARM64 cross-build)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/crawler
+          platforms: linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/jobseek-crawler:latest
+            ghcr.io/${{ github.repository_owner }}/jobseek-crawler:v${{ steps.version.outputs.version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: deploy
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          script: |
+            docker pull ghcr.io/${{ github.repository_owner }}/jobseek-crawler:latest
+            docker stop jobseek-crawler 2>/dev/null || true
+            docker rm jobseek-crawler 2>/dev/null || true
+            docker run -d \
+              --name jobseek-crawler \
+              --restart unless-stopped \
+              --env-file /home/deploy/crawler.env \
+              -p 127.0.0.1:9091:9091 \
+              --memory=6g \
+              --shm-size=2g \
+              ghcr.io/${{ github.repository_owner }}/jobseek-crawler:latest \
+              uv run --no-sync scheduler --browser-only
+            docker image prune -f
