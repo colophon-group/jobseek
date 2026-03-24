@@ -22,6 +22,7 @@ export function CountryFlag({ iso, size = 20, className }: CountryFlagProps) {
   if (!iso) return null;
   const height = Math.round(size * 0.75);
   return (
+    // eslint-disable-next-line @next/next/no-img-element -- static local SVGs, no optimization needed
     <img
       src={`/flags/${iso.toLowerCase()}.svg`}
       alt=""

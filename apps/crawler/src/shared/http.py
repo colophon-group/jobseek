@@ -58,7 +58,10 @@ def create_nossl_http_client() -> httpx.AsyncClient:
     return httpx.AsyncClient(**defaults, **({"mounts": mounts} if mounts else {}))
 
 
-def create_logging_http_client(*, verify: bool = True) -> tuple[httpx.AsyncClient, list[dict[str, Any]]]:
+def create_logging_http_client(
+    *,
+    verify: bool = True,
+) -> tuple[httpx.AsyncClient, list[dict[str, Any]]]:
     """Create an HTTP client that logs request/response metadata.
 
     Returns (client, log_entries) where log_entries is populated as
