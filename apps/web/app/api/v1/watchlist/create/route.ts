@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
 
   return apiResponse({
     url: siteUrl(
-      `/${locale}/watchlists/new?${createParams.toString()}`,
+      `/${locale}/watchlists?${createParams.toString()}`,
     ),
     preview: {
       title,
