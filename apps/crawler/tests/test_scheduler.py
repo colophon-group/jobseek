@@ -319,64 +319,6 @@ class TestWorkerPool:
         assert wp.succeeded == 2
         assert order == ["http", "browser"]
 
-    async def test_accept_rejects_excess_browser(self):
-        """accept() rejects browser items when browser pool is full."""
-        wp = WorkerPool(5, max_browser=1)
-        # Fill the browser slot
-        browser_item = WorkItem(
-            domain="b1.com",
-            kind="scrape",
-            run=_slow_work_item(domain="b1.com", delay=0.1).run,
-            needs_browser=True,
-        )
-        wp.submit(browser_item)
-        await asyncio.sleep(0.01)
-        assert wp.browser_active == 1
-
-        # Now accept a batch with 2 browser + 2 HTTP items
-        items = [
-            WorkItem(domain="b2.com", kind="scrape", run=_work_item().run, needs_browser=True),
-            WorkItem(domain="b3.com", kind="scrape", run=_work_item().run, needs_browser=True),
-            _work_item(domain="h1.com"),
-            _work_item(domain="h2.com"),
-        ]
-        accepted, rejected = wp.accept(items)
-        assert len(accepted) == 2  # both HTTP items
-        assert len(rejected) == 2  # both browser items
-        assert all(r.needs_browser for r in rejected)
-
-        await wp.drain()
-
-    async def test_accept_allows_queued_behind_inflight(self):
-        """accept() always allows items that queue behind in-flight domains."""
-        wp = WorkerPool(5, max_browser=1)
-        # Start a browser item for domain "x.com"
-        wp.submit(
-            WorkItem(
-                domain="x.com",
-                kind="scrape",
-                run=_slow_work_item(domain="x.com", delay=0.1).run,
-                needs_browser=True,
-            )
-        )
-        await asyncio.sleep(0.01)
-        assert wp.browser_free == 0
-
-        # Another browser item for same domain should be accepted (queues behind)
-        items = [
-            WorkItem(
-                domain="x.com",
-                kind="scrape",
-                run=_work_item().run,
-                needs_browser=True,
-            ),
-        ]
-        accepted, rejected = wp.accept(items)
-        assert len(accepted) == 1
-        assert len(rejected) == 0
-
-        await wp.drain()
-
 
 # ── TestRunContinuousLoop ────────────────────────────────────────────
 

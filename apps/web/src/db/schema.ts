@@ -435,6 +435,10 @@ export const jobBoard = pgTable(
     metadata: jsonb("metadata").default({}),
     scrapeIntervalHours: integer("scrape_interval_hours").default(24).notNull(),
 
+    // ── Browser flags (computed by sync from crawler_type + metadata) ──
+    monitorNeedsBrowser: boolean("monitor_needs_browser").default(false).notNull(),
+    scraperNeedsBrowser: boolean("scraper_needs_browser").default(false).notNull(),
+
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },

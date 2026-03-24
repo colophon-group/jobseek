@@ -463,6 +463,13 @@
       "when": 1774934400000,
       "tag": "0070_add_watchlist_description",
       "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1774934400001,
+      "tag": "0071_add_board_browser_flags",
+      "breakpoints": true
     }
   ]
 }

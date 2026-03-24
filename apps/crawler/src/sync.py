@@ -24,8 +24,9 @@ if TYPE_CHECKING:
     import asyncpg
 
 from src.config import settings
-from src.core.monitors import api_monitor_types
+from src.core.monitors import api_monitor_types, monitor_needs_browser
 from src.core.occupation_resolve import match_occupation
+from src.core.scrapers import scraper_needs_browser
 from src.db import close_pool, create_pool
 from src.shared.logging import setup_logging
 
@@ -178,12 +179,16 @@ ON CONFLICT (company_id, locale) DO UPDATE SET
 
 _UPSERT_BOARDS = """
 INSERT INTO job_board (company_id, board_slug, board_url, crawler_type, metadata,
-                       next_check_at, throttle_key)
+                       next_check_at, throttle_key,
+                       monitor_needs_browser, scraper_needs_browser)
 SELECT c.id, b.board_slug, b.board_url, b.crawler_type, b.metadata::jsonb,
        now() + (random() * 3600) * interval '1 second',
-       b.throttle_key
-FROM unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::text[], $6::text[])
-  AS b(company_slug, board_slug, board_url, crawler_type, metadata, throttle_key)
+       b.throttle_key,
+       b.monitor_needs_browser::boolean, b.scraper_needs_browser::boolean
+FROM unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::text[], $6::text[],
+            $7::boolean[], $8::boolean[])
+  AS b(company_slug, board_slug, board_url, crawler_type, metadata, throttle_key,
+       monitor_needs_browser, scraper_needs_browser)
 JOIN company c ON c.slug = b.company_slug
 ON CONFLICT (board_url) DO UPDATE SET
     company_id = EXCLUDED.company_id,
@@ -191,6 +196,8 @@ ON CONFLICT (board_url) DO UPDATE SET
     crawler_type = EXCLUDED.crawler_type,
     metadata = EXCLUDED.metadata,
     throttle_key = EXCLUDED.throttle_key,
+    monitor_needs_browser = EXCLUDED.monitor_needs_browser,
+    scraper_needs_browser = EXCLUDED.scraper_needs_browser,
     is_enabled = true,
     board_status = CASE
         WHEN job_board.board_status = 'disabled' THEN 'active'
@@ -766,6 +773,8 @@ async def sync_boards(
     crawler_types: list[str] = []
     metadatas: list[str | None] = []
     throttle_keys: list[str] = []
+    monitor_browser_flags: list[bool] = []
+    scraper_browser_flags: list[bool] = []
     skipped = 0
 
     for row in boards.iter_rows(named=True):
@@ -825,12 +834,29 @@ async def sync_boards(
 
         metadata: str | None = json.dumps(metadata_obj) if metadata_obj else None
 
+        # Compute browser-need flags from crawler_type + config
+        mon_type = row["monitor_type"]
+        mon_browser = monitor_needs_browser(mon_type, metadata_obj)
+        scr_type = metadata_obj.get("scraper_type")
+        scr_cfg = metadata_obj.get("scraper_config")
+        scr_browser = scraper_needs_browser(scr_type, scr_cfg) if scr_type else False
+        # Also check fallback chain
+        if not scr_browser and scr_cfg and isinstance(scr_cfg, dict):
+            for fb in scr_cfg.get("fallback", []):
+                fb_type = fb if isinstance(fb, str) else fb.get("type", "")
+                fb_cfg = None if isinstance(fb, str) else fb.get("config")
+                if scraper_needs_browser(fb_type, fb_cfg):
+                    scr_browser = True
+                    break
+
         company_slugs.append(row["company_slug"])
         board_slugs.append(_or_none(row.get("board_slug")))
         board_urls.append(row["board_url"])
-        crawler_types.append(row["monitor_type"])
+        crawler_types.append(mon_type)
         metadatas.append(metadata)
-        throttle_keys.append(_compute_throttle_key(row["monitor_type"], row["board_url"]))
+        throttle_keys.append(_compute_throttle_key(mon_type, row["board_url"]))
+        monitor_browser_flags.append(mon_browser)
+        scraper_browser_flags.append(scr_browser)
 
     if dry_run:
         log.info("sync.boards.dry_run", count=len(board_urls), skipped=skipped)
@@ -848,6 +874,8 @@ async def sync_boards(
         crawler_types,
         metadatas,
         throttle_keys,
+        monitor_browser_flags,
+        scraper_browser_flags,
     )
     log.info("sync.boards.upserted", count=len(board_urls), skipped=skipped)
 

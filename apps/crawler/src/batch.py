@@ -328,8 +328,7 @@ WHERE id = $1
 
 _RELEASE_BOARD_LEASES = """
 UPDATE job_board
-SET lease_owner = NULL, leased_until = NULL,
-    next_check_at = now()
+SET lease_owner = NULL, leased_until = NULL
 WHERE id = ANY($1::uuid[])
 """
 
@@ -1237,6 +1236,7 @@ WITH ranked AS (
     AND next_check_at <= now()
     AND (leased_until IS NULL OR leased_until < now())
     AND throttle_key != ALL($3::text[])
+    AND monitor_needs_browser = $4
 ),
 picked AS (
   SELECT id
@@ -1255,16 +1255,19 @@ RETURNING b.*
 
 _CLAIM_SCRAPES = """
 WITH candidates AS (
-    SELECT id, split_part(split_part(source_url, '://', 2), '/', 1) AS domain,
-           next_scrape_at,
-           (titles = '{}')::int AS needs_initial_scrape
-    FROM job_posting
-    WHERE is_active = true
-      AND next_scrape_at IS NOT NULL
-      AND next_scrape_at <= now()
-      AND (leased_until IS NULL OR leased_until < now())
-      AND split_part(split_part(source_url, '://', 2), '/', 1) != ALL($3::text[])
-    FOR UPDATE SKIP LOCKED
+    SELECT p.id,
+           split_part(split_part(p.source_url, '://', 2), '/', 1) AS domain,
+           p.next_scrape_at,
+           (p.titles = '{}')::int AS needs_initial_scrape
+    FROM job_posting p
+    JOIN job_board b ON b.id = p.board_id
+    WHERE p.is_active = true
+      AND p.next_scrape_at IS NOT NULL
+      AND p.next_scrape_at <= now()
+      AND (p.leased_until IS NULL OR p.leased_until < now())
+      AND split_part(split_part(p.source_url, '://', 2), '/', 1) != ALL($3::text[])
+      AND b.scraper_needs_browser = $4
+    FOR UPDATE OF p SKIP LOCKED
 ),
 ranked AS (
     SELECT id,
@@ -1297,22 +1300,24 @@ async def claim_monitor_work(
     limit: int,
     worker_id: str,
     exclude_domains: list[str] | None = None,
+    *,
+    browser: bool = False,
 ) -> list[WorkItem]:
-    """Claim due boards (interleaved across domains) and return WorkItems."""
+    """Claim due boards (interleaved across domains) and return WorkItems.
+
+    When *browser* is True, only boards with ``monitor_needs_browser = true``
+    are claimed; when False, only non-browser boards.
+    """
     if limit <= 0:
         return []
 
-    rows = await pool.fetch(_CLAIM_MONITORS, limit, worker_id, exclude_domains or [])
+    rows = await pool.fetch(_CLAIM_MONITORS, limit, worker_id, exclude_domains or [], browser)
     items: list[WorkItem] = []
     for board in rows:
         domain = board["throttle_key"]
         board_id = str(board["id"])
         on_timeout = functools.partial(_record_timeout, board_id, pool)
         stream_fn = get_stream_fn(board["crawler_type"])
-        metadata = board["metadata"] if board["metadata"] else {}
-        if isinstance(metadata, str):
-            metadata = json.loads(metadata)
-        browser = monitor_needs_browser(board["crawler_type"], metadata)
         if stream_fn is not None:
             extender = DeadlineExtender()
             items.append(
@@ -1352,12 +1357,18 @@ async def claim_scrape_work(
     limit: int,
     worker_id: str,
     exclude_domains: list[str] | None = None,
+    *,
+    browser: bool = False,
 ) -> list[WorkItem]:
-    """Claim due job postings (interleaved across domains) and return WorkItems."""
+    """Claim due job postings (interleaved across domains) and return WorkItems.
+
+    When *browser* is True, only postings whose board has
+    ``scraper_needs_browser = true`` are claimed; when False, only non-browser.
+    """
     if limit <= 0:
         return []
 
-    rows = await pool.fetch(_CLAIM_SCRAPES, limit, worker_id, exclude_domains or [])
+    rows = await pool.fetch(_CLAIM_SCRAPES, limit, worker_id, exclude_domains or [], browser)
     if not rows:
         return []
 
@@ -1415,16 +1426,6 @@ async def claim_scrape_work(
                 scraper_type,
                 scraper_config,
             )
-
-        browser = scraper_needs_browser(scraper_type, scraper_config)
-        # Also check fallback chain for browser need
-        if not browser and scraper_config:
-            for fb in scraper_config.get("fallback", []):
-                fb_type = fb if isinstance(fb, str) else fb.get("type", "")
-                fb_cfg = None if isinstance(fb, str) else fb.get("config")
-                if scraper_needs_browser(fb_type, fb_cfg):
-                    browser = True
-                    break
 
         items.append(
             WorkItem(
