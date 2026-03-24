@@ -338,6 +338,11 @@ novartis,novartis-careers,https://novartis.wd3.myworkdayjobs.com/Novartis_Career
 novo-nordisk,novo-nordisk-careers,https://careers.novonordisk.com/search/?locale=en_GB,rss,"{""url"": ""https://careers.novonordisk.com/googlefeed.xml"", ""preset"": ""successfactors""}",skip,
 nscale,nscale-careers,https://job-boards.eu.greenhouse.io/nscaleoperationsukltd,greenhouse,"{""token"": ""nscaleoperationsukltd""}",skip,
 nvidia,nvidia-careers,https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite,workday,"{""company"": ""nvidia"", ""wd_instance"": ""wd5"", ""site"": ""NVIDIAExternalCareerSite""}",workday,
+oliver-wyman,oliver-wyman-marsh-eu,https://careers.marsh.com/eu/en/oliver-wyman-search,sitemap,"{""sitemap_url"": ""https://careers.marsh.com/eu/en/oliver-wyman-search/sitemap.xml"", ""url_filter"": ""/job/.*Oliver-Wyman""}",json-ld,"{""render"": true}"
+oliver-wyman,oliver-wyman-marsh-eu-early-careers,https://careers.marsh.com/eu/en/oliver-wyman-early-careers-search,sitemap,"{""url_filter"": ""/job/.*Oliver-Wyman""}",json-ld,"{""render"": true, ""timeout"": 60000}"
+oliver-wyman,oliver-wyman-marsh-global,https://careers.marsh.com/global/en/oliver-wyman-search,sitemap,"{""sitemap_url"": ""https://careers.marsh.com/global/en/oliver-wyman-search/sitemap.xml"", ""url_filter"": ""/job/.*Oliver-Wyman""}",json-ld,"{""render"": true}"
+oliver-wyman,oliver-wyman-marsh-global-early-careers,https://careers.marsh.com/global/en/oliver-wyman-early-careers-search,sitemap,"{""url_filter"": ""/job/.*Oliver-Wyman""}",json-ld,"{""render"": true, ""timeout"": 60000}"
+oliver-wyman,oliver-wyman-workday-mmc,https://mmc.wd1.myworkdayjobs.com/en-US/MMC,workday,"{""company"": ""mmc"", ""wd_instance"": ""wd1"", ""site"": ""MMC""}",json-ld,"{""render"": true}"
 omnicom,omnicom-careers-adameve,https://job-boards.greenhouse.io/adamevenyc,greenhouse,"{""token"": ""adamevenyc""}",skip,
 omnicom,omnicom-careers-annalect,https://job-boards.greenhouse.io/omgusannalect,greenhouse,"{""token"": ""omgusannalect""}",skip,
 omnicom,omnicom-careers-canada-phd,https://job-boards.greenhouse.io/omgcaphd,greenhouse,"{""token"": ""omgcaphd""}",skip,
