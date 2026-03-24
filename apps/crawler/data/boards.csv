@@ -290,6 +290,9 @@ neural-concept,neural-concept-careers,https://jobs.ashbyhq.com/neuralconcept,ash
 nexthink,nexthink-careers,https://nexthink.com/company/careers/jobs,smartrecruiters,"{""token"": ""nexthink""}",,
 nikon,nikon-careers-eu,https://europebv.nikon.com/all-open-positions,recruitee,,skip,
 nikon,nikon-careers-us,https://recruiting.paylocity.com/recruiting/jobs/All/15fca012-892c-4721-a285-e56e02980e47/Nikon-Inc,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000}",json-ld,
+northrop-grumman,northrop-grumman-directemployers,https://northropgrumman.jobs/jobs/,sitemap,"{""sitemap_url"": ""https://northropgrumman.jobs/sitemap.xml""}",json-ld,"{""render"": true}"
+northrop-grumman,northrop-grumman-eightfold,https://jobs.northropgrumman.com/careers,sitemap,"{""sitemap_url"": ""https://jobs.northropgrumman.com/careers/sitemap.xml""}",json-ld,"{""render"": true}"
+northrop-grumman,northrop-grumman-veterans,https://northropgrumman-veterans.jobs/,sitemap,"{""sitemap_url"": ""https://northropgrumman-veterans.jobs/sitemap.xml"", ""url_filter"": ""/job/""}",json-ld,"{""render"": true}"
 notion,notion-careers,https://jobs.ashbyhq.com/notion,ashby,"{""token"": ""notion""}",,
 novartis,novartis-careers,https://novartis.wd3.myworkdayjobs.com/Novartis_Careers,workday,"{""company"": ""novartis"", ""wd_instance"": ""wd3"", ""site"": ""Novartis_Careers""}",workday,
 novo-nordisk,novo-nordisk-careers,https://careers.novonordisk.com/search/?locale=en_GB,rss,"{""url"": ""https://careers.novonordisk.com/googlefeed.xml"", ""preset"": ""successfactors""}",skip,
