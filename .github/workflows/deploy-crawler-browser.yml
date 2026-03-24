@@ -62,8 +62,8 @@ jobs:
               --restart unless-stopped \
               --env-file /home/deploy/crawler.env \
               -p 127.0.0.1:9091:9091 \
-              --memory=6g \
-              --shm-size=2g \
+              --memory=3g \
+              --shm-size=1g \
               ghcr.io/${{ github.repository_owner }}/jobseek-crawler:latest \
               uv run --no-sync scheduler --browser-only
             docker image prune -f
