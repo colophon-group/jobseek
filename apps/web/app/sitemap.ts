@@ -72,7 +72,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     for (const locale of locales) {
       entries.push({
         url: `${siteConfig.url}/${locale}${path}`,
-        lastModified: row.updated_at,
+        lastModified: new Date(row.updated_at),
         changeFrequency: "daily",
         priority,
         alternates: { languages },
@@ -107,7 +107,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     for (const locale of locales) {
       entries.push({
         url: `${siteConfig.url}/${locale}${path}`,
-        lastModified: row.updated_at,
+        lastModified: new Date(row.updated_at),
         changeFrequency: row.is_curated ? "daily" : "weekly",
         priority: row.is_curated ? 0.8 : 0.6,
         alternates: { languages },
