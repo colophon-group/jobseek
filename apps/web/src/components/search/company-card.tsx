@@ -102,7 +102,7 @@ export function CompanyCard({ result, keywords, locationIds, locations, occupati
     <div className="rounded-md border border-divider bg-surface p-4">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Link href={companyHref} className="flex items-center gap-3 transition-opacity hover:opacity-80">
+        <Link href={companyHref} prefetch={false} className="flex items-center gap-3 transition-opacity hover:opacity-80">
           {company.icon ? (
             <Image
               src={company.icon}

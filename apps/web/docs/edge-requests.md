@@ -207,48 +207,42 @@ server action IS the security boundary. Use the stateless HTTP neon driver
 ## Link prefetch strategy
 
 Next.js `<Link>` prefetches the RSC payload for every linked route when the
-link enters the viewport. Each prefetch of a dynamic route is an edge request.
+link enters the viewport. Each prefetch of a **dynamic** route triggers a full
+serverless function invocation with all DB queries from the layout — this is
+both an edge request and a function invocation, billed twice.
 
-We disable prefetch on all links except high-conversion cross-page paths.
+**Policy: all links use `prefetch={false}`.** No exceptions.
 
-### Hot paths (prefetch **enabled** — default)
+### Why no "hot paths"
 
-These are the links users are most likely to click next. Prefetching them
-improves perceived navigation speed.
+A previous version of this doc designated certain links as "hot paths" with
+prefetch enabled (CTA buttons to `/explore`, `/sign-in`, `/sign-up`). This was
+wrong — those pages are all **dynamic** (the `(app)` layout runs 4+ DB queries,
+the `(auth)` layout checks session). Each prefetch triggered full SSR for
+nothing. On the explore page, 10 company card links could prefetch 10 company
+detail pages — 10 phantom SSR invocations per page view.
 
-| Link | Location | Href | Why hot |
-|------|----------|------|---------|
-| "How do we index" | Header nav, Mobile menu | `/how-we-index` | Cross-page nav link, high interest |
-| Log in CTA | Header, Mobile menu | `/sign-in` | Primary action |
-| Hero primary CTA | Hero section | `/sign-in` | Main conversion funnel |
-| Pricing CTAs | Pricing cards | `/sign-up` | Conversion funnel |
+Even static pages (About, FAQ, etc.) count toward Vercel's edge request quota
+when prefetched. The navigation speed benefit from prefetch is marginal (~100-
+300ms) and doesn't justify the cost.
 
-### Cold paths (prefetch **disabled**)
+### Implementation
 
-These links either point to the same page (anchor links), are rarely clicked,
-or the user is already on an adjacent page.
-
-| Link | Location | Href | Why cold |
-|------|----------|------|----------|
-| Product | Header nav, Mobile menu | `/` | Same-page anchor |
-| Features | Header nav, Mobile menu, Hero | `/#features` | Same-page anchor |
-| Pricing | Header nav, Mobile menu | `/#pricing` | Same-page anchor |
-| License | Footer | `/license` | Legal — rarely clicked |
-| Privacy | Footer | `/privacy-policy` | Legal — rarely clicked |
-| Terms | Footer | `/terms` | Legal — rarely clicked |
-| Sign in ↔ Sign up | Auth form | `/sign-in`, `/sign-up` | User is already on an auth page |
-| Back to sign in | Verify email (error) | `/sign-in` | Error recovery path |
-| Continue | Verify email (success) | `/app` | User will click immediately |
-| Logo (auth) | Auth layout | `/app` | Same-app navigation |
-| App nav icons | AppHeader (desktop) | `/app`, `/app/settings` | Dynamic pages behind auth |
-| App bottom bar | AppHeader (mobile) | `/app`, `/app/settings` | Dynamic pages behind auth |
+- **`Button` component** (`ui/Button.tsx`): Renders `<Link>` with
+  `prefetch={false}` by default. Callers can override with `prefetch={true}`
+  via props (spread after the default).
+- **All `<Link>` elements** in `src/components/`: Explicitly set
+  `prefetch={false}`.
+- Navigation still works normally — Next.js fetches the route on click.
 
 ### When adding new links
 
-- **Cross-page link on a public page likely to be clicked?** → Leave prefetch as default (enabled).
-- **Same-page anchor, legal page, or low-traffic route?** → Add `prefetch={false}`.
-- **Inside the `(app)` route group?** → Add `prefetch={false}` (dynamic pages behind auth).
-- **Inside `Button` component?** → Pass `prefetch={false}` as a prop; it forwards to `<Link>`.
+- **Always** add `prefetch={false}` to `<Link>` elements.
+- **Using `Button` with `href`?** Already handled — Button defaults to
+  `prefetch={false}`.
+- **Exception:** If you measure that a specific link targets a **static** page
+  AND the conversion lift from prefetch justifies the edge request cost, you
+  may pass `prefetch={true}` explicitly. Document the rationale in a comment.
 
 ## Font loading
 

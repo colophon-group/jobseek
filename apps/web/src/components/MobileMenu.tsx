@@ -43,6 +43,7 @@ export function MobileMenu({ open, onCloseAction }: MobileMenuProps) {
             <div className="flex items-center justify-between gap-2">
               <Link
                 href={lp("/")}
+                prefetch={false}
                 onClick={onCloseAction}
                 className="inline-flex items-center gap-2 no-underline"
               >
@@ -72,7 +73,7 @@ export function MobileMenu({ open, onCloseAction }: MobileMenuProps) {
             <nav className="mt-6">
               <ul className="flex flex-col">
                 <li>
-                  <Link href={lp(siteConfig.nav.about.href)} onClick={onCloseAction} className="block rounded-md px-3 py-2.5 transition-colors hover:bg-border-soft" aria-current={ariaCurrent(lp(siteConfig.nav.about.href))}>
+                  <Link href={lp(siteConfig.nav.about.href)} prefetch={false} onClick={onCloseAction} className="block rounded-md px-3 py-2.5 transition-colors hover:bg-border-soft" aria-current={ariaCurrent(lp(siteConfig.nav.about.href))}>
                     <Trans id="common.nav.about" comment="Nav link: About">About</Trans>
                   </Link>
                 </li>
@@ -87,12 +88,12 @@ export function MobileMenu({ open, onCloseAction }: MobileMenuProps) {
                   </Link>
                 </li>
                 <li>
-                  <Link href={lp(siteConfig.nav.faq.href)} onClick={onCloseAction} className="block rounded-md px-3 py-2.5 transition-colors hover:bg-border-soft" aria-current={ariaCurrent(lp(siteConfig.nav.faq.href))}>
+                  <Link href={lp(siteConfig.nav.faq.href)} prefetch={false} onClick={onCloseAction} className="block rounded-md px-3 py-2.5 transition-colors hover:bg-border-soft" aria-current={ariaCurrent(lp(siteConfig.nav.faq.href))}>
                     <Trans id="common.nav.faq" comment="Nav link: FAQ">FAQ</Trans>
                   </Link>
                 </li>
                 <li>
-                  <Link href={lp(siteConfig.nav.company.href)} onClick={onCloseAction} className="block rounded-md px-3 py-2.5 transition-colors hover:bg-border-soft" aria-current={ariaCurrent(lp(siteConfig.nav.company.href))}>
+                  <Link href={lp(siteConfig.nav.company.href)} prefetch={false} onClick={onCloseAction} className="block rounded-md px-3 py-2.5 transition-colors hover:bg-border-soft" aria-current={ariaCurrent(lp(siteConfig.nav.company.href))}>
                     <Trans id="common.nav.company" comment="Nav link: Job indexing">Job indexing</Trans>
                   </Link>
                 </li>

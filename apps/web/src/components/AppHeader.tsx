@@ -210,7 +210,7 @@ export function AppHeader() {
               </DropdownMenu.Portal>
             </DropdownMenu.Root>
           ) : (
-            <Link href={lp(siteConfig.nav.login.href)} className="flex flex-1 flex-col items-center gap-0.5 py-1.5 text-foreground transition-colors hover:text-muted">
+            <Link href={lp(siteConfig.nav.login.href)} prefetch={false} className="flex flex-1 flex-col items-center gap-0.5 py-1.5 text-foreground transition-colors hover:text-muted">
               <LogIn size={20} />
               <span className="text-[10px] leading-tight">
                 {t({ id: "common.auth.login", comment: "Login button label", message: "Log in" })}
