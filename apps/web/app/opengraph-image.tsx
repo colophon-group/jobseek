@@ -6,9 +6,9 @@ export const alt = "Job Seek";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-const fontPromise = fetch(
-  new URL("../public/fonts/JetBrainsMono-Bold.woff2", import.meta.url),
-).then((res) => res.arrayBuffer());
+const fontPromise = readFile(
+  join(process.cwd(), "public/fonts/JetBrainsMono-Bold.woff2"),
+);
 
 const logoPromise = readFile(
   join(process.cwd(), "public", "android-chrome-512x512.png"),

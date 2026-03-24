@@ -1,4 +1,6 @@
 import { ImageResponse } from "next/og";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { getCompanyBySlug } from "@/lib/actions/company";
 
 export const alt = "Company jobs";
@@ -6,9 +8,9 @@ export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 // Cache the font load across invocations
-const fontPromise = fetch(
-  new URL("../../../../../../public/fonts/JetBrainsMono-Bold.woff2", import.meta.url),
-).then((res) => res.arrayBuffer());
+const fontPromise = readFile(
+  join(process.cwd(), "public/fonts/JetBrainsMono-Bold.woff2"),
+);
 
 export default async function OgImage({
   params,
@@ -114,7 +116,7 @@ export default async function OgImage({
           display: "flex",
         }}
       >
-        jobseek.com
+        jseek.co
       </div>
     </div>,
     {
