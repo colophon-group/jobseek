@@ -5,6 +5,7 @@ import { useLingui } from "@lingui/react/macro";
 import { SearchBar } from "@/components/search/search-bar";
 import { AdvancedSearchPanel } from "@/components/search/advanced-search-panel";
 import { LanguageNote } from "@/components/search/language-note";
+import { SaveSearchButton } from "@/components/search/save-search-button";
 import type { SelectedLocation } from "@/components/search/location-pills";
 import type { HistogramFilters } from "@/lib/search";
 
@@ -283,7 +284,23 @@ export function SearchToolbar({
           </button>
         </div>
       )}
-      <LanguageNote jobLanguages={jobLanguages} locale={locale} />
+      <div className="flex items-center justify-between gap-4">
+        <LanguageNote jobLanguages={jobLanguages} locale={locale} />
+        {hasFilters && (
+          <SaveSearchButton
+            keywords={keywords}
+            locations={locations}
+            occupations={occupations}
+            seniorities={seniorities}
+            technologies={technologies}
+            salaryMin={salaryMin}
+            salaryMax={salaryMax}
+            salaryCurrency={salaryCurrency}
+            experienceMin={experienceMin}
+            experienceMax={experienceMax}
+          />
+        )}
+      </div>
     </div>
   );
 }

@@ -89,7 +89,6 @@ export function WatchlistsPage({
       description: searchParams.get("description") ?? undefined,
       filters: Object.keys(filters).length > 0 ? filters : undefined,
     });
-  // eslint-disable-next-line @typescript-eslint/no-unused-expressions -- intentional one-time effect
   }, []);
 
   return (
