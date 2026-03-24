@@ -34,7 +34,7 @@ export function Header({ onOpenMobileAction }: HeaderProps) {
   return (
     <header className="border-b border-divider bg-surface-alpha backdrop-blur-md">
       <div className="mx-auto flex h-12 max-w-[1200px] items-center gap-4 px-4">
-        <Link href={lp("/")} className="inline-flex shrink-0 items-center gap-2">
+        <Link href={lp("/")} prefetch={false} className="inline-flex shrink-0 items-center gap-2">
           <ThemedImage
             lightSrc={siteConfig.logoWide.light}
             darkSrc={siteConfig.logoWide.dark}
@@ -47,11 +47,12 @@ export function Header({ onOpenMobileAction }: HeaderProps) {
 
         <div className="flex-1" />
 
-        {/* prefetch={false} on same-page anchor links (/, /#features, /#pricing)
-            to avoid wasted edge requests. "How do we index" and CTA buttons
-            keep prefetch enabled — those are cross-page hot paths. */}
+        {/* All links use prefetch={false} to avoid phantom edge requests.
+            Static pages (about, faq, etc.) are cheap CDN hits but still count
+            toward Vercel's edge request quota. Dynamic pages (/explore, /sign-in)
+            would trigger full SSR with DB queries on prefetch. */}
         <nav className="hidden items-center gap-5 lg:flex">
-          <Link href={lp(siteConfig.nav.about.href)} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.about.href))}>
+          <Link href={lp(siteConfig.nav.about.href)} prefetch={false} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.about.href))}>
             <Trans id="common.nav.about" comment="Nav link: About">About</Trans>
           </Link>
           <Link href={lp(siteConfig.nav.features.href)} prefetch={false} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.features.href))}>
@@ -60,10 +61,10 @@ export function Header({ onOpenMobileAction }: HeaderProps) {
           <Link href={lp(siteConfig.nav.pricing.href)} prefetch={false} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.pricing.href))}>
             <Trans id="common.nav.pricing" comment="Nav link: Pricing">Pricing</Trans>
           </Link>
-          <Link href={lp(siteConfig.nav.faq.href)} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.faq.href))}>
+          <Link href={lp(siteConfig.nav.faq.href)} prefetch={false} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.faq.href))}>
             <Trans id="common.nav.faq" comment="Nav link: FAQ">FAQ</Trans>
           </Link>
-          <Link href={lp(siteConfig.nav.company.href)} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.company.href))}>
+          <Link href={lp(siteConfig.nav.company.href)} prefetch={false} className={navLinkClass} aria-current={ariaCurrent(lp(siteConfig.nav.company.href))}>
             <Trans id="common.nav.company" comment="Nav link: Job indexing">Job indexing</Trans>
           </Link>
         </nav>

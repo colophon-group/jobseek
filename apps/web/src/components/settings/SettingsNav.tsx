@@ -44,6 +44,7 @@ export function SettingsNav() {
         <Link
           key={link.href}
           href={link.href}
+          prefetch={false}
           className={`${linkBase} ${isActive(link.href, link.exact) ? linkActive : linkInactive}`}
         >
           {link.label}

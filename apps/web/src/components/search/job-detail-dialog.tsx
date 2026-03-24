@@ -156,7 +156,7 @@ function DetailContent({ detail }: { detail: PostingDetail }) {
 
       {/* Company header */}
       <div className="flex items-center gap-3">
-        <Link href={lp(`/company/${company.slug}`)} className="flex items-center gap-3 transition-opacity hover:opacity-80">
+        <Link href={lp(`/company/${company.slug}`)} prefetch={false} className="flex items-center gap-3 transition-opacity hover:opacity-80">
           {company.icon ? (
             <Image
               src={company.icon}

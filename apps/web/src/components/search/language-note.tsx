@@ -29,7 +29,7 @@ export function LanguageNote({ jobLanguages, locale }: LanguageNoteProps) {
   const remaining = displayCodes.length - MAX_INLINE;
 
   const changeLink = (
-    <Link href={settingsHref} className="text-primary hover:underline">
+    <Link href={settingsHref} prefetch={false} className="text-primary hover:underline">
       <Trans id="search.languageNote.change" comment="Link to change language settings">
         change
       </Trans>

@@ -34,7 +34,7 @@ export function Button({ variant = "primary", size = "md", className, ...rest }:
 
   if (rest.href != null) {
     const { href, ...linkProps } = rest as AsLink;
-    return <Link href={href} className={cls} {...linkProps} />;
+    return <Link href={href} prefetch={false} className={cls} {...linkProps} />;
   }
 
   const buttonProps = rest as AsButton;
