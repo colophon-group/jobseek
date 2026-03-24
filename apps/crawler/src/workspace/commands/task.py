@@ -276,10 +276,15 @@ def task_next(notes: str):
         return
 
     if next_step is None:
-        if message:
-            out.info("task", message)
+        # Workflow finished — if we just advanced past reflect, run
+        # the full completion logic (trace upload, mark PR ready, etc.)
+        if prev_step_id == "reflect":
+            _finalize_workflow(slug)
         else:
-            out.info("task", "Workflow complete!")
+            if message:
+                out.info("task", message)
+            else:
+                out.info("task", "Workflow complete!")
         return
 
     # Show the new step
@@ -416,15 +421,11 @@ def task_status():
         out.error("workflow", f"FAILED at step '{wf.current_step}': {wf.fail_reason}")
 
 
-@task.command(name="complete")
-def task_complete():
-    """Mark workflow as done (only valid at the final reflect step)."""
-    slug = resolve_slug(None)
-    wf = _load_wf_from_disk(slug)
+def _finalize_workflow(slug: str) -> None:
+    """Run completion side-effects: KB push, unclaim issue, trace upload, mark PR ready.
 
-    if wf.current_step != "reflect":
-        out.die(f"Can only complete from the 'reflect' step. Current step: {wf.current_step}")
-
+    Called from both ``task complete`` and ``task next`` (when advancing past reflect).
+    """
     try:
         _persist_kb_updates_if_needed(slug)
     except GitError:
@@ -433,9 +434,12 @@ def task_complete():
     from src.workspace.commands.lifecycle import is_local_mode
 
     ws = load_workspace(slug)
+    wf = _load_wf_from_disk(slug)
 
-    wf.current_step = "done"
-    _save_wf_to_disk(slug, wf)
+    if wf.current_step != "done":
+        wf.current_step = "done"
+        _save_wf_to_disk(slug, wf)
+
     if ws.issue:
         from src.workspace.git import unclaim_issue
 
@@ -474,6 +478,22 @@ def task_complete():
             out.info("github", f"PR #{ws.pr} marked ready for review")
         except Exception:
             out.warn("github", f"Could not mark PR #{ws.pr} ready — do it manually")
+
+
+@task.command(name="complete")
+def task_complete():
+    """Mark workflow as done (only valid at the reflect step or already done)."""
+    slug = resolve_slug(None)
+    wf = _load_wf_from_disk(slug)
+
+    if wf.current_step == "done":
+        out.info("task", "Workflow already complete.")
+        return
+
+    if wf.current_step != "reflect":
+        out.die(f"Can only complete from the 'reflect' step. Current step: {wf.current_step}")
+
+    _finalize_workflow(slug)
 
 
 @task.command(name="fail")
