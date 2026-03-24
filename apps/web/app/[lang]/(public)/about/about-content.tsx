@@ -17,10 +17,9 @@ export function AboutContent({ contactEmail, ossRepoUrl }: AboutContentProps) {
 
   return (
     <main className="py-12 md:py-20">
-      <div className="mx-auto max-w-[1200px] px-4">
-        <div className="flex flex-col items-start gap-12 lg:flex-row lg:gap-20">
-          <div className="flex flex-1 flex-col gap-12 md:gap-16">
-            <div className="w-full max-w-[840px]">
+      <div className="mx-auto max-w-[900px] px-4">
+        <div className="flex flex-col gap-12 md:gap-16">
+          <div className="w-full max-w-[840px]">
               <ContentPageHero
                 eyebrow={<Trans id="about.eyebrow" comment="About page eyebrow">About</Trans>}
                 title={<Trans id="about.title" comment="About page heading">Built by job seekers, for job seekers</Trans>}
@@ -77,7 +76,6 @@ export function AboutContent({ contactEmail, ossRepoUrl }: AboutContentProps) {
                 </a>
               </div>
             </div>
-          </div>
         </div>
       </div>
     </main>
