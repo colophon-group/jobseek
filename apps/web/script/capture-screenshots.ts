@@ -47,6 +47,7 @@ const LOGIN_PWD = process.env.PWD_UI;
 const FEATURES: { path: string; name: string; requiresAuth: boolean }[] = [
   { path: "/explore?q=software+engineer&loc=Switzerland", name: "feature1", requiresAuth: false },
   { path: "/my-jobs?show=dd0e09ec-e452-416a-85f6-593cec9c9923", name: "feature2", requiresAuth: true },
+  { path: "/colophongroup/swe-robotics-zurich", name: "feature3", requiresAuth: true },
 ];
 
 async function login(context: BrowserContext) {
@@ -114,9 +115,13 @@ async function run() {
     deviceScaleFactor: 2,
   });
 
-  // Dismiss cookie banner globally for the context
+  // Dismiss cookie banner and hide Next.js dev indicator globally
   await context.addInitScript(() => {
     localStorage.setItem("cookie-consent", "1");
+    // Hide the Next.js dev mode indicator (floating circle)
+    const style = document.createElement("style");
+    style.textContent = `[data-nextjs-toast], nextjs-portal { display: none !important; }`;
+    document.head.appendChild(style);
   });
 
   // Log in once — session cookies persist across all pages in this context
