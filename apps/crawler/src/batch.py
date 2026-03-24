@@ -35,7 +35,13 @@ from src.core.monitors import api_monitor_types, get_stream_fn, monitor_needs_br
 from src.core.occupation_resolve import load_occupation_ids, match_occupation
 from src.core.salary_extract import extract_salary_unified
 from src.core.scrape import scrape_one
-from src.core.scrapers import JobContent, enrich_description, get_scraper, get_scraper_type
+from src.core.scrapers import (
+    JobContent,
+    enrich_description,
+    get_scraper,
+    get_scraper_type,
+    scraper_needs_browser,
+)
 from src.core.seniority_resolve import load_seniority_ids, match_seniority
 from src.core.technology_resolve import load_technology_ids, match_technologies
 from src.shared.html_normalize import normalize_description_html
@@ -1212,6 +1218,7 @@ class WorkItem:
     id: str = ""  # board ID or posting ID — used for lease release
     on_timeout: Callable[[], Awaitable[None]] | None = None
     deadline_extender: DeadlineExtender | None = None
+    needs_browser: bool = False
 
 
 # ── Claim Queries (Worker Pool) ──────────────────────────────────────
@@ -1301,6 +1308,10 @@ async def claim_monitor_work(
         board_id = str(board["id"])
         on_timeout = functools.partial(_record_timeout, board_id, pool)
         stream_fn = get_stream_fn(board["crawler_type"])
+        metadata = board["metadata"] if board["metadata"] else {}
+        if isinstance(metadata, str):
+            metadata = json.loads(metadata)
+        browser = monitor_needs_browser(board["crawler_type"], metadata)
         if stream_fn is not None:
             extender = DeadlineExtender()
             items.append(
@@ -1317,6 +1328,7 @@ async def claim_monitor_work(
                     id=board_id,
                     on_timeout=on_timeout,
                     deadline_extender=extender,
+                    needs_browser=browser,
                 )
             )
         else:
@@ -1327,6 +1339,7 @@ async def claim_monitor_work(
                     run=functools.partial(_process_one_board, board, pool, http),
                     id=board_id,
                     on_timeout=on_timeout,
+                    needs_browser=browser,
                 )
             )
     return items
@@ -1402,12 +1415,23 @@ async def claim_scrape_work(
                 scraper_config,
             )
 
+        browser = scraper_needs_browser(scraper_type, scraper_config)
+        # Also check fallback chain for browser need
+        if not browser and scraper_config:
+            for fb in scraper_config.get("fallback", []):
+                fb_type = fb if isinstance(fb, str) else fb.get("type", "")
+                fb_cfg = None if isinstance(fb, str) else fb.get("config")
+                if scraper_needs_browser(fb_type, fb_cfg):
+                    browser = True
+                    break
+
         items.append(
             WorkItem(
                 domain=domain,
                 kind="scrape",
                 run=run_fn,
                 id=str(row["id"]),
+                needs_browser=browser,
             )
         )
     return items
@@ -2680,8 +2704,6 @@ async def _scrape_pipeline(
     board_scrapers: dict[str, BoardScraperConfig] | None = None,
 ) -> _PipelineResult:
     """Process scrape items for one domain serially."""
-    from src.core.scrapers import scraper_needs_browser
-
     # Check if any item in this pipeline needs a browser-based scraper
     need_browser = False
     needs_insecure = False
