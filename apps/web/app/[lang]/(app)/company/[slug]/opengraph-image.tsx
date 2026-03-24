@@ -5,10 +5,13 @@ export const alt = "Company jobs";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-// Satori only supports TTF/OTF, not woff2. Fetch from Google Fonts CDN.
-const fontPromise = fetch(
-  "https://fonts.gstatic.com/s/jetbrainsmono/v20/tDbY2o-flEEny0FZhsfKu5WU4zr3E_BX0PnT8RD8yKxTOlOTk6OThhvA.ttf",
-).then((res) => res.arrayBuffer());
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+
+// Satori only supports TTF/OTF, not woff2.
+const fontPromise = readFile(
+  join(process.cwd(), "public/fonts/JetBrainsMono-Bold.ttf"),
+);
 
 export default async function OgImage({
   params,
