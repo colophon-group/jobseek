@@ -18,10 +18,11 @@ function localeFromRequest(request?: Request): Locale {
 }
 
 export const auth = betterAuth({
+  trustedOrigins: (process.env.TRUSTED_ORIGINS ?? "").split(",").filter(Boolean),
   database: drizzleAdapter(db, { provider: "pg" }),
   emailAndPassword: {
     enabled: true,
-    requireEmailVerification: true,
+    requireEmailVerification: false,
     revokeSessionsOnPasswordReset: true,
     sendResetPassword: async ({ user, url }, request) => {
       const locale = localeFromRequest(request);
