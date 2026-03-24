@@ -24,7 +24,7 @@ log = structlog.get_logger()
 DEFAULT_USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Chrome/120.0.0.0 Safari/537.36"
+    "Chrome/133.0.0.0 Safari/537.36"
 )
 DEFAULT_WAIT = "networkidle"
 DEFAULT_TIMEOUT = 30_000
@@ -43,7 +43,17 @@ OVERLAY_SELECTORS = (
 # Browser config keys recognised by open_page / navigate / run_actions.
 # Used by scrapers and monitors to separate browser keys from other config.
 BROWSER_KEYS = frozenset(
-    {"wait", "timeout", "user_agent", "headless", "stealth", "actions", "warmup_url", "cookies"}
+    {
+        "wait",
+        "timeout",
+        "user_agent",
+        "headless",
+        "stealth",
+        "actions",
+        "warmup_url",
+        "cookies",
+        "disable_http2",
+    }
 )
 
 # ---------------------------------------------------------------------------
@@ -94,8 +104,13 @@ async def open_page(
     launch_kwargs: dict = {"headless": headless}
     # Chromium's new headless mode (--headless=new) is less detectable by
     # anti-bot systems like Cloudflare Turnstile.  Enable via stealth: true.
+    extra_args: list[str] = []
     if headless and config.get("stealth"):
-        launch_kwargs["args"] = ["--headless=new"]
+        extra_args.append("--headless=new")
+    if config.get("disable_http2"):
+        extra_args.append("--disable-http2")
+    if extra_args:
+        launch_kwargs["args"] = extra_args
     if target_url:
         from src.shared.proxy import build_playwright_proxy
 

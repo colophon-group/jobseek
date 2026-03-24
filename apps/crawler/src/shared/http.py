@@ -14,8 +14,13 @@ def _make_ssl_context() -> ssl.SSLContext:
     httpcore's async I/O to hang indefinitely.  Setting ``OP_NO_TICKET``
     prevents this by disabling session ticket negotiation — the same
     approach urllib3 uses by default.
+
+    Uses certifi's CA bundle instead of the system store for broader
+    coverage of intermediate CA certificates.
     """
-    ctx = ssl.create_default_context()
+    import certifi
+
+    ctx = ssl.create_default_context(cafile=certifi.where())
     ctx.options |= ssl.OP_NO_TICKET
     return ctx
 
@@ -39,9 +44,21 @@ def create_http_client(*, verify: bool = True) -> httpx.AsyncClient:
     return httpx.AsyncClient(**kwargs, **({"mounts": mounts} if mounts else {}))
 
 
-def create_logging_http_client(
-    *, verify: bool = True
-) -> tuple[httpx.AsyncClient, list[dict[str, Any]]]:
+def create_nossl_http_client() -> httpx.AsyncClient:
+    """Create an HTTP client that skips SSL certificate verification.
+
+    Used for boards whose servers have broken certificate chains
+    (e.g. missing intermediate CA).  Enabled per-board via
+    ``skip_ssl: true`` in scraper_config.
+    """
+    defaults = {**_CLIENT_DEFAULTS, "verify": False}
+    from src.shared.proxy import build_httpx_mounts
+
+    mounts = build_httpx_mounts()
+    return httpx.AsyncClient(**defaults, **({"mounts": mounts} if mounts else {}))
+
+
+def create_logging_http_client() -> tuple[httpx.AsyncClient, list[dict[str, Any]]]:
     """Create an HTTP client that logs request/response metadata.
 
     Returns (client, log_entries) where log_entries is populated as
@@ -72,11 +89,8 @@ def create_logging_http_client(
     from src.shared.proxy import build_httpx_mounts
 
     mounts = build_httpx_mounts()
-    kwargs = {**_CLIENT_DEFAULTS}
-    if not verify:
-        kwargs["verify"] = False
     client = httpx.AsyncClient(
-        **kwargs,
+        **_CLIENT_DEFAULTS,
         event_hooks={"request": [_on_request], "response": [_on_response]},
         **({"mounts": mounts} if mounts else {}),
     )
