@@ -165,6 +165,8 @@ evercore,evercore-experienced-hires,https://evercore.tal.net/vx/mobile-0/appcent
 evercore,evercore-students-graduates,https://evercore.tal.net/candidate/jobboard/vacancy/2/adv/,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""url_filter"": ""/opp/""}",dom,"{""render"": true, ""wait"": ""networkidle"", ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""text"": ""Location"", ""offset"": 1, ""field"": ""locations""}, {""text"": ""Job description"", ""offset"": 1, ""field"": ""description"", ""stop"": ""About Evercore"", ""html"": true}]}"
 exa-ai,exa-ai-careers,https://jobs.ashbyhq.com/exa,ashby,,,
 expedia-group,expedia-group-careers,https://expedia.wd108.myworkdayjobs.com/search,workday,"{""company"": ""expedia"", ""wd_instance"": ""wd108"", ""site"": ""search""}",workday,
+exxonmobil,exxonmobil-contingent,https://exxonmobil.raiserecruiting.com/,dom,"{""render"": true}",json-ld,"{""render"": true}"
+exxonmobil,exxonmobil-main,https://jobs.exxonmobil.com/,rss,"{""preset"": ""successfactors""}",skip,
 ey,ey-careers,https://careers.ey.com/ey/search/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.ey.com/googlefeed.xml""}",skip,
 ey,ey-careers-students,https://eyglobal.yello.co/job_boards/c1riT--B2O-KySgYWsZO1Q?locale=en,dom,"{""url_filter"": ""/jobs/""}",dom,"{""render"": false, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""h3"", ""field"": ""description"", ""html"": true, ""stop"": ""Service Line""}, {""text"": ""Country/Region"", ""field"": ""locations"", ""from"": 0, ""regex"": ""Country/Region\\s+(.+)""}]}"
 fastino-labs,fastino-labs-careers,https://jobs.ashbyhq.com/fastino-ai,ashby,,skip,
