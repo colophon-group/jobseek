@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getI18n } from "@lingui/react/server";
 import { initI18nForPage, isLocale, defaultLocale, loadCatalog } from "@/lib/i18n";
 import { siteConfig } from "@/content/config";
 import { buildAlternates, JsonLd } from "@/lib/seo";
@@ -34,9 +35,10 @@ export default async function PrivacyPolicyPage({ params }: Props) {
       <JsonLd data={{
         "@context": "https://schema.org",
         "@type": "WebPage",
-        name: "Privacy Policy",
-        description: "How Job Seek collects, uses, and protects your personal data.",
+        name: getI18n()!._({ id: "privacy.meta.title", message: "Privacy Policy" }),
+        description: getI18n()!._({ id: "privacy.meta.description", message: "How Job Seek collects, uses, and protects your personal data." }),
         url: `${siteConfig.url}/${locale}/privacy-policy`,
+        inLanguage: locale,
         isPartOf: { "@type": "WebSite", url: siteConfig.url },
         lastReviewed: siteConfig.privacy.lastUpdated,
       }} />

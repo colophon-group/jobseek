@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getI18n } from "@lingui/react/server";
 import { initI18nForPage, isLocale, defaultLocale, loadCatalog } from "@/lib/i18n";
 import { siteConfig } from "@/content/config";
 import { buildAlternates, JsonLd } from "@/lib/seo";
@@ -34,9 +35,10 @@ export default async function HowWeIndexPage({ params }: Props) {
       <JsonLd data={{
         "@context": "https://schema.org",
         "@type": "WebPage",
-        name: "How We Index",
-        description: "How Job Seek discovers, crawls, and indexes job postings — and the safeguards we follow.",
+        name: getI18n()!._({ id: "indexing.meta.title", message: "How We Index" }),
+        description: getI18n()!._({ id: "indexing.meta.description", message: "How Job Seek discovers, crawls, and indexes job postings — and the safeguards we follow." }),
         url: `${siteConfig.url}/${locale}/how-we-index`,
+        inLanguage: locale,
         isPartOf: { "@type": "WebSite", url: siteConfig.url },
       }} />
       <HowWeIndexContent />

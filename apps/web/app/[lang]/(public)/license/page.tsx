@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getI18n } from "@lingui/react/server";
 import { initI18nForPage, isLocale, defaultLocale, loadCatalog } from "@/lib/i18n";
 import { siteConfig } from "@/content/config";
 import { buildAlternates, JsonLd } from "@/lib/seo";
@@ -34,9 +35,10 @@ export default async function LicensePage({ params }: Props) {
       <JsonLd data={{
         "@context": "https://schema.org",
         "@type": "WebPage",
-        name: "License",
-        description: "Licensing terms for Job Seek application code (MIT) and job data (CC BY-NC 4.0).",
+        name: getI18n()!._({ id: "license.meta.title", message: "License" }),
+        description: getI18n()!._({ id: "license.meta.description", message: "Licensing terms for Job Seek application code (MIT) and job data (CC BY-NC 4.0)." }),
         url: `${siteConfig.url}/${locale}/license`,
+        inLanguage: locale,
         isPartOf: { "@type": "WebSite", url: siteConfig.url },
       }} />
       <LicenseContent />

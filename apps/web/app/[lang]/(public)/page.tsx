@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getI18n } from "@lingui/react/server";
 import { initI18nForPage, isLocale, defaultLocale, loadCatalog } from "@/lib/i18n";
 import { Hero } from "@/components/Hero";
 import { Features } from "@/components/Features";
@@ -40,9 +41,10 @@ export default async function HomePage({ params }: Props) {
       <JsonLd data={{
         "@context": "https://schema.org",
         "@type": "WebPage",
-        name: "Job Seek",
-        description: "Search jobs scraped directly from company career pages. Filter by seniority, tech stack, salary, and location, then track every application in one place.",
+        name: getI18n()!._({ id: "home.meta.title", message: "Find Roles Before They Hit the Big Boards" }),
+        description: getI18n()!._({ id: "home.meta.description", message: "Search jobs scraped directly from company career pages. Filter by seniority, tech stack, salary, and location, then track every application in one place." }),
         url: `${siteConfig.url}/${locale}`,
+        inLanguage: locale,
         isPartOf: { "@type": "WebSite", url: siteConfig.url },
       }} />
       <Hero />

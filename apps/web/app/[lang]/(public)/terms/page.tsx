@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getI18n } from "@lingui/react/server";
 import { initI18nForPage, isLocale, defaultLocale, loadCatalog } from "@/lib/i18n";
 import { siteConfig } from "@/content/config";
 import { buildAlternates, JsonLd } from "@/lib/seo";
@@ -34,9 +35,10 @@ export default async function TermsPage({ params }: Props) {
       <JsonLd data={{
         "@context": "https://schema.org",
         "@type": "WebPage",
-        name: "Terms of Service",
-        description: "Terms of Service for the Job Seek application.",
+        name: getI18n()!._({ id: "terms.meta.title", message: "Terms of Service" }),
+        description: getI18n()!._({ id: "terms.meta.description", message: "Terms of Service for the Job Seek application." }),
         url: `${siteConfig.url}/${locale}/terms`,
+        inLanguage: locale,
         isPartOf: { "@type": "WebSite", url: siteConfig.url },
         lastReviewed: siteConfig.terms.lastUpdated,
       }} />
