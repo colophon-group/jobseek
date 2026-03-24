@@ -130,9 +130,10 @@ class WorkerPool:
 
     _ITEM_TIMEOUT = 300  # 5 minutes per job
 
-    def __init__(self, max_concurrent: int) -> None:
+    def __init__(self, max_concurrent: int, db_pool=None) -> None:
         self._semaphore = asyncio.Semaphore(max_concurrent)
         self._max = max_concurrent
+        self._db_pool = db_pool
         self._domains_inflight: set[str] = set()
         self._domain_queues: dict[str, collections.deque[WorkItem]] = {}
         self._tasks: set[asyncio.Task] = set()
@@ -166,11 +167,15 @@ class WorkerPool:
     def claim_budget(self) -> int:
         """How many items the loop should claim this tick.
 
-        Conservative: only claim as many as free concurrency slots.
-        Claimed items always get accepted by submit() — either starting
-        immediately or queuing behind their domain's in-flight task.
+        Bounded by both free concurrency slots and idle DB connections.
+        This prevents claiming work that would queue in memory waiting
+        for a connection — the main cause of memory pressure on
+        constrained machines.
         """
-        return self.free_slots
+        budget = self.free_slots
+        if self._db_pool is not None:
+            budget = min(budget, self._db_pool.get_idle_size())
+        return budget
 
     def submit(self, item: WorkItem) -> None:
         """Schedule a work item.
@@ -307,7 +312,7 @@ async def run_continuous_loop(
     max_interval = settings.crawler_poll_interval
     idle_interval = 1.0
 
-    wp = WorkerPool(max_concurrent)
+    wp = WorkerPool(max_concurrent, db_pool=pool)
     log.info(
         "pool.starting",
         max_concurrent=max_concurrent,
@@ -359,6 +364,7 @@ async def run_continuous_loop(
                 scrapes_claimed=scrapes_claimed,
                 active=wp.active_count,
                 queued=wp.queued_count,
+                db_idle=pool.get_idle_size(),
                 succeeded=wp.succeeded,
                 failed=wp.failed,
             )
