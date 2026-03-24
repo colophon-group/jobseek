@@ -114,6 +114,7 @@ coinbase,coinbase-careers,https://job-boards.greenhouse.io/coinbase,greenhouse,"
 coinbase,coinbase-careers-base,https://job-boards.greenhouse.io/basejobs,greenhouse,"{""board_token"": ""basejobs""}",skip,
 coinbase,coinbase-careers-cdp,https://job-boards.greenhouse.io/cdpjobs,greenhouse,"{""board_token"": ""cdpjobs""}",skip,
 comparis,comparis-careers,https://comparis-ch.jobs.personio.de,personio,"{""slug"": ""comparis-ch"", ""language"": ""en""}",skip,
+conductor,conductor-careers,https://jobs.ashbyhq.com/conductor,ashby,"{""token"": ""conductor""}",skip,
 conocophillips,conocophillips-careers,https://careers.conocophillips.com/job-search-results/,dom,,json-ld,
 conocophillips,conocophillips-workday,https://conocophillips.wd1.myworkdayjobs.com/External/,workday,"{""company"": ""conocophillips"", ""wd_instance"": ""wd1"", ""site"": ""External""}",workday,
 conocophillips,conocophillips-workday-equest,https://conocophillips.wd1.myworkdayjobs.com/eQuest,workday,"{""company"": ""conocophillips"", ""wd_instance"": ""wd1"", ""site"": ""eQuest"", ""all_sites"": false}",workday,
