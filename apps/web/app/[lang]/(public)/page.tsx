@@ -5,6 +5,7 @@ import { Features } from "@/components/Features";
 import { Pricing } from "@/components/Pricing";
 import { PublicDomainArt } from "@/components/PublicDomainArt";
 import { siteConfig, publicDomainAssets } from "@/content/config";
+import { buildAlternates } from "@/lib/seo";
 
 type Props = {
   params: Promise<{ lang: string }>;
@@ -24,7 +25,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title,
     description,
-    openGraph: { title, description, url: `/${locale}` },
+    alternates: buildAlternates("", locale),
+    openGraph: { title, description, url: `${siteConfig.url}/${locale}` },
   };
 }
 

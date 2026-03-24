@@ -277,6 +277,7 @@ export interface CompanyDetail {
   industryName: string | null;
   employeeCountRange: number | null;
   foundedYear: number | null;
+  activeJobCount: number;
 }
 
 export async function getCompanyBySlug(
@@ -299,12 +300,15 @@ async function _fetchCompanyBySlug(slug: string, locale: string): Promise<Compan
     industry_name: string | null;
     employee_count_range: number | null;
     founded_year: number | null;
+    active_job_count: number;
   }>(sql`
     SELECT c.id, c.name, c.slug, c.icon, c.website,
       COALESCE(cd.description, c.description) AS description,
       COALESCE(ind_name.name, i.name) AS industry_name,
       c.employee_count_range,
-      c.founded_year
+      c.founded_year,
+      (SELECT count(*) FROM job_posting jp
+       WHERE jp.company_id = c.id AND jp.is_active = true)::int AS active_job_count
     FROM company c
     LEFT JOIN industry i ON i.id = c.industry
     LEFT JOIN company_description cd
@@ -321,7 +325,7 @@ async function _fetchCompanyBySlug(slug: string, locale: string): Promise<Compan
     id: string; name: string; slug: string; icon: string | null;
     website: string | null; description: string | null;
     industry_name: string | null; employee_count_range: number | null;
-    founded_year: number | null;
+    founded_year: number | null; active_job_count: number;
   };
   const row = (rows as unknown as Row[])[0];
   if (!row) return null;
@@ -336,6 +340,7 @@ async function _fetchCompanyBySlug(slug: string, locale: string): Promise<Compan
     industryName: row.industry_name,
     employeeCountRange: row.employee_count_range,
     foundedYear: row.founded_year,
+    activeJobCount: row.active_job_count,
   };
 }
 

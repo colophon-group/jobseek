@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { initI18nForPage, isLocale, defaultLocale, loadCatalog } from "@/lib/i18n";
+import { siteConfig } from "@/content/config";
+import { buildAlternates } from "@/lib/seo";
 import { LicenseContent } from "@/components/LicenseContent";
 
 type Props = {
@@ -20,7 +22,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title,
     description,
-    openGraph: { title, description, url: `/${locale}/license` },
+    alternates: buildAlternates("/license", locale),
+    openGraph: { title, description, url: `${siteConfig.url}/${locale}/license` },
   };
 }
 

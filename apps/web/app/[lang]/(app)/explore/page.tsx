@@ -1,10 +1,13 @@
 import { Suspense } from "react";
 import { headers } from "next/headers";
-import { initI18nForPage } from "@/lib/i18n";
+import type { Metadata } from "next";
+import { isLocale, defaultLocale, loadCatalog, initI18nForPage } from "@/lib/i18n";
 import { searchJobs, listTopCompanies } from "@/lib/actions/search";
 import { parseSearchFilters } from "@/lib/actions/search-input";
 import { getPreferences } from "@/lib/actions/preferences";
 import { resolveJobLanguages } from "@/lib/job-languages";
+import { siteConfig } from "@/content/config";
+import { buildAlternates } from "@/lib/seo";
 import { SearchPage } from "./search-page";
 
 const PAGE_SIZE = 10;
@@ -13,6 +16,30 @@ type Props = {
   params: Promise<{ lang: string }>;
   searchParams: Promise<{ q?: string; loc?: string; occ?: string; sen?: string; tech?: string; show?: string; sal?: string; salcur?: string; exp?: string }>;
 };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { lang } = await params;
+  const locale = isLocale(lang) ? lang : defaultLocale;
+  const { i18n } = await loadCatalog(locale);
+
+  const title = i18n.t({ id: "explore.meta.title", message: "Explore Jobs" });
+  const description = i18n.t({
+    id: "explore.meta.description",
+    message: "Search jobs across hundreds of companies. Create watchlists to track new openings and get alerts.",
+  });
+
+  return {
+    title,
+    description,
+    alternates: buildAlternates("/explore", locale),
+    openGraph: {
+      title,
+      description,
+      url: `${siteConfig.url}/${locale}/explore`,
+      type: "website",
+    },
+  };
+}
 
 export default async function AppPage({ params, searchParams }: Props) {
   const locale = await initI18nForPage(params);

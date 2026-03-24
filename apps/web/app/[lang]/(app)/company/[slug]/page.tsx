@@ -1,11 +1,14 @@
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import type { Metadata } from "next";
-import { initI18nForPage } from "@/lib/i18n";
+import { getI18n } from "@lingui/react/server";
+import { isLocale, defaultLocale, loadCatalog, initI18nForPage } from "@/lib/i18n";
 import { getCompanyBySlug, getCompanyPostings } from "@/lib/actions/company";
 import { getPreferences } from "@/lib/actions/preferences";
 import { parseSearchFilters } from "@/lib/actions/search-input";
 import { resolveJobLanguages } from "@/lib/job-languages";
+import { siteConfig } from "@/content/config";
+import { buildAlternates, JsonLd, formatEmployeeCount } from "@/lib/seo";
 import { CompanyPage } from "./company-page";
 
 const PAGE_SIZE = 20;
@@ -17,11 +20,49 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug, lang } = await params;
-  const company = await getCompanyBySlug(slug, lang);
+  const locale = isLocale(lang) ? lang : defaultLocale;
+  const [company, { i18n }] = await Promise.all([
+    getCompanyBySlug(slug, locale),
+    loadCatalog(locale),
+  ]);
   if (!company) return {};
+
+  const title = i18n.t({
+    id: "company.meta.title",
+    message: "Jobs at {name}",
+    values: { name: company.name },
+  });
+  const count = company.activeJobCount;
+  const countText = count > 0
+    ? i18n.t({
+        id: "company.meta.positionCount",
+        message: "{count, plural, one {# open position} other {# open positions}}",
+        values: { count },
+      })
+    : i18n.t({ id: "company.meta.openPositions", message: "Open positions" });
+  const description = company.description
+    ? i18n.t({
+        id: "company.meta.descriptionWithInfo",
+        message: "{countText} at {name}. {description}",
+        values: { countText, name: company.name, description: company.description },
+      })
+    : i18n.t({
+        id: "company.meta.descriptionBasic",
+        message: "{countText} at {name}",
+        values: { countText, name: company.name },
+      });
+  const path = `/company/${slug}`;
+
   return {
-    title: `Jobs at ${company.name}`,
-    description: company.description ?? `Browse open positions at ${company.name}`,
+    title,
+    description,
+    alternates: buildAlternates(path, locale),
+    openGraph: {
+      title,
+      description,
+      url: `${siteConfig.url}/${locale}${path}`,
+      type: "website",
+    },
   };
 }
 
@@ -93,7 +134,38 @@ export default async function CompanyPageRoute({ params, searchParams }: Props) 
     limit: PAGE_SIZE,
   });
 
+  const orgJsonLd: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: company.name,
+    ...(company.website && { url: company.website }),
+    ...(company.description && { description: company.description }),
+    ...(company.icon && { logo: company.icon }),
+    ...(company.foundedYear && { foundingDate: String(company.foundedYear) }),
+    ...(company.industryName && { industry: company.industryName }),
+    ...(formatEmployeeCount(company.employeeCountRange) && {
+      numberOfEmployees: {
+        "@type": "QuantitativeValue",
+        value: formatEmployeeCount(company.employeeCountRange),
+      },
+    }),
+  };
+
+  const i18n = getI18n()!;
+  const breadcrumbJsonLd: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: i18n.t({ id: "breadcrumb.home", message: "Home" }), item: `${siteConfig.url}/${locale}` },
+      { "@type": "ListItem", position: 2, name: i18n.t({ id: "breadcrumb.explore", message: "Explore" }), item: `${siteConfig.url}/${locale}/explore` },
+      { "@type": "ListItem", position: 3, name: company.name },
+    ],
+  };
+
   return (
+    <>
+    <JsonLd data={orgJsonLd} />
+    <JsonLd data={breadcrumbJsonLd} />
     <CompanyPage
       company={company}
       initialPostings={postingsResult.postings}
@@ -117,5 +189,6 @@ export default async function CompanyPageRoute({ params, searchParams }: Props) 
       userLat={parsedUserLat}
       userLng={parsedUserLng}
     />
+    </>
   );
 }

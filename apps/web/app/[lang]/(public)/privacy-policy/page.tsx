@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { initI18nForPage, isLocale, defaultLocale, loadCatalog } from "@/lib/i18n";
+import { siteConfig } from "@/content/config";
+import { buildAlternates } from "@/lib/seo";
 import { PrivacyPolicyContent } from "@/components/PrivacyPolicyContent";
 
 type Props = {
@@ -20,7 +22,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title,
     description,
-    openGraph: { title, description, url: `/${locale}/privacy-policy` },
+    alternates: buildAlternates("/privacy-policy", locale),
+    openGraph: { title, description, url: `${siteConfig.url}/${locale}/privacy-policy` },
   };
 }
 
