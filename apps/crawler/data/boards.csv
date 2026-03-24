@@ -162,6 +162,9 @@ elevenlabs,elevenlabs-careers,https://jobs.ashbyhq.com/elevenlabs,ashby,"{""toke
 eli-lilly,eli-lilly-campus,https://lilly.wd5.myworkdayjobs.com/CMP,workday,"{""company"": ""lilly"", ""wd_instance"": ""wd5"", ""site"": ""CMP""}",workday,
 eli-lilly,eli-lilly-careers,https://lilly.wd5.myworkdayjobs.com/LLY,workday,"{""company"": ""lilly"", ""wd_instance"": ""wd5"", ""site"": ""LLY""}",workday,
 eli-lilly,eli-lilly-maa,https://lilly.wd5.myworkdayjobs.com/MAA,workday,"{""company"": ""lilly"", ""wd_instance"": ""wd5"", ""site"": ""MAA""}",workday,
+emerging-travel-group,emerging-travel-group-careers,https://apply.workable.com/emerging-travel-group/,workable,"{""token"": ""emerging-travel-group""}",workable,
+emerging-travel-group,emerging-travel-group-careers-ratehawk,https://apply.workable.com/ratehawk/,workable,"{""token"": ""ratehawk""}",workable,
+emerging-travel-group,emerging-travel-group-careers-roundtrip,https://apply.workable.com/roundtrip-travel/,workable,"{""token"": ""roundtrip-travel""}",workable,
 endress-hauser,endress-hauser-careers,https://careers.endress.com/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.endress.com/googlefeed.xml""}",skip,
 endress-hauser,endress-hauser-careers-ehs,https://jobs.endress-ehs.com/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://jobs.endress-ehs.com/googlefeed.xml""}",skip,
 endress-hauser,endress-hauser-codewrights,https://www.codewrights.de/de/arbeitgeber,dom,"{""render"": true, ""wait"": ""networkidle"", ""url_filter"": ""/de/arbeitgeber/""}",dom,"{""render"": true, ""wait"": ""networkidle"", ""steps"": [{""tag"": ""title"", ""field"": ""title""}, {""attr"": ""class=demi"", ""field"": ""locations"", ""regex"": ""^([^|]+)"", ""optional"": true}, {""tag"": ""h3"", ""field"": ""description"", ""stop"": ""People & Culture"", ""html"": true}]}"
