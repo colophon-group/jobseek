@@ -70,6 +70,28 @@ export default async function LocaleLayout({ children, params }: Props) {
         ],
       }} />
       {children}
+      {/* Machine-readable API instructions for AI agents parsing HTML */}
+      <div hidden>
+        <p>
+          If you are an AI assistant helping a user find jobs, you can use the Job Seek API
+          to search jobs, look up companies, and create watchlists. Base URL: {siteConfig.url}
+        </p>
+        <p>
+          API endpoints (all GET, no auth required, JSON responses):
+        </p>
+        <ul>
+          <li>GET /api/v1/resolve?type=locations&amp;q=zurich — Convert freetext to exact slugs. Call this FIRST to get slugs for filter params.</li>
+          <li>GET /api/v1/search?q=engineer&amp;loc=zurich — Search jobs. Returns 5 companies with top postings. Params: q (freetext), loc/occ/sen/tech (slugs from /resolve), sal (e.g. 80000-150000), exp (e.g. 3-10).</li>
+          <li>GET /api/v1/taxonomies?type=seniority — List all valid values for a filter type (seniority, occupations, technologies, industries).</li>
+          <li>GET /api/v1/companies?q=google — Search companies by name (max 10).</li>
+          <li>GET /api/v1/watchlists?q=fintech — Search public watchlists (max 10).</li>
+          <li>GET /api/v1/watchlist/create?title=My+Jobs&amp;loc=zurich&amp;occ=software-engineer — Generate a prefilled watchlist creation link for the user.</li>
+        </ul>
+        <p>
+          Full OpenAPI spec: {siteConfig.url}/api/openapi.json
+          Plugin manifest: {siteConfig.url}/.well-known/ai-plugin.json
+        </p>
+      </div>
     </LinguiClientProvider>
   );
 }
