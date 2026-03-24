@@ -92,6 +92,15 @@ export const siteConfig = {
         },
         pointIcons: ["tracking", "interviews", "stats"] as const,
       },
+      {
+        screenshot: {
+          light: "/screenshots/{lang}/feature3-light.png",
+          dark: "/screenshots/{lang}/feature3-dark.png",
+          width: 1200,
+          height: 630,
+        },
+        pointIcons: ["curate", "companies", "share"] as const,
+      },
     ],
   },
 

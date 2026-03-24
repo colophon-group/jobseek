@@ -5,7 +5,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { siteConfig } from "@/content/config";
 import { ThemedImage } from "@/components/ThemedImage";
 import { eyebrowClass, sectionHeadingClass } from "@/lib/styles";
-import { Globe, SlidersHorizontal, Bell, GitGraph, ClipboardList, BarChart3 } from "lucide-react";
+import { Globe, SlidersHorizontal, Bell, GitGraph, ClipboardList, BarChart3, Target, Building2, Share2 } from "lucide-react";
 
 const iconMap: Record<string, ElementType> = {
   source: Globe,
@@ -14,6 +14,9 @@ const iconMap: Record<string, ElementType> = {
   tracking: GitGraph,
   interviews: ClipboardList,
   stats: BarChart3,
+  curate: Target,
+  companies: Building2,
+  share: Share2,
 };
 
 const CONTAINER_MAX = 1200;
@@ -56,13 +59,15 @@ function PointBlock({ icon, title, description }: PointBlockProps) {
 function ImageWrapper({
   mediaWidth,
   inverted,
+  sectionId,
   children,
 }: {
   mediaWidth: number;
   inverted: boolean;
+  sectionId?: string;
   children: React.ReactNode;
 }) {
-  const id = inverted ? "inv" : "std";
+  const id = sectionId ?? (inverted ? "inv" : "std");
 
   const wrapperStyle: CSSProperties = {
     width: "100%",
@@ -224,6 +229,66 @@ function FeatureSection2() {
   );
 }
 
+function FeatureSection3() {
+  const { t } = useLingui();
+  const cfg = siteConfig.features.sections[2];
+  const mediaWidth = cfg.screenshot.width;
+  const src = useLocaleScreenshot(cfg.screenshot);
+
+  return (
+    <>
+      <style>{`
+        .feat-row-3 { padding-left: ${CONTAINER_PAD}px; padding-right: 0; }
+        @media (min-width: 1024px) {
+          .feat-row-3 { padding-left: ${ALIGN_PAD}; }
+        }
+        @media (min-width: ${EXTRA_WIDE_BREAKPOINT}px) {
+          .feat-row-3 { padding-right: ${extraWideInset(mediaWidth)}; }
+        }
+      `}</style>
+      <div className="feat-row-3 flex flex-col items-stretch gap-12 lg:flex-row lg:gap-20">
+        <div className="w-full shrink-0 pr-4 lg:w-auto lg:max-w-[520px] lg:pr-0" style={{ flexBasis: TEXT_MAX_W }}>
+          <div className="flex flex-col gap-4">
+            <div>
+              <span className={eyebrowClass}>
+                <Trans id="home.features.s3.eyebrow" comment="Feature section 3 eyebrow text">Your companies, your rules</Trans>
+              </span>
+              <h2 className={`mt-2 ${sectionHeadingClass}`}>
+                <Trans id="home.features.s3.title" comment="Feature section 3 heading">Curate a watchlist for any niche</Trans>
+              </h2>
+              <p className="mt-4 text-muted">
+                <Trans id="home.features.s3.description" comment="Feature section 3 description">Pick the companies you care about, set your filters, and get a live feed of matching roles. Share it publicly or keep it private.</Trans>
+              </p>
+            </div>
+            <dl className="mt-8 flex flex-col gap-6">
+              <PointBlock
+                icon={cfg.pointIcons[0]}
+                title={<Trans id="home.features.s3.p1.title" comment="Feature: focused search title">Focused search</Trans>}
+                description={<Trans id="home.features.s3.p1.description" comment="Feature: focused search description">Combine specific companies with role filters to zero in on exactly the positions you want.</Trans>}
+              />
+              <PointBlock
+                icon={cfg.pointIcons[1]}
+                title={<Trans id="home.features.s3.p2.title" comment="Feature: request companies title">Request any company</Trans>}
+                description={<Trans id="home.features.s3.p2.description" comment="Feature: request companies description">Missing a company? Paste its careers page URL and we start indexing it for you.</Trans>}
+              />
+              <PointBlock
+                icon={cfg.pointIcons[2]}
+                title={<Trans id="home.features.s3.p3.title" comment="Feature: share watchlists title">Share with anyone</Trans>}
+                description={<Trans id="home.features.s3.p3.description" comment="Feature: share watchlists description">Make a watchlist public and share the link with friends, communities, or your network.</Trans>}
+              />
+            </dl>
+          </div>
+        </div>
+        <div className="flex flex-1 justify-start lg:justify-end" style={{ minHeight: 400 }}>
+          <ImageWrapper mediaWidth={mediaWidth} inverted={false} sectionId="s3">
+            <ThemedImage darkSrc={src.dark} lightSrc={src.light} alt={t({ id: "home.features.s3.screenshot.alt", comment: "Alt text for feature section 3 screenshot", message: "Job Seek watchlist showing curated robotics engineering roles in Zurich" })} width={cfg.screenshot.width} height={cfg.screenshot.height} />
+          </ImageWrapper>
+        </div>
+      </div>
+    </>
+  );
+}
+
 export function Features() {
   return (
     <section
@@ -233,6 +298,7 @@ export function Features() {
       <div className="flex flex-col gap-24 md:gap-32">
         <FeatureSection1 />
         <FeatureSection2 />
+        <FeatureSection3 />
       </div>
     </section>
   );
