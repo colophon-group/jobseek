@@ -19,7 +19,17 @@ Job Seek has a public read-only JSON API for job search:
 - [OpenAPI spec](https://jseek.co/api/openapi.json)
 - [Plugin manifest](https://jseek.co/.well-known/ai-plugin.json)
 - Base URL: https://jseek.co/api/v1/
-- Endpoints: /search, /companies, /watchlists, /taxonomies, /resolve
+- Endpoints: /search, /job, /companies, /watchlists, /taxonomies, /resolve
+
+## MCP Server
+
+Install the Job Seek MCP server for direct tool access in Claude, Cursor, or any MCP client:
+
+```
+npx @jobseek/mcp-server
+```
+
+Tools: search_jobs, get_job_detail, search_companies, list_taxonomies, resolve_slugs, search_watchlists, create_watchlist_link
 
 ## Links
 

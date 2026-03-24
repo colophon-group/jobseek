@@ -32,6 +32,17 @@ describe("robots", () => {
     expect(disallow).toContain("/sign-up");
   });
 
+  it("disallows private API routes but not public v1", () => {
+    const result = robots();
+    const rules = Array.isArray(result.rules) ? result.rules : [result.rules];
+    const wildcard = rules.find((r) => r.userAgent === "*");
+    const disallow = wildcard!.disallow as string[];
+    expect(disallow).toContain("/api/auth/");
+    expect(disallow).toContain("/api/admin/");
+    expect(disallow).toContain("/api/stripe/");
+    expect(disallow).not.toContain("/api/");
+  });
+
   it("includes sitemap URL", () => {
     const result = robots();
     expect(result.sitemap).toContain("sitemap.xml");

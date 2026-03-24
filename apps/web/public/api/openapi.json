@@ -46,6 +46,7 @@
                             "items": {
                               "type": "object",
                               "properties": {
+                                "id": { "type": "string", "description": "Posting UUID — use with /api/v1/job to get full details" },
                                 "title": { "type": "string", "nullable": true },
                                 "location": { "type": "string", "nullable": true },
                                 "url": { "type": "string" }
@@ -62,6 +63,95 @@
               }
             }
           },
+          "429": { "description": "Rate limit exceeded" }
+        }
+      }
+    },
+    "/api/v1/job": {
+      "get": {
+        "operationId": "getJobDetail",
+        "summary": "Get full details for a job posting",
+        "description": "Returns structured metadata for a single job posting: salary, technologies, seniority, experience, locations. Does not include the job description text — visit the returned URL on jseek.co to read the full posting.",
+        "parameters": [
+          { "name": "id", "in": "query", "required": true, "schema": { "type": "string" }, "description": "Job posting UUID (from search results topPostings[].id)" },
+          { "name": "locale", "in": "query", "schema": { "type": "string", "default": "en" }, "description": "Response language (en, de, fr, it)" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Job posting detail",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string" },
+                    "title": { "type": "string", "nullable": true },
+                    "company": {
+                      "type": "object",
+                      "properties": {
+                        "name": { "type": "string" },
+                        "slug": { "type": "string" },
+                        "icon": { "type": "string", "nullable": true },
+                        "url": { "type": "string" }
+                      }
+                    },
+                    "locations": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": { "type": "string" },
+                          "type": { "type": "string" },
+                          "geoType": { "type": "string", "nullable": true },
+                          "parentName": { "type": "string", "nullable": true }
+                        }
+                      }
+                    },
+                    "seniority": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "slug": { "type": "string" },
+                        "name": { "type": "string" }
+                      }
+                    },
+                    "technologies": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": { "type": "string" }
+                        }
+                      }
+                    },
+                    "salary": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "min": { "type": "integer", "nullable": true },
+                        "max": { "type": "integer", "nullable": true },
+                        "currency": { "type": "string", "nullable": true },
+                        "period": { "type": "string", "nullable": true }
+                      }
+                    },
+                    "experience": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "min": { "type": "integer", "nullable": true },
+                        "max": { "type": "integer", "nullable": true }
+                      }
+                    },
+                    "employmentType": { "type": "string", "nullable": true },
+                    "url": { "type": "string", "description": "Link to view the full posting on jseek.co" },
+                    "firstSeenAt": { "type": "string", "format": "date-time" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Missing required parameter: id" },
+          "404": { "description": "Job posting not found" },
           "429": { "description": "Rate limit exceeded" }
         }
       }

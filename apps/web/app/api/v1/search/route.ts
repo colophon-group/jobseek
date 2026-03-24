@@ -80,6 +80,7 @@ export async function GET(request: NextRequest) {
     url: siteUrl(`/${locale}/company/${c.company.slug}`),
     activeJobs: c.activeMatches,
     topPostings: c.postings.slice(0, MAX_POSTINGS_PER_COMPANY).map((p) => ({
+      id: p.id,
       title: p.title,
       location: p.locations.map((l) => l.name).join(", ") || null,
       url: siteUrl(

@@ -179,7 +179,9 @@ export const siteConfig = {
       "/dashboard",
       "/sign-in",
       "/sign-up",
-      "/api/",
+      "/api/auth/",
+      "/api/admin/",
+      "/api/stripe/",
       "/settings",
       "/my-jobs",
       "/progress",
@@ -203,6 +205,7 @@ export const siteConfig = {
     links: {
       github: { href: "https://github.com/colophon-group/jobseek", external: true },
       contact: { href: "mailto:business@colophon-group.org", external: true },
+      api: { href: "/api/openapi.json", external: false },
       license: { href: "/license", external: false },
       privacy: { href: "/privacy-policy", external: false },
       terms: { href: "/terms", external: false },
