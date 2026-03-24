@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getI18n } from "@lingui/react/server";
 import { initI18nForPage, isLocale, defaultLocale, loadCatalog } from "@/lib/i18n";
-import { siteConfig, publicDomainAssets } from "@/content/config";
+import { siteConfig } from "@/content/config";
 import { buildAlternates, JsonLd } from "@/lib/seo";
 import { AboutContent } from "./about-content";
 
@@ -31,8 +31,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function AboutPage({ params }: Props) {
   const locale = await initI18nForPage(params);
   const i18n = getI18n()!;
-  const art = publicDomainAssets[siteConfig.about.hero.art.assetKey];
-
   return (
     <>
       <JsonLd data={{
@@ -45,8 +43,6 @@ export default async function AboutPage({ params }: Props) {
         isPartOf: { "@type": "WebSite", url: siteConfig.url },
       }} />
       <AboutContent
-        art={art}
-        artFocus={siteConfig.about.hero.art.focus}
         contactEmail={siteConfig.indexing.contactEmail}
         ossRepoUrl={siteConfig.indexing.ossRepoUrl}
       />
