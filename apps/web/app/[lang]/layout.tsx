@@ -29,6 +29,16 @@ export default async function LocaleLayout({ children, params }: Props) {
         name: "Job Seek",
         url: siteConfig.url,
         logo: `${siteConfig.url}${siteConfig.logo.src}`,
+        description: i18n._({
+          id: "app.schema.org.description",
+          message: "Job search engine that scrapes career pages directly from company websites. Built by Colophon Group in Switzerland.",
+        }),
+        foundingDate: "2025",
+        contactPoint: {
+          "@type": "ContactPoint",
+          email: siteConfig.indexing.contactEmail,
+          contactType: "customer support",
+        },
         sameAs: [siteConfig.social.linkedin.href, siteConfig.repoUrl],
       }} />
       <JsonLd data={{
@@ -57,11 +67,23 @@ export default async function LocaleLayout({ children, params }: Props) {
           id: "app.schema.description",
           message: "Job aggregator that monitors company career pages. Subscribe to company updates, track applications, and get alerts on new openings.",
         }),
-        offers: {
-          "@type": "Offer",
-          price: "0",
-          priceCurrency: "USD",
-        },
+        offers: [
+          {
+            "@type": "Offer",
+            name: "Free",
+            price: "0",
+            priceCurrency: "USD",
+            description: i18n._({ id: "app.schema.offer.free", message: "Full search, 1 watchlist, application tracker" }),
+          },
+          {
+            "@type": "Offer",
+            name: "Pro",
+            price: "10",
+            priceCurrency: "USD",
+            billingPeriod: "P1M",
+            description: i18n._({ id: "app.schema.offer.pro", message: "Unlimited watchlists, email alerts on new matches" }),
+          },
+        ],
         featureList: [
           i18n._({ id: "app.schema.feature.monitor", message: "Monitor company career pages" }),
           i18n._({ id: "app.schema.feature.alerts", message: "Real-time job posting alerts" }),

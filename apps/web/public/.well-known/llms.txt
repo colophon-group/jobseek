@@ -1,0 +1,37 @@
+# Job Seek — llms.txt
+# https://llmstxt.org/
+
+> Job Seek is a job search engine that scrapes career pages directly from company websites. It monitors Workday, Greenhouse, Lever, and 15+ other ATS platforms so roles appear before they hit large aggregators. Users can search with multi-dimensional filters (seniority, tech stack, salary, location, language), create watchlists with email alerts, and track applications through a built-in pipeline.
+
+## Key Facts
+
+- 290+ companies indexed from direct career page scraping
+- 4 languages: English, German, French, Italian
+- Free tier: full search, 1 watchlist, application tracker
+- Pro tier ($10/month): unlimited watchlists, email alerts
+- Open-source crawler (MIT), job data (CC BY-NC 4.0)
+- Built by Colophon Group, a small developer team in Switzerland
+
+## API
+
+Job Seek has a public read-only JSON API for job search:
+
+- [OpenAPI spec](https://jseek.co/api/openapi.json)
+- [Plugin manifest](https://jseek.co/.well-known/ai-plugin.json)
+- Base URL: https://jseek.co/api/v1/
+- Endpoints: /search, /companies, /watchlists, /taxonomies, /resolve
+
+## Links
+
+- [Homepage](https://jseek.co)
+- [About](https://jseek.co/en/about)
+- [FAQ](https://jseek.co/en/faq)
+- [How We Index](https://jseek.co/en/how-we-index)
+- [License](https://jseek.co/en/license)
+- [Privacy Policy](https://jseek.co/en/privacy-policy)
+- [GitHub](https://github.com/colophon-group/jobseek)
+- [Crawler Source](https://github.com/colophon-group/jobseek-indexing)
+
+## Contact
+
+business@colophon-group.org
