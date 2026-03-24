@@ -2,11 +2,10 @@ import { ImageResponse } from "next/og";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-export const alt = "Job Seek";
+export const alt = "Job Seek — How We Index";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-// Satori (used by next/og) only supports TTF/OTF, not woff2.
 const fontPromise = readFile(
   join(process.cwd(), "public/fonts/JetBrainsMono-Bold.ttf"),
 );
@@ -31,12 +30,15 @@ export default async function OgImage() {
         color: "#fafafa",
         fontFamily: "JetBrains Mono",
         gap: "24px",
+        padding: "60px",
       }}
     >
-      <img src={logoSrc} width={120} height={120} />
-      <span style={{ fontSize: 56, fontWeight: 700 }}>Job Seek</span>
-      <span style={{ fontSize: 26, color: "#a1a1aa" }}>
-        Find roles before they hit the big boards
+      <img src={logoSrc} width={80} height={80} />
+      <span style={{ fontSize: 44, fontWeight: 700, textAlign: "center" }}>
+        How We Index
+      </span>
+      <span style={{ fontSize: 22, color: "#a1a1aa", textAlign: "center" }}>
+        How Job Seek discovers, crawls, and indexes job postings — and the safeguards we follow.
       </span>
     </div>,
     {

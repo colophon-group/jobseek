@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { initI18nForPage, isLocale, defaultLocale, loadCatalog } from "@/lib/i18n";
 import { siteConfig } from "@/content/config";
-import { buildAlternates } from "@/lib/seo";
+import { buildAlternates, JsonLd } from "@/lib/seo";
 import { PrivacyPolicyContent } from "@/components/PrivacyPolicyContent";
 
 type Props = {
@@ -28,6 +28,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function PrivacyPolicyPage({ params }: Props) {
-  await initI18nForPage(params);
-  return <PrivacyPolicyContent />;
+  const locale = await initI18nForPage(params);
+  return (
+    <>
+      <JsonLd data={{
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        name: "Privacy Policy",
+        description: "How Job Seek collects, uses, and protects your personal data.",
+        url: `${siteConfig.url}/${locale}/privacy-policy`,
+        isPartOf: { "@type": "WebSite", url: siteConfig.url },
+        lastReviewed: siteConfig.privacy.lastUpdated,
+      }} />
+      <PrivacyPolicyContent />
+    </>
+  );
 }

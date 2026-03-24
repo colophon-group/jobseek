@@ -5,7 +5,7 @@ import { Features } from "@/components/Features";
 import { Pricing } from "@/components/Pricing";
 import { PublicDomainArt } from "@/components/PublicDomainArt";
 import { siteConfig, publicDomainAssets } from "@/content/config";
-import { buildAlternates } from "@/lib/seo";
+import { buildAlternates, JsonLd } from "@/lib/seo";
 
 type Props = {
   params: Promise<{ lang: string }>;
@@ -31,12 +31,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function HomePage({ params }: Props) {
-  await initI18nForPage(params);
+  const locale = await initI18nForPage(params);
 
   const afterPricingArt = publicDomainAssets[siteConfig.homepageArt.assetKey];
 
   return (
     <>
+      <JsonLd data={{
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        name: "Job Seek",
+        description: "Search jobs scraped directly from company career pages. Filter by seniority, tech stack, salary, and location, then track every application in one place.",
+        url: `${siteConfig.url}/${locale}`,
+        isPartOf: { "@type": "WebSite", url: siteConfig.url },
+      }} />
       <Hero />
       <Features />
       <Pricing />
