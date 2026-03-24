@@ -97,6 +97,9 @@ cartier,cartier-careers,https://careers.richemont.com/en/jobs/cartier/,dom,"{""r
 caterpillar,caterpillar-careers,https://careers.caterpillar.com/en/jobs/,sitemap,"{""url_filter"": ""/en/jobs/r""}",json-ld,
 cd-projekt-red,cd-projekt-red-careers,https://www.cdprojektred.com/en/jobs,smartrecruiters,"{""token"": ""CDPROJEKTRED""}",smartrecruiters,
 checkout-com,checkout-com-careers,https://checkout.wd3.myworkdayjobs.com/CheckoutCareers,workday,"{""company"": ""checkout"", ""wd_instance"": ""wd3"", ""site"": ""CheckoutCareers""}",workday,
+chevron,chevron-careers,https://chevron.wd5.myworkdayjobs.com/jobs,workday,"{""company"": ""chevron"", ""wd_instance"": ""wd5"", ""site"": ""jobs"", ""all_sites"": false}",workday,
+chevron,chevron-careers-university,https://chevron.wd5.myworkdayjobs.com/University,workday,"{""company"": ""chevron"", ""wd_instance"": ""wd5"", ""site"": ""University"", ""all_sites"": false}",workday,
+chevron,chevron-stations,https://chevronstations.wd1.myworkdayjobs.com/CSI,workday,"{""company"": ""chevronstations"", ""wd_instance"": ""wd1"", ""site"": ""CSI"", ""all_sites"": false}",workday,
 chipmind,chipmind-careers,https://www.chipmind.ai/careers,dom,,dom,"{""steps"": [{""tag"": ""h1"", ""attr"": ""class=topcard__title"", ""field"": ""title""}, {""tag"": ""div"", ""attr"": ""class=topcard__flavor-row"", ""field"": ""locations"", ""regex"": ""([A-Z]\\w*,\\s+.+)$""}, {""text"": ""About"", ""field"": ""description"", ""html"": true, ""stop"": ""Show more""}, {""text"": ""Employment type"", ""offset"": 1, ""field"": ""employment_type""}]}"
 cisco,cisco-careers,https://cisco.wd5.myworkdayjobs.com/Cisco_Careers,workday,"{""company"": ""cisco"", ""wd_instance"": ""wd5"", ""site"": ""Cisco_Careers""}",workday,
 citigroup,citigroup-eightfold,https://citi.eightfold.ai/careers,sitemap,"{""sitemap_url"": ""https://citi.eightfold.ai/careers/sitemap.xml"", ""url_filter"": ""/careers/job/""}",json-ld,
