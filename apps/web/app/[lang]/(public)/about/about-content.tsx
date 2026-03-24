@@ -5,6 +5,7 @@ import { ContentPageHero } from "@/components/ContentPageHero";
 import { siteConfig } from "@/content/config";
 import { useLocalePath } from "@/lib/useLocalePath";
 import Link from "next/link";
+import { ExternalLink } from "lucide-react";
 
 type AboutContentProps = {
   contactEmail: string;
@@ -58,17 +59,21 @@ export function AboutContent({ contactEmail, ossRepoUrl }: AboutContentProps) {
               </div>
 
               <div className="mt-8 flex flex-wrap gap-4 text-sm">
-                <a href={ossRepoUrl} target="_blank" rel="noopener noreferrer" className="rounded-full border border-border-soft px-4 py-2 transition-colors hover:bg-border-soft">
+                <a href={ossRepoUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-border-soft px-4 py-2 transition-colors hover:bg-border-soft">
                   <Trans id="about.link.crawler" comment="Link to open-source crawler repo">Crawler source code</Trans>
+                  <ExternalLink size={14} />
                 </a>
-                <Link href={lp("/how-we-index")} className="rounded-full border border-border-soft px-4 py-2 transition-colors hover:bg-border-soft">
+                <Link href={lp("/how-we-index")} className="inline-flex items-center gap-1.5 rounded-full border border-border-soft px-4 py-2 transition-colors hover:bg-border-soft">
                   <Trans id="about.link.indexing" comment="Link to how we index page">Job indexing policy</Trans>
+                  <ExternalLink size={14} />
                 </Link>
-                <Link href={lp("/license")} className="rounded-full border border-border-soft px-4 py-2 transition-colors hover:bg-border-soft">
+                <Link href={lp("/license")} className="inline-flex items-center gap-1.5 rounded-full border border-border-soft px-4 py-2 transition-colors hover:bg-border-soft">
                   <Trans id="about.link.license" comment="Link to license page">License</Trans>
+                  <ExternalLink size={14} />
                 </Link>
-                <a href={`mailto:${contactEmail}`} className="rounded-full border border-border-soft px-4 py-2 transition-colors hover:bg-border-soft">
+                <a href={`mailto:${contactEmail}`} className="inline-flex items-center gap-1.5 rounded-full border border-border-soft px-4 py-2 transition-colors hover:bg-border-soft">
                   <Trans id="about.link.contact" comment="Link to contact email">Get in touch</Trans>
+                  <ExternalLink size={14} />
                 </a>
               </div>
             </div>
