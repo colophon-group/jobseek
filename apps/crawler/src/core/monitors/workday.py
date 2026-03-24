@@ -475,6 +475,21 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
             count = await _fetch_job_count(company, wd_instance, site, client)
             if count is not None:
                 result["jobs"] = count
+            elif "_" in company:
+                # Python's ssl module rejects underscores in hostnames even
+                # when the wildcard certificate is valid.  Retry without
+                # SSL verification and flag the board so downstream
+                # clients also disable verification.
+                log.info("workday.ssl_retry", company=company)
+                async with httpx.AsyncClient(
+                    timeout=client.timeout,
+                    follow_redirects=True,
+                    verify=False,
+                ) as insecure:
+                    count = await _fetch_job_count(company, wd_instance, site, insecure)
+                if count is not None:
+                    result["jobs"] = count
+                    result["ssl_verify"] = False
         return result
 
     if client is None:
@@ -502,6 +517,18 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
                     count = await _fetch_job_count(company, wd_instance, site, client)
                     if count is not None:
                         result["jobs"] = count
+                    elif "_" in company:
+                        async with httpx.AsyncClient(
+                            timeout=client.timeout,
+                            follow_redirects=True,
+                            verify=False,
+                        ) as insecure:
+                            count = await _fetch_job_count(
+                                company, wd_instance, site, insecure
+                            )
+                        if count is not None:
+                            result["jobs"] = count
+                            result["ssl_verify"] = False
                     return result
 
     return None

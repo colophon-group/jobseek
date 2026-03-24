@@ -29,14 +29,17 @@ _CLIENT_DEFAULTS = {
 }
 
 
-def create_http_client() -> httpx.AsyncClient:
+def create_http_client(*, verify: bool = True) -> httpx.AsyncClient:
     from src.shared.proxy import build_httpx_mounts
 
     mounts = build_httpx_mounts()
-    return httpx.AsyncClient(**_CLIENT_DEFAULTS, **({"mounts": mounts} if mounts else {}))
+    kwargs = {**_CLIENT_DEFAULTS}
+    if not verify:
+        kwargs["verify"] = False
+    return httpx.AsyncClient(**kwargs, **({"mounts": mounts} if mounts else {}))
 
 
-def create_logging_http_client() -> tuple[httpx.AsyncClient, list[dict[str, Any]]]:
+def create_logging_http_client(*, verify: bool = True) -> tuple[httpx.AsyncClient, list[dict[str, Any]]]:
     """Create an HTTP client that logs request/response metadata.
 
     Returns (client, log_entries) where log_entries is populated as
@@ -67,8 +70,11 @@ def create_logging_http_client() -> tuple[httpx.AsyncClient, list[dict[str, Any]
     from src.shared.proxy import build_httpx_mounts
 
     mounts = build_httpx_mounts()
+    kwargs = {**_CLIENT_DEFAULTS}
+    if not verify:
+        kwargs["verify"] = False
     client = httpx.AsyncClient(
-        **_CLIENT_DEFAULTS,
+        **kwargs,
         event_hooks={"request": [_on_request], "response": [_on_response]},
         **({"mounts": mounts} if mounts else {}),
     )

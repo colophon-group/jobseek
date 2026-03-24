@@ -474,6 +474,7 @@ vercel,vercel-careers,https://job-boards.greenhouse.io/vercel,greenhouse,"{""tok
 vitol,vitol-careers,https://careers.smartrecruiters.com/Vitol,smartrecruiters,"{""token"": ""Vitol""}",smartrecruiters,
 vivid-money,vivid-money-careers,https://careers.vivid.money,personio,"{""slug"": ""vivid"", ""language"": ""en""}",,
 vontobel,vontobel-careers,https://vontobel.wd3.myworkdayjobs.com/Vontobel_External_Career,workday,,workday,
+wachtell,wachtell-careers-workday,https://wd1.myworkdaysite.com/recruiting/vhr_wachtelllipton/wlrk,workday,"{""company"": ""vhr_wachtelllipton"", ""wd_instance"": ""wd1"", ""site"": ""wlrk"", ""ssl_verify"": false}",workday,
 warner-music,warner-music-careers,https://www.wmg.com/careers,lever,"{""token"": ""wmg""}",,
 warner-music,warner-music-careers-workday,https://wmg.wd1.myworkdayjobs.com/WMGGLOBAL,workday,,,
 wesort-ai,wesort-ai-careers,https://www.wesort.ai/karriere,sitemap,"{""url_filter"": ""(stellenanzeige-|entwicklungsingenieur|initiativbewerbung)""}",dom,"{""render"": true, ""wait"": ""load"", ""timeout"": 60000, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""h2"", ""field"": ""description"", ""stop"": ""Interesse geweckt"", ""html"": true}]}"
