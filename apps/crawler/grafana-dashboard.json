@@ -1,0 +1,190 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "links": [],
+  "panels": [
+    {
+      "title": "Task Throughput (per minute)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10, "spanNulls": true },
+          "unit": "opm"
+        },
+        "overrides": [
+          { "matcher": { "id": "byRegexp", "options": "failed|timed_out" }, "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] },
+          { "matcher": { "id": "byRegexp", "options": "succeeded" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] }
+        ]
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(crawler_tasks_total{app=\"jobseek\"}[5m])) by (kind, status) * 60",
+          "legendFormat": "{{kind}} — {{status}}"
+        }
+      ]
+    },
+    {
+      "title": "Success Rate",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": { "steps": [{ "color": "red", "value": null }, { "color": "yellow", "value": 0.9 }, { "color": "green", "value": 0.95 }] },
+          "min": 0, "max": 1
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(crawler_tasks_total{app=\"jobseek\", status=\"succeeded\"}[5m])) / sum(rate(crawler_tasks_total{app=\"jobseek\"}[5m]))",
+          "legendFormat": "Overall"
+        }
+      ]
+    },
+    {
+      "title": "Total Tasks (cumulative)",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 0 },
+      "fieldConfig": {
+        "defaults": { "unit": "short" },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum(crawler_tasks_total{app=\"jobseek\", status=\"succeeded\"}) by (kind)",
+          "legendFormat": "{{kind}} ok"
+        },
+        {
+          "expr": "sum(crawler_tasks_total{app=\"jobseek\", status!=\"succeeded\"}) by (kind)",
+          "legendFormat": "{{kind}} fail"
+        }
+      ]
+    },
+    {
+      "title": "Monitor Duration (seconds)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 5, "spanNulls": true },
+          "unit": "s"
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "p99" }, "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "p95" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "p50" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] }
+        ]
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, rate(crawler_task_duration_seconds_bucket{app=\"jobseek\", kind=\"monitor\"}[5m]))",
+          "legendFormat": "p50"
+        },
+        {
+          "expr": "histogram_quantile(0.95, rate(crawler_task_duration_seconds_bucket{app=\"jobseek\", kind=\"monitor\"}[5m]))",
+          "legendFormat": "p95"
+        },
+        {
+          "expr": "histogram_quantile(0.99, rate(crawler_task_duration_seconds_bucket{app=\"jobseek\", kind=\"monitor\"}[5m]))",
+          "legendFormat": "p99"
+        }
+      ]
+    },
+    {
+      "title": "Scrape Duration (seconds)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 5, "spanNulls": true },
+          "unit": "s"
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "p99" }, "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "p95" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "p50" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] }
+        ]
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, rate(crawler_task_duration_seconds_bucket{app=\"jobseek\", kind=\"scrape\"}[5m]))",
+          "legendFormat": "p50"
+        },
+        {
+          "expr": "histogram_quantile(0.95, rate(crawler_task_duration_seconds_bucket{app=\"jobseek\", kind=\"scrape\"}[5m]))",
+          "legendFormat": "p95"
+        },
+        {
+          "expr": "histogram_quantile(0.99, rate(crawler_task_duration_seconds_bucket{app=\"jobseek\", kind=\"scrape\"}[5m]))",
+          "legendFormat": "p99"
+        }
+      ]
+    },
+    {
+      "title": "Concurrency",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 15, "spanNulls": true },
+          "unit": "short"
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Active" }, "properties": [{ "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "Queued" }, "properties": [{ "id": "color", "value": { "fixedColor": "yellow", "mode": "fixed" } }] }
+        ]
+      },
+      "targets": [
+        {
+          "expr": "crawler_tasks_active{app=\"jobseek\"}",
+          "legendFormat": "Active"
+        },
+        {
+          "expr": "crawler_tasks_queued{app=\"jobseek\"}",
+          "legendFormat": "Queued"
+        }
+      ]
+    },
+    {
+      "title": "DB Pool",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 15, "spanNulls": true },
+          "unit": "short"
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "In Use" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "Idle" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "Total" }, "properties": [{ "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } }, { "id": "color", "value": { "fixedColor": "white", "mode": "fixed" } }] }
+        ]
+      },
+      "targets": [
+        {
+          "expr": "crawler_db_pool_size{app=\"jobseek\"} - crawler_db_pool_idle{app=\"jobseek\"}",
+          "legendFormat": "In Use"
+        },
+        {
+          "expr": "crawler_db_pool_idle{app=\"jobseek\"}",
+          "legendFormat": "Idle"
+        },
+        {
+          "expr": "crawler_db_pool_size{app=\"jobseek\"}",
+          "legendFormat": "Total"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["crawler", "jobseek"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Jobseek Crawler",
+  "uid": "jobseek-crawler"
+}
