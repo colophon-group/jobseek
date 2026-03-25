@@ -40,6 +40,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
 _ALL_MONITOR_TYPES: frozenset[str] = _RICH_MONITORS | {
     "bite",
     "breezy",
+    "eightfold",
     "join",
     "personio",
     "rippling",
@@ -118,6 +119,8 @@ def detect_ats_from_url(url: str) -> str | None:
         return "smartrecruiters"
     if host.endswith(".breezy.hr"):
         return "breezy"
+    if host.endswith(".eightfold.ai"):
+        return "eightfold"
 
     # Suffix-based patterns
     if host.endswith(".recruitee.com"):
@@ -229,6 +232,8 @@ def auto_scraper_type(
         return ("workable", None)
     if monitor_type == "workday":
         return ("workday", None)
+    if monitor_type == "eightfold":
+        return ("json-ld", None)
     if monitor_type == "softgarden":
         return ("json-ld", None)
     if monitor_type == "ycombinator":

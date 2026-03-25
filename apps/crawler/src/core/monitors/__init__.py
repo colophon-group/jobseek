@@ -256,6 +256,12 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"Breezy \u2014 {portal_url}, {jobs} jobs"
         return f"Breezy \u2014 {portal_url}"
+    if name == "eightfold":
+        sitemap_url = metadata.get("sitemap_url", "?")
+        urls = metadata.get("urls")
+        if urls is not None:
+            return f"Eightfold AI \u2014 {urls} jobs at {sitemap_url}"
+        return f"Eightfold AI \u2014 {sitemap_url}"
     if name == "ashby":
         token = metadata.get("token", "?")
         jobs = metadata.get("jobs")
@@ -478,6 +484,7 @@ from src.core.monitors import (  # noqa: E402
     breezy,  # noqa: F401
     deel,  # noqa: F401
     dom,  # noqa: F401
+    eightfold,  # noqa: F401
     dvinci,  # noqa: F401
     gem,  # noqa: F401
     greenhouse,  # noqa: F401
