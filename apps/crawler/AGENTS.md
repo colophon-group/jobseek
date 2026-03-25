@@ -206,6 +206,40 @@ When evaluating scraper probe results and extraction output:
 - Validate field formats (`locations`, HTML `description`, salary structure, location type values).
 - If evidence is ambiguous, capture one more validating signal before choosing a final config.
 
+## Local Mode (`WS_LOCAL=1`)
+
+Set `WS_LOCAL=1` to run `ws` commands without git/GitHub side effects (no
+branches, PRs, pushes, or issue comments). Useful for:
+
+- **Bulk operations** — processing many companies without creating PRs for each
+- **Logo discovery** — `ws new <slug> --issue 1 && ws set <slug> --website <url>`
+  triggers async logo/enrichment discovery. Check results with `ws logos <slug>`.
+- **Testing configs** — iterate on monitor/scraper configs without committing
+- **Debugging** — inspect ws behavior locally
+
+Local mode skips: worktree creation, git commit/push, PR creation/update,
+issue comments, branch cleanup. Everything else works normally (CSV writes,
+logo discovery, monitor probes, scraper tests, validation).
+
+```bash
+# Example: bulk logo discovery
+export WS_LOCAL=1
+for slug in starbucks hsbc bayer; do
+  ws new "$slug" --issue 1
+  ws set "$slug" --website "https://www.${slug}.com"
+done
+sleep 15  # wait for async discovery
+for slug in starbucks hsbc bayer; do
+  ws logos "$slug"
+  ws set "$slug" --logo-candidate 1 --icon-candidate 2 --logo-type wordmark --no-discover
+done
+```
+
+**Note:** `ws new` in local mode still writes stub CSV rows. Clean up with
+`git checkout -- data/` if you only needed the discovery artifacts.
+`ws del` in local mode also removes CSV rows — use with caution on
+companies that already exist.
+
 ## Proposing Code Changes
 
 When existing monitors/scrapers can't handle a site, agents may propose code changes.
