@@ -244,6 +244,7 @@ infosys,infosys-careers,https://digitalcareers.infosys.com/infosys/global-career
 instacart,instacart-careers,https://job-boards.greenhouse.io/embed/job_board?for=instacart,greenhouse,"{""token"": ""instacart""}",skip,
 instories,instories-careers,https://wantapply.com/company/instories,dom,"{""render"": true, ""wait"": ""domcontentloaded"", ""timeout"": 60000, ""url_filter"": ""-at-instories(?:-[0-9]+)?(?:\\?|$)"", ""actions"": [{""action"": ""dismiss_overlays""}, {""action"": ""wait"", ""ms"": 5000}, {""action"": ""evaluate"", ""script"": ""window.scrollTo(0, document.body.scrollHeight)""}, {""action"": ""wait"", ""ms"": 2000}]}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""h1"", ""offset"": 1, ""field"": ""locations"", ""from"": 0}, {""tag"": ""p"", ""field"": ""description"", ""stop"": ""Published on"", ""html"": true}, {""text"": ""Published on:"", ""field"": ""date_posted"", ""regex"": ""Published on:\\s*(.*)""}]}"
 intrinsic,intrinsic-careers,https://boards.greenhouse.io/intrinsicrobotics,greenhouse,"{""token"": ""intrinsicrobotics""}",skip,
+inworld-ai,inworld-ai-careers,https://inworld.ai/career,ashby,"{""token"": ""inworld-ai""}",skip,
 isomorphic-labs,isomorphic-labs-careers,https://job-boards.greenhouse.io/isomorphiclabs,greenhouse,"{""token"": ""isomorphiclabs""}",skip,
 jetbrains,jetbrains-careers,https://boards.greenhouse.io/jetbrains,greenhouse,,,
 johnson-and-johnson,johnson-and-johnson-careers,https://jj.wd5.myworkdayjobs.com/JJ,workday,,workday,
