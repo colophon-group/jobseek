@@ -345,14 +345,15 @@ export async function getWatchlistByUserAndSlug(
   const sessionUserId = await getSessionUserId();
 
   // Resolve user + watchlist in a single JOIN
-  const rows = await db.execute<{
-    [key: string]: unknown;
+  type WatchlistJoinRow = {
     wl_id: string; slug: string; title: string; description: string | null;
     is_public: boolean; alerts_enabled: boolean; filters: WatchlistFilters | null;
     source_watchlist_id: string | null; created_at: Date; user_id: string;
     owner_id: string; username: string | null;
     display_username: string | null; owner_name: string;
-  }>(sql`
+  };
+
+  const rows = await db.execute<{ [key: string]: unknown } & WatchlistJoinRow>(sql`
     SELECT
       w.id AS wl_id, w.slug, w.title, w.description,
       w.is_public, w.alerts_enabled, w.filters,
@@ -364,8 +365,7 @@ export async function getWatchlistByUserAndSlug(
     LIMIT 1
   `);
 
-  type Row = typeof rows extends (infer R)[] ? R : never;
-  const row = (rows as unknown as Row[])[0];
+  const row = (rows as unknown as WatchlistJoinRow[])[0];
   if (!row) return null;
 
   // Access check: public or owner
@@ -375,7 +375,7 @@ export async function getWatchlistByUserAndSlug(
   if (row.user_id === sessionUserId) {
     db.update(watchlist)
       .set({ lastAccessedAt: new Date() })
-      .where(eq(watchlist.id, row.wl_id as string))
+      .where(eq(watchlist.id, row.wl_id))
       .catch(() => {});
   }
 
@@ -389,24 +389,24 @@ export async function getWatchlistByUserAndSlug(
     })
     .from(watchlistCompany)
     .innerJoin(company, eq(watchlistCompany.companyId, company.id))
-    .where(eq(watchlistCompany.watchlistId, row.wl_id as string))
+    .where(eq(watchlistCompany.watchlistId, row.wl_id))
     .orderBy(company.name);
 
   return {
-    id: row.wl_id as string,
-    slug: row.slug as string,
-    title: row.title as string,
-    description: row.description as string | null,
-    isPublic: row.is_public as boolean,
-    alertsEnabled: row.alerts_enabled as boolean,
-    filters: ((row.filters ?? {}) as WatchlistFilters),
-    sourceWatchlistId: row.source_watchlist_id as string | null,
-    createdAt: new Date(row.created_at as Date).toISOString(),
+    id: row.wl_id,
+    slug: row.slug,
+    title: row.title,
+    description: row.description,
+    isPublic: row.is_public,
+    alertsEnabled: row.alerts_enabled,
+    filters: (row.filters ?? {}) as WatchlistFilters,
+    sourceWatchlistId: row.source_watchlist_id,
+    createdAt: new Date(row.created_at).toISOString(),
     owner: {
-      id: row.owner_id as string,
-      username: row.username as string | null,
-      displayUsername: row.display_username as string | null,
-      name: row.owner_name as string,
+      id: row.owner_id,
+      username: row.username,
+      displayUsername: row.display_username,
+      name: row.owner_name,
     },
     companies,
   };
