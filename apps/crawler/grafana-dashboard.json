@@ -212,6 +212,31 @@
       ]
     },
     {
+      "title": "Throttle Rate (skipped ticks/min)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10, "spanNulls": true },
+          "unit": "short"
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "slots full" }, "properties": [{ "id": "color", "value": { "fixedColor": "yellow", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "db busy" }, "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] }
+        ]
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(crawler_tick_skip_total{app=\"jobseek\", reason=\"slots_full\"}[$__rate_interval])) * 60",
+          "legendFormat": "slots full"
+        },
+        {
+          "expr": "sum(rate(crawler_tick_skip_total{app=\"jobseek\", reason=\"db_idle\"}[$__rate_interval])) * 60",
+          "legendFormat": "db busy"
+        }
+      ]
+    },
+    {
       "title": "Concurrency",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
@@ -240,6 +265,7 @@
       "title": "DB Pool",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 32 },
+      "description": "Combined across all crawler containers",
       "fieldConfig": {
         "defaults": {
           "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 15, "spanNulls": true },
