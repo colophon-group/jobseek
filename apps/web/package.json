@@ -22,6 +22,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.888.0",
     "@formatjs/intl-localematcher": "^0.8.1",
+    "@jseek/mcp-server": "workspace:*",
     "@lingui/core": "^5",
     "@lingui/macro": "^5",
     "@lingui/react": "^5",

@@ -21,3 +21,4 @@ __pycache__/
 /apps/crawler/data/dual_lang_results.json
 /apps/crawler/traces/
 .vercel
+.mcpregistry_*

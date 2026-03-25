@@ -119,6 +119,9 @@ importers:
       '@formatjs/intl-localematcher':
         specifier: ^0.8.1
         version: 0.8.1
+      '@jseek/mcp-server':
+        specifier: workspace:*
+        version: link:../../packages/mcp-server
       '@lingui/core':
         specifier: ^5
         version: 5.9.1(@lingui/babel-plugin-lingui-macro@5.9.1(babel-plugin-macros@3.1.0)(typescript@5.9.3))(babel-plugin-macros@3.1.0)
