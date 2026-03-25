@@ -152,11 +152,11 @@
       },
       "targets": [
         {
-          "expr": "crawler_queue_depth{app=\"jobseek\", kind=\"monitor\", browser=\"false\"}",
+          "expr": "max(crawler_queue_depth{app=\"jobseek\", kind=\"monitor\", browser=\"false\"})",
           "legendFormat": "http"
         },
         {
-          "expr": "crawler_queue_depth{app=\"jobseek\", kind=\"monitor\", browser=\"true\"}",
+          "expr": "max(crawler_queue_depth{app=\"jobseek\", kind=\"monitor\", browser=\"true\"})",
           "legendFormat": "browser"
         }
       ]
@@ -227,11 +227,11 @@
       },
       "targets": [
         {
-          "expr": "crawler_tasks_active{app=\"jobseek\"}",
+          "expr": "sum(crawler_tasks_active{app=\"jobseek\"})",
           "legendFormat": "Active"
         },
         {
-          "expr": "crawler_tasks_queued{app=\"jobseek\"}",
+          "expr": "sum(crawler_tasks_queued{app=\"jobseek\"})",
           "legendFormat": "Queued"
         }
       ]
@@ -253,15 +253,15 @@
       },
       "targets": [
         {
-          "expr": "crawler_db_pool_size{app=\"jobseek\"} - crawler_db_pool_idle{app=\"jobseek\"}",
+          "expr": "sum(crawler_db_pool_size{app=\"jobseek\"}) - sum(crawler_db_pool_idle{app=\"jobseek\"})",
           "legendFormat": "In Use"
         },
         {
-          "expr": "crawler_db_pool_idle{app=\"jobseek\"}",
+          "expr": "sum(crawler_db_pool_idle{app=\"jobseek\"})",
           "legendFormat": "Idle"
         },
         {
-          "expr": "crawler_db_pool_size{app=\"jobseek\"}",
+          "expr": "sum(crawler_db_pool_size{app=\"jobseek\"})",
           "legendFormat": "Total"
         }
       ]
