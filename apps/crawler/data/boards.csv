@@ -126,6 +126,7 @@ corintis,corintis-careers,https://careers.corintis.com/jobs,rss,"{""preset"": ""
 cradle,cradle-careers,https://jobs.ashbyhq.com/cradlebio,ashby,"{""token"": ""cradlebio""}",skip,
 cravath,cravath-careers,https://careers-cravath.icims.com/jobs/search,dom,,dom,"{""steps"": [{""tag"": ""title"", ""field"": ""locations"", ""regex"": "" in (.+?) \\|""}, {""tag"": ""h1"", ""attr"": ""class=iCIMS_Header"", ""field"": ""title""}, {""tag"": ""h2"", ""text"": ""OVERVIEW"", ""field"": ""description"", ""stop"": ""Apply for this job"", ""html"": true}]}"
 daedalean,daedalean-careers,https://jobs.lever.co/daedalean,lever,"{""token"": ""daedalean""}",skip,
+dash0,dash0-careers,https://jobs.ashbyhq.com/dash0,ashby,"{""token"": ""dash0""}",skip,
 databricks,databricks-careers,https://www.databricks.com/company/careers,greenhouse,"{""token"": ""databricks""}",,
 davis-polk,davis-polk-careers-workday,https://davispolk.wd5.myworkdayjobs.com/business-professionals-services-usa,workday,"{""company"": ""davispolk"", ""wd_instance"": ""wd5"", ""site"": ""business-professionals-services-usa""}",workday,
 deel,deel-careers,https://jobs.ashbyhq.com/deel,ashby,"{""token"": ""deel""}",skip,
