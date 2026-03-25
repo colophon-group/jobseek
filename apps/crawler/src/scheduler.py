@@ -441,6 +441,12 @@ async def run_continuous_loop(
         monitors_claimed = 0
         scrapes_claimed = 0
 
+        # Skip claim queries when all slots are full — nothing can be submitted
+        if wp.http_free == 0 and wp.browser_free == 0:
+            with contextlib.suppress(TimeoutError):
+                await asyncio.wait_for(shutdown_event.wait(), timeout=1.0)
+            continue
+
         try:
             skip = wp.saturated_domains
 
