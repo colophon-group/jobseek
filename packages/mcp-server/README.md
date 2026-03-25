@@ -1,4 +1,4 @@
-# @jobseek/mcp-server
+# @jseek/mcp-server
 
 MCP server for [Job Seek](https://jseek.co) — search jobs, companies, and watchlists directly from Claude, Cursor, or any MCP-compatible client.
 
@@ -13,7 +13,7 @@ Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_
   "mcpServers": {
     "jobseek": {
       "command": "npx",
-      "args": ["@jobseek/mcp-server"]
+      "args": ["@jseek/mcp-server"]
     }
   }
 }
@@ -22,7 +22,7 @@ Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_
 ### Claude Code
 
 ```bash
-claude mcp add jobseek -- npx @jobseek/mcp-server
+claude mcp add jobseek -- npx @jseek/mcp-server
 ```
 
 ### Cursor
@@ -34,7 +34,7 @@ Add to `.cursor/mcp.json`:
   "mcpServers": {
     "jobseek": {
       "command": "npx",
-      "args": ["@jobseek/mcp-server"]
+      "args": ["@jseek/mcp-server"]
     }
   }
 }

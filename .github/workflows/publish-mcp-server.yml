@@ -1,0 +1,66 @@
+name: Publish MCP server
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/mcp-server/package.json"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+
+      - uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        working-directory: packages/mcp-server
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        working-directory: packages/mcp-server
+        run: pnpm exec tsc
+
+      - name: Check if version changed
+        id: version
+        working-directory: packages/mcp-server
+        run: |
+          LOCAL=$(node -p "require('./package.json').version")
+          REMOTE=$(npm view @jseek/mcp-server version 2>/dev/null || echo "0.0.0")
+          if [ "$LOCAL" = "$REMOTE" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "version=$LOCAL" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish to npm
+        if: steps.version.outputs.changed == 'true'
+        working-directory: packages/mcp-server
+        run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Install mcp-publisher
+        if: steps.version.outputs.changed == 'true'
+        run: |
+          curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" | tar xz mcp-publisher
+          sudo mv mcp-publisher /usr/local/bin/
+
+      - name: Authenticate with MCP registry
+        if: steps.version.outputs.changed == 'true'
+        run: mcp-publisher login github-oidc
+
+      - name: Publish to MCP registry
+        if: steps.version.outputs.changed == 'true'
+        working-directory: packages/mcp-server
+        run: mcp-publisher publish
