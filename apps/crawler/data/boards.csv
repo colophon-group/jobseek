@@ -423,6 +423,7 @@ preply,preply-ashby,https://jobs.ashbyhq.com/preply,ashby,"{""token"": ""preply"
 prior-labs,prior-labs-careers,https://jobs.ashbyhq.com/prior-labs,ashby,,skip,
 procter-gamble,procter-gamble-careers,https://www.pgcareers.com/global/en/search-results,sitemap,"{""sitemap_url"": ""https://www.pgcareers.com/global/en/search-results/sitemap.xml"", ""url_filter"": ""/global/en/job/""}",json-ld,
 proton,proton-careers,https://proton.me/careers,greenhouse,"{""token"": ""proton""}",,
+psi,psi-careers,https://www.psi.ch/en/hr/job-opportunities,dom,"{""render"": true, ""url_filter"": ""(job-opportunities|stellenangebote)/\\d""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""time"", ""field"": ""date_posted"", ""optional"": true}, {""tag"": ""h2"", ""field"": ""description"", ""html"": true, ""stop_count"": 50}], ""defaults"": {""locations"": [""Villigen, CH""]}}"
 pwc,pwc-careers-au,https://jobs-au.pwc.com/experiencedhires/au/en/search-results,sitemap,"{""sitemap_url"": ""https://jobs-au.pwc.com/experiencedhires/au/en/search-results/sitemap.xml"", ""url_filter"": ""/job/""}",json-ld,
 pwc,pwc-careers-ca,https://jobs-ca.pwc.com/ca/en/search-results,sitemap,"{""sitemap_url"": ""https://jobs-ca.pwc.com/ca/en/search-results/sitemap.xml"", ""url_filter"": ""/ca/en/job/""}",json-ld,
 pwc,pwc-careers-cee,https://jobs-cee.pwc.com/ce/en/search-results,sitemap,"{""sitemap_url"": ""https://jobs-cee.pwc.com/ce/en/search-results/sitemap.xml"", ""url_filter"": ""/job/""}",json-ld,
