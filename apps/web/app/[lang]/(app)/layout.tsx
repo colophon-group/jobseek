@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 export const dynamic = "force-dynamic";
 
+import { setI18n } from "@lingui/react/server";
 import { getSession } from "@/lib/sessionCache";
 import { isLocale, defaultLocale, loadCatalog, type Locale } from "@/lib/i18n";
 import { LinguiClientProvider } from "@/components/LinguiProvider";
@@ -28,7 +29,8 @@ type Props = {
 export default async function AppLayout({ params, children }: Props) {
   const { lang } = await params;
   const locale: Locale = isLocale(lang) ? lang : defaultLocale;
-  const { messages } = await loadCatalog(locale);
+  const { i18n, messages } = await loadCatalog(locale);
+  setI18n(i18n);
   const session = await getSession();
 
   const [prefs, savedStatuses, starredIds] = await Promise.all([
