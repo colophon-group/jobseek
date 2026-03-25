@@ -145,6 +145,7 @@ dentsu,dentsu-careers-sr-merkle,https://careers.smartrecruiters.com/MerkleInc,sm
 dentsu,dentsu-careers-sr-my,https://careers.smartrecruiters.com/DentsuAegisNetwork3,smartrecruiters,"{""token"": ""DentsuAegisNetwork3""}",smartrecruiters,
 dentsu,dentsu-careers-workday,https://dentsuaegis.wd3.myworkdayjobs.com/DAN_GLOBAL,workday,"{""company"": ""dentsuaegis"", ""wd_instance"": ""wd3"", ""site"": ""DAN_GLOBAL""}",workday,
 depoly,depoly-careers,https://depoly.jobs.personio.com,personio,"{""slug"": ""depoly"", ""language"": ""en""}",skip,
+destinus,destinus-careers,https://apply.workable.com/destinusgroup/,workable,"{""token"": ""destinusgroup""}",workable,
 deutsche-bank,deutsche-bank-dws,https://db.wd3.myworkdayjobs.com/en-US/DWSWebsite,workday,"{""company"": ""db"", ""wd_instance"": ""wd3"", ""site"": ""DWSWebsite"", ""all_sites"": false}",workday,
 deutsche-bank,deutsche-bank-main,https://db.wd3.myworkdayjobs.com/en-US/DBWebsite,workday,"{""company"": ""db"", ""wd_instance"": ""wd3"", ""site"": ""DBWebsite"", ""all_sites"": false}",workday,
 disney,disney-careers,https://disney.wd5.myworkdayjobs.com/disneycareer,workday,"{""company"": ""disney"", ""wd_instance"": ""wd5"", ""site"": ""disneycareer""}",json-ld,
