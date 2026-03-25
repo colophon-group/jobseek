@@ -7,7 +7,8 @@ The crawler is split into three layers so each can be deployed, tested, and reas
 ```
 ┌─────────────────────────────────────────────────────┐
 │  SCHEDULER (deployment-specific)                    │
-│  Fly.io: async poll loop with adaptive interval     │
+│  Fly.io: --http-only (lightweight HTTP work)        │
+│  Hetzner: --browser-only (Playwright/Chromium)      │
 │  CLI: --once, --board, --dry-run                    │
 ├─────────────────────────────────────────────────────┤
 │  BATCH PROCESSOR (portable)                         │
@@ -103,15 +104,69 @@ async def process_scrape_batch(pool, http, limit=10) -> BatchResult:
 
 Thin, environment-specific wrapper that calls the batch processor on a schedule.
 
-### Fly.io (default): Adaptive Poll Loop
+### Continuous Worker Pool (default)
 
-```python
-async def run_poll_loop(shutdown_event):
-    """Long-running process. Backs off when idle, responds quickly to new work."""
-    while not shutdown_event.is_set():
-        did_work = await process_monitor_batch(...) or await process_scrape_batch(...)
-        interval = 1.0 if did_work else min(interval * 2, max_interval)
-        await asyncio.wait_for(shutdown_event.wait(), timeout=interval)
+Bounded async worker pool with per-domain queuing. Two separate semaphores
+prevent browser work from starving HTTP work. Items for the same domain run
+serially (politeness); different domains run concurrently.
+
+### Split Deployment
+
+The scheduler supports `--http-only` and `--browser-only` flags to split
+work across separate instances. The DB's `FOR UPDATE SKIP LOCKED` pattern
+distributes work automatically — no load balancer needed.
+
+```
+┌─────────────────────┐     ┌──────────────────────────┐
+│  fly.io              │     │  Hetzner CPX22           │
+│  --http-only         │     │  --browser-only          │
+│  512 MB, shared CPU  │     │  4 GB, 2 vCPU            │
+│                     │     │                          │
+│  HTTP monitors +    │     │  DOM render monitors +   │
+│  HTTP scrapers      │     │  api_sniffer monitors +  │
+│                     │     │  browser scrapers        │
+└────────┬────────────┘     └────────┬─────────────────┘
+         └───────┐   ┌───────────────┘
+                 ▼   ▼
+         ┌───────────────┐
+         │  Supabase DB  │
+         └───────────────┘
+```
+
+- `--http-only`: skips browser phases (2 and 4), sets `max_browser=0`. No
+  Playwright/Chromium needed — lightweight instance.
+- `--browser-only`: skips HTTP phases (1 and 3), sets `max_concurrent=0`.
+  Runs only browser work with Chromium installed.
+- Mutually exclusive — cannot pass both.
+
+### Hetzner Browser Worker
+
+Deployed via GitHub Actions (`.github/workflows/deploy-crawler-browser.yml`):
+builds Docker image, pushes to GHCR, SSHes to Hetzner to pull and restart.
+
+Server-side config lives in `/home/deploy/crawler.env`:
+
+```env
+DATABASE_URL=postgresql://...
+CRAWLER_MAX_BROWSER=5        # concurrent Chromium instances
+CRAWLER_MAX_CONCURRENT=0     # no HTTP work on this instance
+WORKER_ID_PREFIX=hetzner
+LOG_LEVEL=INFO
+METRICS_PORT=9091
+```
+
+To change `CRAWLER_MAX_BROWSER`, edit the env file and recreate the
+container (not just restart — `docker restart` does not re-read env files):
+
+```bash
+ssh deploy@<HETZNER_IP>
+vi /home/deploy/crawler.env
+docker stop jobseek-crawler && docker rm jobseek-crawler
+docker run -d --name jobseek-crawler --restart unless-stopped \
+  --env-file /home/deploy/crawler.env --network host \
+  --memory=3g --shm-size=1g \
+  ghcr.io/colophon-group/jobseek-crawler:latest \
+  uv run --no-sync scheduler --browser-only
 ```
 
 ### Single-board mode
@@ -129,6 +184,8 @@ uv run scheduler --board <board_slug> --force-rescrape   # Scrape all active job
 uv run scheduler --once           # Process one batch and exit
 uv run scheduler --monitor-only   # Only monitor (no scraping)
 uv run scheduler --scrape-only    # Only scrape (no monitoring)
+uv run scheduler --http-only      # Skip browser work
+uv run scheduler --browser-only   # Skip HTTP work
 ```
 
 ## File Structure
