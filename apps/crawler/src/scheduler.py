@@ -130,20 +130,19 @@ def _batch_log_kwargs(result) -> dict:
 
 
 class WorkerPool:
-    """Bounded async worker pool with per-domain queuing.
+    """Bounded async worker pool.
 
-    Multiple items for the same domain can run concurrently — the semaphore
-    controls overall concurrency, not per-domain limits. External rate
-    limiting (Redis/throttle_key) handles politeness at the network level.
-
-    When all semaphore slots are occupied, new items queue in memory and
-    start automatically when a slot frees up.
+    Every submitted item gets its own asyncio task. The semaphore controls
+    overall concurrency — multiple items for the same domain run concurrently
+    when slots are available. The claim query maximizes domain diversity via
+    ``PARTITION BY throttle_key ORDER BY domain_rank``; same-domain items
+    only fill remaining slots when no other domains have work.
 
     Two separate semaphores prevent browser (Playwright) work from starving
-    lightweight HTTP work. Items are routed to the appropriate semaphore based
-    on their ``needs_browser`` flag.
+    lightweight HTTP work. Items are routed to the appropriate semaphore
+    based on their ``needs_browser`` flag.
 
-    Asyncio is single-threaded so set/deque operations between await points
+    Asyncio is single-threaded so dict/set operations between await points
     are atomic — no locks needed.
     """
 
@@ -197,7 +196,8 @@ class WorkerPool:
 
     @property
     def queued_count(self) -> int:
-        return 0  # no in-memory queuing — semaphore blocks instead
+        """Tasks waiting on semaphore (submitted but not yet running)."""
+        return max(0, len(self._tasks) - self.active_count)
 
     @property
     def claim_budget(self) -> int:
@@ -225,7 +225,7 @@ class WorkerPool:
         have work.
         """
         self._domains_inflight[item.domain] = self._domains_inflight.get(item.domain, 0) + 1
-        task = asyncio.get_event_loop().create_task(self._run(item))
+        task = asyncio.create_task(self._run(item))
         self._tasks.add(task)
         task.add_done_callback(self._tasks.discard)
         self.total_submitted += 1
@@ -236,8 +236,8 @@ class WorkerPool:
         Browser items use ``_browser_sem``; HTTP items use ``_http_sem``.
         """
         sem = self._sem_for(item)
-        await sem.acquire()
         try:
+            await sem.acquire()
             try:
                 ok, elapsed = await self._run_with_heartbeat(item)
                 task_duration_seconds.labels(kind=item.kind).observe(elapsed)
@@ -264,13 +264,15 @@ class WorkerPool:
                 self.failed += 1
                 tasks_total.labels(kind=item.kind, status="failed").inc()
                 log.exception("pool.task_error", domain=item.domain, kind=item.kind)
+            finally:
+                sem.release()
         finally:
+            # Outer finally: always decrement even if cancelled during sem.acquire()
             count = self._domains_inflight.get(item.domain, 1) - 1
             if count <= 0:
                 self._domains_inflight.pop(item.domain, None)
             else:
                 self._domains_inflight[item.domain] = count
-            sem.release()
 
     async def _run_with_heartbeat(self, item: WorkItem) -> tuple[bool, float]:
         """Run a work item, using heartbeat-aware timeout if a DeadlineExtender is set."""
@@ -379,10 +381,10 @@ async def run_continuous_loop(
 ) -> None:
     """Continuous worker pool scheduler.
 
-    Claims items interleaved across domains, submits to a bounded pool with
-    per-domain queuing. When a domain's current item finishes, the next
-    queued item starts immediately. Monitors get priority; scrapes fill
-    remaining capacity.
+    Claims items interleaved across domains (via SQL ``PARTITION BY
+    throttle_key``), submits each to a bounded pool. Multiple items for
+    the same domain run concurrently when slots are available. Monitors
+    get priority; scrapes fill remaining capacity.
 
     Browser (Playwright) work is capped separately by *max_browser* to
     prevent Chromium instances from starving lightweight HTTP work.

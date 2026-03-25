@@ -296,8 +296,8 @@ class TestWorkerPool:
         await wp.drain()
         assert wp.succeeded == 3
 
-    async def test_browser_swap_in_domain_queue(self):
-        """Semaphore swaps when browser need changes within a domain queue."""
+    async def test_mixed_browser_http_same_domain(self):
+        """HTTP and browser items for the same domain use separate semaphores."""
         wp = WorkerPool(2, max_browser=1)
 
         order = []
@@ -310,13 +310,12 @@ class TestWorkerPool:
             order.append("browser")
             return (True, 0.01)
 
-        # Same domain: first HTTP, then browser
         wp.submit(WorkItem(domain="mix.com", kind="scrape", run=http_run))
         wp.submit(WorkItem(domain="mix.com", kind="scrape", run=browser_run, needs_browser=True))
 
         await wp.drain()
         assert wp.succeeded == 2
-        assert order == ["http", "browser"]
+        assert set(order) == {"http", "browser"}
 
 
 # ── TestRunContinuousLoop ────────────────────────────────────────────
