@@ -62,6 +62,45 @@ Up to **11 phantom SSR invocations per explore page view** are now eliminated.
 - Search interactions trigger server actions (Next.js RSC protocol), each counting as 1 edge request + 1 serverless function invocation.
 - Flag SVGs for location chips are served from `/flags/` with 1-year immutable cache.
 
+## Fluid compute (serverless function duration)
+
+### SSR render
+
+| Step | Queries | Pattern | Cache | Est. duration |
+|------|---------|---------|-------|---------------|
+| `getSession()` | 1 | — | Redis 5min | 5-90ms |
+| `getPreferences()` | 1 | parallel | None | 10-30ms |
+| `getSavedJobStatuses()` | 1 | parallel | None | 10-30ms |
+| `getStarredCompanyIds()` | 1 | parallel | None | 10-30ms |
+| `parseSearchFilters()` | 0-4 | parallel | None | 5-20ms (slug→ID lookups) |
+| `searchJobs()` or `listTopCompanies()` | 3-5 | mixed | Redis 5-10min | 20-100ms |
+| `getPreferences()` (page) | 0 | — | React `cache()` dedup | 0ms |
+
+**Total DB queries:** 7-12
+**Estimated function duration:** 80-250ms (warm instance)
+
+This is the **heaviest page** in the app. The search query uses multi-CTE SQL
+with array intersection filters for location, occupation, technology, and
+seniority. Location/occupation IDs are expanded from parent→children before
+the main query.
+
+Geolocation headers (`x-vercel-ip-latitude/longitude`) are read from
+`headers()` for distance-based sorting — free (injected by Vercel, no extra
+call).
+
+### Client-side server actions
+
+| Action | Queries | Cache | Est. duration |
+|--------|---------|-------|---------------|
+| `searchJobs()` | 3-5 | Redis 5min | 30-150ms |
+| `listTopCompanies()` | 3-5 | Redis 10min | 30-150ms |
+| `getPostingDetail()` | 3 (sequential) | Redis 5min | 20-100ms |
+| `toggleSavedJob()` | 2 (sequential) | None | 15-50ms |
+| `toggleStarredCompany()` | 2 (sequential) | None | 15-50ms |
+
+Search actions fire on every filter change — high frequency. Redis caching
+absorbs repeated identical queries within the 5-min window.
+
 ## Estimated edge requests
 
 **First visit (cold cache):** ~27 (17 base + ~10 company logos)

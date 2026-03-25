@@ -29,6 +29,21 @@ On form submission:
 - Outside the `(auth)` route group — no session check on load.
 - Shows password form if token present, error message if missing.
 
+## Fluid compute (serverless function duration)
+
+### SSR render
+
+**Zero function compute.** Same as verify-email — `"use client"` page outside
+route groups. Minimal SSR shell, no data fetching.
+
+### Client-triggered
+
+| Action | Queries | Est. duration |
+|--------|---------|---------------|
+| `POST /api/auth/reset-password` | 2-3 (token verify + password update) | 20-100ms |
+
+Only fires on form submission (user-initiated).
+
 ## Estimated edge requests
 
 **First visit (cold cache):** ~12

@@ -28,6 +28,11 @@ Inherits from `(public)` layout OG image: `/:lang/opengraph-image` (dynamic PNG 
 - Contains JSON-LD structured data (WebPage schema) — inlined in HTML, no extra request.
 - Public domain art rendered via `next/image` optimization (`/_next/image?url=...`).
 
+## Fluid compute (serverless function duration)
+
+**Zero function compute.** Pre-rendered at build time. Same as all `(public)`
+pages — CDN-served, no serverless invocation.
+
 ## Estimated edge requests
 
 **First visit (cold cache):** ~14

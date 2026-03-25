@@ -27,6 +27,10 @@ Inherits from `(public)` layout OG image.
 - Contains FAQPage JSON-LD structured data (inlined in HTML).
 - No API calls, no server actions.
 
+## Fluid compute (serverless function duration)
+
+**Zero function compute.** Pre-rendered at build time, CDN-served.
+
 ## Estimated edge requests
 
 **First visit (cold cache):** ~13

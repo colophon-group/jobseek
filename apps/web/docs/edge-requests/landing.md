@@ -48,6 +48,12 @@ These 3-4 phantom SSR invocations per landing page visit are now eliminated.
 - The `Hero` and `Features` sections are client components (`"use client"`) — their JS bundles are separate chunks.
 - No server actions or API calls on this page. All content is static.
 
+## Fluid compute (serverless function duration)
+
+**Zero function compute.** Pre-rendered at build time. Served from CDN with
+no serverless invocation. Only the analytics beacon POST and middleware
+redirect (if no locale prefix) touch edge/serverless infrastructure.
+
 ## Estimated edge requests
 
 **First visit (cold cache):** ~23

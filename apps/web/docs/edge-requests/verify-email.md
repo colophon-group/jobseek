@@ -30,6 +30,22 @@ On mount (triggered by `useEffect`):
 - On page load, it immediately calls `authClient.verifyEmail` with the token from the URL.
 - Shows loading -> success/error states. No images beyond AuthShell logo.
 
+## Fluid compute (serverless function duration)
+
+### SSR render
+
+**Zero function compute.** This page is `"use client"` outside the `(auth)`
+route group — no session check, no server-side queries. The HTML document is
+served as a minimal SSR shell with no data fetching.
+
+### Client-triggered
+
+| Action | Queries | Est. duration |
+|--------|---------|---------------|
+| `POST /api/auth/verify-email` | 2-3 (token lookup + user update) | 20-80ms |
+
+One function invocation per page load (the auto-verify on mount).
+
 ## Estimated edge requests
 
 **First visit (cold cache):** ~13 (12 + 1 verify API call)

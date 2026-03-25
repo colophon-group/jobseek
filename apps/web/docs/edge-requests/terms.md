@@ -23,6 +23,10 @@
 - Text page with one public domain artwork in the hero.
 - No API calls, no server actions.
 
+## Fluid compute (serverless function duration)
+
+**Zero function compute.** Pre-rendered at build time, CDN-served.
+
 ## Estimated edge requests
 
 **First visit (cold cache):** ~14

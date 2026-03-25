@@ -32,6 +32,30 @@ On form submission or OAuth click:
 - AuthShell renders the wide logo via `ThemedImage` (both light/dark variants).
 - No public domain artwork on this page.
 
+## Fluid compute (serverless function duration)
+
+### SSR render
+
+| Step | Queries | Pattern | Cache | Est. duration |
+|------|---------|---------|-------|---------------|
+| `getSession()` | 1 | — | Redis 5min | 5-90ms |
+
+**Total DB queries:** 1
+**Estimated function duration:** 10-90ms (warm instance)
+
+Minimal compute — session check only (for redirect-if-logged-in logic). If
+the user is not logged in, the Redis lookup returns null immediately (~5ms).
+If logged in, the function issues a redirect before rendering any page content.
+
+### User-triggered auth actions
+
+| Action | Queries | Cache | Est. duration |
+|--------|---------|-------|---------------|
+| `POST /api/auth/sign-in/email` | 2-3 | Session write: Redis | 30-120ms |
+| `GET /api/auth/sign-in/social` | 1-2 | Session write: Redis | 20-80ms |
+
+Auth operations create/update session records in both DB and Redis.
+
 ## Estimated edge requests
 
 **First visit (cold cache):** ~13

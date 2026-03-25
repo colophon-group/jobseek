@@ -27,6 +27,13 @@ Has its own dedicated OG image: `/:lang/how-we-index/opengraph-image` (dynamic P
 - Contains WebPage JSON-LD structured data (inlined in HTML).
 - No API calls, no server actions.
 
+## Fluid compute (serverless function duration)
+
+**Zero function compute.** Pre-rendered at build time, CDN-served.
+
+The dedicated OG image (`/:lang/how-we-index/opengraph-image`) is the only
+compute associated with this page — ~60-140ms per social share.
+
 ## Estimated edge requests
 
 **First visit (cold cache):** ~13

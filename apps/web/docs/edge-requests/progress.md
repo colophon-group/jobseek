@@ -34,6 +34,24 @@
 - Contains a CompanyRequestForm for requesting new companies to track.
 - Lightweight page — no images beyond header logo, no company logos.
 
+## Fluid compute (serverless function duration)
+
+### SSR render
+
+| Step | Queries | Pattern | Cache | Est. duration |
+|------|---------|---------|-------|---------------|
+| `getSession()` | 1 | — | Redis 5min | 5-90ms |
+| `getPreferences()` | 1 | parallel | None | 10-30ms |
+| `getSavedJobStatuses()` | 1 | parallel | None | 10-30ms |
+| `getStarredCompanyIds()` | 1 | parallel | None | 10-30ms |
+| `getStats()` (public) | 2 | parallel | Redis 6h | 10-30ms |
+
+**Total DB queries:** 6 (4 if stats cached)
+**Estimated function duration:** 30-80ms (warm instance)
+
+Lightest `(app)` page. Public stats (company count + posting count) are
+cached for 6 hours and run in `Promise.all()` — often a single Redis lookup.
+
 ## Estimated edge requests
 
 **First visit (cold cache):** ~13

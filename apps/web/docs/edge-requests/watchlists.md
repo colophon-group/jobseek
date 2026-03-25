@@ -35,6 +35,38 @@
 - Watchlist cards may show company logos if the watchlist is scoped to specific companies.
 - Number of company logo `/_next/image` requests depends on watchlist content.
 
+## Fluid compute (serverless function duration)
+
+### SSR render
+
+| Step | Queries | Pattern | Cache | Est. duration |
+|------|---------|---------|-------|---------------|
+| `getSession()` | 1 | — | Redis 5min | 5-90ms |
+| `getPreferences()` | 1 | parallel | None | 10-30ms |
+| `getSavedJobStatuses()` | 1 | parallel | None | 10-30ms |
+| `getStarredCompanyIds()` | 1 | parallel | None | 10-30ms |
+| `getUserWatchlists()` base | 1 | — | None | 10-30ms |
+| `resolveFilteredJobCount()` × N | 5N | parallel per watchlist | None | 30-80ms × N |
+| `canCreateWatchlist()` | 1 | — | None | 10-20ms |
+
+**Total DB queries:** 5 + 5N (N = number of user's watchlists)
+**Estimated function duration:** 60-300ms+ (warm instance)
+
+**This is the worst N+1 pattern in the app.** For each watchlist,
+`resolveFilteredJobCount()` runs 4 parallel taxonomy lookups (locations,
+occupations, seniority, technology) plus 1 count query. A user with 10
+watchlists triggers ~51 DB queries.
+
+Consider batching all watchlist job counts into a single SQL query that
+computes counts for all watchlists at once.
+
+### Client-side server actions
+
+| Action | Queries | Cache | Est. duration |
+|--------|---------|-------|---------------|
+| `createWatchlist()` | 2 (sequential) | None | 15-50ms |
+| `deleteWatchlist()` | 2 (sequential) | None | 15-50ms |
+
 ## Estimated edge requests
 
 **First visit (cold cache):** ~14

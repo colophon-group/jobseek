@@ -102,3 +102,32 @@ The 6 permanent redirects configured in `next.config.ts` each generate 1 edge re
 | `/:lang/app/settings/:path*` | `/:lang/settings/:path*` |
 | `/:lang/app/watchlists` | `/:lang/watchlists` |
 | `/:lang/app/progress` | `/:lang/progress` |
+
+## Fluid compute (serverless function duration)
+
+| Route | DB queries | CPU work | Est. duration |
+|-------|-----------|----------|---------------|
+| `sitemap.xml` | 2 (companies + watchlists) | URL generation + XML serialization | 30-120ms |
+| `robots.txt` | 0 | Template string | <5ms |
+| OG images (root) | 0 | Font read + Satori render + sharp PNG encode | 60-140ms |
+| OG images (company) | 1 (company lookup) | Font read + Satori + sharp + logo embed | 80-180ms |
+| `/api/v1/search` | 3-5 | Rate limit (Redis) + response serialization | 40-180ms |
+| `/api/v1/job` | 3 | Rate limit (Redis) + response serialization | 30-120ms |
+| `/api/v1/companies` | 1 | Rate limit (Redis) + response serialization | 15-60ms |
+| `/api/v1/taxonomies` | 1 | Rate limit (Redis) + response serialization | 15-50ms |
+| `/api/v1/watchlists` | 2 + 2N | Rate limit (Redis) + per-watchlist count resolution | 40-200ms+ |
+| `/api/auth/*` | 1-5 | Session management, password hashing (bcrypt) | 20-150ms |
+| `/api/stripe/webhook` | 1-2 | Signature verification + DB update | 15-60ms |
+| `/api/admin/.../apify-import` | 100+ | External API fetch + batch DB inserts | 5-30s |
+| Redirects | 0 | None | 0ms (edge-level, no function) |
+| Well-known endpoints | 0 | None | 0ms (static CDN) |
+
+The admin import route is the only function that may run for seconds. All
+others complete under 500ms. Auth sign-in/sign-up includes bcrypt password
+hashing (~50-100ms CPU), making it the most CPU-intensive per-request auth
+operation.
+
+API routes with `Cache-Control: s-maxage` headers (`/api/v1/search`, `/job`,
+`/companies`, `/taxonomies`) benefit from Vercel's edge cache — repeat
+identical requests within the TTL window hit CDN and skip the function
+entirely.

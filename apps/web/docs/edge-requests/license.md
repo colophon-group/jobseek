@@ -24,6 +24,10 @@
 - Art rendered via `next/image` (`/_next/image?url=...` optimization endpoint).
 - No API calls, no server actions.
 
+## Fluid compute (serverless function duration)
+
+**Zero function compute.** Pre-rendered at build time, CDN-served.
+
 ## Estimated edge requests
 
 **First visit (cold cache):** ~14

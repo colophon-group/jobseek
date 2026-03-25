@@ -42,6 +42,42 @@
 - The heaviest SSR of all pages: resolves multiple filter types + fetches postings in parallel.
 - Company logos depend on watchlist scope — a watchlist tracking 5 companies shows ~5 logos.
 
+## Fluid compute (serverless function duration)
+
+### SSR render
+
+| Step | Queries | Pattern | Cache | Est. duration |
+|------|---------|---------|-------|---------------|
+| `getSession()` | 1 | — | Redis 5min | 5-90ms |
+| `getPreferences()` | 1 | parallel | None | 10-30ms |
+| `getSavedJobStatuses()` | 1 | parallel | None | 10-30ms |
+| `getStarredCompanyIds()` | 1 | parallel | None | 10-30ms |
+| `getWatchlistByUserAndSlug()` | 4 | sequential | None | 30-100ms |
+| Resolve filter slugs (×4 types) | 4 | parallel | None | 10-30ms |
+| `getWatchlistPostings()` | 4 | mixed | None | 30-100ms |
+| `getUserPlan()` + `canCreateWatchlist()` | 2 | sequential | None | 15-40ms |
+
+**Total DB queries:** 10-14
+**Estimated function duration:** 100-350ms (warm instance)
+
+**Heaviest single render in the app.** `getWatchlistByUserAndSlug()` alone
+runs 4 sequential queries (resolve user → fetch watchlist → touch
+lastAccessedAt → fetch companies). Then filter slug resolution and posting
+queries add another 8 queries.
+
+No Redis caching on any watchlist query — every render hits the DB. This is
+a strong candidate for caching, especially for public watchlists that are
+shared via social media and may receive bursts of traffic.
+
+### Client-side server actions
+
+| Action | Queries | Cache | Est. duration |
+|--------|---------|-------|---------------|
+| `getWatchlistPostings()` (paginate) | 4 (mixed) | None | 30-120ms |
+| `getPostingDetail()` | 3 (sequential) | Redis 5min | 20-100ms |
+| `toggleSavedJob()` | 2 | None | 15-50ms |
+| `copyWatchlist()` | 3 (sequential) | None | 20-80ms |
+
 ## Estimated edge requests
 
 **First visit (cold cache):** ~21 (16 base + ~5 company logos)

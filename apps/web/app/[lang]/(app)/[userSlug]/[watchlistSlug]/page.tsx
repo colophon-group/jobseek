@@ -1,9 +1,10 @@
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getI18n } from "@lingui/react/server";
 import { isLocale, defaultLocale, loadCatalog, initI18nForPage } from "@/lib/i18n";
 import {
-  getWatchlistByUserAndSlug,
+  getWatchlistByUserAndSlug as _getWatchlistByUserAndSlug,
   getWatchlistPostings,
 } from "@/lib/actions/watchlists";
 import { getSession } from "@/lib/sessionCache";
@@ -13,6 +14,9 @@ import { resolveOccupationSlugs, resolveSenioritySlugs, resolveTechnologySlugs }
 import { siteConfig } from "@/content/config";
 import { buildAlternates, JsonLd } from "@/lib/seo";
 import { WatchlistViewPage } from "./watchlist-view-page";
+
+// Deduplicate across generateMetadata + page component within a single render
+const getWatchlistByUserAndSlug = cache(_getWatchlistByUserAndSlug);
 
 type Props = {
   params: Promise<{ lang: string; userSlug: string; watchlistSlug: string }>;

@@ -9,6 +9,7 @@ import {
   user,
 } from "@/db/schema";
 import { getSessionUserId } from "@/lib/sessionCache";
+import { cached } from "@/lib/cache";
 import { canCreateWatchlist, getUserPlan, PLAN_LIMITS } from "@/lib/plans";
 import { generateUniqueSlug } from "@/lib/watchlist-slug";
 import { expandLocationIds, resolveLocationSlugs } from "@/lib/actions/locations";
@@ -320,9 +321,9 @@ export async function getUserWatchlists(): Promise<WatchlistSummary[]> {
 
   const typed = rows as unknown as Row[];
 
-  // Compute active job counts respecting each watchlist's filters
+  // Compute active job counts respecting each watchlist's filters (cached 5min)
   const counts = await Promise.all(
-    typed.map((r) => resolveFilteredJobCount(r.filters ?? {}, r.company_ids ?? [])),
+    typed.map((r) => resolveFilteredJobCount(r.id, r.filters ?? {}, r.company_ids ?? [])),
   );
 
   return typed.map((r, i) => ({
@@ -430,37 +431,57 @@ export type PublicWatchlistEntry = WatchlistSummary & {
   mirrorCount: number;
 };
 
+function buildFilterCacheKey(f: WatchlistFilters, companyIds: string[]): string {
+  const parts: string[] = [];
+  if (f.anyCompany) parts.push("any");
+  if (companyIds.length) parts.push(`c:${[...companyIds].sort().join(",")}`);
+  if (f.keywords?.length) parts.push(`kw:${[...f.keywords].sort().join(",")}`);
+  if (f.locationSlugs?.length) parts.push(`loc:${[...f.locationSlugs].sort().join(",")}`);
+  if (f.occupationSlugs?.length) parts.push(`occ:${[...f.occupationSlugs].sort().join(",")}`);
+  if (f.senioritySlugs?.length) parts.push(`sen:${[...f.senioritySlugs].sort().join(",")}`);
+  if (f.technologySlugs?.length) parts.push(`tech:${[...f.technologySlugs].sort().join(",")}`);
+  if (f.salaryMin != null) parts.push(`smin:${f.salaryMin}`);
+  if (f.salaryMax != null) parts.push(`smax:${f.salaryMax}`);
+  if (f.experienceMin != null) parts.push(`emin:${f.experienceMin}`);
+  if (f.experienceMax != null) parts.push(`emax:${f.experienceMax}`);
+  return parts.join("|");
+}
+
 async function resolveFilteredJobCount(
+  watchlistId: string,
   f: WatchlistFilters,
   companyIds: string[],
 ): Promise<number> {
   const isAny = f.anyCompany;
   if (!isAny && companyIds.length === 0) return 0;
 
-  const locale = "en";
-  const [locMap, occMap, senMap, techMap] = await Promise.all([
-    f.locationSlugs?.length ? resolveLocationSlugs(f.locationSlugs, locale) : Promise.resolve(new Map()),
-    f.occupationSlugs?.length ? resolveOccupationSlugs(f.occupationSlugs, locale) : Promise.resolve(new Map()),
-    f.senioritySlugs?.length ? resolveSenioritySlugs(f.senioritySlugs, locale) : Promise.resolve(new Map()),
-    f.technologySlugs?.length ? resolveTechnologySlugs(f.technologySlugs) : Promise.resolve(new Map()),
-  ]);
+  const key = `wl-count:${watchlistId}:${buildFilterCacheKey(f, companyIds)}`;
+  return cached(key, async () => {
+    const locale = "en";
+    const [locMap, occMap, senMap, techMap] = await Promise.all([
+      f.locationSlugs?.length ? resolveLocationSlugs(f.locationSlugs, locale) : Promise.resolve(new Map()),
+      f.occupationSlugs?.length ? resolveOccupationSlugs(f.occupationSlugs, locale) : Promise.resolve(new Map()),
+      f.senioritySlugs?.length ? resolveSenioritySlugs(f.senioritySlugs, locale) : Promise.resolve(new Map()),
+      f.technologySlugs?.length ? resolveTechnologySlugs(f.technologySlugs) : Promise.resolve(new Map()),
+    ]);
 
-  const { total } = await getWatchlistPostings({
-    companyIds: isAny ? [] : companyIds,
-    anyCompany: isAny,
-    offset: 0,
-    limit: 0,
-    keywords: f.keywords,
-    locationIds: locMap.size > 0 ? [...locMap.values()].map((l) => l.id) : undefined,
-    occupationIds: occMap.size > 0 ? [...occMap.values()].map((o) => o.id) : undefined,
-    seniorityIds: senMap.size > 0 ? [...senMap.values()].map((s) => s.id) : undefined,
-    technologyIds: techMap.size > 0 ? [...techMap.values()].map((t) => t.id) : undefined,
-    salaryMin: f.salaryMin,
-    salaryMax: f.salaryMax,
-    experienceMin: f.experienceMin,
-    experienceMax: f.experienceMax,
-  });
-  return total;
+    const { total } = await getWatchlistPostings({
+      companyIds: isAny ? [] : companyIds,
+      anyCompany: isAny,
+      offset: 0,
+      limit: 0,
+      keywords: f.keywords,
+      locationIds: locMap.size > 0 ? [...locMap.values()].map((l) => l.id) : undefined,
+      occupationIds: occMap.size > 0 ? [...occMap.values()].map((o) => o.id) : undefined,
+      seniorityIds: senMap.size > 0 ? [...senMap.values()].map((s) => s.id) : undefined,
+      technologyIds: techMap.size > 0 ? [...techMap.values()].map((t) => t.id) : undefined,
+      salaryMin: f.salaryMin,
+      salaryMax: f.salaryMax,
+      experienceMin: f.experienceMin,
+      experienceMax: f.experienceMax,
+    });
+    return total;
+  }, { ttl: 300 });
 }
 
 async function queryPublicWatchlists(params: {
@@ -509,9 +530,9 @@ async function queryPublicWatchlists(params: {
 
   const typed = rows as unknown as Row[];
 
-  // Compute filtered job counts in parallel
+  // Compute filtered job counts in parallel (cached 5min)
   const counts = await Promise.all(
-    typed.map((r) => resolveFilteredJobCount(r.filters ?? {}, r.company_ids ?? [])),
+    typed.map((r) => resolveFilteredJobCount(r.id, r.filters ?? {}, r.company_ids ?? [])),
   );
 
   return {

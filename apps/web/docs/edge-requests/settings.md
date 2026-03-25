@@ -35,6 +35,26 @@
 - Settings layout adds a sidebar navigation (General, Account, Billing).
 - No images beyond header logo. Form-based page.
 
+## Fluid compute (serverless function duration)
+
+### SSR render
+
+| Step | Queries | Pattern | Cache | Est. duration |
+|------|---------|---------|-------|---------------|
+| `getSession()` | 1 | — | Redis 5min | 5-90ms |
+| `getPreferences()` | 1 | parallel | None | 10-30ms |
+| `getSavedJobStatuses()` | 1 | parallel | None | 10-30ms |
+| `getStarredCompanyIds()` | 1 | parallel | None | 10-30ms |
+| `getPreferences()` (page) | 0 | — | React `cache()` dedup | 0ms |
+| `getAvailableJobLanguages()` | 1 | — | Redis 1h | 10-25ms |
+| `getCurrencyRates()` | 1 | — | Redis 1h | 10-25ms |
+
+**Total DB queries:** 7 (5 if languages + currencies cached)
+**Estimated function duration:** 40-120ms (warm instance)
+
+Lightweight. The language list and currency rates are cached for 1 hour —
+most renders hit Redis for these and skip the DB.
+
 ## Estimated edge requests
 
 **First visit (cold cache):** ~13

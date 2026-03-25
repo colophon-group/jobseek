@@ -58,25 +58,39 @@ export async function getStats(params?: {
         ? sql`AND sj.saved_at < (${to}::date + 1)::timestamptz`
         : sql``;
 
-  // Funnel data
-  const rows = await db.execute<{
-    [key: string]: unknown;
-    status: string;
-    interview_count: number;
-    max_round: number;
-  }>(sql`
-    SELECT
-      sj.status,
-      coalesce(ic.cnt, 0)::int AS interview_count,
-      coalesce(ic.max_round, 0)::int AS max_round
-    FROM saved_job sj
-    LEFT JOIN (
-      SELECT saved_job_id, count(*) AS cnt, max(round) AS max_round
-      FROM application_interview
-      GROUP BY saved_job_id
-    ) ic ON ic.saved_job_id = sj.id
-    WHERE sj.user_id = ${userId} ${dateFilter}
-  `);
+  // Run funnel + activity queries in parallel (independent aggregations)
+  const [rows, activityRows] = await Promise.all([
+    db.execute<{
+      [key: string]: unknown;
+      status: string;
+      interview_count: number;
+      max_round: number;
+    }>(sql`
+      SELECT
+        sj.status,
+        coalesce(ic.cnt, 0)::int AS interview_count,
+        coalesce(ic.max_round, 0)::int AS max_round
+      FROM saved_job sj
+      LEFT JOIN (
+        SELECT saved_job_id, count(*) AS cnt, max(round) AS max_round
+        FROM application_interview
+        GROUP BY saved_job_id
+      ) ic ON ic.saved_job_id = sj.id
+      WHERE sj.user_id = ${userId} ${dateFilter}
+    `),
+    db.execute<{
+      [key: string]: unknown;
+      day: string;
+      cnt: number;
+    }>(sql`
+      SELECT to_char(saved_at, 'YYYY-MM-DD') AS day, count(*)::int AS cnt
+      FROM saved_job
+      WHERE user_id = ${userId}
+        AND saved_at >= now() - interval '52 weeks'
+      GROUP BY day
+      ORDER BY day
+    `),
+  ]);
 
   type Row = { status: string; interview_count: number; max_round: number };
   const all = rows as unknown as Row[];
@@ -113,20 +127,6 @@ export async function getStats(params?: {
     const nr = atExactRound.filter((r) => r.status === "interviewing" || r.status === "applied").length;
     if (nr > 0) noResponseAtRound.push({ round, count: nr });
   }
-
-  // Activity: count of applications (saved_at) per day (last 52 weeks)
-  const activityRows = await db.execute<{
-    [key: string]: unknown;
-    day: string;
-    cnt: number;
-  }>(sql`
-    SELECT to_char(saved_at, 'YYYY-MM-DD') AS day, count(*)::int AS cnt
-    FROM saved_job
-    WHERE user_id = ${userId}
-      AND saved_at >= now() - interval '52 weeks'
-    GROUP BY day
-    ORDER BY day
-  `);
 
   const activity = (activityRows as unknown as { day: string; cnt: number }[]).map((r) => ({
     date: r.day,

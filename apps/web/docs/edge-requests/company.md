@@ -47,6 +47,36 @@ When shared on social media:
 - Geolocation headers (`x-vercel-ip-latitude`, `x-vercel-ip-longitude`) read during SSR for location-aware sorting — no extra request, Vercel injects these headers automatically.
 - The page uses the same search filter components as Explore, sharing JS chunks.
 
+## Fluid compute (serverless function duration)
+
+### SSR render
+
+| Step | Queries | Pattern | Cache | Est. duration |
+|------|---------|---------|-------|---------------|
+| `getSession()` | 1 | — | Redis 5min | 5-90ms |
+| `getPreferences()` | 1 | parallel | None | 10-30ms |
+| `getSavedJobStatuses()` | 1 | parallel | None | 10-30ms |
+| `getStarredCompanyIds()` | 1 | parallel | None | 10-30ms |
+| `getCompanyBySlug()` | 1 | — | Redis 5min | 10-30ms |
+| `parseSearchFilters()` | 0-4 | parallel | None | 5-20ms |
+| `getCompanyPostings()` | 2-3 | mixed | Redis 5min | 20-80ms |
+
+**Total DB queries:** 7-9
+**Estimated function duration:** 60-200ms (warm instance)
+
+Second-highest traffic dynamic page. Company detail is cached in Redis, so
+repeat views of the same company are fast. Posting queries apply the same
+multi-CTE search as explore but scoped to a single company.
+
+### Client-side server actions
+
+| Action | Queries | Cache | Est. duration |
+|--------|---------|-------|---------------|
+| `getCompanyPostings()` | 2-3 | Redis 5min | 20-80ms |
+| `getPostingDetail()` | 3 (sequential) | Redis 5min | 20-100ms |
+| `toggleSavedJob()` | 2 | None | 15-50ms |
+| `toggleStarredCompany()` | 2 | None | 15-50ms |
+
 ## Estimated edge requests
 
 **First visit (cold cache):** ~18

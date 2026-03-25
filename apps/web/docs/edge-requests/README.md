@@ -1,8 +1,18 @@
-# Edge Request Reports
+# Edge Request & Fluid Compute Reports
 
-Per-page breakdown of Vercel edge requests for the Job Seek web app.
+Per-page breakdown of Vercel edge requests and serverless function compute for
+the Job Seek web app.
 
-Every HTTP request that reaches the Vercel deployment counts as an **edge request**, including static assets served from CDN, middleware invocations, serverless function routing, and dynamically generated resources.
+Every HTTP request that reaches the Vercel deployment counts as an **edge
+request**, including static assets served from CDN, middleware invocations,
+serverless function routing, and dynamically generated resources.
+
+Every dynamic page render, server action, or API route call triggers a
+**serverless function invocation**, billed by GB-seconds (memory × wall-clock
+duration). Each page report includes a "Fluid compute" section showing DB
+query count, execution pattern (sequential vs parallel), Redis caching, and
+estimated function duration. See the [main doc](../edge-requests.md) for the
+full compute model, connection config, and optimization rules.
 
 ## Common baseline (all pages)
 

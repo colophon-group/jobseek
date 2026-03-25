@@ -28,6 +28,26 @@
 - All stats computed server-side. No client-side API calls on load.
 - Chart JS bundles may be slightly larger than typical pages.
 
+## Fluid compute (serverless function duration)
+
+### SSR render
+
+| Step | Queries | Pattern | Cache | Est. duration |
+|------|---------|---------|-------|---------------|
+| `getSession()` | 1 | — | Redis 5min | 5-90ms |
+| `getPreferences()` | 1 | parallel | None | 10-30ms |
+| `getSavedJobStatuses()` | 1 | parallel | None | 10-30ms |
+| `getStarredCompanyIds()` | 1 | parallel | None | 10-30ms |
+| `getStats()` funnel | 1 | sequential | None | 15-40ms |
+| `getStats()` activity | 1 | sequential | None | 15-40ms |
+
+**Total DB queries:** 6
+**Estimated function duration:** 50-150ms (warm instance)
+
+Moderate compute. Stats queries aggregate over the user's saved jobs and
+interviews — heavier than a simple SELECT but bounded by the user's data
+volume. No Redis caching.
+
 ## Estimated edge requests
 
 **First visit (cold cache):** ~14

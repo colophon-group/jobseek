@@ -30,6 +30,19 @@ On "Resend verification email" click:
 - No images beyond header logo. Very lightweight page.
 - Does not use `AuthShell` wrapper directly — uses it from auth layout.
 
+## Fluid compute (serverless function duration)
+
+### SSR render
+
+| Step | Queries | Cache | Est. duration |
+|------|---------|-------|---------------|
+| `getSession()` | 1 | Redis 5min | 5-90ms |
+
+**Total DB queries:** 1
+**Estimated function duration:** 10-90ms (warm instance)
+
+Session check only.
+
 ## Estimated edge requests
 
 **First visit (cold cache):** ~12

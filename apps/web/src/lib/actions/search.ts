@@ -39,6 +39,65 @@ export async function getPostingDetail(params: {
   return cached(key, () => _fetchPostingDetail(postingId, locale), { ttl: 300 });
 }
 
+async function resolvePostingLocations(
+  locationIds: number[] | null,
+  locationTypes: string[] | null,
+  locale: string,
+): Promise<PostingDetail["locations"]> {
+  if (!locationIds || locationIds.length === 0) return [];
+  const pgArray = `{${locationIds.join(",")}}`;
+  const locRows = await db.execute<{
+    [key: string]: unknown;
+    location_id: number;
+    name: string;
+    type: string;
+    parent_name: string | null;
+  }>(sql`
+    SELECT DISTINCT ON (ln.location_id) ln.location_id, ln.name, l.type::text,
+      (SELECT pn.name FROM location_name pn
+       WHERE pn.location_id = l.parent_id
+         AND pn.locale IN (${locale}, 'en')
+         AND pn.is_display = true
+       ORDER BY (pn.locale = ${locale})::int DESC
+       LIMIT 1) AS parent_name
+    FROM location_name ln
+    JOIN location l ON l.id = ln.location_id
+    WHERE ln.location_id = ANY(${pgArray}::integer[])
+      AND ln.locale IN (${locale}, 'en')
+      AND ln.is_display = true
+    ORDER BY ln.location_id, (ln.locale = ${locale})::int DESC
+  `);
+  const nameMap = new Map<number, { name: string; geoType: string; parentName?: string }>();
+  for (const r of locRows as unknown as { location_id: number; name: string; type: string; parent_name: string | null }[]) {
+    nameMap.set(r.location_id, { name: r.name, geoType: r.type, parentName: r.parent_name ?? undefined });
+  }
+  return locationIds
+    .map((id, i) => {
+      const resolved = nameMap.get(id);
+      return {
+        id,
+        name: resolved?.name ?? "",
+        type: locationTypes?.[i] ?? "onsite",
+        geoType: resolved?.geoType,
+        parentName: resolved?.parentName,
+      };
+    })
+    .filter((l) => l.name !== "");
+}
+
+async function resolvePostingTechnologies(
+  technologyIds: number[] | null,
+): Promise<{ id: number; name: string }[]> {
+  if (!technologyIds || technologyIds.length === 0) return [];
+  const techArray = `{${technologyIds.join(",")}}`;
+  const techRows = await db.execute<{ [key: string]: unknown; id: number; name: string | null }>(
+    sql`SELECT id, name FROM technology WHERE id = ANY(${techArray}::integer[]) ORDER BY name`,
+  );
+  return (techRows as unknown as { id: number; name: string | null }[])
+    .filter((t) => t.name)
+    .map((t) => ({ id: t.id, name: t.name! }));
+}
+
 async function _fetchPostingDetail(
   postingId: string,
   locale: string,
@@ -95,60 +154,11 @@ async function _fetchPostingDetail(
   const row = (rows as unknown as Row[])[0];
   if (!row) return null;
 
-  // Resolve location display names
-  let locations: PostingDetail["locations"] = [];
-  if (row.location_ids && row.location_ids.length > 0) {
-    const pgArray = `{${row.location_ids.join(",")}}`;
-    const locRows = await db.execute<{
-      [key: string]: unknown;
-      location_id: number;
-      name: string;
-      type: string;
-      parent_name: string | null;
-    }>(sql`
-      SELECT DISTINCT ON (ln.location_id) ln.location_id, ln.name, l.type::text,
-        (SELECT pn.name FROM location_name pn
-         WHERE pn.location_id = l.parent_id
-           AND pn.locale IN (${locale}, 'en')
-           AND pn.is_display = true
-         ORDER BY (pn.locale = ${locale})::int DESC
-         LIMIT 1) AS parent_name
-      FROM location_name ln
-      JOIN location l ON l.id = ln.location_id
-      WHERE ln.location_id = ANY(${pgArray}::integer[])
-        AND ln.locale IN (${locale}, 'en')
-        AND ln.is_display = true
-      ORDER BY ln.location_id, (ln.locale = ${locale})::int DESC
-    `);
-    const nameMap = new Map<number, { name: string; geoType: string; parentName?: string }>();
-    for (const r of locRows as unknown as { location_id: number; name: string; type: string; parent_name: string | null }[]) {
-      nameMap.set(r.location_id, { name: r.name, geoType: r.type, parentName: r.parent_name ?? undefined });
-    }
-    locations = row.location_ids
-      .map((id, i) => {
-        const resolved = nameMap.get(id);
-        return {
-          id,
-          name: resolved?.name ?? "",
-          type: row.location_types?.[i] ?? "onsite",
-          geoType: resolved?.geoType,
-          parentName: resolved?.parentName,
-        };
-      })
-      .filter((l) => l.name !== "");
-  }
-
-  // Resolve technology names
-  let technologies: { id: number; name: string }[] = [];
-  if (row.technology_ids && row.technology_ids.length > 0) {
-    const techArray = `{${row.technology_ids.join(",")}}`;
-    const techRows = await db.execute<{ [key: string]: unknown; id: number; name: string | null }>(
-      sql`SELECT id, name FROM technology WHERE id = ANY(${techArray}::integer[]) ORDER BY name`,
-    );
-    technologies = (techRows as unknown as { id: number; name: string | null }[])
-      .filter((t) => t.name)
-      .map((t) => ({ id: t.id, name: t.name! }));
-  }
+  // Resolve location and technology names in parallel
+  const [locations, technologies] = await Promise.all([
+    resolvePostingLocations(row.location_ids, row.location_types, locale),
+    resolvePostingTechnologies(row.technology_ids),
+  ]);
 
   // Build R2 description URL for client-side fetch
   const r2Domain = process.env.R2_DOMAIN_URL;

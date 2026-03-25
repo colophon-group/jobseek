@@ -35,6 +35,23 @@
 - Form-based page. No images beyond header logo.
 - Shares settings layout sidebar with General and Billing settings.
 
+## Fluid compute (serverless function duration)
+
+### SSR render
+
+| Step | Queries | Pattern | Cache | Est. duration |
+|------|---------|---------|-------|---------------|
+| `getSession()` | 1 | — | Redis 5min | 5-90ms |
+| `getPreferences()` | 1 | parallel | None | 10-30ms |
+| `getSavedJobStatuses()` | 1 | parallel | None | 10-30ms |
+| `getStarredCompanyIds()` | 1 | parallel | None | 10-30ms |
+| `getAccountPageData()` | 1 | — | None | 10-30ms |
+
+**Total DB queries:** 5
+**Estimated function duration:** 40-100ms (warm instance)
+
+Lightweight. Single extra query for account data (linked providers).
+
 ## Estimated edge requests
 
 **First visit (cold cache):** ~13

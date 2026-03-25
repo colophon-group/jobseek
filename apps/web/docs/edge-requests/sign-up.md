@@ -31,6 +31,20 @@ On form submission or OAuth click:
 - Sign-up form has an additional "Name" field but same JS bundle.
 - On success, redirects to `/check-email` for email verification.
 
+## Fluid compute (serverless function duration)
+
+### SSR render
+
+| Step | Queries | Cache | Est. duration |
+|------|---------|-------|---------------|
+| `getSession()` | 1 | Redis 5min | 5-90ms |
+
+**Total DB queries:** 1
+**Estimated function duration:** 10-90ms (warm instance)
+
+Same as sign-in — session check only. Unauthenticated users get a Redis null
+in ~5ms.
+
 ## Estimated edge requests
 
 **First visit (cold cache):** ~13

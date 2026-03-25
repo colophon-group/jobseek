@@ -39,6 +39,38 @@
 - Job cards show company icons — each unique company triggers 1 `/_next/image` request.
 - Status changes and interview additions are server actions (1 edge request each).
 
+## Fluid compute (serverless function duration)
+
+### SSR render
+
+| Step | Queries | Pattern | Cache | Est. duration |
+|------|---------|---------|-------|---------------|
+| `getSession()` | 1 | — | Redis 5min | 5-90ms |
+| `getPreferences()` | 1 | parallel | None | 10-30ms |
+| `getSavedJobStatuses()` | 1 | parallel | None | 10-30ms |
+| `getStarredCompanyIds()` | 1 | parallel | None | 10-30ms |
+| `getMyJobs()` count | 1 | sequential | None | 10-30ms |
+| `getMyJobs()` fetch | 1 (with subquery) | sequential | None | 15-50ms |
+
+**Total DB queries:** 6
+**Estimated function duration:** 50-150ms (warm instance)
+
+Moderate compute cost. The `getMyJobs()` fetch includes a lateral subquery
+that counts interviews per saved job — complexity scales with result set size
+(default limit: 20).
+
+### Client-side server actions
+
+| Action | Queries | Cache | Est. duration |
+|--------|---------|-------|---------------|
+| `getMyJobs()` (paginate/filter) | 2 (sequential) | None | 20-80ms |
+| `getPostingDetail()` | 3 (sequential) | Redis 5min | 20-100ms |
+| `updateJobStatus()` | 3 (sequential) | None | 20-80ms |
+| `addInterview()` | 3 (sequential) | None | 20-80ms |
+| `getMyJobDetail()` | 2 (sequential) | None | 15-60ms |
+
+No Redis caching on any my-jobs action — every call hits the DB.
+
 ## Estimated edge requests
 
 **First visit (cold cache):** ~20 (15 base + ~5 company logos)
