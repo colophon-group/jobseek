@@ -215,6 +215,7 @@ google,google-careers,https://www.google.com/about/careers/applications/jobs/res
 gr8-tech,gr8-tech-careers,https://job-boards.eu.greenhouse.io/gr8tech,greenhouse,"{""token"": ""gr8tech""}",skip,
 gsk,gsk-careers,https://jobs.gsk.com/en-gb/jobs,workday,"{""company"": ""gsk"", ""wd_instance"": ""wd5"", ""site"": ""GSKCareers""}",workday,
 h-company,h-company-careers,https://jobs.ashbyhq.com/hcompany,ashby,"{""token"": ""hcompany""}",skip,
+harmattan-ai,harmattan-ai-careers,https://jobs.ashbyhq.com/harmattan-ai,ashby,"{""token"": ""harmattan-ai""}",skip,
 havas,havas-careers-jobvite,https://jobs.jobvite.com/thehavasgroup/,dom,"{""render"": true}",json-ld,"{""render"": false}"
 havas,havas-careers-workday,https://wd3.myworkdaysite.com/recruiting/havas/GroupExternalCareerSite/,workday,"{""company"": ""havas"", ""wd_instance"": ""wd3"", ""site"": ""GroupExternalCareerSite""}",workday,
 havas,havas-careers-workday-health,https://wd3.myworkdaysite.com/recruiting/havas/HealthYouExternalCareerSite,workday,"{""company"": ""havas"", ""wd_instance"": ""wd3"", ""site"": ""HealthYouExternalCareerSite""}",workday,
