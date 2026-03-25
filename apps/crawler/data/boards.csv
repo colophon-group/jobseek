@@ -442,6 +442,7 @@ relai,relai-careers,https://relai.app/career/,greenhouse,"{""token"": ""technolo
 reprisk,reprisk-careers,https://careers.smartrecruiters.com/RepRiskAG,smartrecruiters,,smartrecruiters,
 revolut,revolut-careers,https://www.revolut.com/careers/,nextdata,"{""path"": ""props.pageProps.positions"", ""url_template"": ""https://www.revolut.com/careers/position/{slug}-{id}/"", ""slug_fields"": [""text""], ""render"": true, ""stealth"": true, ""wait"": ""domcontentloaded"", ""fields"": {""title"": ""text"", ""locations"": ""locations[].name"", ""metadata.team"": ""team""}}",nextdata,"{""path"": ""props.pageProps.position"", ""render"": true, ""wait"": ""domcontentloaded"", ""fields"": {""title"": ""text"", ""description"": ""description"", ""locations"": ""locations[].name"", ""job_location_type"": ""locations[].type"", ""metadata.team"": ""team""}}"
 richemont,richemont-careers,https://careers.richemont.com/en/jobs/,dom,,json-ld,
+ripple,ripple-careers,https://boards.greenhouse.io/ripple,greenhouse,"{""token"": ""ripple""}",skip,
 rivr,rivr-careers,https://jobs.lever.co/rivr,lever,,,
 robinhood,robinhood-careers,https://api.greenhouse.io/v1/boards/robinhood/jobs,greenhouse,"{""token"": ""robinhood""}",skip,
 roche,roche-careers,https://roche.wd3.myworkdayjobs.com/roche-ext,workday,"{""company"": ""roche"", ""wd_instance"": ""wd3"", ""site"": ""roche-ext""}",workday,
