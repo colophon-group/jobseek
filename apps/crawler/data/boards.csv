@@ -488,6 +488,7 @@ roland-berger,roland-berger-careers,https://careers.smartrecruiters.com/RolandBe
 rolex,rolex-careers,https://www.carrieres-rolex.com/Rolex/go/Toutes-nos-offres-Rolex/2901501?q=&department=&facility=&shifttype=,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://www.carrieres-rolex.com/googlefeed.xml""}",,
 rtx,rtx-careers,https://careers.rtx.com/global/en,sitemap,"{""url"": ""https://careers.rtx.com/global/en/sitemap.xml"", ""url_filter"": ""/job/""}",json-ld,"{""render"": true}"
 rtx,rtx-careers-workday,https://globalhr.wd5.myworkdayjobs.com/REC_RTX_Ext_Gateway,workday,"{""tenant"": ""globalhr"", ""board_id"": ""REC_RTX_Ext_Gateway""}",workday,
+sakana-ai,sakana-ai-careers,https://sakana.ai/careers/,dom,"{""url_filter"": ""careers/#(?!open-positions)""}",dom,"{""steps"": [{""tag"": ""h2"", ""field"": ""title""}, {""field"": ""description"", ""stop_tag"": ""h2"", ""html"": true}], ""defaults"": {""locations"": [""Tokyo, JP""]}}"
 salesforce,salesforce-careers,https://careers.salesforce.com/en/jobs/,sitemap,"{""url_filter"": ""/en/jobs/""}",json-ld,
 salt,salt-careers,https://www.jobup.ch/masks/salt/list_salt.asp,dom,,json-ld,
 samsung,samsung-careers,https://sec.wd3.myworkdayjobs.com/Samsung_Careers,workday,"{""company"": ""sec"", ""wd_instance"": ""wd3"", ""site"": ""Samsung_Careers""}",workday,
@@ -604,6 +605,7 @@ wpp,wpp-vml-enterprise,https://job-boards.greenhouse.io/vmlenterprisesolutions,g
 wpp,wpp-vml-map,https://job-boards.greenhouse.io/map,greenhouse,"{""token"": ""map""}",skip,
 wpp,wpp-wppmedia,https://job-boards.greenhouse.io/wppmedia,greenhouse,"{""token"": ""wppmedia""}",skip,
 x-ai,x-ai-careers,https://job-boards.greenhouse.io/xai,greenhouse,"{""token"": ""xai""}",skip,
+xiaomi,xiaomi-careers-cn,https://hr.xiaomi.com/job/list,dom,"{""url_filter"": ""job/view"", ""pagination"": {""url_template"": ""https://hr.xiaomi.com/job/list/0-0-2-0-{page}""}}",dom,"{""steps"": [{""text"": ""职位名称"", ""offset"": 1, ""field"": ""title""}, {""text"": ""工作地点"", ""offset"": 1, ""field"": ""locations""}, {""text"": ""工作职责"", ""offset"": 1, ""field"": ""description"", ""html"": true, ""stop"": ""申请职位""}]}"
 xund,xund-careers,https://job-boards.eu.greenhouse.io/xund,greenhouse,"{""token"": ""xund""}",skip,
 zalando,zalando-workday,https://zalando.wd3.myworkdayjobs.com/ZalandoSiteWD,workday,,,
 zimmer-biomet,zimmer-biomet-careers,https://careers.zimmerbiomet.com/us/en,sitemap,"{""sitemap_url"": ""https://careers.zimmerbiomet.com/us/en/sitemap.xml"", ""url_filter"": ""/job/""}",json-ld,

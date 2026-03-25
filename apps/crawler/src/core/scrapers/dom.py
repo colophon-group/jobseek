@@ -19,6 +19,7 @@ from __future__ import annotations
 import contextlib
 import json
 from pathlib import Path
+from urllib.parse import urlparse
 
 import httpx
 import structlog
@@ -150,6 +151,17 @@ def parse_html(html: str, config: dict) -> JobContent:
     return _map_to_job_content(raw)
 
 
+def _fragment_start(url: str, elements: list[dict]) -> int:
+    """Return the element index matching the URL fragment, or 0."""
+    fragment = urlparse(url).fragment
+    if not fragment:
+        return 0
+    for i, el in enumerate(elements):
+        if el.get("attrs", {}).get("id") == fragment:
+            return i
+    return 0
+
+
 # ── Core extraction ───────────────────────────────────────────────────
 
 
@@ -251,7 +263,8 @@ async def scrape(
                 json.dumps(elements, indent=2, ensure_ascii=False),
             )
 
-    raw = walk_steps(elements, steps)
+    start = _fragment_start(url, elements)
+    raw = walk_steps(elements, steps, start=start)
     content = _map_to_job_content(raw)
 
     log.debug("dom.extracted", url=url, fields=[k for k, v in raw.items() if v is not None])
