@@ -162,7 +162,7 @@
       ]
     },
     {
-      "title": "Scraper Queue Depth",
+      "title": "HTTP Scraper Queue",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
       "fieldConfig": {
@@ -171,33 +171,50 @@
           "unit": "short"
         },
         "overrides": [
-          { "matcher": { "id": "byRegexp", "options": ".*initial.*" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }, { "id": "custom.lineWidth", "value": 3 }] },
-          { "matcher": { "id": "byRegexp", "options": ".*rescrape.*" }, "properties": [{ "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }] }
+          { "matcher": { "id": "byName", "options": "initial" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }, { "id": "custom.lineWidth", "value": 3 }] },
+          { "matcher": { "id": "byName", "options": "rescrape" }, "properties": [{ "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }] }
         ]
       },
       "targets": [
         {
           "expr": "sum(crawler_queue_depth{app=\"jobseek\", kind=\"scrape\", initial=\"true\", browser=\"false\"})",
-          "legendFormat": "initial — http"
-        },
-        {
-          "expr": "sum(crawler_queue_depth{app=\"jobseek\", kind=\"scrape\", initial=\"true\", browser=\"true\"})",
-          "legendFormat": "initial — browser"
+          "legendFormat": "initial"
         },
         {
           "expr": "sum(crawler_queue_depth{app=\"jobseek\", kind=\"scrape\", initial=\"false\", browser=\"false\"})",
-          "legendFormat": "rescrape — http"
+          "legendFormat": "rescrape"
+        }
+      ]
+    },
+    {
+      "title": "Browser Scraper Queue",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 15, "spanNulls": true },
+          "unit": "short"
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "initial" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }, { "id": "custom.lineWidth", "value": 3 }] },
+          { "matcher": { "id": "byName", "options": "rescrape" }, "properties": [{ "id": "color", "value": { "fixedColor": "purple", "mode": "fixed" } }] }
+        ]
+      },
+      "targets": [
+        {
+          "expr": "sum(crawler_queue_depth{app=\"jobseek\", kind=\"scrape\", initial=\"true\", browser=\"true\"})",
+          "legendFormat": "initial"
         },
         {
           "expr": "sum(crawler_queue_depth{app=\"jobseek\", kind=\"scrape\", initial=\"false\", browser=\"true\"})",
-          "legendFormat": "rescrape — browser"
+          "legendFormat": "rescrape"
         }
       ]
     },
     {
       "title": "Concurrency",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
       "fieldConfig": {
         "defaults": {
           "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 15, "spanNulls": true },
@@ -222,7 +239,7 @@
     {
       "title": "DB Pool",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 32 },
       "fieldConfig": {
         "defaults": {
           "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 15, "spanNulls": true },
