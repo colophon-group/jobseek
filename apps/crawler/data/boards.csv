@@ -102,6 +102,7 @@ caffeine-ai,caffeine-ai-careers,https://jobs.gem.com/caffeine-ai,gem,"{""token""
 cartier,cartier-careers,https://careers.richemont.com/en/jobs/cartier/,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""pagination"": {""param_name"": ""page"", ""max_pages"": 200}, ""url_filter"": ""/jobs/jr\\d+/""}",json-ld,"{""render"": true}"
 caterpillar,caterpillar-careers,https://careers.caterpillar.com/en/jobs/,sitemap,"{""url_filter"": ""/en/jobs/r""}",json-ld,
 cd-projekt-red,cd-projekt-red-careers,https://www.cdprojektred.com/en/jobs,smartrecruiters,"{""token"": ""CDPROJEKTRED""}",smartrecruiters,
+centric-software,centric-software-careers-workday,https://centricsoftware.wd501.myworkdayjobs.com/Centric,workday,"{""company"": ""centricsoftware"", ""wd_instance"": ""wd501"", ""site"": ""Centric""}",workday,
 checkout-com,checkout-com-careers,https://checkout.wd3.myworkdayjobs.com/CheckoutCareers,workday,"{""company"": ""checkout"", ""wd_instance"": ""wd3"", ""site"": ""CheckoutCareers""}",workday,
 chevron,chevron-careers,https://chevron.wd5.myworkdayjobs.com/jobs,workday,"{""company"": ""chevron"", ""wd_instance"": ""wd5"", ""site"": ""jobs"", ""all_sites"": false}",workday,
 chevron,chevron-careers-university,https://chevron.wd5.myworkdayjobs.com/University,workday,"{""company"": ""chevron"", ""wd_instance"": ""wd5"", ""site"": ""University"", ""all_sites"": false}",workday,
