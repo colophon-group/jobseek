@@ -527,6 +527,7 @@ ubs,ubs-careers-students,https://jobs.ubs.com/TGnewUI/Search/home/HomeWithPreLoa
 uniqlo,uniqlo-careers-workday,https://fastretailing.wd3.myworkdayjobs.com/graduates_eu_Uniqlo,workday,,,
 universal-music,universal-music-careers,https://umusic.wd5.myworkdayjobs.com/UMGUS,workday,"{""company"": ""umusic"", ""wd_instance"": ""wd5"", ""site"": ""UMGUS""}",json-ld,
 unlimit,unlimit-careers-lever,https://jobs.lever.co/unlimit,lever,,,
+unsloth-ai,unsloth-ai-careers,https://www.ycombinator.com/companies/unsloth-ai/jobs,ycombinator,"{""slug"": ""unsloth-ai""}",json-ld,
 upvest,upvest-careers,https://jobs.ashbyhq.com/upvest,ashby,,skip,
 valtech,valtech-careers,https://www.valtech.com/career/jobs/,greenhouse,"{""token"": ""valtech""}",,
 vercel,vercel-careers,https://job-boards.greenhouse.io/vercel,greenhouse,"{""token"": ""vercel""}",skip,
