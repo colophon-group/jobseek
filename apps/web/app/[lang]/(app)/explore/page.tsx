@@ -9,7 +9,7 @@ import { ExploreContent } from "./explore-content";
 
 type Props = {
   params: Promise<{ lang: string }>;
-  searchParams: Promise<{ q?: string; loc?: string; occ?: string; sen?: string; tech?: string; show?: string; sal?: string; salcur?: string; exp?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

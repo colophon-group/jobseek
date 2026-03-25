@@ -7,18 +7,27 @@ import { SearchPage } from "./search-page";
 
 const PAGE_SIZE = 10;
 
+/** Pick the first value when a search param appears multiple times (?q=a&q=b). */
+function firstOf(v: string | string[] | undefined): string | undefined {
+  return Array.isArray(v) ? v[0] : v;
+}
+
 type ExploreContentProps = {
   locale: Locale;
-  searchParams: {
-    q?: string; loc?: string; occ?: string; sen?: string; tech?: string;
-    show?: string; sal?: string; salcur?: string; exp?: string;
-  };
+  searchParams: Record<string, string | string[] | undefined>;
   userLat: number | undefined;
   userLng: number | undefined;
 };
 
 export async function ExploreContent({ locale, searchParams, userLat, userLng }: ExploreContentProps) {
-  const { q, loc, occ, sen, tech, sal, salcur, exp } = searchParams;
+  const q = firstOf(searchParams.q);
+  const loc = firstOf(searchParams.loc);
+  const occ = firstOf(searchParams.occ);
+  const sen = firstOf(searchParams.sen);
+  const tech = firstOf(searchParams.tech);
+  const sal = firstOf(searchParams.sal);
+  const salcur = firstOf(searchParams.salcur);
+  const exp = firstOf(searchParams.exp);
 
   const [parsed, prefs] = await Promise.all([
     parseSearchFilters({
