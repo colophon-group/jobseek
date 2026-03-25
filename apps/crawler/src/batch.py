@@ -931,6 +931,39 @@ def _build_locales(
     return locales
 
 
+def _stable_date(val: object | None) -> str | None:
+    """Coerce a date to a stable ISO 8601 date-only string (YYYY-MM-DD).
+
+    Strips time components and timezone offsets so the hash doesn't churn
+    when the source alternates between date-only and datetime formats.
+    """
+    dt = _coerce_datetime(val)
+    if dt is None:
+        return None
+    return dt.date().isoformat()
+
+
+def _deep_sort(obj: object) -> object:
+    """Recursively sort dicts by key and lists of strings for stable JSON."""
+    if isinstance(obj, dict):
+        return {k: _deep_sort(v) for k, v in sorted(obj.items())}
+    if isinstance(obj, list):
+        return [_deep_sort(item) for item in obj]
+    return obj
+
+
+# Fields that are volatile across cycles and should be excluded from the
+# R2 content hash to avoid spurious re-uploads.  They are still stored in
+# extras (visible in history.json) but changes to them alone don't trigger
+# a write.  Checked at top-level extras AND inside nested metadata dict.
+_HASH_VOLATILE_FIELDS = frozenset(
+    {
+        "valid_through",
+        "expiration_date",
+    }
+)
+
+
 def _build_r2_extras(
     *,
     title: str | None,
@@ -954,9 +987,9 @@ def _build_r2_extras(
     if metadata and isinstance(metadata, dict):
         merged["metadata"] = metadata
     if date_posted is not None:
-        dt = _coerce_datetime(date_posted)
-        if dt is not None:
-            merged["date_posted"] = dt.isoformat()
+        stable = _stable_date(date_posted)
+        if stable is not None:
+            merged["date_posted"] = stable
     if base_salary is not None:
         merged["base_salary"] = base_salary
     if employment_type is not None:
@@ -967,10 +1000,23 @@ def _build_r2_extras(
 
 
 def _compute_r2_hash(description: str | None, merged_extras: dict) -> int:
-    """Compute a combined hash of all R2-bound content."""
+    """Compute a combined hash of all R2-bound content.
+
+    Uses deep-sorted JSON serialization so nested dicts (metadata,
+    base_salary, extras) produce a stable hash regardless of key order.
+    Excludes volatile fields (valid_through, expiration_date) that change
+    frequently but don't represent meaningful content updates.
+    """
     parts = description or ""
     if merged_extras:
-        parts += "\0" + json.dumps(merged_extras, sort_keys=True, ensure_ascii=False)
+        hashable = {}
+        for k, v in merged_extras.items():
+            if k in _HASH_VOLATILE_FIELDS:
+                continue
+            if k == "metadata" and isinstance(v, dict):
+                v = {mk: mv for mk, mv in v.items() if mk not in _HASH_VOLATILE_FIELDS}
+            hashable[k] = v
+        parts += "\0" + json.dumps(_deep_sort(hashable), sort_keys=True, ensure_ascii=False)
     return content_hash(parts)
 
 
