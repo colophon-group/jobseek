@@ -16,8 +16,8 @@
  */
 
 import Parser from 'rss-parser';
-import { createHash } from 'crypto';
 import { Signal } from '../../../../shared/types';
+import { signalId } from '../../../../shared/id';
 
 /** Feed definitions — add more feeds here to expand coverage */
 const RSS_FEEDS = [
@@ -139,10 +139,7 @@ export async function parseRssFeeds(lookbackDays: number): Promise<Signal[]> {
           .join(' ');
 
         // Same hash formula as crunchbase.ts — enables cross-source deduplication
-        const id = createHash('sha256')
-          .update(`${company}:funding:${articleDate.split('T')[0]}`)
-          .digest('hex')
-          .slice(0, 16);
+        const id = signalId(company, 'funding', articleDate.split('T')[0]);
 
         const signal: Signal = {
           id,

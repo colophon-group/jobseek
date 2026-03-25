@@ -13,8 +13,8 @@
  * Domain is derived as a best-effort guess from the org's Crunchbase permalink slug.
  */
 
-import { createHash } from 'crypto';
 import { Signal } from '../../../../shared/types';
+import { signalId } from '../../../../shared/id';
 
 /** Shape of a single funding round entity from the Crunchbase API */
 interface CrunchbaseFundingRound {
@@ -147,11 +147,7 @@ export async function parseCrunchbase(
       const signalText = `${company} announced a ${formatRoundType(investmentType)} of ${amountFormatted}`;
       const sourceUrl = `https://www.crunchbase.com/funding_round/${entity.identifier?.value ?? permalink}`;
 
-      // Signal id: deterministic hash so duplicate runs don't double-count
-      const id = createHash('sha256')
-        .update(`${company}:funding:${announcedOn}`)
-        .digest('hex')
-        .slice(0, 16);
+      const id = signalId(company, 'funding', announcedOn);
 
       const signal: Signal = {
         id,

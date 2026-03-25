@@ -1,8 +1,9 @@
 import { Actor } from 'apify';
 import Anthropic from '@anthropic-ai/sdk';
 import { Signal, UserProfile, Contact, OutreachDraft } from '../../../shared/types';
-import { DATASETS, SIGNAL_ROLE_MAP, MIN_SIGNAL_SCORE } from '../../../shared/constants';
+import { DATASETS, SIGNAL_ROLE_MAP } from '../../../shared/constants';
 import { pushDataWithFallback } from '../../../shared/storage';
+import { sleep } from '../../../shared/utils';
 import { scoreSignal } from './scorer';
 import { applyDecay } from './decay';
 
@@ -233,10 +234,6 @@ for (const { signal, finalScore, reasoning } of qualifying) {
 console.log(`\nOrchestrator complete. Processed ${qualifying.length} qualifying signals.`);
 
 await Actor.exit();
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 interface SourceRunInput {
   accountUsername?: string;

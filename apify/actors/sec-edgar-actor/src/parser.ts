@@ -24,8 +24,9 @@
  *   phrase query to avoid hammering the endpoint.
  */
 
-import { createHash } from 'crypto';
 import { Signal } from '../../../shared/types';
+import { signalId } from '../../../shared/id';
+import { guessDomain, sleep } from '../../../shared/utils';
 
 const EDGAR_BASE = 'https://efts.sec.gov/LATEST/search-index';
 
@@ -142,12 +143,9 @@ export async function parseEdgarFilings(
 
         const filingDate = src.file_date ?? src.period_of_report ?? new Date().toISOString().split('T')[0];
         const formType = src.form_type ?? 'SEC Filing';
-        const domain = guessDomainFromCompany(entityName);
+        const domain = guessDomain(entityName);
 
-        const id = createHash('sha256')
-          .update(`${entityName}:sec_filing:${filingDate}`)
-          .digest('hex')
-          .slice(0, 16);
+        const id = signalId(entityName, 'sec_filing', filingDate);
 
         const signalText = `${entityName} mentioned "${phrase}" in their ${formType} filing dated ${filingDate}`;
         const sourceUrl = buildEdgarFilingUrl(hit._id, src.file_num ?? '');
@@ -234,12 +232,9 @@ async function searchByCompany(company: string, startDateStr: string): Promise<S
       const filingDate = src.file_date ?? src.period_of_report ?? '';
       const formType = src.form_type ?? 'SEC Filing';
       const entityName = src.entity_name ?? company;
-      const domain = guessDomainFromCompany(entityName);
+      const domain = guessDomain(entityName);
 
-      const id = createHash('sha256')
-        .update(`${entityName}:sec_filing:${filingDate}:company_search`)
-        .digest('hex')
-        .slice(0, 16);
+      const id = signalId(entityName, 'sec_filing', filingDate, 'company_search');
 
       signals.push({
         id,
@@ -276,20 +271,3 @@ function buildEdgarFilingUrl(edgarId: string, fileNum: string): string {
   return `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&filenum=${fileNum}&type=10-K&dateb=&owner=include&count=10`;
 }
 
-/**
- * Best-effort domain guess from a company's SEC-registered name.
- * Strips common legal suffixes before generating the slug.
- * e.g. "Stripe, Inc." → "stripe.com"
- */
-function guessDomainFromCompany(company: string): string {
-  const slug = company
-    .toLowerCase()
-    .replace(/\b(inc|corp|ltd|llc|co|company|group|holdings?)\b\.?/g, '')
-    .replace(/[^a-z0-9]/g, '')
-    .slice(0, 30);
-  return `${slug}.com`;
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
