@@ -177,12 +177,20 @@
       },
       "targets": [
         {
-          "expr": "sum(crawler_queue_depth{app=\"jobseek\", kind=\"scrape\", initial=\"true\"})",
-          "legendFormat": "initial scrape"
+          "expr": "sum(crawler_queue_depth{app=\"jobseek\", kind=\"scrape\", initial=\"true\", browser=\"false\"})",
+          "legendFormat": "initial — http"
         },
         {
-          "expr": "sum(crawler_queue_depth{app=\"jobseek\", kind=\"scrape\", initial=\"false\"})",
-          "legendFormat": "rescrape"
+          "expr": "sum(crawler_queue_depth{app=\"jobseek\", kind=\"scrape\", initial=\"true\", browser=\"true\"})",
+          "legendFormat": "initial — browser"
+        },
+        {
+          "expr": "sum(crawler_queue_depth{app=\"jobseek\", kind=\"scrape\", initial=\"false\", browser=\"false\"})",
+          "legendFormat": "rescrape — http"
+        },
+        {
+          "expr": "sum(crawler_queue_depth{app=\"jobseek\", kind=\"scrape\", initial=\"false\", browser=\"true\"})",
+          "legendFormat": "rescrape — browser"
         }
       ]
     },
