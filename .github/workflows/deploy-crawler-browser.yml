@@ -62,5 +62,5 @@ jobs:
               --memory=3g \
               --shm-size=1g \
               ghcr.io/${{ github.repository_owner }}/jobseek-crawler:latest \
-              uv run --no-sync scheduler --browser-only
+              uv run --no-sync scheduler
             docker image prune -f
