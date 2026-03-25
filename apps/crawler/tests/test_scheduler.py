@@ -126,8 +126,8 @@ class TestWorkerPool:
         assert wp.failed == 2
         assert wp.total_submitted == 3
 
-    async def test_domain_queuing(self):
-        """Items for the same domain are queued and run serially."""
+    async def test_same_domain_concurrent(self):
+        """Items for the same domain run concurrently when slots are available."""
         wp = WorkerPool(5, max_browser=0)
         order = []
 
@@ -143,13 +143,13 @@ class TestWorkerPool:
             run_fn = await make_run(f"item-{i}")
             wp.submit(WorkItem(domain="same.com", kind="scrape", run=run_fn))
 
-        assert wp.queued_count == 2  # 1 running, 2 queued
+        await asyncio.sleep(0.001)
+        assert wp.active_count == 3  # all 3 running concurrently
         await wp.drain()
         assert wp.succeeded == 3
-        assert order == ["item-0", "item-1", "item-2"]  # serial order
 
-    async def test_queued_items_dont_consume_slots(self):
-        """Queued items for in-flight domains don't take extra semaphore slots."""
+    async def test_semaphore_limits_concurrency(self):
+        """Semaphore caps concurrent items even for the same domain."""
         wp = WorkerPool(2, max_browser=0)
         # Submit 3 items for same domain + 1 for a different domain
         wp.submit(_slow_work_item(domain="a.com", delay=0.05))
@@ -158,26 +158,23 @@ class TestWorkerPool:
         wp.submit(_slow_work_item(domain="b.com", delay=0.05))
 
         await asyncio.sleep(0.01)
-        # a.com uses 1 slot (2 queued), b.com uses 1 slot → 0 free
+        # 2 slots total, all 4 submitted but only 2 can run
         assert wp.active_count == 2
-        assert wp.queued_count == 2
 
         await wp.drain()
         assert wp.succeeded == 4
 
-    async def test_queue_drains_on_drain(self):
-        """drain() processes all queued items, not just in-flight tasks."""
+    async def test_drain_completes_all(self):
+        """drain() waits for all concurrent items to finish."""
         wp = WorkerPool(5, max_browser=0)
         for _i in range(3):
             wp.submit(_slow_work_item(domain="q.com", delay=0.01))
 
-        assert wp.queued_count == 2  # 1 running + 2 queued (cap=2)
         await wp.drain()
         assert wp.succeeded == 3
-        assert wp.queued_count == 0
 
-    async def test_failed_item_doesnt_break_queue_chain(self):
-        """A failing item in the chain doesn't prevent subsequent items."""
+    async def test_failed_item_doesnt_affect_others(self):
+        """A failing item doesn't prevent other same-domain items."""
         wp = WorkerPool(5, max_browser=0)
         wp.submit(_failing_work_item(domain="chain.com"))
         wp.submit(_work_item(domain="chain.com"))
@@ -188,14 +185,15 @@ class TestWorkerPool:
         assert wp.succeeded == 2
 
     async def test_submit_always_accepts(self):
-        """submit() always accepts — items queue behind in-flight domains."""
+        """submit() always accepts — all items get tasks immediately."""
         wp = WorkerPool(5, max_browser=0)
-        wp.submit(_slow_work_item(domain="d.com", delay=0.1))  # runs
-        wp.submit(_slow_work_item(domain="d.com", delay=0.1))  # queued (1)
-        wp.submit(_slow_work_item(domain="d.com", delay=0.1))  # queued (2)
-        wp.submit(_slow_work_item(domain="d.com", delay=0.1))  # queued (3)
-        assert wp.queued_count == 3
+        wp.submit(_slow_work_item(domain="d.com", delay=0.1))
+        wp.submit(_slow_work_item(domain="d.com", delay=0.1))
+        wp.submit(_slow_work_item(domain="d.com", delay=0.1))
+        wp.submit(_slow_work_item(domain="d.com", delay=0.1))
         assert wp.total_submitted == 4
+        await asyncio.sleep(0.01)
+        assert wp.active_count == 4  # all running concurrently (5 slots)
         await wp.drain()
 
     async def test_claim_budget(self):
@@ -203,15 +201,16 @@ class TestWorkerPool:
         wp = WorkerPool(5, max_browser=0)
         assert wp.claim_budget == 5  # all free
 
-        # Start 2 domains
+        # Start 2 items (same or different domain both consume slots)
         wp.submit(_slow_work_item(domain="a.com", delay=0.1))
         wp.submit(_slow_work_item(domain="b.com", delay=0.1))
         await asyncio.sleep(0.01)
         assert wp.claim_budget == 3  # 2 slots used
 
-        # Queuing behind a.com doesn't change budget (shares slot)
+        # Same domain also consumes a slot
         wp.submit(_slow_work_item(domain="a.com", delay=0.1))
-        assert wp.claim_budget == 3
+        await asyncio.sleep(0.01)
+        assert wp.claim_budget == 2  # 3 slots used
         await wp.drain()
 
     async def test_timeout_kills_stuck_job(self):
@@ -297,8 +296,8 @@ class TestWorkerPool:
         await wp.drain()
         assert wp.succeeded == 3
 
-    async def test_browser_swap_in_domain_queue(self):
-        """Semaphore swaps when browser need changes within a domain queue."""
+    async def test_mixed_browser_http_same_domain(self):
+        """HTTP and browser items for the same domain use separate semaphores."""
         wp = WorkerPool(2, max_browser=1)
 
         order = []
@@ -311,13 +310,12 @@ class TestWorkerPool:
             order.append("browser")
             return (True, 0.01)
 
-        # Same domain: first HTTP, then browser
         wp.submit(WorkItem(domain="mix.com", kind="scrape", run=http_run))
         wp.submit(WorkItem(domain="mix.com", kind="scrape", run=browser_run, needs_browser=True))
 
         await wp.drain()
         assert wp.succeeded == 2
-        assert order == ["http", "browser"]
+        assert set(order) == {"http", "browser"}
 
 
 # ── TestRunContinuousLoop ────────────────────────────────────────────
