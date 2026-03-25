@@ -41,6 +41,7 @@ from src.metrics import (  # noqa: E402
     tasks_active,
     tasks_queued,
     tasks_total,
+    tick_skip_total,
 )
 from src.shared.http import create_http_client  # noqa: E402
 from src.shared.logging import setup_logging  # noqa: E402
@@ -443,6 +444,14 @@ async def run_continuous_loop(
 
         # Skip claim queries when all slots are full — nothing can be submitted
         if wp.http_free == 0 and wp.browser_free == 0:
+            tick_skip_total.labels(reason="slots_full").inc()
+            with contextlib.suppress(TimeoutError):
+                await asyncio.wait_for(shutdown_event.wait(), timeout=1.0)
+            continue
+
+        # Skip claim queries when no DB connections are idle
+        if pool.get_idle_size() == 0:
+            tick_skip_total.labels(reason="db_idle").inc()
             with contextlib.suppress(TimeoutError):
                 await asyncio.wait_for(shutdown_event.wait(), timeout=1.0)
             continue

@@ -24,6 +24,11 @@ queue_depth = Gauge(
     "Number of items due for processing in the DB",
     ["kind", "browser", "initial"],
 )
+tick_skip_total = Counter(
+    "crawler_tick_skip_total",
+    "Scheduler ticks skipped due to resource saturation",
+    ["reason"],  # "slots_full", "db_idle"
+)
 
 
 def start_metrics_server(port: int) -> None:
