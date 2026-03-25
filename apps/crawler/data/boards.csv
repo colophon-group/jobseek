@@ -22,6 +22,7 @@ aiphoria,aiphoria-careers,https://www.aiphoria.net/careers,dom,,dom,"{""render""
 airbnb,airbnb-careers,https://boards-api.greenhouse.io/v1/boards/airbnb/jobs,greenhouse,,skip,
 airbnb,airbnb-contractors,https://magnit-airbnb.talentnet.community/,api_sniffer,"{""fields"": {""title"": ""title.name"", ""description"": ""description"", ""employment_type"": ""type"", ""job_location_type"": ""workplaceType""}}",skip,
 airslate,airslate-careers,https://jobs.lever.co/airslate,lever,"{""token"": ""airslate""}",skip,
+aisle,aisle-careers,https://jobs.ashbyhq.com/aisle,ashby,"{""token"": ""aisle""}",skip,
 alibaba,alibaba-careers-lazada,https://www.lazada.com/en/careers/job-search/,api_sniffer,"{""api_url"": ""https://www.lazada.com/en/api/career/"", ""method"": ""POST"", ""json_path"": ""jobs"", ""browser"": true, ""post_data"": ""do=careersiteJobSearch&location_id=&vertical_id=&keyword=&pagesize=1000&page=1"", ""request_headers"": {""x-requested-with"": ""XMLHttpRequest"", ""content-type"": ""application/x-www-form-urlencoded"", ""referer"": ""https://www.lazada.com/en/careers/job-search/""}, ""url_template"": ""https://www.lazada.com/en/careers/job-description/{id}"", ""fields"": {""title"": ""name"", ""locations"": ""location_name"", ""metadata.team"": ""department_name""}}",,
 alibaba,alibaba-careers-trendyol,https://jobs.lever.co/trendyol,lever,,skip,
 allianz-suisse,allianz-suisse-careers,https://careers.allianz.com/ch/de/search-results,sitemap,"{""url_filter"": ""/ch/de/job/""}",json-ld,
