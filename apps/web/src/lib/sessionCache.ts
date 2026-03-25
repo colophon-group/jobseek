@@ -36,7 +36,13 @@ async function fetchSession(): Promise<SessionResult> {
   }
 
   // Cache miss — fetch from DB via Better Auth
-  const result = await auth.api.getSession({ headers: headersList });
+  let result: SessionResult;
+  try {
+    result = await auth.api.getSession({ headers: headersList });
+  } catch {
+    // DB unavailable (e.g. statement timeout) — treat as unauthenticated
+    return null;
+  }
   if (!result) return null;
 
   // Store in Redis for subsequent requests
