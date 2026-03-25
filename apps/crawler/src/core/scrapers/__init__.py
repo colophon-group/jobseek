@@ -182,8 +182,8 @@ def scraper_needs_browser(name: str, config: dict | None = None) -> bool:
         return False
     if entry.needs_browser:
         return True
-    # dom scraper uses Playwright when render is enabled
-    return name == "dom" and bool(config and config.get("render"))
+    # dom and json-ld scrapers use Playwright when render is enabled
+    return name in ("dom", "json-ld") and bool(config and config.get("render"))
 
 
 # Quality fields checked in probe results
@@ -336,6 +336,7 @@ from src.core.scrapers import (  # noqa: E402
     jsonld,  # noqa: F401
     nextdata,  # noqa: F401
     notion,  # noqa: F401
+    oracle_hcm,  # noqa: F401
     pdf,  # noqa: F401
     rippling,  # noqa: F401
     skip,  # noqa: F401

@@ -10,6 +10,7 @@ Auto-probed via Playwright when ``ws probe scraper`` runs.
 from __future__ import annotations
 
 import asyncio
+import re
 from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
@@ -410,18 +411,28 @@ async def _scrape_http(
     headers = clean_headers(request_headers)
     json_path = config.get("json_path")
 
-    # Substitute {id} from URL path into api_url and post_body
-    if "{id}" in api_url:
+    # Substitute placeholders in api_url and post_body from the job URL.
+    # url_pattern (regex with named groups) extracts values from the URL;
+    # {id} is always available as the last path segment for convenience.
+    url_pattern = config.get("url_pattern")
+    placeholders: dict[str, str] = {}
+    if url_pattern:
+        m = re.search(url_pattern, url)
+        if m:
+            placeholders = m.groupdict()
+    if "id" not in placeholders:
         path = urlparse(url).path.rstrip("/")
-        job_id = path.rsplit("/", 1)[-1]
-        if job_id:
-            api_url = api_url.replace("{id}", job_id)
+        last_seg = path.rsplit("/", 1)[-1]
+        if last_seg:
+            placeholders["id"] = last_seg
+
+    for key, val in placeholders.items():
+        api_url = api_url.replace(f"{{{key}}}", val)
 
     post_body = config.get("post_body") or config.get("post_data")
-    if post_body and "{id}" in post_body:
-        path = urlparse(url).path.rstrip("/")
-        job_id = path.rsplit("/", 1)[-1]
-        post_body = post_body.replace("{id}", job_id)
+    if post_body:
+        for key, val in placeholders.items():
+            post_body = post_body.replace(f"{{{key}}}", val)
 
     data = await http_fetch(http, method, api_url, headers, post_body)
     if data is None:

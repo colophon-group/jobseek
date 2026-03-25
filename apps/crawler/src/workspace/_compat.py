@@ -24,6 +24,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "hireology",
         "lever",
         "mokahr",
+        "oracle_hcm",
         "pinpoint",
         "recruitee",
         "rss",
@@ -75,6 +76,7 @@ _ALL_SCRAPER_TYPES: frozenset[str] = frozenset(
         "json-ld",
         "nextdata",
         "notion",
+        "oracle_hcm",
         "pdf",
         "rippling",
         "skip",
@@ -204,6 +206,13 @@ def auto_scraper_type(
 
     Returns None when manual scraper selection is needed.
     """
+    # oracle_hcm is a rich monitor (returns DiscoveredJob with title/location/date)
+    # but needs a scraper for descriptions. The ``enrich`` key in scraper_config
+    # tells the batch processor to schedule scrapes for newly discovered jobs
+    # even though the monitor is rich.  Without ``enrich``, rich monitors skip
+    # scraping entirely (is_rich_no_scrape = is_rich and not enrich_fields).
+    if monitor_type == "oracle_hcm":
+        return ("oracle_hcm", {"enrich": ["description"]})
     if monitor_type in _RICH_MONITORS:
         return ("skip", None)
     if monitor_type == "join":

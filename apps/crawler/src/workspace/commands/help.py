@@ -1728,6 +1728,19 @@ MONITOR_CARDS: dict[str, str] = {
     "sitemap": MONITOR_SITEMAP,
     "nextdata": MONITOR_NEXTDATA,
     "notion": MONITOR_NOTION,
+    "oracle_hcm": """\
+oracle_hcm — Oracle Cloud HCM REST API monitor
+
+  Auto-detected for URLs matching oraclecloud.com/hcmUI/CandidateExperience.
+  Uses the recruitingCEJobRequisitions REST API — no browser needed.
+
+  Board metadata (auto-detected from URL):
+    host    Oracle HCM tenant hostname (e.g. "jpmc.fa.oraclecloud.com")
+    site    Career site identifier (e.g. "CX_1001", "CampusHiring")
+
+  Rich monitor — returns title, location, date, employment_type.
+  Pair with oracle_hcm scraper + enrich: ["description"] for descriptions.
+  Handles pagination automatically via finder param offset suffix.""",
     "dom": MONITOR_DOM,
     "api_sniffer": MONITOR_API_SNIFFER,
     "mokahr": MONITOR_MOKAHR,
@@ -1838,6 +1851,20 @@ SCRAPER_CARDS: dict[str, str] = {
     "api_sniffer": SCRAPER_API_SNIFFER,
     "pdf": SCRAPER_PDF,
     "notion": SCRAPER_NOTION,
+    "oracle_hcm": """\
+oracle_hcm — Oracle Cloud HCM Detail API scraper
+
+  Fetches job details from recruitingCEJobRequisitionDetails REST API.
+  No browser needed — pure HTTP.
+
+  Auto-detected for Oracle HCM job URLs. Uses host + site from board metadata.
+
+  Available fields: Title, PrimaryLocation, ExternalPostedStartDate,
+  ExternalDescriptionStr, ExternalQualificationsStr,
+  ExternalResponsibilitiesStr, JobSchedule, WorkplaceTypeCode.
+
+  Best used with enrich: ["description"] — monitor provides title/location/date,
+  scraper fills in description from the detail API.""",
     "skip": SCRAPER_SKIP,
     "bite": SCRAPER_BITE,
     "rippling": SCRAPER_RIPPLING,

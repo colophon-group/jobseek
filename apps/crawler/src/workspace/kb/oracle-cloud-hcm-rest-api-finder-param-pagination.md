@@ -80,11 +80,41 @@ Response structure:
 }
 ```
 
-No scraper needed — set `scraper_type: skip`. The API provides title,
-location, and date but **not descriptions** (those require rendering the
-SPA job detail page, which is expensive and fragile).
+### 4. Scraper: job detail API
 
-### 4. If pagination IS needed (>200 jobs)
+Oracle HCM also exposes a detail API that returns full descriptions:
+
+```
+GET /hcmRestApi/resources/latest/recruitingCEJobRequisitionDetails
+    ?expand=all&onlyData=true
+    &finder=ById;Id="<requisition_id>",siteNumber=CX_N
+```
+
+The `Id` is the numeric requisition ID from the job URL (e.g. `/job/210685682`).
+
+Configure `api_sniffer` scraper:
+```json
+{
+  "api_url": "https://{tenant}.fa.oraclecloud.com/hcmRestApi/resources/latest/recruitingCEJobRequisitionDetails?expand=all&onlyData=true&finder=ById;Id=\"{req_id}\",siteNumber=CX_N",
+  "url_pattern": "/job/(?P<req_id>\\d+)",
+  "json_path": "items[0]",
+  "fields": {
+    "title": "Title",
+    "locations": "PrimaryLocation",
+    "date_posted": "ExternalPostedStartDate",
+    "description": "ExternalDescriptionStr",
+    "qualifications": "ExternalQualificationsStr",
+    "responsibilities": "ExternalResponsibilitiesStr"
+  }
+}
+```
+
+Available description fields: `ExternalDescriptionStr`, `ExternalQualificationsStr`,
+`ExternalResponsibilitiesStr`, `ShortDescriptionStr`, `CorporateDescriptionStr`.
+
+No browser needed — pure HTTP. Set `scraper_needs_browser: false`.
+
+### 5. If pagination IS needed (>200 jobs)
 
 Use `pagination.location: "suffix"` which appends `,offset=N` to the
 raw API URL:
@@ -110,8 +140,11 @@ raw API URL:
 
 ## Known tenants
 
-| Tenant | Companies |
-|--------|-----------|
-| `iaaras` | ELCA Group |
+| Tenant | Host | Companies |
+|--------|------|-----------|
+| `iaaras` | `iaaras.fa.ocs.oraclecloud.com` | ELCA Group (CX_4) |
+| `jpmc` | `jpmc.fa.oraclecloud.com` | JPMorgan (CX_1001, CX_1002) |
+| `fa-eqai-saasfaprod1` | `fa-eqai-saasfaprod1.fa.ocs.oraclecloud.com` | EFG International (CX_1001) |
+| `hdpc` | `hdpc.fa.us2.oraclecloud.com` | Goldman Sachs (CampusHiring, LateralHiring) |
 
 Add new tenants as they're discovered.
