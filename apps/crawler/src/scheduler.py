@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import collections
 import contextlib
 import signal
 import uuid
@@ -133,15 +132,16 @@ def _batch_log_kwargs(result) -> dict:
 class WorkerPool:
     """Bounded async worker pool with per-domain queuing.
 
-    Items for the same domain run serially (politeness). Items for different
-    domains run concurrently up to *max_concurrent* (HTTP) or *max_browser*
-    (Playwright). When an item finishes, the next queued item for that domain
-    starts immediately — no claim tick delay.
+    Multiple items for the same domain can run concurrently — the semaphore
+    controls overall concurrency, not per-domain limits. External rate
+    limiting (Redis/throttle_key) handles politeness at the network level.
+
+    When all semaphore slots are occupied, new items queue in memory and
+    start automatically when a slot frees up.
 
     Two separate semaphores prevent browser (Playwright) work from starving
     lightweight HTTP work. Items are routed to the appropriate semaphore based
-    on their ``needs_browser`` flag. If a domain queue contains a mix, the
-    semaphore is swapped between items.
+    on their ``needs_browser`` flag.
 
     Asyncio is single-threaded so set/deque operations between await points
     are atomic — no locks needed.
@@ -155,8 +155,7 @@ class WorkerPool:
         self._max_http = max_concurrent
         self._max_browser = max_browser
         self._db_pool = db_pool
-        self._domains_inflight: set[str] = set()
-        self._domain_queues: dict[str, collections.deque[WorkItem]] = {}
+        self._domains_inflight: dict[str, int] = {}
         self._tasks: set[asyncio.Task] = set()
         self.total_submitted = 0
         self.succeeded = 0
@@ -180,7 +179,7 @@ class WorkerPool:
 
     @property
     def inflight_domains(self) -> list[str]:
-        return list(self._domains_inflight)
+        return list(self._domains_inflight.keys())
 
     @property
     def active_count(self) -> int:
@@ -198,12 +197,7 @@ class WorkerPool:
 
     @property
     def queued_count(self) -> int:
-        return sum(len(q) for q in self._domain_queues.values())
-
-    @property
-    def saturated_domains(self) -> list[str]:
-        """Domains with more than 2 queued items — skip claiming more for these."""
-        return [d for d, q in self._domain_queues.items() if len(q) > 2]
+        return 0  # no in-memory queuing — semaphore blocks instead
 
     @property
     def claim_budget(self) -> int:
@@ -222,77 +216,60 @@ class WorkerPool:
     def submit(self, item: WorkItem) -> None:
         """Schedule a work item.
 
-        If the domain already has an in-flight task, the item is queued and
-        will start automatically when the current one finishes — without
-        consuming an extra semaphore slot.
+        Every item starts its own task immediately. The semaphore controls
+        overall concurrency — items block on acquire until a slot is free.
+        The claim query already maximizes domain diversity via
+        ``PARTITION BY throttle_key ORDER BY domain_rank``, so items arrive
+        interleaved across domains. This means different domains fill slots
+        first, and same-domain items only share slots when no other domains
+        have work.
         """
-        if item.domain in self._domains_inflight:
-            queue = self._domain_queues.get(item.domain)
-            if queue is None:
-                queue = collections.deque()
-                self._domain_queues[item.domain] = queue
-            queue.append(item)
-        else:
-            self._domains_inflight.add(item.domain)
-            task = asyncio.get_event_loop().create_task(self._run(item))
-            self._tasks.add(task)
-            task.add_done_callback(self._tasks.discard)
+        self._domains_inflight[item.domain] = self._domains_inflight.get(item.domain, 0) + 1
+        task = asyncio.get_event_loop().create_task(self._run(item))
+        self._tasks.add(task)
+        task.add_done_callback(self._tasks.discard)
         self.total_submitted += 1
 
     async def _run(self, item: WorkItem) -> None:
-        """Acquire the appropriate semaphore slot and process items for this domain serially.
+        """Acquire the appropriate semaphore slot and process one item.
 
         Browser items use ``_browser_sem``; HTTP items use ``_http_sem``.
-        If the browser need changes between items in the same domain queue,
-        the old semaphore is released and the new one acquired.
         """
         sem = self._sem_for(item)
         await sem.acquire()
-        current: WorkItem | None = item
         try:
-            while current is not None:
-                # Swap semaphore if browser need changed
-                new_sem = self._sem_for(current)
-                if new_sem is not sem:
-                    sem.release()
-                    sem = new_sem
-                    await sem.acquire()
-
-                try:
-                    ok, elapsed = await self._run_with_heartbeat(current)
-                    task_duration_seconds.labels(kind=current.kind).observe(elapsed)
-                    if ok:
-                        self.succeeded += 1
-                        tasks_total.labels(kind=current.kind, status="succeeded").inc()
-                    else:
-                        self.failed += 1
-                        tasks_total.labels(kind=current.kind, status="failed").inc()
-                except TimeoutError:
+            try:
+                ok, elapsed = await self._run_with_heartbeat(item)
+                task_duration_seconds.labels(kind=item.kind).observe(elapsed)
+                if ok:
+                    self.succeeded += 1
+                    tasks_total.labels(kind=item.kind, status="succeeded").inc()
+                else:
                     self.failed += 1
-                    self.timed_out += 1
-                    tasks_total.labels(kind=current.kind, status="timed_out").inc()
-                    log.error(
-                        "pool.task_timeout",
-                        domain=current.domain,
-                        kind=current.kind,
-                        timeout_s=self._ITEM_TIMEOUT,
-                    )
-                    if current.on_timeout is not None:
-                        with contextlib.suppress(Exception):
-                            await current.on_timeout()
-                except Exception:
-                    self.failed += 1
-                    tasks_total.labels(kind=current.kind, status="failed").inc()
-                    log.exception("pool.task_error", domain=current.domain, kind=current.kind)
-                # Pop next queued item for this domain (if any)
-                current = None
-                queue = self._domain_queues.get(item.domain)
-                if queue:
-                    current = queue.popleft()
-                    if not queue:
-                        del self._domain_queues[item.domain]
+                    tasks_total.labels(kind=item.kind, status="failed").inc()
+            except TimeoutError:
+                self.failed += 1
+                self.timed_out += 1
+                tasks_total.labels(kind=item.kind, status="timed_out").inc()
+                log.error(
+                    "pool.task_timeout",
+                    domain=item.domain,
+                    kind=item.kind,
+                    timeout_s=self._ITEM_TIMEOUT,
+                )
+                if item.on_timeout is not None:
+                    with contextlib.suppress(Exception):
+                        await item.on_timeout()
+            except Exception:
+                self.failed += 1
+                tasks_total.labels(kind=item.kind, status="failed").inc()
+                log.exception("pool.task_error", domain=item.domain, kind=item.kind)
         finally:
-            self._domains_inflight.discard(item.domain)
+            count = self._domains_inflight.get(item.domain, 1) - 1
+            if count <= 0:
+                self._domains_inflight.pop(item.domain, None)
+            else:
+                self._domains_inflight[item.domain] = count
             sem.release()
 
     async def _run_with_heartbeat(self, item: WorkItem) -> tuple[bool, float]:
@@ -457,7 +434,7 @@ async def run_continuous_loop(
             continue
 
         try:
-            skip = wp.saturated_domains
+            skip = []  # no domain exclusion — semaphore controls concurrency
 
             # Phase 1: HTTP monitors (priority)
             if not browser_only:
