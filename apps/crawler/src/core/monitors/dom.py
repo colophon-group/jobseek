@@ -143,11 +143,18 @@ async def _paginate_urls(
     page=None,
     url_matcher: re.Pattern | None = None,
 ) -> set[str]:
-    """Fetch paginated pages and merge discovered links with *initial_urls*."""
+    """Fetch paginated pages and merge discovered links with *initial_urls*.
+
+    Supports two URL modes:
+    - ``param_name``: appends ``?param=value`` query parameter (default).
+    - ``url_template``: formats a URL template containing ``{page}`` with the
+      current page value — for path-based pagination.
+    """
     from src.core.monitors import fetch_page_text
     from src.shared.api_sniff import set_url_param
 
-    param_name = pagination["param_name"]
+    url_template = pagination.get("url_template")
+    param_name = pagination.get("param_name")
     start = pagination.get("start", pagination.get("start_value", 1))
     increment = pagination.get("increment", 1)
     max_pages = min(pagination.get("max_pages", _MAX_PAGINATION_PAGES), _MAX_PAGINATION_PAGES)
@@ -157,7 +164,10 @@ async def _paginate_urls(
     value = start + increment
 
     for page_num in range(2, max_pages + 1):
-        page_url = set_url_param(board_url, param_name, value)
+        if url_template:
+            page_url = url_template.format(page=value)
+        else:
+            page_url = set_url_param(board_url, param_name, value)
 
         if use_browser:
             html = await _fetch_via_page(page, page_url)

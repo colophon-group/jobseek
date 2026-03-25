@@ -248,6 +248,26 @@ class TestPaginateUrls:
         assert "offset=20" in fetched_urls[0]
         assert "offset=40" in fetched_urls[1]
 
+    async def test_url_template(self):
+        """``url_template`` with ``{page}`` produces path-based pagination URLs."""
+        initial = {"https://example.com/jobs/1"}
+        fetched_urls = []
+
+        async def tracking_fetch(url, client, **kwargs):
+            fetched_urls.append(url)
+            return _html_with_links(f"https://example.com/jobs/{len(fetched_urls) + 1}")
+
+        with patch(_FETCH_PATCH, new=tracking_fetch):
+            await _paginate_urls(
+                "https://example.com/careers",
+                {"url_template": "https://example.com/careers/0-0-2-0-{page}", "max_pages": 4},
+                initial,
+                MagicMock(),
+            )
+        assert fetched_urls[0] == "https://example.com/careers/0-0-2-0-2"
+        assert fetched_urls[1] == "https://example.com/careers/0-0-2-0-3"
+        assert fetched_urls[2] == "https://example.com/careers/0-0-2-0-4"
+
 
 # ---------------------------------------------------------------------------
 # _fetch_via_page

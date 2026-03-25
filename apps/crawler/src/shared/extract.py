@@ -295,11 +295,19 @@ def _join_html(collected: list[dict]) -> str:
 def walk_steps(
     elements: list[dict],
     steps: list[dict],
+    *,
+    start: int = 0,
 ) -> dict[str, str | list[str] | None]:
     """Walk flat elements according to extraction steps, returning extracted fields.
 
     Every step with a ``field`` key is guaranteed present in the result: the
     extracted value when found, ``None`` when not found.
+
+    Parameters
+    ----------
+    start : int
+        Initial cursor position.  Used by the DOM scraper to begin
+        extraction at the element matching a URL fragment (anchor).
 
     Supported step keys:
         tag        — match by element tag name
@@ -317,7 +325,7 @@ def walk_steps(
         from       — override seek start position (e.g. 0 to search from beginning)
     """
     result: dict[str, str | list[str] | None] = {}
-    cursor = 0
+    cursor = start
 
     for step in steps:
         tag = step.get("tag")
