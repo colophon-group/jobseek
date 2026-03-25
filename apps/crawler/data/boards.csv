@@ -51,6 +51,7 @@ barclays,barclays-careers-workday,https://barclays.wd3.myworkdayjobs.com/Externa
 barry-callebaut,barry-callebaut-careers,https://jobs.barry-callebaut.com/go/All-Jobs/8610800/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://jobs.barry-callebaut.com/googlefeed.xml""}",skip,
 basf,basf-careers,https://basf.jobs,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://basf.jobs/googlefeed.xml""}",skip,
 bcg,bcg-careers,https://careers.bcg.com,sitemap,"{""sitemap_url"": ""https://careers.bcg.com/sitemap.xml"", ""url_filter"": ""/global/en/job/""}",json-ld,
+bcge,bcge-careers,https://jobs.bcge.ch/en,dom,"{""render"": true, ""url_filter"": ""jobs\\.bcge\\.ch/en/our-offers/""}",nextdata,"{""path"": ""props.pageProps.offer"", ""fields"": {""title"": ""title"", ""description"": ""content"", ""locations"": ""information[2].value"", ""date_posted"": ""dateFrom"", ""employment_type"": {""path"": ""information[3].value"", ""map"": {""Permanent Employee"": ""full_time"", ""Apprenticeship"": ""apprenticeship"", ""Trainee"": ""internship""}}}}"
 bcv,bcv-jobs,https://jobs.bcv.ch/search/?q=&searchResultView=LIST,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://jobs.bcv.ch/googlefeed.xml""}",skip,
 biogen,biogen-careers,https://biibhr.wd3.myworkdayjobs.com/external,workday,,workday,
 black-forest-labs,black-forest-labs-careers,https://job-boards.greenhouse.io/blackforestlabs,greenhouse,,skip,
