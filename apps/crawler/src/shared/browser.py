@@ -28,6 +28,7 @@ DEFAULT_USER_AGENT = (
 )
 DEFAULT_WAIT = "networkidle"
 DEFAULT_TIMEOUT = 30_000
+CONTEXT_TIMEOUT = 120_000  # hard cap: no single Playwright operation exceeds 2 minutes
 VALID_WAIT_STRATEGIES = frozenset({"load", "domcontentloaded", "networkidle", "commit"})
 OVERLAY_SELECTORS = (
     '[class*="cookie-banner"]',
@@ -122,6 +123,7 @@ async def open_page(
     context = None
     try:
         context = await browser.new_context(user_agent=user_agent)
+        context.set_default_timeout(CONTEXT_TIMEOUT)
         if cookies:
             await context.add_cookies(_resolve_placeholders(cookies))
         page = await context.new_page()
