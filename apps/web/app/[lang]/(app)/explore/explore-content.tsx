@@ -2,24 +2,18 @@ import { searchJobs, listTopCompanies } from "@/lib/actions/search";
 import { parseSearchFilters } from "@/lib/actions/search-input";
 import { getPreferences } from "@/lib/actions/preferences";
 import { resolveJobLanguages } from "@/lib/job-languages";
+import { firstOf, idsOrUndefined, parseRangeParam, getGeoFromHeaders } from "@/lib/search/params";
 import type { Locale } from "@/lib/i18n";
 import { SearchPage } from "./search-page";
 
 const PAGE_SIZE = 10;
 
-/** Pick the first value when a search param appears multiple times (?q=a&q=b). */
-function firstOf(v: string | string[] | undefined): string | undefined {
-  return Array.isArray(v) ? v[0] : v;
-}
-
 type ExploreContentProps = {
   locale: Locale;
   searchParams: Record<string, string | string[] | undefined>;
-  userLat: number | undefined;
-  userLng: number | undefined;
 };
 
-export async function ExploreContent({ locale, searchParams, userLat, userLng }: ExploreContentProps) {
+export async function ExploreContent({ locale, searchParams }: ExploreContentProps) {
   const q = firstOf(searchParams.q);
   const loc = firstOf(searchParams.loc);
   const occ = firstOf(searchParams.occ);
@@ -29,12 +23,10 @@ export async function ExploreContent({ locale, searchParams, userLat, userLng }:
   const salcur = firstOf(searchParams.salcur);
   const exp = firstOf(searchParams.exp);
 
+  const { userLat, userLng } = await getGeoFromHeaders();
+
   const [parsed, prefs] = await Promise.all([
-    parseSearchFilters({
-      q, loc, occ, sen, tech, locale,
-      userLat,
-      userLng,
-    }),
+    parseSearchFilters({ q, loc, occ, sen, tech, locale, userLat, userLng }),
     getPreferences(),
   ]);
 
@@ -42,37 +34,16 @@ export async function ExploreContent({ locale, searchParams, userLat, userLng }:
   const languages = resolveJobLanguages(jobLanguages, locale);
   const displayCurrency = prefs?.displayCurrency ?? "EUR";
 
-  const locationIds =
-    parsed.locations.length > 0 ? parsed.locations.map((l) => l.id) : undefined;
-  const occupationIds =
-    parsed.occupations.length > 0 ? parsed.occupations.map((o) => o.id) : undefined;
-  const seniorityIds =
-    parsed.seniorities.length > 0 ? parsed.seniorities.map((s) => s.id) : undefined;
-  const technologyIds =
-    parsed.technologies.length > 0 ? parsed.technologies.map((t) => t.id) : undefined;
+  const locationIds = idsOrUndefined(parsed.locations);
+  const occupationIds = idsOrUndefined(parsed.occupations);
+  const seniorityIds = idsOrUndefined(parsed.seniorities);
+  const technologyIds = idsOrUndefined(parsed.technologies);
 
-  // Parse salary filter: sal=50000-120000, salcur=USD
-  let salaryMinEur: number | undefined;
-  let salaryMaxEur: number | undefined;
-  let salaryMinDisplay: number | undefined;
-  let salaryMaxDisplay: number | undefined;
   const salaryCurrencyParam = salcur ?? displayCurrency;
-  if (sal) {
-    const [minStr, maxStr] = sal.split("-");
-    salaryMinDisplay = minStr ? parseInt(minStr, 10) : undefined;
-    salaryMaxDisplay = maxStr ? parseInt(maxStr, 10) : undefined;
-    salaryMinEur = salaryMinDisplay;
-    salaryMaxEur = salaryMaxDisplay;
-  }
-
-  // Parse experience filter: exp=3-10
-  let experienceMin: number | undefined;
-  let experienceMax: number | undefined;
-  if (exp) {
-    const [minStr, maxStr] = exp.split("-");
-    experienceMin = minStr ? parseInt(minStr, 10) : undefined;
-    experienceMax = maxStr ? parseInt(maxStr, 10) : undefined;
-  }
+  const { min: salaryMinDisplay, max: salaryMaxDisplay } = parseRangeParam(sal);
+  const salaryMinEur = salaryMinDisplay;
+  const salaryMaxEur = salaryMaxDisplay;
+  const { min: experienceMin, max: experienceMax } = parseRangeParam(exp);
 
   const result =
     parsed.keywords.length > 0

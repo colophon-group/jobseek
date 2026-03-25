@@ -97,20 +97,20 @@ export async function WatchlistContent({ lang, userSlug, watchlistSlug }: Watchl
 
   return (
     <>
-    <JsonLd data={breadcrumbJsonLd} />
-    <WatchlistViewPage
-      detail={detail}
-      isOwner={isOwner}
-      isPaidPlan={isPaidPlan}
-      limitReached={limitReached}
-      initialPostings={postings}
-      initialTotal={total}
-      locale={lang}
-      resolvedLocations={resolvedLocations}
-      resolvedOccupations={resolvedOccupations}
-      resolvedSeniorities={resolvedSeniorities}
-      resolvedTechnologies={resolvedTechnologies}
-    />
+      <JsonLd data={breadcrumbJsonLd} />
+      <WatchlistViewPage
+        detail={detail}
+        isOwner={isOwner}
+        isPaidPlan={isPaidPlan}
+        limitReached={limitReached}
+        initialPostings={postings}
+        initialTotal={total}
+        locale={lang}
+        resolvedLocations={resolvedLocations}
+        resolvedOccupations={resolvedOccupations}
+        resolvedSeniorities={resolvedSeniorities}
+        resolvedTechnologies={resolvedTechnologies}
+      />
     </>
   );
 }
