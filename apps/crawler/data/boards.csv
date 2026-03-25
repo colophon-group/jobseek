@@ -553,6 +553,7 @@ wpp,wpp-vml-enterprise,https://job-boards.greenhouse.io/vmlenterprisesolutions,g
 wpp,wpp-vml-map,https://job-boards.greenhouse.io/map,greenhouse,"{""token"": ""map""}",skip,
 wpp,wpp-wppmedia,https://job-boards.greenhouse.io/wppmedia,greenhouse,"{""token"": ""wppmedia""}",skip,
 x-ai,x-ai-careers,https://job-boards.greenhouse.io/xai,greenhouse,"{""token"": ""xai""}",skip,
+xund,xund-careers,https://job-boards.eu.greenhouse.io/xund,greenhouse,"{""token"": ""xund""}",skip,
 zalando,zalando-workday,https://zalando.wd3.myworkdayjobs.com/ZalandoSiteWD,workday,,,
 zimmer-biomet,zimmer-biomet-careers,https://careers.zimmerbiomet.com/us/en,sitemap,"{""sitemap_url"": ""https://careers.zimmerbiomet.com/us/en/sitemap.xml"", ""url_filter"": ""/job/""}",json-ld,
 zurich-insurance,zurich-insurance-careers,https://careers.zurich.com/search/,rss,"{""preset"": ""successfactors""}",skip,
