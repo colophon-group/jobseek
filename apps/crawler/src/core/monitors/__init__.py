@@ -487,6 +487,7 @@ from src.core.monitors import (  # noqa: E402
     mokahr,  # noqa: F401
     nextdata,  # noqa: F401
     notion,  # noqa: F401
+    oracle_hcm,  # noqa: F401
     personio,  # noqa: F401
     pinpoint,  # noqa: F401
     recruitee,  # noqa: F401

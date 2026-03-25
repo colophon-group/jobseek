@@ -99,10 +99,26 @@ jobs, verify:
 If any required field is missing or unusable across all samples, this
 config fails — report failure.
 
-### Improve optional field coverage
+### Maximize field coverage
 
-Before recording feedback, check if absent or noisy optional fields can be
-improved:
+**Map every available field from the data source.** Don't stop at the
+required fields — inspect the raw API response or HTML for all extractable
+data. For structured sources (API, JSON-LD, embedded JSON), check every
+key in the response and map it to a job posting field if applicable.
+
+Fields to look for beyond title/location/description:
+- `employment_type` (full_time, part_time, contract, internship, temporary)
+- `job_location_type` (onsite, hybrid, remote)
+- `date_posted` (posting date)
+- `salary` (min, max, currency, period)
+- `qualifications` / `responsibilities` (HTML text)
+
+For **rich monitors** (api_sniffer with `fields`): map everything
+available in the list API response. Use `enrich: ["description"]` to
+fill in fields only available from the detail API, rather than scraping
+all fields redundantly.
+
+### Improve noisy or absent fields
 
 - **`employment_type` / `job_location_type` noisy?** Use the `map` spec to
   normalize non-standard values (see `ws help fields`):
