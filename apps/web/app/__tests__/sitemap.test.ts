@@ -7,6 +7,11 @@ vi.mock("@/db", () => ({
   },
 }));
 
+// Mock the cache — passes through to the fetcher (no Redis in tests)
+vi.mock("@/lib/cache", () => ({
+  cached: (_key: string, fetcher: () => Promise<unknown>) => fetcher(),
+}));
+
 import sitemap from "../sitemap";
 
 describe("sitemap", () => {

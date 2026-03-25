@@ -6,7 +6,6 @@ import {
   watchlist,
   watchlistCompany,
   company,
-  user,
 } from "@/db/schema";
 import { getSessionUserId } from "@/lib/sessionCache";
 import { cached } from "@/lib/cache";
@@ -346,50 +345,39 @@ export async function getWatchlistByUserAndSlug(
 ): Promise<WatchlistDetail | null> {
   const sessionUserId = await getSessionUserId();
 
-  // Resolve user by username
-  const [owner] = await db
-    .select({
-      id: user.id,
-      username: user.username,
-      displayUsername: user.displayUsername,
-      name: user.name,
-    })
-    .from(user)
-    .where(eq(user.username, userSlug))
-    .limit(1);
+  // Resolve user + watchlist in a single JOIN
+  type WatchlistJoinRow = {
+    wl_id: string; slug: string; title: string; description: string | null;
+    is_public: boolean; alerts_enabled: boolean; filters: WatchlistFilters | null;
+    source_watchlist_id: string | null; created_at: Date; user_id: string;
+    owner_id: string; username: string | null;
+    display_username: string | null; owner_name: string;
+  };
 
-  if (!owner) return null;
+  const rows = await db.execute<{ [key: string]: unknown } & WatchlistJoinRow>(sql`
+    SELECT
+      w.id AS wl_id, w.slug, w.title, w.description,
+      w.is_public, w.alerts_enabled, w.filters,
+      w.source_watchlist_id, w.created_at, w.user_id,
+      u.id AS owner_id, u.username, u.display_username, u.name AS owner_name
+    FROM watchlist w
+    JOIN "user" u ON u.id = w.user_id
+    WHERE u.username = ${userSlug} AND w.slug = ${watchlistSlug}
+    LIMIT 1
+  `);
 
-  const [wl] = await db
-    .select({
-      id: watchlist.id,
-      slug: watchlist.slug,
-      title: watchlist.title,
-      description: watchlist.description,
-      isPublic: watchlist.isPublic,
-      alertsEnabled: watchlist.alertsEnabled,
-      filters: watchlist.filters,
-      sourceWatchlistId: watchlist.sourceWatchlistId,
-      createdAt: watchlist.createdAt,
-      userId: watchlist.userId,
-    })
-    .from(watchlist)
-    .where(
-      and(eq(watchlist.userId, owner.id), eq(watchlist.slug, watchlistSlug)),
-    )
-    .limit(1);
-
-  if (!wl) return null;
+  const row = (rows as unknown as WatchlistJoinRow[])[0];
+  if (!row) return null;
 
   // Access check: public or owner
-  if (!wl.isPublic && wl.userId !== sessionUserId) return null;
+  if (!row.is_public && row.user_id !== sessionUserId) return null;
 
-  // Touch lastAccessedAt if owner
-  if (wl.userId === sessionUserId) {
-    await db
-      .update(watchlist)
+  // Touch lastAccessedAt (fire-and-forget — doesn't affect response)
+  if (row.user_id === sessionUserId) {
+    db.update(watchlist)
       .set({ lastAccessedAt: new Date() })
-      .where(eq(watchlist.id, wl.id));
+      .where(eq(watchlist.id, row.wl_id))
+      .catch(() => {});
   }
 
   // Fetch companies
@@ -402,24 +390,24 @@ export async function getWatchlistByUserAndSlug(
     })
     .from(watchlistCompany)
     .innerJoin(company, eq(watchlistCompany.companyId, company.id))
-    .where(eq(watchlistCompany.watchlistId, wl.id))
+    .where(eq(watchlistCompany.watchlistId, row.wl_id))
     .orderBy(company.name);
 
   return {
-    id: wl.id,
-    slug: wl.slug,
-    title: wl.title,
-    description: wl.description,
-    isPublic: wl.isPublic,
-    alertsEnabled: wl.alertsEnabled,
-    filters: (wl.filters ?? {}) as WatchlistFilters,
-    sourceWatchlistId: wl.sourceWatchlistId,
-    createdAt: wl.createdAt.toISOString(),
+    id: row.wl_id,
+    slug: row.slug,
+    title: row.title,
+    description: row.description,
+    isPublic: row.is_public,
+    alertsEnabled: row.alerts_enabled,
+    filters: (row.filters ?? {}) as WatchlistFilters,
+    sourceWatchlistId: row.source_watchlist_id,
+    createdAt: new Date(row.created_at).toISOString(),
     owner: {
-      id: owner.id,
-      username: owner.username,
-      displayUsername: owner.displayUsername,
-      name: owner.name,
+      id: row.owner_id,
+      username: row.username,
+      displayUsername: row.display_username,
+      name: row.owner_name,
     },
     companies,
   };
