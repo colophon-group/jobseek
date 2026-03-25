@@ -345,8 +345,9 @@ class WorkerPool:
 
 
 _QUEUE_DEPTH_SQL = """
-SELECT kind, browser, cnt FROM (
-  SELECT 'monitor' AS kind, monitor_needs_browser AS browser, COUNT(*) AS cnt
+SELECT kind, browser, initial, cnt FROM (
+  SELECT 'monitor' AS kind, monitor_needs_browser AS browser,
+         false AS initial, COUNT(*) AS cnt
   FROM job_board
   WHERE is_enabled = true
     AND board_status IN ('active', 'suspect')
@@ -354,13 +355,14 @@ SELECT kind, browser, cnt FROM (
     AND (leased_until IS NULL OR leased_until < now())
   GROUP BY monitor_needs_browser
   UNION ALL
-  SELECT 'scrape' AS kind, b.scraper_needs_browser AS browser, COUNT(*) AS cnt
+  SELECT 'scrape' AS kind, b.scraper_needs_browser AS browser,
+         (jp.titles = '{}') AS initial, COUNT(*) AS cnt
   FROM job_posting jp
   JOIN job_board b ON b.id = jp.board_id
   WHERE jp.next_scrape_at <= now()
     AND jp.is_active = true
     AND (jp.leased_until IS NULL OR jp.leased_until < now())
-  GROUP BY b.scraper_needs_browser
+  GROUP BY b.scraper_needs_browser, (jp.titles = '{}')
 ) q
 """
 
@@ -372,11 +374,13 @@ async def _update_queue_depth(pool) -> None:
         # Reset all to 0 first, then set from query results
         for kind in ("monitor", "scrape"):
             for browser in ("true", "false"):
-                queue_depth.labels(kind=kind, browser=browser).set(0)
+                for initial in ("true", "false"):
+                    queue_depth.labels(kind=kind, browser=browser, initial=initial).set(0)
         for row in rows:
             queue_depth.labels(
                 kind=row["kind"],
                 browser=str(row["browser"]).lower(),
+                initial=str(row["initial"]).lower(),
             ).set(row["cnt"])
     except Exception:
         pass  # non-critical — skip on error

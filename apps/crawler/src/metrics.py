@@ -22,7 +22,7 @@ db_pool_idle = Gauge("crawler_db_pool_idle", "Idle connections in pool")
 queue_depth = Gauge(
     "crawler_queue_depth",
     "Number of items due for processing in the DB",
-    ["kind", "browser"],
+    ["kind", "browser", "initial"],
 )
 
 
