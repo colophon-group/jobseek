@@ -136,4 +136,72 @@ async def discover(
     return await api_sniffer_discover(enriched_board, client, pw=pw)
 
 
-register("oracle_hcm", discover, cost=15, can_handle=can_handle, rich=True)
+async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
+    """Yield batches of DiscoveredJob per API page, pulsing heartbeats."""
+    metadata = board.get("metadata") or {}
+    host = metadata.get("host")
+    site = metadata.get("site")
+
+    if not host or not site:
+        parsed = urlparse(board["board_url"])
+        host = host or parsed.hostname
+        parts = parsed.path.rstrip("/").split("/")
+        try:
+            idx = parts.index("sites")
+            site = site or parts[idx + 1]
+        except (ValueError, IndexError):
+            log.error("oracle_hcm.missing_host_or_site", board_url=board["board_url"])
+            return
+
+    fields = metadata.get("fields") or _DEFAULT_FIELDS
+    url_template = _build_url_template(host, site)
+    api_url = _build_api_url(host, site)
+
+    offset = 0
+    total = None
+    while total is None or offset < total:
+        page_url = f"{api_url},offset={offset}" if offset else api_url
+        resp = await client.get(page_url, timeout=30)
+        resp.raise_for_status()
+        data = resp.json()
+
+        wrapper = (data.get("items") or [{}])[0]
+        if total is None:
+            total = wrapper.get("TotalJobsCount", 0)
+            if total == 0:
+                return
+
+        items = wrapper.get("requisitionList", [])
+        if not items:
+            break
+
+        jobs: list[DiscoveredJob] = []
+        for item in items:
+            job_id = item.get("Id")
+            if not job_id:
+                continue
+            url = url_template.format(Id=job_id)
+            jobs.append(
+                DiscoveredJob(
+                    url=url,
+                    title=item.get(fields.get("title", "Title")),
+                    locations=[item[fields["locations"]]]
+                    if item.get(fields.get("locations", "PrimaryLocation"))
+                    else None,
+                    date_posted=item.get(fields.get("date_posted", "PostedDate")),
+                    employment_type=item.get(fields.get("employment_type", "JobSchedule")),
+                )
+            )
+
+        if jobs:
+            yield jobs
+            log.debug("oracle_hcm.stream_batch", offset=offset, batch=len(jobs), total=total)
+
+        offset += 200
+        if len(items) < 200:
+            break
+
+    log.info("oracle_hcm.stream_done", host=host, site=site, total=total)
+
+
+register("oracle_hcm", discover, cost=15, can_handle=can_handle, rich=True, stream=discover_stream)

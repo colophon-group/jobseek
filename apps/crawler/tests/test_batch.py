@@ -1332,11 +1332,11 @@ class TestClaimMonitorWork:
         assert items == []
         pool.fetch.assert_not_awaited()
 
-    @patch("src.batch._process_one_board", new_callable=AsyncMock)
+    @patch("src.batch._process_one_board_streaming", new_callable=AsyncMock)
     async def test_run_calls_process_one_board(self, mock_process, mock_pool, mock_http):
-        """WorkItem.run() calls _process_one_board with correct args."""
+        """WorkItem.run() calls _process_one_board_streaming for streaming monitors."""
         pool, _ = mock_pool
-        board_row = _mock_board_row()
+        board_row = _mock_board_row()  # greenhouse → streaming
         pool.fetch.return_value = [board_row]
         mock_process.return_value = (True, 1.0)
 
@@ -1344,7 +1344,11 @@ class TestClaimMonitorWork:
         result = await items[0].run()
 
         assert result == (True, 1.0)
-        mock_process.assert_awaited_once_with(board_row, pool, mock_http)
+        # Streaming path passes board, pool, http, and a DeadlineExtender
+        args = mock_process.await_args.args
+        assert args[0] is board_row
+        assert args[1] is pool
+        assert args[2] is mock_http
 
 
 # ── TestClaimScrapeWork ──────────────────────────────────────────────
