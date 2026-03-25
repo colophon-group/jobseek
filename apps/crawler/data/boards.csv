@@ -514,6 +514,7 @@ totalenergies,totalenergies-careers-pt,https://jobs.totalenergies.com/pt_BR/care
 tracebit,tracebit-careers,https://jobs.ashbyhq.com/tracebit,ashby,,skip,
 tradingview,tradingview-careers,https://tradingview.teamtailor.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://tradingview.teamtailor.com/jobs.rss""}",skip,
 trafigura,trafigura-careers-workday,https://trafigura.wd3.myworkdayjobs.com/TrafiguraCareerSite,workday,,workday,
+travelperk,travelperk-careers,https://jobs.ashbyhq.com/perk,ashby,"{""token"": ""perk""}",skip,
 tune-insight,tune-insight-careers,https://jobs.inflection.fund/companies/tune-insight,api_sniffer,"{""api_url"": ""https://api.getro.com/api/v2/collections/11015/search/jobs"", ""method"": ""POST"", ""json_path"": ""results.jobs"", ""browser"": true, ""url_field"": ""url"", ""fields"": {""title"": ""title"", ""date_posted"": ""created_at"", ""job_location_type"": ""work_mode"", ""locations"": ""searchable_locations"", ""metadata.team"": ""organization.name""}, ""post_data"": ""{\""hitsPerPage\"":20,\""page\"":0,\""filters\"":{\""organization.id\"":[826067],\""page\"":0},\""query\"":\""\""}"", ""pagination"": {""param_name"": ""page"", ""style"": ""page"", ""start_value"": 1, ""increment"": 1, ""location"": ""body""}}",,
 twine,twine-careers,https://jobs.ashbyhq.com/twine,ashby,"{""token"": ""twine""}",skip,
 twitch,twitch-careers,https://job-boards.greenhouse.io/twitch,greenhouse,"{""token"": ""twitch""}",,
