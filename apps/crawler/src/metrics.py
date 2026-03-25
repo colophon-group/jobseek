@@ -19,6 +19,11 @@ tasks_active = Gauge("crawler_tasks_active", "Currently running tasks")
 tasks_queued = Gauge("crawler_tasks_queued", "Tasks waiting in domain queues")
 db_pool_size = Gauge("crawler_db_pool_size", "Total connections in pool")
 db_pool_idle = Gauge("crawler_db_pool_idle", "Idle connections in pool")
+queue_depth = Gauge(
+    "crawler_queue_depth",
+    "Number of items due for processing in the DB",
+    ["kind", "browser"],
+)
 
 
 def start_metrics_server(port: int) -> None:

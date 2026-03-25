@@ -35,6 +35,7 @@ from src.db import close_pool, create_pool  # noqa: E402
 from src.metrics import (  # noqa: E402
     db_pool_idle,
     db_pool_size,
+    queue_depth,
     start_metrics_server,
     task_duration_seconds,
     tasks_active,
@@ -343,6 +344,44 @@ class WorkerPool:
 # ── Continuous Loop ──────────────────────────────────────────────────
 
 
+_QUEUE_DEPTH_SQL = """
+SELECT kind, browser, cnt FROM (
+  SELECT 'monitor' AS kind, monitor_needs_browser AS browser, COUNT(*) AS cnt
+  FROM job_board
+  WHERE is_enabled = true
+    AND board_status IN ('active', 'suspect')
+    AND next_check_at <= now()
+    AND (leased_until IS NULL OR leased_until < now())
+  GROUP BY monitor_needs_browser
+  UNION ALL
+  SELECT 'scrape' AS kind, b.scraper_needs_browser AS browser, COUNT(*) AS cnt
+  FROM job_posting jp
+  JOIN job_board b ON b.id = jp.board_id
+  WHERE jp.next_scrape_at <= now()
+    AND jp.is_active = true
+    AND (jp.leased_until IS NULL OR jp.leased_until < now())
+  GROUP BY b.scraper_needs_browser
+) q
+"""
+
+
+async def _update_queue_depth(pool) -> None:
+    """Query DB for pending work counts and update Prometheus gauges."""
+    try:
+        rows = await pool.fetch(_QUEUE_DEPTH_SQL)
+        # Reset all to 0 first, then set from query results
+        for kind in ("monitor", "scrape"):
+            for browser in ("true", "false"):
+                queue_depth.labels(kind=kind, browser=browser).set(0)
+        for row in rows:
+            queue_depth.labels(
+                kind=row["kind"],
+                browser=str(row["browser"]).lower(),
+            ).set(row["cnt"])
+    except Exception:
+        pass  # non-critical — skip on error
+
+
 async def run_continuous_loop(
     pool,
     http,
@@ -465,6 +504,10 @@ async def run_continuous_loop(
         tasks_queued.set(wp.queued_count)
         db_pool_size.set(pool.get_size())
         db_pool_idle.set(pool.get_idle_size())
+
+        # Update queue depth from DB (throttled — only when idle or every ~30s)
+        if not work_found or wp.succeeded % 30 == 0:
+            await _update_queue_depth(pool)
 
         if work_found or wp.active_count > 0:
             log.info(
