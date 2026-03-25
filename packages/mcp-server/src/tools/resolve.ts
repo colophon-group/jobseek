@@ -16,6 +16,7 @@ export function register(server: McpServer, client: JobseekClient) {
         .default("en")
         .describe("Response language"),
     },
+    { title: "Resolve Slugs", readOnlyHint: true, destructiveHint: false, openWorldHint: true, idempotentHint: true },
     async (params) => {
       const data = await client.get("/api/v1/resolve", {
         type: params.type,
