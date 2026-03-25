@@ -1,27 +1,19 @@
 /**
  * @module sec-edgar-actor/parser
  *
- * Queries the SEC EDGAR full-text search API for 10-K and 10-Q filings
+ * Queries the SEC EDGAR full-text search API (EFTS) for 10-K and 10-Q filings
  * that contain hiring/expansion language, and maps results to Signals.
  *
- * API used:
- *   GET https://efts.sec.gov/LATEST/search-index
- *   (EDGAR's Elasticsearch-based full-text search, no auth required)
- *   SEC requests a polite User-Agent header and a delay between requests.
+ * API: GET https://efts.sec.gov/LATEST/search-index?q=...&forms=10-K,10-Q
+ * No auth required. SEC requests a polite User-Agent and delay between requests.
  *
- * Two search modes:
- *   1. Phrase search — queries each phrase in HIRING_PHRASES across all filers
- *   2. Company search — looks up recent filings for specific named companies
- *
- * Why SEC filings?
- *   10-K/10-Q language like "we plan to hire", "expanding our team", or
- *   "new data center" is a legally required disclosure — unlike PR fluff,
- *   it reflects actual business intent. Finding this language in a filing
- *   typically means headcount growth is 1–3 quarters out.
- *
- * Rate limiting:
- *   EDGAR requests polite usage. A 300ms sleep is inserted between each
- *   phrase query to avoid hammering the endpoint.
+ * EDGAR EFTS response shape (per hit):
+ *   _source.display_names[]  — e.g. ["STRIPE INC  (STRP)  (CIK 0001820953)"]
+ *   _source.file_date        — filing date "YYYY-MM-DD"
+ *   _source.form             — form type "10-K" or "10-Q"
+ *   _source.period_ending    — period end date
+ *   _source.file_num[]       — filing numbers
+ *   _source.adsh             — accession number
  */
 
 import { Signal } from '../../../shared/types';
@@ -30,165 +22,140 @@ import { guessDomain, sleep } from '../../../shared/utils';
 
 const EDGAR_BASE = 'https://efts.sec.gov/LATEST/search-index';
 
-/**
- * Phrases to search for in SEC filings.
- * These are chosen because they appear in growth/hiring disclosures
- * rather than standard boilerplate text.
- */
 const HIRING_PHRASES = [
   'we expect to hire',
-  'we are scaling',
   'expanding our team',
-  'new data center',
-  'headcount',
   'we plan to hire',
   'workforce expansion',
-  'talent acquisition',
   'we intend to grow',
   'increase our headcount',
-  'additional employees',
   'we are growing our team',
+  'additional employees',
+  'talent acquisition',
 ];
 
-/** Shape of a single hit from the EDGAR full-text search response */
-interface EdgarSearchHit {
-  _id: string;
-  _source: {
-    period_of_report?: string;
-    file_date?: string;
-    entity_name?: string;
-    file_num?: string;
-    form_type?: string;
-    biz_location?: string;
-    inc_states?: string;
-  };
-  _score?: number;
+interface EdgarHitSource {
+  display_names?: string[];
+  file_date?: string;
+  period_ending?: string;
+  form?: string;
+  root_forms?: string[];
+  file_num?: string[];
+  adsh?: string;
+  biz_locations?: string[];
 }
 
-/** Top-level EDGAR search response */
 interface EdgarSearchResponse {
   hits: {
-    hits: EdgarSearchHit[];
-    total: { value: number; relation: string };
+    hits: Array<{ _id: string; _source: EdgarHitSource; _score?: number }>;
+    total: { value: number };
   };
 }
 
-/** Response shape from EDGAR company name search */
-interface EdgarCompanySearchResponse {
-  hits: {
-    hits: Array<{
-      _source: {
-        entity_name: string;
-        file_date: string;
-        period_of_report: string;
-        form_type: string;
-        file_num: string;
-      };
-    }>;
-  };
+/** Extract company name from EDGAR display_names like "STRIPE INC  (STRP)  (CIK 0001820953)" */
+function parseDisplayName(raw: string): string {
+  // Strip trailing (CIK ...) and (TICKER)
+  return raw
+    .replace(/\s*\(CIK\s+\d+\)\s*$/i, '')
+    .replace(/\s*\([A-Z]{1,6}\)\s*$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
-/**
- * Searches SEC EDGAR for 10-K/10-Q filings containing hiring/expansion language.
- *
- * @param companies    - Optional list of company names to filter results to.
- *                       If empty, returns signals for all companies mentioning the phrases.
- * @param lookbackDays - How many days back to search (`startdt` filter on EDGAR)
- * @returns Deduplicated array of Signal objects with signal_type = 'sec_filing'
- */
 export async function parseEdgarFilings(
   companies: string[],
   lookbackDays: number
 ): Promise<Signal[]> {
   const signals: Signal[] = [];
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - lookbackDays);
 
-  const startDate = new Date();
-  startDate.setDate(startDate.getDate() - lookbackDays);
-  const startDateStr = startDate.toISOString().split('T')[0];
-
-  // --- Mode 1: Phrase-level search across all filers ---
   for (const phrase of HIRING_PHRASES) {
     const encodedPhrase = encodeURIComponent(`"${phrase}"`);
-    const url = `${EDGAR_BASE}?q=${encodedPhrase}&dateRange=custom&startdt=${startDateStr}&forms=10-K,10-Q&hits.hits.total.value=1&hits.hits._source=period_of_report,entity_name,file_date,form_type,file_num&hits.hits.highlight.body=true`;
+    const url = `${EDGAR_BASE}?q=${encodedPhrase}&forms=10-K,10-Q`;
 
     try {
       const response = await fetch(url, {
         headers: {
-          // EDGAR's fair-use policy requires a descriptive User-Agent
           'User-Agent': 'hiring-signal-engine/1.0 (research@example.com)',
           Accept: 'application/json',
         },
       });
 
       if (!response.ok) {
-        console.warn(`EDGAR search failed for phrase "${phrase}": ${response.status}`);
+        console.warn(`EDGAR search failed for "${phrase}": ${response.status}`);
         continue;
       }
 
       const data = (await response.json()) as EdgarSearchResponse;
       const hits = data.hits?.hits ?? [];
+      console.log(`"${phrase}": ${hits.length} hits (total: ${data.hits?.total?.value ?? '?'})`);
 
       for (const hit of hits) {
         const src = hit._source;
-        const entityName = src.entity_name ?? 'Unknown Company';
+        const rawName = src.display_names?.[0];
+        if (!rawName) continue;
 
-        // If caller specified a company filter, skip non-matching filers
+        const entityName = parseDisplayName(rawName);
+        const filingDate = src.file_date ?? src.period_ending ?? '';
+        if (!filingDate) continue;
+
+        // Client-side date filter (EDGAR doesn't reliably filter server-side)
+        const filingDateObj = new Date(filingDate);
+        if (filingDateObj < cutoff) continue;
+
+        // Company name filter
         if (companies.length > 0) {
-          const matchesCompany = companies.some((c) =>
-            entityName.toLowerCase().includes(c.toLowerCase()) ||
-            c.toLowerCase().includes(entityName.toLowerCase())
+          const matches = companies.some(
+            (c) =>
+              entityName.toLowerCase().includes(c.toLowerCase()) ||
+              c.toLowerCase().includes(entityName.toLowerCase())
           );
-          if (!matchesCompany) continue;
+          if (!matches) continue;
         }
 
-        const filingDate = src.file_date ?? src.period_of_report ?? new Date().toISOString().split('T')[0];
-        const formType = src.form_type ?? 'SEC Filing';
+        const formType = src.form ?? src.root_forms?.[0] ?? '10-K';
         const domain = guessDomain(entityName);
+        const adsh = src.adsh ?? '';
+        const sourceUrl = adsh
+          ? `https://www.sec.gov/Archives/edgar/data/${adsh.replace(/-/g, '/')}`
+          : `https://efts.sec.gov/LATEST/search-index?q=${encodeURIComponent(hit._id)}`;
 
-        const id = signalId(entityName, 'sec_filing', filingDate);
-
-        const signalText = `${entityName} mentioned "${phrase}" in their ${formType} filing dated ${filingDate}`;
-        const sourceUrl = buildEdgarFilingUrl(hit._id, src.file_num ?? '');
-
-        const signal: Signal = {
-          id,
+        signals.push({
+          id: signalId(entityName, 'sec_filing', filingDate),
           company: entityName,
           company_domain: domain,
           signal_type: 'sec_filing',
-          signal_text: signalText,
+          signal_text: `${entityName} mentioned "${phrase}" in their ${formType} filing dated ${filingDate}`,
           source_url: sourceUrl,
-          date: new Date(filingDate).toISOString(),
+          date: filingDateObj.toISOString(),
           raw: {
             form_type: formType,
-            period_of_report: src.period_of_report,
-            file_date: src.file_date,
+            file_date: filingDate,
+            period_ending: src.period_ending,
             matched_phrase: phrase,
             file_num: src.file_num,
+            biz_location: src.biz_locations?.[0],
             edgar_id: hit._id,
           },
-        };
-
-        signals.push(signal);
+        });
       }
     } catch (err) {
-      console.error(`Error querying EDGAR for phrase "${phrase}":`, err);
+      console.error(`Error querying EDGAR for "${phrase}":`, err);
     }
 
-    // Polite delay — SEC asks crawlers to be gentle
     await sleep(300);
   }
 
-  // --- Mode 2: Company-specific search (when companies list is provided) ---
-  // This mode finds *any* recent filing from the named companies, not just
-  // those containing our phrases — useful as a broader sweep.
+  // Mode 2: Company-specific search
   if (companies.length > 0) {
     for (const company of companies) {
-      const companySignals = await searchByCompany(company, startDateStr);
+      const companySignals = await searchByCompany(company, cutoff);
       signals.push(...companySignals);
     }
   }
 
-  // Deduplicate by id before returning
+  // Deduplicate
   const seen = new Set<string>();
   return signals.filter((s) => {
     if (seen.has(s.id)) return false;
@@ -197,19 +164,9 @@ export async function parseEdgarFilings(
   });
 }
 
-/**
- * Fetches recent 10-K/10-Q filings for a specific named company.
- * Returns up to 5 most recent filings as signals, without phrase filtering.
- * Used as a broader sweep when the caller is specifically interested in a company.
- *
- * @param company      - Company name to search for
- * @param startDateStr - ISO date string 'YYYY-MM-DD' — earliest filing date to include
- */
-async function searchByCompany(company: string, startDateStr: string): Promise<Signal[]> {
+async function searchByCompany(company: string, cutoff: Date): Promise<Signal[]> {
   const signals: Signal[] = [];
-  const encodedCompany = encodeURIComponent(company);
-
-  const url = `https://efts.sec.gov/LATEST/search-index?q=%22${encodedCompany}%22&dateRange=custom&startdt=${startDateStr}&forms=10-K,10-Q`;
+  const url = `${EDGAR_BASE}?q=${encodeURIComponent(`"${company}"`)}&forms=10-K,10-Q`;
 
   try {
     const response = await fetch(url, {
@@ -221,32 +178,27 @@ async function searchByCompany(company: string, startDateStr: string): Promise<S
 
     if (!response.ok) return signals;
 
-    const data = (await response.json()) as EdgarCompanySearchResponse;
+    const data = (await response.json()) as EdgarSearchResponse;
     const hits = data.hits?.hits ?? [];
 
-    // Cap at 5 to avoid flooding the signals dataset with low-quality results
-    for (const hit of hits.slice(0, 5)) {
+    for (const hit of hits.slice(0, 10)) {
       const src = hit._source;
-      if (!src) continue;
+      const rawName = src.display_names?.[0];
+      const entityName = rawName ? parseDisplayName(rawName) : company;
+      const filingDate = src.file_date ?? src.period_ending ?? '';
+      if (!filingDate || new Date(filingDate) < cutoff) continue;
 
-      const filingDate = src.file_date ?? src.period_of_report ?? '';
-      const formType = src.form_type ?? 'SEC Filing';
-      const entityName = src.entity_name ?? company;
-      const domain = guessDomain(entityName);
-
-      const id = signalId(entityName, 'sec_filing', filingDate, 'company_search');
-
+      const formType = src.form ?? '10-K';
       signals.push({
-        id,
+        id: signalId(entityName, 'sec_filing', filingDate, 'company_search'),
         company: entityName,
-        company_domain: domain,
+        company_domain: guessDomain(entityName),
         signal_type: 'sec_filing',
         signal_text: `${entityName} filed ${formType} on ${filingDate} — review for growth/hiring language`,
-        source_url: `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&company=${encodedCompany}&type=${formType}&dateb=&owner=include&count=10`,
+        source_url: `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&company=${encodeURIComponent(company)}&type=${formType}&dateb=&owner=include&count=10`,
         date: new Date(filingDate).toISOString(),
         raw: {
           form_type: formType,
-          period_of_report: src.period_of_report,
           file_date: filingDate,
           search_term: company,
         },
@@ -258,16 +210,3 @@ async function searchByCompany(company: string, startDateStr: string): Promise<S
 
   return signals;
 }
-
-/**
- * Builds a link to the EDGAR filing document.
- * Tries to construct a direct archive URL from the EDGAR internal ID;
- * falls back to a company search URL if the ID isn't well-formed.
- */
-function buildEdgarFilingUrl(edgarId: string, fileNum: string): string {
-  if (edgarId) {
-    return `https://efts.sec.gov/LATEST/search-index?q=${encodeURIComponent(edgarId)}`;
-  }
-  return `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&filenum=${fileNum}&type=10-K&dateb=&owner=include&count=10`;
-}
-
