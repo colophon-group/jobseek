@@ -159,6 +159,7 @@ dphi-space,dphi-space-careers,https://www.dphispace.com/careers,dom,,dom,"{""ren
 dsm-firmenich,dsm-firmenich-careers-ats,https://jobs.dsm-firmenich.com/careers,sitemap,"{""sitemap_url"": ""https://jobs.dsm-firmenich.com/careers/sitemap.xml"", ""url_filter"": ""/careers/job/""}",json-ld,
 dupont,dupont-careers-wd,https://dupont.wd5.myworkdayjobs.com/Jobs,workday,,workday,
 efg-international,efg-international-careers,https://fa-eqai-saasfaprod1.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001/jobs,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 60000}",json-ld,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 60000}"
+ekkiden,ekkiden-careers,https://recruiterflow.com/ekkiden/jobs,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000}",json-ld,
 elevenlabs,elevenlabs-careers,https://jobs.ashbyhq.com/elevenlabs,ashby,"{""token"": ""elevenlabs""}",,
 eli-lilly,eli-lilly-campus,https://lilly.wd5.myworkdayjobs.com/CMP,workday,"{""company"": ""lilly"", ""wd_instance"": ""wd5"", ""site"": ""CMP""}",workday,
 eli-lilly,eli-lilly-careers,https://lilly.wd5.myworkdayjobs.com/LLY,workday,"{""company"": ""lilly"", ""wd_instance"": ""wd5"", ""site"": ""LLY""}",workday,
