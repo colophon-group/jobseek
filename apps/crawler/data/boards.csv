@@ -435,6 +435,7 @@ pwc,pwc-careers-strategy,https://jobs.strategyand.pwc.de/de/en/search-results,si
 pwc,pwc-careers-uk,https://jobs.pwc.co.uk/uk/en/search-results,sitemap,"{""sitemap_url"": ""https://jobs.pwc.co.uk/uk/en/search-results/sitemap.xml"", ""url_filter"": ""/uk/en/job/""}",json-ld,
 pwc,pwc-careers-us-phenom,https://jobs-us.pwc.com/us/en/search-results,sitemap,"{""sitemap_url"": ""https://jobs-us.pwc.com/us/en/search-results/sitemap.xml"", ""url_filter"": ""/us/en/job/""}",json-ld,
 pwc,pwc-careers-workday,https://pwc.wd3.myworkdayjobs.com/Global_Experienced_Careers,workday,"{""company"": ""pwc"", ""wd_instance"": ""wd3"", ""site"": ""Global_Experienced_Careers""}",,
+rapyuta-robotics,rapyuta-robotics-careers,https://apply.workable.com/rapyuta-robotics/,workable,"{""token"": ""rapyuta-robotics""}",workable,
 recraft,recraft-careers,https://jobs.ashbyhq.com/recraft,ashby,"{""token"": ""recraft""}",skip,
 reddit,reddit-careers,https://boards.greenhouse.io/reddit,greenhouse,,skip,
 reflection-ai,reflection-ai-careers,https://jobs.ashbyhq.com/reflectionai,ashby,"{""token"": ""reflectionai""}",skip,
