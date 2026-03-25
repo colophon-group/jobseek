@@ -216,25 +216,88 @@ async def _execute_action(page, action: dict, kind: str | None) -> None:
         log.warning("browser.action.unknown", action=kind)
 
 
+def _resolve_frame(page, frame_selector: str | None):
+    """Return the target frame (or the page itself) for actions.
+
+    *frame_selector* is a CSS selector matching an ``<iframe>`` in the
+    main page.  When provided, Playwright's ``frame_locator`` is used to
+    pierce the cross-origin boundary.
+    """
+    if not frame_selector:
+        return page
+    return page.frame_locator(frame_selector)
+
+
 async def _execute_repeat(page, action: dict) -> None:
-    """Click an element repeatedly until no new links appear or selector is gone."""
+    """Click an element repeatedly until no new links appear or selector is gone.
+
+    When ``frame`` is set (CSS selector matching an ``<iframe>``), clicks
+    target elements inside that frame.  After all clicks, links from the
+    frame are injected as hidden ``<a>`` tags into the main page so the
+    DOM monitor's link extractor can see them.
+    """
     selector = action["selector"]
     max_iter = action.get("max", 50)
     wait_ms = action.get("wait_ms", 2000)
+    frame_selector = action.get("frame")
+    force = action.get("force", False)
+
+    target = page.frame_locator(frame_selector) if frame_selector else page
+
+    # For frame targets, measure link counts inside the frame.
+    count_ctx = page
+    if frame_selector:
+        for f in page.frames:
+            if f != page.main_frame and f.url and f.url != "about:blank":
+                count_ctx = f
+                break
 
     for i in range(max_iter):
-        before = await page.evaluate("() => document.querySelectorAll('a[href]').length")
-        loc = page.locator(selector).first
-        if await loc.count() == 0:
-            log.info("browser.repeat.selector_gone", iteration=i)
-            break
-        await loc.click()
+        before = await count_ctx.evaluate("() => document.querySelectorAll('a[href]').length")
+        if frame_selector and count_ctx != page:
+            # Use JS click inside cross-origin frame to bypass overlays.
+            clicked = await count_ctx.evaluate(
+                "(sel) => { const el = document.querySelector(sel);"
+                " if (el) { el.click(); return true; } return false; }",
+                selector,
+            )
+            if not clicked:
+                log.info("browser.repeat.selector_gone", iteration=i)
+                break
+        else:
+            loc = target.locator(selector).first
+            if await loc.count() == 0:
+                log.info("browser.repeat.selector_gone", iteration=i)
+                break
+            await loc.click(force=force)
         await asyncio.sleep(wait_ms / 1000)
-        after = await page.evaluate("() => document.querySelectorAll('a[href]').length")
+        after = await count_ctx.evaluate("() => document.querySelectorAll('a[href]').length")
         if after <= before:
             log.info("browser.repeat.no_new_links", iteration=i + 1, links=after)
             break
         log.debug("browser.repeat.click", iteration=i + 1, new=after - before, total=after)
+
+    # Inject cross-origin iframe links into the main page.
+    if frame_selector:
+        frame = None
+        for f in page.frames:
+            if f != page.main_frame and f.url and f.url != "about:blank":
+                frame = f
+                break
+        if frame:
+            links = await frame.evaluate(
+                "() => [...document.querySelectorAll('a[href]')].map(a => a.href)"
+            )
+            if links:
+                await page.evaluate(
+                    "(urls) => urls.forEach(u => {"
+                    "  const a = document.createElement('a');"
+                    "  a.href = u; a.style.display = 'none';"
+                    "  document.body.appendChild(a);"
+                    "})",
+                    links,
+                )
+                log.info("browser.repeat.frame_links_injected", count=len(links))
 
 
 async def _execute_paginate_collect(page, action: dict) -> None:

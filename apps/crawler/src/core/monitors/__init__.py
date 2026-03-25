@@ -484,6 +484,7 @@ from src.core.monitors import (  # noqa: E402
     hireology,  # noqa: F401
     join,  # noqa: F401
     lever,  # noqa: F401
+    mokahr,  # noqa: F401
     nextdata,  # noqa: F401
     notion,  # noqa: F401
     personio,  # noqa: F401

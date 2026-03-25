@@ -542,6 +542,23 @@ nextdata — Next.js __NEXT_DATA__ Discovery
   item before choosing your fields mapping. Map employment_type, date_posted,
   job_location_type, team/department if present — they come at no extra cost."""
 
+MONITOR_MOKAHR = """\
+mokahr — Mokahr ATS (Chinese recruitment platform)
+
+  Returns:  Rich (title, locations, date_posted, employment_type)
+  Cost:     Low — paginated API with AES-128-CBC decryption, no browser.
+
+  Mokahr (app.mokahr.com) is a Chinese ATS. The API encrypts responses
+  with AES-128-CBC using a per-response key and a per-site IV embedded
+  in the SPA HTML. The monitor handles decryption transparently.
+
+  Auto-detected from app.mokahr.com URLs.
+
+  Config:
+    org_id    Organisation slug (e.g. "zte")
+    site_id   Numeric site ID (e.g. 47588)
+    locale    API locale (default "zh-CN")"""
+
 MONITOR_NOTION = """\
 notion — Notion Site Job Pages
 
@@ -608,11 +625,31 @@ dom — Link Extraction (fallback)
                             expected real page count; low caps silently undercount.
     pagination.browser      If true, fetch via page.evaluate(fetch(...)) inside
                             Playwright context — preserves cookies (default: false)
+    pagination.url_template Format string with {page} placeholder for path-based
+                            pagination (e.g. "https://example.com/jobs/page/{page}").
+                            When set, replaces param_name-based URL building.
+                            Useful for sites that use path segments instead of
+                            query parameters for pagination.
 
     Fetching starts at start + increment (page 1 is the board URL itself).
     Stops when: no new links found, fetch fails, or max_pages reached.
     High max_pages is usually safe: small boards terminate early via "no new links".
     Works with both render: false (httpx) and render: true (Playwright).
+
+  Iframe widgets (onlyfy, prescreen, etc.):
+    When jobs are listed inside a third-party <iframe>, use the repeat action
+    with a "frame" option to click "Show more" inside the iframe:
+    {
+      "render": true,
+      "actions": [
+        {"action": "dismiss_overlays"},
+        {"action": "repeat", "selector": "a.load-more",
+         "frame": "iframe[src*=\\"widget-domain\\"]", "wait_ms": 3000}
+      ],
+      "url_filter": "\\\\?jh="
+    }
+    The repeat action injects frame links into the parent page for discovery.
+    See: ws task troubleshoot (KB: dom-monitor-jobs-inside-cross-origin-iframe-widget)
 
   Discovery:   Extracts all <a href> links, filters for URLs containing
                job/career/position/posting/opening/role/vacancy keywords.
@@ -1389,7 +1426,17 @@ Browser Action Pipeline — pre-extraction actions for Playwright
           selector   CSS selector to click (required)
           max        Max iterations (default: 50)
           wait_ms    Ms to wait after each click (default: 2000)
+          frame      CSS selector for an <iframe> to target (optional).
+                     When set, clicks happen inside the iframe (using JS
+                     to bypass cross-origin overlays), link counts are
+                     measured inside the frame, and after all clicks the
+                     frame's links are injected into the parent page so
+                     the DOM monitor can discover them.
+          force      If true, use Playwright force-click (default: false).
+                     Useful when overlays intercept clicks.
         Use for "Load More" / "Show More" buttons on infinite-scroll pages.
+        Use frame option when the job listing widget runs inside an iframe
+        (e.g. onlyfy, prescreen, or other embedded ATS widgets).
 
   Per-action timeout:
     {"action": "click", "selector": ".btn", "timeout": 5}
@@ -1404,6 +1451,13 @@ Browser Action Pipeline — pre-extraction actions for Playwright
 
     "actions": [
       {"action": "repeat", "selector": "button.load-more", "max": 30, "wait_ms": 1500}
+    ]
+
+    # Click "Show more" inside a cross-origin iframe widget:
+    "actions": [
+      {"action": "dismiss_overlays"},
+      {"action": "repeat", "selector": "a.infinite-next",
+       "frame": "iframe[src*=\\"onlyfy\\"]", "wait_ms": 3000}
     ]"""
 
 ARTIFACTS = """\
@@ -1676,6 +1730,7 @@ MONITOR_CARDS: dict[str, str] = {
     "notion": MONITOR_NOTION,
     "dom": MONITOR_DOM,
     "api_sniffer": MONITOR_API_SNIFFER,
+    "mokahr": MONITOR_MOKAHR,
     "signals": MONITOR_SIGNALS,
     "ycombinator": MONITOR_YCOMBINATOR,
 }
