@@ -15,6 +15,7 @@ export function register(server: McpServer, client: JobseekClient) {
         .default("en")
         .describe("Response language"),
     },
+    { title: "List Taxonomies", readOnlyHint: true, destructiveHint: false, openWorldHint: true, idempotentHint: true },
     async (params) => {
       const data = await client.get("/api/v1/taxonomies", {
         type: params.type,

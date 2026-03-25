@@ -13,6 +13,7 @@ export function register(server: McpServer, client: JobseekClient) {
         .default("en")
         .describe("Response language"),
     },
+    { title: "Search Companies", readOnlyHint: true, destructiveHint: false, openWorldHint: true },
     async (params) => {
       const data = await client.get("/api/v1/companies", {
         q: params.q,

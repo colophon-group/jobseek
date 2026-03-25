@@ -39,6 +39,7 @@ export function register(server: McpServer, client: JobseekClient) {
         .describe("Experience range in years, format: min-max (e.g. 3-10)"),
       locale: LOCALE,
     },
+    { title: "Search Jobs", readOnlyHint: true, destructiveHint: false, openWorldHint: true },
     async (params) => {
       const data = await client.get("/api/v1/search", {
         q: params.q,
