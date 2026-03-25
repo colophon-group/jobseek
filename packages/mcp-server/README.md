@@ -1,8 +1,18 @@
 # @jseek/mcp-server
 
-MCP server for [Job Seek](https://jseek.co) — search jobs, companies, and watchlists directly from Claude, Cursor, or any MCP-compatible client.
+MCP server for [Job Seek](https://jseek.co) — search jobs, companies, and watchlists directly from Claude, ChatGPT, Cursor, or any MCP-compatible client.
 
-## Installation
+## Remote Endpoint
+
+A hosted Streamable HTTP endpoint is available at:
+
+```
+https://jseek.co/mcp
+```
+
+No authentication required. Add it as a custom connector in Claude.ai or ChatGPT.
+
+## Local Installation
 
 ### Claude Desktop
 
@@ -52,16 +62,33 @@ Add to `.cursor/mcp.json`:
 | `search_watchlists` | Search public watchlists |
 | `create_watchlist_link` | Generate a prefilled watchlist creation link |
 
-## Usage
+All tools are annotated as read-only and non-destructive.
 
-Ask Claude things like:
+## Usage Examples
 
-- "Find senior backend engineer jobs in Zurich"
-- "What companies are hiring for machine learning roles?"
-- "Show me React jobs paying over 100k EUR"
-- "Create a watchlist for Go developer positions in Switzerland"
+### Example 1: Find backend jobs in Zurich
 
-The server will guide Claude through the correct workflow: resolving freetext to slugs, searching with those slugs, and drilling into individual postings.
+**User:** "Find senior backend engineer jobs in Zurich"
+
+The server resolves "Zurich" to the slug `zurich` via `resolve_slugs`, then searches with `search_jobs(q: "backend engineer", loc: "zurich", sen: "senior")`. Returns matching companies with their top postings, each linking to the full listing on jseek.co.
+
+### Example 2: Explore a specific company
+
+**User:** "What jobs does Google have open?"
+
+The server calls `search_companies(q: "Google")` to find the company, then `search_jobs` filtered to that company's postings. For any interesting result, `get_job_detail` returns salary, technologies, seniority, experience requirements, and locations.
+
+### Example 3: Create a watchlist for email alerts
+
+**User:** "Create a watchlist for React jobs in Switzerland paying over 100k EUR"
+
+The server resolves "Switzerland" and "React" to slugs, then calls `create_watchlist_link(title: "React Jobs Switzerland 100k+", loc: "switzerland", tech: "react", sal: "100000-")`. Returns a prefilled link the user can open to save the watchlist and receive email alerts for new matching jobs.
+
+### Example 4: Discover filter options
+
+**User:** "What seniority levels can I filter by?"
+
+The server calls `list_taxonomies(type: "seniority")` and returns all available levels: Intern, Entry Level, Senior, Lead, Staff, Principal, Director, Executive.
 
 ## Options
 
@@ -72,6 +99,10 @@ The server will guide Claude through the correct workflow: resolving freetext to
 ## Rate Limits
 
 The Job Seek API is rate-limited to 30 requests per minute per IP.
+
+## Privacy Policy
+
+https://jseek.co/en/privacy-policy
 
 ## License
 
