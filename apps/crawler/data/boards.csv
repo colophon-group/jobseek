@@ -449,6 +449,7 @@ roland-berger,roland-berger-careers,https://careers.smartrecruiters.com/RolandBe
 rolex,rolex-careers,https://www.carrieres-rolex.com/Rolex/go/Toutes-nos-offres-Rolex/2901501?q=&department=&facility=&shifttype=,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://www.carrieres-rolex.com/googlefeed.xml""}",,
 rtx,rtx-careers,https://careers.rtx.com/global/en,sitemap,"{""url"": ""https://careers.rtx.com/global/en/sitemap.xml"", ""url_filter"": ""/job/""}",json-ld,"{""render"": true}"
 rtx,rtx-careers-workday,https://globalhr.wd5.myworkdayjobs.com/REC_RTX_Ext_Gateway,workday,"{""tenant"": ""globalhr"", ""board_id"": ""REC_RTX_Ext_Gateway""}",workday,
+sakana-ai,sakana-ai-careers,https://sakana.ai/careers/,dom,"{""url_filter"": ""careers/#(?!open-positions)""}",dom,"{""steps"": [{""tag"": ""h2"", ""field"": ""title""}, {""field"": ""description"", ""stop_tag"": ""h2"", ""html"": true}], ""defaults"": {""locations"": [""Tokyo, JP""]}}"
 salesforce,salesforce-careers,https://careers.salesforce.com/en/jobs/,sitemap,"{""url_filter"": ""/en/jobs/""}",json-ld,
 salt,salt-careers,https://www.jobup.ch/masks/salt/list_salt.asp,dom,,json-ld,
 samsung,samsung-careers,https://sec.wd3.myworkdayjobs.com/Samsung_Careers,workday,"{""company"": ""sec"", ""wd_instance"": ""wd3"", ""site"": ""Samsung_Careers""}",workday,
