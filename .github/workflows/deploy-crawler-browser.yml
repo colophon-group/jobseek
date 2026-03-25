@@ -1,4 +1,4 @@
-name: Deploy Crawler (Browser Worker)
+name: Deploy Crawler (Hetzner)
 
 on:
   push:
@@ -51,16 +51,24 @@ jobs:
           username: deploy
           key: ${{ secrets.HETZNER_SSH_KEY }}
           script: |
-            docker pull ghcr.io/${{ github.repository_owner }}/jobseek-crawler:latest
-            docker stop jobseek-crawler 2>/dev/null || true
-            docker rm jobseek-crawler 2>/dev/null || true
-            docker run -d \
-              --name jobseek-crawler \
+            IMAGE=ghcr.io/${{ github.repository_owner }}/jobseek-crawler:latest
+            docker pull $IMAGE
+
+            docker stop crawler-http crawler-browser 2>/dev/null || true
+            docker rm crawler-http crawler-browser 2>/dev/null || true
+
+            docker run -d --name crawler-http \
               --restart unless-stopped \
               --env-file /home/deploy/crawler.env \
-              --network host \
-              --memory=3g \
-              --shm-size=1g \
-              ghcr.io/${{ github.repository_owner }}/jobseek-crawler:latest \
-              uv run --no-sync scheduler
+              --network host --memory=1g --cpus=1.2 \
+              -e CRAWLER_MAX_CONCURRENT=15 -e CRAWLER_MAX_BROWSER=0 \
+              $IMAGE uv run --no-sync scheduler --http-only
+
+            docker run -d --name crawler-browser \
+              --restart unless-stopped \
+              --env-file /home/deploy/crawler.env \
+              --network host --memory=2g --shm-size=1g --cpus=0.8 \
+              -e CRAWLER_MAX_CONCURRENT=0 -e CRAWLER_MAX_BROWSER=1 -e METRICS_PORT=9092 \
+              $IMAGE uv run --no-sync scheduler --browser-only
+
             docker image prune -f
