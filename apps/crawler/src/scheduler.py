@@ -459,34 +459,23 @@ async def run_continuous_loop(
         try:
             skip = []  # no domain exclusion — semaphore controls concurrency
 
-            # Phase 1: HTTP monitors (priority)
+            # Priority: first-time monitors → first-time scrapes →
+            #           re-monitors → re-scrapes.
+            # Monitors get up to half the free slots; scrapes get the rest.
+            # Within each type, the SQL claim query orders first-time
+            # items first (last_success_at IS NULL / description pending).
+
+            # Phase 1: HTTP monitors (half the budget)
             if not browser_only:
-                budget = wp.http_free
-                if monitor and budget > 0:
+                budget = max(wp.http_free // 2, 1) if monitor else 0
+                if budget > 0:
                     items = await claim_monitor_work(pool, http, budget, worker_id, skip)
                     monitors_claimed += len(items)
                     for item in items:
                         wp.submit(item)
                         work_found = True
 
-            # Phase 2: browser monitors
-            if not http_only:
-                budget = wp.browser_free
-                if monitor and budget > 0:
-                    items = await claim_monitor_work(
-                        pool,
-                        http,
-                        budget,
-                        worker_id,
-                        skip,
-                        browser=True,
-                    )
-                    monitors_claimed += len(items)
-                    for item in items:
-                        wp.submit(item)
-                        work_found = True
-
-            # Phase 3: HTTP scrapes (fill remaining)
+            # Phase 2: HTTP scrapes (fill up to remaining)
             if not browser_only:
                 budget = wp.http_free
                 if scrape and budget > 0:
@@ -496,19 +485,48 @@ async def run_continuous_loop(
                         wp.submit(item)
                         work_found = True
 
-            # Phase 4: browser scrapes (fill remaining)
+            # Phase 3: HTTP monitors (fill any remaining slots)
+            if not browser_only:
+                budget = wp.http_free
+                if monitor and budget > 0:
+                    items = await claim_monitor_work(pool, http, budget, worker_id, skip)
+                    monitors_claimed += len(items)
+                    for item in items:
+                        wp.submit(item)
+                        work_found = True
+
+            # Phase 4: browser monitors (half budget)
+            if not http_only:
+                budget = max(wp.browser_free // 2, 1) if monitor else 0
+                if budget > 0:
+                    items = await claim_monitor_work(
+                        pool, http, budget, worker_id, skip, browser=True,
+                    )
+                    monitors_claimed += len(items)
+                    for item in items:
+                        wp.submit(item)
+                        work_found = True
+
+            # Phase 5: browser scrapes
             if not http_only:
                 budget = wp.browser_free
                 if scrape and budget > 0:
                     items = await claim_scrape_work(
-                        pool,
-                        http,
-                        budget,
-                        worker_id,
-                        skip,
-                        browser=True,
+                        pool, http, budget, worker_id, skip, browser=True,
                     )
                     scrapes_claimed += len(items)
+                    for item in items:
+                        wp.submit(item)
+                        work_found = True
+
+            # Phase 6: browser monitors (fill remaining)
+            if not http_only:
+                budget = wp.browser_free
+                if monitor and budget > 0:
+                    items = await claim_monitor_work(
+                        pool, http, budget, worker_id, skip, browser=True,
+                    )
+                    monitors_claimed += len(items)
                     for item in items:
                         wp.submit(item)
                         work_found = True

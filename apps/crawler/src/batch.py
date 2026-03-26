@@ -1310,9 +1310,10 @@ class WorkItem:
 _CLAIM_MONITORS = """
 WITH ranked AS (
   SELECT id,
+         (last_success_at IS NULL)::int AS is_first_crawl,
          row_number() OVER (
            PARTITION BY throttle_key
-           ORDER BY next_check_at, id
+           ORDER BY (last_success_at IS NULL) DESC, next_check_at, id
          ) AS domain_rank
   FROM job_board
   WHERE is_enabled = true
@@ -1325,7 +1326,7 @@ WITH ranked AS (
 picked AS (
   SELECT id
   FROM ranked
-  ORDER BY domain_rank, id
+  ORDER BY domain_rank, is_first_crawl DESC, id
   LIMIT $1
   FOR UPDATE SKIP LOCKED
 )
