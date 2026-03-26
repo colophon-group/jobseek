@@ -1,0 +1,29 @@
+{
+  "actorSpecification": 1,
+  "name": "company-discovery-actor",
+  "title": "Company Discovery from Job Aggregators",
+  "description": "Discovers companies with open positions via public ATS APIs (Greenhouse, Lever) and job aggregators (The Muse, Arbeitnow, Remotive). Outputs company name, job board URL, and actual open positions count.",
+  "version": "1.0",
+  "input": {
+    "title": "Input",
+    "description": "Configuration for company discovery.",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+      "maxCompaniesPerSource": {
+        "type": "integer",
+        "title": "Max companies per source",
+        "description": "Maximum number of companies to discover from each source.",
+        "editor": "number",
+        "default": 1000
+      },
+      "sources": {
+        "type": "array",
+        "title": "Sources",
+        "description": "Which sources to query. Options: greenhouse, themuse, megaemployers, arbeitnow, remotive",
+        "editor": "json",
+        "default": ["greenhouse", "themuse", "megaemployers", "arbeitnow", "remotive"]
+      }
+    }
+  }
+}
