@@ -214,38 +214,45 @@ async def _producer(
     max_interval = 10.0
     current_interval = idle_interval
 
-    while not shutdown_event.is_set():
-        try:
-            async with pool.acquire() as conn:
-                rows = await conn.fetch(_FETCH_PENDING, batch_size)
+    try:
+        while not shutdown_event.is_set():
+            try:
+                async with pool.acquire() as conn:
+                    rows = await conn.fetch(_FETCH_PENDING, batch_size)
 
-            if not rows:
-                current_interval = min(current_interval * 2, max_interval)
+                if not rows:
+                    current_interval = min(current_interval * 2, max_interval)
+                    with contextlib.suppress(TimeoutError):
+                        await asyncio.wait_for(
+                            shutdown_event.wait(), timeout=current_interval
+                        )
+                    continue
+
+                current_interval = idle_interval
+
+                for row in rows:
+                    if shutdown_event.is_set():
+                        break
+                    # Use wait_for to unblock on shutdown even when buffer is full
+                    while not shutdown_event.is_set():
+                        try:
+                            buffer.put_nowait(row)
+                            break
+                        except asyncio.QueueFull:
+                            await asyncio.sleep(0.1)
+
+                with contextlib.suppress(Exception):
+                    count = await pool.fetchval(_COUNT_PENDING)
+                    r2_pending_gauge.set(count)
+
+            except (asyncpg.PostgresError, OSError) as exc:
+                log.warning("r2_worker.producer_error", error=str(exc))
                 with contextlib.suppress(TimeoutError):
-                    await asyncio.wait_for(
-                        shutdown_event.wait(), timeout=current_interval
-                    )
-                continue
-
-            current_interval = idle_interval
-
-            for row in rows:
-                if shutdown_event.is_set():
-                    break
-                await buffer.put(row)  # blocks if buffer full
-
-            with contextlib.suppress(Exception):
-                count = await pool.fetchval(_COUNT_PENDING)
-                r2_pending_gauge.set(count)
-
-        except (asyncpg.PostgresError, OSError) as exc:
-            log.warning("r2_worker.producer_error", error=str(exc))
-            with contextlib.suppress(TimeoutError):
-                await asyncio.wait_for(shutdown_event.wait(), timeout=5.0)
-
-    # Signal all consumers to stop
-    for _ in range(num_consumers):
-        await buffer.put(_SENTINEL)
+                    await asyncio.wait_for(shutdown_event.wait(), timeout=5.0)
+    finally:
+        # Always signal consumers to stop, even on crash
+        for _ in range(num_consumers):
+            await buffer.put(_SENTINEL)
 
 
 # ---------------------------------------------------------------------------
@@ -283,13 +290,19 @@ async def run_r2_drain_loop(
         _producer(pool, buffer, shutdown_event, num_consumers)
     )
 
-    # Wait for producer to finish (shutdown signalled)
-    await producer
+    try:
+        # Wait for producer to finish (shutdown signalled or crash)
+        await producer
+    except Exception:
+        log.exception("r2_worker.producer_crashed")
+        # Producer's finally block already sent sentinels
+    finally:
+        # Wait for consumers to drain remaining buffer items + sentinels
+        await asyncio.gather(*consumers, return_exceptions=True)
 
-    # Wait for consumers to drain remaining buffer items
-    await asyncio.gather(*consumers)
-
-    total = sum(c.result() for c in consumers if not c.cancelled())
+    total = sum(
+        c.result() for c in consumers if c.done() and not c.cancelled() and c.exception() is None
+    )
     log.info("r2_worker.stopped", total_drained=total)
 
 
@@ -304,8 +317,6 @@ async def drain_remaining(pool: asyncpg.Pool) -> int:
     buffer: asyncio.Queue = asyncio.Queue(maxsize=num_consumers * 2)
 
     log.info("r2_worker.shutdown_drain_start", timeout_s=timeout, consumers=num_consumers)
-
-    shutdown = asyncio.Event()
 
     async def _timed_producer():
         batch_size = settings.r2_drain_batch_size
