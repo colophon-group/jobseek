@@ -44,7 +44,8 @@ def content_hash(data: str) -> int:
     return struct.unpack(">q", digest[:8])[0]
 
 
-_http: httpx.AsyncClient | None = None
+_http_clients: list[httpx.AsyncClient] = []
+_http_counter = 0
 _signer: S3SigV4Auth | None = None
 
 
@@ -60,18 +61,31 @@ def _get_signer() -> S3SigV4Auth:
 
 
 def _get_http() -> httpx.AsyncClient:
-    global _http
-    if _http is None:
+    """Round-robin across multiple httpx clients.
+
+    Each client has its own TCP connection pool to R2, avoiding the
+    single-host connection bottleneck.
+    """
+    global _http_clients, _http_counter
+    if not _http_clients:
         from src.config import settings
 
-        _http = httpx.AsyncClient(
-            timeout=httpx.Timeout(connect=10.0, read=30.0, write=30.0, pool=30.0),
-            limits=httpx.Limits(
-                max_connections=settings.r2_max_connections,
-                max_keepalive_connections=20,
-            ),
-        )
-    return _http
+        n_pools = max(settings.r2_max_connections // 20, 1)
+        conns_per = max(settings.r2_max_connections // n_pools, 10)
+        for _ in range(n_pools):
+            _http_clients.append(
+                httpx.AsyncClient(
+                    timeout=httpx.Timeout(
+                        connect=10.0, read=30.0, write=30.0, pool=30.0
+                    ),
+                    limits=httpx.Limits(
+                        max_connections=conns_per,
+                        max_keepalive_connections=conns_per,
+                    ),
+                )
+            )
+    _http_counter += 1
+    return _http_clients[_http_counter % len(_http_clients)]
 
 
 def _endpoint() -> str:
