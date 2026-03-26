@@ -14,7 +14,6 @@ import asyncio
 import contextlib
 import functools
 import json
-import threading
 from collections import defaultdict
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
@@ -363,27 +362,6 @@ async def _resolve_locations(
             loc_types.append(r.location_type)
 
     return loc_ids or None, loc_types or None
-
-
-_thread_local = threading.local()
-
-
-def _get_thread_resolver(source: LocationResolver) -> LocationResolver:
-    """Return a thread-local copy of the resolver with its own SQLite DB.
-
-    Each thread pool worker gets a private in-memory SQLite DB copied from
-    the source via ``connection.backup()``.  This avoids concurrent access
-    to the source's SQLite connection while keeping all data available.
-    """
-    resolver = getattr(_thread_local, "resolver", None)
-    if resolver is not None:
-        return resolver
-    copy = LocationResolver()
-    copy._init_db()
-    source._db.backup(copy._db)
-    copy._loaded = True
-    _thread_local.resolver = copy
-    return copy
 
 
 def _resolve_locations_sync(
@@ -1757,7 +1735,6 @@ async def _process_one_board_streaming(
                         # CPU-heavy per-job processing — run off the event loop
                         def _process_new_jobs_cpu(jobs):
                             """Pure CPU: normalize, detect language, resolve, extract."""
-                            thread_resolver = _get_thread_resolver(loc_resolver)
                             records = []
                             r2_staging = []
                             for j in jobs:
@@ -1767,7 +1744,7 @@ async def _process_one_board_streaming(
                                     j.language = detect_language(j.description)
 
                                 loc_ids_r, loc_types_r = _resolve_locations_sync(
-                                    thread_resolver,
+                                    loc_resolver,
                                     _coerce_locations(j.locations),
                                     _coerce_text(j.job_location_type),
                                     _coerce_text(j.language),
@@ -1815,9 +1792,7 @@ async def _process_one_board_streaming(
                                 r2_staging.append((j, t_ids))
                             return records, r2_staging
 
-                        records, r2_staging = await asyncio.to_thread(
-                            _process_new_jobs_cpu, new_jobs
-                        )
+                        records, r2_staging = _process_new_jobs_cpu(new_jobs)
 
                         # DB backfill for location cache misses (rare)
                         if await loc_resolver.backfill_misses():
@@ -2408,11 +2383,9 @@ def _process_jobs_cpu(
 ) -> dict[str, JobCPUResult]:
     """Pure CPU work: normalize, detect language, resolve, extract.
 
-    Runs in a thread via ``asyncio.to_thread``.  No async, no DB.
-    Uses a thread-local SQLite copy to avoid concurrent access.
+    Runs inline on the event loop.  No async, no DB.
     Returns a dict of ``{url: JobCPUResult}``.
     """
-    loc_resolver = _get_thread_resolver(loc_resolver)
     results: dict[str, JobCPUResult] = {}
     for url, j in jobs_by_url.items():
         j.description = normalize_description_html(j.description)
@@ -2594,11 +2567,10 @@ async def _monitor_worker(
                         with contextlib.suppress(Exception):
                             await asyncio.shield(pool.execute(_EXTEND_BOARD_LEASE, board_id))
 
-                        # CPU work in thread
+                        # CPU work inline (no threading — SQLite isn't thread-safe)
                         cpu_results: dict[str, JobCPUResult] = {}
                         if result.jobs_by_url:
-                            cpu_results = await asyncio.to_thread(
-                                _process_jobs_cpu,
+                            cpu_results = _process_jobs_cpu(
                                 result.jobs_by_url,
                                 company_id,
                                 board_id,
