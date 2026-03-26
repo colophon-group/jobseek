@@ -59,6 +59,7 @@ SET description_pending = NULL,
         ELSE to_be_enriched
     END
 WHERE id = $1::uuid
+  AND r2_pending_meta->>'new_hash' = $4
 """
 
 _INCREMENT_RETRY = """
@@ -141,7 +142,13 @@ async def _upload_one(
                 return True
 
         async with pool.acquire() as conn:
-            await conn.execute(_COMPLETE_R2_UPLOAD, posting_id, new_hash, tech_ids)
+            # Optimistic lock: only clear if meta hasn't been overwritten
+            hash_str = str(new_hash) if new_hash is not None else ""
+            result = await conn.execute(
+                _COMPLETE_R2_UPLOAD, posting_id, new_hash, tech_ids, hash_str
+            )
+            if result == "UPDATE 0":
+                log.info("r2_worker.stale_upload", posting_id=posting_id)
         r2_drain_total.labels(status="success").inc()
         return True
 
