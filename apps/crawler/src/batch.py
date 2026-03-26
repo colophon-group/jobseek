@@ -3571,10 +3571,19 @@ async def _unified_producer(
                         # Build _ScrapeWorkItem for each claimed scrape
                         if rows:
                             board_ids = list({str(r["board_id"]) for r in rows})
-                            scrapers = await _load_board_scrapers(pool, board_ids)
+                            scraper_info = await _load_board_scrapers(pool, board_ids)
                             for r in rows:
                                 bid = str(r["board_id"])
-                                info = scrapers.get(bid)
+                                if bid in scraper_info.rich_board_ids:
+                                    # Rich monitor board — clear scrape schedule
+                                    with contextlib.suppress(Exception):
+                                        await pool.execute(
+                                            "UPDATE job_posting SET next_scrape_at = NULL "
+                                            "WHERE id = $1",
+                                            r["id"],
+                                        )
+                                    continue
+                                info = scraper_info.scrapers.get(bid)
                                 if not info:
                                     with contextlib.suppress(Exception):
                                         await pool.execute(
