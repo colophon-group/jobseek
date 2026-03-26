@@ -32,17 +32,44 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push
+      - name: Build and push HTTP image (slim)
         uses: docker/build-push-action@v6
         with:
           context: apps/crawler
+          target: http
           platforms: linux/amd64
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/jobseek-crawler:latest
-            ghcr.io/${{ github.repository_owner }}/jobseek-crawler:v${{ steps.version.outputs.version }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+            ghcr.io/${{ github.repository_owner }}/jobseek-crawler-http:latest
+            ghcr.io/${{ github.repository_owner }}/jobseek-crawler-http:v${{ steps.version.outputs.version }}
+          cache-from: type=gha,scope=crawler-http
+          cache-to: type=gha,mode=max,scope=crawler-http
+
+      - name: Build and push R2 drain image (slim)
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/crawler
+          target: r2-drain
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/jobseek-crawler-r2-drain:latest
+            ghcr.io/${{ github.repository_owner }}/jobseek-crawler-r2-drain:v${{ steps.version.outputs.version }}
+          cache-from: type=gha,scope=crawler-r2-drain
+          cache-to: type=gha,mode=max,scope=crawler-r2-drain
+
+      - name: Build and push browser image (full)
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/crawler
+          target: browser
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/jobseek-crawler-browser:latest
+            ghcr.io/${{ github.repository_owner }}/jobseek-crawler-browser:v${{ steps.version.outputs.version }}
+          cache-from: type=gha,scope=crawler-browser
+          cache-to: type=gha,mode=max,scope=crawler-browser
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
@@ -51,14 +78,19 @@ jobs:
           username: deploy
           key: ${{ secrets.HETZNER_SSH_KEY }}
           script: |
-            IMAGE=ghcr.io/${{ github.repository_owner }}/jobseek-crawler:latest
-            docker pull $IMAGE
+            OWNER=${{ github.repository_owner }}
 
-            # Write env file from CI secret (no manual machine config needed)
+            # Write env file from CI secret
             cat > /home/deploy/crawler.env <<'ENVEOF'
             ${{ secrets.CRAWLER_ENV }}
             ENVEOF
 
+            # Pull all images
+            docker pull ghcr.io/$OWNER/jobseek-crawler-http:latest
+            docker pull ghcr.io/$OWNER/jobseek-crawler-browser:latest
+            docker pull ghcr.io/$OWNER/jobseek-crawler-r2-drain:latest
+
+            # Stop and remove old containers
             docker stop crawler-http crawler-browser crawler-r2-drain 2>/dev/null || true
             docker rm crawler-http crawler-browser crawler-r2-drain 2>/dev/null || true
 
@@ -67,20 +99,20 @@ jobs:
               --env-file /home/deploy/crawler.env \
               --network host --memory=1g --cpus=1.2 \
               -e CRAWLER_MAX_CONCURRENT=15 -e CRAWLER_MAX_BROWSER=0 \
-              $IMAGE uv run --no-sync scheduler --http-only
+              ghcr.io/$OWNER/jobseek-crawler-http:latest
 
             docker run -d --name crawler-browser \
               --restart unless-stopped \
               --env-file /home/deploy/crawler.env \
               --network host --memory=2g --shm-size=1g --cpus=0.8 \
               -e CRAWLER_MAX_CONCURRENT=0 -e CRAWLER_MAX_BROWSER=1 -e METRICS_PORT=9092 \
-              $IMAGE uv run --no-sync scheduler --browser-only
+              ghcr.io/$OWNER/jobseek-crawler-browser:latest
 
             docker run -d --name crawler-r2-drain \
               --restart unless-stopped \
               --env-file /home/deploy/crawler.env \
-              --network host --memory=256m --cpus=0.2 \
+              --network host --memory=192m --cpus=0.5 \
               -e METRICS_PORT=9093 \
-              $IMAGE uv run --no-sync scheduler --r2-drain-only
+              ghcr.io/$OWNER/jobseek-crawler-r2-drain:latest
 
             docker image prune -f
