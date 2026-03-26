@@ -72,6 +72,7 @@ Monitor Types (cheapest first):
 
   Type              Cost    Returns           Scraper needed?
   ──────────────────────────────────────────────────────────────
+  eightfold         8       Job URLs          Auto-configured (json-ld)
   join              9       Job URLs          Auto-configured
   ashby             10      Full job data     No (skipped)
   bite              10      Job URLs          Auto-configured
@@ -326,6 +327,50 @@ breezy — Breezy HR Public Listing Endpoint
   Zero jobs?  Valid board with no open postings still returns 0 jobs.
   False positives:  Redirects to marketing.breezy.hr are rejected unless
                     /json validates as a real listing endpoint."""
+
+MONITOR_EIGHTFOLD = """\
+eightfold — Eightfold AI Careers Portal (sitemap wrapper)
+
+  Sitemap:  GET https://{host}/careers/sitemap.xml
+  Returns:  Job URLs (sitemap URL set)
+  Scraper:  Auto-configured (json-ld) — no render needed
+  Cost:     8 — cheapest monitor type
+  Note:     Thin wrapper over the sitemap monitor. Auto-constructs the
+            sitemap URL from the board URL and applies url_filter.
+            JSON-LD JobPosting schema is embedded in static HTML on all
+            Eightfold job pages — no Playwright/render required.
+
+  Eightfold AI powers careers portals for 170+ enterprises including
+  Starbucks, HSBC, Microsoft, Kering, Citigroup, Micron, etc.
+
+  Config:
+    {}                                            Minimal — sitemap URL auto-derived
+    {"url_filter": "/careers/job/"}               Filter non-job URLs (recommended)
+    {"sitemap_url": "https://custom.com/sitemap.xml"}  Override auto-derived URL
+
+    url_filter     Regex to include only job URLs. Recommended: "/careers/job/"
+                   Eightfold sitemaps include the careers landing page alongside
+                   job URLs — the filter removes it.
+    sitemap_url    Override the auto-derived sitemap URL. Normally not needed —
+                   the monitor constructs it as {board_url_origin}/careers/sitemap.xml.
+
+  URL patterns:
+    *.eightfold.ai subdomains:  starbucks.eightfold.ai/careers
+    White-label custom domains: careers.kering.com, apply.careers.microsoft.com
+    Redirecting subdomains:     netflix.eightfold.ai → explore.jobs.netflix.net
+
+  Detection:  ws probe shows "Eightfold AI — N jobs at {sitemap_url}"
+              Detects *.eightfold.ai domains, HTML markers (eightfold.ai, pcsx),
+              and PCSX API endpoint probe for white-label domains.
+
+  Why not use the API?
+    The Eightfold PCSX search API (/api/pcsx/search) has a hard 2,000 offset
+    cap — companies with more jobs (Starbucks: 21K) are unreachable via API.
+    The sitemap has no such limit. Some tenants also block the search API
+    entirely (STMicroelectronics returns 403). Sitemap is universally reliable.
+
+  Zero jobs?  Verify the sitemap URL exists: curl {host}/careers/sitemap.xml
+              Check url_filter isn't too restrictive."""
 
 MONITOR_GEM = """\
 gem — Gem ATS Job Board API
@@ -1708,6 +1753,7 @@ MONITOR_CARDS: dict[str, str] = {
     "breezy": MONITOR_BREEZY,
     "deel": MONITOR_DEEL,
     "dvinci": MONITOR_DVINCI,
+    "eightfold": MONITOR_EIGHTFOLD,
     "gem": MONITOR_GEM,
     "greenhouse": MONITOR_GREENHOUSE,
     "hireology": MONITOR_HIREOLOGY,
