@@ -145,7 +145,7 @@ def _estimate_initial_load(n_jobs: int, scraper_per_job: float = _DEFAULT_SCRAPE
 
 
 _MONITOR_PROBE_HINTS: dict[str, str] = {
-    "eightfold": "Tip: Eightfold AI portal \u2014 use url_filter: /careers/job/ to exclude non-job pages",
+    "eightfold": "Tip: Eightfold AI portal — use url_filter: /careers/job/ to exclude non-job pages",  # noqa: E501
     "sitemap": "Tip: may include non-job URLs \u2014 verify count, consider url_filter",
     "api_sniffer": "Tip: auto-maps fields from API response \u2014 verify field quality",
     "dom": "Tip: static detection only \u2014 try render: true if count seems low",

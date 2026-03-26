@@ -22,9 +22,7 @@ from src.core.monitors.sitemap import discover as sitemap_discover
 
 log = structlog.get_logger()
 
-_EIGHTFOLD_SUBDOMAIN_RE = re.compile(
-    r"^(?:[\w-]+)\.eightfold\.ai$", re.IGNORECASE
-)
+_EIGHTFOLD_SUBDOMAIN_RE = re.compile(r"^(?:[\w-]+)\.eightfold\.ai$", re.IGNORECASE)
 
 
 def _is_eightfold_domain(url: str) -> bool:
@@ -62,9 +60,7 @@ async def _probe_pcsx(host: str, client: httpx.AsyncClient) -> bool:
     return False
 
 
-async def discover(
-    board: dict, client: httpx.AsyncClient, pw=None
-) -> tuple[set[str], str | None]:
+async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> tuple[set[str], str | None]:
     """Delegate to the sitemap monitor with pre-configured sitemap URL."""
     metadata = board.get("metadata") or {}
     if not metadata.get("sitemap_url"):
@@ -73,9 +69,7 @@ async def discover(
     return await sitemap_discover(sitemap_board, client, pw=pw)
 
 
-async def can_handle(
-    url: str, client: httpx.AsyncClient | None = None, pw=None
-) -> dict | None:
+async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None) -> dict | None:
     """Detect Eightfold: domain pattern, page HTML markers, or PCSX API probe."""
     parsed = urlparse(url)
     host = (parsed.hostname or "").lower()
@@ -85,7 +79,7 @@ async def can_handle(
         sitemap = _sitemap_url(url)
         result: dict = {"sitemap_url": sitemap}
         if client:
-            from src.core.monitors.sitemap import _try_fetch_xml, _extract_urls
+            from src.core.monitors.sitemap import _extract_urls, _try_fetch_xml
 
             root = await _try_fetch_xml(sitemap, client)
             if root is not None:
@@ -103,7 +97,7 @@ async def can_handle(
         lower = html.lower()
         if "eightfold.ai" in lower or "pcsx" in lower or "eightfoldai" in lower:
             sitemap = _sitemap_url(url)
-            from src.core.monitors.sitemap import _try_fetch_xml, _extract_urls
+            from src.core.monitors.sitemap import _extract_urls, _try_fetch_xml
 
             root = await _try_fetch_xml(sitemap, client)
             if root is not None:
