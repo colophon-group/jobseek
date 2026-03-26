@@ -12,7 +12,7 @@ from src.batch import (
     _stable_date,
     _stage_r2_pending,
 )
-from src.r2_worker import _drain_one
+from src.r2_worker import _upload_one
 
 # ── _stage_r2_pending tests ──────────────────────────────────────────
 
@@ -192,14 +192,28 @@ class TestSerializeLocalizations:
         assert result == {"fr": "<p>Bonjour</p>"}
 
 
-# ── _drain_one tests ─────────────────────────────────────────────────
+# ── helpers ──────────────────────────────────────────────────────────
+
+
+def _mock_pool_with_conn():
+    """Create a mock pool where pool.acquire() context manager yields a mock conn."""
+    conn = AsyncMock()
+    pool = MagicMock()
+    cm = AsyncMock()
+    cm.__aenter__.return_value = conn
+    cm.__aexit__.return_value = False
+    pool.acquire.return_value = cm
+    return pool, conn
+
+
+# ── _upload_one tests ────────────────────────────────────────────────
 
 
 class TestDrainOne:
     @patch("src.r2_worker.upload_posting", new_callable=AsyncMock)
     async def test_success_clears_pending(self, mock_upload):
         """Successful upload NULLs pending columns and sets hash."""
-        conn = AsyncMock()
+        pool, conn = _mock_pool_with_conn()
 
         meta = {
             "locale": "en",
@@ -218,7 +232,7 @@ class TestDrainOne:
             "description_r2_hash": None,
         }[k]
 
-        ok = await _drain_one(conn, row)
+        ok = await _upload_one(pool, row)
 
         assert ok is True
         mock_upload.assert_awaited_once_with("abc-123", "en", "<p>Hello</p>", {"title": "Test"})
@@ -233,7 +247,7 @@ class TestDrainOne:
     @patch("src.r2_worker.upload_posting", new_callable=AsyncMock)
     async def test_meta_only_fetches_from_r2(self, mock_upload):
         """Meta-only change fetches existing HTML from R2."""
-        conn = AsyncMock()
+        pool, conn = _mock_pool_with_conn()
 
         meta = {
             "locale": "en",
@@ -254,7 +268,7 @@ class TestDrainOne:
 
         with patch("src.r2_worker.get_description_html", new_callable=AsyncMock) as mock_get:
             mock_get.return_value = "<p>Existing</p>"
-            ok = await _drain_one(conn, row)
+            ok = await _upload_one(pool, row)
 
         assert ok is True
         mock_upload.assert_awaited_once_with(
@@ -265,7 +279,7 @@ class TestDrainOne:
     async def test_retry_on_failure(self, mock_upload):
         """Failed upload increments retry count."""
         mock_upload.side_effect = Exception("R2 down")
-        conn = AsyncMock()
+        pool, conn = _mock_pool_with_conn()
 
         meta = {
             "locale": "en",
@@ -284,7 +298,7 @@ class TestDrainOne:
             "description_r2_hash": None,
         }[k]
 
-        ok = await _drain_one(conn, row)
+        ok = await _upload_one(pool, row)
 
         assert ok is False
         # Should increment retry, not abandon
@@ -295,7 +309,7 @@ class TestDrainOne:
     async def test_abandon_after_max_retries_monitor(self, mock_upload):
         """Monitor source: abandon after max retries, no next_scrape_at reset."""
         mock_upload.side_effect = Exception("R2 down")
-        conn = AsyncMock()
+        pool, conn = _mock_pool_with_conn()
 
         meta = {
             "locale": "en",
@@ -314,7 +328,7 @@ class TestDrainOne:
             "description_r2_hash": None,
         }[k]
 
-        ok = await _drain_one(conn, row)
+        ok = await _upload_one(pool, row)
 
         assert ok is False
         # Should abandon (NULL pending columns)
@@ -332,7 +346,7 @@ class TestDrainOne:
     async def test_abandon_after_max_retries_scrape_resets_scrape(self, mock_upload):
         """Scrape source: abandon and reset next_scrape_at for re-scrape."""
         mock_upload.side_effect = Exception("R2 down")
-        conn = AsyncMock()
+        pool, conn = _mock_pool_with_conn()
 
         meta = {
             "locale": "en",
@@ -351,7 +365,7 @@ class TestDrainOne:
             "description_r2_hash": None,
         }[k]
 
-        ok = await _drain_one(conn, row)
+        ok = await _upload_one(pool, row)
 
         assert ok is False
         # Should reset next_scrape_at for scrape source
@@ -362,7 +376,7 @@ class TestDrainOne:
     @patch("src.r2_worker.upload_description", new_callable=AsyncMock)
     async def test_localizations_uploaded(self, mock_loc_upload, mock_upload):
         """Secondary locale descriptions are uploaded."""
-        conn = AsyncMock()
+        pool, conn = _mock_pool_with_conn()
 
         meta = {
             "locale": "en",
@@ -381,14 +395,14 @@ class TestDrainOne:
             "description_r2_hash": None,
         }[k]
 
-        ok = await _drain_one(conn, row)
+        ok = await _upload_one(pool, row)
 
         assert ok is True
         assert mock_loc_upload.await_count == 2
 
     async def test_null_meta_abandons(self):
         """If r2_pending_meta is NULL (shouldn't happen), abandon gracefully."""
-        conn = AsyncMock()
+        pool, conn = _mock_pool_with_conn()
 
         row = MagicMock()
         row.__getitem__ = lambda s, k: {
@@ -398,7 +412,7 @@ class TestDrainOne:
             "description_r2_hash": None,
         }[k]
 
-        ok = await _drain_one(conn, row)
+        ok = await _upload_one(pool, row)
 
         assert ok is True
         # Should abandon
@@ -533,7 +547,7 @@ class TestDrainOneEdgeCases:
     @patch("src.r2_worker.upload_posting", new_callable=AsyncMock)
     async def test_meta_as_json_string(self, mock_upload):
         """r2_pending_meta stored as JSON string (not dict) is handled."""
-        conn = AsyncMock()
+        pool, conn = _mock_pool_with_conn()
 
         meta = json.dumps(
             {
@@ -554,14 +568,14 @@ class TestDrainOneEdgeCases:
             "description_r2_hash": None,
         }[k]
 
-        ok = await _drain_one(conn, row)
+        ok = await _upload_one(pool, row)
         assert ok is True
         mock_upload.assert_awaited_once()
 
     @patch("src.r2_worker.upload_posting", new_callable=AsyncMock)
     async def test_missing_extras_key(self, mock_upload):
         """Meta without extras key defaults to empty dict."""
-        conn = AsyncMock()
+        pool, conn = _mock_pool_with_conn()
 
         meta = {
             "locale": "en",
@@ -580,7 +594,7 @@ class TestDrainOneEdgeCases:
             "description_r2_hash": None,
         }[k]
 
-        ok = await _drain_one(conn, row)
+        ok = await _upload_one(pool, row)
         assert ok is True
         # upload_posting called with empty extras dict
         call_args = mock_upload.await_args
@@ -589,7 +603,7 @@ class TestDrainOneEdgeCases:
     @patch("src.r2_worker.upload_posting", new_callable=AsyncMock)
     async def test_new_hash_none_in_meta(self, mock_upload):
         """new_hash=None in meta is passed through to DB (NULL hash)."""
-        conn = AsyncMock()
+        pool, conn = _mock_pool_with_conn()
 
         meta = {
             "locale": "en",
@@ -608,7 +622,7 @@ class TestDrainOneEdgeCases:
             "description_r2_hash": None,
         }[k]
 
-        ok = await _drain_one(conn, row)
+        ok = await _upload_one(pool, row)
         assert ok is True
         complete_calls = [
             c

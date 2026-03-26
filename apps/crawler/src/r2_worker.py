@@ -1,17 +1,17 @@
 """Background R2 upload worker.
 
 Drains pending R2 uploads from the ``description_pending`` and
-``r2_pending_meta`` columns on ``job_posting``.  Runs as a long-lived
-coroutine alongside the main scheduler loop.
+``r2_pending_meta`` columns on ``job_posting``.
 
-Design:
-    Monitor/scrape tasks write to the pending columns (same transaction
-    as job insert/update).  This worker reads them, uploads to R2, and
-    NULLs the columns once the upload succeeds.
+Architecture: producer–consumer with an async buffer.
 
-    If only extras changed (not description), ``description_pending`` is
-    NULL and the worker fetches the existing HTML from R2 before calling
-    ``upload_posting``.
+    Producer : fetches batches from DB, fills the buffer
+    Consumers: N concurrent uploaders (one per R2 connection)
+
+The buffer size caps RAM usage.  The consumer count caps concurrent
+R2 connections (and thus CPU/network load).  When the buffer is full
+the producer blocks, providing natural backpressure on the DB side.
+When the buffer is empty the consumers idle, waiting for work.
 """
 
 from __future__ import annotations
@@ -90,24 +90,26 @@ WHERE description_pending IS NOT NULL
    OR r2_pending_meta IS NOT NULL
 """
 
+_SENTINEL = None  # signals consumers to stop
+
 
 # ---------------------------------------------------------------------------
-# Single-item drain
+# Consumer: upload one item to R2
 # ---------------------------------------------------------------------------
 
 
-async def _drain_one(
-    conn: asyncpg.Connection,
+async def _upload_one(
+    pool: asyncpg.Pool,
     row: asyncpg.Record,
 ) -> bool:
-    """Process one pending R2 upload.  Returns True on success."""
+    """Upload one pending item to R2 and update DB.  Returns True on success."""
     posting_id = str(row["id"])
     description = row["description_pending"]
     meta_raw = row["r2_pending_meta"]
 
     if meta_raw is None:
-        # Shouldn't happen, but handle gracefully
-        await conn.execute(_ABANDON_PENDING, posting_id)
+        async with pool.acquire() as conn:
+            await conn.execute(_ABANDON_PENDING, posting_id)
         return True
 
     meta = json.loads(meta_raw) if isinstance(meta_raw, str) else meta_raw
@@ -134,10 +136,12 @@ async def _drain_one(
                 await upload_posting(posting_id, locale, existing_html, extras)
             else:
                 log.warning("r2_worker.no_existing_html", posting_id=posting_id)
-                await conn.execute(_ABANDON_PENDING, posting_id)
+                async with pool.acquire() as conn:
+                    await conn.execute(_ABANDON_PENDING, posting_id)
                 return True
 
-        await conn.execute(_COMPLETE_R2_UPLOAD, posting_id, new_hash, tech_ids)
+        async with pool.acquire() as conn:
+            await conn.execute(_COMPLETE_R2_UPLOAD, posting_id, new_hash, tech_ids)
         r2_drain_total.labels(status="success").inc()
         return True
 
@@ -145,25 +149,107 @@ async def _drain_one(
         log.warning("r2_worker.upload_error", posting_id=posting_id, retry=retry_count)
         r2_drain_errors.inc()
 
-        if retry_count + 1 >= settings.r2_drain_max_retries:
-            log.error(
-                "r2_worker.max_retries",
-                posting_id=posting_id,
-                source=source,
-            )
-            await conn.execute(_ABANDON_PENDING, posting_id)
-            if source == "scrape":
-                await conn.execute(_RESET_SCRAPE, posting_id)
-            r2_drain_total.labels(status="abandoned").inc()
-        else:
-            await conn.execute(_INCREMENT_RETRY, posting_id)
-            r2_drain_total.labels(status="retried").inc()
+        try:
+            async with pool.acquire() as conn:
+                if retry_count + 1 >= settings.r2_drain_max_retries:
+                    log.error(
+                        "r2_worker.max_retries",
+                        posting_id=posting_id,
+                        source=source,
+                    )
+                    await conn.execute(_ABANDON_PENDING, posting_id)
+                    if source == "scrape":
+                        await conn.execute(_RESET_SCRAPE, posting_id)
+                    r2_drain_total.labels(status="abandoned").inc()
+                else:
+                    await conn.execute(_INCREMENT_RETRY, posting_id)
+                    r2_drain_total.labels(status="retried").inc()
+        except Exception:
+            log.warning("r2_worker.db_error_on_retry", posting_id=posting_id)
 
         return False
 
 
 # ---------------------------------------------------------------------------
-# Drain loop
+# Consumer loop
+# ---------------------------------------------------------------------------
+
+
+async def _consumer(
+    pool: asyncpg.Pool,
+    buffer: asyncio.Queue,
+    consumer_id: int,
+) -> int:
+    """Pull items from buffer and upload to R2.  Returns count of successes."""
+    drained = 0
+    while True:
+        row = await buffer.get()
+        if row is _SENTINEL:
+            buffer.task_done()
+            break
+        try:
+            if await _upload_one(pool, row):
+                drained += 1
+        except Exception:
+            log.exception("r2_worker.consumer_error", consumer=consumer_id)
+        finally:
+            buffer.task_done()
+    return drained
+
+
+# ---------------------------------------------------------------------------
+# Producer loop
+# ---------------------------------------------------------------------------
+
+
+async def _producer(
+    pool: asyncpg.Pool,
+    buffer: asyncio.Queue,
+    shutdown_event: asyncio.Event,
+    num_consumers: int,
+) -> None:
+    """Fetch pending rows from DB in batches and feed the buffer."""
+    batch_size = settings.r2_drain_batch_size
+    idle_interval = 1.0
+    max_interval = 10.0
+    current_interval = idle_interval
+
+    while not shutdown_event.is_set():
+        try:
+            async with pool.acquire() as conn:
+                rows = await conn.fetch(_FETCH_PENDING, batch_size)
+
+            if not rows:
+                current_interval = min(current_interval * 2, max_interval)
+                with contextlib.suppress(TimeoutError):
+                    await asyncio.wait_for(
+                        shutdown_event.wait(), timeout=current_interval
+                    )
+                continue
+
+            current_interval = idle_interval
+
+            for row in rows:
+                if shutdown_event.is_set():
+                    break
+                await buffer.put(row)  # blocks if buffer full
+
+            with contextlib.suppress(Exception):
+                count = await pool.fetchval(_COUNT_PENDING)
+                r2_pending_gauge.set(count)
+
+        except (asyncpg.PostgresError, OSError) as exc:
+            log.warning("r2_worker.producer_error", error=str(exc))
+            with contextlib.suppress(TimeoutError):
+                await asyncio.wait_for(shutdown_event.wait(), timeout=5.0)
+
+    # Signal all consumers to stop
+    for _ in range(num_consumers):
+        await buffer.put(_SENTINEL)
+
+
+# ---------------------------------------------------------------------------
+# Public API
 # ---------------------------------------------------------------------------
 
 
@@ -171,77 +257,82 @@ async def run_r2_drain_loop(
     pool: asyncpg.Pool,
     shutdown_event: asyncio.Event,
 ) -> None:
-    """Continuously drain pending R2 uploads.
+    """Run the producer–consumer R2 drain pipeline.
 
-    Runs as a long-lived coroutine alongside the main scheduler loop.
+    ``r2_max_connections`` controls the number of concurrent consumers
+    (one R2 upload per consumer).  ``r2_drain_batch_size`` controls how
+    many rows the producer fetches per DB query.  Buffer size is
+    ``2 * r2_max_connections`` to keep consumers saturated.
     """
-    batch_size = settings.r2_drain_batch_size
-    idle_interval = 2.0
-    max_interval = 10.0
-    current_interval = idle_interval
+    num_consumers = settings.r2_max_connections
+    buffer_size = num_consumers * 2
+    buffer: asyncio.Queue = asyncio.Queue(maxsize=buffer_size)
 
-    log.info("r2_worker.starting", batch_size=batch_size)
+    log.info(
+        "r2_worker.starting",
+        consumers=num_consumers,
+        buffer_size=buffer_size,
+        batch_size=settings.r2_drain_batch_size,
+    )
 
-    while not shutdown_event.is_set():
-        try:
-            drained = 0
-            async with pool.acquire() as conn:
-                rows = await conn.fetch(_FETCH_PENDING, batch_size)
+    consumers = [
+        asyncio.create_task(_consumer(pool, buffer, i))
+        for i in range(num_consumers)
+    ]
+    producer = asyncio.create_task(
+        _producer(pool, buffer, shutdown_event, num_consumers)
+    )
 
-                if not rows:
-                    current_interval = min(current_interval * 2, max_interval)
-                    with contextlib.suppress(TimeoutError):
-                        await asyncio.wait_for(shutdown_event.wait(), timeout=current_interval)
-                    continue
+    # Wait for producer to finish (shutdown signalled)
+    await producer
 
-                current_interval = idle_interval
+    # Wait for consumers to drain remaining buffer items
+    await asyncio.gather(*consumers)
 
-                for row in rows:
-                    if shutdown_event.is_set():
-                        break
-                    if await _drain_one(conn, row):
-                        drained += 1
-
-            if drained:
-                log.info("r2_worker.batch", drained=drained, total=len(rows))
-
-            with contextlib.suppress(Exception):
-                count = await pool.fetchval(_COUNT_PENDING)
-                r2_pending_gauge.set(count)
-
-        except (asyncpg.PostgresError, OSError) as exc:
-            log.warning("r2_worker.db_error", error=str(exc))
-            with contextlib.suppress(TimeoutError):
-                await asyncio.wait_for(shutdown_event.wait(), timeout=5.0)
-
-    log.info("r2_worker.stopped")
+    total = sum(c.result() for c in consumers if not c.cancelled())
+    log.info("r2_worker.stopped", total_drained=total)
 
 
 async def drain_remaining(pool: asyncpg.Pool) -> int:
-    """Drain as many pending uploads as possible within the configured timeout.
+    """Drain pending uploads during graceful shutdown.
 
-    Called during graceful shutdown.
+    Runs a mini producer–consumer pipeline with a deadline.
     """
     timeout = settings.r2_drain_shutdown_timeout
-    drained = 0
     deadline = monotonic() + timeout
+    num_consumers = min(settings.r2_max_connections, 10)
+    buffer: asyncio.Queue = asyncio.Queue(maxsize=num_consumers * 2)
 
-    log.info("r2_worker.shutdown_drain_start", timeout_s=timeout)
+    log.info("r2_worker.shutdown_drain_start", timeout_s=timeout, consumers=num_consumers)
 
-    while monotonic() < deadline:
-        try:
-            async with pool.acquire() as conn:
-                rows = await conn.fetch(_FETCH_PENDING, 50)
+    shutdown = asyncio.Event()
+
+    async def _timed_producer():
+        batch_size = settings.r2_drain_batch_size
+        while monotonic() < deadline:
+            try:
+                async with pool.acquire() as conn:
+                    rows = await conn.fetch(_FETCH_PENDING, batch_size)
                 if not rows:
                     break
                 for row in rows:
                     if monotonic() >= deadline:
                         break
-                    if await _drain_one(conn, row):
-                        drained += 1
-        except Exception:
-            log.warning("r2_worker.shutdown_drain_error", exc_info=True)
-            break
+                    await buffer.put(row)
+            except Exception:
+                log.warning("r2_worker.shutdown_drain_error", exc_info=True)
+                break
+        for _ in range(num_consumers):
+            await buffer.put(_SENTINEL)
+
+    consumers = [
+        asyncio.create_task(_consumer(pool, buffer, i))
+        for i in range(num_consumers)
+    ]
+    await _timed_producer()
+    await asyncio.gather(*consumers)
+
+    drained = sum(c.result() for c in consumers if not c.cancelled())
 
     with contextlib.suppress(Exception):
         remaining = await pool.fetchval(_COUNT_PENDING)
