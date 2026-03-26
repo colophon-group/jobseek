@@ -108,8 +108,30 @@ def _r2_prefix(posting_id: str, locale: str) -> tuple[str, str]:
 
 
 # ---------------------------------------------------------------------------
-# Stage 1: Producer — DB fetch only (no R2 calls)
+# Stage 1: Producer — DB fetch + R2 prefetch
 # ---------------------------------------------------------------------------
+
+
+async def _prefetch_r2_state(row) -> dict:
+    """Fetch existing R2 content for a pending row (concurrent with others)."""
+    meta_raw = row["r2_pending_meta"]
+    if meta_raw is None:
+        return {"row": row, "_r2_html": None, "_r2_history": None}
+
+    meta = json.loads(meta_raw) if isinstance(meta_raw, str) else meta_raw
+    locale = meta.get("locale", "en")
+    posting_id = str(row["id"])
+
+    latest_key, history_key = _r2_prefix(posting_id, locale)
+    try:
+        r2_html, r2_history = await asyncio.gather(
+            get_object(latest_key),
+            get_object(history_key),
+        )
+    except Exception:
+        r2_html, r2_history = None, None
+
+    return {"row": row, "_r2_html": r2_html, "_r2_history": r2_history}
 
 
 async def _producer(
@@ -138,14 +160,19 @@ async def _producer(
 
                 current_interval = idle_interval
 
-                # Put raw rows — consumers do their own R2 GETs
-                for row in rows:
+                # Prefetch R2 state and enqueue concurrently — each item
+                # enters the buffer as soon as its GETs complete, so
+                # consumers start uploading before the whole batch is fetched.
+                async def _prefetch_and_enqueue(r):
+                    item = await _prefetch_r2_state(r)
                     while not shutdown_event.is_set():
                         try:
-                            buffer.put_nowait(row)
-                            break
+                            buffer.put_nowait(item)
+                            return
                         except asyncio.QueueFull:
                             await asyncio.sleep(0.1)
+
+                await asyncio.gather(*[_prefetch_and_enqueue(row) for row in rows])
 
                 with contextlib.suppress(Exception):
                     count = await pool.fetchval(_COUNT_PENDING)
@@ -175,7 +202,9 @@ async def _upload_one(item: dict) -> tuple:
 
     Returns a result tuple for the DB writer. No DB access here.
     """
-    row = item  # raw asyncpg.Record from the producer
+    row = item["row"]
+    r2_html = item["_r2_html"]
+    r2_history_raw = item["_r2_history"]
 
     posting_id = str(row["id"])
     description = row["description_pending"]
@@ -194,16 +223,6 @@ async def _upload_one(item: dict) -> tuple:
     new_hash = meta.get("new_hash")
 
     try:
-        # Fetch existing R2 state (GETs done by each consumer independently)
-        latest_key, history_key = _r2_prefix(posting_id, locale)
-        try:
-            r2_html, r2_history_raw = await asyncio.gather(
-                get_object(latest_key),
-                get_object(history_key),
-            )
-        except Exception:
-            r2_html, r2_history_raw = None, None
-
         html = description
         if not html:
             html = r2_html
@@ -211,6 +230,7 @@ async def _upload_one(item: dict) -> tuple:
                 log.warning("r2_worker.no_existing_html", posting_id=posting_id)
                 return (_ABANDON, posting_id, source)
 
+        latest_key, history_key = _r2_prefix(posting_id, locale)
         history = json.loads(r2_history_raw) if r2_history_raw else {"versions": []}
         existing_extras = history.get("current_extras", {})
 
@@ -372,7 +392,7 @@ async def run_r2_drain_loop(
 ) -> None:
     """Run the three-stage R2 drain pipeline."""
     num_consumers = settings.r2_max_connections
-    buffer_size = num_consumers * 4  # large enough for R2 GETs to resolve while queued
+    buffer_size = num_consumers * 2
     buffer: asyncio.Queue = asyncio.Queue(maxsize=buffer_size)
     done_queue: asyncio.Queue = asyncio.Queue(maxsize=buffer_size)
 
@@ -383,17 +403,47 @@ async def run_r2_drain_loop(
         batch_size=settings.r2_drain_batch_size,
     )
 
+    num_producers = settings.r2_drain_producers
+
     consumers = [
         asyncio.create_task(_consumer(buffer, done_queue, i)) for i in range(num_consumers)
     ]
     writer = asyncio.create_task(_db_writer(pool, done_queue))
-    producer = asyncio.create_task(_producer(pool, buffer, shutdown_event, num_consumers))
+    producers = [
+        asyncio.create_task(_producer(pool, buffer, shutdown_event, num_consumers))
+        for _ in range(num_producers)
+    ]
+
+    log.info("r2_worker.producers", count=num_producers)
+
+    async def _buffer_monitor():
+        """Sample buffer fullness every second, log average every 10s."""
+        samples: list[float] = []
+        while not shutdown_event.is_set():
+            samples.append(buffer.qsize() / buffer_size if buffer_size else 0)
+            if len(samples) >= 10:
+                avg = sum(samples) / len(samples)
+                log.info(
+                    "r2_worker.buffer",
+                    avg_pct=round(avg * 100, 1),
+                    current=buffer.qsize(),
+                    max=buffer_size,
+                    done_q=done_queue.qsize(),
+                )
+                samples.clear()
+            with contextlib.suppress(TimeoutError):
+                await asyncio.wait_for(shutdown_event.wait(), timeout=1.0)
+
+    monitor = asyncio.create_task(_buffer_monitor())
 
     try:
-        await producer
+        await asyncio.gather(*producers, return_exceptions=True)
     except Exception:
         log.exception("r2_worker.producer_crashed")
     finally:
+        monitor.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await monitor
         # Wait for consumers to finish
         await asyncio.gather(*consumers, return_exceptions=True)
         # Signal DB writer to flush and stop
@@ -425,10 +475,11 @@ async def drain_remaining(pool: asyncpg.Pool) -> int:
                     rows = await conn.fetch(_FETCH_PENDING, batch_size)
                 if not rows:
                     break
-                for row in rows:
+                prefetched = await asyncio.gather(*[_prefetch_r2_state(row) for row in rows])
+                for item in prefetched:
                     if monotonic() >= deadline:
                         break
-                    buffer.put_nowait(row)
+                    buffer.put_nowait(item)
             except Exception:
                 log.warning("r2_worker.shutdown_drain_error", exc_info=True)
                 break

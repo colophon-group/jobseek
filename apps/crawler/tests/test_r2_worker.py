@@ -210,9 +210,11 @@ def _make_item(
     posting_id="abc-123",
     description="<p>Hello</p>",
     meta=None,
+    r2_html=None,
+    r2_history=None,
     description_r2_hash=None,
 ):
-    """Build a MagicMock row for _upload_one tests (simulates asyncpg.Record)."""
+    """Build a prefetched item dict for _upload_one tests."""
     if meta is None:
         meta = {
             "locale": "en",
@@ -230,32 +232,17 @@ def _make_item(
         "r2_pending_meta": meta,
         "description_r2_hash": description_r2_hash,
     }[k]
-    return row
+    return {"row": row, "_r2_html": r2_html, "_r2_history": r2_history}
 
 
 # ── _upload_one tests ────────────────────────────────────────────────
 
 
-def _mock_get_object(r2_html=None, r2_history=None):
-    """Create a mock for get_object that returns r2_html/r2_history based on key."""
-
-    async def _get(key):
-        if "latest.html" in key:
-            return r2_html
-        if "history.json" in key:
-            return r2_history
-        return None
-
-    return _get
-
-
 class TestUploadOne:
     @patch("src.r2_worker._put_object", new_callable=AsyncMock)
-    @patch("src.r2_worker.get_object", new_callable=AsyncMock)
-    async def test_first_upload_writes_html_and_history(self, mock_get, mock_put):
+    async def test_first_upload_writes_html_and_history(self, mock_put):
         """First upload (no existing R2 content) writes both files."""
-        mock_get.return_value = None  # nothing in R2
-        item = _make_item(description="<p>Hello</p>")
+        item = _make_item(description="<p>Hello</p>", r2_html=None, r2_history=None)
 
         result = await _upload_one(item)
 
@@ -266,13 +253,14 @@ class TestUploadOne:
         assert any("history.json" in k for k in put_keys)
 
     @patch("src.r2_worker._put_object", new_callable=AsyncMock)
-    @patch("src.r2_worker.get_object", side_effect=_mock_get_object(
-        "<p>Same</p>",
-        json.dumps({"versions": [], "current_extras": {"title": "Old"}}),
-    ))
-    async def test_update_writes_only_history_when_desc_unchanged(self, mock_get, mock_put):
-        """When description hasn't changed but extras differ, only history.json is written."""
-        item = _make_item(description="<p>Same</p>")
+    async def test_update_writes_only_history_when_desc_unchanged(self, mock_put):
+        """When description hasn't changed, only history.json is written."""
+        existing_history = json.dumps({"versions": [], "current_extras": {"title": "Old"}})
+        item = _make_item(
+            description="<p>Same</p>",
+            r2_html="<p>Same</p>",
+            r2_history=existing_history,
+        )
 
         result = await _upload_one(item)
 
@@ -281,14 +269,13 @@ class TestUploadOne:
         assert "history.json" in mock_put.await_args_list[0].args[0]
 
     @patch("src.r2_worker._put_object", new_callable=AsyncMock)
-    @patch("src.r2_worker.get_object", side_effect=_mock_get_object(
-        "<p>Existing</p>",
-        json.dumps({"versions": [], "current_extras": {"title": "Old"}}),
-    ))
-    async def test_meta_only_uses_prefetched_html(self, mock_get, mock_put):
-        """Meta-only change uses R2 HTML fetched via get_object."""
+    async def test_meta_only_uses_prefetched_html(self, mock_put):
+        """Meta-only change uses prefetched R2 HTML."""
+        existing_history = json.dumps({"versions": [], "current_extras": {"title": "Old"}})
         item = _make_item(
             description=None,
+            r2_html="<p>Existing</p>",
+            r2_history=existing_history,
             meta={
                 "locale": "en",
                 "extras": {"title": "New"},
@@ -306,10 +293,8 @@ class TestUploadOne:
         assert mock_put.await_count >= 1
 
     @patch("src.r2_worker._put_object", new_callable=AsyncMock)
-    @patch("src.r2_worker.get_object", new_callable=AsyncMock)
-    async def test_retry_on_failure(self, mock_get, mock_put):
+    async def test_retry_on_failure(self, mock_put):
         """Failed upload returns RETRY."""
-        mock_get.return_value = None
         mock_put.side_effect = Exception("R2 down")
         item = _make_item(
             meta={
@@ -329,10 +314,8 @@ class TestUploadOne:
         assert result[1] == "abc-123"
 
     @patch("src.r2_worker._put_object", new_callable=AsyncMock)
-    @patch("src.r2_worker.get_object", new_callable=AsyncMock)
-    async def test_abandon_after_max_retries_monitor(self, mock_get, mock_put):
+    async def test_abandon_after_max_retries_monitor(self, mock_put):
         """Monitor source: abandon after max retries."""
-        mock_get.return_value = None
         mock_put.side_effect = Exception("R2 down")
         item = _make_item(
             meta={
@@ -352,10 +335,8 @@ class TestUploadOne:
         assert result[2] == "monitor"
 
     @patch("src.r2_worker._put_object", new_callable=AsyncMock)
-    @patch("src.r2_worker.get_object", new_callable=AsyncMock)
-    async def test_abandon_after_max_retries_scrape(self, mock_get, mock_put):
+    async def test_abandon_after_max_retries_scrape(self, mock_put):
         """Scrape source: abandon with source=scrape for re-scrape trigger."""
-        mock_get.return_value = None
         mock_put.side_effect = Exception("R2 down")
         item = _make_item(
             meta={
@@ -376,10 +357,8 @@ class TestUploadOne:
 
     @patch("src.r2_worker.upload_description", new_callable=AsyncMock)
     @patch("src.r2_worker._put_object", new_callable=AsyncMock)
-    @patch("src.r2_worker.get_object", new_callable=AsyncMock)
-    async def test_localizations_uploaded(self, mock_get, mock_put, mock_loc_upload):
+    async def test_localizations_uploaded(self, mock_put, mock_loc_upload):
         """Secondary locale descriptions are uploaded."""
-        mock_get.return_value = None  # first upload
         item = _make_item(
             meta={
                 "locale": "en",
@@ -399,23 +378,21 @@ class TestUploadOne:
 
     async def test_null_meta_abandons(self):
         """If r2_pending_meta is NULL, return ABANDON."""
-        row = MagicMock()
-        row.__getitem__ = lambda s, k: {
+        item = _make_item(meta=None)
+        item["row"].__getitem__ = lambda s, k: {
             "id": "abc-123",
             "description_pending": "<p>Test</p>",
             "r2_pending_meta": None,
             "description_r2_hash": None,
         }[k]
 
-        result = await _upload_one(row)
+        result = await _upload_one(item)
 
         assert result[0] == _ABANDON
 
-    @patch("src.r2_worker.get_object", new_callable=AsyncMock)
-    async def test_meta_only_no_existing_html_abandons(self, mock_get):
-        """Meta-only with no existing R2 HTML returns ABANDON."""
-        mock_get.return_value = None  # nothing in R2
-        item = _make_item(description=None)
+    async def test_meta_only_no_existing_html_abandons(self):
+        """Meta-only with no prefetched HTML returns ABANDON."""
+        item = _make_item(description=None, r2_html=None, r2_history=None)
 
         result = await _upload_one(item)
 
@@ -545,10 +522,8 @@ class TestStageR2PendingEdgeCases:
 
 class TestUploadOneEdgeCases:
     @patch("src.r2_worker._put_object", new_callable=AsyncMock)
-    @patch("src.r2_worker.get_object", new_callable=AsyncMock)
-    async def test_meta_as_json_string(self, mock_get, mock_put):
+    async def test_meta_as_json_string(self, mock_put):
         """r2_pending_meta stored as JSON string (not dict) is handled."""
-        mock_get.return_value = None  # first upload
         meta_str = json.dumps(
             {
                 "locale": "en",
@@ -567,10 +542,8 @@ class TestUploadOneEdgeCases:
         assert mock_put.await_count >= 1
 
     @patch("src.r2_worker._put_object", new_callable=AsyncMock)
-    @patch("src.r2_worker.get_object", new_callable=AsyncMock)
-    async def test_missing_extras_key(self, mock_get, mock_put):
+    async def test_missing_extras_key(self, mock_put):
         """Meta without extras key defaults to empty dict."""
-        mock_get.return_value = None  # first upload
         item = _make_item(
             meta={
                 "locale": "en",
@@ -586,10 +559,8 @@ class TestUploadOneEdgeCases:
         assert result[0] == _OK
 
     @patch("src.r2_worker._put_object", new_callable=AsyncMock)
-    @patch("src.r2_worker.get_object", new_callable=AsyncMock)
-    async def test_new_hash_none_in_meta(self, mock_get, mock_put):
+    async def test_new_hash_none_in_meta(self, mock_put):
         """new_hash=None produces OK result with None hash."""
-        mock_get.return_value = None  # first upload
         item = _make_item(
             meta={
                 "locale": "en",

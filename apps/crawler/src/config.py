@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     crawler_db_pool_max: int = 10  # should be >= half of crawler_max_concurrent
     metrics_port: int = 9091
     r2_max_connections: int = 60  # also controls number of drain worker consumers
+    r2_drain_producers: int = 1  # number of concurrent DB-fetch producers
     r2_drain_batch_size: int = 200
     r2_drain_max_retries: int = 5
     r2_drain_shutdown_timeout: float = 30.0
