@@ -98,6 +98,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Only process browser/Playwright work (skip HTTP tasks)",
     )
+    parser.add_argument(
+        "--r2-drain-only",
+        action="store_true",
+        help="Only run the R2 upload drain worker (no monitors or scrapers)",
+    )
     args = parser.parse_args()
     if args.dry_run and not args.board:
         parser.error("--dry-run requires --board")
@@ -105,6 +110,8 @@ def parse_args() -> argparse.Namespace:
         parser.error("--verbose requires --dry-run")
     if args.http_only and args.browser_only:
         parser.error("--http-only and --browser-only are mutually exclusive")
+    if args.r2_drain_only and (args.http_only or args.browser_only or args.once or args.board):
+        parser.error("--r2-drain-only cannot be combined with other mode flags")
     return args
 
 
@@ -667,6 +674,19 @@ async def run() -> None:
             await run_single_board(pool, http, args.board, force_rescrape=args.force_rescrape)
         elif args.once:
             await run_once(pool, http, monitor=do_monitor, scrape=do_scrape)
+        elif args.r2_drain_only:
+            from src.r2_worker import drain_remaining, run_r2_drain_loop
+
+            shutdown_event = asyncio.Event()
+            loop = asyncio.get_running_loop()
+            for sig in (signal.SIGTERM, signal.SIGINT):
+                loop.add_signal_handler(sig, lambda: shutdown_event.set())
+
+            log.info("scheduler.r2_drain_only")
+            try:
+                await run_r2_drain_loop(pool, shutdown_event)
+            finally:
+                await drain_remaining(pool)
         else:
             shutdown_event = asyncio.Event()
             loop = asyncio.get_running_loop()
