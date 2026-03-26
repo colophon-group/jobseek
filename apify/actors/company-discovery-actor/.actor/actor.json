@@ -2,7 +2,7 @@
   "actorSpecification": 1,
   "name": "company-discovery-actor",
   "title": "Company Discovery from Job Aggregators",
-  "description": "Discovers companies with open positions by scraping top job aggregator sites (Indeed, LinkedIn, Glassdoor, StepStone, Xing). Outputs company name, job board URL, and estimated open positions count.",
+  "description": "Discovers companies with open positions via public ATS APIs (Greenhouse, Lever) and job aggregators (The Muse, Arbeitnow, Remotive). Outputs company name, job board URL, and actual open positions count.",
   "version": "1.0",
   "input": {
     "title": "Input",
@@ -13,30 +13,16 @@
       "maxCompaniesPerSource": {
         "type": "integer",
         "title": "Max companies per source",
-        "description": "Maximum number of companies to discover from each job aggregator.",
+        "description": "Maximum number of companies to discover from each source.",
         "editor": "number",
-        "default": 400
+        "default": 1000
       },
       "sources": {
         "type": "array",
         "title": "Sources",
-        "description": "Which job aggregators to scrape. Options: indeed, linkedin, glassdoor, stepstone, xing",
+        "description": "Which sources to query. Options: greenhouse, themuse, megaemployers, arbeitnow, remotive",
         "editor": "json",
-        "default": ["indeed", "linkedin", "glassdoor", "stepstone", "xing"]
-      },
-      "searchQueries": {
-        "type": "array",
-        "title": "Search queries",
-        "description": "Custom search queries to use across all sources. Leave empty for default industry terms.",
-        "editor": "json",
-        "default": []
-      },
-      "useProxy": {
-        "type": "boolean",
-        "title": "Use proxy",
-        "description": "Whether to use Apify residential proxy for requests.",
-        "editor": "checkbox",
-        "default": true
+        "default": ["greenhouse", "themuse", "megaemployers", "arbeitnow", "remotive"]
       }
     }
   }

@@ -32,7 +32,6 @@ export async function fetchPage(opts: FetchOptions, retries = 2): Promise<string
         continue;
       }
 
-      console.warn(`HTTP ${response.statusCode} for ${opts.url}`);
       return null;
     } catch (err) {
       console.warn(`Fetch error (attempt ${attempt + 1}) for ${opts.url}: ${err}`);
@@ -40,4 +39,35 @@ export async function fetchPage(opts: FetchOptions, retries = 2): Promise<string
     }
   }
   return null;
+}
+
+/** Simple JSON fetch for public APIs (no anti-bot needed) */
+export async function fetchJson<T>(url: string, timeout = 15000): Promise<T | null> {
+  try {
+    const resp = await fetch(url, {
+      signal: AbortSignal.timeout(timeout),
+      headers: { 'Accept': 'application/json', 'User-Agent': 'JobseekDiscovery/1.0' },
+    });
+    if (!resp.ok) return null;
+    return await resp.json() as T;
+  } catch {
+    return null;
+  }
+}
+
+/** Process items in batches with concurrency control */
+export async function processInBatches<T, R>(
+  items: T[],
+  batchSize: number,
+  fn: (item: T) => Promise<R | null>,
+): Promise<R[]> {
+  const results: R[] = [];
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize);
+    const batchResults = await Promise.all(batch.map(fn));
+    for (const r of batchResults) {
+      if (r !== null) results.push(r);
+    }
+  }
+  return results;
 }

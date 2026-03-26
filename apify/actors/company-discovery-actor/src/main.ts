@@ -1,81 +1,54 @@
 /**
  * @actor company-discovery-actor
  *
- * Discovers companies with open positions by scraping top job aggregator sites:
- *   1. Indeed    — Company search directory
- *   2. LinkedIn  — Public guest job search API
- *   3. Glassdoor — Employer browse directory
- *   4. StepStone — DACH market job listings
- *   5. Xing      — DACH market professional network
+ * Discovers companies with open positions from job aggregators and public ATS APIs:
+ *   1. Greenhouse Boards API — 790+ confirmed board tokens, exact job counts
+ *   2. The Muse API         — Company directory with job counts per company
+ *   3. Arbeitnow API        — EU/remote job listings aggregated by company
+ *   4. Remotive API          — Remote job listings aggregated by company
+ *   5. Mega Employers        — Curated list of 150+ global giants (India, China, US, EU)
  *
  * Output: CompanyDiscovery[] → { company_name, job_board_url, estimated_jobs, source }
- *
- * Each source runs independently with isolated error handling so one failure
- * doesn't block the others. Results are deduplicated by normalised company name.
  */
 
 import { Actor, log } from 'apify';
 import type { CompanyDiscovery } from './types.js';
-import { discoverFromIndeed } from './sources/indeed.js';
-import { discoverFromLinkedIn } from './sources/linkedin.js';
-import { discoverFromGlassdoor } from './sources/glassdoor.js';
-import { discoverFromStepstone } from './sources/stepstone.js';
-import { discoverFromXing } from './sources/xing.js';
+import { discoverFromGreenhouse } from './sources/greenhouse.js';
+import { discoverFromTheMuse } from './sources/themuse.js';
+import { discoverFromArbeitnow } from './sources/arbeitnow.js';
+import { discoverFromRemotive } from './sources/remotive.js';
+import { discoverFromMegaEmployers } from './sources/megaemployers.js';
 
 interface Input {
-  maxCompaniesPerSource?: number;
   sources?: string[];
-  searchQueries?: string[];
-  useProxy?: boolean;
+  maxCompaniesPerSource?: number;
 }
 
 await Actor.init();
 
 const input = (await Actor.getInput<Input>()) ?? {};
 const {
-  maxCompaniesPerSource = 400,
-  sources = ['indeed', 'linkedin', 'glassdoor', 'stepstone', 'xing'],
-  searchQueries = [],
-  useProxy = true,
+  sources = ['greenhouse', 'themuse', 'megaemployers', 'arbeitnow', 'remotive'],
+  maxCompaniesPerSource = 1000,
 } = input;
 
-log.info('Starting company-discovery-actor', {
-  maxCompaniesPerSource,
-  sources,
-  customQueries: searchQueries.length,
-  useProxy,
-});
-
-// Configure proxy
-let proxyUrl: string | undefined;
-if (useProxy) {
-  try {
-    const proxyConfig = await Actor.createProxyConfiguration({
-      groups: ['RESIDENTIAL'],
-    });
-    proxyUrl = await proxyConfig.newUrl();
-    log.info('Proxy configured successfully');
-  } catch (err) {
-    log.warning(`Proxy setup failed, running without proxy: ${err}`);
-  }
-}
+log.info('Starting company-discovery-actor', { sources, maxCompaniesPerSource });
 
 const allCompanies: CompanyDiscovery[] = [];
 const globalSeen = new Set<string>();
 
-type SourceFn = (proxyUrl?: string, max?: number, queries?: string[]) => Promise<CompanyDiscovery[]>;
+type SourceFn = () => Promise<CompanyDiscovery[]>;
 
 const sourceMap: Record<string, SourceFn> = {
-  indeed: discoverFromIndeed,
-  linkedin: discoverFromLinkedIn,
-  glassdoor: (p, m) => discoverFromGlassdoor(p, m),
-  stepstone: discoverFromStepstone,
-  xing: discoverFromXing,
+  greenhouse: () => discoverFromGreenhouse(maxCompaniesPerSource),
+  themuse: () => discoverFromTheMuse(maxCompaniesPerSource),
+  megaemployers: () => Promise.resolve(discoverFromMegaEmployers()),
+  arbeitnow: () => discoverFromArbeitnow(),
+  remotive: () => discoverFromRemotive(),
 };
 
-const sourceStats: Record<string, { total: number; unique: number; error?: string }> = {};
+const sourceStats: Record<string, { companies: number; jobs: number; error?: string }> = {};
 
-// Run each source sequentially to manage memory and rate limits
 for (const source of sources) {
   const runner = sourceMap[source];
   if (!runner) {
@@ -87,28 +60,27 @@ for (const source of sources) {
   const startTime = Date.now();
 
   try {
-    const companies = await runner(
-      proxyUrl,
-      maxCompaniesPerSource,
-      searchQueries.length > 0 ? searchQueries : undefined,
-    );
+    const companies = await runner();
 
-    let unique = 0;
+    let uniqueNew = 0;
+    let uniqueJobs = 0;
     for (const company of companies) {
       const key = company.company_name.toLowerCase().trim();
       if (!globalSeen.has(key)) {
         globalSeen.add(key);
         allCompanies.push(company);
-        unique++;
+        uniqueNew++;
+        uniqueJobs += company.estimated_jobs;
       }
     }
 
+    const totalJobs = companies.reduce((s, c) => s + c.estimated_jobs, 0);
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-    sourceStats[source] = { total: companies.length, unique };
-    log.info(`${source}: ${companies.length} found, ${unique} unique new (${elapsed}s) — running total: ${allCompanies.length}`);
+    sourceStats[source] = { companies: uniqueNew, jobs: uniqueJobs };
+    log.info(`${source}: ${companies.length} total, ${uniqueNew} unique new, ${totalJobs.toLocaleString()} jobs (${elapsed}s)`);
   } catch (err) {
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-    sourceStats[source] = { total: 0, unique: 0, error: String(err) };
+    sourceStats[source] = { companies: 0, jobs: 0, error: String(err) };
     log.error(`${source} failed after ${elapsed}s: ${err}`);
   }
 }
@@ -118,24 +90,16 @@ log.info(`Pushing ${allCompanies.length} unique companies to dataset...`);
 await Actor.pushData(allCompanies);
 
 // Summary
+const totalJobs = allCompanies.reduce((s, c) => s + c.estimated_jobs, 0);
 log.info('=== Discovery Summary ===');
 log.info(`Total unique companies: ${allCompanies.length}`);
+log.info(`Total estimated jobs: ${totalJobs.toLocaleString()}`);
 for (const [source, stats] of Object.entries(sourceStats)) {
   if (stats.error) {
     log.info(`  ${source}: FAILED — ${stats.error}`);
   } else {
-    log.info(`  ${source}: ${stats.total} found, ${stats.unique} unique new`);
+    log.info(`  ${source}: ${stats.companies} companies, ${stats.jobs.toLocaleString()} jobs`);
   }
-}
-
-// Source breakdown
-const bySource = new Map<string, number>();
-for (const c of allCompanies) {
-  bySource.set(c.source, (bySource.get(c.source) || 0) + 1);
-}
-log.info('Breakdown by source:');
-for (const [source, count] of bySource) {
-  log.info(`  ${source}: ${count}`);
 }
 
 await Actor.exit();
