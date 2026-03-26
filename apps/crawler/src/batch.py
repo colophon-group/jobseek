@@ -2988,7 +2988,7 @@ async def _scrape_pipeline_producer(
                 except TimeoutError:
                     continue
 
-            claim_limit = min(budget, 20)
+            claim_limit = min(budget, num_workers * 2)
             try:
                 rows = await pool.fetch(
                     _CLAIM_SCRAPES,
@@ -3436,7 +3436,7 @@ async def _monitor_producer(
                 except TimeoutError:
                     continue
 
-            claim_limit = min(budget, 10)
+            claim_limit = min(budget, num_workers * 2)
             try:
                 rows = await pool.fetch(
                     _CLAIM_MONITORS,

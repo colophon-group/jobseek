@@ -473,10 +473,18 @@ async def run_continuous_loop(
     # Wait for shutdown — pipelines handle all work
     await shutdown_event.wait()
 
-    # Stop pipelines
-    for t in monitor_tasks:
-        t.cancel()
-    await asyncio.gather(*monitor_tasks, return_exceptions=True)
+    # Pipelines observe shutdown_event and drain naturally
+    # Give them time to finish, then cancel if stuck
+    try:
+        await asyncio.wait_for(
+            asyncio.gather(*monitor_tasks, return_exceptions=True),
+            timeout=30.0,
+        )
+    except TimeoutError:
+        log.warning("scheduler.pipeline_drain_timeout")
+        for t in monitor_tasks:
+            t.cancel()
+        await asyncio.gather(*monitor_tasks, return_exceptions=True)
 
     # Stop R2 drain loop and flush remaining pending uploads
     r2_drain_task.cancel()
