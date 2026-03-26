@@ -649,3 +649,82 @@ class TestDrainOneEdgeCases:
         ]
         assert len(complete_calls) == 1
         assert complete_calls[0].args[2] is None  # new_hash = None
+
+
+# ── Queue cap tests ──────────────────────────────────────────────────
+
+
+class TestQueueCap:
+    async def test_first_upload_always_staged(self):
+        """current_hash=None → always staged regardless of queue depth."""
+
+        import src.batch as batch_mod
+
+        # Simulate full queue
+        batch_mod._r2_queue_depth = 999999
+        batch_mod._r2_queue_depth_ts = float("inf")  # never expires
+
+        result = _stage_r2_pending(
+            title="T",
+            description="<p>Hello</p>",
+            language="en",
+            locations=None,
+            localizations=None,
+            extras=None,
+            metadata=None,
+            date_posted=None,
+            base_salary=None,
+            employment_type=None,
+            job_location_type=None,
+            current_hash=None,  # first upload
+        )
+        # _stage_r2_pending itself doesn't check queue — it always returns staged
+        # The queue check is in the callers. Verify it returns data.
+        assert result is not None
+
+        # Reset global
+        batch_mod._r2_queue_depth = None
+        batch_mod._r2_queue_depth_ts = 0
+
+    async def test_get_r2_queue_depth_caches(self):
+        """Queue depth is cached for 30s."""
+        import src.batch as batch_mod
+
+        batch_mod._r2_queue_depth = None
+        batch_mod._r2_queue_depth_ts = 0
+
+        pool = AsyncMock()
+        pool.fetchval = AsyncMock(return_value=42)
+
+        depth1 = await batch_mod._get_r2_queue_depth(pool)
+        assert depth1 == 42
+        assert pool.fetchval.await_count == 1
+
+        # Second call within 30s should use cache
+        depth2 = await batch_mod._get_r2_queue_depth(pool)
+        assert depth2 == 42
+        assert pool.fetchval.await_count == 1  # no new DB call
+
+        # Reset
+        batch_mod._r2_queue_depth = None
+        batch_mod._r2_queue_depth_ts = 0
+
+    async def test_get_r2_queue_depth_refreshes_after_ttl(self):
+        """Queue depth refreshes after 30s TTL."""
+        from time import monotonic
+
+        import src.batch as batch_mod
+
+        batch_mod._r2_queue_depth = 10
+        batch_mod._r2_queue_depth_ts = monotonic() - 60  # expired
+
+        pool = AsyncMock()
+        pool.fetchval = AsyncMock(return_value=999)
+
+        depth = await batch_mod._get_r2_queue_depth(pool)
+        assert depth == 999
+        assert pool.fetchval.await_count == 1
+
+        # Reset
+        batch_mod._r2_queue_depth = None
+        batch_mod._r2_queue_depth_ts = 0

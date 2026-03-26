@@ -26,6 +26,7 @@ import asyncpg
 import httpx
 import structlog
 
+from src.config import settings
 from src.core.description_store import content_hash
 from src.core.enum_normalize import normalize_employment_type
 from src.core.experience_extract import extract_experience
@@ -664,7 +665,8 @@ _FETCH_DUE_JOB_POSTINGS = """
 WITH candidates AS (
     SELECT id, split_part(split_part(source_url, '://', 2), '/', 1) AS domain,
            next_scrape_at,
-           (description_r2_hash IS NULL AND description_pending IS NULL)::int AS needs_initial_scrape
+           (description_r2_hash IS NULL
+            AND description_pending IS NULL)::int AS needs_initial_scrape
     FROM job_posting
     WHERE is_active = true
       AND next_scrape_at IS NOT NULL
@@ -1091,6 +1093,28 @@ def _stage_r2_pending(
         "new_hash": new_hash,
     }
     return (description, json.dumps(meta), new_hash)
+
+
+# ── R2 queue cap ─────────────────────────────────────────────────────
+
+_r2_queue_depth: int | None = None
+_r2_queue_depth_ts: float = 0
+
+_COUNT_R2_PENDING = """
+SELECT count(*) FROM job_posting
+WHERE description_pending IS NOT NULL
+   OR r2_pending_meta IS NOT NULL
+"""
+
+
+async def _get_r2_queue_depth(pool) -> int:
+    """Return cached R2 queue depth (refreshed every 30s)."""
+    global _r2_queue_depth, _r2_queue_depth_ts
+    now = monotonic()
+    if _r2_queue_depth is None or now - _r2_queue_depth_ts > 30:
+        _r2_queue_depth = await pool.fetchval(_COUNT_R2_PENDING) or 0
+        _r2_queue_depth_ts = now
+    return _r2_queue_depth
 
 
 def _board_has_enrich(metadata: dict) -> list[str] | None:
@@ -1764,12 +1788,16 @@ async def _process_one_board_streaming(
                                 ),
                             )
                             if staged:
-                                await conn.execute(
-                                    _STAGE_R2_PENDING,
-                                    str(pid),
-                                    staged[0],
-                                    staged[1],
-                                )
+                                is_first = existing_hash is None
+                                depth = await _get_r2_queue_depth(pool)
+                                queue_ok = is_first or depth < settings.r2_queue_max
+                                if queue_ok:
+                                    await conn.execute(
+                                        _STAGE_R2_PENDING,
+                                        str(pid),
+                                        staged[0],
+                                        staged[1],
+                                    )
 
                 # URL-only path — insert stubs with next_scrape_at
                 if result.jobs_by_url is None and new_urls:
@@ -2141,12 +2169,16 @@ async def _process_one_board(
                             ),
                         )
                         if staged:
-                            await conn.execute(
-                                _STAGE_R2_PENDING,
-                                str(pid),
-                                staged[0],
-                                staged[1],
-                            )
+                            is_first = existing_hash is None
+                            depth = await _get_r2_queue_depth(pool)
+                            queue_ok = is_first or depth < settings.r2_queue_max
+                            if queue_ok:
+                                await conn.execute(
+                                    _STAGE_R2_PENDING,
+                                    str(pid),
+                                    staged[0],
+                                    staged[1],
+                                )
                     if backfill_count > _R2_BACKFILL_LIMIT:
                         board_log.info(
                             "batch.r2_backfill.capped",
@@ -2496,6 +2528,14 @@ async def _process_one_enrich_scrape(
             )
             desc_pending = staged[0] if staged else None
             meta_pending = staged[1] if staged else None
+            # Queue cap: skip re-upload staging when queue is full
+            if (
+                staged
+                and item.description_r2_hash is not None
+                and await _get_r2_queue_depth(pool) >= settings.r2_queue_max
+            ):
+                desc_pending = None
+                meta_pending = None
 
         async with pool.acquire() as conn:
             await conn.execute(
@@ -2633,6 +2673,14 @@ async def _process_one_scrape(
         )
         desc_pending = staged[0] if staged else None
         meta_pending = staged[1] if staged else None
+        # Queue cap: skip re-upload staging when queue is full
+        if (
+            staged
+            and item.description_r2_hash is not None
+            and await _get_r2_queue_depth(pool) >= settings.r2_queue_max
+        ):
+            desc_pending = None
+            meta_pending = None
 
         async with pool.acquire() as conn:
             update_result = await conn.execute(

@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     r2_drain_rate_limit: float = 200.0  # R2 API ops/sec target (hard limit 250)
     r2_drain_max_retries: int = 5
     r2_drain_shutdown_timeout: float = 30.0
+    r2_queue_max: int = 50000  # skip re-upload staging above this threshold
 
     apify_token: str = ""
     anthropic_api_key: str = ""
