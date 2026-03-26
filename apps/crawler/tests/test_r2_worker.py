@@ -232,7 +232,15 @@ def _make_item(
         "r2_pending_meta": meta,
         "description_r2_hash": description_r2_hash,
     }[k]
-    return {"row": row, "_r2_html": r2_html, "_r2_history": r2_history}
+    # Create a resolved future with the R2 state
+    if r2_html is not None or r2_history is not None:
+        import asyncio
+
+        future = asyncio.get_event_loop().create_future()
+        future.set_result((r2_html, r2_history))
+    else:
+        future = None
+    return {"row": row, "_r2_future": future}
 
 
 # ── _upload_one tests ────────────────────────────────────────────────
