@@ -664,7 +664,7 @@ _FETCH_DUE_JOB_POSTINGS = """
 WITH candidates AS (
     SELECT id, split_part(split_part(source_url, '://', 2), '/', 1) AS domain,
            next_scrape_at,
-           (titles = '{}')::int AS needs_initial_scrape
+           (description_r2_hash IS NULL AND description_pending IS NULL)::int AS needs_initial_scrape
     FROM job_posting
     WHERE is_active = true
       AND next_scrape_at IS NOT NULL
