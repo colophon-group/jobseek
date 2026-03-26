@@ -288,6 +288,29 @@ async def _resolve_locations(
     return loc_ids or None, loc_types or None
 
 
+def _resolve_locations_sync(
+    resolver: LocationResolver,
+    locations: list[str] | None,
+    job_location_type: str | None,
+    posting_language: str | None = None,
+) -> tuple[list[int] | None, list[str] | None]:
+    """Synchronous location resolution (cache only, no DB backfill).
+
+    Used by threaded batch processing.  Call ``resolver.backfill_misses()``
+    after the thread completes to handle cache misses.
+    """
+    results = resolver.resolve(locations, job_location_type, posting_language)
+    if not results:
+        return None, None
+    loc_ids = []
+    loc_types = []
+    for r in results:
+        if r.location_id is not None:
+            loc_ids.append(r.location_id)
+            loc_types.append(r.location_type)
+    return loc_ids or None, loc_types or None
+
+
 # ── SQL Queries ──────────────────────────────────────────────────────
 
 _FETCH_DUE_BOARDS = """
@@ -1620,85 +1643,102 @@ async def _process_one_board_streaming(
                 if result.jobs_by_url:
                     new_jobs = [result.jobs_by_url[u] for u in new_urls if u in result.jobs_by_url]
 
-                    for j in new_jobs:
-                        j.description = normalize_description_html(j.description)
-                        enrich_description(j)
-                        if not j.language and j.description:
-                            j.language = detect_language(j.description)
-
                     if new_jobs:
-                        for j in new_jobs:
-                            loc_ids, loc_types = await _resolve_locations(
-                                loc_resolver,
-                                _coerce_locations(j.locations),
-                                _coerce_text(j.job_location_type),
-                                _coerce_text(j.language),
-                            )
-                            desc_text = _coerce_text(j.description)
-                            s_min, s_max, s_cur, s_per, s_eur = _extract_salary_fields(
-                                desc_text, rates
-                            )
-                            exp_min, exp_max = _extract_experience_fields(desc_text)
-                            t_ids = _resolve_technology_ids(desc_text, tech_id_map)
-                            title_text = _coerce_text(j.title)
-                            all_titles = _build_titles(title_text, j.localizations)
-                            occ_id, sen_id = _resolve_occupation_seniority(
-                                all_titles, occ_ids, sen_ids
-                            )
-                            detected_langs = (
-                                detect_all_languages(j.description) if j.description else []
-                            )
-                            insert_sql = (
-                                _INSERT_RICH_JOB_ENRICH if enrich_fields else _INSERT_RICH_JOB
-                            )
-                            row = await conn.fetchrow(
-                                insert_sql,
-                                company_id,
-                                board_id,
-                                normalize_employment_type(_coerce_text(j.employment_type)),
-                                j.url,
-                                all_titles,
-                                _build_locales(
+                        # CPU-heavy per-job processing — run off the event loop
+                        def _process_new_jobs_cpu(jobs):
+                            """Pure CPU: normalize, detect language, resolve, extract."""
+                            records = []
+                            r2_staging = []
+                            for j in jobs:
+                                j.description = normalize_description_html(j.description)
+                                enrich_description(j)
+                                if not j.language and j.description:
+                                    j.language = detect_language(j.description)
+
+                                loc_ids_r, loc_types_r = _resolve_locations_sync(
+                                    loc_resolver,
+                                    _coerce_locations(j.locations),
+                                    _coerce_text(j.job_location_type),
                                     _coerce_text(j.language),
-                                    j.localizations,
-                                    detected_languages=detected_langs,
-                                ),
-                                loc_ids,
-                                loc_types,
-                                s_min,
-                                s_max,
-                                s_cur,
-                                s_per,
-                                s_eur,
-                                exp_min,
-                                exp_max,
-                                t_ids,
-                                occ_id,
-                                sen_id,
-                            )
-                            if row:
-                                staged = _stage_r2_pending(
-                                    title=_coerce_text(j.title),
-                                    description=_coerce_text(j.description),
-                                    language=_coerce_text(j.language),
-                                    locations=_coerce_locations(j.locations),
-                                    localizations=j.localizations,
-                                    extras=j.extras,
-                                    metadata=j.metadata,
-                                    date_posted=j.date_posted,
-                                    base_salary=j.base_salary,
-                                    employment_type=_coerce_text(j.employment_type),
-                                    job_location_type=_coerce_text(j.job_location_type),
-                                    source="monitor",
-                                    tech_ids=t_ids,
                                 )
-                                if staged:
-                                    await conn.execute(
-                                        _STAGE_R2_PENDING,
-                                        str(row["id"]),
-                                        staged[0],
-                                        staged[1],
-                                    )
+                                desc_text = _coerce_text(j.description)
+                                s_min, s_max, s_cur, s_per, s_eur = _extract_salary_fields(
+                                    desc_text, rates
+                                )
+                                exp_min, exp_max = _extract_experience_fields(desc_text)
+                                t_ids = _resolve_technology_ids(desc_text, tech_id_map)
+                                title_text = _coerce_text(j.title)
+                                all_titles = _build_titles(title_text, j.localizations)
+                                occ_id, sen_id = _resolve_occupation_seniority(
+                                    all_titles, occ_ids, sen_ids
+                                )
+                                detected_langs = (
+                                    detect_all_languages(j.description) if j.description else []
+                                )
+                                records.append((
+                                    company_id,
+                                    board_id,
+                                    normalize_employment_type(_coerce_text(j.employment_type)),
+                                    j.url,
+                                    all_titles,
+                                    _build_locales(
+                                        _coerce_text(j.language),
+                                        j.localizations,
+                                        detected_languages=detected_langs,
+                                    ),
+                                    loc_ids_r,
+                                    loc_types_r,
+                                    s_min, s_max, s_cur, s_per, s_eur,
+                                    exp_min, exp_max,
+                                    t_ids,
+                                    occ_id,
+                                    sen_id,
+                                ))
+                                r2_staging.append((j, t_ids))
+                            return records, r2_staging
+
+                        records, r2_staging = await asyncio.to_thread(
+                            _process_new_jobs_cpu, new_jobs
+                        )
+
+                        # DB backfill for location cache misses (rare)
+                        if await loc_resolver.backfill_misses():
+                            loc_resolver.drain_location_misses()
+
+                        # Batch insert all new jobs
+                        insert_sql = (
+                            _INSERT_RICH_JOB_ENRICH if enrich_fields else _INSERT_RICH_JOB
+                        )
+                        inserted_ids = []
+                        for rec in records:
+                            row = await conn.fetchrow(insert_sql, *rec)
+                            if row:
+                                inserted_ids.append(str(row["id"]))
+
+                        # Batch R2 staging for inserted jobs
+                        for (j, t_ids), posting_id in zip(r2_staging, inserted_ids, strict=False):
+                            staged = _stage_r2_pending(
+                                title=_coerce_text(j.title),
+                                description=_coerce_text(j.description),
+                                language=_coerce_text(j.language),
+                                locations=_coerce_locations(j.locations),
+                                localizations=j.localizations,
+                                extras=j.extras,
+                                metadata=j.metadata,
+                                date_posted=j.date_posted,
+                                base_salary=j.base_salary,
+                                employment_type=_coerce_text(j.employment_type),
+                                job_location_type=_coerce_text(j.job_location_type),
+                                source="monitor",
+                                tech_ids=t_ids,
+                            )
+                            if staged:
+                                await conn.execute(
+                                    _STAGE_R2_PENDING,
+                                    posting_id,
+                                    staged[0],
+                                    staged[1],
+                                )
 
                     # Update content for relisted and touched
                     update_triples = [
