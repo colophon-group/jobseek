@@ -404,17 +404,22 @@ async def run_r2_drain_loop(
     )
 
     num_producers = settings.r2_drain_producers
+    num_writers = settings.r2_drain_writers
 
     consumers = [
         asyncio.create_task(_consumer(buffer, done_queue, i)) for i in range(num_consumers)
     ]
-    writer = asyncio.create_task(_db_writer(pool, done_queue))
+    writers = [asyncio.create_task(_db_writer(pool, done_queue)) for _ in range(num_writers)]
     producers = [
         asyncio.create_task(_producer(pool, buffer, shutdown_event, num_consumers))
         for _ in range(num_producers)
     ]
 
-    log.info("r2_worker.producers", count=num_producers)
+    log.info(
+        "r2_worker.producers",
+        count=num_producers,
+        writers=num_writers,
+    )
 
     async def _buffer_monitor():
         """Sample buffer fullness every second, log average every 10s."""
@@ -446,14 +451,17 @@ async def run_r2_drain_loop(
             await monitor
         # Wait for consumers to finish
         await asyncio.gather(*consumers, return_exceptions=True)
-        # Signal DB writer to flush and stop
-        await done_queue.put(_DB_WRITER_SENTINEL)
-        await writer
+        # Signal DB writers to flush and stop (one sentinel per writer)
+        for _ in writers:
+            await done_queue.put(_DB_WRITER_SENTINEL)
+        await asyncio.gather(*writers, return_exceptions=True)
 
     total = sum(
         c.result() for c in consumers if c.done() and not c.cancelled() and c.exception() is None
     )
-    db_written = writer.result() if writer.done() and not writer.cancelled() else 0
+    db_written = sum(
+        w.result() for w in writers if w.done() and not w.cancelled() and w.exception() is None
+    )
     log.info("r2_worker.stopped", uploaded=total, db_written=db_written)
 
 
