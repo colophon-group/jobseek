@@ -21,6 +21,7 @@ Environment variables (shared with image_sync):
 
 from __future__ import annotations
 
+import asyncio
 import difflib
 import hashlib
 import json
@@ -177,10 +178,11 @@ async def upload_posting(
     latest_key = f"{prefix}/{locale}/latest.html"
     history_key = f"{prefix}/{locale}/history.json"
 
-    existing_html = await get_object(latest_key)
-
-    # Load previous extras from the first history entry's snapshot
-    history_raw = await get_object(history_key)
+    # Parallel fetch: existing description + history
+    existing_html, history_raw = await asyncio.gather(
+        get_object(latest_key),
+        get_object(history_key),
+    )
     history = json.loads(history_raw) if history_raw else {"versions": []}
     existing_extras: dict = history.get("current_extras", {})
 
@@ -200,9 +202,13 @@ async def upload_posting(
         return  # nothing changed
 
     if is_first:
-        # First upload — create history with current extras snapshot
         history = {"versions": [], "current_extras": extras}
-        await _put_object(history_key, json.dumps(history), "application/json")
+        history_json = json.dumps(history)
+        # First upload — write both in parallel
+        await asyncio.gather(
+            _put_object(history_key, history_json, "application/json"),
+            _put_object(latest_key, html),
+        )
         log.info("description_store.created", posting_id=posting_id, locale=locale)
     else:
         entry: dict = {"timestamp": datetime.now(UTC).isoformat()}
@@ -213,7 +219,18 @@ async def upload_posting(
 
         history["versions"].insert(0, entry)
         history["current_extras"] = extras
-        await _put_object(history_key, json.dumps(history), "application/json")
+        history_json = json.dumps(history)
+
+        if desc_changed:
+            # Description + history changed — write both in parallel
+            await asyncio.gather(
+                _put_object(history_key, history_json, "application/json"),
+                _put_object(latest_key, html),
+            )
+        else:
+            # Only extras changed — just history
+            await _put_object(history_key, history_json, "application/json")
+
         log.info(
             "description_store.updated",
             posting_id=posting_id,
@@ -221,9 +238,6 @@ async def upload_posting(
             desc_changed=desc_changed,
             extras_fields=list(extras_changed_fields.keys()) if extras_changed_fields else [],
         )
-
-    if is_first or desc_changed:
-        await _put_object(latest_key, html)
 
 
 async def upload_description(
@@ -239,23 +253,27 @@ async def upload_description(
     latest_key = f"{prefix}/{locale}/latest.html"
     history_key = f"{prefix}/{locale}/history.json"
 
-    existing = await get_object(latest_key)
+    # Parallel fetch for diff check
+    existing, history_raw = await asyncio.gather(
+        get_object(latest_key),
+        get_object(history_key),
+    )
 
     if existing is not None and existing == html:
         return
 
     if existing is not None:
         diff = _compute_reverse_diff(html, existing)
-        history_raw = await get_object(history_key)
         history = json.loads(history_raw) if history_raw else {"versions": []}
         history["versions"].insert(
             0,
-            {
-                "timestamp": datetime.now(UTC).isoformat(),
-                "diff": diff,
-            },
+            {"timestamp": datetime.now(UTC).isoformat(), "diff": diff},
         )
-        await _put_object(history_key, json.dumps(history), "application/json")
+        # Parallel write: history + HTML
+        await asyncio.gather(
+            _put_object(history_key, json.dumps(history), "application/json"),
+            _put_object(latest_key, html),
+        )
         log.info(
             "description_store.updated",
             posting_id=posting_id,
@@ -263,10 +281,12 @@ async def upload_description(
             diff_len=len(diff),
         )
     else:
-        await _put_object(history_key, json.dumps({"versions": []}), "application/json")
+        # First upload — parallel write
+        await asyncio.gather(
+            _put_object(history_key, json.dumps({"versions": []}), "application/json"),
+            _put_object(latest_key, html),
+        )
         log.info("description_store.created", posting_id=posting_id, locale=locale)
-
-    await _put_object(latest_key, html)
 
 
 async def get_description_html(posting_id: str, locale: str) -> str | None:
