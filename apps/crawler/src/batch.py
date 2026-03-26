@@ -14,6 +14,7 @@ import asyncio
 import contextlib
 import functools
 import json
+import threading
 from collections import defaultdict
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
@@ -362,6 +363,27 @@ async def _resolve_locations(
             loc_types.append(r.location_type)
 
     return loc_ids or None, loc_types or None
+
+
+_thread_local = threading.local()
+
+
+def _get_thread_resolver(source: LocationResolver) -> LocationResolver:
+    """Return a thread-local copy of the resolver with its own SQLite DB.
+
+    Each thread pool worker gets a private in-memory SQLite DB copied from
+    the source via ``connection.backup()``.  This avoids concurrent access
+    to the source's SQLite connection while keeping all data available.
+    """
+    resolver = getattr(_thread_local, "resolver", None)
+    if resolver is not None:
+        return resolver
+    copy = LocationResolver()
+    copy._init_db()
+    source._db.backup(copy._db)
+    copy._loaded = True
+    _thread_local.resolver = copy
+    return copy
 
 
 def _resolve_locations_sync(
@@ -1540,9 +1562,7 @@ async def claim_scrape_work(
     if limit <= 0:
         return []
 
-    rows = await pool.fetch(
-        _CLAIM_SCRAPES, limit, worker_id, exclude_domains or [], browser, False
-    )
+    rows = await pool.fetch(_CLAIM_SCRAPES, limit, worker_id, exclude_domains or [], browser, False)
     if not rows:
         return []
 
@@ -1737,6 +1757,7 @@ async def _process_one_board_streaming(
                         # CPU-heavy per-job processing — run off the event loop
                         def _process_new_jobs_cpu(jobs):
                             """Pure CPU: normalize, detect language, resolve, extract."""
+                            thread_resolver = _get_thread_resolver(loc_resolver)
                             records = []
                             r2_staging = []
                             for j in jobs:
@@ -1746,7 +1767,7 @@ async def _process_one_board_streaming(
                                     j.language = detect_language(j.description)
 
                                 loc_ids_r, loc_types_r = _resolve_locations_sync(
-                                    loc_resolver,
+                                    thread_resolver,
                                     _coerce_locations(j.locations),
                                     _coerce_text(j.job_location_type),
                                     _coerce_text(j.language),
@@ -2388,8 +2409,10 @@ def _process_jobs_cpu(
     """Pure CPU work: normalize, detect language, resolve, extract.
 
     Runs in a thread via ``asyncio.to_thread``.  No async, no DB.
+    Uses a thread-local SQLite copy to avoid concurrent access.
     Returns a dict of ``{url: JobCPUResult}``.
     """
+    loc_resolver = _get_thread_resolver(loc_resolver)
     results: dict[str, JobCPUResult] = {}
     for url, j in jobs_by_url.items():
         j.description = normalize_description_html(j.description)
@@ -3243,9 +3266,7 @@ async def _db_writer(
                         # Insert new rich jobs
                         if new_urls and batch.cpu_results:
                             insert_sql = (
-                                _INSERT_RICH_JOB_ENRICH
-                                if batch.enrich_fields
-                                else _INSERT_RICH_JOB
+                                _INSERT_RICH_JOB_ENRICH if batch.enrich_fields else _INSERT_RICH_JOB
                             )
                             inserted_ids: list[str] = []
                             r2_staging_list: list[tuple[str, dict]] = []
@@ -3313,16 +3334,12 @@ async def _db_writer(
                                     await _get_seniority_ids(pool),
                                 )
                                 detected_langs = (
-                                    detect_all_languages(j.description)
-                                    if j.description
-                                    else []
+                                    detect_all_languages(j.description) if j.description else []
                                 )
                                 records.append(
                                     (
                                         pid,
-                                        normalize_employment_type(
-                                            _coerce_text(j.employment_type)
-                                        ),
+                                        normalize_employment_type(_coerce_text(j.employment_type)),
                                         all_titles,
                                         _build_locales(
                                             _coerce_text(j.language),
@@ -3343,9 +3360,7 @@ async def _db_writer(
                                         sen_id,
                                     )
                                 )
-                            await conn.copy_records_to_table(
-                                "_rich_updates", records=records
-                            )
+                            await conn.copy_records_to_table("_rich_updates", records=records)
                             await conn.execute(_BATCH_UPDATE_RICH_CONTENT)
 
                             # R2 staging for relisted/touched
