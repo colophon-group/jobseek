@@ -61,10 +61,12 @@ def _get_signer() -> S3SigV4Auth:
 def _get_http() -> httpx.AsyncClient:
     global _http
     if _http is None:
+        from src.config import settings
+
         _http = httpx.AsyncClient(
             timeout=httpx.Timeout(connect=10.0, read=30.0, write=30.0, pool=30.0),
             limits=httpx.Limits(
-                max_connections=100,
+                max_connections=settings.r2_max_connections,
                 max_keepalive_connections=20,
             ),
         )

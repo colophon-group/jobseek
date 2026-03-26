@@ -26,6 +26,7 @@ import asyncpg
 import httpx
 import structlog
 
+from src.config import settings
 from src.core.description_store import content_hash, upload_description, upload_posting
 from src.core.enum_normalize import normalize_employment_type
 from src.core.experience_extract import extract_experience
@@ -1549,7 +1550,7 @@ async def _process_one_board_streaming(
         total_relisted = 0
         batch_count = 0
         r2_tasks: list[asyncio.Task] = []
-        r2_semaphore = asyncio.Semaphore(10)
+        r2_semaphore = asyncio.Semaphore(settings.r2_upload_concurrency)
 
         async def _do_upload_bg(
             pid: str,
@@ -2205,7 +2206,7 @@ async def _process_one_board(
 
         # R2 uploads after transaction — concurrent to avoid timeout for large boards
         if r2_work:
-            r2_semaphore = asyncio.Semaphore(10)
+            r2_semaphore = asyncio.Semaphore(settings.r2_upload_concurrency)
 
             async def _do_upload(
                 pid: str, kw: dict, cur_hash: int | None

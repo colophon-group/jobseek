@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     crawler_max_browser: int = 3  # separate cap for browser (Playwright) work
     crawler_db_pool_max: int = 4  # DB connections needed << concurrency (most time is HTTP)
     metrics_port: int = 9091
+    r2_max_connections: int = 50
+    r2_upload_concurrency: int = 5  # per-board R2 upload semaphore
 
     apify_token: str = ""
     anthropic_api_key: str = ""
