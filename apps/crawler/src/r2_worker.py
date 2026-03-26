@@ -108,29 +108,8 @@ def _r2_prefix(posting_id: str, locale: str) -> tuple[str, str]:
 
 
 # ---------------------------------------------------------------------------
-# Stage 1: Producer — DB fetch + R2 prefetch
+# Stage 1: Producer — DB fetch only (no R2 calls)
 # ---------------------------------------------------------------------------
-
-
-def _start_r2_prefetch(row) -> dict:
-    """Start R2 GETs as a future, return immediately.
-
-    The consumer awaits the future when it's ready — by then the
-    network call is likely already complete.
-    """
-    meta_raw = row["r2_pending_meta"]
-    if meta_raw is None:
-        return {"row": row, "_r2_future": None}
-
-    meta = json.loads(meta_raw) if isinstance(meta_raw, str) else meta_raw
-    locale = meta.get("locale", "en")
-    posting_id = str(row["id"])
-
-    latest_key, history_key = _r2_prefix(posting_id, locale)
-    future = asyncio.ensure_future(
-        asyncio.gather(get_object(latest_key), get_object(history_key))
-    )
-    return {"row": row, "_r2_future": future}
 
 
 async def _producer(
@@ -159,14 +138,11 @@ async def _producer(
 
                 current_interval = idle_interval
 
-                # Fire R2 GETs as futures and enqueue immediately.
-                # Consumers await the futures — by then the network
-                # calls are likely already complete or in-flight.
+                # Put raw rows — consumers do their own R2 GETs
                 for row in rows:
-                    item = _start_r2_prefetch(row)
                     while not shutdown_event.is_set():
                         try:
-                            buffer.put_nowait(item)
+                            buffer.put_nowait(row)
                             break
                         except asyncio.QueueFull:
                             await asyncio.sleep(0.1)
@@ -199,15 +175,7 @@ async def _upload_one(item: dict) -> tuple:
 
     Returns a result tuple for the DB writer. No DB access here.
     """
-    row = item["row"]
-    r2_future = item["_r2_future"]
-    if r2_future is not None:
-        try:
-            r2_html, r2_history_raw = await r2_future
-        except Exception:
-            r2_html, r2_history_raw = None, None
-    else:
-        r2_html, r2_history_raw = None, None
+    row = item  # raw asyncpg.Record from the producer
 
     posting_id = str(row["id"])
     description = row["description_pending"]
@@ -226,6 +194,16 @@ async def _upload_one(item: dict) -> tuple:
     new_hash = meta.get("new_hash")
 
     try:
+        # Fetch existing R2 state (GETs done by each consumer independently)
+        latest_key, history_key = _r2_prefix(posting_id, locale)
+        try:
+            r2_html, r2_history_raw = await asyncio.gather(
+                get_object(latest_key),
+                get_object(history_key),
+            )
+        except Exception:
+            r2_html, r2_history_raw = None, None
+
         html = description
         if not html:
             html = r2_html
@@ -233,7 +211,6 @@ async def _upload_one(item: dict) -> tuple:
                 log.warning("r2_worker.no_existing_html", posting_id=posting_id)
                 return (_ABANDON, posting_id, source)
 
-        latest_key, history_key = _r2_prefix(posting_id, locale)
         history = json.loads(r2_history_raw) if r2_history_raw else {"versions": []}
         existing_extras = history.get("current_extras", {})
 
@@ -451,7 +428,7 @@ async def drain_remaining(pool: asyncpg.Pool) -> int:
                 for row in rows:
                     if monotonic() >= deadline:
                         break
-                    buffer.put_nowait(_start_r2_prefetch(row))
+                    buffer.put_nowait(row)
             except Exception:
                 log.warning("r2_worker.shutdown_drain_error", exc_info=True)
                 break
