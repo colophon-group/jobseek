@@ -192,6 +192,14 @@ async def upload_posting(
     if "metadata" not in extras and "metadata" in existing_extras:
         extras = {**extras, "metadata": existing_extras["metadata"]}
 
+    # Normalize date_posted in existing extras to date-only (YYYY-MM-DD)
+    # before diffing — prevents spurious R2 writes when the only change
+    # is the date format (e.g. "2026-03-25T00:00:00+00:00" → "2026-03-25").
+    if "date_posted" in existing_extras and existing_extras["date_posted"]:
+        dp = existing_extras["date_posted"]
+        if isinstance(dp, str) and len(dp) > 10:
+            existing_extras = {**existing_extras, "date_posted": dp[:10]}
+
     desc_changed = existing_html is not None and existing_html != html
     extras_changed_fields = _extras_diff(existing_extras, extras)
     is_first = existing_html is None
