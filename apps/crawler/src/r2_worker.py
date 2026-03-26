@@ -1,8 +1,8 @@
 """Background R2 upload worker.
 
 Drains pending R2 uploads from the ``description_pending`` and
-``r2_pending_meta`` columns on ``job_posting`` at a controlled rate.
-Runs as a long-lived coroutine alongside the main scheduler loop.
+``r2_pending_meta`` columns on ``job_posting``.  Runs as a long-lived
+coroutine alongside the main scheduler loop.
 
 Design:
     Monitor/scrape tasks write to the pending columns (same transaction
@@ -92,40 +92,6 @@ WHERE description_pending IS NOT NULL
 
 
 # ---------------------------------------------------------------------------
-# Token bucket rate limiter
-# ---------------------------------------------------------------------------
-
-
-class TokenBucket:
-    """Async token bucket for R2 API rate limiting.
-
-    R2 allows ~250 writes/sec.  We target ``rate`` ops/sec (default 200)
-    with a small burst buffer.  Each ``upload_posting`` call uses ~4
-    R2 operations (2 GET + 1-2 PUT).
-    """
-
-    def __init__(self, rate: float = 200.0, burst: int = 50):
-        self._rate = rate
-        self._burst = burst
-        self._tokens = float(burst)
-        self._last = monotonic()
-
-    async def acquire(self, tokens: int = 4) -> None:
-        while True:
-            now = monotonic()
-            self._tokens = min(
-                self._burst,
-                self._tokens + (now - self._last) * self._rate,
-            )
-            self._last = now
-            if self._tokens >= tokens:
-                self._tokens -= tokens
-                return
-            wait = (tokens - self._tokens) / self._rate
-            await asyncio.sleep(wait)
-
-
-# ---------------------------------------------------------------------------
 # Single-item drain
 # ---------------------------------------------------------------------------
 
@@ -133,7 +99,6 @@ class TokenBucket:
 async def _drain_one(
     conn: asyncpg.Connection,
     row: asyncpg.Record,
-    bucket: TokenBucket,
 ) -> bool:
     """Process one pending R2 upload.  Returns True on success."""
     posting_id = str(row["id"])
@@ -155,15 +120,12 @@ async def _drain_one(
     new_hash = meta.get("new_hash")
 
     try:
-        await bucket.acquire(4)
-
         if description:
             await upload_posting(posting_id, locale, description, extras)
 
             if localizations and isinstance(localizations, dict):
                 for loc_locale, loc_html in localizations.items():
                     if loc_locale != locale and loc_html:
-                        await bucket.acquire(3)
                         await upload_description(posting_id, loc_locale, loc_html)
         else:
             # Meta-only change: fetch existing description from R2
@@ -213,16 +175,12 @@ async def run_r2_drain_loop(
 
     Runs as a long-lived coroutine alongside the main scheduler loop.
     """
-    bucket = TokenBucket(
-        rate=settings.r2_drain_rate_limit,
-        burst=50,
-    )
     batch_size = settings.r2_drain_batch_size
     idle_interval = 2.0
     max_interval = 10.0
     current_interval = idle_interval
 
-    log.info("r2_worker.starting", batch_size=batch_size, rate=settings.r2_drain_rate_limit)
+    log.info("r2_worker.starting", batch_size=batch_size)
 
     while not shutdown_event.is_set():
         try:
@@ -241,7 +199,7 @@ async def run_r2_drain_loop(
                 for row in rows:
                     if shutdown_event.is_set():
                         break
-                    if await _drain_one(conn, row, bucket):
+                    if await _drain_one(conn, row):
                         drained += 1
 
             if drained:
@@ -264,7 +222,6 @@ async def drain_remaining(pool: asyncpg.Pool) -> int:
 
     Called during graceful shutdown.
     """
-    bucket = TokenBucket(rate=settings.r2_drain_rate_limit, burst=50)
     timeout = settings.r2_drain_shutdown_timeout
     drained = 0
     deadline = monotonic() + timeout
@@ -280,7 +237,7 @@ async def drain_remaining(pool: asyncpg.Pool) -> int:
                 for row in rows:
                     if monotonic() >= deadline:
                         break
-                    if await _drain_one(conn, row, bucket):
+                    if await _drain_one(conn, row):
                         drained += 1
         except Exception:
             log.warning("r2_worker.shutdown_drain_error", exc_info=True)

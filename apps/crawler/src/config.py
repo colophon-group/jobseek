@@ -28,9 +28,7 @@ class Settings(BaseSettings):
     crawler_db_pool_max: int = 10  # should be >= half of crawler_max_concurrent
     metrics_port: int = 9091
     r2_max_connections: int = 50
-    r2_upload_concurrency: int = 5  # per-board R2 upload semaphore (legacy, used by worker)
     r2_drain_batch_size: int = 50
-    r2_drain_rate_limit: float = 200.0  # R2 API ops/sec target (hard limit 250)
     r2_drain_max_retries: int = 5
     r2_drain_shutdown_timeout: float = 30.0
     r2_queue_max: int = 50000  # skip re-upload staging above this threshold

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -13,7 +12,7 @@ from src.batch import (
     _stable_date,
     _stage_r2_pending,
 )
-from src.r2_worker import TokenBucket, _drain_one
+from src.r2_worker import _drain_one
 
 # ── _stage_r2_pending tests ──────────────────────────────────────────
 
@@ -193,27 +192,6 @@ class TestSerializeLocalizations:
         assert result == {"fr": "<p>Bonjour</p>"}
 
 
-# ── TokenBucket tests ────────────────────────────────────────────────
-
-
-class TestTokenBucket:
-    async def test_immediate_acquire_within_burst(self):
-        bucket = TokenBucket(rate=100, burst=10)
-        # Should not block for tokens within burst
-        t0 = asyncio.get_event_loop().time()
-        await bucket.acquire(4)
-        elapsed = asyncio.get_event_loop().time() - t0
-        assert elapsed < 0.1
-
-    async def test_blocks_when_tokens_exhausted(self):
-        bucket = TokenBucket(rate=100, burst=4)
-        await bucket.acquire(4)  # exhaust burst
-        t0 = asyncio.get_event_loop().time()
-        await bucket.acquire(1)  # should block ~0.01s
-        elapsed = asyncio.get_event_loop().time() - t0
-        assert elapsed >= 0.005  # at least some delay
-
-
 # ── _drain_one tests ─────────────────────────────────────────────────
 
 
@@ -222,7 +200,6 @@ class TestDrainOne:
     async def test_success_clears_pending(self, mock_upload):
         """Successful upload NULLs pending columns and sets hash."""
         conn = AsyncMock()
-        bucket = TokenBucket(rate=10000, burst=100)
 
         meta = {
             "locale": "en",
@@ -241,7 +218,7 @@ class TestDrainOne:
             "description_r2_hash": None,
         }[k]
 
-        ok = await _drain_one(conn, row, bucket)
+        ok = await _drain_one(conn, row)
 
         assert ok is True
         mock_upload.assert_awaited_once_with("abc-123", "en", "<p>Hello</p>", {"title": "Test"})
@@ -257,7 +234,6 @@ class TestDrainOne:
     async def test_meta_only_fetches_from_r2(self, mock_upload):
         """Meta-only change fetches existing HTML from R2."""
         conn = AsyncMock()
-        bucket = TokenBucket(rate=10000, burst=100)
 
         meta = {
             "locale": "en",
@@ -278,7 +254,7 @@ class TestDrainOne:
 
         with patch("src.r2_worker.get_description_html", new_callable=AsyncMock) as mock_get:
             mock_get.return_value = "<p>Existing</p>"
-            ok = await _drain_one(conn, row, bucket)
+            ok = await _drain_one(conn, row)
 
         assert ok is True
         mock_upload.assert_awaited_once_with(
@@ -290,7 +266,6 @@ class TestDrainOne:
         """Failed upload increments retry count."""
         mock_upload.side_effect = Exception("R2 down")
         conn = AsyncMock()
-        bucket = TokenBucket(rate=10000, burst=100)
 
         meta = {
             "locale": "en",
@@ -309,7 +284,7 @@ class TestDrainOne:
             "description_r2_hash": None,
         }[k]
 
-        ok = await _drain_one(conn, row, bucket)
+        ok = await _drain_one(conn, row)
 
         assert ok is False
         # Should increment retry, not abandon
@@ -321,7 +296,6 @@ class TestDrainOne:
         """Monitor source: abandon after max retries, no next_scrape_at reset."""
         mock_upload.side_effect = Exception("R2 down")
         conn = AsyncMock()
-        bucket = TokenBucket(rate=10000, burst=100)
 
         meta = {
             "locale": "en",
@@ -340,7 +314,7 @@ class TestDrainOne:
             "description_r2_hash": None,
         }[k]
 
-        ok = await _drain_one(conn, row, bucket)
+        ok = await _drain_one(conn, row)
 
         assert ok is False
         # Should abandon (NULL pending columns)
@@ -359,7 +333,6 @@ class TestDrainOne:
         """Scrape source: abandon and reset next_scrape_at for re-scrape."""
         mock_upload.side_effect = Exception("R2 down")
         conn = AsyncMock()
-        bucket = TokenBucket(rate=10000, burst=100)
 
         meta = {
             "locale": "en",
@@ -378,7 +351,7 @@ class TestDrainOne:
             "description_r2_hash": None,
         }[k]
 
-        ok = await _drain_one(conn, row, bucket)
+        ok = await _drain_one(conn, row)
 
         assert ok is False
         # Should reset next_scrape_at for scrape source
@@ -390,7 +363,6 @@ class TestDrainOne:
     async def test_localizations_uploaded(self, mock_loc_upload, mock_upload):
         """Secondary locale descriptions are uploaded."""
         conn = AsyncMock()
-        bucket = TokenBucket(rate=10000, burst=100)
 
         meta = {
             "locale": "en",
@@ -409,7 +381,7 @@ class TestDrainOne:
             "description_r2_hash": None,
         }[k]
 
-        ok = await _drain_one(conn, row, bucket)
+        ok = await _drain_one(conn, row)
 
         assert ok is True
         assert mock_loc_upload.await_count == 2
@@ -417,7 +389,6 @@ class TestDrainOne:
     async def test_null_meta_abandons(self):
         """If r2_pending_meta is NULL (shouldn't happen), abandon gracefully."""
         conn = AsyncMock()
-        bucket = TokenBucket(rate=10000, burst=100)
 
         row = MagicMock()
         row.__getitem__ = lambda s, k: {
@@ -427,7 +398,7 @@ class TestDrainOne:
             "description_r2_hash": None,
         }[k]
 
-        ok = await _drain_one(conn, row, bucket)
+        ok = await _drain_one(conn, row)
 
         assert ok is True
         # Should abandon
@@ -563,7 +534,6 @@ class TestDrainOneEdgeCases:
     async def test_meta_as_json_string(self, mock_upload):
         """r2_pending_meta stored as JSON string (not dict) is handled."""
         conn = AsyncMock()
-        bucket = TokenBucket(rate=10000, burst=100)
 
         meta = json.dumps(
             {
@@ -584,7 +554,7 @@ class TestDrainOneEdgeCases:
             "description_r2_hash": None,
         }[k]
 
-        ok = await _drain_one(conn, row, bucket)
+        ok = await _drain_one(conn, row)
         assert ok is True
         mock_upload.assert_awaited_once()
 
@@ -592,7 +562,6 @@ class TestDrainOneEdgeCases:
     async def test_missing_extras_key(self, mock_upload):
         """Meta without extras key defaults to empty dict."""
         conn = AsyncMock()
-        bucket = TokenBucket(rate=10000, burst=100)
 
         meta = {
             "locale": "en",
@@ -611,7 +580,7 @@ class TestDrainOneEdgeCases:
             "description_r2_hash": None,
         }[k]
 
-        ok = await _drain_one(conn, row, bucket)
+        ok = await _drain_one(conn, row)
         assert ok is True
         # upload_posting called with empty extras dict
         call_args = mock_upload.await_args
@@ -621,7 +590,6 @@ class TestDrainOneEdgeCases:
     async def test_new_hash_none_in_meta(self, mock_upload):
         """new_hash=None in meta is passed through to DB (NULL hash)."""
         conn = AsyncMock()
-        bucket = TokenBucket(rate=10000, burst=100)
 
         meta = {
             "locale": "en",
@@ -640,7 +608,7 @@ class TestDrainOneEdgeCases:
             "description_r2_hash": None,
         }[k]
 
-        ok = await _drain_one(conn, row, bucket)
+        ok = await _drain_one(conn, row)
         assert ok is True
         complete_calls = [
             c
