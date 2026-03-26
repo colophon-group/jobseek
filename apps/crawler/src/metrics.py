@@ -29,6 +29,19 @@ tick_skip_total = Counter(
     "Scheduler ticks skipped due to resource saturation",
     ["reason"],  # "slots_full", "db_idle"
 )
+r2_drain_total = Counter(
+    "crawler_r2_drain_total",
+    "R2 drain operations by outcome",
+    ["status"],  # "success", "retried", "abandoned"
+)
+r2_drain_errors = Counter(
+    "crawler_r2_drain_errors_total",
+    "R2 drain upload errors (network/upload failures)",
+)
+r2_pending_gauge = Gauge(
+    "crawler_r2_pending",
+    "Job postings with pending R2 uploads",
+)
 
 
 def start_metrics_server(port: int) -> None:

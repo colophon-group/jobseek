@@ -416,6 +416,11 @@ async def run_continuous_loop(
         browser_only=browser_only,
     )
 
+    # Start background R2 drain worker
+    from src.r2_worker import drain_remaining, run_r2_drain_loop
+
+    r2_drain_task = asyncio.create_task(run_r2_drain_loop(pool, shutdown_event))
+
     while not shutdown_event.is_set():
         work_found = False
         monitors_claimed = 0
@@ -528,6 +533,13 @@ async def run_continuous_loop(
 
     log.info("pool.draining", active=wp.active_count, queued=wp.queued_count)
     await wp.drain()
+
+    # Stop R2 drain loop and flush remaining pending uploads
+    r2_drain_task.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await r2_drain_task
+    await drain_remaining(pool)
+
     log.info(
         "pool.stopped",
         total_submitted=wp.total_submitted,

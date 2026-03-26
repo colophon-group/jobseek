@@ -1510,15 +1510,11 @@ class TestEnrichmentScrape:
         assert call_args[3] is None  # titles
         assert call_args[4] is None  # locales
 
-    @patch("src.batch._upload_to_r2", new_callable=AsyncMock)
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
-    async def test_description_enrich_triggers_r2_upload(
-        self, mock_scrape, mock_upload, mock_pool, mock_http
-    ):
-        """Description enrichment triggers R2 upload with monitor metadata."""
+    async def test_description_enrich_stages_r2_pending(self, mock_scrape, mock_pool, mock_http):
+        """Description enrichment stages pending R2 upload with monitor metadata."""
         pool, conn = mock_pool
         mock_scrape.return_value = _job_content(description="<p>Rich desc</p>")
-        mock_upload.return_value = 12345
         pool.fetchrow = AsyncMock(
             return_value={
                 "titles": ["Monitor Title"],
@@ -1539,10 +1535,16 @@ class TestEnrichmentScrape:
         )
 
         assert ok is True
-        mock_upload.assert_awaited_once()
-        # R2 upload uses existing title from DB
-        upload_kwargs = mock_upload.await_args
-        assert upload_kwargs.kwargs.get("title") == "Monitor Title"
+        # Verify the UPDATE sets pending columns (description_pending is non-None)
+        enrich_calls = [
+            c for c in conn.execute.await_args_list if c.args[0] == _UPDATE_ENRICH_CONTENT
+        ]
+        assert len(enrich_calls) == 1
+        call_args = enrich_calls[0].args
+        # $7 = description_pending (should be set since we have a description)
+        assert call_args[7] is not None
+        # $8 = r2_pending_meta (should be set with extras JSON)
+        assert call_args[8] is not None
 
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
     async def test_description_enrich_populates_r2_hash_and_tech(
@@ -1574,8 +1576,10 @@ class TestEnrichmentScrape:
         # Non-enriched fields remain NULL
         assert call_args[2] is None  # employment_type
         assert call_args[3] is None  # titles
-        # description_r2_hash ($7) should be set (non-None) since we uploaded to R2
-        # (it may be None only if upload failed, which isn't the case here with default mock)
+        # description_pending ($7) should be set (non-None) since we have a description
+        assert call_args[7] is not None  # description_pending
+        # r2_pending_meta ($8) should be set
+        assert call_args[8] is not None  # r2_pending_meta
 
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
     async def test_title_enrich_derives_occupation_seniority(
@@ -1598,8 +1602,9 @@ class TestEnrichmentScrape:
         # titles should be set
         assert call_args[3] == ["Senior Software Engineer"]
         # description-derived fields should be None
-        assert call_args[7] is None  # description_r2_hash
-        assert call_args[8] is None  # technology_ids
+        assert call_args[7] is None  # description_pending
+        assert call_args[8] is None  # r2_pending_meta
+        assert call_args[9] is None  # technology_ids
 
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
     async def test_title_enrich_does_not_overwrite_locales_with_default(

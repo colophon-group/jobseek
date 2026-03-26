@@ -33,6 +33,13 @@ def _mock_pool():
     pool = MagicMock()
     pool.get_size.return_value = 10
     pool.get_idle_size.return_value = 10
+    # Default fetch/fetchval return empty for R2 drain queries
+    pool.fetch = AsyncMock(return_value=[])
+    pool.fetchval = AsyncMock(return_value=0)
+    conn = AsyncMock()
+    conn.fetch = AsyncMock(return_value=[])
+    pool.acquire.return_value.__aenter__ = AsyncMock(return_value=conn)
+    pool.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
     return pool
 
 

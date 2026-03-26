@@ -502,6 +502,10 @@ export const jobPosting = pgTable(
     seniorityId: integer("seniority_id").references(() => seniority.id),
     technologyIds: integer("technology_ids").array(),
 
+    // ── R2 upload pending ──
+    descriptionPending: text("description_pending"),
+    r2PendingMeta: jsonb("r2_pending_meta"),
+
     // ── Enrichment fields ──
     enrichment: jsonb("enrichment"),
     toBeEnriched: boolean("to_be_enriched").default(true).notNull(),
@@ -537,6 +541,11 @@ export const jobPosting = pgTable(
     index("idx_jp_experience_min")
       .on(table.experienceMin)
       .where(sql`experience_min IS NOT NULL`),
+    index("idx_jp_r2_pending")
+      .on(table.id)
+      .where(
+        sql`description_pending IS NOT NULL OR r2_pending_meta IS NOT NULL`,
+      ),
   ],
 );
 

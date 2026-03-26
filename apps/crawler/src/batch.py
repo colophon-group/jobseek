@@ -26,8 +26,7 @@ import asyncpg
 import httpx
 import structlog
 
-from src.config import settings
-from src.core.description_store import content_hash, upload_description, upload_posting
+from src.core.description_store import content_hash
 from src.core.enum_normalize import normalize_employment_type
 from src.core.experience_extract import extract_experience
 from src.core.location_resolve import LocationResolver
@@ -633,25 +632,22 @@ UPDATE job_posting
 SET employment_type = $2,
     titles = $3, locales = $4,
     location_ids = $5, location_types = $6,
-    description_r2_hash = $7,
-    technology_ids = COALESCE($8, technology_ids),
-    salary_min = $9, salary_max = $10,
-    salary_currency = $11, salary_period = $12, salary_eur = $13,
-    experience_min = $14, experience_max = $15,
-    occupation_id = COALESCE($16, occupation_id),
-    seniority_id = COALESCE($17, seniority_id),
-    to_be_enriched = CASE
-        WHEN description_r2_hash IS DISTINCT FROM $7 THEN true
-        ELSE to_be_enriched
-    END
+    description_pending = $7,
+    r2_pending_meta = $8::jsonb,
+    technology_ids = COALESCE($9, technology_ids),
+    salary_min = $10, salary_max = $11,
+    salary_currency = $12, salary_period = $13, salary_eur = $14,
+    experience_min = $15, experience_max = $16,
+    occupation_id = COALESCE($17, occupation_id),
+    seniority_id = COALESCE($18, seniority_id),
+    to_be_enriched = true
 WHERE id = $1
 """
 
-_SET_R2_HASH = """
+_STAGE_R2_PENDING = """
 UPDATE job_posting
-SET description_r2_hash = $2,
-    technology_ids = COALESCE($3, technology_ids),
-    to_be_enriched = true
+SET description_pending = COALESCE($2, description_pending),
+    r2_pending_meta = $3::jsonb
 WHERE id = $1::uuid
 """
 
@@ -744,19 +740,20 @@ SET employment_type = COALESCE($2, employment_type),
     locales = COALESCE($4, locales),
     location_ids = COALESCE($5, location_ids),
     location_types = COALESCE($6, location_types),
-    description_r2_hash = COALESCE($7, description_r2_hash),
-    technology_ids = COALESCE($8, technology_ids),
-    salary_min = COALESCE($9, salary_min),
-    salary_max = COALESCE($10, salary_max),
-    salary_currency = COALESCE($11, salary_currency),
-    salary_period = COALESCE($12, salary_period),
-    salary_eur = COALESCE($13, salary_eur),
-    experience_min = COALESCE($14, experience_min),
-    experience_max = COALESCE($15, experience_max),
-    occupation_id = COALESCE($16, occupation_id),
-    seniority_id = COALESCE($17, seniority_id),
+    description_pending = COALESCE($7, description_pending),
+    r2_pending_meta = COALESCE($8::jsonb, r2_pending_meta),
+    technology_ids = COALESCE($9, technology_ids),
+    salary_min = COALESCE($10, salary_min),
+    salary_max = COALESCE($11, salary_max),
+    salary_currency = COALESCE($12, salary_currency),
+    salary_period = COALESCE($13, salary_period),
+    salary_eur = COALESCE($14, salary_eur),
+    experience_min = COALESCE($15, experience_min),
+    experience_max = COALESCE($16, experience_max),
+    occupation_id = COALESCE($17, occupation_id),
+    seniority_id = COALESCE($18, seniority_id),
     to_be_enriched = CASE
-        WHEN description_r2_hash IS DISTINCT FROM COALESCE($7, description_r2_hash) THEN true
+        WHEN $7 IS NOT NULL THEN true
         ELSE to_be_enriched
     END
 WHERE id = $1
@@ -1021,8 +1018,29 @@ def _compute_r2_hash(description: str | None, merged_extras: dict) -> int:
     return content_hash(parts)
 
 
-async def _upload_to_r2(
-    posting_id: str,
+def _serialize_localizations(
+    localizations: dict | None,
+    primary_locale: str,
+) -> dict[str, str] | None:
+    """Flatten localizations to ``{locale: html_string}`` for JSON storage."""
+    if not localizations or not isinstance(localizations, dict):
+        return None
+    result: dict[str, str] = {}
+    for loc_locale, loc_data in localizations.items():
+        if loc_locale == primary_locale:
+            continue
+        if isinstance(loc_data, dict):
+            desc = loc_data.get("description")
+        elif isinstance(loc_data, str):
+            desc = loc_data
+        else:
+            continue
+        if desc:
+            result[loc_locale] = desc
+    return result or None
+
+
+def _stage_r2_pending(
     *,
     title: str | None,
     description: str | None,
@@ -1036,71 +1054,43 @@ async def _upload_to_r2(
     employment_type: str | None,
     job_location_type: str | None,
     current_hash: int | None = None,
-) -> int | None:
-    """Upload description and merged extras to R2. Best-effort, errors are logged.
+    source: str = "monitor",
+    tech_ids: list[int] | None = None,
+) -> tuple[str | None, str | None, int] | None:
+    """Compute R2 pending data without any network I/O.
 
-    Returns the new description_r2_hash (caller should persist in DB),
-    or None if no description was provided.
+    Returns ``(description_pending, r2_pending_meta_json, new_hash)``
+    or ``None`` if nothing changed (hash match) or no description.
     """
     if not description:
         return None
 
-    try:
-        locale = language or "en"
+    locale = language or "en"
+    merged = _build_r2_extras(
+        title=title,
+        locations=locations,
+        extras=extras,
+        metadata=metadata,
+        date_posted=date_posted,
+        base_salary=base_salary,
+        employment_type=employment_type,
+        job_location_type=job_location_type,
+    )
+    new_hash = _compute_r2_hash(description, merged)
 
-        merged = _build_r2_extras(
-            title=title,
-            locations=locations,
-            extras=extras,
-            metadata=metadata,
-            date_posted=date_posted,
-            base_salary=base_salary,
-            employment_type=employment_type,
-            job_location_type=job_location_type,
-        )
-
-        new_hash = _compute_r2_hash(description, merged)
-
-        # Fast path: nothing changed — skip all R2 API calls
-        if current_hash is not None and current_hash == new_hash:
-            return new_hash
-
-        # Upload with retries on transient network errors
-        for attempt in range(3):
-            try:
-                # Upload primary description + extras (tracks diffs in history)
-                await upload_posting(posting_id, locale, description, merged)
-
-                # Upload localizations (secondary locales, description only)
-                if localizations and isinstance(localizations, dict):
-                    for loc_locale, loc_data in localizations.items():
-                        if loc_locale == locale:
-                            continue
-                        loc_desc = None
-                        if isinstance(loc_data, dict):
-                            loc_desc = loc_data.get("description")
-                        elif isinstance(loc_data, str):
-                            loc_desc = loc_data
-                        if loc_desc:
-                            await upload_description(posting_id, loc_locale, loc_desc)
-
-                return new_hash
-            except (
-                httpx.TimeoutException,
-                httpx.ConnectError,
-                httpx.ReadError,
-                httpx.RemoteProtocolError,
-            ):
-                if attempt == 0:
-                    log.warning("batch.r2_upload.retry", posting_id=posting_id)
-                    await asyncio.sleep(2)
-                else:
-                    raise
-
-        return new_hash  # unreachable, keeps type checker happy
-    except Exception:
-        log.exception("batch.r2_upload.error", posting_id=posting_id)
+    if current_hash is not None and current_hash == new_hash:
         return None
+
+    meta = {
+        "locale": locale,
+        "extras": merged,
+        "tech_ids": tech_ids,
+        "localizations": _serialize_localizations(localizations, locale),
+        "source": source,
+        "retry_count": 0,
+        "new_hash": new_hash,
+    }
+    return (description, json.dumps(meta), new_hash)
 
 
 def _board_has_enrich(metadata: dict) -> list[str] | None:
@@ -1549,19 +1539,6 @@ async def _process_one_board_streaming(
         total_new = 0
         total_relisted = 0
         batch_count = 0
-        r2_tasks: list[asyncio.Task] = []
-        r2_semaphore = asyncio.Semaphore(settings.r2_upload_concurrency)
-
-        async def _do_upload_bg(
-            pid: str,
-            kw: dict,
-            cur_hash: int | None,
-        ) -> tuple[str, int, str | None] | None:
-            async with r2_semaphore:
-                new_hash = await _upload_to_r2(pid, current_hash=cur_hash, **kw)
-                if new_hash is not None and new_hash != cur_hash:
-                    return (pid, new_hash, kw.get("description"))
-                return None
 
         async for result in monitor_one_stream(board_url, crawler_type, metadata, http):
             batch_count += 1
@@ -1576,8 +1553,6 @@ async def _process_one_board_streaming(
 
             if not result.urls:
                 continue
-
-            r2_work: list[tuple[str, dict, int | None]] = []
 
             async with pool.acquire() as conn, conn.transaction():
                 is_rich_no_scrape = is_rich and not enrich_fields
@@ -1678,25 +1653,28 @@ async def _process_one_board_streaming(
                                 sen_id,
                             )
                             if row:
-                                r2_work.append(
-                                    (
-                                        str(row["id"]),
-                                        dict(
-                                            title=_coerce_text(j.title),
-                                            description=_coerce_text(j.description),
-                                            language=_coerce_text(j.language),
-                                            locations=_coerce_locations(j.locations),
-                                            localizations=j.localizations,
-                                            extras=j.extras,
-                                            metadata=j.metadata,
-                                            date_posted=j.date_posted,
-                                            base_salary=j.base_salary,
-                                            employment_type=_coerce_text(j.employment_type),
-                                            job_location_type=_coerce_text(j.job_location_type),
-                                        ),
-                                        None,
-                                    )
+                                staged = _stage_r2_pending(
+                                    title=_coerce_text(j.title),
+                                    description=_coerce_text(j.description),
+                                    language=_coerce_text(j.language),
+                                    locations=_coerce_locations(j.locations),
+                                    localizations=j.localizations,
+                                    extras=j.extras,
+                                    metadata=j.metadata,
+                                    date_posted=j.date_posted,
+                                    base_salary=j.base_salary,
+                                    employment_type=_coerce_text(j.employment_type),
+                                    job_location_type=_coerce_text(j.job_location_type),
+                                    source="monitor",
+                                    tech_ids=t_ids,
                                 )
+                                if staged:
+                                    await conn.execute(
+                                        _STAGE_R2_PENDING,
+                                        str(row["id"]),
+                                        staged[0],
+                                        staged[1],
+                                    )
 
                     # Update content for relisted and touched
                     update_triples = [
@@ -1767,25 +1745,31 @@ async def _process_one_board_streaming(
                                 backfill_count += 1
                                 if backfill_count > _R2_BACKFILL_LIMIT:
                                     continue
-                            r2_work.append(
-                                (
-                                    str(pid),
-                                    dict(
-                                        title=_coerce_text(j.title),
-                                        description=_coerce_text(j.description),
-                                        language=_coerce_text(j.language),
-                                        locations=_coerce_locations(j.locations),
-                                        localizations=j.localizations,
-                                        extras=j.extras,
-                                        metadata=j.metadata,
-                                        date_posted=j.date_posted,
-                                        base_salary=j.base_salary,
-                                        employment_type=_coerce_text(j.employment_type),
-                                        job_location_type=_coerce_text(j.job_location_type),
-                                    ),
-                                    existing_hash,
-                                )
+                            staged = _stage_r2_pending(
+                                title=_coerce_text(j.title),
+                                description=_coerce_text(j.description),
+                                language=_coerce_text(j.language),
+                                locations=_coerce_locations(j.locations),
+                                localizations=j.localizations,
+                                extras=j.extras,
+                                metadata=j.metadata,
+                                date_posted=j.date_posted,
+                                base_salary=j.base_salary,
+                                employment_type=_coerce_text(j.employment_type),
+                                job_location_type=_coerce_text(j.job_location_type),
+                                current_hash=existing_hash,
+                                source="monitor",
+                                tech_ids=_resolve_technology_ids(
+                                    _coerce_text(j.description), tech_id_map
+                                ),
                             )
+                            if staged:
+                                await conn.execute(
+                                    _STAGE_R2_PENDING,
+                                    str(pid),
+                                    staged[0],
+                                    staged[1],
+                                )
 
                 # URL-only path — insert stubs with next_scrape_at
                 if result.jobs_by_url is None and new_urls:
@@ -1796,10 +1780,6 @@ async def _process_one_board_streaming(
                         new_urls,
                     )
                     board_log.info("batch.inserted_for_scrape", count=len(inserted))
-
-            # Fire R2 uploads as background tasks (overlap with next batch)
-            for pid, kw, eh in r2_work:
-                r2_tasks.append(asyncio.create_task(_do_upload_bg(pid, kw, eh)))
 
             board_log.info(
                 "batch.monitor.stream_batch",
@@ -1836,20 +1816,6 @@ async def _process_one_board_streaming(
         # Flush location misses to taxonomy_miss table
         await _flush_location_misses(loc_resolver, pool)
 
-        # Await all background R2 tasks and persist hashes
-        if r2_tasks:
-            results = await asyncio.gather(*r2_tasks, return_exceptions=True)
-            hashes_to_persist = [r for r in results if isinstance(r, tuple)]
-            r2_errors = sum(1 for r in results if isinstance(r, Exception))
-            if r2_errors:
-                board_log.warning("batch.r2_upload.failures", count=r2_errors, total=len(r2_tasks))
-            if hashes_to_persist:
-                tech_map = await _get_technology_ids(pool)
-                async with pool.acquire() as conn:
-                    for posting_id, new_hash, desc in hashes_to_persist:
-                        tech_ids = _resolve_technology_ids(desc, tech_map)
-                        await conn.execute(_SET_R2_HASH, posting_id, new_hash, tech_ids)
-
         elapsed = monotonic() - t0
         board_log.info(
             "batch.monitor.success",
@@ -1875,12 +1841,6 @@ async def _process_one_board_streaming(
         board_log.exception("batch.monitor.error", error=error_msg, duration_s=round(elapsed, 2))
         # Discard stale location misses from this failed board
         loc_resolver.drain_location_misses()
-        # Cancel and await any in-flight R2 background tasks
-        for t in r2_tasks:
-            if not t.done():
-                t.cancel()
-        if r2_tasks:
-            await asyncio.gather(*r2_tasks, return_exceptions=True)
         with contextlib.suppress(Exception):
             async with pool.acquire() as conn:
                 await conn.execute(_RECORD_FAILURE, board_id, error_msg)
@@ -1948,9 +1908,6 @@ async def _process_one_board(
                     await conn.execute(_DELIST_BOARD_POSTINGS, board_id)
                     board_log.warning("batch.monitor.board_gone")
             return True, elapsed
-
-        # Collect R2 work to run after DB transaction
-        r2_work: list[tuple[str, dict, int | None]] = []
 
         async with pool.acquire() as conn, conn.transaction():
             # Persist newly discovered sitemap URL
@@ -2071,25 +2028,28 @@ async def _process_one_board(
                             sen_id,
                         )
                         if row:
-                            r2_work.append(
-                                (
-                                    str(row["id"]),
-                                    dict(
-                                        title=_coerce_text(j.title),
-                                        description=_coerce_text(j.description),
-                                        language=_coerce_text(j.language),
-                                        locations=_coerce_locations(j.locations),
-                                        localizations=j.localizations,
-                                        extras=j.extras,
-                                        metadata=j.metadata,
-                                        date_posted=j.date_posted,
-                                        base_salary=j.base_salary,
-                                        employment_type=_coerce_text(j.employment_type),
-                                        job_location_type=_coerce_text(j.job_location_type),
-                                    ),
-                                    None,
-                                )
+                            staged = _stage_r2_pending(
+                                title=_coerce_text(j.title),
+                                description=_coerce_text(j.description),
+                                language=_coerce_text(j.language),
+                                locations=_coerce_locations(j.locations),
+                                localizations=j.localizations,
+                                extras=j.extras,
+                                metadata=j.metadata,
+                                date_posted=j.date_posted,
+                                base_salary=j.base_salary,
+                                employment_type=_coerce_text(j.employment_type),
+                                job_location_type=_coerce_text(j.job_location_type),
+                                source="monitor",
+                                tech_ids=t_ids,
                             )
+                            if staged:
+                                await conn.execute(
+                                    _STAGE_R2_PENDING,
+                                    str(row["id"]),
+                                    staged[0],
+                                    staged[1],
+                                )
 
                 # Update content for relisted and existing active jobs
                 update_triples = [
@@ -2153,7 +2113,7 @@ async def _process_one_board(
                     )
                     await conn.execute(_BATCH_UPDATE_RICH_CONTENT)
 
-                    # R2 work for updated postings:
+                    # Stage R2 pending for updated postings:
                     # - With existing hash: always check for content changes
                     # - Without hash (backfill): cap to avoid overwhelming R2
                     backfill_count = 0
@@ -2162,25 +2122,31 @@ async def _process_one_board(
                             backfill_count += 1
                             if backfill_count > _R2_BACKFILL_LIMIT:
                                 continue
-                        r2_work.append(
-                            (
-                                str(pid),
-                                dict(
-                                    title=_coerce_text(j.title),
-                                    description=_coerce_text(j.description),
-                                    language=_coerce_text(j.language),
-                                    locations=_coerce_locations(j.locations),
-                                    localizations=j.localizations,
-                                    extras=j.extras,
-                                    metadata=j.metadata,
-                                    date_posted=j.date_posted,
-                                    base_salary=j.base_salary,
-                                    employment_type=_coerce_text(j.employment_type),
-                                    job_location_type=_coerce_text(j.job_location_type),
-                                ),
-                                existing_hash,
-                            )
+                        staged = _stage_r2_pending(
+                            title=_coerce_text(j.title),
+                            description=_coerce_text(j.description),
+                            language=_coerce_text(j.language),
+                            locations=_coerce_locations(j.locations),
+                            localizations=j.localizations,
+                            extras=j.extras,
+                            metadata=j.metadata,
+                            date_posted=j.date_posted,
+                            base_salary=j.base_salary,
+                            employment_type=_coerce_text(j.employment_type),
+                            job_location_type=_coerce_text(j.job_location_type),
+                            current_hash=existing_hash,
+                            source="monitor",
+                            tech_ids=_resolve_technology_ids(
+                                _coerce_text(j.description), tech_id_map
+                            ),
                         )
+                        if staged:
+                            await conn.execute(
+                                _STAGE_R2_PENDING,
+                                str(pid),
+                                staged[0],
+                                staged[1],
+                            )
                     if backfill_count > _R2_BACKFILL_LIMIT:
                         board_log.info(
                             "batch.r2_backfill.capped",
@@ -2204,34 +2170,6 @@ async def _process_one_board(
         if result.jobs_by_url:
             await _flush_location_misses(loc_resolver, pool)
 
-        # R2 uploads after transaction — concurrent to avoid timeout for large boards
-        if r2_work:
-            r2_semaphore = asyncio.Semaphore(settings.r2_upload_concurrency)
-
-            async def _do_upload(
-                pid: str, kw: dict, cur_hash: int | None
-            ) -> tuple[str, int, str | None] | None:
-                async with r2_semaphore:
-                    new_hash = await _upload_to_r2(pid, current_hash=cur_hash, **kw)
-                    if new_hash is not None and new_hash != cur_hash:
-                        return (pid, new_hash, kw.get("description"))
-                    return None
-
-            results = await asyncio.gather(
-                *[_do_upload(pid, kw, eh) for pid, kw, eh in r2_work],
-                return_exceptions=True,
-            )
-            hashes_to_persist = [r for r in results if isinstance(r, tuple)]
-            r2_errors = sum(1 for r in results if isinstance(r, Exception))
-            if r2_errors:
-                board_log.warning("batch.r2_upload.failures", count=r2_errors, total=len(r2_work))
-            if hashes_to_persist:
-                tech_id_map = await _get_technology_ids(pool)
-                async with pool.acquire() as conn:
-                    for posting_id, new_hash, desc in hashes_to_persist:
-                        tech_ids = _resolve_technology_ids(desc, tech_id_map)
-                        await conn.execute(_SET_R2_HASH, posting_id, new_hash, tech_ids)
-
         elapsed = monotonic() - t0
         board_log.info(
             "batch.monitor.success",
@@ -2249,7 +2187,7 @@ async def _process_one_board(
             with contextlib.suppress(Exception):
                 await get_redis().delete("cache:platform-stats")
 
-        # Free large temporaries (jobs_by_url, r2_work) before next item
+        # Free large temporaries (jobs_by_url) before next item
         del result
 
         return True, elapsed
@@ -2488,7 +2426,8 @@ async def _process_one_enrich_scrape(
         locales = None
         loc_ids = None
         loc_types = None
-        new_r2_hash = None
+        desc_pending = None
+        meta_pending = None
         tech_ids = None
         s_min = s_max = s_cur = s_per = s_eur = None
         exp_min = exp_max = None
@@ -2539,8 +2478,7 @@ async def _process_one_enrich_scrape(
             r2_title = r2_title or _coerce_text(content.title)
             r2_locations = _coerce_locations(content.locations)
 
-            new_r2_hash = await _upload_to_r2(
-                item.job_posting_id,
+            staged = _stage_r2_pending(
                 title=r2_title,
                 description=desc_text,
                 language=_coerce_text(language),
@@ -2553,7 +2491,11 @@ async def _process_one_enrich_scrape(
                 employment_type=_coerce_text(content.employment_type),
                 job_location_type=_coerce_text(content.job_location_type),
                 current_hash=item.description_r2_hash,
+                source="scrape",
+                tech_ids=tech_ids,
             )
+            desc_pending = staged[0] if staged else None
+            meta_pending = staged[1] if staged else None
 
         async with pool.acquire() as conn:
             await conn.execute(
@@ -2564,7 +2506,8 @@ async def _process_one_enrich_scrape(
                 locales,
                 loc_ids,
                 loc_types,
-                new_r2_hash,
+                desc_pending,
+                meta_pending,
                 tech_ids,
                 s_min,
                 s_max,
@@ -2671,9 +2614,8 @@ async def _process_one_scrape(
         s_min, s_max, s_cur, s_per, s_eur = _extract_salary_fields(desc_text, rates)
         exp_min, exp_max = _extract_experience_fields(desc_text)
 
-        # R2 upload (best-effort, before DB write)
-        new_r2_hash = await _upload_to_r2(
-            item.job_posting_id,
+        # Stage R2 pending data (pure computation, no I/O)
+        staged = _stage_r2_pending(
             title=title_text,
             description=desc_text,
             language=lang_text,
@@ -2686,7 +2628,11 @@ async def _process_one_scrape(
             employment_type=raw_emp_type,
             job_location_type=_coerce_text(content.job_location_type),
             current_hash=item.description_r2_hash,
+            source="scrape",
+            tech_ids=tech_ids,
         )
+        desc_pending = staged[0] if staged else None
+        meta_pending = staged[1] if staged else None
 
         async with pool.acquire() as conn:
             update_result = await conn.execute(
@@ -2697,7 +2643,8 @@ async def _process_one_scrape(
                 _build_locales(lang_text, None, detected_languages=detected_langs),
                 loc_ids,
                 loc_types,
-                new_r2_hash,
+                desc_pending,
+                meta_pending,
                 tech_ids,
                 s_min,
                 s_max,
