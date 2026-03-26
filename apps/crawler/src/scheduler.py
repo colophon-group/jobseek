@@ -22,7 +22,6 @@ dotenv.load_dotenv(".env")
 
 from src.batch import (  # noqa: E402
     WorkItem,
-    claim_monitor_work,
     claim_scrape_work,
     dry_run_single_board,
     process_monitor_batch,
@@ -437,6 +436,50 @@ async def run_continuous_loop(
 
     r2_drain_task = asyncio.create_task(_r2_drain_supervised())
 
+    # Start monitor pipeline (producer-consumer, separate from WorkerPool)
+    from src.batch import run_monitor_pipeline
+
+    monitor_tasks = []
+    if monitor and not browser_only:
+
+        async def _http_monitor_supervised():
+            while not shutdown_event.is_set():
+                try:
+                    await run_monitor_pipeline(
+                        pool,
+                        http,
+                        shutdown_event,
+                        num_workers=max(max_concurrent // 2, 5),
+                        worker_id=worker_id,
+                        browser=False,
+                    )
+                except Exception:
+                    log.exception("monitor_pipeline.http.crashed")
+                    if not shutdown_event.is_set():
+                        await asyncio.sleep(5)
+
+        monitor_tasks.append(asyncio.create_task(_http_monitor_supervised()))
+
+    if monitor and not http_only:
+
+        async def _browser_monitor_supervised():
+            while not shutdown_event.is_set():
+                try:
+                    await run_monitor_pipeline(
+                        pool,
+                        http,
+                        shutdown_event,
+                        num_workers=max(max_browser, 1),
+                        worker_id=worker_id,
+                        browser=True,
+                    )
+                except Exception:
+                    log.exception("monitor_pipeline.browser.crashed")
+                    if not shutdown_event.is_set():
+                        await asyncio.sleep(5)
+
+        monitor_tasks.append(asyncio.create_task(_browser_monitor_supervised()))
+
     while not shutdown_event.is_set():
         work_found = False
         monitors_claimed = 0
@@ -457,25 +500,12 @@ async def run_continuous_loop(
             continue
 
         try:
-            skip = []  # no domain exclusion — semaphore controls concurrency
+            skip = []
 
-            # Priority: first-time monitors → first-time scrapes →
-            #           re-monitors → re-scrapes.
-            # Monitors get up to half the free slots; scrapes get the rest.
-            # Within each type, the SQL claim query orders first-time
-            # items first (last_success_at IS NULL / description pending).
+            # Monitors are handled by the pipeline (above).
+            # WorkerPool handles scrapes only.
 
-            # Phase 1: HTTP monitors (half the budget)
-            if not browser_only:
-                budget = max(wp.http_free // 2, 1) if monitor else 0
-                if budget > 0:
-                    items = await claim_monitor_work(pool, http, budget, worker_id, skip)
-                    monitors_claimed += len(items)
-                    for item in items:
-                        wp.submit(item)
-                        work_found = True
-
-            # Phase 2: HTTP scrapes (fill up to remaining)
+            # HTTP scrapes
             if not browser_only:
                 budget = wp.http_free
                 if scrape and budget > 0:
@@ -485,48 +515,19 @@ async def run_continuous_loop(
                         wp.submit(item)
                         work_found = True
 
-            # Phase 3: HTTP monitors (fill any remaining slots)
-            if not browser_only:
-                budget = wp.http_free
-                if monitor and budget > 0:
-                    items = await claim_monitor_work(pool, http, budget, worker_id, skip)
-                    monitors_claimed += len(items)
-                    for item in items:
-                        wp.submit(item)
-                        work_found = True
-
-            # Phase 4: browser monitors (half budget)
-            if not http_only:
-                budget = max(wp.browser_free // 2, 1) if monitor else 0
-                if budget > 0:
-                    items = await claim_monitor_work(
-                        pool, http, budget, worker_id, skip, browser=True,
-                    )
-                    monitors_claimed += len(items)
-                    for item in items:
-                        wp.submit(item)
-                        work_found = True
-
-            # Phase 5: browser scrapes
+            # Browser scrapes
             if not http_only:
                 budget = wp.browser_free
                 if scrape and budget > 0:
                     items = await claim_scrape_work(
-                        pool, http, budget, worker_id, skip, browser=True,
+                        pool,
+                        http,
+                        budget,
+                        worker_id,
+                        skip,
+                        browser=True,
                     )
                     scrapes_claimed += len(items)
-                    for item in items:
-                        wp.submit(item)
-                        work_found = True
-
-            # Phase 6: browser monitors (fill remaining)
-            if not http_only:
-                budget = wp.browser_free
-                if monitor and budget > 0:
-                    items = await claim_monitor_work(
-                        pool, http, budget, worker_id, skip, browser=True,
-                    )
-                    monitors_claimed += len(items)
                     for item in items:
                         wp.submit(item)
                         work_found = True
@@ -567,6 +568,11 @@ async def run_continuous_loop(
 
     log.info("pool.draining", active=wp.active_count, queued=wp.queued_count)
     await wp.drain()
+
+    # Stop monitor pipelines
+    for t in monitor_tasks:
+        t.cancel()
+    await asyncio.gather(*monitor_tasks, return_exceptions=True)
 
     # Stop R2 drain loop and flush remaining pending uploads
     r2_drain_task.cancel()

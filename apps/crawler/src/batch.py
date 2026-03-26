@@ -68,6 +68,55 @@ _currency_rates: dict[str, float] | None = None
 # Prevents huge first-time runs from timing out. Backfill completes incrementally.
 _R2_BACKFILL_LIMIT = 500
 
+# Sentinel value used to signal workers to shut down.
+_SENTINEL = None
+
+
+@dataclass
+class JobCPUResult:
+    """CPU-processed job data ready for INSERT."""
+
+    url: str
+    insert_record: tuple  # positional params for _INSERT_RICH_JOB
+    r2_staging_args: dict  # kwargs for _stage_r2_pending
+    tech_ids: list[int] | None
+
+
+@dataclass
+class BoardBatch:
+    """One batch from a board -> DB writer."""
+
+    board_id: str
+    company_id: str
+    board_url: str
+    enrich_fields: list[str] | None
+    urls: set[str]
+    jobs_by_url: dict | None  # DiscoveredJob dict, or None for URL-only
+    cpu_results: dict[str, JobCPUResult]  # keyed by URL
+    delist_threshold: int
+
+
+@dataclass
+class BoardDone:
+    """Final signal for a board -> DB writer runs mark_gone + record_success."""
+
+    board_id: str
+    board_url: str
+    all_urls: set[str]
+    delist_threshold: int
+    total_new: int
+    total_relisted: int
+
+
+@dataclass
+class BoardError:
+    """Worker error -> DB writer runs _RECORD_FAILURE."""
+
+    board_id: str
+    board_url: str
+    error_msg: str
+
+
 # Titles that indicate a broken scrape (auth wall, CAPTCHA, etc.)
 _GARBAGE_TITLES = frozenset(
     s.lower()
@@ -1676,25 +1725,32 @@ async def _process_one_board_streaming(
                                 detected_langs = (
                                     detect_all_languages(j.description) if j.description else []
                                 )
-                                records.append((
-                                    company_id,
-                                    board_id,
-                                    normalize_employment_type(_coerce_text(j.employment_type)),
-                                    j.url,
-                                    all_titles,
-                                    _build_locales(
-                                        _coerce_text(j.language),
-                                        j.localizations,
-                                        detected_languages=detected_langs,
-                                    ),
-                                    loc_ids_r,
-                                    loc_types_r,
-                                    s_min, s_max, s_cur, s_per, s_eur,
-                                    exp_min, exp_max,
-                                    t_ids,
-                                    occ_id,
-                                    sen_id,
-                                ))
+                                records.append(
+                                    (
+                                        company_id,
+                                        board_id,
+                                        normalize_employment_type(_coerce_text(j.employment_type)),
+                                        j.url,
+                                        all_titles,
+                                        _build_locales(
+                                            _coerce_text(j.language),
+                                            j.localizations,
+                                            detected_languages=detected_langs,
+                                        ),
+                                        loc_ids_r,
+                                        loc_types_r,
+                                        s_min,
+                                        s_max,
+                                        s_cur,
+                                        s_per,
+                                        s_eur,
+                                        exp_min,
+                                        exp_max,
+                                        t_ids,
+                                        occ_id,
+                                        sen_id,
+                                    )
+                                )
                                 r2_staging.append((j, t_ids))
                             return records, r2_staging
 
@@ -1707,9 +1763,7 @@ async def _process_one_board_streaming(
                             loc_resolver.drain_location_misses()
 
                         # Batch insert all new jobs
-                        insert_sql = (
-                            _INSERT_RICH_JOB_ENRICH if enrich_fields else _INSERT_RICH_JOB
-                        )
+                        insert_sql = _INSERT_RICH_JOB_ENRICH if enrich_fields else _INSERT_RICH_JOB
                         inserted_ids = []
                         for rec in records:
                             row = await conn.fetchrow(insert_sql, *rec)
@@ -2276,6 +2330,746 @@ async def _process_one_board(
             async with pool.acquire() as conn:
                 await conn.execute(_RECORD_FAILURE, board_id, error_msg)
         return False, elapsed
+
+
+# ── Producer-Consumer Monitor Pipeline ────────────────────────────────
+
+
+def _process_jobs_cpu(
+    jobs_by_url: dict,
+    company_id: str,
+    board_id: str,
+    loc_resolver: LocationResolver,
+    rates: dict[str, float],
+    tech_id_map: dict[str, int],
+    occ_ids: dict[str, int],
+    sen_ids: dict[str, int],
+) -> dict[str, JobCPUResult]:
+    """Pure CPU work: normalize, detect language, resolve, extract.
+
+    Runs in a thread via ``asyncio.to_thread``.  No async, no DB.
+    Returns a dict of ``{url: JobCPUResult}``.
+    """
+    results: dict[str, JobCPUResult] = {}
+    for url, j in jobs_by_url.items():
+        j.description = normalize_description_html(j.description)
+        enrich_description(j)
+        if not j.language and j.description:
+            j.language = detect_language(j.description)
+
+        loc_ids_r, loc_types_r = _resolve_locations_sync(
+            loc_resolver,
+            _coerce_locations(j.locations),
+            _coerce_text(j.job_location_type),
+            _coerce_text(j.language),
+        )
+        desc_text = _coerce_text(j.description)
+        s_min, s_max, s_cur, s_per, s_eur = _extract_salary_fields(desc_text, rates)
+        exp_min, exp_max = _extract_experience_fields(desc_text)
+        t_ids = _resolve_technology_ids(desc_text, tech_id_map)
+        title_text = _coerce_text(j.title)
+        all_titles = _build_titles(title_text, j.localizations)
+        occ_id, sen_id = _resolve_occupation_seniority(all_titles, occ_ids, sen_ids)
+        detected_langs = detect_all_languages(j.description) if j.description else []
+
+        insert_record = (
+            company_id,
+            board_id,
+            normalize_employment_type(_coerce_text(j.employment_type)),
+            j.url,
+            all_titles,
+            _build_locales(
+                _coerce_text(j.language),
+                j.localizations,
+                detected_languages=detected_langs,
+            ),
+            loc_ids_r,
+            loc_types_r,
+            s_min,
+            s_max,
+            s_cur,
+            s_per,
+            s_eur,
+            exp_min,
+            exp_max,
+            t_ids,
+            occ_id,
+            sen_id,
+        )
+
+        r2_staging_args = dict(
+            title=_coerce_text(j.title),
+            description=_coerce_text(j.description),
+            language=_coerce_text(j.language),
+            locations=_coerce_locations(j.locations),
+            localizations=j.localizations,
+            extras=j.extras,
+            metadata=j.metadata,
+            date_posted=j.date_posted,
+            base_salary=j.base_salary,
+            employment_type=_coerce_text(j.employment_type),
+            job_location_type=_coerce_text(j.job_location_type),
+            source="monitor",
+            tech_ids=t_ids,
+        )
+
+        results[url] = JobCPUResult(
+            url=url,
+            insert_record=insert_record,
+            r2_staging_args=r2_staging_args,
+            tech_ids=t_ids,
+        )
+    return results
+
+
+async def _monitor_worker(
+    http: httpx.AsyncClient,
+    pool: asyncpg.Pool,
+    fetch_buffer: asyncio.Queue,
+    write_buffer: asyncio.Queue,
+    loc_resolver: LocationResolver,
+    rates: dict[str, float],
+    tech_id_map: dict[str, int],
+    occ_ids: dict[str, int],
+    sen_ids: dict[str, int],
+    worker_id: int,
+) -> int:
+    """Consume boards from fetch_buffer, run monitor + CPU work, put results in write_buffer.
+
+    Returns the number of boards processed.
+    """
+    boards_processed = 0
+    while True:
+        board = await fetch_buffer.get()
+        if board is _SENTINEL:
+            fetch_buffer.task_done()
+            break
+
+        board_id = str(board["id"])
+        company_id = str(board["company_id"])
+        board_url = board["board_url"]
+        crawler_type = board["crawler_type"]
+        board_log = log.bind(
+            board_id=board_id,
+            board_url=board_url,
+            crawler_type=crawler_type,
+            pipeline_worker=worker_id,
+        )
+
+        try:
+            metadata = board["metadata"] if board["metadata"] else {}
+            if isinstance(metadata, str):
+                metadata = json.loads(metadata)
+
+            enrich_fields = _board_has_enrich(metadata)
+            delist_threshold = (
+                _DELIST_THRESHOLD_AUTHORITATIVE
+                if crawler_type in _API_MONITOR_TYPES
+                else _DELIST_THRESHOLD_FRAGILE
+            )
+
+            # Detect if this board needs a browser
+            needs_browser = monitor_needs_browser(crawler_type, metadata)
+            pw = None
+            pw_ctx = None
+            if needs_browser:
+                try:
+                    from playwright.async_api import async_playwright
+
+                    pw_ctx = async_playwright()
+                    pw = await pw_ctx.start()
+                    board_log.info("pipeline.worker.playwright_started")
+                except Exception:
+                    board_log.warning("pipeline.worker.playwright_unavailable", exc_info=True)
+
+            all_urls: set[str] = set()
+            total_new = 0
+            total_relisted = 0
+            batch_count = 0
+
+            try:
+                # Handle SSL verification
+                ssl_verify = metadata.get("ssl_verify", True)
+                effective_http = http
+                if not ssl_verify:
+                    from src.shared.http import create_http_client
+
+                    effective_http = create_http_client(verify=False)
+
+                try:
+                    async for result in monitor_one_stream(
+                        board_url, crawler_type, metadata, effective_http
+                    ):
+                        batch_count += 1
+                        all_urls.update(result.urls)
+
+                        if not result.urls:
+                            continue
+
+                        # Extend DB lease (shielded — fire-and-forget)
+                        with contextlib.suppress(Exception):
+                            await asyncio.shield(pool.execute(_EXTEND_BOARD_LEASE, board_id))
+
+                        # CPU work in thread
+                        cpu_results: dict[str, JobCPUResult] = {}
+                        if result.jobs_by_url:
+                            cpu_results = await asyncio.to_thread(
+                                _process_jobs_cpu,
+                                result.jobs_by_url,
+                                company_id,
+                                board_id,
+                                loc_resolver,
+                                rates,
+                                tech_id_map,
+                                occ_ids,
+                                sen_ids,
+                            )
+
+                        await write_buffer.put(
+                            BoardBatch(
+                                board_id=board_id,
+                                company_id=company_id,
+                                board_url=board_url,
+                                enrich_fields=enrich_fields,
+                                urls=result.urls,
+                                jobs_by_url=result.jobs_by_url,
+                                cpu_results=cpu_results,
+                                delist_threshold=delist_threshold,
+                            )
+                        )
+
+                        board_log.info(
+                            "pipeline.worker.batch",
+                            batch=batch_count,
+                            discovered=len(result.urls),
+                        )
+                finally:
+                    if effective_http is not http:
+                        await effective_http.aclose()
+            finally:
+                if pw:
+                    await pw.stop()
+                if pw_ctx:
+                    with contextlib.suppress(Exception):
+                        await pw_ctx.__aexit__(None, None, None)
+
+            # Send done signal
+            if not all_urls:
+                # Empty check — let the writer handle it
+                await write_buffer.put(
+                    BoardDone(
+                        board_id=board_id,
+                        board_url=board_url,
+                        all_urls=set(),
+                        delist_threshold=delist_threshold,
+                        total_new=0,
+                        total_relisted=0,
+                    )
+                )
+            else:
+                await write_buffer.put(
+                    BoardDone(
+                        board_id=board_id,
+                        board_url=board_url,
+                        all_urls=all_urls,
+                        delist_threshold=delist_threshold,
+                        total_new=total_new,
+                        total_relisted=total_relisted,
+                    )
+                )
+
+            boards_processed += 1
+
+        except Exception as exc:
+            error_msg = _error_message(exc)
+            board_log.exception("pipeline.worker.error", error=error_msg)
+            await write_buffer.put(
+                BoardError(
+                    board_id=board_id,
+                    board_url=board_url,
+                    error_msg=error_msg,
+                )
+            )
+            boards_processed += 1
+
+        fetch_buffer.task_done()
+
+    return boards_processed
+
+
+async def _monitor_db_writer(
+    pool: asyncpg.Pool,
+    write_buffer: asyncio.Queue,
+    loc_resolver: LocationResolver,
+) -> tuple[int, int, int]:
+    """Drain write_buffer and perform all DB writes.
+
+    Returns (boards_succeeded, total_new, total_gone).
+    """
+    boards_succeeded = 0
+    total_new = 0
+    total_gone = 0
+
+    while True:
+        item = await write_buffer.get()
+        if item is _SENTINEL:
+            write_buffer.task_done()
+            break
+
+        try:
+            if isinstance(item, BoardError):
+                with contextlib.suppress(Exception):
+                    async with pool.acquire() as conn:
+                        await conn.execute(_RECORD_FAILURE, item.board_id, item.error_msg)
+                log.warning(
+                    "pipeline.writer.board_error",
+                    board_id=item.board_id,
+                    board_url=item.board_url,
+                    error=item.error_msg,
+                )
+                write_buffer.task_done()
+                continue
+
+            if isinstance(item, BoardDone):
+                if not item.all_urls:
+                    # Empty check
+                    async with pool.acquire() as conn:
+                        rows = await conn.fetch(_RECORD_EMPTY_CHECK, item.board_id)
+                        if rows and rows[0]["board_status"] == "gone":
+                            await conn.execute(_DELIST_BOARD_POSTINGS, item.board_id)
+                            log.warning(
+                                "pipeline.writer.board_gone",
+                                board_id=item.board_id,
+                                board_url=item.board_url,
+                            )
+                else:
+                    # Mark gone + record success
+                    gone_count = 0
+                    async with pool.acquire() as conn, conn.transaction():
+                        gone_rows = await conn.fetch(
+                            _MARK_GONE,
+                            list(item.all_urls),
+                            item.board_id,
+                            item.delist_threshold,
+                        )
+                        gone_count = len(gone_rows)
+                        await conn.execute(_RECORD_SUCCESS_NONEMPTY, item.board_id)
+                    total_gone += gone_count
+
+                    log.info(
+                        "pipeline.writer.board_done",
+                        board_id=item.board_id,
+                        board_url=item.board_url,
+                        all_urls=len(item.all_urls),
+                        gone=gone_count,
+                        new=item.total_new,
+                        relisted=item.total_relisted,
+                    )
+
+                    # Invalidate Redis cache when job counts change
+                    if item.total_new or gone_count:
+                        with contextlib.suppress(Exception):
+                            await get_redis().delete("cache:platform-stats")
+
+                boards_succeeded += 1
+                write_buffer.task_done()
+                continue
+
+            # BoardBatch — run diff + insert + update
+            batch: BoardBatch = item
+            batch_new = 0
+            batch_relisted = 0
+
+            async with pool.acquire() as conn, conn.transaction():
+                is_rich = batch.jobs_by_url is not None
+                is_rich_no_scrape = is_rich and not batch.enrich_fields
+                rows = await conn.fetch(
+                    _DIFF_BATCH,
+                    list(batch.urls),
+                    batch.board_id,
+                    is_rich_no_scrape,
+                )
+
+                new_urls: list[str] = []
+                relisted: list[dict] = []
+                touched: list[dict] = []
+
+                for row in rows:
+                    action = row["action"]
+                    if action == "new":
+                        new_urls.append(row["url"])
+                    elif action == "relisted":
+                        r2h = row["description_r2_hash"]
+                        relisted.append(
+                            {
+                                "id": row["id"],
+                                "url": row["url"],
+                                "r2_hash": int(r2h) if r2h is not None else None,
+                            }
+                        )
+                    elif action == "touched":
+                        r2h = row["description_r2_hash"]
+                        touched.append(
+                            {
+                                "id": row["id"],
+                                "url": row["url"],
+                                "r2_hash": int(r2h) if r2h is not None else None,
+                            }
+                        )
+
+                batch_new = len(new_urls)
+                batch_relisted = len(relisted)
+
+                if batch.jobs_by_url:
+                    # Insert new rich jobs
+                    if new_urls and batch.cpu_results:
+                        insert_sql = (
+                            _INSERT_RICH_JOB_ENRICH if batch.enrich_fields else _INSERT_RICH_JOB
+                        )
+                        inserted_ids: list[str] = []
+                        r2_staging_list: list[tuple[str, dict]] = []
+                        for url in new_urls:
+                            if url not in batch.cpu_results:
+                                continue
+                            cpu_r = batch.cpu_results[url]
+                            row = await conn.fetchrow(insert_sql, *cpu_r.insert_record)
+                            if row:
+                                posting_id = str(row["id"])
+                                inserted_ids.append(posting_id)
+                                r2_staging_list.append((posting_id, cpu_r.r2_staging_args))
+
+                        # Stage R2 pending for inserted jobs
+                        for posting_id, r2_args in r2_staging_list:
+                            staged = _stage_r2_pending(**r2_args)
+                            if staged:
+                                await conn.execute(
+                                    _STAGE_R2_PENDING,
+                                    posting_id,
+                                    staged[0],
+                                    staged[1],
+                                )
+
+                    # Update content for relisted and touched
+                    update_triples = [
+                        (item_d["id"], batch.jobs_by_url[item_d["url"]], item_d.get("r2_hash"))
+                        for item_d in relisted + touched
+                        if item_d["url"] in batch.jobs_by_url
+                    ]
+                    if update_triples:
+                        # CPU work for relisted/touched (normalize, enrich, detect lang)
+                        for _, j, _ in update_triples:
+                            j.description = normalize_description_html(j.description)
+                            enrich_description(j)
+                            if not j.language and j.description:
+                                j.language = detect_language(j.description)
+
+                        await conn.execute(_CREATE_RICH_UPDATES_TEMP)
+                        records = []
+                        for pid, j, _ in update_triples:
+                            loc_ids, loc_types = _resolve_locations_sync(
+                                loc_resolver,
+                                _coerce_locations(j.locations),
+                                _coerce_text(j.job_location_type),
+                                _coerce_text(j.language),
+                            )
+                            desc_text = _coerce_text(j.description)
+                            s_min, s_max, s_cur, s_per, s_eur = _extract_salary_fields(
+                                desc_text, await _get_currency_rates(pool)
+                            )
+                            exp_min, exp_max = _extract_experience_fields(desc_text)
+                            t_ids = _resolve_technology_ids(
+                                desc_text, await _get_technology_ids(pool)
+                            )
+                            title_text = _coerce_text(j.title)
+                            all_titles = _build_titles(title_text, j.localizations)
+                            occ_id, sen_id = _resolve_occupation_seniority(
+                                all_titles,
+                                await _get_occupation_ids(pool),
+                                await _get_seniority_ids(pool),
+                            )
+                            detected_langs = (
+                                detect_all_languages(j.description) if j.description else []
+                            )
+                            records.append(
+                                (
+                                    pid,
+                                    normalize_employment_type(_coerce_text(j.employment_type)),
+                                    all_titles,
+                                    _build_locales(
+                                        _coerce_text(j.language),
+                                        j.localizations,
+                                        detected_languages=detected_langs,
+                                    ),
+                                    loc_ids,
+                                    loc_types,
+                                    s_min,
+                                    s_max,
+                                    s_cur,
+                                    s_per,
+                                    s_eur,
+                                    exp_min,
+                                    exp_max,
+                                    t_ids,
+                                    occ_id,
+                                    sen_id,
+                                )
+                            )
+                        await conn.copy_records_to_table("_rich_updates", records=records)
+                        await conn.execute(_BATCH_UPDATE_RICH_CONTENT)
+
+                        # R2 staging for relisted/touched
+                        backfill_count = 0
+                        for pid, j, existing_hash in update_triples:
+                            if existing_hash is None:
+                                backfill_count += 1
+                                if backfill_count > _R2_BACKFILL_LIMIT:
+                                    continue
+                            staged = _stage_r2_pending(
+                                title=_coerce_text(j.title),
+                                description=_coerce_text(j.description),
+                                language=_coerce_text(j.language),
+                                locations=_coerce_locations(j.locations),
+                                localizations=j.localizations,
+                                extras=j.extras,
+                                metadata=j.metadata,
+                                date_posted=j.date_posted,
+                                base_salary=j.base_salary,
+                                employment_type=_coerce_text(j.employment_type),
+                                job_location_type=_coerce_text(j.job_location_type),
+                                current_hash=existing_hash,
+                                source="monitor",
+                                tech_ids=_resolve_technology_ids(
+                                    _coerce_text(j.description),
+                                    await _get_technology_ids(pool),
+                                ),
+                            )
+                            if staged:
+                                is_first = existing_hash is None
+                                depth = await _get_r2_queue_depth(pool)
+                                queue_ok = is_first or depth < settings.r2_queue_max
+                                if queue_ok:
+                                    await conn.execute(
+                                        _STAGE_R2_PENDING,
+                                        str(pid),
+                                        staged[0],
+                                        staged[1],
+                                    )
+
+                else:
+                    # URL-only path — insert stubs with next_scrape_at
+                    if new_urls:
+                        await conn.fetch(
+                            _INSERT_URL_ONLY_JOBS,
+                            batch.company_id,
+                            batch.board_id,
+                            new_urls,
+                        )
+
+            total_new += batch_new
+
+            # Backfill location cache misses (rare path)
+            if await loc_resolver.backfill_misses():
+                loc_resolver.drain_location_misses()
+            await _flush_location_misses(loc_resolver, pool)
+
+            log.info(
+                "pipeline.writer.batch",
+                board_id=batch.board_id,
+                new=batch_new,
+                relisted=batch_relisted,
+                touched=len(touched),
+            )
+
+        except Exception:
+            log.exception(
+                "pipeline.writer.error",
+                item_type=type(item).__name__,
+                board_id=getattr(item, "board_id", "?"),
+            )
+
+        write_buffer.task_done()
+
+    return boards_succeeded, total_new, total_gone
+
+
+async def _monitor_producer(
+    pool: asyncpg.Pool,
+    http: httpx.AsyncClient,
+    fetch_buffer: asyncio.Queue,
+    shutdown_event: asyncio.Event,
+    num_workers: int,
+    worker_id: str,
+    browser: bool = False,
+) -> None:
+    """Claim boards from DB and feed them into fetch_buffer.
+
+    Sends _SENTINEL to all workers on shutdown.
+    """
+    backoff = 1.0
+    max_backoff = 30.0
+
+    try:
+        while not shutdown_event.is_set():
+            budget = fetch_buffer.maxsize - fetch_buffer.qsize()
+            if budget <= 0:
+                try:
+                    await asyncio.wait_for(
+                        shutdown_event.wait(),
+                        timeout=0.5,
+                    )
+                    break  # shutdown
+                except TimeoutError:
+                    continue
+
+            claim_limit = min(budget, 10)
+            try:
+                rows = await pool.fetch(
+                    _CLAIM_MONITORS,
+                    claim_limit,
+                    worker_id,
+                    [],  # no domain exclusions in pipeline mode
+                    browser,
+                )
+            except Exception:
+                log.exception("pipeline.producer.claim_error")
+                rows = []
+
+            if rows:
+                backoff = 1.0
+                for board in rows:
+                    await fetch_buffer.put(board)
+                log.info("pipeline.producer.claimed", count=len(rows))
+            else:
+                # Adaptive backoff when no work available
+                try:
+                    await asyncio.wait_for(
+                        shutdown_event.wait(),
+                        timeout=backoff,
+                    )
+                    break  # shutdown
+                except TimeoutError:
+                    pass
+                backoff = min(backoff * 2, max_backoff)
+    finally:
+        # Always send sentinels so workers can exit
+        for _ in range(num_workers):
+            await fetch_buffer.put(_SENTINEL)
+        log.info("pipeline.producer.shutdown", sentinels_sent=num_workers)
+
+
+async def run_monitor_pipeline(
+    pool: asyncpg.Pool,
+    http: httpx.AsyncClient,
+    shutdown_event: asyncio.Event,
+    num_workers: int = 20,
+    worker_id: str = "",
+    browser: bool = False,
+) -> None:
+    """Orchestrate the producer-consumer monitor pipeline.
+
+    - 1 producer claims boards from DB
+    - N workers fetch APIs + run CPU work (no DB access except lease extension)
+    - 1 DB writer does all diff/insert/update/staging
+    """
+    t0 = monotonic()
+
+    # Pre-load lookup tables (shared read-only across all workers)
+    loc_resolver = await _get_location_resolver(pool)
+    rates = await _get_currency_rates(pool)
+    tech_id_map = await _get_technology_ids(pool)
+    occ_ids = await _get_occupation_ids(pool)
+    sen_ids = await _get_seniority_ids(pool)
+
+    fetch_buffer: asyncio.Queue = asyncio.Queue(maxsize=num_workers * 2)
+    write_buffer: asyncio.Queue = asyncio.Queue(maxsize=num_workers * 4)
+
+    log.info(
+        "pipeline.start",
+        num_workers=num_workers,
+        fetch_buffer_max=fetch_buffer.maxsize,
+        write_buffer_max=write_buffer.maxsize,
+        browser=browser,
+    )
+
+    # Start producer
+    producer_task = asyncio.create_task(
+        _monitor_producer(
+            pool,
+            http,
+            fetch_buffer,
+            shutdown_event,
+            num_workers,
+            worker_id,
+            browser=browser,
+        ),
+        name="pipeline-producer",
+    )
+
+    # Start workers
+    worker_tasks = []
+    for i in range(num_workers):
+        task = asyncio.create_task(
+            _monitor_worker(
+                http,
+                pool,
+                fetch_buffer,
+                write_buffer,
+                loc_resolver,
+                rates,
+                tech_id_map,
+                occ_ids,
+                sen_ids,
+                worker_id=i,
+            ),
+            name=f"pipeline-worker-{i}",
+        )
+        worker_tasks.append(task)
+
+    # Start DB writer
+    writer_task = asyncio.create_task(
+        _monitor_db_writer(pool, write_buffer, loc_resolver),
+        name="pipeline-writer",
+    )
+
+    # Wait for producer to finish (either shutdown or exhaustion)
+    try:
+        await producer_task
+    except Exception:
+        log.exception("pipeline.producer.crashed")
+        # Ensure sentinels are sent even on crash
+        for _ in range(num_workers):
+            with contextlib.suppress(Exception):
+                await fetch_buffer.put(_SENTINEL)
+
+    # Wait for all workers to finish
+    worker_results = await asyncio.gather(*worker_tasks, return_exceptions=True)
+    total_boards = 0
+    for r in worker_results:
+        if isinstance(r, int):
+            total_boards += r
+        elif isinstance(r, Exception):
+            log.error("pipeline.worker.crashed", error=str(r))
+
+    # Signal DB writer to stop
+    await write_buffer.put(_SENTINEL)
+
+    # Wait for writer to drain
+    try:
+        boards_succeeded, total_new, total_gone = await writer_task
+    except Exception:
+        log.exception("pipeline.writer.crashed")
+        boards_succeeded, total_new, total_gone = 0, 0, 0
+
+    elapsed = monotonic() - t0
+    log.info(
+        "pipeline.done",
+        boards_total=total_boards,
+        boards_succeeded=boards_succeeded,
+        total_new=total_new,
+        total_gone=total_gone,
+        duration_s=round(elapsed, 2),
+        browser=browser,
+    )
 
 
 @dataclass
