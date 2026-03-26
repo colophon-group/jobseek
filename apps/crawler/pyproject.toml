@@ -31,7 +31,6 @@ dependencies = [
 scheduler = "src.scheduler:main"
 enricher = "src.enricher:main"
 ws = "src.workspace.cli:main"
-discover = "src.discover:main"
 
 [project.optional-dependencies]
 enrich = ["openai>=1.0", "anthropic>=0.40", "google-genai>=1.0"]
