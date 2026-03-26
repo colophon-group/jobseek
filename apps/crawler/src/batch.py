@@ -1404,6 +1404,7 @@ WITH ranked AS (
     AND (leased_until IS NULL OR leased_until < now())
     AND throttle_key != ALL($3::text[])
     AND monitor_needs_browser = $4
+    AND ($5::boolean IS FALSE OR last_success_at IS NULL)
 ),
 picked AS (
   SELECT id
@@ -1434,6 +1435,8 @@ WITH candidates AS (
       AND (p.leased_until IS NULL OR p.leased_until < now())
       AND split_part(split_part(p.source_url, '://', 2), '/', 1) != ALL($3::text[])
       AND b.scraper_needs_browser = $4
+      AND ($5::boolean IS FALSE OR (p.description_r2_hash IS NULL
+            AND p.description_pending IS NULL))
     FOR UPDATE OF p SKIP LOCKED
 ),
 ranked AS (
@@ -1478,7 +1481,9 @@ async def claim_monitor_work(
     if limit <= 0:
         return []
 
-    rows = await pool.fetch(_CLAIM_MONITORS, limit, worker_id, exclude_domains or [], browser)
+    rows = await pool.fetch(
+        _CLAIM_MONITORS, limit, worker_id, exclude_domains or [], browser, False
+    )
     items: list[WorkItem] = []
     for board in rows:
         domain = board["throttle_key"]
@@ -1535,7 +1540,9 @@ async def claim_scrape_work(
     if limit <= 0:
         return []
 
-    rows = await pool.fetch(_CLAIM_SCRAPES, limit, worker_id, exclude_domains or [], browser)
+    rows = await pool.fetch(
+        _CLAIM_SCRAPES, limit, worker_id, exclude_domains or [], browser, False
+    )
     if not rows:
         return []
 
@@ -2467,13 +2474,34 @@ async def _monitor_worker(
     sen_ids: dict[str, int],
     worker_id: int,
 ) -> int:
-    """Consume boards from fetch_buffer, run monitor + CPU work, put results in write_buffer.
+    """Consume items from fetch_buffer (boards or scrape work items).
 
-    Returns the number of boards processed.
+    Returns the number of items processed.
     """
     boards_processed = 0
     while True:
         board = await fetch_buffer.get()
+
+        # Dispatch scrape items to the scrape handler
+        if isinstance(board, _ScrapeWorkItem):
+            try:
+                result = await _do_one_scrape(
+                    board, http, pool, loc_resolver, rates, tech_id_map, occ_ids, sen_ids
+                )
+                await write_buffer.put(result)
+                boards_processed += 1
+            except Exception as exc:
+                log.warning(
+                    "pipeline.worker.scrape_error",
+                    url=board.item.url,
+                    error=_error_message(exc),
+                    pipeline_worker=worker_id,
+                )
+                await write_buffer.put(ScrapeError(job_posting_id=board.item.job_posting_id))
+                boards_processed += 1
+            finally:
+                fetch_buffer.task_done()
+            continue
         if board is _SENTINEL:
             fetch_buffer.task_done()
             break
@@ -3472,6 +3500,134 @@ async def _monitor_producer(
         log.info("pipeline.producer.shutdown", sentinels_sent=num_workers)
 
 
+# Priority tiers: (name, weight, is_monitor, first_time_only)
+_PRIORITY_TIERS = [
+    ("first_mon", 0.40, True, True),
+    ("first_scr", 0.25, False, True),
+    ("re_mon", 0.20, True, False),
+    ("re_scr", 0.15, False, False),
+]
+
+
+async def _unified_producer(
+    pool: asyncpg.Pool,
+    fetch_buffer: asyncio.Queue,
+    shutdown_event: asyncio.Event,
+    num_workers: int,
+    worker_id: str,
+    browser: bool = False,
+) -> None:
+    """Claim both monitors and scrapes with weighted priority tiers.
+
+    Budget is split across 4 tiers. Underspend cascades to lower tiers
+    with renormalized weights. Feeds a single shared fetch_buffer.
+    """
+    backoff = 1.0
+    max_backoff = 15.0
+
+    try:
+        while not shutdown_event.is_set():
+            budget = fetch_buffer.maxsize - fetch_buffer.qsize()
+            if budget <= 0:
+                try:
+                    await asyncio.wait_for(shutdown_event.wait(), timeout=0.5)
+                    break
+                except TimeoutError:
+                    continue
+
+            budget = min(budget, num_workers * 2)
+            remaining = budget
+            claimed_any = False
+
+            for i, (name, weight, is_monitor, first_only) in enumerate(_PRIORITY_TIERS):
+                if remaining <= 0:
+                    break
+
+                # Renormalize weight among remaining tiers
+                remaining_weight = sum(w for _, w, _, _ in _PRIORITY_TIERS[i:])
+                tier_budget = max(int(remaining * weight / remaining_weight), 1)
+
+                try:
+                    if is_monitor:
+                        rows = await pool.fetch(
+                            _CLAIM_MONITORS,
+                            tier_budget,
+                            worker_id,
+                            [],
+                            browser,
+                            first_only,
+                        )
+                        for board in rows:
+                            await fetch_buffer.put(board)
+                    else:
+                        rows = await pool.fetch(
+                            _CLAIM_SCRAPES,
+                            tier_budget,
+                            worker_id,
+                            [],
+                            browser,
+                            first_only,
+                        )
+                        # Build _ScrapeWorkItem for each claimed scrape
+                        if rows:
+                            board_ids = list({str(r["board_id"]) for r in rows})
+                            scrapers = await _load_board_scrapers(pool, board_ids)
+                            for r in rows:
+                                bid = str(r["board_id"])
+                                info = scrapers.get(bid)
+                                if not info:
+                                    with contextlib.suppress(Exception):
+                                        await pool.execute(
+                                            "UPDATE job_posting SET leased_until = NULL "
+                                            "WHERE id = $1",
+                                            r["id"],
+                                        )
+                                    continue
+                                cfg = info.scraper_config or {}
+                                ef = cfg.get("enrich")
+                                ef = ef if isinstance(ef, list) and ef else None
+                                item = ScrapeItem(
+                                    job_posting_id=str(r["id"]),
+                                    url=r["source_url"],
+                                    board_id=bid,
+                                    description_r2_hash=(
+                                        int(r["description_r2_hash"])
+                                        if r["description_r2_hash"] is not None
+                                        else None
+                                    ),
+                                )
+                                work = _ScrapeWorkItem(
+                                    item=item,
+                                    scraper_type=info.scraper_type,
+                                    scraper_config=info.scraper_config,
+                                    enrich_fields=ef,
+                                    ssl_verify=info.ssl_verify,
+                                )
+                                await fetch_buffer.put(work)
+                except Exception:
+                    log.warning(f"pipeline.producer.{name}_error", exc_info=True)
+                    rows = []
+
+                remaining -= len(rows)
+                if rows:
+                    claimed_any = True
+
+            if claimed_any:
+                backoff = 1.0
+                log.debug("pipeline.producer.claimed", budget=budget, remaining=remaining)
+            else:
+                try:
+                    await asyncio.wait_for(shutdown_event.wait(), timeout=backoff)
+                    break
+                except TimeoutError:
+                    pass
+                backoff = min(backoff * 2, max_backoff)
+    finally:
+        for _ in range(num_workers):
+            await fetch_buffer.put(_SENTINEL)
+        log.info("pipeline.unified_producer.shutdown", sentinels_sent=num_workers)
+
+
 async def run_monitor_pipeline(
     pool: asyncpg.Pool,
     http: httpx.AsyncClient,
@@ -3497,45 +3653,48 @@ async def run_monitor_pipeline(
     occ_ids = await _get_occupation_ids(pool)
     sen_ids = await _get_seniority_ids(pool)
 
-    fetch_buffer: asyncio.Queue = asyncio.Queue(maxsize=num_workers * 2)
-
-    # Size write_buffer to accommodate both monitor and scrape workers
-    write_buffer_size = num_workers * 4
-    if num_scrape_workers > 0:
-        write_buffer_size += num_scrape_workers * 2
-    write_buffer: asyncio.Queue = asyncio.Queue(maxsize=write_buffer_size)
-
-    # Scrape buffer (only created if scrape workers requested)
-    scrape_fetch_buffer: asyncio.Queue | None = None
-    if num_scrape_workers > 0:
-        scrape_fetch_buffer = asyncio.Queue(maxsize=num_scrape_workers * 2)
+    total_workers = num_workers + num_scrape_workers
+    fetch_buffer: asyncio.Queue = asyncio.Queue(maxsize=total_workers * 2)
+    write_buffer: asyncio.Queue = asyncio.Queue(maxsize=total_workers * 4)
 
     log.info(
         "pipeline.start",
-        num_workers=num_workers,
-        num_scrape_workers=num_scrape_workers,
+        num_workers=total_workers,
         fetch_buffer_max=fetch_buffer.maxsize,
         write_buffer_max=write_buffer.maxsize,
         browser=browser,
     )
 
-    # Start monitor producer
-    producer_task = asyncio.create_task(
-        _monitor_producer(
-            pool,
-            http,
-            fetch_buffer,
-            shutdown_event,
-            num_workers,
-            worker_id,
-            browser=browser,
-        ),
-        name="pipeline-producer",
-    )
+    # Unified producer: claims both monitors and scrapes with priority tiers
+    if num_scrape_workers > 0:
+        producer_task = asyncio.create_task(
+            _unified_producer(
+                pool,
+                fetch_buffer,
+                shutdown_event,
+                total_workers,
+                worker_id,
+                browser=browser,
+            ),
+            name="pipeline-producer",
+        )
+    else:
+        producer_task = asyncio.create_task(
+            _monitor_producer(
+                pool,
+                http,
+                fetch_buffer,
+                shutdown_event,
+                total_workers,
+                worker_id,
+                browser=browser,
+            ),
+            name="pipeline-producer",
+        )
 
-    # Start monitor workers
+    # All workers share the same buffer and handle both monitors and scrapes
     worker_tasks = []
-    for i in range(num_workers):
+    for i in range(total_workers):
         task = asyncio.create_task(
             _monitor_worker(
                 http,
@@ -3553,40 +3712,7 @@ async def run_monitor_pipeline(
         )
         worker_tasks.append(task)
 
-    # Start scrape producer + workers (if requested)
-    scrape_producer_task = None
-    scrape_worker_tasks = []
-    if num_scrape_workers > 0 and scrape_fetch_buffer is not None:
-        scrape_producer_task = asyncio.create_task(
-            _scrape_pipeline_producer(
-                pool,
-                scrape_fetch_buffer,
-                shutdown_event,
-                num_scrape_workers,
-                worker_id,
-                browser=browser,
-            ),
-            name="pipeline-scrape-producer",
-        )
-
-        for i in range(num_scrape_workers):
-            task = asyncio.create_task(
-                _scrape_pipeline_worker(
-                    http,
-                    pool,
-                    scrape_fetch_buffer,
-                    write_buffer,
-                    loc_resolver,
-                    rates,
-                    tech_id_map,
-                    occ_ids,
-                    sen_ids,
-                    worker_id=i,
-                ),
-                name=f"pipeline-scrape-worker-{i}",
-            )
-            scrape_worker_tasks.append(task)
-
+    # No separate scrape producer/workers — unified producer feeds all workers
     # Start DB writer
     writer_task = asyncio.create_task(
         _db_writer(pool, write_buffer, loc_resolver),
@@ -3612,26 +3738,6 @@ async def run_monitor_pipeline(
         elif isinstance(r, Exception):
             log.error("pipeline.worker.crashed", error=str(r))
 
-    # Wait for scrape producer + workers to finish
-    total_scrapes = 0
-    if scrape_producer_task is not None:
-        try:
-            await scrape_producer_task
-        except Exception:
-            log.exception("pipeline.scrape_producer.crashed")
-            # Ensure sentinels are sent even on crash
-            if scrape_fetch_buffer is not None:
-                for _ in range(num_scrape_workers):
-                    with contextlib.suppress(Exception):
-                        await scrape_fetch_buffer.put(_SENTINEL)
-
-        scrape_results = await asyncio.gather(*scrape_worker_tasks, return_exceptions=True)
-        for r in scrape_results:
-            if isinstance(r, int):
-                total_scrapes += r
-            elif isinstance(r, Exception):
-                log.error("pipeline.scrape_worker.crashed", error=str(r))
-
     # Signal DB writer to stop
     await write_buffer.put(_SENTINEL)
 
@@ -3649,7 +3755,6 @@ async def run_monitor_pipeline(
         boards_succeeded=boards_succeeded,
         total_new=total_new,
         total_gone=total_gone,
-        scrapes_total=total_scrapes,
         scrapes_succeeded=scrapes_ok,
         scrapes_failed=scrapes_err,
         duration_s=round(elapsed, 2),
