@@ -416,10 +416,19 @@ async def run_continuous_loop(
         browser_only=browser_only,
     )
 
-    # Start background R2 drain worker
+    # Start background R2 drain worker (auto-restart on crash)
     from src.r2_worker import drain_remaining, run_r2_drain_loop
 
-    r2_drain_task = asyncio.create_task(run_r2_drain_loop(pool, shutdown_event))
+    async def _r2_drain_supervised():
+        while not shutdown_event.is_set():
+            try:
+                await run_r2_drain_loop(pool, shutdown_event)
+            except Exception:
+                log.exception("r2_drain.crashed")
+                if not shutdown_event.is_set():
+                    await asyncio.sleep(5)
+
+    r2_drain_task = asyncio.create_task(_r2_drain_supervised())
 
     while not shutdown_event.is_set():
         work_found = False

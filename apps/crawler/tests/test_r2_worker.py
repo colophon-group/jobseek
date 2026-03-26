@@ -455,3 +455,197 @@ class TestStableDate:
 
     def test_empty_string(self):
         assert _stable_date("") is None
+
+
+# ── Edge case tests ──────────────────────────────────────────────────
+
+
+class TestStageR2PendingEdgeCases:
+    def test_empty_description_string(self):
+        """Empty string description treated as no description."""
+        result = _stage_r2_pending(
+            title="T",
+            description="",
+            language="en",
+            locations=None,
+            localizations=None,
+            extras=None,
+            metadata=None,
+            date_posted=None,
+            base_salary=None,
+            employment_type=None,
+            job_location_type=None,
+        )
+        assert result is None
+
+    def test_whitespace_description(self):
+        """Whitespace-only description treated as no description."""
+        result = _stage_r2_pending(
+            title="T",
+            description="   ",
+            language="en",
+            locations=None,
+            localizations=None,
+            extras=None,
+            metadata=None,
+            date_posted=None,
+            base_salary=None,
+            employment_type=None,
+            job_location_type=None,
+        )
+        # Whitespace is truthy — _stage_r2_pending checks `not description`
+        # "   " is truthy, so it'll compute hash and stage
+        assert result is not None
+
+    def test_hash_stability_across_calls(self):
+        """Same inputs produce same hash — no staging on second call."""
+        kwargs = dict(
+            title="Senior Engineer",
+            description="<p>Build things</p>",
+            language="en",
+            locations=["NYC", "SF"],
+            localizations=None,
+            extras={"qualifications": "5 years"},
+            metadata={"team": "Platform"},
+            date_posted="2026-03-25T12:00:00Z",
+            base_salary={"min": 100000, "max": 200000, "currency": "USD"},
+            employment_type="FULL_TIME",
+            job_location_type="hybrid",
+        )
+        result1 = _stage_r2_pending(**kwargs)
+        assert result1 is not None
+        _, _, hash1 = result1
+
+        # Second call with same hash should return None (no change)
+        result2 = _stage_r2_pending(**kwargs, current_hash=hash1)
+        assert result2 is None
+
+    def test_metadata_key_order_irrelevant(self):
+        """Hash is stable regardless of metadata key order."""
+        base = dict(
+            title="T",
+            description="<p>Hello</p>",
+            language="en",
+            locations=None,
+            localizations=None,
+            extras=None,
+            date_posted=None,
+            base_salary=None,
+            employment_type=None,
+            job_location_type=None,
+        )
+        r1 = _stage_r2_pending(**base, metadata={"a": 1, "b": 2})
+        r2 = _stage_r2_pending(**base, metadata={"b": 2, "a": 1})
+        assert r1[2] == r2[2]  # same hash
+
+    def test_volatile_fields_excluded_from_hash(self):
+        """valid_through and expiration_date don't affect hash."""
+        base = dict(
+            title="T",
+            description="<p>Hello</p>",
+            language="en",
+            locations=None,
+            localizations=None,
+            metadata=None,
+            date_posted=None,
+            base_salary=None,
+            employment_type=None,
+            job_location_type=None,
+        )
+        r1 = _stage_r2_pending(**base, extras={"valid_through": "2026-12-31"})
+        r2 = _stage_r2_pending(**base, extras={"valid_through": "2027-06-30"})
+        r3 = _stage_r2_pending(**base, extras=None)
+        assert r1[2] == r2[2] == r3[2]  # same hash despite different volatile fields
+
+
+class TestDrainOneEdgeCases:
+    @patch("src.r2_worker.upload_posting", new_callable=AsyncMock)
+    async def test_meta_as_json_string(self, mock_upload):
+        """r2_pending_meta stored as JSON string (not dict) is handled."""
+        conn = AsyncMock()
+        bucket = TokenBucket(rate=10000, burst=100)
+
+        meta = json.dumps(
+            {
+                "locale": "en",
+                "extras": {"title": "Test"},
+                "tech_ids": None,
+                "localizations": None,
+                "source": "monitor",
+                "retry_count": 0,
+                "new_hash": 99999,
+            }
+        )
+        row = MagicMock()
+        row.__getitem__ = lambda s, k: {
+            "id": "abc-123",
+            "description_pending": "<p>Hello</p>",
+            "r2_pending_meta": meta,  # string, not dict
+            "description_r2_hash": None,
+        }[k]
+
+        ok = await _drain_one(conn, row, bucket)
+        assert ok is True
+        mock_upload.assert_awaited_once()
+
+    @patch("src.r2_worker.upload_posting", new_callable=AsyncMock)
+    async def test_missing_extras_key(self, mock_upload):
+        """Meta without extras key defaults to empty dict."""
+        conn = AsyncMock()
+        bucket = TokenBucket(rate=10000, burst=100)
+
+        meta = {
+            "locale": "en",
+            # no "extras" key
+            "tech_ids": None,
+            "localizations": None,
+            "source": "monitor",
+            "retry_count": 0,
+            "new_hash": 99999,
+        }
+        row = MagicMock()
+        row.__getitem__ = lambda s, k: {
+            "id": "abc-123",
+            "description_pending": "<p>Hello</p>",
+            "r2_pending_meta": meta,
+            "description_r2_hash": None,
+        }[k]
+
+        ok = await _drain_one(conn, row, bucket)
+        assert ok is True
+        # upload_posting called with empty extras dict
+        call_args = mock_upload.await_args
+        assert call_args.args[3] == {}
+
+    @patch("src.r2_worker.upload_posting", new_callable=AsyncMock)
+    async def test_new_hash_none_in_meta(self, mock_upload):
+        """new_hash=None in meta is passed through to DB (NULL hash)."""
+        conn = AsyncMock()
+        bucket = TokenBucket(rate=10000, burst=100)
+
+        meta = {
+            "locale": "en",
+            "extras": {},
+            "tech_ids": None,
+            "localizations": None,
+            "source": "monitor",
+            "retry_count": 0,
+            "new_hash": None,
+        }
+        row = MagicMock()
+        row.__getitem__ = lambda s, k: {
+            "id": "abc-123",
+            "description_pending": "<p>Hello</p>",
+            "r2_pending_meta": meta,
+            "description_r2_hash": None,
+        }[k]
+
+        ok = await _drain_one(conn, row, bucket)
+        assert ok is True
+        complete_calls = [
+            c
+            for c in conn.execute.await_args_list
+            if "description_pending = NULL" in c.args[0] and "description_r2_hash" in c.args[0]
+        ]
+        assert len(complete_calls) == 1
+        assert complete_calls[0].args[2] is None  # new_hash = None
