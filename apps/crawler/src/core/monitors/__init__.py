@@ -82,6 +82,23 @@ _REGISTRY: list[MonitorType] = []
 _ALLOW_SLUG_GUESS = contextvars.ContextVar("allow_slug_guess", default=False)
 
 
+_STREAM_BATCH = 200
+
+
+def _make_chunked_stream(discover_fn: DiscoverFunc):
+    """Create a generic streaming wrapper that chunks discover() results."""
+
+    async def _chunked_stream(board, client, pw=None):
+        result = await discover_fn(board, client, pw=pw)
+        if isinstance(result, list):
+            for i in range(0, len(result), _STREAM_BATCH):
+                yield result[i : i + _STREAM_BATCH]
+        else:
+            yield result
+
+    return _chunked_stream
+
+
 def register(
     name: str,
     discover: DiscoverFunc,
@@ -91,7 +108,14 @@ def register(
     rich: bool = False,
     stream: Callable | None = None,
 ) -> None:
-    """Register a monitor type. Registry stays sorted by cost (cheapest first)."""
+    """Register a monitor type. Registry stays sorted by cost (cheapest first).
+
+    Rich monitors without an explicit stream function automatically get a
+    chunked-stream wrapper that yields batches of 200 from the discover()
+    result.  This prevents worker-pool timeouts during R2 uploads.
+    """
+    if rich and stream is None:
+        stream = _make_chunked_stream(discover)
     _REGISTRY.append(
         MonitorType(
             name=name,
@@ -484,8 +508,8 @@ from src.core.monitors import (  # noqa: E402
     breezy,  # noqa: F401
     deel,  # noqa: F401
     dom,  # noqa: F401
-    eightfold,  # noqa: F401
     dvinci,  # noqa: F401
+    eightfold,  # noqa: F401
     gem,  # noqa: F401
     greenhouse,  # noqa: F401
     hireology,  # noqa: F401

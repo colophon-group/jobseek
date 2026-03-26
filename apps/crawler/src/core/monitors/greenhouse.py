@@ -164,16 +164,6 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
     return jobs
 
 
-_STREAM_BATCH = 200
-
-
-async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
-    """Yield batches of DiscoveredJob so the caller can pulse heartbeats."""
-    jobs = await discover(board, client, pw=pw)
-    for i in range(0, len(jobs), _STREAM_BATCH):
-        yield jobs[i : i + _STREAM_BATCH]
-
-
 async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None) -> dict | None:
     """Detect Greenhouse: domain check -> page HTML scan -> slug-based API probe."""
     token = _token_from_url(url)
@@ -213,4 +203,4 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
     return None
 
 
-register("greenhouse", discover, cost=10, can_handle=can_handle, rich=True, stream=discover_stream)
+register("greenhouse", discover, cost=10, can_handle=can_handle, rich=True)
