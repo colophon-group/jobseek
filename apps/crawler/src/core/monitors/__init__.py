@@ -484,8 +484,8 @@ from src.core.monitors import (  # noqa: E402
     breezy,  # noqa: F401
     deel,  # noqa: F401
     dom,  # noqa: F401
-    eightfold,  # noqa: F401
     dvinci,  # noqa: F401
+    eightfold,  # noqa: F401
     gem,  # noqa: F401
     greenhouse,  # noqa: F401
     hireology,  # noqa: F401
