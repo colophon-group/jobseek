@@ -13,7 +13,6 @@ import contextlib
 import signal
 import uuid
 
-import asyncpg
 import dotenv
 import structlog
 
@@ -22,7 +21,6 @@ dotenv.load_dotenv(".env")
 
 from src.batch import (  # noqa: E402
     WorkItem,
-    claim_scrape_work,
     dry_run_single_board,
     process_monitor_batch,
     process_scrape_batch,
@@ -31,15 +29,10 @@ from src.batch import (  # noqa: E402
 from src.config import settings  # noqa: E402
 from src.db import close_pool, create_pool  # noqa: E402
 from src.metrics import (  # noqa: E402
-    db_pool_idle,
-    db_pool_size,
     queue_depth,
     start_metrics_server,
     task_duration_seconds,
-    tasks_active,
-    tasks_queued,
     tasks_total,
-    tick_skip_total,
 )
 from src.shared.http import create_http_client  # noqa: E402
 from src.shared.logging import setup_logging  # noqa: E402
@@ -408,12 +401,8 @@ async def run_continuous_loop(
         max_browser = 0
     if browser_only:
         max_concurrent = 0
-    max_interval = settings.crawler_poll_interval
-    idle_interval = 1.0
-
-    wp = WorkerPool(max_concurrent, max_browser=max_browser, db_pool=pool)
     log.info(
-        "pool.starting",
+        "scheduler.starting",
         max_concurrent=max_concurrent,
         max_browser=max_browser,
         monitor=monitor,
@@ -450,6 +439,7 @@ async def run_continuous_loop(
                         http,
                         shutdown_event,
                         num_workers=max(max_concurrent // 2, 5),
+                        num_scrape_workers=max_concurrent if scrape else 0,
                         worker_id=worker_id,
                         browser=False,
                     )
@@ -480,96 +470,10 @@ async def run_continuous_loop(
 
         monitor_tasks.append(asyncio.create_task(_browser_monitor_supervised()))
 
-    while not shutdown_event.is_set():
-        work_found = False
-        monitors_claimed = 0
-        scrapes_claimed = 0
+    # Wait for shutdown — pipelines handle all work
+    await shutdown_event.wait()
 
-        # Skip claim queries when all slots are full — nothing can be submitted
-        if wp.http_free == 0 and wp.browser_free == 0:
-            tick_skip_total.labels(reason="slots_full").inc()
-            with contextlib.suppress(TimeoutError):
-                await asyncio.wait_for(shutdown_event.wait(), timeout=1.0)
-            continue
-
-        # Skip claim queries when no DB connections are idle
-        if pool.get_idle_size() == 0:
-            tick_skip_total.labels(reason="db_idle").inc()
-            with contextlib.suppress(TimeoutError):
-                await asyncio.wait_for(shutdown_event.wait(), timeout=1.0)
-            continue
-
-        try:
-            skip = []
-
-            # Monitors are handled by the pipeline (above).
-            # WorkerPool handles scrapes only.
-
-            # HTTP scrapes
-            if not browser_only:
-                budget = wp.http_free
-                if scrape and budget > 0:
-                    items = await claim_scrape_work(pool, http, budget, worker_id, skip)
-                    scrapes_claimed += len(items)
-                    for item in items:
-                        wp.submit(item)
-                        work_found = True
-
-            # Browser scrapes
-            if not http_only:
-                budget = wp.browser_free
-                if scrape and budget > 0:
-                    items = await claim_scrape_work(
-                        pool,
-                        http,
-                        budget,
-                        worker_id,
-                        skip,
-                        browser=True,
-                    )
-                    scrapes_claimed += len(items)
-                    for item in items:
-                        wp.submit(item)
-                        work_found = True
-        except (TimeoutError, OSError, asyncpg.PostgresError) as exc:
-            log.warning("pool.claim_error", error=str(exc))
-            # Back off and retry on the next tick
-            with contextlib.suppress(TimeoutError):
-                await asyncio.wait_for(shutdown_event.wait(), timeout=5.0)
-            continue
-
-        tasks_active.set(wp.active_count)
-        tasks_queued.set(wp.queued_count)
-        db_pool_size.set(pool.get_size())
-        db_pool_idle.set(pool.get_idle_size())
-
-        # Update queue depth from DB (throttled — only when idle or every ~30s)
-        if not work_found or wp.succeeded % 30 == 0:
-            await _update_queue_depth(pool)
-
-        if work_found or wp.active_count > 0:
-            log.info(
-                "pool.tick",
-                monitors_claimed=monitors_claimed,
-                scrapes_claimed=scrapes_claimed,
-                active=wp.active_count,
-                browser_active=wp.browser_active,
-                queued=wp.queued_count,
-                db_idle=pool.get_idle_size(),
-                succeeded=wp.succeeded,
-                failed=wp.failed,
-            )
-            idle_interval = 1.0
-        else:
-            idle_interval = min(idle_interval * 2, max_interval)
-
-        with contextlib.suppress(TimeoutError):
-            await asyncio.wait_for(shutdown_event.wait(), timeout=idle_interval)
-
-    log.info("pool.draining", active=wp.active_count, queued=wp.queued_count)
-    await wp.drain()
-
-    # Stop monitor pipelines
+    # Stop pipelines
     for t in monitor_tasks:
         t.cancel()
     await asyncio.gather(*monitor_tasks, return_exceptions=True)
@@ -580,12 +484,7 @@ async def run_continuous_loop(
         await r2_drain_task
     await drain_remaining(pool)
 
-    log.info(
-        "pool.stopped",
-        total_submitted=wp.total_submitted,
-        succeeded=wp.succeeded,
-        failed=wp.failed,
-    )
+    log.info("scheduler.stopped")
 
 
 # ── One-shot mode ────────────────────────────────────────────────────

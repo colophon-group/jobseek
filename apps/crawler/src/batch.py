@@ -117,6 +117,33 @@ class BoardError:
     error_msg: str
 
 
+@dataclass
+class ScrapeResult:
+    """Scrape result -> DB writer runs _UPDATE_JOB_CONTENT or _UPDATE_ENRICH_CONTENT."""
+
+    job_posting_id: str
+    params: tuple  # positional args for the SQL query
+    is_enrich: bool
+
+
+@dataclass
+class ScrapeError:
+    """Scrape error -> DB writer runs _RECORD_SCRAPE_FAILURE."""
+
+    job_posting_id: str
+
+
+@dataclass
+class _ScrapeWorkItem:
+    """Bundle of ScrapeItem + resolved scraper config for the pipeline worker."""
+
+    item: ScrapeItem
+    scraper_type: str
+    scraper_config: dict | None
+    enrich_fields: list[str] | None
+    ssl_verify: bool = True
+
+
 # Titles that indicate a broken scrape (auth wall, CAPTCHA, etc.)
 _GARBAGE_TITLES = frozenset(
     s.lower()
@@ -609,6 +636,12 @@ RETURNING job_posting.id, job_posting.source_url
 
 _EXTEND_BOARD_LEASE = """
 UPDATE job_board
+SET leased_until = now() + interval '10 minutes'
+WHERE id = $1
+"""
+
+_EXTEND_SCRAPE_LEASE = """
+UPDATE job_posting
 SET leased_until = now() + interval '10 minutes'
 WHERE id = $1
 """
@@ -2597,18 +2630,479 @@ async def _monitor_worker(
     return boards_processed
 
 
-async def _monitor_db_writer(
+async def _do_one_enrich_scrape(
+    work: _ScrapeWorkItem,
+    http: httpx.AsyncClient,
+    pool: asyncpg.Pool,
+    loc_resolver: LocationResolver,
+    rates: dict[str, float],
+    tech_id_map: dict[str, int],
+    occ_ids: dict[str, int],
+    sen_ids: dict[str, int],
+) -> ScrapeResult | ScrapeError:
+    """Scrape + enrich inline (no threading). Returns ScrapeResult or ScrapeError."""
+    item = work.item
+    enrich_fields = work.enrich_fields or []
+    cfg = work.scraper_config or {}
+
+    content = await scrape_one(item.url, work.scraper_type, work.scraper_config, http)
+    content = await _apply_fallback_chain(content, item.url, work.scraper_type, cfg, http)
+    content = _apply_defaults(content, cfg)
+
+    # Normalize before checking
+    content.description = normalize_description_html(content.description)
+
+    # Success check: at least one enriched field is non-empty
+    has_data = any(getattr(content, f, None) is not None for f in enrich_fields)
+    if not has_data:
+        return ScrapeError(job_posting_id=item.job_posting_id)
+
+    # Detect language if not already set
+    language = content.language
+    if not language and content.description:
+        language = detect_language(content.description)
+
+    # Default all params to None (COALESCE preserves existing)
+    norm_emp_type = None
+    all_titles = None
+    locales = None
+    loc_ids = None
+    loc_types = None
+    desc_pending = None
+    meta_pending = None
+    tech_ids = None
+    s_min = s_max = s_cur = s_per = s_eur = None
+    exp_min = exp_max = None
+    occ_id = sen_id = None
+
+    if "employment_type" in enrich_fields:
+        norm_emp_type = normalize_employment_type(_coerce_text(content.employment_type))
+
+    if "title" in enrich_fields:
+        title_text = _coerce_text(content.title)
+        all_titles = _build_titles(title_text, None) or None
+        occ_id, sen_id = _resolve_occupation_seniority(all_titles, occ_ids, sen_ids)
+        lang_text = _coerce_text(language)
+        if lang_text or content.description:
+            detected_langs = (
+                detect_all_languages(content.description) if content.description else []
+            )
+            built = _build_locales(lang_text, None, detected_languages=detected_langs)
+            if lang_text or detected_langs:
+                locales = built
+
+    if "locations" in enrich_fields:
+        lang_text = _coerce_text(language)
+        loc_ids, loc_types = _resolve_locations_sync(
+            loc_resolver,
+            _coerce_locations(content.locations),
+            _coerce_text(content.job_location_type),
+            posting_language=lang_text,
+        )
+
+    if "description" in enrich_fields:
+        desc_text = _coerce_text(content.description)
+        tech_ids = _resolve_technology_ids(desc_text, tech_id_map)
+        s_min, s_max, s_cur, s_per, s_eur = _extract_salary_fields(desc_text, rates)
+        exp_min, exp_max = _extract_experience_fields(desc_text)
+
+        # Fetch existing posting data for R2 extras
+        existing = await pool.fetchrow(_FETCH_POSTING_FOR_ENRICH, item.job_posting_id)
+        r2_title = None
+        if existing:
+            titles_arr = existing["titles"]
+            if titles_arr:
+                r2_title = titles_arr[0]
+        r2_title = r2_title or _coerce_text(content.title)
+        r2_locations = _coerce_locations(content.locations)
+
+        staged = _stage_r2_pending(
+            title=r2_title,
+            description=desc_text,
+            language=_coerce_text(language),
+            locations=r2_locations,
+            localizations=None,
+            extras=content.extras,
+            metadata=content.metadata,
+            date_posted=content.date_posted,
+            base_salary=content.base_salary,
+            employment_type=_coerce_text(content.employment_type),
+            job_location_type=_coerce_text(content.job_location_type),
+            current_hash=item.description_r2_hash,
+            source="scrape",
+            tech_ids=tech_ids,
+        )
+        desc_pending = staged[0] if staged else None
+        meta_pending = staged[1] if staged else None
+        # Queue cap: skip re-upload staging when queue is full
+        if (
+            staged
+            and item.description_r2_hash is not None
+            and await _get_r2_queue_depth(pool) >= settings.r2_queue_max
+        ):
+            desc_pending = None
+            meta_pending = None
+
+    params = (
+        item.job_posting_id,
+        norm_emp_type,
+        all_titles,
+        locales,
+        loc_ids,
+        loc_types,
+        desc_pending,
+        meta_pending,
+        tech_ids,
+        s_min,
+        s_max,
+        s_cur,
+        s_per,
+        s_eur,
+        exp_min,
+        exp_max,
+        occ_id,
+        sen_id,
+    )
+
+    return ScrapeResult(
+        job_posting_id=item.job_posting_id,
+        params=params,
+        is_enrich=True,
+    )
+
+
+async def _do_one_scrape(
+    work: _ScrapeWorkItem,
+    http: httpx.AsyncClient,
+    pool: asyncpg.Pool,
+    loc_resolver: LocationResolver,
+    rates: dict[str, float],
+    tech_id_map: dict[str, int],
+    occ_ids: dict[str, int],
+    sen_ids: dict[str, int],
+) -> ScrapeResult | ScrapeError:
+    """Scrape + CPU work inline (no threading). Returns ScrapeResult or ScrapeError.
+
+    Modeled on ``_process_one_scrape()`` but returns a result for the DB
+    writer instead of writing directly.
+    """
+    item = work.item
+    cfg = work.scraper_config or {}
+
+    # Early dispatch for enrich-only scrapes
+    enrich_fields = cfg.get("enrich")
+    if isinstance(enrich_fields, list) and enrich_fields:
+        return await _do_one_enrich_scrape(
+            work, http, pool, loc_resolver, rates, tech_id_map, occ_ids, sen_ids
+        )
+
+    content = await scrape_one(item.url, work.scraper_type, work.scraper_config, http)
+    content = await _apply_fallback_chain(content, item.url, work.scraper_type, cfg, http)
+    content = _apply_defaults(content, cfg)
+
+    if not content.title or _is_garbage_title(content.title):
+        if content.title:
+            log.info("pipeline.scrape.garbage_title", url=item.url, title=content.title)
+        return ScrapeError(job_posting_id=item.job_posting_id)
+
+    content.description = normalize_description_html(content.description)
+
+    # Detect language if not already set
+    language = content.language
+    if not language and content.description:
+        language = detect_language(content.description)
+
+    detected_langs = detect_all_languages(content.description) if content.description else []
+
+    title_text = _coerce_text(content.title)
+    desc_text = _coerce_text(content.description)
+    lang_text = _coerce_text(language)
+    raw_emp_type = _coerce_text(content.employment_type)
+    norm_emp_type = normalize_employment_type(raw_emp_type)
+
+    # Resolve locations (sync — no threading, no DB backfill)
+    loc_ids, loc_types = _resolve_locations_sync(
+        loc_resolver,
+        _coerce_locations(content.locations),
+        _coerce_text(content.job_location_type),
+        posting_language=lang_text,
+    )
+
+    # Resolve technologies from description
+    tech_ids = _resolve_technology_ids(desc_text, tech_id_map)
+
+    # Resolve occupation + seniority from title
+    occ_id, sen_id = _resolve_occupation_seniority(title_text, occ_ids, sen_ids)
+
+    # Extract salary + experience from description
+    s_min, s_max, s_cur, s_per, s_eur = _extract_salary_fields(desc_text, rates)
+    exp_min, exp_max = _extract_experience_fields(desc_text)
+
+    # Stage R2 pending data (pure computation, no I/O)
+    staged = _stage_r2_pending(
+        title=title_text,
+        description=desc_text,
+        language=lang_text,
+        locations=_coerce_locations(content.locations),
+        localizations=None,
+        extras=content.extras,
+        metadata=content.metadata,
+        date_posted=content.date_posted,
+        base_salary=content.base_salary,
+        employment_type=raw_emp_type,
+        job_location_type=_coerce_text(content.job_location_type),
+        current_hash=item.description_r2_hash,
+        source="scrape",
+        tech_ids=tech_ids,
+    )
+    desc_pending = staged[0] if staged else None
+    meta_pending = staged[1] if staged else None
+    # Queue cap: skip re-upload staging when queue is full
+    if (
+        staged
+        and item.description_r2_hash is not None
+        and await _get_r2_queue_depth(pool) >= settings.r2_queue_max
+    ):
+        desc_pending = None
+        meta_pending = None
+
+    params = (
+        item.job_posting_id,
+        norm_emp_type,
+        _build_titles(title_text, None),
+        _build_locales(lang_text, None, detected_languages=detected_langs),
+        loc_ids,
+        loc_types,
+        desc_pending,
+        meta_pending,
+        tech_ids,
+        s_min,
+        s_max,
+        s_cur,
+        s_per,
+        s_eur,
+        exp_min,
+        exp_max,
+        occ_id,
+        sen_id,
+    )
+
+    return ScrapeResult(
+        job_posting_id=item.job_posting_id,
+        params=params,
+        is_enrich=False,
+    )
+
+
+async def _scrape_pipeline_worker(
+    http: httpx.AsyncClient,
+    pool: asyncpg.Pool,
+    scrape_fetch_buffer: asyncio.Queue,
+    write_buffer: asyncio.Queue,
+    loc_resolver: LocationResolver,
+    rates: dict[str, float],
+    tech_id_map: dict[str, int],
+    occ_ids: dict[str, int],
+    sen_ids: dict[str, int],
+    worker_id: int,
+) -> int:
+    """Consume _ScrapeWorkItem from scrape_fetch_buffer, scrape, put result in write_buffer.
+
+    Returns the number of scrapes processed.
+    """
+    scrapes_processed = 0
+    while True:
+        work_item = await scrape_fetch_buffer.get()
+        if work_item is _SENTINEL:
+            scrape_fetch_buffer.task_done()
+            break
+
+        try:
+            # Handle SSL verification — create insecure client if needed
+            effective_http = http
+            insecure_http = None
+            if not work_item.ssl_verify:
+                from src.shared.http import create_http_client
+
+                insecure_http = create_http_client(verify=False)
+                effective_http = insecure_http
+
+            try:
+                result = await _do_one_scrape(
+                    work_item,
+                    effective_http,
+                    pool,
+                    loc_resolver,
+                    rates,
+                    tech_id_map,
+                    occ_ids,
+                    sen_ids,
+                )
+                await write_buffer.put(result)
+            finally:
+                if insecure_http is not None:
+                    await insecure_http.aclose()
+
+            scrapes_processed += 1
+
+        except Exception as exc:
+            log.error(
+                "pipeline.scrape_worker.error",
+                url=work_item.item.url,
+                error=_error_message(exc),
+                worker_id=worker_id,
+            )
+            await write_buffer.put(ScrapeError(job_posting_id=work_item.item.job_posting_id))
+            scrapes_processed += 1
+
+        scrape_fetch_buffer.task_done()
+
+    return scrapes_processed
+
+
+async def _scrape_pipeline_producer(
+    pool: asyncpg.Pool,
+    scrape_fetch_buffer: asyncio.Queue,
+    shutdown_event: asyncio.Event,
+    num_workers: int,
+    worker_id: str,
+    browser: bool = False,
+) -> None:
+    """Claim scrape work from DB and feed _ScrapeWorkItem into scrape_fetch_buffer.
+
+    Sends _SENTINEL to all workers on shutdown.
+    """
+    backoff = 1.0
+    max_backoff = 30.0
+
+    try:
+        while not shutdown_event.is_set():
+            budget = scrape_fetch_buffer.maxsize - scrape_fetch_buffer.qsize()
+            if budget <= 0:
+                try:
+                    await asyncio.wait_for(
+                        shutdown_event.wait(),
+                        timeout=0.5,
+                    )
+                    break  # shutdown
+                except TimeoutError:
+                    continue
+
+            claim_limit = min(budget, 20)
+            try:
+                rows = await pool.fetch(
+                    _CLAIM_SCRAPES,
+                    claim_limit,
+                    worker_id,
+                    [],  # no domain exclusions in pipeline mode
+                    browser,
+                )
+            except Exception:
+                log.exception("pipeline.scrape_producer.claim_error")
+                rows = []
+
+            if not rows:
+                # Adaptive backoff when no work available
+                try:
+                    await asyncio.wait_for(
+                        shutdown_event.wait(),
+                        timeout=backoff,
+                    )
+                    break  # shutdown
+                except TimeoutError:
+                    pass
+                backoff = min(backoff * 2, max_backoff)
+                continue
+
+            backoff = 1.0
+
+            # Load board scraper configs for claimed items
+            board_ids = {str(row["board_id"]) for row in rows if row["board_id"]}
+            try:
+                info = await _load_board_scrapers(pool, board_ids)
+            except Exception:
+                log.exception("pipeline.scrape_producer.load_scrapers_error")
+                # Release leases for claimed items
+                posting_ids = [str(row["id"]) for row in rows]
+                with contextlib.suppress(Exception):
+                    await pool.execute(_RELEASE_POSTING_LEASES, posting_ids)
+                continue
+
+            # Clear next_scrape_at for postings from rich monitors
+            rich_posting_ids = [
+                str(row["id"]) for row in rows if str(row["board_id"]) in info.rich_board_ids
+            ]
+            if rich_posting_ids:
+                with contextlib.suppress(Exception):
+                    await pool.execute(_CLEAR_SCRAPE_FOR_RICH, rich_posting_ids)
+                log.info("pipeline.scrape_producer.cleared_rich", count=len(rich_posting_ids))
+
+            fed = 0
+            for row in rows:
+                board_id = str(row["board_id"]) if row["board_id"] else ""
+
+                # Skip rich-monitor postings
+                if board_id in info.rich_board_ids:
+                    continue
+
+                scraper_type = "json-ld"
+                scraper_config: dict | None = None
+                ssl_verify = True
+                enrich_fields: list[str] | None = None
+                if board_id and board_id in info.scrapers:
+                    bsc = info.scrapers[board_id]
+                    scraper_type = bsc.scraper_type
+                    scraper_config = bsc.scraper_config
+                    ssl_verify = bsc.ssl_verify
+
+                # Resolve enrich fields from scraper_config
+                if scraper_config and isinstance(scraper_config, dict):
+                    ef = scraper_config.get("enrich")
+                    if isinstance(ef, list) and ef:
+                        enrich_fields = ef
+
+                r2_hash = row["description_r2_hash"]
+                item = ScrapeItem(
+                    job_posting_id=str(row["id"]),
+                    url=row["source_url"],
+                    board_id=board_id,
+                    description_r2_hash=int(r2_hash) if r2_hash is not None else None,
+                )
+
+                work = _ScrapeWorkItem(
+                    item=item,
+                    scraper_type=scraper_type,
+                    scraper_config=scraper_config,
+                    enrich_fields=enrich_fields,
+                    ssl_verify=ssl_verify,
+                )
+                await scrape_fetch_buffer.put(work)
+                fed += 1
+
+            if fed:
+                log.info("pipeline.scrape_producer.claimed", count=fed)
+
+    finally:
+        # Always send sentinels so workers can exit
+        for _ in range(num_workers):
+            await scrape_fetch_buffer.put(_SENTINEL)
+        log.info("pipeline.scrape_producer.shutdown", sentinels_sent=num_workers)
+
+
+async def _db_writer(
     pool: asyncpg.Pool,
     write_buffer: asyncio.Queue,
     loc_resolver: LocationResolver,
-) -> tuple[int, int, int]:
+) -> tuple[int, int, int, int, int]:
     """Drain write_buffer and perform all DB writes.
 
-    Returns (boards_succeeded, total_new, total_gone).
+    Returns (boards_succeeded, total_new, total_gone, scrapes_succeeded, scrapes_failed).
     """
     boards_succeeded = 0
     total_new = 0
     total_gone = 0
+    scrapes_succeeded = 0
+    scrapes_failed = 0
 
     while True:
         item = await write_buffer.get()
@@ -2627,10 +3121,8 @@ async def _monitor_db_writer(
                     board_url=item.board_url,
                     error=item.error_msg,
                 )
-                write_buffer.task_done()
-                continue
 
-            if isinstance(item, BoardDone):
+            elif isinstance(item, BoardDone):
                 if not item.all_urls:
                     # Empty check
                     async with pool.acquire() as conn:
@@ -2672,213 +3164,236 @@ async def _monitor_db_writer(
                             await get_redis().delete("cache:platform-stats")
 
                 boards_succeeded += 1
-                write_buffer.task_done()
-                continue
 
-            # BoardBatch — run diff + insert + update
-            batch: BoardBatch = item
-            batch_new = 0
-            batch_relisted = 0
+            elif isinstance(item, BoardBatch):
+                # BoardBatch — run diff + insert + update
+                batch: BoardBatch = item
+                batch_new = 0
+                batch_relisted = 0
 
-            async with pool.acquire() as conn, conn.transaction():
-                is_rich = batch.jobs_by_url is not None
-                is_rich_no_scrape = is_rich and not batch.enrich_fields
-                rows = await conn.fetch(
-                    _DIFF_BATCH,
-                    list(batch.urls),
-                    batch.board_id,
-                    is_rich_no_scrape,
-                )
+                async with pool.acquire() as conn, conn.transaction():
+                    is_rich = batch.jobs_by_url is not None
+                    is_rich_no_scrape = is_rich and not batch.enrich_fields
+                    rows = await conn.fetch(
+                        _DIFF_BATCH,
+                        list(batch.urls),
+                        batch.board_id,
+                        is_rich_no_scrape,
+                    )
 
-                new_urls: list[str] = []
-                relisted: list[dict] = []
-                touched: list[dict] = []
+                    new_urls: list[str] = []
+                    relisted: list[dict] = []
+                    touched: list[dict] = []
 
-                for row in rows:
-                    action = row["action"]
-                    if action == "new":
-                        new_urls.append(row["url"])
-                    elif action == "relisted":
-                        r2h = row["description_r2_hash"]
-                        relisted.append(
-                            {
-                                "id": row["id"],
-                                "url": row["url"],
-                                "r2_hash": int(r2h) if r2h is not None else None,
-                            }
-                        )
-                    elif action == "touched":
-                        r2h = row["description_r2_hash"]
-                        touched.append(
-                            {
-                                "id": row["id"],
-                                "url": row["url"],
-                                "r2_hash": int(r2h) if r2h is not None else None,
-                            }
-                        )
-
-                batch_new = len(new_urls)
-                batch_relisted = len(relisted)
-
-                if batch.jobs_by_url:
-                    # Insert new rich jobs
-                    if new_urls and batch.cpu_results:
-                        insert_sql = (
-                            _INSERT_RICH_JOB_ENRICH if batch.enrich_fields else _INSERT_RICH_JOB
-                        )
-                        inserted_ids: list[str] = []
-                        r2_staging_list: list[tuple[str, dict]] = []
-                        for url in new_urls:
-                            if url not in batch.cpu_results:
-                                continue
-                            cpu_r = batch.cpu_results[url]
-                            row = await conn.fetchrow(insert_sql, *cpu_r.insert_record)
-                            if row:
-                                posting_id = str(row["id"])
-                                inserted_ids.append(posting_id)
-                                r2_staging_list.append((posting_id, cpu_r.r2_staging_args))
-
-                        # Stage R2 pending for inserted jobs
-                        for posting_id, r2_args in r2_staging_list:
-                            staged = _stage_r2_pending(**r2_args)
-                            if staged:
-                                await conn.execute(
-                                    _STAGE_R2_PENDING,
-                                    posting_id,
-                                    staged[0],
-                                    staged[1],
-                                )
-
-                    # Update content for relisted and touched
-                    update_triples = [
-                        (item_d["id"], batch.jobs_by_url[item_d["url"]], item_d.get("r2_hash"))
-                        for item_d in relisted + touched
-                        if item_d["url"] in batch.jobs_by_url
-                    ]
-                    if update_triples:
-                        # CPU work for relisted/touched (normalize, enrich, detect lang)
-                        for _, j, _ in update_triples:
-                            j.description = normalize_description_html(j.description)
-                            enrich_description(j)
-                            if not j.language and j.description:
-                                j.language = detect_language(j.description)
-
-                        await conn.execute(_CREATE_RICH_UPDATES_TEMP)
-                        records = []
-                        for pid, j, _ in update_triples:
-                            loc_ids, loc_types = _resolve_locations_sync(
-                                loc_resolver,
-                                _coerce_locations(j.locations),
-                                _coerce_text(j.job_location_type),
-                                _coerce_text(j.language),
+                    for row in rows:
+                        action = row["action"]
+                        if action == "new":
+                            new_urls.append(row["url"])
+                        elif action == "relisted":
+                            r2h = row["description_r2_hash"]
+                            relisted.append(
+                                {
+                                    "id": row["id"],
+                                    "url": row["url"],
+                                    "r2_hash": int(r2h) if r2h is not None else None,
+                                }
                             )
-                            desc_text = _coerce_text(j.description)
-                            s_min, s_max, s_cur, s_per, s_eur = _extract_salary_fields(
-                                desc_text, await _get_currency_rates(pool)
+                        elif action == "touched":
+                            r2h = row["description_r2_hash"]
+                            touched.append(
+                                {
+                                    "id": row["id"],
+                                    "url": row["url"],
+                                    "r2_hash": int(r2h) if r2h is not None else None,
+                                }
                             )
-                            exp_min, exp_max = _extract_experience_fields(desc_text)
-                            t_ids = _resolve_technology_ids(
-                                desc_text, await _get_technology_ids(pool)
-                            )
-                            title_text = _coerce_text(j.title)
-                            all_titles = _build_titles(title_text, j.localizations)
-                            occ_id, sen_id = _resolve_occupation_seniority(
-                                all_titles,
-                                await _get_occupation_ids(pool),
-                                await _get_seniority_ids(pool),
-                            )
-                            detected_langs = (
-                                detect_all_languages(j.description) if j.description else []
-                            )
-                            records.append(
-                                (
-                                    pid,
-                                    normalize_employment_type(_coerce_text(j.employment_type)),
-                                    all_titles,
-                                    _build_locales(
-                                        _coerce_text(j.language),
-                                        j.localizations,
-                                        detected_languages=detected_langs,
-                                    ),
-                                    loc_ids,
-                                    loc_types,
-                                    s_min,
-                                    s_max,
-                                    s_cur,
-                                    s_per,
-                                    s_eur,
-                                    exp_min,
-                                    exp_max,
-                                    t_ids,
-                                    occ_id,
-                                    sen_id,
-                                )
-                            )
-                        await conn.copy_records_to_table("_rich_updates", records=records)
-                        await conn.execute(_BATCH_UPDATE_RICH_CONTENT)
 
-                        # R2 staging for relisted/touched
-                        backfill_count = 0
-                        for pid, j, existing_hash in update_triples:
-                            if existing_hash is None:
-                                backfill_count += 1
-                                if backfill_count > _R2_BACKFILL_LIMIT:
+                    batch_new = len(new_urls)
+                    batch_relisted = len(relisted)
+
+                    if batch.jobs_by_url:
+                        # Insert new rich jobs
+                        if new_urls and batch.cpu_results:
+                            insert_sql = (
+                                _INSERT_RICH_JOB_ENRICH
+                                if batch.enrich_fields
+                                else _INSERT_RICH_JOB
+                            )
+                            inserted_ids: list[str] = []
+                            r2_staging_list: list[tuple[str, dict]] = []
+                            for url in new_urls:
+                                if url not in batch.cpu_results:
                                     continue
-                            staged = _stage_r2_pending(
-                                title=_coerce_text(j.title),
-                                description=_coerce_text(j.description),
-                                language=_coerce_text(j.language),
-                                locations=_coerce_locations(j.locations),
-                                localizations=j.localizations,
-                                extras=j.extras,
-                                metadata=j.metadata,
-                                date_posted=j.date_posted,
-                                base_salary=j.base_salary,
-                                employment_type=_coerce_text(j.employment_type),
-                                job_location_type=_coerce_text(j.job_location_type),
-                                current_hash=existing_hash,
-                                source="monitor",
-                                tech_ids=_resolve_technology_ids(
-                                    _coerce_text(j.description),
-                                    await _get_technology_ids(pool),
-                                ),
-                            )
-                            if staged:
-                                is_first = existing_hash is None
-                                depth = await _get_r2_queue_depth(pool)
-                                queue_ok = is_first or depth < settings.r2_queue_max
-                                if queue_ok:
+                                cpu_r = batch.cpu_results[url]
+                                row = await conn.fetchrow(insert_sql, *cpu_r.insert_record)
+                                if row:
+                                    posting_id = str(row["id"])
+                                    inserted_ids.append(posting_id)
+                                    r2_staging_list.append((posting_id, cpu_r.r2_staging_args))
+
+                            # Stage R2 pending for inserted jobs
+                            for posting_id, r2_args in r2_staging_list:
+                                staged = _stage_r2_pending(**r2_args)
+                                if staged:
                                     await conn.execute(
                                         _STAGE_R2_PENDING,
-                                        str(pid),
+                                        posting_id,
                                         staged[0],
                                         staged[1],
                                     )
 
-                else:
-                    # URL-only path — insert stubs with next_scrape_at
-                    if new_urls:
-                        await conn.fetch(
-                            _INSERT_URL_ONLY_JOBS,
-                            batch.company_id,
-                            batch.board_id,
-                            new_urls,
-                        )
+                        # Update content for relisted and touched
+                        update_triples = [
+                            (
+                                item_d["id"],
+                                batch.jobs_by_url[item_d["url"]],
+                                item_d.get("r2_hash"),
+                            )
+                            for item_d in relisted + touched
+                            if item_d["url"] in batch.jobs_by_url
+                        ]
+                        if update_triples:
+                            # CPU work for relisted/touched (normalize, enrich, detect lang)
+                            for _, j, _ in update_triples:
+                                j.description = normalize_description_html(j.description)
+                                enrich_description(j)
+                                if not j.language and j.description:
+                                    j.language = detect_language(j.description)
 
-            total_new += batch_new
+                            await conn.execute(_CREATE_RICH_UPDATES_TEMP)
+                            records = []
+                            for pid, j, _ in update_triples:
+                                loc_ids, loc_types = _resolve_locations_sync(
+                                    loc_resolver,
+                                    _coerce_locations(j.locations),
+                                    _coerce_text(j.job_location_type),
+                                    _coerce_text(j.language),
+                                )
+                                desc_text = _coerce_text(j.description)
+                                s_min, s_max, s_cur, s_per, s_eur = _extract_salary_fields(
+                                    desc_text, await _get_currency_rates(pool)
+                                )
+                                exp_min, exp_max = _extract_experience_fields(desc_text)
+                                t_ids = _resolve_technology_ids(
+                                    desc_text, await _get_technology_ids(pool)
+                                )
+                                title_text = _coerce_text(j.title)
+                                all_titles = _build_titles(title_text, j.localizations)
+                                occ_id, sen_id = _resolve_occupation_seniority(
+                                    all_titles,
+                                    await _get_occupation_ids(pool),
+                                    await _get_seniority_ids(pool),
+                                )
+                                detected_langs = (
+                                    detect_all_languages(j.description)
+                                    if j.description
+                                    else []
+                                )
+                                records.append(
+                                    (
+                                        pid,
+                                        normalize_employment_type(
+                                            _coerce_text(j.employment_type)
+                                        ),
+                                        all_titles,
+                                        _build_locales(
+                                            _coerce_text(j.language),
+                                            j.localizations,
+                                            detected_languages=detected_langs,
+                                        ),
+                                        loc_ids,
+                                        loc_types,
+                                        s_min,
+                                        s_max,
+                                        s_cur,
+                                        s_per,
+                                        s_eur,
+                                        exp_min,
+                                        exp_max,
+                                        t_ids,
+                                        occ_id,
+                                        sen_id,
+                                    )
+                                )
+                            await conn.copy_records_to_table(
+                                "_rich_updates", records=records
+                            )
+                            await conn.execute(_BATCH_UPDATE_RICH_CONTENT)
 
-            # Backfill location cache misses (rare path)
-            if await loc_resolver.backfill_misses():
-                loc_resolver.drain_location_misses()
-            await _flush_location_misses(loc_resolver, pool)
+                            # R2 staging for relisted/touched
+                            backfill_count = 0
+                            for pid, j, existing_hash in update_triples:
+                                if existing_hash is None:
+                                    backfill_count += 1
+                                    if backfill_count > _R2_BACKFILL_LIMIT:
+                                        continue
+                                staged = _stage_r2_pending(
+                                    title=_coerce_text(j.title),
+                                    description=_coerce_text(j.description),
+                                    language=_coerce_text(j.language),
+                                    locations=_coerce_locations(j.locations),
+                                    localizations=j.localizations,
+                                    extras=j.extras,
+                                    metadata=j.metadata,
+                                    date_posted=j.date_posted,
+                                    base_salary=j.base_salary,
+                                    employment_type=_coerce_text(j.employment_type),
+                                    job_location_type=_coerce_text(j.job_location_type),
+                                    current_hash=existing_hash,
+                                    source="monitor",
+                                    tech_ids=_resolve_technology_ids(
+                                        _coerce_text(j.description),
+                                        await _get_technology_ids(pool),
+                                    ),
+                                )
+                                if staged:
+                                    is_first = existing_hash is None
+                                    depth = await _get_r2_queue_depth(pool)
+                                    queue_ok = is_first or depth < settings.r2_queue_max
+                                    if queue_ok:
+                                        await conn.execute(
+                                            _STAGE_R2_PENDING,
+                                            str(pid),
+                                            staged[0],
+                                            staged[1],
+                                        )
 
-            log.info(
-                "pipeline.writer.batch",
-                board_id=batch.board_id,
-                new=batch_new,
-                relisted=batch_relisted,
-                touched=len(touched),
-            )
+                    else:
+                        # URL-only path — insert stubs with next_scrape_at
+                        if new_urls:
+                            await conn.fetch(
+                                _INSERT_URL_ONLY_JOBS,
+                                batch.company_id,
+                                batch.board_id,
+                                new_urls,
+                            )
+
+                total_new += batch_new
+
+                # Backfill location cache misses (rare path)
+                if await loc_resolver.backfill_misses():
+                    loc_resolver.drain_location_misses()
+                await _flush_location_misses(loc_resolver, pool)
+
+                log.info(
+                    "pipeline.writer.batch",
+                    board_id=batch.board_id,
+                    new=batch_new,
+                    relisted=batch_relisted,
+                    touched=len(touched),
+                )
+
+            elif isinstance(item, ScrapeResult):
+                async with pool.acquire() as conn:
+                    sql = _UPDATE_ENRICH_CONTENT if item.is_enrich else _UPDATE_JOB_CONTENT
+                    await conn.execute(sql, *item.params)
+                    await conn.execute(_RECORD_SCRAPE_SUCCESS, item.job_posting_id)
+                scrapes_succeeded += 1
+
+            elif isinstance(item, ScrapeError):
+                async with pool.acquire() as conn:
+                    await conn.execute(_RECORD_SCRAPE_FAILURE, item.job_posting_id)
+                scrapes_failed += 1
 
         except Exception:
             log.exception(
@@ -2889,7 +3404,7 @@ async def _monitor_db_writer(
 
         write_buffer.task_done()
 
-    return boards_succeeded, total_new, total_gone
+    return boards_succeeded, total_new, total_gone, scrapes_succeeded, scrapes_failed
 
 
 async def _monitor_producer(
@@ -2964,12 +3479,14 @@ async def run_monitor_pipeline(
     num_workers: int = 20,
     worker_id: str = "",
     browser: bool = False,
+    num_scrape_workers: int = 0,
 ) -> None:
     """Orchestrate the producer-consumer monitor pipeline.
 
     - 1 producer claims boards from DB
     - N workers fetch APIs + run CPU work (no DB access except lease extension)
     - 1 DB writer does all diff/insert/update/staging
+    - Optionally: 1 scrape producer + M scrape workers share the same DB writer
     """
     t0 = monotonic()
 
@@ -2981,17 +3498,28 @@ async def run_monitor_pipeline(
     sen_ids = await _get_seniority_ids(pool)
 
     fetch_buffer: asyncio.Queue = asyncio.Queue(maxsize=num_workers * 2)
-    write_buffer: asyncio.Queue = asyncio.Queue(maxsize=num_workers * 4)
+
+    # Size write_buffer to accommodate both monitor and scrape workers
+    write_buffer_size = num_workers * 4
+    if num_scrape_workers > 0:
+        write_buffer_size += num_scrape_workers * 2
+    write_buffer: asyncio.Queue = asyncio.Queue(maxsize=write_buffer_size)
+
+    # Scrape buffer (only created if scrape workers requested)
+    scrape_fetch_buffer: asyncio.Queue | None = None
+    if num_scrape_workers > 0:
+        scrape_fetch_buffer = asyncio.Queue(maxsize=num_scrape_workers * 2)
 
     log.info(
         "pipeline.start",
         num_workers=num_workers,
+        num_scrape_workers=num_scrape_workers,
         fetch_buffer_max=fetch_buffer.maxsize,
         write_buffer_max=write_buffer.maxsize,
         browser=browser,
     )
 
-    # Start producer
+    # Start monitor producer
     producer_task = asyncio.create_task(
         _monitor_producer(
             pool,
@@ -3005,7 +3533,7 @@ async def run_monitor_pipeline(
         name="pipeline-producer",
     )
 
-    # Start workers
+    # Start monitor workers
     worker_tasks = []
     for i in range(num_workers):
         task = asyncio.create_task(
@@ -3025,13 +3553,47 @@ async def run_monitor_pipeline(
         )
         worker_tasks.append(task)
 
+    # Start scrape producer + workers (if requested)
+    scrape_producer_task = None
+    scrape_worker_tasks = []
+    if num_scrape_workers > 0 and scrape_fetch_buffer is not None:
+        scrape_producer_task = asyncio.create_task(
+            _scrape_pipeline_producer(
+                pool,
+                scrape_fetch_buffer,
+                shutdown_event,
+                num_scrape_workers,
+                worker_id,
+                browser=browser,
+            ),
+            name="pipeline-scrape-producer",
+        )
+
+        for i in range(num_scrape_workers):
+            task = asyncio.create_task(
+                _scrape_pipeline_worker(
+                    http,
+                    pool,
+                    scrape_fetch_buffer,
+                    write_buffer,
+                    loc_resolver,
+                    rates,
+                    tech_id_map,
+                    occ_ids,
+                    sen_ids,
+                    worker_id=i,
+                ),
+                name=f"pipeline-scrape-worker-{i}",
+            )
+            scrape_worker_tasks.append(task)
+
     # Start DB writer
     writer_task = asyncio.create_task(
-        _monitor_db_writer(pool, write_buffer, loc_resolver),
+        _db_writer(pool, write_buffer, loc_resolver),
         name="pipeline-writer",
     )
 
-    # Wait for producer to finish (either shutdown or exhaustion)
+    # Wait for monitor producer to finish (either shutdown or exhaustion)
     try:
         await producer_task
     except Exception:
@@ -3041,7 +3603,7 @@ async def run_monitor_pipeline(
             with contextlib.suppress(Exception):
                 await fetch_buffer.put(_SENTINEL)
 
-    # Wait for all workers to finish
+    # Wait for all monitor workers to finish
     worker_results = await asyncio.gather(*worker_tasks, return_exceptions=True)
     total_boards = 0
     for r in worker_results:
@@ -3050,15 +3612,35 @@ async def run_monitor_pipeline(
         elif isinstance(r, Exception):
             log.error("pipeline.worker.crashed", error=str(r))
 
+    # Wait for scrape producer + workers to finish
+    total_scrapes = 0
+    if scrape_producer_task is not None:
+        try:
+            await scrape_producer_task
+        except Exception:
+            log.exception("pipeline.scrape_producer.crashed")
+            # Ensure sentinels are sent even on crash
+            if scrape_fetch_buffer is not None:
+                for _ in range(num_scrape_workers):
+                    with contextlib.suppress(Exception):
+                        await scrape_fetch_buffer.put(_SENTINEL)
+
+        scrape_results = await asyncio.gather(*scrape_worker_tasks, return_exceptions=True)
+        for r in scrape_results:
+            if isinstance(r, int):
+                total_scrapes += r
+            elif isinstance(r, Exception):
+                log.error("pipeline.scrape_worker.crashed", error=str(r))
+
     # Signal DB writer to stop
     await write_buffer.put(_SENTINEL)
 
     # Wait for writer to drain
     try:
-        boards_succeeded, total_new, total_gone = await writer_task
+        boards_succeeded, total_new, total_gone, scrapes_ok, scrapes_err = await writer_task
     except Exception:
         log.exception("pipeline.writer.crashed")
-        boards_succeeded, total_new, total_gone = 0, 0, 0
+        boards_succeeded, total_new, total_gone, scrapes_ok, scrapes_err = 0, 0, 0, 0, 0
 
     elapsed = monotonic() - t0
     log.info(
@@ -3067,6 +3649,9 @@ async def run_monitor_pipeline(
         boards_succeeded=boards_succeeded,
         total_new=total_new,
         total_gone=total_gone,
+        scrapes_total=total_scrapes,
+        scrapes_succeeded=scrapes_ok,
+        scrapes_failed=scrapes_err,
         duration_s=round(elapsed, 2),
         browser=browser,
     )
