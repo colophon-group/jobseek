@@ -3662,14 +3662,13 @@ async def run_monitor_pipeline(
     num_workers: int = 20,
     worker_id: str = "",
     browser: bool = False,
-    num_scrape_workers: int = 0,
+    scrape: bool = True,
 ) -> None:
     """Orchestrate the producer-consumer monitor pipeline.
 
-    - 1 producer claims boards from DB
-    - N workers fetch APIs + run CPU work (no DB access except lease extension)
-    - 1 DB writer does all diff/insert/update/staging
-    - Optionally: 1 scrape producer + M scrape workers share the same DB writer
+    - 1 producer claims boards (and optionally scrapes) from DB
+    - N workers fetch APIs + run CPU work
+    - M DB writers do all diff/insert/update/staging (sharded by board ID)
     """
     t0 = monotonic()
 
@@ -3680,14 +3679,13 @@ async def run_monitor_pipeline(
     occ_ids = await _get_occupation_ids(pool)
     sen_ids = await _get_seniority_ids(pool)
 
-    total_workers = num_workers + num_scrape_workers
     num_writers = settings.crawler_db_writers
-    fetch_buffer: asyncio.Queue = asyncio.Queue(maxsize=total_workers * 2)
+    fetch_buffer: asyncio.Queue = asyncio.Queue(maxsize=num_workers * 2)
 
     # Sharded write queues — items for the same board always go to the same
     # writer, preserving BatchBatch → BoardDone ordering per board.
     write_queues = [
-        asyncio.Queue(maxsize=max(total_workers * 4 // num_writers, 4)) for _ in range(num_writers)
+        asyncio.Queue(maxsize=max(num_workers * 4 // num_writers, 4)) for _ in range(num_writers)
     ]
 
     def _shard_key(item) -> str:
@@ -3721,21 +3719,22 @@ async def run_monitor_pipeline(
 
     log.info(
         "pipeline.start",
-        num_workers=total_workers,
+        num_workers=num_workers,
         num_writers=num_writers,
+        scrape=scrape,
         fetch_buffer_max=fetch_buffer.maxsize,
         write_buffer_max=write_buffer.maxsize,
         browser=browser,
     )
 
-    # Unified producer: claims both monitors and scrapes with priority tiers
-    if num_scrape_workers > 0:
+    # Producer: unified (monitors + scrapes) or monitor-only
+    if scrape:
         producer_task = asyncio.create_task(
             _unified_producer(
                 pool,
                 fetch_buffer,
                 shutdown_event,
-                total_workers,
+                num_workers,
                 worker_id,
                 browser=browser,
             ),
@@ -3748,16 +3747,16 @@ async def run_monitor_pipeline(
                 http,
                 fetch_buffer,
                 shutdown_event,
-                total_workers,
+                num_workers,
                 worker_id,
                 browser=browser,
             ),
             name="pipeline-producer",
         )
 
-    # All workers share the same buffer and handle both monitors and scrapes
+    # All workers handle both monitors and scrapes
     worker_tasks = []
-    for i in range(total_workers):
+    for i in range(num_workers):
         task = asyncio.create_task(
             _monitor_worker(
                 http,

@@ -438,8 +438,8 @@ async def run_continuous_loop(
                         pool,
                         http,
                         shutdown_event,
-                        num_workers=max(max_concurrent // 2, 5),
-                        num_scrape_workers=max_concurrent if scrape else 0,
+                        num_workers=max_concurrent,
+                        scrape=scrape,
                         worker_id=worker_id,
                         browser=False,
                     )
@@ -460,6 +460,7 @@ async def run_continuous_loop(
                         http,
                         shutdown_event,
                         num_workers=max(max_browser, 1),
+                        scrape=scrape,
                         worker_id=worker_id,
                         browser=True,
                     )
