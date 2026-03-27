@@ -411,19 +411,23 @@ async def run_continuous_loop(
         browser_only=browser_only,
     )
 
-    # Start background R2 drain worker (auto-restart on crash)
+    # Start background R2 drain worker unless running in split mode
+    # (dedicated --r2-drain-only container handles it separately)
     from src.r2_worker import drain_remaining, run_r2_drain_loop
 
-    async def _r2_drain_supervised():
-        while not shutdown_event.is_set():
-            try:
-                await run_r2_drain_loop(pool, shutdown_event)
-            except Exception:
-                log.exception("r2_drain.crashed")
-                if not shutdown_event.is_set():
-                    await asyncio.sleep(5)
+    r2_drain_task = None
+    if not http_only and not browser_only:
 
-    r2_drain_task = asyncio.create_task(_r2_drain_supervised())
+        async def _r2_drain_supervised():
+            while not shutdown_event.is_set():
+                try:
+                    await run_r2_drain_loop(pool, shutdown_event)
+                except Exception:
+                    log.exception("r2_drain.crashed")
+                    if not shutdown_event.is_set():
+                        await asyncio.sleep(5)
+
+        r2_drain_task = asyncio.create_task(_r2_drain_supervised())
 
     # Start monitor pipeline (producer-consumer, separate from WorkerPool)
     from src.batch import run_monitor_pipeline
@@ -488,10 +492,11 @@ async def run_continuous_loop(
         await asyncio.gather(*monitor_tasks, return_exceptions=True)
 
     # Stop R2 drain loop and flush remaining pending uploads
-    r2_drain_task.cancel()
-    with contextlib.suppress(asyncio.CancelledError):
-        await r2_drain_task
-    await drain_remaining(pool)
+    if r2_drain_task is not None:
+        r2_drain_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await r2_drain_task
+        await drain_remaining(pool)
 
     log.info("scheduler.stopped")
 
