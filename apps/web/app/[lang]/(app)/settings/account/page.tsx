@@ -1,14 +1,12 @@
-import { initI18nForPage } from "@/lib/i18n";
-import { getAccountPageData } from "@/lib/actions/preferences";
-import { AccountSettings } from "@/components/settings/AccountSettings";
+import { isLocale, defaultLocale } from "@/lib/i18n";
+import { AccountLoader } from "./account-loader";
 
 type Props = {
   params: Promise<{ lang: string }>;
 };
 
 export default async function AccountSettingsPage({ params }: Props) {
-  await initI18nForPage(params);
-  const data = await getAccountPageData();
-
-  return <AccountSettings initialData={data} />;
+  const { lang } = await params;
+  const locale = isLocale(lang) ? lang : defaultLocale;
+  return <AccountLoader locale={locale} />;
 }

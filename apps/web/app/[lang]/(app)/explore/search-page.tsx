@@ -24,6 +24,7 @@ type TaxonomyItem = { id: number; slug: string; name: string };
 interface SearchPageProps {
   initialCompanies: SearchResultCompany[];
   initialTotalCompanies: number;
+  initialTruncated?: boolean;
   initialKeywords: string[];
   initialLocations: SelectedLocation[];
   initialOccupations: TaxonomyItem[];
@@ -47,6 +48,7 @@ interface SearchPageProps {
 export function SearchPage({
   initialCompanies,
   initialTotalCompanies,
+  initialTruncated,
   initialKeywords,
   initialLocations,
   initialOccupations,
@@ -130,6 +132,7 @@ export function SearchPage({
     shouldRestore ? cached.totalCompanies : initialTotalCompanies,
   );
   const [isSearching, startSearch] = useTransition();
+  const [isTruncated, setIsTruncated] = useState(initialTruncated ?? false);
 
   // Refs for all filter state — single source of truth for updateUrl/runSearch
   const keywordsRef = useRef(keywords);
@@ -291,7 +294,7 @@ export function SearchPage({
     }
   }, []);
 
-  const hasMore = companies.length < totalCompanies;
+  const hasMore = companies.length < totalCompanies && !isTruncated;
   const hasFilters = keywords.length > 0 || locations.length > 0 || occupations.length > 0 || seniorities.length > 0 || technologies.length > 0 || employmentTypes.length > 0 || salaryMin != null || salaryMax != null || experienceMin != null || experienceMax != null;
 
   /** Sync URL to current ref state. */
@@ -378,6 +381,7 @@ export function SearchPage({
               });
         setCompanies(result.companies);
         setTotalCompanies(result.totalCompanies);
+        setIsTruncated(result.truncated ?? false);
       } catch {
         // Ensure transition ends even on error — keeps existing results visible
       }
@@ -556,6 +560,8 @@ export function SearchPage({
       ? await searchJobs({ keywords: kws, locationIds, occupationIds, seniorityIds, technologyIds, employmentTypes: etypes, salaryMinEur: salMinEur, salaryMaxEur: salMaxEur, experienceMin: expMin, experienceMax: expMax, languages, locale, offset, limit: PAGE_SIZE })
       : await listTopCompanies({ locationIds, occupationIds, seniorityIds, technologyIds, employmentTypes: etypes, salaryMinEur: salMinEur, salaryMaxEur: salMaxEur, experienceMin: expMin, experienceMax: expMax, languages, locale, offset, limit: PAGE_SIZE });
 
+    if (result.truncated) setIsTruncated(true);
+
     setCompanies((prev) => {
       const seen = new Set(prev.map((c) => c.company.id));
       return [...prev, ...result.companies.filter((c) => !seen.has(c.company.id))];
@@ -634,6 +640,7 @@ export function SearchPage({
           experienceMax={experienceMax}
           languages={languages}
           hasMore={hasMore}
+          truncated={isTruncated}
           load={handleLoadMore}
           onShowPosting={handleOpenPosting}
           selectedPostingId={showPostingId}

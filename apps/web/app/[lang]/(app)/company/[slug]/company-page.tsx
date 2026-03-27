@@ -14,6 +14,7 @@ import { SearchToolbar } from "@/components/search/search-toolbar";
 import { getCompanyPostings } from "@/lib/actions/company";
 import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
 import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
+import { TruncationPrompt } from "@/components/TruncationPrompt";
 import { TrackingDot } from "@/components/TrackingDot";
 import { PendingJobIcon } from "@/components/PendingJobWarning";
 import { getCurrencyRates, type CurrencyRate } from "@/lib/actions/search";
@@ -44,6 +45,7 @@ interface CompanyPageProps {
   initialPostings: SearchResultPosting[];
   initialActiveCount: number;
   initialYearCount: number;
+  initialTruncated?: boolean;
   initialKeywords: string[];
   initialLocations: SelectedLocation[];
   initialOccupations: TaxonomyItem[];
@@ -70,6 +72,7 @@ export function CompanyPage({
   initialPostings,
   initialActiveCount,
   initialYearCount,
+  initialTruncated,
   initialKeywords,
   initialLocations,
   initialOccupations,
@@ -114,6 +117,7 @@ export function CompanyPage({
   );
   const [isSearching, startSearch] = useTransition();
   const [exhausted, setExhausted] = useState(initialPostings.length < PAGE_SIZE);
+  const [isTruncated, setIsTruncated] = useState(initialTruncated ?? false);
 
   // Currency rates for EUR conversion (fetched lazily)
   const [currencyRates, setCurrencyRates] = useState<CurrencyRate[]>([]);
@@ -145,7 +149,7 @@ export function CompanyPage({
   experienceMinRef.current = experienceMin;
   experienceMaxRef.current = experienceMax;
 
-  const hasMore = !exhausted && postings.length < yearCount;
+  const hasMore = !exhausted && !isTruncated && postings.length < yearCount;
   const hasFilters = keywords.length > 0 || locations.length > 0 || occupations.length > 0 || seniorities.length > 0 || technologies.length > 0 || salaryMin != null || salaryMax != null || experienceMin != null || experienceMax != null;
 
   /** Convert a salary amount from the user's display currency to EUR. */
@@ -221,6 +225,7 @@ export function CompanyPage({
       setActiveCount(result.activeCount);
       setYearCount(result.yearCount);
       setExhausted(result.postings.length < PAGE_SIZE);
+      setIsTruncated(result.truncated ?? false);
     });
   }
 
@@ -483,6 +488,7 @@ export function CompanyPage({
       offset: postings.length,
       limit: PAGE_SIZE,
     });
+    if (result.truncated) setIsTruncated(true);
     if (result.postings.length > 0) {
       setPostings((prev) => {
         const seen = new Set(prev.map((p) => p.id));
@@ -683,6 +689,7 @@ export function CompanyPage({
             </div>
           ))}
           {hasMore && <InfiniteScrollSentinel sentinelRef={sentinelRef} isLoading={isLoadingMore} />}
+          {!hasMore && isTruncated && <TruncationPrompt type="postings" />}
         </div>
       )}
     </div>

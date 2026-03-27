@@ -23,6 +23,7 @@ export interface SearchResultCompany {
 export interface SearchResponse {
   companies: SearchResultCompany[];
   totalCompanies: number;
+  truncated?: boolean;
 }
 
 export interface SearchFilters {

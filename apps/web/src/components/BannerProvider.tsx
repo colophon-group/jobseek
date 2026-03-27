@@ -17,10 +17,10 @@ const BannerContext = createContext<BannerContextValue>({
 });
 
 export function BannerProvider({
-  serverDismissed,
+  serverDismissed = [],
   children,
 }: {
-  serverDismissed: string[];
+  serverDismissed?: string[];
   children: ReactNode;
 }) {
   const [dismissedBanners] = useState(() => {

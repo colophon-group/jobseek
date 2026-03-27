@@ -26,10 +26,10 @@ const StarredCompaniesContext = createContext<StarredCompaniesContextValue>({
 });
 
 export function StarredCompaniesProvider({
-  initialIds,
+  initialIds = [],
   children,
 }: {
-  initialIds: string[];
+  initialIds?: string[];
   children: ReactNode;
 }) {
   const [starredIdSet, setStarredIdSet] = useState(() => new Set(initialIds));

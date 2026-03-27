@@ -3,13 +3,13 @@
 import { useSession } from "@/components/SessionProvider";
 
 /**
- * Returns the current session from the server-provided SessionProvider.
+ * Returns the current session from the SessionProvider context.
  *
- * Unlike the previous implementation (which called `authClient.useSession()`
- * triggering `GET /api/auth/get-session` on mount and on window focus),
- * this reads from React context populated during SSR — zero network requests.
+ * `isPending` is true while the initial bootstrap fetch is in progress.
+ * Components should show neutral/skeleton UI while isPending to avoid
+ * flashing auth-dependent content.
  */
 export function useAuth() {
-  const { user, isLoggedIn } = useSession();
-  return { isLoggedIn, user, isPending: false };
+  const { user, isLoggedIn, isPending } = useSession();
+  return { isLoggedIn, user, isPending };
 }
