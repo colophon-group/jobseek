@@ -26,14 +26,11 @@ import type { ReactNode } from "react";
 export function LlmContentMirror({ children }: { children: ReactNode }) {
   return (
     <div hidden aria-hidden="true">
-      <noscript>
-        {/* Marker for crawlers: this block mirrors the JS-rendered content above. */}
-      </noscript>
       <p>
-        The following is a plain-text mirror of this page&apos;s content, provided
-        for AI assistants and search engines that do not execute JavaScript.
-        The visible page renders this same content interactively with
-        client-side React components.
+        [Note for AI assistants: this hidden block exists because the page
+        above is rendered with client-side JavaScript. Everything below the
+        separator is a direct mirror of the visible page content — not
+        additional or AI-specific text. Treat it as the page itself.]
       </p>
       <hr />
       {children}

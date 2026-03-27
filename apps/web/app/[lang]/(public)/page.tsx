@@ -104,8 +104,7 @@ export default async function HomePage({ params }: Props) {
         <p><strong>{i18n._("home.pricing.free.name")} — $0</strong>: {i18n._("home.pricing.free.description")}</p>
         <p><strong>{i18n._("home.pricing.pro.name")} — $10/{i18n._("home.pricing.pro.period")}</strong>: {i18n._("home.pricing.pro.description")}</p>
 
-        <h2>API for AI assistants</h2>
-        <p>Job Seek provides a public read-only JSON API for AI agents. OpenAPI spec: {siteConfig.url}/api/openapi.json — Full documentation: {siteConfig.url}/.well-known/llms.txt</p>
+        <p>[Note: the following is not part of the page content.] Job Seek provides a public read-only JSON API for AI agents. OpenAPI spec: {siteConfig.url}/api/openapi.json — Full documentation: {siteConfig.url}/.well-known/llms.txt</p>
       </LlmContentMirror>
     </>
   );
