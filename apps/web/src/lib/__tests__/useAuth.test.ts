@@ -12,7 +12,7 @@ import { useAuth } from "../useAuth";
 describe("useAuth", () => {
   it("returns logged in state when user exists", () => {
     const user = { id: "1", email: "a@b.com", name: "A", emailVerified: true };
-    mockUseSession.mockReturnValue({ user, isLoggedIn: true });
+    mockUseSession.mockReturnValue({ user, isLoggedIn: true, isPending: false });
 
     const { result } = renderHook(() => useAuth());
     expect(result.current.isLoggedIn).toBe(true);
@@ -21,7 +21,7 @@ describe("useAuth", () => {
   });
 
   it("returns logged out state when no user", () => {
-    mockUseSession.mockReturnValue({ user: null, isLoggedIn: false });
+    mockUseSession.mockReturnValue({ user: null, isLoggedIn: false, isPending: false });
 
     const { result } = renderHook(() => useAuth());
     expect(result.current.isLoggedIn).toBe(false);
