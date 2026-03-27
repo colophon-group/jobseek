@@ -45,7 +45,7 @@ export default async function PrivacyPolicyPage({ params }: Props) {
         lastReviewed: siteConfig.privacy.lastUpdated,
       }} />
       <PrivacyPolicyContent />
-      <LlmContentMirror>
+      <LlmContentMirror locale={locale}>
         <h1>{i18n._("privacy.hero.title")}</h1>
         <p>{i18n._("privacy.hero.description")}</p>
         <h2>{i18n._("privacy.short.title")}</h2>

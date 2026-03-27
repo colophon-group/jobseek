@@ -44,7 +44,7 @@ export default async function HowWeIndexPage({ params }: Props) {
         isPartOf: { "@type": "WebSite", url: siteConfig.url },
       }} />
       <HowWeIndexContent />
-      <LlmContentMirror>
+      <LlmContentMirror locale={locale}>
         <h1>{i18n._("indexing.hero.title")}</h1>
         <p>{i18n._("indexing.hero.description")}</p>
 

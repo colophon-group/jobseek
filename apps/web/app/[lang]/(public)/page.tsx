@@ -67,7 +67,7 @@ export default async function HomePage({ params }: Props) {
           </div>
         </section>
       )}
-      <LlmContentMirror>
+      <LlmContentMirror locale={locale}>
         <h1>{i18n._("home.hero.title")}</h1>
         <p>{i18n._("home.hero.description")}</p>
 

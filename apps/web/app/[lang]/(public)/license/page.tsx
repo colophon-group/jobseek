@@ -44,7 +44,7 @@ export default async function LicensePage({ params }: Props) {
         isPartOf: { "@type": "WebSite", url: siteConfig.url },
       }} />
       <LicenseContent />
-      <LlmContentMirror>
+      <LlmContentMirror locale={locale}>
         <h1>{i18n._("license.hero.title")}</h1>
         <p>{i18n._("license.hero.description")}</p>
         <h2>{i18n._("license.code.title")}</h2>

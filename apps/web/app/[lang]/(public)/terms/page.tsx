@@ -45,7 +45,7 @@ export default async function TermsPage({ params }: Props) {
         lastReviewed: siteConfig.terms.lastUpdated,
       }} />
       <TermsContent />
-      <LlmContentMirror>
+      <LlmContentMirror locale={locale}>
         <h1>{i18n._("terms.hero.title")}</h1>
         <p>{i18n._("terms.hero.description")}</p>
         <h2>{i18n._("terms.short.title")}</h2>

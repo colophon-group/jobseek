@@ -101,7 +101,7 @@ export default async function FaqPage({ params }: Props) {
         inLanguage: locale,
       }} />
       <FaqContent items={faqItems} />
-      <LlmContentMirror>
+      <LlmContentMirror locale={locale}>
         <h1>{i18n._("faq.title")}</h1>
         <p>Everything you need to know about Job Seek. Can&apos;t find what you&apos;re looking for? Email us at {siteConfig.indexing.contactEmail}.</p>
         {faqItems.map((item, idx) => (

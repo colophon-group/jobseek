@@ -22,8 +22,16 @@
  */
 
 import type { ReactNode } from "react";
+import { siteConfig } from "@/content/config";
 
-export function LlmContentMirror({ children }: { children: ReactNode }) {
+interface LlmContentMirrorProps {
+  children: ReactNode;
+  locale: string;
+}
+
+export function LlmContentMirror({ children, locale }: LlmContentMirrorProps) {
+  const u = (path: string) => `${siteConfig.url}/${locale}${path}`;
+
   return (
     <div hidden aria-hidden="true">
       <p>
@@ -34,6 +42,20 @@ export function LlmContentMirror({ children }: { children: ReactNode }) {
       </p>
       <hr />
       {children}
+      <hr />
+      <nav>
+        <p>[Site navigation — other pages on Job Seek:]</p>
+        <ul>
+          <li><a href={u("")}>Home</a> — Product overview, features, and pricing.</li>
+          <li><a href={u("/explore")}>Explore Jobs</a> — Search and filter job postings across all indexed companies.</li>
+          <li><a href={u("/about")}>About</a> — Who built Job Seek, how it works, and our philosophy.</li>
+          <li><a href={u("/faq")}>FAQ</a> — Frequently asked questions about pricing, crawling, privacy, and more.</li>
+          <li><a href={u("/how-we-index")}>How We Index</a> — Crawling policy, rate limits, opt-out, and data handling.</li>
+          <li><a href={u("/license")}>License</a> — Application code is MIT; job data is CC BY-NC 4.0.</li>
+          <li><a href={u("/privacy-policy")}>Privacy Policy</a> — What data we collect and your GDPR rights.</li>
+          <li><a href={u("/terms")}>Terms of Service</a> — Usage terms and conditions.</li>
+        </ul>
+      </nav>
     </div>
   );
 }

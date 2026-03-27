@@ -47,7 +47,7 @@ export default async function AboutPage({ params }: Props) {
         contactEmail={siteConfig.indexing.contactEmail}
         ossRepoUrl={siteConfig.indexing.ossRepoUrl}
       />
-      <LlmContentMirror>
+      <LlmContentMirror locale={locale}>
         <h1>{i18n._("about.title")}</h1>
         <p>{i18n._("about.p1")}</p>
         <p>{i18n._("about.p2")}</p>
