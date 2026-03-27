@@ -3544,6 +3544,12 @@ async def _unified_producer(
                             browser,
                             first_only,
                         )
+                        log.info(
+                            "pipeline.producer.tier",
+                            tier=name,
+                            budget=tier_budget,
+                            claimed=len(rows),
+                        )
                         for board in rows:
                             await fetch_buffer.put(board)
                     else:
@@ -3554,6 +3560,12 @@ async def _unified_producer(
                             [],
                             browser,
                             first_only,
+                        )
+                        log.info(
+                            "pipeline.producer.tier",
+                            tier=name,
+                            budget=tier_budget,
+                            claimed=len(rows),
                         )
                         # Build _ScrapeWorkItem for each claimed scrape
                         if rows:
