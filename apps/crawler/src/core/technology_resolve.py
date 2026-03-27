@@ -98,6 +98,29 @@ def _load_patterns() -> list[tuple[str, re.Pattern[str]]]:
     return result
 
 
+@functools.cache
+def _load_patterns_with_keywords() -> list[tuple[str, re.Pattern[str], tuple[str, ...]]]:
+    """Load patterns with lowercase keywords for fast pre-filtering.
+
+    Returns list of (slug, compiled_pattern, keywords) tuples.
+    keywords is a tuple of all lowercased literal alternatives.
+    If *any* keyword is found via ``in`` on the lowercased text,
+    only then is the full regex invoked.
+    """
+    path = DATA_DIR / "technologies.csv"
+    df = pl.read_csv(path, infer_schema_length=0)
+    slug_keywords: dict[str, tuple[str, ...]] = {}
+    for row in df.iter_rows(named=True):
+        raw = row.get("patterns", "")
+        if not raw:
+            continue
+        alts = [p.strip().lower() for p in raw.split("|") if p.strip()]
+        if alts:
+            slug_keywords[row["slug"]] = tuple(alts)
+
+    return [(slug, pattern, slug_keywords.get(slug, ())) for slug, pattern in _load_patterns()]
+
+
 def match_technologies(text: str) -> list[str]:
     """Extract technology slugs from text (plain text or HTML).
 
@@ -111,8 +134,11 @@ def match_technologies(text: str) -> list[str]:
     if "<" in text:
         text = _strip_html(text)
 
+    text_lower = text.lower()
     matched: list[str] = []
-    for slug, pattern in _load_patterns():
+    for slug, pattern, keywords in _load_patterns_with_keywords():
+        if keywords and not any(kw in text_lower for kw in keywords):
+            continue
         if pattern.search(text):
             matched.append(slug)
 
