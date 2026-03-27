@@ -5,6 +5,7 @@ import { Hero } from "@/components/Hero";
 import { Features } from "@/components/Features";
 import { Pricing } from "@/components/Pricing";
 import { PublicDomainArt } from "@/components/PublicDomainArt";
+import { LlmContentMirror } from "@/components/LlmContentMirror";
 import { siteConfig, publicDomainAssets } from "@/content/config";
 import { buildAlternates, JsonLd } from "@/lib/seo";
 
@@ -33,6 +34,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function HomePage({ params }: Props) {
   const locale = await initI18nForPage(params);
+  const i18n = getI18n()!;
 
   const afterPricingArt = publicDomainAssets[siteConfig.homepageArt.assetKey];
 
@@ -41,8 +43,8 @@ export default async function HomePage({ params }: Props) {
       <JsonLd data={{
         "@context": "https://schema.org",
         "@type": "WebPage",
-        name: getI18n()!._({ id: "home.meta.title", message: "Find Roles Before They Hit the Big Boards" }),
-        description: getI18n()!._({ id: "home.meta.description", message: "Search jobs scraped directly from company career pages. Filter by seniority, tech stack, salary, and location, then track every application in one place." }),
+        name: i18n._({ id: "home.meta.title", message: "Find Roles Before They Hit the Big Boards" }),
+        description: i18n._({ id: "home.meta.description", message: "Search jobs scraped directly from company career pages. Filter by seniority, tech stack, salary, and location, then track every application in one place." }),
         url: `${siteConfig.url}/${locale}`,
         inLanguage: locale,
         isPartOf: { "@type": "WebSite", url: siteConfig.url },
@@ -65,6 +67,46 @@ export default async function HomePage({ params }: Props) {
           </div>
         </section>
       )}
+      <LlmContentMirror>
+        <h1>{i18n._("home.hero.title")}</h1>
+        <p>{i18n._("home.hero.description")}</p>
+
+        <h2>{i18n._("home.features.s1.eyebrow")}</h2>
+        <h3>{i18n._("home.features.s1.title")}</h3>
+        <p>{i18n._("home.features.s1.description")}</p>
+        <ul>
+          <li><strong>{i18n._("home.features.s1.p1.title")}</strong>: {i18n._("home.features.s1.p1.description")}</li>
+          <li><strong>{i18n._("home.features.s1.p2.title")}</strong>: {i18n._("home.features.s1.p2.description")}</li>
+          <li><strong>{i18n._("home.features.s1.p3.title")}</strong>: {i18n._("home.features.s1.p3.description")}</li>
+        </ul>
+
+        <h2>{i18n._("home.features.s2.eyebrow")}</h2>
+        <h3>{i18n._("home.features.s2.title")}</h3>
+        <p>{i18n._("home.features.s2.description")}</p>
+        <ul>
+          <li><strong>{i18n._("home.features.s2.p1.title")}</strong>: {i18n._("home.features.s2.p1.description")}</li>
+          <li><strong>{i18n._("home.features.s2.p2.title")}</strong>: {i18n._("home.features.s2.p2.description")}</li>
+          <li><strong>{i18n._("home.features.s2.p3.title")}</strong>: {i18n._("home.features.s2.p3.description")}</li>
+        </ul>
+
+        <h2>{i18n._("home.features.s3.eyebrow")}</h2>
+        <h3>{i18n._("home.features.s3.title")}</h3>
+        <p>{i18n._("home.features.s3.description")}</p>
+        <ul>
+          <li><strong>{i18n._("home.features.s3.p1.title")}</strong>: {i18n._("home.features.s3.p1.description")}</li>
+          <li><strong>{i18n._("home.features.s3.p2.title")}</strong>: {i18n._("home.features.s3.p2.description")}</li>
+          <li><strong>{i18n._("home.features.s3.p3.title")}</strong>: {i18n._("home.features.s3.p3.description")}</li>
+        </ul>
+
+        <h2>{i18n._("home.pricing.eyebrow")}</h2>
+        <h3>{i18n._("home.pricing.title")}</h3>
+        <p>{i18n._("home.pricing.description")}</p>
+        <p><strong>{i18n._("home.pricing.free.name")} — $0</strong>: {i18n._("home.pricing.free.description")}</p>
+        <p><strong>{i18n._("home.pricing.pro.name")} — $10/{i18n._("home.pricing.pro.period")}</strong>: {i18n._("home.pricing.pro.description")}</p>
+
+        <h2>API for AI assistants</h2>
+        <p>Job Seek provides a public read-only JSON API for AI agents. OpenAPI spec: {siteConfig.url}/api/openapi.json — Full documentation: {siteConfig.url}/.well-known/llms.txt</p>
+      </LlmContentMirror>
     </>
   );
 }

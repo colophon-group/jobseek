@@ -3,6 +3,7 @@ import { getI18n } from "@lingui/react/server";
 import { initI18nForPage, isLocale, defaultLocale, loadCatalog } from "@/lib/i18n";
 import { siteConfig } from "@/content/config";
 import { buildAlternates, JsonLd } from "@/lib/seo";
+import { LlmContentMirror } from "@/components/LlmContentMirror";
 import { TermsContent } from "@/components/TermsContent";
 
 type Props = {
@@ -30,19 +31,33 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function TermsPage({ params }: Props) {
   const locale = await initI18nForPage(params);
+  const i18n = getI18n()!;
   return (
     <>
       <JsonLd data={{
         "@context": "https://schema.org",
         "@type": "WebPage",
-        name: getI18n()!._({ id: "terms.meta.title", message: "Terms of Service" }),
-        description: getI18n()!._({ id: "terms.meta.description", message: "Terms of Service for the Job Seek application." }),
+        name: i18n._({ id: "terms.meta.title", message: "Terms of Service" }),
+        description: i18n._({ id: "terms.meta.description", message: "Terms of Service for the Job Seek application." }),
         url: `${siteConfig.url}/${locale}/terms`,
         inLanguage: locale,
         isPartOf: { "@type": "WebSite", url: siteConfig.url },
         lastReviewed: siteConfig.terms.lastUpdated,
       }} />
       <TermsContent />
+      <LlmContentMirror>
+        <h1>{i18n._("terms.hero.title")}</h1>
+        <p>{i18n._("terms.hero.description")}</p>
+        <h2>{i18n._("terms.short.title")}</h2>
+        <ul>
+          <li>{i18n._("terms.short.r1")}</li>
+          <li>{i18n._("terms.short.r2")}</li>
+          <li>{i18n._("terms.short.r3")}</li>
+          <li>{i18n._("terms.short.r4")}</li>
+          <li>{i18n._("terms.short.r5")}</li>
+        </ul>
+        <p>{i18n._("terms.contact.description")} {siteConfig.indexing.contactEmail}</p>
+      </LlmContentMirror>
     </>
   );
 }

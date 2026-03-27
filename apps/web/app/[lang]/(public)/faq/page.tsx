@@ -3,6 +3,7 @@ import { getI18n } from "@lingui/react/server";
 import { initI18nForPage, isLocale, defaultLocale, loadCatalog } from "@/lib/i18n";
 import { siteConfig } from "@/content/config";
 import { buildAlternates, JsonLd } from "@/lib/seo";
+import { LlmContentMirror } from "@/components/LlmContentMirror";
 import { FaqContent } from "./faq-content";
 
 type Props = {
@@ -100,6 +101,16 @@ export default async function FaqPage({ params }: Props) {
         inLanguage: locale,
       }} />
       <FaqContent items={faqItems} />
+      <LlmContentMirror>
+        <h1>{i18n._("faq.title")}</h1>
+        <p>Everything you need to know about Job Seek. Can&apos;t find what you&apos;re looking for? Email us at {siteConfig.indexing.contactEmail}.</p>
+        {faqItems.map((item, idx) => (
+          <div key={idx}>
+            <h2>{item.q}</h2>
+            <p>{item.a}</p>
+          </div>
+        ))}
+      </LlmContentMirror>
     </>
   );
 }
