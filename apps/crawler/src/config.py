@@ -25,7 +25,8 @@ class Settings(BaseSettings):
     crawler_poll_interval: int = 15
     crawler_max_concurrent: int = 20
     crawler_max_browser: int = 3  # separate cap for browser (Playwright) work
-    crawler_db_pool_max: int = 10  # should be >= half of crawler_max_concurrent
+    crawler_db_pool_max: int = 10
+    crawler_db_writers: int = 1  # number of concurrent pipeline DB writers
     metrics_port: int = 9091
     r2_max_connections: int = 60  # also controls number of drain worker consumers
     r2_drain_producers: int = 1  # number of concurrent DB-fetch producers

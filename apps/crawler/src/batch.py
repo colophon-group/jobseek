@@ -3650,12 +3650,48 @@ async def run_monitor_pipeline(
     sen_ids = await _get_seniority_ids(pool)
 
     total_workers = num_workers + num_scrape_workers
+    num_writers = settings.crawler_db_writers
     fetch_buffer: asyncio.Queue = asyncio.Queue(maxsize=total_workers * 2)
-    write_buffer: asyncio.Queue = asyncio.Queue(maxsize=total_workers * 4)
+
+    # Sharded write queues — items for the same board always go to the same
+    # writer, preserving BatchBatch → BoardDone ordering per board.
+    write_queues = [
+        asyncio.Queue(maxsize=max(total_workers * 4 // num_writers, 4)) for _ in range(num_writers)
+    ]
+
+    def _shard_key(item) -> str:
+        """Extract the key used to route an item to a writer."""
+        if hasattr(item, "board_id"):
+            return item.board_id
+        if hasattr(item, "job_posting_id"):
+            return item.job_posting_id
+        return ""
+
+    class _WriteRouter:
+        """Routes items to sharded write queues by board/posting ID hash."""
+
+        @property
+        def maxsize(self) -> int:
+            return sum(q.maxsize for q in write_queues)
+
+        def qsize(self) -> int:
+            return sum(q.qsize() for q in write_queues)
+
+        async def put(self, item) -> None:
+            if item is _SENTINEL:
+                # Sentinel goes to all writers
+                for q in write_queues:
+                    await q.put(_SENTINEL)
+                return
+            idx = hash(_shard_key(item)) % num_writers
+            await write_queues[idx].put(item)
+
+    write_buffer = _WriteRouter()
 
     log.info(
         "pipeline.start",
         num_workers=total_workers,
+        num_writers=num_writers,
         fetch_buffer_max=fetch_buffer.maxsize,
         write_buffer_max=write_buffer.maxsize,
         browser=browser,
@@ -3708,11 +3744,14 @@ async def run_monitor_pipeline(
         )
         worker_tasks.append(task)
 
-    # Start DB writer
-    writer_task = asyncio.create_task(
-        _db_writer(pool, write_buffer, loc_resolver),
-        name="pipeline-writer",
-    )
+    # Start DB writers (one per sharded queue)
+    writer_tasks = [
+        asyncio.create_task(
+            _db_writer(pool, write_queues[i], loc_resolver),
+            name=f"pipeline-writer-{i}",
+        )
+        for i in range(num_writers)
+    ]
 
     # Buffer pressure monitor
     async def _pipeline_monitor():
@@ -3764,15 +3803,22 @@ async def run_monitor_pipeline(
         elif isinstance(r, Exception):
             log.error("pipeline.worker.crashed", error=str(r))
 
-    # Signal DB writer to stop
+    # Signal all DB writers to stop (router sends sentinel to each queue)
     await write_buffer.put(_SENTINEL)
 
-    # Wait for writer to drain
-    try:
-        boards_succeeded, total_new, total_gone, scrapes_ok, scrapes_err = await writer_task
-    except Exception:
-        log.exception("pipeline.writer.crashed")
-        boards_succeeded, total_new, total_gone, scrapes_ok, scrapes_err = 0, 0, 0, 0, 0
+    # Wait for all writers to drain
+    writer_results = await asyncio.gather(*writer_tasks, return_exceptions=True)
+    boards_succeeded = total_new = total_gone = scrapes_ok = scrapes_err = 0
+    for r in writer_results:
+        if isinstance(r, Exception):
+            log.exception("pipeline.writer.crashed", error=str(r))
+        elif isinstance(r, tuple):
+            bs, tn, tg, so, se = r
+            boards_succeeded += bs
+            total_new += tn
+            total_gone += tg
+            scrapes_ok += so
+            scrapes_err += se
 
     elapsed = monotonic() - t0
     log.info(
@@ -3785,6 +3831,7 @@ async def run_monitor_pipeline(
         scrapes_failed=scrapes_err,
         duration_s=round(elapsed, 2),
         browser=browser,
+        num_writers=num_writers,
     )
 
 
