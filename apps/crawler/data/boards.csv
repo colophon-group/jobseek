@@ -1845,6 +1845,8 @@ impinj,impinj-greenhouse,https://job-boards.greenhouse.io/impinjexternal,greenho
 impiricus,impiricus-greenhouse,https://job-boards.greenhouse.io/impiricus,greenhouse,"{""token"": ""impiricus""}",skip,
 imprint,imprint-ashby,https://jobs.ashbyhq.com/imprint,ashby,"{""token"": ""imprint""}",skip,
 improbable,improbable-ashby,https://jobs.ashbyhq.com/improbable,ashby,"{""token"": ""improbable""}",skip,
+improvado,improvado-careers,https://improvado.applytojob.com/apply,dom,,json-ld,
+improvado,improvado-careers-sr,https://careers.smartrecruiters.com/Improvado,smartrecruiters,"{""company"": ""Improvado""}",smartrecruiters,
 imubit,imubit-greenhouse,https://job-boards.greenhouse.io/imubit,greenhouse,"{""token"": ""imubit""}",skip,
 in-the-pocket,in-the-pocket-greenhouse,https://job-boards.greenhouse.io/inthepocket,greenhouse,"{""token"": ""inthepocket""}",skip,
 inc-innovation-center-gmbh,inc-innovation-center-gmbh-join,https://join.com/companies/innovation-centercom,join,"{""slug"": ""innovation-centercom""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
