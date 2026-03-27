@@ -3708,12 +3708,37 @@ async def run_monitor_pipeline(
         )
         worker_tasks.append(task)
 
-    # No separate scrape producer/workers — unified producer feeds all workers
     # Start DB writer
     writer_task = asyncio.create_task(
         _db_writer(pool, write_buffer, loc_resolver),
         name="pipeline-writer",
     )
+
+    # Buffer pressure monitor
+    async def _pipeline_monitor():
+        fetch_max = fetch_buffer.maxsize or 1
+        write_max = write_buffer.maxsize or 1
+        fetch_samples: list[float] = []
+        write_samples: list[float] = []
+        while not shutdown_event.is_set():
+            fetch_samples.append(fetch_buffer.qsize() / fetch_max)
+            write_samples.append(write_buffer.qsize() / write_max)
+            if len(fetch_samples) >= 10:
+                log.info(
+                    "pipeline.buffer",
+                    fetch_pct=round(sum(fetch_samples) / len(fetch_samples) * 100, 1),
+                    write_pct=round(sum(write_samples) / len(write_samples) * 100, 1),
+                    fetch_cur=fetch_buffer.qsize(),
+                    fetch_max=fetch_max,
+                    write_cur=write_buffer.qsize(),
+                    write_max=write_max,
+                )
+                fetch_samples.clear()
+                write_samples.clear()
+            with contextlib.suppress(TimeoutError):
+                await asyncio.wait_for(shutdown_event.wait(), timeout=1.0)
+
+    monitor_task = asyncio.create_task(_pipeline_monitor(), name="pipeline-monitor")
 
     # Wait for monitor producer to finish (either shutdown or exhaustion)
     try:
@@ -3724,6 +3749,11 @@ async def run_monitor_pipeline(
         for _ in range(num_workers):
             with contextlib.suppress(Exception):
                 await fetch_buffer.put(_SENTINEL)
+
+    # Stop buffer monitor
+    monitor_task.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await monitor_task
 
     # Wait for all monitor workers to finish
     worker_results = await asyncio.gather(*worker_tasks, return_exceptions=True)
