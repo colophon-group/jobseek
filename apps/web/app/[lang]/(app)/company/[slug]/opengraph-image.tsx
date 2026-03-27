@@ -4,6 +4,7 @@ import { getCompanyBySlug } from "@/lib/actions/company";
 export const alt = "Company jobs";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
+export const revalidate = 86400; // Cache generated image for 1 day
 
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
