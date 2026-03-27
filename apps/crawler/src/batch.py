@@ -45,6 +45,7 @@ from src.core.scrapers import (
 )
 from src.core.seniority_resolve import load_seniority_ids, match_seniority
 from src.core.technology_resolve import load_technology_ids, match_technologies
+from src.metrics import tasks_total
 from src.shared.html_normalize import normalize_description_html
 from src.shared.langdetect import detect_all_languages, detect_language
 from src.shared.redis import get_redis
@@ -3144,6 +3145,7 @@ async def _db_writer(
                     board_url=item.board_url,
                     error=item.error_msg,
                 )
+                tasks_total.labels(kind="monitor", status="failed").inc()
 
             elif isinstance(item, BoardDone):
                 if not item.all_urls:
@@ -3187,6 +3189,7 @@ async def _db_writer(
                             await get_redis().delete("cache:platform-stats")
 
                 boards_succeeded += 1
+                tasks_total.labels(kind="monitor", status="succeeded").inc()
 
             elif isinstance(item, BoardBatch):
                 # BoardBatch — run diff + insert + update
@@ -3404,11 +3407,13 @@ async def _db_writer(
                     await conn.execute(sql, *item.params)
                     await conn.execute(_RECORD_SCRAPE_SUCCESS, item.job_posting_id)
                 scrapes_succeeded += 1
+                tasks_total.labels(kind="scrape", status="succeeded").inc()
 
             elif isinstance(item, ScrapeError):
                 async with pool.acquire() as conn:
                     await conn.execute(_RECORD_SCRAPE_FAILURE, item.job_posting_id)
                 scrapes_failed += 1
+                tasks_total.labels(kind="scrape", status="failed").inc()
 
         except Exception:
             log.exception(
