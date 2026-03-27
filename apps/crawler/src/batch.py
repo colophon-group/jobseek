@@ -3526,9 +3526,17 @@ async def _unified_producer(
             remaining = budget
             claimed_any = False
 
+            r2_full = await _get_r2_queue_depth(pool) >= settings.r2_queue_max
+            if r2_full:
+                log.info("pipeline.producer.r2_backpressure")
+
             for i, (name, weight, is_monitor, first_only) in enumerate(_PRIORITY_TIERS):
                 if remaining <= 0:
                     break
+
+                # Backpressure: skip R2-producing tiers when queue is full
+                if r2_full and (not is_monitor or first_only):
+                    continue
 
                 # Renormalize weight among remaining tiers
                 remaining_weight = sum(w for _, w, _, _ in _PRIORITY_TIERS[i:])
