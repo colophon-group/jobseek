@@ -8,6 +8,7 @@ from src.core.monitors.lever import (
     _build_description,
     _parse_job,
     _parse_salary,
+    _region_from_url,
     _token_from_url,
     can_handle,
     discover,
@@ -210,10 +211,36 @@ class TestTokenFromUrl:
     def test_ignore_token(self):
         assert _token_from_url("https://jobs.lever.co/v0") is None
 
+    def test_eu_domain(self):
+        assert _token_from_url("https://jobs.eu.lever.co/xm") == "xm"
+
+    def test_eu_domain_with_path(self):
+        assert _token_from_url("https://jobs.eu.lever.co/xm/some-job-id") == "xm"
+
+
+class TestRegionFromUrl:
+    def test_standard_lever(self):
+        assert _region_from_url("https://jobs.lever.co/stripe") is None
+
+    def test_eu_jobs_domain(self):
+        assert _region_from_url("https://jobs.eu.lever.co/xm") == "eu"
+
+    def test_eu_api_domain(self):
+        assert _region_from_url("https://api.eu.lever.co/v0/postings/xm") == "eu"
+
+    def test_non_lever(self):
+        assert _region_from_url("https://example.com/careers") is None
+
 
 class TestApiUrl:
     def test_basic(self):
         assert _api_url("stripe") == "https://api.lever.co/v0/postings/stripe"
+
+    def test_eu_region(self):
+        assert _api_url("xm", region="eu") == "https://api.eu.lever.co/v0/postings/xm"
+
+    def test_none_region(self):
+        assert _api_url("stripe", region=None) == "https://api.lever.co/v0/postings/stripe"
 
 
 class TestDiscover:
@@ -328,6 +355,39 @@ class TestDiscover:
             with pytest.raises(httpx.HTTPStatusError):
                 await discover(board, client)
 
+    async def test_eu_region_from_url(self):
+        def handler(request):
+            assert "api.eu.lever.co" in str(request.url)
+            return httpx.Response(
+                200,
+                json=[
+                    {
+                        "hostedUrl": "https://jobs.eu.lever.co/xm/1",
+                        "text": "EU Job",
+                        "categories": {},
+                    },
+                ],
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {"board_url": "https://jobs.eu.lever.co/xm", "metadata": {"token": "xm"}}
+            jobs = await discover(board, client)
+            assert len(jobs) == 1
+            assert jobs[0].title == "EU Job"
+
+    async def test_eu_region_from_metadata(self):
+        def handler(request):
+            assert "api.eu.lever.co" in str(request.url)
+            return httpx.Response(200, json=[])
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://example.com/careers",
+                "metadata": {"token": "xm", "region": "eu"},
+            }
+            jobs = await discover(board, client)
+            assert len(jobs) == 0
+
 
 class TestCanHandle:
     async def test_lever_url(self):
@@ -372,3 +432,19 @@ class TestCanHandle:
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             result = await can_handle("https://www.example.com/careers", client)
             assert result is None
+
+    async def test_eu_lever_url(self):
+        def handler(request):
+            assert "api.eu.lever.co" in str(request.url)
+            return httpx.Response(200, json=[{"id": 1}, {"id": 2}])
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle("https://jobs.eu.lever.co/xm", client)
+            assert result is not None
+            assert result["token"] == "xm"
+            assert result["region"] == "eu"
+            assert result["jobs"] == 2
+
+    async def test_eu_lever_url_no_client(self):
+        result = await can_handle("https://jobs.eu.lever.co/xm")
+        assert result == {"token": "xm", "region": "eu"}

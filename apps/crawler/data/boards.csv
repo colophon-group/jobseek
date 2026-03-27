@@ -4142,6 +4142,7 @@ xenon,xenon-ashby,https://jobs.ashbyhq.com/xenon,ashby,"{""token"": ""xenon""}",
 xero,xero-ashby,https://jobs.ashbyhq.com/xero,ashby,"{""token"": ""xero""}",skip,
 xiaomi,xiaomi-careers-cn,https://hr.xiaomi.com/job/list,dom,"{""url_filter"": ""job/view"", ""pagination"": {""url_template"": ""https://hr.xiaomi.com/job/list/0-0-2-0-{page}""}}",dom,"{""steps"": [{""text"": ""职位名称"", ""offset"": 1, ""field"": ""title""}, {""text"": ""工作地点"", ""offset"": 1, ""field"": ""locations""}, {""text"": ""工作职责"", ""offset"": 1, ""field"": ""description"", ""html"": true, ""stop"": ""申请职位""}]}"
 xion,xion-greenhouse,https://job-boards.greenhouse.io/burnt,greenhouse,"{""token"": ""burnt""}",skip,
+xm,xm-careers,https://jobs.eu.lever.co/xm,lever,"{""token"": ""xm"", ""region"": ""eu""}",skip,
 xometry,xometry-greenhouse,https://job-boards.greenhouse.io/xometry,greenhouse,"{""token"": ""xometry""}",skip,
 xometry-europe,xometry-europe-greenhouse,https://job-boards.greenhouse.io/xometryeurope,greenhouse,"{""token"": ""xometryeurope""}",skip,
 xpeng,xpeng-greenhouse,https://job-boards.greenhouse.io/xpengmotors,greenhouse,"{""token"": ""xpengmotors""}",skip,
