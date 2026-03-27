@@ -3651,6 +3651,7 @@ synthflow,synthflow-ashby,https://jobs.ashbyhq.com/synthflow,ashby,"{""token"": 
 system,system-greenhouse,https://job-boards.greenhouse.io/system,greenhouse,"{""token"": ""system""}",skip,
 systemiq,systemiq-greenhouse,https://job-boards.greenhouse.io/systemiq,greenhouse,"{""token"": ""systemiq""}",skip,
 tabapay,tabapay-greenhouse,https://job-boards.greenhouse.io/tabapay,greenhouse,"{""token"": ""tabapay""}",skip,
+tabby,tabby-careers,https://tabby.pinpointhq.com,pinpoint,"{""slug"": ""tabby""}",skip,
 tacto,tacto-ashby,https://jobs.ashbyhq.com/tacto,ashby,"{""token"": ""tacto""}",skip,
 tailorcare,tailorcare-greenhouse,https://job-boards.greenhouse.io/tailorcare2023,greenhouse,"{""token"": ""tailorcare2023""}",skip,
 tailored-brands,tailored-brands-eightfold,https://tailoredbrands.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/""}",json-ld,
