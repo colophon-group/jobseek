@@ -3559,10 +3559,13 @@ async def _unified_producer(
                         if rows:
                             board_ids = list({str(r["board_id"]) for r in rows})
                             scraper_info = await _load_board_scrapers(pool, board_ids)
+                            skipped_rich = 0
+                            skipped_no_scraper = 0
+                            enqueued = 0
                             for r in rows:
                                 bid = str(r["board_id"])
                                 if bid in scraper_info.rich_board_ids:
-                                    # Rich monitor board — clear scrape schedule
+                                    skipped_rich += 1
                                     with contextlib.suppress(Exception):
                                         await pool.execute(
                                             "UPDATE job_posting SET next_scrape_at = NULL "
@@ -3572,6 +3575,7 @@ async def _unified_producer(
                                     continue
                                 info = scraper_info.scrapers.get(bid)
                                 if not info:
+                                    skipped_no_scraper += 1
                                     with contextlib.suppress(Exception):
                                         await pool.execute(
                                             "UPDATE job_posting SET leased_until = NULL "
@@ -3600,6 +3604,16 @@ async def _unified_producer(
                                     ssl_verify=info.ssl_verify,
                                 )
                                 await fetch_buffer.put(work)
+                                enqueued += 1
+                            if skipped_rich or skipped_no_scraper:
+                                log.info(
+                                    "pipeline.producer.scrape_skip",
+                                    tier=name,
+                                    claimed=len(rows),
+                                    enqueued=enqueued,
+                                    skipped_rich=skipped_rich,
+                                    skipped_no_scraper=skipped_no_scraper,
+                                )
                 except Exception:
                     log.warning(f"pipeline.producer.{name}_error", exc_info=True)
                     rows = []
@@ -3610,7 +3624,12 @@ async def _unified_producer(
 
             if claimed_any:
                 backoff = 1.0
-                log.debug("pipeline.producer.claimed", budget=budget, remaining=remaining)
+                log.info(
+                    "pipeline.producer.claimed",
+                    budget=budget,
+                    remaining=remaining,
+                    fetch_q=fetch_buffer.qsize(),
+                )
             else:
                 try:
                     await asyncio.wait_for(shutdown_event.wait(), timeout=backoff)
