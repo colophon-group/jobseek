@@ -5,8 +5,10 @@ import { db } from "@/db";
 import { getSearchProvider } from "@/lib/search";
 import type { SearchResponse, SearchResultPosting, HistogramFilters } from "@/lib/search";
 import { cached } from "@/lib/cache";
+import { getSessionUserId } from "@/lib/sessionCache";
 import { expandLocationIds } from "@/lib/actions/locations";
 import { expandOccupationIds } from "@/lib/actions/taxonomy";
+import { ANON_MAX_COMPANIES, ANON_MAX_CARD_POSTINGS } from "@/lib/search/constants";
 
 // ── Posting detail ──────────────────────────────────────────────────
 
@@ -229,6 +231,13 @@ export async function searchJobs(params: {
   offset: number;
   limit: number;
 }): Promise<SearchResponse> {
+  const userId = await getSessionUserId();
+
+  // Enforce truncation for unauthenticated users
+  if (!userId && params.offset >= ANON_MAX_COMPANIES) {
+    return { companies: [], totalCompanies: 0, truncated: true };
+  }
+
   const sortedKw = [...params.keywords].sort();
   const sortedLoc = [...(params.locationIds ?? [])].sort();
   const sortedOcc = [...(params.occupationIds ?? [])].sort();
@@ -239,7 +248,7 @@ export async function searchJobs(params: {
   const salKey = `${params.salaryMinEur ?? ""}:${params.salaryMaxEur ?? ""}`;
   const expKey = `${params.experienceMax ?? ""}`;
   const key = `search:${sortedKw.join(",")}:${sortedLoc.join(",")}:${sortedOcc.join(",")}:${sortedSen.join(",")}:${sortedTech}:${sortedEtype}:${sortedLangs.join(",")}:${salKey}:${expKey}:${params.locale}:${params.offset}:${params.limit}`;
-  return cached(
+  const result = await cached(
     key,
     async () => {
       const [expandedLocs, expandedOccs] = await Promise.all([
@@ -250,6 +259,13 @@ export async function searchJobs(params: {
     },
     { ttl: 300 },
   );
+
+  // Mark as truncated if this is the last allowed page for anon
+  if (!userId && params.offset + result.companies.length >= ANON_MAX_COMPANIES) {
+    return { ...result, truncated: true };
+  }
+
+  return result;
 }
 
 export async function listTopCompanies(params: {
@@ -267,6 +283,12 @@ export async function listTopCompanies(params: {
   offset: number;
   limit: number;
 }): Promise<SearchResponse> {
+  const userId = await getSessionUserId();
+
+  if (!userId && params.offset >= ANON_MAX_COMPANIES) {
+    return { companies: [], totalCompanies: 0, truncated: true };
+  }
+
   const sortedLoc = [...(params.locationIds ?? [])].sort();
   const sortedOcc = [...(params.occupationIds ?? [])].sort();
   const sortedSen = [...(params.seniorityIds ?? [])].sort();
@@ -276,7 +298,7 @@ export async function listTopCompanies(params: {
   const salKey = `${params.salaryMinEur ?? ""}:${params.salaryMaxEur ?? ""}`;
   const expKey = `${params.experienceMax ?? ""}`;
   const key = `top-companies:${sortedLoc.join(",")}:${sortedOcc.join(",")}:${sortedSen.join(",")}:${sortedTech}:${sortedEtype}:${sortedLangs.join(",")}:${salKey}:${expKey}:${params.locale}:${params.offset}:${params.limit}`;
-  return cached(
+  const result = await cached(
     key,
     async () => {
       const [expandedLocs, expandedOccs] = await Promise.all([
@@ -287,6 +309,12 @@ export async function listTopCompanies(params: {
     },
     { ttl: 600 },
   );
+
+  if (!userId && params.offset + result.companies.length >= ANON_MAX_COMPANIES) {
+    return { ...result, truncated: true };
+  }
+
+  return result;
 }
 
 // ── Currency rates for salary filter ────────────────────────────────
@@ -414,7 +442,13 @@ export async function loadMorePostings(params: {
   locale: string;
   offset: number;
   limit: number;
-}): Promise<SearchResultPosting[]> {
+}): Promise<{ postings: SearchResultPosting[]; truncated?: boolean }> {
+  const userId = await getSessionUserId();
+
+  if (!userId && params.offset >= ANON_MAX_CARD_POSTINGS) {
+    return { postings: [], truncated: true };
+  }
+
   const sortedKw = [...params.keywords].sort();
   const sortedLoc = [...(params.locationIds ?? [])].sort();
   const sortedOcc = [...(params.occupationIds ?? [])].sort();
@@ -424,7 +458,7 @@ export async function loadMorePostings(params: {
   const salKey = `${params.salaryMinEur ?? ""}:${params.salaryMaxEur ?? ""}`;
   const expKey = `${params.experienceMin ?? ""}:${params.experienceMax ?? ""}`;
   const key = `postings:${params.companyId}:${sortedKw.join(",")}:${sortedLoc.join(",")}:${sortedOcc.join(",")}:${sortedSen.join(",")}:${sortedTech}:${sortedLangs.join(",")}:${salKey}:${expKey}:${params.locale}:${params.offset}:${params.limit}`;
-  return cached(
+  const postings = await cached(
     key,
     async () => {
       const [expandedLocs, expandedOccs] = await Promise.all([
@@ -435,4 +469,10 @@ export async function loadMorePostings(params: {
     },
     { ttl: 300 },
   );
+
+  if (!userId && params.offset + postings.length >= ANON_MAX_CARD_POSTINGS) {
+    return { postings, truncated: true };
+  }
+
+  return { postings };
 }

@@ -10,7 +10,7 @@ import { tooltipClass } from "@/components/ui/tooltip-styles";
 
 export function SaveButton({ postingId }: { postingId: string }) {
   const { t } = useLingui();
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, isPending } = useAuth();
   const lp = useLocalePath();
   const { isSaved, toggle, isToggling } = useSavedJobs();
 
@@ -23,6 +23,7 @@ export function SaveButton({ postingId }: { postingId: string }) {
 
   function handleClick(e: React.MouseEvent) {
     e.stopPropagation();
+    if (isPending) return;
     if (!isLoggedIn) {
       window.location.href = lp("/sign-in");
       return;

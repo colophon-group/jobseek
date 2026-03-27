@@ -11,6 +11,7 @@ import { getSessionUserId } from "@/lib/sessionCache";
 import { cached } from "@/lib/cache";
 import { canCreateWatchlist, getUserPlan, PLAN_LIMITS } from "@/lib/plans";
 import { generateUniqueSlug } from "@/lib/watchlist-slug";
+import { ANON_MAX_WATCHLIST_POSTINGS } from "@/lib/search/constants";
 import { expandLocationIds, resolveLocationSlugs } from "@/lib/actions/locations";
 import { expandOccupationIds, resolveOccupationSlugs, resolveSenioritySlugs, resolveTechnologySlugs } from "@/lib/actions/taxonomy";
 
@@ -585,10 +586,16 @@ export async function getWatchlistPostings(params: {
   salaryMax?: number;
   experienceMin?: number;
   experienceMax?: number;
-}): Promise<{ postings: WatchlistPostingEntry[]; total: number }> {
+}): Promise<{ postings: WatchlistPostingEntry[]; total: number; truncated?: boolean }> {
   // No companies selected and not "any company" mode → empty
   if (!params.anyCompany && params.companyIds.length === 0) {
     return { postings: [], total: 0 };
+  }
+
+  // Enforce truncation for unauthenticated users
+  const userId = await getSessionUserId();
+  if (!userId && params.offset >= ANON_MAX_WATCHLIST_POSTINGS) {
+    return { postings: [], total: 0, truncated: true };
   }
 
   // Expand parent locations/occupations to include children (e.g. Switzerland → Zurich)
@@ -700,6 +707,7 @@ export async function getWatchlistPostings(params: {
       },
     })),
     total,
+    ...(!userId && params.offset + params.limit >= ANON_MAX_WATCHLIST_POSTINGS ? { truncated: true } : {}),
   };
 }
 

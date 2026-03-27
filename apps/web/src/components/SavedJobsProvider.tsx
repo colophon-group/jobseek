@@ -36,10 +36,10 @@ const SavedJobsContext = createContext<SavedJobsContextValue>({
 });
 
 export function SavedJobsProvider({
-  initialStatuses,
+  initialStatuses = [],
   children,
 }: {
-  initialStatuses: SavedJobStatus[];
+  initialStatuses?: SavedJobStatus[];
   children: ReactNode;
 }) {
   const [infoMap, setInfoMap] = useState(

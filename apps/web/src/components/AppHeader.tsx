@@ -47,7 +47,7 @@ function BottomBarLink({ href, label, children }: { href: string; label: string;
 export function AppHeader() {
   const { t } = useLingui();
   const lp = useLocalePath();
-  const { isLoggedIn, user } = useAuth();
+  const { isLoggedIn, user, isPending } = useAuth();
 
   const appHref = lp(siteConfig.nav.app.href);
 
@@ -68,6 +68,13 @@ export function AppHeader() {
 
   async function handleSignOut() {
     await authClient.signOut();
+    // Manually clear session cookies — better-auth's nextCookies() plugin
+    // uses cookies().set(name, "", {maxAge:0}) which can silently fail in
+    // route handlers, leaving the browser cookie intact.
+    document.cookie = "better-auth.session_token=; Max-Age=0; Path=/";
+    document.cookie = "__Secure-better-auth.session_token=; Max-Age=0; Path=/; Secure";
+    document.cookie = "better-auth.session_data=; Max-Age=0; Path=/";
+    document.cookie = "__Secure-better-auth.session_data=; Max-Age=0; Path=/; Secure";
     window.location.href = lp("/explore");
   }
 
@@ -153,7 +160,9 @@ export function AppHeader() {
 
           {/* Auth area (desktop only) */}
           <div className="hidden items-center md:flex">
-            {isLoggedIn && user ? (
+            {isPending ? (
+              <div className="h-8 w-8 rounded-full bg-muted/30 animate-pulse" />
+            ) : isLoggedIn && user ? (
               <DropdownMenu.Root>
                 <DropdownMenu.Trigger asChild>
                   {avatarButton}
@@ -187,7 +196,12 @@ export function AppHeader() {
           <Settings size={20} />
         </BottomBarLink>
         <span className="flex flex-1">
-          {isLoggedIn && user ? (
+          {isPending ? (
+            <span className="flex flex-1 flex-col items-center gap-0.5 py-1.5">
+              <span className="size-6 rounded-full bg-muted/30 animate-pulse" />
+              <span className="h-3 w-10 rounded bg-muted/30 animate-pulse" />
+            </span>
+          ) : isLoggedIn && user ? (
             <DropdownMenu.Root>
               <DropdownMenu.Trigger asChild>
                 <button className="flex flex-1 flex-col items-center gap-0.5 py-1.5 transition-colors cursor-pointer">

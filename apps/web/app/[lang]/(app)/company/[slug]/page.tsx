@@ -1,11 +1,11 @@
-import { Suspense } from "react";
 import type { Metadata } from "next";
-import { isLocale, defaultLocale, loadCatalog, initI18nForPage } from "@/lib/i18n";
+import { isLocale, defaultLocale, loadCatalog } from "@/lib/i18n";
 import { getCompanyBySlug } from "@/lib/actions/company";
 import { siteConfig } from "@/content/config";
 import { buildAlternates } from "@/lib/seo";
-import { CompanySkeleton } from "@/components/search/company-skeleton";
 import { CompanyContent } from "./company-content";
+
+export const revalidate = 600; // ISR: cache metadata for 10 minutes
 
 type Props = {
   params: Promise<{ lang: string; slug: string }>;
@@ -60,14 +60,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function CompanyPageRoute({ params, searchParams }: Props) {
-  const locale = await initI18nForPage(params);
-  const { slug } = await params;
-  const sp = await searchParams;
+export default async function CompanyPageRoute({ params }: Props) {
+  const { lang, slug } = await params;
+  const locale = isLocale(lang) ? lang : defaultLocale;
 
-  return (
-    <Suspense fallback={<CompanySkeleton />}>
-      <CompanyContent locale={locale} slug={slug} searchParams={sp} />
-    </Suspense>
-  );
+  return <CompanyContent locale={locale} slug={slug} />;
 }

@@ -3,6 +3,7 @@
 import { CompanyCard } from "./company-card";
 import { RequestCompanyPrompt } from "./request-company";
 import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
+import { TruncationPrompt } from "@/components/TruncationPrompt";
 import type { SearchResultCompany } from "@/lib/search";
 import type { SerializableLocation, SerializableOccupation, SerializableSeniority, SerializableTechnology } from "@/lib/search/query-params";
 import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
@@ -22,6 +23,7 @@ interface SearchResultsProps {
   experienceMax?: number;
   languages?: string[];
   hasMore: boolean;
+  truncated?: boolean;
   load: () => Promise<void>;
   onShowPosting?: (postingId: string) => void;
   selectedPostingId?: string | null;
@@ -42,6 +44,7 @@ export function SearchResults({
   experienceMax,
   languages,
   hasMore,
+  truncated,
   load,
   onShowPosting,
   selectedPostingId,
@@ -56,7 +59,8 @@ export function SearchResults({
         </div>
       ))}
       {hasMore && <InfiniteScrollSentinel sentinelRef={sentinelRef} isLoading={isLoading} />}
-      {!hasMore && <RequestCompanyPrompt />}
+      {!hasMore && truncated && <TruncationPrompt type="companies" />}
+      {!hasMore && !truncated && <RequestCompanyPrompt />}
     </div>
   );
 }

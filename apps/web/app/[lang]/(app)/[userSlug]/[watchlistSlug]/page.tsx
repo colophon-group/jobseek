@@ -1,13 +1,14 @@
-import { Suspense, cache } from "react";
+import { cache } from "react";
 import type { Metadata } from "next";
-import { isLocale, defaultLocale, loadCatalog, initI18nForPage } from "@/lib/i18n";
+import { isLocale, defaultLocale, loadCatalog } from "@/lib/i18n";
 import {
   getWatchlistByUserAndSlug as _getWatchlistByUserAndSlug,
 } from "@/lib/actions/watchlists";
 import { siteConfig } from "@/content/config";
 import { buildAlternates } from "@/lib/seo";
-import { WatchlistSkeleton } from "@/components/search/watchlist-skeleton";
 import { WatchlistContent } from "./watchlist-content";
+
+export const revalidate = 600; // ISR: cache metadata for 10 minutes
 
 // Deduplicate across generateMetadata + page component within a single render
 const getWatchlistByUserAndSlug = cache(_getWatchlistByUserAndSlug);
@@ -30,7 +31,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   let description = detail.description;
   if (!description) {
-    // Auto-generate from companies/filters
     const parts: string[] = [];
     if (detail.companies.length > 0) {
       const names = detail.companies.slice(0, 3).map((c) => c.name);
@@ -90,11 +90,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function WatchlistRoute({ params }: Props) {
   const { lang, userSlug, watchlistSlug } = await params;
-  await initI18nForPage(Promise.resolve({ lang }));
 
-  return (
-    <Suspense fallback={<WatchlistSkeleton />}>
-      <WatchlistContent lang={lang} userSlug={userSlug} watchlistSlug={watchlistSlug} />
-    </Suspense>
-  );
+  return <WatchlistContent lang={lang} userSlug={userSlug} watchlistSlug={watchlistSlug} />;
 }

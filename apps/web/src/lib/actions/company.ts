@@ -5,8 +5,10 @@ import { db } from "@/db";
 import { getSearchProvider } from "@/lib/search";
 import type { SearchResultPosting } from "@/lib/search";
 import { cached } from "@/lib/cache";
+import { getSessionUserId } from "@/lib/sessionCache";
 import { expandLocationIds } from "@/lib/actions/locations";
 import { expandOccupationIds } from "@/lib/actions/taxonomy";
+import { ANON_MAX_POSTINGS } from "@/lib/search/constants";
 
 // ── Company suggestions (search bar autocomplete) ───────────────────
 
@@ -362,7 +364,13 @@ export async function getCompanyPostings(params: {
   locale: string;
   offset: number;
   limit: number;
-}): Promise<{ postings: SearchResultPosting[]; activeCount: number; yearCount: number }> {
+}): Promise<{ postings: SearchResultPosting[]; activeCount: number; yearCount: number; truncated?: boolean }> {
+  const userId = await getSessionUserId();
+
+  if (!userId && params.offset >= ANON_MAX_POSTINGS) {
+    return { postings: [], activeCount: 0, yearCount: 0, truncated: true };
+  }
+
   const sortedKw = [...params.keywords].sort();
   const sortedLoc = [...(params.locationIds ?? [])].sort();
   const sortedOcc = [...(params.occupationIds ?? [])].sort();
@@ -371,7 +379,7 @@ export async function getCompanyPostings(params: {
   const sortedEtype = [...(params.employmentTypes ?? [])].sort();
   const sortedLangs = [...params.languages].sort();
   const key = `company-postings:${params.companyId}:${sortedKw.join(",")}:${sortedLoc.join(",")}:${sortedOcc.join(",")}:${sortedSen.join(",")}:${sortedTech.join(",")}:${sortedEtype.join(",")}:${sortedLangs.join(",")}:${params.salaryMinEur ?? ""}:${params.salaryMaxEur ?? ""}:${params.experienceMin ?? ""}:${params.experienceMax ?? ""}:${params.locale}:${params.offset}:${params.limit}`;
-  return cached(
+  const result = await cached(
     key,
     async () => {
       const [expandedLocs, expandedOccs] = await Promise.all([
@@ -382,6 +390,12 @@ export async function getCompanyPostings(params: {
     },
     { ttl: 300 },
   );
+
+  if (!userId && params.offset + result.postings.length >= ANON_MAX_POSTINGS) {
+    return { ...result, truncated: true };
+  }
+
+  return result;
 }
 
 // ── Top locations for a company ─────────────────────────────────────

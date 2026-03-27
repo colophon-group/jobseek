@@ -1,9 +1,7 @@
-import { Suspense } from "react";
 import type { Metadata } from "next";
-import { isLocale, defaultLocale, loadCatalog, initI18nForPage } from "@/lib/i18n";
+import { isLocale, defaultLocale, loadCatalog } from "@/lib/i18n";
 import { siteConfig } from "@/content/config";
 import { buildAlternates } from "@/lib/seo";
-import { ExploreSkeleton } from "@/components/search/explore-skeleton";
 import { ExploreContent } from "./explore-content";
 
 type Props = {
@@ -35,13 +33,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function AppPage({ params, searchParams }: Props) {
-  const locale = await initI18nForPage(params);
-  const sp = await searchParams;
+export default async function AppPage({ params }: Props) {
+  const { lang } = await params;
+  const locale = isLocale(lang) ? lang : defaultLocale;
 
-  return (
-    <Suspense fallback={<ExploreSkeleton />}>
-      <ExploreContent locale={locale} searchParams={sp} />
-    </Suspense>
-  );
+  return <ExploreContent locale={locale} />;
 }

@@ -10,6 +10,7 @@ import { timeAgoShort } from "@/lib/time";
 import { loadMorePostings } from "@/lib/actions/search";
 import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
 import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
+import { TruncationPrompt } from "@/components/TruncationPrompt";
 import { TrackingDot } from "@/components/TrackingDot";
 import { PendingJobIcon } from "@/components/PendingJobWarning";
 import { SaveButton } from "@/components/search/save-button";
@@ -55,6 +56,7 @@ export function CompanyCard({ result, keywords, locationIds, locations, occupati
 
   const [extraPostings, setExtraPostings] = useState<SearchResultPosting[]>([]);
   const [exhausted, setExhausted] = useState(false);
+  const [isTruncated, setIsTruncated] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const allPostings = useMemo(() => {
@@ -66,11 +68,11 @@ export function CompanyCard({ result, keywords, locationIds, locations, occupati
     });
   }, [result.postings, extraPostings]);
 
-  const hasMore = !exhausted && allPostings.length < yearMatches;
+  const hasMore = !exhausted && !isTruncated && allPostings.length < yearMatches;
   const offsetRef = useRef(result.postings.length);
 
   async function handleLoadMore() {
-    const more = await loadMorePostings({
+    const result = await loadMorePostings({
       companyId: company.id,
       keywords,
       locationIds,
@@ -87,11 +89,12 @@ export function CompanyCard({ result, keywords, locationIds, locations, occupati
       offset: offsetRef.current,
       limit: POSTINGS_BATCH,
     });
-    offsetRef.current += more.length;
-    if (more.length > 0) {
-      setExtraPostings((prev) => [...prev, ...more]);
+    if (result.truncated) setIsTruncated(true);
+    offsetRef.current += result.postings.length;
+    if (result.postings.length > 0) {
+      setExtraPostings((prev) => [...prev, ...result.postings]);
     }
-    if (more.length < POSTINGS_BATCH) {
+    if (result.postings.length < POSTINGS_BATCH) {
       setExhausted(true);
     }
   }
@@ -165,6 +168,7 @@ export function CompanyCard({ result, keywords, locationIds, locations, occupati
           </div>
         ))}
         {hasMore && <InfiniteScrollSentinel sentinelRef={sentinelRef} isLoading={isLoading} size="sm" />}
+        {!hasMore && isTruncated && <TruncationPrompt type="postings" />}
       </div>
     </div>
   );

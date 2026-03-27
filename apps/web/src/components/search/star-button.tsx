@@ -8,7 +8,7 @@ import { useStarredCompanies } from "@/components/StarredCompaniesProvider";
 
 export function StarButton({ companyId }: { companyId: string }) {
   const { t } = useLingui();
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, isPending } = useAuth();
   const lp = useLocalePath();
   const { isStarred, toggle, isToggling } = useStarredCompanies();
 
@@ -22,6 +22,7 @@ export function StarButton({ companyId }: { companyId: string }) {
   function handleClick(e: React.MouseEvent) {
     e.stopPropagation();
     e.preventDefault();
+    if (isPending) return;
     if (!isLoggedIn) {
       window.location.href = lp("/sign-in");
       return;

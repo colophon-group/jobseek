@@ -13,6 +13,7 @@ import { useSavedJobs } from "@/components/SavedJobsProvider";
 import { JobDetailPanel } from "@/components/search/job-detail-dialog";
 import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
 import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
+import { TruncationPrompt } from "@/components/TruncationPrompt";
 import { TrackingDot } from "@/components/TrackingDot";
 import { PendingJobIcon } from "@/components/PendingJobWarning";
 
@@ -69,6 +70,7 @@ export function WatchlistJobList({
   const [postings, setPostings] = useState(initialPostings);
   const [total, setTotal] = useState(initialTotal);
   const [exhausted, setExhausted] = useState(initialPostings.length >= initialTotal);
+  const [isTruncated, setIsTruncated] = useState(false);
   const [showPostingId, setShowPostingId] = useState<string | null>(null);
   const filtersRef = useRef(filters);
   filtersRef.current = filters;
@@ -82,30 +84,33 @@ export function WatchlistJobList({
   // Re-fetch when filters change
   useEffect(() => {
     getWatchlistPostings({ ...filters, offset: 0, limit: BATCH })
-      .then(({ postings: p, total: t }) => {
+      .then(({ postings: p, total: t, truncated }) => {
         setPostings(p);
         setTotal(t);
         setExhausted(p.length >= t);
+        setIsTruncated(truncated ?? false);
       });
   }, [filtersKey]);
 
   async function handleLoadMore() {
-    const { postings: more, total: newTotal } = await getWatchlistPostings({
+    const result = await getWatchlistPostings({
       ...filtersRef.current,
       offset: postings.length,
       limit: BATCH,
     });
-    setTotal(newTotal);
-    if (more.length > 0) {
+    if (result.truncated) setIsTruncated(true);
+    setTotal(result.total);
+    if (result.postings.length > 0) {
       setPostings((prev) => {
         const seen = new Set(prev.map((p) => p.id));
-        return [...prev, ...more.filter((p) => !seen.has(p.id))];
+        return [...prev, ...result.postings.filter((p) => !seen.has(p.id))];
       });
     }
-    if (more.length < BATCH) setExhausted(true);
+    if (result.postings.length < BATCH) setExhausted(true);
   }
 
-  const { sentinelRef, isLoading } = useInfiniteScroll({ hasMore: !exhausted, load: handleLoadMore });
+  const hasMore = !exhausted && !isTruncated;
+  const { sentinelRef, isLoading } = useInfiniteScroll({ hasMore, load: handleLoadMore });
 
   function handleOpenPosting(postingId: string) {
     setShowPostingId(postingId);
@@ -224,7 +229,8 @@ export function WatchlistJobList({
           </div>
         )}
 
-        {!exhausted && <InfiniteScrollSentinel sentinelRef={sentinelRef} isLoading={isLoading} />}
+        {hasMore && <InfiniteScrollSentinel sentinelRef={sentinelRef} isLoading={isLoading} />}
+        {!hasMore && isTruncated && <TruncationPrompt type="postings" />}
       </div>
     </div>
   );

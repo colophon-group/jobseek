@@ -22,12 +22,12 @@ const SalaryDisplayContext = createContext<SalaryDisplayContextValue>({
 });
 
 export function SalaryDisplayProvider({
-  displayCurrency: initialCurrency,
-  salaryPeriod: initialPeriod,
+  displayCurrency: initialCurrency = null,
+  salaryPeriod: initialPeriod = null,
   children,
 }: {
-  displayCurrency: string | null;
-  salaryPeriod: string | null;
+  displayCurrency?: string | null;
+  salaryPeriod?: string | null;
   children: ReactNode;
 }) {
   const [rates, setRates] = useState<CurrencyRate[]>([]);
