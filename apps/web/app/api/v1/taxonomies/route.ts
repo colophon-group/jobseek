@@ -1,4 +1,4 @@
-import { type NextRequest } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import {
   getAllSeniorities,
   getAllOccupationsGrouped,
@@ -10,8 +10,8 @@ import { checkRateLimit, apiResponse } from "../_shared";
 const VALID_TYPES = ["seniority", "occupations", "technologies", "industries"] as const;
 
 export async function GET(request: NextRequest) {
-  const limited = await checkRateLimit(request);
-  if (limited) return limited;
+  const rl = await checkRateLimit(request);
+  if (rl instanceof NextResponse) return rl;
 
   const sp = request.nextUrl.searchParams;
   const type = sp.get("type") as (typeof VALID_TYPES)[number] | null;
@@ -49,5 +49,5 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  return apiResponse({ type, items }, { maxAge: 3600 });
+  return apiResponse({ type, items }, { maxAge: 3600, rateLimit: rl });
 }

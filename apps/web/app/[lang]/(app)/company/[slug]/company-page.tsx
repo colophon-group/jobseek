@@ -137,6 +137,7 @@ export function CompanyPage({
   const salaryMaxRef = useRef(salaryMax);
   const experienceMinRef = useRef(experienceMin);
   const experienceMaxRef = useRef(experienceMax);
+  const showPostingIdRef = useRef(showPostingId);
   keywordsRef.current = keywords;
   locationsRef.current = locations;
   occupationsRef.current = occupations;
@@ -148,6 +149,7 @@ export function CompanyPage({
   salaryMaxRef.current = salaryMax;
   experienceMinRef.current = experienceMin;
   experienceMaxRef.current = experienceMax;
+  showPostingIdRef.current = showPostingId;
 
   const hasMore = !exhausted && !isTruncated && postings.length < yearCount;
   const hasFilters = keywords.length > 0 || locations.length > 0 || occupations.length > 0 || seniorities.length > 0 || technologies.length > 0 || salaryMin != null || salaryMax != null || experienceMin != null || experienceMax != null;
@@ -166,10 +168,21 @@ export function CompanyPage({
     message: `Search at ${company.name}...`,
   });
 
-  /** Sync URL to current ref state. */
-  function updateUrl(showId?: string | null) {
+  /** Update only the `show` query param without touching filter state. */
+  function updateShowParam(postingId: string | null) {
+    const url = new URL(window.location.href);
+    if (postingId) {
+      url.searchParams.set("show", postingId);
+    } else {
+      url.searchParams.delete("show");
+    }
+    window.history.replaceState(null, "", url.pathname + url.search);
+  }
+
+  /** Sync URL to current filter state. */
+  function updateUrl() {
     const extra: Record<string, string> = {};
-    if (showId) extra.show = showId;
+    if (showPostingIdRef.current) extra.show = showPostingIdRef.current;
     if (salaryMinRef.current || salaryMaxRef.current) {
       extra.sal = `${salaryMinRef.current ?? ""}-${salaryMaxRef.current ?? ""}`;
     }
@@ -266,8 +279,8 @@ export function CompanyPage({
         if (nextOccupations) { setOccupations(nextOccupations); occupationsRef.current = nextOccupations; }
         if (nextSeniorities) { setSeniorities(nextSeniorities); senioritiesRef.current = nextSeniorities; }
         if (nextTechnologies) { setTechnologies(nextTechnologies); technologiesRef.current = nextTechnologies; }
-        setShowPostingId(null);
-        updateUrl(null);
+        setShowPostingId(null); showPostingIdRef.current = null;
+        updateUrl();
         runSearch();
       },
       getLocations: () => locationsRef.current,
@@ -413,8 +426,8 @@ export function CompanyPage({
       if (nextOccs) { setOccupations(nextOccs); occupationsRef.current = nextOccs; }
       if (nextSens) { setSeniorities(nextSens); senioritiesRef.current = nextSens; }
       if (nextTechs) { setTechnologies(nextTechs); technologiesRef.current = nextTechs; }
-      setShowPostingId(null);
-      updateUrl(null);
+      setShowPostingId(null); showPostingIdRef.current = null;
+      updateUrl();
       runSearch();
     },
     [],
@@ -457,8 +470,8 @@ export function CompanyPage({
     setSalaryMax(undefined); salaryMaxRef.current = undefined;
     setExperienceMin(undefined); experienceMinRef.current = undefined;
     setExperienceMax(undefined); experienceMaxRef.current = undefined;
-    setShowPostingId(null);
-    updateUrl(null);
+    setShowPostingId(null); showPostingIdRef.current = null;
+    updateUrl();
     runSearch();
   }, [displayCurrency]);
 
@@ -504,12 +517,12 @@ export function CompanyPage({
 
   function handleOpenPosting(postingId: string) {
     setShowPostingId(postingId);
-    updateUrl(postingId);
+    updateShowParam(postingId);
   }
 
   function handleClosePosting() {
     setShowPostingId(null);
-    updateUrl(null);
+    updateShowParam(null);
   }
 
   const histogramFilters: HistogramFilters = useMemo(() => ({

@@ -1,4 +1,4 @@
-import { type NextRequest } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { suggestLocations } from "@/lib/actions/locations";
 import {
   suggestOccupations,
@@ -17,8 +17,8 @@ const VALID_TYPES = [
 ] as const;
 
 export async function GET(request: NextRequest) {
-  const limited = await checkRateLimit(request);
-  if (limited) return limited;
+  const rl = await checkRateLimit(request);
+  if (rl instanceof NextResponse) return rl;
 
   const sp = request.nextUrl.searchParams;
   const type = sp.get("type") as (typeof VALID_TYPES)[number] | null;
@@ -76,9 +76,12 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  return apiResponse({
-    type,
-    query: q,
-    matches: matches.slice(0, 10),
-  });
+  return apiResponse(
+    {
+      type,
+      query: q,
+      matches: matches.slice(0, 10),
+    },
+    { rateLimit: rl },
+  );
 }

@@ -1,4 +1,4 @@
-import { type NextRequest } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import {
   searchPublicWatchlists,
   getPopularWatchlists,
@@ -8,8 +8,8 @@ import { checkRateLimit, apiResponse, siteUrl } from "../_shared";
 const MAX_RESULTS = 10;
 
 export async function GET(request: NextRequest) {
-  const limited = await checkRateLimit(request);
-  if (limited) return limited;
+  const rl = await checkRateLimit(request);
+  if (rl instanceof NextResponse) return rl;
 
   const sp = request.nextUrl.searchParams;
   const q = sp.get("q") ?? "";
@@ -33,5 +33,5 @@ export async function GET(request: NextRequest) {
     ),
   }));
 
-  return apiResponse({ watchlists });
+  return apiResponse({ watchlists }, { rateLimit: rl });
 }

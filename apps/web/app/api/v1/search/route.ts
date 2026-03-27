@@ -1,4 +1,4 @@
-import { type NextRequest } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { searchJobs, listTopCompanies } from "@/lib/actions/search";
 import { parseSearchFilters } from "@/lib/actions/search-input";
 import { checkRateLimit, apiResponse, siteUrl, exploreUrl } from "../_shared";
@@ -7,8 +7,8 @@ const MAX_COMPANIES = 5;
 const MAX_POSTINGS_PER_COMPANY = 3;
 
 export async function GET(request: NextRequest) {
-  const limited = await checkRateLimit(request);
-  if (limited) return limited;
+  const rl = await checkRateLimit(request);
+  if (rl instanceof NextResponse) return rl;
 
   const sp = request.nextUrl.searchParams;
   const q = sp.get("q") ?? undefined;
@@ -89,9 +89,12 @@ export async function GET(request: NextRequest) {
     })),
   }));
 
-  return apiResponse({
-    companies,
-    totalCompanies: result.totalCompanies,
-    moreAt: exploreUrl(sp, locale),
-  });
+  return apiResponse(
+    {
+      companies,
+      totalCompanies: result.totalCompanies,
+      moreAt: exploreUrl(sp, locale),
+    },
+    { rateLimit: rl },
+  );
 }

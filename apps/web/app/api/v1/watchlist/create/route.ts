@@ -1,11 +1,11 @@
-import { type NextRequest } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { listTopCompanies, searchJobs } from "@/lib/actions/search";
 import { parseSearchFilters } from "@/lib/actions/search-input";
 import { checkRateLimit, apiResponse, siteUrl } from "../../_shared";
 
 export async function GET(request: NextRequest) {
-  const limited = await checkRateLimit(request);
-  if (limited) return limited;
+  const rl = await checkRateLimit(request);
+  if (rl instanceof NextResponse) return rl;
 
   const sp = request.nextUrl.searchParams;
   const title = sp.get("title");
@@ -102,15 +102,18 @@ export async function GET(request: NextRequest) {
   if (exp) createParams.set("exp", exp);
   if (companies) createParams.set("companies", companies);
 
-  return apiResponse({
-    url: siteUrl(
-      `/${locale}/watchlists?${createParams.toString()}`,
-    ),
-    preview: {
-      title,
-      description: description ?? null,
-      matchingCompanies: result.totalCompanies,
-      matchingJobs: totalJobs,
+  return apiResponse(
+    {
+      url: siteUrl(
+        `/${locale}/watchlists?${createParams.toString()}`,
+      ),
+      preview: {
+        title,
+        description: description ?? null,
+        matchingCompanies: result.totalCompanies,
+        matchingJobs: totalJobs,
+      },
     },
-  });
+    { rateLimit: rl },
+  );
 }

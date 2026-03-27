@@ -5,6 +5,7 @@ import {
   useContext,
   useState,
   useCallback,
+  useEffect,
   useRef,
   useMemo,
   type ReactNode,
@@ -33,6 +34,11 @@ export function StarredCompaniesProvider({
   children: ReactNode;
 }) {
   const [starredIdSet, setStarredIdSet] = useState(() => new Set(initialIds));
+  // Sync when bootstrap data arrives (initialIds starts empty, then fills)
+  useEffect(() => {
+    if (initialIds.length === 0) return;
+    setStarredIdSet(new Set(initialIds));
+  }, [initialIds]);
   const [togglingIds, setTogglingIds] = useState(() => new Set<string>());
   const lockRef = useRef(new Set<string>());
   const starredIdSetRef = useRef(starredIdSet);

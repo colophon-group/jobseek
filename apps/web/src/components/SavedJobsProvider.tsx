@@ -5,6 +5,7 @@ import {
   useContext,
   useState,
   useCallback,
+  useEffect,
   useRef,
   type ReactNode,
 } from "react";
@@ -45,6 +46,13 @@ export function SavedJobsProvider({
   const [infoMap, setInfoMap] = useState(
     () => new Map(initialStatuses.map((s) => [s.postingId, { savedJobId: s.savedJobId, status: s.status } as SavedJobInfo])),
   );
+  // Sync when bootstrap data arrives (initialStatuses starts empty, then fills)
+  useEffect(() => {
+    if (initialStatuses.length === 0) return;
+    setInfoMap(
+      new Map(initialStatuses.map((s) => [s.postingId, { savedJobId: s.savedJobId, status: s.status }])),
+    );
+  }, [initialStatuses]);
   const [togglingIds, setTogglingIds] = useState(() => new Set<string>());
   const lockRef = useRef(new Set<string>());
   const infoMapRef = useRef(infoMap);
