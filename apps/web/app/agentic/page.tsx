@@ -50,7 +50,7 @@ export default function Page() {
       params: [
         { name: "position", type: "string", required: false, desc: "Filter matchingJobs to titles containing this string (query param)" },
       ],
-      returns: `{ runId, status, finishedAt, result: { company, portalUrl, totalUniqueJobs, ghostCandidates, ghostRate, overallGhostRisk, hiringHealthScore, recommendation, topGhostRoles, patterns, geminiSummary, matchingJobs[] } | null }`,
+      returns: `{ runId, status, finishedAt, result: { company, portalUrl, totalUniqueJobs, ghostCandidates, ghostRate, overallGhostRisk, hiringHealthScore, recommendation, topGhostRoles, patterns, geminiSummary, orgGhostSignal, matchingJobs[] } | null }`,
       example: `GET ${base}/ghosting/<runId>?position=Staff+Engineer`,
     },
     {
