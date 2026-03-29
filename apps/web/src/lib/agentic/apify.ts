@@ -122,6 +122,7 @@ export interface GhostJobRecord {
   durationDays: number;
   archiveCount: number;
   reposted: boolean;
+  repostCount?: number;
   ghostScore: number;
   ghostReason: string;
 }

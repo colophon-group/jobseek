@@ -95,7 +95,7 @@ const staticSourceMap: Record<string, SourceFn> = {
   megaemployers: () => Promise.resolve(discoverFromMegaEmployers()),
   arbeitnow:     () => discoverFromArbeitnow(),
   remotive:      () => discoverFromRemotive(),
-  'hiring-cafe': () => discoverFromHiringCafe(20),
+  'hiring-cafe': () => discoverFromHiringCafe(30),
 };
 
 async function runSource(sourceId: string, fn: SourceFn): Promise<void> {

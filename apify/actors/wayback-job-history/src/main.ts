@@ -24,18 +24,26 @@ import type {
 // Verified via CDX API — snapshot mode (inventoryMode: false) for Greenhouse/Lever.
 // Workday portals rarely appear in Wayback; use snapshot mode for listing pages.
 const SEED_COMPANIES: CompanyInput[] = [
-  // Greenhouse boards — well-archived, companies with layoffs while posting
-  { name: 'Coinbase',   portalUrl: 'https://boards.greenhouse.io/coinbase',   inventoryMode: false },  // 18% layoff Jun 2022, rescinded offers
-  { name: 'Lyft',       portalUrl: 'https://boards.greenhouse.io/lyft',       inventoryMode: false },  // 26% layoff Nov 2022, 13% Mar 2023
-  { name: 'Figma',      portalUrl: 'https://boards.greenhouse.io/figma',      inventoryMode: false },  // Adobe deal collapse, layoffs 2024
-  { name: 'Notion',     portalUrl: 'https://boards.greenhouse.io/notion',     inventoryMode: false },  // Post-hypergrowth slowdown
-  { name: 'OpenAI',     portalUrl: 'https://boards.greenhouse.io/openai',     inventoryMode: false },  // Recurring hiring freezes, evergreen roles
-  { name: 'Twilio',     portalUrl: 'https://boards.greenhouse.io/twilio',     inventoryMode: false },  // 17% layoff Jan 2023 while posting 80+ roles
+  // Greenhouse boards — tech layoffs while posting
+  { name: 'Coinbase',      portalUrl: 'https://boards.greenhouse.io/coinbase',      inventoryMode: false },  // 18% layoff Jun 2022
+  { name: 'Lyft',          portalUrl: 'https://boards.greenhouse.io/lyft',          inventoryMode: false },  // 26% layoff Nov 2022
+  { name: 'Figma',         portalUrl: 'https://boards.greenhouse.io/figma',         inventoryMode: false },  // Adobe deal collapse
+  { name: 'Notion',        portalUrl: 'https://boards.greenhouse.io/notion',        inventoryMode: false },  // post-hypergrowth slowdown
+  { name: 'OpenAI',        portalUrl: 'https://boards.greenhouse.io/openai',        inventoryMode: false },  // recurring hiring freezes
+  { name: 'Twilio',        portalUrl: 'https://boards.greenhouse.io/twilio',        inventoryMode: false },  // 17% layoff Jan 2023
+  { name: 'Anthropic',     portalUrl: 'https://boards.greenhouse.io/anthropic',     inventoryMode: false },  // rapid headcount swings
   // Lever boards
-  { name: 'Scale AI',   portalUrl: 'https://jobs.lever.co/scaleai',           inventoryMode: false },  // Rapid headcount swings
-  { name: 'Brex',       portalUrl: 'https://jobs.lever.co/brex',              inventoryMode: false },  // SMB pivot + layoffs 2022
-  { name: 'Benchling',  portalUrl: 'https://jobs.lever.co/benchling',         inventoryMode: false },
-  { name: 'Rippling',   portalUrl: 'https://jobs.lever.co/rippling',          inventoryMode: false },
+  { name: 'Scale AI',      portalUrl: 'https://jobs.lever.co/scaleai',              inventoryMode: false },
+  { name: 'Brex',          portalUrl: 'https://jobs.lever.co/brex',                 inventoryMode: false },
+  { name: 'Rippling',      portalUrl: 'https://jobs.lever.co/rippling',             inventoryMode: false },
+  // Big 4 consulting — evergreen pipelines, slow hiring
+  { name: 'Deloitte',      portalUrl: 'https://boards.greenhouse.io/deloitte',      inventoryMode: false },
+  { name: 'PwC',           portalUrl: 'https://boards.greenhouse.io/pwc',           inventoryMode: false },
+  // Defense contractors — clearance delays mask ghost posts
+  { name: 'Booz Allen',    portalUrl: 'https://jobs.lever.co/boozallen',            inventoryMode: false },
+  // Fintech / banks
+  { name: 'Robinhood',     portalUrl: 'https://boards.greenhouse.io/robinhood',     inventoryMode: false },  // 23% layoff + ongoing posts
+  { name: 'Stripe',        portalUrl: 'https://boards.greenhouse.io/stripe',        inventoryMode: false },  // long-open senior roles
 ];
 
 await Actor.init();

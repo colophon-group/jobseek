@@ -172,6 +172,7 @@ export async function buildJobRecords(
       durationDays: duration,
       archiveCount: lifespan.count,
       reposted: false,
+      repostCount: 0,
       ghostScore: score,
       ghostReason: reason,
     });

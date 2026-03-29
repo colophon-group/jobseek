@@ -26,6 +26,69 @@ export default function Page() {
     },
   ];
 
+  const ghostingEndpoints = [
+    {
+      method: "POST",
+      path: "/api/ghosting",
+      summary: "Trigger a ghost-job analysis for a company career portal",
+      auth: false,
+      params: [
+        { name: "portalUrl", type: "string", required: true, desc: "Career page URL (e.g. https://boards.greenhouse.io/stripe)" },
+        { name: "companyName", type: "string", required: false, desc: "Human-readable name for reports. Auto-detected from URL if omitted." },
+        { name: "inventoryMode", type: "boolean", required: false, desc: "CDX inventory mode for Workday/SPA portals (default false)" },
+        { name: "maxSnapshots", type: "number", required: false, desc: "Max daily snapshots to process (default 100)" },
+        { name: "delayMs", type: "number", required: false, desc: "Delay between Wayback requests in ms (default 1500)" },
+      ],
+      returns: "{ runId: string, status: string } — poll GET /api/ghosting/:runId for results",
+      example: `POST ${base}/ghosting\nContent-Type: application/json\n\n{ "portalUrl": "https://boards.greenhouse.io/stripe", "companyName": "Stripe" }`,
+    },
+    {
+      method: "GET",
+      path: "/api/ghosting/[runId]",
+      summary: "Poll the status and result of a ghost-job analysis run",
+      auth: false,
+      params: [
+        { name: "position", type: "string", required: false, desc: "Filter matchingJobs to titles containing this string (query param)" },
+      ],
+      returns: `{ runId, status, finishedAt, result: { company, portalUrl, totalUniqueJobs, ghostCandidates, ghostRate, overallGhostRisk, hiringHealthScore, recommendation, topGhostRoles, patterns, geminiSummary, matchingJobs[] } | null }`,
+      example: `GET ${base}/ghosting/<runId>?position=Staff+Engineer`,
+    },
+    {
+      method: "POST",
+      path: "/api/ghosting/paid",
+      summary: "Same as POST /api/ghosting but requires an active subscription",
+      auth: true,
+      params: [
+        { name: "portalUrl", type: "string", required: true, desc: "Career page URL" },
+        { name: "companyName", type: "string", required: false, desc: "Human-readable company name" },
+        { name: "maxSnapshots", type: "number", required: false, desc: "Max snapshots (default 100)" },
+      ],
+      returns: "{ runId: string, status: string }",
+      example: `POST ${base}/ghosting/paid\nAuthorization: Bearer <userId>\nContent-Type: application/json\n\n{ "portalUrl": "https://jobs.lever.co/rippling" }`,
+    },
+  ];
+
+  const utilityEndpoints = [
+    {
+      method: "GET",
+      path: "/api/discovery",
+      summary: "Show the live portal registry from the latest company-discovery run",
+      auth: false,
+      params: [],
+      returns: `{ runId, runAt, runStatus, companiesDiscovered, registry: { portals[] }, topCompanies: [{ name, jobs, source, url }] }`,
+      example: `GET ${base}/discovery`,
+    },
+    {
+      method: "GET",
+      path: "/api/ping",
+      summary: "Health check — returns { ok: true }",
+      auth: false,
+      params: [],
+      returns: "{ ok: true }",
+      example: `GET ${base}/ping`,
+    },
+  ];
+
   const dataEndpoints = [
     {
       method: "GET",
@@ -188,11 +251,29 @@ export default function Page() {
         <EndpointList endpoints={authEndpoints} />
       </section>
 
+      {/* Ghost job analysis */}
+      <section className="space-y-4">
+        <h2 className="text-base font-semibold tracking-tight">Ghost-job analysis</h2>
+        <p className="text-xs text-muted -mt-2 max-w-2xl">
+          Uses the Wayback Machine to reconstruct a company&apos;s full job posting history and detect
+          roles that have been open for months with no apparent intention of being filled. No auth
+          required for the open tier; paid tier preserves credits.
+        </p>
+        <EndpointList endpoints={ghostingEndpoints} />
+      </section>
+
       {/* Data endpoints */}
       <section className="space-y-4">
         <h2 className="text-base font-semibold tracking-tight">Data endpoints</h2>
         <p className="text-xs text-muted -mt-2">All require <code className="font-mono">Authorization: Bearer &lt;userId&gt;</code>.</p>
         <EndpointList endpoints={dataEndpoints} />
+      </section>
+
+      {/* Utility endpoints */}
+      <section className="space-y-4">
+        <h2 className="text-base font-semibold tracking-tight">Utility endpoints</h2>
+        <p className="text-xs text-muted -mt-2">No auth required.</p>
+        <EndpointList endpoints={utilityEndpoints} />
       </section>
 
       {/* Notes */}
