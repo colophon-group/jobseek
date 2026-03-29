@@ -1,4 +1,5 @@
 import { Actor, log } from 'apify';
+import { gotScraping } from 'got-scraping';
 import { sleep } from '../http.js';
 import type { CompanyDiscovery } from '../types.js';
 
@@ -11,22 +12,6 @@ const SEARCH_STATE = {
   workplaceTypes:   ['remote', 'hybrid', 'onsite'],
   commitmentTypes:  ['fullTime', 'partTime', 'contract', 'internship', 'temporary'],
   dateFetchedPastNDays: 90,
-};
-
-const HEADERS: Record<string, string> = {
-  'Content-Type':       'application/json',
-  'Accept':             'application/json, text/plain, */*',
-  'Accept-Language':    'en-US,en;q=0.9',
-  'Accept-Encoding':    'gzip, deflate, br',
-  'Origin':             'https://hiring.cafe',
-  'Referer':            'https://hiring.cafe/',
-  'User-Agent':         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-  'sec-ch-ua':          '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
-  'sec-ch-ua-mobile':   '?0',
-  'sec-ch-ua-platform': '"Windows"',
-  'Sec-Fetch-Dest':     'empty',
-  'Sec-Fetch-Mode':     'cors',
-  'Sec-Fetch-Site':     'same-origin',
 };
 
 interface HiringCafeJob {
@@ -60,26 +45,50 @@ async function fetchPage(page: number): Promise<HiringCafeJob[]> {
 
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      const resp = await fetch('https://hiring.cafe/api/search-jobs', {
-        method:  'POST',
-        headers: HEADERS,
+      const resp = await gotScraping({
+        url:    'https://hiring.cafe/api/search-jobs',
+        method: 'POST',
         body,
-        signal: AbortSignal.timeout(45_000),
+        headers: {
+          'Content-Type':    'application/json',
+          'Accept':          'application/json, text/plain, */*',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Origin':          'https://hiring.cafe',
+          'Referer':         'https://hiring.cafe/',
+          'Sec-Fetch-Dest':  'empty',
+          'Sec-Fetch-Mode':  'cors',
+          'Sec-Fetch-Site':  'same-origin',
+        },
+        headerGeneratorOptions: {
+          browsers:         ['chrome'],
+          operatingSystems: ['windows', 'macos'],
+          locales:          ['en-US'],
+        },
+        timeout:        { request: 45_000 },
+        followRedirect: true,
       });
 
-      if (resp.status === 429) {
+      if (resp.statusCode === 429) {
         const wait = 15_000 * (attempt + 1);
         log.warning(`hiring.cafe: rate limited on page ${page}, waiting ${wait / 1000}s`);
         await sleep(wait);
         continue;
       }
 
-      if (!resp.ok) {
-        log.debug(`hiring.cafe: page ${page} returned HTTP ${resp.status}`);
+      if (resp.statusCode !== 200) {
+        log.debug(`hiring.cafe: page ${page} returned HTTP ${resp.statusCode}`);
         return [];
       }
 
-      const data: unknown = await resp.json();
+      // Guard against Cloudflare HTML challenge pages
+      const text = resp.body;
+      if (!text || text.trimStart().startsWith('<')) {
+        log.warning(`hiring.cafe: page ${page} returned HTML instead of JSON (bot challenge?)`);
+        await sleep(5_000 * (attempt + 1));
+        continue;
+      }
+
+      const data: unknown = JSON.parse(text);
       return extractJobs(data);
     } catch (err) {
       log.debug(`hiring.cafe: page ${page} error (attempt ${attempt + 1}): ${err}`);
