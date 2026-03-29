@@ -30,18 +30,21 @@ interface CdxSnapshot { timestamp: string; size: number }
 /** Fetch list of snapshots via CDX API, sorted newest→oldest, filtered to real data (>100KB). */
 async function listSnapshots(minSizeKb = 100): Promise<CdxSnapshot[]> {
   const url = `${CDX_API}?url=hiring.cafe/api/search-jobs&output=json&fl=timestamp,length&filter=statuscode:200&limit=500`;
-  try {
-    const resp = await gotScraping({ url, timeout: { request: 20_000 } });
-    if (resp.statusCode !== 200) return [];
-    const rows: string[][] = JSON.parse(resp.body);
-    return rows.slice(1) // skip header row
-      .map(r => ({ timestamp: r[0], size: parseInt(r[1], 10) }))
-      .filter(s => s.size >= minSizeKb * 1024)
-      .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
-  } catch (err) {
-    log.warning(`hiring.cafe/wayback: CDX list failed: ${err}`);
-    return [];
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const resp = await gotScraping({ url, timeout: { request: 30_000 } });
+      if (resp.statusCode !== 200) continue;
+      const rows: string[][] = JSON.parse(resp.body);
+      return rows.slice(1) // skip header row
+        .map(r => ({ timestamp: r[0], size: parseInt(r[1], 10) }))
+        .filter(s => s.size >= minSizeKb * 1024)
+        .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+    } catch (err) {
+      log.warning(`hiring.cafe/wayback: CDX list attempt ${attempt + 1} failed: ${err}`);
+      if (attempt < 2) await sleep(3_000 * (attempt + 1));
+    }
   }
+  return [];
 }
 
 /** Fetch one Wayback snapshot and extract company names.
