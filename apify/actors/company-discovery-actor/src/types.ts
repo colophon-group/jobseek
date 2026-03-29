@@ -32,6 +32,8 @@ export interface PortalStrategy {
   companyCssSelector?: string;
   /** Max pages to fetch for paginated_api */
   maxPages?: number;
+  /** User-facing board URL template for company_probe (supports {company} placeholder) */
+  boardUrlTemplate?: string;
 }
 
 export type PortalStatus = 'active' | 'candidate' | 'probing' | 'failed' | 'disabled';
