@@ -31,7 +31,7 @@ const SEED_PORTALS: PortalDefinition[] = [
     name: 'The Muse',
     description: 'Company directory with job listings via api.themuse.com',
     homepageUrl: 'https://www.themuse.com',
-    strategy: { type: 'paginated_api', urlTemplate: 'https://www.themuse.com/api/public/jobs?page={page}&api_key={apiKey}', jobsArrayPath: 'results', companyField: 'company.name', maxPages: 100 },
+    strategy: { type: 'paginated_api', urlTemplate: 'https://www.themuse.com/api/public/jobs?page={page}', jobsArrayPath: 'results', companyField: 'company.name', maxPages: 100 },
     status: 'active',
     suggestedBy: 'hardcoded',
     discoveredAt: new Date().toISOString(),
