@@ -12,13 +12,14 @@ import { extractWorkdayParams, extractFromWorkday } from './workday.js';
 import { extractSRCompany, extractFromSmartRecruiters } from './smartrecruiters.js';
 import { extractBambooHRSlug, extractFromBambooHR } from './bamboohr.js';
 import { extractRecruiteeSlug, extractFromRecruitee } from './recruitee.js';
+import { extractJazzHRSlug, extractFromJazzHR } from './jazzhr.js';
 import { extractGeneric } from './generic.js';
 
 /**
  * Main extraction dispatcher.
  *
  * Priority order:
- * 1. Known ATS API (Greenhouse / Lever / Ashby / Workable / SmartRecruiters / BambooHR / Recruitee) — most reliable, structured data
+ * 1. Known ATS API (Greenhouse / Lever / Ashby / Workable / SmartRecruiters / BambooHR / Recruitee / JazzHR) — most reliable, structured data
  * 2. JSON-LD JobPosting schema
  * 3. Next.js __NEXT_DATA__ recursive walk
  * 4. window.__data / other globals embedded in <script> tags
@@ -74,6 +75,11 @@ export async function extractJobs(
 
   if (extractRecruiteeSlug(url)) {
     const result = await extractFromRecruitee(url, snapshot.timestamp);
+    if (result.jobs.length > 0) return result;
+  }
+
+  if (extractJazzHRSlug(url)) {
+    const result = await extractFromJazzHR(url, snapshot.timestamp);
     if (result.jobs.length > 0) return result;
   }
 
