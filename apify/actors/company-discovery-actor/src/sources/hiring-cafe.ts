@@ -61,7 +61,15 @@ export async function discoverFromHiringCafe(maxPages = 20): Promise<CompanyDisc
   // making the JS challenge impossible to pass. Direct datacenter IP passes CF better.
   const browser = await chromium.launch({
     headless: false, // Xvfb virtual display provided by apify/actor-node-playwright-chrome image
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--use-gl=swiftshader',   // software WebGL so CF fingerprinting doesn't see missing GPU
+      '--enable-webgl',
+      '--ignore-gpu-blocklist',
+      '--disable-blink-features=AutomationControlled',
+    ],
   });
 
   const context = await browser.newContext({
@@ -82,7 +90,22 @@ export async function discoverFromHiringCafe(maxPages = 20): Promise<CompanyDisc
       if (!(window as Record<string, unknown>)['chrome']) {
         (window as Record<string, unknown>)['chrome'] = { runtime: {}, app: { isInstalled: false } };
       }
+      // Spoof canvas fingerprint to avoid consistent VM signature
+      const origToDataURL = HTMLCanvasElement.prototype.toDataURL;
+      HTMLCanvasElement.prototype.toDataURL = function(type?: string, quality?: number) {
+        if (type === 'image/png' && !quality) {
+          const ctx = this.getContext('2d');
+          if (ctx) { ctx.fillRect(0, 0, 1, 1); }
+        }
+        return origToDataURL.call(this, type, quality);
+      };
     });
+
+    // Capture browser console errors to diagnose CF challenge failures
+    page.on('console', msg => {
+      if (msg.type() === 'error') log.debug(`[browser] ${msg.text()}`);
+    });
+    page.on('pageerror', err => log.debug(`[browser-error] ${err.message}`));
 
     // Navigate to the homepage so Cloudflare can run its JS challenge and set cf_clearance
     log.info('hiring.cafe: opening homepage to pass Cloudflare challenge…');
@@ -90,7 +113,7 @@ export async function discoverFromHiringCafe(maxPages = 20): Promise<CompanyDisc
 
     // Poll for cf_clearance cookie (set when CF challenge completes)
     let cleared = false;
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < 60; i++) {
       const cookies = await context.cookies('https://hiring.cafe');
       if (cookies.find(c => c.name === 'cf_clearance')) {
         cleared = true;
@@ -100,7 +123,7 @@ export async function discoverFromHiringCafe(maxPages = 20): Promise<CompanyDisc
       await sleep(1_000);
     }
     if (!cleared) {
-      log.warning(`hiring.cafe: cf_clearance not obtained after 40s (title: "${await page.title()}") — continuing anyway`);
+      log.warning(`hiring.cafe: cf_clearance not obtained after 60s (title: "${await page.title()}") — continuing anyway`);
     }
 
     await sleep(1_000); // brief pause after challenge
