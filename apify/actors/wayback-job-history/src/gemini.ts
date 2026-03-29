@@ -8,6 +8,7 @@ interface GhostStats {
   medianDurationDays: number;
   avgDurationDays: number;
   longestRunningJobs: JobRecord[];
+  orgGhostSignal?: string | null;
 }
 
 interface GeminiOutput {
@@ -48,6 +49,7 @@ export async function analyzeWithGemini(
     reason: j.ghostReason,
   }));
 
+  const orgSignalLine = stats.orgGhostSignal ? `\n- Org-level signal: ${stats.orgGhostSignal}` : '';
   const prompt = `You are an expert labor market analyst specializing in "ghost jobs" — job postings companies publish with no genuine intent to fill them in the near term.
 
 Analyze the following historical job posting data for ${company} (${portalUrl}) covering ${periodStart} to ${periodEnd}.
@@ -56,7 +58,7 @@ Analyze the following historical job posting data for ${company} (${portalUrl}) 
 - Total unique job URLs tracked: ${stats.totalUniqueJobs}
 - Ghost candidates (score ≥ 70): ${stats.ghostCandidates} (${Math.round(stats.ghostRate * 100)}%)
 - Median posting duration: ${stats.medianDurationDays} days
-- Average posting duration: ${stats.avgDurationDays} days
+- Average posting duration: ${stats.avgDurationDays} days${orgSignalLine}
 
 ## Longest-running postings (top 25)
 ${JSON.stringify(topJobs, null, 2)}

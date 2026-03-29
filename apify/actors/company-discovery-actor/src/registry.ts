@@ -77,6 +77,16 @@ const SEED_PORTALS: PortalDefinition[] = [
     discoveredAt: new Date().toISOString(),
   },
   {
+    id: 'lever',
+    name: 'Lever ATS',
+    description: 'Lever ATS popular with tech companies. Jobs at jobs.lever.co/{slug}. Discovered via Wayback CDX path enumeration.',
+    homepageUrl: 'https://lever.co',
+    strategy: { type: 'company_probe', urlTemplate: 'https://api.lever.co/v0/postings/{company}?mode=json', boardUrlTemplate: 'https://jobs.lever.co/{company}' },
+    status: 'active',
+    suggestedBy: 'hardcoded',
+    discoveredAt: new Date().toISOString(),
+  },
+  {
     id: 'ashby',
     name: 'Ashby',
     description: 'Ashby ATS — dominant among YC/VC-backed startups. Jobs at jobs.ashbyhq.com/{slug}. Discovered via Wayback CDX path enumeration.',
