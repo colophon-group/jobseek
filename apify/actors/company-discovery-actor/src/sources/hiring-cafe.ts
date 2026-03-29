@@ -122,7 +122,21 @@ export async function discoverFromHiringCafe(maxPages = 20): Promise<CompanyDisc
       }
       await sleep(1_000);
     }
+    // Log all cookies to diagnose what CF is setting
+    const allCookies = await context.cookies('https://hiring.cafe');
+    log.info(`hiring.cafe: cookies after wait: [${allCookies.map(c => c.name).join(', ') || 'none'}]`);
+
     if (!cleared) {
+      // Screenshot for diagnosis — saved to Apify key-value store
+      try {
+        const { Actor: ActorMod } = await import('apify');
+        const screenshot = await page.screenshot({ fullPage: false });
+        const store = await ActorMod.openKeyValueStore('company-discovery-portals');
+        await store.setValue('hiring_cafe_screenshot', screenshot, { contentType: 'image/png' });
+        log.info('hiring.cafe: screenshot saved to KV store (key: hiring_cafe_screenshot)');
+      } catch (screenshotErr) {
+        log.debug(`hiring.cafe: screenshot failed: ${screenshotErr}`);
+      }
       log.warning(`hiring.cafe: cf_clearance not obtained after 60s (title: "${await page.title()}") — continuing anyway`);
     }
 
@@ -159,7 +173,8 @@ export async function discoverFromHiringCafe(maxPages = 20): Promise<CompanyDisc
           }
 
           if (result.status !== 200) {
-            log.warning(`hiring.cafe: page ${pageIdx} HTTP ${result.status} (attempt ${attempt + 1})`);
+            const snippet = result.text?.slice(0, 300).replace(/\s+/g, ' ') ?? '';
+            log.warning(`hiring.cafe: page ${pageIdx} HTTP ${result.status} (attempt ${attempt + 1}) — ${snippet}`);
             await sleep(5_000 * (attempt + 1));
             continue;
           }
