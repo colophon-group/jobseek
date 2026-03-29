@@ -4,15 +4,23 @@
  * Self-evolving company discovery system.
  *
  * Static sources (always run):
- *   1. Greenhouse Boards API  — 790+ confirmed board tokens
- *   2. The Muse API           — Company directory with job counts
- *   3. Arbeitnow API          — EU/remote job aggregator
- *   4. Remotive API           — Remote job aggregator
- *   5. Mega Employers         — Curated list of 150+ global giants
- *   6. Hiring.cafe            — Job board; job counts memorised in KV for delta tracking
- *   7. Himalayas              — Remote job aggregator with public paginated JSON API
- *   8. SmartRecruiters        — Enterprise ATS (Fortune 500) company probe
- *   9. Y Combinator           — YC-funded company directory (~5,800 companies)
+ *   1.  Greenhouse API          — 790+ confirmed board tokens (boards-api.greenhouse.io)
+ *   2.  Greenhouse CDX          — Wayback CDX wildcard for boards.greenhouse.io/* (new tokens)
+ *   3.  The Muse API            — Company directory with job counts
+ *   4.  Arbeitnow API           — EU/remote job aggregator
+ *   5.  Remotive API            — Remote job aggregator
+ *   6.  Mega Employers          — Curated list of 150+ global giants
+ *   7.  Hiring.cafe             — Job board; job counts memorised in KV for delta tracking
+ *   8.  Himalayas               — Remote job aggregator with public paginated JSON API
+ *   9.  Y Combinator            — YC-funded company directory (~5,800 companies)
+ *  10.  Ashby CDX               — jobs.ashbyhq.com/* (dominant YC/VC startup ATS)
+ *  11.  Lever CDX               — jobs.lever.co/* (popular tech ATS)
+ *  12.  Workable CDX            — apply.workable.com/* (SMB/scale-up ATS)
+ *  13.  BambooHR CDX            — *.bamboohr.com (mid-market ATS)
+ *  14.  Recruitee CDX           — *.recruitee.com (EU mid-market ATS)
+ *  15.  JazzHR CDX              — *.applytojob.com (SMB US ATS)
+ *  16.  BreezyHR CDX            — *.breezy.hr (SMB ATS)
+ *  17.  SmartRecruiters          — Fortune 500 ATS; run via registry/probe path
  *
  * AI-powered discovery (runs when GOOGLE_AI_API_KEY is set):
  *   - Loads portal registry from KV store (persisted across runs)
