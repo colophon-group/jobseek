@@ -77,6 +77,16 @@ const SEED_PORTALS: PortalDefinition[] = [
     discoveredAt: new Date().toISOString(),
   },
   {
+    id: 'recruitee',
+    name: 'Recruitee',
+    description: 'Recruitee ATS used by EU/mid-market companies. Per-company subdomains at {slug}.recruitee.com. Discovered via Wayback CDX wildcard.',
+    homepageUrl: 'https://recruitee.com',
+    strategy: { type: 'company_probe', urlTemplate: 'https://{company}.recruitee.com/api/v1/offers', boardUrlTemplate: 'https://{company}.recruitee.com' },
+    status: 'active',
+    suggestedBy: 'hardcoded',
+    discoveredAt: new Date().toISOString(),
+  },
+  {
     id: 'bamboohr',
     name: 'BambooHR',
     description: 'BambooHR ATS used by SMB/mid-market companies. Per-company subdomains at {slug}.bamboohr.com. Discovered via Wayback CDX wildcard enumeration.',

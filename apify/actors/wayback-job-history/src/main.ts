@@ -36,6 +36,12 @@ const SEED_COMPANIES: CompanyInput[] = [
   { name: 'Scale AI',      portalUrl: 'https://jobs.lever.co/scaleai',              inventoryMode: false },
   { name: 'Brex',          portalUrl: 'https://jobs.lever.co/brex',                 inventoryMode: false },
   { name: 'Rippling',      portalUrl: 'https://jobs.lever.co/rippling',             inventoryMode: false },
+  // Ashby boards — YC/VC-backed startups with evergreen roles
+  { name: 'Linear',        portalUrl: 'https://jobs.ashbyhq.com/linear',            inventoryMode: false },
+  { name: 'Vercel',        portalUrl: 'https://jobs.ashbyhq.com/vercel',            inventoryMode: false },
+  { name: 'Retool',        portalUrl: 'https://jobs.ashbyhq.com/retool',            inventoryMode: false },
+  { name: 'Cursor',        portalUrl: 'https://jobs.ashbyhq.com/anysphere',         inventoryMode: false },  // Cursor/Anysphere
+  { name: 'Loom',          portalUrl: 'https://jobs.ashbyhq.com/loom',              inventoryMode: false },
   // Big 4 consulting — evergreen pipelines, slow hiring
   { name: 'Deloitte',      portalUrl: 'https://boards.greenhouse.io/deloitte',      inventoryMode: false },
   { name: 'PwC',           portalUrl: 'https://boards.greenhouse.io/pwc',           inventoryMode: false },
@@ -53,6 +59,9 @@ const SEED_COMPANIES: CompanyInput[] = [
   { name: 'WP Engine',     portalUrl: 'https://wpengine.bamboohr.com/jobs',             inventoryMode: false },
   { name: 'Qualtrics',     portalUrl: 'https://qualtrics.bamboohr.com/jobs',            inventoryMode: false },
   { name: 'Canopy',        portalUrl: 'https://canopy.bamboohr.com/jobs',               inventoryMode: false },
+  // Recruitee boards — EU/mid-market companies
+  { name: 'Miro',          portalUrl: 'https://miro.recruitee.com',                     inventoryMode: false },
+  { name: 'Typeform',      portalUrl: 'https://typeform.recruitee.com',                 inventoryMode: false },
 ];
 
 await Actor.init();
