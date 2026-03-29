@@ -108,6 +108,7 @@ export interface GhostAnalysisResult {
   patterns: string[];
   geminiSummary: string;
   geminiAvailable: boolean;
+  orgGhostSignal: string | null;
   matchingJobs: GhostJobRecord[];
 }
 
@@ -189,6 +190,7 @@ export async function getGhostingResult(
       patterns: (analysis.patterns as string[]) ?? [],
       geminiSummary: analysis.geminiSummary as string,
       geminiAvailable: analysis.geminiAvailable as boolean,
+      orgGhostSignal: (analysis.orgGhostSignal as string | null) ?? null,
       matchingJobs,
     },
   };

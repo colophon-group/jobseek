@@ -90,6 +90,8 @@ export interface GhostAnalysis {
   avgDurationDays: number;
   // top offenders
   longestRunningJobs: JobRecord[];
+  // org-level signal: null if not triggered
+  orgGhostSignal: string | null;
   // Gemini insights
   overallGhostRisk: number;      // 0–100, from Gemini
   topGhostRoles: string[];

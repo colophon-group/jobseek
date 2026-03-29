@@ -146,6 +146,14 @@ export function computeGhostStats(registry: Map<string, JobRecord>) {
     .sort((a, b) => b.durationDays - a.durationDays)
     .slice(0, 20);
 
+  // Org-level ghost signal: if the company has 5+ jobs all aging 90+ days,
+  // the whole org is likely in a hiring freeze but leaving posts live.
+  const longRunning90 = jobs.filter(j => j.durationDays >= 90).length;
+  const orgGhostSignal =
+    jobs.length >= 5 && longRunning90 >= 5 && longRunning90 / jobs.length >= 0.5
+      ? `${longRunning90}/${jobs.length} active jobs have been open 90+ days — org-level ghost signal`
+      : null;
+
   return {
     totalUniqueJobs: jobs.length,
     ghostCandidates: ghosts.length,
@@ -153,6 +161,7 @@ export function computeGhostStats(registry: Map<string, JobRecord>) {
     medianDurationDays: median,
     avgDurationDays: avg,
     longestRunningJobs: longestRunning,
+    orgGhostSignal,
   };
 }
 
