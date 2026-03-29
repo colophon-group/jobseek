@@ -1,5 +1,0 @@
-node_modules/
-.git/
-src/
-tsconfig.json
-*.map

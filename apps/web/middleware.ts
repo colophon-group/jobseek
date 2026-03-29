@@ -32,5 +32,5 @@ export const config = {
   // Only match paths that do NOT start with a locale prefix, static assets,
   // API routes, or Next.js internals.  Locale-prefixed paths (e.g. /en/…)
   // skip the middleware entirely — no edge invocation needed.
-  matcher: ["/((?!_next|api|mcp|flags|fonts|publicdomain|favicon\\.ico|en|de|fr|it|.*\\..*).*)" ],
+  matcher: ["/((?!_next|api|mcp|flags|fonts|publicdomain|favicon\\.ico|agentic|en|de|fr|it|.*\\..*).*)" ],
 };
