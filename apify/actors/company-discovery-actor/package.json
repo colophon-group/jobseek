@@ -11,7 +11,8 @@
     "apify": "^3.0.0",
     "got-scraping": "^4.0.0",
     "cheerio": "^1.0.0",
-    "@google/generative-ai": "^0.21.0"
+    "@google/generative-ai": "^0.21.0",
+    "playwright": "^1.40.0"
   },
   "devDependencies": {
     "typescript": "^5.0.0",
