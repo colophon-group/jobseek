@@ -9,7 +9,7 @@
  * real browser and skip the managed challenge entirely.
  */
 import { Actor, log } from 'apify';
-import { Session } from 'node-tls-client';
+import { Session, initTLS } from 'node-tls-client';
 import { sleep } from '../http.js';
 import type { CompanyDiscovery } from '../types.js';
 
@@ -99,6 +99,9 @@ async function fetchPage(session: Session, page: number): Promise<HiringCafeJob[
 
 export async function discoverFromHiringCafe(maxPages = 20): Promise<CompanyDiscovery[]> {
   log.info(`hiring.cafe: fetching up to ${maxPages} pages via TLS-fingerprint (node-tls-client chrome_120)`);
+
+  // node-tls-client requires initTLS() before first use (loads the Go shared library)
+  await initTLS();
 
   // node-tls-client sends exact Chrome 120 TLS ClientHello + HTTP2 frames,
   // bypassing Cloudflare Bot Fight Mode at the network layer without needing a browser.
