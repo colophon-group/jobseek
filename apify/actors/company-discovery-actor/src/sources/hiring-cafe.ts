@@ -110,14 +110,21 @@ async function fetchPage(page: number, proxyUrl?: string): Promise<HiringCafeJob
 export async function discoverFromHiringCafe(maxPages = 20): Promise<CompanyDiscovery[]> {
   log.info(`hiring.cafe: fetching up to ${maxPages} pages (1 000 jobs each)`);
 
-  // Apify proxy to bypass Cloudflare (datacenter proxies are included on all plans)
+  // Cloudflare blocks datacenter IPs — residential proxies required.
+  // Tries RESIDENTIAL first, falls back to datacenter (may still be blocked).
   let proxyUrl: string | undefined;
   try {
-    const proxyCfg = await Actor.createProxyConfiguration();
+    const proxyCfg = await Actor.createProxyConfiguration({ groups: ['RESIDENTIAL'] });
     proxyUrl = await proxyCfg.newUrl();
-    log.info('hiring.cafe: using Apify proxy to bypass Cloudflare');
+    log.info('hiring.cafe: using residential proxy to bypass Cloudflare');
   } catch {
-    log.warning('hiring.cafe: no proxy available — requests may be blocked by Cloudflare');
+    try {
+      const proxyCfg = await Actor.createProxyConfiguration();
+      proxyUrl = await proxyCfg.newUrl();
+      log.warning('hiring.cafe: residential proxy unavailable — using datacenter proxy (may be blocked)');
+    } catch {
+      log.warning('hiring.cafe: no proxy available — likely to be blocked by Cloudflare');
+    }
   }
 
   const counts = new Map<string, number>();
