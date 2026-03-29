@@ -44,9 +44,13 @@ async function listSnapshots(minSizeKb = 100): Promise<CdxSnapshot[]> {
   }
 }
 
-/** Fetch one Wayback snapshot and extract company names. */
+/** Fetch one Wayback snapshot and extract company names.
+ *  Uses the `if_` modifier to bypass the Wayback Machine HTML wrapper
+ *  and get the original raw JSON response directly.
+ */
 async function fetchSnapshot(ts: string): Promise<string[]> {
-  const url = `${WB_BASE}/${ts}/https://hiring.cafe/api/search-jobs`;
+  // if_ tells Wayback Machine to serve original content, not the HTML-framed replay
+  const url = `${WB_BASE}/${ts}if_/https://hiring.cafe/api/search-jobs`;
   try {
     const resp = await gotScraping({
       url,
@@ -86,7 +90,7 @@ async function fetchSnapshot(ts: string): Promise<string[]> {
  * Fetches up to `maxSnapshots` recent large snapshots from archive.org/cdx,
  * aggregates company names, and persists job counts to KV for delta tracking.
  */
-export async function discoverFromHiringCafe(maxSnapshots = 25): Promise<CompanyDiscovery[]> {
+export async function discoverFromHiringCafe(maxSnapshots = 30): Promise<CompanyDiscovery[]> {
   log.info('hiring.cafe: discovering via Wayback Machine cached API snapshots');
 
   // ── Discover available snapshots ─────────────────────────────────────────
