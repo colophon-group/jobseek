@@ -15,7 +15,9 @@ export async function cdxEnumerateSlugs(
   extractSlug: (originalUrl: string) => string | null,
   limit = 5000,
 ): Promise<Map<string, number>> {
-  const url = `${CDX_API}?url=${encodeURIComponent(cdxUrlPattern)}&output=json&fl=original&filter=statuscode:200&collapse=urlkey&limit=${limit}`;
+  // Do NOT encode the cdxUrlPattern — CDX API requires literal * wildcards.
+  // Other params are safe as they contain no special characters.
+  const url = `${CDX_API}?url=${cdxUrlPattern}&output=json&fl=original&filter=statuscode:200&collapse=urlkey&limit=${limit}`;
 
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
