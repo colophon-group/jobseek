@@ -75,7 +75,7 @@ export default function Page() {
       summary: "Show the live portal registry from the latest company-discovery run",
       auth: false,
       params: [],
-      returns: `{ runId, runAt, runStatus, companiesDiscovered, registry: { portals[] }, topCompanies: [{ name, jobs, source, url }] }`,
+      returns: `{ runId, runAt, runStatus, companiesDiscovered, registry: { portals[] }, topCompanies: [{ name, jobs, source, url }], growingCompanies: [{ name, jobs, prevJobs, delta, url }] }`,
       example: `GET ${base}/discovery`,
     },
     {
