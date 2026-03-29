@@ -15,6 +15,7 @@ export function scoreGhost(
   archiveCount: number,
   reposted: boolean,
   repostCount = 0,
+  validThrough?: string,
 ): { score: number; reason: string } {
   let score = 0;
   const reasons: string[] = [];
@@ -52,6 +53,16 @@ export function scoreGhost(
     reasons.push(`captured ${archiveCount}× over ${durationDays} days`);
   }
 
+  // validThrough in the past = posting outlived its own stated expiry
+  if (validThrough) {
+    const expiredDays = Math.round((Date.now() - new Date(validThrough).getTime()) / 86_400_000);
+    if (expiredDays > 30) {
+      const bonus = Math.min(25, Math.round(expiredDays / 30) * 5);
+      score += bonus;
+      reasons.push(`validThrough ${validThrough} expired ${expiredDays} days ago`);
+    }
+  }
+
   score = Math.min(100, score);
   return {
     score,
@@ -85,10 +96,15 @@ export function buildJobRegistry(days: DayResult[]): Map<string, JobRecord> {
           archiveCount: 1,
           reposted: false,
           repostCount: 0,
+          validThrough: job.validThrough,
           ghostScore: 0,
           ghostReason: '',
         });
       } else {
+        // Update validThrough to the latest seen (might be updated/extended by the company)
+        if (job.validThrough && (!existing.validThrough || job.validThrough > existing.validThrough)) {
+          existing.validThrough = job.validThrough;
+        }
         // Check for gap (job disappeared for >30 days then came back)
         const gapDays = daysBetween(existing.lastSeen, day.date);
         if (gapDays > 30 && existing.lastSeen !== existing.firstSeen) {
@@ -104,7 +120,7 @@ export function buildJobRegistry(days: DayResult[]): Map<string, JobRecord> {
   // Compute final durations and ghost scores
   for (const record of registry.values()) {
     record.durationDays = daysBetween(record.firstSeen, record.lastSeen);
-    const { score, reason } = scoreGhost(record.durationDays, record.archiveCount, record.reposted, record.repostCount);
+    const { score, reason } = scoreGhost(record.durationDays, record.archiveCount, record.reposted, record.repostCount, record.validThrough);
     record.ghostScore = score;
     record.ghostReason = reason;
   }

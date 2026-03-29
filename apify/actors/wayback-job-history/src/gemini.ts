@@ -44,6 +44,7 @@ export async function analyzeWithGemini(
     department: j.department ?? 'unknown',
     reposted: j.reposted,
     repostCount: j.repostCount ?? 0,
+    validThrough: j.validThrough ?? null,
     reason: j.ghostReason,
   }));
 

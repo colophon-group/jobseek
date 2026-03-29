@@ -33,6 +33,7 @@ export interface JobPosting {
   url?: string;
   id?: string;
   employmentType?: string;
+  validThrough?: string;  // ISO date from schema.org — if in the past, strong ghost signal
 }
 
 export interface ExtractionResult {
@@ -69,6 +70,7 @@ export interface JobRecord {
   archiveCount: number;
   reposted: boolean;   // true if url disappeared then reappeared
   repostCount: number; // how many times the job disappeared and reappeared
+  validThrough?: string; // earliest validThrough date seen in schema.org data
   ghostScore: number;  // 0–100
   ghostReason: string;
 }

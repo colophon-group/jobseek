@@ -26,6 +26,19 @@ export function extractFromJsonLd($: CheerioAPI): ExtractionResult {
           continue;
         }
 
+        // @graph array (WordPress / schema.org pattern)
+        if (Array.isArray(obj['@graph'])) {
+          for (const node of obj['@graph'] as unknown[]) {
+            if (!node || typeof node !== 'object') continue;
+            const n = node as Record<string, unknown>;
+            if (n['@type'] === 'JobPosting') {
+              const job = parseJobPosting(n);
+              if (job) jobs.push(job);
+            }
+          }
+          continue;
+        }
+
         // ItemList of JobPostings
         if (obj['@type'] === 'ItemList' && Array.isArray(obj['itemListElement'])) {
           for (const listItem of obj['itemListElement'] as unknown[]) {
@@ -72,5 +85,6 @@ function parseJobPosting(obj: Record<string, unknown>): JobPosting | null {
     url: obj['url'] ? String(obj['url']) : undefined,
     id: identifier?.['value'] ? String(identifier['value']) : undefined,
     employmentType: obj['employmentType'] ? String(obj['employmentType']) : undefined,
+    validThrough: obj['validThrough'] ? String(obj['validThrough']).slice(0, 10) : undefined,
   };
 }

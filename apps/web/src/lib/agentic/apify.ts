@@ -123,6 +123,7 @@ export interface GhostJobRecord {
   archiveCount: number;
   reposted: boolean;
   repostCount?: number;
+  validThrough?: string;
   ghostScore: number;
   ghostReason: string;
 }
