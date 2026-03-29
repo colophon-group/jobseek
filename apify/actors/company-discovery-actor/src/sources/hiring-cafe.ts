@@ -1,10 +1,10 @@
 import { Actor, log } from 'apify';
 import { chromium } from 'playwright-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import type { CompanyDiscovery } from '../types.js';
 import { sleep } from '../http.js';
 
 chromium.use(StealthPlugin());
-import type { CompanyDiscovery } from '../types.js';
 
 // KV key within the shared company-discovery-portals store
 const KV_STORE_NAME = 'company-discovery-portals';
@@ -46,70 +46,64 @@ function extractJobs(data: unknown): HiringCafeJob[] {
 /**
  * Discover companies from hiring.cafe by aggregating job counts per company.
  *
- * Uses Playwright (Firefox) to pass Cloudflare's JS challenge, then makes
- * API calls via the browser's fetch API from within the page context.
+ * Uses Playwright (Chrome + stealth) to pass Cloudflare's JS challenge.
+ * Intentionally uses direct connection (no proxy) for the browser — Apify's
+ * proxy pool IPs are flagged by Cloudflare's ML, making the challenge harder
+ * to pass than a clean datacenter IP.
  *
  * Persists per-company job counts to the shared KV store so subsequent runs
  * can report the delta (growing / shrinking / stable hiring activity).
  */
 export async function discoverFromHiringCafe(maxPages = 20): Promise<CompanyDiscovery[]> {
-  log.info(`hiring.cafe: fetching up to ${maxPages} pages (1 000 jobs each) via Playwright Firefox`);
+  log.info(`hiring.cafe: fetching up to ${maxPages} pages (1 000 jobs each) via Playwright Chrome stealth`);
 
-  // Resolve proxy — Cloudflare blocks datacenter IPs, try residential first
-  let proxyUrl: string | undefined;
-  try {
-    const proxyCfg = await Actor.createProxyConfiguration({ groups: ['RESIDENTIAL'] });
-    proxyUrl = await proxyCfg.newUrl();
-    log.info('hiring.cafe: using residential proxy');
-  } catch {
-    try {
-      const proxyCfg = await Actor.createProxyConfiguration();
-      proxyUrl = await proxyCfg.newUrl();
-      log.warning('hiring.cafe: residential unavailable — using datacenter proxy (may be blocked)');
-    } catch {
-      log.warning('hiring.cafe: no proxy available — direct connection (may be blocked)');
-    }
-  }
+  // Direct connection (no proxy) — Apify residential proxies are flagged by Cloudflare,
+  // making the JS challenge impossible to pass. Direct datacenter IP passes CF better.
+  const browser = await chromium.launch({
+    headless: false, // Xvfb virtual display provided by apify/actor-node-playwright-chrome image
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  });
 
-  // headless: false + Xvfb virtual display (provided by apify/actor-node-playwright-chrome image)
-  // + playwright-extra stealth plugin to hide automation markers from Cloudflare.
-  const launchOptions: Parameters<typeof chromium.launch>[0] = { headless: false };
-  if (proxyUrl) {
-    const parsed = new URL(proxyUrl);
-    launchOptions.proxy = {
-      server: `${parsed.protocol}//${parsed.hostname}:${parsed.port}`,
-      username: parsed.username || undefined,
-      password: parsed.password || undefined,
-    };
-  }
-
-  const browser = await chromium.launch(launchOptions);
   const context = await browser.newContext({
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0) Gecko/20100101 Firefox/120.0',
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     locale: 'en-US',
     viewport: { width: 1920, height: 1080 },
     extraHTTPHeaders: { 'Accept-Language': 'en-US,en;q=0.9' },
   });
 
   try {
+    const page = await context.newPage();
+
+    // Belt-and-suspenders stealth on top of playwright-extra-plugin-stealth
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+      Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+      Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
+      if (!(window as Record<string, unknown>)['chrome']) {
+        (window as Record<string, unknown>)['chrome'] = { runtime: {}, app: { isInstalled: false } };
+      }
+    });
+
     // Navigate to the homepage so Cloudflare can run its JS challenge and set cf_clearance
     log.info('hiring.cafe: opening homepage to pass Cloudflare challenge…');
-    const page = await context.newPage();
     await page.goto('https://hiring.cafe', { waitUntil: 'domcontentloaded', timeout: 60_000 });
 
-    // Wait up to 30s for CF challenge to resolve (title changes from "Just a moment")
-    try {
-      await page.waitForFunction(
-        () => !document.title.toLowerCase().includes('just a moment'),
-        { timeout: 30_000 },
-      );
-      log.info(`hiring.cafe: challenge passed (page title: "${await page.title()}")`);
-    } catch {
-      log.warning(`hiring.cafe: CF challenge timed out (title: "${await page.title()}") — continuing anyway`);
+    // Poll for cf_clearance cookie (set when CF challenge completes)
+    let cleared = false;
+    for (let i = 0; i < 40; i++) {
+      const cookies = await context.cookies('https://hiring.cafe');
+      if (cookies.find(c => c.name === 'cf_clearance')) {
+        cleared = true;
+        log.info(`hiring.cafe: cf_clearance obtained after ~${i}s`);
+        break;
+      }
+      await sleep(1_000);
+    }
+    if (!cleared) {
+      log.warning(`hiring.cafe: cf_clearance not obtained after 40s (title: "${await page.title()}") — continuing anyway`);
     }
 
-    // Extra breathing room after challenge resolution before hitting the API
-    await sleep(2_000);
+    await sleep(1_000); // brief pause after challenge
 
     const counts = new Map<string, number>();
     const now = new Date().toISOString();
