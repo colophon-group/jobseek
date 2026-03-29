@@ -105,10 +105,16 @@ export async function discoverFromHiringCafe(maxSnapshots = 30): Promise<Company
     return [];
   }
 
-  // Sample evenly across the available history for coverage diversity
-  const step = Math.max(1, Math.floor(snapshots.length / maxSnapshots));
-  const selected = snapshots.filter((_, i) => i % step === 0).slice(0, maxSnapshots);
-  log.info(`hiring.cafe/wayback: sampling ${selected.length} snapshots (step=${step})`);
+  // Recency-biased sampling: take the N most recent, then sample evenly from the rest
+  // This ensures we capture fresh company data while still getting historical coverage.
+  const recentCount = Math.min(Math.ceil(maxSnapshots / 2), snapshots.length);
+  const recentSnaps = snapshots.slice(0, recentCount);
+  const olderSnaps  = snapshots.slice(recentCount);
+  const historyCount = maxSnapshots - recentCount;
+  const step = historyCount > 0 ? Math.max(1, Math.floor(olderSnaps.length / historyCount)) : 1;
+  const historySample = olderSnaps.filter((_, i) => i % step === 0).slice(0, historyCount);
+  const selected = [...recentSnaps, ...historySample];
+  log.info(`hiring.cafe/wayback: sampling ${selected.length} snapshots (${recentCount} recent + ${historySample.length} historical, step=${step})`);
 
   // ── Fetch snapshots ───────────────────────────────────────────────────────
   const counts = new Map<string, number>();

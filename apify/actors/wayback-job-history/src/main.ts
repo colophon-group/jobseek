@@ -45,8 +45,10 @@ const SEED_COMPANIES: CompanyInput[] = [
   { name: 'Robinhood',     portalUrl: 'https://boards.greenhouse.io/robinhood',     inventoryMode: false },  // 23% layoff + ongoing posts
   { name: 'Stripe',        portalUrl: 'https://boards.greenhouse.io/stripe',        inventoryMode: false },  // long-open senior roles
   // SmartRecruiters (Fortune 500 firms notorious for ghost posts)
-  { name: 'Bosch',         portalUrl: 'https://jobs.smartrecruiters.com/BoschGroup', inventoryMode: false },
-  { name: 'Sephora',       portalUrl: 'https://jobs.smartrecruiters.com/SephoraUSA', inventoryMode: false },
+  { name: 'Bosch',         portalUrl: 'https://jobs.smartrecruiters.com/BoschGroup',    inventoryMode: false },
+  { name: 'Sephora',       portalUrl: 'https://jobs.smartrecruiters.com/SephoraUSA',    inventoryMode: false },
+  { name: 'McDonald\'s',   portalUrl: 'https://jobs.smartrecruiters.com/McDonalds',     inventoryMode: false },
+  { name: 'Lidl',          portalUrl: 'https://jobs.smartrecruiters.com/Lidl',          inventoryMode: false },
 ];
 
 await Actor.init();
