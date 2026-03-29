@@ -77,6 +77,16 @@ const SEED_PORTALS: PortalDefinition[] = [
     discoveredAt: new Date().toISOString(),
   },
   {
+    id: 'bamboohr',
+    name: 'BambooHR',
+    description: 'BambooHR ATS used by SMB/mid-market companies. Per-company subdomains at {slug}.bamboohr.com. Discovered via Wayback CDX wildcard enumeration.',
+    homepageUrl: 'https://www.bamboohr.com',
+    strategy: { type: 'company_probe', urlTemplate: 'https://{company}.bamboohr.com/careers/list', boardUrlTemplate: 'https://{company}.bamboohr.com/jobs' },
+    status: 'active',
+    suggestedBy: 'hardcoded',
+    discoveredAt: new Date().toISOString(),
+  },
+  {
     id: 'smartrecruiters',
     name: 'SmartRecruiters ATS',
     description: 'Enterprise ATS used by Fortune 500 companies. Public per-company jobs API at api.smartrecruiters.com/v1/companies/{company}/postings.',

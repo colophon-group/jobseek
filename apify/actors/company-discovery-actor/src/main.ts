@@ -32,6 +32,7 @@ import { discoverFromMegaEmployers } from './sources/megaemployers.js';
 import { discoverFromHiringCafe } from './sources/hiring-cafe.js';
 import { discoverFromHimalayas } from './sources/himalayas.js';
 import { discoverFromYCombinator } from './sources/ycombinator.js';
+import { discoverFromBambooHR } from './sources/bamboohr.js';
 import { suggestNewPortals } from './sources/ai-discovery.js';
 import { probePortal, validatePortal } from './sources/generic-portal.js';
 import { loadRegistry, saveRegistry, getActivePortals, upsertPortal } from './registry.js';
@@ -47,7 +48,7 @@ await Actor.init();
 
 const input = (await Actor.getInput<Input>()) ?? {};
 const {
-  sources = ['greenhouse', 'themuse', 'megaemployers', 'arbeitnow', 'remotive', 'hiring-cafe', 'himalayas', 'ycombinator'],
+  sources = ['greenhouse', 'themuse', 'megaemployers', 'arbeitnow', 'remotive', 'hiring-cafe', 'himalayas', 'ycombinator', 'bamboohr'],
   maxCompaniesPerSource = 1000,
   enableAiDiscovery = true,
   maxAiSuggestionsPerRun = 4,
@@ -103,6 +104,7 @@ const staticSourceMap: Record<string, SourceFn> = {
   'hiring-cafe': () => discoverFromHiringCafe(30),
   himalayas:     () => discoverFromHimalayas(),
   ycombinator:   () => discoverFromYCombinator(),
+  bamboohr:      () => discoverFromBambooHR(),
 };
 
 async function runSource(sourceId: string, fn: SourceFn): Promise<void> {
