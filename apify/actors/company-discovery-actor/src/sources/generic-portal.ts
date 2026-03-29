@@ -108,9 +108,12 @@ async function probeCompanyProbe(
     }
 
     if (count > 0) {
+      const boardUrl = portal.strategy.boardUrlTemplate
+        ? renderUrl(portal.strategy.boardUrlTemplate, { company })
+        : portal.homepageUrl;
       companies.push({
         company_name: company,
-        job_board_url: url,
+        job_board_url: boardUrl,
         estimated_jobs: count,
         source: portal.id,
         discovered_at: now,
