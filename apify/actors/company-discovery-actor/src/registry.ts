@@ -66,6 +66,16 @@ const SEED_PORTALS: PortalDefinition[] = [
     suggestedBy: 'hardcoded',
     discoveredAt: new Date().toISOString(),
   },
+  {
+    id: 'hiring-cafe',
+    name: 'Hiring.cafe',
+    description: 'Job board with per-posting engagement metrics. Paginated POST API, no auth. Job counts per company memorised in KV store for delta tracking across runs.',
+    homepageUrl: 'https://hiring.cafe',
+    strategy: { type: 'paginated_api', urlTemplate: 'https://hiring.cafe/api/search-jobs', maxPages: 20 },
+    status: 'active',
+    suggestedBy: 'hardcoded',
+    discoveredAt: new Date().toISOString(),
+  },
 ];
 
 export async function loadRegistry(): Promise<PortalRegistry> {
