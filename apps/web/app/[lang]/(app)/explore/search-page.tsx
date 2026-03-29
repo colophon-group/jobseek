@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useTransition, useRef, useEffect, useMemo } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 
 import type { SelectedLocation } from "@/components/search/location-pills";
@@ -131,7 +131,8 @@ export function SearchPage({
   const [totalCompanies, setTotalCompanies] = useState(
     shouldRestore ? cached.totalCompanies : initialTotalCompanies,
   );
-  const [isSearching, startSearch] = useTransition();
+  const [isSearching, setIsSearching] = useState(false);
+  const searchCounterRef = useRef(0);
   const [isTruncated, setIsTruncated] = useState(initialTruncated ?? false);
 
   // Refs for all filter state — single source of truth for updateUrl/runSearch
@@ -355,7 +356,9 @@ export function SearchPage({
     const salMaxEur = toEur(salaryMaxRef.current);
     const expMin = experienceMinRef.current;
     const expMax = experienceMaxRef.current;
-    startSearch(async () => {
+    const id = ++searchCounterRef.current;
+    setIsSearching(true);
+    (async () => {
       try {
         const result =
           kws.length > 0
@@ -390,13 +393,16 @@ export function SearchPage({
                 offset: 0,
                 limit: PAGE_SIZE,
               });
+        if (searchCounterRef.current !== id) return; // stale
         setCompanies(result.companies);
         setTotalCompanies(result.totalCompanies);
         setIsTruncated(result.truncated ?? false);
       } catch {
-        // Ensure transition ends even on error — keeps existing results visible
+        // Keep existing results visible on error
+      } finally {
+        if (searchCounterRef.current === id) setIsSearching(false);
       }
-    });
+    })();
   }
 
   const handleRemoveKeyword = useCallback(
