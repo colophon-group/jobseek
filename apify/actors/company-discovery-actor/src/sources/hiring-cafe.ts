@@ -1,171 +1,136 @@
 /**
- * hiring.cafe discovery source
+ * hiring.cafe discovery source — Wayback Machine strategy
  *
- * Strategy: TLS-level Chrome fingerprinting via node-tls-client.
- * Past attempts (gotScraping, Playwright + stealth, residential proxies) all failed
- * because Cloudflare Bot Fight Mode checks the TLS/HTTP2 fingerprint at the socket
- * level before even running JS challenges. node-tls-client sends an exact Chrome 120
- * TLS ClientHello + HTTP2 SETTINGS frames, which makes CF treat the connection as a
- * real browser and skip the managed challenge entirely.
+ * Direct API access is blocked by Cloudflare Bot Fight Mode on all cloud/proxy IPs.
+ * The Wayback Machine has cached 200+ snapshots of hiring.cafe/api/search-jobs
+ * (up to Oct 2025, 100–700 KB each). We use CDX API to discover recent large
+ * snapshots and fetch them directly — no Cloudflare involved.
+ *
+ * Each snapshot contains 80–160 jobs. By sampling ~25 snapshots spread across
+ * recent months we aggregate 500–1 000 unique companies with job counts stored
+ * in the KV store for delta tracking across actor runs.
  */
 import { Actor, log } from 'apify';
-import { Session, initTLS } from 'node-tls-client';
+import { gotScraping } from 'got-scraping';
 import { sleep } from '../http.js';
 import type { CompanyDiscovery } from '../types.js';
 
 const KV_STORE_NAME = 'company-discovery-portals';
 const HC_COUNTS_KEY  = 'hiring_cafe_job_counts';
-
-const SEARCH_STATE = {
-  workplaceTypes:   ['remote', 'hybrid', 'onsite'],
-  commitmentTypes:  ['fullTime', 'partTime', 'contract', 'internship', 'temporary'],
-  dateFetchedPastNDays: 90,
-};
+const CDX_API = 'http://web.archive.org/cdx/search/cdx';
+const WB_BASE = 'http://web.archive.org/web';
 
 interface HiringCafeJob {
+  v5_processed_company_data?: { name?: string };
   source?: string;
-  id?: string;
-  apply_url?: string;
 }
 
-function extractJobs(data: unknown): HiringCafeJob[] {
-  if (!data || typeof data !== 'object') return [];
-  const d = data as Record<string, unknown>;
-  for (const key of ['results', 'jobs', 'data', 'items', 'content']) {
-    if (Array.isArray(d[key])) return d[key] as HiringCafeJob[];
-  }
-  const hits = d['hits'] as Record<string, unknown> | undefined;
-  if (Array.isArray(hits?.['hits'])) {
-    return (hits!['hits'] as Array<Record<string, unknown>>)
-      .map(h => h['_source'])
-      .filter(Boolean) as HiringCafeJob[];
-  }
-  return [];
-}
+interface CdxSnapshot { timestamp: string; size: number }
 
-async function fetchPage(session: Session, page: number): Promise<HiringCafeJob[]> {
-  const body = JSON.stringify({ size: 1000, page, searchState: SEARCH_STATE });
-
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      const resp = await session.post('https://hiring.cafe/api/search-jobs', {
-        headers: {
-          'Content-Type':    'application/json',
-          'Accept':          'application/json, text/plain, */*',
-          'Accept-Language': 'en-US,en;q=0.9',
-          'Accept-Encoding': 'gzip, deflate, br',
-          'Origin':          'https://hiring.cafe',
-          'Referer':         'https://hiring.cafe/',
-          'Sec-Fetch-Dest':  'empty',
-          'Sec-Fetch-Mode':  'cors',
-          'Sec-Fetch-Site':  'same-origin',
-          'Sec-Ch-Ua':       '"Chromium";v="120", "Google Chrome";v="120", "Not-A.Brand";v="99"',
-          'Sec-Ch-Ua-Mobile': '?0',
-          'Sec-Ch-Ua-Platform': '"Windows"',
-        },
-        body,
-      });
-
-      if (resp.status === 429) {
-        const wait = 15_000 * (attempt + 1);
-        log.warning(`hiring.cafe: rate-limited on page ${page}, waiting ${wait / 1000}s`);
-        await sleep(wait);
-        continue;
-      }
-
-      if (resp.status !== 200) {
-        const snippet = resp.body?.slice(0, 200).replace(/\s+/g, ' ') ?? '';
-        log.warning(`hiring.cafe: page ${page} HTTP ${resp.status} (attempt ${attempt + 1}) — ${snippet}`);
-        await sleep(5_000 * (attempt + 1));
-        continue;
-      }
-
-      const text = resp.body ?? '';
-      if (!text || text.trimStart().startsWith('<')) {
-        log.warning(`hiring.cafe: page ${page} got HTML not JSON (attempt ${attempt + 1})`);
-        await sleep(5_000 * (attempt + 1));
-        continue;
-      }
-
-      const data: unknown = JSON.parse(text);
-      return extractJobs(data);
-    } catch (err) {
-      log.warning(`hiring.cafe: page ${page} error (attempt ${attempt + 1}): ${err}`);
-      await sleep(3_000 * (attempt + 1));
-    }
-  }
-  return [];
-}
-
-export async function discoverFromHiringCafe(maxPages = 20): Promise<CompanyDiscovery[]> {
-  log.info(`hiring.cafe: fetching up to ${maxPages} pages via TLS-fingerprint (node-tls-client chrome_120)`);
-
-  // node-tls-client requires initTLS() before first use (loads the Go shared library)
-  await initTLS();
-
-  // node-tls-client sends exact Chrome 120 TLS ClientHello + HTTP2 frames,
-  // bypassing Cloudflare Bot Fight Mode at the network layer without needing a browser.
-  const session = new Session({
-    tlsClientIdentifier: 'chrome_120',
-    followRedirects: true,
-    insecureSkipVerify: false,
-    timeoutSeconds: 45,
-  });
-
-  // Warm up: GET the homepage first so CF sees a realistic browser session pattern
-  // (page load → API call), not a cold API hit.
+/** Fetch list of snapshots via CDX API, sorted newest→oldest, filtered to real data (>100KB). */
+async function listSnapshots(minSizeKb = 100): Promise<CdxSnapshot[]> {
+  const url = `${CDX_API}?url=hiring.cafe/api/search-jobs&output=json&fl=timestamp,length&filter=statuscode:200&limit=500`;
   try {
-    log.info('hiring.cafe: warming up session with homepage GET…');
-    const warmup = await session.get('https://hiring.cafe', {
-      headers: {
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Sec-Fetch-Dest':  'document',
-        'Sec-Fetch-Mode':  'navigate',
-        'Sec-Fetch-Site':  'none',
-        'Sec-Ch-Ua':       '"Chromium";v="120", "Google Chrome";v="120", "Not-A.Brand";v="99"',
-        'Sec-Ch-Ua-Mobile': '?0',
-        'Sec-Ch-Ua-Platform': '"Windows"',
-        'Upgrade-Insecure-Requests': '1',
-      },
-    });
-    log.info(`hiring.cafe: homepage warm-up status ${warmup.status} (${warmup.body?.slice(0, 60).replace(/\s+/g, ' ')})`);
-    await sleep(1_500);
+    const resp = await gotScraping({ url, timeout: { request: 20_000 } });
+    if (resp.statusCode !== 200) return [];
+    const rows: string[][] = JSON.parse(resp.body);
+    return rows.slice(1) // skip header row
+      .map(r => ({ timestamp: r[0], size: parseInt(r[1], 10) }))
+      .filter(s => s.size >= minSizeKb * 1024)
+      .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
   } catch (err) {
-    log.warning(`hiring.cafe: warm-up failed: ${err}`);
+    log.warning(`hiring.cafe/wayback: CDX list failed: ${err}`);
+    return [];
+  }
+}
+
+/** Fetch one Wayback snapshot and extract company names. */
+async function fetchSnapshot(ts: string): Promise<string[]> {
+  const url = `${WB_BASE}/${ts}/https://hiring.cafe/api/search-jobs`;
+  try {
+    const resp = await gotScraping({
+      url,
+      headers: {
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+      timeout: { request: 30_000 },
+      followRedirect: true,
+    });
+
+    if (resp.statusCode !== 200) return [];
+
+    const text = resp.body ?? '';
+    if (!text.trimStart().startsWith('{') && !text.trimStart().startsWith('[')) {
+      // Wayback returned its UI HTML wrapper instead of raw JSON
+      return [];
+    }
+
+    const data = JSON.parse(text) as Record<string, unknown>;
+    const jobs: HiringCafeJob[] = Array.isArray(data['results'])
+      ? (data['results'] as HiringCafeJob[])
+      : [];
+
+    return jobs
+      .map(j => j.v5_processed_company_data?.name?.trim() ?? j.source?.trim() ?? '')
+      .filter(n => n.length > 1);
+  } catch (err) {
+    log.debug(`hiring.cafe/wayback: snapshot ${ts} error: ${err}`);
+    return [];
+  }
+}
+
+/**
+ * Discover companies from hiring.cafe via Wayback Machine cached API snapshots.
+ *
+ * Fetches up to `maxSnapshots` recent large snapshots from archive.org/cdx,
+ * aggregates company names, and persists job counts to KV for delta tracking.
+ */
+export async function discoverFromHiringCafe(maxSnapshots = 25): Promise<CompanyDiscovery[]> {
+  log.info('hiring.cafe: discovering via Wayback Machine cached API snapshots');
+
+  // ── Discover available snapshots ─────────────────────────────────────────
+  const snapshots = await listSnapshots(100);
+  log.info(`hiring.cafe/wayback: found ${snapshots.length} large snapshots (≥100 KB)`);
+
+  if (snapshots.length === 0) {
+    log.warning('hiring.cafe/wayback: no snapshots found — source skipped');
+    return [];
   }
 
+  // Sample evenly across the available history for coverage diversity
+  const step = Math.max(1, Math.floor(snapshots.length / maxSnapshots));
+  const selected = snapshots.filter((_, i) => i % step === 0).slice(0, maxSnapshots);
+  log.info(`hiring.cafe/wayback: sampling ${selected.length} snapshots (step=${step})`);
+
+  // ── Fetch snapshots ───────────────────────────────────────────────────────
   const counts = new Map<string, number>();
   const now = new Date().toISOString();
-  let totalJobs = 0;
+  let fetchedCount = 0;
 
-  for (let page = 0; page < maxPages; page++) {
-    const jobs = await fetchPage(session, page);
-
-    if (jobs.length === 0) {
-      log.info(`hiring.cafe: empty page ${page} — stopping early`);
-      break;
+  for (const snap of selected) {
+    const names = await fetchSnapshot(snap.timestamp);
+    if (names.length === 0) {
+      log.debug(`hiring.cafe/wayback: ${snap.timestamp} — empty (skipped)`);
+      await sleep(500);
+      continue;
     }
 
-    for (const job of jobs) {
-      const name = job.source?.trim();
-      if (!name || name.length < 2) continue;
+    for (const name of names) {
       counts.set(name, (counts.get(name) ?? 0) + 1);
-      totalJobs++;
     }
-
-    log.info(`hiring.cafe: page ${page + 1}/${maxPages} — ${jobs.length} jobs, ${counts.size} companies`);
-
-    if (jobs.length < 1000) break;
-    await sleep(800);
+    fetchedCount++;
+    log.info(`hiring.cafe/wayback: ${snap.timestamp} (${Math.round(snap.size / 1024)}KB) — ${names.length} companies, ${counts.size} unique so far`);
+    await sleep(1_200); // be kind to archive.org
   }
 
-  log.info(`hiring.cafe: scraped ${counts.size} unique companies across ${totalJobs} jobs`);
+  log.info(`hiring.cafe/wayback: fetched ${fetchedCount}/${selected.length} snapshots — ${counts.size} unique companies`);
 
+  // ── Load previous counts for delta tracking ───────────────────────────────
   const store = await Actor.openKeyValueStore(KV_STORE_NAME);
   const prev: Record<string, number> = (await store.getValue<Record<string, number>>(HC_COUNTS_KEY)) ?? {};
 
+  // ── Build CompanyDiscovery records ────────────────────────────────────────
   const results: CompanyDiscovery[] = [];
   for (const [name, count] of counts) {
     const prevCount = prev[name] ?? null;
@@ -180,10 +145,11 @@ export async function discoverFromHiringCafe(maxPages = 20): Promise<CompanyDisc
     } as CompanyDiscovery);
   }
 
+  // ── Persist updated counts ────────────────────────────────────────────────
   const newCounts: Record<string, number> = {};
   for (const [name, count] of counts) newCounts[name] = count;
   await store.setValue(HC_COUNTS_KEY, newCounts);
-  log.info(`hiring.cafe: saved counts for ${Object.keys(newCounts).length} companies → KV:${HC_COUNTS_KEY}`);
+  log.info(`hiring.cafe/wayback: saved counts for ${Object.keys(newCounts).length} companies → KV:${HC_COUNTS_KEY}`);
 
   results.sort((a, b) => b.estimated_jobs - a.estimated_jobs);
   return results;
