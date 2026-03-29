@@ -14,6 +14,7 @@ export function scoreGhost(
   durationDays: number,
   archiveCount: number,
   reposted: boolean,
+  repostCount = 0,
 ): { score: number; reason: string } {
   let score = 0;
   const reasons: string[] = [];
@@ -36,15 +37,17 @@ export function scoreGhost(
     reasons.push(`posted for ${durationDays} days`);
   }
 
-  // Reposted = strong signal
+  // Repost bonus scales with count: +15 first repost, +8 per additional (capped at +35 total)
   if (reposted) {
-    score += 20;
-    reasons.push('job disappeared then reappeared (reposted)');
+    const repostBonus = Math.min(35, 15 + (repostCount - 1) * 8);
+    score += repostBonus;
+    const times = repostCount > 1 ? `${repostCount}×` : 'once';
+    reasons.push(`job disappeared then reappeared ${times} (reposted)`);
   }
 
-  // Very high archive count relative to duration = still alive after many checks
+  // High archive count relative to duration = long-lived posting with active crawls
   const checksPerMonth = archiveCount / Math.max(durationDays / 30, 1);
-  if (checksPerMonth > 15 && durationDays > 90) {
+  if (checksPerMonth > 8 && durationDays > 60) {
     score += 5;
     reasons.push(`captured ${archiveCount}× over ${durationDays} days`);
   }
@@ -81,6 +84,7 @@ export function buildJobRegistry(days: DayResult[]): Map<string, JobRecord> {
           durationDays: 0,
           archiveCount: 1,
           reposted: false,
+          repostCount: 0,
           ghostScore: 0,
           ghostReason: '',
         });
@@ -89,6 +93,7 @@ export function buildJobRegistry(days: DayResult[]): Map<string, JobRecord> {
         const gapDays = daysBetween(existing.lastSeen, day.date);
         if (gapDays > 30 && existing.lastSeen !== existing.firstSeen) {
           existing.reposted = true;
+          existing.repostCount++;
         }
         existing.lastSeen = day.date;
         existing.archiveCount++;
@@ -99,7 +104,7 @@ export function buildJobRegistry(days: DayResult[]): Map<string, JobRecord> {
   // Compute final durations and ghost scores
   for (const record of registry.values()) {
     record.durationDays = daysBetween(record.firstSeen, record.lastSeen);
-    const { score, reason } = scoreGhost(record.durationDays, record.archiveCount, record.reposted);
+    const { score, reason } = scoreGhost(record.durationDays, record.archiveCount, record.reposted, record.repostCount);
     record.ghostScore = score;
     record.ghostReason = reason;
   }

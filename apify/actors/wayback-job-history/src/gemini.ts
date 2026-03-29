@@ -43,6 +43,7 @@ export async function analyzeWithGemini(
     location: j.location ?? 'unknown',
     department: j.department ?? 'unknown',
     reposted: j.reposted,
+    repostCount: j.repostCount ?? 0,
     reason: j.ghostReason,
   }));
 
@@ -142,9 +143,15 @@ ${summary}
 
 Companies already analyzed (do NOT suggest these): ${alreadyAnalyzed}
 
-Based on this data and your knowledge of companies with historically high ghost job rates (large consulting firms, outsourcing giants, banks, tech companies doing "evergreen" recruiting), suggest 6 more companies we should investigate next.
+Based on this data and your knowledge of companies with historically high ghost job rates, suggest 6 more companies we should investigate next.
 
-Focus on: large employers, companies that have done mass layoffs while keeping job postings live, companies known for slow/opaque hiring processes.
+High-priority target categories (pick across categories for diversity):
+- Indian IT outsourcers with US/EU presence: Infosys, Wipro, TCS, Cognizant, HCL Technologies, Capgemini — notorious for pipeline-building ghost posts
+- Big 4 / management consulting: Deloitte, PwC, EY, KPMG, Accenture — post evergreen roles year-round
+- Defense & government contractors: Leidos, SAIC, Booz Allen Hamilton, Northrop Grumman — slow clearance hiring masks ghost posts
+- Banks & fintech: JPMorgan, Goldman Sachs, Citi, Wells Fargo — "always interviewing" culture
+- Tech giants post-layoff: Meta, Amazon, Microsoft, Google — mass layoffs while maintaining job boards
+- Retail / logistics at scale: Walmart, Target, Amazon Logistics — high turnover creates perpetual openings
 
 For each company provide the EXACT Wayback-crawlable career portal URL (prefer Workday myworkdayjobs.com URLs, Greenhouse boards.greenhouse.io URLs, or Lever jobs.lever.co URLs where you know them — NOT generic careers pages that redirect to ATS).
 

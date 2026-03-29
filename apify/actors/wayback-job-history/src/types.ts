@@ -68,6 +68,7 @@ export interface JobRecord {
   durationDays: number;
   archiveCount: number;
   reposted: boolean;   // true if url disappeared then reappeared
+  repostCount: number; // how many times the job disappeared and reappeared
   ghostScore: number;  // 0–100
   ghostReason: string;
 }
