@@ -12,6 +12,7 @@
  *   6. Hiring.cafe            — Job board; job counts memorised in KV for delta tracking
  *   7. Himalayas              — Remote job aggregator with public paginated JSON API
  *   8. SmartRecruiters        — Enterprise ATS (Fortune 500) company probe
+ *   9. Y Combinator           — YC-funded company directory (~5,800 companies)
  *
  * AI-powered discovery (runs when GOOGLE_AI_API_KEY is set):
  *   - Loads portal registry from KV store (persisted across runs)
@@ -30,6 +31,7 @@ import { discoverFromRemotive } from './sources/remotive.js';
 import { discoverFromMegaEmployers } from './sources/megaemployers.js';
 import { discoverFromHiringCafe } from './sources/hiring-cafe.js';
 import { discoverFromHimalayas } from './sources/himalayas.js';
+import { discoverFromYCombinator } from './sources/ycombinator.js';
 import { suggestNewPortals } from './sources/ai-discovery.js';
 import { probePortal, validatePortal } from './sources/generic-portal.js';
 import { loadRegistry, saveRegistry, getActivePortals, upsertPortal } from './registry.js';
@@ -45,7 +47,7 @@ await Actor.init();
 
 const input = (await Actor.getInput<Input>()) ?? {};
 const {
-  sources = ['greenhouse', 'themuse', 'megaemployers', 'arbeitnow', 'remotive', 'hiring-cafe', 'himalayas', 'smartrecruiters'],
+  sources = ['greenhouse', 'themuse', 'megaemployers', 'arbeitnow', 'remotive', 'hiring-cafe', 'himalayas', 'smartrecruiters', 'ycombinator'],
   maxCompaniesPerSource = 1000,
   enableAiDiscovery = true,
   maxAiSuggestionsPerRun = 4,
@@ -100,6 +102,7 @@ const staticSourceMap: Record<string, SourceFn> = {
   remotive:      () => discoverFromRemotive(),
   'hiring-cafe': () => discoverFromHiringCafe(30),
   himalayas:     () => discoverFromHimalayas(),
+  ycombinator:   () => discoverFromYCombinator(),
 };
 
 async function runSource(sourceId: string, fn: SourceFn): Promise<void> {
