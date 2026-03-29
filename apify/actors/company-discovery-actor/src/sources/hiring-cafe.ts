@@ -68,7 +68,9 @@ export async function discoverFromHiringCafe(maxPages = 20): Promise<CompanyDisc
     }
   }
 
-  const launchOptions: Parameters<typeof firefox.launch>[0] = { headless: true };
+  // headless: false + Xvfb virtual display (provided by apify/actor-node-playwright-firefox image)
+  // is less detectable by Cloudflare than true headless mode.
+  const launchOptions: Parameters<typeof firefox.launch>[0] = { headless: false };
   if (proxyUrl) {
     const parsed = new URL(proxyUrl);
     launchOptions.proxy = {
@@ -82,6 +84,7 @@ export async function discoverFromHiringCafe(maxPages = 20): Promise<CompanyDisc
   const context = await browser.newContext({
     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0) Gecko/20100101 Firefox/120.0',
     locale: 'en-US',
+    viewport: { width: 1920, height: 1080 },
     extraHTTPHeaders: { 'Accept-Language': 'en-US,en;q=0.9' },
   });
 
@@ -89,15 +92,21 @@ export async function discoverFromHiringCafe(maxPages = 20): Promise<CompanyDisc
     // Navigate to the homepage so Cloudflare can run its JS challenge and set cf_clearance
     log.info('hiring.cafe: opening homepage to pass Cloudflare challenge…');
     const page = await context.newPage();
-    await page.goto('https://hiring.cafe', { waitUntil: 'networkidle', timeout: 60_000 });
+    await page.goto('https://hiring.cafe', { waitUntil: 'domcontentloaded', timeout: 60_000 });
 
-    // Verify we're past the challenge (page title should not be "Just a moment")
-    const title = await page.title();
-    if (title.toLowerCase().includes('just a moment')) {
-      log.warning('hiring.cafe: Cloudflare challenge not resolved — results may be empty');
-    } else {
-      log.info(`hiring.cafe: challenge passed (page title: "${title}")`);
+    // Wait up to 30s for CF challenge to resolve (title changes from "Just a moment")
+    try {
+      await page.waitForFunction(
+        () => !document.title.toLowerCase().includes('just a moment'),
+        { timeout: 30_000 },
+      );
+      log.info(`hiring.cafe: challenge passed (page title: "${await page.title()}")`);
+    } catch {
+      log.warning(`hiring.cafe: CF challenge timed out (title: "${await page.title()}") — continuing anyway`);
     }
+
+    // Extra breathing room after challenge resolution before hitting the API
+    await sleep(2_000);
 
     const counts = new Map<string, number>();
     const now = new Date().toISOString();
