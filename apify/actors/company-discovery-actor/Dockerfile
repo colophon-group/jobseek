@@ -1,7 +1,6 @@
-FROM apify/actor-node:20
-# libresolv.so.2 was merged into libc in glibc 2.34+ but node-tls-client's Go binary still links it
-RUN ln -sf /lib/x86_64-linux-gnu/libc.so.6 /lib/x86_64-linux-gnu/libresolv.so.2 2>/dev/null || \
-    ln -sf /lib/aarch64-linux-gnu/libc.so.6 /lib/aarch64-linux-gnu/libresolv.so.2 2>/dev/null || true
+# Use playwright-chrome for full glibc stack (node-tls-client Go binary needs libresolv.so.2)
+# We don't launch any browser — this image is just chosen for its complete system libraries.
+FROM apify/actor-node-playwright-chrome:20
 COPY package*.json ./
 RUN npm --quiet set progress=false && npm install --include=dev
 COPY . .
