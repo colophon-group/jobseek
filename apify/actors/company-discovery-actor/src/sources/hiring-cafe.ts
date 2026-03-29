@@ -1,6 +1,9 @@
 import { Actor, log } from 'apify';
-import { firefox } from 'playwright';
+import { chromium } from 'playwright-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { sleep } from '../http.js';
+
+chromium.use(StealthPlugin());
 import type { CompanyDiscovery } from '../types.js';
 
 // KV key within the shared company-discovery-portals store
@@ -68,9 +71,9 @@ export async function discoverFromHiringCafe(maxPages = 20): Promise<CompanyDisc
     }
   }
 
-  // headless: false + Xvfb virtual display (provided by apify/actor-node-playwright-firefox image)
-  // is less detectable by Cloudflare than true headless mode.
-  const launchOptions: Parameters<typeof firefox.launch>[0] = { headless: false };
+  // headless: false + Xvfb virtual display (provided by apify/actor-node-playwright-chrome image)
+  // + playwright-extra stealth plugin to hide automation markers from Cloudflare.
+  const launchOptions: Parameters<typeof chromium.launch>[0] = { headless: false };
   if (proxyUrl) {
     const parsed = new URL(proxyUrl);
     launchOptions.proxy = {
@@ -80,7 +83,7 @@ export async function discoverFromHiringCafe(maxPages = 20): Promise<CompanyDisc
     };
   }
 
-  const browser = await firefox.launch(launchOptions);
+  const browser = await chromium.launch(launchOptions);
   const context = await browser.newContext({
     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0) Gecko/20100101 Firefox/120.0',
     locale: 'en-US',
