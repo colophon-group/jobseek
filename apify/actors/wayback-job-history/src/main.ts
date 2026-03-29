@@ -49,6 +49,10 @@ const SEED_COMPANIES: CompanyInput[] = [
   { name: 'Sephora',       portalUrl: 'https://jobs.smartrecruiters.com/SephoraUSA',    inventoryMode: false },
   { name: 'McDonald\'s',   portalUrl: 'https://jobs.smartrecruiters.com/McDonalds',     inventoryMode: false },
   { name: 'Lidl',          portalUrl: 'https://jobs.smartrecruiters.com/Lidl',          inventoryMode: false },
+  // BambooHR boards — high-ghost SMB/mid-market companies
+  { name: 'WP Engine',     portalUrl: 'https://wpengine.bamboohr.com/jobs',             inventoryMode: false },
+  { name: 'Qualtrics',     portalUrl: 'https://qualtrics.bamboohr.com/jobs',            inventoryMode: false },
+  { name: 'Canopy',        portalUrl: 'https://canopy.bamboohr.com/jobs',               inventoryMode: false },
 ];
 
 await Actor.init();
