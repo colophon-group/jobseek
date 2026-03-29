@@ -66,6 +66,17 @@ export default function Page() {
       returns: "{ runId: string, status: string }",
       example: `POST ${base}/ghosting/paid\nAuthorization: Bearer <userId>\nContent-Type: application/json\n\n{ "portalUrl": "https://jobs.lever.co/rippling" }`,
     },
+    {
+      method: "POST",
+      path: "/api/ghosting/batch",
+      summary: "Batch: trigger ghost-job analysis for up to 10 companies in one request",
+      auth: false,
+      params: [
+        { name: "companies", type: "array", required: true, desc: "Array of company entries (max 10), each: { portalUrl, companyName?, inventoryMode?, maxSnapshots? }" },
+      ],
+      returns: `{ results: [{ companyName, portalUrl, runId, status }] }`,
+      example: `POST ${base}/ghosting/batch\nContent-Type: application/json\n\n{ "companies": [\n  { "portalUrl": "https://boards.greenhouse.io/stripe", "companyName": "Stripe" },\n  { "portalUrl": "https://jobs.lever.co/rippling", "companyName": "Rippling" }\n] }`,
+    },
   ];
 
   const utilityEndpoints = [
