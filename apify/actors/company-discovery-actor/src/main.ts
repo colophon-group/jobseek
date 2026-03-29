@@ -37,6 +37,8 @@ import { discoverFromRecruitee } from './sources/recruitee.js';
 import { discoverFromWorkable } from './sources/workable.js';
 import { discoverFromAshby } from './sources/ashby.js';
 import { discoverFromLever } from './sources/lever.js';
+import { discoverFromGreenhouseCdx } from './sources/greenhouse-cdx.js';
+import { discoverFromJazzHR } from './sources/jazzhr.js';
 import { suggestNewPortals } from './sources/ai-discovery.js';
 import { probePortal, validatePortal } from './sources/generic-portal.js';
 import { loadRegistry, saveRegistry, getActivePortals, upsertPortal } from './registry.js';
@@ -52,7 +54,7 @@ await Actor.init();
 
 const input = (await Actor.getInput<Input>()) ?? {};
 const {
-  sources = ['greenhouse', 'themuse', 'megaemployers', 'arbeitnow', 'remotive', 'hiring-cafe', 'himalayas', 'ycombinator', 'bamboohr', 'recruitee', 'workable', 'ashby', 'lever'],
+  sources = ['greenhouse', 'themuse', 'megaemployers', 'arbeitnow', 'remotive', 'hiring-cafe', 'himalayas', 'ycombinator', 'bamboohr', 'recruitee', 'workable', 'ashby', 'lever', 'greenhouse-cdx', 'jazzhr'],
   maxCompaniesPerSource = 1000,
   enableAiDiscovery = true,
   maxAiSuggestionsPerRun = 4,
@@ -113,6 +115,8 @@ const staticSourceMap: Record<string, SourceFn> = {
   workable:      () => discoverFromWorkable(),
   ashby:         () => discoverFromAshby(),
   lever:         () => discoverFromLever(),
+  'greenhouse-cdx': () => discoverFromGreenhouseCdx(),
+  jazzhr:        () => discoverFromJazzHR(),
 };
 
 async function runSource(sourceId: string, fn: SourceFn): Promise<void> {
