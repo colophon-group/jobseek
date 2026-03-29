@@ -9,6 +9,7 @@
  *   3. Arbeitnow API          — EU/remote job aggregator
  *   4. Remotive API           — Remote job aggregator
  *   5. Mega Employers         — Curated list of 150+ global giants
+ *   6. Hiring.cafe            — Job board; job counts memorised in KV for delta tracking
  *
  * AI-powered discovery (runs when GOOGLE_AI_API_KEY is set):
  *   - Loads portal registry from KV store (persisted across runs)
@@ -25,6 +26,7 @@ import { discoverFromTheMuse } from './sources/themuse.js';
 import { discoverFromArbeitnow } from './sources/arbeitnow.js';
 import { discoverFromRemotive } from './sources/remotive.js';
 import { discoverFromMegaEmployers } from './sources/megaemployers.js';
+import { discoverFromHiringCafe } from './sources/hiring-cafe.js';
 import { suggestNewPortals } from './sources/ai-discovery.js';
 import { probePortal, validatePortal } from './sources/generic-portal.js';
 import { loadRegistry, saveRegistry, getActivePortals, upsertPortal } from './registry.js';
@@ -40,7 +42,7 @@ await Actor.init();
 
 const input = (await Actor.getInput<Input>()) ?? {};
 const {
-  sources = ['greenhouse', 'themuse', 'megaemployers', 'arbeitnow', 'remotive'],
+  sources = ['greenhouse', 'themuse', 'megaemployers', 'arbeitnow', 'remotive', 'hiring-cafe'],
   maxCompaniesPerSource = 1000,
   enableAiDiscovery = true,
   maxAiSuggestionsPerRun = 4,
@@ -93,6 +95,7 @@ const staticSourceMap: Record<string, SourceFn> = {
   megaemployers: () => Promise.resolve(discoverFromMegaEmployers()),
   arbeitnow:     () => discoverFromArbeitnow(),
   remotive:      () => discoverFromRemotive(),
+  'hiring-cafe': () => discoverFromHiringCafe(20),
 };
 
 async function runSource(sourceId: string, fn: SourceFn): Promise<void> {

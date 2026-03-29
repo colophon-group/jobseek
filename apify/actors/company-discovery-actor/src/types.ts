@@ -4,6 +4,9 @@ export interface CompanyDiscovery {
   estimated_jobs: number;
   source: string;
   discovered_at: string;
+  // Populated by sources that track history across runs (e.g. hiring-cafe)
+  prev_jobs?: number | null;    // job count from the previous run
+  jobs_delta?: number | null;   // change since last run (+growing, -shrinking)
 }
 
 /** Scraping strategy for a generic portal */
