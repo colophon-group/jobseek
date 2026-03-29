@@ -76,6 +76,25 @@ const SEED_PORTALS: PortalDefinition[] = [
     suggestedBy: 'hardcoded',
     discoveredAt: new Date().toISOString(),
   },
+  {
+    id: 'smartrecruiters',
+    name: 'SmartRecruiters ATS',
+    description: 'Enterprise ATS used by Fortune 500 companies. Public per-company jobs API at api.smartrecruiters.com/v1/companies/{company}/postings.',
+    homepageUrl: 'https://www.smartrecruiters.com',
+    strategy: {
+      type: 'company_probe',
+      urlTemplate: 'https://api.smartrecruiters.com/v1/companies/{company}/postings?limit=200',
+      seedCompanies: [
+        'BoschGroup', 'SephoraUSA', 'IKEA', 'McDonalds', 'Twitter',
+        'Lidl', 'Aldi', 'Carrefour', 'Vodafone', 'BNPParibas',
+        'Siemens', 'BASF', 'Henkel', 'SAP', 'Zalando',
+      ],
+      jobsArrayPath: 'content',
+    },
+    status: 'active',
+    suggestedBy: 'hardcoded',
+    discoveredAt: new Date().toISOString(),
+  },
 ];
 
 export async function loadRegistry(): Promise<PortalRegistry> {

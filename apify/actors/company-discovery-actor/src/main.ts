@@ -42,7 +42,7 @@ await Actor.init();
 
 const input = (await Actor.getInput<Input>()) ?? {};
 const {
-  sources = ['greenhouse', 'themuse', 'megaemployers', 'arbeitnow', 'remotive', 'hiring-cafe'],
+  sources = ['greenhouse', 'themuse', 'megaemployers', 'arbeitnow', 'remotive', 'hiring-cafe', 'smartrecruiters'],
   maxCompaniesPerSource = 1000,
   enableAiDiscovery = true,
   maxAiSuggestionsPerRun = 4,
@@ -130,9 +130,9 @@ for (const sourceId of sources) {
   await runSource(sourceId, fn);
 }
 
-// 2. AI-discovered active portals
+// 2. All non-static active portals (AI-discovered + hardcoded generic portals like smartrecruiters)
 const aiActivePortals = getActivePortals(registry).filter(
-  p => !staticSourceMap[p.id] && p.suggestedBy === 'gemini',
+  p => !staticSourceMap[p.id],
 );
 for (const portal of aiActivePortals) {
   await runSource(portal.id, async () => {
