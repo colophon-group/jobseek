@@ -48,6 +48,7 @@ import { discoverFromLever } from './sources/lever.js';
 import { discoverFromGreenhouseCdx } from './sources/greenhouse-cdx.js';
 import { discoverFromJazzHR } from './sources/jazzhr.js';
 import { discoverFromBreezyHR } from './sources/breezyhr.js';
+import { discoverFromTeamtailor } from './sources/teamtailor.js';
 import { suggestNewPortals } from './sources/ai-discovery.js';
 import { probePortal, validatePortal } from './sources/generic-portal.js';
 import { loadRegistry, saveRegistry, getActivePortals, upsertPortal } from './registry.js';
@@ -63,7 +64,7 @@ await Actor.init();
 
 const input = (await Actor.getInput<Input>()) ?? {};
 const {
-  sources = ['greenhouse', 'themuse', 'megaemployers', 'arbeitnow', 'remotive', 'hiring-cafe', 'himalayas', 'ycombinator', 'bamboohr', 'recruitee', 'workable', 'ashby', 'lever', 'greenhouse-cdx', 'jazzhr', 'breezyhr'],
+  sources = ['greenhouse', 'themuse', 'megaemployers', 'arbeitnow', 'remotive', 'hiring-cafe', 'himalayas', 'ycombinator', 'bamboohr', 'recruitee', 'workable', 'ashby', 'lever', 'greenhouse-cdx', 'jazzhr', 'breezyhr', 'teamtailor'],
   maxCompaniesPerSource = 1000,
   enableAiDiscovery = true,
   maxAiSuggestionsPerRun = 4,
@@ -127,6 +128,7 @@ const staticSourceMap: Record<string, SourceFn> = {
   'greenhouse-cdx': () => discoverFromGreenhouseCdx(),
   jazzhr:        () => discoverFromJazzHR(),
   breezyhr:      () => discoverFromBreezyHR(),
+  teamtailor:    () => discoverFromTeamtailor(),
 };
 
 async function runSource(sourceId: string, fn: SourceFn): Promise<void> {
