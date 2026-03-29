@@ -1,12 +1,12 @@
 {
   "actorSpecification": 1,
   "name": "company-discovery-actor",
-  "title": "Company Discovery from Job Aggregators",
-  "description": "Discovers companies with open positions via public ATS APIs (Greenhouse, Lever) and job aggregators (The Muse, Arbeitnow, Remotive). Outputs company name, job board URL, and actual open positions count.",
+  "title": "Company Discovery — AI-Powered Self-Evolving",
+  "description": "Discovers companies with open positions. Uses Gemini to reason about coverage gaps and suggest+validate new job portals each run. Registry persists across runs in KV store.",
   "version": "1.0",
+  "environmentVariables": { "GOOGLE_AI_API_KEY": "@GOOGLE_AI_API_KEY" },
   "input": {
     "title": "Input",
-    "description": "Configuration for company discovery.",
     "type": "object",
     "schemaVersion": 1,
     "properties": {
@@ -19,10 +19,23 @@
       },
       "sources": {
         "type": "array",
-        "title": "Sources",
-        "description": "Which sources to query. Options: greenhouse, themuse, megaemployers, arbeitnow, remotive",
+        "title": "Static sources",
+        "description": "Which hardcoded sources to query.",
         "editor": "json",
         "default": ["greenhouse", "themuse", "megaemployers", "arbeitnow", "remotive"]
+      },
+      "enableAiDiscovery": {
+        "type": "boolean",
+        "title": "Enable AI portal discovery",
+        "description": "Use Gemini to suggest and probe new job portals each run. Requires GOOGLE_AI_API_KEY secret.",
+        "default": true
+      },
+      "maxAiSuggestionsPerRun": {
+        "type": "integer",
+        "title": "Max AI suggestions per run",
+        "description": "How many Gemini-suggested portals to probe and validate per run.",
+        "editor": "number",
+        "default": 4
       }
     }
   }

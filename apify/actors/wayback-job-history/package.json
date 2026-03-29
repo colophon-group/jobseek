@@ -1,6 +1,7 @@
 {
-  "name": "company-discovery-actor",
+  "name": "wayback-job-history",
   "version": "1.0.0",
+  "type": "module",
   "main": "dist/main.js",
   "scripts": {
     "start": "node dist/main.js",
@@ -9,14 +10,13 @@
   },
   "dependencies": {
     "apify": "^3.0.0",
-    "got-scraping": "^4.0.0",
     "cheerio": "^1.0.0",
     "@google/generative-ai": "^0.21.0"
   },
   "devDependencies": {
-    "typescript": "^5.0.0",
+    "typescript": "^5.4.5",
     "@types/node": "^20.0.0",
-    "ts-node": "^10.9.0"
-  },
-  "type": "module"
+    "ts-node": "^10.9.0",
+    "esbuild": "^0.27.4"
+  }
 }

@@ -1,14 +1,21 @@
 /**
  * @actor company-discovery-actor
  *
- * Discovers companies with open positions from job aggregators and public ATS APIs:
- *   1. Greenhouse Boards API — 790+ confirmed board tokens, exact job counts
- *   2. The Muse API         — Company directory with job counts per company
- *   3. Arbeitnow API        — EU/remote job listings aggregated by company
- *   4. Remotive API          — Remote job listings aggregated by company
- *   5. Mega Employers        — Curated list of 150+ global giants (India, China, US, EU)
+ * Self-evolving company discovery system.
  *
- * Output: CompanyDiscovery[] → { company_name, job_board_url, estimated_jobs, source }
+ * Static sources (always run):
+ *   1. Greenhouse Boards API  — 790+ confirmed board tokens
+ *   2. The Muse API           — Company directory with job counts
+ *   3. Arbeitnow API          — EU/remote job aggregator
+ *   4. Remotive API           — Remote job aggregator
+ *   5. Mega Employers         — Curated list of 150+ global giants
+ *
+ * AI-powered discovery (runs when GOOGLE_AI_API_KEY is set):
+ *   - Loads portal registry from KV store (persisted across runs)
+ *   - Asks Gemini to analyse current coverage and suggest new portals
+ *   - Probes candidates, promotes successful ones to "active"
+ *   - Scrapes all active portals (static + AI-discovered)
+ *   - Saves updated registry back to KV store
  */
 
 import { Actor, log } from 'apify';
@@ -18,10 +25,15 @@ import { discoverFromTheMuse } from './sources/themuse.js';
 import { discoverFromArbeitnow } from './sources/arbeitnow.js';
 import { discoverFromRemotive } from './sources/remotive.js';
 import { discoverFromMegaEmployers } from './sources/megaemployers.js';
+import { suggestNewPortals } from './sources/ai-discovery.js';
+import { probePortal, validatePortal } from './sources/generic-portal.js';
+import { loadRegistry, saveRegistry, getActivePortals, upsertPortal } from './registry.js';
 
 interface Input {
   sources?: string[];
   maxCompaniesPerSource?: number;
+  enableAiDiscovery?: boolean;
+  maxAiSuggestionsPerRun?: number;
 }
 
 await Actor.init();
@@ -30,76 +42,139 @@ const input = (await Actor.getInput<Input>()) ?? {};
 const {
   sources = ['greenhouse', 'themuse', 'megaemployers', 'arbeitnow', 'remotive'],
   maxCompaniesPerSource = 1000,
+  enableAiDiscovery = true,
+  maxAiSuggestionsPerRun = 4,
 } = input;
 
-log.info('Starting company-discovery-actor', { sources, maxCompaniesPerSource });
+const googleAiKey = process.env.GOOGLE_AI_API_KEY;
+const runAiDiscovery = enableAiDiscovery && !!googleAiKey;
 
+log.info('Starting company-discovery-actor', { sources, maxCompaniesPerSource, aiDiscovery: runAiDiscovery });
+
+// ── Load portal registry ──────────────────────────────────────────────────
+const registry = await loadRegistry();
+
+// ── AI Discovery: suggest + probe new portals ─────────────────────────────
+if (runAiDiscovery) {
+  try {
+    const candidates = await suggestNewPortals(registry, googleAiKey!);
+    log.info(`Gemini suggested ${candidates.length} new candidate portals`);
+
+    for (const candidate of candidates.slice(0, maxAiSuggestionsPerRun)) {
+      candidate.status = 'probing';
+      candidate.lastProbedAt = new Date().toISOString();
+      upsertPortal(registry, candidate);
+
+      const valid = await validatePortal(candidate);
+      candidate.status = valid ? 'active' : 'failed';
+      if (valid) {
+        candidate.lastSuccessAt = new Date().toISOString();
+        log.info(`✓ New portal validated: ${candidate.id}`);
+      } else {
+        log.warning(`✗ Probe failed: ${candidate.id}`);
+      }
+      upsertPortal(registry, candidate);
+    }
+  } catch (err) {
+    log.error(`AI discovery failed: ${err}`);
+  }
+}
+
+// ── Run all sources ───────────────────────────────────────────────────────
 const allCompanies: CompanyDiscovery[] = [];
 const globalSeen = new Set<string>();
+const sourceStats: Record<string, { companies: number; jobs: number; error?: string }> = {};
 
 type SourceFn = () => Promise<CompanyDiscovery[]>;
 
-const sourceMap: Record<string, SourceFn> = {
-  greenhouse: () => discoverFromGreenhouse(maxCompaniesPerSource),
-  themuse: () => discoverFromTheMuse(maxCompaniesPerSource),
+const staticSourceMap: Record<string, SourceFn> = {
+  greenhouse:    () => discoverFromGreenhouse(maxCompaniesPerSource),
+  themuse:       () => discoverFromTheMuse(maxCompaniesPerSource),
   megaemployers: () => Promise.resolve(discoverFromMegaEmployers()),
-  arbeitnow: () => discoverFromArbeitnow(),
-  remotive: () => discoverFromRemotive(),
+  arbeitnow:     () => discoverFromArbeitnow(),
+  remotive:      () => discoverFromRemotive(),
 };
 
-const sourceStats: Record<string, { companies: number; jobs: number; error?: string }> = {};
-
-for (const source of sources) {
-  const runner = sourceMap[source];
-  if (!runner) {
-    log.warning(`Unknown source "${source}", skipping`);
-    continue;
-  }
-
-  log.info(`--- Running source: ${source} ---`);
-  const startTime = Date.now();
-
+async function runSource(sourceId: string, fn: SourceFn): Promise<void> {
+  log.info(`--- Running source: ${sourceId} ---`);
+  const t0 = Date.now();
   try {
-    const companies = await runner();
-
-    let uniqueNew = 0;
-    let uniqueJobs = 0;
-    for (const company of companies) {
-      const key = company.company_name.toLowerCase().trim();
+    const companies = await fn();
+    let uniqueNew = 0, uniqueJobs = 0;
+    for (const c of companies) {
+      const key = c.company_name.toLowerCase().trim();
       if (!globalSeen.has(key)) {
         globalSeen.add(key);
-        allCompanies.push(company);
+        allCompanies.push(c);
         uniqueNew++;
-        uniqueJobs += company.estimated_jobs;
+        uniqueJobs += c.estimated_jobs;
       }
     }
-
-    const totalJobs = companies.reduce((s, c) => s + c.estimated_jobs, 0);
-    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-    sourceStats[source] = { companies: uniqueNew, jobs: uniqueJobs };
-    log.info(`${source}: ${companies.length} total, ${uniqueNew} unique new, ${totalJobs.toLocaleString()} jobs (${elapsed}s)`);
+    const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
+    sourceStats[sourceId] = { companies: uniqueNew, jobs: uniqueJobs };
+    log.info(`${sourceId}: ${companies.length} total, ${uniqueNew} new unique (${elapsed}s)`);
   } catch (err) {
-    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-    sourceStats[source] = { companies: 0, jobs: 0, error: String(err) };
-    log.error(`${source} failed after ${elapsed}s: ${err}`);
+    const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
+    sourceStats[sourceId] = { companies: 0, jobs: 0, error: String(err) };
+    log.error(`${sourceId} failed after ${elapsed}s: ${err}`);
   }
 }
 
-// Push all results to default dataset
+// 1. Static sources
+for (const sourceId of sources) {
+  const fn = staticSourceMap[sourceId];
+  if (!fn) { log.warning(`Unknown source "${sourceId}", skipping`); continue; }
+  await runSource(sourceId, fn);
+}
+
+// 2. AI-discovered active portals
+const aiActivePortals = getActivePortals(registry).filter(
+  p => !staticSourceMap[p.id] && p.suggestedBy === 'gemini',
+);
+for (const portal of aiActivePortals) {
+  await runSource(portal.id, async () => {
+    const { companies, error } = await probePortal(portal);
+    if (error) throw new Error(error);
+    portal.lastSuccessAt = new Date().toISOString();
+    portal.companiesFound = companies.length;
+    upsertPortal(registry, portal);
+    return companies;
+  });
+}
+
+// ── Update registry stats for static portals ─────────────────────────────
+for (const [sourceId, stats] of Object.entries(sourceStats)) {
+  const portal = registry.portals.find(p => p.id === sourceId);
+  if (portal && !stats.error) {
+    portal.lastSuccessAt = new Date().toISOString();
+    portal.companiesFound = stats.companies;
+    upsertPortal(registry, portal);
+  }
+}
+
+await saveRegistry(registry);
+
+// ── Push results ──────────────────────────────────────────────────────────
 log.info(`Pushing ${allCompanies.length} unique companies to dataset...`);
 await Actor.pushData(allCompanies);
 
-// Summary
+// Registry summary record (readable by /agentic/api/discovery)
+await Actor.pushData({
+  _type: 'registry_summary',
+  runAt: new Date().toISOString(),
+  totalPortals: registry.portals.length,
+  activePortals: registry.portals.filter(p => p.status === 'active').length,
+  aiDiscoveredPortals: registry.portals.filter(p => p.suggestedBy === 'gemini' && p.status === 'active').length,
+  portals: registry.portals.map(p => ({
+    id: p.id, name: p.name, status: p.status, suggestedBy: p.suggestedBy,
+    companiesFound: p.companiesFound ?? 0, lastSuccessAt: p.lastSuccessAt,
+    geminiReasoning: p.geminiReasoning,
+  })),
+});
+
 const totalJobs = allCompanies.reduce((s, c) => s + c.estimated_jobs, 0);
-log.info('=== Discovery Summary ===');
-log.info(`Total unique companies: ${allCompanies.length}`);
-log.info(`Total estimated jobs: ${totalJobs.toLocaleString()}`);
-for (const [source, stats] of Object.entries(sourceStats)) {
-  if (stats.error) {
-    log.info(`  ${source}: FAILED — ${stats.error}`);
-  } else {
-    log.info(`  ${source}: ${stats.companies} companies, ${stats.jobs.toLocaleString()} jobs`);
-  }
-}
+log.info('=== Summary ===');
+log.info(`Companies: ${allCompanies.length}, Jobs: ${totalJobs.toLocaleString()}`);
+log.info(`Registry: ${registry.portals.length} portals (${registry.portals.filter(p => p.status === 'active').length} active)`);
 
 await Actor.exit();
