@@ -40,14 +40,15 @@ function extractJobs(data: unknown): HiringCafeJob[] {
   return [];
 }
 
-async function fetchPage(page: number): Promise<HiringCafeJob[]> {
+async function fetchPage(page: number, proxyUrl?: string): Promise<HiringCafeJob[]> {
   const body = JSON.stringify({ size: 1000, page, searchState: SEARCH_STATE });
 
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const resp = await gotScraping({
-        url:    'https://hiring.cafe/api/search-jobs',
-        method: 'POST',
+        url:      'https://hiring.cafe/api/search-jobs',
+        method:   'POST',
+        proxyUrl,
         body,
         headers: {
           'Content-Type':    'application/json',
@@ -75,15 +76,17 @@ async function fetchPage(page: number): Promise<HiringCafeJob[]> {
         continue;
       }
 
+      // Retry on server errors; Cloudflare 403/503 also land here
       if (resp.statusCode !== 200) {
-        log.debug(`hiring.cafe: page ${page} returned HTTP ${resp.statusCode}`);
-        return [];
+        log.warning(`hiring.cafe: page ${page} HTTP ${resp.statusCode} (attempt ${attempt + 1})`);
+        await sleep(5_000 * (attempt + 1));
+        continue;
       }
 
-      // Guard against Cloudflare HTML challenge pages
+      // Guard against Cloudflare HTML challenge slipping through as 200
       const text = resp.body;
       if (!text || text.trimStart().startsWith('<')) {
-        log.warning(`hiring.cafe: page ${page} returned HTML instead of JSON (bot challenge?)`);
+        log.warning(`hiring.cafe: page ${page} got HTML not JSON (attempt ${attempt + 1})`);
         await sleep(5_000 * (attempt + 1));
         continue;
       }
@@ -91,7 +94,7 @@ async function fetchPage(page: number): Promise<HiringCafeJob[]> {
       const data: unknown = JSON.parse(text);
       return extractJobs(data);
     } catch (err) {
-      log.debug(`hiring.cafe: page ${page} error (attempt ${attempt + 1}): ${err}`);
+      log.warning(`hiring.cafe: page ${page} error (attempt ${attempt + 1}): ${err}`);
       await sleep(3_000 * (attempt + 1));
     }
   }
@@ -107,12 +110,22 @@ async function fetchPage(page: number): Promise<HiringCafeJob[]> {
 export async function discoverFromHiringCafe(maxPages = 20): Promise<CompanyDiscovery[]> {
   log.info(`hiring.cafe: fetching up to ${maxPages} pages (1 000 jobs each)`);
 
+  // Apify proxy to bypass Cloudflare (datacenter proxies are included on all plans)
+  let proxyUrl: string | undefined;
+  try {
+    const proxyCfg = await Actor.createProxyConfiguration();
+    proxyUrl = await proxyCfg.newUrl();
+    log.info('hiring.cafe: using Apify proxy to bypass Cloudflare');
+  } catch {
+    log.warning('hiring.cafe: no proxy available — requests may be blocked by Cloudflare');
+  }
+
   const counts = new Map<string, number>();
   const now = new Date().toISOString();
   let totalJobs = 0;
 
   for (let page = 0; page < maxPages; page++) {
-    const jobs = await fetchPage(page);
+    const jobs = await fetchPage(page, proxyUrl);
 
     if (jobs.length === 0) {
       log.info(`hiring.cafe: empty page ${page} — stopping early`);
