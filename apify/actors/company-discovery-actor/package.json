@@ -8,18 +8,19 @@
     "dev": "ts-node src/main.ts"
   },
   "dependencies": {
-    "apify": "^3.0.0",
-    "got-scraping": "^4.0.0",
-    "cheerio": "^1.0.0",
     "@google/generative-ai": "^0.21.0",
+    "apify": "^3.0.0",
+    "cheerio": "^1.0.0",
+    "got-scraping": "^4.0.0",
+    "node-tls-client": "^2.1.0",
     "playwright": "^1.40.0",
     "playwright-extra": "^4.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2"
   },
   "devDependencies": {
-    "typescript": "^5.0.0",
     "@types/node": "^20.0.0",
-    "ts-node": "^10.9.0"
+    "ts-node": "^10.9.0",
+    "typescript": "^5.0.0"
   },
   "type": "module"
 }

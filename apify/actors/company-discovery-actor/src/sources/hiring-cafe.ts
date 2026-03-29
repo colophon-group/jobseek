@@ -1,16 +1,21 @@
+/**
+ * hiring.cafe discovery source
+ *
+ * Strategy: TLS-level Chrome fingerprinting via node-tls-client.
+ * Past attempts (gotScraping, Playwright + stealth, residential proxies) all failed
+ * because Cloudflare Bot Fight Mode checks the TLS/HTTP2 fingerprint at the socket
+ * level before even running JS challenges. node-tls-client sends an exact Chrome 120
+ * TLS ClientHello + HTTP2 SETTINGS frames, which makes CF treat the connection as a
+ * real browser and skip the managed challenge entirely.
+ */
 import { Actor, log } from 'apify';
-import { chromium } from 'playwright-extra';
-import StealthPlugin from 'puppeteer-extra-plugin-stealth';
-import type { CompanyDiscovery } from '../types.js';
+import { Session } from 'node-tls-client';
 import { sleep } from '../http.js';
+import type { CompanyDiscovery } from '../types.js';
 
-chromium.use(StealthPlugin());
-
-// KV key within the shared company-discovery-portals store
 const KV_STORE_NAME = 'company-discovery-portals';
 const HC_COUNTS_KEY  = 'hiring_cafe_job_counts';
 
-// Broad search state — no location/seniority filter so we see everything
 const SEARCH_STATE = {
   workplaceTypes:   ['remote', 'hybrid', 'onsite'],
   commitmentTypes:  ['fullTime', 'partTime', 'contract', 'internship', 'temporary'],
@@ -21,19 +26,14 @@ interface HiringCafeJob {
   source?: string;
   id?: string;
   apply_url?: string;
-  viewedByUsers?: number;
-  appliedFromUsers?: number;
-  savedFromUsers?: number;
 }
 
-// hiring.cafe returns different shapes across versions — handle all
 function extractJobs(data: unknown): HiringCafeJob[] {
   if (!data || typeof data !== 'object') return [];
   const d = data as Record<string, unknown>;
   for (const key of ['results', 'jobs', 'data', 'items', 'content']) {
     if (Array.isArray(d[key])) return d[key] as HiringCafeJob[];
   }
-  // Elasticsearch-style hits
   const hits = d['hits'] as Record<string, unknown> | undefined;
   if (Array.isArray(hits?.['hits'])) {
     return (hits!['hits'] as Array<Record<string, unknown>>)
@@ -43,200 +43,145 @@ function extractJobs(data: unknown): HiringCafeJob[] {
   return [];
 }
 
-/**
- * Discover companies from hiring.cafe by aggregating job counts per company.
- *
- * Uses Playwright (Chrome + stealth) to pass Cloudflare's JS challenge.
- * Intentionally uses direct connection (no proxy) for the browser — Apify's
- * proxy pool IPs are flagged by Cloudflare's ML, making the challenge harder
- * to pass than a clean datacenter IP.
- *
- * Persists per-company job counts to the shared KV store so subsequent runs
- * can report the delta (growing / shrinking / stable hiring activity).
- */
-export async function discoverFromHiringCafe(maxPages = 20): Promise<CompanyDiscovery[]> {
-  log.info(`hiring.cafe: fetching up to ${maxPages} pages (1 000 jobs each) via Playwright Chrome stealth`);
+async function fetchPage(session: Session, page: number): Promise<HiringCafeJob[]> {
+  const body = JSON.stringify({ size: 1000, page, searchState: SEARCH_STATE });
 
-  // Direct connection (no proxy) — Apify residential proxies are flagged by Cloudflare,
-  // making the JS challenge impossible to pass. Direct datacenter IP passes CF better.
-  const browser = await chromium.launch({
-    headless: false, // Xvfb virtual display provided by apify/actor-node-playwright-chrome image
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--use-gl=swiftshader',   // software WebGL so CF fingerprinting doesn't see missing GPU
-      '--enable-webgl',
-      '--ignore-gpu-blocklist',
-      '--disable-blink-features=AutomationControlled',
-    ],
-  });
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const resp = await session.post('https://hiring.cafe/api/search-jobs', {
+        headers: {
+          'Content-Type':    'application/json',
+          'Accept':          'application/json, text/plain, */*',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Accept-Encoding': 'gzip, deflate, br',
+          'Origin':          'https://hiring.cafe',
+          'Referer':         'https://hiring.cafe/',
+          'Sec-Fetch-Dest':  'empty',
+          'Sec-Fetch-Mode':  'cors',
+          'Sec-Fetch-Site':  'same-origin',
+          'Sec-Ch-Ua':       '"Chromium";v="120", "Google Chrome";v="120", "Not-A.Brand";v="99"',
+          'Sec-Ch-Ua-Mobile': '?0',
+          'Sec-Ch-Ua-Platform': '"Windows"',
+        },
+        body,
+      });
 
-  const context = await browser.newContext({
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    locale: 'en-US',
-    viewport: { width: 1920, height: 1080 },
-    extraHTTPHeaders: { 'Accept-Language': 'en-US,en;q=0.9' },
-  });
-
-  try {
-    const page = await context.newPage();
-
-    // Belt-and-suspenders stealth on top of playwright-extra-plugin-stealth
-    await page.addInitScript(() => {
-      Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-      Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
-      Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
-      if (!(window as Record<string, unknown>)['chrome']) {
-        (window as Record<string, unknown>)['chrome'] = { runtime: {}, app: { isInstalled: false } };
+      if (resp.status === 429) {
+        const wait = 15_000 * (attempt + 1);
+        log.warning(`hiring.cafe: rate-limited on page ${page}, waiting ${wait / 1000}s`);
+        await sleep(wait);
+        continue;
       }
-      // Spoof canvas fingerprint to avoid consistent VM signature
-      const origToDataURL = HTMLCanvasElement.prototype.toDataURL;
-      HTMLCanvasElement.prototype.toDataURL = function(type?: string, quality?: number) {
-        if (type === 'image/png' && !quality) {
-          const ctx = this.getContext('2d');
-          if (ctx) { ctx.fillRect(0, 0, 1, 1); }
-        }
-        return origToDataURL.call(this, type, quality);
-      };
-    });
 
-    // Capture browser console errors to diagnose CF challenge failures
-    page.on('console', msg => {
-      if (msg.type() === 'error') log.debug(`[browser] ${msg.text()}`);
-    });
-    page.on('pageerror', err => log.debug(`[browser-error] ${err.message}`));
-
-    // Navigate to the homepage so Cloudflare can run its JS challenge and set cf_clearance
-    log.info('hiring.cafe: opening homepage to pass Cloudflare challenge…');
-    await page.goto('https://hiring.cafe', { waitUntil: 'domcontentloaded', timeout: 60_000 });
-
-    // Poll for cf_clearance cookie (set when CF challenge completes).
-    // Diagnosis showed hiring.cafe uses Cloudflare Bot Fight Mode which blocks cloud IPs at the WAF
-    // level — the challenge page loads but never resolves (zero cookies after 60s).
-    // To bypass this properly, a specialized service like Brightdata Web Unlocker or ZenRows is needed.
-    // We limit the wait to 15s so the source fails fast rather than wasting 60-90s of actor compute.
-    let cleared = false;
-    for (let i = 0; i < 15; i++) {
-      const cookies = await context.cookies('https://hiring.cafe');
-      if (cookies.find(c => c.name === 'cf_clearance')) {
-        cleared = true;
-        log.info(`hiring.cafe: cf_clearance obtained after ~${i}s`);
-        break;
+      if (resp.status !== 200) {
+        const snippet = resp.body?.slice(0, 200).replace(/\s+/g, ' ') ?? '';
+        log.warning(`hiring.cafe: page ${page} HTTP ${resp.status} (attempt ${attempt + 1}) — ${snippet}`);
+        await sleep(5_000 * (attempt + 1));
+        continue;
       }
-      await sleep(1_000);
+
+      const text = resp.body ?? '';
+      if (!text || text.trimStart().startsWith('<')) {
+        log.warning(`hiring.cafe: page ${page} got HTML not JSON (attempt ${attempt + 1})`);
+        await sleep(5_000 * (attempt + 1));
+        continue;
+      }
+
+      const data: unknown = JSON.parse(text);
+      return extractJobs(data);
+    } catch (err) {
+      log.warning(`hiring.cafe: page ${page} error (attempt ${attempt + 1}): ${err}`);
+      await sleep(3_000 * (attempt + 1));
     }
-
-    if (!cleared) {
-      const title = await page.title();
-      log.warning(`hiring.cafe: CF Bot Fight Mode active — challenge never resolves from cloud IPs. ` +
-        `Title: "${title}". To fix: integrate a bypass service (Brightdata Web Unlocker, ZenRows, etc).`);
-    }
-
-    await sleep(1_000); // brief pause after challenge
-
-    const counts = new Map<string, number>();
-    const now = new Date().toISOString();
-    let totalJobs = 0;
-
-    for (let pageIdx = 0; pageIdx < maxPages; pageIdx++) {
-      const body = JSON.stringify({ size: 1000, page: pageIdx, searchState: SEARCH_STATE });
-
-      let jobs: HiringCafeJob[] = [];
-      for (let attempt = 0; attempt < 3; attempt++) {
-        try {
-          // Use page.evaluate so the request goes through the browser (with CF cookies + fingerprint)
-          const result = await page.evaluate(async (payload: string) => {
-            const resp = await fetch('https://hiring.cafe/api/search-jobs', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json, text/plain, */*',
-              },
-              body: payload,
-            });
-            return { status: resp.status, text: await resp.text() };
-          }, body);
-
-          if (result.status === 429) {
-            const wait = 15_000 * (attempt + 1);
-            log.warning(`hiring.cafe: rate-limited on page ${pageIdx}, waiting ${wait / 1000}s`);
-            await sleep(wait);
-            continue;
-          }
-
-          if (result.status !== 200) {
-            const snippet = result.text?.slice(0, 300).replace(/\s+/g, ' ') ?? '';
-            log.warning(`hiring.cafe: page ${pageIdx} HTTP ${result.status} (attempt ${attempt + 1}) — ${snippet}`);
-            await sleep(5_000 * (attempt + 1));
-            continue;
-          }
-
-          if (!result.text || result.text.trimStart().startsWith('<')) {
-            log.warning(`hiring.cafe: page ${pageIdx} returned HTML not JSON (attempt ${attempt + 1})`);
-            await sleep(5_000 * (attempt + 1));
-            continue;
-          }
-
-          const data: unknown = JSON.parse(result.text);
-          jobs = extractJobs(data);
-          break;
-        } catch (err) {
-          log.warning(`hiring.cafe: page ${pageIdx} error (attempt ${attempt + 1}): ${err}`);
-          await sleep(3_000 * (attempt + 1));
-        }
-      }
-
-      if (jobs.length === 0) {
-        log.info(`hiring.cafe: empty page ${pageIdx} — stopping early`);
-        break;
-      }
-
-      for (const job of jobs) {
-        const name = job.source?.trim();
-        if (!name || name.length < 2) continue;
-        counts.set(name, (counts.get(name) ?? 0) + 1);
-        totalJobs++;
-      }
-
-      log.info(`hiring.cafe: page ${pageIdx + 1}/${maxPages} — ${jobs.length} jobs, ${counts.size} companies`);
-
-      if (jobs.length < 1000) break; // last page
-      await sleep(800);
-    }
-
-    log.info(`hiring.cafe: scraped ${counts.size} unique companies across ${totalJobs} jobs`);
-
-    // ── Load previous counts for delta tracking ─────────────────────────────
-    const store = await Actor.openKeyValueStore(KV_STORE_NAME);
-    const prev: Record<string, number> = (await store.getValue<Record<string, number>>(HC_COUNTS_KEY)) ?? {};
-
-    // ── Build CompanyDiscovery records ───────────────────────────────────────
-    const results: CompanyDiscovery[] = [];
-
-    for (const [name, count] of counts) {
-      const prevCount = prev[name] ?? null;
-      results.push({
-        company_name:   name,
-        job_board_url:  `https://hiring.cafe/?q=${encodeURIComponent(name)}`,
-        estimated_jobs: count,
-        source:         'hiring-cafe',
-        discovered_at:  now,
-        prev_jobs:      prevCount,
-        jobs_delta:     prevCount !== null ? count - prevCount : null,
-      } as CompanyDiscovery);
-    }
-
-    // ── Persist updated counts ───────────────────────────────────────────────
-    const newCounts: Record<string, number> = {};
-    for (const [name, count] of counts) newCounts[name] = count;
-    await store.setValue(HC_COUNTS_KEY, newCounts);
-    log.info(`hiring.cafe: saved counts for ${Object.keys(newCounts).length} companies → KV:${HC_COUNTS_KEY}`);
-
-    results.sort((a, b) => b.estimated_jobs - a.estimated_jobs);
-    return results;
-
-  } finally {
-    await browser.close();
   }
+  return [];
+}
+
+export async function discoverFromHiringCafe(maxPages = 20): Promise<CompanyDiscovery[]> {
+  log.info(`hiring.cafe: fetching up to ${maxPages} pages via TLS-fingerprint (node-tls-client chrome_120)`);
+
+  // node-tls-client sends exact Chrome 120 TLS ClientHello + HTTP2 frames,
+  // bypassing Cloudflare Bot Fight Mode at the network layer without needing a browser.
+  const session = new Session({
+    tlsClientIdentifier: 'chrome_120',
+    followRedirects: true,
+    insecureSkipVerify: false,
+    timeoutSeconds: 45,
+  });
+
+  // Warm up: GET the homepage first so CF sees a realistic browser session pattern
+  // (page load → API call), not a cold API hit.
+  try {
+    log.info('hiring.cafe: warming up session with homepage GET…');
+    const warmup = await session.get('https://hiring.cafe', {
+      headers: {
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Sec-Fetch-Dest':  'document',
+        'Sec-Fetch-Mode':  'navigate',
+        'Sec-Fetch-Site':  'none',
+        'Sec-Ch-Ua':       '"Chromium";v="120", "Google Chrome";v="120", "Not-A.Brand";v="99"',
+        'Sec-Ch-Ua-Mobile': '?0',
+        'Sec-Ch-Ua-Platform': '"Windows"',
+        'Upgrade-Insecure-Requests': '1',
+      },
+    });
+    log.info(`hiring.cafe: homepage warm-up status ${warmup.status} (${warmup.body?.slice(0, 60).replace(/\s+/g, ' ')})`);
+    await sleep(1_500);
+  } catch (err) {
+    log.warning(`hiring.cafe: warm-up failed: ${err}`);
+  }
+
+  const counts = new Map<string, number>();
+  const now = new Date().toISOString();
+  let totalJobs = 0;
+
+  for (let page = 0; page < maxPages; page++) {
+    const jobs = await fetchPage(session, page);
+
+    if (jobs.length === 0) {
+      log.info(`hiring.cafe: empty page ${page} — stopping early`);
+      break;
+    }
+
+    for (const job of jobs) {
+      const name = job.source?.trim();
+      if (!name || name.length < 2) continue;
+      counts.set(name, (counts.get(name) ?? 0) + 1);
+      totalJobs++;
+    }
+
+    log.info(`hiring.cafe: page ${page + 1}/${maxPages} — ${jobs.length} jobs, ${counts.size} companies`);
+
+    if (jobs.length < 1000) break;
+    await sleep(800);
+  }
+
+  log.info(`hiring.cafe: scraped ${counts.size} unique companies across ${totalJobs} jobs`);
+
+  const store = await Actor.openKeyValueStore(KV_STORE_NAME);
+  const prev: Record<string, number> = (await store.getValue<Record<string, number>>(HC_COUNTS_KEY)) ?? {};
+
+  const results: CompanyDiscovery[] = [];
+  for (const [name, count] of counts) {
+    const prevCount = prev[name] ?? null;
+    results.push({
+      company_name:   name,
+      job_board_url:  `https://hiring.cafe/?q=${encodeURIComponent(name)}`,
+      estimated_jobs: count,
+      source:         'hiring-cafe',
+      discovered_at:  now,
+      prev_jobs:      prevCount,
+      jobs_delta:     prevCount !== null ? count - prevCount : null,
+    } as CompanyDiscovery);
+  }
+
+  const newCounts: Record<string, number> = {};
+  for (const [name, count] of counts) newCounts[name] = count;
+  await store.setValue(HC_COUNTS_KEY, newCounts);
+  log.info(`hiring.cafe: saved counts for ${Object.keys(newCounts).length} companies → KV:${HC_COUNTS_KEY}`);
+
+  results.sort((a, b) => b.estimated_jobs - a.estimated_jobs);
+  return results;
 }
