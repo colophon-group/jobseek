@@ -48,21 +48,38 @@ export async function GET(_req: NextRequest) {
   const summary = items.find(i => i._type === 'registry_summary');
   const companies = items.filter(i => !i._type);
 
+  // Top 20 companies by job count
+  const topCompanies = [...companies]
+    .sort((a, b) => ((b.estimated_jobs as number) ?? 0) - ((a.estimated_jobs as number) ?? 0))
+    .slice(0, 20)
+    .map((c) => ({
+      name: c.company_name,
+      jobs: c.estimated_jobs,
+      source: c.source,
+      url: c.job_board_url,
+    }));
+
+  // Hiring.cafe: top 10 fastest-growing companies (largest positive delta)
+  const growingCompanies = companies
+    .filter((c) => c.source === 'hiring-cafe' && typeof c.jobs_delta === 'number' && (c.jobs_delta as number) > 0)
+    .sort((a, b) => ((b.jobs_delta as number) ?? 0) - ((a.jobs_delta as number) ?? 0))
+    .slice(0, 10)
+    .map((c) => ({
+      name: c.company_name,
+      jobs: c.estimated_jobs,
+      prevJobs: c.prev_jobs,
+      delta: c.jobs_delta,
+      url: c.job_board_url,
+    }));
+
   return NextResponse.json({
     runId: latestRun.id,
     runAt: latestRun.startedAt,
     runStatus: latestRun.status,
     companiesDiscovered: companies.length,
     registry: summary ?? null,
-    // Top 20 companies by job count for a quick preview
-    topCompanies: companies
-      .sort((a, b) => ((b.estimated_jobs as number) ?? 0) - ((a.estimated_jobs as number) ?? 0))
-      .slice(0, 20)
-      .map((c) => ({
-        name: c.company_name,
-        jobs: c.estimated_jobs,
-        source: c.source,
-        url: c.job_board_url,
-      })),
+    topCompanies,
+    // Companies with the largest growth in hiring.cafe job count since last run
+    growingCompanies,
   });
 }
