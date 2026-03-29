@@ -111,9 +111,13 @@ export async function discoverFromHiringCafe(maxPages = 20): Promise<CompanyDisc
     log.info('hiring.cafe: opening homepage to pass Cloudflare challenge…');
     await page.goto('https://hiring.cafe', { waitUntil: 'domcontentloaded', timeout: 60_000 });
 
-    // Poll for cf_clearance cookie (set when CF challenge completes)
+    // Poll for cf_clearance cookie (set when CF challenge completes).
+    // Diagnosis showed hiring.cafe uses Cloudflare Bot Fight Mode which blocks cloud IPs at the WAF
+    // level — the challenge page loads but never resolves (zero cookies after 60s).
+    // To bypass this properly, a specialized service like Brightdata Web Unlocker or ZenRows is needed.
+    // We limit the wait to 15s so the source fails fast rather than wasting 60-90s of actor compute.
     let cleared = false;
-    for (let i = 0; i < 60; i++) {
+    for (let i = 0; i < 15; i++) {
       const cookies = await context.cookies('https://hiring.cafe');
       if (cookies.find(c => c.name === 'cf_clearance')) {
         cleared = true;
@@ -122,22 +126,11 @@ export async function discoverFromHiringCafe(maxPages = 20): Promise<CompanyDisc
       }
       await sleep(1_000);
     }
-    // Log all cookies to diagnose what CF is setting
-    const allCookies = await context.cookies('https://hiring.cafe');
-    log.info(`hiring.cafe: cookies after wait: [${allCookies.map(c => c.name).join(', ') || 'none'}]`);
 
     if (!cleared) {
-      // Screenshot for diagnosis — saved to Apify key-value store
-      try {
-        const { Actor: ActorMod } = await import('apify');
-        const screenshot = await page.screenshot({ fullPage: false });
-        const store = await ActorMod.openKeyValueStore('company-discovery-portals');
-        await store.setValue('hiring_cafe_screenshot', screenshot, { contentType: 'image/png' });
-        log.info('hiring.cafe: screenshot saved to KV store (key: hiring_cafe_screenshot)');
-      } catch (screenshotErr) {
-        log.debug(`hiring.cafe: screenshot failed: ${screenshotErr}`);
-      }
-      log.warning(`hiring.cafe: cf_clearance not obtained after 60s (title: "${await page.title()}") — continuing anyway`);
+      const title = await page.title();
+      log.warning(`hiring.cafe: CF Bot Fight Mode active — challenge never resolves from cloud IPs. ` +
+        `Title: "${title}". To fix: integrate a bypass service (Brightdata Web Unlocker, ZenRows, etc).`);
     }
 
     await sleep(1_000); // brief pause after challenge
