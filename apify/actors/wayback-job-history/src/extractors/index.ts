@@ -9,13 +9,14 @@ import { extractLeverSlug, extractFromLever } from './lever.js';
 import { extractAshbySlug, extractFromAshby } from './ashby.js';
 import { extractWorkableSlug, extractFromWorkable } from './workable.js';
 import { extractWorkdayParams, extractFromWorkday } from './workday.js';
+import { extractSRCompany, extractFromSmartRecruiters } from './smartrecruiters.js';
 import { extractGeneric } from './generic.js';
 
 /**
  * Main extraction dispatcher.
  *
  * Priority order:
- * 1. Known ATS API (Greenhouse / Lever / Ashby / Workable) — most reliable, structured data
+ * 1. Known ATS API (Greenhouse / Lever / Ashby / Workable / SmartRecruiters) — most reliable, structured data
  * 2. JSON-LD JobPosting schema
  * 3. Next.js __NEXT_DATA__ recursive walk
  * 4. window.__data / other globals embedded in <script> tags
@@ -56,6 +57,11 @@ export async function extractJobs(
 
   if (extractWorkdayParams(url)) {
     const result = await extractFromWorkday(url, snapshot.timestamp);
+    if (result.jobs.length > 0) return result;
+  }
+
+  if (extractSRCompany(url)) {
+    const result = await extractFromSmartRecruiters(url, snapshot.timestamp);
     if (result.jobs.length > 0) return result;
   }
 
