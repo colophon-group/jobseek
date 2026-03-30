@@ -1,0 +1,6387 @@
+[
+  {
+    "slug": "accenture-careers-au",
+    "url": "https://www.accenture.com/au-en/careers/jobsearch",
+    "monitor_type": "accenture",
+    "scraper_type": "",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 348200,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 278.7,
+          "setup_ms": 103.6,
+          "navigation_ms": 947.3,
+          "content_ms": 329.4,
+          "render_ms": 1276.6999999999998,
+          "total_ms": 1659.0
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 354835,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 196.8,
+          "setup_ms": 93.0,
+          "navigation_ms": 1022.5,
+          "content_ms": 110.1,
+          "render_ms": 1132.6,
+          "total_ms": 1422.4
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 354835,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 181.4,
+          "setup_ms": 91.9,
+          "navigation_ms": 1652.9,
+          "content_ms": 188.1,
+          "render_ms": 1841.0,
+          "total_ms": 2114.5
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 156132,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 202.4,
+          "setup_ms": 400.2,
+          "navigation_ms": 307.8,
+          "content_ms": 809.7,
+          "render_ms": 1117.5,
+          "total_ms": 1720.1
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 356980,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 167.2,
+          "setup_ms": 437.2,
+          "navigation_ms": 1890.4,
+          "content_ms": 436.2,
+          "render_ms": 2326.6,
+          "total_ms": 2931.0
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 654445,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 169.8,
+          "setup_ms": 469.5,
+          "navigation_ms": 5376.9,
+          "content_ms": 252.1,
+          "render_ms": 5629.0,
+          "total_ms": 6268.4
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "ai4i-careers",
+    "url": "https://ai4i.it/work-with-us/",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 89586,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 254.0,
+          "setup_ms": 123.9,
+          "navigation_ms": 911.0,
+          "content_ms": 169.2,
+          "render_ms": 1080.2,
+          "total_ms": 1458.1
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 89586,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 173.4,
+          "setup_ms": 93.9,
+          "navigation_ms": 853.0,
+          "content_ms": 119.0,
+          "render_ms": 972.0,
+          "total_ms": 1239.3
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 89600,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 163.7,
+          "setup_ms": 97.7,
+          "navigation_ms": 1631.6,
+          "content_ms": 83.9,
+          "render_ms": 1715.5,
+          "total_ms": 1977.0
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 540,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 191.6,
+          "setup_ms": 419.3,
+          "navigation_ms": 197.9,
+          "content_ms": 265.1,
+          "render_ms": 463.0,
+          "total_ms": 1073.9
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 90433,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 232.3,
+          "setup_ms": 360.1,
+          "navigation_ms": 1504.4,
+          "content_ms": 205.1,
+          "render_ms": 1709.5,
+          "total_ms": 2302.0
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 150209,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 168.0,
+          "setup_ms": 391.0,
+          "navigation_ms": 3093.5,
+          "content_ms": 258.5,
+          "render_ms": 3352.0,
+          "total_ms": 3911.0
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "airbnb-contractors",
+    "url": "https://magnit-airbnb.talentnet.community/",
+    "monitor_type": "api_sniffer",
+    "scraper_type": "skip",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 2363,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 235.5,
+          "setup_ms": 145.1,
+          "navigation_ms": 824.3,
+          "content_ms": 179.6,
+          "render_ms": 1003.9,
+          "total_ms": 1384.5
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 2363,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 198.6,
+          "setup_ms": 309.7,
+          "navigation_ms": 863.3,
+          "content_ms": 129.2,
+          "render_ms": 992.5,
+          "total_ms": 1500.9
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": false,
+        "bytes": 0,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 753.3,
+          "setup_ms": 136.1,
+          "navigation_ms": 1939.1,
+          "total_ms": 2885.9
+        },
+        "error": "Error: Page.content: Unable to retrieve content because the page is navigating and changing the content."
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 1377,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 173.4,
+          "setup_ms": 455.6,
+          "navigation_ms": 199.4,
+          "content_ms": 194.7,
+          "render_ms": 394.1,
+          "total_ms": 1023.1
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 1425,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 238.0,
+          "setup_ms": 473.4,
+          "navigation_ms": 1544.1,
+          "content_ms": 74.6,
+          "render_ms": 1618.6999999999998,
+          "total_ms": 2330.1
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 54039,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 199.3,
+          "setup_ms": 419.0,
+          "navigation_ms": 4320.0,
+          "content_ms": 236.4,
+          "render_ms": 4556.4,
+          "total_ms": 5174.8
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "ao-shearman-earlycareers-uk",
+    "url": "https://earlycareersuk.aoshearman.com/apply",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 104496,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 212.5,
+          "setup_ms": 109.1,
+          "navigation_ms": 981.9,
+          "content_ms": 84.8,
+          "render_ms": 1066.7,
+          "total_ms": 1388.3
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 104496,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 252.7,
+          "setup_ms": 216.1,
+          "navigation_ms": 1072.7,
+          "content_ms": 113.5,
+          "render_ms": 1186.2,
+          "total_ms": 1655.2
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 104693,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 216.7,
+          "setup_ms": 106.3,
+          "navigation_ms": 1649.6,
+          "content_ms": 126.3,
+          "render_ms": 1775.8999999999999,
+          "total_ms": 2099.8
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 2724,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 185.1,
+          "setup_ms": 365.1,
+          "navigation_ms": 798.9,
+          "content_ms": 194.1,
+          "render_ms": 993.0,
+          "total_ms": 1543.4
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 102051,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 223.4,
+          "setup_ms": 343.5,
+          "navigation_ms": 1069.7,
+          "content_ms": 436.1,
+          "render_ms": 1505.8000000000002,
+          "total_ms": 2073.1
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 230854,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 344.1,
+          "setup_ms": 321.4,
+          "navigation_ms": 3203.5,
+          "content_ms": 472.8,
+          "render_ms": 3676.3,
+          "total_ms": 4341.8
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "apheros-careers",
+    "url": "https://apheros.ch/en/open-positions",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 38270,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 231.5,
+          "setup_ms": 111.5,
+          "navigation_ms": 961.8,
+          "content_ms": 69.9,
+          "render_ms": 1031.7,
+          "total_ms": 1374.7
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 38270,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 175.7,
+          "setup_ms": 95.4,
+          "navigation_ms": 993.0,
+          "content_ms": 72.7,
+          "render_ms": 1065.7,
+          "total_ms": 1336.8
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 38270,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 191.0,
+          "setup_ms": 135.1,
+          "navigation_ms": 1371.7,
+          "content_ms": 69.5,
+          "render_ms": 1441.2,
+          "total_ms": 1767.4
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 38264,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 383.5,
+          "setup_ms": 563.0,
+          "navigation_ms": 652.1,
+          "content_ms": 942.1,
+          "render_ms": 1594.2,
+          "total_ms": 2540.7
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 38264,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 222.5,
+          "setup_ms": 458.2,
+          "navigation_ms": 1519.7,
+          "content_ms": 196.7,
+          "render_ms": 1716.4,
+          "total_ms": 2397.2
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 38264,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 243.5,
+          "setup_ms": 560.6,
+          "navigation_ms": 2430.0,
+          "content_ms": 95.3,
+          "render_ms": 2525.3,
+          "total_ms": 3329.5
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "axa-switzerland-careers",
+    "url": "https://jobs.axa.ch/?lang=en&limit=200",
+    "monitor_type": "dom",
+    "scraper_type": "json-ld",
+    "lightpanda": {
+      "commit": {
+        "ok": false,
+        "bytes": 0,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 192.5,
+          "setup_ms": 101.4,
+          "total_ms": 30539.7
+        },
+        "error": "TimeoutError: Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://jobs.axa.ch/?lang=en&limit=200\", waiting until \"commit\"\n"
+      },
+      "domcontentloaded": {
+        "ok": false,
+        "bytes": 0,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 207.5,
+          "setup_ms": 202.4,
+          "total_ms": 30467.4
+        },
+        "error": "TimeoutError: Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://jobs.axa.ch/?lang=en&limit=200\", waiting until \"domcontentloaded\"\n"
+      },
+      "networkidle": {
+        "ok": false,
+        "bytes": 0,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 212.8,
+          "setup_ms": 122.5,
+          "total_ms": 30461.8
+        },
+        "error": "TimeoutError: Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://jobs.axa.ch/?lang=en&limit=200\", waiting until \"networkidle\"\n"
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 293548,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 268.3,
+          "setup_ms": 344.5,
+          "navigation_ms": 901.6,
+          "content_ms": 591.3,
+          "render_ms": 1492.9,
+          "total_ms": 2106.0
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 320369,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 243.1,
+          "setup_ms": 437.3,
+          "navigation_ms": 1500.0,
+          "content_ms": 1814.0,
+          "render_ms": 3314.0,
+          "total_ms": 3994.4
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 320407,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 242.3,
+          "setup_ms": 413.4,
+          "navigation_ms": 6099.2,
+          "content_ms": 672.0,
+          "render_ms": 6771.2,
+          "total_ms": 7427.2
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "barclays-careers-contractors",
+    "url": "https://barclays.talent-community.com/projects",
+    "monitor_type": "sitemap",
+    "scraper_type": "dom",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 1670739,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 215.1,
+          "setup_ms": 92.7,
+          "navigation_ms": 3063.9,
+          "content_ms": 434.2,
+          "render_ms": 3498.1,
+          "total_ms": 3805.9
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 1670739,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 204.2,
+          "setup_ms": 89.4,
+          "navigation_ms": 3130.9,
+          "content_ms": 322.8,
+          "render_ms": 3453.7000000000003,
+          "total_ms": 3747.3
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 1670739,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 169.4,
+          "setup_ms": 86.5,
+          "navigation_ms": 3537.0,
+          "content_ms": 300.3,
+          "render_ms": 3837.3,
+          "total_ms": 4093.2
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 1666564,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 219.3,
+          "setup_ms": 472.4,
+          "navigation_ms": 1154.8,
+          "content_ms": 1324.5,
+          "render_ms": 2479.3,
+          "total_ms": 3171.0
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 1670543,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 192.6,
+          "setup_ms": 273.9,
+          "navigation_ms": 2335.6,
+          "content_ms": 1774.5,
+          "render_ms": 4110.1,
+          "total_ms": 4576.6
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 1670360,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 235.9,
+          "setup_ms": 472.7,
+          "navigation_ms": 2329.9,
+          "content_ms": 1722.6,
+          "render_ms": 4052.5,
+          "total_ms": 4761.2
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "bcge-careers",
+    "url": "https://jobs.bcge.ch/en",
+    "monitor_type": "dom",
+    "scraper_type": "nextdata",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 158549,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 367.0,
+          "setup_ms": 123.2,
+          "navigation_ms": 2381.9,
+          "content_ms": 105.7,
+          "render_ms": 2487.6,
+          "total_ms": 2977.8
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 158549,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 184.1,
+          "setup_ms": 111.8,
+          "navigation_ms": 2390.1,
+          "content_ms": 149.2,
+          "render_ms": 2539.2999999999997,
+          "total_ms": 2835.3
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 158973,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 279.1,
+          "setup_ms": 115.3,
+          "navigation_ms": 2998.1,
+          "content_ms": 128.3,
+          "render_ms": 3126.4,
+          "total_ms": 3522.4
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 149048,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 173.0,
+          "setup_ms": 461.0,
+          "navigation_ms": 1313.3,
+          "content_ms": 329.3,
+          "render_ms": 1642.6,
+          "total_ms": 2276.7
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 167088,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 197.0,
+          "setup_ms": 378.7,
+          "navigation_ms": 3110.1,
+          "content_ms": 247.0,
+          "render_ms": 3357.1,
+          "total_ms": 3932.9
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 167349,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 201.6,
+          "setup_ms": 342.8,
+          "navigation_ms": 4390.0,
+          "content_ms": 175.1,
+          "render_ms": 4565.1,
+          "total_ms": 5109.6
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "bloom-biorenewables-careers",
+    "url": "https://www.bloombiorenewables.com/company",
+    "monitor_type": "dom",
+    "scraper_type": "pdf",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 50928,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 228.8,
+          "setup_ms": 102.7,
+          "navigation_ms": 743.8,
+          "content_ms": 71.0,
+          "render_ms": 814.8,
+          "total_ms": 1146.5
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 51061,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 184.8,
+          "setup_ms": 119.7,
+          "navigation_ms": 582.2,
+          "content_ms": 115.9,
+          "render_ms": 698.1,
+          "total_ms": 1002.6
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": false,
+        "bytes": 0,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 170.8,
+          "setup_ms": 230.8,
+          "total_ms": 30445.8
+        },
+        "error": "TimeoutError: Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://www.bloombiorenewables.com/company\", waiting until \"networkidle\"\n"
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 1894,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 268.4,
+          "setup_ms": 420.8,
+          "navigation_ms": 178.9,
+          "content_ms": 50.0,
+          "render_ms": 228.9,
+          "total_ms": 918.1
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 51244,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 179.8,
+          "setup_ms": 455.1,
+          "navigation_ms": 1599.9,
+          "content_ms": 233.0,
+          "render_ms": 1832.9,
+          "total_ms": 2467.9
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 51241,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 185.9,
+          "setup_ms": 468.7,
+          "navigation_ms": 1812.7,
+          "content_ms": 323.2,
+          "render_ms": 2135.9,
+          "total_ms": 2790.6
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "boeing-bia",
+    "url": "https://phh.tbe.taleo.net/phh01/ats/careers/v2/jobSearch?act=redirectCwsV2&cws=38&org=BIA",
+    "monitor_type": "dom",
+    "scraper_type": "json-ld",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 77875,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 209.1,
+          "setup_ms": 100.2,
+          "navigation_ms": 6533.8,
+          "content_ms": 126.9,
+          "render_ms": 6660.7,
+          "total_ms": 6970.2
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 77875,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 166.2,
+          "setup_ms": 92.1,
+          "navigation_ms": 5450.9,
+          "content_ms": 82.7,
+          "render_ms": 5533.599999999999,
+          "total_ms": 5791.9
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 77875,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 234.2,
+          "setup_ms": 106.9,
+          "navigation_ms": 6772.0,
+          "content_ms": 126.0,
+          "render_ms": 6898.0,
+          "total_ms": 7239.1
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 921,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 448.3,
+          "setup_ms": 299.8,
+          "navigation_ms": 625.4,
+          "content_ms": 58.2,
+          "render_ms": 683.6,
+          "total_ms": 1431.8
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 77866,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 224.4,
+          "setup_ms": 509.3,
+          "navigation_ms": 1937.8,
+          "content_ms": 175.7,
+          "render_ms": 2113.5,
+          "total_ms": 2847.2
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 77916,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 205.6,
+          "setup_ms": 542.7,
+          "navigation_ms": 2964.6,
+          "content_ms": 103.3,
+          "render_ms": 3067.9,
+          "total_ms": 3816.9
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "booking-com-careers",
+    "url": "https://jobs.booking.com/booking/jobs",
+    "monitor_type": "dom",
+    "scraper_type": "json-ld",
+    "lightpanda": {
+      "commit": {
+        "ok": false,
+        "bytes": 0,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 239.0,
+          "setup_ms": 106.6,
+          "navigation_ms": 5065.0,
+          "total_ms": 5446.7
+        },
+        "error": "Error: Page.content: Unable to retrieve content because the page is navigating and changing the content."
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 564719,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 202.0,
+          "setup_ms": 105.8,
+          "navigation_ms": 2062.7,
+          "content_ms": 401.2,
+          "render_ms": 2463.8999999999996,
+          "total_ms": 2771.7
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 564719,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 172.6,
+          "setup_ms": 85.8,
+          "navigation_ms": 2522.2,
+          "content_ms": 221.2,
+          "render_ms": 2743.3999999999996,
+          "total_ms": 3001.9
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 1010,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 165.2,
+          "setup_ms": 471.7,
+          "navigation_ms": 4084.1,
+          "content_ms": 142.7,
+          "render_ms": 4226.8,
+          "total_ms": 4863.8
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 559109,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 310.6,
+          "setup_ms": 518.3,
+          "navigation_ms": 7640.7,
+          "content_ms": 2198.7,
+          "render_ms": 9839.4,
+          "total_ms": 10668.4
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 613354,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 215.8,
+          "setup_ms": 382.7,
+          "navigation_ms": 6331.6,
+          "content_ms": 592.5,
+          "render_ms": 6924.1,
+          "total_ms": 7523.1
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "browser-use-careers",
+    "url": "https://www.ycombinator.com/companies/browser-use/jobs",
+    "monitor_type": "dom",
+    "scraper_type": "json-ld",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 115643,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 202.6,
+          "setup_ms": 103.5,
+          "navigation_ms": 2781.0,
+          "content_ms": 74.9,
+          "render_ms": 2855.9,
+          "total_ms": 3162.7
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 115885,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 181.4,
+          "setup_ms": 125.8,
+          "navigation_ms": 2977.3,
+          "content_ms": 236.7,
+          "render_ms": 3214.0,
+          "total_ms": 3521.4
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 115885,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 167.1,
+          "setup_ms": 96.7,
+          "navigation_ms": 4755.8,
+          "content_ms": 101.4,
+          "render_ms": 4857.2,
+          "total_ms": 5121.2
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 4933,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 225.1,
+          "setup_ms": 357.0,
+          "navigation_ms": 1165.2,
+          "content_ms": 630.8,
+          "render_ms": 1796.0,
+          "total_ms": 2378.1
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 115462,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 219.8,
+          "setup_ms": 358.1,
+          "navigation_ms": 4722.4,
+          "content_ms": 1188.5,
+          "render_ms": 5910.9,
+          "total_ms": 6488.8
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 115909,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 170.5,
+          "setup_ms": 302.5,
+          "navigation_ms": 7214.5,
+          "content_ms": 131.6,
+          "render_ms": 7346.1,
+          "total_ms": 7819.3
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "cartier-careers",
+    "url": "https://careers.richemont.com/en/jobs/cartier/",
+    "monitor_type": "dom",
+    "scraper_type": "json-ld",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 4270,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 205.9,
+          "setup_ms": 147.4,
+          "navigation_ms": 101.7,
+          "content_ms": 42.2,
+          "render_ms": 143.9,
+          "total_ms": 497.3
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 4270,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 173.4,
+          "setup_ms": 121.8,
+          "navigation_ms": 78.4,
+          "content_ms": 42.3,
+          "render_ms": 120.7,
+          "total_ms": 416.0
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 4270,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 190.6,
+          "setup_ms": 92.6,
+          "navigation_ms": 593.8,
+          "content_ms": 57.5,
+          "render_ms": 651.3,
+          "total_ms": 934.5
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 4908,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 182.3,
+          "setup_ms": 465.7,
+          "navigation_ms": 287.2,
+          "content_ms": 196.1,
+          "render_ms": 483.29999999999995,
+          "total_ms": 1131.4
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 4901,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 203.5,
+          "setup_ms": 420.3,
+          "navigation_ms": 390.2,
+          "content_ms": 198.4,
+          "render_ms": 588.6,
+          "total_ms": 1212.5
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 4901,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 262.6,
+          "setup_ms": 408.2,
+          "navigation_ms": 1081.3,
+          "content_ms": 52.8,
+          "render_ms": 1134.1,
+          "total_ms": 1805.0
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "clifford-chance-careers",
+    "url": "https://jobs.cliffordchance.com/jobs",
+    "monitor_type": "sitemap",
+    "scraper_type": "json-ld",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 205456,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 205.3,
+          "setup_ms": 97.8,
+          "navigation_ms": 1714.8,
+          "content_ms": 133.3,
+          "render_ms": 1848.1,
+          "total_ms": 2151.3
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": false,
+        "bytes": 0,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 207.3,
+          "setup_ms": 110.7,
+          "navigation_ms": 2158.3,
+          "total_ms": 2505.9
+        },
+        "error": "Error: Page.content: Unable to retrieve content because the page is navigating and changing the content."
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 198577,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 172.0,
+          "setup_ms": 95.5,
+          "navigation_ms": 2475.1,
+          "content_ms": 183.0,
+          "render_ms": 2658.1,
+          "total_ms": 2925.7
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 10256,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 170.2,
+          "setup_ms": 318.2,
+          "navigation_ms": 497.7,
+          "content_ms": 56.2,
+          "render_ms": 553.9,
+          "total_ms": 1042.3
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 197439,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 187.2,
+          "setup_ms": 477.9,
+          "navigation_ms": 1972.3,
+          "content_ms": 529.3,
+          "render_ms": 2501.6,
+          "total_ms": 3166.9
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 208065,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 237.2,
+          "setup_ms": 512.4,
+          "navigation_ms": 5330.0,
+          "content_ms": 238.7,
+          "render_ms": 5568.7,
+          "total_ms": 6318.4
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "deloitte-careers-ce",
+    "url": "https://apply.deloittece.com/en_US/careers/SearchJobs",
+    "monitor_type": "dom",
+    "scraper_type": "skip",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 123891,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 261.6,
+          "setup_ms": 124.9,
+          "navigation_ms": 1388.1,
+          "content_ms": 236.9,
+          "render_ms": 1625.0,
+          "total_ms": 2012.3
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 123892,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 234.8,
+          "setup_ms": 113.0,
+          "navigation_ms": 1471.0,
+          "content_ms": 183.0,
+          "render_ms": 1654.0,
+          "total_ms": 2003.0
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 123906,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 270.6,
+          "setup_ms": 102.6,
+          "navigation_ms": 2083.9,
+          "content_ms": 122.8,
+          "render_ms": 2206.7000000000003,
+          "total_ms": 2580.2
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 29325,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 206.7,
+          "setup_ms": 273.8,
+          "navigation_ms": 1057.7,
+          "content_ms": 233.9,
+          "render_ms": 1291.6000000000001,
+          "total_ms": 1772.2
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 121921,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 277.4,
+          "setup_ms": 378.1,
+          "navigation_ms": 2305.7,
+          "content_ms": 514.3,
+          "render_ms": 2820.0,
+          "total_ms": 3475.6
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 123543,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 214.3,
+          "setup_ms": 411.4,
+          "navigation_ms": 3626.2,
+          "content_ms": 196.2,
+          "render_ms": 3822.3999999999996,
+          "total_ms": 4448.8
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "deloitte-careers-de",
+    "url": "https://job.deloitte.com",
+    "monitor_type": "sitemap",
+    "scraper_type": "dom",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 245743,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 221.6,
+          "setup_ms": 103.1,
+          "navigation_ms": 1528.1,
+          "content_ms": 104.8,
+          "render_ms": 1632.8999999999999,
+          "total_ms": 1957.6
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 245720,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 211.9,
+          "setup_ms": 161.1,
+          "navigation_ms": 1424.0,
+          "content_ms": 125.9,
+          "render_ms": 1549.9,
+          "total_ms": 1923.0
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 258025,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 171.5,
+          "setup_ms": 90.0,
+          "navigation_ms": 1873.3,
+          "content_ms": 139.5,
+          "render_ms": 2012.8,
+          "total_ms": 2274.4
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 214122,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 337.2,
+          "setup_ms": 469.0,
+          "navigation_ms": 669.9,
+          "content_ms": 966.8,
+          "render_ms": 1636.6999999999998,
+          "total_ms": 2443.6
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 257051,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 294.4,
+          "setup_ms": 394.1,
+          "navigation_ms": 2006.4,
+          "content_ms": 754.0,
+          "render_ms": 2760.4,
+          "total_ms": 3448.8
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 448178,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 182.0,
+          "setup_ms": 437.2,
+          "navigation_ms": 4300.5,
+          "content_ms": 195.9,
+          "render_ms": 4496.4,
+          "total_ms": 5115.7
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "deloitte-careers-us",
+    "url": "https://apply.deloitte.com/en_US/careers/SearchJobs",
+    "monitor_type": "dom",
+    "scraper_type": "json-ld",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 147781,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 423.5,
+          "setup_ms": 160.0,
+          "navigation_ms": 4416.2,
+          "content_ms": 80.8,
+          "render_ms": 4497.0,
+          "total_ms": 5080.6
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 147773,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 170.1,
+          "setup_ms": 91.3,
+          "navigation_ms": 4469.6,
+          "content_ms": 91.1,
+          "render_ms": 4560.700000000001,
+          "total_ms": 4822.2
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 147758,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 166.8,
+          "setup_ms": 89.0,
+          "navigation_ms": 4863.9,
+          "content_ms": 138.1,
+          "render_ms": 5002.0,
+          "total_ms": 5257.9
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 34489,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 158.9,
+          "setup_ms": 385.3,
+          "navigation_ms": 2191.4,
+          "content_ms": 117.6,
+          "render_ms": 2309.0,
+          "total_ms": 2853.2
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 140117,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 204.1,
+          "setup_ms": 262.5,
+          "navigation_ms": 4123.3,
+          "content_ms": 518.8,
+          "render_ms": 4642.1,
+          "total_ms": 5108.6
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 140548,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 253.6,
+          "setup_ms": 406.0,
+          "navigation_ms": 4394.1,
+          "content_ms": 440.8,
+          "render_ms": 4834.900000000001,
+          "total_ms": 5494.6
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "dphi-space-careers",
+    "url": "https://www.dphispace.com/careers",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 30059,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 253.4,
+          "setup_ms": 104.5,
+          "navigation_ms": 175.5,
+          "content_ms": 62.7,
+          "render_ms": 238.2,
+          "total_ms": 596.2
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 30059,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 267.6,
+          "setup_ms": 117.2,
+          "navigation_ms": 159.9,
+          "content_ms": 81.5,
+          "render_ms": 241.4,
+          "total_ms": 626.2
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 30379,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 179.5,
+          "setup_ms": 195.1,
+          "navigation_ms": 1092.6,
+          "content_ms": 58.1,
+          "render_ms": 1150.6999999999998,
+          "total_ms": 1525.4
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 30019,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 426.7,
+          "setup_ms": 549.7,
+          "navigation_ms": 121.3,
+          "content_ms": 539.6,
+          "render_ms": 660.9,
+          "total_ms": 1637.6
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 30019,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 254.9,
+          "setup_ms": 492.5,
+          "navigation_ms": 216.9,
+          "content_ms": 414.1,
+          "render_ms": 631.0,
+          "total_ms": 1378.4
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 30412,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 232.3,
+          "setup_ms": 360.3,
+          "navigation_ms": 1670.6,
+          "content_ms": 141.2,
+          "render_ms": 1811.8,
+          "total_ms": 2404.8
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "ekkiden-careers",
+    "url": "https://recruiterflow.com/ekkiden/jobs",
+    "monitor_type": "dom",
+    "scraper_type": "json-ld",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 238837,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 176.7,
+          "setup_ms": 91.4,
+          "navigation_ms": 895.5,
+          "content_ms": 149.5,
+          "render_ms": 1045.0,
+          "total_ms": 1313.2
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 238838,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 246.5,
+          "setup_ms": 138.8,
+          "navigation_ms": 880.6,
+          "content_ms": 137.2,
+          "render_ms": 1017.8,
+          "total_ms": 1403.2
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 238703,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 197.7,
+          "setup_ms": 169.8,
+          "navigation_ms": 2086.7,
+          "content_ms": 164.0,
+          "render_ms": 2250.7,
+          "total_ms": 2618.3
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 68851,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 200.0,
+          "setup_ms": 370.1,
+          "navigation_ms": 159.4,
+          "content_ms": 271.5,
+          "render_ms": 430.9,
+          "total_ms": 1001.1
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 238701,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 354.8,
+          "setup_ms": 401.9,
+          "navigation_ms": 1207.1,
+          "content_ms": 414.0,
+          "render_ms": 1621.1,
+          "total_ms": 2377.8
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 238702,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 303.5,
+          "setup_ms": 282.0,
+          "navigation_ms": 2985.4,
+          "content_ms": 163.3,
+          "render_ms": 3148.7000000000003,
+          "total_ms": 3734.3
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "endress-hauser-codewrights",
+    "url": "https://www.codewrights.de/de/arbeitgeber",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "lightpanda": {
+      "commit": {
+        "ok": false,
+        "bytes": 0,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 223.3,
+          "setup_ms": 190.9,
+          "total_ms": 30504.4
+        },
+        "error": "TimeoutError: Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://www.codewrights.de/de/arbeitgeber\", waiting until \"commit\"\n"
+      },
+      "domcontentloaded": {
+        "ok": false,
+        "bytes": 0,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 198.2,
+          "setup_ms": 84.3,
+          "total_ms": 30319.4
+        },
+        "error": "TimeoutError: Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://www.codewrights.de/de/arbeitgeber\", waiting until \"domcontentloaded\"\n"
+      },
+      "networkidle": {
+        "ok": false,
+        "bytes": 0,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 175.8,
+          "setup_ms": 99.2,
+          "total_ms": 30314.1
+        },
+        "error": "TimeoutError: Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://www.codewrights.de/de/arbeitgeber\", waiting until \"networkidle\"\n"
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 1094,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 346.4,
+          "setup_ms": 370.1,
+          "navigation_ms": 270.8,
+          "content_ms": 64.9,
+          "render_ms": 335.70000000000005,
+          "total_ms": 1052.3
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 41994,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 327.4,
+          "setup_ms": 441.0,
+          "navigation_ms": 1007.6,
+          "content_ms": 702.2,
+          "render_ms": 1709.8000000000002,
+          "total_ms": 2478.3
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 155978,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 219.9,
+          "setup_ms": 365.3,
+          "navigation_ms": 2825.5,
+          "content_ms": 339.4,
+          "render_ms": 3164.9,
+          "total_ms": 3750.2
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "evercore-experienced-hires",
+    "url": "https://evercore.tal.net/vx/mobile-0/appcentre-1/brand-5/candidate/jobboard/vacancy/3",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 81072,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 275.9,
+          "setup_ms": 176.8,
+          "navigation_ms": 1337.1,
+          "content_ms": 122.2,
+          "render_ms": 1459.3,
+          "total_ms": 1912.4
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 81072,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 284.2,
+          "setup_ms": 207.7,
+          "navigation_ms": 1671.6,
+          "content_ms": 135.6,
+          "render_ms": 1807.1999999999998,
+          "total_ms": 2299.1
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 81072,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 243.7,
+          "setup_ms": 111.7,
+          "navigation_ms": 2304.6,
+          "content_ms": 102.6,
+          "render_ms": 2407.2,
+          "total_ms": 2762.7
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 1735,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 234.5,
+          "setup_ms": 305.3,
+          "navigation_ms": 1299.7,
+          "content_ms": 70.7,
+          "render_ms": 1370.4,
+          "total_ms": 1910.4
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 81194,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 293.9,
+          "setup_ms": 399.9,
+          "navigation_ms": 1526.9,
+          "content_ms": 199.9,
+          "render_ms": 1726.8000000000002,
+          "total_ms": 2421.3
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 81194,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 161.8,
+          "setup_ms": 361.8,
+          "navigation_ms": 2401.0,
+          "content_ms": 108.3,
+          "render_ms": 2509.3,
+          "total_ms": 3033.0
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "exxonmobil-contingent",
+    "url": "https://exxonmobil.raiserecruiting.com/",
+    "monitor_type": "dom",
+    "scraper_type": "json-ld",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 216353,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 207.5,
+          "setup_ms": 110.9,
+          "navigation_ms": 1988.6,
+          "content_ms": 114.5,
+          "render_ms": 2103.1,
+          "total_ms": 2421.6
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 216353,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 198.1,
+          "setup_ms": 108.4,
+          "navigation_ms": 2001.1,
+          "content_ms": 113.3,
+          "render_ms": 2114.4,
+          "total_ms": 2421.0
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 216353,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 180.7,
+          "setup_ms": 100.7,
+          "navigation_ms": 3038.9,
+          "content_ms": 182.0,
+          "render_ms": 3220.9,
+          "total_ms": 3502.8
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 5510,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 158.0,
+          "setup_ms": 438.3,
+          "navigation_ms": 671.4,
+          "content_ms": 40.6,
+          "render_ms": 712.0,
+          "total_ms": 1308.4
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 215621,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 184.3,
+          "setup_ms": 480.4,
+          "navigation_ms": 2389.5,
+          "content_ms": 535.9,
+          "render_ms": 2925.4,
+          "total_ms": 3590.1
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 215751,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 208.2,
+          "setup_ms": 401.5,
+          "navigation_ms": 4716.3,
+          "content_ms": 332.7,
+          "render_ms": 5049.0,
+          "total_ms": 5659.2
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "finom-careers",
+    "url": "https://jobs.eu.lever.co/pnlfin",
+    "monitor_type": "dom",
+    "scraper_type": "json-ld",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 773304,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 277.4,
+          "setup_ms": 92.0,
+          "navigation_ms": 309.8,
+          "content_ms": 225.1,
+          "render_ms": 534.9,
+          "total_ms": 904.3
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 773304,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 202.3,
+          "setup_ms": 96.3,
+          "navigation_ms": 378.1,
+          "content_ms": 217.3,
+          "render_ms": 595.4000000000001,
+          "total_ms": 894.0
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 773304,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 181.3,
+          "setup_ms": 97.3,
+          "navigation_ms": 802.5,
+          "content_ms": 236.6,
+          "render_ms": 1039.1,
+          "total_ms": 1317.8
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 770795,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 247.3,
+          "setup_ms": 388.8,
+          "navigation_ms": 267.1,
+          "content_ms": 969.5,
+          "render_ms": 1236.6,
+          "total_ms": 1872.8
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 770715,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 262.3,
+          "setup_ms": 267.7,
+          "navigation_ms": 692.3,
+          "content_ms": 545.0,
+          "render_ms": 1237.3,
+          "total_ms": 1767.3
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 771711,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 177.6,
+          "setup_ms": 422.3,
+          "navigation_ms": 1598.3,
+          "content_ms": 607.6,
+          "render_ms": 2205.9,
+          "total_ms": 2806.1
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "general-dynamics-gdels",
+    "url": "https://www.gdels.com/en/jobs",
+    "monitor_type": "sitemap",
+    "scraper_type": "dom",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 5351,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 209.8,
+          "setup_ms": 140.4,
+          "navigation_ms": 144.5,
+          "content_ms": 113.9,
+          "render_ms": 258.4,
+          "total_ms": 608.7
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 5351,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 175.6,
+          "setup_ms": 89.7,
+          "navigation_ms": 203.1,
+          "content_ms": 41.7,
+          "render_ms": 244.8,
+          "total_ms": 510.3
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 5351,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 179.7,
+          "setup_ms": 91.6,
+          "navigation_ms": 626.2,
+          "content_ms": 43.1,
+          "render_ms": 669.3000000000001,
+          "total_ms": 940.7
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 405661,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 240.3,
+          "setup_ms": 379.3,
+          "navigation_ms": 274.5,
+          "content_ms": 588.3,
+          "render_ms": 862.8,
+          "total_ms": 1482.3
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 412749,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 162.9,
+          "setup_ms": 360.2,
+          "navigation_ms": 1206.8,
+          "content_ms": 472.5,
+          "render_ms": 1679.3,
+          "total_ms": 2202.4
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 413348,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 170.9,
+          "setup_ms": 401.6,
+          "navigation_ms": 2560.8,
+          "content_ms": 239.7,
+          "render_ms": 2800.5,
+          "total_ms": 3373.1
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "glencore-careers",
+    "url": "https://www.glencore.com/careers/jobs",
+    "monitor_type": "api_sniffer",
+    "scraper_type": "skip",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 180255,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 175.2,
+          "setup_ms": 103.4,
+          "navigation_ms": 1047.0,
+          "content_ms": 180.0,
+          "render_ms": 1227.0,
+          "total_ms": 1505.6
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 180255,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 169.4,
+          "setup_ms": 96.0,
+          "navigation_ms": 1102.1,
+          "content_ms": 164.8,
+          "render_ms": 1266.8999999999999,
+          "total_ms": 1532.4
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 179909,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 237.8,
+          "setup_ms": 123.2,
+          "navigation_ms": 1551.6,
+          "content_ms": 147.5,
+          "render_ms": 1699.1,
+          "total_ms": 2060.2
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 1812,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 225.3,
+          "setup_ms": 323.1,
+          "navigation_ms": 196.0,
+          "content_ms": 144.7,
+          "render_ms": 340.7,
+          "total_ms": 889.1
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 182527,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 168.8,
+          "setup_ms": 389.1,
+          "navigation_ms": 1609.0,
+          "content_ms": 749.8,
+          "render_ms": 2358.8,
+          "total_ms": 2916.9
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 182103,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 314.0,
+          "setup_ms": 299.3,
+          "navigation_ms": 2934.5,
+          "content_ms": 189.1,
+          "render_ms": 3123.6,
+          "total_ms": 3737.0
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "havas-careers-jobvite",
+    "url": "https://jobs.jobvite.com/thehavasgroup/",
+    "monitor_type": "dom",
+    "scraper_type": "json-ld",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 55783,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 255.3,
+          "setup_ms": 116.2,
+          "navigation_ms": 1639.3,
+          "content_ms": 141.0,
+          "render_ms": 1780.3,
+          "total_ms": 2152.5
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 55783,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 196.9,
+          "setup_ms": 111.1,
+          "navigation_ms": 1126.6,
+          "content_ms": 96.2,
+          "render_ms": 1222.8,
+          "total_ms": 1530.9
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 55783,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 364.3,
+          "setup_ms": 198.0,
+          "navigation_ms": 1816.2,
+          "content_ms": 187.2,
+          "render_ms": 2003.4,
+          "total_ms": 2565.7
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 1213,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 223.6,
+          "setup_ms": 395.0,
+          "navigation_ms": 507.1,
+          "content_ms": 187.4,
+          "render_ms": 694.5,
+          "total_ms": 1313.3
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 61397,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 232.6,
+          "setup_ms": 454.4,
+          "navigation_ms": 1853.9,
+          "content_ms": 442.8,
+          "render_ms": 2296.7000000000003,
+          "total_ms": 2983.9
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 61397,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 573.3,
+          "setup_ms": 854.2,
+          "navigation_ms": 3302.7,
+          "content_ms": 109.3,
+          "render_ms": 3412.0,
+          "total_ms": 4839.7
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "hays-careers",
+    "url": "https://www.hays.de/jobsuche/stellenangebote-jobs?q=&e=false&pt=false&ij=true",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 1470673,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 196.1,
+          "setup_ms": 97.4,
+          "navigation_ms": 3959.0,
+          "content_ms": 307.9,
+          "render_ms": 4266.9,
+          "total_ms": 4560.6
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": false,
+        "bytes": 0,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 178.0,
+          "setup_ms": 87.7,
+          "total_ms": 30335.9
+        },
+        "error": "TimeoutError: Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://www.hays.de/jobsuche/stellenangebote-jobs?q=&e=false&pt=false&ij=true\", waiting until \"domcontentloaded\"\n"
+      },
+      "networkidle": {
+        "ok": false,
+        "bytes": 0,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 183.3,
+          "setup_ms": 103.0,
+          "total_ms": 30366.1
+        },
+        "error": "TimeoutError: Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://www.hays.de/jobsuche/stellenangebote-jobs?q=&e=false&pt=false&ij=true\", waiting until \"networkidle\"\n"
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 454,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 169.6,
+          "setup_ms": 389.3,
+          "navigation_ms": 1185.7,
+          "content_ms": 213.7,
+          "render_ms": 1399.4,
+          "total_ms": 1958.3
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 1489752,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 190.7,
+          "setup_ms": 437.7,
+          "navigation_ms": 5505.7,
+          "content_ms": 859.4,
+          "render_ms": 6365.099999999999,
+          "total_ms": 6993.6
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": false,
+        "bytes": 0,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 243.5,
+          "setup_ms": 478.5,
+          "total_ms": 30857.4
+        },
+        "error": "TimeoutError: Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://www.hays.de/jobsuche/stellenangebote-jobs?q=&e=false&pt=false&ij=true\", waiting until \"networkidle\"\n"
+      }
+    }
+  },
+  {
+    "slug": "hexagon-robotics-careers",
+    "url": "https://robotics.hexagon.com/careers/",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 114143,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 350.8,
+          "setup_ms": 131.6,
+          "navigation_ms": 1393.4,
+          "content_ms": 274.5,
+          "render_ms": 1667.9,
+          "total_ms": 2150.4
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 113743,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 380.3,
+          "setup_ms": 182.9,
+          "navigation_ms": 1555.7,
+          "content_ms": 162.2,
+          "render_ms": 1717.9,
+          "total_ms": 2281.4
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 113739,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 192.6,
+          "setup_ms": 106.5,
+          "navigation_ms": 1965.8,
+          "content_ms": 135.4,
+          "render_ms": 2101.2,
+          "total_ms": 2400.4
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 24207,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 287.4,
+          "setup_ms": 530.8,
+          "navigation_ms": 306.4,
+          "content_ms": 199.4,
+          "render_ms": 505.79999999999995,
+          "total_ms": 1324.0
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 112722,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 272.2,
+          "setup_ms": 329.8,
+          "navigation_ms": 2103.2,
+          "content_ms": 726.3,
+          "render_ms": 2829.5,
+          "total_ms": 3431.5
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 231569,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 247.2,
+          "setup_ms": 422.5,
+          "navigation_ms": 6305.7,
+          "content_ms": 158.8,
+          "render_ms": 6464.5,
+          "total_ms": 7134.4
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "hyperskill-careers",
+    "url": "https://hyperskill.bamboohr.com/careers",
+    "monitor_type": "api_sniffer",
+    "scraper_type": "json-ld",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 392489,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 210.5,
+          "setup_ms": 86.1,
+          "navigation_ms": 4254.8,
+          "content_ms": 201.4,
+          "render_ms": 4456.2,
+          "total_ms": 4752.9
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 392489,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 179.6,
+          "setup_ms": 87.1,
+          "navigation_ms": 4545.8,
+          "content_ms": 239.4,
+          "render_ms": 4785.2,
+          "total_ms": 5052.1
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 412395,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 193.3,
+          "setup_ms": 82.3,
+          "navigation_ms": 7099.7,
+          "content_ms": 127.4,
+          "render_ms": 7227.099999999999,
+          "total_ms": 7502.8
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 13914,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 266.3,
+          "setup_ms": 257.1,
+          "navigation_ms": 980.4,
+          "content_ms": 54.0,
+          "render_ms": 1034.4,
+          "total_ms": 1557.9
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 391708,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 301.0,
+          "setup_ms": 573.2,
+          "navigation_ms": 6417.9,
+          "content_ms": 363.2,
+          "render_ms": 6781.099999999999,
+          "total_ms": 7655.6
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 412929,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 153.2,
+          "setup_ms": 558.3,
+          "navigation_ms": 9890.4,
+          "content_ms": 140.9,
+          "render_ms": 10031.3,
+          "total_ms": 10742.9
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "instories-careers",
+    "url": "https://wantapply.com/company/instories",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 5632,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 190.0,
+          "setup_ms": 86.8,
+          "navigation_ms": 116.7,
+          "content_ms": 35.7,
+          "render_ms": 152.4,
+          "total_ms": 429.3
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 5632,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 195.9,
+          "setup_ms": 103.8,
+          "navigation_ms": 148.4,
+          "content_ms": 40.1,
+          "render_ms": 188.5,
+          "total_ms": 488.2
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 5632,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 192.1,
+          "setup_ms": 102.0,
+          "navigation_ms": 636.4,
+          "content_ms": 54.4,
+          "render_ms": 690.8,
+          "total_ms": 985.0
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 133142,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 181.0,
+          "setup_ms": 361.0,
+          "navigation_ms": 322.4,
+          "content_ms": 595.5,
+          "render_ms": 917.9,
+          "total_ms": 1459.8
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 162619,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 203.5,
+          "setup_ms": 436.7,
+          "navigation_ms": 1106.2,
+          "content_ms": 852.5,
+          "render_ms": 1958.7,
+          "total_ms": 2599.0
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 170460,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 220.7,
+          "setup_ms": 409.1,
+          "navigation_ms": 5347.6,
+          "content_ms": 362.5,
+          "render_ms": 5710.1,
+          "total_ms": 6340.1
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "just-eat-takeaway-careers",
+    "url": "https://careers.justeattakeaway.com/global/en/search-results",
+    "monitor_type": "sitemap",
+    "scraper_type": "json-ld",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 106574,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 264.3,
+          "setup_ms": 166.8,
+          "navigation_ms": 1155.7,
+          "content_ms": 103.1,
+          "render_ms": 1258.8,
+          "total_ms": 1690.2
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 106574,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 214.8,
+          "setup_ms": 85.3,
+          "navigation_ms": 942.3,
+          "content_ms": 81.0,
+          "render_ms": 1023.3,
+          "total_ms": 1323.4
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 108127,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 161.4,
+          "setup_ms": 84.9,
+          "navigation_ms": 1539.6,
+          "content_ms": 139.2,
+          "render_ms": 1678.8,
+          "total_ms": 1925.2
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 58770,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 227.3,
+          "setup_ms": 451.6,
+          "navigation_ms": 610.3,
+          "content_ms": 66.4,
+          "render_ms": 676.6999999999999,
+          "total_ms": 1355.8
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 106429,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 151.4,
+          "setup_ms": 434.2,
+          "navigation_ms": 1303.2,
+          "content_ms": 309.4,
+          "render_ms": 1612.6,
+          "total_ms": 2198.3
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 1365920,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 330.9,
+          "setup_ms": 480.5,
+          "navigation_ms": 5313.4,
+          "content_ms": 746.6,
+          "render_ms": 6060.0,
+          "total_ms": 6871.4
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "kearney-careers",
+    "url": "https://kearney.recsolu.com/job_boards/1",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 193137,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 192.0,
+          "setup_ms": 91.8,
+          "navigation_ms": 4484.4,
+          "content_ms": 164.3,
+          "render_ms": 4648.7,
+          "total_ms": 4932.7
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 193137,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 230.6,
+          "setup_ms": 86.7,
+          "navigation_ms": 1792.6,
+          "content_ms": 236.8,
+          "render_ms": 2029.3999999999999,
+          "total_ms": 2347.0
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 193137,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 582.5,
+          "setup_ms": 129.6,
+          "navigation_ms": 2425.4,
+          "content_ms": 207.5,
+          "render_ms": 2632.9,
+          "total_ms": 3345.6
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 183,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 254.7,
+          "setup_ms": 399.6,
+          "navigation_ms": 762.5,
+          "content_ms": 41.3,
+          "render_ms": 803.8,
+          "total_ms": 1458.3
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 193603,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 261.4,
+          "setup_ms": 550.7,
+          "navigation_ms": 2609.0,
+          "content_ms": 353.0,
+          "render_ms": 2962.0,
+          "total_ms": 3774.4
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 309301,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 209.2,
+          "setup_ms": 459.4,
+          "navigation_ms": 4182.3,
+          "content_ms": 622.8,
+          "render_ms": 4805.1,
+          "total_ms": 5474.2
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "lek-careers-americas",
+    "url": "https://lek.tal.net/vx/lang-en-GB/mobile-0/appcentre-2/brand-2/candidate/jobboard/vacancy/3/adv/",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 60779,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 235.8,
+          "setup_ms": 160.3,
+          "navigation_ms": 874.4,
+          "content_ms": 81.6,
+          "render_ms": 956.0,
+          "total_ms": 1352.2
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 60779,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 281.1,
+          "setup_ms": 96.2,
+          "navigation_ms": 784.1,
+          "content_ms": 120.1,
+          "render_ms": 904.2,
+          "total_ms": 1281.4
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 60779,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 178.2,
+          "setup_ms": 89.4,
+          "navigation_ms": 1451.4,
+          "content_ms": 110.0,
+          "render_ms": 1561.4,
+          "total_ms": 1829.7
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 1674,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 547.5,
+          "setup_ms": 723.7,
+          "navigation_ms": 486.8,
+          "content_ms": 68.4,
+          "render_ms": 555.2,
+          "total_ms": 1826.5
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 60895,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 186.3,
+          "setup_ms": 399.1,
+          "navigation_ms": 1307.1,
+          "content_ms": 212.7,
+          "render_ms": 1519.8,
+          "total_ms": 2105.2
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 60895,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 249.1,
+          "setup_ms": 461.1,
+          "navigation_ms": 2035.3,
+          "content_ms": 78.0,
+          "render_ms": 2113.3,
+          "total_ms": 2823.6
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "lenovo-careers",
+    "url": "https://jobs.lenovo.com/en_US/careers/SearchJobs",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 76,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 187.8,
+          "setup_ms": 363.1,
+          "navigation_ms": 506.8,
+          "content_ms": 73.4,
+          "render_ms": 580.2,
+          "total_ms": 1131.2
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 76,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 188.9,
+          "setup_ms": 86.2,
+          "navigation_ms": 444.2,
+          "content_ms": 40.6,
+          "render_ms": 484.8,
+          "total_ms": 760.0
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 76,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 179.9,
+          "setup_ms": 90.9,
+          "navigation_ms": 1102.1,
+          "content_ms": 46.4,
+          "render_ms": 1148.5,
+          "total_ms": 1419.4
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 1202,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 167.3,
+          "setup_ms": 448.5,
+          "navigation_ms": 390.4,
+          "content_ms": 38.2,
+          "render_ms": 428.59999999999997,
+          "total_ms": 1044.4
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 1989,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 163.5,
+          "setup_ms": 448.6,
+          "navigation_ms": 1766.0,
+          "content_ms": 58.9,
+          "render_ms": 1824.9,
+          "total_ms": 2437.3
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 1989,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 206.0,
+          "setup_ms": 402.0,
+          "navigation_ms": 1633.4,
+          "content_ms": 267.8,
+          "render_ms": 1901.2,
+          "total_ms": 2509.3
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "lockheed-martin-intl-apac",
+    "url": "https://krb-sjobs.brassring.com/TGnewUI/Search/Home/Home?partnerid=30122&siteid=6621",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 941684,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 212.1,
+          "setup_ms": 97.2,
+          "navigation_ms": 5024.6,
+          "content_ms": 260.7,
+          "render_ms": 5285.3,
+          "total_ms": 5594.7
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 941530,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 182.5,
+          "setup_ms": 154.9,
+          "navigation_ms": 6204.4,
+          "content_ms": 262.4,
+          "render_ms": 6466.799999999999,
+          "total_ms": 6804.2
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 941682,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 190.5,
+          "setup_ms": 86.5,
+          "navigation_ms": 6154.8,
+          "content_ms": 952.4,
+          "render_ms": 7107.2,
+          "total_ms": 7384.3
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 7912,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 250.6,
+          "setup_ms": 366.8,
+          "navigation_ms": 755.6,
+          "content_ms": 54.1,
+          "render_ms": 809.7,
+          "total_ms": 1427.2
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 950659,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 167.2,
+          "setup_ms": 463.1,
+          "navigation_ms": 2905.1,
+          "content_ms": 1608.4,
+          "render_ms": 4513.5,
+          "total_ms": 5143.7
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 950959,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 328.2,
+          "setup_ms": 380.7,
+          "navigation_ms": 5203.7,
+          "content_ms": 314.4,
+          "render_ms": 5518.099999999999,
+          "total_ms": 6227.1
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "loreal-careers",
+    "url": "https://careers.loreal.com/en_US/jobs",
+    "monitor_type": "sitemap",
+    "scraper_type": "dom",
+    "lightpanda": {
+      "commit": {
+        "ok": false,
+        "bytes": 0,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 195.8,
+          "setup_ms": 82.9,
+          "navigation_ms": 5266.4,
+          "total_ms": 5953.3
+        },
+        "error": "Error: Page.content: Unable to retrieve content because the page is navigating and changing the content."
+      },
+      "domcontentloaded": {
+        "ok": false,
+        "bytes": 0,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 311.3,
+          "setup_ms": 213.9,
+          "navigation_ms": 5293.8,
+          "total_ms": 6080.2
+        },
+        "error": "Error: Page.content: Unable to retrieve content because the page is navigating and changing the content."
+      },
+      "networkidle": {
+        "ok": false,
+        "bytes": 0,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 186.7,
+          "setup_ms": 86.3,
+          "navigation_ms": 6970.7,
+          "total_ms": 7271.9
+        },
+        "error": "Error: Page.content: Unable to retrieve content because the page is navigating and changing the content."
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 30956,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 275.4,
+          "setup_ms": 383.5,
+          "navigation_ms": 267.9,
+          "content_ms": 345.3,
+          "render_ms": 613.2,
+          "total_ms": 1272.1
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 5487,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 170.5,
+          "setup_ms": 387.5,
+          "navigation_ms": 402.5,
+          "content_ms": 43.3,
+          "render_ms": 445.8,
+          "total_ms": 1003.9
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": false,
+        "bytes": 0,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 174.4,
+          "setup_ms": 424.0,
+          "total_ms": 30701.4
+        },
+        "error": "TimeoutError: Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://careers.loreal.com/en_US/jobs\", waiting until \"networkidle\"\n"
+      }
+    }
+  },
+  {
+    "slug": "lyceum-careers",
+    "url": "https://lyceum-technology.jobs.personio.com",
+    "monitor_type": "personio",
+    "scraper_type": "dom",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 73135,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 317.1,
+          "setup_ms": 114.1,
+          "navigation_ms": 606.9,
+          "content_ms": 554.2,
+          "render_ms": 1161.1,
+          "total_ms": 1592.4
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 73135,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 204.2,
+          "setup_ms": 120.1,
+          "navigation_ms": 407.9,
+          "content_ms": 188.3,
+          "render_ms": 596.2,
+          "total_ms": 920.6
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 73135,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 315.3,
+          "setup_ms": 111.9,
+          "navigation_ms": 866.1,
+          "content_ms": 81.1,
+          "render_ms": 947.2,
+          "total_ms": 1374.4
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 36588,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 444.0,
+          "setup_ms": 377.2,
+          "navigation_ms": 360.0,
+          "content_ms": 83.4,
+          "render_ms": 443.4,
+          "total_ms": 1265.0
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 73487,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 265.5,
+          "setup_ms": 550.5,
+          "navigation_ms": 702.3,
+          "content_ms": 217.4,
+          "render_ms": 919.6999999999999,
+          "total_ms": 1735.9
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 73156,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 194.4,
+          "setup_ms": 463.3,
+          "navigation_ms": 1508.5,
+          "content_ms": 432.5,
+          "render_ms": 1941.0,
+          "total_ms": 2599.1
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "mentiora-ai-careers",
+    "url": "https://mentiora.ai",
+    "monitor_type": "dom",
+    "scraper_type": "embedded",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 31560,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 191.9,
+          "setup_ms": 107.1,
+          "navigation_ms": 152.3,
+          "content_ms": 61.2,
+          "render_ms": 213.5,
+          "total_ms": 512.5
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 31560,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 176.0,
+          "setup_ms": 234.7,
+          "navigation_ms": 113.7,
+          "content_ms": 68.7,
+          "render_ms": 182.4,
+          "total_ms": 593.2
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 31560,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 165.2,
+          "setup_ms": 90.9,
+          "navigation_ms": 621.1,
+          "content_ms": 55.9,
+          "render_ms": 677.0,
+          "total_ms": 933.2
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 15307,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 204.0,
+          "setup_ms": 446.9,
+          "navigation_ms": 288.7,
+          "content_ms": 211.8,
+          "render_ms": 500.5,
+          "total_ms": 1151.6
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 89557,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 169.0,
+          "setup_ms": 438.9,
+          "navigation_ms": 1408.2,
+          "content_ms": 597.1,
+          "render_ms": 2005.3000000000002,
+          "total_ms": 2613.2
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 138890,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 202.8,
+          "setup_ms": 582.8,
+          "navigation_ms": 4802.7,
+          "content_ms": 442.2,
+          "render_ms": 5244.9,
+          "total_ms": 6030.7
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "mercedes-benz-careers-taleo",
+    "url": "https://daimler.taleo.net/careersection/ex/jobsearch.ftl?lang=en",
+    "monitor_type": "api_sniffer",
+    "scraper_type": "dom",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 64319,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 190.3,
+          "setup_ms": 102.9,
+          "navigation_ms": 1217.2,
+          "content_ms": 55.3,
+          "render_ms": 1272.5,
+          "total_ms": 1565.8
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 64371,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 189.0,
+          "setup_ms": 87.1,
+          "navigation_ms": 1232.7,
+          "content_ms": 107.9,
+          "render_ms": 1340.6000000000001,
+          "total_ms": 1616.8
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 101290,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 217.7,
+          "setup_ms": 103.5,
+          "navigation_ms": 2505.5,
+          "content_ms": 99.3,
+          "render_ms": 2604.8,
+          "total_ms": 2926.1
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 13411,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 157.4,
+          "setup_ms": 410.3,
+          "navigation_ms": 350.7,
+          "content_ms": 74.4,
+          "render_ms": 425.1,
+          "total_ms": 992.9
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 47219,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 164.8,
+          "setup_ms": 490.6,
+          "navigation_ms": 598.4,
+          "content_ms": 302.5,
+          "render_ms": 900.9,
+          "total_ms": 1556.5
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 113436,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 165.8,
+          "setup_ms": 536.9,
+          "navigation_ms": 3802.6,
+          "content_ms": 75.7,
+          "render_ms": 3878.2999999999997,
+          "total_ms": 4581.1
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "merck-global-en",
+    "url": "https://careers.merckgroup.com/global/en/search-results",
+    "monitor_type": "sitemap",
+    "scraper_type": "json-ld",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 577190,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 165.1,
+          "setup_ms": 86.1,
+          "navigation_ms": 1757.6,
+          "content_ms": 149.7,
+          "render_ms": 1907.3,
+          "total_ms": 2158.6
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 582602,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 183.4,
+          "setup_ms": 79.7,
+          "navigation_ms": 1844.3,
+          "content_ms": 197.6,
+          "render_ms": 2041.8999999999999,
+          "total_ms": 2305.1
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 582602,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 165.9,
+          "setup_ms": 88.6,
+          "navigation_ms": 3118.6,
+          "content_ms": 474.7,
+          "render_ms": 3593.2999999999997,
+          "total_ms": 3847.9
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 70144,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 256.1,
+          "setup_ms": 385.3,
+          "navigation_ms": 420.2,
+          "content_ms": 130.3,
+          "render_ms": 550.5,
+          "total_ms": 1192.0
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 557133,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 163.2,
+          "setup_ms": 543.0,
+          "navigation_ms": 1395.5,
+          "content_ms": 672.7,
+          "render_ms": 2068.2,
+          "total_ms": 2774.5
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 1420570,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 190.0,
+          "setup_ms": 366.5,
+          "navigation_ms": 8711.6,
+          "content_ms": 612.8,
+          "render_ms": 9324.4,
+          "total_ms": 9882.6
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "mercuria-careers",
+    "url": "https://mercuria.com/?s=&post_type=job",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "lightpanda": {
+      "commit": {
+        "ok": false,
+        "bytes": 0,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 209.7,
+          "setup_ms": 116.5,
+          "navigation_ms": 96.2,
+          "total_ms": 448.9
+        },
+        "error": "Error: Page.content: Unable to retrieve content because the page is navigating and changing the content."
+      },
+      "domcontentloaded": {
+        "ok": false,
+        "bytes": 0,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 185.2,
+          "setup_ms": 109.5,
+          "navigation_ms": 93.2,
+          "total_ms": 414.2
+        },
+        "error": "Error: Page.content: Unable to retrieve content because the page is navigating and changing the content."
+      },
+      "networkidle": {
+        "ok": false,
+        "bytes": 0,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 176.5,
+          "setup_ms": 101.0,
+          "total_ms": 576.0
+        },
+        "error": "TargetClosedError: Page.goto: Target page, context or browser has been closed\nCall log:\n  - navigating to \"https://mercuria.com/?s=&post_type=job\", waiting until \"networkidle\"\n"
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": false,
+        "bytes": 0,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 194.1,
+          "setup_ms": 439.2,
+          "total_ms": 873.5
+        },
+        "error": "Error: Page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://mercuria.com/?s=&post_type=job\nCall log:\n  - navigating to \"https://mercuria.com/?s=&post_type=job\", waiting until \"commit\"\n"
+      },
+      "domcontentloaded": {
+        "ok": false,
+        "bytes": 0,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 243.6,
+          "setup_ms": 467.1,
+          "total_ms": 1049.9
+        },
+        "error": "Error: Page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://mercuria.com/?s=&post_type=job\nCall log:\n  - navigating to \"https://mercuria.com/?s=&post_type=job\", waiting until \"domcontentloaded\"\n"
+      },
+      "networkidle": {
+        "ok": false,
+        "bytes": 0,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 185.5,
+          "setup_ms": 462.0,
+          "total_ms": 1049.3
+        },
+        "error": "Error: Page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://mercuria.com/?s=&post_type=job\nCall log:\n  - navigating to \"https://mercuria.com/?s=&post_type=job\", waiting until \"networkidle\"\n"
+      }
+    }
+  },
+  {
+    "slug": "miromind-ai-careers",
+    "url": "https://www.miromind.ai/career",
+    "monitor_type": "sitemap",
+    "scraper_type": "dom",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 688564,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 241.2,
+          "setup_ms": 183.6,
+          "navigation_ms": 1135.8,
+          "content_ms": 288.1,
+          "render_ms": 1423.9,
+          "total_ms": 1848.9
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 688564,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 204.3,
+          "setup_ms": 132.1,
+          "navigation_ms": 1135.0,
+          "content_ms": 240.1,
+          "render_ms": 1375.1,
+          "total_ms": 1711.7
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": false,
+        "bytes": 0,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 199.1,
+          "setup_ms": 142.0,
+          "navigation_ms": 4612.2,
+          "total_ms": 4983.6
+        },
+        "error": "Error: Page.content: Unable to retrieve content because the page is navigating and changing the content."
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 699391,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 237.4,
+          "setup_ms": 563.2,
+          "navigation_ms": 241.6,
+          "content_ms": 1184.5,
+          "render_ms": 1426.1,
+          "total_ms": 2227.0
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 699391,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 161.5,
+          "setup_ms": 407.9,
+          "navigation_ms": 408.2,
+          "content_ms": 1042.6,
+          "render_ms": 1450.8,
+          "total_ms": 2020.4
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 640525,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 200.0,
+          "setup_ms": 308.4,
+          "navigation_ms": 7252.8,
+          "content_ms": 211.8,
+          "render_ms": 7464.6,
+          "total_ms": 7973.1
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "moelis-careers-taleo",
+    "url": "https://moelis-careers.tal.net/candidate/jobboard/vacancy/2/adv/",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 62966,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 200.1,
+          "setup_ms": 109.0,
+          "navigation_ms": 1130.6,
+          "content_ms": 71.1,
+          "render_ms": 1201.6999999999998,
+          "total_ms": 1510.9
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 62966,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 159.3,
+          "setup_ms": 103.7,
+          "navigation_ms": 1013.5,
+          "content_ms": 68.4,
+          "render_ms": 1081.9,
+          "total_ms": 1344.9
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 62966,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 242.9,
+          "setup_ms": 93.4,
+          "navigation_ms": 1868.6,
+          "content_ms": 102.4,
+          "render_ms": 1971.0,
+          "total_ms": 2307.3
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 1723,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 164.1,
+          "setup_ms": 429.3,
+          "navigation_ms": 786.2,
+          "content_ms": 60.4,
+          "render_ms": 846.6,
+          "total_ms": 1440.0
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 63024,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 171.6,
+          "setup_ms": 319.5,
+          "navigation_ms": 5307.3,
+          "content_ms": 205.0,
+          "render_ms": 5512.3,
+          "total_ms": 6003.6
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 63004,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 185.4,
+          "setup_ms": 367.1,
+          "navigation_ms": 2196.7,
+          "content_ms": 217.9,
+          "render_ms": 2414.6,
+          "total_ms": 2967.2
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "nikon-careers-us",
+    "url": "https://recruiting.paylocity.com/recruiting/jobs/All/15fca012-892c-4721-a285-e56e02980e47/Nikon-Inc",
+    "monitor_type": "dom",
+    "scraper_type": "json-ld",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 30781,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 183.5,
+          "setup_ms": 84.0,
+          "navigation_ms": 2478.7,
+          "content_ms": 101.5,
+          "render_ms": 2580.2,
+          "total_ms": 2848.0
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 30780,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 207.0,
+          "setup_ms": 92.4,
+          "navigation_ms": 2171.8,
+          "content_ms": 116.1,
+          "render_ms": 2287.9,
+          "total_ms": 2587.5
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 30220,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 230.7,
+          "setup_ms": 97.8,
+          "navigation_ms": 2848.8,
+          "content_ms": 81.5,
+          "render_ms": 2930.3,
+          "total_ms": 3259.4
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 13128,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 226.8,
+          "setup_ms": 523.5,
+          "navigation_ms": 705.2,
+          "content_ms": 57.1,
+          "render_ms": 762.3000000000001,
+          "total_ms": 1512.8
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 29047,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 217.9,
+          "setup_ms": 379.2,
+          "navigation_ms": 2234.3,
+          "content_ms": 377.0,
+          "render_ms": 2611.3,
+          "total_ms": 3208.6
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 147125,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 208.4,
+          "setup_ms": 436.1,
+          "navigation_ms": 3897.1,
+          "content_ms": 251.6,
+          "render_ms": 4148.7,
+          "total_ms": 4793.2
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "northrop-grumman-directemployers",
+    "url": "https://northropgrumman.jobs/jobs/",
+    "monitor_type": "sitemap",
+    "scraper_type": "json-ld",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 50740,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 293.6,
+          "setup_ms": 103.4,
+          "navigation_ms": 1034.2,
+          "content_ms": 110.6,
+          "render_ms": 1144.8,
+          "total_ms": 1541.7
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 50740,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 174.0,
+          "setup_ms": 82.2,
+          "navigation_ms": 671.3,
+          "content_ms": 61.0,
+          "render_ms": 732.3,
+          "total_ms": 988.5
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 77197,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 151.0,
+          "setup_ms": 83.4,
+          "navigation_ms": 2898.0,
+          "content_ms": 80.9,
+          "render_ms": 2978.9,
+          "total_ms": 3213.3
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 49782,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 366.2,
+          "setup_ms": 711.6,
+          "navigation_ms": 513.3,
+          "content_ms": 104.6,
+          "render_ms": 617.9,
+          "total_ms": 1695.7
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 50421,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 179.6,
+          "setup_ms": 507.7,
+          "navigation_ms": 646.6,
+          "content_ms": 60.3,
+          "render_ms": 706.9,
+          "total_ms": 1394.3
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 76561,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 175.6,
+          "setup_ms": 416.7,
+          "navigation_ms": 3115.7,
+          "content_ms": 61.4,
+          "render_ms": 3177.1,
+          "total_ms": 3769.5
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "northrop-grumman-veterans",
+    "url": "https://northropgrumman-veterans.jobs/",
+    "monitor_type": "sitemap",
+    "scraper_type": "json-ld",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 81209,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 187.9,
+          "setup_ms": 98.4,
+          "navigation_ms": 1074.5,
+          "content_ms": 55.9,
+          "render_ms": 1130.4,
+          "total_ms": 1416.8
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 94691,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 148.9,
+          "setup_ms": 79.7,
+          "navigation_ms": 1076.7,
+          "content_ms": 361.9,
+          "render_ms": 1438.6,
+          "total_ms": 1667.2
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 96525,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 162.6,
+          "setup_ms": 90.3,
+          "navigation_ms": 2615.8,
+          "content_ms": 102.9,
+          "render_ms": 2718.7000000000003,
+          "total_ms": 2971.5
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 80461,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 160.1,
+          "setup_ms": 453.3,
+          "navigation_ms": 449.0,
+          "content_ms": 77.4,
+          "render_ms": 526.4,
+          "total_ms": 1139.8
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 94204,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 262.3,
+          "setup_ms": 403.5,
+          "navigation_ms": 1191.7,
+          "content_ms": 520.4,
+          "render_ms": 1712.1,
+          "total_ms": 2377.9
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 165297,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 177.5,
+          "setup_ms": 376.8,
+          "navigation_ms": 4814.7,
+          "content_ms": 114.7,
+          "render_ms": 4929.4,
+          "total_ms": 5484.0
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "oliver-wyman-marsh-eu",
+    "url": "https://careers.marsh.com/eu/en/oliver-wyman-search",
+    "monitor_type": "sitemap",
+    "scraper_type": "json-ld",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 131235,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 177.4,
+          "setup_ms": 85.0,
+          "navigation_ms": 2893.4,
+          "content_ms": 244.8,
+          "render_ms": 3138.2000000000003,
+          "total_ms": 3400.7
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 130118,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 1899.0,
+          "setup_ms": 96.4,
+          "navigation_ms": 2108.2,
+          "content_ms": 97.7,
+          "render_ms": 2205.8999999999996,
+          "total_ms": 4201.7
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 130307,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 656.7,
+          "setup_ms": 88.0,
+          "navigation_ms": 2409.1,
+          "content_ms": 113.9,
+          "render_ms": 2523.0,
+          "total_ms": 3268.1
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 73762,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 3205.0,
+          "setup_ms": 470.4,
+          "navigation_ms": 1798.1,
+          "content_ms": 105.8,
+          "render_ms": 1903.8999999999999,
+          "total_ms": 5579.3
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 137810,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 1662.3,
+          "setup_ms": 325.8,
+          "navigation_ms": 2956.8,
+          "content_ms": 370.6,
+          "render_ms": 3327.4,
+          "total_ms": 5315.6
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 1210228,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 946.8,
+          "setup_ms": 406.0,
+          "navigation_ms": 7481.2,
+          "content_ms": 635.2,
+          "render_ms": 8116.4,
+          "total_ms": 9469.9
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "oliver-wyman-workday-mmc",
+    "url": "https://mmc.wd1.myworkdayjobs.com/en-US/MMC",
+    "monitor_type": "workday",
+    "scraper_type": "json-ld",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 64368,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 963.0,
+          "setup_ms": 104.5,
+          "navigation_ms": 2792.8,
+          "content_ms": 85.1,
+          "render_ms": 2877.9,
+          "total_ms": 3945.5
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 64368,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 1349.7,
+          "setup_ms": 98.0,
+          "navigation_ms": 2427.0,
+          "content_ms": 159.4,
+          "render_ms": 2586.4,
+          "total_ms": 4034.2
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 146027,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 1194.4,
+          "setup_ms": 87.0,
+          "navigation_ms": 5110.1,
+          "content_ms": 116.4,
+          "render_ms": 5226.5,
+          "total_ms": 6508.7
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 6526,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 207.0,
+          "setup_ms": 443.0,
+          "navigation_ms": 732.5,
+          "content_ms": 69.0,
+          "render_ms": 801.5,
+          "total_ms": 1451.5
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 6526,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 266.3,
+          "setup_ms": 334.2,
+          "navigation_ms": 821.5,
+          "content_ms": 49.4,
+          "render_ms": 870.9,
+          "total_ms": 1471.5
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 64056,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 211.1,
+          "setup_ms": 404.6,
+          "navigation_ms": 2428.4,
+          "content_ms": 403.4,
+          "render_ms": 2831.8,
+          "total_ms": 3447.7
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "oracle-careers",
+    "url": "https://careers.oracle.com/en/sites/jobsearch/jobs",
+    "monitor_type": "sitemap",
+    "scraper_type": "dom",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 53620,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 179.4,
+          "setup_ms": 106.9,
+          "navigation_ms": 3111.3,
+          "content_ms": 58.6,
+          "render_ms": 3169.9,
+          "total_ms": 3456.2
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 53620,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 167.8,
+          "setup_ms": 92.5,
+          "navigation_ms": 2692.6,
+          "content_ms": 74.9,
+          "render_ms": 2767.5,
+          "total_ms": 3027.9
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": false,
+        "bytes": 0,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 183.1,
+          "setup_ms": 105.1,
+          "navigation_ms": 3014.5,
+          "total_ms": 3897.7
+        },
+        "error": "Error: Page.content: Unable to retrieve content because the page is navigating and changing the content."
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 0,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 192.7,
+          "setup_ms": 284.0,
+          "navigation_ms": 958.4,
+          "content_ms": 46.9,
+          "render_ms": 1005.3,
+          "total_ms": 1482.1
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 53592,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 259.6,
+          "setup_ms": 407.4,
+          "navigation_ms": 4210.2,
+          "content_ms": 200.1,
+          "render_ms": 4410.3,
+          "total_ms": 5077.4
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 307958,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 171.4,
+          "setup_ms": 482.9,
+          "navigation_ms": 6033.6,
+          "content_ms": 3836.6,
+          "render_ms": 9870.2,
+          "total_ms": 10526.2
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "pfizer-dejobs",
+    "url": "https://pfizer.dejobs.org/jobs/",
+    "monitor_type": "sitemap",
+    "scraper_type": "json-ld",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 2409,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 682.8,
+          "setup_ms": 109.0,
+          "navigation_ms": 1016.1,
+          "content_ms": 68.4,
+          "render_ms": 1084.5,
+          "total_ms": 1876.3
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 2409,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 187.4,
+          "setup_ms": 94.0,
+          "navigation_ms": 1211.5,
+          "content_ms": 52.3,
+          "render_ms": 1263.8,
+          "total_ms": 1545.3
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 22508,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 228.8,
+          "setup_ms": 104.8,
+          "navigation_ms": 2925.3,
+          "content_ms": 154.4,
+          "render_ms": 3079.7000000000003,
+          "total_ms": 3413.4
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 1991,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 220.9,
+          "setup_ms": 380.6,
+          "navigation_ms": 518.9,
+          "content_ms": 40.7,
+          "render_ms": 559.6,
+          "total_ms": 1161.3
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 2199,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 190.4,
+          "setup_ms": 429.0,
+          "navigation_ms": 784.7,
+          "content_ms": 109.5,
+          "render_ms": 894.2,
+          "total_ms": 1513.7
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 22286,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 278.2,
+          "setup_ms": 524.0,
+          "navigation_ms": 3146.2,
+          "content_ms": 78.5,
+          "render_ms": 3224.7,
+          "total_ms": 4027.1
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "pictet-group-careers",
+    "url": "https://career012.successfactors.eu/career?company=banquepict&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 211800,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 268.4,
+          "setup_ms": 130.0,
+          "navigation_ms": 4735.6,
+          "content_ms": 130.6,
+          "render_ms": 4866.200000000001,
+          "total_ms": 5264.8
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 211760,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 177.0,
+          "setup_ms": 92.6,
+          "navigation_ms": 4663.1,
+          "content_ms": 126.5,
+          "render_ms": 4789.6,
+          "total_ms": 5059.3
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 211764,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 206.5,
+          "setup_ms": 89.1,
+          "navigation_ms": 4559.1,
+          "content_ms": 131.8,
+          "render_ms": 4690.900000000001,
+          "total_ms": 4986.7
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 25268,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 293.7,
+          "setup_ms": 369.5,
+          "navigation_ms": 428.6,
+          "content_ms": 459.3,
+          "render_ms": 887.9000000000001,
+          "total_ms": 1551.2
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 212722,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 184.8,
+          "setup_ms": 439.7,
+          "navigation_ms": 5320.2,
+          "content_ms": 507.7,
+          "render_ms": 5827.9,
+          "total_ms": 6452.5
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 257915,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 281.7,
+          "setup_ms": 429.2,
+          "navigation_ms": 5721.4,
+          "content_ms": 143.9,
+          "render_ms": 5865.299999999999,
+          "total_ms": 6576.3
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "playrix-careers",
+    "url": "https://playrix.com/job/open",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 28552,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 221.4,
+          "setup_ms": 109.2,
+          "navigation_ms": 601.9,
+          "content_ms": 144.7,
+          "render_ms": 746.5999999999999,
+          "total_ms": 1077.2
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 28552,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 204.3,
+          "setup_ms": 108.2,
+          "navigation_ms": 689.4,
+          "content_ms": 97.3,
+          "render_ms": 786.6999999999999,
+          "total_ms": 1099.2
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 28679,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 193.2,
+          "setup_ms": 133.7,
+          "navigation_ms": 1448.6,
+          "content_ms": 648.1,
+          "render_ms": 2096.7,
+          "total_ms": 2423.5
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 3075,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 184.6,
+          "setup_ms": 443.4,
+          "navigation_ms": 203.6,
+          "content_ms": 194.3,
+          "render_ms": 397.9,
+          "total_ms": 1026.0
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 3455,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 558.6,
+          "setup_ms": 595.2,
+          "navigation_ms": 887.8,
+          "content_ms": 187.0,
+          "render_ms": 1074.8,
+          "total_ms": 2228.7
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 149099,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 207.0,
+          "setup_ms": 481.5,
+          "navigation_ms": 3471.1,
+          "content_ms": 229.7,
+          "render_ms": 3700.7999999999997,
+          "total_ms": 4389.4
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "postfinance-careers",
+    "url": "https://www.post.ch/en/jobs/jobs",
+    "monitor_type": "dom",
+    "scraper_type": "json-ld",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 186265,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 189.6,
+          "setup_ms": 81.5,
+          "navigation_ms": 3601.7,
+          "content_ms": 234.7,
+          "render_ms": 3836.3999999999996,
+          "total_ms": 4107.5
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 186265,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 207.3,
+          "setup_ms": 92.4,
+          "navigation_ms": 3438.3,
+          "content_ms": 250.6,
+          "render_ms": 3688.9,
+          "total_ms": 3988.6
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 187123,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 185.5,
+          "setup_ms": 97.7,
+          "navigation_ms": 4105.3,
+          "content_ms": 116.2,
+          "render_ms": 4221.5,
+          "total_ms": 4504.7
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 2143,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 171.9,
+          "setup_ms": 365.9,
+          "navigation_ms": 1767.9,
+          "content_ms": 37.8,
+          "render_ms": 1805.7,
+          "total_ms": 2343.5
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 119544,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 168.8,
+          "setup_ms": 327.5,
+          "navigation_ms": 2205.3,
+          "content_ms": 502.0,
+          "render_ms": 2707.3,
+          "total_ms": 3203.6
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 182233,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 220.6,
+          "setup_ms": 379.5,
+          "navigation_ms": 6018.6,
+          "content_ms": 203.8,
+          "render_ms": 6222.400000000001,
+          "total_ms": 6822.7
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "psi-careers",
+    "url": "https://www.psi.ch/en/hr/job-opportunities",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 246529,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 204.3,
+          "setup_ms": 134.9,
+          "navigation_ms": 377.9,
+          "content_ms": 119.6,
+          "render_ms": 497.5,
+          "total_ms": 836.8
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 246529,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 175.8,
+          "setup_ms": 111.8,
+          "navigation_ms": 362.4,
+          "content_ms": 115.3,
+          "render_ms": 477.7,
+          "total_ms": 765.3
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 246529,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 179.2,
+          "setup_ms": 101.2,
+          "navigation_ms": 818.7,
+          "content_ms": 126.4,
+          "render_ms": 945.1,
+          "total_ms": 1225.5
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 241993,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 215.9,
+          "setup_ms": 480.7,
+          "navigation_ms": 148.7,
+          "content_ms": 621.9,
+          "render_ms": 770.5999999999999,
+          "total_ms": 1467.5
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 247169,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 182.7,
+          "setup_ms": 428.0,
+          "navigation_ms": 906.4,
+          "content_ms": 145.1,
+          "render_ms": 1051.5,
+          "total_ms": 1662.1
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 247169,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 186.2,
+          "setup_ms": 369.7,
+          "navigation_ms": 1399.9,
+          "content_ms": 173.9,
+          "render_ms": 1573.8000000000002,
+          "total_ms": 2129.7
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "revolut-careers",
+    "url": "https://www.revolut.com/careers/",
+    "monitor_type": "nextdata",
+    "scraper_type": "nextdata",
+    "lightpanda": {
+      "commit": {
+        "ok": false,
+        "bytes": 0,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 298.0,
+          "setup_ms": 195.7,
+          "total_ms": 2456.2
+        },
+        "error": "TargetClosedError: Page.goto: Target page, context or browser has been closed\nCall log:\n  - navigating to \"https://www.revolut.com/careers/\", waiting until \"commit\"\n"
+      },
+      "domcontentloaded": {
+        "ok": false,
+        "bytes": 0,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 227.0,
+          "setup_ms": 103.1,
+          "total_ms": 2323.7
+        },
+        "error": "TargetClosedError: Page.goto: Target page, context or browser has been closed\nCall log:\n  - navigating to \"https://www.revolut.com/careers/\", waiting until \"domcontentloaded\"\n"
+      },
+      "networkidle": {
+        "ok": false,
+        "bytes": 0,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 192.9,
+          "setup_ms": 85.4,
+          "total_ms": 2137.3
+        },
+        "error": "TargetClosedError: Page.goto: Target page, context or browser has been closed\nCall log:\n  - navigating to \"https://www.revolut.com/careers/\", waiting until \"networkidle\"\n"
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 578641,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 231.5,
+          "setup_ms": 350.5,
+          "navigation_ms": 219.2,
+          "content_ms": 1368.0,
+          "render_ms": 1587.2,
+          "total_ms": 2169.2
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 488491,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 271.4,
+          "setup_ms": 333.9,
+          "navigation_ms": 1901.4,
+          "content_ms": 1682.1,
+          "render_ms": 3583.5,
+          "total_ms": 4188.9
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 491605,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 390.0,
+          "setup_ms": 438.5,
+          "navigation_ms": 5406.0,
+          "content_ms": 615.8,
+          "render_ms": 6021.8,
+          "total_ms": 6850.5
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "rtx-careers",
+    "url": "https://careers.rtx.com/global/en",
+    "monitor_type": "sitemap",
+    "scraper_type": "json-ld",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 234842,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 175.6,
+          "setup_ms": 111.4,
+          "navigation_ms": 1611.6,
+          "content_ms": 209.0,
+          "render_ms": 1820.6,
+          "total_ms": 2107.7
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": false,
+        "bytes": 0,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 177.1,
+          "setup_ms": 87.2,
+          "total_ms": 30291.9
+        },
+        "error": "TimeoutError: Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://careers.rtx.com/global/en\", waiting until \"domcontentloaded\"\n"
+      },
+      "networkidle": {
+        "ok": false,
+        "bytes": 0,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 186.7,
+          "setup_ms": 96.0,
+          "navigation_ms": 2591.7,
+          "total_ms": 2912.0
+        },
+        "error": "Error: Page.content: Unable to retrieve content because the page is navigating and changing the content."
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 30339,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 190.2,
+          "setup_ms": 393.7,
+          "navigation_ms": 522.3,
+          "content_ms": 89.4,
+          "render_ms": 611.6999999999999,
+          "total_ms": 1195.7
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 249876,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 214.8,
+          "setup_ms": 287.0,
+          "navigation_ms": 3388.5,
+          "content_ms": 1254.6,
+          "render_ms": 4643.1,
+          "total_ms": 5145.0
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": false,
+        "bytes": 0,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 233.8,
+          "setup_ms": 288.7,
+          "total_ms": 30562.2
+        },
+        "error": "TimeoutError: Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://careers.rtx.com/global/en\", waiting until \"networkidle\"\n"
+      }
+    }
+  },
+  {
+    "slug": "shopify-careers",
+    "url": "https://www.shopify.com/careers",
+    "monitor_type": "sitemap",
+    "scraper_type": "dom",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 568925,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 243.3,
+          "setup_ms": 96.8,
+          "navigation_ms": 1101.5,
+          "content_ms": 245.7,
+          "render_ms": 1347.2,
+          "total_ms": 1687.4
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 568925,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 298.5,
+          "setup_ms": 174.4,
+          "navigation_ms": 1169.4,
+          "content_ms": 145.8,
+          "render_ms": 1315.2,
+          "total_ms": 1788.2
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 90944,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 175.1,
+          "setup_ms": 93.4,
+          "navigation_ms": 1697.9,
+          "content_ms": 530.5,
+          "render_ms": 2228.4,
+          "total_ms": 2497.0
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 568840,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 266.4,
+          "setup_ms": 391.5,
+          "navigation_ms": 162.1,
+          "content_ms": 1090.0,
+          "render_ms": 1252.1,
+          "total_ms": 1910.1
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 568928,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 177.4,
+          "setup_ms": 399.4,
+          "navigation_ms": 2124.7,
+          "content_ms": 605.3,
+          "render_ms": 2730.0,
+          "total_ms": 3306.9
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 568928,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 280.8,
+          "setup_ms": 631.2,
+          "navigation_ms": 2564.9,
+          "content_ms": 1010.1,
+          "render_ms": 3575.0,
+          "total_ms": 4487.0
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "siemens-careers",
+    "url": "https://jobs.siemens.com/en_US/externaljobs/SearchJobs",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 179226,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 166.0,
+          "setup_ms": 104.9,
+          "navigation_ms": 3312.6,
+          "content_ms": 80.3,
+          "render_ms": 3392.9,
+          "total_ms": 3663.9
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 179223,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 169.2,
+          "setup_ms": 143.1,
+          "navigation_ms": 3772.7,
+          "content_ms": 80.9,
+          "render_ms": 3853.6,
+          "total_ms": 4166.1
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 179214,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 154.4,
+          "setup_ms": 91.2,
+          "navigation_ms": 3554.9,
+          "content_ms": 143.8,
+          "render_ms": 3698.7000000000003,
+          "total_ms": 3944.3
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 60351,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 193.0,
+          "setup_ms": 364.9,
+          "navigation_ms": 2340.7,
+          "content_ms": 250.1,
+          "render_ms": 2590.7999999999997,
+          "total_ms": 3148.9
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 172498,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 283.0,
+          "setup_ms": 457.6,
+          "navigation_ms": 3798.3,
+          "content_ms": 640.0,
+          "render_ms": 4438.3,
+          "total_ms": 5178.9
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 179737,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 188.8,
+          "setup_ms": 490.2,
+          "navigation_ms": 7000.7,
+          "content_ms": 75.8,
+          "render_ms": 7076.5,
+          "total_ms": 7755.5
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "skadden-careers-allhires-lawyers",
+    "url": "https://skadden.allhires.com/JobBoard/Lawyers/",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 18137,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 237.4,
+          "setup_ms": 102.7,
+          "navigation_ms": 368.9,
+          "content_ms": 49.3,
+          "render_ms": 418.2,
+          "total_ms": 758.3
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 18137,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 153.6,
+          "setup_ms": 81.4,
+          "navigation_ms": 284.0,
+          "content_ms": 72.4,
+          "render_ms": 356.4,
+          "total_ms": 591.5
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 18137,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 186.6,
+          "setup_ms": 123.4,
+          "navigation_ms": 918.9,
+          "content_ms": 71.0,
+          "render_ms": 989.9,
+          "total_ms": 1300.0
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 788,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 154.8,
+          "setup_ms": 424.6,
+          "navigation_ms": 204.4,
+          "content_ms": 48.7,
+          "render_ms": 253.10000000000002,
+          "total_ms": 832.4
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 18901,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 163.0,
+          "setup_ms": 300.0,
+          "navigation_ms": 406.1,
+          "content_ms": 193.3,
+          "render_ms": 599.4000000000001,
+          "total_ms": 1062.4
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 18901,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 236.0,
+          "setup_ms": 366.9,
+          "navigation_ms": 894.2,
+          "content_ms": 69.0,
+          "render_ms": 963.2,
+          "total_ms": 1566.2
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "slaughter-and-may-careers",
+    "url": "https://careers.slaughterandmay.com/VacanciesV2.aspx",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 114483,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 279.9,
+          "setup_ms": 138.6,
+          "navigation_ms": 2162.3,
+          "content_ms": 94.7,
+          "render_ms": 2257.0,
+          "total_ms": 2675.9
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 114483,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 185.9,
+          "setup_ms": 113.4,
+          "navigation_ms": 2409.1,
+          "content_ms": 89.6,
+          "render_ms": 2498.7,
+          "total_ms": 2798.1
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 114483,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 214.3,
+          "setup_ms": 90.7,
+          "navigation_ms": 2438.0,
+          "content_ms": 92.4,
+          "render_ms": 2530.4,
+          "total_ms": 2835.5
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 704,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 183.8,
+          "setup_ms": 352.1,
+          "navigation_ms": 997.2,
+          "content_ms": 490.2,
+          "render_ms": 1487.4,
+          "total_ms": 2023.4
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 181694,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 220.6,
+          "setup_ms": 382.9,
+          "navigation_ms": 2623.6,
+          "content_ms": 603.9,
+          "render_ms": 3227.5,
+          "total_ms": 3831.1
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 309429,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 238.5,
+          "setup_ms": 420.2,
+          "navigation_ms": 4818.5,
+          "content_ms": 310.8,
+          "render_ms": 5129.3,
+          "total_ms": 5788.1
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "strategy-and-careers-uk",
+    "url": "https://jobs.pwc.co.uk/experienced/uk/en/c/strategy-experienced-jobs",
+    "monitor_type": "dom",
+    "scraper_type": "json-ld",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 923,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 297.7,
+          "setup_ms": 205.4,
+          "navigation_ms": 162.8,
+          "content_ms": 33.5,
+          "render_ms": 196.3,
+          "total_ms": 699.4
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 923,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 263.3,
+          "setup_ms": 105.6,
+          "navigation_ms": 129.0,
+          "content_ms": 39.9,
+          "render_ms": 168.9,
+          "total_ms": 537.8
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 923,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 177.0,
+          "setup_ms": 100.7,
+          "navigation_ms": 626.2,
+          "content_ms": 36.1,
+          "render_ms": 662.3000000000001,
+          "total_ms": 940.3
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 923,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 199.0,
+          "setup_ms": 593.8,
+          "navigation_ms": 121.3,
+          "content_ms": 72.1,
+          "render_ms": 193.39999999999998,
+          "total_ms": 986.2
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 923,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 192.3,
+          "setup_ms": 498.4,
+          "navigation_ms": 237.5,
+          "content_ms": 79.2,
+          "render_ms": 316.7,
+          "total_ms": 1007.6
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 923,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 158.8,
+          "setup_ms": 371.9,
+          "navigation_ms": 912.7,
+          "content_ms": 76.4,
+          "render_ms": 989.1,
+          "total_ms": 1519.9
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "strategy-and-careers-us",
+    "url": "https://jobs.us.pwc.com/strategy-and-jobs-2",
+    "monitor_type": "dom",
+    "scraper_type": "json-ld",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 43562,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 184.2,
+          "setup_ms": 86.4,
+          "navigation_ms": 4407.9,
+          "content_ms": 138.4,
+          "render_ms": 4546.299999999999,
+          "total_ms": 4816.9
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": false,
+        "bytes": 0,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 970.0,
+          "setup_ms": 208.6,
+          "navigation_ms": 4320.4,
+          "total_ms": 5770.5
+        },
+        "error": "Error: Page.content: Unable to retrieve content because the page is navigating and changing the content."
+      },
+      "networkidle": {
+        "ok": false,
+        "bytes": 0,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 298.5,
+          "setup_ms": 96.0,
+          "navigation_ms": 4646.0,
+          "total_ms": 5097.1
+        },
+        "error": "Error: Page.content: Unable to retrieve content because the page is navigating and changing the content."
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 2272,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 293.7,
+          "setup_ms": 839.1,
+          "navigation_ms": 157.0,
+          "content_ms": 281.9,
+          "render_ms": 438.9,
+          "total_ms": 1571.6
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 42001,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 1046.6,
+          "setup_ms": 348.2,
+          "navigation_ms": 3590.8,
+          "content_ms": 2024.0,
+          "render_ms": 5614.8,
+          "total_ms": 7009.8
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 45847,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 246.9,
+          "setup_ms": 344.9,
+          "navigation_ms": 10705.1,
+          "content_ms": 221.0,
+          "render_ms": 10926.1,
+          "total_ms": 11517.9
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "sullivan-cromwell-careers-florecruit",
+    "url": "https://florecruit.com/v2/app/sullcrom/jobs",
+    "monitor_type": "api_sniffer",
+    "scraper_type": "",
+    "lightpanda": {
+      "commit": {
+        "ok": false,
+        "bytes": 0,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 274.4,
+          "setup_ms": 137.2,
+          "navigation_ms": 3150.0,
+          "total_ms": 3614.6
+        },
+        "error": "Error: Page.content: Unable to retrieve content because the page is navigating and changing the content."
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 17170,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 174.6,
+          "setup_ms": 96.1,
+          "navigation_ms": 2422.4,
+          "content_ms": 48.4,
+          "render_ms": 2470.8,
+          "total_ms": 2741.5
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": false,
+        "bytes": 0,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 274.3,
+          "setup_ms": 103.6,
+          "navigation_ms": 3237.9,
+          "total_ms": 3638.5
+        },
+        "error": "Error: Page.content: Unable to retrieve content because the page is navigating and changing the content."
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 1064,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 225.0,
+          "setup_ms": 381.3,
+          "navigation_ms": 442.3,
+          "content_ms": 69.6,
+          "render_ms": 511.9,
+          "total_ms": 1118.3
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 17195,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 186.8,
+          "setup_ms": 315.9,
+          "navigation_ms": 2169.7,
+          "content_ms": 42.3,
+          "render_ms": 2212.0,
+          "total_ms": 2715.1
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 17195,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 172.8,
+          "setup_ms": 359.0,
+          "navigation_ms": 1716.0,
+          "content_ms": 229.4,
+          "render_ms": 1945.4,
+          "total_ms": 2477.3
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "sullivan-cromwell-careers-taleo",
+    "url": "https://phg.tbe.taleo.net/phg04/ats/careers/v2/jobSearch?org=SULLCROM&cws=38",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 55187,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 217.8,
+          "setup_ms": 122.0,
+          "navigation_ms": 6533.2,
+          "content_ms": 82.1,
+          "render_ms": 6615.3,
+          "total_ms": 6955.1
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 55187,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 150.8,
+          "setup_ms": 87.8,
+          "navigation_ms": 4243.2,
+          "content_ms": 72.4,
+          "render_ms": 4315.599999999999,
+          "total_ms": 4554.2
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 55187,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 162.8,
+          "setup_ms": 103.1,
+          "navigation_ms": 4684.4,
+          "content_ms": 119.4,
+          "render_ms": 4803.799999999999,
+          "total_ms": 5069.7
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 921,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 156.6,
+          "setup_ms": 416.2,
+          "navigation_ms": 566.4,
+          "content_ms": 65.1,
+          "render_ms": 631.5,
+          "total_ms": 1204.4
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 55187,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 160.7,
+          "setup_ms": 427.3,
+          "navigation_ms": 2104.5,
+          "content_ms": 47.7,
+          "render_ms": 2152.2,
+          "total_ms": 2740.1
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 55237,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 289.6,
+          "setup_ms": 494.1,
+          "navigation_ms": 2760.7,
+          "content_ms": 59.0,
+          "render_ms": 2819.7,
+          "total_ms": 3603.6
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "swoboda-careers-de",
+    "url": "https://karriere.swoboda.com/",
+    "monitor_type": "dom",
+    "scraper_type": "json-ld",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 62037,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 250.8,
+          "setup_ms": 140.5,
+          "navigation_ms": 898.3,
+          "content_ms": 146.8,
+          "render_ms": 1045.1,
+          "total_ms": 1436.6
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 62037,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 194.8,
+          "setup_ms": 135.1,
+          "navigation_ms": 802.8,
+          "content_ms": 124.3,
+          "render_ms": 927.0999999999999,
+          "total_ms": 1257.7
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 62037,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 432.2,
+          "setup_ms": 123.5,
+          "navigation_ms": 1447.2,
+          "content_ms": 119.0,
+          "render_ms": 1566.2,
+          "total_ms": 2121.9
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 2776,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 206.7,
+          "setup_ms": 341.1,
+          "navigation_ms": 375.3,
+          "content_ms": 134.2,
+          "render_ms": 509.5,
+          "total_ms": 1057.3
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 62068,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 164.8,
+          "setup_ms": 474.4,
+          "navigation_ms": 820.9,
+          "content_ms": 1395.4,
+          "render_ms": 2216.3,
+          "total_ms": 2855.5
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 62068,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 225.1,
+          "setup_ms": 407.8,
+          "navigation_ms": 2009.0,
+          "content_ms": 348.0,
+          "render_ms": 2357.0,
+          "total_ms": 2990.2
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "tencent-careers",
+    "url": "https://careers.tencent.com/en-us/search.html",
+    "monitor_type": "api_sniffer",
+    "scraper_type": "json-ld",
+    "lightpanda": {
+      "commit": {
+        "ok": false,
+        "bytes": 0,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 339.4,
+          "setup_ms": 113.9,
+          "navigation_ms": 5147.0,
+          "total_ms": 5653.3
+        },
+        "error": "Error: Page.content: Unable to retrieve content because the page is navigating and changing the content."
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 119198,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 164.6,
+          "setup_ms": 81.1,
+          "navigation_ms": 2114.3,
+          "content_ms": 91.8,
+          "render_ms": 2206.1000000000004,
+          "total_ms": 2451.8
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 119198,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 360.7,
+          "setup_ms": 191.0,
+          "navigation_ms": 2159.8,
+          "content_ms": 74.3,
+          "render_ms": 2234.1000000000004,
+          "total_ms": 2786.0
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 792,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 306.1,
+          "setup_ms": 305.0,
+          "navigation_ms": 695.0,
+          "content_ms": 40.9,
+          "render_ms": 735.9,
+          "total_ms": 1347.0
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 119186,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 196.0,
+          "setup_ms": 419.7,
+          "navigation_ms": 2000.6,
+          "content_ms": 1101.1,
+          "render_ms": 3101.7,
+          "total_ms": 3717.6
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 119525,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 222.3,
+          "setup_ms": 500.6,
+          "navigation_ms": 5438.2,
+          "content_ms": 84.4,
+          "render_ms": 5522.599999999999,
+          "total_ms": 6245.6
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "ubs-careers",
+    "url": "https://jobs.ubs.com/TGnewUI/Search/home/HomeWithPreLoad?partnerid=25008&siteid=5012&PageType=searchResults&SearchType=linkquery&LinkID=15231",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 2604430,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 181.8,
+          "setup_ms": 188.6,
+          "navigation_ms": 3405.6,
+          "content_ms": 446.8,
+          "render_ms": 3852.4,
+          "total_ms": 4222.9
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 2606081,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 161.2,
+          "setup_ms": 80.0,
+          "navigation_ms": 3133.9,
+          "content_ms": 516.2,
+          "render_ms": 3650.1000000000004,
+          "total_ms": 3891.4
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 2606234,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 164.2,
+          "setup_ms": 83.7,
+          "navigation_ms": 5001.3,
+          "content_ms": 506.3,
+          "render_ms": 5507.6,
+          "total_ms": 5755.5
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 1651,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 209.7,
+          "setup_ms": 387.5,
+          "navigation_ms": 941.7,
+          "content_ms": 34.8,
+          "render_ms": 976.5,
+          "total_ms": 1573.7
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 3326648,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 166.6,
+          "setup_ms": 438.9,
+          "navigation_ms": 2523.3,
+          "content_ms": 3659.6,
+          "render_ms": 6182.9,
+          "total_ms": 6788.5
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 3337003,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 205.6,
+          "setup_ms": 542.7,
+          "navigation_ms": 5099.7,
+          "content_ms": 1122.5,
+          "render_ms": 6222.2,
+          "total_ms": 6970.6
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "wesort-ai-careers",
+    "url": "https://www.wesort.ai/karriere",
+    "monitor_type": "sitemap",
+    "scraper_type": "dom",
+    "lightpanda": {
+      "commit": {
+        "ok": false,
+        "bytes": 0,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 178.0,
+          "setup_ms": 83.6,
+          "total_ms": 30443.2
+        },
+        "error": "TimeoutError: Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://www.wesort.ai/karriere\", waiting until \"commit\"\n"
+      },
+      "domcontentloaded": {
+        "ok": false,
+        "bytes": 0,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 172.8,
+          "setup_ms": 107.6,
+          "total_ms": 30495.8
+        },
+        "error": "TimeoutError: Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://www.wesort.ai/karriere\", waiting until \"domcontentloaded\"\n"
+      },
+      "networkidle": {
+        "ok": false,
+        "bytes": 0,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 180.0,
+          "setup_ms": 95.0,
+          "total_ms": 30398.4
+        },
+        "error": "TimeoutError: Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://www.wesort.ai/karriere\", waiting until \"networkidle\"\n"
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 745819,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 390.0,
+          "setup_ms": 486.9,
+          "navigation_ms": 126.2,
+          "content_ms": 1015.7,
+          "render_ms": 1141.9,
+          "total_ms": 2018.9
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 1094420,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 455.7,
+          "setup_ms": 496.9,
+          "navigation_ms": 1891.9,
+          "content_ms": 2213.3,
+          "render_ms": 4105.200000000001,
+          "total_ms": 5057.9
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 1109449,
+        "meaningful": true,
+        "timings": {
+          "connect_ms": 242.1,
+          "setup_ms": 391.6,
+          "navigation_ms": 8318.2,
+          "content_ms": 380.0,
+          "render_ms": 8698.2,
+          "total_ms": 9332.0
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "slug": "wpp-careers",
+    "url": "https://wpp.careersitecloud.com/",
+    "monitor_type": "dom",
+    "scraper_type": "json-ld",
+    "lightpanda": {
+      "commit": {
+        "ok": true,
+        "bytes": 126,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 171.3,
+          "setup_ms": 109.5,
+          "navigation_ms": 341.8,
+          "content_ms": 41.5,
+          "render_ms": 383.3,
+          "total_ms": 664.2
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 126,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 192.1,
+          "setup_ms": 96.4,
+          "navigation_ms": 386.9,
+          "content_ms": 55.3,
+          "render_ms": 442.2,
+          "total_ms": 730.9
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 126,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 238.4,
+          "setup_ms": 133.6,
+          "navigation_ms": 888.0,
+          "content_ms": 52.7,
+          "render_ms": 940.7,
+          "total_ms": 1312.8
+        },
+        "error": null
+      }
+    },
+    "chromium": {
+      "commit": {
+        "ok": true,
+        "bytes": 117,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 218.8,
+          "setup_ms": 374.0,
+          "navigation_ms": 347.8,
+          "content_ms": 40.1,
+          "render_ms": 387.90000000000003,
+          "total_ms": 980.7
+        },
+        "error": null
+      },
+      "domcontentloaded": {
+        "ok": true,
+        "bytes": 117,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 181.1,
+          "setup_ms": 377.0,
+          "navigation_ms": 393.7,
+          "content_ms": 49.6,
+          "render_ms": 443.3,
+          "total_ms": 1001.5
+        },
+        "error": null
+      },
+      "networkidle": {
+        "ok": true,
+        "bytes": 117,
+        "meaningful": false,
+        "timings": {
+          "connect_ms": 228.1,
+          "setup_ms": 408.8,
+          "navigation_ms": 870.3,
+          "content_ms": 66.7,
+          "render_ms": 937.0,
+          "total_ms": 1573.9
+        },
+        "error": null
+      }
+    }
+  }
+]

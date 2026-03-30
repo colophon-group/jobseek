@@ -304,20 +304,19 @@ async def monitor_one_stream(
     monitor_type: str,
     monitor_config: dict | None,
     http: httpx.AsyncClient,
+    *,
+    pw=None,
 ):
-    """Async generator yielding MonitorResult per batch.
-
-    Falls back to single-yield for non-streaming monitors.
-    """
+    """Async generator yielding MonitorResult per batch."""
     stream_fn = get_stream_fn(monitor_type)
     config = monitor_config or {}
 
     if stream_fn is None:
-        yield await monitor_one(board_url, monitor_type, monitor_config, http)
+        yield await monitor_one(board_url, monitor_type, monitor_config, http, pw=pw)
         return
 
     board = {"board_url": board_url, "metadata": config}
-    async for batch in stream_fn(board, http):
+    async for batch in stream_fn(board, http, pw=pw):
         result = _normalize_discovered(batch)
         result = _apply_url_filter(result, config)
         result = _apply_url_transform(result, config)

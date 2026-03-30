@@ -1,31 +1,98 @@
 {
-  "annotations": [],
+  "uid": "jobseek-crawler-pipeline",
+  "title": "Crawler Pipeline",
+  "schemaVersion": 39,
+  "version": 1,
+  "timezone": "browser",
   "editable": true,
-  "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "refresh": "30s",
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": []
+  },
   "links": [],
   "panels": [
     {
+      "id": 1,
+      "type": "row",
+      "title": "HTTP Worker",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "panels": []
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Task Throughput \u2014 HTTP",
       "datasource": {
         "type": "prometheus",
         "uid": "grafanacloud-prom"
       },
+      "gridPos": {
+        "h": 8,
+        "w": 9,
+        "x": 0,
+        "y": 1
+      },
       "fieldConfig": {
         "defaults": {
+          "unit": "short",
           "custom": {
-            "drawStyle": "line",
             "fillOpacity": 10,
             "lineWidth": 2,
             "spanNulls": true
           },
-          "decimals": 1,
-          "unit": "short"
+          "color": {
+            "mode": "palette-classic"
+          }
         },
         "overrides": [
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "failed|timed_out"
+              "options": "monitor-succeeded"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "scrape-succeeded"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "blue",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "monitor-failed"
             },
             "properties": [
               {
@@ -40,13 +107,13 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "succeeded"
+              "options": "scrape-failed"
             },
             "properties": [
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "green",
+                  "fixedColor": "orange",
                   "mode": "fixed"
                 }
               }
@@ -54,35 +121,49 @@
           }
         ]
       },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 0
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "calcs": [
+            "last"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
       },
       "targets": [
         {
+          "refId": "A",
           "datasource": {
             "type": "prometheus",
             "uid": "grafanacloud-prom"
           },
-          "expr": "sum by (kind, status) (rate(crawler_tasks_total{app=\"jobseek\"}[$__rate_interval])) * 60",
-          "legendFormat": "{{kind}} \u2014 {{status}}"
+          "expr": "sum by (kind, status) (rate(crawler_tasks_total{instance=~\"worker-.*\"}[$__rate_interval])) * 60",
+          "legendFormat": "{{kind}}-{{status}}"
         }
       ],
-      "title": "Task Throughput (per minute)",
-      "type": "timeseries"
+      "description": "Monitors and scrapes completed per minute by HTTP workers (worker-1/2/3). Green=monitor success, blue=scrape success, red/orange=failures."
     },
     {
+      "id": 3,
+      "type": "stat",
+      "title": "Success Rate \u2014 HTTP",
       "datasource": {
         "type": "prometheus",
         "uid": "grafanacloud-prom"
       },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 9,
+        "y": 1
+      },
       "fieldConfig": {
         "defaults": {
-          "max": 1,
-          "min": 0,
+          "unit": "percentunit",
           "thresholds": {
+            "mode": "absolute",
             "steps": [
               {
                 "color": "red",
@@ -90,58 +171,132 @@
               },
               {
                 "color": "yellow",
-                "value": 0.9
+                "value": 0.8
               },
               {
                 "color": "green",
-                "value": 0.95
+                "value": 0.9
               }
             ]
-          },
-          "unit": "percentunit"
-        }
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 6,
-        "x": 12,
-        "y": 0
+          }
+        },
+        "overrides": []
       },
       "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ]
-        }
+        "graphMode": "area",
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value"
       },
       "targets": [
         {
+          "refId": "A",
           "datasource": {
             "type": "prometheus",
             "uid": "grafanacloud-prom"
           },
-          "expr": "sum(increase(crawler_tasks_total{app=\"jobseek\", status=\"succeeded\"}[$__range])) / clamp_min(sum(increase(crawler_tasks_total{app=\"jobseek\"}[$__range])), 1)",
-          "instant": true,
-          "legendFormat": "Overall"
+          "expr": "sum(rate(crawler_tasks_total{instance=~\"worker-.*\", status=\"succeeded\"}[5m])) / sum(rate(crawler_tasks_total{instance=~\"worker-.*\"}[5m]))",
+          "legendFormat": "Success Rate"
         }
       ],
-      "title": "Success Rate",
-      "type": "stat"
+      "description": "Percentage of tasks that succeed across all HTTP workers. Healthy: >95%."
     },
     {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Jobs Discovered \u2014 HTTP",
       "datasource": {
         "type": "prometheus",
         "uid": "grafanacloud-prom"
       },
+      "gridPos": {
+        "h": 8,
+        "w": 9,
+        "x": 15,
+        "y": 1
+      },
       "fieldConfig": {
         "defaults": {
-          "unit": "short"
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "spanNulls": true
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "calcs": [
+            "last"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
+          },
+          "expr": "sum by (action) (rate(crawler_monitor_jobs_discovered_total{instance=~\"worker-.*\"}[$__rate_interval])) * 60",
+          "legendFormat": "{{action}}"
+        }
+      ],
+      "description": "New, relisted, and gone job postings detected per minute by HTTP monitors. Spikes when boards with many listings are checked."
+    },
+    {
+      "id": 5,
+      "type": "row",
+      "title": "Browser Worker",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 9
+      },
+      "panels": []
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Task Throughput \u2014 Browser",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "grafanacloud-prom"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 9,
+        "x": 0,
+        "y": 10
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "spanNulls": true
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
         },
         "overrides": [
           {
             "matcher": {
-              "id": "byName",
-              "options": "succeeded"
+              "id": "byRegexp",
+              "options": "monitor-succeeded"
             },
             "properties": [
               {
@@ -155,8 +310,23 @@
           },
           {
             "matcher": {
-              "id": "byName",
-              "options": "failed"
+              "id": "byRegexp",
+              "options": "scrape-succeeded"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "blue",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "monitor-failed"
             },
             "properties": [
               {
@@ -167,415 +337,1201 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "scrape-failed"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "orange",
+                  "mode": "fixed"
+                }
+              }
+            ]
           }
         ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "calcs": [
+            "last"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
+          },
+          "expr": "sum by (kind, status) (rate(crawler_tasks_total{instance=\"browser-1\"}[$__rate_interval])) * 60",
+          "legendFormat": "{{kind}}-{{status}}"
+        }
+      ],
+      "description": "Same as HTTP but for browser worker (Playwright/Chromium). Lower throughput is expected \u2014 each task launches a headless browser."
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "Success Rate \u2014 Browser",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "grafanacloud-prom"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 9,
+        "y": 10
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.8
+              },
+              {
+                "color": "green",
+                "value": 0.9
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "graphMode": "area",
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
+          },
+          "expr": "sum(rate(crawler_tasks_total{instance=\"browser-1\", status=\"succeeded\"}[5m])) / sum(rate(crawler_tasks_total{instance=\"browser-1\"}[5m]))",
+          "legendFormat": "Success Rate"
+        }
+      ],
+      "description": "Percentage of tasks that succeed on the browser worker. ~88% is normal \u2014 some sites block or timeout."
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Jobs Discovered \u2014 Browser",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "grafanacloud-prom"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 9,
+        "x": 15,
+        "y": 10
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "spanNulls": true
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "calcs": [
+            "last"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
+          },
+          "expr": "sum by (action) (rate(crawler_monitor_jobs_discovered_total{instance=\"browser-1\"}[$__rate_interval])) * 60",
+          "legendFormat": "{{action}}"
+        }
+      ],
+      "description": "Same as HTTP but for browser-dependent monitors (api_sniffer, dom with render=true)."
+    },
+    {
+      "id": 9,
+      "type": "row",
+      "title": "Queue Health",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 18
+      },
+      "panels": []
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Queue Depth \u2014 HTTP due now",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "grafanacloud-prom"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 0,
+        "y": 19
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "spanNulls": true
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "calcs": [
+            "last"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
+          },
+          "expr": "crawler_redis_queue_depth{instance=\"exporter\", queue=~\"ready:simple:.*:ready\"}",
+          "legendFormat": "{{queue}}"
+        }
+      ],
+      "description": "Domains with work ready to claim right now per tier. T0=first-time, T1=monitors due, T2=scrapes due. Should stay near 0 if workers keep up."
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Total Domains \u2014 HTTP",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "grafanacloud-prom"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 6,
+        "y": 19
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "spanNulls": true
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "calcs": [
+            "last"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
+          },
+          "expr": "crawler_redis_queue_depth{instance=\"exporter\", queue=~\"ready:simple:.*:total\"}",
+          "legendFormat": "{{queue}}"
+        }
+      ],
+      "description": "All domains in each tier including future-scheduled. Shows the full queue size \u2014 work arrives as boards come due on their check_interval."
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "Queue Depth \u2014 Browser due now",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "grafanacloud-prom"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 12,
+        "y": 19
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "spanNulls": true
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "calcs": [
+            "last"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
+          },
+          "expr": "crawler_redis_queue_depth{instance=\"exporter\", queue=~\"ready:browser:.*:ready\"}",
+          "legendFormat": "{{queue}}"
+        }
+      ],
+      "description": "Browser domains with work ready now. Drains slower than HTTP due to Chromium overhead."
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "Total Domains \u2014 Browser",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "grafanacloud-prom"
       },
       "gridPos": {
         "h": 8,
         "w": 6,
         "x": 18,
-        "y": 0
+        "y": 19
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "spanNulls": true
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
       },
       "options": {
-        "reduceOptions": {
+        "legend": {
+          "displayMode": "table",
           "calcs": [
-            "lastNotNull"
+            "last"
           ]
+        },
+        "tooltip": {
+          "mode": "multi"
         }
       },
       "targets": [
         {
+          "refId": "A",
           "datasource": {
             "type": "prometheus",
             "uid": "grafanacloud-prom"
           },
-          "expr": "sum(crawler_tasks_total{app=\"jobseek\", status=\"succeeded\"})",
-          "instant": true,
-          "legendFormat": "succeeded"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "grafanacloud-prom"
-          },
-          "expr": "sum(crawler_tasks_total{app=\"jobseek\", status!=\"succeeded\"})",
-          "instant": true,
-          "legendFormat": "failed"
+          "expr": "crawler_redis_queue_depth{instance=\"exporter\", queue=~\"ready:browser:.*:total\"}",
+          "legendFormat": "{{queue}}"
         }
       ],
-      "title": "Total Tasks (since restart)",
-      "type": "stat"
+      "description": "All browser domains across tiers. ~80 domains total for browser-dependent boards."
     },
     {
+      "id": 14,
+      "type": "row",
+      "title": "Latency",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 27
+      },
+      "panels": []
+    },
+    {
+      "id": 15,
+      "type": "timeseries",
+      "title": "Monitor Duration \u2014 HTTP",
       "datasource": {
         "type": "prometheus",
         "uid": "grafanacloud-prom"
       },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 0,
+        "y": 28
+      },
       "fieldConfig": {
         "defaults": {
+          "unit": "s",
           "custom": {
-            "drawStyle": "line",
-            "fillOpacity": 5,
+            "fillOpacity": 10,
             "lineWidth": 2,
             "spanNulls": true
           },
-          "unit": "s"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "p99"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "red",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "p95"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "orange",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "p50"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "green",
-                  "mode": "fixed"
-                }
-              }
-            ]
+          "color": {
+            "mode": "palette-classic"
           }
-        ]
+        },
+        "overrides": []
       },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 8
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "calcs": [
+            "last"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
       },
       "targets": [
         {
+          "refId": "A",
           "datasource": {
             "type": "prometheus",
             "uid": "grafanacloud-prom"
           },
-          "expr": "histogram_quantile(0.50, sum by (le) (rate(crawler_task_duration_seconds_bucket{app=\"jobseek\", kind=\"monitor\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(crawler_monitor_duration_seconds_bucket{profile=\"simple\"}[$__rate_interval])))",
           "legendFormat": "p50"
         },
         {
+          "refId": "B",
           "datasource": {
             "type": "prometheus",
             "uid": "grafanacloud-prom"
           },
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(crawler_task_duration_seconds_bucket{app=\"jobseek\", kind=\"monitor\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(crawler_monitor_duration_seconds_bucket{profile=\"simple\"}[$__rate_interval])))",
           "legendFormat": "p95"
         },
         {
+          "refId": "C",
           "datasource": {
             "type": "prometheus",
             "uid": "grafanacloud-prom"
           },
-          "expr": "histogram_quantile(0.99, sum by (le) (rate(crawler_task_duration_seconds_bucket{app=\"jobseek\", kind=\"monitor\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(crawler_monitor_duration_seconds_bucket{profile=\"simple\"}[$__rate_interval])))",
           "legendFormat": "p99"
         }
       ],
-      "title": "Monitor Duration (seconds)",
-      "type": "timeseries"
+      "description": "p50/p95/p99 latency for HTTP monitor cycles. Most complete in 1-5s. Workday boards can take 30-60s (streaming thousands of jobs)."
     },
     {
+      "id": 16,
+      "type": "timeseries",
+      "title": "Monitor Duration \u2014 Browser",
       "datasource": {
         "type": "prometheus",
         "uid": "grafanacloud-prom"
       },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 6,
+        "y": 28
+      },
       "fieldConfig": {
         "defaults": {
+          "unit": "s",
           "custom": {
-            "drawStyle": "line",
-            "fillOpacity": 5,
+            "fillOpacity": 10,
             "lineWidth": 2,
             "spanNulls": true
           },
-          "unit": "s"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "p99"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "red",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "p95"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "orange",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "p50"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "green",
-                  "mode": "fixed"
-                }
-              }
-            ]
+          "color": {
+            "mode": "palette-classic"
           }
-        ]
+        },
+        "overrides": []
       },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 8
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "calcs": [
+            "last"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
       },
       "targets": [
         {
+          "refId": "A",
           "datasource": {
             "type": "prometheus",
             "uid": "grafanacloud-prom"
           },
-          "expr": "histogram_quantile(0.50, sum by (le) (rate(crawler_task_duration_seconds_bucket{app=\"jobseek\", kind=\"scrape\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(crawler_monitor_duration_seconds_bucket{profile=\"browser\"}[$__rate_interval])))",
           "legendFormat": "p50"
         },
         {
+          "refId": "B",
           "datasource": {
             "type": "prometheus",
             "uid": "grafanacloud-prom"
           },
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(crawler_task_duration_seconds_bucket{app=\"jobseek\", kind=\"scrape\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(crawler_monitor_duration_seconds_bucket{profile=\"browser\"}[$__rate_interval])))",
           "legendFormat": "p95"
         },
         {
+          "refId": "C",
           "datasource": {
             "type": "prometheus",
             "uid": "grafanacloud-prom"
           },
-          "expr": "histogram_quantile(0.99, sum by (le) (rate(crawler_task_duration_seconds_bucket{app=\"jobseek\", kind=\"scrape\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(crawler_monitor_duration_seconds_bucket{profile=\"browser\"}[$__rate_interval])))",
           "legendFormat": "p99"
         }
       ],
-      "title": "Scrape Duration (seconds)",
-      "type": "timeseries"
+      "description": "p50/p95/p99 for browser monitors. Higher baseline (10-30s) due to Playwright page load + rendering."
     },
     {
+      "id": 17,
+      "type": "timeseries",
+      "title": "Scrape Duration \u2014 HTTP",
       "datasource": {
         "type": "prometheus",
         "uid": "grafanacloud-prom"
       },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "drawStyle": "line",
-            "fillOpacity": 15,
-            "lineWidth": 2,
-            "spanNulls": true
-          },
-          "unit": "short"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "http"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "blue",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "browser"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "purple",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          }
-        ]
-      },
       "gridPos": {
         "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 16
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "grafanacloud-prom"
-          },
-          "expr": "max(crawler_queue_depth{app=\"jobseek\", kind=\"monitor\", browser=\"false\"})",
-          "legendFormat": "http"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "grafanacloud-prom"
-          },
-          "expr": "max(crawler_queue_depth{app=\"jobseek\", kind=\"monitor\", browser=\"true\"})",
-          "legendFormat": "browser"
-        }
-      ],
-      "title": "Monitor Queue Depth",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "grafanacloud-prom"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "drawStyle": "line",
-            "fillOpacity": 15,
-            "lineWidth": 2,
-            "spanNulls": true
-          },
-          "unit": "short"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "initial"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "orange",
-                  "mode": "fixed"
-                }
-              },
-              {
-                "id": "custom.lineWidth",
-                "value": 3
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "rescrape"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "blue",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
+        "w": 6,
         "x": 12,
-        "y": 16
+        "y": 28
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "spanNulls": true
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "calcs": [
+            "last"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
       },
       "targets": [
         {
+          "refId": "A",
           "datasource": {
             "type": "prometheus",
             "uid": "grafanacloud-prom"
           },
-          "expr": "max(crawler_queue_depth{app=\"jobseek\", kind=\"scrape\", initial=\"true\", browser=\"false\"})",
-          "legendFormat": "initial"
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(crawler_scrape_duration_seconds_bucket{profile=\"simple\"}[$__rate_interval])))",
+          "legendFormat": "p50"
         },
         {
+          "refId": "B",
           "datasource": {
             "type": "prometheus",
             "uid": "grafanacloud-prom"
           },
-          "expr": "max(crawler_queue_depth{app=\"jobseek\", kind=\"scrape\", initial=\"false\", browser=\"false\"})",
-          "legendFormat": "rescrape"
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(crawler_scrape_duration_seconds_bucket{profile=\"simple\"}[$__rate_interval])))",
+          "legendFormat": "p95"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
+          },
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(crawler_scrape_duration_seconds_bucket{profile=\"simple\"}[$__rate_interval])))",
+          "legendFormat": "p99"
         }
       ],
-      "title": "HTTP Scraper Queue",
-      "type": "timeseries"
+      "description": "p50/p95/p99 for individual job page scrapes via HTTP. Typically 1-5s per page."
     },
     {
+      "id": 18,
+      "type": "timeseries",
+      "title": "Scrape Duration \u2014 Browser",
       "datasource": {
         "type": "prometheus",
         "uid": "grafanacloud-prom"
       },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 18,
+        "y": 28
+      },
       "fieldConfig": {
         "defaults": {
+          "unit": "s",
           "custom": {
-            "drawStyle": "line",
-            "fillOpacity": 15,
+            "fillOpacity": 10,
             "lineWidth": 2,
             "spanNulls": true
           },
-          "unit": "short"
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "calcs": [
+            "last"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
+          },
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(crawler_scrape_duration_seconds_bucket{profile=\"browser\"}[$__rate_interval])))",
+          "legendFormat": "p50"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(crawler_scrape_duration_seconds_bucket{profile=\"browser\"}[$__rate_interval])))",
+          "legendFormat": "p95"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
+          },
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(crawler_scrape_duration_seconds_bucket{profile=\"browser\"}[$__rate_interval])))",
+          "legendFormat": "p99"
+        }
+      ],
+      "description": "p50/p95/p99 for rendered scrapes. 5-10s per page including Chromium startup."
+    },
+    {
+      "id": 19,
+      "type": "row",
+      "title": "Exporter & R2",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 36
+      },
+      "panels": []
+    },
+    {
+      "id": 20,
+      "type": "timeseries",
+      "title": "Export Lag",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "grafanacloud-prom"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 37
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "spanNulls": true
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "calcs": [
+            "last"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
+          },
+          "expr": "crawler_exporter_export_lag{instance=\"exporter\"}",
+          "legendFormat": "Export Lag"
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "type": "stat",
+      "title": "R2 Pending",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "grafanacloud-prom"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 37
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "graphMode": "area",
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
+          },
+          "expr": "crawler_r2_pending{instance=\"exporter\"}",
+          "legendFormat": "R2 Pending"
+        }
+      ],
+      "description": "Descriptions waiting to be uploaded to R2. Should be near 0 after initial backlog clears. Only increases when description content actually changes (hash-based check)."
+    },
+    {
+      "id": 22,
+      "type": "stat",
+      "title": "Exporter Staleness",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "grafanacloud-prom"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 37
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 30
+              },
+              {
+                "color": "red",
+                "value": 120
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "graphMode": "area",
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
+          },
+          "expr": "time() - crawler_exporter_last_flush_ts{instance=\"exporter\"}",
+          "legendFormat": "Staleness"
+        }
+      ],
+      "description": "Seconds since last successful export tick. Should be <5s. >30s = exporter stuck or crashed."
+    },
+    {
+      "id": 23,
+      "type": "row",
+      "title": "Exporter Detail",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 45
+      },
+      "panels": []
+    },
+    {
+      "id": 24,
+      "type": "timeseries",
+      "title": "Export Flush Duration",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "grafanacloud-prom"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 46
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "spanNulls": true
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "calcs": [
+            "last"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
+          },
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(crawler_exporter_flush_duration_seconds_bucket{instance=\"exporter\"}[$__rate_interval])))",
+          "legendFormat": "p50"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(crawler_exporter_flush_duration_seconds_bucket{instance=\"exporter\"}[$__rate_interval])))",
+          "legendFormat": "p95"
+        }
+      ],
+      "description": "How long each exporter tick takes (p50/p95). <1s at steady state. High values during backlog catchup."
+    },
+    {
+      "id": 25,
+      "type": "timeseries",
+      "title": "R2 Upload Rate",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "grafanacloud-prom"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 46
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "spanNulls": true
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "calcs": [
+            "last"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
+          },
+          "expr": "sum by (status) (rate(crawler_r2_uploaded_total{instance=\"drain\"}[$__rate_interval]))",
+          "legendFormat": "{{status}}"
+        }
+      ],
+      "description": "R2 PUT operations per second by the drain worker. ~40-50/s at peak. Should drop to near 0 at steady state."
+    },
+    {
+      "id": 26,
+      "type": "timeseries",
+      "title": "Exporter Rows/sec",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "grafanacloud-prom"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 46
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "spanNulls": true
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "calcs": [
+            "last"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
+          },
+          "expr": "sum by (table) (rate(crawler_exporter_rows_exported_total{instance=\"exporter\"}[$__rate_interval]))",
+          "legendFormat": "{{table}}"
+        }
+      ],
+      "description": "Rows exported to Supabase per second. High during backlog, near 0 at steady state thanks to conditional updated_at."
+    },
+    {
+      "id": 27,
+      "type": "row",
+      "title": "Infrastructure",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 54
+      },
+      "panels": []
+    },
+    {
+      "id": 28,
+      "type": "timeseries",
+      "title": "Local Postgres Pool",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "grafanacloud-prom"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 0,
+        "y": 55
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "spanNulls": true
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "calcs": [
+            "last"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
+          },
+          "expr": "crawler_local_db_pool_size{instance=\"exporter\"}",
+          "legendFormat": "Size"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
+          },
+          "expr": "crawler_local_db_pool_idle{instance=\"exporter\"}",
+          "legendFormat": "Idle"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
+          },
+          "expr": "crawler_local_db_pool_size{instance=\"exporter\"} - crawler_local_db_pool_idle{instance=\"exporter\"}",
+          "legendFormat": "In Use"
+        }
+      ],
+      "description": "Connection pool for local Postgres (Hetzner). Size=total connections, Idle=unused, In Use=active queries."
+    },
+    {
+      "id": 29,
+      "type": "timeseries",
+      "title": "Supabase Pool",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "grafanacloud-prom"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 6,
+        "y": 55
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "spanNulls": true
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "calcs": [
+            "last"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
+          },
+          "expr": "crawler_supa_db_pool_size{instance=\"exporter\"}",
+          "legendFormat": "Size"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
+          },
+          "expr": "crawler_supa_db_pool_idle{instance=\"exporter\"}",
+          "legendFormat": "Idle"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
+          },
+          "expr": "crawler_supa_db_pool_size{instance=\"exporter\"} - crawler_supa_db_pool_idle{instance=\"exporter\"}",
+          "legendFormat": "In Use"
+        }
+      ],
+      "description": "Connection pool for Supabase (exporter only). Typically 1-2 connections."
+    },
+    {
+      "id": 30,
+      "type": "timeseries",
+      "title": "Task Failures \u2014 HTTP",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "grafanacloud-prom"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 12,
+        "y": 55
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "spanNulls": true
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "red"
+          }
         },
         "overrides": [
           {
             "matcher": {
-              "id": "byName",
-              "options": "initial"
+              "id": "byRegexp",
+              "options": ".*scrape"
             },
             "properties": [
               {
@@ -584,23 +1540,73 @@
                   "fixedColor": "orange",
                   "mode": "fixed"
                 }
-              },
-              {
-                "id": "custom.lineWidth",
-                "value": 3
               }
             ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "calcs": [
+            "last"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
           },
+          "expr": "sum by (kind) (rate(crawler_tasks_total{instance=~\"worker-.*\", status=\"failed\"}[$__rate_interval]))",
+          "legendFormat": "task-{{kind}}"
+        }
+      ],
+      "description": "Failed monitors (red) and scrapes (orange) per second on HTTP workers. Some failures are normal (sites down, timeouts)."
+    },
+    {
+      "id": 31,
+      "type": "timeseries",
+      "title": "Task Failures \u2014 Browser",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "grafanacloud-prom"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 18,
+        "y": 55
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "spanNulls": true
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "red"
+          }
+        },
+        "overrides": [
           {
             "matcher": {
-              "id": "byName",
-              "options": "rescrape"
+              "id": "byRegexp",
+              "options": ".*scrape"
             },
             "properties": [
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "purple",
+                  "fixedColor": "orange",
                   "mode": "fixed"
                 }
               }
@@ -608,32 +1614,42 @@
           }
         ]
       },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 24
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "calcs": [
+            "last"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
       },
       "targets": [
         {
+          "refId": "A",
           "datasource": {
             "type": "prometheus",
             "uid": "grafanacloud-prom"
           },
-          "expr": "max(crawler_queue_depth{app=\"jobseek\", kind=\"scrape\", initial=\"true\", browser=\"true\"})",
-          "legendFormat": "initial"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "grafanacloud-prom"
-          },
-          "expr": "max(crawler_queue_depth{app=\"jobseek\", kind=\"scrape\", initial=\"false\", browser=\"true\"})",
-          "legendFormat": "rescrape"
+          "expr": "sum by (kind) (rate(crawler_tasks_total{instance=\"browser-1\", status=\"failed\"}[$__rate_interval]))",
+          "legendFormat": "{{kind}}"
         }
       ],
-      "title": "Browser Scraper Queue",
-      "type": "timeseries"
+      "description": "Failed monitors (red) and scrapes (orange) on browser worker. Higher failure rate expected (bot detection, page load failures)."
+    },
+    {
+      "id": 32,
+      "type": "row",
+      "title": "System",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 63
+      },
+      "panels": []
     },
     {
       "datasource": {
@@ -648,46 +1664,26 @@
             "lineWidth": 2,
             "spanNulls": true
           },
-          "unit": "short"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "slots full"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "yellow",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "db busy"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "red",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          }
-        ]
+          "unit": "percentunit"
+        }
       },
       "gridPos": {
         "h": 8,
-        "w": 12,
+        "w": 8,
         "x": 0,
-        "y": 24
+        "y": 64
+      },
+      "id": 700,
+      "title": "Container CPU",
+      "type": "timeseries",
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "last"
+          ]
+        }
       },
       "targets": [
         {
@@ -695,20 +1691,12 @@
             "type": "prometheus",
             "uid": "grafanacloud-prom"
           },
-          "expr": "sum(rate(crawler_tick_skip_total{app=\"jobseek\", reason=\"slots_full\"}[$__rate_interval])) * 60",
-          "legendFormat": "slots full"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "grafanacloud-prom"
-          },
-          "expr": "sum(rate(crawler_tick_skip_total{app=\"jobseek\", reason=\"db_idle\"}[$__rate_interval])) * 60",
-          "legendFormat": "db busy"
+          "expr": "rate(process_cpu_seconds_total{job=\"crawler\"}[$__rate_interval])",
+          "legendFormat": "{{instance}}",
+          "refId": "A"
         }
       ],
-      "title": "Throttle Rate (skipped ticks/min)",
-      "type": "timeseries"
+      "description": "Per-container CPU usage. Each HTTP worker should be near 100% (1 core). Browser worker uses up to 300% (3 cores)."
     },
     {
       "datasource": {
@@ -719,50 +1707,30 @@
         "defaults": {
           "custom": {
             "drawStyle": "line",
-            "fillOpacity": 15,
+            "fillOpacity": 10,
             "lineWidth": 2,
             "spanNulls": true
           },
-          "unit": "short"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Active"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "blue",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Queued"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "yellow",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          }
-        ]
+          "unit": "bytes"
+        }
       },
       "gridPos": {
         "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 24
+        "w": 8,
+        "x": 8,
+        "y": 64
+      },
+      "id": 701,
+      "title": "Container Memory",
+      "type": "timeseries",
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "last"
+          ]
+        }
       },
       "targets": [
         {
@@ -770,100 +1738,46 @@
             "type": "prometheus",
             "uid": "grafanacloud-prom"
           },
-          "expr": "sum(crawler_tasks_active{app=\"jobseek\"})",
-          "legendFormat": "Active"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "grafanacloud-prom"
-          },
-          "expr": "sum(crawler_tasks_queued{app=\"jobseek\"})",
-          "legendFormat": "Queued"
+          "expr": "process_resident_memory_bytes{job=\"crawler\"}",
+          "legendFormat": "{{instance}}",
+          "refId": "A"
         }
       ],
-      "title": "Concurrency",
-      "type": "timeseries"
+      "description": "Per-container RSS memory. HTTP workers ~150-300MB. Browser worker 1-2GB (Chromium). Watch for growth patterns indicating leaks."
     },
     {
       "datasource": {
         "type": "prometheus",
         "uid": "grafanacloud-prom"
       },
-      "description": "Combined across all crawler containers",
       "fieldConfig": {
         "defaults": {
           "custom": {
             "drawStyle": "line",
-            "fillOpacity": 15,
+            "fillOpacity": 10,
             "lineWidth": 2,
             "spanNulls": true
           },
-          "unit": "short"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "In Use"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "orange",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Idle"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "green",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Total"
-            },
-            "properties": [
-              {
-                "id": "custom.lineStyle",
-                "value": {
-                  "dash": [
-                    10,
-                    10
-                  ],
-                  "fill": "dash"
-                }
-              },
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "white",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          }
-        ]
+          "unit": "percentunit"
+        }
       },
       "gridPos": {
         "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 32
+        "w": 8,
+        "x": 16,
+        "y": 64
+      },
+      "id": 702,
+      "title": "Host CPU",
+      "type": "timeseries",
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "last"
+          ]
+        }
       },
       "targets": [
         {
@@ -871,44 +1785,180 @@
             "type": "prometheus",
             "uid": "grafanacloud-prom"
           },
-          "expr": "sum(crawler_db_pool_size{app=\"jobseek\"}) - sum(crawler_db_pool_idle{app=\"jobseek\"})",
-          "legendFormat": "In Use"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "grafanacloud-prom"
-          },
-          "expr": "sum(crawler_db_pool_idle{app=\"jobseek\"})",
-          "legendFormat": "Idle"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "grafanacloud-prom"
-          },
-          "expr": "sum(crawler_db_pool_size{app=\"jobseek\"})",
-          "legendFormat": "Total"
+          "expr": "1 - avg(rate(node_cpu_seconds_total{job=\"integrations/unix\", mode=\"idle\"}[$__rate_interval]))",
+          "legendFormat": "CPU used",
+          "refId": "A"
         }
       ],
-      "title": "DB Pool",
-      "type": "timeseries"
+      "description": "Overall machine CPU utilization. Target: 70-90% of available cores."
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "grafanacloud-prom"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "spanNulls": true
+          },
+          "unit": "bytes"
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 72
+      },
+      "id": 703,
+      "title": "Host Memory",
+      "type": "timeseries",
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "last"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
+          },
+          "expr": "node_memory_MemAvailable_bytes{job=\"integrations/unix\"}",
+          "legendFormat": "Available",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
+          },
+          "expr": "node_memory_MemTotal_bytes{job=\"integrations/unix\"} - node_memory_MemAvailable_bytes{job=\"integrations/unix\"}",
+          "legendFormat": "Used",
+          "refId": "B"
+        }
+      ],
+      "description": "Machine RAM: used vs available. 15GB total, ~2-3GB used by containers."
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "grafanacloud-prom"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "spanNulls": true
+          },
+          "unit": "bytes"
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 72
+      },
+      "id": 704,
+      "title": "Disk Available",
+      "type": "timeseries",
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "last"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
+          },
+          "expr": "node_filesystem_avail_bytes{job=\"integrations/unix\", mountpoint=\"/\"}",
+          "legendFormat": "/",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
+          },
+          "expr": "node_filesystem_avail_bytes{job=\"integrations/unix\", mountpoint=~\"/mnt/.*\"}",
+          "legendFormat": "{{mountpoint}}",
+          "refId": "B"
+        }
+      ],
+      "description": "Free disk space on root (/) and data mount (/mnt). Postgres data grows over time."
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "grafanacloud-prom"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "spanNulls": true
+          },
+          "unit": "Bps"
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 72
+      },
+      "id": 705,
+      "title": "Network I/O",
+      "type": "timeseries",
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "last"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
+          },
+          "expr": "sum(rate(node_network_receive_bytes_total{job=\"integrations/unix\", device!~\"lo|veth.*|docker.*|br-.*\"}[$__rate_interval]))",
+          "legendFormat": "Receive",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "grafanacloud-prom"
+          },
+          "expr": "sum(rate(node_network_transmit_bytes_total{job=\"integrations/unix\", device!~\"lo|veth.*|docker.*|br-.*\"}[$__rate_interval]))",
+          "legendFormat": "Transmit",
+          "refId": "B"
+        }
+      ],
+      "description": "Machine network throughput. Receive=crawled pages from career sites. Transmit=R2 uploads + Supabase exports."
     }
-  ],
-  "schemaVersion": 39,
-  "tags": [
-    "crawler",
-    "jobseek"
-  ],
-  "templating": {
-    "list": []
-  },
-  "time": {
-    "from": "now-1h",
-    "to": "now"
-  },
-  "timepicker": {},
-  "timezone": "",
-  "title": "Jobseek Crawler",
-  "uid": "jobseek-crawler"
+  ]
 }

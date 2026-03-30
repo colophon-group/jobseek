@@ -7,6 +7,7 @@ import asyncpg
 from src.config import settings
 
 _pool: asyncpg.Pool | None = None
+_local_pool: asyncpg.Pool | None = None
 
 
 async def _init_connection(conn: asyncpg.Connection) -> None:
@@ -19,6 +20,7 @@ async def _init_connection(conn: asyncpg.Connection) -> None:
 
 
 async def create_pool() -> asyncpg.Pool:
+    """Create the Supabase pool (remote, used by exporter + sync only)."""
     global _pool
     if _pool is None:
         max_size = settings.crawler_db_pool_max or (
@@ -36,6 +38,21 @@ async def create_pool() -> asyncpg.Pool:
     return _pool
 
 
+async def create_local_pool() -> asyncpg.Pool:
+    """Create the local Postgres pool (same machine, used by workers)."""
+    global _local_pool
+    if _local_pool is None:
+        _local_pool = await asyncpg.create_pool(
+            settings.local_database_url,
+            min_size=1,
+            max_size=settings.crawler_db_pool_max or 10,
+            command_timeout=60,
+            statement_cache_size=0,
+            max_inactive_connection_lifetime=300.0,
+        )
+    return _local_pool
+
+
 async def close_pool() -> None:
     global _pool
     if _pool is not None:
@@ -44,3 +61,18 @@ async def close_pool() -> None:
         except TimeoutError:
             _pool.terminate()
         _pool = None
+
+
+async def close_local_pool() -> None:
+    global _local_pool
+    if _local_pool is not None:
+        try:
+            await asyncio.wait_for(_local_pool.close(), timeout=5.0)
+        except TimeoutError:
+            _local_pool.terminate()
+        _local_pool = None
+
+
+async def close_all_pools() -> None:
+    await close_pool()
+    await close_local_pool()

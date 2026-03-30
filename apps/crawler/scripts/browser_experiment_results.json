@@ -1,0 +1,1934 @@
+[
+  {
+    "slug": "accenture-careers-au",
+    "url": "https://www.accenture.com/au-en/careers/jobsearch",
+    "monitor_type": "accenture",
+    "scraper_type": "",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 151435,
+      "meaningful": true,
+      "elapsed_s": 0.25,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 330305,
+      "meaningful": true,
+      "elapsed_s": 3.37,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 356705,
+      "meaningful": true,
+      "elapsed_s": 2.92,
+      "error": null
+    }
+  },
+  {
+    "slug": "ai4i-careers",
+    "url": "https://ai4i.it/work-with-us/",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 86692,
+      "meaningful": true,
+      "elapsed_s": 0.23,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 89586,
+      "meaningful": true,
+      "elapsed_s": 1.59,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 90575,
+      "meaningful": true,
+      "elapsed_s": 2.39,
+      "error": null
+    }
+  },
+  {
+    "slug": "airbnb-contractors",
+    "url": "https://magnit-airbnb.talentnet.community/",
+    "monitor_type": "api_sniffer",
+    "scraper_type": "skip",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 1292,
+      "meaningful": true,
+      "elapsed_s": 0.15,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 2363,
+      "meaningful": true,
+      "elapsed_s": 1.46,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 1425,
+      "meaningful": true,
+      "elapsed_s": 2.46,
+      "error": null
+    }
+  },
+  {
+    "slug": "ao-shearman-earlycareers-uk",
+    "url": "https://earlycareersuk.aoshearman.com/apply",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 101716,
+      "meaningful": true,
+      "elapsed_s": 1.67,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 104496,
+      "meaningful": true,
+      "elapsed_s": 2.89,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 102063,
+      "meaningful": true,
+      "elapsed_s": 2.09,
+      "error": null
+    }
+  },
+  {
+    "slug": "apheros-careers",
+    "url": "https://apheros.ch/en/open-positions",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 38133,
+      "meaningful": true,
+      "elapsed_s": 0.93,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 38270,
+      "meaningful": true,
+      "elapsed_s": 1.68,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 38264,
+      "meaningful": true,
+      "elapsed_s": 2.52,
+      "error": null
+    }
+  },
+  {
+    "slug": "axa-switzerland-careers",
+    "url": "https://jobs.axa.ch/?lang=en&limit=200",
+    "monitor_type": "dom",
+    "scraper_type": "json-ld",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 315677,
+      "meaningful": true,
+      "elapsed_s": 0.99,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": false,
+      "bytes": 0,
+      "meaningful": false,
+      "elapsed_s": 30.7,
+      "error": "TimeoutError: Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://jobs.axa.ch/?lang=en&limit=200\", waiting until \"domcontentloaded\"\n"
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 320369,
+      "meaningful": true,
+      "elapsed_s": 4.98,
+      "error": null
+    }
+  },
+  {
+    "slug": "barclays-careers-contractors",
+    "url": "https://barclays.talent-community.com/projects",
+    "monitor_type": "sitemap",
+    "scraper_type": "dom",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 1679629,
+      "meaningful": true,
+      "elapsed_s": 1.53,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 1670742,
+      "meaningful": true,
+      "elapsed_s": 4.61,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 1670546,
+      "meaningful": true,
+      "elapsed_s": 5.53,
+      "error": null
+    }
+  },
+  {
+    "slug": "bcge-careers",
+    "url": "https://jobs.bcge.ch/en",
+    "monitor_type": "dom",
+    "scraper_type": "nextdata",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 149050,
+      "meaningful": true,
+      "elapsed_s": 1.82,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 158973,
+      "meaningful": true,
+      "elapsed_s": 3.21,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 167349,
+      "meaningful": true,
+      "elapsed_s": 4.43,
+      "error": null
+    }
+  },
+  {
+    "slug": "bloom-biorenewables-careers",
+    "url": "https://www.bloombiorenewables.com/company",
+    "monitor_type": "dom",
+    "scraper_type": "pdf",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 49492,
+      "meaningful": true,
+      "elapsed_s": 0.29,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 51061,
+      "meaningful": true,
+      "elapsed_s": 1.24,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 51137,
+      "meaningful": true,
+      "elapsed_s": 2.6,
+      "error": null
+    }
+  },
+  {
+    "slug": "boeing-bia",
+    "url": "https://phh.tbe.taleo.net/phh01/ats/careers/v2/jobSearch?act=redirectCwsV2&cws=38&org=BIA",
+    "monitor_type": "dom",
+    "scraper_type": "json-ld",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 78356,
+      "meaningful": true,
+      "elapsed_s": 0.96,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 77875,
+      "meaningful": true,
+      "elapsed_s": 11.21,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 77866,
+      "meaningful": true,
+      "elapsed_s": 3.41,
+      "error": null
+    }
+  },
+  {
+    "slug": "booking-com-careers",
+    "url": "https://jobs.booking.com/booking/jobs",
+    "monitor_type": "dom",
+    "scraper_type": "json-ld",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 278606,
+      "meaningful": true,
+      "elapsed_s": 0.67,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 565155,
+      "meaningful": true,
+      "elapsed_s": 3.33,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 559366,
+      "meaningful": true,
+      "elapsed_s": 7.15,
+      "error": null
+    }
+  },
+  {
+    "slug": "browser-use-careers",
+    "url": "https://www.ycombinator.com/companies/browser-use/jobs",
+    "monitor_type": "dom",
+    "scraper_type": "json-ld",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 113053,
+      "meaningful": true,
+      "elapsed_s": 0.69,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 115885,
+      "meaningful": true,
+      "elapsed_s": 4.22,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 115638,
+      "meaningful": true,
+      "elapsed_s": 7.58,
+      "error": null
+    }
+  },
+  {
+    "slug": "cartier-careers",
+    "url": "https://careers.richemont.com/en/jobs/cartier/",
+    "monitor_type": "dom",
+    "scraper_type": "json-ld",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 150181,
+      "meaningful": true,
+      "elapsed_s": 0.32,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 4270,
+      "meaningful": true,
+      "elapsed_s": 0.67,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 4901,
+      "meaningful": true,
+      "elapsed_s": 1.15,
+      "error": null
+    }
+  },
+  {
+    "slug": "clifford-chance-careers",
+    "url": "https://jobs.cliffordchance.com/jobs",
+    "monitor_type": "sitemap",
+    "scraper_type": "json-ld",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 186326,
+      "meaningful": true,
+      "elapsed_s": 0.68,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": false,
+      "bytes": 0,
+      "meaningful": false,
+      "elapsed_s": 2.78,
+      "error": "Error: Page.content: Unable to retrieve content because the page is navigating and changing the content."
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 191739,
+      "meaningful": true,
+      "elapsed_s": 3.12,
+      "error": null
+    }
+  },
+  {
+    "slug": "deloitte-careers-ce",
+    "url": "https://apply.deloittece.com/en_US/careers/SearchJobs",
+    "monitor_type": "dom",
+    "scraper_type": "skip",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 113820,
+      "meaningful": true,
+      "elapsed_s": 1.23,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 124222,
+      "meaningful": true,
+      "elapsed_s": 2.22,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 122234,
+      "meaningful": true,
+      "elapsed_s": 4.06,
+      "error": null
+    }
+  },
+  {
+    "slug": "deloitte-careers-de",
+    "url": "https://job.deloitte.com",
+    "monitor_type": "sitemap",
+    "scraper_type": "dom",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 216864,
+      "meaningful": true,
+      "elapsed_s": 1.11,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 215471,
+      "meaningful": true,
+      "elapsed_s": 3.02,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 255181,
+      "meaningful": true,
+      "elapsed_s": 3.64,
+      "error": null
+    }
+  },
+  {
+    "slug": "deloitte-careers-us",
+    "url": "https://apply.deloitte.com/en_US/careers/SearchJobs",
+    "monitor_type": "dom",
+    "scraper_type": "json-ld",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 129184,
+      "meaningful": true,
+      "elapsed_s": 2.38,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 147780,
+      "meaningful": true,
+      "elapsed_s": 5.38,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 123574,
+      "meaningful": true,
+      "elapsed_s": 4.97,
+      "error": null
+    }
+  },
+  {
+    "slug": "dphi-space-careers",
+    "url": "https://www.dphispace.com/careers",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 30074,
+      "meaningful": true,
+      "elapsed_s": 0.27,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 30059,
+      "meaningful": true,
+      "elapsed_s": 0.78,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 30092,
+      "meaningful": true,
+      "elapsed_s": 1.42,
+      "error": null
+    }
+  },
+  {
+    "slug": "ekkiden-careers",
+    "url": "https://recruiterflow.com/ekkiden/jobs",
+    "monitor_type": "dom",
+    "scraper_type": "json-ld",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 142502,
+      "meaningful": true,
+      "elapsed_s": 0.21,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 238838,
+      "meaningful": true,
+      "elapsed_s": 1.62,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 238702,
+      "meaningful": true,
+      "elapsed_s": 2.25,
+      "error": null
+    }
+  },
+  {
+    "slug": "endress-hauser-codewrights",
+    "url": "https://www.codewrights.de/de/arbeitgeber",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 40751,
+      "meaningful": true,
+      "elapsed_s": 0.28,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": false,
+      "bytes": 0,
+      "meaningful": false,
+      "elapsed_s": 30.66,
+      "error": "TimeoutError: Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://www.codewrights.de/de/arbeitgeber\", waiting until \"domcontentloaded\"\n"
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 42001,
+      "meaningful": true,
+      "elapsed_s": 3.24,
+      "error": null
+    }
+  },
+  {
+    "slug": "evercore-experienced-hires",
+    "url": "https://evercore.tal.net/vx/mobile-0/appcentre-1/brand-5/candidate/jobboard/vacancy/3",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 74436,
+      "meaningful": true,
+      "elapsed_s": 2.89,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 81072,
+      "meaningful": true,
+      "elapsed_s": 2.32,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 81194,
+      "meaningful": true,
+      "elapsed_s": 3.37,
+      "error": null
+    }
+  },
+  {
+    "slug": "exxonmobil-contingent",
+    "url": "https://exxonmobil.raiserecruiting.com/",
+    "monitor_type": "dom",
+    "scraper_type": "json-ld",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 215671,
+      "meaningful": true,
+      "elapsed_s": 2.53,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 216353,
+      "meaningful": true,
+      "elapsed_s": 4.66,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 215621,
+      "meaningful": true,
+      "elapsed_s": 3.74,
+      "error": null
+    }
+  },
+  {
+    "slug": "finom-careers",
+    "url": "https://jobs.eu.lever.co/pnlfin",
+    "monitor_type": "dom",
+    "scraper_type": "json-ld",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 770202,
+      "meaningful": true,
+      "elapsed_s": 0.91,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 773304,
+      "meaningful": true,
+      "elapsed_s": 1.52,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 770715,
+      "meaningful": true,
+      "elapsed_s": 2.27,
+      "error": null
+    }
+  },
+  {
+    "slug": "general-dynamics-gdels",
+    "url": "https://www.gdels.com/en/jobs",
+    "monitor_type": "sitemap",
+    "scraper_type": "dom",
+    "http": {
+      "ok": true,
+      "status": 403,
+      "bytes": 4925,
+      "meaningful": true,
+      "elapsed_s": 0.16,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 5351,
+      "meaningful": true,
+      "elapsed_s": 0.56,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 412944,
+      "meaningful": true,
+      "elapsed_s": 2.86,
+      "error": null
+    }
+  },
+  {
+    "slug": "glencore-careers",
+    "url": "https://www.glencore.com/careers/jobs",
+    "monitor_type": "api_sniffer",
+    "scraper_type": "skip",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 87639,
+      "meaningful": true,
+      "elapsed_s": 0.26,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 179909,
+      "meaningful": true,
+      "elapsed_s": 3.02,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 182527,
+      "meaningful": true,
+      "elapsed_s": 2.96,
+      "error": null
+    }
+  },
+  {
+    "slug": "havas-careers-jobvite",
+    "url": "https://jobs.jobvite.com/thehavasgroup/",
+    "monitor_type": "dom",
+    "scraper_type": "json-ld",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 55270,
+      "meaningful": true,
+      "elapsed_s": 0.72,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 55783,
+      "meaningful": true,
+      "elapsed_s": 1.64,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 56441,
+      "meaningful": true,
+      "elapsed_s": 3.06,
+      "error": null
+    }
+  },
+  {
+    "slug": "hays-careers",
+    "url": "https://www.hays.de/jobsuche/stellenangebote-jobs?q=&e=false&pt=false&ij=true",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 1525991,
+      "meaningful": true,
+      "elapsed_s": 2.06,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": false,
+      "bytes": 0,
+      "meaningful": false,
+      "elapsed_s": 30.53,
+      "error": "TimeoutError: Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://www.hays.de/jobsuche/stellenangebote-jobs?q=&e=false&pt=false&ij=true\", waiting until \"domcontentloaded\"\n"
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 1488307,
+      "meaningful": true,
+      "elapsed_s": 9.68,
+      "error": null
+    }
+  },
+  {
+    "slug": "hexagon-robotics-careers",
+    "url": "https://robotics.hexagon.com/careers/",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 106097,
+      "meaningful": true,
+      "elapsed_s": 0.65,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 113739,
+      "meaningful": true,
+      "elapsed_s": 2.57,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 112981,
+      "meaningful": true,
+      "elapsed_s": 3.48,
+      "error": null
+    }
+  },
+  {
+    "slug": "hyperskill-careers",
+    "url": "https://hyperskill.bamboohr.com/careers",
+    "monitor_type": "api_sniffer",
+    "scraper_type": "json-ld",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 106245,
+      "meaningful": true,
+      "elapsed_s": 1.12,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 392995,
+      "meaningful": true,
+      "elapsed_s": 6.3,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 392583,
+      "meaningful": true,
+      "elapsed_s": 7.64,
+      "error": null
+    }
+  },
+  {
+    "slug": "instories-careers",
+    "url": "https://wantapply.com/company/instories",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 132686,
+      "meaningful": true,
+      "elapsed_s": 0.44,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 5632,
+      "meaningful": true,
+      "elapsed_s": 0.58,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 161540,
+      "meaningful": true,
+      "elapsed_s": 2.99,
+      "error": null
+    }
+  },
+  {
+    "slug": "just-eat-takeaway-careers",
+    "url": "https://careers.justeattakeaway.com/global/en/search-results",
+    "monitor_type": "sitemap",
+    "scraper_type": "json-ld",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 104600,
+      "meaningful": true,
+      "elapsed_s": 0.76,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 106589,
+      "meaningful": true,
+      "elapsed_s": 1.79,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 106444,
+      "meaningful": true,
+      "elapsed_s": 2.76,
+      "error": null
+    }
+  },
+  {
+    "slug": "kearney-careers",
+    "url": "https://kearney.recsolu.com/job_boards/1",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 44859,
+      "meaningful": true,
+      "elapsed_s": 1.13,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 193137,
+      "meaningful": true,
+      "elapsed_s": 4.92,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 193603,
+      "meaningful": true,
+      "elapsed_s": 4.01,
+      "error": null
+    }
+  },
+  {
+    "slug": "lek-careers-americas",
+    "url": "https://lek.tal.net/vx/lang-en-GB/mobile-0/appcentre-2/brand-2/candidate/jobboard/vacancy/3/adv/",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 60502,
+      "meaningful": true,
+      "elapsed_s": 0.92,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 60779,
+      "meaningful": true,
+      "elapsed_s": 1.42,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 60895,
+      "meaningful": true,
+      "elapsed_s": 2.16,
+      "error": null
+    }
+  },
+  {
+    "slug": "lenovo-careers",
+    "url": "https://jobs.lenovo.com/en_US/careers/SearchJobs",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "http": {
+      "ok": true,
+      "status": 202,
+      "bytes": 0,
+      "meaningful": false,
+      "elapsed_s": 0.68,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 76,
+      "meaningful": false,
+      "elapsed_s": 0.88,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 1989,
+      "meaningful": true,
+      "elapsed_s": 2.04,
+      "error": null
+    }
+  },
+  {
+    "slug": "lockheed-martin-intl-apac",
+    "url": "https://krb-sjobs.brassring.com/TGnewUI/Search/Home/Home?partnerid=30122&siteid=6621",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 929380,
+      "meaningful": true,
+      "elapsed_s": 0.76,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 941608,
+      "meaningful": true,
+      "elapsed_s": 5.44,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 950486,
+      "meaningful": true,
+      "elapsed_s": 4.35,
+      "error": null
+    }
+  },
+  {
+    "slug": "loreal-careers",
+    "url": "https://careers.loreal.com/en_US/jobs",
+    "monitor_type": "sitemap",
+    "scraper_type": "dom",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 223517,
+      "meaningful": true,
+      "elapsed_s": 2.08,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": false,
+      "bytes": 0,
+      "meaningful": false,
+      "elapsed_s": 5.98,
+      "error": "Error: Page.content: Unable to retrieve content because the page is navigating and changing the content."
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 30956,
+      "meaningful": true,
+      "elapsed_s": 1.35,
+      "error": null
+    }
+  },
+  {
+    "slug": "lyceum-careers",
+    "url": "https://lyceum-technology.jobs.personio.com",
+    "monitor_type": "personio",
+    "scraper_type": "dom",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 73507,
+      "meaningful": true,
+      "elapsed_s": 0.5,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 73135,
+      "meaningful": true,
+      "elapsed_s": 1.01,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 73156,
+      "meaningful": true,
+      "elapsed_s": 1.66,
+      "error": null
+    }
+  },
+  {
+    "slug": "mentiora-ai-careers",
+    "url": "https://mentiora.ai",
+    "monitor_type": "dom",
+    "scraper_type": "embedded",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 89544,
+      "meaningful": true,
+      "elapsed_s": 0.2,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 31560,
+      "meaningful": true,
+      "elapsed_s": 0.52,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 89557,
+      "meaningful": true,
+      "elapsed_s": 3.03,
+      "error": null
+    }
+  },
+  {
+    "slug": "mercedes-benz-careers-taleo",
+    "url": "https://daimler.taleo.net/careersection/ex/jobsearch.ftl?lang=en",
+    "monitor_type": "api_sniffer",
+    "scraper_type": "dom",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 43775,
+      "meaningful": true,
+      "elapsed_s": 0.36,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 64320,
+      "meaningful": true,
+      "elapsed_s": 1.6,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 52746,
+      "meaningful": true,
+      "elapsed_s": 2.06,
+      "error": null
+    }
+  },
+  {
+    "slug": "merck-global-en",
+    "url": "https://careers.merckgroup.com/global/en/search-results",
+    "monitor_type": "sitemap",
+    "scraper_type": "json-ld",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 505023,
+      "meaningful": true,
+      "elapsed_s": 0.9,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 923,
+      "meaningful": false,
+      "elapsed_s": 0.56,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 923,
+      "meaningful": false,
+      "elapsed_s": 0.89,
+      "error": null
+    }
+  },
+  {
+    "slug": "mercuria-careers",
+    "url": "https://mercuria.com/?s=&post_type=job",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "http": {
+      "ok": false,
+      "status": null,
+      "bytes": 0,
+      "meaningful": false,
+      "elapsed_s": 0.13,
+      "error": "ConnectError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1010)"
+    },
+    "lightpanda": {
+      "ok": false,
+      "bytes": 0,
+      "meaningful": false,
+      "elapsed_s": 0.73,
+      "error": "Error: Page.content: Unable to retrieve content because the page is navigating and changing the content."
+    },
+    "chromium": {
+      "ok": false,
+      "bytes": 0,
+      "meaningful": false,
+      "elapsed_s": 0.93,
+      "error": "Error: Page.goto: net::ERR_CERT_AUTHORITY_INVALID at https://mercuria.com/?s=&post_type=job\nCall log:\n  - navigating to \"https://mercuria.com/?s=&post_type=job\", waiting until \"domcontentloaded\"\n"
+    }
+  },
+  {
+    "slug": "miromind-ai-careers",
+    "url": "https://www.miromind.ai/career",
+    "monitor_type": "sitemap",
+    "scraper_type": "dom",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 699431,
+      "meaningful": true,
+      "elapsed_s": 0.51,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 688564,
+      "meaningful": true,
+      "elapsed_s": 3.39,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 699391,
+      "meaningful": true,
+      "elapsed_s": 2.64,
+      "error": null
+    }
+  },
+  {
+    "slug": "moelis-careers-taleo",
+    "url": "https://moelis-careers.tal.net/candidate/jobboard/vacancy/2/adv/",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 62535,
+      "meaningful": true,
+      "elapsed_s": 1.13,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 62966,
+      "meaningful": true,
+      "elapsed_s": 1.71,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 63024,
+      "meaningful": true,
+      "elapsed_s": 2.42,
+      "error": null
+    }
+  },
+  {
+    "slug": "nikon-careers-us",
+    "url": "https://recruiting.paylocity.com/recruiting/jobs/All/15fca012-892c-4721-a285-e56e02980e47/Nikon-Inc",
+    "monitor_type": "dom",
+    "scraper_type": "json-ld",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 24041,
+      "meaningful": true,
+      "elapsed_s": 1.1,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 30780,
+      "meaningful": true,
+      "elapsed_s": 4.0,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 29047,
+      "meaningful": true,
+      "elapsed_s": 3.96,
+      "error": null
+    }
+  },
+  {
+    "slug": "northrop-grumman-directemployers",
+    "url": "https://northropgrumman.jobs/jobs/",
+    "monitor_type": "sitemap",
+    "scraper_type": "json-ld",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 50033,
+      "meaningful": true,
+      "elapsed_s": 1.08,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 50740,
+      "meaningful": true,
+      "elapsed_s": 1.3,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 50421,
+      "meaningful": true,
+      "elapsed_s": 1.48,
+      "error": null
+    }
+  },
+  {
+    "slug": "northrop-grumman-veterans",
+    "url": "https://northropgrumman-veterans.jobs/",
+    "monitor_type": "sitemap",
+    "scraper_type": "json-ld",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 81170,
+      "meaningful": true,
+      "elapsed_s": 0.64,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 81209,
+      "meaningful": true,
+      "elapsed_s": 1.61,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 94204,
+      "meaningful": true,
+      "elapsed_s": 2.53,
+      "error": null
+    }
+  },
+  {
+    "slug": "oliver-wyman-marsh-eu",
+    "url": "https://careers.marsh.com/eu/en/oliver-wyman-search",
+    "monitor_type": "sitemap",
+    "scraper_type": "json-ld",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 126526,
+      "meaningful": true,
+      "elapsed_s": 1.97,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 130118,
+      "meaningful": true,
+      "elapsed_s": 3.11,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 128650,
+      "meaningful": true,
+      "elapsed_s": 3.73,
+      "error": null
+    }
+  },
+  {
+    "slug": "oliver-wyman-workday-mmc",
+    "url": "https://mmc.wd1.myworkdayjobs.com/en-US/MMC",
+    "monitor_type": "workday",
+    "scraper_type": "json-ld",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 6247,
+      "meaningful": true,
+      "elapsed_s": 0.7,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 64096,
+      "meaningful": true,
+      "elapsed_s": 2.99,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 6526,
+      "meaningful": true,
+      "elapsed_s": 1.37,
+      "error": null
+    }
+  },
+  {
+    "slug": "oracle-careers",
+    "url": "https://careers.oracle.com/en/sites/jobsearch/jobs",
+    "monitor_type": "sitemap",
+    "scraper_type": "dom",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 53070,
+      "meaningful": true,
+      "elapsed_s": 1.42,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 53620,
+      "meaningful": true,
+      "elapsed_s": 3.39,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 53592,
+      "meaningful": true,
+      "elapsed_s": 5.19,
+      "error": null
+    }
+  },
+  {
+    "slug": "pfizer-dejobs",
+    "url": "https://pfizer.dejobs.org/jobs/",
+    "monitor_type": "sitemap",
+    "scraper_type": "json-ld",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 2154,
+      "meaningful": true,
+      "elapsed_s": 0.38,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 2409,
+      "meaningful": true,
+      "elapsed_s": 1.28,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 10576,
+      "meaningful": true,
+      "elapsed_s": 2.09,
+      "error": null
+    }
+  },
+  {
+    "slug": "pictet-group-careers",
+    "url": "https://career012.successfactors.eu/career?company=banquepict&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 203420,
+      "meaningful": true,
+      "elapsed_s": 1.53,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 255829,
+      "meaningful": true,
+      "elapsed_s": 7.38,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 212762,
+      "meaningful": true,
+      "elapsed_s": 6.82,
+      "error": null
+    }
+  },
+  {
+    "slug": "playrix-careers",
+    "url": "https://playrix.com/job/open",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 3042,
+      "meaningful": true,
+      "elapsed_s": 0.24,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 22825,
+      "meaningful": true,
+      "elapsed_s": 1.28,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 4719,
+      "meaningful": true,
+      "elapsed_s": 3.46,
+      "error": null
+    }
+  },
+  {
+    "slug": "postfinance-careers",
+    "url": "https://www.post.ch/en/jobs/jobs",
+    "monitor_type": "dom",
+    "scraper_type": "json-ld",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 124748,
+      "meaningful": true,
+      "elapsed_s": 2.52,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 186534,
+      "meaningful": true,
+      "elapsed_s": 4.44,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 119543,
+      "meaningful": true,
+      "elapsed_s": 3.86,
+      "error": null
+    }
+  },
+  {
+    "slug": "psi-careers",
+    "url": "https://www.psi.ch/en/hr/job-opportunities",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 241619,
+      "meaningful": true,
+      "elapsed_s": 0.42,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 246677,
+      "meaningful": true,
+      "elapsed_s": 1.14,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 247317,
+      "meaningful": true,
+      "elapsed_s": 1.72,
+      "error": null
+    }
+  },
+  {
+    "slug": "revolut-careers",
+    "url": "https://www.revolut.com/careers/",
+    "monitor_type": "nextdata",
+    "scraper_type": "nextdata",
+    "http": {
+      "ok": true,
+      "status": 403,
+      "bytes": 877141,
+      "meaningful": true,
+      "elapsed_s": 0.4,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": false,
+      "bytes": 0,
+      "meaningful": false,
+      "elapsed_s": 2.85,
+      "error": "TargetClosedError: Page.goto: Target page, context or browser has been closed\nCall log:\n  - navigating to \"https://www.revolut.com/careers/\", waiting until \"domcontentloaded\"\n"
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 487612,
+      "meaningful": true,
+      "elapsed_s": 4.53,
+      "error": null
+    }
+  },
+  {
+    "slug": "rtx-careers",
+    "url": "https://careers.rtx.com/global/en",
+    "monitor_type": "sitemap",
+    "scraper_type": "json-ld",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 221627,
+      "meaningful": true,
+      "elapsed_s": 0.75,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 286109,
+      "meaningful": true,
+      "elapsed_s": 3.45,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 226484,
+      "meaningful": true,
+      "elapsed_s": 4.97,
+      "error": null
+    }
+  },
+  {
+    "slug": "shopify-careers",
+    "url": "https://www.shopify.com/careers",
+    "monitor_type": "sitemap",
+    "scraper_type": "dom",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 569385,
+      "meaningful": true,
+      "elapsed_s": 0.21,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 568925,
+      "meaningful": true,
+      "elapsed_s": 1.88,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 568928,
+      "meaningful": true,
+      "elapsed_s": 3.49,
+      "error": null
+    }
+  },
+  {
+    "slug": "siemens-careers",
+    "url": "https://jobs.siemens.com/en_US/externaljobs/SearchJobs",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 154861,
+      "meaningful": true,
+      "elapsed_s": 2.3,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 179233,
+      "meaningful": true,
+      "elapsed_s": 4.65,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 172714,
+      "meaningful": true,
+      "elapsed_s": 4.95,
+      "error": null
+    }
+  },
+  {
+    "slug": "skadden-careers-allhires-lawyers",
+    "url": "https://skadden.allhires.com/JobBoard/Lawyers/",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 19170,
+      "meaningful": true,
+      "elapsed_s": 0.4,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 18137,
+      "meaningful": true,
+      "elapsed_s": 0.88,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 18901,
+      "meaningful": true,
+      "elapsed_s": 1.33,
+      "error": null
+    }
+  },
+  {
+    "slug": "slaughter-and-may-careers",
+    "url": "https://careers.slaughterandmay.com/VacanciesV2.aspx",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 117886,
+      "meaningful": true,
+      "elapsed_s": 0.92,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 114483,
+      "meaningful": true,
+      "elapsed_s": 4.0,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 181940,
+      "meaningful": true,
+      "elapsed_s": 4.17,
+      "error": null
+    }
+  },
+  {
+    "slug": "strategy-and-careers-uk",
+    "url": "https://jobs.pwc.co.uk/experienced/uk/en/c/strategy-experienced-jobs",
+    "monitor_type": "dom",
+    "scraper_type": "json-ld",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 99635,
+      "meaningful": true,
+      "elapsed_s": 0.67,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 101519,
+      "meaningful": true,
+      "elapsed_s": 2.3,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 101246,
+      "meaningful": true,
+      "elapsed_s": 2.83,
+      "error": null
+    }
+  },
+  {
+    "slug": "strategy-and-careers-us",
+    "url": "https://jobs.us.pwc.com/strategy-and-jobs-2",
+    "monitor_type": "dom",
+    "scraper_type": "json-ld",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 40346,
+      "meaningful": true,
+      "elapsed_s": 0.97,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 43562,
+      "meaningful": true,
+      "elapsed_s": 4.72,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 41875,
+      "meaningful": true,
+      "elapsed_s": 6.18,
+      "error": null
+    }
+  },
+  {
+    "slug": "sullivan-cromwell-careers-florecruit",
+    "url": "https://florecruit.com/v2/app/sullcrom/jobs",
+    "monitor_type": "api_sniffer",
+    "scraper_type": "",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 16085,
+      "meaningful": true,
+      "elapsed_s": 0.66,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 18375,
+      "meaningful": true,
+      "elapsed_s": 3.47,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 17195,
+      "meaningful": true,
+      "elapsed_s": 2.99,
+      "error": null
+    }
+  },
+  {
+    "slug": "sullivan-cromwell-careers-taleo",
+    "url": "https://phg.tbe.taleo.net/phg04/ats/careers/v2/jobSearch?org=SULLCROM&cws=38",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 55354,
+      "meaningful": true,
+      "elapsed_s": 0.78,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 55187,
+      "meaningful": true,
+      "elapsed_s": 9.58,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 55187,
+      "meaningful": true,
+      "elapsed_s": 3.12,
+      "error": null
+    }
+  },
+  {
+    "slug": "swoboda-careers-de",
+    "url": "https://karriere.swoboda.com/",
+    "monitor_type": "dom",
+    "scraper_type": "json-ld",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 51439,
+      "meaningful": true,
+      "elapsed_s": 0.37,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 62037,
+      "meaningful": true,
+      "elapsed_s": 0.94,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 62068,
+      "meaningful": true,
+      "elapsed_s": 2.51,
+      "error": null
+    }
+  },
+  {
+    "slug": "tencent-careers",
+    "url": "https://careers.tencent.com/en-us/search.html",
+    "monitor_type": "api_sniffer",
+    "scraper_type": "json-ld",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 2259,
+      "meaningful": true,
+      "elapsed_s": 2.01,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": false,
+      "bytes": 0,
+      "meaningful": false,
+      "elapsed_s": 5.5,
+      "error": "Error: Page.content: Unable to retrieve content because the page is navigating and changing the content."
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 119186,
+      "meaningful": true,
+      "elapsed_s": 4.41,
+      "error": null
+    }
+  },
+  {
+    "slug": "ubs-careers",
+    "url": "https://jobs.ubs.com/TGnewUI/Search/home/HomeWithPreLoad?partnerid=25008&siteid=5012&PageType=searchResults&SearchType=linkquery&LinkID=15231",
+    "monitor_type": "dom",
+    "scraper_type": "dom",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 2598030,
+      "meaningful": true,
+      "elapsed_s": 1.01,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 2603504,
+      "meaningful": true,
+      "elapsed_s": 4.41,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 3327697,
+      "meaningful": true,
+      "elapsed_s": 7.44,
+      "error": null
+    }
+  },
+  {
+    "slug": "wesort-ai-careers",
+    "url": "https://www.wesort.ai/karriere",
+    "monitor_type": "sitemap",
+    "scraper_type": "dom",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 1085868,
+      "meaningful": true,
+      "elapsed_s": 0.44,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": false,
+      "bytes": 0,
+      "meaningful": false,
+      "elapsed_s": 30.87,
+      "error": "TimeoutError: Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://www.wesort.ai/karriere\", waiting until \"domcontentloaded\"\n"
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 1094420,
+      "meaningful": true,
+      "elapsed_s": 4.53,
+      "error": null
+    }
+  },
+  {
+    "slug": "wpp-careers",
+    "url": "https://wpp.careersitecloud.com/",
+    "monitor_type": "dom",
+    "scraper_type": "json-ld",
+    "http": {
+      "ok": true,
+      "status": 200,
+      "bytes": 34443,
+      "meaningful": true,
+      "elapsed_s": 0.82,
+      "error": null
+    },
+    "lightpanda": {
+      "ok": true,
+      "bytes": 126,
+      "meaningful": false,
+      "elapsed_s": 0.75,
+      "error": null
+    },
+    "chromium": {
+      "ok": true,
+      "bytes": 117,
+      "meaningful": false,
+      "elapsed_s": 1.37,
+      "error": null
+    }
+  }
+]

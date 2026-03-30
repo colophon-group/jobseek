@@ -12,17 +12,22 @@ Jobseek monitors company career pages for new job postings. Companies are config
 /
 ├── apps/
 │   ├── web/                 # Next.js 15 frontend (TypeScript, Drizzle ORM, Lingui i18n)
-│   └── crawler/             # Python crawler (asyncpg, httpx, structlog)
+│   └── crawler/             # Python crawler (asyncpg, httpx, structlog, redis)
 │       ├── data/
 │       │   ├── companies.csv    # Company registry (slug, name, website, logos)
 │       │   ├── boards.csv      # Board configs (monitor + scraper per board)
 │       │   └── images/          # Logo/icon staging area, uploaded to R2 by CI
 │       └── src/
 │           ├── core/        # Pure business logic (monitors + scrapers)
-│           ├── batch.py     # Batch processor
-│           ├── scheduler.py # Poll-loop scheduler
-│           ├── sync.py      # CSV → DB sync
-│           └── inspect.py   # CSV validation + diagnostics
+│           ├── workers/     # Worker pipeline (claim from Redis, dispatch)
+│           ├── processing/  # Board/scrape processing, CPU work, R2 staging
+│           ├── queries/     # SQL queries for local Postgres
+│           ├── redis_queue.py # Lua-backed claim/enqueue/reschedule
+│           ├── lua/         # Redis Lua scripts
+│           ├── exporter.py  # CDC: local Postgres -> Supabase
+│           ├── sync.py      # CSV -> DB + Redis sync
+│           ├── cli.py       # Entry point (crawler run/export/drain/sync/board)
+│           └── config.py    # Settings
 ├── docs/                    # Architecture documentation
 └── .github/workflows/       # CI + agent automation
 ```
@@ -34,8 +39,12 @@ Crawler (from `apps/crawler/` — see [apps/crawler/AGENTS.md](apps/crawler/AGEN
 ```bash
 uv sync                           # Install dependencies
 uv run pytest tests/              # Run tests
-uv run scheduler                  # Run crawler poll loop
-uv run python -m src.sync         # Sync CSVs to database
+uv run crawler run                # Run HTTP worker (claims from Redis simple queues)
+uv run crawler run-browser        # Run browser worker (claims from Redis browser queues)
+uv run crawler export             # Run CDC exporter (local Postgres -> Supabase)
+uv run crawler drain              # Run R2 description uploader
+uv run crawler sync               # Sync CSVs to local Postgres + Supabase + Redis
+uv run crawler board <slug>       # Process single board (debug)
 ```
 
 Web app (from `apps/web/`):

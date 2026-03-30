@@ -1,18 +1,7 @@
-"""Upload and diff-track job descriptions on Cloudflare R2.
+"""Upload job descriptions to Cloudflare R2.
 
 R2 layout per posting:
     job/{posting_id}/{locale}/latest.html
-    job/{posting_id}/{locale}/history.json   — description diffs + extras changes
-
-history.json structure:
-    {"current_extras": {...}, "versions": [{...}, ...]}
-
-    current_extras: latest structured data snapshot (title, locations, metadata, etc.)
-    versions: list of change entries (newest first), each containing:
-        {"timestamp": "...", "diff": "...", "extras": {"field": old_value}}
-        - "diff": reverse unified diff (only if description changed)
-        - "extras": dict of {field: previous_value} for changed fields only
-          (null = field was added, absent = unchanged)
 
 Environment variables (shared with image_sync):
     R2_ENDPOINT_URL / R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY
@@ -21,13 +10,9 @@ Environment variables (shared with image_sync):
 
 from __future__ import annotations
 
-import asyncio
-import difflib
 import hashlib
-import json
 import os
 import struct
-from datetime import UTC, datetime
 from urllib.parse import quote
 
 import httpx
@@ -102,7 +87,7 @@ def _sign(method: str, url: str, headers: dict, data: bytes = b"") -> dict:
     return dict(req.headers)
 
 
-async def get_object(key: str) -> str | None:
+async def _get_object(key: str) -> str | None:
     """Download an object as UTF-8 text. Returns None if not found."""
     url = _object_url(key)
     headers = _sign("GET", url, {})
@@ -129,172 +114,16 @@ async def _put_object(key: str, body: str, content_type: str = "text/html") -> N
     resp.raise_for_status()
 
 
-def _compute_reverse_diff(new_html: str, old_html: str) -> str:
-    """Unified diff from new → old (reverse patch)."""
-    return "".join(
-        difflib.unified_diff(
-            new_html.splitlines(keepends=True),
-            old_html.splitlines(keepends=True),
-            fromfile="new",
-            tofile="old",
-        )
-    )
-
-
-def _extras_diff(old: dict, new: dict) -> dict:
-    """Compute changed fields between old and new extras.
-
-    Returns a dict of {field: old_value} for fields that changed.
-    - Field present with a value → it changed (value is the previous value)
-    - Field present with null → it was added (no previous value)
-    - Field absent → unchanged
-    """
-    changed: dict = {}
-    all_keys = set(old) | set(new)
-    for key in all_keys:
-        old_val = old.get(key)
-        new_val = new.get(key)
-        if old_val != new_val:
-            changed[key] = old_val  # None if key was absent in old
-    return changed
-
-
-async def upload_posting(
-    posting_id: str,
-    locale: str,
-    html: str,
-    extras: dict,
-) -> None:
-    """Upload or update a posting's description + extras on R2.
-
-    Records a history entry with description diff and/or changed extras fields.
-    No separate extras.json — latest extras state is reconstructable from history.
-
-    History entry format:
-        {"timestamp": "...", "diff": "...", "extras": {"field": old_value}}
-    - "diff": reverse unified diff (only if description changed)
-    - "extras": dict of {field: previous_value} for changed fields only
-      (null = field was added, absent = unchanged)
-    """
-    prefix = _prefix(posting_id)
-    latest_key = f"{prefix}/{locale}/latest.html"
-    history_key = f"{prefix}/{locale}/history.json"
-
-    # Parallel fetch: existing description + history
-    existing_html, history_raw = await asyncio.gather(
-        get_object(latest_key),
-        get_object(history_key),
-    )
-    history = json.loads(history_raw) if history_raw else {"versions": []}
-    existing_extras: dict = history.get("current_extras", {})
-
-    # Carry forward metadata from previous extras when the new upload
-    # doesn't provide it.  Monitors produce metadata (e.g. employer,
-    # expiration_date) but scrapers typically don't — without this,
-    # each scrape would "remove" metadata and each monitor would "add"
-    # it back, creating spurious history churn.
-    if "metadata" not in extras and "metadata" in existing_extras:
-        extras = {**extras, "metadata": existing_extras["metadata"]}
-
-    desc_changed = existing_html is not None and existing_html != html
-    extras_changed_fields = _extras_diff(existing_extras, extras)
-    is_first = existing_html is None
-
-    if not is_first and not desc_changed and not extras_changed_fields:
-        return  # nothing changed
-
-    if is_first:
-        history = {"versions": [], "current_extras": extras}
-        history_json = json.dumps(history)
-        # First upload — write both in parallel
-        await asyncio.gather(
-            _put_object(history_key, history_json, "application/json"),
-            _put_object(latest_key, html),
-        )
-        log.info("description_store.created", posting_id=posting_id, locale=locale)
-    else:
-        entry: dict = {"timestamp": datetime.now(UTC).isoformat()}
-        if desc_changed:
-            entry["diff"] = _compute_reverse_diff(html, existing_html)
-        if extras_changed_fields:
-            entry["extras"] = extras_changed_fields
-
-        history["versions"].insert(0, entry)
-        history["current_extras"] = extras
-        history_json = json.dumps(history)
-
-        if desc_changed:
-            # Description + history changed — write both in parallel
-            await asyncio.gather(
-                _put_object(history_key, history_json, "application/json"),
-                _put_object(latest_key, html),
-            )
-        else:
-            # Only extras changed — just history
-            await _put_object(history_key, history_json, "application/json")
-
-        log.info(
-            "description_store.updated",
-            posting_id=posting_id,
-            locale=locale,
-            desc_changed=desc_changed,
-            extras_fields=list(extras_changed_fields.keys()) if extras_changed_fields else [],
-        )
-
-
-async def upload_description(
-    posting_id: str,
-    locale: str,
-    html: str,
-) -> None:
-    """Upload or update a description on R2 (localization-only, no extras).
-
-    Used for secondary locale descriptions. Primary locale should use upload_posting().
-    """
-    prefix = _prefix(posting_id)
-    latest_key = f"{prefix}/{locale}/latest.html"
-    history_key = f"{prefix}/{locale}/history.json"
-
-    # Parallel fetch for diff check
-    existing, history_raw = await asyncio.gather(
-        get_object(latest_key),
-        get_object(history_key),
-    )
-
-    if existing is not None and existing == html:
-        return
-
-    if existing is not None:
-        diff = _compute_reverse_diff(html, existing)
-        history = json.loads(history_raw) if history_raw else {"versions": []}
-        history["versions"].insert(
-            0,
-            {"timestamp": datetime.now(UTC).isoformat(), "diff": diff},
-        )
-        # Parallel write: history + HTML
-        await asyncio.gather(
-            _put_object(history_key, json.dumps(history), "application/json"),
-            _put_object(latest_key, html),
-        )
-        log.info(
-            "description_store.updated",
-            posting_id=posting_id,
-            locale=locale,
-            diff_len=len(diff),
-        )
-    else:
-        # First upload — parallel write
-        await asyncio.gather(
-            _put_object(history_key, json.dumps({"versions": []}), "application/json"),
-            _put_object(latest_key, html),
-        )
-        log.info("description_store.created", posting_id=posting_id, locale=locale)
+async def put_description(posting_id: str, locale: str, html: str) -> None:
+    """Upload a description to R2. Overwrites any existing version."""
+    key = f"job/{posting_id}/{locale}/latest.html"
+    await _put_object(key, html)
 
 
 async def get_description_html(posting_id: str, locale: str) -> str | None:
     """Fetch the latest HTML description from R2. Returns None if not found."""
     key = f"{_prefix(posting_id)}/{locale}/latest.html"
-    return await get_object(key)
+    return await _get_object(key)
 
 
 def get_description_url(posting_id: str, locale: str) -> str:

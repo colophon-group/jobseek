@@ -3,6 +3,11 @@
 Reads data/companies.csv and data/boards.csv, upserts rows into the database.
 The DB is derived state — CSVs are the source of truth.
 
+Writes to three targets:
+- Local Postgres: full board config (scheduling columns)
+- Supabase: minimal board reference (display/admin)
+- Redis: board config hashes + initial schedule
+
 Usage:
     uv run python -m src.sync              # sync both CSVs
     uv run python -m src.sync --dry-run    # show what would change
@@ -13,6 +18,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 from urllib.parse import urlparse
@@ -27,7 +33,8 @@ from src.config import settings
 from src.core.monitors import api_monitor_types, monitor_needs_browser
 from src.core.occupation_resolve import match_occupation
 from src.core.scrapers import scraper_needs_browser
-from src.db import close_pool, create_pool
+from src.db import close_all_pools, create_local_pool, create_pool
+from src.redis_queue import close_redis, enqueue_monitor
 from src.shared.logging import setup_logging
 
 _API_MONITOR_TYPES = api_monitor_types()
@@ -40,6 +47,24 @@ _UPSERT_OCCUPATION_DOMAINS = """
 INSERT INTO occupation_domain (slug)
 SELECT * FROM unnest($1::text[])
 ON CONFLICT (slug) DO NOTHING
+"""
+
+_MIRROR_OCCUPATION_DOMAINS = """
+INSERT INTO occupation_domain (id, slug)
+SELECT * FROM unnest($1::int[], $2::text[])
+ON CONFLICT (slug) DO UPDATE SET id = EXCLUDED.id
+"""
+
+_MIRROR_OCCUPATIONS = """
+INSERT INTO occupation (id, slug)
+SELECT * FROM unnest($1::int[], $2::text[])
+ON CONFLICT (slug) DO UPDATE SET id = EXCLUDED.id
+"""
+
+_MIRROR_SENIORITY = """
+INSERT INTO seniority (id, slug)
+SELECT * FROM unnest($1::int[], $2::text[])
+ON CONFLICT (slug) DO UPDATE SET id = EXCLUDED.id
 """
 
 _UPSERT_OCCUPATION_DOMAIN_NAMES = """
@@ -177,12 +202,11 @@ ON CONFLICT (company_id, locale) DO UPDATE SET
   description = EXCLUDED.description
 """
 
-_UPSERT_BOARDS = """
+_UPSERT_BOARDS_SUPA = """
 INSERT INTO job_board (company_id, board_slug, board_url, crawler_type, metadata,
-                       next_check_at, throttle_key,
+                       throttle_key,
                        monitor_needs_browser, scraper_needs_browser)
 SELECT c.id, b.board_slug, b.board_url, b.crawler_type, b.metadata::jsonb,
-       now() + (random() * 3600) * interval '1 second',
        b.throttle_key,
        b.monitor_needs_browser::boolean, b.scraper_needs_browser::boolean
 FROM unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::text[], $6::text[],
@@ -199,19 +223,31 @@ ON CONFLICT (board_url) DO UPDATE SET
     monitor_needs_browser = EXCLUDED.monitor_needs_browser,
     scraper_needs_browser = EXCLUDED.scraper_needs_browser,
     is_enabled = true,
-    board_status = CASE
-        WHEN job_board.board_status = 'disabled' THEN 'active'
-        ELSE job_board.board_status
-    END,
-    consecutive_failures = CASE
-        WHEN job_board.board_status != 'disabled' THEN 0
-        ELSE job_board.consecutive_failures
-    END,
-    next_check_at = CASE
-        WHEN job_board.board_status != 'disabled'
-        THEN now() + (random() * 600) * interval '1 second'
-        ELSE job_board.next_check_at
-    END,
+    updated_at = now()
+"""
+
+# Keep backward-compatible alias for tests
+_UPSERT_BOARDS = _UPSERT_BOARDS_SUPA
+
+_UPSERT_BOARD_LOCAL = """
+INSERT INTO job_board (id, company_id, board_slug, board_url,
+                       crawler_type, metadata,
+                       check_interval_minutes, scrape_interval_hours,
+                       throttle_key, monitor_needs_browser, scraper_needs_browser,
+                       is_enabled)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+ON CONFLICT (id) DO UPDATE SET
+    company_id = EXCLUDED.company_id,
+    board_slug = COALESCE(EXCLUDED.board_slug, job_board.board_slug),
+    board_url = EXCLUDED.board_url,
+    crawler_type = EXCLUDED.crawler_type,
+    metadata = EXCLUDED.metadata,
+    check_interval_minutes = EXCLUDED.check_interval_minutes,
+    scrape_interval_hours = EXCLUDED.scrape_interval_hours,
+    throttle_key = EXCLUDED.throttle_key,
+    monitor_needs_browser = EXCLUDED.monitor_needs_browser,
+    scraper_needs_browser = EXCLUDED.scraper_needs_browser,
+    is_enabled = EXCLUDED.is_enabled,
     updated_at = now()
 """
 
@@ -220,6 +256,10 @@ UPDATE job_board
 SET is_enabled = false, board_status = 'disabled', updated_at = now()
 WHERE board_url NOT IN (SELECT unnest($1::text[]))
   AND is_enabled = true
+"""
+
+_FETCH_BOARD_IDS = """
+SELECT id, company_id, board_url FROM job_board WHERE board_url = ANY($1::text[])
 """
 
 
@@ -762,8 +802,17 @@ async def sync_boards(
     conn: asyncpg.Connection,
     boards: pl.DataFrame,
     dry_run: bool,
+    *,
+    local_conn: asyncpg.Connection | None = None,
 ) -> None:
-    """Batch upsert boards and disable boards removed from CSV."""
+    """Batch upsert boards to Supabase + local Postgres + Redis.
+
+    Target 1 (Supabase): minimal board reference (display/admin only).
+    Target 2 (local Postgres): full board config with scheduling columns.
+    Target 3 (Redis): board config hashes + initial schedule.
+
+    ``local_conn`` is optional for backward compatibility (tests, dry-run).
+    """
     if len(boards) == 0:
         return
 
@@ -772,6 +821,7 @@ async def sync_boards(
     board_urls: list[str] = []
     crawler_types: list[str] = []
     metadatas: list[str | None] = []
+    metadata_objs: list[dict] = []
     throttle_keys: list[str] = []
     monitor_browser_flags: list[bool] = []
     scraper_browser_flags: list[bool] = []
@@ -854,6 +904,7 @@ async def sync_boards(
         board_urls.append(row["board_url"])
         crawler_types.append(mon_type)
         metadatas.append(metadata)
+        metadata_objs.append(metadata_obj)
         throttle_keys.append(_compute_throttle_key(mon_type, row["board_url"]))
         monitor_browser_flags.append(mon_browser)
         scraper_browser_flags.append(scr_browser)
@@ -866,20 +917,198 @@ async def sync_boards(
         log.info("sync.boards.all_skipped", skipped=skipped)
         return
 
-    await conn.execute(
-        _UPSERT_BOARDS,
-        company_slugs,
-        board_slugs,
-        board_urls,
-        crawler_types,
-        metadatas,
-        throttle_keys,
-        monitor_browser_flags,
-        scraper_browser_flags,
-    )
-    log.info("sync.boards.upserted", count=len(board_urls), skipped=skipped)
+    # Supabase board sync removed — frontend never queries job_board.
+    # Boards are only needed on local Postgres (worker scheduling) and Redis (queue).
 
-    await conn.execute(_DISABLE_REMOVED_BOARDS, board_urls)
+    # --- Targets 2 & 3: local Postgres + Redis ---
+    if local_conn is None:
+        return
+
+    # Fetch resolved board IDs + company IDs from Supabase
+    id_rows = await conn.fetch(_FETCH_BOARD_IDS, board_urls)
+    url_to_ids: dict[str, tuple] = {r["board_url"]: (r["id"], r["company_id"]) for r in id_rows}
+
+    redis_enqueued = 0
+    local_upserted = 0
+
+    for i, board_url in enumerate(board_urls):
+        ids = url_to_ids.get(board_url)
+        if not ids:
+            log.warning("sync.board.missing_id", board_url=board_url)
+            continue
+
+        board_id, company_id = ids
+        mon_type = crawler_types[i]
+        mon_browser = monitor_browser_flags[i]
+        scr_browser = scraper_browser_flags[i]
+        metadata_str = metadatas[i]
+        throttle_key = throttle_keys[i]
+        check_interval = 60  # default
+        scrape_interval = 24  # default
+
+        # Target 2: local Postgres (full board config with scheduling)
+        await local_conn.execute(
+            _UPSERT_BOARD_LOCAL,
+            board_id,
+            company_id,
+            board_slugs[i],
+            board_url,
+            mon_type,
+            metadata_str,
+            check_interval,
+            scrape_interval,
+            throttle_key,
+            mon_browser,
+            scr_browser,
+            True,  # is_enabled
+        )
+        local_upserted += 1
+
+        # Target 3: Redis (board config hash + initial schedule)
+        config = {
+            "board_url": board_url,
+            "crawler_type": mon_type,
+            "company_id": str(company_id),
+            "metadata": json.dumps(metadata_objs[i]) if metadata_objs[i] else "{}",
+            "check_interval_minutes": str(check_interval),
+            "scrape_interval_hours": str(scrape_interval),
+            "throttle_key": throttle_key,
+            "monitor_needs_browser": "1" if mon_browser else "0",
+            "scraper_needs_browser": "1" if scr_browser else "0",
+        }
+        await enqueue_monitor(
+            throttle_key,
+            str(board_id),
+            time.time(),
+            config,
+            browser=mon_browser,
+            first_time=True,
+        )
+        redis_enqueued += 1
+
+    # Disable removed boards in local Postgres too
+    await local_conn.execute(_DISABLE_REMOVED_BOARDS, board_urls)
+
+    log.info(
+        "sync.boards.local_redis",
+        local_upserted=local_upserted,
+        redis_enqueued=redis_enqueued,
+    )
+
+
+async def _mirror_table(
+    local_conn: asyncpg.Connection,
+    table: str,
+    mirror_sql: str,
+    ids: list[int],
+    slugs: list[str],
+) -> None:
+    """Re-insert rows into a local lookup table with Supabase-assigned IDs.
+
+    Caller is responsible for deleting rows in the correct FK order before
+    calling this.  After insert, advances the serial sequence past max(ids)
+    to prevent future auto-increment collisions.
+    """
+    await local_conn.execute(mirror_sql, ids, slugs)
+    max_id = max(ids)
+    await local_conn.execute(
+        "SELECT setval(pg_get_serial_sequence($1, 'id'), $2, true)",
+        table,
+        max_id,
+    )
+
+
+async def sync_lookup_tables_local(
+    supa_conn: asyncpg.Connection,
+    local_conn: asyncpg.Connection,
+    occupation_domains: pl.DataFrame,
+    occupations: pl.DataFrame,
+    seniority_df: pl.DataFrame,
+    technologies: pl.DataFrame,
+    industries: pl.DataFrame,
+    dry_run: bool,
+) -> None:
+    """Sync lookup tables to local Postgres using Supabase-assigned IDs.
+
+    For occupation_domain, occupation, and seniority the local DB must use
+    the exact same IDs as Supabase so that the exporter can copy FK references
+    (occupation_id, seniority_id on job_posting) without translation.
+
+    Strategy: delete all rows in FK-safe order (children before parents),
+    re-insert with Supabase IDs, then sync names/parents/domains.
+    """
+    # Fetch Supabase-assigned IDs for all three tables
+    domain_rows = (
+        await supa_conn.fetch("SELECT id, slug FROM occupation_domain")
+        if len(occupation_domains) > 0
+        else []
+    )
+    occ_rows = (
+        await supa_conn.fetch("SELECT id, slug FROM occupation") if len(occupations) > 0 else []
+    )
+    sen_rows = (
+        await supa_conn.fetch("SELECT id, slug FROM seniority") if len(seniority_df) > 0 else []
+    )
+
+    # --- Delete in FK-safe order: occupation -> occupation_domain, seniority ---
+    # occupation.domain_id references occupation_domain(id), so delete
+    # occupation first.  *_name tables cascade automatically.
+    if occ_rows:
+        await local_conn.execute("DELETE FROM occupation")
+    if domain_rows:
+        await local_conn.execute("DELETE FROM occupation_domain")
+    if sen_rows:
+        await local_conn.execute("DELETE FROM seniority")
+
+    # --- Re-insert with explicit Supabase IDs ---
+    if domain_rows:
+        await _mirror_table(
+            local_conn,
+            "occupation_domain",
+            _MIRROR_OCCUPATION_DOMAINS,
+            [r["id"] for r in domain_rows],
+            [r["slug"] for r in domain_rows],
+        )
+    if occ_rows:
+        await _mirror_table(
+            local_conn,
+            "occupation",
+            _MIRROR_OCCUPATIONS,
+            [r["id"] for r in occ_rows],
+            [r["slug"] for r in occ_rows],
+        )
+    if sen_rows:
+        await _mirror_table(
+            local_conn,
+            "seniority",
+            _MIRROR_SENIORITY,
+            [r["id"] for r in sen_rows],
+            [r["slug"] for r in sen_rows],
+        )
+
+    # --- Sync names, parents, domains (references the now-correct IDs) ---
+    if len(occupation_domains) > 0:
+        await sync_occupation_domains(local_conn, occupation_domains, dry_run)
+    if len(occupations) > 0:
+        await sync_occupations(local_conn, occupations, dry_run)
+    if len(seniority_df) > 0:
+        await sync_seniority(local_conn, seniority_df, dry_run)
+
+    log.info(
+        "sync.lookup_tables_local.mirrored",
+        occupation_domains=len(domain_rows),
+        occupations=len(occ_rows),
+        seniority=len(sen_rows),
+    )
+
+    # Technologies and industries don't have the same problem:
+    # - technologies use slug as the natural key (not auto-increment FK)
+    # - industries have explicit IDs in the CSV
+    # Sync them normally.
+    await sync_technologies(local_conn, technologies, dry_run)
+    await sync_industries(local_conn, industries, dry_run)
+
+    log.info("sync.lookup_tables_local.complete")
 
 
 async def run_sync(dry_run: bool = False) -> None:
@@ -898,20 +1127,52 @@ async def run_sync(dry_run: bool = False) -> None:
         log.info("sync.empty", msg="No data in CSVs, nothing to sync")
         return
 
-    pool = await create_pool()
+    supa_pool = await create_pool()
+    local_pool = None if dry_run else await create_local_pool()
     try:
-        async with pool.acquire() as conn, conn.transaction():
-            await conn.execute("SET lock_timeout = '30s'")
-            await sync_occupation_domains(conn, occupation_domains, dry_run)
-            await sync_occupations(conn, occupations, dry_run)
-            await sync_seniority(conn, seniority_df, dry_run)
-            await sync_technologies(conn, technologies, dry_run)
-            await sync_industries(conn, industries, dry_run)
-            await sync_companies(conn, companies, dry_run)
-            await sync_company_descriptions(conn, company_descs, dry_run)
-            await sync_boards(conn, boards, dry_run)
+        async with supa_pool.acquire() as supa_conn, supa_conn.transaction():
+            await supa_conn.execute("SET lock_timeout = '30s'")
+
+            # Lookup tables -> Supabase (web app queries these)
+            await sync_occupation_domains(supa_conn, occupation_domains, dry_run)
+            await sync_occupations(supa_conn, occupations, dry_run)
+            await sync_seniority(supa_conn, seniority_df, dry_run)
+            await sync_technologies(supa_conn, technologies, dry_run)
+            await sync_industries(supa_conn, industries, dry_run)
+
+            # Company data -> Supabase only (display data)
+            await sync_companies(supa_conn, companies, dry_run)
+            await sync_company_descriptions(supa_conn, company_descs, dry_run)
+
+            # Boards -> Supabase + local Postgres + Redis
+            local_conn = None
+            if local_pool is not None:
+                local_conn = await local_pool.acquire()
+            try:
+                await sync_boards(supa_conn, boards, dry_run, local_conn=local_conn)
+            finally:
+                if local_conn is not None:
+                    await local_pool.release(local_conn)
+
             if not dry_run:
-                await resolve_pending_misses(conn)
+                await resolve_pending_misses(supa_conn)
+
+            # Lookup tables -> local Postgres too (workers need them for CPU
+            # processing: location_resolve, technology_resolve, etc.)
+            # Must run inside the Supabase transaction so we can read back
+            # the IDs that Supabase assigned to occupation/seniority rows.
+            if local_pool is not None and not dry_run:
+                async with local_pool.acquire() as local_conn:
+                    await sync_lookup_tables_local(
+                        supa_conn,
+                        local_conn,
+                        occupation_domains,
+                        occupations,
+                        seniority_df,
+                        technologies,
+                        industries,
+                        dry_run,
+                    )
 
         log.info(
             "sync.complete",
@@ -926,7 +1187,8 @@ async def run_sync(dry_run: bool = False) -> None:
             dry_run=dry_run,
         )
     finally:
-        await close_pool()
+        await close_all_pools()
+        await close_redis()
 
 
 def main():

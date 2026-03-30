@@ -114,7 +114,7 @@ def register(
     chunked-stream wrapper that yields batches of 200 from the discover()
     result.  This prevents worker-pool timeouts during R2 uploads.
     """
-    if rich and stream is None:
+    if stream is None:
         stream = _make_chunked_stream(discover)
     _REGISTRY.append(
         MonitorType(
@@ -168,19 +168,23 @@ def all_monitor_types() -> frozenset[str]:
 def monitor_needs_browser(name: str, config: dict | None = None) -> bool:
     """Return True if the monitor requires a Playwright browser.
 
+    accenture always needs a browser (cookie extraction via Playwright).
     api_sniffer needs a browser when ``browser`` is set in config or when
     no ``api_url`` is configured (auto-discover mode).  dom always benefits
     from a browser but falls back to static HTML.
     """
+    if name == "accenture":
+        return True
     if name == "api_sniffer":
         cfg = config or {}
-        # Auto-discover (no api_url) always needs browser
         if not cfg.get("api_url"):
             return True
-        # Replay mode (browser: true) needs browser
         return bool(cfg.get("browser"))
     if name == "dom":
         return bool((config or {}).get("render"))
+    if name == "nextdata":
+        cfg = config or {}
+        return bool(cfg.get("render") or cfg.get("actions"))
     return False
 
 

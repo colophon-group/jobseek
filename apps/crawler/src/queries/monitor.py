@@ -1,0 +1,367 @@
+"""SQL queries for monitor (board) operations."""
+
+from __future__ import annotations
+
+_FETCH_DUE_BOARDS = """
+WITH ranked AS (
+  SELECT id,
+         row_number() OVER (
+           PARTITION BY throttle_key
+           ORDER BY next_check_at, id
+         ) AS domain_rank,
+         next_check_at
+  FROM job_board
+  WHERE is_enabled = true
+    AND board_status IN ('active', 'suspect')
+    AND next_check_at <= now()
+    AND (leased_until IS NULL OR leased_until < now())
+),
+picked AS (
+  SELECT id
+  FROM ranked
+  ORDER BY domain_rank, next_check_at, id
+  LIMIT $1
+  FOR UPDATE SKIP LOCKED
+)
+UPDATE job_board b
+SET lease_owner   = $2,
+    leased_until  = now() + interval '10 minutes',
+    last_checked_at = now(),
+    next_check_at = now() + (check_interval_minutes || ' minutes')::interval
+FROM picked
+WHERE b.id = picked.id
+RETURNING b.*
+"""
+
+_RELEASE_BOARD_LEASE = """
+UPDATE job_board
+SET lease_owner = NULL, leased_until = NULL
+WHERE id = $1
+"""
+
+_RELEASE_BOARD_LEASES = """
+UPDATE job_board
+SET lease_owner = NULL, leased_until = NULL
+WHERE id = ANY($1::uuid[])
+"""
+
+_RELEASE_POSTING_LEASES = """
+UPDATE job_posting
+SET leased_until = NULL
+WHERE id = ANY($1::uuid[])
+"""
+
+_DIFF_URLS = """
+WITH discovered AS (
+  SELECT unnest($1::text[]) AS url
+),
+touched AS (
+  UPDATE job_posting
+  SET last_seen_at = now(), missing_count = 0
+  FROM discovered d
+  WHERE job_posting.board_id = $2
+    AND job_posting.is_active = true
+    AND job_posting.source_url = d.url
+  RETURNING job_posting.id, job_posting.source_url, job_posting.description_r2_hash
+),
+relisted AS (
+  UPDATE job_posting
+  SET is_active = true, missing_count = 0,
+      last_seen_at = now(),
+      next_scrape_at = CASE WHEN $4::boolean THEN NULL ELSE now() END
+  FROM discovered d
+  WHERE job_posting.board_id = $2
+    AND job_posting.is_active = false
+    AND job_posting.source_url = d.url
+  RETURNING job_posting.id, job_posting.source_url, job_posting.description_r2_hash
+),
+gone AS (
+  UPDATE job_posting
+  SET missing_count = missing_count + 1,
+      is_active = CASE
+          WHEN missing_count + 1 >= $3 THEN false
+          ELSE is_active
+      END,
+      next_scrape_at = CASE
+          WHEN missing_count + 1 >= $3 THEN NULL
+          ELSE next_scrape_at
+      END
+  WHERE job_posting.board_id = $2
+    AND job_posting.is_active = true
+    AND job_posting.source_url NOT IN (SELECT url FROM discovered)
+  RETURNING job_posting.id, job_posting.source_url
+),
+new_urls AS (
+  SELECT d.url
+  FROM discovered d
+  LEFT JOIN job_posting jp
+    ON jp.source_url = d.url AND jp.board_id = $2
+  WHERE jp.id IS NULL
+)
+SELECT 'touched' AS action, id::text, source_url AS url, description_r2_hash FROM touched
+UNION ALL
+SELECT 'relisted' AS action, id::text, source_url AS url, description_r2_hash FROM relisted
+UNION ALL
+SELECT 'gone', id::text, source_url, NULL::bigint FROM gone
+UNION ALL
+SELECT 'new', NULL, url, NULL::bigint FROM new_urls
+"""
+
+# Delist threshold: API monitors are authoritative (1 miss = delist),
+# URL-only monitors are fragile (2 misses before delist).
+_DELIST_THRESHOLD_AUTHORITATIVE = 1
+_DELIST_THRESHOLD_FRAGILE = 2
+
+_DELIST_BOARD_POSTINGS = """
+UPDATE job_posting
+SET is_active = false, next_scrape_at = NULL
+WHERE board_id = $1 AND is_active = true
+"""
+
+_RECORD_BOARD_GONE = """
+UPDATE job_board
+SET board_status = 'gone', gone_at = now(),
+    is_enabled = false,
+    lease_owner = NULL, leased_until = NULL,
+    updated_at = now()
+WHERE id = $1
+"""
+
+_RECORD_SUCCESS_NONEMPTY = """
+UPDATE job_board
+SET consecutive_failures = 0,
+    last_error = NULL,
+    last_success_at = now(),
+    next_check_at = now() + (check_interval_minutes || ' minutes')::interval,
+    empty_check_count = 0,
+    board_status = 'active',
+    last_non_empty_at = now(),
+    lease_owner = NULL,
+    leased_until = NULL,
+    updated_at = now()
+WHERE id = $1
+"""
+
+_RECORD_EMPTY_CHECK = """
+UPDATE job_board
+SET consecutive_failures = 0,
+    last_error = NULL,
+    last_success_at = now(),
+    next_check_at = now() + (check_interval_minutes || ' minutes')::interval,
+    empty_check_count = empty_check_count + 1,
+    board_status = CASE
+        WHEN last_non_empty_at IS NOT NULL AND empty_check_count + 1 >= 6
+        THEN 'gone'
+        WHEN last_non_empty_at IS NOT NULL AND empty_check_count + 1 >= 3
+        THEN 'suspect'
+        ELSE board_status
+    END,
+    gone_at = CASE
+        WHEN last_non_empty_at IS NOT NULL AND empty_check_count + 1 >= 6
+        THEN now()
+        ELSE gone_at
+    END,
+    is_enabled = CASE
+        WHEN last_non_empty_at IS NOT NULL AND empty_check_count + 1 >= 6
+        THEN false
+        ELSE is_enabled
+    END,
+    lease_owner = NULL,
+    leased_until = NULL,
+    updated_at = now()
+WHERE id = $1
+RETURNING board_status
+"""
+
+_RECORD_FAILURE = """
+UPDATE job_board
+SET consecutive_failures = consecutive_failures + 1,
+    last_error = $2,
+    next_check_at = now() + LEAST(
+        (5 * pow(2, consecutive_failures)) || ' minutes',
+        '1440 minutes'
+    )::interval,
+    is_enabled = CASE WHEN consecutive_failures + 1 >= 5 THEN false ELSE is_enabled END,
+    board_status = CASE WHEN consecutive_failures + 1 >= 5 THEN 'disabled' ELSE board_status END,
+    lease_owner = NULL,
+    leased_until = NULL,
+    updated_at = now()
+WHERE id = $1
+"""
+
+_DIFF_BATCH = """
+WITH discovered AS (
+  SELECT unnest($1::text[]) AS url
+),
+touched AS (
+  UPDATE job_posting
+  SET last_seen_at = now(), missing_count = 0
+  FROM discovered d
+  WHERE job_posting.board_id = $2
+    AND job_posting.is_active = true
+    AND job_posting.source_url = d.url
+  RETURNING job_posting.id, job_posting.source_url, job_posting.description_r2_hash
+),
+relisted AS (
+  UPDATE job_posting
+  SET is_active = true, missing_count = 0,
+      last_seen_at = now(),
+      next_scrape_at = CASE WHEN $3::boolean THEN NULL ELSE now() END
+  FROM discovered d
+  WHERE job_posting.board_id = $2
+    AND job_posting.is_active = false
+    AND job_posting.source_url = d.url
+  RETURNING job_posting.id, job_posting.source_url, job_posting.description_r2_hash
+),
+new_urls AS (
+  SELECT d.url
+  FROM discovered d
+  LEFT JOIN job_posting jp
+    ON jp.source_url = d.url AND jp.board_id = $2
+  WHERE jp.id IS NULL
+)
+SELECT 'touched' AS action, id::text, source_url AS url, description_r2_hash FROM touched
+UNION ALL
+SELECT 'relisted' AS action, id::text, source_url AS url, description_r2_hash FROM relisted
+UNION ALL
+SELECT 'new', NULL, url, NULL::bigint FROM new_urls
+"""
+
+_MARK_GONE = """
+WITH discovered AS (
+  SELECT unnest($1::text[]) AS url
+)
+UPDATE job_posting
+SET missing_count = missing_count + 1,
+    is_active = CASE
+        WHEN missing_count + 1 >= $3 THEN false
+        ELSE is_active
+    END,
+    next_scrape_at = CASE
+        WHEN missing_count + 1 >= $3 THEN NULL
+        ELSE next_scrape_at
+    END
+WHERE job_posting.board_id = $2
+  AND job_posting.is_active = true
+  AND job_posting.source_url NOT IN (SELECT url FROM discovered)
+RETURNING job_posting.id, job_posting.source_url
+"""
+
+_MARK_GONE_BY_TIMESTAMP = """
+UPDATE job_posting
+SET missing_count = missing_count + 1,
+    is_active = CASE
+        WHEN missing_count + 1 >= $3 THEN false
+        ELSE is_active
+    END,
+    next_scrape_at = CASE
+        WHEN missing_count + 1 >= $3 THEN NULL
+        ELSE next_scrape_at
+    END
+WHERE board_id = $1
+  AND is_active = true
+  AND last_seen_at < $2
+RETURNING id, source_url
+"""
+
+_EXTEND_BOARD_LEASE = """
+UPDATE job_board
+SET leased_until = now() + interval '10 minutes'
+WHERE id = $1
+"""
+
+_INSERT_RICH_JOB = """
+INSERT INTO job_posting
+    (company_id, board_id,
+     employment_type, source_url,
+     first_seen_at, last_seen_at,
+     is_active, titles, locales,
+     location_ids, location_types,
+     salary_min, salary_max, salary_currency, salary_period, salary_eur,
+     experience_min, experience_max, technology_ids,
+     occupation_id, seniority_id)
+VALUES ($1, $2, $3, $4,
+        now(), now(),
+        true, $5, $6,
+        $7, $8,
+        $9, $10, $11, $12, $13,
+        $14, $15, $16,
+        $17, $18)
+RETURNING id
+"""
+
+_INSERT_RICH_JOB_ENRICH = """
+INSERT INTO job_posting
+    (company_id, board_id,
+     employment_type, source_url,
+     first_seen_at, last_seen_at, next_scrape_at,
+     is_active, titles, locales,
+     location_ids, location_types,
+     salary_min, salary_max, salary_currency, salary_period, salary_eur,
+     experience_min, experience_max, technology_ids,
+     occupation_id, seniority_id)
+VALUES ($1, $2, $3, $4,
+        now(), now(), now(),
+        true, $5, $6,
+        $7, $8,
+        $9, $10, $11, $12, $13,
+        $14, $15, $16,
+        $17, $18)
+RETURNING id
+"""
+
+_CREATE_RICH_UPDATES_TEMP = """
+CREATE TEMP TABLE _rich_updates (
+    id uuid,
+    employment_type text,
+    titles text[], locales text[],
+    location_ids integer[], location_types text[],
+    salary_min integer, salary_max integer,
+    salary_currency text, salary_period text, salary_eur integer,
+    experience_min integer, experience_max integer,
+    technology_ids integer[],
+    occupation_id integer, seniority_id integer
+) ON COMMIT DROP
+"""
+
+_BATCH_UPDATE_RICH_CONTENT = """
+UPDATE job_posting AS jp
+SET employment_type = u.employment_type,
+    titles = u.titles, locales = u.locales,
+    location_ids = u.location_ids, location_types = u.location_types,
+    salary_min = u.salary_min, salary_max = u.salary_max,
+    salary_currency = u.salary_currency, salary_period = u.salary_period,
+    salary_eur = u.salary_eur,
+    experience_min = u.experience_min, experience_max = u.experience_max,
+    technology_ids = COALESCE(u.technology_ids, jp.technology_ids),
+    occupation_id = COALESCE(u.occupation_id, jp.occupation_id),
+    seniority_id = COALESCE(u.seniority_id, jp.seniority_id)
+FROM _rich_updates u
+WHERE jp.id = u.id
+"""
+
+_INSERT_URL_ONLY_JOBS = """
+INSERT INTO job_posting (company_id, board_id, source_url,
+                         first_seen_at, last_seen_at, next_scrape_at,
+                         is_active, titles, locales)
+SELECT $1, $2, u.url, now(), now(), now(),
+       true, '{}', '{}'
+FROM unnest($3::text[]) AS u(url)
+RETURNING id, source_url
+"""
+
+_UPDATE_METADATA = """
+UPDATE job_board
+SET metadata = COALESCE(metadata, '{}'::jsonb) || $2::jsonb,
+    updated_at = now()
+WHERE id = $1
+"""
+
+_UPSERT_LOCATION_MISSES = """
+INSERT INTO taxonomy_miss (taxonomy, raw_value, sample_value)
+SELECT 'location', * FROM unnest($1::text[], $2::text[])
+ON CONFLICT (taxonomy, raw_value) DO UPDATE SET
+    hit_count = taxonomy_miss.hit_count + 1,
+    last_seen_at = now()
+WHERE taxonomy_miss.status = 'pending'
+"""

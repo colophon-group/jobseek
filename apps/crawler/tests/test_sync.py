@@ -466,7 +466,9 @@ class TestRunSync:
     @patch("src.sync._load_seniority")
     @patch("src.sync._load_occupations")
     @patch("src.sync._load_occupation_domains")
-    @patch("src.sync.close_pool")
+    @patch("src.sync.close_redis")
+    @patch("src.sync.close_all_pools")
+    @patch("src.sync.create_local_pool")
     @patch("src.sync.create_pool")
     @patch("src.sync.resolve_pending_misses")
     @patch("src.sync.sync_boards")
@@ -489,7 +491,9 @@ class TestRunSync:
         mock_sync_boards,
         mock_resolve_pending_misses,
         mock_create_pool,
-        mock_close_pool,
+        mock_create_local_pool,
+        mock_close_all_pools,
+        mock_close_redis,
         mock_load_occupation_domains,
         mock_load_occupations,
         mock_load_seniority,
@@ -539,7 +543,7 @@ class TestRunSync:
         mock_load_company_descriptions.return_value = company_descs_df
         mock_load_boards.return_value = boards_df
 
-        # Set up pool + connection mock with proper async context managers
+        # Set up Supabase pool + connection mock with proper async context managers
         mock_conn = MagicMock()
         mock_conn.execute = AsyncMock()
         mock_txn_cm = AsyncMock()
@@ -553,20 +557,58 @@ class TestRunSync:
         mock_pool.acquire.return_value = mock_acquire_cm
         mock_create_pool.return_value = mock_pool
 
+        # Set up local pool mock — acquire() is used in two modes:
+        #   1. conn = await pool.acquire()  (sync_boards path)
+        #   2. async with pool.acquire() as conn:  (lookup tables path)
+        # In asyncpg, pool.acquire() returns a PoolAcquireContext which
+        # supports both modes. We simulate this with a helper class.
+        mock_local_conn = MagicMock()
+        mock_local_conn.execute = AsyncMock()
+
+        class _FakeAcquireCtx:
+            """Simulates asyncpg PoolAcquireContext: awaitable + async CM."""
+
+            def __await__(self_inner):
+                async def _aw():
+                    return mock_local_conn
+
+                return _aw().__await__()
+
+            async def __aenter__(self_inner):
+                return mock_local_conn
+
+            async def __aexit__(self_inner, *a):
+                pass
+
+        mock_local_pool = MagicMock()
+        mock_local_pool.acquire.return_value = _FakeAcquireCtx()
+        mock_local_pool.release = AsyncMock()
+        mock_create_local_pool.return_value = mock_local_pool
+
         await run_sync(dry_run=False)
 
-        mock_sync_occupation_domains.assert_called_once_with(
-            mock_conn, occupation_domains_df, False
-        )
-        mock_sync_occupations.assert_called_once_with(mock_conn, occupations_df, False)
-        mock_sync_seniority.assert_called_once_with(mock_conn, seniority_df, False)
-        mock_sync_technologies.assert_called_once_with(mock_conn, technologies_df, False)
-        mock_sync_industries.assert_called_once_with(mock_conn, industries_df, False)
+        # Supabase: lookup tables + company data
+        # occupation_domains/occupations/seniority: called once on Supabase;
+        # local sync skips them because DataFrames are empty.
+        assert mock_sync_occupation_domains.call_count == 1
+        assert mock_sync_occupations.call_count == 1
+        assert mock_sync_seniority.call_count == 1
+        # technologies/industries: called twice (supa + local) regardless
+        assert mock_sync_technologies.call_count == 2
+        assert mock_sync_industries.call_count == 2
         mock_sync_companies.assert_called_once_with(mock_conn, companies_df, False)
         mock_sync_company_descriptions.assert_called_once_with(mock_conn, company_descs_df, False)
-        mock_sync_boards.assert_called_once_with(mock_conn, boards_df, False)
+
+        # Boards: called with supa_conn + local_conn kwarg
+        mock_sync_boards.assert_called_once()
+        board_call_args = mock_sync_boards.call_args
+        assert board_call_args[0][0] == mock_conn  # supa_conn
+        assert board_call_args[0][1] is boards_df
+        assert board_call_args[0][2] is False  # dry_run
+
         mock_resolve_pending_misses.assert_called_once_with(mock_conn)
-        mock_close_pool.assert_called_once()
+        mock_close_all_pools.assert_called_once()
+        mock_close_redis.assert_called_once()
 
     @patch("src.sync.setup_logging")
     @patch("src.sync._load_boards")
@@ -577,7 +619,9 @@ class TestRunSync:
     @patch("src.sync._load_seniority")
     @patch("src.sync._load_occupations")
     @patch("src.sync._load_occupation_domains")
-    @patch("src.sync.close_pool")
+    @patch("src.sync.close_redis")
+    @patch("src.sync.close_all_pools")
+    @patch("src.sync.create_local_pool")
     @patch("src.sync.create_pool")
     @patch("src.sync.sync_occupation_domains")
     @patch("src.sync.sync_occupations")
@@ -594,7 +638,9 @@ class TestRunSync:
         mock_sync_occupations,
         mock_sync_occupation_domains,
         mock_create_pool,
-        mock_close_pool,
+        mock_create_local_pool,
+        mock_close_all_pools,
+        mock_close_redis,
         mock_load_occupation_domains,
         mock_load_occupations,
         mock_load_seniority,
@@ -605,7 +651,7 @@ class TestRunSync:
         mock_load_boards,
         mock_setup_logging,
     ):
-        """sync_companies raises -> close_pool still called."""
+        """sync_companies raises -> close_all_pools + close_redis still called."""
         mock_load_occupation_domains.return_value = pl.DataFrame()
         mock_load_occupations.return_value = pl.DataFrame()
         mock_load_seniority.return_value = pl.DataFrame()
@@ -628,7 +674,7 @@ class TestRunSync:
             schema_overrides=_BOARD_SCHEMA,
         )
 
-        # Set up pool + connection mock
+        # Set up Supabase pool + connection mock
         mock_conn = MagicMock()
         mock_conn.execute = AsyncMock()
         mock_txn_cm = AsyncMock()
@@ -642,9 +688,16 @@ class TestRunSync:
         mock_pool.acquire.return_value = mock_acquire_cm
         mock_create_pool.return_value = mock_pool
 
+        # Set up local pool mock
+        mock_local_pool = MagicMock()
+        mock_local_pool.acquire.return_value = AsyncMock()
+        mock_local_pool.release = AsyncMock()
+        mock_create_local_pool.return_value = mock_local_pool
+
         mock_sync_companies.side_effect = RuntimeError("DB connection failed")
 
         with pytest.raises(RuntimeError, match="DB connection failed"):
             await run_sync(dry_run=False)
 
-        mock_close_pool.assert_called_once()
+        mock_close_all_pools.assert_called_once()
+        mock_close_redis.assert_called_once()

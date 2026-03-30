@@ -7,7 +7,7 @@ set -euo pipefail
 # ── Validate required env vars ─────────────────────────────────────────
 required_vars=(
   OWNER
-  DATABASE_URL
+  DATABASE_URL_UNPOOLED
   LOCAL_DATABASE_URL
   R2_ACCESS_KEY_ID
   R2_SECRET_ACCESS_KEY
@@ -39,7 +39,7 @@ DEPLOY_DIR="/home/deploy"
 # ── Write env file ──────────────────────────────────────────────────
 cat > "$DEPLOY_DIR/.env" <<EOF
 OWNER=${OWNER}
-DATABASE_URL=${DATABASE_URL}
+DATABASE_URL=${DATABASE_URL_UNPOOLED}
 LOCAL_DATABASE_URL=${LOCAL_DATABASE_URL}
 R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
 R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}

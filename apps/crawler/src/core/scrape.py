@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from src.core.scrapers import JobContent, enrich_description, get_scraper
-from src.shared.throttle import throttle_domain
 
 if TYPE_CHECKING:
     import httpx
@@ -52,9 +51,6 @@ async def scrape_one(
     """
     scraper = get_scraper(scraper_type)
     config = scraper_config or {}
-
-    # Per-domain politeness throttle
-    await throttle_domain(url)
 
     # Use a no-SSL client when the board's cert chain is broken
     if config.get("skip_ssl"):

@@ -82,28 +82,26 @@ See [04 — Monitors and Scrapers](./04-monitors-and-scrapers.md) for config det
 
 ## DB Sync
 
-The sync script (`src/sync.py`) runs on deploy and reads both CSVs to upsert database rows.
+The sync script (`src/sync.py`) runs on deploy and writes to THREE targets in one pass.
 
 ### Sync Behavior
 
 ```
-CSV → DB rules:
-  companies.csv  → company table (upsert on slug)
-  boards.csv     → job_board table (upsert on board_url)
+CSV → DB + Redis rules:
+  companies.csv  → company table (upsert on slug) — both Local Postgres and Supabase
+  boards.csv     → job_board table (upsert on board_url) — Local Postgres (full config),
+                   Supabase (display subset), Redis (queue scheduling + config hashes)
 ```
 
-- **New rows**: Inserted with defaults (next_check_at = now, is_enabled = true)
-- **Existing rows**: Config fields updated, runtime fields preserved:
-  - Preserved: `next_check_at`, `last_checked_at`, `last_success_at`, `consecutive_failures`, `last_error`, `is_enabled`
-  - Updated: `crawler_type`, `metadata` (from monitor_config), company fields
+- **New rows**: Inserted with staggered `next_check_at` (random offset to prevent thundering herd)
+- **Existing rows**: Config fields updated, runtime fields preserved
 - **Removed rows**: Boards not in CSV are disabled (`is_enabled = false`), not deleted. This preserves historical job posting data.
 
 ### Running the Sync
 
 ```bash
 cd apps/crawler
-uv run python -m src.sync              # sync both CSVs
-uv run python -m src.sync --dry-run    # show what would change without writing
+uv run crawler sync              # sync both CSVs to all targets
 ```
 
 ## CSV Validation

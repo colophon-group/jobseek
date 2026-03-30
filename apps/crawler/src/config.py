@@ -8,6 +8,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     database_url: str = ""
+    local_database_url: str = "postgresql://crawler:crawler@postgres:5432/crawler"
     proxy_map: dict[str, str] = {}
 
     @field_validator("proxy_map", mode="before")
@@ -17,24 +18,38 @@ class Settings(BaseSettings):
             return json.loads(v) if v.strip() else {}
         return v
 
+    # Redis (local instance, not Upstash)
+    redis_url: str = "redis://localhost:6379/0"
+    redis_max_connections: int = 20
+    throttle_delay_default: float = 2.0
+    throttle_delay_ats: float = 0.5
+
+    # Upstash (web app only, kept for backward compat)
     upstash_redis_rest_url: str = ""
     upstash_redis_rest_token: str = ""
     log_level: str = "INFO"
     worker_id_prefix: str = ""
-    crawler_batch_limit: int = 200
-    crawler_poll_interval: int = 15
     crawler_max_concurrent: int = 20
     crawler_max_browser: int = 3  # separate cap for browser (Playwright) work
     crawler_db_pool_max: int = 10
-    crawler_db_writers: int = 1  # number of concurrent pipeline DB writers
     metrics_port: int = 9091
-    r2_max_connections: int = 60  # also controls number of drain worker consumers
-    r2_drain_producers: int = 1  # number of concurrent DB-fetch producers
-    r2_drain_writers: int = 1  # number of concurrent DB-write workers
-    r2_drain_batch_size: int = 200
-    r2_drain_max_retries: int = 5
-    r2_drain_shutdown_timeout: float = 30.0
-    r2_queue_max: int = 50000  # skip re-upload staging above this threshold
+    r2_max_connections: int = 60  # controls R2 HTTP client pool size
+
+    # Pipeline concurrency (per-instance)
+    discovery_concurrency: int = 20
+    monitor_concurrency: int = 5  # max concurrent monitors (bounds peak memory)
+    raw_buffer_size: int = 10
+    done_buffer_size: int = 10
+    writeback_concurrency: int = 5
+    cpu_threads: int = 1
+    drain_producers: int = 2
+    drain_consumers: int = 30
+    drain_buffer_size: int = 200
+
+    # Exporter
+    export_interval: int = 1
+    export_batch_limit: int = 2000
+    reconciliation_interval: int = 86400
 
     apify_token: str = ""
     anthropic_api_key: str = ""

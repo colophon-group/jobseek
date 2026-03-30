@@ -3,13 +3,10 @@ from __future__ import annotations
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import httpx
 import pytest
 
 from src.batch import (
     _BATCH_UPDATE_RICH_CONTENT,
-    _CLAIM_MONITORS,
-    _CLAIM_SCRAPES,
     _CREATE_RICH_UPDATES_TEMP,
     _DELIST_BOARD_POSTINGS,
     _INSERT_RICH_JOB,
@@ -22,27 +19,25 @@ from src.batch import (
     _UPDATE_ENRICH_CONTENT,
     _UPDATE_JOB_CONTENT,
     _UPDATE_METADATA,
+    _UPSERT_DESCRIPTION,
     BatchResult,
     BoardScraperConfig,
     ScrapeItem,
-    _apply_fallback_chain,
     _board_has_enrich,
-    _BoardScraperInfo,
     _coerce_datetime,
     _coerce_text,
+    _get_next_fallback,
+    _get_scraper_at_step,
     _jsonb,
     _load_board_scrapers,
     _merge_fields,
     _monitor_pipeline,
     _PipelineResult,
-    _process_one_board,
+    _process_one_board_streaming,
     _process_one_enrich_scrape,
     _process_one_scrape,
-    _run_fallback_scraper,
     _scrape_pipeline,
     _throttle_key,
-    claim_monitor_work,
-    claim_scrape_work,
     process_monitor_batch,
     process_scrape_batch,
 )
@@ -50,6 +45,7 @@ from src.core.location_resolve import LocationResolver
 from src.core.monitor import MonitorResult
 from src.core.monitors import DiscoveredJob, api_monitor_types
 from src.core.scrapers import JobContent
+from src.processing.board import DeadlineExtender
 
 
 @pytest.fixture(autouse=True)
@@ -74,6 +70,13 @@ def _mock_currency_rates(monkeypatch):
         return rates
 
     monkeypatch.setattr("src.batch._get_currency_rates", _fake_get_rates)
+
+
+@pytest.fixture(autouse=True)
+def _mock_enqueue_scrapes(monkeypatch):
+    """Auto-mock scrape enqueue so board tests don't hit Redis."""
+    monkeypatch.setattr("src.processing.board._enqueue_scrapes_for_new", AsyncMock())
+    monkeypatch.setattr("src.processing.board._enqueue_scrapes_for_relisted", AsyncMock())
 
 
 class TestJsonb:
@@ -170,6 +173,11 @@ def _mock_board(**overrides):
     return record
 
 
+async def _process_one_board(board, pool, http):
+    """Backward-compat wrapper: calls streaming path with a DeadlineExtender."""
+    return await _process_one_board_streaming(board, pool, http, DeadlineExtender())
+
+
 @pytest.fixture
 def mock_pool():
     """Return (pool, conn) where pool.acquire() yields conn inside a transaction."""
@@ -177,6 +185,8 @@ def mock_pool():
     conn = AsyncMock()
     conn.execute = AsyncMock(return_value="UPDATE 1")
     pool.fetch = AsyncMock(return_value=[])
+    # monitor_start_ts for timestamp-based gone detection
+    pool.fetchval = AsyncMock(return_value="2026-01-01T00:00:00+00:00")
 
     # pool.acquire() must be a sync call returning an async context manager
     acq_cm = AsyncMock()
@@ -247,18 +257,28 @@ def _inserted_row(row_id, source_url):
     return row
 
 
+def _mock_stream(*results):
+    """Create an async generator that yields MonitorResults for monitor_one_stream mock."""
+
+    async def _gen(*args, **kwargs):
+        for r in results:
+            yield r
+
+    return _gen
+
+
 # ── TestProcessOneBoard ──────────────────────────────────────────────
 
 
 class TestProcessOneBoard:
     @patch("src.batch.get_redis")
-    @patch("src.batch.monitor_one")
+    @patch("src.batch.monitor_one_stream")
     async def test_empty_result_records_empty_check(
         self, mock_monitor, mock_get_redis, mock_pool, mock_http
     ):
         """Monitor returns empty urls -> _RECORD_EMPTY_CHECK called, no transaction."""
         pool, conn = mock_pool
-        mock_monitor.return_value = MonitorResult(urls=set())
+        mock_monitor.side_effect = _mock_stream(MonitorResult(urls=set()))
         # _RECORD_EMPTY_CHECK now uses RETURNING, so conn.fetch returns rows
         conn.fetch.return_value = [{"board_status": "active"}]
         board = _mock_board()
@@ -269,13 +289,13 @@ class TestProcessOneBoard:
         mock_get_redis.assert_not_called()
 
     @patch("src.batch.get_redis")
-    @patch("src.batch.monitor_one")
+    @patch("src.batch.monitor_one_stream")
     async def test_empty_result_board_gone_delists_postings(
         self, mock_monitor, mock_get_redis, mock_pool, mock_http
     ):
         """Board transitions to 'gone' after repeated empties -> delist all postings."""
         pool, conn = mock_pool
-        mock_monitor.return_value = MonitorResult(urls=set())
+        mock_monitor.side_effect = _mock_stream(MonitorResult(urls=set()))
         # Simulate board transitioning to gone
         conn.fetch.return_value = [{"board_status": "gone"}]
         board = _mock_board()
@@ -287,7 +307,7 @@ class TestProcessOneBoard:
         conn.execute.assert_awaited_once_with(_DELIST_BOARD_POSTINGS, "board-1")
 
     @patch("src.batch.get_redis")
-    @patch("src.batch.monitor_one")
+    @patch("src.batch.monitor_one_stream")
     async def test_rich_data_inserts_new_jobs(
         self, mock_monitor, mock_get_redis, mock_pool, mock_http
     ):
@@ -297,9 +317,11 @@ class TestProcessOneBoard:
         url2 = "https://example.com/job/2"
         job1 = _discovered_job(url=url1)
         job2 = _discovered_job(url=url2, title="Designer")
-        mock_monitor.return_value = MonitorResult(
-            urls={url1, url2},
-            jobs_by_url={url1: job1, url2: job2},
+        mock_monitor.side_effect = _mock_stream(
+            MonitorResult(
+                urls={url1, url2},
+                jobs_by_url={url1: job1, url2: job2},
+            )
         )
         # DIFF returns both as new
         conn.fetch.return_value = [
@@ -316,7 +338,7 @@ class TestProcessOneBoard:
         assert any(c.args[0] == _INSERT_RICH_JOB for c in call_args)
 
     @patch("src.batch.get_redis")
-    @patch("src.batch.monitor_one")
+    @patch("src.batch.monitor_one_stream")
     async def test_rich_data_normalizes_escaped_description(
         self, mock_monitor, mock_get_redis, mock_pool, mock_http
     ):
@@ -327,9 +349,11 @@ class TestProcessOneBoard:
             url=url1,
             description="&lt;p class=&quot;Lexical__paragraph&quot;&gt;Hello&lt;/p&gt;",
         )
-        mock_monitor.return_value = MonitorResult(
-            urls={url1},
-            jobs_by_url={url1: job1},
+        mock_monitor.side_effect = _mock_stream(
+            MonitorResult(
+                urls={url1},
+                jobs_by_url={url1: job1},
+            )
         )
         conn.fetch.return_value = [_diff_row("new", url=url1)]
         board = _mock_board()
@@ -343,7 +367,7 @@ class TestProcessOneBoard:
         assert job1.description == "<p>Hello</p>"
 
     @patch("src.batch.get_redis")
-    @patch("src.batch.monitor_one")
+    @patch("src.batch.monitor_one_stream")
     async def test_url_only_inserts_stubs_for_scrape(
         self,
         mock_monitor,
@@ -354,29 +378,31 @@ class TestProcessOneBoard:
         """Monitor returns urls only (jobs_by_url=None) -> INSERT_URL_ONLY_JOBS."""
         pool, conn = mock_pool
         url1 = "https://example.com/job/1"
-        mock_monitor.return_value = MonitorResult(urls={url1}, jobs_by_url=None)
+        mock_monitor.side_effect = _mock_stream(MonitorResult(urls={url1}, jobs_by_url=None))
         conn.fetch.side_effect = [
-            # First fetch call: DIFF_URLS
+            # First fetch call: DIFF_BATCH
             [_diff_row("new", url=url1)],
             # Second fetch call: INSERT_URL_ONLY_JOBS
             [_inserted_row("jp-1", url1)],
+            # Third fetch call: MARK_GONE_BY_TIMESTAMP
+            [],
         ]
         board = _mock_board()
 
         await _process_one_board(board, pool, mock_http)
 
-        # INSERT_URL_ONLY_JOBS was called
-        assert conn.fetch.await_count == 2
+        # INSERT_URL_ONLY_JOBS was called (3 fetches: DIFF_BATCH, INSERT, MARK_GONE)
+        assert conn.fetch.await_count == 3
         second_fetch = conn.fetch.await_args_list[1]
         assert second_fetch.args[0] == _INSERT_URL_ONLY_JOBS
 
     @patch("src.batch.get_redis")
-    @patch("src.batch.monitor_one")
+    @patch("src.batch.monitor_one_stream")
     async def test_gone_jobs_in_diff(self, mock_monitor, mock_get_redis, mock_pool, mock_http):
         """DIFF_URLS returns 'gone' rows -> they trigger cache invalidation."""
         pool, conn = mock_pool
         url1 = "https://example.com/job/1"
-        mock_monitor.return_value = MonitorResult(urls={url1}, jobs_by_url=None)
+        mock_monitor.side_effect = _mock_stream(MonitorResult(urls={url1}, jobs_by_url=None))
         conn.fetch.return_value = [
             _diff_row("gone", row_id="jp-gone", url="https://example.com/old"),
         ]
@@ -390,7 +416,7 @@ class TestProcessOneBoard:
         mock_redis.delete.assert_awaited_with("cache:platform-stats")
 
     @patch("src.batch.get_redis")
-    @patch("src.batch.monitor_one")
+    @patch("src.batch.monitor_one_stream")
     async def test_relisted_jobs_content_update(
         self, mock_monitor, mock_get_redis, mock_pool, mock_http
     ):
@@ -398,9 +424,11 @@ class TestProcessOneBoard:
         pool, conn = mock_pool
         url1 = "https://example.com/job/1"
         job1 = _discovered_job(url=url1)
-        mock_monitor.return_value = MonitorResult(
-            urls={url1},
-            jobs_by_url={url1: job1},
+        mock_monitor.side_effect = _mock_stream(
+            MonitorResult(
+                urls={url1},
+                jobs_by_url={url1: job1},
+            )
         )
         conn.fetch.return_value = [
             _diff_row("relisted", row_id="jp-relisted", url=url1),
@@ -415,17 +443,19 @@ class TestProcessOneBoard:
         conn.copy_records_to_table.assert_awaited()
 
     @patch("src.batch.get_redis")
-    @patch("src.batch.monitor_one")
+    @patch("src.batch.monitor_one_stream")
     async def test_new_sitemap_url_updates_metadata(
         self, mock_monitor, mock_get_redis, mock_pool, mock_http
     ):
         """result.new_sitemap_url set -> _UPDATE_METADATA called."""
         pool, conn = mock_pool
         url1 = "https://example.com/job/1"
-        mock_monitor.return_value = MonitorResult(
-            urls={url1},
-            jobs_by_url=None,
-            new_sitemap_url="https://example.com/sitemap-jobs.xml",
+        mock_monitor.side_effect = _mock_stream(
+            MonitorResult(
+                urls={url1},
+                jobs_by_url=None,
+                new_sitemap_url="https://example.com/sitemap-jobs.xml",
+            )
         )
         conn.fetch.return_value = []  # No diff changes
         board = _mock_board()
@@ -439,7 +469,7 @@ class TestProcessOneBoard:
         assert "sitemap-jobs.xml" in metadata_calls[0].args[2]
 
     @patch("src.batch.get_redis")
-    @patch("src.batch.monitor_one")
+    @patch("src.batch.monitor_one_stream")
     async def test_error_records_failure(self, mock_monitor, mock_get_redis, mock_pool, mock_http):
         """monitor_one raises -> _RECORD_FAILURE called with truncated error."""
         pool, conn = mock_pool
@@ -455,7 +485,7 @@ class TestProcessOneBoard:
         assert len(error_arg) <= 500
 
     @patch("src.batch.get_redis")
-    @patch("src.batch.monitor_one")
+    @patch("src.batch.monitor_one_stream")
     async def test_error_records_exception_type_when_message_is_blank(
         self, mock_monitor, mock_get_redis, mock_pool, mock_http
     ):
@@ -471,7 +501,7 @@ class TestProcessOneBoard:
         assert failure_calls[0].args[2] == "RuntimeError"
 
     @patch("src.batch.get_redis")
-    @patch("src.batch.monitor_one")
+    @patch("src.batch.monitor_one_stream")
     async def test_stats_cache_invalidated_on_changes(
         self,
         mock_monitor,
@@ -482,10 +512,12 @@ class TestProcessOneBoard:
         """New or gone jobs -> get_redis().delete called."""
         pool, conn = mock_pool
         url1 = "https://example.com/job/1"
-        mock_monitor.return_value = MonitorResult(urls={url1}, jobs_by_url=None)
+        mock_monitor.side_effect = _mock_stream(MonitorResult(urls={url1}, jobs_by_url=None))
         conn.fetch.side_effect = [
             [_diff_row("new", url=url1)],
             [_inserted_row("jp-1", url1)],
+            # MARK_GONE_BY_TIMESTAMP
+            [],
         ]
         board = _mock_board()
 
@@ -497,16 +529,18 @@ class TestProcessOneBoard:
         mock_redis.delete.assert_awaited_with("cache:platform-stats")
 
     @patch("src.batch.get_redis")
-    @patch("src.batch.monitor_one")
+    @patch("src.batch.monitor_one_stream")
     async def test_no_cache_invalidation_when_no_changes(
         self, mock_monitor, mock_get_redis, mock_pool, mock_http
     ):
         """No new/gone jobs -> get_redis().delete NOT called."""
         pool, conn = mock_pool
         url1 = "https://example.com/job/1"
-        mock_monitor.return_value = MonitorResult(
-            urls={url1},
-            jobs_by_url={url1: _discovered_job(url=url1)},
+        mock_monitor.side_effect = _mock_stream(
+            MonitorResult(
+                urls={url1},
+                jobs_by_url={url1: _discovered_job(url=url1)},
+            )
         )
         # Only existing active jobs, no new/gone/relisted
         conn.fetch.return_value = []
@@ -521,7 +555,7 @@ class TestProcessOneBoard:
 
 
 class TestMonitorPipeline:
-    @patch("src.batch._process_one_board", new_callable=AsyncMock)
+    @patch("src.processing.board._process_one_board_streaming", new_callable=AsyncMock)
     async def test_all_succeed(self, mock_process, mock_pool, mock_http):
         """3 boards, all succeed -> returns 3."""
         pool, _ = mock_pool
@@ -534,7 +568,7 @@ class TestMonitorPipeline:
         assert len(result.durations) == 3
         assert mock_process.await_count == 3
 
-    @patch("src.batch._process_one_board", new_callable=AsyncMock)
+    @patch("src.processing.board._process_one_board_streaming", new_callable=AsyncMock)
     async def test_partial_failure(self, mock_process, mock_pool, mock_http):
         """3 boards, 1 raises in _process_one_board -> returns 2."""
         pool, _ = mock_pool
@@ -545,7 +579,7 @@ class TestMonitorPipeline:
 
         assert result.succeeded == 2
 
-    @patch("src.batch._process_one_board", new_callable=AsyncMock)
+    @patch("src.processing.board._process_one_board_streaming", new_callable=AsyncMock)
     async def test_counts_false_return_as_failure(self, mock_process, mock_pool, mock_http):
         """_process_one_board False result should count as failed."""
         pool, _ = mock_pool
@@ -556,7 +590,7 @@ class TestMonitorPipeline:
 
         assert result.succeeded == 2
 
-    @patch("src.batch._process_one_board", new_callable=AsyncMock)
+    @patch("src.processing.board._process_one_board_streaming", new_callable=AsyncMock)
     async def test_empty_boards(self, mock_process, mock_pool, mock_http):
         """Empty list -> returns 0."""
         pool, _ = mock_pool
@@ -789,48 +823,85 @@ class TestProcessOneScrape:
         # Verify it was normalized in-place for R2 upload.
         assert content.description == "<p>Hi</p>"
 
+    @patch("src.redis_queue.enqueue_scrape", new_callable=AsyncMock)
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
-    async def test_fallback_on_empty_primary(self, mock_scrape, mock_pool, mock_http):
-        """Primary returns no title, fallback succeeds -> True."""
+    async def test_step0_no_title_enqueues_fallback(
+        self, mock_scrape, mock_enqueue, mock_pool, mock_http
+    ):
+        """Step 0 returns no title -> enqueues next fallback step, returns False."""
         pool, conn = mock_pool
-        mock_scrape.side_effect = [_job_content(title=None), _job_content(title="Fallback Title")]
+        mock_scrape.return_value = _job_content(title=None)
+        mock_enqueue.return_value = True
         item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
         config = {"fallback": {"type": "dom", "config": {"render": True}}}
 
-        ok, _duration = await _process_one_scrape(item, pool, mock_http, "json-ld", config)
+        ok, _duration = await _process_one_scrape(
+            item, pool, mock_http, "json-ld", config, scrape_step=0
+        )
 
-        assert ok is True
-        assert mock_scrape.await_count == 2
-        # First call: primary scraper
-        assert mock_scrape.await_args_list[0].args[1] == "json-ld"
-        # Second call: fallback scraper
-        assert mock_scrape.await_args_list[1].args[1] == "dom"
+        assert ok is False
+        # Only primary scraper called (no inline fallback)
+        assert mock_scrape.await_count == 1
+        # Next step enqueued
+        mock_enqueue.assert_awaited_once()
+        enqueue_args = mock_enqueue.await_args
+        assert enqueue_args.args[0] == "example.com"  # domain
+        assert enqueue_args.args[1] == "jp-1"  # posting_id
+        assert enqueue_args.kwargs.get("browser") is True  # dom+render needs browser
+        assert enqueue_args.args[3]["scrape_step"] == "1"
 
+    @patch("src.redis_queue.enqueue_scrape", new_callable=AsyncMock)
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
-    async def test_no_fallback_when_primary_succeeds(self, mock_scrape, mock_pool, mock_http):
-        """Primary has title -> fallback is not called."""
+    async def test_step0_success_enqueues_next(
+        self, mock_scrape, mock_enqueue, mock_pool, mock_http
+    ):
+        """Step 0 succeeds with title -> saves and enqueues next fallback step."""
         pool, conn = mock_pool
         mock_scrape.return_value = _job_content(title="Primary Title")
+        mock_enqueue.return_value = True
         item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
         config = {"fallback": {"type": "dom", "config": {"render": True}}}
 
-        ok, _duration = await _process_one_scrape(item, pool, mock_http, "json-ld", config)
+        ok, _duration = await _process_one_scrape(
+            item, pool, mock_http, "json-ld", config, scrape_step=0
+        )
 
         assert ok is True
         assert mock_scrape.await_count == 1
+        # Next fallback step should be enqueued
+        mock_enqueue.assert_awaited_once()
+
+    @patch("src.redis_queue.enqueue_scrape", new_callable=AsyncMock)
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_no_fallback_no_enqueue(self, mock_scrape, mock_enqueue, mock_pool, mock_http):
+        """No fallback configured -> no enqueue after success."""
+        pool, conn = mock_pool
+        mock_scrape.return_value = _job_content(title="Title")
+        item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+        config = {}  # no fallback
+
+        ok, _duration = await _process_one_scrape(
+            item, pool, mock_http, "json-ld", config, scrape_step=0
+        )
+
+        assert ok is True
+        mock_enqueue.assert_not_awaited()
 
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
-    async def test_both_scrapers_fail(self, mock_scrape, mock_pool, mock_http):
-        """Primary and fallback both return empty -> failure (backoff)."""
+    async def test_step0_no_title_no_fallback_records_failure(
+        self, mock_scrape, mock_pool, mock_http
+    ):
+        """Step 0, no title, no fallback -> records failure."""
         pool, conn = mock_pool
         mock_scrape.return_value = _job_content(title=None)
         item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
-        config = {"fallback": {"type": "dom", "config": {"render": True}}}
+        config = {}  # no fallback
 
-        ok, _duration = await _process_one_scrape(item, pool, mock_http, "json-ld", config)
+        ok, _duration = await _process_one_scrape(
+            item, pool, mock_http, "json-ld", config, scrape_step=0
+        )
 
-        assert ok is False  # failure triggers backoff
-        assert mock_scrape.await_count == 2
+        assert ok is False
         execute_calls = conn.execute.await_args_list
         failure_calls = [c for c in execute_calls if c.args[0] == _RECORD_SCRAPE_FAILURE]
         assert len(failure_calls) == 1
@@ -920,107 +991,94 @@ class TestMergeFields:
         assert merged.locations == ["London"]
 
 
-class TestApplyFallbackChain:
-    @patch("src.batch.scrape_one", new_callable=AsyncMock)
-    @patch("src.batch._run_fallback_scraper", new_callable=AsyncMock)
-    async def test_field_level_always_runs(self, mock_fb_scraper, mock_scrape, mock_http):
-        """Field-level fallback runs even when primary has title."""
-        primary = _job_content(title="Good Title", description="<p>short</p>")
-        mock_fb_scraper.return_value = _job_content(description="<p>long</p>")
-        cfg = {"fallback": {"type": "dom", "config": {}, "fields": ["description"]}}
+class TestGetScraperAtStep:
+    def test_step_zero_returns_primary(self):
+        """Step 0 returns the primary scraper type and config."""
+        typ, cfg = _get_scraper_at_step("json-ld", {"selector": "h1"}, 0)
+        assert typ == "json-ld"
+        assert cfg == {"selector": "h1"}
 
-        result = await _apply_fallback_chain(primary, "https://x.com/j", "json-ld", cfg, mock_http)
+    def test_step_one_returns_fallback(self):
+        """Step 1 walks to the first fallback."""
+        config = {"fallback": {"type": "dom", "config": {"render": True}}}
+        typ, cfg = _get_scraper_at_step("json-ld", config, 1)
+        assert typ == "dom"
+        assert cfg == {"render": True}
 
-        assert result.title == "Good Title"
-        assert result.description == "<p>long</p>"
-        mock_fb_scraper.assert_awaited_once()
-
-    @patch("src.batch.scrape_one", new_callable=AsyncMock)
-    async def test_full_replacement_only_on_no_title(self, mock_scrape, mock_http):
-        """Full replacement (no fields) only triggers when title is missing."""
-        primary = _job_content(title="Has Title")
-        cfg = {"fallback": {"type": "dom", "config": {}}}
-
-        result = await _apply_fallback_chain(primary, "https://x.com/j", "json-ld", cfg, mock_http)
-
-        assert result.title == "Has Title"
-        mock_scrape.assert_not_awaited()
-
-    @patch("src.batch.scrape_one", new_callable=AsyncMock)
-    @patch("src.batch._run_fallback_scraper", new_callable=AsyncMock)
-    async def test_mixed_chain(self, mock_fb_scraper, mock_scrape, mock_http):
-        """Field-level first, then full-replacement in nested chain."""
-        primary = _job_content(title=None, description="<p>short</p>")
-        mock_fb_scraper.return_value = _job_content(title=None, description="<p>long</p>")
-        mock_scrape.return_value = _job_content(title="DOM Title", description="<p>dom</p>")
-        cfg = {
+    def test_step_two_nested_fallback(self):
+        """Step 2 walks through two levels of fallback."""
+        config = {
             "fallback": {
                 "type": "dom",
-                "config": {"fallback": {"type": "dom", "config": {"render": True}}},
+                "config": {
+                    "render": False,
+                    "fallback": {"type": "embedded", "config": {"path": "$.x"}},
+                },
+            }
+        }
+        typ, cfg = _get_scraper_at_step("json-ld", config, 2)
+        assert typ == "embedded"
+        assert cfg == {"path": "$.x"}
+
+    def test_step_beyond_chain_returns_last(self):
+        """Step beyond chain depth returns the last scraper."""
+        config = {"fallback": {"type": "dom", "config": {}}}
+        typ, cfg = _get_scraper_at_step("json-ld", config, 5)
+        assert typ == "dom"
+        assert cfg == {}
+
+    def test_none_config_step_zero(self):
+        """None config at step 0 returns empty dict."""
+        typ, cfg = _get_scraper_at_step("json-ld", None, 0)
+        assert typ == "json-ld"
+        assert cfg == {}
+
+
+class TestGetNextFallback:
+    def test_returns_next_when_exists(self):
+        """Returns the next fallback at step+1."""
+        config = {
+            "fallback": {
+                "type": "dom",
+                "config": {"render": True},
                 "fields": ["description"],
             }
         }
+        result = _get_next_fallback("json-ld", config, 0)
+        assert result is not None
+        fb_type, fb_cfg, fb_fields = result
+        assert fb_type == "dom"
+        assert fb_cfg == {"render": True}
+        assert fb_fields == ["description"]
 
-        result = await _apply_fallback_chain(primary, "https://x.com/j", "json-ld", cfg, mock_http)
+    def test_returns_none_when_no_fallback(self):
+        """Returns None when there is no next fallback."""
+        config = {"selector": "h1"}
+        result = _get_next_fallback("json-ld", config, 0)
+        assert result is None
 
-        # First fallback: field-level merge for description
-        mock_fb_scraper.assert_awaited_once()
-        # Second fallback: full replacement because still no title
-        mock_scrape.assert_awaited_once()
-        assert result.title == "DOM Title"
+    def test_nested_fallback_at_step_1(self):
+        """Returns the fallback at step 2 when asked at step 1."""
+        config = {
+            "fallback": {
+                "type": "dom",
+                "config": {
+                    "fallback": {"type": "embedded", "config": {"path": "$.x"}},
+                },
+            }
+        }
+        result = _get_next_fallback("json-ld", config, 1)
+        assert result is not None
+        fb_type, fb_cfg, fb_fields = result
+        assert fb_type == "embedded"
+        assert fb_cfg == {"path": "$.x"}
+        assert fb_fields is None
 
-    @patch("src.batch._run_fallback_scraper", new_callable=AsyncMock)
-    async def test_fallback_none_doesnt_overwrite(self, mock_fb_scraper, mock_http):
-        """Fallback returning None for a listed field doesn't overwrite primary."""
-        primary = _job_content(description="<p>primary desc</p>")
-        mock_fb_scraper.return_value = JobContent(description=None)
-        cfg = {"fallback": {"type": "dom", "config": {}, "fields": ["description"]}}
-
-        result = await _apply_fallback_chain(primary, "https://x.com/j", "json-ld", cfg, mock_http)
-
-        assert result.description == "<p>primary desc</p>"
-
-
-class TestRunFallbackScraper:
-    async def test_uses_parse_html_when_available(self):
-        """Optimization: parse_html is used directly instead of full scrape_one."""
-        html = '<script type="application/ld+json">{"@type":"JobPosting","title":"T"}</script>'
-
-        def handler(request):
-            return httpx.Response(200, text=html)
-
-        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
-            result = await _run_fallback_scraper("https://example.com/job/1", "json-ld", {}, http)
-            assert result.title == "T"
-
-    @patch("src.batch.scrape_one", new_callable=AsyncMock)
-    async def test_falls_back_to_scrape_one_when_render(self, mock_scrape, mock_http):
-        """When render is required, falls back to full scrape_one."""
-        mock_scrape.return_value = _job_content(title="Rendered")
-        result = await _run_fallback_scraper(
-            "https://example.com/job/1", "json-ld", {"render": True}, mock_http
-        )
-        assert result.title == "Rendered"
-        mock_scrape.assert_awaited_once()
-
-
-class TestProcessOneScrapeFieldFallback:
-    """Integration tests for field-level fallback through _process_one_scrape."""
-
-    @patch("src.batch.scrape_one", new_callable=AsyncMock)
-    @patch("src.batch._run_fallback_scraper", new_callable=AsyncMock)
-    async def test_field_fallback_through_process(self, mock_fb, mock_scrape, mock_pool, mock_http):
-        """Field-level fallback works end-to-end through _process_one_scrape."""
-        pool, conn = mock_pool
-        mock_scrape.return_value = _job_content(title="Good", description="<p>short</p>")
-        mock_fb.return_value = _job_content(description="<p>long detailed desc</p>")
-        item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
-        config = {"fallback": {"type": "dom", "config": {}, "fields": ["description"]}}
-
-        ok, _ = await _process_one_scrape(item, pool, mock_http, "json-ld", config)
-
-        assert ok is True
-        mock_fb.assert_awaited_once()
+    def test_returns_none_beyond_chain(self):
+        """Returns None when step is already past the chain end."""
+        config = {"fallback": {"type": "dom", "config": {}}}
+        result = _get_next_fallback("json-ld", config, 5)
+        assert result is None
 
 
 # ── TestScrapePipeline ───────────────────────────────────────────────
@@ -1279,167 +1337,6 @@ class TestProcessScrapeBatch:
         assert call_args[1] == 50  # limit
 
 
-# ── TestClaimMonitorWork ─────────────────────────────────────────────
-
-
-def _mock_board_row(**overrides):
-    """Create a dict-like mock for a CLAIM_MONITORS result row."""
-    defaults = {
-        "id": "board-1",
-        "company_id": "company-1",
-        "board_url": "https://example.com/jobs",
-        "crawler_type": "greenhouse",
-        "throttle_key": "greenhouse",
-        "metadata": None,
-    }
-    defaults.update(overrides)
-    record = MagicMock()
-    record.__getitem__ = lambda self, key: defaults[key]
-    return record
-
-
-class TestClaimMonitorWork:
-    async def test_empty_result(self, mock_pool, mock_http):
-        """No due boards → empty list."""
-        pool, _ = mock_pool
-        pool.fetch.return_value = []
-        items = await claim_monitor_work(pool, mock_http, 10, "w")
-        assert items == []
-
-    async def test_correct_domain(self, mock_pool, mock_http):
-        """WorkItem.domain comes from throttle_key."""
-        pool, _ = mock_pool
-        pool.fetch.return_value = [_mock_board_row(throttle_key="greenhouse")]
-        items = await claim_monitor_work(pool, mock_http, 10, "w")
-        assert len(items) == 1
-        assert items[0].domain == "greenhouse"
-        assert items[0].kind == "monitor"
-
-    async def test_params_passed(self, mock_pool, mock_http):
-        """Limit and worker_id are passed as $1/$2 to the query."""
-        pool, _ = mock_pool
-        pool.fetch.return_value = []
-        await claim_monitor_work(pool, mock_http, 5, "w1")
-        call_args = pool.fetch.await_args.args
-        assert call_args[0] == _CLAIM_MONITORS
-        assert call_args[1] == 5
-        assert call_args[2] == "w1"
-
-    async def test_limit_zero_noop(self, mock_pool, mock_http):
-        """limit=0 returns empty without querying."""
-        pool, _ = mock_pool
-        items = await claim_monitor_work(pool, mock_http, 0, "w")
-        assert items == []
-        pool.fetch.assert_not_awaited()
-
-    @patch("src.batch._process_one_board_streaming", new_callable=AsyncMock)
-    async def test_run_calls_process_one_board(self, mock_process, mock_pool, mock_http):
-        """WorkItem.run() calls _process_one_board_streaming for streaming monitors."""
-        pool, _ = mock_pool
-        board_row = _mock_board_row()  # greenhouse → streaming
-        pool.fetch.return_value = [board_row]
-        mock_process.return_value = (True, 1.0)
-
-        items = await claim_monitor_work(pool, mock_http, 10, "w")
-        result = await items[0].run()
-
-        assert result == (True, 1.0)
-        # Streaming path passes board, pool, http, and a DeadlineExtender
-        args = mock_process.await_args.args
-        assert args[0] is board_row
-        assert args[1] is pool
-        assert args[2] is mock_http
-
-
-# ── TestClaimScrapeWork ──────────────────────────────────────────────
-
-
-def _mock_scrape_row(**overrides):
-    """Create a dict-like mock for a CLAIM_SCRAPES result row."""
-    defaults = {
-        "id": "jp-1",
-        "source_url": "https://example.com/jobs/1",
-        "board_id": "board-1",
-        "scrape_domain": "example.com",
-        "description_r2_hash": None,
-    }
-    defaults.update(overrides)
-    record = MagicMock()
-    record.__getitem__ = lambda self, key: defaults[key]
-    return record
-
-
-class TestClaimScrapeWork:
-    @patch("src.batch._load_board_scrapers", new_callable=AsyncMock)
-    async def test_empty_result(self, mock_scrapers, mock_pool, mock_http):
-        """No due postings → empty list."""
-        pool, _ = mock_pool
-        pool.fetch.return_value = []
-        items = await claim_scrape_work(pool, mock_http, 10, "w")
-        assert items == []
-        mock_scrapers.assert_not_awaited()
-
-    @patch("src.batch._load_board_scrapers", new_callable=AsyncMock)
-    async def test_correct_domain(self, mock_scrapers, mock_pool, mock_http):
-        """WorkItem.domain comes from scrape_domain."""
-        pool, _ = mock_pool
-        pool.fetch.return_value = [_mock_scrape_row(scrape_domain="example.com")]
-        mock_scrapers.return_value = _BoardScraperInfo(scrapers={}, rich_board_ids=set())
-        items = await claim_scrape_work(pool, mock_http, 10, "w")
-        assert len(items) == 1
-        assert items[0].domain == "example.com"
-        assert items[0].kind == "scrape"
-
-    @patch("src.batch._load_board_scrapers", new_callable=AsyncMock)
-    async def test_null_scrape_domain_fallback(self, mock_scrapers, mock_pool, mock_http):
-        """NULL scrape_domain falls back to urlparse hostname."""
-        pool, _ = mock_pool
-        pool.fetch.return_value = [
-            _mock_scrape_row(
-                scrape_domain=None,
-                source_url="https://careers.acme.com/job/42",
-            )
-        ]
-        mock_scrapers.return_value = _BoardScraperInfo(scrapers={}, rich_board_ids=set())
-        items = await claim_scrape_work(pool, mock_http, 10, "w")
-        assert items[0].domain == "careers.acme.com"
-
-    @patch("src.batch._load_board_scrapers", new_callable=AsyncMock)
-    async def test_params_passed(self, mock_scrapers, mock_pool, mock_http):
-        """Limit is passed as $1 to the query."""
-        pool, _ = mock_pool
-        pool.fetch.return_value = []
-        await claim_scrape_work(pool, mock_http, 5, "w1")
-        call_args = pool.fetch.await_args.args
-        assert call_args[0] == _CLAIM_SCRAPES
-        assert call_args[1] == 5
-
-    @patch("src.batch._load_board_scrapers", new_callable=AsyncMock)
-    async def test_limit_zero_noop(self, mock_scrapers, mock_pool, mock_http):
-        """limit=0 returns empty without querying."""
-        pool, _ = mock_pool
-        items = await claim_scrape_work(pool, mock_http, 0, "w")
-        assert items == []
-        pool.fetch.assert_not_awaited()
-        mock_scrapers.assert_not_awaited()
-
-    @patch("src.batch._load_board_scrapers", new_callable=AsyncMock)
-    async def test_board_scrapers_loaded(self, mock_scrapers, mock_pool, mock_http):
-        """Board scrapers are loaded for all claimed items."""
-        pool, _ = mock_pool
-        pool.fetch.return_value = [
-            _mock_scrape_row(board_id="b1"),
-            _mock_scrape_row(id="jp-2", board_id="b2", source_url="https://other.com/j"),
-        ]
-        mock_scrapers.return_value = _BoardScraperInfo(
-            scrapers={"b1": BoardScraperConfig(scraper_type="dom", scraper_config={"sel": "h1"})},
-            rich_board_ids=set(),
-        )
-        items = await claim_scrape_work(pool, mock_http, 10, "w")
-        assert len(items) == 2
-        mock_scrapers.assert_awaited_once_with(pool, {"b1", "b2"})
-
-
 # ── TestBoardHasEnrich ─────────────────────────────────────────────
 
 
@@ -1502,8 +1399,6 @@ class TestEnrichmentScrape:
         execute_calls = conn.execute.await_args_list
         enrich_calls = [c for c in execute_calls if c.args[0] == _UPDATE_ENRICH_CONTENT]
         assert len(enrich_calls) == 1
-        content_calls = [c for c in execute_calls if c.args[0] == _UPDATE_JOB_CONTENT]
-        assert len(content_calls) == 0
         # Verify non-enriched fields are NULL (COALESCE preserves existing)
         call_args = enrich_calls[0].args
         assert call_args[2] is None  # employment_type
@@ -1535,16 +1430,16 @@ class TestEnrichmentScrape:
         )
 
         assert ok is True
-        # Verify the UPDATE sets pending columns (description_pending is non-None)
+        # Verify the UPDATE was called
         enrich_calls = [
             c for c in conn.execute.await_args_list if c.args[0] == _UPDATE_ENRICH_CONTENT
         ]
         assert len(enrich_calls) == 1
-        call_args = enrich_calls[0].args
-        # $7 = description_pending (should be set since we have a description)
-        assert call_args[7] is not None
-        # $8 = r2_pending_meta (should be set with extras JSON)
-        assert call_args[8] is not None
+        # Verify description was written to descriptions table
+        desc_calls = [c for c in conn.execute.await_args_list if c.args[0] == _UPSERT_DESCRIPTION]
+        assert len(desc_calls) == 1
+        assert desc_calls[0].args[1] == "jp-1"  # posting_id
+        assert desc_calls[0].args[3] is not None  # html
 
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
     async def test_description_enrich_populates_r2_hash_and_tech(
@@ -1576,10 +1471,10 @@ class TestEnrichmentScrape:
         # Non-enriched fields remain NULL
         assert call_args[2] is None  # employment_type
         assert call_args[3] is None  # titles
-        # description_pending ($7) should be set (non-None) since we have a description
-        assert call_args[7] is not None  # description_pending
-        # r2_pending_meta ($8) should be set
-        assert call_args[8] is not None  # r2_pending_meta
+        # Description should be written to descriptions table
+        desc_calls = [c for c in conn.execute.await_args_list if c.args[0] == _UPSERT_DESCRIPTION]
+        assert len(desc_calls) == 1
+        assert desc_calls[0].args[3] is not None  # html
 
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
     async def test_title_enrich_derives_occupation_seniority(
@@ -1602,9 +1497,10 @@ class TestEnrichmentScrape:
         # titles should be set
         assert call_args[3] == ["Senior Software Engineer"]
         # description-derived fields should be None
-        assert call_args[7] is None  # description_pending
-        assert call_args[8] is None  # r2_pending_meta
-        assert call_args[9] is None  # technology_ids
+        assert call_args[7] is None  # technology_ids
+        # No description write since there's no description
+        desc_calls = [c for c in conn.execute.await_args_list if c.args[0] == _UPSERT_DESCRIPTION]
+        assert len(desc_calls) == 0
 
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
     async def test_title_enrich_does_not_overwrite_locales_with_default(
@@ -1710,13 +1606,11 @@ class TestEnrichmentScrape:
         ]
         assert len(failure_calls) == 1
 
-    @patch("src.batch._run_fallback_scraper", new_callable=AsyncMock)
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
-    async def test_enrich_with_fallback_chain(self, mock_scrape, mock_fb, mock_pool, mock_http):
-        """Enrich + fallback chain compose correctly."""
+    async def test_enrich_no_fallback_chain(self, mock_scrape, mock_pool, mock_http):
+        """Enrich runs only the primary scraper (fallback is a separate step)."""
         pool, conn = mock_pool
-        mock_scrape.return_value = _job_content(title="T", description=None)
-        mock_fb.return_value = _job_content(description="<p>fallback desc</p>")
+        mock_scrape.return_value = _job_content(title="T", description="<p>primary desc</p>")
         pool.fetchrow = AsyncMock(
             return_value={
                 "titles": ["T"],
@@ -1736,7 +1630,8 @@ class TestEnrichmentScrape:
         )
 
         assert ok is True
-        mock_fb.assert_awaited_once()
+        # Only one scrape call (primary), no inline fallback
+        assert mock_scrape.await_count == 1
 
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
     async def test_enrich_multiple_fields(self, mock_scrape, mock_pool, mock_http):
@@ -1811,16 +1706,19 @@ class TestEnrichmentScrape:
 
         assert ok is True
         execute_calls = conn.execute.await_args_list
-        enrich_calls = [c for c in execute_calls if c.args[0] == _UPDATE_ENRICH_CONTENT]
-        content_calls = [c for c in execute_calls if c.args[0] == _UPDATE_JOB_CONTENT]
-        assert len(enrich_calls) == 1
-        assert len(content_calls) == 0
+        # Both paths now use COALESCE update (_UPDATE_ENRICH_CONTENT pattern)
+        update_calls = [c for c in execute_calls if c.args[0] == _UPDATE_ENRICH_CONTENT]
+        assert len(update_calls) == 1
 
+    @patch("src.redis_queue.enqueue_scrape", new_callable=AsyncMock)
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
-    async def test_no_dispatch_without_enrich(self, mock_scrape, mock_pool, mock_http):
-        """_process_one_scrape uses normal path when config has no enrich."""
+    async def test_no_dispatch_without_enrich(
+        self, mock_scrape, mock_enqueue, mock_pool, mock_http
+    ):
+        """_process_one_scrape uses normal (COALESCE) path when config has no enrich."""
         pool, conn = mock_pool
         mock_scrape.return_value = _job_content()
+        mock_enqueue.return_value = True
         item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
         config = {"fallback": {"type": "dom", "config": {}}}
 
@@ -1828,10 +1726,9 @@ class TestEnrichmentScrape:
 
         assert ok is True
         execute_calls = conn.execute.await_args_list
-        content_calls = [c for c in execute_calls if c.args[0] == _UPDATE_JOB_CONTENT]
-        enrich_calls = [c for c in execute_calls if c.args[0] == _UPDATE_ENRICH_CONTENT]
-        assert len(content_calls) == 1
-        assert len(enrich_calls) == 0
+        # All scrape saves now use COALESCE pattern
+        update_calls = [c for c in execute_calls if c.args[0] == _UPDATE_ENRICH_CONTENT]
+        assert len(update_calls) == 1
 
 
 # ── TestMonitorEnrichInsert ────────────────────────────────────────
@@ -1839,7 +1736,7 @@ class TestEnrichmentScrape:
 
 class TestMonitorEnrichInsert:
     @patch("src.batch.get_redis")
-    @patch("src.batch.monitor_one")
+    @patch("src.batch.monitor_one_stream")
     async def test_rich_enrich_new_jobs_get_next_scrape_at(
         self, mock_monitor, mock_get_redis, mock_pool, mock_http
     ):
@@ -1847,9 +1744,11 @@ class TestMonitorEnrichInsert:
         pool, conn = mock_pool
         url1 = "https://example.com/job/1"
         job1 = _discovered_job(url=url1)
-        mock_monitor.return_value = MonitorResult(
-            urls={url1},
-            jobs_by_url={url1: job1},
+        mock_monitor.side_effect = _mock_stream(
+            MonitorResult(
+                urls={url1},
+                jobs_by_url={url1: job1},
+            )
         )
         conn.fetch.return_value = [_diff_row("new", url=url1)]
         board = _mock_board(metadata={"scraper_config": {"enrich": ["description"]}})
@@ -1862,7 +1761,7 @@ class TestMonitorEnrichInsert:
         assert _INSERT_RICH_JOB not in insert_sqls
 
     @patch("src.batch.get_redis")
-    @patch("src.batch.monitor_one")
+    @patch("src.batch.monitor_one_stream")
     async def test_rich_no_enrich_uses_standard_insert(
         self, mock_monitor, mock_get_redis, mock_pool, mock_http
     ):
@@ -1870,9 +1769,11 @@ class TestMonitorEnrichInsert:
         pool, conn = mock_pool
         url1 = "https://example.com/job/1"
         job1 = _discovered_job(url=url1)
-        mock_monitor.return_value = MonitorResult(
-            urls={url1},
-            jobs_by_url={url1: job1},
+        mock_monitor.side_effect = _mock_stream(
+            MonitorResult(
+                urls={url1},
+                jobs_by_url={url1: job1},
+            )
         )
         conn.fetch.return_value = [_diff_row("new", url=url1)]
         board = _mock_board()
@@ -1885,7 +1786,7 @@ class TestMonitorEnrichInsert:
         assert _INSERT_RICH_JOB_ENRICH not in insert_sqls
 
     @patch("src.batch.get_redis")
-    @patch("src.batch.monitor_one")
+    @patch("src.batch.monitor_one_stream")
     async def test_relisted_on_enrich_board_passes_false_to_diff(
         self, mock_monitor, mock_get_redis, mock_pool, mock_http
     ):
@@ -1893,9 +1794,11 @@ class TestMonitorEnrichInsert:
         pool, conn = mock_pool
         url1 = "https://example.com/job/1"
         job1 = _discovered_job(url=url1)
-        mock_monitor.return_value = MonitorResult(
-            urls={url1},
-            jobs_by_url={url1: job1},
+        mock_monitor.side_effect = _mock_stream(
+            MonitorResult(
+                urls={url1},
+                jobs_by_url={url1: job1},
+            )
         )
         conn.fetch.return_value = [
             _diff_row("relisted", row_id="jp-relisted", url=url1),
@@ -1904,18 +1807,18 @@ class TestMonitorEnrichInsert:
 
         await _process_one_board(board, pool, mock_http)
 
-        # Find the _DIFF_URLS call — it's the one with 5 args (urls, board_id,
-        # delist_threshold, is_rich_no_scrape)
+        # Find the _DIFF_BATCH call — it's the one with 4 args (query, urls, board_id,
+        # is_rich_no_scrape)
         diff_call = None
         for c in conn.fetch.await_args_list:
-            if len(c.args) >= 5 and isinstance(c.args[4], bool):
+            if len(c.args) >= 4 and isinstance(c.args[3], bool):
                 diff_call = c
                 break
-        assert diff_call is not None, "No _DIFF_URLS call found"
-        assert diff_call.args[4] is False  # is_rich_no_scrape = False for enrich boards
+        assert diff_call is not None, "No _DIFF_BATCH call found"
+        assert diff_call.args[3] is False  # is_rich_no_scrape = False for enrich boards
 
     @patch("src.batch.get_redis")
-    @patch("src.batch.monitor_one")
+    @patch("src.batch.monitor_one_stream")
     async def test_non_enrich_board_passes_true_to_diff(
         self, mock_monitor, mock_get_redis, mock_pool, mock_http
     ):
@@ -1923,9 +1826,11 @@ class TestMonitorEnrichInsert:
         pool, conn = mock_pool
         url1 = "https://example.com/job/1"
         job1 = _discovered_job(url=url1)
-        mock_monitor.return_value = MonitorResult(
-            urls={url1},
-            jobs_by_url={url1: job1},
+        mock_monitor.side_effect = _mock_stream(
+            MonitorResult(
+                urls={url1},
+                jobs_by_url={url1: job1},
+            )
         )
         conn.fetch.return_value = [
             _diff_row("relisted", row_id="jp-relisted", url=url1),
@@ -1936,11 +1841,11 @@ class TestMonitorEnrichInsert:
 
         diff_call = None
         for c in conn.fetch.await_args_list:
-            if len(c.args) >= 5 and isinstance(c.args[4], bool):
+            if len(c.args) >= 4 and isinstance(c.args[3], bool):
                 diff_call = c
                 break
-        assert diff_call is not None, "No _DIFF_URLS call found"
-        assert diff_call.args[4] is True  # is_rich_no_scrape = True
+        assert diff_call is not None, "No _DIFF_BATCH call found"
+        assert diff_call.args[3] is True  # is_rich_no_scrape = True
 
 
 # ── TestLoadBoardScrapersEnrich ────────────────────────────────────
@@ -2036,35 +1941,6 @@ class TestLoadBoardScrapersEnrich:
         cfg = info.scrapers["b-1"]
         assert cfg.scraper_config["enrich"] == ["description"]
         assert cfg.scraper_config["fallback"]["type"] == "dom"
-
-
-# ── TestClaimScrapeWorkEnrich ──────────────────────────────────────
-
-
-class TestClaimScrapeWorkEnrich:
-    @patch("src.batch._load_board_scrapers", new_callable=AsyncMock)
-    async def test_enrich_board_not_cleared_as_rich(self, mock_scrapers, mock_pool, mock_http):
-        """Enrich boards are not in rich_board_ids → postings are not cleared."""
-        pool, conn = mock_pool
-        pool.fetch.return_value = [
-            _mock_scrape_row(board_id="b-enrich"),
-        ]
-        mock_scrapers.return_value = _BoardScraperInfo(
-            scrapers={
-                "b-enrich": BoardScraperConfig(
-                    scraper_type="json-ld",
-                    scraper_config={"enrich": ["description"]},
-                )
-            },
-            rich_board_ids=set(),  # enrich board is NOT in rich_board_ids
-        )
-
-        items = await claim_scrape_work(pool, mock_http, 10, "w")
-
-        assert len(items) == 1
-        assert items[0].kind == "scrape"
-        # Verify _CLEAR_SCRAPE_FOR_RICH was NOT called
-        pool.execute.assert_not_awaited()
 
 
 # ── TestEnrichValidation ───────────────────────────────────────────

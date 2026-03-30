@@ -125,7 +125,7 @@ Standardized benefit identifiers. The LLM maps free-text benefits to these enum 
 
 ```
 ┌──────────────────────────────────────────┐
-│  Scheduler (scheduler.py)                │
+│  Workers (pipeline.py)                   │
 │  └─ monitors discover new postings       │
 │     └─ to_be_enriched = true             │
 └──────────────┬───────────────────────────┘

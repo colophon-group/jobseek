@@ -1,0 +1,67 @@
+// alloy.river — Grafana Alloy config for crawler observability
+// Collects: application metrics, host metrics, structured logs
+
+// ── Docker service discovery ──────────────────────────────
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+// ── Application metrics (from /metrics endpoints) ─────────
+prometheus.scrape "crawler" {
+  targets        = discovery.docker.containers.targets
+  forward_to     = [prometheus.remote_write.grafana_cloud.receiver]
+  scrape_interval = "15s"
+}
+
+// ── Host metrics (CPU, memory, disk, load, network) ───────
+prometheus.exporter.unix "host" {
+  set_collectors = ["cpu", "meminfo", "diskstats", "filesystem", "loadavg", "netdev"]
+}
+
+prometheus.scrape "node" {
+  targets        = prometheus.exporter.unix.host.targets
+  forward_to     = [prometheus.remote_write.grafana_cloud.receiver]
+  scrape_interval = "15s"
+}
+
+// ── Prometheus remote write to Grafana Cloud ──────────────
+prometheus.remote_write "grafana_cloud" {
+  endpoint {
+    url = env("PROM_URL")
+    basic_auth {
+      username = env("PROM_USERNAME")
+      password = env("PROM_PASSWORD")
+    }
+  }
+}
+
+// ── Log collection (Docker stdout → Loki) ─────────────────
+loki.source.docker "containers" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.docker.containers.targets
+  labels     = { job = "crawler" }
+  forward_to = [loki.process.parse.receiver]
+}
+
+loki.process "parse" {
+  stage.json {
+    expressions = {
+      level = "level",
+      event = "event",
+    }
+  }
+  stage.labels {
+    values = { level = "" }
+  }
+  forward_to = [loki.write.grafana_cloud.receiver]
+}
+
+loki.write "grafana_cloud" {
+  endpoint {
+    url = env("LOKI_URL")
+    basic_auth {
+      username = env("LOKI_USERNAME")
+      password = env("LOKI_PASSWORD")
+    }
+  }
+}

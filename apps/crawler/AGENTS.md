@@ -4,11 +4,12 @@ Crawler-specific instructions. See the root [AGENTS.md](../../AGENTS.md) for pro
 
 ## Architecture
 
-Three-layer design:
+Redis-orchestrated workers writing to local Postgres, with CDC export to Supabase:
 
 1. **Single Job** (`src/core/`) — pure async functions, no DB awareness
-2. **Batch Processor** (`src/batch.py`) — claims work from DB, runs jobs concurrently
-3. **Scheduler** (`src/scheduler.py`) — environment-specific loop/trigger
+2. **Workers** (`src/workers/pipeline.py`) — claim from Redis tiered queues, process, write to local Postgres
+3. **Exporter** (`src/exporter.py`) — CDC: local Postgres -> Supabase batch COPY
+4. **R2 Drain** (`src/workers/r2_drain.py`) — poll descriptions table, PUT to R2
 
 See [docs/03-crawler-architecture.md](../../docs/03-crawler-architecture.md) for full details.
 
@@ -17,7 +18,7 @@ See [docs/03-crawler-architecture.md](../../docs/03-crawler-architecture.md) for
 ```
 src/
 ├── core/
-│   ├── monitors/          # Monitor implementations
+│   ├── monitors/          # Monitor implementations (35+ types)
 │   │   ├── __init__.py    # Registry + DiscoveredJob dataclass
 │   │   ├── accenture.py   # Accenture Career API (dedicated, auto-partitioned)
 │   │   ├── api_sniffer.py # API capture (httpx for public APIs, Playwright for browser-dependent)
@@ -29,7 +30,7 @@ src/
 │   │   ├── personio.py    # Personio Public XML Feed
 │   │   ├── recruitee.py   # Recruitee Careers Site API
 │   │   ├── rippling.py    # Rippling ATS Job Board API
-│   │   ├── rss.py            # RSS 2.0 feed monitor (SuccessFactors, Teamtailor, generic)
+│   │   ├── rss.py         # RSS 2.0 feed monitor (SuccessFactors, Teamtailor, generic)
 │   │   ├── workday.py     # Workday Job Board API
 │   │   ├── sitemap.py     # XML sitemap parser
 │   │   ├── nextdata.py    # Next.js __NEXT_DATA__ discovery
@@ -41,12 +42,34 @@ src/
 │   │   ├── nextdata.py    # Next.js data extractor (thin wrapper for embedded)
 │   │   ├── embedded.py    # Generalized embedded JSON extractor
 │   │   └── dom.py         # Step-based extraction (static or Playwright)
-│   ├── description_store.py # R2 upload/diff-track for descriptions + extras
+│   ├── description_store.py # R2 put/get
 │   ├── enum_normalize.py  # employment_type + job_location_type normalizers
-│   ├── location_resolve.py # Location → GeoNames ID resolution
-│   ├── salary_extract.py  # Heuristic salary parsing from HTML (parse_salary_text)
-│   ├── monitor.py         # monitor_one() dispatcher
-│   └── scrape.py          # scrape_one() dispatcher
+│   ├── location_resolve.py # Location -> GeoNames ID resolution
+│   ├── salary_extract.py  # Heuristic salary parsing from HTML
+│   ├── monitor.py         # monitor_one, monitor_one_stream dispatchers
+│   └── scrape.py          # scrape_one dispatcher
+├── workers/
+│   ├── pipeline.py        # Discovery coroutines, claim from Redis, dispatch
+│   └── r2_drain.py        # Producer-consumer: descriptions -> R2
+├── processing/
+│   ├── board.py           # Streaming monitor processing, timestamp gone detection
+│   ├── scrape.py          # Single-job scraping, fallback chain
+│   ├── cpu.py             # CPU-bound processing (salary, location, tech matching)
+│   └── r2_stage.py        # Stage descriptions for R2 upload
+├── queries/
+│   ├── monitor.py         # SQL: DIFF_BATCH, MARK_GONE_BY_TIMESTAMP, record success/fail
+│   ├── scrape.py          # SQL: UPDATE_JOB_CONTENT (conditional updated_at), RECORD_SCRAPE_*
+│   └── lookups.py         # Cached lookup table loaders (locations, technologies, etc.)
+├── redis_queue.py         # Lua-backed claim/enqueue/reschedule
+├── lua/                   # claim_work.lua, enqueue_task.lua, reschedule_task.lua
+├── exporter.py            # CDC: local Postgres -> Supabase (job_posting only)
+├── sync.py                # CSV -> local Postgres + Supabase + Redis
+├── bootstrap.py           # One-time: Supabase -> local Postgres copy
+├── cli.py                 # Entry point: crawler run/run-browser/export/drain/sync/board
+├── config.py              # Settings (pydantic-settings)
+├── db.py                  # asyncpg pools (local Postgres + Supabase)
+├── metrics.py             # Prometheus metrics
+├── migrations/            # Alembic migrations for local Postgres
 ├── workspace/             # Workspace CLI (ws command)
 │   ├── cli.py             # Click entry point + groups
 │   ├── commands/          # Command implementations
@@ -58,7 +81,7 @@ src/
 │   ├── state.py           # YAML workspace state (v2: named configs)
 │   ├── log.py             # Action log + transcript
 │   ├── git.py             # Git/GitHub CLI wrappers (retry, error wrapping)
-│   ├── errors.py          # Exception hierarchy (WorkspaceError, CsvToolError, GitError)
+│   ├── errors.py          # Exception hierarchy
 │   ├── preflight.py       # Pre-flight checks (branch, PR state)
 │   ├── filelock.py        # Advisory file locking
 │   ├── output.py          # Terminal output helpers
@@ -74,13 +97,8 @@ src/
 │   ├── proxy.py           # Per-domain proxy routing (PROXY_MAP env var)
 │   ├── logging.py         # structlog config
 │   └── slug.py            # slugify utility
-├── batch.py               # Batch processor (R2 uploads, enum normalization, fallback chain)
-├── scheduler.py           # Scheduler (entry point, --board/--dry-run/--verbose)
-├── sync.py                # CSV → DB sync
 ├── inspect.py             # CSV validation + diagnostic library
-├── csvtool.py             # CSV management library
-├── db.py                  # asyncpg pool
-└── config.py              # pydantic-settings
+└── csvtool.py             # CSV management library
 ```
 
 ## Commands
@@ -134,17 +152,16 @@ ws del                                 # Remove workspace + CSV rows + close PR
 ws reject --issue <N> --reason <key> --message "..."
 ws reject --reason <key> --message "..."  # Uses active workspace's issue
 
-# Run crawler (poll loop)
-uv run scheduler
-
-# Run one batch
-uv run scheduler --once
-
-# Dry-run a single board (monitor + scrape, no DB writes)
-uv run scheduler --board <board_slug> --dry-run [--verbose]
-
-# Sync CSVs to DB
-uv run python -m src.sync
+# Run crawler workers
+uv run crawler run                     # HTTP worker (claims from simple queues)
+uv run crawler run-browser             # Browser worker (claims from browser queues)
+uv run crawler export                  # CDC exporter loop
+uv run crawler drain                   # R2 description uploader
+uv run crawler sync                    # CSV -> local Postgres + Supabase + Redis
+uv run crawler reconcile               # Compare local vs Supabase, fix discrepancies
+uv run crawler board <slug>            # Process single board (debug)
+uv run crawler board <slug> --dry-run  # Test without DB writes
+uv run crawler board <slug> --dry-run --verbose  # Show all extracted fields
 
 # Run tests
 uv run pytest tests/
@@ -264,11 +281,115 @@ When existing monitors/scrapers can't handle a site, agents may propose code cha
 - PR body: what was tried, what failed, what the code change does
 - Include CSV config for the company alongside the code change
 
+## Hetzner Operations
+
+All crawler services run on Hetzner. Machine IPs, credentials, and API keys are in `apps/crawler/.env.local` — never hardcode them.
+
+### SSH Access
+
+```bash
+ssh -i ~/.ssh/hetzner_deploy root@<WORKER_IP>    # Worker machine (Redis, workers, exporter, drain, alloy)
+ssh -i ~/.ssh/hetzner_deploy root@<POSTGRES_IP>   # Postgres machine
+```
+
+IPs are in `.env.local` (`HETZNER_HOST` for worker, `LOCAL_DATABASE_URL` contains the Postgres IP).
+
+### Container Management
+
+All containers run with `--network host` and `--restart unless-stopped`:
+
+```bash
+# List running containers
+docker ps --format "table {{.Names}}\t{{.Status}}\t{{.CPUPerc}}\t{{.MemUsage}}"
+
+# View logs
+docker logs <name> 2>&1 | tail -20
+docker logs <name> 2>&1 | grep "error" | tail -10
+
+# Restart a service
+docker rm -f <name> && docker run -d --name <name> --restart unless-stopped \
+  --env-file /home/deploy/.env --network host --memory=1g --cpus=1.0 \
+  -e METRICS_PORT=<port> -e DISCOVERY_CONCURRENCY=30 -e MONITOR_CONCURRENCY=10 \
+  crawler-slim:latest uv run --no-sync crawler run
+
+# Build images after code changes
+rsync -az --delete --exclude='.venv' --exclude='__pycache__' --exclude='.env*' --exclude='*.pyc' \
+  -e "ssh -i ~/.ssh/hetzner_deploy" apps/crawler/ root@<WORKER_IP>:/home/deploy/crawler-src/
+ssh ... 'cd /home/deploy/crawler-src && docker build --target slim -t crawler-slim:latest .'
+ssh ... 'cd /home/deploy/crawler-src && docker build --target full -t crawler-full:latest .'
+```
+
+### Current Container Layout (metrics ports)
+
+| Container | Image | Metrics Port | CPU | Memory |
+|-----------|-------|-------------|-----|--------|
+| worker-1 | crawler-slim | 9095 | 1 | 1GB |
+| worker-2 | crawler-slim | 9096 | 1 | 1GB |
+| worker-3 | crawler-slim | 9097 | 1 | 1GB |
+| browser-1 | crawler-full | 9098 | 3 | 4GB |
+| exporter | crawler-slim | 9093 | — | — |
+| drain | crawler-slim | 9094 | — | — |
+| alloy | grafana/alloy | 12346 | 0.25 | 256MB |
+| redis | redis:7-alpine | — | — | 320MB |
+
+### Querying Metrics
+
+```bash
+# Prometheus metrics from any container
+curl -s http://localhost:<port>/metrics | grep "crawler_"
+
+# Redis queue state
+redis-cli ZCARD ready:simple:0   # first-time domains
+redis-cli ZCARD ready:simple:1   # monitor domains
+redis-cli ZCARD ready:simple:2   # scrape domains
+
+# Local Postgres (via docker exec on Postgres machine)
+ssh ... root@<POSTGRES_IP> "docker exec -i postgres psql -U crawler -d crawler -c '<SQL>'"
+```
+
+### Grafana Dashboard
+
+Dashboard is managed as JSON at `apps/crawler/grafana-dashboard.json` and pushed via the Grafana HTTP API.
+
+```bash
+# Push dashboard update
+curl -s -X POST "https://colophongroup.grafana.net/api/dashboards/db" \
+  -H "Authorization: Bearer <GRAFANA_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{"dashboard": <json>, "overwrite": true}'
+```
+
+`GRAFANA_API_KEY` is in `.env.local`. The dashboard UID is `jobseek-crawler-pipeline`.
+
+### Alloy (Metrics + Logs Collector)
+
+Alloy scrapes Prometheus metrics from all containers and ships to Grafana Cloud. Config is written to `/tmp/alloy-full.river` on the worker machine. When adding/removing containers, update the static scrape targets and restart alloy.
+
+Credentials for Grafana Cloud Prometheus and Loki are in `.env.local` (`GRAFANA_*` vars). Note: Prometheus and Loki have **different user IDs** (Prometheus = `GRAFANA_USER_ID`, Loki has its own instance ID).
+
+### Deploying Code Changes
+
+```bash
+# 1. Rsync from local to Hetzner
+rsync -az --delete --exclude='.venv' --exclude='__pycache__' --exclude='.env*' \
+  -e "ssh -i ~/.ssh/hetzner_deploy" apps/crawler/ root@<WORKER_IP>:/home/deploy/crawler-src/
+
+# 2. Build image(s)
+ssh ... 'cd /home/deploy/crawler-src && docker build --target slim -t crawler-slim:latest .'
+
+# 3. Restart affected containers (worker, exporter, drain, etc.)
+ssh ... 'docker rm -f worker-1 && docker run -d --name worker-1 ...'
+
+# 4. Re-sync if CSV data changed
+ssh ... 'docker run --rm --env-file /home/deploy/.env --network host \
+  crawler-slim:latest uv run --no-sync crawler sync'
+```
+
 ## Code Conventions
 
 - `from __future__ import annotations` in every module
 - Async everywhere — `asyncpg`, `httpx.AsyncClient`
 - Structured logging: `log = structlog.get_logger()`, then `log.info("event.name", key=value)`
 - SQL in raw strings (no ORM), using `$1` positional params for asyncpg
-- Concurrency: `asyncio.TaskGroup` for parallel work, `FOR UPDATE SKIP LOCKED` for DB claims
+- Concurrency: `asyncio.TaskGroup` for parallel work, Redis Lua scripts for atomic claiming
 - Error handling: exponential backoff on failures (interval doubles, capped at 24h, auto-disable at 5 consecutive failures)

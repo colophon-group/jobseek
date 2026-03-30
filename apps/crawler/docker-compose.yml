@@ -1,0 +1,141 @@
+# docker-compose.yml — Hetzner crawler deployment (worker machine)
+#
+# Postgres runs on a separate dedicated machine (178.104.102.63).
+# LOCAL_DATABASE_URL must point to that machine's IP.
+# Redis runs locally on the worker machine.
+
+x-common-env: &common-env
+  DATABASE_URL: ${DATABASE_URL}                    # Supabase (exporter writes only)
+  LOCAL_DATABASE_URL: ${LOCAL_DATABASE_URL}         # Hetzner Postgres machine
+  REDIS_URL: redis://redis:6379/0
+  WORKER_ID_PREFIX: hetzner
+  LOG_LEVEL: INFO
+  R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID}
+  R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY}
+  R2_ENDPOINT_URL: ${R2_ENDPOINT_URL}
+  R2_DOMAIN_URL: ${R2_DOMAIN_URL}
+  R2_BUCKET: ${R2_BUCKET}
+
+services:
+  # -- Redis -------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # noeviction: queue data must never be silently dropped
+    command: redis-server --maxmemory 256mb --maxmemory-policy noeviction
+    volumes:
+      - redis-data:/data
+    ports:
+      - "127.0.0.1:6379:6379"
+    deploy:
+      resources:
+        limits:
+          memory: 320m
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # -- Worker -------------------------------------------------------
+  # Each replica: discovery coroutines → asyncio.Queue → CPU thread → write-back
+  # Claims from ALL non-browser queues (api + http + scrape)
+  worker:
+    image: ghcr.io/${OWNER}/jobseek-crawler:latest
+    restart: unless-stopped
+    command: uv run --no-sync crawler run
+    environment:
+      <<: *common-env
+      METRICS_PORT: "9091"
+    depends_on:
+      redis:
+        condition: service_healthy
+    deploy:
+      replicas: 4
+      resources:
+        limits:
+          memory: 512m
+          cpus: "1.0"
+
+  # -- Exporter ----------------------------------------------------
+  # CDC: local Postgres → Supabase batch export + reconciliation
+  exporter:
+    image: ghcr.io/${OWNER}/jobseek-crawler:latest
+    restart: unless-stopped
+    command: uv run --no-sync crawler export --batch-size 500 --interval 5
+    environment:
+      <<: *common-env
+      METRICS_PORT: "9093"
+    depends_on:
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: "0.5"
+
+  # -- R2 Drain ----------------------------------------------------
+  # Pop from Redis stream → read HTML from local Postgres → PUT to R2
+  drain:
+    image: ghcr.io/${OWNER}/jobseek-crawler:latest
+    restart: unless-stopped
+    command: uv run --no-sync crawler drain
+    environment:
+      <<: *common-env
+      METRICS_PORT: "9094"
+    depends_on:
+      redis:
+        condition: service_healthy
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          memory: 256m
+          cpus: "0.5"
+
+  # -- Browser -----------------------------------------------------
+  # Same pipeline, claims from browser queues only. Needs Chromium.
+  browser:
+    image: ghcr.io/${OWNER}/jobseek-crawler-browser:latest
+    restart: unless-stopped
+    command: uv run --no-sync crawler run-browser
+    environment:
+      <<: *common-env
+      METRICS_PORT: "9092"
+    depends_on:
+      redis:
+        condition: service_healthy
+    shm_size: 1g
+    deploy:
+      resources:
+        limits:
+          memory: 1536m
+          cpus: "1.0"
+
+  # -- Grafana Alloy (metrics + log collector) --------------------
+  alloy:
+    image: grafana/alloy:latest
+    restart: unless-stopped
+    privileged: true
+    pid: host
+    volumes:
+      - ./alloy.river:/etc/alloy/config.river:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /:/host:ro
+    environment:
+      PROM_URL: ${GRAFANA_PROM_URL}
+      PROM_USERNAME: ${GRAFANA_PROM_USERNAME}
+      PROM_PASSWORD: ${GRAFANA_PROM_PASSWORD}
+      LOKI_URL: ${GRAFANA_LOKI_URL}
+      LOKI_USERNAME: ${GRAFANA_LOKI_USERNAME}
+      LOKI_PASSWORD: ${GRAFANA_LOKI_PASSWORD}
+    command: run --config.file=/etc/alloy/config.river
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+          cpus: "0.25"
+
+volumes:
+  redis-data:
