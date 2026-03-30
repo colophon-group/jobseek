@@ -5,14 +5,17 @@
  * latest dataset run — showing which job portals are known, active,
  * AI-suggested, and how many companies each found.
  *
- * No auth required (read-only public data).
+ * Requires admin auth: Authorization: Auth Bearer Basic <GHOSTING_ADMIN_SECRET>
  */
 import { type NextRequest, NextResponse } from 'next/server';
+import { verifyGhostingAdminKey, ghostingAdminUnauthorized } from '@/lib/agentic/agentAuth';
 
 const APIFY_TOKEN = process.env.APIFY_TOKEN;
 const ACTOR_ID = process.env.APIFY_DISCOVERY_ACTOR_ID ?? 'golanger/company-discovery-actor';
 
-export async function GET(_req: NextRequest) {
+export async function GET(req: NextRequest) {
+  if (!verifyGhostingAdminKey(req)) return ghostingAdminUnauthorized();
+
   if (!APIFY_TOKEN) {
     return NextResponse.json({ error: 'APIFY_TOKEN not configured' }, { status: 503 });
   }

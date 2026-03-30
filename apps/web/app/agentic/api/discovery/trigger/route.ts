@@ -1,7 +1,8 @@
 /**
  * POST /agentic/api/discovery/trigger
  *
- * Manually triggers a fresh company-discovery-actor run.
+ * Admin-only. Manually triggers a fresh company-discovery-actor run.
+ * Requires admin auth: Authorization: Auth Bearer Basic <GHOSTING_ADMIN_SECRET>
  * Results will appear in GET /agentic/api/discovery once the run completes
  * (typically 15–30 minutes).
  *
@@ -15,9 +16,12 @@
  * Poll GET /api/apify/status?runId=<runId> to track progress.
  */
 import { NextRequest, NextResponse } from "next/server";
+import { verifyGhostingAdminKey, ghostingAdminUnauthorized } from "@/lib/agentic/agentAuth";
 import { triggerDiscoveryRun } from "@/lib/agentic/apify";
 
 export async function POST(req: NextRequest) {
+  if (!verifyGhostingAdminKey(req)) return ghostingAdminUnauthorized();
+
   try {
     const body = await req.json().catch(() => ({}));
     const run = await triggerDiscoveryRun(body as Record<string, unknown>);
