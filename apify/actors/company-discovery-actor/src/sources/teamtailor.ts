@@ -21,10 +21,11 @@ function extractTeamtailorSlug(originalUrl: string): string | null {
 export async function discoverFromTeamtailor(): Promise<import('../types.js').CompanyDiscovery[]> {
   log.info('teamtailor: discovering company subdomains via Wayback CDX');
 
+  // *.teamtailor.com/* has 166 CDX pages (~16.6M entries) — use 10 pages for better coverage
   const slugCounts = await cdxEnumerateSlugs(
     '*.teamtailor.com/*',
     extractTeamtailorSlug,
-    5000,
+    10000, 10,
   );
 
   log.info(`teamtailor/cdx: found ${slugCounts.size} unique Teamtailor company subdomains`);

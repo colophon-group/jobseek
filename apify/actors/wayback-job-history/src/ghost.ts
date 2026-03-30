@@ -16,6 +16,7 @@ export function scoreGhost(
   reposted: boolean,
   repostCount = 0,
   validThrough?: string,
+  employmentType?: string,
 ): { score: number; reason: string } {
   let score = 0;
   const reasons: string[] = [];
@@ -38,12 +39,12 @@ export function scoreGhost(
     reasons.push(`posted for ${durationDays} days`);
   }
 
-  // Repost bonus scales with count: +15 first repost, +8 per additional (capped at +35 total)
+  // Repost bonus: +15 first repost, +8 per additional, capped at +40 for extreme recyclers
   if (reposted) {
-    const repostBonus = Math.min(35, 15 + (repostCount - 1) * 8);
+    const repostBonus = Math.min(40, 15 + (repostCount - 1) * 8);
     score += repostBonus;
     const times = repostCount > 1 ? `${repostCount}×` : 'once';
-    reasons.push(`job disappeared then reappeared ${times} (reposted)`);
+    reasons.push(`job disappeared then reappeared ${times} (reposted${repostCount >= 4 ? ' — extreme recycling' : ''})`);
   }
 
   // High archive count relative to duration = long-lived posting with active crawls
@@ -67,6 +68,16 @@ export function scoreGhost(
       const reduction = futureDays <= 30 ? 5 : futureDays <= 60 ? 8 : 10;
       score = Math.max(0, score - reduction);
       reasons.push(`validThrough ${validThrough} upcoming in ${futureDays} days — active posting`);
+    }
+  }
+
+  // Contract/temp roles legitimately stay posted for extended periods — reduce ghost signal
+  if (employmentType) {
+    const et = employmentType.toLowerCase();
+    if (/contract|temp|freelance|intern|volunteer|casual|seasonal|fixed.?term|befristet/i.test(et)) {
+      const reduction = durationDays > 180 ? 15 : durationDays > 90 ? 10 : 5;
+      score = Math.max(0, score - reduction);
+      reasons.push(`employment type "${employmentType}" (expected long tenure, -${reduction} score)`);
     }
   }
 
@@ -104,6 +115,7 @@ export function buildJobRegistry(days: DayResult[]): Map<string, JobRecord> {
           reposted: false,
           repostCount: 0,
           validThrough: job.validThrough,
+          employmentType: job.employmentType,
           ghostScore: 0,
           ghostReason: '',
         });
@@ -127,7 +139,7 @@ export function buildJobRegistry(days: DayResult[]): Map<string, JobRecord> {
   // Compute final durations and ghost scores
   for (const record of registry.values()) {
     record.durationDays = daysBetween(record.firstSeen, record.lastSeen);
-    const { score, reason } = scoreGhost(record.durationDays, record.archiveCount, record.reposted, record.repostCount, record.validThrough);
+    const { score, reason } = scoreGhost(record.durationDays, record.archiveCount, record.reposted, record.repostCount, record.validThrough, record.employmentType);
     record.ghostScore = score;
     record.ghostReason = reason;
   }
@@ -169,6 +181,20 @@ export function computeGhostStats(registry: Map<string, JobRecord>) {
   if (repostedJobs > 0 && jobs.length >= 5 && repostedJobs / jobs.length >= 0.3) {
     const repostSignal = `${repostedJobs}/${jobs.length} jobs reposted (${Math.round(repostedJobs / jobs.length * 100)}%) — mass recycling pattern`;
     orgGhostSignal = orgGhostSignal ? `${orgGhostSignal}; ${repostSignal}` : repostSignal;
+  }
+
+  // Title churn detection: same role posted under multiple different job IDs
+  // Pattern: company closes + reposts the same role to reset timestamp on job boards
+  const titleGroups = new Map<string, number>();
+  for (const job of jobs) {
+    const t = normalizeTitle(job.title);
+    titleGroups.set(t, (titleGroups.get(t) ?? 0) + 1);
+  }
+  const churnedTitles = [...titleGroups.entries()].filter(([, count]) => count >= 3);
+  if (churnedTitles.length > 0) {
+    const worst = churnedTitles.sort(([, a], [, b]) => b - a)[0];
+    const churnSignal = `title churn: "${worst[0].replace(/-/g, ' ')}" posted ${worst[1]}× with different IDs — timestamp-reset ghost pattern`;
+    orgGhostSignal = orgGhostSignal ? `${orgGhostSignal}; ${churnSignal}` : churnSignal;
   }
 
   return {

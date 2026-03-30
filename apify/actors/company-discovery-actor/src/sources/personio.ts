@@ -19,9 +19,10 @@ function extractPersonioSlug(url: string): string | null {
 
 export async function discoverFromPersonio(): Promise<CompanyDiscovery[]> {
   log.info('personio: CDX discovery');
+  // *.jobs.personio.de/* has 32 CDX pages — use 8 pages for better coverage
   const [de, com] = await Promise.all([
-    cdxEnumerateSlugs('*.jobs.personio.de/*', extractPersonioSlug, 5000),
-    cdxEnumerateSlugs('*.jobs.personio.com/*', extractPersonioSlug, 3000),
+    cdxEnumerateSlugs('*.jobs.personio.de/*', extractPersonioSlug, 5000, 8),
+    cdxEnumerateSlugs('*.jobs.personio.com/*', extractPersonioSlug, 3000, 4),
   ]);
   const merged = new Map(de);
   for (const [k, v] of com) merged.set(k, (merged.get(k) ?? 0) + v);
@@ -44,7 +45,8 @@ function extractJobviteSlug(url: string): string | null {
 
 export async function discoverFromJobvite(): Promise<CompanyDiscovery[]> {
   log.info('jobvite: CDX discovery — mid-market US ATS');
-  const slugs = await cdxEnumerateSlugs('*.jobvite.com/careers*', extractJobviteSlug, 8000);
+  // *.jobvite.com/careers* has 1275 CDX pages — use 15 pages for significantly better coverage
+  const slugs = await cdxEnumerateSlugs('*.jobvite.com/careers*', extractJobviteSlug, 8000, 15);
   log.info(`jobvite: ${slugs.size} companies`);
   return slugs.size ? slugsToDiscoveries(slugs, s => `https://${s}.jobvite.com/careers`, 'jobvite') : [];
 }
@@ -64,9 +66,10 @@ function extractSuccessFactorsSlug(url: string): string | null {
 
 export async function discoverFromSuccessFactors(): Promise<CompanyDiscovery[]> {
   log.info('successfactors: CDX discovery — SAP enterprise ATS');
+  // *.successfactors.com/careers* has 849 CDX pages — use 12 pages for significantly better coverage
   const [com, eu] = await Promise.all([
-    cdxEnumerateSlugs('*.successfactors.com/careers*', extractSuccessFactorsSlug, 8000),
-    cdxEnumerateSlugs('*.successfactors.eu/careers*', extractSuccessFactorsSlug, 3000),
+    cdxEnumerateSlugs('*.successfactors.com/careers*', extractSuccessFactorsSlug, 8000, 12),
+    cdxEnumerateSlugs('*.successfactors.eu/careers*', extractSuccessFactorsSlug, 3000, 4),
   ]);
   const merged = new Map(com);
   for (const [k, v] of eu) merged.set(k, (merged.get(k) ?? 0) + v);
@@ -90,11 +93,23 @@ function extractSmartRecruitersSlug(url: string): string | null {
 }
 
 export async function discoverFromSmartRecruiters(): Promise<CompanyDiscovery[]> {
-  log.info('smartrecruiters: CDX discovery — Fortune 500 ATS');
-  const slugs = await cdxEnumerateSlugs('jobs.smartrecruiters.com/*/*', extractSmartRecruitersSlug, 10000);
-  log.info(`smartrecruiters: ${slugs.size} companies`);
-  return slugs.size
-    ? slugsToDiscoveries(slugs, s => `https://jobs.smartrecruiters.com/${s}`, 'smartrecruiters')
+  log.info('smartrecruiters: CDX discovery — Fortune 500 ATS (jobs + careers, root + nested paths)');
+  const [rootSlugs, nestedSlugs, careersRootSlugs, careersNestedSlugs] = await Promise.all([
+    // Root-level company pages: jobs.smartrecruiters.com/{CompanySlug} (195 CDX pages, vast coverage)
+    cdxEnumerateSlugs('jobs.smartrecruiters.com/*', extractSmartRecruitersSlug, 10000, 8),
+    // Nested job URLs: jobs.smartrecruiters.com/{CompanySlug}/{JobId}-{Title}
+    cdxEnumerateSlugs('jobs.smartrecruiters.com/*/*', extractSmartRecruitersSlug, 10000, 4),
+    // careers.smartrecruiters.com root pages: 16 CDX pages — use 8 pages
+    cdxEnumerateSlugs('careers.smartrecruiters.com/*', extractSmartRecruitersSlug, 5000, 8),
+    cdxEnumerateSlugs('careers.smartrecruiters.com/*/*', extractSmartRecruitersSlug, 5000, 2),
+  ]);
+  const merged = new Map(rootSlugs);
+  for (const [k, v] of nestedSlugs) merged.set(k, (merged.get(k) ?? 0) + v);
+  for (const [k, v] of careersRootSlugs) merged.set(k, (merged.get(k) ?? 0) + v);
+  for (const [k, v] of careersNestedSlugs) merged.set(k, (merged.get(k) ?? 0) + v);
+  log.info(`smartrecruiters: ${merged.size} companies`);
+  return merged.size
+    ? slugsToDiscoveries(merged, s => `https://jobs.smartrecruiters.com/${s}`, 'smartrecruiters')
     : [];
 }
 
@@ -146,4 +161,34 @@ export async function discoverFromComeet(): Promise<CompanyDiscovery[]> {
   return slugs.size
     ? slugsToDiscoveries(slugs, s => `https://recruiting.comeet.co/jobs/${s}`, 'comeet')
     : [];
+}
+
+// ── Cornerstone OnDemand ──────────────────────────────────────────────────────
+// Major enterprise LMS/ATS used by Fortune 500: Boeing, Adobe, FedEx,
+// UnitedHealth Group, Lockheed Martin, Pfizer, AT&T, and many others.
+// Pattern: {tenant}.csod.com (tenant is typically the company name/abbreviation)
+
+const CSOD_RESERVED = new Set(['www', 'api', 'app', 'jobs', 'login', 'support', 'cdn', 'secure', 'help', 'blog', 'email', 'info', 'test', 'staging', 'preview', 'uat', 'demo']);
+
+function extractCornerstoneSlug(url: string): string | null {
+  try {
+    const h = new URL(url).hostname;
+    if (!h.endsWith('.csod.com')) return null;
+    const s = h.split('.')[0].toLowerCase();
+    return (!s || CSOD_RESERVED.has(s) || s.length < 2) ? null : s;
+  } catch { return null; }
+}
+
+export async function discoverFromCornerstone(): Promise<CompanyDiscovery[]> {
+  log.info('cornerstone: CDX discovery — enterprise ATS (Boeing, Adobe, FedEx, UnitedHealth, Lockheed Martin)');
+  // *.csod.com/careers* has 258 CDX pages — use 12 pages for significantly better coverage
+  const [careerSlugs, recruitSlugs] = await Promise.all([
+    cdxEnumerateSlugs('*.csod.com/careers*', extractCornerstoneSlug, 8000, 12),
+    cdxEnumerateSlugs('*.csod.com/recruitmentcommon*', extractCornerstoneSlug, 5000, 4),
+  ]);
+  const merged = new Map(careerSlugs);
+  for (const [k, v] of recruitSlugs) merged.set(k, (merged.get(k) ?? 0) + v);
+  log.info(`cornerstone: ${merged.size} unique tenant slugs`);
+  if (!merged.size) return [];
+  return slugsToDiscoveries(merged, s => `https://${s}.csod.com/careers`, 'cornerstone');
 }

@@ -22,12 +22,19 @@ interface GhJobsResponse {
 export function extractGreenhouseToken(url: URL): string | null {
   if (
     url.hostname === 'boards.greenhouse.io' ||
-    url.hostname === 'job-boards.greenhouse.io'
+    url.hostname === 'job-boards.greenhouse.io' ||
+    url.hostname === 'boards.eu.greenhouse.io' ||
+    url.hostname === 'job-boards.eu.greenhouse.io'
   ) {
     const token = url.pathname.split('/').filter(Boolean)[0];
     return token ?? null;
   }
   return null;
+}
+
+/** Returns the correct boards-api host for the given Greenhouse URL (US vs EU). */
+function greenhouseApiHost(url: URL): string {
+  return url.hostname.includes('.eu.') ? 'boards-api.eu.greenhouse.io' : 'boards-api.greenhouse.io';
 }
 
 /**
@@ -41,8 +48,9 @@ export async function extractFromGreenhouse(
   if (!token) return { jobs: [], method: 'greenhouse-api' };
 
   // Try with per_page=500 first (Greenhouse supports large limits); fall back to default
-  const apiUrlLarge = `https://boards-api.greenhouse.io/v1/boards/${token}/jobs?content=false&per_page=500`;
-  const apiUrl = `https://boards-api.greenhouse.io/v1/boards/${token}/jobs?content=false`;
+  const apiHost = greenhouseApiHost(url);
+  const apiUrlLarge = `https://${apiHost}/v1/boards/${token}/jobs?content=false&per_page=500`;
+  const apiUrl = `https://${apiHost}/v1/boards/${token}/jobs?content=false`;
   log.debug(`Trying Greenhouse API via Wayback: ${apiUrlLarge}`);
 
   const data = await fetchArchivedJson<GhJobsResponse>(timestamp, apiUrlLarge) ??

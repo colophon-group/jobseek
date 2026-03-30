@@ -30,11 +30,13 @@ function extractRipplingSlug(url: string): string | null {
 export async function discoverFromRippling(): Promise<CompanyDiscovery[]> {
   log.info('rippling: CDX discovery — modern HCM/ATS used by Series B+ tech companies');
 
-  const slugs = await cdxEnumerateSlugs(
-    'ats.rippling.com/*/*',
-    extractRipplingSlug,
-    5000,
-  );
+  // ats.rippling.com/* has 6 CDX pages — search both root and nested paths
+  const [rootSlugs, nestedSlugs] = await Promise.all([
+    cdxEnumerateSlugs('ats.rippling.com/*', extractRipplingSlug, 5000, 6),
+    cdxEnumerateSlugs('ats.rippling.com/*/*', extractRipplingSlug, 5000, 4),
+  ]);
+  const slugs = new Map(rootSlugs);
+  for (const [k, v] of nestedSlugs) slugs.set(k, (slugs.get(k) ?? 0) + v);
 
   log.info(`rippling: ${slugs.size} unique company slugs`);
   if (!slugs.size) return [];

@@ -44,14 +44,24 @@ export async function extractFromPersonio(
   if (!slug) return { jobs: [], method: 'personio-api' };
 
   const tld = url.hostname.endsWith('.personio.de') ? 'personio.de' : 'personio.com';
-  const apiUrl = `https://${slug}.jobs.${tld}/json`;
-  log.debug(`Trying Personio API via Wayback: ${apiUrl}`);
 
-  const data = await fetchArchivedJson<PersonioResponse | PersonioJob[]>(timestamp, apiUrl);
+  // Try multiple API endpoints — newer Personio deployments may use different paths
+  const apiUrls = [
+    `https://${slug}.jobs.${tld}/json`,
+    `https://${slug}.jobs.${tld}/api/v1/positions`,
+    `https://${slug}.jobs.${tld}/en/jobs.json`,
+  ];
 
-  const rawJobs: PersonioJob[] = Array.isArray(data)
-    ? data
-    : ((data as PersonioResponse)?.jobs ?? (data as PersonioResponse)?.data ?? []);
+  let rawJobs: PersonioJob[] = [];
+  for (const apiUrl of apiUrls) {
+    log.debug(`Trying Personio API via Wayback: ${apiUrl}`);
+    const data = await fetchArchivedJson<PersonioResponse | PersonioJob[]>(timestamp, apiUrl);
+    if (!data) continue;
+    rawJobs = Array.isArray(data)
+      ? data
+      : ((data as PersonioResponse)?.jobs ?? (data as PersonioResponse)?.data ?? []);
+    if (rawJobs.length > 0) break;
+  }
 
   if (rawJobs.length === 0) return { jobs: [], method: 'personio-api' };
 
@@ -74,4 +84,67 @@ export async function extractFromPersonio(
 
   log.info(`Personio API: ${jobs.length} jobs via Wayback`);
   return { jobs, method: 'personio-api' };
+}
+
+// ── SAP SuccessFactors ────────────────────────────────────────────────────────
+// Enterprise ATS/HCM with 5000+ tenants. Pattern: {tenant}.successfactors.com/careers
+
+const SF_RESERVED = new Set(['www', 'api', 'app', 'jobs', 'login', 'support', 'cdn', 'secure', 'sso', 'hcm', 'preview', 'help', 'test', 'staging']);
+
+export function extractSuccessFactorsSlug(url: URL): string | null {
+  const h = url.hostname;
+  if (!h.endsWith('.successfactors.com') && !h.endsWith('.successfactors.eu')) return null;
+  const s = h.split('.')[0].toLowerCase();
+  return (!s || SF_RESERVED.has(s) || s.length < 2) ? null : s;
+}
+
+export async function extractFromSuccessFactors(url: URL, ts: string): Promise<ExtractionResult> {
+  const slug = extractSuccessFactorsSlug(url);
+  if (!slug) return { jobs: [], method: 'successfactors' };
+
+  const tld = url.hostname.endsWith('.successfactors.eu') ? 'successfactors.eu' : 'successfactors.com';
+  const base = `https://${slug}.${tld}`;
+
+  interface SFJob {
+    requisitionId?: string | number;
+    jobReqId?: string | number;
+    jobTitle?: string;
+    externalJobTitle?: string;
+    title?: string;
+    location?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    department?: string;
+    jobFamily?: string;
+    employmentType?: string;
+    contractType?: string;
+  }
+  interface SFResponse { requisitions?: SFJob[]; results?: SFJob[]; data?: SFJob[]; jobs?: SFJob[] }
+
+  const apiUrls = [
+    `${base}/careersection/REST/search/v1?site=1&lang=en_US&rows=100`,
+    `${base}/career-site-service/postings?pageNum=0&pageSize=100&lang=en_US`,
+    `${base}/careers/REST/search/v1?site=1&lang=en_US&rows=100`,
+    `${base}/api/rest/v1/posting/getjobs?lang=en_US`,
+  ];
+
+  for (const apiUrl of apiUrls) {
+    const data = await fetchArchivedJson<SFResponse | SFJob[]>(ts, apiUrl);
+    if (!data) continue;
+    const rawJobs: SFJob[] = Array.isArray(data)
+      ? data
+      : ((data as SFResponse).requisitions ?? (data as SFResponse).results ?? (data as SFResponse).data ?? (data as SFResponse).jobs ?? []);
+    if (!rawJobs.length) continue;
+    const jobs: JobPosting[] = rawJobs.flatMap(j => {
+      const title = j.externalJobTitle ?? j.jobTitle ?? j.title ?? '';
+      if (!title) return [];
+      const location = j.location ?? ([j.city, j.state, j.country].filter(Boolean).join(', ') || undefined);
+      const id = j.requisitionId ?? j.jobReqId;
+      const idStr = id ? String(id) : undefined;
+      return [{ title, location, department: j.department ?? j.jobFamily, employmentType: j.employmentType ?? j.contractType, id: idStr, url: idStr ? `${base}/careers/jobdetails.aspx?job_id=${idStr}` : undefined } as JobPosting];
+    });
+    if (jobs.length > 0) { log.info(`SuccessFactors API: ${jobs.length} jobs via Wayback`); return { jobs, method: 'successfactors-api' }; }
+  }
+  return { jobs: [], method: 'successfactors' };
 }

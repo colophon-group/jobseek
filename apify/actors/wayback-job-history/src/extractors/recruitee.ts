@@ -41,11 +41,22 @@ export async function extractFromRecruitee(
   const slug = extractRecruiteeSlug(url);
   if (!slug) return { jobs: [], method: 'recruitee-api' };
 
-  const apiUrl = `https://${slug}.recruitee.com/api/v1/offers`;
-  log.debug(`Trying Recruitee API via Wayback: ${apiUrl}`);
+  // Try both v1 and legacy /api/offers endpoints
+  const apiUrls = [
+    `https://${slug}.recruitee.com/api/v1/offers`,
+    `https://${slug}.recruitee.com/api/offers`,
+    `https://${slug}.recruitee.com/offers.json`,
+  ];
 
-  const data = await fetchArchivedJson<RecruiteeResponse>(timestamp, apiUrl);
-  const rawJobs = data?.offers ?? [];
+  let rawJobs: RecruiteeOffer[] = [];
+  for (const apiUrl of apiUrls) {
+    log.debug(`Trying Recruitee API via Wayback: ${apiUrl}`);
+    const data = await fetchArchivedJson<RecruiteeResponse | RecruiteeOffer[]>(timestamp, apiUrl);
+    if (!data) continue;
+    rawJobs = Array.isArray(data) ? data : (data as RecruiteeResponse).offers ?? [];
+    if (rawJobs.length > 0) break;
+  }
+
   if (rawJobs.length === 0) return { jobs: [], method: 'recruitee-api' };
 
   const jobs: JobPosting[] = rawJobs.map(j => {

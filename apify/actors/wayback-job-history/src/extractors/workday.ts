@@ -24,16 +24,36 @@ interface WorkdayApiResponse {
  *   https://{tenant}.wd{n}.myworkdayjobs.com/{board}/jobs
  */
 export function extractWorkdayParams(url: URL): { tenant: string; instance: string; board: string } | null {
-  const match = url.hostname.match(/^([a-z0-9-]+)\.(wd\d+)\.myworkdayjobs\.com$/i);
-  if (!match) return null;
+  // Standard: {tenant}.wd{N}.myworkdayjobs.com
+  /** Extract board name from path, skipping locale prefixes like en-US, fr-FR, de-DE */
+  function extractBoard(parts: string[], tenant: string): string {
+    const localePattern = /^[a-z]{2}(-[A-Z]{2})?$/;
+    const first = parts[0] ?? '';
+    // If first segment looks like a locale, use the second segment
+    if (localePattern.test(first) && parts[1]) return parts[1];
+    return first || tenant;
+  }
 
-  const tenant   = match[1];
-  const instance = match[2].toLowerCase();
+  const wdMatch = url.hostname.match(/^([a-z0-9-]+)\.(wd\d+)\.myworkdayjobs\.com$/i);
+  if (wdMatch) {
+    const tenant   = wdMatch[1];
+    const instance = wdMatch[2].toLowerCase();
+    const parts    = url.pathname.split('/').filter(Boolean);
+    const board    = extractBoard(parts, tenant);
+    return { tenant, instance, board };
+  }
 
-  const parts = url.pathname.split('/').filter(Boolean);
-  const board = parts[0] ?? tenant;
+  // Legacy/alt: {tenant}.myworkdayjobs.com (no wd{N} instance)
+  const directMatch = url.hostname.match(/^([a-z0-9-]+)\.myworkdayjobs\.com$/i);
+  if (directMatch) {
+    const tenant = directMatch[1];
+    if (tenant === 'www' || tenant.length < 2) return null;
+    const parts = url.pathname.split('/').filter(Boolean);
+    const board = extractBoard(parts, tenant);
+    return { tenant, instance: 'wd1', board }; // default to wd1 for API calls
+  }
 
-  return { tenant, instance, board };
+  return null;
 }
 
 /**

@@ -82,6 +82,89 @@ const SEED_COMPANIES: CompanyInput[] = [
   // Fountain ATS — gig economy / shift work
   { name: 'DoorDash',     portalUrl: 'https://jobs.fountain.com/doordash',              inventoryMode: false },
   { name: 'Instacart',    portalUrl: 'https://jobs.fountain.com/instacart',             inventoryMode: false },
+  { name: 'GoPuff',       portalUrl: 'https://jobs.fountain.com/gopuff',                inventoryMode: false },
+  { name: 'Uber (ops)',   portalUrl: 'https://jobs.fountain.com/uber',                  inventoryMode: false },
+  // Pinpoint ATS — UK/EU Series A–C startups
+  { name: 'Deliveroo',    portalUrl: 'https://app.pinpointhq.com/deliveroo/jobs',        inventoryMode: false },
+  { name: 'Depop',        portalUrl: 'https://app.pinpointhq.com/depop/jobs',            inventoryMode: false },
+  { name: 'Bulb',         portalUrl: 'https://app.pinpointhq.com/bulb/jobs',             inventoryMode: false },
+  // Comeet ATS — Israel/EU/US tech
+  { name: 'Wix',          portalUrl: 'https://recruiting.comeet.co/jobs/wix',            inventoryMode: false },
+  { name: 'monday.com',   portalUrl: 'https://recruiting.comeet.co/jobs/monday',         inventoryMode: false },
+  { name: 'Fiverr',       portalUrl: 'https://recruiting.comeet.co/jobs/fiverr',         inventoryMode: false },
+  // Factorial HR — EU/LATAM HCM/ATS
+  { name: 'Glovo',        portalUrl: 'https://factorialhr.com/job_postings/glovo',       inventoryMode: false },
+  { name: 'Cabify',       portalUrl: 'https://factorialhr.com/job_postings/cabify',      inventoryMode: false },
+  { name: 'Factorial',    portalUrl: 'https://factorialhr.com/job_postings/factorial',   inventoryMode: false },
+  // Kenjo ATS — European DACH/Spain/UK companies
+  { name: 'Mango',        portalUrl: 'https://app.kenjo.io/mango/jobs',                  inventoryMode: false },
+  { name: 'Bershka',      portalUrl: 'https://app.kenjo.io/bershka/jobs',                inventoryMode: false },
+  { name: 'Stradivarius', portalUrl: 'https://app.kenjo.io/stradivarius/jobs',           inventoryMode: false },
+  // Workstream ATS — hourly/shift-work ATS (restaurant chains, retailers)
+  { name: "Chick-fil-A",  portalUrl: 'https://jobs.workstream.us/chick-fil-a',            inventoryMode: false },
+  { name: 'Whataburger',  portalUrl: 'https://jobs.workstream.us/whataburger',            inventoryMode: false },
+  { name: 'Panda Express', portalUrl: 'https://jobs.workstream.us/panda-express',         inventoryMode: false },
+  // Dover ATS — VC-backed startup ATS
+  { name: 'Dover',        portalUrl: 'https://talent.dover.com/jobs/dover',               inventoryMode: false },
+  // Freshteam ATS — Freshworks ATS, popular in Asia/APAC and global mid-market
+  { name: 'Freshworks',   portalUrl: 'https://freshworks.freshteam.com/jobs',             inventoryMode: false },
+  { name: 'Chargebee',    portalUrl: 'https://chargebee.freshteam.com/jobs',              inventoryMode: false },
+  // Jobteaser — European campus/student job board (France, Germany, Spain)
+  { name: 'L\'Oréal',     portalUrl: 'https://jobteaser.com/en/company/loreal/jobs',      inventoryMode: false },
+  { name: 'Capgemini',    portalUrl: 'https://jobteaser.com/en/company/capgemini/jobs',   inventoryMode: false },
+  { name: 'Airbus',       portalUrl: 'https://jobteaser.com/en/company/airbus/jobs',      inventoryMode: false },
+  // Homerun ATS — Dutch/EU startup ATS (Netherlands-origin)
+  { name: 'Catawiki',     portalUrl: 'https://catawiki.homerun.co',                                    inventoryMode: false },
+  { name: 'Messagebird',  portalUrl: 'https://messagebird.homerun.co',                                 inventoryMode: false },
+  // Welcome to the Jungle — leading French/EU job board
+  { name: 'BlaBlaCar',    portalUrl: 'https://www.welcometothejungle.com/en/companies/blablacar/jobs', inventoryMode: false },
+  { name: 'Doctolib',     portalUrl: 'https://www.welcometothejungle.com/en/companies/doctolib/jobs',  inventoryMode: false },
+  { name: 'Alan',         portalUrl: 'https://www.welcometothejungle.com/en/companies/alan/jobs',       inventoryMode: false },
+  // HiBob — modern HRIS/ATS (JetBrains, monday.com, Wix, Pleo, Lightspeed)
+  { name: 'JetBrains',    portalUrl: 'https://app.hibob.com/careers/jetbrains',   inventoryMode: false },
+  { name: 'Pleo',         portalUrl: 'https://app.hibob.com/careers/pleo',        inventoryMode: false },
+  { name: 'Papaya Global', portalUrl: 'https://app.hibob.com/careers/papaya-global', inventoryMode: false },
+  { name: 'Lightspeed',   portalUrl: 'https://app.hibob.com/careers/lightspeed',  inventoryMode: false },
+  // Eightfold.ai — AI talent platform (Prudential, Chevron, Koch, Bayer, BMS, Booz Allen)
+  { name: 'Prudential',   portalUrl: 'https://careers.eightfold.ai/prudential',   inventoryMode: false },
+  { name: 'Chevron',      portalUrl: 'https://careers.eightfold.ai/chevron',      inventoryMode: false },
+  { name: 'NTT Data',     portalUrl: 'https://careers.eightfold.ai/nttdata',      inventoryMode: false },
+  { name: 'Bayer',        portalUrl: 'https://careers.eightfold.ai/bayer',        inventoryMode: false },
+  // Cornerstone OnDemand — Fortune 500 enterprise ATS (Boeing, Adobe, FedEx, UnitedHealth)
+  { name: 'Boeing',            portalUrl: 'https://boeing.csod.com/careers',           inventoryMode: false },
+  { name: 'Adobe (CSOD)',      portalUrl: 'https://adobe.csod.com/careers',            inventoryMode: false },
+  { name: 'FedEx (CSOD)',      portalUrl: 'https://fedex.csod.com/careers',            inventoryMode: false },
+  { name: 'UnitedHealth CSOD', portalUrl: 'https://unitedhealth.csod.com/careers',     inventoryMode: false },
+  // SAP SuccessFactors — enterprise HCM/ATS (5000+ tenants globally)
+  { name: 'Shell',             portalUrl: 'https://shell.successfactors.com/careers',    inventoryMode: false },
+  { name: 'Siemens (SF)',      portalUrl: 'https://siemens.successfactors.com/careers',  inventoryMode: false },
+  { name: 'Philips (SF)',      portalUrl: 'https://philips.successfactors.com/careers',  inventoryMode: false },
+  // PageUp — APAC enterprise ATS (Qantas, ANZ, BHP, Telstra, Australian universities)
+  { name: 'Qantas',            portalUrl: 'https://jobs.pageuppeople.com/qantas/go/All-Jobs',     inventoryMode: false },
+  { name: 'ANZ Bank',          portalUrl: 'https://jobs.pageuppeople.com/anzgroup/go/All-Jobs',   inventoryMode: false },
+  { name: 'BHP',               portalUrl: 'https://jobs.pageuppeople.com/bhp/go/All-Jobs',        inventoryMode: false },
+  // Avature — Fortune 500 talent acquisition CRM (Amazon, EY, PwC, JPMorgan)
+  { name: 'Amazon (Avature)',  portalUrl: 'https://careers.avature.net/amazon',                   inventoryMode: false },
+  { name: 'EY Careers',        portalUrl: 'https://careers.avature.net/EYCareers',                inventoryMode: false },
+  // Darwinbox — India enterprise HCM/ATS (Swiggy, Zomato, Puma, JSW, Bajaj, Vedanta)
+  { name: 'Swiggy',            portalUrl: 'https://swiggy.darwinbox.com/ms/candidate/jobs',       inventoryMode: false },
+  { name: 'Zomato',            portalUrl: 'https://zomato.darwinbox.com/ms/candidate/jobs',       inventoryMode: false },
+  { name: 'Puma India',        portalUrl: 'https://puma.darwinbox.com/ms/candidate/jobs',         inventoryMode: false },
+  { name: 'Vedanta',           portalUrl: 'https://vedanta.darwinbox.com/ms/candidate/jobs',      inventoryMode: false },
+  // Keka — India mid-market HR/ATS platform
+  { name: 'Lenskart',          portalUrl: 'https://lenskart.keka.com/careers',                    inventoryMode: false },
+  { name: 'Meesho',            portalUrl: 'https://meesho.keka.com/careers',                      inventoryMode: false },
+  // Dayforce HCM (Ceridian) — enterprise HCM used by major North American employers
+  { name: 'Dollar General',    portalUrl: 'https://www.dayforcehcm.com/CandidatePortal/en-US/dg',  inventoryMode: false },
+  { name: "Trader Joe's",      portalUrl: 'https://www.dayforcehcm.com/CandidatePortal/en-US/traderjoes', inventoryMode: false },
+  { name: 'Canada Goose',      portalUrl: 'https://www.dayforcehcm.com/CandidatePortal/en-US/canadagoose', inventoryMode: false },
+  // EasyCruit — dominant Scandinavian ATS (Norway, Sweden, Denmark public sector + enterprises)
+  { name: 'Andøy Municipality', portalUrl: 'https://andoy.easycruit.com', inventoryMode: false },
+  { name: '3Shape',             portalUrl: 'https://3shape.easycruit.com', inventoryMode: false },
+  { name: 'Norsk Hydro',        portalUrl: 'https://hydro.easycruit.com',  inventoryMode: false },
+  // Varbi — Swedish/Scandinavian ATS (municipalities, universities, public sector)
+  { name: 'Arvika Municipality', portalUrl: 'https://arvika.varbi.com',          inventoryMode: false },
+  { name: 'Brackediakoni',       portalUrl: 'https://brackediakoni.varbi.com',   inventoryMode: false },
 ];
 
 await Actor.init();
@@ -217,9 +300,10 @@ async function pushGhostAnalysis(cmp: string, portal: string, start: string, end
     // Compute ghost risk heuristically when Gemini is not available
     const rateScore = Math.min(60, Math.round(stats.ghostRate * 80));
     const durationScore = stats.avgDurationDays > 180 ? 25 : stats.avgDurationDays > 90 ? 15 : stats.avgDurationDays > 60 ? 8 : 0;
+    const medianBonus = stats.medianDurationDays > 120 ? 5 : 0;
     const hcPenalty = base.hiringCafeSignal?.lowEngagement ? 15 : (base.hiringCafeSignal?.found === false ? 10 : 0);
     const orgPenalty = stats.orgGhostSignal ? 10 : 0;
-    const rawRisk = Math.min(100, rateScore + durationScore + hcPenalty + orgPenalty);
+    const rawRisk = Math.min(100, rateScore + durationScore + medianBonus + hcPenalty + orgPenalty);
     base.overallGhostRisk = rawRisk;
     base.hiringHealthScore = Math.max(0, 100 - rawRisk);
     base.recommendation = rawRisk >= 70 ? 'Likely ghost posting' : rawRisk >= 40 ? 'Proceed with caution' : 'Apply confidently';

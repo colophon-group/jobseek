@@ -20,10 +20,11 @@ function extractWorkableSlug(originalUrl: string): string | null {
 export async function discoverFromWorkable(): Promise<import('../types.js').CompanyDiscovery[]> {
   log.info('workable: discovering company slugs via Wayback CDX');
 
+  // apply.workable.com/* has 505 CDX pages (~50.5M entries) — use 12 pages for significantly better coverage
   const slugCounts = await cdxEnumerateSlugs(
     'apply.workable.com/*',
     extractWorkableSlug,
-    5000,
+    10000, 12,
   );
 
   log.info(`workable/cdx: found ${slugCounts.size} unique company slugs`);

@@ -34,18 +34,39 @@ export async function fetchArchivedJson<T>(ts: string, url: string): Promise<T |
 export interface HiringCafeSignal { found: boolean; activeListings: number; avgViews: number; avgApplications: number; lowEngagement: boolean; signal: string | null }
 
 const HC_API = 'https://hiring.cafe/api/search-jobs';
+const HC_COMPANIES_API = 'https://hiring.cafe/api/search-companies';
 const HC_BODY = (q: string) => JSON.stringify({ searchQuery: q, filters: [], page: 0, pageSize: 20, sortBy: 'date' });
+const HC_COMPANY_BODY = (q: string) => JSON.stringify({ searchQuery: q, filters: [], page: 0, pageSize: 10 });
 const HC_HEADERS = { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Origin': 'https://hiring.cafe', 'Referer': 'https://hiring.cafe/' };
 
-/** Extract the most distinctive token from a company name for fuzzy matching. */
+/** Extract the most distinctive token from a company name for fuzzy matching against hiring.cafe results. */
 function companyMatchToken(name: string): string {
   const cleaned = name.toLowerCase()
-    .replace(/[.,&()'/]/g, '')   // strip punctuation
-    .replace(/\b(inc|llc|ltd|corp|co|ag|gmbh|sa|nv|plc|group|holdings?|the)\b/g, '') // strip legal suffixes
+    .replace(/\.(com|io|co|ai|net|org|app|dev|us|eu|de|fr|uk)\b/g, ' $1') // split "monday.com" → "monday com"
+    .replace(/[.,&()'"/]/g, ' ')    // strip punctuation to spaces
+    .replace(/\b(inc|llc|ltd|corp|ag|gmbh|sa|nv|plc|the|group|holdings?|technologies|solutions|services|systems|software|consulting)\b/g, '')
+    .replace(/\s+/g, ' ')
     .trim();
-  // Use first word of ≥4 chars, or full cleaned string up to 12 chars
-  const firstWord = cleaned.split(/\s+/).find(w => w.length >= 4) ?? cleaned;
-  return firstWord.slice(0, 12);
+
+  if (!cleaned) return name.toLowerCase().slice(0, 12);
+
+  // For single-word result, return it (up to 14 chars)
+  const words = cleaned.split(' ').filter(w => w.length >= 2);
+  if (!words.length) return cleaned.slice(0, 12);
+  if (words.length === 1) return words[0].slice(0, 14);
+
+  // Prefer the longest distinctive word — e.g. "Bank of America" → "america", "Deutsche Bank" → "deutsche"
+  const TLD_WORDS = new Set(['com', 'io', 'co', 'ai', 'net', 'org', 'app', 'dev', 'us', 'eu', 'de', 'fr', 'uk']);
+  const GENERIC = new Set(['bank', 'capital', 'media', 'global', 'digital', 'cloud', 'data', 'labs', 'ventures', 'partners', 'studio', 'agency', 'team', ...TLD_WORDS]);
+  const ranked = [...words].sort((a, b) => b.length - a.length);
+  const distinctive = ranked.find(w => !GENERIC.has(w)) ?? ranked[0];
+
+  // For 2-word companies: if second word is a TLD, just use the first
+  if (words.length === 2 && TLD_WORDS.has(words[1])) return words[0].slice(0, 14);
+  // Otherwise concatenate both words (most specific token)
+  if (words.length === 2) return words.join('').slice(0, 14);
+
+  return distinctive.slice(0, 14);
 }
 
 function parseHCResponse(text: string, company: string): HiringCafeSignal | null {
@@ -96,37 +117,164 @@ async function _checkHiringCafeSignalUncached(company: string): Promise<HiringCa
     }
   } catch (e) { log.debug(`HC signal gotScraping: ${e}`); }
 
-  // Strategy 3: Wayback CDX — find a recent cached snapshot of the search API response
+  // Strategy 2b: search-companies endpoint — returns company records directly (more targeted than search-jobs)
   try {
-    const cdxRes = await fetch(
-      `http://web.archive.org/cdx/search/cdx?url=hiring.cafe/api/search-jobs&output=json&fl=timestamp,length&filter=statuscode:200&limit=5&from=${new Date(Date.now() - 90*86400*1000).toISOString().slice(0,10).replace(/-/g,'')}&collapse=digest`,
-      { signal: AbortSignal.timeout(10_000) },
-    );
-    if (cdxRes.ok) {
-      const rows: string[][] = await cdxRes.json();
-      const snaps = rows.slice(1).filter(r => parseInt(r[1]) > 10_000).sort((a, b) => b[0].localeCompare(a[0]));
-      for (const [ts] of snaps.slice(0, 3)) {
-        try {
-          const snap = await fetch(`https://web.archive.org/web/${ts}id_/https://hiring.cafe/api/search-jobs`, { signal: AbortSignal.timeout(15_000), headers: { Accept: 'application/json' } });
-          if (!snap.ok) continue;
-          // This is a generic snapshot — search within it for company mentions
-          const text = await snap.text();
-          type HCJob = { viewCount?: number; applicationCount?: number; v5_processed_company_data?: { name?: string } };
-          const allJobs: HCJob[] = (JSON.parse(text) as { results?: HCJob[] }).results ?? [];
-          const jobs = allJobs.filter(j => (j.v5_processed_company_data?.name ?? '').toLowerCase().includes(companyMatchToken(company)));
-          if (jobs.length > 0) {
-            const avgV = jobs.reduce((s, j) => s + (j.viewCount ?? 0), 0) / jobs.length;
-            const avgA = jobs.reduce((s, j) => s + (j.applicationCount ?? 0), 0) / jobs.length;
-            const allZero = jobs.length >= 3 && jobs.every(j => (j.applicationCount ?? 0) === 0);
-            const low = (avgV < 5 && avgA === 0) || allZero;
-            log.debug(`HC signal via Wayback snapshot ${ts} for ${company}`);
-            return { found: true, activeListings: jobs.length, avgViews: avgV, avgApplications: avgA, lowEngagement: low, signal: low ? `hiring.cafe(cached):${jobs.length}j avg${avgV.toFixed(1)}v—low` : null };
-          }
-          break; // Snapshot found but company not in it — no point checking older ones
-        } catch { continue; }
+    const r = await gotScraping({ url: HC_COMPANIES_API, method: 'POST', headers: HC_HEADERS, headerGeneratorOptions: { browsers: ['chrome'], operatingSystems: ['macos'], locales: ['en-US'] }, body: HC_COMPANY_BODY(company), timeout: { request: 12_000 } });
+    if (r.statusCode === 200 && r.body.trimStart().startsWith('{')) {
+      type HCCo = { name?: string; totalActiveListings?: number; activeListings?: number; jobCount?: number };
+      const token = companyMatchToken(company);
+      const companies: HCCo[] = (JSON.parse(r.body) as { results?: HCCo[] }).results ?? [];
+      const matched = companies.filter(co => (co.name ?? '').toLowerCase().includes(token));
+      if (matched.length > 0) {
+        const total = matched.reduce((s, co) => s + (co.totalActiveListings ?? co.activeListings ?? co.jobCount ?? 0), 0);
+        log.debug(`HC signal via search-companies for ${company}: ${total} listings`);
+        return { found: true, activeListings: total, avgViews: 0, avgApplications: 0, lowEngagement: total === 0, signal: total === 0 ? `hiring.cafe(companies):found,0listings—low` : total > 20 ? `hiring.cafe(companies):${total}listings—genuine` : null };
       }
+    }
+  } catch (e) { log.debug(`HC signal search-companies: ${e}`); }
+
+  // Strategy 3: Wayback CDX — check both search-jobs and search-companies archived snapshots
+  try {
+    const fromTs = new Date(Date.now() - 180*86400*1000).toISOString().slice(0,10).replace(/-/g,'');
+    const [jobsCdx, cosCdx] = await Promise.all([
+      fetch(`http://web.archive.org/cdx/search/cdx?url=hiring.cafe/api/search-jobs&output=json&fl=timestamp,length&filter=statuscode:200&limit=20&from=${fromTs}&collapse=digest`, { signal: AbortSignal.timeout(10_000) }).then(r => r.ok ? r.json() as Promise<string[][]> : Promise.resolve([])).catch(() => []),
+      fetch(`http://web.archive.org/cdx/search/cdx?url=hiring.cafe/api/search-companies&output=json&fl=timestamp,length&filter=statuscode:200&limit=10&from=${fromTs}&collapse=digest`, { signal: AbortSignal.timeout(10_000) }).then(r => r.ok ? r.json() as Promise<string[][]> : Promise.resolve([])).catch(() => []),
+    ]);
+
+    // Check search-companies snapshots first (more targeted — company records directly)
+    const cosSnaps = (Array.isArray(cosCdx) ? (cosCdx as string[][]).slice(1) : []).filter(r => parseInt(r[1]) > 1_000).sort((a,b)=>b[0].localeCompare(a[0]));
+    const token = companyMatchToken(company);
+    for (const [ts] of cosSnaps.slice(0, 5)) {
+      try {
+        const snap = await fetch(`https://web.archive.org/web/${ts}id_/https://hiring.cafe/api/search-companies`, { signal: AbortSignal.timeout(12_000), headers: { Accept: 'application/json' } });
+        if (!snap.ok) continue;
+        const text = await snap.text();
+        type HCCo = { name?: string; totalActiveListings?: number; activeListings?: number };
+        const companies: HCCo[] = (JSON.parse(text) as { results?: HCCo[] }).results ?? [];
+        const matched = companies.filter(co => (co.name ?? '').toLowerCase().includes(token));
+        if (matched.length > 0) {
+          const total = matched.reduce((s, co) => s + (co.totalActiveListings ?? co.activeListings ?? 0), 0);
+          log.debug(`HC signal via Wayback search-companies (${matched.length} matches) for ${company}`);
+          return { found: true, activeListings: total, avgViews: 0, avgApplications: 0, lowEngagement: total === 0, signal: total === 0 ? `hiring.cafe(cached-co):found,0listings—low` : null };
+        }
+      } catch { continue; }
+    }
+
+    // Check search-jobs snapshots — each has different 80 results, check all for the company
+    const jobSnaps = (Array.isArray(jobsCdx) ? (jobsCdx as string[][]).slice(1) : []).filter(r => parseInt(r[1]) > 5_000).sort((a,b)=>b[0].localeCompare(a[0]));
+    const allMatchedJobs: { viewCount?: number; applicationCount?: number }[] = [];
+    for (const [ts] of jobSnaps.slice(0, 8)) {
+      try {
+        const snap = await fetch(`https://web.archive.org/web/${ts}id_/https://hiring.cafe/api/search-jobs`, { signal: AbortSignal.timeout(15_000), headers: { Accept: 'application/json' } });
+        if (!snap.ok) continue;
+        const text = await snap.text();
+        type HCJob = { viewCount?: number; applicationCount?: number; v5_processed_company_data?: { name?: string } };
+        const allJobs: HCJob[] = (JSON.parse(text) as { results?: HCJob[] }).results ?? [];
+        const matched = allJobs.filter(j => (j.v5_processed_company_data?.name ?? '').toLowerCase().includes(token));
+        if (matched.length > 0) allMatchedJobs.push(...matched);
+      } catch { continue; }
+    }
+    if (allMatchedJobs.length > 0) {
+      const avgV = allMatchedJobs.reduce((s, j) => s + (j.viewCount ?? 0), 0) / allMatchedJobs.length;
+      const avgA = allMatchedJobs.reduce((s, j) => s + (j.applicationCount ?? 0), 0) / allMatchedJobs.length;
+      const allZero = allMatchedJobs.length >= 3 && allMatchedJobs.every(j => (j.applicationCount ?? 0) === 0);
+      const low = (avgV < 5 && avgA === 0) || allZero;
+      log.debug(`HC signal via Wayback search-jobs (${allMatchedJobs.length} matches) for ${company}`);
+      return { found: true, activeListings: allMatchedJobs.length, avgViews: avgV, avgApplications: avgA, lowEngagement: low, signal: low ? `hiring.cafe(cached):${allMatchedJobs.length}j avg${avgV.toFixed(1)}v—low` : null };
     }
   } catch (e) { log.debug(`HC signal wayback: ${e}`); }
 
+  // Strategy 4: CDX company profile URL check — fast, no live API needed
+  // Converts the company name to slug variants and checks if any profile page was archived.
+  // Much more reliable than API strategies since CDX never rate-limits.
+  try {
+    const slugVariants = companyNameToSlugVariants(company);
+    for (const slug of slugVariants) {
+      const cdxUrl = `http://web.archive.org/cdx/search/cdx?url=hiring.cafe/companies/${slug}*&output=json&fl=timestamp&filter=statuscode:200&limit=5&collapse=urlkey`;
+      const cdxRes = await fetch(cdxUrl, { signal: AbortSignal.timeout(8_000) }).catch(() => null);
+      if (!cdxRes?.ok) continue;
+      const rows = (await cdxRes.json() as string[][]).slice(1);
+      if (!rows.length) continue;
+
+      // Company profile exists on hiring.cafe — try to extract active listing count from archived page
+      const latestTs = rows.sort((a, b) => b[0].localeCompare(a[0]))[0][0];
+      let listings = 0;
+      try {
+        const html = await fetch(`https://web.archive.org/web/${latestTs}id_/https://hiring.cafe/companies/${slug}`, { signal: AbortSignal.timeout(15_000) })
+          .then(r => r.ok ? r.text() : null).catch(() => null);
+        if (html) {
+          // Parse Next.js __NEXT_DATA__ for structured company/job count data
+          // Find the script block start, then use JSON.parse with brace counting
+          const ndIdx = html.indexOf('__NEXT_DATA__');
+          if (ndIdx !== -1) {
+            const jsonStart = html.indexOf('{', ndIdx);
+            if (jsonStart !== -1) {
+              // Walk forward counting braces to find matching closing brace
+              let depth = 0; let pos = jsonStart;
+              for (; pos < Math.min(html.length, jsonStart + 2_000_000); pos++) {
+                if (html[pos] === '{') depth++;
+                else if (html[pos] === '}') { depth--; if (depth === 0) break; }
+              }
+              if (depth === 0) {
+                try {
+                  const nd = JSON.parse(html.slice(jsonStart, pos + 1)) as Record<string, unknown>;
+                  listings = extractListingsCountFromNextData(nd);
+                } catch { /* parse error */ }
+              }
+            }
+          }
+          if (!listings) {
+            // Fallback: regex scan for "N jobs" / "N openings" in page text
+            const m = /\b(\d{1,4})\s+(?:active\s+)?(?:jobs?|openings?|listings?|positions?)/i.exec(html);
+            if (m) listings = parseInt(m[1]);
+          }
+        }
+      } catch { /* can't get details, still report found */ }
+
+      log.debug(`HC signal via CDX profile (${slug}) for ${company}: found, ${listings} listings`);
+      return { found: true, activeListings: listings, avgViews: 0, avgApplications: 0, lowEngagement: listings === 0, signal: listings === 0 ? `hiring.cafe(profile):found,0active—low` : listings > 20 ? `hiring.cafe(profile):${listings}active—genuine` : null };
+    }
+  } catch (e) { log.debug(`HC signal CDX profile: ${e}`); }
+
   return null;
+}
+
+/** Generate slug variants from a company name for hiring.cafe profile URL lookup. */
+function companyNameToSlugVariants(name: string): string[] {
+  const base = name.toLowerCase()
+    .replace(/\.(com|io|co|ai|net|org|app|dev|us|eu|de|fr|uk)\b/g, '') // drop TLDs
+    .replace(/[.,&()'"/]/g, ' ')
+    .replace(/\b(inc|llc|ltd|corp|ag|gmbh|sa|nv|plc|the|group|holdings?|technologies|solutions|services|systems|software|consulting)\b/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+  if (!base || base.length < 2) return [];
+  const variants = [base];
+  // Also try without trailing common suffixes that might differ
+  const noSuffix = base.replace(/-(?:hq|us|global|labs|ai|tech)$/, '');
+  if (noSuffix !== base && noSuffix.length >= 2) variants.push(noSuffix);
+  return variants.slice(0, 3);
+}
+
+/** Walk a Next.js __NEXT_DATA__ object to find a job/listing count. */
+function extractListingsCountFromNextData(obj: unknown, depth = 0): number {
+  if (depth > 8 || !obj || typeof obj !== 'object') return 0;
+  if (Array.isArray(obj)) {
+    // If this looks like a jobs array, use its length
+    if (obj.length > 0 && typeof obj[0] === 'object' && obj[0] !== null && ('title' in (obj[0] as object) || 'jobTitle' in (obj[0] as object))) return obj.length;
+    return Math.max(...obj.map(item => extractListingsCountFromNextData(item, depth + 1)));
+  }
+  const record = obj as Record<string, unknown>;
+  for (const key of ['totalActiveListings', 'activeListings', 'jobCount', 'totalJobs', 'openPositions', 'activeJobCount']) {
+    if (typeof record[key] === 'number') return record[key] as number;
+  }
+  let best = 0;
+  for (const val of Object.values(record)) {
+    if (val && typeof val === 'object') {
+      const sub = extractListingsCountFromNextData(val, depth + 1);
+      if (sub > best) best = sub;
+    }
+  }
+  return best;
 }

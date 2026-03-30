@@ -33,7 +33,9 @@ export async function suggestNewPortals(
     'recruitee', 'jazzhr', 'breezyhr', 'icims', 'taleo', 'teamtailor', 'personio',
     'jobvite', 'successfactors', 'smartrecruiters', 'pinpoint', 'comeet', 'fountain', 'rippling',
     'linkedin', 'indeed', 'glassdoor', 'stepstone', 'xing', 'workday-cdx',
-    'wellfound', 'weworkremotely', 'softgarden', 'join',
+    'wellfound', 'weworkremotely', 'softgarden', 'join', 'factorial', 'kenjo',
+    'workstream', 'dover', 'jobteaser', 'wttj', 'freshteam', 'homerun', 'hibob', 'eightfold', 'cornerstone', 'pageup', 'avature', 'hireology', 'zohorecruit', 'talentlyft', 'occupop',
+    'paycor', 'clearcompany', 'dayforce', 'easycruit', 'varbi', 'darwinbox', 'keka',
   ];
 
   const prompt = `You are an expert on job boards, ATS (applicant tracking systems), and job aggregator APIs.
@@ -55,7 +57,9 @@ Focus on:
 - Job aggregators covering geographies we're missing (Asia-Pacific, LATAM, Middle East, Africa, Nordics, Switzerland)
 - Swiss/EU-specific job boards: jobs.ch, jobup.ch, jobscout24.ch, swissdevjobs.ch, eurojobs.com, finn.no, jobnet.dk, mol.fi (Finnish job board)
 - Niche boards (healthcare/biotech, finance, defense, ESG/climate, diversity-focused, watchmaking/luxury)
-- Emerging ATS platforms growing in market share (Workstream, Paradox, Occupop, Factorial, Recruitly, Manatal, Breezy, Zoho Recruit, Recooty)
+- Emerging ATS platforms growing in market share (Paradox, Occupop, Recruitly, Manatal, Zoho Recruit, Recooty, Applied, Homerun, HiBob, Talentlyft, Recruitee extended, Pinpoint extended, Lever EU)
+- HiBob (app.hibob.com/careers/{company}) — modern HRIS used by JetBrains, monday.com, Wix, Papaya Global; API likely at api.hibob.com/v1/{company}/jobs
+- Homerun (homerun.co) — popular Dutch/EU ATS with {company}.homerun.co/jobs.json public API
 - Company career APIs built on AI-native HR platforms
 
 For each suggestion, provide a complete scraping strategy. You MUST return valid JSON only — no markdown, no explanation outside the JSON.

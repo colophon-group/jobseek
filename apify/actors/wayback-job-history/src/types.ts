@@ -71,6 +71,7 @@ export interface JobRecord {
   reposted: boolean;   // true if url disappeared then reappeared
   repostCount: number; // how many times the job disappeared and reappeared
   validThrough?: string; // earliest validThrough date seen in schema.org data
+  employmentType?: string; // e.g. "CONTRACT", "FULL_TIME" — used to reduce ghost score for temp roles
   ghostScore: number;  // 0–100
   ghostReason: string;
 }

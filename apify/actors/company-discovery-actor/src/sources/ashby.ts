@@ -21,10 +21,11 @@ function extractAshbySlug(originalUrl: string): string | null {
 export async function discoverFromAshby(): Promise<import('../types.js').CompanyDiscovery[]> {
   log.info('ashby: discovering company slugs via Wayback CDX');
 
+  // jobs.ashbyhq.com/* has 42 CDX pages (~4.2M entries) — use 8 pages for better coverage
   const slugCounts = await cdxEnumerateSlugs(
     'jobs.ashbyhq.com/*',
     extractAshbySlug,
-    5000,
+    10000, 8,
   );
 
   log.info(`ashby/cdx: found ${slugCounts.size} unique company slugs`);

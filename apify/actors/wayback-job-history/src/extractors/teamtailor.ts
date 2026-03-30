@@ -41,8 +41,9 @@ export function extractTeamtailorSlug(url: URL): string | null {
 
 /**
  * Fetch jobs from the Teamtailor public JSON:API via the Wayback Machine.
- * API: GET https://{company}.teamtailor.com/api/v1/jobs
+ * API: GET https://{company}.teamtailor.com/api/v1/jobs?page[number]=1&page[size]=30&include=department,location
  *      (or via /jobs.json for simpler responses)
+ * Paginates up to 10 pages to capture large company job lists.
  */
 export async function extractFromTeamtailor(
   url: URL,
@@ -51,20 +52,34 @@ export async function extractFromTeamtailor(
   const slug = extractTeamtailorSlug(url);
   if (!slug) return { jobs: [], method: 'teamtailor-api' };
 
-  const apiUrl = `https://${slug}.teamtailor.com/jobs.json`;
-  log.debug(`Trying Teamtailor API via Wayback: ${apiUrl}`);
-
-  const data = await fetchArchivedJson<TeamtailorResponse | TeamtailorJob[]>(timestamp, apiUrl);
-
+  // Try the JSON:API endpoint with pagination first (supports large job lists)
+  const allIncluded: NonNullable<TeamtailorResponse['included']> = [];
   let rawJobs: TeamtailorJob[] = [];
-  let included: TeamtailorResponse['included'] = [];
 
-  if (Array.isArray(data)) {
-    rawJobs = data;
-  } else if (data && 'data' in data && Array.isArray((data as TeamtailorResponse).data)) {
-    rawJobs = (data as TeamtailorResponse).data ?? [];
-    included = (data as TeamtailorResponse).included ?? [];
+  for (let page = 1; page <= 10; page++) {
+    const pagedUrl = `https://${slug}.teamtailor.com/api/v1/jobs?page%5Bnumber%5D=${page}&page%5Bsize%5D=30&include=department,location`;
+    log.debug(`Trying Teamtailor API via Wayback: ${pagedUrl} (page ${page})`);
+    const data = await fetchArchivedJson<TeamtailorResponse>(timestamp, pagedUrl);
+    if (!data?.data?.length) break;
+    rawJobs.push(...data.data);
+    if (data.included) allIncluded.push(...data.included);
+    if (data.data.length < 30) break; // last page
   }
+
+  // Fallback: legacy /jobs.json endpoint (no pagination, but widely archived)
+  if (rawJobs.length === 0) {
+    const legacyUrl = `https://${slug}.teamtailor.com/jobs.json`;
+    log.debug(`Teamtailor fallback to /jobs.json for ${slug}`);
+    const data = await fetchArchivedJson<TeamtailorResponse | TeamtailorJob[]>(timestamp, legacyUrl);
+    if (Array.isArray(data)) {
+      rawJobs = data;
+    } else if (data && 'data' in data && Array.isArray((data as TeamtailorResponse).data)) {
+      rawJobs = (data as TeamtailorResponse).data ?? [];
+      if ((data as TeamtailorResponse).included) allIncluded.push(...((data as TeamtailorResponse).included ?? []));
+    }
+  }
+
+  const included = allIncluded;
 
   if (rawJobs.length === 0) return { jobs: [], method: 'teamtailor-api' };
 
@@ -72,8 +87,9 @@ export async function extractFromTeamtailor(
   const locationMap = new Map<string, string>();
   const deptMap = new Map<string, string>();
   for (const inc of included) {
-    if (inc.type === 'locations' && inc.attributes?.city) {
-      locationMap.set(inc.id, inc.attributes.city);
+    if (inc.type === 'locations') {
+      const locName = inc.attributes?.city ?? inc.attributes?.name;
+      if (locName) locationMap.set(inc.id, locName);
     }
     if (inc.type === 'departments' && inc.attributes?.name) {
       deptMap.set(inc.id, inc.attributes.name);

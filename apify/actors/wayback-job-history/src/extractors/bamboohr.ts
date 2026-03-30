@@ -11,8 +11,20 @@ export function extractBambooHRSlug(url: URL): string | null {
 export async function extractFromBambooHR(url: URL, ts: string): Promise<ExtractionResult> {
   const slug = extractBambooHRSlug(url);
   if (!slug) return { jobs:[], method:'bamboohr-api' };
-  const data = await fetchArchivedJson<BJob[]>(ts, `https://${slug}.bamboohr.com/careers/list`);
-  if (!Array.isArray(data)||!data.length) return { jobs:[], method:'bamboohr-api' };
+  // Try multiple BambooHR endpoints (API changed across versions)
+  let rawData: BJob[] | null = null;
+  for (const apiUrl of [
+    `https://${slug}.bamboohr.com/careers/list`,
+    `https://${slug}.bamboohr.com/api/gateway.php/${slug}/v1/applicant_tracking/jobs`,
+    `https://${slug}.bamboohr.com/jobs/list.php`,
+  ]) {
+    const d = await fetchArchivedJson<BJob[] | { jobs?: BJob[]; data?: BJob[] }>(ts, apiUrl);
+    if (!d) continue;
+    rawData = Array.isArray(d) ? d : (d as { jobs?: BJob[]; data?: BJob[] }).jobs ?? (d as { jobs?: BJob[]; data?: BJob[] }).data ?? [];
+    if (rawData.length > 0) break;
+  }
+  if (!rawData?.length) return { jobs:[], method:'bamboohr-api' };
+  const data = rawData;
   const jobs: JobPosting[] = data.map(j => {
     const title=j.jobOpeningName??j.title??'';
     let location: string|undefined;
@@ -32,9 +44,24 @@ export function extractICIMSSlug(url: URL): string | null {
 }
 export async function extractFromICIMS(url: URL, ts: string): Promise<ExtractionResult> {
   if (!extractICIMSSlug(url)) return {jobs:[],method:'icims-api'};
-  const data=await fetchArchivedJson<{searchResults?:{id?:string|number;jobtitle?:string;title?:string;category?:string;location?:string|{city?:string;state?:string;country?:string};employmenttype?:string}[]}>( ts,`https://${url.hostname}/jobs/search?ss=1&in_iframe=1`);
-  const raw=data?.searchResults??[];
-  if (!raw.length) return {jobs:[],method:'icims-api'};
-  const jobs:JobPosting[]=raw.map(j=>({title:j.jobtitle??j.title??'',location:typeof j.location==='object'&&j.location?[j.location.city,j.location.state,j.location.country].filter(Boolean).join(', ')||undefined:j.location as string|undefined,department:j.category,id:j.id?String(j.id):undefined,url:j.id?`https://${url.hostname}/jobs/${j.id}/job`:undefined,employmentType:j.employmenttype})).filter(j=>j.title.length>0);
+  type IJob={id?:string|number;jobtitle?:string;title?:string;category?:string;location?:string|{city?:string;state?:string;country?:string};employmenttype?:string};
+  type IResp={searchResults?:IJob[];totalCount?:number};
+  // iCIMS paginates with startrow — fetch up to 5 pages (500 jobs)
+  const allRaw:IJob[]=[];
+  for(let page=0;page<5;page++){
+    const startrow=page*100;
+    const data=await fetchArchivedJson<IResp>(ts,`https://${url.hostname}/jobs/search?ss=1&in_iframe=1&sortby=postdate&ipp=100&startrow=${startrow}`);
+    const rows=data?.searchResults??[];
+    if(!rows.length)break;
+    allRaw.push(...rows);
+    if(rows.length<100)break; // last page
+  }
+  if(!allRaw.length){
+    // fallback: try default endpoint without pagination params
+    const data=await fetchArchivedJson<IResp>(ts,`https://${url.hostname}/jobs/search?ss=1&in_iframe=1`);
+    allRaw.push(...(data?.searchResults??[]));
+  }
+  if(!allRaw.length) return {jobs:[],method:'icims-api'};
+  const jobs:JobPosting[]=allRaw.map(j=>({title:j.jobtitle??j.title??'',location:typeof j.location==='object'&&j.location?[j.location.city,j.location.state,j.location.country].filter(Boolean).join(', ')||undefined:j.location as string|undefined,department:j.category,id:j.id?String(j.id):undefined,url:j.id?`https://${url.hostname}/jobs/${j.id}/job`:undefined,employmentType:j.employmenttype})).filter(j=>j.title.length>0);
   log.info(`iCIMS: ${jobs.length} jobs`); return {jobs,method:'icims-api'};
 }

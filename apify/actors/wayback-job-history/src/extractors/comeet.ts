@@ -29,15 +29,22 @@ export async function extractFromComeet(url: URL, ts: string): Promise<Extractio
   const slug = extractComeetSlug(url);
   if (!slug) return { jobs: [], method: 'comeet-api' };
 
-  // Comeet public API: GET /api/v2.0/companies/{slug}/positions
-  const data = await fetchArchivedJson<ComeetResponse | ComeetJob[]>(
-    ts,
+  // Try multiple Comeet API patterns
+  const apiUrls = [
     `https://www.comeet.co/jobs/${slug}/ALL/positions`,
-  );
+    `https://recruiting.comeet.co/api/v2.0/companies/${slug}/positions`,
+    `https://api.comeet.co/companies/${slug}/positions`,
+  ];
 
-  const raw: ComeetJob[] = Array.isArray(data)
-    ? data
-    : ((data as ComeetResponse)?.positions ?? (data as ComeetResponse)?.jobs ?? []);
+  let raw: ComeetJob[] = [];
+  for (const apiUrl of apiUrls) {
+    const data = await fetchArchivedJson<ComeetResponse | ComeetJob[]>(ts, apiUrl);
+    if (!data) continue;
+    raw = Array.isArray(data)
+      ? data
+      : ((data as ComeetResponse)?.positions ?? (data as ComeetResponse)?.jobs ?? []);
+    if (raw.length > 0) break;
+  }
 
   if (!raw.length) return { jobs: [], method: 'comeet-api' };
 
