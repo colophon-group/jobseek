@@ -34,7 +34,8 @@ jobs:
           if [ "${{ github.event_name }}" = "push" ]; then
             FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "force")
           else
-            FILES=$(gh pr diff "${{ github.event.pull_request.number }}" --name-only 2>/dev/null || echo "force")
+            # Use paginated files API — gh pr diff fails on large diffs (>20k lines)
+            FILES=$(gh api --paginate "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" --jq '.[].filename' 2>/dev/null || echo "force")
           fi
           CODE=false
           CRAWLER_CODE=false
