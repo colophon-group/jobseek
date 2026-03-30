@@ -12,7 +12,10 @@
     "apify": "^3.0.0",
     "cheerio": "^1.0.0",
     "@google/generative-ai": "^0.21.0",
-    "got-scraping": "^4.0.0"
+    "got-scraping": "^4.0.0",
+    "playwright-extra": "^4.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "playwright": "^1.40.0"
   },
   "devDependencies": {
     "typescript": "^5.4.5",

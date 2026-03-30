@@ -57,7 +57,80 @@ async function fetchLive(proxyUrl:string): Promise<Map<string,number>|null> {
   return c.size>=10?c:null;
 }
 
-/** Strategy 2: Crawlee PlaywrightCrawler — loads hiring.cafe to establish a real browser session.
+/** Strategy 2a: playwright-extra + stealth plugin — patches Playwright to bypass Cloudflare bot detection.
+ *  Significantly harder to detect than standard Playwright: patches navigator, WebGL, chrome runtime,
+ *  permissions, etc. Uses page.route() intercept to capture API responses in real time. */
+async function fetchViaStealthPlaywright(proxyUrl?: string): Promise<Map<string,number>|null> {
+  const c=new Map<string,number>();
+  try {
+    const {chromium: chromiumExtra}=await import('playwright-extra');
+    const {default: StealthPlugin}=await import('puppeteer-extra-plugin-stealth');
+    chromiumExtra.use(StealthPlugin());
+    const launchOpts: Record<string,unknown>={headless:true,args:['--no-sandbox','--disable-setuid-sandbox','--disable-dev-shm-usage','--disable-blink-features=AutomationControlled']};
+    if(proxyUrl) launchOpts['proxy']={server:proxyUrl};
+    const browser=await chromiumExtra.launch(launchOpts);
+    try {
+      type HCResult={results?:Array<{v5_processed_company_data?:{name?:string};source?:string}>};
+      type HCCoResult={results?:Array<{name?:string;company_name?:string;totalActiveListings?:number;activeListings?:number;jobCount?:number}>};
+      const urls=[
+        {url:'https://hiring.cafe',sortBy:'date',mode:'jobs'},
+        {url:'https://hiring.cafe/?sort=applications',sortBy:'applications',mode:'jobs'},
+        {url:'https://hiring.cafe/?sort=views',sortBy:'views',mode:'jobs'},
+        {url:'https://hiring.cafe/companies',sortBy:'',mode:'companies'},
+      ];
+      for(const {url,sortBy,mode} of urls){
+        const ctx=await browser.newContext({userAgent:'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',locale:'en-US',timezoneId:'America/New_York',viewport:{width:1440,height:900}});
+        const page=await ctx.newPage();
+        // Intercept API responses passively as they stream in
+        page.on('response',async resp=>{
+          const u=resp.url();
+          const isCo=u.includes('/api/search-companies');
+          const isJobs=u.includes('/api/search-jobs');
+          if(!isJobs&&!isCo)return;
+          try{
+            const body=await resp.text();
+            if(!body.trimStart().startsWith('{'))return;
+            if(isCo){
+              const d=JSON.parse(body) as HCCoResult;
+              for(const co of d.results??[]){const n=(co.name??co.company_name??'').trim();if(n.length>1){const jobs=Math.max(1,co.totalActiveListings??co.activeListings??co.jobCount??3);c.set(n,(c.get(n)??0)+jobs);}}
+            }else{
+              const d=JSON.parse(body) as HCResult;
+              for(const j of d.results??[]){const n=(j.v5_processed_company_data?.name??j.source??'').trim();if(n.length>1)c.set(n,(c.get(n)??0)+1);}
+            }
+          }catch{/* ignore parse errors */}
+        });
+        try{
+          await page.goto(url,{waitUntil:'networkidle',timeout:60_000});
+          await page.waitForTimeout(3000);
+          // Issue paginated requests from within browser context (session cookies intact)
+          const pages=await page.evaluate(async(params:{sortBy:string;mode:string})=>{
+            const out=[];
+            if(params.mode==='companies'){
+              for(let p=1;p<25;p++){
+                try{const r=await fetch('/api/search-companies',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({searchQuery:'',filters:[],page:p,pageSize:50})});if(!r.ok)break;const d=await r.json();out.push({mode:'companies',data:d});if(!(d as {results?:unknown[]}).results?.length)break;await new Promise(res=>setTimeout(res,400));}catch{break;}
+              }
+            }else{
+              for(let p=1;p<25;p++){
+                try{const r=await fetch('/api/search-jobs',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({searchQuery:'',filters:[],page:p,pageSize:80,sortBy:params.sortBy})});if(!r.ok)break;const d=await r.json();out.push({mode:'jobs',data:d});if(!(d as {results?:unknown[]}).results?.length)break;await new Promise(res=>setTimeout(res,400));}catch{break;}
+              }
+            }
+            return out;
+          },{sortBy,mode});
+          for(const {mode:m,data} of pages as {mode:string;data:unknown}[]){
+            if(m==='companies'){const d=data as HCCoResult;for(const co of d.results??[]){const n=(co.name??co.company_name??'').trim();if(n.length>1){const jobs=Math.max(1,co.totalActiveListings??co.activeListings??co.jobCount??3);c.set(n,(c.get(n)??0)+jobs);}}}
+            else{const d=data as HCResult;for(const j of d.results??[]){const n=(j.v5_processed_company_data?.name??j.source??'').trim();if(n.length>1)c.set(n,(c.get(n)??0)+1);}}
+          }
+          log.info(`hiring.cafe/stealth-pw ${mode}(${sortBy||'co'}): ${c.size} unique so far`);
+        }catch(e){log.warning(`stealth-pw page ${url}: ${e}`);}
+        await ctx.close();
+        await sleep(1500);
+      }
+    }finally{await browser.close();}
+  }catch(e){log.warning(`hiring.cafe/stealth-playwright: ${e}`);}
+  return c.size>=20?c:null;
+}
+
+/** Strategy 2c: Crawlee PlaywrightCrawler — loads hiring.cafe to establish a real browser session.
  *  Uses page.on('response') passive streaming to capture ALL API responses as they arrive (including
  *  the initial page-load batch), then uses page.evaluate() for additional paginated passes.
  *  Three sort passes: date + applications + views — navigates to each sort URL for broadest coverage. */
@@ -259,6 +332,7 @@ export async function discoverFromHiringCafe(maxSnapshots=50): Promise<CompanyDi
   let counts:Map<string,number>|null=null; let strategy='wayback-cdx';
   let proxyUrl:string|undefined;
   try { const proxy=await Actor.createProxyConfiguration({groups:['RESIDENTIAL'],countryCode:'US'}); if(proxy){proxyUrl=await proxy.newUrl();if(proxyUrl){counts=await fetchLive(proxyUrl);if((counts?.size??0)>=50)strategy='live-proxy';else counts=null;}}} catch(e){log.info(`proxy n/a: ${e}`);}
+  if(!counts){counts=await fetchViaStealthPlaywright(proxyUrl);if(counts)strategy='stealth-playwright';}
   if(!counts){counts=await fetchViaPlaywright(proxyUrl);if(counts)strategy='playwright';}
   if(!counts){counts=await fetchViaWayback(maxSnapshots);}
   if(!counts?.size)return [];

@@ -117,6 +117,48 @@ async function _checkHiringCafeSignalUncached(company: string): Promise<HiringCa
     }
   } catch (e) { log.debug(`HC signal gotScraping: ${e}`); }
 
+  // Strategy 2.5: playwright-extra + stealth plugin — real browser with anti-fingerprinting patches
+  // Only used if strategies 1 and 2 are blocked (Cloudflare). Heavier but much harder to detect.
+  try {
+    const token = companyMatchToken(company);
+    const { chromium: chromiumExtra } = await import('playwright-extra');
+    const { default: StealthPlugin } = await import('puppeteer-extra-plugin-stealth');
+    chromiumExtra.use(StealthPlugin());
+    const browser = await chromiumExtra.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-blink-features=AutomationControlled'] });
+    try {
+      const ctx = await browser.newContext({ userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36', locale: 'en-US', timezoneId: 'America/New_York' });
+      const page = await ctx.newPage();
+      // Navigate to hiring.cafe to establish session/cookies, then call API from browser context
+      await page.goto('https://hiring.cafe', { waitUntil: 'domcontentloaded', timeout: 30_000 });
+      await page.waitForTimeout(2000);
+      type HCJob = { viewCount?: number; applicationCount?: number; v5_processed_company_data?: { name?: string } };
+      type HCCo = { name?: string; totalActiveListings?: number; activeListings?: number };
+      const [jobsRes, cosRes] = await Promise.all([
+        page.evaluate(async (body: string) => {
+          try { const r = await fetch('/api/search-jobs', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body }); return r.ok ? r.text() : null; } catch { return null; }
+        }, HC_BODY(company)),
+        page.evaluate(async (body: string) => {
+          try { const r = await fetch('/api/search-companies', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body }); return r.ok ? r.text() : null; } catch { return null; }
+        }, HC_COMPANY_BODY(company)),
+      ]);
+      await ctx.close();
+      // Parse companies response first (more targeted)
+      if (cosRes && cosRes.trimStart().startsWith('{')) {
+        const companies: HCCo[] = (JSON.parse(cosRes) as { results?: HCCo[] }).results ?? [];
+        const matched = companies.filter(co => (co.name ?? '').toLowerCase().includes(token));
+        if (matched.length > 0) {
+          const total = matched.reduce((s, co) => s + (co.totalActiveListings ?? co.activeListings ?? 0), 0);
+          log.debug(`HC signal via stealth-playwright (companies) for ${company}: ${total} listings`);
+          return { found: true, activeListings: total, avgViews: 0, avgApplications: 0, lowEngagement: total === 0, signal: total === 0 ? `hiring.cafe(stealth-co):found,0listings—low` : total > 20 ? `hiring.cafe(stealth-co):${total}listings—genuine` : null };
+        }
+      }
+      if (jobsRes && jobsRes.trimStart().startsWith('{')) {
+        const result = parseHCResponse(jobsRes, company);
+        if (result !== null) { log.debug(`HC signal via stealth-playwright (jobs) for ${company}`); return result; }
+      }
+    } finally { await browser.close(); }
+  } catch (e) { log.debug(`HC signal stealth-playwright: ${e}`); }
+
   // Strategy 2b: search-companies endpoint — returns company records directly (more targeted than search-jobs)
   try {
     const r = await gotScraping({ url: HC_COMPANIES_API, method: 'POST', headers: HC_HEADERS, headerGeneratorOptions: { browsers: ['chrome'], operatingSystems: ['macos'], locales: ['en-US'] }, body: HC_COMPANY_BODY(company), timeout: { request: 12_000 } });
