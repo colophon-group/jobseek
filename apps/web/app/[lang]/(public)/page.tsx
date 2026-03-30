@@ -3,6 +3,7 @@ import { getI18n } from "@lingui/react/server";
 import { initI18nForPage, isLocale, defaultLocale, loadCatalog } from "@/lib/i18n";
 import { Hero } from "@/components/Hero";
 import { Features } from "@/components/Features";
+import { AgenticFeatures } from "@/components/AgenticFeatures";
 import { Pricing } from "@/components/Pricing";
 import { PublicDomainArt } from "@/components/PublicDomainArt";
 import { LlmContentMirror } from "@/components/LlmContentMirror";
@@ -51,6 +52,7 @@ export default async function HomePage({ params }: Props) {
       }} />
       <Hero />
       <Features />
+      <AgenticFeatures />
       <Pricing />
       {afterPricingArt && (
         <section className="py-20">
@@ -96,6 +98,15 @@ export default async function HomePage({ params }: Props) {
           <li><strong>{i18n._("home.features.s3.p1.title")}</strong>: {i18n._("home.features.s3.p1.description")}</li>
           <li><strong>{i18n._("home.features.s3.p2.title")}</strong>: {i18n._("home.features.s3.p2.description")}</li>
           <li><strong>{i18n._("home.features.s3.p3.title")}</strong>: {i18n._("home.features.s3.p3.description")}</li>
+        </ul>
+
+        <h2>{i18n._("home.agentic.eyebrow")}</h2>
+        <h3>{i18n._("home.agentic.title")}</h3>
+        <p>{i18n._("home.agentic.description")}</p>
+        <ul>
+          <li><strong>{i18n._("home.agentic.cards.search.title")}</strong>: {i18n._("home.agentic.cards.search.description")}</li>
+          <li><strong>{i18n._("home.agentic.cards.ghosting.title")}</strong>: {i18n._("home.agentic.cards.ghosting.description")}</li>
+          <li><strong>{i18n._("home.agentic.cards.discovery.title")}</strong>: {i18n._("home.agentic.cards.discovery.description")}</li>
         </ul>
 
         <h2>{i18n._("home.pricing.eyebrow")}</h2>
