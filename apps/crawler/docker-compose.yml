@@ -130,7 +130,7 @@ services:
       LOKI_URL: ${GRAFANA_LOKI_URL}
       LOKI_USERNAME: ${GRAFANA_LOKI_USERNAME}
       LOKI_PASSWORD: ${GRAFANA_LOKI_PASSWORD}
-    command: run --config.file=/etc/alloy/config.river
+    command: run --server.http.listen-addr=0.0.0.0:12346 /etc/alloy/config.river
     deploy:
       resources:
         limits:
