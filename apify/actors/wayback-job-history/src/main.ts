@@ -62,6 +62,15 @@ const SEED_COMPANIES: CompanyInput[] = [
   // Recruitee boards — EU/mid-market companies
   { name: 'Miro',          portalUrl: 'https://miro.recruitee.com',                     inventoryMode: false },
   { name: 'Typeform',      portalUrl: 'https://typeform.recruitee.com',                 inventoryMode: false },
+  // Greenhouse EU — post-layoff European tech unicorns
+  { name: 'Klarna',        portalUrl: 'https://boards.greenhouse.io/klarna',            inventoryMode: false },  // 10% layoff May 2022 + 2023 rehiring
+  { name: 'N26',           portalUrl: 'https://boards.greenhouse.io/n26',              inventoryMode: false },  // neobank with hiring volatility
+  { name: 'Gorillas',      portalUrl: 'https://boards.greenhouse.io/gorillas',          inventoryMode: false },  // q-commerce collapse
+  // Teamtailor boards — Nordic tech
+  { name: 'Klarna (SE)',   portalUrl: 'https://klarna.teamtailor.com/jobs',             inventoryMode: false },
+  // Indian IT outsourcers — largest ghost job offenders globally
+  { name: 'Infosys',       portalUrl: 'https://career.infosys.com/joblist',             inventoryMode: true  },
+  { name: 'Wipro',         portalUrl: 'https://careers.wipro.com/careers-home',         inventoryMode: true  },
 ];
 
 await Actor.init();
