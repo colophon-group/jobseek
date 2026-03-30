@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import polars as pl
@@ -245,7 +244,7 @@ class TestSyncCompanies:
 
 class TestSyncBoards:
     async def test_upserts_boards(self, mock_conn, sample_boards):
-        """Board with valid config -> no Supabase writes (removed), no local writes without local_conn."""
+        """No Supabase writes (removed), no local writes without local_conn."""
         await sync_boards(mock_conn, sample_boards, dry_run=False)
 
         # Supabase board writes removed; no local_conn provided -> no execute calls
