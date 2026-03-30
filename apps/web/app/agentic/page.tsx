@@ -11,19 +11,6 @@ export default function Page() {
       returns: "{ userId, email, name, subscription: { plan, status, endsAt } | null }",
       example: `GET ${base}/me\nAuthorization: Bearer <userId>`,
     },
-    {
-      method: "GET",
-      path: "/api/checkout",
-      summary: "Create a Stripe checkout session for the user",
-      auth: false,
-      params: [
-        { name: "userId", type: "string", required: true, desc: "The user's ID (UUID)" },
-        { name: "successUrl", type: "string", required: false, desc: "Redirect URL after successful payment" },
-        { name: "cancelUrl", type: "string", required: false, desc: "Redirect URL on cancellation" },
-      ],
-      returns: "{ checkoutUrl: string } — open this URL in the user's browser to complete payment",
-      example: `GET ${base}/checkout?userId=<userId>`,
-    },
   ];
 
   const ghostingEndpoints = [
@@ -163,17 +150,6 @@ export default function Page() {
       returns: "{ slug, name, website, logo }[]",
       example: `GET ${base}/companies?q=stripe\nAuthorization: Bearer <userId>`,
     },
-    {
-      method: "GET",
-      path: "/api/taxonomies",
-      summary: "List valid filter values",
-      params: [
-        { name: "type", type: "enum", required: true, desc: "seniority | occupations | technologies | industries" },
-        { name: "locale", type: "string", required: false, desc: "Response language: en (default), de, fr, it" },
-      ],
-      returns: "{ slug, label }[]",
-      example: `GET ${base}/taxonomies?type=seniority\nAuthorization: Bearer <userId>`,
-    },
   ];
 
   return (
@@ -189,6 +165,18 @@ export default function Page() {
             Base URL
           </span>
           <code className="font-mono text-xs text-foreground">{base}</code>
+        </div>
+
+        <div className="flex items-center gap-3 pt-2">
+          <a
+            href="https://apify.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-xs text-muted border border-divider rounded-full px-3 py-1 hover:border-foreground/30 transition-colors"
+          >
+            <ApifyIcon className="w-3.5 h-3.5" />
+            Powered by Apify
+          </a>
         </div>
       </div>
 
@@ -214,7 +202,7 @@ export default function Page() {
               status: "402",
               label: "Payment Required",
               color: "text-orange-500",
-              desc: "User exists but has no active subscription. Use GET /api/checkout to get a Stripe URL and open it for the user.",
+              desc: "User exists but has no active subscription. Direct the user to jobseek.colophon-group.org/en/pricing.",
             },
             {
               status: "200",
@@ -248,10 +236,8 @@ export default function Page() {
    → 402: go to step 3
    → 401: ask user to sign up at https://jobseek.colophon-group.org
 
-3. If 402 — start a subscription:
-   GET ${base}/checkout?userId=<userId>
-   → returns { checkoutUrl }
-   Open checkoutUrl in the user's browser, wait for completion.
+3. If 402 — prompt the user to subscribe at:
+   https://jobseek.colophon-group.org/en/pricing
 
 4. Search jobs:
    GET ${base}/jobs?q=typescript&sen=senior&loc=berlin
@@ -268,13 +254,10 @@ export default function Page() {
         <pre className="bg-surface border border-divider rounded-md p-4 text-xs font-mono overflow-x-auto whitespace-pre leading-relaxed text-foreground">{`{
   "error": "Payment Required",
   "message": "An active Job Seek subscription is required to use this API.",
-  "subscribe": "https://jobseek.colophon-group.org/en/pricing",
-  "checkoutUrl": "${base}/checkout?userId=<id>&successUrl=...&cancelUrl=..."
+  "subscribe": "https://jobseek.colophon-group.org/en/pricing"
 }`}</pre>
         <p className="text-xs text-muted">
-          The <code className="font-mono">checkoutUrl</code> is a pre-built link to{" "}
-          <code className="font-mono">GET /api/checkout</code> — open it or redirect the user to it.
-          It resolves to a Stripe hosted checkout page.
+          Direct the user to the <code className="font-mono">subscribe</code> URL to start a subscription.
         </p>
       </section>
 
@@ -331,6 +314,17 @@ export default function Page() {
     </div>
   );
 }
+
+function ApifyIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect width="32" height="32" rx="6" fill="#71C151" />
+      <path d="M16 5L26 24H6L16 5Z" fill="white" />
+      <path d="M16 13L20 21H12L16 13Z" fill="#71C151" />
+    </svg>
+  );
+}
+
 
 type Endpoint = {
   method: string;
