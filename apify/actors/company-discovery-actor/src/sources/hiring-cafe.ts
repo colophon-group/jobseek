@@ -254,7 +254,44 @@ function extractHCCompanyName(urlStr: string): string|null {
   }catch{return null;}
 }
 
-/** Strategy 4: CDX company URL enumeration — extract company names directly from
+/** Strategy 4b: Fetch archived hiring.cafe _next/data viewjob JSON files from Wayback Machine.
+ *  These Next.js static data files contain full job data including v5_processed_company_data.name.
+ *  Completely bypasses Cloudflare — pure CDX + Wayback Machine fetch, no live API calls needed.
+ *  Typically yields ~200+ unique archived job pages from the most recent crawl batch. */
+async function fetchViaNextData(maxFiles=300): Promise<Map<string,number>> {
+  const c=new Map<string,number>();
+  try {
+    const cdxUrl=`${CDX}?url=hiring.cafe/_next/data/*&output=json&fl=original,timestamp&filter=statuscode:200&collapse=urlkey&limit=${maxFiles}`;
+    const cdxResp=await gotScraping({url:cdxUrl,timeout:{request:30_000}});
+    if(cdxResp.statusCode!==200)return c;
+    const rows=(JSON.parse(cdxResp.body)as string[][]).slice(1).filter(r=>r[0].includes('/viewjob/'));
+    log.info(`hiring.cafe/next-data: ${rows.length} archived viewjob JSON files in CDX`);
+    let fetched=0;
+    for(const [fileUrl,ts] of rows){
+      try{
+        const wbUrl=`${WB}/${ts}id_/${fileUrl}`;
+        const resp=await gotScraping({url:wbUrl,timeout:{request:20_000},headers:{Accept:'application/json','Accept-Encoding':'gzip'}});
+        if(resp.statusCode!==200)continue;
+        // Response may be gzip-encoded even when headers don't say so
+        let text=resp.body;
+        if(text.charCodeAt(0)===0x1f&&text.charCodeAt(1)===0x8b){
+          // gzip magic bytes detected — use Buffer approach
+          try{const buf=Buffer.from(resp.rawBody??resp.body);const{gunzipSync}=await import('zlib');text=gunzipSync(buf).toString('utf-8');}catch{continue;}
+        }
+        if(!text.trimStart().startsWith('{'))continue;
+        type HCNextData={pageProps?:{job?:{v5_processed_company_data?:{name?:string};source?:string}}};
+        const d=JSON.parse(text)as HCNextData;
+        const name=(d.pageProps?.job?.v5_processed_company_data?.name??'').trim();
+        if(name.length>1){c.set(name,(c.get(name)??0)+1);fetched++;}
+        await sleep(600);
+      }catch{/* skip individual file errors */}
+    }
+    if(c.size>0)log.info(`hiring.cafe/next-data: ${c.size} unique companies from ${fetched} archived job pages`);
+  }catch(e){log.warning(`hiring.cafe/next-data: ${e}`);}
+  return c;
+}
+
+/** Strategy 4a: CDX company URL enumeration — extract company names directly from
  *  archived hiring.cafe company profile URLs (no API call needed, very reliable).
  *  Runs both CDX patterns in parallel for efficiency. */
 async function fetchViaCompanyUrls(): Promise<Map<string,number>> {
@@ -280,9 +317,12 @@ async function fetchViaCompanyUrls(): Promise<Map<string,number>> {
 
 async function fetchViaWayback(maxSnaps=30): Promise<Map<string,number>> {
   const c=new Map<string,number>();
-  // First try company URL enumeration (no API calls, very fast)
+  // Strategy 4a: company URL enumeration (CDX profile pages)
   const urlCounts=await fetchViaCompanyUrls();
   for(const[k,v]of urlCounts)c.set(k,v);
+  // Strategy 4b: archived _next/data viewjob JSON files (gzip JSON with full company data)
+  const nextDataCounts=await fetchViaNextData(300);
+  for(const[k,v]of nextDataCounts)c.set(k,(c.get(k)??0)+v);
   try {
     // Look for snapshots of both the search-jobs endpoint and the search-companies endpoint
     const cdxUrls=[

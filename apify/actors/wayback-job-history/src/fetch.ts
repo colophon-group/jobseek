@@ -278,6 +278,63 @@ async function _checkHiringCafeSignalUncached(company: string): Promise<HiringCa
     }
   } catch (e) { log.debug(`HC signal CDX profile: ${e}`); }
 
+  // Strategy 4.5: archived hiring.cafe _next/data viewjob JSON files
+  // Each archived job page at hiring.cafe/_next/data/*/viewjob/*.json contains the full job object
+  // including v5_processed_company_data.name, viewCount, applicationCount — pure CDX, no Cloudflare.
+  try {
+    const token = companyMatchToken(company);
+    const cdxUrl = `http://web.archive.org/cdx/search/cdx?url=hiring.cafe/_next/data/*&output=json&fl=original,timestamp&filter=statuscode:200&collapse=urlkey&limit=400`;
+    const cdxRes = await fetch(cdxUrl, { signal: AbortSignal.timeout(12_000) }).catch(() => null);
+    if (cdxRes?.ok) {
+      const rows = ((await cdxRes.json() as string[][]).slice(1)).filter(r => r[0].includes('/viewjob/'));
+      type HCNextJob = { v5_processed_company_data?: { name?: string }; viewCount?: number; applicationCount?: number };
+      type HCNextData = { pageProps?: { job?: HCNextJob } };
+      const matchedJobs: HCNextJob[] = [];
+      for (const [fileUrl, ts] of rows) {
+        try {
+          const wbUrl = `https://web.archive.org/web/${ts}id_/${fileUrl}`;
+          const resp = await fetch(wbUrl, { signal: AbortSignal.timeout(15_000), headers: { Accept: 'application/json' } });
+          if (!resp.ok) continue;
+          const raw = await resp.arrayBuffer();
+          let text: string;
+          // Detect gzip magic bytes (0x1f 0x8b)
+          const bytes = new Uint8Array(raw.slice(0, 2));
+          if (bytes[0] === 0x1f && bytes[1] === 0x8b) {
+            // gzip decompress using DecompressionStream if available, otherwise skip
+            try {
+              const ds = new DecompressionStream('gzip');
+              const writer = ds.writable.getWriter();
+              writer.write(raw); writer.close();
+              const chunks: Uint8Array[] = [];
+              const reader = ds.readable.getReader();
+              let done = false;
+              while (!done) { const result = await reader.read(); if (result.done) { done = true; } else { chunks.push(result.value); } }
+              text = new TextDecoder().decode(new Uint8Array(chunks.reduce((acc, c) => [...acc, ...c], [] as number[])));
+            } catch { continue; }
+          } else {
+            text = new TextDecoder().decode(raw);
+          }
+          if (!text.trimStart().startsWith('{')) continue;
+          const d = JSON.parse(text) as HCNextData;
+          const job = d.pageProps?.job;
+          if (!job) continue;
+          const name = (job.v5_processed_company_data?.name ?? '').toLowerCase();
+          if (name.includes(token)) matchedJobs.push(job);
+          // Stop early if we found enough matches
+          if (matchedJobs.length >= 10) break;
+        } catch { continue; }
+      }
+      if (matchedJobs.length > 0) {
+        const avgV = matchedJobs.reduce((s, j) => s + (j.viewCount ?? 0), 0) / matchedJobs.length;
+        const avgA = matchedJobs.reduce((s, j) => s + (j.applicationCount ?? 0), 0) / matchedJobs.length;
+        const allZero = matchedJobs.length >= 2 && matchedJobs.every(j => (j.applicationCount ?? 0) === 0);
+        const low = (avgV < 5 && avgA === 0) || allZero;
+        log.debug(`HC signal via _next/data viewjob (${matchedJobs.length} matches) for ${company}`);
+        return { found: true, activeListings: matchedJobs.length, avgViews: avgV, avgApplications: avgA, lowEngagement: low, signal: low ? `hiring.cafe(next-data):${matchedJobs.length}j avg${avgV.toFixed(1)}v—low` : avgA > 10 ? `hiring.cafe(next-data):${matchedJobs.length}j avg${avgA.toFixed(0)}apps—genuine` : null };
+      }
+    }
+  } catch (e) { log.debug(`HC signal _next/data: ${e}`); }
+
   return null;
 }
 
