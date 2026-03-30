@@ -16,17 +16,13 @@ COPY data/ data/
 # Install the project itself
 RUN uv sync --frozen --no-dev
 
-# ── Target: http (slim, no Playwright) ───────────────────────────────
-FROM base AS http
-CMD ["uv", "run", "--no-sync", "scheduler", "--http-only"]
+# ── Target: slim (worker, exporter, drain — no Playwright) ───────────
+FROM base AS slim
+# Default: worker instance. Override via docker-compose command.
+CMD ["uv", "run", "--no-sync", "crawler", "run"]
 
-# ── Target: r2-drain (slim, no Playwright, no data/) ─────────────────
-FROM base AS r2-drain
-RUN rm -rf data/
-CMD ["uv", "run", "--no-sync", "scheduler", "--r2-drain-only"]
-
-# ── Target: browser (full, with Playwright + Chromium) ────────────────
-FROM base AS browser
+# ── Target: full (browser worker — with Playwright + Chromium) ───────
+FROM base AS full
 
 # OS deps for headless Chromium
 RUN apt-get update \
@@ -41,4 +37,4 @@ RUN apt-get update \
 # Download Chromium binary
 RUN uv run --no-sync playwright install --only-shell chromium
 
-CMD ["uv", "run", "--no-sync", "scheduler", "--browser-only"]
+CMD ["uv", "run", "--no-sync", "crawler", "run-browser"]
