@@ -53,15 +53,20 @@ export function scoreGhost(
     reasons.push(`captured ${archiveCount}× over ${durationDays} days`);
   }
 
-  // validThrough in the past = posting outlived its own stated expiry
-  // Strong ghost signal: job is still up after its own stated close date
+  // validThrough: past → ghost signal; future → small reduction (company actively set expiry)
   if (validThrough) {
     const expiredDays = Math.round((Date.now() - new Date(validThrough).getTime()) / 86_400_000);
     if (expiredDays > 7) {
-      // More aggressive: cap at 35 (was 25), ramp faster
+      // Past expiry — still posted after stated close date
       const bonus = Math.min(35, Math.round(expiredDays / 14) * 5);
       score += bonus;
       reasons.push(`validThrough ${validThrough} expired ${expiredDays} days ago`);
+    } else if (expiredDays < -7) {
+      // Future expiry — company actively set a close date, suggests genuine hiring intent
+      const futureDays = -expiredDays;
+      const reduction = futureDays <= 30 ? 5 : futureDays <= 60 ? 8 : 10;
+      score = Math.max(0, score - reduction);
+      reasons.push(`validThrough ${validThrough} upcoming in ${futureDays} days — active posting`);
     }
   }
 

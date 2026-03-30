@@ -5,37 +5,74 @@ import { scoreGhost } from './ghost.js';
 /**
  * Fetch ALL archived URLs under a portal via CDX prefix/domain search.
  * One record per unique URL (collapse=urlkey), with earliest timestamp.
- * Then a second pass gets the LATEST timestamp per URL, so we can compute duration.
+ * Supports multi-page CDX pagination via showResumeKey for large portals.
  */
 export async function fetchUrlInventory(
   baseUrl: string,
   startDate?: string,
   endDate?: string,
   limit = 5000,
+  maxPages = 3,
 ): Promise<CdxSnapshot[]> {
   const url = new URL(baseUrl);
   // Use domain/* prefix to catch all paths including Workday subpaths
   const searchUrl = `${url.protocol}//${url.hostname}${url.pathname}`;
+  const cdxUrlParam = searchUrl + (searchUrl.endsWith('/') ? '*' : '/*');
 
-  const params = new URLSearchParams({
-    url: searchUrl + (searchUrl.endsWith('/') ? '*' : '/*'),
+  const baseParams = new URLSearchParams({
+    url: cdxUrlParam,
     matchType: 'prefix',
     output: 'json',
     fl: 'timestamp,original,statuscode',
     filter: 'statuscode:200',
     collapse: 'urlkey',
     limit: String(limit),
+    showResumeKey: 'true',
   });
 
-  if (startDate) params.set('from', startDate.replace(/-/g, ''));
-  if (endDate)   params.set('to',   endDate.replace(/-/g, ''));
+  if (startDate) baseParams.set('from', startDate.replace(/-/g, ''));
+  if (endDate)   baseParams.set('to',   endDate.replace(/-/g, ''));
 
-  const apiUrl = `http://web.archive.org/cdx/search/cdx?${params}`;
-  log.info('CDX inventory search', { apiUrl });
+  const allRows: CdxSnapshot[] = [];
+  let resumeKey: string | null = null;
+  let page = 0;
 
-  const rows = await cdxFetch(apiUrl);
-  log.info(`CDX inventory: ${rows.length} unique URLs found`);
-  return rows;
+  while (page < maxPages) {
+    const params = new URLSearchParams(baseParams);
+    if (resumeKey) params.set('resumeKey', resumeKey);
+
+    const apiUrl = `http://web.archive.org/cdx/search/cdx?${params}`;
+    if (page === 0) log.info('CDX inventory search', { apiUrl });
+
+    const raw = await cdxFetchRaw(apiUrl);
+    if (!raw || raw.length < 2) break;
+
+    // Check for resume key in last row
+    const lastRow = raw[raw.length - 1];
+    const hasResumeKey = lastRow?.length === 1 && lastRow[0] !== 'timestamp';
+    if (hasResumeKey) {
+      resumeKey = lastRow[0];
+      raw.splice(-1); // remove resume key row
+    } else {
+      resumeKey = null;
+    }
+
+    // First row is header (skip), subsequent pages have no header
+    const dataRows = page === 0 ? raw.slice(1) : raw;
+    for (const row of dataRows) {
+      if (row[1] && row[2]) {
+        allRows.push({ timestamp: row[0], original: row[1] });
+      }
+    }
+
+    log.info(`CDX inventory p${page}: ${dataRows.length} rows (total: ${allRows.length})`);
+    if (!resumeKey) break;
+    page++;
+    await sleep(1_500);
+  }
+
+  log.info(`CDX inventory: ${allRows.length} unique URLs found`);
+  return allRows;
 }
 
 /**
@@ -118,7 +155,9 @@ export function filterJobUrls(snapshots: CdxSnapshot[]): CdxSnapshot[] {
       /\/joblistings\/\d/.test(u) ||            // SuccessFactors: /careers/joblistings/{id}
       /\/careersection\/.*\/jobdetail/i.test(u) || // Taleo: /careersection/.../jobdetail.ftl?job=...
       // Workday: /job/{location}/{title}_{id}
-      /\/job\/[^/]+\/[^/]+-[A-Z0-9]+$/.test(u)
+      /\/job\/[^/]+\/[^/]+-[A-Z0-9]+$/.test(u) ||
+      // Fountain: jobs.fountain.com/{company}/{uuid}
+      (/jobs\.fountain\.com/.test(u) && /\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(u))
     );
   });
 }
@@ -241,7 +280,8 @@ export async function buildJobRecords(
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-async function cdxFetch(apiUrl: string): Promise<CdxSnapshot[]> {
+/** Fetch CDX API, return raw rows (including header and optional resume key row). */
+async function cdxFetchRaw(apiUrl: string): Promise<string[][] | null> {
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const res = await fetch(apiUrl, {
@@ -249,24 +289,27 @@ async function cdxFetch(apiUrl: string): Promise<CdxSnapshot[]> {
         headers: { 'Accept': 'application/json' },
       });
 
-      if (res.status === 429) {
-        await sleep(20_000);
-        continue;
-      }
-      if (!res.ok) {
-        await sleep(5_000 * (attempt + 1));
-        continue;
-      }
+      if (res.status === 429) { await sleep(20_000); continue; }
+      if (!res.ok) { await sleep(5_000 * (attempt + 1)); continue; }
 
       const rows: string[][] = await res.json();
-      if (!Array.isArray(rows) || rows.length < 2) return [];
-      return rows.slice(1).map(([timestamp, original]) => ({ timestamp, original }));
+      if (!Array.isArray(rows)) return null;
+      return rows;
     } catch (err) {
       log.warning(`CDX fetch error (attempt ${attempt + 1}): ${err}`);
       await sleep(5_000 * (attempt + 1));
     }
   }
-  return [];
+  return null;
+}
+
+async function cdxFetch(apiUrl: string): Promise<CdxSnapshot[]> {
+  const raw = await cdxFetchRaw(apiUrl);
+  if (!raw || raw.length < 2) return [];
+  // Skip header row; map [timestamp, original] columns
+  return raw.slice(1)
+    .filter(row => row.length >= 2 && row[0] !== undefined)
+    .map(([timestamp, original]) => ({ timestamp, original }));
 }
 
 export function cdxDateToIso(timestamp: string): string {

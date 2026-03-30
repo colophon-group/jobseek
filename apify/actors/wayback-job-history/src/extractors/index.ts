@@ -19,13 +19,15 @@ import { extractBreezySlug, extractFromBreezyHR } from './breezyhr.js';
 import { extractSoftgardenSlug, extractFromSoftgarden } from './softgarden.js';
 import { extractPinpointSlug, extractFromPinpoint } from './pinpoint.js';
 import { extractComeetSlug, extractFromComeet } from './comeet.js';
+import { extractFountainSlug, extractFromFountain } from './fountain.js';
+import { extractRipplingSlug, extractFromRippling } from './rippling.js';
 import { extractGeneric } from './generic.js';
 
 /**
  * Main extraction dispatcher.
  *
  * Priority order:
- * 1. Known ATS API (Greenhouse / Lever / Ashby / Workable / SmartRecruiters / BambooHR / iCIMS / Recruitee / JazzHR / Teamtailor / BreezyHR / Softgarden) — most reliable, structured data
+ * 1. Known ATS API (Greenhouse / Lever / Ashby / Workable / SmartRecruiters / BambooHR / iCIMS / Recruitee / JazzHR / Teamtailor / BreezyHR / Softgarden / Pinpoint / Comeet / Fountain) — most reliable, structured data
  * 2. JSON-LD JobPosting schema
  * 3. Next.js __NEXT_DATA__ recursive walk
  * 4. window.__data / other globals embedded in <script> tags
@@ -131,6 +133,16 @@ export async function extractJobs(
 
   if (extractComeetSlug(url)) {
     const result = await extractFromComeet(url, snapshot.timestamp);
+    if (result.jobs.length > 0) return result;
+  }
+
+  if (extractFountainSlug(url)) {
+    const result = await extractFromFountain(url, snapshot.timestamp);
+    if (result.jobs.length > 0) return result;
+  }
+
+  if (extractRipplingSlug(url)) {
+    const result = await extractFromRippling(url, snapshot.timestamp);
     if (result.jobs.length > 0) return result;
   }
 

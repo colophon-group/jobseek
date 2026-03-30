@@ -61,7 +61,21 @@ function parseHCResponse(text: string, company: string): HiringCafeSignal | null
   return { found: true, activeListings: jobs.length, avgViews: avgV, avgApplications: avgA, lowEngagement: low, signal: low ? `hiring.cafe:${jobs.length}j avg${avgV.toFixed(1)}v ${avgA.toFixed(0)}a—low${allZeroApps ? '(all-zero-apps)' : ''}` : avgA > 10 ? `hiring.cafe:${jobs.length}j avg${avgA.toFixed(0)}apps—genuine` : null };
 }
 
+/** In-process cache to avoid hitting hiring.cafe multiple times for the same company in batch runs. */
+const _hcCache = new Map<string, HiringCafeSignal | null>();
+
 export async function checkHiringCafeSignal(company: string): Promise<HiringCafeSignal | null> {
+  const cacheKey = companyMatchToken(company);
+  if (_hcCache.has(cacheKey)) {
+    log.debug(`HC signal cache hit for ${company}`);
+    return _hcCache.get(cacheKey)!;
+  }
+  const result = await _checkHiringCafeSignalUncached(company);
+  _hcCache.set(cacheKey, result);
+  return result;
+}
+
+async function _checkHiringCafeSignalUncached(company: string): Promise<HiringCafeSignal | null> {
   // Strategy 1: native fetch (fast, sometimes blocked by Cloudflare)
   try {
     const res = await fetch(HC_API, { method: 'POST', signal: AbortSignal.timeout(12_000), headers: { ...HC_HEADERS, 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36' }, body: HC_BODY(company) });

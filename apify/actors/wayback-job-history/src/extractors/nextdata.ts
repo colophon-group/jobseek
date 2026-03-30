@@ -51,11 +51,14 @@ export function findJobsInObject(root: unknown, method: string): ExtractionResul
 
   walk(root, 0);
 
-  // Deduplicate by title
+  // Deduplicate: prefer id/url as key; fall back to title+location to avoid losing
+  // same-title jobs in different locations while preventing double-counting from embedded arrays.
   const seen = new Set<string>();
   const jobs = candidates.filter(j => {
-    if (!j.title || seen.has(j.title.toLowerCase())) return false;
-    seen.add(j.title.toLowerCase());
+    if (!j.title) return false;
+    const key = j.id ?? j.url ?? `${j.title.toLowerCase()}|${(j.location ?? '').toLowerCase()}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
     return true;
   });
 
@@ -87,10 +90,15 @@ function looksLikeJob(item: unknown): boolean {
     'offices' in obj ||       // Lever uses this
     'jobLevel' in obj ||      // Greenhouse uses this
     'jobFunction' in obj ||
+    'jobId' in obj ||
+    'externalId' in obj ||
+    'slug' in obj ||
     'remoteWorkPolicy' in obj || // Ashby uses this
     'payRange' in obj ||
     'salaryRange' in obj ||
-    'workplaceType' in obj;   // Ashby workplace type
+    'workplaceType' in obj ||  // Ashby workplace type
+    'validThrough' in obj ||   // schema.org field
+    'datePosted' in obj;       // schema.org field
 
   return hasJobField;
 }
@@ -128,6 +136,15 @@ export function normalizeJob(obj: Record<string, unknown>): JobPosting {
     department = String(deptObj['name'] ?? deptObj['team'] ?? '').trim() || undefined;
   }
 
+  // Extract validThrough from schema.org or ATS fields
+  const rawExpiry = obj['validThrough'] ?? obj['expiresAt'] ?? obj['expiredAt'] ?? obj['closeDate'] ?? obj['applicationDeadline'];
+  let validThrough: string | undefined;
+  if (typeof rawExpiry === 'string' && rawExpiry.length >= 8) {
+    // Normalize to YYYY-MM-DD
+    const d = new Date(rawExpiry);
+    if (!isNaN(d.getTime())) validThrough = d.toISOString().slice(0, 10);
+  }
+
   return {
     title,
     location,
@@ -137,8 +154,10 @@ export function normalizeJob(obj: Record<string, unknown>): JobPosting {
          obj['applyUrl'] ? String(obj['applyUrl']) : undefined,
     id: obj['id'] ? String(obj['id']) :
         obj['requisitionId'] ? String(obj['requisitionId']) :
-        obj['jobId'] ? String(obj['jobId']) : undefined,
+        obj['jobId'] ? String(obj['jobId']) :
+        obj['externalId'] ? String(obj['externalId']) : undefined,
     employmentType: obj['employmentType'] ? String(obj['employmentType']) :
                     obj['workType'] ? String(obj['workType']) : undefined,
+    validThrough,
   };
 }
