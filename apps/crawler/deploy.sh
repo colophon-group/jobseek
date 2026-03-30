@@ -1,78 +1,70 @@
 #!/usr/bin/env bash
-# Deploy crawler containers on Hetzner.
+# Deploy crawler containers on Hetzner (worker machine).
+# Postgres runs on a separate dedicated machine.
 # Called by CI with env vars set from GitHub secrets.
-#
-# Required env vars:
-#   OWNER              — GitHub repository owner (for image names)
-#   DATABASE_URL       — Postgres connection string
-#   UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN
-#   R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_ENDPOINT_URL,
-#   R2_DOMAIN_URL, R2_BUCKET
 set -euo pipefail
 
-OWNER="${OWNER:?OWNER env var required}"
+# ── Validate required env vars ─────────────────────────────────────────
+required_vars=(
+  OWNER
+  DATABASE_URL
+  LOCAL_DATABASE_URL
+  R2_ACCESS_KEY_ID
+  R2_SECRET_ACCESS_KEY
+  R2_ENDPOINT_URL
+  R2_DOMAIN_URL
+  R2_BUCKET
+  GRAFANA_PROM_URL
+  GRAFANA_PROM_USERNAME
+  GRAFANA_PROM_PASSWORD
+  GRAFANA_LOKI_URL
+  GRAFANA_LOKI_USERNAME
+  GRAFANA_LOKI_PASSWORD
+)
+
+missing=()
+for var in "${required_vars[@]}"; do
+  if [[ -z "${!var:-}" ]]; then
+    missing+=("$var")
+  fi
+done
+
+if [[ ${#missing[@]} -gt 0 ]]; then
+  echo "ERROR: Missing required env vars: ${missing[*]}" >&2
+  exit 1
+fi
+
 DEPLOY_DIR="/home/deploy"
 
-# ── Write per-worker env files ────────────────────────────────────────
-
-cat > "$DEPLOY_DIR/crawler-common.env" <<EOF
+# ── Write env file ──────────────────────────────────────────────────
+cat > "$DEPLOY_DIR/.env" <<EOF
+OWNER=${OWNER}
 DATABASE_URL=${DATABASE_URL}
-WORKER_ID_PREFIX=hetzner
-LOG_LEVEL=INFO
-CRAWLER_DB_POOL_MAX=10
-EOF
-
-cat > "$DEPLOY_DIR/crawler-http.env" <<EOF
-UPSTASH_REDIS_REST_URL=${UPSTASH_REDIS_REST_URL}
-UPSTASH_REDIS_REST_TOKEN=${UPSTASH_REDIS_REST_TOKEN}
-EOF
-
-cat > "$DEPLOY_DIR/crawler-r2.env" <<EOF
+LOCAL_DATABASE_URL=${LOCAL_DATABASE_URL}
 R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
 R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
 R2_ENDPOINT_URL=${R2_ENDPOINT_URL}
 R2_DOMAIN_URL=${R2_DOMAIN_URL}
 R2_BUCKET=${R2_BUCKET}
+GRAFANA_PROM_URL=${GRAFANA_PROM_URL}
+GRAFANA_PROM_USERNAME=${GRAFANA_PROM_USERNAME}
+GRAFANA_PROM_PASSWORD=${GRAFANA_PROM_PASSWORD}
+GRAFANA_LOKI_URL=${GRAFANA_LOKI_URL}
+GRAFANA_LOKI_USERNAME=${GRAFANA_LOKI_USERNAME}
+GRAFANA_LOKI_PASSWORD=${GRAFANA_LOKI_PASSWORD}
 EOF
 
-# ── Pull images ───────────────────────────────────────────────────────
+# ── Pull images and restart ──────────────────────────────────────────
+cd "$DEPLOY_DIR"
+docker compose pull
+docker compose up -d --remove-orphans
 
-docker pull "ghcr.io/$OWNER/jobseek-crawler-http:latest"
-docker pull "ghcr.io/$OWNER/jobseek-crawler-browser:latest"
-docker pull "ghcr.io/$OWNER/jobseek-crawler-r2-drain:latest"
+# ── Run Alembic migrations on local Postgres ─────────────────────────
+docker compose exec worker uv run --no-sync alembic -c src/migrations/alembic.ini upgrade head
 
-# ── Stop old containers ───────────────────────────────────────────────
+# ── Sync board config from CSV → local Postgres + Redis ──────────────
+docker compose exec worker uv run --no-sync crawler sync
 
-docker stop crawler-http crawler-browser crawler-r2-drain 2>/dev/null || true
-docker rm   crawler-http crawler-browser crawler-r2-drain 2>/dev/null || true
-
-# ── Start new containers ──────────────────────────────────────────────
-
-docker run -d --name crawler-http \
-  --restart unless-stopped \
-  --env-file "$DEPLOY_DIR/crawler-common.env" \
-  --env-file "$DEPLOY_DIR/crawler-http.env" \
-  --network host --memory=2g --cpus=1.5 \
-  -e CRAWLER_MAX_CONCURRENT=20 -e CRAWLER_MAX_BROWSER=0 \
-  "ghcr.io/$OWNER/jobseek-crawler-http:latest"
-
-docker run -d --name crawler-browser \
-  --restart unless-stopped \
-  --env-file "$DEPLOY_DIR/crawler-common.env" \
-  --env-file "$DEPLOY_DIR/crawler-http.env" \
-  --network host --memory=3g --shm-size=1g --cpus=1.0 \
-  -e CRAWLER_MAX_CONCURRENT=0 -e CRAWLER_MAX_BROWSER=2 -e METRICS_PORT=9092 \
-  "ghcr.io/$OWNER/jobseek-crawler-browser:latest"
-
-docker run -d --name crawler-r2-drain \
-  --restart unless-stopped \
-  --env-file "$DEPLOY_DIR/crawler-common.env" \
-  --env-file "$DEPLOY_DIR/crawler-r2.env" \
-  --network host --memory=256m --cpus=1.0 \
-  -e METRICS_PORT=9093 \
-  "ghcr.io/$OWNER/jobseek-crawler-r2-drain:latest"
-
-# ── Cleanup ───────────────────────────────────────────────────────────
-
+# ── Cleanup ──────────────────────────────────────────────────────────
 docker image prune -f
-echo "Deploy complete: $(docker ps --format '{{.Names}}' | tr '\n' ' ')"
+echo "Deploy complete: $(docker compose ps --format '{{.Name}}' | tr '\n' ' ')"
