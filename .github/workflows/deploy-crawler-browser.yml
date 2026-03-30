@@ -32,37 +32,24 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push HTTP image (slim)
+      - name: Build and push slim image (worker, exporter, drain)
         uses: docker/build-push-action@v6
         with:
           context: apps/crawler
-          target: http
+          target: slim
           platforms: linux/amd64
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/jobseek-crawler-http:latest
-            ghcr.io/${{ github.repository_owner }}/jobseek-crawler-http:v${{ steps.version.outputs.version }}
-          cache-from: type=gha,scope=crawler-http
-          cache-to: type=gha,mode=max,scope=crawler-http
-
-      - name: Build and push R2 drain image (slim)
-        uses: docker/build-push-action@v6
-        with:
-          context: apps/crawler
-          target: r2-drain
-          platforms: linux/amd64
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/jobseek-crawler-r2-drain:latest
-            ghcr.io/${{ github.repository_owner }}/jobseek-crawler-r2-drain:v${{ steps.version.outputs.version }}
-          cache-from: type=gha,scope=crawler-r2-drain
-          cache-to: type=gha,mode=max,scope=crawler-r2-drain
+            ghcr.io/${{ github.repository_owner }}/jobseek-crawler:latest
+            ghcr.io/${{ github.repository_owner }}/jobseek-crawler:v${{ steps.version.outputs.version }}
+          cache-from: type=gha,scope=crawler-slim
+          cache-to: type=gha,mode=max,scope=crawler-slim
 
       - name: Build and push browser image (full)
         uses: docker/build-push-action@v6
         with:
           context: apps/crawler
-          target: browser
+          target: full
           platforms: linux/amd64
           push: true
           tags: |
@@ -87,15 +74,20 @@ jobs:
           host: ${{ secrets.HETZNER_HOST }}
           username: deploy
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          envs: OWNER,DATABASE_URL,UPSTASH_REDIS_REST_URL,UPSTASH_REDIS_REST_TOKEN,R2_ACCESS_KEY_ID,R2_SECRET_ACCESS_KEY,R2_ENDPOINT_URL,R2_DOMAIN_URL,R2_BUCKET
+          envs: OWNER,DATABASE_URL,LOCAL_DATABASE_URL,R2_ACCESS_KEY_ID,R2_SECRET_ACCESS_KEY,R2_ENDPOINT_URL,R2_DOMAIN_URL,R2_BUCKET,GRAFANA_PROM_URL,GRAFANA_PROM_USERNAME,GRAFANA_PROM_PASSWORD,GRAFANA_LOKI_URL,GRAFANA_LOKI_USERNAME,GRAFANA_LOKI_PASSWORD
           script: bash /home/deploy/deploy.sh
         env:
           OWNER: ${{ github.repository_owner }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
-          UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+          LOCAL_DATABASE_URL: ${{ secrets.LOCAL_DATABASE_URL }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
           R2_DOMAIN_URL: ${{ secrets.R2_DOMAIN_URL }}
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          GRAFANA_PROM_URL: ${{ secrets.GRAFANA_PROM_URL }}
+          GRAFANA_PROM_USERNAME: ${{ secrets.GRAFANA_PROM_USERNAME }}
+          GRAFANA_PROM_PASSWORD: ${{ secrets.GRAFANA_PROM_PASSWORD }}
+          GRAFANA_LOKI_URL: ${{ secrets.GRAFANA_LOKI_URL }}
+          GRAFANA_LOKI_USERNAME: ${{ secrets.GRAFANA_LOKI_USERNAME }}
+          GRAFANA_LOKI_PASSWORD: ${{ secrets.GRAFANA_LOKI_PASSWORD }}
