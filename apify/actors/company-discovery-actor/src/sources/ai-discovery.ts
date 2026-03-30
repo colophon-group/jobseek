@@ -23,21 +23,40 @@ export async function suggestNewPortals(
     id: p.id, name: p.name, companiesFound: p.companiesFound ?? 0, description: p.description,
   }));
   const failedPortalIds = registry.portals.filter(p => p.status === 'failed').map(p => p.id);
+  // Active portals returning very few companies may have coverage gaps
+  const lowYieldPortals = activePortals.filter(p => p.companiesFound < 5).map(p => p.id);
+
+  // Static sources are always run — must be excluded from suggestions
+  const STATIC_SOURCES = [
+    'greenhouse', 'greenhouse-cdx', 'themuse', 'arbeitnow', 'remotive', 'remoteok', 'megaemployers',
+    'hiring-cafe', 'himalayas', 'ycombinator', 'ashby', 'lever', 'workable', 'bamboohr',
+    'recruitee', 'jazzhr', 'breezyhr', 'icims', 'taleo', 'teamtailor', 'personio',
+    'jobvite', 'successfactors', 'smartrecruiters', 'pinpoint', 'comeet',
+    'linkedin', 'indeed', 'glassdoor', 'stepstone', 'xing', 'workday-cdx',
+    'wellfound', 'weworkremotely', 'softgarden', 'join',
+  ];
 
   const prompt = `You are an expert on job boards, ATS (applicant tracking systems), and job aggregator APIs.
 
-We are building a job company discovery system. We currently scrape these ACTIVE portals:
+We are building a job company discovery system. We already cover these 33 static sources (do NOT suggest any of them):
+${STATIC_SOURCES.join(', ')}
+
+We also have these ACTIVE dynamically-discovered portals:
 ${JSON.stringify(activePortals, null, 2)}
 
 These portal IDs have already been tried and FAILED — do NOT suggest them again:
 ${JSON.stringify(failedPortalIds)}
+${lowYieldPortals.length > 0 ? `\nThese active portals returned very few companies (<5) — they may need a different strategy: ${JSON.stringify(lowYieldPortals)}` : ''}
 
 Your task: suggest 4 NEW job portals or ATS systems we are NOT yet scraping and NOT in the failed list.
 Focus on:
 - Public APIs that return JSON (no login required)
 - ATS platforms with public company job boards (like Greenhouse/Lever pattern)
-- Job aggregators covering geographies we're missing (Asia, LATAM, Middle East, DACH)
-- Niche boards (tech-only, startup-focused, remote-only, etc.)
+- Job aggregators covering geographies we're missing (Asia-Pacific, LATAM, Middle East, Africa, Nordics, Switzerland)
+- Swiss/EU-specific job boards: jobs.ch, jobup.ch, jobscout24.ch, swissdevjobs.ch, eurojobs.com, finn.no, jobnet.dk, mol.fi (Finnish job board)
+- Niche boards (healthcare/biotech, finance, defense, ESG/climate, diversity-focused, watchmaking/luxury)
+- Emerging ATS platforms growing in market share (Rippling, Pinpoint, Comeet, Workstream, Paradox, Fountain, Occupop, Factorial)
+- Company career APIs built on AI-native HR platforms
 
 For each suggestion, provide a complete scraping strategy. You MUST return valid JSON only — no markdown, no explanation outside the JSON.
 

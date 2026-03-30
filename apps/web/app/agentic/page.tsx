@@ -50,7 +50,7 @@ export default function Page() {
       params: [
         { name: "position", type: "string", required: false, desc: "Filter matchingJobs to titles containing this string (query param)" },
       ],
-      returns: `{ runId, status, finishedAt, result: { company, portalUrl, totalUniqueJobs, ghostCandidates, ghostRate, overallGhostRisk, hiringHealthScore, recommendation, topGhostRoles, patterns, geminiSummary, orgGhostSignal, matchingJobs[] } | null }`,
+      returns: `{ runId, status, finishedAt, result: { company, portalUrl, totalUniqueJobs, ghostCandidates, ghostRate, overallGhostRisk, hiringHealthScore, recommendation, topGhostRoles, patterns, geminiSummary, orgGhostSignal, hiringCafeSignal, matchingJobs[] } | null }`,
       example: `GET ${base}/ghosting/<runId>?position=Staff+Engineer`,
     },
     {
@@ -83,10 +83,10 @@ export default function Page() {
     {
       method: "GET",
       path: "/api/discovery",
-      summary: "Show the live portal registry from the latest company-discovery run",
+      summary: "Top hiring companies, growing/shrinking signals, and source breakdown from 30+ job boards",
       auth: false,
       params: [],
-      returns: `{ runId, runAt, runStatus, companiesDiscovered, registry: { portals[] }, topCompanies: [{ name, jobs, source, url }], growingCompanies: [{ name, jobs, prevJobs, delta, url }] }`,
+      returns: `{ runId, runAt, runStatus, companiesDiscovered, totalJobsTracked, topCompanies: [{ name, jobs, source, url }], growingCompanies: [{ name, jobs, delta, url }], shrinkingCompanies: [{ name, jobs, delta }], newHiringCompanies: [{ name, jobs }], sourceBreakdown: { [source]: count }, registry: { portals[] } }`,
       example: `GET ${base}/discovery`,
     },
     {
@@ -171,8 +171,7 @@ export default function Page() {
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold tracking-tight">Agentic API</h1>
         <p className="text-muted text-sm max-w-2xl">
-          REST API for AI agents to search the Job Seek job index. Requires an active subscription.
-          All responses are JSON.
+          REST API for AI agents to search the Job Seek job index, detect ghost jobs via Wayback Machine analysis, and discover actively hiring companies from 30+ job boards. Job search requires an active subscription. Ghost-job analysis and company discovery are open-tier. All responses are JSON.
         </p>
         <div className="flex items-center gap-2 pt-1">
           <span className="font-mono text-xs bg-surface border border-divider rounded px-2 py-0.5 text-muted">

@@ -19,8 +19,8 @@ export function extractFromJsonLd($: CheerioAPI): ExtractionResult {
         if (!item || typeof item !== 'object') continue;
         const obj = item as Record<string, unknown>;
 
-        // Direct JobPosting
-        if (obj['@type'] === 'JobPosting') {
+        // Direct JobPosting (or @type: ["JobPosting", "Thing"])
+        if (isJobPosting(obj)) {
           const job = parseJobPosting(obj);
           if (job) jobs.push(job);
           continue;
@@ -31,7 +31,7 @@ export function extractFromJsonLd($: CheerioAPI): ExtractionResult {
           for (const node of obj['@graph'] as unknown[]) {
             if (!node || typeof node !== 'object') continue;
             const n = node as Record<string, unknown>;
-            if (n['@type'] === 'JobPosting') {
+            if (isJobPosting(n)) {
               const job = parseJobPosting(n);
               if (job) jobs.push(job);
             }
@@ -40,7 +40,7 @@ export function extractFromJsonLd($: CheerioAPI): ExtractionResult {
         }
 
         // ItemList of JobPostings
-        if (obj['@type'] === 'ItemList' && Array.isArray(obj['itemListElement'])) {
+        if ((obj['@type'] === 'ItemList' || (Array.isArray(obj['@type']) && (obj['@type'] as string[]).includes('ItemList'))) && Array.isArray(obj['itemListElement'])) {
           for (const listItem of obj['itemListElement'] as unknown[]) {
             if (!listItem || typeof listItem !== 'object') continue;
             const li = listItem as Record<string, unknown>;
@@ -60,16 +60,25 @@ export function extractFromJsonLd($: CheerioAPI): ExtractionResult {
   return { jobs, method: 'jsonld' };
 }
 
+function isJobPosting(obj: Record<string, unknown>): boolean {
+  const t = obj['@type'];
+  if (t === 'JobPosting') return true;
+  if (Array.isArray(t)) return (t as unknown[]).includes('JobPosting');
+  return false;
+}
+
 function parseJobPosting(obj: Record<string, unknown>): JobPosting | null {
   const title = String(obj['title'] ?? obj['name'] ?? '').trim();
   if (!title) return null;
 
   let location: string | undefined;
   const loc = obj['jobLocation'];
-  if (typeof loc === 'string') {
-    location = loc;
-  } else if (loc && typeof loc === 'object') {
-    const locObj = loc as Record<string, unknown>;
+  // jobLocation can be a string, object, or array
+  const firstLoc = Array.isArray(loc) ? loc[0] : loc;
+  if (typeof firstLoc === 'string') {
+    location = firstLoc;
+  } else if (firstLoc && typeof firstLoc === 'object') {
+    const locObj = firstLoc as Record<string, unknown>;
     const addr = locObj['address'] as Record<string, unknown> | undefined;
     location = String(
       locObj['name'] ?? addr?.['addressLocality'] ?? addr?.['addressRegion'] ?? ''

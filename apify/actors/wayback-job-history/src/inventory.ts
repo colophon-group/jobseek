@@ -39,13 +39,14 @@ export async function fetchUrlInventory(
 }
 
 /**
- * For a specific URL, fetch first and last archived timestamps.
+ * For a specific URL, fetch all archived timestamps to compute lifespan and detect reposts.
+ * A repost is detected when there is a gap of >45 days between consecutive captures.
  */
 export async function fetchUrlLifespan(
   originalUrl: string,
   startDate?: string,
   endDate?: string,
-): Promise<{ first: string; last: string; count: number } | null> {
+): Promise<{ first: string; last: string; count: number; reposted: boolean; repostCount: number } | null> {
   const params = new URLSearchParams({
     url: originalUrl,
     output: 'json',
@@ -62,10 +63,22 @@ export async function fetchUrlLifespan(
   if (rows.length === 0) return null;
 
   const timestamps = rows.map(r => r.timestamp).sort();
+
+  // Detect reposts: gap >45 days between consecutive CDX captures
+  let repostCount = 0;
+  let lastTs = timestamps[0];
+  for (let i = 1; i < timestamps.length; i++) {
+    const gapDays = daysBetween(cdxDateToIso(lastTs), cdxDateToIso(timestamps[i]));
+    if (gapDays > 45) repostCount++;
+    lastTs = timestamps[i];
+  }
+
   return {
     first: timestamps[0],
     last: timestamps[timestamps.length - 1],
     count: timestamps.length,
+    reposted: repostCount > 0,
+    repostCount,
   };
 }
 
@@ -85,11 +98,25 @@ export function filterJobUrls(snapshots: CdxSnapshot[]): CdxSnapshot[] {
     return (
       /\/job\//.test(u) ||
       /\/jobs\/\d/.test(u) ||
-      /[?&](jid|job_id|jobId|req_id|reqId|jdid|JobId)=/i.test(u) ||
-      /\/j\/[a-z0-9-]{8,}/.test(u) ||       // Lever: /j/{uuid}
-      /\/posting\/[a-z0-9-]{8,}/i.test(u) || // Ashby
+      /[?&](jid|job_id|jobId|req_id|reqId|jdid|JobId|career_job_req_id|jobReqId|job_number|openingId)=/i.test(u) ||
+      /\/j\/[a-z0-9-]{8,}/.test(u) ||          // Lever: /j/{uuid}
+      /\/posting\/[a-z0-9-]{8,}/i.test(u) ||   // Ashby
       /\/vacancy\//i.test(u) ||
+      /\/vacature\//i.test(u) ||                // Dutch
       /\/position\/\w/i.test(u) ||
+      /\/p\/[a-z0-9-]{10,}/.test(u) ||         // Breezy HR: /p/{long-slug}
+      /\/offre\//.test(u) ||                    // French ATS
+      /\/stellenangebot\//.test(u) ||           // German (Softgarden)
+      /\/stellen\//.test(u) ||                  // German ATS
+      /\/stelle\//.test(u) ||                   // German ATS
+      /\/open-positions\//.test(u) ||
+      /\/apply\/[a-z0-9]{6,}/i.test(u) ||      // JazzHR: {company}.applytojob.com/apply/{hash}
+      /\/o\/[a-z0-9][a-z0-9_-]{5,}/i.test(u) || // Recruitee: {company}.recruitee.com/o/{position-slug}
+      /\/aanbod\/[a-z0-9-]{4,}/i.test(u) ||    // Dutch ATS (aanbod = offer)
+      /\/rol\/[a-z0-9-]{4,}/i.test(u) ||       // Spanish ATS (rol = role)
+      /\/requisition\/\d/.test(u) ||            // SuccessFactors: /careers/requisition/{id}
+      /\/joblistings\/\d/.test(u) ||            // SuccessFactors: /careers/joblistings/{id}
+      /\/careersection\/.*\/jobdetail/i.test(u) || // Taleo: /careersection/.../jobdetail.ftl?job=...
       // Workday: /job/{location}/{title}_{id}
       /\/job\/[^/]+\/[^/]+-[A-Z0-9]+$/.test(u)
     );
@@ -120,6 +147,30 @@ export function titleFromUrl(url: string): string {
       return noUuid.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     }
 
+    // Recruitee: {company}.recruitee.com/o/software-engineer-remote-12345
+    // Strip trailing numeric ID segment: "software-engineer-remote-12345" → "Software Engineer Remote"
+    if (u.hostname.endsWith('.recruitee.com') && parts[0] === 'o' && parts[1]) {
+      const slug = parts[1].replace(/-\d{4,}$/, '').replace(/-\d{4,}-/, '-');
+      return slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    }
+
+    // SmartRecruiters: jobs.smartrecruiters.com/CompanyName/123456789-Job-Title
+    if (u.hostname === 'jobs.smartrecruiters.com' && parts.length >= 2) {
+      const slug = parts[parts.length - 1];
+      // Strip leading numeric ID: "1234567890-senior-engineer" → "Senior Engineer"
+      const noId = slug.replace(/^\d{8,}-/, '');
+      if (noId !== slug) return noId.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    }
+
+    // JazzHR: {company}.applytojob.com/apply/{hash} — title not in URL, skip
+    if (u.hostname.endsWith('.applytojob.com')) return '';
+
+    // SuccessFactors: {company}.successfactors.com/careers/joblistings/12345 → no title in URL
+    if (u.hostname.endsWith('.successfactors.com') || u.hostname.endsWith('.successfactors.eu')) return '';
+
+    // Taleo: {company}.taleo.net/careersection/2/jobdetail.ftl?job=12345 → no title in URL
+    if (u.hostname.endsWith('.taleo.net')) return '';
+
     // Generic: take the most descriptive path segment
     for (let i = parts.length - 1; i >= 0; i--) {
       const p = parts[i];
@@ -135,49 +186,54 @@ export function titleFromUrl(url: string): string {
 
 /**
  * Build JobRecord list from CDX inventory snapshots + lifespan data.
- * Batches lifespan lookups to avoid rate limits.
+ * Processes in concurrent batches of 5 to stay within CDX rate limits
+ * while being ~5x faster than serial processing.
  */
 export async function buildJobRecords(
   jobSnapshots: CdxSnapshot[],
   startDate?: string,
   endDate?: string,
   delayMs = 800,
+  concurrency = 5,
 ): Promise<JobRecord[]> {
   const records: JobRecord[] = [];
+  const total = jobSnapshots.length;
 
-  for (let i = 0; i < jobSnapshots.length; i++) {
-    const snap = jobSnapshots[i];
-    log.debug(`Lifespan [${i + 1}/${jobSnapshots.length}]: ${snap.original}`);
+  for (let i = 0; i < total; i += concurrency) {
+    const batch = jobSnapshots.slice(i, i + concurrency);
+    log.debug(`Lifespan batch [${i + 1}–${Math.min(i + concurrency, total)}/${total}]`);
 
-    const lifespan = await fetchUrlLifespan(snap.original, startDate, endDate);
-    if (!lifespan) {
-      await sleep(delayMs / 2);
-      continue;
+    const results = await Promise.all(
+      batch.map(snap => fetchUrlLifespan(snap.original, startDate, endDate).catch(() => null)),
+    );
+
+    for (let j = 0; j < batch.length; j++) {
+      const snap = batch[j];
+      const lifespan = results[j];
+      if (!lifespan) continue;
+
+      const firstDate = cdxDateToIso(lifespan.first);
+      const lastDate  = cdxDateToIso(lifespan.last);
+      const duration  = daysBetween(firstDate, lastDate);
+      const title = titleFromUrl(snap.original) || snap.original;
+      const { score, reason } = scoreGhost(duration, lifespan.count, lifespan.reposted, lifespan.repostCount);
+
+      records.push({
+        title,
+        url: snap.original,
+        firstSeen: firstDate,
+        lastSeen: lastDate,
+        durationDays: duration,
+        archiveCount: lifespan.count,
+        reposted: lifespan.reposted,
+        repostCount: lifespan.repostCount,
+        ghostScore: score,
+        ghostReason: reason,
+      });
     }
 
-    const firstDate = cdxDateToIso(lifespan.first);
-    const lastDate  = cdxDateToIso(lifespan.last);
-    const duration  = daysBetween(firstDate, lastDate);
-
-    // Title from URL slug; will be enriched with real title if we fetch the page
-    const title = titleFromUrl(snap.original) || snap.original;
-
-    const { score, reason } = scoreGhost(duration, lifespan.count, false);
-
-    records.push({
-      title,
-      url: snap.original,
-      firstSeen: firstDate,
-      lastSeen: lastDate,
-      durationDays: duration,
-      archiveCount: lifespan.count,
-      reposted: false,
-      repostCount: 0,
-      ghostScore: score,
-      ghostReason: reason,
-    });
-
-    await sleep(delayMs);
+    // Delay between batches to respect CDX rate limits
+    if (i + concurrency < total) await sleep(delayMs * concurrency);
   }
 
   return records;

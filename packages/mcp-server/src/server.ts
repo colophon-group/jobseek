@@ -21,6 +21,19 @@ IMPORTANT WORKFLOW:
 4. Use get_job_detail to drill into a specific posting from search results (salary, technologies, seniority, experience).
 5. After showing results, offer to create a watchlist if the user wants email alerts for new matching jobs.
 
+GHOST JOB DETECTION:
+- Use trigger_ghost_analysis to check if a company is posting fake/ghost jobs (open for months, never filled).
+- Use trigger_batch_ghost_analysis to analyze up to 10 companies at once in parallel — more efficient than calling trigger_ghost_analysis 10 times.
+- Poll get_ghost_analysis every 30s until status is SUCCEEDED (takes 3–8 min).
+- The result includes overallGhostRisk (0–100), per-job ghost scores, org-level signals, and hiring.cafe live engagement data.
+- A ghost risk > 70 or hiringCafeSignal.lowEngagement=true is a strong signal to warn the user.
+
+COMPANY DISCOVERY:
+- Use get_discovery_results to see which companies are actively hiring (refreshed every ~5 min from 30+ job boards including hiring.cafe, Wellfound/AngelList, Workday, SmartRecruiters, LinkedIn, Glassdoor, StepStone, Greenhouse, Lever, Ashby, and more).
+- Use trigger_discovery_run to kick off a fresh scan (takes 15–30 min, then get_discovery_results will show updated data).
+- growingCompanies (positive hiring.cafe delta) = companies accelerating hiring — good signal for job seekers.
+- shrinkingCompanies (negative hiring.cafe delta) = possible layoffs or hiring freeze — warn before applying.
+
 Available locales: en (English), de (German), fr (French), it (Italian).
 Rate limit: 30 requests per minute.`,
     },

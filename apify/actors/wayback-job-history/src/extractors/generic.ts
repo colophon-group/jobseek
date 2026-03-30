@@ -8,17 +8,22 @@ import type { ExtractionResult, JobPosting } from '../types.js';
 export function extractGeneric($: CheerioAPI, _url: URL): ExtractionResult {
   // Try each selector pattern; stop at first that produces results
   const selectorGroups = [
-    // Data attribute patterns
+    // Data attribute patterns — most reliable
     ['[data-job-id]', '[data-requisition-id]', '[data-automation="job-result-item"]'],
+    ['[data-ui="job-item"]', '[data-testid="job-item"]', '[data-testid*="job-card"]'],
+    ['[data-controller="job-card"]', '[data-controller="position"]'],
     // Class fragment patterns (sorted by specificity)
     ['[class*="JobCard"]', '[class*="job-card"]', '[class*="job_card"]'],
     ['[class*="job-row"]', '[class*="JobRow"]', '[class*="job_row"]'],
     ['[class*="job-listing"]', '[class*="JobListing"]'],
-    ['[class*="position-item"]', '[class*="PositionItem"]'],
-    // Role-based
-    ['[role="listitem"][class*="job"]', 'li[class*="job"]'],
+    ['[class*="position-item"]', '[class*="PositionItem"]', '[class*="positionCard"]'],
+    ['[class*="opening-item"]', '[class*="OpeningItem"]', '[class*="opening-row"]'],
+    // Semantic / role-based
+    ['article[class*="job"]', 'article[class*="position"]', 'article[class*="opening"]'],
+    ['[role="listitem"][class*="job"]', 'li[class*="job"]', 'li[class*="position"]'],
     // Generic container guesses
     ['.opening', '.position', '.vacancy', '.role'],
+    ['tr[class*="job"]', 'tr[class*="position"]'],
   ];
 
   for (const selectors of selectorGroups) {
@@ -113,8 +118,8 @@ function extractFromJobLinks($: CheerioAPI): JobPosting[] {
 
     // Href should look job-related
     if (
-      !/\/(jobs?|careers?|positions?|openings?|apply|posting|vacancy|vacancies)\//i.test(href) &&
-      !/[?&](jid|job_id|jobId|req_id|reqId)=/i.test(href)
+      !/\/(jobs?|careers?|positions?|openings?|apply|posting|vacancy|vacancies|stellenangebote?|offres?-d-emploi|requisition)\//i.test(href) &&
+      !/[?&](jid|job_id|jobId|req_id|reqId|jobReqId)=/i.test(href)
     ) return;
 
     const key = title.toLowerCase();

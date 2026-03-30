@@ -100,6 +100,7 @@ export interface GhostAnalysis {
   recommendation: string;        // "Apply confidently" | "Proceed with caution" | "Likely ghost posting"
   geminiSummary: string;
   geminiAvailable: boolean;
+  hiringCafeSignal?: { found: boolean; activeListings: number; avgViews: number; avgApplications: number; lowEngagement: boolean; signal: string | null } | null;
 }
 
 export interface SummaryRecord {

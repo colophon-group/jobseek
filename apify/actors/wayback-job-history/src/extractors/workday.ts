@@ -80,22 +80,38 @@ export async function extractFromWorkday(
   const html = await fetchArchivedPage(timestamp, url.toString());
   if (!html) return { jobs: [], method: 'workday' };
 
-  // Try to find serialized job data in script tags
-  const scriptMatch = html.match(/window\.__WD_APP_CONFIG__\s*=\s*(\{[\s\S]*?\});\s*(?:window\.|<\/script>)/);
-  if (scriptMatch) {
+  // Try multiple Workday HTML embedded JSON patterns
+  const htmlPatterns: RegExp[] = [
+    /window\.__WD_APP_CONFIG__\s*=\s*(\{[\s\S]*?\});\s*(?:window\.|<\/script>)/,
+    /window\.__wd_store__\s*=\s*(\{[\s\S]*?\});/,
+    /window\.WORKDAY_STORE\s*=\s*(\{[\s\S]*?\});/,
+  ];
+
+  for (const pat of htmlPatterns) {
+    const m = html.match(pat);
+    if (!m) continue;
     try {
-      const config: unknown = JSON.parse(scriptMatch[1]);
-      const result = findJobsInObject(config, 'workday-html');
+      const result = findJobsInObject(JSON.parse(m[1]), 'workday-html');
       if (result.jobs.length > 0) return result;
-    } catch {
-      // ignore
-    }
+    } catch { /* ignore */ }
+  }
+
+  // application/json script blocks (Workday sometimes embeds job data here)
+  for (const m of html.matchAll(/<script[^>]*type="application\/json"[^>]*>([\s\S]*?)<\/script>/g)) {
+    try {
+      const result = findJobsInObject(JSON.parse(m[1]), 'workday-html-json');
+      if (result.jobs.length > 0) return result;
+    } catch { /* ignore */ }
   }
 
   // Generic __NEXT_DATA__ / embedded JSON walk
-  const result = findJobsInObject(JSON.parse(
-    html.match(/<script[^>]*id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/)?.[1] ?? '{}'
-  ), 'workday-nextdata');
+  const nextMatch = html.match(/<script[^>]*id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+  if (nextMatch) {
+    try {
+      const result = findJobsInObject(JSON.parse(nextMatch[1]), 'workday-nextdata');
+      if (result.jobs.length > 0) return result;
+    } catch { /* ignore */ }
+  }
 
-  return result.jobs.length > 0 ? result : { jobs: [], method: 'workday-none' };
+  return { jobs: [], method: 'workday-none' };
 }

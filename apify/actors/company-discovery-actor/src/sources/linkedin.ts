@@ -11,9 +11,17 @@ const DEFAULT_QUERIES = [
   'cloud architect', 'QA engineer', 'content strategist',
   'customer success', 'supply chain', 'mechanical engineer',
   'nurse', 'accountant', 'teacher',
+  // Swiss / EU market specific
+  'wealth management', 'private banking', 'pharma regulatory',
+  'clinical research', 'biotech scientist', 'insurance actuary',
+  'watchmaking', 'precision engineering', 'medtech',
 ];
 
-const LOCATIONS = ['United States', 'Germany', 'United Kingdom', 'France', 'Netherlands'];
+const LOCATIONS = [
+  'United States', 'Germany', 'United Kingdom', 'France', 'Netherlands',
+  'Switzerland', 'Austria', 'Sweden', 'Denmark', 'Finland',
+  'Spain', 'Italy', 'Belgium', 'Poland', 'Portugal',
+];
 
 export async function discoverFromLinkedIn(
   proxyUrl?: string,

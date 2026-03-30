@@ -1,6 +1,6 @@
 {
   "name": "@jseek/mcp-server",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "mcpName": "io.github.colophon-group/jobseek",
   "description": "MCP server for Job Seek — search jobs, companies, and watchlists on jseek.co",
   "license": "MIT",

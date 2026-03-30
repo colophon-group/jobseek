@@ -54,10 +54,12 @@ export function scoreGhost(
   }
 
   // validThrough in the past = posting outlived its own stated expiry
+  // Strong ghost signal: job is still up after its own stated close date
   if (validThrough) {
     const expiredDays = Math.round((Date.now() - new Date(validThrough).getTime()) / 86_400_000);
-    if (expiredDays > 30) {
-      const bonus = Math.min(25, Math.round(expiredDays / 30) * 5);
+    if (expiredDays > 7) {
+      // More aggressive: cap at 35 (was 25), ramp faster
+      const bonus = Math.min(35, Math.round(expiredDays / 14) * 5);
       score += bonus;
       reasons.push(`validThrough ${validThrough} expired ${expiredDays} days ago`);
     }
@@ -142,17 +144,27 @@ export function computeGhostStats(registry: Map<string, JobRecord>) {
 
   const ghosts = jobs.filter(j => j.ghostScore >= 70);
 
+  // Sort by ghost score DESC (primary) then duration DESC (secondary)
+  // so Gemini sees the most suspicious jobs first, not just the longest
   const longestRunning = [...jobs]
-    .sort((a, b) => b.durationDays - a.durationDays)
-    .slice(0, 20);
+    .sort((a, b) => b.ghostScore !== a.ghostScore ? b.ghostScore - a.ghostScore : b.durationDays - a.durationDays)
+    .slice(0, 25);
 
-  // Org-level ghost signal: if the company has 5+ jobs all aging 90+ days,
-  // the whole org is likely in a hiring freeze but leaving posts live.
+  // Org-level ghost signal: majority of tracked jobs are long-running (90+ days)
   const longRunning90 = jobs.filter(j => j.durationDays >= 90).length;
-  const orgGhostSignal =
-    jobs.length >= 5 && longRunning90 >= 5 && longRunning90 / jobs.length >= 0.5
-      ? `${longRunning90}/${jobs.length} active jobs have been open 90+ days — org-level ghost signal`
-      : null;
+  const longRunning180 = jobs.filter(j => j.durationDays >= 180).length;
+  const repostedJobs = jobs.filter(j => j.reposted).length;
+  let orgGhostSignal: string | null = null;
+  if (jobs.length >= 5 && longRunning90 / jobs.length >= 0.4) {
+    orgGhostSignal = `${longRunning90}/${jobs.length} active jobs open 90+ days — org-level ghost signal`;
+  } else if (jobs.length >= 3 && longRunning180 >= 3) {
+    orgGhostSignal = `${longRunning180} jobs open 180+ days — possible hiring freeze`;
+  }
+  // Mass repost signal: >30% of jobs recycled — characteristic of pipeline-building ghost posts
+  if (repostedJobs > 0 && jobs.length >= 5 && repostedJobs / jobs.length >= 0.3) {
+    const repostSignal = `${repostedJobs}/${jobs.length} jobs reposted (${Math.round(repostedJobs / jobs.length * 100)}%) — mass recycling pattern`;
+    orgGhostSignal = orgGhostSignal ? `${orgGhostSignal}; ${repostSignal}` : repostSignal;
+  }
 
   return {
     totalUniqueJobs: jobs.length,

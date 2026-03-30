@@ -8,8 +8,10 @@
     "dev": "ts-node src/main.ts"
   },
   "dependencies": {
+    "@crawlee/playwright": "^3.0.0",
     "@google/generative-ai": "^0.21.0",
     "apify": "^3.0.0",
+    "crawlee": "^3.0.0",
     "cheerio": "^1.0.0",
     "got-scraping": "^4.0.0",
     "node-tls-client": "^2.1.0",
