@@ -50,12 +50,23 @@ export async function extractFromSmartRecruiters(
   const company = extractSRCompany(url);
   if (!company) return { jobs: [], method: 'smartrecruiters-api' };
 
-  const apiUrl = `https://api.smartrecruiters.com/v1/companies/${company}/postings?limit=200`;
-  log.debug(`Trying SmartRecruiters API via Wayback: ${apiUrl}`);
+  const baseApiUrl = `https://api.smartrecruiters.com/v1/companies/${company}/postings?limit=200`;
+  log.debug(`Trying SmartRecruiters API via Wayback: ${baseApiUrl}`);
 
-  const data = await fetchArchivedJson<SRResponse>(timestamp, apiUrl);
-  const rawJobs = data?.content ?? [];
+  const data = await fetchArchivedJson<SRResponse>(timestamp, baseApiUrl);
+  let rawJobs = data?.content ?? [];
   if (rawJobs.length === 0) return { jobs: [], method: 'smartrecruiters-api' };
+
+  // Paginate if total > 200 (large companies like Deloitte, Bosch)
+  const total = data?.totalFound ?? 0;
+  if (total > 200 && rawJobs.length === 200) {
+    for (let offset = 200; offset < Math.min(total, 1000); offset += 200) {
+      const page = await fetchArchivedJson<SRResponse>(timestamp, `${baseApiUrl}&offset=${offset}`);
+      if (!page?.content?.length) break;
+      rawJobs = [...rawJobs, ...page.content];
+      if (page.content.length < 200) break;
+    }
+  }
 
   const jobs: JobPosting[] = rawJobs.map(j => {
     const loc = j.location;

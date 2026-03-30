@@ -83,7 +83,7 @@ export default function Page() {
     {
       method: "GET",
       path: "/api/discovery",
-      summary: "Top hiring companies, growing/shrinking signals, and source breakdown from 30+ job boards",
+      summary: "Top hiring companies, growing/shrinking signals, and source breakdown from 37+ job boards",
       auth: false,
       params: [],
       returns: `{ runId, runAt, runStatus, companiesDiscovered, totalJobsTracked, topCompanies: [{ name, jobs, source, url }], growingCompanies: [{ name, jobs, delta, url }], shrinkingCompanies: [{ name, jobs, delta }], newHiringCompanies: [{ name, jobs }], sourceBreakdown: { [source]: count }, registry: { portals[] } }`,

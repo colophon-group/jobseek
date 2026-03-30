@@ -40,10 +40,13 @@ export async function extractFromGreenhouse(
   const token = extractGreenhouseToken(url);
   if (!token) return { jobs: [], method: 'greenhouse-api' };
 
+  // Try with per_page=500 first (Greenhouse supports large limits); fall back to default
+  const apiUrlLarge = `https://boards-api.greenhouse.io/v1/boards/${token}/jobs?content=false&per_page=500`;
   const apiUrl = `https://boards-api.greenhouse.io/v1/boards/${token}/jobs?content=false`;
-  log.debug(`Trying Greenhouse API via Wayback: ${apiUrl}`);
+  log.debug(`Trying Greenhouse API via Wayback: ${apiUrlLarge}`);
 
-  const data = await fetchArchivedJson<GhJobsResponse>(timestamp, apiUrl);
+  const data = await fetchArchivedJson<GhJobsResponse>(timestamp, apiUrlLarge) ??
+               await fetchArchivedJson<GhJobsResponse>(timestamp, apiUrl);
   if (!data?.jobs?.length) return { jobs: [], method: 'greenhouse-api' };
 
   const jobs: JobPosting[] = data.jobs.map(job => ({

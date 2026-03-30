@@ -50,17 +50,35 @@ export async function extractFromWorkday(
 
   const { tenant, instance, board } = params;
 
-  // Try the Workday CXS jobs API (some older responses archived as GET)
-  // Try both the base endpoint and with ?limit=100 to get more jobs
+  // Try the Workday CXS jobs API (some older responses archived as GET).
+  // Paginate with offset to get all jobs for large companies (Amazon, Google, etc.)
   const baseApiUrl = `https://${tenant}.${instance}.myworkdayjobs.com/wday/cxs/${tenant}/${board}/jobs`;
-  const apiUrl = `${baseApiUrl}?limit=100&offset=0`;
 
-  log.debug(`Trying Workday API via Wayback: ${apiUrl}`);
-  const data = await fetchArchivedJson<WorkdayApiResponse>(timestamp, apiUrl) ??
-               await fetchArchivedJson<WorkdayApiResponse>(timestamp, baseApiUrl);
+  const allWorkdayJobs: WorkdayJob[] = [];
+  let offset = 0;
+  const pageSize = 100;
+  let totalFromApi = 0;
 
-  if (data?.jobPostings && data.jobPostings.length > 0) {
-    const jobs: JobPosting[] = data.jobPostings.map(j => ({
+  for (let page = 0; page < 5; page++) {
+    const apiUrl = page === 0 && offset === 0
+      ? `${baseApiUrl}?limit=${pageSize}&offset=0`
+      : `${baseApiUrl}?limit=${pageSize}&offset=${offset}`;
+
+    log.debug(`Trying Workday API via Wayback: ${apiUrl} (page ${page})`);
+    const pageData = await fetchArchivedJson<WorkdayApiResponse>(timestamp, apiUrl) ??
+                    (page === 0 ? await fetchArchivedJson<WorkdayApiResponse>(timestamp, baseApiUrl) : null);
+
+    if (!pageData?.jobPostings?.length) break;
+    allWorkdayJobs.push(...pageData.jobPostings);
+    if (page === 0) totalFromApi = pageData.total ?? 0;
+
+    // Stop if we got fewer results than requested (last page) or hit the total
+    if (pageData.jobPostings.length < pageSize || allWorkdayJobs.length >= totalFromApi) break;
+    offset += pageSize;
+  }
+
+  if (allWorkdayJobs.length > 0) {
+    const jobs: JobPosting[] = allWorkdayJobs.map(j => ({
       title: j.title ?? '',
       location: j.locationsText,
       department: j.jobFunctionSummary,
@@ -72,7 +90,7 @@ export async function extractFromWorkday(
     })).filter(j => j.title);
 
     if (jobs.length > 0) {
-      log.info(`Workday CXS API: ${jobs.length} jobs`);
+      log.info(`Workday CXS API: ${jobs.length} jobs (pages: ${Math.ceil(allWorkdayJobs.length / pageSize)})`);
       return { jobs, method: 'workday-api' };
     }
   }
