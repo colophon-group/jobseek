@@ -196,8 +196,8 @@ class TestExportChangedPostings:
 
         assert count == 2
         assert new_ts == ts2
-        # Should have called CREATE TEMP TABLE, copy_records_to_table, INSERT
-        assert conn.execute.await_count == 2  # CREATE + INSERT
+        # Should have called CREATE TEMP TABLE, DELETE dedup, INSERT
+        assert conn.execute.await_count == 3  # CREATE + DELETE dedup + INSERT
         conn.copy_records_to_table.assert_awaited_once()
 
 
@@ -478,23 +478,36 @@ class TestRunExporter:
 class TestUpdateMetrics:
     async def test_updates_gauges(self):
         local = _make_pool()
+        supa = _make_pool()
         ts = datetime(2025, 6, 1, 12, 0, 0, tzinfo=UTC)
         local.fetchval = AsyncMock(return_value=42)
+        # Pool stats methods must return ints for Prometheus gauges
+        local.get_size = MagicMock(return_value=5)
+        local.get_idle_size = MagicMock(return_value=3)
+        supa.get_size = MagicMock(return_value=4)
+        supa.get_idle_size = MagicMock(return_value=2)
 
         with patch(
             "src.exporter.get_queue_depths",
             new_callable=AsyncMock,
             return_value={"board:http:due": 5, "scrape:http:due": 10},
         ):
-            await _update_metrics(local, ts)
+            await _update_metrics(local, supa, ts)
 
-        local.fetchval.assert_awaited_once()
+        # fetchval called twice: once for export lag, once for r2_pending count
+        assert local.fetchval.await_count == 2
 
     async def test_handles_redis_error_gracefully(self):
         """Metrics update should not raise even if Redis fails."""
         local = _make_pool()
+        supa = _make_pool()
         ts = datetime(2025, 6, 1, 12, 0, 0, tzinfo=UTC)
         local.fetchval = AsyncMock(return_value=0)
+        # Pool stats methods must return ints for Prometheus gauges
+        local.get_size = MagicMock(return_value=5)
+        local.get_idle_size = MagicMock(return_value=3)
+        supa.get_size = MagicMock(return_value=4)
+        supa.get_idle_size = MagicMock(return_value=2)
 
         with patch(
             "src.exporter.get_queue_depths",
@@ -502,7 +515,7 @@ class TestUpdateMetrics:
             side_effect=ConnectionError("redis down"),
         ):
             # Should not raise
-            await _update_metrics(local, ts)
+            await _update_metrics(local, supa, ts)
 
 
 # ---------------------------------------------------------------------------
