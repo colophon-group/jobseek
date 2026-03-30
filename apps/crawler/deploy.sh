@@ -63,10 +63,14 @@ docker compose pull
 docker compose up -d --remove-orphans
 
 # ── Run Alembic migrations on local Postgres ─────────────────────────
-docker compose exec worker uv run --no-sync alembic -c src/migrations/alembic.ini upgrade head
+docker run --rm --env-file "$DEPLOY_DIR/.env" --network host \
+  "ghcr.io/${OWNER}/jobseek-crawler:latest" \
+  uv run --no-sync alembic -c src/migrations/alembic.ini upgrade head
 
 # ── Sync board config from CSV → local Postgres + Redis ──────────────
-docker compose exec worker uv run --no-sync crawler sync
+docker run --rm --env-file "$DEPLOY_DIR/.env" --network host \
+  "ghcr.io/${OWNER}/jobseek-crawler:latest" \
+  uv run --no-sync crawler sync
 
 # ── Cleanup ──────────────────────────────────────────────────────────
 docker image prune -f
