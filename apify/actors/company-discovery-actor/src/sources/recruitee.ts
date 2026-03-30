@@ -20,10 +20,11 @@ function extractRecruiteeSlug(originalUrl: string): string | null {
 export async function discoverFromRecruitee(): Promise<import('../types.js').CompanyDiscovery[]> {
   log.info('recruitee: discovering company subdomains via Wayback CDX wildcard');
 
+  // *.recruitee.com/* has 79 CDX pages (~7.9M entries) — use 8 pages for better coverage
   const slugCounts = await cdxEnumerateSlugs(
     '*.recruitee.com/*',
     extractRecruiteeSlug,
-    5000,
+    10000, 8,
   );
 
   log.info(`recruitee/cdx: found ${slugCounts.size} unique Recruitee company subdomains`);

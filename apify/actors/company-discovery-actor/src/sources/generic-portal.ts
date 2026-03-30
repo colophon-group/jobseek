@@ -105,6 +105,10 @@ async function probeCompanyProbe(
       count = resolved.length;
     } else if (typeof resolved === 'number') {
       count = resolved;
+    } else if (portal.strategy.countField) {
+      // countField fallback: extract job count from a named field
+      const countVal = resolvePath(data, portal.strategy.countField);
+      if (typeof countVal === 'number') count = countVal;
     }
 
     if (count > 0) {

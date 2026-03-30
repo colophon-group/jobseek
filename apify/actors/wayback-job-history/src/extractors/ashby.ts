@@ -18,10 +18,10 @@ interface AshbyJobBoard {
 
 /**
  * Detect Ashby company slug from a URL.
- * Handles: jobs.ashbyhq.com/{company}
+ * Handles: jobs.ashbyhq.com/{company} and boards.ashbyhq.com/{company}
  */
 export function extractAshbySlug(url: URL): string | null {
-  if (url.hostname === 'jobs.ashbyhq.com') {
+  if (url.hostname === 'jobs.ashbyhq.com' || url.hostname === 'boards.ashbyhq.com') {
     const slug = url.pathname.split('/').filter(Boolean)[0];
     return slug ?? null;
   }
@@ -38,12 +38,21 @@ export async function extractFromAshby(
   const slug = extractAshbySlug(url);
   if (!slug) return { jobs: [], method: 'ashby-api' };
 
-  // Try the Ashby public job board API
-  const apiUrl = `https://api.ashbyhq.com/posting-api/job-board/${slug}?includeCompensation=false`;
-  log.debug(`Trying Ashby API via Wayback: ${apiUrl}`);
+  // Try the Ashby public job board API (with and without compensation flag for older snapshots)
+  const apiUrls = [
+    `https://api.ashbyhq.com/posting-api/job-board/${slug}?includeCompensation=false`,
+    `https://api.ashbyhq.com/posting-api/job-board/${slug}`,
+    `https://jobs.ashbyhq.com/api/job-board/${slug}`,
+  ];
 
-  const data = await fetchArchivedJson<AshbyJobBoard>(timestamp, apiUrl);
-  const rawJobs = data?.jobPostings ?? data?.jobs ?? [];
+  let rawJobs: AshbyJob[] = [];
+  for (const apiUrl of apiUrls) {
+    log.debug(`Trying Ashby API via Wayback: ${apiUrl}`);
+    const data = await fetchArchivedJson<AshbyJobBoard>(timestamp, apiUrl);
+    rawJobs = data?.jobPostings ?? data?.jobs ?? [];
+    if (rawJobs.length > 0) break;
+  }
+
   if (rawJobs.length === 0) return { jobs: [], method: 'ashby-api' };
 
   const jobs: JobPosting[] = rawJobs.map(j => ({

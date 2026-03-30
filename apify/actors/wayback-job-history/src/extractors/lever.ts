@@ -19,7 +19,7 @@ interface LeverPosting {
  * Handles: jobs.lever.co/{company}
  */
 export function extractLeverSlug(url: URL): string | null {
-  if (url.hostname === 'jobs.lever.co') {
+  if (url.hostname === 'jobs.lever.co' || url.hostname === 'jobs.eu.lever.co') {
     const slug = url.pathname.split('/').filter(Boolean)[0];
     return slug ?? null;
   }
@@ -36,13 +36,26 @@ export async function extractFromLever(
   const slug = extractLeverSlug(url);
   if (!slug) return { jobs: [], method: 'lever-api' };
 
-  const apiUrl = `https://api.lever.co/v0/postings/${slug}?mode=json`;
-  log.debug(`Trying Lever API via Wayback: ${apiUrl}`);
+  // Try multiple Lever API endpoint forms — some are more commonly archived than others
+  const apiUrls = [
+    `https://api.lever.co/v0/postings/${slug}?mode=json`,
+    `https://api.lever.co/v0/postings/${slug}`,
+    `https://api.eu.lever.co/v0/postings/${slug}?mode=json`, // EU-hosted tenants
+    `https://jobs.lever.co/${slug}?format=json`,
+  ];
 
-  const data = await fetchArchivedJson<LeverPosting[]>(timestamp, apiUrl);
-  if (!Array.isArray(data) || data.length === 0) return { jobs: [], method: 'lever-api' };
+  let data: LeverPosting[] | null = null;
+  for (const apiUrl of apiUrls) {
+    log.debug(`Trying Lever API via Wayback: ${apiUrl}`);
+    const raw = await fetchArchivedJson<LeverPosting[] | { data?: LeverPosting[] }>(timestamp, apiUrl);
+    if (!raw) continue;
+    const arr = Array.isArray(raw) ? raw : (raw as { data?: LeverPosting[] }).data ?? [];
+    if (arr.length > 0) { data = arr; break; }
+  }
 
-  const jobs: JobPosting[] = data.map(p => ({
+  if (!data?.length) return { jobs: [], method: 'lever-api' };
+
+  const jobs: JobPosting[] = data!.map(p => ({
     title: p.text,
     location: p.categories?.location,
     department: p.categories?.team ?? p.categories?.department,

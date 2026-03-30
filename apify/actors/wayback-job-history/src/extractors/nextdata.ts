@@ -25,7 +25,7 @@ export function findJobsInObject(root: unknown, method: string): ExtractionResul
   const visited = new WeakSet<object>();
 
   function walk(node: unknown, depth: number): void {
-    if (depth > 12) return;
+    if (depth > 15) return;
     if (!node || typeof node !== 'object') return;
 
     const obj = node as object;
@@ -33,9 +33,10 @@ export function findJobsInObject(root: unknown, method: string): ExtractionResul
     visited.add(obj);
 
     if (Array.isArray(node)) {
-      // Check if this looks like a job array
+      // Check if this looks like a job array — require >=75% of items to be job-like
+      // (handles arrays with pagination metadata appended, e.g. [...jobs, {total:50}])
       const jobLike = node.filter(looksLikeJob);
-      if (jobLike.length > 0 && jobLike.length === node.length) {
+      if (jobLike.length >= 1 && jobLike.length >= Math.ceil(node.length * 0.75)) {
         for (const item of jobLike) {
           candidates.push(normalizeJob(item as Record<string, unknown>));
         }
@@ -98,14 +99,42 @@ function looksLikeJob(item: unknown): boolean {
     'salaryRange' in obj ||
     'workplaceType' in obj ||  // Ashby workplace type
     'validThrough' in obj ||   // schema.org field
-    'datePosted' in obj;       // schema.org field
+    'datePosted' in obj ||     // schema.org field
+    'jobType' in obj ||        // common employment type field
+    'applyLink' in obj ||      // common application link
+    'hiringOrganization' in obj || // schema.org
+    'companyName' in obj ||   // aggregator data
+    'jobReqId' in obj ||       // SAP SuccessFactors
+    'jobCode' in obj ||        // SAP SuccessFactors / Oracle
+    'positionId' in obj ||     // generic enterprise ATS
+    'requisitionType' in obj || // Oracle Taleo / iCIMS
+    'contractType' in obj ||   // EU ATS (Personio, Factorial, Kenjo)
+    'seniority' in obj ||      // LinkedIn-style seniority level
+    'workMode' in obj ||       // Remote/Hybrid/Onsite flag (modern ATSs)
+    'openDate' in obj ||       // date job was opened
+    'postDate' in obj ||       // date job was posted
+    'publishedAt' in obj ||    // publishing timestamp
+    'closingDate' in obj ||    // application deadline
+    'jobFamily' in obj ||      // SAP SuccessFactors job family
+    'businessTitle' in obj ||  // SAP SuccessFactors business title
+    'requisitionNumber' in obj || // Oracle HCM / generic
+    'applicationDeadline' in obj || // schema.org / generic
+    'isRemote' in obj ||       // boolean remote flag
+    'hiringOrganizationName' in obj || // schema.org variant
+    'yearsExperienceMin' in obj ||  // structured job requirements
+    'jobFunction' in obj ||    // SAP / LinkedIn category
+    'careerLevel' in obj ||    // SAP / LinkedIn career level
+    'targetHireDate' in obj || // enterprise ATS (SuccessFactors)
+    'externalApplyUrl' in obj || // modern ATS external link
+    'listingStatus' in obj;    // status field (open/closed) found in Eightfold, HiBob
 
   return hasJobField;
 }
 
 export function normalizeJob(obj: Record<string, unknown>): JobPosting {
   const title = String(
-    obj['title'] ?? obj['jobTitle'] ?? obj['position'] ?? obj['name'] ?? ''
+    obj['title'] ?? obj['jobTitle'] ?? obj['externalJobTitle'] ?? obj['businessTitle'] ??
+    obj['position'] ?? obj['positionTitle'] ?? obj['name'] ?? ''
   ).trim();
 
   let location: string | undefined;
@@ -116,19 +145,26 @@ export function normalizeJob(obj: Record<string, unknown>): JobPosting {
     const locObj = rawLoc as Record<string, unknown>;
     location = String(locObj['name'] ?? locObj['city'] ?? locObj['text'] ?? '').trim() || undefined;
   }
+  // locations array (multiple offices)
+  if (!location && Array.isArray(obj['locations']) && obj['locations'].length > 0) {
+    const first = obj['locations'][0] as Record<string, unknown>;
+    location = String(first['name'] ?? first['city'] ?? first['text'] ?? first ?? '').trim() || undefined;
+  }
   // Lever: offices = [{ name: "San Francisco" }, ...]
   if (!location && Array.isArray(obj['offices']) && obj['offices'].length > 0) {
     const first = obj['offices'][0] as Record<string, unknown>;
     location = String(first['name'] ?? first['location'] ?? '').trim() || undefined;
   }
-  // remoteWorkPolicy / workplaceType as fallback
+  // remoteWorkPolicy / workplaceType / workMode as fallback
   if (!location) {
-    const remote = obj['remoteWorkPolicy'] ?? obj['workplaceType'];
+    const remote = obj['remoteWorkPolicy'] ?? obj['workplaceType'] ?? obj['workMode'];
     if (typeof remote === 'string' && /remote|hybrid/i.test(remote)) location = remote;
   }
+  // isRemote boolean
+  if (!location && obj['isRemote'] === true) location = 'Remote';
 
   let department: string | undefined;
-  const rawDept = obj['department'] ?? obj['team'] ?? obj['categories'] ?? obj['jobCategory'];
+  const rawDept = obj['department'] ?? obj['team'] ?? obj['categories'] ?? obj['jobCategory'] ?? obj['jobFamily'] ?? obj['jobFunction'] ?? obj['careerLevel'];
   if (typeof rawDept === 'string') {
     department = rawDept.trim() || undefined;
   } else if (rawDept && typeof rawDept === 'object') {
@@ -137,7 +173,9 @@ export function normalizeJob(obj: Record<string, unknown>): JobPosting {
   }
 
   // Extract validThrough from schema.org or ATS fields
-  const rawExpiry = obj['validThrough'] ?? obj['expiresAt'] ?? obj['expiredAt'] ?? obj['closeDate'] ?? obj['applicationDeadline'];
+  const rawExpiry = obj['validThrough'] ?? obj['expiresAt'] ?? obj['expiredAt'] ??
+    obj['closeDate'] ?? obj['closingDate'] ?? obj['applicationDeadline'] ??
+    obj['deadline'] ?? obj['expirationDate'] ?? obj['endDate'];
   let validThrough: string | undefined;
   if (typeof rawExpiry === 'string' && rawExpiry.length >= 8) {
     // Normalize to YYYY-MM-DD
@@ -151,13 +189,26 @@ export function normalizeJob(obj: Record<string, unknown>): JobPosting {
     department,
     url: obj['url'] ? String(obj['url']) :
          obj['hostedUrl'] ? String(obj['hostedUrl']) :
-         obj['applyUrl'] ? String(obj['applyUrl']) : undefined,
+         obj['applyUrl'] ? String(obj['applyUrl']) :
+         obj['applyLink'] ? String(obj['applyLink']) :
+         obj['applicationUrl'] ? String(obj['applicationUrl']) :
+         obj['externalUrl'] ? String(obj['externalUrl']) :
+         obj['link'] ? String(obj['link']) :
+         obj['permalink'] ? String(obj['permalink']) :
+         obj['jobUrl'] ? String(obj['jobUrl']) :
+         obj['externalApplyUrl'] ? String(obj['externalApplyUrl']) : undefined,
     id: obj['id'] ? String(obj['id']) :
         obj['requisitionId'] ? String(obj['requisitionId']) :
         obj['jobId'] ? String(obj['jobId']) :
-        obj['externalId'] ? String(obj['externalId']) : undefined,
+        obj['externalId'] ? String(obj['externalId']) :
+        obj['jobReqId'] ? String(obj['jobReqId']) :
+        obj['requisitionNumber'] ? String(obj['requisitionNumber']) :
+        obj['jobCode'] ? String(obj['jobCode']) :
+        obj['positionId'] ? String(obj['positionId']) : undefined,
     employmentType: obj['employmentType'] ? String(obj['employmentType']) :
-                    obj['workType'] ? String(obj['workType']) : undefined,
+                    obj['contractType'] ? String(obj['contractType']) :
+                    obj['workType'] ? String(obj['workType']) :
+                    obj['jobType'] ? String(obj['jobType']) : undefined,
     validThrough,
   };
 }

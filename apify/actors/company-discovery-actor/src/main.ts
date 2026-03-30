@@ -37,6 +37,27 @@
  *  31.  Fountain CDX            — jobs.fountain.com/{company} (gig/shift-work ATS: Uber, DoorDash, Instacart)
  *  32.  Rippling CDX            — ats.rippling.com/{company} (modern HCM/ATS: Series B+ tech scale-ups)
  *  33.  Ashby Boards CDX        — boards.ashbyhq.com/{company} (alternative Ashby domain, extends coverage)
+ *  34.  Factorial HR CDX        — factorialhr.com/job_postings/{company} (EU/LATAM HCM/ATS, Spain-origin)
+ *  35.  Kenjo CDX               — app.kenjo.io/{company}/jobs (European ATS, DACH/Spain/UK)
+ *  36.  Workstream CDX          — jobs.workstream.us/{company} (hourly/shift-work ATS: Chick-fil-A, McDonald's, Walmart)
+ *  37.  Dover CDX               — talent.dover.com/jobs/{company} (VC-backed startup ATS)
+ *  38.  Jobteaser CDX           — jobteaser.com/{locale}/company/{slug}/jobs (EU campus/student job board)
+ *  39.  WTTJ CDX               — welcometothejungle.com/{locale}/companies/{slug}/jobs (leading French/EU job board)
+ *  40.  Freshteam CDX          — {company}.freshteam.com/jobs (Freshworks ATS, global/Asia-APAC)
+ *  41.  Homerun CDX            — {company}.homerun.co (Dutch/EU startup ATS, Netherlands-origin)
+ *  42.  HiBob CDX             — app.hibob.com/careers/{company} (modern HRIS/ATS: JetBrains, monday.com, Wix)
+ *  43.  Eightfold CDX         — careers.eightfold.ai/{company} (AI talent platform: Prudential, Chevron, NTT Data)
+ *  44.  Cornerstone CDX      — {tenant}.csod.com/careers (Fortune 500 enterprise ATS: Boeing, Adobe, FedEx, UnitedHealth)
+ *  45.  PageUp CDX           — jobs.pageuppeople.com/{company}/go (APAC enterprise ATS: Qantas, ANZ, BHP, universities)
+ *  46.  Avature CDX          — careers.avature.net/{company} (Fortune 500 talent platform: Amazon, EY, PwC, NASA)
+ *  47.  Hireology CDX        — {company}.hireology.com/jobs (automotive/franchise/retail ATS)
+ *  48.  Zoho Recruit CDX     — {company}.zohorecruit.com/jobs (global SMB ATS)
+ *  49.  TalentLyft CDX       — {company}.talentlyft.com/jobs (EU ATS: Croatia-origin, DACH/CEE)
+ *  50.  Occupop CDX          — {company}.occupop.com/jobs (Irish/UK enterprise ATS)
+ *  51.  Paycor CDX           — {company}.paycor.com/career-portal (US HCM/ATS: healthcare, retail, manufacturing)
+ *  52.  ClearCompany CDX     — {company}.clearcompany.com/careers (US mid-market ATS: healthcare, education)
+ *  53.  Darwinbox CDX        — {company}.darwinbox.com/ms/candidate/jobs (India enterprise HCM: Swiggy, Zomato, Puma, JSW)
+ *  54.  Keka CDX             — {company}.keka.com/careers (India HR/ATS platform: mid-market APAC)
  *
  * AI-powered discovery (runs when GOOGLE_AI_API_KEY is set):
  *   - Loads portal registry from KV store (persisted across runs)
@@ -63,9 +84,9 @@ import { discoverFromAshby } from './sources/ashby.js';
 import { discoverFromLever } from './sources/lever.js';
 import { discoverFromGreenhouseCdx } from './sources/greenhouse-cdx.js';
 import { discoverFromJazzHR, discoverFromTaleo } from './sources/jazzhr.js';
-import { discoverFromBreezyHR, discoverFromICIMS } from './sources/breezyhr.js';
+import { discoverFromBreezyHR, discoverFromICIMS, discoverFromFreshteam, discoverFromHomerun, discoverFromHiBob, discoverFromHireology, discoverFromZohoRecruit, discoverFromDarwinbox, discoverFromKeka } from './sources/breezyhr.js';
 import { discoverFromTeamtailor } from './sources/teamtailor.js';
-import { discoverFromPersonio, discoverFromJobvite, discoverFromSuccessFactors, discoverFromSmartRecruiters, discoverFromPinpoint, discoverFromComeet } from './sources/personio.js';
+import { discoverFromPersonio, discoverFromJobvite, discoverFromSuccessFactors, discoverFromSmartRecruiters, discoverFromPinpoint, discoverFromComeet, discoverFromCornerstone } from './sources/personio.js';
 import { discoverFromLinkedIn } from './sources/linkedin.js';
 import { discoverFromIndeed } from './sources/indeed.js';
 import { discoverFromGlassdoor } from './sources/glassdoor.js';
@@ -75,9 +96,10 @@ import { discoverFromWorkdayCdx } from './sources/workday-cdx.js';
 import { discoverFromWellfound } from './sources/wellfound.js';
 import { discoverFromRemoteOK } from './sources/remoteok.js';
 import { discoverFromWeWorkRemotely } from './sources/weworkremotely.js';
-import { discoverFromSoftgarden, discoverFromJoin } from './sources/softgarden.js';
+import { discoverFromSoftgarden, discoverFromJoin, discoverFromWelcomeToTheJungle, discoverFromTalentLyft, discoverFromOccupop, discoverFromEasyCruit, discoverFromVarbi } from './sources/softgarden.js';
 import { discoverFromFountain } from './sources/fountain.js';
 import { discoverFromRippling, discoverFromAshbyBoards } from './sources/rippling.js';
+import { discoverFromFactorial, discoverFromKenjo, discoverFromWorkstream, discoverFromDover, discoverFromJobteaser, discoverFromEightfold, discoverFromPageUp, discoverFromAvature, discoverFromPaycor, discoverFromClearCompany, discoverFromDayforce } from './sources/factorial.js';
 import { suggestNewPortals } from './sources/ai-discovery.js';
 import { probePortal, validatePortal } from './sources/generic-portal.js';
 import { loadRegistry, saveRegistry, getActivePortals, upsertPortal } from './registry.js';
@@ -93,7 +115,7 @@ await Actor.init();
 
 const input = (await Actor.getInput<Input>()) ?? {};
 const {
-  sources = ['greenhouse', 'themuse', 'megaemployers', 'arbeitnow', 'remotive', 'remoteok', 'hiring-cafe', 'himalayas', 'ycombinator', 'bamboohr', 'recruitee', 'workable', 'ashby', 'lever', 'greenhouse-cdx', 'jazzhr', 'breezyhr', 'teamtailor', 'personio', 'icims', 'taleo', 'jobvite', 'successfactors', 'smartrecruiters', 'pinpoint', 'comeet', 'fountain', 'rippling', 'ashby-boards', 'linkedin', 'indeed', 'glassdoor', 'stepstone', 'xing', 'workday-cdx', 'wellfound', 'weworkremotely', 'softgarden', 'join'],
+  sources = ['greenhouse', 'themuse', 'megaemployers', 'arbeitnow', 'remotive', 'remoteok', 'hiring-cafe', 'himalayas', 'ycombinator', 'bamboohr', 'recruitee', 'workable', 'ashby', 'lever', 'greenhouse-cdx', 'jazzhr', 'breezyhr', 'homerun', 'hibob', 'eightfold', 'cornerstone', 'pageup', 'avature', 'hireology', 'zohorecruit', 'talentlyft', 'occupop', 'easycruit', 'varbi', 'paycor', 'clearcompany', 'dayforce', 'darwinbox', 'keka', 'teamtailor', 'personio', 'icims', 'taleo', 'jobvite', 'successfactors', 'smartrecruiters', 'pinpoint', 'comeet', 'fountain', 'rippling', 'ashby-boards', 'factorial', 'kenjo', 'workstream', 'dover', 'jobteaser', 'wttj', 'freshteam', 'linkedin', 'indeed', 'glassdoor', 'stepstone', 'xing', 'workday-cdx', 'wellfound', 'weworkremotely', 'softgarden', 'join'],
   maxCompaniesPerSource = 1000,
   enableAiDiscovery = true,
   maxAiSuggestionsPerRun = 4,
@@ -147,7 +169,7 @@ const staticSourceMap: Record<string, SourceFn> = {
   arbeitnow:     () => discoverFromArbeitnow(),
   remotive:      () => discoverFromRemotive(),
   remoteok:      () => discoverFromRemoteOK(),
-  'hiring-cafe': () => discoverFromHiringCafe(30),
+  'hiring-cafe': () => discoverFromHiringCafe(50),
   himalayas:     () => discoverFromHimalayas(),
   ycombinator:   () => discoverFromYCombinator(),
   bamboohr:      () => discoverFromBambooHR(),
@@ -158,9 +180,11 @@ const staticSourceMap: Record<string, SourceFn> = {
   'greenhouse-cdx': () => discoverFromGreenhouseCdx(),
   jazzhr:        () => discoverFromJazzHR(),
   breezyhr:      () => discoverFromBreezyHR(),
+  homerun:       () => discoverFromHomerun(),
   teamtailor:    () => discoverFromTeamtailor(),
   personio:      () => discoverFromPersonio(),
   icims:         () => discoverFromICIMS(),
+  freshteam:     () => discoverFromFreshteam(),
   taleo:         () => discoverFromTaleo(),
   jobvite:       () => discoverFromJobvite(),
   successfactors:  () => discoverFromSuccessFactors(),
@@ -177,9 +201,31 @@ const staticSourceMap: Record<string, SourceFn> = {
   weworkremotely:  () => discoverFromWeWorkRemotely(),
   softgarden:      () => discoverFromSoftgarden(),
   join:            () => discoverFromJoin(),
+  wttj:            () => discoverFromWelcomeToTheJungle(),
   fountain:        () => discoverFromFountain(),
   rippling:        () => discoverFromRippling(),
   'ashby-boards':  () => discoverFromAshbyBoards(),
+  factorial:       () => discoverFromFactorial(),
+  kenjo:           () => discoverFromKenjo(),
+  workstream:      () => discoverFromWorkstream(),
+  dover:           () => discoverFromDover(),
+  jobteaser:       () => discoverFromJobteaser(),
+  hibob:           () => discoverFromHiBob(),
+  eightfold:       () => discoverFromEightfold(),
+  cornerstone:     () => discoverFromCornerstone(),
+  pageup:          () => discoverFromPageUp(),
+  avature:         () => discoverFromAvature(),
+  hireology:       () => discoverFromHireology(),
+  zohorecruit:     () => discoverFromZohoRecruit(),
+  darwinbox:       () => discoverFromDarwinbox(),
+  keka:            () => discoverFromKeka(),
+  talentlyft:      () => discoverFromTalentLyft(),
+  occupop:         () => discoverFromOccupop(),
+  paycor:          () => discoverFromPaycor(),
+  clearcompany:    () => discoverFromClearCompany(),
+  dayforce:        () => discoverFromDayforce(),
+  easycruit:       () => discoverFromEasyCruit(),
+  varbi:           () => discoverFromVarbi(),
 };
 
 /** Fetch a single source; returns raw results without mutating shared state. */

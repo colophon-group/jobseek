@@ -62,8 +62,8 @@ export async function cdxEnumerateSlugs(
       resumeKey = null;
     }
 
-    // Skip header row (first row) on first page; CDX includes it once
-    const dataRows = page === 0 ? rows.slice(1) : rows;
+    // CDX includes header row ["original"] on every page — filter it out
+    const dataRows = rows.filter(row => row[0] !== 'original' && row[0]);
     for (const row of dataRows) {
       const originalUrl = row[0];
       if (!originalUrl) continue;

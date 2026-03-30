@@ -30,15 +30,22 @@ export async function extractFromPinpoint(url: URL, ts: string): Promise<Extract
   const slug = extractPinpointSlug(url);
   if (!slug) return { jobs: [], method: 'pinpoint-api' };
 
-  // Pinpoint public API
-  const data = await fetchArchivedJson<PinpointResponse | PinpointJob[]>(
-    ts,
+  // Try multiple Pinpoint API patterns
+  const apiUrls = [
     `https://app.pinpointhq.com/api/v1/job_applications/jobs?subdomain=${slug}`,
-  );
+    `https://app.pinpointhq.com/api/v1/${slug}/jobs`,
+    `https://${slug}.pinpointhq.com/api/v1/jobs`,
+  ];
 
-  const raw: PinpointJob[] = Array.isArray(data)
-    ? data
-    : ((data as PinpointResponse)?.jobs ?? (data as PinpointResponse)?.data ?? []);
+  let raw: PinpointJob[] = [];
+  for (const apiUrl of apiUrls) {
+    const data = await fetchArchivedJson<PinpointResponse | PinpointJob[]>(ts, apiUrl);
+    if (!data) continue;
+    raw = Array.isArray(data)
+      ? data
+      : ((data as PinpointResponse)?.jobs ?? (data as PinpointResponse)?.data ?? []);
+    if (raw.length > 0) break;
+  }
 
   if (!raw.length) return { jobs: [], method: 'pinpoint-api' };
 

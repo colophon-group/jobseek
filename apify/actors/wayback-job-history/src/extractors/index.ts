@@ -14,20 +14,22 @@ import { extractBambooHRSlug, extractFromBambooHR, extractICIMSSlug, extractFrom
 import { extractRecruiteeSlug, extractFromRecruitee } from './recruitee.js';
 import { extractJazzHRSlug, extractFromJazzHR, extractTaleoSlug, extractFromTaleo, extractJobviteSlug, extractFromJobvite } from './jazzhr.js';
 import { extractTeamtailorSlug, extractFromTeamtailor } from './teamtailor.js';
-import { extractPersonioSlug, extractFromPersonio } from './personio.js';
-import { extractBreezySlug, extractFromBreezyHR } from './breezyhr.js';
-import { extractSoftgardenSlug, extractFromSoftgarden } from './softgarden.js';
+import { extractPersonioSlug, extractFromPersonio, extractSuccessFactorsSlug, extractFromSuccessFactors } from './personio.js';
+import { extractBreezySlug, extractFromBreezyHR, extractHomerunSlug, extractFromHomerun, extractHiBobSlug, extractFromHiBob, extractHireologySlug, extractFromHireology, extractZohoRecruitSlug, extractFromZohoRecruit, extractDarwinboxSlug, extractFromDarwinbox, extractKekaSlug, extractFromKeka } from './breezyhr.js';
+import { extractSoftgardenSlug, extractFromSoftgarden, extractJobteaserSlug, extractFromJobteaser, extractWttjSlug, extractFromWttj, extractTalentLyftSlug, extractFromTalentLyft, extractOccupopSlug, extractFromOccupop, extractEasyCruitSlug, extractFromEasyCruit, extractVarbiSlug, extractFromVarbi } from './softgarden.js';
 import { extractPinpointSlug, extractFromPinpoint } from './pinpoint.js';
 import { extractComeetSlug, extractFromComeet } from './comeet.js';
 import { extractFountainSlug, extractFromFountain } from './fountain.js';
 import { extractRipplingSlug, extractFromRippling } from './rippling.js';
+import { extractFactorialSlug, extractFromFactorial, extractWorkstreamSlug, extractFromWorkstream, extractDoverSlug, extractFromDover, extractFreshteamSlug, extractFromFreshteam, extractEightfoldSlug, extractFromEightfold, extractCornerstoneSlug, extractFromCornerstone, extractPageUpSlug, extractFromPageUp, extractAvatureSlug, extractFromAvature, extractPaycorSlug, extractFromPaycor, extractClearCompanySlug, extractFromClearCompany, extractDayforceSlug, extractFromDayforce } from './factorial.js';
+import { extractKenjoSlug, extractFromKenjo } from './kenjo.js';
 import { extractGeneric } from './generic.js';
 
 /**
  * Main extraction dispatcher.
  *
  * Priority order:
- * 1. Known ATS API (Greenhouse / Lever / Ashby / Workable / SmartRecruiters / BambooHR / iCIMS / Recruitee / JazzHR / Teamtailor / BreezyHR / Softgarden / Pinpoint / Comeet / Fountain) — most reliable, structured data
+ * 1. Known ATS API (Greenhouse / Lever / Ashby / Workable / SmartRecruiters / BambooHR / iCIMS / Recruitee / JazzHR / Teamtailor / BreezyHR / Homerun / HiBob / Eightfold / Personio / SuccessFactors / Softgarden / Pinpoint / Comeet / Fountain / Rippling / Factorial / Kenjo / Workstream / Dover / Freshteam / Cornerstone / Jobteaser / WTTJ) — most reliable, structured data
  * 2. JSON-LD JobPosting schema
  * 3. Next.js __NEXT_DATA__ recursive walk
  * 4. window.__data / other globals embedded in <script> tags
@@ -116,13 +118,73 @@ export async function extractJobs(
     if (result.jobs.length > 0) return result;
   }
 
+  if (extractSuccessFactorsSlug(url)) {
+    const result = await extractFromSuccessFactors(url, snapshot.timestamp);
+    if (result.jobs.length > 0) return result;
+  }
+
   if (extractBreezySlug(url)) {
     const result = await extractFromBreezyHR(url, snapshot.timestamp);
     if (result.jobs.length > 0) return result;
   }
 
+  if (extractHomerunSlug(url)) {
+    const result = await extractFromHomerun(url, snapshot.timestamp);
+    if (result.jobs.length > 0) return result;
+  }
+
+  if (extractHiBobSlug(url)) {
+    const result = await extractFromHiBob(url, snapshot.timestamp);
+    if (result.jobs.length > 0) return result;
+  }
+
+  if (extractHireologySlug(url)) {
+    const result = await extractFromHireology(url, snapshot.timestamp);
+    if (result.jobs.length > 0) return result;
+  }
+
+  if (extractZohoRecruitSlug(url)) {
+    const result = await extractFromZohoRecruit(url, snapshot.timestamp);
+    if (result.jobs.length > 0) return result;
+  }
+
+  if (extractEightfoldSlug(url)) {
+    const result = await extractFromEightfold(url, snapshot.timestamp);
+    if (result.jobs.length > 0) return result;
+  }
+
   if (extractSoftgardenSlug(url)) {
     const result = await extractFromSoftgarden(url, snapshot.timestamp);
+    if (result.jobs.length > 0) return result;
+  }
+
+  if (extractTalentLyftSlug(url)) {
+    const result = await extractFromTalentLyft(url, snapshot.timestamp);
+    if (result.jobs.length > 0) return result;
+  }
+
+  if (extractOccupopSlug(url)) {
+    const result = await extractFromOccupop(url, snapshot.timestamp);
+    if (result.jobs.length > 0) return result;
+  }
+
+  if (extractEasyCruitSlug(url)) {
+    const result = await extractFromEasyCruit(url, snapshot.timestamp);
+    if (result.jobs.length > 0) return result;
+  }
+
+  if (extractVarbiSlug(url)) {
+    const result = await extractFromVarbi(url, snapshot.timestamp);
+    if (result.jobs.length > 0) return result;
+  }
+
+  if (extractJobteaserSlug(url)) {
+    const result = await extractFromJobteaser(url, snapshot.timestamp);
+    if (result.jobs.length > 0) return result;
+  }
+
+  if (extractWttjSlug(url)) {
+    const result = await extractFromWttj(url, snapshot.timestamp);
     if (result.jobs.length > 0) return result;
   }
 
@@ -146,6 +208,71 @@ export async function extractJobs(
     if (result.jobs.length > 0) return result;
   }
 
+  if (extractFactorialSlug(url)) {
+    const result = await extractFromFactorial(url, snapshot.timestamp);
+    if (result.jobs.length > 0) return result;
+  }
+
+  if (extractKenjoSlug(url)) {
+    const result = await extractFromKenjo(url, snapshot.timestamp);
+    if (result.jobs.length > 0) return result;
+  }
+
+  if (extractWorkstreamSlug(url)) {
+    const result = await extractFromWorkstream(url, snapshot.timestamp);
+    if (result.jobs.length > 0) return result;
+  }
+
+  if (extractDoverSlug(url)) {
+    const result = await extractFromDover(url, snapshot.timestamp);
+    if (result.jobs.length > 0) return result;
+  }
+
+  if (extractFreshteamSlug(url)) {
+    const result = await extractFromFreshteam(url, snapshot.timestamp);
+    if (result.jobs.length > 0) return result;
+  }
+
+  if (extractCornerstoneSlug(url)) {
+    const result = await extractFromCornerstone(url, snapshot.timestamp);
+    if (result.jobs.length > 0) return result;
+  }
+
+  if (extractPageUpSlug(url)) {
+    const result = await extractFromPageUp(url, snapshot.timestamp);
+    if (result.jobs.length > 0) return result;
+  }
+
+  if (extractAvatureSlug(url)) {
+    const result = await extractFromAvature(url, snapshot.timestamp);
+    if (result.jobs.length > 0) return result;
+  }
+
+  if (extractPaycorSlug(url)) {
+    const result = await extractFromPaycor(url, snapshot.timestamp);
+    if (result.jobs.length > 0) return result;
+  }
+
+  if (extractClearCompanySlug(url)) {
+    const result = await extractFromClearCompany(url, snapshot.timestamp);
+    if (result.jobs.length > 0) return result;
+  }
+
+  if (extractDayforceSlug(url)) {
+    const result = await extractFromDayforce(url, snapshot.timestamp);
+    if (result.jobs.length > 0) return result;
+  }
+
+  if (extractDarwinboxSlug(url)) {
+    const result = await extractFromDarwinbox(url, snapshot.timestamp);
+    if (result.jobs.length > 0) return result;
+  }
+
+  if (extractKekaSlug(url)) {
+    const result = await extractFromKeka(url, snapshot.timestamp);
+    if (result.jobs.length > 0) return result;
+  }
+
   // ── 2–5. HTML-based extractors ─────────────────────────────────────────────
   const $ = load(html);
 
@@ -160,6 +287,10 @@ export async function extractJobs(
   // Other globals embedded in <script> tags (window.__data, INITIAL_STATE, etc.)
   const globalsResult = extractFromScriptGlobals($);
   if (globalsResult.jobs.length > 0) return globalsResult;
+
+  // application/json script blocks (non-JSON-LD) — some SPAs embed job lists here
+  const jsonBlockResult = extractFromJsonBlocks($);
+  if (jsonBlockResult.jobs.length > 0) return jsonBlockResult;
 
   // Generic CSS
   const genericResult = extractGeneric($, url);
@@ -176,15 +307,23 @@ function extractFromScriptGlobals($: ReturnType<typeof load>): ExtractionResult 
     // window.__data = {...}
     /window\.__data\s*=\s*(\{[\s\S]*?\});?\s*(?:window\.|$)/,
     // window.__INITIAL_STATE__ = {...}
-    /window\.__INITIAL_STATE__\s*=\s*(\{[\s\S]*?\});/,
+    /window\.__(?:INITIAL_STATE|REDUX_STATE|STORE_STATE|STATE)\s*=\s*(\{[\s\S]*?\});/,
     // var pageData = {...}
     /(?:var|let|const)\s+pageData\s*=\s*(\{[\s\S]*?\});/,
     // window.jobListings = [...]
-    /window\.(?:jobListings|jobs|jobData)\s*=\s*(\[[\s\S]*?\]);/,
+    /window\.(?:jobListings|jobs|jobData|openings|positions)\s*=\s*(\[[\s\S]*?\]);/,
     // SuccessFactors: window.sfConfig = {...}
     /window\.sfConfig\s*=\s*(\{[\s\S]*?\});/,
     // SuccessFactors / generic: window.APP_DATA = {...}
-    /window\.(?:APP_DATA|appData|APP_STATE|appState|pageConfig)\s*=\s*(\{[\s\S]*?\});/,
+    /window\.(?:APP_DATA|appData|APP_STATE|appState|pageConfig|pageProps)\s*=\s*(\{[\s\S]*?\});/,
+    // Nuxt SSR: window.__NUXT__ = {...}
+    /window\.__NUXT__\s*=\s*(\{[\s\S]*?\});/,
+    // React/Redux: window.__PRELOADED_STATE__ = {...}
+    /window\.__PRELOADED_STATE__\s*=\s*(\{[\s\S]*?\});/,
+    // Generic initial props / state
+    /window\.(?:initialProps|INITIAL_PROPS|initialData|INITIAL_DATA)\s*=\s*(\{[\s\S]*?\});/,
+    // window.__SERVER_DATA__ / __PAGE_DATA__
+    /window\.__(?:SERVER|PAGE|APP)_DATA__\s*=\s*(\{[\s\S]*?\});/,
   ];
 
   const scripts = $('script:not([src])').map((_, el) => $(el).html() ?? '').get();
@@ -204,4 +343,25 @@ function extractFromScriptGlobals($: ReturnType<typeof load>): ExtractionResult 
   }
 
   return { jobs: [], method: 'script-globals' };
+}
+
+/**
+ * Parse <script type="application/json"> blocks that are NOT JSON-LD.
+ * Some SPAs (Workday embedded, custom ATS) embed job arrays this way.
+ */
+function extractFromJsonBlocks($: ReturnType<typeof load>): ExtractionResult {
+  const blocks = $('script[type="application/json"]:not([type="application/ld+json"])').map((_, el) => $(el).html() ?? '').get();
+
+  for (const block of blocks) {
+    if (!block.trim()) continue;
+    try {
+      const data: unknown = JSON.parse(block);
+      const result = findJobsInObject(data, 'json-block');
+      if (result.jobs.length > 0) return result;
+    } catch {
+      // malformed — skip
+    }
+  }
+
+  return { jobs: [], method: 'json-block' };
 }

@@ -57,10 +57,10 @@ export async function fetchUrlInventory(
       resumeKey = null;
     }
 
-    // First row is header (skip), subsequent pages have no header
-    const dataRows = page === 0 ? raw.slice(1) : raw;
+    // CDX includes header row on every page — filter it out by checking for the header field name
+    const dataRows = raw.filter(row => row[0] !== 'timestamp' && row.length >= 2);
     for (const row of dataRows) {
-      if (row[1] && row[2]) {
+      if (row[1]) {
         allRows.push({ timestamp: row[0], original: row[1] });
       }
     }
@@ -157,7 +157,59 @@ export function filterJobUrls(snapshots: CdxSnapshot[]): CdxSnapshot[] {
       // Workday: /job/{location}/{title}_{id}
       /\/job\/[^/]+\/[^/]+-[A-Z0-9]+$/.test(u) ||
       // Fountain: jobs.fountain.com/{company}/{uuid}
-      (/jobs\.fountain\.com/.test(u) && /\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(u))
+      (/jobs\.fountain\.com/.test(u) && /\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(u)) ||
+      // Rippling: ats.rippling.com/{company}/jobs/{id}
+      (/ats\.rippling\.com/.test(u) && /\/jobs\/[a-z0-9-]{4,}$/i.test(u)) ||
+      // Factorial: factorialhr.com/job_postings/{company}/{slug}
+      (/factorialhr\.com\/job_postings\/[^/]+\/[a-z0-9-]{4,}/.test(u)) ||
+      // Kenjo: app.kenjo.io/{company}/jobs/{id}
+      (/app\.kenjo\.io\/[^/]+\/jobs\/\d+/.test(u)) ||
+      // Workstream: jobs.workstream.us/{company}/{uuid-or-id}
+      (/jobs\.workstream\.us\/[^/]+\/[0-9a-f-]{8,}/.test(u)) ||
+      // Dover: talent.dover.com/jobs/{company}/{slug}
+      (/talent\.dover\.com\/jobs\/[^/]+\/[a-z0-9-]{4,}/.test(u)) ||
+      // Freshteam: {company}.freshteam.com/jobs/{id}
+      (/\.freshteam\.com\/jobs\/\d+/.test(u)) ||
+      // Jobteaser: jobteaser.com/{locale}/company/{slug}/jobs/{job-ref}
+      (/jobteaser\.com\/[a-z]{2}\/company\/[^/]+\/jobs\/[a-z0-9-]{4,}/i.test(u)) ||
+      // WTTJ: welcometothejungle.com/{locale}/companies/{slug}/jobs/{job-slug}
+      (/welcometothejungle\.com\/[a-z]{2}\/companies\/[^/]+\/jobs\/[a-z0-9-]{4,}/i.test(u)) ||
+      // Homerun: {company}.homerun.co/jobs/{id}
+      (/\.homerun\.co\/jobs\/[a-z0-9-]{4,}/i.test(u)) ||
+      // HiBob: app.hibob.com/careers/{company}/{job-id}
+      (/app\.hibob\.com\/careers\/[^/]+\/[a-z0-9-]{4,}/i.test(u)) ||
+      // Eightfold: careers.eightfold.ai/{company}/job/{id}
+      (/careers\.eightfold\.ai\/[^/]+\/job\/\d+/i.test(u)) ||
+      // Cornerstone OnDemand: {tenant}.csod.com/ats/careersite/jobdetails.aspx?id={id}
+      (/\.csod\.com\/ats\/careersite\/jobdetails\.aspx/i.test(u)) ||
+      // SAP SuccessFactors: {tenant}.successfactors.com/careers/jobdetails.aspx
+      (/\.successfactors\.(com|eu)\/careers\/jobdetails\.aspx/i.test(u)) ||
+      // PageUp: jobs.pageuppeople.com/{company}/go/{id}
+      (/jobs\.pageuppeople\.com\/[^/]+\/go\/\d+/i.test(u)) ||
+      // Avature: careers.avature.net/{company}/ViewJob/{id}
+      (/careers\.avature\.net\/[^/]+\/ViewJob\/\d+/i.test(u)) ||
+      // Hireology: {company}.hireology.com/jobs/{id}
+      (/\.hireology\.com\/jobs\/\d+/i.test(u)) ||
+      // Zoho Recruit: {company}.zohorecruit.com/jobs/Careers/{id}
+      (/\.zohorecruit\.com\/jobs\/Careers\/[a-z0-9-]{4,}/i.test(u)) ||
+      // TalentLyft: {company}.talentlyft.com/jobs/{id}
+      (/\.talentlyft\.com\/jobs\/[a-z0-9-]{4,}/i.test(u)) ||
+      // Occupop: {company}.occupop.com/jobs/{id}
+      (/\.occupop\.com\/jobs\/[a-z0-9-]{4,}/i.test(u)) ||
+      // Paycor: {tenant}.paycor.com/career-portal/job/{id}
+      (/\.paycor\.com\/career-portal\/job\/\d+/i.test(u)) ||
+      // ClearCompany: {tenant}.clearcompany.com/careers/job/{id}
+      (/\.clearcompany\.com\/careers\/job\/[a-z0-9-]+/i.test(u)) ||
+      // Darwinbox: {tenant}.darwinbox.com/ms/candidate/jobs/{id}
+      (/\.darwinbox\.(com|in)\/ms\/candidate\/jobs\/\d+/i.test(u)) ||
+      // Keka: {tenant}.keka.com/careers/job/{id}
+      (/\.keka\.com\/careers\/job\/[a-z0-9-]+/i.test(u)) ||
+      // Dayforce HCM: dayforcehcm.com/CandidatePortal/{locale}/{tenant}/Posting/View/{id}
+      (/dayforcehcm\.com\/CandidatePortal\/[a-z-]+\/[a-z0-9-]+\/Posting\/View\/\d+/i.test(u)) ||
+      // EasyCruit: {company}.easycruit.com/vacancy/{vacancy_id}/{sub_id}
+      (/\.easycruit\.com\/vacancy\/\d+/i.test(u)) ||
+      // Varbi: {company}.varbi.com/{locale}/what:job/jobID:{id}
+      (/\.varbi\.com\/[a-z]+\/what:job\/jobID:\d+/i.test(u))
     );
   });
 }
@@ -178,8 +230,8 @@ export function titleFromUrl(url: string): string {
       return beforeUnderscore.replace(/-/g, ' ');
     }
 
-    // Lever: /stripe/abc123-senior-software-engineer
-    if (u.hostname === 'jobs.lever.co' && parts.length >= 2) {
+    // Lever: /stripe/abc123-senior-software-engineer (US + EU)
+    if ((u.hostname === 'jobs.lever.co' || u.hostname === 'jobs.eu.lever.co') && parts.length >= 2) {
       const slug = parts[parts.length - 1];
       // Remove UUID prefix: abc123-senior-... → senior-...
       const noUuid = slug.replace(/^[0-9a-f-]{36}-/, '').replace(/^[0-9a-f]{8}-[0-9a-f]{4}-.*?-/, '');
@@ -209,6 +261,51 @@ export function titleFromUrl(url: string): string {
 
     // Taleo: {company}.taleo.net/careersection/2/jobdetail.ftl?job=12345 → no title in URL
     if (u.hostname.endsWith('.taleo.net')) return '';
+
+    // Cornerstone: {tenant}.csod.com/ats/careersite/jobdetails.aspx?id=123 → no title in URL
+    if (u.hostname.endsWith('.csod.com')) return '';
+
+    // Darwinbox: {tenant}.darwinbox.com/ms/candidate/jobs/12345 → no title in URL
+    if (u.hostname.endsWith('.darwinbox.com') || u.hostname.endsWith('.darwinbox.in')) return '';
+
+    // Paycor: {tenant}.paycor.com/career-portal/job/12345 → no title in URL
+    if (u.hostname.endsWith('.paycor.com')) return '';
+
+    // Dayforce HCM: dayforcehcm.com/CandidatePortal/en-US/{tenant}/Posting/View/12345 → no title in URL
+    if (u.hostname === 'www.dayforcehcm.com') return '';
+
+    // Hireology: {tenant}.hireology.com/jobs/12345 → no title in URL
+    if (u.hostname.endsWith('.hireology.com')) return '';
+
+    // PageUp: jobs.pageuppeople.com/{company}/go/{id} → numeric ID
+    if (u.hostname === 'jobs.pageuppeople.com') return '';
+
+    // Avature: careers.avature.net/{company}/ViewJob/{id} → numeric ID
+    if (u.hostname === 'careers.avature.net') return '';
+
+    // EasyCruit: {company}.easycruit.com/vacancy/{id}/{subid} → no title in URL
+    if (u.hostname.endsWith('.easycruit.com')) return '';
+
+    // Varbi: {company}.varbi.com/{locale}/what:job/jobID:{id} → no title in URL
+    if (u.hostname.endsWith('.varbi.com')) return '';
+
+    // Jobteaser: /en/company/{slug}/jobs/{job-ref} → job-ref is typically a descriptive slug
+    if ((u.hostname === 'jobteaser.com' || u.hostname === 'www.jobteaser.com') && parts.indexOf('jobs') >= 0) {
+      const jobsIdx = parts.indexOf('jobs');
+      const slug = parts[jobsIdx + 1];
+      if (slug && slug.length > 4) return slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    }
+
+    // WTTJ: /en/companies/{slug}/jobs/{job-slug}
+    if ((u.hostname === 'welcometothejungle.com' || u.hostname === 'www.welcometothejungle.com')) {
+      const jobsIdx = parts.indexOf('jobs');
+      const slug = parts[jobsIdx + 1];
+      if (slug && slug.length > 4) {
+        // Remove trailing UUID-like hash: "software-engineer-XXXXXX" → "Software Engineer"
+        const clean = slug.replace(/-[A-Za-z0-9]{6,8}$/, '');
+        return clean.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      }
+    }
 
     // Generic: take the most descriptive path segment
     for (let i = parts.length - 1; i >= 0; i--) {

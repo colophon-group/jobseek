@@ -74,16 +74,25 @@ function parseJobPosting(obj: Record<string, unknown>): JobPosting | null {
   let location: string | undefined;
   const loc = obj['jobLocation'];
   // jobLocation can be a string, object, or array
-  const firstLoc = Array.isArray(loc) ? loc[0] : loc;
-  if (typeof firstLoc === 'string') {
-    location = firstLoc;
-  } else if (firstLoc && typeof firstLoc === 'object') {
-    const locObj = firstLoc as Record<string, unknown>;
-    const addr = locObj['address'] as Record<string, unknown> | undefined;
-    location = String(
-      locObj['name'] ?? addr?.['addressLocality'] ?? addr?.['addressRegion'] ?? ''
-    ).trim() || undefined;
+  const locItems = Array.isArray(loc) ? loc : loc ? [loc] : [];
+  const locParts: string[] = [];
+  for (const l of locItems) {
+    if (typeof l === 'string') {
+      if (l) locParts.push(l);
+    } else if (l && typeof l === 'object') {
+      const locObj = l as Record<string, unknown>;
+      const addr = locObj['address'] as Record<string, unknown> | undefined;
+      const part = String(
+        locObj['name'] ?? addr?.['addressLocality'] ?? addr?.['addressRegion'] ?? ''
+      ).trim();
+      if (part) locParts.push(part);
+    }
   }
+  // Also check jobLocationType for remote
+  if (!locParts.length && obj['jobLocationType'] === 'TELECOMMUTE') {
+    locParts.push('Remote');
+  }
+  location = locParts.length > 0 ? locParts.join(', ') : undefined;
 
   const identifier = obj['identifier'] as Record<string, unknown> | undefined;
 

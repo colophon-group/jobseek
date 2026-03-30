@@ -22,10 +22,11 @@ function extractBambooSlug(originalUrl: string): string | null {
 export async function discoverFromBambooHR(): Promise<import('../types.js').CompanyDiscovery[]> {
   log.info('bamboohr: discovering company subdomains via Wayback CDX wildcard');
 
+  // *.bamboohr.com/jobs* has 259 CDX pages (~25.9M entries) — use 10 pages for better coverage
   const slugCounts = await cdxEnumerateSlugs(
     '*.bamboohr.com/jobs*',
     extractBambooSlug,
-    5000,
+    10000, 10,
   );
 
   log.info(`bamboohr/cdx: found ${slugCounts.size} unique BambooHR company subdomains`);

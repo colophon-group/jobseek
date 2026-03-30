@@ -5,7 +5,7 @@ import type { ExtractionResult, JobPosting } from '../types.js';
  * Generic CSS-based extractor for server-rendered career pages.
  * Tries common job card selectors used across many ATS / career sites.
  */
-export function extractGeneric($: CheerioAPI, _url: URL): ExtractionResult {
+export function extractGeneric($: CheerioAPI, pageUrl: URL): ExtractionResult {
   // Try each selector pattern; stop at first that produces results
   const selectorGroups = [
     // Data attribute patterns — most reliable
@@ -37,7 +37,7 @@ export function extractGeneric($: CheerioAPI, _url: URL): ExtractionResult {
   }
 
   // Last resort: look for any <a> that points to a /jobs/ path with a title
-  const linkJobs = extractFromJobLinks($);
+  const linkJobs = extractFromJobLinks($, pageUrl);
   if (linkJobs.length > 0) return { jobs: linkJobs, method: 'job-links' };
 
   return { jobs: [], method: 'none' };
@@ -113,21 +113,27 @@ function trySelectors($: CheerioAPI, selectors: string[]): JobPosting[] {
 /**
  * Fallback: find <a href="/jobs/..."> or <a href="...careers..."> links and infer titles.
  */
-function extractFromJobLinks($: CheerioAPI): JobPosting[] {
+function extractFromJobLinks($: CheerioAPI, baseUrl: URL): JobPosting[] {
   const jobs: JobPosting[] = [];
   const seen = new Set<string>();
 
   $('a[href]').each((_, el) => {
     const $a = $(el);
-    const href = $a.attr('href') ?? '';
+    const rawHref = $a.attr('href') ?? '';
     const title = $a.text().trim();
+
+    // Resolve relative URLs to absolute
+    let href = rawHref;
+    try {
+      href = new URL(rawHref, baseUrl).href;
+    } catch { href = rawHref; }
 
     if (!title || title.length < 3 || title.length > 150) return;
 
     // Href should look job-related
     if (
-      !/\/(jobs?|careers?|positions?|openings?|apply|posting|vacancy|vacancies|stellenangebote?|offres?-d-emploi|requisition)\//i.test(href) &&
-      !/[?&](jid|job_id|jobId|req_id|reqId|jobReqId)=/i.test(href)
+      !/\/(jobs?|careers?|positions?|openings?|apply|posting|vacancy|vacancies|stellenangebote?|offres?-d-emploi|requisition|talentpool|emploi|joboffer|job-offer|offre|angebot|rolle?n?|stellen)\//i.test(href) &&
+      !/[?&](jid|job_id|jobId|req_id|reqId|jobReqId|jobNumber|reqNumber|positionId)=/i.test(href)
     ) return;
 
     const key = title.toLowerCase();

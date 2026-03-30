@@ -21,7 +21,8 @@ function extractJazzHRSlug(url: string): string | null {
 
 export async function discoverFromJazzHR(): Promise<CompanyDiscovery[]> {
   log.info('jazzhr: CDX wildcard discovery');
-  const slugs = await cdxEnumerateSlugs('*.applytojob.com/*', extractJazzHRSlug, 5000);
+  // *.applytojob.com/* has 573 CDX pages — use 12 pages for significantly better coverage
+  const slugs = await cdxEnumerateSlugs('*.applytojob.com/*', extractJazzHRSlug, 5000, 12);
   log.info(`jazzhr: ${slugs.size} unique subdomains`);
   return slugs.size ? slugsToDiscoveries(slugs, s => `https://${s}.applytojob.com/apply`, 'jazzhr') : [];
 }
@@ -42,7 +43,8 @@ function extractTaleoSlug(url: string): string | null {
 
 export async function discoverFromTaleo(): Promise<CompanyDiscovery[]> {
   log.info('taleo: CDX wildcard discovery — Oracle enterprise ATS with 5000+ companies');
-  const slugs = await cdxEnumerateSlugs('*.taleo.net/careersection*', extractTaleoSlug, 10000);
+  // *.taleo.net/careersection* has 1027 CDX pages — use 15 pages for significantly better coverage
+  const slugs = await cdxEnumerateSlugs('*.taleo.net/careersection*', extractTaleoSlug, 10000, 15);
   log.info(`taleo: ${slugs.size} unique company slugs`);
   if (!slugs.size) return [];
   return slugsToDiscoveries(slugs, s => `https://${s}.taleo.net/careersection/2/jobsearch.ftl`, 'taleo');

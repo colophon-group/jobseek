@@ -28,10 +28,11 @@ function extractFountainSlug(url: string): string | null {
 export async function discoverFromFountain(): Promise<CompanyDiscovery[]> {
   log.info('fountain: CDX discovery — gig economy ATS (Uber, DoorDash, Instacart, etc.)');
 
+  // jobs.fountain.com/*/* has 248 CDX pages — use 10 pages for significantly better coverage
   const slugs = await cdxEnumerateSlugs(
     'jobs.fountain.com/*/*',
     extractFountainSlug,
-    5000,
+    5000, 10,
   );
 
   log.info(`fountain: ${slugs.size} unique company slugs`);

@@ -44,7 +44,9 @@ export async function extractFromRippling(
 
   const apiUrls = [
     `https://ats.rippling.com/api/v1/${slug}/jobs`,
+    `https://ats.rippling.com/api/public/v1/${slug}/job-postings`,
     `https://ats.rippling.com/${slug}/jobs.json`,
+    `https://ats.rippling.com/${slug}/api/jobs`,
   ];
 
   for (const apiUrl of apiUrls) {

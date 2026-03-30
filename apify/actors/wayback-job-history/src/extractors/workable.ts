@@ -43,11 +43,21 @@ export async function extractFromWorkable(
   const slug = extractWorkableSlug(url);
   if (!slug) return { jobs: [], method: 'workable-api' };
 
-  const apiUrl = `https://apply.workable.com/api/v2/widget/accounts/${slug}/jobs?details=1`;
-  log.debug(`Trying Workable API via Wayback: ${apiUrl}`);
+  // Try multiple Workable API endpoints (v2 widget, v1, and legacy subdomain)
+  const apiUrls = [
+    `https://apply.workable.com/api/v2/widget/accounts/${slug}/jobs?details=1`,
+    `https://apply.workable.com/api/v3/accounts/${slug}/jobs`,
+    `https://${slug}.workable.com/api/v2/widget/accounts/${slug}/jobs`,
+  ];
 
-  const data = await fetchArchivedJson<WorkableResponse>(timestamp, apiUrl);
-  const rawJobs = data?.results ?? data?.jobs ?? [];
+  let rawJobs: WorkableJob[] = [];
+  for (const apiUrl of apiUrls) {
+    log.debug(`Trying Workable API via Wayback: ${apiUrl}`);
+    const data = await fetchArchivedJson<WorkableResponse>(timestamp, apiUrl);
+    rawJobs = data?.results ?? data?.jobs ?? [];
+    if (rawJobs.length > 0) break;
+  }
+
   if (rawJobs.length === 0) return { jobs: [], method: 'workable-api' };
 
   const jobs: JobPosting[] = rawJobs.map(j => {

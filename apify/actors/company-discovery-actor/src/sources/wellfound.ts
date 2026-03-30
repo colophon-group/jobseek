@@ -25,12 +25,15 @@ function extractWellfoundSlug(url: string): string | null {
 export async function discoverFromWellfound(): Promise<CompanyDiscovery[]> {
   log.info('wellfound: CDX discovery — AngelList Talent startup job board');
 
-  const [wf, al] = await Promise.all([
-    cdxEnumerateSlugs('wellfound.com/company/*/jobs', extractWellfoundSlug, 10000),
-    cdxEnumerateSlugs('angel.co/company/*/jobs', extractWellfoundSlug, 5000),
+  // wellfound.com/company/* has 8 CDX pages — use 8 pages for full coverage
+  const [wf, wfBroad, al] = await Promise.all([
+    cdxEnumerateSlugs('wellfound.com/company/*/jobs', extractWellfoundSlug, 10000, 6),
+    cdxEnumerateSlugs('wellfound.com/company/*', extractWellfoundSlug, 10000, 8),
+    cdxEnumerateSlugs('angel.co/company/*/jobs', extractWellfoundSlug, 5000, 4),
   ]);
 
   const merged = new Map(wf);
+  for (const [k, v] of wfBroad) merged.set(k, (merged.get(k) ?? 0) + v);
   for (const [k, v] of al) merged.set(k, (merged.get(k) ?? 0) + v);
 
   log.info(`wellfound: ${merged.size} unique companies`);

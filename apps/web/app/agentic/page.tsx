@@ -83,7 +83,7 @@ export default function Page() {
     {
       method: "GET",
       path: "/api/discovery",
-      summary: "Top hiring companies, growing/shrinking signals, and source breakdown from 37+ job boards",
+      summary: "Top hiring companies, growing/shrinking signals, and source breakdown from 39+ job boards",
       auth: false,
       params: [],
       returns: `{ runId, runAt, runStatus, companiesDiscovered, totalJobsTracked, topCompanies: [{ name, jobs, source, url }], growingCompanies: [{ name, jobs, delta, url }], shrinkingCompanies: [{ name, jobs, delta }], newHiringCompanies: [{ name, jobs }], sourceBreakdown: { [source]: count }, registry: { portals[] } }`,
@@ -171,7 +171,7 @@ export default function Page() {
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold tracking-tight">Agentic API</h1>
         <p className="text-muted text-sm max-w-2xl">
-          REST API for AI agents to search the Job Seek job index, detect ghost jobs via Wayback Machine analysis, and discover actively hiring companies from 30+ job boards. Job search requires an active subscription. Ghost-job analysis and company discovery are open-tier. All responses are JSON.
+          REST API for AI agents to search the Job Seek job index, detect ghost jobs via Wayback Machine analysis, and discover actively hiring companies from 39+ job boards. Job search requires an active subscription. Ghost-job analysis and company discovery are open-tier. All responses are JSON.
         </p>
         <div className="flex items-center gap-2 pt-1">
           <span className="font-mono text-xs bg-surface border border-divider rounded px-2 py-0.5 text-muted">
