@@ -153,11 +153,12 @@ Based on this data and your knowledge of companies with historically high ghost 
 
 High-priority target categories (pick across categories for diversity):
 - Indian IT outsourcers with US/EU presence: Infosys, Wipro, TCS, Cognizant, HCL Technologies, Capgemini — notorious for pipeline-building ghost posts
-- Big 4 / management consulting: Deloitte, PwC, EY, KPMG, Accenture — post evergreen roles year-round
-- Defense & government contractors: Leidos, SAIC, Booz Allen Hamilton, Northrop Grumman — slow clearance hiring masks ghost posts
-- Banks & fintech: JPMorgan, Goldman Sachs, Citi, Wells Fargo — "always interviewing" culture
-- Tech giants post-layoff: Meta, Amazon, Microsoft, Google — mass layoffs while maintaining job boards
-- Retail / logistics at scale: Walmart, Target, Amazon Logistics — high turnover creates perpetual openings
+- Big 4 / management consulting: Deloitte, PwC, EY, KPMG, Accenture, McKinsey, BCG, Bain — post evergreen roles year-round
+- Defense & government contractors: Leidos, SAIC, Booz Allen Hamilton, Northrop Grumman, Lockheed Martin — slow clearance hiring masks ghost posts
+- Banks & fintech: JPMorgan, Goldman Sachs, Citi, Wells Fargo, Deutsche Bank, Credit Suisse (now UBS), Julius Baer — "always interviewing" culture
+- Tech giants post-layoff: Meta, Amazon, Microsoft, Google, Salesforce — mass layoffs while maintaining job boards
+- Retail / logistics at scale: Walmart, Amazon Logistics, Lidl, Carrefour, Metro AG — high turnover creates perpetual openings
+- Swiss/European corporates: Novartis, Roche, Nestlé, ABB, Zurich Insurance, Siemens, Allianz — often post regulatory/compliance roles for long periods
 
 For each company provide the EXACT Wayback-crawlable career portal URL (prefer Workday myworkdayjobs.com URLs, Greenhouse boards.greenhouse.io URLs, or Lever jobs.lever.co URLs where you know them — NOT generic careers pages that redirect to ATS).
 

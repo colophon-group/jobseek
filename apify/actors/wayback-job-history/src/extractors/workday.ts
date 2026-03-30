@@ -51,11 +51,13 @@ export async function extractFromWorkday(
   const { tenant, instance, board } = params;
 
   // Try the Workday CXS jobs API (some older responses archived as GET)
-  const apiUrl =
-    `https://${tenant}.${instance}.myworkdayjobs.com/wday/cxs/${tenant}/${board}/jobs`;
+  // Try both the base endpoint and with ?limit=100 to get more jobs
+  const baseApiUrl = `https://${tenant}.${instance}.myworkdayjobs.com/wday/cxs/${tenant}/${board}/jobs`;
+  const apiUrl = `${baseApiUrl}?limit=100&offset=0`;
 
   log.debug(`Trying Workday API via Wayback: ${apiUrl}`);
-  const data = await fetchArchivedJson<WorkdayApiResponse>(timestamp, apiUrl);
+  const data = await fetchArchivedJson<WorkdayApiResponse>(timestamp, apiUrl) ??
+               await fetchArchivedJson<WorkdayApiResponse>(timestamp, baseApiUrl);
 
   if (data?.jobPostings && data.jobPostings.length > 0) {
     const jobs: JobPosting[] = data.jobPostings.map(j => ({
