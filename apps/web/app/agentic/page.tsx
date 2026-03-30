@@ -90,6 +90,18 @@ export default function Page() {
       example: `GET ${base}/discovery`,
     },
     {
+      method: "POST",
+      path: "/api/discovery/trigger",
+      summary: "Trigger a fresh company-discovery run (results visible in GET /api/discovery after ~15–30 min)",
+      auth: false,
+      params: [
+        { name: "sources", type: "string[]", required: false, desc: "Override the default sources list" },
+        { name: "enableAiDiscovery", type: "boolean", required: false, desc: "Enable Gemini portal discovery (default true)" },
+      ],
+      returns: "{ runId: string, status: string }",
+      example: `POST ${base}/discovery/trigger\nContent-Type: application/json\n\n{}`,
+    },
+    {
       method: "GET",
       path: "/api/ping",
       summary: "Health check — returns { ok: true }",
