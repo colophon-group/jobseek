@@ -34,6 +34,9 @@
  *  28.  JOIN CDX                — join.com/companies/* (EU startup job board)
  *  29.  Pinpoint HQ CDX         — app.pinpointhq.com/{company} (UK/EU Series A–C ATS)
  *  30.  Comeet CDX              — recruiting.comeet.co/jobs/{company} (Israel/EU/US tech ATS)
+ *  31.  Fountain CDX            — jobs.fountain.com/{company} (gig/shift-work ATS: Uber, DoorDash, Instacart)
+ *  32.  Rippling CDX            — ats.rippling.com/{company} (modern HCM/ATS: Series B+ tech scale-ups)
+ *  33.  Ashby Boards CDX        — boards.ashbyhq.com/{company} (alternative Ashby domain, extends coverage)
  *
  * AI-powered discovery (runs when GOOGLE_AI_API_KEY is set):
  *   - Loads portal registry from KV store (persisted across runs)
@@ -73,6 +76,8 @@ import { discoverFromWellfound } from './sources/wellfound.js';
 import { discoverFromRemoteOK } from './sources/remoteok.js';
 import { discoverFromWeWorkRemotely } from './sources/weworkremotely.js';
 import { discoverFromSoftgarden, discoverFromJoin } from './sources/softgarden.js';
+import { discoverFromFountain } from './sources/fountain.js';
+import { discoverFromRippling, discoverFromAshbyBoards } from './sources/rippling.js';
 import { suggestNewPortals } from './sources/ai-discovery.js';
 import { probePortal, validatePortal } from './sources/generic-portal.js';
 import { loadRegistry, saveRegistry, getActivePortals, upsertPortal } from './registry.js';
@@ -88,7 +93,7 @@ await Actor.init();
 
 const input = (await Actor.getInput<Input>()) ?? {};
 const {
-  sources = ['greenhouse', 'themuse', 'megaemployers', 'arbeitnow', 'remotive', 'remoteok', 'hiring-cafe', 'himalayas', 'ycombinator', 'bamboohr', 'recruitee', 'workable', 'ashby', 'lever', 'greenhouse-cdx', 'jazzhr', 'breezyhr', 'teamtailor', 'personio', 'icims', 'taleo', 'jobvite', 'successfactors', 'smartrecruiters', 'pinpoint', 'comeet', 'linkedin', 'indeed', 'glassdoor', 'stepstone', 'xing', 'workday-cdx', 'wellfound', 'weworkremotely', 'softgarden', 'join'],
+  sources = ['greenhouse', 'themuse', 'megaemployers', 'arbeitnow', 'remotive', 'remoteok', 'hiring-cafe', 'himalayas', 'ycombinator', 'bamboohr', 'recruitee', 'workable', 'ashby', 'lever', 'greenhouse-cdx', 'jazzhr', 'breezyhr', 'teamtailor', 'personio', 'icims', 'taleo', 'jobvite', 'successfactors', 'smartrecruiters', 'pinpoint', 'comeet', 'fountain', 'rippling', 'ashby-boards', 'linkedin', 'indeed', 'glassdoor', 'stepstone', 'xing', 'workday-cdx', 'wellfound', 'weworkremotely', 'softgarden', 'join'],
   maxCompaniesPerSource = 1000,
   enableAiDiscovery = true,
   maxAiSuggestionsPerRun = 4,
@@ -172,6 +177,9 @@ const staticSourceMap: Record<string, SourceFn> = {
   weworkremotely:  () => discoverFromWeWorkRemotely(),
   softgarden:      () => discoverFromSoftgarden(),
   join:            () => discoverFromJoin(),
+  fountain:        () => discoverFromFountain(),
+  rippling:        () => discoverFromRippling(),
+  'ashby-boards':  () => discoverFromAshbyBoards(),
 };
 
 /** Fetch a single source; returns raw results without mutating shared state. */

@@ -9,36 +9,76 @@ import type { CompanyDiscovery } from '../types.js';
 
 const CDX_API = 'http://web.archive.org/cdx/search/cdx';
 
-/** Enumerate unique slugs from a CDX URL pattern. */
+/**
+ * Enumerate unique slugs from a CDX URL pattern.
+ * Supports multi-page CDX pagination via showResumeKey — automatically follows
+ * resume keys to fetch more pages until results are exhausted or maxPages is reached.
+ */
 export async function cdxEnumerateSlugs(
   cdxUrlPattern: string,
   extractSlug: (originalUrl: string) => string | null,
   limit = 5000,
+  maxPages = 4,
 ): Promise<Map<string, number>> {
-  // Do NOT encode the cdxUrlPattern — CDX API requires literal * wildcards.
-  // Other params are safe as they contain no special characters.
-  const url = `${CDX_API}?url=${cdxUrlPattern}&output=json&fl=original&filter=statuscode:200&collapse=urlkey&limit=${limit}`;
+  const slugCounts = new Map<string, number>();
+  let resumeKey: string | null = null;
+  let page = 0;
 
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      const resp = await gotScraping({ url, timeout: { request: 60_000 } });
-      if (resp.statusCode !== 200) continue;
+  while (page < maxPages) {
+    // Do NOT encode the cdxUrlPattern — CDX API requires literal * wildcards.
+    const baseParams = `url=${cdxUrlPattern}&output=json&fl=original&filter=statuscode:200&collapse=urlkey&limit=${limit}&showResumeKey=true`;
+    const url = resumeKey
+      ? `${CDX_API}?${baseParams}&resumeKey=${encodeURIComponent(resumeKey)}`
+      : `${CDX_API}?${baseParams}`;
 
-      const rows: string[][] = JSON.parse(resp.body);
-      const slugCounts = new Map<string, number>();
+    let rows: string[][] = [];
+    let success = false;
 
-      for (const [originalUrl] of rows.slice(1)) {
-        const slug = extractSlug(originalUrl);
-        if (slug) slugCounts.set(slug, (slugCounts.get(slug) ?? 0) + 1);
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const resp = await gotScraping({ url, timeout: { request: 60_000 } });
+        if (resp.statusCode !== 200) {
+          if (attempt < 2) await sleep(3_000 * (attempt + 1));
+          continue;
+        }
+        rows = JSON.parse(resp.body) as string[][];
+        success = true;
+        break;
+      } catch (err) {
+        log.warning(`cdx-enumerate p${page}: attempt ${attempt + 1} failed: ${err}`);
+        if (attempt < 2) await sleep(3_000 * (attempt + 1));
       }
-
-      return slugCounts;
-    } catch (err) {
-      log.warning(`cdx-enumerate: attempt ${attempt + 1} failed: ${err}`);
-      if (attempt < 2) await sleep(3_000 * (attempt + 1));
     }
+
+    if (!success || rows.length < 2) break;
+
+    // Check if the last row is a resume key (single-element array)
+    const lastRow = rows[rows.length - 1];
+    const hasResumeKey = lastRow?.length === 1 && lastRow[0] !== 'original';
+    if (hasResumeKey) {
+      resumeKey = lastRow[0];
+      rows = rows.slice(0, -1); // strip resume key row from data
+    } else {
+      resumeKey = null;
+    }
+
+    // Skip header row (first row) on first page; CDX includes it once
+    const dataRows = page === 0 ? rows.slice(1) : rows;
+    for (const row of dataRows) {
+      const originalUrl = row[0];
+      if (!originalUrl) continue;
+      const slug = extractSlug(originalUrl);
+      if (slug) slugCounts.set(slug, (slugCounts.get(slug) ?? 0) + 1);
+    }
+
+    log.debug(`cdx-enumerate: p${page} → ${dataRows.length} rows (total slugs: ${slugCounts.size})`);
+
+    if (!resumeKey) break; // no more pages
+    page++;
+    await sleep(1_500); // polite pause between CDX pages
   }
-  return new Map();
+
+  return slugCounts;
 }
 
 /** Convert a slug to a readable company name. */

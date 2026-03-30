@@ -47,15 +47,17 @@ export async function analyzeWithGemini(
 
   const orgSignalLine = stats.orgGhostSignal ? `\n- Org-level signal: ${stats.orgGhostSignal}` : '';
   const hcLine = hcSignal?.found ? `\n- hiring.cafe live signal: ${hcSignal.activeListings} active listings, avg ${hcSignal.avgViews.toFixed(1)} views, ${hcSignal.avgApplications.toFixed(0)} applications${hcSignal.lowEngagement ? ' — LOW ENGAGEMENT (corroborates ghost pattern)' : ' — moderate engagement'}` : hcSignal !== undefined ? '\n- hiring.cafe: company not found (no live listings)' : '';
+  const analysisPeriodDays = Math.round((new Date(periodEnd).getTime() - new Date(periodStart).getTime()) / 86_400_000);
   const prompt = `You are an expert labor market analyst specializing in "ghost jobs" — job postings companies publish with no genuine intent to fill them in the near term.
 
-Analyze the following historical job posting data for ${company} (${portalUrl}) covering ${periodStart} to ${periodEnd}.
+Analyze the following historical job posting data for ${company} (${portalUrl}) covering ${periodStart} to ${periodEnd} (${analysisPeriodDays} days).
 
 ## Stats
 - Total unique job URLs tracked: ${stats.totalUniqueJobs}
 - Ghost candidates (score ≥ 70): ${stats.ghostCandidates} (${Math.round(stats.ghostRate * 100)}%)
 - Median posting duration: ${stats.medianDurationDays} days
-- Average posting duration: ${stats.avgDurationDays} days${orgSignalLine}${hcLine}
+- Average posting duration: ${stats.avgDurationDays} days
+- Analysis window: ${analysisPeriodDays} days${orgSignalLine}${hcLine}
 
 ## Longest-running postings (top 25)
 ${JSON.stringify(topJobs, null, 2)}
@@ -140,7 +142,7 @@ export async function discoverGhostCompanies(
     )
     .join('\n');
 
-  const alreadyAnalyzed = results.map(r => r.company).join(', ');
+  const alreadyAnalyzed = results.map(r => `${r.company} (${r.portalUrl})`).join(', ');
 
   const prompt = `You are a labor market researcher specializing in ghost job postings — roles that companies post indefinitely with no genuine near-term hiring intent.
 
