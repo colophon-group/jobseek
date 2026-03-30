@@ -24,7 +24,8 @@ jobs:
       - name: Check for pending images
         id: images
         run: |
-          FILES=$(gh pr diff "$PR" --repo "$REPO" --name-only)
+          # Use paginated files API — gh pr diff fails on large diffs (>20k lines)
+          FILES=$(gh api --paginate "repos/$REPO/pulls/$PR/files" --jq '.[].filename')
           if echo "$FILES" | grep -q '^apps/crawler/data/images/'; then
             echo "pending=true" >> "$GITHUB_OUTPUT"
             echo "Images pending — upload-company-images workflow will handle labeling"
