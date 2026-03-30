@@ -11,10 +11,38 @@ interface CdxOptions {
 /**
  * Query the Wayback CDX Search API for all archived snapshots of a URL.
  * Uses collapse=timestamp:8 to return at most one snapshot per day.
+ * If the primary URL returns 0 results, tries alternative URL variants.
  */
 export async function fetchCdxSnapshots(opts: CdxOptions): Promise<CdxSnapshot[]> {
   const { url, startDate, endDate, maxSnapshots = 365 } = opts;
 
+  // Build alternative URL variants to try if primary returns nothing
+  const urlVariants: string[] = [url];
+  try {
+    const u = new URL(url);
+    // Try opposite protocol
+    const altProtocol = u.protocol === 'https:' ? 'http' : 'https';
+    urlVariants.push(url.replace(u.protocol, `${altProtocol}:`));
+    // Try with/without trailing slash on pathname
+    if (u.pathname.endsWith('/') && u.pathname.length > 1) {
+      urlVariants.push(url.replace(/\/$/, ''));
+    } else {
+      urlVariants.push(url + '/');
+    }
+  } catch { /* malformed URL — just use as-is */ }
+
+  for (const variant of urlVariants) {
+    const snapshots = await queryCdx(variant, startDate, endDate, maxSnapshots);
+    if (snapshots.length > 0) {
+      if (variant !== url) log.info(`CDX found results using alternative URL: ${variant}`);
+      return snapshots;
+    }
+  }
+
+  return [];
+}
+
+async function queryCdx(url: string, startDate?: string, endDate?: string, maxSnapshots = 365): Promise<CdxSnapshot[]> {
   const params = new URLSearchParams({
     url,
     output: 'json',
@@ -51,7 +79,6 @@ export async function fetchCdxSnapshots(opts: CdxOptions): Promise<CdxSnapshot[]
 
       const rows: string[][] = await res.json();
       if (!Array.isArray(rows) || rows.length < 2) {
-        log.warning('No CDX results found');
         return [];
       }
 

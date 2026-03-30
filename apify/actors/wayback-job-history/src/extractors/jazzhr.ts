@@ -1,69 +1,44 @@
 import { log } from 'apify';
 import { fetchArchivedJson } from '../fetch.js';
 import type { ExtractionResult, JobPosting } from '../types.js';
-
-interface JazzHRJob {
-  id: string;
-  title: string;
-  city?: string;
-  state?: string;
-  zip?: string;
-  country?: string;
-  employment_type?: string;
-  department?: string;
-}
-
-interface JazzHRResponse {
-  jobs?: JazzHRJob[];
-}
-
-/**
- * Detect JazzHR company slug from a URL.
- * Handles: {company}.applytojob.com/apply
- */
+interface JJob { id:string; title:string; city?:string; state?:string; country?:string; employment_type?:string; department?:string }
 export function extractJazzHRSlug(url: URL): string | null {
-  const hostname = url.hostname;
-  if (hostname.endsWith('.applytojob.com')) {
-    const slug = hostname.replace('.applytojob.com', '');
-    return slug && slug !== 'www' ? slug : null;
-  }
-  return null;
+  if (!url.hostname.endsWith('.applytojob.com')) return null;
+  const s = url.hostname.replace('.applytojob.com',''); return s&&s!=='www'?s:null;
 }
-
-/**
- * Fetch jobs from the JazzHR public jobs feed via the Wayback Machine.
- * API: GET https://{company}.applytojob.com/apply?format=json
- */
-export async function extractFromJazzHR(
-  url: URL,
-  timestamp: string,
-): Promise<ExtractionResult> {
-  const slug = extractJazzHRSlug(url);
-  if (!slug) return { jobs: [], method: 'jazzhr-api' };
-
-  const apiUrl = `https://${slug}.applytojob.com/apply?format=json`;
-  log.debug(`Trying JazzHR API via Wayback: ${apiUrl}`);
-
-  const data = await fetchArchivedJson<JazzHRResponse | JazzHRJob[]>(timestamp, apiUrl);
-
-  const rawJobs: JazzHRJob[] = Array.isArray(data)
-    ? data
-    : (data as JazzHRResponse)?.jobs ?? [];
-
-  if (rawJobs.length === 0) return { jobs: [], method: 'jazzhr-api' };
-
-  const jobs: JobPosting[] = rawJobs.map(j => {
-    const parts = [j.city, j.state, j.country].filter(Boolean);
-    return {
-      title: j.title,
-      location: parts.length > 0 ? parts.join(', ') : undefined,
-      department: j.department,
-      url: `https://${slug}.applytojob.com/apply/${j.id}`,
-      id: j.id,
-      employmentType: j.employment_type,
-    };
-  }).filter(j => j.title.length > 0);
-
-  log.info(`JazzHR API: ${jobs.length} jobs via Wayback`);
-  return { jobs, method: 'jazzhr-api' };
+export async function extractFromJazzHR(url: URL, ts: string): Promise<ExtractionResult> {
+  const slug = extractJazzHRSlug(url); if (!slug) return {jobs:[],method:'jazzhr-api'};
+  const data = await fetchArchivedJson<{jobs?:JJob[]}|JJob[]>(ts,`https://${slug}.applytojob.com/apply?format=json`);
+  const raw: JJob[] = Array.isArray(data)?data:(data as {jobs?:JJob[]})?.jobs??[];
+  if (!raw.length) return {jobs:[],method:'jazzhr-api'};
+  const jobs: JobPosting[] = raw.map(j=>({title:j.title,location:[j.city,j.state,j.country].filter(Boolean).join(', ')||undefined,department:j.department,url:`https://${slug}.applytojob.com/apply/${j.id}`,id:j.id,employmentType:j.employment_type})).filter(j=>j.title.length>0);
+  log.info(`JazzHR: ${jobs.length} jobs`); return {jobs,method:'jazzhr-api'};
+}
+interface TaleoJob { requisitionId?:string; jobTitle?:string; title?:string; location?:string; jobFamily?:string; contractType?:string }
+export function extractTaleoSlug(url: URL): string | null {
+  if (!url.hostname.endsWith('.taleo.net')) return null;
+  const s = url.hostname.replace('.taleo.net','').toLowerCase();
+  return (!s||s.length<2||['www','api','app','preview','cdn','mail','secure'].includes(s))?null:s;
+}
+export async function extractFromTaleo(url: URL, ts: string): Promise<ExtractionResult> {
+  if (!extractTaleoSlug(url)) return {jobs:[],method:'taleo-api'};
+  const data = await fetchArchivedJson<{requisitions?:TaleoJob[];results?:TaleoJob[]}>(ts,`https://${url.hostname}/careersection/rest/jobboard/requisitionList?lang=en`);
+  const raw: TaleoJob[] = data?.requisitions??data?.results??[];
+  if (!raw.length) return {jobs:[],method:'taleo-api'};
+  const jobs: JobPosting[] = raw.map(j=>({title:j.jobTitle??j.title??'',location:j.location,department:j.jobFamily,id:j.requisitionId,url:j.requisitionId?`https://${url.hostname}/careersection/2/jobdetail.ftl?job=${j.requisitionId}`:undefined,employmentType:j.contractType})).filter(j=>j.title.length>0);
+  log.info(`Taleo: ${jobs.length} jobs`); return {jobs,method:'taleo-api'};
+}
+interface JVJob { id?:string; title?:string; jobTitle?:string; location?:string; department?:string; jobType?:string }
+export function extractJobviteSlug(url: URL): string | null {
+  if (!url.hostname.endsWith('.jobvite.com')) return null;
+  const s = url.hostname.replace('.jobvite.com','').toLowerCase();
+  return (!s||s.length<2||['www','api','app','jobs','login','support','careers','hire','web'].includes(s))?null:s;
+}
+export async function extractFromJobvite(url: URL, ts: string): Promise<ExtractionResult> {
+  const slug = extractJobviteSlug(url); if (!slug) return {jobs:[],method:'jobvite-api'};
+  const data = await fetchArchivedJson<{jobs?:JVJob[]}|JVJob[]>(ts,`https://${slug}.jobvite.com/api/v4/job/list`);
+  const raw: JVJob[] = Array.isArray(data)?data:(data as {jobs?:JVJob[]})?.jobs??[];
+  if (!raw.length) return {jobs:[],method:'jobvite-api'};
+  const jobs: JobPosting[] = raw.map(j=>({title:j.jobTitle??j.title??'',location:typeof j.location==='string'?j.location||undefined:undefined,department:j.department,id:j.id,url:j.id?`https://${slug}.jobvite.com/careers?c=${j.id}`:undefined,employmentType:j.jobType})).filter(j=>j.title.length>0);
+  log.info(`Jobvite: ${jobs.length} jobs`); return {jobs,method:'jobvite-api'};
 }

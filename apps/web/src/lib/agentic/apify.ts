@@ -100,6 +100,15 @@ export type GhostingRunResult =
   | { runId: string; status: string; finishedAt: null; result: null }
   | { runId: string; status: string; finishedAt: string; result: GhostAnalysisResult };
 
+export interface HiringCafeSignal {
+  found: boolean;
+  activeListings: number;
+  avgViews: number;
+  avgApplications: number;
+  lowEngagement: boolean;
+  signal: string | null;
+}
+
 export interface GhostAnalysisResult {
   company: string;
   portalUrl: string;
@@ -119,6 +128,7 @@ export interface GhostAnalysisResult {
   geminiSummary: string;
   geminiAvailable: boolean;
   orgGhostSignal: string | null;
+  hiringCafeSignal: HiringCafeSignal | null;
   matchingJobs: GhostJobRecord[];
 }
 
@@ -167,11 +177,17 @@ export async function getGhostingResult(
     (i) => i._type === "job-record",
   ) as unknown as GhostJobRecord[];
 
+  // Fall back to longestRunningJobs from the analysis record if no separate job-record items exist
+  // (can happen when all jobs scored below the 40-point push threshold in snapshot mode)
+  const effectiveJobs: GhostJobRecord[] = jobRecords.length > 0
+    ? jobRecords
+    : ((analysis?.longestRunningJobs as GhostJobRecord[] | undefined) ?? []);
+
   const matchingJobs = positionFilter
-    ? jobRecords.filter((j) =>
+    ? effectiveJobs.filter((j) =>
         j.title?.toLowerCase().includes(positionFilter.toLowerCase()),
       )
-    : jobRecords;
+    : effectiveJobs;
 
   if (!analysis) {
     // Run succeeded but no analysis record yet — treat as still running
@@ -201,7 +217,8 @@ export async function getGhostingResult(
       geminiSummary: analysis.geminiSummary as string,
       geminiAvailable: analysis.geminiAvailable as boolean,
       orgGhostSignal: (analysis.orgGhostSignal as string | null) ?? null,
-      matchingJobs,
+      hiringCafeSignal: (analysis.hiringCafeSignal as HiringCafeSignal | null) ?? null,
+      matchingJobs: matchingJobs.sort((a, b) => b.ghostScore - a.ghostScore),
     },
   };
 }

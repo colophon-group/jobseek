@@ -24,4 +24,17 @@ export class JobseekClient {
     }
     return res.json();
   }
+
+  async post(path: string, body: Record<string, unknown>): Promise<unknown> {
+    const res = await fetch(`${this.baseUrl}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`API error ${res.status}: ${text}`);
+    }
+    return res.json();
+  }
 }

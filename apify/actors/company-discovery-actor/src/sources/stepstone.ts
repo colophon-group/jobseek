@@ -7,6 +7,9 @@ const DEFAULT_QUERIES = [
   'finanzen', 'IT', 'projektmanagement', 'design', 'personalwesen',
   'logistik', 'pharma', 'automotive', 'versicherung', 'energie',
   'medien', 'bauingenieur', 'controlling', 'einkauf', 'qualitaet',
+  // Swiss / Austrian market
+  'banken', 'compliance', 'klinische forschung', 'medizintechnik',
+  'uhrenindustrie', 'lebensmittel', 'treuhand',
 ];
 
 export async function discoverFromStepstone(

@@ -25,12 +25,8 @@ interface GeminiOutput {
  * Returns a partial GhostAnalysis (the AI-generated fields).
  */
 export async function analyzeWithGemini(
-  apiKey: string,
-  company: string,
-  portalUrl: string,
-  stats: GhostStats,
-  periodStart: string,
-  periodEnd: string,
+  apiKey: string, company: string, portalUrl: string, stats: GhostStats, periodStart: string, periodEnd: string,
+  hcSignal?: { found: boolean; activeListings: number; avgViews: number; avgApplications: number; lowEngagement: boolean; signal: string | null } | null,
 ): Promise<Omit<GhostAnalysis, '_type' | 'company' | 'portalUrl' | 'analysisDate' | 'periodStart' | 'periodEnd' | keyof GhostStats> & { geminiAvailable: true }> {
 
   const { GoogleGenerativeAI } = await import('@google/generative-ai');
@@ -50,6 +46,7 @@ export async function analyzeWithGemini(
   }));
 
   const orgSignalLine = stats.orgGhostSignal ? `\n- Org-level signal: ${stats.orgGhostSignal}` : '';
+  const hcLine = hcSignal?.found ? `\n- hiring.cafe live signal: ${hcSignal.activeListings} active listings, avg ${hcSignal.avgViews.toFixed(1)} views, ${hcSignal.avgApplications.toFixed(0)} applications${hcSignal.lowEngagement ? ' — LOW ENGAGEMENT (corroborates ghost pattern)' : ' — moderate engagement'}` : hcSignal !== undefined ? '\n- hiring.cafe: company not found (no live listings)' : '';
   const prompt = `You are an expert labor market analyst specializing in "ghost jobs" — job postings companies publish with no genuine intent to fill them in the near term.
 
 Analyze the following historical job posting data for ${company} (${portalUrl}) covering ${periodStart} to ${periodEnd}.
@@ -58,13 +55,19 @@ Analyze the following historical job posting data for ${company} (${portalUrl}) 
 - Total unique job URLs tracked: ${stats.totalUniqueJobs}
 - Ghost candidates (score ≥ 70): ${stats.ghostCandidates} (${Math.round(stats.ghostRate * 100)}%)
 - Median posting duration: ${stats.medianDurationDays} days
-- Average posting duration: ${stats.avgDurationDays} days${orgSignalLine}
+- Average posting duration: ${stats.avgDurationDays} days${orgSignalLine}${hcLine}
 
 ## Longest-running postings (top 25)
 ${JSON.stringify(topJobs, null, 2)}
 
 ## Your task
 Analyze whether this company has a systemic ghost job problem and what patterns you see.
+
+Important nuances to consider:
+- "Evergreen" roles (e.g., generic Software Engineer at a large tech company) may stay open intentionally as talent pools — lower ghost risk if the company is actively hiring in general
+- Consulting firms (Deloitte, McKinsey, Accenture, Infosys, Wipro) routinely post to build candidate pipelines — higher baseline ghost rate is expected; score accordingly
+- A reposted role that clearly changed location or requirements is less suspicious than an identical repost
+- hiring.cafe low engagement (if provided) is a strong independent corroborating signal for ghost behavior
 
 Return ONLY valid JSON (no markdown fences):
 {

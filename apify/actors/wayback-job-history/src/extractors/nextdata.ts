@@ -83,7 +83,14 @@ function looksLikeJob(item: unknown): boolean {
     'employmentType' in obj ||
     'jobCategory' in obj ||
     'categories' in obj ||
-    'team' in obj;
+    'team' in obj ||
+    'offices' in obj ||       // Lever uses this
+    'jobLevel' in obj ||      // Greenhouse uses this
+    'jobFunction' in obj ||
+    'remoteWorkPolicy' in obj || // Ashby uses this
+    'payRange' in obj ||
+    'salaryRange' in obj ||
+    'workplaceType' in obj;   // Ashby workplace type
 
   return hasJobField;
 }
@@ -94,12 +101,22 @@ export function normalizeJob(obj: Record<string, unknown>): JobPosting {
   ).trim();
 
   let location: string | undefined;
-  const rawLoc = obj['location'] ?? obj['locationName'] ?? obj['city'];
+  const rawLoc = obj['location'] ?? obj['locationName'] ?? obj['city'] ?? obj['office'];
   if (typeof rawLoc === 'string') {
     location = rawLoc.trim() || undefined;
   } else if (rawLoc && typeof rawLoc === 'object') {
     const locObj = rawLoc as Record<string, unknown>;
     location = String(locObj['name'] ?? locObj['city'] ?? locObj['text'] ?? '').trim() || undefined;
+  }
+  // Lever: offices = [{ name: "San Francisco" }, ...]
+  if (!location && Array.isArray(obj['offices']) && obj['offices'].length > 0) {
+    const first = obj['offices'][0] as Record<string, unknown>;
+    location = String(first['name'] ?? first['location'] ?? '').trim() || undefined;
+  }
+  // remoteWorkPolicy / workplaceType as fallback
+  if (!location) {
+    const remote = obj['remoteWorkPolicy'] ?? obj['workplaceType'];
+    if (typeof remote === 'string' && /remote|hybrid/i.test(remote)) location = remote;
   }
 
   let department: string | undefined;

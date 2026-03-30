@@ -20,7 +20,20 @@
  *  14.  Recruitee CDX           — *.recruitee.com (EU mid-market ATS)
  *  15.  JazzHR CDX              — *.applytojob.com (SMB US ATS)
  *  16.  BreezyHR CDX            — *.breezy.hr (SMB ATS)
- *  17.  SmartRecruiters          — Fortune 500 ATS; run via registry/probe path
+ *  17.  iCIMS CDX               — *.icims.com/jobs/* (enterprise ATS, 4000+ companies)
+ *  18.  Taleo CDX               — *.taleo.net/careersection* (Oracle enterprise, 5000+ companies)
+ *  19.  SmartRecruiters          — Fortune 500 ATS; run via registry/probe path
+ *  20.  LinkedIn guest API       — Public job search, extracts hiring companies
+ *  21.  Indeed companies         — Company directory with job counts
+ *  22.  Glassdoor browse         — Employer directory with ratings/job counts
+ *  23.  Workday CDX              — *.myworkdayjobs.com (Fortune 500 / enterprise ATS, 5000+ companies)
+ *  24.  SmartRecruiters CDX     — jobs.smartrecruiters.com/* (Fortune 500 ATS via CDX path scan)
+ *  25.  Wellfound CDX           — wellfound.com/company/* (AngelList Talent, 10,000+ startups)
+ *  26.  We Work Remotely        — RSS feeds for 11 remote job categories
+ *  27.  Softgarden CDX          — *.softgarden.io (dominant DACH/German ATS)
+ *  28.  JOIN CDX                — join.com/companies/* (EU startup job board)
+ *  29.  Pinpoint HQ CDX         — app.pinpointhq.com/{company} (UK/EU Series A–C ATS)
+ *  30.  Comeet CDX              — recruiting.comeet.co/jobs/{company} (Israel/EU/US tech ATS)
  *
  * AI-powered discovery (runs when GOOGLE_AI_API_KEY is set):
  *   - Loads portal registry from KV store (persisted across runs)
@@ -46,10 +59,20 @@ import { discoverFromWorkable } from './sources/workable.js';
 import { discoverFromAshby } from './sources/ashby.js';
 import { discoverFromLever } from './sources/lever.js';
 import { discoverFromGreenhouseCdx } from './sources/greenhouse-cdx.js';
-import { discoverFromJazzHR } from './sources/jazzhr.js';
-import { discoverFromBreezyHR } from './sources/breezyhr.js';
+import { discoverFromJazzHR, discoverFromTaleo } from './sources/jazzhr.js';
+import { discoverFromBreezyHR, discoverFromICIMS } from './sources/breezyhr.js';
 import { discoverFromTeamtailor } from './sources/teamtailor.js';
-import { discoverFromPersonio } from './sources/personio.js';
+import { discoverFromPersonio, discoverFromJobvite, discoverFromSuccessFactors, discoverFromSmartRecruiters, discoverFromPinpoint, discoverFromComeet } from './sources/personio.js';
+import { discoverFromLinkedIn } from './sources/linkedin.js';
+import { discoverFromIndeed } from './sources/indeed.js';
+import { discoverFromGlassdoor } from './sources/glassdoor.js';
+import { discoverFromStepstone } from './sources/stepstone.js';
+import { discoverFromXing } from './sources/xing.js';
+import { discoverFromWorkdayCdx } from './sources/workday-cdx.js';
+import { discoverFromWellfound } from './sources/wellfound.js';
+import { discoverFromRemoteOK } from './sources/remoteok.js';
+import { discoverFromWeWorkRemotely } from './sources/weworkremotely.js';
+import { discoverFromSoftgarden, discoverFromJoin } from './sources/softgarden.js';
 import { suggestNewPortals } from './sources/ai-discovery.js';
 import { probePortal, validatePortal } from './sources/generic-portal.js';
 import { loadRegistry, saveRegistry, getActivePortals, upsertPortal } from './registry.js';
@@ -65,7 +88,7 @@ await Actor.init();
 
 const input = (await Actor.getInput<Input>()) ?? {};
 const {
-  sources = ['greenhouse', 'themuse', 'megaemployers', 'arbeitnow', 'remotive', 'hiring-cafe', 'himalayas', 'ycombinator', 'bamboohr', 'recruitee', 'workable', 'ashby', 'lever', 'greenhouse-cdx', 'jazzhr', 'breezyhr', 'teamtailor', 'personio'],
+  sources = ['greenhouse', 'themuse', 'megaemployers', 'arbeitnow', 'remotive', 'remoteok', 'hiring-cafe', 'himalayas', 'ycombinator', 'bamboohr', 'recruitee', 'workable', 'ashby', 'lever', 'greenhouse-cdx', 'jazzhr', 'breezyhr', 'teamtailor', 'personio', 'icims', 'taleo', 'jobvite', 'successfactors', 'smartrecruiters', 'pinpoint', 'comeet', 'linkedin', 'indeed', 'glassdoor', 'stepstone', 'xing', 'workday-cdx', 'wellfound', 'weworkremotely', 'softgarden', 'join'],
   maxCompaniesPerSource = 1000,
   enableAiDiscovery = true,
   maxAiSuggestionsPerRun = 4,
@@ -118,6 +141,7 @@ const staticSourceMap: Record<string, SourceFn> = {
   megaemployers: () => Promise.resolve(discoverFromMegaEmployers()),
   arbeitnow:     () => discoverFromArbeitnow(),
   remotive:      () => discoverFromRemotive(),
+  remoteok:      () => discoverFromRemoteOK(),
   'hiring-cafe': () => discoverFromHiringCafe(30),
   himalayas:     () => discoverFromHimalayas(),
   ycombinator:   () => discoverFromYCombinator(),
@@ -131,13 +155,44 @@ const staticSourceMap: Record<string, SourceFn> = {
   breezyhr:      () => discoverFromBreezyHR(),
   teamtailor:    () => discoverFromTeamtailor(),
   personio:      () => discoverFromPersonio(),
+  icims:         () => discoverFromICIMS(),
+  taleo:         () => discoverFromTaleo(),
+  jobvite:       () => discoverFromJobvite(),
+  successfactors:  () => discoverFromSuccessFactors(),
+  smartrecruiters: () => discoverFromSmartRecruiters(),
+  pinpoint:        () => discoverFromPinpoint(),
+  comeet:          () => discoverFromComeet(),
+  linkedin:      () => discoverFromLinkedIn(undefined, maxCompaniesPerSource),
+  indeed:        () => discoverFromIndeed(undefined, maxCompaniesPerSource),
+  glassdoor:     () => discoverFromGlassdoor(undefined, maxCompaniesPerSource),
+  stepstone:     () => discoverFromStepstone(undefined, maxCompaniesPerSource),
+  xing:          () => discoverFromXing(undefined, maxCompaniesPerSource),
+  'workday-cdx': () => discoverFromWorkdayCdx(),
+  wellfound:       () => discoverFromWellfound(),
+  weworkremotely:  () => discoverFromWeWorkRemotely(),
+  softgarden:      () => discoverFromSoftgarden(),
+  join:            () => discoverFromJoin(),
 };
 
-async function runSource(sourceId: string, fn: SourceFn): Promise<void> {
-  log.info(`--- Running source: ${sourceId} ---`);
+/** Fetch a single source; returns raw results without mutating shared state. */
+async function fetchSource(sourceId: string, fn: SourceFn): Promise<{ sourceId: string; companies: CompanyDiscovery[]; elapsed: string; error?: string }> {
   const t0 = Date.now();
   try {
     const companies = await fn();
+    return { sourceId, companies, elapsed: ((Date.now() - t0) / 1000).toFixed(1) };
+  } catch (err) {
+    return { sourceId, companies: [], elapsed: ((Date.now() - t0) / 1000).toFixed(1), error: String(err) };
+  }
+}
+
+/** Merge a batch of source results into shared state. */
+function mergeResults(batch: Awaited<ReturnType<typeof fetchSource>>[]): void {
+  for (const { sourceId, companies, elapsed, error } of batch) {
+    if (error) {
+      sourceStats[sourceId] = { companies: 0, jobs: 0, error };
+      log.error(`${sourceId} failed after ${elapsed}s: ${error}`);
+      continue;
+    }
     let uniqueNew = 0, uniqueJobs = 0;
     for (const c of companies) {
       const key = c.company_name.toLowerCase().trim();
@@ -148,21 +203,28 @@ async function runSource(sourceId: string, fn: SourceFn): Promise<void> {
         uniqueJobs += c.estimated_jobs;
       }
     }
-    const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
     sourceStats[sourceId] = { companies: uniqueNew, jobs: uniqueJobs };
     log.info(`${sourceId}: ${companies.length} total, ${uniqueNew} new unique (${elapsed}s)`);
-  } catch (err) {
-    const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
-    sourceStats[sourceId] = { companies: 0, jobs: 0, error: String(err) };
-    log.error(`${sourceId} failed after ${elapsed}s: ${err}`);
   }
 }
 
-// 1. Static sources
-for (const sourceId of sources) {
-  const fn = staticSourceMap[sourceId];
-  if (!fn) { log.warning(`Unknown source "${sourceId}", skipping`); continue; }
-  await runSource(sourceId, fn);
+async function runSource(sourceId: string, fn: SourceFn): Promise<void> {
+  const result = await fetchSource(sourceId, fn);
+  mergeResults([result]);
+}
+
+// 1. Static sources — run in parallel batches of 6
+// CDX sources share Wayback bandwidth; API sources run independently. Batch size balances speed vs rate limits.
+const BATCH_SIZE = 6;
+const sourceEntries = sources
+  .map(id => ({ id, fn: staticSourceMap[id] }))
+  .filter(({ id, fn }) => { if (!fn) { log.warning(`Unknown source "${id}", skipping`); return false; } return true; });
+
+for (let i = 0; i < sourceEntries.length; i += BATCH_SIZE) {
+  const batch = sourceEntries.slice(i, i + BATCH_SIZE);
+  log.info(`--- Running source batch ${Math.floor(i / BATCH_SIZE) + 1}: ${batch.map(b => b.id).join(', ')} ---`);
+  const results = await Promise.all(batch.map(({ id, fn }) => fetchSource(id, fn)));
+  mergeResults(results);
 }
 
 // 2. All non-static active portals (AI-discovered + hardcoded generic portals like smartrecruiters)

@@ -9,9 +9,9 @@ import { cdxEnumerateSlugs, slugsToDiscoveries } from './cdx-subdomain.js';
 function extractGreenhouseToken(originalUrl: string): string | null {
   try {
     const u = new URL(originalUrl);
-    if (u.hostname !== 'boards.greenhouse.io') return null;
+    if (u.hostname !== 'boards.greenhouse.io' && u.hostname !== 'job-boards.greenhouse.io') return null;
     const token = u.pathname.split('/').filter(Boolean)[0];
-    if (!token || token === 'embed' || token === 'js' || token.length < 2) return null;
+    if (!token || ['embed', 'js', 'css', 'api', 'assets'].includes(token) || token.length < 2) return null;
     return token.toLowerCase();
   } catch {
     return null;
@@ -21,17 +21,21 @@ function extractGreenhouseToken(originalUrl: string): string | null {
 export async function discoverFromGreenhouseCdx(): Promise<import('../types.js').CompanyDiscovery[]> {
   log.info('greenhouse-cdx: discovering board tokens via Wayback CDX');
 
-  const slugCounts = await cdxEnumerateSlugs(
-    'boards.greenhouse.io/*',
-    extractGreenhouseToken,
-    10_000, // Greenhouse has lots of boards
-  );
+  // Scan both Greenhouse URL formats in parallel
+  const [boards, jobBoards] = await Promise.all([
+    cdxEnumerateSlugs('boards.greenhouse.io/*', extractGreenhouseToken, 10_000),
+    cdxEnumerateSlugs('job-boards.greenhouse.io/*', extractGreenhouseToken, 5_000),
+  ]);
 
-  log.info(`greenhouse-cdx: found ${slugCounts.size} unique board tokens`);
-  if (slugCounts.size === 0) return [];
+  // Merge (prefer boards.greenhouse.io URL)
+  const merged = new Map(boards);
+  for (const [k, v] of jobBoards) merged.set(k, (merged.get(k) ?? 0) + v);
+
+  log.info(`greenhouse-cdx: found ${merged.size} unique board tokens (boards + job-boards)`);
+  if (merged.size === 0) return [];
 
   const results = slugsToDiscoveries(
-    slugCounts,
+    merged,
     token => `https://boards.greenhouse.io/${token}`,
     'greenhouse-cdx',
   );

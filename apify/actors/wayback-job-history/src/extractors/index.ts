@@ -1,7 +1,7 @@
 import { load } from 'cheerio';
 import { log } from 'apify';
 import type { ExtractionResult } from '../types.js';
-import type { CdxSnapshot } from '../cdx.js';
+import type { CdxSnapshot } from '../types.js';
 import { extractFromJsonLd } from './jsonld.js';
 import { extractFromNextData, findJobsInObject } from './nextdata.js';
 import { extractGreenhouseToken, extractFromGreenhouse } from './greenhouse.js';
@@ -10,18 +10,22 @@ import { extractAshbySlug, extractFromAshby } from './ashby.js';
 import { extractWorkableSlug, extractFromWorkable } from './workable.js';
 import { extractWorkdayParams, extractFromWorkday } from './workday.js';
 import { extractSRCompany, extractFromSmartRecruiters } from './smartrecruiters.js';
-import { extractBambooHRSlug, extractFromBambooHR } from './bamboohr.js';
+import { extractBambooHRSlug, extractFromBambooHR, extractICIMSSlug, extractFromICIMS } from './bamboohr.js';
 import { extractRecruiteeSlug, extractFromRecruitee } from './recruitee.js';
-import { extractJazzHRSlug, extractFromJazzHR } from './jazzhr.js';
+import { extractJazzHRSlug, extractFromJazzHR, extractTaleoSlug, extractFromTaleo, extractJobviteSlug, extractFromJobvite } from './jazzhr.js';
 import { extractTeamtailorSlug, extractFromTeamtailor } from './teamtailor.js';
 import { extractPersonioSlug, extractFromPersonio } from './personio.js';
+import { extractBreezySlug, extractFromBreezyHR } from './breezyhr.js';
+import { extractSoftgardenSlug, extractFromSoftgarden } from './softgarden.js';
+import { extractPinpointSlug, extractFromPinpoint } from './pinpoint.js';
+import { extractComeetSlug, extractFromComeet } from './comeet.js';
 import { extractGeneric } from './generic.js';
 
 /**
  * Main extraction dispatcher.
  *
  * Priority order:
- * 1. Known ATS API (Greenhouse / Lever / Ashby / Workable / SmartRecruiters / BambooHR / Recruitee / JazzHR / Teamtailor) — most reliable, structured data
+ * 1. Known ATS API (Greenhouse / Lever / Ashby / Workable / SmartRecruiters / BambooHR / iCIMS / Recruitee / JazzHR / Teamtailor / BreezyHR / Softgarden) — most reliable, structured data
  * 2. JSON-LD JobPosting schema
  * 3. Next.js __NEXT_DATA__ recursive walk
  * 4. window.__data / other globals embedded in <script> tags
@@ -75,6 +79,11 @@ export async function extractJobs(
     if (result.jobs.length > 0) return result;
   }
 
+  if (extractICIMSSlug(url)) {
+    const result = await extractFromICIMS(url, snapshot.timestamp);
+    if (result.jobs.length > 0) return result;
+  }
+
   if (extractRecruiteeSlug(url)) {
     const result = await extractFromRecruitee(url, snapshot.timestamp);
     if (result.jobs.length > 0) return result;
@@ -85,6 +94,16 @@ export async function extractJobs(
     if (result.jobs.length > 0) return result;
   }
 
+  if (extractTaleoSlug(url)) {
+    const result = await extractFromTaleo(url, snapshot.timestamp);
+    if (result.jobs.length > 0) return result;
+  }
+
+  if (extractJobviteSlug(url)) {
+    const result = await extractFromJobvite(url, snapshot.timestamp);
+    if (result.jobs.length > 0) return result;
+  }
+
   if (extractTeamtailorSlug(url)) {
     const result = await extractFromTeamtailor(url, snapshot.timestamp);
     if (result.jobs.length > 0) return result;
@@ -92,6 +111,26 @@ export async function extractJobs(
 
   if (extractPersonioSlug(url)) {
     const result = await extractFromPersonio(url, snapshot.timestamp);
+    if (result.jobs.length > 0) return result;
+  }
+
+  if (extractBreezySlug(url)) {
+    const result = await extractFromBreezyHR(url, snapshot.timestamp);
+    if (result.jobs.length > 0) return result;
+  }
+
+  if (extractSoftgardenSlug(url)) {
+    const result = await extractFromSoftgarden(url, snapshot.timestamp);
+    if (result.jobs.length > 0) return result;
+  }
+
+  if (extractPinpointSlug(url)) {
+    const result = await extractFromPinpoint(url, snapshot.timestamp);
+    if (result.jobs.length > 0) return result;
+  }
+
+  if (extractComeetSlug(url)) {
+    const result = await extractFromComeet(url, snapshot.timestamp);
     if (result.jobs.length > 0) return result;
   }
 
@@ -130,6 +169,10 @@ function extractFromScriptGlobals($: ReturnType<typeof load>): ExtractionResult 
     /(?:var|let|const)\s+pageData\s*=\s*(\{[\s\S]*?\});/,
     // window.jobListings = [...]
     /window\.(?:jobListings|jobs|jobData)\s*=\s*(\[[\s\S]*?\]);/,
+    // SuccessFactors: window.sfConfig = {...}
+    /window\.sfConfig\s*=\s*(\{[\s\S]*?\});/,
+    // SuccessFactors / generic: window.APP_DATA = {...}
+    /window\.(?:APP_DATA|appData|APP_STATE|appState|pageConfig)\s*=\s*(\{[\s\S]*?\});/,
   ];
 
   const scripts = $('script:not([src])').map((_, el) => $(el).html() ?? '').get();
