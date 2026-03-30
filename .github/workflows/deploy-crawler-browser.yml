@@ -58,13 +58,13 @@ jobs:
           cache-from: type=gha,scope=crawler-browser
           cache-to: type=gha,mode=max,scope=crawler-browser
 
-      - name: Copy deploy script
+      - name: Copy deploy files
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.HETZNER_HOST }}
           username: deploy
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          source: apps/crawler/deploy.sh
+          source: apps/crawler/deploy.sh,apps/crawler/docker-compose.yml,apps/crawler/alloy.river
           target: /home/deploy/
           strip_components: 2
 
