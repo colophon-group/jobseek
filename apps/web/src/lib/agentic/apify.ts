@@ -145,6 +145,7 @@ export interface GhostJobRecord {
   reposted: boolean;
   repostCount?: number;
   validThrough?: string;
+  employmentType?: string;
   ghostScore: number;
   ghostReason: string;
 }

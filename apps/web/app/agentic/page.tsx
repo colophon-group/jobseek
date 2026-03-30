@@ -81,6 +81,17 @@ export default function Page() {
 
   const utilityEndpoints = [
     {
+      method: "POST",
+      path: "/api/hiring-cafe",
+      summary: "Quick hiring.cafe engagement signal for a company — no Apify actor, real-time check",
+      auth: false,
+      params: [
+        { name: "company", type: "string", required: true, desc: "Company name (e.g. \"Stripe\", \"Rippling\")" },
+      ],
+      returns: "{ found, activeListings, avgViews, avgApplications, lowEngagement, signal, strategy }",
+      example: `POST ${base}/hiring-cafe\nContent-Type: application/json\n\n{ "company": "Rippling" }`,
+    },
+    {
       method: "GET",
       path: "/api/discovery",
       summary: "Top hiring companies, growing/shrinking signals, and source breakdown from 39+ job boards",
