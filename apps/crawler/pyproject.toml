@@ -28,8 +28,7 @@ dependencies = [
 ]
 
 [project.scripts]
-scheduler = "src.scheduler:main"
-enricher = "src.enricher:main"
+crawler = "src.cli:main"
 ws = "src.workspace.cli:main"
 
 [project.optional-dependencies]
