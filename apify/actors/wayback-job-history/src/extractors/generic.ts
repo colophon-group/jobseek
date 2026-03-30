@@ -11,16 +11,21 @@ export function extractGeneric($: CheerioAPI, _url: URL): ExtractionResult {
     // Data attribute patterns — most reliable
     ['[data-job-id]', '[data-requisition-id]', '[data-automation="job-result-item"]'],
     ['[data-ui="job-item"]', '[data-testid="job-item"]', '[data-testid*="job-card"]'],
+    ['[data-testid*="position"]', '[data-testid*="opening"]', '[data-testid*="role"]'],
     ['[data-controller="job-card"]', '[data-controller="position"]'],
     // Class fragment patterns (sorted by specificity)
     ['[class*="JobCard"]', '[class*="job-card"]', '[class*="job_card"]'],
     ['[class*="job-row"]', '[class*="JobRow"]', '[class*="job_row"]'],
-    ['[class*="job-listing"]', '[class*="JobListing"]'],
+    ['[class*="job-listing"]', '[class*="JobListing"]', '[class*="job-item"]'],
     ['[class*="position-item"]', '[class*="PositionItem"]', '[class*="positionCard"]'],
     ['[class*="opening-item"]', '[class*="OpeningItem"]', '[class*="opening-row"]'],
+    ['[class*="vacancy-item"]', '[class*="VacancyItem"]', '[class*="vacancyCard"]'],
     // Semantic / role-based
     ['article[class*="job"]', 'article[class*="position"]', 'article[class*="opening"]'],
     ['[role="listitem"][class*="job"]', 'li[class*="job"]', 'li[class*="position"]'],
+    // Rippling / modern SPA patterns
+    ['[class*="jobPosting"]', '[class*="JobPosting"]', '[class*="job-posting"]'],
+    ['[class*="career-item"]', '[class*="CareerItem"]', '[class*="careerItem"]'],
     // Generic container guesses
     ['.opening', '.position', '.vacancy', '.role'],
     ['tr[class*="job"]', 'tr[class*="position"]'],
@@ -69,10 +74,6 @@ function trySelectors($: CheerioAPI, selectors: string[]): JobPosting[] {
 
       if (!title || title.length > 200 || title.length < 2) return;
 
-      const key = title.toLowerCase();
-      if (seen.has(key)) return;
-      seen.add(key);
-
       const locationEl = $el
         .find('[class*="location"], [class*="Location"], [class*="city"], [data-location]')
         .first();
@@ -87,9 +88,16 @@ function trySelectors($: CheerioAPI, selectors: string[]): JobPosting[] {
         $el.attr('data-requisition-id') ??
         undefined;
 
+      const location = locationEl.text().trim() || undefined;
+
+      // Deduplicate by id, then by title+location to preserve same-title jobs in different locations
+      const key = id ?? `${title.toLowerCase()}|${(location ?? '').toLowerCase()}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+
       jobs.push({
         title,
-        location: locationEl.text().trim() || undefined,
+        location,
         department: deptEl.text().trim() || undefined,
         url: linkEl.attr('href') || undefined,
         id,

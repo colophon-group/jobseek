@@ -75,6 +75,13 @@ const SEED_COMPANIES: CompanyInput[] = [
   { name: 'Contentful',   portalUrl: 'https://contentful.bamboohr.com/jobs',           inventoryMode: false },
   { name: 'GetYourGuide', portalUrl: 'https://boards.greenhouse.io/getyourguide',      inventoryMode: false },
   { name: 'Moonpay',      portalUrl: 'https://boards.greenhouse.io/moonpay',           inventoryMode: false },
+  // Rippling ATS — fast-growing tech companies
+  { name: 'Notion (Rippling)', portalUrl: 'https://ats.rippling.com/notion',           inventoryMode: false },
+  { name: 'Ramp',         portalUrl: 'https://ats.rippling.com/ramp',                  inventoryMode: false },
+  { name: 'Brex',         portalUrl: 'https://ats.rippling.com/brex',                  inventoryMode: false },
+  // Fountain ATS — gig economy / shift work
+  { name: 'DoorDash',     portalUrl: 'https://jobs.fountain.com/doordash',              inventoryMode: false },
+  { name: 'Instacart',    portalUrl: 'https://jobs.fountain.com/instacart',             inventoryMode: false },
 ];
 
 await Actor.init();
