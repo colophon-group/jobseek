@@ -19,7 +19,13 @@ export default function AgenticLayout({ children }: { children: React.ReactNode 
 
           <div className="flex-1" />
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-3">
+            <Link
+              href="/en"
+              className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-foreground transition-colors"
+            >
+              ← Job Seek
+            </Link>
             <ThemeToggle />
             <Link href="/agentic" className={iconBtn} aria-label="Agentic">
               <Bot size={18} strokeWidth={1.8} aria-hidden="true" />
