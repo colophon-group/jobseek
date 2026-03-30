@@ -1050,9 +1050,15 @@ async def sync_lookup_tables_local(
         await supa_conn.fetch("SELECT id, slug FROM seniority") if len(seniority_df) > 0 else []
     )
 
-    # --- Delete in FK-safe order: occupation -> occupation_domain, seniority ---
-    # occupation.domain_id references occupation_domain(id), so delete
-    # occupation first.  *_name tables cascade automatically.
+    # --- Drop FK constraints, delete, re-insert, re-add FKs ---
+    # job_posting references occupation(id) and seniority(id), so we must
+    # temporarily drop those constraints to replace the lookup rows.
+    await local_conn.execute(
+        "ALTER TABLE job_posting DROP CONSTRAINT IF EXISTS job_posting_occupation_id_fkey"
+    )
+    await local_conn.execute(
+        "ALTER TABLE job_posting DROP CONSTRAINT IF EXISTS job_posting_seniority_id_fkey"
+    )
     if occ_rows:
         await local_conn.execute("DELETE FROM occupation")
     if domain_rows:
@@ -1107,6 +1113,16 @@ async def sync_lookup_tables_local(
     # Sync them normally.
     await sync_technologies(local_conn, technologies, dry_run)
     await sync_industries(local_conn, industries, dry_run)
+
+    # --- Re-add FK constraints (dropped above) ---
+    await local_conn.execute(
+        "ALTER TABLE job_posting ADD CONSTRAINT "
+        "job_posting_occupation_id_fkey FOREIGN KEY (occupation_id) REFERENCES occupation(id)"
+    )
+    await local_conn.execute(
+        "ALTER TABLE job_posting ADD CONSTRAINT "
+        "job_posting_seniority_id_fkey FOREIGN KEY (seniority_id) REFERENCES seniority(id)"
+    )
 
     log.info("sync.lookup_tables_local.complete")
 
