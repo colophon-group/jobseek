@@ -86,6 +86,16 @@ export async function triggerGhostingRun(
   return { id: run.id, status: run.status };
 }
 
+export async function triggerDiscoveryRun(
+  input: Record<string, unknown> = {},
+): Promise<{ id: string; status: string }> {
+  const client = getClient();
+  const actorId = process.env.APIFY_DISCOVERY_ACTOR_ID;
+  if (!actorId) throw new Error("APIFY_DISCOVERY_ACTOR_ID is not set");
+  const run = await client.actor(actorId).call(input, { waitSecs: 0 });
+  return { id: run.id, status: run.status };
+}
+
 export type GhostingRunResult =
   | { runId: string; status: string; finishedAt: null; result: null }
   | { runId: string; status: string; finishedAt: string; result: GhostAnalysisResult };

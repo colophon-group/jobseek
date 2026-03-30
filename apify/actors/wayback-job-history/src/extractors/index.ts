@@ -14,6 +14,7 @@ import { extractBambooHRSlug, extractFromBambooHR } from './bamboohr.js';
 import { extractRecruiteeSlug, extractFromRecruitee } from './recruitee.js';
 import { extractJazzHRSlug, extractFromJazzHR } from './jazzhr.js';
 import { extractTeamtailorSlug, extractFromTeamtailor } from './teamtailor.js';
+import { extractPersonioSlug, extractFromPersonio } from './personio.js';
 import { extractGeneric } from './generic.js';
 
 /**
@@ -86,6 +87,11 @@ export async function extractJobs(
 
   if (extractTeamtailorSlug(url)) {
     const result = await extractFromTeamtailor(url, snapshot.timestamp);
+    if (result.jobs.length > 0) return result;
+  }
+
+  if (extractPersonioSlug(url)) {
+    const result = await extractFromPersonio(url, snapshot.timestamp);
     if (result.jobs.length > 0) return result;
   }
 
