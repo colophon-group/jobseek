@@ -34,13 +34,14 @@ jobs:
           if [ "${{ github.event_name }}" = "push" ]; then
             FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "force")
           else
-            FILES=$(gh pr diff "${{ github.event.pull_request.number }}" --name-only 2>/dev/null || echo "")
+            FILES=$(gh pr diff "${{ github.event.pull_request.number }}" --name-only 2>/dev/null || echo "force")
           fi
           CODE=false
           CRAWLER_CODE=false
           while IFS= read -r f; do
             [ -z "$f" ] && continue
             case "$f" in
+              force) CODE=true; CRAWLER_CODE=true ;;
               apps/crawler/data/*) ;;
               apps/crawler/traces/*) ;;
               apps/crawler/VERSION) ;;
