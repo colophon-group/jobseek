@@ -36,6 +36,9 @@ fi
 
 DEPLOY_DIR="/home/deploy"
 
+# ── Stop any manually-started containers that conflict with compose ──
+docker rm -f redis worker-1 worker-2 worker-3 browser-1 exporter drain alloy 2>/dev/null || true
+
 # ── Write env file ──────────────────────────────────────────────────
 cat > "$DEPLOY_DIR/.env" <<EOF
 OWNER=${OWNER}
