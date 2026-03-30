@@ -22,6 +22,7 @@ dependencies = [
     "prometheus-client>=0.21",
     "redis>=5.0",
     "alembic>=1.13",
+    "psycopg2-binary>=2.9",
     "selectolax>=0.4.7",
     "pypdf>=4.0",
     "jinja2>=3.1",
