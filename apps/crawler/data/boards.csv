@@ -284,6 +284,7 @@ apply,apply-recruitee,https://apply.recruitee.com,recruitee,"{""token"": ""apply
 appnovation-technologies,appnovation-technologies-greenhouse,https://job-boards.greenhouse.io/appnovation,greenhouse,"{""token"": ""appnovation""}",skip,
 appodeal,appodeal-greenhouse,https://job-boards.greenhouse.io/appodeal,greenhouse,"{""token"": ""appodeal""}",skip,
 appomni,appomni-greenhouse,https://job-boards.greenhouse.io/appomni,greenhouse,"{""token"": ""appomni""}",skip,
+appquantum,appquantum-careers,https://appquantum.pinpointhq.com/,pinpoint,"{""slug"": ""appquantum""}",skip,
 appsflyer,appsflyer-greenhouse,https://job-boards.greenhouse.io/appsflyer,greenhouse,"{""token"": ""appsflyer""}",skip,
 appspace,appspace-greenhouse,https://job-boards.greenhouse.io/appspace,greenhouse,"{""token"": ""appspace""}",skip,
 apptronik,apptronik-greenhouse,https://job-boards.greenhouse.io/apptronik,greenhouse,"{""token"": ""apptronik""}",skip,
