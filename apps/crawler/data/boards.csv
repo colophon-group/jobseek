@@ -1918,6 +1918,7 @@ interstellar-lab,interstellar-lab-greenhouse,https://job-boards.greenhouse.io/in
 interview-engineering,interview-engineering-greenhouse,https://job-boards.greenhouse.io/interviewengineering,greenhouse,"{""token"": ""interviewengineering""}",skip,
 interview-kickstart,interview-kickstart-greenhouse,https://job-boards.greenhouse.io/interviewkickstart,greenhouse,"{""token"": ""interviewkickstart""}",skip,
 interworks,interworks-greenhouse,https://job-boards.greenhouse.io/interworks,greenhouse,"{""token"": ""interworks""}",skip,
+intesa-sanpaolo,intesa-sanpaolo-careers,https://jobs.intesasanpaolo.com/search/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://jobs.intesasanpaolo.com/googlefeed.xml""}",skip,
 intradiem,intradiem-greenhouse,https://job-boards.greenhouse.io/intradiem,greenhouse,"{""token"": ""intradiem""}",skip,
 intrinsic,intrinsic-careers,https://boards.greenhouse.io/intrinsicrobotics,greenhouse,"{""token"": ""intrinsicrobotics""}",skip,
 intus,intus-ashby,https://jobs.ashbyhq.com/intus,ashby,"{""token"": ""intus""}",skip,
