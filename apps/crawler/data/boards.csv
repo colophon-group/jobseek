@@ -3099,6 +3099,7 @@ quillbot,quillbot-greenhouse,https://job-boards.greenhouse.io/quillbot,greenhous
 quince,quince-greenhouse,https://job-boards.greenhouse.io/quince,greenhouse,"{""token"": ""quince""}",skip,
 quisitive,quisitive-greenhouse,https://job-boards.greenhouse.io/quisitivejobs,greenhouse,"{""token"": ""quisitivejobs""}",skip,
 quora,quora-ashby,https://jobs.ashbyhq.com/quora,ashby,"{""token"": ""quora""}",skip,
+qutwo,qutwo-careers,https://qutwo.com/careers/,sitemap,"{""sitemap_url"": ""https://qutwo.com/sitemap.xml"", ""url_filter"": {""exclude"": ""/(careers|privacy-policy)/$|^https://qutwo\\.com/$""}}",dom,"{""render"": true, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""text"": ""Read more"", ""from"": 0}, {""tag"": ""p"", ""field"": ""description"", ""stop"": ""Apply now"", ""html"": true}], ""defaults"": {""locations"": [""Helsinki, FI""], ""employment_type"": ""full_time"", ""job_location_type"": ""onsite""}}"
 qventus,qventus-greenhouse,https://job-boards.greenhouse.io/qventus,greenhouse,"{""token"": ""qventus""}",skip,
 rackner,rackner-greenhouse,https://job-boards.greenhouse.io/rackner,greenhouse,"{""token"": ""rackner""}",skip,
 radai,radai-ashby,https://jobs.ashbyhq.com/radai,ashby,"{""token"": ""radai""}",skip,
