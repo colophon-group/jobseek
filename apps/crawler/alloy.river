@@ -1,19 +1,21 @@
 // alloy.river — Grafana Alloy config for crawler observability
-// Collects: application metrics, host metrics, structured logs
+// Static scrape targets (containers use network_mode: host)
 
-// ── Docker service discovery ──────────────────────────────
-discovery.docker "containers" {
-  host = "unix:///var/run/docker.sock"
-}
-
-// ── Application metrics (from /metrics endpoints) ─────────
+// ── Application metrics (static targets per container) ────
 prometheus.scrape "crawler" {
-  targets        = discovery.docker.containers.targets
+  targets = [
+    {"__address__" = "localhost:9095", "instance" = "worker-1", "job" = "crawler"},
+    {"__address__" = "localhost:9096", "instance" = "worker-2", "job" = "crawler"},
+    {"__address__" = "localhost:9097", "instance" = "worker-3", "job" = "crawler"},
+    {"__address__" = "localhost:9098", "instance" = "browser-1", "job" = "crawler"},
+    {"__address__" = "localhost:9093", "instance" = "exporter", "job" = "crawler"},
+    {"__address__" = "localhost:9094", "instance" = "drain", "job" = "crawler"},
+  ]
   forward_to     = [prometheus.remote_write.grafana_cloud.receiver]
   scrape_interval = "15s"
 }
 
-// ── Host metrics (CPU, memory, disk, load, network) ───────
+// ── Host metrics ──────────────────────────────────────────
 prometheus.exporter.unix "host" {
   set_collectors = ["cpu", "meminfo", "diskstats", "filesystem", "loadavg", "netdev"]
 }
@@ -24,7 +26,7 @@ prometheus.scrape "node" {
   scrape_interval = "15s"
 }
 
-// ── Prometheus remote write to Grafana Cloud ──────────────
+// ── Remote write ──────────────────────────────────────────
 prometheus.remote_write "grafana_cloud" {
   endpoint {
     url = env("PROM_URL")
@@ -35,7 +37,11 @@ prometheus.remote_write "grafana_cloud" {
   }
 }
 
-// ── Log collection (Docker stdout → Loki) ─────────────────
+// ── Logs (Docker stdout → Loki) ───────────────────────────
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
 loki.source.docker "containers" {
   host       = "unix:///var/run/docker.sock"
   targets    = discovery.docker.containers.targets
