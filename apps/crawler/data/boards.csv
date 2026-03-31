@@ -1630,6 +1630,7 @@ grail,grail-lever,https://jobs.lever.co/grailbio,lever,"{""token"": ""grailbio""
 gram-games,gram-games-greenhouse,https://job-boards.greenhouse.io/gramgamescareers,greenhouse,"{""token"": ""gramgamescareers""}",skip,
 grand,grand-ashby,https://jobs.ashbyhq.com/grand,ashby,"{""token"": ""grand""}",skip,
 grand-games,grand-games-lever,https://jobs.lever.co/grand,lever,"{""token"": ""grand""}",skip,
+graphax,graphax-jobs,https://jobs.graphax.ch/de/stellenangebote.html,dom,"{""url_filter"": ""-j\\d+\\.html""}",json-ld,
 graphcore,graphcore-greenhouse,https://job-boards.greenhouse.io/graphcore,greenhouse,"{""token"": ""graphcore""}",skip,
 graphite,graphite-ashby,https://jobs.ashbyhq.com/graphite,ashby,"{""token"": ""graphite""}",skip,
 gravityclimate,gravityclimate-ashby,https://jobs.ashbyhq.com/gravityclimate,ashby,"{""token"": ""gravityclimate""}",skip,
