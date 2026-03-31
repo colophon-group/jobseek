@@ -1068,6 +1068,12 @@ def select_monitor(
     # Auto-configure scraper when the monitor determines it
     if auto:
         cfg_entry["scraper_type"] = auto[0]
+    # Preserve scraper settings when re-selecting a monitor with the same name
+    if name in board.configs:
+        prev = board.configs[name]
+        for key in ("scraper_type", "scraper_config"):
+            if key in prev and key not in cfg_entry:
+                cfg_entry[key] = prev[key]
     board.configs[name] = cfg_entry
     board.active_config = name
 
