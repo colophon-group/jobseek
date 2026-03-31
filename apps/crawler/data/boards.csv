@@ -796,6 +796,7 @@ checkr-chile,checkr-chile-greenhouse,https://job-boards.greenhouse.io/chile,gree
 chenmoore,chenmoore-greenhouse,https://job-boards.greenhouse.io/chenmoore,greenhouse,"{""token"": ""chenmoore""}",skip,
 cherry-ventures,cherry-ventures-greenhouse,https://job-boards.greenhouse.io/cherryventures,greenhouse,"{""token"": ""cherryventures""}",skip,
 chess-at-three-singapore,chess-at-three-singapore-greenhouse,https://job-boards.greenhouse.io/chess-at-three-sg,greenhouse,"{""token"": ""chess-at-three-sg""}",skip,
+chess-com,chess-com-careers,https://ats.rippling.com/chess/jobs,rippling,"{""slug"": ""chess""}",rippling,
 chestnut,chestnut-ashby,https://jobs.ashbyhq.com/chestnut,ashby,"{""token"": ""chestnut""}",skip,
 chevron,chevron-careers,https://chevron.wd5.myworkdayjobs.com/jobs,workday,"{""company"": ""chevron"", ""wd_instance"": ""wd5"", ""site"": ""jobs"", ""all_sites"": false}",workday,
 chevron,chevron-careers-university,https://chevron.wd5.myworkdayjobs.com/University,workday,"{""company"": ""chevron"", ""wd_instance"": ""wd5"", ""site"": ""University"", ""all_sites"": false}",workday,
