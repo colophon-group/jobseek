@@ -1224,7 +1224,12 @@ async def run_sync(dry_run: bool = False) -> None:
         return
 
     supa_pool = await create_pool()
-    local_pool = None if dry_run else await create_local_pool()
+    local_pool = None
+    if not dry_run:
+        try:
+            local_pool = await create_local_pool()
+        except OSError:
+            log.warning("sync.local_pool_unavailable", msg="Cannot reach local Postgres, skipping")
     try:
         async with supa_pool.acquire() as supa_conn, supa_conn.transaction():
             await supa_conn.execute("SET lock_timeout = '30s'")
