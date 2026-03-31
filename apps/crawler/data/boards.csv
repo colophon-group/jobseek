@@ -2931,7 +2931,7 @@ pictet-group,pictet-group-careers,https://career012.successfactors.eu/career?com
 pie-insurance,pie-insurance-greenhouse,https://job-boards.greenhouse.io/pieinsurance,greenhouse,"{""token"": ""pieinsurance""}",skip,
 pieinsurance,pieinsurance-pinpoint,https://pieinsurance.pinpointhq.com,pinpoint,"{""slug"": ""pieinsurance""}",skip,
 piermont-bank,piermont-bank-greenhouse,https://job-boards.greenhouse.io/piermontbank,greenhouse,"{""token"": ""piermontbank""}",skip,
-pierson-ferdinand,pierson-ferdinand-careers,https://pierferd.com/open-positions,dom,,json-ld,
+pierson-ferdinand,pierson-ferdinand-careers,https://pierferd.com/open-positions,inline,"{""steps"": [{""tag"": ""h3"", ""field"": ""title""}, {""text"": ""Location"", ""field"": ""location"", ""regex"": ""Location:\\s*(.+)""}, {""tag"": ""p"", ""field"": ""description"", ""html"": true, ""stop_tag"": ""h3""}]}",skip,
 pigment,pigment-lever,https://jobs.lever.co/pigment,lever,"{""token"": ""pigment""}",skip,
 pika,pika-ashby,https://jobs.ashbyhq.com/pika,ashby,"{""token"": ""pika""}",skip,
 pilot-com,pilot-com-greenhouse,https://job-boards.greenhouse.io/pilothq,greenhouse,"{""token"": ""pilothq""}",skip,
