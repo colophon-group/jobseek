@@ -4026,6 +4026,7 @@ veracode,veracode-greenhouse,https://job-boards.greenhouse.io/veracode,greenhous
 veracyte,veracyte-greenhouse,https://job-boards.greenhouse.io/veracyte,greenhouse,"{""token"": ""veracyte""}",skip,
 verantos,verantos-greenhouse,https://job-boards.greenhouse.io/verantos,greenhouse,"{""token"": ""verantos""}",skip,
 vercel,vercel-careers,https://job-boards.greenhouse.io/vercel,greenhouse,"{""token"": ""vercel""}",skip,
+verda,verda-careers,https://datacrunch.jobs.personio.com/,personio,"{""slug"": ""datacrunch""}",skip,
 verein-f-r-erziehungshilfen,verein-f-r-erziehungshilfen-join,https://join.com/companies/vfe-mengede,join,"{""slug"": ""vfe-mengede""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 veriff,veriff-greenhouse,https://job-boards.greenhouse.io/veriff,greenhouse,"{""token"": ""veriff""}",skip,
 verifone,verifone-greenhouse,https://job-boards.greenhouse.io/verifone,greenhouse,"{""token"": ""verifone""}",skip,
