@@ -2968,6 +2968,7 @@ polar,polar-ashby,https://jobs.ashbyhq.com/polar,ashby,"{""token"": ""polar""}",
 polyai,polyai-greenhouse,https://job-boards.greenhouse.io/polyai,greenhouse,"{""token"": ""polyai""}",skip,
 polychain-capital,polychain-capital-greenhouse,https://job-boards.greenhouse.io/polychaincapital,greenhouse,"{""token"": ""polychaincapital""}",skip,
 polygon-labs,polygon-labs-ashby,https://jobs.ashbyhq.com/polygon-labs,ashby,"{""token"": ""polygon-labs""}",skip,
+polymarket,polymarket-careers,https://jobs.ashbyhq.com/polymarket,ashby,"{""token"": ""polymarket""}",skip,
 pomelo-care,pomelo-care-greenhouse,https://job-boards.greenhouse.io/pomelocare,greenhouse,"{""token"": ""pomelocare""}",skip,
 pont-connects-e-k,pont-connects-e-k-join,https://join.com/companies/pont-connectsde,join,"{""slug"": ""pont-connectsde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 pontera,pontera-greenhouse,https://job-boards.greenhouse.io/pontera,greenhouse,"{""token"": ""pontera""}",skip,
