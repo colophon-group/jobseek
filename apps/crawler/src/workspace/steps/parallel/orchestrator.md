@@ -121,8 +121,14 @@ Before submitting, verify:
   multiple countries but only 1 board was configured, discovery is likely
   incomplete. Investigate the careers page for regional or ATS-specific
   boards before submitting.
+- **Board overlap check (2+ boards):** Run `ws compare-boards {{ slug }}`
+  to detect mirrors, subsets, and partial overlaps. If boards are mirrors or
+  subsets, drop the redundant one (keep the board with better data quality,
+  or lower cost if equal). For partial overlaps, investigate whether both
+  boards serve distinct audiences before keeping both.
 
 ```bash
+ws compare-boards {{ slug }}   # check for overlap between boards
 ws submit {{ slug }} [--summary "..."]
 ```
 
