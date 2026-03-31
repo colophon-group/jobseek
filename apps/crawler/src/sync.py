@@ -1018,6 +1018,82 @@ async def _mirror_table(
     )
 
 
+async def _populate_locations_if_empty(
+    supa_conn: asyncpg.Connection,
+    local_conn: asyncpg.Connection,
+) -> None:
+    """One-time population of GeoNames data from Supabase into local Postgres.
+
+    Local DB is the source of truth.  This only runs when the local tables
+    are empty (fresh deploy).  After that, GeoNames data lives in local
+    Postgres and is never overwritten from Supabase.
+    """
+    local_count = await local_conn.fetchval("SELECT count(*) FROM location")
+    if local_count > 0:
+        log.info("sync.locations.already_populated", count=local_count)
+        return
+
+    loc_rows = await supa_conn.fetch(
+        "SELECT id, parent_id, type, population, languages FROM location"
+    )
+    if not loc_rows:
+        log.warning("sync.locations.supabase_empty")
+        return
+
+    name_rows = await supa_conn.fetch(
+        "SELECT location_id, locale, name, is_display FROM location_name"
+    )
+
+    await local_conn.copy_records_to_table(
+        "location",
+        records=[
+            (r["id"], r["parent_id"], r["type"], r["population"], r["languages"]) for r in loc_rows
+        ],
+        columns=["id", "parent_id", "type", "population", "languages"],
+    )
+
+    if name_rows:
+        await local_conn.copy_records_to_table(
+            "location_name",
+            records=[
+                (r["location_id"], r["locale"], r["name"], r["is_display"]) for r in name_rows
+            ],
+            columns=["location_id", "locale", "name", "is_display"],
+        )
+
+    log.info(
+        "sync.locations.populated_from_supabase",
+        locations=len(loc_rows),
+        names=len(name_rows),
+    )
+
+
+async def _populate_currency_rates_if_empty(
+    supa_conn: asyncpg.Connection,
+    local_conn: asyncpg.Connection,
+) -> None:
+    """One-time population of currency rates from Supabase into local Postgres.
+
+    Local DB is the source of truth.  After initial population, rates
+    should be refreshed by a local script (e.g. ECB daily feed).
+    """
+    local_count = await local_conn.fetchval("SELECT count(*) FROM currency_rate")
+    if local_count > 0:
+        log.info("sync.currency_rates.already_populated", count=local_count)
+        return
+
+    rows = await supa_conn.fetch("SELECT currency, to_eur, updated_at FROM currency_rate")
+    if not rows:
+        return
+
+    await local_conn.copy_records_to_table(
+        "currency_rate",
+        records=[(r["currency"], r["to_eur"], r["updated_at"]) for r in rows],
+        columns=["currency", "to_eur", "updated_at"],
+    )
+    log.info("sync.currency_rates.populated_from_supabase", count=len(rows))
+
+
 async def sync_lookup_tables_local(
     supa_conn: asyncpg.Connection,
     local_conn: asyncpg.Connection,
@@ -1113,6 +1189,10 @@ async def sync_lookup_tables_local(
     # Sync them normally.
     await sync_technologies(local_conn, technologies, dry_run)
     await sync_industries(local_conn, industries, dry_run)
+
+    # --- GeoNames + currency: one-time population from Supabase if empty ---
+    await _populate_locations_if_empty(supa_conn, local_conn)
+    await _populate_currency_rates_if_empty(supa_conn, local_conn)
 
     # --- Re-add FK constraints (dropped above) ---
     await local_conn.execute(
