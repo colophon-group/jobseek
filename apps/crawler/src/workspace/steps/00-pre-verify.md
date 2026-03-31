@@ -47,7 +47,7 @@ If there's no public careers page and the user cannot provide a URL, reject with
 **Subsidiary check:** If the company's careers page redirects to a parent
 company's centralized portal (e.g. SWISS → Lufthansa Group, Fiat → Stellantis),
 configure the **parent company** instead — its portal is the actual data source
-and covers all subsidiaries. Reject the issue with `duplicate` explaining the
+and covers all subsidiaries. Reject the issue with `subsidiary` explaining the
 situation, then `ws new <parent-slug> --issue {issue}` for the parent.
 
 ```bash

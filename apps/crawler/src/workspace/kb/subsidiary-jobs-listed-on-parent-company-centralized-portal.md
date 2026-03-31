@@ -27,7 +27,7 @@ the actual data source and covers all subsidiaries in one place.
 
 1. Reject the subsidiary issue explaining the situation:
    ```bash
-   ws reject --issue <N> --reason duplicate --message "<Subsidiary> does not have its own careers page. All jobs are listed on the <Parent> Group careers portal at <URL>. Configuring <Parent> Group instead, which covers all subsidiaries."
+   ws reject --issue <N> --reason subsidiary --message "<Subsidiary> does not have its own careers page. All jobs are listed on the <Parent> Group careers portal at <URL>. Configuring <Parent> Group instead, which covers all subsidiaries."
    ```
 2. Create a new workspace for the parent company:
    ```bash
