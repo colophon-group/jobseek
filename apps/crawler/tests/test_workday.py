@@ -15,6 +15,7 @@ from src.core.monitors.workday import (
 )
 from src.core.scrapers.workday import (
     _detail_url,
+    _normalize_workday_location,
     _parse_detail,
     _parse_job_url,
     _parse_location_type,
@@ -90,6 +91,57 @@ class TestParseLocationtype:
 
     def test_case_insensitive(self):
         assert _parse_location_type("REMOTE") == "remote"
+
+
+class TestNormalizeWorkdayLocation:
+    """Test _normalize_workday_location for Workday location formats."""
+
+    # Code format: US-STATE-CITY with building/address after ~
+    def test_code_format_with_tilde(self):
+        assert (
+            _normalize_workday_location("US-AR-SPRINGDALE-BLDG 1 ~ 275 E Robinson Ave ~ BLDG 1")
+            == "Springdale, AR, US"
+        )
+
+    def test_code_format_with_building(self):
+        assert (
+            _normalize_workday_location("US-MA-TEWKSBURY-TB1 ~ 50 Apple Hill Dr ~ ASSABET BLDG")
+            == "Tewksbury, MA, US"
+        )
+
+    def test_code_format_remote(self):
+        assert _normalize_workday_location("US-CT-REMOTE") == "Remote, CT, US"
+
+    def test_code_format_au(self):
+        assert (
+            _normalize_workday_location("AU-NSW-NOWRA-039 ~ 39 Wugan St ~ WUGAN Lot 10 Yerriyong")
+            == "Nowra, NSW, AU"
+        )
+
+    def test_code_format_gb(self):
+        assert _normalize_workday_location("GB-LND-LONDON") == "London, LND, GB"
+
+    # Display format: space-separated without commas
+    def test_display_format_double_space(self):
+        # Citi returns "Sg  Singapore" (double space)
+        assert _normalize_workday_location("Sg  Singapore") == "Sg, Singapore"
+
+    def test_display_format_triple_part(self):
+        assert _normalize_workday_location("Heredia  Costa Rica") == "Heredia, Costa Rica"
+
+    # Already comma-separated (pass through)
+    def test_already_comma_separated(self):
+        assert (
+            _normalize_workday_location("New York, NY, United States")
+            == "New York, NY, United States"
+        )
+
+    # Plain city name (unchanged)
+    def test_plain_city(self):
+        assert _normalize_workday_location("Singapore") == "Singapore"
+
+    def test_empty_string(self):
+        assert _normalize_workday_location("") == ""
 
 
 class TestParseDetail:
