@@ -23,7 +23,7 @@ from src.core.monitors import (
 
 log = structlog.get_logger()
 
-MAX_JOBS = 10_000
+MAX_JOBS = 50_000
 
 _DOMAIN_RE = re.compile(r"^([\w-]+)\.recruitee\.com$")
 

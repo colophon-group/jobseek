@@ -55,7 +55,7 @@ if TYPE_CHECKING:
 
 log = structlog.get_logger()
 
-MAX_URLS = 10_000
+MAX_URLS = 50_000
 _MAX_CONCURRENT_PAGES = 5
 
 # Common paths where Next.js apps store job listings.

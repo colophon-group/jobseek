@@ -26,7 +26,7 @@ from src.core.monitors import (
 
 log = structlog.get_logger()
 
-MAX_JOBS = 10_000
+MAX_JOBS = 50_000
 _RETRY_ATTEMPTS = 4
 _RETRY_BACKOFF = (5.0, 15.0, 30.0, 60.0)
 

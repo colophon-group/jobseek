@@ -30,7 +30,7 @@ from src.core.monitors import fetch_page_text, register
 
 log = structlog.get_logger()
 
-MAX_JOBS = 10_000
+MAX_JOBS = 50_000
 PAGE_SIZE = 100
 
 _SEARCH_URL = "https://jobs.b-ite.com/api/v1/postings/search"

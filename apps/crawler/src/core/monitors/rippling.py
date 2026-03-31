@@ -19,7 +19,7 @@ from src.core.monitors import fetch_page_text, register, slugs_from_url
 
 log = structlog.get_logger()
 
-MAX_JOBS = 10_000
+MAX_JOBS = 50_000
 
 _API_BASE = "https://api.rippling.com/platform/api/ats/v1/board"
 

@@ -24,7 +24,7 @@ from src.core.monitors import fetch_page_text, register
 
 log = structlog.get_logger()
 
-MAX_JOBS = 10_000
+MAX_JOBS = 50_000
 MAX_PAGES = 100
 PAGE_SIZE = 10  # Umantis default per page
 

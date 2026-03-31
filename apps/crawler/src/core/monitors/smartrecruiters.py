@@ -20,7 +20,7 @@ from src.core.monitors import register, slugs_from_url
 
 log = structlog.get_logger()
 
-MAX_JOBS = 10_000
+MAX_JOBS = 50_000
 PAGE_SIZE = 100
 
 _PAGE_PATTERNS = [
