@@ -5,7 +5,7 @@ import { username } from "better-auth/plugins";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 import { db } from "@/db";
-import { sendVerificationEmail, sendResetPasswordEmail } from "@/lib/email";
+import { sendVerificationEmail, sendResetPasswordEmail, sendChangeEmailConfirmationEmail } from "@/lib/email";
 import { type Locale, defaultLocale, isLocale } from "@/lib/i18n";
 import { invalidateSessionCache } from "@/lib/sessionCache";
 import { sql } from "drizzle-orm";
@@ -42,6 +42,13 @@ export const auth = betterAuth({
   user: {
     changeEmail: {
       enabled: true,
+      // Require the account owner to confirm the change via the OLD address.
+      // Without this hook an attacker who steals an active session can silently
+      // redirect the account to a new email address they control.
+      sendChangeEmailConfirmation: async ({ user, newEmail, url }, request) => {
+        const locale = localeFromRequest(request);
+        await sendChangeEmailConfirmationEmail(user.email, newEmail, url, locale);
+      },
     },
     deleteUser: {
       enabled: true,

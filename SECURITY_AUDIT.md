@@ -8,13 +8,14 @@
 
 ## Summary
 
-Fifteen vulnerabilities were identified and fixed across three audit passes. Two are
+Eighteen vulnerabilities were identified and fixed across four audit passes. Two are
 critical (unauthenticated subscription-granting and unauthenticated actor
 triggering), three are high severity (free access to paid features and business
-intelligence), and ten are medium severity (SSRF surface, timing side-channels,
+intelligence), and thirteen are medium severity (SSRF surface, timing side-channels,
 missing brute-force protection, a Stripe replay-attack window, missing security
-headers, auth token credential exposure, cookie misconfiguration, and a workflow
-injection hardening gap).
+headers, auth token credential exposure, cookie misconfiguration, a workflow
+injection hardening gap, JWT secret strength, password comparison truncation,
+and missing email-change confirmation).
 
 ### Audit Pass 1 (2026-03-31)
 
@@ -37,6 +38,14 @@ injection hardening gap).
 | 10 | MEDIUM | `src/lib/admin/basic-auth.ts` (`matchesBasicAuthorization`) | Fixed |
 | 11 | MEDIUM | `app/agentic/api/auth/login/route.ts` | Fixed |
 | 12 | MEDIUM | `app/api/stripe/webhook/route.ts` (replay attack) | Fixed |
+
+### Audit Pass 4 (2026-03-31)
+
+| # | Severity | File | Status |
+|---|----------|------|--------|
+| 17 | MEDIUM | `src/lib/agentic/auth.ts` (`ADMIN_JWT_SECRET` minimum length not enforced) | Fixed |
+| 18 | MEDIUM | `src/lib/agentic/auth.ts` (`checkPassword` truncates passwords > 64 bytes) | Fixed |
+| 19 | MEDIUM | `src/lib/auth.ts` + `src/lib/email.ts` (`changeEmail` no old-address confirmation) | Fixed |
 
 ### Audit Pass 3 (2026-03-31)
 
@@ -497,6 +506,119 @@ added an integer validation guard (`[[ "$ISSUE_NUMBER" =~ ^[0-9]+$ ]]`) before
 it is used in the shell script. The shell now references `${ISSUE_NUMBER}` rather
 than the raw `${{ ... }}` expression, following GitHub's recommended pattern for
 preventing script injection.
+
+---
+
+---
+
+## Audit Pass 4 Findings
+
+### 17. MEDIUM — `ADMIN_JWT_SECRET` Minimum Length Not Enforced
+
+**File:** `src/lib/agentic/auth.ts` (`getSecret`)
+
+**Description:**
+`getSecret()` threw an error when `ADMIN_JWT_SECRET` was unset but accepted
+any non-empty string, including a single character. HS256 requires a key of
+at least 256 bits (32 bytes) per NIST SP 800-131A. A secret shorter than
+32 characters is trivially brutable offline: if an attacker captures any
+`admin_session` JWT (e.g., from a log, an error response, or a network
+intercept), they can enumerate all short secrets in seconds on commodity
+hardware to recover the signing key and forge arbitrary tokens.
+
+**Attack scenario:**
+```bash
+# With a 1-char secret "x", an attacker captures the cookie value and brutes:
+hashcat -m 16500 captured.jwt -a 3 -w 3 ?a  # done in milliseconds
+# Forged token grants unlimited admin access to agentic panel
+```
+
+**Fix:**
+Added a minimum-length check: `getSecret()` now throws at startup if
+`ADMIN_JWT_SECRET` is fewer than 32 characters, ensuring the HS256 key
+meets the 256-bit security margin.
+
+---
+
+### 18. MEDIUM — `checkPassword` Truncates Passwords Longer Than 64 Bytes
+
+**File:** `src/lib/agentic/auth.ts` (`checkPassword`)
+
+**Description:**
+The previous implementation used `Buffer.from(submitted.padEnd(64))` and
+then compared only `subarray(0, 64)`. For passwords longer than 64 bytes
+`padEnd` is a no-op and `subarray` silently truncates to the first 64 bytes.
+The `submitted.length === expected.length` guard does prevent comparing
+strings of different lengths, but two passwords that share the same length
+and the same first 64 bytes are indistinguishable. An attacker who knows
+the first 64 bytes of an `ADMIN_PASSWORD` longer than 64 chars only needs to
+match those 64 bytes — any trailing characters are ignored.
+
+**Proof of concept (local):**
+```js
+// Both return true (before fix):
+checkPassword("a".repeat(65) + "X");  // actual password: "a".repeat(65) + "Y"
+```
+
+**Fix:**
+Replaced `padEnd(64)` + `subarray(0, 64)` with `Buffer.alloc(256)` +
+`Buffer.copy()`. The 256-byte fixed buffer is far above any realistic
+password length, so no content is ever truncated. The full UTF-8 encoding
+of both passwords is written into their respective zero-padded buffers and
+`timingSafeEqual` compares all 256 bytes.
+
+---
+
+### 19. MEDIUM — Email Change Requires No Confirmation from Old Address
+
+**File:** `src/lib/auth.ts`, `src/lib/email.ts`
+
+**Description:**
+Better Auth's `changeEmail` was enabled without configuring
+`sendChangeEmailConfirmation`. Under this configuration Better Auth sends a
+verification link to the **new** email only. The old email address receives
+no notification and no confirmation is required from it. An attacker who
+hijacks an active session (via XSS, session token theft, or a compromised
+device) can silently reassign the account to an attacker-controlled address.
+Once the new email is verified, the original owner loses all recovery paths
+(password reset emails go to the attacker's inbox; the old address is no
+longer associated with the account).
+
+**Attack scenario:**
+1. Attacker steals a valid `better-auth.session_token` cookie.
+2. Attacker calls `POST /api/auth/change-email` with `{ newEmail: "attacker@evil.com" }`.
+3. Attacker verifies the link sent to their inbox.
+4. Account is now fully under attacker control — the victim gets no email,
+   password-reset tokens go to the attacker.
+
+**Fix:**
+Added `sendChangeEmailConfirmation` to the `changeEmail` config in
+`auth.ts`. Better Auth will now email a confirmation link to the **old**
+address before the change is applied. The link must be clicked within the
+configured expiry window; if it is not, the email remains unchanged.
+
+A new `sendChangeEmailConfirmationEmail` helper was added to `email.ts`
+with full i18n copy for all four supported locales (en/de/fr/it) and
+proper HTML escaping of the new email address in the email body.
+
+---
+
+## Pass 4 — Areas Reviewed with No Issues Found
+
+| Area | Finding |
+|------|---------|
+| JWT algorithm confusion (`jwtVerify` in jose) | `jwtVerify(token, Uint8Array)` only accepts symmetric (HMAC) algorithms. `alg: none` and RS256/HS256 switching are both rejected. |
+| Session fixation on login | Better Auth issues a fresh session token on every successful sign-in; no pre-existing token is re-used. |
+| OAuth callback validation | Better Auth validates the `state` parameter and restricts redirect targets to `trustedOrigins`. |
+| `eval()` / `exec()` in Python crawler | No occurrences found in `apps/crawler/src/`. |
+| Pickle deserialization | No `pickle.load` or `pickle.loads` calls found anywhere in the crawler. |
+| Shell injection in `subprocess` calls | All `subprocess.run` / `Popen` calls use list-form arguments (never `shell=True`). No user-controlled values are interpolated. |
+| Unsafe YAML loading | All YAML reads use `yaml.safe_load`; no `yaml.load(stream)` without a Loader found. |
+| Path traversal in file-serving routes | No `fs.readFile` or `createReadStream` calls accept user-supplied paths in any route handler. |
+| Prototype pollution | No `Object.assign(..., userBody)` or spread of unsanitised request bodies into sensitive objects. |
+| ReDoS via user-supplied keywords | Keywords are used in PostgreSQL `~*` regex; all regex metacharacters are escaped before use (`/[.*+?^${}()|[\]\\]/g`). No backtracking-heavy patterns. |
+| `pnpm audit` (HIGH+CRITICAL) | No known HIGH or CRITICAL CVEs. |
+| Python dependency vulnerabilities | `pip-audit` not installed; `cryptography` is at 46.0.6 (current). PyYAML, Pillow, httpx at current versions. No known critical CVEs in pinned versions. |
 
 ---
 

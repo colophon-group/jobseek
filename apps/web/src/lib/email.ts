@@ -135,3 +135,80 @@ export async function sendResetPasswordEmail(
   });
 }
 
+const changeEmailCopy = {
+  en: {
+    subject: "Confirm your email change",
+    heading: "Email change requested",
+    button: "Confirm email change",
+    fallback: "Or copy and paste this link into your browser:",
+    ignore: "If you did not request this change, please ignore this email — your account has not been modified.",
+  },
+  de: {
+    subject: "E-Mail-Änderung bestätigen",
+    heading: "E-Mail-Änderung angefordert",
+    button: "E-Mail-Änderung bestätigen",
+    fallback: "Oder kopiere diesen Link in deinen Browser:",
+    ignore: "Falls du diese Änderung nicht angefordert hast, ignoriere diese E-Mail — dein Konto wurde nicht geändert.",
+  },
+  fr: {
+    subject: "Confirmez le changement d'e-mail",
+    heading: "Changement d'e-mail demandé",
+    button: "Confirmer le changement",
+    fallback: "Ou copiez et collez ce lien dans votre navigateur :",
+    ignore: "Si vous n'avez pas demandé cette modification, ignorez cet e-mail — votre compte n'a pas été modifié.",
+  },
+  it: {
+    subject: "Conferma la modifica dell'email",
+    heading: "Modifica email richiesta",
+    button: "Conferma la modifica",
+    fallback: "Oppure copia e incolla questo link nel tuo browser:",
+    ignore: "Se non hai richiesto questa modifica, ignora questa email — il tuo account non è stato modificato.",
+  },
+} as const satisfies Record<Locale, Omit<EmailCopy, "body">>;
+
+/**
+ * Notification sent to the OLD email address when a user requests an email
+ * change.  The recipient must click the link to confirm the change was
+ * intentional.  Without this step an attacker who steals an active session
+ * can silently redirect the account to a new address.
+ */
+export async function sendChangeEmailConfirmationEmail(
+  oldEmail: string,
+  newEmail: string,
+  url: string,
+  locale: Locale = "en",
+) {
+  const t = changeEmailCopy[locale];
+  const safeNew = newEmail.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const bodies: Record<Locale, string> = {
+    en: `A request was made to change your Job Seek account email address to <strong>${safeNew}</strong>. Click the button below to confirm.`,
+    de: `Es wurde eine Anfrage gestellt, deine Job-Seek-E-Mail-Adresse in <strong>${safeNew}</strong> zu ändern. Klicke auf den Button, um zu bestätigen.`,
+    fr: `Une demande a été faite pour changer l'adresse e-mail de ton compte Job Seek en <strong>${safeNew}</strong>. Clique sur le bouton ci-dessous pour confirmer.`,
+    it: `È stata inoltrata una richiesta per cambiare l'email del tuo account Job Seek in <strong>${safeNew}</strong>. Clicca il pulsante qui sotto per confermare.`,
+  };
+  const safeUrl = escapeHtml(url);
+  const html = `
+    <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+      <h2>${t.heading}</h2>
+      <p>${bodies[locale]}</p>
+      <a href="${safeUrl}"
+         style="display: inline-block; padding: 10px 20px; background: #111111; color: #f5f5f5; text-decoration: none; border-radius: 9999px; font-weight: 600; font-size: 16px;">
+        ${t.button}
+      </a>
+      <p style="margin-top: 16px; color: #666; font-size: 14px;">
+        ${t.fallback}<br/>
+        <a href="${safeUrl}" style="color: #666; word-break: break-all;">${safeUrl}</a>
+      </p>
+      <p style="margin-top: 16px; color: #666; font-size: 14px;">
+        ${t.ignore}
+      </p>
+    </div>
+  `;
+  await getResend().emails.send({
+    from: FROM_ADDRESS,
+    to: oldEmail,
+    subject: t.subject,
+    html,
+  });
+}
+
