@@ -1296,6 +1296,8 @@ ethos-life,ethos-life-greenhouse,https://job-boards.greenhouse.io/ethoslife,gree
 ethyca,ethyca-ashby,https://jobs.ashbyhq.com/ethyca,ashby,"{""token"": ""ethyca""}",skip,
 euclid-power,euclid-power-greenhouse,https://job-boards.greenhouse.io/euclidpower,greenhouse,"{""token"": ""euclidpower""}",skip,
 eudia,eudia-greenhouse,https://job-boards.greenhouse.io/eudia,greenhouse,"{""token"": ""eudia""}",skip,
+euronext,euronext-careers-workday,https://hrhub.wd3.myworkdayjobs.com/Euronext_Career_Page,workday,"{""company"": ""hrhub"", ""wd_instance"": ""wd3"", ""site"": ""Euronext_Career_Page""}",workday,
+euronext,euronext-careers-wttj,https://www.welcometothejungle.com/en/companies/euronext/jobs,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 60000, ""url_filter"": ""/jobs/"", ""pagination"": {""param_name"": ""page"", ""max_pages"": 100}}",json-ld,
 ever,ever-greenhouse,https://job-boards.greenhouse.io/ever,greenhouse,"{""token"": ""ever""}",skip,
 everbridge,everbridge-pinpoint,https://everbridge.pinpointhq.com,pinpoint,"{""slug"": ""everbridge""}",skip,
 evercore,evercore-experienced-hires,https://evercore.tal.net/vx/mobile-0/appcentre-1/brand-5/candidate/jobboard/vacancy/3,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""url_filter"": ""/opp/""}",dom,"{""render"": true, ""wait"": ""networkidle"", ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""text"": ""Location"", ""offset"": 1, ""field"": ""locations""}, {""text"": ""Job description"", ""offset"": 1, ""field"": ""description"", ""stop"": ""About Evercore"", ""html"": true}]}"
