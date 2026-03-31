@@ -739,6 +739,10 @@ class LocationResolver:
 
         Inserts results into SQLite so subsequent ``resolve()`` calls hit.
         Returns True if new names were added.
+
+        Queries are chunked to avoid shared-memory exhaustion on Postgres
+        when thousands of location names need backfilling (e.g. Amazon
+        with 17k+ jobs per crawl).
         """
         if not self._pool or not self._misses or self._db is None:
             return False
@@ -746,23 +750,26 @@ class LocationResolver:
         missed = list(self._misses)
         self._misses.clear()
 
-        async with self._pool.acquire() as conn:
-            rows = await conn.fetch(
-                "SELECT location_id, lower(name) AS name "
-                "FROM location_name WHERE lower(name) = ANY($1::text[])",
-                missed,
-            )
-
-        if not rows:
-            self._negative.update(missed)
-            return False
-
+        _CHUNK = 500
         matched_keys: set[str] = set()
         name_pairs: list[tuple[str, int]] = []
-        for row in rows:
-            matched_keys.add(row["name"])
-            for variant in self._name_variants(row["name"]):
-                name_pairs.append((variant, row["location_id"]))
+
+        for i in range(0, len(missed), _CHUNK):
+            chunk = missed[i : i + _CHUNK]
+            async with self._pool.acquire() as conn:
+                rows = await conn.fetch(
+                    "SELECT location_id, lower(name) AS name "
+                    "FROM location_name WHERE lower(name) = ANY($1::text[])",
+                    chunk,
+                )
+            for row in rows:
+                matched_keys.add(row["name"])
+                for variant in self._name_variants(row["name"]):
+                    name_pairs.append((variant, row["location_id"]))
+
+        if not name_pairs:
+            self._negative.update(missed)
+            return False
 
         self._db.executemany(
             "INSERT OR IGNORE INTO name_index (name, location_id) VALUES (?, ?)",

@@ -559,7 +559,9 @@ async def _process_one_board_streaming(
                     await _enqueue_scrapes_for_new(inserted, board_id, metadata, board_log)
 
                 # Enqueue scrapes for relisted jobs (came back after gone)
-                await _enqueue_scrapes_for_relisted(relisted, board_id, metadata, board_log)
+                # Skip for rich monitors without enrichment — they already have full data
+                if not is_rich_no_scrape:
+                    await _enqueue_scrapes_for_relisted(relisted, board_id, metadata, board_log)
 
             board_log.info(
                 "batch.monitor.stream_batch",
