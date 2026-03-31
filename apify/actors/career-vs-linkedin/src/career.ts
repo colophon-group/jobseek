@@ -254,7 +254,11 @@ function extractFromHtml(html: string, snap: CdxSnapshot): Partial<JobSighting>[
   if (results.length > 0) return results;
 
   // 2. __NEXT_DATA__
-  return extractJobsFromNextData(html, 'html');
+  const nextData = extractJobsFromNextData(html, 'html');
+  if (nextData.length > 0) return nextData;
+
+  // 3. Greenhouse boards HTML: <div class="opening"><a href="/slug/jobs/ID">Title</a><span class="location">…</span></div>
+  return extractFromGreenhouseBoards($);
 }
 
 function extractLocationFromJsonLd(obj: Record<string, unknown>): string | undefined {
@@ -272,6 +276,29 @@ function extractLocationFromJsonLd(obj: Record<string, unknown>): string | undef
     }
   }
   return parts.length > 0 ? parts.join(', ') : undefined;
+}
+
+function extractFromGreenhouseBoards($: ReturnType<typeof load>): Partial<JobSighting>[] {
+  const results: Partial<JobSighting>[] = [];
+  $('div.opening').each((_, el) => {
+    const a = $(el).find('a').first();
+    const title = a.text().trim();
+    if (!title) return;
+    const location = $(el).find('span.location').first().text().trim() || undefined;
+    // department: nearest preceding <h3> within parent section
+    const section = $(el).closest('section');
+    const department = section.find('h3').first().text().trim() || undefined;
+    const href = a.attr('href') ?? '';
+    const idMatch = href.match(/\/(\d+)$/);
+    results.push({
+      title,
+      location,
+      department,
+      id: idMatch ? idMatch[1] : undefined,
+      extractionMethod: 'greenhouse-html',
+    });
+  });
+  return results;
 }
 
 function extractJobsFromNextData(html: string, method: string): Partial<JobSighting>[] {

@@ -152,9 +152,10 @@ function extractFromLinkedInHtml(html: string, snap: { timestamp: string; origin
   const snapshotUrl = `https://web.archive.org/web/${snap.timestamp}/${snap.original}`;
 
   // Collect all /jobs/view/ hrefs found on the page
+  // LinkedIn URL formats: /jobs/view/12345/ (old) or /jobs/view/title-at-co-12345?tracking (new)
   $('a[href*="/jobs/view/"]').each((_, el) => {
     const href = $(el).attr('href') ?? '';
-    const match = href.match(/\/jobs\/view\/(\d+)/);
+    const match = href.match(/\/jobs\/view\/(?:[^/?]*?-)?(\d{7,})/);
     if (match) {
       const cleanUrl = `https://www.linkedin.com/jobs/view/${match[1]}/`;
       jobViewUrls.push(cleanUrl);
@@ -165,8 +166,10 @@ function extractFromLinkedInHtml(html: string, snap: { timestamp: string; origin
   const titleSelectors = [
     'h3.job-card-list__title',
     'h3.base-search-card__title',
+    'h3.base-main-card__title',
     '.job-result-card__title',
     'h3[class*="job-card"]',
+    'h3[class*="base-main-card"]',
     '.jobs-unified-top-card__job-title',
     '[class*="job-title"]',
     '.result-card__title',
