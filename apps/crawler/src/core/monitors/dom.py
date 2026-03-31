@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 
 log = structlog.get_logger()
 
-MAX_URLS = 10_000
+MAX_URLS = 50_000
 _MAX_PAGINATION_PAGES = 10_000
 
 _JOB_KEYWORDS = frozenset({"job", "career", "position", "posting", "opening", "role", "vacancy"})

@@ -33,7 +33,7 @@ from src.core.monitors import fetch_page_text, register
 
 log = structlog.get_logger()
 
-MAX_JOBS = 10_000
+MAX_JOBS = 50_000
 PAGE_SIZE = 20
 _LIST_CONCURRENCY = 5  # Parallel site listing during multi-site discovery
 _API_RESULT_CAP = 2000  # Workday caps list results at 2000 per query

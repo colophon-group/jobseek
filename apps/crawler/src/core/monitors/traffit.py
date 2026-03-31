@@ -24,7 +24,7 @@ from src.core.monitors import DiscoveredJob, fetch_page_text, register
 
 log = structlog.get_logger()
 
-MAX_JOBS = 10_000
+MAX_JOBS = 50_000
 
 # Page HTML patterns for detecting TRAFFIT career portals
 _PAGE_PATTERNS = [

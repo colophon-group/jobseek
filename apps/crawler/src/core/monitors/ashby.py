@@ -16,7 +16,7 @@ from src.core.monitors import DiscoveredJob, fetch_page_text, register, slugs_fr
 
 log = structlog.get_logger()
 
-MAX_JOBS = 10_000
+MAX_JOBS = 50_000
 
 _PAGE_PATTERNS = [
     re.compile(r"api\.ashbyhq\.com/posting-api/job-board/([\w-]+)"),

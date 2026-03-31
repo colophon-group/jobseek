@@ -24,7 +24,7 @@ from src.core.monitors import register
 
 log = structlog.get_logger()
 
-MAX_JOBS = 10_000
+MAX_JOBS = 50_000
 
 _BREEZY_DOMAIN_RE = re.compile(r"^([\w-]+)\.breezy\.hr$")
 _PORTAL_HOST_RE = re.compile(r"(?:https?:)?//([\w-]+\.breezy\.hr)", re.IGNORECASE)

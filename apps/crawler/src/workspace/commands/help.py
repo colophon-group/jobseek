@@ -238,7 +238,7 @@ bite — BITE GmbH ATS (Job Search API, widget key auth)
   Search: POST https://jobs.b-ite.com/api/v1/postings/search
   Returns:  Job URLs only (https://{domain}/jobposting/{hash})
   Scraper:  Auto-configured (bite) — fetches details on daily scrape schedule
-  Cap:      10,000 jobs
+  Cap:      50,000 jobs
   Note:     Requires a 40-char hex "Job Listing Key" embedded in widget JS.
             Key is extracted from listing JS at cs-assets.b-ite.com.
             6,500+ customers in DACH. Pitchman portals (multi-employer
@@ -288,7 +288,7 @@ dvinci — d.vinci ATS (Public JSON API, no auth)
             date_posted, base_salary)
             metadata: contract_period, reference, categories, department
   Scraper:  Not needed (API returns full data, scraper step is skipped)
-  Cap:      10,000 jobs
+  Cap:      50,000 jobs
   Note:     API is fully public — no authentication required.
             Primarily DACH region (Germany, Austria, Switzerland).
 
@@ -310,7 +310,7 @@ breezy — Breezy HR Public Listing Endpoint
   Listing:  GET https://{portal}/json
   Returns:  Job detail URLs (built from listing JSON)
   Scraper:  Auto-configured (json-ld) — extracts JSON-LD JobPosting from detail pages
-  Cap:      10,000 jobs
+  Cap:      50,000 jobs
   Note:     Single HTTP call to listing endpoint.
             Detail URLs built as https://{portal}/p/{friendly_id}.
 
@@ -380,7 +380,7 @@ gem — Gem ATS Job Board API
             job_location_type, date_posted)
             metadata: department
   Scraper:  Not needed (API returns full data, scraper step is skipped)
-  Cap:      10,000 jobs
+  Cap:      50,000 jobs
   Note:     Single API call — no pagination, no auth needed
 
   Config:
@@ -401,7 +401,7 @@ greenhouse — Greenhouse Public API
   Returns:  Full job data (title, HTML description, locations, date_posted)
             metadata: departments, education, requisition_id
   Scraper:  Not needed (API returns full data, scraper step is skipped)
-  Cap:      10,000 jobs
+  Cap:      50,000 jobs
 
   Config:
     {"token": "stripe"}
@@ -423,7 +423,7 @@ hireology — Hireology Careers API
             job_location_type, date_posted)
             metadata: organization, job_family, id
   Scraper:  Not needed (API returns full data, scraper step is skipped)
-  Cap:      10,000 jobs
+  Cap:      50,000 jobs
   Note:     Single API call for most boards (page_size=500)
 
   Config:
@@ -446,7 +446,7 @@ lever — Lever Postings API
             job_location_type, base_salary)
             metadata: team, department, id
   Scraper:  Not needed (API returns full data, scraper step is skipped)
-  Cap:      10,000 jobs
+  Cap:      50,000 jobs
   Rate:     0.5s sleep between pagination batches of 100
 
   Config:
@@ -466,7 +466,7 @@ join — JOIN (join.com) Next.js Monitor
   Source:    Next.js __NEXT_DATA__ on join.com/companies/{slug}
   Returns:   Job URLs (scraper fetches details separately on daily schedule)
   Scraper:   Auto-configured (nextdata) — config needed in board CSV
-  Cap:       10,000 jobs
+  Cap:      50,000 jobs
   Note:      Pre-configured nextdata monitor for JOIN.
              Listing pages contain jobs at:
              props.pageProps.initialState.jobs.items
@@ -517,7 +517,7 @@ MONITOR_SITEMAP = """\
 sitemap — XML Sitemap Parser
 
   Returns:  URL set only (needs scraper)
-  Cap:      10,000 URLs
+  Cap:      50,000 URLs
 
   Config:
     {"sitemap_url": "https://example.com/jobs/sitemap.xml"}
@@ -549,7 +549,7 @@ MONITOR_NEXTDATA = """\
 nextdata — Next.js __NEXT_DATA__ Discovery
 
   Returns:  URL set (default) or full job data (if fields configured)
-  Cap:      10,000 items
+  Cap:      50,000 items
 
   Config (minimal — URL-only mode):
     {"path": "props.pageProps.positions", "url_template": "https://example.com/jobs/{id}"}
@@ -684,7 +684,7 @@ MONITOR_DOM = """\
 dom — Link Extraction (fallback)
 
   Returns:  URL set only (needs scraper)
-  Cap:      10,000 URLs
+  Cap:      50,000 URLs
   Cost:     Highest — use only as last resort.
 
   Config:
@@ -778,7 +778,7 @@ recruitee — Recruitee Careers Site API
             job_location_type, date_posted, base_salary)
             metadata: department, tags, category, id
   Scraper:  Not needed (API returns full data, scraper step is skipped)
-  Cap:      10,000 jobs
+  Cap:      50,000 jobs
   Note:     Single API call — no pagination needed
 
   Config:
@@ -803,7 +803,7 @@ smartrecruiters — SmartRecruiters Posting API (URL-only)
   API:      GET https://api.smartrecruiters.com/v1/companies/{token}/postings?limit=100&offset=0
   Returns:  URL set only — constructs URLs as https://jobs.smartrecruiters.com/{token}/{posting_id}
   Scraper:  Auto-configured (smartrecruiters) — fetches details on daily schedule
-  Cap:      10,000 jobs
+  Cap:      50,000 jobs
 
   Config:
     {"token": "smartrecruiters"}
@@ -822,7 +822,7 @@ softgarden — Softgarden ATS (HTML scraping, no auth)
   Listing:  GET https://{slug}.softgarden.io
   Returns:  Job detail URLs (built from inline JS job IDs)
   Scraper:  Auto-configured (json-ld) — extracts JSON-LD JobPosting from detail pages
-  Cap:      10,000 jobs
+  Cap:      50,000 jobs
   Note:     Single HTTP call to listing page.
             Listing page embeds job IDs in inline JavaScript.
             Detail URLs built as https://{slug}.softgarden.io/job/{id}?l=en.
@@ -855,7 +855,7 @@ traffit — TRAFFIT ATS (Public JSON API, no auth)
             extras: requirements, responsibilities, benefits (HTML)
             metadata: reference, department
   Scraper:  Not needed (API returns full data, scraper step is skipped)
-  Cap:      10,000 jobs
+  Cap:      50,000 jobs
   Note:     API is fully public — no authentication required.
             Primarily Poland/CEE region.
 
@@ -876,7 +876,7 @@ umantis — Umantis ATS (Haufe Group / Abacus)
 
   Listing:  GET https://recruitingapp-{ID}[.de].umantis.com/Jobs/All
   Returns:  URL set only (needs scraper)
-  Cap:      10,000 URLs
+  Cap:      50,000 URLs
   Note:     Paginated HTML listing pages (10 per page).
             Pagination via tc{tableNr}=p{page} query params.
             1,000+ customers in DACH (Switzerland, Germany, Austria).
@@ -905,7 +905,7 @@ rippling — Rippling ATS Job Board API
   API:      GET https://api.rippling.com/platform/api/ats/v1/board/{slug}/jobs
   Returns:  Job posting URLs (https://ats.rippling.com/{slug}/jobs/{uuid})
   Scraper:  Auto-configured (rippling) — detail API fetches full data daily
-  Cap:      10,000 jobs
+  Cap:      50,000 jobs
   Note:     Single API call — returns all jobs, no pagination
 
   Config:
@@ -927,7 +927,7 @@ pinpoint — Pinpoint HQ Postings API
             job_location_type, base_salary)
             metadata: department, division, requisition_id
   Scraper:  Not needed (API returns full data, scraper step is skipped)
-  Cap:      10,000 jobs
+  Cap:      50,000 jobs
   Note:     Single API call — returns all jobs, no pagination
 
   Config:
@@ -953,7 +953,7 @@ personio — Personio XML Feed + HTML Fallback
             yearsOfExperience, occupation, occupationCategory, keywords
   Scraper:  Not needed when XML available with descriptions (skipped).
             When HTML fallback is used or descriptions are missing, scraper needed.
-  Cap:      10,000 jobs
+  Cap:      50,000 jobs
   Note:     Tries both .personio.de and .personio.com domains automatically.
             Some tenants only serve .com and/or have no XML feed.
             Many tenants have descriptions in only one language (e.g. DE only).
@@ -983,7 +983,7 @@ rss — RSS 2.0 Feed Monitor (presets: successfactors, teamtailor, generic)
   Returns:  Full job data (title, HTML description, locations, date_posted)
             metadata: id and preset-specific fields
   Scraper:  Not needed (feed returns full data, scraper step is skipped)
-  Cap:      10,000 jobs
+  Cap:      50,000 jobs
   Note:     One monitor type with multiple ATS presets:
             - successfactors: /googlefeed.xml (Google Base namespace)
             - teamtailor: /jobs.rss (offset-paginated)
@@ -1012,7 +1012,7 @@ workable — Workable Posting API
   API:      POST https://apply.workable.com/api/v3/accounts/{token}/jobs
   Returns:  Job URLs (scraper fetches details separately on daily schedule)
   Scraper:  Auto-configured (workable) — no manual selection needed
-  Cap:      10,000 jobs
+  Cap:      50,000 jobs
   Note:     Monitor discovers URLs only via the list API (lightweight, hourly).
             A dedicated workable scraper fetches full details (title, description,
             locations, etc.) from the detail API on a daily schedule.
@@ -1035,7 +1035,7 @@ workday — Workday Job Board API
   API:      POST https://{company}.{wd_instance}.myworkdayjobs.com/wday/cxs/{company}/{site}/jobs
   Returns:  Job URLs (scraper fetches details separately on daily schedule)
   Scraper:  Auto-configured (workday) — no manual selection needed
-  Cap:      10,000 jobs
+  Cap:      50,000 jobs
   Note:     Monitor discovers URLs only via the list API (lightweight, hourly).
             A dedicated workday scraper fetches full details (title, description,
             locations, etc.) from the detail API on a daily schedule.
