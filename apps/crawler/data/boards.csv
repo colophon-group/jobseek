@@ -2963,6 +2963,7 @@ plain,plain-ashby,https://jobs.ashbyhq.com/plain,ashby,"{""token"": ""plain""}",
 plane,plane-ashby,https://jobs.ashbyhq.com/plane,ashby,"{""token"": ""plane""}",skip,
 planet,planet-greenhouse,https://job-boards.greenhouse.io/planetlabs,greenhouse,"{""token"": ""planetlabs""}",skip,
 planet-a-foods-gmbh,planet-a-foods-gmbh-join,https://join.com/companies/forplanetacom,join,"{""slug"": ""forplanetacom""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
+planet-pharma,planet-pharma-careers,https://careers.planet-pharma.com,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""url_filter"": ""/jb/"", ""actions"": [{""action"": ""dismiss_overlays""}, {""action"": ""repeat"", ""selector"": ""#loadMore"", ""wait_ms"": 3000}]}",json-ld,"{""render"": true}"
 planetscale,planetscale-greenhouse,https://job-boards.greenhouse.io/planetscale,greenhouse,"{""token"": ""planetscale""}",skip,
 planhat,planhat-pinpoint,https://planhat.pinpointhq.com,pinpoint,"{""slug"": ""planhat""}",skip,
 planner5d,planner5d-pinpoint,https://planner5d.pinpointhq.com,pinpoint,"{""slug"": ""planner5d""}",skip,
