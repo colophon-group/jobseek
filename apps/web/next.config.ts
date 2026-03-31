@@ -23,6 +23,43 @@ const nextConfig: NextConfig = {
   ],
   headers: async () => [
     {
+      // Security headers applied to all routes.
+      source: "/:path*",
+      headers: [
+        // Prevent the page from being embedded in iframes (clickjacking protection).
+        { key: "X-Frame-Options", value: "SAMEORIGIN" },
+        // Prevent MIME-type sniffing.
+        { key: "X-Content-Type-Options", value: "nosniff" },
+        // Control referrer information sent with outbound requests.
+        { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+        // Restrict access to browser features.
+        { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+        // Content Security Policy.
+        // - default-src 'self': only allow content from this origin by default.
+        // - script-src 'self' 'unsafe-inline': Next.js requires unsafe-inline for
+        //   its runtime bootstrap script; 'unsafe-eval' is intentionally omitted.
+        // - style-src 'self' 'unsafe-inline': CSS-in-JS and inline styles.
+        // - img-src 'self' data: blob: + trusted CDN for company logos.
+        // - connect-src 'self': XHR/fetch only to own origin.
+        // - font-src 'self': self-hosted fonts only.
+        // - frame-ancestors 'self': duplicate of X-Frame-Options for CSP-aware browsers.
+        {
+          key: "Content-Security-Policy",
+          value: [
+            "default-src 'self'",
+            "script-src 'self' 'unsafe-inline'",
+            "style-src 'self' 'unsafe-inline'",
+            "img-src 'self' data: blob: https://jobseek-assets.colophon-group.org",
+            "connect-src 'self'",
+            "font-src 'self'",
+            "frame-ancestors 'self'",
+            "base-uri 'self'",
+            "form-action 'self'",
+          ].join("; "),
+        },
+      ],
+    },
+    {
       // Optimized remote images (company logos) — cache aggressively.
       // Logos rarely change; Vercel CDN is purged on deploy.
       source: "/_next/image",

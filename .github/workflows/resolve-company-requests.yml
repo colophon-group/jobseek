@@ -77,9 +77,19 @@ jobs:
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           GH_TOKEN: ${{ github.token }}
+          # Pass the issue number through an env var rather than interpolating
+          # ${{ steps.select.outputs.selected }} directly into the run: shell
+          # script. Direct interpolation can enable workflow injection if a
+          # malicious step output ever contains shell metacharacters.
+          ISSUE_NUMBER: ${{ steps.select.outputs.selected }}
         run: |
+          # Validate that ISSUE_NUMBER is a positive integer before use.
+          if ! [[ "$ISSUE_NUMBER" =~ ^[0-9]+$ ]]; then
+            echo "::error::ISSUE_NUMBER is not a valid integer: $ISSUE_NUMBER"
+            exit 1
+          fi
           cd apps/crawler
-          claude --print "Run: ws task --issue ${{ steps.select.outputs.selected }}
+          claude --print "Run: ws task --issue ${ISSUE_NUMBER}
 
           Follow the instructions printed by ws task. The ws tool will guide
           you through the parallel pipeline: pre-verify, create workspace,

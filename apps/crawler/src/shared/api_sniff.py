@@ -143,14 +143,28 @@ PAGINATION_PARAM_DEFAULTS: dict[str, int] = {
 
 _DESIRED_PAGE_SIZE = 100
 
-# Headers to strip when replaying requests
+# Headers to strip when replaying requests or storing in board config.
+# Connection-level headers break replayed requests; auth/cookie headers are
+# short-lived session tokens that should NOT be persisted in the database —
+# they become invalid quickly and pose a credential-exposure risk if logged.
 _SKIP_HEADERS = frozenset(
     {
+        # Connection / transport headers
         "host",
         "connection",
         "content-length",
         "accept-encoding",
         "transfer-encoding",
+        # Auth / credential headers — never store in DB or logs
+        "authorization",
+        "cookie",
+        "set-cookie",
+        "x-api-key",
+        "x-auth-token",
+        "x-access-token",
+        "x-csrf-token",
+        "x-session-token",
+        "proxy-authorization",
     }
 )
 
