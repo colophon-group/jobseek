@@ -177,6 +177,15 @@ export default function Page() {
             <ApifyIcon className="w-3.5 h-3.5" />
             Powered by Apify
           </a>
+          <a
+            href="https://apify.com/golanger/company-discovery-actor/api/openapi"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-xs text-muted border border-divider rounded-full px-3 py-1 hover:border-foreground/30 transition-colors"
+          >
+            <ApifyIcon className="w-3.5 h-3.5" />
+            Get to know our Apify discovery actor
+          </a>
         </div>
       </div>
 
