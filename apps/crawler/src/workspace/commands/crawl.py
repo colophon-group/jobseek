@@ -1601,6 +1601,7 @@ def run_scraper(
         from playwright.async_api import async_playwright
 
         from src.core.scrape import scrape_one
+        from src.processing.scrape import _apply_defaults
         from src.shared.http import create_logging_http_client
 
         ssl_verify = (board.monitor_config or {}).get("ssl_verify", True)
@@ -1625,6 +1626,7 @@ def run_scraper(
                     except HTTPStatusError as exc:
                         skipped.append((url, str(exc.response.status_code)))
                         continue
+                    content = _apply_defaults(content, scr_config or {})
                     elapsed = time.monotonic() - start
                     results.append((url, content, elapsed))
             return results, http_log, skipped
