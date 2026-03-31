@@ -48,6 +48,53 @@ def _detail_url(company: str, wd_instance: str, site: str, path: str) -> str:
     return f"https://{company}.{wd_instance}.myworkdayjobs.com/wday/cxs/{company}/{site}{path}"
 
 
+# Workday location format: "{COUNTRY}-{STATE}-{CITY}-{BUILDING} ~ {ADDRESS} ~ ..."
+# Strip building/address noise after ~ and normalize the code prefix.
+_TILDE_RE = re.compile(r"\s*~.*")
+
+# Code-format: "US-AR-SPRINGDALE", "AU-NSW-NOWRA-039", "GB-LND-LONDON"
+# The state segment is 2-3 uppercase letters; city is all-caps letters/spaces.
+_CODE_RE = re.compile(
+    r"^([A-Z]{2})"  # country (ISO-2)
+    r"-([A-Z]{2,3})"  # state/province
+    r"-([A-Z][A-Z ]+)"  # city (all-caps, may contain spaces)
+)
+
+# Space-separated display format without commas: "New York New York United States"
+# Collapse multiple spaces before further processing.
+_MULTI_SPACE_RE = re.compile(r" {2,}")
+
+
+def _normalize_workday_location(raw: str) -> str:
+    """Normalize a Workday location string for the resolver.
+
+    Handles two Workday formats:
+    - Code: "US-AR-SPRINGDALE-BLDG 1 ~ 275 E Robinson Ave" -> "Springdale, AR, US"
+    - Display: "New York New York United States" -> "New York, New York, United States"
+    """
+    # Strip building/address after ~
+    cleaned = _TILDE_RE.sub("", raw).strip()
+    if not cleaned:
+        return raw
+
+    # Try code format first
+    m = _CODE_RE.match(cleaned)
+    if m:
+        country, state, city = m.group(1), m.group(2), m.group(3)
+        # Strip trailing building codes (digits, alphanumeric IDs like "TB1", "BLDG", etc.)
+        city = re.sub(r"[-\s]+([A-Z]{0,4}\d+|BLDG).*$", "", city, flags=re.IGNORECASE).strip()
+        if city:
+            return f"{city.title()}, {state}, {country}"
+        return f"{state}, {country}"
+
+    # Display format: Workday uses double spaces as segment separators
+    # "Sg  Singapore", "Heredia  Costa Rica", "New York  New York  United States"
+    if "  " in cleaned:
+        return ", ".join(part.strip() for part in cleaned.split("  ") if part.strip())
+
+    return cleaned
+
+
 def _parse_location_type(value: str | None) -> str | None:
     """Normalize Workday remoteType to our enum."""
     if not value:
@@ -67,7 +114,7 @@ def _parse_detail(data: dict) -> JobContent:
     title = info.get("title")
     description = info.get("jobDescription")
 
-    # Locations: primary + additional, deduplicated
+    # Locations: primary + additional, deduplicated and normalized
     locations: list[str] | None = None
     primary = info.get("location")
     additional = info.get("additionalLocations") or []
@@ -75,9 +122,11 @@ def _parse_detail(data: dict) -> JobContent:
         seen: set[str] = set()
         locs: list[str] = []
         for loc in [primary, *additional]:
-            if loc and loc not in seen:
-                seen.add(loc)
-                locs.append(loc)
+            if loc:
+                normalized = _normalize_workday_location(loc)
+                if normalized not in seen:
+                    seen.add(normalized)
+                    locs.append(normalized)
         if locs:
             locations = locs
 
