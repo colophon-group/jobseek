@@ -18,7 +18,8 @@
       "flatted": ">=3.4.2",
       "minimatch": ">=10.2.3",
       "fast-xml-parser": ">=5.5.7",
-      "kysely": ">=0.28.14"
+      "kysely": ">=0.28.14",
+      "path-to-regexp": ">=8.4.0"
     }
   }
 }
