@@ -3483,6 +3483,7 @@ smithrx,smithrx-greenhouse,https://job-boards.greenhouse.io/smithrx,greenhouse,"
 snap,snap-careers,https://snapchat.wd1.myworkdayjobs.com/snap,workday,,workday,
 snap-mobile-inc,snap-mobile-inc-greenhouse,https://job-boards.greenhouse.io/snapmobileinc,greenhouse,"{""token"": ""snapmobileinc""}",skip,
 snappy,snappy-ashby,https://jobs.ashbyhq.com/snappy,ashby,"{""token"": ""snappy""}",skip,
+sncf,sncf-careers,https://emploi.sncf.com/nos-offres,sitemap,"{""sitemap_url"": ""https://emploi.sncf.com/sitemap.xml"", ""url_filter"": ""/nos-offres/\\d+""}",json-ld,
 snorkel-ai,snorkel-ai-greenhouse,https://job-boards.greenhouse.io/snorkelai,greenhouse,"{""token"": ""snorkelai""}",skip,
 snow-companies,snow-companies-greenhouse,https://job-boards.greenhouse.io/snowcompanies,greenhouse,"{""token"": ""snowcompanies""}",skip,
 snowflake,snowflake-careers,https://careers.snowflake.com/us/en/search-results,ashby,"{""token"": ""snowflake""}",skip,
