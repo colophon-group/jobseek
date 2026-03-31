@@ -29,3 +29,10 @@ export const apiLimiter = new Ratelimit({
   limiter: Ratelimit.slidingWindow(30, "60 s"),
   prefix: "rl:api",
 });
+
+/** Agentic admin login: 5 attempts per 15 minutes per IP (brute-force protection). */
+export const agenticLoginLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(5, "900 s"),
+  prefix: "rl:agentic-login",
+});

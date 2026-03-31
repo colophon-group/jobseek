@@ -8,10 +8,13 @@
 
 ## Summary
 
-Eight vulnerabilities were identified and fixed in this audit pass. Two are critical
-(unauthenticated subscription-granting and unauthenticated actor triggering), three
-are high severity (free access to paid features and business intelligence), and three
-are medium severity (SSRF surface and a timing side-channel).
+Eleven vulnerabilities were identified and fixed across two audit passes. Two are
+critical (unauthenticated subscription-granting and unauthenticated actor
+triggering), three are high severity (free access to paid features and business
+intelligence), and six are medium severity (SSRF surface, timing side-channels,
+missing brute-force protection, and a Stripe replay-attack window).
+
+### Audit Pass 1 (2026-03-31)
 
 | # | Severity | File | Status |
 |---|----------|------|--------|
@@ -24,6 +27,14 @@ are medium severity (SSRF surface and a timing side-channel).
 | 7 | MEDIUM | `app/agentic/api/apify/status/[runId]/route.ts` | Fixed |
 | 8 | MEDIUM | `app/agentic/api/hiring-cafe/route.ts` | Fixed |
 | 9 | MEDIUM | `src/lib/agentic/agentAuth.ts` (`verifyAgentKey`) | Fixed |
+
+### Audit Pass 2 (2026-03-31)
+
+| # | Severity | File | Status |
+|---|----------|------|--------|
+| 10 | MEDIUM | `src/lib/admin/basic-auth.ts` (`matchesBasicAuthorization`) | Fixed |
+| 11 | MEDIUM | `app/agentic/api/auth/login/route.ts` | Fixed |
+| 12 | MEDIUM | `app/api/stripe/webhook/route.ts` (replay attack) | Fixed |
 
 ---
 
@@ -192,6 +203,99 @@ use constant-time comparison.
 
 ---
 
+---
+
+## Audit Pass 2 Findings
+
+### 10. MEDIUM — Timing Side-Channel in `matchesBasicAuthorization`
+
+**File:** `src/lib/admin/basic-auth.ts`
+
+**Description:**
+The `matchesBasicAuthorization` function compared the provided `Basic` token to
+`ADMIN_SECRET` using the JavaScript `===` operator. String equality in V8
+short-circuits on the first differing byte, leaking a timing signal that a
+patient attacker could use to enumerate the secret character-by-character via a
+remote timing oracle. The affected route is `POST /api/admin/meta/apify-import`
+which triggers a Meta Careers Apify data import. This was the same class of
+vulnerability fixed in `verifyAgentKey` in Pass 1 (finding #9).
+
+**Proof of concept:**
+Repeated requests with incrementally longer matching prefixes produce measurable
+timing differences under a noise-averaging attack. With sufficient request volume
+(typically thousands), the full secret can be extracted.
+
+**Fix:**
+Replaced `===` with `crypto.timingSafeEqual`, using the same padding strategy
+(`padEnd(128)`) already used in `verifyGhostingAdminKey` and `verifyAgentKey`.
+Added an explicit `scheme !== "Basic"` early-exit before the secret comparison.
+
+---
+
+### 11. MEDIUM — No Rate Limiting on Agentic Admin Login
+
+**File:** `app/agentic/api/auth/login/route.ts`
+
+**Description:**
+`POST /agentic/api/auth/login` accepted unlimited password guesses with no
+brute-force protection. An attacker could mount a high-throughput dictionary
+or brute-force attack against `ADMIN_PASSWORD` without any throttling. A
+successful guess yields a 7-day JWT session cookie granting access to all
+agentic admin views. The main auth route at `/api/auth/[...all]` already had
+rate limiting (10 req/60 s), but the agentic login had none.
+
+**Attack scenario:**
+```bash
+# Enumerate common passwords or short secrets at full network speed
+for pass in $(cat rockyou.txt); do
+  curl -s -X POST https://jseek.co/agentic/api/auth/login \
+    -H 'Content-Type: application/json' \
+    -d "{\"password\":\"$pass\"}" | grep -q '"ok":true' && echo "FOUND: $pass" && break
+done
+```
+
+**Fix:**
+Added `agenticLoginLimiter` (5 requests per 15 minutes per IP, using Upstash
+Redis sliding window) in `src/lib/rate-limit.ts` and applied it as the first
+check in the login handler. Returns `429 Too Many Requests` with `Retry-After`
+when the limit is exceeded. Falls through if Redis is unavailable to avoid a
+denial-of-service on the login if Redis goes down.
+
+---
+
+### 12. MEDIUM — Stripe Webhook Missing Replay-Attack Protection
+
+**File:** `app/api/stripe/webhook/route.ts`
+
+**Description:**
+The Stripe webhook signature verification (added in Pass 1) verifies the
+HMAC-SHA256 signature correctly, but did not check the `t=` timestamp embedded
+in the `stripe-signature` header. Stripe includes this timestamp to enable
+replay-attack protection: a valid signed event from the past can be replayed
+indefinitely because the server never checked whether the timestamp was recent.
+
+**Attack scenario:**
+An attacker who can observe a legitimate `checkout.session.completed` event
+(e.g., via network interception, a compromised logging pipeline, or an
+accidentally-logged header dump) could replay that event at any future time to
+re-activate a subscription without paying again:
+
+```bash
+# Replayed captured webhook (valid signature, stale timestamp)
+curl -X POST https://jseek.co/api/stripe/webhook \
+  -H 'stripe-signature: t=1700000000,v1=<captured-valid-signature>' \
+  -d '<captured-body>'
+```
+
+**Fix:**
+Added a `±300 second` (5-minute) tolerance check in `verifyStripeSignature`.
+The function now parses `t=<unix-seconds>` from the signature header, compares
+it against `Date.now()`, and returns `false` if the absolute difference exceeds
+300 seconds. This matches the protection provided by `stripe.webhooks.constructEvent()`
+in the official Stripe SDK.
+
+---
+
 ## Routes Audited — No Issues Found
 
 The following routes were reviewed and found to have appropriate access controls
@@ -210,10 +314,11 @@ already in place:
 | `GET /agentic/api/ping` | `checkPaywall` |
 | `POST /agentic/api/ghosting/paid` | `checkPaywall` |
 | `GET /agentic/api/ghosting/paid/:runId` | `checkPaywall` |
-| `POST /api/admin/meta/apify-import` | HTTP Basic (`matchesBasicAuthorization`) |
-| `POST /agentic/api/auth/login` | Password check (`checkPassword`) |
+| `POST /api/admin/meta/apify-import` | HTTP Basic (`matchesBasicAuthorization`) — now timing-safe |
+| `POST /agentic/api/auth/login` | Password check + rate limit |
 | `POST /agentic/api/auth/logout` | N/A (clears cookie) |
 | `GET /api/v1/*` | Rate-limited, public read API — appropriate |
+| `GET/POST/DELETE /mcp` | Public MCP endpoint — only proxies to public/paywalled APIs; no auth bypass possible |
 
 ---
 
@@ -225,21 +330,16 @@ already in place:
    window. Remove the `STRIPE_WEBHOOK_SECRET` guard for the case where the env var
    is unset — production should fail hard.
 
-2. **Add replay-attack protection to the webhook** — The current fix verifies the
-   HMAC but does not check the `t=` timestamp. Add a check that the event
-   timestamp is within ±300 seconds of `Date.now()` to prevent replayed valid
-   signatures.
+2. **Rotate secrets** — `GHOSTING_ADMIN_SECRET`, `AGENT_API_KEY`, and
+   `ADMIN_SECRET` should be rotated now that unauthenticated or timing-observable
+   access existed in production. Any secret transmitted over the wire before
+   these fixes should be considered potentially compromised.
 
-3. **Rotate secrets** — `GHOSTING_ADMIN_SECRET` and `AGENT_API_KEY` should be
-   rotated now that unauthenticated access existed in production. Any secret that
-   was ever transmitted over the wire to these endpoints prior to this fix should
-   be considered compromised.
-
-4. **Add rate-limiting to agentic endpoints** — Even with auth in place, the
+3. **Add rate-limiting to agentic endpoints** — Even with auth in place, the
    ghosting and apify endpoints trigger expensive third-party operations. Consider
    adding per-user rate limits (e.g., max 5 actor runs / hour) to limit damage
    from a compromised credential.
 
-5. **Review Apify dataset visibility** — Apify datasets created by the actor runs
+4. **Review Apify dataset visibility** — Apify datasets created by the actor runs
    may be publicly readable via the Apify platform if the actor was not configured
    with `DATASET_IS_PUBLIC: false`. Audit Apify actor settings.

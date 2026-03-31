@@ -16,6 +16,9 @@ import { subscription } from "@/db/schema";
  *   STRIPE_WEBHOOK_SECRET  — whsec_… value from the Stripe dashboard
  */
 
+/** Maximum age of a Stripe webhook event (±5 minutes). */
+const STRIPE_TIMESTAMP_TOLERANCE_SECONDS = 300;
+
 /** Verify a Stripe webhook signature without the stripe SDK. */
 async function verifyStripeSignature(
   body: string,
@@ -30,6 +33,15 @@ async function verifyStripeSignature(
     if (!tPart || v1Parts.length === 0) return false;
 
     const timestamp = tPart.slice(2);
+
+    // Replay-attack protection: reject events older (or newer) than 5 minutes
+    const eventTimeSec = parseInt(timestamp, 10);
+    if (!isFinite(eventTimeSec)) return false;
+    const nowSec = Math.floor(Date.now() / 1000);
+    if (Math.abs(nowSec - eventTimeSec) > STRIPE_TIMESTAMP_TOLERANCE_SECONDS) {
+      return false;
+    }
+
     const signed_payload = `${timestamp}.${body}`;
 
     const enc = new TextEncoder();
