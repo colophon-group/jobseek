@@ -2857,6 +2857,7 @@ paypay-india,paypay-india-greenhouse,https://job-boards.greenhouse.io/pay2dc,gre
 paystack,paystack-greenhouse,https://job-boards.greenhouse.io/paystack,greenhouse,"{""token"": ""paystack""}",skip,
 paytient,paytient-greenhouse,https://job-boards.greenhouse.io/paytient,greenhouse,"{""token"": ""paytient""}",skip,
 paytm,paytm-lever,https://jobs.lever.co/paytm,lever,"{""token"": ""paytm""}",skip,
+pdf-net,pdf-net-wantapply,https://wantapply.com/company/pdf-net,dom,"{""render"": false, ""url_filter"": ""at-pdf-net""}",dom,"{""steps"": [{""tag"": ""h1"", ""attr"": ""class=font-bold"", ""field"": ""title""}, {""tag"": ""p"", ""attr"": ""class=text-primary"", ""field"": ""base_salary"", ""optional"": true}, {""tag"": ""p"", ""attr"": ""class=text-primary"", ""offset"": 1, ""field"": ""description"", ""stop"": ""Published on"", ""html"": true, ""from"": 0}, {""text"": ""Published on"", ""field"": ""date_posted"", ""regex"": ""Published on: (.+)"", ""from"": 0}], ""defaults"": {""job_location_type"": ""remote""}, ""render"": false}"
 pdt-partners,pdt-partners-greenhouse,https://job-boards.greenhouse.io/pdtpartners,greenhouse,"{""token"": ""pdtpartners""}",skip,
 peak-design,peak-design-greenhouse,https://job-boards.greenhouse.io/peakdesign,greenhouse,"{""token"": ""peakdesign""}",skip,
 pearl,pearl-ashby,https://jobs.ashbyhq.com/pearl,ashby,"{""token"": ""pearl""}",skip,
