@@ -13,6 +13,7 @@ import type { PostingDetail } from "@/lib/actions/search";
 import { SaveButton } from "@/components/search/save-button";
 import { useSavedJobs } from "@/components/SavedJobsProvider";
 import { PendingJobBanner } from "@/components/PendingJobWarning";
+import { sanitizeJobHtml } from "@/lib/sanitize";
 import { withUtmSource } from "@/lib/utm";
 
 import { InterviewList } from "@/components/my-jobs/interview-list";
@@ -273,7 +274,7 @@ function DetailContent({ detail }: { detail: PostingDetail }) {
           {!detail.technologies.length && !savedJobId && <hr className="border-divider" />}
           <div
             className="job-description max-w-none text-sm leading-relaxed"
-            dangerouslySetInnerHTML={{ __html: detail.descriptionHtml }}
+            dangerouslySetInnerHTML={{ __html: sanitizeJobHtml(detail.descriptionHtml) }}
           />
         </>
       )}
