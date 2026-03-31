@@ -1,0 +1,88 @@
+{
+  "actorSpecification": 1,
+  "name": "career-vs-linkedin",
+  "title": "Career Page vs LinkedIn — First-Posting Proof",
+  "description": "Uses the Wayback Machine to compare when jobs first appeared on a company's career page versus LinkedIn, providing historical evidence that career pages are the primary source of job postings — often days or weeks before LinkedIn indexes them.",
+  "version": "1.0",
+  "environmentVariables": {
+    "GOOGLE_AI_API_KEY": "@GOOGLE_AI_API_KEY"
+  },
+  "input": {
+    "title": "Input",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+      "companyName": {
+        "title": "Company name",
+        "type": "string",
+        "description": "Human-readable company name (e.g. 'Stripe'). Auto-detected from careerPageUrl if omitted.",
+        "editor": "textfield"
+      },
+      "careerPageUrl": {
+        "title": "Career page URL",
+        "type": "string",
+        "description": "The company's career portal URL. Examples: https://boards.greenhouse.io/stripe, https://jobs.lever.co/openai, https://jobs.ashbyhq.com/linear",
+        "editor": "textfield"
+      },
+      "linkedinSlug": {
+        "title": "LinkedIn company slug",
+        "type": "string",
+        "description": "The company slug from their LinkedIn URL (e.g. 'stripe' from linkedin.com/company/stripe). Used to find LinkedIn job page archives.",
+        "editor": "textfield"
+      },
+      "linkedinCompanyId": {
+        "title": "LinkedIn company ID (numeric)",
+        "type": "string",
+        "description": "Numeric LinkedIn company ID for jobs/search?f_C= URLs. Optional — use linkedinSlug instead if possible.",
+        "editor": "textfield"
+      },
+      "batchMode": {
+        "title": "Batch mode",
+        "type": "boolean",
+        "description": "Run on multiple companies at once. Uses built-in seed list (Stripe, Coinbase, Anthropic, OpenAI…) unless you supply a custom companies list.",
+        "default": false,
+        "editor": "checkbox"
+      },
+      "companies": {
+        "title": "Companies list (batch mode)",
+        "type": "array",
+        "description": "Override the seed list. Each item: { name, careerPageUrl, linkedinSlug?, linkedinCompanyId? }",
+        "editor": "json"
+      },
+      "startDate": {
+        "title": "Start date (YYYY-MM-DD)",
+        "type": "string",
+        "description": "Earliest Wayback snapshot date to analyze. Defaults to 1 year ago.",
+        "editor": "textfield"
+      },
+      "endDate": {
+        "title": "End date (YYYY-MM-DD)",
+        "type": "string",
+        "description": "Latest Wayback snapshot date to analyze. Defaults to today.",
+        "editor": "textfield"
+      },
+      "maxSnapshots": {
+        "title": "Max snapshots per source",
+        "type": "integer",
+        "description": "Maximum number of CDX snapshots to fetch per platform (career page and LinkedIn separately). Higher = more evidence but slower.",
+        "editor": "number",
+        "default": 60
+      },
+      "delayMs": {
+        "title": "Delay between requests (ms)",
+        "type": "integer",
+        "description": "Milliseconds to wait between Wayback Machine requests to avoid rate limits.",
+        "editor": "number",
+        "default": 1500
+      },
+      "googleAiApiKey": {
+        "title": "Google AI API key (Gemini)",
+        "type": "string",
+        "description": "Gemini key for research narrative generation. Leave blank to use the GOOGLE_AI_API_KEY secret, or omit for stats-only output.",
+        "editor": "textfield",
+        "isSecret": true
+      }
+    },
+    "required": []
+  }
+}
