@@ -2260,6 +2260,7 @@ ltk-usa,ltk-usa-greenhouse,https://job-boards.greenhouse.io/shopltk,greenhouse,"
 lucid-bots,lucid-bots-greenhouse,https://job-boards.greenhouse.io/lucidbots,greenhouse,"{""token"": ""lucidbots""}",skip,
 lucid-motors,lucid-motors-greenhouse,https://job-boards.greenhouse.io/lucidmotors,greenhouse,"{""token"": ""lucidmotors""}",skip,
 lucid-software,lucid-software-greenhouse,https://job-boards.greenhouse.io/lucidsoftware,greenhouse,"{""token"": ""lucidsoftware""}",skip,
+lucidya,lucidya-careers,https://apply.workable.com/lucidya/,workable,"{""token"": ""lucidya""}",workable,
 luma-health,luma-health-greenhouse,https://job-boards.greenhouse.io/lumahealth,greenhouse,"{""token"": ""lumahealth""}",skip,
 lumana,lumana-ashby,https://jobs.ashbyhq.com/lumana,ashby,"{""token"": ""lumana""}",skip,
 lumiform,lumiform-join,https://join.com/companies/lumiform,join,"{""slug"": ""lumiform""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
