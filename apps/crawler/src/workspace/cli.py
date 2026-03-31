@@ -22,6 +22,7 @@ from src.workspace.commands.config import (
     set_,
 )
 from src.workspace.commands.crawl import (
+    compare_boards,
     feedback_cmd,
     probe_api,
     probe_deep,
@@ -97,6 +98,7 @@ ws.add_command(help_cmd, name="help")
 ws.add_command(logos)
 ws.add_command(discover)
 ws.add_command(discover_bg, name="discover-bg")
+ws.add_command(compare_boards, name="compare-boards")
 ws.add_command(feedback_cmd, name="feedback")
 ws.add_command(reject_config, name="reject-config")
 ws.add_command(task, name="task")

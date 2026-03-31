@@ -126,8 +126,10 @@ ws add board careers-us --url "https://company.com/us/careers"
 ws add board careers-de --url "https://company.com/de/careers"
 ```
 
-If one board's listings are a strict superset of another's (verified by comparing job counts
-and sampling titles), the subset board can be skipped — document this in feedback `--verdict-notes` later.
+After configuring monitors for all boards, run `ws compare-boards` to detect
+overlapping boards (mirrors, subsets, partial overlap). Drop redundant boards —
+keep the one with better data quality, or lower cost if equal. Document skipped
+boards in feedback `--verdict-notes`.
 
 ## When done
 
