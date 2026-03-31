@@ -27,8 +27,7 @@ pattern = "(?P<version>.+)"
 packages = ["src"]
 
 [tool.hatch.build.targets.wheel.force-include]
-# Workspace CLI and supporting modules
-"../src/__init__.py" = "src/__init__.py"
+# Workspace CLI and supporting modules (no src/__init__.py — implicit namespace package)
 "../src/workspace/" = "src/workspace/"
 "../src/shared/" = "src/shared/"
 "../src/core/" = "src/core/"
