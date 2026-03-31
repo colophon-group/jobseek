@@ -169,7 +169,7 @@ export default function Page() {
 
         <div className="flex items-center gap-3 pt-2">
           <a
-            href="https://apify.com"
+            href="https://apify.com/golanger/company-discovery-actor/api/openapi"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 text-xs text-muted border border-divider rounded-full px-3 py-1 hover:border-foreground/30 transition-colors"
