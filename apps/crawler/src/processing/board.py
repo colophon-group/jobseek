@@ -320,69 +320,195 @@ async def _process_one_board_streaming(
             if not result.urls:
                 continue
 
-            async with pool.acquire() as conn, conn.transaction():
-                # Persist newly discovered sitemap URL (once per board)
-                if getattr(result, "new_sitemap_url", None):
-                    await conn.execute(
-                        _UPDATE_METADATA,
-                        board_id,
-                        json.dumps({"sitemap_url": result.new_sitemap_url}),
-                    )
+            # Sub-chunk large batches to keep _DIFF_BATCH within the
+            # 60s asyncpg command_timeout (e.g. Amazon USA = 8,900 URLs).
+            _DB_CHUNK = 500
+            all_urls = list(result.urls)
+            chunk_new_urls: list[str] = []
 
-                is_rich_no_scrape = is_rich and not enrich_fields
-                rows = await conn.fetch(
-                    _DIFF_BATCH,
-                    list(result.urls),
-                    board_id,
-                    is_rich_no_scrape,
+            for _chunk_start in range(0, len(all_urls), _DB_CHUNK):
+                chunk_urls = all_urls[_chunk_start : _chunk_start + _DB_CHUNK]
+                chunk_jobs = (
+                    {u: result.jobs_by_url[u] for u in chunk_urls if u in result.jobs_by_url}
+                    if result.jobs_by_url is not None
+                    else None
                 )
 
-                new_urls: list[str] = []
-                relisted: list[dict] = []
-                touched: list[dict] = []
-
-                for row in rows:
-                    action = row["action"]
-                    if action == "new":
-                        new_urls.append(row["url"])
-                    elif action == "relisted":
-                        r2h = row["description_r2_hash"]
-                        relisted.append(
-                            {
-                                "id": row["id"],
-                                "url": row["url"],
-                                "r2_hash": int(r2h) if r2h is not None else None,
-                            }
-                        )
-                    elif action == "touched":
-                        r2h = row["description_r2_hash"]
-                        touched.append(
-                            {
-                                "id": row["id"],
-                                "url": row["url"],
-                                "r2_hash": int(r2h) if r2h is not None else None,
-                            }
+                async with pool.acquire() as conn, conn.transaction():
+                    # Persist newly discovered sitemap URL (once per board)
+                    if _chunk_start == 0 and getattr(result, "new_sitemap_url", None):
+                        await conn.execute(
+                            _UPDATE_METADATA,
+                            board_id,
+                            json.dumps({"sitemap_url": result.new_sitemap_url}),
                         )
 
-                total_new += len(new_urls)
-                total_relisted += len(relisted)
+                    is_rich_no_scrape = is_rich and not enrich_fields
+                    rows = await conn.fetch(
+                        _DIFF_BATCH,
+                        chunk_urls,
+                        board_id,
+                        is_rich_no_scrape,
+                    )
 
-                if result.jobs_by_url:
-                    new_jobs = [result.jobs_by_url[u] for u in new_urls if u in result.jobs_by_url]
+                    new_urls: list[str] = []
+                    relisted: list[dict] = []
+                    touched: list[dict] = []
 
-                    if new_jobs:
-                        # CPU-heavy per-job processing -- run off the event loop
-                        def _process_new_jobs_cpu(jobs):
-                            """Pure CPU: normalize, detect language, resolve, extract."""
-                            records = []
-                            r2_staging = []
-                            for j in jobs:
+                    for row in rows:
+                        action = row["action"]
+                        if action == "new":
+                            new_urls.append(row["url"])
+                        elif action == "relisted":
+                            r2h = row["description_r2_hash"]
+                            relisted.append(
+                                {
+                                    "id": row["id"],
+                                    "url": row["url"],
+                                    "r2_hash": int(r2h) if r2h is not None else None,
+                                }
+                            )
+                        elif action == "touched":
+                            r2h = row["description_r2_hash"]
+                            touched.append(
+                                {
+                                    "id": row["id"],
+                                    "url": row["url"],
+                                    "r2_hash": int(r2h) if r2h is not None else None,
+                                }
+                            )
+
+                    total_new += len(new_urls)
+                    total_relisted += len(relisted)
+                    chunk_new_urls.extend(new_urls)
+
+                    if chunk_jobs:
+                        new_jobs = [chunk_jobs[u] for u in new_urls if u in chunk_jobs]
+
+                        if new_jobs:
+                            # CPU-heavy per-job processing -- run off the event loop
+                            def _process_new_jobs_cpu(jobs):
+                                """Pure CPU: normalize, detect language, resolve, extract."""
+                                records = []
+                                r2_staging = []
+                                for j in jobs:
+                                    j.description = normalize_description_html(j.description)
+                                    enrich_description(j)
+                                    if not j.language and j.description:
+                                        j.language = detect_language(j.description)
+
+                                    loc_ids_r, loc_types_r = _resolve_locations_sync(
+                                        loc_resolver,
+                                        _coerce_locations(j.locations),
+                                        _coerce_text(j.job_location_type),
+                                        _coerce_text(j.language),
+                                    )
+                                    desc_text = _coerce_text(j.description)
+                                    s_min, s_max, s_cur, s_per, s_eur = _extract_salary_fields(
+                                        desc_text, rates
+                                    )
+                                    exp_min, exp_max = _extract_experience_fields(desc_text)
+                                    t_ids = _resolve_technology_ids(desc_text, tech_id_map)
+                                    title_text = _coerce_text(j.title)
+                                    all_titles = _build_titles(title_text, j.localizations)
+                                    occ_id, sen_id = _resolve_occupation_seniority(
+                                        all_titles, occ_ids, sen_ids
+                                    )
+                                    detected_langs = (
+                                        detect_all_languages(j.description) if j.description else []
+                                    )
+                                    records.append(
+                                        (
+                                            company_id,
+                                            board_id,
+                                            normalize_employment_type(
+                                                _coerce_text(j.employment_type)
+                                            ),
+                                            j.url,
+                                            all_titles,
+                                            _build_locales(
+                                                _coerce_text(j.language),
+                                                j.localizations,
+                                                detected_languages=detected_langs,
+                                            ),
+                                            loc_ids_r,
+                                            loc_types_r,
+                                            s_min,
+                                            s_max,
+                                            s_cur,
+                                            s_per,
+                                            s_eur,
+                                            exp_min,
+                                            exp_max,
+                                            t_ids,
+                                            occ_id,
+                                            sen_id,
+                                        )
+                                    )
+                                    r2_staging.append((j, t_ids))
+                                return records, r2_staging
+
+                            records, r2_staging = _process_new_jobs_cpu(new_jobs)
+
+                            # DB backfill for location cache misses (rare)
+                            if await loc_resolver.backfill_misses():
+                                loc_resolver.drain_location_misses()
+
+                            # Batch insert all new jobs
+                            insert_sql = (
+                                _INSERT_RICH_JOB_ENRICH if enrich_fields else _INSERT_RICH_JOB
+                            )
+                            inserted_ids = []
+                            for rec in records:
+                                row = await conn.fetchrow(insert_sql, *rec)
+                                if row:
+                                    inserted_ids.append(str(row["id"]))
+
+                            # Write descriptions for inserted jobs
+                            for (j, _t_ids), posting_id in zip(
+                                r2_staging, inserted_ids, strict=False
+                            ):
+                                desc_html = _coerce_text(j.description)
+                                if desc_html:
+                                    locale = _coerce_text(j.language) or "en"
+                                    await conn.execute(
+                                        _UPSERT_DESCRIPTION,
+                                        posting_id,
+                                        locale,
+                                        desc_html,
+                                        content_hash(desc_html),
+                                    )
+
+                            # Enqueue scrapes for rich jobs that need enrichment
+                            if enrich_fields and inserted_ids:
+                                rich_rows = [
+                                    {"id": pid, "source_url": j.url}
+                                    for (j, _), pid in zip(r2_staging, inserted_ids, strict=False)
+                                ]
+                                await _enqueue_scrapes_for_new(
+                                    rich_rows,
+                                    board_id,
+                                    metadata,
+                                    board_log,
+                                )
+
+                        # Update content for relisted and touched
+                        update_triples = [
+                            (item["id"], chunk_jobs[item["url"]], item.get("r2_hash"))
+                            for item in relisted + touched
+                            if item["url"] in chunk_jobs
+                        ]
+                        if update_triples:
+                            for _, j, _ in update_triples:
                                 j.description = normalize_description_html(j.description)
                                 enrich_description(j)
                                 if not j.language and j.description:
                                     j.language = detect_language(j.description)
 
-                                loc_ids_r, loc_types_r = _resolve_locations_sync(
+                            await conn.execute(_CREATE_RICH_UPDATES_TEMP)
+                            records = []
+                            for pid, j, _ in update_triples:
+                                loc_ids, loc_types = await _batch._resolve_locations(
                                     loc_resolver,
                                     _coerce_locations(j.locations),
                                     _coerce_text(j.job_location_type),
@@ -404,18 +530,16 @@ async def _process_one_board_streaming(
                                 )
                                 records.append(
                                     (
-                                        company_id,
-                                        board_id,
+                                        pid,
                                         normalize_employment_type(_coerce_text(j.employment_type)),
-                                        j.url,
                                         all_titles,
                                         _build_locales(
                                             _coerce_text(j.language),
                                             j.localizations,
                                             detected_languages=detected_langs,
                                         ),
-                                        loc_ids_r,
-                                        loc_types_r,
+                                        loc_ids,
+                                        loc_types,
                                         s_min,
                                         s_max,
                                         s_cur,
@@ -428,144 +552,41 @@ async def _process_one_board_streaming(
                                         sen_id,
                                     )
                                 )
-                                r2_staging.append((j, t_ids))
-                            return records, r2_staging
+                            await conn.copy_records_to_table("_rich_updates", records=records)
+                            await conn.execute(_BATCH_UPDATE_RICH_CONTENT)
 
-                        records, r2_staging = _process_new_jobs_cpu(new_jobs)
+                            # Write descriptions for updated postings
+                            for pid, j, _existing_hash in update_triples:
+                                desc_html = _coerce_text(j.description)
+                                if desc_html:
+                                    locale = _coerce_text(j.language) or "en"
+                                    await conn.execute(
+                                        _UPSERT_DESCRIPTION,
+                                        str(pid),
+                                        locale,
+                                        desc_html,
+                                        content_hash(desc_html),
+                                    )
 
-                        # DB backfill for location cache misses (rare)
-                        if await loc_resolver.backfill_misses():
-                            loc_resolver.drain_location_misses()
+                    # URL-only path -- insert stubs with next_scrape_at
+                    if chunk_jobs is None and new_urls:
+                        inserted = await conn.fetch(
+                            _INSERT_URL_ONLY_JOBS,
+                            company_id,
+                            board_id,
+                            new_urls,
+                        )
+                        board_log.info("batch.inserted_for_scrape", count=len(inserted))
+                        await _enqueue_scrapes_for_new(inserted, board_id, metadata, board_log)
 
-                        # Batch insert all new jobs
-                        insert_sql = _INSERT_RICH_JOB_ENRICH if enrich_fields else _INSERT_RICH_JOB
-                        inserted_ids = []
-                        for rec in records:
-                            row = await conn.fetchrow(insert_sql, *rec)
-                            if row:
-                                inserted_ids.append(str(row["id"]))
-
-                        # Write descriptions for inserted jobs
-                        for (j, _t_ids), posting_id in zip(r2_staging, inserted_ids, strict=False):
-                            desc_html = _coerce_text(j.description)
-                            if desc_html:
-                                locale = _coerce_text(j.language) or "en"
-                                await conn.execute(
-                                    _UPSERT_DESCRIPTION,
-                                    posting_id,
-                                    locale,
-                                    desc_html,
-                                    content_hash(desc_html),
-                                )
-
-                        # Enqueue scrapes for rich jobs that need enrichment
-                        if enrich_fields and inserted_ids:
-                            rich_rows = [
-                                {"id": pid, "source_url": j.url}
-                                for (j, _), pid in zip(r2_staging, inserted_ids, strict=False)
-                            ]
-                            await _enqueue_scrapes_for_new(
-                                rich_rows,
-                                board_id,
-                                metadata,
-                                board_log,
-                            )
-
-                    # Update content for relisted and touched
-                    update_triples = [
-                        (item["id"], result.jobs_by_url[item["url"]], item.get("r2_hash"))
-                        for item in relisted + touched
-                        if item["url"] in result.jobs_by_url
-                    ]
-                    if update_triples:
-                        for _, j, _ in update_triples:
-                            j.description = normalize_description_html(j.description)
-                            enrich_description(j)
-                            if not j.language and j.description:
-                                j.language = detect_language(j.description)
-
-                        await conn.execute(_CREATE_RICH_UPDATES_TEMP)
-                        records = []
-                        for pid, j, _ in update_triples:
-                            loc_ids, loc_types = await _batch._resolve_locations(
-                                loc_resolver,
-                                _coerce_locations(j.locations),
-                                _coerce_text(j.job_location_type),
-                                _coerce_text(j.language),
-                            )
-                            desc_text = _coerce_text(j.description)
-                            s_min, s_max, s_cur, s_per, s_eur = _extract_salary_fields(
-                                desc_text, rates
-                            )
-                            exp_min, exp_max = _extract_experience_fields(desc_text)
-                            t_ids = _resolve_technology_ids(desc_text, tech_id_map)
-                            title_text = _coerce_text(j.title)
-                            all_titles = _build_titles(title_text, j.localizations)
-                            occ_id, sen_id = _resolve_occupation_seniority(
-                                all_titles, occ_ids, sen_ids
-                            )
-                            detected_langs = (
-                                detect_all_languages(j.description) if j.description else []
-                            )
-                            records.append(
-                                (
-                                    pid,
-                                    normalize_employment_type(_coerce_text(j.employment_type)),
-                                    all_titles,
-                                    _build_locales(
-                                        _coerce_text(j.language),
-                                        j.localizations,
-                                        detected_languages=detected_langs,
-                                    ),
-                                    loc_ids,
-                                    loc_types,
-                                    s_min,
-                                    s_max,
-                                    s_cur,
-                                    s_per,
-                                    s_eur,
-                                    exp_min,
-                                    exp_max,
-                                    t_ids,
-                                    occ_id,
-                                    sen_id,
-                                )
-                            )
-                        await conn.copy_records_to_table("_rich_updates", records=records)
-                        await conn.execute(_BATCH_UPDATE_RICH_CONTENT)
-
-                        # Write descriptions for updated postings
-                        for pid, j, _existing_hash in update_triples:
-                            desc_html = _coerce_text(j.description)
-                            if desc_html:
-                                locale = _coerce_text(j.language) or "en"
-                                await conn.execute(
-                                    _UPSERT_DESCRIPTION,
-                                    str(pid),
-                                    locale,
-                                    desc_html,
-                                    content_hash(desc_html),
-                                )
-
-                # URL-only path -- insert stubs with next_scrape_at
-                if result.jobs_by_url is None and new_urls:
-                    inserted = await conn.fetch(
-                        _INSERT_URL_ONLY_JOBS,
-                        company_id,
-                        board_id,
-                        new_urls,
-                    )
-                    board_log.info("batch.inserted_for_scrape", count=len(inserted))
-                    await _enqueue_scrapes_for_new(inserted, board_id, metadata, board_log)
-
-                # Enqueue scrapes for relisted jobs (came back after gone)
-                await _enqueue_scrapes_for_relisted(relisted, board_id, metadata, board_log)
+                    # Enqueue scrapes for relisted jobs (came back after gone)
+                    await _enqueue_scrapes_for_relisted(relisted, board_id, metadata, board_log)
 
             board_log.info(
                 "batch.monitor.stream_batch",
                 batch=batch_count,
                 discovered=len(result.urls),
-                new=len(new_urls),
+                new=len(chunk_new_urls),
             )
 
         # After all batches: mark gone postings
