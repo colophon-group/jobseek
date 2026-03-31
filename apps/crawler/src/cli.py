@@ -61,6 +61,8 @@ def parse_args() -> argparse.Namespace:
     recon_g.add_argument("--full", action="store_true", help="Touch all rows")
     recon_g.add_argument("--bootstrap", action="store_true", help="Bootstrap local from Supabase")
 
+    sub.add_parser("backfill-locations", help="Enqueue re-scrapes for jobs missing locations")
+
     board_p = sub.add_parser("board", help="Dev testing for a single board")
     board_p.add_argument("slug", help="Board slug to process")
     board_p.add_argument("--dry-run", action="store_true", help="No DB writes")
@@ -125,6 +127,12 @@ async def run() -> None:
             from src.sync import run_sync
 
             await run_sync()
+
+        elif args.command == "backfill-locations":
+            local_pool = await create_local_pool()
+            from src.backfill import backfill_locations
+
+            await backfill_locations(local_pool)
 
         elif args.command == "reconcile":
             local_pool = await create_local_pool()

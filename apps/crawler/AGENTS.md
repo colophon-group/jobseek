@@ -34,7 +34,8 @@ src/
 │   │   ├── workday.py     # Workday Job Board API
 │   │   ├── sitemap.py     # XML sitemap parser
 │   │   ├── nextdata.py    # Next.js __NEXT_DATA__ discovery
-│   │   └── dom.py         # Playwright DOM-based discovery
+│   │   ├── dom.py         # Playwright DOM-based discovery
+│   │   └── inline.py      # Single-page inline job extraction (rich)
 │   ├── scrapers/          # Scraper implementations
 │   │   ├── __init__.py    # Registry + JobContent dataclass
 │   │   ├── api_sniffer.py # XHR/fetch API capture for single pages
@@ -75,7 +76,7 @@ src/
 │   ├── commands/          # Command implementations
 │   │   ├── lifecycle.py   # new, reject, del, submit, status, validate, resume
 │   │   ├── config.py      # set, add board, del board
-│   │   ├── crawl.py       # probe, select/run monitor/scraper, feedback
+│   │   ├── crawl.py       # probe, select/run monitor/scraper, feedback, compare-boards
 │   │   ├── task.py        # Workflow: task, troubleshoot, learn, casestudy
 │   │   └── help.py        # Reference docs for monitors, scrapers, config
 │   ├── state.py           # YAML workspace state (v2: named configs)
@@ -127,6 +128,7 @@ ws run scraper [--url URL ...] [--config <name>]  # Test scrape
 ws feedback [<config>] --verdict good  # Record extraction quality (mandatory)
 ws select config <name>                # Re-activate a previously tested config
 ws reject-config <name> --reason "..." # Mark a config as rejected
+ws compare-boards                      # Detect mirror/subset/overlapping boards
 ws submit [--summary "..."] [--force]  # Validate, commit, push, post stats
 
 # Search + discovery

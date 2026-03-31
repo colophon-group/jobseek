@@ -78,6 +78,13 @@ Search the company name + "jobs" + common ATS domains.
   board — e.g., WTTJ often mirrors Ashby listings)
 - Do NOT read source code files — use `ws help` and `ws task troubleshoot` instead
 
+**Centralized parent portals:** If the company's careers page redirects to or
+is hosted on a parent company's centralized portal (e.g. SWISS jobs on the
+Lufthansa Group portal, Fiat jobs on Stellantis portal), **stop and report this
+to the main agent.** The parent company should be configured instead — its
+portal covers all subsidiaries and is the actual data source. Do not add boards
+from a parent portal when working on a subsidiary workspace.
+
 {% if monitor_table %}
 ### Auto-detected ATS types
 

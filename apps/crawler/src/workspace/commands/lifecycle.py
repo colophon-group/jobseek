@@ -467,15 +467,15 @@ def reject(slug: str | None, issue: int | None, reason: str, message: str):
     if local:
         out.warn("github", "Local mode — skipping issue comment and close")
         out.plain("github", f"Would comment on issue #{issue}: {reason}")
-        if reason == "duplicate":
-            out.plain("github", f"Would add 'duplicate' label to issue #{issue}")
+        if reason in ("duplicate", "subsidiary"):
+            out.plain("github", f"Would add {reason!r} label to issue #{issue}")
         out.plain("github", f"Would close issue #{issue}")
     else:
         from src.workspace import git
 
         git.comment_on_issue(issue, body)
-        if reason == "duplicate":
-            git.add_label_to_issue(issue, "duplicate")
+        if reason in ("duplicate", "subsidiary"):
+            git.add_label_to_issue(issue, reason)
         git.unclaim_issue(issue)
         git.close_issue(issue)
         out.info("github", f"Commented on issue #{issue} (validation-failed: {reason})")
@@ -1145,8 +1145,15 @@ def submit(slug: str | None, summary: str | None, force: bool):
             for b in blockers:
                 out.warn("submit", f"(forced) {b}")
 
-    # Stale submit detection: if config selections changed since last submit, restart
-    current_configs = {b.alias: b.active_config for b in boards}
+    # Stale submit detection: if config selections or content changed since last submit, restart
+    current_configs = {}
+    for b in boards:
+        cfg = b._active_cfg()
+        current_configs[b.alias] = {
+            "active": b.active_config,
+            "monitor_type": cfg.get("monitor_type"),
+            "scraper_type": cfg.get("scraper_type"),
+        }
     prev_configs = ws.submit_state.get("_active_configs")
     if prev_configs and prev_configs != current_configs:
         out.warn("submit", "Board config changed since last submit — restarting")

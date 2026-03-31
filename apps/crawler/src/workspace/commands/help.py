@@ -634,6 +634,52 @@ notion — Notion Site Job Pages
   Pair with:   notion scraper (extracts title, description, locations,
                employment_type from page blocks and collection properties)"""
 
+MONITOR_INLINE = """\
+inline — Single-Page Extraction (rich)
+
+  Returns:  Full job data (title, description, locations, etc.)
+  Scraper:  Not needed (skipped)
+  Cost:     60
+  Browser:  Only when render: true
+
+  For career pages that list all jobs inline on a single URL with no
+  individual job links (e.g., Squarespace, Webflow sites).  Extracts
+  multiple jobs by running step-based extraction repeatedly — the cursor
+  advances through the page, pulling one job per iteration.
+
+  Each job gets a synthetic URL: {board_url}?_jid={title-slug}-{hash}
+
+  Config:
+    {
+      "render": true,
+      "steps": [
+        {"tag": "h3", "field": "title"},
+        {"text": "Location", "offset": 1, "field": "location", "optional": true},
+        {"tag": "p", "field": "description", "html": true, "stop_tag": "h3"}
+      ],
+      "defaults": {"employment_type": "full_time"}
+    }
+
+    render       true = Playwright, false = static HTTP (default: false)
+    steps        Extraction steps run once per job (see: ws help steps).
+                 The first step with a field (usually title) is the stop
+                 condition — when it can't find a match, extraction ends.
+    defaults     Default field values applied when extracted value is absent.
+                 Supports: locations (list), employment_type, job_location_type,
+                 date_posted.
+    + browser keys (wait, timeout, user_agent, etc.)
+
+  Step design tips:
+    - Steps run in a loop: after extracting one job, the cursor is where
+      the next job starts.  Design steps so the last step's cursor ends
+      just before the next job's title.
+    - Use stop_tag to limit description collection: {"stop_tag": "h3"}
+      stops before the next job's heading.
+    - Use optional: true for fields that may not appear on every job.
+
+  Detection:   Not auto-detected. Select manually after inspecting the page.
+               Best for small boards (< 50 jobs) with consistent HTML structure."""
+
 MONITOR_DOM = """\
 dom — Link Extraction (fallback)
 
@@ -1788,6 +1834,7 @@ oracle_hcm — Oracle Cloud HCM REST API monitor
   Pair with oracle_hcm scraper + enrich: ["description"] for descriptions.
   Handles pagination automatically via finder param offset suffix.""",
     "dom": MONITOR_DOM,
+    "inline": MONITOR_INLINE,
     "api_sniffer": MONITOR_API_SNIFFER,
     "mokahr": MONITOR_MOKAHR,
     "signals": MONITOR_SIGNALS,

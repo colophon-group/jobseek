@@ -519,6 +519,7 @@ class TestRunSync:
         # Set up Supabase pool + connection mock with proper async context managers
         mock_conn = MagicMock()
         mock_conn.execute = AsyncMock()
+        mock_conn.fetch = AsyncMock(return_value=[])
         mock_txn_cm = AsyncMock()
         mock_conn.transaction.return_value = mock_txn_cm
 
@@ -537,6 +538,8 @@ class TestRunSync:
         # supports both modes. We simulate this with a helper class.
         mock_local_conn = MagicMock()
         mock_local_conn.execute = AsyncMock()
+        mock_local_conn.copy_records_to_table = AsyncMock()
+        mock_local_conn.fetchval = AsyncMock(return_value=0)
 
         class _FakeAcquireCtx:
             """Simulates asyncpg PoolAcquireContext: awaitable + async CM."""

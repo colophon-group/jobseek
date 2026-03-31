@@ -1068,6 +1068,12 @@ def select_monitor(
     # Auto-configure scraper when the monitor determines it
     if auto:
         cfg_entry["scraper_type"] = auto[0]
+    # Preserve scraper settings when re-selecting a monitor with the same name
+    if name in board.configs:
+        prev = board.configs[name]
+        for key in ("scraper_type", "scraper_config"):
+            if key in prev and key not in cfg_entry:
+                cfg_entry[key] = prev[key]
     board.configs[name] = cfg_entry
     board.active_config = name
 
@@ -1487,6 +1493,66 @@ def run_monitor(slug: str | None, board_alias: str | None, config_name: str | No
     )
     save_board(slug, board)
 
+    # Auto-compare against other boards with monitor runs
+    if job_count > 0:
+        _auto_compare_boards(slug, board.alias)
+
+
+def _auto_compare_boards(slug: str, current_alias: str) -> None:
+    """Compare the current board against all other boards that have monitor runs."""
+    from src.workspace.state import list_boards as _list_boards
+
+    boards = _list_boards(slug)
+    other_aliases = []
+    for b in boards:
+        if b.alias == current_alias:
+            continue
+        for cfg in b.configs.values():
+            run = cfg.get("run")
+            if run and run.get("jobs", 0) > 0:
+                other_aliases.append(b.alias)
+                break
+
+    if not other_aliases:
+        return
+
+    for other in other_aliases:
+        cmp = _compare_two_boards(slug, current_alias, other)
+        if "error" in cmp:
+            continue
+        rel = cmp["relationship"]
+        if rel == "mirror":
+            print()
+            out.warn(
+                "overlap",
+                f"MIRROR: {current_alias} ({cmp['count_a']} jobs) and "
+                f"{other} ({cmp['count_b']} jobs) share "
+                f"{cmp['shared_urls']} URLs "
+                f"({cmp['url_overlap_pct_a']}%/{cmp['url_overlap_pct_b']}%). "
+                f"These boards are nearly identical — keep only the one with "
+                f"better data or lower cost.",
+            )
+        elif rel == "subset":
+            smaller = current_alias if cmp["count_a"] <= cmp["count_b"] else other
+            larger = other if smaller == current_alias else current_alias
+            print()
+            out.warn(
+                "overlap",
+                f"SUBSET: {smaller} appears to be a subset of {larger} "
+                f"({cmp['shared_urls']} shared URLs). "
+                f"Consider dropping {smaller} unless it has unique data.",
+            )
+        elif rel == "overlap":
+            print()
+            out.warn(
+                "overlap",
+                f"OVERLAP: {current_alias} and {other} share "
+                f"{cmp['shared_urls']} URLs "
+                f"({cmp['url_overlap_pct_a']}% of {current_alias}, "
+                f"{cmp['url_overlap_pct_b']}% of {other}). "
+                f"Run: ws compare-boards",
+            )
+
 
 @click.command(name="scraper")
 @click.argument("slug_or_type")
@@ -1601,6 +1667,7 @@ def run_scraper(
         from playwright.async_api import async_playwright
 
         from src.core.scrape import scrape_one
+        from src.processing.scrape import _apply_defaults
         from src.shared.http import create_logging_http_client
 
         ssl_verify = (board.monitor_config or {}).get("ssl_verify", True)
@@ -1625,6 +1692,7 @@ def run_scraper(
                     except HTTPStatusError as exc:
                         skipped.append((url, str(exc.response.status_code)))
                         continue
+                    content = _apply_defaults(content, scr_config or {})
                     elapsed = time.monotonic() - start
                     results.append((url, content, elapsed))
             return results, http_log, skipped
@@ -2221,4 +2289,242 @@ def run_quality_gates(
         if not has_icon and not icon_is_remote:
             warnings.append("No minified square logo image artifact found (icon_url)")
 
+    # Check for board overlap (only when 2+ boards have monitor runs)
+    aliases_with_runs = [
+        b.alias
+        for b in boards
+        if any((cfg.get("run") or {}).get("jobs", 0) > 0 for cfg in b.configs.values())
+    ]
+    if len(aliases_with_runs) >= 2:
+        for i, alias_a in enumerate(aliases_with_runs):
+            for alias_b in aliases_with_runs[i + 1 :]:
+                cmp = _compare_two_boards(ws.slug, alias_a, alias_b)
+                if "error" in cmp:
+                    continue
+                rel = cmp["relationship"]
+                if rel == "mirror":
+                    warnings.append(
+                        f"Boards {alias_a} and {alias_b} are mirrors "
+                        f"({cmp['shared_urls']}/{cmp['count_a']} shared URLs). "
+                        f"Run: ws compare-boards"
+                    )
+                elif rel == "subset":
+                    smaller = alias_a if cmp["count_a"] <= cmp["count_b"] else alias_b
+                    larger = alias_b if smaller == alias_a else alias_a
+                    warnings.append(
+                        f"Board {smaller} is a subset of {larger} "
+                        f"({cmp['shared_urls']} shared URLs). "
+                        f"Run: ws compare-boards"
+                    )
+                elif rel == "overlap":
+                    warnings.append(
+                        f"Boards {alias_a} and {alias_b} have significant overlap "
+                        f"({cmp['shared_urls']} shared URLs). "
+                        f"Run: ws compare-boards"
+                    )
+
     return blockers, warnings
+
+
+# ── Compare boards ─────────────────────────────────────────────────────
+
+
+def _latest_jobs_json(slug: str, alias: str) -> list[dict] | None:
+    """Load jobs.json from the most recent monitor run for a board."""
+    from src.workspace.state import artifacts_dir
+
+    monitor_dir = artifacts_dir(slug, alias) / "monitor"
+    if not monitor_dir.exists():
+        return None
+    runs = sorted(monitor_dir.glob("run-*"), reverse=True)
+    if not runs:
+        return None
+    jobs_file = runs[0] / "jobs.json"
+    if not jobs_file.exists():
+        return None
+    return json.loads(jobs_file.read_text())
+
+
+def _normalize_compare_url(url: str) -> str:
+    """Normalize URL for comparison — strip trailing slash, lowercase host."""
+    from urllib.parse import urlparse, urlunparse
+
+    p = urlparse(url)
+    path = p.path.rstrip("/") or "/"
+    return urlunparse((p.scheme.lower(), p.netloc.lower(), path, p.params, p.query, ""))
+
+
+def _compare_two_boards(
+    slug: str,
+    alias_a: str,
+    alias_b: str,
+) -> dict:
+    """Compare two boards by URL overlap and title similarity."""
+    jobs_a = _latest_jobs_json(slug, alias_a)
+    jobs_b = _latest_jobs_json(slug, alias_b)
+
+    if jobs_a is None:
+        return {"error": f"No monitor run artifacts for board '{alias_a}'"}
+    if jobs_b is None:
+        return {"error": f"No monitor run artifacts for board '{alias_b}'"}
+
+    # URL comparison
+    urls_a = {_normalize_compare_url(j["url"]) for j in jobs_a if j.get("url")}
+    urls_b = {_normalize_compare_url(j["url"]) for j in jobs_b if j.get("url")}
+
+    shared_urls = urls_a & urls_b
+    only_a = urls_a - urls_b
+    only_b = urls_b - urls_a
+
+    # Title comparison (for rich data)
+    titles_a = {j.get("title", "").strip().lower() for j in jobs_a if j.get("title")}
+    titles_b = {j.get("title", "").strip().lower() for j in jobs_b if j.get("title")}
+
+    shared_titles = titles_a & titles_b if titles_a and titles_b else set()
+
+    # Classify relationship
+    url_overlap_pct_a = round(len(shared_urls) / len(urls_a) * 100) if urls_a else 0
+    url_overlap_pct_b = round(len(shared_urls) / len(urls_b) * 100) if urls_b else 0
+
+    if url_overlap_pct_a >= 90 and url_overlap_pct_b >= 90:
+        relationship = "mirror"
+    elif url_overlap_pct_a >= 90:
+        relationship = "subset"  # A is subset of B
+    elif url_overlap_pct_b >= 90:
+        relationship = "subset"  # B is subset of A
+    elif url_overlap_pct_a >= 30 or url_overlap_pct_b >= 30:
+        relationship = "overlap"
+    else:
+        relationship = "independent"
+
+    return {
+        "board_a": alias_a,
+        "board_b": alias_b,
+        "count_a": len(urls_a),
+        "count_b": len(urls_b),
+        "shared_urls": len(shared_urls),
+        "only_a": len(only_a),
+        "only_b": len(only_b),
+        "url_overlap_pct_a": url_overlap_pct_a,
+        "url_overlap_pct_b": url_overlap_pct_b,
+        "titles_a": len(titles_a),
+        "titles_b": len(titles_b),
+        "shared_titles": len(shared_titles),
+        "relationship": relationship,
+    }
+
+
+@click.command("compare-boards")
+@click.argument("slug", required=False)
+def compare_boards(slug: str | None):
+    """Compare job URL overlap between all boards in a workspace.
+
+    Detects mirror boards, subsets, and partial overlaps to help decide
+    which boards to keep.
+    """
+    from src.workspace.state import list_boards
+
+    slug = resolve_slug(slug)
+    boards = list_boards(slug)
+
+    if len(boards) < 2:
+        out.info("compare", "Need at least 2 boards to compare")
+        return
+
+    # Collect all board aliases that have monitor runs
+    board_aliases = []
+    for b in boards:
+        has_run = False
+        for cfg in b.configs.values():
+            run = cfg.get("run")
+            if run and run.get("jobs", 0) > 0:
+                has_run = True
+                break
+        if has_run:
+            board_aliases.append(b.alias)
+
+    if len(board_aliases) < 2:
+        out.info("compare", "Need at least 2 boards with monitor runs to compare")
+        return
+
+    # Compare all pairs
+    comparisons = []
+    for i, alias_a in enumerate(board_aliases):
+        for alias_b in board_aliases[i + 1 :]:
+            result = _compare_two_boards(slug, alias_a, alias_b)
+            comparisons.append(result)
+
+    # Print results
+    print()
+    for c in comparisons:
+        if "error" in c:
+            out.warn("compare", c["error"])
+            continue
+
+        rel = c["relationship"]
+        if rel == "mirror":
+            icon = "!!"
+        elif rel == "subset":
+            icon = "! "
+        elif rel == "overlap":
+            icon = "? "
+        else:
+            icon = "ok"
+
+        out.plain(
+            "compare",
+            f"[{icon}] {c['board_a']} ({c['count_a']} jobs) vs "
+            f"{c['board_b']} ({c['count_b']} jobs)",
+        )
+        out.plain(
+            "compare",
+            f"     URLs: {c['shared_urls']} shared, "
+            f"{c['only_a']} only-{c['board_a']}, "
+            f"{c['only_b']} only-{c['board_b']} "
+            f"({c['url_overlap_pct_a']}% of {c['board_a']}, "
+            f"{c['url_overlap_pct_b']}% of {c['board_b']})",
+        )
+        if c["titles_a"] or c["titles_b"]:
+            out.plain(
+                "compare",
+                f"     Titles: {c['shared_titles']} shared "
+                f"(of {c['titles_a']} in {c['board_a']}, "
+                f"{c['titles_b']} in {c['board_b']})",
+            )
+
+        if rel == "mirror":
+            out.warn(
+                "compare",
+                "     -> MIRROR: these boards are nearly identical. "
+                "Keep the one with better data quality or lower cost.",
+            )
+        elif rel == "subset":
+            smaller = c["board_a"] if c["count_a"] <= c["count_b"] else c["board_b"]
+            larger = c["board_b"] if smaller == c["board_a"] else c["board_a"]
+            out.warn(
+                "compare",
+                f"     -> SUBSET: {smaller} appears to be a subset of {larger}. "
+                f"Consider dropping {smaller} unless it has unique data.",
+            )
+        elif rel == "overlap":
+            out.warn(
+                "compare",
+                "     -> OVERLAP: significant job overlap detected. "
+                "Investigate whether both boards are needed.",
+            )
+
+    # Summary
+    mirrors = sum(1 for c in comparisons if c.get("relationship") == "mirror")
+    subsets = sum(1 for c in comparisons if c.get("relationship") == "subset")
+    overlaps = sum(1 for c in comparisons if c.get("relationship") == "overlap")
+
+    print()
+    if mirrors or subsets or overlaps:
+        out.warn(
+            "compare",
+            f"Found {mirrors} mirror(s), {subsets} subset(s), "
+            f"{overlaps} partial overlap(s). "
+            f"Review and drop redundant boards before submitting.",
+        )
+    else:
+        out.info("compare", "All boards are independent — no overlaps detected.")

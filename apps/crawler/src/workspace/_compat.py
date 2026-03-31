@@ -22,6 +22,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "gem",
         "greenhouse",
         "hireology",
+        "inline",
         "lever",
         "mokahr",
         "oracle_hcm",

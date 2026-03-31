@@ -180,7 +180,7 @@ def monitor_needs_browser(name: str, config: dict | None = None) -> bool:
         if not cfg.get("api_url"):
             return True
         return bool(cfg.get("browser"))
-    if name == "dom":
+    if name in ("dom", "inline"):
         return bool((config or {}).get("render"))
     if name == "nextdata":
         cfg = config or {}
@@ -517,6 +517,7 @@ from src.core.monitors import (  # noqa: E402
     gem,  # noqa: F401
     greenhouse,  # noqa: F401
     hireology,  # noqa: F401
+    inline,  # noqa: F401
     join,  # noqa: F401
     lever,  # noqa: F401
     mokahr,  # noqa: F401
