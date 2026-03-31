@@ -12,6 +12,11 @@ concurrency:
 env:
   BUDGET_PER_5H: 5
 
+permissions:
+  contents: write       # push add-company/* branches
+  pull-requests: write  # create/update draft PRs, post comments
+  issues: write         # comment on issues, add labels, close
+
 jobs:
   resolve:
     runs-on: ubuntu-latest
