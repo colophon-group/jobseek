@@ -30,6 +30,7 @@
  * → { found: true, activeListings: 12, avgViews: 3.2, avgApplications: 0, lowEngagement: true, signal: "hiring.cafe:12j avg3.2v 0a—low", strategy: "live-api" }
  */
 import { type NextRequest, NextResponse } from 'next/server';
+import { checkPaywall } from '@/lib/agentic/apiPaywall';
 
 const HC_API = 'https://hiring.cafe/api/search-jobs';
 const HC_COMPANIES_API = 'https://hiring.cafe/api/search-companies';
@@ -78,6 +79,10 @@ function buildSignal(jobs: HCJob[], source: string) {
 }
 
 export async function POST(req: NextRequest) {
+  // Require payment / valid subscription before proxying requests to external APIs
+  const gate = await checkPaywall(req);
+  if (!gate.ok) return gate.response;
+
   const body = await req.json().catch(() => ({})) as Record<string, unknown>;
   const company = typeof body.company === 'string' ? body.company.trim() : '';
   if (!company) return NextResponse.json({ error: 'company is required' }, { status: 400 });

@@ -6,7 +6,17 @@ export function verifyAgentKey(req: NextRequest): boolean {
   if (!expected) return false;
   const auth = req.headers.get("authorization") ?? "";
   const [scheme, token] = auth.split(" ");
-  return scheme === "Bearer" && token === expected;
+  if (scheme !== "Bearer" || !token) return false;
+  try {
+    const a = Buffer.from(token.padEnd(128));
+    const b = Buffer.from(expected.padEnd(128));
+    return (
+      token.length === expected.length &&
+      timingSafeEqual(a.subarray(0, 128), b.subarray(0, 128))
+    );
+  } catch {
+    return false;
+  }
 }
 
 export function agentUnauthorized() {

@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
+import { verifyGhostingAdminKey, ghostingAdminUnauthorized } from "@/lib/agentic/agentAuth";
 import { triggerOrchestratorRun } from "@/lib/agentic/apify";
 
+/**
+ * POST /agentic/api/apify/run
+ *
+ * Admin-only. Triggers the Apify orchestrator actor.
+ * Requires: Authorization: Auth Bearer Basic <GHOSTING_ADMIN_SECRET>
+ */
 export async function POST(req: NextRequest) {
+  if (!verifyGhostingAdminKey(req)) return ghostingAdminUnauthorized();
+
   try {
     const body = await req.json().catch(() => ({}));
     const defaultInput = process.env.APIFY_DEFAULT_INPUT

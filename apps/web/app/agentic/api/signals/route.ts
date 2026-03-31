@@ -1,9 +1,18 @@
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { hiringSignal, company } from "@/db/schema";
 import { desc, eq } from "drizzle-orm";
+import { verifyGhostingAdminKey, ghostingAdminUnauthorized } from "@/lib/agentic/agentAuth";
 
-export async function GET() {
+/**
+ * GET /agentic/api/signals
+ *
+ * Returns hiring signals (business intelligence). Admin-only.
+ * Requires: Authorization: Auth Bearer Basic <GHOSTING_ADMIN_SECRET>
+ */
+export async function GET(req: NextRequest) {
+  if (!verifyGhostingAdminKey(req)) return ghostingAdminUnauthorized();
+
   const signals = await db
     .select({
       id: hiringSignal.id,

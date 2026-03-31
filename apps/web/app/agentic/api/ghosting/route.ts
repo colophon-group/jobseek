@@ -89,9 +89,14 @@
  * // }
  */
 import { NextRequest, NextResponse } from "next/server";
+import { checkPaywall } from "@/lib/agentic/apiPaywall";
 import { triggerGhostingRun } from "@/lib/agentic/apify";
 
 export async function POST(req: NextRequest) {
+  // Require payment / valid subscription to trigger expensive actor runs
+  const gate = await checkPaywall(req);
+  if (!gate.ok) return gate.response;
+
   try {
     const body = await req.json().catch(() => ({}));
     const {

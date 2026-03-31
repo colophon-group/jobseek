@@ -35,6 +35,7 @@
  * //   ] }
  */
 import { NextRequest, NextResponse } from "next/server";
+import { verifyGhostingAdminKey, ghostingAdminUnauthorized } from "@/lib/agentic/agentAuth";
 import { triggerGhostingRun } from "@/lib/agentic/apify";
 
 const MAX_BATCH = 10;
@@ -48,6 +49,9 @@ interface CompanyEntry {
 }
 
 export async function POST(req: NextRequest) {
+  // Batch runs are admin-only — each entry spawns a separate Apify actor
+  if (!verifyGhostingAdminKey(req)) return ghostingAdminUnauthorized();
+
   try {
     const body = await req.json().catch(() => ({}));
     const { companies } = body as { companies?: unknown };
