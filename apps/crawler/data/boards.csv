@@ -3647,6 +3647,7 @@ swatch-group,swatch-group-careers,https://www.swatchgroup.com/en/job-finder,site
 sweep,sweep-ashby,https://jobs.ashbyhq.com/sweep,ashby,"{""token"": ""sweep""}",skip,
 sweetgreen,sweetgreen-greenhouse,https://job-boards.greenhouse.io/sweetgreen,greenhouse,"{""token"": ""sweetgreen""}",skip,
 swile,swile-lever,https://jobs.lever.co/swile,lever,"{""token"": ""swile""}",skip,
+swiss-international-air-lines,swiss-international-air-lines-careers,https://apply.lufthansagroup.careers/index.php?ac=search_result&search_criterion_division%5B%5D=5926,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""url_filter"": ""ac=jobad&id=""}",json-ld,
 swiss-life,swiss-life-careers-ch,https://swisslife.wd3.myworkdayjobs.com/Swiss_Life_Career_Site,workday,"{""company"": ""swisslife"", ""wd_instance"": ""wd3"", ""site"": ""Swiss_Life_Career_Site"", ""all_sites"": false}",workday,
 swiss-life,swiss-life-careers-de,https://swisslife.wd3.myworkdayjobs.com/Swiss_Life_Deutschland_Stellenangebote,workday,"{""company"": ""swisslife"", ""wd_instance"": ""wd3"", ""site"": ""Swiss_Life_Deutschland_Stellenangebote"", ""all_sites"": false}",workday,
 swiss-life,swiss-life-careers-workday,https://swisslife.wd3.myworkdayjobs.com/en-US/Swiss_Life_Asset_Managers_Career_Site,workday,"{""company"": ""swisslife"", ""wd_instance"": ""wd3"", ""site"": ""Swiss_Life_Asset_Managers_Career_Site""}",workday,
