@@ -2374,7 +2374,13 @@ class TestSubmitIdempotency:
 
         # Mark some steps as done
         ws_obj.submit_state = {
-            "_active_configs": {"careers": "greenhouse"},
+            "_active_configs": {
+                "careers": {
+                    "active": "greenhouse",
+                    "monitor_type": "greenhouse",
+                    "scraper_type": None,
+                }
+            },
             "csv_written": True,
             "validated": True,
         }

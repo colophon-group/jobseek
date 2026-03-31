@@ -1145,8 +1145,15 @@ def submit(slug: str | None, summary: str | None, force: bool):
             for b in blockers:
                 out.warn("submit", f"(forced) {b}")
 
-    # Stale submit detection: if config selections changed since last submit, restart
-    current_configs = {b.alias: b.active_config for b in boards}
+    # Stale submit detection: if config selections or content changed since last submit, restart
+    current_configs = {}
+    for b in boards:
+        cfg = b._active_cfg()
+        current_configs[b.alias] = {
+            "active": b.active_config,
+            "monitor_type": cfg.get("monitor_type"),
+            "scraper_type": cfg.get("scraper_type"),
+        }
     prev_configs = ws.submit_state.get("_active_configs")
     if prev_configs and prev_configs != current_configs:
         out.warn("submit", "Board config changed since last submit — restarting")
