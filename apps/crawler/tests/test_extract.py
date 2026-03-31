@@ -138,7 +138,7 @@ class TestFlatten:
         )
         els = flatten(html)
         steps = [{"tag": "title", "field": "title"}, {"tag": "p", "field": "desc"}]
-        result = walk_steps(els, steps)
+        result, _ = walk_steps(els, steps)
         assert result["title"] == "Software Engineer"
         assert result["desc"] == "Description"
 
@@ -207,13 +207,13 @@ class TestWalkSteps:
     def test_basic_single_match(self):
         els = self._els(("h1", "Title"), ("p", "Description"))
         steps = [{"tag": "h1", "field": "title"}]
-        result = walk_steps(els, steps)
+        result, _ = walk_steps(els, steps)
         assert result["title"] == "Title"
 
     def test_text_match(self):
         els = self._els(("p", "Location: Berlin"), ("p", "Other"))
         steps = [{"text": "Location", "field": "loc"}]
-        result = walk_steps(els, steps)
+        result, _ = walk_steps(els, steps)
         assert result["loc"] == "Location: Berlin"
 
     def test_range_with_stop(self):
@@ -225,7 +225,7 @@ class TestWalkSteps:
             ("p", "Req 1"),
         )
         steps = [{"tag": "h2", "text": "Description", "field": "desc", "stop": "Requirements"}]
-        result = walk_steps(els, steps)
+        result, _ = walk_steps(els, steps)
         assert "Description" in result["desc"]
         assert "Line 1" in result["desc"]
         assert "Line 2" in result["desc"]
@@ -238,7 +238,7 @@ class TestWalkSteps:
             ("h2", "Next Section"),
         )
         steps = [{"tag": "p", "text": "Start", "field": "section", "stop_tag": "h2"}]
-        result = walk_steps(els, steps)
+        result, _ = walk_steps(els, steps)
         assert "Start" in result["section"]
         assert "Middle" in result["section"]
         assert "Next Section" not in result["section"]
@@ -251,7 +251,7 @@ class TestWalkSteps:
             ("p", "Four"),
         )
         steps = [{"tag": "p", "field": "first_two", "stop_count": 2}]
-        result = walk_steps(els, steps)
+        result, _ = walk_steps(els, steps)
         assert "One" in result["first_two"]
         assert "Two" in result["first_two"]
         assert "Three" not in result["first_two"]
@@ -261,7 +261,7 @@ class TestWalkSteps:
         steps = [{"tag": "h1", "field": "missing", "optional": True}]
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            result = walk_steps(els, steps)
+            result, _ = walk_steps(els, steps)
             assert result["missing"] is None
             assert len(w) == 0
 
@@ -270,7 +270,7 @@ class TestWalkSteps:
         steps = [{"tag": "h1", "field": "missing"}]
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            result = walk_steps(els, steps)
+            result, _ = walk_steps(els, steps)
             assert result["missing"] is None
             assert len(w) == 1
             assert "not found" in str(w[0].message)
@@ -281,7 +281,7 @@ class TestWalkSteps:
             {"tag": "div", "attrs": {"class": "job-loc"}, "text": "Berlin"},
         ]
         steps = [{"attr": "class=job-loc", "field": "location"}]
-        result = walk_steps(els, steps)
+        result, _ = walk_steps(els, steps)
         assert result["location"] == "Berlin"
 
     def test_attr_key_exists_match(self):
@@ -290,37 +290,37 @@ class TestWalkSteps:
             {"tag": "div", "attrs": {"data-role": "title"}, "text": "With attr"},
         ]
         steps = [{"attr": "data-role", "field": "val"}]
-        result = walk_steps(els, steps)
+        result, _ = walk_steps(els, steps)
         assert result["val"] == "With attr"
 
     def test_regex_capture(self):
         els = self._els(("p", "Location: Berlin, Germany"))
         steps = [{"tag": "p", "field": "city", "regex": r"Location:\s*(.+)"}]
-        result = walk_steps(els, steps)
+        result, _ = walk_steps(els, steps)
         assert result["city"] == "Berlin, Germany"
 
     def test_regex_no_match_keeps_original(self):
         els = self._els(("p", "Hello World"))
         steps = [{"tag": "p", "field": "val", "regex": r"Missing:\s*(.+)"}]
-        result = walk_steps(els, steps)
+        result, _ = walk_steps(els, steps)
         assert result["val"] == "Hello World"
 
     def test_split_produces_list(self):
         els = self._els(("p", "Python,Java,Go"))
         steps = [{"tag": "p", "field": "skills", "split": ","}]
-        result = walk_steps(els, steps)
+        result, _ = walk_steps(els, steps)
         assert result["skills"] == ["Python", "Java", "Go"]
 
     def test_split_filters_empties(self):
         els = self._els(("p", "A,,B, ,C"))
         steps = [{"tag": "p", "field": "items", "split": ","}]
-        result = walk_steps(els, steps)
+        result, _ = walk_steps(els, steps)
         assert result["items"] == ["A", "B", "C"]
 
     def test_offset_skips_elements(self):
         els = self._els(("h2", "Title"), ("p", "Subtitle"), ("p", "Content"))
         steps = [{"tag": "h2", "field": "val", "offset": 1}]
-        result = walk_steps(els, steps)
+        result, _ = walk_steps(els, steps)
         assert result["val"] == "Subtitle"
 
     def test_from_seeks_from_index(self):
@@ -330,7 +330,7 @@ class TestWalkSteps:
             {"tag": "p", "field": "a"},
             {"tag": "p", "field": "b", "from": 0},
         ]
-        result = walk_steps(els, steps)
+        result, _ = walk_steps(els, steps)
         assert result["a"] == "First"
         assert result["b"] == "First"  # "from": 0 overrides cursor
 
@@ -342,7 +342,7 @@ class TestWalkSteps:
             {"tag": "h2", "attrs": {}, "text": "Next"},
         ]
         steps = [{"tag": "p", "text": "Intro", "field": "content", "stop": "Next", "html": True}]
-        result = walk_steps(els, steps)
+        result, _ = walk_steps(els, steps)
         assert "<p>Intro</p>" in result["content"]
         assert "<ul>" in result["content"]
         assert "<li>Item 1</li>" in result["content"]
@@ -358,7 +358,7 @@ class TestWalkSteps:
         ]
         with warnings.catch_warnings(record=True):
             warnings.simplefilter("always")
-            result = walk_steps(els, steps)
+            result, _ = walk_steps(els, steps)
         assert "found" in result
         assert "missing" in result
         assert "also_missing" in result
@@ -372,20 +372,20 @@ class TestWalkSteps:
             {"tag": "h1"},  # anchor — no field
             {"tag": "p", "field": "val"},
         ]
-        result = walk_steps(els, steps)
+        result, _ = walk_steps(els, steps)
         assert "val" in result
         assert result["val"] == "Para 1"
 
     def test_unicode_text_matching(self):
         els = self._els(("p", "What\u2019s New"))
         steps = [{"text": "What's New", "field": "title"}]
-        result = walk_steps(els, steps)
+        result, _ = walk_steps(els, steps)
         assert result["title"] == "What\u2019s New"
 
     def test_case_insensitive_matching(self):
         els = self._els(("h2", "JOB DESCRIPTION"), ("p", "Details here"))
         steps = [{"text": "job description", "field": "heading"}]
-        result = walk_steps(els, steps)
+        result, _ = walk_steps(els, steps)
         assert result["heading"] == "JOB DESCRIPTION"
 
     def test_case_insensitive_stop(self):
@@ -394,7 +394,7 @@ class TestWalkSteps:
             ("h2", "REQUIREMENTS"),
         )
         steps = [{"tag": "p", "field": "section", "stop": "requirements"}]
-        result = walk_steps(els, steps)
+        result, _ = walk_steps(els, steps)
         assert result["section"] == "Content"
 
 
@@ -406,7 +406,7 @@ class TestExtractSections:
             {"tag": "p", "field": "body"},
         ]
         result = extract_sections(html, steps)
-        expected = walk_steps(flatten(html), steps)
+        expected, _ = walk_steps(flatten(html), steps)
         assert result == expected
 
     def test_end_to_end(self):

@@ -147,7 +147,7 @@ def parse_html(html: str, config: dict) -> JobContent:
     if not steps:
         return JobContent()
     elements = flatten(html)
-    raw = walk_steps(elements, steps)
+    raw, _ = walk_steps(elements, steps)
     return _map_to_job_content(raw)
 
 
@@ -264,7 +264,7 @@ async def scrape(
             )
 
     start = _fragment_start(url, elements)
-    raw = walk_steps(elements, steps, start=start)
+    raw, _ = walk_steps(elements, steps, start=start)
     content = _map_to_job_content(raw)
 
     log.debug("dom.extracted", url=url, fields=[k for k, v in raw.items() if v is not None])
