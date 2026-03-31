@@ -989,8 +989,15 @@ def _execute_submit_step(
                 board_kwargs["monitor_type"] = b.monitor_type
             if b.monitor_config:
                 board_kwargs["monitor_config"] = json.dumps(b.monitor_config)
-            if b.scraper_type:
-                board_kwargs["scraper_type"] = b.scraper_type
+            scraper = b.scraper_type
+            if not scraper and b.monitor_type:
+                from src.workspace._compat import auto_scraper_type
+
+                auto = auto_scraper_type(b.monitor_type, b.monitor_config)
+                if auto:
+                    scraper = auto[0]
+            if scraper:
+                board_kwargs["scraper_type"] = scraper
             if b.scraper_config:
                 board_kwargs["scraper_config"] = json.dumps(b.scraper_config)
             board_add(ws.slug, **board_kwargs)
