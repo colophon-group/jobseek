@@ -414,6 +414,7 @@ axiom-co,axiom-co-ashby,https://jobs.ashbyhq.com/axiom-co,ashby,"{""token"": ""a
 axios,axios-greenhouse,https://job-boards.greenhouse.io/axios,greenhouse,"{""token"": ""axios""}",skip,
 axle,axle-greenhouse,https://job-boards.greenhouse.io/axle,greenhouse,"{""token"": ""axle""}",skip,
 axle-careers,axle-careers-ashby,https://jobs.ashbyhq.com/axle-careers,ashby,"{""token"": ""axle-careers""}",skip,
+axmed,axmed-careers,https://axmed.teamtailor.com/,rss,"{""preset"": ""teamtailor""}",skip,
 axon,axon-greenhouse,https://job-boards.greenhouse.io/axon,greenhouse,"{""token"": ""axon""}",skip,
 axonius,axonius-greenhouse,https://job-boards.greenhouse.io/axonius,greenhouse,"{""token"": ""axonius""}",skip,
 axs,axs-greenhouse,https://job-boards.greenhouse.io/axs,greenhouse,"{""token"": ""axs""}",skip,
