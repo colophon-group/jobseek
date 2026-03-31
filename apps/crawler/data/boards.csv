@@ -4053,6 +4053,8 @@ vitable-health,vitable-health-greenhouse,https://job-boards.greenhouse.io/vitabl
 vitalize,vitalize-ashby,https://jobs.ashbyhq.com/vitalize,ashby,"{""token"": ""vitalize""}",skip,
 vitol,vitol-careers,https://careers.smartrecruiters.com/Vitol,smartrecruiters,"{""token"": ""Vitol""}",smartrecruiters,
 vivid-money,vivid-money-careers,https://careers.vivid.money,personio,"{""slug"": ""vivid"", ""language"": ""en""}",,
+vodafone,vodafone-jobs,https://jobs.vodafone.com/careers,eightfold,"{""url_filter"": ""/careers/job/""}",json-ld,
+vodafone,vodafone-opportunities,https://opportunities.vodafone.com/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://opportunities.vodafone.com/googlefeed.xml""}",skip,
 voldex,voldex-ashby,https://jobs.ashbyhq.com/voldex,ashby,"{""token"": ""voldex""}",skip,
 vonage,vonage-greenhouse,https://job-boards.greenhouse.io/vonage,greenhouse,"{""token"": ""vonage""}",skip,
 vontobel,vontobel-careers,https://vontobel.wd3.myworkdayjobs.com/Vontobel_External_Career,workday,,workday,
