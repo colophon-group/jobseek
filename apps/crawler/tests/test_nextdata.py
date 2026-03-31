@@ -475,12 +475,14 @@ class TestErrorHandling:
         assert result == []
 
     async def test_max_urls_cap(self):
-        items = [{"id": str(i), "text": f"Job {i}"} for i in range(10_500)]
+        from src.core.monitors.nextdata import MAX_URLS
+
+        items = [{"id": str(i), "text": f"Job {i}"} for i in range(MAX_URLS + 500)]
         data = {"props": {"pageProps": {"positions": items}}}
         html = _html_with_next_data(data)
         async with httpx.AsyncClient(transport=_mock_transport(html)) as client:
             result = await discover(BOARD_URL_ONLY, client)
-        assert len(result) <= 10_000
+        assert len(result) <= MAX_URLS
 
     async def test_missing_path_config(self):
         board = {
