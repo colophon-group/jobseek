@@ -2422,6 +2422,7 @@ mgt-insurance,mgt-insurance-greenhouse,https://job-boards.greenhouse.io/mgtinsur
 michael-bonsby-hvac-plumbing-electrical,michael-bonsby-hvac-plumbing-electrical-greenhouse,https://job-boards.greenhouse.io/bonsbyhvacplumbing,greenhouse,"{""token"": ""bonsbyhvacplumbing""}",skip,
 micron,micron-eightfold,https://micron.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/""}",json-ld,
 microsoft,microsoft-careers2,https://apply.careers.microsoft.com/careers,eightfold,"{""url_filter"": ""/careers/job/""}",json-ld,
+microtech-global,microtech-global-main,https://www.microtech-global.com/en/jobs.asp,dom,"{""render"": false, ""url_filter"": ""job_detail\\.asp"", ""pagination"": {""param_name"": ""nav"", ""max_pages"": 25}}",json-ld,
 midi-health,midi-health-greenhouse,https://job-boards.greenhouse.io/midihealth,greenhouse,"{""token"": ""midihealth""}",skip,
 migros,migros-careers,https://jobs.migros.ch/de/unsere-unternehmen/migros-gruppe/offene-stellen,sitemap,"{""url_filter"": {""include"": ""/unsere-unternehmen/job/"", ""exclude"": ""/job/galaxus/""}}",json-ld,"{""fallback"": {""type"": ""dom"", ""config"": {""steps"": [{""tag"": ""h3"", ""text"": ""beweg"", ""field"": ""description"", ""html"": true, ""stop"": ""Bewerbung & Kontakt""}]}, ""fields"": [""description""]}}"
 mill,mill-greenhouse,https://job-boards.greenhouse.io/mill,greenhouse,"{""token"": ""mill""}",skip,
