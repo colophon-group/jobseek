@@ -823,6 +823,7 @@ circleci,circleci-greenhouse,https://job-boards.greenhouse.io/circleci,greenhous
 circuithub,circuithub-ashby,https://jobs.ashbyhq.com/circuithub,ashby,"{""token"": ""circuithub""}",skip,
 cisco,cisco-careers,https://cisco.wd5.myworkdayjobs.com/Cisco_Careers,workday,"{""company"": ""cisco"", ""wd_instance"": ""wd5"", ""site"": ""Cisco_Careers""}",workday,
 cision,cision-greenhouse,https://job-boards.greenhouse.io/cision,greenhouse,"{""token"": ""cision""}",skip,
+citadel,citadel-careers,https://www.citadel.com/careers/open-opportunities/,sitemap,"{""sitemap_url"": ""https://www.citadel.com/career-sitemap.xml"", ""url_filter"": ""/careers/details/""}",json-ld,"{""render"": true, ""timeout"": 60000, ""wait"": ""domcontentloaded""}"
 citema-systems-gmbh,citema-systems-gmbh-join,https://join.com/companies/citema,join,"{""slug"": ""citema""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 citian,citian-greenhouse,https://job-boards.greenhouse.io/citian,greenhouse,"{""token"": ""citian""}",skip,
 citigroup,citigroup-eightfold,https://citi.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/""}",json-ld,
