@@ -2331,6 +2331,7 @@ man-group,man-group-greenhouse,https://job-boards.greenhouse.io/mangroup,greenho
 manscaped,manscaped-greenhouse,https://job-boards.greenhouse.io/manscaped,greenhouse,"{""token"": ""manscaped""}",skip,
 mantra-health,mantra-health-greenhouse,https://job-boards.greenhouse.io/mantrahealth,greenhouse,"{""token"": ""mantrahealth""}",skip,
 manufact,manufact-careers,https://www.ycombinator.com/companies/mcp-use/jobs,ycombinator,"{""slug"": ""manufact""}",json-ld,
+manukai,manukai-careers,https://www.manukai.ch/career,inline,"{""render"": true, ""timeout"": 10000, ""actions"": [{""action"": ""evaluate"", ""script"": ""document.querySelectorAll('.accordion_description').forEach(el => { el.style.cssText = 'width:100%;height:auto;overflow:visible;display:block;visibility:visible;opacity:1;position:static'; })""}], ""steps"": [{""tag"": ""div"", ""attr"": ""class=heading-style-h2"", ""field"": ""title""}, {""tag"": ""p"", ""field"": ""description"", ""html"": true, ""stop_tag"": ""div""}], ""defaults"": {""locations"": [""Zurich, CH""]}}",skip,
 manychat,manychat-greenhouse,https://job-boards.greenhouse.io/manychat,greenhouse,"{""token"": ""manychat""}",skip,
 maple,maple-ashby,https://jobs.ashbyhq.com/maple,ashby,"{""token"": ""maple""}",skip,
 maple,maple-recruitee,https://maple.recruitee.com,recruitee,"{""token"": ""maple""}",skip,
