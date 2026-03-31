@@ -1485,6 +1485,7 @@ fries-gruppe,fries-gruppe-join,https://join.com/companies/fries24de,join,"{""slu
 froid-climatisation-assistance,froid-climatisation-assistance-join,https://join.com/companies/froidclimatisationassistancefr,join,"{""slug"": ""froidclimatisationassistancefr""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 frontcareers,frontcareers-ashby,https://jobs.ashbyhq.com/frontcareers,ashby,"{""token"": ""frontcareers""}",skip,
 frontier-dermatology-provider-careers,frontier-dermatology-provider-careers-greenhouse,https://job-boards.greenhouse.io/frontierdermatologyprovidercareers,greenhouse,"{""token"": ""frontierdermatologyprovidercareers""}",skip,
+frontiers,frontiers-careers,https://apply.workable.com/frontiersmedia/,workable,"{""token"": ""frontiersmedia""}",workable,
 fueled,fueled-greenhouse,https://job-boards.greenhouse.io/fueledcareers,greenhouse,"{""token"": ""fueledcareers""}",skip,
 fulfil-solutions,fulfil-solutions-greenhouse,https://job-boards.greenhouse.io/fulfil,greenhouse,"{""token"": ""fulfil""}",skip,
 fullstory,fullstory-ashby,https://jobs.ashbyhq.com/fullstory,ashby,"{""token"": ""fullstory""}",skip,
