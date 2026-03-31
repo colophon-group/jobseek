@@ -26,7 +26,7 @@ jobs:
         env:
           TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Select issue
         id: select
@@ -47,7 +47,7 @@ jobs:
         if: >
           steps.select.outputs.selected != '' &&
           steps.budget.outputs.remaining > 0
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "22"
 

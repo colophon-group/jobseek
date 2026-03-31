@@ -16,24 +16,24 @@ jobs:
       packages: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Read VERSION
         id: version
         run: echo "version=$(cat apps/crawler/VERSION | tr -d '[:space:]')" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
       - name: Log in to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push slim image (worker, exporter, drain)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: apps/crawler
           target: slim
@@ -46,7 +46,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=crawler-slim
 
       - name: Build and push browser image (full)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: apps/crawler
           target: full
@@ -59,7 +59,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=crawler-browser
 
       - name: Copy deploy files
-        uses: appleboy/scp-action@v0.1.7
+        uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634 # v0.1.7
         with:
           host: ${{ secrets.HETZNER_HOST }}
           username: deploy
@@ -69,7 +69,7 @@ jobs:
           strip_components: 2
 
       - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
         with:
           host: ${{ secrets.HETZNER_HOST }}
           username: deploy
