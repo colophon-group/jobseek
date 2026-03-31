@@ -88,6 +88,13 @@ careers page, and Workday site lists for the full set.
 Prefer directly referenced board URLs over unreferenced slug guesses unless
 the latter has stronger corroborating evidence.
 
+**Centralized parent portals:** If the company's careers page redirects to a
+parent company's portal (e.g. SWISS → Lufthansa Group, Fiat → Stellantis),
+the parent company should be configured instead — reject this issue and create
+a workspace for the parent. Use `ws task fail --reason "Jobs are hosted on
+<Parent> Group's centralized portal at <URL>. Configure the parent company
+instead."` to abort.
+
 ## Add each board
 
 ```bash
