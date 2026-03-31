@@ -23,6 +23,7 @@ import {
 } from "@/lib/actions/my-jobs-types";
 import { StatusBadge } from "./status-badge";
 import { withUtmSource } from "@/lib/utm";
+import { sanitizeJobHtml } from "@/lib/sanitize";
 import { InterviewList } from "./interview-list";
 import { timeAgoShort } from "@/lib/time";
 import { SaveButton } from "@/components/search/save-button";
@@ -246,7 +247,7 @@ export function MyJobDetailPanel({
                 <div
                   className="job-description max-w-none text-sm leading-relaxed"
                   dangerouslySetInnerHTML={{
-                    __html: postingDetail.descriptionHtml,
+                    __html: sanitizeJobHtml(postingDetail.descriptionHtml),
                   }}
                 />
               </>
