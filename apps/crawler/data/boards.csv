@@ -2016,6 +2016,7 @@ kalepa,kalepa-greenhouse,https://job-boards.greenhouse.io/kalepa,greenhouse,"{""
 kalles-group,kalles-group-greenhouse,https://job-boards.greenhouse.io/kallesgroup,greenhouse,"{""token"": ""kallesgroup""}",skip,
 kalshi,kalshi-ashby,https://jobs.ashbyhq.com/kalshi,ashby,"{""token"": ""kalshi""}",skip,
 kalshi,kalshi-greenhouse,https://job-boards.greenhouse.io/kalshi,greenhouse,"{""token"": ""kalshi""}",skip,
+kandou-ai,kandou-ai-careers,https://kandou.bamboohr.com/careers,dom,"{""render"": true}",json-ld,"{""render"": true}"
 kapa-ai,kapa-ai-careers,https://www.ycombinator.com/companies/kapa-ai/jobs/,ycombinator,"{""slug"": ""kapa-ai""}",json-ld,
 kapitus,kapitus-greenhouse,https://job-boards.greenhouse.io/kapitus,greenhouse,"{""token"": ""kapitus""}",skip,
 karat,karat-greenhouse,https://job-boards.greenhouse.io/karat,greenhouse,"{""token"": ""karat""}",skip,
