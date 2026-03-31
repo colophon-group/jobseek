@@ -3253,6 +3253,7 @@ rxsense,rxsense-greenhouse,https://job-boards.greenhouse.io/rxsense,greenhouse,"
 rzr-global-inc,rzr-global-inc-greenhouse,https://job-boards.greenhouse.io/aarkiinc,greenhouse,"{""token"": ""aarkiinc""}",skip,
 s-l-connect-gmbh,s-l-connect-gmbh-join,https://join.com/companies/sundlconnectde,join,"{""slug"": ""sundlconnectde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 saas-group,saas-group-greenhouse,https://job-boards.greenhouse.io/saasgroup,greenhouse,"{""token"": ""saasgroup""}",skip,
+saber-interactive,saber-interactive-careers-huntflow,https://saberjobs.huntflow.io/,dom,"{""render"": false}",embedded,"{""script_id"": ""__NUXT_DATA__"", ""fields"": {""title"": ""[7]"", ""description"": [""[10]"", ""=<h3>Conditions</h3>"", ""[11]"", ""=<h3>Requirements</h3>"", ""[12]""], ""metadata.division"": ""[9]""}}"
 saber-tech,saber-tech-greenhouse,https://job-boards.greenhouse.io/sabertech,greenhouse,"{""token"": ""sabertech""}",skip,
 sable,sable-ashby,https://jobs.ashbyhq.com/sable,ashby,"{""token"": ""sable""}",skip,
 safari-ai,safari-ai-greenhouse,https://job-boards.greenhouse.io/safariai,greenhouse,"{""token"": ""safariai""}",skip,
