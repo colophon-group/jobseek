@@ -3624,6 +3624,7 @@ stryker,stryker-careers,https://careers.stryker.com/jobs,sitemap,"{""url_filter"
 stubhub,stubhub-greenhouse,https://job-boards.greenhouse.io/stubhubinc,greenhouse,"{""token"": ""stubhubinc""}",skip,
 studapart,studapart-greenhouse,https://job-boards.greenhouse.io/studapart,greenhouse,"{""token"": ""studapart""}",skip,
 study-com-c,study-com-c-greenhouse,https://job-boards.greenhouse.io/studycontractors,greenhouse,"{""token"": ""studycontractors""}",skip,
+studyflash,studyflash-careers,https://join.com/companies/studyflash,join,,json-ld,"{""render"": true}"
 stytch,stytch-ashby,https://jobs.ashbyhq.com/stytch,ashby,"{""token"": ""stytch""}",skip,
 substack,substack-ashby,https://jobs.ashbyhq.com/substack,ashby,"{""token"": ""substack""}",skip,
 sugarcrm,sugarcrm-lever,https://jobs.lever.co/sugarcrm,lever,"{""token"": ""sugarcrm""}",skip,
