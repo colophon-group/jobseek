@@ -573,6 +573,7 @@ bluevine-india,bluevine-india-greenhouse,https://job-boards.greenhouse.io/bluevi
 bluevine-us,bluevine-us-greenhouse,https://job-boards.greenhouse.io/bluevineus,greenhouse,"{""token"": ""bluevineus""}",skip,
 blushark-digital,blushark-digital-greenhouse,https://job-boards.greenhouse.io/blusharkdigital,greenhouse,"{""token"": ""blusharkdigital""}",skip,
 blytheco,blytheco-greenhouse,https://job-boards.greenhouse.io/blytheco,greenhouse,"{""token"": ""blytheco""}",skip,
+bmw,bmw-careers-sf,https://jobs.bmwgroup.com/search,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://jobs.bmwgroup.com/googlefeed.xml""}",skip,
 bobbie,bobbie-greenhouse,https://job-boards.greenhouse.io/bobbie,greenhouse,"{""token"": ""bobbie""}",skip,
 boeing,boeing-bia,https://phh.tbe.taleo.net/phh01/ats/careers/v2/jobSearch?act=redirectCwsV2&cws=38&org=BIA,dom,"{""render"": true, ""actions"": [{""action"": ""dismiss_overlays""}, {""action"": ""evaluate"", ""script"": ""document.querySelector(\""form\"")?.submit() || document.querySelector(\""input[type=submit], button[type=submit]\"")?.click()""}, {""action"": ""wait"", ""ms"": 5000}], ""url_filter"": ""viewRequisition"", ""wait"": ""networkidle"", ""timeout"": 45000, ""pagination"": {""param_name"": ""rowFrom"", ""start"": 0, ""increment"": 10, ""max_pages"": 100}}",json-ld,"{""render"": true}"
 boeing,boeing-careers,https://boeing.wd1.myworkdayjobs.com/EXTERNAL_CAREERS,workday,"{""company"": ""boeing"", ""wd_instance"": ""wd1"", ""site"": ""EXTERNAL_CAREERS""}",workday,
@@ -3734,8 +3735,8 @@ tanium,tanium-greenhouse,https://job-boards.greenhouse.io/tanium,greenhouse,"{""
 tanius-technology,tanius-technology-greenhouse,https://job-boards.greenhouse.io/tanius,greenhouse,"{""token"": ""tanius""}",skip,
 tapblaze,tapblaze-ashby,https://jobs.ashbyhq.com/tapblaze,ashby,"{""token"": ""tapblaze""}",skip,
 tappz-gmbh,tappz-gmbh-join,https://join.com/companies/tappzcom,join,"{""slug"": ""tappzcom""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
-target-rwe,target-rwe-greenhouse,https://job-boards.greenhouse.io/targetrwe,greenhouse,"{""token"": ""targetrwe""}",skip,
 target,target-careers,https://target.wd5.myworkdayjobs.com/en-US/targetcareers,workday,,workday,
+target-rwe,target-rwe-greenhouse,https://job-boards.greenhouse.io/targetrwe,greenhouse,"{""token"": ""targetrwe""}",skip,
 taskrabbit,taskrabbit-greenhouse,https://job-boards.greenhouse.io/taskrabbit,greenhouse,"{""token"": ""taskrabbit""}",skip,
 tastytrade,tastytrade-greenhouse,https://job-boards.greenhouse.io/tastytrade,greenhouse,"{""token"": ""tastytrade""}",skip,
 tatari,tatari-greenhouse,https://job-boards.greenhouse.io/tatari,greenhouse,"{""token"": ""tatari""}",skip,
