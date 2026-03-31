@@ -1222,6 +1222,7 @@ ekkiden,ekkiden-careers,https://recruiterflow.com/ekkiden/jobs,dom,"{""render"":
 ekn-engineering,ekn-engineering-greenhouse,https://job-boards.greenhouse.io/eknengineering,greenhouse,"{""token"": ""eknengineering""}",skip,
 elastic,elastic-greenhouse,https://job-boards.greenhouse.io/elastic,greenhouse,"{""token"": ""elastic""}",skip,
 elca-group,elca-group-careers,https://iaaras.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_4/requisitions,oracle_hcm,"{""host"": ""iaaras.fa.ocs.oraclecloud.com"", ""site"": ""CX_4""}",oracle_hcm,"{""host"": ""iaaras.fa.ocs.oraclecloud.com"", ""site"": ""CX_4""}"
+electrolux,electrolux-careers-workday,https://electrolux.wd3.myworkdayjobs.com/ElectroluxCareerSite,workday,"{""tenant"": ""electrolux"", ""site"": ""ElectroluxCareerSite""}",workday,
 electronx,electronx-ashby,https://jobs.ashbyhq.com/electronx,ashby,"{""token"": ""electronx""}",skip,
 eleos-health,eleos-health-greenhouse,https://job-boards.greenhouse.io/eleoshealth,greenhouse,"{""token"": ""eleoshealth""}",skip,
 elevations-credit-union,elevations-credit-union-greenhouse,https://job-boards.greenhouse.io/elevationscreditunion,greenhouse,"{""token"": ""elevationscreditunion""}",skip,
