@@ -928,6 +928,17 @@ async def sync_boards(
     id_rows = await conn.fetch(_FETCH_BOARD_IDS, board_urls)
     url_to_ids: dict[str, tuple] = {r["board_url"]: (r["id"], r["company_id"]) for r in id_rows}
 
+    # Check Redis availability once — skip enqueue if unreachable (e.g. CI)
+    redis_available = True
+    try:
+        from src.redis_queue import get_redis
+
+        r = get_redis()
+        await r.ping()
+    except Exception:
+        redis_available = False
+        log.warning("sync.redis_unavailable", msg="Redis unreachable, skipping enqueue")
+
     redis_enqueued = 0
     local_upserted = 0
 
@@ -965,26 +976,27 @@ async def sync_boards(
         local_upserted += 1
 
         # Target 3: Redis (board config hash + initial schedule)
-        config = {
-            "board_url": board_url,
-            "crawler_type": mon_type,
-            "company_id": str(company_id),
-            "metadata": json.dumps(metadata_objs[i]) if metadata_objs[i] else "{}",
-            "check_interval_minutes": str(check_interval),
-            "scrape_interval_hours": str(scrape_interval),
-            "throttle_key": throttle_key,
-            "monitor_needs_browser": "1" if mon_browser else "0",
-            "scraper_needs_browser": "1" if scr_browser else "0",
-        }
-        await enqueue_monitor(
-            throttle_key,
-            str(board_id),
-            time.time(),
-            config,
-            browser=mon_browser,
-            first_time=True,
-        )
-        redis_enqueued += 1
+        if redis_available:
+            config = {
+                "board_url": board_url,
+                "crawler_type": mon_type,
+                "company_id": str(company_id),
+                "metadata": json.dumps(metadata_objs[i]) if metadata_objs[i] else "{}",
+                "check_interval_minutes": str(check_interval),
+                "scrape_interval_hours": str(scrape_interval),
+                "throttle_key": throttle_key,
+                "monitor_needs_browser": "1" if mon_browser else "0",
+                "scraper_needs_browser": "1" if scr_browser else "0",
+            }
+            await enqueue_monitor(
+                throttle_key,
+                str(board_id),
+                time.time(),
+                config,
+                browser=mon_browser,
+                first_time=True,
+            )
+            redis_enqueued += 1
 
     # Disable removed boards in local Postgres too
     await local_conn.execute(_DISABLE_REMOVED_BOARDS, board_urls)
