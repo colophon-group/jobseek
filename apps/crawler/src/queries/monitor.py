@@ -114,7 +114,7 @@ _DELIST_THRESHOLD_FRAGILE = 2
 
 _DELIST_BOARD_POSTINGS = """
 UPDATE job_posting
-SET is_active = false, next_scrape_at = NULL
+SET is_active = false, next_scrape_at = NULL, updated_at = now()
 WHERE board_id = $1 AND is_active = true
 """
 
@@ -240,6 +240,10 @@ SET missing_count = missing_count + 1,
     next_scrape_at = CASE
         WHEN missing_count + 1 >= $3 THEN NULL
         ELSE next_scrape_at
+    END,
+    updated_at = CASE
+        WHEN missing_count + 1 >= $3 THEN now()
+        ELSE updated_at
     END
 WHERE job_posting.board_id = $2
   AND job_posting.is_active = true
@@ -257,6 +261,10 @@ SET missing_count = missing_count + 1,
     next_scrape_at = CASE
         WHEN missing_count + 1 >= $3 THEN NULL
         ELSE next_scrape_at
+    END,
+    updated_at = CASE
+        WHEN missing_count + 1 >= $3 THEN now()
+        ELSE updated_at
     END
 WHERE board_id = $1
   AND is_active = true
