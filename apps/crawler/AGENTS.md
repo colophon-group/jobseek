@@ -34,7 +34,8 @@ src/
 │   │   ├── workday.py     # Workday Job Board API
 │   │   ├── sitemap.py     # XML sitemap parser
 │   │   ├── nextdata.py    # Next.js __NEXT_DATA__ discovery
-│   │   └── dom.py         # Playwright DOM-based discovery
+│   │   ├── dom.py         # Playwright DOM-based discovery
+│   │   └── inline.py      # Single-page inline job extraction (rich)
 │   ├── scrapers/          # Scraper implementations
 │   │   ├── __init__.py    # Registry + JobContent dataclass
 │   │   ├── api_sniffer.py # XHR/fetch API capture for single pages

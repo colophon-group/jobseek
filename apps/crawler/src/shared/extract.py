@@ -297,7 +297,7 @@ def walk_steps(
     steps: list[dict],
     *,
     start: int = 0,
-) -> dict[str, str | list[str] | None]:
+) -> tuple[dict[str, str | list[str] | None], int]:
     """Walk flat elements according to extraction steps, returning extracted fields.
 
     Every step with a ``field`` key is guaranteed present in the result: the
@@ -435,9 +435,9 @@ def walk_steps(
             # Anchor step — just advance cursor
             cursor = match_idx + 1
 
-    return result
+    return result, cursor
 
 
 def extract_sections(html: str, steps: list[dict]) -> dict[str, str | list[str] | None]:
     """Flatten HTML and walk extraction steps in one call."""
-    return walk_steps(flatten(html), steps)
+    return walk_steps(flatten(html), steps)[0]
