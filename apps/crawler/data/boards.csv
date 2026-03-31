@@ -1767,6 +1767,8 @@ hivestack,hivestack-greenhouse,https://job-boards.greenhouse.io/hivestack,greenh
 hiya,hiya-ashby,https://jobs.ashbyhq.com/hiya,ashby,"{""token"": ""hiya""}",skip,
 hmg-systems-engineering-gmbh,hmg-systems-engineering-gmbh-join,https://join.com/companies/hmg-systems-engineering,join,"{""slug"": ""hmg-systems-engineering""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 holcim,holcim-careers,https://careers.holcimgroup.com/go/All-Jobs/8790902/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.holcimgroup.com/googlefeed.xml""}",skip,
+home-depot,home-depot-careers-ca,https://homedepot.wd5.myworkdayjobs.com/CareerDepotCanada,workday,"{""company"": ""homedepot"", ""wd_instance"": ""wd5"", ""site"": ""CareerDepotCanada""}",workday,
+home-depot,home-depot-careers-workday,https://homedepot.wd5.myworkdayjobs.com/CareerDepot,workday,"{""company"": ""homedepot"", ""wd_instance"": ""wd5"", ""site"": ""CareerDepot""}",workday,
 homebase,homebase-ashby,https://jobs.ashbyhq.com/homebase,ashby,"{""token"": ""homebase""}",skip,
 homelight,homelight-greenhouse,https://job-boards.greenhouse.io/homelight,greenhouse,"{""token"": ""homelight""}",skip,
 hometap,hometap-greenhouse,https://job-boards.greenhouse.io/hometap,greenhouse,"{""token"": ""hometap""}",skip,
