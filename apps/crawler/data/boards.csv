@@ -2249,6 +2249,7 @@ lodestar,lodestar-greenhouse,https://job-boards.greenhouse.io/lodestarspace,gree
 logicgate,logicgate-greenhouse,https://job-boards.greenhouse.io/logicgate,greenhouse,"{""token"": ""logicgate""}",skip,
 logicmanager,logicmanager-pinpoint,https://logicmanager.pinpointhq.com,pinpoint,"{""slug"": ""logicmanager""}",skip,
 logitech,logitech-careers,https://logitech.wd5.myworkdayjobs.com/Logitech,workday,,workday,
+logmind,logmind-careers,https://www.logmind.com/company/careers,dom,"{""render"": true, ""url_filter"": ""/careers/[a-z]""}",json-ld,"{""render"": true}"
 logop-dische-praxis-kuhnle-gmbh,logop-dische-praxis-kuhnle-gmbh-join,https://join.com/companies/logopaedie-kuhnlede,join,"{""slug"": ""logopaedie-kuhnlede""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 logos,logos-greenhouse,https://job-boards.greenhouse.io/logos,greenhouse,"{""token"": ""logos""}",skip,
 loka-inc,loka-inc-greenhouse,https://job-boards.greenhouse.io/lokainc,greenhouse,"{""token"": ""lokainc""}",skip,
