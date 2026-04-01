@@ -341,6 +341,7 @@ ascend-analytics,ascend-analytics-greenhouse,https://job-boards.greenhouse.io/as
 ascent,ascent-careers,https://ascenthealthservices.career.softgarden.de/,softgarden,"{""slug"": ""ascenthealthservices""}",json-ld,
 asg,asg-greenhouse,https://job-boards.greenhouse.io/asgjobs,greenhouse,"{""token"": ""asgjobs""}",skip,
 ashby,ashby-careers,https://jobs.ashbyhq.com/ashby,ashby,,skip,
+asian-paints,asian-paints-careers,https://careers.asianpaints.com/search/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.asianpaints.com/googlefeed.xml""}",skip,
 asm,asm-greenhouse,https://job-boards.greenhouse.io/asm,greenhouse,"{""token"": ""asm""}",skip,
 asm,asm-recruitee,https://asm.recruitee.com,recruitee,"{""token"": ""asm""}",skip,
 asml,asml-careers,https://careers.smartrecruiters.com/ASML1,smartrecruiters,"{""token"": ""ASML1""}",smartrecruiters,
