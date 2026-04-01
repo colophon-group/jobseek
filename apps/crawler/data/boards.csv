@@ -1167,6 +1167,7 @@ dovetail,dovetail-ashby,https://jobs.ashbyhq.com/dovetail,ashby,"{""token"": ""d
 doximity,doximity-greenhouse,https://job-boards.greenhouse.io/doximity,greenhouse,"{""token"": ""doximity""}",skip,
 dphi-space,dphi-space-careers,https://www.dphispace.com/careers,dom,,dom,"{""render"": true, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""div"", ""attr"": ""class=text-gray-600"", ""field"": ""locations""}, {""tag"": ""p"", ""attr"": ""class=text-gray-700"", ""field"": ""description"", ""html"": true, ""stop_count"": 100}]}"
 dr-dental,dr-dental-greenhouse,https://job-boards.greenhouse.io/drdental,greenhouse,"{""token"": ""drdental""}",skip,
+dr-reddys,dr-reddys-careers,https://careers.smartrecruiters.com/drreddyslaboratorieslimited,smartrecruiters,"{""token"": ""drreddyslaboratorieslimited""}",smartrecruiters,
 dr-squatch,dr-squatch-greenhouse,https://job-boards.greenhouse.io/drsquatch,greenhouse,"{""token"": ""drsquatch""}",skip,
 dragos,dragos-greenhouse,https://job-boards.greenhouse.io/dragos,greenhouse,"{""token"": ""dragos""}",skip,
 drata,drata-ashby,https://jobs.ashbyhq.com/drata,ashby,"{""token"": ""drata""}",skip,
