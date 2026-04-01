@@ -420,6 +420,7 @@ axiom,axiom-ashby,https://jobs.ashbyhq.com/axiom,ashby,"{""token"": ""axiom""}",
 axiom,axiom-greenhouse,https://job-boards.greenhouse.io/axiom,greenhouse,"{""token"": ""axiom""}",skip,
 axiom-co,axiom-co-ashby,https://jobs.ashbyhq.com/axiom-co,ashby,"{""token"": ""axiom-co""}",skip,
 axios,axios-greenhouse,https://job-boards.greenhouse.io/axios,greenhouse,"{""token"": ""axios""}",skip,
+axis-bank,axis-bank-careers,https://axisbank.ripplehire.com/candidate/?token=WIXhCuz0XRZ7H0GZCwjJ&source=CAREERSITE#list,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 60000, ""actions"": [{""action"": ""wait"", ""ms"": 10000}], ""url_filter"": ""#detail/job/\\d+""}",dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""actions"": [{""action"": ""wait"", ""ms"": 10000}], ""steps"": [{""tag"": ""h2"", ""field"": ""title""}, {""tag"": ""li"", ""attr"": ""class=location-text"", ""field"": ""locations"", ""optional"": true}, {""text"": ""Role description"", ""tag"": ""h3""}, {""tag"": ""p"", ""field"": ""description"", ""stop"": ""Skills"", ""html"": true}]}"
 axle,axle-greenhouse,https://job-boards.greenhouse.io/axle,greenhouse,"{""token"": ""axle""}",skip,
 axle-careers,axle-careers-ashby,https://jobs.ashbyhq.com/axle-careers,ashby,"{""token"": ""axle-careers""}",skip,
 axmed,axmed-careers,https://axmed.teamtailor.com/,rss,"{""preset"": ""teamtailor""}",skip,
