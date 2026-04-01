@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import json
 import re
 from math import ceil
 from typing import TYPE_CHECKING
@@ -56,6 +57,70 @@ if TYPE_CHECKING:
 log = structlog.get_logger()
 
 MAX_ITEMS = 10_000
+
+
+# ---------------------------------------------------------------------------
+# AES response decryption
+# ---------------------------------------------------------------------------
+
+
+def _decrypt_aes_cbc(ciphertext: str, key: str, iv_mode: str = "suffix") -> object:
+    """Decrypt an AES-CBC encrypted string and return parsed JSON.
+
+    *iv_mode* controls how the IV is derived:
+    - ``"suffix"`` (default): last 16 chars of *ciphertext* are the IV
+      (as UTF-8 bytes), remainder is the base64-encoded ciphertext.
+    - ``"fixed:<iv>"``: use a fixed IV string.
+
+    Returns the parsed JSON object, or *None* on failure.
+    """
+    import base64
+
+    try:
+        from Crypto.Cipher import AES as _AES
+        from Crypto.Util.Padding import unpad
+    except ImportError:
+        from Cryptodome.Cipher import AES as _AES
+        from Cryptodome.Util.Padding import unpad
+
+    key_bytes = key.encode("utf-8")
+
+    if iv_mode == "suffix":
+        iv_bytes = ciphertext[-16:].encode("utf-8")
+        ct_b64 = ciphertext[:-16]
+    elif iv_mode.startswith("fixed:"):
+        iv_bytes = iv_mode[6:].encode("utf-8")
+        ct_b64 = ciphertext
+    else:
+        return None
+
+    decoded = base64.b64decode(ct_b64)
+    cipher = _AES.new(key_bytes, _AES.MODE_CBC, iv_bytes)
+    decrypted = unpad(cipher.decrypt(decoded), _AES.block_size)
+    return json.loads(" " + decrypted.decode("utf-8"))
+
+
+def _apply_response_decrypt(data: object, decrypt_cfg: dict) -> object:
+    """Decrypt the ``Data`` field of *data* if *decrypt_cfg* is present.
+
+    *decrypt_cfg* must contain ``key`` and optionally ``iv_mode`` (default
+    ``"suffix"``).  The decrypted content replaces ``Data`` in the returned dict.
+    """
+    if not isinstance(data, dict):
+        return data
+    encrypted = data.get("Data")
+    if not encrypted or not isinstance(encrypted, str):
+        return data
+    key = decrypt_cfg["key"]
+    iv_mode = decrypt_cfg.get("iv_mode", "suffix")
+    try:
+        decrypted = _decrypt_aes_cbc(encrypted, key, iv_mode)
+        return {**data, "Data": decrypted}
+    except Exception:
+        log.debug("api_sniffer.decrypt_failed", key_len=len(key))
+        return data
+
+
 MAX_PAGES = 50
 _HTTP_MAX_PAGES = 200  # higher limit for plain httpx (no Playwright overhead)
 
@@ -536,6 +601,11 @@ async def _discover_http(
     if data is None:
         return list() if fields_map else set()
 
+    # -- decrypt encrypted response field ----------------------------------
+    decrypt_cfg = config.get("response_decrypt")
+    if decrypt_cfg:
+        data = _apply_response_decrypt(data, decrypt_cfg)
+
     # -- auto-detect json_path when not configured -------------------------
     content: object = None
     if json_path is not None:
@@ -914,6 +984,11 @@ async def _discover_replay(
             if data is None:
                 log.error("api_sniffer.replay_failed", api_url=api_url, exc_info=True)
                 return list() if fields_map else set()
+
+        # Decrypt encrypted response field
+        decrypt_cfg = config.get("response_decrypt")
+        if decrypt_cfg:
+            data = _apply_response_decrypt(data, decrypt_cfg)
 
         items = extract_items(data, json_path)
         if not items:
