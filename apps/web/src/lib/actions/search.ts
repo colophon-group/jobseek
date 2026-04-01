@@ -246,7 +246,7 @@ export async function searchJobs(params: {
   const sortedEtype = [...(params.employmentTypes ?? [])].sort().join(",");
   const sortedLangs = [...params.languages].sort();
   const salKey = `${params.salaryMinEur ?? ""}:${params.salaryMaxEur ?? ""}`;
-  const expKey = `${params.experienceMax ?? ""}`;
+  const expKey = `${params.experienceMin ?? ""}:${params.experienceMax ?? ""}`;
   const key = `search:${sortedKw.join(",")}:${sortedLoc.join(",")}:${sortedOcc.join(",")}:${sortedSen.join(",")}:${sortedTech}:${sortedEtype}:${sortedLangs.join(",")}:${salKey}:${expKey}:${params.locale}:${params.offset}:${params.limit}`;
   const result = await cached(
     key,
@@ -296,7 +296,7 @@ export async function listTopCompanies(params: {
   const sortedEtype = [...(params.employmentTypes ?? [])].sort().join(",");
   const sortedLangs = [...params.languages].sort();
   const salKey = `${params.salaryMinEur ?? ""}:${params.salaryMaxEur ?? ""}`;
-  const expKey = `${params.experienceMax ?? ""}`;
+  const expKey = `${params.experienceMin ?? ""}:${params.experienceMax ?? ""}`;
   const key = `top-companies:${sortedLoc.join(",")}:${sortedOcc.join(",")}:${sortedSen.join(",")}:${sortedTech}:${sortedEtype}:${sortedLangs.join(",")}:${salKey}:${expKey}:${params.locale}:${params.offset}:${params.limit}`;
   const result = await cached(
     key,

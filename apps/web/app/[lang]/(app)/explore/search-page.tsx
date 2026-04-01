@@ -310,7 +310,8 @@ export function SearchPage({
   }
 
   /** Sync URL to current filter state. */
-  function updateUrl() {
+  const updateUrlRef = useRef(() => {});
+  updateUrlRef.current = () => {
     const extra: Record<string, string> = {};
     if (showPostingIdRef.current) extra.show = showPostingIdRef.current;
     if (salaryMinRef.current || salaryMaxRef.current) {
@@ -332,7 +333,8 @@ export function SearchPage({
       technologiesRef.current,
     );
     window.history.replaceState(null, "", url);
-  }
+  };
+  function updateUrl() { updateUrlRef.current(); }
 
   function handleOpenPosting(postingId: string) {
     setShowPostingId(postingId);
@@ -345,7 +347,8 @@ export function SearchPage({
   }
 
   /** Run a search using current ref state. */
-  function runSearch() {
+  const runSearchRef = useRef(() => {});
+  runSearchRef.current = () => {
     const kws = keywordsRef.current;
     const locationIds = locationsRef.current.map((l) => l.id);
     const occupationIds = occupationsRef.current.map((o) => o.id);
@@ -403,50 +406,51 @@ export function SearchPage({
         if (searchCounterRef.current === id) setIsSearching(false);
       }
     })();
-  }
+  };
+  function runSearch() { runSearchRef.current(); }
 
   const handleRemoveKeyword = useCallback(
     (keyword: string) => {
-      const updated = keywords.filter((k) => k !== keyword);
+      const updated = keywordsRef.current.filter((k) => k !== keyword);
       setKeywords(updated);
       keywordsRef.current = updated;
       updateUrl();
       runSearch();
     },
-    [keywords],
+    [],
   );
 
   const handleAddLocation = useCallback(
     (location: SelectedLocation) => {
-      const updated = [...locations, location];
+      const updated = [...locationsRef.current, location];
       setLocations(updated);
       locationsRef.current = updated;
       updateUrl();
       runSearch();
     },
-    [locations],
+    [],
   );
 
   const handleAddOccupation = useCallback(
     (occ: TaxonomyItem) => {
-      const updated = [...occupations, occ];
+      const updated = [...occupationsRef.current, occ];
       setOccupations(updated);
       occupationsRef.current = updated;
       updateUrl();
       runSearch();
     },
-    [occupations],
+    [],
   );
 
   const handleAddSeniority = useCallback(
     (sen: TaxonomyItem) => {
-      const updated = [...seniorities, sen];
+      const updated = [...senioritiesRef.current, sen];
       setSeniorities(updated);
       senioritiesRef.current = updated;
       updateUrl();
       runSearch();
     },
-    [seniorities],
+    [],
   );
 
   const handleSubmitSearch = useCallback(
@@ -465,57 +469,57 @@ export function SearchPage({
 
   const handleRemoveLocation = useCallback(
     (locationId: number) => {
-      const updated = locations.filter((l) => l.id !== locationId);
+      const updated = locationsRef.current.filter((l) => l.id !== locationId);
       setLocations(updated);
       locationsRef.current = updated;
       updateUrl();
       runSearch();
     },
-    [locations],
+    [],
   );
 
   const handleRemoveOccupation = useCallback(
     (occId: number) => {
-      const updated = occupations.filter((o) => o.id !== occId);
+      const updated = occupationsRef.current.filter((o) => o.id !== occId);
       setOccupations(updated);
       occupationsRef.current = updated;
       updateUrl();
       runSearch();
     },
-    [occupations],
+    [],
   );
 
   const handleRemoveSeniority = useCallback(
     (senId: number) => {
-      const updated = seniorities.filter((s) => s.id !== senId);
+      const updated = senioritiesRef.current.filter((s) => s.id !== senId);
       setSeniorities(updated);
       senioritiesRef.current = updated;
       updateUrl();
       runSearch();
     },
-    [seniorities],
+    [],
   );
 
   const handleAddTechnology = useCallback(
     (tech: TaxonomyItem) => {
-      const updated = [...technologies, tech];
+      const updated = [...technologiesRef.current, tech];
       setTechnologies(updated);
       technologiesRef.current = updated;
       updateUrl();
       runSearch();
     },
-    [technologies],
+    [],
   );
 
   const handleRemoveTechnology = useCallback(
     (techId: number) => {
-      const updated = technologies.filter((t) => t.id !== techId);
+      const updated = technologiesRef.current.filter((t) => t.id !== techId);
       setTechnologies(updated);
       technologiesRef.current = updated;
       updateUrl();
       runSearch();
     },
-    [technologies],
+    [],
   );
 
   const handleSalaryChange = useCallback(
