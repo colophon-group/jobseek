@@ -79,20 +79,22 @@ export function MyJobDetailPanel({
         return;
       }
 
-      // Fetch description client-side
-      if (posting.descriptionUrl && !posting.descriptionHtml) {
-        try {
-          const resp = await fetch(posting.descriptionUrl);
-          if (resp.ok) {
-            posting.descriptionHtml = await resp.text();
-          }
-        } catch {
-          // Description is optional
-        }
-      }
-
+      // Show structured data immediately
       setPostingDetail(posting);
       setJobDetail(detail);
+      setLoading(false);
+
+      // Fetch description in background
+      if (posting.descriptionUrl && !posting.descriptionHtml) {
+        fetch(posting.descriptionUrl)
+          .then((r) => r.ok ? r.text() : null)
+          .then((html) => {
+            if (!html) return;
+            setPostingDetail((prev) => prev ? { ...prev, descriptionHtml: html } : prev);
+          })
+          .catch(() => {});
+      }
+      return;
     } catch {
       setError(true);
     } finally {
@@ -242,7 +244,7 @@ export function MyJobDetailPanel({
             />
 
             {/* Description (below tracker sections) */}
-            {postingDetail.descriptionHtml && (
+            {postingDetail.descriptionHtml ? (
               <>
                 <hr className="border-divider" />
                 <div
@@ -252,7 +254,13 @@ export function MyJobDetailPanel({
                   }}
                 />
               </>
-            )}
+            ) : postingDetail.descriptionUrl ? (
+              <div className="space-y-2 py-4">
+                <div className="h-3 w-full animate-pulse rounded bg-border-soft" />
+                <div className="h-3 w-5/6 animate-pulse rounded bg-border-soft" />
+                <div className="h-3 w-4/6 animate-pulse rounded bg-border-soft" />
+              </div>
+            ) : null}
           </div>
         )}
       </ScrollFade>

@@ -170,15 +170,22 @@ export function SearchPage({
   // navigation (router.push from header search bar, back/forward, etc.)
   const internalUrlChangeRef = useRef(false);
 
+  // Build a search-only key from params, excluding UI-only params like "show".
+  function buildSearchKey(sp: URLSearchParams): string {
+    const filtered = new URLSearchParams();
+    sp.forEach((v, k) => { if (k !== "show") filtered.set(k, v); });
+    return filtered.toString();
+  }
+
   // Track the last search key we've processed so we only react to genuine
   // external URL changes — not mount, StrictMode double-runs, or our own
   // replaceState calls.
-  const lastSearchKeyRef = useRef(searchParams.toString());
+  const lastSearchKeyRef = useRef(buildSearchKey(searchParams));
 
   // Detect external URL changes (e.g. header search bar → router.push)
   // and re-parse filters + search, without remounting the component.
   useEffect(() => {
-    const currentKey = searchParams.toString();
+    const currentKey = buildSearchKey(searchParams);
     if (internalUrlChangeRef.current) {
       internalUrlChangeRef.current = false;
       lastSearchKeyRef.current = currentKey;
@@ -222,7 +229,6 @@ export function SearchPage({
       setOccupations(parsed.occupations); occupationsRef.current = parsed.occupations;
       setSeniorities(parsed.seniorities); senioritiesRef.current = parsed.seniorities;
       setTechnologies(parsed.technologies); technologiesRef.current = parsed.technologies;
-      setShowPostingId(null); showPostingIdRef.current = null;
       runSearch();
     });
   }, [searchParams]);
@@ -362,6 +368,7 @@ export function SearchPage({
 
   /** Update only the `show` query param without touching filter state. */
   function updateShowParam(postingId: string | null) {
+    internalUrlChangeRef.current = true;
     const url = new URL(window.location.href);
     if (postingId) {
       url.searchParams.set("show", postingId);
