@@ -1997,6 +1997,7 @@ janea-systems,janea-systems-greenhouse,https://job-boards.greenhouse.io/janeasys
 january,january-ashby,https://jobs.ashbyhq.com/january,ashby,"{""token"": ""january""}",skip,
 jazzx-ai,jazzx-ai-greenhouse,https://job-boards.greenhouse.io/jazzx-ai,greenhouse,"{""token"": ""jazzx-ai""}",skip,
 jbs-dev,jbs-dev-ashby,https://jobs.ashbyhq.com/jbs-dev,ashby,"{""token"": ""jbs-dev""}",skip,
+jd-com,jd-com-careers,https://zhaopin.jd.com/web/job/job_info_list/3,api_sniffer,"{""api_url"": ""https://zhaopin.jd.com/web/job/job_list"", ""method"": ""POST"", ""json_path"": ""[*]"", ""url_template"": ""https://zhaopin.jd.com/web/job-info-detail?requementId={requirementId}"", ""post_data"": ""{\""jobType\"":3,\""page\"":1,\""limit\"":100}"", ""params"": {}, ""pagination"": {""param_name"": ""page"", ""style"": ""page"", ""start_value"": 1, ""increment"": 1, ""location"": ""body""}, ""fields"": {""title"": ""positionNameOpen"", ""description"": ""workContent"", ""locations"": ""workCity"", ""employment_type"": ""jobType"", ""qualifications"": ""qualification"", ""date_posted"": ""formatPublishTime"", ""metadata.department"": ""positionDeptName"", ""metadata.position_code"": ""positionCode""}}",skip,
 jd-sports,jd-sports-greenhouse,https://job-boards.greenhouse.io/jdsports,greenhouse,"{""token"": ""jdsports""}",skip,
 jellyfish,jellyfish-ashby,https://jobs.ashbyhq.com/jellyfish,ashby,"{""token"": ""jellyfish""}",skip,
 jellyfishcareers,jellyfishcareers-ashby,https://jobs.ashbyhq.com/jellyfishcareers,ashby,"{""token"": ""jellyfishcareers""}",skip,
