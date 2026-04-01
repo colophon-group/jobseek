@@ -1,46 +1,28 @@
 # Job Seek — llms.txt
 # https://llmstxt.org/
 
-> Job Seek is a job search engine that scrapes career pages directly from company websites. It monitors Workday, Greenhouse, Lever, and 15+ other ATS platforms so roles appear before they hit large aggregators. Users can search with multi-dimensional filters (seniority, tech stack, salary, location, language), create watchlists with email alerts, and track applications through a built-in pipeline.
+> Job Seek is a job search engine that scrapes career pages directly from company websites. It monitors Workday, Greenhouse, Lever, and 30+ other ATS platforms so roles appear before they hit large aggregators. Users can search with multi-dimensional filters (seniority, tech stack, salary, location, language), create watchlists with email alerts, and track applications through a built-in pipeline.
 
 ## Key Facts
 
-- 290+ companies indexed from direct career page scraping
+- Thousands of companies indexed from direct career page scraping
+- Millions of job postings tracked
 - 4 languages: English, German, French, Italian
 - Free tier: full search, 1 watchlist, application tracker
 - Pro tier ($10/month): unlimited watchlists, email alerts
 - Open-source crawler (MIT), job data (CC BY-NC 4.0)
 - Built by Colophon Group, a small developer team in Switzerland
 
-## API
+## Pages
 
-Job Seek has a public read-only JSON API for job search:
-
-- [OpenAPI spec](https://jseek.co/api/openapi.json)
-- [Plugin manifest](https://jseek.co/.well-known/ai-plugin.json)
-- Base URL: https://jseek.co/api/v1/
-- Endpoints: /search, /job, /companies, /watchlists, /taxonomies, /resolve
-
-## MCP Server
-
-Install the Job Seek MCP server for direct tool access in Claude, Cursor, or any MCP client:
-
-```
-npx @jobseek/mcp-server
-```
-
-Tools: search_jobs, get_job_detail, search_companies, list_taxonomies, resolve_slugs, search_watchlists, create_watchlist_link
-
-## Links
-
-- [Homepage](https://jseek.co)
-- [About](https://jseek.co/en/about)
-- [FAQ](https://jseek.co/en/faq)
-- [How We Index](https://jseek.co/en/how-we-index)
-- [License](https://jseek.co/en/license)
-- [Privacy Policy](https://jseek.co/en/privacy-policy)
-- [GitHub](https://github.com/colophon-group/jobseek)
-- [Crawler Source](https://github.com/colophon-group/jobseek-indexing)
+- [Homepage](https://jseek.co) — Product overview, features, and pricing
+- [Explore Jobs](https://jseek.co/en/explore) — Search and filter job postings across all indexed companies
+- [About](https://jseek.co/en/about) — Who built Job Seek, how it works, and our philosophy
+- [FAQ](https://jseek.co/en/faq) — Frequently asked questions about pricing, crawling, privacy, and more
+- [How We Index](https://jseek.co/en/how-we-index) — Crawling policy, rate limits, opt-out, and data handling
+- [License](https://jseek.co/en/license) — Application code is MIT; job data is CC BY-NC 4.0
+- [Privacy Policy](https://jseek.co/en/privacy-policy) — What data we collect and your GDPR rights
+- [Terms of Service](https://jseek.co/en/terms) — Usage terms and conditions
 
 ## Contact
 
