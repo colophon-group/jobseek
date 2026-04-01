@@ -192,7 +192,56 @@ plt.savefig('charts/03_donut_coverage.png', dpi=180, bbox_inches='tight')
 plt.close()
 print('Saved charts/03_donut_coverage.png')
 
+# ── Chart 4: Confirmed timing leads — LinkedIn's own datePosted ───────────────
+# Only matches where LinkedIn's embedded <time datetime> is within 90 days of
+# the career page datePosted. These use LinkedIn's own date, not archive date.
+
+confirmed = [m for m in matches if m.get('lagDays', 999) <= 90]
+
+fig, ax = plt.subplots(figsize=(10, max(3.5, len(confirmed) * 0.85 + 1.8)))
+fig.patch.set_facecolor(BG)
+ax.set_facecolor(BG)
+
+if confirmed:
+    confirmed_sorted = sorted(confirmed, key=lambda x: x['lagDays'])
+    labels = [f"{m['company']} · {m['careerTitle'][:48]}" for m in confirmed_sorted]
+    values = [m['lagDays'] for m in confirmed_sorted]
+    bar_colors = [COMPANY_COLORS.get(m['company'], CAREER_COLOR) for m in confirmed_sorted]
+    y = np.arange(len(labels))
+    bars = ax.barh(y, values, color=bar_colors, height=0.55, zorder=3)
+    for bar, val, m in zip(bars, values, confirmed_sorted):
+        board_dp = m.get('boardDatePosted', '')
+        ax.text(bar.get_width() + 1.0, bar.get_y() + bar.get_height() / 2,
+                f"{val}d  (LinkedIn posted {board_dp})",
+                va='center', ha='left', fontsize=8.5, color=TEXT, fontweight='bold')
+    ax.set_yticks(y)
+    ax.set_yticklabels(labels, fontsize=9.5, color=TEXT)
+    ax.set_xlim(0, max(values) * 1.8)
+else:
+    ax.text(0.5, 0.5, 'No confirmed short leads in current dataset',
+            ha='center', va='center', transform=ax.transAxes, color=SUBTEXT)
+
+ax.set_xlabel('Days career page was ahead of LinkedIn', fontsize=10, color=SUBTEXT, labelpad=8)
+ax.set_title('Career page timing advantage — verified with LinkedIn\'s own posting date\n'
+             'LinkedIn\'s <time datetime> attribute used (not Wayback archive date)',
+             fontsize=12, fontweight='bold', color=TEXT, pad=14)
+ax.spines[['top', 'right', 'left']].set_visible(False)
+ax.spines['bottom'].set_color(GRID)
+ax.xaxis.grid(True, color=GRID, zorder=0)
+ax.set_axisbelow(True)
+ax.tick_params(axis='x', colors=SUBTEXT, labelsize=9)
+
+fig.text(0.01, 0.01,
+         'Career datePosted: Greenhouse ATS JSON-LD (exact) · LinkedIn datePosted: <time datetime> from archived HTML (LinkedIn\'s own field)',
+         fontsize=7, color=SUBTEXT)
+
+plt.tight_layout(rect=[0, 0.04, 1, 1])
+plt.savefig('charts/04_confirmed_timing.png', dpi=180, bbox_inches='tight')
+plt.close()
+print('Saved charts/04_confirmed_timing.png')
+
 print(f'\nDone. Summary:')
 print(f'  Total career jobs: {total_all}')
 print(f'  Found on LinkedIn: {indexed_all} ({100-pct_missed_all}%)')
 print(f'  Never on LinkedIn: {missed_all} ({pct_missed_all}%)')
+print(f'  Confirmed timing leads (≤90d, LinkedIn own date): {len(confirmed)}')

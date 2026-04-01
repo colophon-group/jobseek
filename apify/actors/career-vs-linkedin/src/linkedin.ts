@@ -191,10 +191,16 @@ function extractFromLinkedInHtml(html: string, snap: { timestamp: string; origin
       seenTitles.add(title);
       const normTitle = normalizeTitle(title);
       if (!normTitle) return;
+      // Walk up to the job card container and look for a <time datetime="YYYY-MM-DD">
+      // LinkedIn embeds its own real posting date here — not the archive snapshot date
+      const card = $(el).closest('li, article, div.job-card-container, div.base-card, div[class*="job-card"]');
+      const timeEl = card.length ? card.find('time[datetime]').first() : $(el).closest('li').find('time[datetime]').first();
+      const linkedinDatePosted = timeEl.attr('datetime')?.slice(0, 10) ?? undefined;
       jobs.push({
         title,
         normalizedTitle: normTitle,
         firstSeen: date,
+        datePosted: linkedinDatePosted,
         snapshotUrl,
         platform: 'linkedin',
         extractionMethod: 'linkedin-company-page-html',
