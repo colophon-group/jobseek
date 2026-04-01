@@ -439,7 +439,7 @@ export function SearchBar({
           role="listbox"
           className="absolute left-0 top-full z-50 mt-1 w-full min-w-64 rounded-lg border border-border-soft bg-surface shadow-lg"
         >
-        <ScrollFade className="max-h-80" deps={[allSuggestions.length]}>
+        <ScrollFade className="max-h-96" deps={[allSuggestions.length]}>
           {companyResults.length > 0 && (
             <>
               <div className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted">
