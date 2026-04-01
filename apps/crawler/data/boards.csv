@@ -3990,6 +3990,8 @@ upgrade,upgrade-greenhouse,https://job-boards.greenhouse.io/upgrade,greenhouse,"
 upgrade,upgrade-recruitee,https://upgrade.recruitee.com,recruitee,"{""token"": ""upgrade""}",skip,
 upkeep,upkeep-greenhouse,https://job-boards.greenhouse.io/upkeep,greenhouse,"{""token"": ""upkeep""}",skip,
 uprite-construction,uprite-construction-greenhouse,https://job-boards.greenhouse.io/upriteconstruction,greenhouse,"{""token"": ""upriteconstruction""}",skip,
+ups,ups-careers,https://www.jobs-ups.com/search-jobs,sitemap,"{""sitemap_url"": ""https://www.jobs-ups.com/search-jobs/sitemap.xml"", ""url_filter"": ""/job/""}",json-ld,
+ups,ups-careers-wd,https://hcmportal.wd5.myworkdayjobs.com/en-US/Search,workday,"{""tenant"": ""hcmportal"", ""board"": ""Search""}",workday,
 upshop,upshop-greenhouse,https://job-boards.greenhouse.io/upshop,greenhouse,"{""token"": ""upshop""}",skip,
 upside,upside-ashby,https://jobs.ashbyhq.com/upside,ashby,"{""token"": ""upside""}",skip,
 upside,upside-greenhouse,https://job-boards.greenhouse.io/upside,greenhouse,"{""token"": ""upside""}",skip,
