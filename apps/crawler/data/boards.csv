@@ -117,6 +117,7 @@ agility-robotics,agility-robotics-greenhouse,https://job-boards.greenhouse.io/ag
 agilityrobotics,agilityrobotics-pinpoint,https://agilityrobotics.pinpointhq.com,pinpoint,"{""slug"": ""agilityrobotics""}",skip,
 agiloft,agiloft-lever,https://jobs.lever.co/agiloft,lever,"{""token"": ""agiloft""}",skip,
 agoda,agoda-greenhouse,https://job-boards.greenhouse.io/agoda,greenhouse,"{""token"": ""agoda""}",skip,
+agricultural-bank-of-china,agricultural-bank-of-china-careers,https://career.abchina.com.cn/build/index.html,dom,"{""render"": true, ""stealth"": true, ""wait"": ""networkidle"", ""timeout"": 45000, ""actions"": [{""action"": ""wait"", ""ms"": 5000}, {""action"": ""evaluate"", ""script"": ""window.location.hash = '/NoticeList'""}, {""action"": ""wait"", ""ms"": 8000}], ""url_filter"": ""career\\.abchina\\.com""}",json-ld,
 agwest-farm-credit,agwest-farm-credit-greenhouse,https://job-boards.greenhouse.io/agwestfarmcredit,greenhouse,"{""token"": ""agwestfarmcredit""}",skip,
 ahti-interiors,ahti-interiors-join,https://join.com/companies/ahtiinteriors,join,"{""slug"": ""ahtiinteriors""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 ai-squared,ai-squared-greenhouse,https://job-boards.greenhouse.io/aisquared,greenhouse,"{""token"": ""aisquared""}",skip,
