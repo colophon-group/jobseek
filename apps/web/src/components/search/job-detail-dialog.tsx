@@ -33,10 +33,12 @@ export function JobDetailPanel({ postingId, onClose }: JobDetailPanelProps) {
   const [detail, setDetail] = useState<PostingDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
+  const [descriptionLoaded, setDescriptionLoaded] = useState(false);
   const fetchIdRef = useRef(0);
 
   useEffect(() => {
     setDetail(null);
+    setDescriptionLoaded(false);
     if (!postingId) return;
 
     const id = ++fetchIdRef.current;
@@ -46,7 +48,7 @@ export function JobDetailPanel({ postingId, onClose }: JobDetailPanelProps) {
 
     getPostingDetail({ postingId, locale })
       .then((d) => {
-        if (fetchIdRef.current !== id) return; // stale
+        if (fetchIdRef.current !== id) return;
         if (!d) { setError(true); setLoading(false); return; }
         // Show structured data immediately
         setDetail(d);
@@ -56,10 +58,15 @@ export function JobDetailPanel({ postingId, onClose }: JobDetailPanelProps) {
           fetch(d.descriptionUrl)
             .then((r) => r.ok ? r.text() : null)
             .then((html) => {
-              if (fetchIdRef.current !== id || !html) return;
-              setDetail((prev) => prev ? { ...prev, descriptionHtml: html } : prev);
+              if (fetchIdRef.current !== id) return;
+              if (html) setDetail((prev) => prev ? { ...prev, descriptionHtml: html } : prev);
+              setDescriptionLoaded(true);
             })
-            .catch(() => {});
+            .catch(() => {
+              if (fetchIdRef.current === id) setDescriptionLoaded(true);
+            });
+        } else {
+          setDescriptionLoaded(true);
         }
       })
       .catch(() => {
@@ -94,13 +101,13 @@ export function JobDetailPanel({ postingId, onClose }: JobDetailPanelProps) {
             <Trans id="search.detail.notFound" comment="Posting not found message">Posting not found.</Trans>
           </p>
         )}
-        {detail && !loading && <DetailContent detail={detail} />}
+        {detail && !loading && <DetailContent detail={detail} descriptionLoaded={descriptionLoaded} />}
       </ScrollFade>
     </div>
   );
 }
 
-function DetailContent({ detail }: { detail: PostingDetail }) {
+function DetailContent({ detail, descriptionLoaded }: { detail: PostingDetail; descriptionLoaded: boolean }) {
   const { company } = detail;
   const lp = useLocalePath();
   const pageActions = usePageActions();
@@ -159,7 +166,7 @@ function DetailContent({ detail }: { detail: PostingDetail }) {
   return (
     <Tooltip.Provider delayDuration={300}>
     <div className="space-y-4">
-      {(!detail.title || !detail.descriptionHtml) && <PendingJobBanner />}
+      {descriptionLoaded && (!detail.title || !detail.descriptionHtml) && <PendingJobBanner />}
 
       {/* Company header */}
       <div className="flex items-center gap-3">
@@ -283,7 +290,7 @@ function DetailContent({ detail }: { detail: PostingDetail }) {
             dangerouslySetInnerHTML={{ __html: sanitizeJobHtml(detail.descriptionHtml) }}
           />
         </>
-      ) : detail.descriptionUrl ? (
+      ) : !descriptionLoaded && detail.descriptionUrl ? (
         <div className="space-y-2 py-4">
           <div className="h-3 w-full animate-pulse rounded bg-border-soft" />
           <div className="h-3 w-5/6 animate-pulse rounded bg-border-soft" />
