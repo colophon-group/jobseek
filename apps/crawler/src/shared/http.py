@@ -15,6 +15,10 @@ def _make_ssl_context() -> ssl.SSLContext:
     prevents this by disabling session ticket negotiation — the same
     approach urllib3 uses by default.
 
+    Also enables legacy server connect for servers that require TLS
+    renegotiation (e.g. career.abchina.com.cn).  OpenSSL 3.0+ disables
+    this by default.
+
     Uses certifi's CA bundle instead of the system store for broader
     coverage of intermediate CA certificates.
     """
@@ -22,6 +26,10 @@ def _make_ssl_context() -> ssl.SSLContext:
 
     ctx = ssl.create_default_context(cafile=certifi.where())
     ctx.options |= ssl.OP_NO_TICKET
+    # Allow connections to servers that require legacy TLS renegotiation.
+    # The constant may not exist on older Python/OpenSSL builds.
+    OP_LEGACY_SERVER_CONNECT = getattr(ssl, "OP_LEGACY_SERVER_CONNECT", 0x4)
+    ctx.options |= OP_LEGACY_SERVER_CONNECT
     return ctx
 
 

@@ -491,11 +491,14 @@ def _show_career_results(slug: str, html: str, final_url: str, homepage_url: str
 
         from src.workspace.logo_discover import _LOGO_HEADERS
 
+        from src.shared.http import _make_ssl_context
+
         client = httpx.AsyncClient(
             headers=_LOGO_HEADERS,
             follow_redirects=True,
             timeout=httpx.Timeout(30.0),
             limits=httpx.Limits(max_connections=20, max_keepalive_connections=10),
+            verify=_make_ssl_context(),
         )
         try:
             return await discover_career_pages(homepage_url, html, client, state_path=state_path)
@@ -680,7 +683,9 @@ async def _run_enrichment(website: str, name: str):
 
     from src.core.enrich.company import enrich_company
 
-    async with httpx.AsyncClient() as http:
+    from src.shared.http import _make_ssl_context
+
+    async with httpx.AsyncClient(verify=_make_ssl_context()) as http:
         return await enrich_company(website, name, http)
 
 
@@ -906,11 +911,14 @@ def discover_bg(slug: str):
 
             from src.workspace.logo_discover import _LOGO_HEADERS as _headers
 
+            from src.shared.http import _make_ssl_context as _ssl_ctx
+
             client = _httpx.AsyncClient(
                 headers=_headers,
                 follow_redirects=True,
                 timeout=_httpx.Timeout(30.0),
                 limits=_httpx.Limits(max_connections=20, max_keepalive_connections=10),
+                verify=_ssl_ctx(),
             )
             try:
                 return await discover_career_pages(ws.website, html, client, state_path=state_path)
@@ -1116,11 +1124,14 @@ def _inspect_board_job_links(url: str, provided_pattern: str | None):
         )
         from src.workspace.logo_discover import _LOGO_HEADERS
 
+        from src.shared.http import _make_ssl_context
+
         client = httpx.AsyncClient(
             headers=_LOGO_HEADERS,
             follow_redirects=True,
             timeout=httpx.Timeout(20.0),
             limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
+            verify=_make_ssl_context(),
         )
         try:
             fetched = await fetch_page_for_job_link_analysis(
