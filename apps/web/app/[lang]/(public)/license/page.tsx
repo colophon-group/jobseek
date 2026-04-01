@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = i18n._({ id: "license.meta.title", message: "License" });
   const description = i18n._({
     id: "license.meta.description",
-    message: "Licensing terms for Job Seek application code (MIT) and job data (CC BY-NC 4.0).",
+    message: "Licensing for Job Seek — application source code is MIT-licensed, job posting data is CC BY-NC 4.0. Learn what you can and cannot do with our code and data.",
   });
 
   return {
@@ -38,7 +38,7 @@ export default async function LicensePage({ params }: Props) {
         "@context": "https://schema.org",
         "@type": "WebPage",
         name: i18n._({ id: "license.meta.title", message: "License" }),
-        description: i18n._({ id: "license.meta.description", message: "Licensing terms for Job Seek application code (MIT) and job data (CC BY-NC 4.0)." }),
+        description: i18n._({ id: "license.meta.description", message: "Licensing for Job Seek — application source code is MIT-licensed, job posting data is CC BY-NC 4.0. Learn what you can and cannot do with our code and data." }),
         url: `${siteConfig.url}/${locale}/license`,
         inLanguage: locale,
         isPartOf: { "@type": "WebSite", url: siteConfig.url },
