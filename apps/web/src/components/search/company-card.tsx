@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Building2 } from "lucide-react";
@@ -101,6 +101,21 @@ export function CompanyCard({ result, keywords, locationIds, locations, occupati
 
   const { sentinelRef, isLoading } = useInfiniteScroll({ hasMore, load: handleLoadMore, root: scrollRef, rootMargin: "50px" });
 
+  // Scroll fade indicators
+  const [canScrollUp, setCanScrollUp] = useState(false);
+  const [canScrollDown, setCanScrollDown] = useState(false);
+
+  const updateScrollFades = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setCanScrollUp(el.scrollTop > 2);
+    setCanScrollDown(el.scrollHeight - el.scrollTop - el.clientHeight > 2);
+  }, []);
+
+  useEffect(() => {
+    updateScrollFades();
+  }, [allPostings.length, updateScrollFades]);
+
   return (
     <div className="rounded-md border border-divider bg-surface p-4">
       {/* Header */}
@@ -135,8 +150,15 @@ export function CompanyCard({ result, keywords, locationIds, locations, occupati
       <hr className="my-3 border-divider" />
 
       {/* Scrollable posting list */}
-      <div ref={scrollRef} className="max-h-[196px] overflow-y-auto scrollbar-hide">
-        {allPostings.map((posting) => (
+      <div className="relative">
+        {canScrollUp && (
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-6 bg-gradient-to-b from-surface to-transparent backdrop-blur-sm" />
+        )}
+        {canScrollDown && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-6 bg-gradient-to-t from-surface to-transparent backdrop-blur-sm" />
+        )}
+        <div ref={scrollRef} className="max-h-[196px] overflow-y-auto scrollbar-hide" onScroll={updateScrollFades}>
+          {allPostings.map((posting) => (
           <div
             key={posting.id}
             role="button"
@@ -169,6 +191,7 @@ export function CompanyCard({ result, keywords, locationIds, locations, occupati
         ))}
         {hasMore && <InfiniteScrollSentinel sentinelRef={sentinelRef} isLoading={isLoading} size="sm" />}
         {!hasMore && isTruncated && <TruncationPrompt type="postings" />}
+        </div>
       </div>
     </div>
   );
