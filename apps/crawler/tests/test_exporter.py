@@ -7,11 +7,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from src.exporter import (
     _EPOCH,
+    _ZERO_UUID,
     _export_changed_boards,
     _export_changed_postings,
-    _get_last_export_ts,
+    _get_cursor,
     _reconciliation_loop,
-    _save_last_export_ts,
+    _save_cursor,
     _update_metrics,
     run_exporter,
     run_exporter_with_reconciliation,
@@ -64,32 +65,46 @@ class TestCursorPersistence:
         pool = _make_pool()
         pool.fetchrow = AsyncMock(return_value=None)
 
-        ts = await _get_last_export_ts(pool, "job_posting")
-        assert ts == _EPOCH
+        cursor = await _get_cursor(pool, "job_posting")
+        assert cursor == (_EPOCH, _ZERO_UUID)
         pool.fetchrow.assert_awaited_once()
 
-    async def test_get_returns_stored_timestamp(self):
-        stored = datetime(2025, 6, 15, 12, 0, 0, tzinfo=UTC)
+    async def test_get_returns_stored_cursor(self):
+        stored_ts = datetime(2025, 6, 15, 12, 0, 0, tzinfo=UTC)
+        stored_id = uuid.uuid4()
         pool = _make_pool()
-        pool.fetchrow = AsyncMock(return_value={"value": stored.isoformat()})
+        pool.fetchrow = AsyncMock(return_value={"value": f"{stored_ts.isoformat()}|{stored_id}"})
 
-        ts = await _get_last_export_ts(pool, "job_posting")
-        assert ts == stored
+        cursor = await _get_cursor(pool, "job_posting")
+        assert cursor == (stored_ts, stored_id)
+
+    async def test_get_backward_compat_ts_only(self):
+        """Old cursor format (just timestamp) should still work."""
+        stored_ts = datetime(2025, 6, 15, 12, 0, 0, tzinfo=UTC)
+        pool = _make_pool()
+        pool.fetchrow = AsyncMock(return_value={"value": stored_ts.isoformat()})
+
+        cursor = await _get_cursor(pool, "job_posting")
+        assert cursor == (stored_ts, _ZERO_UUID)
 
     async def test_save_calls_upsert(self):
         pool = _make_pool()
         pool.execute = AsyncMock()
 
         ts = datetime(2025, 6, 15, 13, 0, 0, tzinfo=UTC)
-        await _save_last_export_ts(pool, "job_board", ts)
+        last_id = uuid.uuid4()
+        await _save_cursor(pool, "job_board", (ts, last_id))
 
         pool.execute.assert_awaited_once()
-        args = pool.execute.call_args
-        assert "last_export_ts:job_board" in args[0]
-        assert ts.isoformat() in args[0]
+        args = pool.execute.call_args[0]
+        assert "last_export_ts:job_board" in args
+        # Value should contain both ts and id separated by |
+        value_arg = args[2]  # $2 parameter
+        assert str(last_id) in value_arg
+        assert ts.isoformat() in value_arg
 
     async def test_round_trip(self):
-        """Save then get should return the same timestamp."""
+        """Save then get should return the same cursor."""
         stored = {}
         pool = _make_pool()
 
@@ -107,9 +122,10 @@ class TestCursorPersistence:
         pool.fetchrow = AsyncMock(side_effect=fake_fetchrow)
 
         ts = datetime(2025, 7, 1, 10, 30, 0, tzinfo=UTC)
-        await _save_last_export_ts(pool, "job_posting", ts)
-        result = await _get_last_export_ts(pool, "job_posting")
-        assert result == ts
+        last_id = uuid.uuid4()
+        await _save_cursor(pool, "job_posting", (ts, last_id))
+        result = await _get_cursor(pool, "job_posting")
+        assert result == (ts, last_id)
 
 
 # ---------------------------------------------------------------------------
@@ -118,24 +134,24 @@ class TestCursorPersistence:
 
 
 class TestExportChangedPostings:
-    async def test_no_rows_returns_zero_and_same_ts(self):
+    async def test_no_rows_returns_zero_and_same_cursor(self):
         local = _make_pool()
         supa = _make_pool()
-        last_ts = datetime(2025, 1, 1, tzinfo=UTC)
+        cursor = (datetime(2025, 1, 1, tzinfo=UTC), _ZERO_UUID)
 
         local.fetch = AsyncMock(return_value=[])
 
-        count, new_ts = await _export_changed_postings(local, supa, last_ts)
+        count, new_cursor = await _export_changed_postings(local, supa, cursor)
         assert count == 0
-        assert new_ts == last_ts
+        assert new_cursor == cursor
 
-    async def test_exports_rows_and_returns_new_ts(self):
+    async def test_exports_rows_and_returns_new_cursor(self):
         local = _make_pool()
         supa = _make_pool()
 
         ts1 = datetime(2025, 6, 1, 12, 0, 0, tzinfo=UTC)
         ts2 = datetime(2025, 6, 1, 12, 5, 0, tzinfo=UTC)
-        last_ts = datetime(2025, 6, 1, 11, 0, 0, tzinfo=UTC)
+        cursor = (datetime(2025, 6, 1, 11, 0, 0, tzinfo=UTC), _ZERO_UUID)
 
         posting_id_1 = uuid.uuid4()
         posting_id_2 = uuid.uuid4()
@@ -192,10 +208,10 @@ class TestExportChangedPostings:
         acq_ctx.__aexit__ = AsyncMock(return_value=False)
         supa.acquire = MagicMock(return_value=acq_ctx)
 
-        count, new_ts = await _export_changed_postings(local, supa, last_ts)
+        count, new_cursor = await _export_changed_postings(local, supa, cursor)
 
         assert count == 2
-        assert new_ts == ts2
+        assert new_cursor == (ts2, posting_id_2)
         # Should have called CREATE TEMP TABLE, DELETE dedup, INSERT
         assert conn.execute.await_count == 3  # CREATE + DELETE dedup + INSERT
         conn.copy_records_to_table.assert_awaited_once()
@@ -207,16 +223,16 @@ class TestExportChangedPostings:
 
 
 class TestExportChangedBoards:
-    async def test_no_rows_returns_zero_and_same_ts(self):
+    async def test_no_rows_returns_zero_and_same_cursor(self):
         local = _make_pool()
         supa = _make_pool()
-        last_ts = datetime(2025, 1, 1, tzinfo=UTC)
+        cursor = (datetime(2025, 1, 1, tzinfo=UTC), _ZERO_UUID)
 
         local.fetch = AsyncMock(return_value=[])
 
-        count, new_ts = await _export_changed_boards(local, supa, last_ts)
+        count, new_cursor = await _export_changed_boards(local, supa, cursor)
         assert count == 0
-        assert new_ts == last_ts
+        assert new_cursor == cursor
 
     async def test_exports_boards_row_by_row(self):
         local = _make_pool()
@@ -226,7 +242,7 @@ class TestExportChangedBoards:
         board_id_2 = uuid.uuid4()
         ts1 = datetime(2025, 6, 1, 12, 0, 0, tzinfo=UTC)
         ts2 = datetime(2025, 6, 1, 12, 5, 0, tzinfo=UTC)
-        last_ts = datetime(2025, 6, 1, 11, 0, 0, tzinfo=UTC)
+        cursor = (datetime(2025, 6, 1, 11, 0, 0, tzinfo=UTC), _ZERO_UUID)
 
         row1 = _make_record(
             {
@@ -256,10 +272,10 @@ class TestExportChangedBoards:
         acq_ctx.__aexit__ = AsyncMock(return_value=False)
         supa.acquire = MagicMock(return_value=acq_ctx)
 
-        count, new_ts = await _export_changed_boards(local, supa, last_ts)
+        count, new_cursor = await _export_changed_boards(local, supa, cursor)
 
         assert count == 2
-        assert new_ts == ts2
+        assert new_cursor == (ts2, board_id_2)
         # One UPDATE per row
         assert conn.execute.await_count == 2
 
@@ -479,7 +495,7 @@ class TestUpdateMetrics:
     async def test_updates_gauges(self):
         local = _make_pool()
         supa = _make_pool()
-        ts = datetime(2025, 6, 1, 12, 0, 0, tzinfo=UTC)
+        cursor = (datetime(2025, 6, 1, 12, 0, 0, tzinfo=UTC), _ZERO_UUID)
         local.fetchval = AsyncMock(return_value=42)
         # Pool stats methods must return ints for Prometheus gauges
         local.get_size = MagicMock(return_value=5)
@@ -492,7 +508,7 @@ class TestUpdateMetrics:
             new_callable=AsyncMock,
             return_value={"board:http:due": 5, "scrape:http:due": 10},
         ):
-            await _update_metrics(local, supa, ts)
+            await _update_metrics(local, supa, cursor)
 
         # fetchval called twice: once for export lag, once for r2_pending count
         assert local.fetchval.await_count == 2
@@ -501,7 +517,7 @@ class TestUpdateMetrics:
         """Metrics update should not raise even if Redis fails."""
         local = _make_pool()
         supa = _make_pool()
-        ts = datetime(2025, 6, 1, 12, 0, 0, tzinfo=UTC)
+        cursor = (datetime(2025, 6, 1, 12, 0, 0, tzinfo=UTC), _ZERO_UUID)
         local.fetchval = AsyncMock(return_value=0)
         # Pool stats methods must return ints for Prometheus gauges
         local.get_size = MagicMock(return_value=5)
@@ -515,7 +531,7 @@ class TestUpdateMetrics:
             side_effect=ConnectionError("redis down"),
         ):
             # Should not raise
-            await _update_metrics(local, supa, ts)
+            await _update_metrics(local, supa, cursor)
 
 
 # ---------------------------------------------------------------------------

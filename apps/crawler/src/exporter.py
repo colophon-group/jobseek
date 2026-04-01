@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import time
+import uuid
 from datetime import UTC, datetime
 
 import asyncpg
@@ -31,27 +32,38 @@ log = structlog.get_logger()
 # ---------------------------------------------------------------------------
 
 _EPOCH = datetime.min.replace(tzinfo=UTC)
+_ZERO_UUID = uuid.UUID(int=0)
+
+# Cursor is a (timestamp, id) pair for keyset pagination.
+# Stored as "ts_iso|uuid" in exporter_state.
+Cursor = tuple[datetime, uuid.UUID]
 
 
-async def _get_last_export_ts(pool: asyncpg.Pool, table: str) -> datetime:
-    """Load the last export timestamp from exporter_state, or epoch if none."""
+async def _get_cursor(pool: asyncpg.Pool, table: str) -> Cursor:
+    """Load the last export cursor from exporter_state."""
     row = await pool.fetchrow(
         "SELECT value FROM exporter_state WHERE key = $1",
         f"last_export_ts:{table}",
     )
     if row:
-        return datetime.fromisoformat(row["value"])
-    return _EPOCH
+        val = row["value"]
+        if "|" in val:
+            ts_str, id_str = val.split("|", 1)
+            return datetime.fromisoformat(ts_str), uuid.UUID(id_str)
+        # Backward compat: old cursor stored just a timestamp
+        return datetime.fromisoformat(val), _ZERO_UUID
+    return _EPOCH, _ZERO_UUID
 
 
-async def _save_last_export_ts(pool: asyncpg.Pool, table: str, ts: datetime) -> None:
-    """Persist the last export timestamp to exporter_state."""
+async def _save_cursor(pool: asyncpg.Pool, table: str, cursor: Cursor) -> None:
+    """Persist the export cursor to exporter_state."""
+    ts, last_id = cursor
     await pool.execute(
         "INSERT INTO exporter_state (key, value, updated_at) "
         "VALUES ($1, $2, now()) "
         "ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = now()",
         f"last_export_ts:{table}",
-        ts.isoformat(),
+        f"{ts.isoformat()}|{last_id}",
     )
 
 
@@ -93,23 +105,25 @@ _POSTING_UPSERT_SET = (
 async def _export_changed_postings(
     local_pool: asyncpg.Pool,
     supa_pool: asyncpg.Pool,
-    last_ts: datetime,
-) -> tuple[int, datetime]:
-    """Export job_posting rows changed since last_ts to Supabase.
+    cursor: Cursor,
+) -> tuple[int, Cursor]:
+    """Export job_posting rows changed since cursor to Supabase.
 
-    Uses temp table + COPY + INSERT ON CONFLICT DO UPDATE for efficiency.
-    Returns (count_exported, new_last_ts).
+    Uses keyset pagination on (updated_at, id) to avoid skipping rows
+    when many share the same updated_at timestamp (e.g. bulk mark-gone).
+    Returns (count_exported, new_cursor).
     """
-    # SELECT includes updated_at for cursor tracking, but it's not sent to Supabase
+    last_ts, last_id = cursor
     rows = await local_pool.fetch(
         f"SELECT {_POSTING_COLUMNS}, updated_at "
-        "FROM job_posting WHERE updated_at > $1 "
-        "ORDER BY updated_at, id LIMIT $2",
+        "FROM job_posting WHERE (updated_at, id) > ($1, $2) "
+        "ORDER BY updated_at, id LIMIT $3",
         last_ts,
+        last_id,
         settings.export_batch_limit,
     )
     if not rows:
-        return 0, last_ts
+        return 0, cursor
 
     # Strip updated_at from records before COPY to Supabase
     col_names = _POSTING_COLUMNS.split(", ")
@@ -149,8 +163,9 @@ async def _export_changed_postings(
             f"ON CONFLICT (id) DO UPDATE SET {_POSTING_UPSERT_SET}"
         )
 
-    new_ts = rows[-1]["updated_at"]
-    return len(rows), new_ts
+    last_row = rows[-1]
+    new_cursor = (last_row["updated_at"], last_row["id"])
+    return len(rows), new_cursor
 
 
 # ---------------------------------------------------------------------------
@@ -161,22 +176,24 @@ async def _export_changed_postings(
 async def _export_changed_boards(
     local_pool: asyncpg.Pool,
     supa_pool: asyncpg.Pool,
-    last_ts: datetime,
-) -> tuple[int, datetime]:
-    """Export job_board status rows changed since last_ts to Supabase.
+    cursor: Cursor,
+) -> tuple[int, Cursor]:
+    """Export job_board status rows changed since cursor to Supabase.
 
     Row-by-row UPDATE is intentional -- board status changes are rare.
-    Returns (count_exported, new_last_ts).
+    Returns (count_exported, new_cursor).
     """
+    last_ts, last_id = cursor
     rows = await local_pool.fetch(
         "SELECT id, board_status, last_error, is_enabled, updated_at "
-        "FROM job_board WHERE updated_at > $1 "
-        "ORDER BY updated_at, id LIMIT $2",
+        "FROM job_board WHERE (updated_at, id) > ($1, $2) "
+        "ORDER BY updated_at, id LIMIT $3",
         last_ts,
+        last_id,
         settings.export_batch_limit,
     )
     if not rows:
-        return 0, last_ts
+        return 0, cursor
 
     async with supa_pool.acquire() as conn:
         for row in rows:
@@ -190,8 +207,9 @@ async def _export_changed_boards(
                 row["updated_at"],
             )
 
-    new_ts = rows[-1]["updated_at"]
-    return len(rows), new_ts
+    last_row = rows[-1]
+    new_cursor = (last_row["updated_at"], last_row["id"])
+    return len(rows), new_cursor
 
 
 # ---------------------------------------------------------------------------
@@ -202,7 +220,7 @@ async def _export_changed_boards(
 async def _update_metrics(
     local_pool: asyncpg.Pool,
     supa_pool: asyncpg.Pool,
-    last_posting_ts: datetime,
+    posting_cursor: Cursor,
 ) -> None:
     """Update Prometheus gauges with queue depths, export lag, and R2 pending."""
     try:
@@ -215,9 +233,11 @@ async def _update_metrics(
         log.warning("exporter.metrics_redis_error", exc_info=True)
 
     try:
+        last_ts, last_id = posting_cursor
         lag = await local_pool.fetchval(
-            "SELECT count(*) FROM job_posting WHERE updated_at > $1",
-            last_posting_ts,
+            "SELECT count(*) FROM job_posting WHERE (updated_at, id) > ($1, $2)",
+            last_ts,
+            last_id,
         )
         exporter_export_lag.labels(table="job_posting").set(lag or 0)
     except Exception:
@@ -255,16 +275,16 @@ async def run_exporter(
     is set.
     """
     interval = settings.export_interval
-    last_posting_ts = await _get_last_export_ts(local_pool, "job_posting")
+    posting_cursor = await _get_cursor(local_pool, "job_posting")
 
     while not shutdown_event.is_set():
         t0 = time.monotonic()
         try:
-            exported, last_posting_ts = await _export_changed_postings(
-                local_pool, supa_pool, last_posting_ts
+            exported, posting_cursor = await _export_changed_postings(
+                local_pool, supa_pool, posting_cursor
             )
-            await _save_last_export_ts(local_pool, "job_posting", last_posting_ts)
-            await _update_metrics(local_pool, supa_pool, last_posting_ts)
+            await _save_cursor(local_pool, "job_posting", posting_cursor)
+            await _update_metrics(local_pool, supa_pool, posting_cursor)
 
             duration = time.monotonic() - t0
             exporter_flush_duration.observe(duration)
