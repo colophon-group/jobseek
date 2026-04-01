@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { fetchExploreData, type ExploreData } from "@/lib/actions/explore-data";
 import { ExploreSkeleton } from "@/components/search/explore-skeleton";
@@ -14,6 +14,13 @@ export function ExploreContent({ locale }: ExploreContentProps) {
   const searchParams = useSearchParams();
   const [data, setData] = useState<ExploreData | null>(null);
 
+  // Track whether the URL change came from SearchPage's updateUrl() so we
+  // can skip the re-fetch — SearchPage already handles client-side searches.
+  const skipFetchRef = useRef(false);
+  const onBeforeUrlChange = useCallback(() => {
+    skipFetchRef.current = true;
+  }, []);
+
   // Build a stable key from search params, excluding UI-only params like "show"
   // so that opening a posting detail panel doesn't trigger a re-fetch.
   const searchKey = useMemo(() => {
@@ -25,6 +32,12 @@ export function ExploreContent({ locale }: ExploreContentProps) {
   }, [searchParams]);
 
   useEffect(() => {
+    // Skip re-fetch when the URL was changed by SearchPage's client-side
+    // filter handlers — runSearch() already handles the search.
+    if (skipFetchRef.current) {
+      skipFetchRef.current = false;
+      return;
+    }
     setData(null);
     const sp: Record<string, string | undefined> = {};
     searchParams.forEach((value, key) => {
@@ -39,7 +52,6 @@ export function ExploreContent({ locale }: ExploreContentProps) {
 
   return (
     <SearchPage
-      key={`${parsed.keywords.join(",")}-${parsed.locations.map((l) => l.id).join(",")}-${parsed.occupations.map((o) => o.id).join(",")}-${parsed.seniorities.map((s) => s.id).join(",")}-${parsed.technologies.map((t) => t.id).join(",")}`}
       initialCompanies={result.companies}
       initialTotalCompanies={result.totalCompanies}
       initialTruncated={result.truncated}
@@ -59,6 +71,7 @@ export function ExploreContent({ locale }: ExploreContentProps) {
       languages={languages}
       userLat={userLat}
       userLng={userLng}
+      onBeforeUrlChange={onBeforeUrlChange}
     />
   );
 }

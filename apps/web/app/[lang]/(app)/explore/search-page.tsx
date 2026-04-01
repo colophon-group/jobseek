@@ -43,6 +43,8 @@ interface SearchPageProps {
   languages: string[];
   userLat?: number;
   userLng?: number;
+  /** Called before updateUrl so the parent can skip its own re-fetch. */
+  onBeforeUrlChange?: () => void;
 }
 
 export function SearchPage({
@@ -65,6 +67,7 @@ export function SearchPage({
   languages,
   userLat,
   userLng,
+  onBeforeUrlChange,
 }: SearchPageProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -334,7 +337,7 @@ export function SearchPage({
     );
     window.history.replaceState(null, "", url);
   };
-  function updateUrl() { updateUrlRef.current(); }
+  function updateUrl() { onBeforeUrlChange?.(); updateUrlRef.current(); }
 
   function handleOpenPosting(postingId: string) {
     setShowPostingId(postingId);
