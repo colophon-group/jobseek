@@ -3162,6 +3162,7 @@ pst-professional-support-technologies-gmbh,pst-professional-support-technologies
 ptc,ptc-eightfold,https://ptc.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/""}",json-ld,
 public,public-greenhouse,https://job-boards.greenhouse.io/public,greenhouse,"{""token"": ""public""}",skip,
 public-library-of-science,public-library-of-science-greenhouse,https://job-boards.greenhouse.io/plos,greenhouse,"{""token"": ""plos""}",skip,
+publicis,publicis-main,https://careers.publicisgroupe.com/jobs,sitemap,"{""sitemap_url"": ""https://careers.publicisgroupe.com/sitemap.xml""}",json-ld,
 pubmatic,pubmatic-greenhouse,https://job-boards.greenhouse.io/pubmatic,greenhouse,"{""token"": ""pubmatic""}",skip,
 pulley,pulley-greenhouse,https://job-boards.greenhouse.io/pulley,greenhouse,"{""token"": ""pulley""}",skip,
 pulse,pulse-ashby,https://jobs.ashbyhq.com/pulse,ashby,"{""token"": ""pulse""}",skip,
