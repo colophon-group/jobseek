@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = i18n._({ id: "privacy.meta.title", message: "Privacy Policy" });
   const description = i18n._({
     id: "privacy.meta.description",
-    message: "How Job Seek collects, uses, and protects your personal data.",
+    message: "Job Seek privacy policy — what personal data we collect, how we use it, your GDPR rights, cookie policy, and how to request deletion of your account and data.",
   });
 
   return {
@@ -38,7 +38,7 @@ export default async function PrivacyPolicyPage({ params }: Props) {
         "@context": "https://schema.org",
         "@type": "WebPage",
         name: i18n._({ id: "privacy.meta.title", message: "Privacy Policy" }),
-        description: i18n._({ id: "privacy.meta.description", message: "How Job Seek collects, uses, and protects your personal data." }),
+        description: i18n._({ id: "privacy.meta.description", message: "Job Seek privacy policy — what personal data we collect, how we use it, your GDPR rights, cookie policy, and how to request deletion of your account and data." }),
         url: `${siteConfig.url}/${locale}/privacy-policy`,
         inLanguage: locale,
         isPartOf: { "@type": "WebSite", url: siteConfig.url },

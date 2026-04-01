@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = i18n._({ id: "terms.meta.title", message: "Terms of Service" });
   const description = i18n._({
     id: "terms.meta.description",
-    message: "Terms of Service for the Job Seek application.",
+    message: "Terms of Service for Job Seek — usage rules, intellectual property, account responsibilities, limitation of liability, and governing law for the job search platform.",
   });
 
   return {
@@ -38,7 +38,7 @@ export default async function TermsPage({ params }: Props) {
         "@context": "https://schema.org",
         "@type": "WebPage",
         name: i18n._({ id: "terms.meta.title", message: "Terms of Service" }),
-        description: i18n._({ id: "terms.meta.description", message: "Terms of Service for the Job Seek application." }),
+        description: i18n._({ id: "terms.meta.description", message: "Terms of Service for Job Seek — usage rules, intellectual property, account responsibilities, limitation of liability, and governing law for the job search platform." }),
         url: `${siteConfig.url}/${locale}/terms`,
         inLanguage: locale,
         isPartOf: { "@type": "WebSite", url: siteConfig.url },

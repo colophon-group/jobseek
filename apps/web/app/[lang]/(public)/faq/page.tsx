@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = i18n._({ id: "faq.meta.title", message: "FAQ" });
   const description = i18n._({
     id: "faq.meta.description",
-    message: "Frequently asked questions about Job Seek — pricing, crawling, privacy, and more.",
+    message: "Answers to common questions about Job Seek — how we crawl career pages, what the free and Pro plans include, how we handle your data, and how to opt out.",
   });
 
   return {
