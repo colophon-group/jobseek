@@ -1,0 +1,19 @@
+{
+	"_type": "job-comparison",
+	"company": "OpenAI",
+	"normalizedTitle": "data scientist strategic finance",
+	"careerTitle": "Data Scientist, Strategic Finance",
+	"boardTitle": "Data Scientist, Strategic Finance",
+	"careerPageFirstSeen": "2025-10-21",
+	"careerPageDatePosted": "2025-10-21",
+	"boardFirstSeen": "2025-04-15",
+	"boardDatePosted": "2025-04-15",
+	"effectiveCareerDate": "2025-10-21",
+	"effectiveBoardDate": "2025-04-15",
+	"lagDays": -189,
+	"verdict": "board_first",
+	"location": "San Francisco",
+	"department": "Data Science",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401221123/https://api.ashbyhq.com/posting-api/job-board/openai",
+	"boardSnapshotUrl": "https://web.archive.org/web/20250415173732/https://www.linkedin.com/company/openai/jobs"
+}

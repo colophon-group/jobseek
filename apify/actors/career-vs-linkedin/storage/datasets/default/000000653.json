@@ -1,0 +1,19 @@
+{
+	"_type": "job-comparison",
+	"company": "Notion",
+	"normalizedTitle": "account executive mid market dach",
+	"careerTitle": "Account Executive, Mid-Market, DACH",
+	"boardTitle": "Account Executive, Mid-Market, DACH",
+	"careerPageFirstSeen": "2025-05-30",
+	"careerPageDatePosted": "2025-05-30",
+	"boardFirstSeen": "2025-10-02",
+	"boardDatePosted": "2025-10-02",
+	"effectiveCareerDate": "2025-05-30",
+	"effectiveBoardDate": "2025-10-02",
+	"lagDays": 125,
+	"verdict": "career_first",
+	"location": "Dublin, Ireland",
+	"department": "Sales",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401221609/https://api.ashbyhq.com/posting-api/job-board/notion",
+	"boardSnapshotUrl": "https://web.archive.org/web/20251002080032/https://www.linkedin.com/company/notionhq/jobs"
+}

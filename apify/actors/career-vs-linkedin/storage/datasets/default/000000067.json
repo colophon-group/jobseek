@@ -1,0 +1,19 @@
+{
+	"_type": "job-comparison",
+	"company": "OpenAI",
+	"normalizedTitle": "forward deployed engineer paris",
+	"careerTitle": "Forward Deployed Engineer - Paris",
+	"boardTitle": "Forward Deployed Engineer - Singapore",
+	"careerPageFirstSeen": "2025-09-23",
+	"careerPageDatePosted": "2025-09-23",
+	"boardFirstSeen": "2025-03-20",
+	"boardDatePosted": "2025-03-19",
+	"effectiveCareerDate": "2025-09-23",
+	"effectiveBoardDate": "2025-03-19",
+	"lagDays": -188,
+	"verdict": "board_first",
+	"location": "Paris, France",
+	"department": "Model Deployment for Business",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401221123/https://api.ashbyhq.com/posting-api/job-board/openai",
+	"boardSnapshotUrl": "https://web.archive.org/web/20250320135910/https://www.linkedin.com/company/openai/jobs"
+}

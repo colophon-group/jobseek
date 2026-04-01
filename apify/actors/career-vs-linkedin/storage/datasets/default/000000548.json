@@ -1,0 +1,19 @@
+{
+	"_type": "job-comparison",
+	"company": "OpenAI",
+	"normalizedTitle": "software engineer infrastructure",
+	"careerTitle": "Senior Software Engineer, Infrastructure ",
+	"boardTitle": "Software Engineer, Search Infrastructure",
+	"careerPageFirstSeen": "2026-03-17",
+	"careerPageDatePosted": "2026-03-17",
+	"boardFirstSeen": "2025-03-20",
+	"boardDatePosted": "2025-03-19",
+	"effectiveCareerDate": "2026-03-17",
+	"effectiveBoardDate": "2025-03-19",
+	"lagDays": -363,
+	"verdict": "board_first",
+	"location": "Seattle",
+	"department": "Applied AI",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401221123/https://api.ashbyhq.com/posting-api/job-board/openai",
+	"boardSnapshotUrl": "https://web.archive.org/web/20250320135910/https://www.linkedin.com/company/openai/jobs"
+}

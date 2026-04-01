@@ -1,0 +1,19 @@
+{
+	"_type": "job-comparison",
+	"company": "OpenAI",
+	"normalizedTitle": "software engineer platform systems",
+	"careerTitle": "Software Engineer, Platform Systems",
+	"boardTitle": "Software Engineer, Analytics Platform",
+	"careerPageFirstSeen": "2026-01-23",
+	"careerPageDatePosted": "2026-01-23",
+	"boardFirstSeen": "2025-02-08",
+	"boardDatePosted": "2025-02-06",
+	"effectiveCareerDate": "2026-01-23",
+	"effectiveBoardDate": "2025-02-06",
+	"lagDays": -351,
+	"verdict": "board_first",
+	"location": "San Francisco",
+	"department": "Scaling",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401221123/https://api.ashbyhq.com/posting-api/job-board/openai",
+	"boardSnapshotUrl": "https://web.archive.org/web/20250208011146/https://www.linkedin.com/company/openai/jobs/"
+}

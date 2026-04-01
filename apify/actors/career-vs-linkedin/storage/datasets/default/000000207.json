@@ -1,0 +1,19 @@
+{
+	"_type": "job-comparison",
+	"company": "OpenAI",
+	"normalizedTitle": "offensive security engineer agent security",
+	"careerTitle": "Offensive Security Engineer, Agent Security",
+	"boardTitle": "Offensive Security Engineer, Preparedness",
+	"careerPageFirstSeen": "2025-10-28",
+	"careerPageDatePosted": "2025-10-28",
+	"boardFirstSeen": "2024-01-04",
+	"boardDatePosted": "2024-01-04",
+	"effectiveCareerDate": "2025-10-28",
+	"effectiveBoardDate": "2024-01-04",
+	"lagDays": -663,
+	"verdict": "board_first",
+	"location": "San Francisco",
+	"department": "Security",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401221123/https://api.ashbyhq.com/posting-api/job-board/openai",
+	"boardSnapshotUrl": "https://web.archive.org/web/20240104101233/https://www.linkedin.com/company/openai/jobs/"
+}

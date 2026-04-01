@@ -1,0 +1,19 @@
+{
+	"_type": "job-comparison",
+	"company": "OpenAI",
+	"normalizedTitle": "software engineer data infrastructure",
+	"careerTitle": "Software Engineer, Data Infrastructure",
+	"boardTitle": "Software Engineer, Search Infrastructure",
+	"careerPageFirstSeen": "2024-06-27",
+	"careerPageDatePosted": "2024-06-27",
+	"boardFirstSeen": "2025-03-20",
+	"boardDatePosted": "2025-03-19",
+	"effectiveCareerDate": "2024-06-27",
+	"effectiveBoardDate": "2025-03-19",
+	"lagDays": 265,
+	"verdict": "career_first",
+	"location": "San Francisco",
+	"department": "Applied AI",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401221123/https://api.ashbyhq.com/posting-api/job-board/openai",
+	"boardSnapshotUrl": "https://web.archive.org/web/20250320135910/https://www.linkedin.com/company/openai/jobs"
+}
