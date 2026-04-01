@@ -3783,6 +3783,7 @@ target,target-careers,https://target.wd5.myworkdayjobs.com/en-US/targetcareers,w
 target-rwe,target-rwe-greenhouse,https://job-boards.greenhouse.io/targetrwe,greenhouse,"{""token"": ""targetrwe""}",skip,
 taskrabbit,taskrabbit-greenhouse,https://job-boards.greenhouse.io/taskrabbit,greenhouse,"{""token"": ""taskrabbit""}",skip,
 tastytrade,tastytrade-greenhouse,https://job-boards.greenhouse.io/tastytrade,greenhouse,"{""token"": ""tastytrade""}",skip,
+tata-motors,tata-motors-careers,https://careers.tatamotors.com,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.tatamotors.com/googlefeed.xml""}",skip,
 tatari,tatari-greenhouse,https://job-boards.greenhouse.io/tatari,greenhouse,"{""token"": ""tatari""}",skip,
 tavus,tavus-ashby,https://jobs.ashbyhq.com/tavus,ashby,"{""token"": ""tavus""}",skip,
 taxbit,taxbit-greenhouse,https://job-boards.greenhouse.io/taxbit,greenhouse,"{""token"": ""taxbit""}",skip,
