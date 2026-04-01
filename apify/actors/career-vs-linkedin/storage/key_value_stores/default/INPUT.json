@@ -5,8 +5,9 @@
   "startDate": "2021-01-01",
   "endDate": "2024-01-01",
   "companies": [
-    { "name": "OpenAI",   "careerPageUrl": "https://boards.greenhouse.io/openai",  "linkedinSlug": "openai" },
-    { "name": "Notion",   "careerPageUrl": "https://boards.greenhouse.io/notion",  "linkedinSlug": "notionhq" },
-    { "name": "Figma",    "careerPageUrl": "https://boards.greenhouse.io/figma",   "linkedinSlug": "figma" }
+    { "name": "OpenAI",    "careerPageUrl": "https://boards.greenhouse.io/openai",    "linkedinSlug": "openai" },
+    { "name": "Notion",    "careerPageUrl": "https://boards.greenhouse.io/notion",    "linkedinSlug": "notionhq" },
+    { "name": "Figma",     "careerPageUrl": "https://boards.greenhouse.io/figma",     "linkedinSlug": "figma" },
+    { "name": "Robinhood", "careerPageUrl": "https://boards.greenhouse.io/robinhood", "linkedinSlug": "robinhood" }
   ]
 }
