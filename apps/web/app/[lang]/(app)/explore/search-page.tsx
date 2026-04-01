@@ -310,7 +310,8 @@ export function SearchPage({
   }
 
   /** Sync URL to current filter state. */
-  function updateUrl() {
+  const updateUrlRef = useRef(() => {});
+  updateUrlRef.current = () => {
     const extra: Record<string, string> = {};
     if (showPostingIdRef.current) extra.show = showPostingIdRef.current;
     if (salaryMinRef.current || salaryMaxRef.current) {
@@ -332,7 +333,8 @@ export function SearchPage({
       technologiesRef.current,
     );
     window.history.replaceState(null, "", url);
-  }
+  };
+  function updateUrl() { updateUrlRef.current(); }
 
   function handleOpenPosting(postingId: string) {
     setShowPostingId(postingId);
@@ -345,7 +347,8 @@ export function SearchPage({
   }
 
   /** Run a search using current ref state. */
-  function runSearch() {
+  const runSearchRef = useRef(() => {});
+  runSearchRef.current = () => {
     const kws = keywordsRef.current;
     const locationIds = locationsRef.current.map((l) => l.id);
     const occupationIds = occupationsRef.current.map((o) => o.id);
@@ -403,7 +406,8 @@ export function SearchPage({
         if (searchCounterRef.current === id) setIsSearching(false);
       }
     })();
-  }
+  };
+  function runSearch() { runSearchRef.current(); }
 
   const handleRemoveKeyword = useCallback(
     (keyword: string) => {
