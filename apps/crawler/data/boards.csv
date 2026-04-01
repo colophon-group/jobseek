@@ -1762,6 +1762,7 @@ hazel-health,hazel-health-greenhouse,https://job-boards.greenhouse.io/hazel,gree
 hca-healthcare,hca-healthcare-careers,https://careers.hcahealthcare.com/,sitemap,"{""sitemap_url"": ""https://careers.hcahealthcare.com/sitemap.xml"", ""url_filter"": ""/jobs/\\d+""}",json-ld,
 hca-healthcare,hca-healthcare-careers-uk,https://wd3.myworkdaysite.com/recruiting/hcahealthcare/hcacareers,workday,"{""company"": ""hcahealthcare"", ""wd_instance"": ""wd3"", ""site"": ""hcacareers""}",workday,
 hcltech,hcltech-careers,https://careers.hcltech.com/,rss,"{""url"": ""https://careers.hcltech.com/googlefeed.xml"", ""preset"": ""successfactors""}",skip,
+hdfc-bank,hdfc-bank-careers-homeloans,https://homeloans.hdfc.bank.in/careers/current-vacancies,inline,"{""render"": false, ""steps"": [{""tag"": ""div"", ""attr"": ""class=job-title"", ""field"": ""title""}, {""tag"": ""span"", ""attr"": ""class=place"", ""field"": ""location"", ""optional"": true}, {""tag"": ""h3"", ""text"": ""Job Description"", ""offset"": 1, ""field"": ""description"", ""html"": true, ""stop_tag"": ""h3""}]}",skip,
 headlands-research,headlands-research-greenhouse,https://job-boards.greenhouse.io/headlandsresearch,greenhouse,"{""token"": ""headlandsresearch""}",skip,
 headout-li,headout-li-greenhouse,https://job-boards.greenhouse.io/headoutlinkedin,greenhouse,"{""token"": ""headoutlinkedin""}",skip,
 headspace,headspace-greenhouse,https://job-boards.greenhouse.io/hs,greenhouse,"{""token"": ""hs""}",skip,
