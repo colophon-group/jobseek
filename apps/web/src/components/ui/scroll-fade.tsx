@@ -32,7 +32,7 @@ export function ScrollFade({ className = "", children, fadeHeight = "h-4", deps 
   }, [...deps, update]);
 
   return (
-    <div className="relative">
+    <div className="relative overflow-hidden rounded-[inherit]">
       {canScrollUp && (
         <div className={`pointer-events-none absolute inset-x-0 top-0 z-10 ${fadeHeight} bg-gradient-to-b from-surface via-surface/40 to-transparent`} />
       )}
