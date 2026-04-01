@@ -16,6 +16,7 @@ import type { SelectedLocation } from "@/components/search/location-pills";
 import { buildFilteredPath } from "@/lib/search/query-params";
 import { useSearchStateStore, usePageActions } from "@/components/SearchStateProvider";
 import { useLocalePath } from "@/lib/useLocalePath";
+import { ScrollFade } from "@/components/ui/scroll-fade";
 
 type SuggestionItem =
   | { kind: "occupation"; data: TaxonomySuggestion }
@@ -429,8 +430,9 @@ export function SearchBar({
         <div
           ref={listRef}
           role="listbox"
-          className="absolute left-0 top-full z-50 mt-1 max-h-80 w-full min-w-64 overflow-y-auto scrollbar-hide rounded-lg border border-border-soft bg-surface shadow-lg"
+          className="absolute left-0 top-full z-50 mt-1 w-full min-w-64 rounded-lg border border-border-soft bg-surface shadow-lg"
         >
+        <ScrollFade className="max-h-80" deps={[allSuggestions.length]}>
           {occupationResults.length > 0 && (
             <>
               <div className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted">
@@ -621,6 +623,7 @@ export function SearchBar({
               })}
             </>
           )}
+        </ScrollFade>
         </div>
       )}
     </div>
