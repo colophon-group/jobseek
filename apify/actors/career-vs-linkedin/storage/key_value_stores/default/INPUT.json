@@ -1,1 +1,12 @@
-{"companyName":"OpenAI","careerPageUrl":"https://boards.greenhouse.io/openai","linkedinSlug":"openai","startDate":"2023-01-01","endDate":"2024-12-31","maxSnapshots":60,"delayMs":1000}
+{
+  "batchMode": true,
+  "maxSnapshots": 80,
+  "delayMs": 1000,
+  "startDate": "2021-01-01",
+  "endDate": "2024-01-01",
+  "companies": [
+    { "name": "OpenAI",   "careerPageUrl": "https://boards.greenhouse.io/openai",  "linkedinSlug": "openai" },
+    { "name": "Notion",   "careerPageUrl": "https://boards.greenhouse.io/notion",  "linkedinSlug": "notionhq" },
+    { "name": "Figma",    "careerPageUrl": "https://boards.greenhouse.io/figma",   "linkedinSlug": "figma" }
+  ]
+}

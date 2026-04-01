@@ -1,14 +1,19 @@
 export interface CompanyPair {
   name: string;
   careerPageUrl: string;
-  linkedinSlug?: string;       // e.g. "stripe" → linkedin.com/company/stripe/jobs/
-  linkedinCompanyId?: string;  // numeric LinkedIn company ID for jobs/search?f_C= URLs
+  /** Indeed company slug, e.g. "Stripe" → indeed.com/cmp/Stripe/jobs */
+  indeedSlug?: string;
+  /** Legacy LinkedIn slug kept for backward compatibility */
+  linkedinSlug?: string;
+  linkedinCompanyId?: string;
 }
 
 export interface Input {
   // ── Single-company mode ────────────────────────────────────────────────────
   companyName?: string;
   careerPageUrl?: string;
+  indeedSlug?: string;
+  /** @deprecated Use indeedSlug instead */
   linkedinSlug?: string;
   linkedinCompanyId?: string;
   // ── Batch mode ─────────────────────────────────────────────────────────────
@@ -37,42 +42,42 @@ export interface JobSighting {
   location?: string;
   department?: string;
   id?: string;               // ATS job ID if available
-  platform: 'career_page' | 'linkedin';
+  platform: 'career_page' | 'linkedin' | 'indeed';
   extractionMethod: string;
 }
 
 export type Verdict =
-  | 'career_first'    // career page appeared N days before LinkedIn
-  | 'linkedin_first'  // LinkedIn appeared N days before career page (anomaly)
+  | 'career_first'    // career page appeared N days before job board
+  | 'board_first'     // job board appeared N days before career page (anomaly)
   | 'same_day'        // appeared on same day on both platforms
-  | 'career_only'     // seen on career page but never indexed by LinkedIn
-  | 'linkedin_only';  // seen on LinkedIn but not found on career page (syndicated/old)
+  | 'career_only'     // seen on career page but never indexed by job board
+  | 'board_only';     // seen on job board but not found on career page
 
 export interface JobComparison {
   _type: 'job-comparison';
   company: string;
   normalizedTitle: string;
   careerTitle: string;
-  linkedinTitle?: string;
+  boardTitle?: string;
   /** Earliest Wayback snapshot date for this job on the career page. */
   careerPageFirstSeen: string;
   /** datePosted from career page JSON-LD if available (more accurate than firstSeen). */
   careerPageDatePosted?: string;
-  /** Earliest Wayback snapshot date for this job on LinkedIn. */
-  linkedinFirstSeen?: string;
-  /** datePosted from LinkedIn JSON-LD if available. */
-  linkedinDatePosted?: string;
+  /** Earliest Wayback snapshot date for this job on the job board. */
+  boardFirstSeen?: string;
+  /** datePosted from job board JSON-LD if available. */
+  boardDatePosted?: string;
   /** Best available date for career page (datePosted > firstSeen). */
   effectiveCareerDate: string;
-  /** Best available date for LinkedIn (datePosted > firstSeen). */
-  effectiveLinkedInDate?: string;
-  /** Days career page is ahead of LinkedIn (positive = career page first). */
+  /** Best available date for job board (datePosted > firstSeen). */
+  effectiveBoardDate?: string;
+  /** Days career page is ahead of job board (positive = career page first). */
   lagDays?: number;
   verdict: Verdict;
   location?: string;
   department?: string;
   careerSnapshotUrl: string;
-  linkedinSnapshotUrl?: string;
+  boardSnapshotUrl?: string;
 }
 
 export interface LagBucket {
@@ -84,18 +89,19 @@ export interface ResearchSummary {
   _type: 'research-summary';
   company: string;
   careerPageUrl: string;
-  linkedinUrl: string;
+  boardUrl: string;
+  boardPlatform: string;   // e.g. "indeed", "linkedin"
   periodStart: string;
   periodEnd: string;
   careerSnapshotsProcessed: number;
-  linkedinSnapshotsProcessed: number;
+  boardSnapshotsProcessed: number;
   totalCareerJobs: number;
-  totalLinkedInJobs: number;
+  totalBoardJobs: number;
   matchedJobs: number;
   careerOnlyJobs: number;
-  linkedinOnlyJobs: number;
+  boardOnlyJobs: number;
   careerFirstCount: number;
-  linkedinFirstCount: number;
+  boardFirstCount: number;
   sameDayCount: number;
   avgLagDays: number;
   medianLagDays: number;

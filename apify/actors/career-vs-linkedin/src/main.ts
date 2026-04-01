@@ -1,5 +1,6 @@
 import { Actor, log } from 'apify';
 import { collectCareerJobs } from './career.js';
+import { collectIndeedJobs } from './indeed.js';
 import { collectLinkedInJobs } from './linkedin.js';
 import { compareJobs } from './compare.js';
 import { analyzeWithGemini } from './gemini.js';
@@ -7,15 +8,19 @@ import type { Input, CompanyPair, ResearchSummary, BatchSummary } from './types.
 
 /**
  * Seed companies for batch mode — a diverse mix of ATS platforms.
- * Each pair has a well-archived career page and a LinkedIn company slug.
+ * Each pair has a well-archived career page and an Indeed company slug.
+ * Indeed's company pages (indeed.com/cmp/{slug}/jobs) are reliably crawled
+ * by Wayback Machine, unlike LinkedIn which has sparse archival coverage.
  */
 const SEED_COMPANIES: CompanyPair[] = [
+  // OpenAI + Figma: Greenhouse boards are well-archived (60+ snapshots each).
+  // LinkedIn is used as fallback since Indeed has 0 Wayback coverage for these.
+  { name: 'OpenAI',       careerPageUrl: 'https://boards.greenhouse.io/openai',          linkedinSlug: 'openai' },
+  { name: 'Notion',       careerPageUrl: 'https://boards.greenhouse.io/notion',          linkedinSlug: 'notionhq' },
+  { name: 'Figma',        careerPageUrl: 'https://boards.greenhouse.io/figma',           linkedinSlug: 'figma' },
   { name: 'Stripe',       careerPageUrl: 'https://boards.greenhouse.io/stripe',         linkedinSlug: 'stripe' },
   { name: 'Coinbase',     careerPageUrl: 'https://boards.greenhouse.io/coinbase',        linkedinSlug: 'coinbase' },
   { name: 'Anthropic',    careerPageUrl: 'https://boards.greenhouse.io/anthropic',       linkedinSlug: 'anthropic' },
-  { name: 'OpenAI',       careerPageUrl: 'https://boards.greenhouse.io/openai',          linkedinSlug: 'openai' },
-  { name: 'Figma',        careerPageUrl: 'https://boards.greenhouse.io/figma',           linkedinSlug: 'figma' },
-  { name: 'Notion',       careerPageUrl: 'https://boards.greenhouse.io/notion',          linkedinSlug: 'notion' },
   { name: 'Scale AI',     careerPageUrl: 'https://jobs.lever.co/scaleai',                linkedinSlug: 'scaleai' },
   { name: 'Brex',         careerPageUrl: 'https://jobs.lever.co/brex',                   linkedinSlug: 'brex-inc-' },
   { name: 'Rippling',     careerPageUrl: 'https://jobs.lever.co/rippling',               linkedinSlug: 'rippling' },
@@ -40,8 +45,7 @@ const {
   companies,
   careerPageUrl,
   companyName,
-  linkedinSlug,
-  linkedinCompanyId,
+  indeedSlug,
   startDate,
   endDate,
   maxSnapshots = 60,
@@ -58,12 +62,12 @@ if (batchMode) {
   await runBatch();
 } else {
   if (!careerPageUrl) throw new Error('Input field "careerPageUrl" is required (or set batchMode: true).');
-  if (!linkedinSlug && !linkedinCompanyId) {
-    throw new Error('Either "linkedinSlug" or "linkedinCompanyId" is required (or set batchMode: true).');
+  if (!indeedSlug && !input.linkedinSlug && !input.linkedinCompanyId) {
+    throw new Error('One of "indeedSlug", "linkedinSlug", or "linkedinCompanyId" is required (or set batchMode: true).');
   }
   const name = companyName ?? new URL(careerPageUrl).hostname;
-  log.info('Career vs LinkedIn', { company: name, careerPageUrl, linkedinSlug, linkedinCompanyId, start: effectiveStart, end: effectiveEnd });
-  await analyzeCompany({ name, careerPageUrl, linkedinSlug, linkedinCompanyId });
+  log.info('Career vs job board', { company: name, careerPageUrl, indeedSlug, linkedinSlug: input.linkedinSlug, start: effectiveStart, end: effectiveEnd });
+  await analyzeCompany({ name, careerPageUrl, indeedSlug, linkedinSlug: input.linkedinSlug, linkedinCompanyId: input.linkedinCompanyId });
 }
 
 await Actor.exit();
@@ -98,7 +102,7 @@ async function runBatch(): Promise<void> {
     avgPctCareerFirst: avgPct,
     avgLagDays: avgLag,
     overallConclusion:
-      `Across ${batchResults.length} companies, ${avgPct}% of matched jobs appeared on the career page before LinkedIn, ` +
+      `Across ${batchResults.length} companies, ${avgPct}% of matched jobs appeared on the career page before Indeed, ` +
       `with an average career-page lead of ${avgLag} days. ` +
       `Career pages are consistently the primary source of truth for job postings.`,
     companyResults: batchResults.map(r => ({
@@ -122,24 +126,43 @@ async function analyzeCompany(co: CompanyPair): Promise<ResearchSummary | null> 
     co.careerPageUrl, effectiveStart, effectiveEnd, maxSnapshots, delayMs,
   );
 
-  log.info(`Collecting LinkedIn jobs…`, { slug: co.linkedinSlug, id: co.linkedinCompanyId });
-  const { jobs: linkedinJobs, snapshotsProcessed: liSnaps, linkedinUrl } = await collectLinkedInJobs(
-    co.name, co.linkedinSlug, co.linkedinCompanyId,
-    effectiveStart, effectiveEnd, maxSnapshots, delayMs,
-  );
+  // Try Indeed first; fall back to LinkedIn if Indeed yields nothing
+  let boardJobs: Map<string, import('./types.js').JobSighting>;
+  let boardSnaps: number;
+  let boardUrl: string;
+  let boardPlatform: string;
 
-  if (careerJobs.size === 0 && linkedinJobs.size === 0) {
+  if (co.indeedSlug) {
+    log.info(`Collecting Indeed jobs…`, { slug: co.indeedSlug });
+    const result = await collectIndeedJobs(co.name, co.indeedSlug, effectiveStart, effectiveEnd, maxSnapshots, delayMs);
+    boardJobs = result.jobs; boardSnaps = result.snapshotsProcessed; boardUrl = result.boardUrl;
+    boardPlatform = 'indeed';
+  } else {
+    boardJobs = new Map(); boardSnaps = 0; boardUrl = ''; boardPlatform = 'indeed';
+  }
+
+  if (boardJobs.size === 0 && (co.linkedinSlug || co.linkedinCompanyId)) {
+    log.info(`Indeed yielded 0 jobs — falling back to LinkedIn`, { slug: co.linkedinSlug });
+    const result = await collectLinkedInJobs(
+      co.name, co.linkedinSlug, co.linkedinCompanyId,
+      effectiveStart, effectiveEnd, maxSnapshots, delayMs,
+    );
+    boardJobs = result.jobs; boardSnaps = result.snapshotsProcessed; boardUrl = result.linkedinUrl;
+    boardPlatform = 'linkedin';
+  }
+
+  if (careerJobs.size === 0 && boardJobs.size === 0) {
     log.warning(`${co.name}: no jobs found on either platform. Skipping.`);
     return null;
   }
 
-  log.info(`${co.name}: ${careerJobs.size} career jobs, ${linkedinJobs.size} LinkedIn jobs — comparing…`);
+  log.info(`${co.name}: ${careerJobs.size} career jobs, ${boardJobs.size} Indeed jobs — comparing…`);
 
   const { comparisons, summary: partialSummary } = compareJobs(
-    careerJobs, linkedinJobs, co.name, co.careerPageUrl, linkedinUrl,
+    careerJobs, boardJobs, co.name, co.careerPageUrl, boardUrl, boardPlatform,
     effectiveStart, effectiveEnd,
     maxSnapshots, // careerSnapshotsProcessed approximation
-    liSnaps,
+    boardSnaps,
   );
 
   // Push individual job comparison records
@@ -169,7 +192,7 @@ async function analyzeCompany(co: CompanyPair): Promise<ResearchSummary | null> 
   await Actor.pushData(summary);
   log.info(`${co.name}: done`, {
     careerJobs: summary.totalCareerJobs,
-    linkedinJobs: summary.totalLinkedInJobs,
+    boardJobs: summary.totalBoardJobs,
     matched: summary.matchedJobs,
     pctCareerFirst: `${summary.pctCareerFirst}%`,
     avgLag: `${summary.avgLagDays}d`,
