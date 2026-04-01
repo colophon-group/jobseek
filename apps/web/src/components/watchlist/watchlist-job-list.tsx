@@ -240,10 +240,8 @@ export function WatchlistJobList({
       <div className="min-w-0 flex-1">{listColumn}</div>
       {showPostingId && (
         <>
-          <div className="hidden w-[420px] shrink-0 lg:block" aria-hidden="true" />
           <div
-            className="fixed top-[4.5rem] z-40 hidden w-[420px] lg:block"
-            style={{ right: "max(1rem, calc((100vw - 1200px) / 2 + 1rem))", height: "calc(100vh - 5.5rem)" }}
+            className="sticky top-[4.5rem] z-40 hidden h-[calc(100vh-5.5rem)] w-[420px] shrink-0 lg:block"
           >
             <JobDetailPanel postingId={showPostingId} onClose={handleClosePosting} />
           </div>
