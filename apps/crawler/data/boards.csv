@@ -3734,8 +3734,8 @@ tanium,tanium-greenhouse,https://job-boards.greenhouse.io/tanium,greenhouse,"{""
 tanius-technology,tanius-technology-greenhouse,https://job-boards.greenhouse.io/tanius,greenhouse,"{""token"": ""tanius""}",skip,
 tapblaze,tapblaze-ashby,https://jobs.ashbyhq.com/tapblaze,ashby,"{""token"": ""tapblaze""}",skip,
 tappz-gmbh,tappz-gmbh-join,https://join.com/companies/tappzcom,join,"{""slug"": ""tappzcom""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
-target-rwe,target-rwe-greenhouse,https://job-boards.greenhouse.io/targetrwe,greenhouse,"{""token"": ""targetrwe""}",skip,
 target,target-careers,https://target.wd5.myworkdayjobs.com/en-US/targetcareers,workday,,workday,
+target-rwe,target-rwe-greenhouse,https://job-boards.greenhouse.io/targetrwe,greenhouse,"{""token"": ""targetrwe""}",skip,
 taskrabbit,taskrabbit-greenhouse,https://job-boards.greenhouse.io/taskrabbit,greenhouse,"{""token"": ""taskrabbit""}",skip,
 tastytrade,tastytrade-greenhouse,https://job-boards.greenhouse.io/tastytrade,greenhouse,"{""token"": ""tastytrade""}",skip,
 tatari,tatari-greenhouse,https://job-boards.greenhouse.io/tatari,greenhouse,"{""token"": ""tatari""}",skip,
@@ -4077,6 +4077,17 @@ vitol,vitol-careers,https://careers.smartrecruiters.com/Vitol,smartrecruiters,"{
 vivid-money,vivid-money-careers,https://careers.vivid.money,personio,"{""slug"": ""vivid"", ""language"": ""en""}",,
 vodafone,vodafone-jobs,https://jobs.vodafone.com/careers,eightfold,"{""url_filter"": ""/careers/job/""}",json-ld,
 voldex,voldex-ashby,https://jobs.ashbyhq.com/voldex,ashby,"{""token"": ""voldex""}",skip,
+volkswagen,volkswagen-australia,https://careers.volkswagen.net.au/,rss,"{""url"": ""https://careers.volkswagen.net.au/googlefeed.xml"", ""preset"": ""successfactors""}",skip,
+volkswagen,volkswagen-brazil,https://vwbrasil.gupy.io/,nextdata,"{""url"": ""https://vwbrasil.gupy.io/"", ""path"": ""props.pageProps.jobs"", ""url_template"": ""https://vwbrasil.gupy.io/jobs/{id}"", ""fields"": {""title"": ""title"", ""employment_type"": ""type"", ""locations"": ""workplace.address.city"", ""job_location_type"": ""workplace.workplaceType""}}",skip,
+volkswagen,volkswagen-brazil-services,https://vwgs-sam.gupy.io/,nextdata,"{""url"": ""https://vwgs-sam.gupy.io/"", ""path"": ""props.pageProps.jobs"", ""url_template"": ""https://vwgs-sam.gupy.io/jobs/{id}"", ""fields"": {""title"": ""title"", ""locations"": ""workplace.address.city"", ""employment_type"": ""type"", ""job_location_type"": ""workplace.workplaceType""}}",json-ld,"{""render"": true}"
+volkswagen,volkswagen-brazil-trucks,https://vwco.gupy.io/,nextdata,"{""url"": ""https://vwco.gupy.io/"", ""path"": ""props.pageProps.jobs"", ""url_template"": ""https://vwco.gupy.io/jobs/{id}"", ""fields"": {""title"": ""title"", ""locations"": ""workplace.address.city"", ""employment_type"": ""type"", ""job_location_type"": ""workplace.workplaceType""}}",json-ld,"{""render"": true}"
+volkswagen,volkswagen-cariad-india,https://embitel.sensehq.com/careers,nextdata,"{""url"": ""https://embitel.sensehq.com/careers?pageSize=50"", ""path"": ""props.pageProps.jobsData.rows"", ""url_template"": ""https://embitel.sensehq.com/careers/jobs/{id}"", ""fields"": {""title"": ""title"", ""description"": ""description_external"", ""locations"": ""location"", ""employment_type"": ""job_type""}}",skip,
+volkswagen,volkswagen-cariad-us,https://job-boards.greenhouse.io/cariadinc,greenhouse,"{""token"": ""cariadinc""}",skip,
+volkswagen,volkswagen-china,https://volkswagengroupchina.jobs2web.sapsf.cn/,rss,"{""url"": ""https://volkswagengroupchina.jobs2web.sapsf.cn/googlefeed.xml"", ""preset"": ""successfactors""}",skip,
+volkswagen,volkswagen-group-global,https://jobs.volkswagen-group.com/,rss,"{""url"": ""https://jobs.volkswagen-group.com/googlefeed.xml"", ""preset"": ""successfactors""}",skip,
+volkswagen,volkswagen-moia,https://job-boards.eu.greenhouse.io/moia,greenhouse,"{""token"": ""moia""}",skip,
+volkswagen,volkswagen-uk,https://www.jobs.volkswagengroup.co.uk/vacancies/vacancy-search-results.aspx,dom,"{""render"": true, ""url_filter"": ""/vacancies/\\d+/""}",json-ld,
+volkswagen,volkswagen-vwgds-portugal,https://jobs.eu.lever.co/vwgds,lever,"{""token"": ""vwgds""}",skip,
 vonage,vonage-greenhouse,https://job-boards.greenhouse.io/vonage,greenhouse,"{""token"": ""vonage""}",skip,
 vontobel,vontobel-careers,https://vontobel.wd3.myworkdayjobs.com/Vontobel_External_Career,workday,,workday,
 vorto,vorto-ashby,https://jobs.ashbyhq.com/vorto,ashby,"{""token"": ""vorto""}",skip,
