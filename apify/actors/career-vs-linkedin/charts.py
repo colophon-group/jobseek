@@ -3,8 +3,9 @@ Generate marketing charts for the Career Page vs LinkedIn coverage analysis.
 Run: python3 charts.py
 Outputs: charts/ directory with PNG files.
 
-Key finding: ~96% of jobs on company career pages never appear on LinkedIn at all.
-Only short confirmed leads (≤90 days) are shown for timing claims.
+Key finding: ~97% of jobs on company career pages never appear on LinkedIn at all.
+Timing comparison is NOT claimed — Wayback Machine resolution (weeks) cannot
+capture the real gap (hours-to-days). Coverage gap is the credible finding.
 """
 
 import os, json, statistics
@@ -147,51 +148,7 @@ plt.savefig('charts/02_hero_coverage.png', dpi=180, bbox_inches='tight')
 plt.close()
 print('Saved charts/02_hero_coverage.png')
 
-# ── Chart 3: Confirmed timing leads (≤90 days only) ──────────────────────────
-# Only showing short leads where archival bias cannot explain the gap
-
-fig, ax = plt.subplots(figsize=(10, max(3.5, len(credible_matches) * 0.7 + 1.5)))
-fig.patch.set_facecolor(BG)
-ax.set_facecolor(BG)
-
-if credible_matches:
-    credible_matches.sort(key=lambda x: x['lagDays'])
-    labels = [f"{m['company']} · {m['careerTitle'][:45]}" for m in credible_matches]
-    values = [m['lagDays'] for m in credible_matches]
-    colors = [COMPANY_COLORS.get(m['company'], CAREER_COLOR) for m in credible_matches]
-    y = np.arange(len(labels))
-    bars = ax.barh(y, values, color=colors, height=0.55, zorder=3)
-    for bar, val in zip(bars, values):
-        ax.text(bar.get_width() + 1.5, bar.get_y() + bar.get_height() / 2,
-                f'{val}d', va='center', ha='left', fontsize=9,
-                color=TEXT, fontweight='bold')
-    ax.set_yticks(y)
-    ax.set_yticklabels(labels, fontsize=9.5, color=TEXT)
-    ax.set_xlim(0, max(values) * 1.25)
-else:
-    ax.text(0.5, 0.5, 'No confirmed short leads in current dataset',
-            ha='center', va='center', transform=ax.transAxes, color=SUBTEXT)
-
-ax.set_xlabel('Days career page posted BEFORE first LinkedIn evidence', fontsize=10, color=SUBTEXT, labelpad=8)
-ax.set_title('Confirmed timing advantage — career pages were first\n'
-             'Only matches within 90-day window shown (archival-bias-free)',
-             fontsize=13, fontweight='bold', color=TEXT, pad=14)
-ax.spines[['top', 'right', 'left']].set_visible(False)
-ax.spines['bottom'].set_color(GRID)
-ax.xaxis.grid(True, color=GRID, zorder=0)
-ax.set_axisbelow(True)
-ax.tick_params(axis='x', colors=SUBTEXT, labelsize=9)
-
-fig.text(0.01, 0.01,
-         'Career datePosted from Greenhouse JSON-LD (exact) · LinkedIn firstSeen = earliest Wayback snapshot (upper bound)',
-         fontsize=7, color=SUBTEXT)
-
-plt.tight_layout(rect=[0, 0.04, 1, 1])
-plt.savefig('charts/03_confirmed_leads.png', dpi=180, bbox_inches='tight')
-plt.close()
-print('Saved charts/03_confirmed_leads.png')
-
-# ── Chart 4: Donut — what share of jobs reach LinkedIn ───────────────────────
+# ── Chart 3: Donut — what share of jobs reach LinkedIn ───────────────────────
 
 fig, axes = plt.subplots(1, len(summaries), figsize=(12, 5))
 fig.patch.set_facecolor(BG)
@@ -231,12 +188,11 @@ fig.text(0.5, -0.06, 'Source: Greenhouse ATS vs Wayback Machine LinkedIn archive
          ha='center', fontsize=8, color=SUBTEXT)
 
 plt.tight_layout()
-plt.savefig('charts/04_donut_coverage.png', dpi=180, bbox_inches='tight')
+plt.savefig('charts/03_donut_coverage.png', dpi=180, bbox_inches='tight')
 plt.close()
-print('Saved charts/04_donut_coverage.png')
+print('Saved charts/03_donut_coverage.png')
 
 print(f'\nDone. Summary:')
 print(f'  Total career jobs: {total_all}')
 print(f'  Found on LinkedIn: {indexed_all} ({100-pct_missed_all}%)')
 print(f'  Never on LinkedIn: {missed_all} ({pct_missed_all}%)')
-print(f'  Credible timing matches (≤90d): {len(credible_matches)}')
