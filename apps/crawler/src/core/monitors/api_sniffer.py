@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import json
 import re
 from math import ceil
 from typing import TYPE_CHECKING
@@ -118,6 +119,8 @@ def _apply_response_decrypt(data: object, decrypt_cfg: dict) -> object:
     except Exception:
         log.debug("api_sniffer.decrypt_failed", key_len=len(key))
         return data
+
+
 MAX_PAGES = 50
 _HTTP_MAX_PAGES = 200  # higher limit for plain httpx (no Playwright overhead)
 
