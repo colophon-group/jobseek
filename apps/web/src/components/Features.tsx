@@ -137,7 +137,7 @@ function FeatureSection1() {
                 <Trans id="home.features.s1.title" comment="Feature section 1 heading">Every filter a job seeker actually needs</Trans>
               </h2>
               <p className="mt-4 text-muted">
-                <Trans id="home.features.s1.description" comment="Feature section 1 description">Search across hundreds of companies scraped directly from their career pages. Filter by seniority, tech stack, salary range, location, and language — all at once.</Trans>
+                <Trans id="home.features.s1.description" comment="Feature section 1 description">Search across thousands of companies scraped directly from their career pages. Filter by seniority, tech stack, salary range, location, and language — all at once.</Trans>
               </p>
             </div>
             <dl className="mt-8 flex flex-col gap-6">

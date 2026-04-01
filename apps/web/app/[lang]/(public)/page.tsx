@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = i18n._({ id: "home.meta.title", message: "Find Roles Before They Hit the Big Boards" });
   const description = i18n._({
     id: "home.meta.description",
-    message: "Search jobs scraped directly from company career pages. Filter by seniority, tech stack, salary, and location, then track every application in one place.",
+    message: "Search millions of jobs scraped directly from thousands of company career pages. Filter by seniority, tech stack, salary, and location, then track every application.",
   });
 
   return {
@@ -45,7 +45,7 @@ export default async function HomePage({ params }: Props) {
         "@context": "https://schema.org",
         "@type": "WebPage",
         name: i18n._({ id: "home.meta.title", message: "Find Roles Before They Hit the Big Boards" }),
-        description: i18n._({ id: "home.meta.description", message: "Search jobs scraped directly from company career pages. Filter by seniority, tech stack, salary, and location, then track every application in one place." }),
+        description: i18n._({ id: "home.meta.description", message: "Search millions of jobs scraped directly from thousands of company career pages. Filter by seniority, tech stack, salary, and location, then track every application." }),
         url: `${siteConfig.url}/${locale}`,
         inLanguage: locale,
         isPartOf: { "@type": "WebSite", url: siteConfig.url },

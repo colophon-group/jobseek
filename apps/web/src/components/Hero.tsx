@@ -29,7 +29,7 @@ export function Hero() {
           </h1>
           <p className="text-muted">
             <Trans id="home.hero.description" comment="Hero description paragraph">
-              We scrape career pages directly so you see openings the moment they go live. Filter by seniority, tech stack, salary, and location across hundreds of companies, then track every application in one place.
+              We scrape career pages directly so you see openings the moment they go live. Search millions of job postings across thousands of companies — filter by seniority, tech stack, salary, and location, then track every application in one place.
             </Trans>
           </p>
           <div className="flex flex-col gap-4 pt-4 sm:flex-row">
