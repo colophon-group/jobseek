@@ -974,6 +974,16 @@ coefficient,coefficient-greenhouse,https://job-boards.greenhouse.io/coefficient,
 cofertility,cofertility-greenhouse,https://job-boards.greenhouse.io/cofertility,greenhouse,"{""token"": ""cofertility""}",skip,
 cofra-holding,cofra-holding-greenhouse,https://job-boards.greenhouse.io/cofraholding,greenhouse,"{""token"": ""cofraholding""}",skip,
 cognition,cognition-ashby,https://jobs.ashbyhq.com/cognition,ashby,"{""token"": ""cognition""}",skip,
+cognizant,cognizant-careers-apj,https://careers.cognizant.com/apj-en/jobs/,sitemap,"{""sitemap_url"": ""https://careers.cognizant.com/sitemap.xml"", ""url_filter"": ""/apj-en/jobs/\\d+""}",json-ld,"{""render"": true}"
+cognizant,cognizant-careers-ca,https://careers.cognizant.com/ca-en/jobs/,sitemap,"{""sitemap_url"": ""https://careers.cognizant.com/sitemap.xml"", ""url_filter"": ""/ca-en/jobs/\\d+""}",json-ld,"{""render"": true}"
+cognizant,cognizant-careers-emea,https://careers.cognizant.com/emea-en/jobs/,sitemap,"{""sitemap_url"": ""https://careers.cognizant.com/sitemap.xml"", ""url_filter"": ""/emea-en/jobs/\\d+""}",json-ld,"{""render"": true}"
+cognizant,cognizant-careers-emea-fr,https://careers.cognizant.com/emea-fr/postes-a-pourvoir/,sitemap,"{""sitemap_url"": ""https://careers.cognizant.com/sitemap.xml"", ""url_filter"": ""/emea-fr/postes-a-pourvoir/\\d+""}",json-ld,"{""render"": true}"
+cognizant,cognizant-careers-global,https://careers.cognizant.com/global-en/jobs/,sitemap,"{""sitemap_url"": ""https://careers.cognizant.com/sitemap.xml"", ""url_filter"": ""/global-en/jobs/\\d+""}",json-ld,"{""render"": true}"
+cognizant,cognizant-careers-india,https://careers.cognizant.com/india-en/jobs/,sitemap,"{""sitemap_url"": ""https://careers.cognizant.com/sitemap.xml"", ""url_filter"": ""/india-en/jobs/\\d+""}",json-ld,"{""render"": true}"
+cognizant,cognizant-careers-latam-es,https://careers.cognizant.com/latam-es/empleos/,sitemap,"{""sitemap_url"": ""https://careers.cognizant.com/sitemap.xml"", ""url_filter"": ""/latam-es/empleos/\\d+""}",json-ld,"{""render"": true}"
+cognizant,cognizant-careers-latam-pt,https://careers.cognizant.com/latam-pt/vagas/,sitemap,"{""sitemap_url"": ""https://careers.cognizant.com/sitemap.xml"", ""url_filter"": ""/latam-pt/vagas/\\d+""}",json-ld,"{""render"": true}"
+cognizant,cognizant-careers-uki,https://careers.cognizant.com/uki-en/jobs/,sitemap,"{""sitemap_url"": ""https://careers.cognizant.com/sitemap.xml"", ""url_filter"": ""/uki-en/jobs/\\d+""}",json-ld,"{""render"": true}"
+cognizant,cognizant-careers-us,https://careers.cognizant.com/us-en/jobs/,sitemap,"{""sitemap_url"": ""https://careers.cognizant.com/sitemap.xml"", ""url_filter"": ""/us-en/jobs/\\d+""}",json-ld,"{""render"": true}"
 cogstate,cogstate-greenhouse,https://job-boards.greenhouse.io/cogstateinc,greenhouse,"{""token"": ""cogstateinc""}",skip,
 cohere,cohere-careers,https://jobs.ashbyhq.com/cohere,ashby,,skip,
 cohere-health,cohere-health-greenhouse,https://job-boards.greenhouse.io/coherehealth,greenhouse,"{""token"": ""coherehealth""}",skip,
