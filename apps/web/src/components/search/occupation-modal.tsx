@@ -7,6 +7,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { getAllOccupationsGrouped } from "@/lib/actions/taxonomy";
 import type { OccupationGroup, OccupationItem } from "@/lib/actions/taxonomy";
 import { findBestGuess } from "./best-guess";
+import { ScrollFade } from "@/components/ui/scroll-fade";
 
 interface OccupationModalProps {
   open: boolean;
@@ -202,7 +203,7 @@ export function OccupationModal({
           </div>
 
           {/* Body */}
-          <div className="flex-1 overflow-y-auto px-5 py-4">
+          <ScrollFade wrapperClassName="flex-1 min-h-0" className="h-full px-5 py-4">
             {loading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 size={20} className="animate-spin text-muted" />
@@ -274,7 +275,7 @@ export function OccupationModal({
                 })}
               </div>
             )}
-          </div>
+          </ScrollFade>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

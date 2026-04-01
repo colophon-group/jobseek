@@ -6,6 +6,7 @@ import { X, Search } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { allLanguages } from "@/lib/job-languages";
 import { CountryFlag } from "@/components/country-flag";
+import { ScrollFade } from "@/components/ui/scroll-fade";
 
 interface JobLanguageModalProps {
   open: boolean;
@@ -85,7 +86,7 @@ export function JobLanguageModal({
           </div>
 
           {/* Body */}
-          <div className="flex-1 overflow-y-auto px-5 py-4">
+          <ScrollFade wrapperClassName="flex-1 min-h-0" className="h-full px-5 py-4">
             {filtered.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted">
                 <Trans
@@ -116,7 +117,7 @@ export function JobLanguageModal({
                 })}
               </div>
             )}
-          </div>
+          </ScrollFade>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
