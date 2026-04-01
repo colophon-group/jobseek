@@ -1,13 +1,16 @@
 {
 	"_type": "job-comparison",
-	"company": "Notion",
-	"normalizedTitle": "software engineer datastore",
-	"careerTitle": "Software Engineer, Datastore",
-	"careerPageFirstSeen": "2025-07-25",
-	"careerPageDatePosted": "2025-07-25",
-	"effectiveCareerDate": "2025-07-25",
-	"verdict": "career_only",
-	"location": "San Francisco, California",
-	"department": "Engineering",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260401221609/https://api.ashbyhq.com/posting-api/job-board/notion"
+	"company": "OpenAI",
+	"normalizedTitle": "workforce planning manager",
+	"careerTitle": "",
+	"boardTitle": "Workforce Planning Manager",
+	"careerPageFirstSeen": "",
+	"boardFirstSeen": "2025-11-30",
+	"boardDatePosted": "2025-10-16",
+	"effectiveCareerDate": "",
+	"effectiveBoardDate": "2025-10-16",
+	"verdict": "board_only",
+	"location": "San Francisco, CA",
+	"careerSnapshotUrl": "",
+	"boardSnapshotUrl": "https://web.archive.org/web/20251130024858/https://www.glassdoor.com/Jobs/OpenAI-Jobs-E2210885.htm"
 }

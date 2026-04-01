@@ -1,15 +1,13 @@
 {
 	"_type": "job-comparison",
 	"company": "Notion",
-	"normalizedTitle": "people operations contractor",
-	"careerTitle": "",
-	"boardTitle": "People Operations Contractor",
-	"careerPageFirstSeen": "",
-	"boardFirstSeen": "2026-02-18",
-	"boardDatePosted": "2026-02-18",
-	"effectiveCareerDate": "",
-	"effectiveBoardDate": "2026-02-18",
-	"verdict": "board_only",
-	"careerSnapshotUrl": "",
-	"boardSnapshotUrl": "https://web.archive.org/web/20260218083125/https://www.linkedin.com/company/notionhq/jobs"
+	"normalizedTitle": "marketing strategy operations manager emea",
+	"careerTitle": "Marketing Strategy & Operations Manager, EMEA",
+	"careerPageFirstSeen": "2026-03-26",
+	"careerPageDatePosted": "2026-03-26",
+	"effectiveCareerDate": "2026-03-26",
+	"verdict": "career_only",
+	"location": "Dublin, Ireland",
+	"department": "Revenue Operations & Strategy ",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401223818/https://api.ashbyhq.com/posting-api/job-board/notion"
 }

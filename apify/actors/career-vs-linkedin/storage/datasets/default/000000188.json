@@ -3,11 +3,17 @@
 	"company": "OpenAI",
 	"normalizedTitle": "researcher pretraining safety",
 	"careerTitle": "Researcher, Pretraining Safety",
+	"boardTitle": "Researcher, Pretraining Safety",
 	"careerPageFirstSeen": "2025-10-30",
 	"careerPageDatePosted": "2025-10-30",
+	"boardFirstSeen": "2025-12-19",
+	"boardDatePosted": "2025-12-18",
 	"effectiveCareerDate": "2025-10-30",
-	"verdict": "career_only",
+	"effectiveBoardDate": "2025-12-18",
+	"lagDays": 49,
+	"verdict": "career_first",
 	"location": "San Francisco",
 	"department": "Safety Systems",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260401221123/https://api.ashbyhq.com/posting-api/job-board/openai"
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401223752/https://api.ashbyhq.com/posting-api/job-board/openai",
+	"boardSnapshotUrl": "https://web.archive.org/web/20251219060136/https://www.glassdoor.com/Jobs/OpenAI-Jobs-E2210885.htm"
 }

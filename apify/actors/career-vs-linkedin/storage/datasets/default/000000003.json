@@ -3,17 +3,11 @@
 	"company": "OpenAI",
 	"normalizedTitle": "research engineer",
 	"careerTitle": "Research Engineer",
-	"boardTitle": "Research Engineer, Preparedness",
 	"careerPageFirstSeen": "2025-04-05",
 	"careerPageDatePosted": "2025-04-05",
-	"boardFirstSeen": "2025-04-15",
-	"boardDatePosted": "2025-04-15",
 	"effectiveCareerDate": "2025-04-05",
-	"effectiveBoardDate": "2025-04-15",
-	"lagDays": 10,
-	"verdict": "career_first",
+	"verdict": "career_only",
 	"location": "San Francisco",
 	"department": "Research",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260401221123/https://api.ashbyhq.com/posting-api/job-board/openai",
-	"boardSnapshotUrl": "https://web.archive.org/web/20250415173732/https://www.linkedin.com/company/openai/jobs"
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401223752/https://api.ashbyhq.com/posting-api/job-board/openai"
 }

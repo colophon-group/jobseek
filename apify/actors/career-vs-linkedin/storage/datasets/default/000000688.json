@@ -1,19 +1,13 @@
 {
 	"_type": "job-comparison",
 	"company": "Notion",
-	"normalizedTitle": "engineering manager ai search",
-	"careerTitle": "Engineering Manager, AI Search",
-	"boardTitle": "Engineering Manager, AI",
-	"careerPageFirstSeen": "2025-10-23",
-	"careerPageDatePosted": "2025-10-23",
-	"boardFirstSeen": "2024-01-11",
-	"boardDatePosted": "2024-01-10",
-	"effectiveCareerDate": "2025-10-23",
-	"effectiveBoardDate": "2024-01-10",
-	"lagDays": -652,
-	"verdict": "board_first",
-	"location": "San Francisco, California",
-	"department": "Engineering",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260401221609/https://api.ashbyhq.com/posting-api/job-board/notion",
-	"boardSnapshotUrl": "https://web.archive.org/web/20240111112456/https://www.linkedin.com/company/notionhq/jobs/"
+	"normalizedTitle": "sales manager asia",
+	"careerTitle": "Sales Manager, Asia",
+	"careerPageFirstSeen": "2026-01-11",
+	"careerPageDatePosted": "2026-01-11",
+	"effectiveCareerDate": "2026-01-11",
+	"verdict": "career_only",
+	"location": "Singapore",
+	"department": "Sales",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401223818/https://api.ashbyhq.com/posting-api/job-board/notion"
 }

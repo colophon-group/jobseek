@@ -1,19 +1,13 @@
 {
 	"_type": "job-comparison",
 	"company": "Notion",
-	"normalizedTitle": "solutions engineer enterprise uk",
-	"careerTitle": "Solutions Engineer, Enterprise, UK ",
-	"boardTitle": "Solutions Engineer, Enterprise, DACH",
-	"careerPageFirstSeen": "2026-01-21",
-	"careerPageDatePosted": "2026-01-21",
-	"boardFirstSeen": "2026-01-21",
-	"boardDatePosted": "2026-01-20",
-	"effectiveCareerDate": "2026-01-21",
-	"effectiveBoardDate": "2026-01-20",
-	"lagDays": -1,
-	"verdict": "board_first",
-	"location": "London, United Kingdom",
+	"normalizedTitle": "account executive commercial dach",
+	"careerTitle": "Account Executive, Commercial, DACH",
+	"careerPageFirstSeen": "2025-10-08",
+	"careerPageDatePosted": "2025-10-08",
+	"effectiveCareerDate": "2025-10-08",
+	"verdict": "career_only",
+	"location": "Dublin, Ireland",
 	"department": "Sales",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260401221609/https://api.ashbyhq.com/posting-api/job-board/notion",
-	"boardSnapshotUrl": "https://web.archive.org/web/20260121005519/https://www.linkedin.com/company/notionhq/jobs/"
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401223818/https://api.ashbyhq.com/posting-api/job-board/notion"
 }

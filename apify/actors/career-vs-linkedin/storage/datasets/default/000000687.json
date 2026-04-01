@@ -1,13 +1,13 @@
 {
 	"_type": "job-comparison",
 	"company": "Notion",
-	"normalizedTitle": "account executive commercial dach",
-	"careerTitle": "Account Executive, Commercial, DACH",
-	"careerPageFirstSeen": "2025-10-08",
-	"careerPageDatePosted": "2025-10-08",
-	"effectiveCareerDate": "2025-10-08",
+	"normalizedTitle": "software engineer datastore",
+	"careerTitle": "Software Engineer, Datastore",
+	"careerPageFirstSeen": "2025-07-25",
+	"careerPageDatePosted": "2025-07-25",
+	"effectiveCareerDate": "2025-07-25",
 	"verdict": "career_only",
-	"location": "Dublin, Ireland",
-	"department": "Sales",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260401221609/https://api.ashbyhq.com/posting-api/job-board/notion"
+	"location": "San Francisco, California",
+	"department": "Engineering",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401223818/https://api.ashbyhq.com/posting-api/job-board/notion"
 }

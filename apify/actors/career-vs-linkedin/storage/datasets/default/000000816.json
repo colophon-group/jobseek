@@ -1,15 +1,13 @@
 {
 	"_type": "job-comparison",
 	"company": "Notion",
-	"normalizedTitle": "account executive mid market france",
-	"careerTitle": "",
-	"boardTitle": "Account Executive, Mid-Market, France",
-	"careerPageFirstSeen": "",
-	"boardFirstSeen": "2025-10-02",
-	"boardDatePosted": "2025-10-01",
-	"effectiveCareerDate": "",
-	"effectiveBoardDate": "2025-10-01",
-	"verdict": "board_only",
-	"careerSnapshotUrl": "",
-	"boardSnapshotUrl": "https://web.archive.org/web/20251002080032/https://www.linkedin.com/company/notionhq/jobs"
+	"normalizedTitle": "scaled customer success manager dach",
+	"careerTitle": "Scaled Customer Success Manager, DACH",
+	"careerPageFirstSeen": "2026-03-24",
+	"careerPageDatePosted": "2026-03-24",
+	"effectiveCareerDate": "2026-03-24",
+	"verdict": "career_only",
+	"location": "Dublin, Ireland",
+	"department": "Customer Success",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401223818/https://api.ashbyhq.com/posting-api/job-board/notion"
 }

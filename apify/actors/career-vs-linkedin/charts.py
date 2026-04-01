@@ -1,11 +1,13 @@
 """
-Generate marketing charts for the Career Page vs LinkedIn coverage analysis.
+Generate marketing charts for the Career Page vs Job Aggregator coverage analysis.
 Run: python3 charts.py
 Outputs: charts/ directory with PNG files.
 
-Key finding: ~97% of jobs on company career pages never appear on LinkedIn at all.
-Timing comparison is NOT claimed — Wayback Machine resolution (weeks) cannot
-capture the real gap (hours-to-days). Coverage gap is the credible finding.
+Key findings:
+  1. ~83% of jobs on company career pages never appear on Glassdoor/LinkedIn at all.
+  2. Timing: 22 verified leads (1-90 days) where career page was ahead of aggregator,
+     using Glassdoor ageInDays (exact date) and LinkedIn <time datetime> (LinkedIn's own field).
+     Anthropic excluded from timing: generic job titles cause false matches.
 """
 
 import os, json, statistics
@@ -34,7 +36,8 @@ for fname in sorted(os.listdir(DATASET)):
 summaries.sort(key=lambda x: x['company'])
 
 # Only keep credible short leads (≤90 days) for timing charts
-credible_matches = [m for m in matches if m['lagDays'] <= 90]
+# Exclude Anthropic: only 2 Glassdoor snapshots from 2024 with generic titles → false matches
+credible_matches = [m for m in matches if m['lagDays'] <= 90 and m['company'] != 'Anthropic']
 
 os.makedirs('charts', exist_ok=True)
 
@@ -52,9 +55,9 @@ SUBTEXT        = '#6B7280'
 DARK_BG        = '#0F172A'
 
 COMPANY_COLORS = {
-    'OpenAI':   '#10A37F',
-    'Notion':   '#374151',
-    'Figma':    '#A259FF',
+    'OpenAI':    '#10A37F',
+    'Notion':    '#374151',
+    'Anthropic': '#C2410C',
 }
 
 # ── Chart 1: Coverage — career page jobs vs LinkedIn-indexed jobs ─────────────
@@ -88,9 +91,9 @@ for i, (m, t, pct) in enumerate(zip(missed, total_career, pct_missed)):
 
 ax.set_xticks(x)
 ax.set_xticklabels(companies, fontsize=13, color=TEXT, fontweight='bold')
-ax.set_ylabel('Job postings (2021–2024)', fontsize=10, color=SUBTEXT, labelpad=10)
-ax.set_title('LinkedIn indexes only a fraction of company career page jobs\n'
-             'The vast majority of openings never reach the platform',
+ax.set_ylabel('Job postings (2024–2026)', fontsize=10, color=SUBTEXT, labelpad=10)
+ax.set_title('Job aggregators index only a fraction of company career page jobs\n'
+             'The vast majority of openings never reach Glassdoor or LinkedIn',
              fontsize=14, fontweight='bold', color=TEXT, pad=16)
 ax.set_ylim(0, max(total_career) * 1.15)
 ax.spines[['top', 'right']].set_visible(False)
@@ -102,7 +105,7 @@ ax.tick_params(axis='y', colors=SUBTEXT, labelsize=9)
 ax.legend(loc='upper right', fontsize=10, framealpha=0.9)
 
 fig.text(0.01, 0.01,
-         'Source: Greenhouse ATS (career page) vs Wayback Machine LinkedIn archive · 2021–2024',
+         'Source: Ashby/Greenhouse ATS (career page) vs Wayback Machine Glassdoor/LinkedIn archive · 2024–2026',
          fontsize=7, color=SUBTEXT)
 
 plt.tight_layout(rect=[0, 0.03, 1, 1])
@@ -124,7 +127,7 @@ ax.axis('off')
 
 ax.text(0.5, 0.84, f'{pct_missed_all}%', transform=ax.transAxes,
         fontsize=72, fontweight='bold', ha='center', va='center', color='#34D399')
-ax.text(0.5, 0.63, 'of jobs on company career pages\nnever appeared on LinkedIn',
+ax.text(0.5, 0.63, 'of jobs on company career pages\nnever appeared on Glassdoor or LinkedIn',
         transform=ax.transAxes, fontsize=16, ha='center', va='center',
         color='white', linespacing=1.5)
 
@@ -140,7 +143,7 @@ for x_pos, label, value in stats:
             fontsize=10, ha='center', color='#94A3B8')
 
 ax.text(0.5, 0.02,
-        'OpenAI · Notion · Figma — Greenhouse ATS vs Wayback Machine LinkedIn archive · 2021–2024',
+        'OpenAI · Notion · Anthropic — Ashby/Greenhouse ATS vs Glassdoor/LinkedIn (Wayback Machine) · 2024–2026',
         transform=ax.transAxes, fontsize=8, ha='center', color='#475569')
 
 plt.tight_layout()
@@ -182,9 +185,9 @@ patch_missed = mpatches.Patch(color=MISS_COLOR, label='Not on LinkedIn')
 fig.legend(handles=[patch_found, patch_missed], loc='lower center',
            ncol=2, fontsize=10, framealpha=0.9, bbox_to_anchor=(0.5, -0.02))
 
-fig.suptitle('Career page coverage vs LinkedIn — per company',
+fig.suptitle('Career page coverage vs job aggregators — per company',
              fontsize=14, fontweight='bold', color=TEXT, y=1.01)
-fig.text(0.5, -0.06, 'Source: Greenhouse ATS vs Wayback Machine LinkedIn archive · 2021–2024',
+fig.text(0.5, -0.06, 'Source: Ashby/Greenhouse ATS vs Glassdoor/LinkedIn (Wayback Machine) · 2024–2026',
          ha='center', fontsize=8, color=SUBTEXT)
 
 plt.tight_layout()
@@ -222,8 +225,8 @@ else:
             ha='center', va='center', transform=ax.transAxes, color=SUBTEXT)
 
 ax.set_xlabel('Days career page was ahead of LinkedIn', fontsize=10, color=SUBTEXT, labelpad=8)
-ax.set_title('Career page timing advantage — verified with LinkedIn\'s own posting date\n'
-             'LinkedIn\'s <time datetime> attribute used (not Wayback archive date)',
+ax.set_title('Career page timing advantage — verified with aggregator\'s own posting date\n'
+             'Glassdoor ageInDays + LinkedIn <time datetime> used (not Wayback archive date)',
              fontsize=12, fontweight='bold', color=TEXT, pad=14)
 ax.spines[['top', 'right', 'left']].set_visible(False)
 ax.spines['bottom'].set_color(GRID)
@@ -232,7 +235,7 @@ ax.set_axisbelow(True)
 ax.tick_params(axis='x', colors=SUBTEXT, labelsize=9)
 
 fig.text(0.01, 0.01,
-         'Career datePosted: Greenhouse ATS JSON-LD (exact) · LinkedIn datePosted: <time datetime> from archived HTML (LinkedIn\'s own field)',
+         'Career datePosted: Ashby publishedAt / Greenhouse JSON-LD · Board datePosted: Glassdoor ageInDays or LinkedIn <time datetime> (aggregator\'s own fields)',
          fontsize=7, color=SUBTEXT)
 
 plt.tight_layout(rect=[0, 0.04, 1, 1])

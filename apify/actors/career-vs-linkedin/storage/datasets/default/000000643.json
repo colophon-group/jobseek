@@ -1,15 +1,16 @@
 {
 	"_type": "job-comparison",
 	"company": "OpenAI",
-	"normalizedTitle": "corporate security professional",
+	"normalizedTitle": "recruiter robotics",
 	"careerTitle": "",
-	"boardTitle": "Corporate Security Professional",
+	"boardTitle": "Recruiter, Robotics",
 	"careerPageFirstSeen": "",
-	"boardFirstSeen": "2025-07-24",
-	"boardDatePosted": "2025-07-24",
+	"boardFirstSeen": "2025-11-30",
+	"boardDatePosted": "2025-11-18",
 	"effectiveCareerDate": "",
-	"effectiveBoardDate": "2025-07-24",
+	"effectiveBoardDate": "2025-11-18",
 	"verdict": "board_only",
+	"location": "San Francisco, CA",
 	"careerSnapshotUrl": "",
-	"boardSnapshotUrl": "https://web.archive.org/web/20250724232321/https://www.linkedin.com/company/openai/jobs"
+	"boardSnapshotUrl": "https://web.archive.org/web/20251130024858/https://www.glassdoor.com/Jobs/OpenAI-Jobs-E2210885.htm"
 }

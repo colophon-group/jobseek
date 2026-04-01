@@ -3,11 +3,17 @@
 	"company": "OpenAI",
 	"normalizedTitle": "full stack software engineer social products",
 	"careerTitle": "Full-Stack Software Engineer, Social Products",
+	"boardTitle": "Full-Stack Software Engineer, Social Products",
 	"careerPageFirstSeen": "2026-02-09",
 	"careerPageDatePosted": "2026-02-09",
+	"boardFirstSeen": "2025-11-30",
+	"boardDatePosted": "2025-10-16",
 	"effectiveCareerDate": "2026-02-09",
-	"verdict": "career_only",
+	"effectiveBoardDate": "2025-10-16",
+	"lagDays": -116,
+	"verdict": "board_first",
 	"location": "San Francisco",
 	"department": "Applied AI",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260401221123/https://api.ashbyhq.com/posting-api/job-board/openai"
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401223752/https://api.ashbyhq.com/posting-api/job-board/openai",
+	"boardSnapshotUrl": "https://web.archive.org/web/20251130024858/https://www.glassdoor.com/Jobs/OpenAI-Jobs-E2210885.htm"
 }

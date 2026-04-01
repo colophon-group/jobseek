@@ -3,11 +3,17 @@
 	"company": "OpenAI",
 	"normalizedTitle": "account director startups expansion",
 	"careerTitle": "Account Director, Startups Expansion",
+	"boardTitle": "Account Director, Startups",
 	"careerPageFirstSeen": "2026-01-27",
 	"careerPageDatePosted": "2026-01-27",
+	"boardFirstSeen": "2025-12-22",
+	"boardDatePosted": "2025-11-05",
 	"effectiveCareerDate": "2026-01-27",
-	"verdict": "career_only",
+	"effectiveBoardDate": "2025-11-05",
+	"lagDays": -83,
+	"verdict": "board_first",
 	"location": "San Francisco",
 	"department": "Go To Market",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260401221123/https://api.ashbyhq.com/posting-api/job-board/openai"
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401223752/https://api.ashbyhq.com/posting-api/job-board/openai",
+	"boardSnapshotUrl": "https://web.archive.org/web/20251222115517/https://www.glassdoor.com/Jobs/Openai-Jobs-E2210885.htm"
 }

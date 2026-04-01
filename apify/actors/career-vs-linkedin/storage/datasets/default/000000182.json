@@ -3,11 +3,17 @@
 	"company": "OpenAI",
 	"normalizedTitle": "data scientist safety systems",
 	"careerTitle": "Data Scientist, Safety Systems",
+	"boardTitle": "Data Scientist, Safety Systems",
 	"careerPageFirstSeen": "2026-03-16",
 	"careerPageDatePosted": "2026-03-16",
+	"boardFirstSeen": "2025-11-30",
+	"boardDatePosted": "2025-10-21",
 	"effectiveCareerDate": "2026-03-16",
-	"verdict": "career_only",
+	"effectiveBoardDate": "2025-10-21",
+	"lagDays": -146,
+	"verdict": "board_first",
 	"location": "San Francisco",
 	"department": "Data Science",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260401221123/https://api.ashbyhq.com/posting-api/job-board/openai"
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401223752/https://api.ashbyhq.com/posting-api/job-board/openai",
+	"boardSnapshotUrl": "https://web.archive.org/web/20251130024858/https://www.glassdoor.com/Jobs/OpenAI-Jobs-E2210885.htm"
 }

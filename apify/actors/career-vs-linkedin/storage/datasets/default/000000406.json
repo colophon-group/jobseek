@@ -3,17 +3,11 @@
 	"company": "OpenAI",
 	"normalizedTitle": "program manager product policy",
 	"careerTitle": "Program Manager, Product Policy",
-	"boardTitle": "Product Policy Manager - Product Advising",
 	"careerPageFirstSeen": "2026-02-16",
 	"careerPageDatePosted": "2026-02-16",
-	"boardFirstSeen": "2025-04-15",
-	"boardDatePosted": "2025-04-15",
 	"effectiveCareerDate": "2026-02-16",
-	"effectiveBoardDate": "2025-04-15",
-	"lagDays": -307,
-	"verdict": "board_first",
+	"verdict": "career_only",
 	"location": "San Francisco",
 	"department": "Product Policy",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260401221123/https://api.ashbyhq.com/posting-api/job-board/openai",
-	"boardSnapshotUrl": "https://web.archive.org/web/20250415173732/https://www.linkedin.com/company/openai/jobs"
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401223752/https://api.ashbyhq.com/posting-api/job-board/openai"
 }

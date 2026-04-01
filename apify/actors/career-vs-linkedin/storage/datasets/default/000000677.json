@@ -1,13 +1,16 @@
 {
 	"_type": "job-comparison",
-	"company": "Notion",
-	"normalizedTitle": "account executive commercial benelux",
-	"careerTitle": "Account Executive, Commercial, Benelux",
-	"careerPageFirstSeen": "2026-01-15",
-	"careerPageDatePosted": "2026-01-15",
-	"effectiveCareerDate": "2026-01-15",
-	"verdict": "career_only",
-	"location": "Dublin, Ireland",
-	"department": "Sales",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260401221609/https://api.ashbyhq.com/posting-api/job-board/notion"
+	"company": "OpenAI",
+	"normalizedTitle": "optical network engineer",
+	"careerTitle": "",
+	"boardTitle": "Optical Network Engineer",
+	"careerPageFirstSeen": "",
+	"boardFirstSeen": "2025-12-22",
+	"boardDatePosted": "2025-11-18",
+	"effectiveCareerDate": "",
+	"effectiveBoardDate": "2025-11-18",
+	"verdict": "board_only",
+	"location": "San Francisco, CA",
+	"careerSnapshotUrl": "",
+	"boardSnapshotUrl": "https://web.archive.org/web/20251222115517/https://www.glassdoor.com/Jobs/Openai-Jobs-E2210885.htm"
 }

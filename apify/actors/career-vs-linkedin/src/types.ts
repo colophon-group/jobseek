@@ -3,6 +3,8 @@ export interface CompanyPair {
   careerPageUrl: string;
   /** Indeed company slug, e.g. "Stripe" → indeed.com/cmp/Stripe/jobs */
   indeedSlug?: string;
+  /** Glassdoor jobs page URL, e.g. https://www.glassdoor.com/Jobs/OpenAI-Jobs-E2210885.htm */
+  glassdoorUrl?: string;
   /** Legacy LinkedIn slug kept for backward compatibility */
   linkedinSlug?: string;
   linkedinCompanyId?: string;
@@ -16,6 +18,7 @@ export interface Input {
   /** @deprecated Use indeedSlug instead */
   linkedinSlug?: string;
   linkedinCompanyId?: string;
+  glassdoorUrl?: string;
   // ── Batch mode ─────────────────────────────────────────────────────────────
   batchMode?: boolean;
   companies?: CompanyPair[];
@@ -42,7 +45,7 @@ export interface JobSighting {
   location?: string;
   department?: string;
   id?: string;               // ATS job ID if available
-  platform: 'career_page' | 'linkedin' | 'indeed';
+  platform: 'career_page' | 'linkedin' | 'indeed' | 'glassdoor';
   extractionMethod: string;
 }
 

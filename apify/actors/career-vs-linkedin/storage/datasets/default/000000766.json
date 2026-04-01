@@ -1,19 +1,13 @@
 {
 	"_type": "job-comparison",
 	"company": "Notion",
-	"normalizedTitle": "account executive enterprise nordics",
-	"careerTitle": "Account Executive, Enterprise, Nordics",
-	"boardTitle": "Enterprise Account Executive",
-	"careerPageFirstSeen": "2026-03-03",
-	"careerPageDatePosted": "2026-03-03",
-	"boardFirstSeen": "2025-03-17",
-	"boardDatePosted": "2025-03-16",
-	"effectiveCareerDate": "2026-03-03",
-	"effectiveBoardDate": "2025-03-16",
-	"lagDays": -352,
-	"verdict": "board_first",
-	"location": "Stockholm, Sweden",
+	"normalizedTitle": "forward deployed engineer gtm dach",
+	"careerTitle": "Forward Deployed Engineer, GTM, DACH",
+	"careerPageFirstSeen": "2026-02-05",
+	"careerPageDatePosted": "2026-02-05",
+	"effectiveCareerDate": "2026-02-05",
+	"verdict": "career_only",
+	"location": "Munich, Germany",
 	"department": "Sales",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260401221609/https://api.ashbyhq.com/posting-api/job-board/notion",
-	"boardSnapshotUrl": "https://web.archive.org/web/20250317163754/https://www.linkedin.com/company/notionhq/jobs"
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401223818/https://api.ashbyhq.com/posting-api/job-board/notion"
 }

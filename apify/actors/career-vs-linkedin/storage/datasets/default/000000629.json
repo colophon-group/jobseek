@@ -1,15 +1,16 @@
 {
 	"_type": "job-comparison",
 	"company": "OpenAI",
-	"normalizedTitle": "information systems architect",
+	"normalizedTitle": "security engineer cloud security",
 	"careerTitle": "",
-	"boardTitle": "Information Systems Architect",
+	"boardTitle": "Security Engineer, Cloud Security",
 	"careerPageFirstSeen": "",
-	"boardFirstSeen": "2025-02-08",
-	"boardDatePosted": "2025-02-07",
+	"boardFirstSeen": "2025-07-24",
+	"boardDatePosted": "2025-04-08",
 	"effectiveCareerDate": "",
-	"effectiveBoardDate": "2025-02-07",
+	"effectiveBoardDate": "2025-04-08",
 	"verdict": "board_only",
+	"location": "Remote",
 	"careerSnapshotUrl": "",
-	"boardSnapshotUrl": "https://web.archive.org/web/20250208011146/https://www.linkedin.com/company/openai/jobs/"
+	"boardSnapshotUrl": "https://web.archive.org/web/20250724232322/https://www.glassdoor.com/Jobs/OpenAI-Jobs-E2210885.htm"
 }

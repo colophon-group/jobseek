@@ -3,11 +3,17 @@
 	"company": "OpenAI",
 	"normalizedTitle": "client platform engineer",
 	"careerTitle": "Client Platform Engineer",
+	"boardTitle": "Client Platform Engineer",
 	"careerPageFirstSeen": "2025-09-03",
 	"careerPageDatePosted": "2025-09-03",
+	"boardFirstSeen": "2025-12-19",
+	"boardDatePosted": "2025-11-18",
 	"effectiveCareerDate": "2025-09-03",
-	"verdict": "career_only",
+	"effectiveBoardDate": "2025-11-18",
+	"lagDays": 76,
+	"verdict": "career_first",
 	"location": "San Francisco",
 	"department": "IT",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260401221123/https://api.ashbyhq.com/posting-api/job-board/openai"
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401223752/https://api.ashbyhq.com/posting-api/job-board/openai",
+	"boardSnapshotUrl": "https://web.archive.org/web/20251219060136/https://www.glassdoor.com/Jobs/OpenAI-Jobs-E2210885.htm"
 }

@@ -3,17 +3,11 @@
 	"company": "OpenAI",
 	"normalizedTitle": "software engineer model inference",
 	"careerTitle": "Software Engineer, Model Inference",
-	"boardTitle": "Software Engineer, Model Inference",
 	"careerPageFirstSeen": "2025-02-06",
 	"careerPageDatePosted": "2025-02-06",
-	"boardFirstSeen": "2025-02-08",
-	"boardDatePosted": "2025-02-06",
 	"effectiveCareerDate": "2025-02-06",
-	"effectiveBoardDate": "2025-02-06",
-	"lagDays": 0,
-	"verdict": "same_day",
+	"verdict": "career_only",
 	"location": "San Francisco",
 	"department": "Scaling",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260401221123/https://api.ashbyhq.com/posting-api/job-board/openai",
-	"boardSnapshotUrl": "https://web.archive.org/web/20250208011146/https://www.linkedin.com/company/openai/jobs/"
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401223752/https://api.ashbyhq.com/posting-api/job-board/openai"
 }

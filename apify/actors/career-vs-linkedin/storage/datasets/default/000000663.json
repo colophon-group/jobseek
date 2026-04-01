@@ -1,13 +1,16 @@
 {
 	"_type": "job-comparison",
-	"company": "Notion",
-	"normalizedTitle": "manager scaled customer success",
-	"careerTitle": "Manager, Scaled Customer Success",
-	"careerPageFirstSeen": "2026-03-13",
-	"careerPageDatePosted": "2026-03-13",
-	"effectiveCareerDate": "2026-03-13",
-	"verdict": "career_only",
-	"location": "San Francisco, California",
-	"department": "Customer Success",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260401221609/https://api.ashbyhq.com/posting-api/job-board/notion"
+	"company": "OpenAI",
+	"normalizedTitle": "recruiting coordinator",
+	"careerTitle": "",
+	"boardTitle": "Recruiting Coordinator",
+	"careerPageFirstSeen": "",
+	"boardFirstSeen": "2025-12-19",
+	"boardDatePosted": "2025-12-11",
+	"effectiveCareerDate": "",
+	"effectiveBoardDate": "2025-12-11",
+	"verdict": "board_only",
+	"location": "San Francisco, CA",
+	"careerSnapshotUrl": "",
+	"boardSnapshotUrl": "https://web.archive.org/web/20251219060136/https://www.glassdoor.com/Jobs/OpenAI-Jobs-E2210885.htm"
 }

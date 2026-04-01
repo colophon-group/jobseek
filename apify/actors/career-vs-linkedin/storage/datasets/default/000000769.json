@@ -1,13 +1,13 @@
 {
 	"_type": "job-comparison",
 	"company": "Notion",
-	"normalizedTitle": "analyst customer trust",
-	"careerTitle": "Senior Analyst, Customer Trust",
-	"careerPageFirstSeen": "2026-03-03",
-	"careerPageDatePosted": "2026-03-03",
-	"effectiveCareerDate": "2026-03-03",
+	"normalizedTitle": "software engineer permissions",
+	"careerTitle": "Software Engineer, Permissions",
+	"careerPageFirstSeen": "2026-02-06",
+	"careerPageDatePosted": "2026-02-06",
+	"effectiveCareerDate": "2026-02-06",
 	"verdict": "career_only",
-	"location": "Dublin, Ireland",
-	"department": "Security",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260401221609/https://api.ashbyhq.com/posting-api/job-board/notion"
+	"location": "San Francisco, California",
+	"department": "Engineering",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401223818/https://api.ashbyhq.com/posting-api/job-board/notion"
 }

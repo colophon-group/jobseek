@@ -3,17 +3,11 @@
 	"company": "OpenAI",
 	"normalizedTitle": "research engineer privacy",
 	"careerTitle": "Research Engineer, Privacy",
-	"boardTitle": "Research Engineer, Privacy",
 	"careerPageFirstSeen": "2025-12-17",
 	"careerPageDatePosted": "2025-12-17",
-	"boardFirstSeen": "2025-07-24",
-	"boardDatePosted": "2025-07-23",
 	"effectiveCareerDate": "2025-12-17",
-	"effectiveBoardDate": "2025-07-23",
-	"lagDays": -147,
-	"verdict": "board_first",
+	"verdict": "career_only",
 	"location": "San Francisco",
 	"department": "Security",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260401221123/https://api.ashbyhq.com/posting-api/job-board/openai",
-	"boardSnapshotUrl": "https://web.archive.org/web/20250724232321/https://www.linkedin.com/company/openai/jobs"
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401223752/https://api.ashbyhq.com/posting-api/job-board/openai"
 }

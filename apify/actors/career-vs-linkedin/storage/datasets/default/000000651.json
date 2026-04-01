@@ -1,13 +1,16 @@
 {
 	"_type": "job-comparison",
-	"company": "Notion",
-	"normalizedTitle": "account executive commercial",
-	"careerTitle": "Account Executive, Commercial",
-	"careerPageFirstSeen": "2024-06-25",
-	"careerPageDatePosted": "2024-06-25",
-	"effectiveCareerDate": "2024-06-25",
-	"verdict": "career_only",
-	"location": "New York, New York",
-	"department": "Sales",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260401221609/https://api.ashbyhq.com/posting-api/job-board/notion"
+	"company": "OpenAI",
+	"normalizedTitle": "technical program manager support delivery",
+	"careerTitle": "",
+	"boardTitle": "Technical Program Manager, Support Delivery",
+	"careerPageFirstSeen": "",
+	"boardFirstSeen": "2025-11-30",
+	"boardDatePosted": "2025-11-20",
+	"effectiveCareerDate": "",
+	"effectiveBoardDate": "2025-11-20",
+	"verdict": "board_only",
+	"location": "San Francisco, CA",
+	"careerSnapshotUrl": "",
+	"boardSnapshotUrl": "https://web.archive.org/web/20251130024858/https://www.glassdoor.com/Jobs/OpenAI-Jobs-E2210885.htm"
 }

@@ -3,11 +3,17 @@
 	"company": "OpenAI",
 	"normalizedTitle": "security engineer infrastructure security",
 	"careerTitle": "Security Engineer, Infrastructure Security",
+	"boardTitle": "Security Engineer, Infrastructure Security",
 	"careerPageFirstSeen": "2025-10-06",
 	"careerPageDatePosted": "2025-10-06",
+	"boardFirstSeen": "2025-12-19",
+	"boardDatePosted": "2025-10-16",
 	"effectiveCareerDate": "2025-10-06",
-	"verdict": "career_only",
+	"effectiveBoardDate": "2025-10-16",
+	"lagDays": 10,
+	"verdict": "career_first",
 	"location": "Remote - US",
 	"department": "Security",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260401221123/https://api.ashbyhq.com/posting-api/job-board/openai"
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401223752/https://api.ashbyhq.com/posting-api/job-board/openai",
+	"boardSnapshotUrl": "https://web.archive.org/web/20251219060136/https://www.glassdoor.com/Jobs/OpenAI-Jobs-E2210885.htm"
 }

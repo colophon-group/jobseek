@@ -1,23 +1,13 @@
 {
-	"_type": "batch-summary",
-	"companiesAnalyzed": 2,
-	"avgPctCareerFirst": 18,
-	"avgLagDays": 172,
-	"overallConclusion": "Across 2 companies, 18% of matched jobs appeared on the career page before Indeed, with an average career-page lead of 172 days. Career pages are consistently the primary source of truth for job postings.",
-	"companyResults": [
-		{
-			"company": "OpenAI",
-			"pctCareerFirst": 12,
-			"avgLagDays": 225,
-			"matchedJobs": 43,
-			"conclusion": "For OpenAI, the career page partially precedes Linkedin: 12% of matched jobs (5/43) appeared on the career page first, with an average lead of 225 days (median: 182 days). An additional 564 jobs (93% of career-page listings) were never indexed by Linkedin at all. This confirms that the career page is the primary source of truth for job postings."
-		},
-		{
-			"company": "Notion",
-			"pctCareerFirst": 23,
-			"avgLagDays": 119,
-			"matchedJobs": 44,
-			"conclusion": "For Notion, the career page partially precedes Linkedin: 23% of matched jobs (10/44) appeared on the career page first, with an average lead of 119 days (median: 43 days). An additional 105 jobs (70% of career-page listings) were never indexed by Linkedin at all. This confirms that the career page is the primary source of truth for job postings."
-		}
-	]
+	"_type": "job-comparison",
+	"company": "Notion",
+	"normalizedTitle": "motion designer brand",
+	"careerTitle": "Motion Designer, Brand",
+	"careerPageFirstSeen": "2026-03-30",
+	"careerPageDatePosted": "2026-03-30",
+	"effectiveCareerDate": "2026-03-30",
+	"verdict": "career_only",
+	"location": "San Francisco, California",
+	"department": "Marketing",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401223818/https://api.ashbyhq.com/posting-api/job-board/notion"
 }

@@ -1,15 +1,13 @@
 {
 	"_type": "job-comparison",
 	"company": "Notion",
-	"normalizedTitle": "solutions engineer france",
-	"careerTitle": "",
-	"boardTitle": "Solutions Engineer, France",
-	"careerPageFirstSeen": "",
-	"boardFirstSeen": "2025-03-17",
-	"boardDatePosted": "2025-03-16",
-	"effectiveCareerDate": "",
-	"effectiveBoardDate": "2025-03-16",
-	"verdict": "board_only",
-	"careerSnapshotUrl": "",
-	"boardSnapshotUrl": "https://web.archive.org/web/20250317163754/https://www.linkedin.com/company/notionhq/jobs"
+	"normalizedTitle": "user researcher growth",
+	"careerTitle": "User Researcher, Growth",
+	"careerPageFirstSeen": "2026-03-20",
+	"careerPageDatePosted": "2026-03-20",
+	"effectiveCareerDate": "2026-03-20",
+	"verdict": "career_only",
+	"location": "San Francisco, California",
+	"department": "User Research and Product Operations",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401223818/https://api.ashbyhq.com/posting-api/job-board/notion"
 }

@@ -1,13 +1,16 @@
 {
 	"_type": "job-comparison",
-	"company": "Notion",
-	"normalizedTitle": "mid market customer success manager",
-	"careerTitle": "Mid-Market Customer Success Manager",
-	"careerPageFirstSeen": "2026-02-18",
-	"careerPageDatePosted": "2026-02-18",
-	"effectiveCareerDate": "2026-02-18",
-	"verdict": "career_only",
-	"location": "San Francisco, California",
-	"department": "Customer Success",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260401221609/https://api.ashbyhq.com/posting-api/job-board/notion"
+	"company": "OpenAI",
+	"normalizedTitle": "head employee tech experience",
+	"careerTitle": "",
+	"boardTitle": "Head of Employee Tech & Experience",
+	"careerPageFirstSeen": "",
+	"boardFirstSeen": "2025-12-17",
+	"boardDatePosted": "2025-11-09",
+	"effectiveCareerDate": "",
+	"effectiveBoardDate": "2025-11-09",
+	"verdict": "board_only",
+	"location": "San Francisco, CA",
+	"careerSnapshotUrl": "",
+	"boardSnapshotUrl": "https://web.archive.org/web/20251217010453/https://www.glassdoor.com/Jobs/OpenAI-Jobs-E2210885.htm"
 }

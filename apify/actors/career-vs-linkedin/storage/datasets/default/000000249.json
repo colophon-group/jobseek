@@ -3,17 +3,11 @@
 	"company": "OpenAI",
 	"normalizedTitle": "forward deployed engineer singapore",
 	"careerTitle": "Forward Deployed Engineer - Singapore",
-	"boardTitle": "Forward Deployed Engineer - Singapore",
 	"careerPageFirstSeen": "2025-12-09",
 	"careerPageDatePosted": "2025-12-09",
-	"boardFirstSeen": "2025-03-20",
-	"boardDatePosted": "2025-03-19",
 	"effectiveCareerDate": "2025-12-09",
-	"effectiveBoardDate": "2025-03-19",
-	"lagDays": -265,
-	"verdict": "board_first",
+	"verdict": "career_only",
 	"location": "Singapore",
 	"department": "Model Deployment for Business",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260401221123/https://api.ashbyhq.com/posting-api/job-board/openai",
-	"boardSnapshotUrl": "https://web.archive.org/web/20250320135910/https://www.linkedin.com/company/openai/jobs"
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401223752/https://api.ashbyhq.com/posting-api/job-board/openai"
 }

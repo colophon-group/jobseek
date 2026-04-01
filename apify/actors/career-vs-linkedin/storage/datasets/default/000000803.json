@@ -1,15 +1,13 @@
 {
 	"_type": "job-comparison",
 	"company": "Notion",
-	"normalizedTitle": "manager account management americas",
-	"careerTitle": "",
-	"boardTitle": "Manager, Account Management - Americas",
-	"careerPageFirstSeen": "",
-	"boardFirstSeen": "2024-02-28",
-	"boardDatePosted": "2024-02-27",
-	"effectiveCareerDate": "",
-	"effectiveBoardDate": "2024-02-27",
-	"verdict": "board_only",
-	"careerSnapshotUrl": "",
-	"boardSnapshotUrl": "https://web.archive.org/web/20240228185346/https://www.linkedin.com/company/notionhq/jobs/"
+	"normalizedTitle": "software engineer enterprise",
+	"careerTitle": "Software Engineer, Enterprise",
+	"careerPageFirstSeen": "2026-03-09",
+	"careerPageDatePosted": "2026-03-09",
+	"effectiveCareerDate": "2026-03-09",
+	"verdict": "career_only",
+	"location": "New York, New York",
+	"department": "Engineering",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401223818/https://api.ashbyhq.com/posting-api/job-board/notion"
 }

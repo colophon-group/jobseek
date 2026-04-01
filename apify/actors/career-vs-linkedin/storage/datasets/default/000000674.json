@@ -1,13 +1,16 @@
 {
 	"_type": "job-comparison",
-	"company": "Notion",
-	"normalizedTitle": "solutions consultant",
-	"careerTitle": "Solutions Consultant",
-	"careerPageFirstSeen": "2026-02-09",
-	"careerPageDatePosted": "2026-02-09",
-	"effectiveCareerDate": "2026-02-09",
-	"verdict": "career_only",
-	"location": "San Francisco, California",
-	"department": "Sales",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260401221609/https://api.ashbyhq.com/posting-api/job-board/notion"
+	"company": "OpenAI",
+	"normalizedTitle": "data scientist user operations",
+	"careerTitle": "",
+	"boardTitle": "Data Scientist, User Operations",
+	"careerPageFirstSeen": "",
+	"boardFirstSeen": "2025-12-19",
+	"boardDatePosted": "2025-11-04",
+	"effectiveCareerDate": "",
+	"effectiveBoardDate": "2025-11-04",
+	"verdict": "board_only",
+	"location": "New York, NY",
+	"careerSnapshotUrl": "",
+	"boardSnapshotUrl": "https://web.archive.org/web/20251219060136/https://www.glassdoor.com/Jobs/OpenAI-Jobs-E2210885.htm"
 }

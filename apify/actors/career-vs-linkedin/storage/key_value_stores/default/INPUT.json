@@ -5,7 +5,22 @@
   "startDate": "2024-01-01",
   "endDate": "2026-04-01",
   "companies": [
-    { "name": "OpenAI", "careerPageUrl": "https://jobs.ashbyhq.com/openai", "linkedinSlug": "openai" },
-    { "name": "Notion", "careerPageUrl": "https://jobs.ashbyhq.com/notion", "linkedinSlug": "notionhq" }
+    {
+      "name": "OpenAI",
+      "careerPageUrl": "https://jobs.ashbyhq.com/openai",
+      "glassdoorUrl": "https://www.glassdoor.com/Jobs/OpenAI-Jobs-E2210885.htm",
+      "linkedinSlug": "openai"
+    },
+    {
+      "name": "Notion",
+      "careerPageUrl": "https://jobs.ashbyhq.com/notion",
+      "linkedinSlug": "notionhq"
+    },
+    {
+      "name": "Anthropic",
+      "careerPageUrl": "https://boards.greenhouse.io/anthropic",
+      "glassdoorUrl": "https://www.glassdoor.com/Jobs/Anthropic-Jobs-E8109027.htm",
+      "linkedinSlug": "anthropic"
+    }
   ]
 }

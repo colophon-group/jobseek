@@ -1,15 +1,13 @@
 {
 	"_type": "job-comparison",
 	"company": "Notion",
-	"normalizedTitle": "enterprise premium support agent",
-	"careerTitle": "",
-	"boardTitle": "Enterprise Premium Support Agent",
-	"careerPageFirstSeen": "",
-	"boardFirstSeen": "2025-03-17",
-	"boardDatePosted": "2025-03-15",
-	"effectiveCareerDate": "",
-	"effectiveBoardDate": "2025-03-15",
-	"verdict": "board_only",
-	"careerSnapshotUrl": "",
-	"boardSnapshotUrl": "https://web.archive.org/web/20250317163754/https://www.linkedin.com/company/notionhq/jobs"
+	"normalizedTitle": "product support specialist contract",
+	"careerTitle": "Product Support Specialist (Contract)",
+	"careerPageFirstSeen": "2026-03-23",
+	"careerPageDatePosted": "2026-03-23",
+	"effectiveCareerDate": "2026-03-23",
+	"verdict": "career_only",
+	"location": "Seoul, South Korea",
+	"department": "Customer Experience",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401223818/https://api.ashbyhq.com/posting-api/job-board/notion"
 }
