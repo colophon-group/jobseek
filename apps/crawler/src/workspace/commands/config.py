@@ -489,9 +489,8 @@ def _show_career_results(slug: str, html: str, final_url: str, homepage_url: str
     async def _run():
         import httpx
 
-        from src.workspace.logo_discover import _LOGO_HEADERS
-
         from src.shared.http import _make_ssl_context
+        from src.workspace.logo_discover import _LOGO_HEADERS
 
         client = httpx.AsyncClient(
             headers=_LOGO_HEADERS,
@@ -682,7 +681,6 @@ async def _run_enrichment(website: str, name: str):
     import httpx
 
     from src.core.enrich.company import enrich_company
-
     from src.shared.http import _make_ssl_context
 
     async with httpx.AsyncClient(verify=_make_ssl_context()) as http:
@@ -909,9 +907,8 @@ def discover_bg(slug: str):
         async def _run_career():
             import httpx as _httpx
 
-            from src.workspace.logo_discover import _LOGO_HEADERS as _headers
-
             from src.shared.http import _make_ssl_context as _ssl_ctx
+            from src.workspace.logo_discover import _LOGO_HEADERS as _headers
 
             client = _httpx.AsyncClient(
                 headers=_headers,
@@ -1118,13 +1115,12 @@ def _inspect_board_job_links(url: str, provided_pattern: str | None):
     async def _run():
         import httpx
 
+        from src.shared.http import _make_ssl_context
         from src.workspace.job_links import (
             analyze_job_links,
             fetch_page_for_job_link_analysis,
         )
         from src.workspace.logo_discover import _LOGO_HEADERS
-
-        from src.shared.http import _make_ssl_context
 
         client = httpx.AsyncClient(
             headers=_LOGO_HEADERS,

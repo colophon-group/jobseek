@@ -9,6 +9,7 @@ import { useLocalePath } from "@/lib/useLocalePath";
 import { useAuth } from "@/lib/useAuth";
 import { createWatchlist } from "@/lib/actions/watchlists";
 import { CompanySelector } from "./company-selector";
+import { ScrollFade } from "@/components/ui/scroll-fade";
 
 type SelectedCompany = { id: string; name: string; slug: string; icon: string | null };
 
@@ -87,7 +88,8 @@ export function CreateWatchlistDialog({
           </div>
 
           {/* Body */}
-          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-5 py-4">
+          <ScrollFade wrapperClassName="flex-1 min-h-0" className="">
+            <form onSubmit={handleSubmit} className="px-5 py-4">
             <div className="space-y-4">
               {/* Title input */}
               <div>
@@ -176,6 +178,7 @@ export function CreateWatchlistDialog({
               </button>
             </div>
           </form>
+          </ScrollFade>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

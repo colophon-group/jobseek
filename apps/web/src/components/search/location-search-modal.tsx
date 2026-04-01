@@ -9,6 +9,7 @@ import type { GlobalLocationGroup } from "@/lib/actions/locations";
 import { countryIso } from "@/lib/country-flags";
 import { CountryFlag } from "@/components/country-flag";
 import { findBestGuess } from "./best-guess";
+import { ScrollFade } from "@/components/ui/scroll-fade";
 
 /** Show region sub-headers when a country has more cities than this. */
 const REGION_THRESHOLD = 8;
@@ -160,7 +161,7 @@ export function LocationSearchModal({
           </div>
 
           {/* Body */}
-          <div className="flex-1 overflow-y-auto px-5 py-4">
+          <ScrollFade wrapperClassName="flex-1 min-h-0" className="px-5 py-4">
             {loading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 size={20} className="animate-spin text-muted" />
@@ -292,7 +293,7 @@ export function LocationSearchModal({
                 })}
               </div>
             )}
-          </div>
+          </ScrollFade>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

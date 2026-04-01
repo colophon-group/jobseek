@@ -15,6 +15,7 @@ import { TrackingDot } from "@/components/TrackingDot";
 import { PendingJobIcon } from "@/components/PendingJobWarning";
 import { SaveButton } from "@/components/search/save-button";
 import { StarButton } from "@/components/search/star-button";
+import { ScrollFade } from "@/components/ui/scroll-fade";
 import { buildFilteredPath } from "@/lib/search/query-params";
 import type { SerializableLocation, SerializableOccupation, SerializableSeniority, SerializableTechnology } from "@/lib/search/query-params";
 import type { SearchResultCompany, SearchResultPosting } from "@/lib/search";
@@ -135,8 +136,8 @@ export function CompanyCard({ result, keywords, locationIds, locations, occupati
       <hr className="my-3 border-divider" />
 
       {/* Scrollable posting list */}
-      <div ref={scrollRef} className="max-h-[196px] overflow-y-auto scrollbar-hide">
-        {allPostings.map((posting) => (
+      <ScrollFade className="max-h-[184px]" scrollRef={scrollRef} deps={[allPostings.length]}>
+          {allPostings.map((posting) => (
           <div
             key={posting.id}
             role="button"
@@ -169,7 +170,7 @@ export function CompanyCard({ result, keywords, locationIds, locations, occupati
         ))}
         {hasMore && <InfiniteScrollSentinel sentinelRef={sentinelRef} isLoading={isLoading} size="sm" />}
         {!hasMore && isTruncated && <TruncationPrompt type="postings" />}
-      </div>
+      </ScrollFade>
     </div>
   );
 }

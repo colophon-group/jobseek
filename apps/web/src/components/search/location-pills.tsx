@@ -5,6 +5,7 @@ import { X, MapPin } from "lucide-react";
 import { useLingui } from "@lingui/react/macro";
 import { suggestLocations } from "@/lib/actions/locations";
 import type { LocationSuggestion } from "@/lib/actions/locations";
+import { ScrollFade } from "@/components/ui/scroll-fade";
 
 export interface SelectedLocation {
   id: number;
@@ -242,8 +243,9 @@ export function LocationPills({
           <ul
             ref={listRef}
             role="listbox"
-            className="absolute left-0 top-full z-50 mt-1 max-h-60 w-64 overflow-auto rounded-lg border border-border-soft bg-surface shadow-lg"
+            className="absolute left-0 top-full z-50 mt-1 w-64 rounded-lg border border-border-soft bg-surface shadow-lg"
           >
+          <ScrollFade className="max-h-60" deps={[suggestions.length]}>
             {suggestions.map((s, i) => (
               <li
                 key={s.id}
@@ -271,6 +273,7 @@ export function LocationPills({
                 </div>
               </li>
             ))}
+          </ScrollFade>
           </ul>
         )}
       </div>

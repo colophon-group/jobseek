@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
+import { ScrollFade } from "@/components/ui/scroll-fade";
 
 function useEmploymentTypes() {
   const { t } = useLingui();
@@ -56,7 +57,7 @@ export function EmploymentTypeModal({
           </div>
 
           {/* Body */}
-          <div className="flex-1 overflow-y-auto px-5 py-4">
+          <ScrollFade wrapperClassName="flex-1 min-h-0" className="px-5 py-4">
             <div className="flex flex-col gap-2">
               {EMPLOYMENT_TYPES.map((opt) => {
                 const active = selectedSet.has(opt.value);
@@ -75,7 +76,7 @@ export function EmploymentTypeModal({
                 );
               })}
             </div>
-          </div>
+          </ScrollFade>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

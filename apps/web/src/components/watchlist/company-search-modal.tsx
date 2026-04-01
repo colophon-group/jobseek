@@ -15,6 +15,7 @@ import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
 import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
 import { RequestCompanyPrompt } from "@/components/search/request-company";
 import { useStarredCompanies } from "@/components/StarredCompaniesProvider";
+import { ScrollFade } from "@/components/ui/scroll-fade";
 
 type SelectedCompany = { id: string; name: string; slug: string; icon: string | null };
 
@@ -244,7 +245,7 @@ export function CompanySearchModal({
                         autoFocus
                       />
                     </div>
-                    <div className="max-h-48 overflow-y-auto py-1">
+                    <div className="max-h-48 overflow-y-auto scrollbar-hide py-1">
                       {selectedIndustry && (
                         <button
                           type="button"
@@ -282,7 +283,7 @@ export function CompanySearchModal({
           </div>
 
           {/* Company list */}
-          <div className="flex-1 overflow-y-auto">
+          <ScrollFade wrapperClassName="flex-1 min-h-0" className="">
             {loading && companies.length === 0 ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 size={20} className="animate-spin text-muted" />
@@ -351,7 +352,7 @@ export function CompanySearchModal({
                 )}
               </div>
             )}
-          </div>
+          </ScrollFade>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

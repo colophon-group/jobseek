@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X, Loader2 } from "lucide-react";
 import { Trans } from "@lingui/react/macro";
+import { ScrollFade } from "@/components/ui/scroll-fade";
 import { getAllSeniorities } from "@/lib/actions/taxonomy";
 import type { SeniorityOption } from "@/lib/actions/taxonomy";
 
@@ -65,7 +66,7 @@ export function SeniorityModal({
           </div>
 
           {/* Body */}
-          <div className="flex-1 overflow-y-auto px-5 py-4">
+          <ScrollFade wrapperClassName="flex-1 min-h-0" className="px-5 py-4">
             {loading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 size={20} className="animate-spin text-muted" />
@@ -99,7 +100,7 @@ export function SeniorityModal({
                 })}
               </div>
             )}
-          </div>
+          </ScrollFade>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

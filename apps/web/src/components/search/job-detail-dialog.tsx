@@ -15,6 +15,7 @@ import { useSavedJobs } from "@/components/SavedJobsProvider";
 import { PendingJobBanner } from "@/components/PendingJobWarning";
 import { sanitizeJobHtml } from "@/lib/sanitize";
 import { withUtmSource } from "@/lib/utm";
+import { ScrollFade } from "@/components/ui/scroll-fade";
 
 import { InterviewList } from "@/components/my-jobs/interview-list";
 import { updateJobStatus, getMyJobDetail, addInterview, updateInterview, deleteInterview } from "@/lib/actions/my-jobs";
@@ -81,7 +82,7 @@ export function JobDetailPanel({ postingId, onClose }: JobDetailPanelProps) {
       </div>
 
       {/* Body */}
-      <div className="flex-1 overflow-y-auto px-4 py-4">
+      <ScrollFade wrapperClassName="flex-1 min-h-0" className="px-4 py-4">
         {loading && <DetailSkeleton />}
         {error && (
           <p className="py-12 text-center text-sm text-muted">
@@ -89,7 +90,7 @@ export function JobDetailPanel({ postingId, onClose }: JobDetailPanelProps) {
           </p>
         )}
         {detail && !loading && <DetailContent detail={detail} />}
-      </div>
+      </ScrollFade>
     </div>
   );
 }

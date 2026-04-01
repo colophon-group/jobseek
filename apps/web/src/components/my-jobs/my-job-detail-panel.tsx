@@ -27,6 +27,7 @@ import { sanitizeJobHtml } from "@/lib/sanitize";
 import { InterviewList } from "./interview-list";
 import { timeAgoShort } from "@/lib/time";
 import { SaveButton } from "@/components/search/save-button";
+import { ScrollFade } from "@/components/ui/scroll-fade";
 
 function useStatusOptionLabels(): Record<ApplicationStatus, string> {
   const { t } = useLingui();
@@ -173,7 +174,7 @@ export function MyJobDetailPanel({
       </div>
 
       {/* Body */}
-      <div className="flex-1 overflow-y-auto px-4 py-4">
+      <ScrollFade wrapperClassName="flex-1 min-h-0" className="px-4 py-4">
         {loading && <DetailSkeleton />}
         {error && (
           <p className="py-12 text-center text-sm text-muted">
@@ -254,7 +255,7 @@ export function MyJobDetailPanel({
             )}
           </div>
         )}
-      </div>
+      </ScrollFade>
     </div>
   );
 }

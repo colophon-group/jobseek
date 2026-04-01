@@ -6,6 +6,7 @@ import { useLingui, Trans } from "@lingui/react/macro";
 import { suggestLocations } from "@/lib/actions/locations";
 import type { LocationSuggestion } from "@/lib/actions/locations";
 import { LocationModal } from "./location-modal";
+import { ScrollFade } from "@/components/ui/scroll-fade";
 
 export type FilterItem =
   | { kind: "location"; id: number; slug: string; name: string; type: string }
@@ -389,8 +390,9 @@ export function FilterBar({
           <ul
             ref={listRef}
             role="listbox"
-            className="absolute left-0 top-full z-50 mt-1 max-h-60 w-72 overflow-auto rounded-lg border border-border-soft bg-surface shadow-lg"
+            className="absolute left-0 top-full z-50 mt-1 w-72 rounded-lg border border-border-soft bg-surface shadow-lg"
           >
+          <ScrollFade className="max-h-60" deps={[suggestions.length]}>
             {suggestions.map((s, i) => (
               <li
                 key={s.id}
@@ -418,6 +420,7 @@ export function FilterBar({
                 </div>
               </li>
             ))}
+          </ScrollFade>
           </ul>
         )}
       </div>

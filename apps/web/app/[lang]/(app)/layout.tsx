@@ -9,6 +9,7 @@ import { CookieBanner } from "@/components/CookieBanner";
 import { SearchStateProvider } from "@/components/SearchStateProvider";
 import { UpgradeBanner } from "@/components/UpgradeBanner";
 import { WatchlistTipBanner } from "@/components/watchlist/watchlist-tip-banner";
+import { BackToTop } from "@/components/ui/back-to-top";
 
 type Props = {
   params: Promise<{ lang: string }>;
@@ -35,6 +36,7 @@ export default async function AppLayout({ params, children }: Props) {
               {children}
             </main>
           </div>
+          <BackToTop />
         </div>
       </SearchStateProvider>
     </AppBootstrapProvider>
