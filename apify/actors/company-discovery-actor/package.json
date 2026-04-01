@@ -8,16 +8,15 @@
     "dev": "ts-node src/main.ts"
   },
   "dependencies": {
-    "@crawlee/playwright": "^3.0.0",
+    "@crawlee/puppeteer": "^3.0.0",
     "@google/generative-ai": "^0.21.0",
     "apify": "^3.0.0",
+    "apify-client": "^2.9.0",
     "crawlee": "^3.0.0",
     "cheerio": "^1.0.0",
     "got-scraping": "^4.0.0",
     "node-tls-client": "^2.1.0",
-    "playwright": "^1.40.0",
-    "playwright-extra": "^4.3.6",
-    "puppeteer-extra-plugin-stealth": "^2.11.2"
+    "puppeteer": "^22.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

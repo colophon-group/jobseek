@@ -2,9 +2,11 @@
   "actorSpecification": 1,
   "name": "company-discovery-actor",
   "title": "Company Discovery — AI-Powered Self-Evolving",
-  "description": "Discovers companies with open positions. Uses Gemini to reason about coverage gaps and suggest+validate new job portals each run. Registry persists across runs in KV store.",
-  "version": "1.0",
-  "environmentVariables": { "GOOGLE_AI_API_KEY": "@GOOGLE_AI_API_KEY" },
+  "description": "Discovers companies with open positions. Uses Gemini to reason about coverage gaps and suggest+validate new job portals each run. Scrapes JS-heavy sites (Glassdoor, Indeed) with Puppeteer. Calls apify/ai-web-scraper to extract companies from dynamic directories (Built In, etc.). Registry persists across runs in KV store.",
+  "version": "1.1",
+  "environmentVariables": {
+    "GOOGLE_AI_API_KEY": "@GOOGLE_AI_API_KEY"
+  },
   "input": {
     "title": "Input",
     "type": "object",
@@ -20,9 +22,9 @@
       "sources": {
         "type": "array",
         "title": "Static sources",
-        "description": "Which hardcoded sources to query.",
+        "description": "Which hardcoded sources to query. Include 'ai-web-scraper' to call apify/ai-web-scraper for dynamic directories.",
         "editor": "json",
-        "default": ["greenhouse", "themuse", "megaemployers", "arbeitnow", "remotive"]
+        "default": ["greenhouse", "themuse", "megaemployers", "arbeitnow", "remotive", "ai-web-scraper"]
       },
       "enableAiDiscovery": {
         "type": "boolean",

@@ -103,6 +103,7 @@ import { discoverFromFactorial, discoverFromKenjo, discoverFromWorkstream, disco
 import { suggestNewPortals } from './sources/ai-discovery.js';
 import { probePortal, validatePortal } from './sources/generic-portal.js';
 import { loadRegistry, saveRegistry, getActivePortals, upsertPortal } from './registry.js';
+import { discoverFromAiWebScraper } from './sources/ai-web-scraper-source.js';
 
 interface Input {
   sources?: string[];
@@ -115,7 +116,7 @@ await Actor.init();
 
 const input = (await Actor.getInput<Input>()) ?? {};
 const {
-  sources = ['greenhouse', 'themuse', 'megaemployers', 'arbeitnow', 'remotive', 'remoteok', 'hiring-cafe', 'himalayas', 'ycombinator', 'bamboohr', 'recruitee', 'workable', 'ashby', 'lever', 'greenhouse-cdx', 'jazzhr', 'breezyhr', 'homerun', 'hibob', 'eightfold', 'cornerstone', 'pageup', 'avature', 'hireology', 'zohorecruit', 'talentlyft', 'occupop', 'easycruit', 'varbi', 'paycor', 'clearcompany', 'dayforce', 'darwinbox', 'keka', 'teamtailor', 'personio', 'icims', 'taleo', 'jobvite', 'successfactors', 'smartrecruiters', 'pinpoint', 'comeet', 'fountain', 'rippling', 'ashby-boards', 'factorial', 'kenjo', 'workstream', 'dover', 'jobteaser', 'wttj', 'freshteam', 'linkedin', 'indeed', 'glassdoor', 'stepstone', 'xing', 'workday-cdx', 'wellfound', 'weworkremotely', 'softgarden', 'join'],
+  sources = ['greenhouse', 'themuse', 'megaemployers', 'arbeitnow', 'remotive', 'remoteok', 'hiring-cafe', 'himalayas', 'ycombinator', 'bamboohr', 'recruitee', 'workable', 'ashby', 'lever', 'greenhouse-cdx', 'jazzhr', 'breezyhr', 'homerun', 'hibob', 'eightfold', 'cornerstone', 'pageup', 'avature', 'hireology', 'zohorecruit', 'talentlyft', 'occupop', 'easycruit', 'varbi', 'paycor', 'clearcompany', 'dayforce', 'darwinbox', 'keka', 'teamtailor', 'personio', 'icims', 'taleo', 'jobvite', 'successfactors', 'smartrecruiters', 'pinpoint', 'comeet', 'fountain', 'rippling', 'ashby-boards', 'factorial', 'kenjo', 'workstream', 'dover', 'jobteaser', 'wttj', 'freshteam', 'linkedin', 'indeed', 'glassdoor', 'stepstone', 'xing', 'workday-cdx', 'wellfound', 'weworkremotely', 'softgarden', 'join', 'ai-web-scraper'],
   maxCompaniesPerSource = 1000,
   enableAiDiscovery = true,
   maxAiSuggestionsPerRun = 4,
@@ -226,6 +227,7 @@ const staticSourceMap: Record<string, SourceFn> = {
   dayforce:        () => discoverFromDayforce(),
   easycruit:       () => discoverFromEasyCruit(),
   varbi:           () => discoverFromVarbi(),
+  'ai-web-scraper': () => discoverFromAiWebScraper(maxCompaniesPerSource),
 };
 
 /** Fetch a single source; returns raw results without mutating shared state. */

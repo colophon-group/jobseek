@@ -1,5 +1,6 @@
 import * as cheerio from 'cheerio';
 import { fetchPage, sleep } from '../http.js';
+import { fetchPageWithPuppeteer } from '../browser.js';
 import type { CompanyDiscovery } from '../types.js';
 
 const DEFAULT_QUERIES = [
@@ -29,8 +30,15 @@ export async function discoverFromIndeed(
       if (results.length >= maxCompanies) break;
 
       const url = `https://www.indeed.com/companies?q=${encodeURIComponent(query)}&l=&start=${start}`;
-      const html = await fetchPage({ url, proxyUrl });
-      if (!html) break;
+
+      // Try plain HTTP first; Indeed renders its company directory in JavaScript, so fall back to Puppeteer.
+      let html = await fetchPage({ url, proxyUrl });
+
+      if (!html || !hasCompanyContent(html)) {
+        console.log(`Indeed: q="${query}" start=${start} HTTP gave no content, retrying with Puppeteer…`);
+        html = await fetchPageWithPuppeteer(url, { waitMs: 2500 });
+        if (!html) break;
+      }
 
       const $ = cheerio.load(html);
       let found = 0;
@@ -100,4 +108,9 @@ export async function discoverFromIndeed(
 
   console.log(`Indeed: finished with ${results.length} companies`);
   return results;
+}
+
+/** Heuristic: does the fetched HTML look like a rendered company directory? */
+function hasCompanyContent(html: string): boolean {
+  return /\/cmp\//i.test(html) && html.length > 3000;
 }
