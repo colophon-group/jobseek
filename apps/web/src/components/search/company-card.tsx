@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useMemo, useCallback, useEffect } from "react";
+import { useState, useRef, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Building2 } from "lucide-react";
@@ -15,6 +15,7 @@ import { TrackingDot } from "@/components/TrackingDot";
 import { PendingJobIcon } from "@/components/PendingJobWarning";
 import { SaveButton } from "@/components/search/save-button";
 import { StarButton } from "@/components/search/star-button";
+import { ScrollFade } from "@/components/ui/scroll-fade";
 import { buildFilteredPath } from "@/lib/search/query-params";
 import type { SerializableLocation, SerializableOccupation, SerializableSeniority, SerializableTechnology } from "@/lib/search/query-params";
 import type { SearchResultCompany, SearchResultPosting } from "@/lib/search";
@@ -101,21 +102,6 @@ export function CompanyCard({ result, keywords, locationIds, locations, occupati
 
   const { sentinelRef, isLoading } = useInfiniteScroll({ hasMore, load: handleLoadMore, root: scrollRef, rootMargin: "50px" });
 
-  // Scroll fade indicators
-  const [canScrollUp, setCanScrollUp] = useState(false);
-  const [canScrollDown, setCanScrollDown] = useState(false);
-
-  const updateScrollFades = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    setCanScrollUp(el.scrollTop > 2);
-    setCanScrollDown(el.scrollHeight - el.scrollTop - el.clientHeight > 2);
-  }, []);
-
-  useEffect(() => {
-    updateScrollFades();
-  }, [allPostings.length, updateScrollFades]);
-
   return (
     <div className="rounded-md border border-divider bg-surface p-4">
       {/* Header */}
@@ -150,14 +136,7 @@ export function CompanyCard({ result, keywords, locationIds, locations, occupati
       <hr className="my-3 border-divider" />
 
       {/* Scrollable posting list */}
-      <div className="relative">
-        {canScrollUp && (
-          <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-4 bg-gradient-to-b from-surface via-surface/40 to-transparent" />
-        )}
-        {canScrollDown && (
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-4 bg-gradient-to-t from-surface via-surface/40 to-transparent" />
-        )}
-        <div ref={scrollRef} className="max-h-[184px] overflow-y-auto scrollbar-hide" onScroll={updateScrollFades}>
+      <ScrollFade className="max-h-[184px]" scrollRef={scrollRef} deps={[allPostings.length]}>
           {allPostings.map((posting) => (
           <div
             key={posting.id}
@@ -191,8 +170,7 @@ export function CompanyCard({ result, keywords, locationIds, locations, occupati
         ))}
         {hasMore && <InfiniteScrollSentinel sentinelRef={sentinelRef} isLoading={isLoading} size="sm" />}
         {!hasMore && isTruncated && <TruncationPrompt type="postings" />}
-        </div>
-      </div>
+      </ScrollFade>
     </div>
   );
 }

@@ -429,7 +429,7 @@ export function SearchBar({
         <div
           ref={listRef}
           role="listbox"
-          className="absolute left-0 top-full z-50 mt-1 max-h-80 w-full min-w-64 overflow-auto rounded-lg border border-border-soft bg-surface shadow-lg"
+          className="absolute left-0 top-full z-50 mt-1 max-h-80 w-full min-w-64 overflow-y-auto scrollbar-hide rounded-lg border border-border-soft bg-surface shadow-lg"
         >
           {occupationResults.length > 0 && (
             <>

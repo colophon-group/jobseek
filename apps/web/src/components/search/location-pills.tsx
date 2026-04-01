@@ -242,7 +242,7 @@ export function LocationPills({
           <ul
             ref={listRef}
             role="listbox"
-            className="absolute left-0 top-full z-50 mt-1 max-h-60 w-64 overflow-auto rounded-lg border border-border-soft bg-surface shadow-lg"
+            className="absolute left-0 top-full z-50 mt-1 max-h-60 w-64 overflow-y-auto scrollbar-hide rounded-lg border border-border-soft bg-surface shadow-lg"
           >
             {suggestions.map((s, i) => (
               <li

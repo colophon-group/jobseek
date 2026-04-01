@@ -244,7 +244,7 @@ export function CompanySearchModal({
                         autoFocus
                       />
                     </div>
-                    <div className="max-h-48 overflow-y-auto py-1">
+                    <div className="max-h-48 overflow-y-auto scrollbar-hide py-1">
                       {selectedIndustry && (
                         <button
                           type="button"
