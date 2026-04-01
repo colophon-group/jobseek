@@ -1,5 +1,6 @@
 import * as cheerio from 'cheerio';
 import { fetchPage, sleep } from '../http.js';
+import { fetchPageWithPuppeteer } from '../browser.js';
 import type { CompanyDiscovery } from '../types.js';
 
 export async function discoverFromGlassdoor(
@@ -17,20 +18,27 @@ export async function discoverFromGlassdoor(
     if (results.length >= maxCompanies) break;
 
     const url = `https://www.glassdoor.com/Explore/browse-companies.htm?overall_rating_low=0&page=${page}`;
-    const html = await fetchPage({
+
+    // Glassdoor renders content via JavaScript — try HTTP first (faster), fall back to Puppeteer.
+    let html = await fetchPage({
       url,
       proxyUrl,
       headers: { 'Accept-Language': 'en-US,en;q=0.9' },
     });
 
-    if (!html) {
-      // Try alternative URL pattern
-      const altUrl = `https://www.glassdoor.com/Reviews/company-reviews.htm?page=${page}`;
-      const altHtml = await fetchPage({ url: altUrl, proxyUrl });
-      if (!altHtml) break;
-      parseGlassdoorPage(cheerio.load(altHtml), results, seen, now);
-      await sleep(1500 + Math.random() * 2000);
-      continue;
+    // If HTTP returned no employer content, render with a real browser.
+    if (!html || !hasEmployerContent(html)) {
+      console.log(`Glassdoor: page=${page} HTTP gave no content, retrying with Puppeteer…`);
+      html = await fetchPageWithPuppeteer(url, {
+        waitMs: 2500,
+        extraHeaders: { 'Accept-Language': 'en-US,en;q=0.9' },
+      });
+      if (!html) {
+        // Try alternative URL pattern before giving up on this page
+        const altUrl = `https://www.glassdoor.com/Reviews/company-reviews.htm?page=${page}`;
+        html = await fetchPageWithPuppeteer(altUrl, { waitMs: 2500 });
+        if (!html) break;
+      }
     }
 
     const found = parseGlassdoorPage(cheerio.load(html), results, seen, now);
@@ -42,6 +50,11 @@ export async function discoverFromGlassdoor(
 
   console.log(`Glassdoor: finished with ${results.length} companies`);
   return results;
+}
+
+/** Quick check: does the HTML look like a rendered employer listing? */
+function hasEmployerContent(html: string): boolean {
+  return /Overview|employer|company/i.test(html) && html.length > 5000;
 }
 
 function parseGlassdoorPage(
