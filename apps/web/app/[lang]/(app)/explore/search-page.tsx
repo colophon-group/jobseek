@@ -10,6 +10,7 @@ import { SkeletonCards } from "@/components/search/skeleton-card";
 import { JobDetailPanel } from "@/components/search/job-detail-dialog";
 import { SearchToolbar } from "@/components/search/search-toolbar";
 import { searchJobs, listTopCompanies, getCurrencyRates, type CurrencyRate } from "@/lib/actions/search";
+import { parseSearchFilters } from "@/lib/actions/search-input";
 import { buildFilteredPath } from "@/lib/search/query-params";
 import type { SearchResultCompany, HistogramFilters } from "@/lib/search";
 import {
@@ -164,6 +165,67 @@ export function SearchPage({
   companiesRef.current = companies;
   totalCompaniesRef.current = totalCompanies;
   showPostingIdRef.current = showPostingId;
+
+  // Flag to distinguish our own URL changes (replaceState) from external
+  // navigation (router.push from header search bar, back/forward, etc.)
+  const internalUrlChangeRef = useRef(false);
+
+  // Track the last search key we've processed so we only react to genuine
+  // external URL changes — not mount, StrictMode double-runs, or our own
+  // replaceState calls.
+  const lastSearchKeyRef = useRef(searchParams.toString());
+
+  // Detect external URL changes (e.g. header search bar → router.push)
+  // and re-parse filters + search, without remounting the component.
+  useEffect(() => {
+    const currentKey = searchParams.toString();
+    if (internalUrlChangeRef.current) {
+      internalUrlChangeRef.current = false;
+      lastSearchKeyRef.current = currentKey;
+      return; // our own replaceState — already handled by runSearch
+    }
+    if (currentKey === lastSearchKeyRef.current) {
+      return; // same params — mount, StrictMode double-run, or no-op
+    }
+    lastSearchKeyRef.current = currentKey;
+
+    // External navigation: parse URL params and update state
+    const q = searchParams.get("q") ?? undefined;
+    const loc = searchParams.get("loc") ?? undefined;
+    const occ = searchParams.get("occ") ?? undefined;
+    const sen = searchParams.get("sen") ?? undefined;
+    const tech = searchParams.get("tech") ?? undefined;
+    const sal = searchParams.get("sal") ?? undefined;
+    const salcur = searchParams.get("salcur") ?? undefined;
+    const exp = searchParams.get("exp") ?? undefined;
+
+    const parseSalParts = sal ? sal.split("-") : [];
+    const newSalMin = parseSalParts[0] ? parseInt(parseSalParts[0], 10) : undefined;
+    const newSalMax = parseSalParts[1] ? parseInt(parseSalParts[1], 10) : undefined;
+    const parseExpParts = exp ? exp.split("-") : [];
+    const newExpMin = parseExpParts[0] ? parseInt(parseExpParts[0], 10) : undefined;
+    const newExpMax = parseExpParts[1] ? parseInt(parseExpParts[1], 10) : undefined;
+    if (salcur) { setSalaryCurrency(salcur); salaryCurrencyRef.current = salcur; }
+    if (newSalMin !== undefined || newSalMax !== undefined) {
+      setSalaryMin(newSalMin); salaryMinRef.current = newSalMin;
+      setSalaryMax(newSalMax); salaryMaxRef.current = newSalMax;
+    }
+    if (newExpMin !== undefined || newExpMax !== undefined) {
+      setExperienceMin(newExpMin); experienceMinRef.current = newExpMin;
+      setExperienceMax(newExpMax); experienceMaxRef.current = newExpMax;
+    }
+
+    setIsSearching(true);
+    parseSearchFilters({ q, loc, occ, sen, tech, locale, userLat, userLng }).then((parsed) => {
+      setKeywords(parsed.keywords); keywordsRef.current = parsed.keywords;
+      setLocations(parsed.locations); locationsRef.current = parsed.locations;
+      setOccupations(parsed.occupations); occupationsRef.current = parsed.occupations;
+      setSeniorities(parsed.seniorities); senioritiesRef.current = parsed.seniorities;
+      setTechnologies(parsed.technologies); technologiesRef.current = parsed.technologies;
+      setShowPostingId(null); showPostingIdRef.current = null;
+      runSearch();
+    });
+  }, [searchParams]);
 
   /** Convert a salary amount from the user's display currency to EUR. */
   function toEur(amount: number | undefined): number | undefined {
@@ -334,7 +396,7 @@ export function SearchPage({
     );
     window.history.replaceState(null, "", url);
   };
-  function updateUrl() { updateUrlRef.current(); }
+  function updateUrl() { internalUrlChangeRef.current = true; updateUrlRef.current(); }
 
   function handleOpenPosting(postingId: string) {
     setShowPostingId(postingId);
@@ -641,31 +703,33 @@ export function SearchPage({
         onSubmitSearch={handleSubmitSearch}
       />
 
-      {isSearching ? (
+      {companies.length === 0 && isSearching ? (
         <SkeletonCards count={3} />
       ) : companies.length === 0 && hasFilters ? (
         <ZeroResults query={[...keywords, ...locations.map((l) => l.name)].join(", ")} />
       ) : (
-        <SearchResults
-          companies={companies}
-          keywords={keywords}
-          locationIds={locations.map((l) => l.id)}
-          locations={locations}
-          occupations={occupations}
-          seniorities={seniorities}
-          technologies={technologies}
-          employmentTypes={employmentTypes}
-          salaryMinEur={toEur(salaryMin)}
-          salaryMaxEur={toEur(salaryMax)}
-          experienceMin={experienceMin}
-          experienceMax={experienceMax}
-          languages={languages}
-          hasMore={hasMore}
-          truncated={isTruncated}
-          load={handleLoadMore}
-          onShowPosting={handleOpenPosting}
-          selectedPostingId={showPostingId}
-        />
+        <div className={isSearching ? "opacity-60 pointer-events-none transition-opacity" : ""}>
+          <SearchResults
+            companies={companies}
+            keywords={keywords}
+            locationIds={locations.map((l) => l.id)}
+            locations={locations}
+            occupations={occupations}
+            seniorities={seniorities}
+            technologies={technologies}
+            employmentTypes={employmentTypes}
+            salaryMinEur={toEur(salaryMin)}
+            salaryMaxEur={toEur(salaryMax)}
+            experienceMin={experienceMin}
+            experienceMax={experienceMax}
+            languages={languages}
+            hasMore={hasMore}
+            truncated={isTruncated}
+            load={handleLoadMore}
+            onShowPosting={handleOpenPosting}
+            selectedPostingId={showPostingId}
+          />
+        </div>
       )}
     </div>
   );
