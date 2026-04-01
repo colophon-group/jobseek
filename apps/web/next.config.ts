@@ -11,6 +11,8 @@ const nextConfig: NextConfig = {
     minimumCacheTTL: 31536000,
     remotePatterns: [
       { hostname: "jobseek-assets.colophon-group.org" },
+      { hostname: "icons.duckduckgo.com" },
+      { hostname: "**" }, // fallback logos hosted directly on company domains
     ],
   },
   redirects: async () => [

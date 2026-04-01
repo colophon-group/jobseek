@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { BarChart3, Building2, CalendarDays, ChevronDown, ChevronUp, Clock, Code2, DollarSign, MapPin, X } from "lucide-react";
@@ -33,35 +33,40 @@ export function JobDetailPanel({ postingId, onClose }: JobDetailPanelProps) {
   const [detail, setDetail] = useState<PostingDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
+  const fetchIdRef = useRef(0);
 
   useEffect(() => {
-    if (!postingId) {
-      setDetail(null);
-      return;
-    }
+    setDetail(null);
+    if (!postingId) return;
 
+    const id = ++fetchIdRef.current;
     setLoading(true);
     setError(false);
     const locale = document.documentElement.lang || "en";
 
     getPostingDetail({ postingId, locale })
-      .then(async (d) => {
-        if (!d) { setError(true); return; }
-        // Fetch description client-side to avoid Cloudflare challenge
-        if (d.descriptionUrl && !d.descriptionHtml) {
-          try {
-            const resp = await fetch(d.descriptionUrl);
-            if (resp.ok) {
-              d.descriptionHtml = await resp.text();
-            }
-          } catch {
-            // Description is optional, continue without it
-          }
-        }
+      .then((d) => {
+        if (fetchIdRef.current !== id) return; // stale
+        if (!d) { setError(true); setLoading(false); return; }
+        // Show structured data immediately
         setDetail(d);
+        setLoading(false);
+        // Fetch description in background
+        if (d.descriptionUrl && !d.descriptionHtml) {
+          fetch(d.descriptionUrl)
+            .then((r) => r.ok ? r.text() : null)
+            .then((html) => {
+              if (fetchIdRef.current !== id || !html) return;
+              setDetail((prev) => prev ? { ...prev, descriptionHtml: html } : prev);
+            })
+            .catch(() => {});
+        }
       })
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
+      .catch(() => {
+        if (fetchIdRef.current !== id) return;
+        setError(true);
+        setLoading(false);
+      });
   }, [postingId]);
 
   if (!postingId) return null;
@@ -270,7 +275,7 @@ function DetailContent({ detail }: { detail: PostingDetail }) {
       )}
 
       {/* Description */}
-      {detail.descriptionHtml && (
+      {detail.descriptionHtml ? (
         <>
           {!detail.technologies.length && !savedJobId && <hr className="border-divider" />}
           <div
@@ -278,7 +283,15 @@ function DetailContent({ detail }: { detail: PostingDetail }) {
             dangerouslySetInnerHTML={{ __html: sanitizeJobHtml(detail.descriptionHtml) }}
           />
         </>
-      )}
+      ) : detail.descriptionUrl ? (
+        <div className="space-y-2 py-4">
+          <div className="h-3 w-full animate-pulse rounded bg-border-soft" />
+          <div className="h-3 w-5/6 animate-pulse rounded bg-border-soft" />
+          <div className="h-3 w-4/6 animate-pulse rounded bg-border-soft" />
+          <div className="h-3 w-full animate-pulse rounded bg-border-soft" />
+          <div className="h-3 w-3/4 animate-pulse rounded bg-border-soft" />
+        </div>
+      ) : null}
     </div>
     </Tooltip.Provider>
   );
