@@ -88,7 +88,7 @@ export function CreateWatchlistDialog({
           </div>
 
           {/* Body */}
-          <ScrollFade wrapperClassName="flex-1 min-h-0" className="h-full">
+          <ScrollFade wrapperClassName="flex-1 min-h-0" className="">
             <form onSubmit={handleSubmit} className="px-5 py-4">
             <div className="space-y-4">
               {/* Title input */}

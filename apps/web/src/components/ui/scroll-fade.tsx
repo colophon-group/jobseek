@@ -34,7 +34,7 @@ export function ScrollFade({ className = "", wrapperClassName = "", children, fa
   }, [...deps, update]);
 
   return (
-    <div className={`relative overflow-hidden rounded-[inherit] ${wrapperClassName}`}>
+    <div className={`relative flex flex-col overflow-hidden rounded-[inherit] ${wrapperClassName}`}>
       {canScrollUp && (
         <div className={`pointer-events-none absolute inset-x-0 top-0 z-10 ${fadeHeight} bg-gradient-to-b from-surface via-surface/40 to-transparent`} />
       )}
@@ -43,7 +43,7 @@ export function ScrollFade({ className = "", wrapperClassName = "", children, fa
       )}
       <div
         ref={scrollRef}
-        className={`overflow-y-auto scrollbar-hide ${className}`}
+        className={`min-h-0 flex-1 overflow-y-auto scrollbar-hide ${className}`}
         onScroll={update}
       >
         {children}

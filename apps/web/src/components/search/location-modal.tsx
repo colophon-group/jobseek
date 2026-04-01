@@ -176,7 +176,7 @@ export function LocationModal({
           </div>
 
           {/* Body */}
-          <ScrollFade wrapperClassName="flex-1 min-h-0" className="h-full px-5 py-4">
+          <ScrollFade wrapperClassName="flex-1 min-h-0" className="px-5 py-4">
             {loading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 size={20} className="animate-spin text-muted" />

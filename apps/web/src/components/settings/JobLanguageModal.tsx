@@ -86,7 +86,7 @@ export function JobLanguageModal({
           </div>
 
           {/* Body */}
-          <ScrollFade wrapperClassName="flex-1 min-h-0" className="h-full px-5 py-4">
+          <ScrollFade wrapperClassName="flex-1 min-h-0" className="px-5 py-4">
             {filtered.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted">
                 <Trans

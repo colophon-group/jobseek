@@ -283,7 +283,7 @@ export function CompanySearchModal({
           </div>
 
           {/* Company list */}
-          <ScrollFade wrapperClassName="flex-1 min-h-0" className="h-full">
+          <ScrollFade wrapperClassName="flex-1 min-h-0" className="">
             {loading && companies.length === 0 ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 size={20} className="animate-spin text-muted" />

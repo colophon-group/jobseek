@@ -174,7 +174,7 @@ export function MyJobDetailPanel({
       </div>
 
       {/* Body */}
-      <ScrollFade wrapperClassName="flex-1 min-h-0" className="h-full px-4 py-4">
+      <ScrollFade wrapperClassName="flex-1 min-h-0" className="px-4 py-4">
         {loading && <DetailSkeleton />}
         {error && (
           <p className="py-12 text-center text-sm text-muted">

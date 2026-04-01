@@ -57,7 +57,7 @@ export function EmploymentTypeModal({
           </div>
 
           {/* Body */}
-          <ScrollFade wrapperClassName="flex-1 min-h-0" className="h-full px-5 py-4">
+          <ScrollFade wrapperClassName="flex-1 min-h-0" className="px-5 py-4">
             <div className="flex flex-col gap-2">
               {EMPLOYMENT_TYPES.map((opt) => {
                 const active = selectedSet.has(opt.value);
