@@ -129,13 +129,13 @@ export function SearchBar({
   const selectedSeniorityIds = new Set((senioritiesProp ?? []).map((s) => s.id));
   const selectedTechnologyIds = new Set((technologiesProp ?? []).map((t) => t.id));
 
-  // Build flat list for keyboard navigation
+  // Build flat list for keyboard navigation (companies first, then locations, then rest)
   const allSuggestions: SuggestionItem[] = [
+    ...companyResults.map((s): SuggestionItem => ({ kind: "company", data: s })),
+    ...locationResults.map((s): SuggestionItem => ({ kind: "location", data: s })),
     ...occupationResults.map((s): SuggestionItem => ({ kind: "occupation", data: s })),
     ...seniorityResults.map((s): SuggestionItem => ({ kind: "seniority", data: s })),
     ...technologyResults.map((s): SuggestionItem => ({ kind: "technology", data: s })),
-    ...locationResults.map((s): SuggestionItem => ({ kind: "location", data: s })),
-    ...companyResults.map((s): SuggestionItem => ({ kind: "company", data: s })),
   ];
 
   const fetchSuggestions = useCallback(
@@ -150,28 +150,35 @@ export function SearchBar({
         setIsOpen(false);
         return;
       }
-      debounceRef.current = setTimeout(async () => {
-        const [locs, companies, occs, sens, techs] = await Promise.all([
-          suggestLocations({ query, locale: lang, userLat, userLng }),
-          suggestCompanies({ query }),
-          suggestOccupations({ query, locale: lang }),
-          suggestSeniorities({ query, locale: lang }),
-          suggestTechnologies({ query, locale: lang }),
-        ]);
-        // Filter out already-selected items
-        const filteredLocs = selectedLocationIds
-          ? locs.filter((r) => !selectedLocationIds.has(r.id))
-          : locs.filter((r) => !selectedLocationSlugs.has(r.slug));
-        const filteredOccs = occs.filter((r) => !selectedOccupationIds.has(r.id));
-        const filteredSens = sens.filter((r) => !selectedSeniorityIds.has(r.id));
-        const filteredTechs = techs.filter((r) => !selectedTechnologyIds.has(r.id));
-        setLocationResults(filteredLocs);
-        setCompanyResults(companies);
-        setOccupationResults(filteredOccs);
-        setSeniorityResults(filteredSens);
-        setTechnologyResults(filteredTechs);
-        setIsOpen(filteredLocs.length > 0 || companies.length > 0 || filteredOccs.length > 0 || filteredSens.length > 0 || filteredTechs.length > 0);
+      debounceRef.current = setTimeout(() => {
+        // Fire all requests independently so results appear as they arrive
         setActiveIndex(-1);
+        suggestCompanies({ query }).then((companies) => {
+          setCompanyResults(companies);
+          if (companies.length > 0) setIsOpen(true);
+        });
+        suggestLocations({ query, locale: lang, userLat, userLng }).then((locs) => {
+          const filtered = selectedLocationIds
+            ? locs.filter((r) => !selectedLocationIds.has(r.id))
+            : locs.filter((r) => !selectedLocationSlugs.has(r.slug));
+          setLocationResults(filtered);
+          if (filtered.length > 0) setIsOpen(true);
+        });
+        suggestOccupations({ query, locale: lang }).then((occs) => {
+          const filtered = occs.filter((r) => !selectedOccupationIds.has(r.id));
+          setOccupationResults(filtered);
+          if (filtered.length > 0) setIsOpen(true);
+        });
+        suggestSeniorities({ query, locale: lang }).then((sens) => {
+          const filtered = sens.filter((r) => !selectedSeniorityIds.has(r.id));
+          setSeniorityResults(filtered);
+          if (filtered.length > 0) setIsOpen(true);
+        });
+        suggestTechnologies({ query, locale: lang }).then((techs) => {
+          const filtered = techs.filter((r) => !selectedTechnologyIds.has(r.id));
+          setTechnologyResults(filtered);
+          if (filtered.length > 0) setIsOpen(true);
+        });
       }, 200);
     },
     [lang, userLat, userLng, selectedLocationIds, selectedLocationSlugs, selectedOccupationIds, selectedSeniorityIds, selectedTechnologyIds],
@@ -387,17 +394,17 @@ export function SearchBar({
     message: "Search...",
   });
 
-  // Compute flat indices for each section
+  // Compute flat indices for each section (companies → locations → occupations → seniorities → technologies)
   let flatIdx = 0;
+  const companyStartIndex = flatIdx;
+  flatIdx += companyResults.length;
+  const locStartIndex = flatIdx;
+  flatIdx += locationResults.length;
   const occStartIndex = flatIdx;
   flatIdx += occupationResults.length;
   const senStartIndex = flatIdx;
   flatIdx += seniorityResults.length;
   const techStartIndex = flatIdx;
-  flatIdx += technologyResults.length;
-  const locStartIndex = flatIdx;
-  flatIdx += locationResults.length;
-  const companyStartIndex = flatIdx;
 
   return (
     <div className={`relative ${className ?? ""}`} ref={containerRef}>
@@ -433,154 +440,9 @@ export function SearchBar({
           className="absolute left-0 top-full z-50 mt-1 w-full min-w-64 rounded-lg border border-border-soft bg-surface shadow-lg"
         >
         <ScrollFade className="max-h-80" deps={[allSuggestions.length]}>
-          {occupationResults.length > 0 && (
-            <>
-              <div className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted">
-                {t({
-                  id: "search.bar.roles",
-                  comment: "Section header for occupation suggestions in search bar",
-                  message: "Roles",
-                })}
-              </div>
-              {occupationResults.map((s, i) => {
-                const fi = occStartIndex + i;
-                return (
-                  <div
-                    key={`occ-${s.id}`}
-                    id={`search-option-${fi}`}
-                    role="option"
-                    aria-selected={fi === activeIndex}
-                    data-suggestion
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      selectItem({ kind: "occupation", data: s });
-                    }}
-                    onMouseEnter={() => setActiveIndex(fi)}
-                    className={`flex cursor-pointer items-center gap-2 px-3 py-2 text-sm ${
-                      fi === activeIndex ? "bg-primary/10" : "hover:bg-primary/5"
-                    }`}
-                  >
-                    <Briefcase size={14} className="shrink-0 text-muted" />
-                    <span className="min-w-0 flex-1 font-medium">{s.name}</span>
-                  </div>
-                );
-              })}
-            </>
-          )}
-
-          {seniorityResults.length > 0 && (
-            <>
-              <div className={`px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted ${occupationResults.length > 0 ? "border-t border-border-soft" : ""}`}>
-                {t({
-                  id: "search.bar.level",
-                  comment: "Section header for seniority suggestions in search bar",
-                  message: "Level",
-                })}
-              </div>
-              {seniorityResults.map((s, i) => {
-                const fi = senStartIndex + i;
-                return (
-                  <div
-                    key={`sen-${s.id}`}
-                    id={`search-option-${fi}`}
-                    role="option"
-                    aria-selected={fi === activeIndex}
-                    data-suggestion
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      selectItem({ kind: "seniority", data: s });
-                    }}
-                    onMouseEnter={() => setActiveIndex(fi)}
-                    className={`flex cursor-pointer items-center gap-2 px-3 py-2 text-sm ${
-                      fi === activeIndex ? "bg-primary/10" : "hover:bg-primary/5"
-                    }`}
-                  >
-                    <BarChart3 size={14} className="shrink-0 text-muted" />
-                    <span className="min-w-0 flex-1 font-medium">{s.name}</span>
-                  </div>
-                );
-              })}
-            </>
-          )}
-
-          {technologyResults.length > 0 && (
-            <>
-              <div className={`px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted ${(occupationResults.length > 0 || seniorityResults.length > 0) ? "border-t border-border-soft" : ""}`}>
-                {t({
-                  id: "search.bar.technologies",
-                  comment: "Section header for technology suggestions in search bar",
-                  message: "Technologies",
-                })}
-              </div>
-              {technologyResults.map((s, i) => {
-                const fi = techStartIndex + i;
-                return (
-                  <div
-                    key={`tech-${s.id}`}
-                    id={`search-option-${fi}`}
-                    role="option"
-                    aria-selected={fi === activeIndex}
-                    data-suggestion
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      selectItem({ kind: "technology", data: s });
-                    }}
-                    onMouseEnter={() => setActiveIndex(fi)}
-                    className={`flex cursor-pointer items-center gap-2 px-3 py-2 text-sm ${
-                      fi === activeIndex ? "bg-primary/10" : "hover:bg-primary/5"
-                    }`}
-                  >
-                    <Code2 size={14} className="shrink-0 text-muted" />
-                    <span className="min-w-0 flex-1 font-medium">{s.name}</span>
-                  </div>
-                );
-              })}
-            </>
-          )}
-
-          {locationResults.length > 0 && (
-            <>
-              <div className={`px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted ${(occupationResults.length > 0 || seniorityResults.length > 0 || technologyResults.length > 0) ? "border-t border-border-soft" : ""}`}>
-                {t({
-                  id: "search.bar.locations",
-                  comment: "Section header for location suggestions in search bar",
-                  message: "Locations",
-                })}
-              </div>
-              {locationResults.map((s, i) => {
-                const fi = locStartIndex + i;
-                return (
-                  <div
-                    key={`loc-${s.id}`}
-                    id={`search-option-${fi}`}
-                    role="option"
-                    aria-selected={fi === activeIndex}
-                    data-suggestion
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      selectItem({ kind: "location", data: s });
-                    }}
-                    onMouseEnter={() => setActiveIndex(fi)}
-                    className={`flex cursor-pointer items-center gap-2 px-3 py-2 text-sm ${
-                      fi === activeIndex ? "bg-primary/10" : "hover:bg-primary/5"
-                    }`}
-                  >
-                    <MapPin size={14} className="shrink-0 text-muted" />
-                    <div className="min-w-0 flex-1">
-                      <span className="font-medium">{s.name}</span>
-                      {s.parentName && (
-                        <span className="text-muted">, {s.parentName}</span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </>
-          )}
-
           {companyResults.length > 0 && (
             <>
-              <div className={`px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted ${(locationResults.length > 0 || occupationResults.length > 0 || seniorityResults.length > 0 || technologyResults.length > 0) ? "border-t border-border-soft" : ""}`}>
+              <div className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted">
                 {t({
                   id: "search.bar.companies",
                   comment: "Section header for company suggestions in search bar",
@@ -618,6 +480,151 @@ export function SearchBar({
                     )}
                     <span className="min-w-0 flex-1 font-medium">{c.name}</span>
                     <ArrowRight size={12} className="shrink-0 text-muted" />
+                  </div>
+                );
+              })}
+            </>
+          )}
+
+          {locationResults.length > 0 && (
+            <>
+              <div className={`px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted ${companyResults.length > 0 ? "border-t border-border-soft" : ""}`}>
+                {t({
+                  id: "search.bar.locations",
+                  comment: "Section header for location suggestions in search bar",
+                  message: "Locations",
+                })}
+              </div>
+              {locationResults.map((s, i) => {
+                const fi = locStartIndex + i;
+                return (
+                  <div
+                    key={`loc-${s.id}`}
+                    id={`search-option-${fi}`}
+                    role="option"
+                    aria-selected={fi === activeIndex}
+                    data-suggestion
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      selectItem({ kind: "location", data: s });
+                    }}
+                    onMouseEnter={() => setActiveIndex(fi)}
+                    className={`flex cursor-pointer items-center gap-2 px-3 py-2 text-sm ${
+                      fi === activeIndex ? "bg-primary/10" : "hover:bg-primary/5"
+                    }`}
+                  >
+                    <MapPin size={14} className="shrink-0 text-muted" />
+                    <div className="min-w-0 flex-1">
+                      <span className="font-medium">{s.name}</span>
+                      {s.parentName && (
+                        <span className="text-muted">, {s.parentName}</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </>
+          )}
+
+          {occupationResults.length > 0 && (
+            <>
+              <div className={`px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted ${(companyResults.length > 0 || locationResults.length > 0) ? "border-t border-border-soft" : ""}`}>
+                {t({
+                  id: "search.bar.roles",
+                  comment: "Section header for occupation suggestions in search bar",
+                  message: "Roles",
+                })}
+              </div>
+              {occupationResults.map((s, i) => {
+                const fi = occStartIndex + i;
+                return (
+                  <div
+                    key={`occ-${s.id}`}
+                    id={`search-option-${fi}`}
+                    role="option"
+                    aria-selected={fi === activeIndex}
+                    data-suggestion
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      selectItem({ kind: "occupation", data: s });
+                    }}
+                    onMouseEnter={() => setActiveIndex(fi)}
+                    className={`flex cursor-pointer items-center gap-2 px-3 py-2 text-sm ${
+                      fi === activeIndex ? "bg-primary/10" : "hover:bg-primary/5"
+                    }`}
+                  >
+                    <Briefcase size={14} className="shrink-0 text-muted" />
+                    <span className="min-w-0 flex-1 font-medium">{s.name}</span>
+                  </div>
+                );
+              })}
+            </>
+          )}
+
+          {seniorityResults.length > 0 && (
+            <>
+              <div className={`px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted ${(companyResults.length > 0 || locationResults.length > 0 || occupationResults.length > 0) ? "border-t border-border-soft" : ""}`}>
+                {t({
+                  id: "search.bar.level",
+                  comment: "Section header for seniority suggestions in search bar",
+                  message: "Level",
+                })}
+              </div>
+              {seniorityResults.map((s, i) => {
+                const fi = senStartIndex + i;
+                return (
+                  <div
+                    key={`sen-${s.id}`}
+                    id={`search-option-${fi}`}
+                    role="option"
+                    aria-selected={fi === activeIndex}
+                    data-suggestion
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      selectItem({ kind: "seniority", data: s });
+                    }}
+                    onMouseEnter={() => setActiveIndex(fi)}
+                    className={`flex cursor-pointer items-center gap-2 px-3 py-2 text-sm ${
+                      fi === activeIndex ? "bg-primary/10" : "hover:bg-primary/5"
+                    }`}
+                  >
+                    <BarChart3 size={14} className="shrink-0 text-muted" />
+                    <span className="min-w-0 flex-1 font-medium">{s.name}</span>
+                  </div>
+                );
+              })}
+            </>
+          )}
+
+          {technologyResults.length > 0 && (
+            <>
+              <div className={`px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted ${(companyResults.length > 0 || locationResults.length > 0 || occupationResults.length > 0 || seniorityResults.length > 0) ? "border-t border-border-soft" : ""}`}>
+                {t({
+                  id: "search.bar.technologies",
+                  comment: "Section header for technology suggestions in search bar",
+                  message: "Technologies",
+                })}
+              </div>
+              {technologyResults.map((s, i) => {
+                const fi = techStartIndex + i;
+                return (
+                  <div
+                    key={`tech-${s.id}`}
+                    id={`search-option-${fi}`}
+                    role="option"
+                    aria-selected={fi === activeIndex}
+                    data-suggestion
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      selectItem({ kind: "technology", data: s });
+                    }}
+                    onMouseEnter={() => setActiveIndex(fi)}
+                    className={`flex cursor-pointer items-center gap-2 px-3 py-2 text-sm ${
+                      fi === activeIndex ? "bg-primary/10" : "hover:bg-primary/5"
+                    }`}
+                  >
+                    <Code2 size={14} className="shrink-0 text-muted" />
+                    <span className="min-w-0 flex-1 font-medium">{s.name}</span>
                   </div>
                 );
               })}
