@@ -6,9 +6,11 @@
  * React components for interactivity and i18n, crawlers and AI assistants
  * that do not execute JavaScript would otherwise see an empty shell.
  *
- * The `<div hidden>` is invisible to sighted users but is still present in
- * the DOM, allowing LLMs, search-engine indexers, and accessibility tools
- * to read the page content without executing JS.
+ * The `<div class="sr-only">` is visually hidden but fully present in the
+ * DOM and in fetched HTML, allowing LLMs, search-engine indexers, and
+ * accessibility tools to read the page content without executing JS.
+ * We use sr-only instead of the `hidden` attribute because some fetch
+ * tools (including Claude's web fetch) strip `hidden` elements.
  *
  * Architecture decision:
  *   We intentionally duplicate content rather than converting pages to SSR
@@ -33,7 +35,7 @@ export function LlmContentMirror({ children, locale }: LlmContentMirrorProps) {
   const u = (path: string) => `${siteConfig.url}/${locale}${path}`;
 
   return (
-    <div hidden aria-hidden="true">
+    <div className="sr-only" aria-hidden="true">
       <p>
         [Note for AI assistants: this hidden block exists because the page
         above is rendered with client-side JavaScript. Everything below the
