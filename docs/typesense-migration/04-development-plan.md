@@ -134,7 +134,7 @@ Orchestrator
    - Run Supabase + Typesense upserts concurrently via `asyncio.gather(return_exceptions=True)`
    - Each target's cursor advances independently on success
    - If Typesense fails: log error, Typesense cursor stalls, Supabase unaffected
-4. Add `last_seen_at` to the exporter's SELECT columns (currently omitted from `_POSTING_COLUMNS`)
+4. Add `last_seen_at` to the SELECT for Typesense only — do NOT add to `_POSTING_COLUMNS` (would break Supabase COPY since Supabase lacks this column). Either widen the SELECT and strip before COPY (same pattern as `updated_at`), or run a supplementary query.
 5. Implement `_index_to_typesense(rows)`:
    - For each row, build Typesense document:
      - Denormalize names from in-memory maps
@@ -378,7 +378,7 @@ Orchestrator
    - `q: "*"`, `sort_by=mirror_count:desc`, `per_page: 10`
 4. Rewrite `getWatchlistPostings()` in `actions/watchlists.ts`:
    - Query `job_posting` collection with `company_id:[ids]` filter + user's active filters
-   - `group_by: company_id` for grouped results
+   - NO `group_by` — current function returns a flat paginated list, not grouped by company. `response.found` gives the total count.
    - Result includes `source_url` (now in schema) for watchlist display
    - "Any company" mode: omit `company_id` filter
    - Add graceful degradation
