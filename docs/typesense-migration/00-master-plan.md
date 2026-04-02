@@ -139,10 +139,10 @@ Comfortable up to ~3M postings on 4 GB. At 5M+, upgrade to 8 GB.
 {
   "name": "job_posting",
   "fields": [
-    { "name": "id",              "type": "string",   "index": false },
-    { "name": "company_id",      "type": "string",   "index": false },
+    { "name": "company_id",      "type": "string",   "facet": true },
     { "name": "company_name",    "type": "string",   "facet": true },
     { "name": "company_slug",    "type": "string",   "index": false },
+    { "name": "company_icon",    "type": "string",   "index": false, "optional": true },
     { "name": "title",           "type": "string" },
     { "name": "is_active",       "type": "bool",     "facet": true },
     { "name": "location_ids",    "type": "int32[]",  "facet": true },
@@ -167,6 +167,9 @@ Comfortable up to ~3M postings on 4 GB. At 5M+, upgrade to 8 GB.
 ```
 
 **Key design decisions:**
+- Typesense uses each document's `id` field as its primary key automatically. The job posting UUID is set as the document `id` during import — no separate `id` schema field needed.
+- `company_id` is `facet: true` — required for `group_by` and `filter_by` in search queries
+- `company_icon` is denormalized onto each posting for display without extra lookups
 - `title` is the only full-text searchable field (matches current scope — structured data only, no descriptions)
 - Taxonomy names are denormalized onto each document (e.g., `occupation_name`, `location_names[]`) so Typesense can search and facet on them without joins
 - IDs are kept alongside names for filter-by-ID queries (e.g., location hierarchy expansion)
@@ -214,7 +217,7 @@ One document per (occupation, locale) pair. Occupations have locale-specific dis
 {
   "name": "occupation",
   "fields": [
-    { "name": "id",          "type": "int32" },
+    { "name": "occupation_id", "type": "int32" },
     { "name": "slug",        "type": "string",  "index": false },
     { "name": "name",        "type": "string" },
     { "name": "aliases",     "type": "string[]" },
@@ -227,7 +230,9 @@ One document per (occupation, locale) pair. Occupations have locale-specific dis
 }
 ```
 
-**Design decision:** Per-locale docs (not multi-field). Filter by `locale:${userLocale}` at query time, fall back to `locale:en` if no results. Each doc's `name` field gets correct tokenization for its language.
+**Design decisions:**
+- Per-locale docs (not multi-field). Filter by `locale:${userLocale}` at query time, fall back to `locale:en` if no results. Each doc's `name` field gets correct tokenization for its language.
+- Document `id` (Typesense primary key) is a composite string: `"{occupation_id}-{locale}"` (e.g., `"42-de"`). The `occupation_id` field (int32) stores the numeric ID for filtering and joins.
 
 ### `seniority` (typeahead collection)
 
@@ -237,7 +242,7 @@ Same strategy as occupations — one document per (seniority, locale) pair. ~10 
 {
   "name": "seniority",
   "fields": [
-    { "name": "id",          "type": "int32" },
+    { "name": "seniority_id", "type": "int32" },
     { "name": "slug",        "type": "string",  "index": false },
     { "name": "name",        "type": "string" },
     { "name": "aliases",     "type": "string[]" },
@@ -302,7 +307,8 @@ No locale dimension — tech names are universal ("Python", "React", "C++"). One
     { "name": "slug",          "type": "string",  "index": false },
     { "name": "title",         "type": "string" },
     { "name": "description",   "type": "string",  "optional": true },
-    { "name": "owner_name",    "type": "string" },
+    { "name": "owner_name",      "type": "string" },
+    { "name": "owner_username",  "type": "string",  "index": false, "optional": true },
     { "name": "company_count", "type": "int32" },
     { "name": "active_job_count", "type": "int32" },
     { "name": "mirror_count",  "type": "int32" },
@@ -317,24 +323,34 @@ No locale dimension — tech names are universal ("Python", "React", "C++"). One
 
 ### Job postings — extend exporter.py
 
-The exporter already runs a CDC loop reading from local Postgres (`WHERE updated_at > cursor`). Add a Typesense upsert step after the Supabase upsert in the same batch cycle.
+The exporter already runs a CDC loop reading from local Postgres (`WHERE updated_at > cursor`). Typesense indexing runs as a **separate cursor** alongside the Supabase export — independent failure domains.
 
 ```
 exporter tick:
-  1. SELECT changed postings (unchanged)
-  2. Upsert to Supabase (unchanged)
-  3. [NEW] Upsert to Typesense
+  1. SELECT changed postings WHERE updated_at > max(supabase_cursor, typesense_cursor)
+  2. Upsert to Supabase (cursor: last_export_ts:job_posting)
+  3. Advance Supabase cursor
+  4. [NEW] Upsert to Typesense (cursor: last_export_ts:typesense:job_posting)
      - Denormalize: resolve location_ids → location_names,
        occupation_id → occupation_name, seniority_id → seniority_name,
        technology_ids → technology_names using in-memory lookup tables
      - Batch upsert via POST /collections/job_posting/documents/import
        (action: upsert, batch_size: 40 — Typesense recommendation)
-  4. Advance cursor (unchanged)
+  5. Advance Typesense cursor (only on success)
 ```
 
-**Denormalization strategy**: The exporter already connects to local Postgres which has all taxonomy tables. Load taxonomy name maps into memory at startup (they're small — hundreds of rows each). Refresh on a timer or when sync.py runs.
+**Two-cursor design**: Supabase and Typesense each have their own `exporter_state` cursor (`last_export_ts:job_posting` and `last_export_ts:typesense:job_posting`). If Typesense upsert fails, only the Typesense cursor stalls — Supabase export continues unaffected. On the next tick, Typesense catches up from its own cursor position. The SELECT uses the minimum of both cursors to ensure both targets see all changed rows.
+
+**Column note**: The exporter's current `_POSTING_COLUMNS` omits `last_seen_at`. Add `last_seen_at` to the SELECT for Typesense indexing (needed for year-range queries and purge logic).
+
+**Denormalization strategy**: The exporter already connects to local Postgres which has all taxonomy tables. Load taxonomy name maps into memory at startup (they're small — hundreds of rows each). Refresh on a timer or when sync.py runs. If a taxonomy name changes (rare), existing Typesense documents keep the old name until they are individually re-exported. For bulk fixups after a rename, use the backfill command.
 
 **Deletion handling**: When `is_active` flips to false, the document stays in Typesense with `is_active: false`. All search queries filter on `is_active:true`. Periodically purge documents where `last_seen_at < now - 1 year` via a cleanup job.
+
+**Reconciliation**: Daily reconciliation job (extend existing `run_reconciliation()`):
+1. Compare document counts: `SELECT COUNT(*) FROM job_posting` vs `GET /collections/job_posting` → `num_documents`
+2. If counts diverge by >1%, trigger a full backfill
+3. Sample 100 random posting IDs, fetch from both Postgres and Typesense, compare `updated_at` / `is_active` — touch any discrepant rows in Postgres (set `updated_at = now()`) so the normal CDC cursor picks them up
 
 **Initial backfill**: On first deployment, run a one-shot full export:
 ```bash
@@ -354,11 +370,21 @@ After each taxonomy table sync:
 
 Since sync.py runs infrequently (on CSV changes / deploys), this adds negligible overhead.
 
+### Taxonomy posting counts — relaxed refresh
+
+`active_posting_count` and `has_active_postings` on taxonomy and company collections do not need to be precise. Approximate counts (100+, 1100+, 30+) are acceptable — they're used for typeahead ranking and display, not business logic.
+
+**Refresh mechanism**: A standalone function `refresh_typesense_counts()` in the crawler:
+1. For each taxonomy collection (location, occupation, seniority, technology): `SELECT {taxonomy_id}, COUNT(*) FROM job_posting WHERE is_active GROUP BY 1` → batch-update Typesense docs
+2. For the company collection: same pattern with `company_id`
+3. Invoked by: sync.py after each run + a cron/timer (every ~30 min or on a relaxed schedule)
+
+Since the function is idempotent and the counts are approximate, exact cadence doesn't matter much. Even running only during sync.py (on deploys / CSV changes) is acceptable.
+
 ### Company collection — dual source
 
 - **Initial load + updates**: sync.py writes company metadata (name, slug, icon, industry)
-- **Posting counts**: Updated by exporter after each batch (recount active/year postings per company, batch update the Typesense company documents)
-- Alternative: A periodic job (every 5 min) that recalculates counts and patches company docs
+- **Posting counts**: `active_posting_count` and `year_posting_count` refreshed by `refresh_typesense_counts()` (see above). These are the pre-computed counts used by `listTopCompanies()` and the `yearMatches` field in search results — avoids per-query count subqueries.
 
 ### Watchlist collection — web app writes
 
@@ -494,12 +520,24 @@ TYPESENSE_PORT=8108
 TYPESENSE_PROTOCOL=https
 TYPESENSE_ADMIN_KEY=<admin-key>
 
-# Web app
+# Web app (Vercel env vars — set in Vercel dashboard, not just .env.local)
 TYPESENSE_HOST=<typesense-ipv4>
 TYPESENSE_PORT=8108
 TYPESENSE_PROTOCOL=https
 TYPESENSE_SEARCH_KEY=<search-only-key>
 ```
+
+**Vercel note**: The web app deploys on Vercel. Add these env vars in the Vercel project settings (Settings → Environment Variables), not just in `.env.local`. Set for Production + Preview environments.
+
+## Rollback strategy
+
+One-shot cutover means `postgres.ts` is deleted. If Typesense is down in production:
+
+1. **Git revert** the merge commit that introduced the Typesense search provider
+2. **Deploy** the reverted web app — Postgres search is restored
+3. Crawler exporter continues writing to both Supabase and Typesense (Typesense upserts will fail silently, Supabase cursor unaffected thanks to two-cursor design)
+
+This is a ~5 minute operation. No dead code to maintain, no feature flags. The revert commit is clean because the migration is a single PR with a clear boundary.
 
 ## Risks and mitigations
 
@@ -515,6 +553,10 @@ TYPESENSE_SEARCH_KEY=<search-only-key>
 ## Design decisions log
 
 - **Location geo-sorting**: Use Typesense's native `geopoint` field. Replaces client-side Haversine calculation. Sort by `coordinates(lat, lng, precision: 5km):asc` with fallback to `active_posting_count:desc` when no user coordinates.
-- **Multi-locale strategy**: Locations use multi-field approach (one doc with `name_en`, `name_de`, `name_fr`, `name_it` — each with correct `locale` for tokenization). Occupations and seniorities use per-locale docs (one doc per entity+locale — cleaner for locale-specific aliases). Technologies and companies have no locale dimension.
-- **Rollout**: One-shot cutover. No feature flag or parallel running. Build, backfill, verify, deploy.
-- **Posting count refresh cadence**: Every 5 minutes via a periodic job. Accurate enough for typeahead ranking without adding per-tick write load to the exporter.
+- **Multi-locale strategy**: Locations use multi-field approach (one doc with `name_en`, `name_de`, `name_fr`, `name_it` — each with correct `locale` for tokenization). Occupations and seniorities use per-locale docs (one doc per entity+locale, document `id` = `"{numeric_id}-{locale}"` — cleaner for locale-specific aliases). Technologies and companies have no locale dimension.
+- **Rollout**: One-shot cutover. No feature flag or parallel running. Build, backfill, verify, deploy. Rollback via git revert.
+- **Two-cursor exporter**: Supabase and Typesense have independent cursors. Typesense failure doesn't block Supabase export or cursor advance. Typesense catches up from its own cursor on next tick.
+- **yearMatches / activeMatches**: Pre-computed on the `company` collection as `year_posting_count` and `active_posting_count`. Refreshed periodically by `refresh_typesense_counts()`. Approximate counts are acceptable — avoids per-query count subqueries.
+- **Posting count refresh cadence**: Relaxed — runs during sync.py + on a timer (~30 min). Imprecise counts (100+, 1100+) are fine for ranking and display.
+- **Denormalized name staleness**: Accepted. Taxonomy renames are rare. Existing Typesense documents keep old names until re-exported. For bulk fixups, run the backfill command.
+- **Rollback**: Git revert the merge commit, redeploy. ~5 min recovery. No dead code or feature flags to maintain.

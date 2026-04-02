@@ -127,18 +127,28 @@ Orchestrator
    - `seniority_id → name` from `seniority_name` (same)
    - `technology_id → name` from `technology` table
    - `company_id → {name, slug, icon}` from `company` table
-3. After `_export_changed_postings()` Supabase upsert, add `_index_to_typesense(rows)`:
+3. Implement **two-cursor design** (see `00-master-plan.md`):
+   - Add a separate cursor `last_export_ts:typesense:job_posting` in `exporter_state`
+   - SELECT uses `MIN(supabase_cursor, typesense_cursor)` to ensure both targets see all rows
+   - After Supabase upsert: advance Supabase cursor (existing)
+   - After Typesense upsert: advance Typesense cursor (new, only on success)
+   - If Typesense fails: log error, Typesense cursor stalls, Supabase unaffected
+4. Add `last_seen_at` to the exporter's SELECT columns (currently omitted from `_POSTING_COLUMNS`)
+5. Implement `_index_to_typesense(rows)`:
    - For each row, build Typesense document:
      - Denormalize names from in-memory maps
      - Convert `first_seen_at` / `last_seen_at` to Unix timestamps
      - Set `company_icon` from company map
    - Batch upsert via `documents.import_(docs, {"action": "upsert"})`
-   - On failure: log error, do NOT block Supabase export or cursor advance
-4. Add `--backfill-typesense` CLI flag to `cli.py`:
+6. Add `--backfill-typesense` CLI flag to `cli.py`:
    - Iterates all `job_posting` rows (not just changed ones)
    - Same denormalization + upsert logic
    - Progress logging every 10K rows
-5. Add taxonomy map refresh: reload maps every 10 minutes (or on SIGHUP)
+7. Add taxonomy map refresh: reload maps every 10 minutes (or on SIGHUP)
+8. Extend `run_reconciliation()` with Typesense check:
+   - Compare doc counts (Postgres vs Typesense)
+   - Sample 100 random IDs, compare `is_active` / `updated_at`
+   - Touch discrepant rows so CDC cursor picks them up
 
 **Report**: Files modified, new functions, error handling approach.
 
@@ -159,7 +169,11 @@ Orchestrator
    - Query all public watchlists from Supabase (or local if available)
    - Build docs with title, description, owner info, counts
    - Upsert to `watchlist` collection
-4. Add `active_posting_count` refresh as a standalone function callable by a periodic job
+4. Implement `refresh_typesense_counts()` as a standalone function:
+   - For each taxonomy collection: `SELECT {id}, COUNT(*) FROM job_posting WHERE is_active GROUP BY 1` → batch-update docs
+   - For company collection: same + `year_posting_count` (postings from last year)
+   - Idempotent, callable by sync.py after each run + on a timer (~30 min)
+   - Counts are approximate — imprecise values (100+, 1100+) are acceptable
 
 **Report**: Files modified, collections populated, document counts per collection.
 

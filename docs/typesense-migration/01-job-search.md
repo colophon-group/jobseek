@@ -130,22 +130,33 @@ function buildFilterString(filters: SearchFilters): string {
 
 ### Query mapping: `listTopCompanies()`
 
-Same as `search()` but with `q: "*"` (match all) and `sort_by: "active_posting_count:desc"` on the company group level. Alternatively, query the `company` collection directly:
+Typesense's `group_by` sorts groups by the best-matching *document's* sort key, not by group size. So `group_by: company_id` with `sort_by: first_seen_at:desc` would rank companies by most recent posting, not by posting count. For browse mode we want "top companies by number of postings."
+
+**Two-step approach** (2 queries, not N+1):
 
 ```typescript
-{
-  collection: "company",
+// Step 1: Get top companies ranked by posting count
+const companyResults = await typesense.collections("company").documents().search({
   q: "*",
   filter_by: "active_posting_count:>0",
   sort_by: "active_posting_count:desc",
   per_page: limit,
   page: Math.floor(offset / limit) + 1,
-}
+});
+
+// Step 2: Fetch postings for those companies in one query
+const companyIds = companyResults.hits.map(h => h.document.id);
+const postingResults = await typesense.collections("job_posting").documents().search({
+  q: "*",
+  filter_by: `company_id:[${companyIds.join(",")}] && is_active:true && ${buildFilterString(filters)}`,
+  group_by: "company_id",
+  group_limit: 10,
+  sort_by: "first_seen_at:desc",
+  per_page: companyIds.length,
+});
 ```
 
-Then for each company, fetch their postings from `job_posting` collection with company_id filter. This two-step approach matches the current Postgres behavior where companies are ranked first, then postings loaded.
-
-**Trade-off**: The `group_by` approach (single query) is simpler but doesn't give a clean company-level ranking by posting count. The two-step approach is more accurate. Recommend starting with two-step for listTopCompanies.
+This is 2 queries (batched via `multi_search` = 1 HTTP round-trip). The `company` collection has pre-computed `active_posting_count` and `year_posting_count` — no per-query count subqueries needed.
 
 ### Query mapping: `loadPostings()`
 
@@ -165,29 +176,35 @@ Then for each company, fetch their postings from `job_posting` collection with c
 
 ### Query mapping: `loadPostingsWithCounts()`
 
-Same as `loadPostings()` plus a separate faceted count query:
+Same as `loadPostings()` plus a company doc lookup for pre-computed counts:
 
 ```typescript
-// Get counts for this company
-{
-  collection: "job_posting",
-  q: "*",
-  filter_by: `company_id:${companyId} && is_active:true`,
-  per_page: 0,              // don't need documents
-  facet_by: "is_active",    // just to trigger counting
-  // activeCount = found (total hits with is_active:true)
-}
+// Batch via multi_search: postings query + company doc lookup
+const searches = [
+  // Postings query (same as loadPostings)
+  {
+    collection: "job_posting",
+    q: keywords.length ? keywords.join(" ") : "*",
+    query_by: "title",
+    filter_by: `company_id:${companyId} && is_active:true && ${buildFilterString(filters)}`,
+    sort_by: keywords.length ? "_text_match:desc,first_seen_at:desc" : "first_seen_at:desc",
+    per_page: limit,
+    page: Math.floor(offset / limit) + 1,
+  },
+  // Company doc for pre-computed counts
+  {
+    collection: "company",
+    q: "*",
+    filter_by: `id:${companyId}`,
+    per_page: 1,
+  },
+];
 
-// yearCount: add first_seen_at filter for past year
-{
-  collection: "job_posting",
-  q: "*",
-  filter_by: `company_id:${companyId} && first_seen_at:>${oneYearAgoUnix}`,
-  per_page: 0,
-}
+// activeCount = company.active_posting_count
+// yearCount = company.year_posting_count
 ```
 
-Use `multi_search` to batch both count queries with the postings query in one request.
+Counts come from the `company` collection (pre-computed, approximate). Single `multi_search` call.
 
 ### Query mapping: `getSalaryHistogram()`
 
@@ -230,18 +247,22 @@ Typesense returns `{ value: "3", count: 1234 }` facet entries. Transform to `Exp
 Typesense `group_by` results need transformation to match `SearchResponse`:
 
 ```typescript
-function mapGroupedHits(response: TypesenseSearchResponse): SearchResponse {
+function mapGroupedHits(
+  response: TypesenseSearchResponse,
+  companyMap: Map<string, { activeCount: number; yearCount: number }>,
+): SearchResponse {
   const companies: SearchResultCompany[] = response.grouped_hits.map(group => {
     const firstHit = group.hits[0].document;
+    const counts = companyMap.get(firstHit.company_id);
     return {
       company: {
         id: firstHit.company_id,
         name: firstHit.company_name,
         slug: firstHit.company_slug,
-        icon: null,  // fetch from company collection or denormalize
+        icon: firstHit.company_icon ?? null,  // denormalized on job_posting
       },
-      activeMatches: group.found.value,  // total docs in group
-      yearMatches: 0,  // separate query or approximate
+      activeMatches: counts?.activeCount ?? group.found.value,
+      yearMatches: counts?.yearCount ?? 0,
       postings: group.hits.map(hit => ({
         id: hit.document.id,
         title: hit.document.title,
@@ -261,12 +282,13 @@ function mapGroupedHits(response: TypesenseSearchResponse): SearchResponse {
 }
 ```
 
-**Company icon**: Not on the job_posting document. Options:
-1. Denormalize `company_icon` onto job_posting (adds ~30 bytes per doc, simple)
-2. Batch-fetch from company collection after search (extra round-trip)
-3. Batch-fetch from a cached in-memory map (most efficient)
+**`activeMatches` / `yearMatches`**: Pre-computed on the `company` collection as `active_posting_count` and `year_posting_count`, refreshed periodically. For `search()`, after getting grouped results, batch-fetch company docs for the returned company IDs via `multi_search` to get counts. This is 1 extra query batched in the same `multi_search` call — not N queries.
 
-Recommend option 1 (denormalize) for simplicity.
+For `listTopCompanies()`, the counts come directly from the `company` collection query (step 1 of the two-step approach).
+
+Counts are approximate (refreshed every ~30 min) — this is acceptable.
+
+**`company_icon`**: Denormalized on each `job_posting` document (see schema in `00-master-plan.md`). No extra lookup needed.
 
 ## Code changes
 
@@ -309,5 +331,6 @@ Recommend option 1 (denormalize) for simplicity.
 - **No results**: Typesense returns `{ found: 0, hits: [] }` — map to `{ companies: [], totalCompanies: 0 }`
 - **Anon user truncation**: Handled in the server action layer (search.ts), not in the provider — no change needed
 - **Location hierarchy expansion**: Already expanded to ID arrays before reaching the provider — Typesense filters on the expanded array
-- **Year matches count**: Typesense doesn't natively compute "postings from the last year" as a group-level aggregate. Use a `multi_search` with `first_seen_at:>${oneYearAgoTimestamp}` filter and `per_page: 0` to get the count per company. Batch with the main query.
+- **Year matches count**: Pre-computed on the `company` collection as `year_posting_count`. Refreshed periodically by `refresh_typesense_counts()`. Approximate — acceptable for display.
+- **`buildFilterString()` and `is_active`**: The function always injects `is_active:true`. This is correct for all search queries. The `yearCount` pre-computation (in the crawler's `refresh_typesense_counts()`) runs its own SQL query without this restriction, so it can count both active and inactive postings from the last year. No conflict.
 - **Relevance scoring**: Typesense's `_text_match` score replaces the keyword count ranking. It incorporates typo distance, token position, and field weights — strictly better than the current integer count.
