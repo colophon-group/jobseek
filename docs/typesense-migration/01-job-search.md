@@ -297,10 +297,11 @@ const searches = [
     filter_by: `is_active:true && ${baseFilter}`,
     per_page: 0,  // activeCount = found
   },
-  // Year count (filtered — includes inactive postings from past year)
+  // Year count (includes inactive postings from past year, NO keyword filter)
+  // Uses q:"*" — Postgres year count counts ALL postings, not just keyword matches
   {
     collection: "job_posting",
-    q,
+    q: "*",
     query_by: "title",
     filter_by: `first_seen_at:>${oneYearAgoUnix} && ${baseFilter}`,
     per_page: 0,  // yearCount = found
@@ -335,7 +336,7 @@ This returns 31 bucket counts (30 standard 10K EUR buckets + 1 overflow bucket f
 
 **Boundary handling**: Typesense labeled range facets use inclusive-start, exclusive-end by default: `[0, 10000]` means `0 <= x < 10000`. No double-counting at boundaries — a salary of exactly 10000 falls only in `[10000, 20000]`, not in `[0, 10000]`. The overflow bucket `[300000, 999999999]` uses a very high upper bound to effectively capture all salaries >= 300K (exclusive-end, so technically `300K <= x < 1B`, which covers any practical salary).
 
-**Overflow bucket**: Add a `300k+:[300000, 999999]` bucket to capture salaries above 300K EUR. Without it, high salaries are silently excluded from the histogram. Postgres `width_bucket` handles this with bucket 31.
+**Overflow bucket**: Add a `300k+:[300000, 999999999]` bucket to capture salaries above 300K EUR. Without it, high salaries are silently excluded from the histogram. Postgres `width_bucket` handles this with bucket 31.
 
 ### Query mapping: `getExperienceHistogram()`
 

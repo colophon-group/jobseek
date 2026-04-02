@@ -124,7 +124,7 @@ When no watchlist context filters are active, use the original company collectio
 **Starred companies sorting**: If `starredCompanyIds` is provided and no text query, do two Typesense queries:
 1. Fetch starred companies: `filter_by: "id:[${starredCompanyIds.join(',')}]"`
 2. Fetch remaining companies: `filter_by: "id:!=[${starredCompanyIds.join(',')}]"`
-Concatenate results.
+Concatenate results. **Both sets need match counts** — starred companies must go through the same count computation (facet or multi_search) to populate `activeMatches` / `yearMatches`. Don't skip count computation just because they're starred.
 
 **No text query + watchlist filters**: When there's no text query but the user has active watchlist filters (keywords, locations, etc.), company ranking must be by **filtered** match count, not global `active_posting_count`. Use the same match count queries from step 2 to sort results. Without this, a company with 1000 total jobs but 0 filter-matching jobs would rank above one with 50 matching jobs.
 
@@ -274,7 +274,9 @@ const filterStr = buildFilterString(filters);
 
 **Location/occupation expansion**: The current `getWatchlistPostings()` calls `expandLocationIds()` and `expandOccupationIds()` internally (it's NOT called via the SearchProvider, so `parseSearchFilters()` doesn't run first). The Typesense version must continue calling these expansion functions before building the filter string. Without expansion, selecting "Germany" in a watchlist would only match postings tagged with the country, not its cities.
 
-**"Any company" mode**: When the watchlist has no company filter, omit the `company_id` filter — searches all postings.
+**Large watchlists**: A watchlist with 200+ companies generates a `company_id:[uuid1,...,uuid200]` filter string of ~7KB. If this hits HTTP limits or causes parsing slowdowns, batch into multiple queries (e.g., 100 companies per batch) and merge results.
+
+**"Any company" mode**: When the watchlist has no company restriction (user hasn't selected specific companies), omit the `company_id` filter — searches all postings matching the watchlist's keyword/filter criteria.
 
 ## Code changes
 

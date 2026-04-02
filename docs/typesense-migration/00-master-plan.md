@@ -242,7 +242,8 @@ One document per (occupation, locale) pair. Occupations have locale-specific dis
 ```
 
 **Design decisions:**
-- Per-locale docs (not multi-field). Filter by `locale:${userLocale}` at query time, fall back to `locale:en` if no results. Each doc's `name` field gets correct tokenization for its language.
+- Per-locale docs (not multi-field). Filter by `locale:${userLocale}` at query time, fall back to `locale:en` if no results.
+- **Locale tokenization caveat**: Typesense `locale` is a schema-level property on a field, not per-document. Since all locale docs share one `name` field, only one `locale` can be set (or none, using the default English tokenizer). In practice this is acceptable — occupation names are short strings where tokenization differences across locales are minimal. The primary benefit of per-locale docs is locale-specific *names and aliases*, not tokenization.
 - Document `id` (Typesense primary key) is a composite string: `"{occupation_id}-{locale}"` (e.g., `"42-de"`). The `occupation_id` field (int32) stores the numeric ID for filtering and joins.
 
 ### `seniority` (typeahead collection)
