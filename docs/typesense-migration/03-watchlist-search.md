@@ -104,7 +104,8 @@ const response = await typesense.multiSearch.perform({
 // When filters are active: get companies ranked by filtered match count
 const filterStr = buildFilterString(watchlistFilters);
 const facetResult = await typesense.collections("job_posting").documents().search({
-  q: "*",
+  q: keywords?.length ? keywords.join(" ") : "*",
+  query_by: "title",
   filter_by: `is_active:true${filterStr ? " && " + filterStr : ""}`,
   facet_by: "company_id",
   facet_strategy: "exhaustive",
