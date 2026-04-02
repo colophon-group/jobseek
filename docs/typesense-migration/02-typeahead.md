@@ -172,7 +172,8 @@ function mapOccupationSuggestion(hit: TypesenseHit): OccupationSuggestion {
     name: doc.name,
     // For array fields like aliases, snippets[0] gives the first matched alias text.
     // matched_tokens is string[][] (nested array per array element), not flat string[].
-    matchedName: aliasHighlight?.snippets?.[0] ?? undefined,
+    // NOTE: snippets may contain <mark> HTML tags — strip them before display.
+    matchedName: aliasHighlight?.snippets?.[0]?.replace(/<\/?mark>/g, "") ?? undefined,
   };
 }
 ```

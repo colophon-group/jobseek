@@ -107,6 +107,8 @@ const response = await typesense.multiSearch.perform({
 2. Fetch remaining companies: `filter_by: "id:!=[${starredCompanyIds.join(',')}]"`
 Concatenate results.
 
+**No text query + watchlist filters**: When there's no text query but the user has active watchlist filters (keywords, locations, etc.), company ranking must be by **filtered** match count, not global `active_posting_count`. Use the same match count queries from step 2 to sort results. Without this, a company with 1000 total jobs but 0 filter-matching jobs would rank above one with 50 matching jobs.
+
 **Industry filter:**
 
 ```typescript

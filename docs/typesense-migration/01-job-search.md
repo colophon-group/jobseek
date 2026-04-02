@@ -80,6 +80,7 @@ const filterStr = buildFilterString(filters);
     per_page: limit,                 // companies per page
     page: Math.floor(offset / limit) + 1,
     typo_tokens_threshold: 1,        // enable typo tolerance
+    drop_tokens_threshold: 1,        // if no results match ALL keywords, progressively drop tokens
   }]
 }
 ```
@@ -154,6 +155,8 @@ filter_by: `is_active:true${filterStr ? " && " + filterStr : ""}`
 filter_by: `first_seen_at:>${oneYearAgoUnix}${filterStr ? " && " + filterStr : ""}`
 ```
 ```
+
+**Keyword matching semantics change (AND vs OR)**: Postgres matches ANY keyword independently (OR) and scores by count. Typesense with `q: keywords.join(" ")` defaults to AND — all tokens must appear. With `drop_tokens_threshold: 1`, Typesense progressively drops tokens if no all-keyword match exists, making it behave like "try AND first, fall back to partial matches." This produces more relevant results than pure OR but is a behavioral change — users who previously searched "React Engineer Berlin" and saw any posting matching at least one keyword will now see postings matching all three first (better), with partial matches appearing only when no full match exists. This is an intentional improvement, not a parity-preserving migration.
 
 **Location/occupation hierarchy expansion**: The current Postgres implementation expands parent IDs to include all children (e.g., selecting "Germany" includes all German cities). This expansion happens in `parseSearchFilters()` before reaching the search provider. Typesense receives the already-expanded ID arrays — no change needed.
 
@@ -296,6 +299,10 @@ Typesense supports facet ranges for numeric fields:
 This returns bucket counts matching the current 30-bucket / 10K EUR layout. Transform the facet response into `SalaryBucket[]`.
 
 **Facet range syntax note:** The syntax varies by Typesense version. In 27.x, labeled ranges use `field(Label:[start, end], ...)`. In some versions, flat boundary lists `field([0, 10000, 20000, ...])` are used. **Verify the exact syntax against the deployed Typesense 27.1 instance** during implementation. The E2E tests will catch syntax errors.
+
+**Boundary handling**: Typesense range facets use inclusive boundaries by default. A salary of exactly 10000 could be counted in both `[0,10000]` and `[10000,20000]`. To avoid double-counting, use exclusive end boundaries (e.g., `0-10k:[0,9999]` or verify how 27.1 handles boundary values).
+
+**Overflow bucket**: Add a `300k+:[300000, 999999]` bucket to capture salaries above 300K EUR. Without it, high salaries are silently excluded from the histogram. Postgres `width_bucket` handles this with bucket 31.
 
 ### Query mapping: `getExperienceHistogram()`
 
