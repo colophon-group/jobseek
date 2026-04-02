@@ -165,11 +165,8 @@ export function CompanySearchModal({
 
   const { sentinelRef, isLoading: isLoadingMore } = useInfiniteScroll({ hasMore: !exhausted, load: handleLoadMore, root: scrollRef });
 
-  // Hide companies with zero matches for the current filters
-  const visibleCompanies = useMemo(
-    () => companies.filter((c) => c.activeMatches > 0 || c.yearMatches > 0),
-    [companies],
-  );
+  // Server already filters out zero-match companies
+  const visibleCompanies = companies;
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>

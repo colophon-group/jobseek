@@ -170,12 +170,6 @@ export async function searchCompaniesForWatchlist(params: {
   }
   const jobWhere = sql.join(jobClauses, sql` AND `);
 
-  const [totalRow] = await db.execute<{ [key: string]: unknown; cnt: number }>(sql`
-    SELECT count(*)::int AS cnt FROM company c WHERE ${companyWhere}
-  `);
-  const total = (totalRow as unknown as { cnt: number })?.cnt ?? 0;
-  if (total === 0) return { companies: [], total: 0 };
-
   // When no text query and starred IDs are provided, boost starred companies to top
   const starredIds = params.starredCompanyIds;
   const boostStarred = !hasQuery && starredIds && starredIds.length > 0;
@@ -185,6 +179,8 @@ export async function searchCompaniesForWatchlist(params: {
     ? sql`CASE WHEN c.id = ANY(${starredArray}::uuid[]) THEN 0 ELSE 1 END, active_matches DESC, c.name`
     : sql`active_matches DESC, c.name`;
 
+  // Single query: compute match counts, filter out zero-match companies,
+  // and get total in one pass using a window function.
   const rows = await db.execute<{
     [key: string]: unknown;
     id: string;
@@ -194,18 +190,22 @@ export async function searchCompaniesForWatchlist(params: {
     description: string | null;
     active_matches: number;
     year_matches: number;
+    filtered_total: number;
   }>(sql`
-    SELECT c.id, c.name, c.slug, c.icon,
-           COALESCE(cd.description, c.description) AS description,
-           (SELECT count(*)::int FROM job_posting jp
-            WHERE jp.company_id = c.id AND ${jobWhere}) AS active_matches,
-           (SELECT count(*)::int FROM job_posting jp
-            WHERE jp.company_id = c.id
-              AND jp.first_seen_at >= now() - interval '1 year'
-              AND ${jobWhere}) AS year_matches
-    FROM company c
-    LEFT JOIN company_description cd ON cd.company_id = c.id AND cd.locale = ${params.locale}
-    WHERE ${companyWhere}
+    SELECT *, count(*) OVER () AS filtered_total FROM (
+      SELECT c.id, c.name, c.slug, c.icon,
+             COALESCE(cd.description, c.description) AS description,
+             (SELECT count(*)::int FROM job_posting jp
+              WHERE jp.company_id = c.id AND ${jobWhere}) AS active_matches,
+             (SELECT count(*)::int FROM job_posting jp
+              WHERE jp.company_id = c.id
+                AND jp.first_seen_at >= now() - interval '1 year'
+                AND ${jobWhere}) AS year_matches
+      FROM company c
+      LEFT JOIN company_description cd ON cd.company_id = c.id AND cd.locale = ${params.locale}
+      WHERE ${companyWhere}
+    ) sub
+    WHERE active_matches > 0 OR year_matches > 0
     ORDER BY ${orderClause}
     OFFSET ${params.offset}
     LIMIT ${params.limit}
@@ -214,9 +214,12 @@ export async function searchCompaniesForWatchlist(params: {
   type Row = {
     id: string; name: string; slug: string; icon: string | null;
     description: string | null; active_matches: number; year_matches: number;
+    filtered_total: number;
   };
+  const typed = rows as unknown as Row[];
+  const total = typed.length > 0 ? typed[0].filtered_total : 0;
   return {
-    companies: (rows as unknown as Row[]).map((r) => ({
+    companies: typed.map((r) => ({
       id: r.id,
       name: r.name,
       slug: r.slug,
