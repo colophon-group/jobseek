@@ -63,6 +63,8 @@ def parse_args() -> argparse.Namespace:
 
     sub.add_parser("backfill-locations", help="Enqueue re-scrapes for jobs missing locations")
 
+    sub.add_parser("backfill-typesense", help="Full re-index of job_posting to Typesense")
+
     board_p = sub.add_parser("board", help="Dev testing for a single board")
     board_p.add_argument("slug", help="Board slug to process")
     board_p.add_argument("--dry-run", action="store_true", help="No DB writes")
@@ -133,6 +135,13 @@ async def run() -> None:
             from src.backfill import backfill_locations
 
             await backfill_locations(local_pool)
+
+        elif args.command == "backfill-typesense":
+            local_pool = await create_local_pool()
+            supa_pool = await create_pool()
+            from src.exporter import backfill_typesense
+
+            await backfill_typesense(local_pool, supa_pool)
 
         elif args.command == "reconcile":
             local_pool = await create_local_pool()
