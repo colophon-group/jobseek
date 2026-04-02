@@ -127,19 +127,21 @@ Orchestrator
    - `seniority_id → name` from `seniority_name` (same)
    - `technology_id → name` from `technology` table
    - `company_id → {name, slug, icon}` from `company` table
-3. Implement **two-cursor design** (see `00-master-plan.md`):
+3. Implement **two-cursor design with concurrent upserts** (see `00-master-plan.md`):
    - Add a separate cursor `last_export_ts:typesense:job_posting` in `exporter_state`
    - SELECT uses `MIN(supabase_cursor, typesense_cursor)` to ensure both targets see all rows
-   - After Supabase upsert: advance Supabase cursor (existing)
-   - After Typesense upsert: advance Typesense cursor (new, only on success)
+   - Run Supabase + Typesense upserts concurrently via `asyncio.gather(return_exceptions=True)`
+   - Each target's cursor advances independently on success
    - If Typesense fails: log error, Typesense cursor stalls, Supabase unaffected
 4. Add `last_seen_at` to the exporter's SELECT columns (currently omitted from `_POSTING_COLUMNS`)
 5. Implement `_index_to_typesense(rows)`:
    - For each row, build Typesense document:
      - Denormalize names from in-memory maps
+     - Denormalize `location_geo_types` from location table (city/region/country/macro)
      - Convert `first_seen_at` / `last_seen_at` to Unix timestamps
      - Set `company_icon` from company map
-   - Batch upsert via `documents.import_(docs, {"action": "upsert"})`
+     - Set sentinel values: `experience_min = -1` for NULL, `locales = ["any"]` for empty array
+   - Batch upsert via `client.collections['job_posting'].documents.import_(docs, {'action': 'upsert'})`
 6. Add `--backfill-typesense` CLI flag to `cli.py`:
    - Iterates all `job_posting` rows (not just changed ones)
    - Same denormalization + upsert logic
@@ -253,14 +255,20 @@ Orchestrator
 Orchestrator
   ├── Impl-3A: TypesenseSearchProvider        ──┐
   │   (search, listTopCompanies, loadPostings,  │  (parallel — independent code)
-  │    loadPostingsWithCounts, histograms)       │
+  │    loadPostingsWithCounts, histograms,       │
+  │    graceful degradation)                     │
   │                                              │
-  ├── Impl-3B: Typeahead functions              │
-  │   (5 suggest functions + multi_search)       │
+  ├── Impl-3B: Typeahead + browse-all modals    │
+  │   (5 suggest functions + multi_search +      │
+  │    getGlobalLocationsGrouped,                │
+  │    getAllOccupationsGrouped,                  │
+  │    getAllSeniorities,                         │
+  │    getAllTechnologiesGrouped)                 │
   │                                              │
-  ├── Impl-3C: Watchlist search                 │
+  ├── Impl-3C: Watchlist search + postings      │
   │   (searchCompaniesForWatchlist,              │
-  │    searchPublicWatchlists, write hooks)      │
+  │    searchPublicWatchlists, write hooks,      │
+  │    getWatchlistPostings)                     │
   │                                              │
   └── Impl-3D: Cleanup Postgres search code     ──── (after 3A/3B/3C complete)
 ```
@@ -283,8 +291,9 @@ Orchestrator
    - Connection timeout: 2s
 3. Create `typesense-filters.ts`:
    - `buildFilterString(filters: SearchFilters): string` — builds Typesense `filter_by` string
-   - Always includes `is_active:true`
+   - Does NOT inject `is_active:true` — callers add it explicitly
    - Maps each filter dimension (locationIds, occupationIds, salary range, etc.)
+   - Sentinel handling: `experience_min` filter includes `|| experience_min:=-1` for max bound; `locales` filter includes `"any"` sentinel
    - See `01-job-search.md` for exact mapping
 4. Create `typesense.ts` implementing `SearchProvider`:
    - `search()` — `multi_search` with `q: keywords.join(" ")`, `group_by: "company_id"`, `group_limit: 10`
@@ -295,6 +304,7 @@ Orchestrator
    - `getExperienceHistogram()` — facet on `experience_min`, transform to `ExperienceBucket[]`
 5. Update `apps/web/src/lib/search/index.ts`:
    - Replace `PostgresSearchProvider` with `TypesenseSearchProvider` directly (no toggle)
+6. Add graceful degradation: all SearchProvider methods catch connection errors and return empty results with `degraded: true` flag, rather than propagating exceptions to the UI
 
 **Report**: Files created/modified, methods implemented, any design decisions made.
 
@@ -325,6 +335,22 @@ Orchestrator
    - Single `multi_search` with all 5 collection queries
    - Used by header search bar for single-roundtrip typeahead
    - Keep individual functions for filter modals
+7. Rewrite browse-all modal functions using `facet_by` on `job_posting`:
+   - `getGlobalLocationsGrouped()` in `actions/locations.ts`:
+     - `facet_by: location_ids` with user's active filters → per-location filtered counts
+     - Client-side hierarchy assembly using cached location parent_id relationships
+     - Bottom-up count aggregation (cities → regions → countries)
+   - `getAllOccupationsGrouped()` in `actions/taxonomy.ts`:
+     - `facet_by: occupation_id` with filters → per-occupation filtered counts
+     - Client-side domain grouping using cached occupation domain_id
+   - `getAllSeniorities()` in `actions/taxonomy.ts`:
+     - `facet_by: seniority_id` with filters → per-seniority filtered counts
+     - Flat list, no hierarchy
+   - `getAllTechnologiesGrouped()` in `actions/taxonomy.ts`:
+     - `facet_by: technology_ids` with filters → per-technology filtered counts
+     - Client-side category grouping using cached technology category
+   - All four use the same pattern: single `per_page: 0` query with facet + filters, then resolve IDs to display names via lookup tables
+   - Add graceful degradation (catch connection errors, return empty)
 
 **Report**: Files modified, functions rewritten, cache wrappers removed.
 
@@ -342,7 +368,13 @@ Orchestrator
    - Query `watchlist` collection, `query_by=title,description`, `filter_by=is_public:true`
 3. Rewrite `getPopularWatchlists()`:
    - `q: "*"`, `sort_by=mirror_count:desc`, `per_page: 10`
-4. Add Typesense write hooks to watchlist mutation actions:
+4. Rewrite `getWatchlistPostings()` in `actions/watchlists.ts`:
+   - Query `job_posting` collection with `company_id:[ids]` filter + user's active filters
+   - `group_by: company_id` for grouped results
+   - Result includes `source_url` (now in schema) for watchlist display
+   - "Any company" mode: omit `company_id` filter
+   - Add graceful degradation
+5. Add Typesense write hooks to watchlist mutation actions:
    - Find watchlist create/update/delete actions
    - After Supabase write, upsert/delete in Typesense `watchlist` collection
    - Only index public watchlists
@@ -446,6 +478,22 @@ def test_job_posting_denormalized_fields():
 def test_job_posting_timestamps_are_unix():
     """first_seen_at and last_seen_at are integers (unix timestamps),
     not ISO strings. Values should be > 1600000000 (post-2020)."""
+
+def test_job_posting_sentinel_experience():
+    """Postings where Postgres experience_min IS NULL should have
+    experience_min = -1 in Typesense (sentinel value)."""
+
+def test_job_posting_sentinel_locales():
+    """Postings where Postgres locales = '{}' (empty) should have
+    locales = ['any'] in Typesense (sentinel value)."""
+
+def test_job_posting_location_geo_types():
+    """Sample 10 postings with location_ids. Each should have
+    location_geo_types array of same length, with values in
+    ['city', 'region', 'country', 'macro']."""
+
+def test_job_posting_has_source_url():
+    """Sample postings should have source_url field (string or null)."""
 
 # ── Taxonomy collection tests ──
 
@@ -699,6 +747,71 @@ test("searchPublicWatchlists searches title and description", async () => {
 
 test("searchPublicWatchlists only returns public watchlists", async () => {
   // All results should have is_public = true
+});
+
+// ── Watchlist postings ──
+
+test("getWatchlistPostings returns postings scoped to company IDs", async () => {
+  // Pick 3 company IDs, query watchlist postings
+  // Expect: all returned postings belong to one of the 3 companies
+});
+
+test("getWatchlistPostings applies filters", async () => {
+  // Query with location filter
+  // Expect: all returned postings have matching location_id
+});
+
+test("getWatchlistPostings includes source_url", async () => {
+  // Expect: each posting has source_url field (string or null)
+});
+
+// ── Browse-all modals (faceted counts) ──
+
+test("getGlobalLocationsGrouped returns filtered counts", async () => {
+  // Query with no filters → get location facet counts
+  // Expect: non-empty array of { locationId, count }
+  // Expect: counts are positive integers
+});
+
+test("getGlobalLocationsGrouped respects filters", async () => {
+  // Query with occupation filter → get location facet counts
+  // Expect: total count across all locations <= unfiltered total
+});
+
+test("getAllOccupationsGrouped returns filtered counts", async () => {
+  // Query with no filters → get occupation facet counts
+  // Expect: non-empty results
+});
+
+test("getAllSeniorities returns filtered counts", async () => {
+  // Query with no filters → get seniority facet counts
+  // Expect: non-empty results
+});
+
+test("getAllTechnologiesGrouped returns filtered counts", async () => {
+  // Query with no filters → get technology facet counts
+  // Expect: non-empty results
+});
+
+// ── Sentinel value tests ──
+
+test("experience filter includes jobs without experience requirement", async () => {
+  // Search with experienceMax=5
+  // Expect: results include postings with experience_min=-1 (sentinel for NULL)
+  // Verify these are jobs that genuinely have no experience requirement in Postgres
+});
+
+test("language filter includes jobs with no detected language", async () => {
+  // Search with languages=["en"]
+  // Expect: results include postings with locales=["any"] (sentinel for empty)
+});
+
+// ── Graceful degradation ──
+
+test("search returns empty results when Typesense is unreachable", async () => {
+  // Point client at wrong host/port
+  // Expect: { companies: [], totalCompanies: 0, degraded: true }
+  // Expect: no thrown exception
 });
 ```
 

@@ -109,13 +109,17 @@ function buildFilterString(filters: SearchFilters): string {
     parts.push(`salary_eur:[${min}..${max}]`);
   }
 
+  // experience_min uses sentinel -1 for "not specified". Include sentinels
+  // so jobs without stated experience aren't excluded by range filters.
   if (filters.experienceMin != null)
     parts.push(`experience_min:>=${filters.experienceMin}`);
   if (filters.experienceMax != null)
-    parts.push(`experience_min:<=${filters.experienceMax}`);
+    parts.push(`experience_min:<=${filters.experienceMax} || experience_min:=-1`);
 
+  // locales uses sentinel "any" for jobs with no detected language.
+  // Include it so those jobs match any language filter.
   if (filters.languages?.length)
-    parts.push(`locales:[${filters.languages.join(",")}]`);
+    parts.push(`locales:[${[...filters.languages, "any"].join(",")}]`);
 
   return parts.join(" && ");
 }
@@ -259,7 +263,7 @@ Typesense supports facet ranges for numeric fields:
   q: keywords?.length ? keywords.join(" ") : "*",
   query_by: "title",
   filter_by: `is_active:true && salary_eur:>0 && ${buildFilterString(filters)}`,
-  facet_by: "salary_eur(0, 10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000, 90000, 100000, 110000, 120000, 130000, 140000, 150000, 160000, 170000, 180000, 190000, 200000, 210000, 220000, 230000, 240000, 250000, 260000, 270000, 280000, 290000, 300000)",
+  facet_by: "salary_eur(0-10k:[0,10000], 10-20k:[10000,20000], 20-30k:[20000,30000], 30-40k:[30000,40000], 40-50k:[40000,50000], 50-60k:[50000,60000], 60-70k:[60000,70000], 70-80k:[70000,80000], 80-90k:[80000,90000], 90-100k:[90000,100000], 100-110k:[100000,110000], 110-120k:[110000,120000], 120-130k:[120000,130000], 130-140k:[130000,140000], 140-150k:[140000,150000], 150-160k:[150000,160000], 160-170k:[160000,170000], 170-180k:[170000,180000], 180-190k:[180000,190000], 190-200k:[190000,200000], 200-210k:[200000,210000], 210-220k:[210000,220000], 220-230k:[220000,230000], 230-240k:[230000,240000], 240-250k:[240000,250000], 250-260k:[250000,260000], 260-270k:[260000,270000], 270-280k:[270000,280000], 280-290k:[280000,290000], 290-300k:[290000,300000])",
   max_facet_values: 31,
   per_page: 0,  // no documents needed
 }
@@ -305,7 +309,7 @@ function mapGroupedHits(
         slug: firstHit.company_slug,
         icon: firstHit.company_icon ?? null,
       },
-      activeMatches: activeCountMap.get(companyId) ?? group.found.value,
+      activeMatches: activeCountMap.get(companyId) ?? group.found,
       yearMatches: yearCountMap?.get(companyId) ?? 0,
       postings: group.hits.map(hit => ({
         id: hit.document.id,
@@ -330,7 +334,7 @@ function mapGroupedHits(
 
 | Method | activeMatches | yearMatches |
 |--------|--------------|-------------|
-| `search()` (keywords) | `group.found.value` — Typesense returns the filtered match count per group natively | Second `multi_search` query: same filters + `first_seen_at:>${oneYearAgoUnix}`, `facet_by: company_id`, `per_page: 0` |
+| `search()` (keywords) | `group.found` — Typesense returns the filtered match count per group natively | Second `multi_search` query: same filters + `first_seen_at:>${oneYearAgoUnix}`, `facet_by: company_id`, `per_page: 0` |
 | `listTopCompanies()` (no keywords, with filters) | From `facet_by: company_id` counts (step 1 of facet approach) | Second facet query with year filter |
 | `listTopCompanies()` (no keywords, no filters) | From `company` collection `active_posting_count` (pre-computed) | From `company` collection `year_posting_count` (pre-computed) |
 | `loadPostingsWithCounts()` | Live count query: `filter_by: company_id:X && is_active:true && filters`, `per_page: 0` → `found` | Live count query: same + `first_seen_at:>${oneYearAgoUnix}` |
@@ -381,5 +385,5 @@ For `search()` and `listTopCompanies()` with filters, `yearMatches` requires one
 - **Anon user truncation**: Handled in the server action layer (search.ts), not in the provider — no change needed
 - **Location hierarchy expansion**: Already expanded to ID arrays before reaching the provider — Typesense filters on the expanded array
 - **Year matches count**: Computed live per query using a filtered facet or count query (see result mapping table above). For `listTopCompanies()` without filters, falls back to pre-computed `year_posting_count` on the `company` collection.
-- **`buildFilterString()` and `is_active`**: The function always injects `is_active:true`. The `yearCount` query intentionally uses `first_seen_at:>${oneYearAgoUnix}` instead of `is_active:true` via a separate filter string — it counts all postings seen in the past year, including now-inactive ones (filled jobs). This matches the current Postgres behavior.
+- **`buildFilterString()` and `is_active`**: The function does NOT inject `is_active:true` — callers add it explicitly. The `yearCount` query uses `first_seen_at:>${oneYearAgoUnix}` without `is_active:true` to count all postings from the past year (including filled/inactive ones). This matches the current Postgres behavior.
 - **Relevance scoring**: Typesense's `_text_match` score replaces the keyword count ranking. It incorporates typo distance, token position, and field weights — strictly better than the current integer count.

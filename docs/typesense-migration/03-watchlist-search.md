@@ -210,6 +210,41 @@ Recommend the cron approach for simplicity.
 
 For `searchCompaniesForWatchlist`, consider adding pre-computed filter-specific match counts to avoid N×2 count queries per page load. This is an optimization for later — start with the multi_search approach and measure.
 
+## getWatchlistPostings() — watchlist job feed
+
+### Current implementation
+
+**File**: `apps/web/src/lib/actions/watchlists.ts` (lines 575–712)
+
+Core watchlist feature — paginated, filtered job postings across all companies in a watchlist. Supports keywords, locations, occupations, seniorities, technologies, salary range, experience range. Returns postings with company info and source URLs.
+
+### Typesense query
+
+Natural fit — essentially a search query scoped to a set of company IDs:
+
+```typescript
+const companyIds = watchlist.companies.map(c => c.id);
+const filterStr = buildFilterString(filters);
+
+{
+  collection: "job_posting",
+  q: keywords?.length ? keywords.join(" ") : "*",
+  query_by: "title",
+  filter_by: `is_active:true && company_id:[${companyIds.join(",")}]${filterStr ? " && " + filterStr : ""}`,
+  sort_by: keywords?.length
+    ? "_text_match:desc,first_seen_at:desc"
+    : "first_seen_at:desc",
+  group_by: "company_id",
+  group_limit: groupLimit,
+  per_page: limit,
+  page: Math.floor(offset / limit) + 1,
+}
+```
+
+**Result mapping**: Each hit includes `source_url` (now in the schema) for display in the watchlist view. Company info (`company_name`, `company_slug`, `company_icon`) is denormalized on each posting — no extra lookup.
+
+**"Any company" mode**: When the watchlist has no company filter, omit the `company_id` filter — searches all postings.
+
 ## Code changes
 
 ### Modified files
@@ -217,7 +252,7 @@ For `searchCompaniesForWatchlist`, consider adding pre-computed filter-specific 
 | File | Change |
 |------|--------|
 | `apps/web/src/lib/actions/company.ts` | Replace Postgres query in `searchCompaniesForWatchlist()` with Typesense two-step query |
-| `apps/web/src/lib/actions/watchlists.ts` | Replace ILIKE query in `searchPublicWatchlists()` with Typesense query |
+| `apps/web/src/lib/actions/watchlists.ts` | Replace ILIKE query in `searchPublicWatchlists()` with Typesense query; replace `getWatchlistPostings()` with Typesense query |
 | Watchlist mutation actions (create/update/delete) | Add Typesense upsert/delete hooks |
 
 ### New files

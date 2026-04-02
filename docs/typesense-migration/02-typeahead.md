@@ -58,7 +58,7 @@ Postgres `similarity()` requires a sequential scan of the trigram index for each
   query_by_weights: "3,1",                   // boost user locale matches
   filter_by: "has_active_postings:true",
   sort_by: userLat && userLng
-    ? `_text_match:desc,coordinates(${userLat},${userLng}, precision: 5 km):asc,active_posting_count:desc`
+    ? `_text_match:desc,coordinates(${userLat},${userLng}, precision: 5km):asc,active_posting_count:desc`
     : "_text_match:desc,active_posting_count:desc",
   per_page: 8,
   prefix: true,                    // prefix search (match start of words)
@@ -69,7 +69,7 @@ Postgres `similarity()` requires a sequential scan of the trigram index for each
 
 **Geo-sorting via native `geopoint`**: The `location` collection has a `coordinates` field of type `geopoint` storing `[lat, lng]` from the Postgres `location` table. This completely replaces the client-side Haversine calculation (`locations.ts:423-434`) and the near/far sorting logic (`locations.ts:118-135`).
 
-The `precision: 5 km` parameter buckets locations into 5km geo bands. Within the same text match quality and geo band, locations are ranked by `active_posting_count` (posting volume). This closely matches the current behavior where:
+The `precision: 5km` parameter buckets locations into 5km geo bands. Within the same text match quality and geo band, locations are ranked by `active_posting_count` (posting volume). This closely matches the current behavior where:
 - `match_rank` (prefix vs fuzzy) → `_text_match` (Typesense relevance score)
 - Distance within 300km → `coordinates(lat, lng, precision: 5km)` geo bucketing
 - Population for far locations → `active_posting_count` (better proxy for search relevance)

@@ -145,21 +145,23 @@ Comfortable up to ~3M postings on 4 GB. At 5M+, upgrade to 8 GB.
     { "name": "company_icon",    "type": "string",   "index": false, "optional": true },
     { "name": "title",           "type": "string" },
     { "name": "is_active",       "type": "bool",     "facet": true },
-    { "name": "location_ids",    "type": "int32[]",  "facet": true },
-    { "name": "location_names",  "type": "string[]", "facet": true },
-    { "name": "location_types",  "type": "string[]", "facet": true },
-    { "name": "occupation_id",   "type": "int32",    "facet": true, "optional": true },
-    { "name": "occupation_name", "type": "string",   "facet": true, "optional": true },
-    { "name": "seniority_id",    "type": "int32",    "facet": true, "optional": true },
-    { "name": "seniority_name",  "type": "string",   "facet": true, "optional": true },
-    { "name": "technology_ids",  "type": "int32[]",  "facet": true },
-    { "name": "technology_names","type": "string[]",  "facet": true },
-    { "name": "employment_type", "type": "string",   "facet": true, "optional": true },
-    { "name": "salary_eur",      "type": "int32",    "facet": true, "optional": true },
-    { "name": "experience_min",  "type": "int32",    "facet": true, "optional": true },
-    { "name": "locales",         "type": "string[]", "facet": true },
-    { "name": "first_seen_at",   "type": "int64" },
-    { "name": "last_seen_at",    "type": "int64",    "optional": true }
+    { "name": "location_ids",       "type": "int32[]",  "facet": true },
+    { "name": "location_names",     "type": "string[]", "facet": true },
+    { "name": "location_types",     "type": "string[]", "facet": true },
+    { "name": "location_geo_types", "type": "string[]", "index": false },
+    { "name": "occupation_id",      "type": "int32",    "facet": true, "optional": true },
+    { "name": "occupation_name",    "type": "string",   "facet": true, "optional": true },
+    { "name": "seniority_id",       "type": "int32",    "facet": true, "optional": true },
+    { "name": "seniority_name",     "type": "string",   "facet": true, "optional": true },
+    { "name": "technology_ids",     "type": "int32[]",  "facet": true },
+    { "name": "technology_names",   "type": "string[]", "facet": true },
+    { "name": "employment_type",    "type": "string",   "facet": true, "optional": true },
+    { "name": "salary_eur",         "type": "int32",    "facet": true, "optional": true },
+    { "name": "experience_min",     "type": "int32",    "facet": true },
+    { "name": "locales",            "type": "string[]", "facet": true },
+    { "name": "source_url",         "type": "string",   "index": false, "optional": true },
+    { "name": "first_seen_at",      "type": "int64" },
+    { "name": "last_seen_at",       "type": "int64",    "optional": true }
   ],
   "default_sorting_field": "first_seen_at",
   "token_separators": ["-", "/"]
@@ -176,6 +178,9 @@ Comfortable up to ~3M postings on 4 GB. At 5M+, upgrade to 8 GB.
 - `salary_eur` and `experience_min` are numeric for range filtering and histogram faceting
 - `first_seen_at` / `last_seen_at` stored as Unix timestamps (int64) for sorting and range queries
 - Fields that are only used for display (not search/filter) have `index: false` to save RAM
+- `source_url` is stored for display in watchlist postings view (index: false)
+- `location_geo_types` stores the geographic type per location (city/region/country/macro) — positionally aligned with `location_ids` and `location_names`. Used for `PostingLocation.geoType` in results. `index: false` since it's display-only.
+- **NULL sentinel values**: `experience_min` is NOT optional — jobs without stated experience get `-1` so they're included by numeric range filters (Typesense excludes missing optional fields from range queries). `locales` array gets `"any"` sentinel for jobs with no detected language, so they match any language filter.
 
 ### `location` (typeahead collection)
 
@@ -327,19 +332,20 @@ The exporter already runs a CDC loop reading from local Postgres (`WHERE updated
 
 ```
 exporter tick:
-  1. SELECT changed postings WHERE updated_at > max(supabase_cursor, typesense_cursor)
-  2. Upsert to Supabase (cursor: last_export_ts:job_posting)
-  3. Advance Supabase cursor
-  4. [NEW] Upsert to Typesense (cursor: last_export_ts:typesense:job_posting)
-     - Denormalize: resolve location_ids → location_names,
-       occupation_id → occupation_name, seniority_id → seniority_name,
-       technology_ids → technology_names using in-memory lookup tables
-     - Batch upsert via POST /collections/job_posting/documents/import
-       (action: upsert, batch_size: 40 — Typesense recommendation)
-  5. Advance Typesense cursor (only on success)
+  1. SELECT changed postings WHERE updated_at > min(supabase_cursor, typesense_cursor)
+  2. Concurrently (asyncio.gather):
+     a. Upsert to Supabase → advance Supabase cursor on success
+     b. Upsert to Typesense → advance Typesense cursor on success
+        - Denormalize: resolve location_ids → location_names + location_geo_types,
+          occupation_id → occupation_name, seniority_id → seniority_name,
+          technology_ids → technology_names using in-memory lookup tables
+        - Set sentinel values: experience_min=-1 for NULL, locales=["any"] for empty
+        - Batch upsert via documents.import_(docs, {"action": "upsert"})
 ```
 
 **Two-cursor design**: Supabase and Typesense each have their own `exporter_state` cursor (`last_export_ts:job_posting` and `last_export_ts:typesense:job_posting`). If Typesense upsert fails, only the Typesense cursor stalls — Supabase export continues unaffected. On the next tick, Typesense catches up from its own cursor position. The SELECT uses the minimum of both cursors to ensure both targets see all changed rows.
+
+**Concurrent upserts**: Supabase and Typesense upserts run concurrently via `asyncio.gather(return_exceptions=True)`. This prevents Typesense latency (3–5s for 2000 docs over network) from blocking the exporter loop and causing cascading lag during high-churn periods. Each target's cursor advances independently based on its own success/failure.
 
 **Column note**: The exporter's current `_POSTING_COLUMNS` omits `last_seen_at`. Add `last_seen_at` to the SELECT for Typesense indexing (needed for year-range queries and purge logic).
 
@@ -455,14 +461,93 @@ client = typesense.Client({
 })
 ```
 
+### Graceful degradation
+
+The `TypesenseSearchProvider` must catch connection errors and return empty results with a degraded flag, rather than letting exceptions propagate to the UI. During a Typesense restart (~30 seconds), every Vercel serverless cold start would independently discover the outage and throw unhandled errors.
+
+```typescript
+try {
+  return await typesenseQuery();
+} catch (err) {
+  if (isConnectionError(err)) {
+    log.warn("Typesense unavailable, returning empty results");
+    return { companies: [], totalCompanies: 0, degraded: true };
+  }
+  throw err;
+}
+```
+
+All search methods and suggest functions should follow this pattern. The UI can optionally show a "search temporarily unavailable" banner when `degraded: true`.
+
 ### Caching
 
 Typesense queries are fast (<10ms for structured search). The existing Redis cache layer in the web app can be simplified:
 - **Remove** caching for keyword search and typeahead (Typesense is faster than Redis deserialization for small payloads)
-- **Keep** caching for histogram aggregations if they prove slower than expected
+- **Keep** caching for non-search Postgres queries: `expandLocationIds()`, `resolveLocationSlugs()`, `expandOccupationIds()`, `resolveOccupationSlugs()`, `getPostingDetail()`, `getCurrencyRates()`. These are NOT search-related — do not remove their cache keys during cleanup.
 - **Keep** caching for the public API route (rate limiting / abuse protection)
 
 Evaluate after benchmarking — start with caching disabled for Typesense queries, add back if needed.
+
+## Stays on Postgres (Supabase)
+
+These functions use complex hierarchical queries, recursive CTEs, or multi-table joins that Typesense cannot serve. They remain on Supabase Postgres, unchanged. Their Redis cache keys must NOT be removed during cleanup.
+
+| Function | File | Why |
+|----------|------|-----|
+| `getPostingDetail()` | `actions/search.ts` | Full posting detail with company logo, salary min/max/currency/period, source_url, seniority, technologies — many fields not in Typesense schema |
+| `getCurrencyRates()` | `actions/search.ts` | Pure lookup table query |
+| `getCompanyBySlug()` | `actions/company.ts` | Full company detail with locale-aware descriptions, website, founded year, employee count |
+| `getCompanyTopLocations()` | `actions/company.ts` | Company detail page aggregation |
+| `getCompanyLocationsGrouped()` | `actions/company.ts` | Company detail hierarchy query |
+| `suggestIndustries()` | `actions/company.ts` | Tiny lookup, not worth a collection |
+| `expandLocationIds()` | `actions/locations.ts` | Recursive CTE for location hierarchy (WITH RECURSIVE) |
+| `expandOccupationIds()` | `actions/taxonomy.ts` | Recursive CTE for occupation hierarchy |
+| `resolveLocationSlugs()` | `actions/locations.ts` | Slug-to-ID lookup with locale-aware names |
+| `resolveOccupationSlugs()` | `actions/taxonomy.ts` | Slug-to-ID lookup |
+| `resolveSenioritySlugs()` | `actions/taxonomy.ts` | Slug-to-ID lookup |
+| `resolveTechnologySlugs()` | `actions/taxonomy.ts` | Slug-to-ID lookup |
+| `parseSearchFilters()` | `actions/search-input.ts` | Calls resolve/expand functions above — stays on Postgres, runs before SearchProvider |
+
+## Browse-all filter modals → Typesense facets
+
+These functions serve the "browse all" view in filter modals. Currently slow Postgres CTEs with filtered counts. Migrate to Typesense `facet_by` on the `job_posting` collection.
+
+### Current functions
+
+| Function | File | What it does |
+|----------|------|--------------|
+| `getGlobalLocationsGrouped()` | `actions/locations.ts` | All locations grouped by country/region/city with filtered posting counts |
+| `getAllOccupationsGrouped()` | `actions/taxonomy.ts` | All occupations grouped by domain with filtered counts |
+| `getAllSeniorities()` | `actions/taxonomy.ts` | All seniority levels with filtered counts |
+| `getAllTechnologiesGrouped()` | `actions/taxonomy.ts` | All technologies grouped by category with filtered counts |
+
+### Typesense approach
+
+Use `facet_by` on the `job_posting` collection with the user's active filters applied. Returns per-ID counts. Client-side assembly for hierarchy.
+
+```typescript
+// Example: filtered location counts for the location modal
+{
+  collection: "job_posting",
+  q: keywords?.length ? keywords.join(" ") : "*",
+  query_by: "title",
+  filter_by: `is_active:true${filterStr ? " && " + filterStr : ""}`,
+  facet_by: "location_ids",
+  max_facet_values: 500,   // all locations with postings
+  per_page: 0,             // no docs needed
+}
+// → facet_counts[0].counts = [{ value: "123", count: 45 }, ...]
+```
+
+Then resolve IDs to names + hierarchy client-side using the `location` / `occupation` / `seniority` / `technology` Typesense collections (or cached lookup tables).
+
+**For locations**: Facet returns flat `location_id → count` pairs. The location hierarchy (country → region → city) is assembled client-side using `parent_id` relationships from the `location` table (cached). Bottom-up count aggregation: city counts roll up to regions, regions to countries.
+
+**For occupations**: Facet returns `occupation_id → count`. Domain grouping assembled client-side using `domain_id` from the occupation lookup.
+
+**For technologies**: Facet returns `technology_id → count`. Category grouping assembled client-side.
+
+**For seniorities**: Facet returns `seniority_id → count`. Flat list, no hierarchy.
 
 ## Rollout Plan
 
