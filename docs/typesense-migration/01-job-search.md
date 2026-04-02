@@ -130,22 +130,39 @@ function buildFilterString(filters: SearchFilters): string {
 
 ### Query mapping: `listTopCompanies()`
 
-Typesense's `group_by` sorts groups by the best-matching *document's* sort key, not by group size. So `group_by: company_id` with `sort_by: first_seen_at:desc` would rank companies by most recent posting, not by posting count. For browse mode we want "top companies by number of postings."
+Typesense's `group_by` sorts groups by the best-matching *document's* sort key, not by group size. So `group_by: company_id` with `sort_by: first_seen_at:desc` would rank companies by most recent posting, not by posting count. For browse mode we want "top companies by number of matching postings."
 
-**Two-step approach** (2 queries, not N+1):
+**Critical**: Companies must be ranked by **filtered** posting count, not global count. If the user filters by "Berlin + Python", a company with 15 matching jobs must rank above one with 500 total jobs but 1 match.
+
+**Facet-based approach** (2 queries, 1 HTTP call):
 
 ```typescript
-// Step 1: Get top companies ranked by posting count
-const companyResults = await typesense.collections("company").documents().search({
-  q: "*",
-  filter_by: "active_posting_count:>0",
-  sort_by: "active_posting_count:desc",
-  per_page: limit,
-  page: Math.floor(offset / limit) + 1,
+// Step 1: Get company IDs ranked by FILTERED posting count
+// facet_by returns values sorted by count descending
+const facetResult = await typesense.multiSearch.perform({
+  searches: [
+    {
+      collection: "job_posting",
+      q: "*",
+      filter_by: `is_active:true && ${buildFilterString(filters)}`,
+      facet_by: "company_id",
+      max_facet_values: offset + limit,  // enough for pagination
+      per_page: 0,                       // no docs needed, just facet counts
+    },
+  ],
 });
 
-// Step 2: Fetch postings for those companies in one query
-const companyIds = companyResults.hits.map(h => h.document.id);
+// facet_counts[0].counts = [
+//   { value: "company-abc", count: 15 },  ← 15 Berlin+Python jobs
+//   { value: "company-xyz", count: 8 },
+//   ...
+// ]
+const facetCounts = facetResult.results[0].facet_counts[0].counts;
+const page = facetCounts.slice(offset, offset + limit);
+const companyIds = page.map(f => f.value);
+const matchCountMap = new Map(page.map(f => [f.value, f.count]));
+
+// Step 2: Fetch postings for this page of companies
 const postingResults = await typesense.collections("job_posting").documents().search({
   q: "*",
   filter_by: `company_id:[${companyIds.join(",")}] && is_active:true && ${buildFilterString(filters)}`,
@@ -156,7 +173,15 @@ const postingResults = await typesense.collections("job_posting").documents().se
 });
 ```
 
-This is 2 queries (batched via `multi_search` = 1 HTTP round-trip). The `company` collection has pre-computed `active_posting_count` and `year_posting_count` — no per-query count subqueries needed.
+**How it works**: `facet_by: company_id` returns company IDs sorted by how many matching postings they have — exactly the filtered ranking we need. We paginate through the facet list, then fetch postings for the current page. The facet counts become `activeMatches` per company.
+
+**Unfiltered case**: When no filters are active, the facet still works (counts all active postings per company). Alternatively, for the pure unfiltered case, querying the `company` collection by `active_posting_count:desc` is faster since counts are pre-computed. The implementation can branch:
+- No filters → query `company` collection (pre-computed counts)
+- With filters → facet approach (live filtered counts)
+
+**`yearMatches` with filters**: Add a second facet query with `first_seen_at:>${oneYearAgoUnix}` to get filtered year counts per company. Batch via `multi_search`.
+
+**Pagination limit**: `max_facet_values` caps how many companies we can paginate through. Set it to `offset + limit`. For deep pagination (page 10+), this means fetching a larger facet set. Acceptable for typical usage — most users don't go past page 3–4. If this becomes a bottleneck, switch to cursor-based pagination.
 
 ### Query mapping: `loadPostings()`
 
@@ -176,10 +201,9 @@ This is 2 queries (batched via `multi_search` = 1 HTTP round-trip). The `company
 
 ### Query mapping: `loadPostingsWithCounts()`
 
-Same as `loadPostings()` plus a company doc lookup for pre-computed counts:
+Same as `loadPostings()` plus live filtered count queries — these counts must reflect the user's active filters, not global pre-computed values:
 
 ```typescript
-// Batch via multi_search: postings query + company doc lookup
 const searches = [
   // Postings query (same as loadPostings)
   {
@@ -191,20 +215,29 @@ const searches = [
     per_page: limit,
     page: Math.floor(offset / limit) + 1,
   },
-  // Company doc for pre-computed counts
+  // Active count (filtered)
   {
-    collection: "company",
-    q: "*",
-    filter_by: `id:${companyId}`,
-    per_page: 1,
+    collection: "job_posting",
+    q: keywords.length ? keywords.join(" ") : "*",
+    query_by: "title",
+    filter_by: `company_id:${companyId} && is_active:true && ${buildFilterString(filters)}`,
+    per_page: 0,  // activeCount = found
+  },
+  // Year count (filtered)
+  {
+    collection: "job_posting",
+    q: keywords.length ? keywords.join(" ") : "*",
+    query_by: "title",
+    filter_by: `company_id:${companyId} && first_seen_at:>${oneYearAgoUnix} && ${buildFilterString(filters)}`,
+    per_page: 0,  // yearCount = found
   },
 ];
 
-// activeCount = company.active_posting_count
-// yearCount = company.year_posting_count
+// activeCount = results[1].found
+// yearCount = results[2].found
 ```
 
-Counts come from the `company` collection (pre-computed, approximate). Single `multi_search` call.
+Three queries in one `multi_search` call. The count queries use the same filters as the postings query, ensuring counts reflect the user's current filter state.
 
 ### Query mapping: `getSalaryHistogram()`
 
@@ -249,20 +282,21 @@ Typesense `group_by` results need transformation to match `SearchResponse`:
 ```typescript
 function mapGroupedHits(
   response: TypesenseSearchResponse,
-  companyMap: Map<string, { activeCount: number; yearCount: number }>,
+  activeCountMap: Map<string, number>,   // from facet or group.found
+  yearCountMap?: Map<string, number>,    // from year facet (optional)
 ): SearchResponse {
   const companies: SearchResultCompany[] = response.grouped_hits.map(group => {
     const firstHit = group.hits[0].document;
-    const counts = companyMap.get(firstHit.company_id);
+    const companyId = firstHit.company_id;
     return {
       company: {
-        id: firstHit.company_id,
+        id: companyId,
         name: firstHit.company_name,
         slug: firstHit.company_slug,
-        icon: firstHit.company_icon ?? null,  // denormalized on job_posting
+        icon: firstHit.company_icon ?? null,
       },
-      activeMatches: counts?.activeCount ?? group.found.value,
-      yearMatches: counts?.yearCount ?? 0,
+      activeMatches: activeCountMap.get(companyId) ?? group.found.value,
+      yearMatches: yearCountMap?.get(companyId) ?? 0,
       postings: group.hits.map(hit => ({
         id: hit.document.id,
         title: hit.document.title,
@@ -282,11 +316,16 @@ function mapGroupedHits(
 }
 ```
 
-**`activeMatches` / `yearMatches`**: Pre-computed on the `company` collection as `active_posting_count` and `year_posting_count`, refreshed periodically. For `search()`, after getting grouped results, batch-fetch company docs for the returned company IDs via `multi_search` to get counts. This is 1 extra query batched in the same `multi_search` call — not N queries.
+**`activeMatches` / `yearMatches` — how counts are obtained per method:**
 
-For `listTopCompanies()`, the counts come directly from the `company` collection query (step 1 of the two-step approach).
+| Method | activeMatches | yearMatches |
+|--------|--------------|-------------|
+| `search()` (keywords) | `group.found.value` — Typesense returns the filtered match count per group natively | Second `multi_search` query: same filters + `first_seen_at:>${oneYearAgoUnix}`, `facet_by: company_id`, `per_page: 0` |
+| `listTopCompanies()` (no keywords, with filters) | From `facet_by: company_id` counts (step 1 of facet approach) | Second facet query with year filter |
+| `listTopCompanies()` (no keywords, no filters) | From `company` collection `active_posting_count` (pre-computed) | From `company` collection `year_posting_count` (pre-computed) |
+| `loadPostingsWithCounts()` | Live count query: `filter_by: company_id:X && is_active:true && filters`, `per_page: 0` → `found` | Live count query: same + `first_seen_at:>${oneYearAgoUnix}` |
 
-Counts are approximate (refreshed every ~30 min) — this is acceptable.
+For `search()` and `listTopCompanies()` with filters, `yearMatches` requires one extra facet query batched in the same `multi_search` call. For the unfiltered `listTopCompanies()`, counts come from the pre-computed `company` collection.
 
 **`company_icon`**: Denormalized on each `job_posting` document (see schema in `00-master-plan.md`). No extra lookup needed.
 
@@ -331,6 +370,6 @@ Counts are approximate (refreshed every ~30 min) — this is acceptable.
 - **No results**: Typesense returns `{ found: 0, hits: [] }` — map to `{ companies: [], totalCompanies: 0 }`
 - **Anon user truncation**: Handled in the server action layer (search.ts), not in the provider — no change needed
 - **Location hierarchy expansion**: Already expanded to ID arrays before reaching the provider — Typesense filters on the expanded array
-- **Year matches count**: Pre-computed on the `company` collection as `year_posting_count`. Refreshed periodically by `refresh_typesense_counts()`. Approximate — acceptable for display.
-- **`buildFilterString()` and `is_active`**: The function always injects `is_active:true`. This is correct for all search queries. The `yearCount` pre-computation (in the crawler's `refresh_typesense_counts()`) runs its own SQL query without this restriction, so it can count both active and inactive postings from the last year. No conflict.
+- **Year matches count**: Computed live per query using a filtered facet or count query (see result mapping table above). For `listTopCompanies()` without filters, falls back to pre-computed `year_posting_count` on the `company` collection.
+- **`buildFilterString()` and `is_active`**: The function always injects `is_active:true`. The `yearCount` query intentionally uses `first_seen_at:>${oneYearAgoUnix}` instead of `is_active:true` via a separate filter string — it counts all postings seen in the past year, including now-inactive ones (filled jobs). This matches the current Postgres behavior.
 - **Relevance scoring**: Typesense's `_text_match` score replaces the keyword count ranking. It incorporates typo distance, token position, and field weights — strictly better than the current integer count.
