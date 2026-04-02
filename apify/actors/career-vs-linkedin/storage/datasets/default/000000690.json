@@ -1,0 +1,19 @@
+{
+	"_type": "job-comparison",
+	"company": "Notion",
+	"normalizedTitle": "software engineer developer experience",
+	"careerTitle": "Software Engineer, Developer Experience",
+	"boardTitle": "Software Engineer, Developer Infrastructure",
+	"careerPageFirstSeen": "2025-07-25",
+	"careerPageDatePosted": "2025-07-25",
+	"boardFirstSeen": "2024-01-11",
+	"boardDatePosted": "2024-01-10",
+	"effectiveCareerDate": "2025-07-25",
+	"effectiveBoardDate": "2024-01-10",
+	"lagDays": -562,
+	"verdict": "board_first",
+	"location": "San Francisco, California",
+	"department": "Engineering",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402062439/https://api.ashbyhq.com/posting-api/job-board/notion",
+	"boardSnapshotUrl": "https://web.archive.org/web/20240111112456/https://www.linkedin.com/company/notionhq/jobs/"
+}

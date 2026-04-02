@@ -1,0 +1,19 @@
+{
+	"_type": "job-comparison",
+	"company": "Notion",
+	"normalizedTitle": "outbound business development representative",
+	"careerTitle": "Outbound Business Development Representative ",
+	"boardTitle": "Outbound Business Development Representative - AMER",
+	"careerPageFirstSeen": "2026-04-01",
+	"careerPageDatePosted": "2026-04-01",
+	"boardFirstSeen": "2025-10-02",
+	"boardDatePosted": "2025-10-02",
+	"effectiveCareerDate": "2026-04-01",
+	"effectiveBoardDate": "2025-10-02",
+	"lagDays": -181,
+	"verdict": "board_first",
+	"location": "San Francisco, California",
+	"department": "Sales",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402062439/https://api.ashbyhq.com/posting-api/job-board/notion",
+	"boardSnapshotUrl": "https://web.archive.org/web/20251002080032/https://www.linkedin.com/company/notionhq/jobs"
+}

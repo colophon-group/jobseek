@@ -1,0 +1,19 @@
+{
+	"_type": "job-comparison",
+	"company": "OpenAI",
+	"normalizedTitle": "data visualization analyst",
+	"careerTitle": "Data Visualization Analyst",
+	"boardTitle": "Data Visualization Analyst",
+	"careerPageFirstSeen": "2026-02-25",
+	"careerPageDatePosted": "2026-02-25",
+	"boardFirstSeen": "2025-11-30",
+	"boardDatePosted": "2025-11-26",
+	"effectiveCareerDate": "2026-02-25",
+	"effectiveBoardDate": "2025-11-26",
+	"lagDays": -91,
+	"verdict": "board_first",
+	"location": "San Francisco",
+	"department": "Intelligence & Investigations",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402062406/https://api.ashbyhq.com/posting-api/job-board/openai",
+	"boardSnapshotUrl": "https://web.archive.org/web/20251130024858/https://www.glassdoor.com/Jobs/OpenAI-Jobs-E2210885.htm"
+}

@@ -1,0 +1,19 @@
+{
+	"_type": "job-comparison",
+	"company": "OpenAI",
+	"normalizedTitle": "product engineer full stack enterprise agents",
+	"careerTitle": "Product Engineer, Full Stack - Enterprise Agents",
+	"boardTitle": "Full Stack Software Engineer, Enterprise Agents",
+	"careerPageFirstSeen": "2026-01-08",
+	"careerPageDatePosted": "2026-01-08",
+	"boardFirstSeen": "2025-11-30",
+	"boardDatePosted": "2025-10-31",
+	"effectiveCareerDate": "2026-01-08",
+	"effectiveBoardDate": "2025-10-31",
+	"lagDays": -69,
+	"verdict": "board_first",
+	"location": "San Francisco",
+	"department": "Applied AI",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402062406/https://api.ashbyhq.com/posting-api/job-board/openai",
+	"boardSnapshotUrl": "https://web.archive.org/web/20251130024858/https://www.glassdoor.com/Jobs/OpenAI-Jobs-E2210885.htm"
+}

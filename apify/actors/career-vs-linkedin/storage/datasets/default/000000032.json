@@ -1,0 +1,19 @@
+{
+	"_type": "job-comparison",
+	"company": "OpenAI",
+	"normalizedTitle": "enterprise security engineer",
+	"careerTitle": "Enterprise Security Engineer",
+	"boardTitle": "Enterprise Security Engineer",
+	"careerPageFirstSeen": "2024-11-06",
+	"careerPageDatePosted": "2024-11-06",
+	"boardFirstSeen": "2025-07-24",
+	"boardDatePosted": "2025-07-17",
+	"effectiveCareerDate": "2024-11-06",
+	"effectiveBoardDate": "2025-07-17",
+	"lagDays": 253,
+	"verdict": "career_first",
+	"location": "San Francisco",
+	"department": "IT",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402062406/https://api.ashbyhq.com/posting-api/job-board/openai",
+	"boardSnapshotUrl": "https://web.archive.org/web/20250724232322/https://www.glassdoor.com/Jobs/OpenAI-Jobs-E2210885.htm"
+}

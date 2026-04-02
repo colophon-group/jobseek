@@ -1,0 +1,19 @@
+{
+	"_type": "job-comparison",
+	"company": "OpenAI",
+	"normalizedTitle": "program manager industrial security",
+	"careerTitle": "Program Manager, Industrial Security",
+	"boardTitle": "Senior Technical Program Manager - Security",
+	"careerPageFirstSeen": "2026-02-04",
+	"careerPageDatePosted": "2026-02-04",
+	"boardFirstSeen": "2025-12-22",
+	"boardDatePosted": "2025-10-30",
+	"effectiveCareerDate": "2026-02-04",
+	"effectiveBoardDate": "2025-10-30",
+	"lagDays": -97,
+	"verdict": "board_first",
+	"location": "Washington, DC",
+	"department": "Corporate Security",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402062406/https://api.ashbyhq.com/posting-api/job-board/openai",
+	"boardSnapshotUrl": "https://web.archive.org/web/20251222115517/https://www.glassdoor.com/Jobs/Openai-Jobs-E2210885.htm"
+}

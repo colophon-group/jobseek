@@ -1,35 +1,44 @@
 import { Actor, log } from 'apify';
 import { collectCareerJobs } from './career.js';
+import { collectGlassdoorJobs } from './glassdoor.js';
+import { collectIndeedJobs } from './indeed.js';
 import { collectLinkedInJobs } from './linkedin.js';
 import { compareJobs } from './compare.js';
 import { analyzeWithGemini } from './gemini.js';
 import type { Input, CompanyPair, ResearchSummary, BatchSummary } from './types.js';
 
 /**
- * Seed companies for batch mode — a diverse mix of ATS platforms.
- * Each pair has a well-archived career page and a LinkedIn company slug.
+ * Seed companies for batch mode — companies with verified Glassdoor Wayback coverage.
+ *
+ * Platform selection priority:
+ *   1. Glassdoor — best: ageInDays gives exact posting date, independent of archive timing
+ *   2. LinkedIn  — fallback: uses <time datetime> from HTML, decent coverage
+ *   3. Indeed    — last: almost no Wayback coverage for US tech companies
+ *
+ * Glassdoor employer IDs discovered via CDX:
+ *   OpenAI=E2210885 (8 snaps 2025), Anthropic=E8109027 (2 snaps 2024)
  */
 const SEED_COMPANIES: CompanyPair[] = [
-  { name: 'Stripe',       careerPageUrl: 'https://boards.greenhouse.io/stripe',         linkedinSlug: 'stripe' },
-  { name: 'Coinbase',     careerPageUrl: 'https://boards.greenhouse.io/coinbase',        linkedinSlug: 'coinbase' },
-  { name: 'Anthropic',    careerPageUrl: 'https://boards.greenhouse.io/anthropic',       linkedinSlug: 'anthropic' },
-  { name: 'OpenAI',       careerPageUrl: 'https://boards.greenhouse.io/openai',          linkedinSlug: 'openai' },
-  { name: 'Figma',        careerPageUrl: 'https://boards.greenhouse.io/figma',           linkedinSlug: 'figma' },
-  { name: 'Notion',       careerPageUrl: 'https://boards.greenhouse.io/notion',          linkedinSlug: 'notion' },
-  { name: 'Scale AI',     careerPageUrl: 'https://jobs.lever.co/scaleai',                linkedinSlug: 'scaleai' },
-  { name: 'Brex',         careerPageUrl: 'https://jobs.lever.co/brex',                   linkedinSlug: 'brex-inc-' },
-  { name: 'Rippling',     careerPageUrl: 'https://jobs.lever.co/rippling',               linkedinSlug: 'rippling' },
-  { name: 'Linear',       careerPageUrl: 'https://jobs.ashbyhq.com/linear',              linkedinSlug: 'linear-app' },
-  { name: 'Vercel',       careerPageUrl: 'https://jobs.ashbyhq.com/vercel',              linkedinSlug: 'vercel' },
-  { name: 'Retool',       careerPageUrl: 'https://jobs.ashbyhq.com/retool',              linkedinSlug: 'tryretool' },
-  { name: 'Klarna',       careerPageUrl: 'https://boards.greenhouse.io/klarna',          linkedinSlug: 'klarna' },
-  { name: 'Spotify',      careerPageUrl: 'https://boards.greenhouse.io/spotify',         linkedinSlug: 'spotify' },
-  { name: 'Robinhood',    careerPageUrl: 'https://boards.greenhouse.io/robinhood',       linkedinSlug: 'robinhood' },
-  { name: 'Miro',         careerPageUrl: 'https://miro.recruitee.com',                   linkedinSlug: 'mirohq' },
-  { name: 'Typeform',     careerPageUrl: 'https://typeform.recruitee.com',               linkedinSlug: 'typeform' },
-  { name: 'Novartis',     careerPageUrl: 'https://jobs.smartrecruiters.com/Novartis',    linkedinSlug: 'novartis' },
-  { name: 'SAP',          careerPageUrl: 'https://jobs.smartrecruiters.com/SAP',         linkedinSlug: 'sap' },
-  { name: 'Bosch',        careerPageUrl: 'https://jobs.smartrecruiters.com/BoschGroup',  linkedinSlug: 'bosch' },
+  // Glassdoor has good 2025 coverage for OpenAI (8 snapshots)
+  {
+    name: 'OpenAI',
+    careerPageUrl: 'https://jobs.ashbyhq.com/openai',
+    glassdoorUrl: 'https://www.glassdoor.com/Jobs/OpenAI-Jobs-E2210885.htm',
+    linkedinSlug: 'openai',
+  },
+  // Notion: no Glassdoor 2024+ coverage → use LinkedIn (6 snapshots 2024-2026)
+  {
+    name: 'Notion',
+    careerPageUrl: 'https://jobs.ashbyhq.com/notion',
+    linkedinSlug: 'notionhq',
+  },
+  // Anthropic: Greenhouse (20 snaps 2024) + Glassdoor (2 snaps 2024)
+  {
+    name: 'Anthropic',
+    careerPageUrl: 'https://boards.greenhouse.io/anthropic',
+    glassdoorUrl: 'https://www.glassdoor.com/Jobs/Anthropic-Jobs-E8109027.htm',
+    linkedinSlug: 'anthropic',
+  },
 ];
 
 await Actor.init();
@@ -40,8 +49,7 @@ const {
   companies,
   careerPageUrl,
   companyName,
-  linkedinSlug,
-  linkedinCompanyId,
+  indeedSlug,
   startDate,
   endDate,
   maxSnapshots = 60,
@@ -58,12 +66,12 @@ if (batchMode) {
   await runBatch();
 } else {
   if (!careerPageUrl) throw new Error('Input field "careerPageUrl" is required (or set batchMode: true).');
-  if (!linkedinSlug && !linkedinCompanyId) {
-    throw new Error('Either "linkedinSlug" or "linkedinCompanyId" is required (or set batchMode: true).');
+  if (!indeedSlug && !input.linkedinSlug && !input.linkedinCompanyId) {
+    throw new Error('One of "indeedSlug", "linkedinSlug", or "linkedinCompanyId" is required (or set batchMode: true).');
   }
   const name = companyName ?? new URL(careerPageUrl).hostname;
-  log.info('Career vs LinkedIn', { company: name, careerPageUrl, linkedinSlug, linkedinCompanyId, start: effectiveStart, end: effectiveEnd });
-  await analyzeCompany({ name, careerPageUrl, linkedinSlug, linkedinCompanyId });
+  log.info('Career vs job board', { company: name, careerPageUrl, indeedSlug, linkedinSlug: input.linkedinSlug, start: effectiveStart, end: effectiveEnd });
+  await analyzeCompany({ name, careerPageUrl, indeedSlug, linkedinSlug: input.linkedinSlug, linkedinCompanyId: input.linkedinCompanyId });
 }
 
 await Actor.exit();
@@ -98,7 +106,7 @@ async function runBatch(): Promise<void> {
     avgPctCareerFirst: avgPct,
     avgLagDays: avgLag,
     overallConclusion:
-      `Across ${batchResults.length} companies, ${avgPct}% of matched jobs appeared on the career page before LinkedIn, ` +
+      `Across ${batchResults.length} companies, ${avgPct}% of matched jobs appeared on the career page before Indeed, ` +
       `with an average career-page lead of ${avgLag} days. ` +
       `Career pages are consistently the primary source of truth for job postings.`,
     companyResults: batchResults.map(r => ({
@@ -122,24 +130,51 @@ async function analyzeCompany(co: CompanyPair): Promise<ResearchSummary | null> 
     co.careerPageUrl, effectiveStart, effectiveEnd, maxSnapshots, delayMs,
   );
 
-  log.info(`Collecting LinkedIn jobs…`, { slug: co.linkedinSlug, id: co.linkedinCompanyId });
-  const { jobs: linkedinJobs, snapshotsProcessed: liSnaps, linkedinUrl } = await collectLinkedInJobs(
-    co.name, co.linkedinSlug, co.linkedinCompanyId,
-    effectiveStart, effectiveEnd, maxSnapshots, delayMs,
-  );
+  // Platform priority: Glassdoor (exact ageInDays dates) → LinkedIn → Indeed
+  let boardJobs: Map<string, import('./types.js').JobSighting>;
+  let boardSnaps: number;
+  let boardUrl: string;
+  let boardPlatform: string;
 
-  if (careerJobs.size === 0 && linkedinJobs.size === 0) {
+  boardJobs = new Map(); boardSnaps = 0; boardUrl = ''; boardPlatform = 'none';
+
+  if (co.glassdoorUrl) {
+    log.info(`Collecting Glassdoor jobs…`, { url: co.glassdoorUrl });
+    const result = await collectGlassdoorJobs(co.name, co.glassdoorUrl, effectiveStart, effectiveEnd, maxSnapshots, delayMs);
+    boardJobs = result.jobs; boardSnaps = result.snapshotsProcessed; boardUrl = result.boardUrl;
+    boardPlatform = 'glassdoor';
+    log.info(`Glassdoor: ${boardJobs.size} jobs collected`);
+  }
+
+  if (boardJobs.size === 0 && (co.linkedinSlug || co.linkedinCompanyId)) {
+    log.info(`Glassdoor yielded 0 jobs — falling back to LinkedIn`, { slug: co.linkedinSlug });
+    const result = await collectLinkedInJobs(
+      co.name, co.linkedinSlug, co.linkedinCompanyId,
+      effectiveStart, effectiveEnd, maxSnapshots, delayMs,
+    );
+    boardJobs = result.jobs; boardSnaps = result.snapshotsProcessed; boardUrl = result.linkedinUrl;
+    boardPlatform = 'linkedin';
+  }
+
+  if (boardJobs.size === 0 && co.indeedSlug) {
+    log.info(`LinkedIn yielded 0 jobs — falling back to Indeed`, { slug: co.indeedSlug });
+    const result = await collectIndeedJobs(co.name, co.indeedSlug, effectiveStart, effectiveEnd, maxSnapshots, delayMs);
+    boardJobs = result.jobs; boardSnaps = result.snapshotsProcessed; boardUrl = result.boardUrl;
+    boardPlatform = 'indeed';
+  }
+
+  if (careerJobs.size === 0 && boardJobs.size === 0) {
     log.warning(`${co.name}: no jobs found on either platform. Skipping.`);
     return null;
   }
 
-  log.info(`${co.name}: ${careerJobs.size} career jobs, ${linkedinJobs.size} LinkedIn jobs — comparing…`);
+  log.info(`${co.name}: ${careerJobs.size} career jobs, ${boardJobs.size} Indeed jobs — comparing…`);
 
   const { comparisons, summary: partialSummary } = compareJobs(
-    careerJobs, linkedinJobs, co.name, co.careerPageUrl, linkedinUrl,
+    careerJobs, boardJobs, co.name, co.careerPageUrl, boardUrl, boardPlatform,
     effectiveStart, effectiveEnd,
     maxSnapshots, // careerSnapshotsProcessed approximation
-    liSnaps,
+    boardSnaps,
   );
 
   // Push individual job comparison records
@@ -169,7 +204,7 @@ async function analyzeCompany(co: CompanyPair): Promise<ResearchSummary | null> 
   await Actor.pushData(summary);
   log.info(`${co.name}: done`, {
     careerJobs: summary.totalCareerJobs,
-    linkedinJobs: summary.totalLinkedInJobs,
+    boardJobs: summary.totalBoardJobs,
     matched: summary.matchedJobs,
     pctCareerFirst: `${summary.pctCareerFirst}%`,
     avgLag: `${summary.avgLagDays}d`,

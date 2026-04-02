@@ -1,0 +1,19 @@
+{
+	"_type": "job-comparison",
+	"company": "OpenAI",
+	"normalizedTitle": "account director state local government",
+	"careerTitle": "Account Director, State and Local Government ",
+	"boardTitle": "Account Director, State & Local Government",
+	"careerPageFirstSeen": "2026-02-06",
+	"careerPageDatePosted": "2026-02-06",
+	"boardFirstSeen": "2025-07-24",
+	"boardDatePosted": "2025-05-14",
+	"effectiveCareerDate": "2026-02-06",
+	"effectiveBoardDate": "2025-05-14",
+	"lagDays": -268,
+	"verdict": "board_first",
+	"location": "Washington, DC",
+	"department": "OpenAI for Gov",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402062406/https://api.ashbyhq.com/posting-api/job-board/openai",
+	"boardSnapshotUrl": "https://web.archive.org/web/20250724232322/https://www.glassdoor.com/Jobs/OpenAI-Jobs-E2210885.htm"
+}

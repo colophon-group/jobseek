@@ -1,0 +1,19 @@
+{
+	"_type": "job-comparison",
+	"company": "OpenAI",
+	"normalizedTitle": "data scientist codex",
+	"careerTitle": "Data Scientist, Codex",
+	"boardTitle": "Data Scientist",
+	"careerPageFirstSeen": "2025-09-30",
+	"careerPageDatePosted": "2025-09-30",
+	"boardFirstSeen": "2025-07-24",
+	"boardDatePosted": "2025-04-29",
+	"effectiveCareerDate": "2025-09-30",
+	"effectiveBoardDate": "2025-04-29",
+	"lagDays": -154,
+	"verdict": "board_first",
+	"location": "San Francisco",
+	"department": "Data Science",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402062406/https://api.ashbyhq.com/posting-api/job-board/openai",
+	"boardSnapshotUrl": "https://web.archive.org/web/20250724232322/https://www.glassdoor.com/Jobs/OpenAI-Jobs-E2210885.htm"
+}

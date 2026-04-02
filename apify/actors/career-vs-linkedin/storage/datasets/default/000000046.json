@@ -1,0 +1,19 @@
+{
+	"_type": "job-comparison",
+	"company": "OpenAI",
+	"normalizedTitle": "research engineer research scientist post training",
+	"careerTitle": "Research Engineer / Research Scientist, Post-Training",
+	"boardTitle": "Research Engineer / Research Scientist, Post-Training",
+	"careerPageFirstSeen": "2025-12-01",
+	"careerPageDatePosted": "2025-12-01",
+	"boardFirstSeen": "2025-12-19",
+	"boardDatePosted": "2025-10-16",
+	"effectiveCareerDate": "2025-12-01",
+	"effectiveBoardDate": "2025-10-16",
+	"lagDays": -46,
+	"verdict": "board_first",
+	"location": "San Francisco",
+	"department": "Research",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402062406/https://api.ashbyhq.com/posting-api/job-board/openai",
+	"boardSnapshotUrl": "https://web.archive.org/web/20251219060136/https://www.glassdoor.com/Jobs/OpenAI-Jobs-E2210885.htm"
+}

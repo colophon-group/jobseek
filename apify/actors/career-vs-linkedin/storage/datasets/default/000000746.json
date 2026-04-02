@@ -1,0 +1,19 @@
+{
+	"_type": "job-comparison",
+	"company": "Notion",
+	"normalizedTitle": "business development representative uki",
+	"careerTitle": "Business Development Representative, UKI",
+	"boardTitle": "Business Development Representative, Nordics",
+	"careerPageFirstSeen": "2026-01-22",
+	"careerPageDatePosted": "2026-01-22",
+	"boardFirstSeen": "2026-02-18",
+	"boardDatePosted": "2026-02-17",
+	"effectiveCareerDate": "2026-01-22",
+	"effectiveBoardDate": "2026-02-17",
+	"lagDays": 26,
+	"verdict": "career_first",
+	"location": "Dublin, Ireland",
+	"department": "Business Development",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402062439/https://api.ashbyhq.com/posting-api/job-board/notion",
+	"boardSnapshotUrl": "https://web.archive.org/web/20260218083125/https://www.linkedin.com/company/notionhq/jobs"
+}

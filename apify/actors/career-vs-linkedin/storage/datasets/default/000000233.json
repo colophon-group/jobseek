@@ -1,0 +1,19 @@
+{
+	"_type": "job-comparison",
+	"company": "OpenAI",
+	"normalizedTitle": "software engineer full stack revenue platform",
+	"careerTitle": "Software Engineer, Full Stack, Revenue Platform",
+	"boardTitle": "Software Engineer, Full-Stack",
+	"careerPageFirstSeen": "2025-11-18",
+	"careerPageDatePosted": "2025-11-18",
+	"boardFirstSeen": "2025-11-30",
+	"boardDatePosted": "2025-10-16",
+	"effectiveCareerDate": "2025-11-18",
+	"effectiveBoardDate": "2025-10-16",
+	"lagDays": -33,
+	"verdict": "board_first",
+	"location": "San Francisco",
+	"department": "Applied AI",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402062406/https://api.ashbyhq.com/posting-api/job-board/openai",
+	"boardSnapshotUrl": "https://web.archive.org/web/20251130024858/https://www.glassdoor.com/Jobs/OpenAI-Jobs-E2210885.htm"
+}

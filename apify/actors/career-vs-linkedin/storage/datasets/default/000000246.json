@@ -1,0 +1,19 @@
+{
+	"_type": "job-comparison",
+	"company": "OpenAI",
+	"normalizedTitle": "software engineer monetization infrastructure",
+	"careerTitle": "Software Engineer, Monetization Infrastructure",
+	"boardTitle": "Software Engineer, Infrastructure Security",
+	"careerPageFirstSeen": "2025-12-10",
+	"careerPageDatePosted": "2025-12-10",
+	"boardFirstSeen": "2025-12-19",
+	"boardDatePosted": "2025-10-16",
+	"effectiveCareerDate": "2025-12-10",
+	"effectiveBoardDate": "2025-10-16",
+	"lagDays": -55,
+	"verdict": "board_first",
+	"location": "San Francisco",
+	"department": "Applied AI",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402062406/https://api.ashbyhq.com/posting-api/job-board/openai",
+	"boardSnapshotUrl": "https://web.archive.org/web/20251219060136/https://www.glassdoor.com/Jobs/OpenAI-Jobs-E2210885.htm"
+}

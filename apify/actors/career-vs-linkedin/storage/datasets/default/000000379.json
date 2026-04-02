@@ -1,0 +1,19 @@
+{
+	"_type": "job-comparison",
+	"company": "OpenAI",
+	"normalizedTitle": "technical recruiter tokyo",
+	"careerTitle": "Technical Recruiter - Tokyo",
+	"boardTitle": "Senior Technical Recruiter",
+	"careerPageFirstSeen": "2026-02-05",
+	"careerPageDatePosted": "2026-02-05",
+	"boardFirstSeen": "2025-07-24",
+	"boardDatePosted": "2025-05-22",
+	"effectiveCareerDate": "2026-02-05",
+	"effectiveBoardDate": "2025-05-22",
+	"lagDays": -259,
+	"verdict": "board_first",
+	"location": "Tokyo, Japan",
+	"department": "People",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402062406/https://api.ashbyhq.com/posting-api/job-board/openai",
+	"boardSnapshotUrl": "https://web.archive.org/web/20250724232322/https://www.glassdoor.com/Jobs/OpenAI-Jobs-E2210885.htm"
+}

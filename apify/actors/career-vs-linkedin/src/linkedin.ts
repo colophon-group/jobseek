@@ -17,7 +17,9 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 export function buildLinkedInUrls(slug?: string, companyId?: string): string[] {
   const urls: string[] = [];
   if (slug) {
+    // /jobs/ sub-page is most direct; main company page sometimes has job listings too
     urls.push(`https://www.linkedin.com/company/${slug}/jobs/`);
+    urls.push(`https://www.linkedin.com/company/${slug}/`);
     urls.push(`https://www.linkedin.com/jobs/search/?f_C=&keywords=&location=&geoId=&f_C=${slug}`);
   }
   if (companyId) {
@@ -59,7 +61,8 @@ export async function collectLinkedInJobs(
   }
   log.info(`LinkedIn company page: ${companyPageSnapshots.length} snapshots`, { url: primaryLinkedInUrl });
 
-  const jobViewUrls = new Set<string>();
+  // Map jobViewUrl → best known snapshot timestamp (from the page we found it on)
+  const jobViewUrls = new Map<string, string>();
 
   for (let i = 0; i < companyPageSnapshots.length; i++) {
     const snap = companyPageSnapshots[i];
@@ -70,13 +73,17 @@ export async function collectLinkedInJobs(
       const extracted = extractFromLinkedInHtml(html, snap, companyName);
       snapshotsProcessed++;
       for (const job of extracted.jobs) mergeJob(jobs, job);
-      for (const url of extracted.jobViewUrls) jobViewUrls.add(url);
+      // Record the earliest company-page timestamp where this job view URL appeared
+      for (const url of extracted.jobViewUrls) {
+        if (!jobViewUrls.has(url) || snap.timestamp < jobViewUrls.get(url)!) {
+          jobViewUrls.set(url, snap.timestamp);
+        }
+      }
     }
     if (i < companyPageSnapshots.length - 1) await sleep(delayMs);
   }
 
   // ── Step 2: Additional LinkedIn URL variants ───────────────────────────────
-  // Try alternate company URL forms if the first didn't yield many job view links.
   if (jobViewUrls.size < 5 && linkedinUrls.length > 1) {
     for (const altUrl of linkedinUrls.slice(1)) {
       const altSnaps = await fetchCdxSnapshots({ url: altUrl, startDate, endDate, maxSnapshots: Math.min(maxSnapshots, 20) });
@@ -85,7 +92,11 @@ export async function collectLinkedInJobs(
         if (html) {
           const result = extractFromLinkedInHtml(html, snap, companyName);
           for (const job of result.jobs) mergeJob(jobs, job);
-          for (const u of result.jobViewUrls) jobViewUrls.add(u);
+          for (const u of result.jobViewUrls) {
+            if (!jobViewUrls.has(u) || snap.timestamp < jobViewUrls.get(u)!) {
+              jobViewUrls.set(u, snap.timestamp);
+            }
+          }
           snapshotsProcessed++;
         }
       }
@@ -95,22 +106,19 @@ export async function collectLinkedInJobs(
   log.info(`LinkedIn: ${jobViewUrls.size} individual job view URLs to fetch`);
 
   // ── Step 3: Fetch individual job pages ────────────────────────────────────
-  const jobViewArray = Array.from(jobViewUrls).slice(0, maxSnapshots * 2);
+  // Use the known snapshot timestamp from the company page — this avoids CDX lookup
+  // (which times out for LinkedIn job view URLs) and directly fetches the archived page.
+  const jobViewArray = Array.from(jobViewUrls.entries()).slice(0, maxSnapshots * 2);
   log.info(`LinkedIn: fetching ${jobViewArray.length} individual job pages`);
 
   for (let i = 0; i < jobViewArray.length; i++) {
-    const jobUrl = jobViewArray[i];
-    // Get the most relevant snapshot for this URL within our date range
-    const snaps = await fetchCdxSnapshots({
-      url: jobUrl,
-      startDate,
-      endDate,
-      maxSnapshots: 1,
-      collapse: 'timestamp:8',
-    });
-    if (snaps.length === 0) { await sleep(delayMs / 2); continue; }
+    const [jobUrl, knownTimestamp] = jobViewArray[i];
 
-    const snap = snaps[0];
+    // Try direct fetch using the known timestamp first (avoids slow CDX query)
+    const snap = { timestamp: knownTimestamp, original: jobUrl };
+    // Direct fetch using known company-page timestamp.
+    // LinkedIn individual job pages are rarely archived independently — if this
+    // returns empty we skip rather than doing a slow CDX lookup that will time out.
     const html = await fetchArchivedPage(snap.timestamp, snap.original);
     if (html) {
       snapshotsProcessed++;
@@ -183,10 +191,16 @@ function extractFromLinkedInHtml(html: string, snap: { timestamp: string; origin
       seenTitles.add(title);
       const normTitle = normalizeTitle(title);
       if (!normTitle) return;
+      // Walk up to the job card container and look for a <time datetime="YYYY-MM-DD">
+      // LinkedIn embeds its own real posting date here — not the archive snapshot date
+      const card = $(el).closest('li, article, div.job-card-container, div.base-card, div[class*="job-card"]');
+      const timeEl = card.length ? card.find('time[datetime]').first() : $(el).closest('li').find('time[datetime]').first();
+      const linkedinDatePosted = timeEl.attr('datetime')?.slice(0, 10) ?? undefined;
       jobs.push({
         title,
         normalizedTitle: normTitle,
         firstSeen: date,
+        datePosted: linkedinDatePosted,
         snapshotUrl,
         platform: 'linkedin',
         extractionMethod: 'linkedin-company-page-html',

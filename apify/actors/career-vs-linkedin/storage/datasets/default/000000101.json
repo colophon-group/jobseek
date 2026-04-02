@@ -1,0 +1,19 @@
+{
+	"_type": "job-comparison",
+	"company": "OpenAI",
+	"normalizedTitle": "ai support engineer san francisco",
+	"careerTitle": "AI Support Engineer - San Francisco",
+	"boardTitle": "AI Support Engineer - San Francisco",
+	"careerPageFirstSeen": "2026-02-24",
+	"careerPageDatePosted": "2026-02-24",
+	"boardFirstSeen": "2025-12-22",
+	"boardDatePosted": "2025-10-30",
+	"effectiveCareerDate": "2026-02-24",
+	"effectiveBoardDate": "2025-10-30",
+	"lagDays": -117,
+	"verdict": "board_first",
+	"location": "San Francisco",
+	"department": "Go To Market",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402062406/https://api.ashbyhq.com/posting-api/job-board/openai",
+	"boardSnapshotUrl": "https://web.archive.org/web/20251222115517/https://www.glassdoor.com/Jobs/Openai-Jobs-E2210885.htm"
+}

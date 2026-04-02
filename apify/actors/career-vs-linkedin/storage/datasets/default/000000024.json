@@ -1,0 +1,19 @@
+{
+	"_type": "job-comparison",
+	"company": "OpenAI",
+	"normalizedTitle": "software engineer youth well being",
+	"careerTitle": "Software Engineer, Youth Well-Being",
+	"boardTitle": "Software Engineer, Youth Well-Being",
+	"careerPageFirstSeen": "2024-11-22",
+	"careerPageDatePosted": "2024-11-22",
+	"boardFirstSeen": "2025-07-24",
+	"boardDatePosted": "2025-06-10",
+	"effectiveCareerDate": "2024-11-22",
+	"effectiveBoardDate": "2025-06-10",
+	"lagDays": 200,
+	"verdict": "career_first",
+	"location": "San Francisco",
+	"department": "Applied AI",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402062406/https://api.ashbyhq.com/posting-api/job-board/openai",
+	"boardSnapshotUrl": "https://web.archive.org/web/20250724232322/https://www.glassdoor.com/Jobs/OpenAI-Jobs-E2210885.htm"
+}

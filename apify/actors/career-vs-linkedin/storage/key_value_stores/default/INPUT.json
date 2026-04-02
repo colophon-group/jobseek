@@ -1,1 +1,66 @@
-{"companyName":"OpenAI","careerPageUrl":"https://boards.greenhouse.io/openai","linkedinSlug":"openai","startDate":"2023-01-01","endDate":"2024-12-31","maxSnapshots":60,"delayMs":1000}
+{
+  "batchMode": true,
+  "maxSnapshots": 200,
+  "delayMs": 800,
+  "startDate": "2024-01-01",
+  "endDate": "2026-04-01",
+  "companies": [
+    {
+      "name": "OpenAI",
+      "careerPageUrl": "https://jobs.ashbyhq.com/openai",
+      "glassdoorUrl": "https://www.glassdoor.com/Jobs/OpenAI-Jobs-E2210885.htm",
+      "linkedinSlug": "openai"
+    },
+    {
+      "name": "Notion",
+      "careerPageUrl": "https://jobs.ashbyhq.com/notion",
+      "linkedinSlug": "notionhq"
+    },
+    {
+      "name": "Deel",
+      "careerPageUrl": "https://jobs.ashbyhq.com/deel",
+      "linkedinSlug": "deel"
+    },
+    {
+      "name": "Anthropic",
+      "careerPageUrl": "https://boards.greenhouse.io/anthropic",
+      "glassdoorUrl": "https://www.glassdoor.com/Jobs/Anthropic-Jobs-E8109027.htm",
+      "linkedinSlug": "anthropic"
+    },
+    {
+      "name": "Figma",
+      "careerPageUrl": "https://boards.greenhouse.io/figma",
+      "linkedinSlug": "figma"
+    },
+    {
+      "name": "Zapier",
+      "careerPageUrl": "https://jobs.ashbyhq.com/zapier",
+      "linkedinSlug": "zapier"
+    },
+    {
+      "name": "Intercom",
+      "careerPageUrl": "https://boards.greenhouse.io/intercom",
+      "linkedinSlug": "intercom"
+    },
+    {
+      "name": "Airtable",
+      "careerPageUrl": "https://boards.greenhouse.io/airtable",
+      "linkedinSlug": "airtable"
+    },
+    {
+      "name": "Cloudflare",
+      "careerPageUrl": "https://boards.greenhouse.io/cloudflare",
+      "linkedinSlug": "cloudflare"
+    },
+    {
+      "name": "Discord",
+      "careerPageUrl": "https://boards.greenhouse.io/discord",
+      "linkedinSlug": "discord"
+    },
+    {
+      "name": "Duolingo",
+      "careerPageUrl": "https://boards.greenhouse.io/duolingo",
+      "linkedinSlug": "duolingo"
+    }
+  ]
+}

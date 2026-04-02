@@ -11,9 +11,10 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
  * Collect all unique jobs seen on a company career portal over a date range,
  * using Wayback Machine CDX snapshots.
  *
- * For known ATS platforms (Greenhouse, Lever, Ashby, SmartRecruiters, Workable)
- * the actor CDXes their API endpoints directly — those are well-archived and include
- * structured datePosted data. For unknown portals it falls back to HTML snapshots.
+ * Strategy (in priority order):
+ * 1. ATS API endpoint (Greenhouse, Lever, Ashby, SmartRecruiters, Workable) — well-archived JSON with datePosted
+ * 2. Individual job pages via CDX prefix (e.g. boards.greenhouse.io/{token}/jobs/*) — JSON-LD with actual datePosted
+ * 3. Board listing HTML snapshots — titles + locations, firstSeen = archive date (least accurate)
  *
  * Returns a map of normalizedTitle → JobSighting (first sighting only).
  */
@@ -28,12 +29,29 @@ export async function collectCareerJobs(
 
   // Detect ATS type and pick the best CDX target URL
   const atsInfo = detectAts(portalUrl);
-  if (atsInfo) {
+
+  // Ashby: call live API for current jobs (exact publishedAt), THEN also check CDX snapshots
+  // — some Ashby API endpoints ARE archived (e.g. zapier, ramp) and give historical job data
+  if (atsInfo?.type === 'ashby') {
+    log.info(`Career portal: detected Ashby, calling live API`, { apiUrl: atsInfo.apiUrl });
+    await collectFromAshbyLive(jobs, atsInfo);
+    // Also try CDX snapshots of the API endpoint for historical coverage
+    await collectFromAtsApi(jobs, atsInfo, startDate, endDate, maxSnapshots, delayMs);
+  } else if (atsInfo) {
     log.info(`Career portal: detected ${atsInfo.type}, using API CDX URL`, { apiUrl: atsInfo.apiUrl });
     await collectFromAtsApi(jobs, atsInfo, startDate, endDate, maxSnapshots, delayMs);
   }
 
-  // Also try the portal HTML page for extra coverage (or as fallback)
+  // For Greenhouse: also try individual job pages via CDX prefix — these have actual datePosted in JSON-LD
+  // This is more accurate than the board listing HTML (which only gives firstSeen = archive date)
+  if (atsInfo?.type === 'greenhouse') {
+    const jobPageCount = await collectFromGreenhouseJobPages(
+      jobs, portalUrl, startDate, endDate, maxSnapshots, delayMs,
+    );
+    log.info(`Career portal: ${jobPageCount} individual Greenhouse job pages enriched/added with datePosted`);
+  }
+
+  // Fallback: portal HTML page
   if (jobs.size === 0) {
     log.info('Career portal: falling back to HTML snapshot extraction', { url: portalUrl });
     const snapshots = await fetchCdxSnapshots({ url: portalUrl, startDate, endDate, maxSnapshots });
@@ -48,8 +66,118 @@ export async function collectCareerJobs(
     }
   }
 
+  // If we got jobs from HTML but no datePosted, try to enrich via individual pages
+  const missingDates = Array.from(jobs.values()).filter(j => !j.datePosted && j.id);
+  if (missingDates.length > 0 && atsInfo?.type === 'greenhouse') {
+    log.info(`Career portal: enriching ${missingDates.length} jobs missing datePosted via individual pages`);
+    await enrichJobsWithIndividualPages(jobs, missingDates, portalUrl, delayMs);
+  }
+
   log.info(`Career portal: ${jobs.size} unique jobs collected`);
   return jobs;
+}
+
+/**
+ * Collect jobs from individual Greenhouse job pages via CDX prefix.
+ * These pages have JSON-LD with actual datePosted (not archive date).
+ * Much more accurate than the board listing HTML.
+ */
+async function collectFromGreenhouseJobPages(
+  jobs: Map<string, JobSighting>,
+  portalUrl: string,
+  startDate: string,
+  endDate: string,
+  maxSnapshots: number,
+  delayMs: number,
+): Promise<number> {
+  let url: URL;
+  try { url = new URL(portalUrl); } catch { return 0; }
+  const token = url.pathname.split('/').filter(Boolean)[0];
+  if (!token) return 0;
+
+  // CDX prefix search for all individual job pages
+  const jobPagePrefix = `https://boards.greenhouse.io/${token}/jobs/`;
+  const snapshots = await fetchCdxSnapshots({
+    url: jobPagePrefix,
+    startDate,
+    endDate,
+    maxSnapshots: maxSnapshots * 5, // grab more since many jobs
+    prefix: true,
+    collapse: 'urlkey', // one per unique job URL
+  });
+
+  // Filter to only clean job URLs (no query params like ?utm_source or /confirmation)
+  const cleanSnaps = snapshots.filter(s => {
+    try {
+      const u = new URL(s.original);
+      return /^\/[^/]+\/jobs\/\d+$/.test(u.pathname) && !u.search;
+    } catch { return false; }
+  });
+
+  log.info(`Career Greenhouse job pages: ${cleanSnaps.length} unique job pages found (from ${snapshots.length} CDX results)`, { prefix: jobPagePrefix });
+
+  let enriched = 0;
+  const limit = Math.min(cleanSnaps.length, maxSnapshots * 3);
+
+  for (let i = 0; i < limit; i++) {
+    const snap = cleanSnaps[i];
+    const html = await fetchArchivedPage(snap.timestamp, snap.original);
+    if (html) {
+      const extracted = extractFromHtml(html, snap);
+      // Only keep jobs with datePosted (the whole point of fetching individual pages)
+      const withDates = extracted.filter(j => j.datePosted);
+      if (withDates.length > 0) {
+        mergeJobs(jobs, withDates, snap);
+        enriched++;
+      }
+    }
+    if (i < limit - 1) await sleep(delayMs / 2);
+  }
+
+  return enriched;
+}
+
+/**
+ * For jobs already found from board HTML that have an ID but no datePosted,
+ * try to find and fetch the individual page from Wayback to get the real datePosted.
+ */
+async function enrichJobsWithIndividualPages(
+  jobs: Map<string, JobSighting>,
+  toEnrich: JobSighting[],
+  portalUrl: string,
+  delayMs: number,
+): Promise<void> {
+  let url: URL;
+  try { url = new URL(portalUrl); } catch { return; }
+  const token = url.pathname.split('/').filter(Boolean)[0];
+  if (!token) return;
+
+  for (let i = 0; i < Math.min(toEnrich.length, 50); i++) {
+    const job = toEnrich[i];
+    if (!job.id) continue;
+
+    const jobUrl = `https://boards.greenhouse.io/${token}/jobs/${job.id}`;
+    const snaps = await fetchCdxSnapshots({ url: jobUrl, maxSnapshots: 1, collapse: 'timestamp:8' });
+    if (snaps.length === 0) { await sleep(delayMs / 4); continue; }
+
+    const html = await fetchArchivedPage(snaps[0].timestamp, snaps[0].original);
+    if (html) {
+      const extracted = extractFromHtml(html, snaps[0]);
+      const match = extracted.find(e => e.datePosted && e.title);
+      if (match?.datePosted && match.title) {
+        const normTitle = normalizeTitle(match.title);
+        const existing = jobs.get(normTitle ?? job.normalizedTitle);
+        if (existing && !existing.datePosted) {
+          existing.datePosted = match.datePosted;
+          // Update firstSeen to actual datePosted if it's earlier
+          if (match.datePosted < existing.firstSeen) {
+            existing.firstSeen = match.datePosted;
+          }
+        }
+      }
+    }
+    if (i < Math.min(toEnrich.length, 50) - 1) await sleep(delayMs / 2);
+  }
 }
 
 interface AtsInfo {
@@ -63,6 +191,27 @@ interface AtsInfo {
 function detectAts(portalUrl: string): AtsInfo | null {
   let url: URL;
   try { url = new URL(portalUrl); } catch { return null; }
+
+  // Ashby: jobs.ashbyhq.com/{company}
+  if (/^jobs\.ashbyhq\.com$/i.test(url.hostname)) {
+    const company = url.pathname.split('/').filter(Boolean)[0];
+    if (!company) return null;
+    return {
+      type: 'ashby',
+      apiUrl: `https://api.ashbyhq.com/posting-api/job-board/${company}`,
+      extract: (body) => {
+        const data = body as { jobs?: AshbyJob[] };
+        return (data.jobs ?? []).map(j => ({
+          title: j.title,
+          location: j.location ?? j.address?.postalAddress?.addressLocality,
+          department: j.department ?? j.team,
+          id: j.id,
+          datePosted: j.publishedAt ? j.publishedAt.slice(0, 10) : undefined,
+          extractionMethod: 'ashby-api',
+        }));
+      },
+    };
+  }
 
   // Greenhouse: boards.greenhouse.io/{token}
   if (/^boards\.greenhouse\.io$/i.test(url.hostname)) {
@@ -152,6 +301,24 @@ function detectAts(portalUrl: string): AtsInfo | null {
   return null;
 }
 
+/** Fetch Ashby live API directly — publishedAt is exact, no Wayback needed. */
+async function collectFromAshbyLive(
+  jobs: Map<string, JobSighting>,
+  ats: AtsInfo,
+): Promise<void> {
+  try {
+    const res = await fetch(ats.apiUrl, { signal: AbortSignal.timeout(15_000) });
+    if (!res.ok) { log.warning(`Ashby API error: ${res.status}`); return; }
+    const data: unknown = await res.json();
+    const extracted = ats.extract(data);
+    log.info(`Ashby live API: ${extracted.length} jobs`, { url: ats.apiUrl });
+    const fakeSnap = { timestamp: new Date().toISOString().replace(/[-T:.Z]/g, '').slice(0, 14), original: ats.apiUrl };
+    mergeJobs(jobs, extracted, fakeSnap);
+  } catch (err) {
+    log.warning(`Ashby live API fetch failed: ${err}`);
+  }
+}
+
 /** Fetch CDX snapshots for an ATS API endpoint and extract jobs from each snapshot. */
 async function collectFromAtsApi(
   jobs: Map<string, JobSighting>,
@@ -215,6 +382,7 @@ function snapshotToDate(ts: string): string {
 
 // ── ATS response type interfaces ─────────────────────────────────────────────
 
+interface AshbyJob { id: string; title: string; publishedAt?: string; department?: string; team?: string; location?: string; address?: { postalAddress?: { addressLocality?: string } } }
 interface GhJob { id: number; title: string; location: { name: string }; departments: { name: string }[]; updated_at: string }
 interface LeverPosting { id: string; text: string; categories: { location?: string; department?: string }; createdAt: number }
 interface SRJob { id: string; name: string; location: { city?: string; country?: string }; department: { label?: string }; releasedDate?: string }

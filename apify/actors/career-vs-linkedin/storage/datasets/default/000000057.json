@@ -1,0 +1,19 @@
+{
+	"_type": "job-comparison",
+	"company": "OpenAI",
+	"normalizedTitle": "content designer",
+	"careerTitle": "Content Designer",
+	"boardTitle": "Content Designer",
+	"careerPageFirstSeen": "2025-11-10",
+	"careerPageDatePosted": "2025-11-10",
+	"boardFirstSeen": "2025-07-24",
+	"boardDatePosted": "2025-05-14",
+	"effectiveCareerDate": "2025-11-10",
+	"effectiveBoardDate": "2025-05-14",
+	"lagDays": -180,
+	"verdict": "board_first",
+	"location": "San Francisco",
+	"department": "Product Design",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402062406/https://api.ashbyhq.com/posting-api/job-board/openai",
+	"boardSnapshotUrl": "https://web.archive.org/web/20250724232322/https://www.glassdoor.com/Jobs/OpenAI-Jobs-E2210885.htm"
+}
