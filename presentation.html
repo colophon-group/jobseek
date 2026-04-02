@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>job-seek — Presentation</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0d0d0d;
+      --bg2: #141414;
+      --bg3: #1a1a1a;
+      --border: #2a2a2a;
+      --text: #f0f0f0;
+      --muted: #888;
+      --accent: #ffffff;
+      --dim: #444;
+      --mono: 'Courier New', 'Courier', monospace;
+    }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--mono);
+      height: 100%;
+      overflow: hidden;
+    }
+
+    /* ── SLIDE CONTAINER ── */
+    .deck {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 60px 80px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.45s ease;
+    }
+
+    .slide.active {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    /* ── NAVIGATION ── */
+    .nav {
+      position: fixed;
+      bottom: 36px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      z-index: 100;
+    }
+
+    .nav button {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 12px;
+      padding: 8px 20px;
+      cursor: pointer;
+      letter-spacing: 0.08em;
+      transition: all 0.2s;
+    }
+
+    .nav button:hover { border-color: var(--text); color: var(--text); }
+    .nav button:disabled { opacity: 0.2; cursor: default; }
+
+    .nav .counter {
+      font-size: 11px;
+      color: var(--dim);
+      letter-spacing: 0.1em;
+      min-width: 60px;
+      text-align: center;
+    }
+
+    .slide-dots {
+      position: fixed;
+      right: 32px;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 100;
+    }
+
+    .dot {
+      width: 5px;
+      height: 5px;
+      background: var(--dim);
+      border-radius: 50%;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.2s;
+    }
+
+    .dot.active { background: var(--text); transform: scale(1.4); }
+
+    /* ── SLIDE 1 — TITLE ── */
+    #s1 {
+      text-align: center;
+      gap: 0;
+    }
+
+    .brand {
+      font-size: clamp(52px, 7vw, 96px);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--accent);
+      line-height: 1;
+    }
+
+    .tagline {
+      margin-top: 32px;
+      font-size: clamp(16px, 2vw, 22px);
+      color: var(--muted);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .sub-tagline {
+      margin-top: 48px;
+      font-size: clamp(26px, 4vw, 52px);
+      font-weight: 700;
+      line-height: 1.25;
+      max-width: 800px;
+      text-align: center;
+    }
+
+    .sub-tagline span { color: var(--muted); }
+
+    .btn-row {
+      margin-top: 56px;
+      display: flex;
+      gap: 16px;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 14px 32px;
+      font-family: var(--mono);
+      font-size: 14px;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      border-radius: 100px;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .btn-primary { background: #fff; color: #000; border: 1px solid #fff; }
+    .btn-secondary { background: transparent; color: #fff; border: 1px solid #fff; }
+    .btn-primary:hover { background: #e0e0e0; }
+    .btn-secondary:hover { background: rgba(255,255,255,0.07); }
+
+    /* ── SLIDE 2 — PROBLEM ── */
+    #s2 { gap: 48px; }
+
+    .section-label {
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      color: var(--dim);
+      text-transform: uppercase;
+      align-self: flex-start;
+    }
+
+    .problem-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+      width: 100%;
+      max-width: 1000px;
+    }
+
+    .problem-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      padding: 36px;
+      border-radius: 4px;
+    }
+
+    .problem-card h3 {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      margin-bottom: 20px;
+    }
+
+    .problem-card ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .problem-card ul li {
+      font-size: 15px;
+      line-height: 1.5;
+      color: var(--text);
+      padding-left: 20px;
+      position: relative;
+    }
+
+    .problem-card ul li::before {
+      content: '—';
+      position: absolute;
+      left: 0;
+      color: var(--dim);
+    }
+
+    .bad li::before { color: #ff4444 !important; content: '✗' !important; }
+    .good li::before { color: #44cc77 !important; content: '✓' !important; }
+
+    .slide-title {
+      font-size: clamp(28px, 4vw, 52px);
+      font-weight: 700;
+      line-height: 1.2;
+      max-width: 900px;
+      text-align: center;
+    }
+
+    .slide-title .dim { color: var(--muted); }
+
+    /* ── SLIDE 3 — STATS ── */
+    #s3 { gap: 48px; }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 24px;
+      width: 100%;
+      max-width: 760px;
+    }
+
+    .stat-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 48px 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .stat-icon {
+      font-size: 28px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .stat-number {
+      font-size: clamp(40px, 5vw, 64px);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--accent);
+    }
+
+    .stat-label {
+      font-size: 13px;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .stat-sub {
+      margin-top: 32px;
+      font-size: 13px;
+      color: var(--dim);
+      letter-spacing: 0.06em;
+      text-align: center;
+      max-width: 600px;
+      line-height: 1.8;
+    }
+
+    /* ── SLIDE 4 — HOW IT WORKS ── */
+    #s4 { gap: 48px; }
+
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      width: 100%;
+      max-width: 760px;
+    }
+
+    .step {
+      display: grid;
+      grid-template-columns: 56px 1fr;
+      gap: 24px;
+      padding: 28px 0;
+      border-bottom: 1px solid var(--border);
+      align-items: start;
+    }
+
+    .step:first-child { border-top: 1px solid var(--border); }
+
+    .step-num {
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      color: var(--dim);
+      padding-top: 3px;
+    }
+
+    .step-body h4 {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .step-body p {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.7;
+      max-width: 540px;
+    }
+
+    /* ── SLIDE 5 — FEATURES ── */
+    #s5 { gap: 48px; }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      width: 100%;
+      max-width: 960px;
+    }
+
+    .feature {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      padding: 28px 24px;
+      border-radius: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .feature-icon {
+      font-size: 20px;
+      color: var(--muted);
+    }
+
+    .feature h4 {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    .feature p {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    /* ── SLIDE 6 — VS LINKEDIN ── */
+    #s6 { gap: 48px; }
+
+    .vs-table {
+      width: 100%;
+      max-width: 800px;
+      border: 1px solid var(--border);
+      border-collapse: collapse;
+    }
+
+    .vs-table th, .vs-table td {
+      padding: 16px 24px;
+      text-align: left;
+      font-size: 13px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .vs-table th {
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      background: var(--bg2);
+    }
+
+    .vs-table th:nth-child(2),
+    .vs-table td:nth-child(2) { color: var(--dim); }
+
+    .vs-table th:nth-child(3),
+    .vs-table td:nth-child(3) { color: var(--accent); font-weight: 700; }
+
+    .vs-table tr:last-child td { border-bottom: none; }
+
+    .tag-good { color: #44cc77; }
+    .tag-bad { color: #ff5555; }
+
+    /* ── SLIDE 7 — CTA ── */
+    #s7 { text-align: center; gap: 0; }
+
+    .cta-label {
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      color: var(--dim);
+      text-transform: uppercase;
+      margin-bottom: 28px;
+    }
+
+    .cta-title {
+      font-size: clamp(36px, 5.5vw, 72px);
+      font-weight: 700;
+      line-height: 1.15;
+      max-width: 760px;
+      margin-bottom: 20px;
+    }
+
+    .cta-sub {
+      font-size: 15px;
+      color: var(--muted);
+      max-width: 520px;
+      line-height: 1.8;
+      margin-bottom: 52px;
+    }
+
+    .cta-url {
+      font-size: 14px;
+      color: var(--dim);
+      margin-top: 40px;
+      letter-spacing: 0.12em;
+    }
+
+    /* ── PROGRESS BAR ── */
+    .progress {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 2px;
+      background: var(--accent);
+      transition: width 0.4s ease;
+      z-index: 200;
+    }
+
+    /* ── LOGO TOP-LEFT ── */
+    .logo-fixed {
+      position: fixed;
+      top: 28px;
+      left: 36px;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: var(--muted);
+      z-index: 100;
+    }
+
+    /* ── DECORATIVE RULE ── */
+    .rule {
+      width: 40px;
+      height: 2px;
+      background: var(--dim);
+      margin: 24px auto;
+    }
+
+    /* ── KEYBOARD HINT ── */
+    .key-hint {
+      position: fixed;
+      bottom: 36px;
+      right: 36px;
+      font-size: 10px;
+      color: var(--dim);
+      letter-spacing: 0.1em;
+    }
+
+    /* ── ANIMATIONS ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .slide.active > * {
+      animation: fadeUp 0.5s ease both;
+    }
+
+    .slide.active > *:nth-child(1) { animation-delay: 0.05s; }
+    .slide.active > *:nth-child(2) { animation-delay: 0.15s; }
+    .slide.active > *:nth-child(3) { animation-delay: 0.25s; }
+    .slide.active > *:nth-child(4) { animation-delay: 0.35s; }
+    .slide.active > *:nth-child(5) { animation-delay: 0.42s; }
+
+    /* counter animate */
+    .count-anim {
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+
+<div class="progress" id="progress"></div>
+<div class="logo-fixed">&lt;job-seek&gt;</div>
+
+<!-- DOTS -->
+<div class="slide-dots" id="dots"></div>
+
+<div class="deck" id="deck">
+
+  <!-- SLIDE 1 — TITLE -->
+  <section class="slide active" id="s1">
+    <div class="tagline">Job search on your terms.</div>
+    <div class="sub-tagline">
+      Find roles <span>before they hit</span><br>the big boards.
+    </div>
+    <div class="rule"></div>
+    <p style="font-size:14px; color:var(--muted); max-width:560px; text-align:center; line-height:1.8;">
+      We scrape career pages directly so you see openings the moment they go live.
+      Search millions of postings — filter by seniority, stack, salary, and location.
+    </p>
+    <div class="btn-row">
+      <a href="#" class="btn btn-primary">Get started</a>
+      <a href="#" class="btn btn-secondary">Learn more</a>
+    </div>
+  </section>
+
+  <!-- SLIDE 2 — PROBLEM -->
+  <section class="slide" id="s2">
+    <div class="section-label">01 — The Problem</div>
+    <div class="slide-title">Big job boards are slow,<br><span class="dim">noisy, and pay-to-rank.</span></div>
+    <div class="problem-layout">
+      <div class="problem-card bad">
+        <h3>Traditional boards</h3>
+        <ul>
+          <li>Postings arrive days or weeks late</li>
+          <li>Paid listings dominate results</li>
+          <li>Algorithms hide junior roles</li>
+          <li>No first-party data — just aggregators</li>
+          <li>Requires premium to see applicant counts</li>
+        </ul>
+      </div>
+      <div class="problem-card good">
+        <h3>job-seek</h3>
+        <ul>
+          <li>Crawls career pages directly at source</li>
+          <li>Zero pay-to-rank — fully organic</li>
+          <li>All seniority levels, all stacks</li>
+          <li>First-party data from company ATS</li>
+          <li>Free applicant signal &amp; role freshness</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 3 — STATS -->
+  <section class="slide" id="s3">
+    <div class="section-label">02 — Scale</div>
+    <div class="slide-title">The numbers.</div>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon">🏢</div>
+        <div class="stat-number count-anim" data-target="3994">0</div>
+        <div class="stat-label">Companies Tracked</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">💼</div>
+        <div class="stat-number count-anim" data-target="480124">0</div>
+        <div class="stat-label">Job Postings Indexed</div>
+      </div>
+    </div>
+    <p class="stat-sub">
+      Live data from thousands of company career pages — not scraped from LinkedIn.<br>
+      Updated continuously as boards publish new openings.
+    </p>
+  </section>
+
+  <!-- SLIDE 4 — HOW IT WORKS -->
+  <section class="slide" id="s4">
+    <div class="section-label">03 — How it works</div>
+    <div class="slide-title">Direct from source.</div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div class="step-body">
+          <h4>Company registry</h4>
+          <p>4,000+ companies are configured with their exact ATS board URL — Greenhouse, Lever, Workday, custom stacks — no guessing.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <div class="step-body">
+          <h4>Continuous crawl</h4>
+          <p>An async Python crawler monitors boards on a rolling schedule, detecting new postings within minutes of publish.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <div class="step-body">
+          <h4>Structured extraction</h4>
+          <p>Titles, locations, seniority, tech stack, salary signals and full job descriptions are parsed, normalised, and stored.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">04</div>
+        <div class="step-body">
+          <h4>Searchable frontend</h4>
+          <p>A fast Next.js interface with powerful filters lets you slice 480k+ postings instantly — before they appear on LinkedIn.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 5 — FEATURES -->
+  <section class="slide" id="s5">
+    <div class="section-label">04 — Features</div>
+    <div class="slide-title">Everything you need,<br><span class="dim">nothing you don't.</span></div>
+    <div class="features-grid">
+      <div class="feature">
+        <div class="feature-icon">⚡</div>
+        <h4>Real-time indexing</h4>
+        <p>Roles appear on job-seek within minutes of being posted to the company's career page.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🔍</div>
+        <h4>Powerful filters</h4>
+        <p>Filter by seniority, tech stack, salary range, location, company size, and industry.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🏢</div>
+        <h4>Company intelligence</h4>
+        <p>See all open roles at a company in one view. Track hiring velocity over time.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">📍</div>
+        <h4>Remote &amp; local</h4>
+        <p>Precise location data — on-site, hybrid, or remote — sourced directly from job descriptions.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🔔</div>
+        <h4>Saved searches</h4>
+        <p>Set up alerts for specific criteria. Get notified the instant a matching role is posted.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🗺️</div>
+        <h4>Request tracking</h4>
+        <p>Missing a company? Submit a careers URL and we'll add it to the crawler within hours.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 6 — VS LINKEDIN -->
+  <section class="slide" id="s6">
+    <div class="section-label">05 — Comparison</div>
+    <div class="slide-title">job-seek vs. LinkedIn Jobs.</div>
+    <table class="vs-table">
+      <thead>
+        <tr>
+          <th>Feature</th>
+          <th>LinkedIn Jobs</th>
+          <th>&lt;job-seek&gt;</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Data source</td>
+          <td class="tag-bad">Aggregator / self-submit</td>
+          <td class="tag-good">Direct career page crawl</td>
+        </tr>
+        <tr>
+          <td>Posting freshness</td>
+          <td class="tag-bad">Hours to days delay</td>
+          <td class="tag-good">Minutes after publish</td>
+        </tr>
+        <tr>
+          <td>Result ranking</td>
+          <td class="tag-bad">Pay-to-rank algorithm</td>
+          <td class="tag-good">Fully organic, chronological</td>
+        </tr>
+        <tr>
+          <td>Salary visibility</td>
+          <td class="tag-bad">Premium required</td>
+          <td class="tag-good">Included by default</td>
+        </tr>
+        <tr>
+          <td>Companies covered</td>
+          <td>Variable</td>
+          <td class="tag-good">3,994 verified sources</td>
+        </tr>
+        <tr>
+          <td>Total job postings</td>
+          <td>Millions (incl. duplicates)</td>
+          <td class="tag-good">480,124 deduplicated</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- SLIDE 7 — CTA -->
+  <section class="slide" id="s7">
+    <div class="cta-label">Get started today</div>
+    <div class="cta-title">Find your next role.<br>Before the crowd does.</div>
+    <div class="rule"></div>
+    <p class="cta-sub">
+      3,994 companies. 480,124 postings. Zero pay-to-rank.<br>
+      Job search on your terms.
+    </p>
+    <div class="btn-row">
+      <a href="#" class="btn btn-primary">Get started — free</a>
+      <a href="#" class="btn btn-secondary">View job index</a>
+    </div>
+    <div class="cta-url">jseek.co</div>
+  </section>
+
+</div><!-- /deck -->
+
+<!-- NAVIGATION -->
+<nav class="nav">
+  <button id="prevBtn" disabled>← prev</button>
+  <span class="counter" id="counter">1 / 7</span>
+  <button id="nextBtn">next →</button>
+</nav>
+
+<div class="key-hint">← → or arrow keys</div>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const total = slides.length;
+  let current = 0;
+
+  // Build dots
+  const dotsEl = document.getElementById('dots');
+  slides.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.addEventListener('click', () => goTo(i));
+    dotsEl.appendChild(d);
+  });
+
+  function goTo(n) {
+    slides[current].classList.remove('active');
+    dotsEl.children[current].classList.remove('active');
+    current = Math.max(0, Math.min(total - 1, n));
+    slides[current].classList.add('active');
+    dotsEl.children[current].classList.add('active');
+    document.getElementById('counter').textContent = (current + 1) + ' / ' + total;
+    document.getElementById('prevBtn').disabled = current === 0;
+    document.getElementById('nextBtn').disabled = current === total - 1;
+    document.getElementById('progress').style.width = ((current + 1) / total * 100) + '%';
+
+    // Trigger counters if on stats slide
+    if (slides[current].id === 's3') animateCounters();
+  }
+
+  document.getElementById('prevBtn').addEventListener('click', () => goTo(current - 1));
+  document.getElementById('nextBtn').addEventListener('click', () => goTo(current + 1));
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') goTo(current + 1);
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   goTo(current - 1);
+  });
+
+  // init progress
+  document.getElementById('progress').style.width = (1 / total * 100) + '%';
+
+  // ── Counter animation ──
+  let countersAnimated = false;
+  function animateCounters() {
+    if (countersAnimated) return;
+    countersAnimated = true;
+    document.querySelectorAll('.count-anim').forEach(el => {
+      const target = parseInt(el.dataset.target, 10);
+      const duration = 1400;
+      const start = performance.now();
+      function tick(now) {
+        const elapsed = now - start;
+        const progress = Math.min(elapsed / duration, 1);
+        // ease out cubic
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const val = Math.round(eased * target);
+        el.textContent = val.toLocaleString();
+        if (progress < 1) requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    });
+  }
+</script>
+
+</body>
+</html>
