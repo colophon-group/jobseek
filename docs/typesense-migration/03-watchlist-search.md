@@ -215,7 +215,7 @@ function mapWatchlistHit(hit: TypesenseHit): PublicWatchlist {
 
 Unlike job postings and taxonomies (which are crawler-sourced), watchlists are created by users in the web app. Indexing happens in the web app layer.
 
-**Write hooks** — add Typesense upsert/delete calls alongside existing Supabase writes. **All Typesense writes are fire-and-forget** — catch and log errors, never block the user mutation. If Typesense is down, the Supabase write succeeds and the periodic reconciliation job syncs watchlists later.
+**Write hooks** — add Typesense upsert/delete calls alongside existing Supabase writes. **Must use `getWriteClient()` (TYPESENSE_WRITE_KEY), NOT the search client** — the search-only key cannot write and all upserts would silently fail. **All Typesense writes are fire-and-forget** — catch and log errors, never block the user mutation. If Typesense is down, the Supabase write succeeds and the periodic reconciliation job syncs watchlists later.
 
 | Event | Action |
 |-------|--------|

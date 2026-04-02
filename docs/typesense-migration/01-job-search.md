@@ -323,7 +323,7 @@ Typesense supports facet ranges for numeric fields:
   q: keywords?.length ? keywords.join(" ") : "*",
   query_by: "title",
   filter_by: `is_active:true && salary_eur:>0${filterStr ? " && " + filterStr : ""}`,
-  facet_by: "salary_eur(0-10k:[0,10000], 10-20k:[10000,20000], 20-30k:[20000,30000], 30-40k:[30000,40000], 40-50k:[40000,50000], 50-60k:[50000,60000], 60-70k:[60000,70000], 70-80k:[70000,80000], 80-90k:[80000,90000], 90-100k:[90000,100000], 100-110k:[100000,110000], 110-120k:[110000,120000], 120-130k:[120000,130000], 130-140k:[130000,140000], 140-150k:[140000,150000], 150-160k:[150000,160000], 160-170k:[160000,170000], 170-180k:[170000,180000], 180-190k:[180000,190000], 190-200k:[190000,200000], 200-210k:[200000,210000], 210-220k:[210000,220000], 220-230k:[220000,230000], 230-240k:[230000,240000], 240-250k:[240000,250000], 250-260k:[250000,260000], 260-270k:[260000,270000], 270-280k:[270000,280000], 280-290k:[280000,290000], 290-300k:[290000,300000], 300k+:[300000,999999])",
+  facet_by: "salary_eur(0-10k:[0,10000], 10-20k:[10000,20000], 20-30k:[20000,30000], 30-40k:[30000,40000], 40-50k:[40000,50000], 50-60k:[50000,60000], 60-70k:[60000,70000], 70-80k:[70000,80000], 80-90k:[80000,90000], 90-100k:[90000,100000], 100-110k:[100000,110000], 110-120k:[110000,120000], 120-130k:[120000,130000], 130-140k:[130000,140000], 140-150k:[140000,150000], 150-160k:[150000,160000], 160-170k:[160000,170000], 170-180k:[170000,180000], 180-190k:[180000,190000], 190-200k:[190000,200000], 200-210k:[200000,210000], 210-220k:[210000,220000], 220-230k:[220000,230000], 230-240k:[230000,240000], 240-250k:[240000,250000], 250-260k:[250000,260000], 260-270k:[260000,270000], 270-280k:[270000,280000], 280-290k:[280000,290000], 290-300k:[290000,300000], 300k+:[300000,999999999])",
   max_facet_values: 31,
   per_page: 0,  // no documents needed
 }
@@ -333,7 +333,7 @@ This returns 31 bucket counts (30 standard 10K EUR buckets + 1 overflow bucket f
 
 **Facet range syntax note:** The syntax varies by Typesense version. In 27.x, labeled ranges use `field(Label:[start, end], ...)`. In some versions, flat boundary lists `field([0, 10000, 20000, ...])` are used. **Verify the exact syntax against the deployed Typesense 27.1 instance** during implementation. The E2E tests will catch syntax errors.
 
-**Boundary handling**: Typesense labeled range facets use inclusive-start, exclusive-end by default: `[0, 10000]` means `0 <= x < 10000`. No double-counting at boundaries — a salary of exactly 10000 falls only in `[10000, 20000]`, not in `[0, 10000]`. The overflow bucket `[300000, 999999]` captures salaries >= 300K.
+**Boundary handling**: Typesense labeled range facets use inclusive-start, exclusive-end by default: `[0, 10000]` means `0 <= x < 10000`. No double-counting at boundaries — a salary of exactly 10000 falls only in `[10000, 20000]`, not in `[0, 10000]`. The overflow bucket `[300000, 999999999]` uses a very high upper bound to effectively capture all salaries >= 300K (exclusive-end, so technically `300K <= x < 1B`, which covers any practical salary).
 
 **Overflow bucket**: Add a `300k+:[300000, 999999]` bucket to capture salaries above 300K EUR. Without it, high salaries are silently excluded from the histogram. Postgres `width_bucket` handles this with bucket 31.
 
@@ -457,7 +457,7 @@ function buildLocations(
 | File | Purpose |
 |------|---------|
 | `apps/web/src/lib/search/typesense.ts` | `TypesenseSearchProvider` class |
-| `apps/web/src/lib/search/typesense-client.ts` | Singleton Typesense client instance |
+| `apps/web/src/lib/search/typesense-client.ts` | Singleton Typesense clients: `getSearchClient()` (search-only key for reads) + `getWriteClient()` (write key for watchlist mutation hooks) |
 | `apps/web/src/lib/search/typesense-filters.ts` | `buildFilterString()` helper |
 
 ### Modified files
