@@ -2,6 +2,8 @@
 
 Phase-based plan with work distributed across implementation and verification subagents. Follows the repo's parallel orchestration pattern (independent tracks, convergence gates, evidence-based verification).
 
+Development and testing run against a local Typesense instance on the dev machine (Docker). Production deployment to Hetzner happens after E2E tests pass.
+
 ## Agent roles
 
 | Role | Responsibility |
@@ -14,31 +16,48 @@ Impl and Verify never run in the same subagent — separation ensures the person
 
 ---
 
-## Phase 1: Infrastructure
+## Phase 1: Local Typesense deployment
 
-Manual/ops phase. Orchestrator runs this directly (no subagents — sequential commands with verification between steps).
+Orchestrator runs this directly. Add Typesense to the existing `docker-compose.yml` on this machine.
 
 ### Steps
 
-1. Provision Hetzner CX22 (4 GB RAM, dedicated IPv4, disk backups)
-2. SSH in, install Docker
-3. Deploy Typesense container (docker-compose.yml from master plan)
-4. Configure firewall: port 8108 open to crawler IP + web app IP only
-5. Set up TLS termination (Caddy reverse proxy)
-6. Generate API keys:
-   - `TYPESENSE_ADMIN_KEY` (exporter + sync)
-   - `TYPESENSE_SEARCH_KEY` (web app, search-only scope)
-7. Add keys to GitHub secrets + crawler env file + web app env
+1. Add `typesense` service to `/Users/Viktor/jobseek/docker-compose.yml`:
+   ```yaml
+   services:
+     postgres:
+       # ... existing postgres config unchanged ...
 
-### Gate: Infrastructure ready
+     typesense:
+       image: typesense/typesense:27.1
+       restart: unless-stopped
+       ports:
+         - "8108:8108"
+       volumes:
+         - typesense-data:/data
+       command: >
+         --data-dir /data
+         --api-key=local_dev_typesense_key
+         --enable-cors
+
+   volumes:
+     pgdata:
+     typesense-data:
+   ```
+2. Start the container: `docker compose up -d typesense`
+3. Add local dev env vars to crawler `.env` and web app `.env.local`:
+   ```bash
+   TYPESENSE_HOST=localhost
+   TYPESENSE_PORT=8108
+   TYPESENSE_PROTOCOL=http
+   TYPESENSE_ADMIN_KEY=local_dev_typesense_key
+   TYPESENSE_SEARCH_KEY=local_dev_typesense_key  # same key for local dev
+   ```
+
+### Gate: Local Typesense running
 
 ```bash
-# From crawler machine
-curl -s https://<typesense-host>/health -H "X-TYPESENSE-API-KEY: $TYPESENSE_ADMIN_KEY"
-# → {"ok": true}
-
-# From web app machine
-curl -s https://<typesense-host>/health -H "X-TYPESENSE-API-KEY: $TYPESENSE_SEARCH_KEY"
+curl -s http://localhost:8108/health -H "X-TYPESENSE-API-KEY: local_dev_typesense_key"
 # → {"ok": true}
 ```
 
@@ -84,7 +103,7 @@ Orchestrator
 **Scope**: Confirm all 7 collections + aliases exist with correct fields.
 
 **Steps:**
-1. Run `scripts/typesense-setup.py` against the Typesense instance
+1. Run `scripts/typesense-setup.py` against local Typesense
 2. For each collection (`job_posting`, `location`, `occupation`, `seniority`, `technology`, `company`, `watchlist`):
    - `GET /collections/{name}` — verify it returns schema
    - Check field count matches expected
@@ -146,11 +165,11 @@ Orchestrator
 
 ### Verify-2B: Verify exporter indexing
 
-**Scope**: Run the exporter and confirm job postings appear in Typesense with correct denormalized data.
+**Scope**: Run the exporter against local Postgres + local Typesense and confirm job postings appear with correct denormalized data.
 
 **Steps:**
 1. Run exporter for ~30 seconds (let it process a few batches)
-2. Query Typesense: `GET /collections/job_posting/documents/search?q=*&per_page=5`
+2. Query local Typesense: `GET http://localhost:8108/collections/job_posting/documents/search?q=*&per_page=5`
 3. For each returned document, verify:
    - `title` is non-empty string
    - `company_name` matches the `company_id` → name mapping
@@ -168,7 +187,7 @@ Orchestrator
 
 ### Verify-2C: Verify sync indexing
 
-**Scope**: Run sync and confirm taxonomy + company collections are populated correctly.
+**Scope**: Run sync and confirm taxonomy + company collections are populated correctly in local Typesense.
 
 **Steps:**
 1. Run `uv run crawler sync`
@@ -184,7 +203,7 @@ Orchestrator
 
 ### Verify-2D: Full backfill + count check
 
-**Scope**: Run full backfill and verify data parity with Postgres.
+**Scope**: Run full backfill and verify data parity with local Postgres.
 
 **Steps:**
 1. Run `uv run crawler export --backfill-typesense`
@@ -196,9 +215,9 @@ Orchestrator
    SELECT COUNT(*) FROM job_posting WHERE is_active = true;
    ```
    ```
-   -- Typesense
-   GET /collections/job_posting → num_documents
-   GET /collections/job_posting/documents/search?q=*&filter_by=is_active:true&per_page=0 → found
+   -- Typesense (local)
+   GET http://localhost:8108/collections/job_posting → num_documents
+   GET http://localhost:8108/collections/job_posting/documents/search?q=*&filter_by=is_active:true&per_page=0 → found
    ```
 4. Counts should match within 0.1% (some postings may be updated during backfill)
 5. Spot-check 10 random postings: fetch by ID from both Postgres and Typesense, compare fields
@@ -207,31 +226,27 @@ Orchestrator
 
 ---
 
-## Phase 3: Search provider
+## Phase 3: Search provider implementation
 
 ### Subagent layout
 
 ```
 Orchestrator
   ├── Impl-3A: TypesenseSearchProvider        ──┐
-  │   (search, listTopCompanies, loadPostings,  │
+  │   (search, listTopCompanies, loadPostings,  │  (parallel — independent code)
   │    loadPostingsWithCounts, histograms)       │
   │                                              │
-  ├── Impl-3B: Typeahead functions              │  (parallel — independent code)
+  ├── Impl-3B: Typeahead functions              │
   │   (5 suggest functions + multi_search)       │
   │                                              │
   ├── Impl-3C: Watchlist search                 │
   │   (searchCompaniesForWatchlist,              │
   │    searchPublicWatchlists, write hooks)      │
   │                                              │
-  ├── Impl-3D: Cleanup Postgres search code     ──── (after 3A/3B/3C complete)
-  │                                              │
-  ├── Verify-3A: Search provider correctness    ──┘
-  ├── Verify-3B: Typeahead correctness          ──┘
-  └── Verify-3C: Watchlist search correctness   ──┘
+  └── Impl-3D: Cleanup Postgres search code     ──── (after 3A/3B/3C complete)
 ```
 
-**Dependency**: Impl-3A, 3B, 3C are independent and run in parallel. Impl-3D runs after all three complete. Verify subagents can start as soon as their corresponding Impl finishes (don't wait for all Impl to complete).
+**Dependency**: Impl-3A, 3B, 3C are independent and run in parallel. Impl-3D runs after all three complete.
 
 ### Impl-3A: TypesenseSearchProvider
 
@@ -334,142 +349,427 @@ Orchestrator
 
 **Report**: Files deleted, cache calls removed, grep confirms no remaining references.
 
-### Verify-3A: Search provider correctness
-
-**Scope**: Compare Typesense search results against known Postgres results for a set of test queries.
-
-**Depends on**: Impl-3A complete.
-
-**Steps:**
-1. Prepare 10 test queries covering:
-   - Single keyword ("Python")
-   - Multi-keyword ("Senior React Developer")
-   - Keyword + location filter
-   - Keyword + salary range
-   - Keyword + multiple filters (occupation + seniority + technology)
-   - Empty keyword (browse mode / listTopCompanies)
-   - Keyword with typo ("Pythno", "Deveolper")
-   - Very specific query (should return few results)
-   - Very broad query (should return many results)
-   - loadPostings for a specific company
-2. For each query, call the TypesenseSearchProvider methods and verify:
-   - `companies` array is non-empty (for queries that should match)
-   - `totalCompanies` is reasonable
-   - Each company has `postings` array with valid posting objects
-   - `posting.title` is non-empty
-   - `posting.locations` is an array of `{ name, type }` objects
-   - `posting.firstSeenAt` is a valid date
-   - `posting.relevanceScore` is present for keyword queries
-3. Test histograms:
-   - `getSalaryHistogram()` returns array of `{ min, max, count }` buckets
-   - Bucket boundaries are 10K apart (0-10K, 10K-20K, ..., 290K-300K)
-   - `getExperienceHistogram()` returns array of `{ years, count }`
-   - Both return non-empty arrays for unfiltered queries
-4. Test edge cases:
-   - Empty keyword search → delegates to listTopCompanies behavior
-   - No matching results → `{ companies: [], totalCompanies: 0 }`
-   - Very large offset → empty results, no error
-
-**Gate**: All 10 queries return valid results, histograms work, edge cases handled.
-
-### Verify-3B: Typeahead correctness
-
-**Scope**: Verify all 5 suggest functions return correct results from Typesense.
-
-**Depends on**: Impl-3B complete.
-
-**Steps:**
-1. **suggestLocations**:
-   - Query "Ber" → should return Berlin (prefix match)
-   - Query "Münch" with locale=de → should return München (German locale match)
-   - Query "Munich" with locale=en → should return Munich
-   - Query with user coords near Berlin → Berlin should rank higher than other "Ber*" matches
-   - Query "Zurich" (without umlaut) → should match Zürich via typo tolerance
-   - Verify `parentName` is populated (e.g., "Germany" for Berlin)
-   - Verify `type` field is one of macro/country/region/city
-2. **suggestCompanies**:
-   - Query known company name prefix → should return the company
-   - Verify `icon` field is present (or null)
-   - Verify only companies with active postings are returned
-3. **suggestOccupations**:
-   - Query "Develop" → should return developer-related occupations
-   - Query with locale=de → should return German names
-   - Query alias (e.g., "Softwareentwickler") → should match and set `matchedName`
-   - Verify locale fallback: query gibberish with locale=fr → retry with locale=en
-4. **suggestSeniorities**:
-   - Query "Sen" → should return Senior
-   - Verify locale filtering works
-5. **suggestTechnologies**:
-   - Query "Pyth" → should return Python
-   - Query "C++" → should return C++ (symbols_to_index test)
-   - Query "c#" → should return C#
-   - Query ".net" → should return .NET
-   - Verify `num_typos: 0` — "Pyhton" should NOT match (prefix only, no fuzzy)
-
-**Gate**: All suggest functions return correct results, locale handling works, special characters handled.
-
-### Verify-3C: Watchlist search correctness
-
-**Scope**: Verify watchlist search and write hooks.
-
-**Depends on**: Impl-3C complete.
-
-**Steps:**
-1. **searchCompaniesForWatchlist**:
-   - Search by company name → returns matching companies
-   - Filter by industry → only matching industry companies returned
-   - Verify `activeMatches` and `yearMatches` counts are populated
-   - Test with starredCompanyIds → starred companies appear first
-2. **searchPublicWatchlists**:
-   - Search by watchlist title → returns matching public watchlists
-   - Search by description keywords → returns matches
-   - Verify only public watchlists returned (`is_public: true`)
-   - Verify `companyCount`, `activeJobCount` are populated
-3. **Write hooks** (if testable in dev):
-   - Create a public watchlist → verify it appears in Typesense within seconds
-   - Update watchlist title → verify Typesense doc updated
-   - Toggle visibility to private → verify deleted from Typesense
-   - Toggle back to public → verify re-indexed
-4. **getPopularWatchlists**:
-   - Returns watchlists sorted by `mirror_count` desc
-   - All results are public
-
-**Gate**: Search functions return correct results, write hooks work for CRUD + visibility toggle.
-
 ---
 
-## Phase 4: Deploy
+## Phase 4: E2E testing
+
+Runs against local Typesense (http://localhost:8108) with backfilled data from Phase 2. Tests are actual test files committed to the repo, not manual verification steps. A Verify subagent writes the tests, an Impl subagent fixes any failures.
+
+### Prerequisites
+
+- Local Typesense running with all collections populated (Phase 2 complete)
+- All search provider code implemented (Phase 3 complete)
+- Local Postgres has real data (from crawler or seed)
 
 ### Subagent layout
 
 ```
 Orchestrator
-  ├── Impl-4A: Deploy crawler (exporter + sync)
-  ├── Impl-4B: Deploy web app
-  │
-  └── Verify-4: Production smoke test         ──── Gate: production working
+  ├── Impl-4A: E2E test suite (crawler/indexing)     ──┐
+  ├── Impl-4B: E2E test suite (web/search)            │  (parallel — independent test files)
+  │                                                     │
+  ├── Verify-4A: Run crawler E2E tests                ──┤
+  ├── Verify-4B: Run web E2E tests                    ──┤
+  │                                                     │
+  └── Impl-4Fix: Fix failures found by Verify         ──── (iterate until green)
 ```
 
-### Impl-4A: Deploy crawler
+### Impl-4A: Crawler E2E test suite
+
+**Scope**: Write pytest tests that verify the indexing pipeline against local Typesense.
+
+**File**: `apps/crawler/tests/e2e/test_typesense_indexing.py`
+
+**Requires**: Local Typesense running, local Postgres with data. Tests are skipped if Typesense is unavailable (`pytest.mark.skipif`).
+
+**Tests to write:**
+
+```python
+# ── Schema tests ──
+
+def test_all_collections_exist():
+    """All 7 collections (job_posting, location, occupation, seniority,
+    technology, company, watchlist) are accessible via their aliases."""
+
+def test_job_posting_schema_fields():
+    """job_posting collection has all expected fields with correct types.
+    Specifically: title (string), is_active (bool), location_ids (int32[]),
+    salary_eur (int32, optional), coordinates NOT present (only on location)."""
+
+def test_location_schema_has_geopoint():
+    """location collection has 'coordinates' field of type 'geopoint'."""
+
+def test_technology_schema_has_symbols():
+    """technology collection has token_separators and symbols_to_index
+    configured for +, #, . characters."""
+
+# ── Indexing data integrity tests ──
+
+def test_job_posting_count_matches_postgres():
+    """Typesense job_posting doc count matches
+    SELECT COUNT(*) FROM job_posting (within 1%)."""
+
+def test_active_posting_count_matches_postgres():
+    """Typesense is_active:true count matches
+    SELECT COUNT(*) FROM job_posting WHERE is_active = true (within 1%)."""
+
+def test_job_posting_denormalized_fields():
+    """Sample 20 random postings from Typesense. For each:
+    - title is non-empty
+    - company_name matches company table lookup by company_id
+    - location_names length == location_ids length (when both non-empty)
+    - occupation_name matches occupation_name table (when occupation_id set)
+    - seniority_name matches seniority_name table (when seniority_id set)
+    - technology_names length == technology_ids length
+    - first_seen_at is a valid unix timestamp > 0
+    - salary_eur is None or > 0"""
+
+def test_job_posting_timestamps_are_unix():
+    """first_seen_at and last_seen_at are integers (unix timestamps),
+    not ISO strings. Values should be > 1600000000 (post-2020)."""
+
+# ── Taxonomy collection tests ──
+
+def test_location_collection_has_coordinates():
+    """Sample 10 locations of type 'city'. Each should have a
+    'coordinates' field that is a [lat, lng] array with lat in [-90, 90]
+    and lng in [-180, 180]."""
+
+def test_location_collection_multilingual():
+    """Sample 5 locations. Each should have name_en populated.
+    At least some should have name_de, name_fr, name_it populated."""
+
+def test_occupation_collection_per_locale():
+    """Occupation docs have a 'locale' field. For a known occupation slug,
+    verify docs exist for at least 'en' and 'de' locales."""
+
+def test_technology_special_characters():
+    """Search for 'C++' in technology collection → returns a result.
+    Search for 'C#' → returns a result. Search for '.NET' → returns a result."""
+
+def test_company_collection_posting_counts():
+    """Sample 5 companies from Typesense. Each with active_posting_count > 0
+    should have a matching count in Postgres:
+    SELECT COUNT(*) FROM job_posting WHERE company_id = $1 AND is_active."""
+
+# ── Exporter CDC tests ──
+
+def test_exporter_indexes_new_postings():
+    """Insert a synthetic posting into local Postgres with a known title.
+    Run one exporter tick. Verify the posting appears in Typesense
+    with correct denormalized fields. Clean up after."""
+```
+
+### Impl-4B: Web E2E test suite
+
+**Scope**: Write vitest tests that verify the TypesenseSearchProvider and all search functions against local Typesense.
+
+**File**: `apps/web/src/lib/search/__tests__/typesense.e2e.test.ts`
+
+**Requires**: Local Typesense running with populated data. Tests use the real TypesenseSearchProvider, not mocks.
+
+**Tests to write:**
+
+```typescript
+// ── SearchProvider.search() ──
+
+test("search with single keyword returns companies with matching postings", async () => {
+  // Search for a common keyword like "Engineer"
+  // Expect: companies array non-empty, each has postings with titles containing the keyword
+  // Expect: totalCompanies > 0
+});
+
+test("search with multiple keywords ranks by relevance", async () => {
+  // Search for "Senior React Developer"
+  // Expect: results with more keyword matches in title rank higher
+});
+
+test("search with typo returns results via typo tolerance", async () => {
+  // Search for "Develoer" (missing 'p')
+  // Expect: still returns developer positions
+});
+
+test("search with location filter restricts results", async () => {
+  // Search with a known location ID
+  // Expect: all returned postings have that location_id in their location_ids array
+});
+
+test("search with salary range filter works", async () => {
+  // Search with salaryMinEur=50000, salaryMaxEur=100000
+  // Expect: all returned postings have salary_eur in range (where set)
+});
+
+test("search with multiple filters combines with AND", async () => {
+  // Search with keyword + location + occupation + seniority
+  // Expect: results satisfy all filters simultaneously
+});
+
+test("search with no results returns empty", async () => {
+  // Search for "xyznonexistentkeyword12345"
+  // Expect: { companies: [], totalCompanies: 0 }
+});
+
+test("search pagination works", async () => {
+  // Search with offset=0, limit=5, then offset=5, limit=5
+  // Expect: different company sets, no overlap
+});
+
+// ── SearchProvider.listTopCompanies() ──
+
+test("listTopCompanies returns companies sorted by posting count", async () => {
+  // No keywords, just filters
+  // Expect: companies sorted by activeMatches descending
+});
+
+test("listTopCompanies with filters restricts results", async () => {
+  // Apply location filter
+  // Expect: only companies with postings in that location
+});
+
+// ── SearchProvider.loadPostings() ──
+
+test("loadPostings returns postings for a specific company", async () => {
+  // Pick a known company_id
+  // Expect: all postings belong to that company
+});
+
+test("loadPostings with keywords sorts by relevance", async () => {
+  // Load postings with keyword filter
+  // Expect: postings with keyword in title rank first
+});
+
+test("loadPostings without keywords sorts by recency", async () => {
+  // Load postings without keywords
+  // Expect: postings sorted by firstSeenAt descending
+});
+
+// ── SearchProvider.loadPostingsWithCounts() ──
+
+test("loadPostingsWithCounts returns activeCount and yearCount", async () => {
+  // Pick a known company_id
+  // Expect: activeCount > 0, yearCount >= activeCount
+  // Expect: postings array populated
+});
+
+// ── Histograms ──
+
+test("getSalaryHistogram returns 10K EUR buckets", async () => {
+  // No filters
+  // Expect: array of { min, max, count } buckets
+  // Expect: bucket width is 10000 (max - min)
+  // Expect: at least some buckets have count > 0
+});
+
+test("getSalaryHistogram respects filters", async () => {
+  // With location filter
+  // Expect: total count across buckets <= unfiltered total
+});
+
+test("getExperienceHistogram returns year buckets", async () => {
+  // No filters
+  // Expect: array of { years, count }
+  // Expect: years are non-negative integers
+  // Expect: at least some buckets have count > 0
+});
+
+// ── Typeahead: suggestLocations() ──
+
+test("suggestLocations returns prefix matches", async () => {
+  // Query "Ber"
+  // Expect: results include Berlin (or other Ber* cities)
+});
+
+test("suggestLocations respects locale", async () => {
+  // Query "Münch" with locale=de
+  // Expect: München in results
+});
+
+test("suggestLocations handles typos", async () => {
+  // Query "Zurich" (no umlaut)
+  // Expect: Zürich in results via typo tolerance
+});
+
+test("suggestLocations geo-sorts when coordinates provided", async () => {
+  // Query "B" with coords near Berlin (52.52, 13.40)
+  // Expect: Berlin ranks higher than Barcelona or Budapest
+});
+
+test("suggestLocations includes parentName", async () => {
+  // Query for a city
+  // Expect: parentName is set (country or region name)
+});
+
+test("suggestLocations returns correct type field", async () => {
+  // Expect: each result has type in ["macro", "country", "region", "city"]
+});
+
+test("suggestLocations only returns locations with active postings", async () => {
+  // Expect: all results have has_active_postings = true
+});
+
+// ── Typeahead: suggestCompanies() ──
+
+test("suggestCompanies returns prefix matches", async () => {
+  // Query first 3 chars of a known company name
+  // Expect: that company in results
+});
+
+test("suggestCompanies only returns companies with active postings", async () => {
+  // All results should have active_posting_count > 0
+});
+
+// ── Typeahead: suggestOccupations() ──
+
+test("suggestOccupations returns prefix matches", async () => {
+  // Query "Develop"
+  // Expect: developer-related occupations in results
+});
+
+test("suggestOccupations matches aliases and sets matchedName", async () => {
+  // Query a known alias (e.g., "Softwareentwickler" for locale=de)
+  // Expect: result with matchedName set to the alias
+});
+
+test("suggestOccupations falls back to locale=en", async () => {
+  // Query with locale=fr for something only available in en
+  // Expect: still returns result (en fallback)
+});
+
+// ── Typeahead: suggestSeniorities() ──
+
+test("suggestSeniorities returns prefix matches", async () => {
+  // Query "Sen"
+  // Expect: "Senior" in results
+});
+
+// ── Typeahead: suggestTechnologies() ──
+
+test("suggestTechnologies returns prefix matches", async () => {
+  // Query "Pyth"
+  // Expect: "Python" in results
+});
+
+test("suggestTechnologies handles special characters", async () => {
+  // Query "C++" → expect C++ result
+  // Query "C#" → expect C# result
+  // Query ".NET" → expect .NET result
+});
+
+test("suggestTechnologies does not fuzzy match (prefix only)", async () => {
+  // Query "Pyhton" (typo)
+  // Expect: no results (num_typos: 0)
+});
+
+// ── Watchlist search ──
+
+test("searchCompaniesForWatchlist returns companies by name", async () => {
+  // Query with known company name prefix
+  // Expect: matching companies with activeMatches/yearMatches populated
+});
+
+test("searchCompaniesForWatchlist filters by industry", async () => {
+  // Query with industryId set
+  // Expect: all results have matching industry
+});
+
+test("searchPublicWatchlists searches title and description", async () => {
+  // Requires at least one public watchlist in Typesense
+  // Query with word from a known watchlist title
+  // Expect: that watchlist in results
+});
+
+test("searchPublicWatchlists only returns public watchlists", async () => {
+  // All results should have is_public = true
+});
+```
+
+### Verify-4A: Run crawler E2E tests
+
+**Scope**: Execute the crawler E2E test suite, report results.
+
+**Steps:**
+1. Ensure local Typesense is running and populated
+2. Run: `cd apps/crawler && uv run pytest tests/e2e/test_typesense_indexing.py -v`
+3. Report: number of tests passed/failed/skipped, full output of any failures
+
+**Gate**: All tests pass.
+
+### Verify-4B: Run web E2E tests
+
+**Scope**: Execute the web E2E test suite, report results.
+
+**Steps:**
+1. Ensure local Typesense is running and populated
+2. Run: `cd apps/web && pnpm vitest run src/lib/search/__tests__/typesense.e2e.test.ts`
+3. Report: number of tests passed/failed/skipped, full output of any failures
+
+**Gate**: All tests pass.
+
+### Impl-4Fix: Fix failures
+
+**Scope**: Fix any test failures found by Verify-4A/4B.
+
+**Depends on**: Verify-4A or Verify-4B reporting failures.
+
+**Steps:**
+1. Read the failure output from the Verify subagent
+2. Diagnose: is it a test issue (bad assertion) or an implementation bug?
+3. Fix the root cause
+4. Re-run the failing test to confirm the fix
+
+**Iterate**: Orchestrator re-runs Verify after each fix round until all tests pass.
+
+---
+
+## Phase 5: Production deployment
+
+### Subagent layout
+
+```
+Orchestrator
+  ├── Impl-5A: Provision Hetzner + deploy Typesense
+  ├── Impl-5B: Deploy crawler (exporter + sync)
+  ├── Impl-5C: Deploy web app
+  │
+  └── Verify-5: Production smoke test         ──── Gate: production working
+```
+
+### Impl-5A: Provision Hetzner + deploy Typesense
+
+**Steps:**
+1. Provision Hetzner CX22 (4 GB RAM, dedicated IPv4, disk backups)
+2. Install Docker, deploy Typesense container
+3. Configure firewall (allow crawler + web app IPs only)
+4. Set up TLS termination (Caddy reverse proxy)
+5. Generate production API keys (admin + search-only)
+6. Run `scripts/typesense-setup.py` to create collections
+7. Add keys to GitHub secrets + env files
+
+**Gate**: `curl -s https://<typesense-host>/health` returns `{"ok": true}`
+
+### Impl-5B: Deploy crawler
+
+**Depends on**: Impl-5A complete.
 
 **Steps:**
 1. Merge crawler changes to main
-2. Deploy crawler with new Typesense env vars
-3. Verify exporter logs show Typesense upserts succeeding
-4. Run sync to populate taxonomy + company collections
+2. Deploy crawler with production Typesense env vars
+3. Run sync to populate taxonomy + company collections
+4. Run backfill to populate job_posting collection
+5. Verify exporter logs show Typesense upserts succeeding
 
-### Impl-4B: Deploy web app
+### Impl-5C: Deploy web app
 
-**Depends on**: Impl-4A complete (index must be populated before web app queries it).
+**Depends on**: Impl-5B complete (index must be populated).
 
 **Steps:**
 1. Merge web app changes to main
-2. Deploy with Typesense env vars (`TYPESENSE_HOST`, `TYPESENSE_PORT`, `TYPESENSE_PROTOCOL`, `TYPESENSE_SEARCH_KEY`)
+2. Deploy with production Typesense env vars
 3. Verify no build errors
 
-### Verify-4: Production smoke test
+### Verify-5: Production smoke test
 
-**Depends on**: Impl-4A and Impl-4B both deployed.
+**Depends on**: Impl-5B and Impl-5C both deployed.
 
 **Steps:**
 1. Hit the live site — perform a keyword search, verify results load
@@ -484,11 +784,11 @@ Orchestrator
 
 ---
 
-## Phase 5: Cleanup
+## Phase 6: Cleanup
 
 Single Impl subagent, no verification needed (these are deletions).
 
-### Impl-5: Remove legacy search infrastructure
+### Impl-6: Remove legacy search infrastructure
 
 **Steps:**
 1. Drop unused Supabase GIN indexes on `location_ids`, `technology_ids` (if only used by search)
@@ -502,40 +802,50 @@ Single Impl subagent, no verification needed (these are deletions).
 ## Execution summary
 
 ```
-Phase 1: Infrastructure                          (orchestrator, sequential)
+Phase 1: Local Typesense deployment                   (orchestrator, sequential)
   │
 Phase 2: Indexing pipeline
-  ├── Impl-2A  → Verify-2A                       (schema setup)
-  ├── Impl-2B ─┐                                 (exporter + sync, parallel)
+  ├── Impl-2A  → Verify-2A                            (schema setup)
+  ├── Impl-2B ─┐                                      (exporter + sync, parallel)
   ├── Impl-2C ─┤→ Verify-2B, Verify-2C
-  │            └→ Verify-2D                       (backfill + parity check)
+  │            └→ Verify-2D                            (backfill + parity check)
   │
-Phase 3: Search provider
-  ├── Impl-3A ──→ Verify-3A                       (core search, parallel)
-  ├── Impl-3B ──→ Verify-3B                       (typeahead, parallel)
-  ├── Impl-3C ──→ Verify-3C                       (watchlist, parallel)
-  └── Impl-3D                                     (cleanup, after 3A+3B+3C)
+Phase 3: Search provider implementation
+  ├── Impl-3A ─┐                                      (search + typeahead + watchlist, parallel)
+  ├── Impl-3B ─┤
+  ├── Impl-3C ─┘
+  └── Impl-3D                                         (cleanup, after 3A+3B+3C)
   │
-Phase 4: Deploy
-  ├── Impl-4A → Impl-4B → Verify-4               (sequential: crawler first)
+Phase 4: E2E testing
+  ├── Impl-4A ─┐                                      (write test suites, parallel)
+  ├── Impl-4B ─┘
+  ├── Verify-4A, Verify-4B                            (run tests)
+  └── Impl-4Fix → Verify loop                         (fix + re-run until green)
   │
-Phase 5: Cleanup
-  └── Impl-5                                      (delete legacy code)
+Phase 5: Production deployment
+  ├── Impl-5A → Impl-5B → Impl-5C                    (sequential: infra → crawler → web)
+  └── Verify-5                                         (smoke test)
+  │
+Phase 6: Cleanup
+  └── Impl-6                                           (delete legacy code)
 ```
 
 ### Parallelism map
 
 | Time | Slot 1 | Slot 2 | Slot 3 |
 |------|--------|--------|--------|
-| Phase 2a | Impl-2A | | |
+| Phase 1 | Orchestrator: docker-compose up | | |
+| Phase 2a | Impl-2A (schemas) | | |
 | Phase 2a verify | Verify-2A | | |
 | Phase 2b | Impl-2B (exporter) | Impl-2C (sync) | |
 | Phase 2b verify | Verify-2B | Verify-2C | |
 | Phase 2c | Verify-2D (backfill) | | |
-| Phase 3a | Impl-3A (search) | Impl-3B (typeahead) | Impl-3C (watchlist) |
-| Phase 3a verify | Verify-3A | Verify-3B | Verify-3C |
-| Phase 3b | Impl-3D (cleanup) | | |
-| Phase 4 | Impl-4A → Impl-4B → Verify-4 | | |
-| Phase 5 | Impl-5 | | |
+| Phase 3 | Impl-3A (search provider) | Impl-3B (typeahead) | Impl-3C (watchlist) |
+| Phase 3 cleanup | Impl-3D | | |
+| Phase 4 write | Impl-4A (crawler tests) | Impl-4B (web tests) | |
+| Phase 4 run | Verify-4A | Verify-4B | |
+| Phase 4 fix | Impl-4Fix → Verify loop | | |
+| Phase 5 | Impl-5A → 5B → 5C → Verify-5 | | |
+| Phase 6 | Impl-6 | | |
 
-Maximum 3 concurrent subagents (Phase 3a). Most of the wall-clock time savings come from parallelizing the three independent search provider tracks.
+Maximum 3 concurrent subagents (Phase 3). E2E test suites are written in parallel (2 slots), then run, then failures fixed iteratively.
