@@ -141,11 +141,13 @@ function buildFilterString(filters: SearchFilters): string {
 **`buildFilterString` does NOT inject `is_active:true`** — callers prepend it explicitly. This keeps the function as a pure mechanical helper for user-specified filter dimensions. Query-level concerns (`is_active`, `first_seen_at` ranges) are the caller's responsibility:
 
 ```typescript
+const filterStr = buildFilterString(filters);
+
 // Active search queries:
-filter_by: `is_active:true && ${buildFilterString(filters)}`
+filter_by: `is_active:true${filterStr ? " && " + filterStr : ""}`
 
 // Year count queries (includes inactive/filled postings):
-filter_by: `first_seen_at:>${oneYearAgoUnix} && ${buildFilterString(filters)}`
+filter_by: `first_seen_at:>${oneYearAgoUnix}${filterStr ? " && " + filterStr : ""}`
 ```
 ```
 
@@ -169,6 +171,7 @@ const facetResult = await typesense.multiSearch.perform({
       q: "*",
       filter_by: `is_active:true${buildFilterString(filters) ? " && " + buildFilterString(filters) : ""}`,
       facet_by: "company_id",
+      facet_strategy: "exhaustive",      // guarantee exact counts for 50K+ companies
       max_facet_values: offset + limit,  // enough for pagination
       per_page: 0,                       // no docs needed, just facet counts
     },

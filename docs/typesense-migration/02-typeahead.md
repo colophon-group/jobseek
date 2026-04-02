@@ -90,7 +90,7 @@ This avoids duplicating coordinates and IDs across locale documents and avoids d
 function mapLocationSuggestion(hit: TypesenseHit, locale: string): LocationSuggestion {
   const doc = hit.document;
   return {
-    id: doc.id,
+    id: doc.location_id,  // numeric ID, not the string document id
     slug: doc.slug,
     name: doc[`name_${locale}`] ?? doc.name_en,
     type: doc.type,
@@ -167,10 +167,12 @@ function mapOccupationSuggestion(hit: TypesenseHit): OccupationSuggestion {
   const doc = hit.document;
   const aliasHighlight = hit.highlights?.find(h => h.field === "aliases");
   return {
-    id: doc.id,
+    id: doc.occupation_id,  // numeric ID, not the composite "42-de" document id
     slug: doc.slug,
     name: doc.name,
-    matchedName: aliasHighlight ? aliasHighlight.matched_tokens.join(" ") : undefined,
+    // For array fields like aliases, snippets[0] gives the first matched alias text.
+    // matched_tokens is string[][] (nested array per array element), not flat string[].
+    matchedName: aliasHighlight?.snippets?.[0] ?? undefined,
   };
 }
 ```
