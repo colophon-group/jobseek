@@ -97,15 +97,19 @@ services:
       - TYPESENSE_API_KEY=${TYPESENSE_API_KEY}
 ```
 
-### Security
+### Security & networking
 
-- **Firewall (ufw or Hetzner firewall)**: Port 8108 open only to:
-  - Crawler machine (exporter writes)
-  - Web app server / Vercel edge (search reads)
+- **Firewall**: Port 8108 open only to localhost. Typesense is NOT exposed to the internet directly.
+- **Crawler machine access**: Firewall allows the crawler machine IP on port 8108 (same Hetzner private network, or public IP).
+- **Web app access (Vercel)**: Via **Cloudflare tunnel**. Vercel serverless has no stable IPs, so firewall allowlisting doesn't work. The tunnel routes `typesense.yourdomain.com` → `localhost:8108` through Cloudflare's edge network.
+  - Setup: `cloudflared tunnel create typesense` + config file + systemd service (~15 min)
+  - Benefits: DDoS protection (4GB box is trivially killable without it), rate limiting, zero public attack surface
+  - Latency overhead: ~5-10ms per request (invisible — Typesense queries take <10ms, total still under 20ms)
+  - The tunnel daemon must auto-start on reboot (systemd)
 - **API keys**: Two scoped keys:
-  - `TYPESENSE_ADMIN_KEY` — full access, used by exporter and sync only
-  - `TYPESENSE_SEARCH_KEY` — search-only, used by web app
-- **TLS**: Terminate TLS at a reverse proxy (Caddy or nginx) in front of Typesense, or use Typesense's built-in `--ssl-certificate` / `--ssl-certificate-key` flags
+  - `TYPESENSE_ADMIN_KEY` — full access, used by exporter and sync only (direct connection via private network / firewall rule)
+  - `TYPESENSE_SEARCH_KEY` — search-only, used by web app (via Cloudflare tunnel)
+- **TLS**: Handled by Cloudflare tunnel for web app traffic. For crawler-to-Typesense (direct), use Caddy reverse proxy or Typesense's built-in `--ssl-certificate` flags if on public network.
 
 ### Resource budget (4 GB RAM)
 
@@ -367,13 +371,12 @@ The exporter already connects to both `local_pool` and `supa_pool`. Load maps fr
 
 **Feature flag**: Only write to Typesense when `typesense_admin_key` is configured (non-empty). This allows backward-compatible deployment — existing environments without Typesense are unaffected.
 
-**Taxonomy rename handling**: If a taxonomy name changes in a CSV (rare), sync.py detects the diff (compare name maps before/after sync) and:
-1. Signals the exporter to refresh its in-memory taxonomy maps (via a Redis key `typesense:refresh_maps` or SIGHUP) — **must happen first**
-2. Waits for acknowledgment (or a brief delay) to ensure the exporter has loaded fresh names
-3. Then touches affected job_posting rows in local Postgres (`SET updated_at = now() WHERE occupation_id = $1`)
-4. The normal CDC cursor picks them up and re-indexes with fresh denormalized names
+**Taxonomy rename handling**: If a taxonomy name changes in a CSV (rare), sync.py detects the diff (compare name maps before/after sync) and directly updates the affected Typesense documents:
+1. Query affected postings: `SELECT id FROM job_posting WHERE occupation_id = $1` (or seniority_id, etc.)
+2. Build partial update docs with the new denormalized name (e.g., `{ id: posting_id, occupation_name: "New Name" }`)
+3. Batch upsert to Typesense `job_posting` collection
 
-**Ordering is critical**: If sync.py touches rows before the exporter refreshes its maps, the exporter will re-index with stale names, and those stale names persist until the next reconciliation.
+This is self-contained — no inter-process signaling, no dependency on the exporter running, no CDC cascade. sync.py already has the new name maps (it just loaded them from CSVs) and Typesense connection (from the taxonomy sync step). The exporter's in-memory maps are refreshed on their normal timer (every 10 min) and will pick up the new names for any future postings.
 
 **Deletion handling**: When `is_active` flips to false, the document stays in Typesense with `is_active: false`. All search queries filter on `is_active:true`. Periodically purge documents where `last_seen_at < now - 1 year` via a cleanup job.
 
@@ -687,5 +690,5 @@ This is a ~5 minute operation. No dead code to maintain, no feature flags. The r
 - **Two-cursor exporter**: Supabase and Typesense have independent cursors. Typesense failure doesn't block Supabase export or cursor advance. Typesense catches up from its own cursor on next tick.
 - **yearMatches / activeMatches**: Computed live using `facet_by: company_id` on `job_posting` when filters are active — ensures companies are ranked by *filtered* posting count, not global count. For the unfiltered browse case, falls back to pre-computed `active_posting_count` / `year_posting_count` on the `company` collection. Pre-computed counts are refreshed periodically by `refresh_typesense_counts()` and are approximate.
 - **Posting count refresh cadence**: Relaxed — runs during sync.py + on a timer (~30 min). Imprecise counts (100+, 1100+) are fine for ranking and display.
-- **Denormalized name staleness**: sync.py detects taxonomy name diffs and touches affected postings so CDC re-indexes them automatically. No manual intervention needed.
+- **Denormalized name staleness**: sync.py detects taxonomy name diffs and directly updates affected Typesense documents. No inter-process signaling, no CDC cascade. Self-contained in sync.py.
 - **Rollback**: Git revert the merge commit, redeploy. ~5 min recovery. No dead code or feature flags to maintain.

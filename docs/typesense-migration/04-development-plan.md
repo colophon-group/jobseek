@@ -183,8 +183,11 @@ Orchestrator
 5. Implement taxonomy rename detection in sync.py:
    - Before syncing each taxonomy, snapshot the current name maps
    - After sync, diff against new maps
-   - If any names changed: `UPDATE job_posting SET updated_at = now() WHERE {taxonomy_id} = $1` for each changed ID
-   - CDC cursor picks up the touched rows and re-indexes with fresh denormalized names
+   - If any names changed: directly update affected Typesense documents
+     - Query `SELECT id FROM job_posting WHERE {taxonomy_id} = $1`
+     - Build partial update docs with the new denormalized name
+     - Batch upsert to Typesense job_posting collection
+   - Self-contained — no inter-process signaling, no CDC dependency
 
 **Report**: Files modified, collections populated, document counts per collection.
 
@@ -878,14 +881,21 @@ Orchestrator
 
 **Steps:**
 1. Provision Hetzner CX22 (4 GB RAM, dedicated IPv4, disk backups)
-2. Install Docker, deploy Typesense container
-3. Configure firewall (allow crawler + web app IPs only)
-4. Set up TLS termination (Caddy reverse proxy)
-5. Generate production API keys (admin + search-only)
-6. Run `scripts/typesense-setup.py` to create collections
-7. Add keys to GitHub secrets + env files
+2. Install Docker, deploy Typesense container (port 8108 bound to localhost only)
+3. Configure firewall: port 8108 open to crawler machine IP only (not public)
+4. Set up Cloudflare tunnel for web app access:
+   - `cloudflared tunnel create typesense`
+   - Configure tunnel to route `typesense.yourdomain.com` → `localhost:8108`
+   - Install as systemd service (auto-start on reboot)
+   - Verify tunnel health from external network
+5. Set up TLS for crawler-to-Typesense (Caddy reverse proxy or Typesense built-in SSL)
+6. Generate production API keys (admin + search-only)
+7. Run `scripts/typesense-setup.py` to create collections
+8. Add keys + Cloudflare tunnel hostname to GitHub secrets + env files + Vercel env vars
 
-**Gate**: `curl -s https://<typesense-host>/health` returns `{"ok": true}`
+**Gate**: 
+- From crawler: `curl -s https://<direct-ip>:8108/health` returns `{"ok": true}`
+- From internet: `curl -s https://typesense.yourdomain.com/health -H "X-TYPESENSE-API-KEY: $SEARCH_KEY"` returns `{"ok": true}`
 
 ### Impl-5B: Deploy crawler + backfill
 
