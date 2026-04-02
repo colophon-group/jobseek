@@ -927,7 +927,7 @@ Orchestrator
    - Verify tunnel health from external network
    - Add Cloudflare Cache Rule: `Cache Level: Bypass` for all paths on the tunnel hostname (prevents stale search results)
 5. Set up TLS for crawler-to-Typesense (Caddy reverse proxy or Typesense built-in SSL)
-6. Generate production API keys (admin + search-only)
+6. Generate production API keys (admin + search-only + watchlist-write)
 7. Run `scripts/typesense-setup.py` to create collections
 8. Add keys + Cloudflare tunnel hostname to GitHub secrets + env files + Vercel env vars
 

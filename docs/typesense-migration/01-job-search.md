@@ -491,6 +491,6 @@ function buildLocations(
 - **No results**: Typesense returns `{ found: 0, hits: [] }` — map to `{ companies: [], totalCompanies: 0 }`
 - **Anon user truncation**: Handled in the server action layer (search.ts), not in the provider — no change needed
 - **Location hierarchy expansion**: Already expanded to ID arrays before reaching the provider — Typesense filters on the expanded array
-- **Year matches count**: Computed live per query using a filtered facet or count query (see result mapping table above). For `listTopCompanies()` without filters, falls back to pre-computed `year_posting_count` on the `company` collection.
+- **Year matches count**: For `search()`, uses pre-computed `year_posting_count` from the company collection (approximate, ~30 min refresh). For `listTopCompanies()` with filters, computed live via a second facet query with `first_seen_at` filter. For `listTopCompanies()` without filters, uses pre-computed `year_posting_count` directly. For `loadPostingsWithCounts()`, computed live via a count query.
 - **`buildFilterString()` and `is_active`**: The function does NOT inject `is_active:true` — callers add it explicitly. The `yearCount` query uses `first_seen_at:>${oneYearAgoUnix}` without `is_active:true` to count all postings from the past year (including filled/inactive ones). This matches the current Postgres behavior.
 - **Relevance scoring**: Typesense's `_text_match` score replaces the keyword count ranking. It incorporates typo distance, token position, and field weights — strictly better than the current integer count.
