@@ -1686,6 +1686,7 @@ grand-games,grand-games-lever,https://jobs.lever.co/grand,lever,"{""token"": ""g
 graphax,graphax-jobs,https://jobs.graphax.ch/de/stellenangebote.html,dom,"{""url_filter"": ""-j\\d+\\.html""}",json-ld,
 graphcore,graphcore-greenhouse,https://job-boards.greenhouse.io/graphcore,greenhouse,"{""token"": ""graphcore""}",skip,
 graphite,graphite-ashby,https://jobs.ashbyhq.com/graphite,ashby,"{""token"": ""graphite""}",skip,
+gravis-robotics,gravis-robotics-careers,https://jobs.lever.co/gravisrobotics,lever,"{""token"": ""gravisrobotics""}",skip,
 gravityclimate,gravityclimate-ashby,https://jobs.ashbyhq.com/gravityclimate,ashby,"{""token"": ""gravityclimate""}",skip,
 graymatter-robotics,graymatter-robotics-ashby,https://jobs.ashbyhq.com/graymatter-robotics,ashby,"{""token"": ""graymatter-robotics""}",skip,
 grayscale-investments,grayscale-investments-greenhouse,https://job-boards.greenhouse.io/grayscaleinvestments,greenhouse,"{""token"": ""grayscaleinvestments""}",skip,
