@@ -125,9 +125,11 @@ When no watchlist context filters are active, use the original company collectio
 **Starred companies sorting**: If `starredCompanyIds` is provided and no text query, do two Typesense queries:
 1. Fetch starred companies: `filter_by: "id:[${starredCompanyIds.join(',')}]"`
 2. Fetch remaining companies: `filter_by: "id:!=[${starredCompanyIds.join(',')}]"`
-Concatenate results. **Both sets need match counts** — starred companies must go through the same count computation (facet or multi_search) to populate `activeMatches` / `yearMatches`. Don't skip count computation just because they're starred.
+Concatenate results. **Verify the multi-value exclusion syntax** against Typesense 27.1 docs — it may be `id:![ids]` (no `=`) rather than `id:!=[ids]`. **Both sets need match counts** — starred companies must go through the same count computation (facet or multi_search) to populate `activeMatches` / `yearMatches`. Don't skip count computation just because they're starred.
 
 **No text query + watchlist filters**: When there's no text query but the user has active watchlist filters (keywords, locations, etc.), company ranking must be by **filtered** match count, not global `active_posting_count`. Use the same match count queries from step 2 to sort results. Without this, a company with 1000 total jobs but 0 filter-matching jobs would rank above one with 50 matching jobs.
+
+**Salary param mapping**: The watchlist context uses `salaryMin`/`salaryMax` but `buildFilterString` expects `salaryMinEur`/`salaryMaxEur`. The caller must map these field names before calling `buildFilterString`, or salary filters will silently not apply.
 
 **Location/occupation expansion**: The current `searchCompaniesForWatchlist()` calls `expandLocationIds()` and `expandOccupationIds()` on the watchlist context filters before computing match counts. The Typesense version must do the same — without expansion, selecting "Germany" as a watchlist location filter would miss postings in Berlin, Munich, etc.
 
@@ -156,7 +158,7 @@ If performance is a concern at scale, consider pre-computing match counts and st
 ```typescript
 {
   collection: "watchlist",
-  q: query,
+  q: query || "*",
   query_by: "title,description",
   filter_by: "is_public:true",
   sort_by: "_text_match:desc,created_at:desc",
@@ -260,7 +262,7 @@ const filterStr = buildFilterString(filters);
   collection: "job_posting",
   q: keywords?.length ? keywords.join(" ") : "*",
   query_by: "title",
-  filter_by: `is_active:true && company_id:[${companyIds.join(",")}]${filterStr ? " && " + filterStr : ""}`,
+  filter_by: `is_active:true${companyIds.length ? " && company_id:[" + companyIds.join(",") + "]" : ""}${filterStr ? " && " + filterStr : ""}`,
   sort_by: keywords?.length
     ? "_text_match:desc,first_seen_at:desc"
     : "first_seen_at:desc",
