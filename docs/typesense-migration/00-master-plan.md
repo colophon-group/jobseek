@@ -533,6 +533,7 @@ These functions use complex hierarchical queries, recursive CTEs, or multi-table
 | `getCompanyTopLocations()` | `actions/company.ts` | Company detail page aggregation |
 | `getCompanyLocationsGrouped()` | `actions/company.ts` | Company detail hierarchy query |
 | `suggestIndustries()` | `actions/company.ts` | Tiny lookup, not worth a collection |
+| `getAvailableJobLanguages()` | `actions/preferences.ts` | Candidate for `facet_by: "locales"` on `job_posting` — but currently cached 1h, settings page only, low traffic. Can stay on Postgres or migrate later. Must filter out `"_none"` sentinel if migrated. |
 | `expandLocationIds()` | `actions/locations.ts` | Recursive CTE for location hierarchy (WITH RECURSIVE) |
 | `expandOccupationIds()` | `actions/taxonomy.ts` | Recursive CTE for occupation hierarchy |
 | `resolveLocationSlugs()` | `actions/locations.ts` | Slug-to-ID lookup with locale-aware names |
