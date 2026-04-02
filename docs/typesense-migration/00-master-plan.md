@@ -467,7 +467,11 @@ Use `typesense-js` (official Node.js client) in the web app:
 import Typesense from "typesense";
 
 const client = new Typesense.Client({
-  nodes: [{ host: process.env.TYPESENSE_HOST!, port: 8108, protocol: "https" }],
+  nodes: [{
+    host: process.env.TYPESENSE_HOST!,
+    port: parseInt(process.env.TYPESENSE_PORT || "443"),
+    protocol: process.env.TYPESENSE_PROTOCOL || "https",
+  }],
   apiKey: process.env.TYPESENSE_SEARCH_KEY!,
   connectionTimeoutSeconds: 2,
 });
@@ -654,8 +658,9 @@ TYPESENSE_PROTOCOL=https
 TYPESENSE_ADMIN_KEY=<admin-key>
 
 # Web app (Vercel env vars — set in Vercel dashboard, not just .env.local)
-TYPESENSE_HOST=<typesense-ipv4>
-TYPESENSE_PORT=8108
+# Uses Cloudflare tunnel hostname, NOT direct IP (Vercel has no stable IPs)
+TYPESENSE_HOST=typesense.yourdomain.com
+TYPESENSE_PORT=443
 TYPESENSE_PROTOCOL=https
 TYPESENSE_SEARCH_KEY=<search-only-key>
 ```
