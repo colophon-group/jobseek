@@ -65,13 +65,12 @@ User types keywords + selects filters
 ### Query mapping: `search()`
 
 ```typescript
-// Typesense multi_search request — 3 searches batched in 1 HTTP call
+// Step 1: Main grouped search with facet for totalCompanies
 const filterStr = buildFilterString(filters);
 const activeFilter = `is_active:true${filterStr ? " && " + filterStr : ""}`;
 
 const response = await typesense.multiSearch.perform({
   searches: [
-    // 1. Main grouped search — returns postings grouped by company
     {
       collection: "job_posting",
       q: keywords.join(" "),
@@ -84,22 +83,21 @@ const response = await typesense.multiSearch.perform({
       page: Math.floor(offset / limit) + 1,
       typo_tokens_threshold: 1,
       drop_tokens_threshold: 1,
-      // facet_by for totalCompanies — stats.total_values gives distinct company count
       facet_by: "company_id",
-      facet_strategy: "exhaustive",  // exact count with 50K+ companies
-      max_facet_values: 1,           // we only need the stats, not the values
+      facet_strategy: "exhaustive",
+      max_facet_values: 1,  // only need stats.total_values, not individual counts
     },
-    // 2. Company doc lookup for yearMatches — batch-fetch pre-computed counts
-    // (added AFTER receiving results[0] — use company IDs from grouped_hits)
-    // See "Company counts" section below
   ],
 });
 
-// totalCompanies from facet stats (NOT response.found which is document count)
+// totalCompanies from facet stats (NOT response.found which is document count in grouped mode)
 const totalCompanies = response.results[0].facet_counts?.[0]?.stats?.total_values ?? 0;
+
+// activeMatches: use group.found (live filtered count per company — matches current Postgres behavior)
+// yearMatches: batch-fetch pre-computed year_posting_count from company collection (approximate)
 ```
 
-**Company counts for activeMatches / yearMatches**: After the main search returns `grouped_hits`, extract the company IDs and batch-fetch their pre-computed counts from the `company` collection in a second `multi_search` call:
+**Step 2: Batch-fetch company docs for yearMatches**: `group.found` gives live `activeMatches` per company, but there's no efficient way to get filtered year counts per company in a grouped query. Fetch pre-computed `year_posting_count` from the `company` collection:
 
 ```typescript
 const companyIds = response.results[0].grouped_hits?.map(g => g.hits[0].document.company_id) ?? [];
@@ -110,14 +108,13 @@ const companyDocs = await typesense.collections("company").documents().search({
   per_page: companyIds.length,
 });
 
-// Build count map from company docs
-const countMap = new Map(companyDocs.hits?.map(h => [
+const yearCountMap = new Map(companyDocs.hits?.map(h => [
   h.document.id,
-  { activeCount: h.document.active_posting_count, yearCount: h.document.year_posting_count }
+  h.document.year_posting_count as number,
 ]) ?? []);
 ```
 
-This avoids the facet-based year count approach which fails because facets sort by count (not text relevance) and `max_facet_values` would need to be unreasonably high to guarantee overlap with the relevance-ranked search results. Pre-computed counts from the company collection are approximate (~30 min refresh) but always available for every company in the search results.
+**Why this two-step approach**: `activeMatches` uses `group.found` (live, filtered by keywords + all filters — exact parity with Postgres). `yearMatches` uses pre-computed `year_posting_count` (approximate, ~30 min refresh — not filtered by current keywords/filters). A facet-based year count was considered but rejected because facets sort by count (not text relevance), so `max_facet_values` can't reliably cover the companies that appeared in the relevance-ranked search results.
 
 **Filter string builder:**
 
@@ -367,8 +364,8 @@ Typesense `group_by` results need transformation to match `SearchResponse`:
 ```typescript
 function mapGroupedHits(
   response: TypesenseSearchResponse,
-  activeCountMap: Map<string, number>,   // from facet or group.found
-  yearCountMap?: Map<string, number>,    // from year facet (optional)
+  totalCompanies: number,                // from facet stats.total_values
+  yearCountMap: Map<string, number>,     // from company-doc batch fetch
 ): SearchResponse {
   const companies: SearchResultCompany[] = response.grouped_hits.map(group => {
     const firstHit = group.hits[0].document;
@@ -380,8 +377,8 @@ function mapGroupedHits(
         slug: firstHit.company_slug,
         icon: firstHit.company_icon ?? null,
       },
-      activeMatches: activeCountMap.get(companyId) ?? group.found,
-      yearMatches: yearCountMap?.get(companyId) ?? 0,
+      activeMatches: group.found,                     // live filtered count
+      yearMatches: yearCountMap.get(companyId) ?? 0,  // pre-computed approximate
       postings: group.hits.map(hit => ({
         id: hit.document.id,
         title: hit.document.title,
@@ -395,10 +392,7 @@ function mapGroupedHits(
 
   return {
     companies,
-    // NOTE: In grouped queries, response.found is total DOCUMENTS, not groups.
-    // Use response.found_docs for doc count. For total company count, use
-    // facet_counts[0].stats.total_values from a parallel facet_by:company_id query.
-    totalCompanies: totalCompanyCount,  // from facet stats, see below
+    totalCompanies,
     truncated: false,  // handle anon truncation in server action layer
   };
 }
@@ -413,12 +407,12 @@ function mapGroupedHits(
 
 | Method | activeMatches | yearMatches |
 |--------|--------------|-------------|
-| `search()` (keywords) | `group.found` for live filtered count, or `company.active_posting_count` from batch company-doc lookup (pre-computed, approximate) | `company.year_posting_count` from batch company-doc lookup (pre-computed, approximate) |
+| `search()` (keywords) | `group.found` — live filtered count per company (exact parity with Postgres) | `company.year_posting_count` from batch company-doc lookup (pre-computed, approximate ~30 min) |
 | `listTopCompanies()` (no keywords, with filters) | From `facet_by: company_id` counts (step 1 of facet approach) | Second facet query with year filter |
 | `listTopCompanies()` (no keywords, no filters) | From `company` collection `active_posting_count` (pre-computed) | From `company` collection `year_posting_count` (pre-computed) |
 | `loadPostingsWithCounts()` | Live count query: `filter_by: company_id:X && is_active:true && filters`, `per_page: 0` → `found` | Live count query: same + `first_seen_at:>${oneYearAgoUnix}` |
 
-For `search()` and `listTopCompanies()` with filters, `yearMatches` requires one extra facet query batched in the same `multi_search` call. For the unfiltered `listTopCompanies()`, counts come from the pre-computed `company` collection.
+For `search()`, `yearMatches` comes from the batch company-doc lookup (`year_posting_count`, pre-computed, approximate). For `listTopCompanies()` with filters, `yearMatches` requires one extra facet query with `first_seen_at` filter batched via `multi_search`. For unfiltered `listTopCompanies()`, counts come from the pre-computed `company` collection directly.
 
 **`company_icon`**: Denormalized on each `job_posting` document (see schema in `00-master-plan.md`). No extra lookup needed.
 
