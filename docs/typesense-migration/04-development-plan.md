@@ -147,7 +147,7 @@ Orchestrator
    - Iterates all `job_posting` rows (not just changed ones)
    - Same denormalization + upsert logic
    - Progress logging every 10K rows
-7. Add taxonomy map refresh: reload maps every 10 minutes (or on SIGHUP)
+7. Add taxonomy map refresh: reload maps every 10 minutes
 8. Extend `run_reconciliation()` with Typesense check:
    - Compare doc counts (Postgres vs Typesense)
    - Sample 100 random IDs, compare `is_active` / `updated_at`
@@ -888,6 +888,7 @@ Orchestrator
    - Configure tunnel to route `typesense.yourdomain.com` → `localhost:8108`
    - Install as systemd service (auto-start on reboot)
    - Verify tunnel health from external network
+   - Add Cloudflare Cache Rule: `Cache Level: Bypass` for all paths on the tunnel hostname (prevents stale search results)
 5. Set up TLS for crawler-to-Typesense (Caddy reverse proxy or Typesense built-in SSL)
 6. Generate production API keys (admin + search-only)
 7. Run `scripts/typesense-setup.py` to create collections

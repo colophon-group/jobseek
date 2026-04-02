@@ -104,7 +104,8 @@ services:
 - **Web app access (Vercel)**: Via **Cloudflare tunnel**. Vercel serverless has no stable IPs, so firewall allowlisting doesn't work. The tunnel routes `typesense.yourdomain.com` → `localhost:8108` through Cloudflare's edge network.
   - Setup: `cloudflared tunnel create typesense` + config file + systemd service (~15 min)
   - Benefits: DDoS protection (4GB box is trivially killable without it), rate limiting, zero public attack surface
-  - Latency overhead: ~5-10ms per request (invisible — Typesense queries take <10ms, total still under 20ms)
+  - **Cache bypass rule required**: Add a Cloudflare Cache Rule for the tunnel hostname — `Cache Level: Bypass` for all paths. Without it, Cloudflare may cache GET search responses, causing stale results. Typesense does not set `Cache-Control` headers by default.
+  - Latency overhead: ~10-30ms per request (acceptable — Typesense queries take <10ms, total still under 50ms). If Vercel cold-starts in US while Typesense is in EU, base RTT adds ~80-100ms regardless.
   - The tunnel daemon must auto-start on reboot (systemd)
 - **API keys**: Two scoped keys:
   - `TYPESENSE_ADMIN_KEY` — full access, used by exporter and sync only (direct connection via private network / firewall rule)
