@@ -174,6 +174,11 @@ Orchestrator
    - For company collection: same + `year_posting_count` (postings from last year)
    - Idempotent, callable by sync.py after each run + on a timer (~30 min)
    - Counts are approximate — imprecise values (100+, 1100+) are acceptable
+5. Implement taxonomy rename detection in sync.py:
+   - Before syncing each taxonomy, snapshot the current name maps
+   - After sync, diff against new maps
+   - If any names changed: `UPDATE job_posting SET updated_at = now() WHERE {taxonomy_id} = $1` for each changed ID
+   - CDC cursor picks up the touched rows and re-indexes with fresh denormalized names
 
 **Report**: Files modified, collections populated, document counts per collection.
 

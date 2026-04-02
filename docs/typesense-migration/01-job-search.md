@@ -71,12 +71,7 @@ User types keywords + selects filters
     collection: "job_posting",
     q: keywords.join(" "),           // free-text query
     query_by: "title",               // search in title field only
-    filter_by: buildFilterString({   // all facet filters
-      is_active: true,
-      location_ids, occupation_id, seniority_id,
-      technology_ids, employment_type,
-      salary_eur, experience_min, locales
-    }),
+    filter_by: `is_active:true && ${buildFilterString(filters)}`,
     sort_by: "_text_match:desc,first_seen_at:desc",
     group_by: "company_id",          // group results by company
     group_limit: 10,                 // max 10 postings per company group
@@ -91,7 +86,7 @@ User types keywords + selects filters
 
 ```typescript
 function buildFilterString(filters: SearchFilters): string {
-  const parts: string[] = ["is_active:true"];
+  const parts: string[] = [];
 
   if (filters.locationIds?.length)
     parts.push(`location_ids:[${filters.locationIds.join(",")}]`);
@@ -126,6 +121,17 @@ function buildFilterString(filters: SearchFilters): string {
 }
 ```
 
+**`buildFilterString` does NOT inject `is_active:true`** — callers prepend it explicitly. This keeps the function as a pure mechanical helper for user-specified filter dimensions. Query-level concerns (`is_active`, `first_seen_at` ranges) are the caller's responsibility:
+
+```typescript
+// Active search queries:
+filter_by: `is_active:true && ${buildFilterString(filters)}`
+
+// Year count queries (includes inactive/filled postings):
+filter_by: `first_seen_at:>${oneYearAgoUnix} && ${buildFilterString(filters)}`
+```
+```
+
 **Location/occupation hierarchy expansion**: The current Postgres implementation expands parent IDs to include all children (e.g., selecting "Germany" includes all German cities). This expansion happens in `parseSearchFilters()` before reaching the search provider. Typesense receives the already-expanded ID arrays — no change needed.
 
 ### Query mapping: `listTopCompanies()`
@@ -144,7 +150,7 @@ const facetResult = await typesense.multiSearch.perform({
     {
       collection: "job_posting",
       q: "*",
-      filter_by: `is_active:true && ${buildFilterString(filters)}`,
+      filter_by: `is_active:true${buildFilterString(filters) ? " && " + buildFilterString(filters) : ""}`,
       facet_by: "company_id",
       max_facet_values: offset + limit,  // enough for pagination
       per_page: 0,                       // no docs needed, just facet counts
@@ -165,7 +171,7 @@ const matchCountMap = new Map(page.map(f => [f.value, f.count]));
 // Step 2: Fetch postings for this page of companies
 const postingResults = await typesense.collections("job_posting").documents().search({
   q: "*",
-  filter_by: `company_id:[${companyIds.join(",")}] && is_active:true && ${buildFilterString(filters)}`,
+  filter_by: `company_id:[${companyIds.join(",")}] && is_active:true${buildFilterString(filters) ? " && " + buildFilterString(filters) : ""}`,
   group_by: "company_id",
   group_limit: 10,
   sort_by: "first_seen_at:desc",
@@ -190,7 +196,7 @@ const postingResults = await typesense.collections("job_posting").documents().se
   collection: "job_posting",
   q: keywords.length ? keywords.join(" ") : "*",
   query_by: "title",
-  filter_by: `company_id:${companyId} && is_active:true && ${buildFilterString(filters)}`,
+  filter_by: `company_id:=${companyId} && is_active:true${buildFilterString(filters) ? " && " + buildFilterString(filters) : ""}`,
   sort_by: keywords.length
     ? "_text_match:desc,first_seen_at:desc"
     : "first_seen_at:desc",
@@ -204,13 +210,17 @@ const postingResults = await typesense.collections("job_posting").documents().se
 Same as `loadPostings()` plus live filtered count queries — these counts must reflect the user's active filters, not global pre-computed values:
 
 ```typescript
+const filterStr = buildFilterString(filters);
+const baseFilter = `company_id:=${companyId}${filterStr ? " && " + filterStr : ""}`;
+const q = keywords.length ? keywords.join(" ") : "*";
+
 const searches = [
   // Postings query (same as loadPostings)
   {
     collection: "job_posting",
-    q: keywords.length ? keywords.join(" ") : "*",
+    q,
     query_by: "title",
-    filter_by: `company_id:${companyId} && is_active:true && ${buildFilterString(filters)}`,
+    filter_by: `is_active:true && ${baseFilter}`,
     sort_by: keywords.length ? "_text_match:desc,first_seen_at:desc" : "first_seen_at:desc",
     per_page: limit,
     page: Math.floor(offset / limit) + 1,
@@ -218,17 +228,17 @@ const searches = [
   // Active count (filtered)
   {
     collection: "job_posting",
-    q: keywords.length ? keywords.join(" ") : "*",
+    q,
     query_by: "title",
-    filter_by: `company_id:${companyId} && is_active:true && ${buildFilterString(filters)}`,
+    filter_by: `is_active:true && ${baseFilter}`,
     per_page: 0,  // activeCount = found
   },
-  // Year count (filtered)
+  // Year count (filtered — includes inactive postings from past year)
   {
     collection: "job_posting",
-    q: keywords.length ? keywords.join(" ") : "*",
+    q,
     query_by: "title",
-    filter_by: `company_id:${companyId} && first_seen_at:>${oneYearAgoUnix} && ${buildFilterString(filters)}`,
+    filter_by: `first_seen_at:>${oneYearAgoUnix} && ${baseFilter}`,
     per_page: 0,  // yearCount = found
   },
 ];
@@ -237,7 +247,7 @@ const searches = [
 // yearCount = results[2].found
 ```
 
-Three queries in one `multi_search` call. The count queries use the same filters as the postings query, ensuring counts reflect the user's current filter state.
+Three queries in one `multi_search` call. Active count uses `is_active:true`, year count uses `first_seen_at` range without `is_active` (includes filled jobs). Both apply the user's filters.
 
 ### Query mapping: `getSalaryHistogram()`
 

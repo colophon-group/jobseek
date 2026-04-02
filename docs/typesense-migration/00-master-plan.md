@@ -343,7 +343,9 @@ exporter tick:
 
 **Column note**: The exporter's current `_POSTING_COLUMNS` omits `last_seen_at`. Add `last_seen_at` to the SELECT for Typesense indexing (needed for year-range queries and purge logic).
 
-**Denormalization strategy**: The exporter already connects to local Postgres which has all taxonomy tables. Load taxonomy name maps into memory at startup (they're small — hundreds of rows each). Refresh on a timer or when sync.py runs. If a taxonomy name changes (rare), existing Typesense documents keep the old name until they are individually re-exported. For bulk fixups after a rename, use the backfill command.
+**Denormalization strategy**: The exporter already connects to local Postgres which has all taxonomy tables. Load taxonomy name maps into memory at startup (they're small — hundreds of rows each). Refresh on a timer or when sync.py runs.
+
+**Taxonomy rename handling**: If a taxonomy name changes in a CSV (rare), sync.py detects the diff (compare name maps before/after sync) and touches affected job_posting rows in local Postgres (`SET updated_at = now() WHERE occupation_id = $1`). The normal CDC cursor picks them up and re-indexes with fresh denormalized names. No manual backfill needed.
 
 **Deletion handling**: When `is_active` flips to false, the document stays in Typesense with `is_active: false`. All search queries filter on `is_active:true`. Periodically purge documents where `last_seen_at < now - 1 year` via a cleanup job.
 
@@ -558,5 +560,5 @@ This is a ~5 minute operation. No dead code to maintain, no feature flags. The r
 - **Two-cursor exporter**: Supabase and Typesense have independent cursors. Typesense failure doesn't block Supabase export or cursor advance. Typesense catches up from its own cursor on next tick.
 - **yearMatches / activeMatches**: Computed live using `facet_by: company_id` on `job_posting` when filters are active — ensures companies are ranked by *filtered* posting count, not global count. For the unfiltered browse case, falls back to pre-computed `active_posting_count` / `year_posting_count` on the `company` collection. Pre-computed counts are refreshed periodically by `refresh_typesense_counts()` and are approximate.
 - **Posting count refresh cadence**: Relaxed — runs during sync.py + on a timer (~30 min). Imprecise counts (100+, 1100+) are fine for ranking and display.
-- **Denormalized name staleness**: Accepted. Taxonomy renames are rare. Existing Typesense documents keep old names until re-exported. For bulk fixups, run the backfill command.
+- **Denormalized name staleness**: sync.py detects taxonomy name diffs and touches affected postings so CDC re-indexes them automatically. No manual intervention needed.
 - **Rollback**: Git revert the merge commit, redeploy. ~5 min recovery. No dead code or feature flags to maintain.
