@@ -384,7 +384,8 @@ This is self-contained — no inter-process signaling, no dependency on the expo
 **Reconciliation**: Daily reconciliation job (extend existing `run_reconciliation()`):
 1. Compare document counts: `SELECT COUNT(*) FROM job_posting` vs `GET /collections/job_posting` → `num_documents`
 2. If counts diverge by >1%, trigger a full backfill
-3. Sample 100 random posting IDs, fetch from both Postgres and Typesense, compare `updated_at` / `is_active` — touch any discrepant rows in Postgres (set `updated_at = now()`) so the normal CDC cursor picks them up
+3. Sample 100 random posting IDs from Postgres (`SELECT id FROM job_posting ORDER BY random() LIMIT 100`), fetch from Typesense by ID, compare `is_active` — touch any discrepant rows in Postgres (set `updated_at = now()`) so the normal CDC cursor picks them up
+4. Sample 100 IDs from Typesense (from multiple random pages via `page` parameter), verify they exist in Postgres — detect orphaned Typesense documents
 
 **Initial backfill**: On first deployment, run a one-shot full export:
 ```bash

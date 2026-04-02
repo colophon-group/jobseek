@@ -311,7 +311,7 @@ Orchestrator
    - `listTopCompanies()` — two paths: (a) with filters: `facet_by: company_id` on `job_posting` for filtered ranking + `facet_strategy: "exhaustive"`, then fetch postings; (b) without filters: query `company` collection by `active_posting_count`, then fetch postings. See `01-job-search.md` for details.
    - `loadPostings()` — filter by `company_id`, sort by text match or recency
    - `loadPostingsWithCounts()` — `loadPostings()` + count queries via `multi_search` (active + year counts)
-   - `getSalaryHistogram()` — faceted range query on `salary_eur` with 30 boundaries (0, 10K, ..., 300K)
+   - `getSalaryHistogram()` — faceted range query on `salary_eur` with 31 labeled ranges (30 x 10K + overflow 300K+)
    - `getExperienceHistogram()` — facet on `experience_min`, transform to `ExperienceBucket[]`
 5. Update `apps/web/src/lib/search/index.ts`:
    - Replace `PostgresSearchProvider` with `TypesenseSearchProvider` directly (no toggle)

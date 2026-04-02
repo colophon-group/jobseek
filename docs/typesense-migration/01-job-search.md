@@ -65,25 +65,59 @@ User types keywords + selects filters
 ### Query mapping: `search()`
 
 ```typescript
-// Typesense multi_search request
+// Typesense multi_search request — 3 searches batched in 1 HTTP call
 const filterStr = buildFilterString(filters);
+const activeFilter = `is_active:true${filterStr ? " && " + filterStr : ""}`;
 
-{
-  searches: [{
-    collection: "job_posting",
-    q: keywords.join(" "),           // free-text query
-    query_by: "title",               // search in title field only
-    filter_by: `is_active:true${filterStr ? " && " + filterStr : ""}`,
-    sort_by: "_text_match:desc,first_seen_at:desc",
-    group_by: "company_id",          // group results by company
-    group_limit: 10,                 // max 10 postings per company group
-    per_page: limit,                 // companies per page
-    page: Math.floor(offset / limit) + 1,
-    typo_tokens_threshold: 1,        // enable typo tolerance
-    drop_tokens_threshold: 1,        // if no results match ALL keywords, progressively drop tokens
-  }]
-}
+const response = await typesense.multiSearch.perform({
+  searches: [
+    // 1. Main grouped search — returns postings grouped by company
+    {
+      collection: "job_posting",
+      q: keywords.join(" "),
+      query_by: "title",
+      filter_by: activeFilter,
+      sort_by: "_text_match:desc,first_seen_at:desc",
+      group_by: "company_id",
+      group_limit: 10,
+      per_page: limit,
+      page: Math.floor(offset / limit) + 1,
+      typo_tokens_threshold: 1,
+      drop_tokens_threshold: 1,
+      // facet_by for totalCompanies — stats.total_values gives distinct company count
+      facet_by: "company_id",
+      facet_strategy: "exhaustive",  // exact count with 50K+ companies
+      max_facet_values: 1,           // we only need the stats, not the values
+    },
+    // 2. Company doc lookup for yearMatches — batch-fetch pre-computed counts
+    // (added AFTER receiving results[0] — use company IDs from grouped_hits)
+    // See "Company counts" section below
+  ],
+});
+
+// totalCompanies from facet stats (NOT response.found which is document count)
+const totalCompanies = response.results[0].facet_counts?.[0]?.stats?.total_values ?? 0;
 ```
+
+**Company counts for activeMatches / yearMatches**: After the main search returns `grouped_hits`, extract the company IDs and batch-fetch their pre-computed counts from the `company` collection in a second `multi_search` call:
+
+```typescript
+const companyIds = response.results[0].grouped_hits?.map(g => g.hits[0].document.company_id) ?? [];
+
+const companyDocs = await typesense.collections("company").documents().search({
+  q: "*",
+  filter_by: `id:[${companyIds.join(",")}]`,
+  per_page: companyIds.length,
+});
+
+// Build count map from company docs
+const countMap = new Map(companyDocs.hits?.map(h => [
+  h.document.id,
+  { activeCount: h.document.active_posting_count, yearCount: h.document.year_posting_count }
+]) ?? []);
+```
+
+This avoids the facet-based year count approach which fails because facets sort by count (not text relevance) and `max_facet_values` would need to be unreasonably high to guarantee overlap with the relevance-ranked search results. Pre-computed counts from the company collection are approximate (~30 min refresh) but always available for every company in the search results.
 
 **Filter string builder:**
 
@@ -298,11 +332,11 @@ Typesense supports facet ranges for numeric fields:
 }
 ```
 
-This returns bucket counts matching the current 30-bucket / 10K EUR layout. Transform the facet response into `SalaryBucket[]`.
+This returns 31 bucket counts (30 standard 10K EUR buckets + 1 overflow bucket for 300K+). Transform the facet response into `SalaryBucket[]`.
 
 **Facet range syntax note:** The syntax varies by Typesense version. In 27.x, labeled ranges use `field(Label:[start, end], ...)`. In some versions, flat boundary lists `field([0, 10000, 20000, ...])` are used. **Verify the exact syntax against the deployed Typesense 27.1 instance** during implementation. The E2E tests will catch syntax errors.
 
-**Boundary handling**: Typesense range facets use inclusive boundaries by default. A salary of exactly 10000 could be counted in both `[0,10000]` and `[10000,20000]`. To avoid double-counting, use exclusive end boundaries (e.g., `0-10k:[0,9999]` or verify how 27.1 handles boundary values).
+**Boundary handling**: Typesense labeled range facets use inclusive-start, exclusive-end by default: `[0, 10000]` means `0 <= x < 10000`. No double-counting at boundaries — a salary of exactly 10000 falls only in `[10000, 20000]`, not in `[0, 10000]`. The overflow bucket `[300000, 999999]` captures salaries >= 300K.
 
 **Overflow bucket**: Add a `300k+:[300000, 999999]` bucket to capture salaries above 300K EUR. Without it, high salaries are silently excluded from the histogram. Postgres `width_bucket` handles this with bucket 31.
 
@@ -379,7 +413,7 @@ function mapGroupedHits(
 
 | Method | activeMatches | yearMatches |
 |--------|--------------|-------------|
-| `search()` (keywords) | `group.found` — Typesense returns the filtered match count per group natively | Second `multi_search` query: same filters + `first_seen_at:>${oneYearAgoUnix}`, `facet_by: company_id`, `per_page: 0` |
+| `search()` (keywords) | `group.found` for live filtered count, or `company.active_posting_count` from batch company-doc lookup (pre-computed, approximate) | `company.year_posting_count` from batch company-doc lookup (pre-computed, approximate) |
 | `listTopCompanies()` (no keywords, with filters) | From `facet_by: company_id` counts (step 1 of facet approach) | Second facet query with year filter |
 | `listTopCompanies()` (no keywords, no filters) | From `company` collection `active_posting_count` (pre-computed) | From `company` collection `year_posting_count` (pre-computed) |
 | `loadPostingsWithCounts()` | Live count query: `filter_by: company_id:X && is_active:true && filters`, `per_page: 0` → `found` | Live count query: same + `first_seen_at:>${oneYearAgoUnix}` |
@@ -418,7 +452,7 @@ function buildLocations(
 }
 ```
 
-**Note on `group.found`**: In Typesense 26.0+, each element in `grouped_hits` includes a `found` field (plain integer) giving the total matching document count for that group. This is confirmed available in 27.1. Verify the response shape with a test query during implementation.
+**Note on `group.found`**: In Typesense 0.25+, each element in `grouped_hits` includes a `found` field (plain integer) giving the total matching document count for that group. This is confirmed available in 27.1. Verify the response shape with a test query during implementation.
 
 **NULL title handling**: `title` is a required (non-optional) field in the schema. During indexing, postings with NULL or empty titles in Postgres should be indexed with `title: ""` (empty string). They won't match keyword searches but will appear in browse/filter results. If the exporter encounters a NULL title, it must not pass `null` to Typesense (would reject the document).
 
