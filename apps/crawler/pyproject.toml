@@ -28,6 +28,7 @@ dependencies = [
     "jinja2>=3.1",
     "huggingface-hub>=1.7.2",
     "cryptography>=46.0.5",
+    "typesense>=0.21",
 ]
 
 [project.scripts]

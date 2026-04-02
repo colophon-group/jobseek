@@ -51,6 +51,12 @@ class Settings(BaseSettings):
     export_batch_limit: int = 2000
     reconciliation_interval: int = 86400
 
+    # Typesense (disabled when typesense_admin_key is empty)
+    typesense_host: str = ""
+    typesense_port: int = 8108
+    typesense_protocol: str = "http"
+    typesense_admin_key: str = ""
+
     apify_token: str = ""
     anthropic_api_key: str = ""
 
