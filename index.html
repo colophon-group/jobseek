@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>&lt;job-seek&gt;</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0d0d0d;
+      --text: #f0f0f0;
+      --muted: #666;
+      --dim: #2a2a2a;
+      --mono: 'Courier New', Courier, monospace;
+    }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--mono);
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ── HEADER ── */
+    header {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      padding: 64px 48px 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .logo {
+      font-size: 55px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: #fff;
+      opacity: 0;
+      animation: rise 0.6s 0.1s ease forwards;
+    }
+
+    nav {
+      display: flex;
+      gap: 34px;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      opacity: 0;
+      animation: rise 0.6s 0.2s ease forwards;
+    }
+
+    nav a { color: inherit; text-decoration: none; transition: color 0.2s; }
+    nav a:hover { color: var(--text); }
+
+    .btn-nav {
+      border: 1px solid rgba(255,255,255,0.35);
+      color: var(--text);
+      padding: 8px 22px;
+      border-radius: 100px;
+      font-family: var(--mono);
+      font-size: 12px;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      background: transparent;
+      transition: border-color 0.2s, background 0.2s;
+      opacity: 0;
+      animation: rise 0.6s 0.3s ease forwards;
+    }
+    .btn-nav:hover { border-color: var(--text); background: rgba(255,255,255,0.06); }
+
+    /* ── FULL-PAGE LAYOUT ── */
+    .page {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 88px 48px 32px;
+      gap: 0;
+    }
+
+    /* ── IMAGES ── */
+    .img-scene {
+      position: relative;
+      width: 100%;
+      max-width: 1100px;
+      height: 72vh;
+      flex-shrink: 0;
+    }
+
+    .img-card {
+      position: absolute;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 40px 100px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.07);
+    }
+
+    .card-js {
+      box-shadow:
+        0 40px 100px rgba(0,0,0,0.85),
+        0 0 0 1px rgba(212,175,55,0.3),
+        0 0 40px 6px rgba(212,175,55,0.18),
+        0 0 80px 20px rgba(212,175,55,0.08);
+    }
+
+    .img-card img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: top left;
+    }
+
+    /* jobseek — dominant, left-center, front */
+    .card-js {
+      width: 62%;
+      height: 88%;
+      top: 0;
+      left: 4%;
+      z-index: 2;
+      opacity: 0;
+      animation: rise 0.9s 0.5s ease forwards;
+    }
+
+    /* linkedin — secondary, right, behind, fully visible */
+    .card-li {
+      width: 46%;
+      height: 75%;
+      top: 6%;
+      right: 0;
+      z-index: 1;
+      opacity: 0;
+      animation: rise 0.9s 0.75s ease forwards;
+      mask-image: linear-gradient(to left, rgba(0,0,0,1) 60%, rgba(0,0,0,0) 100%);
+      -webkit-mask-image: linear-gradient(to left, rgba(0,0,0,1) 60%, rgba(0,0,0,0) 100%);
+    }
+
+    /* red overlay on linkedin */
+    .red-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(200, 30, 30, 0.28);
+      mix-blend-mode: multiply;
+      pointer-events: none;
+    }
+
+    /* bottom fade */
+    .img-scene::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 45%;
+      background: linear-gradient(to bottom, transparent 0%, var(--bg) 100%);
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    /* ── FOOTER LINE ── */
+    .foot {
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      color: var(--muted);
+      text-transform: uppercase;
+      padding-top: 10px;
+      opacity: 0;
+      animation: rise 0.6s 1s ease forwards;
+    }
+
+    /* ── ANIMATIONS ── */
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .card-js, .card-li {
+      animation-name: risePlain;
+    }
+    @keyframes risePlain {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo">jseek.co</div>
+  </header>
+
+  <div class="page">
+    <div class="img-scene">
+
+      <!-- LinkedIn — secondary, right, behind -->
+      <div class="img-card card-li">
+        <img src="img1.png" alt="LinkedIn Jobs" />
+        <div class="red-overlay"></div>
+      </div>
+
+      <!-- job-seek — dominant, center, front -->
+      <div class="img-card card-js">
+        <img src="img2.png" alt="job-seek" />
+      </div>
+
+    </div>
+
+  </div>
+
+</body>
+</html>
