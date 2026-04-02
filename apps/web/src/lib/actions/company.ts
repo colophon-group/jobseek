@@ -176,8 +176,8 @@ export async function searchCompaniesForWatchlist(params: {
   const starredArray = boostStarred ? `{${starredIds.join(",")}}` : null;
 
   const orderClause = boostStarred
-    ? sql`CASE WHEN c.id = ANY(${starredArray}::uuid[]) THEN 0 ELSE 1 END, active_matches DESC, c.name`
-    : sql`active_matches DESC, c.name`;
+    ? sql`CASE WHEN sub.id = ANY(${starredArray}::uuid[]) THEN 0 ELSE 1 END, active_matches DESC, sub.name`
+    : sql`active_matches DESC, sub.name`;
 
   // Single query: compute match counts, filter out zero-match companies,
   // and get total in one pass using a window function.
