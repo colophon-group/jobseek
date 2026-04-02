@@ -199,11 +199,11 @@ Unlike job postings and taxonomies (which are crawler-sourced), watchlists are c
 | Watchlist deleted | Delete from Typesense |
 | Company added/removed from watchlist | Update `company_count` on Typesense doc |
 
-**Count refresh**: `active_job_count` depends on job posting data (not user actions). Refresh periodically — either:
-- A cron job (every 15 min) that recalculates counts for all public watchlists
-- Triggered after exporter batches (more real-time but couples crawler to watchlist logic)
+**Count refresh + reconciliation**: A periodic job (every 15 min) that:
+1. Recalculates `active_job_count` and `company_count` for all public watchlists
+2. **Full reconciliation**: queries all public watchlists from Supabase, compares against Typesense collection, upserts any missing/divergent docs and deletes any that are no longer public. This covers watchlist writes lost during Typesense outages (fire-and-forget hooks don't retry).
 
-Recommend the cron approach for simplicity.
+This is a single job that handles both count freshness and data consistency. Since the watchlist collection is small (hundreds to low thousands of public watchlists), a full reconciliation every 15 min is cheap.
 
 **Initial backfill**: Query all public watchlists from Supabase, compute counts, bulk upsert to Typesense.
 

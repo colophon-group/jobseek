@@ -105,7 +105,11 @@ function buildFilterString(filters: SearchFilters): string {
   if (filters.employmentTypes?.length)
     parts.push(`employment_type:[${filters.employmentTypes.join(",")}]`);
 
-  if (filters.salaryMinEur != null || filters.salaryMaxEur != null) {
+  // salary_eur is optional — range filters exclude docs with missing fields.
+  // Only apply when the user has set a meaningful salary filter (not just 0).
+  const hasSalaryFilter = (filters.salaryMinEur != null && filters.salaryMinEur > 0)
+                       || (filters.salaryMaxEur != null && filters.salaryMaxEur > 0);
+  if (hasSalaryFilter) {
     const min = filters.salaryMinEur ?? 0;
     const max = filters.salaryMaxEur ?? 999999;
     parts.push(`salary_eur:[${min}..${max}]`);
@@ -348,11 +352,19 @@ function mapGroupedHits(
 
   return {
     companies,
-    totalCompanies: response.found,
+    // NOTE: In grouped queries, response.found is total DOCUMENTS, not groups.
+    // Use response.found_docs for doc count. For total company count, use
+    // facet_counts[0].stats.total_values from a parallel facet_by:company_id query.
+    totalCompanies: totalCompanyCount,  // from facet stats, see below
     truncated: false,  // handle anon truncation in server action layer
   };
 }
 ```
+
+**`totalCompanies` computation**: In Typesense grouped queries, `response.found` returns total matching **documents**, not groups. To get the total number of distinct companies:
+- For `search()`: add `facet_by: "company_id"` to the main query with `max_facet_values: 1`. The response includes `facet_counts[0].stats.total_values` — the total number of distinct company_id values matching the query. This is the correct `totalCompanies`.
+- For `listTopCompanies()` with filters: `facet_counts[0].stats.total_values` from the facet query (already present).
+- For `listTopCompanies()` without filters: `companyResults.found` from the `company` collection query (not grouped, so `found` is correct).
 
 **`activeMatches` / `yearMatches` — how counts are obtained per method:**
 
