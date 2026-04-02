@@ -12,6 +12,12 @@ Key findings:
      Anthropic excluded from timing: generic job titles cause cross-cycle false matches.
      Deel excluded: only 2 LinkedIn snapshots — insufficient board coverage.
      Figma excluded: LinkedIn coverage starts Mar 2025 only, all lags >90d (archival gap).
+     Airtable excluded (naturally): first LinkedIn snap Mar 2024, next Jun 2025 — 15-month gap means all leads >90d.
+
+Platforms per company:
+  OpenAI    → Glassdoor (8 snapshots, ageInDays gives exact posting date)
+  Anthropic → Glassdoor (2 snapshots from 2024 — cross-cycle issue, excluded from timing)
+  Others    → LinkedIn (<time datetime> attribute gives real posting date)
 """
 
 import os, json, statistics
@@ -38,13 +44,6 @@ for fname in sorted(os.listdir(DATASET)):
         summaries.append(d)
 
 summaries.sort(key=lambda x: x['company'])
-
-# Only keep credible short leads (≤90 days) for timing charts
-# Exclude Anthropic: generic job titles cause cross-cycle false matches (2 Glassdoor snaps from 2024)
-# Exclude Deel: only 2 LinkedIn snapshots — insufficient board coverage for timing
-# Exclude Figma: LinkedIn coverage starts Mar 2025 only, all lags are archival gap artifacts (>90d)
-# OpenAI uses Glassdoor ageInDays; Notion/Zapier/Intercom use Ashby/GH publishedAt + LinkedIn <time datetime>
-credible_matches = [m for m in matches if m['lagDays'] <= 90 and m['company'] not in ('Anthropic', 'Deel', 'Figma')]
 
 os.makedirs('charts', exist_ok=True)
 
@@ -202,9 +201,14 @@ plt.savefig('charts/03_donut_coverage.png', dpi=180, bbox_inches='tight')
 plt.close()
 print('Saved charts/03_donut_coverage.png')
 
-# ── Chart 4: Confirmed timing leads — LinkedIn's own datePosted ───────────────
-# Only matches where LinkedIn's embedded <time datetime> is within 90 days of
-# the career page datePosted. These use LinkedIn's own date, not archive date.
+# ── Chart 4: Confirmed timing leads — aggregator's own datePosted ─────────────
+# Filter to ≤90 days naturally excludes archival-gap companies:
+#   Figma/Airtable: all leads >90d (15-month LinkedIn gap is archival artifact)
+#   Anthropic: 0 career_first matches (cross-cycle false matches with generic titles)
+#   Deel: 0 career_first matches (only 2 LinkedIn snapshots)
+# Remaining 43 leads use aggregator's own embedded dates (not Wayback archive dates):
+#   OpenAI  → Glassdoor ageInDays (exact date)
+#   Notion/Zapier/Intercom → LinkedIn <time datetime> attribute
 
 confirmed = [m for m in matches if m.get('lagDays', 999) <= 90]
 
@@ -219,10 +223,15 @@ if confirmed:
     bar_colors = [COMPANY_COLORS.get(m['company'], CAREER_COLOR) for m in confirmed_sorted]
     y = np.arange(len(labels))
     bars = ax.barh(y, values, color=bar_colors, height=0.55, zorder=3)
+    # Map company → aggregator platform name for labels
+    COMPANY_PLATFORM = {
+        'OpenAI': 'Glassdoor', 'Anthropic': 'Glassdoor',
+    }
     for bar, val, m in zip(bars, values, confirmed_sorted):
         board_dp = m.get('boardDatePosted', '')
+        platform_label = COMPANY_PLATFORM.get(m['company'], 'LinkedIn')
         ax.text(bar.get_width() + 1.0, bar.get_y() + bar.get_height() / 2,
-                f"{val}d  (LinkedIn posted {board_dp})",
+                f"{val}d  ({platform_label} posted {board_dp})",
                 va='center', ha='left', fontsize=8.5, color=TEXT, fontweight='bold')
     ax.set_yticks(y)
     ax.set_yticklabels(labels, fontsize=9.5, color=TEXT)
@@ -231,7 +240,7 @@ else:
     ax.text(0.5, 0.5, 'No confirmed short leads in current dataset',
             ha='center', va='center', transform=ax.transAxes, color=SUBTEXT)
 
-ax.set_xlabel('Days career page was ahead of LinkedIn', fontsize=10, color=SUBTEXT, labelpad=8)
+ax.set_xlabel('Days career page was ahead of aggregator', fontsize=10, color=SUBTEXT, labelpad=8)
 ax.set_title('Career page timing advantage — verified with aggregator\'s own posting date\n'
              'Glassdoor ageInDays + LinkedIn <time datetime> used (not Wayback archive date)',
              fontsize=12, fontweight='bold', color=TEXT, pad=14)
