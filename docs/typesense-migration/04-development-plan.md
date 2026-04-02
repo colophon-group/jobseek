@@ -160,8 +160,8 @@ Orchestrator
 **Scope**: Extend `apps/crawler/src/sync.py` to write taxonomy, company, and initial watchlist data to Typesense.
 
 **Steps:**
-1. After each taxonomy sync block, add Typesense bulk upsert:
-   - **Locations**: Query all locations + all locale names + lat/lng. Build one doc per location with `name_en`, `name_de`, `name_fr`, `name_it`, `coordinates: [lat, lng]`. Count active postings per location. Upsert to `location` collection.
+1. After each taxonomy sync block, add Typesense bulk upsert **outside the Supabase transaction** (fire-and-forget — if Typesense fails, don't roll back the CSV sync):
+   - **Locations**: Query from **Supabase** (local Postgres lacks lat/lng/slug). All locale names from `location_name`, coordinates from `location.lat/lng`, parent_name from parent join. Build one doc per location. Count active postings. Upsert to `location` collection.
    - **Occupations**: Query all (occupation, locale) pairs with display names + aliases. Count active postings. Upsert to `occupation` collection (one doc per entity+locale, id = `{occupation_id}-{locale}`).
    - **Seniorities**: Same pattern as occupations.
    - **Technologies**: Query all technologies. Count active postings. Upsert to `technology` collection.
@@ -169,7 +169,10 @@ Orchestrator
    - Name, slug, icon, industry_id, industry_name
    - `active_posting_count` and `year_posting_count` from job_posting counts
 3. Add public watchlist sync:
-   - Query all public watchlists from Supabase (or local if available)
+   - Query from **Supabase** (watchlists are user-created, only exist on Supabase): `SELECT w.*, u.name AS owner_name, u.username AS owner_username FROM watchlist w JOIN user u ON ... WHERE w.is_public = true`
+   - `company_count`: count from watchlist_company junction table
+   - `active_job_count`: count from job_posting joined via watchlist companies
+   - `mirror_count`: `SELECT COUNT(*) FROM watchlist WHERE source_watchlist_id = $1`
    - Build docs with title, description, owner info, counts
    - Upsert to `watchlist` collection
 4. Implement `refresh_typesense_counts()` as a standalone function:
@@ -298,11 +301,11 @@ Orchestrator
    - `buildFilterString(filters: SearchFilters): string` — builds Typesense `filter_by` string
    - Does NOT inject `is_active:true` — callers add it explicitly
    - Maps each filter dimension (locationIds, occupationIds, salary range, etc.)
-   - Sentinel handling: `experience_min` filter includes `|| experience_min:=-1` for max bound; `locales` filter includes `"_none"` sentinel
+   - Sentinel handling: `experience_min` filter includes `|| experience_min:=-1` in ALL cases (min-only, max-only, both bounds — see `01-job-search.md` for exact logic); `locales` filter includes `"_none"` sentinel
    - See `01-job-search.md` for exact mapping
 4. Create `typesense.ts` implementing `SearchProvider`:
    - `search()` — `multi_search` with `q: keywords.join(" ")`, `group_by: "company_id"`, `group_limit: 10`
-   - `listTopCompanies()` — two-step: query `company` collection sorted by `active_posting_count`, then fetch postings per company
+   - `listTopCompanies()` — two paths: (a) with filters: `facet_by: company_id` on `job_posting` for filtered ranking + `facet_strategy: "exhaustive"`, then fetch postings; (b) without filters: query `company` collection by `active_posting_count`, then fetch postings. See `01-job-search.md` for details.
    - `loadPostings()` — filter by `company_id`, sort by text match or recency
    - `loadPostingsWithCounts()` — `loadPostings()` + count queries via `multi_search` (active + year counts)
    - `getSalaryHistogram()` — faceted range query on `salary_eur` with 30 boundaries (0, 10K, ..., 300K)
@@ -490,7 +493,7 @@ def test_job_posting_sentinel_experience():
 
 def test_job_posting_sentinel_locales():
     """Postings where Postgres locales = '{}' (empty) should have
-    locales = ['any'] in Typesense (sentinel value)."""
+    locales = ['_none'] in Typesense (sentinel value)."""
 
 def test_job_posting_location_geo_types():
     """Sample 10 postings with location_ids. Each should have

@@ -81,7 +81,7 @@ const matchCountSearches = companyIds.map(companyId => ({
   collection: "job_posting",
   q: keywords?.length ? keywords.join(" ") : "*",
   query_by: "title",
-  filter_by: `company_id:${companyId} && is_active:true && ${buildFilterString(filters)}`,
+  filter_by: `company_id:=${companyId} && is_active:true${filterStr ? " && " + filterStr : ""}`,
   per_page: 0,  // counts only
 }));
 
@@ -89,7 +89,7 @@ const yearCountSearches = companyIds.map(companyId => ({
   collection: "job_posting",
   q: keywords?.length ? keywords.join(" ") : "*",
   query_by: "title",
-  filter_by: `company_id:${companyId} && first_seen_at:>${oneYearAgoUnix} && ${buildFilterString(filters)}`,
+  filter_by: `company_id:=${companyId} && first_seen_at:>${oneYearAgoUnix}${filterStr ? " && " + filterStr : ""}`,
   per_page: 0,
 }));
 
@@ -235,11 +235,11 @@ const filterStr = buildFilterString(filters);
   sort_by: keywords?.length
     ? "_text_match:desc,first_seen_at:desc"
     : "first_seen_at:desc",
-  group_by: "company_id",
-  group_limit: groupLimit,
   per_page: limit,
   page: Math.floor(offset / limit) + 1,
 }
+// NOTE: No group_by — current function returns a flat paginated list of
+// postings, not grouped by company. response.found gives the total count.
 ```
 
 **Result mapping**: Each hit includes `source_url` (now in the schema) for display in the watchlist view. Company info (`company_name`, `company_slug`, `company_icon`) is denormalized on each posting — no extra lookup.
@@ -255,7 +255,7 @@ const filterStr = buildFilterString(filters);
 | File | Change |
 |------|--------|
 | `apps/web/src/lib/actions/company.ts` | Replace Postgres query in `searchCompaniesForWatchlist()` with Typesense two-step query |
-| `apps/web/src/lib/actions/watchlists.ts` | Replace ILIKE query in `searchPublicWatchlists()` with Typesense query; replace `getWatchlistPostings()` with Typesense query |
+| `apps/web/src/lib/actions/watchlists.ts` | Replace `searchPublicWatchlists()`, `getPopularWatchlists()`, `getWatchlistPostings()` with Typesense queries |
 | Watchlist mutation actions (create/update/delete) | Add Typesense upsert/delete hooks |
 
 ### New files

@@ -350,9 +350,22 @@ exporter tick:
 
 **Concurrent upserts**: Supabase and Typesense upserts run concurrently via `asyncio.gather(return_exceptions=True)`. This prevents Typesense latency (3–5s for 2000 docs over network) from blocking the exporter loop and causing cascading lag during high-churn periods. Each target's cursor advances independently based on its own success/failure.
 
-**Column note**: The exporter's current `_POSTING_COLUMNS` omits `last_seen_at`. Add `last_seen_at` to the SELECT for Typesense indexing (needed for year-range queries and purge logic).
+**Column note**: The exporter's current `_POSTING_COLUMNS` omits `last_seen_at`, and Supabase's `job_posting` table does NOT have a `last_seen_at` column. Do NOT add `last_seen_at` to `_POSTING_COLUMNS` (would break COPY to Supabase). Instead, SELECT it separately for Typesense only — either widen the SELECT to include it but strip it before Supabase COPY (same pattern as `updated_at`), or run a supplementary query.
 
-**Denormalization strategy**: The exporter already connects to local Postgres which has all taxonomy tables. Load taxonomy name maps into memory at startup (they're small — hundreds of rows each). Refresh on a timer or when sync.py runs.
+**`titles` → `title` mapping**: The Postgres column is `titles TEXT[]` (array). For Typesense, use `titles[0]` (first element, Python 0-indexed from asyncpg list). If NULL or empty, set `title: ""` (required field — see NULL title handling in `01-job-search.md`).
+
+**Two-cursor post-fetch filtering**: The SELECT fetches all rows after `MIN(supabase_cursor, typesense_cursor)`. Each target only receives rows past its own cursor. After fetch, filter: Supabase gets rows where `(updated_at, id) > supabase_cursor`, Typesense gets rows where `(updated_at, id) > typesense_cursor`. When both cursors are equal, all rows go to both.
+
+**Denormalization strategy**: Load taxonomy name maps into memory at startup. Data sources:
+- `location_name` (locale-aware names), `location.type` (geo type): from **local Postgres** (populated by `sync_lookup_tables_local()`)
+- `location.lat`, `location.lng`, `location.slug`: from **Supabase** (not copied to local Postgres by `_populate_locations_if_empty`)
+- `occupation_name`, `seniority_name`: from **local Postgres** (populated by sync)
+- `technology` (name, category): from **local Postgres** (populated by sync)
+- `company` (name, slug, icon): from **Supabase** (not synced to local Postgres)
+
+The exporter already connects to both `local_pool` and `supa_pool`. Load maps from the appropriate pool. Refresh on a timer or when sync.py runs.
+
+**Feature flag**: Only write to Typesense when `typesense_admin_key` is configured (non-empty). This allows backward-compatible deployment — existing environments without Typesense are unaffected.
 
 **Taxonomy rename handling**: If a taxonomy name changes in a CSV (rare), sync.py detects the diff (compare name maps before/after sync) and:
 1. Signals the exporter to refresh its in-memory taxonomy maps (via a Redis key `typesense:refresh_maps` or SIGHUP) — **must happen first**
@@ -562,6 +575,14 @@ Use `facet_by` on the `job_posting` collection with the user's active filters ap
 Then resolve IDs to names + hierarchy client-side using the `location` / `occupation` / `seniority` / `technology` Typesense collections (or cached lookup tables).
 
 **For locations**: Facet returns flat `location_id → count` pairs. The location hierarchy (country → region → city) is assembled client-side using `parent_id` relationships from the `location` table (cached). Bottom-up count aggregation: city counts roll up to regions, regions to countries.
+
+**Hierarchy cache**: The browse-all modals need taxonomy metadata (parent_id chains, locale-aware names, domain groupings) to reconstruct hierarchies from flat facet results. Use the same Redis `cached()` pattern as `expandLocationIds()` (TTL 86400s):
+- Location hierarchy: `Map<locationId, { parentId, slug, type, names: Record<locale, string> }>` — loaded from Supabase `location` + `location_name` tables
+- Occupation domains: `Map<occupationId, { domainId, domainName, parentId, slug, names }>` — loaded from Supabase
+- Technology categories: `Map<technologyId, { slug, name, category }>` — loaded from Supabase
+- Seniority: `Map<seniorityId, { slug, names }>` — loaded from Supabase
+
+These are small (hundreds to low thousands of entries) and change only when sync.py runs. Cache them at module level or in Redis with long TTL.
 
 **For occupations**: Facet returns `occupation_id → count`. Domain grouping assembled client-side using `domain_id` from the occupation lookup.
 

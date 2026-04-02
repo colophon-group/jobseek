@@ -414,6 +414,7 @@ function buildLocations(
 |------|--------|
 | `apps/web/src/lib/search/index.ts` | Replace `PostgresSearchProvider` with `TypesenseSearchProvider` (one-shot, no toggle) |
 | `apps/web/package.json` | Add `typesense` dependency |
+| `apps/web/src/lib/search/types.ts` | Add `degraded?: boolean` to `SearchResponse` |
 | `apps/crawler/src/exporter.py` | Add Typesense upsert step after Supabase upsert |
 | `apps/crawler/pyproject.toml` | Add `typesense` dependency |
 
@@ -431,7 +432,6 @@ function buildLocations(
 | `apps/web/src/lib/actions/search-input.ts` | `parseSearchFilters()` stays — still resolves slugs → IDs |
 | `apps/web/app/[lang]/(app)/explore/search-page.tsx` | UI unchanged |
 | `apps/web/app/api/v1/search/route.ts` | Uses same server actions — transparent |
-| `apps/web/src/lib/search/types.ts` | Interface stays the same |
 
 ## Edge cases
 
