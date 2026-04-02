@@ -297,11 +297,11 @@ const searches = [
     filter_by: `is_active:true && ${baseFilter}`,
     per_page: 0,  // activeCount = found
   },
-  // Year count (includes inactive postings from past year, NO keyword filter)
-  // Uses q:"*" — Postgres year count counts ALL postings, not just keyword matches
+  // Year count (includes inactive postings from past year, WITH keyword filter)
+  // Postgres year count DOES filter by keywords — same q as the postings query
   {
     collection: "job_posting",
-    q: "*",
+    q,
     query_by: "title",
     filter_by: `first_seen_at:>${oneYearAgoUnix} && ${baseFilter}`,
     per_page: 0,  // yearCount = found
@@ -312,7 +312,9 @@ const searches = [
 // yearCount = results[2].found
 ```
 
-Three queries in one `multi_search` call. Active count uses `is_active:true`, year count uses `first_seen_at` range without `is_active` (includes filled jobs). Both apply the user's filters.
+Three queries in one `multi_search` call. Active count uses `is_active:true`, year count uses `first_seen_at` range without `is_active` (includes filled jobs). Both apply the user's filters and keywords.
+
+**Postgres bug-fix note**: The current Postgres `loadPostingsWithCounts` counts query is missing `employmentTypeFilter` — it counts all employment types even when the user has filtered to e.g. "full-time". The Typesense version applies `buildFilterString(filters)` which includes employment types. This is a silent bug-fix that makes counts more accurate.
 
 ### Query mapping: `getSalaryHistogram()`
 

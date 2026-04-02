@@ -87,7 +87,7 @@ const matchCountSearches = companyIds.map(companyId => ({
 
 const yearCountSearches = companyIds.map(companyId => ({
   collection: "job_posting",
-  q: keywords?.length ? keywords.join(" ") : "*",
+  q: "*",  // year count includes ALL postings, not keyword-filtered (matches Postgres)
   query_by: "title",
   filter_by: `company_id:=${companyId} && first_seen_at:>${oneYearAgoUnix}${filterStr ? " && " + filterStr : ""}`,
   per_page: 0,
@@ -119,7 +119,7 @@ This eliminates the zero-match problem entirely — facets only return companies
 
 When no watchlist context filters are active, use the original company collection approach (step 1) since all active companies are relevant.
 
-**Note on multi_search limits**: Typesense defaults to max 50 searches per `multi_search` request. The facet approach eliminates the N×2 count queries, so this limit is no longer a concern for the main query path. The per-company year count is obtained from the pre-computed `year_posting_count` on the company collection (approximate, acceptable for display). With page size 20 companies × 2 count queries = 40 searches, this fits. If page size increases, batch into multiple multi_search calls.
+**Note on multi_search limits**: When using the facet approach (filtered case), the N×2 per-company count queries are eliminated — the facet itself gives per-company active counts. Year counts come from pre-computed `year_posting_count` on the company collection (approximate, acceptable). When using the original per-company multi_search approach (step 2 for non-facet paths), the default limit is 50 searches. With page size 20 × 2 count queries = 40 searches, this fits. If page size increases, batch into multiple calls.
 
 **Starred companies sorting**: If `starredCompanyIds` is provided and no text query, do two Typesense queries:
 1. Fetch starred companies: `filter_by: "id:[${starredCompanyIds.join(',')}]"`
