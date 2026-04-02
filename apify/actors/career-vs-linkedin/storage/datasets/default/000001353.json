@@ -1,11 +1,18 @@
 {
 	"_type": "job-comparison",
 	"company": "Anthropic",
-	"normalizedTitle": "applied ai partner solutions architect",
-	"careerTitle": "Applied AI, Partner Solutions Architect",
-	"careerPageFirstSeen": "2025-01-10",
-	"careerPageDatePosted": "2025-01-10",
-	"effectiveCareerDate": "2025-01-10",
-	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20250111153352/https://boards.greenhouse.io/anthropic/jobs/4491240008"
+	"normalizedTitle": "litigation legal specialist",
+	"careerTitle": "Litigation Legal Specialist",
+	"boardTitle": "Litigation Legal Specialist",
+	"careerPageFirstSeen": "2025-01-09",
+	"careerPageDatePosted": "2025-01-09",
+	"boardFirstSeen": "2024-04-07",
+	"boardDatePosted": "2024-03-08",
+	"effectiveCareerDate": "2025-01-09",
+	"effectiveBoardDate": "2024-03-08",
+	"lagDays": -307,
+	"verdict": "board_first",
+	"location": "San Francisco, CA",
+	"careerSnapshotUrl": "https://web.archive.org/web/20250115222138/https://boards.greenhouse.io/anthropic/jobs/4489146008",
+	"boardSnapshotUrl": "https://web.archive.org/web/20240407021748/https://www.glassdoor.com/Jobs/Anthropic-Jobs-E8109027.htm"
 }

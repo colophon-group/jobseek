@@ -1,11 +1,12 @@
 {
 	"_type": "job-comparison",
 	"company": "Anthropic",
-	"normalizedTitle": "design engineer",
-	"careerTitle": "Design Engineer",
-	"careerPageFirstSeen": "2024-08-12",
-	"careerPageDatePosted": "2024-08-12",
-	"effectiveCareerDate": "2024-08-12",
+	"normalizedTitle": "engineering manager model serving",
+	"careerTitle": "Engineering Manager, Model Serving",
+	"careerPageFirstSeen": "2024-08-02",
+	"careerPageDatePosted": "2024-08-02",
+	"effectiveCareerDate": "2024-08-02",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240826180126/https://boards.greenhouse.io/anthropic/jobs/4095648008"
+	"location": "San Francisco Bay Area, California, United States",
+	"careerSnapshotUrl": "https://web.archive.org/web/20240815155502/https://boards.greenhouse.io/anthropic/jobs/4095107008"
 }

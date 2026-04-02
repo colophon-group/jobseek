@@ -1,18 +1,11 @@
 {
 	"_type": "job-comparison",
 	"company": "Anthropic",
-	"normalizedTitle": "operations program manager",
-	"careerTitle": "Operations Program Manager",
-	"boardTitle": "Privacy Operations Program Manager",
+	"normalizedTitle": "strategy operations gtm",
+	"careerTitle": "Strategy and Operations, GTM",
 	"careerPageFirstSeen": "2024-05-16",
 	"careerPageDatePosted": "2024-05-16",
-	"boardFirstSeen": "2024-04-07",
-	"boardDatePosted": "2023-11-08",
 	"effectiveCareerDate": "2024-05-16",
-	"effectiveBoardDate": "2023-11-08",
-	"lagDays": -190,
-	"verdict": "board_first",
-	"location": "San Francisco, CA",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240605225306/https://boards.greenhouse.io/anthropic/jobs/4035785008",
-	"boardSnapshotUrl": "https://web.archive.org/web/20240407021748/https://www.glassdoor.com/Jobs/Anthropic-Jobs-E8109027.htm"
+	"verdict": "career_only",
+	"careerSnapshotUrl": "https://web.archive.org/web/20240521171855/https://boards.greenhouse.io/anthropic/jobs/4035737008"
 }

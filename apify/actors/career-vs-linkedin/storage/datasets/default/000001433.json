@@ -1,11 +1,12 @@
 {
 	"_type": "job-comparison",
 	"company": "Anthropic",
-	"normalizedTitle": "it systems integrations engineer",
-	"careerTitle": "IT Systems - Integrations Engineer",
-	"careerPageFirstSeen": "2025-02-04",
-	"careerPageDatePosted": "2025-02-04",
-	"effectiveCareerDate": "2025-02-04",
+	"normalizedTitle": "team manager alignment finetuning",
+	"careerTitle": "Team Manager, Alignment Finetuning",
+	"careerPageFirstSeen": "2025-02-03",
+	"careerPageDatePosted": "2025-02-03",
+	"effectiveCareerDate": "2025-02-03",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20250213054135/https://boards.greenhouse.io/anthropic/jobs/4521508008"
+	"location": "San Francisco, California, United States",
+	"careerSnapshotUrl": "https://web.archive.org/web/20250213054034/https://boards.greenhouse.io/anthropic/jobs/4520285008"
 }

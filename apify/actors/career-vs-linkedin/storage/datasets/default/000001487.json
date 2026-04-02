@@ -1,11 +1,12 @@
 {
 	"_type": "job-comparison",
 	"company": "Anthropic",
-	"normalizedTitle": "enterprise account executive state local sales",
-	"careerTitle": "Enterprise Account Executive, State & Local Sales",
-	"careerPageFirstSeen": "2025-03-12",
-	"careerPageDatePosted": "2025-03-12",
-	"effectiveCareerDate": "2025-03-12",
+	"normalizedTitle": "software engineer ios",
+	"careerTitle": "Software Engineer, iOS",
+	"careerPageFirstSeen": "2025-03-07",
+	"careerPageDatePosted": "2025-03-07",
+	"effectiveCareerDate": "2025-03-07",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20250314061328/https://boards.greenhouse.io/anthropic/jobs/4578458008"
+	"location": "San Francisco, California, United States",
+	"careerSnapshotUrl": "https://web.archive.org/web/20250314061846/https://boards.greenhouse.io/anthropic/jobs/4572743008"
 }

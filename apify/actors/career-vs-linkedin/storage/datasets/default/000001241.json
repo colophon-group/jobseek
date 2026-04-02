@@ -1,11 +1,18 @@
 {
 	"_type": "job-comparison",
 	"company": "Anthropic",
-	"normalizedTitle": "facilities coordinator london contract",
-	"careerTitle": "Facilities Coordinator, London (Contract)",
-	"careerPageFirstSeen": "2024-07-02",
-	"careerPageDatePosted": "2024-07-02",
-	"effectiveCareerDate": "2024-07-02",
-	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240704145935/https://boards.greenhouse.io/anthropic/jobs/4069637008"
+	"normalizedTitle": "research engineer multimodal",
+	"careerTitle": "Research Engineer, Multimodal",
+	"boardTitle": "Research Engineer",
+	"careerPageFirstSeen": "2024-06-28",
+	"careerPageDatePosted": "2024-06-28",
+	"boardFirstSeen": "2024-04-07",
+	"boardDatePosted": "2023-12-22",
+	"effectiveCareerDate": "2024-06-28",
+	"effectiveBoardDate": "2023-12-22",
+	"lagDays": -189,
+	"verdict": "board_first",
+	"location": "Friendly, MD",
+	"careerSnapshotUrl": "https://web.archive.org/web/20240702145051/https://boards.greenhouse.io/anthropic/jobs/4064086008",
+	"boardSnapshotUrl": "https://web.archive.org/web/20240407021748/https://www.glassdoor.com/Jobs/Anthropic-Jobs-E8109027.htm"
 }

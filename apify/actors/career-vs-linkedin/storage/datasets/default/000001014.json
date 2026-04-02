@@ -1,19 +1,13 @@
 {
 	"_type": "job-comparison",
 	"company": "Deel",
-	"normalizedTitle": "legal counsel nam",
-	"careerTitle": "Associate Legal Counsel I NAM",
-	"boardTitle": "Senior Legal Counsel",
-	"careerPageFirstSeen": "2026-03-03",
-	"careerPageDatePosted": "2026-03-03",
-	"boardFirstSeen": "2025-11-19",
-	"boardDatePosted": "2025-11-19",
-	"effectiveCareerDate": "2026-03-03",
-	"effectiveBoardDate": "2025-11-19",
-	"lagDays": -104,
-	"verdict": "board_first",
-	"location": "North America",
-	"department": "G&A",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel",
-	"boardSnapshotUrl": "https://web.archive.org/web/20251119202615/https://www.linkedin.com/company/deel/jobs"
+	"normalizedTitle": "payroll greece",
+	"careerTitle": "Senior Payroll Associate | Greece",
+	"careerPageFirstSeen": "2026-03-04",
+	"careerPageDatePosted": "2026-03-04",
+	"effectiveCareerDate": "2026-03-04",
+	"verdict": "career_only",
+	"location": "Greece",
+	"department": "COGS",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402010354/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

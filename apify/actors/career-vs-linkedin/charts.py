@@ -4,10 +4,13 @@ Run: python3 charts.py
 Outputs: charts/ directory with PNG files.
 
 Key findings:
-  1. ~83% of jobs on company career pages never appear on Glassdoor/LinkedIn at all.
+  1. ~85% of jobs on company career pages never appear on Glassdoor/LinkedIn at all.
+     5 companies: OpenAI, Notion, Deel, Anthropic, Figma. 1555 career jobs tracked.
   2. Timing: 22 verified leads (1-90 days) where career page was ahead of aggregator,
      using Glassdoor ageInDays (exact date) and LinkedIn <time datetime> (LinkedIn's own field).
      Anthropic excluded from timing: generic job titles cause false matches.
+     Deel excluded: only 2 LinkedIn snapshots — insufficient board coverage.
+     Figma excluded: LinkedIn coverage starts Mar 2025, all lags >90d (archival gap, not real timing).
 """
 
 import os, json, statistics
@@ -38,7 +41,10 @@ summaries.sort(key=lambda x: x['company'])
 # Only keep credible short leads (≤90 days) for timing charts
 # Exclude Anthropic: only 2 Glassdoor snapshots from 2024 — cross-job-cycle false matches
 # Exclude Deel: only 2 LinkedIn snapshots — insufficient board coverage for timing
-credible_matches = [m for m in matches if m['lagDays'] <= 90 and m['company'] not in ('Anthropic', 'Deel')]
+# Exclude Anthropic: generic titles cause cross-cycle false matches
+# Exclude Deel: only 2 LinkedIn snapshots, insufficient coverage
+# Exclude Figma: LinkedIn coverage starts Mar 2025 only, all lags are archival gap artifacts (>90d)
+credible_matches = [m for m in matches if m['lagDays'] <= 90 and m['company'] not in ('Anthropic', 'Deel', 'Figma')]
 
 os.makedirs('charts', exist_ok=True)
 

@@ -26,6 +26,11 @@
       "careerPageUrl": "https://boards.greenhouse.io/anthropic",
       "glassdoorUrl": "https://www.glassdoor.com/Jobs/Anthropic-Jobs-E8109027.htm",
       "linkedinSlug": "anthropic"
+    },
+    {
+      "name": "Figma",
+      "careerPageUrl": "https://boards.greenhouse.io/figma",
+      "linkedinSlug": "figma"
     }
   ]
 }
