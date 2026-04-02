@@ -176,19 +176,22 @@ Comfortable up to ~3M postings on 4 GB. At 5M+, upgrade to 8 GB.
 
 ### `location` (typeahead collection)
 
+One document per location. All locale names stored as separate fields with per-field `locale` for correct tokenization (German umlauts, French accents). Native `geopoint` field for geo-distance sorting.
+
 ```json
 {
   "name": "location",
   "fields": [
     { "name": "id",          "type": "int32" },
     { "name": "slug",        "type": "string",  "index": false },
-    { "name": "name",        "type": "string" },
-    { "name": "name_en",     "type": "string",  "optional": true },
+    { "name": "name_en",     "type": "string",  "locale": "en" },
+    { "name": "name_de",     "type": "string",  "locale": "de", "optional": true },
+    { "name": "name_fr",     "type": "string",  "locale": "fr", "optional": true },
+    { "name": "name_it",     "type": "string",  "locale": "it", "optional": true },
     { "name": "parent_name", "type": "string",  "optional": true },
     { "name": "type",        "type": "string",  "facet": true },
+    { "name": "coordinates", "type": "geopoint", "optional": true },
     { "name": "population",  "type": "int32",   "optional": true },
-    { "name": "lat",         "type": "float",   "optional": true },
-    { "name": "lng",         "type": "float",   "optional": true },
     { "name": "has_active_postings", "type": "bool", "facet": true },
     { "name": "active_posting_count", "type": "int32" }
   ],
@@ -196,13 +199,16 @@ Comfortable up to ~3M postings on 4 GB. At 5M+, upgrade to 8 GB.
 }
 ```
 
-**Notes:**
-- One document per (location, locale) pair — or one doc with `name` in user's preferred locale resolved at query time via `query_by` override
-- Geo-sorting handled by Typesense's built-in `_geo_distance_km` if we add a `coordinates` geopoint field, or by client-side re-ranking
+**Design decisions:**
+- **Multi-field locale** (not per-locale docs): One doc holds `name_en`, `name_de`, `name_fr`, `name_it`. Each field has its own `locale` for correct tokenization. Query with `query_by=name_${locale},name_en` to prefer user locale with English fallback. Avoids duplicating coordinates and IDs across locale documents.
+- **Native geopoint**: `coordinates` field stores `[lat, lng]` from the `location` table. Replaces the client-side Haversine calculation. Sort by `coordinates(userLat, userLng):asc` for nearby-first, or use `precision: 5km` bucketing to group nearby locations and rank by posting count within each band.
+- **`coordinates` is optional**: Macro regions (e.g., "European Union") lack lat/lng. Use `missing_values: last` in sort to push them to the end when geo-sorting.
 - `has_active_postings` filters out locations with no jobs
-- `active_posting_count` as default sort surfaces popular locations first
+- `active_posting_count` as default sort surfaces popular locations first (fallback when no user coordinates)
 
 ### `occupation` (typeahead collection)
+
+One document per (occupation, locale) pair. Occupations have locale-specific display names and aliases (e.g., "Softwareentwickler" in German vs "Software Developer" in English), so per-locale docs are cleaner than cramming `aliases_en[]`, `aliases_de[]` etc. into one doc. The collection is tiny (~100 occupations x 4 locales = ~400 docs).
 
 ```json
 {
@@ -221,7 +227,11 @@ Comfortable up to ~3M postings on 4 GB. At 5M+, upgrade to 8 GB.
 }
 ```
 
+**Design decision:** Per-locale docs (not multi-field). Filter by `locale:${userLocale}` at query time, fall back to `locale:en` if no results. Each doc's `name` field gets correct tokenization for its language.
+
 ### `seniority` (typeahead collection)
+
+Same strategy as occupations — one document per (seniority, locale) pair. ~10 seniority levels x 4 locales = ~40 docs.
 
 ```json
 {
@@ -241,6 +251,8 @@ Comfortable up to ~3M postings on 4 GB. At 5M+, upgrade to 8 GB.
 
 ### `technology` (typeahead collection)
 
+No locale dimension — tech names are universal ("Python", "React", "C++"). One document per technology.
+
 ```json
 {
   "name": "technology",
@@ -252,9 +264,13 @@ Comfortable up to ~3M postings on 4 GB. At 5M+, upgrade to 8 GB.
     { "name": "has_active_postings", "type": "bool", "facet": true },
     { "name": "active_posting_count", "type": "int32" }
   ],
-  "default_sorting_field": "active_posting_count"
+  "default_sorting_field": "active_posting_count",
+  "token_separators": ["+", "#", "."],
+  "symbols_to_index": ["+", "#", "."]
 }
 ```
+
+**Note:** `token_separators` and `symbols_to_index` ensure "C++", "C#", ".NET", "F#" are indexed as single tokens.
 
 ### `company` (typeahead + watchlist search collection)
 
@@ -369,19 +385,19 @@ To reindex with a new schema:
 
 ### TypesenseSearchProvider
 
-Create `apps/web/src/lib/search/typesense.ts` implementing the existing `SearchProvider` interface. Drop-in replacement for `PostgresSearchProvider`.
+Create `apps/web/src/lib/search/typesense.ts` implementing the existing `SearchProvider` interface. Replaces `PostgresSearchProvider` directly (one-shot cutover, no feature flag).
 
 ```typescript
 // apps/web/src/lib/search/index.ts
+let _provider: SearchProvider | undefined;
+
 export function getSearchProvider(): SearchProvider {
-  if (process.env.SEARCH_PROVIDER === "typesense") {
-    return new TypesenseSearchProvider();
+  if (!_provider) {
+    _provider = new TypesenseSearchProvider();
   }
-  return new PostgresSearchProvider();
+  return _provider;
 }
 ```
-
-Toggle via `SEARCH_PROVIDER=typesense` env var. Keeps Postgres as fallback during migration.
 
 ### Client library
 
@@ -422,50 +438,50 @@ Evaluate after benchmarking — start with caching disabled for Typesense querie
 
 ## Rollout Plan
 
-### Phase 1: Infrastructure (1–2 days)
+One-shot cutover. No feature flag, no parallel running. Build it, backfill the index, verify, deploy.
+
+### Phase 1: Infrastructure
 
 1. Provision Hetzner CX22 (4 GB RAM, dedicated IPv4)
 2. Install Docker, deploy Typesense container
 3. Configure firewall (allow crawler + web app IPs only)
-4. Set up TLS termination
+4. Set up TLS termination (Caddy or nginx reverse proxy)
 5. Generate API keys, add to GitHub secrets / env files
 6. Verify health endpoint from crawler and web app machines
 
-### Phase 2: Indexing pipeline (3–5 days)
+### Phase 2: Indexing pipeline
 
 1. Add `typesense` Python package to crawler dependencies
 2. Create collection schemas via a setup script (`scripts/typesense-setup.py`)
-3. Extend `exporter.py` with Typesense upsert step
-4. Extend `sync.py` with taxonomy + company collection sync
-5. Run initial backfill
-6. Verify document counts match Postgres
-7. Set up monitoring (health + RAM + latency)
+3. Extend `exporter.py` with Typesense upsert step (denormalize taxonomy names in-memory)
+4. Extend `sync.py` with taxonomy + company collection sync to Typesense
+5. Add watchlist Typesense upsert hooks in web app mutation actions
+6. Run initial backfill (`uv run crawler export --backfill-typesense`)
+7. Run sync to populate taxonomy + company collections
+8. Verify document counts match Postgres
 
-### Phase 3: Search provider (3–5 days)
+### Phase 3: Search provider
 
 1. Add `typesense` JS package to web app dependencies
 2. Implement `TypesenseSearchProvider` (search, listTopCompanies, loadPostings, histograms)
-3. Implement Typesense-backed suggest functions (all 5 typeahead surfaces)
-4. Implement watchlist search via Typesense
-5. Wire up `SEARCH_PROVIDER` env var toggle
-6. Test locally against Typesense instance
+3. Replace all 5 suggest functions with Typesense queries
+4. Replace watchlist search functions with Typesense queries
+5. Remove `PostgresSearchProvider` and Postgres search code
+6. Remove search-related Redis cache keys (typeahead, search results)
+7. Test locally against Typesense instance — spot-check queries, verify result quality
 
-### Phase 4: Validation & cutover (2–3 days)
+### Phase 4: Deploy
 
-1. Deploy web app with `SEARCH_PROVIDER=typesense` to staging
-2. Compare search results quality vs Postgres (spot-check queries)
-3. Benchmark latency (expect 5–50ms Typesense vs 50–300ms Postgres)
-4. Deploy to production
-5. Monitor error rates, latency, RAM usage for 48h
-6. Remove Postgres search code and `SEARCH_PROVIDER` toggle once stable
+1. Deploy crawler with Typesense exporter (starts keeping index live)
+2. Deploy web app with Typesense search provider
+3. Set up monitoring (health + RAM + latency in Grafana)
+4. Monitor error rates, latency, RAM usage
 
 ### Phase 5: Cleanup
 
-1. Remove `PostgresSearchProvider` class
-2. Remove Postgres trigram extension / similarity indexes (if no other users)
-3. Remove search-related Redis cache keys
-4. Update CLAUDE.md / docs with new architecture
-5. Drop unused Supabase indexes (search-specific GIN indexes, etc.)
+1. Drop unused Supabase indexes (search-specific GIN indexes, trigram extension)
+2. Remove search-related Redis cache keys
+3. Update CLAUDE.md / docs with new architecture
 
 ## Configuration
 
@@ -483,7 +499,6 @@ TYPESENSE_HOST=<typesense-ipv4>
 TYPESENSE_PORT=8108
 TYPESENSE_PROTOCOL=https
 TYPESENSE_SEARCH_KEY=<search-only-key>
-SEARCH_PROVIDER=typesense  # or "postgres" for fallback
 ```
 
 ## Risks and mitigations
@@ -497,8 +512,9 @@ SEARCH_PROVIDER=typesense  # or "postgres" for fallback
 | Typesense version upgrade | Breaking changes | Pin Docker image version, test upgrades in staging |
 | Network partition (crawler ↔ Typesense) | Index falls behind | Exporter retries, cursor doesn't advance on failure |
 
-## Open questions
+## Design decisions log
 
-- **Location geo-sorting**: Typesense supports `_geo_distance_km` natively via a `geopoint` field type. Should we add `coordinates: geopoint` to the location collection for native geo-sorting in typeahead, or handle it client-side?
-- **Multi-locale typeahead**: One document per (entity, locale) pair, or one document with all locale names as a string array? The former is simpler to query; the latter saves documents.
-- **Posting count refresh cadence**: How often should `active_posting_count` on taxonomy/company docs be refreshed? Every exporter tick is accurate but adds write load. Every 5 min is a pragmatic default.
+- **Location geo-sorting**: Use Typesense's native `geopoint` field. Replaces client-side Haversine calculation. Sort by `coordinates(lat, lng, precision: 5km):asc` with fallback to `active_posting_count:desc` when no user coordinates.
+- **Multi-locale strategy**: Locations use multi-field approach (one doc with `name_en`, `name_de`, `name_fr`, `name_it` — each with correct `locale` for tokenization). Occupations and seniorities use per-locale docs (one doc per entity+locale — cleaner for locale-specific aliases). Technologies and companies have no locale dimension.
+- **Rollout**: One-shot cutover. No feature flag or parallel running. Build, backfill, verify, deploy.
+- **Posting count refresh cadence**: Every 5 minutes via a periodic job. Accurate enough for typeahead ranking without adding per-tick write load to the exporter.

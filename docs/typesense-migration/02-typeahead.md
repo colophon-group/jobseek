@@ -54,62 +54,40 @@ Postgres `similarity()` requires a sequential scan of the trigram index for each
 {
   collection: "location",
   q: query,
-  query_by: "name,name_en",
+  query_by: `name_${locale},name_en`,       // prefer user locale, fall back to English
+  query_by_weights: "3,1",                   // boost user locale matches
   filter_by: "has_active_postings:true",
   sort_by: userLat && userLng
-    ? `_geo_distance_km(${userLat},${userLng}):asc`
-    : "active_posting_count:desc",
+    ? `_text_match:desc,coordinates(${userLat},${userLng}, precision: 5 km):asc,active_posting_count:desc`
+    : "_text_match:desc,active_posting_count:desc",
   per_page: 8,
   prefix: true,                    // prefix search (match start of words)
-  typo_tokens_threshold: 1,        // enable typo tolerance
   num_typos: 1,                    // allow 1 typo
   drop_tokens_threshold: 0,        // don't drop tokens
 }
 ```
 
-**Geo-sorting**: Typesense supports native geo-distance sorting. Add a `coordinates` field of type `geopoint` to the `location` collection:
+**Geo-sorting via native `geopoint`**: The `location` collection has a `coordinates` field of type `geopoint` storing `[lat, lng]` from the Postgres `location` table. This completely replaces the client-side Haversine calculation (`locations.ts:423-434`) and the near/far sorting logic (`locations.ts:118-135`).
 
-```json
-{ "name": "coordinates", "type": "geopoint", "optional": true }
-```
+The `precision: 5 km` parameter buckets locations into 5km geo bands. Within the same text match quality and geo band, locations are ranked by `active_posting_count` (posting volume). This closely matches the current behavior where:
+- `match_rank` (prefix vs fuzzy) → `_text_match` (Typesense relevance score)
+- Distance within 300km → `coordinates(lat, lng, precision: 5km)` geo bucketing
+- Population for far locations → `active_posting_count` (better proxy for search relevance)
 
-This replaces the client-side Haversine calculation. When user coordinates are available, sort by `_geo_distance_km(lat,lng):asc`. When not available, fall back to `active_posting_count:desc` (population-based ranking equivalent).
+Locations without coordinates (macro regions like "European Union") have `coordinates` as optional. Typesense sorts them to the end when geo-sorting via `missing_values: last` (default behavior for optional geopoint fields).
 
-**Locale handling**: Two approaches:
+**Multi-locale via multi-field approach**: One document per location with `name_en`, `name_de`, `name_fr`, `name_it` fields. Each field has its own `locale` property in the schema for correct tokenization:
+- German: preserves umlauts (München → München, not Munchen)
+- French: preserves accents (Genève → Genève)
+- `query_by=name_${locale},name_en` searches user locale first, then English fallback
+- `query_by_weights=3,1` boosts user-locale matches so "München" ranks above "Munich" for German users
 
-1. **Separate documents per locale** — one doc for "München" (de) and one for "Munich" (en). Filter by `locale: userLocale` with fallback to `locale: en`. Simple but doubles/quadruples document count.
-
-2. **Multi-field per locale** — single doc with `name_en`, `name_de`, `name_fr`, `name_it` fields. Set `query_by` dynamically: `query_by: "name_${locale},name_en"`. More efficient, requires all locale names on each doc.
-
-Recommend approach 2 — the location collection is small (tens of thousands of rows), and it avoids dealing with deduplication across locale documents.
-
-**Updated location collection schema:**
-
-```json
-{
-  "name": "location",
-  "fields": [
-    { "name": "id",          "type": "int32" },
-    { "name": "slug",        "type": "string",  "index": false },
-    { "name": "name_en",     "type": "string" },
-    { "name": "name_de",     "type": "string",  "optional": true },
-    { "name": "name_fr",     "type": "string",  "optional": true },
-    { "name": "name_it",     "type": "string",  "optional": true },
-    { "name": "parent_name", "type": "string",  "optional": true },
-    { "name": "type",        "type": "string",  "facet": true },
-    { "name": "coordinates", "type": "geopoint", "optional": true },
-    { "name": "population",  "type": "int32",   "optional": true },
-    { "name": "has_active_postings", "type": "bool", "facet": true },
-    { "name": "active_posting_count", "type": "int32" }
-  ],
-  "default_sorting_field": "active_posting_count"
-}
-```
+This avoids duplicating coordinates and IDs across locale documents and avoids deduplication in results.
 
 **Result mapping:**
 
 ```typescript
-function mapLocationSuggestion(hit: TypesenseHit): LocationSuggestion {
+function mapLocationSuggestion(hit: TypesenseHit, locale: string): LocationSuggestion {
   const doc = hit.document;
   return {
     id: doc.id,
@@ -197,7 +175,12 @@ function mapOccupationSuggestion(hit: TypesenseHit): OccupationSuggestion {
 }
 ```
 
-**Locale handling**: Each (occupation, locale) pair is a separate document in the collection. Filter by `locale` to get locale-specific names. If no results for the requested locale, retry with `locale:en` fallback.
+**Per-locale docs**: Each (occupation, locale) pair is a separate document (e.g., `softwaredev-en`, `softwaredev-de`). This is the right choice for occupations because:
+- Aliases are locale-specific ("Softwareentwickler" is a German alias, not English)
+- The `name` field needs correct locale tokenization (one field can only have one `locale`)
+- The collection is tiny (~400 docs for 100 occupations × 4 locales)
+
+Filter by `locale:${userLocale}` to get locale-specific names. If no results, retry with `locale:en` fallback.
 
 ### suggestSeniorities()
 
@@ -246,16 +229,7 @@ Result mapping identical to occupations.
 }
 ```
 
-**Note**: Technologies like "C++", "C#", ".NET" contain special characters. Typesense handles these via `token_separators` and `symbols_to_index` configuration on the collection. Add to the technology collection schema:
-
-```json
-{
-  "token_separators": ["+", "#", "."],
-  "symbols_to_index": ["+", "#", "."]
-}
-```
-
-This ensures "C++" is indexed as a single token, not split on "+".
+**Note**: Technologies like "C++", "C#", ".NET" contain special characters. The `technology` collection schema includes `token_separators` and `symbols_to_index` for `+`, `#`, `.` — ensuring "C++" is indexed as a single token.
 
 ## Unified typeahead via multi_search
 
@@ -348,7 +322,8 @@ Populated by `sync.py` for metadata + exporter for counts (see master plan).
 ## Edge cases
 
 - **Query < 2 chars**: Current functions return empty. Keep this behavior client-side — don't hit Typesense for 1-char queries (too broad).
-- **No results for user locale**: Fall back to `locale:en` for occupations/seniorities. For locations, `query_by: "name_${locale},name_en"` handles this natively (searches both fields).
+- **No results for user locale**: Fall back to `locale:en` for occupations/seniorities (second query). For locations, `query_by: "name_${locale},name_en"` handles this natively — it searches both fields in one query, prioritizing user locale via `query_by_weights`.
 - **Already-selected items**: Currently filtered out client-side in `search-bar.tsx`. No change needed — continue filtering the Typesense response in the component.
-- **Special characters in tech names**: Handled by `symbols_to_index` configuration (see above).
-- **Location geo-sorting without user coords**: Fall back to `active_posting_count:desc`. Current behavior falls back to population sort — `active_posting_count` is a better proxy for relevance.
+- **Special characters in tech names**: Handled by `symbols_to_index` on the technology collection schema.
+- **Location geo-sorting without user coords**: Falls back to `_text_match:desc,active_posting_count:desc`. Replaces the current population-based fallback — posting count is a better proxy for search relevance.
+- **Coordinate order**: Typesense uses `[lat, lng]` — NOT GeoJSON's `[lng, lat]`. The Postgres `location` table stores `lat` and `lng` as separate columns, so pass them in the correct order.

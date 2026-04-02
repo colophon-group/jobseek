@@ -282,10 +282,16 @@ Recommend option 1 (denormalize) for simplicity.
 
 | File | Change |
 |------|--------|
-| `apps/web/src/lib/search/index.ts` | Add env-var toggle between Postgres and Typesense providers |
+| `apps/web/src/lib/search/index.ts` | Replace `PostgresSearchProvider` with `TypesenseSearchProvider` (one-shot, no toggle) |
 | `apps/web/package.json` | Add `typesense` dependency |
 | `apps/crawler/src/exporter.py` | Add Typesense upsert step after Supabase upsert |
 | `apps/crawler/pyproject.toml` | Add `typesense` dependency |
+
+### Deleted files
+
+| File | Why |
+|------|-----|
+| `apps/web/src/lib/search/postgres.ts` | Replaced entirely by Typesense provider |
 
 ### No changes needed
 
