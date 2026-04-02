@@ -99,6 +99,7 @@ function ImageWrapper({
     maxWidth: mediaWidth,
     overflow: "hidden",
     boxShadow: MEDIA_SHADOW,
+    border: "1px solid var(--border-soft)",
     display: "flex",
     flexDirection: "column",
   };
