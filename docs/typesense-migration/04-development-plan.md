@@ -140,7 +140,7 @@ Orchestrator
      - Denormalize `location_geo_types` from location table (city/region/country/macro)
      - Convert `first_seen_at` / `last_seen_at` to Unix timestamps
      - Set `company_icon` from company map
-     - Set sentinel values: `experience_min = -1` for NULL, `locales = ["any"]` for empty array
+     - Set sentinel values: `experience_min = -1` for NULL, `locales = ["_none"]` for empty array
    - Batch upsert via `client.collections['job_posting'].documents.import_(docs, {'action': 'upsert'})`
 6. Add `--backfill-typesense` CLI flag to `cli.py`:
    - Iterates all `job_posting` rows (not just changed ones)
@@ -297,7 +297,7 @@ Orchestrator
    - `buildFilterString(filters: SearchFilters): string` — builds Typesense `filter_by` string
    - Does NOT inject `is_active:true` — callers add it explicitly
    - Maps each filter dimension (locationIds, occupationIds, salary range, etc.)
-   - Sentinel handling: `experience_min` filter includes `|| experience_min:=-1` for max bound; `locales` filter includes `"any"` sentinel
+   - Sentinel handling: `experience_min` filter includes `|| experience_min:=-1` for max bound; `locales` filter includes `"_none"` sentinel
    - See `01-job-search.md` for exact mapping
 4. Create `typesense.ts` implementing `SearchProvider`:
    - `search()` — `multi_search` with `q: keywords.join(" ")`, `group_by: "company_id"`, `group_limit: 10`
@@ -807,7 +807,7 @@ test("experience filter includes jobs without experience requirement", async () 
 
 test("language filter includes jobs with no detected language", async () => {
   // Search with languages=["en"]
-  // Expect: results include postings with locales=["any"] (sentinel for empty)
+  // Expect: results include postings with locales=["_none"] (sentinel for empty)
 });
 
 // ── Graceful degradation ──

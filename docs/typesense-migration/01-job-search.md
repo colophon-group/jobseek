@@ -111,18 +111,28 @@ function buildFilterString(filters: SearchFilters): string {
     parts.push(`salary_eur:[${min}..${max}]`);
   }
 
-  // experience_min uses sentinel -1 for "not specified". Parentheses are
-  // CRITICAL — without them, OR has lower precedence than && and the
-  // sentinel clause would match ALL -1 docs regardless of other filters.
-  if (filters.experienceMin != null)
-    parts.push(`experience_min:>=${filters.experienceMin}`);
-  if (filters.experienceMax != null)
+  // experience_min uses sentinel -1 for "not specified" (NULL in Postgres).
+  // Parentheses are CRITICAL — without them, OR has lower precedence than &&
+  // and the sentinel clause would match ALL -1 docs regardless of other filters.
+  //
+  // Must match Postgres semantics: NULL experience is always included in
+  // range filters (jobs without stated requirements shouldn't be excluded).
+  if (filters.experienceMin != null && filters.experienceMax != null) {
+    // Both bounds: single OR wrapping the entire range + sentinel
+    parts.push(`(experience_min:[${filters.experienceMin}..${filters.experienceMax}] || experience_min:=-1)`);
+  } else if (filters.experienceMin != null) {
+    // Min only: include sentinel so "no requirement" jobs are included
+    // (matches Postgres: IS NULL OR experience_min >= N)
+    parts.push(`(experience_min:>=${filters.experienceMin} || experience_min:=-1)`);
+  } else if (filters.experienceMax != null) {
+    // Max only: include sentinel
     parts.push(`(experience_min:<=${filters.experienceMax} || experience_min:=-1)`);
+  }
 
-  // locales uses sentinel "any" for jobs with no detected language.
+  // locales uses sentinel "_none" for jobs with no detected language.
   // Include it so those jobs match any language filter.
   if (filters.languages?.length)
-    parts.push(`locales:[${[...filters.languages, "any"].join(",")}]`);
+    parts.push(`locales:[${[...filters.languages, "_none"].join(",")}]`);
 
   return parts.join(" && ");
 }
@@ -194,7 +204,11 @@ const postingResults = await typesense.collections("job_posting").documents().se
 
 **`yearMatches` with filters**: Add a second facet query with `first_seen_at:>${oneYearAgoUnix}` to get filtered year counts per company. Batch via `multi_search`.
 
-**Pagination limit**: `max_facet_values` caps how many companies we can paginate through. Set it to `offset + limit`. For deep pagination (page 10+), this means fetching a larger facet set. Acceptable for typical usage — most users don't go past page 3–4. If this becomes a bottleneck, switch to cursor-based pagination.
+**Facet strategy**: Explicitly set `facet_strategy: "exhaustive"` on the facet query to guarantee exact counts and correct ordering. The default `automatic` strategy may silently switch to approximate counting (`top_values`) for high-cardinality fields like `company_id` (50K+ unique values), which could return incorrect ranking.
+
+**Pagination limit**: `max_facet_values` caps how many companies we can paginate through. Set it to `offset + limit`. For deep pagination (page 10+), this means fetching a larger facet set. At `max_facet_values: 500+` with 50K unique company_ids, latency could reach 200-500ms. Cap browsable depth at ~25 pages. Most users don't go past page 3-4.
+
+**Browse-all modals**: The `max_facet_values` parameter is global (applies to all faceted fields equally). Browse-all modals that need different depths per field (e.g., 500 locations but only 200 occupations) must use **separate queries** per facet field, batched via `multi_search`.
 
 ### Query mapping: `loadPostings()`
 
@@ -353,12 +367,30 @@ For `search()` and `listTopCompanies()` with filters, `yearMatches` requires one
 **`buildLocations` helper** — reconstructs `PostingLocation[]` from parallel arrays on the Typesense document. Arrays are positionally aligned: `location_names[i]`, `location_types[i]`, and `location_geo_types[i]` all refer to the same location.
 
 ```typescript
-function buildLocations(doc: TypesenseDocument): PostingLocation[] {
-  return (doc.location_names ?? []).map((name: string, i: number) => ({
+function buildLocations(
+  doc: TypesenseDocument,
+  filteredLocationIds?: number[],
+): PostingLocation[] {
+  const locations = (doc.location_names ?? []).map((name: string, i: number) => ({
     name,
     type: doc.location_types?.[i] ?? "onsite",
     geoType: doc.location_geo_types?.[i],
+    _locationId: doc.location_ids?.[i],  // internal, for sorting
   }));
+
+  // Promote filter-matching locations to the front of the list.
+  // Current Postgres implementation does this — without it, multi-location
+  // postings show locations in stored order, not relevance order.
+  if (filteredLocationIds?.length) {
+    const filterSet = new Set(filteredLocationIds);
+    locations.sort((a, b) => {
+      const aMatch = filterSet.has(a._locationId) ? 0 : 1;
+      const bMatch = filterSet.has(b._locationId) ? 0 : 1;
+      return aMatch - bMatch;
+    });
+  }
+
+  return locations.map(({ _locationId, ...rest }) => rest);
 }
 ```
 
