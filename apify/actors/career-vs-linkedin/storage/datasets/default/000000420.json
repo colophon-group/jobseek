@@ -1,13 +1,13 @@
 {
 	"_type": "job-comparison",
 	"company": "OpenAI",
-	"normalizedTitle": "product manager core identity",
-	"careerTitle": "Product Manager, Core Identity",
-	"careerPageFirstSeen": "2026-02-20",
-	"careerPageDatePosted": "2026-02-20",
-	"effectiveCareerDate": "2026-02-20",
+	"normalizedTitle": "software engineer codex app",
+	"careerTitle": "Software Engineer, Codex App",
+	"careerPageFirstSeen": "2026-02-18",
+	"careerPageDatePosted": "2026-02-18",
+	"effectiveCareerDate": "2026-02-18",
 	"verdict": "career_only",
 	"location": "San Francisco",
-	"department": "Product Management",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260402010059/https://api.ashbyhq.com/posting-api/job-board/openai"
+	"department": "Applied AI",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402024014/https://api.ashbyhq.com/posting-api/job-board/openai"
 }

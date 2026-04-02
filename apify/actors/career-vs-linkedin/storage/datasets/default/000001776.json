@@ -1,0 +1,19 @@
+{
+	"_type": "job-comparison",
+	"company": "Zapier",
+	"normalizedTitle": "engineering manager identity platform",
+	"careerTitle": "Engineering Manager, Identity Platform",
+	"boardTitle": "Engineering Manager, Identity Platform",
+	"careerPageFirstSeen": "2024-12-12",
+	"careerPageDatePosted": "2024-12-12",
+	"boardFirstSeen": "2024-12-19",
+	"boardDatePosted": "2024-12-13",
+	"effectiveCareerDate": "2024-12-12",
+	"effectiveBoardDate": "2024-12-13",
+	"lagDays": 1,
+	"verdict": "career_first",
+	"location": "NAMER",
+	"department": "Engineering",
+	"careerSnapshotUrl": "https://web.archive.org/web/20241214022934/https://api.ashbyhq.com/posting-api/job-board/zapier",
+	"boardSnapshotUrl": "https://web.archive.org/web/20241219153212/https://www.linkedin.com/company/zapier/jobs/"
+}

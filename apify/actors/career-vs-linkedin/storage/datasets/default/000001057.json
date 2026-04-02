@@ -1,13 +1,19 @@
 {
 	"_type": "job-comparison",
 	"company": "Deel",
-	"normalizedTitle": "ai ml engineer python",
-	"careerTitle": "AI/ML Engineer, Python",
-	"careerPageFirstSeen": "2026-03-25",
-	"careerPageDatePosted": "2026-03-25",
-	"effectiveCareerDate": "2026-03-25",
-	"verdict": "career_only",
-	"location": "Spain",
-	"department": "R&D",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260402010354/https://api.ashbyhq.com/posting-api/job-board/deel"
+	"normalizedTitle": "payroll implementation manager uki",
+	"careerTitle": "Payroll Implementation Manager | UKI   ",
+	"boardTitle": "Payroll Implementation Manager | France",
+	"careerPageFirstSeen": "2026-03-26",
+	"careerPageDatePosted": "2026-03-26",
+	"boardFirstSeen": "2025-07-20",
+	"boardDatePosted": "2025-07-19",
+	"effectiveCareerDate": "2026-03-26",
+	"effectiveBoardDate": "2025-07-19",
+	"lagDays": -250,
+	"verdict": "board_first",
+	"location": "Ireland",
+	"department": "COGS",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402024506/https://api.ashbyhq.com/posting-api/job-board/deel",
+	"boardSnapshotUrl": "https://web.archive.org/web/20250720232337/https://www.linkedin.com/company/deel/jobs"
 }

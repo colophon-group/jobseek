@@ -1,11 +1,18 @@
 {
 	"_type": "job-comparison",
 	"company": "Anthropic",
-	"normalizedTitle": "detection response engineer",
-	"careerTitle": "Detection and Response Engineer",
-	"careerPageFirstSeen": "2024-04-22",
-	"careerPageDatePosted": "2024-04-22",
-	"effectiveCareerDate": "2024-04-22",
-	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240611060504/https://boards.greenhouse.io/anthropic/jobs/4020344008"
+	"normalizedTitle": "software engineer",
+	"careerTitle": "Software Engineer",
+	"boardTitle": "Senior Software Security Engineer",
+	"careerPageFirstSeen": "2024-04-18",
+	"careerPageDatePosted": "2024-04-18",
+	"boardFirstSeen": "2024-04-07",
+	"boardDatePosted": "2024-02-25",
+	"effectiveCareerDate": "2024-04-18",
+	"effectiveBoardDate": "2024-02-25",
+	"lagDays": -53,
+	"verdict": "board_first",
+	"location": "Seattle, WA",
+	"careerSnapshotUrl": "https://web.archive.org/web/20240524044911/https://boards.greenhouse.io/anthropic/jobs/4020354008",
+	"boardSnapshotUrl": "https://web.archive.org/web/20240407021748/https://www.glassdoor.com/Jobs/Anthropic-Jobs-E8109027.htm"
 }

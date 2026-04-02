@@ -1,11 +1,18 @@
 {
 	"_type": "job-comparison",
 	"company": "Anthropic",
-	"normalizedTitle": "software engineer employee acceleration tools",
-	"careerTitle": "Software Engineer, Employee Acceleration Tools",
+	"normalizedTitle": "technical program manager external technical partnerships",
+	"careerTitle": "Technical Program Manager, External Technical Partnerships",
+	"boardTitle": "Technical Program Manager, External Technical Partnerships",
 	"careerPageFirstSeen": "2024-04-17",
 	"careerPageDatePosted": "2024-04-17",
+	"boardFirstSeen": "2024-04-07",
+	"boardDatePosted": "2024-03-09",
 	"effectiveCareerDate": "2024-04-17",
-	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240521171908/https://boards.greenhouse.io/anthropic/jobs/4020043008"
+	"effectiveBoardDate": "2024-03-09",
+	"lagDays": -39,
+	"verdict": "board_first",
+	"location": "Seattle, WA",
+	"careerSnapshotUrl": "https://web.archive.org/web/20241015025723/https://boards.greenhouse.io/anthropic/jobs/4020045008",
+	"boardSnapshotUrl": "https://web.archive.org/web/20240407021748/https://www.glassdoor.com/Jobs/Anthropic-Jobs-E8109027.htm"
 }

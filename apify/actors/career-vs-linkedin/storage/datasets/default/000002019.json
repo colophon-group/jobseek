@@ -1,0 +1,18 @@
+{
+	"_type": "job-comparison",
+	"company": "Intercom",
+	"normalizedTitle": "sales engineer",
+	"careerTitle": "Senior Sales Engineer",
+	"boardTitle": "Senior Enterprise Sales Engineer",
+	"careerPageFirstSeen": "2024-11-12",
+	"careerPageDatePosted": "2024-11-12",
+	"boardFirstSeen": "2025-07-31",
+	"boardDatePosted": "2025-07-30",
+	"effectiveCareerDate": "2024-11-12",
+	"effectiveBoardDate": "2025-07-30",
+	"lagDays": 260,
+	"verdict": "career_first",
+	"location": "San Francisco Bay Area, California, United States",
+	"careerSnapshotUrl": "https://web.archive.org/web/20241212073008/https://boards.greenhouse.io/intercom/jobs/6392109",
+	"boardSnapshotUrl": "https://web.archive.org/web/20250731011504/https://www.linkedin.com/company/intercom/jobs/"
+}

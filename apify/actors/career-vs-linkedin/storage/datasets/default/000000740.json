@@ -1,19 +1,13 @@
 {
 	"_type": "job-comparison",
 	"company": "Notion",
-	"normalizedTitle": "customer success manager enterprise dach",
-	"careerTitle": "Customer Success Manager, Enterprise, DACH",
-	"boardTitle": "Enterprise Customer Success Manager, AMER",
-	"careerPageFirstSeen": "2026-01-07",
-	"careerPageDatePosted": "2026-01-07",
-	"boardFirstSeen": "2026-02-18",
-	"boardDatePosted": "2026-02-18",
-	"effectiveCareerDate": "2026-01-07",
-	"effectiveBoardDate": "2026-02-18",
-	"lagDays": 42,
-	"verdict": "career_first",
-	"location": "Munich, Germany",
-	"department": "Customer Success",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260402010144/https://api.ashbyhq.com/posting-api/job-board/notion",
-	"boardSnapshotUrl": "https://web.archive.org/web/20260218083125/https://www.linkedin.com/company/notionhq/jobs"
+	"normalizedTitle": "security operations engineer detection response team",
+	"careerTitle": "Security Operations Engineer, Detection and Response Team ",
+	"careerPageFirstSeen": "2026-01-29",
+	"careerPageDatePosted": "2026-01-29",
+	"effectiveCareerDate": "2026-01-29",
+	"verdict": "career_only",
+	"location": "Dublin, Ireland",
+	"department": "Security",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402024251/https://api.ashbyhq.com/posting-api/job-board/notion"
 }

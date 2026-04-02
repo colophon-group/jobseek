@@ -1,13 +1,19 @@
 {
 	"_type": "job-comparison",
 	"company": "OpenAI",
-	"normalizedTitle": "gtm onboarding",
-	"careerTitle": "GTM Onboarding Lead",
-	"careerPageFirstSeen": "2026-03-03",
-	"careerPageDatePosted": "2026-03-03",
-	"effectiveCareerDate": "2026-03-03",
-	"verdict": "career_only",
-	"location": "San Francisco",
-	"department": "Go To Market",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260402010059/https://api.ashbyhq.com/posting-api/job-board/openai"
+	"normalizedTitle": "operations analyst user operations trust safety emea",
+	"careerTitle": "Operations Analyst, User Operations (Trust & Safety) - EMEA",
+	"boardTitle": "Trust & Safety Operations Analyst",
+	"careerPageFirstSeen": "2026-03-04",
+	"careerPageDatePosted": "2026-03-04",
+	"boardFirstSeen": "2025-11-30",
+	"boardDatePosted": "2025-10-16",
+	"effectiveCareerDate": "2026-03-04",
+	"effectiveBoardDate": "2025-10-16",
+	"lagDays": -139,
+	"verdict": "board_first",
+	"location": "London, UK",
+	"department": "Trust & Safety",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402024014/https://api.ashbyhq.com/posting-api/job-board/openai",
+	"boardSnapshotUrl": "https://web.archive.org/web/20251130024858/https://www.glassdoor.com/Jobs/OpenAI-Jobs-E2210885.htm"
 }

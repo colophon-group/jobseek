@@ -1,13 +1,19 @@
 {
 	"_type": "job-comparison",
 	"company": "Notion",
-	"normalizedTitle": "account executive commercial",
-	"careerTitle": "Account Executive, Commercial",
-	"careerPageFirstSeen": "2024-06-25",
-	"careerPageDatePosted": "2024-06-25",
-	"effectiveCareerDate": "2024-06-25",
-	"verdict": "career_only",
-	"location": "New York, New York",
+	"normalizedTitle": "solutions engineer emea",
+	"careerTitle": "Solutions Engineer, EMEA",
+	"boardTitle": "Solutions Engineer, EMEA",
+	"careerPageFirstSeen": "2025-09-04",
+	"careerPageDatePosted": "2025-09-04",
+	"boardFirstSeen": "2025-10-02",
+	"boardDatePosted": "2025-10-01",
+	"effectiveCareerDate": "2025-09-04",
+	"effectiveBoardDate": "2025-10-01",
+	"lagDays": 27,
+	"verdict": "career_first",
+	"location": "Dublin, Ireland",
 	"department": "Sales",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260402010144/https://api.ashbyhq.com/posting-api/job-board/notion"
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402024251/https://api.ashbyhq.com/posting-api/job-board/notion",
+	"boardSnapshotUrl": "https://web.archive.org/web/20251002080032/https://www.linkedin.com/company/notionhq/jobs"
 }

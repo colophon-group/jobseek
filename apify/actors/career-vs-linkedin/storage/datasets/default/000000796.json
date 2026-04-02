@@ -1,8 +1,8 @@
 {
 	"_type": "job-comparison",
 	"company": "Notion",
-	"normalizedTitle": "account executive enterprise benelux",
-	"careerTitle": "Account Executive, Enterprise, Benelux",
+	"normalizedTitle": "account executive enterprise nordics",
+	"careerTitle": "Account Executive, Enterprise, Nordics",
 	"boardTitle": "Enterprise Account Executive",
 	"careerPageFirstSeen": "2026-03-03",
 	"careerPageDatePosted": "2026-03-03",
@@ -12,8 +12,8 @@
 	"effectiveBoardDate": "2025-03-16",
 	"lagDays": -352,
 	"verdict": "board_first",
-	"location": "Amsterdam, Netherlands",
+	"location": "Stockholm, Sweden",
 	"department": "Sales",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260402010144/https://api.ashbyhq.com/posting-api/job-board/notion",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402024251/https://api.ashbyhq.com/posting-api/job-board/notion",
 	"boardSnapshotUrl": "https://web.archive.org/web/20250317163754/https://www.linkedin.com/company/notionhq/jobs"
 }

@@ -1,19 +1,13 @@
 {
 	"_type": "job-comparison",
 	"company": "Deel",
-	"normalizedTitle": "compensation partner",
-	"careerTitle": "Senior Compensation Partner",
-	"boardTitle": "Global Compensation Partner",
-	"careerPageFirstSeen": "2026-04-01",
-	"careerPageDatePosted": "2026-04-01",
-	"boardFirstSeen": "2025-07-20",
-	"boardDatePosted": "2025-07-19",
-	"effectiveCareerDate": "2026-04-01",
-	"effectiveBoardDate": "2025-07-19",
-	"lagDays": -256,
-	"verdict": "board_first",
-	"location": "USA",
-	"department": "G&A",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260402010354/https://api.ashbyhq.com/posting-api/job-board/deel",
-	"boardSnapshotUrl": "https://web.archive.org/web/20250720232337/https://www.linkedin.com/company/deel/jobs"
+	"normalizedTitle": "account executive smb north america",
+	"careerTitle": "Account Executive, SMB | North America",
+	"careerPageFirstSeen": "2026-02-19",
+	"careerPageDatePosted": "2026-02-19",
+	"effectiveCareerDate": "2026-02-19",
+	"verdict": "career_only",
+	"location": "North America",
+	"department": "S&M",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402024506/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

@@ -1,11 +1,16 @@
 {
 	"_type": "job-comparison",
 	"company": "Anthropic",
-	"normalizedTitle": "machine learning systems engineer encodings tokenization",
-	"careerTitle": "Machine Learning Systems Engineer, Encodings and Tokenization",
-	"careerPageFirstSeen": "2025-03-12",
-	"careerPageDatePosted": "2025-03-12",
-	"effectiveCareerDate": "2025-03-12",
-	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20250314061215/https://boards.greenhouse.io/anthropic/jobs/4579550008"
+	"normalizedTitle": "engineering manager mobile",
+	"careerTitle": "",
+	"boardTitle": "Engineering Manager, Mobile",
+	"careerPageFirstSeen": "",
+	"boardFirstSeen": "2024-04-07",
+	"boardDatePosted": "2024-03-25",
+	"effectiveCareerDate": "",
+	"effectiveBoardDate": "2024-03-25",
+	"verdict": "board_only",
+	"location": "Seattle, WA",
+	"careerSnapshotUrl": "",
+	"boardSnapshotUrl": "https://web.archive.org/web/20240407021748/https://www.glassdoor.com/Jobs/Anthropic-Jobs-E8109027.htm"
 }

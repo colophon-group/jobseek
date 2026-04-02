@@ -1,0 +1,19 @@
+{
+	"_type": "job-comparison",
+	"company": "Zapier",
+	"normalizedTitle": "technical support specialist amers west",
+	"careerTitle": "Technical Support Specialist - AMERS WEST",
+	"boardTitle": "Technical Support Specialist - AMERS WEST",
+	"careerPageFirstSeen": "2024-05-10",
+	"careerPageDatePosted": "2024-05-10",
+	"boardFirstSeen": "2024-04-18",
+	"boardDatePosted": "2024-04-05",
+	"effectiveCareerDate": "2024-05-10",
+	"effectiveBoardDate": "2024-04-05",
+	"lagDays": -35,
+	"verdict": "board_first",
+	"location": "HQ",
+	"department": "Support",
+	"careerSnapshotUrl": "https://web.archive.org/web/20240528053022/https://api.ashbyhq.com/posting-api/job-board/zapier",
+	"boardSnapshotUrl": "https://web.archive.org/web/20240418063117/https://www.linkedin.com/company/zapier/jobs"
+}

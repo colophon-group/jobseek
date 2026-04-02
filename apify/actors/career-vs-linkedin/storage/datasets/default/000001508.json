@@ -1,18 +1,12 @@
 {
 	"_type": "job-comparison",
 	"company": "Figma",
-	"normalizedTitle": "software engineer infrastructure",
-	"careerTitle": "Software Engineer, Infrastructure",
-	"boardTitle": "Software Engineer - AI Infrastructure",
-	"careerPageFirstSeen": "2023-01-17",
-	"careerPageDatePosted": "2023-01-17",
-	"boardFirstSeen": "2025-04-26",
-	"boardDatePosted": "2025-04-25",
-	"effectiveCareerDate": "2023-01-17",
-	"effectiveBoardDate": "2025-04-25",
-	"lagDays": 829,
-	"verdict": "career_first",
-	"location": "San Francisco, California, United States",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240228193413/https://boards.greenhouse.io/figma/jobs/4776674004",
-	"boardSnapshotUrl": "https://web.archive.org/web/20250426012509/https://www.linkedin.com/company/figma/jobs"
+	"normalizedTitle": "manager enterprise sales",
+	"careerTitle": "Manager, Enterprise Sales",
+	"careerPageFirstSeen": "2023-06-27",
+	"careerPageDatePosted": "2023-06-27",
+	"effectiveCareerDate": "2023-06-27",
+	"verdict": "career_only",
+	"location": "New York City, New York, United States",
+	"careerSnapshotUrl": "https://web.archive.org/web/20240228193421/https://boards.greenhouse.io/figma/jobs/4918287004"
 }

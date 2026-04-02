@@ -1,19 +1,13 @@
 {
 	"_type": "job-comparison",
 	"company": "Notion",
-	"normalizedTitle": "enterprise account executive san francisco",
-	"careerTitle": "Enterprise Account Executive, San Francisco ",
-	"boardTitle": "Enterprise Account Executive",
-	"careerPageFirstSeen": "2025-01-31",
-	"careerPageDatePosted": "2025-01-31",
-	"boardFirstSeen": "2025-03-17",
-	"boardDatePosted": "2025-03-16",
-	"effectiveCareerDate": "2025-01-31",
-	"effectiveBoardDate": "2025-03-16",
-	"lagDays": 44,
-	"verdict": "career_first",
-	"location": "San Francisco, California",
+	"normalizedTitle": "account executive commercial",
+	"careerTitle": "Account Executive, Commercial",
+	"careerPageFirstSeen": "2024-06-25",
+	"careerPageDatePosted": "2024-06-25",
+	"effectiveCareerDate": "2024-06-25",
+	"verdict": "career_only",
+	"location": "New York, New York",
 	"department": "Sales",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260402010144/https://api.ashbyhq.com/posting-api/job-board/notion",
-	"boardSnapshotUrl": "https://web.archive.org/web/20250317163754/https://www.linkedin.com/company/notionhq/jobs"
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402024251/https://api.ashbyhq.com/posting-api/job-board/notion"
 }

@@ -1,11 +1,18 @@
 {
 	"_type": "job-comparison",
 	"company": "Anthropic",
-	"normalizedTitle": "head sales strategy business partners",
-	"careerTitle": "Head of Sales Strategy Business Partners",
-	"careerPageFirstSeen": "2024-10-21",
-	"careerPageDatePosted": "2024-10-21",
-	"effectiveCareerDate": "2024-10-21",
-	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20241127233559/https://boards.greenhouse.io/anthropic/jobs/4230444008"
+	"normalizedTitle": "research engineer societal impacts",
+	"careerTitle": "Research Engineer, Societal Impacts",
+	"boardTitle": "Research Scientist, Societal Impacts",
+	"careerPageFirstSeen": "2024-10-24",
+	"careerPageDatePosted": "2024-10-24",
+	"boardFirstSeen": "2024-04-07",
+	"boardDatePosted": "2023-10-19",
+	"effectiveCareerDate": "2024-10-24",
+	"effectiveBoardDate": "2023-10-19",
+	"lagDays": -371,
+	"verdict": "board_first",
+	"location": "San Francisco, CA",
+	"careerSnapshotUrl": "https://web.archive.org/web/20241106135353/https://boards.greenhouse.io/anthropic/jobs/4251453008",
+	"boardSnapshotUrl": "https://web.archive.org/web/20240407021748/https://www.glassdoor.com/Jobs/Anthropic-Jobs-E8109027.htm"
 }

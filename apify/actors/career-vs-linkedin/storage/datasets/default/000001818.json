@@ -1,0 +1,19 @@
+{
+	"_type": "job-comparison",
+	"company": "Zapier",
+	"normalizedTitle": "account executive core",
+	"careerTitle": "Account Executive, Core",
+	"boardTitle": "Account Executive",
+	"careerPageFirstSeen": "2025-05-08",
+	"careerPageDatePosted": "2025-05-08",
+	"boardFirstSeen": "2024-12-19",
+	"boardDatePosted": "2024-11-28",
+	"effectiveCareerDate": "2025-05-08",
+	"effectiveBoardDate": "2024-11-28",
+	"lagDays": -161,
+	"verdict": "board_first",
+	"location": "NAMER",
+	"department": "Sales & Success",
+	"careerSnapshotUrl": "https://web.archive.org/web/20250817115302/https://api.ashbyhq.com/posting-api/job-board/zapier",
+	"boardSnapshotUrl": "https://web.archive.org/web/20241219153212/https://www.linkedin.com/company/zapier/jobs/"
+}

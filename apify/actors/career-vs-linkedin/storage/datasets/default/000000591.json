@@ -1,13 +1,13 @@
 {
 	"_type": "job-comparison",
 	"company": "OpenAI",
-	"normalizedTitle": "recruiter user operations",
-	"careerTitle": "Recruiter, User Operations",
-	"careerPageFirstSeen": "2026-03-26",
-	"careerPageDatePosted": "2026-03-26",
-	"effectiveCareerDate": "2026-03-26",
+	"normalizedTitle": "software engineer workload enablement",
+	"careerTitle": "Software Engineer, Workload Enablement",
+	"careerPageFirstSeen": "2026-03-28",
+	"careerPageDatePosted": "2026-03-28",
+	"effectiveCareerDate": "2026-03-28",
 	"verdict": "career_only",
 	"location": "San Francisco",
-	"department": "People",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260402010059/https://api.ashbyhq.com/posting-api/job-board/openai"
+	"department": "Scaling",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402024014/https://api.ashbyhq.com/posting-api/job-board/openai"
 }

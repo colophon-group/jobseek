@@ -1,13 +1,13 @@
 {
 	"_type": "job-comparison",
 	"company": "OpenAI",
-	"normalizedTitle": "executive producer",
-	"careerTitle": "Executive Producer",
-	"careerPageFirstSeen": "2026-03-27",
-	"careerPageDatePosted": "2026-03-27",
-	"effectiveCareerDate": "2026-03-27",
+	"normalizedTitle": "security engineer host assurance",
+	"careerTitle": "Security Engineer, Host Assurance",
+	"careerPageFirstSeen": "2026-04-01",
+	"careerPageDatePosted": "2026-04-01",
+	"effectiveCareerDate": "2026-04-01",
 	"verdict": "career_only",
 	"location": "San Francisco",
-	"department": "Marketing",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260402010059/https://api.ashbyhq.com/posting-api/job-board/openai"
+	"department": "Security",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402024014/https://api.ashbyhq.com/posting-api/job-board/openai"
 }

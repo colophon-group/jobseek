@@ -1,19 +1,13 @@
 {
 	"_type": "job-comparison",
 	"company": "OpenAI",
-	"normalizedTitle": "us payroll operations",
-	"careerTitle": "US Payroll Operations",
-	"boardTitle": "US Payroll Operations Lead",
-	"careerPageFirstSeen": "2026-02-27",
-	"careerPageDatePosted": "2026-02-27",
-	"boardFirstSeen": "2025-11-30",
-	"boardDatePosted": "2025-11-08",
-	"effectiveCareerDate": "2026-02-27",
-	"effectiveBoardDate": "2025-11-08",
-	"lagDays": -111,
-	"verdict": "board_first",
+	"normalizedTitle": "web platform",
+	"careerTitle": "Web Platform Lead",
+	"careerPageFirstSeen": "2026-02-28",
+	"careerPageDatePosted": "2026-02-28",
+	"effectiveCareerDate": "2026-02-28",
+	"verdict": "career_only",
 	"location": "San Francisco",
-	"department": "Finance",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260402010059/https://api.ashbyhq.com/posting-api/job-board/openai",
-	"boardSnapshotUrl": "https://web.archive.org/web/20251130024858/https://www.glassdoor.com/Jobs/OpenAI-Jobs-E2210885.htm"
+	"department": "Marketing",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402024014/https://api.ashbyhq.com/posting-api/job-board/openai"
 }

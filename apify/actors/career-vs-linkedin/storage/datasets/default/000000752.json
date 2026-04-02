@@ -1,19 +1,19 @@
 {
 	"_type": "job-comparison",
 	"company": "Notion",
-	"normalizedTitle": "account executive mid market korea",
-	"careerTitle": "Account Executive - Mid Market, Korea",
-	"boardTitle": "Account Executive, Mid-Market, DACH",
+	"normalizedTitle": "commercial sales manager korea",
+	"careerTitle": "Commercial Sales Manager, Korea",
+	"boardTitle": "Manager, Commercial Sales",
 	"careerPageFirstSeen": "2026-01-22",
 	"careerPageDatePosted": "2026-01-22",
-	"boardFirstSeen": "2025-10-02",
-	"boardDatePosted": "2025-10-02",
+	"boardFirstSeen": "2024-01-11",
+	"boardDatePosted": "2024-01-10",
 	"effectiveCareerDate": "2026-01-22",
-	"effectiveBoardDate": "2025-10-02",
-	"lagDays": -112,
+	"effectiveBoardDate": "2024-01-10",
+	"lagDays": -743,
 	"verdict": "board_first",
 	"location": "Seoul, South Korea",
 	"department": "Sales",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260402010144/https://api.ashbyhq.com/posting-api/job-board/notion",
-	"boardSnapshotUrl": "https://web.archive.org/web/20251002080032/https://www.linkedin.com/company/notionhq/jobs"
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402024251/https://api.ashbyhq.com/posting-api/job-board/notion",
+	"boardSnapshotUrl": "https://web.archive.org/web/20240111112456/https://www.linkedin.com/company/notionhq/jobs/"
 }

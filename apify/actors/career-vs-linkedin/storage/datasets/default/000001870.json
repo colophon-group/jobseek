@@ -1,0 +1,19 @@
+{
+	"_type": "job-comparison",
+	"company": "Zapier",
+	"normalizedTitle": "engineering manager growth",
+	"careerTitle": "Engineering Manager, Growth",
+	"boardTitle": "Engineering Manager, Growth",
+	"careerPageFirstSeen": "2025-11-21",
+	"careerPageDatePosted": "2025-11-21",
+	"boardFirstSeen": "2026-03-13",
+	"boardDatePosted": "2026-03-08",
+	"effectiveCareerDate": "2025-11-21",
+	"effectiveBoardDate": "2026-03-08",
+	"lagDays": 107,
+	"verdict": "career_first",
+	"location": "NAMER",
+	"department": "Engineering",
+	"careerSnapshotUrl": "https://web.archive.org/web/20251208024049/https://api.ashbyhq.com/posting-api/job-board/zapier",
+	"boardSnapshotUrl": "https://web.archive.org/web/20260313223319/https://www.linkedin.com/company/zapier/jobs/"
+}

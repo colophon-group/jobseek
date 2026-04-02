@@ -1,18 +1,12 @@
 {
 	"_type": "job-comparison",
 	"company": "Figma",
-	"normalizedTitle": "product manager data ml infrastructure",
-	"careerTitle": "Product Manager, Data & ML Infrastructure",
-	"boardTitle": "Product Manager, Data and AI Infrastructure",
-	"careerPageFirstSeen": "2024-06-07",
-	"careerPageDatePosted": "2024-06-07",
-	"boardFirstSeen": "2025-06-17",
-	"boardDatePosted": "2025-06-16",
-	"effectiveCareerDate": "2024-06-07",
-	"effectiveBoardDate": "2025-06-16",
-	"lagDays": 374,
-	"verdict": "career_first",
-	"location": "San Francisco, California, United States",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240615083248/https://boards.greenhouse.io/figma/jobs/5184792004",
-	"boardSnapshotUrl": "https://web.archive.org/web/20250617214752/https://www.linkedin.com/company/figma/jobs/"
+	"normalizedTitle": "order management analyst dublin ireland",
+	"careerTitle": "Senior Order Management Analyst (Dublin, Ireland)",
+	"careerPageFirstSeen": "2024-05-22",
+	"careerPageDatePosted": "2024-05-22",
+	"effectiveCareerDate": "2024-05-22",
+	"verdict": "career_only",
+	"location": "Dublin, Dublin, Ireland",
+	"careerSnapshotUrl": "https://web.archive.org/web/20240615083316/https://boards.greenhouse.io/figma/jobs/5186330004"
 }

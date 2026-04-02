@@ -1,0 +1,19 @@
+{
+	"_type": "job-comparison",
+	"company": "Zapier",
+	"normalizedTitle": "engineering manager payments",
+	"careerTitle": "Engineering Manager, Payments",
+	"boardTitle": "Engineering Manager, Payments",
+	"careerPageFirstSeen": "2024-12-11",
+	"careerPageDatePosted": "2024-12-11",
+	"boardFirstSeen": "2024-12-19",
+	"boardDatePosted": "2024-12-11",
+	"effectiveCareerDate": "2024-12-11",
+	"effectiveBoardDate": "2024-12-11",
+	"lagDays": 0,
+	"verdict": "same_day",
+	"location": "HQ",
+	"department": "Engineering",
+	"careerSnapshotUrl": "https://web.archive.org/web/20241214022934/https://api.ashbyhq.com/posting-api/job-board/zapier",
+	"boardSnapshotUrl": "https://web.archive.org/web/20241219153212/https://www.linkedin.com/company/zapier/jobs/"
+}

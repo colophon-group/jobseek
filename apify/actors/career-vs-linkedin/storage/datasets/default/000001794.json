@@ -1,0 +1,19 @@
+{
+	"_type": "job-comparison",
+	"company": "Zapier",
+	"normalizedTitle": "product manager identity platform",
+	"careerTitle": "Sr. Product Manager, Identity Platform",
+	"boardTitle": "Engineering Manager, Identity Platform",
+	"careerPageFirstSeen": "2025-02-27",
+	"careerPageDatePosted": "2025-02-27",
+	"boardFirstSeen": "2024-12-19",
+	"boardDatePosted": "2024-12-13",
+	"effectiveCareerDate": "2025-02-27",
+	"effectiveBoardDate": "2024-12-13",
+	"lagDays": -76,
+	"verdict": "board_first",
+	"location": "NAMER",
+	"department": "Product",
+	"careerSnapshotUrl": "https://web.archive.org/web/20250303152700/https://api.ashbyhq.com/posting-api/job-board/zapier",
+	"boardSnapshotUrl": "https://web.archive.org/web/20241219153212/https://www.linkedin.com/company/zapier/jobs/"
+}

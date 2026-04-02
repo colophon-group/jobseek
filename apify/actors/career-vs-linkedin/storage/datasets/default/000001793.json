@@ -1,0 +1,19 @@
+{
+	"_type": "job-comparison",
+	"company": "Zapier",
+	"normalizedTitle": "engineer backend functions",
+	"careerTitle": "Sr. Engineer, Backend (Functions)",
+	"boardTitle": "Sr. Backend Engineer",
+	"careerPageFirstSeen": "2025-02-10",
+	"careerPageDatePosted": "2025-02-10",
+	"boardFirstSeen": "2024-12-19",
+	"boardDatePosted": "2024-11-30",
+	"effectiveCareerDate": "2025-02-10",
+	"effectiveBoardDate": "2024-11-30",
+	"lagDays": -72,
+	"verdict": "board_first",
+	"location": "NAMER",
+	"department": "Engineering",
+	"careerSnapshotUrl": "https://web.archive.org/web/20250210014458/https://api.ashbyhq.com/posting-api/job-board/zapier",
+	"boardSnapshotUrl": "https://web.archive.org/web/20241219153212/https://www.linkedin.com/company/zapier/jobs/"
+}

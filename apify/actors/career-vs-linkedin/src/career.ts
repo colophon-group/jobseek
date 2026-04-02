@@ -30,10 +30,13 @@ export async function collectCareerJobs(
   // Detect ATS type and pick the best CDX target URL
   const atsInfo = detectAts(portalUrl);
 
-  // Ashby: call live API directly (not via Wayback — API endpoint is never archived)
+  // Ashby: call live API for current jobs (exact publishedAt), THEN also check CDX snapshots
+  // — some Ashby API endpoints ARE archived (e.g. zapier, ramp) and give historical job data
   if (atsInfo?.type === 'ashby') {
     log.info(`Career portal: detected Ashby, calling live API`, { apiUrl: atsInfo.apiUrl });
     await collectFromAshbyLive(jobs, atsInfo);
+    // Also try CDX snapshots of the API endpoint for historical coverage
+    await collectFromAtsApi(jobs, atsInfo, startDate, endDate, maxSnapshots, delayMs);
   } else if (atsInfo) {
     log.info(`Career portal: detected ${atsInfo.type}, using API CDX URL`, { apiUrl: atsInfo.apiUrl });
     await collectFromAtsApi(jobs, atsInfo, startDate, endDate, maxSnapshots, delayMs);

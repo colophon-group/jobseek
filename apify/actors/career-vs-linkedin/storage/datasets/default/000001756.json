@@ -1,0 +1,19 @@
+{
+	"_type": "job-comparison",
+	"company": "Zapier",
+	"normalizedTitle": "engineer backend runner",
+	"careerTitle": "Engineer, Backend (Runner)",
+	"boardTitle": "Sr. Backend Engineer",
+	"careerPageFirstSeen": "2024-08-06",
+	"careerPageDatePosted": "2024-08-06",
+	"boardFirstSeen": "2024-12-19",
+	"boardDatePosted": "2024-11-30",
+	"effectiveCareerDate": "2024-08-06",
+	"effectiveBoardDate": "2024-11-30",
+	"lagDays": 116,
+	"verdict": "career_first",
+	"location": "NAMER",
+	"department": "Engineering",
+	"careerSnapshotUrl": "https://web.archive.org/web/20240813012551/https://api.ashbyhq.com/posting-api/job-board/zapier",
+	"boardSnapshotUrl": "https://web.archive.org/web/20241219153212/https://www.linkedin.com/company/zapier/jobs/"
+}

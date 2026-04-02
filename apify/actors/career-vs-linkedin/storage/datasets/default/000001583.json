@@ -1,12 +1,18 @@
 {
 	"_type": "job-comparison",
 	"company": "Figma",
-	"normalizedTitle": "program manager scale customer onboarding",
-	"careerTitle": "Program Manager, Scale Customer Onboarding",
+	"normalizedTitle": "growth marketing manager seo",
+	"careerTitle": "Growth Marketing Manager, SEO",
+	"boardTitle": "Growth Marketing Manager, SEO",
 	"careerPageFirstSeen": "2024-03-11",
 	"careerPageDatePosted": "2024-03-11",
+	"boardFirstSeen": "2025-03-10",
+	"boardDatePosted": "2025-03-06",
 	"effectiveCareerDate": "2024-03-11",
-	"verdict": "career_only",
+	"effectiveBoardDate": "2025-03-06",
+	"lagDays": 360,
+	"verdict": "career_first",
 	"location": "San Francisco, California, United States",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240328031837/https://boards.greenhouse.io/figma/jobs/5120063004"
+	"careerSnapshotUrl": "https://web.archive.org/web/20240502211719/https://boards.greenhouse.io/figma/jobs/5125630004",
+	"boardSnapshotUrl": "https://web.archive.org/web/20250310111450/https://www.linkedin.com/company/figma/jobs/"
 }

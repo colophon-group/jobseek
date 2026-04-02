@@ -1,44 +1,13 @@
 {
-	"_type": "batch-summary",
-	"companiesAnalyzed": 5,
-	"avgPctCareerFirst": 30,
-	"avgLagDays": 154,
-	"overallConclusion": "Across 5 companies, 30% of matched jobs appeared on the career page before Indeed, with an average career-page lead of 154 days. Career pages are consistently the primary source of truth for job postings.",
-	"companyResults": [
-		{
-			"company": "OpenAI",
-			"pctCareerFirst": 28,
-			"avgLagDays": 118,
-			"matchedJobs": 87,
-			"conclusion": "For OpenAI, the career page partially precedes Glassdoor: 28% of matched jobs (24/87) appeared on the career page first, with an average lead of 118 days (median: 75 days). An additional 520 jobs (86% of career-page listings) were never indexed by Glassdoor at all. This confirms that the career page is the primary source of truth for job postings."
-		},
-		{
-			"company": "Notion",
-			"pctCareerFirst": 22,
-			"avgLagDays": 119,
-			"matchedJobs": 45,
-			"conclusion": "For Notion, the career page partially precedes Linkedin: 22% of matched jobs (10/45) appeared on the career page first, with an average lead of 119 days (median: 43 days). An additional 106 jobs (70% of career-page listings) were never indexed by Linkedin at all. This confirms that the career page is the primary source of truth for job postings."
-		},
-		{
-			"company": "Deel",
-			"pctCareerFirst": 0,
-			"avgLagDays": 0,
-			"matchedJobs": 8,
-			"conclusion": "For Deel, the career page partially precedes Linkedin: 0% of matched jobs (0/8) appeared on the career page first, with an average lead of 0 days (median: 0 days). An additional 233 jobs (97% of career-page listings) were never indexed by Linkedin at all. This confirms that the career page is the primary source of truth for job postings."
-		},
-		{
-			"company": "Anthropic",
-			"pctCareerFirst": 0,
-			"avgLagDays": 0,
-			"matchedJobs": 43,
-			"conclusion": "For Anthropic, the career page partially precedes Glassdoor: 0% of matched jobs (0/43) appeared on the career page first, with an average lead of 0 days (median: 0 days). An additional 344 jobs (89% of career-page listings) were never indexed by Glassdoor at all. This confirms that the career page is the primary source of truth for job postings."
-		},
-		{
-			"company": "Figma",
-			"pctCareerFirst": 100,
-			"avgLagDays": 532,
-			"matchedJobs": 21,
-			"conclusion": "For Figma, the career page strongly precedes Linkedin: 100% of matched jobs (21/21) appeared on the career page first, with an average lead of 532 days (median: 427 days). An additional 148 jobs (88% of career-page listings) were never indexed by Linkedin at all. This confirms that the career page is the primary source of truth for job postings."
-		}
-	]
+	"_type": "job-comparison",
+	"company": "Zapier",
+	"normalizedTitle": "account executive large enterprise",
+	"careerTitle": "Account Executive, Large Enterprise",
+	"careerPageFirstSeen": "2025-01-24",
+	"careerPageDatePosted": "2025-01-24",
+	"effectiveCareerDate": "2025-01-24",
+	"verdict": "career_only",
+	"location": "NAMER",
+	"department": "Sales & Success",
+	"careerSnapshotUrl": "https://web.archive.org/web/20250517161203/https://api.ashbyhq.com/posting-api/job-board/zapier"
 }

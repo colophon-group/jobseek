@@ -1,0 +1,19 @@
+{
+	"_type": "job-comparison",
+	"company": "Zapier",
+	"normalizedTitle": "site reliability engineer",
+	"careerTitle": "Site Reliability Engineer ",
+	"boardTitle": "Site Reliability Engineer",
+	"careerPageFirstSeen": "2025-04-08",
+	"careerPageDatePosted": "2025-04-08",
+	"boardFirstSeen": "2025-07-30",
+	"boardDatePosted": "2025-07-25",
+	"effectiveCareerDate": "2025-04-08",
+	"effectiveBoardDate": "2025-07-25",
+	"lagDays": 108,
+	"verdict": "career_first",
+	"location": "India",
+	"department": "Engineering",
+	"careerSnapshotUrl": "https://web.archive.org/web/20250517161203/https://api.ashbyhq.com/posting-api/job-board/zapier",
+	"boardSnapshotUrl": "https://web.archive.org/web/20250730160457/https://www.linkedin.com/company/zapier/jobs/"
+}

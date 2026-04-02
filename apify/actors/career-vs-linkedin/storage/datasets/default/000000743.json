@@ -1,13 +1,19 @@
 {
 	"_type": "job-comparison",
 	"company": "Notion",
-	"normalizedTitle": "software engineer content onboarding",
-	"careerTitle": "Software Engineer, Content Onboarding",
-	"careerPageFirstSeen": "2026-01-16",
-	"careerPageDatePosted": "2026-01-16",
-	"effectiveCareerDate": "2026-01-16",
-	"verdict": "career_only",
+	"normalizedTitle": "software engineer ai agentic search",
+	"careerTitle": "Staff Software Engineer, AI Agentic Search",
+	"boardTitle": "Software Engineer, AI Agentic Search",
+	"careerPageFirstSeen": "2026-01-19",
+	"careerPageDatePosted": "2026-01-19",
+	"boardFirstSeen": "2026-01-21",
+	"boardDatePosted": "2026-01-19",
+	"effectiveCareerDate": "2026-01-19",
+	"effectiveBoardDate": "2026-01-19",
+	"lagDays": 0,
+	"verdict": "same_day",
 	"location": "Hyderabad, India",
 	"department": "Engineering",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260402010144/https://api.ashbyhq.com/posting-api/job-board/notion"
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402024251/https://api.ashbyhq.com/posting-api/job-board/notion",
+	"boardSnapshotUrl": "https://web.archive.org/web/20260121005519/https://www.linkedin.com/company/notionhq/jobs/"
 }

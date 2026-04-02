@@ -1,12 +1,18 @@
 {
 	"_type": "job-comparison",
 	"company": "Figma",
-	"normalizedTitle": "enterprise support specialist tokyo japan",
-	"careerTitle": "Enterprise Support Specialist  (Tokyo, Japan)",
+	"normalizedTitle": "software engineer figfile platform",
+	"careerTitle": "Software Engineer - FigFile Platform",
+	"boardTitle": "Software Engineer - Application Platform",
 	"careerPageFirstSeen": "2024-04-18",
 	"careerPageDatePosted": "2024-04-18",
+	"boardFirstSeen": "2025-03-10",
+	"boardDatePosted": "2025-03-06",
 	"effectiveCareerDate": "2024-04-18",
-	"verdict": "career_only",
-	"location": "Tokyo, Tokyo Prefecture, Japan",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240615083213/https://boards.greenhouse.io/figma/jobs/5157570004"
+	"effectiveBoardDate": "2025-03-06",
+	"lagDays": 322,
+	"verdict": "career_first",
+	"location": "San Francisco, California, United States",
+	"careerSnapshotUrl": "https://web.archive.org/web/20240525131933/https://boards.greenhouse.io/figma/jobs/5159891004",
+	"boardSnapshotUrl": "https://web.archive.org/web/20250310111450/https://www.linkedin.com/company/figma/jobs/"
 }

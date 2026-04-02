@@ -1,13 +1,19 @@
 {
 	"_type": "job-comparison",
 	"company": "OpenAI",
-	"normalizedTitle": "manager ads revenue",
-	"careerTitle": "Senior Manager, Ads Revenue",
+	"normalizedTitle": "ai support engineer government san francisco",
+	"careerTitle": "AI Support Engineer, Government - San Francisco",
+	"boardTitle": "AI Support Engineer - San Francisco",
 	"careerPageFirstSeen": "2026-02-20",
 	"careerPageDatePosted": "2026-02-20",
+	"boardFirstSeen": "2025-12-22",
+	"boardDatePosted": "2025-10-30",
 	"effectiveCareerDate": "2026-02-20",
-	"verdict": "career_only",
+	"effectiveBoardDate": "2025-10-30",
+	"lagDays": -113,
+	"verdict": "board_first",
 	"location": "San Francisco",
-	"department": "Finance",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260402010059/https://api.ashbyhq.com/posting-api/job-board/openai"
+	"department": "Go To Market",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402024014/https://api.ashbyhq.com/posting-api/job-board/openai",
+	"boardSnapshotUrl": "https://web.archive.org/web/20251222115517/https://www.glassdoor.com/Jobs/Openai-Jobs-E2210885.htm"
 }

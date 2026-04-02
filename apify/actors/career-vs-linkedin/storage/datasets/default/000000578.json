@@ -1,13 +1,13 @@
 {
 	"_type": "job-comparison",
 	"company": "OpenAI",
-	"normalizedTitle": "head partner marketing",
-	"careerTitle": "Head of Partner Marketing",
-	"careerPageFirstSeen": "2026-03-24",
-	"careerPageDatePosted": "2026-03-24",
-	"effectiveCareerDate": "2026-03-24",
+	"normalizedTitle": "head data center delivery",
+	"careerTitle": "Head of Data Center Delivery",
+	"careerPageFirstSeen": "2026-03-30",
+	"careerPageDatePosted": "2026-03-30",
+	"effectiveCareerDate": "2026-03-30",
 	"verdict": "career_only",
-	"location": "Remote - US",
-	"department": "Marketing",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260402010059/https://api.ashbyhq.com/posting-api/job-board/openai"
+	"location": "San Francisco",
+	"department": "XYZ - Exec",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402024014/https://api.ashbyhq.com/posting-api/job-board/openai"
 }

@@ -1,0 +1,19 @@
+{
+	"_type": "job-comparison",
+	"company": "Zapier",
+	"normalizedTitle": "site reliability engineer europe",
+	"careerTitle": "Site Reliability Engineer - Europe",
+	"boardTitle": "Site Reliability Engineer",
+	"careerPageFirstSeen": "2025-10-03",
+	"careerPageDatePosted": "2025-10-03",
+	"boardFirstSeen": "2025-07-30",
+	"boardDatePosted": "2025-07-25",
+	"effectiveCareerDate": "2025-10-03",
+	"effectiveBoardDate": "2025-07-25",
+	"lagDays": -70,
+	"verdict": "board_first",
+	"location": "EMEA",
+	"department": "Engineering",
+	"careerSnapshotUrl": "https://web.archive.org/web/20251108013028/https://api.ashbyhq.com/posting-api/job-board/zapier",
+	"boardSnapshotUrl": "https://web.archive.org/web/20250730160457/https://www.linkedin.com/company/zapier/jobs/"
+}

@@ -1,19 +1,13 @@
 {
 	"_type": "job-comparison",
 	"company": "Notion",
-	"normalizedTitle": "account executive enterprise uk",
-	"careerTitle": "Account Executive, Enterprise, UK",
-	"boardTitle": "Enterprise Account Executive",
+	"normalizedTitle": "product marketing manager it solutions",
+	"careerTitle": "Product Marketing Manager, IT Solutions",
 	"careerPageFirstSeen": "2025-07-25",
 	"careerPageDatePosted": "2025-07-25",
-	"boardFirstSeen": "2025-03-17",
-	"boardDatePosted": "2025-03-16",
 	"effectiveCareerDate": "2025-07-25",
-	"effectiveBoardDate": "2025-03-16",
-	"lagDays": -131,
-	"verdict": "board_first",
-	"location": "London, United Kingdom",
-	"department": "Sales",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260402010144/https://api.ashbyhq.com/posting-api/job-board/notion",
-	"boardSnapshotUrl": "https://web.archive.org/web/20250317163754/https://www.linkedin.com/company/notionhq/jobs"
+	"verdict": "career_only",
+	"location": "New York, New York",
+	"department": "Marketing",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402024251/https://api.ashbyhq.com/posting-api/job-board/notion"
 }

@@ -1,0 +1,19 @@
+{
+	"_type": "job-comparison",
+	"company": "Zapier",
+	"normalizedTitle": "technical support specialist premier",
+	"careerTitle": "Sr. Technical Support Specialist, Premier",
+	"boardTitle": "Technical Support Specialist (India)",
+	"careerPageFirstSeen": "2025-01-27",
+	"careerPageDatePosted": "2025-01-27",
+	"boardFirstSeen": "2024-12-19",
+	"boardDatePosted": "2024-12-18",
+	"effectiveCareerDate": "2025-01-27",
+	"effectiveBoardDate": "2024-12-18",
+	"lagDays": -40,
+	"verdict": "board_first",
+	"location": "HQ",
+	"department": "Support",
+	"careerSnapshotUrl": "https://web.archive.org/web/20250206233511/https://api.ashbyhq.com/posting-api/job-board/zapier",
+	"boardSnapshotUrl": "https://web.archive.org/web/20241219153212/https://www.linkedin.com/company/zapier/jobs/"
+}

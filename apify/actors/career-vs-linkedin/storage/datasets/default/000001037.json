@@ -1,19 +1,13 @@
 {
 	"_type": "job-comparison",
 	"company": "Deel",
-	"normalizedTitle": "legal counsel italy",
-	"careerTitle": "Associate Legal Counsel | Italy",
-	"boardTitle": "Senior Legal Counsel",
-	"careerPageFirstSeen": "2026-03-11",
-	"careerPageDatePosted": "2026-03-11",
-	"boardFirstSeen": "2025-11-19",
-	"boardDatePosted": "2025-11-19",
-	"effectiveCareerDate": "2026-03-11",
-	"effectiveBoardDate": "2025-11-19",
-	"lagDays": -112,
-	"verdict": "board_first",
-	"location": "Italy",
-	"department": "G&A",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260402010354/https://api.ashbyhq.com/posting-api/job-board/deel",
-	"boardSnapshotUrl": "https://web.archive.org/web/20251119202615/https://www.linkedin.com/company/deel/jobs"
+	"normalizedTitle": "product manager fintech client experience",
+	"careerTitle": "Staff Product Manager - Fintech, Client Experience",
+	"careerPageFirstSeen": "2026-03-12",
+	"careerPageDatePosted": "2026-03-12",
+	"effectiveCareerDate": "2026-03-12",
+	"verdict": "career_only",
+	"location": "EMEA",
+	"department": "R&D",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402024506/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

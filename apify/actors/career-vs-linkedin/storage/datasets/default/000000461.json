@@ -1,19 +1,13 @@
 {
 	"_type": "job-comparison",
 	"company": "OpenAI",
-	"normalizedTitle": "data scientist preparedness",
-	"careerTitle": "Data Scientist, Preparedness",
-	"boardTitle": "Data Scientist",
-	"careerPageFirstSeen": "2026-02-26",
-	"careerPageDatePosted": "2026-02-26",
-	"boardFirstSeen": "2025-07-24",
-	"boardDatePosted": "2025-04-29",
-	"effectiveCareerDate": "2026-02-26",
-	"effectiveBoardDate": "2025-04-29",
-	"lagDays": -303,
-	"verdict": "board_first",
+	"normalizedTitle": "head demand generation",
+	"careerTitle": "Head of Demand Generation",
+	"careerPageFirstSeen": "2026-03-04",
+	"careerPageDatePosted": "2026-03-04",
+	"effectiveCareerDate": "2026-03-04",
+	"verdict": "career_only",
 	"location": "San Francisco",
-	"department": "Data Science",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260402010059/https://api.ashbyhq.com/posting-api/job-board/openai",
-	"boardSnapshotUrl": "https://web.archive.org/web/20250724232322/https://www.glassdoor.com/Jobs/OpenAI-Jobs-E2210885.htm"
+	"department": "Marketing",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402024014/https://api.ashbyhq.com/posting-api/job-board/openai"
 }

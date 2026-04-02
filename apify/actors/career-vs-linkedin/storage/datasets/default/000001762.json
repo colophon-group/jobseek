@@ -1,0 +1,19 @@
+{
+	"_type": "job-comparison",
+	"company": "Zapier",
+	"normalizedTitle": "account executive",
+	"careerTitle": "Sr. Account Executive",
+	"boardTitle": "Account Executive",
+	"careerPageFirstSeen": "2024-09-24",
+	"careerPageDatePosted": "2024-09-24",
+	"boardFirstSeen": "2024-12-19",
+	"boardDatePosted": "2024-11-28",
+	"effectiveCareerDate": "2024-09-24",
+	"effectiveBoardDate": "2024-11-28",
+	"lagDays": 65,
+	"verdict": "career_first",
+	"location": "NAMER",
+	"department": "Sales & Success",
+	"careerSnapshotUrl": "https://web.archive.org/web/20240929161920/https://api.ashbyhq.com/posting-api/job-board/zapier",
+	"boardSnapshotUrl": "https://web.archive.org/web/20241219153212/https://www.linkedin.com/company/zapier/jobs/"
+}

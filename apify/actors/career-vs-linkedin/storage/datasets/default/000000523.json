@@ -1,13 +1,19 @@
 {
 	"_type": "job-comparison",
 	"company": "OpenAI",
-	"normalizedTitle": "recruiter forward deployed engineering",
-	"careerTitle": "Recruiter, Forward Deployed Engineering",
-	"careerPageFirstSeen": "2026-03-11",
-	"careerPageDatePosted": "2026-03-11",
-	"effectiveCareerDate": "2026-03-11",
-	"verdict": "career_only",
-	"location": "Seattle",
-	"department": "People",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260402010059/https://api.ashbyhq.com/posting-api/job-board/openai"
+	"normalizedTitle": "technical program manager privacy",
+	"careerTitle": "Technical Program Manager, Privacy",
+	"boardTitle": "Senior Technical Program Manager - Security",
+	"careerPageFirstSeen": "2026-03-12",
+	"careerPageDatePosted": "2026-03-12",
+	"boardFirstSeen": "2025-12-22",
+	"boardDatePosted": "2025-10-30",
+	"effectiveCareerDate": "2026-03-12",
+	"effectiveBoardDate": "2025-10-30",
+	"lagDays": -133,
+	"verdict": "board_first",
+	"location": "San Francisco",
+	"department": "Technical Program Management",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402024014/https://api.ashbyhq.com/posting-api/job-board/openai",
+	"boardSnapshotUrl": "https://web.archive.org/web/20251222115517/https://www.glassdoor.com/Jobs/Openai-Jobs-E2210885.htm"
 }

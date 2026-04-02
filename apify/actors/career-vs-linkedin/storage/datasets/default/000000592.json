@@ -1,13 +1,13 @@
 {
 	"_type": "job-comparison",
 	"company": "OpenAI",
-	"normalizedTitle": "software engineer workload enablement",
-	"careerTitle": "Software Engineer, Workload Enablement",
-	"careerPageFirstSeen": "2026-03-28",
-	"careerPageDatePosted": "2026-03-28",
-	"effectiveCareerDate": "2026-03-28",
+	"normalizedTitle": "software engineer system enablement",
+	"careerTitle": "Software Engineer, System Enablement",
+	"careerPageFirstSeen": "2026-03-29",
+	"careerPageDatePosted": "2026-03-29",
+	"effectiveCareerDate": "2026-03-29",
 	"verdict": "career_only",
 	"location": "San Francisco",
 	"department": "Scaling",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260402010059/https://api.ashbyhq.com/posting-api/job-board/openai"
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402024014/https://api.ashbyhq.com/posting-api/job-board/openai"
 }

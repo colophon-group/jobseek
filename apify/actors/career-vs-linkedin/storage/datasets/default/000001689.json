@@ -1,0 +1,19 @@
+{
+	"_type": "job-comparison",
+	"company": "Zapier",
+	"normalizedTitle": "sales assist representative",
+	"careerTitle": "Sales Assist Representative",
+	"boardTitle": "Sales Assist Representative I",
+	"careerPageFirstSeen": "2024-12-20",
+	"careerPageDatePosted": "2024-12-20",
+	"boardFirstSeen": "2024-04-18",
+	"boardDatePosted": "2024-04-16",
+	"effectiveCareerDate": "2024-12-20",
+	"effectiveBoardDate": "2024-04-16",
+	"lagDays": -248,
+	"verdict": "board_first",
+	"location": "APAC",
+	"department": "Sales & Success",
+	"careerSnapshotUrl": "https://web.archive.org/web/20250111061421/https://api.ashbyhq.com/posting-api/job-board/zapier",
+	"boardSnapshotUrl": "https://web.archive.org/web/20240418063117/https://www.linkedin.com/company/zapier/jobs"
+}

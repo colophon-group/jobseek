@@ -1,13 +1,19 @@
 {
 	"_type": "job-comparison",
 	"company": "OpenAI",
-	"normalizedTitle": "executive business partner creative partnerships nyc",
-	"careerTitle": "Executive Business Partner, Creative Partnerships, NYC",
-	"careerPageFirstSeen": "2026-03-24",
-	"careerPageDatePosted": "2026-03-24",
-	"effectiveCareerDate": "2026-03-24",
-	"verdict": "career_only",
-	"location": "New York City",
-	"department": "Executive Operations",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260402010059/https://api.ashbyhq.com/posting-api/job-board/openai"
+	"normalizedTitle": "us payroll operations",
+	"careerTitle": "US Payroll Operations",
+	"boardTitle": "US Payroll Operations Lead",
+	"careerPageFirstSeen": "2026-02-27",
+	"careerPageDatePosted": "2026-02-27",
+	"boardFirstSeen": "2025-11-30",
+	"boardDatePosted": "2025-11-08",
+	"effectiveCareerDate": "2026-02-27",
+	"effectiveBoardDate": "2025-11-08",
+	"lagDays": -111,
+	"verdict": "board_first",
+	"location": "San Francisco",
+	"department": "Finance",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402024014/https://api.ashbyhq.com/posting-api/job-board/openai",
+	"boardSnapshotUrl": "https://web.archive.org/web/20251130024858/https://www.glassdoor.com/Jobs/OpenAI-Jobs-E2210885.htm"
 }

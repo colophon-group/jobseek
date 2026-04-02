@@ -1,13 +1,13 @@
 {
 	"_type": "job-comparison",
 	"company": "OpenAI",
-	"normalizedTitle": "software engineer codex app",
-	"careerTitle": "Software Engineer, Codex App",
+	"normalizedTitle": "frontend software engineer codex app",
+	"careerTitle": "Frontend Software Engineer, Codex App",
 	"careerPageFirstSeen": "2026-02-18",
 	"careerPageDatePosted": "2026-02-18",
 	"effectiveCareerDate": "2026-02-18",
 	"verdict": "career_only",
 	"location": "San Francisco",
 	"department": "Applied AI",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260402010059/https://api.ashbyhq.com/posting-api/job-board/openai"
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402024014/https://api.ashbyhq.com/posting-api/job-board/openai"
 }

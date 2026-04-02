@@ -1,0 +1,19 @@
+{
+	"_type": "job-comparison",
+	"company": "Zapier",
+	"normalizedTitle": "data scientist",
+	"careerTitle": "Sr. Data Scientist",
+	"boardTitle": "Sr. Data Scientist",
+	"careerPageFirstSeen": "2025-07-25",
+	"careerPageDatePosted": "2025-07-25",
+	"boardFirstSeen": "2025-07-30",
+	"boardDatePosted": "2025-07-25",
+	"effectiveCareerDate": "2025-07-25",
+	"effectiveBoardDate": "2025-07-25",
+	"lagDays": 0,
+	"verdict": "same_day",
+	"location": "EMEA",
+	"department": "Data",
+	"careerSnapshotUrl": "https://web.archive.org/web/20250817115302/https://api.ashbyhq.com/posting-api/job-board/zapier",
+	"boardSnapshotUrl": "https://web.archive.org/web/20250730160457/https://www.linkedin.com/company/zapier/jobs/"
+}

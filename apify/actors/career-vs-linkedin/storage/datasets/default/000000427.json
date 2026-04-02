@@ -1,13 +1,19 @@
 {
 	"_type": "job-comparison",
 	"company": "OpenAI",
-	"normalizedTitle": "manager ai success engineers san francisco",
-	"careerTitle": "Manager, AI Success Engineers - San Francisco",
-	"careerPageFirstSeen": "2026-02-18",
-	"careerPageDatePosted": "2026-02-18",
-	"effectiveCareerDate": "2026-02-18",
-	"verdict": "career_only",
+	"normalizedTitle": "data scientist integrity measurement",
+	"careerTitle": "Data Scientist, Integrity Measurement",
+	"boardTitle": "Data Scientist, Integrity",
+	"careerPageFirstSeen": "2026-03-05",
+	"careerPageDatePosted": "2026-03-05",
+	"boardFirstSeen": "2025-12-19",
+	"boardDatePosted": "2025-10-16",
+	"effectiveCareerDate": "2026-03-05",
+	"effectiveBoardDate": "2025-10-16",
+	"lagDays": -140,
+	"verdict": "board_first",
 	"location": "San Francisco",
-	"department": "Go To Market",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260402010059/https://api.ashbyhq.com/posting-api/job-board/openai"
+	"department": "Data Science",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402024014/https://api.ashbyhq.com/posting-api/job-board/openai",
+	"boardSnapshotUrl": "https://web.archive.org/web/20251219060136/https://www.glassdoor.com/Jobs/OpenAI-Jobs-E2210885.htm"
 }

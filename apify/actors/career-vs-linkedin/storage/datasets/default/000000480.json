@@ -1,13 +1,13 @@
 {
 	"_type": "job-comparison",
 	"company": "OpenAI",
-	"normalizedTitle": "training process management engineer",
-	"careerTitle": "Training, Process Management Engineer",
-	"careerPageFirstSeen": "2026-03-09",
-	"careerPageDatePosted": "2026-03-09",
-	"effectiveCareerDate": "2026-03-09",
+	"normalizedTitle": "gtm onboarding",
+	"careerTitle": "GTM Onboarding Lead",
+	"careerPageFirstSeen": "2026-03-03",
+	"careerPageDatePosted": "2026-03-03",
+	"effectiveCareerDate": "2026-03-03",
 	"verdict": "career_only",
-	"location": "London, UK",
-	"department": "Scaling",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260402010059/https://api.ashbyhq.com/posting-api/job-board/openai"
+	"location": "San Francisco",
+	"department": "Go To Market",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402024014/https://api.ashbyhq.com/posting-api/job-board/openai"
 }

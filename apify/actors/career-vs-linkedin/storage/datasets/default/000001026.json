@@ -1,13 +1,19 @@
 {
 	"_type": "job-comparison",
 	"company": "Deel",
-	"normalizedTitle": "solutions engineer deel hr emea",
-	"careerTitle": "Solutions Engineer, Deel HR | EMEA",
-	"careerPageFirstSeen": "2026-03-09",
-	"careerPageDatePosted": "2026-03-09",
-	"effectiveCareerDate": "2026-03-09",
-	"verdict": "career_only",
-	"location": "Spain",
-	"department": "S&M",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260402010354/https://api.ashbyhq.com/posting-api/job-board/deel"
+	"normalizedTitle": "payroll implementation manager denmark",
+	"careerTitle": "Payroll Implementation Manager | Denmark   ",
+	"boardTitle": "Payroll Implementation Manager | France",
+	"careerPageFirstSeen": "2026-03-16",
+	"careerPageDatePosted": "2026-03-16",
+	"boardFirstSeen": "2025-07-20",
+	"boardDatePosted": "2025-07-19",
+	"effectiveCareerDate": "2026-03-16",
+	"effectiveBoardDate": "2025-07-19",
+	"lagDays": -240,
+	"verdict": "board_first",
+	"location": "EMEA",
+	"department": "COGS",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402024506/https://api.ashbyhq.com/posting-api/job-board/deel",
+	"boardSnapshotUrl": "https://web.archive.org/web/20250720232337/https://www.linkedin.com/company/deel/jobs"
 }

@@ -1,0 +1,19 @@
+{
+	"_type": "job-comparison",
+	"company": "Zapier",
+	"normalizedTitle": "backend engineer",
+	"careerTitle": "Sr. Backend Engineer",
+	"boardTitle": "Sr. Backend Engineer",
+	"careerPageFirstSeen": "2024-09-27",
+	"careerPageDatePosted": "2024-09-27",
+	"boardFirstSeen": "2024-12-19",
+	"boardDatePosted": "2024-11-30",
+	"effectiveCareerDate": "2024-09-27",
+	"effectiveBoardDate": "2024-11-30",
+	"lagDays": 64,
+	"verdict": "career_first",
+	"location": "NAMER",
+	"department": "Engineering",
+	"careerSnapshotUrl": "https://web.archive.org/web/20241214022934/https://api.ashbyhq.com/posting-api/job-board/zapier",
+	"boardSnapshotUrl": "https://web.archive.org/web/20241219153212/https://www.linkedin.com/company/zapier/jobs/"
+}

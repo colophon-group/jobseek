@@ -1,13 +1,19 @@
 {
 	"_type": "job-comparison",
 	"company": "OpenAI",
-	"normalizedTitle": "data scientist chatgpt work",
-	"careerTitle": "Data Scientist, ChatGPT for Work  ",
+	"normalizedTitle": "data scientist api",
+	"careerTitle": "Data Scientist, API ",
+	"boardTitle": "Data Scientist",
 	"careerPageFirstSeen": "2026-03-06",
 	"careerPageDatePosted": "2026-03-06",
+	"boardFirstSeen": "2025-07-24",
+	"boardDatePosted": "2025-04-29",
 	"effectiveCareerDate": "2026-03-06",
-	"verdict": "career_only",
+	"effectiveBoardDate": "2025-04-29",
+	"lagDays": -311,
+	"verdict": "board_first",
 	"location": "San Francisco",
 	"department": "Data Science",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260402010059/https://api.ashbyhq.com/posting-api/job-board/openai"
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402024014/https://api.ashbyhq.com/posting-api/job-board/openai",
+	"boardSnapshotUrl": "https://web.archive.org/web/20250724232322/https://www.glassdoor.com/Jobs/OpenAI-Jobs-E2210885.htm"
 }

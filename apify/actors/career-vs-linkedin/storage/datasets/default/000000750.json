@@ -1,13 +1,19 @@
 {
 	"_type": "job-comparison",
 	"company": "Notion",
-	"normalizedTitle": "account executive commercial korea",
-	"careerTitle": "Account Executive - Commercial, Korea",
-	"careerPageFirstSeen": "2026-01-28",
-	"careerPageDatePosted": "2026-01-28",
-	"effectiveCareerDate": "2026-01-28",
-	"verdict": "career_only",
-	"location": "Seoul, South Korea",
+	"normalizedTitle": "account executive mid market southern europe",
+	"careerTitle": "Account Executive, Mid-Market, Southern Europe",
+	"boardTitle": "Account Executive, Mid-Market, Southern Europe",
+	"careerPageFirstSeen": "2026-01-23",
+	"careerPageDatePosted": "2026-01-23",
+	"boardFirstSeen": "2025-10-02",
+	"boardDatePosted": "2025-10-01",
+	"effectiveCareerDate": "2026-01-23",
+	"effectiveBoardDate": "2025-10-01",
+	"lagDays": -114,
+	"verdict": "board_first",
+	"location": "Dublin, Ireland",
 	"department": "Sales",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260402010144/https://api.ashbyhq.com/posting-api/job-board/notion"
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402024251/https://api.ashbyhq.com/posting-api/job-board/notion",
+	"boardSnapshotUrl": "https://web.archive.org/web/20251002080032/https://www.linkedin.com/company/notionhq/jobs"
 }

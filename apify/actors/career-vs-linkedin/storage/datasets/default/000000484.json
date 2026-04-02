@@ -1,19 +1,13 @@
 {
 	"_type": "job-comparison",
 	"company": "OpenAI",
-	"normalizedTitle": "executive business partner technical leadership support",
-	"careerTitle": "Executive Business Partner, Technical Leadership Support",
-	"boardTitle": "Executive Business Partner (Technical VP Support)",
-	"careerPageFirstSeen": "2026-03-16",
-	"careerPageDatePosted": "2026-03-16",
-	"boardFirstSeen": "2025-11-30",
-	"boardDatePosted": "2025-11-14",
-	"effectiveCareerDate": "2026-03-16",
-	"effectiveBoardDate": "2025-11-14",
-	"lagDays": -122,
-	"verdict": "board_first",
+	"normalizedTitle": "product engagement specialist",
+	"careerTitle": "Product Engagement Specialist",
+	"careerPageFirstSeen": "2026-03-03",
+	"careerPageDatePosted": "2026-03-03",
+	"effectiveCareerDate": "2026-03-03",
+	"verdict": "career_only",
 	"location": "San Francisco",
-	"department": "Executive Operations",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260402010059/https://api.ashbyhq.com/posting-api/job-board/openai",
-	"boardSnapshotUrl": "https://web.archive.org/web/20251130024858/https://www.glassdoor.com/Jobs/OpenAI-Jobs-E2210885.htm"
+	"department": "Go To Market",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402024014/https://api.ashbyhq.com/posting-api/job-board/openai"
 }

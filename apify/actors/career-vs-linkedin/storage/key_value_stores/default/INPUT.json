@@ -31,6 +31,16 @@
       "name": "Figma",
       "careerPageUrl": "https://boards.greenhouse.io/figma",
       "linkedinSlug": "figma"
+    },
+    {
+      "name": "Zapier",
+      "careerPageUrl": "https://jobs.ashbyhq.com/zapier",
+      "linkedinSlug": "zapier"
+    },
+    {
+      "name": "Intercom",
+      "careerPageUrl": "https://boards.greenhouse.io/intercom",
+      "linkedinSlug": "intercom"
     }
   ]
 }

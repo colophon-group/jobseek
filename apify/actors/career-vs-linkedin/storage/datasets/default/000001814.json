@@ -1,0 +1,19 @@
+{
+	"_type": "job-comparison",
+	"company": "Zapier",
+	"normalizedTitle": "engineer site reliability",
+	"careerTitle": "Staff Engineer, Site Reliability",
+	"boardTitle": "Site Reliability Engineer",
+	"careerPageFirstSeen": "2025-08-15",
+	"careerPageDatePosted": "2025-08-15",
+	"boardFirstSeen": "2025-07-30",
+	"boardDatePosted": "2025-07-25",
+	"effectiveCareerDate": "2025-08-15",
+	"effectiveBoardDate": "2025-07-25",
+	"lagDays": -21,
+	"verdict": "board_first",
+	"location": "NAMER",
+	"department": "Engineering",
+	"careerSnapshotUrl": "https://web.archive.org/web/20250817115302/https://api.ashbyhq.com/posting-api/job-board/zapier",
+	"boardSnapshotUrl": "https://web.archive.org/web/20250730160457/https://www.linkedin.com/company/zapier/jobs/"
+}

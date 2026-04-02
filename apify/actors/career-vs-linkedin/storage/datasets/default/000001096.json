@@ -1,13 +1,15 @@
 {
 	"_type": "job-comparison",
 	"company": "Deel",
-	"normalizedTitle": "account executive enterprise spain",
-	"careerTitle": "Account Executive, Enterprise | Spain",
-	"careerPageFirstSeen": "2026-04-01",
-	"careerPageDatePosted": "2026-04-01",
-	"effectiveCareerDate": "2026-04-01",
-	"verdict": "career_only",
-	"location": "Spain",
-	"department": "S&M",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260402010354/https://api.ashbyhq.com/posting-api/job-board/deel"
+	"normalizedTitle": "team paid search marketing",
+	"careerTitle": "",
+	"boardTitle": "Team Lead, Paid Search Marketing",
+	"careerPageFirstSeen": "",
+	"boardFirstSeen": "2025-07-20",
+	"boardDatePosted": "2025-07-20",
+	"effectiveCareerDate": "",
+	"effectiveBoardDate": "2025-07-20",
+	"verdict": "board_only",
+	"careerSnapshotUrl": "",
+	"boardSnapshotUrl": "https://web.archive.org/web/20250720232337/https://www.linkedin.com/company/deel/jobs"
 }

@@ -1,13 +1,13 @@
 {
 	"_type": "job-comparison",
 	"company": "OpenAI",
-	"normalizedTitle": "rack product engineer ai rack infrastructure stargate",
-	"careerTitle": "Rack Product Engineer - AI Rack Infrastructure - Stargate",
-	"careerPageFirstSeen": "2026-03-22",
-	"careerPageDatePosted": "2026-03-22",
-	"effectiveCareerDate": "2026-03-22",
+	"normalizedTitle": "software engineer product",
+	"careerTitle": "Senior Software Engineer, Product ",
+	"careerPageFirstSeen": "2026-03-17",
+	"careerPageDatePosted": "2026-03-17",
+	"effectiveCareerDate": "2026-03-17",
 	"verdict": "career_only",
-	"location": "San Francisco",
-	"department": "Scaling",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260402010059/https://api.ashbyhq.com/posting-api/job-board/openai"
+	"location": "Seattle",
+	"department": "Applied AI",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402024014/https://api.ashbyhq.com/posting-api/job-board/openai"
 }

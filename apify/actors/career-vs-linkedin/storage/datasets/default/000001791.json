@@ -1,0 +1,19 @@
+{
+	"_type": "job-comparison",
+	"company": "Zapier",
+	"normalizedTitle": "applied ai engineer canvas",
+	"careerTitle": "Sr. Applied AI Engineer, Canvas",
+	"boardTitle": "Applied AI Engineer",
+	"careerPageFirstSeen": "2025-01-30",
+	"careerPageDatePosted": "2025-01-30",
+	"boardFirstSeen": "2024-12-19",
+	"boardDatePosted": "2024-12-09",
+	"effectiveCareerDate": "2025-01-30",
+	"effectiveBoardDate": "2024-12-09",
+	"lagDays": -52,
+	"verdict": "board_first",
+	"location": "NAMER",
+	"department": "New Products",
+	"careerSnapshotUrl": "https://web.archive.org/web/20250206233511/https://api.ashbyhq.com/posting-api/job-board/zapier",
+	"boardSnapshotUrl": "https://web.archive.org/web/20241219153212/https://www.linkedin.com/company/zapier/jobs/"
+}

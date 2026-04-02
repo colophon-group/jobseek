@@ -1,19 +1,13 @@
 {
 	"_type": "job-comparison",
 	"company": "OpenAI",
-	"normalizedTitle": "software engineer infrastructure",
-	"careerTitle": "Senior Software Engineer, Infrastructure ",
-	"boardTitle": "Software Engineer, Infrastructure Security",
+	"normalizedTitle": "manager people compliance",
+	"careerTitle": "Senior Manager, People Compliance ",
 	"careerPageFirstSeen": "2026-03-17",
 	"careerPageDatePosted": "2026-03-17",
-	"boardFirstSeen": "2025-12-19",
-	"boardDatePosted": "2025-10-16",
 	"effectiveCareerDate": "2026-03-17",
-	"effectiveBoardDate": "2025-10-16",
-	"lagDays": -152,
-	"verdict": "board_first",
-	"location": "Seattle",
-	"department": "Applied AI",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260402010059/https://api.ashbyhq.com/posting-api/job-board/openai",
-	"boardSnapshotUrl": "https://web.archive.org/web/20251219060136/https://www.glassdoor.com/Jobs/OpenAI-Jobs-E2210885.htm"
+	"verdict": "career_only",
+	"location": "San Francisco",
+	"department": "People",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402024014/https://api.ashbyhq.com/posting-api/job-board/openai"
 }
