@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "resident",
-	"careerTitle": "Resident",
-	"careerPageFirstSeen": "2024-04-17",
-	"careerPageDatePosted": "2024-04-17",
-	"effectiveCareerDate": "2024-04-17",
+	"company": "Deel",
+	"normalizedTitle": "payroll compliance analyst belgium",
+	"careerTitle": "Payroll Compliance Analyst | Belgium",
+	"careerPageFirstSeen": "2026-03-27",
+	"careerPageDatePosted": "2026-03-27",
+	"effectiveCareerDate": "2026-03-27",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240605225151/https://boards.greenhouse.io/anthropic/jobs/4019511008"
+	"location": "Belgium",
+	"department": "R&D",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

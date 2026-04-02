@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "facilities coordinator london contract",
-	"careerTitle": "Facilities Coordinator, London (Contract)",
-	"careerPageFirstSeen": "2024-07-02",
-	"careerPageDatePosted": "2024-07-02",
-	"effectiveCareerDate": "2024-07-02",
+	"company": "Deel",
+	"normalizedTitle": "account executive deel it ent emea",
+	"careerTitle": "Account Executive, Deel IT, ENT | EMEA",
+	"careerPageFirstSeen": "2026-02-09",
+	"careerPageDatePosted": "2026-02-09",
+	"effectiveCareerDate": "2026-02-09",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240704145935/https://boards.greenhouse.io/anthropic/jobs/4069637008"
+	"location": "UK",
+	"department": "S&M",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

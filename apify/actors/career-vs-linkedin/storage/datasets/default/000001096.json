@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "recruiting analytics engineer",
-	"careerTitle": "Recruiting Analytics Engineer",
-	"careerPageFirstSeen": "2025-01-06",
-	"careerPageDatePosted": "2025-01-06",
-	"effectiveCareerDate": "2025-01-06",
+	"company": "Deel",
+	"normalizedTitle": "vc partnerships manager",
+	"careerTitle": "Senior VC Partnerships Manager",
+	"careerPageFirstSeen": "2026-04-01",
+	"careerPageDatePosted": "2026-04-01",
+	"effectiveCareerDate": "2026-04-01",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20250115221832/https://boards.greenhouse.io/anthropic/jobs/4483767008"
+	"location": "UK",
+	"department": "S&M",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

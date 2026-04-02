@@ -1,13 +1,19 @@
 {
 	"_type": "job-comparison",
 	"company": "Notion",
-	"normalizedTitle": "mid market customer success manager",
-	"careerTitle": "Mid-Market Customer Success Manager",
-	"careerPageFirstSeen": "2026-02-18",
-	"careerPageDatePosted": "2026-02-18",
-	"effectiveCareerDate": "2026-02-18",
-	"verdict": "career_only",
+	"normalizedTitle": "enterprise customer success manager amer",
+	"careerTitle": "Enterprise Customer Success Manager, AMER",
+	"boardTitle": "Enterprise Customer Success Manager, AMER",
+	"careerPageFirstSeen": "2025-07-25",
+	"careerPageDatePosted": "2025-07-25",
+	"boardFirstSeen": "2026-02-18",
+	"boardDatePosted": "2026-02-18",
+	"effectiveCareerDate": "2025-07-25",
+	"effectiveBoardDate": "2026-02-18",
+	"lagDays": 208,
+	"verdict": "career_first",
 	"location": "San Francisco, California",
 	"department": "Customer Success",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260401223818/https://api.ashbyhq.com/posting-api/job-board/notion"
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401233651/https://api.ashbyhq.com/posting-api/job-board/notion",
+	"boardSnapshotUrl": "https://web.archive.org/web/20260218083125/https://www.linkedin.com/company/notionhq/jobs"
 }

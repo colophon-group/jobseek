@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "software engineer human feedback interface",
-	"careerTitle": "Software Engineer, Human Feedback Interface",
-	"careerPageFirstSeen": "2024-05-23",
-	"careerPageDatePosted": "2024-05-23",
-	"effectiveCareerDate": "2024-05-23",
+	"company": "Deel",
+	"normalizedTitle": "account executive mid market cee baltics",
+	"careerTitle": "Account Executive, Mid-Market | CEE & Baltics",
+	"careerPageFirstSeen": "2026-02-12",
+	"careerPageDatePosted": "2026-02-12",
+	"effectiveCareerDate": "2026-02-12",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240526021925/https://boards.greenhouse.io/anthropic/jobs/4040023008"
+	"location": "Poland",
+	"department": "S&M",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

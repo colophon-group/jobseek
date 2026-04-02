@@ -1,11 +1,18 @@
 {
 	"_type": "job-comparison",
 	"company": "Anthropic",
-	"normalizedTitle": "product policy",
-	"careerTitle": "Product Policy",
-	"careerPageFirstSeen": "2025-01-17",
-	"careerPageDatePosted": "2025-01-17",
-	"effectiveCareerDate": "2025-01-17",
-	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20250118165104/https://boards.greenhouse.io/anthropic/jobs/4498341008"
+	"normalizedTitle": "product manager api",
+	"careerTitle": "Product Manager, API",
+	"boardTitle": "Product Manager, API",
+	"careerPageFirstSeen": "2024-04-17",
+	"careerPageDatePosted": "2024-04-17",
+	"boardFirstSeen": "2024-04-07",
+	"boardDatePosted": "2024-02-25",
+	"effectiveCareerDate": "2024-04-17",
+	"effectiveBoardDate": "2024-02-25",
+	"lagDays": -52,
+	"verdict": "board_first",
+	"location": "New York, NY",
+	"careerSnapshotUrl": "https://web.archive.org/web/20240605232421/https://boards.greenhouse.io/anthropic/jobs/4020072008",
+	"boardSnapshotUrl": "https://web.archive.org/web/20240407021748/https://www.glassdoor.com/Jobs/Anthropic-Jobs-E8109027.htm"
 }

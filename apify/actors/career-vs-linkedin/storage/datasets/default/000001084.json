@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "external affairs europe",
-	"careerTitle": "External Affairs, Europe",
-	"careerPageFirstSeen": "2024-12-19",
-	"careerPageDatePosted": "2024-12-19",
-	"effectiveCareerDate": "2024-12-19",
+	"company": "Deel",
+	"normalizedTitle": "hr specialist global support apac",
+	"careerTitle": "HR Specialist - Global Support | APAC",
+	"careerPageFirstSeen": "2026-03-27",
+	"careerPageDatePosted": "2026-03-27",
+	"effectiveCareerDate": "2026-03-27",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20250128212904/https://boards.greenhouse.io/anthropic/jobs/4461539008"
+	"location": "Philippines",
+	"department": "COGS",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

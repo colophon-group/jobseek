@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "product policy manager cyber threats",
-	"careerTitle": "Product Policy Manager, Cyber Threats",
-	"careerPageFirstSeen": "2024-05-21",
-	"careerPageDatePosted": "2024-05-21",
-	"effectiveCareerDate": "2024-05-21",
+	"company": "Deel",
+	"normalizedTitle": "account executive smb france",
+	"careerTitle": "Account Executive, SMB | France ",
+	"careerPageFirstSeen": "2026-01-06",
+	"careerPageDatePosted": "2026-01-06",
+	"effectiveCareerDate": "2026-01-06",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240605232421/https://boards.greenhouse.io/anthropic/jobs/4038346008"
+	"location": "France",
+	"department": "S&M",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

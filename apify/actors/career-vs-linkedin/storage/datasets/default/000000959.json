@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "commercial counsel",
-	"careerTitle": "Commercial Counsel",
-	"careerPageFirstSeen": "2024-05-29",
-	"careerPageDatePosted": "2024-05-29",
-	"effectiveCareerDate": "2024-05-29",
+	"company": "Deel",
+	"normalizedTitle": "account executive smb benelux",
+	"careerTitle": "Account Executive, SMB | Benelux",
+	"careerPageFirstSeen": "2026-01-09",
+	"careerPageDatePosted": "2026-01-09",
+	"effectiveCareerDate": "2026-01-09",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240530154406/https://boards.greenhouse.io/anthropic/jobs/4042638008"
+	"location": "EMEA",
+	"department": "S&M",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

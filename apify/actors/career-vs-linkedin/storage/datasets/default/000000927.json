@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "technical program manager engineering",
-	"careerTitle": "Technical Program Manager, Engineering",
-	"careerPageFirstSeen": "2024-05-02",
-	"careerPageDatePosted": "2024-05-02",
-	"effectiveCareerDate": "2024-05-02",
+	"company": "Deel",
+	"normalizedTitle": "sales development representative enterprise dach",
+	"careerTitle": "Sales Development Representative, Enterprise | DACH",
+	"careerPageFirstSeen": "2026-03-04",
+	"careerPageDatePosted": "2026-03-04",
+	"effectiveCareerDate": "2026-03-04",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240522112918/https://boards.greenhouse.io/anthropic/jobs/4026539008"
+	"location": "Germany",
+	"department": "S&M",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

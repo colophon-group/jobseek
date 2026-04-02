@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "external affairs",
-	"careerTitle": "External Affairs",
-	"careerPageFirstSeen": "2024-08-15",
-	"careerPageDatePosted": "2024-08-15",
-	"effectiveCareerDate": "2024-08-15",
+	"company": "Deel",
+	"normalizedTitle": "analytics engineer marketing",
+	"careerTitle": "Analytics Engineer (Marketing)  ",
+	"careerPageFirstSeen": "2026-02-18",
+	"careerPageDatePosted": "2026-02-18",
+	"effectiveCareerDate": "2026-02-18",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240817174550/https://boards.greenhouse.io/anthropic/jobs/4104333008"
+	"location": "UK",
+	"department": "R&D",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

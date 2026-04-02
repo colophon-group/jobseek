@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "technical program manager tech enablement",
-	"careerTitle": "Technical Program Manager, Tech Enablement",
-	"careerPageFirstSeen": "2024-05-22",
-	"careerPageDatePosted": "2024-05-22",
-	"effectiveCareerDate": "2024-05-22",
+	"company": "Deel",
+	"normalizedTitle": "general manager white label",
+	"careerTitle": "General Manager, White Label",
+	"careerPageFirstSeen": "2026-03-09",
+	"careerPageDatePosted": "2026-03-09",
+	"effectiveCareerDate": "2026-03-09",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240526095149/https://boards.greenhouse.io/anthropic/jobs/4039229008"
+	"location": "North America",
+	"department": "COGS",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "brand communications manager",
-	"careerTitle": "Brand Communications Manager",
-	"careerPageFirstSeen": "2024-11-12",
-	"careerPageDatePosted": "2024-11-12",
-	"effectiveCareerDate": "2024-11-12",
+	"company": "Deel",
+	"normalizedTitle": "cloud partner manager",
+	"careerTitle": "Cloud Partner Manager",
+	"careerPageFirstSeen": "2026-03-24",
+	"careerPageDatePosted": "2026-03-24",
+	"effectiveCareerDate": "2026-03-24",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20241114160810/https://boards.greenhouse.io/anthropic/jobs/4406493008"
+	"location": "UK",
+	"department": "S&M",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

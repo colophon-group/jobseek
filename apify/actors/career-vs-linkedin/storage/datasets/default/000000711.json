@@ -1,13 +1,19 @@
 {
 	"_type": "job-comparison",
 	"company": "Notion",
-	"normalizedTitle": "people partner",
-	"careerTitle": "People Partner",
-	"careerPageFirstSeen": "2026-02-14",
-	"careerPageDatePosted": "2026-02-14",
-	"effectiveCareerDate": "2026-02-14",
-	"verdict": "career_only",
+	"normalizedTitle": "corporate finance",
+	"careerTitle": "Corporate Finance",
+	"boardTitle": "Corporate Finance",
+	"careerPageFirstSeen": "2026-02-03",
+	"careerPageDatePosted": "2026-02-03",
+	"boardFirstSeen": "2025-10-02",
+	"boardDatePosted": "2025-10-02",
+	"effectiveCareerDate": "2026-02-03",
+	"effectiveBoardDate": "2025-10-02",
+	"lagDays": -124,
+	"verdict": "board_first",
 	"location": "San Francisco, California",
-	"department": "People",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260401223818/https://api.ashbyhq.com/posting-api/job-board/notion"
+	"department": "Finance",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401233651/https://api.ashbyhq.com/posting-api/job-board/notion",
+	"boardSnapshotUrl": "https://web.archive.org/web/20251002080032/https://www.linkedin.com/company/notionhq/jobs"
 }

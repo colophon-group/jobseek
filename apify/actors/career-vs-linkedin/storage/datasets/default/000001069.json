@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "software engineer technical partnerships",
-	"careerTitle": "Software Engineer, Technical Partnerships",
-	"careerPageFirstSeen": "2024-11-22",
-	"careerPageDatePosted": "2024-11-22",
-	"effectiveCareerDate": "2024-11-22",
+	"company": "Deel",
+	"normalizedTitle": "country finance manager south africa",
+	"careerTitle": "Country Finance Manager | South Africa",
+	"careerPageFirstSeen": "2026-03-24",
+	"careerPageDatePosted": "2026-03-24",
+	"effectiveCareerDate": "2026-03-24",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20241127235136/https://boards.greenhouse.io/anthropic/jobs/4415111008"
+	"location": "South Africa",
+	"department": "G&A",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

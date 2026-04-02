@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "head communications emea",
-	"careerTitle": "Head of Communications, EMEA",
-	"careerPageFirstSeen": "2024-06-21",
-	"careerPageDatePosted": "2024-06-21",
-	"effectiveCareerDate": "2024-06-21",
+	"company": "Deel",
+	"normalizedTitle": "hr experience specialist israel",
+	"careerTitle": "HR Experience Specialist | Israel",
+	"careerPageFirstSeen": "2026-02-05",
+	"careerPageDatePosted": "2026-02-05",
+	"effectiveCareerDate": "2026-02-05",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240714012512/https://boards.greenhouse.io/anthropic/jobs/4057955008"
+	"location": "EMEA",
+	"department": "COGS",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

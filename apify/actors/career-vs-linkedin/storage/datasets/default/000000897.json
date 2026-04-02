@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "research engineer rsp evaluations autonomy london",
-	"careerTitle": "Research Engineer, RSP Evaluations (Autonomy) (London)",
-	"careerPageFirstSeen": "2024-04-18",
-	"careerPageDatePosted": "2024-04-18",
-	"effectiveCareerDate": "2024-04-18",
+	"company": "Deel",
+	"normalizedTitle": "sales operations business partner",
+	"careerTitle": "Senior Sales Operations Business Partner",
+	"careerPageFirstSeen": "2026-03-20",
+	"careerPageDatePosted": "2026-03-20",
+	"effectiveCareerDate": "2026-03-20",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240611060448/https://boards.greenhouse.io/anthropic/jobs/4020292008"
+	"location": "North America",
+	"department": "COGS",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

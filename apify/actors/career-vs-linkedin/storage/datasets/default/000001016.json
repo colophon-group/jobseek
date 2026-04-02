@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "consumer communications",
-	"careerTitle": "Consumer Communications Lead",
-	"careerPageFirstSeen": "2024-09-03",
-	"careerPageDatePosted": "2024-09-03",
-	"effectiveCareerDate": "2024-09-03",
+	"company": "Deel",
+	"normalizedTitle": "payroll belgium",
+	"careerTitle": "Payroll Associate | Belgium",
+	"careerPageFirstSeen": "2026-03-03",
+	"careerPageDatePosted": "2026-03-03",
+	"effectiveCareerDate": "2026-03-03",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240905130310/https://boards.greenhouse.io/anthropic/jobs/4117878008"
+	"location": "Belgium",
+	"department": "COGS",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

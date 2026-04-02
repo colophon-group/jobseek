@@ -1,19 +1,13 @@
 {
 	"_type": "job-comparison",
 	"company": "Notion",
-	"normalizedTitle": "account executive mid market benelux",
-	"careerTitle": "Account Executive, Mid-Market, Benelux",
-	"boardTitle": "Account Executive, Mid-Market, DACH",
-	"careerPageFirstSeen": "2026-01-27",
-	"careerPageDatePosted": "2026-01-27",
-	"boardFirstSeen": "2025-10-02",
-	"boardDatePosted": "2025-10-02",
-	"effectiveCareerDate": "2026-01-27",
-	"effectiveBoardDate": "2025-10-02",
-	"lagDays": -117,
-	"verdict": "board_first",
-	"location": "Dublin, Ireland",
-	"department": "Sales",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260401223818/https://api.ashbyhq.com/posting-api/job-board/notion",
-	"boardSnapshotUrl": "https://web.archive.org/web/20251002080032/https://www.linkedin.com/company/notionhq/jobs"
+	"normalizedTitle": "recruiting coordinator",
+	"careerTitle": "Recruiting Coordinator",
+	"careerPageFirstSeen": "2026-02-25",
+	"careerPageDatePosted": "2026-02-25",
+	"effectiveCareerDate": "2026-02-25",
+	"verdict": "career_only",
+	"location": "New York, New York",
+	"department": "People",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401233651/https://api.ashbyhq.com/posting-api/job-board/notion"
 }

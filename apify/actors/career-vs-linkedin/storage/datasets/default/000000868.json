@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "partner marketing manager",
-	"careerTitle": "Partner Marketing Manager",
-	"careerPageFirstSeen": "2024-04-21",
-	"careerPageDatePosted": "2024-04-21",
-	"effectiveCareerDate": "2024-04-21",
+	"company": "Deel",
+	"normalizedTitle": "backend engineer calc team net c",
+	"careerTitle": " Backend Engineer - Calc Team (.NET/C#)",
+	"careerPageFirstSeen": "2026-03-27",
+	"careerPageDatePosted": "2026-03-27",
+	"effectiveCareerDate": "2026-03-27",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240521171818/https://boards.greenhouse.io/anthropic/jobs/4018775008"
+	"location": "South Africa",
+	"department": "R&D",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

@@ -1,11 +1,18 @@
 {
 	"_type": "job-comparison",
 	"company": "Anthropic",
-	"normalizedTitle": "enterprise account executive digital native business api sales",
-	"careerTitle": "Enterprise Account Executive, Digital Native Business (API Sales)",
-	"careerPageFirstSeen": "2025-01-13",
-	"careerPageDatePosted": "2025-01-13",
-	"effectiveCareerDate": "2025-01-13",
-	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20250128145007/https://boards.greenhouse.io/anthropic/jobs/4493001008"
+	"normalizedTitle": "team manager interpretability",
+	"careerTitle": "Team Manager, Interpretability",
+	"boardTitle": "Team Manager, Interpretability",
+	"careerPageFirstSeen": "2024-03-27",
+	"careerPageDatePosted": "2024-03-27",
+	"boardFirstSeen": "2024-04-07",
+	"boardDatePosted": "2024-03-20",
+	"effectiveCareerDate": "2024-03-27",
+	"effectiveBoardDate": "2024-03-20",
+	"lagDays": -7,
+	"verdict": "board_first",
+	"location": "Seattle, WA",
+	"careerSnapshotUrl": "https://web.archive.org/web/20240520072334/https://boards.greenhouse.io/anthropic/jobs/4009173008",
+	"boardSnapshotUrl": "https://web.archive.org/web/20240407021748/https://www.glassdoor.com/Jobs/Anthropic-Jobs-E8109027.htm"
 }

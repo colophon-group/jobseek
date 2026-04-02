@@ -1,18 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "team manager interpretability",
-	"careerTitle": "Team Manager, Interpretability",
-	"boardTitle": "Team Manager, Interpretability",
-	"careerPageFirstSeen": "2024-03-27",
-	"careerPageDatePosted": "2024-03-27",
-	"boardFirstSeen": "2024-04-07",
-	"boardDatePosted": "2024-03-20",
-	"effectiveCareerDate": "2024-03-27",
-	"effectiveBoardDate": "2024-03-20",
-	"lagDays": -7,
-	"verdict": "board_first",
-	"location": "Seattle, WA",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240520072334/https://boards.greenhouse.io/anthropic/jobs/4009173008",
-	"boardSnapshotUrl": "https://web.archive.org/web/20240407021748/https://www.glassdoor.com/Jobs/Anthropic-Jobs-E8109027.htm"
+	"company": "Deel",
+	"normalizedTitle": "full stack engineer net vue",
+	"careerTitle": "Senior Full Stack Engineer ( .NET/ Vue)",
+	"careerPageFirstSeen": "2026-03-19",
+	"careerPageDatePosted": "2026-03-19",
+	"effectiveCareerDate": "2026-03-19",
+	"verdict": "career_only",
+	"location": "South Africa",
+	"department": "R&D",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

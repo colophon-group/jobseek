@@ -1,12 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "data operations manager",
-	"careerTitle": "Data Operations Manager",
-	"careerPageFirstSeen": "2024-12-19",
-	"careerPageDatePosted": "2024-12-19",
-	"effectiveCareerDate": "2024-12-19",
+	"company": "Deel",
+	"normalizedTitle": "team enablement",
+	"careerTitle": " Team Lead, Enablement",
+	"careerPageFirstSeen": "2026-03-27",
+	"careerPageDatePosted": "2026-03-27",
+	"effectiveCareerDate": "2026-03-27",
 	"verdict": "career_only",
-	"location": "San Francisco, California, United States",
-	"careerSnapshotUrl": "https://web.archive.org/web/20241220153734/https://boards.greenhouse.io/anthropic/jobs/4462114008"
+	"location": "North America",
+	"department": "COGS",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

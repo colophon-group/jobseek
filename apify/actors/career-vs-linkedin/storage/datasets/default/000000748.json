@@ -1,13 +1,19 @@
 {
 	"_type": "job-comparison",
 	"company": "Notion",
-	"normalizedTitle": "account executive commercial mena",
-	"careerTitle": "Account Executive, Commercial, MENA",
-	"careerPageFirstSeen": "2026-01-23",
-	"careerPageDatePosted": "2026-01-23",
-	"effectiveCareerDate": "2026-01-23",
-	"verdict": "career_only",
-	"location": "Dublin, Ireland",
+	"normalizedTitle": "solutions engineer enterprise uk",
+	"careerTitle": "Solutions Engineer, Enterprise, UK ",
+	"boardTitle": "Solutions Engineer, Enterprise, DACH",
+	"careerPageFirstSeen": "2026-01-21",
+	"careerPageDatePosted": "2026-01-21",
+	"boardFirstSeen": "2026-01-21",
+	"boardDatePosted": "2026-01-20",
+	"effectiveCareerDate": "2026-01-21",
+	"effectiveBoardDate": "2026-01-20",
+	"lagDays": -1,
+	"verdict": "board_first",
+	"location": "London, United Kingdom",
 	"department": "Sales",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260401223818/https://api.ashbyhq.com/posting-api/job-board/notion"
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401233651/https://api.ashbyhq.com/posting-api/job-board/notion",
+	"boardSnapshotUrl": "https://web.archive.org/web/20260121005519/https://www.linkedin.com/company/notionhq/jobs/"
 }

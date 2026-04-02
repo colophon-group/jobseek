@@ -1,13 +1,13 @@
 {
 	"_type": "job-comparison",
 	"company": "Notion",
-	"normalizedTitle": "head internal audit",
-	"careerTitle": "Head of Internal Audit",
-	"careerPageFirstSeen": "2026-01-13",
-	"careerPageDatePosted": "2026-01-13",
-	"effectiveCareerDate": "2026-01-13",
+	"normalizedTitle": "security operations engineer detection response team",
+	"careerTitle": "Security Operations Engineer, Detection and Response Team ",
+	"careerPageFirstSeen": "2026-01-29",
+	"careerPageDatePosted": "2026-01-29",
+	"effectiveCareerDate": "2026-01-29",
 	"verdict": "career_only",
-	"location": "San Francisco, California",
-	"department": "Finance",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260401223818/https://api.ashbyhq.com/posting-api/job-board/notion"
+	"location": "Dublin, Ireland",
+	"department": "Security",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401233651/https://api.ashbyhq.com/posting-api/job-board/notion"
 }

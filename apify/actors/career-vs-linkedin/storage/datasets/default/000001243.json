@@ -1,16 +1,11 @@
 {
 	"_type": "job-comparison",
 	"company": "Anthropic",
-	"normalizedTitle": "engineering manager mobile",
-	"careerTitle": "",
-	"boardTitle": "Engineering Manager, Mobile",
-	"careerPageFirstSeen": "",
-	"boardFirstSeen": "2024-04-07",
-	"boardDatePosted": "2024-03-25",
-	"effectiveCareerDate": "",
-	"effectiveBoardDate": "2024-03-25",
-	"verdict": "board_only",
-	"location": "Seattle, WA",
-	"careerSnapshotUrl": "",
-	"boardSnapshotUrl": "https://web.archive.org/web/20240407021748/https://www.glassdoor.com/Jobs/Anthropic-Jobs-E8109027.htm"
+	"normalizedTitle": "creative producer",
+	"careerTitle": "Creative Producer",
+	"careerPageFirstSeen": "2024-07-11",
+	"careerPageDatePosted": "2024-07-11",
+	"effectiveCareerDate": "2024-07-11",
+	"verdict": "career_only",
+	"careerSnapshotUrl": "https://web.archive.org/web/20240717115024/https://boards.greenhouse.io/anthropic/jobs/4075242008"
 }

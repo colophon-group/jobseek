@@ -1,11 +1,19 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "benefits partner contract",
-	"careerTitle": "Benefits Partner (Contract)",
-	"careerPageFirstSeen": "2024-09-27",
-	"careerPageDatePosted": "2024-09-27",
-	"effectiveCareerDate": "2024-09-27",
-	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20241001141821/https://boards.greenhouse.io/anthropic/jobs/4142154008"
+	"company": "Deel",
+	"normalizedTitle": "legal counsel italy",
+	"careerTitle": "Associate Legal Counsel | Italy",
+	"boardTitle": "Senior Legal Counsel",
+	"careerPageFirstSeen": "2026-03-11",
+	"careerPageDatePosted": "2026-03-11",
+	"boardFirstSeen": "2025-11-19",
+	"boardDatePosted": "2025-11-19",
+	"effectiveCareerDate": "2026-03-11",
+	"effectiveBoardDate": "2025-11-19",
+	"lagDays": -112,
+	"verdict": "board_first",
+	"location": "Italy",
+	"department": "G&A",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel",
+	"boardSnapshotUrl": "https://web.archive.org/web/20251119202615/https://www.linkedin.com/company/deel/jobs"
 }

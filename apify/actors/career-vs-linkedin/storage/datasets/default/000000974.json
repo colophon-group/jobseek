@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "product communications",
-	"careerTitle": "Product Communications Lead",
-	"careerPageFirstSeen": "2024-06-07",
-	"careerPageDatePosted": "2024-06-07",
-	"effectiveCareerDate": "2024-06-07",
+	"company": "Deel",
+	"normalizedTitle": "payroll poland",
+	"careerTitle": "Payroll Associate |  Poland",
+	"careerPageFirstSeen": "2026-01-28",
+	"careerPageDatePosted": "2026-01-28",
+	"effectiveCareerDate": "2026-01-28",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240611135120/https://boards.greenhouse.io/anthropic/jobs/4048464008"
+	"location": "Poland",
+	"department": "COGS",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

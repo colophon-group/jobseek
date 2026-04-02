@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "software engineer data ingestion",
-	"careerTitle": "Software Engineer, Data Ingestion",
-	"careerPageFirstSeen": "2024-12-23",
-	"careerPageDatePosted": "2024-12-23",
-	"effectiveCareerDate": "2024-12-23",
+	"company": "Deel",
+	"normalizedTitle": "account executive enterprise spain",
+	"careerTitle": "Account Executive, Enterprise | Spain",
+	"careerPageFirstSeen": "2026-04-01",
+	"careerPageDatePosted": "2026-04-01",
+	"effectiveCareerDate": "2026-04-01",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20250108200709/https://boards.greenhouse.io/anthropic/jobs/4465088008"
+	"location": "Spain",
+	"department": "S&M",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

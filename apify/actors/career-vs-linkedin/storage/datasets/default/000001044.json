@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "software engineer mobile ios android",
-	"careerTitle": "Software Engineer, Mobile (iOS or Android)",
-	"careerPageFirstSeen": "2024-10-03",
-	"careerPageDatePosted": "2024-10-03",
-	"effectiveCareerDate": "2024-10-03",
+	"company": "Deel",
+	"normalizedTitle": "m integration specialist",
+	"careerTitle": "M&A Integration Specialist",
+	"careerPageFirstSeen": "2026-03-24",
+	"careerPageDatePosted": "2026-03-24",
+	"effectiveCareerDate": "2026-03-24",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20241005130654/https://boards.greenhouse.io/anthropic/jobs/4146689008"
+	"location": "Austria",
+	"department": "G&A",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

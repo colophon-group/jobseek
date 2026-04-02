@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "brand designer marketing",
-	"careerTitle": "Brand Designer, Marketing",
-	"careerPageFirstSeen": "2024-08-15",
-	"careerPageDatePosted": "2024-08-15",
-	"effectiveCareerDate": "2024-08-15",
+	"company": "Deel",
+	"normalizedTitle": "account executive smb north america",
+	"careerTitle": "Account Executive, SMB | North America",
+	"careerPageFirstSeen": "2026-02-19",
+	"careerPageDatePosted": "2026-02-19",
+	"effectiveCareerDate": "2026-02-19",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240905070354/https://boards.greenhouse.io/anthropic/jobs/4104496008"
+	"location": "North America",
+	"department": "S&M",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

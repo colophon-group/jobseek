@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "software engineer employee acceleration tools",
-	"careerTitle": "Software Engineer, Employee Acceleration Tools",
-	"careerPageFirstSeen": "2024-04-17",
-	"careerPageDatePosted": "2024-04-17",
-	"effectiveCareerDate": "2024-04-17",
+	"company": "Deel",
+	"normalizedTitle": "sales development representative smb uk",
+	"careerTitle": "Sales Development Representative, SMB | UK&I",
+	"careerPageFirstSeen": "2025-09-10",
+	"careerPageDatePosted": "2025-09-10",
+	"effectiveCareerDate": "2025-09-10",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240521171908/https://boards.greenhouse.io/anthropic/jobs/4020043008"
+	"location": "UK",
+	"department": "S&M",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

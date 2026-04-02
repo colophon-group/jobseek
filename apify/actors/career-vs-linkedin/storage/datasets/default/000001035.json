@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "software engineer growth",
-	"careerTitle": "Software Engineer, Growth",
-	"careerPageFirstSeen": "2024-09-26",
-	"careerPageDatePosted": "2024-09-26",
-	"effectiveCareerDate": "2024-09-26",
+	"company": "Deel",
+	"normalizedTitle": "payroll south korea payroll",
+	"careerTitle": "Senior Payroll Associate, South Korea Payroll",
+	"careerPageFirstSeen": "2026-03-26",
+	"careerPageDatePosted": "2026-03-26",
+	"effectiveCareerDate": "2026-03-26",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20241111074718/https://boards.greenhouse.io/anthropic/jobs/4141519008"
+	"location": "South Korea",
+	"department": "COGS",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

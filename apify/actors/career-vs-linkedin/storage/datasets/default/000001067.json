@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "head capital markets corporate development",
-	"careerTitle": "Head of Capital Markets & Corporate Development",
-	"careerPageFirstSeen": "2024-11-21",
-	"careerPageDatePosted": "2024-11-21",
-	"effectiveCareerDate": "2024-11-21",
+	"company": "Deel",
+	"normalizedTitle": "payroll china payroll",
+	"careerTitle": "Payroll Associate, China Payroll",
+	"careerPageFirstSeen": "2026-03-24",
+	"careerPageDatePosted": "2026-03-24",
+	"effectiveCareerDate": "2026-03-24",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20250109013738/https://boards.greenhouse.io/anthropic/jobs/4413874008"
+	"location": "China",
+	"department": "COGS",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

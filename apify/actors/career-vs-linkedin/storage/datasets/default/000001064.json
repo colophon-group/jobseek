@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "software engineer horizons",
-	"careerTitle": "Software Engineer, Horizons",
-	"careerPageFirstSeen": "2024-11-18",
-	"careerPageDatePosted": "2024-11-18",
-	"effectiveCareerDate": "2024-11-18",
+	"company": "Deel",
+	"normalizedTitle": "payroll operations manager mexico",
+	"careerTitle": "Payroll Operations Manager | Mexico",
+	"careerPageFirstSeen": "2026-03-26",
+	"careerPageDatePosted": "2026-03-26",
+	"effectiveCareerDate": "2026-03-26",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20241128102638/https://boards.greenhouse.io/anthropic/jobs/4410691008"
+	"location": "Mexico",
+	"department": "COGS",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

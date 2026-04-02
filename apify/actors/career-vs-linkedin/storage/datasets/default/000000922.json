@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "it support engineer",
-	"careerTitle": "IT Support Engineer",
-	"careerPageFirstSeen": "2024-04-25",
-	"careerPageDatePosted": "2024-04-25",
-	"effectiveCareerDate": "2024-04-25",
+	"company": "Deel",
+	"normalizedTitle": "customer success manager french speaking",
+	"careerTitle": "Customer Success Manager I | French speaking",
+	"careerPageFirstSeen": "2026-03-30",
+	"careerPageDatePosted": "2026-03-30",
+	"effectiveCareerDate": "2026-03-30",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240615072504/https://boards.greenhouse.io/anthropic/jobs/4023363008"
+	"location": "France",
+	"department": "COGS",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

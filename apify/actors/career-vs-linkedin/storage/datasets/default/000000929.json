@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "research engineer human computer interfaces",
-	"careerTitle": "Research Engineer, Human Computer Interfaces",
-	"careerPageFirstSeen": "2024-05-07",
-	"careerPageDatePosted": "2024-05-07",
-	"effectiveCareerDate": "2024-05-07",
+	"company": "Deel",
+	"normalizedTitle": "product designer fintech",
+	"careerTitle": "Lead Product Designer (Fintech) ",
+	"careerPageFirstSeen": "2026-02-23",
+	"careerPageDatePosted": "2026-02-23",
+	"effectiveCareerDate": "2026-02-23",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240522142114/https://boards.greenhouse.io/anthropic/jobs/4030764008"
+	"location": "UK",
+	"department": "R&D",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "software engineer console",
-	"careerTitle": "Software Engineer, Console",
-	"careerPageFirstSeen": "2024-05-14",
-	"careerPageDatePosted": "2024-05-14",
-	"effectiveCareerDate": "2024-05-14",
+	"company": "Deel",
+	"normalizedTitle": "workday consultant",
+	"careerTitle": "Workday Consultant",
+	"careerPageFirstSeen": "2025-12-29",
+	"careerPageDatePosted": "2025-12-29",
+	"effectiveCareerDate": "2025-12-29",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240521172014/https://boards.greenhouse.io/anthropic/jobs/4035087008"
+	"location": "North America",
+	"department": "COGS",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

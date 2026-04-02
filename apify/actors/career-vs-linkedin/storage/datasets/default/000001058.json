@@ -1,11 +1,19 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "sales recruiter contract",
-	"careerTitle": "Sales Recruiter (Contract)",
-	"careerPageFirstSeen": "2024-11-01",
-	"careerPageDatePosted": "2024-11-01",
-	"effectiveCareerDate": "2024-11-01",
-	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20241127230009/https://boards.greenhouse.io/anthropic/jobs/4256835008"
+	"company": "Deel",
+	"normalizedTitle": "payroll implementation manager uki",
+	"careerTitle": "Payroll Implementation Manager | UKI   ",
+	"boardTitle": "Payroll Implementation Manager | France",
+	"careerPageFirstSeen": "2026-03-26",
+	"careerPageDatePosted": "2026-03-26",
+	"boardFirstSeen": "2025-07-20",
+	"boardDatePosted": "2025-07-19",
+	"effectiveCareerDate": "2026-03-26",
+	"effectiveBoardDate": "2025-07-19",
+	"lagDays": -250,
+	"verdict": "board_first",
+	"location": "Ireland",
+	"department": "COGS",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel",
+	"boardSnapshotUrl": "https://web.archive.org/web/20250720232337/https://www.linkedin.com/company/deel/jobs"
 }

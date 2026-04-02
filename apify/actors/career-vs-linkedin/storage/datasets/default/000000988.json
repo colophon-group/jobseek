@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "competition counsel",
-	"careerTitle": "Competition Counsel",
-	"careerPageFirstSeen": "2024-06-24",
-	"careerPageDatePosted": "2024-06-24",
-	"effectiveCareerDate": "2024-06-24",
+	"company": "Deel",
+	"normalizedTitle": "immigration consultant germany",
+	"careerTitle": "Immigration Consultant | Germany",
+	"careerPageFirstSeen": "2026-02-09",
+	"careerPageDatePosted": "2026-02-09",
+	"effectiveCareerDate": "2026-02-09",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240627021902/https://boards.greenhouse.io/anthropic/jobs/4061139008"
+	"location": "Germany",
+	"department": "COGS",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

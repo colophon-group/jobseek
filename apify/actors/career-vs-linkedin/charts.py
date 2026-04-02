@@ -36,8 +36,9 @@ for fname in sorted(os.listdir(DATASET)):
 summaries.sort(key=lambda x: x['company'])
 
 # Only keep credible short leads (≤90 days) for timing charts
-# Exclude Anthropic: only 2 Glassdoor snapshots from 2024 with generic titles → false matches
-credible_matches = [m for m in matches if m['lagDays'] <= 90 and m['company'] != 'Anthropic']
+# Exclude Anthropic: only 2 Glassdoor snapshots from 2024 — cross-job-cycle false matches
+# Exclude Deel: only 2 LinkedIn snapshots — insufficient board coverage for timing
+credible_matches = [m for m in matches if m['lagDays'] <= 90 and m['company'] not in ('Anthropic', 'Deel')]
 
 os.makedirs('charts', exist_ok=True)
 

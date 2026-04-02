@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "design engineer",
-	"careerTitle": "Design Engineer",
-	"careerPageFirstSeen": "2024-08-12",
-	"careerPageDatePosted": "2024-08-12",
-	"effectiveCareerDate": "2024-08-12",
+	"company": "Deel",
+	"normalizedTitle": "accounts payable specialist",
+	"careerTitle": "Accounts Payable Specialist I",
+	"careerPageFirstSeen": "2026-04-01",
+	"careerPageDatePosted": "2026-04-01",
+	"effectiveCareerDate": "2026-04-01",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240826180126/https://boards.greenhouse.io/anthropic/jobs/4095648008"
+	"location": "Philippines",
+	"department": "G&A",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

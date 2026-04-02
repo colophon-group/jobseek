@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "resident london",
-	"careerTitle": "Resident, London",
-	"careerPageFirstSeen": "2024-04-19",
-	"careerPageDatePosted": "2024-04-19",
-	"effectiveCareerDate": "2024-04-19",
+	"company": "Deel",
+	"normalizedTitle": "sales development representative mid market dach",
+	"careerTitle": "Sales Development Representative, Mid-Market | DACH",
+	"careerPageFirstSeen": "2026-03-04",
+	"careerPageDatePosted": "2026-03-04",
+	"effectiveCareerDate": "2026-03-04",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240605232554/https://boards.greenhouse.io/anthropic/jobs/4020718008"
+	"location": "Germany",
+	"department": "S&M",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

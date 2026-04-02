@@ -1,11 +1,19 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "applied ai product engineer uk",
-	"careerTitle": "Applied AI Product Engineer (UK)",
-	"careerPageFirstSeen": "2024-09-18",
-	"careerPageDatePosted": "2024-09-18",
-	"effectiveCareerDate": "2024-09-18",
-	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240920123930/https://boards.greenhouse.io/anthropic/jobs/4133168008"
+	"company": "Deel",
+	"normalizedTitle": "payroll implementation manager denmark",
+	"careerTitle": "Payroll Implementation Manager | Denmark   ",
+	"boardTitle": "Payroll Implementation Manager | France",
+	"careerPageFirstSeen": "2026-03-16",
+	"careerPageDatePosted": "2026-03-16",
+	"boardFirstSeen": "2025-07-20",
+	"boardDatePosted": "2025-07-19",
+	"effectiveCareerDate": "2026-03-16",
+	"effectiveBoardDate": "2025-07-19",
+	"lagDays": -240,
+	"verdict": "board_first",
+	"location": "EMEA",
+	"department": "COGS",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel",
+	"boardSnapshotUrl": "https://web.archive.org/web/20250720232337/https://www.linkedin.com/company/deel/jobs"
 }

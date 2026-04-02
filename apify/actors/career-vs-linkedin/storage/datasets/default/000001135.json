@@ -1,12 +1,18 @@
 {
 	"_type": "job-comparison",
 	"company": "Anthropic",
-	"normalizedTitle": "head international accounting",
-	"careerTitle": "Head of International Accounting",
-	"careerPageFirstSeen": "2025-01-20",
-	"careerPageDatePosted": "2025-01-20",
-	"effectiveCareerDate": "2025-01-20",
-	"verdict": "career_only",
-	"location": "Dublin, Dublin, Ireland",
-	"careerSnapshotUrl": "https://web.archive.org/web/20250126225729/https://boards.greenhouse.io/anthropic/jobs/4500444008"
+	"normalizedTitle": "research engineer research scientist finetuning",
+	"careerTitle": "Research Engineer / Research Scientist, Finetuning",
+	"boardTitle": "Research Engineer / Research Scientist, Finetuning",
+	"careerPageFirstSeen": "2024-04-22",
+	"careerPageDatePosted": "2024-04-22",
+	"boardFirstSeen": "2024-04-07",
+	"boardDatePosted": "2024-03-08",
+	"effectiveCareerDate": "2024-04-22",
+	"effectiveBoardDate": "2024-03-08",
+	"lagDays": -45,
+	"verdict": "board_first",
+	"location": "Seattle, WA",
+	"careerSnapshotUrl": "https://web.archive.org/web/20240611061407/https://boards.greenhouse.io/anthropic/jobs/4020080008",
+	"boardSnapshotUrl": "https://web.archive.org/web/20240407021748/https://www.glassdoor.com/Jobs/Anthropic-Jobs-E8109027.htm"
 }

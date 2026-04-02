@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "revenue accountant",
-	"careerTitle": "Senior Revenue Accountant",
-	"careerPageFirstSeen": "2024-04-17",
-	"careerPageDatePosted": "2024-04-17",
-	"effectiveCareerDate": "2024-04-17",
+	"company": "Deel",
+	"normalizedTitle": "executive assistant c suite",
+	"careerTitle": "Executive Assistant to C-Suite",
+	"careerPageFirstSeen": "2026-02-04",
+	"careerPageDatePosted": "2026-02-04",
+	"effectiveCareerDate": "2026-02-04",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240526164100/https://boards.greenhouse.io/anthropic/jobs/4020049008"
+	"location": "Israel",
+	"department": "G&A",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "product designer",
-	"careerTitle": "Product Designer",
-	"careerPageFirstSeen": "2024-07-31",
-	"careerPageDatePosted": "2024-07-31",
-	"effectiveCareerDate": "2024-07-31",
+	"company": "Deel",
+	"normalizedTitle": "payroll japan payroll japan",
+	"careerTitle": "Payroll Associate, Japan Payroll | Japan",
+	"careerPageFirstSeen": "2026-02-24",
+	"careerPageDatePosted": "2026-02-24",
+	"effectiveCareerDate": "2026-02-24",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240823141507/https://boards.greenhouse.io/anthropic/jobs/4092763008"
+	"location": "Japan",
+	"department": "COGS",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

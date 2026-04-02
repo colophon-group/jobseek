@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "software engineer ui",
-	"careerTitle": "Software Engineer, UI",
-	"careerPageFirstSeen": "2024-04-30",
-	"careerPageDatePosted": "2024-04-30",
-	"effectiveCareerDate": "2024-04-30",
+	"company": "Deel",
+	"normalizedTitle": "ghostbuster",
+	"careerTitle": "Ghostbuster",
+	"careerPageFirstSeen": "2026-03-10",
+	"careerPageDatePosted": "2026-03-10",
+	"effectiveCareerDate": "2026-03-10",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240506221912/https://boards.greenhouse.io/anthropic/jobs/4023357008"
+	"location": "EMEA",
+	"department": "COGS",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

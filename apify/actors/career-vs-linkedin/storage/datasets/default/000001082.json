@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "recruiter marketing",
-	"careerTitle": "Recruiter, Marketing",
-	"careerPageFirstSeen": "2024-12-19",
-	"careerPageDatePosted": "2024-12-19",
-	"effectiveCareerDate": "2024-12-19",
+	"company": "Deel",
+	"normalizedTitle": "information security engineer north america est",
+	"careerTitle": "Information Security Engineer | North America (EST)",
+	"careerPageFirstSeen": "2026-03-26",
+	"careerPageDatePosted": "2026-03-26",
+	"effectiveCareerDate": "2026-03-26",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20241220155344/https://boards.greenhouse.io/anthropic/jobs/4461440008"
+	"location": "USA",
+	"department": "R&D",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

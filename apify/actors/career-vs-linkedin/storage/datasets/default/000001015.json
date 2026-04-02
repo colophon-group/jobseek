@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "business development representative",
-	"careerTitle": "Business Development Representative",
-	"careerPageFirstSeen": "2024-09-03",
-	"careerPageDatePosted": "2024-09-03",
-	"effectiveCareerDate": "2024-09-03",
+	"company": "Deel",
+	"normalizedTitle": "backend engineer node js typescript",
+	"careerTitle": "Backend Engineer, Node.js/Typescript",
+	"careerPageFirstSeen": "2026-03-05",
+	"careerPageDatePosted": "2026-03-05",
+	"effectiveCareerDate": "2026-03-05",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240905135539/https://boards.greenhouse.io/anthropic/jobs/4117704008"
+	"location": "LATAM",
+	"department": "R&D",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

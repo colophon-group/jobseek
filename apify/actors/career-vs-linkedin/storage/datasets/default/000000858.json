@@ -1,18 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "research engineer model evaluations",
-	"careerTitle": "Research Engineer, Model Evaluations",
-	"boardTitle": "Research Engineer, Model Evaluations",
-	"careerPageFirstSeen": "2024-04-21",
-	"careerPageDatePosted": "2024-04-21",
-	"boardFirstSeen": "2024-04-07",
-	"boardDatePosted": "2024-02-25",
-	"effectiveCareerDate": "2024-04-21",
-	"effectiveBoardDate": "2024-02-25",
-	"lagDays": -56,
-	"verdict": "board_first",
-	"location": "San Francisco, CA",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240603192531/https://boards.greenhouse.io/anthropic/jobs/4017312008",
-	"boardSnapshotUrl": "https://web.archive.org/web/20240407021748/https://www.glassdoor.com/Jobs/Anthropic-Jobs-E8109027.htm"
+	"company": "Deel",
+	"normalizedTitle": "product operations manager emea",
+	"careerTitle": "Staff Product Operations Manager - EMEA",
+	"careerPageFirstSeen": "2026-03-20",
+	"careerPageDatePosted": "2026-03-20",
+	"effectiveCareerDate": "2026-03-20",
+	"verdict": "career_only",
+	"location": "EMEA",
+	"department": "R&D",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

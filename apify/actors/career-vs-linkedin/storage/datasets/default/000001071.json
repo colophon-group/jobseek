@@ -1,12 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "engineering manager rl engineering",
-	"careerTitle": "Engineering Manager, RL Engineering",
-	"careerPageFirstSeen": "2024-11-28",
-	"careerPageDatePosted": "2024-11-28",
-	"effectiveCareerDate": "2024-11-28",
+	"company": "Deel",
+	"normalizedTitle": "solutions engineer local payroll",
+	"careerTitle": "Senior Solutions Engineer - Local Payroll",
+	"careerPageFirstSeen": "2026-03-30",
+	"careerPageDatePosted": "2026-03-30",
+	"effectiveCareerDate": "2026-03-30",
 	"verdict": "career_only",
-	"location": "San Francisco Bay Area, California, United States",
-	"careerSnapshotUrl": "https://web.archive.org/web/20241203152033/https://boards.greenhouse.io/anthropic/jobs/4419281008"
+	"location": "UK",
+	"department": "S&M",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

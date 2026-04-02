@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "product marketing manager",
-	"careerTitle": "Product Marketing Manager",
-	"careerPageFirstSeen": "2024-04-19",
-	"careerPageDatePosted": "2024-04-19",
-	"effectiveCareerDate": "2024-04-19",
+	"company": "Deel",
+	"normalizedTitle": "full stack engineer",
+	"careerTitle": "Senior Full Stack Engineer",
+	"careerPageFirstSeen": "2026-03-08",
+	"careerPageDatePosted": "2026-03-08",
+	"effectiveCareerDate": "2026-03-08",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240521171819/https://boards.greenhouse.io/anthropic/jobs/4018571008"
+	"location": "EMEA",
+	"department": "R&D",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

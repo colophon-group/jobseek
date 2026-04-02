@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "data infra enginer pretraining",
-	"careerTitle": "Data Infra Enginer, Pretraining",
-	"careerPageFirstSeen": "2024-11-06",
-	"careerPageDatePosted": "2024-11-06",
-	"effectiveCareerDate": "2024-11-06",
+	"company": "Deel",
+	"normalizedTitle": "regional field marketing manager latam",
+	"careerTitle": "Regional Field Marketing Manager | LATAM",
+	"careerPageFirstSeen": "2026-03-23",
+	"careerPageDatePosted": "2026-03-23",
+	"effectiveCareerDate": "2026-03-23",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20241108124432/https://boards.greenhouse.io/anthropic/jobs/4343592008"
+	"location": "Argentina",
+	"department": "S&M",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

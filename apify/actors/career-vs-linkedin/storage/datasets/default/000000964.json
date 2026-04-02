@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "software engineer interpretability",
-	"careerTitle": "Software Engineer, Interpretability",
-	"careerPageFirstSeen": "2024-05-30",
-	"careerPageDatePosted": "2024-05-30",
-	"effectiveCareerDate": "2024-05-30",
+	"company": "Deel",
+	"normalizedTitle": "product marketing manager deel it",
+	"careerTitle": "Senior Product Marketing Manager - Deel IT",
+	"careerPageFirstSeen": "2026-01-13",
+	"careerPageDatePosted": "2026-01-13",
+	"effectiveCareerDate": "2026-01-13",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240531123953/https://boards.greenhouse.io/anthropic/jobs/4044276008"
+	"location": "EMEA",
+	"department": "S&M",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

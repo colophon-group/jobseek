@@ -1,13 +1,19 @@
 {
 	"_type": "job-comparison",
 	"company": "Notion",
-	"normalizedTitle": "forward deployed engineer gtm",
-	"careerTitle": "Forward Deployed Engineer, GTM",
-	"careerPageFirstSeen": "2025-08-07",
-	"careerPageDatePosted": "2025-08-07",
-	"effectiveCareerDate": "2025-08-07",
-	"verdict": "career_only",
-	"location": "San Francisco, California",
+	"normalizedTitle": "solutions engineer tokyo",
+	"careerTitle": "Solutions Engineer, Tokyo",
+	"boardTitle": "Solutions Engineer",
+	"careerPageFirstSeen": "2025-07-25",
+	"careerPageDatePosted": "2025-07-25",
+	"boardFirstSeen": "2024-02-28",
+	"boardDatePosted": "2024-02-24",
+	"effectiveCareerDate": "2025-07-25",
+	"effectiveBoardDate": "2024-02-24",
+	"lagDays": -517,
+	"verdict": "board_first",
+	"location": "Tokyo, Japan ",
 	"department": "Sales",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260401223818/https://api.ashbyhq.com/posting-api/job-board/notion"
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401233651/https://api.ashbyhq.com/posting-api/job-board/notion",
+	"boardSnapshotUrl": "https://web.archive.org/web/20240228185346/https://www.linkedin.com/company/notionhq/jobs/"
 }

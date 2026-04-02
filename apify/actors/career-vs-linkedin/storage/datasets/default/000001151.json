@@ -1,12 +1,18 @@
 {
 	"_type": "job-comparison",
 	"company": "Anthropic",
-	"normalizedTitle": "finance strategy gtm",
-	"careerTitle": "Finance & Strategy, GTM",
-	"careerPageFirstSeen": "2025-01-22",
-	"careerPageDatePosted": "2025-01-22",
-	"effectiveCareerDate": "2025-01-22",
-	"verdict": "career_only",
-	"location": "San Francisco Bay Area, California, United States",
-	"careerSnapshotUrl": "https://web.archive.org/web/20250126223442/https://boards.greenhouse.io/anthropic/jobs/4503404008"
+	"normalizedTitle": "research engineer interpretability",
+	"careerTitle": "Research Engineer, Interpretability",
+	"boardTitle": "Research Engineer, Interpretability",
+	"careerPageFirstSeen": "2024-04-20",
+	"careerPageDatePosted": "2024-04-20",
+	"boardFirstSeen": "2024-04-07",
+	"boardDatePosted": "2024-02-25",
+	"effectiveCareerDate": "2024-04-20",
+	"effectiveBoardDate": "2024-02-25",
+	"lagDays": -55,
+	"verdict": "board_first",
+	"location": "San Francisco, CA",
+	"careerSnapshotUrl": "https://web.archive.org/web/20240520072333/https://boards.greenhouse.io/anthropic/jobs/4020305008",
+	"boardSnapshotUrl": "https://web.archive.org/web/20240407021748/https://www.glassdoor.com/Jobs/Anthropic-Jobs-E8109027.htm"
 }

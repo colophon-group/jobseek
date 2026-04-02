@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "software engineer anthropic labs",
-	"careerTitle": "Software Engineer, Anthropic Labs",
-	"careerPageFirstSeen": "2024-04-18",
-	"careerPageDatePosted": "2024-04-18",
-	"effectiveCareerDate": "2024-04-18",
+	"company": "Deel",
+	"normalizedTitle": "fulfilment centre it equipment amsterdam site",
+	"careerTitle": "Fulfilment Centre Associate, IT equipment | Amsterdam, On-site",
+	"careerPageFirstSeen": "2026-03-20",
+	"careerPageDatePosted": "2026-03-20",
+	"effectiveCareerDate": "2026-03-20",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240515021440/https://boards.greenhouse.io/anthropic/jobs/4020134008"
+	"location": "Amsterdam, Netherlands",
+	"department": "COGS",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

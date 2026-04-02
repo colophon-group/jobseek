@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "billing operations specialist",
-	"careerTitle": "Billing Operations Specialist",
-	"careerPageFirstSeen": "2024-06-27",
-	"careerPageDatePosted": "2024-06-27",
-	"effectiveCareerDate": "2024-06-27",
+	"company": "Deel",
+	"normalizedTitle": "account executive deel it smb emea",
+	"careerTitle": "Account Executive, Deel IT, SMB | EMEA",
+	"careerPageFirstSeen": "2026-02-06",
+	"careerPageDatePosted": "2026-02-06",
+	"effectiveCareerDate": "2026-02-06",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240630113041/https://boards.greenhouse.io/anthropic/jobs/4063357008"
+	"location": "UK",
+	"department": "S&M",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

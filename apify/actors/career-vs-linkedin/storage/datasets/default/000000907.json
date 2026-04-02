@@ -1,18 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "software engineer systems",
-	"careerTitle": "Software Engineer, Systems",
-	"boardTitle": "Software Engineer, Systems",
-	"careerPageFirstSeen": "2024-04-19",
-	"careerPageDatePosted": "2024-04-19",
-	"boardFirstSeen": "2024-04-07",
-	"boardDatePosted": "2024-04-03",
-	"effectiveCareerDate": "2024-04-19",
-	"effectiveBoardDate": "2024-04-03",
-	"lagDays": -16,
-	"verdict": "board_first",
-	"location": "Seattle, WA",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240619212322/https://boards.greenhouse.io/anthropic/jobs/4020358008",
-	"boardSnapshotUrl": "https://web.archive.org/web/20240407021748/https://www.glassdoor.com/Jobs/Anthropic-Jobs-E8109027.htm"
+	"company": "Deel",
+	"normalizedTitle": "sales development representative japan",
+	"careerTitle": "Sales Development Representative | Japan",
+	"careerPageFirstSeen": "2025-10-22",
+	"careerPageDatePosted": "2025-10-22",
+	"effectiveCareerDate": "2025-10-22",
+	"verdict": "career_only",
+	"location": "Japan",
+	"department": "S&M",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

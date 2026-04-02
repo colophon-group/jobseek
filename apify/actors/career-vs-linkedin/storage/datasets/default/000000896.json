@@ -1,18 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "research engineer london",
-	"careerTitle": "Research Engineer, London",
-	"boardTitle": "Research Engineer",
-	"careerPageFirstSeen": "2024-04-18",
-	"careerPageDatePosted": "2024-04-18",
-	"boardFirstSeen": "2024-04-07",
-	"boardDatePosted": "2023-12-22",
-	"effectiveCareerDate": "2024-04-18",
-	"effectiveBoardDate": "2023-12-22",
-	"lagDays": -118,
-	"verdict": "board_first",
-	"location": "Friendly, MD",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240611061413/https://boards.greenhouse.io/anthropic/jobs/4020286008",
-	"boardSnapshotUrl": "https://web.archive.org/web/20240407021748/https://www.glassdoor.com/Jobs/Anthropic-Jobs-E8109027.htm"
+	"company": "Deel",
+	"normalizedTitle": "backend engineer node js aws",
+	"careerTitle": "Senior Backend Engineer, Node.js + AWS",
+	"careerPageFirstSeen": "2026-02-24",
+	"careerPageDatePosted": "2026-02-24",
+	"effectiveCareerDate": "2026-02-24",
+	"verdict": "career_only",
+	"location": "Spain",
+	"department": "R&D",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

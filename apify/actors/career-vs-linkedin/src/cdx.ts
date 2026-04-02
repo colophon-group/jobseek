@@ -127,11 +127,13 @@ async function queryCdx(
   const apiUrl = `http://web.archive.org/cdx/search/cdx?${params}`;
   log.info('Querying Wayback CDX', { url, maxSnapshots: opts.maxSnapshots });
 
-  for (let attempt = 0; attempt < 2; attempt++) {
+  // Prefix searches can be slow when the index is large; use a longer timeout
+  const timeoutMs = opts.prefix ? 45_000 : 20_000;
+  for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      const res = await fetch(apiUrl, { signal: AbortSignal.timeout(12_000), headers: { Accept: 'application/json' } });
-      if (res.status === 429) { log.warning('CDX rate limited, waiting 15s'); await sleep(15_000); continue; }
-      if (!res.ok) { await sleep(3_000 * (attempt + 1)); continue; }
+      const res = await fetch(apiUrl, { signal: AbortSignal.timeout(timeoutMs), headers: { Accept: 'application/json' } });
+      if (res.status === 429) { log.warning('CDX rate limited, waiting 20s'); await sleep(20_000); continue; }
+      if (!res.ok) { await sleep(4_000 * (attempt + 1)); continue; }
       const rows: string[][] = await res.json();
       if (!Array.isArray(rows) || rows.length < 2) return [];
       const snapshots: CdxSnapshot[] = rows.slice(1).map(([timestamp, original]) => ({ timestamp, original }));
@@ -139,7 +141,7 @@ async function queryCdx(
       return snapshots;
     } catch (err) {
       log.warning(`CDX query error (attempt ${attempt + 1}): ${err}`);
-      await sleep(3_000 * (attempt + 1));
+      await sleep(5_000 * (attempt + 1));
     }
   }
   return [];

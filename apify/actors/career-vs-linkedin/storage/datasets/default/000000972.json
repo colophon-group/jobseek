@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "hr business partner london",
-	"careerTitle": "HR Business Partner (London)",
-	"careerPageFirstSeen": "2024-06-06",
-	"careerPageDatePosted": "2024-06-06",
-	"effectiveCareerDate": "2024-06-06",
+	"company": "Deel",
+	"normalizedTitle": "account executive smb",
+	"careerTitle": "Account Executive, SMB",
+	"careerPageFirstSeen": "2026-03-02",
+	"careerPageDatePosted": "2026-03-02",
+	"effectiveCareerDate": "2026-03-02",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240609083145/https://boards.greenhouse.io/anthropic/jobs/4048088008"
+	"location": "Colombia",
+	"department": "S&M",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "software engineer product",
-	"careerTitle": "Software Engineer, Product",
-	"careerPageFirstSeen": "2024-04-20",
-	"careerPageDatePosted": "2024-04-20",
-	"effectiveCareerDate": "2024-04-20",
+	"company": "Deel",
+	"normalizedTitle": "sales development representative smb latam",
+	"careerTitle": "Sales Development Representative | SMB LATAM",
+	"careerPageFirstSeen": "2025-09-04",
+	"careerPageDatePosted": "2025-09-04",
+	"effectiveCareerDate": "2025-09-04",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240506221903/https://boards.greenhouse.io/anthropic/jobs/4018206008"
+	"location": "Brazil",
+	"department": "S&M",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "strategic finance product compute",
-	"careerTitle": "Strategic Finance, Product & Compute",
-	"careerPageFirstSeen": "2024-06-21",
-	"careerPageDatePosted": "2024-06-21",
-	"effectiveCareerDate": "2024-06-21",
+	"company": "Deel",
+	"normalizedTitle": "business continuity manager latam",
+	"careerTitle": "Business Continuity Manager | LATAM",
+	"careerPageFirstSeen": "2026-03-20",
+	"careerPageDatePosted": "2026-03-20",
+	"effectiveCareerDate": "2026-03-20",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240714012402/https://boards.greenhouse.io/anthropic/jobs/4058123008"
+	"location": "LATAM",
+	"department": "COGS",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

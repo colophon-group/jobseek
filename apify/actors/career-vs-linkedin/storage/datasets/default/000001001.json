@@ -1,12 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "engineering manager model serving",
-	"careerTitle": "Engineering Manager, Model Serving",
-	"careerPageFirstSeen": "2024-08-02",
-	"careerPageDatePosted": "2024-08-02",
-	"effectiveCareerDate": "2024-08-02",
+	"company": "Deel",
+	"normalizedTitle": "enablement manager revenue",
+	"careerTitle": "Enablement Manager, Revenue",
+	"careerPageFirstSeen": "2026-03-30",
+	"careerPageDatePosted": "2026-03-30",
+	"effectiveCareerDate": "2026-03-30",
 	"verdict": "career_only",
-	"location": "San Francisco Bay Area, California, United States",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240815155502/https://boards.greenhouse.io/anthropic/jobs/4095107008"
+	"location": "Spain",
+	"department": "COGS",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

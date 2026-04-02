@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "enterprise account executive uk",
-	"careerTitle": "Enterprise Account Executive (UK)",
-	"careerPageFirstSeen": "2024-09-18",
-	"careerPageDatePosted": "2024-09-18",
-	"effectiveCareerDate": "2024-09-18",
+	"company": "Deel",
+	"normalizedTitle": "data engineer",
+	"careerTitle": "Data Engineer ",
+	"careerPageFirstSeen": "2026-03-06",
+	"careerPageDatePosted": "2026-03-06",
+	"effectiveCareerDate": "2026-03-06",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240920124003/https://boards.greenhouse.io/anthropic/jobs/4133047008"
+	"location": "Spain",
+	"department": "R&D",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

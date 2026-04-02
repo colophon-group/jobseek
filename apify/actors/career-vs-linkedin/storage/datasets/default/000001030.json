@@ -1,11 +1,19 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "head government relations",
-	"careerTitle": "Head of Government Relations",
-	"careerPageFirstSeen": "2024-09-24",
-	"careerPageDatePosted": "2024-09-24",
-	"effectiveCareerDate": "2024-09-24",
-	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20250213054121/https://boards.greenhouse.io/anthropic/jobs/4136347008"
+	"company": "Deel",
+	"normalizedTitle": "payroll implementation manager poland",
+	"careerTitle": "Payroll Implementation Manager | Poland",
+	"boardTitle": "Payroll Implementation Manager | France",
+	"careerPageFirstSeen": "2026-03-24",
+	"careerPageDatePosted": "2026-03-24",
+	"boardFirstSeen": "2025-07-20",
+	"boardDatePosted": "2025-07-19",
+	"effectiveCareerDate": "2026-03-24",
+	"effectiveBoardDate": "2025-07-19",
+	"lagDays": -248,
+	"verdict": "board_first",
+	"location": "Poland",
+	"department": "COGS",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel",
+	"boardSnapshotUrl": "https://web.archive.org/web/20250720232337/https://www.linkedin.com/company/deel/jobs"
 }

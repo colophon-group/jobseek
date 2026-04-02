@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "corporate counsel",
-	"careerTitle": "Corporate Counsel",
-	"careerPageFirstSeen": "2024-05-29",
-	"careerPageDatePosted": "2024-05-29",
-	"effectiveCareerDate": "2024-05-29",
+	"company": "Deel",
+	"normalizedTitle": "payroll spain",
+	"careerTitle": "Senior Payroll Associate | Spain",
+	"careerPageFirstSeen": "2026-03-10",
+	"careerPageDatePosted": "2026-03-10",
+	"effectiveCareerDate": "2026-03-10",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240605225258/https://boards.greenhouse.io/anthropic/jobs/4042651008"
+	"location": "Spain",
+	"department": "COGS",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "engineering manager data platform",
-	"careerTitle": "Engineering Manager, Data Platform",
-	"careerPageFirstSeen": "2024-04-18",
-	"careerPageDatePosted": "2024-04-18",
-	"effectiveCareerDate": "2024-04-18",
+	"company": "Deel",
+	"normalizedTitle": "payroll uk based india",
+	"careerTitle": "Payroll Associate |  UK (Based in India)",
+	"careerPageFirstSeen": "2026-02-25",
+	"careerPageDatePosted": "2026-02-25",
+	"effectiveCareerDate": "2026-02-25",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240611060512/https://boards.greenhouse.io/anthropic/jobs/4020189008"
+	"location": "India",
+	"department": "COGS",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

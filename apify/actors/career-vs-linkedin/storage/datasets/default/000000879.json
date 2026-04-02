@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "technical program manager trust safety",
-	"careerTitle": "Technical Program Manager, Trust & Safety",
-	"careerPageFirstSeen": "2024-04-17",
-	"careerPageDatePosted": "2024-04-17",
-	"effectiveCareerDate": "2024-04-17",
+	"company": "Deel",
+	"normalizedTitle": "account executive mid market dach",
+	"careerTitle": "Account Executive, Mid-Market | DACH",
+	"careerPageFirstSeen": "2026-03-25",
+	"careerPageDatePosted": "2026-03-25",
+	"effectiveCareerDate": "2026-03-25",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240605232420/https://boards.greenhouse.io/anthropic/jobs/4020044008"
+	"location": "Germany",
+	"department": "S&M",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

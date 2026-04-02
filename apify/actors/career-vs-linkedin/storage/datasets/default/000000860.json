@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "machine learning engineer trust safety",
-	"careerTitle": "Machine Learning Engineer, Trust & Safety",
-	"careerPageFirstSeen": "2024-04-25",
-	"careerPageDatePosted": "2024-04-25",
-	"effectiveCareerDate": "2024-04-25",
+	"company": "Deel",
+	"normalizedTitle": "account executive enterprise anz",
+	"careerTitle": "Account Executive, Enterprise ANZ",
+	"careerPageFirstSeen": "2026-03-12",
+	"careerPageDatePosted": "2026-03-12",
+	"effectiveCareerDate": "2026-03-12",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240619072027/https://boards.greenhouse.io/anthropic/jobs/4017355008"
+	"location": "Australia",
+	"department": "S&M",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

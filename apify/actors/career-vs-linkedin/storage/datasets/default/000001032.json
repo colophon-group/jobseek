@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "research scientist engineer rsp evaluations cbrn biosecurity",
-	"careerTitle": "Research Scientist / Engineer, RSP Evaluations (CBRN, Biosecurity)",
-	"careerPageFirstSeen": "2024-09-24",
-	"careerPageDatePosted": "2024-09-24",
-	"effectiveCareerDate": "2024-09-24",
+	"company": "Deel",
+	"normalizedTitle": "product partnerships manager",
+	"careerTitle": "Product Partnerships Manager",
+	"careerPageFirstSeen": "2026-03-10",
+	"careerPageDatePosted": "2026-03-10",
+	"effectiveCareerDate": "2026-03-10",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20241102012852/https://boards.greenhouse.io/anthropic/jobs/4136414008"
+	"location": "USA",
+	"department": "S&M",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "software engineer corporate engineering",
-	"careerTitle": "Senior Software Engineer, Corporate Engineering",
-	"careerPageFirstSeen": "2024-10-09",
-	"careerPageDatePosted": "2024-10-09",
-	"effectiveCareerDate": "2024-10-09",
+	"company": "Deel",
+	"normalizedTitle": "payroll portugal",
+	"careerTitle": "Payroll Associate |  Portugal",
+	"careerPageFirstSeen": "2026-03-20",
+	"careerPageDatePosted": "2026-03-20",
+	"effectiveCareerDate": "2026-03-20",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20241114112649/https://boards.greenhouse.io/anthropic/jobs/4173402008"
+	"location": "Portugal",
+	"department": "COGS",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

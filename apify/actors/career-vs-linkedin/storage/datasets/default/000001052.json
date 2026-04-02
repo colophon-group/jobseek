@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "ap specialist contract",
-	"careerTitle": "AP Specialist (Contract)",
-	"careerPageFirstSeen": "2024-10-18",
-	"careerPageDatePosted": "2024-10-18",
-	"effectiveCareerDate": "2024-10-18",
+	"company": "Deel",
+	"normalizedTitle": "product operations manager payroll",
+	"careerTitle": "Product Operations Manager, Payroll",
+	"careerPageFirstSeen": "2026-03-18",
+	"careerPageDatePosted": "2026-03-18",
+	"effectiveCareerDate": "2026-03-18",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20241127231303/https://boards.greenhouse.io/anthropic/jobs/4182088008"
+	"location": "EMEA",
+	"department": "R&D",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

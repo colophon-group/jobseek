@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "technical program manager security",
-	"careerTitle": "Technical Program Manager, Security",
-	"careerPageFirstSeen": "2024-06-04",
-	"careerPageDatePosted": "2024-06-04",
-	"effectiveCareerDate": "2024-06-04",
+	"company": "Deel",
+	"normalizedTitle": "sales development representative ent anz",
+	"careerTitle": "Sales Development Representative, ENT | ANZ",
+	"careerPageFirstSeen": "2026-02-12",
+	"careerPageDatePosted": "2026-02-12",
+	"effectiveCareerDate": "2026-02-12",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240608205320/https://boards.greenhouse.io/anthropic/jobs/4046421008"
+	"location": "Australia",
+	"department": "S&M",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

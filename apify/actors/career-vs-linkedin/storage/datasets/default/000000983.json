@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "technical program manager model development",
-	"careerTitle": "Technical Program Manager, Model Development",
-	"careerPageFirstSeen": "2024-06-18",
-	"careerPageDatePosted": "2024-06-18",
-	"effectiveCareerDate": "2024-06-18",
+	"company": "Deel",
+	"normalizedTitle": "strategic corporate development director",
+	"careerTitle": "Associate Strategic Corporate Development Director",
+	"careerPageFirstSeen": "2026-02-03",
+	"careerPageDatePosted": "2026-02-03",
+	"effectiveCareerDate": "2026-02-03",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240619130007/https://boards.greenhouse.io/anthropic/jobs/4056094008"
+	"location": "North America",
+	"department": "G&A",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

@@ -1,13 +1,13 @@
 {
 	"_type": "job-comparison",
 	"company": "Notion",
-	"normalizedTitle": "sales manager asia",
-	"careerTitle": "Sales Manager, Asia",
-	"careerPageFirstSeen": "2026-01-11",
-	"careerPageDatePosted": "2026-01-11",
-	"effectiveCareerDate": "2026-01-11",
+	"normalizedTitle": "software engineer datastore",
+	"careerTitle": "Software Engineer, Datastore",
+	"careerPageFirstSeen": "2025-07-25",
+	"careerPageDatePosted": "2025-07-25",
+	"effectiveCareerDate": "2025-07-25",
 	"verdict": "career_only",
-	"location": "Singapore",
-	"department": "Sales",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260401223818/https://api.ashbyhq.com/posting-api/job-board/notion"
+	"location": "San Francisco, California",
+	"department": "Engineering",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401233651/https://api.ashbyhq.com/posting-api/job-board/notion"
 }

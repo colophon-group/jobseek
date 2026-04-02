@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "product manager apps claude ai",
-	"careerTitle": "Product Manager, Apps - Claude.ai",
-	"careerPageFirstSeen": "2024-10-30",
-	"careerPageDatePosted": "2024-10-30",
-	"effectiveCareerDate": "2024-10-30",
+	"company": "Deel",
+	"normalizedTitle": "payroll malta",
+	"careerTitle": "Senior Payroll Associate | Malta",
+	"careerPageFirstSeen": "2026-03-19",
+	"careerPageDatePosted": "2026-03-19",
+	"effectiveCareerDate": "2026-03-19",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20241102133554/https://boards.greenhouse.io/anthropic/jobs/4254682008"
+	"location": "Malta",
+	"department": "COGS",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

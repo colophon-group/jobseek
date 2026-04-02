@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "applied ai product engineer",
-	"careerTitle": "Applied AI Product Engineer",
-	"careerPageFirstSeen": "2024-09-17",
-	"careerPageDatePosted": "2024-09-17",
-	"effectiveCareerDate": "2024-09-17",
+	"company": "Deel",
+	"normalizedTitle": "benefits manager",
+	"careerTitle": "Benefits Manager ",
+	"careerPageFirstSeen": "2026-04-01",
+	"careerPageDatePosted": "2026-04-01",
+	"effectiveCareerDate": "2026-04-01",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240918142605/https://boards.greenhouse.io/anthropic/jobs/4131823008"
+	"location": "EMEA",
+	"department": "COGS",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

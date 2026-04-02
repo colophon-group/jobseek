@@ -1,11 +1,13 @@
 {
 	"_type": "job-comparison",
-	"company": "Anthropic",
-	"normalizedTitle": "technical documentation content developer",
-	"careerTitle": "Technical Documentation and Content Developer",
-	"careerPageFirstSeen": "2024-06-06",
-	"careerPageDatePosted": "2024-06-06",
-	"effectiveCareerDate": "2024-06-06",
+	"company": "Deel",
+	"normalizedTitle": "payroll sweden",
+	"careerTitle": "Payroll Associate | Sweden",
+	"careerPageFirstSeen": "2026-01-28",
+	"careerPageDatePosted": "2026-01-28",
+	"effectiveCareerDate": "2026-01-28",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240615072453/https://boards.greenhouse.io/anthropic/jobs/4048474008"
+	"location": "Sweden",
+	"department": "COGS",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260401234008/https://api.ashbyhq.com/posting-api/job-board/deel"
 }
