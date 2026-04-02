@@ -4,8 +4,8 @@ Run: python3 charts.py
 Outputs: charts/ directory with PNG files.
 
 Key findings:
-  1. ~84% of jobs on company career pages never appear on Glassdoor/LinkedIn at all.
-     7 companies: OpenAI, Notion, Deel, Anthropic, Figma, Zapier, Intercom. 1920 career jobs tracked.
+  1. ~83% of jobs on company career pages never appear on Glassdoor/LinkedIn at all.
+     8 companies: OpenAI, Notion, Deel, Anthropic, Figma, Zapier, Intercom, Airtable. 1995 career jobs tracked.
   2. Timing: 43 verified leads (1-90 days) where career page was ahead of aggregator.
      4 companies contribute timing evidence: OpenAI (15), Notion (7), Zapier (14), Intercom (7).
      Sources: Glassdoor ageInDays (exact date), Ashby API publishedAt, LinkedIn <time datetime>.

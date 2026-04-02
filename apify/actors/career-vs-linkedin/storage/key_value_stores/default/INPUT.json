@@ -41,6 +41,11 @@
       "name": "Intercom",
       "careerPageUrl": "https://boards.greenhouse.io/intercom",
       "linkedinSlug": "intercom"
+    },
+    {
+      "name": "Airtable",
+      "careerPageUrl": "https://boards.greenhouse.io/airtable",
+      "linkedinSlug": "airtable"
     }
   ]
 }
