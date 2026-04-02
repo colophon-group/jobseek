@@ -34,7 +34,7 @@ export function ScrollFade({ className = "", wrapperClassName = "", children, fa
   }, [...deps, update]);
 
   return (
-    <div className={`relative flex flex-col overflow-hidden rounded-[inherit] ${wrapperClassName}`}>
+    <div className={`relative flex flex-col overflow-clip rounded-[inherit] ${wrapperClassName}`}>
       {canScrollUp && (
         <div className={`pointer-events-none absolute inset-x-0 top-0 z-10 ${fadeHeight} bg-gradient-to-b from-surface via-surface/40 to-transparent`} />
       )}
