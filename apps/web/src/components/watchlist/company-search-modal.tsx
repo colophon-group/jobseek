@@ -66,6 +66,7 @@ export function CompanySearchModal({
   const [industryQuery, setIndustryQuery] = useState("");
   const [industryOpen, setIndustryOpen] = useState(false);
   const industryRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const selectedIds = useMemo(() => new Set(selected.map((c) => c.id)), [selected]);
 
@@ -163,7 +164,13 @@ export function CompanySearchModal({
     if (more.length < BATCH) setExhausted(true);
   }
 
-  const { sentinelRef, isLoading: isLoadingMore } = useInfiniteScroll({ hasMore: !exhausted, load: handleLoadMore });
+  const { sentinelRef, isLoading: isLoadingMore } = useInfiniteScroll({ hasMore: !exhausted, load: handleLoadMore, root: scrollRef });
+
+  // Hide companies with zero matches for the current filters
+  const visibleCompanies = useMemo(
+    () => companies.filter((c) => c.activeMatches > 0 || c.yearMatches > 0),
+    [companies],
+  );
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -283,18 +290,18 @@ export function CompanySearchModal({
           </div>
 
           {/* Company list */}
-          <ScrollFade wrapperClassName="flex-1 min-h-0" className="">
+          <ScrollFade wrapperClassName="flex-1 min-h-0" scrollRef={scrollRef}>
             {loading && companies.length === 0 ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 size={20} className="animate-spin text-muted" />
               </div>
-            ) : companies.length === 0 && !loading ? (
+            ) : visibleCompanies.length === 0 && !loading ? (
               <div className="px-5">
                 <RequestCompanyPrompt />
               </div>
             ) : (
               <div className="divide-y divide-divider">
-                {companies.map((c) => {
+                {visibleCompanies.map((c) => {
                   const isSelected = selectedIds.has(c.id);
                   return (
                     <button
@@ -345,7 +352,7 @@ export function CompanySearchModal({
                 {!exhausted && <InfiniteScrollSentinel sentinelRef={sentinelRef} isLoading={isLoadingMore} />}
 
                 {/* End of list prompt */}
-                {exhausted && companies.length > 0 && (
+                {exhausted && visibleCompanies.length > 0 && (
                   <div className="px-5">
                     <RequestCompanyPrompt />
                   </div>
