@@ -189,7 +189,7 @@ function mapWatchlistHit(hit: TypesenseHit): PublicWatchlist {
 
 Unlike job postings and taxonomies (which are crawler-sourced), watchlists are created by users in the web app. Indexing happens in the web app layer.
 
-**Write hooks** — add Typesense upsert/delete calls alongside existing Supabase writes:
+**Write hooks** — add Typesense upsert/delete calls alongside existing Supabase writes. **All Typesense writes are fire-and-forget** — catch and log errors, never block the user mutation. If Typesense is down, the Supabase write succeeds and the periodic reconciliation job syncs watchlists later.
 
 | Event | Action |
 |-------|--------|
@@ -242,6 +242,8 @@ const filterStr = buildFilterString(filters);
 ```
 
 **Result mapping**: Each hit includes `source_url` (now in the schema) for display in the watchlist view. Company info (`company_name`, `company_slug`, `company_icon`) is denormalized on each posting — no extra lookup.
+
+**Location/occupation expansion**: The current `getWatchlistPostings()` calls `expandLocationIds()` and `expandOccupationIds()` internally (it's NOT called via the SearchProvider, so `parseSearchFilters()` doesn't run first). The Typesense version must continue calling these expansion functions before building the filter string. Without expansion, selecting "Germany" in a watchlist would only match postings tagged with the country, not its cities.
 
 **"Any company" mode**: When the watchlist has no company filter, omit the `company_id` filter — searches all postings.
 

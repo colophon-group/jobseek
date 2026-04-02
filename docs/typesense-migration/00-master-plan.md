@@ -190,7 +190,7 @@ One document per location. All locale names stored as separate fields with per-f
 {
   "name": "location",
   "fields": [
-    { "name": "id",          "type": "int32" },
+    { "name": "location_id",  "type": "int32" },
     { "name": "slug",        "type": "string",  "index": false },
     { "name": "name_en",     "type": "string",  "locale": "en" },
     { "name": "name_de",     "type": "string",  "locale": "de", "optional": true },
@@ -267,7 +267,7 @@ No locale dimension — tech names are universal ("Python", "React", "C++"). One
 {
   "name": "technology",
   "fields": [
-    { "name": "id",       "type": "int32" },
+    { "name": "technology_id", "type": "int32" },
     { "name": "slug",     "type": "string" },
     { "name": "name",     "type": "string" },
     { "name": "category", "type": "string",  "facet": true, "optional": true },
@@ -280,7 +280,9 @@ No locale dimension — tech names are universal ("Python", "React", "C++"). One
 }
 ```
 
-**Note:** `token_separators` and `symbols_to_index` ensure "C++", "C#", ".NET", "F#" are indexed as single tokens.
+**Notes:**
+- `token_separators` and `symbols_to_index` ensure "C++", "C#", ".NET", "F#" are indexed as single tokens. These are collection-level settings (Typesense 27.x) so they also affect the `slug` and `category` fields — acceptable since those don't contain these characters.
+- **Typesense `id` convention**: All collections use Typesense's built-in string `id` field as the document primary key. Numeric IDs are stored in separate fields (`location_id`, `technology_id`, `occupation_id`, `seniority_id`) to avoid conflicting with Typesense's reserved `id` field. The document `id` is set during import (e.g., `str(location_id)` for locations, `f"{occupation_id}-{locale}"` for per-locale docs).
 
 ### `company` (typeahead + watchlist search collection)
 
@@ -292,7 +294,7 @@ No locale dimension — tech names are universal ("Python", "React", "C++"). One
     { "name": "name",            "type": "string" },
     { "name": "slug",            "type": "string",  "index": false },
     { "name": "icon",            "type": "string",  "index": false, "optional": true },
-    { "name": "description",     "type": "string",  "optional": true },
+    { "name": "description",     "type": "string",  "index": false, "optional": true },
     { "name": "industry_id",     "type": "int32",   "facet": true, "optional": true },
     { "name": "industry_name",   "type": "string",  "facet": true, "optional": true },
     { "name": "active_posting_count", "type": "int32" },
@@ -351,7 +353,13 @@ exporter tick:
 
 **Denormalization strategy**: The exporter already connects to local Postgres which has all taxonomy tables. Load taxonomy name maps into memory at startup (they're small — hundreds of rows each). Refresh on a timer or when sync.py runs.
 
-**Taxonomy rename handling**: If a taxonomy name changes in a CSV (rare), sync.py detects the diff (compare name maps before/after sync) and touches affected job_posting rows in local Postgres (`SET updated_at = now() WHERE occupation_id = $1`). The normal CDC cursor picks them up and re-indexes with fresh denormalized names. No manual backfill needed.
+**Taxonomy rename handling**: If a taxonomy name changes in a CSV (rare), sync.py detects the diff (compare name maps before/after sync) and:
+1. Signals the exporter to refresh its in-memory taxonomy maps (via a Redis key `typesense:refresh_maps` or SIGHUP) — **must happen first**
+2. Waits for acknowledgment (or a brief delay) to ensure the exporter has loaded fresh names
+3. Then touches affected job_posting rows in local Postgres (`SET updated_at = now() WHERE occupation_id = $1`)
+4. The normal CDC cursor picks them up and re-indexes with fresh denormalized names
+
+**Ordering is critical**: If sync.py touches rows before the exporter refreshes its maps, the exporter will re-index with stale names, and those stale names persist until the next reconciliation.
 
 **Deletion handling**: When `is_active` flips to false, the document stays in Typesense with `is_active: false`. All search queries filter on `is_active:true`. Periodically purge documents where `last_seen_at < now - 1 year` via a cleanup job.
 
@@ -460,6 +468,17 @@ client = typesense.Client({
     "connection_timeout_seconds": 5,
 })
 ```
+
+**Async note**: The `typesense` Python client is **synchronous**. The exporter uses `asyncio`. To avoid blocking the event loop during `asyncio.gather`, wrap Typesense calls in `loop.run_in_executor()`:
+
+```python
+await loop.run_in_executor(
+    None,  # default thread pool
+    lambda: client.collections["job_posting"].documents.import_(docs, {"action": "upsert"})
+)
+```
+
+Alternatively, use raw `httpx` async POST to `/collections/job_posting/documents/import` with JSONL body.
 
 ### Graceful degradation
 

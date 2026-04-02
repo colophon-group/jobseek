@@ -275,6 +275,10 @@ Orchestrator
 
 **Dependency**: Impl-3A, 3B, 3C are independent and run in parallel. Impl-3D runs after all three complete.
 
+**Shared file note**: Impl-3B and Impl-3C both modify `actions/company.ts` (suggestCompanies vs searchCompaniesForWatchlist). Impl-3B also modifies `actions/taxonomy.ts` for both suggest and browse-all functions. These are different functions in the same file — merge conflicts are possible but straightforward to resolve. The orchestrator should merge after both complete.
+
+**Type change**: Add `degraded?: boolean` to the `SearchResponse` interface in `types.ts` (Impl-3A's responsibility).
+
 ### Impl-3A: TypesenseSearchProvider
 
 **Scope**: Implement the core search provider that replaces `PostgresSearchProvider`.
@@ -879,7 +883,7 @@ Orchestrator
 
 **Gate**: `curl -s https://<typesense-host>/health` returns `{"ok": true}`
 
-### Impl-5B: Deploy crawler
+### Impl-5B: Deploy crawler + backfill
 
 **Depends on**: Impl-5A complete.
 
@@ -888,11 +892,12 @@ Orchestrator
 2. Deploy crawler with production Typesense env vars
 3. Run sync to populate taxonomy + company collections
 4. Run backfill to populate job_posting collection
-5. Verify exporter logs show Typesense upserts succeeding
+5. **Gate: wait for backfill to complete** — verify `num_documents` matches Postgres count within 1%
+6. Verify exporter logs show Typesense upserts succeeding
 
 ### Impl-5C: Deploy web app
 
-**Depends on**: Impl-5B complete (index must be populated).
+**Depends on**: Impl-5B complete AND backfill verified (index must be fully populated before the web app queries it — otherwise users see biased partial results during the 8-minute backfill window).
 
 **Steps:**
 1. Merge web app changes to main

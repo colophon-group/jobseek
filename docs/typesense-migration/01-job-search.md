@@ -66,12 +66,14 @@ User types keywords + selects filters
 
 ```typescript
 // Typesense multi_search request
+const filterStr = buildFilterString(filters);
+
 {
   searches: [{
     collection: "job_posting",
     q: keywords.join(" "),           // free-text query
     query_by: "title",               // search in title field only
-    filter_by: `is_active:true && ${buildFilterString(filters)}`,
+    filter_by: `is_active:true${filterStr ? " && " + filterStr : ""}`,
     sort_by: "_text_match:desc,first_seen_at:desc",
     group_by: "company_id",          // group results by company
     group_limit: 10,                 // max 10 postings per company group
@@ -109,12 +111,13 @@ function buildFilterString(filters: SearchFilters): string {
     parts.push(`salary_eur:[${min}..${max}]`);
   }
 
-  // experience_min uses sentinel -1 for "not specified". Include sentinels
-  // so jobs without stated experience aren't excluded by range filters.
+  // experience_min uses sentinel -1 for "not specified". Parentheses are
+  // CRITICAL — without them, OR has lower precedence than && and the
+  // sentinel clause would match ALL -1 docs regardless of other filters.
   if (filters.experienceMin != null)
     parts.push(`experience_min:>=${filters.experienceMin}`);
   if (filters.experienceMax != null)
-    parts.push(`experience_min:<=${filters.experienceMax} || experience_min:=-1`);
+    parts.push(`(experience_min:<=${filters.experienceMax} || experience_min:=-1)`);
 
   // locales uses sentinel "any" for jobs with no detected language.
   // Include it so those jobs match any language filter.
@@ -271,21 +274,25 @@ Typesense supports facet ranges for numeric fields:
 
 This returns bucket counts matching the current 30-bucket / 10K EUR layout. Transform the facet response into `SalaryBucket[]`.
 
-**Note:** Typesense facet ranges use the syntax `field(val1, val2, ...)` where each value is a boundary. Verify the exact range syntax against the Typesense version deployed.
+**Facet range syntax note:** The syntax varies by Typesense version. In 27.x, labeled ranges use `field(Label:[start, end], ...)`. In some versions, flat boundary lists `field([0, 10000, 20000, ...])` are used. **Verify the exact syntax against the deployed Typesense 27.1 instance** during implementation. The E2E tests will catch syntax errors.
 
 ### Query mapping: `getExperienceHistogram()`
 
 ```typescript
+const filterStr = buildFilterString(filters);
+
 {
   collection: "job_posting",
   q: keywords?.length ? keywords.join(" ") : "*",
   query_by: "title",
-  filter_by: `is_active:true && ${buildFilterString(filters)}`,
+  filter_by: `is_active:true && experience_min:>=0${filterStr ? " && " + filterStr : ""}`,
   facet_by: "experience_min",
   max_facet_values: 30,  // cover 0-30 years
   per_page: 0,
 }
 ```
+
+**Note**: `experience_min:>=0` excludes the sentinel value `-1` (jobs with no stated experience requirement). Without this filter, the histogram would show a `-1 years` bucket — likely the largest bar.
 
 Typesense returns `{ value: "3", count: 1234 }` facet entries. Transform to `ExperienceBucket[]`.
 
@@ -342,6 +349,22 @@ function mapGroupedHits(
 For `search()` and `listTopCompanies()` with filters, `yearMatches` requires one extra facet query batched in the same `multi_search` call. For the unfiltered `listTopCompanies()`, counts come from the pre-computed `company` collection.
 
 **`company_icon`**: Denormalized on each `job_posting` document (see schema in `00-master-plan.md`). No extra lookup needed.
+
+**`buildLocations` helper** — reconstructs `PostingLocation[]` from parallel arrays on the Typesense document. Arrays are positionally aligned: `location_names[i]`, `location_types[i]`, and `location_geo_types[i]` all refer to the same location.
+
+```typescript
+function buildLocations(doc: TypesenseDocument): PostingLocation[] {
+  return (doc.location_names ?? []).map((name: string, i: number) => ({
+    name,
+    type: doc.location_types?.[i] ?? "onsite",
+    geoType: doc.location_geo_types?.[i],
+  }));
+}
+```
+
+**Note on `group.found`**: In Typesense 26.0+, each element in `grouped_hits` includes a `found` field (plain integer) giving the total matching document count for that group. This is confirmed available in 27.1. Verify the response shape with a test query during implementation.
+
+**NULL title handling**: `title` is a required (non-optional) field in the schema. During indexing, postings with NULL or empty titles in Postgres should be indexed with `title: ""` (empty string). They won't match keyword searches but will appear in browse/filter results. If the exporter encounters a NULL title, it must not pass `null` to Typesense (would reject the document).
 
 ## Code changes
 
