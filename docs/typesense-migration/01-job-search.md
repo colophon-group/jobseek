@@ -143,6 +143,8 @@ function buildFilterString(filters: SearchFilters): string {
 }
 ```
 
+**Input validation**: `employmentTypes` and `languages` are `string[]` interpolated directly into `filter_by`. Validate against known allowlists before calling `buildFilterString()` to prevent filter syntax errors from crafted input (e.g., a value containing `&&` or `]`). Numeric arrays (`locationIds`, `technologyIds`, etc.) are safe (TypeScript enforces `number[]`).
+
 **`buildFilterString` does NOT inject `is_active:true`** — callers prepend it explicitly. This keeps the function as a pure mechanical helper for user-specified filter dimensions. Query-level concerns (`is_active`, `first_seen_at` ranges) are the caller's responsibility:
 
 ```typescript

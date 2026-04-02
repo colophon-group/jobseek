@@ -98,9 +98,28 @@ const response = await typesense.multiSearch.perform({
 });
 ```
 
-**Zero-match filtering**: After step 2 returns match counts, filter out companies where both `activeMatches === 0` and `yearMatches === 0`. The current Postgres implementation does this in SQL (`WHERE active_matches > 0 OR year_matches > 0`). Without this, the modal shows companies with no jobs matching the user's watchlist filters. Adjust `total` count accordingly. Since filtering may produce underfilled pages, over-fetch in step 1 (e.g., request `limit * 2`) and trim after filtering.
+**Zero-match filtering via facet approach**: The over-fetch + post-filter approach breaks pagination (the client's post-filter offset doesn't map to Typesense's pre-filter pages). Instead, when watchlist context filters are active, use the same facet-based approach as `listTopCompanies()`:
 
-**Note on multi_search limits**: Typesense defaults to max 50 searches per `multi_search` request. With over-fetching (`limit * 2 = 40` companies), step 2 produces `40 * 2 = 80` count queries — exceeding the limit. Batch step 2 into multiple `multi_search` calls (e.g., 25 companies per batch = 50 searches per call), or raise `limit_multi_searches` on the admin API key. With page size 20 companies × 2 count queries = 40 searches, this fits. If page size increases, batch into multiple multi_search calls.
+```typescript
+// When filters are active: get companies ranked by filtered match count
+const filterStr = buildFilterString(watchlistFilters);
+const facetResult = await typesense.collections("job_posting").documents().search({
+  q: "*",
+  filter_by: `is_active:true${filterStr ? " && " + filterStr : ""}`,
+  facet_by: "company_id",
+  facet_strategy: "exhaustive",
+  max_facet_values: offset + limit,
+  per_page: 0,
+});
+// facet_counts gives company IDs ranked by filtered posting count
+// Only companies with >0 matching postings appear — zero-match filtering is implicit
+```
+
+This eliminates the zero-match problem entirely — facets only return companies that have matching postings. Then apply the text query filter on those company IDs (step 1 of the original approach) if the user typed a name. `totalCompanies` comes from `facet_counts[0].stats.total_values`.
+
+When no watchlist context filters are active, use the original company collection approach (step 1) since all active companies are relevant.
+
+**Note on multi_search limits**: Typesense defaults to max 50 searches per `multi_search` request. The facet approach eliminates the N×2 count queries, so this limit is no longer a concern for the main query path. The per-company year count is obtained from the pre-computed `year_posting_count` on the company collection (approximate, acceptable for display). With page size 20 companies × 2 count queries = 40 searches, this fits. If page size increases, batch into multiple multi_search calls.
 
 **Starred companies sorting**: If `starredCompanyIds` is provided and no text query, do two Typesense queries:
 1. Fetch starred companies: `filter_by: "id:[${starredCompanyIds.join(',')}]"`
@@ -200,10 +219,13 @@ Unlike job postings and taxonomies (which are crawler-sourced), watchlists are c
 
 | Event | Action |
 |-------|--------|
-| Watchlist created | If public: upsert to Typesense |
-| Watchlist updated (title, description, visibility) | If now public: upsert. If now private: delete from Typesense |
-| Watchlist deleted | Delete from Typesense |
-| Company added/removed from watchlist | Update `company_count` on Typesense doc |
+| `createWatchlist()` | If public: upsert to Typesense |
+| `updateWatchlist()` (title, description, visibility) | If now public: upsert. If now private: delete from Typesense |
+| `deleteWatchlist()` | Delete from Typesense |
+| `copyWatchlist()` | Upsert the new copy (if public) + update source's `mirror_count` in Typesense |
+| `addCompanyToWatchlist()` | Update `company_count` on Typesense doc (if public) |
+| `removeCompanyFromWatchlist()` | Update `company_count` on Typesense doc (if public) |
+| `clearWatchlistCompanies()` | Set `company_count` to 0 on Typesense doc (if public) |
 
 **Count refresh + reconciliation**: A periodic job (every 15 min) that:
 1. Recalculates `active_job_count` and `company_count` for all public watchlists
@@ -262,7 +284,7 @@ const filterStr = buildFilterString(filters);
 |------|--------|
 | `apps/web/src/lib/actions/company.ts` | Replace Postgres query in `searchCompaniesForWatchlist()` with Typesense two-step query |
 | `apps/web/src/lib/actions/watchlists.ts` | Replace `searchPublicWatchlists()`, `getPopularWatchlists()`, `getWatchlistPostings()` with Typesense queries |
-| Watchlist mutation actions (create/update/delete) | Add Typesense upsert/delete hooks |
+| Watchlist mutation actions: `createWatchlist`, `updateWatchlist`, `deleteWatchlist`, `copyWatchlist`, `addCompanyToWatchlist`, `removeCompanyFromWatchlist`, `clearWatchlistCompanies` | Add Typesense upsert/delete hooks (fire-and-forget) |
 
 ### New files
 

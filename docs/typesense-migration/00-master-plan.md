@@ -92,7 +92,6 @@ services:
     command: >
       --data-dir /data
       --api-key=${TYPESENSE_API_KEY}
-      --enable-cors
     environment:
       - TYPESENSE_API_KEY=${TYPESENSE_API_KEY}
 ```
@@ -107,9 +106,10 @@ services:
   - **Cache bypass rule required**: Add a Cloudflare Cache Rule for the tunnel hostname — `Cache Level: Bypass` for all paths. Without it, Cloudflare may cache GET search responses, causing stale results. Typesense does not set `Cache-Control` headers by default.
   - Latency overhead: ~10-30ms per request (acceptable — Typesense queries take <10ms, total still under 50ms). If Vercel cold-starts in US while Typesense is in EU, base RTT adds ~80-100ms regardless.
   - The tunnel daemon must auto-start on reboot (systemd)
-- **API keys**: Two scoped keys:
+- **API keys**: Three scoped keys:
   - `TYPESENSE_ADMIN_KEY` — full access, used by exporter and sync only (direct connection via private network / firewall rule)
-  - `TYPESENSE_SEARCH_KEY` — search-only, used by web app (via Cloudflare tunnel)
+  - `TYPESENSE_SEARCH_KEY` — search-only (`actions: ["documents:search"]`), used by web app for all search queries (via Cloudflare tunnel)
+  - `TYPESENSE_WRITE_KEY` — write-only on `watchlist` collection (`actions: ["documents:upsert", "documents:delete"], collections: ["watchlist"]`), used by web app for watchlist mutation hooks. The search-only key cannot write — without a separate write key, all fire-and-forget watchlist hooks silently fail.
 - **TLS**: Handled by Cloudflare tunnel for web app traffic. For crawler-to-Typesense (direct), use Caddy reverse proxy or Typesense's built-in `--ssl-certificate` flags if on public network.
 
 ### Resource budget (4 GB RAM)
@@ -663,6 +663,7 @@ TYPESENSE_HOST=typesense.yourdomain.com
 TYPESENSE_PORT=443
 TYPESENSE_PROTOCOL=https
 TYPESENSE_SEARCH_KEY=<search-only-key>
+TYPESENSE_WRITE_KEY=<watchlist-write-key>
 ```
 
 **Vercel note**: The web app deploys on Vercel. Add these env vars in the Vercel project settings (Settings → Environment Variables), not just in `.env.local`. Set for Production + Preview environments.
