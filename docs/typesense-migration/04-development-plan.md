@@ -52,6 +52,7 @@ Orchestrator runs this directly. Add Typesense to the existing `docker-compose.y
    TYPESENSE_PROTOCOL=http
    TYPESENSE_ADMIN_KEY=local_dev_typesense_key
    TYPESENSE_SEARCH_KEY=local_dev_typesense_key  # same key for local dev
+   TYPESENSE_WRITE_KEY=local_dev_typesense_key   # same key for local dev
    ```
 
 ### Gate: Local Typesense running

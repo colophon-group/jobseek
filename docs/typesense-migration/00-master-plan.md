@@ -184,7 +184,8 @@ Comfortable up to ~3M postings on 4 GB. At 5M+, upgrade to 8 GB.
 - `first_seen_at` / `last_seen_at` stored as Unix timestamps (int64) for sorting and range queries
 - Fields that are only used for display (not search/filter) have `index: false` to save RAM
 - `source_url` is stored for display in watchlist postings view (index: false)
-- `location_geo_types` stores the geographic type per location (city/region/country/macro) — positionally aligned with `location_ids` and `location_names`. Used for `PostingLocation.geoType` in results. `index: false` since it's display-only.
+- `location_types` stores the **work arrangement** per location (onsite/remote/hybrid) — from Postgres `location_types` column
+- `location_geo_types` stores the **geographic level** per location (city/region/country/macro) — from `location.type` column — positionally aligned with `location_ids` and `location_names`. Used for `PostingLocation.geoType` in results. `index: false` since it's display-only.
 - **NULL sentinel values**: `experience_min` is NOT optional — jobs without stated experience get `-1` so they're included by numeric range filters (Typesense excludes missing optional fields from range queries). `locales` array gets `"_none"` sentinel for jobs with no detected language, so they match any language filter. The sentinel `"_none"` uses a prefix underscore to avoid collision with any real ISO locale code. Any code that facets on `locales` must filter out `"_none"` from display.
 - **`salary_eur` has no sentinel** (intentional): jobs without salary data are excluded from salary range filter results. This matches current Postgres behavior (`salary_eur BETWEEN X AND Y` naturally excludes NULLs). This is a conscious design choice — salary filtering is opt-in and exclusive.
 
