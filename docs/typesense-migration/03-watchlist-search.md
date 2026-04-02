@@ -98,6 +98,8 @@ const response = await typesense.multiSearch.perform({
 });
 ```
 
+**Zero-match filtering**: After step 2 returns match counts, filter out companies where both `activeMatches === 0` and `yearMatches === 0`. The current Postgres implementation does this in SQL (`WHERE active_matches > 0 OR year_matches > 0`). Without this, the modal shows companies with no jobs matching the user's watchlist filters. Adjust `total` count accordingly. Since filtering may produce underfilled pages, over-fetch in step 1 (e.g., request `limit * 2`) and trim after filtering.
+
 **Note on multi_search limits**: Typesense defaults to max 50 searches per multi_search request. With page size 20 companies × 2 count queries = 40 searches, this fits. If page size increases, batch into multiple multi_search calls.
 
 **Starred companies sorting**: If `starredCompanyIds` is provided and no text query, do two Typesense queries:
