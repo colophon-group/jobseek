@@ -331,22 +331,22 @@ No locale dimension — tech names are universal ("Python", "React", "C++"). One
 
 ### Job postings — extend exporter.py
 
-The exporter already runs a CDC loop reading from local Postgres (`WHERE updated_at > cursor`). Typesense indexing runs as a **separate cursor** alongside the Supabase export — independent failure domains.
+The exporter uses **keyset pagination** with `(updated_at, id)` tuple cursors (recently refactored from timestamp-only cursors). Typesense indexing runs as a **separate cursor** alongside the Supabase export — independent failure domains.
 
 ```
 exporter tick:
-  1. SELECT changed postings WHERE updated_at > min(supabase_cursor, typesense_cursor)
+  1. SELECT changed postings WHERE (updated_at, id) > min(supabase_cursor, typesense_cursor)
   2. Concurrently (asyncio.gather):
      a. Upsert to Supabase → advance Supabase cursor on success
      b. Upsert to Typesense → advance Typesense cursor on success
         - Denormalize: resolve location_ids → location_names + location_geo_types,
           occupation_id → occupation_name, seniority_id → seniority_name,
           technology_ids → technology_names using in-memory lookup tables
-        - Set sentinel values: experience_min=-1 for NULL, locales=["any"] for empty
+        - Set sentinel values: experience_min=-1 for NULL, locales=["_none"] for empty
         - Batch upsert via documents.import_(docs, {"action": "upsert"})
 ```
 
-**Two-cursor design**: Supabase and Typesense each have their own `exporter_state` cursor (`last_export_ts:job_posting` and `last_export_ts:typesense:job_posting`). If Typesense upsert fails, only the Typesense cursor stalls — Supabase export continues unaffected. On the next tick, Typesense catches up from its own cursor position. The SELECT uses the minimum of both cursors to ensure both targets see all changed rows.
+**Two-cursor design**: The exporter uses `Cursor = tuple[datetime, uuid.UUID]` stored as `"ts_iso|uuid"` in `exporter_state` (via `_get_cursor` / `_save_cursor` helpers). Supabase and Typesense each have their own cursor (`last_export_ts:job_posting` and `last_export_ts:typesense:job_posting`). If Typesense upsert fails, only the Typesense cursor stalls — Supabase export continues unaffected. On the next tick, Typesense catches up from its own cursor position. The SELECT uses the minimum of both cursors to ensure both targets see all changed rows.
 
 **Concurrent upserts**: Supabase and Typesense upserts run concurrently via `asyncio.gather(return_exceptions=True)`. This prevents Typesense latency (3–5s for 2000 docs over network) from blocking the exporter loop and causing cascading lag during high-churn periods. Each target's cursor advances independently based on its own success/failure.
 

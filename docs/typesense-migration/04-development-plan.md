@@ -129,6 +129,7 @@ Orchestrator
    - `company_id → {name, slug, icon}` from `company` table
 3. Implement **two-cursor design with concurrent upserts** (see `00-master-plan.md`):
    - Add a separate cursor `last_export_ts:typesense:job_posting` in `exporter_state`
+   - Uses the same `Cursor = tuple[datetime, uuid.UUID]` format and `_get_cursor` / `_save_cursor` helpers as the existing Supabase cursor (keyset pagination on `(updated_at, id)`)
    - SELECT uses `MIN(supabase_cursor, typesense_cursor)` to ensure both targets see all rows
    - Run Supabase + Typesense upserts concurrently via `asyncio.gather(return_exceptions=True)`
    - Each target's cursor advances independently on success

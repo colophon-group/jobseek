@@ -24,7 +24,8 @@ Migrates two search surfaces: the company search modal (used when adding compani
 
 **Query logic:**
 - Company matching: prefix + fuzzy (similarity > 0.3)
-- Match counting: subquery counts active job_posting rows matching all filters per company
+- Match counting: subquery counts active job_posting rows matching all filters per company, with window function for `filtered_total`
+- Zero-match companies filtered out in SQL (`WHERE active_matches > 0 OR year_matches > 0`)
 - Two SQL paths: starred-first (no text query) vs. text search
 
 **Output:** `{ companies: Array<{ id, name, slug, icon, description, activeMatches, yearMatches }>, total }`
