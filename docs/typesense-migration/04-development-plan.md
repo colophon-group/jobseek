@@ -536,6 +536,25 @@ def test_exporter_indexes_new_postings():
     """Insert a synthetic posting into local Postgres with a known title.
     Run one exporter tick. Verify the posting appears in Typesense
     with correct denormalized fields. Clean up after."""
+
+# ── Reconciliation tests ──
+
+def test_reconciliation_detects_missing_document():
+    """Delete a document directly from Typesense. Run reconciliation.
+    Verify the discrepancy is detected and the document is re-indexed
+    (the row is touched in Postgres so CDC picks it up)."""
+
+def test_reconciliation_detects_stale_is_active():
+    """Toggle is_active directly in Postgres (without going through
+    normal exporter flow). Run reconciliation. Verify the discrepancy
+    is detected and corrected."""
+
+# ── Taxonomy rename tests ──
+
+def test_taxonomy_rename_updates_typesense_documents():
+    """Change an occupation name in the CSV/DB. Run sync.
+    Verify that job_posting documents in Typesense referencing that
+    occupation now have the updated occupation_name."""
 ```
 
 ### Impl-4B: Web E2E test suite
@@ -575,6 +594,18 @@ test("search with location filter restricts results", async () => {
 test("search with salary range filter works", async () => {
   // Search with salaryMinEur=50000, salaryMaxEur=100000
   // Expect: all returned postings have salary_eur in range (where set)
+});
+
+test("search with salaryMinEur=0 does not exclude salary-less postings", async () => {
+  // Search with salaryMinEur=0 (or undefined)
+  // Expect: postings WITHOUT salary data are still included
+  // This verifies the salary filter guard (only activates when > 0)
+});
+
+test("search totalCompanies returns distinct company count not document count", async () => {
+  // Search for a broad keyword that matches multiple postings per company
+  // Expect: totalCompanies < total posting count
+  // Expect: totalCompanies equals number of distinct companies in results
 });
 
 test("search with multiple filters combines with AND", async () => {
@@ -743,6 +774,12 @@ test("suggestTechnologies does not fuzzy match (prefix only)", async () => {
 test("searchCompaniesForWatchlist returns companies by name", async () => {
   // Query with known company name prefix
   // Expect: matching companies with activeMatches/yearMatches populated
+});
+
+test("searchCompaniesForWatchlist excludes zero-match companies", async () => {
+  // Search with restrictive watchlist filters (rare location + specific tech)
+  // Expect: no company in results has activeMatches=0 AND yearMatches=0
+  // Verifies the post-filter step after match count computation
 });
 
 test("searchCompaniesForWatchlist filters by industry", async () => {
