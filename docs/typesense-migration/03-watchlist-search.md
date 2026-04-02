@@ -87,7 +87,7 @@ const matchCountSearches = companyIds.map(companyId => ({
 
 const yearCountSearches = companyIds.map(companyId => ({
   collection: "job_posting",
-  q: "*",  // year count includes ALL postings, not keyword-filtered (matches Postgres)
+  q: keywords?.length ? keywords.join(" ") : "*",  // Postgres year count DOES filter by keywords
   query_by: "title",
   filter_by: `company_id:=${companyId} && first_seen_at:>${oneYearAgoUnix}${filterStr ? " && " + filterStr : ""}`,
   per_page: 0,
