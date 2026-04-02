@@ -753,27 +753,6 @@ export const outreachDraft = pgTable(
   (table) => [index("idx_od_signal").on(table.signalId)],
 );
 
-// ── Crypto-payment API credits ───────────────────────────────────────
-
-export const apiCredit = pgTable(
-  "api_credit",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    token: text("token").notNull().unique(),
-    walletAddress: text("wallet_address").notNull(),
-    txHash: text("tx_hash").notNull().unique(),
-    chainId: integer("chain_id").notNull().default(11155111),
-    amountWei: text("amount_wei").notNull(),
-    creditsGranted: integer("credits_granted").notNull(),
-    creditsUsed: integer("credits_used").notNull().default(0),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  },
-  (table) => [
-    index("idx_api_credit_token").on(table.token),
-    index("idx_api_credit_wallet_address").on(table.walletAddress),
-  ],
-);
-
 // ── Watchlist tables ────────────────────────────────────────────────
 
 export const watchlist = pgTable(

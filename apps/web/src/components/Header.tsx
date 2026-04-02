@@ -10,7 +10,7 @@ import { LocaleSwitcher } from "@/components/LocaleSwitcher";
 import { ThemedImage } from "@/components/ThemedImage";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { Button } from "@/components/ui/Button";
-import { Menu, Bot } from "lucide-react";
+import { Menu } from "lucide-react";
 
 type HeaderProps = {
   onOpenMobileAction: () => void;
@@ -72,9 +72,6 @@ export function Header({ onOpenMobileAction }: HeaderProps) {
         <div className="hidden items-center gap-3 lg:flex">
           <LocaleSwitcher />
           <ThemeToggleButton />
-          <Link href="/agentic" className="inline-flex items-center justify-center rounded-md p-1.5 text-foreground hover:bg-border-soft transition-colors cursor-pointer" aria-label="Agentic">
-            <Bot size={18} strokeWidth={1.8} aria-hidden="true" />
-          </Link>
           <Button href={appHref} variant="primary" size="sm">
             {appLabel}
           </Button>

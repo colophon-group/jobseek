@@ -27,6 +27,32 @@ const EXTRA_WIDE_BREAKPOINT = 2448;
 const MEDIA_SHADOW = "0px 12px 32px rgba(15, 23, 42, 0.18)";
 
 /**
+ * How far inside the content area the fade begins (px).
+ * The image is fully visible up to this distance from the content edge,
+ * then fades over FADE_WIDTH to fully transparent at the content edge.
+ * Beyond the content edge is pure background.
+ */
+const FADE_WIDTH = 120;
+
+function fadeOverlayCSS(cls: string, side: "left" | "right") {
+  return `
+    @media (min-width: 1024px) {
+      .${cls}::after {
+        content: "";
+        position: absolute;
+        top: -48px;
+        bottom: -48px;
+        ${side}: 0;
+        width: calc(${ALIGN_PAD} + ${FADE_WIDTH}px);
+        background: linear-gradient(to ${side}, transparent, var(--background) ${FADE_WIDTH}px);
+        pointer-events: none;
+        z-index: 1;
+      }
+    }
+  `;
+}
+
+/**
  * CSS expression: padding that aligns a child's edge with the content edge
  * of a `max-w-[1200px] px-4` container.
  */
@@ -68,14 +94,13 @@ function ImageWrapper({
   children: React.ReactNode;
 }) {
   const id = sectionId ?? (inverted ? "inv" : "std");
-
   const wrapperStyle: CSSProperties = {
     width: "100%",
     maxWidth: mediaWidth,
     overflow: "hidden",
     boxShadow: MEDIA_SHADOW,
     display: "flex",
-    justifyContent: inverted ? "flex-end" : "flex-start",
+    flexDirection: "column",
   };
 
   return (
@@ -95,7 +120,14 @@ function ImageWrapper({
           height: auto;
         }
       `}</style>
-      {children}
+      <div className="flex items-center gap-2 px-4 py-2.5" style={{ borderBottom: '1px solid var(--border-soft)' }}>
+        <span className="size-3 rounded-full" style={{ background: '#ff5f57' }} />
+        <span className="size-3 rounded-full" style={{ background: '#febc2e' }} />
+        <span className="size-3 rounded-full" style={{ background: '#28c840' }} />
+      </div>
+      <div style={{ display: 'flex', justifyContent: inverted ? 'flex-end' : 'flex-start' }}>
+        {children}
+      </div>
     </div>
   );
 }
@@ -118,13 +150,14 @@ function FeatureSection1() {
   return (
     <>
       <style>{`
-        .feat-row-1 { padding-left: ${CONTAINER_PAD}px; padding-right: 0; }
+        .feat-row-1 { position: relative; padding-left: ${CONTAINER_PAD}px; padding-right: 0; }
         @media (min-width: 1024px) {
           .feat-row-1 { padding-left: ${ALIGN_PAD}; }
         }
         @media (min-width: ${EXTRA_WIDE_BREAKPOINT}px) {
           .feat-row-1 { padding-right: ${extraWideInset(mediaWidth)}; }
         }
+        ${fadeOverlayCSS("feat-row-1", "right")}
       `}</style>
       <div className="feat-row-1 flex flex-col items-stretch gap-12 lg:flex-row lg:gap-20">
         <div className="w-full shrink-0 pr-4 lg:w-auto lg:max-w-[520px] lg:pr-0" style={{ flexBasis: TEXT_MAX_W }}>
@@ -178,13 +211,14 @@ function FeatureSection2() {
   return (
     <>
       <style>{`
-        .feat-row-2 { padding-left: 0; padding-right: ${CONTAINER_PAD}px; }
+        .feat-row-2 { position: relative; padding-left: 0; padding-right: ${CONTAINER_PAD}px; }
         @media (min-width: 1024px) {
           .feat-row-2 { padding-left: 0; padding-right: ${ALIGN_PAD}; }
         }
         @media (min-width: ${EXTRA_WIDE_BREAKPOINT}px) {
           .feat-row-2 { padding-left: ${extraWideInset(mediaWidth)}; }
         }
+        ${fadeOverlayCSS("feat-row-2", "left")}
       `}</style>
       <div className="feat-row-2 flex flex-col items-stretch gap-12 lg:flex-row-reverse lg:gap-20">
         <div className="w-full shrink-0 pl-4 lg:w-auto lg:max-w-[520px] lg:pl-0" style={{ flexBasis: TEXT_MAX_W }}>
@@ -238,13 +272,14 @@ function FeatureSection3() {
   return (
     <>
       <style>{`
-        .feat-row-3 { padding-left: ${CONTAINER_PAD}px; padding-right: 0; }
+        .feat-row-3 { position: relative; padding-left: ${CONTAINER_PAD}px; padding-right: 0; }
         @media (min-width: 1024px) {
           .feat-row-3 { padding-left: ${ALIGN_PAD}; }
         }
         @media (min-width: ${EXTRA_WIDE_BREAKPOINT}px) {
           .feat-row-3 { padding-right: ${extraWideInset(mediaWidth)}; }
         }
+        ${fadeOverlayCSS("feat-row-3", "right")}
       `}</style>
       <div className="feat-row-3 flex flex-col items-stretch gap-12 lg:flex-row lg:gap-20">
         <div className="w-full shrink-0 pr-4 lg:w-auto lg:max-w-[520px] lg:pr-0" style={{ flexBasis: TEXT_MAX_W }}>

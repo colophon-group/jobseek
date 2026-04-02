@@ -48,7 +48,7 @@ const LOGIN_PWD = process.env.PWD_UI;
  */
 const FEATURES: { path: string; name: string; requiresAuth: boolean }[] = [
   { path: "/explore?q=software+engineer&loc=Switzerland", name: "feature1", requiresAuth: false },
-  { path: "/my-jobs?show=dd0e09ec-e452-416a-85f6-593cec9c9923", name: "feature2", requiresAuth: true },
+  { path: "/my-jobs", name: "feature2", requiresAuth: true },
   { path: "/colophongroup/swe-robotics-zurich", name: "feature3", requiresAuth: true },
 ];
 
@@ -169,11 +169,31 @@ async function run() {
             await page.waitForTimeout(300);
           }
 
-          // Wait for job detail panel to load (for my-jobs page)
-          if (url.includes("show=")) {
-            await page.waitForSelector('text="View posting"', { timeout: 5_000 }).catch(() => {});
-            await page.waitForLoadState("networkidle");
+          // Expand advanced filters panel on the search page (feature1)
+          if (feature.name === "feature1") {
+            const filtersBtn = page.locator('button:has-text("Filters")').first();
+            if (await filtersBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
+              await filtersBtn.click();
+              await page.waitForTimeout(400);
+            }
+          }
+
+          // Dismiss tip banner on watchlist page (feature3)
+          const gotItBtn = page.locator('button:has-text("Got it")').first();
+          if (await gotItBtn.isVisible({ timeout: 500 }).catch(() => false)) {
+            await gotItBtn.click();
             await page.waitForTimeout(300);
+          }
+
+          // Click first job to open detail panel (for my-jobs page)
+          if (feature.name === "feature2") {
+            const jobRow = page.locator('[role="button"][tabindex="0"]').first();
+            if (await jobRow.isVisible({ timeout: 3_000 }).catch(() => false)) {
+              await jobRow.click();
+              await page.waitForSelector('text="View posting"', { timeout: 5_000 }).catch(() => {});
+              await page.waitForLoadState("networkidle");
+              await page.waitForTimeout(500);
+            }
           }
 
           // Remove Next.js dev indicator (circle with N logo in bottom-left)
