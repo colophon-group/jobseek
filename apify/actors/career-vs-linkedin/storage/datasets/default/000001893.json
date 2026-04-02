@@ -1,18 +1,12 @@
 {
 	"_type": "job-comparison",
-	"company": "Intercom",
-	"normalizedTitle": "product engineer",
-	"careerTitle": "Senior Product Engineer",
-	"boardTitle": "Staff Product Engineer",
-	"careerPageFirstSeen": "2022-12-20",
-	"careerPageDatePosted": "2022-12-20",
-	"boardFirstSeen": "2024-07-12",
-	"boardDatePosted": "2024-07-06",
-	"effectiveCareerDate": "2022-12-20",
-	"effectiveBoardDate": "2024-07-06",
-	"lagDays": 564,
-	"verdict": "career_first",
-	"location": "Dublin, Dublin, Ireland",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240428055906/https://boards.greenhouse.io/intercom/jobs/4763643",
-	"boardSnapshotUrl": "https://web.archive.org/web/20240712205417/https://www.linkedin.com/company/intercom/jobs"
+	"company": "Airtable",
+	"normalizedTitle": "strategic finance",
+	"careerTitle": "Strategic Finance Associate",
+	"careerPageFirstSeen": "2023-05-22",
+	"careerPageDatePosted": "2023-05-22",
+	"effectiveCareerDate": "2023-05-22",
+	"verdict": "career_only",
+	"location": "San Francisco, California, United States",
+	"careerSnapshotUrl": "https://web.archive.org/web/20240228192810/https://boards.greenhouse.io/airtable/jobs/6770256002"
 }

@@ -1,13 +1,12 @@
 {
 	"_type": "job-comparison",
-	"company": "Zapier",
-	"normalizedTitle": "manager paid support",
-	"careerTitle": "Manager, Paid Support",
-	"careerPageFirstSeen": "2024-07-23",
-	"careerPageDatePosted": "2024-07-23",
-	"effectiveCareerDate": "2024-07-23",
+	"company": "Intercom",
+	"normalizedTitle": "account executive small business",
+	"careerTitle": "Account Executive, Small Business",
+	"careerPageFirstSeen": "2024-03-26",
+	"careerPageDatePosted": "2024-03-26",
+	"effectiveCareerDate": "2024-03-26",
 	"verdict": "career_only",
-	"location": "APAC",
-	"department": "Support",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240723220410/https://api.ashbyhq.com/posting-api/job-board/zapier"
+	"location": "Dublin, Dublin, Ireland",
+	"careerSnapshotUrl": "https://web.archive.org/web/20240428055819/https://boards.greenhouse.io/intercom/jobs/5849855"
 }

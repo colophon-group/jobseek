@@ -1,19 +1,12 @@
 {
 	"_type": "job-comparison",
-	"company": "Zapier",
-	"normalizedTitle": "backend engineer manage",
-	"careerTitle": "Sr. Backend Engineer (Manage)",
-	"boardTitle": "Sr. Backend Engineer",
-	"careerPageFirstSeen": "2024-09-27",
-	"careerPageDatePosted": "2024-09-27",
-	"boardFirstSeen": "2024-12-19",
-	"boardDatePosted": "2024-11-30",
-	"effectiveCareerDate": "2024-09-27",
-	"effectiveBoardDate": "2024-11-30",
-	"lagDays": 64,
-	"verdict": "career_first",
-	"location": "NAMER",
-	"department": "Engineering",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240929161920/https://api.ashbyhq.com/posting-api/job-board/zapier",
-	"boardSnapshotUrl": "https://web.archive.org/web/20241219153212/https://www.linkedin.com/company/zapier/jobs/"
+	"company": "Intercom",
+	"normalizedTitle": "account manager small business",
+	"careerTitle": "Account Manager, Small Business",
+	"careerPageFirstSeen": "2024-04-18",
+	"careerPageDatePosted": "2024-04-18",
+	"effectiveCareerDate": "2024-04-18",
+	"verdict": "career_only",
+	"location": "Dublin, Dublin, Ireland",
+	"careerSnapshotUrl": "https://web.archive.org/web/20240428055905/https://boards.greenhouse.io/intercom/jobs/5916491"
 }

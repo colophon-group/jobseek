@@ -1,19 +1,13 @@
 {
 	"_type": "job-comparison",
 	"company": "Deel",
-	"normalizedTitle": "payroll implementation manager uki",
-	"careerTitle": "Payroll Implementation Manager | UKI   ",
-	"boardTitle": "Payroll Implementation Manager | France",
-	"careerPageFirstSeen": "2026-03-26",
-	"careerPageDatePosted": "2026-03-26",
-	"boardFirstSeen": "2025-07-20",
-	"boardDatePosted": "2025-07-19",
-	"effectiveCareerDate": "2026-03-26",
-	"effectiveBoardDate": "2025-07-19",
-	"lagDays": -250,
-	"verdict": "board_first",
-	"location": "Ireland",
+	"normalizedTitle": "payroll malta",
+	"careerTitle": "Senior Payroll Associate | Malta",
+	"careerPageFirstSeen": "2026-03-19",
+	"careerPageDatePosted": "2026-03-19",
+	"effectiveCareerDate": "2026-03-19",
+	"verdict": "career_only",
+	"location": "Malta",
 	"department": "COGS",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260402035102/https://api.ashbyhq.com/posting-api/job-board/deel",
-	"boardSnapshotUrl": "https://web.archive.org/web/20250720232337/https://www.linkedin.com/company/deel/jobs"
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402062727/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

@@ -1,18 +1,12 @@
 {
 	"_type": "job-comparison",
 	"company": "Figma",
-	"normalizedTitle": "growth marketing manager seo",
-	"careerTitle": "Growth Marketing Manager, SEO",
-	"boardTitle": "Growth Marketing Manager, SEO",
+	"normalizedTitle": "sales enablement manager commercial",
+	"careerTitle": "Sales Enablement Manager, Commercial",
 	"careerPageFirstSeen": "2024-03-11",
 	"careerPageDatePosted": "2024-03-11",
-	"boardFirstSeen": "2025-03-10",
-	"boardDatePosted": "2025-03-06",
 	"effectiveCareerDate": "2024-03-11",
-	"effectiveBoardDate": "2025-03-06",
-	"lagDays": 360,
-	"verdict": "career_first",
-	"location": "San Francisco, California, United States",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240502211719/https://boards.greenhouse.io/figma/jobs/5125630004",
-	"boardSnapshotUrl": "https://web.archive.org/web/20250310111450/https://www.linkedin.com/company/figma/jobs/"
+	"verdict": "career_only",
+	"location": "New York City, New York, United States",
+	"careerSnapshotUrl": "https://web.archive.org/web/20240520072104/https://boards.greenhouse.io/figma/jobs/5120920004"
 }

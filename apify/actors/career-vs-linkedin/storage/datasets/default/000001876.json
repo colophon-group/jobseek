@@ -1,13 +1,15 @@
 {
 	"_type": "job-comparison",
-	"company": "Zapier",
-	"normalizedTitle": "revenue enablement specialist",
-	"careerTitle": "Sr. Revenue Enablement Specialist",
-	"careerPageFirstSeen": "2025-12-05",
-	"careerPageDatePosted": "2025-12-05",
-	"effectiveCareerDate": "2025-12-05",
-	"verdict": "career_only",
-	"location": "NAMER",
-	"department": "Revenue Operations",
-	"careerSnapshotUrl": "https://web.archive.org/web/20251208024049/https://api.ashbyhq.com/posting-api/job-board/zapier"
+	"company": "Intercom",
+	"normalizedTitle": "manager creative operations",
+	"careerTitle": "",
+	"boardTitle": "Manager, Creative Operations",
+	"careerPageFirstSeen": "",
+	"boardFirstSeen": "2024-05-15",
+	"boardDatePosted": "2024-05-09",
+	"effectiveCareerDate": "",
+	"effectiveBoardDate": "2024-05-09",
+	"verdict": "board_only",
+	"careerSnapshotUrl": "",
+	"boardSnapshotUrl": "https://web.archive.org/web/20240515174257/https://www.linkedin.com/company/intercom/jobs/"
 }

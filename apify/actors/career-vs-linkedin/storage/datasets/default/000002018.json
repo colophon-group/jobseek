@@ -1,12 +1,14 @@
 {
 	"_type": "job-comparison",
-	"company": "Intercom",
-	"normalizedTitle": "manager people systems",
-	"careerTitle": "Manager, People Systems",
-	"careerPageFirstSeen": "2024-11-14",
-	"careerPageDatePosted": "2024-11-14",
-	"effectiveCareerDate": "2024-11-14",
-	"verdict": "career_only",
-	"location": "San Francisco Bay Area, California, United States",
-	"careerSnapshotUrl": "https://web.archive.org/web/20241211095956/https://boards.greenhouse.io/intercom/jobs/6384606"
+	"company": "Cloudflare",
+	"normalizedTitle": "thomas hammell",
+	"careerTitle": "",
+	"boardTitle": "Thomas Hammell",
+	"careerPageFirstSeen": "",
+	"boardFirstSeen": "2024-01-01",
+	"effectiveCareerDate": "",
+	"effectiveBoardDate": "2024-01-01",
+	"verdict": "board_only",
+	"careerSnapshotUrl": "",
+	"boardSnapshotUrl": "https://web.archive.org/web/20240101032856/https://www.linkedin.com/company/cloudflare"
 }

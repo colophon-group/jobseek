@@ -1,18 +1,12 @@
 {
 	"_type": "job-comparison",
-	"company": "Intercom",
-	"normalizedTitle": "machine learning scientist",
-	"careerTitle": "Machine Learning Scientist",
-	"boardTitle": "Staff Machine Learning Scientist",
-	"careerPageFirstSeen": "2024-04-18",
-	"careerPageDatePosted": "2024-04-18",
-	"boardFirstSeen": "2026-03-10",
-	"boardDatePosted": "2026-03-10",
-	"effectiveCareerDate": "2024-04-18",
-	"effectiveBoardDate": "2026-03-10",
-	"lagDays": 691,
-	"verdict": "career_first",
-	"location": "Dublin, Dublin, Ireland",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240428055814/https://boards.greenhouse.io/intercom/jobs/5914221",
-	"boardSnapshotUrl": "https://web.archive.org/web/20260310171645/https://www.linkedin.com/company/intercom/jobs"
+	"company": "Airtable",
+	"normalizedTitle": "manager customer support",
+	"careerTitle": "Senior Manager, Customer Support",
+	"careerPageFirstSeen": "2024-05-30",
+	"careerPageDatePosted": "2024-05-30",
+	"effectiveCareerDate": "2024-05-30",
+	"verdict": "career_only",
+	"location": "Austin, Texas, United States",
+	"careerSnapshotUrl": "https://web.archive.org/web/20240629181442/https://boards.greenhouse.io/airtable/jobs/7471561002"
 }

@@ -1,13 +1,15 @@
 {
 	"_type": "job-comparison",
-	"company": "Zapier",
-	"normalizedTitle": "product manager growth",
-	"careerTitle": "Product Manager, Growth ",
-	"careerPageFirstSeen": "2025-12-16",
-	"careerPageDatePosted": "2025-12-16",
-	"effectiveCareerDate": "2025-12-16",
-	"verdict": "career_only",
-	"location": "NAMER",
-	"department": "Product",
-	"careerSnapshotUrl": "https://web.archive.org/web/20251229082841/https://api.ashbyhq.com/posting-api/job-board/zapier"
+	"company": "Intercom",
+	"normalizedTitle": "implementation project manager",
+	"careerTitle": "",
+	"boardTitle": "Implementation Project Manager",
+	"careerPageFirstSeen": "",
+	"boardFirstSeen": "2026-01-18",
+	"boardDatePosted": "2026-01-17",
+	"effectiveCareerDate": "",
+	"effectiveBoardDate": "2026-01-17",
+	"verdict": "board_only",
+	"careerSnapshotUrl": "",
+	"boardSnapshotUrl": "https://web.archive.org/web/20260118094244/https://www.linkedin.com/company/intercom/jobs/"
 }

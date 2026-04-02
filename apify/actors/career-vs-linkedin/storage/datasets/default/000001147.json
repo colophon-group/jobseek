@@ -1,18 +1,11 @@
 {
 	"_type": "job-comparison",
 	"company": "Anthropic",
-	"normalizedTitle": "team manager interpretability london",
-	"careerTitle": "Team Manager, Interpretability (London)",
-	"boardTitle": "Team Manager, Interpretability",
-	"careerPageFirstSeen": "2024-04-18",
-	"careerPageDatePosted": "2024-04-18",
-	"boardFirstSeen": "2024-04-07",
-	"boardDatePosted": "2024-03-20",
-	"effectiveCareerDate": "2024-04-18",
-	"effectiveBoardDate": "2024-03-20",
-	"lagDays": -29,
-	"verdict": "board_first",
-	"location": "Seattle, WA",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240520072419/https://boards.greenhouse.io/anthropic/jobs/4020295008",
-	"boardSnapshotUrl": "https://web.archive.org/web/20240407021748/https://www.glassdoor.com/Jobs/Anthropic-Jobs-E8109027.htm"
+	"normalizedTitle": "finance systems",
+	"careerTitle": "Finance Systems Lead",
+	"careerPageFirstSeen": "2024-04-20",
+	"careerPageDatePosted": "2024-04-20",
+	"effectiveCareerDate": "2024-04-20",
+	"verdict": "career_only",
+	"careerSnapshotUrl": "https://web.archive.org/web/20240615072528/https://boards.greenhouse.io/anthropic/jobs/4020293008"
 }

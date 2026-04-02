@@ -1,12 +1,18 @@
 {
 	"_type": "job-comparison",
 	"company": "Figma",
-	"normalizedTitle": "account executive enterprise gcr singapore",
-	"careerTitle": "Account Executive, Enterprise - GCR (Singapore)",
-	"careerPageFirstSeen": "2024-04-03",
-	"careerPageDatePosted": "2024-04-03",
-	"effectiveCareerDate": "2024-04-03",
-	"verdict": "career_only",
-	"location": "Singapore",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240520072110/https://boards.greenhouse.io/figma/jobs/5146173004"
+	"normalizedTitle": "software engineer server platform",
+	"careerTitle": "Software Engineer - Server Platform",
+	"boardTitle": "Software Engineer - Application Platform",
+	"careerPageFirstSeen": "2024-04-02",
+	"careerPageDatePosted": "2024-04-02",
+	"boardFirstSeen": "2025-03-10",
+	"boardDatePosted": "2025-03-06",
+	"effectiveCareerDate": "2024-04-02",
+	"effectiveBoardDate": "2025-03-06",
+	"lagDays": 338,
+	"verdict": "career_first",
+	"location": "San Francisco, California, United States",
+	"careerSnapshotUrl": "https://web.archive.org/web/20240520072111/https://boards.greenhouse.io/figma/jobs/5145924004",
+	"boardSnapshotUrl": "https://web.archive.org/web/20250310111450/https://www.linkedin.com/company/figma/jobs/"
 }

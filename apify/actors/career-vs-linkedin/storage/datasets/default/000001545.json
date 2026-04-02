@@ -1,12 +1,18 @@
 {
 	"_type": "job-comparison",
 	"company": "Figma",
-	"normalizedTitle": "research program manager audience engagement",
-	"careerTitle": "Research Program Manager, Audience Engagement",
-	"careerPageFirstSeen": "2024-01-25",
-	"careerPageDatePosted": "2024-01-25",
-	"effectiveCareerDate": "2024-01-25",
-	"verdict": "career_only",
+	"normalizedTitle": "ml ai engineer infrastructure",
+	"careerTitle": "ML/AI Engineer, Infrastructure",
+	"boardTitle": "Software Engineer - AI Infrastructure",
+	"careerPageFirstSeen": "2024-01-23",
+	"careerPageDatePosted": "2024-01-23",
+	"boardFirstSeen": "2025-04-26",
+	"boardDatePosted": "2025-04-25",
+	"effectiveCareerDate": "2024-01-23",
+	"effectiveBoardDate": "2025-04-25",
+	"lagDays": 458,
+	"verdict": "career_first",
 	"location": "San Francisco, California, United States",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240228193510/https://boards.greenhouse.io/figma/jobs/5065910004"
+	"careerSnapshotUrl": "https://web.archive.org/web/20240228193421/https://boards.greenhouse.io/figma/jobs/5063763004",
+	"boardSnapshotUrl": "https://web.archive.org/web/20250426012509/https://www.linkedin.com/company/figma/jobs"
 }

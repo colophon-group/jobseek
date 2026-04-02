@@ -1,11 +1,12 @@
 {
 	"_type": "job-comparison",
 	"company": "Anthropic",
-	"normalizedTitle": "technical revenue accounting manager",
-	"careerTitle": "Technical Revenue Accounting Manager",
-	"careerPageFirstSeen": "2024-12-02",
-	"careerPageDatePosted": "2024-12-02",
-	"effectiveCareerDate": "2024-12-02",
+	"normalizedTitle": "engineering manager rl engineering",
+	"careerTitle": "Engineering Manager, RL Engineering",
+	"careerPageFirstSeen": "2024-11-28",
+	"careerPageDatePosted": "2024-11-28",
+	"effectiveCareerDate": "2024-11-28",
 	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20250109034038/https://boards.greenhouse.io/anthropic/jobs/4421718008"
+	"location": "San Francisco Bay Area, California, United States",
+	"careerSnapshotUrl": "https://web.archive.org/web/20241203152033/https://boards.greenhouse.io/anthropic/jobs/4419281008"
 }

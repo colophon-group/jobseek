@@ -1,12 +1,14 @@
 {
 	"_type": "job-comparison",
-	"company": "Intercom",
-	"normalizedTitle": "front end engineer team web",
-	"careerTitle": "Senior Front End Engineer, Team Web",
-	"careerPageFirstSeen": "2024-11-15",
-	"careerPageDatePosted": "2024-11-15",
-	"effectiveCareerDate": "2024-11-15",
-	"verdict": "career_only",
-	"location": "London, England, United Kingdom",
-	"careerSnapshotUrl": "https://web.archive.org/web/20250123113838/https://boards.greenhouse.io/intercom/jobs/6402231"
+	"company": "Cloudflare",
+	"normalizedTitle": "dave dot ai barnett",
+	"careerTitle": "",
+	"boardTitle": "Dave dot ai Barnett",
+	"careerPageFirstSeen": "",
+	"boardFirstSeen": "2024-01-01",
+	"effectiveCareerDate": "",
+	"effectiveBoardDate": "2024-01-01",
+	"verdict": "board_only",
+	"careerSnapshotUrl": "",
+	"boardSnapshotUrl": "https://web.archive.org/web/20240101032856/https://www.linkedin.com/company/cloudflare"
 }

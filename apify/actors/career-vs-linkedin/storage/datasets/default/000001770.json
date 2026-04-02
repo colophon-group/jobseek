@@ -1,19 +1,12 @@
 {
 	"_type": "job-comparison",
-	"company": "Zapier",
-	"normalizedTitle": "solutions architect enterprise",
-	"careerTitle": "Solutions Architect, Enterprise",
-	"boardTitle": "Solutions Architect",
-	"careerPageFirstSeen": "2024-11-27",
-	"careerPageDatePosted": "2024-11-27",
-	"boardFirstSeen": "2025-07-30",
-	"boardDatePosted": "2025-07-26",
-	"effectiveCareerDate": "2024-11-27",
-	"effectiveBoardDate": "2025-07-26",
-	"lagDays": 241,
-	"verdict": "career_first",
-	"location": "NAMER",
-	"department": "Sales & Success",
-	"careerSnapshotUrl": "https://web.archive.org/web/20241214022934/https://api.ashbyhq.com/posting-api/job-board/zapier",
-	"boardSnapshotUrl": "https://web.archive.org/web/20250730160457/https://www.linkedin.com/company/zapier/jobs/"
+	"company": "Intercom",
+	"normalizedTitle": "product designer ai group",
+	"careerTitle": "Senior Product Designer, AI Group",
+	"careerPageFirstSeen": "2024-05-01",
+	"careerPageDatePosted": "2024-05-01",
+	"effectiveCareerDate": "2024-05-01",
+	"verdict": "career_only",
+	"location": "Dublin, Dublin, Ireland",
+	"careerSnapshotUrl": "https://web.archive.org/web/20240619134049/https://boards.greenhouse.io/intercom/jobs/5940977"
 }

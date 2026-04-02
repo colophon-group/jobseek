@@ -1,13 +1,15 @@
 {
 	"_type": "job-comparison",
-	"company": "Zapier",
-	"normalizedTitle": "engineering manager ai capabilities",
-	"careerTitle": "Engineering Manager, AI Capabilities",
-	"careerPageFirstSeen": "2025-12-10",
-	"careerPageDatePosted": "2025-12-10",
-	"effectiveCareerDate": "2025-12-10",
-	"verdict": "career_only",
-	"location": "NAMER",
-	"department": "Engineering",
-	"careerSnapshotUrl": "https://web.archive.org/web/20251229082841/https://api.ashbyhq.com/posting-api/job-board/zapier"
+	"company": "Intercom",
+	"normalizedTitle": "forward deployed product manager",
+	"careerTitle": "",
+	"boardTitle": "Senior Forward Deployed Product Manager",
+	"careerPageFirstSeen": "",
+	"boardFirstSeen": "2025-07-31",
+	"boardDatePosted": "2025-07-28",
+	"effectiveCareerDate": "",
+	"effectiveBoardDate": "2025-07-28",
+	"verdict": "board_only",
+	"careerSnapshotUrl": "",
+	"boardSnapshotUrl": "https://web.archive.org/web/20250731011504/https://www.linkedin.com/company/intercom/jobs/"
 }

@@ -1,18 +1,12 @@
 {
 	"_type": "job-comparison",
-	"company": "Intercom",
-	"normalizedTitle": "director engineering",
-	"careerTitle": "Director of Engineering",
-	"boardTitle": "Director, Solutions Engineering",
-	"careerPageFirstSeen": "2024-01-09",
-	"careerPageDatePosted": "2024-01-09",
-	"boardFirstSeen": "2025-07-31",
-	"boardDatePosted": "2025-07-29",
-	"effectiveCareerDate": "2024-01-09",
-	"effectiveBoardDate": "2025-07-29",
-	"lagDays": 567,
-	"verdict": "career_first",
-	"location": "Dublin, Dublin, Ireland",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240428055922/https://boards.greenhouse.io/intercom/jobs/5580110",
-	"boardSnapshotUrl": "https://web.archive.org/web/20250731011504/https://www.linkedin.com/company/intercom/jobs/"
+	"company": "Airtable",
+	"normalizedTitle": "sales manager strategic accounts",
+	"careerTitle": "Sales Manager, Strategic Accounts",
+	"careerPageFirstSeen": "2023-12-07",
+	"careerPageDatePosted": "2023-12-07",
+	"effectiveCareerDate": "2023-12-07",
+	"verdict": "career_only",
+	"location": "Austin, Texas, United States",
+	"careerSnapshotUrl": "https://web.archive.org/web/20240104174619/https://boards.greenhouse.io/airtable/jobs/7055744002"
 }

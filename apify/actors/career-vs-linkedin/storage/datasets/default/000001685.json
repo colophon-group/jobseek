@@ -1,19 +1,13 @@
 {
 	"_type": "job-comparison",
 	"company": "Zapier",
-	"normalizedTitle": "account executive enterprise",
-	"careerTitle": "Account Executive, Enterprise",
-	"boardTitle": "Account Executive",
-	"careerPageFirstSeen": "2025-01-24",
-	"careerPageDatePosted": "2025-01-24",
-	"boardFirstSeen": "2024-12-19",
-	"boardDatePosted": "2024-11-28",
-	"effectiveCareerDate": "2025-01-24",
-	"effectiveBoardDate": "2024-11-28",
-	"lagDays": -57,
-	"verdict": "board_first",
+	"normalizedTitle": "talent community form",
+	"careerTitle": "Talent Community Form",
+	"careerPageFirstSeen": "2024-03-21",
+	"careerPageDatePosted": "2024-03-21",
+	"effectiveCareerDate": "2024-03-21",
+	"verdict": "career_only",
 	"location": "NAMER",
-	"department": "Sales & Success",
-	"careerSnapshotUrl": "https://web.archive.org/web/20250206233511/https://api.ashbyhq.com/posting-api/job-board/zapier",
-	"boardSnapshotUrl": "https://web.archive.org/web/20241219153212/https://www.linkedin.com/company/zapier/jobs/"
+	"department": "Apply for Future Roles at Zapier",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402065519/https://api.ashbyhq.com/posting-api/job-board/zapier"
 }

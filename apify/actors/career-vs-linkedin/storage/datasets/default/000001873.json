@@ -1,13 +1,18 @@
 {
 	"_type": "job-comparison",
-	"company": "Zapier",
-	"normalizedTitle": "software engineer ai tasks fullstack",
-	"careerTitle": "Sr. Software Engineer, AI Tasks (Fullstack)",
-	"careerPageFirstSeen": "2025-12-02",
-	"careerPageDatePosted": "2025-12-02",
-	"effectiveCareerDate": "2025-12-02",
-	"verdict": "career_only",
-	"location": "NAMER",
-	"department": "Engineering",
-	"careerSnapshotUrl": "https://web.archive.org/web/20251208024049/https://api.ashbyhq.com/posting-api/job-board/zapier"
+	"company": "Intercom",
+	"normalizedTitle": "account executive commercial french speaking",
+	"careerTitle": "Account Executive, Commercial (French-Speaking)",
+	"boardTitle": "Account Executive, Commercial",
+	"careerPageFirstSeen": "2025-02-21",
+	"careerPageDatePosted": "2025-02-21",
+	"boardFirstSeen": "2026-03-10",
+	"boardDatePosted": "2026-03-10",
+	"effectiveCareerDate": "2025-02-21",
+	"effectiveBoardDate": "2026-03-10",
+	"lagDays": 382,
+	"verdict": "career_first",
+	"location": "Dublin, Ireland",
+	"careerSnapshotUrl": "https://web.archive.org/web/20250307192340/https://boards.greenhouse.io/intercom/jobs/6652644",
+	"boardSnapshotUrl": "https://web.archive.org/web/20260310171645/https://www.linkedin.com/company/intercom/jobs"
 }

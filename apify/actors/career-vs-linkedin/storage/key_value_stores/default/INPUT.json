@@ -46,6 +46,21 @@
       "name": "Airtable",
       "careerPageUrl": "https://boards.greenhouse.io/airtable",
       "linkedinSlug": "airtable"
+    },
+    {
+      "name": "Cloudflare",
+      "careerPageUrl": "https://boards.greenhouse.io/cloudflare",
+      "linkedinSlug": "cloudflare"
+    },
+    {
+      "name": "Discord",
+      "careerPageUrl": "https://boards.greenhouse.io/discord",
+      "linkedinSlug": "discord"
+    },
+    {
+      "name": "Duolingo",
+      "careerPageUrl": "https://boards.greenhouse.io/duolingo",
+      "linkedinSlug": "duolingo"
     }
   ]
 }

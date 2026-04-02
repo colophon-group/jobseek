@@ -1,13 +1,12 @@
 {
 	"_type": "job-comparison",
-	"company": "Zapier",
-	"normalizedTitle": "engineering manager editor ai",
-	"careerTitle": "Engineering Manager, Editor AI",
-	"careerPageFirstSeen": "2024-05-29",
-	"careerPageDatePosted": "2024-05-29",
-	"effectiveCareerDate": "2024-05-29",
+	"company": "Intercom",
+	"normalizedTitle": "data infrastructure engineer",
+	"careerTitle": "Senior Data Infrastructure Engineer",
+	"careerPageFirstSeen": "2024-02-23",
+	"careerPageDatePosted": "2024-02-23",
+	"effectiveCareerDate": "2024-02-23",
 	"verdict": "career_only",
-	"location": "NAMER",
-	"department": "Engineering",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240614065220/https://api.ashbyhq.com/posting-api/job-board/zapier"
+	"location": "Dublin, Dublin, Ireland",
+	"careerSnapshotUrl": "https://web.archive.org/web/20240428055826/https://boards.greenhouse.io/intercom/jobs/5745624"
 }

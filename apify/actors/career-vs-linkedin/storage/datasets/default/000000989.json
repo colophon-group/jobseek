@@ -1,13 +1,19 @@
 {
 	"_type": "job-comparison",
 	"company": "Deel",
-	"normalizedTitle": "product manager integrations",
-	"careerTitle": "Staff Product Manager, Integrations",
-	"careerPageFirstSeen": "2026-02-09",
-	"careerPageDatePosted": "2026-02-09",
-	"effectiveCareerDate": "2026-02-09",
-	"verdict": "career_only",
-	"location": "EMEA",
-	"department": "R&D",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260402035102/https://api.ashbyhq.com/posting-api/job-board/deel"
+	"normalizedTitle": "payroll implementation manager mexico",
+	"careerTitle": "Payroll Implementation Manager | Mexico",
+	"boardTitle": "Payroll Implementation Manager | France",
+	"careerPageFirstSeen": "2026-03-12",
+	"careerPageDatePosted": "2026-03-12",
+	"boardFirstSeen": "2025-07-20",
+	"boardDatePosted": "2025-07-19",
+	"effectiveCareerDate": "2026-03-12",
+	"effectiveBoardDate": "2025-07-19",
+	"lagDays": -236,
+	"verdict": "board_first",
+	"location": "Mexico",
+	"department": "COGS",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402062727/https://api.ashbyhq.com/posting-api/job-board/deel",
+	"boardSnapshotUrl": "https://web.archive.org/web/20250720232337/https://www.linkedin.com/company/deel/jobs"
 }

@@ -1,18 +1,12 @@
 {
 	"_type": "job-comparison",
-	"company": "Intercom",
-	"normalizedTitle": "customer success manager french speaking",
-	"careerTitle": "Customer Success Manager (French Speaking)",
-	"boardTitle": "Manager, Customer Success",
-	"careerPageFirstSeen": "2024-04-17",
-	"careerPageDatePosted": "2024-04-17",
-	"boardFirstSeen": "2025-07-31",
-	"boardDatePosted": "2025-07-30",
-	"effectiveCareerDate": "2024-04-17",
-	"effectiveBoardDate": "2025-07-30",
-	"lagDays": 469,
-	"verdict": "career_first",
-	"location": "Dublin, Dublin, Ireland",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240428055835/https://boards.greenhouse.io/intercom/jobs/5910130",
-	"boardSnapshotUrl": "https://web.archive.org/web/20250731011504/https://www.linkedin.com/company/intercom/jobs/"
+	"company": "Airtable",
+	"normalizedTitle": "strategic customer success manager emea fran ais",
+	"careerTitle": "Strategic Customer Success Manager, EMEA (Français)",
+	"careerPageFirstSeen": "2024-05-03",
+	"careerPageDatePosted": "2024-05-03",
+	"effectiveCareerDate": "2024-05-03",
+	"verdict": "career_only",
+	"location": "London, England, United Kingdom",
+	"careerSnapshotUrl": "https://web.archive.org/web/20240520072537/https://boards.greenhouse.io/airtable/jobs/7436779002"
 }

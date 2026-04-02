@@ -1,12 +1,18 @@
 {
 	"_type": "job-comparison",
 	"company": "Figma",
-	"normalizedTitle": "software engineer livegraph",
-	"careerTitle": "Software Engineer - Livegraph",
-	"careerPageFirstSeen": "2024-04-04",
-	"careerPageDatePosted": "2024-04-04",
-	"effectiveCareerDate": "2024-04-04",
-	"verdict": "career_only",
-	"location": "San Francisco, California, United States",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240527145314/https://boards.greenhouse.io/figma/jobs/5147734004"
+	"normalizedTitle": "manager localization london united kingdom",
+	"careerTitle": "Manager, Localization (London, United Kingdom)",
+	"boardTitle": "Manager, Advocacy (London, United Kingdom)",
+	"careerPageFirstSeen": "2024-04-03",
+	"careerPageDatePosted": "2024-04-03",
+	"boardFirstSeen": "2025-04-26",
+	"boardDatePosted": "2025-04-25",
+	"effectiveCareerDate": "2024-04-03",
+	"effectiveBoardDate": "2025-04-25",
+	"lagDays": 387,
+	"verdict": "career_first",
+	"location": "London, England, United Kingdom",
+	"careerSnapshotUrl": "https://web.archive.org/web/20240520155150/https://boards.greenhouse.io/figma/jobs/5146222004",
+	"boardSnapshotUrl": "https://web.archive.org/web/20250426012509/https://www.linkedin.com/company/figma/jobs"
 }

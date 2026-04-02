@@ -1,13 +1,18 @@
 {
 	"_type": "job-comparison",
-	"company": "Zapier",
-	"normalizedTitle": "product marketing manager mcp developer audience",
-	"careerTitle": "Sr. Product Marketing Manager - MCP & Developer Audience",
-	"careerPageFirstSeen": "2025-11-27",
-	"careerPageDatePosted": "2025-11-27",
-	"effectiveCareerDate": "2025-11-27",
-	"verdict": "career_only",
-	"location": "NAMER",
-	"department": "Campaign Marketing",
-	"careerSnapshotUrl": "https://web.archive.org/web/20251208024049/https://api.ashbyhq.com/posting-api/job-board/zapier"
+	"company": "Intercom",
+	"normalizedTitle": "growth product designer",
+	"careerTitle": "Senior Growth Product Designer",
+	"boardTitle": "Senior Product Designer",
+	"careerPageFirstSeen": "2025-02-24",
+	"careerPageDatePosted": "2025-02-24",
+	"boardFirstSeen": "2026-03-10",
+	"boardDatePosted": "2026-03-10",
+	"effectiveCareerDate": "2025-02-24",
+	"effectiveBoardDate": "2026-03-10",
+	"lagDays": 379,
+	"verdict": "career_first",
+	"location": "London, England, United Kingdom",
+	"careerSnapshotUrl": "https://web.archive.org/web/20250304111247/https://boards.greenhouse.io/intercom/jobs/6652611",
+	"boardSnapshotUrl": "https://web.archive.org/web/20260310171645/https://www.linkedin.com/company/intercom/jobs"
 }

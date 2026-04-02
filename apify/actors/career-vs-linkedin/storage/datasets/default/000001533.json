@@ -1,12 +1,18 @@
 {
 	"_type": "job-comparison",
 	"company": "Figma",
-	"normalizedTitle": "business development representative early career",
-	"careerTitle": "Business Development Representative - Early Career",
-	"careerPageFirstSeen": "2024-01-08",
-	"careerPageDatePosted": "2024-01-08",
-	"effectiveCareerDate": "2024-01-08",
-	"verdict": "career_only",
+	"normalizedTitle": "manager software engineering search",
+	"careerTitle": "Manager, Software Engineering (Search)",
+	"boardTitle": "Manager, Software Engineering - Search Platform",
+	"careerPageFirstSeen": "2024-01-04",
+	"careerPageDatePosted": "2024-01-04",
+	"boardFirstSeen": "2025-03-10",
+	"boardDatePosted": "2025-03-06",
+	"effectiveCareerDate": "2024-01-04",
+	"effectiveBoardDate": "2025-03-06",
+	"lagDays": 427,
+	"verdict": "career_first",
 	"location": "San Francisco, California, United States",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240206150704/https://boards.greenhouse.io/figma/jobs/5053152004"
+	"careerSnapshotUrl": "https://web.archive.org/web/20240228193413/https://boards.greenhouse.io/figma/jobs/5050988004",
+	"boardSnapshotUrl": "https://web.archive.org/web/20250310111450/https://www.linkedin.com/company/figma/jobs/"
 }

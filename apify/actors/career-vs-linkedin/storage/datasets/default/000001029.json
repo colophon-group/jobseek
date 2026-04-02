@@ -1,19 +1,13 @@
 {
 	"_type": "job-comparison",
 	"company": "Deel",
-	"normalizedTitle": "payroll implementation manager poland",
-	"careerTitle": "Payroll Implementation Manager | Poland",
-	"boardTitle": "Payroll Implementation Manager | France",
-	"careerPageFirstSeen": "2026-03-24",
-	"careerPageDatePosted": "2026-03-24",
-	"boardFirstSeen": "2025-07-20",
-	"boardDatePosted": "2025-07-19",
-	"effectiveCareerDate": "2026-03-24",
-	"effectiveBoardDate": "2025-07-19",
-	"lagDays": -248,
-	"verdict": "board_first",
-	"location": "Poland",
-	"department": "COGS",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260402035102/https://api.ashbyhq.com/posting-api/job-board/deel",
-	"boardSnapshotUrl": "https://web.archive.org/web/20250720232337/https://www.linkedin.com/company/deel/jobs"
+	"normalizedTitle": "global leave partner",
+	"careerTitle": "Global Leave Partner",
+	"careerPageFirstSeen": "2026-03-10",
+	"careerPageDatePosted": "2026-03-10",
+	"effectiveCareerDate": "2026-03-10",
+	"verdict": "career_only",
+	"location": "EMEA",
+	"department": "G&A",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402062727/https://api.ashbyhq.com/posting-api/job-board/deel"
 }

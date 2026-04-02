@@ -1,13 +1,15 @@
 {
 	"_type": "job-comparison",
-	"company": "Zapier",
-	"normalizedTitle": "renewals manager",
-	"careerTitle": "Renewals Manager",
-	"careerPageFirstSeen": "2025-12-23",
-	"careerPageDatePosted": "2025-12-23",
-	"effectiveCareerDate": "2025-12-23",
-	"verdict": "career_only",
-	"location": "NAMER",
-	"department": "Sales & Success",
-	"careerSnapshotUrl": "https://web.archive.org/web/20251229082841/https://api.ashbyhq.com/posting-api/job-board/zapier"
+	"company": "Intercom",
+	"normalizedTitle": "strategic operations gtm",
+	"careerTitle": "",
+	"boardTitle": "Strategic Operations Lead, GTM",
+	"careerPageFirstSeen": "",
+	"boardFirstSeen": "2026-03-10",
+	"boardDatePosted": "2026-03-10",
+	"effectiveCareerDate": "",
+	"effectiveBoardDate": "2026-03-10",
+	"verdict": "board_only",
+	"careerSnapshotUrl": "",
+	"boardSnapshotUrl": "https://web.archive.org/web/20260310171645/https://www.linkedin.com/company/intercom/jobs"
 }

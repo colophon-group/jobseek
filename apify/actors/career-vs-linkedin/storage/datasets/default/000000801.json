@@ -1,13 +1,19 @@
 {
 	"_type": "job-comparison",
 	"company": "Notion",
-	"normalizedTitle": "customer experience operations workforce manager",
-	"careerTitle": "Customer Experience Operations & Workforce Manager",
-	"careerPageFirstSeen": "2026-03-06",
-	"careerPageDatePosted": "2026-03-06",
-	"effectiveCareerDate": "2026-03-06",
-	"verdict": "career_only",
-	"location": "San Francisco, California",
-	"department": "Revenue Operations & Strategy ",
-	"careerSnapshotUrl": "https://web.archive.org/web/20260402034654/https://api.ashbyhq.com/posting-api/job-board/notion"
+	"normalizedTitle": "partner solutions engineer",
+	"careerTitle": "Partner Solutions Engineer",
+	"boardTitle": "Solutions Engineer",
+	"careerPageFirstSeen": "2026-03-05",
+	"careerPageDatePosted": "2026-03-05",
+	"boardFirstSeen": "2024-02-28",
+	"boardDatePosted": "2024-02-24",
+	"effectiveCareerDate": "2026-03-05",
+	"effectiveBoardDate": "2024-02-24",
+	"lagDays": -740,
+	"verdict": "board_first",
+	"location": "New York, New York",
+	"department": "Sales",
+	"careerSnapshotUrl": "https://web.archive.org/web/20260402062439/https://api.ashbyhq.com/posting-api/job-board/notion",
+	"boardSnapshotUrl": "https://web.archive.org/web/20240228185346/https://www.linkedin.com/company/notionhq/jobs/"
 }

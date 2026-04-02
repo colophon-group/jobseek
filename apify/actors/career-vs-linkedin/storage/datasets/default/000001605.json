@@ -1,18 +1,12 @@
 {
 	"_type": "job-comparison",
 	"company": "Figma",
-	"normalizedTitle": "software engineer data infrastructure",
-	"careerTitle": "Software Engineer, Data Infrastructure",
-	"boardTitle": "Software Engineer - AI Infrastructure",
-	"careerPageFirstSeen": "2024-04-02",
-	"careerPageDatePosted": "2024-04-02",
-	"boardFirstSeen": "2025-04-26",
-	"boardDatePosted": "2025-04-25",
-	"effectiveCareerDate": "2024-04-02",
-	"effectiveBoardDate": "2025-04-25",
-	"lagDays": 388,
-	"verdict": "career_first",
-	"location": "San Francisco, California, United States",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240416152404/https://boards.greenhouse.io/figma/jobs/5145550004",
-	"boardSnapshotUrl": "https://web.archive.org/web/20250426012509/https://www.linkedin.com/company/figma/jobs"
+	"normalizedTitle": "technical quality specialist london united kingdom",
+	"careerTitle": "Technical Quality Specialist (London, United Kingdom)",
+	"careerPageFirstSeen": "2024-03-30",
+	"careerPageDatePosted": "2024-03-30",
+	"effectiveCareerDate": "2024-03-30",
+	"verdict": "career_only",
+	"location": "London, England, United Kingdom",
+	"careerSnapshotUrl": "https://web.archive.org/web/20240520072107/https://boards.greenhouse.io/figma/jobs/5142365004"
 }

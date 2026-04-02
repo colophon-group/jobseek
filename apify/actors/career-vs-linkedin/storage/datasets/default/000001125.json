@@ -1,18 +1,11 @@
 {
 	"_type": "job-comparison",
 	"company": "Anthropic",
-	"normalizedTitle": "research scientist societal impacts",
-	"careerTitle": "Research Scientist, Societal Impacts",
-	"boardTitle": "Research Scientist, Societal Impacts",
+	"normalizedTitle": "web engineer brand design",
+	"careerTitle": "Web Engineer, Brand Design",
 	"careerPageFirstSeen": "2024-04-17",
 	"careerPageDatePosted": "2024-04-17",
-	"boardFirstSeen": "2024-04-07",
-	"boardDatePosted": "2023-10-19",
 	"effectiveCareerDate": "2024-04-17",
-	"effectiveBoardDate": "2023-10-19",
-	"lagDays": -181,
-	"verdict": "board_first",
-	"location": "San Francisco, CA",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240523225710/https://boards.greenhouse.io/anthropic/jobs/4020039008",
-	"boardSnapshotUrl": "https://web.archive.org/web/20240407021748/https://www.glassdoor.com/Jobs/Anthropic-Jobs-E8109027.htm"
+	"verdict": "career_only",
+	"careerSnapshotUrl": "https://web.archive.org/web/20241127231258/https://boards.greenhouse.io/anthropic/jobs/4019971008"
 }

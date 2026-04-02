@@ -1,18 +1,12 @@
 {
 	"_type": "job-comparison",
-	"company": "Intercom",
-	"normalizedTitle": "product designer monetization",
-	"careerTitle": "Senior Product Designer - Monetization",
-	"boardTitle": "Senior Product Designer",
-	"careerPageFirstSeen": "2024-06-18",
-	"careerPageDatePosted": "2024-06-18",
-	"boardFirstSeen": "2026-03-10",
-	"boardDatePosted": "2026-03-10",
-	"effectiveCareerDate": "2024-06-18",
-	"effectiveBoardDate": "2026-03-10",
-	"lagDays": 630,
-	"verdict": "career_first",
+	"company": "Cloudflare",
+	"normalizedTitle": "software engineer unimog",
+	"careerTitle": "Software Engineer, Unimog",
+	"careerPageFirstSeen": "2023-07-20",
+	"careerPageDatePosted": "2023-07-20",
+	"effectiveCareerDate": "2023-07-20",
+	"verdict": "career_only",
 	"location": "London, England, United Kingdom",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240810102901/https://boards.greenhouse.io/intercom/jobs/6048955",
-	"boardSnapshotUrl": "https://web.archive.org/web/20260310171645/https://www.linkedin.com/company/intercom/jobs"
+	"careerSnapshotUrl": "https://web.archive.org/web/20240219212640/https://boards.greenhouse.io/cloudflare/jobs/5201904"
 }

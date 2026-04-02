@@ -1,19 +1,12 @@
 {
 	"_type": "job-comparison",
-	"company": "Zapier",
-	"normalizedTitle": "engineer backend edge",
-	"careerTitle": "Sr. Engineer, Backend (Edge)",
-	"boardTitle": "Sr. Backend Engineer",
-	"careerPageFirstSeen": "2024-02-09",
-	"careerPageDatePosted": "2024-02-09",
-	"boardFirstSeen": "2024-12-19",
-	"boardDatePosted": "2024-11-30",
-	"effectiveCareerDate": "2024-02-09",
-	"effectiveBoardDate": "2024-11-30",
-	"lagDays": 295,
-	"verdict": "career_first",
-	"location": "NAMER",
-	"department": "Engineering",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240528053022/https://api.ashbyhq.com/posting-api/job-board/zapier",
-	"boardSnapshotUrl": "https://web.archive.org/web/20241219153212/https://www.linkedin.com/company/zapier/jobs/"
+	"company": "Intercom",
+	"normalizedTitle": "product manager",
+	"careerTitle": "Senior Product Manager",
+	"careerPageFirstSeen": "2023-11-09",
+	"careerPageDatePosted": "2023-11-09",
+	"effectiveCareerDate": "2023-11-09",
+	"verdict": "career_only",
+	"location": "London, England, United Kingdom",
+	"careerSnapshotUrl": "https://web.archive.org/web/20240222140601/https://boards.greenhouse.io/intercom/jobs/5496757"
 }

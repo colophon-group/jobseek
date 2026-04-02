@@ -1,11 +1,18 @@
 {
 	"_type": "job-comparison",
 	"company": "Anthropic",
-	"normalizedTitle": "partner marketing manager",
-	"careerTitle": "Partner Marketing Manager",
-	"careerPageFirstSeen": "2024-04-21",
-	"careerPageDatePosted": "2024-04-21",
-	"effectiveCareerDate": "2024-04-21",
-	"verdict": "career_only",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240521171818/https://boards.greenhouse.io/anthropic/jobs/4018775008"
+	"normalizedTitle": "machine learning systems engineer finetuning infrastructure",
+	"careerTitle": "Machine Learning Systems Engineer, Finetuning Infrastructure",
+	"boardTitle": "Machine Learning Systems Engineer, Finetuning",
+	"careerPageFirstSeen": "2024-04-20",
+	"careerPageDatePosted": "2024-04-20",
+	"boardFirstSeen": "2024-04-07",
+	"boardDatePosted": "2024-02-25",
+	"effectiveCareerDate": "2024-04-20",
+	"effectiveBoardDate": "2024-02-25",
+	"lagDays": -55,
+	"verdict": "board_first",
+	"location": "New York, NY",
+	"careerSnapshotUrl": "https://web.archive.org/web/20240611060342/https://boards.greenhouse.io/anthropic/jobs/4018647008",
+	"boardSnapshotUrl": "https://web.archive.org/web/20240407021748/https://www.glassdoor.com/Jobs/Anthropic-Jobs-E8109027.htm"
 }

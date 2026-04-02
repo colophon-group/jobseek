@@ -1,13 +1,12 @@
 {
 	"_type": "job-comparison",
-	"company": "Zapier",
-	"normalizedTitle": "manager procurement",
-	"careerTitle": "Manager, Procurement",
-	"careerPageFirstSeen": "2024-07-17",
-	"careerPageDatePosted": "2024-07-17",
-	"effectiveCareerDate": "2024-07-17",
+	"company": "Intercom",
+	"normalizedTitle": "technical program manager",
+	"careerTitle": "Senior Technical Program Manager",
+	"careerPageFirstSeen": "2024-03-27",
+	"careerPageDatePosted": "2024-03-27",
+	"effectiveCareerDate": "2024-03-27",
 	"verdict": "career_only",
-	"location": "NAMER",
-	"department": "Finance",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240723220410/https://api.ashbyhq.com/posting-api/job-board/zapier"
+	"location": "San Francisco, California, United States",
+	"careerSnapshotUrl": "https://web.archive.org/web/20240428055852/https://boards.greenhouse.io/intercom/jobs/5853125"
 }

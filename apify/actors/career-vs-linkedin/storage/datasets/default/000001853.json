@@ -1,13 +1,18 @@
 {
 	"_type": "job-comparison",
-	"company": "Zapier",
-	"normalizedTitle": "mgr product design growth",
-	"careerTitle": "Sr. Mgr, Product Design - Growth",
-	"careerPageFirstSeen": "2025-10-08",
-	"careerPageDatePosted": "2025-10-08",
-	"effectiveCareerDate": "2025-10-08",
-	"verdict": "career_only",
-	"location": "NAMER",
-	"department": "Product",
-	"careerSnapshotUrl": "https://web.archive.org/web/20251108013028/https://api.ashbyhq.com/posting-api/job-board/zapier"
+	"company": "Intercom",
+	"normalizedTitle": "account executive midmarket latam",
+	"careerTitle": "Account Executive, Senior MidMarket (LATAM)",
+	"boardTitle": "Account Executive, Senior MidMarket",
+	"careerPageFirstSeen": "2025-01-07",
+	"careerPageDatePosted": "2025-01-07",
+	"boardFirstSeen": "2025-07-31",
+	"boardDatePosted": "2025-07-30",
+	"effectiveCareerDate": "2025-01-07",
+	"effectiveBoardDate": "2025-07-30",
+	"lagDays": 204,
+	"verdict": "career_first",
+	"location": "San Francisco Bay Area, California, United States",
+	"careerSnapshotUrl": "https://web.archive.org/web/20250212033036/https://boards.greenhouse.io/intercom/jobs/6516221",
+	"boardSnapshotUrl": "https://web.archive.org/web/20250731011504/https://www.linkedin.com/company/intercom/jobs/"
 }

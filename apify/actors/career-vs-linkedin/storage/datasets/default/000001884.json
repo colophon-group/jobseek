@@ -1,13 +1,15 @@
 {
 	"_type": "job-comparison",
-	"company": "Zapier",
-	"normalizedTitle": "accountant disbursements",
-	"careerTitle": "Accountant, Disbursements",
-	"careerPageFirstSeen": "2025-12-19",
-	"careerPageDatePosted": "2025-12-19",
-	"effectiveCareerDate": "2025-12-19",
-	"verdict": "career_only",
-	"location": "NAMER",
-	"department": "Finance",
-	"careerSnapshotUrl": "https://web.archive.org/web/20251229082841/https://api.ashbyhq.com/posting-api/job-board/zapier"
+	"company": "Intercom",
+	"normalizedTitle": "engineering manager ai core platform",
+	"careerTitle": "",
+	"boardTitle": "Senior Engineering Manager - AI Core Platform",
+	"careerPageFirstSeen": "",
+	"boardFirstSeen": "2026-01-18",
+	"boardDatePosted": "2026-01-15",
+	"effectiveCareerDate": "",
+	"effectiveBoardDate": "2026-01-15",
+	"verdict": "board_only",
+	"careerSnapshotUrl": "",
+	"boardSnapshotUrl": "https://web.archive.org/web/20260118094244/https://www.linkedin.com/company/intercom/jobs/"
 }

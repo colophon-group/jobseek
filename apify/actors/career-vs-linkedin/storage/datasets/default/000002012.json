@@ -1,18 +1,12 @@
 {
 	"_type": "job-comparison",
-	"company": "Intercom",
-	"normalizedTitle": "engineering manager it engineering",
-	"careerTitle": "Engineering Manager - IT Engineering",
-	"boardTitle": "Engineering Manager",
-	"careerPageFirstSeen": "2024-10-30",
-	"careerPageDatePosted": "2024-10-30",
-	"boardFirstSeen": "2024-07-12",
-	"boardDatePosted": "2024-07-06",
-	"effectiveCareerDate": "2024-10-30",
-	"effectiveBoardDate": "2024-07-06",
-	"lagDays": -116,
-	"verdict": "board_first",
-	"location": "Dublin, Dublin, Ireland",
-	"careerSnapshotUrl": "https://web.archive.org/web/20241209233218/https://boards.greenhouse.io/intercom/jobs/6361460",
-	"boardSnapshotUrl": "https://web.archive.org/web/20240712205417/https://www.linkedin.com/company/intercom/jobs"
+	"company": "Cloudflare",
+	"normalizedTitle": "cloudflare startups onboarding manager",
+	"careerTitle": "Cloudflare For Startups, Onboarding Manager",
+	"careerPageFirstSeen": "2024-05-27",
+	"careerPageDatePosted": "2024-05-27",
+	"effectiveCareerDate": "2024-05-27",
+	"verdict": "career_only",
+	"location": "Lisbon, Lisbon, Portugal",
+	"careerSnapshotUrl": "https://web.archive.org/web/20240606062224/https://boards.greenhouse.io/cloudflare/jobs/5995234"
 }

@@ -1,18 +1,12 @@
 {
 	"_type": "job-comparison",
-	"company": "Intercom",
-	"normalizedTitle": "product designer product setup",
-	"careerTitle": "Senior Product Designer - Product Setup",
-	"boardTitle": "Senior Product Designer",
-	"careerPageFirstSeen": "2024-05-23",
-	"careerPageDatePosted": "2024-05-23",
-	"boardFirstSeen": "2026-03-10",
-	"boardDatePosted": "2026-03-10",
-	"effectiveCareerDate": "2024-05-23",
-	"effectiveBoardDate": "2026-03-10",
-	"lagDays": 656,
-	"verdict": "career_first",
-	"location": "London, England, United Kingdom",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240622124708/https://boards.greenhouse.io/intercom/jobs/5987976",
-	"boardSnapshotUrl": "https://web.archive.org/web/20260310171645/https://www.linkedin.com/company/intercom/jobs"
+	"company": "Airtable",
+	"normalizedTitle": "dach field marketing manager",
+	"careerTitle": "DACH Field Marketing Manager",
+	"careerPageFirstSeen": "2024-06-27",
+	"careerPageDatePosted": "2024-06-27",
+	"effectiveCareerDate": "2024-06-27",
+	"verdict": "career_only",
+	"location": "Munich, Bavaria, Germany",
+	"careerSnapshotUrl": "https://web.archive.org/web/20240629181414/https://boards.greenhouse.io/airtable/jobs/7514738002"
 }

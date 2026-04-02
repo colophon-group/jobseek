@@ -1,19 +1,12 @@
 {
 	"_type": "job-comparison",
-	"company": "Zapier",
-	"normalizedTitle": "engineer backend events",
-	"careerTitle": "Engineer, Backend (Events)",
-	"boardTitle": "Sr. Backend Engineer",
-	"careerPageFirstSeen": "2024-08-07",
-	"careerPageDatePosted": "2024-08-07",
-	"boardFirstSeen": "2024-12-19",
-	"boardDatePosted": "2024-11-30",
-	"effectiveCareerDate": "2024-08-07",
-	"effectiveBoardDate": "2024-11-30",
-	"lagDays": 115,
-	"verdict": "career_first",
-	"location": "NAMER",
-	"department": "Engineering",
-	"careerSnapshotUrl": "https://web.archive.org/web/20240813012551/https://api.ashbyhq.com/posting-api/job-board/zapier",
-	"boardSnapshotUrl": "https://web.archive.org/web/20241219153212/https://www.linkedin.com/company/zapier/jobs/"
+	"company": "Intercom",
+	"normalizedTitle": "gtm finance",
+	"careerTitle": "GTM Finance Lead",
+	"careerPageFirstSeen": "2024-03-29",
+	"careerPageDatePosted": "2024-03-29",
+	"effectiveCareerDate": "2024-03-29",
+	"verdict": "career_only",
+	"location": "San Francisco, California, United States",
+	"careerSnapshotUrl": "https://web.archive.org/web/20240428055915/https://boards.greenhouse.io/intercom/jobs/5864005"
 }
