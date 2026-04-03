@@ -315,7 +315,7 @@ export async function getSalaryHistogram(filters?: HistogramFilters): Promise<Sa
     async () => {
       try {
         // No expansion needed — ancestor IDs are stored on each Typesense document
-        return getSearchProvider().getSalaryHistogram(f);
+        return await getSearchProvider().getSalaryHistogram(f);
       } catch {
         return [];
       }
@@ -346,7 +346,7 @@ export async function getExperienceHistogram(filters?: HistogramFilters): Promis
     async () => {
       try {
         // No expansion needed — ancestor IDs are stored on each Typesense document
-        return getSearchProvider().getExperienceHistogram(f);
+        return await getSearchProvider().getExperienceHistogram(f);
       } catch {
         return [];
       }

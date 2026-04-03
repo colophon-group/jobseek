@@ -262,7 +262,7 @@ async function _fetchGlobalLocationsGrouped(
     const result = await client.collections("job_posting").documents().search({
       q,
       query_by: "title",
-      filter_by: filterStr,
+      filter_by: `is_active:true${filterStr ? " && " + filterStr : ""}`,
       facet_by: "location_ids",
       max_facet_values: 500,
       facet_strategy: "exhaustive",

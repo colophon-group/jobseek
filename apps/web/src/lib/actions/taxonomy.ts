@@ -435,7 +435,7 @@ async function _fetchAllOccupationsGrouped(
     const result = await client.collections("job_posting").documents().search({
       q,
       query_by: "title",
-      filter_by: filterStr,
+      filter_by: `is_active:true${filterStr ? " && " + filterStr : ""}`,
       facet_by: "occupation_id",
       max_facet_values: 500,
       facet_strategy: "exhaustive",
@@ -675,7 +675,7 @@ async function _fetchAllSeniorities(
     const result = await client.collections("job_posting").documents().search({
       q,
       query_by: "title",
-      filter_by: filterStr,
+      filter_by: `is_active:true${filterStr ? " && " + filterStr : ""}`,
       facet_by: "seniority_id",
       max_facet_values: 50,
       facet_strategy: "exhaustive",
@@ -783,7 +783,7 @@ async function _fetchAllTechnologiesGrouped(
     const result = await client.collections("job_posting").documents().search({
       q,
       query_by: "title",
-      filter_by: filterStr,
+      filter_by: `is_active:true${filterStr ? " && " + filterStr : ""}`,
       facet_by: "technology_ids",
       max_facet_values: 500,
       facet_strategy: "exhaustive",
