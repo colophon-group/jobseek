@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { Building2, Bookmark } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -71,7 +72,8 @@ export function WatchlistJobList({
   const [total, setTotal] = useState(initialTotal);
   const [exhausted, setExhausted] = useState(initialPostings.length >= initialTotal);
   const [isTruncated, setIsTruncated] = useState(false);
-  const [showPostingId, setShowPostingId] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const [showPostingId, setShowPostingId] = useState<string | null>(searchParams.get("show"));
   const filtersRef = useRef(filters);
   filtersRef.current = filters;
   const { isSaved, toggle } = useSavedJobs();
@@ -117,10 +119,16 @@ export function WatchlistJobList({
 
   function handleOpenPosting(postingId: string) {
     setShowPostingId(postingId);
+    const url = new URL(window.location.href);
+    url.searchParams.set("show", postingId);
+    window.history.replaceState(null, "", url.pathname + url.search);
   }
 
   function handleClosePosting() {
     setShowPostingId(null);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("show");
+    window.history.replaceState(null, "", url.pathname + url.search);
   }
 
   // Build entries with date dividers
@@ -153,7 +161,7 @@ export function WatchlistJobList({
         key={entry.id}
         type="button"
         onClick={() => handleOpenPosting(entry.id)}
-        className={`flex w-full items-center gap-3 rounded-md px-2 py-2 text-left transition-colors hover:bg-border-soft ${
+        className={`flex w-full cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-left transition-colors hover:bg-border-soft ${
           showPostingId === entry.id ? "bg-border-soft" : ""
         }`}
       >
