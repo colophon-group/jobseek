@@ -1,0 +1,50 @@
+<svg version="1.2" baseProfile="tiny-ps" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1533" width="1600" height="1533">
+	<title>Petrochina_logo-svg</title>
+	<defs>
+		<linearGradient id="grd1" gradientUnits="userSpaceOnUse"  x1="661.113" y1="758.977" x2="-4.862" y2="776.326">
+			<stop offset="0" stop-color="#ffe200"  />
+			<stop offset="1" stop-color="#f08300"  />
+		</linearGradient>
+		<linearGradient id="grd2" gradientUnits="userSpaceOnUse"  x1="695.299" y1="638.62" x2="102.276" y2="225.193">
+			<stop offset="0" stop-color="#ffe200"  />
+			<stop offset="1" stop-color="#f08300"  />
+		</linearGradient>
+		<linearGradient id="grd3" gradientUnits="userSpaceOnUse"  x1="694.314" y1="615.562" x2="481.269" y2="-20.372">
+			<stop offset="0" stop-color="#ffe200"  />
+			<stop offset="1" stop-color="#f08300"  />
+		</linearGradient>
+		<linearGradient id="grd4" gradientUnits="userSpaceOnUse"  x1="947.5" y1="767.651" x2="1599.679" y2="767.651">
+			<stop offset="0" stop-color="#ffe200"  />
+			<stop offset="1" stop-color="#f08300"  />
+		</linearGradient>
+		<linearGradient id="grd5" gradientUnits="userSpaceOnUse"  x1="906.519" y1="636.273" x2="1497.897" y2="225.123">
+			<stop offset="0" stop-color="#ffe200"  />
+			<stop offset="1" stop-color="#f08300"  />
+		</linearGradient>
+		<linearGradient id="grd6" gradientUnits="userSpaceOnUse"  x1="905.659" y1="615.689" x2="1118.426" y2="-20.499">
+			<stop offset="0" stop-color="#ffe200"  />
+			<stop offset="1" stop-color="#f08300"  />
+		</linearGradient>
+	</defs>
+	<style>
+		tspan { white-space:pre }
+		.shp0 { fill: #ffffff } 
+		.shp1 { fill: #c7000d } 
+		.shp2 { fill: url(#grd1) } 
+		.shp3 { fill: url(#grd2) } 
+		.shp4 { fill: url(#grd3) } 
+		.shp5 { fill: url(#grd4) } 
+		.shp6 { fill: url(#grd5) } 
+		.shp7 { fill: url(#grd6) } 
+	</style>
+	<g id="Ebene_x0020_1">
+		<path id="Layer" class="shp0" d="M1481.66 750.75C1481.66 1124.04 1179 1426.7 805.71 1426.7C432.39 1426.7 129.77 1124.04 129.77 750.75C129.77 377.47 432.39 74.81 805.71 74.81C1179 74.81 1481.66 377.46 1481.66 750.75Z" />
+		<path id="Layer" class="shp1" d="M799.9 801.63L118.06 994.63C137.88 1070.38 107.17 1172.06 151.57 1233.55C198.02 1297.86 311.13 1298.6 374.96 1345.64C439.03 1392.7 474.26 1500.86 551.48 1526.1C626.57 1550.75 719.32 1485.37 802.73 1485.29C883.47 1485.13 973.51 1551.09 1046.39 1527.9C1122.92 1503.23 1158.19 1395.89 1222.22 1349.9C1286.49 1303.52 1399.52 1303.89 1446.51 1240.18C1493.58 1176.36 1455.64 1072.34 1480.6 995.41L799.9 801.63L799.9 801.63Z" />
+		<path id="Layer" fill-rule="evenodd" class="shp2" d="M655.7 750.59C655.7 739.86 649.47 730.72 640.37 726.38L114 550.75C85.29 622.28 0.56 687.91 0.72 767.76C0.93 847.56 90.98 912.5 115.19 984.55L639.43 775.34C649.01 771.19 655.7 761.73 655.7 750.59L655.7 750.59Z" />
+		<path id="Layer" fill-rule="evenodd" class="shp3" d="M659.5 675.37L659.78 675.37C670.01 675.27 679.82 669.43 684.37 659.53L684.37 659.53C688.05 651.57 687.32 642.72 683.51 635.59L372.21 188.45C306.7 229.29 201.47 231.54 156.48 292.71C109.53 356.24 142.14 463.17 117.89 540.07L659.5 675.37L659.5 675.37Z" />
+		<path id="Layer" fill-rule="evenodd" class="shp4" d="M757.37 608.6C766.63 604.75 772.57 596.31 773.59 587L793.96 47.27C714.86 44.4 627.8 -17.75 556.55 4.99C480.4 29.49 445.13 136.05 381.64 182.21L728.16 603.15C735.75 610.49 747.17 612.94 757.37 608.61L757.37 608.61L757.37 608.6Z" />
+		<path id="Layer" fill-rule="evenodd" class="shp5" d="M947.5 750.07L947.5 750.59L947.5 751.08C947.71 761.98 954.33 771.26 963.72 775.34L1485.14 984.55C1509.31 912.5 1599.44 847.56 1599.56 767.76C1599.68 687.91 1515 622.28 1486.41 550.75L962.86 726.38C953.91 730.65 947.7 739.56 947.5 750.07L947.5 750.07Z" />
+		<path id="Layer" fill-rule="evenodd" class="shp6" d="M941.89 672.95L942.18 672.95L1482.52 540.07C1458.18 463.17 1490.68 356.24 1443.89 292.7C1398.79 231.54 1293.59 229.29 1228.12 188.45L918.21 633.14C914.32 640.35 913.75 649.15 917.39 657.06L917.39 657.06C921.94 666.98 931.62 672.86 941.89 672.95L941.89 672.95Z" />
+		<path id="Layer" fill-rule="evenodd" class="shp7" d="M842.87 608.6C833.7 604.75 827.83 596.31 826.65 587L805.47 47.27C884.65 44.4 972.61 -17.75 1043.77 4.99C1119.89 29.49 1155.24 136.05 1218.62 182.21L872.16 603.15C864.59 610.49 853.15 612.94 842.87 608.61L842.87 608.61L842.87 608.6Z" />
+	</g>
+</svg>
