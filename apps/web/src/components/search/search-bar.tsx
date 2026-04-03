@@ -368,8 +368,11 @@ export function SearchBar({
       e.preventDefault();
       if (activeIndex >= 0 && activeIndex < allSuggestions.length) {
         selectItem(allSuggestions[activeIndex]);
+      } else if (allSuggestions.length === 1 && allSuggestions[0].kind === "keyword") {
+        // Auto-select when keyword is the only option
+        selectItem(allSuggestions[0]);
       }
-      // No free text submission — user must select from dropdown
+      // Otherwise no action — user must select from dropdown
     } else if (e.key === "Escape") {
       setIsOpen(false);
       setActiveIndex(-1);
