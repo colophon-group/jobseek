@@ -24,6 +24,7 @@ export interface SearchResponse {
   companies: SearchResultCompany[];
   totalCompanies: number;
   truncated?: boolean;
+  degraded?: boolean;
 }
 
 export interface SearchFilters {

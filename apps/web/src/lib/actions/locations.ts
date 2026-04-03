@@ -3,6 +3,8 @@
 import { sql } from "drizzle-orm";
 import { db } from "@/db";
 import { cached } from "@/lib/cache";
+import { getTypesenseClient, type TypesenseHit } from "@/lib/search/typesense-client";
+import { buildFilterString } from "@/lib/search/typesense-filters";
 
 export interface LocationSuggestion {
   id: number;
@@ -18,134 +20,59 @@ export async function suggestLocations(params: {
   userLat?: number;
   userLng?: number;
 }): Promise<LocationSuggestion[]> {
-  const q = params.query.trim().toLowerCase();
+  const q = params.query.trim();
   if (q.length < 2) return [];
 
-  const key = `loc-suggest:${q}:${params.locale}:${params.userLat ?? ""}:${params.userLng ?? ""}`;
-  return cached(key, () => _querySuggestions(params), { ttl: 3600 });
-}
-
-async function _querySuggestions(params: {
-  query: string;
-  locale: string;
-  userLat?: number;
-  userLng?: number;
-}): Promise<LocationSuggestion[]> {
-  const q = params.query.trim().toLowerCase();
   const { locale, userLat, userLng } = params;
   const hasGeo = userLat != null && userLng != null;
 
-  const rows = await db.execute<{
-    [key: string]: unknown;
-    id: number;
-    slug: string;
-    name: string;
-    type: string;
-    parent_name: string | null;
-    population: number;
-    lat: number | null;
-    lng: number | null;
-    match_rank: number;
-  }>(sql`
-    WITH active_locs AS (
-      WITH RECURSIVE job_locs AS (
-        SELECT DISTINCT unnest(location_ids) AS id
-        FROM job_posting WHERE is_active = true
-      ),
-      ancestors AS (
-        SELECT id FROM job_locs
-        UNION
-        SELECT l.parent_id FROM ancestors a
-        JOIN location l ON l.id = a.id WHERE l.parent_id IS NOT NULL
-      )
-      SELECT id FROM ancestors WHERE id IS NOT NULL
-      UNION
-      SELECT lm.macro_id FROM ancestors a
-      JOIN location_macro_member lm ON lm.country_id = a.id
-    ),
-    prefix_matches AS (
-      SELECT DISTINCT ON (l.id) l.id, l.type, l.population, l.lat, l.lng, l.parent_id,
-             1 AS match_rank
-      FROM location_name ln
-      JOIN location l ON l.id = ln.location_id
-      JOIN active_locs al ON al.id = l.id
-      WHERE ln.locale = ${locale}
-        AND lower(ln.name) LIKE ${q + "%"}
-      ORDER BY l.id
-    ),
-    fuzzy_matches AS (
-      SELECT DISTINCT ON (l.id) l.id, l.type, l.population, l.lat, l.lng, l.parent_id,
-             2 AS match_rank
-      FROM location_name ln
-      JOIN location l ON l.id = ln.location_id
-      JOIN active_locs al ON al.id = l.id
-      WHERE ln.locale = ${locale}
-        AND length(${q}) >= 3
-        AND similarity(lower(ln.name), ${q}) > 0.25
-        AND l.id NOT IN (SELECT id FROM prefix_matches)
-      ORDER BY l.id, similarity(lower(ln.name), ${q}) DESC
-    ),
-    matches AS (
-      SELECT * FROM prefix_matches
-      UNION ALL
-      SELECT * FROM fuzzy_matches
-    )
-    SELECT m.id,
-      loc.slug,
-      dn.name,
-      m.type::text AS type,
-      pdn.name AS parent_name,
-      COALESCE(m.population, 0) AS population,
-      m.lat, m.lng,
-      m.match_rank
-    FROM matches m
-    JOIN location loc ON loc.id = m.id
-    JOIN LATERAL (
-      SELECT name FROM location_name
-      WHERE location_id = m.id AND locale IN (${locale}, 'en') AND is_display = true
-      ORDER BY (locale = ${locale})::int DESC LIMIT 1
-    ) dn ON true
-    LEFT JOIN LATERAL (
-      SELECT name FROM location_name
-      WHERE location_id = m.parent_id AND locale IN (${locale}, 'en') AND is_display = true
-      ORDER BY (locale = ${locale})::int DESC LIMIT 1
-    ) pdn ON true
-  `);
+  const sortBy = hasGeo
+    ? `_text_match:desc,coordinates(${userLat},${userLng}, precision: 5km):asc,active_posting_count:desc`
+    : "_text_match:desc,active_posting_count:desc";
 
-  type Row = { id: number; slug: string; name: string; type: string; parent_name: string | null; population: number; lat: number | null; lng: number | null; match_rank: number };
-  const all = rows as unknown as Row[];
+  // Determine query_by fields — prefer user locale, fall back to English
+  const queryByFields = locale !== "en"
+    ? `name_${locale},name_en`
+    : "name_en";
+  const queryByWeights = locale !== "en" ? "3,1" : "1";
 
-  // Sort: nearby locations by distance, then far locations by population
-  const NEAR_KM = 300;
-  const sorted = all
-    .map((r) => ({
-      ...r,
-      dist: hasGeo && r.lat != null && r.lng != null
-        ? _haversineKm(userLat!, userLng!, r.lat, r.lng)
-        : Infinity,
-    }))
-    .sort((a, b) => {
-      if (a.match_rank !== b.match_rank) return a.match_rank - b.match_rank;
-      const nearA = a.dist < NEAR_KM;
-      const nearB = b.dist < NEAR_KM;
-      if (nearA && nearB) return a.dist - b.dist;
-      if (nearA !== nearB) return nearA ? -1 : 1;
-      return b.population - a.population;
-    })
-    .slice(0, 8);
+  try {
+    const client = getTypesenseClient();
+    const result = await client.collections("location").documents().search({
+      q,
+      query_by: queryByFields,
+      query_by_weights: queryByWeights,
+      filter_by: "has_active_postings:true",
+      sort_by: sortBy,
+      per_page: 8,
+      prefix: "true",
+      num_typos: "1",
+      drop_tokens_threshold: 0,
+    });
 
-  return sorted.map((r) => ({
-    id: r.id,
-    slug: r.slug,
-    name: r.name,
-    type: r.type as LocationSuggestion["type"],
-    parentName: r.parent_name,
-  }));
+    if (!result.hits || result.hits.length === 0) return [];
+
+    return result.hits.map((hit) => _mapLocationHit(hit as unknown as TypesenseHit, locale));
+  } catch {
+    // Typesense unavailable — return empty (graceful degradation)
+    return [];
+  }
+}
+
+function _mapLocationHit(hit: TypesenseHit, locale: string): LocationSuggestion {
+  const doc = hit.document;
+  return {
+    id: doc.location_id as number,
+    slug: doc.slug as string,
+    name: (doc[`name_${locale}`] ?? doc.name_en) as string,
+    type: doc.type as LocationSuggestion["type"],
+    parentName: (doc.parent_name as string) ?? null,
+  };
 }
 
 /**
  * Expand a location ID to include all descendant IDs.
- * Used by search to match "Switzerland" → all jobs in Swiss cities.
+ * Used by search to match "Switzerland" -> all jobs in Swiss cities.
  */
 export async function expandLocationIds(locationId: number): Promise<number[]> {
   const key = `loc-expand:${locationId}`;
@@ -260,175 +187,224 @@ export async function getGlobalLocationsGrouped(
   return cached(key, () => _fetchGlobalLocationsGrouped(locale, filters), { ttl: 3600 });
 }
 
+// ── Location hierarchy cache (from Supabase Postgres, long TTL) ──────
+
+interface LocationMeta {
+  id: number;
+  slug: string;
+  type: string;
+  parentId: number | null;
+  names: Record<string, string>; // locale -> display name
+}
+
+async function _getLocationHierarchyCache(): Promise<Map<number, LocationMeta>> {
+  const key = "loc-hierarchy-cache";
+  const record = await cached(
+    key,
+    async () => {
+      const rows = await db.execute<{
+        [key: string]: unknown;
+        id: number;
+        slug: string;
+        type: string;
+        parent_id: number | null;
+      }>(sql`SELECT id, slug, type::text AS type, parent_id FROM location`);
+
+      const nameRows = await db.execute<{
+        [key: string]: unknown;
+        location_id: number;
+        locale: string;
+        name: string;
+      }>(sql`SELECT location_id, locale, name FROM location_name WHERE is_display = true`);
+
+      const nameMap = new Map<number, Record<string, string>>();
+      for (const nr of nameRows as unknown as { location_id: number; locale: string; name: string }[]) {
+        let names = nameMap.get(nr.location_id);
+        if (!names) { names = {}; nameMap.set(nr.location_id, names); }
+        names[nr.locale] = nr.name;
+      }
+
+      const result: Record<string, LocationMeta> = {};
+      for (const r of rows as unknown as { id: number; slug: string; type: string; parent_id: number | null }[]) {
+        result[String(r.id)] = {
+          id: r.id,
+          slug: r.slug,
+          type: r.type,
+          parentId: r.parent_id,
+          names: nameMap.get(r.id) ?? {},
+        };
+      }
+      return result;
+    },
+    { ttl: 86400 },
+  );
+  return new Map(Object.entries(record).map(([k, v]) => [Number(k), v]));
+}
+
+function _getLocaleName(meta: LocationMeta, locale: string): string {
+  return meta.names[locale] ?? meta.names.en ?? meta.slug;
+}
+
 async function _fetchGlobalLocationsGrouped(
   locale: string,
   filters?: { companyId?: string; keywords?: string[]; occupationIds?: number[]; seniorityIds?: number[]; technologyIds?: number[]; languages?: string[] },
 ): Promise<GlobalLocationGroup[]> {
-  const f = filters;
-  const hasKeywords = f?.keywords && f.keywords.length > 0;
-  const rows = await db.execute<{
-    [key: string]: unknown;
-    location_id: number;
-    loc_slug: string;
-    loc_type: string;
-    loc_name: string;
-    cnt: number;
-    region_id: number | null;
-    region_slug: string | null;
-    region_name: string | null;
-    country_id: number | null;
-    country_slug: string | null;
-    country_name: string | null;
-  }>(sql`
-    WITH active_locs AS (
-      SELECT unnest(jp.location_ids) AS location_id
-      FROM job_posting jp
-      WHERE jp.is_active = true
-        AND jp.location_ids IS NOT NULL
-        AND jp.titles[1] IS NOT NULL AND jp.titles[1] != ''
-        ${f?.companyId ? sql`AND jp.company_id = ${f.companyId}` : sql``}
-        ${hasKeywords ? sql`AND (${sql.join(f!.keywords!.map(k => sql`jp.titles[1] ~* ${`\\m${k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\M`}`), sql` OR `)})` : sql``}
-        ${f?.occupationIds && f.occupationIds.length > 0 ? sql`AND jp.occupation_id = ANY(${`{${f.occupationIds.join(",")}}`}::integer[])` : sql``}
-        ${f?.seniorityIds && f.seniorityIds.length > 0 ? sql`AND jp.seniority_id = ANY(${`{${f.seniorityIds.join(",")}}`}::integer[])` : sql``}
-        ${f?.technologyIds && f.technologyIds.length > 0 ? sql`AND jp.technology_ids && ${`{${f.technologyIds.join(",")}}`}::integer[]` : sql``}
-        ${f?.languages && f.languages.length > 0 ? sql`AND (jp.locales && ${`{${f.languages.join(",")}}`}::text[] OR jp.locales = '{}')` : sql``}
-    ),
-    loc_counts AS (
-      SELECT al.location_id, COUNT(*)::int AS cnt
-      FROM active_locs al GROUP BY al.location_id
-    ),
-    hierarchy AS (
-      SELECT lc.location_id, lc.cnt,
-        l.type::text AS loc_type, l.slug AS loc_slug,
-        CASE
-          WHEN l.type = 'region' THEN l.id
-          WHEN l.type = 'city' AND p.type = 'region' THEN p.id
-          ELSE NULL
-        END AS region_id,
-        CASE
-          WHEN l.type = 'country' THEN l.id
-          WHEN p.type = 'country' THEN p.id
-          WHEN gp.type = 'country' THEN gp.id
-          ELSE NULL
-        END AS country_id
-      FROM loc_counts lc
-      JOIN location l ON l.id = lc.location_id
-      LEFT JOIN location p ON p.id = l.parent_id
-      LEFT JOIN location gp ON gp.id = p.parent_id
-    )
-    SELECT
-      h.location_id, h.loc_slug, h.loc_type, h.cnt,
-      ln.name AS loc_name,
-      h.region_id,
-      rl.slug AS region_slug,
-      rn.name AS region_name,
-      h.country_id,
-      cl.slug AS country_slug,
-      cn.name AS country_name
-    FROM hierarchy h
-    JOIN LATERAL (
-      SELECT name FROM location_name
-      WHERE location_id = h.location_id AND locale IN (${locale}, 'en') AND is_display = true
-      ORDER BY (locale = ${locale})::int DESC LIMIT 1
-    ) ln ON true
-    LEFT JOIN location rl ON rl.id = h.region_id
-    LEFT JOIN LATERAL (
-      SELECT name FROM location_name
-      WHERE location_id = h.region_id AND locale IN (${locale}, 'en') AND is_display = true
-      ORDER BY (locale = ${locale})::int DESC LIMIT 1
-    ) rn ON true
-    LEFT JOIN location cl ON cl.id = h.country_id
-    LEFT JOIN LATERAL (
-      SELECT name FROM location_name
-      WHERE location_id = h.country_id AND locale IN (${locale}, 'en') AND is_display = true
-      ORDER BY (locale = ${locale})::int DESC LIMIT 1
-    ) cn ON true
-    ORDER BY cn.name NULLS LAST, rn.name NULLS LAST, h.cnt DESC
-  `);
+  try {
+    const client = getTypesenseClient();
 
-  type Row = {
-    location_id: number; loc_slug: string; loc_type: string; loc_name: string; cnt: number;
-    region_id: number | null; region_slug: string | null; region_name: string | null;
-    country_id: number | null; country_slug: string | null; country_name: string | null;
-  };
-  const all = rows as unknown as Row[];
+    // Build filter string for the facet query (excludes location filter itself)
+    const filterStr = buildFilterString(filters);
 
-  // Build country → region → city hierarchy
-  const countries = new Map<number, GlobalLocationGroup>();
-  const directCountryCount = new Map<number, number>();
-  const directRegionCount = new Map<number, number>();
+    // Build the query string for keyword matching
+    const hasKeywords = filters?.keywords && filters.keywords.length > 0;
+    const q = hasKeywords ? filters!.keywords!.join(" ") : "*";
 
-  for (const r of all) {
-    const cid = r.country_id ?? 0;
-    let country = countries.get(cid);
-    if (!country) {
-      country = {
-        countryId: cid,
-        countrySlug: r.country_slug ?? "",
-        countryName: r.country_name ?? "Other",
-        countryCount: 0,
-        regions: [],
-      };
-      countries.set(cid, country);
-    }
-
-    if (r.loc_type === "country") {
-      directCountryCount.set(cid, r.cnt);
-      continue;
-    }
-    if (r.loc_type === "region") {
-      directRegionCount.set(r.location_id, r.cnt);
-      continue;
-    }
-
-    // City: find or create region group
-    const rid = r.region_id ?? 0;
-    let region = country.regions.find((rg) => rg.regionId === rid);
-    if (!region) {
-      region = {
-        regionId: rid,
-        regionSlug: r.region_slug ?? "",
-        regionName: r.region_name ?? "",
-        regionCount: 0,
-        locations: [],
-      };
-      country.regions.push(region);
-    }
-
-    region.locations.push({
-      id: r.location_id,
-      slug: r.loc_slug,
-      name: r.loc_name,
-      type: r.loc_type,
-      count: r.cnt,
+    const result = await client.collections("job_posting").documents().search({
+      q,
+      query_by: "title",
+      filter_by: filterStr,
+      facet_by: "location_ids",
+      max_facet_values: 500,
+      facet_strategy: "exhaustive",
+      per_page: 0,
     });
-  }
 
-  // Aggregate counts bottom-up
-  for (const country of countries.values()) {
-    let countryTotal = directCountryCount.get(country.countryId) ?? 0;
-    for (const region of country.regions) {
-      const cityTotal = region.locations.reduce((sum, l) => sum + l.count, 0);
-      region.regionCount = cityTotal + (directRegionCount.get(region.regionId) ?? 0);
-      countryTotal += region.regionCount;
+    // Extract facet counts: location_id -> count
+    const facetCounts = new Map<number, number>();
+    const locationFacet = result.facet_counts?.find(
+      (f) => (f as { field_name: string }).field_name === "location_ids",
+    );
+    if (locationFacet) {
+      for (const fc of (locationFacet as { counts: Array<{ value: string; count: number }> }).counts) {
+        facetCounts.set(Number(fc.value), fc.count);
+      }
     }
-    country.countryCount = countryTotal;
-    // Sort regions by count desc
-    country.regions.sort((a, b) => b.regionCount - a.regionCount);
-  }
 
-  return [...countries.values()].filter((g) => g.regions.some((r) => r.locations.length > 0));
+    if (facetCounts.size === 0) return [];
+
+    // Load hierarchy metadata
+    const hierarchy = await _getLocationHierarchyCache();
+
+    // Build country -> region -> city structure from flat facet results
+    const countries = new Map<number, GlobalLocationGroup>();
+    const directCountryCount = new Map<number, number>();
+    const directRegionCount = new Map<number, number>();
+
+    for (const [locationId, count] of facetCounts) {
+      const loc = hierarchy.get(locationId);
+      if (!loc) continue;
+
+      // Find region and country for this location
+      let regionId: number | null = null;
+      let countryId: number | null = null;
+
+      if (loc.type === "country") {
+        countryId = loc.id;
+        directCountryCount.set(countryId, count);
+        // Ensure country group exists
+        _ensureCountryGroup(countries, countryId, loc, locale);
+        continue;
+      }
+
+      if (loc.type === "region") {
+        regionId = loc.id;
+        // parent should be country
+        const parent = loc.parentId ? hierarchy.get(loc.parentId) : null;
+        countryId = parent?.type === "country" ? parent.id : null;
+        directRegionCount.set(regionId, count);
+        // Ensure country group exists
+        if (countryId) _ensureCountryGroup(countries, countryId, parent!, locale);
+        continue;
+      }
+
+      if (loc.type === "city") {
+        const parent = loc.parentId ? hierarchy.get(loc.parentId) : null;
+        if (parent?.type === "region") {
+          regionId = parent.id;
+          const grandparent = parent.parentId ? hierarchy.get(parent.parentId) : null;
+          countryId = grandparent?.type === "country" ? grandparent.id : null;
+        } else if (parent?.type === "country") {
+          countryId = parent.id;
+        }
+      }
+
+      const cid = countryId ?? 0;
+      const countryMeta = countryId ? hierarchy.get(countryId) : null;
+      let country = countries.get(cid);
+      if (!country) {
+        country = {
+          countryId: cid,
+          countrySlug: countryMeta?.slug ?? "",
+          countryName: countryMeta ? _getLocaleName(countryMeta, locale) : "Other",
+          countryCount: 0,
+          regions: [],
+        };
+        countries.set(cid, country);
+      }
+
+      const rid = regionId ?? 0;
+      let region = country.regions.find((rg) => rg.regionId === rid);
+      if (!region) {
+        const regionMeta = regionId ? hierarchy.get(regionId) : null;
+        region = {
+          regionId: rid,
+          regionSlug: regionMeta?.slug ?? "",
+          regionName: regionMeta ? _getLocaleName(regionMeta, locale) : "",
+          regionCount: 0,
+          locations: [],
+        };
+        country.regions.push(region);
+      }
+
+      region.locations.push({
+        id: locationId,
+        slug: loc.slug,
+        name: _getLocaleName(loc, locale),
+        type: loc.type,
+        count,
+      });
+    }
+
+    // Aggregate counts bottom-up
+    for (const country of countries.values()) {
+      let countryTotal = directCountryCount.get(country.countryId) ?? 0;
+      for (const region of country.regions) {
+        const cityTotal = region.locations.reduce((sum, l) => sum + l.count, 0);
+        region.regionCount = cityTotal + (directRegionCount.get(region.regionId) ?? 0);
+        countryTotal += region.regionCount;
+        // Sort locations within region by count desc
+        region.locations.sort((a, b) => b.count - a.count);
+      }
+      country.countryCount = countryTotal;
+      // Sort regions by count desc
+      country.regions.sort((a, b) => b.regionCount - a.regionCount);
+    }
+
+    return [...countries.values()]
+      .filter((g) => g.regions.some((r) => r.locations.length > 0))
+      .sort((a, b) => {
+        // Sort by country name alphabetically
+        return a.countryName.localeCompare(b.countryName);
+      });
+  } catch {
+    // Typesense unavailable — return empty
+    return [];
+  }
 }
 
-function _haversineKm(
-  lat1: number, lng1: number,
-  lat2: number, lng2: number,
-): number {
-  const toRad = (d: number) => (d * Math.PI) / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLng = toRad(lng2 - lng1);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
-  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+function _ensureCountryGroup(
+  countries: Map<number, GlobalLocationGroup>,
+  countryId: number,
+  meta: LocationMeta,
+  locale: string,
+): void {
+  if (!countries.has(countryId)) {
+    countries.set(countryId, {
+      countryId,
+      countrySlug: meta.slug,
+      countryName: _getLocaleName(meta, locale),
+      countryCount: 0,
+      regions: [],
+    });
+  }
 }
