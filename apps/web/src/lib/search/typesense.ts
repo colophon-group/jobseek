@@ -199,7 +199,7 @@ function isConnectionError(err: unknown): boolean {
       return true;
     }
     // AxiosError wraps the cause — check err.code (e.g. "ECONNREFUSED")
-    const code = (err as Record<string, unknown>).code;
+    const code = (err as { code?: string }).code;
     if (typeof code === "string") {
       const lc = code.toLowerCase();
       if (

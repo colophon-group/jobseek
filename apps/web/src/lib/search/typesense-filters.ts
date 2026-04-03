@@ -1,4 +1,4 @@
-import type { SearchFilters, HistogramFilters } from "./types";
+import type { HistogramFilters } from "./types";
 
 /**
  * Build a Typesense filter_by string from user-specified filter dimensions.
@@ -7,18 +7,8 @@ import type { SearchFilters, HistogramFilters } from "./types";
  * Returns an empty string when no filters are active.
  */
 export function buildFilterString(
-  filters: Partial<Pick<SearchFilters,
-    | "locationIds"
-    | "occupationIds"
-    | "seniorityIds"
-    | "technologyIds"
-    | "employmentTypes"
-    | "salaryMinEur"
-    | "salaryMaxEur"
-    | "experienceMin"
-    | "experienceMax"
-    | "languages"
-  >>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  filters: any,
 ): string {
   const parts: string[] = [];
 
