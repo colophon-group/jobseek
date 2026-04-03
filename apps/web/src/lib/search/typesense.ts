@@ -187,14 +187,30 @@ function oneYearAgoUnix(): number {
 function isConnectionError(err: unknown): boolean {
   if (err instanceof Error) {
     const msg = err.message.toLowerCase();
-    return (
+    // Check message content
+    if (
       msg.includes("econnrefused") ||
       msg.includes("econnreset") ||
       msg.includes("etimedout") ||
       msg.includes("socket hang up") ||
       msg.includes("request failed with status code 0") ||
       msg.includes("could not connect")
-    );
+    ) {
+      return true;
+    }
+    // AxiosError wraps the cause — check err.code (e.g. "ECONNREFUSED")
+    const code = (err as Record<string, unknown>).code;
+    if (typeof code === "string") {
+      const lc = code.toLowerCase();
+      if (
+        lc === "econnrefused" ||
+        lc === "econnreset" ||
+        lc === "etimedout" ||
+        lc === "err_network"
+      ) {
+        return true;
+      }
+    }
   }
   return false;
 }
