@@ -176,6 +176,45 @@ sync_boards_total = Gauge(
     "Total boards synced to Redis + local Postgres",
 )
 
+# ── Typesense export metrics ───────────────────────────────────────
+
+typesense_export_docs_total = Counter(
+    "crawler_typesense_export_docs_total",
+    "Documents upserted to Typesense",
+    ["status"],
+)
+
+typesense_export_lag = Gauge(
+    "crawler_typesense_export_lag",
+    "Rows behind the Typesense export cursor",
+)
+
+typesense_export_duration_seconds = Histogram(
+    "crawler_typesense_export_duration_seconds",
+    "Time per Typesense upsert batch",
+    buckets=[0.1, 0.25, 0.5, 1, 2, 5, 10, 30],
+)
+
+typesense_backfill_docs_total = Counter(
+    "crawler_typesense_backfill_docs_total",
+    "Documents backfilled to Typesense",
+)
+
+typesense_reconciliation_discrepancies = Gauge(
+    "crawler_typesense_reconciliation_discrepancies",
+    "Discrepancies from last Typesense reconciliation run",
+)
+
+typesense_healthy = Gauge(
+    "crawler_typesense_healthy",
+    "Typesense health status (1=healthy, 0=unhealthy)",
+)
+
+typesense_memory_bytes = Gauge(
+    "crawler_typesense_memory_bytes",
+    "Typesense process memory usage in bytes",
+)
+
 
 def start_metrics_server(port: int) -> None:
     start_http_server(port)

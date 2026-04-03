@@ -22,6 +22,13 @@ from src.metrics import (
     redis_queue_depth,
     supa_db_pool_idle,
     supa_db_pool_size,
+    typesense_backfill_docs_total,
+    typesense_export_docs_total,
+    typesense_export_duration_seconds,
+    typesense_export_lag,
+    typesense_healthy,
+    typesense_memory_bytes,
+    typesense_reconciliation_discrepancies,
 )
 from src.redis_queue import get_queue_depths
 
@@ -71,7 +78,6 @@ async def _save_cursor(pool: asyncpg.Pool, table: str, cursor: Cursor) -> None:
 # Taxonomy name maps for Typesense denormalization
 # ---------------------------------------------------------------------------
 
-# Refresh interval for taxonomy maps (seconds)
 _TAXONOMY_REFRESH_INTERVAL = 600  # 10 minutes
 
 
@@ -79,22 +85,12 @@ class TaxonomyMaps:
     """In-memory lookup tables for denormalizing Typesense documents."""
 
     def __init__(self) -> None:
-        # location_id -> {locale -> name}
         self.location_names: dict[int, dict[str, str]] = {}
-        # location_id -> geo type (city/region/country/macro)
         self.location_types: dict[int, str] = {}
-        # company_id (UUID) -> {name, slug, icon}
         self.company_info: dict[uuid.UUID, dict[str, str | None]] = {}
-        # occupation_id -> name (English display name)
         self.occupation_names: dict[int, str] = {}
-        # seniority_id -> name (English display name)
         self.seniority_names: dict[int, str] = {}
-        # technology_id -> name
         self.technology_names: dict[int, str] = {}
-        # location_id -> list of all ancestor IDs (self + parents + macro regions)
-        self.location_ancestors: dict[int, list[int]] = {}
-        # occupation_id -> list of all ancestor IDs (self + parents)
-        self.occupation_ancestors: dict[int, list[int]] = {}
         self._last_refresh: float = 0.0
 
     @property
@@ -106,7 +102,6 @@ class TaxonomyMaps:
         local_pool: asyncpg.Pool,
         supa_pool: asyncpg.Pool,
     ) -> None:
-        """Reload all taxonomy maps from the database."""
         await asyncio.gather(
             self._load_location_names(local_pool),
             self._load_location_geo_types(local_pool),
@@ -114,8 +109,6 @@ class TaxonomyMaps:
             self._load_occupation_names(local_pool),
             self._load_seniority_names(local_pool),
             self._load_technology_names(local_pool),
-            self._load_location_ancestors(local_pool),
-            self._load_occupation_ancestors(local_pool),
         )
         self._last_refresh = time.monotonic()
         log.info(
@@ -125,8 +118,6 @@ class TaxonomyMaps:
             occupations=len(self.occupation_names),
             seniorities=len(self.seniority_names),
             technologies=len(self.technology_names),
-            location_ancestors=len(self.location_ancestors),
-            occupation_ancestors=len(self.occupation_ancestors),
         )
 
     async def _load_location_names(self, pool: asyncpg.Pool) -> None:
@@ -167,57 +158,7 @@ class TaxonomyMaps:
         rows = await pool.fetch("SELECT id, name FROM technology")
         self.technology_names = {r["id"]: r["name"] for r in rows}
 
-    async def _load_location_ancestors(self, pool: asyncpg.Pool) -> None:
-        """Build location_id -> [ancestor IDs] map (self + parents + macro regions)."""
-        from collections import defaultdict
 
-        # Load parent_id chains
-        location_parents: dict[int, int | None] = {}
-        rows = await pool.fetch("SELECT id, parent_id FROM location")
-        for r in rows:
-            location_parents[r["id"]] = r["parent_id"]
-
-        # Load macro memberships (country_id -> [macro_id, ...])
-        macro_members: dict[int, list[int]] = defaultdict(list)
-        rows = await pool.fetch("SELECT country_id, macro_id FROM location_macro_member")
-        for r in rows:
-            macro_members[r["country_id"]].append(r["macro_id"])
-
-        # Build ancestor sets
-        ancestors: dict[int, list[int]] = {}
-        for loc_id in location_parents:
-            ancestor_set: set[int] = set()
-            current: int | None = loc_id
-            while current is not None and current not in ancestor_set:
-                ancestor_set.add(current)
-                # If this is a country, add its macro regions
-                if current in macro_members:
-                    ancestor_set.update(macro_members[current])
-                current = location_parents.get(current)
-            ancestors[loc_id] = list(ancestor_set)
-
-        self.location_ancestors = ancestors
-
-    async def _load_occupation_ancestors(self, pool: asyncpg.Pool) -> None:
-        """Build occupation_id -> [ancestor IDs] map (self + parents)."""
-        occupation_parents: dict[int, int | None] = {}
-        rows = await pool.fetch("SELECT id, parent_id FROM occupation")
-        for r in rows:
-            occupation_parents[r["id"]] = r["parent_id"]
-
-        ancestors: dict[int, list[int]] = {}
-        for occ_id in occupation_parents:
-            ancestor_set: set[int] = set()
-            current: int | None = occ_id
-            while current is not None and current not in ancestor_set:
-                ancestor_set.add(current)
-                current = occupation_parents.get(current)
-            ancestors[occ_id] = list(ancestor_set)
-
-        self.occupation_ancestors = ancestors
-
-
-# Module-level singleton
 _taxonomy_maps: TaxonomyMaps | None = None
 
 
@@ -247,71 +188,47 @@ def _build_typesense_docs(
     """Build Typesense documents from asyncpg rows using taxonomy maps."""
     docs = []
     for row in rows:
-        # titles[0] -> title
         titles = row["titles"]
         title = titles[0] if titles else ""
 
-        # company denormalization
         company_id = row["company_id"]
         company = maps.company_info.get(company_id, {})
         company_name = company.get("name", "")
         company_slug = company.get("slug", "")
         company_icon = company.get("icon")
 
-        # location denormalization
-        raw_location_ids = row["location_ids"] or []
+        location_ids = row["location_ids"] or []
         location_names = []
         location_geo_types = []
-        for loc_id in raw_location_ids:
+        for loc_id in location_ids:
             loc_name_map = maps.location_names.get(loc_id, {})
-            # Use English name, fall back to any available locale
             name = loc_name_map.get("en", "")
             if not name and loc_name_map:
                 name = next(iter(loc_name_map.values()))
             location_names.append(name)
             location_geo_types.append(maps.location_types.get(loc_id, ""))
 
-        # Expand location_ids to include all ancestors (parents + macro regions).
-        # Leaf IDs come first (aligned with location_names/location_geo_types),
-        # then additional ancestor-only IDs.
-        ancestor_only: set[int] = set()
-        for lid in raw_location_ids:
-            ancestor_only.update(maps.location_ancestors.get(lid, [lid]))
-        ancestor_only -= set(raw_location_ids)
-        expanded_location_ids = list(raw_location_ids) + list(ancestor_only)
-
-        # occupation denormalization
         occ_id = row["occupation_id"]
         occ_name = maps.occupation_names.get(occ_id) if occ_id else None
 
-        # Expand occupation_id to include all ancestors (parents)
-        occupation_ids: list[int] = []
-        if occ_id is not None:
-            occupation_ids = maps.occupation_ancestors.get(occ_id, [occ_id])
-
-        # seniority denormalization
         sen_id = row["seniority_id"]
         sen_name = maps.seniority_names.get(sen_id) if sen_id else None
 
-        # technology denormalization
         tech_ids = row["technology_ids"] or []
         tech_names = [maps.technology_names.get(tid, "") for tid in tech_ids]
 
-        # experience_min: sentinel -1 for NULL
         exp_min = row["experience_min"]
         if exp_min is None:
             exp_min = -1
 
-        # locales: sentinel ["_none"] for empty
         locales = row["locales"] or []
         if not locales:
             locales = ["_none"]
 
-        # timestamps -> Unix int
         first_seen = row["first_seen_at"]
         first_seen_ts = int(first_seen.timestamp()) if first_seen else 0
 
-        last_seen = row["last_seen_at"]
+        last_seen = row.get("last_seen_at") if hasattr(row, "get") else row["last_seen_at"]
         last_seen_ts = int(last_seen.timestamp()) if last_seen else None
 
         doc: dict = {
@@ -321,7 +238,7 @@ def _build_typesense_docs(
             "company_slug": company_slug,
             "title": title,
             "is_active": row["is_active"],
-            "location_ids": expanded_location_ids,
+            "location_ids": list(location_ids),
             "location_names": location_names,
             "location_types": list(row["location_types"] or []),
             "location_geo_types": location_geo_types,
@@ -333,13 +250,10 @@ def _build_typesense_docs(
             "first_seen_at": first_seen_ts,
         }
 
-        # Optional fields
         if company_icon:
             doc["company_icon"] = company_icon
         if occ_id is not None:
             doc["occupation_id"] = occ_id
-        if occupation_ids:
-            doc["occupation_ids"] = occupation_ids
         if occ_name is not None:
             doc["occupation_name"] = occ_name
         if sen_id is not None:
@@ -358,7 +272,7 @@ def _build_typesense_docs(
 
 
 # ---------------------------------------------------------------------------
-# Typesense upsert
+# Typesense upsert (instrumented)
 # ---------------------------------------------------------------------------
 
 
@@ -367,6 +281,7 @@ async def _upsert_to_typesense(
 ) -> None:
     """Batch upsert documents to Typesense job_posting collection.
 
+    Instruments typesense_export_docs_total and typesense_export_duration_seconds.
     The typesense client is synchronous, so we run it in an executor.
     """
     from src.typesense_client import get_typesense_client
@@ -376,10 +291,180 @@ async def _upsert_to_typesense(
         return
 
     loop = asyncio.get_running_loop()
-    await loop.run_in_executor(
-        None,
-        lambda: client.collections["job_posting"].documents.import_(docs, {"action": "upsert"}),
+    t0 = time.monotonic()
+    try:
+        await loop.run_in_executor(
+            None,
+            lambda: client.collections["job_posting"].documents.import_(docs, {"action": "upsert"}),
+        )
+        duration = time.monotonic() - t0
+        typesense_export_duration_seconds.observe(duration)
+        typesense_export_docs_total.labels(status="success").inc(len(docs))
+    except Exception:
+        duration = time.monotonic() - t0
+        typesense_export_duration_seconds.observe(duration)
+        typesense_export_docs_total.labels(status="error").inc(len(docs))
+        raise
+
+
+# ---------------------------------------------------------------------------
+# Typesense health check
+# ---------------------------------------------------------------------------
+
+
+async def _update_typesense_health() -> None:
+    """Probe Typesense /health and /stats.json, update gauges."""
+    from src.typesense_client import get_typesense_client
+
+    client = get_typesense_client()
+    if client is None:
+        return
+
+    loop = asyncio.get_running_loop()
+    try:
+        health = await loop.run_in_executor(
+            None,
+            lambda: client.operations.perform("health"),
+        )
+        typesense_healthy.set(1 if health.get("ok", False) else 0)
+    except Exception:
+        typesense_healthy.set(0)
+        log.warning("exporter.typesense_health_error", exc_info=True)
+
+    try:
+        stats = await loop.run_in_executor(
+            None,
+            lambda: client.operations.perform("stats.json"),
+        )
+        mem = stats.get("memory_active_bytes") or stats.get("memory_allocated_bytes")
+        if mem is not None:
+            typesense_memory_bytes.set(int(mem))
+    except Exception:
+        log.warning("exporter.typesense_stats_error", exc_info=True)
+
+
+# ---------------------------------------------------------------------------
+# Dual export helpers
+# ---------------------------------------------------------------------------
+
+
+def _cursor_gt(row_ts: datetime, row_id: uuid.UUID, cursor: Cursor) -> bool:
+    """Return True if (row_ts, row_id) > cursor."""
+    c_ts, c_id = cursor
+    return (row_ts, row_id) > (c_ts, c_id)
+
+
+def _min_cursor(a: Cursor, b: Cursor) -> Cursor:
+    """Return the smaller of two cursors."""
+    return a if a <= b else b
+
+
+async def _noop() -> None:
+    """No-op coroutine for gather slots."""
+
+
+async def _upsert_to_supabase(
+    supa_pool: asyncpg.Pool,
+    rows: list,
+) -> None:
+    """Upsert rows to Supabase (extracted from _export_changed_postings)."""
+    col_names = _POSTING_COLUMNS.split(", ")
+    async with supa_pool.acquire() as conn, conn.transaction():
+        await conn.execute(
+            "CREATE TEMP TABLE _export_postings ("
+            "  id UUID, company_id UUID, board_id UUID, source_url TEXT,"
+            "  is_active BOOLEAN, titles TEXT[], locales TEXT[],"
+            "  location_ids INT[], location_types TEXT[],"
+            "  employment_type TEXT,"
+            "  salary_min INT, salary_max INT, salary_currency TEXT,"
+            "  salary_period TEXT, salary_eur INT,"
+            "  experience_min INT, experience_max INT,"
+            "  occupation_id INT, seniority_id INT,"
+            "  technology_ids INT[], description_r2_hash BIGINT,"
+            "  first_seen_at TIMESTAMPTZ"
+            ") ON COMMIT DROP"
+        )
+
+        await conn.copy_records_to_table(
+            "_export_postings",
+            records=[tuple(r[c] for c in col_names) for r in rows],
+            columns=col_names,
+        )
+
+        await conn.execute(
+            "DELETE FROM _export_postings t "
+            "USING job_posting jp "
+            "WHERE jp.source_url = t.source_url AND jp.id != t.id"
+        )
+
+        await conn.execute(
+            f"INSERT INTO job_posting ({_POSTING_COLUMNS}) "
+            "SELECT * FROM _export_postings "
+            f"ON CONFLICT (id) DO UPDATE SET {_POSTING_UPSERT_SET}"
+        )
+
+
+async def _export_postings_dual(
+    local_pool: asyncpg.Pool,
+    supa_pool: asyncpg.Pool,
+    supa_cursor: Cursor,
+    ts_cursor: Cursor,
+    maps: TaxonomyMaps,
+) -> tuple[int, Cursor, Cursor]:
+    """Fetch changed postings and upsert to both Supabase and Typesense concurrently.
+
+    Uses two-cursor design: SELECT from MIN(supa_cursor, ts_cursor), then
+    post-filter rows for each target. Returns (total_fetched, new_supa_cursor, new_ts_cursor).
+    """
+    fetch_cursor = _min_cursor(supa_cursor, ts_cursor)
+    fetch_ts, fetch_id = fetch_cursor
+
+    rows = await local_pool.fetch(
+        f"SELECT {_POSTING_COLUMNS}, last_seen_at, updated_at "
+        "FROM job_posting WHERE (updated_at, id) > ($1, $2) "
+        "ORDER BY updated_at, id LIMIT $3",
+        fetch_ts,
+        fetch_id,
+        settings.export_batch_limit,
     )
+    if not rows:
+        return 0, supa_cursor, ts_cursor
+
+    supa_rows = [r for r in rows if _cursor_gt(r["updated_at"], r["id"], supa_cursor)]
+    ts_rows = [r for r in rows if _cursor_gt(r["updated_at"], r["id"], ts_cursor)]
+
+    tasks = []
+
+    if supa_rows:
+        tasks.append(_upsert_to_supabase(supa_pool, supa_rows))
+    else:
+        tasks.append(_noop())
+
+    if ts_rows:
+        docs = _build_typesense_docs(ts_rows, maps)
+        tasks.append(_upsert_to_typesense(docs))
+    else:
+        tasks.append(_noop())
+
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    new_supa_cursor = supa_cursor
+    if supa_rows:
+        if isinstance(results[0], BaseException):
+            log.error("exporter.supabase_upsert_error", error=str(results[0]))
+        else:
+            last = supa_rows[-1]
+            new_supa_cursor = (last["updated_at"], last["id"])
+
+    new_ts_cursor = ts_cursor
+    if ts_rows:
+        if isinstance(results[1], BaseException):
+            log.error("exporter.typesense_upsert_error", error=str(results[1]))
+        else:
+            last = ts_rows[-1]
+            new_ts_cursor = (last["updated_at"], last["id"])
+
+    return len(rows), new_supa_cursor, new_ts_cursor
 
 
 # ---------------------------------------------------------------------------
@@ -415,17 +500,6 @@ _POSTING_UPSERT_SET = (
     "technology_ids = EXCLUDED.technology_ids, "
     "description_r2_hash = EXCLUDED.description_r2_hash"
 )
-
-
-def _cursor_gt(row_ts: datetime, row_id: uuid.UUID, cursor: Cursor) -> bool:
-    """Return True if (row_ts, row_id) > cursor."""
-    c_ts, c_id = cursor
-    return (row_ts, row_id) > (c_ts, c_id)
-
-
-def _min_cursor(a: Cursor, b: Cursor) -> Cursor:
-    """Return the smaller of two cursors."""
-    return a if a <= b else b
 
 
 async def _export_changed_postings(
@@ -494,120 +568,6 @@ async def _export_changed_postings(
     return len(rows), new_cursor
 
 
-async def _export_postings_dual(
-    local_pool: asyncpg.Pool,
-    supa_pool: asyncpg.Pool,
-    supa_cursor: Cursor,
-    ts_cursor: Cursor,
-    maps: TaxonomyMaps,
-) -> tuple[int, Cursor, Cursor]:
-    """Fetch changed postings and upsert to both Supabase and Typesense concurrently.
-
-    Uses two-cursor design: SELECT from MIN(supa_cursor, ts_cursor), then
-    post-filter rows for each target. Returns (total_fetched, new_supa_cursor, new_ts_cursor).
-    """
-    fetch_cursor = _min_cursor(supa_cursor, ts_cursor)
-    fetch_ts, fetch_id = fetch_cursor
-
-    # Widen SELECT to include last_seen_at (needed by Typesense, not sent to Supabase)
-    rows = await local_pool.fetch(
-        f"SELECT {_POSTING_COLUMNS}, last_seen_at, updated_at "
-        "FROM job_posting WHERE (updated_at, id) > ($1, $2) "
-        "ORDER BY updated_at, id LIMIT $3",
-        fetch_ts,
-        fetch_id,
-        settings.export_batch_limit,
-    )
-    if not rows:
-        return 0, supa_cursor, ts_cursor
-
-    # Post-fetch filtering: each target only gets rows past its own cursor
-    supa_rows = [r for r in rows if _cursor_gt(r["updated_at"], r["id"], supa_cursor)]
-    ts_rows = [r for r in rows if _cursor_gt(r["updated_at"], r["id"], ts_cursor)]
-
-    # Build tasks
-    tasks = []
-
-    # Supabase upsert
-    if supa_rows:
-        tasks.append(_upsert_to_supabase(supa_pool, supa_rows))
-    else:
-        tasks.append(_noop())
-
-    # Typesense upsert
-    if ts_rows:
-        docs = _build_typesense_docs(ts_rows, maps)
-        tasks.append(_upsert_to_typesense(docs))
-    else:
-        tasks.append(_noop())
-
-    results = await asyncio.gather(*tasks, return_exceptions=True)
-
-    # Advance cursors independently on success
-    new_supa_cursor = supa_cursor
-    if supa_rows:
-        if isinstance(results[0], BaseException):
-            log.error("exporter.supabase_upsert_error", error=str(results[0]))
-        else:
-            last = supa_rows[-1]
-            new_supa_cursor = (last["updated_at"], last["id"])
-
-    new_ts_cursor = ts_cursor
-    if ts_rows:
-        if isinstance(results[1], BaseException):
-            log.error("exporter.typesense_upsert_error", error=str(results[1]))
-        else:
-            last = ts_rows[-1]
-            new_ts_cursor = (last["updated_at"], last["id"])
-
-    return len(rows), new_supa_cursor, new_ts_cursor
-
-
-async def _noop() -> None:
-    """No-op coroutine for gather slots."""
-
-
-async def _upsert_to_supabase(
-    supa_pool: asyncpg.Pool,
-    rows: list,
-) -> None:
-    """Upsert rows to Supabase (extracted from _export_changed_postings)."""
-    col_names = _POSTING_COLUMNS.split(", ")
-    async with supa_pool.acquire() as conn, conn.transaction():
-        await conn.execute(
-            "CREATE TEMP TABLE _export_postings ("
-            "  id UUID, company_id UUID, board_id UUID, source_url TEXT,"
-            "  is_active BOOLEAN, titles TEXT[], locales TEXT[],"
-            "  location_ids INT[], location_types TEXT[],"
-            "  employment_type TEXT,"
-            "  salary_min INT, salary_max INT, salary_currency TEXT,"
-            "  salary_period TEXT, salary_eur INT,"
-            "  experience_min INT, experience_max INT,"
-            "  occupation_id INT, seniority_id INT,"
-            "  technology_ids INT[], description_r2_hash BIGINT,"
-            "  first_seen_at TIMESTAMPTZ"
-            ") ON COMMIT DROP"
-        )
-
-        await conn.copy_records_to_table(
-            "_export_postings",
-            records=[tuple(r[c] for c in col_names) for r in rows],
-            columns=col_names,
-        )
-
-        await conn.execute(
-            "DELETE FROM _export_postings t "
-            "USING job_posting jp "
-            "WHERE jp.source_url = t.source_url AND jp.id != t.id"
-        )
-
-        await conn.execute(
-            f"INSERT INTO job_posting ({_POSTING_COLUMNS}) "
-            "SELECT * FROM _export_postings "
-            f"ON CONFLICT (id) DO UPDATE SET {_POSTING_UPSERT_SET}"
-        )
-
-
 # ---------------------------------------------------------------------------
 # Export: changed board status
 # ---------------------------------------------------------------------------
@@ -661,6 +621,7 @@ async def _update_metrics(
     local_pool: asyncpg.Pool,
     supa_pool: asyncpg.Pool,
     posting_cursor: Cursor,
+    ts_cursor: Cursor | None = None,
 ) -> None:
     """Update Prometheus gauges with queue depths, export lag, and R2 pending."""
     try:
@@ -683,6 +644,19 @@ async def _update_metrics(
     except Exception:
         log.warning("exporter.metrics_lag_error", exc_info=True)
 
+    # Typesense export lag
+    if ts_cursor is not None:
+        try:
+            ts_ts, ts_id = ts_cursor
+            ts_lag = await local_pool.fetchval(
+                "SELECT count(*) FROM job_posting WHERE (updated_at, id) > ($1, $2)",
+                ts_ts,
+                ts_id,
+            )
+            typesense_export_lag.set(ts_lag or 0)
+        except Exception:
+            log.warning("exporter.metrics_typesense_lag_error", exc_info=True)
+
     try:
         pending = await local_pool.fetchval(
             "SELECT count(*) FROM descriptions WHERE r2_uploaded = false"
@@ -690,6 +664,13 @@ async def _update_metrics(
         r2_pending_gauge.set(pending or 0)
     except Exception:
         log.warning("exporter.metrics_r2_pending_error", exc_info=True)
+
+    # Typesense health check
+    if _typesense_enabled():
+        try:
+            await _update_typesense_health()
+        except Exception:
+            log.warning("exporter.metrics_typesense_health_error", exc_info=True)
 
     # Pool stats
     local_db_pool_size.set(local_pool.get_size())
@@ -753,7 +734,12 @@ async def run_exporter(
                 )
                 await _save_cursor(local_pool, "job_posting", posting_cursor)
 
-            await _update_metrics(local_pool, supa_pool, posting_cursor)
+            await _update_metrics(
+                local_pool,
+                supa_pool,
+                posting_cursor,
+                ts_cursor=ts_cursor if ts_enabled else None,
+            )
 
             duration = time.monotonic() - t0
             exporter_flush_duration.observe(duration)
@@ -813,10 +799,9 @@ async def backfill_typesense(
         docs = _build_typesense_docs(rows, maps)
         try:
             await _upsert_to_typesense(docs)
+            typesense_backfill_docs_total.inc(len(docs))
         except Exception:
             log.exception("backfill.typesense_upsert_error", batch_start=str(cursor))
-            # Continue with next batch rather than aborting entirely
-            pass
 
         last_row = rows[-1]
         cursor = (last_row["updated_at"], last_row["id"])
@@ -901,6 +886,7 @@ async def _reconcile_typesense(local_pool: asyncpg.Pool) -> int:
 
     1. Compare total doc counts
     2. Sample 100 random IDs from Postgres, check in Typesense
+    Sets typesense_reconciliation_discrepancies gauge.
     Returns number of discrepancies found.
     """
     from src.typesense_client import get_typesense_client
@@ -962,6 +948,7 @@ async def _reconcile_typesense(local_pool: asyncpg.Pool) -> int:
     except Exception:
         log.exception("reconciliation.typesense.sample_error")
 
+    typesense_reconciliation_discrepancies.set(discrepancies)
     log.info("reconciliation.typesense.completed", discrepancies=discrepancies)
     return discrepancies
 
