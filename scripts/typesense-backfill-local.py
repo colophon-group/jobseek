@@ -177,18 +177,18 @@ def _build_doc(row: asyncpg.Record, maps: dict, csv_companies: dict) -> dict:
     """Build a Typesense document from a job_posting row."""
     company_id = str(row["company_id"])
 
-    # Resolve company info
+    # Resolve company info — match the longest CSV slug that is a prefix
+    # of board_slug (e.g., "stripe-careers" should match "stripe" not "str")
     board_slug = maps["company_slugs"].get(company_id, "")
-    # Try matching board_slug against CSV companies
+    best_slug = ""
     company_info = None
     for csv_slug, info in csv_companies.items():
-        if board_slug.startswith(csv_slug):
+        if board_slug.startswith(csv_slug) and len(csv_slug) > len(best_slug):
+            best_slug = csv_slug
             company_info = info
-            company_slug = csv_slug
-            break
+    company_slug = best_slug or board_slug or "unknown"
     if not company_info:
         company_info = {"name": board_slug or "Unknown", "icon": None}
-        company_slug = board_slug or "unknown"
 
     titles = row["titles"] or []
     title = titles[0] if titles else ""
