@@ -4000,6 +4000,11 @@ totalenergies,totalenergies-careers-nl,https://jobs.totalenergies.com/nl_NL/care
 totalenergies,totalenergies-careers-pt,https://jobs.totalenergies.com/pt_BR/careers/SearchJobs,sitemap,"{""sitemap_url"": ""https://jobs.totalenergies.com/pt_BR/careers/sitemap.xml"", ""url_filter"": ""JobDetail/""}",dom,"{""steps"": [{""tag"": ""h2"", ""attr"": ""class=banner__text__title"", ""field"": ""title""}, {""text"": ""Pa\u00eds"", ""offset"": 1, ""field"": ""locations""}, {""text"": ""Tipo de contrato"", ""offset"": 1, ""field"": ""employment_type"", ""optional"": true}, {""tag"": ""h3"", ""attr"": ""class=article__header__text__title"", ""field"": ""description"", ""stop"": ""Apply"", ""html"": true}]}"
 touchbistro,touchbistro-greenhouse,https://job-boards.greenhouse.io/touchbistro,greenhouse,"{""token"": ""touchbistro""}",skip,
 tower-peak-partners,tower-peak-partners-greenhouse,https://job-boards.greenhouse.io/towerpeak,greenhouse,"{""token"": ""towerpeak""}",skip,
+toyota,toyota-careers,https://toyota.wd5.myworkdayjobs.com/TMNA,workday,"{""company"": ""toyota"", ""wd_instance"": ""wd503"", ""site"": ""TMNA"", ""all_sites"": true}",workday,
+toyota,toyota-careers-asia,https://careers.toyota-asia.com/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.toyota-asia.com/googlefeed.xml""}",skip,
+toyota,toyota-careers-australia,https://toyotaau.wd3.myworkdayjobs.com/Careers,workday,"{""company"": ""toyotaau"", ""wd_instance"": ""wd3"", ""site"": ""Careers""}",workday,
+toyota,toyota-careers-europe,https://careers.toyota-europe.com/jobs,sitemap,"{""url"": ""https://careers.toyota-europe.com/sitemap.xml"", ""url_filter"": ""/jobs/(?!domains|p\\d)[a-z]""}",json-ld,
+toyota,toyota-careers-southafrica,https://jobs.toyota.co.za/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://jobs.toyota.co.za/googlefeed.xml""}",skip,
 tpr-education-llc,tpr-education-llc-greenhouse,https://job-boards.greenhouse.io/tpreducationllc,greenhouse,"{""token"": ""tpreducationllc""}",skip,
 tr-fr,tr-fr-greenhouse,https://job-boards.greenhouse.io/trufru,greenhouse,"{""token"": ""trufru""}",skip,
 traba,traba-ashby,https://jobs.ashbyhq.com/traba,ashby,"{""token"": ""traba""}",skip,
