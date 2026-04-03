@@ -252,8 +252,29 @@ export async function listTopCompanies(params: {
     return { companies: [], totalCompanies: 0, truncated: true };
   }
 
-  // No expansion needed — ancestor IDs are stored on each Typesense document
-  const result = await getSearchProvider().listTopCompanies(params);
+  // Determine if this is an unfiltered request (cacheable)
+  const isUnfiltered =
+    !params.locationIds?.length &&
+    !params.occupationIds?.length &&
+    !params.seniorityIds?.length &&
+    !params.technologyIds?.length &&
+    !params.employmentTypes?.length &&
+    !params.languages?.length &&
+    params.salaryMinEur == null &&
+    params.salaryMaxEur == null &&
+    params.experienceMin == null &&
+    params.experienceMax == null;
+
+  const fetch = () => getSearchProvider().listTopCompanies(params);
+
+  // Cache only the unfiltered case (stable key, high hit rate)
+  const result = isUnfiltered
+    ? await cached(
+        `top-companies:${params.locale}:${params.offset}:${params.limit}`,
+        fetch,
+        { ttl: 60 },
+      )
+    : await fetch();
 
   if (!userId && params.offset + result.companies.length >= ANON_MAX_COMPANIES) {
     return { ...result, truncated: true };

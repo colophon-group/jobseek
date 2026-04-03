@@ -317,22 +317,21 @@ export class TypesenseSearchProvider implements SearchProvider {
           [f.value, f.count] as [string, number],
       ),
     );
-    // Fetch year counts from company collection (pre-computed) — more reliable
-    // than a year facet which may not return all companies on the current page
-    const yearCountMap = await fetchYearCounts(companyIds);
-
-    // Fetch postings for this page of companies
-    const postingResults: TsSearchResponse<JobPostingDoc> = await client
-      .collections<JobPostingDoc>("job_posting")
-      .documents()
-      .search({
-        q: "*",
-        filter_by: `company_id:[${companyIds.join(",")}] && ${activeFilter}`,
-        group_by: "company_id",
-        group_limit: 10,
-        sort_by: "first_seen_at:desc",
-        per_page: companyIds.length,
-      });
+    // Fetch year counts and postings in parallel (independent queries)
+    const [yearCountMap, postingResults] = await Promise.all([
+      fetchYearCounts(companyIds),
+      client
+        .collections<JobPostingDoc>("job_posting")
+        .documents()
+        .search({
+          q: "*",
+          filter_by: `company_id:[${companyIds.join(",")}] && ${activeFilter}`,
+          group_by: "company_id",
+          group_limit: 10,
+          sort_by: "first_seen_at:desc",
+          per_page: companyIds.length,
+        }),
+    ]);
 
     // Build a map of company_id -> group for ordered assembly
     const groupedHits = (postingResults.grouped_hits ?? []) as GroupedHit[];
