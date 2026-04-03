@@ -672,7 +672,12 @@ export async function searchPublicWatchlists(params: {
   if (!q) return { watchlists: [], total: 0 };
 
   try {
-    return await _searchPublicWatchlistsTypesense(q, params.offset, params.limit);
+    const tsResult = await _searchPublicWatchlistsTypesense(q, params.offset, params.limit);
+    // Enrich with real job counts from Postgres (Typesense active_job_count may be stale)
+    if (tsResult.watchlists.length > 0) {
+      return { watchlists: await _enrichWatchlistsWithRealCounts(tsResult.watchlists), total: tsResult.total };
+    }
+    return tsResult;
   } catch (err) {
     console.error("[searchPublicWatchlists] Typesense failed, falling back to Postgres", err);
     return queryPublicWatchlists({
@@ -689,7 +694,12 @@ export async function getPopularWatchlists(params: {
   limit: number;
 }): Promise<{ watchlists: PublicWatchlistEntry[]; total: number }> {
   try {
-    return await _getPopularWatchlistsTypesense(params.offset, params.limit);
+    const tsResult = await _getPopularWatchlistsTypesense(params.offset, params.limit);
+    // Enrich with real job counts from Postgres (Typesense active_job_count may be stale)
+    if (tsResult.watchlists.length > 0) {
+      return { watchlists: await _enrichWatchlistsWithRealCounts(tsResult.watchlists), total: tsResult.total };
+    }
+    return tsResult;
   } catch (err) {
     console.error("[getPopularWatchlists] Typesense failed, falling back to Postgres", err);
     return queryPublicWatchlists({
@@ -728,8 +738,7 @@ export async function getWatchlistPostings(params: {
   }
 
   try {
-    const result = await _getWatchlistPostingsTypesense(params, userId);
-    return result;
+    return await _getWatchlistPostingsTypesense(params, userId);
   } catch (err) {
     console.error("[getWatchlistPostings] Typesense failed, falling back to Postgres", err);
     return _getWatchlistPostingsPostgres(params, userId);
@@ -902,6 +911,49 @@ function _mapWatchlistDoc(doc: Record<string, unknown>): PublicWatchlistEntry {
   };
 }
 
+/**
+ * Enrich Typesense-sourced watchlist entries with real activeJobCount
+ * computed from Postgres (the Typesense watchlist collection may have stale counts).
+ */
+async function _enrichWatchlistsWithRealCounts(
+  watchlists: PublicWatchlistEntry[],
+): Promise<PublicWatchlistEntry[]> {
+  const ids = watchlists.map((w) => w.id);
+  if (ids.length === 0) return watchlists;
+
+  const pgArr = `{${ids.join(",")}}`;
+  const rows = await db.execute<{
+    [key: string]: unknown;
+    id: string;
+    filters: WatchlistFilters | null;
+    company_ids: string[];
+  }>(sql`
+    SELECT w.id, w.filters,
+           (SELECT coalesce(array_agg(wc.company_id), '{}') FROM watchlist_company wc WHERE wc.watchlist_id = w.id) AS company_ids
+    FROM watchlist w
+    WHERE w.id = ANY(${pgArr}::uuid[])
+  `);
+
+  type Row = { id: string; filters: WatchlistFilters | null; company_ids: string[] };
+  const rowMap = new Map<string, Row>();
+  for (const r of rows as unknown as Row[]) {
+    rowMap.set(r.id, r);
+  }
+
+  const counts = await Promise.all(
+    watchlists.map((w) => {
+      const pgRow = rowMap.get(w.id);
+      if (!pgRow) return Promise.resolve(0);
+      return resolveFilteredJobCount(w.id, pgRow.filters ?? {}, pgRow.company_ids ?? []);
+    }),
+  );
+
+  return watchlists.map((w, i) => ({
+    ...w,
+    activeJobCount: counts[i],
+  }));
+}
+
 /** Max company IDs per Typesense filter string batch (~7KB ≈ 200 UUIDs). */
 const COMPANY_BATCH_SIZE = 100;
 
@@ -977,6 +1029,7 @@ async function _getWatchlistPostingsTypesense(
   });
 
   const total = result.found ?? 0;
+  console.log(`[getWatchlistPostings] Typesense returned ${total} total, ${(result.hits ?? []).length} hits, filter=${fullFilter}`);
   if (total === 0 || params.limit === 0) return { postings: [], total };
 
   const postings: WatchlistPostingEntry[] = (result.hits ?? []).map((hit) => {
