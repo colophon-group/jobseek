@@ -365,12 +365,16 @@ async function _fetchGlobalLocationsGrouped(
       });
     }
 
-    // Aggregate counts bottom-up
+    // Aggregate counts bottom-up.
+    // With ancestor IDs stored on documents, the facet already returns correct
+    // counts for regions/countries (they include all descendant postings).
+    // We only roll up from cities — do NOT add directRegionCount/directCountryCount
+    // to avoid double-counting.
     for (const country of countries.values()) {
-      let countryTotal = directCountryCount.get(country.countryId) ?? 0;
+      let countryTotal = 0;
       for (const region of country.regions) {
         const cityTotal = region.locations.reduce((sum, l) => sum + l.count, 0);
-        region.regionCount = cityTotal + (directRegionCount.get(region.regionId) ?? 0);
+        region.regionCount = cityTotal;
         countryTotal += region.regionCount;
         // Sort locations within region by count desc
         region.locations.sort((a, b) => b.count - a.count);
