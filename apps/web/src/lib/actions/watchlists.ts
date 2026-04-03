@@ -14,6 +14,13 @@ import { generateUniqueSlug } from "@/lib/watchlist-slug";
 import { ANON_MAX_WATCHLIST_POSTINGS } from "@/lib/search/constants";
 import { expandLocationIds, resolveLocationSlugs } from "@/lib/actions/locations";
 import { expandOccupationIds, resolveOccupationSlugs, resolveSenioritySlugs, resolveTechnologySlugs } from "@/lib/actions/taxonomy";
+import { getSearchClient } from "@/lib/search/typesense-client";
+import { buildFilterString } from "@/lib/search/typesense-filters";
+import {
+  upsertWatchlist as tsUpsertWatchlist,
+  deleteWatchlist as tsDeleteWatchlist,
+  updateWatchlistField as tsUpdateWatchlistField,
+} from "@/lib/search/typesense-watchlist";
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -120,6 +127,30 @@ export async function createWatchlist(params: {
     );
   }
 
+  // Typesense write hook: upsert if public (fire-and-forget)
+  const isPublic = params.isPublic ?? true;
+  if (isPublic) {
+    // Fetch owner info for the Typesense doc
+    _getOwnerInfo(userId).then((owner) => {
+      if (!owner) return;
+      tsUpsertWatchlist({
+        id: row.id,
+        slug,
+        title: params.title,
+        description: params.description,
+        owner_name: owner.name,
+        owner_username: owner.username ?? undefined,
+        company_count: params.companyIds.length,
+        active_job_count: 0, // will be refreshed by reconciliation cron
+        mirror_count: 0,
+        created_at: Math.floor(Date.now() / 1000),
+        is_public: true,
+      });
+    }).catch((err) => {
+      console.error("[createWatchlist] Typesense hook failed", err);
+    });
+  }
+
   return { id: row.id, slug };
 }
 
@@ -135,7 +166,14 @@ export async function updateWatchlist(params: {
   if (!userId) throw new Error("Not authenticated");
 
   const [wl] = await db
-    .select({ id: watchlist.id, userId: watchlist.userId, slug: watchlist.slug })
+    .select({
+      id: watchlist.id,
+      userId: watchlist.userId,
+      slug: watchlist.slug,
+      title: watchlist.title,
+      description: watchlist.description,
+      isPublic: watchlist.isPublic,
+    })
     .from(watchlist)
     .where(eq(watchlist.id, params.watchlistId))
     .limit(1);
@@ -176,6 +214,55 @@ export async function updateWatchlist(params: {
     }
   }
 
+  // Typesense write hook (fire-and-forget)
+  const wasPublic = wl.isPublic;
+  const nowPublic = params.isPublic !== undefined ? params.isPublic : wasPublic;
+
+  if (nowPublic) {
+    // Upsert: the watchlist is (still or newly) public
+    // Use partial update for fields we know; reconciliation cron handles the rest.
+    const tsFields: Record<string, unknown> = {
+      slug: newSlug,
+      title: params.title ?? wl.title,
+      is_public: true,
+    };
+    if (params.description !== undefined) {
+      tsFields.description = params.description ?? "";
+    }
+    if (params.companyIds !== undefined) {
+      tsFields.company_count = params.companyIds.length;
+    }
+    tsUpdateWatchlistField(params.watchlistId, tsFields);
+
+    // If transitioning from private to public, the doc may not exist yet — do a full upsert
+    if (!wasPublic) {
+      _getOwnerInfo(userId).then(async (owner) => {
+        if (!owner) return;
+        const companyCount = params.companyIds !== undefined
+          ? params.companyIds.length
+          : await _countWatchlistCompanies(params.watchlistId);
+        tsUpsertWatchlist({
+          id: params.watchlistId,
+          slug: newSlug,
+          title: params.title ?? wl.title,
+          description: (params.description !== undefined ? params.description : wl.description) ?? undefined,
+          owner_name: owner.name,
+          owner_username: owner.username ?? undefined,
+          company_count: companyCount,
+          active_job_count: 0, // refreshed by reconciliation cron
+          mirror_count: 0,
+          created_at: Math.floor(Date.now() / 1000),
+          is_public: true,
+        });
+      }).catch((err) => {
+        console.error("[updateWatchlist] Typesense hook failed", err);
+      });
+    }
+  } else if (wasPublic && !nowPublic) {
+    // Was public, now private — delete from Typesense
+    tsDeleteWatchlist(params.watchlistId);
+  }
+
   return { slug: newSlug };
 }
 
@@ -194,6 +281,10 @@ export async function deleteWatchlist(
   if (!wl || wl.userId !== userId) return { ok: false };
 
   await db.delete(watchlist).where(eq(watchlist.id, watchlistId));
+
+  // Typesense write hook: delete (fire-and-forget, safe even if doc doesn't exist)
+  tsDeleteWatchlist(watchlistId);
+
   return { ok: true };
 }
 
@@ -254,6 +345,34 @@ export async function copyWatchlist(
       })),
     );
   }
+
+  // Typesense write hooks (fire-and-forget):
+  // 1. Upsert the new copy (copies are always public)
+  _getOwnerInfo(userId).then((owner) => {
+    if (!owner) return;
+    tsUpsertWatchlist({
+      id: row.id,
+      slug,
+      title: source.title,
+      description: source.description ?? undefined,
+      owner_name: owner.name,
+      owner_username: owner.username ?? undefined,
+      company_count: companies.length,
+      active_job_count: 0, // refreshed by reconciliation cron
+      mirror_count: 0,
+      created_at: Math.floor(Date.now() / 1000),
+      is_public: true,
+    });
+  }).catch((err) => {
+    console.error("[copyWatchlist] Typesense upsert hook failed", err);
+  });
+
+  // 2. Update source watchlist's mirror_count (increment)
+  _getWatchlistMirrorCount(watchlistId).then((count) => {
+    tsUpdateWatchlistField(watchlistId, { mirror_count: count });
+  }).catch((err) => {
+    console.error("[copyWatchlist] Typesense mirror_count hook failed", err);
+  });
 
   return { id: row.id, slug };
 }
@@ -552,24 +671,34 @@ export async function searchPublicWatchlists(params: {
   const q = params.query.trim();
   if (!q) return { watchlists: [], total: 0 };
 
-  return queryPublicWatchlists({
-    whereClause: sql`w.is_public = true AND (w.title ILIKE ${"%" + q + "%"} OR w.description ILIKE ${"%" + q + "%"})`,
-    orderClause: sql`w.created_at DESC`,
-    offset: params.offset,
-    limit: params.limit,
-  });
+  try {
+    return await _searchPublicWatchlistsTypesense(q, params.offset, params.limit);
+  } catch (err) {
+    console.error("[searchPublicWatchlists] Typesense failed, falling back to Postgres", err);
+    return queryPublicWatchlists({
+      whereClause: sql`w.is_public = true AND (w.title ILIKE ${"%" + q + "%"} OR w.description ILIKE ${"%" + q + "%"})`,
+      orderClause: sql`w.created_at DESC`,
+      offset: params.offset,
+      limit: params.limit,
+    });
+  }
 }
 
 export async function getPopularWatchlists(params: {
   offset: number;
   limit: number;
 }): Promise<{ watchlists: PublicWatchlistEntry[]; total: number }> {
-  return queryPublicWatchlists({
-    whereClause: sql`w.is_public = true`,
-    orderClause: sql`(SELECT count(*)::int FROM watchlist w2 WHERE w2.source_watchlist_id = w.id) DESC, w.created_at DESC`,
-    offset: params.offset,
-    limit: params.limit,
-  });
+  try {
+    return await _getPopularWatchlistsTypesense(params.offset, params.limit);
+  } catch (err) {
+    console.error("[getPopularWatchlists] Typesense failed, falling back to Postgres", err);
+    return queryPublicWatchlists({
+      whereClause: sql`w.is_public = true`,
+      orderClause: sql`(SELECT count(*)::int FROM watchlist w2 WHERE w2.source_watchlist_id = w.id) DESC, w.created_at DESC`,
+      offset: params.offset,
+      limit: params.limit,
+    });
+  }
 }
 
 export async function getWatchlistPostings(params: {
@@ -598,7 +727,205 @@ export async function getWatchlistPostings(params: {
     return { postings: [], total: 0, truncated: true };
   }
 
-  // Expand parent locations/occupations to include children (e.g. Switzerland → Zurich)
+  try {
+    const result = await _getWatchlistPostingsTypesense(params, userId);
+    return result;
+  } catch (err) {
+    console.error("[getWatchlistPostings] Typesense failed, falling back to Postgres", err);
+    return _getWatchlistPostingsPostgres(params, userId);
+  }
+}
+
+export async function addCompanyToWatchlist(
+  watchlistId: string,
+  companyId: string,
+): Promise<{ ok: boolean }> {
+  const userId = await getSessionUserId();
+  if (!userId) throw new Error("Not authenticated");
+
+  const [wl] = await db
+    .select({ userId: watchlist.userId, isPublic: watchlist.isPublic })
+    .from(watchlist)
+    .where(eq(watchlist.id, watchlistId))
+    .limit(1);
+
+  if (!wl || wl.userId !== userId) return { ok: false };
+
+  await db
+    .insert(watchlistCompany)
+    .values({ watchlistId, companyId })
+    .onConflictDoNothing();
+
+  // Typesense write hook: update company_count if public (fire-and-forget)
+  if (wl.isPublic) {
+    _countWatchlistCompanies(watchlistId).then((count) => {
+      tsUpdateWatchlistField(watchlistId, { company_count: count });
+    }).catch((err) => {
+      console.error("[addCompanyToWatchlist] Typesense hook failed", err);
+    });
+  }
+
+  return { ok: true };
+}
+
+export async function clearWatchlistCompanies(
+  watchlistId: string,
+): Promise<{ ok: boolean }> {
+  const userId = await getSessionUserId();
+  if (!userId) throw new Error("Not authenticated");
+
+  const [wl] = await db
+    .select({ userId: watchlist.userId, isPublic: watchlist.isPublic })
+    .from(watchlist)
+    .where(eq(watchlist.id, watchlistId))
+    .limit(1);
+
+  if (!wl || wl.userId !== userId) return { ok: false };
+
+  await db
+    .delete(watchlistCompany)
+    .where(eq(watchlistCompany.watchlistId, watchlistId));
+
+  // Typesense write hook: set company_count to 0 if public (fire-and-forget)
+  if (wl.isPublic) {
+    tsUpdateWatchlistField(watchlistId, { company_count: 0 });
+  }
+
+  return { ok: true };
+}
+
+export async function removeCompanyFromWatchlist(
+  watchlistId: string,
+  companyId: string,
+): Promise<{ ok: boolean }> {
+  const userId = await getSessionUserId();
+  if (!userId) throw new Error("Not authenticated");
+
+  const [wl] = await db
+    .select({ userId: watchlist.userId, isPublic: watchlist.isPublic })
+    .from(watchlist)
+    .where(eq(watchlist.id, watchlistId))
+    .limit(1);
+
+  if (!wl || wl.userId !== userId) return { ok: false };
+
+  await db
+    .delete(watchlistCompany)
+    .where(
+      and(
+        eq(watchlistCompany.watchlistId, watchlistId),
+        eq(watchlistCompany.companyId, companyId),
+      ),
+    );
+
+  // Typesense write hook: update company_count if public (fire-and-forget)
+  if (wl.isPublic) {
+    _countWatchlistCompanies(watchlistId).then((count) => {
+      tsUpdateWatchlistField(watchlistId, { company_count: count });
+    }).catch((err) => {
+      console.error("[removeCompanyFromWatchlist] Typesense hook failed", err);
+    });
+  }
+
+  return { ok: true };
+}
+
+// ── Typesense search implementations ──────────────────────────────────
+
+async function _searchPublicWatchlistsTypesense(
+  query: string,
+  offset: number,
+  limit: number,
+): Promise<{ watchlists: PublicWatchlistEntry[]; total: number }> {
+  const client = getSearchClient();
+
+  const result = await client.collections("watchlist").documents().search({
+    q: query,
+    query_by: "title,description",
+    filter_by: "is_public:true",
+    sort_by: "_text_match:desc,created_at:desc",
+    per_page: limit,
+    page: Math.floor(offset / limit) + 1,
+    prefix: true,
+    num_typos: 1,
+  });
+
+  return {
+    watchlists: (result.hits ?? []).map((hit) => {
+      const doc = hit.document as Record<string, unknown>;
+      return _mapWatchlistDoc(doc);
+    }),
+    total: result.found ?? 0,
+  };
+}
+
+async function _getPopularWatchlistsTypesense(
+  offset: number,
+  limit: number,
+): Promise<{ watchlists: PublicWatchlistEntry[]; total: number }> {
+  const client = getSearchClient();
+
+  const result = await client.collections("watchlist").documents().search({
+    q: "*",
+    query_by: "title,description",
+    filter_by: "is_public:true",
+    sort_by: "mirror_count:desc,created_at:desc",
+    per_page: limit,
+    page: Math.floor(offset / limit) + 1,
+  });
+
+  return {
+    watchlists: (result.hits ?? []).map((hit) => {
+      const doc = hit.document as Record<string, unknown>;
+      return _mapWatchlistDoc(doc);
+    }),
+    total: result.found ?? 0,
+  };
+}
+
+function _mapWatchlistDoc(doc: Record<string, unknown>): PublicWatchlistEntry {
+  const createdAtTs = doc.created_at as number;
+  return {
+    id: doc.id as string,
+    slug: doc.slug as string,
+    title: doc.title as string,
+    description: (doc.description as string) ?? null,
+    isPublic: true,
+    alertsEnabled: false, // not stored in Typesense; display-only field
+    companyCount: (doc.company_count as number) ?? 0,
+    activeJobCount: (doc.active_job_count as number) ?? 0,
+    lastAccessedAt: new Date(createdAtTs * 1000).toISOString(), // approximate
+    createdAt: new Date(createdAtTs * 1000).toISOString(),
+    ownerName: (doc.owner_name as string) ?? "",
+    ownerUsername: (doc.owner_username as string) ?? null,
+    mirrorCount: (doc.mirror_count as number) ?? 0,
+  };
+}
+
+/** Max company IDs per Typesense filter string batch (~7KB ≈ 200 UUIDs). */
+const COMPANY_BATCH_SIZE = 100;
+
+async function _getWatchlistPostingsTypesense(
+  params: {
+    companyIds: string[];
+    anyCompany?: boolean;
+    offset: number;
+    limit: number;
+    keywords?: string[];
+    locationIds?: number[];
+    occupationIds?: number[];
+    seniorityIds?: number[];
+    technologyIds?: number[];
+    salaryMin?: number;
+    salaryMax?: number;
+    experienceMin?: number;
+    experienceMax?: number;
+  },
+  userId: string | null,
+): Promise<{ postings: WatchlistPostingEntry[]; total: number; truncated?: boolean }> {
+  const client = getSearchClient();
+
+  // Expand parent locations/occupations to include children
   const [expandedLocationIds, expandedOccupationIds] = await Promise.all([
     params.locationIds && params.locationIds.length > 0
       ? Promise.all(params.locationIds.map(expandLocationIds)).then((a) => [...new Set(a.flat())])
@@ -608,7 +935,215 @@ export async function getWatchlistPostings(params: {
       : undefined,
   ]);
 
-  // Build filter clauses
+  // Build filter string from watchlist context filters
+  // Map salaryMin/salaryMax to salaryMinEur/salaryMaxEur
+  const filterStr = buildFilterString({
+    locationIds: expandedLocationIds,
+    occupationIds: expandedOccupationIds,
+    seniorityIds: params.seniorityIds,
+    technologyIds: params.technologyIds,
+    salaryMinEur: params.salaryMin,
+    salaryMaxEur: params.salaryMax,
+    experienceMin: params.experienceMin,
+    experienceMax: params.experienceMax,
+  });
+
+  const hasKeywords = params.keywords && params.keywords.length > 0;
+  const keywordsQ = hasKeywords ? params.keywords!.join(" ") : "*";
+
+  // Build company_id filter — omit for "any company" mode
+  let companyFilter = "";
+  if (params.companyIds.length > 0) {
+    if (params.companyIds.length > COMPANY_BATCH_SIZE) {
+      // Large watchlist: batch queries and merge
+      return _getWatchlistPostingsBatched(params, userId, expandedLocationIds, expandedOccupationIds);
+    }
+    companyFilter = `company_id:[${params.companyIds.join(",")}]`;
+  }
+
+  // Combine all filter parts
+  const filterParts = ["is_active:true"];
+  if (companyFilter) filterParts.push(companyFilter);
+  if (filterStr) filterParts.push(filterStr);
+  const fullFilter = filterParts.join(" && ");
+
+  const result = await client.collections("job_posting").documents().search({
+    q: keywordsQ,
+    query_by: "title",
+    filter_by: fullFilter,
+    sort_by: hasKeywords ? "_text_match:desc,first_seen_at:desc" : "first_seen_at:desc",
+    per_page: params.limit === 0 ? 0 : params.limit,
+    page: params.limit === 0 ? 1 : Math.floor(params.offset / params.limit) + 1,
+  });
+
+  const total = result.found ?? 0;
+  if (total === 0 || params.limit === 0) return { postings: [], total };
+
+  const postings: WatchlistPostingEntry[] = (result.hits ?? []).map((hit) => {
+    const doc = hit.document as Record<string, unknown>;
+    return {
+      id: doc.id as string,
+      title: (doc.title as string) ?? null,
+      sourceUrl: (doc.source_url as string) ?? "",
+      firstSeenAt: new Date(((doc.first_seen_at as number) ?? 0) * 1000).toISOString(),
+      isActive: (doc.is_active as boolean) ?? true,
+      company: {
+        id: (doc.company_id as string) ?? "",
+        name: (doc.company_name as string) ?? "",
+        slug: (doc.company_slug as string) ?? "",
+        icon: (doc.company_icon as string) ?? null,
+      },
+    };
+  });
+
+  return {
+    postings,
+    total,
+    ...(!userId && params.offset + params.limit >= ANON_MAX_WATCHLIST_POSTINGS ? { truncated: true } : {}),
+  };
+}
+
+/** Batched version for large watchlists (200+ companies). */
+async function _getWatchlistPostingsBatched(
+  params: {
+    companyIds: string[];
+    anyCompany?: boolean;
+    offset: number;
+    limit: number;
+    keywords?: string[];
+    locationIds?: number[];
+    occupationIds?: number[];
+    seniorityIds?: number[];
+    technologyIds?: number[];
+    salaryMin?: number;
+    salaryMax?: number;
+    experienceMin?: number;
+    experienceMax?: number;
+  },
+  userId: string | null,
+  expandedLocationIds?: number[],
+  expandedOccupationIds?: number[],
+): Promise<{ postings: WatchlistPostingEntry[]; total: number; truncated?: boolean }> {
+  const client = getSearchClient();
+
+  const filterStr = buildFilterString({
+    locationIds: expandedLocationIds,
+    occupationIds: expandedOccupationIds,
+    seniorityIds: params.seniorityIds,
+    technologyIds: params.technologyIds,
+    salaryMinEur: params.salaryMin,
+    salaryMaxEur: params.salaryMax,
+    experienceMin: params.experienceMin,
+    experienceMax: params.experienceMax,
+  });
+
+  const hasKeywords = params.keywords && params.keywords.length > 0;
+  const keywordsQ = hasKeywords ? params.keywords!.join(" ") : "*";
+
+  // Split company IDs into batches
+  const batches: string[][] = [];
+  for (let i = 0; i < params.companyIds.length; i += COMPANY_BATCH_SIZE) {
+    batches.push(params.companyIds.slice(i, i + COMPANY_BATCH_SIZE));
+  }
+
+  // Query each batch for total count (per_page: 0)
+  const countResults = await Promise.all(
+    batches.map((batch) => {
+      const filterParts = ["is_active:true", `company_id:[${batch.join(",")}]`];
+      if (filterStr) filterParts.push(filterStr);
+      return client.collections("job_posting").documents().search({
+        q: keywordsQ,
+        query_by: "title",
+        filter_by: filterParts.join(" && "),
+        per_page: 0,
+      });
+    }),
+  );
+
+  const total = countResults.reduce((sum, r) => sum + (r.found ?? 0), 0);
+  if (total === 0 || params.limit === 0) return { postings: [], total };
+
+  // For actual postings, query all batches with enough per_page to cover offset+limit,
+  // then merge and sort by first_seen_at desc, slice to desired page.
+  const needed = params.offset + params.limit;
+  const postingsResults = await Promise.all(
+    batches.map((batch) => {
+      const filterParts = ["is_active:true", `company_id:[${batch.join(",")}]`];
+      if (filterStr) filterParts.push(filterStr);
+      return client.collections("job_posting").documents().search({
+        q: keywordsQ,
+        query_by: "title",
+        filter_by: filterParts.join(" && "),
+        sort_by: hasKeywords ? "_text_match:desc,first_seen_at:desc" : "first_seen_at:desc",
+        per_page: needed,
+        page: 1,
+      });
+    }),
+  );
+
+  // Merge all hits, sort, and paginate
+  const allHits = postingsResults.flatMap((r) => r.hits ?? []);
+  allHits.sort((a, b) => {
+    const aDoc = a.document as Record<string, unknown>;
+    const bDoc = b.document as Record<string, unknown>;
+    return ((bDoc.first_seen_at as number) ?? 0) - ((aDoc.first_seen_at as number) ?? 0);
+  });
+
+  const pageHits = allHits.slice(params.offset, params.offset + params.limit);
+
+  const postings: WatchlistPostingEntry[] = pageHits.map((hit) => {
+    const doc = hit.document as Record<string, unknown>;
+    return {
+      id: doc.id as string,
+      title: (doc.title as string) ?? null,
+      sourceUrl: (doc.source_url as string) ?? "",
+      firstSeenAt: new Date(((doc.first_seen_at as number) ?? 0) * 1000).toISOString(),
+      isActive: (doc.is_active as boolean) ?? true,
+      company: {
+        id: (doc.company_id as string) ?? "",
+        name: (doc.company_name as string) ?? "",
+        slug: (doc.company_slug as string) ?? "",
+        icon: (doc.company_icon as string) ?? null,
+      },
+    };
+  });
+
+  return {
+    postings,
+    total,
+    ...(!userId && params.offset + params.limit >= ANON_MAX_WATCHLIST_POSTINGS ? { truncated: true } : {}),
+  };
+}
+
+/** Postgres fallback for getWatchlistPostings (graceful degradation). */
+async function _getWatchlistPostingsPostgres(
+  params: {
+    companyIds: string[];
+    anyCompany?: boolean;
+    offset: number;
+    limit: number;
+    keywords?: string[];
+    locationIds?: number[];
+    occupationIds?: number[];
+    seniorityIds?: number[];
+    technologyIds?: number[];
+    salaryMin?: number;
+    salaryMax?: number;
+    experienceMin?: number;
+    experienceMax?: number;
+  },
+  userId: string | null,
+): Promise<{ postings: WatchlistPostingEntry[]; total: number; truncated?: boolean }> {
+  // Expand parent locations/occupations to include children
+  const [expandedLocationIds, expandedOccupationIds] = await Promise.all([
+    params.locationIds && params.locationIds.length > 0
+      ? Promise.all(params.locationIds.map(expandLocationIds)).then((a) => [...new Set(a.flat())])
+      : undefined,
+    params.occupationIds && params.occupationIds.length > 0
+      ? Promise.all(params.occupationIds.map(expandOccupationIds)).then((a) => [...new Set(a.flat())])
+      : undefined,
+  ]);
+
   const clauses = [sql`jp.is_active = true`];
 
   if (params.companyIds.length > 0) {
@@ -711,73 +1246,31 @@ export async function getWatchlistPostings(params: {
   };
 }
 
-export async function addCompanyToWatchlist(
-  watchlistId: string,
-  companyId: string,
-): Promise<{ ok: boolean }> {
-  const userId = await getSessionUserId();
-  if (!userId) throw new Error("Not authenticated");
+// ── Helper functions for Typesense write hooks ────────────────────────
 
-  const [wl] = await db
-    .select({ userId: watchlist.userId })
-    .from(watchlist)
-    .where(eq(watchlist.id, watchlistId))
-    .limit(1);
-
-  if (!wl || wl.userId !== userId) return { ok: false };
-
-  await db
-    .insert(watchlistCompany)
-    .values({ watchlistId, companyId })
-    .onConflictDoNothing();
-
-  return { ok: true };
+/** Fetch owner info for Typesense watchlist doc. */
+async function _getOwnerInfo(userId: string): Promise<{ name: string; username: string | null } | null> {
+  const rows = await db.execute<{
+    [key: string]: unknown;
+    name: string;
+    username: string | null;
+  }>(sql`SELECT name, username FROM "user" WHERE id = ${userId} LIMIT 1`);
+  const row = (rows as unknown as { name: string; username: string | null }[])[0];
+  return row ?? null;
 }
 
-export async function clearWatchlistCompanies(
-  watchlistId: string,
-): Promise<{ ok: boolean }> {
-  const userId = await getSessionUserId();
-  if (!userId) throw new Error("Not authenticated");
-
-  const [wl] = await db
-    .select({ userId: watchlist.userId })
-    .from(watchlist)
-    .where(eq(watchlist.id, watchlistId))
-    .limit(1);
-
-  if (!wl || wl.userId !== userId) return { ok: false };
-
-  await db
-    .delete(watchlistCompany)
-    .where(eq(watchlistCompany.watchlistId, watchlistId));
-
-  return { ok: true };
+/** Count companies in a watchlist. */
+async function _countWatchlistCompanies(watchlistId: string): Promise<number> {
+  const [row] = await db.execute<{ [key: string]: unknown; cnt: number }>(
+    sql`SELECT count(*)::int AS cnt FROM watchlist_company WHERE watchlist_id = ${watchlistId}`,
+  );
+  return (row as unknown as { cnt: number })?.cnt ?? 0;
 }
 
-export async function removeCompanyFromWatchlist(
-  watchlistId: string,
-  companyId: string,
-): Promise<{ ok: boolean }> {
-  const userId = await getSessionUserId();
-  if (!userId) throw new Error("Not authenticated");
-
-  const [wl] = await db
-    .select({ userId: watchlist.userId })
-    .from(watchlist)
-    .where(eq(watchlist.id, watchlistId))
-    .limit(1);
-
-  if (!wl || wl.userId !== userId) return { ok: false };
-
-  await db
-    .delete(watchlistCompany)
-    .where(
-      and(
-        eq(watchlistCompany.watchlistId, watchlistId),
-        eq(watchlistCompany.companyId, companyId),
-      ),
-    );
-
-  return { ok: true };
+/** Get the mirror count for a watchlist (number of copies). */
+async function _getWatchlistMirrorCount(watchlistId: string): Promise<number> {
+  const [row] = await db.execute<{ [key: string]: unknown; cnt: number }>(
+    sql`SELECT count(*)::int AS cnt FROM watchlist WHERE source_watchlist_id = ${watchlistId}`,
+  );
+  return (row as unknown as { cnt: number })?.cnt ?? 0;
 }

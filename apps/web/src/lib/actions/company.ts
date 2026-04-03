@@ -9,6 +9,8 @@ import { getSessionUserId } from "@/lib/sessionCache";
 import { expandLocationIds } from "@/lib/actions/locations";
 import { expandOccupationIds } from "@/lib/actions/taxonomy";
 import { ANON_MAX_POSTINGS } from "@/lib/search/constants";
+import { getSearchClient } from "@/lib/search/typesense-client";
+import { buildFilterString } from "@/lib/search/typesense-filters";
 
 // ── Company suggestions (search bar autocomplete) ───────────────────
 
@@ -100,20 +102,34 @@ export async function searchCompaniesForWatchlist(params: {
   experienceMax?: number;
   starredCompanyIds?: string[];
 }): Promise<{ companies: CompanyListEntry[]; total: number }> {
-  const q = params.query?.trim().toLowerCase();
-  const hasQuery = q && q.length >= 2;
+  try {
+    return await _searchCompaniesForWatchlistTypesense(params);
+  } catch (err) {
+    console.error("[searchCompaniesForWatchlist] Typesense failed, falling back to Postgres", err);
+    return _searchCompaniesForWatchlistPostgres(params);
+  }
+}
 
-  // Company-level WHERE
-  const companyClauses = [sql`true`];
-  if (hasQuery) {
-    companyClauses.push(
-      sql`(lower(c.name) LIKE ${q + "%"} OR (length(${q}) >= 3 AND similarity(lower(c.name), ${q}) > 0.3))`,
-    );
-  }
-  if (params.industryId != null) {
-    companyClauses.push(sql`c.industry = ${params.industryId}`);
-  }
-  const companyWhere = sql.join(companyClauses, sql` AND `);
+async function _searchCompaniesForWatchlistTypesense(params: {
+  query?: string;
+  industryId?: number;
+  locale: string;
+  offset: number;
+  limit: number;
+  keywords?: string[];
+  locationIds?: number[];
+  occupationIds?: number[];
+  seniorityIds?: number[];
+  technologyIds?: number[];
+  salaryMin?: number;
+  salaryMax?: number;
+  experienceMin?: number;
+  experienceMax?: number;
+  starredCompanyIds?: string[];
+}): Promise<{ companies: CompanyListEntry[]; total: number }> {
+  const client = getSearchClient();
+  const q = params.query?.trim();
+  const hasQuery = q && q.length >= 2;
 
   // Expand parent locations/occupations to include children
   const [expandedLocIds, expandedOccIds] = await Promise.all([
@@ -125,7 +141,257 @@ export async function searchCompaniesForWatchlist(params: {
       : undefined,
   ]);
 
-  // Job-level filter clauses for match counting
+  // Build watchlist context filter for job_posting queries.
+  // Map salaryMin/salaryMax to salaryMinEur/salaryMaxEur for buildFilterString.
+  const watchlistFilterStr = buildFilterString({
+    locationIds: expandedLocIds,
+    occupationIds: expandedOccIds,
+    seniorityIds: params.seniorityIds,
+    technologyIds: params.technologyIds,
+    salaryMinEur: params.salaryMin,
+    salaryMaxEur: params.salaryMax,
+    experienceMin: params.experienceMin,
+    experienceMax: params.experienceMax,
+  });
+
+  const hasWatchlistFilters = watchlistFilterStr.length > 0 || (params.keywords && params.keywords.length > 0);
+
+  // Starred company handling
+  const starredIds = params.starredCompanyIds;
+  const wantStarredBoost = !hasQuery && starredIds && starredIds.length > 0;
+
+  if (hasWatchlistFilters) {
+    // FACET APPROACH: Get companies ranked by filtered match count.
+    // Facets only return companies with >0 matching postings — zero-match filtering is implicit.
+    const activeFilter = `is_active:true${watchlistFilterStr ? " && " + watchlistFilterStr : ""}`;
+    const keywordsQ = params.keywords?.length ? params.keywords.join(" ") : "*";
+
+    const facetResult = await client.collections("job_posting").documents().search({
+      q: keywordsQ,
+      query_by: "title",
+      filter_by: activeFilter,
+      facet_by: "company_id",
+      facet_strategy: "exhaustive",
+      max_facet_values: params.offset + params.limit + (wantStarredBoost ? starredIds!.length : 0),
+      per_page: 0, // counts only
+    });
+
+    const facetCounts = facetResult.facet_counts?.[0]?.counts ?? [];
+    const totalFromFacet = facetResult.facet_counts?.[0]?.stats?.total_values ?? 0;
+
+    // Build a map of companyId -> active match count from facets
+    const activeMatchMap = new Map<string, number>();
+    for (const fc of facetCounts) {
+      activeMatchMap.set(fc.value, fc.count);
+    }
+
+    // If we need text filtering on company name, filter the facet results
+    let filteredCompanyIds: string[];
+    let total: number;
+
+    if (hasQuery || params.industryId != null) {
+      // Query company collection to get matching company IDs, then intersect
+      const companyFilterParts: string[] = ["active_posting_count:>0"];
+      if (params.industryId != null) companyFilterParts.push(`industry_id:=${params.industryId}`);
+
+      const companyResult = await client.collections("company").documents().search({
+        q: hasQuery ? q! : "*",
+        query_by: "name",
+        filter_by: companyFilterParts.join(" && "),
+        per_page: 250, // generous limit to intersect with facets
+        prefix: true,
+        num_typos: 1,
+      });
+
+      const companyNameSet = new Set(
+        (companyResult.hits ?? []).map((h) => (h.document as Record<string, unknown>).id as string),
+      );
+
+      // Intersect: only companies that appear in both name search and facet results
+      filteredCompanyIds = facetCounts
+        .filter((fc) => companyNameSet.has(fc.value))
+        .map((fc) => fc.value);
+      total = filteredCompanyIds.length;
+    } else {
+      filteredCompanyIds = facetCounts.map((fc) => fc.value);
+      total = totalFromFacet;
+    }
+
+    // Apply starred boost ordering
+    let orderedIds: string[];
+    if (wantStarredBoost) {
+      const starredSet = new Set(starredIds!);
+      const starred = filteredCompanyIds.filter((id) => starredSet.has(id));
+      const rest = filteredCompanyIds.filter((id) => !starredSet.has(id));
+      orderedIds = [...starred, ...rest];
+    } else {
+      orderedIds = filteredCompanyIds;
+    }
+
+    // Paginate
+    const pageIds = orderedIds.slice(params.offset, params.offset + params.limit);
+    if (pageIds.length === 0) return { companies: [], total };
+
+    // Fetch company details + year counts from company collection
+    const companyDocs = await client.collections("company").documents().search({
+      q: "*",
+      filter_by: `id:[${pageIds.join(",")}]`,
+      per_page: pageIds.length,
+    });
+
+    const companyMap = new Map<string, Record<string, unknown>>();
+    for (const hit of companyDocs.hits ?? []) {
+      const doc = hit.document as Record<string, unknown>;
+      companyMap.set(doc.id as string, doc);
+    }
+
+    return {
+      companies: pageIds.map((id) => {
+        const doc = companyMap.get(id);
+        return {
+          id,
+          name: (doc?.name as string) ?? "",
+          slug: (doc?.slug as string) ?? "",
+          icon: (doc?.icon as string) ?? null,
+          description: (doc?.description as string) ?? null,
+          activeMatches: activeMatchMap.get(id) ?? 0,
+          yearMatches: (doc?.year_posting_count as number) ?? 0,
+        };
+      }),
+      total,
+    };
+  }
+
+  // NO WATCHLIST FILTERS: query company collection directly by active_posting_count.
+  // Much simpler — every active company is relevant.
+
+  if (wantStarredBoost) {
+    // Two queries: starred first, then remaining
+    const companyFilterParts: string[] = ["active_posting_count:>0"];
+    if (params.industryId != null) companyFilterParts.push(`industry_id:=${params.industryId}`);
+    const baseFilter = companyFilterParts.join(" && ");
+
+    const starredFilter = `${baseFilter} && id:[${starredIds!.join(",")}]`;
+    const remainingFilter = `${baseFilter} && id:!=[${starredIds!.join(",")}]`;
+
+    const [starredResult, remainingResult] = await Promise.all([
+      client.collections("company").documents().search({
+        q: "*",
+        query_by: "name",
+        filter_by: starredFilter,
+        sort_by: "active_posting_count:desc",
+        per_page: starredIds!.length,
+        page: 1,
+      }),
+      client.collections("company").documents().search({
+        q: "*",
+        query_by: "name",
+        filter_by: remainingFilter,
+        sort_by: "active_posting_count:desc",
+        per_page: params.limit,
+        page: 1,
+      }),
+    ]);
+
+    // Combine: all starred + remaining to fill the page
+    const starredHits = starredResult.hits ?? [];
+    const remainingHits = remainingResult.hits ?? [];
+    const allHits = [...starredHits, ...remainingHits];
+    const total = (starredResult.found ?? 0) + (remainingResult.found ?? 0);
+
+    // Paginate across the combined result
+    const pageHits = allHits.slice(params.offset, params.offset + params.limit);
+
+    return {
+      companies: pageHits.map((hit) => {
+        const doc = hit.document as Record<string, unknown>;
+        return {
+          id: doc.id as string,
+          name: doc.name as string,
+          slug: doc.slug as string,
+          icon: (doc.icon as string) ?? null,
+          description: (doc.description as string) ?? null,
+          activeMatches: (doc.active_posting_count as number) ?? 0,
+          yearMatches: (doc.year_posting_count as number) ?? 0,
+        };
+      }),
+      total,
+    };
+  }
+
+  // Simple case: no starred, no watchlist filters, maybe text query
+  const companyFilterParts: string[] = ["active_posting_count:>0"];
+  if (params.industryId != null) companyFilterParts.push(`industry_id:=${params.industryId}`);
+
+  const result = await client.collections("company").documents().search({
+    q: hasQuery ? q! : "*",
+    query_by: "name",
+    filter_by: companyFilterParts.join(" && "),
+    sort_by: hasQuery ? "_text_match:desc,active_posting_count:desc" : "active_posting_count:desc",
+    per_page: params.limit,
+    page: Math.floor(params.offset / params.limit) + 1,
+    prefix: true,
+    num_typos: 1,
+  });
+
+  return {
+    companies: (result.hits ?? []).map((hit) => {
+      const doc = hit.document as Record<string, unknown>;
+      return {
+        id: doc.id as string,
+        name: doc.name as string,
+        slug: doc.slug as string,
+        icon: (doc.icon as string) ?? null,
+        description: (doc.description as string) ?? null,
+        activeMatches: (doc.active_posting_count as number) ?? 0,
+        yearMatches: (doc.year_posting_count as number) ?? 0,
+      };
+    }),
+    total: result.found ?? 0,
+  };
+}
+
+/** Postgres fallback for searchCompaniesForWatchlist (graceful degradation). */
+async function _searchCompaniesForWatchlistPostgres(params: {
+  query?: string;
+  industryId?: number;
+  locale: string;
+  offset: number;
+  limit: number;
+  keywords?: string[];
+  locationIds?: number[];
+  occupationIds?: number[];
+  seniorityIds?: number[];
+  technologyIds?: number[];
+  salaryMin?: number;
+  salaryMax?: number;
+  experienceMin?: number;
+  experienceMax?: number;
+  starredCompanyIds?: string[];
+}): Promise<{ companies: CompanyListEntry[]; total: number }> {
+  const q = params.query?.trim().toLowerCase();
+  const hasQuery = q && q.length >= 2;
+
+  const companyClauses = [sql`true`];
+  if (hasQuery) {
+    companyClauses.push(
+      sql`(lower(c.name) LIKE ${q + "%"} OR (length(${q}) >= 3 AND similarity(lower(c.name), ${q}) > 0.3))`,
+    );
+  }
+  if (params.industryId != null) {
+    companyClauses.push(sql`c.industry = ${params.industryId}`);
+  }
+  const companyWhere = sql.join(companyClauses, sql` AND `);
+
+  const [expandedLocIds, expandedOccIds] = await Promise.all([
+    params.locationIds?.length
+      ? Promise.all(params.locationIds.map(expandLocationIds)).then((a) => [...new Set(a.flat())])
+      : undefined,
+    params.occupationIds?.length
+      ? Promise.all(params.occupationIds.map(expandOccupationIds)).then((a) => [...new Set(a.flat())])
+      : undefined,
+  ]);
+
   const jobClauses = [sql`jp.is_active = true`];
   if (params.keywords && params.keywords.length > 0) {
     const kwParts = params.keywords.map((k) => {
@@ -170,17 +436,20 @@ export async function searchCompaniesForWatchlist(params: {
   }
   const jobWhere = sql.join(jobClauses, sql` AND `);
 
-  // When no text query and starred IDs are provided, boost starred companies to top
+  const [totalRow] = await db.execute<{ [key: string]: unknown; cnt: number }>(sql`
+    SELECT count(*)::int AS cnt FROM company c WHERE ${companyWhere}
+  `);
+  const total = (totalRow as unknown as { cnt: number })?.cnt ?? 0;
+  if (total === 0) return { companies: [], total: 0 };
+
   const starredIds = params.starredCompanyIds;
   const boostStarred = !hasQuery && starredIds && starredIds.length > 0;
   const starredArray = boostStarred ? `{${starredIds.join(",")}}` : null;
 
   const orderClause = boostStarred
-    ? sql`CASE WHEN sub.id = ANY(${starredArray}::uuid[]) THEN 0 ELSE 1 END, active_matches DESC, sub.name`
-    : sql`active_matches DESC, sub.name`;
+    ? sql`CASE WHEN c.id = ANY(${starredArray}::uuid[]) THEN 0 ELSE 1 END, active_matches DESC, c.name`
+    : sql`active_matches DESC, c.name`;
 
-  // Single query: compute match counts, filter out zero-match companies,
-  // and get total in one pass using a window function.
   const rows = await db.execute<{
     [key: string]: unknown;
     id: string;
@@ -190,22 +459,18 @@ export async function searchCompaniesForWatchlist(params: {
     description: string | null;
     active_matches: number;
     year_matches: number;
-    filtered_total: number;
   }>(sql`
-    SELECT *, count(*) OVER () AS filtered_total FROM (
-      SELECT c.id, c.name, c.slug, c.icon,
-             COALESCE(cd.description, c.description) AS description,
-             (SELECT count(*)::int FROM job_posting jp
-              WHERE jp.company_id = c.id AND ${jobWhere}) AS active_matches,
-             (SELECT count(*)::int FROM job_posting jp
-              WHERE jp.company_id = c.id
-                AND jp.first_seen_at >= now() - interval '1 year'
-                AND ${jobWhere}) AS year_matches
-      FROM company c
-      LEFT JOIN company_description cd ON cd.company_id = c.id AND cd.locale = ${params.locale}
-      WHERE ${companyWhere}
-    ) sub
-    WHERE active_matches > 0 OR year_matches > 0
+    SELECT c.id, c.name, c.slug, c.icon,
+           COALESCE(cd.description, c.description) AS description,
+           (SELECT count(*)::int FROM job_posting jp
+            WHERE jp.company_id = c.id AND ${jobWhere}) AS active_matches,
+           (SELECT count(*)::int FROM job_posting jp
+            WHERE jp.company_id = c.id
+              AND jp.first_seen_at >= now() - interval '1 year'
+              AND ${jobWhere}) AS year_matches
+    FROM company c
+    LEFT JOIN company_description cd ON cd.company_id = c.id AND cd.locale = ${params.locale}
+    WHERE ${companyWhere}
     ORDER BY ${orderClause}
     OFFSET ${params.offset}
     LIMIT ${params.limit}
@@ -214,12 +479,9 @@ export async function searchCompaniesForWatchlist(params: {
   type Row = {
     id: string; name: string; slug: string; icon: string | null;
     description: string | null; active_matches: number; year_matches: number;
-    filtered_total: number;
   };
-  const typed = rows as unknown as Row[];
-  const total = typed.length > 0 ? typed[0].filtered_total : 0;
   return {
-    companies: typed.map((r) => ({
+    companies: (rows as unknown as Row[]).map((r) => ({
       id: r.id,
       name: r.name,
       slug: r.slug,
