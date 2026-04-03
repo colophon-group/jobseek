@@ -188,7 +188,7 @@ class TaxonomyMaps:
         for loc_id in location_parents:
             ancestor_set: set[int] = set()
             current: int | None = loc_id
-            while current is not None:
+            while current is not None and current not in ancestor_set:
                 ancestor_set.add(current)
                 # If this is a country, add its macro regions
                 if current in macro_members:
@@ -209,7 +209,7 @@ class TaxonomyMaps:
         for occ_id in occupation_parents:
             ancestor_set: set[int] = set()
             current: int | None = occ_id
-            while current is not None:
+            while current is not None and current not in ancestor_set:
                 ancestor_set.add(current)
                 current = occupation_parents.get(current)
             ancestors[occ_id] = list(ancestor_set)
@@ -271,10 +271,14 @@ def _build_typesense_docs(
             location_names.append(name)
             location_geo_types.append(maps.location_types.get(loc_id, ""))
 
-        # Expand location_ids to include all ancestors (parents + macro regions)
-        expanded_location_ids: set[int] = set()
+        # Expand location_ids to include all ancestors (parents + macro regions).
+        # Leaf IDs come first (aligned with location_names/location_geo_types),
+        # then additional ancestor-only IDs.
+        ancestor_only: set[int] = set()
         for lid in raw_location_ids:
-            expanded_location_ids.update(maps.location_ancestors.get(lid, [lid]))
+            ancestor_only.update(maps.location_ancestors.get(lid, [lid]))
+        ancestor_only -= set(raw_location_ids)
+        expanded_location_ids = list(raw_location_ids) + list(ancestor_only)
 
         # occupation denormalization
         occ_id = row["occupation_id"]
@@ -317,7 +321,7 @@ def _build_typesense_docs(
             "company_slug": company_slug,
             "title": title,
             "is_active": row["is_active"],
-            "location_ids": list(expanded_location_ids),
+            "location_ids": expanded_location_ids,
             "location_names": location_names,
             "location_types": list(row["location_types"] or []),
             "location_geo_types": location_geo_types,

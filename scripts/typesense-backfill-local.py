@@ -203,10 +203,12 @@ def _build_doc(row: asyncpg.Record, maps: dict, csv_companies: dict) -> dict:
         location_types.append("onsite")
     location_types = location_types[: len(raw_location_ids)]
 
-    # Expand location_ids to include all ancestors (parents + macro regions)
-    expanded_location_ids: set[int] = set()
+    # Expand location_ids: leaf IDs first (aligned with names/geo_types), then ancestors
+    ancestor_only: set[int] = set()
     for lid in raw_location_ids:
-        expanded_location_ids.update(maps["loc_ancestors"].get(lid, [lid]))
+        ancestor_only.update(maps["loc_ancestors"].get(lid, [lid]))
+    ancestor_only -= set(raw_location_ids)
+    expanded_location_ids = list(raw_location_ids) + list(ancestor_only)
 
     tech_ids = row["technology_ids"] or []
     tech_names = [maps["tech_names"].get(tid, f"tech-{tid}") for tid in tech_ids]
@@ -228,7 +230,7 @@ def _build_doc(row: asyncpg.Record, maps: dict, csv_companies: dict) -> dict:
         "company_slug": company_slug,
         "title": title,
         "is_active": row["is_active"],
-        "location_ids": list(expanded_location_ids),
+        "location_ids": expanded_location_ids,
         "location_names": location_names,
         "location_types": location_types,
         "location_geo_types": location_geo_types,
