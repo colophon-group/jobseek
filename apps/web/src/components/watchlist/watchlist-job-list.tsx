@@ -80,9 +80,12 @@ export function WatchlistJobList({
   const yesterdayLabel = t({ id: "watchlists.jobList.yesterday", comment: "Date divider label for yesterday", message: "Yesterday" });
 
   const filtersKey = JSON.stringify(filters);
+  const initialFiltersKey = useRef(filtersKey);
 
-  // Re-fetch when filters change
+  // Re-fetch only when filters actually change (not on initial mount —
+  // the server already provided initialPostings/initialTotal)
   useEffect(() => {
+    if (filtersKey === initialFiltersKey.current) return;
     getWatchlistPostings({ ...filters, offset: 0, limit: BATCH })
       .then(({ postings: p, total: t, truncated }) => {
         setPostings(p);
