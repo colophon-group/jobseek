@@ -238,27 +238,12 @@ export async function searchJobs(params: {
     return { companies: [], totalCompanies: 0, truncated: true };
   }
 
-  const sortedKw = [...params.keywords].sort();
-  const sortedLoc = [...(params.locationIds ?? [])].sort();
-  const sortedOcc = [...(params.occupationIds ?? [])].sort();
-  const sortedSen = [...(params.seniorityIds ?? [])].sort();
-  const sortedTech = [...(params.technologyIds ?? [])].sort().join(",");
-  const sortedEtype = [...(params.employmentTypes ?? [])].sort().join(",");
-  const sortedLangs = [...params.languages].sort();
-  const salKey = `${params.salaryMinEur ?? ""}:${params.salaryMaxEur ?? ""}`;
-  const expKey = `${params.experienceMin ?? ""}:${params.experienceMax ?? ""}`;
-  const key = `search:${sortedKw.join(",")}:${sortedLoc.join(",")}:${sortedOcc.join(",")}:${sortedSen.join(",")}:${sortedTech}:${sortedEtype}:${sortedLangs.join(",")}:${salKey}:${expKey}:${params.locale}:${params.offset}:${params.limit}`;
-  const result = await cached(
-    key,
-    async () => {
-      const [expandedLocs, expandedOccs] = await Promise.all([
-        resolveLocationIds(params.locationIds),
-        resolveOccupationIds(params.occupationIds),
-      ]);
-      return getSearchProvider().search({ ...params, locationIds: expandedLocs, occupationIds: expandedOccs });
-    },
-    { ttl: 300 },
-  );
+  // No Redis cache — Typesense is fast enough (<20ms)
+  const [expandedLocs, expandedOccs] = await Promise.all([
+    resolveLocationIds(params.locationIds),
+    resolveOccupationIds(params.occupationIds),
+  ]);
+  const result = await getSearchProvider().search({ ...params, locationIds: expandedLocs, occupationIds: expandedOccs });
 
   // Mark as truncated if this is the last allowed page for anon
   if (!userId && params.offset + result.companies.length >= ANON_MAX_COMPANIES) {
@@ -289,26 +274,12 @@ export async function listTopCompanies(params: {
     return { companies: [], totalCompanies: 0, truncated: true };
   }
 
-  const sortedLoc = [...(params.locationIds ?? [])].sort();
-  const sortedOcc = [...(params.occupationIds ?? [])].sort();
-  const sortedSen = [...(params.seniorityIds ?? [])].sort();
-  const sortedTech = [...(params.technologyIds ?? [])].sort().join(",");
-  const sortedEtype = [...(params.employmentTypes ?? [])].sort().join(",");
-  const sortedLangs = [...params.languages].sort();
-  const salKey = `${params.salaryMinEur ?? ""}:${params.salaryMaxEur ?? ""}`;
-  const expKey = `${params.experienceMin ?? ""}:${params.experienceMax ?? ""}`;
-  const key = `top-companies:${sortedLoc.join(",")}:${sortedOcc.join(",")}:${sortedSen.join(",")}:${sortedTech}:${sortedEtype}:${sortedLangs.join(",")}:${salKey}:${expKey}:${params.locale}:${params.offset}:${params.limit}`;
-  const result = await cached(
-    key,
-    async () => {
-      const [expandedLocs, expandedOccs] = await Promise.all([
-        resolveLocationIds(params.locationIds),
-        resolveOccupationIds(params.occupationIds),
-      ]);
-      return getSearchProvider().listTopCompanies({ ...params, locationIds: expandedLocs, occupationIds: expandedOccs });
-    },
-    { ttl: 600 },
-  );
+  // No Redis cache — Typesense is fast enough
+  const [expandedLocs, expandedOccs] = await Promise.all([
+    resolveLocationIds(params.locationIds),
+    resolveOccupationIds(params.occupationIds),
+  ]);
+  const result = await getSearchProvider().listTopCompanies({ ...params, locationIds: expandedLocs, occupationIds: expandedOccs });
 
   if (!userId && params.offset + result.companies.length >= ANON_MAX_COMPANIES) {
     return { ...result, truncated: true };
@@ -449,26 +420,12 @@ export async function loadMorePostings(params: {
     return { postings: [], truncated: true };
   }
 
-  const sortedKw = [...params.keywords].sort();
-  const sortedLoc = [...(params.locationIds ?? [])].sort();
-  const sortedOcc = [...(params.occupationIds ?? [])].sort();
-  const sortedSen = [...(params.seniorityIds ?? [])].sort();
-  const sortedTech = [...(params.technologyIds ?? [])].sort().join(",");
-  const sortedLangs = [...params.languages].sort();
-  const salKey = `${params.salaryMinEur ?? ""}:${params.salaryMaxEur ?? ""}`;
-  const expKey = `${params.experienceMin ?? ""}:${params.experienceMax ?? ""}`;
-  const key = `postings:${params.companyId}:${sortedKw.join(",")}:${sortedLoc.join(",")}:${sortedOcc.join(",")}:${sortedSen.join(",")}:${sortedTech}:${sortedLangs.join(",")}:${salKey}:${expKey}:${params.locale}:${params.offset}:${params.limit}`;
-  const postings = await cached(
-    key,
-    async () => {
-      const [expandedLocs, expandedOccs] = await Promise.all([
-        resolveLocationIds(params.locationIds),
-        resolveOccupationIds(params.occupationIds),
-      ]);
-      return getSearchProvider().loadPostings({ ...params, locationIds: expandedLocs, occupationIds: expandedOccs });
-    },
-    { ttl: 300 },
-  );
+  // No Redis cache — Typesense is fast enough
+  const [expandedLocs, expandedOccs] = await Promise.all([
+    resolveLocationIds(params.locationIds),
+    resolveOccupationIds(params.occupationIds),
+  ]);
+  const postings = await getSearchProvider().loadPostings({ ...params, locationIds: expandedLocs, occupationIds: expandedOccs });
 
   if (!userId && params.offset + postings.length >= ANON_MAX_CARD_POSTINGS) {
     return { postings, truncated: true };
