@@ -55,7 +55,8 @@
     "server-only": "^0.0.1",
     "sharp": "^0.34.5",
     "stripe": "^17",
-    "tailwindcss": "^4.2.0"
+    "tailwindcss": "^4.2.0",
+    "typesense": "^3.0.5"
   },
   "devDependencies": {
     "@lingui/babel-plugin-lingui-macro": "^5",
