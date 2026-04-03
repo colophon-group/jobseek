@@ -24,6 +24,7 @@ export function WatchlistContent({ lang, userSlug, watchlistSlug }: WatchlistCon
   const [data, setData] = useState<WatchlistPageData | null | "not-found">(null);
 
   useEffect(() => {
+    setData(null);
     window.scrollTo(0, 0);
     fetchWatchlistPageData({ userSlug, watchlistSlug, locale: lang }).then((result) => {
       setData(result ?? "not-found");
