@@ -3883,6 +3883,10 @@ tekion,tekion-greenhouse,https://job-boards.greenhouse.io/tekion,greenhouse,"{""
 tekmetric,tekmetric-greenhouse,https://job-boards.greenhouse.io/tekmetric,greenhouse,"{""token"": ""tekmetric""}",skip,
 tellius,tellius-greenhouse,https://job-boards.greenhouse.io/tellius,greenhouse,"{""token"": ""tellius""}",skip,
 telnyx,telnyx-greenhouse,https://job-boards.greenhouse.io/telnyx54,greenhouse,"{""token"": ""telnyx54""}",skip,
+telstra,telstra-careers-workday,https://telstra.wd3.myworkdayjobs.com/Telstra_Careers,workday,"{""company"": ""telstra"", ""wd_instance"": ""wd3"", ""site"": ""Telstra_Careers""}",workday,
+telstra,telstra-health-1800respect,https://www.livehire.com/careers/th-1800respect/jobs,sitemap,"{""sitemap_url"": ""https://www.livehire.com/careers/th-1800respect/sitemap.xml"", ""url_filter"": ""/job/""}",json-ld,"{""render"": true}"
+telstra,telstra-health-livehire,https://www.livehire.com/careers/telstra-health/jobs,sitemap,"{""sitemap_url"": ""https://www.livehire.com/careers/telstra-health/sitemap.xml"", ""url_filter"": ""/job/""}",json-ld,"{""render"": true}"
+telstra,telstra-health-oracle,https://iaaktz.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_2,oracle_hcm,"{""host"": ""iaaktz.fa.ocs.oraclecloud.com"", ""site"": ""CX_2"", ""jobs_count"": 6}",oracle_hcm,
 tem,tem-ashby,https://jobs.ashbyhq.com/tem,ashby,"{""token"": ""tem""}",skip,
 temenos,temenos-careers,https://temenos.wd103.myworkdayjobs.com/en-US/Temenoscareers,workday,"{""company"": ""temenos"", ""wd_instance"": ""wd103"", ""site"": ""Temenoscareers""}",workday,
 tempo,tempo-ashby,https://jobs.ashbyhq.com/tempo,ashby,"{""token"": ""tempo""}",skip,
