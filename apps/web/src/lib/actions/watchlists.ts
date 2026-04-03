@@ -1029,7 +1029,6 @@ async function _getWatchlistPostingsTypesense(
   });
 
   const total = result.found ?? 0;
-  console.log(`[getWatchlistPostings] Typesense returned ${total} total, ${(result.hits ?? []).length} hits, filter=${fullFilter}`);
   if (total === 0 || params.limit === 0) return { postings: [], total };
 
   const postings: WatchlistPostingEntry[] = (result.hits ?? []).map((hit) => {
