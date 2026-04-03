@@ -38,6 +38,39 @@ export function getSearchClient(): Client {
   return globalForTypesense.__typesenseSearchClient;
 }
 
+/** Alias for getSearchClient — used by typeahead/browse-all functions. */
+export const getTypesenseClient = getSearchClient;
+
+/** Hit type from Typesense search response. */
+export interface TypesenseHit {
+  document: Record<string, unknown>;
+  highlights?: Array<{
+    field: string;
+    snippet?: string;
+    snippets?: string[];
+    value?: string;
+    matched_tokens?: string[] | string[][];
+  }>;
+  text_match?: number;
+}
+
+/** Typed search result wrapper. */
+export interface TypesenseSearchResult {
+  found: number;
+  hits?: TypesenseHit[];
+  grouped_hits?: Array<{
+    group_key: string[];
+    hits: TypesenseHit[];
+    found: number;
+  }>;
+  facet_counts?: Array<{
+    field_name: string;
+    counts: Array<{ value: string; count: number }>;
+    stats: { total_values?: number };
+  }>;
+  search_time_ms?: number;
+}
+
 export function getWriteClient(): Client {
   if (!globalForTypesense.__typesenseWriteClient) {
     const key = process.env.TYPESENSE_WRITE_KEY;
