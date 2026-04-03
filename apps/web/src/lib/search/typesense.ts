@@ -185,37 +185,6 @@ function oneYearAgoUnix(): number {
   return Math.floor(d.getTime() / 1000);
 }
 
-function isConnectionError(err: unknown): boolean {
-  if (err instanceof Error) {
-    const msg = err.message.toLowerCase();
-    // Check message content
-    if (
-      msg.includes("econnrefused") ||
-      msg.includes("econnreset") ||
-      msg.includes("etimedout") ||
-      msg.includes("socket hang up") ||
-      msg.includes("request failed with status code 0") ||
-      msg.includes("could not connect")
-    ) {
-      return true;
-    }
-    // AxiosError wraps the cause — check err.code (e.g. "ECONNREFUSED")
-    const code = (err as { code?: string }).code;
-    if (typeof code === "string") {
-      const lc = code.toLowerCase();
-      if (
-        lc === "econnrefused" ||
-        lc === "econnreset" ||
-        lc === "etimedout" ||
-        lc === "err_network"
-      ) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
 // ── Salary histogram bucket definitions ────────────────────────────
 
 const SALARY_FACET_RANGES = [
@@ -277,8 +246,8 @@ export class TypesenseSearchProvider implements SearchProvider {
 
       return mapGroupedHits(groupedHits, totalCompanies, yearCountMap, locationIds);
     } catch (err) {
-      if (isConnectionError(err)) return emptyResponse();
-      throw err;
+      console.error("[typesense] search error", err);
+      return emptyResponse();
     }
   }
 
@@ -303,8 +272,8 @@ export class TypesenseSearchProvider implements SearchProvider {
         locationIds,
       );
     } catch (err) {
-      if (isConnectionError(err)) return emptyResponse();
-      throw err;
+      console.error("[typesense] search error", err);
+      return emptyResponse();
     }
   }
 
@@ -510,8 +479,8 @@ export class TypesenseSearchProvider implements SearchProvider {
         mapHitToPosting(hit, locationIds),
       );
     } catch (err) {
-      if (isConnectionError(err)) return [];
-      throw err;
+      console.error("[typesense] search error", err);
+      return [];
     }
   }
 
@@ -577,10 +546,8 @@ export class TypesenseSearchProvider implements SearchProvider {
 
       return { postings, activeCount, yearCount };
     } catch (err) {
-      if (isConnectionError(err)) {
-        return { postings: [], activeCount: 0, yearCount: 0 };
-      }
-      throw err;
+      console.error("[typesense] search error", err);
+      return { postings: [], activeCount: 0, yearCount: 0 };
     }
   }
 
@@ -624,8 +591,8 @@ export class TypesenseSearchProvider implements SearchProvider {
       buckets.sort((a: SalaryBucket, b: SalaryBucket) => a.min - b.min);
       return buckets;
     } catch (err) {
-      if (isConnectionError(err)) return [];
-      throw err;
+      console.error("[typesense] search error", err);
+      return [];
     }
   }
 
@@ -671,8 +638,8 @@ export class TypesenseSearchProvider implements SearchProvider {
       );
       return buckets;
     } catch (err) {
-      if (isConnectionError(err)) return [];
-      throw err;
+      console.error("[typesense] search error", err);
+      return [];
     }
   }
 }

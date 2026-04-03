@@ -71,10 +71,10 @@ export interface TypesenseSearchResult {
   search_time_ms?: number;
 }
 
-export function getWriteClient(): Client {
+export function getWriteClient(): Client | null {
   if (!globalForTypesense.__typesenseWriteClient) {
     const key = process.env.TYPESENSE_WRITE_KEY;
-    if (!key) throw new Error("TYPESENSE_WRITE_KEY is not set");
+    if (!key) return null;
     globalForTypesense.__typesenseWriteClient = createClient(key);
   }
   return globalForTypesense.__typesenseWriteClient;

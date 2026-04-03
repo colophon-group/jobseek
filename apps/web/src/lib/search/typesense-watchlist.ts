@@ -2,8 +2,8 @@
  * Typesense watchlist indexing helpers.
  *
  * All operations are fire-and-forget — they catch and log errors,
- * never blocking the user mutation. If Typesense is down, the Supabase
- * write succeeds and the periodic reconciliation job syncs later.
+ * never blocking the user mutation. If Typesense is down or the write
+ * key is missing, operations silently no-op.
  *
  * Uses getWriteClient() (TYPESENSE_WRITE_KEY), NOT the search client.
  */
@@ -26,7 +26,9 @@ export interface WatchlistDoc {
 
 /** Upsert a public watchlist document. */
 export function upsertWatchlist(doc: WatchlistDoc): void {
-  getWriteClient()
+  const client = getWriteClient();
+  if (!client) return;
+  client
     .collections("watchlist")
     .documents()
     .upsert(doc)
@@ -37,7 +39,9 @@ export function upsertWatchlist(doc: WatchlistDoc): void {
 
 /** Delete a watchlist document by ID. */
 export function deleteWatchlist(watchlistId: string): void {
-  getWriteClient()
+  const client = getWriteClient();
+  if (!client) return;
+  client
     .collections("watchlist")
     .documents(watchlistId)
     .delete()
@@ -53,7 +57,9 @@ export function updateWatchlistField(
   watchlistId: string,
   fields: Partial<WatchlistDoc>,
 ): void {
-  getWriteClient()
+  const client = getWriteClient();
+  if (!client) return;
+  client
     .collections("watchlist")
     .documents(watchlistId)
     .update(fields)
