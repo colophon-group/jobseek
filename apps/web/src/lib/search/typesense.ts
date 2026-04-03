@@ -315,36 +315,21 @@ export class TypesenseSearchProvider implements SearchProvider {
   ): Promise<SearchResponse> {
     const client = getSearchClient();
     const activeFilter = `is_active:true && ${filterStr}`;
-    const yearFilter = `first_seen_at:>${oneYearAgoUnix()} && ${filterStr}`;
 
-    // Two facet queries in parallel: active counts + year counts
-    const [activeResult, yearResult] = await Promise.all([
-      client
-        .collections<JobPostingDoc>("job_posting")
-        .documents()
-        .search({
-          q: "*",
-          filter_by: activeFilter,
-          facet_by: "company_id",
-          facet_strategy: "exhaustive",
-          max_facet_values: offset + limit,
-          per_page: 0,
-        }),
-      client
-        .collections<JobPostingDoc>("job_posting")
-        .documents()
-        .search({
-          q: "*",
-          filter_by: yearFilter,
-          facet_by: "company_id",
-          facet_strategy: "exhaustive",
-          max_facet_values: offset + limit,
-          per_page: 0,
-        }),
-    ]);
+    // Active count facet to rank companies
+    const activeResult: TsSearchResponse<JobPostingDoc> = await client
+      .collections<JobPostingDoc>("job_posting")
+      .documents()
+      .search({
+        q: "*",
+        filter_by: activeFilter,
+        facet_by: "company_id",
+        facet_strategy: "exhaustive",
+        max_facet_values: offset + limit,
+        per_page: 0,
+      });
 
     const activeFacets: FacetCount | undefined = activeResult.facet_counts?.[0];
-    const yearFacets: FacetCount | undefined = yearResult.facet_counts?.[0];
     const totalCompanies = activeFacets?.stats?.total_values ?? 0;
     const activeCounts = activeFacets?.counts ?? [];
 
@@ -362,12 +347,9 @@ export class TypesenseSearchProvider implements SearchProvider {
           [f.value, f.count] as [string, number],
       ),
     );
-    const yearCountMap = new Map(
-      (yearFacets?.counts ?? []).map(
-        (f: { value: string; count: number }) =>
-          [f.value, f.count] as [string, number],
-      ),
-    );
+    // Fetch year counts from company collection (pre-computed) — more reliable
+    // than a year facet which may not return all companies on the current page
+    const yearCountMap = await fetchYearCounts(companyIds);
 
     // Fetch postings for this page of companies
     const postingResults: TsSearchResponse<JobPostingDoc> = await client
