@@ -676,20 +676,22 @@ export async function searchPublicWatchlists(params: {
     async () => {
       try {
         const tsResult = await _searchPublicWatchlistsTypesense(q, params.offset, params.limit);
-        // Enrich with real job counts from Postgres (Typesense active_job_count may be stale)
         if (tsResult.watchlists.length > 0) {
-          return { watchlists: await _enrichWatchlistsWithRealCounts(tsResult.watchlists), total: tsResult.total };
+          return {
+            watchlists: await _enrichWatchlistsWithRealCounts(tsResult.watchlists),
+            total: tsResult.total,
+          };
         }
-        return tsResult;
       } catch (err) {
         console.error("[searchPublicWatchlists] Typesense failed, falling back to Postgres", err);
-        return queryPublicWatchlists({
-          whereClause: sql`w.is_public = true AND (w.title ILIKE ${"%" + q + "%"} OR w.description ILIKE ${"%" + q + "%"})`,
-          orderClause: sql`w.created_at DESC`,
-          offset: params.offset,
-          limit: params.limit,
-        });
       }
+      // Empty Typesense result or error — fall back to Postgres
+      return queryPublicWatchlists({
+        whereClause: sql`w.is_public = true AND (w.title ILIKE ${"%" + q + "%"} OR w.description ILIKE ${"%" + q + "%"})`,
+        orderClause: sql`w.created_at DESC`,
+        offset: params.offset,
+        limit: params.limit,
+      });
     },
     { ttl: 60 },
   );
@@ -704,20 +706,22 @@ export async function getPopularWatchlists(params: {
     async () => {
       try {
         const tsResult = await _getPopularWatchlistsTypesense(params.offset, params.limit);
-        // Enrich with real job counts from Postgres (Typesense active_job_count may be stale)
         if (tsResult.watchlists.length > 0) {
-          return { watchlists: await _enrichWatchlistsWithRealCounts(tsResult.watchlists), total: tsResult.total };
+          return {
+            watchlists: await _enrichWatchlistsWithRealCounts(tsResult.watchlists),
+            total: tsResult.total,
+          };
         }
-        return tsResult;
       } catch (err) {
         console.error("[getPopularWatchlists] Typesense failed, falling back to Postgres", err);
-        return queryPublicWatchlists({
-          whereClause: sql`w.is_public = true`,
-          orderClause: sql`(SELECT count(*)::int FROM watchlist w2 WHERE w2.source_watchlist_id = w.id) DESC, w.created_at DESC`,
-          offset: params.offset,
-          limit: params.limit,
-        });
       }
+      // Empty Typesense result or error — fall back to Postgres
+      return queryPublicWatchlists({
+        whereClause: sql`w.is_public = true`,
+        orderClause: sql`(SELECT count(*)::int FROM watchlist w2 WHERE w2.source_watchlist_id = w.id) DESC, w.created_at DESC`,
+        offset: params.offset,
+        limit: params.limit,
+      });
     },
     { ttl: 120 },
   );
