@@ -252,14 +252,15 @@ export async function listTopCompanies(params: {
     return { companies: [], totalCompanies: 0, truncated: true };
   }
 
-  // Determine if this is an unfiltered request (cacheable)
-  const isUnfiltered =
+  // Determine if this is a default/unfiltered request (cacheable).
+  // The default case has languages=[locale] (single locale from resolveJobLanguages).
+  // We consider that "unfiltered" since it's the automatic default, not a user choice.
+  const hasNoExplicitFilters =
     !params.locationIds?.length &&
     !params.occupationIds?.length &&
     !params.seniorityIds?.length &&
     !params.technologyIds?.length &&
     !params.employmentTypes?.length &&
-    !params.languages?.length &&
     params.salaryMinEur == null &&
     params.salaryMaxEur == null &&
     params.experienceMin == null &&
@@ -267,10 +268,12 @@ export async function listTopCompanies(params: {
 
   const fetch = () => getSearchProvider().listTopCompanies(params);
 
-  // Cache only the unfiltered case (stable key, high hit rate)
-  const result = isUnfiltered
+  // Cache the default homepage (no user-specified filters). Include languages
+  // in the key since different locales produce different language filters.
+  const langKey = [...(params.languages ?? [])].sort().join(",");
+  const result = hasNoExplicitFilters
     ? await cached(
-        `top-companies:${params.locale}:${params.offset}:${params.limit}`,
+        `top-companies:${params.locale}:${langKey}:${params.offset}:${params.limit}`,
         fetch,
         { ttl: 60 },
       )
