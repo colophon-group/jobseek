@@ -3402,6 +3402,7 @@ saber-interactive,saber-interactive-careers-huntflow,https://saberjobs.huntflow.
 saber-tech,saber-tech-greenhouse,https://job-boards.greenhouse.io/sabertech,greenhouse,"{""token"": ""sabertech""}",skip,
 sable,sable-ashby,https://jobs.ashbyhq.com/sable,ashby,"{""token"": ""sable""}",skip,
 safari-ai,safari-ai-greenhouse,https://job-boards.greenhouse.io/safariai,greenhouse,"{""token"": ""safariai""}",skip,
+safaricom,safaricom-careers-et,https://egjd.fa.us6.oraclecloud.com/hcmUI/CandidateExperience/en/sites/STEP/jobs,oracle_hcm,"{""host"": ""egjd.fa.us6.oraclecloud.com"", ""site"": ""STEP"", ""enrich"": [""description""]}",oracle_hcm,
 safe,safe-ashby,https://jobs.ashbyhq.com/safe,ashby,"{""token"": ""safe""}",skip,
 safe-security,safe-security-lever,https://jobs.lever.co/safe,lever,"{""token"": ""safe""}",skip,
 sahara,sahara-recruitee,https://sahara.recruitee.com,recruitee,"{""token"": ""sahara""}",skip,
