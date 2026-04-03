@@ -3436,6 +3436,7 @@ sardine,sardine-ashby,https://jobs.ashbyhq.com/sardine,ashby,"{""token"": ""sard
 sattler-media-gmbh,sattler-media-gmbh-join,https://join.com/companies/sattlermedia,join,"{""slug"": ""sattlermedia""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 saturn,saturn-ashby,https://jobs.ashbyhq.com/saturn,ashby,"{""token"": ""saturn""}",skip,
 sauce-labs-inc,sauce-labs-inc-greenhouse,https://job-boards.greenhouse.io/saucelabs,greenhouse,"{""token"": ""saucelabs""}",skip,
+saudi-aramco,saudi-aramco-careers-eu,https://careers.aramco.eu/search/?createNewAlert=false&q=&locationsearch=&locale=en_US,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.aramco.eu/googlefeed.xml""}",skip,
 saviynt,saviynt-lever,https://jobs.lever.co/saviynt,lever,"{""token"": ""saviynt""}",skip,
 savvy,savvy-ashby,https://jobs.ashbyhq.com/savvy,ashby,"{""token"": ""savvy""}",skip,
 sax-advisory-group,sax-advisory-group-greenhouse,https://job-boards.greenhouse.io/saxllp,greenhouse,"{""token"": ""saxllp""}",skip,
