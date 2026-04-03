@@ -65,6 +65,8 @@ def parse_args() -> argparse.Namespace:
 
     sub.add_parser("backfill-typesense", help="Full re-index of job_posting to Typesense")
 
+    sub.add_parser("refresh-typesense", help="Refresh Typesense counts + reconcile watchlists")
+
     board_p = sub.add_parser("board", help="Dev testing for a single board")
     board_p.add_argument("slug", help="Board slug to process")
     board_p.add_argument("--dry-run", action="store_true", help="No DB writes")
@@ -142,6 +144,21 @@ async def run() -> None:
             from src.exporter import backfill_typesense
 
             await backfill_typesense(local_pool, supa_pool)
+
+        elif args.command == "refresh-typesense":
+            local_pool = await create_local_pool()
+            supa_pool = await create_pool()
+            from src.sync import refresh_typesense_counts, sync_watchlists_typesense
+            from src.typesense_client import get_typesense_client
+
+            ts_client = get_typesense_client()
+            if not ts_client:
+                log.error("refresh-typesense: Typesense not configured")
+            else:
+                async with local_pool.acquire() as local_conn, supa_pool.acquire() as supa_conn:
+                    await refresh_typesense_counts(local_conn, ts_client)
+                    await sync_watchlists_typesense(supa_conn, ts_client)
+                log.info("refresh-typesense: done")
 
         elif args.command == "reconcile":
             local_pool = await create_local_pool()
