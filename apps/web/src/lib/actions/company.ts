@@ -131,21 +131,12 @@ async function _searchCompaniesForWatchlistTypesense(params: {
   const q = params.query?.trim();
   const hasQuery = q && q.length >= 2;
 
-  // Expand parent locations/occupations to include children
-  const [expandedLocIds, expandedOccIds] = await Promise.all([
-    params.locationIds?.length
-      ? Promise.all(params.locationIds.map(expandLocationIds)).then((a) => [...new Set(a.flat())])
-      : undefined,
-    params.occupationIds?.length
-      ? Promise.all(params.occupationIds.map(expandOccupationIds)).then((a) => [...new Set(a.flat())])
-      : undefined,
-  ]);
-
+  // No expansion needed — ancestor IDs are stored on each Typesense document
   // Build watchlist context filter for job_posting queries.
   // Map salaryMin/salaryMax to salaryMinEur/salaryMaxEur for buildFilterString.
   const watchlistFilterStr = buildFilterString({
-    locationIds: expandedLocIds,
-    occupationIds: expandedOccIds,
+    locationIds: params.locationIds,
+    occupationIds: params.occupationIds,
     seniorityIds: params.seniorityIds,
     technologyIds: params.technologyIds,
     salaryMinEur: params.salaryMin,
@@ -647,11 +638,8 @@ export async function getCompanyPostings(params: {
   const result = await cached(
     key,
     async () => {
-      const [expandedLocs, expandedOccs] = await Promise.all([
-        resolveLocationIds(params.locationIds),
-        resolveOccupationIds(params.occupationIds),
-      ]);
-      return getSearchProvider().loadPostingsWithCounts({ ...params, locationIds: expandedLocs, occupationIds: expandedOccs });
+      // No expansion needed — ancestor IDs are stored on each Typesense document
+      return getSearchProvider().loadPostingsWithCounts(params);
     },
     { ttl: 300 },
   );
@@ -955,18 +943,3 @@ async function _fetchLocationsGrouped(
 
 // ── Helpers ─────────────────────────────────────────────────────────
 
-async function resolveLocationIds(
-  locationIds?: number[],
-): Promise<number[] | undefined> {
-  if (!locationIds || locationIds.length === 0) return undefined;
-  const expanded = await Promise.all(locationIds.map(expandLocationIds));
-  return [...new Set(expanded.flat())];
-}
-
-async function resolveOccupationIds(
-  occupationIds?: number[],
-): Promise<number[] | undefined> {
-  if (!occupationIds || occupationIds.length === 0) return undefined;
-  const expanded = await Promise.all(occupationIds.map(expandOccupationIds));
-  return [...new Set(expanded.flat())];
-}

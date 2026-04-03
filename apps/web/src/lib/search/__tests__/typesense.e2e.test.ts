@@ -292,6 +292,7 @@ const JOB_POSTING_SCHEMA: CollectionCreateSchema = {
     { name: "location_types", type: "string[]", facet: true },
     { name: "location_geo_types", type: "string[]", index: false },
     { name: "occupation_id", type: "int32", facet: true, optional: true },
+    { name: "occupation_ids", type: "int32[]", facet: true, optional: true },
     { name: "seniority_id", type: "int32", facet: true, optional: true },
     { name: "technology_ids", type: "int32[]", facet: true },
     { name: "employment_type", type: "string", facet: true, optional: true },
@@ -409,12 +410,13 @@ beforeAll(async () => {
       .create(company);
   }
 
-  // Seed job postings
+  // Seed job postings (add occupation_ids from occupation_id for ancestor denormalization)
   for (const posting of JOB_POSTINGS) {
+    const doc = { ...posting, occupation_ids: posting.occupation_id != null ? [posting.occupation_id] : undefined };
     await adminClient
       .collections(JOB_POSTING_COLLECTION)
       .documents()
-      .create(posting);
+      .create(doc);
   }
 
   // Create aliases so the provider sees our test collections

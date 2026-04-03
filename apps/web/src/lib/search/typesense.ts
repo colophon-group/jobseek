@@ -32,6 +32,7 @@ interface JobPostingDoc {
   location_types: string[];
   location_geo_types: string[];
   occupation_id?: number;
+  occupation_ids?: number[];
   seniority_id?: number;
   technology_ids: number[];
   employment_type?: string;

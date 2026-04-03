@@ -6,8 +6,6 @@ import { getSearchProvider } from "@/lib/search";
 import type { SearchResponse, SearchResultPosting, HistogramFilters } from "@/lib/search";
 import { cached } from "@/lib/cache";
 import { getSessionUserId } from "@/lib/sessionCache";
-import { expandLocationIds } from "@/lib/actions/locations";
-import { expandOccupationIds } from "@/lib/actions/taxonomy";
 import { ANON_MAX_COMPANIES, ANON_MAX_CARD_POSTINGS } from "@/lib/search/constants";
 
 // ── Posting detail ──────────────────────────────────────────────────
@@ -199,22 +197,6 @@ async function _fetchPostingDetail(
   };
 }
 
-async function resolveLocationIds(
-  locationIds?: number[],
-): Promise<number[] | undefined> {
-  if (!locationIds || locationIds.length === 0) return undefined;
-  const expanded = await Promise.all(locationIds.map(expandLocationIds));
-  return [...new Set(expanded.flat())];
-}
-
-async function resolveOccupationIds(
-  occupationIds?: number[],
-): Promise<number[] | undefined> {
-  if (!occupationIds || occupationIds.length === 0) return undefined;
-  const expanded = await Promise.all(occupationIds.map(expandOccupationIds));
-  return [...new Set(expanded.flat())];
-}
-
 export async function searchJobs(params: {
   keywords: string[];
   locationIds?: number[];
@@ -238,12 +220,8 @@ export async function searchJobs(params: {
     return { companies: [], totalCompanies: 0, truncated: true };
   }
 
-  // No Redis cache — Typesense is fast enough (<20ms)
-  const [expandedLocs, expandedOccs] = await Promise.all([
-    resolveLocationIds(params.locationIds),
-    resolveOccupationIds(params.occupationIds),
-  ]);
-  const result = await getSearchProvider().search({ ...params, locationIds: expandedLocs, occupationIds: expandedOccs });
+  // No expansion needed — ancestor IDs are stored on each Typesense document
+  const result = await getSearchProvider().search(params);
 
   // Mark as truncated if this is the last allowed page for anon
   if (!userId && params.offset + result.companies.length >= ANON_MAX_COMPANIES) {
@@ -274,12 +252,8 @@ export async function listTopCompanies(params: {
     return { companies: [], totalCompanies: 0, truncated: true };
   }
 
-  // No Redis cache — Typesense is fast enough
-  const [expandedLocs, expandedOccs] = await Promise.all([
-    resolveLocationIds(params.locationIds),
-    resolveOccupationIds(params.occupationIds),
-  ]);
-  const result = await getSearchProvider().listTopCompanies({ ...params, locationIds: expandedLocs, occupationIds: expandedOccs });
+  // No expansion needed — ancestor IDs are stored on each Typesense document
+  const result = await getSearchProvider().listTopCompanies(params);
 
   if (!userId && params.offset + result.companies.length >= ANON_MAX_COMPANIES) {
     return { ...result, truncated: true };
@@ -340,15 +314,8 @@ export async function getSalaryHistogram(filters?: HistogramFilters): Promise<Sa
     key,
     async () => {
       try {
-        const [expandedLocs, expandedOccs] = await Promise.all([
-          resolveLocationIds(f.locationIds),
-          resolveOccupationIds(f.occupationIds),
-        ]);
-        return getSearchProvider().getSalaryHistogram({
-          ...f,
-          locationIds: expandedLocs,
-          occupationIds: expandedOccs,
-        });
+        // No expansion needed — ancestor IDs are stored on each Typesense document
+        return getSearchProvider().getSalaryHistogram(f);
       } catch {
         return [];
       }
@@ -378,15 +345,8 @@ export async function getExperienceHistogram(filters?: HistogramFilters): Promis
     key,
     async () => {
       try {
-        const [expandedLocs, expandedOccs] = await Promise.all([
-          resolveLocationIds(f.locationIds),
-          resolveOccupationIds(f.occupationIds),
-        ]);
-        return getSearchProvider().getExperienceHistogram({
-          ...f,
-          locationIds: expandedLocs,
-          occupationIds: expandedOccs,
-        });
+        // No expansion needed — ancestor IDs are stored on each Typesense document
+        return getSearchProvider().getExperienceHistogram(f);
       } catch {
         return [];
       }
@@ -420,12 +380,8 @@ export async function loadMorePostings(params: {
     return { postings: [], truncated: true };
   }
 
-  // No Redis cache — Typesense is fast enough
-  const [expandedLocs, expandedOccs] = await Promise.all([
-    resolveLocationIds(params.locationIds),
-    resolveOccupationIds(params.occupationIds),
-  ]);
-  const postings = await getSearchProvider().loadPostings({ ...params, locationIds: expandedLocs, occupationIds: expandedOccs });
+  // No expansion needed — ancestor IDs are stored on each Typesense document
+  const postings = await getSearchProvider().loadPostings(params);
 
   if (!userId && params.offset + postings.length >= ANON_MAX_CARD_POSTINGS) {
     return { postings, truncated: true };

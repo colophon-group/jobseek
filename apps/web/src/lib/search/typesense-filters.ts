@@ -17,7 +17,7 @@ export function buildFilterString(
   }
 
   if (filters.occupationIds?.length) {
-    parts.push(`occupation_id:[${filters.occupationIds.join(",")}]`);
+    parts.push(`occupation_ids:[${filters.occupationIds.join(",")}]`);
   }
 
   if (filters.seniorityIds?.length) {

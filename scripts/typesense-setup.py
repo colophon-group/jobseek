@@ -36,6 +36,7 @@ COLLECTIONS: list[dict] = [
             {"name": "location_types", "type": "string[]", "facet": True},
             {"name": "location_geo_types", "type": "string[]", "index": False},
             {"name": "occupation_id", "type": "int32", "facet": True, "optional": True},
+            {"name": "occupation_ids", "type": "int32[]", "facet": True, "optional": True},
             {"name": "occupation_name", "type": "string", "facet": True, "optional": True},
             {"name": "seniority_id", "type": "int32", "facet": True, "optional": True},
             {"name": "seniority_name", "type": "string", "facet": True, "optional": True},

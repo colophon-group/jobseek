@@ -60,6 +60,8 @@ def _load_companies_csv() -> dict[str, dict]:
 
 async def _load_taxonomy_maps(conn: asyncpg.Connection) -> dict:
     """Load all taxonomy lookup maps from Hetzner Postgres."""
+    from collections import defaultdict
+
     # Location names (en only for denormalization)
     loc_names = {}
     rows = await conn.fetch(
@@ -75,6 +77,30 @@ async def _load_taxonomy_maps(conn: asyncpg.Connection) -> dict:
     for r in rows:
         loc_types[r["id"]] = r["type"]
 
+    # Location ancestors (self + parents + macro regions)
+    loc_parents: dict[int, int | None] = {}
+    rows = await conn.fetch("SELECT id, parent_id FROM location")
+    for r in rows:
+        loc_parents[r["id"]] = r["parent_id"]
+
+    macro_members: dict[int, list[int]] = defaultdict(list)
+    rows = await conn.fetch(
+        "SELECT country_id, macro_id FROM location_macro_member"
+    )
+    for r in rows:
+        macro_members[r["country_id"]].append(r["macro_id"])
+
+    loc_ancestors: dict[int, list[int]] = {}
+    for lid in loc_parents:
+        ancestors: set[int] = set()
+        current: int | None = lid
+        while current is not None:
+            ancestors.add(current)
+            if current in macro_members:
+                ancestors.update(macro_members[current])
+            current = loc_parents.get(current)
+        loc_ancestors[lid] = list(ancestors)
+
     # Occupation names
     occ_names = {}
     rows = await conn.fetch(
@@ -83,6 +109,21 @@ async def _load_taxonomy_maps(conn: asyncpg.Connection) -> dict:
     )
     for r in rows:
         occ_names[r["occupation_id"]] = r["name"]
+
+    # Occupation ancestors (self + parents)
+    occ_parents: dict[int, int | None] = {}
+    rows = await conn.fetch("SELECT id, parent_id FROM occupation")
+    for r in rows:
+        occ_parents[r["id"]] = r["parent_id"]
+
+    occ_ancestors: dict[int, list[int]] = {}
+    for oid in occ_parents:
+        ancestors_set: set[int] = set()
+        current_occ: int | None = oid
+        while current_occ is not None:
+            ancestors_set.add(current_occ)
+            current_occ = occ_parents.get(current_occ)
+        occ_ancestors[oid] = list(ancestors_set)
 
     # Seniority names
     sen_names = {}
@@ -123,7 +164,9 @@ async def _load_taxonomy_maps(conn: asyncpg.Connection) -> dict:
     return {
         "loc_names": loc_names,
         "loc_types": loc_types,
+        "loc_ancestors": loc_ancestors,
         "occ_names": occ_names,
+        "occ_ancestors": occ_ancestors,
         "sen_names": sen_names,
         "tech_names": tech_names,
         "company_slugs": company_slugs,
@@ -150,15 +193,20 @@ def _build_doc(row: asyncpg.Record, maps: dict, csv_companies: dict) -> dict:
     titles = row["titles"] or []
     title = titles[0] if titles else ""
 
-    location_ids = row["location_ids"] or []
-    location_names = [maps["loc_names"].get(lid, f"loc-{lid}") for lid in location_ids]
+    raw_location_ids = row["location_ids"] or []
+    location_names = [maps["loc_names"].get(lid, f"loc-{lid}") for lid in raw_location_ids]
     location_types = row["location_types"] or []
-    location_geo_types = [maps["loc_types"].get(lid, "city") for lid in location_ids]
+    location_geo_types = [maps["loc_types"].get(lid, "city") for lid in raw_location_ids]
 
-    # Pad location_types to match location_ids length
-    while len(location_types) < len(location_ids):
+    # Pad location_types to match raw location_ids length
+    while len(location_types) < len(raw_location_ids):
         location_types.append("onsite")
-    location_types = location_types[: len(location_ids)]
+    location_types = location_types[: len(raw_location_ids)]
+
+    # Expand location_ids to include all ancestors (parents + macro regions)
+    expanded_location_ids: set[int] = set()
+    for lid in raw_location_ids:
+        expanded_location_ids.update(maps["loc_ancestors"].get(lid, [lid]))
 
     tech_ids = row["technology_ids"] or []
     tech_names = [maps["tech_names"].get(tid, f"tech-{tid}") for tid in tech_ids]
@@ -180,7 +228,7 @@ def _build_doc(row: asyncpg.Record, maps: dict, csv_companies: dict) -> dict:
         "company_slug": company_slug,
         "title": title,
         "is_active": row["is_active"],
-        "location_ids": location_ids,
+        "location_ids": list(expanded_location_ids),
         "location_names": location_names,
         "location_types": location_types,
         "location_geo_types": location_geo_types,
@@ -198,6 +246,9 @@ def _build_doc(row: asyncpg.Record, maps: dict, csv_companies: dict) -> dict:
 
     if row["occupation_id"] is not None:
         doc["occupation_id"] = row["occupation_id"]
+        doc["occupation_ids"] = maps["occ_ancestors"].get(
+            row["occupation_id"], [row["occupation_id"]]
+        )
         doc["occupation_name"] = maps["occ_names"].get(
             row["occupation_id"], f"occ-{row['occupation_id']}"
         )

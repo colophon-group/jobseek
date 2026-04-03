@@ -977,21 +977,12 @@ async function _getWatchlistPostingsTypesense(
 ): Promise<{ postings: WatchlistPostingEntry[]; total: number; truncated?: boolean }> {
   const client = getSearchClient();
 
-  // Expand parent locations/occupations to include children
-  const [expandedLocationIds, expandedOccupationIds] = await Promise.all([
-    params.locationIds && params.locationIds.length > 0
-      ? Promise.all(params.locationIds.map(expandLocationIds)).then((a) => [...new Set(a.flat())])
-      : undefined,
-    params.occupationIds && params.occupationIds.length > 0
-      ? Promise.all(params.occupationIds.map(expandOccupationIds)).then((a) => [...new Set(a.flat())])
-      : undefined,
-  ]);
-
+  // No expansion needed — ancestor IDs are stored on each Typesense document
   // Build filter string from watchlist context filters
   // Map salaryMin/salaryMax to salaryMinEur/salaryMaxEur
   const filterStr = buildFilterString({
-    locationIds: expandedLocationIds,
-    occupationIds: expandedOccupationIds,
+    locationIds: params.locationIds,
+    occupationIds: params.occupationIds,
     seniorityIds: params.seniorityIds,
     technologyIds: params.technologyIds,
     salaryMinEur: params.salaryMin,
@@ -1008,7 +999,7 @@ async function _getWatchlistPostingsTypesense(
   if (params.companyIds.length > 0) {
     if (params.companyIds.length > COMPANY_BATCH_SIZE) {
       // Large watchlist: batch queries and merge
-      return _getWatchlistPostingsBatched(params, userId, expandedLocationIds, expandedOccupationIds);
+      return _getWatchlistPostingsBatched(params, userId);
     }
     companyFilter = `company_id:[${params.companyIds.join(",")}]`;
   }
@@ -1073,14 +1064,13 @@ async function _getWatchlistPostingsBatched(
     experienceMax?: number;
   },
   userId: string | null,
-  expandedLocationIds?: number[],
-  expandedOccupationIds?: number[],
 ): Promise<{ postings: WatchlistPostingEntry[]; total: number; truncated?: boolean }> {
   const client = getSearchClient();
 
+  // No expansion needed — ancestor IDs are stored on each Typesense document
   const filterStr = buildFilterString({
-    locationIds: expandedLocationIds,
-    occupationIds: expandedOccupationIds,
+    locationIds: params.locationIds,
+    occupationIds: params.occupationIds,
     seniorityIds: params.seniorityIds,
     technologyIds: params.technologyIds,
     salaryMinEur: params.salaryMin,
