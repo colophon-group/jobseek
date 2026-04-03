@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { fetchCompanyPageData, type CompanyPageData } from "@/lib/actions/company-page-data";
 import { CompanySkeleton } from "@/components/search/company-skeleton";
@@ -24,17 +24,10 @@ export function CompanyContent({ locale, slug }: CompanyContentProps) {
   const searchParams = useSearchParams();
   const [data, setData] = useState<CompanyPageData | null | "not-found">(null);
 
-  // Exclude UI-only params like "show" so opening a posting doesn't re-fetch
-  const searchKey = useMemo(() => {
-    const filtered = new URLSearchParams();
-    searchParams.forEach((value, key) => {
-      if (key !== "show") filtered.set(key, value);
-    });
-    return filtered.toString();
-  }, [searchParams]);
-
+  // Fetch initial data once on mount. After that, CompanyPage owns all
+  // filter changes and searches — URL sync via replaceState is for
+  // bookmarkability only and does not trigger a re-fetch here.
   useEffect(() => {
-    setData(null);
     const sp: Record<string, string | undefined> = {};
     searchParams.forEach((value, key) => {
       sp[key] = value;
@@ -42,7 +35,7 @@ export function CompanyContent({ locale, slug }: CompanyContentProps) {
     fetchCompanyPageData({ slug, searchParams: sp, locale }).then((result) => {
       setData(result ?? "not-found");
     });
-  }, [slug, searchKey, locale]);
+  }, []);
 
   if (data === null) return <CompanySkeleton />;
   if (data === "not-found") return <CompanyNotFound />;
