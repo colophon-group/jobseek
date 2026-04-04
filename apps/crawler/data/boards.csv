@@ -2326,6 +2326,7 @@ link,link-greenhouse,https://job-boards.greenhouse.io/link,greenhouse,"{""token"
 linklaters,linklaters-careers,https://linklaters.wd3.myworkdayjobs.com/Linklaters,workday,"{""company"": ""linklaters"", ""wd_instance"": ""wd3"", ""site"": ""Linklaters""}",workday,
 linkup,linkup-careers,https://jobs.ashbyhq.com/Linkup,ashby,"{""token"": ""Linkup""}",skip,
 linq,linq-greenhouse,https://job-boards.greenhouse.io/emslinqinc,greenhouse,"{""token"": ""emslinqinc""}",skip,
+liquid-ai,liquid-ai-careers,https://jobs.ashbyhq.com/liquid-ai,ashby,"{""token"": ""liquid-ai""}",skip,
 liquid-death,liquid-death-greenhouse,https://job-boards.greenhouse.io/liquiddeath,greenhouse,"{""token"": ""liquiddeath""}",skip,
 liquid-i-v,liquid-i-v-greenhouse,https://job-boards.greenhouse.io/liquidiv,greenhouse,"{""token"": ""liquidiv""}",skip,
 lirio,lirio-greenhouse,https://job-boards.greenhouse.io/lirio,greenhouse,"{""token"": ""lirio""}",skip,
