@@ -404,6 +404,7 @@ auctane,auctane-greenhouse,https://job-boards.greenhouse.io/auctane,greenhouse,"
 audax-group,audax-group-greenhouse,https://job-boards.greenhouse.io/audaxgroup,greenhouse,"{""token"": ""audaxgroup""}",skip,
 audibene-hear-com,audibene-hear-com-greenhouse,https://job-boards.greenhouse.io/audibenehearcom,greenhouse,"{""token"": ""audibenehearcom""}",skip,
 auditax-steuerberatungs-gmbh,auditax-steuerberatungs-gmbh-join,https://join.com/companies/auditaxat,join,"{""slug"": ""auditaxat""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
+auditdata,auditdata-careers,https://auditdata.recruitee.com/,recruitee,"{""company_slug"": ""auditdata""}",skip,
 auditless,auditless-ashby,https://jobs.ashbyhq.com/auditless,ashby,"{""token"": ""auditless""}",skip,
 augment-code,augment-code-greenhouse,https://job-boards.greenhouse.io/augmentcomputing,greenhouse,"{""token"": ""augmentcomputing""}",skip,
 augury,augury-greenhouse,https://job-boards.greenhouse.io/augury,greenhouse,"{""token"": ""augury""}",skip,
