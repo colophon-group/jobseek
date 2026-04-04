@@ -510,6 +510,7 @@ bda,bda-greenhouse,https://job-boards.greenhouse.io/bdainc,greenhouse,"{""token"
 be-our-guest,be-our-guest-join,https://join.com/companies/beourguesttacom,join,"{""slug"": ""beourguesttacom""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 beacon-biosignals,beacon-biosignals-greenhouse,https://job-boards.greenhouse.io/beaconbiosignals,greenhouse,"{""token"": ""beaconbiosignals""}",skip,
 beacon-software,beacon-software-greenhouse,https://job-boards.greenhouse.io/beaconsoftware,greenhouse,"{""token"": ""beaconsoftware""}",skip,
+beam,beam-careers,https://jobs.ashbyhq.com/beam-up,ashby,"{""token"": ""beam-up""}",skip,
 beam-therapeutics,beam-therapeutics-greenhouse,https://job-boards.greenhouse.io/beamtherapeutics,greenhouse,"{""token"": ""beamtherapeutics""}",skip,
 beamery,beamery-ashby,https://jobs.ashbyhq.com/beamery,ashby,"{""token"": ""beamery""}",skip,
 beautiful-ai,beautiful-ai-greenhouse,https://job-boards.greenhouse.io/beautifulai,greenhouse,"{""token"": ""beautifulai""}",skip,
