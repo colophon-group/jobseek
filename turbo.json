@@ -18,7 +18,12 @@
         "DATABASE_URL_UNPOOLED",
         "UPSTASH_REDIS_REST_URL",
         "UPSTASH_REDIS_REST_TOKEN",
-        "R2_DOMAIN_URL"
+        "R2_DOMAIN_URL",
+        "TYPESENSE_HOST",
+        "TYPESENSE_PORT",
+        "TYPESENSE_PROTOCOL",
+        "TYPESENSE_SEARCH_KEY",
+        "TYPESENSE_WRITE_KEY"
       ]
     },
     "dev": {
