@@ -15,6 +15,10 @@ x-common-env: &common-env
   R2_ENDPOINT_URL: ${R2_ENDPOINT_URL}
   R2_DOMAIN_URL: ${R2_DOMAIN_URL}
   R2_BUCKET: ${R2_BUCKET}
+  TYPESENSE_HOST: ${TYPESENSE_HOST}
+  TYPESENSE_PORT: ${TYPESENSE_PORT}
+  TYPESENSE_PROTOCOL: ${TYPESENSE_PROTOCOL}
+  TYPESENSE_ADMIN_KEY: ${TYPESENSE_ADMIN_KEY}
 
 services:
   # -- Redis -------------------------------------------------------
