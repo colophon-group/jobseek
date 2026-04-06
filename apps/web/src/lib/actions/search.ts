@@ -271,13 +271,16 @@ export async function listTopCompanies(params: {
   // Cache the default homepage (no user-specified filters). Include languages
   // in the key since different locales produce different language filters.
   const langKey = [...(params.languages ?? [])].sort().join(",");
-  const result = hasNoExplicitFilters
-    ? await cached(
-        `top-companies:${params.locale}:${langKey}:${params.offset}:${params.limit}`,
-        fetch,
-        { ttl: 60 },
-      )
-    : await fetch();
+  let result: SearchResponse;
+  if (hasNoExplicitFilters) {
+    result = await cached(
+      `top-companies:${params.locale}:${langKey}:${params.offset}:${params.limit}`,
+      fetch,
+      { ttl: 60, skipIf: (r: SearchResponse) => !!r.degraded },
+    );
+  } else {
+    result = await fetch();
+  }
 
   if (!userId && params.offset + result.companies.length >= ANON_MAX_COMPANIES) {
     return { ...result, truncated: true };
