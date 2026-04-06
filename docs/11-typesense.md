@@ -60,7 +60,7 @@ Three scoped keys. Stored in: `apps/crawler/.env.local` (main branch), GitHub se
 
 ### Key Design Choices
 
-- **Ancestor IDs**: `job_posting.location_ids` and `job_posting.occupation_ids` contain the leaf ID plus all ancestor IDs (parents, grandparents, macro regions). This enables hierarchy-free filtering -- searching for "Germany" matches all cities in Germany without recursive joins.
+- **Ancestor IDs**: `job_posting.location_ids` and `job_posting.occupation_ids` contain the leaf ID plus all ancestor IDs (parents, grandparents, macro regions). This enables hierarchy-free filtering -- searching for "Germany" matches all cities in Germany without recursive joins. **Critical**: The web app's `buildFilterString()` filters on `location_ids` and `occupation_ids` (plural array fields). Both the CDC exporter (`exporter.py`) and the backfill scripts must compute and populate these ancestor arrays -- writing only the singular `occupation_id`/`location_id` will cause filters to silently return 0 results.
 - **Sentinel values**: `experience_min = -1` for NULL (Typesense excludes missing optional fields from range queries). `locales = ["_none"]` for jobs with no detected language.
 - **Denormalized names**: Taxonomy names (location, occupation, seniority, technology) are stored directly on each job posting document for search and faceting without joins.
 - **Versioned aliases**: `job_posting` is an alias pointing to `job_posting_v1`. To reindex with a new schema: create `_v2`, backfill, swap alias, drop `_v1`.
@@ -87,7 +87,9 @@ The exporter uses a **two-cursor design**: Supabase and Typesense each have thei
 
 If one target fails, only its cursor stalls. The other continues unaffected.
 
-**Feature flag**: Typesense writes only happen when `TYPESENSE_ADMIN_KEY` is set (non-empty). Environments without Typesense are unaffected.
+**Feature flag**: Typesense writes only happen when `TYPESENSE_ADMIN_KEY` is set (non-empty). Environments without Typesense are unaffected. The env var must be passed to containers in `docker-compose.yml` (`x-common-env`).
+
+**Denormalization**: The exporter's `TaxonomyMaps` computes ancestor chains for hierarchical taxonomies (locations, occupations). Each document includes `location_ids` (all ancestor location IDs from Postgres) and `occupation_ids` (computed from `occupation.parent_id` chain). These must stay in sync with the web app's `buildFilterString()` field names -- a mismatch causes silent 0-result filters.
 
 ### Taxonomy Collections (via sync.py)
 
