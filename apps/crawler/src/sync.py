@@ -1744,6 +1744,8 @@ async def sync_watchlists_typesense(
             "company_count": company_counts.get(wid, 0),
             "active_job_count": job_counts.get(wid, 0),
             "mirror_count": mirror_counts.get(wid, 0),
+            "is_featured": (r["owner_username"] or "").lower() == "colophongroup",
+            "has_description": bool(r["description"]),
             "created_at": created_ts,
             "is_public": True,
         }

@@ -143,6 +143,8 @@ export async function createWatchlist(params: {
         company_count: params.companyIds.length,
         active_job_count: 0, // will be refreshed by reconciliation cron
         mirror_count: 0,
+        is_featured: (owner.username ?? "").toLowerCase() === "colophongroup",
+        has_description: !!params.description,
         created_at: Math.floor(Date.now() / 1000),
         is_public: true,
       });
@@ -241,16 +243,19 @@ export async function updateWatchlist(params: {
         const companyCount = params.companyIds !== undefined
           ? params.companyIds.length
           : await _countWatchlistCompanies(params.watchlistId);
+        const desc = params.description !== undefined ? params.description : wl.description;
         tsUpsertWatchlist({
           id: params.watchlistId,
           slug: newSlug,
           title: params.title ?? wl.title,
-          description: (params.description !== undefined ? params.description : wl.description) ?? undefined,
+          description: desc ?? undefined,
           owner_name: owner.name,
           owner_username: owner.username ?? undefined,
           company_count: companyCount,
           active_job_count: 0, // refreshed by reconciliation cron
           mirror_count: 0,
+          is_featured: (owner.username ?? "").toLowerCase() === "colophongroup",
+          has_description: !!desc,
           created_at: Math.floor(Date.now() / 1000),
           is_public: true,
         });
@@ -360,6 +365,8 @@ export async function copyWatchlist(
       company_count: companies.length,
       active_job_count: 0, // refreshed by reconciliation cron
       mirror_count: 0,
+      is_featured: (owner.username ?? "").toLowerCase() === "colophongroup",
+      has_description: !!source.description,
       created_at: Math.floor(Date.now() / 1000),
       is_public: true,
     });
@@ -718,7 +725,7 @@ export async function getPopularWatchlists(params: {
       // Empty Typesense result or error — fall back to Postgres
       return queryPublicWatchlists({
         whereClause: sql`w.is_public = true`,
-        orderClause: sql`(SELECT count(*)::int FROM watchlist w2 WHERE w2.source_watchlist_id = w.id) DESC, w.created_at DESC`,
+        orderClause: sql`(u.username = 'colophongroup')::int DESC, (SELECT count(*)::int FROM watchlist w2 WHERE w2.source_watchlist_id = w.id) DESC, (w.description IS NOT NULL AND w.description != '')::int DESC, w.created_at DESC`,
         offset: params.offset,
         limit: params.limit,
       });
@@ -894,7 +901,7 @@ async function _getPopularWatchlistsTypesense(
     q: "*",
     query_by: "title,description",
     filter_by: "is_public:true",
-    sort_by: "mirror_count:desc,created_at:desc",
+    sort_by: "is_featured:desc,mirror_count:desc,has_description:desc,created_at:desc",
     per_page: limit,
     page: Math.floor(offset / limit) + 1,
   });

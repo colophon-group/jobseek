@@ -139,6 +139,8 @@ COLLECTIONS: list[dict] = [
             {"name": "company_count", "type": "int32"},
             {"name": "active_job_count", "type": "int32"},
             {"name": "mirror_count", "type": "int32"},
+            {"name": "is_featured", "type": "bool", "facet": True},
+            {"name": "has_description", "type": "bool", "facet": True},
             {"name": "created_at", "type": "int64"},
             {"name": "is_public", "type": "bool", "facet": True},
         ],

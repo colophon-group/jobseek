@@ -20,6 +20,8 @@ export interface WatchlistDoc {
   company_count: number;
   active_job_count: number;
   mirror_count: number;
+  is_featured: boolean;
+  has_description: boolean;
   created_at: number; // Unix timestamp
   is_public: boolean;
 }
