@@ -11,14 +11,26 @@ import type { ConfigurationOptions } from "typesense/lib/Typesense/Configuration
  */
 
 function createClient(apiKey: string): Client {
-  const host = process.env.TYPESENSE_HOST ?? "localhost";
-  const port = parseInt(process.env.TYPESENSE_PORT ?? "8108", 10);
-  const protocol = process.env.TYPESENSE_PROTOCOL ?? "https";
+  const host = process.env.TYPESENSE_HOST;
+  const port = process.env.TYPESENSE_PORT;
+  const protocol = process.env.TYPESENSE_PROTOCOL;
+
+  if (!host || !port || !protocol) {
+    throw new Error(
+      `Typesense connection not configured. Missing: ${[
+        !host && "TYPESENSE_HOST",
+        !port && "TYPESENSE_PORT",
+        !protocol && "TYPESENSE_PROTOCOL",
+      ]
+        .filter(Boolean)
+        .join(", ")}`,
+    );
+  }
 
   const config: ConfigurationOptions = {
-    nodes: [{ host, port, protocol }],
+    nodes: [{ host, port: parseInt(port, 10), protocol }],
     apiKey,
-    connectionTimeoutSeconds: 2,
+    connectionTimeoutSeconds: 5,
   };
 
   return new Client(config);
