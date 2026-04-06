@@ -5,11 +5,15 @@ import Link from "next/link";
 import { Search, Loader2, Copy } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useLocalePath } from "@/lib/useLocalePath";
+import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
+import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
 import {
   searchPublicWatchlists,
   getPopularWatchlists,
   type PublicWatchlistEntry,
 } from "@/lib/actions/watchlists";
+
+const PAGE_SIZE = 10;
 
 export function PublicWatchlistSearch() {
   const { t } = useLingui();
@@ -18,54 +22,58 @@ export function PublicWatchlistSearch() {
   const [results, setResults] = useState<PublicWatchlistEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
+  const [exhausted, setExhausted] = useState(false);
   const [mode, setMode] = useState<"popular" | "search">("popular");
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const queryRef = useRef(query);
+  queryRef.current = query;
 
-  // Load popular watchlists on mount
-  useEffect(() => {
-    setLoading(true);
-    getPopularWatchlists({ offset: 0, limit: 10 })
-      .then(({ watchlists, total }) => {
-        setResults(watchlists);
-        setTotal(total);
-        setMode("popular");
-      })
-      .finally(() => setLoading(false));
-  }, []);
+  const fetchPage = useCallback(async (q: string, offset: number, append: boolean) => {
+    const fetcher = q.length >= 2
+      ? () => searchPublicWatchlists({ query: q, offset, limit: PAGE_SIZE })
+      : () => getPopularWatchlists({ offset, limit: PAGE_SIZE });
 
-  const doSearch = useCallback(async (q: string) => {
-    if (q.length < 2) {
-      // Revert to popular
-      setLoading(true);
-      getPopularWatchlists({ offset: 0, limit: 10 })
-        .then(({ watchlists, total }) => {
-          setResults(watchlists);
-          setTotal(total);
-          setMode("popular");
-        })
-        .finally(() => setLoading(false));
-      return;
-    }
-    setLoading(true);
+    const newMode = q.length >= 2 ? "search" : "popular";
+
     try {
-      const { watchlists, total } = await searchPublicWatchlists({
-        query: q,
-        offset: 0,
-        limit: 10,
-      });
-      setResults(watchlists);
-      setTotal(total);
-      setMode("search");
+      const { watchlists, total: t } = await fetcher();
+      if (append) {
+        setResults((prev) => {
+          const seen = new Set(prev.map((w) => w.id));
+          return [...prev, ...watchlists.filter((w) => !seen.has(w.id))];
+        });
+      } else {
+        setResults(watchlists);
+      }
+      setTotal(t);
+      setMode(newMode);
+      if (watchlists.length < PAGE_SIZE) setExhausted(true);
     } finally {
       setLoading(false);
     }
   }, []);
 
+  // Initial load + search on query change
   useEffect(() => {
     clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => doSearch(query), query.length > 0 ? 300 : 0);
+    timerRef.current = setTimeout(() => {
+      setLoading(true);
+      setExhausted(false);
+      fetchPage(query, 0, false);
+    }, query.length > 0 ? 300 : 0);
     return () => clearTimeout(timerRef.current);
-  }, [query, doSearch]);
+  }, [query, fetchPage]);
+
+  const hasMore = !exhausted && results.length < total;
+
+  async function handleLoadMore() {
+    await fetchPage(queryRef.current, results.length, true);
+  }
+
+  const { sentinelRef, isLoading: loadingMore } = useInfiniteScroll({
+    hasMore,
+    load: handleLoadMore,
+  });
 
   return (
     <div>
@@ -125,13 +133,7 @@ export function PublicWatchlistSearch() {
             </Link>
           ))}
 
-          {total > results.length && (
-            <p className="text-center text-xs text-muted">
-              <Trans id="watchlists.explore.moreCount" comment="Count of additional watchlists not shown">
-                {total - results.length} more
-              </Trans>
-            </p>
-          )}
+          {hasMore && <InfiniteScrollSentinel sentinelRef={sentinelRef} isLoading={loadingMore} size="sm" />}
         </div>
       )}
 
