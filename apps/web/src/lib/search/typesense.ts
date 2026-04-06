@@ -154,29 +154,36 @@ function mapGroupedHits(
 }
 
 /**
- * Batch-fetch company docs for yearMatches.
+ * Compute filtered year counts via facet on job_posting.
+ * Counts postings from the past year matching the same filters as the main query.
  */
-async function fetchYearCounts(
+async function fetchYearCountsFiltered(
   companyIds: string[],
+  filterStr: string,
+  q: string,
 ): Promise<Map<string, number>> {
   if (companyIds.length === 0) return new Map();
 
   const client = getSearchClient();
-  const companyDocs: TsSearchResponse<CompanyDoc> = await client
-    .collections<CompanyDoc>("company")
+  const yearFilter = `first_seen_at:>${oneYearAgoUnix()} && company_id:[${companyIds.join(",")}]${filterStr ? " && " + filterStr : ""}`;
+
+  const result: TsSearchResponse<JobPostingDoc> = await client
+    .collections<JobPostingDoc>("job_posting")
     .documents()
     .search({
-      q: "*",
-      filter_by: `id:[${companyIds.join(",")}]`,
-      per_page: companyIds.length,
-      include_fields: "id,year_posting_count",
+      q,
+      query_by: "title",
+      filter_by: yearFilter,
+      facet_by: "company_id",
+      facet_strategy: "exhaustive",
+      max_facet_values: companyIds.length,
+      per_page: 0,
     });
 
-  const entries: [string, number][] = (companyDocs.hits ?? []).map(
-    (h: SearchResponseHit<CompanyDoc>) =>
-      [h.document.id, h.document.year_posting_count] as [string, number],
+  const counts = result.facet_counts?.[0]?.counts ?? [];
+  return new Map(
+    counts.map((c: { value: string; count: number }) => [c.value, c.count]),
   );
-  return new Map(entries);
 }
 
 function oneYearAgoUnix(): number {
@@ -237,12 +244,16 @@ export class TypesenseSearchProvider implements SearchProvider {
       const totalCompanies =
         result.facet_counts?.[0]?.stats?.total_values ?? 0;
 
-      // Batch-fetch company docs for yearMatches
+      // Compute filtered year counts — same keywords + filters but for the past year
       const groupedHits = (result.grouped_hits ?? []) as GroupedHit[];
       const companyIds = groupedHits.map(
         (g: GroupedHit) => g.hits[0].document.company_id,
       );
-      const yearCountMap = await fetchYearCounts(companyIds);
+      const yearCountMap = await fetchYearCountsFiltered(
+        companyIds,
+        filterStr,
+        keywords.join(" "),
+      );
 
       return mapGroupedHits(groupedHits, totalCompanies, yearCountMap, locationIds);
     } catch (err) {
@@ -317,9 +328,9 @@ export class TypesenseSearchProvider implements SearchProvider {
           [f.value, f.count] as [string, number],
       ),
     );
-    // Fetch year counts and postings in parallel (independent queries)
+    // Fetch filtered year counts and postings in parallel (independent queries)
     const [yearCountMap, postingResults] = await Promise.all([
-      fetchYearCounts(companyIds),
+      fetchYearCountsFiltered(companyIds, filterStr, "*"),
       client
         .collections<JobPostingDoc>("job_posting")
         .documents()
