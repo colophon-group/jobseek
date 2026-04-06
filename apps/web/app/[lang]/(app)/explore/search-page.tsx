@@ -135,6 +135,10 @@ export function SearchPage({
   const [isSearching, setIsSearching] = useState(false);
   const searchCounterRef = useRef(0);
   const [isTruncated, setIsTruncated] = useState(initialTruncated ?? false);
+  // Track server-side offset separately from deduped client list length.
+  // Facet-based pagination can return overlapping companies between pages,
+  // causing the deduped list to grow slower than the server offset.
+  const serverOffsetRef = useRef(initialCompanies.length);
 
   // Refs for all filter state — single source of truth for updateUrl/runSearch
   const keywordsRef = useRef(keywords);
@@ -467,6 +471,7 @@ export function SearchPage({
               });
         if (searchCounterRef.current !== id) return; // stale
         setCompanies(result.companies);
+        serverOffsetRef.current = result.companies.length;
         setTotalCompanies(result.totalCompanies);
         setIsTruncated(result.truncated ?? false);
       } catch {
@@ -635,7 +640,7 @@ export function SearchPage({
   }, [displayCurrency]);
 
   async function handleLoadMore() {
-    const offset = companiesRef.current.length;
+    const offset = serverOffsetRef.current;
     const kws = keywordsRef.current;
     const locationIds = locationsRef.current.map((l) => l.id);
     const occupationIds = occupationsRef.current.length > 0 ? occupationsRef.current.map((o) => o.id) : undefined;
@@ -651,6 +656,7 @@ export function SearchPage({
       : await listTopCompanies({ locationIds, occupationIds, seniorityIds, technologyIds, employmentTypes: etypes, salaryMinEur: salMinEur, salaryMaxEur: salMaxEur, experienceMin: expMin, experienceMax: expMax, languages, locale, offset, limit: PAGE_SIZE });
 
     if (result.truncated) setIsTruncated(true);
+    serverOffsetRef.current += result.companies.length;
 
     setCompanies((prev) => {
       const seen = new Set(prev.map((c) => c.company.id));
