@@ -33,7 +33,8 @@ Jobseek monitors company career pages for new job postings. Companies are config
 │   ├── typesense-setup.py       # Create/recreate Typesense collections + aliases
 │   └── typesense-backfill-local.py  # One-shot backfill from Postgres to Typesense
 ├── docs/                    # Architecture documentation
-│   └── typesense-migration/ # Typesense design docs + deployment state
+│   ├── 11-typesense.md      # Typesense deployment + architecture reference
+│   └── 12-typesense-benchmarks.md  # Performance benchmarks
 └── .github/workflows/       # CI + agent automation
 ```
 
@@ -88,7 +89,7 @@ Developer guidance for agent reasoning style lives in [docs/agents.md](docs/agen
 
 All search, typeahead, browse-all modals, and watchlist search are served by Typesense. Supabase Postgres still handles non-search reads (posting detail, user data).
 
-See [docs/typesense-migration/06-deployment-state.md](docs/typesense-migration/06-deployment-state.md) for full deployment details.
+See [docs/11-typesense.md](docs/11-typesense.md) for full deployment details.
 
 ### Infrastructure
 

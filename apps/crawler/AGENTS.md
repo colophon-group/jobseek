@@ -13,7 +13,7 @@ Redis-orchestrated workers writing to local Postgres, with CDC export to Supabas
 5. **Typesense Sync** (`src/sync.py`) — taxonomy + company collections populated after CSV sync; rename detection updates denormalized names on postings
 
 See [docs/03-crawler-architecture.md](../../docs/03-crawler-architecture.md) for full details.
-See [docs/typesense-migration/06-deployment-state.md](../../docs/typesense-migration/06-deployment-state.md) for Typesense deployment details.
+See [docs/11-typesense.md](../../docs/11-typesense.md) for Typesense deployment details.
 
 ## Key Files
 
