@@ -4,14 +4,16 @@ Crawler-specific instructions. See the root [AGENTS.md](../../AGENTS.md) for pro
 
 ## Architecture
 
-Redis-orchestrated workers writing to local Postgres, with CDC export to Supabase:
+Redis-orchestrated workers writing to local Postgres, with CDC export to Supabase + Typesense:
 
 1. **Single Job** (`src/core/`) — pure async functions, no DB awareness
 2. **Workers** (`src/workers/pipeline.py`) — claim from Redis tiered queues, process, write to local Postgres
-3. **Exporter** (`src/exporter.py`) — CDC: local Postgres -> Supabase batch COPY
+3. **Exporter** (`src/exporter.py`) — CDC: local Postgres -> Supabase batch COPY + Typesense upserts (two independent cursors, concurrent writes)
 4. **R2 Drain** (`src/workers/r2_drain.py`) — poll descriptions table, PUT to R2
+5. **Typesense Sync** (`src/sync.py`) — taxonomy + company collections populated after CSV sync; rename detection updates denormalized names on postings
 
 See [docs/03-crawler-architecture.md](../../docs/03-crawler-architecture.md) for full details.
+See [docs/typesense-migration/06-deployment-state.md](../../docs/typesense-migration/06-deployment-state.md) for Typesense deployment details.
 
 ## Key Files
 
@@ -63,8 +65,9 @@ src/
 │   └── lookups.py         # Cached lookup table loaders (locations, technologies, etc.)
 ├── redis_queue.py         # Lua-backed claim/enqueue/reschedule
 ├── lua/                   # claim_work.lua, enqueue_task.lua, reschedule_task.lua
-├── exporter.py            # CDC: local Postgres -> Supabase (job_posting only)
-├── sync.py                # CSV -> local Postgres + Supabase + Redis
+├── exporter.py            # CDC: local Postgres -> Supabase + Typesense (two-cursor)
+├── typesense_client.py    # Shared Typesense client (lazy init, None when unconfigured)
+├── sync.py                # CSV -> local Postgres + Supabase + Redis + Typesense taxonomies
 ├── bootstrap.py           # One-time: Supabase -> local Postgres copy
 ├── cli.py                 # Entry point: crawler run/run-browser/export/drain/sync/board
 ├── config.py              # Settings (pydantic-settings)
@@ -157,10 +160,12 @@ ws reject --reason <key> --message "..."  # Uses active workspace's issue
 # Run crawler workers
 uv run crawler run                     # HTTP worker (claims from simple queues)
 uv run crawler run-browser             # Browser worker (claims from browser queues)
-uv run crawler export                  # CDC exporter loop
+uv run crawler export                  # CDC exporter loop (Supabase + Typesense)
 uv run crawler drain                   # R2 description uploader
-uv run crawler sync                    # CSV -> local Postgres + Supabase + Redis
+uv run crawler sync                    # CSV -> local Postgres + Supabase + Redis + Typesense
 uv run crawler reconcile               # Compare local vs Supabase, fix discrepancies
+uv run crawler backfill-typesense      # Full re-index of job_posting to Typesense
+uv run crawler refresh-typesense       # Refresh Typesense counts + reconcile watchlists
 uv run crawler board <slug>            # Process single board (debug)
 uv run crawler board <slug> --dry-run  # Test without DB writes
 uv run crawler board <slug> --dry-run --verbose  # Show all extracted fields
@@ -290,11 +295,22 @@ All crawler services run on Hetzner. Machine IPs, credentials, and API keys are 
 ### SSH Access
 
 ```bash
-ssh -i ~/.ssh/hetzner_deploy root@<WORKER_IP>    # Worker machine (Redis, workers, exporter, drain, alloy)
-ssh -i ~/.ssh/hetzner_deploy root@<POSTGRES_IP>   # Postgres machine
+ssh -i ~/.ssh/hetzner_deploy root@<WORKER_IP>      # Worker machine (Redis, workers, exporter, drain, alloy)
+ssh -i ~/.ssh/hetzner_deploy root@<POSTGRES_IP>     # Postgres machine
+ssh -i ~/.ssh/hetzner_deploy root@<TYPESENSE_IP>    # Typesense machine
 ```
 
-IPs are in `.env.local` (`HETZNER_HOST` for worker, `LOCAL_DATABASE_URL` contains the Postgres IP).
+IPs are in `.env.local` (`HETZNER_HOST` for worker, `LOCAL_DATABASE_URL` contains the Postgres IP, `TYPESENSE_HOST` for Typesense).
+
+### Private Network Layout
+
+All machines communicate via Hetzner private network (10.0.0.0/16). See `.env.local` for actual IPs.
+
+| Machine | Role |
+|---------|------|
+| Crawler box | Workers, exporter, drain, Redis, Alloy |
+| Postgres box | Local Postgres (source of truth) |
+| Typesense box | Typesense 27.1, Cloudflare tunnel (`cloudflared`) |
 
 ### Container Management
 
@@ -362,6 +378,55 @@ curl -s -X POST "https://colophongroup.grafana.net/api/dashboards/db" \
 ```
 
 `GRAFANA_API_KEY` is in `.env.local`. The dashboard UID is `jobseek-crawler-pipeline`.
+
+### Typesense Operations
+
+Typesense 27.1 runs as a Docker container on a dedicated Hetzner CX22 (4 GB RAM, 2 vCPU). Data stored at `/mnt/typesense-data`. The container runs with `--network host`.
+
+```bash
+# SSH to Typesense machine
+ssh -i ~/.ssh/hetzner_deploy root@<TYPESENSE_IP>
+
+# Check health
+curl -s http://localhost:8108/health -H "X-TYPESENSE-API-KEY: <ADMIN_KEY>"
+
+# View stats
+curl -s http://localhost:8108/stats.json -H "X-TYPESENSE-API-KEY: <ADMIN_KEY>"
+
+# View container
+docker ps --format "table {{.Names}}\t{{.Status}}\t{{.MemUsage}}"
+docker logs typesense 2>&1 | tail -20
+
+# Restart Typesense
+docker rm -f typesense && docker run -d --name typesense --restart unless-stopped \
+  --network host -v /mnt/typesense-data:/data \
+  typesense/typesense:27.1 --data-dir /data --api-key=<ADMIN_KEY>
+```
+
+**Cloudflare tunnel**: `cloudflared` runs as a systemd service, routing `typesense.colophon-group.org` to `localhost:8108`. Auto-starts on reboot.
+
+```bash
+# Check tunnel status
+systemctl status cloudflared
+
+# Restart tunnel
+systemctl restart cloudflared
+```
+
+**Collection management** (from `apps/crawler/` on any machine with connectivity):
+
+```bash
+# Create/recreate collections + aliases
+uv run python ../../scripts/typesense-setup.py [--force]
+
+# Full re-index
+uv run crawler backfill-typesense
+
+# Refresh counts + reconcile watchlists
+uv run crawler refresh-typesense
+```
+
+**Grafana metrics**: `typesense_export_docs_total`, `typesense_export_lag`, `typesense_export_duration_seconds`, `typesense_healthy` (0/1), `typesense_memory_bytes`, `typesense_reconciliation_discrepancies`.
 
 ### Alloy (Metrics + Logs Collector)
 
