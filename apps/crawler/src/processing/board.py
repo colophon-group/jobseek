@@ -243,6 +243,7 @@ async def _process_one_board_streaming(
     pool: asyncpg.Pool,
     http: httpx.AsyncClient,
     extender: object,
+    pw=None,
 ) -> tuple[bool, float]:
     """Run a streaming monitor cycle for a single board. Returns (success, duration_s).
 
@@ -251,6 +252,9 @@ async def _process_one_board_streaming(
     - Runs _DIFF_BATCH (new/touched/relisted only) per batch
     - Fires R2 uploads as background tasks overlapping with discovery
     - Runs _MARK_GONE once after all batches complete
+
+    When *pw* is provided (a running Playwright instance), it is reused
+    instead of spawning a new Playwright server process per monitor cycle.
     """
     board_id = str(board["id"])
     company_id = str(board["company_id"])
@@ -260,8 +264,7 @@ async def _process_one_board_streaming(
     board_log = log.bind(board_id=board_id, board_url=board_url, crawler_type=crawler_type)
     t0 = monotonic()
 
-    pw = None
-    pw_ctx = None
+    pw_owned = False  # True when we created pw ourselves and must stop it
     effective_http = http
 
     try:
@@ -278,13 +281,14 @@ async def _process_one_board_streaming(
 
             effective_http = create_http_client(verify=False)
 
-        # Start Playwright if this monitor needs a browser
-        if _batch.monitor_needs_browser(crawler_type, metadata):
+        # Start Playwright if this monitor needs a browser and none was provided
+        if pw is None and _batch.monitor_needs_browser(crawler_type, metadata):
             try:
                 from playwright.async_api import async_playwright
 
                 pw_ctx = async_playwright()
                 pw = await pw_ctx.start()
+                pw_owned = True
                 board_log.info("batch.monitor.playwright_started")
             except Exception:
                 board_log.warning("batch.monitor.playwright_unavailable", exc_info=True)
@@ -664,7 +668,7 @@ async def _process_one_board_streaming(
                 await conn.execute(_RECORD_FAILURE, board_id, error_msg)
         return False, elapsed
     finally:
-        if pw:
+        if pw and pw_owned:
             await pw.stop()
         if effective_http is not http:
             await effective_http.aclose()

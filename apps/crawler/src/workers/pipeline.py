@@ -105,6 +105,24 @@ def _scrape_item_from_redis(work: ScrapeWork):
 # ---------------------------------------------------------------------------
 
 
+async def _ensure_playwright(worker_log):
+    """Start a Playwright server process. Returns ``(pw, pw_ctx)``."""
+    from playwright.async_api import async_playwright
+
+    pw_ctx = async_playwright()
+    pw = await pw_ctx.start()
+    worker_log.info("pipeline.worker.playwright_started")
+    return pw, pw_ctx
+
+
+async def _stop_playwright(pw, worker_log):
+    """Stop a Playwright server process, suppressing errors."""
+    try:
+        await pw.stop()
+    except Exception:
+        worker_log.warning("pipeline.worker.playwright_stop_error", exc_info=True)
+
+
 async def _discovery_worker(
     worker_id: int,
     local_pool: asyncpg.Pool,
@@ -122,53 +140,71 @@ async def _discovery_worker(
     ``monitor_semaphore`` caps concurrent monitor processing to bound
     peak memory (monitors hold full board results in memory).  Scrapes
     are lightweight and not limited.
+
+    Browser workers create a shared Playwright server process per worker
+    to avoid spawning (and leaking) a new process on every task.
     """
     worker_log = log.bind(worker_id=worker_id, browser=browser)
     worker_log.info("pipeline.worker.started")
 
-    while not shutdown_event.is_set():
+    # Browser workers share one Playwright server per worker coroutine.
+    pw = None
+    if browser:
         try:
-            work = await claim_work(browser=browser)
+            pw, _pw_ctx = await _ensure_playwright(worker_log)
         except Exception:
-            worker_log.warning("pipeline.claim_error", exc_info=True)
-            with contextlib.suppress(TimeoutError):
-                await asyncio.wait_for(shutdown_event.wait(), timeout=_IDLE_BACKOFF_S)
-            continue
+            worker_log.warning("pipeline.worker.playwright_unavailable", exc_info=True)
 
-        if work is None:
-            # No work available — back off
-            with contextlib.suppress(TimeoutError):
-                await asyncio.wait_for(shutdown_event.wait(), timeout=_IDLE_BACKOFF_S)
-            continue
+    try:
+        while not shutdown_event.is_set():
+            try:
+                work = await claim_work(browser=browser)
+            except Exception:
+                worker_log.warning("pipeline.claim_error", exc_info=True)
+                with contextlib.suppress(TimeoutError):
+                    await asyncio.wait_for(shutdown_event.wait(), timeout=_IDLE_BACKOFF_S)
+                continue
 
-        if work.kind == "monitor" and work.board_work is not None:
-            if monitor_semaphore is not None:
-                async with monitor_semaphore:
+            if work is None:
+                # No work available — back off
+                with contextlib.suppress(TimeoutError):
+                    await asyncio.wait_for(shutdown_event.wait(), timeout=_IDLE_BACKOFF_S)
+                continue
+
+            if work.kind == "monitor" and work.board_work is not None:
+                if monitor_semaphore is not None:
+                    async with monitor_semaphore:
+                        await _process_monitor_work(
+                            worker_log,
+                            work.board_work,
+                            local_pool,
+                            http,
+                            browser=browser,
+                            pw=pw,
+                        )
+                else:
                     await _process_monitor_work(
                         worker_log,
                         work.board_work,
                         local_pool,
                         http,
                         browser=browser,
+                        pw=pw,
                     )
-            else:
-                await _process_monitor_work(
+            elif work.kind == "scrape" and work.scrape_work is not None:
+                await _process_scrape_work(
                     worker_log,
-                    work.board_work,
+                    work.scrape_work,
                     local_pool,
                     http,
                     browser=browser,
+                    pw=pw,
                 )
-        elif work.kind == "scrape" and work.scrape_work is not None:
-            await _process_scrape_work(
-                worker_log,
-                work.scrape_work,
-                local_pool,
-                http,
-                browser=browser,
-            )
-        else:
-            worker_log.warning("pipeline.unknown_work_kind", kind=work.kind)
+            else:
+                worker_log.warning("pipeline.unknown_work_kind", kind=work.kind)
+    finally:
+        if pw:
+            await _stop_playwright(pw, worker_log)
 
     worker_log.info("pipeline.worker.stopped")
 
@@ -185,6 +221,7 @@ async def _process_monitor_work(
     http: httpx.AsyncClient,
     *,
     browser: bool = False,
+    pw=None,
 ) -> None:
     """Process a single monitor work item claimed from Redis."""
     board_id = board_work.board_id
@@ -203,7 +240,7 @@ async def _process_monitor_work(
 
         extender = DeadlineExtender()
         success, duration = await _process_one_board_streaming(
-            board_record, local_pool, http, extender
+            board_record, local_pool, http, extender, pw=pw
         )
 
         profile = "browser" if browser else "simple"
@@ -239,6 +276,7 @@ async def _process_scrape_work(
     http: httpx.AsyncClient,
     *,
     browser: bool = False,
+    pw=None,
 ) -> None:
     """Process a single scrape work item claimed from Redis."""
     posting_id = scrape_work.posting_id
@@ -282,6 +320,7 @@ async def _process_scrape_work(
             http,
             scraper_type,
             scraper_config,
+            pw=pw,
             scrape_step=scrape_step,
             scrape_interval=scrape_work.scrape_interval_hours,
         )
