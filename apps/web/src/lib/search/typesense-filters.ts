@@ -10,6 +10,7 @@ export function buildFilterString(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   filters: any,
 ): string {
+  if (!filters) return "";
   const parts: string[] = [];
 
   if (filters.locationIds?.length) {

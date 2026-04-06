@@ -477,6 +477,12 @@ export function WatchlistViewPage({
               onRemoveTechnology={onRemoveTechnology}
               onSalaryChange={onSalaryChange}
               onExperienceChange={onExperienceChange}
+              histogramFilters={{
+                locationIds: locations.length > 0 ? locations.map((l) => l.id) : undefined,
+                occupationIds: occupations.length > 0 ? occupations.map((o) => o.id) : undefined,
+                seniorityIds: seniorities.length > 0 ? seniorities.map((s) => s.id) : undefined,
+                technologyIds: technologies.length > 0 ? technologies.map((t) => t.id) : undefined,
+              }}
             />
             {hasFilters && (
               <div className="flex flex-wrap items-center gap-2">
