@@ -89,6 +89,7 @@ class TaxonomyMaps:
         self.location_types: dict[int, str] = {}
         self.company_info: dict[uuid.UUID, dict[str, str | None]] = {}
         self.occupation_names: dict[int, str] = {}
+        self.occupation_ancestors: dict[int, list[int]] = {}
         self.seniority_names: dict[int, str] = {}
         self.technology_names: dict[int, str] = {}
         # Ancestor lookup maps for hierarchy-free Typesense filtering
@@ -110,6 +111,7 @@ class TaxonomyMaps:
             self._load_location_geo_types(local_pool),
             self._load_company_info(supa_pool),
             self._load_occupation_names(local_pool),
+            self._load_occupation_ancestors(local_pool),
             self._load_seniority_names(local_pool),
             self._load_technology_names(local_pool),
             self._load_location_ancestors(local_pool, supa_pool),
@@ -151,6 +153,19 @@ class TaxonomyMaps:
             "WHERE locale = 'en' AND is_display = true"
         )
         self.occupation_names = {r["occupation_id"]: r["name"] for r in rows}
+
+    async def _load_occupation_ancestors(self, pool: asyncpg.Pool) -> None:
+        rows = await pool.fetch("SELECT id, parent_id FROM occupation")
+        parents: dict[int, int | None] = {r["id"]: r["parent_id"] for r in rows}
+        ancestors: dict[int, list[int]] = {}
+        for oid in parents:
+            chain: set[int] = set()
+            current: int | None = oid
+            while current is not None:
+                chain.add(current)
+                current = parents.get(current)
+            ancestors[oid] = list(chain)
+        self.occupation_ancestors = ancestors
 
     async def _load_seniority_names(self, pool: asyncpg.Pool) -> None:
         rows = await pool.fetch(
