@@ -3538,6 +3538,7 @@ sanofi,sanofi-careers-opella,https://sanofi.wd3.myworkdayjobs.com/OpellaCareers,
 sanovio,sanovio-join,https://join.com/companies/sanoviode,join,"{""slug"": ""sanoviode""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 sap,sap-careers,https://jobs.sap.com/search/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://jobs.sap.com/googlefeed.xml""}",skip,
 sardine,sardine-ashby,https://jobs.ashbyhq.com/sardine,ashby,"{""token"": ""sardine""}",skip,
+saronic,saronic-careers,https://jobs.lever.co/saronic,lever,"{""token"": ""saronic""}",skip,
 sattler-media-gmbh,sattler-media-gmbh-join,https://join.com/companies/sattlermedia,join,"{""slug"": ""sattlermedia""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 saturn,saturn-ashby,https://jobs.ashbyhq.com/saturn,ashby,"{""token"": ""saturn""}",skip,
 sauce-labs-inc,sauce-labs-inc-greenhouse,https://job-boards.greenhouse.io/saucelabs,greenhouse,"{""token"": ""saucelabs""}",skip,
