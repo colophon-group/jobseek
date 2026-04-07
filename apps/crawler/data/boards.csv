@@ -3361,6 +3361,7 @@ ramp,ramp-ashby,https://jobs.ashbyhq.com/ramp,ashby,"{""token"": ""ramp""}",skip
 range,range-ashby,https://jobs.ashbyhq.com/range,ashby,"{""token"": ""range""}",skip,
 range,range-greenhouse,https://job-boards.greenhouse.io/range,greenhouse,"{""token"": ""range""}",skip,
 rapidsos,rapidsos-greenhouse,https://job-boards.greenhouse.io/rapidsos,greenhouse,"{""token"": ""rapidsos""}",skip,
+rappi,rappi-careers-workday,https://rappi.wd12.myworkdayjobs.com/Rappi_jobs,workday,"{""company"": ""rappi"", ""wd_instance"": ""wd12"", ""site"": ""Rappi_jobs""}",workday,
 rapyuta-robotics,rapyuta-robotics-careers,https://apply.workable.com/rapyuta-robotics/,workable,"{""token"": ""rapyuta-robotics""}",workable,
 rasa,rasa-ashby,https://jobs.ashbyhq.com/rasa,ashby,"{""token"": ""rasa""}",skip,
 razorpay,razorpay-pinpoint,https://razorpay.pinpointhq.com,pinpoint,"{""slug"": ""razorpay""}",skip,
