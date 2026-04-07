@@ -136,7 +136,7 @@ def _parse_job(job: dict, org_id: str, site_id: int) -> DiscoveredJob | None:
 
 async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[DiscoveredJob]:
     """Fetch all jobs from Mokahr's encrypted API."""
-    config = board.get("monitor_config") or {}
+    config = board.get("metadata") or {}
     if isinstance(config, str):
         config = json.loads(config) if config else {}
 
