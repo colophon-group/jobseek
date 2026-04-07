@@ -244,11 +244,11 @@ class TestSyncCompanies:
 
 class TestSyncBoards:
     async def test_upserts_boards(self, mock_conn, sample_boards):
-        """No Supabase writes (removed), no local writes without local_conn."""
+        """Upserts boards to Supabase, no local writes without local_conn."""
         await sync_boards(mock_conn, sample_boards, dry_run=False)
 
-        # Supabase board writes removed; no local_conn provided -> no execute calls
-        mock_conn.execute.assert_not_called()
+        # Supabase upsert + disable queries
+        assert mock_conn.execute.call_count == 2
 
     async def test_invalid_json_skips_row(self, mock_conn):
         """monitor_config has invalid JSON -> row skipped, valid rows still collected."""
@@ -267,8 +267,8 @@ class TestSyncBoards:
 
         await sync_boards(mock_conn, boards, dry_run=False)
 
-        # Supabase board writes removed; no local_conn -> no execute calls
-        mock_conn.execute.assert_not_called()
+        # Valid row (globex) collected, so Supabase upsert + disable called
+        assert mock_conn.execute.call_count == 2
 
     async def test_all_invalid_json_skips_upsert(self, mock_conn):
         """All rows have invalid JSON -> no upsert, no disable."""
@@ -291,7 +291,7 @@ class TestSyncBoards:
         mock_conn.execute.assert_not_called()
 
     async def test_valid_json_parsed(self, mock_conn):
-        """monitor_config='{"key":"value"}' -> parsed without error (no Supabase write)."""
+        """monitor_config='{"key":"value"}' -> parsed and upserted to Supabase."""
         boards = pl.DataFrame(
             {
                 "company_slug": ["acme"],
@@ -307,11 +307,11 @@ class TestSyncBoards:
 
         await sync_boards(mock_conn, boards, dry_run=False)
 
-        # Supabase board writes removed; no local_conn -> no execute calls
-        mock_conn.execute.assert_not_called()
+        # Supabase upsert + disable queries
+        assert mock_conn.execute.call_count == 2
 
     async def test_scraper_fields_embedded_in_metadata(self, mock_conn):
-        """scraper_type + scraper_config parsed without error (no Supabase write)."""
+        """scraper_type + scraper_config parsed and upserted to Supabase."""
         boards = pl.DataFrame(
             {
                 "company_slug": ["acme"],
@@ -327,8 +327,8 @@ class TestSyncBoards:
 
         await sync_boards(mock_conn, boards, dry_run=False)
 
-        # Supabase board writes removed; no local_conn -> no execute calls
-        mock_conn.execute.assert_not_called()
+        # Supabase upsert + disable queries
+        assert mock_conn.execute.call_count == 2
 
     async def test_invalid_scraper_json_skips_row(self, mock_conn):
         boards = pl.DataFrame(
@@ -354,7 +354,7 @@ class TestSyncBoards:
         mock_conn.execute.assert_not_called()
 
     async def test_disables_removed_boards(self, mock_conn):
-        """Without local_conn, no disable call happens (Supabase writes removed)."""
+        """Boards upserted and removed boards disabled on Supabase."""
         boards = pl.DataFrame(
             {
                 "company_slug": ["acme", "acme"],
@@ -370,8 +370,8 @@ class TestSyncBoards:
 
         await sync_boards(mock_conn, boards, dry_run=False)
 
-        # Supabase board writes removed; no local_conn -> no execute calls
-        mock_conn.execute.assert_not_called()
+        # Supabase upsert + disable queries
+        assert mock_conn.execute.call_count == 2
 
 
 # ---------------------------------------------------------------------------
