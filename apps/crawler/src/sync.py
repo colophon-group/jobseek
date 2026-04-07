@@ -736,6 +736,52 @@ async def sync_company_descriptions(
     log.info("sync.company_descriptions.upserted", count=len(slugs))
 
 
+async def _mirror_companies_to_local(
+    supa_conn: asyncpg.Connection,
+    local_conn: asyncpg.Connection,
+) -> None:
+    """Copy companies from Supabase to local Postgres, preserving UUIDs.
+
+    job_posting.company_id references Supabase-generated UUIDs, so local
+    must have the same IDs for the exporter's company_info lookup to work.
+    """
+    rows = await supa_conn.fetch(
+        "SELECT id, slug, name, website, logo, icon, logo_type, "
+        "industry, employee_count_range, founded_year, extras "
+        "FROM company"
+    )
+    if not rows:
+        return
+
+    await local_conn.execute(
+        "INSERT INTO company (id, slug, name, website, logo, icon, logo_type, "
+        "industry, employee_count_range, founded_year, extras) "
+        "SELECT * FROM unnest($1::uuid[], $2::text[], $3::text[], $4::text[], "
+        "$5::text[], $6::text[], $7::text[], $8::smallint[], $9::smallint[], "
+        "$10::smallint[], $11::jsonb[]) "
+        "ON CONFLICT (id) DO UPDATE SET "
+        "slug = EXCLUDED.slug, name = EXCLUDED.name, "
+        "website = EXCLUDED.website, logo = EXCLUDED.logo, "
+        "icon = EXCLUDED.icon, logo_type = EXCLUDED.logo_type, "
+        "industry = EXCLUDED.industry, "
+        "employee_count_range = EXCLUDED.employee_count_range, "
+        "founded_year = EXCLUDED.founded_year, "
+        "extras = EXCLUDED.extras, updated_at = now()",
+        [r["id"] for r in rows],
+        [r["slug"] for r in rows],
+        [r["name"] for r in rows],
+        [r.get("website") for r in rows],
+        [r.get("logo") for r in rows],
+        [r.get("icon") for r in rows],
+        [r.get("logo_type") for r in rows],
+        [r.get("industry") for r in rows],
+        [r.get("employee_count_range") for r in rows],
+        [r.get("founded_year") for r in rows],
+        [r.get("extras") for r in rows],
+    )
+    log.info("sync.companies.mirrored_to_local", count=len(rows))
+
+
 async def sync_companies(conn: asyncpg.Connection, companies: pl.DataFrame, dry_run: bool) -> None:
     """Batch upsert companies."""
     if len(companies) == 0:
@@ -2104,10 +2150,11 @@ async def run_sync(dry_run: bool = False) -> None:
             # Company data -> Supabase + local Postgres
             await sync_companies(supa_conn, companies, dry_run)
             await sync_company_descriptions(supa_conn, company_descs, dry_run)
-            # Sync companies to local Postgres (exporter reads from here)
-            if local_pool is not None:
+            # Mirror companies to local Postgres with Supabase UUIDs so
+            # job_posting.company_id references match.
+            if local_pool is not None and not dry_run:
                 async with local_pool.acquire() as lc:
-                    await sync_companies(lc, companies, dry_run)
+                    await _mirror_companies_to_local(supa_conn, lc)
 
             # Boards -> Supabase + local Postgres + Redis
             local_conn = None
