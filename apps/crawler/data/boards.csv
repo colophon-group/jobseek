@@ -109,6 +109,9 @@ adonis,adonis-ashby,https://jobs.ashbyhq.com/adonis,ashby,"{""token"": ""adonis"
 adonis,adonis-greenhouse,https://job-boards.greenhouse.io/adonis,greenhouse,"{""token"": ""adonis""}",skip,
 adswerve-inc,adswerve-inc-greenhouse,https://job-boards.greenhouse.io/adswerveinc,greenhouse,"{""token"": ""adswerveinc""}",skip,
 advanced-space,advanced-space-greenhouse,https://job-boards.greenhouse.io/advancedspace,greenhouse,"{""token"": ""advancedspace""}",skip,
+advantest,advantest-careers-eu,https://jobs.advantest-career.de/en/,dom,"{""render"": true, ""url_filter"": ""/offer/"", ""actions"": [{""action"": ""dismiss_overlays""}, {""action"": ""evaluate"", ""script"": ""fetch(\""/en/sitemap.xml\"").then(r=>r.text()).then(t=>{const p=new DOMParser();const d=p.parseFromString(t,\""text/xml\"");d.querySelectorAll(\""url loc\"").forEach(u=>{const a=document.createElement(\""a\"");a.href=u.textContent;document.body.appendChild(a)})})""}, {""action"": ""wait"", ""ms"": 3000}]}",json-ld,
+advantest,advantest-careers-jp,https://hrmos.co/pages/advantest/jobs,dom,,json-ld,
+advantest,advantest-careers-tw,https://www.104.com.tw/company/at3y78o,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""url_filter"": ""104\\.com\\.tw/job/""}",json-ld,"{""render"": true, ""wait"": ""load"", ""timeout"": 60000}"
 adyen,adyen-careers,https://job-boards.greenhouse.io/adyen,greenhouse,"{""token"": ""adyen""}",skip,
 ae-studio,ae-studio-greenhouse,https://job-boards.greenhouse.io/aestudio,greenhouse,"{""token"": ""aestudio""}",skip,
 aechelon-technology,aechelon-technology-greenhouse,https://job-boards.greenhouse.io/aechelontechnology,greenhouse,"{""token"": ""aechelontechnology""}",skip,
