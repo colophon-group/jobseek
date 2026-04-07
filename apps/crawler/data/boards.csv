@@ -673,6 +673,7 @@ brilliant,brilliant-lever,https://jobs.lever.co/brilliant,lever,"{""token"": ""b
 bring-labs-ag,bring-labs-ag-join,https://join.com/companies/bring,join,"{""slug"": ""bring""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 bringg,bringg-greenhouse,https://job-boards.greenhouse.io/bringg,greenhouse,"{""token"": ""bringg""}",skip,
 brinqa,brinqa-greenhouse,https://job-boards.greenhouse.io/brinqa,greenhouse,"{""token"": ""brinqa""}",skip,
+broadcom,broadcom-workday,https://broadcom.wd1.myworkdayjobs.com/External_Career,workday,"{""tenant"": ""broadcom"", ""board"": ""External_Career""}",workday,
 broadsign-careers,broadsign-careers-greenhouse,https://job-boards.greenhouse.io/broadsign,greenhouse,"{""token"": ""broadsign""}",skip,
 broadway-ventures,broadway-ventures-greenhouse,https://job-boards.greenhouse.io/broadwayventures,greenhouse,"{""token"": ""broadwayventures""}",skip,
 broeder-ruckh-consulting-gmbh,broeder-ruckh-consulting-gmbh-join,https://join.com/companies/broeder-ruckhde,join,"{""slug"": ""broeder-ruckhde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
