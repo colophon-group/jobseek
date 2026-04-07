@@ -595,6 +595,45 @@ def _resolve_repo() -> str:
     return os.environ.get("WS_REPO", _DEFAULT_REPO)
 
 
+def _fetch_issues_with_open_prs() -> set[int]:
+    """Batch-fetch all issue numbers that have an open add-company/ or fix-crawler/ PR."""
+    import json
+    import re
+
+    result = _run(
+        [
+            "gh",
+            "pr",
+            "list",
+            *_gh_repo_flag(),
+            "--state",
+            "open",
+            "--limit",
+            "200",
+            "--json",
+            "headRefName,body",
+        ],
+        retries=_GH_RETRIES,
+        check=False,
+    )
+    if result.returncode != 0 or not result.stdout.strip():
+        return set()
+    try:
+        prs = json.loads(result.stdout)
+    except (json.JSONDecodeError, TypeError):
+        return set()
+
+    linked: set[int] = set()
+    closes_re = re.compile(r"(?:closes|fixes|resolves)\s+#(\d+)", re.IGNORECASE)
+    for pr in prs:
+        branch = pr.get("headRefName", "")
+        if not (branch.startswith("add-company/") or branch.startswith("fix-crawler/")):
+            continue
+        for m in closes_re.finditer(pr.get("body", "") or ""):
+            linked.add(int(m.group(1)))
+    return linked
+
+
 def fetch_oldest_open_issue(label: str = "company-request") -> int | None:
     """Return the issue number of the oldest open issue with the given label.
 
@@ -602,6 +641,8 @@ def fetch_oldest_open_issue(label: str = "company-request") -> int | None:
     ``fix-crawler/`` PR linked via "Closes #N", and issues with an
     active claim comment.  Returns ``None`` when no eligible issue exists.
     """
+    import concurrent.futures
+
     result = _run(
         [
             "gh",
@@ -627,32 +668,20 @@ def fetch_oldest_open_issue(label: str = "company-request") -> int | None:
     if not numbers:
         return None
 
-    for num in numbers:
-        # Skip claimed issues
-        if is_issue_claimed(num):
-            continue
+    # Batch-fetch all issues with open PRs (1 API call instead of N)
+    issues_with_prs = _fetch_issues_with_open_prs()
 
-        # Check for open PRs linked to this issue
-        pr_result = _run(
-            [
-                "gh",
-                "pr",
-                "list",
-                *_gh_repo_flag(),
-                "--state",
-                "open",
-                "--search",
-                f"Closes #{num}",
-                "--json",
-                "number,headRefName",
-                "--jq",
-                '[.[] | select(.headRefName | startswith("add-company/")'
-                ' or startswith("fix-crawler/"))] | length',
-            ],
-            retries=_GH_RETRIES,
-        )
-        active_pr_count = int(pr_result.stdout.strip() or "0")
-        if active_pr_count == 0:
+    # Filter out issues that already have PRs
+    candidates = [n for n in numbers if n not in issues_with_prs]
+    if not candidates:
+        return None
+
+    # Check claims in parallel (up to 8 concurrent checks)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
+        claim_map = dict(zip(candidates, pool.map(is_issue_claimed, candidates), strict=True))
+
+    for num in candidates:
+        if not claim_map[num]:
             return num
 
     return None
