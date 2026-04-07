@@ -1626,6 +1626,9 @@ genscript-probio,genscript-probio-greenhouse,https://job-boards.greenhouse.io/ge
 gensyn,gensyn-greenhouse,https://job-boards.greenhouse.io/gensyn,greenhouse,"{""token"": ""gensyn""}",skip,
 geotab,geotab-greenhouse,https://job-boards.greenhouse.io/geotab,greenhouse,"{""token"": ""geotab""}",skip,
 get-well-network,get-well-network-greenhouse,https://job-boards.greenhouse.io/getwellnetwork,greenhouse,"{""token"": ""getwellnetwork""}",skip,
+getnet,getnet-careers,https://job-boards.eu.greenhouse.io/getnet,greenhouse,,skip,
+getnet,getnet-gupy,https://getnet.gupy.io/,dom,"{""render"": true}",json-ld,"{""render"": true}"
+getnet,getnet-pagonxt,https://job-boards.eu.greenhouse.io/pagonxt,greenhouse,,skip,
 getspecialfasteners-com,getspecialfasteners-com-join,https://join.com/companies/getspecialfastenerscom,join,"{""slug"": ""getspecialfastenerscom""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 gett,gett-pinpoint,https://gett.pinpointhq.com,pinpoint,"{""slug"": ""gett""}",skip,
 getyourguide,getyourguide-careers,https://boards.greenhouse.io/getyourguide,greenhouse,"{""token"": ""getyourguide""}",skip,
