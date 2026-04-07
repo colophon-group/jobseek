@@ -2549,6 +2549,10 @@ metronome,metronome-greenhouse,https://job-boards.greenhouse.io/metronome,greenh
 metropolis,metropolis-greenhouse,https://job-boards.greenhouse.io/metropolis,greenhouse,"{""token"": ""metropolis""}",skip,
 metropolitan-commercial-bank,metropolitan-commercial-bank-greenhouse,https://job-boards.greenhouse.io/metropolitancommercialbank,greenhouse,"{""token"": ""metropolitancommercialbank""}",skip,
 mgt-insurance,mgt-insurance-greenhouse,https://job-boards.greenhouse.io/mgtinsurance,greenhouse,"{""token"": ""mgtinsurance""}",skip,
+mhi,mhi-careers,https://mhicareers.com/viewalljobs/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://mhicareers.com/googlefeed.xml""}",skip,
+mhi,mhi-careers-eu,https://mhiecpd.recruitee.com/,recruitee,"{""company"": ""mhiecpd""}",skip,
+mhi,mhi-careers-jp,https://hrmos.co/pages/mhi/jobs,dom,"{""render"": true}",json-ld,"{""render"": true}"
+mhi,mhi-primetals,https://careers.primetals.com/global/en/search-results,sitemap,"{""sitemap_url"": ""https://careers.primetals.com/global/en/search-results/sitemap.xml"", ""url_filter"": ""/job/""}",json-ld,"{""render"": true}"
 michael-bonsby-hvac-plumbing-electrical,michael-bonsby-hvac-plumbing-electrical-greenhouse,https://job-boards.greenhouse.io/bonsbyhvacplumbing,greenhouse,"{""token"": ""bonsbyhvacplumbing""}",skip,
 micron,micron-eightfold,https://micron.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/""}",json-ld,
 microsoft,microsoft-careers2,https://apply.careers.microsoft.com/careers,eightfold,"{""url_filter"": ""/careers/job/""}",json-ld,
