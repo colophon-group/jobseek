@@ -2646,6 +2646,7 @@ moelis,moelis-careers-taleo,https://moelis-careers.tal.net/candidate/jobboard/va
 moelis,moelis-careers-workday,https://moelis.wd1.myworkdayjobs.com/Experienced-Hires,workday,"{""company"": ""moelis"", ""wd_instance"": ""wd1"", ""site"": ""Experienced-Hires""}",workday,
 moia-gmbh,moia-gmbh-greenhouse,https://job-boards.greenhouse.io/moia,greenhouse,"{""token"": ""moia""}",skip,
 molg,molg-ashby,https://jobs.ashbyhq.com/molg,ashby,"{""token"": ""molg""}",skip,
+mollie,mollie-careers,https://jobs.ashbyhq.com/mollie/,ashby,"{""token"": ""mollie""}",skip,
 moloco,moloco-greenhouse,https://job-boards.greenhouse.io/moloco,greenhouse,"{""token"": ""moloco""}",skip,
 momence,momence-greenhouse,https://job-boards.greenhouse.io/momence,greenhouse,"{""token"": ""momence""}",skip,
 moment,moment-ashby,https://jobs.ashbyhq.com/moment,ashby,"{""token"": ""moment""}",skip,
