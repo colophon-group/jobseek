@@ -1826,6 +1826,7 @@ heygen,heygen-greenhouse,https://job-boards.greenhouse.io/heygen,greenhouse,"{""
 heylogin-gmbh,heylogin-gmbh-join,https://join.com/companies/heylogincom,join,"{""slug"": ""heylogincom""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 hibu,hibu-greenhouse,https://job-boards.greenhouse.io/hibu,greenhouse,"{""token"": ""hibu""}",skip,
 hidden-events,hidden-events-greenhouse,https://job-boards.greenhouse.io/jshiddenevents,greenhouse,"{""token"": ""jshiddenevents""}",skip,
+higgsfield-ai,higgsfield-ai-careers,https://jobs.ashbyhq.com/higgsfieldai,ashby,"{""token"": ""higgsfieldai""}",skip,
 highdive,highdive-greenhouse,https://job-boards.greenhouse.io/highdive,greenhouse,"{""token"": ""highdive""}",skip,
 higher-logic,higher-logic-greenhouse,https://job-boards.greenhouse.io/higherlogic,greenhouse,"{""token"": ""higherlogic""}",skip,
 highnote,highnote-greenhouse,https://job-boards.greenhouse.io/highnote,greenhouse,"{""token"": ""highnote""}",skip,
