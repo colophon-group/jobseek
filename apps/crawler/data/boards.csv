@@ -2646,6 +2646,12 @@ mr-apple,mr-apple-greenhouse,https://job-boards.greenhouse.io/mrapple,greenhouse
 mr-apple-careers-site,mr-apple-careers-site-greenhouse,https://job-boards.greenhouse.io/mrapplecareers,greenhouse,"{""token"": ""mrapplecareers""}",skip,
 mrbeast,mrbeast-greenhouse,https://job-boards.greenhouse.io/mrbeastyoutube,greenhouse,"{""token"": ""mrbeastyoutube""}",skip,
 mrbeast-contract-jobs,mrbeast-contract-jobs-greenhouse,https://job-boards.greenhouse.io/aplayers,greenhouse,"{""token"": ""aplayers""}",skip,
+msf,msf-careers-belgium,https://www.msf-azg.be/en/our-job-offers,dom,"{""url_filter"": ""/en/job/(?!work-with-msf|why-work-with-msf|prepare-your-application|our-variety-of-roles)""}",json-ld,
+msf,msf-careers-recruitee,https://msf.recruitee.com,recruitee,"{""slug"": ""msf"", ""api_base"": ""https://msf.recruitee.com""}",skip,
+msf,msf-careers-successfactors-ocba,https://careers.msf-applications.org,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.msf-applications.org/googlefeed.xml""}",skip,
+msf,msf-careers-talentsoft-ch,https://msfsuisse-career.talent-soft.com/offre-de-emploi/liste-offres.aspx,dom,"{""render"": false, ""url_filter"": ""emploi-.*_\\d+\\.aspx"", ""pagination"": {""param_name"": ""page"", ""max_pages"": 100}}",dom,"{""render"": true, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""h1"", ""offset"": 1, ""field"": ""description"", ""html"": true, ""optional"": true}]}"
+msf,msf-careers-workday-france,https://msf.wd3.myworkdayjobs.com/msf_france_terrain,workday,"{""company"": ""msf"", ""wd_instance"": ""wd3"", ""site"": ""msf_france_terrain""}",workday,
+msf,msf-careers-workday-oca,https://msfoca.wd103.myworkdayjobs.com/en-US/artsen_zonder_grenzen,workday,"{""company"": ""msfoca"", ""wd_instance"": ""wd103"", ""site"": ""artsen_zonder_grenzen""}",workday,
 mthree-recruiting-portal,mthree-recruiting-portal-greenhouse,https://job-boards.greenhouse.io/mthreerecruitingportal,greenhouse,"{""token"": ""mthreerecruitingportal""}",skip,
 mtn-group,mtn-group-oracle-hcm,https://ehle.fa.em2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/requisitions,oracle_hcm,,oracle_hcm,
 muck-rack,muck-rack-greenhouse,https://job-boards.greenhouse.io/muckrack,greenhouse,"{""token"": ""muckrack""}",skip,
