@@ -931,48 +931,51 @@ async def run_reconciliation(
     local_pool: asyncpg.Pool,
     supa_pool: asyncpg.Pool,
 ) -> int:
-    """Compare local Postgres vs Supabase per board, touch discrepancies.
+    """Lightweight reconciliation: count comparison + random sample.
 
-    This does NOT export directly -- it sets ``updated_at = now()`` on local
-    Postgres rows that are missing or stale on Supabase, letting the CDC
-    exporter pick them up on the next cycle.
+    Instead of reading every row from Supabase (which was eating 40% of
+    Supabase compute), this does:
+    1. Compare total counts (local vs Supabase)
+    2. Sample 200 random local rows and check if they exist + match in Supabase
+    3. Touch discrepant rows so the CDC exporter picks them up
 
     Returns the number of discrepancies found.
     """
     discrepancies = 0
 
-    local_boards = await local_pool.fetch("SELECT DISTINCT board_id FROM job_posting")
+    # 1. Count comparison
+    local_count_row = await local_pool.fetchrow("SELECT count(*)::int AS cnt FROM job_posting")
+    supa_count_row = await supa_pool.fetchrow("SELECT count(*)::int AS cnt FROM job_posting")
+    local_count = local_count_row["cnt"] if local_count_row else 0
+    supa_count = supa_count_row["cnt"] if supa_count_row else 0
 
-    for board_row in local_boards:
-        board_id = board_row["board_id"]
-
-        local_rows = await local_pool.fetch(
-            "SELECT id, source_url, is_active, description_r2_hash "
-            "FROM job_posting WHERE board_id = $1",
-            board_id,
+    if local_count > 0 and abs(local_count - supa_count) / local_count > 0.05:
+        log.warning(
+            "reconciliation.count_drift",
+            local=local_count,
+            supabase=supa_count,
+            drift_pct=round(abs(local_count - supa_count) / local_count * 100, 1),
         )
 
-        remote_rows = await supa_pool.fetch(
-            "SELECT id, source_url, is_active, description_r2_hash "
-            "FROM job_posting WHERE board_id = $1",
-            board_id,
-        )
+    # 2. Random sample check (200 rows)
+    sample_rows = await local_pool.fetch(
+        "SELECT id, is_active, description_r2_hash FROM job_posting ORDER BY random() LIMIT 200"
+    )
 
-        remote_map = {r["id"]: r for r in remote_rows}
-        for local in local_rows:
-            remote = remote_map.get(local["id"])
-            if remote is None:
-                # Missing from Supabase -- touch updated_at to trigger CDC
-                await local_pool.execute(
-                    "UPDATE job_posting SET updated_at = now() WHERE id = $1",
-                    local["id"],
-                )
-                discrepancies += 1
-            elif (
+    if sample_rows:
+        sample_ids = [r["id"] for r in sample_rows]
+        supa_rows = await supa_pool.fetch(
+            "SELECT id, is_active, description_r2_hash FROM job_posting WHERE id = ANY($1::uuid[])",
+            sample_ids,
+        )
+        supa_map = {r["id"]: r for r in supa_rows}
+
+        for local in sample_rows:
+            remote = supa_map.get(local["id"])
+            if remote is None or (
                 remote["is_active"] != local["is_active"]
                 or remote["description_r2_hash"] != local["description_r2_hash"]
             ):
-                # State mismatch -- touch updated_at to trigger CDC
                 await local_pool.execute(
                     "UPDATE job_posting SET updated_at = now() WHERE id = $1",
                     local["id"],
