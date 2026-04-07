@@ -206,25 +206,16 @@ ON CONFLICT (company_id, locale) DO UPDATE SET
 """
 
 _UPSERT_BOARDS_SUPA = """
-INSERT INTO job_board (company_id, board_slug, board_url, crawler_type, metadata,
-                       throttle_key,
-                       monitor_needs_browser, scraper_needs_browser)
-SELECT c.id, b.board_slug, b.board_url, b.crawler_type, b.metadata::jsonb,
-       b.throttle_key,
-       b.monitor_needs_browser::boolean, b.scraper_needs_browser::boolean
-FROM unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::text[], $6::text[],
-            $7::boolean[], $8::boolean[])
-  AS b(company_slug, board_slug, board_url, crawler_type, metadata, throttle_key,
-       monitor_needs_browser, scraper_needs_browser)
+INSERT INTO job_board (company_id, board_slug, board_url, crawler_type, metadata)
+SELECT c.id, b.board_slug, b.board_url, b.crawler_type, b.metadata::jsonb
+FROM unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::text[])
+  AS b(company_slug, board_slug, board_url, crawler_type, metadata)
 JOIN company c ON c.slug = b.company_slug
 ON CONFLICT (board_url) DO UPDATE SET
     company_id = EXCLUDED.company_id,
     board_slug = COALESCE(EXCLUDED.board_slug, job_board.board_slug),
     crawler_type = EXCLUDED.crawler_type,
     metadata = EXCLUDED.metadata,
-    throttle_key = EXCLUDED.throttle_key,
-    monitor_needs_browser = EXCLUDED.monitor_needs_browser,
-    scraper_needs_browser = EXCLUDED.scraper_needs_browser,
     is_enabled = true,
     updated_at = now()
 """
@@ -920,8 +911,18 @@ async def sync_boards(
         log.info("sync.boards.all_skipped", skipped=skipped)
         return
 
-    # Supabase board sync removed — frontend never queries job_board.
-    # Boards are only needed on local Postgres (worker scheduling) and Redis (queue).
+    # --- Target 1: Supabase (minimal board reference) ---
+    await conn.execute(
+        _UPSERT_BOARDS_SUPA,
+        company_slugs,
+        board_slugs,
+        board_urls,
+        crawler_types,
+        metadatas,
+    )
+    log.info("sync.boards.upserted_supa", count=len(board_urls), skipped=skipped)
+
+    await conn.execute(_DISABLE_REMOVED_BOARDS, board_urls)
 
     # --- Targets 2 & 3: local Postgres + Redis ---
     if local_conn is None:
