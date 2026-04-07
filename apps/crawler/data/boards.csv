@@ -4315,6 +4315,8 @@ virtahealth,virtahealth-ashby,https://jobs.ashbyhq.com/virtahealth,ashby,"{""tok
 virtru,virtru-greenhouse,https://job-boards.greenhouse.io/virtru,greenhouse,"{""token"": ""virtru""}",skip,
 virtu-financial,virtu-financial-greenhouse,https://job-boards.greenhouse.io/virtu,greenhouse,"{""token"": ""virtu""}",skip,
 virtual-preparatory-academy-of-florida,virtual-preparatory-academy-of-florida-greenhouse,https://job-boards.greenhouse.io/vpaofflorida,greenhouse,"{""token"": ""vpaofflorida""}",skip,
+visa,visa-careers,https://careers.smartrecruiters.com/Visa,smartrecruiters,"{""token"": ""Visa""}",smartrecruiters,
+visa,visa-careers-wd,https://visa.wd5.myworkdayjobs.com/Visa,workday,"{""tenant"": ""visa"", ""board"": ""Visa""}",workday,
 visasq-coleman,visasq-coleman-greenhouse,https://job-boards.greenhouse.io/colemanresearch,greenhouse,"{""token"": ""colemanresearch""}",skip,
 vise,vise-greenhouse,https://job-boards.greenhouse.io/viseai,greenhouse,"{""token"": ""viseai""}",skip,
 visier-solutions-inc,visier-solutions-inc-greenhouse,https://job-boards.greenhouse.io/visiersolutionsinc,greenhouse,"{""token"": ""visiersolutionsinc""}",skip,
