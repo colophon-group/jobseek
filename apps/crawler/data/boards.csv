@@ -2123,6 +2123,7 @@ join-the-folx-team,join-the-folx-team-greenhouse,https://job-boards.greenhouse.i
 jomboy-media,jomboy-media-greenhouse,https://job-boards.greenhouse.io/jomboymedia,greenhouse,"{""token"": ""jomboymedia""}",skip,
 josko-services,josko-services-greenhouse,https://job-boards.greenhouse.io/joskoasp,greenhouse,"{""token"": ""joskoasp""}",skip,
 jpmorgan,jpmorgan-careers,https://jpmc.fa.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001/requisitions,oracle_hcm,"{""host"": ""jpmc.fa.oraclecloud.com"", ""site"": ""CX_1001""}",oracle_hcm,"{""host"": ""jpmc.fa.oraclecloud.com"", ""site"": ""CX_1001""}"
+jti,jti-careers,https://jobs.jti.com/,rss,"{""preset"": ""successfactors""}",skip,
 jua,jua-ashby,https://jobs.ashbyhq.com/jua,ashby,"{""token"": ""jua""}",skip,
 judi-health,judi-health-greenhouse,https://job-boards.greenhouse.io/capitalrx,greenhouse,"{""token"": ""capitalrx""}",skip,
 juicebox,juicebox-ashby,https://jobs.ashbyhq.com/juicebox,ashby,"{""token"": ""juicebox""}",skip,
