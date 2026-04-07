@@ -2798,3 +2798,60 @@ class TestLanguageDisambiguation:
         results = resolver.resolve(["Montana, USA"], posting_language="bg")
         assert len(results) == 1
         assert results[0].location_id == MONTANA_STATE_ID
+
+
+# ── Ancestor ID tests ──────────────────────────────────────────────
+
+
+class TestGetAncestorIds:
+    """Tests for LocationResolver.get_ancestor_ids()."""
+
+    @pytest.fixture()
+    def resolver(self) -> LocationResolver:
+        return _build_resolver(_ENTRIES, _NAMES)
+
+    def test_city_returns_self_and_all_ancestors(self, resolver: LocationResolver) -> None:
+        """Zurich city → Zurich city + Canton of Zurich + Switzerland."""
+        ancestors = set(resolver.get_ancestor_ids(ZH_CITY_ID))
+        assert ZH_CITY_ID in ancestors  # self
+        assert ZH_REGION_ID in ancestors  # Canton of Zurich
+        assert CH_ID in ancestors  # Switzerland
+        assert len(ancestors) == 3
+
+    def test_region_returns_self_and_country(self, resolver: LocationResolver) -> None:
+        """California region → California + United States."""
+        ancestors = set(resolver.get_ancestor_ids(CA_REGION_ID))
+        assert CA_REGION_ID in ancestors
+        assert US_ID in ancestors
+        assert len(ancestors) == 2
+
+    def test_country_returns_only_self(self, resolver: LocationResolver) -> None:
+        """Country with no parent → just itself."""
+        ancestors = resolver.get_ancestor_ids(DE_ID)
+        assert ancestors == [DE_ID]
+
+    def test_macro_returns_only_self(self, resolver: LocationResolver) -> None:
+        """Macro region with no parent → just itself."""
+        ancestors = resolver.get_ancestor_ids(EMEA_ID)
+        assert ancestors == [EMEA_ID]
+
+    def test_deep_hierarchy(self, resolver: LocationResolver) -> None:
+        """Munich → Bavaria → Germany (3 levels)."""
+        ancestors = set(resolver.get_ancestor_ids(MUNICH_ID))
+        assert MUNICH_ID in ancestors
+        assert BY_REGION_ID in ancestors
+        assert DE_ID in ancestors
+        assert len(ancestors) == 3
+
+    def test_unknown_id_returns_self(self, resolver: LocationResolver) -> None:
+        """Unknown location ID returns just that ID (no entry found)."""
+        ancestors = resolver.get_ancestor_ids(999999999)
+        assert ancestors == [999999999]
+
+    def test_us_city_full_chain(self, resolver: LocationResolver) -> None:
+        """Chicago → Illinois → United States."""
+        ancestors = set(resolver.get_ancestor_ids(CHICAGO_ID))
+        assert CHICAGO_ID in ancestors
+        assert IL_REGION_ID in ancestors
+        assert US_ID in ancestors
+        assert len(ancestors) == 3

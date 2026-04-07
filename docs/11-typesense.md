@@ -60,7 +60,13 @@ Three scoped keys. Stored in: `apps/crawler/.env.local` (main branch), GitHub se
 
 ### Key Design Choices
 
-- **Ancestor IDs**: `job_posting.location_ids` and `job_posting.occupation_ids` contain the leaf ID plus all ancestor IDs (parents, grandparents, macro regions). This enables hierarchy-free filtering -- searching for "Germany" matches all cities in Germany without recursive joins. **Critical**: The web app's `buildFilterString()` filters on `location_ids` and `occupation_ids` (plural array fields). Both the CDC exporter (`exporter.py`) and the backfill scripts must compute and populate these ancestor arrays -- writing only the singular `occupation_id`/`location_id` will cause filters to silently return 0 results.
+- **Ancestor IDs**: `job_posting.location_ids` and `job_posting.occupation_ids` contain the leaf ID plus all ancestor IDs (parents, grandparents, macro regions). This enables hierarchy-free filtering -- searching for "Germany" matches all cities in Germany without recursive joins. **Critical**: The web app's `buildFilterString()` filters on `location_ids` and `occupation_ids` (plural array fields). Writing only the singular `occupation_id`/`location_id` will cause filters to silently return 0 results.
+
+  **Where ancestor expansion happens (both paths required):**
+  1. **At processing time** (`processing/cpu.py` → `LocationResolver.get_ancestor_ids()`): new postings get ancestor-expanded `location_ids` written to local Postgres.
+  2. **At export time** (`exporter.py` → `TaxonomyMaps.location_ancestors` / `occupation_ancestors`): the exporter re-expands IDs when building Typesense documents. This is the safety net — even if Postgres only has leaf IDs (legacy data or a bug), Typesense documents will still contain ancestors.
+
+  **Invariant**: if you change how location/occupation IDs are resolved or stored, you MUST ensure both paths still produce ancestor-expanded arrays. If only leaf IDs reach Typesense, hierarchy filtering silently breaks (filtering by "Germany" won't match "Berlin").
 - **Sentinel values**: `experience_min = -1` for NULL (Typesense excludes missing optional fields from range queries). `locales = ["_none"]` for jobs with no detected language.
 - **Denormalized names**: Taxonomy names (location, occupation, seniority, technology) are stored directly on each job posting document for search and faceting without joins.
 - **Versioned aliases**: `job_posting` is an alias pointing to `job_posting_v1`. To reindex with a new schema: create `_v2`, backfill, swap alias, drop `_v1`.
@@ -83,7 +89,9 @@ The exporter uses a **two-cursor design**: Supabase and Typesense each have thei
 1. SELECT changed postings after `MIN(supabase_cursor, typesense_cursor)`
 2. Concurrently (`asyncio.gather`):
    - Upsert to Supabase, advance Supabase cursor on success
-   - Denormalize + upsert to Typesense, advance Typesense cursor on success
+   - Denormalize + expand ancestor IDs + upsert to Typesense, advance Typesense cursor on success
+
+The Typesense document builder (`_build_typesense_docs`) expands `location_ids` and `occupation_ids` with all ancestor IDs using pre-loaded hierarchy maps (`TaxonomyMaps.location_ancestors`, `occupation_ancestors`). This means even legacy Postgres rows with leaf-only IDs produce correct hierarchy-filterable Typesense documents.
 
 If one target fails, only its cursor stalls. The other continues unaffected.
 

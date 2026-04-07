@@ -92,6 +92,9 @@ class TaxonomyMaps:
         self.occupation_ancestors: dict[int, list[int]] = {}
         self.seniority_names: dict[int, str] = {}
         self.technology_names: dict[int, str] = {}
+        # Ancestor lookup maps for hierarchy-free Typesense filtering
+        self.location_ancestors: dict[int, list[int]] = {}
+        self.occupation_ancestors: dict[int, list[int]] = {}
         self._last_refresh: float = 0.0
 
     @property
@@ -111,6 +114,8 @@ class TaxonomyMaps:
             self._load_occupation_ancestors(local_pool),
             self._load_seniority_names(local_pool),
             self._load_technology_names(local_pool),
+            self._load_location_ancestors(local_pool, supa_pool),
+            self._load_occupation_ancestors(local_pool),
         )
         self._last_refresh = time.monotonic()
         log.info(
@@ -173,6 +178,62 @@ class TaxonomyMaps:
         rows = await pool.fetch("SELECT id, name FROM technology")
         self.technology_names = {r["id"]: r["name"] for r in rows}
 
+    async def _load_location_ancestors(
+        self,
+        local_pool: asyncpg.Pool,
+        supa_pool: asyncpg.Pool,
+    ) -> None:
+        """Build location_id -> [self + all ancestor IDs] map.
+
+        Uses parent_id chain from local Postgres and macro-region membership
+        from Supabase (location_macro_member links countries to macro regions
+        like EMEA, APAC, etc.).
+        """
+        from collections import defaultdict
+
+        # Parent chain from local Postgres
+        loc_parents: dict[int, int | None] = {}
+        rows = await local_pool.fetch("SELECT id, parent_id FROM location")
+        for r in rows:
+            loc_parents[r["id"]] = r["parent_id"]
+
+        # Macro-region membership from Supabase (country_id -> [macro_ids])
+        macro_members: dict[int, list[int]] = defaultdict(list)
+        with contextlib.suppress(Exception):
+            rows = await supa_pool.fetch("SELECT country_id, macro_id FROM location_macro_member")
+            for r in rows:
+                macro_members[r["country_id"]].append(r["macro_id"])
+
+        # Build ancestor map
+        ancestors: dict[int, list[int]] = {}
+        for lid in loc_parents:
+            anc: set[int] = set()
+            current: int | None = lid
+            while current is not None:
+                anc.add(current)
+                if current in macro_members:
+                    anc.update(macro_members[current])
+                current = loc_parents.get(current)
+            ancestors[lid] = list(anc)
+        self.location_ancestors = ancestors
+
+    async def _load_occupation_ancestors(self, pool: asyncpg.Pool) -> None:
+        """Build occupation_id -> [self + all ancestor IDs] map."""
+        occ_parents: dict[int, int | None] = {}
+        rows = await pool.fetch("SELECT id, parent_id FROM occupation")
+        for r in rows:
+            occ_parents[r["id"]] = r["parent_id"]
+
+        ancestors: dict[int, list[int]] = {}
+        for oid in occ_parents:
+            anc: set[int] = set()
+            current: int | None = oid
+            while current is not None:
+                anc.add(current)
+                current = occ_parents.get(current)
+            ancestors[oid] = list(anc)
+        self.occupation_ancestors = ancestors
+
 
 _taxonomy_maps: TaxonomyMaps | None = None
 
@@ -212,10 +273,10 @@ def _build_typesense_docs(
         company_slug = company.get("slug", "")
         company_icon = company.get("icon")
 
-        location_ids = row["location_ids"] or []
+        raw_location_ids = row["location_ids"] or []
         location_names = []
         location_geo_types = []
-        for loc_id in location_ids:
+        for loc_id in raw_location_ids:
             loc_name_map = maps.location_names.get(loc_id, {})
             name = loc_name_map.get("en", "")
             if not name and loc_name_map:
@@ -223,8 +284,24 @@ def _build_typesense_docs(
             location_names.append(name)
             location_geo_types.append(maps.location_types.get(loc_id, ""))
 
+        # Expand location_ids with ancestors for hierarchy-free filtering.
+        # Leaf IDs come first (aligned with location_names/geo_types arrays),
+        # then ancestor-only IDs are appended.  This ensures that filtering
+        # by a parent location (e.g. country) matches postings in child
+        # locations (e.g. city) even if Postgres only stores leaf IDs.
+        ancestor_only: set[int] = set()
+        for lid in raw_location_ids:
+            ancestor_only.update(maps.location_ancestors.get(lid, [lid]))
+        ancestor_only -= set(raw_location_ids)
+        expanded_location_ids = list(raw_location_ids) + sorted(ancestor_only)
+
         occ_id = row["occupation_id"]
         occ_name = maps.occupation_names.get(occ_id) if occ_id else None
+
+        # Expand occupation_id to include ancestors for hierarchy-free filtering
+        occ_ids: list[int] | None = None
+        if occ_id is not None:
+            occ_ids = maps.occupation_ancestors.get(occ_id, [occ_id])
 
         sen_id = row["seniority_id"]
         sen_name = maps.seniority_names.get(sen_id) if sen_id else None
@@ -253,7 +330,7 @@ def _build_typesense_docs(
             "company_slug": company_slug,
             "title": title,
             "is_active": row["is_active"],
-            "location_ids": list(location_ids),
+            "location_ids": expanded_location_ids,
             "location_names": location_names,
             "location_types": list(row["location_types"] or []),
             "location_geo_types": location_geo_types,
@@ -269,7 +346,8 @@ def _build_typesense_docs(
             doc["company_icon"] = company_icon
         if occ_id is not None:
             doc["occupation_id"] = occ_id
-            doc["occupation_ids"] = maps.occupation_ancestors.get(occ_id, [occ_id])
+        if occ_ids is not None:
+            doc["occupation_ids"] = occ_ids
         if occ_name is not None:
             doc["occupation_name"] = occ_name
         if sen_id is not None:
