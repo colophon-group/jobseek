@@ -3843,6 +3843,7 @@ sunnyside,sunnyside-greenhouse,https://job-boards.greenhouse.io/sunnyside,greenh
 suno,suno-ashby,https://jobs.ashbyhq.com/suno,ashby,"{""token"": ""suno""}",skip,
 sunrise,sunrise-ashby,https://jobs.ashbyhq.com/sunrise,ashby,"{""token"": ""sunrise""}",skip,
 sunrise-management,sunrise-management-greenhouse,https://job-boards.greenhouse.io/sunrise,greenhouse,"{""token"": ""sunrise""}",skip,
+sunrun,sunrun-careers-wd,https://sunrun.wd5.myworkdayjobs.com/Sunrun_Careers,workday,"{""company"": ""sunrun"", ""board"": ""Sunrun_Careers""}",json-ld,
 supabase,supabase-ashby,https://jobs.ashbyhq.com/supabase,ashby,"{""token"": ""supabase""}",skip,
 super-com,super-com-ashby,https://jobs.ashbyhq.com/super.com,ashby,"{""token"": ""super.com""}",skip,
 super-technologies,super-technologies-greenhouse,https://job-boards.greenhouse.io/superbet,greenhouse,"{""token"": ""superbet""}",skip,
