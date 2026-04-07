@@ -558,15 +558,12 @@ async function _fetchCompanyBySlug(slug: string, locale: string): Promise<Compan
     industry_name: string | null;
     employee_count_range: number | null;
     founded_year: number | null;
-    active_job_count: number;
   }>(sql`
     SELECT c.id, c.name, c.slug, c.icon, c.website,
       COALESCE(cd.description, c.description) AS description,
       COALESCE(ind_name.name, i.name) AS industry_name,
       c.employee_count_range,
-      c.founded_year,
-      (SELECT count(*) FROM job_posting jp
-       WHERE jp.company_id = c.id AND jp.is_active = true)::int AS active_job_count
+      c.founded_year
     FROM company c
     LEFT JOIN industry i ON i.id = c.industry
     LEFT JOIN company_description cd
@@ -583,10 +580,30 @@ async function _fetchCompanyBySlug(slug: string, locale: string): Promise<Compan
     id: string; name: string; slug: string; icon: string | null;
     website: string | null; description: string | null;
     industry_name: string | null; employee_count_range: number | null;
-    founded_year: number | null; active_job_count: number;
+    founded_year: number | null;
   };
   const row = (rows as unknown as Row[])[0];
   if (!row) return null;
+
+  // Get active job count from Typesense (already computed, avoids expensive
+  // correlated subquery that was consuming 10% of Supabase compute)
+  let activeJobCount = 0;
+  try {
+    const client = getSearchClient();
+    const result = await client.collections("company").documents().search({
+      q: slug,
+      query_by: "slug",
+      filter_by: `slug:=${slug}`,
+      per_page: 1,
+      include_fields: "active_posting_count",
+    });
+    if (result.hits?.length) {
+      const doc = result.hits[0].document as Record<string, unknown>;
+      activeJobCount = (doc.active_posting_count as number) ?? 0;
+    }
+  } catch {
+    // Typesense unavailable — fall back to 0 (graceful degradation)
+  }
 
   return {
     id: row.id,
@@ -598,7 +615,7 @@ async function _fetchCompanyBySlug(slug: string, locale: string): Promise<Compan
     industryName: row.industry_name,
     employeeCountRange: row.employee_count_range,
     foundedYear: row.founded_year,
-    activeJobCount: row.active_job_count,
+    activeJobCount,
   };
 }
 
