@@ -2178,6 +2178,9 @@ kittl,kittl-ashby,https://jobs.ashbyhq.com/kittl,ashby,"{""token"": ""kittl""}",
 kiwi,kiwi-pinpoint,https://kiwi.pinpointhq.com,pinpoint,"{""slug"": ""kiwi""}",skip,
 kizen,kizen-greenhouse,https://job-boards.greenhouse.io/kizen,greenhouse,"{""token"": ""kizen""}",skip,
 kjp-steuerberater-gbr,kjp-steuerberater-gbr-join,https://join.com/companies/kjp-webde,join,"{""slug"": ""kjp-webde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
+kla,kla-ann-arbor,https://kla.wd1.myworkdayjobs.com/AnnArbor,workday,"{""tenant"": ""kla"", ""board"": ""AnnArbor""}",workday,
+kla,kla-careers,https://kla.wd1.myworkdayjobs.com/Search,workday,"{""tenant"": ""kla"", ""board"": ""Search""}",workday,
+kla,kla-university-recruiting,https://kla.wd1.myworkdayjobs.com/UR,workday,"{""tenant"": ""kla"", ""board"": ""UR""}",workday,
 klarna,klarna-careers,https://jobs.deel.com/job-boards/klarna,deel,"{""slug"": ""klarna""}",skip,
 klaus-meyer-gmbh-co-kg,klaus-meyer-gmbh-co-kg-join,https://join.com/companies/km-schubyde,join,"{""slug"": ""km-schubyde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 klaviyo,klaviyo-greenhouse,https://job-boards.greenhouse.io/klaviyo,greenhouse,"{""token"": ""klaviyo""}",skip,
