@@ -4094,6 +4094,7 @@ trailofbits,trailofbits-careers,https://apply.workable.com/trailofbits/,workable
 transcarent,transcarent-greenhouse,https://job-boards.greenhouse.io/transcarent,greenhouse,"{""token"": ""transcarent""}",skip,
 transcend-inc,transcend-inc-greenhouse,https://job-boards.greenhouse.io/transcendinc,greenhouse,"{""token"": ""transcendinc""}",skip,
 transmarket-group,transmarket-group-greenhouse,https://job-boards.greenhouse.io/transmarketgroup,greenhouse,"{""token"": ""transmarketgroup""}",skip,
+transunion,transunion-careers-workday,https://transunion.wd5.myworkdayjobs.com/transunion,workday,"{""company"": ""transunion"", ""wd_instance"": ""wd5"", ""site"": ""transunion""}",workday,
 trase-systems,trase-systems-greenhouse,https://job-boards.greenhouse.io/trase,greenhouse,"{""token"": ""trase""}",skip,
 travelperk,travelperk-careers,https://jobs.ashbyhq.com/perk,ashby,"{""token"": ""perk""}",skip,
 traversal,traversal-ashby,https://jobs.ashbyhq.com/traversal,ashby,"{""token"": ""traversal""}",skip,
