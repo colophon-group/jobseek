@@ -241,6 +241,7 @@ american-college-of-obstetricians-and-gynecologists,american-college-of-obstetri
 american-express,american-express-eightfold,https://aexp.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/""}",json-ld,
 american-housing,american-housing-ashby,https://jobs.ashbyhq.com/american-housing,ashby,"{""token"": ""american-housing""}",skip,
 american-institute,american-institute-greenhouse,https://job-boards.greenhouse.io/americaninstitute,greenhouse,"{""token"": ""americaninstitute""}",skip,
+ametek,ametek-careers,https://jobs.ametek.com/,rss,"{""preset"": ""successfactors""}",skip,
 ami,ami-ashby,https://jobs.ashbyhq.com/ami,ashby,"{""token"": ""ami""}",skip,
 amo,amo-ashby,https://jobs.ashbyhq.com/amo,ashby,"{""token"": ""amo""}",skip,
 amoria-group,amoria-group-greenhouse,https://job-boards.greenhouse.io/amoriabond,greenhouse,"{""token"": ""amoriabond""}",skip,
