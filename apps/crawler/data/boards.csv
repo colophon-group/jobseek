@@ -498,6 +498,7 @@ barkley,barkley-greenhouse,https://job-boards.greenhouse.io/barkley,greenhouse,"
 baron-capital,baron-capital-greenhouse,https://job-boards.greenhouse.io/baroncapital,greenhouse,"{""token"": ""baroncapital""}",skip,
 barry-callebaut,barry-callebaut-careers,https://jobs.barry-callebaut.com/go/All-Jobs/8610800/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://jobs.barry-callebaut.com/googlefeed.xml""}",skip,
 base,base-ashby,https://jobs.ashbyhq.com/base,ashby,"{""token"": ""base""}",skip,
+base-power-company,base-power-company-ashby,https://jobs.ashbyhq.com/base-power,ashby,"{""token"": ""base-power""}",skip,
 baselayer,baselayer-greenhouse,https://job-boards.greenhouse.io/baselayer,greenhouse,"{""token"": ""baselayer""}",skip,
 baseten,baseten-ashby,https://jobs.ashbyhq.com/baseten,ashby,"{""token"": ""baseten""}",skip,
 basf,basf-careers,https://basf.jobs,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://basf.jobs/googlefeed.xml""}",skip,
