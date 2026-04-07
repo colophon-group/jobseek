@@ -3212,6 +3212,8 @@ productschool,productschool-pinpoint,https://productschool.pinpointhq.com,pinpoi
 profluent,profluent-greenhouse,https://job-boards.greenhouse.io/profluent,greenhouse,"{""token"": ""profluent""}",skip,
 project-expedition,project-expedition-ashby,https://jobs.ashbyhq.com/project-expedition,ashby,"{""token"": ""project-expedition""}",skip,
 project44,project44-greenhouse,https://job-boards.greenhouse.io/project44,greenhouse,"{""token"": ""project44""}",skip,
+projective-group,projective-group-careers,https://projectivegroup.recruitee.com/,recruitee,"{""company"": ""projectivegroup""}",skip,
+projective-group,projective-group-careers-talent,https://talent.projectivegroup.com/open-positions/,dom,"{""render"": true, ""actions"": [{""action"": ""dismiss_overlays""}, {""action"": ""repeat"", ""selector"": ""#load-more-jobs"", ""max"": 20, ""wait_ms"": 2000}], ""url_filter"": ""/jobs/""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""div"", ""attr"": ""class=job-location"", ""field"": ""location"", ""optional"": true}, {""text"": ""About"", ""field"": ""description"", ""stop"": ""APPLY FOR THIS JOB"", ""html"": true}]}"
 prolaio,prolaio-greenhouse,https://job-boards.greenhouse.io/prolaio,greenhouse,"{""token"": ""prolaio""}",skip,
 prolific,prolific-greenhouse,https://job-boards.greenhouse.io/prolific,greenhouse,"{""token"": ""prolific""}",skip,
 prometheus-real-estate-group,prometheus-real-estate-group-greenhouse,https://job-boards.greenhouse.io/prometheusrealestategroup,greenhouse,"{""token"": ""prometheusrealestategroup""}",skip,
