@@ -100,7 +100,7 @@ If one target fails, only its cursor stalls. The other continues unaffected.
 
 **Feature flag**: Typesense writes only happen when `TYPESENSE_ADMIN_KEY` is set (non-empty). Environments without Typesense are unaffected. The env var must be passed to containers in `docker-compose.yml` (`x-common-env`).
 
-**Denormalization**: The exporter's `TaxonomyMaps` computes ancestor chains for hierarchical taxonomies (locations, occupations). Each document includes `location_ids` (all ancestor location IDs from Postgres) and `occupation_ids` (computed from `occupation.parent_id` chain). These must stay in sync with the web app's `buildFilterString()` field names -- a mismatch causes silent 0-result filters.
+**Denormalization**: The exporter's `TaxonomyMaps` reads all lookup data from **local Postgres** (the source of truth). Company info, location names, occupation names, seniority names, and technology names are all loaded from local. A Supabase fallback exists for company_info only (for pre-migration compatibility). All ancestor chain computation (locations + macro regions, occupations) uses local Postgres data exclusively.
 
 ### Taxonomy Collections (via sync.py)
 

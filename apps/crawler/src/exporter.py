@@ -109,13 +109,12 @@ class TaxonomyMaps:
         await asyncio.gather(
             self._load_location_names(local_pool),
             self._load_location_geo_types(local_pool),
-            self._load_company_info(supa_pool),
+            self._load_company_info(local_pool, supa_pool),
             self._load_occupation_names(local_pool),
             self._load_occupation_ancestors(local_pool),
             self._load_seniority_names(local_pool),
             self._load_technology_names(local_pool),
-            self._load_location_ancestors(local_pool, supa_pool),
-            self._load_occupation_ancestors(local_pool),
+            self._load_location_ancestors(local_pool),
         )
         self._last_refresh = time.monotonic()
         log.info(
@@ -141,8 +140,24 @@ class TaxonomyMaps:
         rows = await pool.fetch("SELECT id, type FROM location")
         self.location_types = {r["id"]: r["type"] for r in rows}
 
-    async def _load_company_info(self, pool: asyncpg.Pool) -> None:
-        rows = await pool.fetch("SELECT id, name, slug, icon FROM company")
+    async def _load_company_info(
+        self,
+        local_pool: asyncpg.Pool,
+        supa_pool: asyncpg.Pool,
+    ) -> None:
+        """Load company info, preferring local Postgres (primary) with Supabase fallback."""
+        try:
+            rows = await local_pool.fetch("SELECT id, name, slug, icon FROM company")
+            if rows:
+                self.company_info = {
+                    r["id"]: {"name": r["name"], "slug": r["slug"], "icon": r.get("icon")}
+                    for r in rows
+                }
+                return
+        except Exception:
+            pass  # Table may not exist yet (pre-migration)
+        # Fallback to Supabase until migration is applied
+        rows = await supa_pool.fetch("SELECT id, name, slug, icon FROM company")
         self.company_info = {
             r["id"]: {"name": r["name"], "slug": r["slug"], "icon": r.get("icon")} for r in rows
         }
@@ -181,13 +196,11 @@ class TaxonomyMaps:
     async def _load_location_ancestors(
         self,
         local_pool: asyncpg.Pool,
-        supa_pool: asyncpg.Pool,
     ) -> None:
         """Build location_id -> [self + all ancestor IDs] map.
 
-        Uses parent_id chain from local Postgres and macro-region membership
-        from Supabase (location_macro_member links countries to macro regions
-        like EMEA, APAC, etc.).
+        Uses parent_id chain and macro-region membership from local Postgres.
+        (location_macro_member links countries to macro regions like EU, DACH.)
         """
         from collections import defaultdict
 
@@ -197,10 +210,10 @@ class TaxonomyMaps:
         for r in rows:
             loc_parents[r["id"]] = r["parent_id"]
 
-        # Macro-region membership from Supabase (country_id -> [macro_ids])
+        # Macro-region membership (country_id -> [macro_ids])
         macro_members: dict[int, list[int]] = defaultdict(list)
         with contextlib.suppress(Exception):
-            rows = await supa_pool.fetch("SELECT country_id, macro_id FROM location_macro_member")
+            rows = await local_pool.fetch("SELECT country_id, macro_id FROM location_macro_member")
             for r in rows:
                 macro_members[r["country_id"]].append(r["macro_id"])
 

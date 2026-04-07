@@ -2101,9 +2101,13 @@ async def run_sync(dry_run: bool = False) -> None:
             await sync_technologies(supa_conn, technologies, dry_run)
             await sync_industries(supa_conn, industries, dry_run)
 
-            # Company data -> Supabase only (display data)
+            # Company data -> Supabase + local Postgres
             await sync_companies(supa_conn, companies, dry_run)
             await sync_company_descriptions(supa_conn, company_descs, dry_run)
+            # Sync companies to local Postgres (exporter reads from here)
+            if local_pool is not None:
+                async with local_pool.acquire() as lc:
+                    await sync_companies(lc, companies, dry_run)
 
             # Boards -> Supabase + local Postgres + Redis
             local_conn = None
