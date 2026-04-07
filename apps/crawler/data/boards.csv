@@ -305,6 +305,7 @@ appletree-prep,appletree-prep-greenhouse,https://job-boards.greenhouse.io/applet
 applied,applied-ashby,https://jobs.ashbyhq.com/applied,ashby,"{""token"": ""applied""}",skip,
 applied-engineering,applied-engineering-greenhouse,https://job-boards.greenhouse.io/appliedengineering,greenhouse,"{""token"": ""appliedengineering""}",skip,
 applied-intuition,applied-intuition-greenhouse,https://job-boards.greenhouse.io/appliedintuition,greenhouse,"{""token"": ""appliedintuition""}",skip,
+applied-materials,applied-materials-careers-workday,https://amat.wd1.myworkdayjobs.com/External,workday,"{""company"": ""amat"", ""wd_instance"": ""wd1"", ""site"": ""External""}",workday,
 appliedlabs,appliedlabs-ashby,https://jobs.ashbyhq.com/appliedlabs,ashby,"{""token"": ""appliedlabs""}",skip,
 applike-group-gmbh,applike-group-gmbh-join,https://join.com/companies/applike-group,join,"{""slug"": ""applike-group""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 applovin,applovin-greenhouse,https://job-boards.greenhouse.io/applovin,greenhouse,"{""token"": ""applovin""}",skip,
