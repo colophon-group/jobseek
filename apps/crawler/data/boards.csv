@@ -2224,6 +2224,7 @@ kraken-energy,kraken-energy-careers,https://jobs.lever.co/kraken123,lever,"{""to
 krea,krea-ashby,https://jobs.ashbyhq.com/krea,ashby,"{""token"": ""krea""}",skip,
 kronos-research,kronos-research-greenhouse,https://job-boards.greenhouse.io/kronosresearch,greenhouse,"{""token"": ""kronosresearch""}",skip,
 kubra-gmbh-industrie-und-kunststofftechnik,kubra-gmbh-industrie-und-kunststofftechnik-join,https://join.com/companies/kubra-gmbhde,join,"{""slug"": ""kubra-gmbhde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
+kuda,kuda-careers,https://apply.workable.com/kuda/,workable,"{""token"": ""kuda""}",workable,
 kulfi-collective,kulfi-collective-greenhouse,https://job-boards.greenhouse.io/kulficollective,greenhouse,"{""token"": ""kulficollective""}",skip,
 kunai,kunai-greenhouse,https://job-boards.greenhouse.io/kunai,greenhouse,"{""token"": ""kunai""}",skip,
 kura-oncology,kura-oncology-greenhouse,https://job-boards.greenhouse.io/kuraoncology,greenhouse,"{""token"": ""kuraoncology""}",skip,
