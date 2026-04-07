@@ -628,6 +628,25 @@ class LocationResolver:
             languages=tuple(row[4].split(",")) if row[4] else (),
         )
 
+    def get_ancestor_ids(self, location_id: int) -> list[int]:
+        """Return *location_id* plus all its ancestor IDs (parent, grandparent, ...).
+
+        Walks up the ``parent_id`` chain stored in the SQLite ``entry`` table.
+        Returns a list containing the original ID and every ancestor found,
+        in no particular order.  Safe against cycles (bounded to 20 hops).
+        """
+        ancestors: set[int] = {location_id}
+        current: int | None = location_id
+        hops = 0
+        while current is not None and hops < 20:
+            entry = self._get_entry(current)
+            if entry is None or entry.parent_id is None:
+                break
+            ancestors.add(entry.parent_id)
+            current = entry.parent_id
+            hops += 1
+        return list(ancestors)
+
     def _lookup_name(self, key: str) -> list[int]:
         """Look up name→location IDs from SQLite, tracking misses for backfill."""
         assert self._db is not None

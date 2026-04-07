@@ -8,6 +8,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from src.exporter import (
     _EPOCH,
     _ZERO_UUID,
+    TaxonomyMaps,
+    _build_typesense_docs,
     _export_changed_boards,
     _export_changed_postings,
     _get_cursor,
@@ -589,3 +591,150 @@ class TestCombinedRunner:
 
             mock_exp.assert_awaited_once_with(local, supa, shutdown)
             mock_recon.assert_awaited_once_with(local, supa, shutdown)
+
+
+# ---------------------------------------------------------------------------
+# _build_typesense_docs: ancestor expansion
+# ---------------------------------------------------------------------------
+
+
+def _make_taxonomy_maps() -> TaxonomyMaps:
+    """Build a TaxonomyMaps with test hierarchy data.
+
+    Location hierarchy: city(10) -> region(20) -> country(30)
+    Occupation hierarchy: child_occ(100) -> parent_occ(200)
+    """
+    maps = TaxonomyMaps()
+    maps.location_names = {
+        10: {"en": "Zurich"},
+        20: {"en": "Canton of Zurich"},
+        30: {"en": "Switzerland"},
+    }
+    maps.location_types = {10: "city", 20: "region", 30: "country"}
+    company_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
+    maps.company_info = {company_id: {"name": "TestCo", "slug": "testco", "icon": None}}
+    maps.occupation_names = {100: "Software Engineer", 200: "Engineering"}
+    maps.seniority_names = {1: "Senior"}
+    maps.technology_names = {50: "Python"}
+    # Location ancestors: city -> [city, region, country]
+    maps.location_ancestors = {
+        10: [10, 20, 30],
+        20: [20, 30],
+        30: [30],
+    }
+    # Occupation ancestors: child -> [child, parent]
+    maps.occupation_ancestors = {
+        100: [100, 200],
+        200: [200],
+    }
+    return maps
+
+
+def _make_posting_record(
+    *,
+    location_ids: list[int] | None = None,
+    occupation_id: int | None = None,
+) -> MagicMock:
+    """Simulate an asyncpg.Record for a job_posting row."""
+    company_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
+    posting_id = uuid.uuid4()
+    now = datetime(2025, 6, 15, 12, 0, 0, tzinfo=UTC)
+    data = {
+        "id": posting_id,
+        "company_id": company_id,
+        "titles": ["Test Job"],
+        "is_active": True,
+        "location_ids": location_ids,
+        "location_types": ["onsite"] * len(location_ids or []),
+        "occupation_id": occupation_id,
+        "seniority_id": None,
+        "technology_ids": None,
+        "employment_type": "full-time",
+        "experience_min": None,
+        "locales": ["en"],
+        "first_seen_at": now,
+        "last_seen_at": now,
+        "salary_eur": None,
+        "source_url": "https://example.com/job",
+    }
+    rec = MagicMock()
+    rec.keys.return_value = list(data.keys())
+    rec.__getitem__ = lambda self, k: data[k]
+    rec.__contains__ = lambda self, k: k in data
+    rec.get = lambda k, default=None: data.get(k, default)
+    return rec
+
+
+class TestBuildTypesenseDocsAncestors:
+    """Tests for ancestor expansion in _build_typesense_docs."""
+
+    def test_location_ids_expanded_with_ancestors(self):
+        """Leaf location ID 10 should expand to include region(20) and country(30)."""
+        maps = _make_taxonomy_maps()
+        row = _make_posting_record(location_ids=[10])
+        docs = _build_typesense_docs([row], maps)
+        assert len(docs) == 1
+        loc_ids = set(docs[0]["location_ids"])
+        assert 10 in loc_ids  # leaf (city)
+        assert 20 in loc_ids  # region ancestor
+        assert 30 in loc_ids  # country ancestor
+
+    def test_location_names_only_for_leaf_ids(self):
+        """location_names should only contain names for leaf IDs, not ancestors."""
+        maps = _make_taxonomy_maps()
+        row = _make_posting_record(location_ids=[10])
+        docs = _build_typesense_docs([row], maps)
+        assert docs[0]["location_names"] == ["Zurich"]
+
+    def test_multiple_locations_deduplicated(self):
+        """Two cities in the same country should not duplicate the country ancestor."""
+        maps = _make_taxonomy_maps()
+        # Add a second city in the same region
+        maps.location_names[11] = {"en": "Winterthur"}
+        maps.location_types[11] = "city"
+        maps.location_ancestors[11] = [11, 20, 30]
+
+        row = _make_posting_record(location_ids=[10, 11])
+        docs = _build_typesense_docs([row], maps)
+        loc_ids = docs[0]["location_ids"]
+        # Should have both leaves first, then ancestor-only IDs
+        assert loc_ids[0] == 10
+        assert loc_ids[1] == 11
+        # 20 and 30 should each appear exactly once in the ancestor portion
+        assert loc_ids.count(20) == 1
+        assert loc_ids.count(30) == 1
+
+    def test_occupation_ids_expanded_with_ancestors(self):
+        """occupation_ids should include the leaf occupation and its parent."""
+        maps = _make_taxonomy_maps()
+        row = _make_posting_record(occupation_id=100)
+        docs = _build_typesense_docs([row], maps)
+        assert set(docs[0]["occupation_ids"]) == {100, 200}
+        # occupation_id (singular) should be the leaf
+        assert docs[0]["occupation_id"] == 100
+
+    def test_no_occupation_when_none(self):
+        """No occupation_ids field when occupation_id is None."""
+        maps = _make_taxonomy_maps()
+        row = _make_posting_record(occupation_id=None)
+        docs = _build_typesense_docs([row], maps)
+        assert "occupation_ids" not in docs[0]
+        assert "occupation_id" not in docs[0]
+
+    def test_empty_location_ids(self):
+        """Empty location_ids should not crash or produce ancestors."""
+        maps = _make_taxonomy_maps()
+        row = _make_posting_record(location_ids=[])
+        docs = _build_typesense_docs([row], maps)
+        assert docs[0]["location_ids"] == []
+
+    def test_leaf_ids_come_first(self):
+        """Leaf IDs should be at the start of location_ids (aligned with names/geo_types)."""
+        maps = _make_taxonomy_maps()
+        row = _make_posting_record(location_ids=[10])
+        docs = _build_typesense_docs([row], maps)
+        # First element is the leaf
+        assert docs[0]["location_ids"][0] == 10
+        # location_names and location_geo_types are only for the leaf
+        assert len(docs[0]["location_names"]) == 1
+        assert len(docs[0]["location_geo_types"]) == 1
