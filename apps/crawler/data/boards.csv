@@ -3274,6 +3274,7 @@ qai-ventures-ag,qai-ventures-ag-join,https://join.com/companies/qai-venturescom,
 qdrant,qdrant-join,https://join.com/companies/qdrant,join,"{""slug"": ""qdrant""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 qonto,qonto-lever,https://jobs.lever.co/qonto,lever,"{""token"": ""qonto""}",skip,
 qts,qts-recruitee,https://qts.recruitee.com,recruitee,"{""token"": ""qts""}",skip,
+qualcomm,qualcomm-eightfold,https://careers.qualcomm.com/careers/search?query=*&domain=qualcomm.com,eightfold,"{""sitemap_url"": ""https://careers.qualcomm.com/careers/sitemap.xml""}",json-ld,
 qualia,qualia-greenhouse,https://job-boards.greenhouse.io/qualia,greenhouse,"{""token"": ""qualia""}",skip,
 qualified,qualified-ashby,https://jobs.ashbyhq.com/qualified,ashby,"{""token"": ""qualified""}",skip,
 qualified-digital,qualified-digital-greenhouse,https://job-boards.greenhouse.io/qualifieddigital,greenhouse,"{""token"": ""qualifieddigital""}",skip,
