@@ -292,6 +292,7 @@ apartmentiq,apartmentiq-greenhouse,https://job-boards.greenhouse.io/abodo,greenh
 apera-ai-inc,apera-ai-inc-greenhouse,https://job-boards.greenhouse.io/aperaaiinc,greenhouse,"{""token"": ""aperaaiinc""}",skip,
 aperia,aperia-greenhouse,https://job-boards.greenhouse.io/aperiasolutions,greenhouse,"{""token"": ""aperiasolutions""}",skip,
 apex,apex-join,https://join.com/companies/apex-crocom,join,"{""slug"": ""apex-crocom""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
+apex-space,apex-space-careers,https://jobs.ashbyhq.com/apex-technology-inc,ashby,"{""token"": ""apex-technology-inc""}",skip,
 apheros,apheros-careers,https://apheros.ch/en/open-positions,dom,,dom,"{""render"": true, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""text"": ""About apheros"", ""field"": ""description"", ""stop"": ""continuously accepting"", ""html"": true}]}"
 apify,apify-careers,https://apify.com/jobs,ashby,"{""token"": ""apify""}",skip,
 apiiro,apiiro-greenhouse,https://job-boards.greenhouse.io/apiiro,greenhouse,"{""token"": ""apiiro""}",skip,
