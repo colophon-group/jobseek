@@ -22,7 +22,12 @@ import httpx
 import structlog
 
 from src.config import settings
-from src.metrics import monitor_duration_seconds, scrape_duration_seconds, tasks_total
+from src.metrics import (
+    monitor_duration_seconds,
+    scrape_duration_seconds,
+    tasks_total,
+    worker_heartbeat_ts,
+)
 from src.redis_queue import (
     BoardWork,
     ScrapeWork,
@@ -157,6 +162,7 @@ async def _discovery_worker(
 
     try:
         while not shutdown_event.is_set():
+            worker_heartbeat_ts.labels(worker_id=str(worker_id)).set_to_current_time()
             try:
                 work = await claim_work(browser=browser)
             except Exception:
@@ -171,9 +177,19 @@ async def _discovery_worker(
                     await asyncio.wait_for(shutdown_event.wait(), timeout=_IDLE_BACKOFF_S)
                 continue
 
-            if work.kind == "monitor" and work.board_work is not None:
-                if monitor_semaphore is not None:
-                    async with monitor_semaphore:
+            try:
+                if work.kind == "monitor" and work.board_work is not None:
+                    if monitor_semaphore is not None:
+                        async with monitor_semaphore:
+                            await _process_monitor_work(
+                                worker_log,
+                                work.board_work,
+                                local_pool,
+                                http,
+                                browser=browser,
+                                pw=pw,
+                            )
+                    else:
                         await _process_monitor_work(
                             worker_log,
                             work.board_work,
@@ -182,26 +198,19 @@ async def _discovery_worker(
                             browser=browser,
                             pw=pw,
                         )
-                else:
-                    await _process_monitor_work(
+                elif work.kind == "scrape" and work.scrape_work is not None:
+                    await _process_scrape_work(
                         worker_log,
-                        work.board_work,
+                        work.scrape_work,
                         local_pool,
                         http,
                         browser=browser,
                         pw=pw,
                     )
-            elif work.kind == "scrape" and work.scrape_work is not None:
-                await _process_scrape_work(
-                    worker_log,
-                    work.scrape_work,
-                    local_pool,
-                    http,
-                    browser=browser,
-                    pw=pw,
-                )
-            else:
-                worker_log.warning("pipeline.unknown_work_kind", kind=work.kind)
+                else:
+                    worker_log.warning("pipeline.unknown_work_kind", kind=work.kind)
+            except Exception:
+                worker_log.exception("pipeline.worker.task_escaped")
     finally:
         if pw:
             await _stop_playwright(pw, worker_log)
@@ -259,9 +268,12 @@ async def _process_monitor_work(
 
     except Exception:
         worker_log.exception("pipeline.monitor.error", board_id=board_id)
-        # Reschedule with backoff
-        backoff_ts = time.time() + _ERROR_BACKOFF_S
-        await reschedule_task(domain, board_id, "monitor", backoff_ts, browser=browser)
+        # Reschedule with backoff — guard so Redis errors don't kill the worker
+        try:
+            backoff_ts = time.time() + _ERROR_BACKOFF_S
+            await reschedule_task(domain, board_id, "monitor", backoff_ts, browser=browser)
+        except Exception:
+            worker_log.warning("pipeline.monitor.reschedule_failed", exc_info=True)
 
 
 # ---------------------------------------------------------------------------
@@ -343,9 +355,12 @@ async def _process_scrape_work(
     except Exception:
         worker_log.exception("pipeline.scrape.error", posting_id=posting_id)
         tasks_total.labels(kind="scrape", status="failed").inc()
-        # Reschedule with backoff
-        backoff_ts = time.time() + _ERROR_BACKOFF_S
-        await reschedule_task(domain, posting_id, "scrape", backoff_ts, browser=browser)
+        # Reschedule with backoff — guard so Redis errors don't kill the worker
+        try:
+            backoff_ts = time.time() + _ERROR_BACKOFF_S
+            await reschedule_task(domain, posting_id, "scrape", backoff_ts, browser=browser)
+        except Exception:
+            worker_log.warning("pipeline.scrape.reschedule_failed", exc_info=True)
 
 
 # ---------------------------------------------------------------------------

@@ -51,6 +51,12 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:9095/\")'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
     mem_limit: 1g
     cpus: 1.0
 
@@ -68,6 +74,12 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:9096/\")'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
     mem_limit: 1g
     cpus: 1.0
 
@@ -85,6 +97,12 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:9097/\")'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
     mem_limit: 1g
     cpus: 1.0
 
@@ -131,6 +149,12 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:9098/\")'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     mem_limit: 4g
     cpus: 3.0
 

@@ -216,5 +216,12 @@ typesense_memory_bytes = Gauge(
 )
 
 
+worker_heartbeat_ts = Gauge(
+    "crawler_worker_heartbeat_timestamp_seconds",
+    "Unix timestamp of each worker's last loop iteration",
+    ["worker_id"],
+)
+
+
 def start_metrics_server(port: int) -> None:
     start_http_server(port)
