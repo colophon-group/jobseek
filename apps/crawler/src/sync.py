@@ -753,6 +753,14 @@ async def _mirror_companies_to_local(
     if not rows:
         return
 
+    # Delete any local rows whose slug matches but UUID differs (stale from
+    # earlier sync that generated new UUIDs instead of preserving Supabase's).
+    await local_conn.execute(
+        "DELETE FROM company WHERE slug = ANY($1::text[]) AND id != ALL($2::uuid[])",
+        [r["slug"] for r in rows],
+        [r["id"] for r in rows],
+    )
+
     await local_conn.execute(
         "INSERT INTO company (id, slug, name, website, logo, icon, logo_type, "
         "industry, employee_count_range, founded_year, extras) "
