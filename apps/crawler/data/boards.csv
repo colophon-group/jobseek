@@ -4127,6 +4127,8 @@ trust-bank,trust-bank-greenhouse,https://job-boards.greenhouse.io/trustbank,gree
 trust-wallet,trust-wallet-ashby,https://jobs.ashbyhq.com/trust-wallet,ashby,"{""token"": ""trust-wallet""}",skip,
 trust-will,trust-will-greenhouse,https://job-boards.greenhouse.io/trustwill,greenhouse,"{""token"": ""trustwill""}",skip,
 truveta,truveta-greenhouse,https://job-boards.greenhouse.io/truveta,greenhouse,"{""token"": ""truveta""}",skip,
+tsmc,tsmc-main,https://careers.tsmc.com/en_US/careers,sitemap,"{""sitemap_url"": ""https://careers.tsmc.com/en_US/careers/sitemap.xml"", ""url_filter"": ""/JobDetail/""}",json-ld,
+tsmc,tsmc-successfactors,https://ro.careers.tsmc.com/search/?createNewAlert=false&q=&locationsearch=,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://ro.careers.tsmc.com/googlefeed.xml""}",json-ld,
 tubi,tubi-greenhouse,https://job-boards.greenhouse.io/tubitv,greenhouse,"{""token"": ""tubitv""}",skip,
 tucows,tucows-greenhouse,https://job-boards.greenhouse.io/tucows,greenhouse,"{""token"": ""tucows""}",skip,
 tucows-inc,tucows-inc-greenhouse,https://job-boards.greenhouse.io/remotetcx,greenhouse,"{""token"": ""remotetcx""}",skip,
