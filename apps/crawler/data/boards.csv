@@ -3237,6 +3237,7 @@ proqura-gmbh,proqura-gmbh-join,https://join.com/companies/proqurade,join,"{""slu
 prosek-partners,prosek-partners-greenhouse,https://job-boards.greenhouse.io/prosek,greenhouse,"{""token"": ""prosek""}",skip,
 proshares,proshares-greenhouse,https://job-boards.greenhouse.io/proshares,greenhouse,"{""token"": ""proshares""}",skip,
 prosper-health,prosper-health-greenhouse,https://job-boards.greenhouse.io/prosperhealth,greenhouse,"{""token"": ""prosperhealth""}",skip,
+prosus,prosus-careers,https://jobs.eu.lever.co/prosus,lever,,skip,
 protege,protege-ashby,https://jobs.ashbyhq.com/protege,ashby,"{""token"": ""protege""}",skip,
 prothesen-orthesenmanufaktur,prothesen-orthesenmanufaktur-join,https://join.com/companies/prothesen-orthesende,join,"{""slug"": ""prothesen-orthesende""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 protolabs,protolabs-lever,https://jobs.lever.co/protolabs,lever,"{""token"": ""protolabs""}",skip,
