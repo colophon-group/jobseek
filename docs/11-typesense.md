@@ -60,13 +60,16 @@ Three scoped keys. Stored in: `apps/crawler/.env.local` (main branch), GitHub se
 
 ### Key Design Choices
 
-- **Ancestor IDs**: `job_posting.location_ids` and `job_posting.occupation_ids` contain the leaf ID plus all ancestor IDs (parents, grandparents, macro regions). This enables hierarchy-free filtering -- searching for "Germany" matches all cities in Germany without recursive joins. **Critical**: The web app's `buildFilterString()` filters on `location_ids` and `occupation_ids` (plural array fields). Writing only the singular `occupation_id`/`location_id` will cause filters to silently return 0 results.
+- **Ancestor IDs**: Typesense `job_posting` documents store `location_ids` and `occupation_ids` as **ancestor-expanded arrays** (leaf ID + all parent/grandparent IDs + macro region IDs). This enables hierarchy-free filtering -- searching for "Germany" matches all cities in Germany without recursive joins.
 
-  **Where ancestor expansion happens (both paths required):**
-  1. **At processing time** (`processing/cpu.py` → `LocationResolver.get_ancestor_ids()`): new postings get ancestor-expanded `location_ids` written to local Postgres.
-  2. **At export time** (`exporter.py` → `TaxonomyMaps.location_ancestors` / `occupation_ancestors`): the exporter re-expands IDs when building Typesense documents. This is the safety net — even if Postgres only has leaf IDs (legacy data or a bug), Typesense documents will still contain ancestors.
+  **Design rule: Postgres stores leaf IDs only; the exporter expands to ancestors at indexing time.** Do NOT expand ancestors in the crawler processing pipeline (`_resolve_locations_sync`, `_resolve_locations`). Postgres `location_ids` and `location_types` must remain parallel arrays of the same length (Supabase enforces `chk_location_arrays_length`). Ancestor expansion adds extra IDs without matching type entries, breaking this constraint.
 
-  **Invariant**: if you change how location/occupation IDs are resolved or stored, you MUST ensure both paths still produce ancestor-expanded arrays. If only leaf IDs reach Typesense, hierarchy filtering silently breaks (filtering by "Germany" won't match "Berlin").
+  **Where ancestor expansion happens (exporter only):**
+  - `exporter.py` → `TaxonomyMaps.location_ancestors`: walks `location.parent_id` chain + `location_macro_member` (macro regions like EU, DACH). Populates `location_ids` on Typesense documents.
+  - `exporter.py` → `TaxonomyMaps.occupation_ancestors`: walks `occupation.parent_id` chain. Populates `occupation_ids` on Typesense documents.
+  - The backfill script (`typesense-backfill-local.py`) must use the same logic.
+
+  **Invariant**: `buildFilterString()` in the web app filters on `location_ids` and `occupation_ids` (plural array fields). If only leaf IDs reach Typesense, hierarchy filtering silently breaks (filtering by "Germany" won't match "Berlin"). If ancestors are written to Postgres instead, the `location_ids`/`location_types` length constraint breaks and the Supabase exporter stalls.
 - **Sentinel values**: `experience_min = -1` for NULL (Typesense excludes missing optional fields from range queries). `locales = ["_none"]` for jobs with no detected language.
 - **Denormalized names**: Taxonomy names (location, occupation, seniority, technology) are stored directly on each job posting document for search and faceting without joins.
 - **Versioned aliases**: `job_posting` is an alias pointing to `job_posting_v1`. To reindex with a new schema: create `_v2`, backfill, swap alias, drop `_v1`.

@@ -171,33 +171,19 @@ def _resolve_locations_sync(
     Used by threaded batch processing.  Call ``resolver.backfill_misses()``
     after the thread completes to handle cache misses.
 
-    ``location_ids`` contains the resolved leaf IDs *plus* all ancestor IDs
-    (parent, grandparent, up to macro-region).  This enables hierarchy-free
-    filtering in Typesense (filtering by "Switzerland" matches postings in
-    Zurich without needing a JOIN).  ``location_types`` only covers the
-    leaf locations; ancestors are included solely for filter matching.
+    Returns parallel arrays of (location_ids, location_types) — leaf IDs only.
+    Ancestor expansion for Typesense happens at indexing time in the exporter.
     """
     results = resolver.resolve(locations, job_location_type, posting_language)
     if not results:
         return None, None
-    leaf_ids: list[int] = []
+    loc_ids: list[int] = []
     loc_types: list[str] = []
     for r in results:
         if r.location_id is not None:
-            leaf_ids.append(r.location_id)
+            loc_ids.append(r.location_id)
             loc_types.append(r.location_type)
-
-    if not leaf_ids:
-        return None, loc_types or None
-
-    # Expand leaf IDs with all ancestor IDs for hierarchy-free filtering
-    all_ids: set[int] = set()
-    for lid in leaf_ids:
-        all_ids.update(resolver.get_ancestor_ids(lid))
-    # Keep leaf IDs first (aligned with loc_types), then append ancestor-only IDs
-    ancestor_only = all_ids - set(leaf_ids)
-    expanded = leaf_ids + sorted(ancestor_only)
-    return expanded or None, loc_types or None
+    return loc_ids or None, loc_types or None
 
 
 # ── Helpers ──────────────────────────────────────────────────────────
