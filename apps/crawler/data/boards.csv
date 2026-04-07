@@ -3221,6 +3221,7 @@ public,public-greenhouse,https://job-boards.greenhouse.io/public,greenhouse,"{""
 public-library-of-science,public-library-of-science-greenhouse,https://job-boards.greenhouse.io/plos,greenhouse,"{""token"": ""plos""}",skip,
 publicis,publicis-main,https://careers.publicisgroupe.com/jobs,sitemap,"{""sitemap_url"": ""https://careers.publicisgroupe.com/sitemap.xml""}",json-ld,
 pubmatic,pubmatic-greenhouse,https://job-boards.greenhouse.io/pubmatic,greenhouse,"{""token"": ""pubmatic""}",skip,
+pubnub,pubnub-careers,https://careers.smartrecruiters.com/PubNub,smartrecruiters,"{""token"": ""PubNub""}",smartrecruiters,
 pulley,pulley-greenhouse,https://job-boards.greenhouse.io/pulley,greenhouse,"{""token"": ""pulley""}",skip,
 pulse,pulse-ashby,https://jobs.ashbyhq.com/pulse,ashby,"{""token"": ""pulse""}",skip,
 pulumi,pulumi-greenhouse,https://job-boards.greenhouse.io/pulumicorporation,greenhouse,"{""token"": ""pulumicorporation""}",skip,
