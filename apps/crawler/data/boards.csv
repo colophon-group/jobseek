@@ -536,6 +536,8 @@ berlin-packaging,berlin-packaging-greenhouse,https://job-boards.greenhouse.io/be
 berlinrosen,berlinrosen-greenhouse,https://job-boards.greenhouse.io/berlinrosen,greenhouse,"{""token"": ""berlinrosen""}",skip,
 bers,bers-join,https://join.com/companies/bersfr,join,"{""slug"": ""bersfr""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 bertram-capital-management,bertram-capital-management-greenhouse,https://job-boards.greenhouse.io/bertramcapitalmanagement,greenhouse,"{""token"": ""bertramcapitalmanagement""}",skip,
+besi,besi-careers-at,https://besi.kandidatenportal.eu/Jobs,dom,"{""render"": true, ""url_filter"": ""/Job/\\d+""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""text"": ""Radfeld"", ""field"": ""locations""}, {""text"": ""time"", ""field"": ""employment_type"", ""optional"": true, ""from"": 0}, {""tag"": ""h2"", ""field"": ""description"", ""stop"": ""APPLY"", ""html"": true}, {""attr"": ""class=salaryText"", ""field"": ""base_salary"", ""optional"": true}]}"
+besi,besi-main,https://www.besi.com/careers/jobs/,dom,"{""url_filter"": ""fileadmin/data/Jobs/.*\\.pdf""}",pdf,"{""title_source"": ""url""}"
 bestow,bestow-ashby,https://jobs.ashbyhq.com/bestow,ashby,"{""token"": ""bestow""}",skip,
 beta-technologies,beta-technologies-lever,https://jobs.lever.co/beta,lever,"{""token"": ""beta""}",skip,
 betsson-group,betsson-group-greenhouse,https://job-boards.greenhouse.io/betsson,greenhouse,"{""token"": ""betsson""}",skip,
