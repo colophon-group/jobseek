@@ -1918,6 +1918,7 @@ hubspot,hubspot-greenhouse,https://job-boards.greenhouse.io/hubspotjobs,greenhou
 hubstaff,hubstaff-ashby,https://jobs.ashbyhq.com/hubstaff,ashby,"{""token"": ""hubstaff""}",skip,
 hudl,hudl-greenhouse,https://job-boards.greenhouse.io/hudl,greenhouse,"{""token"": ""hudl""}",skip,
 hudson-river-trading,hudson-river-trading-greenhouse,https://job-boards.greenhouse.io/wehrtyou,greenhouse,"{""token"": ""wehrtyou""}",skip,
+hug,hug-careers,https://careers.smartrecruiters.com/HUG,smartrecruiters,"{""token"": ""HUG""}",smartrecruiters,
 hugeinc,hugeinc-greenhouse,https://job-boards.greenhouse.io/hugeinc,greenhouse,"{""token"": ""hugeinc""}",skip,
 huggingface,huggingface-careers,https://apply.workable.com/huggingface,workable,,workable,
 humaans,humaans-ashby,https://jobs.ashbyhq.com/humaans,ashby,"{""token"": ""humaans""}",skip,
