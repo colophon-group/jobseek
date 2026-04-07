@@ -447,6 +447,8 @@ class TestRunSync:
     @patch("src.sync.sync_boards")
     @patch("src.sync.sync_company_descriptions")
     @patch("src.sync.sync_companies")
+    @patch("src.sync._mirror_companies_to_supabase", new_callable=AsyncMock)
+    @patch("src.sync._mirror_companies_to_local", new_callable=AsyncMock)
     @patch("src.sync.sync_industries")
     @patch("src.sync.sync_technologies")
     @patch("src.sync.sync_seniority")
@@ -459,6 +461,8 @@ class TestRunSync:
         mock_sync_seniority,
         mock_sync_technologies,
         mock_sync_industries,
+        _mock_mirror_to_local,
+        _mock_mirror_to_supa,
         mock_sync_companies,
         mock_sync_company_descriptions,
         mock_sync_boards,
@@ -572,8 +576,8 @@ class TestRunSync:
         # technologies/industries: called twice (supa + local) regardless
         assert mock_sync_technologies.call_count == 2
         assert mock_sync_industries.call_count == 2
-        # companies: called twice (supa + local)
-        assert mock_sync_companies.call_count == 2
+        # companies: called once on local (local-first flow)
+        assert mock_sync_companies.call_count == 1
         mock_sync_company_descriptions.assert_called_once_with(mock_conn, company_descs_df, False)
 
         # Boards: called with supa_conn + local_conn kwarg
@@ -605,10 +609,14 @@ class TestRunSync:
     @patch("src.sync.sync_seniority")
     @patch("src.sync.sync_technologies")
     @patch("src.sync.sync_industries")
+    @patch("src.sync._mirror_companies_to_supabase", new_callable=AsyncMock)
+    @patch("src.sync._mirror_companies_to_local", new_callable=AsyncMock)
     @patch("src.sync.sync_companies")
     async def test_closes_pool_on_error(
         self,
         mock_sync_companies,
+        _mock_mirror_to_local,
+        _mock_mirror_to_supa,
         mock_sync_industries,
         mock_sync_technologies,
         mock_sync_seniority,

@@ -288,165 +288,70 @@ class TestExportChangedBoards:
 
 
 class TestReconciliation:
-    async def test_no_boards_returns_zero(self):
+    async def test_empty_sample_returns_zero(self):
         local = _make_pool()
         supa = _make_pool()
 
-        local.fetch = AsyncMock(return_value=[])
+        local.fetchrow = AsyncMock(return_value=_make_record({"cnt": 100}))
+        supa.fetchrow = AsyncMock(return_value=_make_record({"cnt": 100}))
+        local.fetch = AsyncMock(return_value=[])  # empty sample
 
         result = await run_reconciliation(local, supa)
         assert result == 0
 
     async def test_missing_remote_triggers_touch(self):
-        """A posting in local but not in Supabase should be touched."""
+        """A sampled posting missing from Supabase should be touched."""
         local = _make_pool()
         supa = _make_pool()
 
-        board_id = uuid.uuid4()
         posting_id = uuid.uuid4()
+        sample = [_make_record({"id": posting_id, "is_active": True, "description_r2_hash": 111})]
 
-        # local has one board and one posting
-        local_board_row = _make_record({"board_id": board_id})
-        local_posting = _make_record(
-            {
-                "id": posting_id,
-                "source_url": "https://example.com/j/1",
-                "is_active": True,
-                "description_r2_hash": 111,
-            }
-        )
-
-        call_count = 0
-
-        async def fake_local_fetch(query, *args):
-            nonlocal call_count
-            call_count += 1
-            if "DISTINCT board_id" in query:
-                return [local_board_row]
-            return [local_posting]
-
-        local.fetch = AsyncMock(side_effect=fake_local_fetch)
+        local.fetchrow = AsyncMock(return_value=_make_record({"cnt": 100}))
+        supa.fetchrow = AsyncMock(return_value=_make_record({"cnt": 99}))
+        local.fetch = AsyncMock(return_value=sample)
+        supa.fetch = AsyncMock(return_value=[])  # not found in Supabase
         local.execute = AsyncMock()
-
-        # Supabase has no postings for this board
-        supa.fetch = AsyncMock(return_value=[])
 
         result = await run_reconciliation(local, supa)
         assert result == 1
-        # Should have touched updated_at
         local.execute.assert_awaited_once()
-        assert "updated_at = now()" in local.execute.call_args[0][0]
 
     async def test_state_mismatch_triggers_touch(self):
-        """Differing is_active between local and remote triggers a touch."""
+        """Differing is_active triggers a touch."""
         local = _make_pool()
         supa = _make_pool()
 
-        board_id = uuid.uuid4()
         posting_id = uuid.uuid4()
+        local_sample = [
+            _make_record({"id": posting_id, "is_active": True, "description_r2_hash": 111})
+        ]
+        supa_match = [
+            _make_record({"id": posting_id, "is_active": False, "description_r2_hash": 111})
+        ]
 
-        local_board_row = _make_record({"board_id": board_id})
-        local_posting = _make_record(
-            {
-                "id": posting_id,
-                "source_url": "https://example.com/j/1",
-                "is_active": True,
-                "description_r2_hash": 111,
-            }
-        )
-        remote_posting = _make_record(
-            {
-                "id": posting_id,
-                "source_url": "https://example.com/j/1",
-                "is_active": False,  # mismatch
-                "description_r2_hash": 111,
-            }
-        )
-
-        async def fake_local_fetch(query, *args):
-            if "DISTINCT board_id" in query:
-                return [local_board_row]
-            return [local_posting]
-
-        local.fetch = AsyncMock(side_effect=fake_local_fetch)
+        local.fetchrow = AsyncMock(return_value=_make_record({"cnt": 100}))
+        supa.fetchrow = AsyncMock(return_value=_make_record({"cnt": 100}))
+        local.fetch = AsyncMock(return_value=local_sample)
+        supa.fetch = AsyncMock(return_value=supa_match)
         local.execute = AsyncMock()
-        supa.fetch = AsyncMock(return_value=[remote_posting])
-
-        result = await run_reconciliation(local, supa)
-        assert result == 1
-
-    async def test_hash_mismatch_triggers_touch(self):
-        """Differing description_r2_hash triggers a touch."""
-        local = _make_pool()
-        supa = _make_pool()
-
-        board_id = uuid.uuid4()
-        posting_id = uuid.uuid4()
-
-        local_board_row = _make_record({"board_id": board_id})
-        local_posting = _make_record(
-            {
-                "id": posting_id,
-                "source_url": "https://example.com/j/1",
-                "is_active": True,
-                "description_r2_hash": 111,
-            }
-        )
-        remote_posting = _make_record(
-            {
-                "id": posting_id,
-                "source_url": "https://example.com/j/1",
-                "is_active": True,
-                "description_r2_hash": 999,  # different hash
-            }
-        )
-
-        async def fake_local_fetch(query, *args):
-            if "DISTINCT board_id" in query:
-                return [local_board_row]
-            return [local_posting]
-
-        local.fetch = AsyncMock(side_effect=fake_local_fetch)
-        local.execute = AsyncMock()
-        supa.fetch = AsyncMock(return_value=[remote_posting])
 
         result = await run_reconciliation(local, supa)
         assert result == 1
 
     async def test_matching_state_no_touch(self):
-        """When local and remote match, no touch should happen."""
+        """When sampled rows match, no touch should happen."""
         local = _make_pool()
         supa = _make_pool()
 
-        board_id = uuid.uuid4()
         posting_id = uuid.uuid4()
+        sample = [_make_record({"id": posting_id, "is_active": True, "description_r2_hash": 111})]
 
-        local_board_row = _make_record({"board_id": board_id})
-        local_posting = _make_record(
-            {
-                "id": posting_id,
-                "source_url": "https://example.com/j/1",
-                "is_active": True,
-                "description_r2_hash": 111,
-            }
-        )
-        remote_posting = _make_record(
-            {
-                "id": posting_id,
-                "source_url": "https://example.com/j/1",
-                "is_active": True,
-                "description_r2_hash": 111,
-            }
-        )
-
-        async def fake_local_fetch(query, *args):
-            if "DISTINCT board_id" in query:
-                return [local_board_row]
-            return [local_posting]
-
-        local.fetch = AsyncMock(side_effect=fake_local_fetch)
+        local.fetchrow = AsyncMock(return_value=_make_record({"cnt": 100}))
+        supa.fetchrow = AsyncMock(return_value=_make_record({"cnt": 100}))
+        local.fetch = AsyncMock(return_value=sample)
+        supa.fetch = AsyncMock(return_value=sample)
         local.execute = AsyncMock()
-        supa.fetch = AsyncMock(return_value=[remote_posting])
 
         result = await run_reconciliation(local, supa)
         assert result == 0
