@@ -109,7 +109,7 @@ class TaxonomyMaps:
         await asyncio.gather(
             self._load_location_names(local_pool),
             self._load_location_geo_types(local_pool),
-            self._load_company_info(local_pool, supa_pool),
+            self._load_company_info(local_pool),
             self._load_occupation_names(local_pool),
             self._load_occupation_ancestors(local_pool),
             self._load_seniority_names(local_pool),
@@ -140,24 +140,9 @@ class TaxonomyMaps:
         rows = await pool.fetch("SELECT id, type FROM location")
         self.location_types = {r["id"]: r["type"] for r in rows}
 
-    async def _load_company_info(
-        self,
-        local_pool: asyncpg.Pool,
-        supa_pool: asyncpg.Pool,
-    ) -> None:
-        """Load company info, preferring local Postgres (primary) with Supabase fallback."""
-        try:
-            rows = await local_pool.fetch("SELECT id, name, slug, icon FROM company")
-            if rows:
-                self.company_info = {
-                    r["id"]: {"name": r["name"], "slug": r["slug"], "icon": r.get("icon")}
-                    for r in rows
-                }
-                return
-        except Exception:
-            pass  # Table may not exist yet (pre-migration)
-        # Fallback to Supabase until migration is applied
-        rows = await supa_pool.fetch("SELECT id, name, slug, icon FROM company")
+    async def _load_company_info(self, pool: asyncpg.Pool) -> None:
+        """Load company info from local Postgres (source of truth)."""
+        rows = await pool.fetch("SELECT id, name, slug, icon FROM company")
         self.company_info = {
             r["id"]: {"name": r["name"], "slug": r["slug"], "icon": r.get("icon")} for r in rows
         }

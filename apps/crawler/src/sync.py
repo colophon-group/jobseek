@@ -790,6 +790,60 @@ async def _mirror_companies_to_local(
     log.info("sync.companies.mirrored_to_local", count=len(rows))
 
 
+async def _mirror_companies_to_supabase(
+    local_conn: asyncpg.Connection,
+    supa_conn: asyncpg.Connection,
+) -> None:
+    """Push all companies from local Postgres to Supabase.
+
+    Local is the source of truth. Uses ON CONFLICT (slug) since Supabase
+    may have rows with different UUIDs from before the migration. Updates
+    the Supabase row's id to match local so all references are consistent.
+    """
+    rows = await local_conn.fetch(
+        "SELECT id, slug, name, website, logo, icon, logo_type, "
+        "industry, employee_count_range, founded_year, extras "
+        "FROM company"
+    )
+    if not rows:
+        return
+
+    # Delete Supabase rows whose slug matches but UUID differs, then upsert
+    await supa_conn.execute(
+        "DELETE FROM company WHERE slug = ANY($1::text[]) AND id != ALL($2::uuid[])",
+        [r["slug"] for r in rows],
+        [r["id"] for r in rows],
+    )
+
+    await supa_conn.execute(
+        "INSERT INTO company (id, slug, name, website, logo, icon, logo_type, "
+        "industry, employee_count_range, founded_year, extras) "
+        "SELECT * FROM unnest($1::uuid[], $2::text[], $3::text[], $4::text[], "
+        "$5::text[], $6::text[], $7::text[], $8::smallint[], $9::smallint[], "
+        "$10::smallint[], $11::jsonb[]) "
+        "ON CONFLICT (id) DO UPDATE SET "
+        "slug = EXCLUDED.slug, name = EXCLUDED.name, "
+        "website = EXCLUDED.website, logo = EXCLUDED.logo, "
+        "icon = EXCLUDED.icon, logo_type = EXCLUDED.logo_type, "
+        "industry = EXCLUDED.industry, "
+        "employee_count_range = EXCLUDED.employee_count_range, "
+        "founded_year = EXCLUDED.founded_year, "
+        "extras = EXCLUDED.extras, updated_at = now()",
+        [r["id"] for r in rows],
+        [r["slug"] for r in rows],
+        [r["name"] for r in rows],
+        [r.get("website") for r in rows],
+        [r.get("logo") for r in rows],
+        [r.get("icon") for r in rows],
+        [r.get("logo_type") for r in rows],
+        [r.get("industry") for r in rows],
+        [r.get("employee_count_range") for r in rows],
+        [r.get("founded_year") for r in rows],
+        [r.get("extras") for r in rows],
+    )
+    log.info("sync.companies.mirrored_to_supabase", count=len(rows))
+
+
 async def sync_companies(conn: asyncpg.Connection, companies: pl.DataFrame, dry_run: bool) -> None:
     """Batch upsert companies."""
     if len(companies) == 0:
@@ -2155,14 +2209,20 @@ async def run_sync(dry_run: bool = False) -> None:
             await sync_technologies(supa_conn, technologies, dry_run)
             await sync_industries(supa_conn, industries, dry_run)
 
-            # Company data -> Supabase + local Postgres
-            await sync_companies(supa_conn, companies, dry_run)
-            await sync_company_descriptions(supa_conn, company_descs, dry_run)
-            # Mirror companies to local Postgres with Supabase UUIDs so
-            # job_posting.company_id references match.
+            # Company data: local Postgres is source of truth.
+            # 1. Bootstrap: align existing Supabase UUIDs into local
+            #    (historical company_ids reference Supabase UUIDs)
+            # 2. Apply CSV updates to local (new companies get local UUIDs)
+            # 3. Mirror local -> Supabase (display layer)
             if local_pool is not None and not dry_run:
                 async with local_pool.acquire() as lc:
                     await _mirror_companies_to_local(supa_conn, lc)
+                    await sync_companies(lc, companies, dry_run)
+                    await _mirror_companies_to_supabase(lc, supa_conn)
+            else:
+                # No local pool (dry_run or unreachable) — write to Supabase directly
+                await sync_companies(supa_conn, companies, dry_run)
+            await sync_company_descriptions(supa_conn, company_descs, dry_run)
 
             # Boards -> Supabase + local Postgres + Redis
             local_conn = None
