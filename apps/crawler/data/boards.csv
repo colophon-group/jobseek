@@ -2016,6 +2016,9 @@ integrafec,integrafec-greenhouse,https://job-boards.greenhouse.io/integra,greenh
 integral-services-gmbh,integral-services-gmbh-join,https://join.com/companies/integralde,join,"{""slug"": ""integralde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 integrated-specialty-coverages-llc,integrated-specialty-coverages-llc-greenhouse,https://job-boards.greenhouse.io/isccareers,greenhouse,"{""token"": ""isccareers""}",skip,
 integrity-rehab-group,integrity-rehab-group-greenhouse,https://job-boards.greenhouse.io/integrityrehabgroup,greenhouse,"{""token"": ""integrityrehabgroup""}",skip,
+intel,intel-careers,https://intel.wd1.myworkdayjobs.com/External,workday,,workday,
+intel,intel-careers-altera,https://altera.wd1.myworkdayjobs.com/Altera,workday,,workday,
+intel,intel-careers-mobileye,https://jobs.eu.lever.co/mobileye,lever,,skip,
 intellum-inc,intellum-inc-greenhouse,https://job-boards.greenhouse.io/intelluminc,greenhouse,"{""token"": ""intelluminc""}",skip,
 interactive-brokers,interactive-brokers-greenhouse,https://job-boards.greenhouse.io/ibkr,greenhouse,"{""token"": ""ibkr""}",skip,
 interactive-brokers-external,interactive-brokers-external-greenhouse,https://job-boards.greenhouse.io/ibkrexternal,greenhouse,"{""token"": ""ibkrexternal""}",skip,
