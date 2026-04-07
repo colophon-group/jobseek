@@ -572,7 +572,8 @@ class TestRunSync:
         # technologies/industries: called twice (supa + local) regardless
         assert mock_sync_technologies.call_count == 2
         assert mock_sync_industries.call_count == 2
-        mock_sync_companies.assert_called_once_with(mock_conn, companies_df, False)
+        # companies: called twice (supa + local)
+        assert mock_sync_companies.call_count == 2
         mock_sync_company_descriptions.assert_called_once_with(mock_conn, company_descs_df, False)
 
         # Boards: called with supa_conn + local_conn kwarg
