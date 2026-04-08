@@ -173,11 +173,14 @@ def _is_skip_no_scrape(metadata: dict, crawler_type: str | None = None) -> bool:
     scraper_type = metadata.get("scraper_type")
     if scraper_type == "skip":
         return True
-    if scraper_type is None and crawler_type:
+    # Normalize empty string (can come from Redis hash fields) to None so the
+    # implicit-rich branch only fires with a real crawler_type.
+    ct = crawler_type or None
+    if scraper_type is None and ct:
         # Import here to avoid the workspace._compat dependency at module load
         from src.workspace._compat import auto_skip_crawler_types
 
-        if crawler_type in auto_skip_crawler_types():
+        if ct in auto_skip_crawler_types():
             return True
     return False
 
