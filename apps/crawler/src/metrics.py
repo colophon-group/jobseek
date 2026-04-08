@@ -223,5 +223,28 @@ worker_heartbeat_ts = Gauge(
 )
 
 
+# Build info — emitted once at startup so Grafana can confirm which
+# ``apps/crawler/VERSION`` each container is running without SSH-ing in.
+# Use via: ``crawler_build_info{version="0.8.13"} 1``.
+build_info = Gauge(
+    "crawler_build_info",
+    "Crawler build info (always 1; inspect the ``version`` label).",
+    ["version"],
+)
+
+
+def _read_version() -> str:
+    """Read ``apps/crawler/VERSION`` relative to this module, or "unknown"."""
+    import pathlib
+
+    # src/metrics.py → src/../VERSION
+    version_file = pathlib.Path(__file__).resolve().parent.parent / "VERSION"
+    try:
+        return version_file.read_text().strip() or "unknown"
+    except OSError:
+        return "unknown"
+
+
 def start_metrics_server(port: int) -> None:
+    build_info.labels(version=_read_version()).set(1)
     start_http_server(port)

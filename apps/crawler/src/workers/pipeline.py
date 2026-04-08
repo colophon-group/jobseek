@@ -313,7 +313,8 @@ async def _process_scrape_work(
             except (json.JSONDecodeError, TypeError):
                 metadata = {}
 
-            scraper_type = metadata.get("scraper_type", board_config.get("crawler_type", "dom"))
+            crawler_type = board_config.get("crawler_type") or None
+            scraper_type = metadata.get("scraper_type") or crawler_type or "dom"
             scraper_config = metadata.get("scraper_config")
             if isinstance(scraper_config, str):
                 try:
@@ -321,10 +322,82 @@ async def _process_scrape_work(
                 except (json.JSONDecodeError, TypeError):
                     scraper_config = None
         else:
+            metadata = {}
+            crawler_type = None
             scraper_type = "dom"
             scraper_config = None
 
-        from src.processing.scrape import _process_one_scrape
+        from src.processing.scrape import (
+            _CLEAR_SCRAPE_FOR_RICH,
+            _RECORD_SCRAPE_FAILURE,
+            _is_skip_no_scrape,
+            _process_one_scrape,
+        )
+
+        async def _delete_scrape_hash() -> None:
+            try:
+                await r.delete(f"scrape:{posting_id}")
+            except Exception:
+                worker_log.warning("pipeline.scrape.scrape_hash_delete_failed", exc_info=True)
+
+        async def _drop_rich(reason: str) -> None:
+            """Rich-monitor path: scoped Postgres clear + drop Redis task.
+
+            Uses ``_CLEAR_SCRAPE_FOR_RICH`` which requires the board to
+            STILL be rich-no-scrape (race guard for config drift). Does
+            NOT reschedule in Redis — the claim already removed the task
+            from the per-domain ZSET, so returning drains one entry.
+            """
+            async with local_pool.acquire() as conn:
+                await conn.execute(_CLEAR_SCRAPE_FOR_RICH, [posting_id])
+            await _delete_scrape_hash()
+            tasks_total.labels(kind="scrape", status="skipped_rich").inc()
+            worker_log.info(
+                "pipeline.scrape.skipped_rich",
+                board_id=scrape_work.board_id,
+                reason=reason,
+            )
+
+        async def _fail_stale_task(reason: str) -> None:
+            """Fail-safe path: Redis board hash is missing or corrupt.
+
+            We don't know if the board is rich or not, so we can't use the
+            scoped rich clear (which would no-op on a non-rich board and
+            leave the posting re-claim looping). Instead we call
+            ``_RECORD_SCRAPE_FAILURE`` which pushes ``next_scrape_at``
+            forward via exponential backoff (30 m × 2^failures, NULL after
+            3 failures). If Redis is re-synced before backoff expires, the
+            next monitor cycle re-enqueues the posting with fresh config.
+            If not, the posting is eventually dropped from the Postgres
+            schedule anyway.
+            """
+            async with local_pool.acquire() as conn:
+                await conn.execute(_RECORD_SCRAPE_FAILURE, posting_id)
+            await _delete_scrape_hash()
+            tasks_total.labels(kind="scrape", status="stale_config").inc()
+            worker_log.warning(
+                "pipeline.scrape.stale_config",
+                board_id=scrape_work.board_id,
+                reason=reason,
+            )
+
+        # Defense in depth: rich monitors must never invoke the scraper
+        # pipeline. If a stale task (pre-fix data, drift, or a rich-monitor
+        # fallback) reaches this worker, clear the Postgres schedule and
+        # drop the Redis task without rescheduling so the loop drains.
+        if _is_skip_no_scrape(metadata, crawler_type):
+            await _drop_rich("rich monitor, no enrich")
+            return
+
+        # Fail-safe: an empty board config means Redis lost the board hash
+        # (eviction, missing sync). The legacy fallback used to pass
+        # ``crawler_type`` as the scraper name, raising ``KeyError`` for
+        # names like "greenhouse" that aren't registered scrapers. Fail
+        # the task softly so the worker doesn't crash AND doesn't wipe a
+        # legitimate schedule (critic-2 regression).
+        if not board_config:
+            await _fail_stale_task("missing board config in Redis")
+            return
 
         success, duration = await _process_one_scrape(
             item,

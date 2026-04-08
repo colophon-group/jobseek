@@ -40,6 +40,7 @@ from src.processing.scrape import (
     ScrapeItem,
     _apply_defaults,
     _board_has_enrich,
+    _is_skip_no_scrape,
     _PipelineResult,
 )
 from src.queries.monitor import (
@@ -137,9 +138,22 @@ async def _enqueue_scrapes_for_new(
     board_id: str,
     metadata: dict,
     board_log: structlog.stdlib.BoundLogger,
+    *,
+    crawler_type: str | None = None,
 ) -> None:
     """Enqueue scrapes for newly inserted postings into Redis."""
     if not posting_rows:
+        return
+    # Rich monitors provide full job data; never route them through the
+    # scrape pipeline or the placeholder ``skip`` scraper will fire.
+    # Pass ``crawler_type`` so implicit rich monitors (no explicit
+    # scraper_type but rich crawler_type) are caught too.
+    if _is_skip_no_scrape(metadata, crawler_type):
+        board_log.debug(
+            "batch.enqueue_scrape.skipped_rich",
+            count=len(posting_rows),
+            reason="rich monitor, no enrich",
+        )
         return
     scraper_type = metadata.get("scraper_type", "json-ld")
     scraper_config = metadata.get("scraper_config")
@@ -171,9 +185,20 @@ async def _enqueue_scrapes_for_relisted(
     board_id: str,
     metadata: dict,
     board_log: structlog.stdlib.BoundLogger,
+    *,
+    crawler_type: str | None = None,
 ) -> None:
     """Enqueue scrapes for relisted postings (came back after gone)."""
     if not relisted:
+        return
+    # Rich monitors provide full job data; never route them through the
+    # scrape pipeline or the placeholder ``skip`` scraper will fire.
+    if _is_skip_no_scrape(metadata, crawler_type):
+        board_log.debug(
+            "batch.enqueue_scrape.skipped_rich",
+            count=len(relisted),
+            reason="rich monitor, no enrich",
+        )
         return
     scraper_type = metadata.get("scraper_type", "json-ld")
     scraper_config = metadata.get("scraper_config")
@@ -494,6 +519,7 @@ async def _process_one_board_streaming(
                                     board_id,
                                     metadata,
                                     board_log,
+                                    crawler_type=crawler_type,
                                 )
 
                         # Update content for relisted and touched
@@ -574,19 +600,38 @@ async def _process_one_board_streaming(
 
                     # URL-only path -- insert stubs with next_scrape_at
                     if chunk_jobs is None and new_urls:
+                        # If a rich-monitor board falls into this path (e.g. an
+                        # API fallback that returns URLs only for a cycle), the
+                        # runtime ``is_rich_no_scrape`` flag is False because
+                        # ``is_rich`` is False. We need the metadata-level
+                        # classifier to catch it too — otherwise ``next_scrape_at``
+                        # gets set to now() and the posting re-enters the skip-
+                        # scraper loop.
+                        never_scrape = is_rich_no_scrape or _is_skip_no_scrape(
+                            metadata, crawler_type
+                        )
                         inserted = await conn.fetch(
                             _INSERT_URL_ONLY_JOBS,
                             company_id,
                             board_id,
                             new_urls,
+                            never_scrape,
                         )
                         board_log.info("batch.inserted_for_scrape", count=len(inserted))
-                        await _enqueue_scrapes_for_new(inserted, board_id, metadata, board_log)
+                        await _enqueue_scrapes_for_new(
+                            inserted, board_id, metadata, board_log, crawler_type=crawler_type
+                        )
 
                     # Enqueue scrapes for relisted jobs (came back after gone)
                     # Skip for rich monitors without enrichment — they already have full data
                     if not is_rich_no_scrape:
-                        await _enqueue_scrapes_for_relisted(relisted, board_id, metadata, board_log)
+                        await _enqueue_scrapes_for_relisted(
+                            relisted,
+                            board_id,
+                            metadata,
+                            board_log,
+                            crawler_type=crawler_type,
+                        )
 
             board_log.info(
                 "batch.monitor.stream_batch",
