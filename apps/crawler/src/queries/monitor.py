@@ -295,6 +295,7 @@ VALUES ($1, $2, $3, $4,
         $9, $10, $11, $12, $13,
         $14, $15, $16,
         $17, $18)
+ON CONFLICT (source_url) DO NOTHING
 RETURNING id
 """
 
@@ -315,6 +316,7 @@ VALUES ($1, $2, $3, $4,
         $9, $10, $11, $12, $13,
         $14, $15, $16,
         $17, $18)
+ON CONFLICT (source_url) DO NOTHING
 RETURNING id
 """
 
@@ -355,6 +357,7 @@ INSERT INTO job_posting (company_id, board_id, source_url,
 SELECT $1, $2, u.url, now(), now(), now(),
        true, '{}', '{}'
 FROM unnest($3::text[]) AS u(url)
+ON CONFLICT (source_url) DO NOTHING
 RETURNING id, source_url
 """
 

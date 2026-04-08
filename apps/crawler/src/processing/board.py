@@ -19,7 +19,12 @@ from src.core.enum_normalize import normalize_employment_type
 from src.core.monitors import api_monitor_types
 from src.core.scrapers import enrich_description
 from src.core.scrapers import scraper_needs_browser as _scraper_needs_browser
-from src.metrics import monitor_jobs_discovered, tasks_total
+from src.metrics import (
+    monitor_dedup_total,
+    monitor_jobs_discovered,
+    monitor_url_filtered_total,
+    tasks_total,
+)
 from src.processing.cpu import (
     BatchResult,
     JobCPUResult,
@@ -92,6 +97,43 @@ _API_MONITOR_TYPES = api_monitor_types()
 # Prevents huge first-time runs from timing out. Backfill completes incrementally.
 _SLOW_MONITOR_SECONDS = 30.0
 _SLOW_SCRAPE_SECONDS = 15.0
+
+
+# ── URL sanity check ─────────────────────────────────────────────────
+
+
+def _is_plausible_job_url(url: str, board_url: str | None = None) -> bool:
+    """Return True if *url* could plausibly identify an individual job posting.
+
+    Catches data-quality bugs where DOM-based monitors emit site-root or
+    navigation URLs (e.g. ``https://krb-sjobs.brassring.com/``, ``.../#``)
+    that every monitor run re-discovers and every insert then collides on
+    ``job_posting_source_url_key``. The filter is deliberately blunt:
+
+    - Reject URLs with no scheme or host.
+    - Reject bare-host URLs — empty or single-slash path.
+    - Reject URLs whose path equals the board's own homepage path (same
+      host + same path), which catches hash-only variants like ``.../#0``.
+    """
+    if not url:
+        return False
+    try:
+        p = urlparse(url)
+    except ValueError:
+        return False
+    if not p.scheme or not p.netloc:
+        return False
+    path = (p.path or "").rstrip("/")
+    if path in ("", "/"):
+        return False
+    if board_url:
+        try:
+            bp = urlparse(board_url)
+        except ValueError:
+            bp = None
+        if bp and bp.netloc == p.netloc and (bp.path or "").rstrip("/") == path:
+            return False
+    return True
 
 
 # ── Dataclasses ──────────────────────────────────────────────────────
@@ -304,6 +346,7 @@ async def _process_one_board_streaming(
         monitor_start_ts = await pool.fetchval("SELECT now()")
 
         total_discovered = 0
+        total_processed = 0
         total_new = 0
         total_relisted = 0
         batch_count = 0
@@ -321,20 +364,40 @@ async def _process_one_board_streaming(
             with contextlib.suppress(Exception):
                 await asyncio.shield(pool.execute(_EXTEND_BOARD_LEASE, board_id))
 
-            if not result.urls:
+            # Drop implausible URLs (site roots, bare-hash variants) before
+            # they reach _DIFF_BATCH. These otherwise collide on the
+            # job_posting.source_url unique index every monitor cycle.
+            filtered_urls = [u for u in result.urls if _is_plausible_job_url(u, board_url)]
+            n_dropped = len(result.urls) - len(filtered_urls)
+            if n_dropped:
+                monitor_url_filtered_total.labels(reason="implausible").inc(n_dropped)
+                board_log.info(
+                    "batch.monitor.url_filtered",
+                    reason="implausible",
+                    count=n_dropped,
+                )
+
+            if not filtered_urls:
                 continue
+            total_processed += len(filtered_urls)
+
+            filtered_jobs_by_url = (
+                {u: result.jobs_by_url[u] for u in filtered_urls if u in result.jobs_by_url}
+                if result.jobs_by_url is not None
+                else None
+            )
 
             # Sub-chunk large batches to keep _DIFF_BATCH within the
             # 60s asyncpg command_timeout (e.g. Amazon USA = 8,900 URLs).
             _DB_CHUNK = 500
-            all_urls = list(result.urls)
+            all_urls = filtered_urls
             all_new_urls: list[str] = []
 
             for _chunk_start in range(0, len(all_urls), _DB_CHUNK):
                 chunk_urls = all_urls[_chunk_start : _chunk_start + _DB_CHUNK]
                 chunk_jobs = (
-                    {u: result.jobs_by_url[u] for u in chunk_urls if u in result.jobs_by_url}
-                    if result.jobs_by_url is not None
+                    {u: filtered_jobs_by_url[u] for u in chunk_urls if u in filtered_jobs_by_url}
+                    if filtered_jobs_by_url is not None
                     else None
                 )
 
@@ -458,20 +521,32 @@ async def _process_one_board_streaming(
                             if await loc_resolver.backfill_misses():
                                 loc_resolver.drain_location_misses()
 
-                            # Batch insert all new jobs
+                            # Batch insert all new jobs. ON CONFLICT (source_url)
+                            # DO NOTHING means fetchrow returns None when the URL
+                            # already exists globally (e.g. the same Workday
+                            # tenant reached via a different board). We must pair
+                            # each r2_staging entry with its own insert outcome
+                            # in the same pass — a trailing zip would silently
+                            # misalign descriptions with posting ids when some
+                            # inserts no-op.
                             insert_sql = (
                                 _INSERT_RICH_JOB_ENRICH if enrich_fields else _INSERT_RICH_JOB
                             )
-                            inserted_ids = []
-                            for rec in records:
+                            inserted_rich: list[tuple[object, object, str]] = []
+                            for rec, (j, t_ids) in zip(records, r2_staging, strict=True):
                                 row = await conn.fetchrow(insert_sql, *rec)
-                                if row:
-                                    inserted_ids.append(str(row["id"]))
+                                if row is None:
+                                    monitor_dedup_total.labels(path="rich").inc()
+                                    board_log.info(
+                                        "batch.monitor.duplicate_source_url",
+                                        path="rich",
+                                        source_url=j.url,
+                                    )
+                                    continue
+                                inserted_rich.append((j, t_ids, str(row["id"])))
 
                             # Write descriptions for inserted jobs
-                            for (j, _t_ids), posting_id in zip(
-                                r2_staging, inserted_ids, strict=False
-                            ):
+                            for j, _t_ids, posting_id in inserted_rich:
                                 desc_html = _coerce_text(j.description)
                                 if desc_html:
                                     locale = _coerce_text(j.language) or "en"
@@ -484,10 +559,10 @@ async def _process_one_board_streaming(
                                     )
 
                             # Enqueue scrapes for rich jobs that need enrichment
-                            if enrich_fields and inserted_ids:
+                            if enrich_fields and inserted_rich:
                                 rich_rows = [
                                     {"id": pid, "source_url": j.url}
-                                    for (j, _), pid in zip(r2_staging, inserted_ids, strict=False)
+                                    for j, _t_ids, pid in inserted_rich
                                 ]
                                 await _enqueue_scrapes_for_new(
                                     rich_rows,
@@ -580,6 +655,17 @@ async def _process_one_board_streaming(
                             board_id,
                             new_urls,
                         )
+                        # _INSERT_URL_ONLY_JOBS uses ON CONFLICT (source_url)
+                        # DO NOTHING — some rows may silently no-op when the
+                        # same URL is already owned by another board.
+                        n_deduped = len(new_urls) - len(inserted)
+                        if n_deduped:
+                            monitor_dedup_total.labels(path="url_only").inc(n_deduped)
+                            board_log.info(
+                                "batch.monitor.duplicate_source_url",
+                                path="url_only",
+                                count=n_deduped,
+                            )
                         board_log.info("batch.inserted_for_scrape", count=len(inserted))
                         await _enqueue_scrapes_for_new(inserted, board_id, metadata, board_log)
 
@@ -596,10 +682,17 @@ async def _process_one_board_streaming(
             )
 
         # After all batches: mark gone postings
-        if total_discovered == 0:
-            # No URLs discovered at all (or all filtered out) -- treat as empty check
+        if total_processed == 0:
+            # Nothing reached _DIFF_BATCH — either the monitor yielded 0 URLs
+            # or every discovered URL was filtered out as implausible. Treat
+            # both as an empty check so we don't mark every active posting
+            # as gone based on a garbage-only run.
             elapsed = monotonic() - t0
-            board_log.warning("batch.monitor.empty", duration_s=round(elapsed, 2))
+            board_log.warning(
+                "batch.monitor.empty",
+                duration_s=round(elapsed, 2),
+                raw_discovered=total_discovered,
+            )
             async with pool.acquire() as conn:
                 rows = await conn.fetch(_RECORD_EMPTY_CHECK, board_id)
                 if rows and rows[0]["board_status"] == "gone":
@@ -631,6 +724,7 @@ async def _process_one_board_streaming(
         board_log.info(
             "batch.monitor.success",
             discovered=total_discovered,
+            processed=total_processed,
             new=total_new,
             relisted=total_relisted,
             gone=gone_count,

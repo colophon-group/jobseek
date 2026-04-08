@@ -9,6 +9,7 @@ from src.batch import (
     _BATCH_UPDATE_RICH_CONTENT,
     _CREATE_RICH_UPDATES_TEMP,
     _DELIST_BOARD_POSTINGS,
+    _DIFF_BATCH,
     _INSERT_RICH_JOB,
     _INSERT_RICH_JOB_ENRICH,
     _INSERT_URL_ONLY_JOBS,
@@ -549,6 +550,204 @@ class TestProcessOneBoard:
         await _process_one_board(board, pool, mock_http)
 
         mock_get_redis.assert_not_called()
+
+
+# ── TestIsPlausibleJobUrl ────────────────────────────────────────────
+
+
+class TestIsPlausibleJobUrl:
+    """Unit tests for the URL sanity check that drops site-root / bare-hash URLs."""
+
+    def setup_method(self):
+        from src.processing.board import _is_plausible_job_url
+
+        self.is_plausible = _is_plausible_job_url
+
+    def test_real_job_url_accepted(self):
+        assert self.is_plausible("https://example.com/jobs/engineer-123")
+
+    def test_real_job_url_with_query_accepted(self):
+        assert self.is_plausible("https://apply.example.com/index.php?ac=jobad&id=130858")
+
+    def test_bare_host_rejected(self):
+        assert not self.is_plausible("https://krb-sjobs.brassring.com")
+
+    def test_bare_host_with_slash_rejected(self):
+        assert not self.is_plausible("https://krb-sjobs.brassring.com/")
+
+    def test_bare_hash_rejected(self):
+        # Fragments are stripped by urlparse from path; path = "/" → rejected.
+        assert not self.is_plausible("https://krb-sjobs.brassring.com/#")
+
+    def test_hash_with_fragment_rejected(self):
+        assert not self.is_plausible("https://krb-sjobs.brassring.com/#0")
+
+    def test_matches_board_homepage_path_rejected(self):
+        assert not self.is_plausible(
+            "https://example.com/careers",
+            board_url="https://example.com/careers",
+        )
+
+    def test_matches_board_homepage_with_trailing_slash_rejected(self):
+        assert not self.is_plausible(
+            "https://example.com/careers/",
+            board_url="https://example.com/careers",
+        )
+
+    def test_different_host_accepted_even_when_path_matches(self):
+        assert self.is_plausible(
+            "https://jobs.example.com/careers",
+            board_url="https://example.com/careers",
+        )
+
+    def test_empty_string_rejected(self):
+        assert not self.is_plausible("")
+
+    def test_missing_scheme_rejected(self):
+        assert not self.is_plausible("example.com/jobs/123")
+
+    def test_invalid_url_rejected(self):
+        assert not self.is_plausible("not a url at all")
+
+
+# ── TestDuplicateSourceUrl ───────────────────────────────────────────
+
+
+class TestDuplicateSourceUrl:
+    """Fix for issue 02: duplicate source_url must not abort the batch."""
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_url_only_duplicate_skipped_by_on_conflict(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """URL-only batch where ON CONFLICT drops one of two rows still succeeds.
+
+        The monitor yields two new URLs. DIFF_BATCH reports both as new,
+        but _INSERT_URL_ONLY_JOBS returns only one row (the other was a
+        duplicate via another board and silently no-ops). The run must
+        complete without raising, and only the inserted row should get
+        enqueued for scraping.
+        """
+        pool, conn = mock_pool
+        url1 = "https://example.com/job/1"
+        url2 = "https://example.com/job/2"
+        mock_monitor.side_effect = _mock_stream(MonitorResult(urls={url1, url2}, jobs_by_url=None))
+        conn.fetch.side_effect = [
+            # 1. DIFF_BATCH -> both new
+            [_diff_row("new", url=url1), _diff_row("new", url=url2)],
+            # 2. INSERT_URL_ONLY_JOBS with ON CONFLICT -> only url1 inserted
+            [_inserted_row("jp-1", url1)],
+            # 3. MARK_GONE_BY_TIMESTAMP
+            [],
+        ]
+        board = _mock_board()
+
+        # Must not raise.
+        await _process_one_board(board, pool, mock_http)
+
+        # The INSERT call went through with both URLs in the payload.
+        insert_call = conn.fetch.await_args_list[1]
+        assert insert_call.args[0] == _INSERT_URL_ONLY_JOBS
+        assert set(insert_call.args[3]) == {url1, url2}
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_rich_duplicate_keeps_description_aligned(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """Rich-insert path: when the first fetchrow returns None (ON CONFLICT
+        no-op), the description UPSERT must be written against the SECOND
+        job's id, never the first's. This guards against the zip-misalignment
+        bug where dropping inserted_ids[0] silently shifted every description
+        by one row.
+        """
+        pool, conn = mock_pool
+        url1 = "https://example.com/job/1"
+        url2 = "https://example.com/job/2"
+        job1 = _discovered_job(url=url1, description="<p>Job one body</p>")
+        job2 = _discovered_job(url=url2, title="Designer", description="<p>Job two body</p>")
+        mock_monitor.side_effect = _mock_stream(
+            MonitorResult(urls={url1, url2}, jobs_by_url={url1: job1, url2: job2})
+        )
+        conn.fetch.return_value = [
+            _diff_row("new", url=url1),
+            _diff_row("new", url=url2),
+        ]
+
+        # First insert → conflict (None), second insert → success.
+        # DiscoveredJob sets don't preserve insertion order, so we have to
+        # key the fetchrow responses on the source_url that's in the record.
+        inserted_urls: list[str] = []
+
+        async def _fake_fetchrow(sql, *args):
+            # _INSERT_RICH_JOB uses $4 for source_url (1-indexed → args[3]).
+            source_url = args[3]
+            inserted_urls.append(source_url)
+            if len(inserted_urls) == 1:
+                return None  # duplicate collides via another board
+            return {"id": f"jp-for-{source_url}"}
+
+        conn.fetchrow.side_effect = _fake_fetchrow
+        board = _mock_board()
+
+        await _process_one_board(board, pool, mock_http)
+
+        # Two inserts were attempted, one no-op, one success.
+        assert len(inserted_urls) == 2
+        survivor = inserted_urls[1]
+
+        # The only description upsert should be against the surviving row's id.
+        desc_calls = [c for c in conn.execute.await_args_list if c.args[0] == _UPSERT_DESCRIPTION]
+        assert len(desc_calls) == 1, "exactly one description write expected"
+        assert desc_calls[0].args[1] == f"jp-for-{survivor}"
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_implausible_urls_filtered_before_insert(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """Site-root URL yielded by a DOM monitor is dropped pre-insert."""
+        pool, conn = mock_pool
+        garbage = "https://krb-sjobs.brassring.com/"
+        real = "https://krb-sjobs.brassring.com/TGnewUI/job/123"
+        mock_monitor.side_effect = _mock_stream(
+            MonitorResult(urls={garbage, real}, jobs_by_url=None)
+        )
+        conn.fetch.side_effect = [
+            [_diff_row("new", url=real)],
+            [_inserted_row("jp-1", real)],
+            [],  # MARK_GONE
+        ]
+        board = _mock_board(board_url="https://krb-sjobs.brassring.com/TGnewUI")
+
+        await _process_one_board(board, pool, mock_http)
+
+        # DIFF_BATCH should only see the real URL — garbage was filtered out.
+        diff_call = conn.fetch.await_args_list[0]
+        assert diff_call.args[0] == _DIFF_BATCH
+        assert garbage not in diff_call.args[1]
+        assert real in diff_call.args[1]
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_all_urls_filtered_treated_as_empty_check(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """If every URL is filtered out, fall back to the empty-check path
+        rather than running _MARK_GONE_BY_TIMESTAMP (which would wrongly
+        mark every active posting as gone)."""
+        pool, conn = mock_pool
+        garbage = "https://example.com/"
+        mock_monitor.side_effect = _mock_stream(MonitorResult(urls={garbage}, jobs_by_url=None))
+        conn.fetch.return_value = [{"board_status": "active"}]
+        board = _mock_board(board_url="https://example.com/careers")
+
+        await _process_one_board(board, pool, mock_http)
+
+        # Only _RECORD_EMPTY_CHECK was called — not _DIFF_BATCH or MARK_GONE.
+        assert conn.fetch.await_count == 1
+        conn.fetch.assert_awaited_with(_RECORD_EMPTY_CHECK, "board-1")
 
 
 # ── TestMonitorPipeline ──────────────────────────────────────────────

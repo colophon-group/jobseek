@@ -36,6 +36,18 @@ monitor_jobs_discovered = Counter(
     ["profile", "action"],
 )
 
+monitor_url_filtered_total = Counter(
+    "crawler_monitor_url_filtered_total",
+    "URLs dropped by monitor pre-insert sanity checks",
+    ["reason"],
+)
+
+monitor_dedup_total = Counter(
+    "crawler_monitor_dedup_total",
+    "Insert attempts silently skipped by ON CONFLICT (source_url) DO NOTHING",
+    ["path"],
+)
+
 monitor_idle_seconds = Counter(
     "crawler_monitor_idle_seconds_total",
     "Time workers spent idle (no work in queue)",
