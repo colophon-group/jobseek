@@ -213,16 +213,34 @@ relisted AS (
     AND job_posting.source_url = d.url
   RETURNING job_posting.id, job_posting.source_url, job_posting.description_r2_hash
 ),
+-- Cross-tenant URLs: the same source_url exists under another board
+-- (e.g. ByteDance/TikTok share jobs.bytedance.com, Glencore reaches
+-- GCAA's Workday tenant). Refresh the owning row's last_seen_at so
+-- _MARK_GONE_BY_TIMESTAMP on the OWNING board doesn't tombstone jobs
+-- that are still live via a secondary board. Excluded from new_urls
+-- below so we don't chase an impossible INSERT every cycle.
+foreign_touched AS (
+  UPDATE job_posting
+  SET last_seen_at = now()
+  FROM discovered d
+  WHERE job_posting.source_url = d.url
+    AND job_posting.board_id != $2
+    AND job_posting.is_active = true
+  RETURNING job_posting.id, job_posting.source_url
+),
 new_urls AS (
   SELECT d.url
   FROM discovered d
-  LEFT JOIN job_posting jp
-    ON jp.source_url = d.url AND jp.board_id = $2
-  WHERE jp.id IS NULL
+  WHERE NOT EXISTS (
+    SELECT 1 FROM job_posting jp
+    WHERE jp.source_url = d.url
+  )
 )
 SELECT 'touched' AS action, id::text, source_url AS url, description_r2_hash FROM touched
 UNION ALL
 SELECT 'relisted' AS action, id::text, source_url AS url, description_r2_hash FROM relisted
+UNION ALL
+SELECT 'foreign' AS action, id::text, source_url AS url, NULL::bigint FROM foreign_touched
 UNION ALL
 SELECT 'new', NULL, url, NULL::bigint FROM new_urls
 """

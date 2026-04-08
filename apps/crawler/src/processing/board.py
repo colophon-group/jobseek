@@ -102,38 +102,56 @@ _SLOW_SCRAPE_SECONDS = 15.0
 # ── URL sanity check ─────────────────────────────────────────────────
 
 
-def _is_plausible_job_url(url: str, board_url: str | None = None) -> bool:
-    """Return True if *url* could plausibly identify an individual job posting.
+def _classify_job_url(url: str, board_url: str | None = None) -> str | None:
+    """Return a rejection reason for *url*, or None if it looks plausible.
 
     Catches data-quality bugs where DOM-based monitors emit site-root or
     navigation URLs (e.g. ``https://krb-sjobs.brassring.com/``, ``.../#``)
     that every monitor run re-discovers and every insert then collides on
-    ``job_posting_source_url_key``. The filter is deliberately blunt:
+    ``job_posting_source_url_key``. Returning the reason (instead of a
+    plain bool) lets the caller break the dropped-URL counter down by
+    rule so a single noisy DOM monitor is easy to spot in Grafana.
 
-    - Reject URLs with no scheme or host.
-    - Reject bare-host URLs — empty or single-slash path.
-    - Reject URLs whose path equals the board's own homepage path (same
-      host + same path), which catches hash-only variants like ``.../#0``.
+    Rejection reasons (stable metric label values):
+
+    - ``"invalid"`` — empty, malformed, or missing scheme/host.
+    - ``"bare_host"`` — path is empty, ``/``, or a bare hash fragment.
+    - ``"board_homepage"`` — host matches the board's own host and the
+      path (after ``rstrip("/")``) equals the board's own path, which
+      catches hash-only variants like ``.../#0``. The rule is skipped
+      when the discovered URL carries a non-empty query string, since
+      query-keyed job URLs legitimately share the board's listing path
+      (e.g. Lufthansa's ``index.php?ac=jobad&id=...``).
     """
     if not url:
-        return False
+        return "invalid"
     try:
         p = urlparse(url)
     except ValueError:
-        return False
+        return "invalid"
     if not p.scheme or not p.netloc:
-        return False
+        return "invalid"
     path = (p.path or "").rstrip("/")
-    if path in ("", "/"):
-        return False
+    if not path:
+        return "bare_host"
     if board_url:
         try:
             bp = urlparse(board_url)
         except ValueError:
             bp = None
-        if bp and bp.netloc == p.netloc and (bp.path or "").rstrip("/") == path:
-            return False
-    return True
+        if (
+            bp
+            and bp.netloc.lower() == p.netloc.lower()
+            and (bp.path or "").rstrip("/") == path
+            and not p.query
+        ):
+            return "board_homepage"
+    return None
+
+
+def _is_plausible_job_url(url: str, board_url: str | None = None) -> bool:
+    """Thin bool wrapper around :func:`_classify_job_url` for readability."""
+    return _classify_job_url(url, board_url) is None
 
 
 # ── Dataclasses ──────────────────────────────────────────────────────
@@ -367,14 +385,20 @@ async def _process_one_board_streaming(
             # Drop implausible URLs (site roots, bare-hash variants) before
             # they reach _DIFF_BATCH. These otherwise collide on the
             # job_posting.source_url unique index every monitor cycle.
-            filtered_urls = [u for u in result.urls if _is_plausible_job_url(u, board_url)]
-            n_dropped = len(result.urls) - len(filtered_urls)
-            if n_dropped:
-                monitor_url_filtered_total.labels(reason="implausible").inc(n_dropped)
+            filtered_urls: list[str] = []
+            drop_reasons: dict[str, int] = {}
+            for u in result.urls:
+                reason = _classify_job_url(u, board_url)
+                if reason is None:
+                    filtered_urls.append(u)
+                else:
+                    drop_reasons[reason] = drop_reasons.get(reason, 0) + 1
+            for reason, count in drop_reasons.items():
+                monitor_url_filtered_total.labels(reason=reason).inc(count)
                 board_log.info(
                     "batch.monitor.url_filtered",
-                    reason="implausible",
-                    count=n_dropped,
+                    reason=reason,
+                    count=count,
                 )
 
             if not filtered_urls:
@@ -421,6 +445,7 @@ async def _process_one_board_streaming(
                     new_urls: list[str] = []
                     relisted: list[dict] = []
                     touched: list[dict] = []
+                    n_foreign = 0
 
                     for row in rows:
                         action = row["action"]
@@ -444,6 +469,19 @@ async def _process_one_board_streaming(
                                     "r2_hash": int(r2h) if r2h is not None else None,
                                 }
                             )
+                        elif action == "foreign":
+                            # Cross-tenant duplicate — the row is already
+                            # owned by another board and _DIFF_BATCH has
+                            # refreshed its last_seen_at. We don't insert
+                            # and don't enqueue; just count the signal.
+                            n_foreign += 1
+
+                    if n_foreign:
+                        monitor_dedup_total.labels(path="cross_board").inc(n_foreign)
+                        board_log.info(
+                            "batch.monitor.cross_board_duplicate",
+                            count=n_foreign,
+                        )
 
                     total_new += len(new_urls)
                     total_relisted += len(relisted)
@@ -522,28 +560,32 @@ async def _process_one_board_streaming(
                                 loc_resolver.drain_location_misses()
 
                             # Batch insert all new jobs. ON CONFLICT (source_url)
-                            # DO NOTHING means fetchrow returns None when the URL
-                            # already exists globally (e.g. the same Workday
-                            # tenant reached via a different board). We must pair
-                            # each r2_staging entry with its own insert outcome
-                            # in the same pass — a trailing zip would silently
-                            # misalign descriptions with posting ids when some
-                            # inserts no-op.
+                            # DO NOTHING is a belt-and-braces safety net for
+                            # the rare race where two workers running DIFF
+                            # concurrently both classify the same URL as new
+                            # (the bulk cross-tenant case is handled upstream
+                            # in _DIFF_BATCH.foreign_touched). We must pair
+                            # each r2_staging entry with its own insert
+                            # outcome in the same pass — a trailing zip would
+                            # silently misalign descriptions with posting ids.
                             insert_sql = (
                                 _INSERT_RICH_JOB_ENRICH if enrich_fields else _INSERT_RICH_JOB
                             )
                             inserted_rich: list[tuple[object, object, str]] = []
+                            n_rich_dedup = 0
                             for rec, (j, t_ids) in zip(records, r2_staging, strict=True):
                                 row = await conn.fetchrow(insert_sql, *rec)
                                 if row is None:
-                                    monitor_dedup_total.labels(path="rich").inc()
-                                    board_log.info(
-                                        "batch.monitor.duplicate_source_url",
-                                        path="rich",
-                                        source_url=j.url,
-                                    )
+                                    n_rich_dedup += 1
                                     continue
                                 inserted_rich.append((j, t_ids, str(row["id"])))
+                            if n_rich_dedup:
+                                monitor_dedup_total.labels(path="rich").inc(n_rich_dedup)
+                                board_log.info(
+                                    "batch.monitor.duplicate_source_url",
+                                    path="rich",
+                                    count=n_rich_dedup,
+                                )
 
                             # Write descriptions for inserted jobs
                             for j, _t_ids, posting_id in inserted_rich:
