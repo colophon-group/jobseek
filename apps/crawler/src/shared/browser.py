@@ -200,9 +200,18 @@ async def navigate(
         await page.goto(url, wait_until=wait_strategy, timeout=timeout)
         return
     except PlaywrightTimeoutError:
-        if not fallback_strategy or fallback_strategy == wait_strategy:
+        if not fallback_strategy:
+            # Board opted out via wait_fallback=None. Record separately from
+            # the match-primary case so operators can tell why the retry was
+            # skipped.
             metrics.browser_navigate_fallback_total.labels(
-                primary=wait_strategy, fallback="none", outcome="skipped"
+                primary=wait_strategy, fallback="none", outcome="disabled"
+            ).inc()
+            raise
+        if fallback_strategy == wait_strategy:
+            # Fallback equals primary — nothing to gain from a second attempt.
+            metrics.browser_navigate_fallback_total.labels(
+                primary=wait_strategy, fallback=fallback_strategy, outcome="match"
             ).inc()
             raise
 

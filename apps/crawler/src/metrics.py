@@ -226,6 +226,10 @@ worker_heartbeat_ts = Gauge(
 
 browser_navigate_fallback_total = Counter(
     "crawler_browser_navigate_fallback_total",
+    # Outcomes: success = fallback recovered the navigation; failed = fallback
+    # also timed out or errored; disabled = board opted out via
+    # wait_fallback=None; match = fallback strategy equals primary so no
+    # retry was attempted.
     "Browser navigate() fallback retries after primary wait-strategy timeout",
     ["primary", "fallback", "outcome"],
 )
