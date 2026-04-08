@@ -3467,6 +3467,7 @@ richemont,richemont-careers,https://careers.richemont.com/en/jobs/,dom,,json-ld,
 rigetti-computing,rigetti-computing-lever,https://jobs.lever.co/rigetti,lever,"{""token"": ""rigetti""}",skip,
 right-search,right-search-join,https://join.com/companies/right-search,join,"{""slug"": ""right-search""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 rigup,rigup-greenhouse,https://job-boards.greenhouse.io/rigup,greenhouse,"{""token"": ""rigup""}",skip,
+rillet,rillet-careers,https://jobs.ashbyhq.com/rillet,ashby,"{""token"": ""rillet""}",skip,
 riot-games,riot-games-greenhouse,https://job-boards.greenhouse.io/riotgames,greenhouse,"{""token"": ""riotgames""}",skip,
 ripple,ripple-careers,https://boards.greenhouse.io/ripple,greenhouse,"{""token"": ""ripple""}",skip,
 rise8,rise8-greenhouse,https://job-boards.greenhouse.io/rise8,greenhouse,"{""token"": ""rise8""}",skip,
