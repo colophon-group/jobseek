@@ -26,6 +26,7 @@ from urllib.parse import parse_qs, urlencode, urljoin, urlparse, urlunparse
 import structlog
 
 from src.core.monitors import DiscoveredJob, register
+from src.metrics import api_sniffer_fallback_failed_total
 from src.shared.api_sniff import (
     JOB_KEYWORDS,
     TITLE_FIELDS,
@@ -57,6 +58,23 @@ if TYPE_CHECKING:
 log = structlog.get_logger()
 
 MAX_ITEMS = 10_000
+
+
+class ApiSnifferFallbackError(RuntimeError):
+    """Raised when every replay path in ``_discover_replay`` has failed.
+
+    Propagates up through ``monitor_one`` → ``_process_one_board_streaming``
+    so the board-level ``_RECORD_FAILURE`` runs, incrementing
+    ``consecutive_failures`` and auto-disabling at 5.  Without this,
+    a persistently-broken sniffer board (e.g. expired CSOD JWT, geo-locked
+    DiDi, CSRF-protected Workday) would silently log an empty check each
+    cycle and never trip the disable threshold.
+    """
+
+    def __init__(self, message: str, *, board_url: str, api_url: str) -> None:
+        super().__init__(message)
+        self.board_url = board_url
+        self.api_url = api_url
 
 
 # ---------------------------------------------------------------------------
@@ -977,13 +995,39 @@ async def _discover_replay(
                 using_http = True
                 try:
                     data = await fetch_fn(method, api_url, headers, post_data)
-                except Exception:
-                    log.error("api_sniffer.http_fallback_failed", api_url=api_url, exc_info=True)
-                    return list() if fields_map else set()
+                except Exception as exc:
+                    # Every replay path has now failed: in-browser fetch, live-URL
+                    # rediscovery (if any), and HTTP fallback.  Propagate so the
+                    # board processor records a failure and the consecutive-failure
+                    # counter can trip the auto-disable at 5.
+                    log.warning(
+                        "api_sniffer.http_fallback_failed",
+                        api_url=api_url,
+                        board_url=board_url,
+                        exc_info=True,
+                    )
+                    api_sniffer_fallback_failed_total.labels(reason="http_fallback").inc()
+                    raise ApiSnifferFallbackError(
+                        f"api_sniffer fallback exhausted for {api_url}: {exc}",
+                        board_url=board_url,
+                        api_url=api_url,
+                    ) from exc
 
             if data is None:
-                log.error("api_sniffer.replay_failed", api_url=api_url, exc_info=True)
-                return list() if fields_map else set()
+                # Browser fetch returned None and no HTTP client was available
+                # (or the fallback path consumed the exception without data).
+                log.warning(
+                    "api_sniffer.replay_failed",
+                    api_url=api_url,
+                    board_url=board_url,
+                    exc_info=True,
+                )
+                api_sniffer_fallback_failed_total.labels(reason="replay_failed").inc()
+                raise ApiSnifferFallbackError(
+                    f"api_sniffer replay failed for {api_url} (no data returned)",
+                    board_url=board_url,
+                    api_url=api_url,
+                )
 
         # Decrypt encrypted response field
         decrypt_cfg = config.get("response_decrypt")

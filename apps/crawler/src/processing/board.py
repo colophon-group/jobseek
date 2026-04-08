@@ -960,7 +960,19 @@ async def dry_run_single_board(
     )
 
     # -- Monitor --
-    result = await _batch.monitor_one(board["board_url"], crawler_type, metadata, http, pw=pw)
+    # Catch failures (e.g. ApiSnifferFallbackError from a broken sniffer) so
+    # `crawler board <slug> --dry-run` reports a clean log line instead of
+    # exiting with an unhandled traceback that noises up agent troubleshooting.
+    try:
+        result = await _batch.monitor_one(board["board_url"], crawler_type, metadata, http, pw=pw)
+    except Exception as exc:
+        log.error(
+            "dry_run.monitor.failed",
+            board_slug=board_slug,
+            error=_error_message(exc),
+            exc_info=True,
+        )
+        return
 
     is_rich = result.jobs_by_url is not None
     log.info(
