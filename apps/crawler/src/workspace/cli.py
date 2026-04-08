@@ -75,8 +75,33 @@ class _WsGroup(click.Group):
             raise
 
 
+def _resolve_ws_version() -> str:
+    """Resolve the ``ws`` version from whichever package is installed.
+
+    Two distributions can ship this CLI:
+
+    - ``jobseek-crawler-setup`` — the slim wheel published to PyPI that
+      installs ``ws`` for end users / agents.
+    - ``jobseek-crawler`` — the full crawler package, only ever installed
+      as an editable dev install from ``apps/crawler``.
+
+    Both share the same ``VERSION`` file, so either lookup is correct.
+    Click's ``version_option(package_name=...)`` only accepts a single
+    name and raises ``RuntimeError`` if that package isn't installed,
+    which broke ``ws --version`` from a clean slim install.
+    """
+    from importlib.metadata import PackageNotFoundError, version
+
+    for pkg in ("jobseek-crawler-setup", "jobseek-crawler"):
+        try:
+            return version(pkg)
+        except PackageNotFoundError:
+            continue
+    return "unknown"
+
+
 @click.group(cls=_WsGroup)
-@click.version_option(package_name="jobseek-crawler")
+@click.version_option(version=_resolve_ws_version())
 def ws():
     """Workspace CLI for managing company additions."""
 

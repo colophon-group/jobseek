@@ -165,9 +165,10 @@ jobs:
         run: |
           /tmp/ws-smoke/bin/python apps/crawler/ws-package/smoketest.py
 
-      - name: ws --help works end-to-end
+      - name: ws --help / --version work end-to-end
         run: |
           /tmp/ws-smoke/bin/ws --help
+          /tmp/ws-smoke/bin/ws --version
 
   version-check:
     name: Version bump check

@@ -36,6 +36,7 @@ jobs:
           /tmp/ws-smoke/bin/pip install apps/crawler/ws-package/dist/*.whl
           /tmp/ws-smoke/bin/python apps/crawler/ws-package/smoketest.py
           /tmp/ws-smoke/bin/ws --help
+          /tmp/ws-smoke/bin/ws --version
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # release/v1
