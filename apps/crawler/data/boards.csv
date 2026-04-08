@@ -4585,6 +4585,7 @@ yousician,yousician-greenhouse,https://job-boards.greenhouse.io/yousician,greenh
 yttp,yttp-join,https://join.com/companies/yttpde,join,"{""slug"": ""yttpde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 yubico,yubico-careers,https://job-boards.greenhouse.io/yubico,greenhouse,"{""token"": ""yubico""}",skip,
 yugabytedb,yugabytedb-greenhouse,https://job-boards.greenhouse.io/yugabyte,greenhouse,"{""token"": ""yugabyte""}",skip,
+yuno,yuno-careers,https://jobs.lever.co/yuno,lever,"{""token"": ""yuno""}",skip,
 zalando,zalando-workday,https://zalando.wd3.myworkdayjobs.com/ZalandoSiteWD,workday,,,
 zam,zam-greenhouse,https://job-boards.greenhouse.io/zam,greenhouse,"{""token"": ""zam""}",skip,
 zapier,zapier-ashby,https://jobs.ashbyhq.com/zapier,ashby,"{""token"": ""zapier""}",skip,
