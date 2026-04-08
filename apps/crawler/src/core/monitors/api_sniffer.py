@@ -26,7 +26,23 @@ from urllib.parse import parse_qs, urlencode, urljoin, urlparse, urlunparse
 import structlog
 
 from src.core.monitors import DiscoveredJob, register
-from src.metrics import api_sniffer_fallback_failed_total
+
+try:
+    from src.metrics import api_sniffer_fallback_failed_total
+except ImportError:
+    # The slim ``jobseek-crawler-setup`` (ws CLI) wheel does not ship
+    # ``src/metrics.py``. Fall back to a no-op counter so this module
+    # stays importable from the ws install (which never scrapes
+    # Prometheus anyway).
+    class _NoopCounter:
+        def labels(self, **_kwargs):
+            return self
+
+        def inc(self, *_args, **_kwargs):
+            pass
+
+    api_sniffer_fallback_failed_total = _NoopCounter()  # type: ignore[assignment]
+
 from src.shared.api_sniff import (
     JOB_KEYWORDS,
     TITLE_FIELDS,

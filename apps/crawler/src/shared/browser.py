@@ -16,7 +16,25 @@ from contextlib import asynccontextmanager
 import structlog
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
-from src import metrics
+try:
+    from src import metrics
+except ImportError:
+    # The slim ``jobseek-crawler-setup`` (ws CLI) wheel does not ship
+    # ``src/metrics.py`` — it would pull in prometheus_client, which is
+    # unnecessary for workspace/config-time commands. Fall back to a
+    # no-op stub so this module stays importable from the ws install.
+    class _NoopMetric:
+        def labels(self, **_kwargs):
+            return self
+
+        def inc(self, *_args, **_kwargs):
+            pass
+
+    class _NoopMetricsModule:
+        def __getattr__(self, _name):
+            return _NoopMetric()
+
+    metrics = _NoopMetricsModule()  # type: ignore[assignment]
 
 log = structlog.get_logger()
 
