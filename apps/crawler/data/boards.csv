@@ -2423,6 +2423,7 @@ livescore-group,livescore-group-greenhouse,https://job-boards.greenhouse.io/live
 living-infinitely,living-infinitely-join,https://join.com/companies/livinginfinitelycom,join,"{""slug"": ""livinginfinitelycom""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 llamaindex,llamaindex-ashby,https://jobs.ashbyhq.com/llamaindex,ashby,"{""token"": ""llamaindex""}",skip,
 llr-partners,llr-partners-greenhouse,https://job-boards.greenhouse.io/llrpartnersjobs,greenhouse,"{""token"": ""llrpartnersjobs""}",skip,
+lmarena,lmarena-careers,https://jobs.ashbyhq.com/arena,ashby,"{""token"": ""arena""}",skip,
 lnfusedinnovations,lnfusedinnovations-recruitee,https://lnfusedinnovations.recruitee.com,recruitee,"{""token"": ""lnfusedinnovations""}",skip,
 loadsmart,loadsmart-lever,https://jobs.lever.co/loadsmart,lever,"{""token"": ""loadsmart""}",skip,
 lob,lob-greenhouse,https://job-boards.greenhouse.io/lob,greenhouse,"{""token"": ""lob""}",skip,
