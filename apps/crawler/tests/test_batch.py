@@ -9,6 +9,7 @@ from src.batch import (
     _BATCH_UPDATE_RICH_CONTENT,
     _CREATE_RICH_UPDATES_TEMP,
     _DELIST_BOARD_POSTINGS,
+    _DIFF_BATCH,
     _INSERT_RICH_JOB,
     _INSERT_RICH_JOB_ENRICH,
     _INSERT_URL_ONLY_JOBS,
@@ -265,6 +266,21 @@ def _mock_stream(*results):
             yield r
 
     return _gen
+
+
+def _counter_value(metric, **labels):
+    """Read a Prometheus counter's current value via the public collect() API.
+
+    Avoids reaching into ``counter._value.get()`` (private API that may
+    break across ``prometheus-client`` upgrades, and ``pyproject.toml``
+    only pins ``>=0.21``).
+    """
+    expected = labels
+    for family in metric.collect():
+        for sample in family.samples:
+            if sample.name.endswith("_total") and sample.labels == expected:
+                return sample.value
+    return 0.0
 
 
 # ── TestProcessOneBoard ──────────────────────────────────────────────
@@ -592,6 +608,484 @@ class TestProcessOneBoard:
         await _process_one_board(board, pool, mock_http)
 
         mock_get_redis.assert_not_called()
+
+
+# ── TestIsPlausibleJobUrl ────────────────────────────────────────────
+
+
+class TestIsPlausibleJobUrl:
+    """Unit tests for the URL sanity check that drops site-root / bare-hash URLs."""
+
+    def setup_method(self):
+        from src.processing.board import _is_plausible_job_url
+
+        self.is_plausible = _is_plausible_job_url
+
+    def test_real_job_url_accepted(self):
+        assert self.is_plausible("https://example.com/jobs/engineer-123")
+
+    def test_real_job_url_with_query_accepted(self):
+        assert self.is_plausible("https://apply.example.com/index.php?ac=jobad&id=130858")
+
+    def test_bare_host_rejected(self):
+        assert not self.is_plausible("https://krb-sjobs.brassring.com")
+
+    def test_bare_host_with_slash_rejected(self):
+        assert not self.is_plausible("https://krb-sjobs.brassring.com/")
+
+    def test_bare_hash_rejected(self):
+        # Fragments are stripped by urlparse from path; path = "/" → rejected.
+        assert not self.is_plausible("https://krb-sjobs.brassring.com/#")
+
+    def test_hash_with_fragment_rejected(self):
+        assert not self.is_plausible("https://krb-sjobs.brassring.com/#0")
+
+    def test_matches_board_homepage_path_rejected(self):
+        assert not self.is_plausible(
+            "https://example.com/careers",
+            board_url="https://example.com/careers",
+        )
+
+    def test_matches_board_homepage_with_trailing_slash_rejected(self):
+        assert not self.is_plausible(
+            "https://example.com/careers/",
+            board_url="https://example.com/careers",
+        )
+
+    def test_different_host_accepted_even_when_path_matches(self):
+        assert self.is_plausible(
+            "https://jobs.example.com/careers",
+            board_url="https://example.com/careers",
+        )
+
+    def test_empty_string_rejected(self):
+        assert not self.is_plausible("")
+
+    def test_missing_scheme_rejected(self):
+        assert not self.is_plausible("example.com/jobs/123")
+
+    def test_invalid_url_rejected(self):
+        assert not self.is_plausible("not a url at all")
+
+    def test_case_insensitive_host_match(self):
+        # Upper/lower mismatch in host must still trigger the homepage-path
+        # rejection; real DOM extractors sometimes emit mixed-case hosts.
+        assert not self.is_plausible(
+            "https://Example.COM/careers",
+            board_url="https://example.com/careers",
+        )
+
+    def test_query_string_on_board_path_accepted(self):
+        # Query-keyed job URLs that share the board's own listing path
+        # (e.g. Lufthansa ``index.php?ac=jobad&id=...``) must NOT be rejected.
+        assert self.is_plausible(
+            "https://apply.example.com/index.php?ac=jobad&id=130858",
+            board_url="https://apply.example.com/index.php?ac=joblist",
+        )
+
+    def test_mailto_scheme_rejected(self):
+        assert not self.is_plausible("mailto:jobs@example.com")
+
+
+# ── TestClassifyJobUrl ───────────────────────────────────────────────
+
+
+class TestClassifyJobUrl:
+    """Reason codes feed the ``monitor_url_filtered_total`` Prometheus label,
+    so their exact string values are a contract."""
+
+    def setup_method(self):
+        from src.processing.board import _classify_job_url
+
+        self.classify = _classify_job_url
+
+    def test_plausible_returns_none(self):
+        assert self.classify("https://example.com/jobs/123") is None
+
+    def test_invalid_reason(self):
+        assert self.classify("") == "invalid"
+        assert self.classify("not-a-url") == "invalid"
+
+    def test_bare_host_reason(self):
+        assert self.classify("https://example.com/") == "bare_host"
+        assert self.classify("https://example.com/#0") == "bare_host"
+
+    def test_board_homepage_reason(self):
+        assert (
+            self.classify(
+                "https://example.com/careers",
+                board_url="https://example.com/careers",
+            )
+            == "board_homepage"
+        )
+
+
+# ── TestInsertSqlContract ────────────────────────────────────────────
+
+
+class TestInsertSqlContract:
+    """String-level pins on the SQL constants so refactors can't silently
+    drop the duplicate-handling clauses without triggering a test failure.
+    Mock-based integration tests exercise the Python branches but never
+    run the actual SQL — these pins are the only layer that catches
+    'someone deleted ON CONFLICT from _INSERT_RICH_JOB_ENRICH' in CI."""
+
+    def test_insert_rich_job_has_on_conflict(self):
+        assert "ON CONFLICT (source_url) DO NOTHING" in _INSERT_RICH_JOB
+
+    def test_insert_rich_job_enrich_has_on_conflict(self):
+        assert "ON CONFLICT (source_url) DO NOTHING" in _INSERT_RICH_JOB_ENRICH
+
+    def test_insert_url_only_jobs_has_on_conflict(self):
+        assert "ON CONFLICT (source_url) DO NOTHING" in _INSERT_URL_ONLY_JOBS
+
+    def test_diff_batch_has_foreign_touched_cte(self):
+        # Pin the cross-board handling added in the follow-up commit:
+        # without these clauses, the infinite-retry loop and the
+        # last_seen_at ghost-tombstoning both come back.
+        assert "foreign_touched" in _DIFF_BATCH
+        assert "board_id != $2" in _DIFF_BATCH
+        # new_urls must check "any board", not "this board only".
+        assert "NOT EXISTS" in _DIFF_BATCH
+
+
+# ── TestDuplicateSourceUrl ───────────────────────────────────────────
+
+
+class TestDuplicateSourceUrl:
+    """Fix for issue 02: duplicate source_url must not abort the batch."""
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_url_only_duplicate_skipped_by_on_conflict(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """URL-only batch where ON CONFLICT drops one of two rows still succeeds.
+
+        The monitor yields two new URLs. DIFF_BATCH reports both as new,
+        but _INSERT_URL_ONLY_JOBS returns only one row (the other was a
+        duplicate via another board and silently no-ops). The run must
+        complete without raising, and only the inserted row should get
+        enqueued for scraping.
+        """
+        pool, conn = mock_pool
+        url1 = "https://example.com/job/1"
+        url2 = "https://example.com/job/2"
+        mock_monitor.side_effect = _mock_stream(MonitorResult(urls={url1, url2}, jobs_by_url=None))
+        conn.fetch.side_effect = [
+            # 1. DIFF_BATCH -> both new
+            [_diff_row("new", url=url1), _diff_row("new", url=url2)],
+            # 2. INSERT_URL_ONLY_JOBS with ON CONFLICT -> only url1 inserted
+            [_inserted_row("jp-1", url1)],
+            # 3. MARK_GONE_BY_TIMESTAMP
+            [],
+        ]
+        board = _mock_board()
+
+        # Must not raise.
+        await _process_one_board(board, pool, mock_http)
+
+        # The INSERT call went through with both URLs in the payload.
+        insert_call = conn.fetch.await_args_list[1]
+        assert insert_call.args[0] == _INSERT_URL_ONLY_JOBS
+        assert set(insert_call.args[3]) == {url1, url2}
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_rich_duplicate_keeps_description_aligned(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """Rich-insert path: when the first fetchrow returns None (ON CONFLICT
+        no-op), the description UPSERT must be written against the SECOND
+        job's id AND carry the SECOND job's body — never the first's. This
+        guards against the zip-misalignment bug where dropping inserted_ids[0]
+        silently shifted every description by one row.
+        """
+        pool, conn = mock_pool
+        url1 = "https://example.com/job/1"
+        url2 = "https://example.com/job/2"
+        job1 = _discovered_job(url=url1, description="<p>Job one body</p>")
+        job2 = _discovered_job(url=url2, title="Designer", description="<p>Job two body</p>")
+        mock_monitor.side_effect = _mock_stream(
+            MonitorResult(urls={url1, url2}, jobs_by_url={url1: job1, url2: job2})
+        )
+        conn.fetch.side_effect = [
+            # 1. DIFF_BATCH -> both new
+            [_diff_row("new", url=url1), _diff_row("new", url=url2)],
+            # 2. MARK_GONE_BY_TIMESTAMP
+            [],
+        ]
+
+        # First insert → conflict (None), second insert → success.
+        # DiscoveredJob sets don't preserve insertion order, so we have to
+        # key the fetchrow responses on the source_url that's in the record.
+        insert_order: list[str] = []
+
+        async def _fake_fetchrow(sql, *args):
+            # _INSERT_RICH_JOB uses $4 for source_url (1-indexed → args[3]).
+            source_url = args[3]
+            insert_order.append(source_url)
+            if len(insert_order) == 1:
+                return None  # duplicate collides via another board
+            return {"id": f"jp-for-{source_url}"}
+
+        conn.fetchrow.side_effect = _fake_fetchrow
+        board = _mock_board()
+
+        await _process_one_board(board, pool, mock_http)
+
+        # Two inserts attempted, first no-op, second success.
+        assert len(insert_order) == 2
+        survivor_url = insert_order[1]
+        survivor_body = "<p>Job one body</p>" if survivor_url == url1 else "<p>Job two body</p>"
+
+        # Exactly one description upsert, and it must be BOTH
+        # (a) targeting the surviving row's id, AND
+        # (b) carrying the surviving job's description body.
+        # Asserting only (a) is insufficient — with the pre-fix
+        # zip(r2_staging, inserted_ids, strict=False), the id column would
+        # still match since there's only ever one surviving id, but the
+        # description body would belong to job1. Asserting (b) catches that.
+        desc_calls = [c for c in conn.execute.await_args_list if c.args[0] == _UPSERT_DESCRIPTION]
+        assert len(desc_calls) == 1, "exactly one description write expected"
+        assert desc_calls[0].args[1] == f"jp-for-{survivor_url}"
+        assert desc_calls[0].args[3] == survivor_body, (
+            f"description body should belong to {survivor_url} but got {desc_calls[0].args[3]!r}"
+        )
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_implausible_urls_filtered_before_insert(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """Site-root URL yielded by a DOM monitor is dropped pre-insert."""
+        pool, conn = mock_pool
+        garbage = "https://krb-sjobs.brassring.com/"
+        real = "https://krb-sjobs.brassring.com/TGnewUI/job/123"
+        mock_monitor.side_effect = _mock_stream(
+            MonitorResult(urls={garbage, real}, jobs_by_url=None)
+        )
+        conn.fetch.side_effect = [
+            [_diff_row("new", url=real)],
+            [_inserted_row("jp-1", real)],
+            [],  # MARK_GONE
+        ]
+        board = _mock_board(board_url="https://krb-sjobs.brassring.com/TGnewUI")
+
+        await _process_one_board(board, pool, mock_http)
+
+        # DIFF_BATCH should only see the real URL — garbage was filtered out.
+        diff_call = conn.fetch.await_args_list[0]
+        assert diff_call.args[0] == _DIFF_BATCH
+        assert garbage not in diff_call.args[1]
+        assert real in diff_call.args[1]
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_all_urls_filtered_treated_as_empty_check(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """If every URL is filtered out, fall back to the empty-check path
+        rather than running _MARK_GONE_BY_TIMESTAMP (which would wrongly
+        mark every active posting as gone)."""
+        pool, conn = mock_pool
+        garbage = "https://example.com/"
+        mock_monitor.side_effect = _mock_stream(MonitorResult(urls={garbage}, jobs_by_url=None))
+        conn.fetch.return_value = [{"board_status": "active"}]
+        board = _mock_board(board_url="https://example.com/careers")
+
+        await _process_one_board(board, pool, mock_http)
+
+        # Only _RECORD_EMPTY_CHECK was called — not _DIFF_BATCH or MARK_GONE.
+        assert conn.fetch.await_count == 1
+        conn.fetch.assert_awaited_with(_RECORD_EMPTY_CHECK, "board-1")
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_rich_duplicate_uses_enrich_insert_when_enrich_configured(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """ON CONFLICT must also apply to the ENRICH insert variant — a
+        regression here would re-introduce crashes for boards that have
+        scraper_config.enrich set (the common Workday-plus-description case).
+        """
+        pool, conn = mock_pool
+        url1 = "https://example.com/job/1"
+        job1 = _discovered_job(url=url1, description="<p>body</p>")
+        mock_monitor.side_effect = _mock_stream(
+            MonitorResult(urls={url1}, jobs_by_url={url1: job1})
+        )
+        conn.fetch.side_effect = [
+            [_diff_row("new", url=url1)],
+            [],  # MARK_GONE
+        ]
+        conn.fetchrow.return_value = None  # simulate global conflict
+        board = _mock_board(metadata={"scraper_config": {"enrich": ["description"]}})
+
+        await _process_one_board(board, pool, mock_http)
+
+        # Selected the ENRICH variant (not the base _INSERT_RICH_JOB).
+        insert_sqls = [c.args[0] for c in conn.fetchrow.await_args_list]
+        assert _INSERT_RICH_JOB_ENRICH in insert_sqls
+        assert _INSERT_RICH_JOB not in insert_sqls
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_rich_all_inserts_conflict_no_crash(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """All-rows-deduped edge case: every fetchrow returns None. The loop
+        must complete, no description upserts should fire, and nothing
+        should be enqueued for scraping."""
+        import src.processing.board as board_mod
+        from src.metrics import monitor_dedup_total
+
+        pool, conn = mock_pool
+        url1 = "https://example.com/job/1"
+        url2 = "https://example.com/job/2"
+        mock_monitor.side_effect = _mock_stream(
+            MonitorResult(
+                urls={url1, url2},
+                jobs_by_url={
+                    url1: _discovered_job(url=url1),
+                    url2: _discovered_job(url=url2),
+                },
+            )
+        )
+        conn.fetch.side_effect = [
+            [_diff_row("new", url=url1), _diff_row("new", url=url2)],
+            [],  # MARK_GONE
+        ]
+        conn.fetchrow.return_value = None  # every insert conflicts
+        board = _mock_board()
+
+        # Ensure the label set is registered before we read it.
+        monitor_dedup_total.labels(path="rich")
+        before = _counter_value(monitor_dedup_total, path="rich")
+        enqueue_spy = board_mod._enqueue_scrapes_for_new
+        enqueue_spy.reset_mock()
+
+        await _process_one_board(board, pool, mock_http)
+
+        # No descriptions written.
+        desc_calls = [c for c in conn.execute.await_args_list if c.args[0] == _UPSERT_DESCRIPTION]
+        assert len(desc_calls) == 0
+        # Dedup counter bumped by exactly two.
+        assert _counter_value(monitor_dedup_total, path="rich") - before == 2
+        # Nothing enqueued for scraping (the board has no enrich, so the
+        # enqueue branch wouldn't fire anyway; this is just belt-and-braces).
+        enqueue_spy.assert_not_awaited()
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_rich_enrich_all_inserts_conflict_does_not_enqueue(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """Enrich path + all-conflict: the `if enrich_fields and inserted_rich`
+        branch must NOT fire, so no deduped URLs leak into the scrape queue.
+        This is the branch the base all-conflict test can't reach."""
+        import src.processing.board as board_mod
+
+        pool, conn = mock_pool
+        url1 = "https://example.com/job/1"
+        mock_monitor.side_effect = _mock_stream(
+            MonitorResult(urls={url1}, jobs_by_url={url1: _discovered_job(url=url1)})
+        )
+        conn.fetch.side_effect = [
+            [_diff_row("new", url=url1)],
+            [],  # MARK_GONE
+        ]
+        conn.fetchrow.return_value = None  # conflict
+        board = _mock_board(metadata={"scraper_config": {"enrich": ["description"]}})
+
+        enqueue_spy = board_mod._enqueue_scrapes_for_new
+        enqueue_spy.reset_mock()
+
+        await _process_one_board(board, pool, mock_http)
+
+        # The enrich-path enqueue branch must not fire when every insert
+        # conflicted — nothing to enrich, nothing to scrape.
+        enqueue_spy.assert_not_awaited()
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_url_only_dedup_does_not_enqueue_scrape(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """Silent behaviour contract: when _INSERT_URL_ONLY_JOBS drops a row
+        via ON CONFLICT, that URL must NOT be enqueued for scraping. Only
+        the surviving inserted row should be passed to
+        _enqueue_scrapes_for_new."""
+        import src.processing.board as board_mod
+
+        pool, conn = mock_pool
+        url1 = "https://example.com/job/1"
+        url2 = "https://example.com/job/2"
+        mock_monitor.side_effect = _mock_stream(MonitorResult(urls={url1, url2}, jobs_by_url=None))
+        conn.fetch.side_effect = [
+            [_diff_row("new", url=url1), _diff_row("new", url=url2)],
+            [_inserted_row("jp-1", url1)],  # only url1 survives ON CONFLICT
+            [],  # MARK_GONE
+        ]
+
+        # _enqueue_scrapes_for_new is already AsyncMock() via the autouse
+        # _mock_enqueue_scrapes fixture; inspect its calls directly.
+        enqueue_spy = board_mod._enqueue_scrapes_for_new
+        enqueue_spy.reset_mock()
+        board = _mock_board()
+
+        await _process_one_board(board, pool, mock_http)
+
+        # Called once with the survivor list — NOT with url2.
+        assert enqueue_spy.await_count == 1
+        passed_rows = enqueue_spy.await_args.args[0]
+        passed_urls = {r["source_url"] for r in passed_rows}
+        assert passed_urls == {url1}, f"deduped url2 leaked into scrape queue: {passed_urls}"
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_foreign_action_does_not_insert_or_enqueue(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """_DIFF_BATCH can emit the ``foreign`` action when the URL is
+        already owned by another board (cross-tenant Workday etc.). The
+        application layer must:
+        - NOT call _INSERT_URL_ONLY_JOBS or _INSERT_RICH_JOB for it
+        - NOT enqueue it for scraping
+        - bump monitor_dedup_total{path="cross_board"}
+        The owning row's last_seen_at is refreshed inside _DIFF_BATCH
+        itself, so nothing else is needed from the Python side.
+        """
+        import src.processing.board as board_mod
+        from src.metrics import monitor_dedup_total
+
+        pool, conn = mock_pool
+        foreign = "https://jobs.example.com/foreign/role"
+        mock_monitor.side_effect = _mock_stream(MonitorResult(urls={foreign}, jobs_by_url=None))
+        conn.fetch.side_effect = [
+            [_diff_row("foreign", url=foreign)],
+            [],  # MARK_GONE
+        ]
+
+        enqueue_spy = board_mod._enqueue_scrapes_for_new
+        enqueue_spy.reset_mock()
+        # Ensure label set is registered before reading.
+        monitor_dedup_total.labels(path="cross_board")
+        before = _counter_value(monitor_dedup_total, path="cross_board")
+        board = _mock_board()
+
+        await _process_one_board(board, pool, mock_http)
+
+        # No insert attempted (neither URL-only nor rich).
+        for call in conn.fetch.await_args_list:
+            assert call.args[0] != _INSERT_URL_ONLY_JOBS
+        conn.fetchrow.assert_not_awaited()
+
+        # Nothing enqueued for scraping.
+        enqueue_spy.assert_not_awaited()
+
+        # Metric contract: cross-board dedup counter bumped exactly once.
+        assert _counter_value(monitor_dedup_total, path="cross_board") - before == 1
 
 
 # ── TestMonitorPipeline ──────────────────────────────────────────────

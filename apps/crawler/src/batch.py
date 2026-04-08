@@ -115,7 +115,6 @@ from src.queries.monitor import (  # noqa: F401
     _DELIST_THRESHOLD_AUTHORITATIVE,
     _DELIST_THRESHOLD_FRAGILE,
     _DIFF_BATCH,
-    _DIFF_URLS,
     _EXTEND_BOARD_LEASE,
     _FETCH_DUE_BOARDS,
     _INSERT_RICH_JOB,

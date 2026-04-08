@@ -19,7 +19,12 @@ from src.core.enum_normalize import normalize_employment_type
 from src.core.monitors import api_monitor_types
 from src.core.scrapers import enrich_description
 from src.core.scrapers import scraper_needs_browser as _scraper_needs_browser
-from src.metrics import monitor_jobs_discovered, tasks_total
+from src.metrics import (
+    monitor_dedup_total,
+    monitor_jobs_discovered,
+    monitor_url_filtered_total,
+    tasks_total,
+)
 from src.processing.cpu import (
     BatchResult,
     JobCPUResult,
@@ -93,6 +98,61 @@ _API_MONITOR_TYPES = api_monitor_types()
 # Prevents huge first-time runs from timing out. Backfill completes incrementally.
 _SLOW_MONITOR_SECONDS = 30.0
 _SLOW_SCRAPE_SECONDS = 15.0
+
+
+# ── URL sanity check ─────────────────────────────────────────────────
+
+
+def _classify_job_url(url: str, board_url: str | None = None) -> str | None:
+    """Return a rejection reason for *url*, or None if it looks plausible.
+
+    Catches data-quality bugs where DOM-based monitors emit site-root or
+    navigation URLs (e.g. ``https://krb-sjobs.brassring.com/``, ``.../#``)
+    that every monitor run re-discovers and every insert then collides on
+    ``job_posting_source_url_key``. Returning the reason (instead of a
+    plain bool) lets the caller break the dropped-URL counter down by
+    rule so a single noisy DOM monitor is easy to spot in Grafana.
+
+    Rejection reasons (stable metric label values):
+
+    - ``"invalid"`` — empty, malformed, or missing scheme/host.
+    - ``"bare_host"`` — path is empty, ``/``, or a bare hash fragment.
+    - ``"board_homepage"`` — host matches the board's own host and the
+      path (after ``rstrip("/")``) equals the board's own path, which
+      catches hash-only variants like ``.../#0``. The rule is skipped
+      when the discovered URL carries a non-empty query string, since
+      query-keyed job URLs legitimately share the board's listing path
+      (e.g. Lufthansa's ``index.php?ac=jobad&id=...``).
+    """
+    if not url:
+        return "invalid"
+    try:
+        p = urlparse(url)
+    except ValueError:
+        return "invalid"
+    if not p.scheme or not p.netloc:
+        return "invalid"
+    path = (p.path or "").rstrip("/")
+    if not path:
+        return "bare_host"
+    if board_url:
+        try:
+            bp = urlparse(board_url)
+        except ValueError:
+            bp = None
+        if (
+            bp
+            and bp.netloc.lower() == p.netloc.lower()
+            and (bp.path or "").rstrip("/") == path
+            and not p.query
+        ):
+            return "board_homepage"
+    return None
+
+
+def _is_plausible_job_url(url: str, board_url: str | None = None) -> bool:
+    """Thin bool wrapper around :func:`_classify_job_url` for readability."""
+    return _classify_job_url(url, board_url) is None
 
 
 # ── Dataclasses ──────────────────────────────────────────────────────
@@ -329,6 +389,7 @@ async def _process_one_board_streaming(
         monitor_start_ts = await pool.fetchval("SELECT now()")
 
         total_discovered = 0
+        total_processed = 0
         total_new = 0
         total_relisted = 0
         batch_count = 0
@@ -346,20 +407,46 @@ async def _process_one_board_streaming(
             with contextlib.suppress(Exception):
                 await asyncio.shield(pool.execute(_EXTEND_BOARD_LEASE, board_id))
 
-            if not result.urls:
+            # Drop implausible URLs (site roots, bare-hash variants) before
+            # they reach _DIFF_BATCH. These otherwise collide on the
+            # job_posting.source_url unique index every monitor cycle.
+            filtered_urls: list[str] = []
+            drop_reasons: dict[str, int] = {}
+            for u in result.urls:
+                reason = _classify_job_url(u, board_url)
+                if reason is None:
+                    filtered_urls.append(u)
+                else:
+                    drop_reasons[reason] = drop_reasons.get(reason, 0) + 1
+            for reason, count in drop_reasons.items():
+                monitor_url_filtered_total.labels(reason=reason).inc(count)
+                board_log.info(
+                    "batch.monitor.url_filtered",
+                    reason=reason,
+                    count=count,
+                )
+
+            if not filtered_urls:
                 continue
+            total_processed += len(filtered_urls)
+
+            filtered_jobs_by_url = (
+                {u: result.jobs_by_url[u] for u in filtered_urls if u in result.jobs_by_url}
+                if result.jobs_by_url is not None
+                else None
+            )
 
             # Sub-chunk large batches to keep _DIFF_BATCH within the
             # 60s asyncpg command_timeout (e.g. Amazon USA = 8,900 URLs).
             _DB_CHUNK = 500
-            all_urls = list(result.urls)
+            all_urls = filtered_urls
             all_new_urls: list[str] = []
 
             for _chunk_start in range(0, len(all_urls), _DB_CHUNK):
                 chunk_urls = all_urls[_chunk_start : _chunk_start + _DB_CHUNK]
                 chunk_jobs = (
-                    {u: result.jobs_by_url[u] for u in chunk_urls if u in result.jobs_by_url}
-                    if result.jobs_by_url is not None
+                    {u: filtered_jobs_by_url[u] for u in chunk_urls if u in filtered_jobs_by_url}
+                    if filtered_jobs_by_url is not None
                     else None
                 )
 
@@ -383,6 +470,7 @@ async def _process_one_board_streaming(
                     new_urls: list[str] = []
                     relisted: list[dict] = []
                     touched: list[dict] = []
+                    n_foreign = 0
 
                     for row in rows:
                         action = row["action"]
@@ -406,6 +494,19 @@ async def _process_one_board_streaming(
                                     "r2_hash": int(r2h) if r2h is not None else None,
                                 }
                             )
+                        elif action == "foreign":
+                            # Cross-tenant duplicate — the row is already
+                            # owned by another board and _DIFF_BATCH has
+                            # refreshed its last_seen_at. We don't insert
+                            # and don't enqueue; just count the signal.
+                            n_foreign += 1
+
+                    if n_foreign:
+                        monitor_dedup_total.labels(path="cross_board").inc(n_foreign)
+                        board_log.info(
+                            "batch.monitor.cross_board_duplicate",
+                            count=n_foreign,
+                        )
 
                     total_new += len(new_urls)
                     total_relisted += len(relisted)
@@ -483,20 +584,36 @@ async def _process_one_board_streaming(
                             if await loc_resolver.backfill_misses():
                                 loc_resolver.drain_location_misses()
 
-                            # Batch insert all new jobs
+                            # Batch insert all new jobs. ON CONFLICT (source_url)
+                            # DO NOTHING is a belt-and-braces safety net for
+                            # the rare race where two workers running DIFF
+                            # concurrently both classify the same URL as new
+                            # (the bulk cross-tenant case is handled upstream
+                            # in _DIFF_BATCH.foreign_touched). We must pair
+                            # each r2_staging entry with its own insert
+                            # outcome in the same pass — a trailing zip would
+                            # silently misalign descriptions with posting ids.
                             insert_sql = (
                                 _INSERT_RICH_JOB_ENRICH if enrich_fields else _INSERT_RICH_JOB
                             )
-                            inserted_ids = []
-                            for rec in records:
+                            inserted_rich: list[tuple[object, object, str]] = []
+                            n_rich_dedup = 0
+                            for rec, (j, t_ids) in zip(records, r2_staging, strict=True):
                                 row = await conn.fetchrow(insert_sql, *rec)
-                                if row:
-                                    inserted_ids.append(str(row["id"]))
+                                if row is None:
+                                    n_rich_dedup += 1
+                                    continue
+                                inserted_rich.append((j, t_ids, str(row["id"])))
+                            if n_rich_dedup:
+                                monitor_dedup_total.labels(path="rich").inc(n_rich_dedup)
+                                board_log.info(
+                                    "batch.monitor.duplicate_source_url",
+                                    path="rich",
+                                    count=n_rich_dedup,
+                                )
 
                             # Write descriptions for inserted jobs
-                            for (j, _t_ids), posting_id in zip(
-                                r2_staging, inserted_ids, strict=False
-                            ):
+                            for j, _t_ids, posting_id in inserted_rich:
                                 desc_html = _coerce_text(j.description)
                                 if desc_html:
                                     locale = _coerce_text(j.language) or "en"
@@ -509,10 +626,10 @@ async def _process_one_board_streaming(
                                     )
 
                             # Enqueue scrapes for rich jobs that need enrichment
-                            if enrich_fields and inserted_ids:
+                            if enrich_fields and inserted_rich:
                                 rich_rows = [
                                     {"id": pid, "source_url": j.url}
-                                    for (j, _), pid in zip(r2_staging, inserted_ids, strict=False)
+                                    for j, _t_ids, pid in inserted_rich
                                 ]
                                 await _enqueue_scrapes_for_new(
                                     rich_rows,
@@ -617,6 +734,17 @@ async def _process_one_board_streaming(
                             new_urls,
                             never_scrape,
                         )
+                        # _INSERT_URL_ONLY_JOBS uses ON CONFLICT (source_url)
+                        # DO NOTHING — some rows may silently no-op when the
+                        # same URL is already owned by another board.
+                        n_deduped = len(new_urls) - len(inserted)
+                        if n_deduped:
+                            monitor_dedup_total.labels(path="url_only").inc(n_deduped)
+                            board_log.info(
+                                "batch.monitor.duplicate_source_url",
+                                path="url_only",
+                                count=n_deduped,
+                            )
                         board_log.info("batch.inserted_for_scrape", count=len(inserted))
                         await _enqueue_scrapes_for_new(
                             inserted, board_id, metadata, board_log, crawler_type=crawler_type
@@ -641,10 +769,17 @@ async def _process_one_board_streaming(
             )
 
         # After all batches: mark gone postings
-        if total_discovered == 0:
-            # No URLs discovered at all (or all filtered out) -- treat as empty check
+        if total_processed == 0:
+            # Nothing reached _DIFF_BATCH — either the monitor yielded 0 URLs
+            # or every discovered URL was filtered out as implausible. Treat
+            # both as an empty check so we don't mark every active posting
+            # as gone based on a garbage-only run.
             elapsed = monotonic() - t0
-            board_log.warning("batch.monitor.empty", duration_s=round(elapsed, 2))
+            board_log.warning(
+                "batch.monitor.empty",
+                duration_s=round(elapsed, 2),
+                raw_discovered=total_discovered,
+            )
             async with pool.acquire() as conn:
                 rows = await conn.fetch(_RECORD_EMPTY_CHECK, board_id)
                 if rows and rows[0]["board_status"] == "gone":
@@ -676,6 +811,7 @@ async def _process_one_board_streaming(
         board_log.info(
             "batch.monitor.success",
             discovered=total_discovered,
+            processed=total_processed,
             new=total_new,
             relisted=total_relisted,
             gone=gone_count,
