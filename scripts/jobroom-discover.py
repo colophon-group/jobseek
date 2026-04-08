@@ -260,11 +260,16 @@ _SELF_AGGREGATOR_NAMES: frozenset[str] = frozenset({
 
 # Staffing / recruitment-agency name patterns.
 _RECRUITER_NAME_PATTERNS: tuple[re.Pattern, ...] = (
-    # Endings: "... Personal AG", "... Personal SA", "... Personnel Sàrl"
-    re.compile(r"\bpersonal(?:\s+(?:ag|gmbh|sa|sàrl|sagl))?\s*$", re.I),
-    # Matches "Personaldienst", "Personaldienste",
-    # "Personaldienstleistung", "Personaldienstleistungen"
-    re.compile(r"\bpersonaldienst", re.I),
+    # "Personal" in Swiss German business names is almost always staffing.
+    # Broad match catches "Personal AG", "KMU Personal", "aktiv personal
+    # service", "Nexus Personal- & Unternehmensberatung", etc.
+    re.compile(r"\bpersonal\b", re.I),
+    # Compound German: "Personalmanagement", "Personalberatung",
+    # "Personaldienstleistung", "Personalvermittlung" — no word boundary
+    # between "personal" and the suffix
+    re.compile(r"\bpersonal(?:dienst|management|beratung|vermittlung|service)", re.I),
+    # "A4personal AG" — no word boundary before "personal" either
+    re.compile(r"personal\s+(?:ag|gmbh|sa|sàrl|sagl)\s*$", re.I),
     re.compile(r"\bpersonnel\b", re.I),
     # Common English staffing brand words
     re.compile(r"\bhuman\s+resources?\b", re.I),
@@ -294,14 +299,50 @@ _RECRUITER_NAME_PATTERNS: tuple[re.Pattern, ...] = (
     re.compile(r"\bjobs?\s*4\s*you\b", re.I),
     re.compile(r"\bjobpartner\b", re.I),
     re.compile(r"\bpeople\s+(?:ag|sa|gmbh|sàrl)\s*$", re.I),
-    # Patterns discovered from the all-cantons full sweep
-    re.compile(r"\bflexsis\b", re.I),
+    # Patterns discovered from the all-cantons full sweep.
+    # Note: legal-suffix clauses are NOT end-anchored because real names
+    # like "OK Job AG, Zweigniederlassung Basel" have the suffix in
+    # the middle of the string. `\b` is used instead of `\s*$`.
     re.compile(r"\bjob\s+impuls\b", re.I),
     re.compile(r"\bjob\s+team\b", re.I),
-    re.compile(r"\b(?:job|jobs)\s+(?:ag|gmbh|sa|sàrl|sagl)\s*$", re.I),
+    re.compile(r"\b(?:job|jobs)\s+(?:ag|gmbh|sa|sàrl|sagl)\b", re.I),
+    # Compound "*job(s) AG" — Carejob, StarJOB, ländlejobs — no word
+    # boundary between qualifier and "job"
+    re.compile(r"[a-z]jobs?\s+(?:ag|gmbh|sa|sàrl|sagl)\b", re.I),
+    # Job-first: "JOB SCHWEIZ AG", "JOB Ticino SA", "POWER JOB ANSTALT"
+    re.compile(r"(?:^|\s)job\s+(?:schweiz|ticino|service|now|company)", re.I),
+    re.compile(r"\bjob\s+anstalt\b", re.I),
+    re.compile(r"\bpower\s+job\b", re.I),
     re.compile(r"\bhuman\s+capital\b", re.I),
     re.compile(r"\bswiss\s+work\b", re.I),
     re.compile(r"\bwork\s+management\b", re.I),
+    # "* Work AG" endings — no end anchor: "city-work ag St. Gallen",
+    # "myWork AG Niederbipp" have trailing location names
+    re.compile(r"\bwork\s+(?:ag|gmbh|sa|sàrl|sagl|agency)\b", re.I),
+    # "timework ag", "city-work ag" — letter or dash before "work"
+    re.compile(r"[a-z-]work\s+(?:ag|gmbh|sa)\b", re.I),
+    re.compile(r"\bmywork\b", re.I),
+    # "Stellen*" German compound words (Stellenbern, Stellentreff,
+    # Stellenpartner, Stellenvermittlung, Stellenmarkt, Stellenprofi).
+    # "Stellen" literally means "job positions" — any company name built
+    # around it is a staffing firm.
+    re.compile(r"\bstellen(?:partner|treff|bern|büro|buero|vermittlung|"
+               r"markt|profi|profis|haus|finder|meister|boerse|börse|"
+               r"suche|welt|zentrum)", re.I),
+    # "Interim AG" — temp placement agency
+    re.compile(r"\binterim\s+(?:ag|gmbh|sa|sàrl|sagl)\s*$", re.I),
+    # "Talent*" staffing brands: Talentzio, SIGMA Talent, talent pool, etc.
+    re.compile(r"\btalentzio\b", re.I),
+    re.compile(r"\btalent\s+(?:pool|hub|center|agency|partners?)\b", re.I),
+    re.compile(r"\btalent\s+(?:ag|gmbh|sa|sàrl|sagl)\s*$", re.I),
+    # "Sigma Talent SA" — talent as last word
+    re.compile(r"\btalent\s+s[aà]$", re.I),
+    # "Prime International Jobs by von Arx" — Jobs by X
+    re.compile(r"\bjobs?\s+by\s+", re.I),
+    # "Tempro Personal" — Tempro brand
+    re.compile(r"\btempro\b", re.I),
+    # "Work-shop Personalmanagement GmbH"
+    re.compile(r"\bwork-?shop\s+personal", re.I),
     # "Personal Kolin AG", "Personal Sigma", etc. — "Personal" at start
     re.compile(r"^personal\s+\w+", re.I),
     # Hans Leutenegger is the name of a very large Swiss temp agency
@@ -352,16 +393,134 @@ _FEDERAL_NAME_PATTERNS: tuple[re.Pattern, ...] = (
     re.compile(r"^direzione\s+(?:dell[ae']|delle|dei|degli)\b", re.I),
     re.compile(r"^direction\s+(?:des|de|du|de\s+l['a-z])\b", re.I),
     re.compile(r"^direktion\s+(?:für|des|der|von)\b", re.I),
+    # Hospitals / Spitäler (German "Spitäler" = hospitals). "Spital"
+    # alone is too generic (might be in street names), so anchor it
+    # at the start or require a place name to follow.
+    re.compile(r"\bspit[äa]ler\b", re.I),
+    re.compile(r"^spital\b", re.I),
+    re.compile(r"\bspital\s+[A-ZÄÖÜ][a-zäöü]+\b", re.I),  # "Spital Zollikerberg"
+    re.compile(r"\bpsychiatrische\s+dienste\b|\bluzerner\s+psychiatrie\b", re.I),
+    # Universities and higher-education institutions
+    re.compile(r"\beth\s+z[üu]rich\b", re.I),
+    re.compile(r"\b(?:epfl|psi|empa|wsl|agroscope|eawag|idiap)\b", re.I),
+    re.compile(r"\b(?:zhaw|hslu|fhnw|supsi|usi|eth)\b", re.I),
+    re.compile(r"\bhes[\s-]so\b|\bhaute\s+école\b", re.I),
+    re.compile(r"\bfachhochschule\b", re.I),
+    re.compile(r"\bpädagogische\s+hochschule\b", re.I),
     # Named federal institutions (shown in real job-room data)
     re.compile(r"\b(?:swisstopo|swissmedic|meteoschweiz|meteo-suisse|seco|suva|ruag)\b", re.I),
+    re.compile(r"\bschweizerische\s+post\b", re.I),
+    re.compile(r"\bdie\s+post\b|\bla\s+poste\b|\bla\s+posta\b", re.I),
+    re.compile(r"\bschweizerische\s+bundesbahnen\b|\bsbb\s+cff\s+ffs\b", re.I),
+    # Jobcenter / Arbeitsvermittlung (public employment services run by cantons)
+    re.compile(r"\bjobcenter\s+(?:baselland|zürich|bern|aargau|luzern|basel)\b", re.I),
+    re.compile(r"\brav\b.*\b(?:kanton|canton|cantone)\b", re.I),
+)
+
+
+# Case-insensitive substring signals for staffing / recruitment.
+# Any of these in a company name → classified as recruiter. These are
+# broad on purpose: in Swiss German business names "Personal" almost
+# always means staffing, "Stellen" means job positions, "Emploi" (FR)
+# means employment. Federal public-sector names are checked FIRST so
+# edge cases like "Personalamt Kanton Bern" are protected.
+_RECRUITER_SUBSTRINGS: tuple[str, ...] = (
+    # German staffing vocabulary
+    "personal",          # Personal AG, Personalpartner, Personalverleih,
+                         # Personalmanagement, Personalberatung, A4personal,
+                         # InnoPersonal, DAM Personalverleih, Trio Personalconsulting
+    "stellen",           # Stellentreff, Stellenpartner, Stellenbern, Stellenvermittlung
+    "zeitarbeit",
+    "vermittlung",       # Arbeitsvermittlung, Stellenvermittlung
+    "personaldienst",    # explicit just in case the "personal" substring is tightened
+    # French staffing vocabulary
+    "emploi",            # Emplois, Tac-Tic Emploi, Calani Emplois, BM Emplois
+    "interim",           # "Max Studer Interim", "SWISS LINK Interim", "Project Interim"
+    "temporaire",        # "Placements fixes et temporaires"
+    # English staffing vocabulary
+    "human capital",
+    "human resources",
+    "hr services",
+    "staffing",
+    "workforce",
+    "recruitment",
+    "recruiting",
+    "headhunt",
+    "talent pool",
+    "talent hub",
+    "talent center",
+    "talent agency",
+    "talent partners",
+    "talent solutions",
+    "work agency",
+    "work selection",
+    "work management",
+    "work4you",
+    "jobs4you",
+    "job now",
+    "job impuls",
+    "job team",
+    "job ag",
+    "job gmbh",
+    "job sa",
+    "job sàrl",
+    "job company",
+    "job services",
+    "job ticino",
+    "jobpartner",
+    "jobsign",
+    # Known brand/firm strings
+    "flexsis",
+    "jobeo",
+    "hans leutenegger",
+    "permserv",
+    "persigo",
+    "tempro",
+    "talentzio",
+    "rent a person",
+    "careerplus",
+    "career plus",
+    # Extra names discovered in the deep-inspection pass
+    "persona service",
+    "talent management",
+    "talent analytics",
+    "job schweiz",
+    "job service",
+    "jobsbusiness",
+    "swissdevjobs",
+    # Swiss staffing brands found at scale in --all-cantons sweep
+    "staff.ch",
+    "jobgate",
+    "jobprofi",
+    "job4life",
+    "job 4 life",
+    "hardworker",
+    "das team",       # das-team.ag is a Swiss staffing brand
+    "jobfactory",
+    "rh s",           # "... RH Sàrl" / "... RH SA" — French HR staffing
+    "work24",
+    "synergie",       # French-origin staffing brand
+    "coopers group",  # recruitment consultancy
+    "beeworx",
+    "äsk us",         # German "frag uns" staffing brand
+    "asku s",         # non-umlaut variant
+    "jobdoor",
+    "arbeitskraft",   # German "labor / workforce"
+    "jobpoint",
+    "büetzer",        # Swiss German slang for "worker"
+    "buetzer",        # non-umlaut
+    "wigumar",
+    "yellowshark",
 )
 
 
 def classify_by_name(name: str) -> str | None:
     """Name-based source_kind classification.
 
-    Returns 'recruiter' if the name matches a staffing-agency pattern,
-    'federal' for public-sector entities, or None otherwise.
+    Returns 'federal' for public-sector entities (checked first so names
+    like 'Personalamt Kanton Bern' land in federal, not recruiter),
+    'recruiter' if the name matches a staffing-agency pattern, or None
+    otherwise.
 
     Takes precedence over URL-based classification: a 'Kanton Aargau'
     posting via jobs.ch is still federal; an 'Express Personal AG'
@@ -369,12 +528,20 @@ def classify_by_name(name: str) -> str | None:
     """
     if not name:
         return None
-    for pat in _RECRUITER_NAME_PATTERNS:
-        if pat.search(name):
-            return "recruiter"
+    # Federal FIRST — protect public-sector names from accidental
+    # recruiter classification via the broad "personal" substring.
     for pat in _FEDERAL_NAME_PATTERNS:
         if pat.search(name):
             return "federal"
+    name_lower = name.lower()
+    # Broad substring pass (fast, case-insensitive)
+    for substr in _RECRUITER_SUBSTRINGS:
+        if substr in name_lower:
+            return "recruiter"
+    # Regex patterns for structural signals the substring list can't express
+    for pat in _RECRUITER_NAME_PATTERNS:
+        if pat.search(name):
+            return "recruiter"
     return None
 
 
