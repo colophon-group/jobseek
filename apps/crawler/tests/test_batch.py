@@ -662,6 +662,35 @@ class TestClassifyJobUrl:
         )
 
 
+# ── TestInsertSqlContract ────────────────────────────────────────────
+
+
+class TestInsertSqlContract:
+    """String-level pins on the SQL constants so refactors can't silently
+    drop the duplicate-handling clauses without triggering a test failure.
+    Mock-based integration tests exercise the Python branches but never
+    run the actual SQL — these pins are the only layer that catches
+    'someone deleted ON CONFLICT from _INSERT_RICH_JOB_ENRICH' in CI."""
+
+    def test_insert_rich_job_has_on_conflict(self):
+        assert "ON CONFLICT (source_url) DO NOTHING" in _INSERT_RICH_JOB
+
+    def test_insert_rich_job_enrich_has_on_conflict(self):
+        assert "ON CONFLICT (source_url) DO NOTHING" in _INSERT_RICH_JOB_ENRICH
+
+    def test_insert_url_only_jobs_has_on_conflict(self):
+        assert "ON CONFLICT (source_url) DO NOTHING" in _INSERT_URL_ONLY_JOBS
+
+    def test_diff_batch_has_foreign_touched_cte(self):
+        # Pin the cross-board handling added in the follow-up commit:
+        # without these clauses, the infinite-retry loop and the
+        # last_seen_at ghost-tombstoning both come back.
+        assert "foreign_touched" in _DIFF_BATCH
+        assert "board_id != $2" in _DIFF_BATCH
+        # new_urls must check "any board", not "this board only".
+        assert "NOT EXISTS" in _DIFF_BATCH
+
+
 # ── TestDuplicateSourceUrl ───────────────────────────────────────────
 
 
@@ -850,6 +879,9 @@ class TestDuplicateSourceUrl:
         """All-rows-deduped edge case: every fetchrow returns None. The loop
         must complete, no description upserts should fire, and nothing
         should be enqueued for scraping."""
+        import src.processing.board as board_mod
+        from src.metrics import monitor_dedup_total
+
         pool, conn = mock_pool
         url1 = "https://example.com/job/1"
         url2 = "https://example.com/job/2"
@@ -869,11 +901,52 @@ class TestDuplicateSourceUrl:
         conn.fetchrow.return_value = None  # every insert conflicts
         board = _mock_board()
 
+        counter = monitor_dedup_total.labels(path="rich")
+        before = counter._value.get()
+        enqueue_spy = board_mod._enqueue_scrapes_for_new
+        enqueue_spy.reset_mock()
+
         await _process_one_board(board, pool, mock_http)
 
         # No descriptions written.
         desc_calls = [c for c in conn.execute.await_args_list if c.args[0] == _UPSERT_DESCRIPTION]
         assert len(desc_calls) == 0
+        # Dedup counter bumped by exactly two.
+        assert counter._value.get() - before == 2
+        # Nothing enqueued for scraping (the board has no enrich, so the
+        # enqueue branch wouldn't fire anyway; this is just belt-and-braces).
+        enqueue_spy.assert_not_awaited()
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_rich_enrich_all_inserts_conflict_does_not_enqueue(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """Enrich path + all-conflict: the `if enrich_fields and inserted_rich`
+        branch must NOT fire, so no deduped URLs leak into the scrape queue.
+        This is the branch the base all-conflict test can't reach."""
+        import src.processing.board as board_mod
+
+        pool, conn = mock_pool
+        url1 = "https://example.com/job/1"
+        mock_monitor.side_effect = _mock_stream(
+            MonitorResult(urls={url1}, jobs_by_url={url1: _discovered_job(url=url1)})
+        )
+        conn.fetch.side_effect = [
+            [_diff_row("new", url=url1)],
+            [],  # MARK_GONE
+        ]
+        conn.fetchrow.return_value = None  # conflict
+        board = _mock_board(metadata={"scraper_config": {"enrich": ["description"]}})
+
+        enqueue_spy = board_mod._enqueue_scrapes_for_new
+        enqueue_spy.reset_mock()
+
+        await _process_one_board(board, pool, mock_http)
+
+        # The enrich-path enqueue branch must not fire when every insert
+        # conflicted — nothing to enrich, nothing to scrape.
+        enqueue_spy.assert_not_awaited()
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
@@ -920,21 +993,25 @@ class TestDuplicateSourceUrl:
         application layer must:
         - NOT call _INSERT_URL_ONLY_JOBS or _INSERT_RICH_JOB for it
         - NOT enqueue it for scraping
+        - bump monitor_dedup_total{path="cross_board"}
         The owning row's last_seen_at is refreshed inside _DIFF_BATCH
         itself, so nothing else is needed from the Python side.
         """
         import src.processing.board as board_mod
+        from src.metrics import monitor_dedup_total
 
         pool, conn = mock_pool
         foreign = "https://jobs.example.com/foreign/role"
         mock_monitor.side_effect = _mock_stream(MonitorResult(urls={foreign}, jobs_by_url=None))
         conn.fetch.side_effect = [
-            [_diff_row("foreign", row_id="jp-owner", url=foreign)],
+            [_diff_row("foreign", url=foreign)],
             [],  # MARK_GONE
         ]
 
         enqueue_spy = board_mod._enqueue_scrapes_for_new
         enqueue_spy.reset_mock()
+        counter = monitor_dedup_total.labels(path="cross_board")
+        before = counter._value.get()
         board = _mock_board()
 
         await _process_one_board(board, pool, mock_http)
@@ -946,6 +1023,9 @@ class TestDuplicateSourceUrl:
 
         # Nothing enqueued for scraping.
         enqueue_spy.assert_not_awaited()
+
+        # Metric contract: cross-board dedup counter bumped exactly once.
+        assert counter._value.get() - before == 1
 
 
 # ── TestMonitorPipeline ──────────────────────────────────────────────
