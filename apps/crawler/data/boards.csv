@@ -2504,6 +2504,7 @@ maple,maple-ashby,https://jobs.ashbyhq.com/maple,ashby,"{""token"": ""maple""}",
 maple,maple-recruitee,https://maple.recruitee.com,recruitee,"{""token"": ""maple""}",skip,
 maplight-therapeutics,maplight-therapeutics-greenhouse,https://job-boards.greenhouse.io/maplighttherapeutics,greenhouse,"{""token"": ""maplighttherapeutics""}",skip,
 maria-kersjes,maria-kersjes-join,https://join.com/companies/mariakersjesde,join,"{""slug"": ""mariakersjesde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
+mariana-minerals,mariana-minerals-careers,https://jobs.ashbyhq.com/marianaminerals,ashby,"{""token"": ""marianaminerals""}",skip,
 mark-spain-real-estate,mark-spain-real-estate-greenhouse,https://job-boards.greenhouse.io/markspainrealestate,greenhouse,"{""token"": ""markspainrealestate""}",skip,
 mark43,mark43-greenhouse,https://job-boards.greenhouse.io/mark43,greenhouse,"{""token"": ""mark43""}",skip,
 marketaxess,marketaxess-greenhouse,https://job-boards.greenhouse.io/marketaxesscorporation,greenhouse,"{""token"": ""marketaxesscorporation""}",skip,
