@@ -975,6 +975,7 @@ coinbase,coinbase-careers,https://job-boards.greenhouse.io/coinbase,greenhouse,"
 coinbase,coinbase-careers-base,https://job-boards.greenhouse.io/basejobs,greenhouse,"{""board_token"": ""basejobs""}",skip,
 coinbase,coinbase-careers-cdp,https://job-boards.greenhouse.io/cdpjobs,greenhouse,"{""board_token"": ""cdpjobs""}",skip,
 coindcx,coindcx-pinpoint,https://coindcx.pinpointhq.com,pinpoint,"{""slug"": ""coindcx""}",skip,
+coinswitch,coinswitch-careers,https://recruiterflow.com/coinswitch/jobs,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""url_filter"": ""/coinswitch/jobs/""}",json-ld,
 cointracker,cointracker-ashby,https://jobs.ashbyhq.com/cointracker,ashby,"{""token"": ""cointracker""}",skip,
 colab-software,colab-software-greenhouse,https://job-boards.greenhouse.io/colabsoftware,greenhouse,"{""token"": ""colabsoftware""}",skip,
 collective,collective-ashby,https://jobs.ashbyhq.com/collective,ashby,"{""token"": ""collective""}",skip,
