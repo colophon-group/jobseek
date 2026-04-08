@@ -4475,6 +4475,8 @@ world-health-organization,world-health-organization-careers,https://careers.who.
 world-health-organization,world-health-organization-intern,https://careers.who.int/careersection/intern/jobsearch.ftl,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""url_filter"": ""jobdetail\\.ftl""}",skip,
 world-health-organization,world-health-organization-paho,https://paho.wd5.myworkdayjobs.com/pahocareers,workday,"{""company"": ""paho"", ""wd_instance"": ""wd5"", ""site"": ""pahocareers""}",json-ld,"{""render"": true}"
 world-labs,world-labs-greenhouse,https://job-boards.greenhouse.io/worldlabs,greenhouse,"{""token"": ""worldlabs""}",skip,
+worldcoin,worldcoin-careers,https://jobs.ashbyhq.com/Tools%20for%20Humanity,ashby,"{""token"": ""Tools for Humanity""}",skip,
+worldcoin,worldcoin-world-foundation,https://jobs.ashbyhq.com/world-foundation,ashby,"{""token"": ""world-foundation""}",skip,
 worldly,worldly-ashby,https://jobs.ashbyhq.com/worldly,ashby,"{""token"": ""worldly""}",skip,
 worldpay,worldpay-careers-wd,https://worldpay.wd5.myworkdayjobs.com/Worldpay_External_Careers_Site,workday,"{""tenant"": ""worldpay"", ""board_id"": ""Worldpay_External_Careers_Site""}",json-ld,
 worldquant,worldquant-greenhouse,https://job-boards.greenhouse.io/worldquant,greenhouse,"{""token"": ""worldquant""}",skip,
