@@ -141,8 +141,16 @@ _PATTERNS: list[tuple[re.Pattern, str, str]] = [
     (re.compile(r"(?:^|\.)stepstone\.(?:ch|de)$", re.I), "stepstone", "aggregator"),
     (re.compile(r"(?:^|\.)monster\.(?:ch|de|com)$", re.I), "monster", "aggregator"),
     (re.compile(r"(?:^|\.)xing\.com$", re.I), "xing", "aggregator"),
+    # Specialized niche boards (industry-specific, not employer ATSes)
+    (re.compile(r"(?:^|\.)sozialinfo\.ch$", re.I), "sozialinfo", "aggregator"),
+    (re.compile(r"(?:^|\.)sozjobs\.ch$", re.I), "sozjobs", "aggregator"),
+    (re.compile(r"(?:^|\.)krippenstellen\.ch$", re.I), "krippenstellen", "aggregator"),
+    (re.compile(r"(?:^|\.)swiss-architects\.com$", re.I), "swiss_architects", "aggregator"),
+    (re.compile(r"(?:^|\.)jobeo\.ch$", re.I), "jobeo", "aggregator"),
 
-    # Recruitment agencies / staffing
+    # Recruitment agencies / staffing — URL-based detection.
+    # Only definitive recruiter hosts go here; name-based detection
+    # (classify_by_name) catches many more that post via jobs.ch.
     (re.compile(r"(?:^|\.)randstad\.ch$", re.I), "randstad", "recruiter"),
     (re.compile(r"(?:^|\.)adecco\.ch$", re.I), "adecco", "recruiter"),
     (re.compile(r"(?:^|\.)hays\.ch$", re.I), "hays", "recruiter"),
@@ -151,9 +159,40 @@ _PATTERNS: list[tuple[re.Pattern, str, str]] = [
     (re.compile(r"(?:^|\.)robertwalters\.ch$", re.I), "robert_walters", "recruiter"),
     (re.compile(r"(?:^|\.)michaelpage\.ch$", re.I), "michael_page", "recruiter"),
     (re.compile(r"(?:^|\.)experis\.ch$", re.I), "experis", "recruiter"),
+    # Swiss staffing agencies discovered from the all-cantons sweep
+    (re.compile(r"(?:^|\.)yellowshark\.com$", re.I), "yellowshark", "recruiter"),
+    (re.compile(r"(?:^|\.)progresspersonal\.ch$", re.I), "progresspersonal", "recruiter"),
+    (re.compile(r"(?:^|\.)alegro\.ch$", re.I), "alegro", "recruiter"),
+    (re.compile(r"(?:^|\.)team\.jobs$", re.I), "team_jobs", "recruiter"),
+    (re.compile(r"(?:^|\.)workmanagement\.ch$", re.I), "workmanagement", "recruiter"),
+    (re.compile(r"(?:^|\.)work24\.com$", re.I), "work24", "recruiter"),
+    (re.compile(r"(?:^|\.)careerplus\.ch$", re.I), "careerplus", "recruiter"),
+    (re.compile(r"(?:^|\.)itjob\.ch$", re.I), "itjob", "recruiter"),
+    (re.compile(r"(?:^|\.)myitjob\.ch$", re.I), "myitjob", "recruiter"),
+    (re.compile(r"(?:^|\.)bauagro\.ch$", re.I), "bauagro", "recruiter"),
+    (re.compile(r"(?:^|\.)okjob\.ch$", re.I), "okjob", "recruiter"),
+    (re.compile(r"(?:^|\.)workselection\.com$", re.I), "workselection", "recruiter"),
+    (re.compile(r"(?:^|\.)valjob\.digital$", re.I), "valjob", "recruiter"),
+    (re.compile(r"(?:^|\.)newwork-hr\.ch$", re.I), "newwork_hr", "recruiter"),
+    (re.compile(r"(?:^|\.)gefrapersonal\.ch$", re.I), "gefrapersonal", "recruiter"),
+    (re.compile(r"(?:^|\.)carepeople\.ch$", re.I), "carepeople", "recruiter"),
+    (re.compile(r"(?:^|\.)gl-partner\.ch$", re.I), "gl_partner", "recruiter"),
+    (re.compile(r"(?:^|\.)wigumar\.ch$", re.I), "wigumar", "recruiter"),
+    (re.compile(r"(?:^|\.)rentaperson\.ch$", re.I), "rentaperson", "recruiter"),
+    (re.compile(r"(?:^|\.)permserv\.ch$", re.I), "permserv", "recruiter"),
+    (re.compile(r"(?:^|\.)jobalino\.ch$", re.I), "jobalino", "recruiter"),
+    (re.compile(r"(?:^|\.)cvmanager\.ch$", re.I), "cvmanager", "recruiter"),
+    (re.compile(r"(?:^|\.)bm-emploi\.ch$", re.I), "bm_emploi", "recruiter"),
+    (re.compile(r"(?:^|\.)hansleutenegger\.ch$", re.I), "hans_leutenegger", "recruiter"),
+    (re.compile(r"(?:^|\.)jobteam\.ch$", re.I), "jobteam", "recruiter"),
+    (re.compile(r"(?:^|\.)persigo\.ch$", re.I), "persigo", "recruiter"),
+    (re.compile(r"(?:^|\.)mt-jobs\.ch$", re.I), "mt_jobs", "recruiter"),
+    (re.compile(r"(?:^|\.)spitexjobs\.ch$", re.I), "spitexjobs", "recruiter"),
 
     # Federal admin
     (re.compile(r"(?:^|\.)admin\.ch$", re.I), "swiss_federal", "federal"),
+    (re.compile(r"(?:^|\.)stadt-zuerich\.ch$", re.I), "swiss_federal", "federal"),
+    (re.compile(r"\.apps\.(?:be|bs|ge|zh|vd|ag|sg|lu)\.ch$", re.I), "cantonal", "federal"),
 
     # ATS — turnkey rich monitors that jobseek already supports
     (re.compile(r"(?:^|\.)greenhouse\.io$", re.I), "greenhouse", "ats"),
@@ -170,17 +209,173 @@ _PATTERNS: list[tuple[re.Pattern, str, str]] = [
     (re.compile(r"(?:^|\.)breezy\.hr$", re.I), "breezy", "ats"),
     (re.compile(r"(?:^|\.)teamtailor\.com$", re.I), "teamtailor", "ats"),
     (re.compile(r"(?:^|\.)successfactors\.(?:eu|com)$", re.I), "successfactors", "ats"),
+    (re.compile(r"(?:^|\.)join\.com$", re.I), "join", "ats"),
 
     # ATS — Swiss-specific, NOT YET supported by jobseek (Phase 3 candidates)
     (re.compile(r"(?:^|\.)refline\.ch$", re.I), "refline", "ats"),
+    (re.compile(r"(?:^|\.)link\.ostendis\.com$", re.I), "ostendis", "ats"),
     (re.compile(r"(?:^|\.)ostendis\.com$", re.I), "ostendis", "ats"),
     (re.compile(r"(?:^|\.)dualoo\.com$", re.I), "dualoo", "ats"),
     (re.compile(r"(?:^|\.)jacando\.com$", re.I), "jacando", "ats"),
     (re.compile(r"(?:^|\.)abacus\.ch$", re.I), "abacus", "ats"),
+    # prospective.ch / OHWS — public-sector ATS used by Stadler Rail,
+    # Inselspital, Klinik Hirslanden, multiple cantonal administrations,
+    # federal offices (BAFU, swisstopo), universities. Largest Phase 3
+    # target — ~1900 postings in a full --all-cantons sweep (Apr 2026).
+    (re.compile(r"(?:^|\.)ohws\.prospective\.ch$", re.I), "prospective", "ats"),
+    (re.compile(r"(?:^|\.)prospective\.ch$", re.I), "prospective", "ats"),
+    # Solique — Swiss multi-posting platform with ATS partnerships;
+    # used by ISS Schweiz and others. ~430 postings in full sweep.
+    (re.compile(r"(?:^|\.)solique\.ch$", re.I), "solique", "ats"),
 ]
 
 # ATS names that jobseek does NOT yet have a monitor for (flagged in stats).
-UNSUPPORTED_ATS = frozenset({"refline", "ostendis", "dualoo", "jacando", "abacus"})
+UNSUPPORTED_ATS = frozenset({
+    "refline", "ostendis", "dualoo", "jacando", "abacus", "prospective",
+    "solique",
+})
+
+# Self-branded aggregator company names to skip entirely. These appear
+# when an aggregator cross-posts its own listings INTO job-room with
+# company.name set to the aggregator brand (e.g. "Jobup" with 1689 postings
+# linking back to jobup.ch). Not real employers.
+_SELF_AGGREGATOR_NAMES: frozenset[str] = frozenset({
+    "jobup", "jobs.ch", "jobs ch", "jobscout24", "jobscout", "indeed",
+    "linkedin", "stepstone", "monster", "xing",
+})
+
+
+# ---------------------------------------------------------------------------
+# Name-based source-kind detection
+# ---------------------------------------------------------------------------
+#
+# Some employers are definitively classifiable from their name alone,
+# independent of the apply URL. Staffing agencies and government bodies
+# can hide behind any URL (including jobs.ch syndication), so URL-based
+# classification alone misses them.
+#
+# Recruiters are SKIPPED from the discovery output entirely — we do not
+# want them polluting companies.csv. A future agent classifier can
+# revisit the raw cache if a more nuanced policy is needed.
+
+# Staffing / recruitment-agency name patterns.
+_RECRUITER_NAME_PATTERNS: tuple[re.Pattern, ...] = (
+    # Endings: "... Personal AG", "... Personal SA", "... Personnel Sàrl"
+    re.compile(r"\bpersonal(?:\s+(?:ag|gmbh|sa|sàrl|sagl))?\s*$", re.I),
+    # Matches "Personaldienst", "Personaldienste",
+    # "Personaldienstleistung", "Personaldienstleistungen"
+    re.compile(r"\bpersonaldienst", re.I),
+    re.compile(r"\bpersonnel\b", re.I),
+    # Common English staffing brand words
+    re.compile(r"\bhuman\s+resources?\b", re.I),
+    re.compile(r"\bhr\s+services?\b", re.I),
+    re.compile(r"\b(?:temporary|temp|temp-work|zeitarbeit)\b", re.I),
+    re.compile(r"\bstaffing\b", re.I),
+    re.compile(r"\bworkforce\b", re.I),
+    re.compile(r"\brecruitment\b|\brecruiting\b", re.I),
+    re.compile(r"\btalent\s+(?:solutions?|acquisition|partners?)\b", re.I),
+    re.compile(r"\bmanpower\b", re.I),
+    # Known Swiss / global brands that are pure recruiters
+    re.compile(r"\bgi\s+group\b", re.I),
+    re.compile(r"\badecco\b", re.I),
+    re.compile(r"\brandstad\b", re.I),
+    re.compile(r"\bhays\b", re.I),
+    re.compile(r"\bkelly\s+services\b", re.I),
+    re.compile(r"\brobert\s+walters\b", re.I),
+    re.compile(r"\bmichael\s+page\b", re.I),
+    re.compile(r"\bexperis\b", re.I),
+    # "Jobs AG" / "Job ... AG" / "Stellen..." — often brokers, not employers
+    re.compile(r"^jobsign\b", re.I),
+    re.compile(r"\bkmu\s+jobs\b", re.I),
+    re.compile(r"\bstellenprofis?\b", re.I),
+    re.compile(r"\bstellenvermittlung\b", re.I),
+    re.compile(r"\bstellenmarkt\b", re.I),
+    re.compile(r"\bwork\s*4\s*you\b", re.I),
+    re.compile(r"\bjobs?\s*4\s*you\b", re.I),
+    re.compile(r"\bjobpartner\b", re.I),
+    re.compile(r"\bpeople\s+(?:ag|sa|gmbh|sàrl)\s*$", re.I),
+    # Patterns discovered from the all-cantons full sweep
+    re.compile(r"\bflexsis\b", re.I),
+    re.compile(r"\bjob\s+impuls\b", re.I),
+    re.compile(r"\bjob\s+team\b", re.I),
+    re.compile(r"\b(?:job|jobs)\s+(?:ag|gmbh|sa|sàrl|sagl)\s*$", re.I),
+    re.compile(r"\bhuman\s+capital\b", re.I),
+    re.compile(r"\bswiss\s+work\b", re.I),
+    re.compile(r"\bwork\s+management\b", re.I),
+    # "Personal Kolin AG", "Personal Sigma", etc. — "Personal" at start
+    re.compile(r"^personal\s+\w+", re.I),
+    # Hans Leutenegger is the name of a very large Swiss temp agency
+    re.compile(r"\bhans\s+leutenegger\b", re.I),
+    re.compile(r"\brent\s*a\s*person\b", re.I),
+    re.compile(r"\bpermserv\b", re.I),
+    re.compile(r"\bpersigo\b", re.I),
+    re.compile(r"\balegro\b.*\bpersonal\b", re.I),
+    re.compile(r"\bpersonalberat(?:ung|ungs)\b", re.I),
+    re.compile(r"\bunternehmensberatung\b.*\bpersonal\b", re.I),
+)
+
+# Government / public-sector name patterns. These employers ARE real and
+# worth adding, but they're "federal" rather than "ats" since they usually
+# use a custom cantonal CMS. Not skipped — just classified.
+_FEDERAL_NAME_PATTERNS: tuple[re.Pattern, ...] = (
+    # German — federal + cantonal
+    re.compile(r"^bundes(?:amt|rat|kanzlei|verwaltung|gericht)\b", re.I),
+    re.compile(r"^(?:schweizerische|schweizer)\s+eidgenossenschaft", re.I),
+    re.compile(r"^kanton\b", re.I),
+    re.compile(r"^kantonale\b", re.I),
+    re.compile(r"\bkantonalbank\b", re.I),
+    re.compile(r"^stadt\b", re.I),
+    re.compile(r"^gemeinde\b", re.I),
+    re.compile(r"\bkantonsspital\b", re.I),
+    re.compile(r"\binselspital\b", re.I),
+    re.compile(r"\buniversitätsspital\b", re.I),
+    re.compile(r"\bpädagogische\s+hochschule\b", re.I),
+    # French
+    re.compile(r"^office\s+fédéral\b", re.I),
+    re.compile(r"^(?:confédération\s+suisse|département\s+fédéral)", re.I),
+    re.compile(r"^canton\s+(?:de|du|des)\b", re.I),
+    re.compile(r"^etat\s+(?:de|du|des)\b", re.I),
+    re.compile(r"^ville\s+(?:de|du|des)\b", re.I),
+    re.compile(r"^commune\s+(?:de|du|des)\b", re.I),
+    re.compile(r"\bbanque\s+cantonale\b", re.I),
+    re.compile(r"\bhôpital\s+(?:universitaire|cantonal|du|de)\b", re.I),
+    re.compile(r"\bhaute\s+école\b", re.I),
+    # Italian
+    re.compile(r"^ufficio\s+federale\b", re.I),
+    re.compile(r"^(?:confederazione\s+svizzera|dipartimento\s+federale)", re.I),
+    re.compile(r"^cantone\b", re.I),
+    re.compile(r"^città\s+di\b", re.I),
+    re.compile(r"^comune\s+di\b", re.I),
+    re.compile(r"\bbanca\s+dello\s+stato\b", re.I),
+    re.compile(r"\bospedale\b", re.I),
+    # Multi-lingual directorates
+    re.compile(r"^direzione\s+(?:dell[ae']|delle|dei|degli)\b", re.I),
+    re.compile(r"^direction\s+(?:des|de|du|de\s+l['a-z])\b", re.I),
+    re.compile(r"^direktion\s+(?:für|des|der|von)\b", re.I),
+    # Named federal institutions (shown in real job-room data)
+    re.compile(r"\b(?:swisstopo|swissmedic|meteoschweiz|meteo-suisse|seco|suva|ruag)\b", re.I),
+)
+
+
+def classify_by_name(name: str) -> str | None:
+    """Name-based source_kind classification.
+
+    Returns 'recruiter' if the name matches a staffing-agency pattern,
+    'federal' for public-sector entities, or None otherwise.
+
+    Takes precedence over URL-based classification: a 'Kanton Aargau'
+    posting via jobs.ch is still federal; an 'Express Personal AG'
+    posting via jobs.ch is still a recruiter.
+    """
+    if not name:
+        return None
+    for pat in _RECRUITER_NAME_PATTERNS:
+        if pat.search(name):
+            return "recruiter"
+    for pat in _FEDERAL_NAME_PATTERNS:
+        if pat.search(name):
+            return "federal"
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -274,11 +469,17 @@ def _normalize_host(url_or_host: str) -> str:
 def classify_ats(external_url: str) -> tuple[str, str]:
     """Return (ats_name, source_kind) for an apply URL.
 
-    source_kind: "ats" | "aggregator" | "recruiter" | "federal" | "unknown".
+    source_kind: "ats" | "aggregator" | "recruiter" | "federal" | "direct" | "unknown".
     Pure regex, no HTTP probing.
+
+    - "direct" means the posting has no externalUrl at all — i.e. the
+      employer posts through job-room.ch's own apply flow (typically
+      sourceSystem=JOBROOM or RAV-counsellor-created for small employers
+      without an ATS). These are legitimate small-employer discoveries.
+    - "unknown" means an externalUrl exists but doesn't match any pattern.
     """
     if not external_url:
-        return ("unknown", "unknown")
+        return ("direct", "direct")
     try:
         host = (urlparse(external_url).hostname or "").lower()
     except Exception:
@@ -468,13 +669,15 @@ def load_cached_postings(cache_path: Path) -> Iterable[RawPosting]:
 # ---------------------------------------------------------------------------
 
 
-# Source-kind preference: prefer ats > federal > aggregator > recruiter > unknown.
+# Source-kind preference: prefer ats > federal > direct > aggregator > unknown.
+# Recruiters are SKIPPED at ingest, so they never reach the ranker.
 _SOURCE_KIND_RANK = {
     "ats": 0,
     "federal": 1,
-    "aggregator": 2,
-    "recruiter": 3,
-    "unknown": 4,
+    "direct": 2,  # no externalUrl, posted directly through job-room
+    "aggregator": 3,
+    "recruiter": 4,  # not reachable via normal flow; present for completeness
+    "unknown": 5,
 }
 
 
@@ -483,17 +686,52 @@ def _better_source_kind(a: str, b: str) -> str:
     return a if _SOURCE_KIND_RANK.get(a, 99) <= _SOURCE_KIND_RANK.get(b, 99) else b
 
 
-def aggregate_employers(postings: Iterable[RawPosting]) -> dict[tuple[str, str], DiscoveredEmployer]:
+@dataclass
+class AggregationStats:
+    """Counters that the aggregation stage emits alongside the employer dict."""
+    parsed: int = 0
+    skipped_recruiter_by_name: int = 0
+    skipped_recruiter_by_url: int = 0
+    skipped_self_aggregator: int = 0
+    federal_by_name: int = 0
+
+
+def aggregate_employers(
+    postings: Iterable[RawPosting],
+) -> tuple[dict[tuple[str, str], DiscoveredEmployer], AggregationStats]:
     """Group postings into per-employer DiscoveredEmployer records.
 
-    Dedupes incoming postings by posting_id first, then groups by employer key.
+    Dedupes by posting_id first, then groups by employer key. Two classes
+    of postings are **skipped entirely** (not included in the output):
+
+    1. Postings whose employer name matches a recruiter/staffing-agency
+       pattern (e.g. 'Express Personal AG', 'Evergreen Human Resources').
+    2. Postings whose externalUrl points to a recruiter host
+       (randstad.ch, adecco.ch, etc.).
+
+    Recruiters are filtered at the discovery stage because they are
+    proxies, not real employers — adding them to companies.csv would
+    pollute the registry with staffing firms instead of the actual Swiss
+    employers that are hiring. A future agent classifier may revisit
+    the raw cache for nuanced handling.
+
+    Federal / public-sector employers ARE kept but have source_kind
+    overridden to 'federal' based on their name.
     """
+    stats = AggregationStats()
     seen_ids: set[str] = set()
     employers: dict[tuple[str, str], DiscoveredEmployer] = {}
-    # Track per-employer ATS-name votes so we can pick the most common one.
-    ats_votes: dict[tuple[str, str], Counter] = defaultdict(Counter)
+    # Per-employer ATS-name votes, bucketed by source_kind so that the
+    # resolved detected_ats matches the employer's final source_kind.
+    # Structure: {key: {kind: Counter(name)}}.
+    ats_votes: dict[tuple[str, str], dict[str, Counter]] = defaultdict(
+        lambda: defaultdict(Counter)
+    )
     # Track per-employer best (ats-link) URL sample.
     best_url: dict[tuple[str, str], tuple[int, str]] = {}
+    # Name-based override cache: employer_key -> 'federal' (recruiters
+    # are dropped before aggregation, so never reach this map).
+    name_override: dict[tuple[str, str], str] = {}
 
     for posting in postings:
         if posting.posting_id and posting.posting_id in seen_ids:
@@ -501,14 +739,38 @@ def aggregate_employers(postings: Iterable[RawPosting]) -> dict[tuple[str, str],
         if posting.posting_id:
             seen_ids.add(posting.posting_id)
 
+        # Skip self-branded aggregator postings — not real employers.
+        # E.g. jobup.ch sometimes syndicates INTO job-room with
+        # company.name="Jobup", so strip those to avoid polluting the output.
+        if posting.employer_name.strip().lower() in _SELF_AGGREGATOR_NAMES:
+            stats.skipped_self_aggregator += 1
+            continue
+
+        # Skip recruiters — they are proxies, not employers.
+        name_kind = classify_by_name(posting.employer_name)
+        if name_kind == "recruiter":
+            stats.skipped_recruiter_by_name += 1
+            continue
+
+        ats, url_kind = classify_ats(posting.external_url)
+        if url_kind == "recruiter":
+            stats.skipped_recruiter_by_url += 1
+            continue
+
+        stats.parsed += 1
+
         norm_name = _normalize_name(posting.employer_name)
         if not norm_name:
             continue
         norm_host = _normalize_host(posting.website)
         key = (norm_name, norm_host)
 
-        ats, kind = classify_ats(posting.external_url)
-        ats_votes[key][ats] += 1
+        ats_votes[key][url_kind][ats] += 1
+
+        # Record federal name override (applied at the end).
+        if name_kind == "federal":
+            name_override[key] = "federal"
+            stats.federal_by_name += 1
 
         emp = employers.get(key)
         if emp is None:
@@ -517,7 +779,7 @@ def aggregate_employers(postings: Iterable[RawPosting]) -> dict[tuple[str, str],
                 website=posting.website,
                 website_host=norm_host,
                 company_city=posting.company_city,
-                source_kind=kind,
+                source_kind=url_kind,
             )
             employers[key] = emp
         else:
@@ -528,7 +790,7 @@ def aggregate_employers(postings: Iterable[RawPosting]) -> dict[tuple[str, str],
             if not emp.company_city and posting.company_city:
                 emp.company_city = posting.company_city
             # Best (preferred) source_kind across postings.
-            emp.source_kind = _better_source_kind(emp.source_kind, kind)
+            emp.source_kind = _better_source_kind(emp.source_kind, url_kind)
 
         emp.posting_count += 1
         if posting.canton_code:
@@ -545,20 +807,35 @@ def aggregate_employers(postings: Iterable[RawPosting]) -> dict[tuple[str, str],
                 emp.last_seen_date = posting.publication_date
 
         # Track best URL sample: prefer URLs whose source_kind is "ats".
-        kind_rank = _SOURCE_KIND_RANK.get(kind, 99)
+        kind_rank = _SOURCE_KIND_RANK.get(url_kind, 99)
         cur = best_url.get(key)
         if posting.external_url and (cur is None or kind_rank < cur[0]):
             best_url[key] = (kind_rank, posting.external_url)
 
-    # Resolve detected_ats from votes (most common non-unknown).
+    # Resolve detected_ats from votes, scoped to the employer's final
+    # source_kind, and apply the name-based federal override where present.
     for key, emp in employers.items():
-        votes = ats_votes[key]
-        ranked = [(name, n) for name, n in votes.most_common() if name != "unknown"]
-        emp.detected_ats = ranked[0][0] if ranked else "unknown"
+        if name_override.get(key) == "federal":
+            emp.source_kind = "federal"
+        kind_votes = ats_votes[key].get(emp.source_kind, Counter())
+        ranked = [(name, n) for name, n in kind_votes.most_common() if name != "unknown"]
+        if ranked:
+            emp.detected_ats = ranked[0][0]
+        else:
+            # Fall back to any non-unknown vote across all kinds (e.g. a
+            # federal-by-name employer that posted via prospective.ch —
+            # keep prospective as detected_ats even though source_kind is
+            # federal after the override).
+            any_votes: Counter = Counter()
+            for kind_counter in ats_votes[key].values():
+                for name, n in kind_counter.items():
+                    if name != "unknown":
+                        any_votes[name] += n
+            emp.detected_ats = any_votes.most_common(1)[0][0] if any_votes else "unknown"
         if key in best_url:
             emp.external_url_sample = best_url[key][1]
 
-    return employers
+    return employers, stats
 
 
 # ---------------------------------------------------------------------------
@@ -657,12 +934,27 @@ def print_summary(
     fetched: int,
     parsed: int,
     skipped_surrogate: int,
+    agg_stats: AggregationStats,
     canton_filter: str,
 ) -> None:
     print("\n=== Job-room.ch discovery summary ===", file=sys.stderr)
     print(f"Sample fetched:          {fetched}  (canton filter: {canton_filter})", file=sys.stderr)
     print(f"  Parsed:                {parsed}", file=sys.stderr)
     print(f"  Skipped (surrogate):   {skipped_surrogate}", file=sys.stderr)
+    skipped_recruiter_total = (
+        agg_stats.skipped_recruiter_by_name + agg_stats.skipped_recruiter_by_url
+    )
+    print(
+        f"  Skipped (recruiter):   {skipped_recruiter_total}"
+        f"  (by_name={agg_stats.skipped_recruiter_by_name}, "
+        f"by_url={agg_stats.skipped_recruiter_by_url})",
+        file=sys.stderr,
+    )
+    if agg_stats.skipped_self_aggregator:
+        print(
+            f"  Skipped (self-branded aggregator): {agg_stats.skipped_self_aggregator}",
+            file=sys.stderr,
+        )
 
     total_employers = len(employers)
     matched = sum(1 for e in employers.values() if e.matched_company_slug)
@@ -690,7 +982,7 @@ def print_summary(
             aggregator_breakdown[e.detected_ats] += 1
 
     print("Source kind distribution:", file=sys.stderr)
-    for kind in ("ats", "aggregator", "recruiter", "federal", "unknown"):
+    for kind in ("ats", "federal", "direct", "aggregator", "unknown"):
         n = kind_counts.get(kind, 0)
         suffix = ""
         if kind == "aggregator" and aggregator_breakdown:
@@ -801,9 +1093,15 @@ async def amain() -> int:
 
     log.info("jobroom_discover.parsed", parsed=len(parsed_postings), skipped_surrogate=skipped_surrogate)
 
-    # Aggregate per employer
-    employers = aggregate_employers(parsed_postings)
-    log.info("jobroom_discover.aggregated", unique_employers=len(employers))
+    # Aggregate per employer (recruiters skipped here, not in output)
+    employers, agg_stats = aggregate_employers(parsed_postings)
+    log.info(
+        "jobroom_discover.aggregated",
+        unique_employers=len(employers),
+        skipped_recruiter_by_name=agg_stats.skipped_recruiter_by_name,
+        skipped_recruiter_by_url=agg_stats.skipped_recruiter_by_url,
+        federal_by_name=agg_stats.federal_by_name,
+    )
 
     # Reconcile against companies.csv
     host_to_slug, name_to_slug = build_company_lookups(COMPANIES_CSV)
@@ -813,7 +1111,9 @@ async def amain() -> int:
     write_employers_csv(employers, args.output)
 
     # Print summary
-    print_summary(employers, fetched, len(parsed_postings), skipped_surrogate, canton_filter)
+    print_summary(
+        employers, fetched, len(parsed_postings), skipped_surrogate, agg_stats, canton_filter
+    )
     return 0
 
 
