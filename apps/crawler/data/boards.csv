@@ -2834,6 +2834,7 @@ northrop-grumman,northrop-grumman-directemployers,https://northropgrumman.jobs/j
 northrop-grumman,northrop-grumman-eightfold,https://jobs.northropgrumman.com/careers,eightfold,"{""url_filter"": ""/careers/job/""}",json-ld,
 northrop-grumman,northrop-grumman-veterans,https://northropgrumman-veterans.jobs/,sitemap,"{""sitemap_url"": ""https://northropgrumman-veterans.jobs/sitemap.xml"", ""url_filter"": ""/job/""}",json-ld,"{""render"": true}"
 northwest-pipe-fittings,northwest-pipe-fittings-greenhouse,https://job-boards.greenhouse.io/northwestpipefittings,greenhouse,"{""token"": ""northwestpipefittings""}",skip,
+northwood-space,northwood-space-careers,https://jobs.ashbyhq.com/NorthwoodSpace,ashby,"{""org"": ""NorthwoodSpace""}",skip,
 notabene,notabene-ashby,https://jobs.ashbyhq.com/notabene,ashby,"{""token"": ""notabene""}",skip,
 notability,notability-greenhouse,https://job-boards.greenhouse.io/gingerlabsinc,greenhouse,"{""token"": ""gingerlabsinc""}",skip,
 notable,notable-ashby,https://jobs.ashbyhq.com/notable,ashby,"{""token"": ""notable""}",skip,
