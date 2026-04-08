@@ -470,6 +470,37 @@ class TestClearScrapeForRichPredicate:
         assert "jb.id = jp.board_id" in _CLEAR_SCRAPE_FOR_RICH
 
 
+# ── Build info metric ─────────────────────────────────────────────────
+
+
+class TestBuildInfoMetric:
+    def test_version_read_matches_file(self):
+        """``_read_version()`` returns the contents of ``apps/crawler/VERSION``.
+
+        Added so SREs can confirm which VERSION each container is running
+        from Grafana (``crawler_build_info{version="X"}``) without SSH-ing
+        in. See SRE critic finding on the rich-monitor scheduling PR.
+        """
+        import pathlib
+
+        from src.metrics import _read_version
+
+        version_file = pathlib.Path(__file__).resolve().parent.parent / "VERSION"
+        expected = version_file.read_text().strip()
+        assert _read_version() == expected
+        assert expected  # non-empty
+
+    def test_build_info_metric_registered(self):
+        """The gauge must exist in the prometheus registry before startup."""
+        from src.metrics import build_info
+
+        # Set + read back. The exact numeric value is 1; we're verifying
+        # the label is accepted and the sample is emitted.
+        build_info.labels(version="test").set(1)
+        samples = list(build_info.collect())[0].samples
+        assert any(s.labels.get("version") == "test" and s.value == 1.0 for s in samples)
+
+
 # ── Predicate sync across Python, SQL filter, and backfill script ──────
 
 
