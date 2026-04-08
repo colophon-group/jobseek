@@ -2751,6 +2751,7 @@ nansen-ai,nansen-ai-greenhouse,https://job-boards.greenhouse.io/nansen,greenhous
 nanuq-gmbh,nanuq-gmbh-join,https://join.com/companies/nanuqtech,join,"{""slug"": ""nanuqtech""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 narvar,narvar-greenhouse,https://job-boards.greenhouse.io/narvar,greenhouse,"{""token"": ""narvar""}",skip,
 nas-company,nas-company-greenhouse,https://job-boards.greenhouse.io/nascompany,greenhouse,"{""token"": ""nascompany""}",skip,
+nash,nash-careers,https://jobs.ashbyhq.com/Nash,ashby,"{""token"": ""Nash""}",skip,
 natera,natera-greenhouse,https://job-boards.greenhouse.io/natera,greenhouse,"{""token"": ""natera""}",skip,
 national-design-build-services,national-design-build-services-greenhouse,https://job-boards.greenhouse.io/nationaldbs1,greenhouse,"{""token"": ""nationaldbs1""}",skip,
 national-life-insurance-company,national-life-insurance-company-greenhouse,https://job-boards.greenhouse.io/nationallifeinsurancecompany,greenhouse,"{""token"": ""nationallifeinsurancecompany""}",skip,
