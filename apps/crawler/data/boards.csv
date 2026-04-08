@@ -2893,6 +2893,7 @@ nutrafol,nutrafol-greenhouse,https://job-boards.greenhouse.io/nutrafol,greenhous
 nutrisense,nutrisense-recruitee,https://nutrisense.recruitee.com,recruitee,"{""token"": ""nutrisense""}",skip,
 nvidia,nvidia-careers,https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite,workday,"{""company"": ""nvidia"", ""wd_instance"": ""wd5"", ""site"": ""NVIDIAExternalCareerSite""}",workday,
 nviso,nviso-join,https://join.com/companies/nviso,join,"{""slug"": ""nviso""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
+nxp,nxp-careers,https://nxp.wd3.myworkdayjobs.com/careers,workday,"{""tenant"": ""nxp"", ""board_id"": ""careers""}",workday,
 oak,oak-recruitee,https://oak.recruitee.com,recruitee,"{""token"": ""oak""}",skip,
 oboe,oboe-ashby,https://jobs.ashbyhq.com/oboe,ashby,"{""token"": ""oboe""}",skip,
 obsidian,obsidian-pinpoint,https://obsidian.pinpointhq.com,pinpoint,"{""slug"": ""obsidian""}",skip,
