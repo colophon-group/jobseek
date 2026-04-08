@@ -398,6 +398,7 @@ athletics-business-operations,athletics-business-operations-greenhouse,https://j
 atlan,atlan-ashby,https://jobs.ashbyhq.com/atlan,ashby,"{""token"": ""atlan""}",skip,
 atlas,atlas-ashby,https://jobs.ashbyhq.com/atlas,ashby,"{""token"": ""atlas""}",skip,
 atlas-hxm,atlas-hxm-greenhouse,https://job-boards.greenhouse.io/atlasxhm,greenhouse,"{""token"": ""atlasxhm""}",skip,
+atlys,atlys-careers,https://careers.atlys.com/,recruitee,"{""api_base"": ""https://careers.atlys.com""}",skip,
 atmos-cholet,atmos-cholet-join,https://join.com/companies/atmosfr,join,"{""slug"": ""atmosfr""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 atom-computing,atom-computing-lever,https://jobs.lever.co/atomcomputing,lever,"{""token"": ""atomcomputing""}",skip,
 atomic-cartoons,atomic-cartoons-greenhouse,https://job-boards.greenhouse.io/atomiccartoons,greenhouse,"{""token"": ""atomiccartoons""}",skip,
