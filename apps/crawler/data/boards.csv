@@ -1083,6 +1083,7 @@ culture-amp,culture-amp-greenhouse,https://job-boards.greenhouse.io/cultureamp,g
 curaleaf,curaleaf-greenhouse,https://job-boards.greenhouse.io/curaleaf,greenhouse,"{""token"": ""curaleaf""}",skip,
 curaponte,curaponte-join,https://join.com/companies/curapontede,join,"{""slug"": ""curapontede""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 curi-capital,curi-capital-greenhouse,https://job-boards.greenhouse.io/curicapital,greenhouse,"{""token"": ""curicapital""}",skip,
+current,current-careers,https://boards.greenhouse.io/current81,greenhouse,"{""token"": ""current81""}",skip,
 cursor,cursor-careers,https://jobs.ashbyhq.com/cursor,ashby,"{""token"": ""cursor""}",skip,
 custom-surgical-gmbh,custom-surgical-gmbh-join,https://join.com/companies/customsurgicalco,join,"{""slug"": ""customsurgicalco""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 customer-io,customer-io-greenhouse,https://job-boards.greenhouse.io/customerio,greenhouse,"{""token"": ""customerio""}",skip,
