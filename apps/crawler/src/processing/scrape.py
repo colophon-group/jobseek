@@ -147,21 +147,39 @@ def _board_has_enrich(metadata: dict) -> list[str] | None:
     return None
 
 
-def _is_skip_no_scrape(metadata: dict) -> bool:
+def _is_skip_no_scrape(metadata: dict, crawler_type: str | None = None) -> bool:
     """Return True if this board is 'rich monitor, no scraping needed'.
 
-    A board is skip-no-scrape when its metadata explicitly sets
-    ``scraper_type = "skip"`` AND does not configure enrichment fields.
+    A board is skip-no-scrape when it will never use the scrape pipeline:
+
+    1. ``metadata.scraper_type = "skip"`` with no enrichment — explicit.
+    2. ``metadata.scraper_type`` is unset AND ``crawler_type`` auto-resolves
+       to ``("skip", None)`` via ``auto_scraper_type()`` AND no enrichment —
+       implicit rich monitor that relies on CSV defaults.
+
     Such boards provide full job data from the monitor and must never be
     sent through the scrape pipeline, or the placeholder ``skip`` scraper
     raises ``RuntimeError("skip scraper called for …")``.
 
+    ``crawler_type`` is optional so legacy callers keep working. Pass it
+    whenever you have it (board record, Redis config hash) so implicit
+    rich monitors are caught too.
+
     Use this at every point that writes ``next_scrape_at`` or enqueues a
     scrape task so rich-monitor postings stay out of the scrape loop.
     """
-    if metadata.get("scraper_type") != "skip":
+    if _board_has_enrich(metadata) is not None:
         return False
-    return _board_has_enrich(metadata) is None
+    scraper_type = metadata.get("scraper_type")
+    if scraper_type == "skip":
+        return True
+    if scraper_type is None and crawler_type:
+        # Import here to avoid the workspace._compat dependency at module load
+        from src.workspace._compat import auto_skip_crawler_types
+
+        if crawler_type in auto_skip_crawler_types():
+            return True
+    return False
 
 
 async def _load_board_scrapers(

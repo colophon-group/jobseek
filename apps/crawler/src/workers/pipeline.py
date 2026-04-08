@@ -313,7 +313,8 @@ async def _process_scrape_work(
             except (json.JSONDecodeError, TypeError):
                 metadata = {}
 
-            scraper_type = metadata.get("scraper_type", board_config.get("crawler_type", "dom"))
+            crawler_type = board_config.get("crawler_type") or None
+            scraper_type = metadata.get("scraper_type") or crawler_type or "dom"
             scraper_config = metadata.get("scraper_config")
             if isinstance(scraper_config, str):
                 try:
@@ -322,6 +323,7 @@ async def _process_scrape_work(
                     scraper_config = None
         else:
             metadata = {}
+            crawler_type = None
             scraper_type = "dom"
             scraper_config = None
 
@@ -331,19 +333,43 @@ async def _process_scrape_work(
             _process_one_scrape,
         )
 
-        # Defense in depth: rich monitors must never invoke the scraper
-        # pipeline. If a stale task (pre-fix data, drift, or a rich-monitor
-        # fallback) reaches this worker, clear the Postgres schedule and
-        # drop the Redis task without rescheduling so the loop drains.
-        if _is_skip_no_scrape(metadata):
+        async def _drop_skipped(reason: str) -> None:
+            """Clear Postgres + delete the Redis scrape hash and return.
+
+            Does NOT reschedule in Redis — the claim already removed the task
+            from the per-domain ZSET, so simply returning drains one entry
+            from the loop.
+            """
             async with local_pool.acquire() as conn:
                 await conn.execute(_CLEAR_SCRAPE_FOR_RICH, [posting_id])
+            # Clean up the per-posting scrape config hash; leaving it creates
+            # an orphan key (40k orphans across a drain is wasteful).
+            try:
+                await r.delete(f"scrape:{posting_id}")
+            except Exception:
+                worker_log.warning("pipeline.scrape.scrape_hash_delete_failed", exc_info=True)
             tasks_total.labels(kind="scrape", status="skipped_rich").inc()
             worker_log.info(
                 "pipeline.scrape.skipped_rich",
                 board_id=scrape_work.board_id,
-                reason="scraper_type=skip, no enrich",
+                reason=reason,
             )
+
+        # Defense in depth: rich monitors must never invoke the scraper
+        # pipeline. If a stale task (pre-fix data, drift, or a rich-monitor
+        # fallback) reaches this worker, clear the Postgres schedule and
+        # drop the Redis task without rescheduling so the loop drains.
+        if _is_skip_no_scrape(metadata, crawler_type):
+            await _drop_skipped("rich monitor, no enrich")
+            return
+
+        # Fail-safe: an empty board config means Redis lost the board hash
+        # (eviction, missing sync). The legacy fallback here used to pass
+        # ``crawler_type`` as the scraper name, which is not a registered
+        # scraper and raises ``KeyError``. Drop the task the same way we
+        # drop rich-monitor stragglers so the worker doesn't crash.
+        if not board_config:
+            await _drop_skipped("missing board config in Redis")
             return
 
         success, duration = await _process_one_scrape(

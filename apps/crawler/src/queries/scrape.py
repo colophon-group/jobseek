@@ -2,7 +2,46 @@
 
 from __future__ import annotations
 
-_FETCH_DUE_JOB_POSTINGS = """
+from src.workspace._compat import auto_skip_crawler_types
+
+
+def _build_skip_no_scrape_predicate(board_alias: str = "jb") -> str:
+    """Build the SQL predicate for 'board is rich-monitor, no scraping'.
+
+    Mirrors ``_is_skip_no_scrape`` (``processing/scrape.py``). Returns a
+    parenthesized boolean expression suitable for ``WHERE NOT ( … )``.
+
+    Two cases match:
+    1. ``metadata.scraper_type = 'skip'`` explicitly.
+    2. ``metadata.scraper_type`` is unset AND ``crawler_type`` is in the
+       auto-resolved rich-monitor set.
+
+    Both cases additionally require no enrichment to be configured.
+    ``COALESCE`` wraps the ``? 'enrich'`` check because the JSONB ``?``
+    operator returns NULL when ``scraper_config`` itself is NULL, and
+    ``NOT NULL`` is NULL (not TRUE).
+
+    The rich crawler-type list is injected as a string literal so callers
+    don't need to pass extra SQL parameters. Keep it in sync with
+    ``workspace._compat._AUTO_SKIP_CRAWLER_TYPES``.
+    """
+    types = sorted(auto_skip_crawler_types())
+    literal = ", ".join(f"'{t}'" for t in types)
+    return f"""(
+            ({board_alias}.metadata->>'scraper_type' = 'skip'
+             OR (
+                 {board_alias}.metadata->>'scraper_type' IS NULL
+                 AND {board_alias}.crawler_type IN ({literal})
+             )
+            )
+            AND NOT COALESCE({board_alias}.metadata->'scraper_config' ? 'enrich', false)
+        )"""
+
+
+_SKIP_NO_SCRAPE_PREDICATE = _build_skip_no_scrape_predicate("jb")
+
+
+_FETCH_DUE_JOB_POSTINGS = f"""
 WITH candidates AS (
     SELECT jp.id,
            split_part(split_part(jp.source_url, '://', 2), '/', 1) AS domain,
@@ -14,15 +53,9 @@ WITH candidates AS (
       AND jp.next_scrape_at IS NOT NULL
       AND jp.next_scrape_at <= now()
       AND (jp.leased_until IS NULL OR jp.leased_until < now())
-      -- Defense in depth: never pick up postings from rich-monitor boards
-      -- whose scraper_type is 'skip' (without enrichment). See issue
-      -- #01-rich-monitor-scheduling. COALESCE wraps the ``? 'enrich'``
-      -- check because the operator returns NULL when scraper_config is
-      -- itself NULL, and NOT NULL is NULL (not TRUE).
-      AND NOT (
-            jb.metadata->>'scraper_type' = 'skip'
-            AND NOT COALESCE(jb.metadata->'scraper_config' ? 'enrich', false)
-          )
+      -- Defense in depth: never pick up postings from rich-monitor boards.
+      -- See issue #01-rich-monitor-scheduling.
+      AND NOT {_SKIP_NO_SCRAPE_PREDICATE}
     FOR UPDATE OF jp SKIP LOCKED
 ),
 ranked AS (
@@ -157,10 +190,17 @@ SET scrape_failures   = scrape_failures + 1,
 WHERE id = $1
 """
 
-_CLEAR_SCRAPE_FOR_RICH = """
-UPDATE job_posting
+_CLEAR_SCRAPE_FOR_RICH = f"""
+UPDATE job_posting jp
 SET next_scrape_at = NULL, leased_until = NULL
-WHERE id = ANY($1::uuid[])
+FROM job_board jb
+WHERE jp.id = ANY($1::uuid[])
+  AND jb.id = jp.board_id
+  -- Scope the clear to boards that are STILL rich-no-scrape. Without this
+  -- predicate the UPDATE races with legitimate scrape writers when a
+  -- board was just reclassified (config drift, enrich added). See issue
+  -- #01-rich-monitor-scheduling.
+  AND {_SKIP_NO_SCRAPE_PREDICATE}
 """
 
 _FETCH_POSTING_FOR_ENRICH = """

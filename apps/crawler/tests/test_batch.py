@@ -387,7 +387,10 @@ class TestProcessOneBoard:
             # Third fetch call: MARK_GONE_BY_TIMESTAMP
             [],
         ]
-        board = _mock_board()
+        # Use a genuinely non-rich crawler_type. ``_mock_board()`` defaults to
+        # greenhouse, which the new classifier correctly treats as implicit
+        # rich-no-scrape.
+        board = _mock_board(crawler_type="dom")
 
         await _process_one_board(board, pool, mock_http)
 
@@ -395,8 +398,46 @@ class TestProcessOneBoard:
         assert conn.fetch.await_count == 3
         second_fetch = conn.fetch.await_args_list[1]
         assert second_fetch.args[0] == _INSERT_URL_ONLY_JOBS
-        # Non-rich monitor → is_rich_no_scrape flag is False, so next_scrape_at is set.
+        # Non-rich monitor → never_scrape flag is False, so next_scrape_at is set.
         assert second_fetch.args[4] is False
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_url_only_on_rich_crawler_type_keeps_next_scrape_null(
+        self,
+        mock_monitor,
+        mock_get_redis,
+        mock_pool,
+        mock_http,
+    ):
+        """Rich crawler_type falling back to URL-only must NOT set next_scrape_at.
+
+        This is the scenario the comment in ``_process_one_board_streaming``
+        called out: a greenhouse/lever/etc monitor emits URLs-only for a
+        cycle (e.g. transient API degradation). Before the fix,
+        ``is_rich_no_scrape = is_rich and not enrich_fields`` was False
+        because ``is_rich`` is False, so ``_INSERT_URL_ONLY_JOBS`` set
+        ``next_scrape_at = now()`` and the postings re-entered the stuck
+        cohort. After the fix, the metadata/crawler-type classifier kicks
+        in and the insert keeps ``next_scrape_at = NULL``.
+        """
+        pool, conn = mock_pool
+        url1 = "https://example.com/job/1"
+        mock_monitor.side_effect = _mock_stream(MonitorResult(urls={url1}, jobs_by_url=None))
+        conn.fetch.side_effect = [
+            [_diff_row("new", url=url1)],
+            [_inserted_row("jp-1", url1)],
+            [],
+        ]
+        # Rich crawler_type, no explicit scraper_type in metadata.
+        board = _mock_board(crawler_type="greenhouse")
+
+        await _process_one_board(board, pool, mock_http)
+
+        second_fetch = conn.fetch.await_args_list[1]
+        assert second_fetch.args[0] == _INSERT_URL_ONLY_JOBS
+        # never_scrape must be True even though the runtime is_rich flag was False.
+        assert second_fetch.args[4] is True
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
