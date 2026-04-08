@@ -268,6 +268,21 @@ def _mock_stream(*results):
     return _gen
 
 
+def _counter_value(metric, **labels):
+    """Read a Prometheus counter's current value via the public collect() API.
+
+    Avoids reaching into ``counter._value.get()`` (private API that may
+    break across ``prometheus-client`` upgrades, and ``pyproject.toml``
+    only pins ``>=0.21``).
+    """
+    expected = labels
+    for family in metric.collect():
+        for sample in family.samples:
+            if sample.name.endswith("_total") and sample.labels == expected:
+                return sample.value
+    return 0.0
+
+
 # ── TestProcessOneBoard ──────────────────────────────────────────────
 
 
@@ -901,8 +916,9 @@ class TestDuplicateSourceUrl:
         conn.fetchrow.return_value = None  # every insert conflicts
         board = _mock_board()
 
-        counter = monitor_dedup_total.labels(path="rich")
-        before = counter._value.get()
+        # Ensure the label set is registered before we read it.
+        monitor_dedup_total.labels(path="rich")
+        before = _counter_value(monitor_dedup_total, path="rich")
         enqueue_spy = board_mod._enqueue_scrapes_for_new
         enqueue_spy.reset_mock()
 
@@ -912,7 +928,7 @@ class TestDuplicateSourceUrl:
         desc_calls = [c for c in conn.execute.await_args_list if c.args[0] == _UPSERT_DESCRIPTION]
         assert len(desc_calls) == 0
         # Dedup counter bumped by exactly two.
-        assert counter._value.get() - before == 2
+        assert _counter_value(monitor_dedup_total, path="rich") - before == 2
         # Nothing enqueued for scraping (the board has no enrich, so the
         # enqueue branch wouldn't fire anyway; this is just belt-and-braces).
         enqueue_spy.assert_not_awaited()
@@ -1010,8 +1026,9 @@ class TestDuplicateSourceUrl:
 
         enqueue_spy = board_mod._enqueue_scrapes_for_new
         enqueue_spy.reset_mock()
-        counter = monitor_dedup_total.labels(path="cross_board")
-        before = counter._value.get()
+        # Ensure label set is registered before reading.
+        monitor_dedup_total.labels(path="cross_board")
+        before = _counter_value(monitor_dedup_total, path="cross_board")
         board = _mock_board()
 
         await _process_one_board(board, pool, mock_http)
@@ -1025,7 +1042,7 @@ class TestDuplicateSourceUrl:
         enqueue_spy.assert_not_awaited()
 
         # Metric contract: cross-board dedup counter bumped exactly once.
-        assert counter._value.get() - before == 1
+        assert _counter_value(monitor_dedup_total, path="cross_board") - before == 1
 
 
 # ── TestMonitorPipeline ──────────────────────────────────────────────
