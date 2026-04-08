@@ -39,6 +39,7 @@ services:
   # -- Workers (3x HTTP, each on its own metrics port) -------------
   worker-1:
     image: ghcr.io/${OWNER}/jobseek-crawler:latest
+    init: true
     restart: unless-stopped
     network_mode: host
     command: uv run --no-sync crawler run
@@ -62,6 +63,7 @@ services:
 
   worker-2:
     image: ghcr.io/${OWNER}/jobseek-crawler:latest
+    init: true
     restart: unless-stopped
     network_mode: host
     command: uv run --no-sync crawler run
@@ -85,6 +87,7 @@ services:
 
   worker-3:
     image: ghcr.io/${OWNER}/jobseek-crawler:latest
+    init: true
     restart: unless-stopped
     network_mode: host
     command: uv run --no-sync crawler run
@@ -109,6 +112,7 @@ services:
   # -- Exporter ----------------------------------------------------
   exporter:
     image: ghcr.io/${OWNER}/jobseek-crawler:latest
+    init: true
     restart: unless-stopped
     network_mode: host
     command: uv run --no-sync crawler export
@@ -123,6 +127,7 @@ services:
   # -- R2 Drain ----------------------------------------------------
   drain:
     image: ghcr.io/${OWNER}/jobseek-crawler:latest
+    init: true
     restart: unless-stopped
     network_mode: host
     command: uv run --no-sync crawler drain
@@ -137,6 +142,7 @@ services:
   # -- Browser -----------------------------------------------------
   browser-1:
     image: ghcr.io/${OWNER}/jobseek-crawler-browser:latest
+    init: true
     restart: unless-stopped
     network_mode: host
     command: uv run --no-sync crawler run-browser
@@ -156,6 +162,7 @@ services:
       retries: 3
       start_period: 30s
     mem_limit: 4g
+    pids_limit: 4096
     cpus: 3.0
 
   # -- Grafana Alloy (metrics + log collector) --------------------
