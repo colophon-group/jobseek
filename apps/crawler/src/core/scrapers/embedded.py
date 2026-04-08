@@ -293,12 +293,10 @@ async def scrape(
     # Fetch page HTML
     if render:
         try:
+            from src.shared.browser import NAVIGATE_KEYS
             from src.shared.browser import render as browser_render
 
-            browser_config = {}
-            for key in ("wait", "timeout", "actions"):
-                if config.get(key) is not None:
-                    browser_config[key] = config[key]
+            browser_config = {k: v for k, v in config.items() if k in NAVIGATE_KEYS}
             html = await browser_render(url, config=browser_config, pw=pw)
         except Exception:
             log.warning("embedded_scraper.render_failed", url=url, exc_info=True)

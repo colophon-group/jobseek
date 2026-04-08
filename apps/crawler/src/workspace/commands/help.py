@@ -690,16 +690,21 @@ dom — Link Extraction (fallback)
   Config:
     {"render": true, "wait": "networkidle", "timeout": 30000}
 
-    render       false (default) = static HTTP, true = Playwright
-    wait         Wait strategy: "load" | "domcontentloaded" | "networkidle" (default) | "commit"
-    timeout      Navigation timeout in ms (default: 30000)
-    user_agent   Custom User-Agent string
-    headless     Run headless (default: true)
-    actions      Browser action pipeline (see: ws help actions)
-    url_filter   Regex filter for discovered URLs (see: ws help monitor sitemap)
-                 Keep patterns broad enough to include URL variants
-    url_transform Regex find/replace to rewrite URLs (see: ws help monitor sitemap)
-                 (numeric suffixes, trailing slash, query params)
+    render         false (default) = static HTTP, true = Playwright
+    wait           Wait strategy: "load" | "domcontentloaded" | "networkidle" (default) | "commit"
+    wait_fallback  Optional fallback wait strategy. On Page.goto timeout, a
+                   second attempt is made using this strategy with the same
+                   timeout. Use for SPA sites where "networkidle" never
+                   settles (persistent analytics/telemetry requests) — pair
+                   primary "networkidle" with fallback "domcontentloaded".
+    timeout        Navigation timeout in ms (default: 30000)
+    user_agent     Custom User-Agent string
+    headless       Run headless (default: true)
+    actions        Browser action pipeline (see: ws help actions)
+    url_filter     Regex filter for discovered URLs (see: ws help monitor sitemap)
+                   Keep patterns broad enough to include URL variants
+    url_transform  Regex find/replace to rewrite URLs (see: ws help monitor sitemap)
+                   (numeric suffixes, trailing slash, query params)
 
   Pagination (multi-page career sites):
     {
@@ -1170,10 +1175,12 @@ json-ld — Schema.org JobPosting Extractor
   Uses the first JSON-LD block that contains a JobPosting.
 
   Optional runtime config:
-    render    Use Playwright (default: false)
-    actions   Browser action pipeline (auto-enables render)
-    wait      Navigation wait strategy (Playwright only)
-    timeout   Navigation timeout in ms (Playwright only)
+    render         Use Playwright (default: false)
+    actions        Browser action pipeline (auto-enables render)
+    wait           Navigation wait strategy (Playwright only)
+    wait_fallback  Fallback wait strategy tried on primary timeout (Playwright
+                   only). Use for SPA sites where "networkidle" never settles.
+    timeout        Navigation timeout in ms (Playwright only)
 
   Fields extracted (from schema.org properties):
     title          ← title or name
@@ -1295,14 +1302,17 @@ dom — Step-based Extraction Engine
       "wait": "networkidle"
     }
 
-    steps     Extraction step list (see: ws help steps)
-    render    false (default) = static HTTP, true = Playwright
-    wait      Wait strategy (Playwright only): load | domcontentloaded
-              | networkidle (default) | commit
-    timeout   Navigation timeout in ms (default: 30000)
-    user_agent  Custom User-Agent
-    headless  Run headless (default: true)
-    actions   Browser action pipeline (see: ws help actions)
+    steps          Extraction step list (see: ws help steps)
+    render         false (default) = static HTTP, true = Playwright
+    wait           Wait strategy (Playwright only): load | domcontentloaded
+                   | networkidle (default) | commit
+    wait_fallback  Fallback wait strategy tried on primary Page.goto timeout.
+                   Use for SPA sites where "networkidle" never settles —
+                   pair with "domcontentloaded" as the fallback.
+    timeout        Navigation timeout in ms (default: 30000)
+    user_agent     Custom User-Agent
+    headless       Run headless (default: true)
+    actions        Browser action pipeline (see: ws help actions)
 
   Target fields: title, description, locations, employment_type,
   job_location_type, date_posted, valid_through, qualifications,

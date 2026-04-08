@@ -222,6 +222,14 @@ worker_heartbeat_ts = Gauge(
     ["worker_id"],
 )
 
+# ── Browser metrics ─────────────────────────────────────────────────
+
+browser_navigate_fallback_total = Counter(
+    "crawler_browser_navigate_fallback_total",
+    "Browser navigate() fallback retries after primary wait-strategy timeout",
+    ["primary", "fallback", "outcome"],
+)
+
 
 def start_metrics_server(port: int) -> None:
     start_http_server(port)

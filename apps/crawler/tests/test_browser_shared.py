@@ -6,13 +6,17 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
 from src.shared.browser import (
     _REPEAT_TIMEOUT,
     ACTION_TIMEOUT,
+    BROWSER_KEYS,
     DEFAULT_TIMEOUT,
     DEFAULT_USER_AGENT,
     DEFAULT_WAIT,
+    DEFAULT_WAIT_FALLBACK,
+    NAVIGATE_KEYS,
     OVERLAY_SELECTORS,
     VALID_WAIT_STRATEGIES,
     _resolve_placeholders,
@@ -83,6 +87,37 @@ class TestConstants:
         for sel in OVERLAY_SELECTORS:
             assert isinstance(sel, str)
 
+    def test_default_wait_fallback_is_valid_strategy(self):
+        assert DEFAULT_WAIT_FALLBACK in VALID_WAIT_STRATEGIES
+
+    def test_browser_keys_exact_membership(self):
+        # BROWSER_KEYS is the single source of truth for which config keys
+        # reach open_page / navigate / run_actions. A missing entry silently
+        # drops the key at the monitor/scraper boundary — regression guard.
+        expected = frozenset(
+            {
+                "wait",
+                "wait_fallback",
+                "timeout",
+                "user_agent",
+                "headless",
+                "stealth",
+                "actions",
+                "warmup_url",
+                "cookies",
+                "disable_http2",
+            }
+        )
+        assert expected == BROWSER_KEYS
+
+    def test_navigate_keys_is_nav_only_subset(self):
+        # NAVIGATE_KEYS is the narrow projection for call sites that should
+        # not silently activate open_page launch flags (stealth, cookies,
+        # user_agent, etc.) on boards that historically had them dropped.
+        expected = frozenset({"wait", "wait_fallback", "timeout", "actions"})
+        assert expected == NAVIGATE_KEYS
+        assert NAVIGATE_KEYS < BROWSER_KEYS
+
 
 # ---------------------------------------------------------------------------
 # TestNavigate
@@ -108,6 +143,128 @@ class TestNavigate:
         page = _make_page()
         with pytest.raises(ValueError, match="Invalid wait strategy"):
             await navigate(page, "https://example.com", {"wait": "bogus"})
+
+
+# ---------------------------------------------------------------------------
+# TestNavigateFallback
+# ---------------------------------------------------------------------------
+
+
+class TestNavigateFallback:
+    """Tests for the wait_fallback retry behaviour added to navigate().
+
+    Background: SPA career sites with persistent analytics/telemetry chatter
+    never reach ``networkidle``, so the 30s primary attempt times out. The
+    fallback retries once with ``domcontentloaded`` (default) and recovers.
+    """
+
+    async def test_fallback_triggers_on_timeout(self):
+        """Primary times out → fallback strategy is tried with same timeout."""
+        page = _make_page()
+        page.goto = AsyncMock(
+            side_effect=[
+                PlaywrightTimeoutError("Page.goto: Timeout 30000ms exceeded."),
+                None,
+            ]
+        )
+        await navigate(
+            page,
+            "https://example.com",
+            {"wait": "networkidle", "wait_fallback": "domcontentloaded", "timeout": 30000},
+        )
+        assert page.goto.await_count == 2
+        first_call = page.goto.await_args_list[0]
+        second_call = page.goto.await_args_list[1]
+        assert first_call.kwargs["wait_until"] == "networkidle"
+        assert second_call.kwargs["wait_until"] == "domcontentloaded"
+        assert second_call.kwargs["timeout"] == 30000
+
+    async def test_default_fallback_applied_when_key_absent(self):
+        """When wait_fallback is not set in config, DEFAULT_WAIT_FALLBACK is used."""
+        page = _make_page()
+        page.goto = AsyncMock(side_effect=[PlaywrightTimeoutError("Timeout"), None])
+        await navigate(page, "https://example.com", {"wait": "networkidle"})
+        assert page.goto.await_count == 2
+        assert page.goto.await_args_list[1].kwargs["wait_until"] == DEFAULT_WAIT_FALLBACK
+
+    async def test_explicit_none_disables_fallback(self):
+        """wait_fallback: None opts the board out of the default retry."""
+        page = _make_page()
+        page.goto = AsyncMock(side_effect=PlaywrightTimeoutError("Timeout"))
+        with pytest.raises(PlaywrightTimeoutError):
+            await navigate(
+                page,
+                "https://example.com",
+                {"wait": "networkidle", "wait_fallback": None},
+            )
+        assert page.goto.await_count == 1
+
+    async def test_fallback_no_op_when_primary_succeeds(self):
+        """When primary succeeds, fallback is never attempted."""
+        page = _make_page()
+        await navigate(
+            page,
+            "https://example.com",
+            {"wait": "networkidle", "wait_fallback": "domcontentloaded"},
+        )
+        assert page.goto.await_count == 1
+        page.goto.assert_awaited_once_with(
+            "https://example.com", wait_until="networkidle", timeout=DEFAULT_TIMEOUT
+        )
+
+    async def test_fallback_both_fail_raises(self):
+        """When both primary and fallback time out, TimeoutError propagates."""
+        page = _make_page()
+        page.goto = AsyncMock(side_effect=PlaywrightTimeoutError("Timeout"))
+        with pytest.raises(PlaywrightTimeoutError):
+            await navigate(
+                page,
+                "https://example.com",
+                {"wait": "networkidle", "wait_fallback": "domcontentloaded"},
+            )
+        assert page.goto.await_count == 2
+
+    async def test_fallback_primary_domcontentloaded_no_retry(self):
+        """Primary already equals DEFAULT_WAIT_FALLBACK — no pointless retry."""
+        page = _make_page()
+        page.goto = AsyncMock(side_effect=PlaywrightTimeoutError("Timeout"))
+        with pytest.raises(PlaywrightTimeoutError):
+            await navigate(page, "https://example.com", {"wait": "domcontentloaded"})
+        # Default fallback is "domcontentloaded", same as primary → skip retry
+        assert page.goto.await_count == 1
+
+    async def test_fallback_same_as_primary_does_not_retry(self):
+        """An explicit fallback equal to the primary strategy is a no-op."""
+        page = _make_page()
+        page.goto = AsyncMock(side_effect=PlaywrightTimeoutError("Timeout"))
+        with pytest.raises(PlaywrightTimeoutError):
+            await navigate(
+                page,
+                "https://example.com",
+                {"wait": "networkidle", "wait_fallback": "networkidle"},
+            )
+        assert page.goto.await_count == 1
+
+    async def test_fallback_non_timeout_error_not_retried(self):
+        """Non-timeout errors propagate without fallback retry."""
+        page = _make_page()
+        page.goto = AsyncMock(side_effect=RuntimeError("network unreachable"))
+        with pytest.raises(RuntimeError, match="network unreachable"):
+            await navigate(
+                page,
+                "https://example.com",
+                {"wait": "networkidle", "wait_fallback": "domcontentloaded"},
+            )
+        assert page.goto.await_count == 1
+
+    async def test_invalid_fallback_raises(self):
+        page = _make_page()
+        with pytest.raises(ValueError, match="Invalid wait_fallback strategy"):
+            await navigate(
+                page,
+                "https://example.com",
+                {"wait": "networkidle", "wait_fallback": "bogus"},
+            )
 
 
 # ---------------------------------------------------------------------------
