@@ -1146,6 +1146,8 @@ deepintent,deepintent-greenhouse,https://job-boards.greenhouse.io/deepintent,gre
 deepjudge,deepjudge-careers,https://jobs.ashbyhq.com/deepjudge,ashby,"{""token"": ""deepjudge""}",skip,
 deepmind,deepmind-careers,https://deepmind.google/about/careers/,greenhouse,"{""token"": ""deepmind""}",skip,
 deepnote,deepnote-ashby,https://jobs.ashbyhq.com/deepnote,ashby,"{""token"": ""deepnote""}",skip,
+deepseek,deepseek-careers,https://app.mokahr.com/social-recruitment/high-flyer/140576,mokahr,"{""org_id"": ""high-flyer"", ""site_id"": 140576}",skip,
+deepseek,deepseek-campus,https://app.mokahr.com/campus_apply/high-flyer/4605,mokahr,"{""org_id"": ""high-flyer"", ""site_id"": 4605}",skip,
 deepsense-ai,deepsense-ai-careers,https://deepsense.ai/careers/,dom,"{""url_filter"": ""/careers/[a-z]""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""attr"": ""class=taxonomy-location"", ""field"": ""locations"", ""optional"": true, ""from"": 0}, {""attr"": ""class=taxonomy-operating-mode"", ""field"": ""job_location_type"", ""optional"": true, ""from"": 0}, {""tag"": ""h2"", ""field"": ""description"", ""html"": true, ""stop_tag"": ""footer"", ""from"": 0}]}"
 deepset,deepset-careers,https://deepset.jobs.personio.de/,personio,"{""slug"": ""deepset""}",skip,
 defense-unicorns,defense-unicorns-greenhouse,https://job-boards.greenhouse.io/defenseunicorns,greenhouse,"{""token"": ""defenseunicorns""}",skip,
