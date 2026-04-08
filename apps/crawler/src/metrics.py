@@ -36,6 +36,12 @@ monitor_jobs_discovered = Counter(
     ["profile", "action"],
 )
 
+api_sniffer_fallback_failed_total = Counter(
+    "crawler_api_sniffer_fallback_failed_total",
+    "api_sniffer replay paths that ended with no data (raised ApiSnifferFallbackError)",
+    ["reason"],
+)
+
 monitor_idle_seconds = Counter(
     "crawler_monitor_idle_seconds_total",
     "Time workers spent idle (no work in queue)",

@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from src.core.monitors.api_sniffer import (
+    ApiSnifferFallbackError,
     _discover_live_url,
     _extract_rich,
     _extract_urls_from_template,
@@ -311,8 +312,15 @@ class TestHTTPFallback:
         assert result[0].title == "Dev"
 
     @pytest.mark.asyncio
-    async def test_replay_both_fail_returns_empty(self):
-        """When both browser and HTTP fallback fail, returns empty."""
+    async def test_replay_both_fail_raises(self):
+        """When both browser and HTTP fallback fail, raises ApiSnifferFallbackError.
+
+        The raised exception propagates up to the board processor, which records
+        a failure (incrementing ``consecutive_failures``) so the auto-disable at
+        5 kicks in for persistently-broken boards.  Previously this returned an
+        empty list, causing the counter to bounce between success and empty and
+        never trip the disable threshold.
+        """
         config = {
             "api_url": "https://example.com/api/jobs",
             "browser": True,
@@ -331,9 +339,86 @@ class TestHTTPFallback:
         http = AsyncMock()
         http.request = AsyncMock(return_value=mock_resp)
 
-        result = await discover(board, http, pw=mock_pw)
-        assert isinstance(result, list)
-        assert len(result) == 0
+        with pytest.raises(ApiSnifferFallbackError) as exc_info:
+            await discover(board, http, pw=mock_pw)
+        assert exc_info.value.api_url == "https://example.com/api/jobs"
+        assert exc_info.value.board_url == "https://example.com/careers"
+        # Chained from the underlying httpx failure
+        assert exc_info.value.__cause__ is not None
+
+    @pytest.mark.asyncio
+    async def test_replay_both_fail_logs_at_warning_not_error(self):
+        """http_fallback_failed must be logged at WARNING, not ERROR.
+
+        These events are expected ends-of-fallback-chain; logging them at ERROR
+        muddies the error budget.  The exception raised propagates the failure
+        through the normal board-failure pipeline instead.
+        """
+        config = {
+            "api_url": "https://example.com/api/jobs",
+            "browser": True,
+            "fields": {"title": "title"},
+        }
+        board = {"board_url": "https://example.com/careers", "metadata": config}
+
+        mock_page = AsyncMock()
+        mock_page.evaluate = AsyncMock(side_effect=Exception("Browser crashed"))
+        mock_pw = _make_mock_pw(mock_page)
+
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status.side_effect = Exception("HTTP failed too")
+        http = AsyncMock()
+        http.request = AsyncMock(return_value=mock_resp)
+
+        # Patch the module-level structlog BoundLogger to intercept calls.
+        with (
+            patch("src.core.monitors.api_sniffer.log") as mock_log,
+            pytest.raises(ApiSnifferFallbackError),
+        ):
+            await discover(board, http, pw=mock_pw)
+
+        warning_events = [c.args[0] for c in mock_log.warning.call_args_list]
+        error_events = [c.args[0] for c in mock_log.error.call_args_list]
+
+        assert "api_sniffer.http_fallback_failed" in warning_events, (
+            f"expected http_fallback_failed at WARNING, got warnings={warning_events}"
+        )
+        assert "api_sniffer.http_fallback_failed" not in error_events, (
+            f"http_fallback_failed must not be logged at ERROR, got errors={error_events}"
+        )
+
+    @pytest.mark.asyncio
+    async def test_replay_fallback_raise_chains_original_exception(self):
+        """The raised ApiSnifferFallbackError preserves the underlying cause.
+
+        Operators reading the failure in Loki need to know which HTTP status
+        or network error caused the fallback to exhaust; the chain carries
+        that context via ``__cause__``.
+        """
+        config = {
+            "api_url": "https://us.api.csod.com/rec-job-search/external/jobs",
+            "browser": True,
+            "fields": {"title": "title"},
+        }
+        board = {
+            "board_url": "https://bradesco.csod.com/ux/ats/careersite/1/home",
+            "metadata": config,
+        }
+
+        mock_page = AsyncMock()
+        mock_page.evaluate = AsyncMock(side_effect=Exception("Browser crashed"))
+        mock_pw = _make_mock_pw(mock_page)
+
+        original_error = RuntimeError("401 Unauthorized")
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status.side_effect = original_error
+        http = AsyncMock()
+        http.request = AsyncMock(return_value=mock_resp)
+
+        with pytest.raises(ApiSnifferFallbackError) as exc_info:
+            await discover(board, http, pw=mock_pw)
+        assert exc_info.value.__cause__ is original_error
+        assert "401 Unauthorized" in str(exc_info.value)
 
 
 def _make_mock_response(url, data=None):
@@ -709,7 +794,12 @@ class TestRetryWithApiUrlMatch:
 
     @pytest.mark.asyncio
     async def test_no_api_url_match_skips_rediscovery(self):
-        """Without api_url_match, fetch failure goes straight to HTTP fallback."""
+        """Without api_url_match, fetch failure goes straight to HTTP fallback.
+
+        When the HTTP fallback also fails, ApiSnifferFallbackError is raised so
+        the board processor advances the consecutive-failure counter rather
+        than recording an empty check (which would reset it).
+        """
         config = {
             "api_url": "https://api.example.com/v1/jobs",
             "method": "GET",
@@ -731,9 +821,8 @@ class TestRetryWithApiUrlMatch:
         http = AsyncMock()
         http.request = AsyncMock(return_value=mock_resp)
 
-        result = await discover(board, http, pw=mock_pw)
-        assert isinstance(result, list)
-        assert len(result) == 0
+        with pytest.raises(ApiSnifferFallbackError):
+            await discover(board, http, pw=mock_pw)
 
 
 class TestHttpModeUrlMatchFallback:
