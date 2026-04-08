@@ -4525,6 +4525,7 @@ wpp,wpp-vml-enterprise,https://job-boards.greenhouse.io/vmlenterprisesolutions,g
 wpp,wpp-vml-map,https://job-boards.greenhouse.io/map,greenhouse,"{""token"": ""map""}",skip,
 wpp,wpp-wppmedia,https://job-boards.greenhouse.io/wppmedia,greenhouse,"{""token"": ""wppmedia""}",skip,
 wpromote,wpromote-lever,https://jobs.lever.co/wpromote,lever,"{""token"": ""wpromote""}",skip,
+wrapbook,wrapbook-careers,https://jobs.ashbyhq.com/wrapbook,ashby,"{""token"": ""wrapbook""}",skip,
 wrike,wrike-greenhouse,https://job-boards.greenhouse.io/wrike,greenhouse,"{""token"": ""wrike""}",skip,
 writer,writer-ashby,https://jobs.ashbyhq.com/writer,ashby,"{""token"": ""writer""}",skip,
 wunder,wunder-greenhouse,https://job-boards.greenhouse.io/wundercapital,greenhouse,"{""token"": ""wundercapital""}",skip,
