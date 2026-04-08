@@ -147,6 +147,23 @@ def _board_has_enrich(metadata: dict) -> list[str] | None:
     return None
 
 
+def _is_skip_no_scrape(metadata: dict) -> bool:
+    """Return True if this board is 'rich monitor, no scraping needed'.
+
+    A board is skip-no-scrape when its metadata explicitly sets
+    ``scraper_type = "skip"`` AND does not configure enrichment fields.
+    Such boards provide full job data from the monitor and must never be
+    sent through the scrape pipeline, or the placeholder ``skip`` scraper
+    raises ``RuntimeError("skip scraper called for …")``.
+
+    Use this at every point that writes ``next_scrape_at`` or enqueues a
+    scrape task so rich-monitor postings stay out of the scrape loop.
+    """
+    if metadata.get("scraper_type") != "skip":
+        return False
+    return _board_has_enrich(metadata) is None
+
+
 async def _load_board_scrapers(
     pool: asyncpg.Pool,
     board_ids: set[str],

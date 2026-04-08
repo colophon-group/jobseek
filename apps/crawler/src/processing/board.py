@@ -40,6 +40,7 @@ from src.processing.scrape import (
     ScrapeItem,
     _apply_defaults,
     _board_has_enrich,
+    _is_skip_no_scrape,
     _PipelineResult,
 )
 from src.queries.monitor import (
@@ -141,6 +142,15 @@ async def _enqueue_scrapes_for_new(
     """Enqueue scrapes for newly inserted postings into Redis."""
     if not posting_rows:
         return
+    # Rich monitors provide full job data; never route them through the
+    # scrape pipeline or the placeholder ``skip`` scraper will fire.
+    if _is_skip_no_scrape(metadata):
+        board_log.debug(
+            "batch.enqueue_scrape.skipped_rich",
+            count=len(posting_rows),
+            reason="scraper_type=skip, no enrich",
+        )
+        return
     scraper_type = metadata.get("scraper_type", "json-ld")
     scraper_config = metadata.get("scraper_config")
     if not isinstance(scraper_config, dict):
@@ -174,6 +184,15 @@ async def _enqueue_scrapes_for_relisted(
 ) -> None:
     """Enqueue scrapes for relisted postings (came back after gone)."""
     if not relisted:
+        return
+    # Rich monitors provide full job data; never route them through the
+    # scrape pipeline or the placeholder ``skip`` scraper will fire.
+    if _is_skip_no_scrape(metadata):
+        board_log.debug(
+            "batch.enqueue_scrape.skipped_rich",
+            count=len(relisted),
+            reason="scraper_type=skip, no enrich",
+        )
         return
     scraper_type = metadata.get("scraper_type", "json-ld")
     scraper_config = metadata.get("scraper_config")
@@ -574,11 +593,16 @@ async def _process_one_board_streaming(
 
                     # URL-only path -- insert stubs with next_scrape_at
                     if chunk_jobs is None and new_urls:
+                        # Defensive: rich monitors should never fall into this
+                        # path, but if a rich monitor fails and emits URLs-only,
+                        # the insert must still keep next_scrape_at=NULL to
+                        # avoid feeding the skip scraper loop.
                         inserted = await conn.fetch(
                             _INSERT_URL_ONLY_JOBS,
                             company_id,
                             board_id,
                             new_urls,
+                            is_rich_no_scrape,
                         )
                         board_log.info("batch.inserted_for_scrape", count=len(inserted))
                         await _enqueue_scrapes_for_new(inserted, board_id, metadata, board_log)

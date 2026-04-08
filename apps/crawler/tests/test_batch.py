@@ -395,6 +395,8 @@ class TestProcessOneBoard:
         assert conn.fetch.await_count == 3
         second_fetch = conn.fetch.await_args_list[1]
         assert second_fetch.args[0] == _INSERT_URL_ONLY_JOBS
+        # Non-rich monitor → is_rich_no_scrape flag is False, so next_scrape_at is set.
+        assert second_fetch.args[4] is False
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")

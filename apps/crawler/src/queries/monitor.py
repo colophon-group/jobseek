@@ -352,7 +352,8 @@ _INSERT_URL_ONLY_JOBS = """
 INSERT INTO job_posting (company_id, board_id, source_url,
                          first_seen_at, last_seen_at, next_scrape_at,
                          is_active, titles, locales)
-SELECT $1, $2, u.url, now(), now(), now(),
+SELECT $1, $2, u.url, now(), now(),
+       CASE WHEN $4::boolean THEN NULL ELSE now() END,
        true, '{}', '{}'
 FROM unnest($3::text[]) AS u(url)
 RETURNING id, source_url

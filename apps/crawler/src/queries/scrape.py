@@ -4,15 +4,26 @@ from __future__ import annotations
 
 _FETCH_DUE_JOB_POSTINGS = """
 WITH candidates AS (
-    SELECT id, split_part(split_part(source_url, '://', 2), '/', 1) AS domain,
-           next_scrape_at,
-           (description_r2_hash IS NULL)::int AS needs_initial_scrape
-    FROM job_posting
-    WHERE is_active = true
-      AND next_scrape_at IS NOT NULL
-      AND next_scrape_at <= now()
-      AND (leased_until IS NULL OR leased_until < now())
-    FOR UPDATE SKIP LOCKED
+    SELECT jp.id,
+           split_part(split_part(jp.source_url, '://', 2), '/', 1) AS domain,
+           jp.next_scrape_at,
+           (jp.description_r2_hash IS NULL)::int AS needs_initial_scrape
+    FROM job_posting jp
+    JOIN job_board  jb ON jp.board_id = jb.id
+    WHERE jp.is_active = true
+      AND jp.next_scrape_at IS NOT NULL
+      AND jp.next_scrape_at <= now()
+      AND (jp.leased_until IS NULL OR jp.leased_until < now())
+      -- Defense in depth: never pick up postings from rich-monitor boards
+      -- whose scraper_type is 'skip' (without enrichment). See issue
+      -- #01-rich-monitor-scheduling. COALESCE wraps the ``? 'enrich'``
+      -- check because the operator returns NULL when scraper_config is
+      -- itself NULL, and NOT NULL is NULL (not TRUE).
+      AND NOT (
+            jb.metadata->>'scraper_type' = 'skip'
+            AND NOT COALESCE(jb.metadata->'scraper_config' ? 'enrich', false)
+          )
+    FOR UPDATE OF jp SKIP LOCKED
 ),
 ranked AS (
     SELECT id,

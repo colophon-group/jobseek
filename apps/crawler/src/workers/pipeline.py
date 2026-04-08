@@ -321,10 +321,30 @@ async def _process_scrape_work(
                 except (json.JSONDecodeError, TypeError):
                     scraper_config = None
         else:
+            metadata = {}
             scraper_type = "dom"
             scraper_config = None
 
-        from src.processing.scrape import _process_one_scrape
+        from src.processing.scrape import (
+            _CLEAR_SCRAPE_FOR_RICH,
+            _is_skip_no_scrape,
+            _process_one_scrape,
+        )
+
+        # Defense in depth: rich monitors must never invoke the scraper
+        # pipeline. If a stale task (pre-fix data, drift, or a rich-monitor
+        # fallback) reaches this worker, clear the Postgres schedule and
+        # drop the Redis task without rescheduling so the loop drains.
+        if _is_skip_no_scrape(metadata):
+            async with local_pool.acquire() as conn:
+                await conn.execute(_CLEAR_SCRAPE_FOR_RICH, [posting_id])
+            tasks_total.labels(kind="scrape", status="skipped_rich").inc()
+            worker_log.info(
+                "pipeline.scrape.skipped_rich",
+                board_id=scrape_work.board_id,
+                reason="scraper_type=skip, no enrich",
+            )
+            return
 
         success, duration = await _process_one_scrape(
             item,
