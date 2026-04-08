@@ -14,6 +14,9 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 import structlog
+from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+
+from src import metrics
 
 log = structlog.get_logger()
 
@@ -27,6 +30,14 @@ DEFAULT_USER_AGENT = (
     "Chrome/133.0.0.0 Safari/537.36"
 )
 DEFAULT_WAIT = "networkidle"
+# Default fallback for ``navigate()``: when the primary ``page.goto`` times out
+# (typically because an SPA never reaches ``networkidle`` due to persistent
+# analytics/telemetry chatter), retry once with ``domcontentloaded``. Set
+# ``wait_fallback=None`` in config to explicitly disable for a given board.
+# This is strictly safer than the previous behaviour: the fallback only fires
+# on paths that were already failing, so there is no extra CPU cost vs the
+# status quo, and sites that do settle under ``networkidle`` are untouched.
+DEFAULT_WAIT_FALLBACK = "domcontentloaded"
 DEFAULT_TIMEOUT = 30_000
 CONTEXT_TIMEOUT = 120_000  # hard cap: no single Playwright operation exceeds 2 minutes
 VALID_WAIT_STRATEGIES = frozenset({"load", "domcontentloaded", "networkidle", "commit"})
@@ -46,6 +57,7 @@ OVERLAY_SELECTORS = (
 BROWSER_KEYS = frozenset(
     {
         "wait",
+        "wait_fallback",
         "timeout",
         "user_agent",
         "headless",
@@ -56,6 +68,13 @@ BROWSER_KEYS = frozenset(
         "disable_http2",
     }
 )
+
+# Narrow subset that affects only ``navigate()`` and the action pipeline — not
+# browser launch (``open_page``).  Use this in call sites that historically
+# only forwarded ``wait``/``timeout``/``actions`` so we can add ``wait_fallback``
+# without silently activating previously-dropped launch-time keys (``stealth``,
+# ``user_agent``, ``cookies``, etc.) on boards that set them.
+NAVIGATE_KEYS = frozenset({"wait", "wait_fallback", "timeout", "actions"})
 
 # ---------------------------------------------------------------------------
 # Config placeholders
@@ -144,20 +163,76 @@ async def navigate(
 ) -> None:
     """Navigate *page* to *url* respecting wait strategy and timeout.
 
-    Config keys: ``wait`` (default ``"networkidle"``), ``timeout`` (default
-    ``30000``).
+    Config keys:
+        ``wait``           Primary wait strategy (default ``"networkidle"``).
+        ``timeout``        Navigation timeout in ms (default ``30000``).
+        ``wait_fallback``  Fallback wait strategy retried once when the primary
+                           ``page.goto`` raises Playwright's ``TimeoutError``
+                           (non-timeout errors propagate unchanged). Defaults
+                           to ``DEFAULT_WAIT_FALLBACK`` ("domcontentloaded")
+                           so SPA sites that never reach ``networkidle`` still
+                           produce usable HTML. Set to ``None`` in config to
+                           opt out; set to the same value as ``wait`` for an
+                           effective no-op. The fallback reuses the original
+                           timeout, so worst-case wall-clock is ``2 * timeout``.
     """
     config = config or {}
     wait_strategy = config.get("wait", DEFAULT_WAIT)
     timeout = config.get("timeout", DEFAULT_TIMEOUT)
+    # Distinguish "not set" (use default) from "explicitly None" (disable).
+    if "wait_fallback" in config:
+        fallback_strategy = config["wait_fallback"]
+    else:
+        fallback_strategy = DEFAULT_WAIT_FALLBACK
 
     if wait_strategy not in VALID_WAIT_STRATEGIES:
         raise ValueError(
             f"Invalid wait strategy {wait_strategy!r}, "
             f"must be one of {sorted(VALID_WAIT_STRATEGIES)}"
         )
+    if fallback_strategy is not None and fallback_strategy not in VALID_WAIT_STRATEGIES:
+        raise ValueError(
+            f"Invalid wait_fallback strategy {fallback_strategy!r}, "
+            f"must be one of {sorted(VALID_WAIT_STRATEGIES)}"
+        )
 
-    await page.goto(url, wait_until=wait_strategy, timeout=timeout)
+    try:
+        await page.goto(url, wait_until=wait_strategy, timeout=timeout)
+        return
+    except PlaywrightTimeoutError:
+        if not fallback_strategy:
+            # Board opted out via wait_fallback=None. Record separately from
+            # the match-primary case so operators can tell why the retry was
+            # skipped.
+            metrics.browser_navigate_fallback_total.labels(
+                primary=wait_strategy, fallback="none", outcome="disabled"
+            ).inc()
+            raise
+        if fallback_strategy == wait_strategy:
+            # Fallback equals primary — nothing to gain from a second attempt.
+            metrics.browser_navigate_fallback_total.labels(
+                primary=wait_strategy, fallback=fallback_strategy, outcome="match"
+            ).inc()
+            raise
+
+    log.info(
+        "browser.navigate.fallback",
+        url=url,
+        primary=wait_strategy,
+        fallback=fallback_strategy,
+        timeout_ms=timeout,
+    )
+    try:
+        await page.goto(url, wait_until=fallback_strategy, timeout=timeout)
+    except Exception:
+        metrics.browser_navigate_fallback_total.labels(
+            primary=wait_strategy, fallback=fallback_strategy, outcome="failed"
+        ).inc()
+        raise
+    else:
+        metrics.browser_navigate_fallback_total.labels(
+            primary=wait_strategy, fallback=fallback_strategy, outcome="success"
+        ).inc()
 
 
 ACTION_TIMEOUT = 10.0  # seconds

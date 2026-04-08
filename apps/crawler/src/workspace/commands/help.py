@@ -562,17 +562,22 @@ nextdata — Next.js __NEXT_DATA__ Discovery
       "slug_fields": ["title"]
     }
 
-    path          Dot-notation path to jobs array in __NEXT_DATA__ JSON
-    url_template  URL template with {field_name} placeholders from each item
-                  Special: {slug} built by slugifying + joining slug_fields
-    fields        Dict mapping DiscoveredJob fields to item field paths
-                  Supports dot notation (a.b.c), array index (a[0].b),
-                  array wildcard (a[].b — extracts from all items)
-    slug_fields   List of item fields to slugify + join for {slug} variable
-    render        If true, use Playwright to render page (default: false)
-    actions       Browser action pipeline (auto-enables render)
-    url_filter    Regex filter for discovered URLs (see: ws help monitor sitemap)
-    url_transform Regex find/replace to rewrite URLs (see: ws help monitor sitemap)
+    path           Dot-notation path to jobs array in __NEXT_DATA__ JSON
+    url_template   URL template with {field_name} placeholders from each item
+                   Special: {slug} built by slugifying + joining slug_fields
+    fields         Dict mapping DiscoveredJob fields to item field paths
+                   Supports dot notation (a.b.c), array index (a[0].b),
+                   array wildcard (a[].b — extracts from all items)
+    slug_fields    List of item fields to slugify + join for {slug} variable
+    render         If true, use Playwright to render page (default: false)
+    actions        Browser action pipeline (auto-enables render)
+    wait           Navigation wait strategy (Playwright only)
+    wait_fallback  Fallback wait strategy retried once on Page.goto timeout
+                   (Playwright only). Default: "domcontentloaded". Set to
+                   null to opt out.
+    timeout        Navigation timeout in ms (Playwright only)
+    url_filter     Regex filter for discovered URLs (see: ws help monitor sitemap)
+    url_transform  Regex find/replace to rewrite URLs (see: ws help monitor sitemap)
 
   Detection:  ws probe shows "__NEXT_DATA__ — N items at <path>"
               If "(render)" shown, page needs Playwright to load data.
@@ -667,7 +672,10 @@ inline — Single-Page Extraction (rich)
     defaults     Default field values applied when extracted value is absent.
                  Supports: locations (list), employment_type, job_location_type,
                  date_posted.
-    + browser keys (wait, timeout, user_agent, etc.)
+    + browser keys (wait, wait_fallback, timeout, user_agent, etc. — see
+      `ws help scraper dom` for the full list; wait_fallback defaults to
+      "domcontentloaded" and retries once on Page.goto timeout, set to null
+      to opt out)
 
   Step design tips:
     - Steps run in a loop: after extracting one job, the cursor is where
@@ -690,16 +698,22 @@ dom — Link Extraction (fallback)
   Config:
     {"render": true, "wait": "networkidle", "timeout": 30000}
 
-    render       false (default) = static HTTP, true = Playwright
-    wait         Wait strategy: "load" | "domcontentloaded" | "networkidle" (default) | "commit"
-    timeout      Navigation timeout in ms (default: 30000)
-    user_agent   Custom User-Agent string
-    headless     Run headless (default: true)
-    actions      Browser action pipeline (see: ws help actions)
-    url_filter   Regex filter for discovered URLs (see: ws help monitor sitemap)
-                 Keep patterns broad enough to include URL variants
-    url_transform Regex find/replace to rewrite URLs (see: ws help monitor sitemap)
-                 (numeric suffixes, trailing slash, query params)
+    render         false (default) = static HTTP, true = Playwright
+    wait           Wait strategy: "load" | "domcontentloaded" | "networkidle" (default) | "commit"
+    wait_fallback  Fallback wait strategy retried once on Page.goto timeout.
+                   Default: "domcontentloaded" (applied automatically). Set
+                   to null to opt out. The retry reuses the same timeout, so
+                   worst-case wall-clock is 2*timeout. Use for SPA sites
+                   where "networkidle" never settles (persistent analytics/
+                   telemetry requests).
+    timeout        Navigation timeout in ms (default: 30000)
+    user_agent     Custom User-Agent string
+    headless       Run headless (default: true)
+    actions        Browser action pipeline (see: ws help actions)
+    url_filter     Regex filter for discovered URLs (see: ws help monitor sitemap)
+                   Keep patterns broad enough to include URL variants
+    url_transform  Regex find/replace to rewrite URLs (see: ws help monitor sitemap)
+                   (numeric suffixes, trailing slash, query params)
 
   Pagination (multi-page career sites):
     {
@@ -1115,6 +1129,11 @@ api_sniffer — XHR/Fetch API Capture (Playwright)
     wait             Navigation wait strategy: "load", "domcontentloaded", or
                      "networkidle". Default: "load". Use "networkidle" for sites
                      where XHRs fire late; avoid it on heavy sites (analytics/ads).
+    wait_fallback    Fallback wait strategy retried once on Page.goto timeout.
+                     Default: "domcontentloaded". Set to null to opt out.
+                     Note: sniffer monitors depend on network activity to
+                     capture XHRs — an early fallback may miss late-loading
+                     responses. If API discovery regresses, set to null.
     timeout          Navigation timeout in ms. Default: 20000.
     settle           Seconds to wait after navigation for late XHRs. Default: 3.
 
@@ -1170,10 +1189,13 @@ json-ld — Schema.org JobPosting Extractor
   Uses the first JSON-LD block that contains a JobPosting.
 
   Optional runtime config:
-    render    Use Playwright (default: false)
-    actions   Browser action pipeline (auto-enables render)
-    wait      Navigation wait strategy (Playwright only)
-    timeout   Navigation timeout in ms (Playwright only)
+    render         Use Playwright (default: false)
+    actions        Browser action pipeline (auto-enables render)
+    wait           Navigation wait strategy (Playwright only)
+    wait_fallback  Fallback wait strategy retried once on Page.goto timeout
+                   (Playwright only). Default: "domcontentloaded". Set to
+                   null to opt out.
+    timeout        Navigation timeout in ms (Playwright only)
 
   Fields extracted (from schema.org properties):
     title          ← title or name
@@ -1221,8 +1243,13 @@ nextdata — Next.js __NEXT_DATA__ Page Extractor
               Target fields: title, description, locations, employment_type,
               job_location_type, date_posted, valid_through, qualifications,
               responsibilities, skills. Prefix with "metadata." for extras.
-    render    Use Playwright (default: false)
-    actions   Browser action pipeline (auto-enables render)
+    render        Use Playwright (default: false)
+    actions       Browser action pipeline (auto-enables render)
+    wait          Navigation wait strategy (Playwright only)
+    wait_fallback Fallback wait strategy retried once on Page.goto timeout
+                  (Playwright only). Default: "domcontentloaded". Set to
+                  null to opt out.
+    timeout       Navigation timeout in ms (Playwright only)
 
   When to use:  When job pages are Next.js and embed data in __NEXT_DATA__.
   Empty result? Verify path points to the right data with browser devtools.
@@ -1265,8 +1292,13 @@ embedded — Generalized Embedded Data Extractor
               Target fields: title, description, locations, employment_type,
               job_location_type, date_posted, valid_through, qualifications,
               responsibilities, skills. Prefix with "metadata." for extras.
-    render    Use Playwright (default: false)
-    actions   Browser action pipeline (auto-enables render)
+    render        Use Playwright (default: false)
+    actions       Browser action pipeline (auto-enables render)
+    wait          Navigation wait strategy (Playwright only)
+    wait_fallback Fallback wait strategy retried once on Page.goto timeout
+                  (Playwright only). Default: "domcontentloaded". Set to
+                  null to opt out.
+    timeout       Navigation timeout in ms (Playwright only)
 
   When to use:  Sites with structured job data embedded in JavaScript
                 that isn't Next.js __NEXT_DATA__ (use nextdata for that).
@@ -1295,14 +1327,18 @@ dom — Step-based Extraction Engine
       "wait": "networkidle"
     }
 
-    steps     Extraction step list (see: ws help steps)
-    render    false (default) = static HTTP, true = Playwright
-    wait      Wait strategy (Playwright only): load | domcontentloaded
-              | networkidle (default) | commit
-    timeout   Navigation timeout in ms (default: 30000)
-    user_agent  Custom User-Agent
-    headless  Run headless (default: true)
-    actions   Browser action pipeline (see: ws help actions)
+    steps          Extraction step list (see: ws help steps)
+    render         false (default) = static HTTP, true = Playwright
+    wait           Wait strategy (Playwright only): load | domcontentloaded
+                   | networkidle (default) | commit
+    wait_fallback  Fallback wait strategy retried once on Page.goto timeout.
+                   Default: "domcontentloaded" (applied automatically). Set
+                   to null to opt out. Use for SPA sites where "networkidle"
+                   never settles.
+    timeout        Navigation timeout in ms (default: 30000)
+    user_agent     Custom User-Agent
+    headless       Run headless (default: true)
+    actions        Browser action pipeline (see: ws help actions)
 
   Target fields: title, description, locations, employment_type,
   job_location_type, date_posted, valid_through, qualifications,
@@ -1355,10 +1391,17 @@ api_sniffer — XHR/Fetch API Capture (single page)
               Target fields: title, description, locations, employment_type,
               job_location_type, date_posted, valid_through, qualifications,
               responsibilities, skills. Prefix with "metadata." for extras.
-    wait      (Browser mode only) Navigation wait strategy: "load",
-              "domcontentloaded", or "networkidle". Default: "load".
-    timeout   (Browser mode only) Navigation timeout in ms. Default: 20000.
-    settle    (Browser mode only) Seconds to wait for late XHRs. Default: 3.
+    wait          (Browser mode only) Navigation wait strategy: "load",
+                  "domcontentloaded", or "networkidle". Default: "load".
+    wait_fallback (Browser mode only) Fallback wait strategy retried once on
+                  Page.goto timeout. Default: "domcontentloaded". Set to null
+                  to opt out. Note: the sniffer captures XHRs during both the
+                  primary and fallback navigations, so the retry adds rather
+                  than replaces responses — but if API discovery regresses
+                  on a specific board, set to null to revert to single-attempt
+                  behavior.
+    timeout       (Browser mode only) Navigation timeout in ms. Default: 20000.
+    settle        (Browser mode only) Seconds to wait for late XHRs. Default: 3.
 
   Auto-probed via Playwright in ws probe scraper. Requires Playwright.
   Can also be manually selected: ws select scraper api_sniffer

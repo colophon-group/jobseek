@@ -470,18 +470,22 @@ async def scrape(
     if config.get("api_url"):
         return await _scrape_http(url, config, http)
 
-    from src.shared.browser import navigate, open_page
+    from src.shared.browser import NAVIGATE_KEYS, navigate, open_page
 
     async def _do_scrape(p):
-        wait = config.get("wait", _DEFAULT_WAIT)
-        timeout = config.get("timeout", _DEFAULT_TIMEOUT)
         settle = config.get("settle", _DEFAULT_SETTLE)
+        # Narrow projection: wait / wait_fallback / timeout (and actions, if the
+        # scraper ever starts running them). Intentionally does not forward
+        # open_page keys — open_page is still called with {} below.
+        nav_config = {k: v for k, v in config.items() if k in NAVIGATE_KEYS}
+        nav_config.setdefault("wait", _DEFAULT_WAIT)
+        nav_config.setdefault("timeout", _DEFAULT_TIMEOUT)
 
         async with open_page(p, {}, target_url=url) as page:
             page_host = urlparse(url).netloc
             exchanges = await capture_exchanges(page, page_host)
 
-            await navigate(page, url, {"wait": wait, "timeout": timeout})
+            await navigate(page, url, nav_config)
             await asyncio.sleep(settle)
 
             json_path = config.get("json_path")

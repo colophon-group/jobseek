@@ -40,6 +40,7 @@ from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 import structlog
 
 from src.core.monitors import DiscoveredJob, fetch_page_text, register
+from src.shared.browser import NAVIGATE_KEYS
 from src.shared.nextdata import (
     extract_embedded_json,
     extract_field,
@@ -315,8 +316,7 @@ async def discover(
         )
         render = True
 
-    wait: str | None = metadata.get("wait")
-    timeout: int | None = metadata.get("timeout")
+    browser_config = {k: v for k, v in metadata.items() if k in NAVIGATE_KEYS}
 
     # Fetch the page
     html = await _fetch_html(
@@ -324,9 +324,7 @@ async def discover(
         render,
         client,
         pw=pw,
-        actions=actions,
-        wait=wait,
-        timeout=timeout,
+        browser_config=browser_config,
     )
     if not html:
         log.warning("nextdata.fetch_failed", board_url=board_url)
@@ -356,9 +354,7 @@ async def discover(
             pagination_cfg,
             source=source,
             pw=pw,
-            actions=actions,
-            wait=wait,
-            timeout=timeout,
+            browser_config=browser_config,
         )
 
     # Cap items
@@ -404,17 +400,14 @@ async def discover_stream(
     if not render and actions:
         render = True
 
-    wait: str | None = metadata.get("wait")
-    timeout: int | None = metadata.get("timeout")
+    browser_config = {k: v for k, v in metadata.items() if k in NAVIGATE_KEYS}
 
     html = await _fetch_html(
         board_url,
         render,
         client,
         pw=pw,
-        actions=actions,
-        wait=wait,
-        timeout=timeout,
+        browser_config=browser_config,
     )
     if not html:
         return
@@ -461,9 +454,7 @@ async def discover_stream(
                 render,
                 client,
                 pw=pw,
-                actions=actions,
-                wait=wait,
-                timeout=timeout,
+                browser_config=browser_config,
             )
             if not page_html:
                 return []
@@ -531,23 +522,19 @@ async def _fetch_html(
     render: bool,
     client: httpx.AsyncClient,
     pw=None,
-    actions: list[dict] | None = None,
-    wait: str | None = None,
-    timeout: int | None = None,
+    browser_config: dict | None = None,
 ) -> str | None:
-    """Fetch page HTML via httpx or Playwright."""
+    """Fetch page HTML via httpx or Playwright.
+
+    ``browser_config`` is a full projection of browser-recognised keys (use
+    ``BROWSER_KEYS`` at the call site) so ``wait`` / ``wait_fallback`` /
+    ``timeout`` / ``actions`` etc. all reach ``navigate()``.
+    """
     if render:
         try:
             from src.shared.browser import render as browser_render
 
-            browser_config: dict = {}
-            if actions:
-                browser_config["actions"] = actions
-            if wait:
-                browser_config["wait"] = wait
-            if timeout is not None:
-                browser_config["timeout"] = timeout
-            return await browser_render(url, config=browser_config, pw=pw)
+            return await browser_render(url, config=browser_config or {}, pw=pw)
         except Exception:
             log.warning("nextdata.render_failed", url=url, exc_info=True)
             return None
@@ -564,9 +551,7 @@ async def _fetch_remaining_pages(
     pagination_cfg: dict,
     source: str = "nextdata",
     pw=None,
-    actions: list[dict] | None = None,
-    wait: str | None = None,
-    timeout: int | None = None,
+    browser_config: dict | None = None,
 ) -> list:
     """Fetch pages 2..N and merge items with the first page."""
     pagination_path = pagination_cfg.get("path")
@@ -625,9 +610,7 @@ async def _fetch_remaining_pages(
                 render,
                 client,
                 pw=pw,
-                actions=actions,
-                wait=wait,
-                timeout=timeout,
+                browser_config=browser_config,
             )
             if not html:
                 log.warning("nextdata.page_fetch_failed", page=page_num)
