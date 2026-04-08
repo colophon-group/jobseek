@@ -562,6 +562,59 @@ function buildFilterCacheKey(f: WatchlistFilters, companyIds: string[]): string 
   return parts.join("|");
 }
 
+/**
+ * Count distinct companies with currently-active postings matching the given
+ * watchlist filters. Used to render an accurate "Tracking N companies" string
+ * in metadata for `anyCompany` watchlists, where `watchlist_company` rows are
+ * unrelated to what the watchlist actually tracks.
+ */
+export async function getWatchlistMatchingCompanyCount(
+  f: WatchlistFilters,
+): Promise<number> {
+  const key = `wl-match-companies:${buildFilterCacheKey(f, [])}`;
+  return cached(key, async () => {
+    const locale = "en";
+    const [locMap, occMap, senMap, techMap] = await Promise.all([
+      f.locationSlugs?.length ? resolveLocationSlugs(f.locationSlugs, locale) : Promise.resolve(new Map()),
+      f.occupationSlugs?.length ? resolveOccupationSlugs(f.occupationSlugs, locale) : Promise.resolve(new Map()),
+      f.senioritySlugs?.length ? resolveSenioritySlugs(f.senioritySlugs, locale) : Promise.resolve(new Map()),
+      f.technologySlugs?.length ? resolveTechnologySlugs(f.technologySlugs) : Promise.resolve(new Map()),
+    ]);
+
+    const filterStr = buildFilterString({
+      locationIds: locMap.size > 0 ? [...locMap.values()].map((l) => l.id) : undefined,
+      occupationIds: occMap.size > 0 ? [...occMap.values()].map((o) => o.id) : undefined,
+      seniorityIds: senMap.size > 0 ? [...senMap.values()].map((s) => s.id) : undefined,
+      technologyIds: techMap.size > 0 ? [...techMap.values()].map((t) => t.id) : undefined,
+      salaryMinEur: f.salaryMin,
+      salaryMaxEur: f.salaryMax,
+      experienceMin: f.experienceMin,
+      experienceMax: f.experienceMax,
+    });
+
+    const fullFilter = `is_active:true${filterStr ? " && " + filterStr : ""}`;
+    const hasKeywords = f.keywords && f.keywords.length > 0;
+    const q = hasKeywords ? f.keywords!.join(" ") : "*";
+
+    try {
+      const client = getSearchClient();
+      const result = await client.collections("job_posting").documents().search({
+        q,
+        query_by: "title",
+        filter_by: fullFilter,
+        facet_by: "company_id",
+        facet_strategy: "exhaustive",
+        max_facet_values: 1,
+        per_page: 0,
+      });
+      return result.facet_counts?.[0]?.stats?.total_values ?? 0;
+    } catch (err) {
+      console.error("[getWatchlistMatchingCompanyCount] Typesense failed", err);
+      return 0;
+    }
+  }, { ttl: 600 });
+}
+
 async function resolveFilteredJobCount(
   watchlistId: string,
   f: WatchlistFilters,

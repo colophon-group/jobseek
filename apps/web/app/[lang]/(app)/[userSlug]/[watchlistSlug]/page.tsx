@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { isLocale, defaultLocale, loadCatalog } from "@/lib/i18n";
 import {
   getWatchlistByUserAndSlug as _getWatchlistByUserAndSlug,
+  getWatchlistMatchingCompanyCount,
 } from "@/lib/actions/watchlists";
 import { siteConfig } from "@/content/config";
 import { buildAlternates } from "@/lib/seo";
@@ -65,7 +66,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
           values: { owner: ownerLabel },
         });
   }
-  const companyCount = detail.companies.length;
+  // For `anyCompany` watchlists, `detail.companies` is unrelated to what the
+  // watchlist actually tracks (it holds leftover rows from source copies).
+  // Ask Typesense how many distinct companies currently have postings matching
+  // the filter so the social preview reflects reality.
+  const companyCount = detail.filters.anyCompany
+    ? await getWatchlistMatchingCompanyCount(detail.filters)
+    : detail.companies.length;
   if (companyCount > 0) {
     description = i18n._({
       id: "watchlist.meta.tracking",
