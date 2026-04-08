@@ -235,7 +235,20 @@ ON CONFLICT (id) DO UPDATE SET
     board_slug = COALESCE(EXCLUDED.board_slug, job_board.board_slug),
     board_url = EXCLUDED.board_url,
     crawler_type = EXCLUDED.crawler_type,
-    metadata = EXCLUDED.metadata,
+    -- Preserve runtime-written metadata subkeys that the pipeline persists
+    -- via _UPDATE_METADATA during normal operation. Without this, every
+    -- `crawler sync` wipes out:
+    --   * ``sitemap_url`` — written by monitors that discover the sitemap
+    --     URL dynamically (eightfold, api_sniffer-based boards)
+    --   * ``pcsx_watermark`` — the eightfold incremental high-water mark
+    -- Shallow JSONB merge: start with CSV-derived values, then overlay any
+    -- preserved runtime subkeys from the existing row. ``jsonb_strip_nulls``
+    -- drops keys that don't exist on the existing row so the CSV value wins
+    -- on first sync (when there's nothing to preserve yet).
+    metadata = EXCLUDED.metadata || jsonb_strip_nulls(jsonb_build_object(
+        'sitemap_url', job_board.metadata -> 'sitemap_url',
+        'pcsx_watermark', job_board.metadata -> 'pcsx_watermark'
+    )),
     check_interval_minutes = EXCLUDED.check_interval_minutes,
     scrape_interval_hours = EXCLUDED.scrape_interval_hours,
     throttle_key = EXCLUDED.throttle_key,

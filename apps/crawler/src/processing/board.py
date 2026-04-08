@@ -666,18 +666,27 @@ async def _process_one_board_streaming(
                                 )
 
                         # Update content for relisted and touched.
-                        # Hybrid monitors (partial rich data) skip the touched
-                        # path because _BATCH_UPDATE_RICH_CONTENT uses plain
-                        # SET (not COALESCE) for core fields — feeding partial
-                        # rich data would null out previously-scraped fields.
-                        # Relisted jobs still go through because they're being
-                        # revived and need fresh content anyway.
-                        touched_for_update = [] if getattr(result, "hybrid", False) else touched
-                        update_triples = [
-                            (item["id"], chunk_jobs[item["url"]], item.get("r2_hash"))
-                            for item in relisted + touched_for_update
-                            if item["url"] in chunk_jobs
-                        ]
+                        # Hybrid monitors (partial rich data) skip BOTH the
+                        # touched AND relisted update paths because
+                        # _BATCH_UPDATE_RICH_CONTENT uses plain SET (not
+                        # COALESCE) for core fields — feeding partial rich
+                        # data would null out previously-scraped fields
+                        # (employment_type, salary_*, experience_*). Relisted
+                        # jobs still get refreshed content via the enrich
+                        # scrape path: _DIFF_BATCH resets ``next_scrape_at
+                        # = now()`` for relisted when ``is_rich_no_scrape``
+                        # is False, and the subsequent json-ld scrape fills
+                        # missing fields via ``_UPDATE_ENRICH_CONTENT``
+                        # (which DOES use COALESCE, so it's safe on partial
+                        # data). See ``_enqueue_scrapes_for_relisted`` below.
+                        if getattr(result, "hybrid", False):
+                            update_triples = []
+                        else:
+                            update_triples = [
+                                (item["id"], chunk_jobs[item["url"]], item.get("r2_hash"))
+                                for item in relisted + touched
+                                if item["url"] in chunk_jobs
+                            ]
                         if update_triples:
                             for _, j, _ in update_triples:
                                 j.description = normalize_description_html(j.description)

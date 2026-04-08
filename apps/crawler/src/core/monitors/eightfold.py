@@ -36,7 +36,6 @@ from __future__ import annotations
 
 import re
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
 import httpx
@@ -44,9 +43,6 @@ import structlog
 
 from src.core.monitors import DiscoveredJob, _pcsx, _watermark, fetch_page_text, register
 from src.core.monitors.sitemap import discover as sitemap_discover
-
-if TYPE_CHECKING:
-    from src.core.monitor import MonitorResult  # noqa: F401 — type hint only
 
 log = structlog.get_logger()
 
@@ -152,7 +148,6 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
     from src.core.monitor import MonitorResult
 
     metadata = board.get("metadata") or {}
-    _ = board.get("board_url", "")  # noqa: F841 — reserved for future logging
 
     # --- Step 1: sitemap (authoritative URL set) ---
     sitemap_urls, new_sitemap_url = await _sitemap_urls(board, client, pw=pw)
@@ -323,35 +318,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
     return MonitorResult()
 
 
-# ── can_handle (unchanged) ─────────────────────────────────────────────
-
-
-async def _probe_pcsx_simple(host: str, client: httpx.AsyncClient) -> bool:
-    """Legacy probe used by can_handle — kept separate to preserve behaviour.
-
-    Returns True on both 200 success AND 403 "PCSX is not enabled" because
-    both confirm the host is an Eightfold tenant, even if we can't use PCSX
-    for discovery. The runtime probe in ``_pcsx.probe`` is stricter and
-    returns False on 403.
-    """
-    try:
-        resp = await client.get(
-            f"https://{host}/api/pcsx/search",
-            params={"domain": host, "query": "", "location": "", "start": "0"},
-            timeout=10,
-        )
-        if resp.status_code == 200:
-            data = resp.json()
-            return "data" in data and "positions" in (data.get("data") or {})
-        if resp.status_code == 403:
-            try:
-                body = resp.json()
-                return "pcsx" in body.get("message", "").lower()
-            except Exception:
-                pass
-    except Exception:
-        pass
-    return False
+# ── can_handle (unchanged behaviour) ───────────────────────────────────
 
 
 async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None) -> dict | None:
@@ -390,8 +357,11 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
                 job_urls = [u for u in urls if "/careers/job/" in u]
                 return {"sitemap_url": sitemap, "urls": len(job_urls)}
 
-    # Last resort: probe PCSX API on the host
-    if await _probe_pcsx_simple(host, client):
+    # Last resort: probe the PCSX API on the host itself (lenient mode —
+    # a 403 "PCSX is not enabled" response still confirms the tenant is
+    # Eightfold, even though the runtime discover flow can't use PCSX
+    # for that tenant).
+    if await _pcsx.probe(host, host, client, strict=False):
         sitemap = _sitemap_url(url)
         return {"sitemap_url": sitemap}
 

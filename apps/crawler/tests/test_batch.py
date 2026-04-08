@@ -644,10 +644,14 @@ class TestProcessOneBoard:
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
-    async def test_hybrid_relisted_still_updates_content(
+    async def test_hybrid_skips_relisted_content_update(
         self, mock_monitor, mock_get_redis, mock_pool, mock_http
     ):
-        """Hybrid monitors DO update content for relisted jobs — they need fresh data."""
+        """Hybrid monitors must NOT feed 'relisted' jobs to _BATCH_UPDATE_RICH_CONTENT
+        either. That SQL uses plain SET (not COALESCE) for core fields, so PCSX's
+        partial data (no employment_type, salary, experience) would null out the
+        previously-scraped values. Relisted jobs get fresh content via the
+        enrichment re-scrape path instead, which uses COALESCE-safe semantics."""
         pool, conn = mock_pool
         relisted_url = "https://example.com/job/back"
         relisted_job = _discovered_job(url=relisted_url)
@@ -665,7 +669,38 @@ class TestProcessOneBoard:
 
         await _process_one_board(board, pool, mock_http)
 
-        # Relisted still triggers the update path
+        # Neither the temp table nor the bulk update runs for hybrid relisted.
+        execute_calls = conn.execute.await_args_list
+        rich_update_calls = [c for c in execute_calls if c.args[0] == _BATCH_UPDATE_RICH_CONTENT]
+        create_temp_calls = [c for c in execute_calls if c.args[0] == _CREATE_RICH_UPDATES_TEMP]
+        assert len(rich_update_calls) == 0, "hybrid must not touch relisted content"
+        assert len(create_temp_calls) == 0
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_nonhybrid_relisted_still_updates_content(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """Sanity check: non-hybrid rich monitors (greenhouse, lever, etc.) still
+        go through the update path for relisted — they always return full rich
+        data, so SET-based _BATCH_UPDATE_RICH_CONTENT is safe for them."""
+        pool, conn = mock_pool
+        relisted_url = "https://example.com/job/back"
+        relisted_job = _discovered_job(url=relisted_url)
+        mock_monitor.side_effect = _mock_stream(
+            MonitorResult(
+                urls={relisted_url},
+                jobs_by_url={relisted_url: relisted_job},
+                hybrid=False,  # traditional rich monitor
+            )
+        )
+        conn.fetch.return_value = [
+            _diff_row("relisted", row_id="jp-relisted", url=relisted_url),
+        ]
+        board = _mock_board()
+
+        await _process_one_board(board, pool, mock_http)
+
         execute_calls = conn.execute.await_args_list
         assert any(c.args[0] == _BATCH_UPDATE_RICH_CONTENT for c in execute_calls)
 

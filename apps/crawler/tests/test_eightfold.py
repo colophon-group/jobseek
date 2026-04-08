@@ -7,6 +7,8 @@ _watermark helpers live in test_pcsx.py and test_watermark.py.
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import httpx
 
 from src.core.monitor import MonitorResult
@@ -122,7 +124,27 @@ class TestFirstRun:
             ],
         ]
         handler, calls = _make_handler(SITEMAP_XML, pcsx_pages=pages)
-        [result] = await _run_discover_stream(handler)
+
+        # Spy on both pagination functions to verify the correct code path runs.
+        # Without this, the test would pass even if fetch_incremental were
+        # silently called (with watermark=0 it'd behave the same as fetch_all).
+        with (
+            patch(
+                "src.core.monitors._pcsx.fetch_all",
+                wraps=__import__("src.core.monitors._pcsx", fromlist=["fetch_all"]).fetch_all,
+            ) as spy_fetch_all,
+            patch(
+                "src.core.monitors._pcsx.fetch_incremental",
+                wraps=__import__(
+                    "src.core.monitors._pcsx", fromlist=["fetch_incremental"]
+                ).fetch_incremental,
+            ) as spy_fetch_incremental,
+        ):
+            [result] = await _run_discover_stream(handler)
+
+        # Critical assertion: fetch_all ran, fetch_incremental did NOT.
+        assert spy_fetch_all.await_count == 1
+        assert spy_fetch_incremental.await_count == 0
 
         assert len(result.urls) == 3
         assert result.jobs_by_url is not None
@@ -154,7 +176,16 @@ class TestFirstRun:
         }
         pages = [[_pos(111, 1000)]]
         handler, calls = _make_handler(SITEMAP_XML, pcsx_pages=pages)
-        [result] = await _run_discover_stream(handler, metadata=metadata)
+
+        with (
+            patch("src.core.monitors._pcsx.fetch_all") as spy_fetch_all,
+            patch("src.core.monitors._pcsx.fetch_incremental") as spy_fetch_incremental,
+        ):
+            [result] = await _run_discover_stream(handler, metadata=metadata)
+
+        # Neither pagination function should run — sitemap-only fallback.
+        assert spy_fetch_all.await_count == 0
+        assert spy_fetch_incremental.await_count == 0
 
         # Sitemap URLs present, but NO rich data (fetch_all was skipped).
         assert len(result.urls) == 3
@@ -163,6 +194,8 @@ class TestFirstRun:
         assert result.metadata_updates is not None
         wm = result.metadata_updates["pcsx_watermark"]
         assert wm["max_ts"] == 0
+        # auto_full_crawl must still be False after the fallback
+        assert wm["auto_full_crawl"] is False
 
 
 class TestIncremental:
@@ -182,7 +215,27 @@ class TestIncremental:
             [],  # safety 1 ends
         ]
         handler, calls = _make_handler(SITEMAP_XML, pcsx_pages=pages)
-        [result] = await _run_discover_stream(handler, metadata=metadata)
+
+        with (
+            patch(
+                "src.core.monitors._pcsx.fetch_all",
+                wraps=__import__("src.core.monitors._pcsx", fromlist=["fetch_all"]).fetch_all,
+            ) as spy_fetch_all,
+            patch(
+                "src.core.monitors._pcsx.fetch_incremental",
+                wraps=__import__(
+                    "src.core.monitors._pcsx", fromlist=["fetch_incremental"]
+                ).fetch_incremental,
+            ) as spy_fetch_incremental,
+        ):
+            [result] = await _run_discover_stream(handler, metadata=metadata)
+
+        # Critical: incremental path was taken, full crawl was NOT.
+        assert spy_fetch_incremental.await_count == 1
+        assert spy_fetch_all.await_count == 0
+        # Verify the watermark was passed correctly.
+        call_kwargs = spy_fetch_incremental.await_args.kwargs
+        assert call_kwargs["max_posted_ts"] == 500
 
         assert result.jobs_by_url is not None
         # Only 111, 222, 333 are in the sitemap — 444 and 555 get unmatched.
@@ -251,7 +304,13 @@ class TestPcsxFetchError:
 
 class TestForceFullCrawl:
     async def test_force_full_crawl_overrides_incremental(self):
-        """pcsx_force_full_crawl=True → fetch_all regardless of watermark."""
+        """pcsx_force_full_crawl=True → fetch_all regardless of watermark.
+
+        Uses spies to verify that ``fetch_all`` is called even when the
+        watermark is recent enough that incremental mode would normally run.
+        Without the flag override, this metadata state would trigger
+        ``fetch_incremental`` — so the spy assertion is the real test.
+        """
         metadata = {
             "pcsx_force_full_crawl": True,
             "pcsx_watermark": {
@@ -262,12 +321,33 @@ class TestForceFullCrawl:
         }
         pages = [[_pos(111, 1000)]]
         handler, calls = _make_handler(SITEMAP_XML, pcsx_pages=pages)
-        [result] = await _run_discover_stream(handler, metadata=metadata)
+
+        import datetime as _datetime
+
+        with (
+            patch(
+                "src.core.monitors._pcsx.fetch_all",
+                wraps=__import__("src.core.monitors._pcsx", fromlist=["fetch_all"]).fetch_all,
+            ) as spy_fetch_all,
+            patch(
+                "src.core.monitors._pcsx.fetch_incremental",
+                wraps=__import__(
+                    "src.core.monitors._pcsx", fromlist=["fetch_incremental"]
+                ).fetch_incremental,
+            ) as spy_fetch_incremental,
+        ):
+            [result] = await _run_discover_stream(handler, metadata=metadata)
+
+        # Force flag must override incremental mode — full crawl runs instead.
+        assert spy_fetch_all.await_count == 1
+        assert spy_fetch_incremental.await_count == 0
 
         assert result.jobs_by_url is not None
-        # last_full_at should have been advanced (full crawl happened).
         wm = result.metadata_updates["pcsx_watermark"]
-        assert "last_full_at" in wm
+        # last_full_at must have been advanced past the old value.
+        old_last_full = _datetime.datetime.fromisoformat("2026-04-08T00:00:00+00:00")
+        new_last_full = _datetime.datetime.fromisoformat(wm["last_full_at"])
+        assert new_last_full > old_last_full
 
 
 class TestUnmatched:

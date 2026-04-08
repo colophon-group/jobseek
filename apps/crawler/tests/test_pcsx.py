@@ -201,14 +201,12 @@ class TestBuildSitemapIdMap:
         assert result == {"111": "https://careers.kering.com/careers/job/111-foo"}
 
     def test_duplicate_id_keeps_first(self):
-        urls = [
-            "https://careers.kering.com/careers/job/111-first",
-            "https://careers.kering.com/careers/job/111-second",
-        ]
-        result = build_sitemap_id_map(urls)
-        # First wins. Sorting input is deterministic for the test.
-        assert len(result) == 1
-        assert "111" in result
+        first = "https://careers.kering.com/careers/job/111-first"
+        second = "https://careers.kering.com/careers/job/111-second"
+        result = build_sitemap_id_map([first, second])
+        # First wins — verify the specific URL, not just count. Without this
+        # assertion, a buggy "last wins" implementation would still pass.
+        assert result == {"111": first}
 
 
 # ── extract_host_and_domain ────────────────────────────────────────────
@@ -235,6 +233,16 @@ class TestExtractHostAndDomain:
 
     def test_empty_iterable(self):
         assert extract_host_and_domain([]) is None
+
+    def test_case_insensitive_domain_param(self):
+        """Malformed sitemaps in the wild sometimes use ``Domain=`` or
+        ``DOMAIN=`` instead of the canonical ``domain=``. The extraction
+        must tolerate both."""
+        for variant in ("Domain", "DOMAIN", "DoMaIn"):
+            urls = [
+                f"https://careers.example.com/careers/job/111-foo?{variant}=example",
+            ]
+            assert extract_host_and_domain(urls) == ("careers.example.com", "example")
 
 
 # ── pcsx_to_discovered ─────────────────────────────────────────────────
@@ -295,6 +303,41 @@ class TestPcsxToDiscovered:
         raw = {"name": "Job", "postedTs": 1775606400}
         job = pcsx_to_discovered(raw, "https://example.com/careers/job/1")
         assert job.metadata is None
+
+    def test_json_encoded_locations_string(self):
+        """Some PCSX tenants return standardizedLocations as a JSON-encoded
+        string rather than a list. The defensive decoder must unwrap it."""
+        raw = {
+            "name": "Job",
+            "standardizedLocations": '["Milan, Lombardy, IT", "Rome, Lazio, IT"]',
+            "postedTs": 1775606400,
+        }
+        job = pcsx_to_discovered(raw, "https://example.com/careers/job/1")
+        assert job.locations == ["Milan, Lombardy, IT", "Rome, Lazio, IT"]
+
+    def test_json_encoded_non_list_wraps(self):
+        """A JSON string that isn't a list falls back to wrapping the original
+        string as a one-element list. This is defensive against tenants that
+        quote a single location."""
+        raw = {
+            "name": "Job",
+            "standardizedLocations": '"Milan, Lombardy, IT"',
+            "postedTs": 1775606400,
+        }
+        job = pcsx_to_discovered(raw, "https://example.com/careers/job/1")
+        # parsed to "Milan, Lombardy, IT" (str), then wrapped as [original_str].
+        assert job.locations == ['"Milan, Lombardy, IT"']
+
+    def test_invalid_json_string_wraps_as_single_element(self):
+        """Malformed JSON → keep the original string as a one-element list
+        so we never lose the value."""
+        raw = {
+            "name": "Job",
+            "standardizedLocations": "[broken json",
+            "postedTs": 1775606400,
+        }
+        job = pcsx_to_discovered(raw, "https://example.com/careers/job/1")
+        assert job.locations == ["[broken json"]
 
 
 # ── Error handling for _fetch_page via public surface ──────────────────

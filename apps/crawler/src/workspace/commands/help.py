@@ -72,7 +72,7 @@ Monitor Types (cheapest first):
 
   Type              Cost    Returns           Scraper needed?
   ──────────────────────────────────────────────────────────────
-  eightfold         8       Job URLs          Auto-configured (json-ld)
+  eightfold         8       Hybrid rich+URL   json-ld enrich (description only)
   join              9       Job URLs          Auto-configured
   ashby             10      Full job data     No (skipped)
   bite              10      Job URLs          Auto-configured
@@ -329,30 +329,66 @@ breezy — Breezy HR Public Listing Endpoint
                     /json validates as a real listing endpoint."""
 
 MONITOR_EIGHTFOLD = """\
-eightfold — Eightfold AI Careers Portal (sitemap wrapper)
+eightfold — Eightfold AI Careers Portal (hybrid sitemap + PCSX)
 
-  Sitemap:  GET https://{host}/careers/sitemap.xml
-  Returns:  Job URLs (sitemap URL set)
-  Scraper:  Auto-configured (json-ld) — no render needed
+  Sources:  Sitemap (URL authority) + PCSX API (rich data, incremental)
+  Returns:  Sitemap URL set + partial rich data (title, locations, date_posted,
+            job_location_type, department, ats_job_id) for new/updated jobs
+  Scraper:  json-ld in "enrich" mode to fill description only
+            (PCSX doesn't return descriptions)
   Cost:     8 — cheapest monitor type
-  Note:     Thin wrapper over the sitemap monitor. Auto-constructs the
-            sitemap URL from the board URL and applies url_filter.
-            JSON-LD JobPosting schema is embedded in static HTML on all
-            Eightfold job pages — no Playwright/render required.
+
+  How it works:
+    1. Fetch the sitemap (canonical URL set — drives gone detection)
+    2. Probe PCSX API availability (cached in board metadata after first run)
+    3. If PCSX enabled: paginate newest-first via postedTs DESC, stopping
+       early when all items on a page are older than the stored watermark
+       (high-water mark). First run + weekly interval = full pagination.
+    4. Correlate PCSX positions to sitemap URLs by numeric job id
+    5. Emit partial rich data (keyed on canonical sitemap URL) + the full
+       sitemap URL set so gone detection continues to work
+
+  PCSX-disabled tenants (403 "PCSX is not enabled"): fall back to sitemap-only
+  mode automatically — same behaviour as the pre-hybrid monitor. Known
+  disabled tenants: bayer, american-express, hsbc, stmicroelectronics,
+  symetra, vale, zebra.
 
   Eightfold AI powers careers portals for 170+ enterprises including
   Starbucks, HSBC, Microsoft, Kering, Citigroup, Micron, etc.
 
-  Config:
-    {}                                            Minimal — sitemap URL auto-derived
+  Config (monitor_config):
     {"url_filter": "/careers/job/"}               Filter non-job URLs (recommended)
     {"sitemap_url": "https://custom.com/sitemap.xml"}  Override auto-derived URL
+    {"pcsx_watermark": {"auto_full_crawl": false}}     Await manual backfill
+                                                        (used for very large boards
+                                                        like Starbucks — see below)
 
-    url_filter     Regex to include only job URLs. Recommended: "/careers/job/"
-                   Eightfold sitemaps include the careers landing page alongside
-                   job URLs — the filter removes it.
-    sitemap_url    Override the auto-derived sitemap URL. Normally not needed —
-                   the monitor constructs it as {board_url_origin}/careers/sitemap.xml.
+  Config (scraper_config):
+    {"enrich": ["description"]}                   REQUIRED for PCSX-enabled tenants
+                                                   so json-ld fills in descriptions
+                                                   (PCSX doesn't return them).
+                                                   Optional for PCSX-disabled
+                                                   tenants (no effect if PCSX is
+                                                   skipped).
+
+  Watermark state (runtime-written in ``metadata.pcsx_watermark``):
+    max_ts               Highest postedTs seen — drives incremental stop
+    last_full_at         Last full crawl time (for 7-day refresh cadence)
+    last_incremental_at  Last successful incremental run
+    enabled              Cached probe result (true/false)
+    auto_full_crawl      If false, skip automatic full crawl on first run
+    extra                Host + domain (derived from sitemap URLs)
+
+  Manual backfill for large boards (Starbucks-scale):
+    Board CSVs with ``monitor_config.pcsx_watermark.auto_full_crawl: false``
+    skip the initial full crawl in scheduled runs. Operator triggers it
+    manually with:
+
+        uv run crawler board <slug> --pcsx-full-crawl
+
+    This bypasses the watermark and does a full PCSX pagination (can take
+    30-60 minutes for very large boards). On success the watermark is
+    populated and subsequent scheduled runs do fast incremental top-ups.
 
   URL patterns:
     *.eightfold.ai subdomains:  starbucks.eightfold.ai/careers
@@ -363,11 +399,27 @@ eightfold — Eightfold AI Careers Portal (sitemap wrapper)
               Detects *.eightfold.ai domains, HTML markers (eightfold.ai, pcsx),
               and PCSX API endpoint probe for white-label domains.
 
-  Why not use the API?
-    The Eightfold PCSX search API (/api/pcsx/search) has a hard 2,000 offset
-    cap — companies with more jobs (Starbucks: 21K) are unreachable via API.
-    The sitemap has no such limit. Some tenants also block the search API
-    entirely (STMicroelectronics returns 403). Sitemap is universally reliable.
+  Observability:
+    eightfold.full_crawl_start       First run or weekly re-sync starting
+    eightfold.full_crawl_done        Completed, N positions fetched
+    eightfold.incremental_start      Steady-state polling, max_ts=<unix>
+    eightfold.incremental_done       Completed, N positions fetched
+    eightfold.pcsx_disabled          Tenant returned 403 / probe failed
+    eightfold.pcsx_fetch_failed      Rate limit (405) or retry exhaustion —
+                                      sitemap-only fallback, watermark preserved
+    eightfold.pcsx_unmatched         N PCSX positions had no sitemap match
+                                      (usually sitemap lag for fresh jobs)
+    eightfold.awaiting_manual_backfill  auto_full_crawl=false + no watermark
+
+  Why the hybrid design?  Two problems in the old sitemap-only path:
+    1. JSON-LD in schema.org HTML has known quality issues on Eightfold —
+       stale datePosted, malformed addressRegion, missing jobLocationType.
+       PCSX returns clean standardizedLocations, accurate postedTs, and
+       explicit workLocationOption.
+    2. Steady-state crawls become O(new jobs) instead of O(total jobs)
+       via watermark-based early termination — the monitor typically
+       fetches only the first ~5-20 PCSX pages per cycle instead of
+       hundreds.
 
   Zero jobs?  Verify the sitemap URL exists: curl {host}/careers/sitemap.xml
               Check url_filter isn't too restrictive."""

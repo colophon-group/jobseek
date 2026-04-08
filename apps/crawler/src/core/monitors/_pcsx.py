@@ -147,17 +147,32 @@ async def _fetch_page(
     )
 
 
-async def probe(host: str, domain: str, http: httpx.AsyncClient) -> bool:
+async def probe(
+    host: str,
+    domain: str,
+    http: httpx.AsyncClient,
+    *,
+    strict: bool = True,
+) -> bool:
     """Check whether the tenant has PCSX enabled.
 
-    Returns True if a 200 response with at least one position is received
-    (or an empty but well-formed response). Returns False on 403
-    "PCSX is not enabled" or any other failure.
+    Two semantic modes, distinguished by the ``strict`` flag:
+
+    - ``strict=True`` (default, used by the hybrid discover flow):
+      returns True only if PCSX can actually be used for discovery.
+      A 403 "PCSX is not enabled for this user." response returns
+      False — we can't use PCSX, fall back to sitemap-only.
+
+    - ``strict=False`` (used by ``can_handle`` for Eightfold detection):
+      returns True if the response confirms this is an Eightfold tenant
+      AT ALL, even when PCSX is disabled. A 403 "PCSX is not enabled"
+      response still returns True because the message itself confirms
+      Eightfold. Used to classify a URL during ``ws probe monitor``.
     """
     try:
         positions = await _fetch_page(host, domain, http, offset=0, num=1)
     except PcsxDisabled:
-        return False
+        return not strict  # lenient mode: 403 confirms Eightfold
     except PcsxFetchError as exc:
         log.warning("pcsx.probe_failed", host=host, error=str(exc))
         return False
@@ -326,15 +341,20 @@ def extract_host_and_domain(sitemap_urls: Iterable[str]) -> tuple[str, str] | No
     where ``kering`` is the ``domain`` query param PCSX expects.
     Returns ``None`` if no sitemap URL carries a ``domain=`` query param
     — callers should fall back to using the host itself.
+
+    The query-parameter key match is **case-insensitive** (``?domain=``,
+    ``?Domain=``, ``?DOMAIN=`` all work) because we've seen malformed
+    sitemaps in the wild that use non-canonical capitalisation.
     """
     for url in sitemap_urls:
         parsed = urlparse(url)
         if not parsed.hostname:
             continue
         qs = parse_qs(parsed.query)
-        domain_vals = qs.get("domain")
-        if domain_vals:
-            return parsed.hostname, domain_vals[0]
+        # Case-insensitive lookup: walk keys and compare lowered form.
+        for key, values in qs.items():
+            if key.lower() == "domain" and values:
+                return parsed.hostname, values[0]
     return None
 
 
