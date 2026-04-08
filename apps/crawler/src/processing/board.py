@@ -451,13 +451,25 @@ async def _process_one_board_streaming(
                 )
 
                 async with pool.acquire() as conn, conn.transaction():
-                    # Persist newly discovered sitemap URL (once per board)
-                    if _chunk_start == 0 and getattr(result, "new_sitemap_url", None):
-                        await conn.execute(
-                            _UPDATE_METADATA,
-                            board_id,
-                            json.dumps({"sitemap_url": result.new_sitemap_url}),
-                        )
+                    # Persist monitor-signalled metadata updates once per batch.
+                    # Merges both the sitemap URL (for monitors that discover it
+                    # dynamically) and arbitrary metadata_updates (used by
+                    # incremental monitors to persist a watermark / probe result)
+                    # into a single JSONB shallow-merge call.
+                    if _chunk_start == 0:
+                        meta_patch: dict = {}
+                        new_sitemap_url = getattr(result, "new_sitemap_url", None)
+                        if new_sitemap_url:
+                            meta_patch["sitemap_url"] = new_sitemap_url
+                        metadata_updates = getattr(result, "metadata_updates", None)
+                        if metadata_updates:
+                            meta_patch.update(metadata_updates)
+                        if meta_patch:
+                            await conn.execute(
+                                _UPDATE_METADATA,
+                                board_id,
+                                json.dumps(meta_patch),
+                            )
 
                     is_rich_no_scrape = is_rich and not enrich_fields
                     rows = await conn.fetch(
@@ -512,8 +524,22 @@ async def _process_one_board_streaming(
                     total_relisted += len(relisted)
                     all_new_urls.extend(new_urls)
 
+                    # Hybrid monitors (eightfold) return a partial chunk_jobs
+                    # dict — rich data only for some new URLs. Split new_urls
+                    # so URLs with rich data go to the rich insert path and
+                    # URLs without rich data fall through to the URL-only stub
+                    # insert path (which enqueues a scrape to fill content).
+                    # When chunk_jobs is None, stub_new_urls == new_urls and
+                    # the behaviour is identical to pre-refactor.
+                    if chunk_jobs is not None:
+                        rich_new_urls = [u for u in new_urls if u in chunk_jobs]
+                        stub_new_urls = [u for u in new_urls if u not in chunk_jobs]
+                    else:
+                        rich_new_urls = []
+                        stub_new_urls = list(new_urls)
+
                     if chunk_jobs:
-                        new_jobs = [chunk_jobs[u] for u in new_urls if u in chunk_jobs]
+                        new_jobs = [chunk_jobs[u] for u in rich_new_urls]
 
                         if new_jobs:
                             # CPU-heavy per-job processing -- run off the event loop
@@ -639,10 +665,17 @@ async def _process_one_board_streaming(
                                     crawler_type=crawler_type,
                                 )
 
-                        # Update content for relisted and touched
+                        # Update content for relisted and touched.
+                        # Hybrid monitors (partial rich data) skip the touched
+                        # path because _BATCH_UPDATE_RICH_CONTENT uses plain
+                        # SET (not COALESCE) for core fields — feeding partial
+                        # rich data would null out previously-scraped fields.
+                        # Relisted jobs still go through because they're being
+                        # revived and need fresh content anyway.
+                        touched_for_update = [] if getattr(result, "hybrid", False) else touched
                         update_triples = [
                             (item["id"], chunk_jobs[item["url"]], item.get("r2_hash"))
-                            for item in relisted + touched
+                            for item in relisted + touched_for_update
                             if item["url"] in chunk_jobs
                         ]
                         if update_triples:
@@ -715,8 +748,11 @@ async def _process_one_board_streaming(
                                         content_hash(desc_html),
                                     )
 
-                    # URL-only path -- insert stubs with next_scrape_at
-                    if chunk_jobs is None and new_urls:
+                    # URL-only path -- insert stubs with next_scrape_at.
+                    # Runs when chunk_jobs is None (traditional URL-only
+                    # monitor) OR when it's a partial dict and has new URLs
+                    # without rich data (hybrid monitors like eightfold).
+                    if stub_new_urls:
                         # If a rich-monitor board falls into this path (e.g. an
                         # API fallback that returns URLs only for a cycle), the
                         # runtime ``is_rich_no_scrape`` flag is False because
@@ -731,7 +767,7 @@ async def _process_one_board_streaming(
                             _INSERT_URL_ONLY_JOBS,
                             company_id,
                             board_id,
-                            new_urls,
+                            stub_new_urls,
                             never_scrape,
                         )
                         # _INSERT_URL_ONLY_JOBS uses ON CONFLICT (source_url)
@@ -933,6 +969,7 @@ async def dry_run_single_board(
     verbose: bool = False,
     scrape_limit: int = 3,
     pw=None,
+    pcsx_force_full_crawl: bool = False,
 ) -> None:
     """Dry-run a single board: monitor + scrape without any DB writes.
 
@@ -941,6 +978,10 @@ async def dry_run_single_board(
 
     When *pw* is provided, Playwright is available for monitors/scrapers that
     require browser rendering (e.g. replay-mode api_sniffer, rendered nextdata).
+
+    When *pcsx_force_full_crawl* is True, the eightfold hybrid monitor forces
+    a full PCSX crawl regardless of its watermark state. Used for manual
+    backfills of large boards (Starbucks) before enabling incremental mode.
     """
     from dataclasses import fields as dc_fields
 
@@ -950,6 +991,8 @@ async def dry_run_single_board(
         return
     crawler_type = board["crawler_type"]
     metadata = _parse_metadata(board["metadata"])
+    if pcsx_force_full_crawl:
+        metadata = {**metadata, "pcsx_force_full_crawl": True}
     enrich_fields = _board_has_enrich(metadata)
 
     log.info(
@@ -1092,17 +1135,28 @@ async def run_single_board(
     board_slug: str,
     *,
     force_rescrape: bool = False,
+    pcsx_force_full_crawl: bool = False,
 ) -> None:
     """Process a single board end-to-end: monitor then scrape.
 
     Bypasses scheduling -- fetches the board directly by slug and processes
     all due scrape items for that board after the monitor run.
     When *force_rescrape* is True, scrapes all active jobs regardless of schedule.
+    When *pcsx_force_full_crawl* is True, the eightfold hybrid monitor forces
+    a full PCSX crawl regardless of its watermark state.
     """
     board = await pool.fetchrow(_FETCH_BOARD_BY_SLUG, board_slug)
     if not board:
         log.error("single_board.not_found", board_slug=board_slug)
         return
+
+    # asyncpg.Record is immutable — rebuild as a dict so we can inject
+    # the CLI override into the monitor metadata for this run only.
+    board = dict(board)
+    if pcsx_force_full_crawl:
+        md = _parse_metadata(board["metadata"])
+        md["pcsx_force_full_crawl"] = True
+        board["metadata"] = json.dumps(md)
 
     board_id = str(board["id"])
     log.info("single_board.monitor.start", board_slug=board_slug, board_id=board_id)

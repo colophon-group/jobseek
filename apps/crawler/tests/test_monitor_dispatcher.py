@@ -49,6 +49,29 @@ class TestNormalizeDiscovered:
         result = _normalize_discovered(set())
         assert result.urls == set()
 
+    def test_monitor_result_passthrough(self):
+        """Hybrid monitors can pre-build a MonitorResult with partial rich data
+        and metadata_updates; _normalize_discovered must pass it through."""
+        jobs = {
+            "https://example.com/jobs/1": DiscoveredJob(
+                url="https://example.com/jobs/1", title="Job 1"
+            )
+        }
+        pre = MonitorResult(
+            urls={"https://example.com/jobs/1", "https://example.com/jobs/2"},
+            jobs_by_url=jobs,
+            new_sitemap_url="https://example.com/sitemap.xml",
+            metadata_updates={"pcsx_watermark": {"max_ts": 12345}},
+            hybrid=True,
+        )
+        result = _normalize_discovered(pre)
+        assert result is pre  # same instance, no copying
+        assert result.urls == pre.urls
+        assert result.jobs_by_url is pre.jobs_by_url
+        assert result.new_sitemap_url == "https://example.com/sitemap.xml"
+        assert result.metadata_updates == {"pcsx_watermark": {"max_ts": 12345}}
+        assert result.hybrid is True
+
 
 class TestApplyUrlFilter:
     def _make_result(self, urls, jobs_by_url=None, new_sitemap_url=None):
@@ -123,6 +146,18 @@ class TestApplyUrlFilter:
         filtered = _apply_url_filter(result, {"url_filter": "/jobs/"})
         assert filtered.new_sitemap_url == "https://example.com/sitemap.xml"
         assert filtered.filtered_count == 1
+
+    def test_preserves_metadata_updates_and_hybrid_flag(self):
+        """Hybrid monitors set metadata_updates/hybrid on MonitorResult; these
+        must survive url_filter and url_transform passes."""
+        result = MonitorResult(
+            urls={"https://example.com/jobs/1", "https://example.com/blog/2"},
+            metadata_updates={"pcsx_watermark": {"max_ts": 999}},
+            hybrid=True,
+        )
+        filtered = _apply_url_filter(result, {"url_filter": "/jobs/"})
+        assert filtered.metadata_updates == {"pcsx_watermark": {"max_ts": 999}}
+        assert filtered.hybrid is True
 
 
 class TestMonitorOne:

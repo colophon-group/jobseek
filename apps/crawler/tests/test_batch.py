@@ -529,6 +529,148 @@ class TestProcessOneBoard:
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
+    async def test_hybrid_partial_rich_falls_through_to_url_only(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """Hybrid monitors return jobs_by_url with rich data for only some URLs.
+
+        URLs in new_urls but NOT in jobs_by_url must fall through to
+        _INSERT_URL_ONLY_JOBS so the scraper picks them up. URLs in
+        jobs_by_url go through the rich insert path as usual.
+        """
+        pool, conn = mock_pool
+        rich_url = "https://example.com/job/rich-1"
+        stub_url = "https://example.com/job/stub-2"
+        rich_job = _discovered_job(url=rich_url, title="Rich Job")
+        mock_monitor.side_effect = _mock_stream(
+            MonitorResult(
+                urls={rich_url, stub_url},
+                jobs_by_url={rich_url: rich_job},  # partial — stub_url absent
+                hybrid=True,
+            )
+        )
+        conn.fetch.side_effect = [
+            # DIFF_BATCH: both new
+            [_diff_row("new", url=rich_url), _diff_row("new", url=stub_url)],
+            # _INSERT_URL_ONLY_JOBS for stub_url
+            [_inserted_row("jp-stub", stub_url)],
+            # _MARK_GONE_BY_TIMESTAMP
+            [],
+        ]
+        conn.fetchrow.return_value = _inserted_row("jp-rich", rich_url)
+        board = _mock_board()
+
+        await _process_one_board(board, pool, mock_http)
+
+        # Rich path: fetchrow called with _INSERT_RICH_JOB for rich_url
+        rich_calls = [c for c in conn.fetchrow.await_args_list if c.args[0] == _INSERT_RICH_JOB]
+        assert len(rich_calls) == 1
+        assert rich_calls[0].args[4] == rich_url  # 4th positional arg is source_url
+
+        # URL-only path: fetch called with _INSERT_URL_ONLY_JOBS for stub_url only
+        url_only_calls = [
+            c for c in conn.fetch.await_args_list if c.args[0] == _INSERT_URL_ONLY_JOBS
+        ]
+        assert len(url_only_calls) == 1
+        assert url_only_calls[0].args[3] == [stub_url]  # 3rd positional is urls list
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_metadata_updates_merged_with_sitemap_url(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """Both new_sitemap_url and metadata_updates go in a SINGLE _UPDATE_METADATA call."""
+        pool, conn = mock_pool
+        url1 = "https://example.com/job/1"
+        mock_monitor.side_effect = _mock_stream(
+            MonitorResult(
+                urls={url1},
+                jobs_by_url=None,
+                new_sitemap_url="https://example.com/sitemap.xml",
+                metadata_updates={"pcsx_watermark": {"max_ts": 12345, "enabled": True}},
+            )
+        )
+        conn.fetch.return_value = []
+        board = _mock_board()
+
+        await _process_one_board(board, pool, mock_http)
+
+        metadata_calls = [c for c in conn.execute.await_args_list if c.args[0] == _UPDATE_METADATA]
+        assert len(metadata_calls) == 1
+        patch_json = metadata_calls[0].args[2]
+        patch_dict = json.loads(patch_json)
+        assert patch_dict["sitemap_url"] == "https://example.com/sitemap.xml"
+        assert patch_dict["pcsx_watermark"]["max_ts"] == 12345
+        assert patch_dict["pcsx_watermark"]["enabled"] is True
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_hybrid_skips_touched_content_update(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """Hybrid monitors must NOT feed 'touched' jobs to _BATCH_UPDATE_RICH_CONTENT.
+
+        That SQL uses plain SET (not COALESCE) for core fields, so feeding
+        partial rich data would null out previously-scraped fields.
+        Relisted jobs still flow through because they need fresh content.
+        """
+        pool, conn = mock_pool
+        touched_url = "https://example.com/job/touched"
+        touched_job = _discovered_job(url=touched_url, title="Partial Data")
+        mock_monitor.side_effect = _mock_stream(
+            MonitorResult(
+                urls={touched_url},
+                jobs_by_url={touched_url: touched_job},
+                hybrid=True,
+            )
+        )
+        conn.fetch.return_value = [
+            _diff_row("touched", row_id="jp-touched", url=touched_url),
+        ]
+        board = _mock_board()
+
+        await _process_one_board(board, pool, mock_http)
+
+        # _BATCH_UPDATE_RICH_CONTENT must NOT be called (nothing to update because
+        # touched jobs are excluded when hybrid=True).
+        rich_update_calls = [
+            c for c in conn.execute.await_args_list if c.args[0] == _BATCH_UPDATE_RICH_CONTENT
+        ]
+        assert len(rich_update_calls) == 0
+        create_temp_calls = [
+            c for c in conn.execute.await_args_list if c.args[0] == _CREATE_RICH_UPDATES_TEMP
+        ]
+        assert len(create_temp_calls) == 0
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_hybrid_relisted_still_updates_content(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """Hybrid monitors DO update content for relisted jobs — they need fresh data."""
+        pool, conn = mock_pool
+        relisted_url = "https://example.com/job/back"
+        relisted_job = _discovered_job(url=relisted_url)
+        mock_monitor.side_effect = _mock_stream(
+            MonitorResult(
+                urls={relisted_url},
+                jobs_by_url={relisted_url: relisted_job},
+                hybrid=True,
+            )
+        )
+        conn.fetch.return_value = [
+            _diff_row("relisted", row_id="jp-relisted", url=relisted_url),
+        ]
+        board = _mock_board()
+
+        await _process_one_board(board, pool, mock_http)
+
+        # Relisted still triggers the update path
+        execute_calls = conn.execute.await_args_list
+        assert any(c.args[0] == _BATCH_UPDATE_RICH_CONTENT for c in execute_calls)
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
     async def test_error_records_failure(self, mock_monitor, mock_get_redis, mock_pool, mock_http):
         """monitor_one raises -> _RECORD_FAILURE called with truncated error."""
         pool, conn = mock_pool

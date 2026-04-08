@@ -71,6 +71,15 @@ def parse_args() -> argparse.Namespace:
     board_p.add_argument("slug", help="Board slug to process")
     board_p.add_argument("--dry-run", action="store_true", help="No DB writes")
     board_p.add_argument("-v", "--verbose", action="store_true", help="Log all fields")
+    board_p.add_argument(
+        "--pcsx-full-crawl",
+        action="store_true",
+        help=(
+            "Force a full PCSX crawl on eightfold boards, ignoring the "
+            "watermark. Used for manual backfills of large boards (e.g. "
+            "Starbucks) before enabling steady-state incremental mode."
+        ),
+    )
 
     return parser.parse_args()
 
@@ -183,9 +192,15 @@ async def run() -> None:
                             args.slug,
                             verbose=args.verbose,
                             pw=pw,
+                            pcsx_force_full_crawl=args.pcsx_full_crawl,
                         )
                 else:
-                    await run_single_board(local_pool, http, args.slug)
+                    await run_single_board(
+                        local_pool,
+                        http,
+                        args.slug,
+                        pcsx_force_full_crawl=args.pcsx_full_crawl,
+                    )
             finally:
                 await http.aclose()
 
