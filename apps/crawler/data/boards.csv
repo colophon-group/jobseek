@@ -3866,6 +3866,7 @@ stackgini-gmbh,stackgini-gmbh-join,https://join.com/companies/softwaregini,join,
 stackhawk,stackhawk-lever,https://jobs.lever.co/stackhawk,lever,"{""token"": ""stackhawk""}",skip,
 stackline,stackline-greenhouse,https://job-boards.greenhouse.io/stackline,greenhouse,"{""token"": ""stackline""}",skip,
 stahlwerk-annah-tte-max-aicher-gmbh-co-kg,stahlwerk-annah-tte-max-aicher-gmbh-co-kg-join,https://join.com/companies/annahuette,join,"{""slug"": ""annahuette""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
+stainless,stainless-careers,https://jobs.ashbyhq.com/stainlessapi,ashby,"{""token"": ""stainlessapi""}",skip,
 stam-holding-gmbh,stam-holding-gmbh-join,https://join.com/companies/stamholdingat,join,"{""slug"": ""stamholdingat""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 stambaugh-ness,stambaugh-ness-greenhouse,https://job-boards.greenhouse.io/stambaughness,greenhouse,"{""token"": ""stambaughness""}",skip,
 standard-nuclear,standard-nuclear-careers,https://job-boards.greenhouse.io/standardnuclearinc,greenhouse,"{""token"": ""standardnuclearinc""}",skip,
