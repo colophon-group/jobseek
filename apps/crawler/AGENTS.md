@@ -179,6 +179,60 @@ uv run crawler board <slug> --pcsx-full-crawl  # Force full PCSX crawl for
 uv run pytest tests/
 ```
 
+## CDP-routed transport (Lightpanda)
+
+Some sites (e.g. `apply.starbucks.com`) front their entire stack with AWS
+WAF rules that block Hetzner datacenter IPs with HTTP 405 captcha pages.
+For those, the crawler routes httpx requests through the Lightpanda cloud
+service over CDP — the request still goes through `httpx.AsyncClient`
+unchanged, but the underlying transport is a `LightpandaTransport`
+(`src/shared/cdp.py`) that issues the request via Playwright's
+`APIRequestContext.fetch()` against a remote browser. No DOM render, no
+JS execution — just HTTP-through-the-browser-network-stack.
+
+### Configuration (env vars on the worker)
+
+```bash
+LIGHTPANDA_CDP_URL=wss://euwest.cloud.lightpanda.io/ws?token=...
+CDP_ROUTES={"apply.starbucks.com":"lightpanda","starbucks.eightfold.ai":"lightpanda"}
+```
+
+`CDP_ROUTES` is a JSON object mapping hostname → backend name. Only
+`lightpanda` is supported today; unknown backend names are logged and
+skipped (not fatal). Hostnames in the map have their httpx requests
+mounted to a `LightpandaTransport`; everything else uses direct httpx.
+
+### Cost model
+
+Lightpanda bills by **browser-hours of session clock time** (not per
+request). The Explorer (free) tier is 10 h/mo, Builder is $19/mo for
+300 h. The crawler uses one shared session per process, lazily opened
+on first request and reused across all CDP-routed traffic in that
+worker — handshake cost is paid once per process, then amortized.
+
+For Starbucks-scale traffic (one sitemap fetch + a few PCSX pages +
+~50 detail-page scrapes per day), expect well under 1 h/month. Free
+tier handles it with room for ~10 more similarly-sized WAF'd boards.
+
+### Disabling re-scrapes (cost saver)
+
+Boards routed through expensive transports usually don't need their
+descriptions re-scraped on the default 24h cadence — the data rarely
+changes and bandwidth/session-time isn't free. Set
+`monitor_config.rescrape_policy = "never"` in `data/boards.csv` and
+`_RECORD_SCRAPE_SUCCESS` will set `next_scrape_at = NULL` after each
+successful scrape. The first scrape still runs (so descriptions get
+filled when a posting is first discovered), and relisted jobs still
+re-scrape once (because `_enqueue_scrapes_for_relisted` directly sets
+`next_scrape_at = now()`); only the periodic refresh tail is suppressed.
+
+```csv
+starbucks,starbucks-eightfold,https://starbucks.eightfold.ai/careers,eightfold,"{""url_filter"":""/careers/job/"",""rescrape_policy"":""never""}",json-ld,"{""enrich"":[""description""]}"
+```
+
+`inspect.validate_csvs()` rejects unknown values (only `"never"` is
+supported today).
+
 ## Eightfold hybrid monitor (sitemap + PCSX incremental)
 
 The `eightfold` monitor runs in a hybrid mode for PCSX-enabled tenants: it

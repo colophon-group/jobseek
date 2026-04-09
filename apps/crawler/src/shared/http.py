@@ -42,10 +42,31 @@ _CLIENT_DEFAULTS = {
 }
 
 
-def create_http_client(*, verify: bool = True) -> httpx.AsyncClient:
+def _build_all_mounts() -> dict | None:
+    """Merge per-domain proxy mounts and CDP-routed transport mounts.
+
+    Proxy mounts come from ``PROXY_MAP`` (datacenter HTTP proxies) and
+    CDP mounts come from ``CDP_ROUTES`` + ``LIGHTPANDA_CDP_URL`` (headless
+    browser transports for bypassing WAF-protected hosts). A hostname
+    configured in both wins CDP (the later ``update`` call takes
+    precedence) since CDP is strictly more powerful — but this overlap
+    is not expected in practice.
+    """
+    from src.shared.cdp import build_cdp_mounts
     from src.shared.proxy import build_httpx_mounts
 
-    mounts = build_httpx_mounts()
+    mounts: dict = {}
+    proxy_mounts = build_httpx_mounts()
+    if proxy_mounts:
+        mounts.update(proxy_mounts)
+    cdp_mounts = build_cdp_mounts()
+    if cdp_mounts:
+        mounts.update(cdp_mounts)
+    return mounts or None
+
+
+def create_http_client(*, verify: bool = True) -> httpx.AsyncClient:
+    mounts = _build_all_mounts()
     kwargs = {**_CLIENT_DEFAULTS}
     if not verify:
         kwargs["verify"] = False
@@ -60,9 +81,7 @@ def create_nossl_http_client() -> httpx.AsyncClient:
     ``skip_ssl: true`` in scraper_config.
     """
     defaults = {**_CLIENT_DEFAULTS, "verify": False}
-    from src.shared.proxy import build_httpx_mounts
-
-    mounts = build_httpx_mounts()
+    mounts = _build_all_mounts()
     return httpx.AsyncClient(**defaults, **({"mounts": mounts} if mounts else {}))
 
 
@@ -97,9 +116,7 @@ def create_logging_http_client(
             }
         )
 
-    from src.shared.proxy import build_httpx_mounts
-
-    mounts = build_httpx_mounts()
+    mounts = _build_all_mounts()
     kwargs = {**_CLIENT_DEFAULTS}
     if not verify:
         kwargs["verify"] = False

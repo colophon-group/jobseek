@@ -18,6 +18,21 @@ class Settings(BaseSettings):
             return json.loads(v) if v.strip() else {}
         return v
 
+    # CDP-routed HTTP transport (see src/shared/cdp.py). ``cdp_routes`` maps
+    # hostname → backend name ("lightpanda" is the only backend today).
+    # When a request hits one of these hosts the shared httpx client
+    # transparently routes it through a headless-browser network stack,
+    # bypassing datacenter-IP anti-bot blocks like AWS WAF.
+    lightpanda_cdp_url: str = ""
+    cdp_routes: dict[str, str] = {}
+
+    @field_validator("cdp_routes", mode="before")
+    @classmethod
+    def _parse_cdp_routes(cls, v):
+        if isinstance(v, str):
+            return json.loads(v) if v.strip() else {}
+        return v
+
     # Redis (local instance, not Upstash)
     redis_url: str = "redis://localhost:6379/0"
     redis_max_connections: int = 20

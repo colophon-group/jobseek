@@ -204,9 +204,26 @@ def validate_csvs() -> list[ValidationError]:
         # Validate JSON configs
         if monitor_config:
             try:
-                json.loads(monitor_config)
+                mc_obj = json.loads(monitor_config)
             except json.JSONDecodeError:
                 errors.append(ValidationError("boards.csv", i, "Invalid monitor_config JSON"))
+            else:
+                # rescrape_policy controls whether workers re-scrape postings
+                # after a successful scrape (see _RECORD_SCRAPE_SUCCESS).
+                # Only "never" is supported today; absent means default cadence.
+                if isinstance(mc_obj, dict) and "rescrape_policy" in mc_obj:
+                    rp = mc_obj["rescrape_policy"]
+                    if rp not in ("never",):
+                        errors.append(
+                            ValidationError(
+                                "boards.csv",
+                                i,
+                                (
+                                    f"Invalid rescrape_policy={rp!r} in monitor_config "
+                                    "(supported: 'never')"
+                                ),
+                            )
+                        )
 
         if scraper_config:
             try:
