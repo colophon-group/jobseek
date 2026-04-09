@@ -38,13 +38,24 @@ async def _shutdown_http(http) -> None:
     quota during agent/dev iteration.
 
     Idempotent — safe to call multiple times.
+
+    Both the http close and the session shutdown are wrapped so an
+    exception in one path can't mask the other (Python's try/finally
+    semantics suppress the original exception when the finally raises;
+    we explicitly swallow CDP shutdown errors to preserve the http
+    close error which is the more useful diagnostic).
     """
     try:
         await http.aclose()
     finally:
         from src.shared.cdp import shutdown_all_sessions
 
-        await shutdown_all_sessions()
+        try:
+            await shutdown_all_sessions()
+        except Exception:  # noqa: BLE001 — defensive cleanup, must not mask
+            import structlog
+
+            structlog.get_logger().warning("ws.shutdown_all_sessions_failed", exc_info=True)
 
 
 def _warn_suspicious_count(count: int, category: str) -> None:

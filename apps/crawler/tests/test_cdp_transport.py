@@ -767,29 +767,61 @@ class TestWorkspaceShutdownWiring:
     """
 
     def test_ws_crawl_uses_shutdown_helper(self):
-        """``crawl.py`` should not call ``http.aclose()`` directly.
+        """``crawl.py`` should not close http clients directly.
 
         Every cleanup site must go through ``_shutdown_http`` so the
         Lightpanda sessions get released alongside the http client.
+
+        We assert the helper exists, that it's called from at least
+        the known set of sites, and that no ``.aclose()`` call lives
+        outside the helper. Counting ``_shutdown_http(`` references
+        instead of the literal ``http.aclose()`` makes the test robust
+        to a future PR renaming the local httpx variable from ``http``
+        to ``client`` (etc.) — the test would otherwise fail for the
+        wrong reason.
         """
         import inspect
+        import re
 
         from src.workspace.commands import crawl as crawl_module
 
         source = inspect.getsource(crawl_module)
-        # The helper must exist and be referenced.
+        # The helper must exist.
         assert "async def _shutdown_http" in source, (
             "crawl.py must define _shutdown_http helper that closes "
             "the http client AND flushes Lightpanda sessions"
         )
-        # Find every direct ``await http.aclose()`` outside the helper —
-        # there must be exactly ONE (the one inside ``_shutdown_http``).
-        direct_calls = source.count("await http.aclose()")
-        assert direct_calls == 1, (
-            f"Found {direct_calls} direct ``await http.aclose()`` calls in "
-            "crawl.py — every site except the one inside _shutdown_http "
-            "must use _shutdown_http(http) instead, otherwise that path "
-            "leaks Lightpanda sessions on each ws command invocation."
+        # Count call sites — at least 5 today; we don't pin the exact
+        # number because new ws commands may need cleanup too. ZERO
+        # would mean the helper exists but isn't actually being used.
+        call_sites = source.count("await _shutdown_http(")
+        assert call_sites >= 5, (
+            f"Only {call_sites} call sites use _shutdown_http(). Every "
+            "ws command that creates an http client must route cleanup "
+            "through this helper, otherwise that path leaks Lightpanda "
+            "sessions on each invocation."
+        )
+        # And no other ``.aclose()`` calls anywhere in crawl.py — the
+        # only acceptable one is the ``await http.aclose()`` inside the
+        # helper definition itself. This catches both ``http.aclose()``
+        # and any rename to ``client.aclose()``/``conn.aclose()``.
+        offending = []
+        in_helper = False
+        for line in source.splitlines():
+            if line.startswith("async def _shutdown_http"):
+                in_helper = True
+                continue
+            if in_helper and line and not line.startswith((" ", "\t")):
+                in_helper = False
+            if in_helper:
+                continue
+            if re.search(r"\.aclose\(\)", line):
+                offending.append(line.strip())
+        assert not offending, (
+            "Found .aclose() calls in crawl.py outside the _shutdown_http "
+            "helper — these paths leak Lightpanda sessions:\n"
+            + "\n".join("  " + line for line in offending)
+            + "\nUse _shutdown_http(<client>) instead."
         )
 
 
