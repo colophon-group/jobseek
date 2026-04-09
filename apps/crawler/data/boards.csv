@@ -31,7 +31,7 @@ abacum,abacum-ashby,https://jobs.ashbyhq.com/abacum,ashby,"{""token"": ""abacum"
 abacus-insights,abacus-insights-greenhouse,https://job-boards.greenhouse.io/abacusinsights,greenhouse,"{""token"": ""abacusinsights""}",skip,
 abb,abb-workday,https://abb.wd3.myworkdayjobs.com/External_Career_Page,workday,,workday,
 abbvie,abbvie-careers,https://careers.abbvie.com/en/jobs,sitemap,"{""url"": ""https://careers.abbvie.com/en/sitemap.xml"", ""url_filter"": ""/job/""}",json-ld,
-abbvie,abbvie-smartrecruiters,https://careers.smartrecruiters.com/AbbVie,smartrecruiters,"{""token"": ""AbbVie""}",json-ld,
+abbvie,abbvie-smartrecruiters,https://careers.smartrecruiters.com/AbbVie,smartrecruiters,"{""token"": ""AbbVie""}",smartrecruiters,
 abbyy,abbyy-greenhouse,https://job-boards.greenhouse.io/abbyy,greenhouse,"{""token"": ""abbyy""}",skip,
 abcellera,abcellera-greenhouse,https://job-boards.greenhouse.io/abcellera,greenhouse,"{""token"": ""abcellera""}",skip,
 abilitypath,abilitypath-greenhouse,https://job-boards.greenhouse.io/abilitypath,greenhouse,"{""token"": ""abilitypath""}",skip,
@@ -679,7 +679,7 @@ brennan-industries,brennan-industries-greenhouse,https://job-boards.greenhouse.i
 brex,brex-greenhouse,https://job-boards.greenhouse.io/brex,greenhouse,"{""token"": ""brex""}",skip,
 bridge-to-enter-advanced-mathematics-beam,bridge-to-enter-advanced-mathematics-beam-greenhouse,https://job-boards.greenhouse.io/beam,greenhouse,"{""token"": ""beam""}",skip,
 bridgebio-pharma,bridgebio-pharma-greenhouse,https://job-boards.greenhouse.io/bridgebio,greenhouse,"{""token"": ""bridgebio""}",skip,
-bridgepoint,bridgepoint-careers,https://careers.smartrecruiters.com/Bridgepoint,smartrecruiters,"{""token"": ""Bridgepoint""}",json-ld,
+bridgepoint,bridgepoint-careers,https://careers.smartrecruiters.com/Bridgepoint,smartrecruiters,"{""token"": ""Bridgepoint""}",smartrecruiters,
 bridgewater-associates,bridgewater-associates-greenhouse,https://job-boards.greenhouse.io/bridgewater89,greenhouse,"{""token"": ""bridgewater89""}",skip,
 bright,bright-pinpoint,https://bright.pinpointhq.com,pinpoint,"{""slug"": ""bright""}",skip,
 brightai-corporation,brightai-corporation-greenhouse,https://job-boards.greenhouse.io/brightai,greenhouse,"{""token"": ""brightai""}",skip,
@@ -4073,7 +4073,7 @@ tealium,tealium-pinpoint,https://tealium.pinpointhq.com,pinpoint,"{""slug"": ""t
 team-skalieren,team-skalieren-join,https://join.com/companies/team-skalierende,join,"{""slug"": ""team-skalierende""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 tebra,tebra-greenhouse,https://job-boards.greenhouse.io/tebra,greenhouse,"{""token"": ""tebra""}",skip,
 tech-holding,tech-holding-greenhouse,https://job-boards.greenhouse.io/techholding,greenhouse,"{""token"": ""techholding""}",skip,
-tech-mahindra,tech-mahindra-careers-smartrecruiters,https://careers.smartrecruiters.com/TechMahindraLtd1,smartrecruiters,"{""company_identifier"": ""TechMahindraLtd1""}",json-ld,"{""render"": true}"
+tech-mahindra,tech-mahindra-careers-smartrecruiters,https://careers.smartrecruiters.com/TechMahindraLtd1,smartrecruiters,"{""company_identifier"": ""TechMahindraLtd1""}",smartrecruiters,
 technology,technology-recruitee,https://technology.recruitee.com,recruitee,"{""token"": ""technology""}",skip,
 techtorch,techtorch-ashby,https://jobs.ashbyhq.com/techtorch,ashby,"{""token"": ""techtorch""}",skip,
 tecovas,tecovas-greenhouse,https://job-boards.greenhouse.io/tecovas,greenhouse,"{""token"": ""tecovas""}",skip,
