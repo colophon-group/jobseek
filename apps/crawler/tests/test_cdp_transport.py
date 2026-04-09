@@ -49,6 +49,49 @@ class TestParseCdpRoutes:
         assert parse_cdp_routes('{"host": 42}') == {"host": "42"}
 
 
+class TestSettingsEmptyStringTolerance:
+    """Regression: pydantic-settings auto-decodes complex env values via
+    json.loads() before our validators run. ``CDP_ROUTES=""`` (the value
+    docker-compose's ``${CDP_ROUTES:-}`` substitution emits when the
+    secret is unset) used to crash worker startup with a SettingsError.
+    The field is now typed as ``str`` and parsed lazily, so empty string
+    is fine and ``_cdp_routes()`` returns an empty dict.
+    """
+
+    def test_settings_accept_empty_cdp_routes(self, monkeypatch):
+        monkeypatch.setenv("CDP_ROUTES", "")
+        from src.config import Settings
+
+        s = Settings()
+        assert s.cdp_routes == ""
+
+    def test_settings_accept_valid_json_cdp_routes(self, monkeypatch):
+        monkeypatch.setenv("CDP_ROUTES", '{"apply.starbucks.com": "lightpanda"}')
+        from src.config import Settings
+
+        s = Settings()
+        # Stored as raw string; parsing happens in cdp._cdp_routes()
+        assert "apply.starbucks.com" in s.cdp_routes
+
+    def test_cdp_routes_helper_with_real_settings_empty(self, monkeypatch):
+        """End-to-end: empty env var -> _cdp_routes() returns {}, no crash."""
+        monkeypatch.setenv("CDP_ROUTES", "")
+        from src.config import Settings
+
+        # Simulate the live Settings instance for this test
+        live = Settings()
+        monkeypatch.setattr(cdp, "_settings", lambda: live)
+        assert cdp._cdp_routes() == {}
+
+    def test_cdp_routes_helper_with_real_settings_populated(self, monkeypatch):
+        monkeypatch.setenv("CDP_ROUTES", '{"apply.starbucks.com": "lightpanda"}')
+        from src.config import Settings
+
+        live = Settings()
+        monkeypatch.setattr(cdp, "_settings", lambda: live)
+        assert cdp._cdp_routes() == {"apply.starbucks.com": "lightpanda"}
+
+
 # ── should_route_via_cdp ──────────────────────────────────────────────
 
 
