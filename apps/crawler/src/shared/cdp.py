@@ -41,8 +41,20 @@ All concurrent requests on the same event loop share the same session
 Lightpanda's billing model (browser-hours of session clock time, not
 per request).
 
-Sessions are re-opened on any error that looks connection-level, so a
-flaky CDP websocket heals on the next retry without propagating.
+Sessions are re-opened **only** on errors that look connection-level
+(see ``_CONNECTION_ERROR_MARKERS``), so a flaky CDP websocket heals
+on the next retry without propagating. Per-request errors like
+upstream timeouts or body decoding errors leave the session alive —
+resetting on every error caused a session-churn bug where every
+404 from the target site tore down the Lightpanda session, and any
+process exit during the reconnect leaked a ~6-minute orphaned session
+on the Lightpanda side (idle-timeout reap).
+
+On clean process shutdown (SIGTERM/SIGINT), call
+``shutdown_all_sessions`` from the worker shutdown path — the
+``cli.py`` ``finally:`` block does this. Without it, the Lightpanda
+session ticks toward its 6-minute idle timeout for every process
+restart, eating into the monthly browser-hours quota.
 
 ## Testing surface
 
@@ -194,6 +206,38 @@ class CdpRequestError(Exception):
     """
 
 
+# Substrings that indicate the underlying CDP/websocket session is dead
+# and the next request would also fail. Matched case-insensitively
+# against ``str(exc)``. Conservative — anything not on this list keeps
+# the session alive.
+_CONNECTION_ERROR_MARKERS = (
+    "target page, context or browser has been closed",
+    "browser has been closed",
+    "browser closed",
+    "target closed",
+    "context closed",
+    "session closed",
+    "websocket",
+    "connection closed",
+    "disconnected",
+    "connect_over_cdp",
+    "page, context or browser has been closed",
+)
+
+
+def _is_connection_error(exc: BaseException) -> bool:
+    """True if ``exc`` indicates a broken CDP/websocket connection.
+
+    Used to decide whether the session needs a reset+reconnect on the
+    next request, vs. whether the error is local to a single request
+    (HTTP 4xx/5xx via fetch — playwright doesn't raise on those, but
+    body decoding errors and per-request timeouts do — those don't
+    invalidate the session).
+    """
+    msg = str(exc).lower()
+    return any(marker in msg for marker in _CONNECTION_ERROR_MARKERS)
+
+
 class _LightpandaSession:
     """Lazy, reusable Playwright+Lightpanda session bound to one event loop.
 
@@ -261,8 +305,15 @@ class _LightpandaSession:
     ) -> tuple[int, bytes, dict[str, str]]:
         """Issue an HTTP request via Lightpanda. Returns (status, body, headers).
 
-        Raises :class:`CdpRequestError` on any failure. On error, the
-        session is reset so the next call re-handshakes.
+        Raises :class:`CdpRequestError` on any failure. The session is
+        reset **only** when the failure looks like a broken CDP/websocket
+        connection (per :func:`_is_connection_error`). Per-request errors
+        like upstream timeouts or target-server quirks leave the session
+        intact, since the websocket is still good and the next request
+        can reuse it. Resetting on every error caused a session-churn
+        bug where every 404 from the target tore down the Lightpanda
+        session, and any process exit during the reconnect leaked a
+        ~6-minute orphaned session on the Lightpanda side.
         """
         await self._ensure_open()
         assert self._context is not None  # for type checkers
@@ -279,9 +330,10 @@ class _LightpandaSession:
             status = resp.status
             resp_headers = dict(resp.headers)
             return status, body, resp_headers
-        except Exception as exc:  # noqa: BLE001 — reset on any failure
-            async with self._lock:
-                await self._reset_locked()
+        except Exception as exc:  # noqa: BLE001 — translated to CdpRequestError
+            if _is_connection_error(exc):
+                async with self._lock:
+                    await self._reset_locked()
             raise CdpRequestError(f"lightpanda request failed: {exc}") from exc
 
     async def close(self) -> None:

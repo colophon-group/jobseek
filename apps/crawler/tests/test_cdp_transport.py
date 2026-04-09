@@ -15,9 +15,12 @@ from src.shared import cdp
 from src.shared.cdp import (
     CdpRequestError,
     LightpandaTransport,
+    _is_connection_error,
+    _LightpandaSession,
     build_cdp_mounts,
     parse_cdp_routes,
     should_route_via_cdp,
+    shutdown_all_sessions,
 )
 
 # ── parse_cdp_routes ───────────────────────────────────────────────────
@@ -396,6 +399,274 @@ class TestLightpandaTransportInjectedFetch:
         # If aclose did anything session-level, this list would be non-empty;
         # the contract is that it's intentionally a no-op.
         assert sessions_closed == []
+
+
+# ── Connection-error classification ──────────────────────────────────
+
+
+class TestIsConnectionError:
+    """Regression guard: only true connection errors should reset the session."""
+
+    @pytest.mark.parametrize(
+        "msg",
+        [
+            "Target page, context or browser has been closed",
+            "Browser has been closed",
+            "browser closed",
+            "Target closed",
+            "Context closed",
+            "Session closed",
+            "WebSocket connection failed",
+            "Connection closed by remote",
+            "disconnected from CDP",
+            "BrowserType.connect_over_cdp: WebSocket error",
+        ],
+    )
+    def test_real_connection_errors_match(self, msg):
+        assert _is_connection_error(Exception(msg)) is True
+
+    @pytest.mark.parametrize(
+        "msg",
+        [
+            "Timeout 30000ms exceeded",
+            "Request failed with status 404",
+            "ECONNRESET",  # not in marker list — IP-level only
+            "decoding error: incorrect header check",
+            "Body too large",
+            "JSON decode error",
+            "",
+        ],
+    )
+    def test_benign_errors_do_not_match(self, msg):
+        assert _is_connection_error(Exception(msg)) is False
+
+    def test_case_insensitive(self):
+        assert _is_connection_error(Exception("TARGET CLOSED")) is True
+        assert _is_connection_error(Exception("websocket")) is True
+
+
+# ── Session reset behavior ───────────────────────────────────────────
+
+
+class _FakePlaywrightObj:
+    """Stub Playwright handle that records close()/stop() invocations."""
+
+    def __init__(self):
+        self.close_called = False
+        self.stop_called = False
+
+    async def close(self):
+        self.close_called = True
+
+    async def stop(self):
+        self.stop_called = True
+
+
+class _StubFetch:
+    """Stub Playwright APIRequestContext.fetch() result."""
+
+    def __init__(self, status: int, body: bytes, headers: dict[str, str]):
+        self.status = status
+        self._body = body
+        self.headers = headers
+
+    async def body(self):
+        return self._body
+
+
+class _StubRequestCtx:
+    """Stub `context.request` that raises a configurable error or returns a stub."""
+
+    def __init__(self, *, raise_exc: BaseException | None = None, response=None):
+        self._raise = raise_exc
+        self._response = response
+        self.fetch_calls = 0
+
+    async def fetch(self, url, **kwargs):  # noqa: ARG002
+        self.fetch_calls += 1
+        if self._raise is not None:
+            raise self._raise
+        return self._response
+
+
+class _StubContext:
+    def __init__(self, request_ctx):
+        self.request = request_ctx
+        self.closed = False
+
+    async def close(self):
+        self.closed = True
+
+
+class TestSessionResetNarrowing:
+    """``_LightpandaSession.request`` must reset only on connection errors.
+
+    Resetting on every error caused the session-churn bug that leaked
+    ~6-minute orphaned Lightpanda sessions on every worker restart.
+    """
+
+    @pytest.mark.asyncio
+    async def test_benign_error_keeps_session_alive(self):
+        sess = _LightpandaSession("wss://fake/ws")
+        # Pre-populate as if _ensure_open had run.
+        sess._pw = _FakePlaywrightObj()
+        sess._browser = _FakePlaywrightObj()
+        sess._context = _StubContext(
+            _StubRequestCtx(raise_exc=TimeoutError("Timeout 30000ms exceeded"))
+        )
+
+        with pytest.raises(CdpRequestError):
+            await sess.request("GET", "https://target/x")
+
+        # Session must still be open — benign per-request errors don't kill it.
+        assert sess._context is not None
+        assert sess._browser is not None
+        assert sess._pw is not None
+
+    @pytest.mark.asyncio
+    async def test_connection_error_resets_session(self):
+        sess = _LightpandaSession("wss://fake/ws")
+        pw = _FakePlaywrightObj()
+        browser = _FakePlaywrightObj()
+        ctx = _StubContext(_StubRequestCtx(raise_exc=Exception("Target closed")))
+        sess._pw = pw
+        sess._browser = browser
+        sess._context = ctx
+
+        with pytest.raises(CdpRequestError):
+            await sess.request("GET", "https://target/x")
+
+        # Session was torn down; objects all cleared.
+        assert sess._context is None
+        assert sess._browser is None
+        assert sess._pw is None
+        # And the close/stop callbacks were invoked.
+        assert ctx.closed is True
+        assert browser.close_called is True
+        assert pw.stop_called is True
+
+    @pytest.mark.asyncio
+    async def test_404_response_does_not_reset_session(self):
+        """Playwright returns HTTP errors as a Response, not an exception.
+
+        The session must obviously stay open for those, but this test
+        also documents that even if some downstream call started raising
+        on 404, the narrowed reset would keep the session intact.
+        """
+        sess = _LightpandaSession("wss://fake/ws")
+        pw = _FakePlaywrightObj()
+        browser = _FakePlaywrightObj()
+        # 404 comes back as a normal Response object, no exception.
+        stub_resp = _StubFetch(404, b"<html>not found</html>", {"content-type": "text/html"})
+        request_ctx = _StubRequestCtx(response=stub_resp)
+        ctx = _StubContext(request_ctx)
+        sess._pw = pw
+        sess._browser = browser
+        sess._context = ctx
+
+        status, body, headers = await sess.request("GET", "https://target/missing")
+
+        assert status == 404
+        assert b"not found" in body
+        # Session is intact for the next request.
+        assert sess._context is ctx
+        assert request_ctx.fetch_calls == 1
+
+
+# ── Shutdown wiring ──────────────────────────────────────────────────
+
+
+class TestShutdownAllSessions:
+    """``shutdown_all_sessions`` must close every cached session and clear
+    the module-level cache so the next request opens a fresh session.
+
+    The whole point of wiring this into the cli.py shutdown path is to
+    avoid leaking 6-minute idle sessions on the Lightpanda side.
+    """
+
+    @pytest.mark.asyncio
+    async def test_closes_all_cached_sessions(self):
+        # Inject two fake sessions into the module-level cache.
+        closed_urls: list[str] = []
+
+        class _RecordingSession:
+            def __init__(self, url):
+                self._url = url
+
+            async def close(self):
+                closed_urls.append(self._url)
+
+        cdp._set_session_for_test("wss://a/ws", _RecordingSession("a"))
+        cdp._set_session_for_test("wss://b/ws", _RecordingSession("b"))
+
+        try:
+            await shutdown_all_sessions()
+            assert sorted(closed_urls) == ["a", "b"]
+            # Cache cleared so the next request opens a fresh session.
+            assert cdp._sessions == {}
+        finally:
+            # Defensive: leave the global cache empty whatever happened.
+            cdp._sessions.clear()
+
+    @pytest.mark.asyncio
+    async def test_swallows_close_errors(self):
+        """One bad session must not block the others from closing."""
+
+        class _BadSession:
+            async def close(self):
+                raise RuntimeError("close failed")
+
+        class _GoodSession:
+            def __init__(self):
+                self.closed = False
+
+            async def close(self):
+                self.closed = True
+
+        good = _GoodSession()
+        cdp._set_session_for_test("wss://bad/ws", _BadSession())
+        cdp._set_session_for_test("wss://good/ws", good)
+
+        try:
+            await shutdown_all_sessions()  # must not raise
+            assert good.closed is True
+            assert cdp._sessions == {}
+        finally:
+            cdp._sessions.clear()
+
+    @pytest.mark.asyncio
+    async def test_safe_when_no_sessions(self):
+        cdp._sessions.clear()
+        # Should be a no-op, no exception.
+        await shutdown_all_sessions()
+        assert cdp._sessions == {}
+
+
+# ── Redis pool sizing ────────────────────────────────────────────────
+
+
+class TestRedisPoolSizingDefault:
+    """Regression guard: pool default must accommodate worker concurrency.
+
+    Production runs ``DISCOVERY_CONCURRENCY=30`` and ``MONITOR_CONCURRENCY=10``
+    in a single worker process; the redis pool default must be at least
+    that, otherwise concurrent ``claim_work`` calls hit ``MaxConnectionsError``
+    and the worker enters a crash-restart loop. Each restart leaks an
+    orphaned Lightpanda session, burning the browser-hours quota.
+    """
+
+    def test_default_fits_production_worker_concurrency(self):
+        from src.config import Settings
+
+        s = Settings()
+        # Worst case in production: 30 discovery + 10 monitor = 40 concurrent.
+        # The default must leave headroom for ad-hoc Redis calls (lookups,
+        # metrics, reschedule bursts) on top of that.
+        assert s.redis_max_connections >= 40, (
+            f"redis_max_connections default {s.redis_max_connections} is too "
+            "low for production worker concurrency (30+10) — the worker will "
+            "crash with MaxConnectionsError under load"
+        )
 
 
 # ── http.py integration ──────────────────────────────────────────────

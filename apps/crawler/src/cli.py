@@ -23,6 +23,7 @@ dotenv.load_dotenv(".env")
 from src.config import settings  # noqa: E402
 from src.db import close_all_pools, create_local_pool, create_pool  # noqa: E402
 from src.metrics import start_metrics_server  # noqa: E402
+from src.shared.cdp import shutdown_all_sessions  # noqa: E402
 from src.shared.http import create_http_client  # noqa: E402
 from src.shared.logging import setup_logging  # noqa: E402
 
@@ -206,6 +207,12 @@ async def run() -> None:
 
     finally:
         log.info("cli.shutting_down")
+        # Close any open Lightpanda CDP sessions BEFORE letting the
+        # process exit. Without this, orphaned playwright/CDP websockets
+        # leak on the Lightpanda side and tick toward the 6-minute idle
+        # timeout for each crash-restart cycle — burning through the
+        # browser-hours quota fast (see PR for full incident notes).
+        await shutdown_all_sessions()
         await close_all_pools()
         log.info("cli.stopped")
 
