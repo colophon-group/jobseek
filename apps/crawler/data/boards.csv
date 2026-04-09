@@ -3665,6 +3665,7 @@ semrush,semrush-careers,https://careers.semrush.com/,recruitee,"{""slug"": ""sem
 sendbird,sendbird-greenhouse,https://job-boards.greenhouse.io/sendbird,greenhouse,"{""token"": ""sendbird""}",skip,
 senior-doc,senior-doc-greenhouse,https://job-boards.greenhouse.io/seniordoc,greenhouse,"{""token"": ""seniordoc""}",skip,
 senra-systems,senra-systems-careers,https://job-boards.greenhouse.io/senrasystems,greenhouse,"{""token"": ""senrasystems""}",skip,
+sensirion,sensirion-careers,https://sensirion.com/career,dom,"{""render"": false, ""url_filter"": ""/job-vacancies/"", ""pagination"": {""param_name"": ""page"", ""start"": 1, ""max_pages"": 50}}",json-ld,
 sentilink,sentilink-ashby,https://jobs.ashbyhq.com/sentilink,ashby,"{""token"": ""sentilink""}",skip,
 sentry,sentry-ashby,https://jobs.ashbyhq.com/sentry,ashby,"{""token"": ""sentry""}",skip,
 seo-sponsors-for-educational-opportunity,seo-sponsors-for-educational-opportunity-greenhouse,https://job-boards.greenhouse.io/sponsorsforeducationalopportunity,greenhouse,"{""token"": ""sponsorsforeducationalopportunity""}",skip,
