@@ -3569,6 +3569,7 @@ saas-group,saas-group-greenhouse,https://job-boards.greenhouse.io/saasgroup,gree
 saber-interactive,saber-interactive-careers-huntflow,https://saberjobs.huntflow.io/,dom,"{""render"": false}",embedded,"{""script_id"": ""__NUXT_DATA__"", ""fields"": {""title"": ""[7]"", ""description"": [""[10]"", ""=<h3>Conditions</h3>"", ""[11]"", ""=<h3>Requirements</h3>"", ""[12]""], ""metadata.division"": ""[9]""}}"
 saber-tech,saber-tech-greenhouse,https://job-boards.greenhouse.io/sabertech,greenhouse,"{""token"": ""sabertech""}",skip,
 sable,sable-ashby,https://jobs.ashbyhq.com/sable,ashby,"{""token"": ""sable""}",skip,
+saeki,saeki-careers,https://saeki.jobs.personio.de/,personio,"{""slug"": ""saeki""}",skip,
 safari-ai,safari-ai-greenhouse,https://job-boards.greenhouse.io/safariai,greenhouse,"{""token"": ""safariai""}",skip,
 safaricom,safaricom-careers-et,https://egjd.fa.us6.oraclecloud.com/hcmUI/CandidateExperience/en/sites/STEP/jobs,oracle_hcm,"{""host"": ""egjd.fa.us6.oraclecloud.com"", ""site"": ""STEP"", ""enrich"": [""description""]}",oracle_hcm,
 safe,safe-ashby,https://jobs.ashbyhq.com/safe,ashby,"{""token"": ""safe""}",skip,
