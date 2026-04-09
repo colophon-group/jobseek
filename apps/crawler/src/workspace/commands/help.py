@@ -72,7 +72,7 @@ Monitor Types (cheapest first):
 
   Type              Cost    Returns           Scraper needed?
   ──────────────────────────────────────────────────────────────
-  eightfold         8       Hybrid rich+URL   json-ld enrich (description only)
+  eightfold         8       Hybrid rich+URL   eightfold enrich (description only)
   join              9       Job URLs          Auto-configured
   ashby             10      Full job data     No (skipped)
   bite              10      Job URLs          Auto-configured
@@ -1970,6 +1970,26 @@ workday — Workday Detail API scraper
             Runs on the daily scrape schedule (not every monitor cycle).
 """
 
+SCRAPER_EIGHTFOLD = """\
+eightfold — Eightfold.ai Detail scraper (JSON-LD + position API fallback)
+
+  Fast path: fetch the HTML page and parse schema.org/JobPosting from the
+             inlined <script type="application/ld+json"> block. This is the
+             same path the generic json-ld scraper uses.
+  Fallback:  if the page does not contain a JobPosting block, call the
+             public position API:
+               GET https://{tenant}.eightfold.ai/api/apply/v2/jobs/{id}?domain={d}
+             which returns title, locations, HTML description, t_create, and
+             ats_job_id for every active position id.
+
+  Returns:  title, HTML description, locations, date_posted, metadata
+            (ats_job_id, display_job_id, department, business_unit).
+  Config:   None needed — job id and domain are parsed from the URL.
+  Note:     Auto-configured when selecting the eightfold monitor. Fallback
+            adds a second HTTP call only for pages missing JSON-LD, so the
+            happy-path cost is unchanged.
+"""
+
 SCRAPER_RIPPLING = """\
 rippling — Rippling Detail API scraper
 
@@ -2059,6 +2079,7 @@ oracle_hcm — Oracle Cloud HCM Detail API scraper
     "smartrecruiters": SCRAPER_SMARTRECRUITERS,
     "workable": SCRAPER_WORKABLE,
     "workday": SCRAPER_WORKDAY,
+    "eightfold": SCRAPER_EIGHTFOLD,
 }
 
 
