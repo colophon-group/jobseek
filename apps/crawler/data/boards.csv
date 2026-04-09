@@ -3996,6 +3996,7 @@ swiss-re,swiss-re-careers,https://careers.swissre.com/viewalljobs/,rss,"{""prese
 swiss-re,swiss-re-careers-corp,https://corporatesolutions.swissre.com/careers/jobSearch.html,dom,,dom,"{""render"": false, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""text"": ""Location"", ""field"": ""location"", ""regex"": ""Locations?:\\s*(.+)""}, {""tag"": ""p"", ""field"": ""description"", ""html"": true, ""stop"": ""Keywords:""}]}"
 swisscom,swisscom-careers,https://swisscom.wd103.myworkdayjobs.com/en-US/SwisscomExternalCareers,workday,,,
 swisscom,swisscom-careers-rotterdam,https://swisscom.recruitee.com,recruitee,,skip,
+swissdrones,swissdrones-personio,https://swissdrones.jobs.personio.com/,personio,"{""slug"": ""swissdrones"", ""language"": ""en""}",skip,
 swissquote-bank,swissquote-bank-careers,https://careers.smartrecruiters.com/Swissquote,smartrecruiters,,,
 swoboda,swoboda-careers-de,https://karriere.swoboda.com/,dom,"{""render"": true, ""wait"": ""networkidle"", ""url_filter"": ""karriere\\.swoboda\\.com/.*-de-j\\d+\\.html""}",json-ld,
 swoboda,swoboda-careers-global,https://www.swoboda.com/en/careers/global-careers/,dom,"{""url_filter"": ""swoboda\\.com/en/careers/global-careers/[^/]+/""}",json-ld,
