@@ -663,14 +663,29 @@ async def _process_one_scrape(
             tech_ids=tech_ids,
         )
 
-        # Always use COALESCE save — never erases existing values
+        # Always use COALESCE save — never erases existing values.
+        # ``_build_titles`` returns ``[]`` (not ``None``) when title is
+        # missing, and ``COALESCE($3, titles)`` only treats SQL ``NULL``
+        # as null — empty arrays pass through and overwrite. Pass
+        # ``None`` explicitly so step-N fallbacks (which often only
+        # extract description, e.g. Migros's dom step) don't wipe the
+        # title that step 0 successfully extracted. Same logic for
+        # locales: ``_build_locales`` always returns at least ``["en"]``
+        # via the ``primary or "en"`` default, so without the language-
+        # signal gate it would clobber a real language with the default.
+        all_titles = _build_titles(title_text, None) or None
+        all_locales = (
+            _build_locales(lang_text, None, detected_languages=detected_langs)
+            if (lang_text or detected_langs)
+            else None
+        )
         async with pool.acquire() as conn:
             update_result = await conn.execute(
                 _UPDATE_ENRICH_CONTENT,
                 item.job_posting_id,
                 norm_emp_type,
-                _build_titles(title_text, None),
-                _build_locales(lang_text, None, detected_languages=detected_langs),
+                all_titles,
+                all_locales,
                 loc_ids,
                 loc_types,
                 tech_ids,
@@ -1011,11 +1026,20 @@ async def _do_one_scrape(
         source="scrape",
         tech_ids=tech_ids,
     )
+    # See _process_one_scrape for why title/locales are guarded with
+    # ``or None`` / language-signal gates: COALESCE only treats SQL NULL
+    # as null, so empty arrays would clobber existing values.
+    all_titles = _build_titles(title_text, None) or None
+    all_locales = (
+        _build_locales(lang_text, None, detected_languages=detected_langs)
+        if (lang_text or detected_langs)
+        else None
+    )
     params = (
         item.job_posting_id,
         norm_emp_type,
-        _build_titles(title_text, None),
-        _build_locales(lang_text, None, detected_languages=detected_langs),
+        all_titles,
+        all_locales,
         loc_ids,
         loc_types,
         tech_ids,

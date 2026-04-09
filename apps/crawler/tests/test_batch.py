@@ -1636,6 +1636,89 @@ class TestProcessOneScrape:
         assert len(failure_calls) == 1
 
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_step1_fallback_with_no_title_must_pass_none_not_empty_list(
+        self, mock_scrape, mock_pool, mock_http
+    ):
+        """Regression: dom fallback at step 1 returns no title, MUST pass
+        SQL ``NULL`` (not ``[]``) so COALESCE preserves the title that
+        step 0 wrote. ``COALESCE($3, titles)`` only treats SQL NULL as
+        null — empty arrays pass through and overwrite. This was the
+        Migros/Galaxus/KPMG/L'Oreal title-wipe bug (~800 affected rows).
+        """
+        pool, conn = mock_pool
+        mock_scrape.return_value = _job_content(
+            title=None,  # dom fallback only extracts description
+            description="<p>Long body the dom step extracted</p>",
+            locations=None,
+            employment_type=None,
+            language=None,
+        )
+        item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+
+        ok, _duration = await _process_one_scrape(
+            item,
+            pool,
+            mock_http,
+            "dom",
+            {"steps": [{"tag": "h3", "field": "description"}]},
+            scrape_step=1,
+        )
+
+        assert ok is True
+        update_calls = [
+            c for c in conn.execute.await_args_list if c.args[0] == _UPDATE_ENRICH_CONTENT
+        ]
+        assert len(update_calls) == 1
+        call_args = update_calls[0].args
+        # $3 = titles -> MUST be None so COALESCE preserves existing
+        assert call_args[3] is None, (
+            f"titles param must be None to preserve step-0 title, got {call_args[3]!r}"
+        )
+        # Description-derived language detection still picks 'en' from
+        # the body, so locales may be set legitimately. The bug was
+        # specifically that titles got wiped.
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_step1_fallback_with_no_language_signal_passes_none_locales(
+        self, mock_scrape, mock_pool, mock_http
+    ):
+        """Same shape as the title bug but for locales: when the fallback
+        returns no language and no description (so detect_language has
+        nothing to work with), ``_build_locales`` would default to
+        ``["en"]`` and clobber any real language stored on the row.
+        Pass None instead so COALESCE preserves existing locales.
+        """
+        pool, conn = mock_pool
+        mock_scrape.return_value = _job_content(
+            title=None,
+            description=None,  # nothing to detect language from
+            locations=None,
+            employment_type=None,
+            language=None,
+        )
+        item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+
+        ok, _duration = await _process_one_scrape(
+            item,
+            pool,
+            mock_http,
+            "dom",
+            {"steps": [{"tag": "h3", "field": "description"}]},
+            scrape_step=1,
+        )
+
+        assert ok is True
+        update_calls = [
+            c for c in conn.execute.await_args_list if c.args[0] == _UPDATE_ENRICH_CONTENT
+        ]
+        assert len(update_calls) == 1
+        call_args = update_calls[0].args
+        # $4 = locales -> MUST be None so COALESCE preserves existing
+        assert call_args[4] is None, (
+            f"locales param must be None to preserve step-0 locales, got {call_args[4]!r}"
+        )
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
     async def test_garbage_title_treated_as_empty(self, mock_scrape, mock_pool, mock_http):
         """Garbage titles (auth walls, etc.) -> failure (backoff), no content write."""
         pool, conn = mock_pool
