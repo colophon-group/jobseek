@@ -332,6 +332,7 @@ from src.core.scrapers import (  # noqa: E402
     api_sniffer,  # noqa: F401
     bite,  # noqa: F401
     dom,  # noqa: F401
+    eightfold,  # noqa: F401
     embedded,  # noqa: F401
     jsonld,  # noqa: F401
     nextdata,  # noqa: F401

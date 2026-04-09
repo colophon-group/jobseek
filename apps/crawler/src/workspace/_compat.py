@@ -88,6 +88,7 @@ _ALL_SCRAPER_TYPES: frozenset[str] = frozenset(
         "api_sniffer",
         "bite",
         "dom",
+        "eightfold",
         "embedded",
         "json-ld",
         "nextdata",
@@ -248,7 +249,7 @@ def auto_scraper_type(
     if monitor_type == "workday":
         return ("workday", None)
     if monitor_type == "eightfold":
-        return ("json-ld", None)
+        return ("eightfold", None)
     if monitor_type == "softgarden":
         return ("json-ld", None)
     if monitor_type == "ycombinator":

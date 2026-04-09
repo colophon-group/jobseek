@@ -1407,12 +1407,20 @@ class LocationResolver:
             return self._best_by_population(regions)
         return self._best_by_population(ids)
 
-    def _match_compound(self, words: list[str]) -> int | None:
+    def _match_compound(self, words: list[str], *, _recursion_depth: int = 0) -> int | None:
         """Try to split space-separated words into city + country/region.
 
         For strings like "Bremen Germany" or "Riyadh Saudi Arabia" where
         city and country are space-separated without delimiters.
         Tries from right: last N words as country context, rest as city.
+
+        When the left portion itself is space-separated "City Region" (e.g.
+        "Tampa Florida United States" — 2-word country + 2-word remainder),
+        recursively decompose the left words one more level.  Workday tenants
+        emit this single-space format for some sites (Citi, Tencent, Broadcom,
+        Chevron, Home Depot CA, etc.), so a single recursion step covers the
+        "City State Country" class that the flat matcher previously missed.
+        Recursion is capped at depth 1 and gated by the descendant check.
         """
         for split_pos in range(len(words) - 1, 0, -1):
             right = " ".join(words[split_pos:])
@@ -1436,13 +1444,22 @@ class LocationResolver:
                 continue
 
             # Look up left part
-            left = " ".join(words[:split_pos])
+            left_words = words[:split_pos]
+            left = " ".join(left_words)
             left_key = left.lower()
             left_ids = self._lookup_name(left_key)
             if not left_ids:
                 left_ids = self._lookup_name(_strip_accents(left_key))
 
             if not left_ids:
+                # Try one level of recursive decomposition: the left portion
+                # may itself be "City Region" inside the outer country context.
+                # Only accept the nested match when it sits within the outer
+                # context — that gate prevents matching unrelated cities.
+                if _recursion_depth == 0 and len(left_words) >= 2:
+                    nested = self._match_compound(left_words, _recursion_depth=1)
+                    if nested is not None and self._is_descendant_of_any(nested, context_ids):
+                        return nested
                 continue
 
             # Prefer candidates that are descendants of the context
