@@ -19,6 +19,12 @@ x-common-env: &common-env
   TYPESENSE_PORT: ${TYPESENSE_PORT}
   TYPESENSE_PROTOCOL: ${TYPESENSE_PROTOCOL}
   TYPESENSE_ADMIN_KEY: ${TYPESENSE_ADMIN_KEY}
+  # CDP-routed transport (PR #2076). Optional — when both are set, the
+  # shared httpx client routes hosts in CDP_ROUTES through the Lightpanda
+  # cloud service to bypass datacenter-IP anti-bot blocks (e.g. AWS WAF
+  # on apply.starbucks.com). See src/shared/cdp.py.
+  LIGHTPANDA_CDP_URL: ${LIGHTPANDA_CDP_URL:-}
+  CDP_ROUTES: ${CDP_ROUTES:-}
 
 services:
   # -- Redis -------------------------------------------------------
