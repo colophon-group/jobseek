@@ -169,10 +169,83 @@ uv run crawler refresh-typesense       # Refresh Typesense counts + reconcile wa
 uv run crawler board <slug>            # Process single board (debug)
 uv run crawler board <slug> --dry-run  # Test without DB writes
 uv run crawler board <slug> --dry-run --verbose  # Show all extracted fields
+uv run crawler board <slug> --pcsx-full-crawl  # Force full PCSX crawl for
+                                                # eightfold boards, bypassing
+                                                # the incremental watermark.
+                                                # Used for manual backfills of
+                                                # very large boards (Starbucks).
 
 # Run tests
 uv run pytest tests/
 ```
+
+## Eightfold hybrid monitor (sitemap + PCSX incremental)
+
+The `eightfold` monitor runs in a hybrid mode for PCSX-enabled tenants: it
+fetches the sitemap for the canonical URL set (gone detection works
+unchanged) **and** paginates the Eightfold PCSX API (`/api/pcsx/search`)
+incrementally via a high-water mark on `postedTs`. See `ws help monitor
+eightfold` for the full reference.
+
+### Watermark state
+
+Stored as `job_board.metadata.pcsx_watermark` (runtime-written — preserved
+across `crawler sync` by `_UPSERT_BOARD_LOCAL`'s JSONB merge):
+
+```json
+{
+  "max_ts": 1775606400,
+  "last_full_at": "2026-04-08T23:00:00+00:00",
+  "last_incremental_at": "2026-04-09T09:00:00+00:00",
+  "interval_days": 7,
+  "enabled": true,
+  "auto_full_crawl": true,
+  "extra": {"host": "careers.kering.com", "domain": "kering"}
+}
+```
+
+- `max_ts` — drives incremental stop (paginate until all items on a page
+  have `postedTs <= max_ts`, then 3 safety pages for boundary jitter)
+- `last_full_at` / `interval_days` — weekly forced full crawl for drift
+  correction (content changes on existing jobs via json-ld enrichment)
+- `enabled` — cached result of the `/api/pcsx/search` probe. `false` for
+  the 7 tenants that return `"PCSX is not enabled for this user."`
+- `auto_full_crawl` — if `false`, skip the automatic full crawl on first
+  run. Used for boards too large to crawl inside the scheduled worker pool
+
+### Manual backfill for very large boards
+
+Starbucks (~21k jobs) has `monitor_config.pcsx_watermark.auto_full_crawl:
+false` in `data/boards.csv` so scheduled runs don't start a 30-60 minute
+full crawl. Operator runs the backfill manually from the Hetzner box:
+
+```bash
+ssh -i ~/.ssh/hetzner_deploy root@<WORKER_IP>
+docker exec crawler-slim uv run crawler board starbucks-eightfold --pcsx-full-crawl
+```
+
+After success, the watermark is populated and subsequent scheduled runs
+do fast incremental top-ups (~30-60 seconds). The 7 PCSX-disabled boards
+(bayer, american-express, hsbc, stmicroelectronics, symetra, vale, zebra)
+stay on the sitemap-only path automatically — their probes fail and
+`enabled=false` gets cached.
+
+### CSV config for PCSX-enabled eightfold boards
+
+Each PCSX-enabled eightfold board needs `scraper_config: {"enrich":
+["description"]}` in `data/boards.csv` so the pipeline runs a one-shot
+json-ld scrape per new job to fill descriptions (PCSX doesn't return
+them). 15 boards migrated: citigroup, dexcom, eaton, hasbro, kering,
+lam-research, mercado-libre, micron, microsoft, northrop-grumman, ptc,
+qualcomm, starbucks, tailored-brands, vodafone.
+
+### Rollback paths
+
+1. Per-board kill switch — `metadata.pcsx_watermark.enabled = false` via SQL
+2. Disable auto-full-crawl — `metadata.pcsx_watermark.auto_full_crawl = false`
+3. CSV revert — remove `scraper_config: {enrich: [description]}` and sync
+4. Full git revert — safe; the `board.py` partial-rich fix is a strict
+   superset of pre-refactor behaviour
 
 ## Crawler Setup Agent Instruction Sources
 
