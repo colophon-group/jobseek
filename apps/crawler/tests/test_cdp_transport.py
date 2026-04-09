@@ -242,6 +242,42 @@ class TestLightpandaTransportInjectedFetch:
                 await client.get("https://waf.example.com/x")
 
     @pytest.mark.asyncio
+    async def test_strips_content_encoding_to_avoid_double_decompression(self):
+        """Lightpanda returns already-decompressed body, but its headers
+        still claim ``Content-Encoding: gzip``. Forwarding that header to
+        httpx would cause ``DecodingError: incorrect header check``."""
+
+        async def fake_fetch(*args, **kwargs):
+            return (
+                200,
+                b"<html>plain body</html>",
+                {
+                    "content-encoding": "gzip",
+                    "content-length": "9999",
+                    "transfer-encoding": "chunked",
+                    "content-type": "text/html",
+                },
+            )
+
+        transport = LightpandaTransport("wss://fake/ws", fetch=fake_fetch)
+        async with httpx.AsyncClient(mounts={"all://waf.example.com": transport}) as client:
+            resp = await client.get("https://waf.example.com/x")
+        assert resp.status_code == 200
+        assert resp.text == "<html>plain body</html>"
+        # Crucially: no content-encoding/transfer-encoding leaks through
+        # to confuse httpx's body decoder. (httpx may auto-recompute a
+        # correct content-length itself, which is fine.)
+        for h in ("content-encoding", "transfer-encoding"):
+            assert h not in resp.headers
+        # If httpx did set content-length, it must match the actual body
+        # bytes (not the upstream's lying "9999").
+        cl = resp.headers.get("content-length")
+        if cl is not None:
+            assert int(cl) == len(resp.content)
+        # Other headers do pass through.
+        assert resp.headers["content-type"] == "text/html"
+
+    @pytest.mark.asyncio
     async def test_aclose_is_noop_by_design(self):
         """Closing the httpx client must NOT tear down the shared session
         (other clients in the same process may still be using it)."""

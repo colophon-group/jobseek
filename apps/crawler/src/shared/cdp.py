@@ -297,9 +297,21 @@ class LightpandaTransport(httpx.AsyncBaseTransport):
             raise
         except Exception as exc:  # noqa: BLE001
             raise httpx.ConnectError(f"cdp transport failed: {exc}", request=request) from exc
+        # Strip headers that no longer match the body. Lightpanda's
+        # APIRequestContext returns the body already decompressed, so
+        # passing through ``content-encoding: gzip`` would make httpx try
+        # to inflate the body a second time and crash with
+        # ``DecodingError: incorrect header check``. Same for
+        # ``content-length`` and ``transfer-encoding`` — the bytes we hand
+        # back are the final post-transfer-decoding payload.
+        cleaned_headers = {
+            k: v
+            for k, v in resp_headers.items()
+            if k.lower() not in ("content-encoding", "content-length", "transfer-encoding")
+        }
         return httpx.Response(
             status_code=status,
-            headers=resp_headers,
+            headers=cleaned_headers,
             content=body,
             request=request,
         )
