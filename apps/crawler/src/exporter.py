@@ -127,7 +127,17 @@ class TaxonomyMaps:
         )
 
     async def _load_location_names(self, pool: asyncpg.Pool) -> None:
-        rows = await pool.fetch("SELECT location_id, locale, name FROM location_name")
+        # Filter is_display=true so canonical names win (Los Angeles, Colorado
+        # Springs, Maryland) over alternate GeoNames variants (L.A., Colorado
+        # Spgs, Old Line State). The location_name table stores aliases and
+        # nicknames as separate rows with is_display=false; without this
+        # filter, last-write-wins in Postgres heap order picks arbitrary
+        # variants for each (location_id, locale) pair. Matches
+        # _load_occupation_names / _load_seniority_names below and the
+        # location Typesense sync in sync.py:1432.
+        rows = await pool.fetch(
+            "SELECT location_id, locale, name FROM location_name WHERE is_display = true"
+        )
         names: dict[int, dict[str, str]] = {}
         for r in rows:
             loc_id = r["location_id"]

@@ -643,3 +643,36 @@ class TestBuildTypesenseDocsAncestors:
         # location_names and location_geo_types are only for the leaf
         assert len(docs[0]["location_names"]) == 1
         assert len(docs[0]["location_geo_types"]) == 1
+
+
+class TestLoadLocationNames:
+    """Tests for TaxonomyMaps._load_location_names is_display filter."""
+
+    async def test_filters_by_is_display(self):
+        """Query must include WHERE is_display=true so alternate names
+        (L.A., Colorado Spgs, Old Line State) cannot leak into Typesense."""
+        pool = _make_pool()
+        # Simulate Postgres returning only is_display=true rows (the filter works).
+        pool.fetch = AsyncMock(
+            return_value=[
+                {"location_id": 5368361, "locale": "en", "name": "Los Angeles"},
+                {"location_id": 5417598, "locale": "en", "name": "Colorado Springs"},
+                {"location_id": 4361885, "locale": "en", "name": "Maryland"},
+                {"location_id": 5368361, "locale": "de", "name": "Los Angeles"},
+            ]
+        )
+
+        maps = TaxonomyMaps()
+        await maps._load_location_names(pool)
+
+        # Query must include the is_display filter — defends against
+        # accidental removal in future refactors.
+        pool.fetch.assert_awaited_once()
+        sql = pool.fetch.await_args.args[0]
+        assert "is_display" in sql
+        assert "WHERE is_display = true" in sql
+
+        # Canonical names picked up for each locale
+        assert maps.location_names[5368361] == {"en": "Los Angeles", "de": "Los Angeles"}
+        assert maps.location_names[5417598] == {"en": "Colorado Springs"}
+        assert maps.location_names[4361885] == {"en": "Maryland"}
