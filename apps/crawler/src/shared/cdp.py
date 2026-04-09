@@ -357,13 +357,43 @@ def _set_session_for_test(cdp_url: str, sess: _LightpandaSession | None) -> None
         _sessions[cdp_url] = sess
 
 
+# Per-session close timeout for graceful shutdown. The Lightpanda CDP
+# websocket can hang on close (network glitch, server-side reap in
+# progress) — without a timeout the cli ``finally:`` block would block
+# forever, eventually getting SIGKILL'd by docker stop's grace period
+# and leaking the session anyway. 5 seconds is generous: a healthy
+# close completes in ~50ms.
+_SHUTDOWN_CLOSE_TIMEOUT_SEC = 5.0
+
+
 async def shutdown_all_sessions() -> None:
-    """Close every cached CDP session. Call from the worker shutdown path."""
-    for sess in list(_sessions.values()):
+    """Close every cached CDP session. Call from the worker shutdown path.
+
+    Each session close is bounded by ``_SHUTDOWN_CLOSE_TIMEOUT_SEC`` and
+    runs concurrently — a hung session must not block the others, and
+    the shutdown must complete inside docker's stop-grace window so the
+    process exits cleanly (otherwise SIGKILL leaks the very sessions we
+    were trying to close).
+
+    Idempotent — safe to call multiple times. The cache is cleared at
+    the end so a follow-up request opens a fresh session.
+    """
+    sessions = list(_sessions.values())
+    if not sessions:
+        return
+
+    async def _close_one(sess: _LightpandaSession) -> None:
         try:
-            await sess.close()
+            await asyncio.wait_for(sess.close(), timeout=_SHUTDOWN_CLOSE_TIMEOUT_SEC)
+        except TimeoutError:
+            log.warning(
+                "cdp.shutdown.session_close_timeout",
+                timeout_sec=_SHUTDOWN_CLOSE_TIMEOUT_SEC,
+            )
         except Exception as exc:  # noqa: BLE001
             log.debug("cdp.shutdown.session_close_failed", error=str(exc))
+
+    await asyncio.gather(*(_close_one(s) for s in sessions), return_exceptions=True)
     _sessions.clear()
 
 

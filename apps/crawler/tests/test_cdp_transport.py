@@ -641,6 +641,157 @@ class TestShutdownAllSessions:
         await shutdown_all_sessions()
         assert cdp._sessions == {}
 
+    @pytest.mark.asyncio
+    async def test_hung_close_does_not_block_others(self):
+        """A session whose close() hangs MUST NOT block the others.
+
+        Without a per-session timeout, one stuck Lightpanda close()
+        would block the cli.py finally block past docker's stop grace
+        period — the container then gets SIGKILL'd and ALL the sessions
+        leak, defeating the purpose of the shutdown wiring.
+        """
+        import asyncio as _asyncio
+
+        closed: list[str] = []
+
+        class _HangSession:
+            async def close(self):
+                # Sleep longer than _SHUTDOWN_CLOSE_TIMEOUT_SEC.
+                await _asyncio.sleep(60)
+
+        class _GoodSession:
+            def __init__(self, name):
+                self._name = name
+
+            async def close(self):
+                closed.append(self._name)
+
+        # Patch the timeout down so the test runs in <1s.
+        original = cdp._SHUTDOWN_CLOSE_TIMEOUT_SEC
+        cdp._SHUTDOWN_CLOSE_TIMEOUT_SEC = 0.1
+        try:
+            cdp._set_session_for_test("wss://hang/ws", _HangSession())
+            cdp._set_session_for_test("wss://good1/ws", _GoodSession("good1"))
+            cdp._set_session_for_test("wss://good2/ws", _GoodSession("good2"))
+
+            t0 = _asyncio.get_event_loop().time()
+            await shutdown_all_sessions()
+            elapsed = _asyncio.get_event_loop().time() - t0
+
+            # The hang session timed out (~0.1s), the good ones closed.
+            # Total elapsed must be well under 1s — they must run in
+            # parallel, not sequentially.
+            assert elapsed < 1.0, (
+                f"shutdown took {elapsed:.2f}s — sessions are not closing in parallel"
+            )
+            assert sorted(closed) == ["good1", "good2"]
+            assert cdp._sessions == {}
+        finally:
+            cdp._SHUTDOWN_CLOSE_TIMEOUT_SEC = original
+            cdp._sessions.clear()
+
+
+# ── Cli wiring regression guard ──────────────────────────────────────
+
+
+class TestCliShutdownWiring:
+    """Source-level regression guard: cli.py MUST keep calling
+    ``shutdown_all_sessions()`` from its outer ``finally:`` block.
+
+    A future refactor that splits cli.py into multiple binaries, removes
+    the import, or moves the call out of the finally would silently
+    re-introduce today's leak. This test catches it before merge.
+    """
+
+    def test_cli_imports_shutdown_helper(self):
+        import src.cli as cli_module
+
+        assert hasattr(cli_module, "shutdown_all_sessions"), (
+            "cli.py must import shutdown_all_sessions from src.shared.cdp — "
+            "without it, the SIGTERM finally block can't release Lightpanda "
+            "sessions and every worker restart leaks ~6 minutes of quota."
+        )
+
+    def test_cli_calls_shutdown_in_finally(self):
+        """Read cli.py source and assert the call lives inside a finally:."""
+        import inspect
+
+        import src.cli as cli_module
+
+        source = inspect.getsource(cli_module.run)
+        assert "await shutdown_all_sessions()" in source, (
+            "cli.run() must await shutdown_all_sessions() in its outer finally block"
+        )
+        # The "await shutdown_all_sessions()" line must come after the last
+        # "finally:" in the function source — i.e. inside it, not in the
+        # try: body where exceptions could skip it.
+        last_finally = source.rfind("finally:")
+        shutdown_call = source.find("await shutdown_all_sessions()")
+        assert last_finally != -1, "cli.run() has no finally: block"
+        assert shutdown_call > last_finally, (
+            "shutdown_all_sessions() must be inside a finally: block — "
+            "if it lives in the try: body, exceptions can skip it and "
+            "leak Lightpanda sessions on crash."
+        )
+
+    def test_cli_shutdown_runs_before_pool_close(self):
+        """Sessions close before pools.
+
+        Reverse order risks errors during the session close that suppress
+        useful diagnostics, and a pool-related close failure shouldn't
+        prevent the (more important) Lightpanda session release.
+        """
+        import inspect
+
+        import src.cli as cli_module
+
+        source = inspect.getsource(cli_module.run)
+        shutdown_pos = source.find("await shutdown_all_sessions()")
+        pool_close_pos = source.find("await close_all_pools()")
+        assert shutdown_pos != -1
+        assert pool_close_pos != -1
+        assert shutdown_pos < pool_close_pos, (
+            "shutdown_all_sessions() must come before close_all_pools() "
+            "in cli.run()'s finally block"
+        )
+
+
+# ── Workspace command wiring regression guard ──────────────────────
+
+
+class TestWorkspaceShutdownWiring:
+    """Workspace ws commands run as one-shot processes — they get NO
+    cli.py finally block. Each ``_run()`` MUST flush Lightpanda sessions
+    on its own, otherwise every ``ws probe`` / ``ws run`` against a
+    CDP-routed host leaks a session.
+    """
+
+    def test_ws_crawl_uses_shutdown_helper(self):
+        """``crawl.py`` should not call ``http.aclose()`` directly.
+
+        Every cleanup site must go through ``_shutdown_http`` so the
+        Lightpanda sessions get released alongside the http client.
+        """
+        import inspect
+
+        from src.workspace.commands import crawl as crawl_module
+
+        source = inspect.getsource(crawl_module)
+        # The helper must exist and be referenced.
+        assert "async def _shutdown_http" in source, (
+            "crawl.py must define _shutdown_http helper that closes "
+            "the http client AND flushes Lightpanda sessions"
+        )
+        # Find every direct ``await http.aclose()`` outside the helper —
+        # there must be exactly ONE (the one inside ``_shutdown_http``).
+        direct_calls = source.count("await http.aclose()")
+        assert direct_calls == 1, (
+            f"Found {direct_calls} direct ``await http.aclose()`` calls in "
+            "crawl.py — every site except the one inside _shutdown_http "
+            "must use _shutdown_http(http) instead, otherwise that path "
+            "leaks Lightpanda sessions on each ws command invocation."
+        )
+
 
 # ── Redis pool sizing ────────────────────────────────────────────────
 

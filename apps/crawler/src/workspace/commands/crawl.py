@@ -27,6 +27,26 @@ from src.workspace.state import (
 _SUSPICIOUS_ROUND_THRESHOLDS = {1000, 5000, 10000, 50000, 100000}
 
 
+async def _shutdown_http(http) -> None:
+    """Close an httpx client AND release any Lightpanda CDP sessions.
+
+    Workspace commands run as one-shot processes, so the cli.py
+    ``finally:`` block that flushes Lightpanda sessions for the long-
+    running workers never fires here. Without this, every ``ws probe``
+    or ``ws run`` against a CDP-routed host would leak a ~6-minute
+    Lightpanda session and burn through the monthly browser-hours
+    quota during agent/dev iteration.
+
+    Idempotent — safe to call multiple times.
+    """
+    try:
+        await http.aclose()
+    finally:
+        from src.shared.cdp import shutdown_all_sessions
+
+        await shutdown_all_sessions()
+
+
 def _warn_suspicious_count(count: int, category: str) -> None:
     """Warn when a job count looks like a server-side cap or is unusually high."""
     if count <= 0:
@@ -335,7 +355,7 @@ def probe_monitors(slug: str | None, board_alias: str | None, current_jobs: int,
                 results = await probe_all_monitors(board.url, http, pw=pw)
             return results
         finally:
-            await http.aclose()
+            await _shutdown_http(http)
 
     results = asyncio.run(_run())
 
@@ -410,7 +430,7 @@ def _probe_all_boards(slug: str, current_jobs: int) -> None:
                         await asyncio.sleep(SAME_HOST_DELAY)
                 return all_results
         finally:
-            await http.aclose()
+            await _shutdown_http(http)
 
     all_results = asyncio.run(_run())
 
@@ -490,7 +510,7 @@ def probe_scraper(slug: str | None, board_alias: str | None, urls: tuple[str, ..
             async with async_playwright() as pw:
                 return await probe_scrapers(target_urls, http, pw=pw)
         finally:
-            await http.aclose()
+            await _shutdown_http(http)
 
     results, spa_suspect = asyncio.run(_run())
 
@@ -665,7 +685,7 @@ def probe_deep(slug: str | None, board_alias: str | None, current_jobs: int):
 
                 return metadata, httpx_ok, diag, cms_results
         finally:
-            await http.aclose()
+            await _shutdown_http(http)
 
     metadata, httpx_ok, diagnostics, cms_results = asyncio.run(_run())
 
@@ -827,7 +847,7 @@ def probe_api(url: str, slug: str | None, board_alias: str | None):
             resp = await http.get(url, timeout=30)
             return resp
         finally:
-            await http.aclose()
+            await _shutdown_http(http)
 
     resp = asyncio.run(_run())
 
@@ -1207,7 +1227,7 @@ def run_monitor(slug: str | None, board_alias: str | None, config_name: str | No
                 elapsed = time.monotonic() - start
             return result, elapsed, http_log
         finally:
-            await http.aclose()
+            await _shutdown_http(http)
 
     try:
         result, elapsed, http_log = asyncio.run(_run())
@@ -1697,7 +1717,7 @@ def run_scraper(
                     results.append((url, content, elapsed))
             return results, http_log, skipped
         finally:
-            await http.aclose()
+            await _shutdown_http(http)
 
     results, http_log, skipped = asyncio.run(_run())
 
