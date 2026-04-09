@@ -2091,7 +2091,11 @@ class TestBoardHasEnrich:
 class TestEnrichmentScrape:
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
     async def test_enrich_only_updates_enriched_fields(self, mock_scrape, mock_pool, mock_http):
-        """Enrich scrape uses _UPDATE_ENRICH_CONTENT, not _UPDATE_JOB_CONTENT."""
+        """Enrich scrape uses _UPDATE_ENRICH_CONTENT, not _UPDATE_JOB_CONTENT.
+
+        When the row is fully populated (title/locations/employment_type all
+        set), backfill-on-empty is a no-op and non-enriched fields stay NULL.
+        """
         pool, conn = mock_pool
         content = _job_content(description="<p>Long description</p>")
         mock_scrape.return_value = content
@@ -2099,8 +2103,9 @@ class TestEnrichmentScrape:
             return_value={
                 "titles": ["Existing Title"],
                 "locales": ["en"],
-                "location_ids": None,
-                "location_types": None,
+                "location_ids": [1, 2],
+                "location_types": ["physical"],
+                "employment_type": "part_time",
             }
         )
         item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
@@ -2166,8 +2171,9 @@ class TestEnrichmentScrape:
             return_value={
                 "titles": ["Eng"],
                 "locales": ["en"],
-                "location_ids": None,
-                "location_types": None,
+                "location_ids": [1],
+                "location_types": ["physical"],
+                "employment_type": "full_time",
             }
         )
         item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
@@ -2361,8 +2367,9 @@ class TestEnrichmentScrape:
             return_value={
                 "titles": ["Old"],
                 "locales": ["en"],
-                "location_ids": None,
-                "location_types": None,
+                "location_ids": [1],
+                "location_types": ["physical"],
+                "employment_type": "part_time",
             }
         )
         item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
@@ -2381,6 +2388,130 @@ class TestEnrichmentScrape:
         # titles enriched → set
         assert call_args[3] == ["Lead Engineer"]
         # description_r2_hash enriched → may be set (R2 upload runs)
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_enrich_backfills_empty_stub_row(self, mock_scrape, mock_pool, mock_http):
+        """Stub row (all core fields empty) → enrich writes title/locations/employment_type.
+
+        Regression test for the Starbucks empty-posting bug: the hybrid
+        eightfold monitor can insert URL-only stubs when PCSX hasn't run,
+        and ``scraper_config: {"enrich":["description"]}`` would previously
+        leave those stubs with empty title forever. Now json-ld values are
+        opportunistically backfilled when the row is empty.
+        """
+        pool, conn = mock_pool
+        mock_scrape.return_value = _job_content(
+            title="Software Engineer",
+            description="<p>Build things</p>",
+            locations=["Berlin"],
+            employment_type="FULL_TIME",
+        )
+        pool.fetchrow = AsyncMock(
+            return_value={
+                "titles": None,
+                "locales": None,
+                "location_ids": None,
+                "location_types": None,
+                "employment_type": None,
+            }
+        )
+        item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+
+        ok, _ = await _process_one_enrich_scrape(
+            item, pool, mock_http, "json-ld", None, ["description"]
+        )
+
+        assert ok is True
+        enrich_calls = [
+            c for c in conn.execute.await_args_list if c.args[0] == _UPDATE_ENRICH_CONTENT
+        ]
+        assert len(enrich_calls) == 1
+        call_args = enrich_calls[0].args
+        # All backfilled from the scraper result
+        assert call_args[2] == "full_time"  # employment_type
+        assert call_args[3] == ["Software Engineer"]  # titles
+        # locations resolve to ids even if the resolver returns empty (at
+        # minimum the call is made — we don't assert the exact ids here
+        # because the resolver is not mocked tightly)
+        # description-derived tech_ids column is still populated
+        # (description is in the enrich list)
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_enrich_does_not_backfill_when_row_is_populated(
+        self, mock_scrape, mock_pool, mock_http
+    ):
+        """Populated row → backfill is a no-op (PCSX-sourced values preserved).
+
+        COALESCE in _UPDATE_ENRICH_CONTENT would already protect existing
+        values, but we explicitly pass None so the UPDATE is a pure no-op
+        for those columns and updated_at doesn't flip.
+        """
+        pool, conn = mock_pool
+        mock_scrape.return_value = _job_content(
+            title="Stale Scraper Title",
+            description="<p>Fresh desc</p>",
+            locations=["Wrong City"],
+            employment_type="PART_TIME",
+        )
+        pool.fetchrow = AsyncMock(
+            return_value={
+                "titles": ["PCSX Title"],
+                "locales": ["en"],
+                "location_ids": [42],
+                "location_types": ["physical"],
+                "employment_type": "full_time",
+            }
+        )
+        item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+
+        ok, _ = await _process_one_enrich_scrape(
+            item, pool, mock_http, "json-ld", None, ["description"]
+        )
+
+        assert ok is True
+        enrich_calls = [
+            c for c in conn.execute.await_args_list if c.args[0] == _UPDATE_ENRICH_CONTENT
+        ]
+        call_args = enrich_calls[0].args
+        assert call_args[2] is None  # employment_type: not overwritten
+        assert call_args[3] is None  # titles: not overwritten
+        assert call_args[5] is None  # location_ids: not overwritten
+        assert call_args[6] is None  # location_types: not overwritten
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_enrich_skips_backfill_for_garbage_scraped_title(
+        self, mock_scrape, mock_pool, mock_http
+    ):
+        """Garbage scraped title → do not backfill, leave row for PCSX to fill later."""
+        pool, conn = mock_pool
+        mock_scrape.return_value = _job_content(
+            title="Page Not Found",  # in _GARBAGE_TITLES
+            description="<p>real desc</p>",
+            locations=None,
+            employment_type=None,
+        )
+        pool.fetchrow = AsyncMock(
+            return_value={
+                "titles": None,
+                "locales": None,
+                "location_ids": None,
+                "location_types": None,
+                "employment_type": None,
+            }
+        )
+        item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+
+        ok, _ = await _process_one_enrich_scrape(
+            item, pool, mock_http, "json-ld", None, ["description"]
+        )
+
+        assert ok is True
+        enrich_calls = [
+            c for c in conn.execute.await_args_list if c.args[0] == _UPDATE_ENRICH_CONTENT
+        ]
+        call_args = enrich_calls[0].args
+        # Garbage title must not be persisted
+        assert call_args[3] is None  # titles
 
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
     async def test_enrich_exception_records_failure(self, mock_scrape, mock_pool, mock_http):

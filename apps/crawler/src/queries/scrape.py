@@ -204,7 +204,7 @@ WHERE jp.id = ANY($1::uuid[])
 """
 
 _FETCH_POSTING_FOR_ENRICH = """
-SELECT titles, locales, location_ids, location_types
+SELECT titles, locales, location_ids, location_types, employment_type
 FROM job_posting
 WHERE id = $1
 """

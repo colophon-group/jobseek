@@ -336,7 +336,21 @@ async def _process_one_enrich_scrape(
     enrich_fields: list[str],
     pw=None,
 ) -> tuple[bool, float]:
-    """Run a scrape that only enriches specific fields. Returns (success, duration_s)."""
+    """Run a scrape that only enriches specific fields. Returns (success, duration_s).
+
+    Backfill-on-empty: ``title``, ``employment_type``, and ``locations`` are
+    opportunistically filled from the scraper output when the existing
+    posting row has them empty. This recovers URL-only stubs inserted when
+    a hybrid monitor could not deliver rich data (e.g. the eightfold
+    ``awaiting_manual_backfill`` path on Starbucks, which yields sitemap
+    URLs without any PCSX data). ``_UPDATE_ENRICH_CONTENT`` uses COALESCE
+    on every column, so once PCSX does run, real rich data is preserved
+    and never clobbered by a later json-ld scrape.
+
+    Garbage scraped titles (``_is_garbage_title``) are not backfilled — an
+    obviously-broken page should not poison a still-empty row that PCSX
+    might fill correctly later.
+    """
     t0 = monotonic()
     try:
         cfg = scraper_config or {}
@@ -352,6 +366,37 @@ async def _process_one_enrich_scrape(
             async with pool.acquire() as conn:
                 await conn.execute(_RECORD_SCRAPE_FAILURE, item.job_posting_id)
             return False, monotonic() - t0
+
+        # Fetch existing row once: used for both backfill detection and
+        # R2 staging. ``existing`` may be None in tests or if the row was
+        # concurrently deleted; treat that as "don't backfill".
+        existing = await pool.fetchrow(_FETCH_POSTING_FOR_ENRICH, item.job_posting_id)
+
+        # Expand enrich_fields with any core fields that are currently empty
+        # on the DB row, so the rest of this function naturally populates
+        # them via its existing if-branches. Guarded by a garbage-title
+        # check so a broken page can't poison a stub row.
+        effective_fields = list(enrich_fields)
+        if existing:
+            existing_titles = existing.get("titles")
+            existing_loc_ids = existing.get("location_ids")
+            existing_et = existing.get("employment_type")
+            scraped_title = _coerce_text(content.title)
+            title_is_usable = bool(scraped_title) and not _is_garbage_title(scraped_title)
+            if "title" not in effective_fields and not existing_titles and title_is_usable:
+                effective_fields.append("title")
+            if (
+                "locations" not in effective_fields
+                and not existing_loc_ids
+                and _coerce_locations(content.locations)
+            ):
+                effective_fields.append("locations")
+            if (
+                "employment_type" not in effective_fields
+                and not existing_et
+                and _coerce_text(content.employment_type)
+            ):
+                effective_fields.append("employment_type")
 
         # Detect language if not already set
         language = content.language
@@ -377,10 +422,10 @@ async def _process_one_enrich_scrape(
         occ_id = sen_id = None
         staged = None
 
-        if "employment_type" in enrich_fields:
+        if "employment_type" in effective_fields:
             norm_emp_type = normalize_employment_type(_coerce_text(content.employment_type))
 
-        if "title" in enrich_fields:
+        if "title" in effective_fields:
             title_text = _coerce_text(content.title)
             all_titles = _build_titles(title_text, None) or None
             occ_id, sen_id = _resolve_occupation_seniority(all_titles, occ_ids, sen_ids)
@@ -397,7 +442,7 @@ async def _process_one_enrich_scrape(
                 if lang_text or detected_langs:
                     locales = built
 
-        if "locations" in enrich_fields:
+        if "locations" in effective_fields:
             lang_text = _coerce_text(language)
             loc_ids, loc_types = await _batch._resolve_locations(
                 loc_resolver,
@@ -406,14 +451,13 @@ async def _process_one_enrich_scrape(
                 posting_language=lang_text,
             )
 
-        if "description" in enrich_fields:
+        if "description" in effective_fields:
             desc_text = _coerce_text(content.description)
             tech_ids = _resolve_technology_ids(desc_text, tech_id_map)
             s_min, s_max, s_cur, s_per, s_eur = _extract_salary_fields(desc_text, rates)
             exp_min, exp_max = _extract_experience_fields(desc_text)
 
-            # Fetch existing posting data for R2 extras
-            existing = await pool.fetchrow(_FETCH_POSTING_FOR_ENRICH, item.job_posting_id)
+            # Reuse the earlier fetch for R2 extras.
             r2_title = None
             if existing:
                 titles_arr = existing["titles"]
@@ -736,7 +780,11 @@ async def _do_one_enrich_scrape(
     occ_ids: dict[str, int],
     sen_ids: dict[str, int],
 ) -> ScrapeResult | ScrapeError:
-    """Scrape + enrich inline (no threading). Returns ScrapeResult or ScrapeError."""
+    """Scrape + enrich inline (no threading). Returns ScrapeResult or ScrapeError.
+
+    Shares the backfill-on-empty semantics documented on
+    :func:`_process_one_enrich_scrape`. See that docstring for the rationale.
+    """
     item = work.item
     enrich_fields = work.enrich_fields or []
     cfg = work.scraper_config or {}
@@ -751,6 +799,33 @@ async def _do_one_enrich_scrape(
     has_data = any(getattr(content, f, None) is not None for f in enrich_fields)
     if not has_data:
         return ScrapeError(job_posting_id=item.job_posting_id)
+
+    # Fetch existing row once: used for both backfill detection and R2 staging.
+    existing = await pool.fetchrow(_FETCH_POSTING_FOR_ENRICH, item.job_posting_id)
+
+    # Expand enrich_fields with any core fields currently empty on the row
+    # (see _process_one_enrich_scrape for rationale).
+    effective_fields = list(enrich_fields)
+    if existing:
+        existing_titles = existing.get("titles")
+        existing_loc_ids = existing.get("location_ids")
+        existing_et = existing.get("employment_type")
+        scraped_title = _coerce_text(content.title)
+        title_is_usable = bool(scraped_title) and not _is_garbage_title(scraped_title)
+        if "title" not in effective_fields and not existing_titles and title_is_usable:
+            effective_fields.append("title")
+        if (
+            "locations" not in effective_fields
+            and not existing_loc_ids
+            and _coerce_locations(content.locations)
+        ):
+            effective_fields.append("locations")
+        if (
+            "employment_type" not in effective_fields
+            and not existing_et
+            and _coerce_text(content.employment_type)
+        ):
+            effective_fields.append("employment_type")
 
     # Detect language if not already set
     language = content.language
@@ -769,10 +844,10 @@ async def _do_one_enrich_scrape(
     occ_id = sen_id = None
     staged = None
 
-    if "employment_type" in enrich_fields:
+    if "employment_type" in effective_fields:
         norm_emp_type = normalize_employment_type(_coerce_text(content.employment_type))
 
-    if "title" in enrich_fields:
+    if "title" in effective_fields:
         title_text = _coerce_text(content.title)
         all_titles = _build_titles(title_text, None) or None
         occ_id, sen_id = _resolve_occupation_seniority(all_titles, occ_ids, sen_ids)
@@ -785,7 +860,7 @@ async def _do_one_enrich_scrape(
             if lang_text or detected_langs:
                 locales = built
 
-    if "locations" in enrich_fields:
+    if "locations" in effective_fields:
         lang_text = _coerce_text(language)
         loc_ids, loc_types = _resolve_locations_sync(
             loc_resolver,
@@ -794,14 +869,13 @@ async def _do_one_enrich_scrape(
             posting_language=lang_text,
         )
 
-    if "description" in enrich_fields:
+    if "description" in effective_fields:
         desc_text = _coerce_text(content.description)
         tech_ids = _resolve_technology_ids(desc_text, tech_id_map)
         s_min, s_max, s_cur, s_per, s_eur = _extract_salary_fields(desc_text, rates)
         exp_min, exp_max = _extract_experience_fields(desc_text)
 
-        # Fetch existing posting data for R2 extras
-        existing = await pool.fetchrow(_FETCH_POSTING_FOR_ENRICH, item.job_posting_id)
+        # Reuse the earlier fetch for R2 extras.
         r2_title = None
         if existing:
             titles_arr = existing["titles"]
