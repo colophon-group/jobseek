@@ -28,6 +28,7 @@ mapping lives here.
 from __future__ import annotations
 
 import asyncio
+import random
 import re
 from collections.abc import Iterable
 from datetime import UTC, datetime
@@ -55,6 +56,16 @@ PCSX_PAGE_SLEEP_S = 0.2
 PCSX_FULL_HARD_PAGE_CAP = 5000
 #: Hard page cap for incremental crawls (rarely needs more than ~30 pages).
 PCSX_INCREMENTAL_HARD_PAGE_CAP = 500
+#: Safety cap on response body size. Anything larger signals a malicious
+#: or misconfigured upstream — fail fast instead of buffering GB-scale
+#: responses in memory. 10 MB is ~50x bigger than the largest legitimate
+#: PCSX page (a full 10-item response is typically <200 KB).
+PCSX_MAX_RESPONSE_BYTES = 10 * 1024 * 1024
+#: Log progress every N pages during a full crawl so operators can see
+#: forward motion on long-running manual backfills (e.g. Starbucks ~2000
+#: pages). At one log event per 50 pages, a Starbucks backfill emits ~40
+#: progress events.
+PCSX_FULL_CRAWL_PROGRESS_EVERY = 50
 #: Numeric job id embedded in ``/careers/job/{id}`` paths.
 PCSX_JOB_ID_RE = re.compile(r"/careers/job/(\d+)")
 
@@ -109,13 +120,37 @@ async def _fetch_page(
             continue
         last_status = resp.status_code
         if resp.status_code == 200:
+            # Safety valve against a malicious / broken tenant returning
+            # an enormous response body. ``resp.content`` is the already-
+            # buffered body; httpx streams it up to this point regardless.
+            # We rely on the default body size being bounded at httpx level
+            # via response limits, but add an explicit cap here so a
+            # misconfigured tenant can't OOM the worker by returning an
+            # uncommonly large payload (expected size is <200 KB).
+            if len(resp.content) > PCSX_MAX_RESPONSE_BYTES:
+                raise PcsxFetchError(
+                    f"PCSX response from {host} exceeds "
+                    f"{PCSX_MAX_RESPONSE_BYTES} bytes "
+                    f"(got {len(resp.content)})"
+                )
             try:
                 data = resp.json()
             except Exception as exc:  # noqa: BLE001 — log and retry
                 last_exc = exc
                 await asyncio.sleep(0.5 * (attempt + 1))
                 continue
-            positions = (data.get("data") or {}).get("positions") or []
+            # Defensive: PCSX could respond with an unexpected shape.
+            if not isinstance(data, dict):
+                raise PcsxFetchError(
+                    f"PCSX response from {host} is not a JSON object (got {type(data).__name__})"
+                )
+            data_inner = data.get("data")
+            if data_inner is not None and not isinstance(data_inner, dict):
+                raise PcsxFetchError(
+                    f"PCSX response.data from {host} is not a JSON object "
+                    f"(got {type(data_inner).__name__})"
+                )
+            positions = (data_inner or {}).get("positions") or []
             return positions
         if resp.status_code == 403:
             # Distinguish "PCSX not enabled" from other 403s.
@@ -135,8 +170,12 @@ async def _fetch_page(
             # fall back to sitemap-only.
             raise PcsxFetchError(f"405 from {host} (rate-limited / blocked)")
         if resp.status_code in (429, 500, 502, 503, 504):
-            # Transient — exponential backoff then retry.
-            await asyncio.sleep(5.0 * (2**attempt))
+            # Transient — exponential backoff + jitter then retry. Jitter
+            # prevents thundering herd when multiple workers hit the same
+            # tenant simultaneously and all back off in lockstep.
+            base_delay = 5.0 * (2**attempt)
+            jittered = base_delay * random.uniform(0.8, 1.2)
+            await asyncio.sleep(jittered)
             continue
         # Other unexpected status — fail fast.
         raise PcsxFetchError(f"HTTP {resp.status_code} from {host}")
@@ -147,6 +186,27 @@ async def _fetch_page(
     )
 
 
+class ProbeResult:
+    """Outcome of a PCSX probe.
+
+    Distinguishes between:
+
+    - ``ENABLED``   — PCSX answered with a valid response; tenant is usable.
+    - ``DISABLED``  — tenant returned 403 "PCSX is not enabled for this user."
+                      or the confirmed strict==False Eightfold-detected case.
+                      This is a STABLE signal that PCSX can't be used for
+                      discovery — safe to cache as ``enabled=False``.
+    - ``TRANSIENT`` — probe failed for a non-stable reason (5xx, timeout,
+                      JSON parse error, rate-limit block). The caller
+                      should NOT cache this as a permanent disable state —
+                      retry on the next cycle.
+    """
+
+    ENABLED = "enabled"
+    DISABLED = "disabled"
+    TRANSIENT = "transient"
+
+
 async def probe(
     host: str,
     domain: str,
@@ -154,32 +214,47 @@ async def probe(
     *,
     strict: bool = True,
 ) -> bool:
-    """Check whether the tenant has PCSX enabled.
+    """Back-compat shim over :func:`probe_detail`.
 
-    Two semantic modes, distinguished by the ``strict`` flag:
+    Returns a bool matching the previous contract:
+    - ``strict=True``: True iff ENABLED.
+    - ``strict=False``: True if ENABLED or DISABLED (both confirm Eightfold).
 
-    - ``strict=True`` (default, used by the hybrid discover flow):
-      returns True only if PCSX can actually be used for discovery.
-      A 403 "PCSX is not enabled for this user." response returns
-      False — we can't use PCSX, fall back to sitemap-only.
+    Callers that need to distinguish TRANSIENT from DISABLED (e.g. so
+    they don't cache a transient failure as ``enabled=False``) should use
+    :func:`probe_detail` directly.
+    """
+    result = await probe_detail(host, domain, http)
+    if result == ProbeResult.ENABLED:
+        return True
+    if result == ProbeResult.DISABLED:
+        return not strict
+    return False  # TRANSIENT → False under both modes
 
-    - ``strict=False`` (used by ``can_handle`` for Eightfold detection):
-      returns True if the response confirms this is an Eightfold tenant
-      AT ALL, even when PCSX is disabled. A 403 "PCSX is not enabled"
-      response still returns True because the message itself confirms
-      Eightfold. Used to classify a URL during ``ws probe monitor``.
+
+async def probe_detail(
+    host: str,
+    domain: str,
+    http: httpx.AsyncClient,
+) -> str:
+    """Return a tri-state :class:`ProbeResult` for a PCSX probe.
+
+    Used by the eightfold hybrid discover flow to decide whether to cache
+    the ``enabled`` flag on the board watermark. Only ``DISABLED`` should
+    be cached as a permanent ``enabled=False``; ``TRANSIENT`` should be
+    left as ``None`` so the next run re-probes.
     """
     try:
         positions = await _fetch_page(host, domain, http, offset=0, num=1)
     except PcsxDisabled:
-        return not strict  # lenient mode: 403 confirms Eightfold
+        return ProbeResult.DISABLED
     except PcsxFetchError as exc:
         log.warning("pcsx.probe_failed", host=host, error=str(exc))
-        return False
+        return ProbeResult.TRANSIENT
     except Exception as exc:  # noqa: BLE001 — be defensive on probe
         log.warning("pcsx.probe_exception", host=host, error=str(exc))
-        return False
-    return positions is not None
+        return ProbeResult.TRANSIENT
+    return ProbeResult.ENABLED if positions is not None else ProbeResult.TRANSIENT
 
 
 async def get_count(
@@ -224,11 +299,28 @@ async def fetch_all(
     """Full linear pagination (for first runs and weekly re-syncs).
 
     Returns raw PCSX position dicts. Sleeps ``PCSX_PAGE_SLEEP_S`` between
-    pages to stay polite on rate-limited tenants.
+    pages to stay polite on rate-limited tenants. Logs a progress event
+    every ``PCSX_FULL_CRAWL_PROGRESS_EVERY`` pages so operators can tell
+    if a long-running manual backfill is still making forward progress
+    or has gotten stuck.
     """
+    pages_fetched = 0
+    items_fetched = 0
 
     async def _page(offset: int) -> list[dict]:
+        nonlocal pages_fetched, items_fetched
         items = await _fetch_page(host, domain, http, offset=offset)
+        pages_fetched += 1
+        items_fetched += len(items)
+        if pages_fetched % PCSX_FULL_CRAWL_PROGRESS_EVERY == 0:
+            log.info(
+                "pcsx.full_crawl_progress",
+                host=host,
+                domain=domain,
+                pages=pages_fetched,
+                items=items_fetched,
+                offset=offset,
+            )
         if items:
             await asyncio.sleep(PCSX_PAGE_SLEEP_S)
         return items

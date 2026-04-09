@@ -241,13 +241,38 @@ ON CONFLICT (id) DO UPDATE SET
     --   * ``sitemap_url`` — written by monitors that discover the sitemap
     --     URL dynamically (eightfold, api_sniffer-based boards)
     --   * ``pcsx_watermark`` — the eightfold incremental high-water mark
-    -- Shallow JSONB merge: start with CSV-derived values, then overlay any
-    -- preserved runtime subkeys from the existing row. ``jsonb_strip_nulls``
-    -- drops keys that don't exist on the existing row so the CSV value wins
-    -- on first sync (when there's nothing to preserve yet).
+    --
+    -- ``sitemap_url`` is a pure runtime signal (CSV never sets it), so
+    -- preserve it verbatim from the existing row.
+    --
+    -- ``pcsx_watermark`` is a mixed subkey: some fields are runtime state
+    -- (``max_ts``, ``last_full_at``, ``last_incremental_at``, ``enabled``,
+    -- ``extra``) and some are CSV-controlled configuration (``auto_full_crawl``,
+    -- ``interval_days``). We layer them so that CSV wins for config and
+    -- runtime wins for state:
+    --
+    --   final_pcsx_watermark = csv_pcsx_watermark
+    --                          || runtime_state_fields_from_existing
+    --
+    -- This means an operator who edits ``auto_full_crawl`` in the CSV and
+    -- re-syncs will see the change take effect immediately, but the watermark
+    -- itself (max_ts and friends) stays intact so the next scheduled run
+    -- still knows where incremental pagination left off.
     metadata = EXCLUDED.metadata || jsonb_strip_nulls(jsonb_build_object(
         'sitemap_url', job_board.metadata -> 'sitemap_url',
-        'pcsx_watermark', job_board.metadata -> 'pcsx_watermark'
+        'pcsx_watermark', CASE
+            WHEN job_board.metadata -> 'pcsx_watermark' IS NULL THEN NULL
+            ELSE COALESCE(EXCLUDED.metadata -> 'pcsx_watermark', '{}'::jsonb)
+                 || jsonb_strip_nulls(jsonb_build_object(
+                     'max_ts', job_board.metadata -> 'pcsx_watermark' -> 'max_ts',
+                     'last_full_at',
+                         job_board.metadata -> 'pcsx_watermark' -> 'last_full_at',
+                     'last_incremental_at',
+                         job_board.metadata -> 'pcsx_watermark' -> 'last_incremental_at',
+                     'enabled', job_board.metadata -> 'pcsx_watermark' -> 'enabled',
+                     'extra', job_board.metadata -> 'pcsx_watermark' -> 'extra'
+                 ))
+        END
     )),
     check_interval_minutes = EXCLUDED.check_interval_minutes,
     scrape_interval_hours = EXCLUDED.scrape_interval_hours,

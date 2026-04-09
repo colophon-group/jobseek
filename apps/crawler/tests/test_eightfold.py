@@ -301,6 +301,51 @@ class TestPcsxFetchError:
         assert result.metadata_updates is None
         assert result.hybrid is True  # still hybrid flag to skip touched update
 
+    async def test_transient_probe_failure_does_not_cache_disabled(self):
+        """5xx/network errors during probe must NOT cache enabled=False.
+
+        Previously, any exception in the probe path set ``wm.enabled =
+        False`` and cached it, which meant a single transient 5xx would
+        permanently disable the board until the weekly full-crawl cycle
+        re-probed. Fixed to distinguish DISABLED (stable 403) from
+        TRANSIENT (5xx / timeout / parse error) via ``probe_detail``.
+        """
+        metadata = {
+            "pcsx_watermark": {
+                "max_ts": 500,
+                "enabled": True,
+                "last_full_at": "2026-04-08T00:00:00+00:00",
+                "last_incremental_at": "2026-04-08T12:00:00+00:00",
+            }
+        }
+        # Force the needs_probe condition via a full-crawl cycle, then
+        # return 500 on every PCSX call (transient failure).
+        handler, _ = _make_handler(
+            SITEMAP_XML,
+            pcsx_pages=None,
+            pcsx_status=500,
+        )
+        # Bypass the cached last_full_at by forcing a full crawl via flag.
+        metadata["pcsx_force_full_crawl"] = True
+
+        # Skip the real retry backoff to keep the test fast. The retry
+        # loop sleeps 5 * 2^attempt × jitter seconds between attempts —
+        # ~35 seconds total for 3 attempts.
+        async def _instant(_duration):
+            return None
+
+        with patch("src.core.monitors._pcsx.asyncio.sleep", new=_instant):
+            [result] = await _run_discover_stream(handler, metadata=metadata)
+
+        # Sitemap-only result — PCSX fetch failed, but watermark is NOT
+        # updated (would have poisoned enabled=False).
+        assert len(result.urls) == 3
+        assert not result.jobs_by_url
+        # Critical: metadata_updates is None so the existing enabled=True
+        # watermark is preserved for the next run to re-probe.
+        assert result.metadata_updates is None
+        assert result.hybrid is True
+
 
 class TestForceFullCrawl:
     async def test_force_full_crawl_overrides_incremental(self):

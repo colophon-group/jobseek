@@ -122,12 +122,28 @@ def _map_pcsx_to_discovered(
         if ts_int > new_max_ts:
             new_max_ts = ts_int
     if unmatched:
-        log.info(
-            "eightfold.pcsx_unmatched",
-            host=board_host,
-            count=unmatched,
-            matched=len(jobs_by_url),
-        )
+        # Usually benign — sitemap lags behind PCSX by a few hours when
+        # new jobs are posted. If this number is a large fraction of the
+        # PCSX total, it signals a sitemap fetch problem or a format
+        # drift (log at warning level so operators see it in alerts).
+        total = len(jobs_by_url) + unmatched
+        unmatched_ratio = unmatched / total if total else 0.0
+        if unmatched_ratio > 0.3:
+            log.warning(
+                "eightfold.pcsx_unmatched_high",
+                host=board_host,
+                count=unmatched,
+                matched=len(jobs_by_url),
+                ratio=round(unmatched_ratio, 3),
+            )
+        else:
+            log.info(
+                "eightfold.pcsx_unmatched",
+                host=board_host,
+                count=unmatched,
+                matched=len(jobs_by_url),
+                ratio=round(unmatched_ratio, 3),
+            )
     return jobs_by_url, unmatched, new_max_ts
 
 
@@ -173,21 +189,56 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
 
     # --- Step 4: probe PCSX when enabled-state is unknown or on full-crawl cycle ---
     needs_probe = wm.enabled is None or wm.needs_full_crawl(now=now) or force_full
+    probe_result: str | None = None
     if needs_probe:
         try:
-            wm.enabled = await _pcsx.probe(host, domain, client)
+            probe_result = await _pcsx.probe_detail(host, domain, client)
         except Exception as exc:  # noqa: BLE001 — probe must fail closed
-            log.warning("eightfold.probe_exception", host=host, error=str(exc))
+            log.warning("eightfold.probe_exception", host=host, domain=domain, error=str(exc))
+            probe_result = _pcsx.ProbeResult.TRANSIENT
+        # Distinguish confirmed disabled from transient failures:
+        # - DISABLED: cache ``enabled=False`` permanently (next run stays
+        #   on sitemap, skipping the probe entirely until the weekly
+        #   full-crawl cycle re-probes).
+        # - TRANSIENT: do NOT cache as disabled — leave ``enabled`` at its
+        #   previous value (possibly ``None`` or ``True``) so the next
+        #   run retries the probe. The current run falls back to
+        #   sitemap-only but doesn't poison future runs.
+        # - ENABLED: clear the flag, proceed with rich discovery.
+        if probe_result == _pcsx.ProbeResult.DISABLED:
             wm.enabled = False
+        elif probe_result == _pcsx.ProbeResult.ENABLED:
+            wm.enabled = True
+        # else TRANSIENT: leave wm.enabled as-is
 
     # --- Step 5: PCSX-disabled tenant → sitemap-only, cache the probe result ---
-    if not wm.enabled:
+    # A transient probe failure (wm.enabled still None or still True but
+    # probe_result was TRANSIENT) also falls through here for this run,
+    # but we do NOT write metadata_updates in that case so the watermark
+    # is preserved.
+    if probe_result == _pcsx.ProbeResult.DISABLED or wm.enabled is False:
         wm.extra = {**wm.extra, "host": host, "domain": domain}
         log.info("eightfold.pcsx_disabled", host=host, domain=domain)
         yield MonitorResult(
             urls=sitemap_urls,
             new_sitemap_url=new_sitemap_url,
             metadata_updates=_watermark.to_metadata_patch(wm),
+        )
+        return
+
+    if probe_result == _pcsx.ProbeResult.TRANSIENT:
+        # Transient probe failure — fall back to sitemap-only for this
+        # run but DO NOT cache enabled=False. Next run re-probes.
+        log.warning(
+            "eightfold.probe_transient",
+            host=host,
+            domain=domain,
+            note="sitemap-only for this run; next run will re-probe",
+        )
+        yield MonitorResult(
+            urls=sitemap_urls,
+            new_sitemap_url=new_sitemap_url,
+            hybrid=True,  # same reason as PcsxFetchError path
         )
         return
 
@@ -198,9 +249,10 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
     # a manual backfill via ``--pcsx-full-crawl``.
     needs_full = force_full or wm.needs_full_crawl(now=now)
     if needs_full and wm.max_ts == 0 and not wm.auto_full_crawl and not force_full:
-        log.info(
+        log.warning(
             "eightfold.awaiting_manual_backfill",
             host=host,
+            domain=domain,
             note=(
                 "pcsx_watermark.auto_full_crawl=false; run `crawler board <slug> --pcsx-full-crawl`"
             ),
@@ -229,7 +281,12 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
         if needs_full:
             log.info("eightfold.full_crawl_start", host=host, domain=domain)
             raw_positions = await _pcsx.fetch_all(host, domain, client)
-            log.info("eightfold.full_crawl_done", host=host, fetched=len(raw_positions))
+            log.info(
+                "eightfold.full_crawl_done",
+                host=host,
+                domain=domain,
+                fetched=len(raw_positions),
+            )
         else:
             log.info(
                 "eightfold.incremental_start",
@@ -243,12 +300,14 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
             log.info(
                 "eightfold.incremental_done",
                 host=host,
+                domain=domain,
                 fetched=len(raw_positions),
             )
     except _pcsx.PcsxDisabled:
         # Tenant flipped disabled mid-run. Cache and fall back.
         wm.enabled = False
         wm.extra = {**wm.extra, "host": host, "domain": domain}
+        log.warning("eightfold.pcsx_disabled", host=host, domain=domain, mid_run=True)
         yield MonitorResult(
             urls=sitemap_urls,
             new_sitemap_url=new_sitemap_url,
@@ -258,8 +317,15 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
     except _pcsx.PcsxFetchError as exc:
         # Transient failure (rate limit, 5xx). Emit sitemap-only result
         # with NO metadata_updates so the watermark is preserved and the
-        # next run retries from the same point.
-        log.warning("eightfold.pcsx_fetch_failed", host=host, error=str(exc))
+        # next run retries from the same point. Log at error level so
+        # this shows up in operator alert dashboards — it represents
+        # genuine data freshness loss for this cycle.
+        log.error(
+            "eightfold.pcsx_fetch_failed",
+            host=host,
+            domain=domain,
+            error=str(exc),
+        )
         yield MonitorResult(
             urls=sitemap_urls,
             new_sitemap_url=new_sitemap_url,
