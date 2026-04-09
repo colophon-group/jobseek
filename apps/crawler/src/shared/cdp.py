@@ -72,11 +72,25 @@ def _settings() -> Any | None:
 
 
 def _cdp_routes() -> dict[str, str]:
-    """``{hostname: backend_name}`` from ``CDP_ROUTES`` env var, parsed dict."""
+    """``{hostname: backend_name}`` from ``CDP_ROUTES`` env var, parsed dict.
+
+    The settings field is typed as ``str`` (raw env var content) so
+    pydantic-settings doesn't try to JSON-decode it before our parser
+    runs — that auto-decode raises on the empty string the
+    docker-compose ``${CDP_ROUTES:-}`` substitution produces when the
+    secret is unset. Parsing happens lazily here on every call. Cheap
+    enough — the call sites that use this are infrequent (mounts are
+    built once per httpx client construction).
+    """
     s = _settings()
     if s is None:
         return {}
-    return getattr(s, "cdp_routes", {}) or {}
+    raw = getattr(s, "cdp_routes", "")
+    # Settings field is `str`, but we still tolerate dict for tests that
+    # monkeypatch _cdp_routes directly with a dict literal.
+    if isinstance(raw, dict):
+        return raw
+    return parse_cdp_routes(raw)
 
 
 def _lightpanda_cdp_url() -> str | None:
