@@ -18,11 +18,12 @@ class Settings(BaseSettings):
             return json.loads(v) if v.strip() else {}
         return v
 
-    # CDP-routed HTTP transport (see src/shared/cdp.py). ``cdp_routes`` maps
-    # hostname → backend name ("lightpanda" is the only backend today).
-    # When a request hits one of these hosts the shared httpx client
-    # transparently routes it through a headless-browser network stack,
-    # bypassing datacenter-IP anti-bot blocks like AWS WAF.
+    # CDP-routed HTTP transport (see src/shared/cdp.py). The shared httpx
+    # client routes hosts in the CDP route list through a headless-browser
+    # network stack (Lightpanda cloud) to bypass datacenter-IP anti-bot
+    # blocks like AWS WAF. Source of truth is ``data/cdp_routes.csv``;
+    # ``cdp_routes`` (env var) is an optional runtime override that wins
+    # over the file.
     #
     # ``cdp_routes`` is intentionally typed as ``str`` (not ``dict``) so
     # pydantic-settings does NOT auto-JSON-parse it before our validator
@@ -32,6 +33,7 @@ class Settings(BaseSettings):
     # ``src.shared.cdp.parse_cdp_routes`` instead.
     lightpanda_cdp_url: str = ""
     cdp_routes: str = ""
+    cdp_routes_file: str = ""  # override path to data/cdp_routes.csv
 
     # Redis (local instance, not Upstash)
     redis_url: str = "redis://localhost:6379/0"

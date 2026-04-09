@@ -73,23 +73,127 @@ class TestSettingsEmptyStringTolerance:
         # Stored as raw string; parsing happens in cdp._cdp_routes()
         assert "apply.starbucks.com" in s.cdp_routes
 
-    def test_cdp_routes_helper_with_real_settings_empty(self, monkeypatch):
+    def test_cdp_routes_helper_with_real_settings_empty(self, monkeypatch, tmp_path):
         """End-to-end: empty env var -> _cdp_routes() returns {}, no crash."""
         monkeypatch.setenv("CDP_ROUTES", "")
+        # Point CDP_ROUTES_FILE at a non-existent path so the repo's
+        # data/cdp_routes.csv doesn't bleed into this test.
+        monkeypatch.setenv("CDP_ROUTES_FILE", str(tmp_path / "missing.csv"))
         from src.config import Settings
 
-        # Simulate the live Settings instance for this test
         live = Settings()
         monkeypatch.setattr(cdp, "_settings", lambda: live)
         assert cdp._cdp_routes() == {}
 
-    def test_cdp_routes_helper_with_real_settings_populated(self, monkeypatch):
+    def test_cdp_routes_helper_with_real_settings_populated(self, monkeypatch, tmp_path):
         monkeypatch.setenv("CDP_ROUTES", '{"apply.starbucks.com": "lightpanda"}')
+        monkeypatch.setenv("CDP_ROUTES_FILE", str(tmp_path / "missing.csv"))
         from src.config import Settings
 
         live = Settings()
         monkeypatch.setattr(cdp, "_settings", lambda: live)
         assert cdp._cdp_routes() == {"apply.starbucks.com": "lightpanda"}
+
+
+# ── data/cdp_routes.csv loader ────────────────────────────────────────
+
+
+class TestCdpRoutesFile:
+    def _write_csv(self, tmp_path, content):
+        p = tmp_path / "cdp_routes.csv"
+        p.write_text(content)
+        return p
+
+    def test_missing_file_returns_empty(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("CDP_ROUTES_FILE", str(tmp_path / "nope.csv"))
+        monkeypatch.setenv("CDP_ROUTES", "")
+        from src.config import Settings
+
+        monkeypatch.setattr(cdp, "_settings", lambda: Settings())
+        assert cdp._load_cdp_routes_file() == {}
+
+    def test_loads_hostname_backend_pairs(self, monkeypatch, tmp_path):
+        csv_path = self._write_csv(
+            tmp_path,
+            "hostname,backend,reason\n"
+            "apply.starbucks.com,lightpanda,WAF\n"
+            "jobs.northropgrumman.com,lightpanda,WAF\n",
+        )
+        monkeypatch.setenv("CDP_ROUTES_FILE", str(csv_path))
+        from src.config import Settings
+
+        monkeypatch.setattr(cdp, "_settings", lambda: Settings())
+        assert cdp._load_cdp_routes_file() == {
+            "apply.starbucks.com": "lightpanda",
+            "jobs.northropgrumman.com": "lightpanda",
+        }
+
+    def test_default_backend_is_lightpanda_when_column_missing(self, monkeypatch, tmp_path):
+        csv_path = self._write_csv(tmp_path, "hostname,reason\napply.starbucks.com,WAF\n")
+        monkeypatch.setenv("CDP_ROUTES_FILE", str(csv_path))
+        from src.config import Settings
+
+        monkeypatch.setattr(cdp, "_settings", lambda: Settings())
+        assert cdp._load_cdp_routes_file() == {"apply.starbucks.com": "lightpanda"}
+
+    def test_blank_and_comment_rows_skipped(self, monkeypatch, tmp_path):
+        csv_path = self._write_csv(
+            tmp_path,
+            "hostname,backend\n"
+            "apply.starbucks.com,lightpanda\n"
+            ",lightpanda\n"
+            "#commented.example.com,lightpanda\n"
+            "jobs.northropgrumman.com,lightpanda\n",
+        )
+        monkeypatch.setenv("CDP_ROUTES_FILE", str(csv_path))
+        from src.config import Settings
+
+        monkeypatch.setattr(cdp, "_settings", lambda: Settings())
+        assert cdp._load_cdp_routes_file() == {
+            "apply.starbucks.com": "lightpanda",
+            "jobs.northropgrumman.com": "lightpanda",
+        }
+
+    def test_no_hostname_column_returns_empty_with_warning(self, monkeypatch, tmp_path):
+        csv_path = self._write_csv(tmp_path, "host,backend\nexample.com,lightpanda\n")
+        monkeypatch.setenv("CDP_ROUTES_FILE", str(csv_path))
+        from src.config import Settings
+
+        monkeypatch.setattr(cdp, "_settings", lambda: Settings())
+        assert cdp._load_cdp_routes_file() == {}
+
+    def test_env_overrides_file(self, monkeypatch, tmp_path):
+        """CDP_ROUTES env var wins over file (runtime override)."""
+        csv_path = self._write_csv(
+            tmp_path,
+            "hostname,backend\napply.starbucks.com,lightpanda\nold.example.com,lightpanda\n",
+        )
+        monkeypatch.setenv("CDP_ROUTES_FILE", str(csv_path))
+        # Env adds a new host AND overrides apply.starbucks.com to a
+        # different (hypothetical) backend
+        monkeypatch.setenv(
+            "CDP_ROUTES",
+            '{"apply.starbucks.com": "other", "new.example.com": "lightpanda"}',
+        )
+        from src.config import Settings
+
+        monkeypatch.setattr(cdp, "_settings", lambda: Settings())
+        result = cdp._cdp_routes()
+        # File entry kept
+        assert result["old.example.com"] == "lightpanda"
+        # Env override won
+        assert result["apply.starbucks.com"] == "other"
+        # Env addition included
+        assert result["new.example.com"] == "lightpanda"
+
+    def test_real_repo_file_loads(self):
+        """Smoke: the actual data/cdp_routes.csv parses without error."""
+        # Don't override the file path — exercise the default path resolution
+        result = cdp._load_cdp_routes_file()
+        # The repo file should at least contain Starbucks (the original
+        # WAF'd host that motivated this whole system).
+        assert "apply.starbucks.com" in result
+        assert result["apply.starbucks.com"] == "lightpanda"
 
 
 # ── should_route_via_cdp ──────────────────────────────────────────────

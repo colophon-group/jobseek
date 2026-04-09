@@ -1,25 +1,33 @@
 """Per-domain CDP-routed HTTP transport.
 
-Reads ``settings.cdp_routes`` (``CDP_ROUTES`` env var) and provides an
-``httpx.AsyncBaseTransport`` implementation that makes the request via a
-remote headless browser (Lightpanda cloud) over the Chrome DevTools
-Protocol. Used to bypass datacenter-IP anti-bot blocks (e.g. AWS WAF on
-``apply.starbucks.com``) without changing any scraper or monitor call
-sites — the routing is wired into the shared ``httpx.AsyncClient`` via
-``mounts``, so ``jsonld.scrape()``, ``_pcsx._fetch_page()``, and
-``sitemap._try_fetch_xml()`` all transparently route through the
-browser when the hostname matches.
+Provides an ``httpx.AsyncBaseTransport`` implementation that makes the
+request via a remote headless browser (Lightpanda cloud) over the Chrome
+DevTools Protocol. Used to bypass datacenter-IP anti-bot blocks (e.g.
+AWS WAF on ``apply.starbucks.com``) without changing any scraper or
+monitor call sites — the routing is wired into the shared
+``httpx.AsyncClient`` via ``mounts``, so ``jsonld.scrape()``,
+``_pcsx._fetch_page()``, and ``sitemap._try_fetch_xml()`` all
+transparently route through the browser when the hostname matches.
 
-## Environment variables
+## Configuration
 
-- ``LIGHTPANDA_CDP_URL`` — ``wss://...`` CDP endpoint for the Lightpanda
-  cloud service. Contains an auth token. Secret.
-- ``CDP_ROUTES`` — JSON object mapping hostname to backend name::
+Two layers, merged on every call:
 
-      {"apply.starbucks.com": "lightpanda", "starbucks.eightfold.ai": "lightpanda"}
+1. **``data/cdp_routes.csv``** (repo-tracked, source of truth) — a
+   simple CSV with columns ``hostname,backend,reason``. Adding a
+   domain that needs CDP routing is a normal PR — no GitHub secret
+   update needed. Override the file path with the
+   ``CDP_ROUTES_FILE`` env var.
+2. **``CDP_ROUTES`` env var** (JSON, optional) — runtime overrides
+   that win over the file. Use for testing a new host before adding
+   it to the file, or temporarily disabling a route on production
+   without a deploy.
 
-  Only ``lightpanda`` is a supported backend today. Unknown backends are
-  logged and ignored.
+The ``LIGHTPANDA_CDP_URL`` env var holds the ``wss://`` CDP endpoint
+(with auth token) — secret, must be set for CDP transport to work.
+
+Only ``lightpanda`` is a supported backend today. Unknown backends are
+logged and ignored.
 
 ## Session lifecycle
 
@@ -48,8 +56,10 @@ keyed by CDP URL — tests can inject a fake session via
 from __future__ import annotations
 
 import asyncio
+import csv
 import json
 from collections.abc import Awaitable, Callable
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -71,26 +81,93 @@ def _settings() -> Any | None:
         return None
 
 
-def _cdp_routes() -> dict[str, str]:
-    """``{hostname: backend_name}`` from ``CDP_ROUTES`` env var, parsed dict.
+def _cdp_routes_file_path() -> Path:
+    """Path to the repo-tracked default routes file.
 
-    The settings field is typed as ``str`` (raw env var content) so
-    pydantic-settings doesn't try to JSON-decode it before our parser
-    runs — that auto-decode raises on the empty string the
-    docker-compose ``${CDP_ROUTES:-}`` substitution produces when the
-    secret is unset. Parsing happens lazily here on every call. Cheap
-    enough — the call sites that use this are infrequent (mounts are
-    built once per httpx client construction).
+    Lives next to ``data/boards.csv`` so it ships with the codebase
+    and follows the same PR-driven editing flow. Override the path
+    with the ``CDP_ROUTES_FILE`` env var if you need a different
+    location (tests, dev sandboxes).
     """
     s = _settings()
-    if s is None:
+    if s is not None:
+        override = getattr(s, "cdp_routes_file", "") or ""
+        if override:
+            return Path(override)
+    # Default: <repo>/apps/crawler/data/cdp_routes.csv
+    return Path(__file__).resolve().parent.parent.parent / "data" / "cdp_routes.csv"
+
+
+def _load_cdp_routes_file() -> dict[str, str]:
+    """Read ``data/cdp_routes.csv`` (if present) into ``{hostname: backend}``.
+
+    The file is the source of truth for which hostnames go through
+    a CDP-routed transport. Adding a domain is a normal PR — no
+    GitHub secret update needed, no manual env-var dance.
+
+    File format (CSV with header)::
+
+        hostname,backend,reason
+        apply.starbucks.com,lightpanda,AWS WAF blocks Hetzner
+        ...
+
+    Parses leniently: missing file → empty dict (logged at info, not
+    fatal); malformed rows → skipped with warning; the ``reason``
+    column is documentation only and is not consumed.
+
+    Cached at module load? **No** — read on every call so a sync
+    operation that rewrites the file picks up changes without a
+    process restart. Reads are negligible (a few hundred bytes).
+    """
+    path = _cdp_routes_file_path()
+    if not path.exists():
         return {}
-    raw = getattr(s, "cdp_routes", "")
-    # Settings field is `str`, but we still tolerate dict for tests that
-    # monkeypatch _cdp_routes directly with a dict literal.
-    if isinstance(raw, dict):
-        return raw
-    return parse_cdp_routes(raw)
+    routes: dict[str, str] = {}
+    try:
+        with path.open() as f:
+            reader = csv.DictReader(f)
+            if not reader.fieldnames or "hostname" not in reader.fieldnames:
+                log.warning("cdp.routes_file.no_hostname_column", path=str(path))
+                return {}
+            for row in reader:
+                host = (row.get("hostname") or "").strip()
+                backend = (row.get("backend") or "lightpanda").strip()
+                if not host or host.startswith("#"):
+                    continue
+                routes[host] = backend
+    except Exception as exc:  # noqa: BLE001 — file is non-critical
+        log.warning("cdp.routes_file.parse_failed", path=str(path), error=str(exc))
+        return {}
+    return routes
+
+
+def _cdp_routes() -> dict[str, str]:
+    """``{hostname: backend_name}`` for hosts that should route via CDP.
+
+    Source order (later overrides earlier):
+
+    1. ``data/cdp_routes.csv`` — repo-tracked default list, edited via
+       normal PRs. Single source of truth for "which hostnames are
+       behind anti-bot blocks we need to bypass".
+    2. ``CDP_ROUTES`` env var (JSON) — runtime overrides for adhoc
+       cases (e.g. testing a new host before adding it to the file,
+       or temporarily disabling a route on production without a
+       deploy).
+
+    Both layers are merged on every call (~microseconds). The settings
+    field for the env var is typed as ``str`` so pydantic-settings
+    doesn't try to JSON-decode an empty string at startup (which used
+    to crash worker startup before PR #2137).
+    """
+    routes = _load_cdp_routes_file()
+    s = _settings()
+    if s is not None:
+        raw = getattr(s, "cdp_routes", "")
+        if isinstance(raw, dict):
+            routes.update(raw)
+        else:
+            routes.update(parse_cdp_routes(raw))
+    return routes
 
 
 def _lightpanda_cdp_url() -> str | None:
