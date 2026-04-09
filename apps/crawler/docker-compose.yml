@@ -48,6 +48,14 @@ services:
     init: true
     restart: unless-stopped
     network_mode: host
+    # Give the cli.py SIGTERM handler time to flush Lightpanda CDP
+    # sessions and close the Postgres pool. Default 10s is too tight:
+    # Lightpanda close has a 5s per-session timeout, and Postgres pool
+    # close can take a few seconds under load. 30s is the conservative
+    # value the rest of the worker services use too. Without this, a
+    # docker stop hits SIGKILL before shutdown_all_sessions runs and
+    # leaks ~6 minutes of Lightpanda browser-hours per restart.
+    stop_grace_period: 30s
     command: uv run --no-sync crawler run
     environment:
       <<: *common-env
@@ -72,6 +80,7 @@ services:
     init: true
     restart: unless-stopped
     network_mode: host
+    stop_grace_period: 30s  # see worker-1 — needed for clean Lightpanda close
     command: uv run --no-sync crawler run
     environment:
       <<: *common-env
@@ -96,6 +105,7 @@ services:
     init: true
     restart: unless-stopped
     network_mode: host
+    stop_grace_period: 30s  # see worker-1 — needed for clean Lightpanda close
     command: uv run --no-sync crawler run
     environment:
       <<: *common-env
@@ -121,6 +131,7 @@ services:
     init: true
     restart: unless-stopped
     network_mode: host
+    stop_grace_period: 30s  # uniform with workers — gives Postgres pool time to drain
     command: uv run --no-sync crawler export
     environment:
       <<: *common-env
@@ -136,6 +147,7 @@ services:
     init: true
     restart: unless-stopped
     network_mode: host
+    stop_grace_period: 30s  # uniform with workers — gives in-flight R2 PUTs time to complete
     command: uv run --no-sync crawler drain
     environment:
       <<: *common-env
@@ -151,6 +163,7 @@ services:
     init: true
     restart: unless-stopped
     network_mode: host
+    stop_grace_period: 30s  # see worker-1 — needed for clean Lightpanda close
     command: uv run --no-sync crawler run-browser
     environment:
       <<: *common-env

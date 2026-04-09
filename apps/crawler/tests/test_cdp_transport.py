@@ -15,9 +15,12 @@ from src.shared import cdp
 from src.shared.cdp import (
     CdpRequestError,
     LightpandaTransport,
+    _is_connection_error,
+    _LightpandaSession,
     build_cdp_mounts,
     parse_cdp_routes,
     should_route_via_cdp,
+    shutdown_all_sessions,
 )
 
 # ── parse_cdp_routes ───────────────────────────────────────────────────
@@ -396,6 +399,457 @@ class TestLightpandaTransportInjectedFetch:
         # If aclose did anything session-level, this list would be non-empty;
         # the contract is that it's intentionally a no-op.
         assert sessions_closed == []
+
+
+# ── Connection-error classification ──────────────────────────────────
+
+
+class TestIsConnectionError:
+    """Regression guard: only true connection errors should reset the session."""
+
+    @pytest.mark.parametrize(
+        "msg",
+        [
+            "Target page, context or browser has been closed",
+            "Browser has been closed",
+            "browser closed",
+            "Target closed",
+            "Context closed",
+            "Session closed",
+            "WebSocket connection failed",
+            "Connection closed by remote",
+            "disconnected from CDP",
+            "BrowserType.connect_over_cdp: WebSocket error",
+        ],
+    )
+    def test_real_connection_errors_match(self, msg):
+        assert _is_connection_error(Exception(msg)) is True
+
+    @pytest.mark.parametrize(
+        "msg",
+        [
+            "Timeout 30000ms exceeded",
+            "Request failed with status 404",
+            "ECONNRESET",  # not in marker list — IP-level only
+            "decoding error: incorrect header check",
+            "Body too large",
+            "JSON decode error",
+            "",
+        ],
+    )
+    def test_benign_errors_do_not_match(self, msg):
+        assert _is_connection_error(Exception(msg)) is False
+
+    def test_case_insensitive(self):
+        assert _is_connection_error(Exception("TARGET CLOSED")) is True
+        assert _is_connection_error(Exception("websocket")) is True
+
+
+# ── Session reset behavior ───────────────────────────────────────────
+
+
+class _FakePlaywrightObj:
+    """Stub Playwright handle that records close()/stop() invocations."""
+
+    def __init__(self):
+        self.close_called = False
+        self.stop_called = False
+
+    async def close(self):
+        self.close_called = True
+
+    async def stop(self):
+        self.stop_called = True
+
+
+class _StubFetch:
+    """Stub Playwright APIRequestContext.fetch() result."""
+
+    def __init__(self, status: int, body: bytes, headers: dict[str, str]):
+        self.status = status
+        self._body = body
+        self.headers = headers
+
+    async def body(self):
+        return self._body
+
+
+class _StubRequestCtx:
+    """Stub `context.request` that raises a configurable error or returns a stub."""
+
+    def __init__(self, *, raise_exc: BaseException | None = None, response=None):
+        self._raise = raise_exc
+        self._response = response
+        self.fetch_calls = 0
+
+    async def fetch(self, url, **kwargs):  # noqa: ARG002
+        self.fetch_calls += 1
+        if self._raise is not None:
+            raise self._raise
+        return self._response
+
+
+class _StubContext:
+    def __init__(self, request_ctx):
+        self.request = request_ctx
+        self.closed = False
+
+    async def close(self):
+        self.closed = True
+
+
+class TestSessionResetNarrowing:
+    """``_LightpandaSession.request`` must reset only on connection errors.
+
+    Resetting on every error caused the session-churn bug that leaked
+    ~6-minute orphaned Lightpanda sessions on every worker restart.
+    """
+
+    @pytest.mark.asyncio
+    async def test_benign_error_keeps_session_alive(self):
+        sess = _LightpandaSession("wss://fake/ws")
+        # Pre-populate as if _ensure_open had run.
+        sess._pw = _FakePlaywrightObj()
+        sess._browser = _FakePlaywrightObj()
+        sess._context = _StubContext(
+            _StubRequestCtx(raise_exc=TimeoutError("Timeout 30000ms exceeded"))
+        )
+
+        with pytest.raises(CdpRequestError):
+            await sess.request("GET", "https://target/x")
+
+        # Session must still be open — benign per-request errors don't kill it.
+        assert sess._context is not None
+        assert sess._browser is not None
+        assert sess._pw is not None
+
+    @pytest.mark.asyncio
+    async def test_connection_error_resets_session(self):
+        sess = _LightpandaSession("wss://fake/ws")
+        pw = _FakePlaywrightObj()
+        browser = _FakePlaywrightObj()
+        ctx = _StubContext(_StubRequestCtx(raise_exc=Exception("Target closed")))
+        sess._pw = pw
+        sess._browser = browser
+        sess._context = ctx
+
+        with pytest.raises(CdpRequestError):
+            await sess.request("GET", "https://target/x")
+
+        # Session was torn down; objects all cleared.
+        assert sess._context is None
+        assert sess._browser is None
+        assert sess._pw is None
+        # And the close/stop callbacks were invoked.
+        assert ctx.closed is True
+        assert browser.close_called is True
+        assert pw.stop_called is True
+
+    @pytest.mark.asyncio
+    async def test_404_response_does_not_reset_session(self):
+        """Playwright returns HTTP errors as a Response, not an exception.
+
+        The session must obviously stay open for those, but this test
+        also documents that even if some downstream call started raising
+        on 404, the narrowed reset would keep the session intact.
+        """
+        sess = _LightpandaSession("wss://fake/ws")
+        pw = _FakePlaywrightObj()
+        browser = _FakePlaywrightObj()
+        # 404 comes back as a normal Response object, no exception.
+        stub_resp = _StubFetch(404, b"<html>not found</html>", {"content-type": "text/html"})
+        request_ctx = _StubRequestCtx(response=stub_resp)
+        ctx = _StubContext(request_ctx)
+        sess._pw = pw
+        sess._browser = browser
+        sess._context = ctx
+
+        status, body, headers = await sess.request("GET", "https://target/missing")
+
+        assert status == 404
+        assert b"not found" in body
+        # Session is intact for the next request.
+        assert sess._context is ctx
+        assert request_ctx.fetch_calls == 1
+
+
+# ── Shutdown wiring ──────────────────────────────────────────────────
+
+
+class TestShutdownAllSessions:
+    """``shutdown_all_sessions`` must close every cached session and clear
+    the module-level cache so the next request opens a fresh session.
+
+    The whole point of wiring this into the cli.py shutdown path is to
+    avoid leaking 6-minute idle sessions on the Lightpanda side.
+    """
+
+    @pytest.mark.asyncio
+    async def test_closes_all_cached_sessions(self):
+        # Inject two fake sessions into the module-level cache.
+        closed_urls: list[str] = []
+
+        class _RecordingSession:
+            def __init__(self, url):
+                self._url = url
+
+            async def close(self):
+                closed_urls.append(self._url)
+
+        cdp._set_session_for_test("wss://a/ws", _RecordingSession("a"))
+        cdp._set_session_for_test("wss://b/ws", _RecordingSession("b"))
+
+        try:
+            await shutdown_all_sessions()
+            assert sorted(closed_urls) == ["a", "b"]
+            # Cache cleared so the next request opens a fresh session.
+            assert cdp._sessions == {}
+        finally:
+            # Defensive: leave the global cache empty whatever happened.
+            cdp._sessions.clear()
+
+    @pytest.mark.asyncio
+    async def test_swallows_close_errors(self):
+        """One bad session must not block the others from closing."""
+
+        class _BadSession:
+            async def close(self):
+                raise RuntimeError("close failed")
+
+        class _GoodSession:
+            def __init__(self):
+                self.closed = False
+
+            async def close(self):
+                self.closed = True
+
+        good = _GoodSession()
+        cdp._set_session_for_test("wss://bad/ws", _BadSession())
+        cdp._set_session_for_test("wss://good/ws", good)
+
+        try:
+            await shutdown_all_sessions()  # must not raise
+            assert good.closed is True
+            assert cdp._sessions == {}
+        finally:
+            cdp._sessions.clear()
+
+    @pytest.mark.asyncio
+    async def test_safe_when_no_sessions(self):
+        cdp._sessions.clear()
+        # Should be a no-op, no exception.
+        await shutdown_all_sessions()
+        assert cdp._sessions == {}
+
+    @pytest.mark.asyncio
+    async def test_hung_close_does_not_block_others(self):
+        """A session whose close() hangs MUST NOT block the others.
+
+        Without a per-session timeout, one stuck Lightpanda close()
+        would block the cli.py finally block past docker's stop grace
+        period — the container then gets SIGKILL'd and ALL the sessions
+        leak, defeating the purpose of the shutdown wiring.
+        """
+        import asyncio as _asyncio
+
+        closed: list[str] = []
+
+        class _HangSession:
+            async def close(self):
+                # Sleep longer than _SHUTDOWN_CLOSE_TIMEOUT_SEC.
+                await _asyncio.sleep(60)
+
+        class _GoodSession:
+            def __init__(self, name):
+                self._name = name
+
+            async def close(self):
+                closed.append(self._name)
+
+        # Patch the timeout down so the test runs in <1s.
+        original = cdp._SHUTDOWN_CLOSE_TIMEOUT_SEC
+        cdp._SHUTDOWN_CLOSE_TIMEOUT_SEC = 0.1
+        try:
+            cdp._set_session_for_test("wss://hang/ws", _HangSession())
+            cdp._set_session_for_test("wss://good1/ws", _GoodSession("good1"))
+            cdp._set_session_for_test("wss://good2/ws", _GoodSession("good2"))
+
+            t0 = _asyncio.get_event_loop().time()
+            await shutdown_all_sessions()
+            elapsed = _asyncio.get_event_loop().time() - t0
+
+            # The hang session timed out (~0.1s), the good ones closed.
+            # Total elapsed must be well under 1s — they must run in
+            # parallel, not sequentially.
+            assert elapsed < 1.0, (
+                f"shutdown took {elapsed:.2f}s — sessions are not closing in parallel"
+            )
+            assert sorted(closed) == ["good1", "good2"]
+            assert cdp._sessions == {}
+        finally:
+            cdp._SHUTDOWN_CLOSE_TIMEOUT_SEC = original
+            cdp._sessions.clear()
+
+
+# ── Cli wiring regression guard ──────────────────────────────────────
+
+
+class TestCliShutdownWiring:
+    """Source-level regression guard: cli.py MUST keep calling
+    ``shutdown_all_sessions()`` from its outer ``finally:`` block.
+
+    A future refactor that splits cli.py into multiple binaries, removes
+    the import, or moves the call out of the finally would silently
+    re-introduce today's leak. This test catches it before merge.
+    """
+
+    def test_cli_imports_shutdown_helper(self):
+        import src.cli as cli_module
+
+        assert hasattr(cli_module, "shutdown_all_sessions"), (
+            "cli.py must import shutdown_all_sessions from src.shared.cdp — "
+            "without it, the SIGTERM finally block can't release Lightpanda "
+            "sessions and every worker restart leaks ~6 minutes of quota."
+        )
+
+    def test_cli_calls_shutdown_in_finally(self):
+        """Read cli.py source and assert the call lives inside a finally:."""
+        import inspect
+
+        import src.cli as cli_module
+
+        source = inspect.getsource(cli_module.run)
+        assert "await shutdown_all_sessions()" in source, (
+            "cli.run() must await shutdown_all_sessions() in its outer finally block"
+        )
+        # The "await shutdown_all_sessions()" line must come after the last
+        # "finally:" in the function source — i.e. inside it, not in the
+        # try: body where exceptions could skip it.
+        last_finally = source.rfind("finally:")
+        shutdown_call = source.find("await shutdown_all_sessions()")
+        assert last_finally != -1, "cli.run() has no finally: block"
+        assert shutdown_call > last_finally, (
+            "shutdown_all_sessions() must be inside a finally: block — "
+            "if it lives in the try: body, exceptions can skip it and "
+            "leak Lightpanda sessions on crash."
+        )
+
+    def test_cli_shutdown_runs_before_pool_close(self):
+        """Sessions close before pools.
+
+        Reverse order risks errors during the session close that suppress
+        useful diagnostics, and a pool-related close failure shouldn't
+        prevent the (more important) Lightpanda session release.
+        """
+        import inspect
+
+        import src.cli as cli_module
+
+        source = inspect.getsource(cli_module.run)
+        shutdown_pos = source.find("await shutdown_all_sessions()")
+        pool_close_pos = source.find("await close_all_pools()")
+        assert shutdown_pos != -1
+        assert pool_close_pos != -1
+        assert shutdown_pos < pool_close_pos, (
+            "shutdown_all_sessions() must come before close_all_pools() "
+            "in cli.run()'s finally block"
+        )
+
+
+# ── Workspace command wiring regression guard ──────────────────────
+
+
+class TestWorkspaceShutdownWiring:
+    """Workspace ws commands run as one-shot processes — they get NO
+    cli.py finally block. Each ``_run()`` MUST flush Lightpanda sessions
+    on its own, otherwise every ``ws probe`` / ``ws run`` against a
+    CDP-routed host leaks a session.
+    """
+
+    def test_ws_crawl_uses_shutdown_helper(self):
+        """``crawl.py`` should not close http clients directly.
+
+        Every cleanup site must go through ``_shutdown_http`` so the
+        Lightpanda sessions get released alongside the http client.
+
+        We assert the helper exists, that it's called from at least
+        the known set of sites, and that no ``.aclose()`` call lives
+        outside the helper. Counting ``_shutdown_http(`` references
+        instead of the literal ``http.aclose()`` makes the test robust
+        to a future PR renaming the local httpx variable from ``http``
+        to ``client`` (etc.) — the test would otherwise fail for the
+        wrong reason.
+        """
+        import inspect
+        import re
+
+        from src.workspace.commands import crawl as crawl_module
+
+        source = inspect.getsource(crawl_module)
+        # The helper must exist.
+        assert "async def _shutdown_http" in source, (
+            "crawl.py must define _shutdown_http helper that closes "
+            "the http client AND flushes Lightpanda sessions"
+        )
+        # Count call sites — at least 5 today; we don't pin the exact
+        # number because new ws commands may need cleanup too. ZERO
+        # would mean the helper exists but isn't actually being used.
+        call_sites = source.count("await _shutdown_http(")
+        assert call_sites >= 5, (
+            f"Only {call_sites} call sites use _shutdown_http(). Every "
+            "ws command that creates an http client must route cleanup "
+            "through this helper, otherwise that path leaks Lightpanda "
+            "sessions on each invocation."
+        )
+        # And no other ``.aclose()`` calls anywhere in crawl.py — the
+        # only acceptable one is the ``await http.aclose()`` inside the
+        # helper definition itself. This catches both ``http.aclose()``
+        # and any rename to ``client.aclose()``/``conn.aclose()``.
+        offending = []
+        in_helper = False
+        for line in source.splitlines():
+            if line.startswith("async def _shutdown_http"):
+                in_helper = True
+                continue
+            if in_helper and line and not line.startswith((" ", "\t")):
+                in_helper = False
+            if in_helper:
+                continue
+            if re.search(r"\.aclose\(\)", line):
+                offending.append(line.strip())
+        assert not offending, (
+            "Found .aclose() calls in crawl.py outside the _shutdown_http "
+            "helper — these paths leak Lightpanda sessions:\n"
+            + "\n".join("  " + line for line in offending)
+            + "\nUse _shutdown_http(<client>) instead."
+        )
+
+
+# ── Redis pool sizing ────────────────────────────────────────────────
+
+
+class TestRedisPoolSizingDefault:
+    """Regression guard: pool default must accommodate worker concurrency.
+
+    Production runs ``DISCOVERY_CONCURRENCY=30`` and ``MONITOR_CONCURRENCY=10``
+    in a single worker process; the redis pool default must be at least
+    that, otherwise concurrent ``claim_work`` calls hit ``MaxConnectionsError``
+    and the worker enters a crash-restart loop. Each restart leaks an
+    orphaned Lightpanda session, burning the browser-hours quota.
+    """
+
+    def test_default_fits_production_worker_concurrency(self):
+        from src.config import Settings
+
+        s = Settings()
+        # Worst case in production: 30 discovery + 10 monitor = 40 concurrent.
+        # The default must leave headroom for ad-hoc Redis calls (lookups,
+        # metrics, reschedule bursts) on top of that.
+        assert s.redis_max_connections >= 40, (
+            f"redis_max_connections default {s.redis_max_connections} is too "
+            "low for production worker concurrency (30+10) — the worker will "
+            "crash with MaxConnectionsError under load"
+        )
 
 
 # ── http.py integration ──────────────────────────────────────────────
