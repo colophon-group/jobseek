@@ -1502,6 +1502,7 @@ feverup,feverup-greenhouse,https://job-boards.greenhouse.io/feverup,greenhouse,"
 ffg-finanzcheck-finanzportale-gmbh,ffg-finanzcheck-finanzportale-gmbh-greenhouse,https://job-boards.greenhouse.io/finanzcheck,greenhouse,"{""token"": ""finanzcheck""}",skip,
 ffg-finanzcheck-finanzportale-gmbh,ffg-finanzcheck-finanzportale-gmbh-join,https://join.com/companies/finanzcheck,join,"{""slug"": ""finanzcheck""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 fgs-global,fgs-global-greenhouse,https://job-boards.greenhouse.io/fgsglobal,greenhouse,"{""token"": ""fgsglobal""}",skip,
+fhgr,fhgr-careers,https://recruitingapp-2865.umantis.com/Jobs/All,umantis,"{""customer_id"": ""2865""}",dom,"{""steps"": [{""tag"": ""div"", ""attr"": ""class=einleitung"", ""field"": ""description"", ""html"": true, ""stop_count"": 10, ""optional"": true}, {""tag"": ""h1"", ""field"": ""title"", ""from"": 0}]}"
 fictiv,fictiv-greenhouse,https://job-boards.greenhouse.io/fictiv,greenhouse,"{""token"": ""fictiv""}",skip,
 fieldwire,fieldwire-greenhouse,https://job-boards.greenhouse.io/fieldwire,greenhouse,"{""token"": ""fieldwire""}",skip,
 figma,figma-careers,https://boards.greenhouse.io/figma,greenhouse,"{""token"": ""figma""}",skip,
