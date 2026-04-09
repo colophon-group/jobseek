@@ -190,17 +190,38 @@ unchanged, but the underlying transport is a `LightpandaTransport`
 `APIRequestContext.fetch()` against a remote browser. No DOM render, no
 JS execution — just HTTP-through-the-browser-network-stack.
 
-### Configuration (env vars on the worker)
+### Configuration
 
-```bash
-LIGHTPANDA_CDP_URL=wss://euwest.cloud.lightpanda.io/ws?token=...
-CDP_ROUTES={"apply.starbucks.com":"lightpanda","starbucks.eightfold.ai":"lightpanda"}
+The list of CDP-routed hostnames lives in **`data/cdp_routes.csv`** —
+a normal repo-tracked file. Adding a new domain that needs to bypass
+WAF is a normal PR: edit the CSV, validate, merge. No GitHub secret
+update needed.
+
+```csv
+hostname,backend,reason
+apply.starbucks.com,lightpanda,AWS WAF blocks Hetzner egress IPs
+jobs.northropgrumman.com,lightpanda,Intermittent AWS WAF block
+...
 ```
 
-`CDP_ROUTES` is a JSON object mapping hostname → backend name. Only
-`lightpanda` is supported today; unknown backend names are logged and
-skipped (not fatal). Hostnames in the map have their httpx requests
-mounted to a `LightpandaTransport`; everything else uses direct httpx.
+Only `lightpanda` is a supported backend today; unknown backend names
+are logged and skipped. The `reason` column is documentation only.
+
+The `LIGHTPANDA_CDP_URL` env var (the `wss://` Lightpanda endpoint with
+auth token) must be set on the worker — it's a GitHub Actions secret
+forwarded by `deploy-crawler-browser.yml`.
+
+The optional `CDP_ROUTES` env var (JSON) is a runtime override that
+wins over the file. Use for testing a new host before adding it to
+the file, or temporarily disabling a route on production without a
+deploy:
+
+```bash
+CDP_ROUTES={"new.host.com":"lightpanda"}   # adds on top of the file
+```
+
+The optional `CDP_ROUTES_FILE` env var overrides the path to the CSV
+(default: `apps/crawler/data/cdp_routes.csv`). Used by tests.
 
 ### Cost model
 
