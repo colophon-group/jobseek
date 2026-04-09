@@ -3759,6 +3759,7 @@ skin-clique,skin-clique-greenhouse,https://job-boards.greenhouse.io/skinclique,g
 skin-laundry,skin-laundry-greenhouse,https://job-boards.greenhouse.io/skinlaundry,greenhouse,"{""token"": ""skinlaundry""}",skip,
 skydio,skydio-careers,https://www.skydio.com/careers,ashby,"{""token"": ""skydio""}",skip,
 skyflow,skyflow-ashby,https://jobs.ashbyhq.com/skyflow,ashby,"{""token"": ""skyflow""}",skip,
+skyguide,skyguide-careers,https://jobs.skyguide.ch/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://jobs.skyguide.ch/googlefeed.xml""}",skip,
 skylight,skylight-greenhouse,https://job-boards.greenhouse.io/skylighthq,greenhouse,"{""token"": ""skylighthq""}",skip,
 skylo-technologies,skylo-technologies-greenhouse,https://job-boards.greenhouse.io/skylotechnologies,greenhouse,"{""token"": ""skylotechnologies""}",skip,
 skyscanner,skyscanner-greenhouse,https://job-boards.greenhouse.io/skyscanner,greenhouse,"{""token"": ""skyscanner""}",skip,
