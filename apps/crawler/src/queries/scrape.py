@@ -162,17 +162,29 @@ SET employment_type = COALESCE($2, employment_type),
 WHERE id = $1
 """
 
+# A board's ``metadata->>'rescrape_policy'`` controls whether scheduled
+# re-scrapes happen after a successful scrape:
+#
+#   "never" -> set next_scrape_at = NULL (one-shot per posting; cost saver
+#              for boards behind expensive transports, e.g. Lightpanda-routed
+#              WAF'd hosts like Starbucks). The first scrape still runs.
+#   absent/other -> existing behaviour (re-scrape on the usual cadence).
+#
+# Relisted jobs (gone -> seen again) still re-scrape once because
+# ``_enqueue_scrapes_for_relisted`` sets ``next_scrape_at = now()``
+# directly; "never" only suppresses the post-success scheduling tail.
 _RECORD_SCRAPE_SUCCESS = """
 UPDATE job_posting jp
 SET scrape_failures  = 0,
     last_scraped_at  = now(),
     next_scrape_at   = CASE
-        WHEN jp.is_active
-        THEN now() + (COALESCE(
+        WHEN NOT jp.is_active THEN NULL
+        WHEN (SELECT metadata->>'rescrape_policy' FROM job_board WHERE id = jp.board_id) = 'never'
+            THEN NULL
+        ELSE now() + (COALESCE(
             (SELECT scrape_interval_hours FROM job_board WHERE id = jp.board_id),
             24
         ) || ' hours')::interval
-        ELSE NULL
     END,
     leased_until     = NULL
 WHERE jp.id = $1

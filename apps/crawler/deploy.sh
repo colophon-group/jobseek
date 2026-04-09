@@ -44,6 +44,10 @@ DEPLOY_DIR="/home/deploy"
 docker rm -f redis worker-1 worker-2 worker-3 browser-1 exporter drain alloy 2>/dev/null || true
 
 # ── Write env file ──────────────────────────────────────────────────
+# Optional vars (CDP routing through Lightpanda for WAF'd hosts) are
+# expanded with ``:-`` defaults so missing GitHub secrets don't break
+# the deploy — the worker handles empty values gracefully (see
+# src/shared/cdp.py and the str-typed cdp_routes Settings field).
 cat > "$DEPLOY_DIR/.env" <<EOF
 OWNER=${OWNER}
 DATABASE_URL=${DATABASE_URL_UNPOOLED}
@@ -63,6 +67,8 @@ TYPESENSE_HOST=${TYPESENSE_HOST}
 TYPESENSE_PORT=${TYPESENSE_PORT}
 TYPESENSE_PROTOCOL=${TYPESENSE_PROTOCOL}
 TYPESENSE_ADMIN_KEY=${TYPESENSE_ADMIN_KEY}
+LIGHTPANDA_CDP_URL=${LIGHTPANDA_CDP_URL:-}
+CDP_ROUTES=${CDP_ROUTES:-}
 EOF
 
 # ── Pull images and restart ──────────────────────────────────────────

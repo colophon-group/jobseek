@@ -18,6 +18,21 @@ class Settings(BaseSettings):
             return json.loads(v) if v.strip() else {}
         return v
 
+    # CDP-routed HTTP transport (see src/shared/cdp.py). ``cdp_routes`` maps
+    # hostname → backend name ("lightpanda" is the only backend today).
+    # When a request hits one of these hosts the shared httpx client
+    # transparently routes it through a headless-browser network stack,
+    # bypassing datacenter-IP anti-bot blocks like AWS WAF.
+    #
+    # ``cdp_routes`` is intentionally typed as ``str`` (not ``dict``) so
+    # pydantic-settings does NOT auto-JSON-parse it before our validator
+    # runs — that auto-parser raises on the empty string the docker-compose
+    # ``${CDP_ROUTES:-}`` substitution produces when the secret is unset.
+    # The empty/JSON parsing happens lazily in
+    # ``src.shared.cdp.parse_cdp_routes`` instead.
+    lightpanda_cdp_url: str = ""
+    cdp_routes: str = ""
+
     # Redis (local instance, not Upstash)
     redis_url: str = "redis://localhost:6379/0"
     redis_max_connections: int = 20
