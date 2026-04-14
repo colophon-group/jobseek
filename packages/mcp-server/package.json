@@ -6,7 +6,7 @@
   "license": "MIT",
   "type": "module",
   "bin": {
-    "jobseek-mcp": "./dist/index.js"
+    "jobseek-mcp": "dist/index.js"
   },
   "main": "./dist/index.js",
   "exports": {
