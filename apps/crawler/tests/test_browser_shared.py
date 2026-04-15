@@ -451,6 +451,41 @@ class TestOpenPage:
         context.close.assert_awaited_once()
         browser.close.assert_awaited_once()
 
+    async def test_use_proxy_false_does_not_pass_proxy_kwarg(self):
+        pw = _make_pw()
+        async with open_page(pw, use_proxy=False):
+            pass
+        # Default path: no "proxy" key in launch kwargs.
+        kwargs = pw.chromium.launch.await_args.kwargs
+        assert "proxy" not in kwargs
+
+    async def test_use_proxy_true_attaches_provider_dict(self, monkeypatch):
+        from src import config
+
+        monkeypatch.setattr(config.settings, "proxy_provider", "webshare")
+        monkeypatch.setattr(
+            config.settings, "webshare_proxy_url", "http://user:pass@pxy.example:7000"
+        )
+        pw = _make_pw()
+        async with open_page(pw, use_proxy=True):
+            pass
+        kwargs = pw.chromium.launch.await_args.kwargs
+        assert kwargs.get("proxy") == {
+            "server": "http://pxy.example:7000",
+            "username": "user",
+            "password": "pass",
+        }
+
+    async def test_use_proxy_true_but_provider_none_skips_proxy(self, monkeypatch):
+        from src import config
+
+        monkeypatch.setattr(config.settings, "proxy_provider", "none")
+        pw = _make_pw()
+        async with open_page(pw, use_proxy=True):
+            pass
+        kwargs = pw.chromium.launch.await_args.kwargs
+        assert "proxy" not in kwargs
+
 
 # ---------------------------------------------------------------------------
 # TestRender

@@ -302,6 +302,22 @@ uv run crawler board citigroup-eightfold --dry-run --verbose
 - **Per-host denylist / failover across providers**: not yet supported;
   add a new `ProxyProvider` implementation when needed.
 
+### Rollback paths (fastest → slowest)
+
+1. **Provider outage, creds still good** — flip `PROXY_PROVIDER` GH
+   secret to the other configured provider (e.g. `webshare` → `decodo`)
+   and re-run the deploy workflow. Takes ~8 min. The 10 migrated boards
+   pick up the new provider on their next monitor cycle.
+2. **All providers broken** — flip `PROXY_PROVIDER` GH secret to
+   `none` and re-deploy. Proxied boards fall back to direct egress; if
+   WAF is still blocking Hetzner IPs they'll go back to captcha-failing
+   (same state as before this PR landed), but nothing crashes.
+3. **Code-level regression in the proxy layer** — revert the merge on
+   GitHub. The post-revert deploy re-runs `crawler sync`, which
+   overwrites `job_board.metadata` in local Postgres with the old CSV
+   (no `proxy: true`). Redis config hashes are overwritten by the same
+   sync pass.
+
 ### Cost model
 
 Static residential / ISP proxies (the current shape: Webshare / Decodo)

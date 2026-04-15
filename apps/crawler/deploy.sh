@@ -71,6 +71,10 @@ WEBSHARE_PROXY_URL=${WEBSHARE_PROXY_URL:-}
 DECODO_PROXY_URL=${DECODO_PROXY_URL:-}
 EOF
 
+# Lock down the env file — it contains proxy + DB + R2 creds. Default
+# umask on some images is 0022, which would leave this world-readable.
+chmod 600 "$DEPLOY_DIR/.env"
+
 # ── Pull images and restart ──────────────────────────────────────────
 cd "$DEPLOY_DIR"
 docker compose pull
