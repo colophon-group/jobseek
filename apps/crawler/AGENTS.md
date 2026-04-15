@@ -231,14 +231,95 @@ the CONNECT level, Webshare doesn't).
 
 Unknown `PROXY_PROVIDER` values log a warning and fall through to "no
 proxy", which is fail-safe: boards with `proxy: true` fall back to
-direct egress instead of crashing the worker.
+direct egress instead of crashing the worker. If `PROXY_PROVIDER` is set
+but the matching `*_PROXY_URL` is empty, the provider logs a
+`proxy.provider.missing_url` error at startup — check this when
+`proxy: true` boards start returning captcha pages in logs.
+
+### Adding a new WAF-blocked board
+
+1. Confirm via ad-hoc test that the host returns captcha/405 from
+   Hetzner but 200 through the active provider (`ssh` to a worker,
+   `curl -x "$WEBSHARE_PROXY_URL" $URL`).
+2. Edit the board row in `data/boards.csv`: add `"proxy": true` to
+   both `monitor_config` and `scraper_config` JSON.
+3. `uv run crawler validate` to confirm CSV syntax.
+4. Merge the PR. The next deploy runs `crawler sync`, which pushes the
+   new metadata to Postgres + Redis and the `proxy: true` flag takes
+   effect on the next monitor cycle.
+5. Watch `crawler_monitor_fail_total` for the board — should drop
+   toward zero within one cycle.
+
+### Adding a new provider
+
+1. Add `NEW_PROXY_URL: str = ""` to `Settings` in `src/config.py`.
+2. Add a factory in `src/shared/proxy.py`:
+   ```python
+   def _newprovider(settings) -> ProxyProvider | None:
+       url = settings.new_proxy_url
+       if not url:
+           log.error("proxy.provider.missing_url", provider="newprovider")
+           return None
+       return StaticProxyProvider("newprovider", url)
+   ```
+3. Register: `_PROVIDERS["newprovider"] = _newprovider`.
+4. Add `NEW_PROXY_URL` to `.env.local`, `docker-compose.yml`, `deploy.sh`,
+   `.github/workflows/deploy-crawler-browser.yml`.
+5. For a non-static provider (rotating pool, failover), implement
+   `ProxyProvider` directly — the Protocol only requires `name` and
+   `proxy_url()`.
+
+### Testing locally
+
+```bash
+# Smoke test: confirm provider wiring + live proxy connectivity
+PROXY_PROVIDER=webshare WEBSHARE_PROXY_URL='http://user:pass@host:port' \
+  uv run python -c "
+import asyncio
+from src.shared.http import create_http_client
+async def main():
+    async with create_http_client(use_proxy=True) as c:
+        r = await c.get('https://api.ipify.org')
+        print('egress:', r.text)
+asyncio.run(main())
+"
+# Expect the output to be the provider's IP, not your laptop's.
+
+# Full board dry-run (requires .env.local with LOCAL_DATABASE_URL)
+uv run crawler board citigroup-eightfold --dry-run --verbose
+```
+
+### Troubleshooting
+
+- **Board returns 405/captcha**: either `proxy: true` is missing in the
+  board config, or `PROXY_PROVIDER=none`/empty URL silently disables
+  the provider. Check worker logs for `proxy.provider.missing_url` at
+  startup and confirm the board row in `data/boards.csv`.
+- **Proxy returns `HTTP 403 after CONNECT`**: the provider has the
+  target host on a blocklist (Decodo does this for `citi.eightfold.ai`).
+  Swap providers by flipping `PROXY_PROVIDER` in GH secrets, or keep
+  both creds and add a per-host override in a future extension.
+- **Per-host denylist / failover across providers**: not yet supported;
+  add a new `ProxyProvider` implementation when needed.
 
 ### Cost model
 
-Residential / ISP proxies are metered by **GB of traffic**, not
-session-time. Starbucks-scale traffic (sitemap + PCSX incremental + ~50
-detail scrapes/day) fits inside a few GB/month per board. Cost scales
-linearly with the number of proxy-enabled boards.
+Static residential / ISP proxies (the current shape: Webshare / Decodo)
+are billed **per static IP**, flat monthly fee, unmetered bandwidth.
+`StaticProxyProvider` maps one IP to one provider, so cost is flat in
+traffic volume — the relevant dimension is **how many IPs we lease**,
+not how many boards use them or how much data flows.
+
+One IP can front the entire WAF-blocked set as long as it doesn't trip
+a per-destination rate limit or get banned by an origin. Adding IPs
+only becomes cost-effective when (a) a single IP gets banned by a
+specific host, (b) a provider hits per-IP concurrency caps at scale,
+or (c) we want per-IP routing for isolation. In those cases we need a
+new provider shape (rotating pool or per-host selection) — the current
+Protocol only surfaces a single URL. See *Adding a new provider* above.
+
+Rotating residential / metered pool products exist too (per-GB) but are
+not wired in — add a new provider impl if we move to that billing.
 
 ### Disabling re-scrapes (cost saver)
 

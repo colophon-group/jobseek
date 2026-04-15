@@ -45,12 +45,18 @@ class StaticProxyProvider:
 
 def _webshare(settings) -> ProxyProvider | None:
     url = settings.webshare_proxy_url
-    return StaticProxyProvider("webshare", url) if url else None
+    if not url:
+        log.error("proxy.provider.missing_url", provider="webshare")
+        return None
+    return StaticProxyProvider("webshare", url)
 
 
 def _decodo(settings) -> ProxyProvider | None:
     url = settings.decodo_proxy_url
-    return StaticProxyProvider("decodo", url) if url else None
+    if not url:
+        log.error("proxy.provider.missing_url", provider="decodo")
+        return None
+    return StaticProxyProvider("decodo", url)
 
 
 _PROVIDERS: dict[str, Callable[..., ProxyProvider | None]] = {
@@ -82,7 +88,10 @@ def httpx_proxy_for(*, use_proxy: bool) -> str | None:
         return None
     url = provider.proxy_url()
     if url:
-        log.info("proxy.httpx", provider=provider.name, host=urlparse(url).hostname)
+        # DEBUG, not INFO: called on every client construction — at scale
+        # this fires per-board-cycle × per-worker. Provider identity is a
+        # deploy-time constant, so INFO-level surfaces no useful signal.
+        log.debug("proxy.httpx", provider=provider.name, host=urlparse(url).hostname)
     return url
 
 

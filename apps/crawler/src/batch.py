@@ -89,7 +89,6 @@ from src.processing.scrape import (  # noqa: F401
     _PipelineResult,
     _process_one_enrich_scrape,
     _process_one_scrape,
-    _process_one_scrape_insecure,
     _run_scrape_items,
     _scrape_pipeline,
     _ScrapeWorkItem,

@@ -324,6 +324,18 @@ def validate_csvs() -> list[ValidationError]:
                                         )
                                     )
                     fb_cfg = fb.get("config")
+                    if (
+                        isinstance(fb_cfg, dict)
+                        and "proxy" in fb_cfg
+                        and not isinstance(fb_cfg["proxy"], bool)
+                    ):
+                        errors.append(
+                            ValidationError(
+                                "boards.csv",
+                                i,
+                                f"'proxy' in fallback config must be bool, got {fb_cfg['proxy']!r}",
+                            )
+                        )
                     fb = fb_cfg.get("fallback") if isinstance(fb_cfg, dict) else None
                     depth += 1
             except json.JSONDecodeError:

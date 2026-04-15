@@ -774,19 +774,6 @@ async def _process_one_scrape(
         return False, elapsed
 
 
-async def _process_one_scrape_insecure(
-    item: ScrapeItem,
-    pool: asyncpg.Pool,
-    scraper_type: str,
-    scraper_config: dict | None,
-) -> tuple[bool, float]:
-    """Wrapper that creates a temporary insecure HTTP client for boards with ssl_verify=False."""
-    from src.shared.http import create_http_client
-
-    async with create_http_client(verify=False) as http:
-        return await _batch._process_one_scrape(item, pool, http, scraper_type, scraper_config)
-
-
 async def _do_one_enrich_scrape(
     work: _ScrapeWorkItem,
     http: httpx.AsyncClient,
