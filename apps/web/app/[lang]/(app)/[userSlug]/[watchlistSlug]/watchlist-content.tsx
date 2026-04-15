@@ -47,6 +47,7 @@ export function WatchlistContent({ lang, userSlug, watchlistSlug }: WatchlistCon
       resolvedOccupations={data.resolvedOccupations}
       resolvedSeniorities={data.resolvedSeniorities}
       resolvedTechnologies={data.resolvedTechnologies}
+      jobLanguages={data.jobLanguages}
       languages={data.languages}
     />
   );

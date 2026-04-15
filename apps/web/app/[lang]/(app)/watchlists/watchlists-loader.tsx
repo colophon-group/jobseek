@@ -11,7 +11,7 @@ type WatchlistsData = {
   limitReached: boolean;
 };
 
-export function WatchlistsLoader({ locale: _locale }: { locale: string }) {
+export function WatchlistsLoader({ locale }: { locale: string }) {
   const { user, isPending } = useSession();
   const [data, setData] = useState<WatchlistsData | null>(null);
 
@@ -21,14 +21,14 @@ export function WatchlistsLoader({ locale: _locale }: { locale: string }) {
       setData({ watchlists: [], username: null, limitReached: true });
       return;
     }
-    getUserWatchlists().then((watchlists) => {
+    getUserWatchlists(locale).then((watchlists) => {
       setData({
         watchlists,
         username: user.username ?? null,
         limitReached: false,
       });
     });
-  }, [user, isPending]);
+  }, [user, isPending, locale]);
 
   if (!data) {
     return (

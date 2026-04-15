@@ -20,8 +20,9 @@ export async function GET(request: NextRequest) {
         query: q,
         offset: 0,
         limit: MAX_RESULTS,
+        locale,
       })
-    : await getPopularWatchlists({ offset: 0, limit: MAX_RESULTS });
+    : await getPopularWatchlists({ offset: 0, limit: MAX_RESULTS, locale });
 
   const watchlists = result.watchlists.map((w) => ({
     title: w.title,

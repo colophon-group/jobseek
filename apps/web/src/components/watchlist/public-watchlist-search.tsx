@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Search, Loader2, Copy } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -16,6 +17,8 @@ import {
 const PAGE_SIZE = 10;
 
 export function PublicWatchlistSearch() {
+  const params = useParams();
+  const locale = (params.lang as string) ?? "en";
   const { t } = useLingui();
   const lp = useLocalePath();
   const [query, setQuery] = useState("");
@@ -30,8 +33,8 @@ export function PublicWatchlistSearch() {
 
   const fetchPage = useCallback(async (q: string, offset: number, append: boolean) => {
     const fetcher = q.length >= 2
-      ? () => searchPublicWatchlists({ query: q, offset, limit: PAGE_SIZE })
-      : () => getPopularWatchlists({ offset, limit: PAGE_SIZE });
+      ? () => searchPublicWatchlists({ query: q, offset, limit: PAGE_SIZE, locale })
+      : () => getPopularWatchlists({ offset, limit: PAGE_SIZE, locale });
 
     const newMode = q.length >= 2 ? "search" : "popular";
 
@@ -51,7 +54,7 @@ export function PublicWatchlistSearch() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [locale]);
 
   // Initial load + search on query change
   useEffect(() => {

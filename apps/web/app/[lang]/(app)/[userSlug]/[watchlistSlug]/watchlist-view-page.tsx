@@ -24,6 +24,7 @@ import { WatchlistActionBar } from "@/components/watchlist/watchlist-action-bar"
 import { WatchlistJobList } from "@/components/watchlist/watchlist-job-list";
 import { FilterPillsReadOnly } from "@/components/search/filter-pills-readonly";
 import { AdvancedSearchPanel } from "@/components/search/advanced-search-panel";
+import { LanguageNote } from "@/components/search/language-note";
 import type { SelectedLocation } from "@/components/search/location-pills";
 import type { HistogramFilters } from "@/lib/search";
 
@@ -42,6 +43,7 @@ export function WatchlistViewPage({
   resolvedOccupations,
   resolvedSeniorities,
   resolvedTechnologies,
+  jobLanguages,
   languages,
 }: {
   detail: WatchlistDetail;
@@ -55,6 +57,7 @@ export function WatchlistViewPage({
   resolvedOccupations: TaxonomyItem[];
   resolvedSeniorities: TaxonomyItem[];
   resolvedTechnologies: TaxonomyItem[];
+  jobLanguages: string[];
   languages: string[];
 }) {
   const { t } = useLingui();
@@ -560,6 +563,12 @@ export function WatchlistViewPage({
             technologies={resolvedTechnologies}
           />
         )}
+      </div>
+
+      {/* Language-scope disclosure — watchlist postings are filtered by
+          the viewer's jobLanguages pref, so surface the active scope. */}
+      <div className="flex justify-end">
+        <LanguageNote jobLanguages={jobLanguages} locale={locale} />
       </div>
 
       {/* Job results */}
