@@ -15,7 +15,7 @@ dependencies = [
     "polars>=1.38.1",
     "jmespath>=1.0",
     "upstash-redis>=1.6.0",
-    "Pillow>=10.0",
+    "Pillow>=12.2.0",
     "cairosvg>=2.9.0",
     "playwright>=1.58.0",
     "fast-langdetect>=0.3",
@@ -40,7 +40,7 @@ enrich = ["openai>=1.0", "anthropic>=0.40", "google-genai>=1.0"]
 
 [dependency-groups]
 dev = [
-    "pytest>=8.0",
+    "pytest>=9.0.3",
     "pytest-asyncio>=0.25",
     "pytest-timeout>=2.4.0",
     "ruff>=0.15.4",

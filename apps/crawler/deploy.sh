@@ -74,7 +74,12 @@ EOF
 # ── Pull images and restart ──────────────────────────────────────────
 cd "$DEPLOY_DIR"
 docker compose pull
-docker compose up -d --remove-orphans
+
+# Keep Redis up for migrations + sync, but quiesce the rest of the
+# crawler so deploy-time `crawler sync` does not race with live workers
+# claiming work out of Redis while we are reseeding board monitors.
+docker compose stop worker-1 worker-2 worker-3 browser-1 exporter drain alloy 2>/dev/null || true
+docker compose up -d redis
 
 # ── Run Alembic migrations on local Postgres ─────────────────────────
 docker run --rm --env-file "$DEPLOY_DIR/.env" --network host \
@@ -85,6 +90,9 @@ docker run --rm --env-file "$DEPLOY_DIR/.env" --network host \
 docker run --rm --env-file "$DEPLOY_DIR/.env" --network host \
   "ghcr.io/${OWNER}/jobseek-crawler:latest" \
   uv run --no-sync crawler sync
+
+# ── Start the full stack on the freshly seeded Redis state ───────────
+docker compose up -d --remove-orphans
 
 # ── Cleanup ──────────────────────────────────────────────────────────
 docker image prune -f

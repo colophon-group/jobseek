@@ -32,10 +32,14 @@ services:
     image: redis:7-alpine
     restart: unless-stopped
     network_mode: host
-    command: redis-server --maxmemory 256mb --maxmemory-policy noeviction --bind 127.0.0.1
+    # Deploy-time sync reseeds ~4.7k board monitors into Redis. 256 MB
+    # leaves too little headroom once steady-state scrape backlog is
+    # already present, so deploys can fail with OOM before sync
+    # completes.
+    command: redis-server --maxmemory 512mb --maxmemory-policy noeviction --bind 127.0.0.1
     volumes:
       - redis-data:/data
-    mem_limit: 320m
+    mem_limit: 768m
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s

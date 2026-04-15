@@ -1,14 +1,17 @@
 name: Publish MCP server
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
+      - ".github/workflows/publish-mcp-server.yml"
       - "packages/mcp-server/package.json"
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    environment: production
     permissions:
       contents: read
       id-token: write
@@ -42,6 +45,16 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
             echo "version=$LOCAL" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Check npm auth token
+        if: steps.version.outputs.changed == 'true'
+        run: |
+          if [ -z "${NPM_TOKEN:-}" ]; then
+            echo "NPM_TOKEN is not available. This job expects the secret in the production environment." >&2
+            exit 1
+          fi
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish to npm
         if: steps.version.outputs.changed == 'true'
