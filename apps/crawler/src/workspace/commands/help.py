@@ -578,7 +578,7 @@ sitemap — XML Sitemap Parser
                  1. Walking up the board URL path trying sitemap.xml at each level
                  2. Trying non-standard paths (/sitemaps/sitemapIndex, etc.)
                  3. Parsing robots.txt for Sitemap: directives
-                 4. Resolving sitemap indexes (prefers job-related children)
+                 4. Recursively resolving sitemap indexes (prefers job-related children)
                  Discovered URL is cached in board metadata for future runs.
 
   url_filter   Regex filter for discovered URLs (all monitors):
