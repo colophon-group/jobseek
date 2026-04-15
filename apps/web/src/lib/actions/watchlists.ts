@@ -89,6 +89,29 @@ export type WatchlistPostingEntry = {
   };
 };
 
+// A watchlist is "trivial" when it carries no meaningful filters and tracks
+// no companies — effectively a blank shell. We exclude these from public
+// listings and search engines so they don't dilute the index.
+// `anyCompany` and `salaryCurrency` alone don't count (they're defaults/prefs).
+export function isTrivialWatchlist(
+  filters: WatchlistFilters | null | undefined,
+  companyCount: number,
+): boolean {
+  if (companyCount > 0) return false;
+  const f = filters ?? {};
+  return !(
+    f.keywords?.length ||
+    f.locationSlugs?.length ||
+    f.occupationSlugs?.length ||
+    f.senioritySlugs?.length ||
+    f.technologySlugs?.length ||
+    f.salaryMin != null ||
+    f.salaryMax != null ||
+    f.experienceMin != null ||
+    f.experienceMax != null
+  );
+}
+
 // ── Actions ─────────────────────────────────────────────────────────
 
 export async function createWatchlist(params: {
@@ -127,9 +150,11 @@ export async function createWatchlist(params: {
     );
   }
 
-  // Typesense write hook: upsert if public (fire-and-forget)
+  // Typesense write hook: upsert if public and non-trivial (fire-and-forget)
   const isPublic = params.isPublic ?? true;
-  if (isPublic) {
+  const mergedFilters = { anyCompany: true, ...params.filters };
+  const trivial = isTrivialWatchlist(mergedFilters, params.companyIds.length);
+  if (isPublic && !trivial) {
     // Fetch owner info for the Typesense doc
     _getOwnerInfo(userId).then((owner) => {
       if (!owner) return;
@@ -175,6 +200,7 @@ export async function updateWatchlist(params: {
       title: watchlist.title,
       description: watchlist.description,
       isPublic: watchlist.isPublic,
+      filters: watchlist.filters,
     })
     .from(watchlist)
     .where(eq(watchlist.id, params.watchlistId))
@@ -216,57 +242,48 @@ export async function updateWatchlist(params: {
     }
   }
 
-  // Typesense write hook (fire-and-forget)
+  // Typesense write hook (fire-and-forget).
+  // A doc is indexed when the watchlist is both public and non-trivial.
   const wasPublic = wl.isPublic;
   const nowPublic = params.isPublic !== undefined ? params.isPublic : wasPublic;
+  const newFilters = params.filters !== undefined
+    ? params.filters
+    : (wl.filters ?? {}) as WatchlistFilters;
 
-  if (nowPublic) {
-    // Upsert: the watchlist is (still or newly) public
-    // Use partial update for fields we know; reconciliation cron handles the rest.
-    const tsFields: Record<string, unknown> = {
-      slug: newSlug,
-      title: params.title ?? wl.title,
-      is_public: true,
-    };
-    if (params.description !== undefined) {
-      tsFields.description = params.description ?? "";
-    }
-    if (params.companyIds !== undefined) {
-      tsFields.company_count = params.companyIds.length;
-    }
-    tsUpdateWatchlistField(params.watchlistId, tsFields);
+  (async () => {
+    const newCompanyCount = params.companyIds !== undefined
+      ? params.companyIds.length
+      : await _countWatchlistCompanies(params.watchlistId);
+    const shouldIndex = nowPublic && !isTrivialWatchlist(newFilters, newCompanyCount);
 
-    // If transitioning from private to public, the doc may not exist yet — do a full upsert
-    if (!wasPublic) {
-      _getOwnerInfo(userId).then(async (owner) => {
-        if (!owner) return;
-        const companyCount = params.companyIds !== undefined
-          ? params.companyIds.length
-          : await _countWatchlistCompanies(params.watchlistId);
-        const desc = params.description !== undefined ? params.description : wl.description;
-        tsUpsertWatchlist({
-          id: params.watchlistId,
-          slug: newSlug,
-          title: params.title ?? wl.title,
-          description: desc ?? undefined,
-          owner_name: owner.name,
-          owner_username: owner.username ?? undefined,
-          company_count: companyCount,
-          active_job_count: 0, // refreshed by reconciliation cron
-          mirror_count: 0,
-          is_featured: (owner.username ?? "").toLowerCase() === "colophongroup",
-          has_description: !!desc,
-          created_at: Math.floor(Date.now() / 1000),
-          is_public: true,
-        });
-      }).catch((err) => {
-        console.error("[updateWatchlist] Typesense hook failed", err);
+    if (shouldIndex) {
+      // Idempotent upsert — doc may or may not exist (public↔private or
+      // trivial↔non-trivial transitions can leave stale or missing docs).
+      const owner = await _getOwnerInfo(userId);
+      if (!owner) return;
+      const desc = params.description !== undefined ? params.description : wl.description;
+      tsUpsertWatchlist({
+        id: params.watchlistId,
+        slug: newSlug,
+        title: params.title ?? wl.title,
+        description: desc ?? undefined,
+        owner_name: owner.name,
+        owner_username: owner.username ?? undefined,
+        company_count: newCompanyCount,
+        active_job_count: 0, // refreshed by reconciliation cron
+        mirror_count: 0,
+        is_featured: (owner.username ?? "").toLowerCase() === "colophongroup",
+        has_description: !!desc,
+        created_at: Math.floor(Date.now() / 1000),
+        is_public: true,
       });
+    } else if (wasPublic) {
+      // Was potentially indexed and shouldn't be now — delete is a no-op if missing.
+      tsDeleteWatchlist(params.watchlistId);
     }
-  } else if (wasPublic && !nowPublic) {
-    // Was public, now private — delete from Typesense
-    tsDeleteWatchlist(params.watchlistId);
-  }
+  })().catch((err) => {
+    console.error("[updateWatchlist] Typesense hook failed", err);
+  });
 
   return { slug: newSlug };
 }

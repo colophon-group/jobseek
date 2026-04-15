@@ -4,6 +4,7 @@ import { isLocale, defaultLocale, loadCatalog } from "@/lib/i18n";
 import {
   getWatchlistByUserAndSlug as _getWatchlistByUserAndSlug,
   getWatchlistMatchingCompanyCount,
+  isTrivialWatchlist,
 } from "@/lib/actions/watchlists";
 import { siteConfig } from "@/content/config";
 import { buildAlternates } from "@/lib/seo";
@@ -82,6 +83,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   const path = `/${userSlug}/${watchlistSlug}`;
+  const trivial = isTrivialWatchlist(detail.filters, detail.companies.length);
   return {
     title,
     description,
@@ -92,6 +94,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       url: `${siteConfig.url}/${locale}${path}`,
       type: "website",
     },
+    ...(trivial && { robots: { index: false, follow: true } }),
   };
 }
 
