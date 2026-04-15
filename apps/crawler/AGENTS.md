@@ -181,42 +181,23 @@ uv run pytest tests/
 
 ## Proxy-routed transport
 
-Some sites (e.g. `apply.starbucks.com`, `citi.eightfold.ai`) front their
-stack with AWS WAF rules that block Hetzner datacenter IPs with HTTP 405
-captcha pages. For those, the crawler routes httpx requests (and
-Playwright launches, when the monitor renders) through an external HTTP
-proxy provider. The implementation is in `src/shared/proxy.py`:
+Some hosts (e.g. `apply.starbucks.com`, `citi.eightfold.ai`) block
+Hetzner datacenter IPs with AWS WAF captcha pages. The crawler routes
+httpx requests and Playwright launches for those boards through an
+external HTTP proxy. Implementation: `src/shared/proxy.py` — a
+`ProxyProvider` Protocol with a single `StaticProxyProvider` impl
+covering Webshare / Decodo / any `http://user:pass@host:port` service.
 
-- `ProxyProvider` — `Protocol` interface with a `proxy_url()` method.
-- `StaticProxyProvider` — covers any service that exposes a single
-  `http://user:pass@host:port` endpoint (Webshare, Decodo, IPRoyal, …).
-- `get_provider()` — returns the active provider based on
-  `PROXY_PROVIDER`, or `None` when disabled.
-- `httpx_proxy_for(use_proxy=…)` / `playwright_proxy_for(use_proxy=…)` —
-  return a proxy URL / Playwright launch dict when the caller opts in.
-
-Adding a new provider is one entry in `_PROVIDERS` + one env var. Adding
-a rotating/failover provider is one new class implementing the Protocol;
-call sites do not change.
-
-### Per-board opt-in
-
-A board opts into the proxy with `"proxy": true` in its `monitor_config`
-and/or `scraper_config` JSON — the same place as `render`, `skip_ssl`,
-`rescrape_policy`, etc. No new CSV column.
+A board opts in by setting `"proxy": true` inside `monitor_config`
+and/or `scraper_config` JSON in `data/boards.csv` — same place as
+`render`, `skip_ssl`, `rescrape_policy`. The two flags are independent;
+typically both are set for a WAF-blocked host.
 
 ```csv
 starbucks,starbucks-eightfold,https://starbucks.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/"", ""proxy"": true}",eightfold,"{""enrich"": [""description""], ""proxy"": true}"
 ```
 
-The monitor and scraper flags are independent. Typically both are set
-when a host is WAF-blocked (the monitor discovers new URLs and the
-scraper enriches them from the same WAF-protected origin).
-
-Adding a new WAF-blocked host = edit the CSV row + `uv run crawler sync`.
-No GitHub secret update, no deploy for the route list.
-
-### Provider selection
+Active provider is chosen by env:
 
 ```bash
 PROXY_PROVIDER=webshare         # none | webshare | decodo
@@ -224,118 +205,22 @@ WEBSHARE_PROXY_URL=http://user:pass@192.53.69.78:6716
 DECODO_PROXY_URL=http://user:pass@isp.decodo.com:10001
 ```
 
-All provider credentials are kept in env regardless of which is active,
-so swapping is a one-env-var flip (useful when a provider adds a host to
-its destination blocklist — e.g. Decodo blocks `citi.eightfold.ai` at
-the CONNECT level, Webshare doesn't).
+`PROXY_PROVIDER=none` (and missing/empty URLs) are fail-safe — boards
+with `proxy: true` fall back to direct egress, which means captcha on
+WAF'd hosts but nothing crashes. The provider logs
+`proxy.provider.missing_url` at ERROR when a selected provider has an
+empty URL — first thing to check when a `proxy: true` board starts
+returning captcha.
 
-Unknown `PROXY_PROVIDER` values log a warning and fall through to "no
-proxy", which is fail-safe: boards with `proxy: true` fall back to
-direct egress instead of crashing the worker. If `PROXY_PROVIDER` is set
-but the matching `*_PROXY_URL` is empty, the provider logs a
-`proxy.provider.missing_url` error at startup — check this when
-`proxy: true` boards start returning captcha pages in logs.
+Static residential / ISP is billed **per IP, flat monthly**, so cost
+scales with IPs leased, not traffic volume. A single IP covers the
+current WAF-blocked set; add IPs (and a rotating/failover provider
+impl) only when an origin bans the IP or a provider hits concurrency
+caps.
 
-### Adding a new WAF-blocked board
-
-1. Confirm via ad-hoc test that the host returns captcha/405 from
-   Hetzner but 200 through the active provider (`ssh` to a worker,
-   `curl -x "$WEBSHARE_PROXY_URL" $URL`).
-2. Edit the board row in `data/boards.csv`: add `"proxy": true` to
-   both `monitor_config` and `scraper_config` JSON.
-3. `uv run crawler validate` to confirm CSV syntax.
-4. Merge the PR. The next deploy runs `crawler sync`, which pushes the
-   new metadata to Postgres + Redis and the `proxy: true` flag takes
-   effect on the next monitor cycle.
-5. Watch `crawler_monitor_fail_total` for the board — should drop
-   toward zero within one cycle.
-
-### Adding a new provider
-
-1. Add `NEW_PROXY_URL: str = ""` to `Settings` in `src/config.py`.
-2. Add a factory in `src/shared/proxy.py`:
-   ```python
-   def _newprovider(settings) -> ProxyProvider | None:
-       url = settings.new_proxy_url
-       if not url:
-           log.error("proxy.provider.missing_url", provider="newprovider")
-           return None
-       return StaticProxyProvider("newprovider", url)
-   ```
-3. Register: `_PROVIDERS["newprovider"] = _newprovider`.
-4. Add `NEW_PROXY_URL` to `.env.local`, `docker-compose.yml`, `deploy.sh`,
-   `.github/workflows/deploy-crawler-browser.yml`.
-5. For a non-static provider (rotating pool, failover), implement
-   `ProxyProvider` directly — the Protocol only requires `name` and
-   `proxy_url()`.
-
-### Testing locally
-
-```bash
-# Smoke test: confirm provider wiring + live proxy connectivity
-PROXY_PROVIDER=webshare WEBSHARE_PROXY_URL='http://user:pass@host:port' \
-  uv run python -c "
-import asyncio
-from src.shared.http import create_http_client
-async def main():
-    async with create_http_client(use_proxy=True) as c:
-        r = await c.get('https://api.ipify.org')
-        print('egress:', r.text)
-asyncio.run(main())
-"
-# Expect the output to be the provider's IP, not your laptop's.
-
-# Full board dry-run (requires .env.local with LOCAL_DATABASE_URL)
-uv run crawler board citigroup-eightfold --dry-run --verbose
-```
-
-### Troubleshooting
-
-- **Board returns 405/captcha**: either `proxy: true` is missing in the
-  board config, or `PROXY_PROVIDER=none`/empty URL silently disables
-  the provider. Check worker logs for `proxy.provider.missing_url` at
-  startup and confirm the board row in `data/boards.csv`.
-- **Proxy returns `HTTP 403 after CONNECT`**: the provider has the
-  target host on a blocklist (Decodo does this for `citi.eightfold.ai`).
-  Swap providers by flipping `PROXY_PROVIDER` in GH secrets, or keep
-  both creds and add a per-host override in a future extension.
-- **Per-host denylist / failover across providers**: not yet supported;
-  add a new `ProxyProvider` implementation when needed.
-
-### Rollback paths (fastest → slowest)
-
-1. **Provider outage, creds still good** — flip `PROXY_PROVIDER` GH
-   secret to the other configured provider (e.g. `webshare` → `decodo`)
-   and re-run the deploy workflow. Takes ~8 min. The 10 migrated boards
-   pick up the new provider on their next monitor cycle.
-2. **All providers broken** — flip `PROXY_PROVIDER` GH secret to
-   `none` and re-deploy. Proxied boards fall back to direct egress; if
-   WAF is still blocking Hetzner IPs they'll go back to captcha-failing
-   (same state as before this PR landed), but nothing crashes.
-3. **Code-level regression in the proxy layer** — revert the merge on
-   GitHub. The post-revert deploy re-runs `crawler sync`, which
-   overwrites `job_board.metadata` in local Postgres with the old CSV
-   (no `proxy: true`). Redis config hashes are overwritten by the same
-   sync pass.
-
-### Cost model
-
-Static residential / ISP proxies (the current shape: Webshare / Decodo)
-are billed **per static IP**, flat monthly fee, unmetered bandwidth.
-`StaticProxyProvider` maps one IP to one provider, so cost is flat in
-traffic volume — the relevant dimension is **how many IPs we lease**,
-not how many boards use them or how much data flows.
-
-One IP can front the entire WAF-blocked set as long as it doesn't trip
-a per-destination rate limit or get banned by an origin. Adding IPs
-only becomes cost-effective when (a) a single IP gets banned by a
-specific host, (b) a provider hits per-IP concurrency caps at scale,
-or (c) we want per-IP routing for isolation. In those cases we need a
-new provider shape (rotating pool or per-host selection) — the current
-Protocol only surfaces a single URL. See *Adding a new provider* above.
-
-Rotating residential / metered pool products exist too (per-GB) but are
-not wired in — add a new provider impl if we move to that billing.
+Adding a new provider or a new WAF-blocked host is covered in the
+commit that introduced this section (PR #2181) — the PR body has the
+step-by-step and rollback runbook.
 
 ### Disabling re-scrapes (cost saver)
 
