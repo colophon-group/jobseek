@@ -4,7 +4,7 @@ import type {
   SearchResponseFacetCountSchema,
 } from "typesense/lib/Typesense/Documents";
 import { getSearchClient } from "./typesense-client";
-import { buildFilterString, buildHistogramFilterString } from "./typesense-filters";
+import { buildFilterString } from "./typesense-filters";
 import type {
   PostingLocation,
   SearchFilters,
@@ -566,15 +566,12 @@ export class TypesenseSearchProvider implements SearchProvider {
   ): Promise<SalaryBucket[]> {
     try {
       const f = filters ?? {};
-      const filterStr = buildHistogramFilterString(f);
+      const filterStr = buildFilterString(f);
       const hasKeywords = f.keywords && f.keywords.length > 0;
       const q = hasKeywords ? f.keywords!.join(" ") : "*";
       const client = getSearchClient();
 
-      let filterBy = `is_active:true && salary_eur:>0${filterStr ? " && " + filterStr : ""}`;
-      if (f.companyId) {
-        filterBy += ` && company_id:=${f.companyId}`;
-      }
+      const filterBy = `is_active:true && salary_eur:>0${filterStr ? " && " + filterStr : ""}`;
 
       const result: TsSearchResponse<JobPostingDoc> = await client
         .collections<JobPostingDoc>("job_posting")
@@ -611,15 +608,12 @@ export class TypesenseSearchProvider implements SearchProvider {
   ): Promise<ExperienceBucket[]> {
     try {
       const f = filters ?? {};
-      const filterStr = buildHistogramFilterString(f);
+      const filterStr = buildFilterString(f);
       const hasKeywords = f.keywords && f.keywords.length > 0;
       const q = hasKeywords ? f.keywords!.join(" ") : "*";
       const client = getSearchClient();
 
-      let filterBy = `is_active:true && experience_min:>=0${filterStr ? " && " + filterStr : ""}`;
-      if (f.companyId) {
-        filterBy += ` && company_id:=${f.companyId}`;
-      }
+      const filterBy = `is_active:true && experience_min:>=0${filterStr ? " && " + filterStr : ""}`;
 
       const result: TsSearchResponse<JobPostingDoc> = await client
         .collections<JobPostingDoc>("job_posting")

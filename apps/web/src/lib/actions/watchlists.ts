@@ -8,6 +8,7 @@ import {
   company,
 } from "@/db/schema";
 import { getSessionUserId } from "@/lib/sessionCache";
+import { getViewerLanguages } from "@/lib/viewer";
 import { cached } from "@/lib/cache";
 import { canCreateWatchlist, getUserPlan, PLAN_LIMITS } from "@/lib/plans";
 import { generateUniqueSlug } from "@/lib/watchlist-slug";
@@ -16,6 +17,7 @@ import { expandLocationIds, resolveLocationSlugs } from "@/lib/actions/locations
 import { expandOccupationIds, resolveOccupationSlugs, resolveSenioritySlugs, resolveTechnologySlugs } from "@/lib/actions/taxonomy";
 import { getSearchClient } from "@/lib/search/typesense-client";
 import { buildFilterString } from "@/lib/search/typesense-filters";
+import { localesOrNoneClause } from "@/lib/search/pg-filters";
 import {
   upsertWatchlist as tsUpsertWatchlist,
   deleteWatchlist as tsDeleteWatchlist,
@@ -410,9 +412,11 @@ export async function toggleWatchlistAlerts(
   return { enabled: newVal };
 }
 
-export async function getUserWatchlists(): Promise<WatchlistSummary[]> {
+export async function getUserWatchlists(locale: string): Promise<WatchlistSummary[]> {
   const userId = await getSessionUserId();
   if (!userId) return [];
+
+  const languages = await getViewerLanguages(locale);
 
   const rows = await db.execute<{
     [key: string]: unknown;
@@ -444,9 +448,10 @@ export async function getUserWatchlists(): Promise<WatchlistSummary[]> {
 
   const typed = rows as unknown as Row[];
 
-  // Compute active job counts respecting each watchlist's filters (cached 5min)
+  // Compute active job counts respecting each watchlist's filters and the
+  // viewer's language preference (cached 5min per (watchlist, filters, languages)).
   const counts = await Promise.all(
-    typed.map((r) => resolveFilteredJobCount(r.id, r.filters ?? {}, r.company_ids ?? [])),
+    typed.map((r) => resolveFilteredJobCount(r.id, r.filters ?? {}, r.company_ids ?? [], languages)),
   );
 
   return typed.map((r, i) => ({
@@ -543,6 +548,12 @@ export type PublicWatchlistEntry = WatchlistSummary & {
   mirrorCount: number;
 };
 
+/** Stable cache-key fragment for a viewer's language filter. */
+function languagesCacheKey(languages: string[] | undefined): string {
+  if (!languages || languages.length === 0) return "all";
+  return languages.join(",");
+}
+
 function buildFilterCacheKey(f: WatchlistFilters, companyIds: string[]): string {
   const parts: string[] = [];
   if (f.anyCompany) parts.push("any");
@@ -567,8 +578,9 @@ function buildFilterCacheKey(f: WatchlistFilters, companyIds: string[]): string 
  */
 export async function getWatchlistMatchingCompanyCount(
   f: WatchlistFilters,
+  languages?: string[],
 ): Promise<number> {
-  const key = `wl-match-companies:${buildFilterCacheKey(f, [])}`;
+  const key = `wl-match-companies:${buildFilterCacheKey(f, [])}:${languagesCacheKey(languages)}`;
   return cached(key, async () => {
     const locale = "en";
     const [locMap, occMap, senMap, techMap] = await Promise.all([
@@ -587,6 +599,7 @@ export async function getWatchlistMatchingCompanyCount(
       salaryMaxEur: f.salaryMax,
       experienceMin: f.experienceMin,
       experienceMax: f.experienceMax,
+      languages,
     });
 
     const fullFilter = `is_active:true${filterStr ? " && " + filterStr : ""}`;
@@ -616,11 +629,12 @@ async function resolveFilteredJobCount(
   watchlistId: string,
   f: WatchlistFilters,
   companyIds: string[],
+  languages?: string[],
 ): Promise<number> {
   const isAny = f.anyCompany;
   if (!isAny && companyIds.length === 0) return 0;
 
-  const key = `wl-count:${watchlistId}:${buildFilterCacheKey(f, companyIds)}`;
+  const key = `wl-count:${watchlistId}:${buildFilterCacheKey(f, companyIds)}:${languagesCacheKey(languages)}`;
   return cached(key, async () => {
     const locale = "en";
     const [locMap, occMap, senMap, techMap] = await Promise.all([
@@ -644,6 +658,7 @@ async function resolveFilteredJobCount(
       salaryMax: f.salaryMax,
       experienceMin: f.experienceMin,
       experienceMax: f.experienceMax,
+      languages,
     });
     return total;
   }, { ttl: 300 });
@@ -654,6 +669,7 @@ async function queryPublicWatchlists(params: {
   orderClause: ReturnType<typeof sql>;
   offset: number;
   limit: number;
+  languages?: string[];
 }): Promise<{ watchlists: PublicWatchlistEntry[]; total: number }> {
   const [totalRow] = await db.execute<{ [key: string]: unknown; cnt: number }>(sql`
     SELECT count(*)::int AS cnt FROM watchlist w WHERE ${params.whereClause}
@@ -695,9 +711,9 @@ async function queryPublicWatchlists(params: {
 
   const typed = rows as unknown as Row[];
 
-  // Compute filtered job counts in parallel (cached 5min)
+  // Compute filtered job counts in parallel (cached 5min per viewer-languages)
   const counts = await Promise.all(
-    typed.map((r) => resolveFilteredJobCount(r.id, r.filters ?? {}, r.company_ids ?? [])),
+    typed.map((r) => resolveFilteredJobCount(r.id, r.filters ?? {}, r.company_ids ?? [], params.languages)),
   );
 
   return {
@@ -724,18 +740,22 @@ export async function searchPublicWatchlists(params: {
   query: string;
   offset: number;
   limit: number;
+  locale: string;
 }): Promise<{ watchlists: PublicWatchlistEntry[]; total: number }> {
   const q = params.query.trim();
   if (!q) return { watchlists: [], total: 0 };
 
+  const languages = await getViewerLanguages(params.locale);
+  const langKey = languagesCacheKey(languages);
+
   return cached(
-    `public-watchlist-search:${q}:${params.offset}:${params.limit}`,
+    `public-watchlist-search:${q}:${params.offset}:${params.limit}:${langKey}`,
     async () => {
       try {
         const tsResult = await _searchPublicWatchlistsTypesense(q, params.offset, params.limit);
         if (tsResult.watchlists.length > 0) {
           return {
-            watchlists: await _enrichWatchlistsWithRealCounts(tsResult.watchlists),
+            watchlists: await _enrichWatchlistsWithRealCounts(tsResult.watchlists, languages),
             total: tsResult.total,
           };
         }
@@ -748,6 +768,7 @@ export async function searchPublicWatchlists(params: {
         orderClause: sql`w.created_at DESC`,
         offset: params.offset,
         limit: params.limit,
+        languages,
       });
     },
     { ttl: 60 },
@@ -757,15 +778,19 @@ export async function searchPublicWatchlists(params: {
 export async function getPopularWatchlists(params: {
   offset: number;
   limit: number;
+  locale: string;
 }): Promise<{ watchlists: PublicWatchlistEntry[]; total: number }> {
+  const languages = await getViewerLanguages(params.locale);
+  const langKey = languagesCacheKey(languages);
+
   return cached(
-    `popular-watchlists:${params.offset}:${params.limit}`,
+    `popular-watchlists:${params.offset}:${params.limit}:${langKey}`,
     async () => {
       try {
         const tsResult = await _getPopularWatchlistsTypesense(params.offset, params.limit);
         if (tsResult.watchlists.length > 0) {
           return {
-            watchlists: await _enrichWatchlistsWithRealCounts(tsResult.watchlists),
+            watchlists: await _enrichWatchlistsWithRealCounts(tsResult.watchlists, languages),
             total: tsResult.total,
           };
         }
@@ -778,6 +803,7 @@ export async function getPopularWatchlists(params: {
         orderClause: sql`(u.username = 'colophongroup')::int DESC, (SELECT count(*)::int FROM watchlist w2 WHERE w2.source_watchlist_id = w.id) DESC, (w.description IS NOT NULL AND w.description != '')::int DESC, w.created_at DESC`,
         offset: params.offset,
         limit: params.limit,
+        languages,
       });
     },
     { ttl: 120 },
@@ -798,6 +824,7 @@ export async function getWatchlistPostings(params: {
   salaryMax?: number;
   experienceMin?: number;
   experienceMax?: number;
+  languages?: string[];
 }): Promise<{ postings: WatchlistPostingEntry[]; total: number; truncated?: boolean }> {
   // No companies selected and not "any company" mode → empty
   if (!params.anyCompany && params.companyIds.length === 0) {
@@ -990,6 +1017,7 @@ function _mapWatchlistDoc(doc: Record<string, unknown>): PublicWatchlistEntry {
  */
 async function _enrichWatchlistsWithRealCounts(
   watchlists: PublicWatchlistEntry[],
+  languages?: string[],
 ): Promise<PublicWatchlistEntry[]> {
   const ids = watchlists.map((w) => w.id);
   if (ids.length === 0) return watchlists;
@@ -1017,7 +1045,7 @@ async function _enrichWatchlistsWithRealCounts(
     watchlists.map((w) => {
       const pgRow = rowMap.get(w.id);
       if (!pgRow) return Promise.resolve(0);
-      return resolveFilteredJobCount(w.id, pgRow.filters ?? {}, pgRow.company_ids ?? []);
+      return resolveFilteredJobCount(w.id, pgRow.filters ?? {}, pgRow.company_ids ?? [], languages);
     }),
   );
 
@@ -1045,6 +1073,7 @@ async function _getWatchlistPostingsTypesense(
     salaryMax?: number;
     experienceMin?: number;
     experienceMax?: number;
+    languages?: string[];
   },
   userId: string | null,
 ): Promise<{ postings: WatchlistPostingEntry[]; total: number; truncated?: boolean }> {
@@ -1062,6 +1091,7 @@ async function _getWatchlistPostingsTypesense(
     salaryMaxEur: params.salaryMax,
     experienceMin: params.experienceMin,
     experienceMax: params.experienceMax,
+    languages: params.languages,
   });
 
   const hasKeywords = params.keywords && params.keywords.length > 0;
@@ -1135,6 +1165,7 @@ async function _getWatchlistPostingsBatched(
     salaryMax?: number;
     experienceMin?: number;
     experienceMax?: number;
+    languages?: string[];
   },
   userId: string | null,
 ): Promise<{ postings: WatchlistPostingEntry[]; total: number; truncated?: boolean }> {
@@ -1150,6 +1181,7 @@ async function _getWatchlistPostingsBatched(
     salaryMaxEur: params.salaryMax,
     experienceMin: params.experienceMin,
     experienceMax: params.experienceMax,
+    languages: params.languages,
   });
 
   const hasKeywords = params.keywords && params.keywords.length > 0;
@@ -1246,6 +1278,7 @@ async function _getWatchlistPostingsPostgres(
     salaryMax?: number;
     experienceMin?: number;
     experienceMax?: number;
+    languages?: string[];
   },
   userId: string | null,
 ): Promise<{ postings: WatchlistPostingEntry[]; total: number; truncated?: boolean }> {
@@ -1307,6 +1340,8 @@ async function _getWatchlistPostingsPostgres(
       clauses.push(sql`(jp.experience_min IS NULL OR jp.experience_min <= ${params.experienceMax!})`);
     }
   }
+  const localesClause = localesOrNoneClause(params.languages);
+  if (localesClause) clauses.push(localesClause);
 
   const whereClause = sql.join(clauses, sql` AND `);
 

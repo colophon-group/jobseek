@@ -1,5 +1,3 @@
-import type { HistogramFilters } from "./types";
-
 /**
  * Build a Typesense filter_by string from user-specified filter dimensions.
  *
@@ -12,6 +10,14 @@ export function buildFilterString(
 ): string {
   if (!filters) return "";
   const parts: string[] = [];
+
+  // companyId reaches here from "use server" actions that clients can call
+  // directly with arbitrary strings. Shape-validate before raw interpolation
+  // so a hostile caller can't break out of the filter clause. Bad input is
+  // dropped silently — a missing company scope is safer than an injection.
+  if (filters.companyId && /^[0-9a-z_-]{8,64}$/i.test(filters.companyId)) {
+    parts.push(`company_id:=${filters.companyId}`);
+  }
 
   if (filters.locationIds?.length) {
     parts.push(`location_ids:[${filters.locationIds.join(",")}]`);
@@ -69,17 +75,4 @@ export function buildFilterString(
   }
 
   return parts.join(" && ");
-}
-
-/**
- * Build a filter string from HistogramFilters (subset of SearchFilters).
- */
-export function buildHistogramFilterString(filters: HistogramFilters): string {
-  return buildFilterString({
-    locationIds: filters.locationIds,
-    occupationIds: filters.occupationIds,
-    seniorityIds: filters.seniorityIds,
-    technologyIds: filters.technologyIds,
-    languages: filters.languages,
-  });
 }

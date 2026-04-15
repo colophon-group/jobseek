@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { X, Loader2, MapPin, Briefcase, BarChart3, Code2, DollarSign, Clock, Building2, Pencil } from "lucide-react";
 import { BackLink } from "@/components/BackLink";
@@ -24,7 +24,9 @@ import { WatchlistActionBar } from "@/components/watchlist/watchlist-action-bar"
 import { WatchlistJobList } from "@/components/watchlist/watchlist-job-list";
 import { FilterPillsReadOnly } from "@/components/search/filter-pills-readonly";
 import { AdvancedSearchPanel } from "@/components/search/advanced-search-panel";
+import { LanguageNote } from "@/components/search/language-note";
 import type { SelectedLocation } from "@/components/search/location-pills";
+import type { HistogramFilters } from "@/lib/search";
 
 type Company = { id: string; name: string; slug: string; icon: string | null };
 type TaxonomyItem = { id: number; slug: string; name: string };
@@ -41,6 +43,8 @@ export function WatchlistViewPage({
   resolvedOccupations,
   resolvedSeniorities,
   resolvedTechnologies,
+  jobLanguages,
+  languages,
 }: {
   detail: WatchlistDetail;
   isOwner: boolean;
@@ -53,6 +57,8 @@ export function WatchlistViewPage({
   resolvedOccupations: TaxonomyItem[];
   resolvedSeniorities: TaxonomyItem[];
   resolvedTechnologies: TaxonomyItem[];
+  jobLanguages: string[];
+  languages: string[];
 }) {
   const { t } = useLingui();
   const router = useRouter();
@@ -153,6 +159,14 @@ export function WatchlistViewPage({
   const [salaryMax, setSalaryMax] = useState<number | undefined>(detail.filters.salaryMax);
   const [experienceMin, setExperienceMin] = useState<number | undefined>(detail.filters.experienceMin);
   const [experienceMax, setExperienceMax] = useState<number | undefined>(detail.filters.experienceMax);
+
+  const histogramFilters: HistogramFilters = useMemo(() => ({
+    locationIds: locations.length > 0 ? locations.map((l) => l.id) : undefined,
+    occupationIds: occupations.length > 0 ? occupations.map((o) => o.id) : undefined,
+    seniorityIds: seniorities.length > 0 ? seniorities.map((s) => s.id) : undefined,
+    technologyIds: technologies.length > 0 ? technologies.map((t) => t.id) : undefined,
+    languages: languages.length > 0 ? languages : undefined,
+  }), [locations, occupations, seniorities, technologies, languages]);
 
   // Persist filters to DB (debounced, cleaned up on unmount)
   const saveFiltersTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -448,6 +462,7 @@ export function WatchlistViewPage({
                 salaryMax,
                 experienceMin,
                 experienceMax,
+                languages: languages.length > 0 ? languages : undefined,
               }}
             />
           )}
@@ -477,12 +492,7 @@ export function WatchlistViewPage({
               onRemoveTechnology={onRemoveTechnology}
               onSalaryChange={onSalaryChange}
               onExperienceChange={onExperienceChange}
-              histogramFilters={{
-                locationIds: locations.length > 0 ? locations.map((l) => l.id) : undefined,
-                occupationIds: occupations.length > 0 ? occupations.map((o) => o.id) : undefined,
-                seniorityIds: seniorities.length > 0 ? seniorities.map((s) => s.id) : undefined,
-                technologyIds: technologies.length > 0 ? technologies.map((t) => t.id) : undefined,
-              }}
+              histogramFilters={histogramFilters}
             />
             {hasFilters && (
               <div className="flex flex-wrap items-center gap-2">
@@ -555,6 +565,11 @@ export function WatchlistViewPage({
         )}
       </div>
 
+      {/* Language-scope disclosure — watchlist postings are filtered by
+          the viewer's jobLanguages pref, so surface the active scope
+          (left-aligned to match the toolbar convention on explore/company). */}
+      <LanguageNote jobLanguages={jobLanguages} locale={locale} />
+
       {/* Job results */}
       <WatchlistJobList
         filters={{
@@ -569,6 +584,7 @@ export function WatchlistViewPage({
           salaryMax,
           experienceMin,
           experienceMax,
+          languages: languages.length > 0 ? languages : undefined,
         }}
         initialPostings={initialPostings}
         initialTotal={initialTotal}

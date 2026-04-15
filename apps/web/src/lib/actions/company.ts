@@ -11,6 +11,7 @@ import { expandOccupationIds } from "@/lib/actions/taxonomy";
 import { ANON_MAX_POSTINGS } from "@/lib/search/constants";
 import { getSearchClient } from "@/lib/search/typesense-client";
 import { buildFilterString } from "@/lib/search/typesense-filters";
+import { localesOrNoneClause } from "@/lib/search/pg-filters";
 
 // ── Company suggestions (search bar autocomplete) ───────────────────
 
@@ -100,6 +101,7 @@ export async function searchCompaniesForWatchlist(params: {
   salaryMax?: number;
   experienceMin?: number;
   experienceMax?: number;
+  languages?: string[];
   starredCompanyIds?: string[];
 }): Promise<{ companies: CompanyListEntry[]; total: number }> {
   try {
@@ -125,6 +127,7 @@ async function _searchCompaniesForWatchlistTypesense(params: {
   salaryMax?: number;
   experienceMin?: number;
   experienceMax?: number;
+  languages?: string[];
   starredCompanyIds?: string[];
 }): Promise<{ companies: CompanyListEntry[]; total: number }> {
   const client = getSearchClient();
@@ -143,6 +146,7 @@ async function _searchCompaniesForWatchlistTypesense(params: {
     salaryMaxEur: params.salaryMax,
     experienceMin: params.experienceMin,
     experienceMax: params.experienceMax,
+    languages: params.languages,
   });
 
   const hasWatchlistFilters = watchlistFilterStr.length > 0 || (params.keywords && params.keywords.length > 0);
@@ -358,6 +362,7 @@ async function _searchCompaniesForWatchlistPostgres(params: {
   salaryMax?: number;
   experienceMin?: number;
   experienceMax?: number;
+  languages?: string[];
   starredCompanyIds?: string[];
 }): Promise<{ companies: CompanyListEntry[]; total: number }> {
   const q = params.query?.trim().toLowerCase();
@@ -425,6 +430,8 @@ async function _searchCompaniesForWatchlistPostgres(params: {
       jobClauses.push(sql`(jp.experience_min IS NULL OR jp.experience_min <= ${params.experienceMax!})`);
     }
   }
+  const localesClause = localesOrNoneClause(params.languages);
+  if (localesClause) jobClauses.push(localesClause);
   const jobWhere = sql.join(jobClauses, sql` AND `);
 
   const [totalRow] = await db.execute<{ [key: string]: unknown; cnt: number }>(sql`
