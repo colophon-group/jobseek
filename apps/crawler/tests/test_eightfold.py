@@ -7,6 +7,7 @@ _watermark helpers live in test_pcsx.py and test_watermark.py.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 import httpx
@@ -25,6 +26,10 @@ SITEMAP_XML = """<?xml version="1.0" encoding="UTF-8"?>
   <url><loc>https://careers.kering.com/careers/job/333-bottega-baz?domain=kering</loc></url>
 </urlset>
 """
+
+
+def _iso_now_minus(*, days: int = 0, hours: int = 0) -> str:
+    return (datetime.now(UTC) - timedelta(days=days, hours=hours)).isoformat()
 
 
 def _pcsx_response(positions: list[dict], count: int | None = None) -> dict:
@@ -205,8 +210,8 @@ class TestIncremental:
             "pcsx_watermark": {
                 "max_ts": 500,
                 "enabled": True,
-                "last_full_at": "2026-04-08T00:00:00+00:00",  # recent
-                "last_incremental_at": "2026-04-08T12:00:00+00:00",
+                "last_full_at": _iso_now_minus(days=1),
+                "last_incremental_at": _iso_now_minus(hours=12),
             }
         }
         pages = [
@@ -264,7 +269,7 @@ class TestPcsxDisabled:
         metadata = {
             "pcsx_watermark": {
                 "enabled": False,
-                "last_full_at": "2026-04-08T00:00:00+00:00",
+                "last_full_at": _iso_now_minus(days=1),
                 "max_ts": 100,
             }
         }
@@ -288,7 +293,7 @@ class TestPcsxFetchError:
             "pcsx_watermark": {
                 "max_ts": 500,
                 "enabled": True,
-                "last_full_at": "2026-04-08T00:00:00+00:00",
+                "last_full_at": _iso_now_minus(days=1),
             }
         }
         handler, _ = _make_handler(SITEMAP_XML, pcsx_pages=None, pcsx_status=405)
@@ -314,8 +319,8 @@ class TestPcsxFetchError:
             "pcsx_watermark": {
                 "max_ts": 500,
                 "enabled": True,
-                "last_full_at": "2026-04-08T00:00:00+00:00",
-                "last_incremental_at": "2026-04-08T12:00:00+00:00",
+                "last_full_at": _iso_now_minus(days=1),
+                "last_incremental_at": _iso_now_minus(hours=12),
             }
         }
         # Force the needs_probe condition via a full-crawl cycle, then
@@ -361,13 +366,11 @@ class TestForceFullCrawl:
             "pcsx_watermark": {
                 "max_ts": 999999,  # would normally trigger incremental
                 "enabled": True,
-                "last_full_at": "2026-04-08T00:00:00+00:00",  # recent
+                "last_full_at": _iso_now_minus(days=1),
             },
         }
         pages = [[_pos(111, 1000)]]
         handler, calls = _make_handler(SITEMAP_XML, pcsx_pages=pages)
-
-        import datetime as _datetime
 
         with (
             patch(
@@ -390,8 +393,8 @@ class TestForceFullCrawl:
         assert result.jobs_by_url is not None
         wm = result.metadata_updates["pcsx_watermark"]
         # last_full_at must have been advanced past the old value.
-        old_last_full = _datetime.datetime.fromisoformat("2026-04-08T00:00:00+00:00")
-        new_last_full = _datetime.datetime.fromisoformat(wm["last_full_at"])
+        old_last_full = datetime.fromisoformat(metadata["pcsx_watermark"]["last_full_at"])
+        new_last_full = datetime.fromisoformat(wm["last_full_at"])
         assert new_last_full > old_last_full
 
 
