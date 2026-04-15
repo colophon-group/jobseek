@@ -27,6 +27,11 @@ export async function boostByFilterMatches<T>(
 ): Promise<T[]> {
   if (candidates.length === 0) return candidates;
 
+  // No active filter dimensions → boost would be a no-op (every taxonomy
+  // candidate already has has_active_postings:true). Skip the round-trip.
+  const filterStr = buildFilterString(filters);
+  if (!filterStr) return candidates;
+
   try {
     const client = getSearchClient();
     const ids = candidates.map(idOf);
@@ -34,9 +39,8 @@ export async function boostByFilterMatches<T>(
     const filterParts = [
       "is_active:true",
       `${facetField}:[${ids.join(",")}]`,
+      filterStr,
     ];
-    const filterStr = buildFilterString(filters);
-    if (filterStr) filterParts.push(filterStr);
 
     const hasKeywords = filters.keywords && filters.keywords.length > 0;
     const q = hasKeywords ? filters.keywords!.join(" ") : "*";
