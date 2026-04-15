@@ -13,6 +13,10 @@ export function buildFilterString(
   if (!filters) return "";
   const parts: string[] = [];
 
+  if (filters.companyId) {
+    parts.push(`company_id:=${filters.companyId}`);
+  }
+
   if (filters.locationIds?.length) {
     parts.push(`location_ids:[${filters.locationIds.join(",")}]`);
   }
@@ -73,13 +77,9 @@ export function buildFilterString(
 
 /**
  * Build a filter string from HistogramFilters (subset of SearchFilters).
+ * `keywords` is the search query, not a filter clause — buildFilterString
+ * silently ignores it.
  */
 export function buildHistogramFilterString(filters: HistogramFilters): string {
-  return buildFilterString({
-    locationIds: filters.locationIds,
-    occupationIds: filters.occupationIds,
-    seniorityIds: filters.seniorityIds,
-    technologyIds: filters.technologyIds,
-    languages: filters.languages,
-  });
+  return buildFilterString(filters);
 }

@@ -8,6 +8,8 @@ import { getSession } from "@/lib/sessionCache";
 import { getUserPlan, PLAN_LIMITS, canCreateWatchlist } from "@/lib/plans";
 import { resolveLocationSlugs } from "@/lib/actions/locations";
 import { resolveOccupationSlugs, resolveSenioritySlugs, resolveTechnologySlugs } from "@/lib/actions/taxonomy";
+import { getPreferences } from "@/lib/actions/preferences";
+import { resolveJobLanguages } from "@/lib/job-languages";
 import type { WatchlistPostingEntry } from "@/lib/actions/watchlists";
 
 export interface WatchlistPageData {
@@ -21,6 +23,8 @@ export interface WatchlistPageData {
   resolvedOccupations: { id: number; slug: string; name: string }[];
   resolvedSeniorities: { id: number; slug: string; name: string }[];
   resolvedTechnologies: { id: number; slug: string; name: string }[];
+  jobLanguages: string[];
+  languages: string[];
 }
 
 export async function fetchWatchlistPageData(params: {
@@ -36,12 +40,16 @@ export async function fetchWatchlistPageData(params: {
   const session = await getSession();
   const isOwner = session?.user?.id === detail.owner.id;
 
-  const [plan, limit] = await Promise.all([
+  const [plan, limit, prefs] = await Promise.all([
     session ? getUserPlan(session.user.id) : ("free" as const),
     session ? canCreateWatchlist(session.user.id) : { allowed: false, current: 0, max: 0 },
+    session ? getPreferences() : Promise.resolve(null),
   ]);
   const isPaidPlan = PLAN_LIMITS[plan].canReceiveAlerts;
   const limitReached = !limit.allowed;
+
+  const jobLanguages = prefs?.jobLanguages ?? [];
+  const languages = resolveJobLanguages(jobLanguages, locale);
 
   const filters = detail.filters;
 
@@ -91,6 +99,7 @@ export async function fetchWatchlistPageData(params: {
     salaryMax: filters.salaryMax,
     experienceMin: filters.experienceMin,
     experienceMax: filters.experienceMax,
+    languages,
   });
 
   return {
@@ -104,5 +113,7 @@ export async function fetchWatchlistPageData(params: {
     resolvedOccupations,
     resolvedSeniorities,
     resolvedTechnologies,
+    jobLanguages,
+    languages,
   };
 }

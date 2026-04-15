@@ -571,10 +571,7 @@ export class TypesenseSearchProvider implements SearchProvider {
       const q = hasKeywords ? f.keywords!.join(" ") : "*";
       const client = getSearchClient();
 
-      let filterBy = `is_active:true && salary_eur:>0${filterStr ? " && " + filterStr : ""}`;
-      if (f.companyId) {
-        filterBy += ` && company_id:=${f.companyId}`;
-      }
+      const filterBy = `is_active:true && salary_eur:>0${filterStr ? " && " + filterStr : ""}`;
 
       const result: TsSearchResponse<JobPostingDoc> = await client
         .collections<JobPostingDoc>("job_posting")
@@ -616,10 +613,7 @@ export class TypesenseSearchProvider implements SearchProvider {
       const q = hasKeywords ? f.keywords!.join(" ") : "*";
       const client = getSearchClient();
 
-      let filterBy = `is_active:true && experience_min:>=0${filterStr ? " && " + filterStr : ""}`;
-      if (f.companyId) {
-        filterBy += ` && company_id:=${f.companyId}`;
-      }
+      const filterBy = `is_active:true && experience_min:>=0${filterStr ? " && " + filterStr : ""}`;
 
       const result: TsSearchResponse<JobPostingDoc> = await client
         .collections<JobPostingDoc>("job_posting")

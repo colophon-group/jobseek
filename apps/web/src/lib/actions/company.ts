@@ -100,6 +100,7 @@ export async function searchCompaniesForWatchlist(params: {
   salaryMax?: number;
   experienceMin?: number;
   experienceMax?: number;
+  languages?: string[];
   starredCompanyIds?: string[];
 }): Promise<{ companies: CompanyListEntry[]; total: number }> {
   try {
@@ -125,6 +126,7 @@ async function _searchCompaniesForWatchlistTypesense(params: {
   salaryMax?: number;
   experienceMin?: number;
   experienceMax?: number;
+  languages?: string[];
   starredCompanyIds?: string[];
 }): Promise<{ companies: CompanyListEntry[]; total: number }> {
   const client = getSearchClient();
@@ -143,6 +145,7 @@ async function _searchCompaniesForWatchlistTypesense(params: {
     salaryMaxEur: params.salaryMax,
     experienceMin: params.experienceMin,
     experienceMax: params.experienceMax,
+    languages: params.languages,
   });
 
   const hasWatchlistFilters = watchlistFilterStr.length > 0 || (params.keywords && params.keywords.length > 0);
@@ -358,6 +361,7 @@ async function _searchCompaniesForWatchlistPostgres(params: {
   salaryMax?: number;
   experienceMin?: number;
   experienceMax?: number;
+  languages?: string[];
   starredCompanyIds?: string[];
 }): Promise<{ companies: CompanyListEntry[]; total: number }> {
   const q = params.query?.trim().toLowerCase();
@@ -424,6 +428,11 @@ async function _searchCompaniesForWatchlistPostgres(params: {
     } else {
       jobClauses.push(sql`(jp.experience_min IS NULL OR jp.experience_min <= ${params.experienceMax!})`);
     }
+  }
+  // Match Typesense semantics: include postings with no detected language.
+  if (params.languages && params.languages.length > 0) {
+    const a = `{${params.languages.join(",")}}`;
+    jobClauses.push(sql`(jp.locales && ${a}::text[] OR cardinality(jp.locales) = 0)`);
   }
   const jobWhere = sql.join(jobClauses, sql` AND `);
 

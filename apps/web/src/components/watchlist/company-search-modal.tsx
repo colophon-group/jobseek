@@ -30,6 +30,7 @@ export interface CompanySearchFilters {
   salaryMax?: number;
   experienceMin?: number;
   experienceMax?: number;
+  languages?: string[];
 }
 
 export function CompanySearchModal({

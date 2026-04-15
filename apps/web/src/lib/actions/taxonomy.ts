@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { cached } from "@/lib/cache";
 import { getTypesenseClient, type TypesenseHit } from "@/lib/search/typesense-client";
 import { buildFilterString } from "@/lib/search/typesense-filters";
+import { boostByFilterMatches, type TypeaheadBoostFilters } from "@/lib/search/typeahead-boost";
 
 export interface TaxonomySuggestion {
   id: number;
@@ -19,6 +20,7 @@ export interface TaxonomySuggestion {
 export async function suggestOccupations(params: {
   query: string;
   locale: string;
+  filters?: TypeaheadBoostFilters;
 }): Promise<TaxonomySuggestion[]> {
   const q = params.query.trim();
   if (q.length < 2) return [];
@@ -53,7 +55,17 @@ export async function suggestOccupations(params: {
 
     if (!result.hits || result.hits.length === 0) return [];
 
-    return result.hits.map((hit) => _mapOccupationHit(hit as unknown as TypesenseHit));
+    const suggestions = result.hits.map((hit) =>
+      _mapOccupationHit(hit as unknown as TypesenseHit),
+    );
+
+    if (!params.filters) return suggestions;
+    return boostByFilterMatches(
+      suggestions,
+      "occupation_id",
+      (s) => s.id,
+      params.filters,
+    );
   } catch {
     return [];
   }
@@ -77,6 +89,7 @@ function _mapOccupationHit(hit: TypesenseHit): TaxonomySuggestion {
 export async function suggestSeniorities(params: {
   query: string;
   locale: string;
+  filters?: TypeaheadBoostFilters;
 }): Promise<TaxonomySuggestion[]> {
   const q = params.query.trim();
   if (q.length < 2) return [];
@@ -110,7 +123,17 @@ export async function suggestSeniorities(params: {
 
     if (!result.hits || result.hits.length === 0) return [];
 
-    return result.hits.map((hit) => _mapSeniorityHit(hit as unknown as TypesenseHit));
+    const suggestions = result.hits.map((hit) =>
+      _mapSeniorityHit(hit as unknown as TypesenseHit),
+    );
+
+    if (!params.filters) return suggestions;
+    return boostByFilterMatches(
+      suggestions,
+      "seniority_id",
+      (s) => s.id,
+      params.filters,
+    );
   } catch {
     return [];
   }
@@ -134,6 +157,7 @@ function _mapSeniorityHit(hit: TypesenseHit): TaxonomySuggestion {
 export async function suggestTechnologies(params: {
   query: string;
   locale: string;
+  filters?: TypeaheadBoostFilters;
 }): Promise<TaxonomySuggestion[]> {
   const q = params.query.trim();
   if (q.length < 2) return [];
@@ -153,7 +177,7 @@ export async function suggestTechnologies(params: {
 
     if (!result.hits || result.hits.length === 0) return [];
 
-    return result.hits.map((hit) => {
+    const suggestions = result.hits.map((hit) => {
       const doc = (hit as unknown as TypesenseHit).document;
       return {
         id: doc.technology_id as number,
@@ -161,6 +185,14 @@ export async function suggestTechnologies(params: {
         name: (doc.name ?? doc.slug) as string,
       };
     });
+
+    if (!params.filters) return suggestions;
+    return boostByFilterMatches(
+      suggestions,
+      "technology_ids",
+      (s) => s.id,
+      params.filters,
+    );
   } catch {
     return [];
   }

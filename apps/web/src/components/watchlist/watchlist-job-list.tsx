@@ -32,6 +32,7 @@ export interface WatchlistJobListFilters {
   salaryMax?: number;
   experienceMin?: number;
   experienceMax?: number;
+  languages?: string[];
 }
 
 function formatDateDivider(dateStr: string, todayLabel: string, yesterdayLabel: string): string {

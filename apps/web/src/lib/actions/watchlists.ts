@@ -798,6 +798,7 @@ export async function getWatchlistPostings(params: {
   salaryMax?: number;
   experienceMin?: number;
   experienceMax?: number;
+  languages?: string[];
 }): Promise<{ postings: WatchlistPostingEntry[]; total: number; truncated?: boolean }> {
   // No companies selected and not "any company" mode → empty
   if (!params.anyCompany && params.companyIds.length === 0) {
@@ -1045,6 +1046,7 @@ async function _getWatchlistPostingsTypesense(
     salaryMax?: number;
     experienceMin?: number;
     experienceMax?: number;
+    languages?: string[];
   },
   userId: string | null,
 ): Promise<{ postings: WatchlistPostingEntry[]; total: number; truncated?: boolean }> {
@@ -1062,6 +1064,7 @@ async function _getWatchlistPostingsTypesense(
     salaryMaxEur: params.salaryMax,
     experienceMin: params.experienceMin,
     experienceMax: params.experienceMax,
+    languages: params.languages,
   });
 
   const hasKeywords = params.keywords && params.keywords.length > 0;
@@ -1135,6 +1138,7 @@ async function _getWatchlistPostingsBatched(
     salaryMax?: number;
     experienceMin?: number;
     experienceMax?: number;
+    languages?: string[];
   },
   userId: string | null,
 ): Promise<{ postings: WatchlistPostingEntry[]; total: number; truncated?: boolean }> {
@@ -1150,6 +1154,7 @@ async function _getWatchlistPostingsBatched(
     salaryMaxEur: params.salaryMax,
     experienceMin: params.experienceMin,
     experienceMax: params.experienceMax,
+    languages: params.languages,
   });
 
   const hasKeywords = params.keywords && params.keywords.length > 0;
@@ -1246,6 +1251,7 @@ async function _getWatchlistPostingsPostgres(
     salaryMax?: number;
     experienceMin?: number;
     experienceMax?: number;
+    languages?: string[];
   },
   userId: string | null,
 ): Promise<{ postings: WatchlistPostingEntry[]; total: number; truncated?: boolean }> {
@@ -1306,6 +1312,12 @@ async function _getWatchlistPostingsPostgres(
     } else {
       clauses.push(sql`(jp.experience_min IS NULL OR jp.experience_min <= ${params.experienceMax!})`);
     }
+  }
+  // Match Typesense semantics: include postings with no detected language
+  // (empty `locales` array — the `_none` sentinel on the Typesense side).
+  if (params.languages && params.languages.length > 0) {
+    const pgArr = `{${params.languages.join(",")}}`;
+    clauses.push(sql`(jp.locales && ${pgArr}::text[] OR cardinality(jp.locales) = 0)`);
   }
 
   const whereClause = sql.join(clauses, sql` AND `);
