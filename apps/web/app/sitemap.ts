@@ -5,6 +5,61 @@ import { cached } from "@/lib/cache";
 import { siteConfig } from "@/content/config";
 import { locales } from "@/lib/i18n";
 
+type SitemapCompanyRow = {
+  slug: string;
+  updated_at: Date;
+  active_count: number;
+};
+
+async function fetchSitemapCompanies(): Promise<SitemapCompanyRow[]> {
+  // Use Typesense company collection (has precomputed active_posting_count)
+  // instead of correlated subquery on Supabase that was consuming 10% compute.
+  try {
+    const { getSearchClient } = await import("@/lib/search/typesense-client");
+    const client = getSearchClient();
+    const perPage = 250;
+    const companies: SitemapCompanyRow[] = [];
+
+    for (let page = 1; ; page += 1) {
+      const result = await client.collections("company").documents().search({
+        q: "*",
+        query_by: "name",
+        filter_by: "active_posting_count:>0",
+        sort_by: "active_posting_count:desc",
+        per_page: perPage,
+        page,
+        include_fields: "slug,active_posting_count",
+      });
+
+      const hits = result.hits ?? [];
+      for (const hit of hits) {
+        const doc = hit.document as Record<string, unknown>;
+        companies.push({
+          slug: doc.slug as string,
+          updated_at: new Date(),
+          active_count: (doc.active_posting_count as number) ?? 0,
+        });
+      }
+
+      if (hits.length < perPage) break;
+      if (typeof result.found === "number" && page * perPage >= result.found) break;
+    }
+
+    return companies;
+  } catch {
+    // Typesense unavailable — fall back to simple Postgres query without counts
+    const rows = await db.execute<{ slug: string; updated_at: Date }>(sql`
+      SELECT c.slug, c.updated_at FROM company c
+      WHERE EXISTS (SELECT 1 FROM job_posting jp WHERE jp.company_id = c.id AND jp.is_active = true)
+      ORDER BY c.slug
+    `);
+    return (rows as unknown as { slug: string; updated_at: Date }[]).map((r) => ({
+      ...r,
+      active_count: 0,
+    }));
+  }
+}
+
 /** Build hreflang alternates map for a given path (without locale prefix). */
 function langAlternates(path: string): Record<string, string> {
   const languages: Record<string, string> = {};
@@ -51,41 +106,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const CURATED_USERNAME = "colophongroup";
 
   const [companies, watchlists] = await Promise.all([
-    cached("sitemap:companies", async () => {
-      // Use Typesense company collection (has precomputed active_posting_count)
-      // instead of correlated subquery on Supabase that was consuming 10% compute.
-      try {
-        const { getSearchClient } = await import("@/lib/search/typesense-client");
-        const client = getSearchClient();
-        const result = await client.collections("company").documents().search({
-          q: "*",
-          query_by: "name",
-          filter_by: "active_posting_count:>0",
-          sort_by: "active_posting_count:desc",
-          per_page: 250,
-          include_fields: "slug,active_posting_count",
-        });
-        return (result.hits ?? []).map((hit) => {
-          const doc = hit.document as Record<string, unknown>;
-          return {
-            slug: doc.slug as string,
-            updated_at: new Date(),
-            active_count: (doc.active_posting_count as number) ?? 0,
-          };
-        });
-      } catch {
-        // Typesense unavailable — fall back to simple Postgres query without counts
-        const rows = await db.execute<{ slug: string; updated_at: Date }>(sql`
-          SELECT c.slug, c.updated_at FROM company c
-          WHERE EXISTS (SELECT 1 FROM job_posting jp WHERE jp.company_id = c.id AND jp.is_active = true)
-          ORDER BY c.slug
-        `);
-        return (rows as unknown as { slug: string; updated_at: Date }[]).map((r) => ({
-          ...r,
-          active_count: 0,
-        }));
-      }
-    }, { ttl: 3600 }),
+    cached("sitemap:companies", fetchSitemapCompanies, { ttl: 3600 }),
     cached("sitemap:watchlists", () => db.execute<{
       user_slug: string;
       watchlist_slug: string;

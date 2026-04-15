@@ -148,6 +148,8 @@ async def _parse_robots_sitemaps(
 async def _resolve_sitemap_index(
     root: ET.Element,
     client: httpx.AsyncClient,
+    *,
+    seen: set[str] | None = None,
 ) -> list[ET.Element]:
     """Fetch all child sitemaps from a sitemap index.
 
@@ -160,10 +162,20 @@ async def _resolve_sitemap_index(
     job_children = [u for u in children if _is_job_related(u)]
     targets = job_children if job_children else children
     log.debug("sitemap.index_resolved", targets=len(targets), total_children=len(children))
+    if seen is None:
+        seen = set()
     results: list[ET.Element] = []
     for target in targets:
+        if target in seen:
+            log.debug("sitemap.index_cycle_skipped", target=target)
+            continue
+        seen.add(target)
         child_root = await _try_fetch_xml(target, client)
-        if child_root is not None:
+        if child_root is None:
+            continue
+        if _is_sitemap_index(child_root):
+            results.extend(await _resolve_sitemap_index(child_root, client, seen=seen))
+        else:
             results.append(child_root)
     return results
 
