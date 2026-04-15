@@ -7,9 +7,8 @@ import {
   watchlistCompany,
   company,
 } from "@/db/schema";
-import { getSession, getSessionUserId } from "@/lib/sessionCache";
-import { getPreferences } from "@/lib/actions/preferences";
-import { resolveJobLanguages } from "@/lib/job-languages";
+import { getSessionUserId } from "@/lib/sessionCache";
+import { getViewerLanguages } from "@/lib/viewer";
 import { cached } from "@/lib/cache";
 import { canCreateWatchlist, getUserPlan, PLAN_LIMITS } from "@/lib/plans";
 import { generateUniqueSlug } from "@/lib/watchlist-slug";
@@ -18,6 +17,7 @@ import { expandLocationIds, resolveLocationSlugs } from "@/lib/actions/locations
 import { expandOccupationIds, resolveOccupationSlugs, resolveSenioritySlugs, resolveTechnologySlugs } from "@/lib/actions/taxonomy";
 import { getSearchClient } from "@/lib/search/typesense-client";
 import { buildFilterString } from "@/lib/search/typesense-filters";
+import { localesOrNoneClause } from "@/lib/search/pg-filters";
 import {
   upsertWatchlist as tsUpsertWatchlist,
   deleteWatchlist as tsDeleteWatchlist,
@@ -416,7 +416,7 @@ export async function getUserWatchlists(locale: string): Promise<WatchlistSummar
   const userId = await getSessionUserId();
   if (!userId) return [];
 
-  const languages = await resolveViewerLanguages(locale);
+  const languages = await getViewerLanguages(locale);
 
   const rows = await db.execute<{
     [key: string]: unknown;
@@ -548,17 +548,6 @@ export type PublicWatchlistEntry = WatchlistSummary & {
   mirrorCount: number;
 };
 
-/**
- * Resolve the current viewer's effective job-language filter.
- * Anonymous viewers fall through to `[locale]` (UI locale only), matching
- * the behavior of explore and company pages.
- */
-async function resolveViewerLanguages(locale: string): Promise<string[]> {
-  const session = await getSession();
-  const prefs = session ? await getPreferences() : null;
-  return resolveJobLanguages(prefs?.jobLanguages ?? [], locale);
-}
-
 /** Stable cache-key fragment for a viewer's language filter. */
 function languagesCacheKey(languages: string[] | undefined): string {
   if (!languages || languages.length === 0) return "all";
@@ -589,8 +578,9 @@ function buildFilterCacheKey(f: WatchlistFilters, companyIds: string[]): string 
  */
 export async function getWatchlistMatchingCompanyCount(
   f: WatchlistFilters,
+  languages?: string[],
 ): Promise<number> {
-  const key = `wl-match-companies:${buildFilterCacheKey(f, [])}`;
+  const key = `wl-match-companies:${buildFilterCacheKey(f, [])}:${languagesCacheKey(languages)}`;
   return cached(key, async () => {
     const locale = "en";
     const [locMap, occMap, senMap, techMap] = await Promise.all([
@@ -609,6 +599,7 @@ export async function getWatchlistMatchingCompanyCount(
       salaryMaxEur: f.salaryMax,
       experienceMin: f.experienceMin,
       experienceMax: f.experienceMax,
+      languages,
     });
 
     const fullFilter = `is_active:true${filterStr ? " && " + filterStr : ""}`;
@@ -754,7 +745,7 @@ export async function searchPublicWatchlists(params: {
   const q = params.query.trim();
   if (!q) return { watchlists: [], total: 0 };
 
-  const languages = await resolveViewerLanguages(params.locale);
+  const languages = await getViewerLanguages(params.locale);
   const langKey = languagesCacheKey(languages);
 
   return cached(
@@ -789,7 +780,7 @@ export async function getPopularWatchlists(params: {
   limit: number;
   locale: string;
 }): Promise<{ watchlists: PublicWatchlistEntry[]; total: number }> {
-  const languages = await resolveViewerLanguages(params.locale);
+  const languages = await getViewerLanguages(params.locale);
   const langKey = languagesCacheKey(languages);
 
   return cached(
@@ -1349,12 +1340,8 @@ async function _getWatchlistPostingsPostgres(
       clauses.push(sql`(jp.experience_min IS NULL OR jp.experience_min <= ${params.experienceMax!})`);
     }
   }
-  // Match Typesense semantics: include postings with no detected language
-  // (empty `locales` array — the `_none` sentinel on the Typesense side).
-  if (params.languages && params.languages.length > 0) {
-    const pgArr = `{${params.languages.join(",")}}`;
-    clauses.push(sql`(jp.locales && ${pgArr}::text[] OR cardinality(jp.locales) = 0)`);
-  }
+  const localesClause = localesOrNoneClause(params.languages);
+  if (localesClause) clauses.push(localesClause);
 
   const whereClause = sql.join(clauses, sql` AND `);
 

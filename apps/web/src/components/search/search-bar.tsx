@@ -170,6 +170,26 @@ export function SearchBar({
         setIsOpen(false);
         return;
       }
+      // Build the shared filter context for typeahead boost once; each
+      // suggest* call omits its own dimension so the boost query re-ranks
+      // candidates against the viewer's *other* filters (matches the
+      // browse-all-modal convention and prevents sticky self-matches).
+      const baseFilters = {
+        companyId,
+        keywords: baseKeywords,
+        locationIds: baseLocationIds,
+        occupationIds: baseOccupationIds,
+        seniorityIds: baseSeniorityIds,
+        technologyIds: baseTechnologyIds,
+        languages: baseLanguages,
+      };
+      const filtersExcluding = (
+        omit: "locationIds" | "occupationIds" | "seniorityIds" | "technologyIds",
+      ) => {
+        const { [omit]: _omitted, ...rest } = baseFilters;
+        return rest;
+      };
+
       debounceRef.current = setTimeout(() => {
         // Fire all requests independently so results appear as they arrive
         setActiveIndex(-1);
@@ -182,14 +202,7 @@ export function SearchBar({
           locale: lang,
           userLat,
           userLng,
-          filters: {
-            companyId,
-            keywords: baseKeywords,
-            occupationIds: baseOccupationIds,
-            seniorityIds: baseSeniorityIds,
-            technologyIds: baseTechnologyIds,
-            languages: baseLanguages,
-          },
+          filters: filtersExcluding("locationIds"),
         }).then((locs) => {
           const filtered = selectedLocationIds
             ? locs.filter((r) => !selectedLocationIds.has(r.id))
@@ -200,14 +213,7 @@ export function SearchBar({
         suggestOccupations({
           query,
           locale: lang,
-          filters: {
-            companyId,
-            keywords: baseKeywords,
-            locationIds: baseLocationIds,
-            seniorityIds: baseSeniorityIds,
-            technologyIds: baseTechnologyIds,
-            languages: baseLanguages,
-          },
+          filters: filtersExcluding("occupationIds"),
         }).then((occs) => {
           const filtered = occs.filter((r) => !selectedOccupationIds.has(r.id));
           setOccupationResults(filtered);
@@ -216,14 +222,7 @@ export function SearchBar({
         suggestSeniorities({
           query,
           locale: lang,
-          filters: {
-            companyId,
-            keywords: baseKeywords,
-            locationIds: baseLocationIds,
-            occupationIds: baseOccupationIds,
-            technologyIds: baseTechnologyIds,
-            languages: baseLanguages,
-          },
+          filters: filtersExcluding("seniorityIds"),
         }).then((sens) => {
           const filtered = sens.filter((r) => !selectedSeniorityIds.has(r.id));
           setSeniorityResults(filtered);
@@ -232,14 +231,7 @@ export function SearchBar({
         suggestTechnologies({
           query,
           locale: lang,
-          filters: {
-            companyId,
-            keywords: baseKeywords,
-            locationIds: baseLocationIds,
-            occupationIds: baseOccupationIds,
-            seniorityIds: baseSeniorityIds,
-            languages: baseLanguages,
-          },
+          filters: filtersExcluding("technologyIds"),
         }).then((techs) => {
           const filtered = techs.filter((r) => !selectedTechnologyIds.has(r.id));
           setTechnologyResults(filtered);

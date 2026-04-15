@@ -27,22 +27,21 @@ export async function boostByFilterMatches<T>(
 ): Promise<T[]> {
   if (candidates.length === 0) return candidates;
 
-  // No active filter dimensions → boost would be a no-op (every taxonomy
-  // candidate already has has_active_postings:true). Skip the round-trip.
+  // No active filter dimensions AND no keyword query → boost would be a
+  // no-op (every taxonomy candidate already has has_active_postings:true).
+  // Skip the round-trip. Keywords aren't emitted by buildFilterString (they
+  // go into `q`), so check them separately.
   const filterStr = buildFilterString(filters);
-  if (!filterStr) return candidates;
+  const hasKeywords = filters.keywords && filters.keywords.length > 0;
+  if (!filterStr && !hasKeywords) return candidates;
 
   try {
     const client = getSearchClient();
     const ids = candidates.map(idOf);
 
-    const filterParts = [
-      "is_active:true",
-      `${facetField}:[${ids.join(",")}]`,
-      filterStr,
-    ];
+    const filterParts = ["is_active:true", `${facetField}:[${ids.join(",")}]`];
+    if (filterStr) filterParts.push(filterStr);
 
-    const hasKeywords = filters.keywords && filters.keywords.length > 0;
     const q = hasKeywords ? filters.keywords!.join(" ") : "*";
 
     const result = await client

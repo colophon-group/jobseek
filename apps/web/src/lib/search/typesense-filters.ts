@@ -1,5 +1,3 @@
-import type { HistogramFilters } from "./types";
-
 /**
  * Build a Typesense filter_by string from user-specified filter dimensions.
  *
@@ -77,13 +75,4 @@ export function buildFilterString(
   }
 
   return parts.join(" && ");
-}
-
-/**
- * Build a filter string from HistogramFilters (subset of SearchFilters).
- * `keywords` is the search query, not a filter clause — buildFilterString
- * silently ignores it.
- */
-export function buildHistogramFilterString(filters: HistogramFilters): string {
-  return buildFilterString(filters);
 }

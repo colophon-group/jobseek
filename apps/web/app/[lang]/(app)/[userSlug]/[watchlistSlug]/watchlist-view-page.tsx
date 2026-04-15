@@ -566,10 +566,9 @@ export function WatchlistViewPage({
       </div>
 
       {/* Language-scope disclosure — watchlist postings are filtered by
-          the viewer's jobLanguages pref, so surface the active scope. */}
-      <div className="flex justify-end">
-        <LanguageNote jobLanguages={jobLanguages} locale={locale} />
-      </div>
+          the viewer's jobLanguages pref, so surface the active scope
+          (left-aligned to match the toolbar convention on explore/company). */}
+      <LanguageNote jobLanguages={jobLanguages} locale={locale} />
 
       {/* Job results */}
       <WatchlistJobList

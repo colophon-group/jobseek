@@ -11,6 +11,7 @@ import { expandOccupationIds } from "@/lib/actions/taxonomy";
 import { ANON_MAX_POSTINGS } from "@/lib/search/constants";
 import { getSearchClient } from "@/lib/search/typesense-client";
 import { buildFilterString } from "@/lib/search/typesense-filters";
+import { localesOrNoneClause } from "@/lib/search/pg-filters";
 
 // ── Company suggestions (search bar autocomplete) ───────────────────
 
@@ -429,11 +430,8 @@ async function _searchCompaniesForWatchlistPostgres(params: {
       jobClauses.push(sql`(jp.experience_min IS NULL OR jp.experience_min <= ${params.experienceMax!})`);
     }
   }
-  // Match Typesense semantics: include postings with no detected language.
-  if (params.languages && params.languages.length > 0) {
-    const a = `{${params.languages.join(",")}}`;
-    jobClauses.push(sql`(jp.locales && ${a}::text[] OR cardinality(jp.locales) = 0)`);
-  }
+  const localesClause = localesOrNoneClause(params.languages);
+  if (localesClause) jobClauses.push(localesClause);
   const jobWhere = sql.join(jobClauses, sql` AND `);
 
   const [totalRow] = await db.execute<{ [key: string]: unknown; cnt: number }>(sql`
