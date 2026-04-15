@@ -4,8 +4,8 @@ import { isLocale, defaultLocale, loadCatalog } from "@/lib/i18n";
 import {
   getWatchlistByUserAndSlug as _getWatchlistByUserAndSlug,
   getWatchlistMatchingCompanyCount,
-  isTrivialWatchlist,
 } from "@/lib/actions/watchlists";
+import { isTrivialWatchlist } from "@/lib/watchlist-utils";
 import { siteConfig } from "@/content/config";
 import { buildAlternates } from "@/lib/seo";
 import { WatchlistContent } from "./watchlist-content";
