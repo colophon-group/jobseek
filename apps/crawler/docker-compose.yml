@@ -19,12 +19,12 @@ x-common-env: &common-env
   TYPESENSE_PORT: ${TYPESENSE_PORT}
   TYPESENSE_PROTOCOL: ${TYPESENSE_PROTOCOL}
   TYPESENSE_ADMIN_KEY: ${TYPESENSE_ADMIN_KEY}
-  # CDP-routed transport (PR #2076). Optional — when both are set, the
-  # shared httpx client routes hosts in CDP_ROUTES through the Lightpanda
-  # cloud service to bypass datacenter-IP anti-bot blocks (e.g. AWS WAF
-  # on apply.starbucks.com). See src/shared/cdp.py.
-  LIGHTPANDA_CDP_URL: ${LIGHTPANDA_CDP_URL:-}
-  CDP_ROUTES: ${CDP_ROUTES:-}
+  # Proxy provider — applies to boards with ``"proxy": true`` in their
+  # monitor_config / scraper_config (see src/shared/proxy.py). Secrets
+  # for idle providers stay set so operators can swap with one env flip.
+  PROXY_PROVIDER: ${PROXY_PROVIDER:-none}
+  WEBSHARE_PROXY_URL: ${WEBSHARE_PROXY_URL:-}
+  DECODO_PROXY_URL: ${DECODO_PROXY_URL:-}
 
 services:
   # -- Redis -------------------------------------------------------
@@ -52,13 +52,8 @@ services:
     init: true
     restart: unless-stopped
     network_mode: host
-    # Give the cli.py SIGTERM handler time to flush Lightpanda CDP
-    # sessions and close the Postgres pool. Default 10s is too tight:
-    # Lightpanda close has a 5s per-session timeout, and Postgres pool
-    # close can take a few seconds under load. 30s is the conservative
-    # value the rest of the worker services use too. Without this, a
-    # docker stop hits SIGKILL before shutdown_all_sessions runs and
-    # leaks ~6 minutes of Lightpanda browser-hours per restart.
+    # Give the cli.py SIGTERM handler time to close the Postgres pool
+    # under load. Default 10s is too tight; 30s is conservative.
     stop_grace_period: 30s
     command: uv run --no-sync crawler run
     environment:
@@ -84,7 +79,7 @@ services:
     init: true
     restart: unless-stopped
     network_mode: host
-    stop_grace_period: 30s  # see worker-1 — needed for clean Lightpanda close
+    stop_grace_period: 30s  # see worker-1 — gives Postgres pool time to drain
     command: uv run --no-sync crawler run
     environment:
       <<: *common-env
@@ -109,7 +104,7 @@ services:
     init: true
     restart: unless-stopped
     network_mode: host
-    stop_grace_period: 30s  # see worker-1 — needed for clean Lightpanda close
+    stop_grace_period: 30s  # see worker-1 — gives Postgres pool time to drain
     command: uv run --no-sync crawler run
     environment:
       <<: *common-env
@@ -167,7 +162,7 @@ services:
     init: true
     restart: unless-stopped
     network_mode: host
-    stop_grace_period: 30s  # see worker-1 — needed for clean Lightpanda close
+    stop_grace_period: 30s  # see worker-1 — gives Postgres pool time to drain
     command: uv run --no-sync crawler run-browser
     environment:
       <<: *common-env

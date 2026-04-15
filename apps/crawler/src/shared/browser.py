@@ -120,7 +120,7 @@ async def open_page(
     pw,  # AsyncPlaywright
     config: dict | None = None,
     *,
-    target_url: str | None = None,
+    use_proxy: bool = False,
 ) -> AsyncIterator:
     """Create browser → context → page.  Yields a Playwright *Page*.
 
@@ -130,8 +130,8 @@ async def open_page(
 
     Config keys consumed: ``user_agent``, ``headless`` (default ``True``).
 
-    When *target_url* is provided and the target domain has a proxy configured
-    (via ``PROXY_MAP``), the browser is launched through that proxy.
+    When ``use_proxy`` is True, the browser launches through the active
+    proxy provider (see :mod:`src.shared.proxy`).
     """
     config = config or {}
     headless = config.get("headless", True)
@@ -149,10 +149,10 @@ async def open_page(
         extra_args.append("--disable-http2")
     if extra_args:
         launch_kwargs["args"] = extra_args
-    if target_url:
-        from src.shared.proxy import build_playwright_proxy
+    if use_proxy:
+        from src.shared.proxy import playwright_proxy_for
 
-        pw_proxy = build_playwright_proxy(target_url)
+        pw_proxy = playwright_proxy_for(use_proxy=True)
         if pw_proxy:
             launch_kwargs["proxy"] = pw_proxy
 
@@ -486,14 +486,17 @@ async def render(url: str, config: dict | None = None, pw=None) -> str:
     config = config or {}
 
     if pw is not None:
-        async with open_page(pw, config, target_url=url) as page:
+        async with open_page(pw, config, use_proxy=bool(config.get("proxy"))) as page:
             await navigate(page, url, config)
             await run_actions(page, config.get("actions", []))
             return await page.content()
 
     from playwright.async_api import async_playwright
 
-    async with async_playwright() as _pw, open_page(_pw, config, target_url=url) as page:
+    async with (
+        async_playwright() as _pw,
+        open_page(_pw, config, use_proxy=bool(config.get("proxy"))) as page,
+    ):
         await navigate(page, url, config)
         await run_actions(page, config.get("actions", []))
         return await page.content()

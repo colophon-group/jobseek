@@ -230,9 +230,10 @@ async def scrape(
 
     if render:
         browser_config = {k: v for k, v in config.items() if k in BROWSER_KEYS}
+        use_proxy = bool(config.get("proxy"))
 
         async def _render_page(p):
-            async with open_page(p, browser_config, target_url=url) as page:
+            async with open_page(p, browser_config, use_proxy=use_proxy) as page:
                 await navigate(page, url, browser_config)
                 await run_actions(page, browser_config.get("actions", []))
                 return await page.content()

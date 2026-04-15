@@ -1,79 +1,95 @@
-"""Tests for src.shared.proxy — per-domain proxy routing."""
+"""Tests for src.shared.proxy — provider-based proxy layer."""
 
 from __future__ import annotations
 
-import pytest
+from src.shared.proxy import (
+    StaticProxyProvider,
+    get_provider,
+    httpx_proxy_for,
+    playwright_proxy_for,
+)
 
-from src.shared.proxy import build_httpx_mounts, build_playwright_proxy, proxy_for_url
 
-
-@pytest.fixture(autouse=True)
-def _patch_proxy_map(monkeypatch):
-    """Default: proxy map with one entry."""
+def _set_provider(monkeypatch, name: str, webshare: str = "", decodo: str = "") -> None:
     from src import config
 
-    monkeypatch.setattr(
-        config.settings,
-        "proxy_map",
-        {"apply.workable.com": "http://user:pass@gate.smartproxy.com:7777"},
-    )
+    monkeypatch.setattr(config.settings, "proxy_provider", name)
+    monkeypatch.setattr(config.settings, "webshare_proxy_url", webshare)
+    monkeypatch.setattr(config.settings, "decodo_proxy_url", decodo)
 
 
-class TestProxyForUrl:
-    def test_exact_match(self):
-        result = proxy_for_url("https://apply.workable.com/company/j/ABC123/")
-        assert result == "http://user:pass@gate.smartproxy.com:7777"
+class TestStaticProxyProvider:
+    def test_returns_url(self):
+        p = StaticProxyProvider("webshare", "http://u:p@host:1000")
+        assert p.name == "webshare"
+        assert p.proxy_url() == "http://u:p@host:1000"
 
-    def test_no_match(self):
-        assert proxy_for_url("https://example.com/jobs") is None
-
-    def test_empty_map(self, monkeypatch):
-        from src import config
-
-        monkeypatch.setattr(config.settings, "proxy_map", {})
-        assert proxy_for_url("https://apply.workable.com/foo") is None
+    def test_empty_url_returns_none(self):
+        p = StaticProxyProvider("webshare", "")
+        assert p.proxy_url() is None
 
 
-class TestBuildHttpxMounts:
-    def test_builds_correct_mount_keys(self):
-        mounts = build_httpx_mounts()
-        assert mounts is not None
-        assert "all://apply.workable.com" in mounts
+class TestGetProvider:
+    def test_webshare(self, monkeypatch):
+        _set_provider(monkeypatch, "webshare", webshare="http://u:p@ws:7000")
+        p = get_provider()
+        assert p is not None
+        assert p.name == "webshare"
+        assert p.proxy_url() == "http://u:p@ws:7000"
 
-    def test_returns_none_when_empty(self, monkeypatch):
-        from src import config
+    def test_decodo(self, monkeypatch):
+        _set_provider(monkeypatch, "decodo", decodo="http://u:p@dc:10001")
+        p = get_provider()
+        assert p is not None
+        assert p.name == "decodo"
+        assert p.proxy_url() == "http://u:p@dc:10001"
 
-        monkeypatch.setattr(config.settings, "proxy_map", {})
-        assert build_httpx_mounts() is None
+    def test_none(self, monkeypatch):
+        _set_provider(monkeypatch, "none", webshare="http://u:p@ws:7000")
+        assert get_provider() is None
+
+    def test_unknown_provider_returns_none(self, monkeypatch):
+        _set_provider(monkeypatch, "iproyal", webshare="http://u:p@ws:7000")
+        assert get_provider() is None
+
+    def test_webshare_without_url_returns_none(self, monkeypatch):
+        _set_provider(monkeypatch, "webshare")
+        assert get_provider() is None
 
 
-class TestBuildPlaywrightProxy:
-    def test_returns_dict_with_credentials(self):
-        result = build_playwright_proxy("https://apply.workable.com/company/")
-        assert result is not None
-        assert result["server"] == "http://gate.smartproxy.com:7777"
-        assert result["username"] == "user"
-        assert result["password"] == "pass"
+class TestHttpxProxyFor:
+    def test_opt_out_returns_none(self, monkeypatch):
+        _set_provider(monkeypatch, "webshare", webshare="http://u:p@ws:7000")
+        assert httpx_proxy_for(use_proxy=False) is None
 
-    def test_returns_none_when_no_match(self):
-        assert build_playwright_proxy("https://example.com/jobs") is None
+    def test_opt_in_returns_url(self, monkeypatch):
+        _set_provider(monkeypatch, "webshare", webshare="http://u:p@ws:7000")
+        assert httpx_proxy_for(use_proxy=True) == "http://u:p@ws:7000"
 
-    def test_returns_none_when_empty_map(self, monkeypatch):
-        from src import config
+    def test_opt_in_no_provider_returns_none(self, monkeypatch):
+        _set_provider(monkeypatch, "none")
+        assert httpx_proxy_for(use_proxy=True) is None
 
-        monkeypatch.setattr(config.settings, "proxy_map", {})
-        assert build_playwright_proxy("https://apply.workable.com/foo") is None
+
+class TestPlaywrightProxyFor:
+    def test_opt_out_returns_none(self, monkeypatch):
+        _set_provider(monkeypatch, "webshare", webshare="http://u:p@ws:7000")
+        assert playwright_proxy_for(use_proxy=False) is None
+
+    def test_parses_credentials(self, monkeypatch):
+        _set_provider(monkeypatch, "webshare", webshare="http://user:pass@host.example:7000")
+        result = playwright_proxy_for(use_proxy=True)
+        assert result == {
+            "server": "http://host.example:7000",
+            "username": "user",
+            "password": "pass",
+        }
 
     def test_no_credentials(self, monkeypatch):
-        from src import config
+        _set_provider(monkeypatch, "webshare", webshare="http://host.example:8080")
+        result = playwright_proxy_for(use_proxy=True)
+        assert result == {"server": "http://host.example:8080"}
 
-        monkeypatch.setattr(
-            config.settings,
-            "proxy_map",
-            {"example.com": "http://proxy.example.com:8080"},
-        )
-        result = build_playwright_proxy("https://example.com/jobs")
-        assert result is not None
-        assert result["server"] == "http://proxy.example.com:8080"
-        assert "username" not in result
-        assert "password" not in result
+    def test_none_when_disabled(self, monkeypatch):
+        _set_provider(monkeypatch, "none")
+        assert playwright_proxy_for(use_proxy=True) is None

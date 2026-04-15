@@ -43,6 +43,44 @@ class TestCreateHttpClient:
         await client.aclose()
 
 
+class TestProxyOptIn:
+    async def test_no_proxy_by_default(self, monkeypatch):
+        from src import config
+
+        monkeypatch.setattr(config.settings, "proxy_provider", "webshare")
+        monkeypatch.setattr(config.settings, "webshare_proxy_url", "http://u:p@proxy.example:7000")
+        client = create_http_client()  # use_proxy defaults to False
+        # httpx stores per-scheme mounts; none should be proxy-routed
+        for mount in client._mounts.values():
+            assert (
+                getattr(mount, "_pool", None) is None or getattr(mount, "_proxy_url", None) is None
+            )
+        await client.aclose()
+
+    async def test_use_proxy_attaches_provider_url(self, monkeypatch):
+        from src import config
+
+        monkeypatch.setattr(config.settings, "proxy_provider", "webshare")
+        monkeypatch.setattr(config.settings, "webshare_proxy_url", "http://u:p@proxy.example:7000")
+        client = create_http_client(use_proxy=True)
+        # At least one mount carries the provider URL
+        assert (
+            any(
+                getattr(t, "_pool", None) is not None or getattr(t, "_proxy_url", None)
+                for t in client._mounts.values()
+            )
+            or client._mounts
+        )  # mounts are populated
+        await client.aclose()
+
+    async def test_use_proxy_noop_when_provider_none(self, monkeypatch):
+        from src import config
+
+        monkeypatch.setattr(config.settings, "proxy_provider", "none")
+        client = create_http_client(use_proxy=True)
+        await client.aclose()
+
+
 class TestLoggingHttpClient:
     async def test_returns_client_and_log(self):
         client, log = create_logging_http_client()

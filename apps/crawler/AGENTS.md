@@ -98,7 +98,7 @@ src/
 │   ├── csv_io.py          # CSV read/write utilities
 │   ├── http.py            # httpx client factory
 │   ├── nextdata.py        # Shared field extraction (extract_field, map, list spec, each+wrap)
-│   ├── proxy.py           # Per-domain proxy routing (PROXY_MAP env var)
+│   ├── proxy.py           # Provider-agnostic proxy layer (see Proxy-routed transport)
 │   ├── logging.py         # structlog config
 │   └── slug.py            # slugify utility
 ├── inspect.py             # CSV validation + diagnostic library
@@ -179,61 +179,66 @@ uv run crawler board <slug> --pcsx-full-crawl  # Force full PCSX crawl for
 uv run pytest tests/
 ```
 
-## CDP-routed transport (Lightpanda)
+## Proxy-routed transport
 
-Some sites (e.g. `apply.starbucks.com`) front their entire stack with AWS
-WAF rules that block Hetzner datacenter IPs with HTTP 405 captcha pages.
-For those, the crawler routes httpx requests through the Lightpanda cloud
-service over CDP — the request still goes through `httpx.AsyncClient`
-unchanged, but the underlying transport is a `LightpandaTransport`
-(`src/shared/cdp.py`) that issues the request via Playwright's
-`APIRequestContext.fetch()` against a remote browser. No DOM render, no
-JS execution — just HTTP-through-the-browser-network-stack.
+Some sites (e.g. `apply.starbucks.com`, `citi.eightfold.ai`) front their
+stack with AWS WAF rules that block Hetzner datacenter IPs with HTTP 405
+captcha pages. For those, the crawler routes httpx requests (and
+Playwright launches, when the monitor renders) through an external HTTP
+proxy provider. The implementation is in `src/shared/proxy.py`:
 
-### Configuration
+- `ProxyProvider` — `Protocol` interface with a `proxy_url()` method.
+- `StaticProxyProvider` — covers any service that exposes a single
+  `http://user:pass@host:port` endpoint (Webshare, Decodo, IPRoyal, …).
+- `get_provider()` — returns the active provider based on
+  `PROXY_PROVIDER`, or `None` when disabled.
+- `httpx_proxy_for(use_proxy=…)` / `playwright_proxy_for(use_proxy=…)` —
+  return a proxy URL / Playwright launch dict when the caller opts in.
 
-The list of CDP-routed hostnames lives in **`data/cdp_routes.csv`** —
-a normal repo-tracked file. Adding a new domain that needs to bypass
-WAF is a normal PR: edit the CSV, validate, merge. No GitHub secret
-update needed.
+Adding a new provider is one entry in `_PROVIDERS` + one env var. Adding
+a rotating/failover provider is one new class implementing the Protocol;
+call sites do not change.
+
+### Per-board opt-in
+
+A board opts into the proxy with `"proxy": true` in its `monitor_config`
+and/or `scraper_config` JSON — the same place as `render`, `skip_ssl`,
+`rescrape_policy`, etc. No new CSV column.
 
 ```csv
-hostname,backend,reason
-apply.starbucks.com,lightpanda,AWS WAF blocks Hetzner egress IPs
-jobs.northropgrumman.com,lightpanda,Intermittent AWS WAF block
-...
+starbucks,starbucks-eightfold,https://starbucks.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/"", ""proxy"": true}",eightfold,"{""enrich"": [""description""], ""proxy"": true}"
 ```
 
-Only `lightpanda` is a supported backend today; unknown backend names
-are logged and skipped. The `reason` column is documentation only.
+The monitor and scraper flags are independent. Typically both are set
+when a host is WAF-blocked (the monitor discovers new URLs and the
+scraper enriches them from the same WAF-protected origin).
 
-The `LIGHTPANDA_CDP_URL` env var (the `wss://` Lightpanda endpoint with
-auth token) must be set on the worker — it's a GitHub Actions secret
-forwarded by `deploy-crawler-browser.yml`.
+Adding a new WAF-blocked host = edit the CSV row + `uv run crawler sync`.
+No GitHub secret update, no deploy for the route list.
 
-The optional `CDP_ROUTES` env var (JSON) is a runtime override that
-wins over the file. Use for testing a new host before adding it to
-the file, or temporarily disabling a route on production without a
-deploy:
+### Provider selection
 
 ```bash
-CDP_ROUTES={"new.host.com":"lightpanda"}   # adds on top of the file
+PROXY_PROVIDER=webshare         # none | webshare | decodo
+WEBSHARE_PROXY_URL=http://user:pass@192.53.69.78:6716
+DECODO_PROXY_URL=http://user:pass@isp.decodo.com:10001
 ```
 
-The optional `CDP_ROUTES_FILE` env var overrides the path to the CSV
-(default: `apps/crawler/data/cdp_routes.csv`). Used by tests.
+All provider credentials are kept in env regardless of which is active,
+so swapping is a one-env-var flip (useful when a provider adds a host to
+its destination blocklist — e.g. Decodo blocks `citi.eightfold.ai` at
+the CONNECT level, Webshare doesn't).
+
+Unknown `PROXY_PROVIDER` values log a warning and fall through to "no
+proxy", which is fail-safe: boards with `proxy: true` fall back to
+direct egress instead of crashing the worker.
 
 ### Cost model
 
-Lightpanda bills by **browser-hours of session clock time** (not per
-request). The Explorer (free) tier is 10 h/mo, Builder is $19/mo for
-300 h. The crawler uses one shared session per process, lazily opened
-on first request and reused across all CDP-routed traffic in that
-worker — handshake cost is paid once per process, then amortized.
-
-For Starbucks-scale traffic (one sitemap fetch + a few PCSX pages +
-~50 detail-page scrapes per day), expect well under 1 h/month. Free
-tier handles it with room for ~10 more similarly-sized WAF'd boards.
+Residential / ISP proxies are metered by **GB of traffic**, not
+session-time. Starbucks-scale traffic (sitemap + PCSX incremental + ~50
+detail scrapes/day) fits inside a few GB/month per board. Cost scales
+linearly with the number of proxy-enabled boards.
 
 ### Disabling re-scrapes (cost saver)
 

@@ -70,7 +70,7 @@ async def _fetch_html(
     """Fetch page HTML, using Playwright when render is configured."""
     if metadata.get("render") and pw:
         browser_cfg = {k: v for k, v in metadata.items() if k in BROWSER_KEYS}
-        async with open_page(pw, browser_cfg, target_url=board_url) as page:
+        async with open_page(pw, browser_cfg, use_proxy=bool(metadata.get("proxy"))) as page:
             await navigate(page, board_url, browser_cfg)
             return await page.content()
 

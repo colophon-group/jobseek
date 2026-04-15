@@ -336,7 +336,7 @@ async def probe_pw(
     async def _probe_one(url: str) -> tuple[JobContent | None, dict | None]:
         """Probe a single URL, return (content, job_obj) or (None, None)."""
         try:
-            async with open_page(pw, {}, target_url=url) as page:
+            async with open_page(pw, {}) as page:
                 page_host = urlparse(url).netloc
                 exchanges = await capture_exchanges(page, page_host)
                 await navigate(page, url, {"wait": wait, "timeout": timeout})
@@ -472,6 +472,8 @@ async def scrape(
 
     from src.shared.browser import NAVIGATE_KEYS, navigate, open_page
 
+    use_proxy = bool(config.get("proxy"))
+
     async def _do_scrape(p):
         settle = config.get("settle", _DEFAULT_SETTLE)
         # Narrow projection: wait / wait_fallback / timeout (and actions, if the
@@ -481,7 +483,7 @@ async def scrape(
         nav_config.setdefault("wait", _DEFAULT_WAIT)
         nav_config.setdefault("timeout", _DEFAULT_TIMEOUT)
 
-        async with open_page(p, {}, target_url=url) as page:
+        async with open_page(p, {}, use_proxy=use_proxy) as page:
             page_host = urlparse(url).netloc
             exchanges = await capture_exchanges(page, page_host)
 

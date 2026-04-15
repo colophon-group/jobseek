@@ -28,34 +28,8 @@ _SUSPICIOUS_ROUND_THRESHOLDS = {1000, 5000, 10000, 50000, 100000}
 
 
 async def _shutdown_http(http) -> None:
-    """Close an httpx client AND release any Lightpanda CDP sessions.
-
-    Workspace commands run as one-shot processes, so the cli.py
-    ``finally:`` block that flushes Lightpanda sessions for the long-
-    running workers never fires here. Without this, every ``ws probe``
-    or ``ws run`` against a CDP-routed host would leak a ~6-minute
-    Lightpanda session and burn through the monthly browser-hours
-    quota during agent/dev iteration.
-
-    Idempotent — safe to call multiple times.
-
-    Both the http close and the session shutdown are wrapped so an
-    exception in one path can't mask the other (Python's try/finally
-    semantics suppress the original exception when the finally raises;
-    we explicitly swallow CDP shutdown errors to preserve the http
-    close error which is the more useful diagnostic).
-    """
-    try:
-        await http.aclose()
-    finally:
-        from src.shared.cdp import shutdown_all_sessions
-
-        try:
-            await shutdown_all_sessions()
-        except Exception:  # noqa: BLE001 — defensive cleanup, must not mask
-            import structlog
-
-            structlog.get_logger().warning("ws.shutdown_all_sessions_failed", exc_info=True)
+    """Close an httpx client. Idempotent — safe to call multiple times."""
+    await http.aclose()
 
 
 def _warn_suspicious_count(count: int, category: str) -> None:
@@ -1223,7 +1197,8 @@ def run_monitor(slug: str | None, board_alias: str | None, config_name: str | No
         from src.shared.http import create_logging_http_client
 
         ssl_verify = (board.monitor_config or {}).get("ssl_verify", True)
-        http, http_log = create_logging_http_client(verify=ssl_verify)
+        use_proxy = bool((mon_config or {}).get("proxy"))
+        http, http_log = create_logging_http_client(verify=ssl_verify, use_proxy=use_proxy)
         try:
             async with async_playwright() as pw:
                 start = time.monotonic()
@@ -1702,7 +1677,8 @@ def run_scraper(
         from src.shared.http import create_logging_http_client
 
         ssl_verify = (board.monitor_config or {}).get("ssl_verify", True)
-        http, http_log = create_logging_http_client(verify=ssl_verify)
+        use_proxy = bool((scr_config or {}).get("proxy"))
+        http, http_log = create_logging_http_client(verify=ssl_verify, use_proxy=use_proxy)
         results = []
         skipped: list[tuple[str, str]] = []
         try:
