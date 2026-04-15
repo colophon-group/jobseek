@@ -369,27 +369,29 @@ export async function copyWatchlist(
   }
 
   // Typesense write hooks (fire-and-forget):
-  // 1. Upsert the new copy (copies are always public)
-  _getOwnerInfo(userId).then((owner) => {
-    if (!owner) return;
-    tsUpsertWatchlist({
-      id: row.id,
-      slug,
-      title: source.title,
-      description: source.description ?? undefined,
-      owner_name: owner.name,
-      owner_username: owner.username ?? undefined,
-      company_count: companies.length,
-      active_job_count: 0, // refreshed by reconciliation cron
-      mirror_count: 0,
-      is_featured: (owner.username ?? "").toLowerCase() === "colophongroup",
-      has_description: !!source.description,
-      created_at: Math.floor(Date.now() / 1000),
-      is_public: true,
+  // 1. Upsert the new copy (copies are always public) — unless trivial
+  if (!isTrivialWatchlist(sourceFilters, companies.length)) {
+    _getOwnerInfo(userId).then((owner) => {
+      if (!owner) return;
+      tsUpsertWatchlist({
+        id: row.id,
+        slug,
+        title: source.title,
+        description: source.description ?? undefined,
+        owner_name: owner.name,
+        owner_username: owner.username ?? undefined,
+        company_count: companies.length,
+        active_job_count: 0, // refreshed by reconciliation cron
+        mirror_count: 0,
+        is_featured: (owner.username ?? "").toLowerCase() === "colophongroup",
+        has_description: !!source.description,
+        created_at: Math.floor(Date.now() / 1000),
+        is_public: true,
+      });
+    }).catch((err) => {
+      console.error("[copyWatchlist] Typesense upsert hook failed", err);
     });
-  }).catch((err) => {
-    console.error("[copyWatchlist] Typesense upsert hook failed", err);
-  });
+  }
 
   // 2. Update source watchlist's mirror_count (increment)
   _getWatchlistMirrorCount(watchlistId).then((count) => {
