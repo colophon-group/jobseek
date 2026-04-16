@@ -317,7 +317,7 @@ async def run() -> None:
                 if not rows:
                     print("No matching jobs.")
                 else:
-                    print(f"{'Title':<50} {'Company':<30} {'Score':<8} {'First seen'}")
+                    print(f"{'Title':<50} {'Company':<30} {'Visa':<8} {'First seen'}")
                     print("-" * 100)
                     for r in rows:
                         print(

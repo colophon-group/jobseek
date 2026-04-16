@@ -15,6 +15,7 @@ from src.core.enrich.local import (
     _build_exclude_regex,
     fetch_html_local,
     mark_candidates_from_yaml,
+    run_sync_enrich,
 )
 
 
@@ -101,3 +102,63 @@ async def test_fetch_html_local_returns_none_when_missing():
 
     html = await fetch_html_local(pool, "some-uuid", "en")
     assert html is None
+
+
+# ── run_sync_enrich ───────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_run_sync_enrich_happy_path():
+    """Two postings with HTML: both get enriched, _persist_results called once."""
+    import uuid
+    from unittest.mock import patch
+
+    fake_id_1 = str(uuid.uuid4())
+    fake_id_2 = str(uuid.uuid4())
+
+    # pool.fetch returns 2 rows on first call, empty on second (terminates loop)
+    row1 = {"id": fake_id_1, "title": "Engineer", "locale": "en", "employment_type": "full_time"}
+    row2 = {"id": fake_id_2, "title": "Analyst", "locale": "en", "employment_type": "full_time"}
+    pool = MagicMock()
+    pool.fetch = AsyncMock(side_effect=[[row1, row2], []])
+    pool.fetchval = AsyncMock(return_value="<p>Job HTML</p>")
+    pool.execute = AsyncMock(return_value=None)
+
+    provider = MagicMock()
+    provider.generate = AsyncMock(
+        return_value=({"work_permit_support": "yes", "seniority": "entry"}, MagicMock())
+    )
+
+    with patch("src.core.enrich.batch._persist_results", new_callable=AsyncMock) as mock_persist:
+        result = await run_sync_enrich(pool, provider, batch_size=2, rate_limit_rpm=60)
+
+    assert result["enriched"] == 2
+    assert result["failed"] == 0
+    assert result["skipped"] == 0
+    assert provider.generate.call_count == 2
+    assert mock_persist.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_run_sync_enrich_breaks_when_all_skipped():
+    """If all claimed postings lack HTML, the loop breaks (no infinite loop)."""
+    import uuid
+    from unittest.mock import patch
+
+    fake_id = str(uuid.uuid4())
+    row = {"id": fake_id, "title": "Engineer", "locale": "en", "employment_type": "full_time"}
+    pool = MagicMock()
+    pool.fetch = AsyncMock(return_value=[row])  # always returns same row
+    pool.fetchval = AsyncMock(return_value=None)  # no HTML
+    pool.execute = AsyncMock(return_value=None)
+
+    provider = MagicMock()
+    provider.generate = AsyncMock()
+
+    with patch("src.core.enrich.batch._persist_results", new_callable=AsyncMock):
+        result = await run_sync_enrich(pool, provider, batch_size=1, rate_limit_rpm=60)
+
+    # Loop must exit; provider.generate must never be called
+    assert result["skipped"] == 1
+    assert result["enriched"] == 0
+    provider.generate.assert_not_called()

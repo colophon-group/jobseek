@@ -44,8 +44,8 @@ class GeminiSyncProvider:
 
         um = response.usage_metadata
         usage = LLMUsage(
-            input_tokens=um.prompt_token_count or 0 if um else 0,
-            output_tokens=um.candidates_token_count or 0 if um else 0,
+            input_tokens=(um.prompt_token_count or 0) if um else 0,
+            output_tokens=(um.candidates_token_count or 0) if um else 0,
             model=self._model,
             provider="gemini",
         )
