@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
@@ -10,6 +12,8 @@ config = context.config
 # Override sqlalchemy.url from application settings so the URL is never
 # hard-coded in alembic.ini.
 config.set_main_option("sqlalchemy.url", settings.local_database_url)
+config.set_main_option("version_locations", str(Path(__file__).parent / "versions"))
+config.set_main_option("recursive_version_locations", "true")
 
 
 def run_migrations_offline() -> None:

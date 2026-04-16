@@ -1,5 +1,7 @@
 .idea
 .claude
+.serena/
+ai/
 node_modules
 .next
 dist

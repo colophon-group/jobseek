@@ -2,6 +2,12 @@
 
 Monitors company career pages for new job postings. Companies are configured via CSV — a Python crawler monitors boards and extracts job details, a Next.js frontend serves the data.
 
+## Local Development
+
+For a local end-to-end setup (`crawler -> Postgres -> Typesense -> web API`), see:
+
+- [docs/local/13-local-dev.md](docs/local/13-local-dev.md)
+
 ## Contributing: Add a Company
 
 Open issues labeled [`company-request`](https://github.com/colophon-group/jobseek/issues?q=is%3Aopen+label%3Acompany-request) are companies waiting to be added. Each one can be resolved by any coding agent that can run shell commands and access the web.

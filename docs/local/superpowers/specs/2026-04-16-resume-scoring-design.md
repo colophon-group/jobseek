@@ -3,7 +3,7 @@
 **Status:** Awaiting user review
 **Date:** 2026-04-16
 **Author:** Claude (planner) with @Milky-Mac (user)
-**Depends on:** `docs/superpowers/specs/2026-04-16-local-job-alert-filter-design.md` (Phase 1 must be implemented first)
+**Depends on:** `docs/local/superpowers/specs/2026-04-16-local-job-alert-filter-design.md` (Phase 1 must be implemented first)
 
 ---
 
