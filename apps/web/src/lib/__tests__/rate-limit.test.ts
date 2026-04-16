@@ -6,6 +6,7 @@ vi.mock("server-only", () => ({}));
 
 // Mock Redis
 vi.mock("@/lib/redis", () => ({
+  hasUpstashRedisConfig: true,
   redis: {
     get: vi.fn(),
     set: vi.fn(),

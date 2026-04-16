@@ -3,10 +3,66 @@ import { cache } from "react";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { redis } from "@/lib/redis";
+import { db } from "@/db";
+import { user } from "@/db/schema";
 
 const SESSION_TTL = 300; // 5 minutes
 
 type SessionResult = Awaited<ReturnType<typeof auth.api.getSession>>;
+
+function isLocalDevAuthBypassEnabled(): boolean {
+  return process.env.NODE_ENV !== "production"
+    && process.env.LOCAL_DEV_AUTH_BYPASS === "true";
+}
+
+function getLocalDevUser() {
+  return {
+    id: process.env.LOCAL_DEV_AUTH_USER_ID ?? "local-dev-user",
+    name: process.env.LOCAL_DEV_AUTH_NAME ?? "Local Dev",
+    email: process.env.LOCAL_DEV_AUTH_EMAIL ?? "local-dev@example.com",
+    username: process.env.LOCAL_DEV_AUTH_USERNAME ?? "local-dev",
+    displayUsername: process.env.LOCAL_DEV_AUTH_DISPLAY_USERNAME ?? "local-dev",
+    emailVerified: true,
+    image: null,
+  };
+}
+
+async function ensureLocalDevUser(): Promise<void> {
+  const localUser = getLocalDevUser();
+  await db
+    .insert(user)
+    .values({
+      id: localUser.id,
+      name: localUser.name,
+      email: localUser.email,
+      emailVerified: true,
+      username: localUser.username,
+      displayUsername: localUser.displayUsername,
+      image: null,
+    })
+    .onConflictDoNothing();
+}
+
+async function getLocalDevSession(): Promise<SessionResult> {
+  await ensureLocalDevUser();
+  const localUser = getLocalDevUser();
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000);
+
+  return {
+    user: localUser,
+    session: {
+      id: "local-dev-session",
+      createdAt: now,
+      updatedAt: now,
+      expiresAt,
+      token: "local-dev-session-token",
+      userId: localUser.id,
+      ipAddress: null,
+      userAgent: "local-dev-auth-bypass",
+    },
+  } as SessionResult;
+}
 
 function extractToken(cookieHeader: string): string | null {
   for (const part of cookieHeader.split(";")) {
@@ -22,6 +78,10 @@ function extractToken(cookieHeader: string): string | null {
 }
 
 async function fetchSession(): Promise<SessionResult> {
+  if (isLocalDevAuthBypassEnabled()) {
+    return getLocalDevSession();
+  }
+
   const headersList = await headers();
   const cookieHeader = headersList.get("cookie") ?? "";
   const token = extractToken(cookieHeader);

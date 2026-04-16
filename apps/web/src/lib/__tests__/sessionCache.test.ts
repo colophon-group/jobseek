@@ -31,6 +31,20 @@ vi.mock("@/lib/auth", () => ({
   },
 }));
 
+const mockOnConflictDoNothing = vi.fn();
+const mockValues = vi.fn(() => ({ onConflictDoNothing: mockOnConflictDoNothing }));
+const mockInsert = vi.fn(() => ({ values: mockValues }));
+
+vi.mock("@/db", () => ({
+  db: {
+    insert: (...args: unknown[]) => mockInsert(...args),
+  },
+}));
+
+vi.mock("@/db/schema", () => ({
+  user: {},
+}));
+
 // Mock react cache to pass through
 vi.mock("react", () => ({
   cache: (fn: (...args: unknown[]) => unknown) => fn,
@@ -46,6 +60,13 @@ const mockRedisDel = redis.del as ReturnType<typeof vi.fn>;
 describe("getSession", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    delete process.env.LOCAL_DEV_AUTH_BYPASS;
+    delete process.env.LOCAL_DEV_AUTH_USER_ID;
+    delete process.env.LOCAL_DEV_AUTH_EMAIL;
+    delete process.env.LOCAL_DEV_AUTH_NAME;
+    delete process.env.LOCAL_DEV_AUTH_USERNAME;
+    delete process.env.LOCAL_DEV_AUTH_DISPLAY_USERNAME;
+    mockOnConflictDoNothing.mockResolvedValue(undefined);
   });
 
   it("returns null when no session cookie is present", async () => {
@@ -129,11 +150,34 @@ describe("getSession", () => {
     // Should not attempt to cache null result
     expect(mockRedisSet).not.toHaveBeenCalled();
   });
+
+  it("returns a local dev session when bypass is enabled", async () => {
+    process.env.LOCAL_DEV_AUTH_BYPASS = "true";
+    process.env.LOCAL_DEV_AUTH_USER_ID = "dev-user";
+    process.env.LOCAL_DEV_AUTH_EMAIL = "dev@example.com";
+    process.env.LOCAL_DEV_AUTH_NAME = "Dev User";
+    process.env.LOCAL_DEV_AUTH_USERNAME = "dev-user";
+    process.env.LOCAL_DEV_AUTH_DISPLAY_USERNAME = "dev-user";
+
+    const result = await getSession();
+
+    expect(result?.user.id).toBe("dev-user");
+    expect(result?.user.email).toBe("dev@example.com");
+    expect(mockInsert).toHaveBeenCalled();
+    expect(mockGetSession).not.toHaveBeenCalled();
+    expect(mockRedisGet).not.toHaveBeenCalled();
+  });
 });
 
 describe("getSessionUserId", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    delete process.env.LOCAL_DEV_AUTH_BYPASS;
+    delete process.env.LOCAL_DEV_AUTH_USER_ID;
+    delete process.env.LOCAL_DEV_AUTH_EMAIL;
+    delete process.env.LOCAL_DEV_AUTH_NAME;
+    delete process.env.LOCAL_DEV_AUTH_USERNAME;
+    delete process.env.LOCAL_DEV_AUTH_DISPLAY_USERNAME;
   });
 
   it("returns userId when session exists", async () => {
@@ -158,6 +202,12 @@ describe("getSessionUserId", () => {
 describe("invalidateSessionCache", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    delete process.env.LOCAL_DEV_AUTH_BYPASS;
+    delete process.env.LOCAL_DEV_AUTH_USER_ID;
+    delete process.env.LOCAL_DEV_AUTH_EMAIL;
+    delete process.env.LOCAL_DEV_AUTH_NAME;
+    delete process.env.LOCAL_DEV_AUTH_USERNAME;
+    delete process.env.LOCAL_DEV_AUTH_DISPLAY_USERNAME;
   });
 
   it("deletes session key from Redis", async () => {

@@ -17,6 +17,33 @@ function localeFromRequest(request?: Request): Locale {
   return segment && isLocale(segment) ? segment : defaultLocale;
 }
 
+const socialProviders = {
+  ...(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET
+    ? {
+        github: {
+          clientId: process.env.GITHUB_CLIENT_ID,
+          clientSecret: process.env.GITHUB_CLIENT_SECRET,
+        },
+      }
+    : {}),
+  ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+    ? {
+        google: {
+          clientId: process.env.GOOGLE_CLIENT_ID,
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        },
+      }
+    : {}),
+  ...(process.env.LINKEDIN_CLIENT_ID && process.env.LINKEDIN_CLIENT_SECRET
+    ? {
+        linkedin: {
+          clientId: process.env.LINKEDIN_CLIENT_ID,
+          clientSecret: process.env.LINKEDIN_CLIENT_SECRET,
+        },
+      }
+    : {}),
+};
+
 export const auth = betterAuth({
   trustedOrigins: (process.env.TRUSTED_ORIGINS ?? "").split(",").filter(Boolean),
   database: drizzleAdapter(db, { provider: "pg" }),
@@ -47,20 +74,7 @@ export const auth = betterAuth({
       enabled: true,
     },
   },
-  socialProviders: {
-    github: {
-      clientId: process.env.GITHUB_CLIENT_ID!,
-      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
-    },
-    google: {
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    },
-    linkedin: {
-      clientId: process.env.LINKEDIN_CLIENT_ID!,
-      clientSecret: process.env.LINKEDIN_CLIENT_SECRET!,
-    },
-  },
+  socialProviders,
   hooks: {
     after: createAuthMiddleware(async (ctx) => {
       if (
