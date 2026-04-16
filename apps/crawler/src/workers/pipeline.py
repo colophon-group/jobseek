@@ -45,6 +45,43 @@ _IDLE_BACKOFF_S = 2.0
 
 
 # ---------------------------------------------------------------------------
+# Scraper resolution from Redis board hash
+# ---------------------------------------------------------------------------
+
+
+def _resolve_scraper(
+    metadata: dict,
+    crawler_type: str | None,
+    scraper_config: dict | None,
+) -> tuple[str, dict | None]:
+    """Resolve (scraper_type, scraper_config) from a board's Redis metadata.
+
+    Precedence: explicit ``metadata.scraper_type`` > monitor's auto-configured
+    scraper (``auto_scraper_type``) > default ``json-ld``.  Mirrors the logic
+    in :func:`src.processing.scrape._load_board_scrapers`.
+
+    A dict ``scraper_config`` passed in wins over auto-configured config so
+    callers can preserve explicit board-level overrides.  The fallback is
+    ``json-ld`` rather than the monitor name — issue #2186 was caused by the
+    previous ``crawler_type`` fallback using the monitor type as a scraper
+    name and crashing for monitors whose name isn't a registered scraper
+    (e.g. ``personio``).
+    """
+    from src.workspace._compat import auto_scraper_type
+
+    explicit = metadata.get("scraper_type")
+    if explicit:
+        return explicit, scraper_config
+
+    auto = auto_scraper_type(crawler_type, metadata) if crawler_type else None
+    if auto:
+        resolved_config = scraper_config if isinstance(scraper_config, dict) else auto[1]
+        return auto[0], resolved_config
+
+    return "json-ld", scraper_config
+
+
+# ---------------------------------------------------------------------------
 # Board record reconstruction from Redis config hash
 # ---------------------------------------------------------------------------
 
@@ -314,13 +351,13 @@ async def _process_scrape_work(
                 metadata = {}
 
             crawler_type = board_config.get("crawler_type") or None
-            scraper_type = metadata.get("scraper_type") or crawler_type or "dom"
             scraper_config = metadata.get("scraper_config")
             if isinstance(scraper_config, str):
                 try:
                     scraper_config = json.loads(scraper_config)
                 except (json.JSONDecodeError, TypeError):
                     scraper_config = None
+            scraper_type, scraper_config = _resolve_scraper(metadata, crawler_type, scraper_config)
         else:
             metadata = {}
             crawler_type = None

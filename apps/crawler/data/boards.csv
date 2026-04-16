@@ -1938,7 +1938,7 @@ hoppr,hoppr-greenhouse,https://job-boards.greenhouse.io/hoppr,greenhouse,"{""tok
 hopskipdrive,hopskipdrive-greenhouse,https://job-boards.greenhouse.io/hopskipdrive,greenhouse,"{""token"": ""hopskipdrive""}",skip,
 horace-mann,horace-mann-greenhouse,https://job-boards.greenhouse.io/horacemannservicecorporation,greenhouse,"{""token"": ""horacemannservicecorporation""}",skip,
 horizon-industries,horizon-industries-greenhouse,https://job-boards.greenhouse.io/horizonindustrieslimited,greenhouse,"{""token"": ""horizonindustrieslimited""}",skip,
-hoshii,hoshii-careers,https://hoshii-ai.notion.site/job-posts,notion,,,
+hoshii,hoshii-careers,https://hoshii-ai.notion.site/job-posts,notion,,notion,
 houseaccount,houseaccount-greenhouse,https://job-boards.greenhouse.io/houseaccount,greenhouse,"{""token"": ""houseaccount""}",skip,
 housecall-pro,housecall-pro-greenhouse,https://job-boards.greenhouse.io/housecall,greenhouse,"{""token"": ""housecall""}",skip,
 housemarque,housemarque-greenhouse,https://job-boards.greenhouse.io/housemarque,greenhouse,"{""token"": ""housemarque""}",skip,
@@ -4436,7 +4436,7 @@ visus-one-holding-gmbh,visus-one-holding-gmbh-join,https://join.com/companies/vi
 vitable-health,vitable-health-greenhouse,https://job-boards.greenhouse.io/vitablehealth,greenhouse,"{""token"": ""vitablehealth""}",skip,
 vitalize,vitalize-ashby,https://jobs.ashbyhq.com/vitalize,ashby,"{""token"": ""vitalize""}",skip,
 vitol,vitol-careers,https://careers.smartrecruiters.com/Vitol,smartrecruiters,"{""token"": ""Vitol""}",smartrecruiters,
-vivid-money,vivid-money-careers,https://careers.vivid.money,personio,"{""slug"": ""vivid"", ""language"": ""en""}",,
+vivid-money,vivid-money-careers,https://careers.vivid.money,personio,"{""slug"": ""vivid"", ""language"": ""en""}",skip,
 vodafone,vodafone-jobs,https://jobs.vodafone.com/careers,eightfold,"{""url_filter"": ""/careers/job/"", ""proxy"": true}",eightfold,"{""enrich"": [""description""], ""proxy"": true}"
 voladynamics,voladynamics-careers,https://jobs.ashbyhq.com/voladynamics,ashby,"{""token"": ""voladynamics""}",skip,
 voldex,voldex-ashby,https://jobs.ashbyhq.com/voldex,ashby,"{""token"": ""voldex""}",skip,

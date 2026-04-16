@@ -14,7 +14,7 @@ from src.core.scrapers import _REGISTRY as SCRAPER_REGISTRY
 from src.core.scrapers import JobContent
 from src.shared.constants import LOGO_TYPES, SLUG_RE, URL_RE, get_data_dir
 from src.shared.csv_io import read_csv
-from src.workspace._compat import all_monitor_types
+from src.workspace._compat import all_monitor_types, auto_scraper_type
 
 _JOBCONTENT_FIELD_NAMES = frozenset(f.name for f in dc_fields(JobContent))
 
@@ -198,6 +198,39 @@ def validate_csvs() -> list[ValidationError]:
                         "boards.csv",
                         i,
                         "api_sniffer without 'fields' in config requires a scraper_type",
+                    )
+                )
+
+        # Monitors that don't return rich data and don't auto-configure a
+        # scraper (personio, umantis, notion, nextdata without 'fields') need
+        # an explicit scraper_type. Use 'skip' when the monitor returns full
+        # job data, or name a scraper. Without this the runtime falls back to
+        # json-ld, which silently produces empty descriptions.
+        if (
+            monitor_type
+            and monitor_type in valid_monitor_types
+            and not scraper_type
+            and monitor_type not in url_only_monitors
+            and monitor_type != "api_sniffer"
+        ):
+            mc_obj: dict | None = None
+            if monitor_config:
+                try:
+                    parsed = json.loads(monitor_config)
+                    if isinstance(parsed, dict):
+                        mc_obj = parsed
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            if auto_scraper_type(monitor_type, mc_obj) is None:
+                errors.append(
+                    ValidationError(
+                        "boards.csv",
+                        i,
+                        (
+                            f"monitor_type {monitor_type!r} requires explicit "
+                            "scraper_type (use 'skip' when the monitor returns "
+                            "rich data, or name a scraper)"
+                        ),
                     )
                 )
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 
 from src.redis_queue import ScrapeWork
-from src.workers.pipeline import _BoardRecord, _scrape_item_from_redis
+from src.workers.pipeline import _BoardRecord, _resolve_scraper, _scrape_item_from_redis
 
 # ---------------------------------------------------------------------------
 # _BoardRecord
@@ -89,3 +89,63 @@ class TestScrapeItemFromRedis:
         )
         item, _ = _scrape_item_from_redis(work)
         assert item.description_r2_hash is None
+
+
+# ---------------------------------------------------------------------------
+# _resolve_scraper
+# ---------------------------------------------------------------------------
+
+
+class TestResolveScraper:
+    def test_explicit_scraper_wins(self):
+        scraper_type, scraper_config = _resolve_scraper(
+            {"scraper_type": "dom"}, crawler_type="sitemap", scraper_config={"render": True}
+        )
+        assert scraper_type == "dom"
+        assert scraper_config == {"render": True}
+
+    def test_auto_scraper_resolution(self):
+        scraper_type, scraper_config = _resolve_scraper(
+            {}, crawler_type="workday", scraper_config=None
+        )
+        assert scraper_type == "workday"
+        assert scraper_config is None
+
+    def test_personio_without_scraper_type_defaults_to_jsonld(self):
+        """Regression guard for issue #2186.
+
+        personio has no auto_scraper_type mapping, so when metadata has no
+        explicit scraper_type we must NOT fall back to using ``crawler_type``
+        as the scraper name (which crashes).  json-ld is the safe default.
+        """
+        scraper_type, scraper_config = _resolve_scraper(
+            {}, crawler_type="personio", scraper_config=None
+        )
+        assert scraper_type == "json-ld"
+        assert scraper_config is None
+
+    def test_rich_monitor_resolves_to_skip(self):
+        scraper_type, _ = _resolve_scraper({}, crawler_type="greenhouse", scraper_config=None)
+        assert scraper_type == "skip"
+
+    def test_no_crawler_type_defaults_to_jsonld(self):
+        scraper_type, scraper_config = _resolve_scraper({}, crawler_type=None, scraper_config=None)
+        assert scraper_type == "json-ld"
+        assert scraper_config is None
+
+    def test_auto_config_applied_when_no_explicit_scraper_config(self):
+        """breezy's auto config should flow through when no override is set."""
+        scraper_type, scraper_config = _resolve_scraper(
+            {}, crawler_type="breezy", scraper_config=None
+        )
+        assert scraper_type == "json-ld"
+        assert isinstance(scraper_config, dict)
+        assert "fallback" in scraper_config
+
+    def test_explicit_scraper_config_overrides_auto(self):
+        override = {"steps": [{"tag": "h1", "field": "title"}]}
+        scraper_type, scraper_config = _resolve_scraper(
+            {}, crawler_type="breezy", scraper_config=override
+        )
+        assert scraper_type == "json-ld"
+        assert scraper_config is override
