@@ -64,3 +64,29 @@ def create_provider(provider: str, model: str, api_key: str) -> BatchProvider:
         return GeminiBatchProvider(model=model, api_key=api_key)
     else:
         raise ValueError(f"Unknown LLM provider: {provider!r}")
+
+
+class SyncProvider(Protocol):
+    """Sync (non-batch) LLM provider for interactive use."""
+
+    async def generate(
+        self,
+        system_prompt: str,
+        user_content: str,
+        response_schema: dict,
+    ) -> tuple[dict, LLMUsage]:
+        """Make one synchronous structured JSON call.
+
+        Returns (parsed_dict, usage).
+        """
+        ...
+
+
+def create_sync_provider(provider: str, model: str, api_key: str) -> SyncProvider:
+    """Factory for sync providers. Lazily imports the SDK."""
+    if provider == "gemini":
+        from src.core.enrich.providers.gemini_sync import GeminiSyncProvider
+
+        return GeminiSyncProvider(model=model, api_key=api_key)
+    else:
+        raise ValueError(f"Unsupported sync provider: {provider!r}. Only 'gemini' supported.")
