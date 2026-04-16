@@ -25,7 +25,7 @@ import httpx
 import structlog
 
 from src.core.scrapers import JobContent, register
-from src.shared.browser import BROWSER_KEYS, navigate, open_page, run_actions
+from src.shared.browser import BROWSER_KEYS, navigate, open_page, run_actions, safe_content
 from src.shared.extract import flatten, walk_steps
 
 log = structlog.get_logger()
@@ -236,7 +236,7 @@ async def scrape(
             async with open_page(p, browser_config, use_proxy=use_proxy) as page:
                 await navigate(page, url, browser_config)
                 await run_actions(page, browser_config.get("actions", []))
-                return await page.content()
+                return await safe_content(page)
 
         if pw is not None:
             html = await _render_page(pw)

@@ -252,6 +252,15 @@ browser_navigate_fallback_total = Counter(
     ["primary", "fallback", "outcome"],
 )
 
+browser_content_retry_total = Counter(
+    "crawler_browser_content_retry_total",
+    # Outcomes: retry = page.content() raised the navigation-race error and a
+    # retry was scheduled; recovered = a subsequent retry succeeded; failed =
+    # all retries exhausted and the error propagated.
+    "page.content() retries after the 'page is navigating' race error",
+    ["outcome"],
+)
+
 
 # Build info — emitted once at startup so Grafana can confirm which
 # ``apps/crawler/VERSION`` each container is running without SSH-ing in.

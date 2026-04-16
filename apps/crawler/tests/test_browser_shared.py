@@ -25,6 +25,7 @@ from src.shared.browser import (
     open_page,
     render,
     run_actions,
+    safe_content,
 )
 
 # ---------------------------------------------------------------------------
@@ -546,6 +547,82 @@ class TestRender:
         with patch("playwright.async_api.async_playwright", return_value=mock_async_pw):
             html = await render("https://example.com", None)
         assert html == "<html></html>"
+
+
+# ---------------------------------------------------------------------------
+# TestSafeContent
+# ---------------------------------------------------------------------------
+
+
+class TestSafeContent:
+    """Retry behaviour for page.content() when the page is navigating.
+
+    Background: post.ch (issue #2188) reliably hits
+    ``Error: Page.content: Unable to retrieve content because the page is
+    navigating and changing the content.`` The race is transient — waiting
+    for ``domcontentloaded`` and retrying once recovers the HTML. Any other
+    error propagates so real failures are not silently swallowed.
+    """
+
+    @staticmethod
+    def _navigating_error() -> Exception:
+        return Exception(
+            "Page.content: Unable to retrieve content because the "
+            "page is navigating and changing the content."
+        )
+
+    async def test_success_first_try(self):
+        page = _make_page()
+        page.content = AsyncMock(return_value="<html>ok</html>")
+        html = await safe_content(page)
+        assert html == "<html>ok</html>"
+        assert page.content.await_count == 1
+
+    async def test_retries_on_navigation_race_and_recovers(self):
+        page = _make_page()
+        page.content = AsyncMock(side_effect=[self._navigating_error(), "<html>ok</html>"])
+        page.wait_for_load_state = AsyncMock()
+        with patch.object(asyncio, "sleep", new_callable=AsyncMock):
+            html = await safe_content(page)
+        assert html == "<html>ok</html>"
+        assert page.content.await_count == 2
+        page.wait_for_load_state.assert_awaited_once()
+        call = page.wait_for_load_state.await_args
+        assert call.args[0] == "domcontentloaded"
+        assert isinstance(call.kwargs.get("timeout"), int)
+
+    async def test_retries_exhausted_reraises(self):
+        page = _make_page()
+        err = self._navigating_error()
+        page.content = AsyncMock(side_effect=[err, err, err])
+        page.wait_for_load_state = AsyncMock()
+        with (
+            patch.object(asyncio, "sleep", new_callable=AsyncMock),
+            pytest.raises(Exception) as exc_info,
+        ):
+            await safe_content(page)
+        assert "page is navigating" in str(exc_info.value)
+        # 1 initial + 2 retries = 3 attempts
+        assert page.content.await_count == 3
+
+    async def test_non_navigation_error_propagates_without_retry(self):
+        page = _make_page()
+        page.content = AsyncMock(side_effect=RuntimeError("connection closed"))
+        page.wait_for_load_state = AsyncMock()
+        with pytest.raises(RuntimeError, match="connection closed"):
+            await safe_content(page)
+        assert page.content.await_count == 1
+        page.wait_for_load_state.assert_not_awaited()
+
+    async def test_wait_for_load_state_failure_does_not_block_retry(self):
+        """If wait_for_load_state raises, we still retry page.content()."""
+        page = _make_page()
+        page.content = AsyncMock(side_effect=[self._navigating_error(), "<html>ok</html>"])
+        page.wait_for_load_state = AsyncMock(side_effect=PlaywrightTimeoutError("x"))
+        with patch.object(asyncio, "sleep", new_callable=AsyncMock):
+            html = await safe_content(page)
+        assert html == "<html>ok</html>"
+        assert page.content.await_count == 2
 
 
 # ---------------------------------------------------------------------------

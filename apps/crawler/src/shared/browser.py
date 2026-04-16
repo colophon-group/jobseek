@@ -9,6 +9,7 @@ in boards.csv — no schema change needed.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -475,6 +476,53 @@ async def dismiss_overlays(page) -> None:
     )
 
 
+# Playwright raises a plain ``Error`` when ``page.content()`` is called while
+# the page is in the middle of a navigation (SPA route change, client redirect,
+# delayed meta-refresh, late-firing analytics that triggers a reload). The
+# error message is stable across versions — substring match is sufficient.
+# Observed on post.ch (issue #2188); same race can occur on any board whose
+# final actions trigger navigation or whose SPA settles after the configured
+# wait strategy fires.
+_CONTENT_NAVIGATING_MARKER = "page is navigating and changing the content"
+_SAFE_CONTENT_RETRIES = 2
+_SAFE_CONTENT_SETTLE_MS = 500
+
+
+async def safe_content(page) -> str:
+    """Return ``page.content()`` with retry on the navigation-race error.
+
+    Playwright refuses to serialize the DOM when the page is mid-navigation
+    and raises ``Error("... page is navigating and changing the content")``.
+    The race is almost always transient: waiting for ``domcontentloaded``
+    after the error lets the new document settle, and a retry succeeds.
+    Non-matching errors propagate so real failures are not swallowed.
+    """
+    last_exc: Exception | None = None
+    for attempt in range(_SAFE_CONTENT_RETRIES + 1):
+        try:
+            html = await page.content()
+        except Exception as exc:  # noqa: BLE001 — Playwright raises plain Error
+            if _CONTENT_NAVIGATING_MARKER not in str(exc):
+                raise
+            last_exc = exc
+            if attempt == _SAFE_CONTENT_RETRIES:
+                break
+            metrics.browser_content_retry_total.labels(outcome="retry").inc()
+            log.info("browser.content.navigating_retry", attempt=attempt + 1)
+            # Tolerate wait failure — we retry page.content() either way.
+            with contextlib.suppress(Exception):
+                await page.wait_for_load_state("domcontentloaded", timeout=CONTEXT_TIMEOUT)
+            await asyncio.sleep(_SAFE_CONTENT_SETTLE_MS / 1000)
+            continue
+        else:
+            if attempt > 0:
+                metrics.browser_content_retry_total.labels(outcome="recovered").inc()
+            return html
+    metrics.browser_content_retry_total.labels(outcome="failed").inc()
+    assert last_exc is not None
+    raise last_exc
+
+
 async def render(url: str, config: dict | None = None, pw=None) -> str:
     """All-in-one: launch browser → navigate → run actions → return HTML.
 
@@ -489,7 +537,7 @@ async def render(url: str, config: dict | None = None, pw=None) -> str:
         async with open_page(pw, config, use_proxy=bool(config.get("proxy"))) as page:
             await navigate(page, url, config)
             await run_actions(page, config.get("actions", []))
-            return await page.content()
+            return await safe_content(page)
 
     from playwright.async_api import async_playwright
 
@@ -499,4 +547,4 @@ async def render(url: str, config: dict | None = None, pw=None) -> str:
     ):
         await navigate(page, url, config)
         await run_actions(page, config.get("actions", []))
-        return await page.content()
+        return await safe_content(page)
