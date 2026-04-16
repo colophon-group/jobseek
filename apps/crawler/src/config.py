@@ -99,7 +99,7 @@ class Settings(BaseSettings):
     use_local_descriptions: bool = False   # true = fetch HTML from descriptions table (not R2)
     enrich_mode: str = "batch"             # "batch" | "sync"
     enrich_rate_limit_rpm: int = 15        # Gemini free tier: 15 RPM
-    alert_filters_path: str = "ai/filters.yaml"
+    alert_filters_path: str = "data/alert-filters.yaml"
 
     model_config = SettingsConfigDict(env_file=(".env", ".env.local"), extra="ignore")
 

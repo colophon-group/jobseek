@@ -89,8 +89,8 @@ def parse_args() -> argparse.Namespace:
     )
     mark_p.add_argument(
         "--filters",
-        default="ai/filters.yaml",
-        help="Path to filters YAML (default: ai/filters.yaml)",
+        default="data/alert-filters.yaml",
+        help="Path to filters YAML (default: data/alert-filters.yaml)",
     )
 
     enrich_local_p = sub.add_parser(
@@ -116,8 +116,8 @@ def parse_args() -> argparse.Namespace:
     )
     alert_p.add_argument(
         "--filters",
-        default="ai/filters.yaml",
-        help="Path to filters YAML (default: ai/filters.yaml)",
+        default="data/alert-filters.yaml",
+        help="Path to filters YAML (default: data/alert-filters.yaml)",
     )
     alert_p.add_argument(
         "--format",
