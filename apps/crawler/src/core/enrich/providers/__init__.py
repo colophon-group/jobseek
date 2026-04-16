@@ -84,6 +84,12 @@ class SyncProvider(Protocol):
 
 def create_sync_provider(provider: str, model: str, api_key: str) -> SyncProvider:
     """Factory for sync providers. Lazily imports the SDK."""
+    if not api_key:
+        raise ValueError(
+            "ENRICH_API_KEY is required for sync enrichment. "
+            "Set ENRICH_PROVIDER=gemini, ENRICH_MODEL=gemini-2.0-flash, and ENRICH_API_KEY=<your-key>."
+        )
+
     if provider == "gemini":
         from src.core.enrich.providers.gemini_sync import GeminiSyncProvider
 
