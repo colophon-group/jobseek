@@ -29,7 +29,7 @@ a24,a24-greenhouse,https://job-boards.greenhouse.io/a24,greenhouse,"{""token"": 
 ab-inbev-growth-group,ab-inbev-growth-group-greenhouse,https://job-boards.greenhouse.io/abinbev,greenhouse,"{""token"": ""abinbev""}",skip,
 abacum,abacum-ashby,https://jobs.ashbyhq.com/abacum,ashby,"{""token"": ""abacum""}",skip,
 abacus-insights,abacus-insights-greenhouse,https://job-boards.greenhouse.io/abacusinsights,greenhouse,"{""token"": ""abacusinsights""}",skip,
-abb,abb-workday,https://abb.wd3.myworkdayjobs.com/External_Career_Page,workday,,workday,
+abb,abb-workday,https://abb.wd3.myworkdayjobs.com/External_Career_Page,workday,,workday,"{""proxy"": true}"
 abbvie,abbvie-careers,https://careers.abbvie.com/en/jobs,sitemap,"{""url"": ""https://careers.abbvie.com/en/sitemap.xml"", ""url_filter"": ""/job/""}",json-ld,
 abbvie,abbvie-smartrecruiters,https://careers.smartrecruiters.com/AbbVie,smartrecruiters,"{""token"": ""AbbVie""}",smartrecruiters,
 abbyy,abbyy-greenhouse,https://job-boards.greenhouse.io/abbyy,greenhouse,"{""token"": ""abbyy""}",skip,
@@ -155,7 +155,7 @@ airbus,airbus-careers-bank,https://karriereportal.airbusbank.com/eng,dom,"{""ren
 airbus,airbus-careers-stormshield,https://www.stormshield.com/join-us/offers/,sitemap,"{""url_filter"": {""include"": ""/offers/[^/]+/$"", ""exclude"": ""^https://www\\.stormshield\\.com/(de|fr|it|es)/""}}",dom,"{""steps"": [{""tag"": ""h1"", ""attr"": ""itemprop=title"", ""field"": ""title""}, {""tag"": ""li"", ""text"": ""Location"", ""field"": ""locations"", ""regex"": ""Location:\\s*(.+)"", ""optional"": true}, {""tag"": ""li"", ""text"": ""Permanent"", ""field"": ""employment_type"", ""from"": 0, ""optional"": true}, {""tag"": ""h2"", ""field"": ""description"", ""stop"": ""Apply"", ""html"": true}]}"
 airbus,airbus-careers-uk-contingent,https://airbus.guidantglobal.com/jobs,dom,"{""render"": true, ""wait"": ""networkidle""}",json-ld,"{""render"": true, ""wait"": ""networkidle""}"
 airbus,airbus-careers-us-spacedefense,https://airbusspaceanddefense.applicantpro.com/jobs/,api_sniffer,"{""api_url"": ""https://airbusspaceanddefense.applicantpro.com/core/jobs/3546"", ""method"": ""GET"", ""json_path"": ""data.jobs"", ""items"": 40, ""score"": 75, ""browser"": true, ""params"": {""getParams"": ""{\""cityUrl\"":\""\"",\""countryAbbreviation\"":\""\"",\""stateAbbreviation\"":\""\"",\""isInternal\"":0,\""showPayFrequency\"":1,\""showLocation\"":1,\""locationTitle\"":\""Location\"",\""locationWeight\"":2,\""showCustomCategory\"":0,\""customCategoryTitle\"":\""\"",\""customCategoryWeight\"":0,\""showEmploymentType\"":1,\""employmentTypeTitle\"":\""Employment Type\"",\""employmentTypeWeight\"":5,\""showJobBoardClassifications\"":0,\""jobBoardClassificationsTitle\"":\""# of Openings\"",\""jobBoardClassificationsWeight\"":4,\""showJobCategory\"":0,\""jobCategoryTitle\"":\""Job Categories\"",\""jobCategoryWeight\"":0,\""showOrgUnit\"":1,\""orgUnitTitle\"":\""Department\"",\""orgUnitWeight\"":2,\""showDate\"":1,\""dateTitle\"":\""Closing Date\"",\""dateWeight\"":3,\""showWorkplaceType\"":0,\""workplaceTypeTitle\"":\""Workplace Type\"",\""workplaceTypeWeight\"":11,\""chatToApplyButton\"":\""0\"",\""chatToApplySort\"":\""\""}""}, ""url_field"": ""jobUrl"", ""request_headers"": {""sec-ch-ua-platform"": ""\""macOS\"""", ""referer"": ""https://airbusspaceanddefense.applicantpro.com/jobs/"", ""user-agent"": ""Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36"", ""accept"": ""application/json, text/plain, */*"", ""sec-ch-ua"": ""\""Not:A-Brand\"";v=\""99\"", \""HeadlessChrome\"";v=\""145\"", \""Chromium\"";v=\""145\"""", ""content-type"": ""application/json"", ""sec-ch-ua-mobile"": ""?0""}, ""fields"": {""title"": ""title"", ""employment_type"": ""employmentType"", ""job_location_type"": ""workplaceType"", ""locations"": ""city""}}",json-ld,
-airbus,airbus-careers-workday,https://ag.wd3.myworkdayjobs.com/en-US/Airbus,workday,"{""company"": ""ag"", ""wd_instance"": ""wd3"", ""site"": ""Airbus""}",workday,
+airbus,airbus-careers-workday,https://ag.wd3.myworkdayjobs.com/en-US/Airbus,workday,"{""company"": ""ag"", ""wd_instance"": ""wd3"", ""site"": ""Airbus""}",workday,"{""proxy"": true}"
 airbyte,airbyte-ashby,https://jobs.ashbyhq.com/airbyte,ashby,"{""token"": ""airbyte""}",skip,
 airgarage,airgarage-ashby,https://jobs.ashbyhq.com/airgarage,ashby,"{""token"": ""airgarage""}",skip,
 airia,airia-greenhouse,https://job-boards.greenhouse.io/airia,greenhouse,"{""token"": ""airia""}",skip,
@@ -313,7 +313,7 @@ appletree-prep,appletree-prep-greenhouse,https://job-boards.greenhouse.io/applet
 applied,applied-ashby,https://jobs.ashbyhq.com/applied,ashby,"{""token"": ""applied""}",skip,
 applied-engineering,applied-engineering-greenhouse,https://job-boards.greenhouse.io/appliedengineering,greenhouse,"{""token"": ""appliedengineering""}",skip,
 applied-intuition,applied-intuition-greenhouse,https://job-boards.greenhouse.io/appliedintuition,greenhouse,"{""token"": ""appliedintuition""}",skip,
-applied-materials,applied-materials-careers-workday,https://amat.wd1.myworkdayjobs.com/External,workday,"{""company"": ""amat"", ""wd_instance"": ""wd1"", ""site"": ""External""}",workday,
+applied-materials,applied-materials-careers-workday,https://amat.wd1.myworkdayjobs.com/External,workday,"{""company"": ""amat"", ""wd_instance"": ""wd1"", ""site"": ""External""}",workday,"{""proxy"": true}"
 appliedlabs,appliedlabs-ashby,https://jobs.ashbyhq.com/appliedlabs,ashby,"{""token"": ""appliedlabs""}",skip,
 applike-group-gmbh,applike-group-gmbh-join,https://join.com/companies/applike-group,join,"{""slug"": ""applike-group""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 applovin,applovin-greenhouse,https://job-boards.greenhouse.io/applovin,greenhouse,"{""token"": ""applovin""}",skip,
@@ -498,7 +498,7 @@ banking-talent,banking-talent-join,https://join.com/companies/bankingtalentde,jo
 banyan-software,banyan-software-greenhouse,https://job-boards.greenhouse.io/banyansoftware,greenhouse,"{""token"": ""banyansoftware""}",skip,
 barclays,barclays-careers,https://search.jobs.barclays/search-jobs,sitemap,"{""sitemap_url"": ""https://search.jobs.barclays/sitemap.xml"", ""url_filter"": ""search\\.jobs\\.barclays/job/""}",json-ld,
 barclays,barclays-careers-contractors,https://barclays.talent-community.com/projects,sitemap,"{""sitemap_url"": ""https://barclays.talent-community.com/sitemap.xml"", ""url_filter"": ""barclays\\.talent-community\\.com/projects/[^/]+/\\d+""}",dom,"{""render"": true, ""wait"": ""networkidle"", ""actions"": [{""action"": ""dismiss_overlays""}], ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""text"": ""Posted"", ""field"": ""date_posted"", ""regex"": ""Posted (.+)"", ""optional"": true}, {""text"": ""Location"", ""tag"": ""div"", ""attr"": ""class=v-list-item__title""}, {""tag"": ""div"", ""attr"": ""class=v-list-item__subtitle"", ""field"": ""locations""}, {""text"": ""Hours/week"", ""tag"": ""div"", ""attr"": ""class=v-list-item__title""}, {""tag"": ""div"", ""attr"": ""class=v-list-item__subtitle"", ""field"": ""metadata.hours_per_week""}, {""text"": ""Timeline"", ""tag"": ""div"", ""attr"": ""class=v-list-item__title""}, {""tag"": ""div"", ""attr"": ""class=v-list-item__subtitle"", ""field"": ""metadata.timeline""}, {""text"": ""Payrate"", ""tag"": ""div"", ""attr"": ""class=v-list-item__title"", ""optional"": true}, {""tag"": ""div"", ""attr"": ""class=v-list-item__subtitle"", ""field"": ""metadata.payrate"", ""optional"": true}, {""tag"": ""p"", ""field"": ""description"", ""stop"": ""About Barclays"", ""html"": true}]}"
-barclays,barclays-careers-workday,https://barclays.wd3.myworkdayjobs.com/External_Career_Site_Barclays,workday,"{""company"": ""barclays"", ""wd_instance"": ""wd3"", ""site"": ""External_Career_Site_Barclays""}",workday,
+barclays,barclays-careers-workday,https://barclays.wd3.myworkdayjobs.com/External_Career_Site_Barclays,workday,"{""company"": ""barclays"", ""wd_instance"": ""wd3"", ""site"": ""External_Career_Site_Barclays""}",workday,"{""proxy"": true}"
 barfer-s,barfer-s-join,https://join.com/companies/barfers-wellfood,join,"{""slug"": ""barfers-wellfood""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 bark,bark-greenhouse,https://job-boards.greenhouse.io/bark,greenhouse,"{""token"": ""bark""}",skip,
 barkbox,barkbox-pinpoint,https://barkbox.pinpointhq.com,pinpoint,"{""slug"": ""barkbox""}",skip,
@@ -898,13 +898,13 @@ cinven,cinven-pinpoint,https://cinven.pinpointhq.com,pinpoint,"{""slug"": ""cinv
 circle-so,circle-so-greenhouse,https://job-boards.greenhouse.io/circleso,greenhouse,"{""token"": ""circleso""}",skip,
 circleci,circleci-greenhouse,https://job-boards.greenhouse.io/circleci,greenhouse,"{""token"": ""circleci""}",skip,
 circuithub,circuithub-ashby,https://jobs.ashbyhq.com/circuithub,ashby,"{""token"": ""circuithub""}",skip,
-cisco,cisco-careers,https://cisco.wd5.myworkdayjobs.com/Cisco_Careers,workday,"{""company"": ""cisco"", ""wd_instance"": ""wd5"", ""site"": ""Cisco_Careers""}",workday,
+cisco,cisco-careers,https://cisco.wd5.myworkdayjobs.com/Cisco_Careers,workday,"{""company"": ""cisco"", ""wd_instance"": ""wd5"", ""site"": ""Cisco_Careers""}",workday,"{""proxy"": true}"
 cision,cision-greenhouse,https://job-boards.greenhouse.io/cision,greenhouse,"{""token"": ""cision""}",skip,
 citadel,citadel-careers,https://www.citadel.com/careers/open-opportunities/,sitemap,"{""sitemap_url"": ""https://www.citadel.com/career-sitemap.xml"", ""url_filter"": ""/careers/details/""}",json-ld,"{""render"": true, ""timeout"": 60000, ""wait"": ""domcontentloaded""}"
 citema-systems-gmbh,citema-systems-gmbh-join,https://join.com/companies/citema,join,"{""slug"": ""citema""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 citian,citian-greenhouse,https://job-boards.greenhouse.io/citian,greenhouse,"{""token"": ""citian""}",skip,
 citigroup,citigroup-eightfold,https://citi.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/"", ""proxy"": true}",eightfold,"{""enrich"": [""description""], ""proxy"": true}"
-citigroup,citigroup-workday,https://citi.wd5.myworkdayjobs.com/en-US/2,workday,"{""company"": ""citi"", ""wd_instance"": ""wd5"", ""site"": ""2""}",workday,
+citigroup,citigroup-workday,https://citi.wd5.myworkdayjobs.com/en-US/2,workday,"{""company"": ""citi"", ""wd_instance"": ""wd5"", ""site"": ""2""}",workday,"{""proxy"": true}"
 citrus-health-group-inc,citrus-health-group-inc-greenhouse,https://job-boards.greenhouse.io/citrushealthgroup,greenhouse,"{""token"": ""citrushealthgroup""}",skip,
 civil-science,civil-science-greenhouse,https://job-boards.greenhouse.io/civilscience,greenhouse,"{""token"": ""civilscience""}",skip,
 clara,clara-greenhouse,https://job-boards.greenhouse.io/clara,greenhouse,"{""token"": ""clara""}",skip,
@@ -1182,7 +1182,7 @@ dentsu,dentsu-careers-hrmos-jp-inc,https://hrmos.co/pages/dentsu/jobs,dom,,json-
 dentsu,dentsu-careers-hrmos-jp-intl,https://hrmos.co/pages/daj-group/jobs,dom,,json-ld,
 dentsu,dentsu-careers-sr-merkle,https://careers.smartrecruiters.com/MerkleInc,smartrecruiters,"{""token"": ""MerkleInc""}",smartrecruiters,
 dentsu,dentsu-careers-sr-my,https://careers.smartrecruiters.com/DentsuAegisNetwork3,smartrecruiters,"{""token"": ""DentsuAegisNetwork3""}",smartrecruiters,
-dentsu,dentsu-careers-workday,https://dentsuaegis.wd3.myworkdayjobs.com/DAN_GLOBAL,workday,"{""company"": ""dentsuaegis"", ""wd_instance"": ""wd3"", ""site"": ""DAN_GLOBAL""}",workday,
+dentsu,dentsu-careers-workday,https://dentsuaegis.wd3.myworkdayjobs.com/DAN_GLOBAL,workday,"{""company"": ""dentsuaegis"", ""wd_instance"": ""wd3"", ""site"": ""DAN_GLOBAL""}",workday,"{""proxy"": true}"
 depoly,depoly-careers,https://depoly.jobs.personio.com,personio,"{""slug"": ""depoly"", ""language"": ""en""}",skip,
 dept,dept-greenhouse,https://job-boards.greenhouse.io/dept,greenhouse,"{""token"": ""dept""}",skip,
 descript,descript-greenhouse,https://job-boards.greenhouse.io/descript,greenhouse,"{""token"": ""descript""}",skip,
@@ -1665,7 +1665,7 @@ general-dynamics,general-dynamics-biw,https://careers-gdbiw.icims.com/jobs/searc
 general-dynamics,general-dynamics-electric-boat,https://careers-gdeb.icims.com/jobs/search,sitemap,"{""sitemap_url"": ""https://careers-gdeb.icims.com/sitemap.xml"", ""url_filter"": ""/job$""}",json-ld,
 general-dynamics,general-dynamics-gd-corporate,https://careers-generaldynamics.icims.com/jobs/search,sitemap,"{""sitemap_url"": ""https://careers-generaldynamics.icims.com/sitemap.xml"", ""url_filter"": ""/job$""}",json-ld,
 general-dynamics,general-dynamics-gdels,https://www.gdels.com/en/jobs,sitemap,"{""sitemap_url"": ""https://www.gdels.com/sitemap.xml"", ""url_filter"": ""career|job""}",dom,"{""render"": true, ""wait"": ""domcontentloaded"", ""timeout"": 60000, ""steps"": [{""text"": ""All Jobs"", ""offset"": 1, ""field"": ""locations""}, {""tag"": ""h1"", ""field"": ""title""}, {""text"": ""Published at"", ""offset"": 1, ""field"": ""date_posted""}, {""tag"": ""p"", ""field"": ""description"", ""stop"": ""Apply now"", ""html"": true}]}"
-general-dynamics,general-dynamics-gdit,https://gdit.wd5.myworkdayjobs.com/External_Career_Site,workday,"{""tenant"": ""gdit"", ""board"": ""External_Career_Site""}",workday,
+general-dynamics,general-dynamics-gdit,https://gdit.wd5.myworkdayjobs.com/External_Career_Site,workday,"{""tenant"": ""gdit"", ""board"": ""External_Career_Site""}",workday,"{""proxy"": true}"
 general-dynamics,general-dynamics-gdms,https://careers-gdms.icims.com/jobs/search,sitemap,"{""sitemap_url"": ""https://careers-gdms.icims.com/sitemap.xml"", ""url_filter"": ""/job$""}",json-ld,
 general-dynamics,general-dynamics-gulfstream,https://careers.gulfstream.com/search/,rss,"{""url"": ""https://careers.gulfstream.com/googlefeed.xml"", ""preset"": ""successfactors""}",skip,
 general-dynamics,general-dynamics-jet-aviation,https://jobs.jetaviation.com/search/,rss,"{""url"": ""https://jobs.jetaviation.com/googlefeed.xml"", ""preset"": ""successfactors""}",skip,
@@ -1902,7 +1902,7 @@ hillel-international,hillel-international-greenhouse,https://job-boards.greenhou
 hippocratic-ai,hippocratic-ai-ashby,https://jobs.ashbyhq.com/Hippocratic%20AI,ashby,"{""token"": ""Hippocratic AI""}",skip,
 hiry-agency,hiry-agency-join,https://join.com/companies/hiryagency,join,"{""slug"": ""hiryagency""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 hit-haus-industrietechnik-gmbh,hit-haus-industrietechnik-gmbh-join,https://join.com/companies/media-max-gmbhde,join,"{""slug"": ""media-max-gmbhde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
-hitachi,hitachi-careers,https://hitachi.wd1.myworkdayjobs.com/hitachi,workday,"{""company"": ""hitachi"", ""wd_instance"": ""wd1"", ""site"": ""hitachi""}",workday,
+hitachi,hitachi-careers,https://hitachi.wd1.myworkdayjobs.com/hitachi,workday,"{""company"": ""hitachi"", ""wd_instance"": ""wd1"", ""site"": ""hitachi""}",workday,"{""proxy"": true}"
 hitachi-energy,hitachi-energy-careers,https://www.hitachienergy.com/careers/open-jobs,api_sniffer,"{""api_url"": ""https://www.hitachienergy.com/careers/open-jobs/_jcr_content/root/container/content_1/content/grid_0/joblist.listsearchresults.json"", ""method"": ""GET"", ""json_path"": ""items"", ""items"": 20, ""score"": 75, ""browser"": true, ""api_url_match"": ""www.hitachienergy.com/careers/open-jobs/_jcr_content/root/container/*/content/grid_0/joblist.listsearchresults.json"", ""params"": {""calculatedOffset"": ""0""}, ""url_field"": ""url"", ""pagination"": {""param_name"": ""offset"", ""style"": ""offset"", ""start_value"": 0, ""increment"": 20, ""location"": ""query""}, ""request_headers"": {""sec-ch-ua-platform"": ""\""macOS\"""", ""referer"": ""https://www.hitachienergy.com/careers/open-jobs"", ""user-agent"": ""Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"", ""sec-ch-ua"": ""\""Not:A-Brand\"";v=\""99\"", \""HeadlessChrome\"";v=\""145\"", \""Chromium\"";v=\""145\"""", ""sec-ch-ua-mobile"": ""?0""}, ""fields"": {""title"": ""title"", ""employment_type"": ""jobType"", ""locations"": ""location"", ""date_posted"": ""publicationDate"", ""metadata.experience"": ""experience"", ""metadata.function"": ""jobFunction""}}",json-ld,
 hive,hive-greenhouse,https://job-boards.greenhouse.io/hive,greenhouse,"{""token"": ""hive""}",skip,
 hive,hive-lever,https://jobs.lever.co/hive,lever,"{""token"": ""hive""}",skip,
@@ -1948,7 +1948,7 @@ hoyoverse,hoyoverse-greenhouse,https://job-boards.greenhouse.io/hoyoverse,greenh
 hp,hp-recruitee,https://hp.recruitee.com,recruitee,"{""token"": ""hp""}",skip,
 hp-hood,hp-hood-greenhouse,https://job-boards.greenhouse.io/hoodhp,greenhouse,"{""token"": ""hoodhp""}",skip,
 hp-iq,hp-iq-greenhouse,https://job-boards.greenhouse.io/hpiq,greenhouse,"{""token"": ""hpiq""}",skip,
-hpe,hpe-careers,https://hpe.wd5.myworkdayjobs.com/Jobsathpe,workday,"{""company"": ""hpe"", ""wd_instance"": ""wd5"", ""site"": ""Jobsathpe""}",workday,
+hpe,hpe-careers,https://hpe.wd5.myworkdayjobs.com/Jobsathpe,workday,"{""company"": ""hpe"", ""wd_instance"": ""wd5"", ""site"": ""Jobsathpe""}",workday,"{""proxy"": true}"
 hpr,hpr-greenhouse,https://job-boards.greenhouse.io/hyannisportresearch,greenhouse,"{""token"": ""hyannisportresearch""}",skip,
 hr-werkstatt-gmbh,hr-werkstatt-gmbh-join,https://join.com/companies/hr-werkstattde,join,"{""slug"": ""hr-werkstattde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 hsbc,hsbc-eightfold,https://hsbc.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/""}",eightfold,
@@ -2159,7 +2159,7 @@ job-board,job-board-greenhouse,https://job-boards.greenhouse.io/corelight,greenh
 jobber,jobber-ashby,https://jobs.ashbyhq.com/jobber,ashby,"{""token"": ""jobber""}",skip,
 jobhive-ag,jobhive-ag-join,https://join.com/companies/jobhive,join,"{""slug"": ""jobhive""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 joe-nimble-gmbh,joe-nimble-gmbh-join,https://join.com/companies/joe-nimble,join,"{""slug"": ""joe-nimble""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
-johnson-and-johnson,johnson-and-johnson-careers,https://jj.wd5.myworkdayjobs.com/JJ,workday,,workday,
+johnson-and-johnson,johnson-and-johnson-careers,https://jj.wd5.myworkdayjobs.com/JJ,workday,,workday,"{""proxy"": true}"
 johnson-law-group,johnson-law-group-greenhouse,https://job-boards.greenhouse.io/johnsonlawgroup,greenhouse,"{""token"": ""johnsonlawgroup""}",skip,
 join,join-join,https://join.com/companies/join,join,"{""slug"": ""join""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 join-gmbh,join-gmbh-join,https://join.com/companies/joinit,join,"{""slug"": ""joinit""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
@@ -2557,7 +2557,7 @@ martell-ventures,martell-ventures-greenhouse,https://job-boards.greenhouse.io/ma
 maruti-suzuki,maruti-suzuki-careers,https://maruti.app.param.ai/jobs/,api_sniffer,"{""api_url"": ""https://maruti.app.param.ai/api/career/get_job/"", ""method"": ""GET"", ""json_path"": ""data.*.jobs[]"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""employment_type"": ""job_type"", ""date_posted"": ""created_at"", ""locations"": ""locations"", ""metadata.team"": ""category""}, ""wait"": ""networkidle"", ""timeout"": 30000, ""settle"": 5}",skip,
 maruti-suzuki,maruti-suzuki-careers-hansalpur,https://smgsuzuki.app.param.ai/jobs/,api_sniffer,"{""api_url"": ""https://smgsuzuki.app.param.ai/api/career/get_job/"", ""method"": ""GET"", ""json_path"": ""data.*.jobs[]"", ""url_template"": ""https://smgsuzuki.app.param.ai/jobs/{slug}"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""employment_type"": ""job_type"", ""date_posted"": ""created_at"", ""locations"": ""locations"", ""metadata.team"": ""category""}, ""wait"": ""networkidle"", ""timeout"": 30000, ""settle"": 5}",skip,
 massar-capital,massar-capital-greenhouse,https://job-boards.greenhouse.io/massarcapital,greenhouse,"{""token"": ""massarcapital""}",skip,
-mastercard,mastercard-careers-wd,https://mastercard.wd1.myworkdayjobs.com/CorporateCareers,workday,"{""company"": ""mastercard"", ""wd_instance"": ""wd1"", ""site"": ""CorporateCareers""}",workday,
+mastercard,mastercard-careers-wd,https://mastercard.wd1.myworkdayjobs.com/CorporateCareers,workday,"{""company"": ""mastercard"", ""wd_instance"": ""wd1"", ""site"": ""CorporateCareers""}",workday,"{""proxy"": true}"
 masterclass,masterclass-greenhouse,https://job-boards.greenhouse.io/masterclass,greenhouse,"{""token"": ""masterclass""}",skip,
 material-bank,material-bank-greenhouse,https://job-boards.greenhouse.io/materialbank,greenhouse,"{""token"": ""materialbank""}",skip,
 materialize,materialize-greenhouse,https://job-boards.greenhouse.io/materialize,greenhouse,"{""token"": ""materialize""}",skip,
@@ -2590,7 +2590,7 @@ medical-informatics-engineering,medical-informatics-engineering-greenhouse,https
 mediengr-nderzentrum-mgz-nrw-gmbh,mediengr-nderzentrum-mgz-nrw-gmbh-join,https://join.com/companies/mediengruenderzentrumde,join,"{""slug"": ""mediengruenderzentrumde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 medier,medier-greenhouse,https://job-boards.greenhouse.io/medier,greenhouse,"{""token"": ""medier""}",skip,
 medsien,medsien-greenhouse,https://job-boards.greenhouse.io/medsien,greenhouse,"{""token"": ""medsien""}",skip,
-medtronic,medtronic-careers,https://medtronic.wd1.myworkdayjobs.com/MedtronicCareers,workday,,workday,
+medtronic,medtronic-careers,https://medtronic.wd1.myworkdayjobs.com/MedtronicCareers,workday,,workday,"{""proxy"": true}"
 megazone,megazone-ashby,https://jobs.ashbyhq.com/megazone,ashby,"{""token"": ""megazone""}",skip,
 mejuri,mejuri-greenhouse,https://job-boards.greenhouse.io/mejuri,greenhouse,"{""token"": ""mejuri""}",skip,
 melio,melio-greenhouse,https://job-boards.greenhouse.io/melio,greenhouse,"{""token"": ""melio""}",skip,
@@ -2713,7 +2713,7 @@ moment,moment-ashby,https://jobs.ashbyhq.com/moment,ashby,"{""token"": ""moment"
 momentum,momentum-greenhouse,https://job-boards.greenhouse.io/momentumcompany3,greenhouse,"{""token"": ""momentumcompany3""}",skip,
 momentum-financial-services-group,momentum-financial-services-group-greenhouse,https://job-boards.greenhouse.io/momentumfinancialservicesgroup,greenhouse,"{""token"": ""momentumfinancialservicesgroup""}",skip,
 monad-foundation,monad-foundation-ashby,https://jobs.ashbyhq.com/monad.foundation,ashby,"{""token"": ""monad.foundation""}",skip,
-mondelez,mondelez-careers,https://mdlz.wd3.myworkdayjobs.com/External,workday,,workday,
+mondelez,mondelez-careers,https://mdlz.wd3.myworkdayjobs.com/External,workday,,workday,"{""proxy"": true}"
 mondelez,mondelez-careers-hourly-us,https://hourlyjobs-us.mondelezinternational.com/jobs,api_sniffer,"{""api_url"": ""https://hourlyjobs-us.mondelezinternational.com/api/get-jobs"", ""method"": ""POST"", ""json_path"": ""jobs"", ""browser"": true, ""url_field"": ""applyURL"", ""post_data"": ""{\""disable_switch_search_mode\"":false,\""site_available_languages\"":[\""en\"",\""en-us\""]}"", ""request_headers"": {""accept"": ""application/json, text/plain, */*"", ""content-type"": ""application/json""}, ""params"": {""radius"": ""15"", ""enable_kilometers"": ""false"", ""page_number"": ""1""}, ""pagination"": {""param_name"": ""page_number"", ""style"": ""page"", ""start_value"": 1, ""increment"": 1, ""location"": ""query""}, ""fields"": {""title"": ""title"", ""description"": ""description"", ""employment_type"": ""employmentType"", ""job_location_type"": ""isRemote"", ""locations"": ""locations[].city""}, ""max_pages"": 60}",skip,
 moneyboxapp,moneyboxapp-pinpoint,https://moneyboxapp.pinpointhq.com,pinpoint,"{""slug"": ""moneyboxapp""}",skip,
 moneyhero-group,moneyhero-group-greenhouse,https://job-boards.greenhouse.io/moneyherogroup,greenhouse,"{""token"": ""moneyherogroup""}",skip,
@@ -2726,7 +2726,7 @@ monumental-sports-entertainment,monumental-sports-entertainment-greenhouse,https
 monzo,monzo-careers,https://job-boards.greenhouse.io/monzo,greenhouse,"{""token"": ""monzo""}",skip,
 moonlite,moonlite-greenhouse,https://job-boards.greenhouse.io/moonlite,greenhouse,"{""token"": ""moonlite""}",skip,
 morgan-morgan-p-a,morgan-morgan-p-a-greenhouse,https://job-boards.greenhouse.io/morganmorganjobsapplynow,greenhouse,"{""token"": ""morganmorganjobsapplynow""}",skip,
-morgan-stanley,morgan-stanley-workday,https://ms.wd5.myworkdayjobs.com/External,workday,"{""company"": ""ms"", ""wd_instance"": ""wd5"", ""site"": ""External""}",workday,
+morgan-stanley,morgan-stanley-workday,https://ms.wd5.myworkdayjobs.com/External,workday,"{""company"": ""ms"", ""wd_instance"": ""wd5"", ""site"": ""External""}",workday,"{""proxy"": true}"
 morning-brew-inc,morning-brew-inc-lever,https://jobs.lever.co/morningbrew,lever,"{""token"": ""morningbrew""}",skip,
 morse-micro,morse-micro-ashby,https://jobs.ashbyhq.com/morse-micro,ashby,"{""token"": ""morse-micro""}",skip,
 morse-micro,morse-micro-greenhouse,https://job-boards.greenhouse.io/morsemicro,greenhouse,"{""token"": ""morsemicro""}",skip,
@@ -2888,7 +2888,7 @@ noto,noto-ashby,https://jobs.ashbyhq.com/noto,ashby,"{""token"": ""noto""}",skip
 nourish,nourish-greenhouse,https://job-boards.greenhouse.io/usenourish,greenhouse,"{""token"": ""usenourish""}",skip,
 nova-credit,nova-credit-greenhouse,https://job-boards.greenhouse.io/novacredit,greenhouse,"{""token"": ""novacredit""}",skip,
 nova-founders-capital,nova-founders-capital-greenhouse,https://job-boards.greenhouse.io/novafounders,greenhouse,"{""token"": ""novafounders""}",skip,
-novartis,novartis-careers,https://novartis.wd3.myworkdayjobs.com/Novartis_Careers,workday,"{""company"": ""novartis"", ""wd_instance"": ""wd3"", ""site"": ""Novartis_Careers""}",workday,
+novartis,novartis-careers,https://novartis.wd3.myworkdayjobs.com/Novartis_Careers,workday,"{""company"": ""novartis"", ""wd_instance"": ""wd3"", ""site"": ""Novartis_Careers""}",workday,"{""proxy"": true}"
 novel,novel-ashby,https://jobs.ashbyhq.com/novel,ashby,"{""token"": ""novel""}",skip,
 novo,novo-ashby,https://jobs.ashbyhq.com/novo,ashby,"{""token"": ""novo""}",skip,
 novo-nordisk,novo-nordisk-careers,https://careers.novonordisk.com/search/?locale=en_GB,rss,"{""url"": ""https://careers.novonordisk.com/googlefeed.xml"", ""preset"": ""successfactors""}",skip,
@@ -2908,7 +2908,7 @@ nunu-ai,nunu-ai-careers,https://nunu-ai.notion.site/jobs,notion,,notion,
 nuro,nuro-greenhouse,https://job-boards.greenhouse.io/nuro,greenhouse,"{""token"": ""nuro""}",skip,
 nutrafol,nutrafol-greenhouse,https://job-boards.greenhouse.io/nutrafol,greenhouse,"{""token"": ""nutrafol""}",skip,
 nutrisense,nutrisense-recruitee,https://nutrisense.recruitee.com,recruitee,"{""token"": ""nutrisense""}",skip,
-nvidia,nvidia-careers,https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite,workday,"{""company"": ""nvidia"", ""wd_instance"": ""wd5"", ""site"": ""NVIDIAExternalCareerSite""}",workday,
+nvidia,nvidia-careers,https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite,workday,"{""company"": ""nvidia"", ""wd_instance"": ""wd5"", ""site"": ""NVIDIAExternalCareerSite""}",workday,"{""proxy"": true}"
 nviso,nviso-join,https://join.com/companies/nviso,join,"{""slug"": ""nviso""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 nxp,nxp-careers,https://nxp.wd3.myworkdayjobs.com/careers,workday,"{""tenant"": ""nxp"", ""board_id"": ""careers""}",workday,
 oak,oak-recruitee,https://oak.recruitee.com,recruitee,"{""token"": ""oak""}",skip,
@@ -3533,7 +3533,7 @@ robinhood,robinhood-careers,https://api.greenhouse.io/v1/boards/robinhood/jobs,g
 roblox,roblox-greenhouse,https://job-boards.greenhouse.io/roblox,greenhouse,"{""token"": ""roblox""}",skip,
 roboforce,roboforce-greenhouse,https://job-boards.greenhouse.io/roboforce,greenhouse,"{""token"": ""roboforce""}",skip,
 roboyo,roboyo-greenhouse,https://job-boards.greenhouse.io/roboyo,greenhouse,"{""token"": ""roboyo""}",skip,
-roche,roche-careers,https://roche.wd3.myworkdayjobs.com/roche-ext,workday,"{""company"": ""roche"", ""wd_instance"": ""wd3"", ""site"": ""roche-ext""}",workday,
+roche,roche-careers,https://roche.wd3.myworkdayjobs.com/roche-ext,workday,"{""company"": ""roche"", ""wd_instance"": ""wd3"", ""site"": ""roche-ext""}",workday,"{""proxy"": true}"
 rocket-chat,rocket-chat-greenhouse,https://job-boards.greenhouse.io/rocketchat,greenhouse,"{""token"": ""rocketchat""}",skip,
 rocket-lab-corporation,rocket-lab-corporation-greenhouse,https://job-boards.greenhouse.io/rocketlab,greenhouse,"{""token"": ""rocketlab""}",skip,
 rocket-lawyer,rocket-lawyer-greenhouse,https://job-boards.greenhouse.io/rocketlawyer,greenhouse,"{""token"": ""rocketlawyer""}",skip,
@@ -3555,7 +3555,7 @@ routine-labs,routine-labs-join,https://join.com/companies/routinelabs,join,"{""s
 rover,rover-lever,https://jobs.lever.co/rover,lever,"{""token"": ""rover""}",skip,
 rtcamp,rtcamp-recruitee,https://rtcamp.recruitee.com,recruitee,"{""token"": ""rtcamp""}",skip,
 rtx,rtx-careers,https://careers.rtx.com/global/en,sitemap,"{""url"": ""https://careers.rtx.com/global/en/sitemap.xml"", ""url_filter"": ""/job/""}",json-ld,"{""render"": true}"
-rtx,rtx-careers-workday,https://globalhr.wd5.myworkdayjobs.com/REC_RTX_Ext_Gateway,workday,"{""tenant"": ""globalhr"", ""board_id"": ""REC_RTX_Ext_Gateway""}",workday,
+rtx,rtx-careers-workday,https://globalhr.wd5.myworkdayjobs.com/REC_RTX_Ext_Gateway,workday,"{""tenant"": ""globalhr"", ""board_id"": ""REC_RTX_Ext_Gateway""}",workday,"{""proxy"": true}"
 rubrik-job-board,rubrik-job-board-greenhouse,https://job-boards.greenhouse.io/rubrik,greenhouse,"{""token"": ""rubrik""}",skip,
 ruf-it-gmbh,ruf-it-gmbh-join,https://join.com/companies/ruf-itcom,join,"{""slug"": ""ruf-itcom""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 ruggable,ruggable-greenhouse,https://job-boards.greenhouse.io/ruggable,greenhouse,"{""token"": ""ruggable""}",skip,
@@ -4055,7 +4055,7 @@ tanium,tanium-greenhouse,https://job-boards.greenhouse.io/tanium,greenhouse,"{""
 tanius-technology,tanius-technology-greenhouse,https://job-boards.greenhouse.io/tanius,greenhouse,"{""token"": ""tanius""}",skip,
 tapblaze,tapblaze-ashby,https://jobs.ashbyhq.com/tapblaze,ashby,"{""token"": ""tapblaze""}",skip,
 tappz-gmbh,tappz-gmbh-join,https://join.com/companies/tappzcom,join,"{""slug"": ""tappzcom""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
-target,target-careers,https://target.wd5.myworkdayjobs.com/en-US/targetcareers,workday,,workday,
+target,target-careers,https://target.wd5.myworkdayjobs.com/en-US/targetcareers,workday,,workday,"{""proxy"": true}"
 target-rwe,target-rwe-greenhouse,https://job-boards.greenhouse.io/targetrwe,greenhouse,"{""token"": ""targetrwe""}",skip,
 taskrabbit,taskrabbit-greenhouse,https://job-boards.greenhouse.io/taskrabbit,greenhouse,"{""token"": ""taskrabbit""}",skip,
 tastytrade,tastytrade-greenhouse,https://job-boards.greenhouse.io/tastytrade,greenhouse,"{""token"": ""tastytrade""}",skip,
@@ -4222,7 +4222,7 @@ totalenergies,totalenergies-careers-nl,https://jobs.totalenergies.com/nl_NL/care
 totalenergies,totalenergies-careers-pt,https://jobs.totalenergies.com/pt_BR/careers/SearchJobs,sitemap,"{""sitemap_url"": ""https://jobs.totalenergies.com/pt_BR/careers/sitemap.xml"", ""url_filter"": ""JobDetail/""}",dom,"{""steps"": [{""tag"": ""h2"", ""attr"": ""class=banner__text__title"", ""field"": ""title""}, {""text"": ""Pa\u00eds"", ""offset"": 1, ""field"": ""locations""}, {""text"": ""Tipo de contrato"", ""offset"": 1, ""field"": ""employment_type"", ""optional"": true}, {""tag"": ""h3"", ""attr"": ""class=article__header__text__title"", ""field"": ""description"", ""stop"": ""Apply"", ""html"": true}]}"
 touchbistro,touchbistro-greenhouse,https://job-boards.greenhouse.io/touchbistro,greenhouse,"{""token"": ""touchbistro""}",skip,
 tower-peak-partners,tower-peak-partners-greenhouse,https://job-boards.greenhouse.io/towerpeak,greenhouse,"{""token"": ""towerpeak""}",skip,
-toyota,toyota-careers,https://toyota.wd5.myworkdayjobs.com/TMNA,workday,"{""company"": ""toyota"", ""wd_instance"": ""wd503"", ""site"": ""TMNA"", ""all_sites"": true}",workday,
+toyota,toyota-careers,https://toyota.wd5.myworkdayjobs.com/TMNA,workday,"{""company"": ""toyota"", ""wd_instance"": ""wd503"", ""site"": ""TMNA"", ""all_sites"": true}",workday,"{""proxy"": true}"
 toyota,toyota-careers-asia,https://careers.toyota-asia.com/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.toyota-asia.com/googlefeed.xml""}",skip,
 toyota,toyota-careers-australia,https://toyotaau.wd3.myworkdayjobs.com/Careers,workday,"{""company"": ""toyotaau"", ""wd_instance"": ""wd3"", ""site"": ""Careers""}",workday,
 toyota,toyota-careers-europe,https://careers.toyota-europe.com/jobs,sitemap,"{""url"": ""https://careers.toyota-europe.com/sitemap.xml"", ""url_filter"": ""/jobs/(?!domains|p\\d)[a-z]""}",json-ld,
@@ -4506,7 +4506,7 @@ weiss-asset-management,weiss-asset-management-greenhouse,https://job-boards.gree
 welbehealth,welbehealth-greenhouse,https://job-boards.greenhouse.io/welbehealth,greenhouse,"{""token"": ""welbehealth""}",skip,
 welcome-to-the-jungle,welcome-to-the-jungle-greenhouse,https://job-boards.greenhouse.io/artefactjobs,greenhouse,"{""token"": ""artefactjobs""}",skip,
 wellpower-all-jobs,wellpower-all-jobs-greenhouse,https://job-boards.greenhouse.io/mentalhealthcenterofdenver,greenhouse,"{""token"": ""mentalhealthcenterofdenver""}",skip,
-wells-fargo,wells-fargo-careers,https://wd1.myworkdaysite.com/recruiting/wf/WellsFargoJobs,workday,"{""company"": ""wf"", ""wd_instance"": ""wd1"", ""site"": ""WellsFargoJobs""}",workday,
+wells-fargo,wells-fargo-careers,https://wd1.myworkdaysite.com/recruiting/wf/WellsFargoJobs,workday,"{""company"": ""wf"", ""wd_instance"": ""wd1"", ""site"": ""WellsFargoJobs""}",workday,"{""proxy"": true}"
 weploy,weploy-greenhouse,https://job-boards.greenhouse.io/weploy,greenhouse,"{""token"": ""weploy""}",skip,
 wesort-ai,wesort-ai-careers,https://www.wesort.ai/karriere,sitemap,"{""url_filter"": ""(stellenanzeige-|entwicklungsingenieur|initiativbewerbung)""}",dom,"{""render"": true, ""wait"": ""load"", ""timeout"": 60000, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""h2"", ""field"": ""description"", ""stop"": ""Interesse geweckt"", ""html"": true}]}"
 westhafen-leipzig,westhafen-leipzig-join,https://join.com/companies/westhafen-leipzigde,join,"{""slug"": ""westhafen-leipzigde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"

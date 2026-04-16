@@ -57,15 +57,19 @@ def _resolve_scraper(
     """Resolve (scraper_type, scraper_config) from a board's Redis metadata.
 
     Precedence: explicit ``metadata.scraper_type`` > monitor's auto-configured
-    scraper (``auto_scraper_type``) > default ``json-ld``.  Mirrors the logic
-    in :func:`src.processing.scrape._load_board_scrapers`.
+    scraper (``auto_scraper_type``) > default ``"dom"``.
 
-    A dict ``scraper_config`` passed in wins over auto-configured config so
-    callers can preserve explicit board-level overrides.  The fallback is
-    ``json-ld`` rather than the monitor name — issue #2186 was caused by the
-    previous ``crawler_type`` fallback using the monitor type as a scraper
-    name and crashing for monitors whose name isn't a registered scraper
-    (e.g. ``personio``).
+    Falling straight through to ``crawler_type`` as the scraper name is
+    unsafe — many crawler types (``greenhouse``, ``lever``, ``personio`` …)
+    aren't registered scrapers. Issue #2186 was caused by exactly that
+    fallback: a personio board with no explicit ``scraper_type`` crashed
+    with ``Unknown scraper type: 'personio'``.
+
+    ``auto_scraper_type`` returning ``("skip", None)`` signals a rich
+    monitor — ``_is_skip_no_scrape`` handles those callers separately, so
+    we never invoke the ``skip`` scraper here.  A caller-supplied
+    ``scraper_config`` wins over the auto-configured default, preserving
+    board-level overrides.
     """
     from src.workspace._compat import auto_scraper_type
 
@@ -73,12 +77,13 @@ def _resolve_scraper(
     if explicit:
         return explicit, scraper_config
 
-    auto = auto_scraper_type(crawler_type, metadata) if crawler_type else None
-    if auto:
-        resolved_config = scraper_config if isinstance(scraper_config, dict) else auto[1]
-        return auto[0], resolved_config
+    if crawler_type:
+        auto = auto_scraper_type(crawler_type, metadata)
+        if auto and auto[0] != "skip":
+            resolved_config = scraper_config if scraper_config is not None else auto[1]
+            return auto[0], resolved_config
 
-    return "json-ld", scraper_config
+    return "dom", scraper_config
 
 
 # ---------------------------------------------------------------------------
@@ -357,6 +362,8 @@ async def _process_scrape_work(
                     scraper_config = json.loads(scraper_config)
                 except (json.JSONDecodeError, TypeError):
                     scraper_config = None
+            if not isinstance(scraper_config, dict):
+                scraper_config = None
             scraper_type, scraper_config = _resolve_scraper(metadata, crawler_type, scraper_config)
         else:
             metadata = {}

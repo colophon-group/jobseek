@@ -65,7 +65,13 @@ def _skip_no_scrape_predicate(alias: str = "jb") -> str:
         ({alias}.metadata->>'scraper_type' = 'skip'
          OR (
              {alias}.metadata->>'scraper_type' IS NULL
-             AND {alias}.crawler_type IN ({literal})
+             AND (
+                 {alias}.crawler_type IN ({literal})
+                 OR (
+                     {alias}.crawler_type IN ('api_sniffer', 'nextdata')
+                     AND {alias}.metadata ? 'fields'
+                 )
+             )
          )
         )
         AND NOT COALESCE({alias}.metadata->'scraper_config' ? 'enrich', false)

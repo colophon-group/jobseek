@@ -111,26 +111,31 @@ class TestResolveScraper:
         assert scraper_type == "workday"
         assert scraper_config is None
 
-    def test_personio_without_scraper_type_defaults_to_jsonld(self):
+    def test_personio_without_scraper_type_defaults_to_dom(self):
         """Regression guard for issue #2186.
 
         personio has no auto_scraper_type mapping, so when metadata has no
         explicit scraper_type we must NOT fall back to using ``crawler_type``
-        as the scraper name (which crashes).  json-ld is the safe default.
+        as the scraper name (which crashes).  ``dom`` is the safe default —
+        the validator rejects this configuration at CI anyway.
         """
         scraper_type, scraper_config = _resolve_scraper(
             {}, crawler_type="personio", scraper_config=None
         )
-        assert scraper_type == "json-ld"
+        assert scraper_type == "dom"
         assert scraper_config is None
 
-    def test_rich_monitor_resolves_to_skip(self):
+    def test_rich_monitor_does_not_resolve_to_skip(self):
+        """Rich monitors auto-resolve to ``skip``, but _is_skip_no_scrape is
+        the real guard — this helper must never return ``skip`` itself, or
+        the ``skip`` scraper would be invoked and raise."""
         scraper_type, _ = _resolve_scraper({}, crawler_type="greenhouse", scraper_config=None)
-        assert scraper_type == "skip"
+        assert scraper_type != "skip"
+        assert scraper_type == "dom"
 
-    def test_no_crawler_type_defaults_to_jsonld(self):
+    def test_no_crawler_type_defaults_to_dom(self):
         scraper_type, scraper_config = _resolve_scraper({}, crawler_type=None, scraper_config=None)
-        assert scraper_type == "json-ld"
+        assert scraper_type == "dom"
         assert scraper_config is None
 
     def test_auto_config_applied_when_no_explicit_scraper_config(self):

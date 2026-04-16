@@ -162,13 +162,13 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, **kwargs) -> J
     api_url = _detail_url(company, wd_instance, site, path)
 
     resp = await http.get(api_url, headers={"Content-Type": "application/json"})
-    if resp.status_code != 200:
-        log.warning(
-            "workday_scraper.detail_failed",
-            url=url,
-            status=resp.status_code,
-        )
+    # 404: posting removed between list + detail fetches — soft-fail.
+    # Anything else (403 WAF block, 5xx): raise so it surfaces in
+    # batch.scrape.error and gets retried, rather than importing blank.
+    if resp.status_code == 404:
+        log.info("workday_scraper.detail_gone", url=url, status=404)
         return JobContent()
+    resp.raise_for_status()
 
     return _parse_detail(resp.json())
 

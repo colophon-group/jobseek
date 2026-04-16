@@ -125,6 +125,36 @@ class TestIsSkipNoScrape:
         # Still catches explicit skip regardless of crawler_type noise.
         assert _is_skip_no_scrape({"scraper_type": "skip"}, crawler_type="") is True
 
+    def test_implicit_api_sniffer_with_fields_is_skip(self):
+        """api_sniffer with ``fields`` in metadata is conditionally rich.
+
+        Mirrors ``auto_scraper_type`` and ``is_rich_monitor``, which both
+        return skip / rich for api_sniffer when ``fields`` is configured.
+        Without this branch a McKinsey-style stub URL leaks into the
+        scrape pipeline, where the api_sniffer scraper runs with empty
+        config and tries to launch Playwright on slim workers (issue #2183).
+        """
+        metadata = {"api_url": "https://example.com/api", "fields": {"title": "name"}}
+        assert _is_skip_no_scrape(metadata, crawler_type="api_sniffer") is True
+
+    def test_implicit_api_sniffer_without_fields_is_NOT_skip(self):
+        """api_sniffer without ``fields`` returns URL-only and DOES need scraping."""
+        metadata = {"api_url": "https://example.com/api"}
+        assert _is_skip_no_scrape(metadata, crawler_type="api_sniffer") is False
+
+    def test_implicit_nextdata_with_fields_is_skip(self):
+        """nextdata with ``fields`` is conditionally rich (same rule as api_sniffer)."""
+        metadata = {"fields": {"title": "props.title"}}
+        assert _is_skip_no_scrape(metadata, crawler_type="nextdata") is True
+
+    def test_implicit_api_sniffer_with_fields_and_enrich_is_NOT_skip(self):
+        """Enrich override still wins for conditionally-rich monitors."""
+        metadata = {
+            "fields": {"title": "name"},
+            "scraper_config": {"enrich": ["description"]},
+        }
+        assert _is_skip_no_scrape(metadata, crawler_type="api_sniffer") is False
+
 
 # ── _enqueue_scrapes_for_* guards ───────────────────────────────────────
 
@@ -507,6 +537,82 @@ class TestProcessScrapeWorkSkipGuard:
 
         mock_reschedule.assert_awaited_once()
 
+    @patch("src.workers.pipeline.reschedule_task", new_callable=AsyncMock)
+    @patch("src.workers.pipeline.claim_work", new_callable=AsyncMock)
+    @patch("src.redis_queue.get_redis")
+    async def test_implicit_scraper_type_uses_auto_scraper_type(
+        self, mock_get_redis, _mock_claim, mock_reschedule
+    ):
+        """When metadata.scraper_type is empty, resolve via auto_scraper_type.
+
+        Regression for issue #2183: the worker used to fall back to
+        ``crawler_type`` directly, so an api_sniffer board with empty
+        scraper_config would invoke the api_sniffer scraper with ``{}``,
+        which silently switches to browser mode and tries to launch
+        Playwright on slim workers. With ``auto_scraper_type`` we either
+        get a sensible mapping (workday → workday scraper) or a safe
+        default (``dom``), never the unguarded crawler_type fallback.
+        """
+        pool, _conn = self._mock_pool()
+        http = AsyncMock()
+
+        # Workday: crawler_type="workday" auto-maps to scraper_type="workday".
+        redis = self._mock_redis(
+            {
+                "metadata": json.dumps({"tenant": "acme", "board_id": "X"}),
+                "crawler_type": "workday",
+            }
+        )
+        mock_get_redis.return_value = redis
+
+        with patch(
+            "src.processing.scrape._process_one_scrape", new_callable=AsyncMock
+        ) as mock_scrape:
+            mock_scrape.return_value = (True, 0.1)
+            log = MagicMock()
+            await _process_scrape_work(log, self._scrape_work(), pool, http, browser=False)
+
+            mock_scrape.assert_awaited_once()
+            # Verify the resolved scraper_type was "workday", not the legacy
+            # ``crawler_type or "dom"`` fallback.
+            assert mock_scrape.await_args.args[3] == "workday"
+
+    @patch("src.workers.pipeline.reschedule_task", new_callable=AsyncMock)
+    @patch("src.workers.pipeline.claim_work", new_callable=AsyncMock)
+    @patch("src.redis_queue.get_redis")
+    async def test_unknown_crawler_type_falls_back_to_dom(
+        self, mock_get_redis, _mock_claim, mock_reschedule
+    ):
+        """Unknown crawler types resolve to "dom", not their own name.
+
+        ``crawler_type or "dom"`` would raise KeyError for names like
+        "greenhouse" that aren't registered scrapers. Defense in depth:
+        always end up with a known scraper.
+        """
+        pool, _conn = self._mock_pool()
+        http = AsyncMock()
+
+        redis = self._mock_redis(
+            {
+                # sitemap monitor with no metadata.scraper_type and no auto-
+                # configured fallback in auto_scraper_type → dom.
+                "metadata": json.dumps({"sitemap_url": "https://example.com/sitemap.xml"}),
+                "crawler_type": "sitemap",
+            }
+        )
+        mock_get_redis.return_value = redis
+
+        with patch(
+            "src.processing.scrape._process_one_scrape", new_callable=AsyncMock
+        ) as mock_scrape:
+            mock_scrape.return_value = (False, 0.1)
+            log = MagicMock()
+            await _process_scrape_work(log, self._scrape_work(), pool, http, browser=False)
+
+            mock_scrape.assert_awaited_once()
+            # No registered "sitemap" scraper — must fall back to "dom".
+            assert mock_scrape.await_args.args[3] == "dom"
+
 
 # ── _FETCH_DUE_JOB_POSTINGS filter shape ───────────────────────────────
 
@@ -533,6 +639,16 @@ class TestFetchDuePostingsFilter:
             assert f"'{t}'" in _FETCH_DUE_JOB_POSTINGS, f"missing {t} in fetch filter"
         # Oracle HCM (rich monitor with enrich) must NOT be in the list.
         assert "'oracle_hcm'" not in _FETCH_DUE_JOB_POSTINGS
+
+    def test_query_covers_conditionally_rich_api_sniffer(self):
+        """api_sniffer / nextdata with ``fields`` in metadata are excluded too."""
+        from src.queries.scrape import _FETCH_DUE_JOB_POSTINGS
+
+        # The conditional branch should mention both crawler types and the
+        # ``fields`` jsonb-key check.
+        assert "'api_sniffer'" in _FETCH_DUE_JOB_POSTINGS
+        assert "'nextdata'" in _FETCH_DUE_JOB_POSTINGS
+        assert "metadata ? 'fields'" in _FETCH_DUE_JOB_POSTINGS
 
 
 # ── _CLEAR_SCRAPE_FOR_RICH predicate scoping ──────────────────────────

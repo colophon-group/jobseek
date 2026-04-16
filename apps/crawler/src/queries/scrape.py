@@ -11,12 +11,15 @@ def _build_skip_no_scrape_predicate(board_alias: str = "jb") -> str:
     Mirrors ``_is_skip_no_scrape`` (``processing/scrape.py``). Returns a
     parenthesized boolean expression suitable for ``WHERE NOT ( … )``.
 
-    Two cases match:
+    Three cases match:
     1. ``metadata.scraper_type = 'skip'`` explicitly.
     2. ``metadata.scraper_type`` is unset AND ``crawler_type`` is in the
        auto-resolved rich-monitor set.
+    3. ``metadata.scraper_type`` is unset AND ``crawler_type`` is
+       ``api_sniffer`` / ``nextdata`` AND ``metadata.fields`` is set
+       (conditionally rich monitors).
 
-    Both cases additionally require no enrichment to be configured.
+    All three cases additionally require no enrichment to be configured.
     ``COALESCE`` wraps the ``? 'enrich'`` check because the JSONB ``?``
     operator returns NULL when ``scraper_config`` itself is NULL, and
     ``NOT NULL`` is NULL (not TRUE).
@@ -31,7 +34,13 @@ def _build_skip_no_scrape_predicate(board_alias: str = "jb") -> str:
             ({board_alias}.metadata->>'scraper_type' = 'skip'
              OR (
                  {board_alias}.metadata->>'scraper_type' IS NULL
-                 AND {board_alias}.crawler_type IN ({literal})
+                 AND (
+                     {board_alias}.crawler_type IN ({literal})
+                     OR (
+                         {board_alias}.crawler_type IN ('api_sniffer', 'nextdata')
+                         AND {board_alias}.metadata ? 'fields'
+                     )
+                 )
              )
             )
             AND NOT COALESCE({board_alias}.metadata->'scraper_config' ? 'enrich', false)
