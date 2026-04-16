@@ -26,6 +26,7 @@ from urllib.parse import urlparse
 
 import polars as pl
 import structlog
+from typesense.exceptions import ObjectNotFound
 
 if TYPE_CHECKING:
     import asyncpg
@@ -1394,6 +1395,41 @@ def _ts_bulk_upsert(
     )
 
 
+def _ts_bulk_delete_ids(
+    client: typesense.Client,
+    collection: str,
+    ids: list[str],
+) -> None:
+    """Delete documents by id from a Typesense collection.
+
+    Iterates per-id (cheap at the scale this is used — excluding trivial
+    watchlists). 404s are expected for ids that were never indexed.
+    """
+    if not ids:
+        return
+    deleted = 0
+    for doc_id in ids:
+        try:
+            client.collections[collection].documents[doc_id].delete()
+            deleted += 1
+        except ObjectNotFound:
+            # Doc may never have been indexed — that's the whole point.
+            pass
+        except Exception as exc:
+            log.warning(
+                "typesense.delete.error",
+                collection=collection,
+                doc_id=doc_id,
+                error=str(exc),
+            )
+    log.info(
+        "typesense.delete.done",
+        collection=collection,
+        requested=len(ids),
+        deleted=deleted,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Typesense taxonomy sync
 # ---------------------------------------------------------------------------
@@ -1817,18 +1853,47 @@ async def sync_companies_typesense(
 # ---------------------------------------------------------------------------
 
 
+def _is_trivial_watchlist(filters: dict | None, company_count: int) -> bool:
+    """Mirror of the web app's ``isTrivialWatchlist``.
+
+    A watchlist is "trivial" when it tracks no companies and carries no
+    meaningful filters — effectively a blank shell. We exclude these from
+    the public ``watchlist`` collection so they don't dilute search/popular
+    listings. ``anyCompany`` and ``salaryCurrency`` alone don't count
+    (they're defaults/prefs). Keep in sync with
+    ``apps/web/src/lib/watchlist-utils.ts``.
+    """
+    if company_count > 0:
+        return False
+    f = filters or {}
+    return not (
+        f.get("keywords")
+        or f.get("locationSlugs")
+        or f.get("occupationSlugs")
+        or f.get("senioritySlugs")
+        or f.get("technologySlugs")
+        or f.get("salaryMin") is not None
+        or f.get("salaryMax") is not None
+        or f.get("experienceMin") is not None
+        or f.get("experienceMax") is not None
+    )
+
+
 async def sync_watchlists_typesense(
     supa_conn: asyncpg.Connection,
     client: typesense.Client,
 ) -> None:
     """Sync public watchlists to the Typesense ``watchlist`` collection.
 
-    Queries from Supabase only (watchlists only exist there).
+    Queries from Supabase only (watchlists only exist there). Trivial
+    watchlists (no companies, no meaningful filters) are deleted from
+    Typesense rather than upserted, so they're hidden from public search
+    and popular listings while still existing in Postgres for their owner.
     """
     rows = await supa_conn.fetch(
         """
         SELECT w.id, w.slug, w.title, w.description,
-               w.is_public, w.created_at,
+               w.is_public, w.created_at, w.filters,
                u.name AS owner_name, u.username AS owner_username
         FROM watchlist w
         JOIN "user" u ON u.id = w.user_id
@@ -1879,16 +1944,32 @@ async def sync_watchlists_typesense(
     mirror_counts = {str(r["source_watchlist_id"]): r["cnt"] for r in mirror_count_rows}
 
     docs: list[dict] = []
+    trivial_ids: list[str] = []
     for r in rows:
         wid = str(r["id"])
         created_ts = int(r["created_at"].timestamp()) if r["created_at"] else 0
+        company_count = company_counts.get(wid, 0)
+
+        raw_filters = r["filters"]
+        filters: dict | None
+        if isinstance(raw_filters, str):
+            try:
+                filters = json.loads(raw_filters)
+            except (ValueError, TypeError):
+                filters = None
+        else:
+            filters = raw_filters
+
+        if _is_trivial_watchlist(filters, company_count):
+            trivial_ids.append(wid)
+            continue
 
         doc: dict = {
             "id": wid,
             "slug": r["slug"] or "",
             "title": r["title"] or "",
             "owner_name": r["owner_name"] or "",
-            "company_count": company_counts.get(wid, 0),
+            "company_count": company_count,
             "active_job_count": job_counts.get(wid, 0),
             "mirror_count": mirror_counts.get(wid, 0),
             "is_featured": (r["owner_username"] or "").lower() == "colophongroup",
@@ -1904,7 +1985,15 @@ async def sync_watchlists_typesense(
 
     loop = asyncio.get_event_loop()
     await loop.run_in_executor(None, _ts_bulk_upsert, client, "watchlist", docs)
-    log.info("typesense.watchlists.synced", count=len(docs))
+    # Drop any trivial watchlists that were previously indexed (e.g. pre-#2177
+    # or a web-side write hook that got skipped). This only touches Typesense;
+    # the rows still exist in Postgres for their owner.
+    await loop.run_in_executor(None, _ts_bulk_delete_ids, client, "watchlist", trivial_ids)
+    log.info(
+        "typesense.watchlists.synced",
+        upserted=len(docs),
+        trivial_deleted=len(trivial_ids),
+    )
 
 
 # ---------------------------------------------------------------------------

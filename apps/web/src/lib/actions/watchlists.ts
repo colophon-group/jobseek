@@ -554,6 +554,27 @@ function languagesCacheKey(languages: string[] | undefined): string {
   return languages.join(",");
 }
 
+/**
+ * SQL predicate: the watchlist is **not** trivial.
+ *
+ * Mirror of `isTrivialWatchlist` from `@/lib/watchlist-utils`. A watchlist is
+ * trivial when it tracks no companies and carries no meaningful filters; we
+ * use this in Postgres fallbacks for public listings to match the Typesense
+ * indexing rule. Keep the two in sync.
+ */
+const nonTrivialWatchlistPredicate = sql`(
+  (SELECT count(*) FROM watchlist_company wc WHERE wc.watchlist_id = w.id) > 0
+  OR jsonb_array_length(COALESCE(w.filters->'keywords', '[]'::jsonb)) > 0
+  OR jsonb_array_length(COALESCE(w.filters->'locationSlugs', '[]'::jsonb)) > 0
+  OR jsonb_array_length(COALESCE(w.filters->'occupationSlugs', '[]'::jsonb)) > 0
+  OR jsonb_array_length(COALESCE(w.filters->'senioritySlugs', '[]'::jsonb)) > 0
+  OR jsonb_array_length(COALESCE(w.filters->'technologySlugs', '[]'::jsonb)) > 0
+  OR (w.filters ? 'salaryMin')
+  OR (w.filters ? 'salaryMax')
+  OR (w.filters ? 'experienceMin')
+  OR (w.filters ? 'experienceMax')
+)`;
+
 function buildFilterCacheKey(f: WatchlistFilters, companyIds: string[]): string {
   const parts: string[] = [];
   if (f.anyCompany) parts.push("any");
@@ -764,7 +785,7 @@ export async function searchPublicWatchlists(params: {
       }
       // Empty Typesense result or error — fall back to Postgres
       return queryPublicWatchlists({
-        whereClause: sql`w.is_public = true AND (w.title ILIKE ${"%" + q + "%"} OR w.description ILIKE ${"%" + q + "%"})`,
+        whereClause: sql`w.is_public = true AND ${nonTrivialWatchlistPredicate} AND (w.title ILIKE ${"%" + q + "%"} OR w.description ILIKE ${"%" + q + "%"})`,
         orderClause: sql`w.created_at DESC`,
         offset: params.offset,
         limit: params.limit,
@@ -799,7 +820,7 @@ export async function getPopularWatchlists(params: {
       }
       // Empty Typesense result or error — fall back to Postgres
       return queryPublicWatchlists({
-        whereClause: sql`w.is_public = true`,
+        whereClause: sql`w.is_public = true AND ${nonTrivialWatchlistPredicate}`,
         orderClause: sql`(u.username = 'colophongroup')::int DESC, (SELECT count(*)::int FROM watchlist w2 WHERE w2.source_watchlist_id = w.id) DESC, (w.description IS NOT NULL AND w.description != '')::int DESC, w.created_at DESC`,
         offset: params.offset,
         limit: params.limit,

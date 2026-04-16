@@ -9,6 +9,7 @@ from src.sync import (
     _UPSERT_COMPANIES,
     _UPSERT_OCCUPATION_DOMAIN_NAMES,
     _UPSERT_OCCUPATION_DOMAINS,
+    _is_trivial_watchlist,
     _load_boards,
     _load_companies,
     run_sync,
@@ -686,3 +687,51 @@ class TestRunSync:
 
         mock_close_all_pools.assert_called_once()
         mock_close_redis.assert_called_once()
+
+
+class TestIsTrivialWatchlist:
+    def test_no_companies_no_filters_is_trivial(self):
+        assert _is_trivial_watchlist({}, 0) is True
+        assert _is_trivial_watchlist(None, 0) is True
+
+    def test_any_company_and_currency_alone_are_trivial(self):
+        # Defaults/prefs don't count as meaningful.
+        assert _is_trivial_watchlist({"anyCompany": True}, 0) is True
+        assert _is_trivial_watchlist({"salaryCurrency": "USD"}, 0) is True
+        assert _is_trivial_watchlist({"anyCompany": True, "salaryCurrency": "USD"}, 0) is True
+
+    def test_companies_make_non_trivial(self):
+        assert _is_trivial_watchlist({}, 1) is False
+        assert _is_trivial_watchlist({"anyCompany": True}, 3) is False
+
+    @pytest.mark.parametrize(
+        "filters",
+        [
+            {"keywords": ["python"]},
+            {"locationSlugs": ["zurich"]},
+            {"occupationSlugs": ["engineer"]},
+            {"senioritySlugs": ["senior"]},
+            {"technologySlugs": ["react"]},
+            {"salaryMin": 100000},
+            {"salaryMax": 200000},
+            {"experienceMin": 2},
+            {"experienceMax": 10},
+            {"experienceMin": 0},
+            {"salaryMin": 0},
+        ],
+    )
+    def test_meaningful_filters_make_non_trivial(self, filters):
+        assert _is_trivial_watchlist(filters, 0) is False
+
+    @pytest.mark.parametrize(
+        "filters",
+        [
+            {"keywords": []},
+            {"locationSlugs": []},
+            {"occupationSlugs": []},
+            {"senioritySlugs": []},
+            {"technologySlugs": []},
+        ],
+    )
+    def test_empty_filter_arrays_are_trivial(self, filters):
+        assert _is_trivial_watchlist(filters, 0) is True
