@@ -5,6 +5,7 @@ import ssl
 import httpx
 
 from src.shared.http import (
+    DEFAULT_USER_AGENT,
     _client_kwargs,
     _make_ssl_context,
     create_http_client,
@@ -33,7 +34,9 @@ class TestCreateHttpClient:
 
     async def test_user_agent(self):
         client = create_http_client()
-        assert client.headers["user-agent"] == "jobseek-crawler/0.1"
+        assert client.headers["user-agent"] == DEFAULT_USER_AGENT
+        assert "Chrome/" in client.headers["user-agent"]
+        assert "jobseek" not in client.headers["user-agent"].lower()
         await client.aclose()
 
     async def test_timeout(self):
