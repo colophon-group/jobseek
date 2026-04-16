@@ -95,6 +95,12 @@ class Settings(BaseSettings):
     enrich_input_price_per_m: float = 0.10
     enrich_output_price_per_m: float = 0.40
 
+    # Local-mode enrichment (personal alert pipeline)
+    use_local_descriptions: bool = False   # true = fetch HTML from descriptions table (not R2)
+    enrich_mode: str = "batch"             # "batch" | "sync"
+    enrich_rate_limit_rpm: int = 15        # Gemini free tier: 15 RPM
+    alert_filters_path: str = "ai/filters.yaml"
+
     model_config = SettingsConfigDict(env_file=(".env", ".env.local"), extra="ignore")
 
 
