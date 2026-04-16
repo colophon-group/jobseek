@@ -41,7 +41,7 @@
     "@vercel/speed-insights": "^1.3.1",
     "apify-client": "^2",
     "better-auth": "^1.4.18",
-    "dompurify": "^3.3.3",
+    "dompurify": "^3.4.0",
     "drizzle-orm": "^0.45.2",
     "jose": "^6",
     "lucide-react": "^0.575.0",
