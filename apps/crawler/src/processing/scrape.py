@@ -126,6 +126,7 @@ class BoardScraperConfig:
     scraper_type: str
     scraper_config: dict | None
     ssl_verify: bool = True
+    use_proxy: bool = False
 
 
 @dataclass
@@ -251,6 +252,7 @@ async def _load_board_scrapers(
             scraper_type=scraper_type,
             scraper_config=scraper_config,
             ssl_verify=metadata.get("ssl_verify", True),
+            use_proxy=bool((scraper_config or {}).get("proxy")),
         )
 
     return _BoardScraperInfo(scrapers=resolved, rich_board_ids=rich_board_ids)
@@ -772,19 +774,6 @@ async def _process_one_scrape(
         return False, elapsed
 
 
-async def _process_one_scrape_insecure(
-    item: ScrapeItem,
-    pool: asyncpg.Pool,
-    scraper_type: str,
-    scraper_config: dict | None,
-) -> tuple[bool, float]:
-    """Wrapper that creates a temporary insecure HTTP client for boards with ssl_verify=False."""
-    from src.shared.http import create_http_client
-
-    async with create_http_client(verify=False) as http:
-        return await _batch._process_one_scrape(item, pool, http, scraper_type, scraper_config)
-
-
 async def _do_one_enrich_scrape(
     work: _ScrapeWorkItem,
     http: httpx.AsyncClient,
@@ -1078,6 +1067,7 @@ async def _scrape_pipeline(
     # Check if any item in this pipeline needs a browser-based scraper
     need_browser = False
     needs_insecure = False
+    needs_proxy = False
     for item in items:
         if not board_scrapers or item.board_id not in board_scrapers:
             continue
@@ -1086,8 +1076,12 @@ async def _scrape_pipeline(
             need_browser = True
         if not bsc.ssl_verify:
             needs_insecure = True
+        if bsc.use_proxy:
+            needs_proxy = True
 
-    return await _run_scrape_items(items, pool, http, board_scrapers, need_browser, needs_insecure)
+    return await _run_scrape_items(
+        items, pool, http, board_scrapers, need_browser, needs_insecure, needs_proxy
+    )
 
 
 async def _run_scrape_items(
@@ -1097,11 +1091,14 @@ async def _run_scrape_items(
     board_scrapers: dict[str, BoardScraperConfig] | None,
     need_browser: bool,
     needs_insecure: bool = False,
+    needs_proxy: bool = False,
 ) -> _PipelineResult:
     """Inner scrape loop, optionally wrapped in a shared Playwright context."""
     pw = None
     pw_ctx = None
     insecure_http = None
+    proxy_http = None
+    insecure_proxy_http = None
 
     if need_browser:
         try:
@@ -1113,10 +1110,24 @@ async def _run_scrape_items(
         except Exception:
             log.warning("batch.scrape.playwright_unavailable", exc_info=True)
 
-    if needs_insecure:
+    if needs_insecure or needs_proxy:
         from src.shared.http import create_http_client
 
-        insecure_http = create_http_client(verify=False)
+        if needs_insecure:
+            insecure_http = create_http_client(verify=False)
+        if needs_proxy:
+            proxy_http = create_http_client(use_proxy=True)
+        if needs_insecure and needs_proxy:
+            insecure_proxy_http = create_http_client(verify=False, use_proxy=True)
+
+    def _pick_http(use_insecure: bool, use_proxy: bool) -> httpx.AsyncClient:
+        if use_insecure and use_proxy and insecure_proxy_http is not None:
+            return insecure_proxy_http
+        if use_insecure and insecure_http is not None:
+            return insecure_http
+        if use_proxy and proxy_http is not None:
+            return proxy_http
+        return http
 
     try:
         result = _PipelineResult()
@@ -1125,13 +1136,15 @@ async def _run_scrape_items(
                 scraper_type = "json-ld"
                 scraper_config: dict | None = None
                 use_insecure = False
+                use_proxy = False
                 if board_scrapers and item.board_id in board_scrapers:
                     cfg = board_scrapers[item.board_id]
                     scraper_type = cfg.scraper_type
                     scraper_config = cfg.scraper_config
                     use_insecure = not cfg.ssl_verify
+                    use_proxy = cfg.use_proxy
 
-                effective_http = insecure_http if use_insecure and insecure_http else http
+                effective_http = _pick_http(use_insecure, use_proxy)
                 ok, elapsed = await _batch._process_one_scrape(
                     item,
                     pool,
@@ -1150,8 +1163,9 @@ async def _run_scrape_items(
         if pw_ctx is not None:
             with contextlib.suppress(Exception):
                 await pw_ctx.__aexit__(None, None, None)
-        if insecure_http is not None:
-            await insecure_http.aclose()
+        for client in (insecure_http, proxy_http, insecure_proxy_http):
+            if client is not None:
+                await client.aclose()
 
 
 async def process_scrape_batch(

@@ -75,7 +75,6 @@ export function SaveSearchButton({
         title,
         companyIds: [],
         filters,
-        isPublic: false,
       });
 
       if ("error" in result) {

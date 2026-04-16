@@ -6,6 +6,8 @@ from typing import Any
 
 import httpx
 
+from src.shared.proxy import httpx_proxy_for
+
 
 def _make_ssl_context() -> ssl.SSLContext:
     """Create an SSL context compatible with CDNs that mishandle TLS session tickets.
@@ -42,52 +44,35 @@ _CLIENT_DEFAULTS = {
 }
 
 
-def _build_all_mounts() -> dict | None:
-    """Merge per-domain proxy mounts and CDP-routed transport mounts.
-
-    Proxy mounts come from ``PROXY_MAP`` (datacenter HTTP proxies) and
-    CDP mounts come from ``CDP_ROUTES`` + ``LIGHTPANDA_CDP_URL`` (headless
-    browser transports for bypassing WAF-protected hosts). A hostname
-    configured in both wins CDP (the later ``update`` call takes
-    precedence) since CDP is strictly more powerful — but this overlap
-    is not expected in practice.
-    """
-    from src.shared.cdp import build_cdp_mounts
-    from src.shared.proxy import build_httpx_mounts
-
-    mounts: dict = {}
-    proxy_mounts = build_httpx_mounts()
-    if proxy_mounts:
-        mounts.update(proxy_mounts)
-    cdp_mounts = build_cdp_mounts()
-    if cdp_mounts:
-        mounts.update(cdp_mounts)
-    return mounts or None
-
-
-def create_http_client(*, verify: bool = True) -> httpx.AsyncClient:
-    mounts = _build_all_mounts()
-    kwargs = {**_CLIENT_DEFAULTS}
+def _client_kwargs(*, verify: bool, use_proxy: bool) -> dict[str, Any]:
+    kwargs: dict[str, Any] = {**_CLIENT_DEFAULTS}
     if not verify:
         kwargs["verify"] = False
-    return httpx.AsyncClient(**kwargs, **({"mounts": mounts} if mounts else {}))
+    proxy = httpx_proxy_for(use_proxy=use_proxy)
+    if proxy:
+        kwargs["proxy"] = proxy
+    return kwargs
 
 
-def create_nossl_http_client() -> httpx.AsyncClient:
-    """Create an HTTP client that skips SSL certificate verification.
+def create_http_client(*, verify: bool = True, use_proxy: bool = False) -> httpx.AsyncClient:
+    """Create an httpx client, optionally routed through the active proxy provider."""
+    return httpx.AsyncClient(**_client_kwargs(verify=verify, use_proxy=use_proxy))
+
+
+def create_nossl_http_client(*, use_proxy: bool = False) -> httpx.AsyncClient:
+    """HTTP client that skips SSL certificate verification.
 
     Used for boards whose servers have broken certificate chains
-    (e.g. missing intermediate CA).  Enabled per-board via
+    (e.g. missing intermediate CA). Enabled per-board via
     ``skip_ssl: true`` in scraper_config.
     """
-    defaults = {**_CLIENT_DEFAULTS, "verify": False}
-    mounts = _build_all_mounts()
-    return httpx.AsyncClient(**defaults, **({"mounts": mounts} if mounts else {}))
+    return create_http_client(verify=False, use_proxy=use_proxy)
 
 
 def create_logging_http_client(
     *,
     verify: bool = True,
+    use_proxy: bool = False,
 ) -> tuple[httpx.AsyncClient, list[dict[str, Any]]]:
     """Create an HTTP client that logs request/response metadata.
 
@@ -116,13 +101,8 @@ def create_logging_http_client(
             }
         )
 
-    mounts = _build_all_mounts()
-    kwargs = {**_CLIENT_DEFAULTS}
-    if not verify:
-        kwargs["verify"] = False
     client = httpx.AsyncClient(
-        **kwargs,
+        **_client_kwargs(verify=verify, use_proxy=use_proxy),
         event_hooks={"request": [_on_request], "response": [_on_response]},
-        **({"mounts": mounts} if mounts else {}),
     )
     return client, log_entries

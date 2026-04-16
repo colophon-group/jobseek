@@ -321,3 +321,117 @@ class TestValidateCsvs:
         monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
         errors = validate_csvs()
         assert any("Duplicate board_slug" in str(e) for e in errors)
+
+
+class TestValidateProxyFlag:
+    """The ``proxy`` JSON key must be a bool — anywhere it appears.
+
+    Non-bool values coerce truthy at runtime (``bool("false") is True``),
+    which would silently turn proxy on for a board the operator tried to
+    turn it off for.
+    """
+
+    def _write_csvs(self, path, boards_csv):
+        (path / "companies.csv").write_text(
+            "slug,name,website,logo_url,icon_url,logo_type\ntest,Test,https://test.com,,\n"
+        )
+        (path / "boards.csv").write_text(boards_csv)
+
+    def test_monitor_config_non_bool_proxy_rejected(self, tmp_path, monkeypatch):
+        self._write_csvs(
+            tmp_path,
+            "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
+            'test,test-careers,https://example.com,greenhouse,"{""proxy"": ""yes""}",skip,\n',
+        )
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
+        errors = validate_csvs()
+        assert any("'proxy' in monitor_config must be bool" in str(e) for e in errors)
+
+    def test_scraper_config_non_bool_proxy_rejected(self, tmp_path, monkeypatch):
+        self._write_csvs(
+            tmp_path,
+            "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
+            'test,test-careers,https://example.com,greenhouse,,json-ld,"{""proxy"": 1}"\n',
+        )
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
+        errors = validate_csvs()
+        assert any("'proxy' in scraper_config must be bool" in str(e) for e in errors)
+
+    def test_fallback_config_non_bool_proxy_rejected(self, tmp_path, monkeypatch):
+        fallback = '"{""fallback"": {""type"": ""dom"", ""config"": {""proxy"": ""no""}}}"'
+        self._write_csvs(
+            tmp_path,
+            "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
+            f"test,test-careers,https://example.com,greenhouse,,json-ld,{fallback}\n",
+        )
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
+        errors = validate_csvs()
+        assert any("'proxy' in fallback config must be bool" in str(e) for e in errors)
+
+    def test_bool_proxy_accepted_in_all_three_places(self, tmp_path, monkeypatch):
+        mon = '"{""proxy"": true}"'
+        scr = (
+            '"{""proxy"": true, ""fallback"": {""type"": ""dom"", ""config"": {""proxy"": false}}}"'
+        )
+        self._write_csvs(
+            tmp_path,
+            "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
+            f"test,test-careers,https://example.com,greenhouse,{mon},json-ld,{scr}\n",
+        )
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
+        errors = validate_csvs()
+        # No errors *about proxy* — other errors (like missing companies cols) are fine
+        assert not any("'proxy'" in str(e) for e in errors)
+
+
+class TestMigratedBoardsHaveProxy:
+    """The 10 boards migrated off Lightpanda CDP MUST keep ``proxy: true``.
+
+    The old source of truth was ``data/cdp_routes.csv`` (one CSV, one
+    place); the new source is scattered across 10 rows in
+    ``data/boards.csv``. If a future bulk-edit drops the flag, these
+    boards silently go back to WAF captcha — we want CI to catch that.
+    """
+
+    MIGRATED_BOARD_SLUGS = (
+        "citigroup-eightfold",
+        "eaton-eightfold",
+        "kering-careers",
+        "lam-research-eightfold",
+        "micron-eightfold",
+        "northrop-grumman-eightfold",
+        "qualcomm-eightfold",
+        "starbucks-eightfold",
+        "tailored-brands-eightfold",
+        "vodafone-jobs",
+    )
+
+    def test_all_ten_have_proxy_true_in_monitor_and_scraper(self):
+        import json
+
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        by_slug = {r["board_slug"]: r for r in rows}
+
+        missing: list[str] = []
+        for slug in self.MIGRATED_BOARD_SLUGS:
+            row = by_slug.get(slug)
+            assert row is not None, f"migrated board {slug!r} not found in boards.csv"
+            mc = json.loads(row.get("monitor_config") or "{}")
+            sc = json.loads(row.get("scraper_config") or "{}")
+            if mc.get("proxy") is not True:
+                missing.append(f"{slug}: monitor_config.proxy != True")
+            if sc.get("proxy") is not True:
+                missing.append(f"{slug}: scraper_config.proxy != True")
+
+        assert not missing, (
+            "These boards lost the proxy flag — they were WAF-blocked from Hetzner "
+            'and rely on the proxy layer to get data. Re-add "proxy": true to both '
+            "monitor_config and scraper_config:\n  - " + "\n  - ".join(missing)
+        )

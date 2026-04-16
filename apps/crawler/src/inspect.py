@@ -225,6 +225,19 @@ def validate_csvs() -> list[ValidationError]:
                             )
                         )
 
+                if (
+                    isinstance(mc_obj, dict)
+                    and "proxy" in mc_obj
+                    and not isinstance(mc_obj["proxy"], bool)
+                ):
+                    errors.append(
+                        ValidationError(
+                            "boards.csv",
+                            i,
+                            f"'proxy' in monitor_config must be bool, got {mc_obj['proxy']!r}",
+                        )
+                    )
+
         if scraper_config:
             try:
                 json.loads(scraper_config)
@@ -236,6 +249,15 @@ def validate_csvs() -> list[ValidationError]:
             try:
                 sc_obj = json.loads(scraper_config)
                 if isinstance(sc_obj, dict):
+                    if "proxy" in sc_obj and not isinstance(sc_obj["proxy"], bool):
+                        errors.append(
+                            ValidationError(
+                                "boards.csv",
+                                i,
+                                f"'proxy' in scraper_config must be bool, got {sc_obj['proxy']!r}",
+                            )
+                        )
+
                     # Validate enrich key
                     enrich = sc_obj.get("enrich")
                     if enrich is not None:
@@ -302,6 +324,18 @@ def validate_csvs() -> list[ValidationError]:
                                         )
                                     )
                     fb_cfg = fb.get("config")
+                    if (
+                        isinstance(fb_cfg, dict)
+                        and "proxy" in fb_cfg
+                        and not isinstance(fb_cfg["proxy"], bool)
+                    ):
+                        errors.append(
+                            ValidationError(
+                                "boards.csv",
+                                i,
+                                f"'proxy' in fallback config must be bool, got {fb_cfg['proxy']!r}",
+                            )
+                        )
                     fb = fb_cfg.get("fallback") if isinstance(fb_cfg, dict) else None
                     depth += 1
             except json.JSONDecodeError:

@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { cached } from "@/lib/cache";
 import { getTypesenseClient, type TypesenseHit } from "@/lib/search/typesense-client";
 import { buildFilterString } from "@/lib/search/typesense-filters";
+import { boostByFilterMatches, type TypeaheadBoostFilters } from "@/lib/search/typeahead-boost";
 
 export interface LocationSuggestion {
   id: number;
@@ -19,6 +20,7 @@ export async function suggestLocations(params: {
   locale: string;
   userLat?: number;
   userLng?: number;
+  filters?: TypeaheadBoostFilters;
 }): Promise<LocationSuggestion[]> {
   const q = params.query.trim();
   if (q.length < 2) return [];
@@ -52,7 +54,17 @@ export async function suggestLocations(params: {
 
     if (!result.hits || result.hits.length === 0) return [];
 
-    return result.hits.map((hit) => _mapLocationHit(hit as unknown as TypesenseHit, locale));
+    const suggestions = result.hits.map((hit) =>
+      _mapLocationHit(hit as unknown as TypesenseHit, locale),
+    );
+
+    if (!params.filters) return suggestions;
+    return boostByFilterMatches(
+      suggestions,
+      "location_ids",
+      (s) => s.id,
+      params.filters,
+    );
   } catch {
     // Typesense unavailable — return empty (graceful degradation)
     return [];

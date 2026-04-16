@@ -3,7 +3,7 @@
 import { getCompanyBySlug, getCompanyPostings, type CompanyDetail } from "@/lib/actions/company";
 import { parseSearchFilters, type ParsedSearchFilters } from "@/lib/actions/search-input";
 import { getPreferences } from "@/lib/actions/preferences";
-import { resolveJobLanguages } from "@/lib/job-languages";
+import { getViewerLanguages } from "@/lib/viewer";
 import { firstOf, idsOrUndefined, parseRangeParam, getGeoFromHeaders } from "@/lib/search/params";
 import type { SearchResultPosting } from "@/lib/search";
 
@@ -51,13 +51,13 @@ export async function fetchCompanyPageData(params: {
 
   const { userLat, userLng } = await getGeoFromHeaders();
 
-  const [parsed, prefs] = await Promise.all([
+  const [parsed, prefs, languages] = await Promise.all([
     parseSearchFilters({ q, loc, occ, sen, tech, locale, userLat, userLng }),
     getPreferences(),
+    getViewerLanguages(locale),
   ]);
 
   const jobLanguages = prefs?.jobLanguages ?? [];
-  const languages = resolveJobLanguages(jobLanguages, locale);
   const displayCurrency = prefs?.displayCurrency ?? "EUR";
 
   const locationIds = idsOrUndefined(parsed.locations);

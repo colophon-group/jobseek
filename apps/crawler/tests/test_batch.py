@@ -2870,6 +2870,59 @@ class TestLoadBoardScrapersEnrich:
         assert cfg.scraper_config["enrich"] == ["description"]
         assert cfg.scraper_config["fallback"]["type"] == "dom"
 
+    async def test_use_proxy_derived_from_scraper_config(self, mock_pool):
+        """``scraper_config.proxy = true`` lifts to ``BoardScraperConfig.use_proxy``."""
+        pool, _ = mock_pool
+        pool.fetch.return_value = [
+            {
+                "id": "b-1",
+                "metadata": {
+                    "scraper_type": "json-ld",
+                    "scraper_config": {"enrich": ["description"], "proxy": True},
+                },
+                "crawler_type": "eightfold",
+            }
+        ]
+        info = await _load_board_scrapers(pool, {"b-1"})
+        assert info.scrapers["b-1"].use_proxy is True
+
+    async def test_use_proxy_false_by_default(self, mock_pool):
+        pool, _ = mock_pool
+        pool.fetch.return_value = [
+            {
+                "id": "b-1",
+                "metadata": {
+                    "scraper_type": "json-ld",
+                    "scraper_config": {"enrich": ["description"]},
+                },
+                "crawler_type": "greenhouse",
+            }
+        ]
+        info = await _load_board_scrapers(pool, {"b-1"})
+        assert info.scrapers["b-1"].use_proxy is False
+
+    async def test_use_proxy_ignored_at_top_level_metadata(self, mock_pool):
+        """Top-level ``metadata.proxy`` is for the monitor, not the scraper.
+
+        The scraper only reads ``scraper_config.proxy``. If the operator
+        sets it at the flattened top level by mistake, the scraper must
+        stay direct (and the validator + docs guide them to fix it).
+        """
+        pool, _ = mock_pool
+        pool.fetch.return_value = [
+            {
+                "id": "b-1",
+                "metadata": {
+                    "scraper_type": "json-ld",
+                    "scraper_config": {"enrich": ["description"]},
+                    "proxy": True,  # wrong level — scraper must not pick it up
+                },
+                "crawler_type": "eightfold",
+            }
+        ]
+        info = await _load_board_scrapers(pool, {"b-1"})
+        assert info.scrapers["b-1"].use_proxy is False
+
 
 # ── TestEnrichValidation ───────────────────────────────────────────
 

@@ -240,7 +240,7 @@ async def dom_discover(board: dict, client: httpx.AsyncClient = None, pw=None) -
         combined = {**metadata, "_board_url": board_url}
 
         if pw is not None:
-            async with open_page(pw, combined, target_url=board_url) as page:
+            async with open_page(pw, combined, use_proxy=bool(metadata.get("proxy"))) as page:
                 urls = await _extract_links_rendered(page, combined, url_matcher)
                 if pagination:
                     browser_page = page if pagination.get("browser") else None
@@ -263,7 +263,7 @@ async def dom_discover(board: dict, client: httpx.AsyncClient = None, pw=None) -
 
             async with (
                 async_playwright() as p,
-                open_page(p, combined, target_url=board_url) as page,
+                open_page(p, combined, use_proxy=bool(metadata.get("proxy"))) as page,
             ):
                 urls = await _extract_links_rendered(page, combined, url_matcher)
                 if pagination:

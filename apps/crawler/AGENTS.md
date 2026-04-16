@@ -98,7 +98,7 @@ src/
 │   ├── csv_io.py          # CSV read/write utilities
 │   ├── http.py            # httpx client factory
 │   ├── nextdata.py        # Shared field extraction (extract_field, map, list spec, each+wrap)
-│   ├── proxy.py           # Per-domain proxy routing (PROXY_MAP env var)
+│   ├── proxy.py           # Provider-agnostic proxy layer (see Proxy-routed transport)
 │   ├── logging.py         # structlog config
 │   └── slug.py            # slugify utility
 ├── inspect.py             # CSV validation + diagnostic library
@@ -179,61 +179,48 @@ uv run crawler board <slug> --pcsx-full-crawl  # Force full PCSX crawl for
 uv run pytest tests/
 ```
 
-## CDP-routed transport (Lightpanda)
+## Proxy-routed transport
 
-Some sites (e.g. `apply.starbucks.com`) front their entire stack with AWS
-WAF rules that block Hetzner datacenter IPs with HTTP 405 captcha pages.
-For those, the crawler routes httpx requests through the Lightpanda cloud
-service over CDP — the request still goes through `httpx.AsyncClient`
-unchanged, but the underlying transport is a `LightpandaTransport`
-(`src/shared/cdp.py`) that issues the request via Playwright's
-`APIRequestContext.fetch()` against a remote browser. No DOM render, no
-JS execution — just HTTP-through-the-browser-network-stack.
+Some hosts (e.g. `apply.starbucks.com`, `citi.eightfold.ai`) block
+Hetzner datacenter IPs with AWS WAF captcha pages. The crawler routes
+httpx requests and Playwright launches for those boards through an
+external HTTP proxy. Implementation: `src/shared/proxy.py` — a
+`ProxyProvider` Protocol with a single `StaticProxyProvider` impl
+covering Webshare / Decodo / any `http://user:pass@host:port` service.
 
-### Configuration
-
-The list of CDP-routed hostnames lives in **`data/cdp_routes.csv`** —
-a normal repo-tracked file. Adding a new domain that needs to bypass
-WAF is a normal PR: edit the CSV, validate, merge. No GitHub secret
-update needed.
+A board opts in by setting `"proxy": true` inside `monitor_config`
+and/or `scraper_config` JSON in `data/boards.csv` — same place as
+`render`, `skip_ssl`, `rescrape_policy`. The two flags are independent;
+typically both are set for a WAF-blocked host.
 
 ```csv
-hostname,backend,reason
-apply.starbucks.com,lightpanda,AWS WAF blocks Hetzner egress IPs
-jobs.northropgrumman.com,lightpanda,Intermittent AWS WAF block
-...
+starbucks,starbucks-eightfold,https://starbucks.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/"", ""proxy"": true}",eightfold,"{""enrich"": [""description""], ""proxy"": true}"
 ```
 
-Only `lightpanda` is a supported backend today; unknown backend names
-are logged and skipped. The `reason` column is documentation only.
-
-The `LIGHTPANDA_CDP_URL` env var (the `wss://` Lightpanda endpoint with
-auth token) must be set on the worker — it's a GitHub Actions secret
-forwarded by `deploy-crawler-browser.yml`.
-
-The optional `CDP_ROUTES` env var (JSON) is a runtime override that
-wins over the file. Use for testing a new host before adding it to
-the file, or temporarily disabling a route on production without a
-deploy:
+Active provider is chosen by env:
 
 ```bash
-CDP_ROUTES={"new.host.com":"lightpanda"}   # adds on top of the file
+PROXY_PROVIDER=webshare         # none | webshare | decodo
+WEBSHARE_PROXY_URL=http://user:pass@192.53.69.78:6716
+DECODO_PROXY_URL=http://user:pass@isp.decodo.com:10001
 ```
 
-The optional `CDP_ROUTES_FILE` env var overrides the path to the CSV
-(default: `apps/crawler/data/cdp_routes.csv`). Used by tests.
+`PROXY_PROVIDER=none` (and missing/empty URLs) are fail-safe — boards
+with `proxy: true` fall back to direct egress, which means captcha on
+WAF'd hosts but nothing crashes. The provider logs
+`proxy.provider.missing_url` at ERROR when a selected provider has an
+empty URL — first thing to check when a `proxy: true` board starts
+returning captcha.
 
-### Cost model
+Static residential / ISP is billed **per IP, flat monthly**, so cost
+scales with IPs leased, not traffic volume. A single IP covers the
+current WAF-blocked set; add IPs (and a rotating/failover provider
+impl) only when an origin bans the IP or a provider hits concurrency
+caps.
 
-Lightpanda bills by **browser-hours of session clock time** (not per
-request). The Explorer (free) tier is 10 h/mo, Builder is $19/mo for
-300 h. The crawler uses one shared session per process, lazily opened
-on first request and reused across all CDP-routed traffic in that
-worker — handshake cost is paid once per process, then amortized.
-
-For Starbucks-scale traffic (one sitemap fetch + a few PCSX pages +
-~50 detail-page scrapes per day), expect well under 1 h/month. Free
-tier handles it with room for ~10 more similarly-sized WAF'd boards.
+Adding a new provider or a new WAF-blocked host is covered in the
+commit that introduced this section (PR #2181) — the PR body has the
+step-by-step and rollback runbook.
 
 ### Disabling re-scrapes (cost saver)
 

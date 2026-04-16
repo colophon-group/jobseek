@@ -3208,7 +3208,11 @@ export function getLanguage(code: string): JobLanguage | undefined {
  *
  * - `[]`        → default: filter by UI locale only
  * - `["*"]`     → all languages: no filter (returns `[]`)
- * - `["en","de"]` → specific selection
+ * - `["en","de"]` → specific selection (silently filtered to known codes)
+ *
+ * Unknown / malformed codes are dropped — these strings flow into Typesense
+ * `filter_by` and Postgres array literals, so we must not trust the DB's
+ * `user_preferences.jobLanguages` value blindly.
  */
 export function resolveJobLanguages(
   jobLanguages: string[],
@@ -3216,5 +3220,10 @@ export function resolveJobLanguages(
 ): string[] {
   if (jobLanguages.length === 0) return [locale];
   if (jobLanguages.includes("*")) return [];
-  return jobLanguages;
+  const safe = jobLanguages.filter((c) => _langMap.has(c));
+  if (safe.length === 0) return [locale];
+  // Sort + dedupe so downstream JSON.stringify cache keys (taxonomy.ts,
+  // locations.ts) collapse equivalent prefs across users (["en","de"] and
+  // ["de","en"] would otherwise produce distinct Redis entries).
+  return Array.from(new Set(safe)).sort();
 }

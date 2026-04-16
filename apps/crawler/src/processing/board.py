@@ -359,12 +359,15 @@ async def _process_one_board_streaming(
 
         enrich_fields = _board_has_enrich(metadata)
 
-        # Use a per-board insecure client when ssl_verify is disabled
+        # Use a per-board http client when the monitor opts out of SSL
+        # verification or into the proxy provider. We reuse the shared
+        # client otherwise.
         ssl_verify = metadata.get("ssl_verify", True)
-        if not ssl_verify:
+        use_proxy = bool(metadata.get("proxy"))
+        if not ssl_verify or use_proxy:
             from src.shared.http import create_http_client
 
-            effective_http = create_http_client(verify=False)
+            effective_http = create_http_client(verify=ssl_verify, use_proxy=use_proxy)
 
         # Start Playwright if this monitor needs a browser and none was provided
         if pw is None and _batch.monitor_needs_browser(crawler_type, metadata):

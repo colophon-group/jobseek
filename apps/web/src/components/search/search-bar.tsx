@@ -45,6 +45,8 @@ interface SearchBarProps {
   occupations?: { id: number; slug: string; name: string }[];
   seniorities?: { id: number; slug: string; name: string }[];
   technologies?: { id: number; slug: string; name: string }[];
+  languages?: string[];
+  companyId?: string;
   userLat?: number;
   userLng?: number;
   className?: string;
@@ -63,6 +65,8 @@ export function SearchBar({
   occupations: occupationsProp,
   seniorities: senioritiesProp,
   technologies: technologiesProp,
+  languages: languagesProp,
+  companyId,
   userLat: serverLat,
   userLng: serverLng,
   className,
@@ -130,6 +134,16 @@ export function SearchBar({
   const selectedSeniorityIds = new Set((senioritiesProp ?? []).map((s) => s.id));
   const selectedTechnologyIds = new Set((technologiesProp ?? []).map((t) => t.id));
 
+  // Filter context shared across typeahead boost queries. Each suggest*
+  // call omits the dimension it's suggesting (same convention as the
+  // browse-all modals) so users see counts under their *other* filters.
+  const baseLocationIds = locationsProp?.length ? locationsProp.map((l) => l.id) : undefined;
+  const baseOccupationIds = occupationsProp?.length ? occupationsProp.map((o) => o.id) : undefined;
+  const baseSeniorityIds = senioritiesProp?.length ? senioritiesProp.map((s) => s.id) : undefined;
+  const baseTechnologyIds = technologiesProp?.length ? technologiesProp.map((t) => t.id) : undefined;
+  const baseLanguages = languagesProp?.length ? languagesProp : undefined;
+  const baseKeywords = currentKeywords.length > 0 ? currentKeywords : undefined;
+
   // Build flat list for keyboard navigation
   // "keyword" option first so user can search by title, then structured suggestions
   const trimmedInput = inputValue.trim();
@@ -156,6 +170,26 @@ export function SearchBar({
         setIsOpen(false);
         return;
       }
+      // Build the shared filter context for typeahead boost once; each
+      // suggest* call omits its own dimension so the boost query re-ranks
+      // candidates against the viewer's *other* filters (matches the
+      // browse-all-modal convention and prevents sticky self-matches).
+      const baseFilters = {
+        companyId,
+        keywords: baseKeywords,
+        locationIds: baseLocationIds,
+        occupationIds: baseOccupationIds,
+        seniorityIds: baseSeniorityIds,
+        technologyIds: baseTechnologyIds,
+        languages: baseLanguages,
+      };
+      const filtersExcluding = (
+        omit: "locationIds" | "occupationIds" | "seniorityIds" | "technologyIds",
+      ) => {
+        const { [omit]: _omitted, ...rest } = baseFilters;
+        return rest;
+      };
+
       debounceRef.current = setTimeout(() => {
         // Fire all requests independently so results appear as they arrive
         setActiveIndex(-1);
@@ -163,31 +197,49 @@ export function SearchBar({
           setCompanyResults(companies);
           if (companies.length > 0) setIsOpen(true);
         });
-        suggestLocations({ query, locale: lang, userLat, userLng }).then((locs) => {
+        suggestLocations({
+          query,
+          locale: lang,
+          userLat,
+          userLng,
+          filters: filtersExcluding("locationIds"),
+        }).then((locs) => {
           const filtered = selectedLocationIds
             ? locs.filter((r) => !selectedLocationIds.has(r.id))
             : locs.filter((r) => !selectedLocationSlugs.has(r.slug));
           setLocationResults(filtered);
           if (filtered.length > 0) setIsOpen(true);
         });
-        suggestOccupations({ query, locale: lang }).then((occs) => {
+        suggestOccupations({
+          query,
+          locale: lang,
+          filters: filtersExcluding("occupationIds"),
+        }).then((occs) => {
           const filtered = occs.filter((r) => !selectedOccupationIds.has(r.id));
           setOccupationResults(filtered);
           if (filtered.length > 0) setIsOpen(true);
         });
-        suggestSeniorities({ query, locale: lang }).then((sens) => {
+        suggestSeniorities({
+          query,
+          locale: lang,
+          filters: filtersExcluding("seniorityIds"),
+        }).then((sens) => {
           const filtered = sens.filter((r) => !selectedSeniorityIds.has(r.id));
           setSeniorityResults(filtered);
           if (filtered.length > 0) setIsOpen(true);
         });
-        suggestTechnologies({ query, locale: lang }).then((techs) => {
+        suggestTechnologies({
+          query,
+          locale: lang,
+          filters: filtersExcluding("technologyIds"),
+        }).then((techs) => {
           const filtered = techs.filter((r) => !selectedTechnologyIds.has(r.id));
           setTechnologyResults(filtered);
           if (filtered.length > 0) setIsOpen(true);
         });
       }, 200);
     },
-    [lang, userLat, userLng, selectedLocationIds, selectedLocationSlugs, selectedOccupationIds, selectedSeniorityIds, selectedTechnologyIds],
+    [lang, userLat, userLng, companyId, selectedLocationIds, selectedLocationSlugs, selectedOccupationIds, selectedSeniorityIds, selectedTechnologyIds, baseKeywords, baseLanguages, baseLocationIds, baseOccupationIds, baseSeniorityIds, baseTechnologyIds],
   );
 
   const selectItem = useCallback(

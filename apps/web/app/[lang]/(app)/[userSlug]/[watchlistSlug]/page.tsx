@@ -5,6 +5,8 @@ import {
   getWatchlistByUserAndSlug as _getWatchlistByUserAndSlug,
   getWatchlistMatchingCompanyCount,
 } from "@/lib/actions/watchlists";
+import { getViewerLanguages } from "@/lib/viewer";
+import { isTrivialWatchlist } from "@/lib/watchlist-utils";
 import { siteConfig } from "@/content/config";
 import { buildAlternates } from "@/lib/seo";
 import { WatchlistContent } from "./watchlist-content";
@@ -69,9 +71,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // For `anyCompany` watchlists, `detail.companies` is unrelated to what the
   // watchlist actually tracks (it holds leftover rows from source copies).
   // Ask Typesense how many distinct companies currently have postings matching
-  // the filter so the social preview reflects reality.
+  // the filter. Scope by the viewer's language preference so the social
+  // preview / page header match what the user actually sees below.
+  const languages = await getViewerLanguages(locale);
   const companyCount = detail.filters.anyCompany
-    ? await getWatchlistMatchingCompanyCount(detail.filters)
+    ? await getWatchlistMatchingCompanyCount(detail.filters, languages)
     : detail.companies.length;
   if (companyCount > 0) {
     description = i18n._({
@@ -82,6 +86,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   const path = `/${userSlug}/${watchlistSlug}`;
+  const trivial = isTrivialWatchlist(detail.filters, detail.companies.length);
   return {
     title,
     description,
@@ -92,6 +97,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       url: `${siteConfig.url}/${locale}${path}`,
       type: "website",
     },
+    ...(trivial && { robots: { index: false, follow: true } }),
   };
 }
 

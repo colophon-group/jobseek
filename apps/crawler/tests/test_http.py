@@ -4,7 +4,12 @@ import ssl
 
 import httpx
 
-from src.shared.http import _make_ssl_context, create_http_client, create_logging_http_client
+from src.shared.http import (
+    _client_kwargs,
+    _make_ssl_context,
+    create_http_client,
+    create_logging_http_client,
+)
 
 
 class TestSSLContext:
@@ -41,6 +46,60 @@ class TestCreateHttpClient:
         client = create_http_client()
         assert client.follow_redirects is True
         await client.aclose()
+
+
+class TestProxyOptIn:
+    """Test the public contract: ``_client_kwargs`` is the exact dict we
+    pass to ``httpx.AsyncClient(**kwargs)``. Asserting on it is robust
+    against httpx internal changes (no probing of ``client._mounts``).
+    """
+
+    URL = "http://u:p@proxy.example:7000"
+
+    def test_no_proxy_by_default(self, monkeypatch):
+        from src import config
+
+        monkeypatch.setattr(config.settings, "proxy_provider", "webshare")
+        monkeypatch.setattr(config.settings, "webshare_proxy_url", self.URL)
+        kwargs = _client_kwargs(verify=True, use_proxy=False)
+        assert "proxy" not in kwargs
+
+    def test_use_proxy_true_attaches_provider_url(self, monkeypatch):
+        from src import config
+
+        monkeypatch.setattr(config.settings, "proxy_provider", "webshare")
+        monkeypatch.setattr(config.settings, "webshare_proxy_url", self.URL)
+        kwargs = _client_kwargs(verify=True, use_proxy=True)
+        assert kwargs["proxy"] == self.URL
+
+    def test_use_proxy_true_noop_when_provider_none(self, monkeypatch):
+        from src import config
+
+        monkeypatch.setattr(config.settings, "proxy_provider", "none")
+        monkeypatch.setattr(config.settings, "webshare_proxy_url", self.URL)
+        kwargs = _client_kwargs(verify=True, use_proxy=True)
+        assert "proxy" not in kwargs
+
+    def test_use_proxy_true_noop_when_url_empty(self, monkeypatch):
+        """Active provider but empty URL — missing_url ERROR logged, direct egress."""
+        from src import config
+
+        monkeypatch.setattr(config.settings, "proxy_provider", "webshare")
+        monkeypatch.setattr(config.settings, "webshare_proxy_url", "")
+        kwargs = _client_kwargs(verify=True, use_proxy=True)
+        assert "proxy" not in kwargs
+
+    async def test_create_http_client_accepts_use_proxy_kwarg(self, monkeypatch):
+        """Sanity: the factory builds a live AsyncClient with the proxy attached."""
+        from src import config
+
+        monkeypatch.setattr(config.settings, "proxy_provider", "webshare")
+        monkeypatch.setattr(config.settings, "webshare_proxy_url", self.URL)
+        client = create_http_client(use_proxy=True)
+        try:
+            assert isinstance(client, httpx.AsyncClient)
+        finally:
+            await client.aclose()
 
 
 class TestLoggingHttpClient:

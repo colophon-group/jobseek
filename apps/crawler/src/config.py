@@ -1,39 +1,20 @@
 from __future__ import annotations
 
-import json
-
-from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     database_url: str = ""
     local_database_url: str = "postgresql://crawler:crawler@postgres:5432/crawler"
-    proxy_map: dict[str, str] = {}
 
-    @field_validator("proxy_map", mode="before")
-    @classmethod
-    def _parse_proxy_map(cls, v):
-        if isinstance(v, str):
-            return json.loads(v) if v.strip() else {}
-        return v
-
-    # CDP-routed HTTP transport (see src/shared/cdp.py). The shared httpx
-    # client routes hosts in the CDP route list through a headless-browser
-    # network stack (Lightpanda cloud) to bypass datacenter-IP anti-bot
-    # blocks like AWS WAF. Source of truth is ``data/cdp_routes.csv``;
-    # ``cdp_routes`` (env var) is an optional runtime override that wins
-    # over the file.
-    #
-    # ``cdp_routes`` is intentionally typed as ``str`` (not ``dict``) so
-    # pydantic-settings does NOT auto-JSON-parse it before our validator
-    # runs — that auto-parser raises on the empty string the docker-compose
-    # ``${CDP_ROUTES:-}`` substitution produces when the secret is unset.
-    # The empty/JSON parsing happens lazily in
-    # ``src.shared.cdp.parse_cdp_routes`` instead.
-    lightpanda_cdp_url: str = ""
-    cdp_routes: str = ""
-    cdp_routes_file: str = ""  # override path to data/cdp_routes.csv
+    # Proxy provider — applies to hosts with ``"proxy": true`` in
+    # ``monitor_config`` / ``scraper_config`` (``data/boards.csv``). See
+    # ``src.shared.proxy`` for the provider registry. Swap provider by
+    # changing ``PROXY_PROVIDER``; credentials for idle providers stay
+    # around for ad-hoc testing / quick fallback.
+    proxy_provider: str = "none"  # none | webshare | decodo
+    webshare_proxy_url: str = ""
+    decodo_proxy_url: str = ""
 
     # Redis (local instance, not Upstash)
     redis_url: str = "redis://localhost:6379/0"

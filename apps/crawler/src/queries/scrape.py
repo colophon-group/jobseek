@@ -166,7 +166,7 @@ WHERE id = $1
 # re-scrapes happen after a successful scrape:
 #
 #   "never" -> set next_scrape_at = NULL (one-shot per posting; cost saver
-#              for boards behind expensive transports, e.g. Lightpanda-routed
+#              for boards behind metered transports, e.g. proxy-routed
 #              WAF'd hosts like Starbucks). The first scrape still runs.
 #   absent/other -> existing behaviour (re-scrape on the usual cadence).
 #

@@ -903,7 +903,7 @@ cision,cision-greenhouse,https://job-boards.greenhouse.io/cision,greenhouse,"{""
 citadel,citadel-careers,https://www.citadel.com/careers/open-opportunities/,sitemap,"{""sitemap_url"": ""https://www.citadel.com/career-sitemap.xml"", ""url_filter"": ""/careers/details/""}",json-ld,"{""render"": true, ""timeout"": 60000, ""wait"": ""domcontentloaded""}"
 citema-systems-gmbh,citema-systems-gmbh-join,https://join.com/companies/citema,join,"{""slug"": ""citema""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 citian,citian-greenhouse,https://job-boards.greenhouse.io/citian,greenhouse,"{""token"": ""citian""}",skip,
-citigroup,citigroup-eightfold,https://citi.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/""}",eightfold,"{""enrich"": [""description""]}"
+citigroup,citigroup-eightfold,https://citi.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/"", ""proxy"": true}",eightfold,"{""enrich"": [""description""], ""proxy"": true}"
 citigroup,citigroup-workday,https://citi.wd5.myworkdayjobs.com/en-US/2,workday,"{""company"": ""citi"", ""wd_instance"": ""wd5"", ""site"": ""2""}",workday,
 citrus-health-group-inc,citrus-health-group-inc-greenhouse,https://job-boards.greenhouse.io/citrushealthgroup,greenhouse,"{""token"": ""citrushealthgroup""}",skip,
 civil-science,civil-science-greenhouse,https://job-boards.greenhouse.io/civilscience,greenhouse,"{""token"": ""civilscience""}",skip,
@@ -1302,7 +1302,7 @@ earnin,earnin-greenhouse,https://job-boards.greenhouse.io/earnin,greenhouse,"{""
 easygo,easygo-greenhouse,https://job-boards.greenhouse.io/easygo,greenhouse,"{""token"": ""easygo""}",skip,
 easypost,easypost-recruitee,https://easypost.recruitee.com,recruitee,"{""token"": ""easypost""}",skip,
 easyship,easyship-greenhouse,https://job-boards.greenhouse.io/easyship,greenhouse,"{""token"": ""easyship""}",skip,
-eaton,eaton-eightfold,https://eaton.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/""}",eightfold,"{""enrich"": [""description""]}"
+eaton,eaton-eightfold,https://eaton.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/"", ""proxy"": true}",eightfold,"{""enrich"": [""description""], ""proxy"": true}"
 ebanx,ebanx-greenhouse,https://job-boards.greenhouse.io/ebanx,greenhouse,"{""token"": ""ebanx""}",skip,
 echo,echo-ashby,https://jobs.ashbyhq.com/echo,ashby,"{""token"": ""echo""}",skip,
 echodyne-corp,echodyne-corp-greenhouse,https://job-boards.greenhouse.io/echodynecorp,greenhouse,"{""token"": ""echodynecorp""}",skip,
@@ -2228,7 +2228,7 @@ kemaro,kemaro-careers,https://jobs.dualoo.com/portal/1e9qvgvs,dom,"{""render"": 
 kentik,kentik-greenhouse,https://job-boards.greenhouse.io/kentik,greenhouse,"{""token"": ""kentik""}",skip,
 kepler-communications,kepler-communications-lever,https://jobs.lever.co/kepler,lever,"{""token"": ""kepler""}",skip,
 kepler-group,kepler-group-greenhouse,https://job-boards.greenhouse.io/keplergroup,greenhouse,"{""token"": ""keplergroup""}",skip,
-kering,kering-careers,https://careers.kering.com,eightfold,"{""url_filter"": ""/careers/job/""}",eightfold,"{""enrich"": [""description""]}"
+kering,kering-careers,https://careers.kering.com,eightfold,"{""url_filter"": ""/careers/job/"", ""proxy"": true}",eightfold,"{""enrich"": [""description""], ""proxy"": true}"
 kernal-biologics-inc,kernal-biologics-inc-greenhouse,https://job-boards.greenhouse.io/kernalbio,greenhouse,"{""token"": ""kernalbio""}",skip,
 kernel,kernel-ashby,https://jobs.ashbyhq.com/kernel,ashby,"{""token"": ""kernel""}",skip,
 kestra,kestra-ashby,https://jobs.ashbyhq.com/kestra,ashby,"{""token"": ""kestra""}",skip,
@@ -2323,7 +2323,7 @@ la28,la28-greenhouse,https://job-boards.greenhouse.io/la2028,greenhouse,"{""toke
 la28-web,la28-web-greenhouse,https://job-boards.greenhouse.io/la28careers,greenhouse,"{""token"": ""la28careers""}",skip,
 labelbox,labelbox-greenhouse,https://job-boards.greenhouse.io/labelbox,greenhouse,"{""token"": ""labelbox""}",skip,
 lakera,lakera-careers,https://jobs.ashbyhq.com/lakera.ai,ashby,"{""token"": ""lakera.ai""}",skip,
-lam-research,lam-research-eightfold,https://lamresearch.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/""}",eightfold,"{""enrich"": [""description""]}"
+lam-research,lam-research-eightfold,https://lamresearch.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/"", ""proxy"": true}",eightfold,"{""enrich"": [""description""], ""proxy"": true}"
 lambda,lambda-ashby,https://jobs.ashbyhq.com/lambda,ashby,"{""token"": ""lambda""}",skip,
 lambertus-apotheke,lambertus-apotheke-join,https://join.com/companies/canndirektde,join,"{""slug"": ""canndirektde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 lancedb,lancedb-ashby,https://jobs.ashbyhq.com/lancedb,ashby,"{""token"": ""lancedb""}",skip,
@@ -2649,7 +2649,7 @@ mhi,mhi-careers-eu,https://mhiecpd.recruitee.com/,recruitee,"{""company"": ""mhi
 mhi,mhi-careers-jp,https://hrmos.co/pages/mhi/jobs,dom,"{""render"": true}",json-ld,"{""render"": true}"
 mhi,mhi-primetals,https://careers.primetals.com/global/en/search-results,sitemap,"{""sitemap_url"": ""https://careers.primetals.com/global/en/search-results/sitemap.xml"", ""url_filter"": ""/job/""}",json-ld,"{""render"": true}"
 michael-bonsby-hvac-plumbing-electrical,michael-bonsby-hvac-plumbing-electrical-greenhouse,https://job-boards.greenhouse.io/bonsbyhvacplumbing,greenhouse,"{""token"": ""bonsbyhvacplumbing""}",skip,
-micron,micron-eightfold,https://micron.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/""}",eightfold,"{""enrich"": [""description""]}"
+micron,micron-eightfold,https://micron.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/"", ""proxy"": true}",eightfold,"{""enrich"": [""description""], ""proxy"": true}"
 microsoft,microsoft-careers2,https://apply.careers.microsoft.com/careers,eightfold,"{""url_filter"": ""/careers/job/""}",eightfold,"{""enrich"": [""description""]}"
 microtech-global,microtech-global-main,https://www.microtech-global.com/en/jobs.asp,dom,"{""render"": false, ""url_filter"": ""job_detail\\.asp"", ""pagination"": {""param_name"": ""nav"", ""max_pages"": 25}}",json-ld,
 midea-group,midea-group-careers-americas,https://midea.hire.trakstar.com/jobs,sitemap,"{""sitemap_url"": ""https://midea.hire.trakstar.com/jobs/sitemap.xml""}",json-ld,
@@ -2876,7 +2876,7 @@ north-america,north-america-greenhouse,https://job-boards.greenhouse.io/xebiausa
 northbeam,northbeam-greenhouse,https://job-boards.greenhouse.io/northbeam,greenhouse,"{""token"": ""northbeam""}",skip,
 northmarq,northmarq-greenhouse,https://job-boards.greenhouse.io/northmarq,greenhouse,"{""token"": ""northmarq""}",skip,
 northrop-grumman,northrop-grumman-directemployers,https://northropgrumman.jobs/jobs/,sitemap,"{""sitemap_url"": ""https://northropgrumman.jobs/sitemap.xml""}",json-ld,"{""render"": true}"
-northrop-grumman,northrop-grumman-eightfold,https://jobs.northropgrumman.com/careers,eightfold,"{""url_filter"": ""/careers/job/""}",eightfold,"{""enrich"": [""description""]}"
+northrop-grumman,northrop-grumman-eightfold,https://jobs.northropgrumman.com/careers,eightfold,"{""url_filter"": ""/careers/job/"", ""proxy"": true}",eightfold,"{""enrich"": [""description""], ""proxy"": true}"
 northrop-grumman,northrop-grumman-veterans,https://northropgrumman-veterans.jobs/,sitemap,"{""sitemap_url"": ""https://northropgrumman-veterans.jobs/sitemap.xml"", ""url_filter"": ""/job/""}",json-ld,"{""render"": true}"
 northwest-pipe-fittings,northwest-pipe-fittings-greenhouse,https://job-boards.greenhouse.io/northwestpipefittings,greenhouse,"{""token"": ""northwestpipefittings""}",skip,
 northwood-space,northwood-space-careers,https://jobs.ashbyhq.com/NorthwoodSpace,ashby,"{""org"": ""NorthwoodSpace""}",skip,
@@ -3383,7 +3383,7 @@ qai-ventures-ag,qai-ventures-ag-join,https://join.com/companies/qai-venturescom,
 qdrant,qdrant-join,https://join.com/companies/qdrant,join,"{""slug"": ""qdrant""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 qonto,qonto-lever,https://jobs.lever.co/qonto,lever,"{""token"": ""qonto""}",skip,
 qts,qts-recruitee,https://qts.recruitee.com,recruitee,"{""token"": ""qts""}",skip,
-qualcomm,qualcomm-eightfold,https://careers.qualcomm.com/careers/search?query=*&domain=qualcomm.com,eightfold,"{""sitemap_url"": ""https://careers.qualcomm.com/careers/sitemap.xml""}",eightfold,"{""enrich"": [""description""]}"
+qualcomm,qualcomm-eightfold,https://careers.qualcomm.com/careers/search?query=*&domain=qualcomm.com,eightfold,"{""sitemap_url"": ""https://careers.qualcomm.com/careers/sitemap.xml"", ""proxy"": true}",eightfold,"{""enrich"": [""description""], ""proxy"": true}"
 qualia,qualia-greenhouse,https://job-boards.greenhouse.io/qualia,greenhouse,"{""token"": ""qualia""}",skip,
 qualified,qualified-ashby,https://jobs.ashbyhq.com/qualified,ashby,"{""token"": ""qualified""}",skip,
 qualified-digital,qualified-digital-greenhouse,https://job-boards.greenhouse.io/qualifieddigital,greenhouse,"{""token"": ""qualifieddigital""}",skip,
@@ -3903,7 +3903,7 @@ standard-nuclear,standard-nuclear-careers,https://job-boards.greenhouse.io/stand
 standardfleet,standardfleet-ashby,https://jobs.ashbyhq.com/standardfleet,ashby,"{""token"": ""standardfleet""}",skip,
 stanley-1913,stanley-1913-greenhouse,https://job-boards.greenhouse.io/stanley1913-us,greenhouse,"{""token"": ""stanley1913-us""}",skip,
 starbridge,starbridge-ashby,https://jobs.ashbyhq.com/starbridge,ashby,"{""token"": ""starbridge""}",skip,
-starbucks,starbucks-eightfold,https://starbucks.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/"", ""pcsx_watermark"": {""auto_full_crawl"": false}}",eightfold,"{""enrich"": [""description""]}"
+starbucks,starbucks-eightfold,https://starbucks.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/"", ""pcsx_watermark"": {""auto_full_crawl"": false}, ""proxy"": true}",eightfold,"{""enrich"": [""description""], ""proxy"": true}"
 starburst,starburst-greenhouse,https://job-boards.greenhouse.io/starburst,greenhouse,"{""token"": ""starburst""}",skip,
 starcloud,starcloud-greenhouse,https://job-boards.greenhouse.io/starcloud,greenhouse,"{""token"": ""starcloud""}",skip,
 starrez,starrez-greenhouse,https://job-boards.greenhouse.io/starrez,greenhouse,"{""token"": ""starrez""}",skip,
@@ -4032,7 +4032,7 @@ tabapay,tabapay-greenhouse,https://job-boards.greenhouse.io/tabapay,greenhouse,"
 tabby,tabby-careers,https://tabby.pinpointhq.com,pinpoint,"{""slug"": ""tabby""}",skip,
 tacto,tacto-ashby,https://jobs.ashbyhq.com/tacto,ashby,"{""token"": ""tacto""}",skip,
 tailorcare,tailorcare-greenhouse,https://job-boards.greenhouse.io/tailorcare2023,greenhouse,"{""token"": ""tailorcare2023""}",skip,
-tailored-brands,tailored-brands-eightfold,https://tailoredbrands.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/""}",eightfold,"{""enrich"": [""description""]}"
+tailored-brands,tailored-brands-eightfold,https://tailoredbrands.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/"", ""proxy"": true}",eightfold,"{""enrich"": [""description""], ""proxy"": true}"
 tailscale,tailscale-greenhouse,https://job-boards.greenhouse.io/tailscale,greenhouse,"{""token"": ""tailscale""}",skip,
 tailwind,tailwind-ashby,https://jobs.ashbyhq.com/tailwind,ashby,"{""token"": ""tailwind""}",skip,
 take-two-interactive-software-inc,take-two-interactive-software-inc-greenhouse,https://job-boards.greenhouse.io/taketwo,greenhouse,"{""token"": ""taketwo""}",skip,
@@ -4437,7 +4437,7 @@ vitable-health,vitable-health-greenhouse,https://job-boards.greenhouse.io/vitabl
 vitalize,vitalize-ashby,https://jobs.ashbyhq.com/vitalize,ashby,"{""token"": ""vitalize""}",skip,
 vitol,vitol-careers,https://careers.smartrecruiters.com/Vitol,smartrecruiters,"{""token"": ""Vitol""}",smartrecruiters,
 vivid-money,vivid-money-careers,https://careers.vivid.money,personio,"{""slug"": ""vivid"", ""language"": ""en""}",,
-vodafone,vodafone-jobs,https://jobs.vodafone.com/careers,eightfold,"{""url_filter"": ""/careers/job/""}",eightfold,"{""enrich"": [""description""]}"
+vodafone,vodafone-jobs,https://jobs.vodafone.com/careers,eightfold,"{""url_filter"": ""/careers/job/"", ""proxy"": true}",eightfold,"{""enrich"": [""description""], ""proxy"": true}"
 voladynamics,voladynamics-careers,https://jobs.ashbyhq.com/voladynamics,ashby,"{""token"": ""voladynamics""}",skip,
 voldex,voldex-ashby,https://jobs.ashbyhq.com/voldex,ashby,"{""token"": ""voldex""}",skip,
 volkswagen-group,volkswagen-group-australia,https://careers.volkswagen.net.au/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.volkswagen.net.au/googlefeed.xml""}",skip,

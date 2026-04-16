@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Trans } from "@lingui/react/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { getLanguage } from "@/lib/job-languages";
 
 interface LanguageNoteProps {
@@ -12,6 +12,7 @@ interface LanguageNoteProps {
 }
 
 export function LanguageNote({ jobLanguages, locale }: LanguageNoteProps) {
+  const { t } = useLingui();
   const params = useParams();
   const lang = (params.lang as string) ?? locale;
   const settingsHref = `/${lang}/settings`;
@@ -28,8 +29,19 @@ export function LanguageNote({ jobLanguages, locale }: LanguageNoteProps) {
   const shownNames = allNames.slice(0, MAX_INLINE).join(", ");
   const remaining = displayCodes.length - MAX_INLINE;
 
+  const changeLabel = t({
+    id: "search.languageNote.changeAria",
+    comment: "Aria label for the change link in the language note",
+    message: "Change job language preference",
+  });
+
   const changeLink = (
-    <Link href={settingsHref} prefetch={false} className="text-primary hover:underline">
+    <Link
+      href={settingsHref}
+      prefetch={false}
+      className="text-primary hover:underline"
+      aria-label={changeLabel}
+    >
       <Trans id="search.languageNote.change" comment="Link to change language settings">
         change
       </Trans>
@@ -38,7 +50,7 @@ export function LanguageNote({ jobLanguages, locale }: LanguageNoteProps) {
 
   if (isAll) {
     return (
-      <p className="shrink-0 text-xs text-muted">
+      <p role="status" className="shrink-0 text-xs text-muted">
         <Trans id="search.languageNote.all" comment="Note showing jobs in all languages">
           Showing jobs in all languages
         </Trans>
@@ -49,7 +61,7 @@ export function LanguageNote({ jobLanguages, locale }: LanguageNoteProps) {
   }
 
   return (
-    <p className="shrink-0 text-xs text-muted">
+    <p role="status" className="shrink-0 text-xs text-muted">
       {remaining > 0 ? (
         <Trans
           id="search.languageNote.withMore"
