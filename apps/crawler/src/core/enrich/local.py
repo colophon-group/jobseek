@@ -166,8 +166,9 @@ async def run_sync_enrich(
 
         results: list[tuple[str, dict | None, object | None]] = []
         posting_ids: list[str] = []
+        gemini_calls_made = 0
 
-        for i, row in enumerate(rows):
+        for row in rows:
             pid = str(row["id"])
             posting_ids.append(pid)
             locale = row["locale"] or "en"
@@ -184,8 +185,8 @@ async def run_sync_enrich(
                 total_skipped += 1
                 continue
 
-            # Rate-limit: sleep between calls (not before the first)
-            if i > 0:
+            # Rate-limit: sleep between calls (not before the first actual call)
+            if gemini_calls_made > 0:
                 await asyncio.sleep(60 / rate_limit_rpm)
 
             user_msg = build_user_message(
@@ -204,6 +205,7 @@ async def run_sync_enrich(
                 log.info("enrich.local.gemini_call", posting_id=pid)
                 results.append((pid, parsed_dict, usage))
                 total_enriched += 1
+                gemini_calls_made += 1
             except Exception as exc:
                 log.warning("enrich.local.gemini_error", posting_id=pid, error=str(exc))
                 # Re-queue for retry
@@ -214,8 +216,10 @@ async def run_sync_enrich(
                 results.append((pid, None, None))
                 total_failed += 1
 
-        if not results:
-            continue
+        # Break if no Gemini calls were made (all items skipped due to missing HTML).
+        # Without this guard, the loop would re-claim the same re-queued postings forever.
+        if gemini_calls_made == 0:
+            break
 
         # Insert synthetic enrich_batch row before calling _persist_results
         # (_persist_results does UPDATE enrich_batch SET status='completed' at the end)
