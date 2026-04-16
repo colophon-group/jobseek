@@ -470,6 +470,20 @@
       "when": 1774934400001,
       "tag": "0071_add_board_browser_flags",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1776207600000,
+      "tag": "0074_add_job_board_slug",
+      "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1776313200000,
+      "tag": "0075_add_missing_salary_period",
+      "breakpoints": true
     }
   ]
 }
