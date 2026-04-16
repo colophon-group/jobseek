@@ -314,13 +314,37 @@ async def _process_scrape_work(
                 metadata = {}
 
             crawler_type = board_config.get("crawler_type") or None
-            scraper_type = metadata.get("scraper_type") or crawler_type or "dom"
+            explicit_scraper = metadata.get("scraper_type") or None
             scraper_config = metadata.get("scraper_config")
             if isinstance(scraper_config, str):
                 try:
                     scraper_config = json.loads(scraper_config)
                 except (json.JSONDecodeError, TypeError):
                     scraper_config = None
+            if not isinstance(scraper_config, dict):
+                scraper_config = None
+
+            if explicit_scraper:
+                scraper_type = explicit_scraper
+            elif crawler_type:
+                # Resolve via auto_scraper_type, mirroring _load_board_scrapers.
+                # Falling straight through to ``crawler_type`` is unsafe: many
+                # crawler types ("greenhouse", "lever", …) aren't registered
+                # scrapers, and api_sniffer with an empty scraper_config
+                # silently switches to browser mode and tries to launch
+                # Playwright on slim workers. The skip-with-no-enrich case is
+                # handled by ``_is_skip_no_scrape`` below.
+                from src.workspace._compat import auto_scraper_type
+
+                auto = auto_scraper_type(crawler_type, metadata)
+                if auto and auto[0] != "skip":
+                    scraper_type = auto[0]
+                    if scraper_config is None:
+                        scraper_config = auto[1]
+                else:
+                    scraper_type = "dom"
+            else:
+                scraper_type = "dom"
         else:
             metadata = {}
             crawler_type = None
