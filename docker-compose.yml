@@ -22,6 +22,16 @@ services:
       --api-key=local_dev_typesense_key
       --enable-cors
 
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+
 volumes:
   pgdata:
   typesense-data:
+  redis-data:
