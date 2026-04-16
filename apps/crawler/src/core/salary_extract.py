@@ -44,7 +44,10 @@ def _html_to_text(html: str) -> str:
 def _parse_number(s: str) -> float:
     """Parse '137,300.00' or '137300' or '1 800' or '120'000' → float."""
     s = s.replace(",", "").replace(" ", "").replace("'", "").replace("\u2019", "")
-    # Handle K/k suffix: "85K" → 85000
+    # Defense in depth: currency regexes are tightened to forbid trailing
+    # dots, but if any capture still arrives with a sentence-ending dot
+    # (e.g. "£115,500.00."), it's never a decimal point on its own.
+    s = s.rstrip(".")
     if s.upper().endswith("K"):
         return float(s[:-1]) * 1000
     return float(s)
@@ -257,7 +260,7 @@ def _extract_bare_range(text: str) -> list[SalaryRange]:
 #   "$107.40/hr", "$120,000 per year", "$105,000 Annually"
 
 _SINGLE_DOLLAR_PERIOD_RE = re.compile(
-    r"\$([\d,.]+)\s*"
+    r"\$([\d,]+(?:\.\d+)?)\s*"
     r"(per year|per annum|annually|annual|/year|/yr|"
     r"per hour|hourly|/hour|/hr)",
     re.IGNORECASE,
@@ -411,11 +414,13 @@ def _extract_eur(text: str) -> list[SalaryRange]:
 # ── Pattern 6: GBP ──────────────────────────────────────────────────
 
 _GBP_RANGE_RE = re.compile(
-    r"£([\d,.]+)\s*[-–—]\s*£?([\d,.]+)"
+    r"£([\d,]+(?:\.\d+)?)\s*[-–—]\s*£?([\d,]+(?:\.\d+)?)"
     r"(\s*.{0,50})",
 )
 
-_GBP_SINGLE_RE = re.compile(r"£([\d,.]+)\s*(per hour|hourly|per year|annually|/hr|/hour|/year)")
+_GBP_SINGLE_RE = re.compile(
+    r"£([\d,]+(?:\.\d+)?)\s*(per hour|hourly|per year|annually|/hr|/hour|/year)"
+)
 
 
 def _extract_gbp(text: str) -> list[SalaryRange]:
