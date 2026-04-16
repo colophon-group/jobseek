@@ -26,6 +26,26 @@ log = structlog.get_logger()
 MAX_JOBS = 50_000
 
 
+class RssFeedNotXml(ValueError):
+    """Feed endpoint returned a non-XML body (e.g. publisher disabled the feed)."""
+
+
+def _parse_feed(text: str, feed_url: str) -> ET.Element:
+    """Parse an RSS response body, with a clear error for non-XML content.
+
+    Some publishers retire their feed endpoint but keep the URL live, serving
+    an HTML landing page or a plain-text "feed disabled" message with 200 OK.
+    ``ET.fromstring`` then surfaces a cryptic ``not well-formed`` error that
+    gives no clue about the actual cause. Sniff the leading bytes and raise a
+    named error up-front so the monitor's ``last_error`` identifies the root
+    cause instead of a column offset in a JavaScript blob.
+    """
+    head = text.lstrip()[:512].lower()
+    if not head.startswith(("<?xml", "<rss", "<feed")):
+        raise RssFeedNotXml(f"feed returned non-XML content: {feed_url}")
+    return ET.fromstring(text)
+
+
 # ── Preset definitions ──────────────────────────────────────────────────
 
 
@@ -284,7 +304,7 @@ async def _fetch_all_items(
     if not preset.paginated:
         resp = await client.get(feed_url, follow_redirects=True)
         resp.raise_for_status()
-        root = ET.fromstring(resp.text)
+        root = _parse_feed(resp.text, feed_url)
         channel = root.find("channel")
         return channel.findall("item") if channel is not None else []
 
@@ -298,7 +318,7 @@ async def _fetch_all_items(
         resp = await client.get(page_url, follow_redirects=True)
         resp.raise_for_status()
 
-        root = ET.fromstring(resp.text)
+        root = _parse_feed(resp.text, page_url)
         channel = root.find("channel")
         if channel is None:
             break

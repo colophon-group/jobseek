@@ -3,12 +3,15 @@ from __future__ import annotations
 import xml.etree.ElementTree as ET
 
 import httpx
+import pytest
 
 from src.core.monitors import DiscoveredJob
 from src.core.monitors.rss import (
+    RssFeedNotXml,
     _add_pagination,
     _build_feed_url,
     _g,
+    _parse_feed,
     _parse_generic_item,
     _parse_sf_item,
     _parse_tt_item,
@@ -563,3 +566,62 @@ class TestCanHandle:
             result = await can_handle("https://example.com/careers", client)
             assert result is not None
             assert result["preset"] == "successfactors"
+
+
+# ── _parse_feed (non-XML sniff) ──────────────────────────────────────────
+
+
+class TestParseFeed:
+    def test_accepts_rss(self):
+        root = _parse_feed(_rss_xml(""), "https://x/feed")
+        assert root.tag == "rss"
+
+    def test_accepts_xml_prolog(self):
+        root = _parse_feed(
+            '<?xml version="1.0"?><feed xmlns="http://www.w3.org/2005/Atom"/>',
+            "https://x/feed",
+        )
+        assert root.tag.endswith("feed")
+
+    def test_rejects_html_landing_page(self):
+        # The real Givaudan failure: a redirect target returns a Phenom People
+        # HTML page with a huge <script> that ET misreports as a line-17 parse
+        # error deep inside JavaScript code.
+        html = '<!DOCTYPE html>\n<html lang="en"><head><title>Careers</title></head></html>'
+        with pytest.raises(RssFeedNotXml):
+            _parse_feed(html, "https://jobs.example.com/googlefeed.xml")
+
+    def test_rejects_plaintext_disabled_message(self):
+        # The other Givaudan variant: careers.givaudan.com/googlefeed.xml
+        # returns "Message - This feed is disabled" with 200 OK.
+        with pytest.raises(RssFeedNotXml):
+            _parse_feed("Message - This feed is disabled", "https://x/feed")
+
+    def test_rejects_empty(self):
+        with pytest.raises(RssFeedNotXml):
+            _parse_feed("", "https://x/feed")
+
+
+class TestDiscoverRejectsNonXml:
+    async def test_html_response_raises_named_error(self):
+        """discover() must surface a named error, not a cryptic XML parse
+        message, when a feed endpoint starts serving HTML.
+        """
+
+        def handler(request):
+            return httpx.Response(
+                200,
+                text="<!DOCTYPE html><html><body>Feed moved</body></html>",
+                headers={"content-type": "text/html; charset=utf-8"},
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://jobs.example.com/careers",
+                "metadata": {
+                    "preset": "successfactors",
+                    "feed_url": "https://jobs.example.com/googlefeed.xml",
+                },
+            }
+            with pytest.raises(RssFeedNotXml, match="googlefeed.xml"):
+                await discover(board, client)
