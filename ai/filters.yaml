@@ -1,0 +1,26 @@
+# ai/filters.yaml — personal job alert filters (phase 1)
+# Run: crawler mark-candidates && crawler enrich-local && crawler alert
+
+# Title-keyword exclusions — case-insensitive regex fragments joined with |
+exclude_title_patterns:
+  - senior
+  - "sr\\."
+  - principal
+  - staff
+  - lead
+  - director
+  - manager
+  - "vp\\b"
+  - "head of"
+
+require:
+  # "yes" = job explicitly offers visa/work-permit sponsorship.
+  # null or "no" values are excluded.
+  work_permit_support: "yes"
+
+  # Max years of experience listed in the posting.
+  # NULL in DB (no requirement stated) is also accepted.
+  experience_max: 2
+
+output:
+  limit: 100
