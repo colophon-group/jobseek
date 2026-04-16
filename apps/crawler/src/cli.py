@@ -82,6 +82,50 @@ def parse_args() -> argparse.Namespace:
         ),
     )
 
+    # Phase 1: local alert pipeline
+    mark_p = sub.add_parser(
+        "mark-candidates",
+        help="Flag postings that pass cheap filters as enrichment candidates",
+    )
+    mark_p.add_argument(
+        "--filters",
+        default="ai/filters.yaml",
+        help="Path to filters YAML (default: ai/filters.yaml)",
+    )
+
+    enrich_local_p = sub.add_parser(
+        "enrich-local",
+        help="Enrich flagged postings via sync Gemini calls (local mode)",
+    )
+    enrich_local_p.add_argument(
+        "--batch-size",
+        type=int,
+        default=20,
+        help="Postings per claim iteration (default: 20)",
+    )
+    enrich_local_p.add_argument(
+        "--rate-limit-rpm",
+        type=int,
+        default=None,
+        help="Gemini calls per minute (default: from ENRICH_RATE_LIMIT_RPM env, fallback 15)",
+    )
+
+    alert_p = sub.add_parser(
+        "alert",
+        help="Print visa-sponsoring entry-level jobs as JSON",
+    )
+    alert_p.add_argument(
+        "--filters",
+        default="ai/filters.yaml",
+        help="Path to filters YAML (default: ai/filters.yaml)",
+    )
+    alert_p.add_argument(
+        "--format",
+        choices=["json", "table"],
+        default="json",
+        help="Output format (default: json)",
+    )
+
     return parser.parse_args()
 
 
@@ -204,6 +248,84 @@ async def run() -> None:
                     )
             finally:
                 await http.aclose()
+
+        elif args.command == "mark-candidates":
+            local_pool = await create_local_pool()
+            from src.core.enrich.local import mark_candidates_from_yaml
+
+            result = await mark_candidates_from_yaml(local_pool, args.filters)
+            print(
+                f"mark-candidates: {result['marked']} candidates flagged, "
+                f"{result['cleared']} cleared"
+            )
+
+        elif args.command == "enrich-local":
+            local_pool = await create_local_pool()
+            from src.core.enrich.local import run_sync_enrich
+            from src.core.enrich.providers import create_sync_provider
+
+            rpm = args.rate_limit_rpm or settings.enrich_rate_limit_rpm
+            provider = create_sync_provider(
+                settings.enrich_provider or "gemini",
+                settings.enrich_model or "gemini-2.0-flash",
+                settings.enrich_api_key,
+            )
+            result = await run_sync_enrich(
+                local_pool,
+                provider,
+                batch_size=args.batch_size,
+                rate_limit_rpm=rpm,
+            )
+            print(
+                f"enrich-local: enriched={result['enriched']} "
+                f"failed={result['failed']} skipped={result['skipped']}"
+            )
+
+        elif args.command == "alert":
+            import json as _json
+
+            local_pool = await create_local_pool()
+            from src.core.enrich.local import _build_exclude_regex, load_filter_config
+            from src.queries.alert import run_alert_query
+
+            cfg = load_filter_config(args.filters)
+            exclude_regex = _build_exclude_regex(cfg.exclude_title_patterns)
+            experience_max = cfg.require.experience_max if cfg.require.experience_max is not None else 9999
+
+            async with local_pool.acquire() as conn:
+                rows = await run_alert_query(
+                    conn,
+                    experience_max=experience_max,
+                    exclude_title_regex=exclude_regex,
+                    limit=cfg.output.limit,
+                )
+
+            log.info("alert.query", row_count=len(rows))
+
+            if args.format == "json":
+                # Convert non-serializable types
+                output = []
+                for r in rows:
+                    d = dict(r)
+                    for k, v in d.items():
+                        if hasattr(v, "isoformat"):
+                            d[k] = v.isoformat()
+                    output.append(d)
+                print(_json.dumps(output, indent=2, ensure_ascii=False))
+            else:
+                # table format
+                if not rows:
+                    print("No matching jobs.")
+                else:
+                    print(f"{'Title':<50} {'Company':<30} {'Score':<8} {'First seen'}")
+                    print("-" * 100)
+                    for r in rows:
+                        print(
+                            f"{str(r.get('title') or '')[:49]:<50} "
+                            f"{str(r.get('company_name') or '')[:29]:<30} "
+                            f"{str(r.get('work_permit_support') or ''):<8} "
+                            f"{str(r.get('first_seen_at') or '')[:10]}"
+                        )
 
     finally:
         log.info("cli.shutting_down")
