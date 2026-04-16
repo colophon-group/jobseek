@@ -1,8 +1,11 @@
 """Deel ATS Job Board API monitor.
 
-Public API:
-- Settings: GET /deelapi/guest/ats/organizations/{slug}/career_page_settings
-- Postings: GET /deelapi/guest/ats/organizations/{org_id}/job_boards/{board_id}/job_postings
+Public API (api-prod.letsdeel.com):
+- Settings: GET /guest/ats/organizations/{slug}/career_page_settings
+- Postings: GET /guest/ats/organizations/{org_id}/job_boards/{board_id}/job_postings
+
+Board page lives at https://jobs.deel.com/{slug}; individual postings at
+https://jobs.deel.com/{slug}/job-details/{posting_id}/overview.
 
 Returns full job data (title, rich-text description, locations, salary, employment type).
 """
@@ -21,14 +24,16 @@ if TYPE_CHECKING:
 
 log = structlog.get_logger()
 
-_BASE = "https://jobs.deel.com"
-_SETTINGS = f"{_BASE}/deelapi/guest/ats/organizations/{{slug}}/career_page_settings"
-_POSTINGS = (
-    f"{_BASE}/deelapi/guest/ats/organizations/{{org_id}}/job_boards/{{board_id}}/job_postings"
-)
+_FRONTEND_BASE = "https://jobs.deel.com"
+_API_BASE = "https://api-prod.letsdeel.com"
+_SETTINGS = f"{_API_BASE}/guest/ats/organizations/{{slug}}/career_page_settings"
+_POSTINGS = f"{_API_BASE}/guest/ats/organizations/{{org_id}}/job_boards/{{board_id}}/job_postings"
 
-_DEEL_RE = re.compile(r"jobs\.deel\.com/([\w-]+)")
-_IGNORE_SLUGS = frozenset({"auth", "login", "signup", "guest", "api", "deelapi"})
+# Accepts both the legacy `/job-boards/{slug}` layout and the current `/{slug}` layout.
+_DEEL_RE = re.compile(r"jobs\.deel\.com/(?:job-boards/)?([\w-]+)")
+_IGNORE_SLUGS = frozenset(
+    {"auth", "login", "signup", "guest", "api", "deelapi", "job-boards", "job-details"}
+)
 
 
 def _parse_salary(posting: dict) -> dict | None:
@@ -54,7 +59,7 @@ def _parse_job(posting: dict, slug: str) -> DiscoveredJob | None:
     if not posting_id:
         return None
 
-    url = f"{_BASE}/{slug}/postings/{posting_id}"
+    url = f"{_FRONTEND_BASE}/{slug}/job-details/{posting_id}/overview"
     job = posting.get("job") or {}
 
     # Locations

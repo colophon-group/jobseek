@@ -184,6 +184,44 @@ class TestValidateCsvs:
         errors = validate_csvs()
         assert any("Invalid scraper_type" in str(e) for e in errors)
 
+    @pytest.mark.parametrize("monitor_type", ["personio", "umantis", "notion"])
+    def test_non_auto_scraper_monitor_requires_scraper_type(
+        self, tmp_path, monkeypatch, monitor_type
+    ):
+        """Monitors without auto-scraper resolution must set scraper_type.
+
+        Regression guard for issue #2186: a personio board with empty
+        scraper_type let the runtime fall back to using the monitor type as
+        the scraper name, which crashed ("Unknown scraper type: 'personio'").
+        """
+        self._write_csvs(
+            tmp_path,
+            "slug,name,website,logo_url,icon_url,logo_type\ntest,Test,https://test.com,,\n",
+            "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
+            f"test,test-careers,https://example.com,{monitor_type},,,\n",
+        )
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
+        errors = validate_csvs()
+        assert any(
+            f"monitor_type {monitor_type!r} requires explicit scraper_type" in str(e)
+            for e in errors
+        )
+
+    def test_auto_scraper_monitor_allows_empty_scraper_type(self, tmp_path, monkeypatch):
+        """Monitors that auto-configure a scraper (e.g. greenhouse) may leave
+        scraper_type empty — the runtime resolves it via auto_scraper_type."""
+        self._write_csvs(
+            tmp_path,
+            "slug,name,website,logo_url,icon_url,logo_type\ntest,Test,https://test.com,,\n",
+            "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
+            "test,test-careers,https://boards.greenhouse.io/test,greenhouse,,,\n",
+        )
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
+        errors = validate_csvs()
+        assert not any("requires explicit scraper_type" in str(e) for e in errors)
+
     @pytest.mark.parametrize("scraper_type", ["skip", "workday"])
     def test_registered_scraper_types_are_valid(self, tmp_path, monkeypatch, scraper_type):
         self._write_csvs(

@@ -535,8 +535,9 @@ class TestScrape:
             result = await scrape("https://example.com/job/123", {}, client)
             assert result.title is None
 
-    async def test_api_error_returns_empty(self):
-        transport = httpx.MockTransport(lambda r: httpx.Response(500))
+    async def test_404_returns_empty(self):
+        """Posting removed between list + detail fetches — soft-fail."""
+        transport = httpx.MockTransport(lambda r: httpx.Response(404))
         async with httpx.AsyncClient(transport=transport) as client:
             result = await scrape(
                 "https://co.wd1.myworkdayjobs.com/Site/job/X/JR001",
@@ -544,3 +545,24 @@ class TestScrape:
                 client,
             )
             assert result.title is None
+
+    async def test_403_raises(self):
+        """WAF block on Hetzner egress — surface as error so it's retried."""
+        transport = httpx.MockTransport(lambda r: httpx.Response(403))
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(httpx.HTTPStatusError):
+                await scrape(
+                    "https://co.wd1.myworkdayjobs.com/Site/job/X/JR001",
+                    {},
+                    client,
+                )
+
+    async def test_500_raises(self):
+        transport = httpx.MockTransport(lambda r: httpx.Response(500))
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(httpx.HTTPStatusError):
+                await scrape(
+                    "https://co.wd1.myworkdayjobs.com/Site/job/X/JR001",
+                    {},
+                    client,
+                )

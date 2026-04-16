@@ -156,7 +156,9 @@ def _is_skip_no_scrape(metadata: dict, crawler_type: str | None = None) -> bool:
     1. ``metadata.scraper_type = "skip"`` with no enrichment — explicit.
     2. ``metadata.scraper_type`` is unset AND ``crawler_type`` auto-resolves
        to ``("skip", None)`` via ``auto_scraper_type()`` AND no enrichment —
-       implicit rich monitor that relies on CSV defaults.
+       implicit rich monitor that relies on CSV defaults. Includes
+       ``api_sniffer``/``nextdata`` when ``fields`` is set in the monitor
+       metadata (conditionally rich).
 
     Such boards provide full job data from the monitor and must never be
     sent through the scrape pipeline, or the placeholder ``skip`` scraper
@@ -182,6 +184,15 @@ def _is_skip_no_scrape(metadata: dict, crawler_type: str | None = None) -> bool:
         from src.workspace._compat import auto_skip_crawler_types
 
         if ct in auto_skip_crawler_types():
+            return True
+        # api_sniffer / nextdata are conditionally rich: they auto-resolve to
+        # ("skip", None) only when ``fields`` is set in their monitor
+        # metadata. Mirrors ``auto_scraper_type()`` and ``is_rich_monitor()``.
+        # Without this branch a stub URL insert from a partial-rich monitor
+        # cycle (e.g. McKinsey api_sniffer) leaks into the scrape pipeline,
+        # where the worker tries to run the api_sniffer scraper with empty
+        # config and crashes on browser launch from a slim worker.
+        if ct in ("api_sniffer", "nextdata") and bool(metadata.get("fields")):
             return True
     return False
 

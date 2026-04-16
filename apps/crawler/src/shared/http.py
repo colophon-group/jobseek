@@ -35,11 +35,24 @@ def _make_ssl_context() -> ssl.SSLContext:
     return ctx
 
 
+# Default UA mimics a recent Chrome on Windows. The previous value
+# ``jobseek-crawler/0.1`` was a unique fingerprint that WAF vendors
+# trivially match — it produced the anti-bot /Error and /404/ redirects
+# documented in issue #2193 on apply.deloitte.com, digitalcareers.infosys,
+# careers.loreal.com, careers.tsmc.com, careers.bain.com, and
+# recruitingapp-1619.umantis.com. Individual monitors/scrapers that need a
+# different UA still override via ``headers=`` on the request.
+DEFAULT_USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/131.0.0.0 Safari/537.36"
+)
+
 _CLIENT_DEFAULTS = {
     "timeout": httpx.Timeout(30.0),
     "follow_redirects": True,
     "limits": httpx.Limits(max_connections=20, max_keepalive_connections=10),
-    "headers": {"User-Agent": "jobseek-crawler/0.1"},
+    "headers": {"User-Agent": DEFAULT_USER_AGENT},
     "verify": _make_ssl_context(),
 }
 
