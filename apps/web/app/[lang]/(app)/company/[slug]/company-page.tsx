@@ -1,11 +1,8 @@
 "use client";
 
 import { useState, useCallback, useTransition, useRef, useEffect, useMemo } from "react";
-import Image from "next/image";
-import { Building2, Loader2 } from "lucide-react";
-import { BackLink } from "@/components/BackLink";
+import { Loader2 } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { StarButton } from "@/components/search/star-button";
 import { useParams, usePathname, useSearchParams } from "next/navigation";
 import { timeAgoShort } from "@/lib/time";
 import { SaveButton } from "@/components/search/save-button";
@@ -23,20 +20,8 @@ import { buildFilteredPath } from "@/lib/search/query-params";
 import type { SearchResultPosting, HistogramFilters } from "@/lib/search";
 import type { SelectedLocation } from "@/components/search/location-pills";
 import { useSearchStateStore } from "@/components/SearchStateProvider";
-import { withUtmSource } from "@/lib/utm";
 
 const PAGE_SIZE = 20;
-
-const EMPLOYEE_RANGE_LABELS: Record<number, string> = {
-  1: "1-10",
-  2: "11-50",
-  3: "51-200",
-  4: "201-500",
-  5: "501-1,000",
-  6: "1,001-5,000",
-  7: "5,001-10,000",
-  8: "10,000+",
-};
 
 type TaxonomyItem = { id: number; slug: string; name: string };
 
@@ -314,12 +299,6 @@ export function CompanyPage({
     return () => setPageActions(null);
   }, [setPageActions, searchPlaceholder]);
 
-  // Back-to-search link that carries current filters
-  const searchHref = useMemo(
-    () => buildFilteredPath(`/${uiLocale}/explore`, keywords, locations, undefined, occupations, seniorities, technologies),
-    [uiLocale, keywords, locations, occupations, seniorities, technologies],
-  );
-
   const handleRemoveKeyword = useCallback(
     (keyword: string) => {
       const updated = keywords.filter((k) => k !== keyword);
@@ -535,87 +514,34 @@ export function CompanyPage({
     languages: languages.length > 0 ? languages : undefined,
   }), [company.id, keywords, locations, occupations, seniorities, technologies, languages]);
 
-  const metaParts: string[] = [];
-  if (company.industryName) metaParts.push(company.industryName);
-  if (company.employeeCountRange && EMPLOYEE_RANGE_LABELS[company.employeeCountRange]) {
-    metaParts.push(t({
-      id: "company.page.employees",
-      comment: "Employee count range on company page",
-      message: `${EMPLOYEE_RANGE_LABELS[company.employeeCountRange]} employees`,
-    }));
-  }
-  if (company.foundedYear) {
-    metaParts.push(t({
-      id: "company.page.founded",
-      comment: "Founded year on company page",
-      message: `Founded ${company.foundedYear}`,
-    }));
-  }
+  // Desktop: stats sit inline on the language-note row (right side).
+  // Hidden on mobile so it can drop to its own row below, split
+  // left/right.
+  const statsSlot = (
+    <p className="hidden whitespace-nowrap text-xs text-muted md:block">
+      {activeCount} <Trans id="company.page.active" comment="Active postings count on company page">active</Trans>
+      {" · "}
+      {yearCount} <Trans id="company.page.yearCount" comment="Year postings count on company page">in the last year</Trans>
+    </p>
+  );
+  // Mobile: dedicated row. Active left, year right.
+  const statsRowMobile = (
+    <div className="flex items-center justify-between text-xs text-muted md:hidden">
+      <span>
+        {activeCount}{" "}
+        <Trans id="company.page.active" comment="Active postings count on company page">active</Trans>
+      </span>
+      <span>
+        {yearCount}{" "}
+        <Trans id="company.page.yearCount" comment="Year postings count on company page">in the last year</Trans>
+      </span>
+    </div>
+  );
 
   const mainContent = (
     <div className="space-y-4">
-      {/* Back to search */}
-      <BackLink href={searchHref}>
-        <Trans id="company.page.backToSearch" comment="Back to search results link on company page">
-          Search results
-        </Trans>
-      </BackLink>
-
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        {company.icon ? (
-          <Image
-            src={company.icon}
-            alt={company.name}
-            width={32}
-            height={32}
-            className="size-8 shrink-0 rounded"
-          />
-        ) : (
-          <div className="flex size-8 shrink-0 items-center justify-center rounded bg-border-soft text-muted">
-            <Building2 size={18} />
-          </div>
-        )}
-        {company.website ? (
-          <a
-            href={withUtmSource(company.website)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-lg font-semibold hover:underline"
-          >
-            {company.name}
-          </a>
-        ) : (
-          <span className="text-lg font-semibold">{company.name}</span>
-        )}
-        <StarButton companyId={company.id} />
-      </div>
-
-      {/* Tagline / description */}
-      {company.description && (
-        <p className="text-sm text-muted">{company.description}</p>
-      )}
-
-      {/* Meta */}
-      {metaParts.length > 0 && (
-        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted">
-          {metaParts.map((part, i) => (
-            <span key={i}>{part}</span>
-          ))}
-        </div>
-      )}
-
-      {/* Stats */}
-      <p className="text-xs text-muted">
-        {activeCount} <Trans id="company.page.active" comment="Active postings count on company page">active</Trans>
-        {" · "}
-        {yearCount} <Trans id="company.page.yearCount" comment="Year postings count on company page">in the last year</Trans>
-      </p>
-
-      {/* Divider */}
-      <hr className="border-divider" />
-
-      {/* Search toolbar — same as main search page */}
+      {/* Search toolbar — same as main search page. Stats sit on the
+          right of the language-note row via `statsSlot`. */}
       <SearchToolbar
         locale={uiLocale}
         userLat={userLat}
@@ -655,7 +581,10 @@ export function CompanyPage({
         onClearAll={handleClearAll}
         onSubmitSearch={handleSubmitSearch}
         searchPlaceholder={searchPlaceholder}
+        statsSlot={statsSlot}
       />
+
+      {statsRowMobile}
 
       {/* Posting list */}
       {isSearching ? (
@@ -713,14 +642,14 @@ export function CompanyPage({
       <div className="min-w-0 flex-1">{mainContent}</div>
       {showPostingId && (
         <>
-          <div className="hidden w-[420px] shrink-0 lg:block" aria-hidden="true" />
-          <div
-            className="fixed top-[4.5rem] z-40 hidden w-[420px] lg:block"
-            style={{ right: "max(1rem, calc((100vw - 1200px) / 2 + 1rem))", height: "calc(100vh - 5.5rem)" }}
-          >
+          {/* Desktop: side-by-side sticky panel. Matches
+              watchlist-job-list.tsx pattern. */}
+          <div className="sticky top-[4.5rem] z-40 hidden h-[calc(100vh-5.5rem)] w-[420px] shrink-0 lg:block">
             <JobDetailPanel postingId={showPostingId} onClose={handleClosePosting} />
           </div>
-          {/* On small screens, show as an overlay */}
+          {/* Small screens: full-height slide-out overlay with dim
+              backdrop. Matches explore / my-jobs / watchlist patterns
+              so the job detail card behaves identically across pages. */}
           <div className="fixed inset-0 z-50 bg-black/40 lg:hidden" onClick={handleClosePosting}>
             <div
               className="absolute inset-y-0 right-0 w-full max-w-lg bg-surface shadow-xl"

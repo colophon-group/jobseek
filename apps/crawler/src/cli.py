@@ -67,6 +67,16 @@ def parse_args() -> argparse.Namespace:
 
     sub.add_parser("refresh-typesense", help="Refresh Typesense counts + reconcile watchlists")
 
+    indexnow_p = sub.add_parser(
+        "notify-indexnow",
+        help="Push changed company URLs to IndexNow (Bing/Yandex/Seznam/Naver/Yep)",
+    )
+    indexnow_p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Compute the diff and log the count without POSTing or recording hashes",
+    )
+
     board_p = sub.add_parser("board", help="Dev testing for a single board")
     board_p.add_argument("slug", help="Board slug to process")
     board_p.add_argument("--dry-run", action="store_true", help="No DB writes")
@@ -168,6 +178,17 @@ async def run() -> None:
                     await refresh_typesense_counts(local_conn, ts_client)
                     await sync_watchlists_typesense(supa_conn, ts_client)
                 log.info("refresh-typesense: done")
+
+        elif args.command == "notify-indexnow":
+            start_metrics_server(settings.metrics_port)
+            local_pool = await create_local_pool()
+            http = create_http_client()
+            try:
+                from src.indexnow import notify_indexnow
+
+                await notify_indexnow(local_pool, http, dry_run=args.dry_run)
+            finally:
+                await http.aclose()
 
         elif args.command == "reconcile":
             local_pool = await create_local_pool()

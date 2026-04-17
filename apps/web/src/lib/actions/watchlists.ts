@@ -24,6 +24,7 @@ import {
   updateWatchlistField as tsUpdateWatchlistField,
 } from "@/lib/search/typesense-watchlist";
 import { isTrivialWatchlist } from "@/lib/watchlist-utils";
+import { notifyIndexNow } from "@/lib/indexnow";
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -135,7 +136,7 @@ export async function createWatchlist(params: {
   const mergedFilters = { anyCompany: true, ...params.filters };
   const trivial = isTrivialWatchlist(mergedFilters, params.companyIds.length);
   if (isPublic && !trivial) {
-    // Fetch owner info for the Typesense doc
+    // Fetch owner info for the Typesense doc + IndexNow notification
     _getOwnerInfo(userId).then((owner) => {
       if (!owner) return;
       tsUpsertWatchlist({
@@ -153,6 +154,12 @@ export async function createWatchlist(params: {
         created_at: Math.floor(Date.now() / 1000),
         is_public: true,
       });
+      // Match sitemap semantics: only notify URLs the sitemap also exposes
+      // (see apps/web/app/sitemap.ts — filters `u.username IS NOT NULL`).
+      if (owner.username) {
+        const userSlug = owner.displayUsername ?? owner.username;
+        notifyIndexNow([`/${userSlug}/${slug}`]);
+      }
     }).catch((err) => {
       console.error("[createWatchlist] Typesense hook failed", err);
     });
@@ -257,9 +264,26 @@ export async function updateWatchlist(params: {
         created_at: Math.floor(Date.now() / 1000),
         is_public: true,
       });
+      if (owner.username) {
+        const userSlug = owner.displayUsername ?? owner.username;
+        // Notify the new URL, plus the old slug if the title rename
+        // produced a new slug — the old URL now 404s and we want the
+        // engines to discover that.
+        const urls = [`/${userSlug}/${newSlug}`];
+        if (newSlug !== wl.slug) urls.push(`/${userSlug}/${wl.slug}`);
+        notifyIndexNow(urls);
+      }
     } else if (wasPublic) {
-      // Was potentially indexed and shouldn't be now — delete is a no-op if missing.
+      // Was indexed and shouldn't be now — delete from Typesense and
+      // ping IndexNow so engines re-crawl and discover the 404/private
+      // response. IndexNow has no explicit delete; submitting the URL
+      // is the canonical re-crawl trigger.
       tsDeleteWatchlist(params.watchlistId);
+      const owner = await _getOwnerInfo(userId);
+      if (owner?.username) {
+        const userSlug = owner.displayUsername ?? owner.username;
+        notifyIndexNow([`/${userSlug}/${wl.slug}`]);
+      }
     }
   })().catch((err) => {
     console.error("[updateWatchlist] Typesense hook failed", err);
@@ -275,7 +299,7 @@ export async function deleteWatchlist(
   if (!userId) throw new Error("Not authenticated");
 
   const [wl] = await db
-    .select({ userId: watchlist.userId })
+    .select({ userId: watchlist.userId, slug: watchlist.slug, isPublic: watchlist.isPublic })
     .from(watchlist)
     .where(eq(watchlist.id, watchlistId))
     .limit(1);
@@ -286,6 +310,20 @@ export async function deleteWatchlist(
 
   // Typesense write hook: delete (fire-and-forget, safe even if doc doesn't exist)
   tsDeleteWatchlist(watchlistId);
+
+  // IndexNow notification — only for URLs that were indexable (public).
+  // The submission is a re-crawl trigger; engines will discover the 404
+  // and drop the URL from their index.
+  if (wl.isPublic) {
+    _getOwnerInfo(userId).then((owner) => {
+      if (owner?.username) {
+        const userSlug = owner.displayUsername ?? owner.username;
+        notifyIndexNow([`/${userSlug}/${wl.slug}`]);
+      }
+    }).catch((err) => {
+      console.error("[deleteWatchlist] IndexNow hook failed", err);
+    });
+  }
 
   return { ok: true };
 }
@@ -368,6 +406,10 @@ export async function copyWatchlist(
         created_at: Math.floor(Date.now() / 1000),
         is_public: true,
       });
+      if (owner.username) {
+        const userSlug = owner.displayUsername ?? owner.username;
+        notifyIndexNow([`/${userSlug}/${slug}`]);
+      }
     }).catch((err) => {
       console.error("[copyWatchlist] Typesense upsert hook failed", err);
     });
@@ -483,6 +525,12 @@ export async function getWatchlistByUserAndSlug(
     display_username: string | null; owner_name: string;
   };
 
+  // URL path segment is COALESCE(display_username, username) (see sitemap.ts
+  // and the IndexNow notifier) — a user with a distinct display_username
+  // will advertise that variant as their slug. Match either column so the
+  // detail page resolves the same URLs the sitemap exposes.  Exact username
+  // match is preferred via ORDER BY when both columns happen to collide
+  // across users.
   const rows = await db.execute<{ [key: string]: unknown } & WatchlistJoinRow>(sql`
     SELECT
       w.id AS wl_id, w.slug, w.title, w.description,
@@ -491,7 +539,9 @@ export async function getWatchlistByUserAndSlug(
       u.id AS owner_id, u.username, u.display_username, u.name AS owner_name
     FROM watchlist w
     JOIN "user" u ON u.id = w.user_id
-    WHERE u.username = ${userSlug} AND w.slug = ${watchlistSlug}
+    WHERE (u.username = ${userSlug} OR u.display_username = ${userSlug})
+      AND w.slug = ${watchlistSlug}
+    ORDER BY (u.username = ${userSlug})::int DESC
     LIMIT 1
   `);
 
@@ -863,6 +913,69 @@ export async function getWatchlistPostings(params: {
   } catch (err) {
     console.error("[getWatchlistPostings] Typesense failed, falling back to Postgres", err);
     return _getWatchlistPostingsPostgres(params, userId);
+  }
+}
+
+/**
+ * Year-window posting count for a watchlist's current filter set.
+ *
+ * Counterpart to `getWatchlistPostings`: same filters, but drops
+ * `is_active:true` and adds `first_seen_at >= now() - 1 year`. Used to
+ * feed the "N active · M in the last year" stats row on the watchlist
+ * view. `per_page: 0` so Typesense returns only the `found` total with
+ * no documents — cheap and cacheable.
+ */
+export async function getWatchlistPostingYearCount(params: {
+  companyIds: string[];
+  anyCompany?: boolean;
+  keywords?: string[];
+  locationIds?: number[];
+  occupationIds?: number[];
+  seniorityIds?: number[];
+  technologyIds?: number[];
+  salaryMin?: number;
+  salaryMax?: number;
+  experienceMin?: number;
+  experienceMax?: number;
+  languages?: string[];
+}): Promise<number> {
+  if (!params.anyCompany && params.companyIds.length === 0) return 0;
+  try {
+    const client = getSearchClient();
+    const filterStr = buildFilterString({
+      locationIds: params.locationIds,
+      occupationIds: params.occupationIds,
+      seniorityIds: params.seniorityIds,
+      technologyIds: params.technologyIds,
+      salaryMinEur: params.salaryMin,
+      salaryMaxEur: params.salaryMax,
+      experienceMin: params.experienceMin,
+      experienceMax: params.experienceMax,
+      languages: params.languages,
+    });
+    const hasKeywords = params.keywords && params.keywords.length > 0;
+    const keywordsQ = hasKeywords ? params.keywords!.join(" ") : "*";
+    const oneYearAgo = Math.floor((Date.now() - 365 * 24 * 3600 * 1000) / 1000);
+    const parts = [`first_seen_at:>${oneYearAgo}`];
+    if (params.companyIds.length > 0 && params.companyIds.length <= COMPANY_BATCH_SIZE) {
+      parts.push(`company_id:[${params.companyIds.join(",")}]`);
+    } else if (params.companyIds.length > COMPANY_BATCH_SIZE) {
+      // Oversized company list: fall back to the batched helper's
+      // activeTotal flavour — conservatively skip year count instead
+      // of running N Typesense queries just for a stats number.
+      return 0;
+    }
+    if (filterStr) parts.push(filterStr);
+    const result = await client.collections("job_posting").documents().search({
+      q: keywordsQ,
+      query_by: "title",
+      filter_by: parts.join(" && "),
+      per_page: 0,
+    });
+    return result.found ?? 0;
+  } catch (err) {
+    console.error("[getWatchlistPostingYearCount] Typesense failed, returning 0", err);
+    return 0;
   }
 }
 
@@ -1419,15 +1532,19 @@ async function _getWatchlistPostingsPostgres(
 
 // ── Helper functions for Typesense write hooks ────────────────────────
 
-/** Fetch owner info for Typesense watchlist doc. */
-async function _getOwnerInfo(userId: string): Promise<{ name: string; username: string | null } | null> {
+/** Fetch owner info for Typesense watchlist doc + IndexNow URL construction. */
+async function _getOwnerInfo(
+  userId: string,
+): Promise<{ name: string; username: string | null; displayUsername: string | null } | null> {
   const rows = await db.execute<{
     [key: string]: unknown;
     name: string;
     username: string | null;
-  }>(sql`SELECT name, username FROM "user" WHERE id = ${userId} LIMIT 1`);
-  const row = (rows as unknown as { name: string; username: string | null }[])[0];
-  return row ?? null;
+    display_username: string | null;
+  }>(sql`SELECT name, username, display_username FROM "user" WHERE id = ${userId} LIMIT 1`);
+  const row = (rows as unknown as { name: string; username: string | null; display_username: string | null }[])[0];
+  if (!row) return null;
+  return { name: row.name, username: row.username, displayUsername: row.display_username };
 }
 
 /** Count companies in a watchlist. */

@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from urllib.parse import urlparse
+
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -75,6 +78,29 @@ class Settings(BaseSettings):
     enrich_daily_spend_cap_usd: float = 5.0
     enrich_input_price_per_m: float = 0.10
     enrich_output_price_per_m: float = 0.40
+
+    # IndexNow (disabled when indexnow_key is empty). A single POST to
+    # api.indexnow.org propagates to Bing, Yandex, Seznam, Naver, and
+    # Microsoft Yep. Google does NOT participate in IndexNow.
+    # `indexnow_site_url` is the single source of truth — `indexnow_host`
+    # is derived from it on load unless explicitly overridden.
+    indexnow_key: str = ""  # 8-128 hex chars
+    indexnow_host: str = ""  # derived from site_url unless set
+    indexnow_site_url: str = ""  # e.g. "https://jseek.co" (no trailing slash)
+    indexnow_key_url: str = ""  # e.g. "https://jseek.co/indexnow-key.txt"
+    indexnow_interval: int = 3600  # seconds between ticks
+
+    @model_validator(mode="after")
+    def _normalize_indexnow(self) -> Settings:
+        # Strip trailing slashes on site_url to avoid double-slash URLs
+        # downstream ("https://jseek.co/" + "/en/..." → "...co//en/...").
+        if self.indexnow_site_url.endswith("/"):
+            self.indexnow_site_url = self.indexnow_site_url.rstrip("/")
+        # Derive host from site_url when unset. Explicit host wins so
+        # operators can still override, e.g. during cutover to www.
+        if not self.indexnow_host and self.indexnow_site_url:
+            self.indexnow_host = urlparse(self.indexnow_site_url).netloc
+        return self
 
     model_config = SettingsConfigDict(env_file=(".env", ".env.local"), extra="ignore")
 

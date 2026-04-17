@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Search, MapPin, Building2, ArrowRight, Briefcase, BarChart3, Code2 } from "lucide-react";
 import Image from "next/image";
 import { useLingui } from "@lingui/react/macro";
@@ -76,10 +76,18 @@ export function SearchBar({
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const lp = useLocalePath();
   const { getPageActions } = useSearchStateStore();
 
   const lang = localeProp ?? (params.lang as string) ?? "en";
+
+  // Suppress cross-company suggestions whenever the search bar is
+  // rendered inside a company page — either via the explicit
+  // `companyId` prop (in-toolbar mobile bar) or detected from the
+  // pathname (global header bar on `/[lang]/company/[slug]`).
+  const isOnCompanyRoute = /^\/[a-z]{2}\/company\/[^/]+$/.test(pathname ?? "");
+  const scopedToCompany = !!companyId || isOnCompanyRoute;
 
   const [inputValue, setInputValue] = useState("");
   const [locationResults, setLocationResults] = useState<LocationSuggestion[]>([]);
@@ -193,10 +201,20 @@ export function SearchBar({
       debounceRef.current = setTimeout(() => {
         // Fire all requests independently so results appear as they arrive
         setActiveIndex(-1);
-        suggestCompanies({ query }).then((companies) => {
-          setCompanyResults(companies);
-          if (companies.length > 0) setIsOpen(true);
-        });
+        // Skip cross-company suggestions when the search bar is scoped
+        // to a single company page (explicit `companyId` prop OR the
+        // user is currently on `/[lang]/company/[slug]`). Dropping the
+        // user onto a different company via the suggestion list would
+        // be a navigation trap — they are filtering within THIS
+        // company.
+        if (scopedToCompany) {
+          setCompanyResults([]);
+        } else {
+          suggestCompanies({ query }).then((companies) => {
+            setCompanyResults(companies);
+            if (companies.length > 0) setIsOpen(true);
+          });
+        }
         suggestLocations({
           query,
           locale: lang,
