@@ -24,7 +24,6 @@ import { WatchlistActionBar } from "@/components/watchlist/watchlist-action-bar"
 import { WatchlistJobList } from "@/components/watchlist/watchlist-job-list";
 import { FilterPillsReadOnly } from "@/components/search/filter-pills-readonly";
 import { AdvancedSearchPanel } from "@/components/search/advanced-search-panel";
-import { LanguageNote } from "@/components/search/language-note";
 import type { SelectedLocation } from "@/components/search/location-pills";
 import type { HistogramFilters } from "@/lib/search";
 
@@ -38,6 +37,7 @@ export function WatchlistViewPage({
   limitReached,
   initialPostings,
   initialTotal,
+  yearTotal,
   locale,
   resolvedLocations,
   resolvedOccupations,
@@ -52,6 +52,7 @@ export function WatchlistViewPage({
   limitReached: boolean;
   initialPostings: WatchlistPostingEntry[];
   initialTotal: number;
+  yearTotal: number;
   locale: string;
   resolvedLocations: SelectedLocation[];
   resolvedOccupations: TaxonomyItem[];
@@ -565,12 +566,10 @@ export function WatchlistViewPage({
         )}
       </div>
 
-      {/* Language-scope disclosure — watchlist postings are filtered by
-          the viewer's jobLanguages pref, so surface the active scope
-          (left-aligned to match the toolbar convention on explore/company). */}
-      <LanguageNote jobLanguages={jobLanguages} locale={locale} />
-
-      {/* Job results */}
+      {/* Job results. WatchlistJobList owns the "Showing jobs ... ·
+          N active · M in the last year" row internally so it stays
+          inside the left flex column alongside the postings list,
+          not stacked above the detail panel. */}
       <WatchlistJobList
         filters={{
           companyIds: anyCompany ? [] : companies.map((c) => c.id),
@@ -588,6 +587,9 @@ export function WatchlistViewPage({
         }}
         initialPostings={initialPostings}
         initialTotal={initialTotal}
+        yearTotal={yearTotal}
+        jobLanguages={jobLanguages}
+        locale={locale}
       />
     </div>
   );

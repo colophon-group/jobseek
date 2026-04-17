@@ -8,10 +8,12 @@ import { cached } from "@/lib/cache";
 import { getSessionUserId } from "@/lib/sessionCache";
 import { expandLocationIds } from "@/lib/actions/locations";
 import { expandOccupationIds } from "@/lib/actions/taxonomy";
-import { ANON_MAX_POSTINGS } from "@/lib/search/constants";
+import { ANON_MAX_COMPANIES, ANON_MAX_POSTINGS } from "@/lib/search/constants";
 import { getSearchClient } from "@/lib/search/typesense-client";
 import { buildFilterString } from "@/lib/search/typesense-filters";
 import { localesOrNoneClause } from "@/lib/search/pg-filters";
+import { parseSearchFilters } from "@/lib/actions/search-input";
+import { firstOf, idsOrUndefined, parseRangeParam } from "@/lib/search/params";
 
 // ── Company suggestions (search bar autocomplete) ───────────────────
 
@@ -537,8 +539,10 @@ export interface CompanyDetail {
   name: string;
   slug: string;
   icon: string | null;
+  logo: string | null;
   website: string | null;
   description: string | null;
+  industryId: number | null;
   industryName: string | null;
   employeeCountRange: number | null;
   foundedYear: number | null;
@@ -560,14 +564,17 @@ async function _fetchCompanyBySlug(slug: string, locale: string): Promise<Compan
     name: string;
     slug: string;
     icon: string | null;
+    logo: string | null;
     website: string | null;
     description: string | null;
+    industry_id: number | null;
     industry_name: string | null;
     employee_count_range: number | null;
     founded_year: number | null;
   }>(sql`
-    SELECT c.id, c.name, c.slug, c.icon, c.website,
+    SELECT c.id, c.name, c.slug, c.icon, c.logo, c.website,
       COALESCE(cd.description, c.description) AS description,
+      c.industry AS industry_id,
       COALESCE(ind_name.name, i.name) AS industry_name,
       c.employee_count_range,
       c.founded_year
@@ -585,9 +592,9 @@ async function _fetchCompanyBySlug(slug: string, locale: string): Promise<Compan
 
   type Row = {
     id: string; name: string; slug: string; icon: string | null;
-    website: string | null; description: string | null;
-    industry_name: string | null; employee_count_range: number | null;
-    founded_year: number | null;
+    logo: string | null; website: string | null; description: string | null;
+    industry_id: number | null; industry_name: string | null;
+    employee_count_range: number | null; founded_year: number | null;
   };
   const row = (rows as unknown as Row[])[0];
   if (!row) return null;
@@ -617,12 +624,310 @@ async function _fetchCompanyBySlug(slug: string, locale: string): Promise<Compan
     name: row.name,
     slug: row.slug,
     icon: row.icon,
+    logo: row.logo,
     website: row.website,
     description: row.description,
+    industryId: row.industry_id,
     industryName: row.industry_name,
     employeeCountRange: row.employee_count_range,
     foundedYear: row.founded_year,
     activeJobCount,
+  };
+}
+
+// ── Similar companies (same industry, active, excluding self) ───────
+
+export interface SimilarCompany {
+  id: string;
+  slug: string;
+  name: string;
+  icon: string | null;
+  activeJobCount: number;
+}
+
+export interface SimilarCompaniesPage {
+  companies: SimilarCompany[];
+  hasMore: boolean;
+  /** True when an anonymous user has reached the pagination cap. */
+  truncated?: boolean;
+}
+
+/**
+ * Same-industry peers for the company page strip.
+ *
+ * Two code paths:
+ * - **Unfiltered** — query the `company` collection by `active_posting_count`
+ *   desc. Paginated (offset + limit), counts are the precomputed totals.
+ * - **Filtered** — the caller passes URL `searchParams` reflecting the
+ *   user's active filters. We fetch a pool of same-industry candidates
+ *   from `company`, then facet on `job_posting` (filtered + scoped to
+ *   those candidate IDs) to get per-company filtered counts. Returns
+ *   top-N by filtered count; pagination is disabled because the
+ *   filter-ranked order breaks offset semantics.
+ *
+ * Either path: returns an empty page on any failure so the strip
+ * silently hides.
+ */
+export async function getSimilarCompanies(
+  companyId: string,
+  industryId: number | null,
+  opts: {
+    offset?: number;
+    limit?: number;
+    /** Raw URL search params. When any filter is set, the filtered path runs. */
+    searchParams?: Record<string, string | string[] | undefined>;
+    locale?: string;
+  } = {},
+): Promise<SimilarCompaniesPage> {
+  const offset = opts.offset ?? 0;
+  const limit = opts.limit ?? 10;
+  if (industryId == null || !Number.isInteger(industryId)) {
+    return { companies: [], hasMore: false };
+  }
+
+  const filters = await _parseSimilarFilters(opts.searchParams, opts.locale);
+  if (_hasSimilarFilters(filters)) {
+    const filterKey = _similarFiltersKey(filters);
+    const key = `company-similar:${companyId}:${industryId}:filtered:${limit}:${filterKey}`;
+    return cached(
+      key,
+      () => _fetchSimilarFiltered(companyId, industryId, limit, filters),
+      { ttl: 600 },
+    );
+  }
+
+  // Anonymous users can scroll up to ANON_MAX_COMPANIES similar peers;
+  // after that pagination is capped and the strip renders a sign-in
+  // prompt (same pattern as the main companies list — see
+  // actions/search.ts::searchCompanies and TruncationPrompt usage).
+  // The cache stays shared between logged-in and anon; the cap is
+  // applied outside the cached() boundary so cache keys don't multiply.
+  const userId = await getSessionUserId();
+  if (!userId && offset >= ANON_MAX_COMPANIES) {
+    return { companies: [], hasMore: false, truncated: true };
+  }
+
+  const key = `company-similar:${companyId}:${industryId}:${offset}:${limit}`;
+  const page = await cached(
+    key,
+    () => _fetchSimilarUnfiltered(companyId, industryId, offset, limit),
+    { ttl: 3600 },
+  );
+
+  if (!userId && offset + page.companies.length >= ANON_MAX_COMPANIES) {
+    return { ...page, hasMore: false, truncated: true };
+  }
+  return page;
+}
+
+async function _fetchSimilarUnfiltered(
+  companyId: string,
+  industryId: number,
+  offset: number,
+  limit: number,
+): Promise<SimilarCompaniesPage> {
+  try {
+    const client = getSearchClient();
+    // Typesense paginates via 1-based `page`. Convert offset → page with
+    // `per_page = limit`; on mixed offsets the client picks the right batch.
+    const page = Math.floor(offset / limit) + 1;
+    const result = await client.collections("company").documents().search({
+      q: "*",
+      query_by: "name",
+      filter_by: `industry_id:=${industryId} && active_posting_count:>0 && id:!=${companyId}`,
+      sort_by: "active_posting_count:desc",
+      per_page: limit,
+      page,
+      include_fields: "id,slug,name,icon,active_posting_count",
+    });
+    const companies = (result.hits ?? []).map((hit) => _toSimilarCompany(hit.document as Record<string, unknown>));
+    const found = typeof result.found === "number" ? result.found : companies.length;
+    const hasMore = offset + companies.length < found;
+    return { companies, hasMore };
+  } catch (err) {
+    console.error("[_fetchSimilarUnfiltered] Typesense failed, returning empty page", err);
+    return { companies: [], hasMore: false };
+  }
+}
+
+type SimilarFilters = {
+  keywords: string[];
+  locationIds: number[];
+  occupationIds: number[];
+  seniorityIds: number[];
+  technologyIds: number[];
+  employmentTypes: string[];
+  salaryMinEur?: number;
+  salaryMaxEur?: number;
+  experienceMin?: number;
+  experienceMax?: number;
+};
+
+async function _parseSimilarFilters(
+  searchParams: Record<string, string | string[] | undefined> | undefined,
+  locale: string | undefined,
+): Promise<SimilarFilters> {
+  const empty: SimilarFilters = {
+    keywords: [],
+    locationIds: [],
+    occupationIds: [],
+    seniorityIds: [],
+    technologyIds: [],
+    employmentTypes: [],
+  };
+  if (!searchParams || !locale) return empty;
+
+  const q = firstOf(searchParams.q);
+  const loc = firstOf(searchParams.loc);
+  const occ = firstOf(searchParams.occ);
+  const sen = firstOf(searchParams.sen);
+  const tech = firstOf(searchParams.tech);
+  const sal = firstOf(searchParams.sal);
+  const exp = firstOf(searchParams.exp);
+  const etype = firstOf(searchParams.etype);
+
+  const parsed = await parseSearchFilters({ q, loc, occ, sen, tech, locale });
+  const { min: salaryMinEur, max: salaryMaxEur } = parseRangeParam(sal);
+  const { min: experienceMin, max: experienceMax } = parseRangeParam(exp);
+
+  return {
+    keywords: parsed.keywords,
+    locationIds: idsOrUndefined(parsed.locations) ?? [],
+    occupationIds: idsOrUndefined(parsed.occupations) ?? [],
+    seniorityIds: idsOrUndefined(parsed.seniorities) ?? [],
+    technologyIds: idsOrUndefined(parsed.technologies) ?? [],
+    employmentTypes: etype ? etype.split(",").filter(Boolean) : [],
+    salaryMinEur,
+    salaryMaxEur,
+    experienceMin,
+    experienceMax,
+  };
+}
+
+function _hasSimilarFilters(f: SimilarFilters): boolean {
+  return (
+    f.keywords.length > 0 ||
+    f.locationIds.length > 0 ||
+    f.occupationIds.length > 0 ||
+    f.seniorityIds.length > 0 ||
+    f.technologyIds.length > 0 ||
+    f.employmentTypes.length > 0 ||
+    f.salaryMinEur != null ||
+    f.salaryMaxEur != null ||
+    f.experienceMin != null ||
+    f.experienceMax != null
+  );
+}
+
+function _similarFiltersKey(f: SimilarFilters): string {
+  return [
+    [...f.keywords].sort().join(","),
+    [...f.locationIds].sort().join(","),
+    [...f.occupationIds].sort().join(","),
+    [...f.seniorityIds].sort().join(","),
+    [...f.technologyIds].sort().join(","),
+    [...f.employmentTypes].sort().join(","),
+    f.salaryMinEur ?? "",
+    f.salaryMaxEur ?? "",
+    f.experienceMin ?? "",
+    f.experienceMax ?? "",
+  ].join("|");
+}
+
+async function _fetchSimilarFiltered(
+  companyId: string,
+  industryId: number,
+  limit: number,
+  filters: SimilarFilters,
+): Promise<SimilarCompaniesPage> {
+  try {
+    const client = getSearchClient();
+
+    // Step 1: candidate pool of same-industry companies ordered by raw
+    // active count. Fetch a wider pool than `limit` so thinning by the
+    // filter still leaves enough results to rank. 100 covers typical
+    // industries without materially growing the query cost.
+    const pool = await client.collections("company").documents().search({
+      q: "*",
+      query_by: "name",
+      filter_by: `industry_id:=${industryId} && active_posting_count:>0 && id:!=${companyId}`,
+      sort_by: "active_posting_count:desc",
+      per_page: 100,
+      include_fields: "id,slug,name,icon",
+    });
+    const candidates = new Map<string, { slug: string; name: string; icon: string | null }>();
+    for (const hit of pool.hits ?? []) {
+      const doc = hit.document as Record<string, unknown>;
+      const id = doc.id as string;
+      if (!id) continue;
+      candidates.set(id, {
+        slug: (doc.slug as string) ?? "",
+        name: (doc.name as string) ?? "",
+        icon: (doc.icon as string) ?? null,
+      });
+    }
+    if (candidates.size === 0) return { companies: [], hasMore: false };
+
+    // Step 2: facet on job_posting with user filters scoped to the pool.
+    const filterStr = buildFilterString({
+      locationIds: filters.locationIds.length ? filters.locationIds : undefined,
+      occupationIds: filters.occupationIds.length ? filters.occupationIds : undefined,
+      seniorityIds: filters.seniorityIds.length ? filters.seniorityIds : undefined,
+      technologyIds: filters.technologyIds.length ? filters.technologyIds : undefined,
+      employmentTypes: filters.employmentTypes.length ? filters.employmentTypes : undefined,
+      salaryMinEur: filters.salaryMinEur,
+      salaryMaxEur: filters.salaryMaxEur,
+      experienceMin: filters.experienceMin,
+      experienceMax: filters.experienceMax,
+    });
+    const candidateIds = [...candidates.keys()];
+    const activeFilter = `is_active:true && company_id:[${candidateIds.join(",")}]${filterStr ? ` && ${filterStr}` : ""}`;
+    const q = filters.keywords.length ? filters.keywords.join(" ") : "*";
+
+    const facet = await client.collections("job_posting").documents().search({
+      q,
+      query_by: "title",
+      filter_by: activeFilter,
+      facet_by: "company_id",
+      max_facet_values: candidateIds.length,
+      per_page: 0,
+    });
+    const counts = new Map<string, number>();
+    for (const entry of facet.facet_counts?.[0]?.counts ?? []) {
+      counts.set(entry.value, entry.count);
+    }
+
+    // Step 3: rank candidates by filtered count, drop zeros, slice top-N.
+    const companies: SimilarCompany[] = [...candidates.entries()]
+      .map(([id, meta]) => ({
+        id,
+        slug: meta.slug,
+        name: meta.name,
+        icon: meta.icon,
+        activeJobCount: counts.get(id) ?? 0,
+      }))
+      .filter((c) => c.activeJobCount > 0)
+      .sort((a, b) => b.activeJobCount - a.activeJobCount)
+      .slice(0, limit);
+
+    return { companies, hasMore: false };
+  } catch (err) {
+    console.error("[_fetchSimilarFiltered] Typesense failed, returning empty page", err);
+    return { companies: [], hasMore: false };
+  }
+}
+
+function _toSimilarCompany(doc: Record<string, unknown>): SimilarCompany {
+  // Coerce numeric fields defensively — a missing/string count would
+  // propagate into the ICU plural as `NaN` and render "NaN open positions".
+  const raw = doc.active_posting_count;
+  const count = typeof raw === "number" ? raw : Number(raw);
+  return {
+    id: (doc.id as string) ?? "",
+    slug: (doc.slug as string) ?? "",
+    name: (doc.name as string) ?? "",
+    icon: (doc.icon as string) ?? null,
+    activeJobCount: Number.isFinite(count) ? count : 0,
   };
 }
 

@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { X, MapPin, Briefcase, BarChart3, CalendarDays, DollarSign, Clock, Code2 } from "lucide-react";
 import { useLingui } from "@lingui/react/macro";
 import { SearchBar } from "@/components/search/search-bar";
@@ -53,6 +54,12 @@ interface SearchToolbarProps {
   ) => void;
   /** Placeholder for the mobile search bar */
   searchPlaceholder?: string;
+  /**
+   * Optional element rendered on the right of the language-note row
+   * (next to SaveSearchButton when filters are active). Used by the
+   * company page to render active/year posting counts inline.
+   */
+  statsSlot?: ReactNode;
 }
 
 export function SearchToolbar({
@@ -87,6 +94,7 @@ export function SearchToolbar({
   onClearAll,
   onSubmitSearch,
   searchPlaceholder,
+  statsSlot,
 }: SearchToolbarProps) {
   const { t } = useLingui();
 
@@ -124,33 +132,49 @@ export function SearchToolbar({
           placeholder={searchPlaceholder}
         />
       </div>
-      <AdvancedSearchPanel
-        locale={locale}
-        userLat={userLat}
-        userLng={userLng}
-        locations={locations}
-        occupations={occupations}
-        seniorities={seniorities}
-        technologies={technologies}
-        salaryCurrency={salaryCurrency ?? "EUR"}
-        salaryMin={salaryMin}
-        salaryMax={salaryMax}
-        experienceMin={experienceMin}
-        experienceMax={experienceMax}
-        onAddLocation={onAddLocation}
-        onRemoveLocation={onRemoveLocation}
-        onAddOccupation={onAddOccupation}
-        onRemoveOccupation={onRemoveOccupation}
-        onAddSeniority={onAddSeniority}
-        onRemoveSeniority={onRemoveSeniority}
-        onAddTechnology={onAddTechnology}
-        onRemoveTechnology={onRemoveTechnology}
-        employmentTypes={employmentTypes}
-        onToggleEmploymentType={onToggleEmploymentType}
-        onSalaryChange={onSalaryChange}
-        onExperienceChange={onExperienceChange}
-        histogramFilters={histogramFilters}
-      />
+      <div className="flex items-start justify-between gap-4">
+        <AdvancedSearchPanel
+          locale={locale}
+          userLat={userLat}
+          userLng={userLng}
+          locations={locations}
+          occupations={occupations}
+          seniorities={seniorities}
+          technologies={technologies}
+          salaryCurrency={salaryCurrency ?? "EUR"}
+          salaryMin={salaryMin}
+          salaryMax={salaryMax}
+          experienceMin={experienceMin}
+          experienceMax={experienceMax}
+          onAddLocation={onAddLocation}
+          onRemoveLocation={onRemoveLocation}
+          onAddOccupation={onAddOccupation}
+          onRemoveOccupation={onRemoveOccupation}
+          onAddSeniority={onAddSeniority}
+          onRemoveSeniority={onRemoveSeniority}
+          onAddTechnology={onAddTechnology}
+          onRemoveTechnology={onRemoveTechnology}
+          employmentTypes={employmentTypes}
+          onToggleEmploymentType={onToggleEmploymentType}
+          onSalaryChange={onSalaryChange}
+          onExperienceChange={onExperienceChange}
+          histogramFilters={histogramFilters}
+        />
+        {hasFilters && (
+          <SaveSearchButton
+            keywords={keywords}
+            locations={locations}
+            occupations={occupations}
+            seniorities={seniorities}
+            technologies={technologies}
+            salaryMin={salaryMin}
+            salaryMax={salaryMax}
+            salaryCurrency={salaryCurrency}
+            experienceMin={experienceMin}
+            experienceMax={experienceMax}
+          />
+        )}
+      </div>
       {hasFilters && (
         <div className="flex flex-wrap items-center gap-2">
           {occupations.map((occ) => (
@@ -288,20 +312,7 @@ export function SearchToolbar({
       )}
       <div className="flex items-center justify-between gap-4">
         <LanguageNote jobLanguages={jobLanguages} locale={locale} />
-        {hasFilters && (
-          <SaveSearchButton
-            keywords={keywords}
-            locations={locations}
-            occupations={occupations}
-            seniorities={seniorities}
-            technologies={technologies}
-            salaryMin={salaryMin}
-            salaryMax={salaryMax}
-            salaryCurrency={salaryCurrency}
-            experienceMin={experienceMin}
-            experienceMax={experienceMax}
-          />
-        )}
+        {statsSlot}
       </div>
     </div>
   );

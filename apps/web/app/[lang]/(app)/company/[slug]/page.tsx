@@ -1,9 +1,15 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
-import { isLocale, defaultLocale, loadCatalog } from "@/lib/i18n";
-import { getCompanyBySlug } from "@/lib/actions/company";
+import { isLocale, defaultLocale, loadCatalog, initI18nForPage } from "@/lib/i18n";
+import {
+  getCompanyBySlug,
+  getSimilarCompanies,
+} from "@/lib/actions/company";
 import { siteConfig } from "@/content/config";
 import { buildAlternates } from "@/lib/seo";
+import { CompanyHead } from "./company-head";
 import { CompanyContent } from "./company-content";
+import { SimilarSection } from "./similar-section";
 
 export const revalidate = 600; // ISR: cache metadata for 10 minutes
 
@@ -60,9 +66,60 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function CompanyPageRoute({ params }: Props) {
-  const { lang, slug } = await params;
-  const locale = isLocale(lang) ? lang : defaultLocale;
+async function CompanyNotFound() {
+  const { i18n } = await loadCatalog(defaultLocale);
+  const title = i18n._({
+    id: "company.notFound.title",
+    comment: "Heading shown when a company page slug does not exist",
+    message: "Company not found",
+  });
+  const message = i18n._({
+    id: "company.notFound.message",
+    comment: "Body text shown when a company page slug does not exist",
+    message: "The company you are looking for does not exist or has been removed.",
+  });
+  return (
+    <div className="flex flex-col items-center justify-center py-24 text-center">
+      <h1 className="text-2xl font-bold">{title}</h1>
+      <p className="mt-2 text-muted">{message}</p>
+    </div>
+  );
+}
 
-  return <CompanyContent locale={locale} slug={slug} />;
+export default async function CompanyPageRoute({ params, searchParams }: Props) {
+  const locale = await initI18nForPage(params);
+  const { slug } = await params;
+  const sp = await searchParams;
+
+  const company = await getCompanyBySlug(slug, locale);
+  if (!company) return <CompanyNotFound />;
+
+  // Fire-and-hold the similar-companies query. We do NOT `await` it
+  // here — the head + postings list must stream to the browser
+  // without waiting for Typesense. The Promise is unwrapped inside
+  // <Suspense>; if Typesense is slow the rest of the page is already
+  // visible by then.
+  const similarPromise = getSimilarCompanies(company.id, company.industryId, {
+    searchParams: sp,
+    locale,
+  });
+
+  return (
+    <div className="space-y-4">
+      <CompanyHead
+        company={company}
+        locale={locale}
+        backSearchParams={sp}
+      />
+      <Suspense fallback={null}>
+        <SimilarSection
+          promise={similarPromise}
+          companyId={company.id}
+          industryId={company.industryId}
+          locale={locale}
+        />
+      </Suspense>
+      <CompanyContent locale={locale} slug={slug} />
+    </div>
+  );
 }

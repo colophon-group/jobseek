@@ -17,6 +17,7 @@ import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
 import { TruncationPrompt } from "@/components/TruncationPrompt";
 import { TrackingDot } from "@/components/TrackingDot";
 import { PendingJobIcon } from "@/components/PendingJobWarning";
+import { LanguageStatsRow } from "@/components/search/language-stats-row";
 
 const BATCH = 20;
 
@@ -63,10 +64,16 @@ export function WatchlistJobList({
   filters,
   initialPostings,
   initialTotal,
+  yearTotal,
+  jobLanguages,
+  locale,
 }: {
   filters: WatchlistJobListFilters;
   initialPostings: WatchlistPostingEntry[];
   initialTotal: number;
+  yearTotal: number;
+  jobLanguages: string[];
+  locale: string;
 }) {
   const { t } = useLingui();
   const [postings, setPostings] = useState(initialPostings);
@@ -219,17 +226,20 @@ export function WatchlistJobList({
     );
   }
 
+  // Stats row lives inside the left flex column so when the job
+  // detail panel opens on the right, the "Showing jobs ... · N
+  // active · M in the last year" line stays aligned to the postings
+  // list (not spanning across both columns). `total` reflects the
+  // live filter state, so the activeCount here updates if the user
+  // edits the watchlist filters in-place.
   const listColumn = (
-    <div>
-      <div className="mb-4">
-        <span className="text-sm text-muted">
-          {total}{" "}
-          <Trans id="watchlists.jobList.jobCount" comment="Job count label in watchlist view">
-            jobs
-          </Trans>
-        </span>
-      </div>
-
+    <div className="space-y-4">
+      <LanguageStatsRow
+        jobLanguages={jobLanguages}
+        locale={locale}
+        activeCount={total}
+        yearCount={yearTotal}
+      />
       <div>
         {rows}
 

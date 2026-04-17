@@ -42,6 +42,7 @@ export function WatchlistContent({ lang, userSlug, watchlistSlug }: WatchlistCon
       limitReached={data.limitReached}
       initialPostings={data.postings}
       initialTotal={data.total}
+      yearTotal={data.yearTotal}
       locale={lang}
       resolvedLocations={data.resolvedLocations}
       resolvedOccupations={data.resolvedOccupations}

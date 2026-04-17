@@ -3,6 +3,7 @@
 import {
   getWatchlistByUserAndSlug,
   getWatchlistPostings,
+  getWatchlistPostingYearCount,
 } from "@/lib/actions/watchlists";
 import { getSession } from "@/lib/sessionCache";
 import { getUserPlan, PLAN_LIMITS, canCreateWatchlist } from "@/lib/plans";
@@ -19,6 +20,8 @@ export interface WatchlistPageData {
   limitReached: boolean;
   postings: WatchlistPostingEntry[];
   total: number;
+  /** Count of postings first seen in the last year matching the same filters (active or inactive). */
+  yearTotal: number;
   resolvedLocations: { id: number; slug: string; name: string; type: "macro" | "country" | "region" | "city"; parentName: string | null }[];
   resolvedOccupations: { id: number; slug: string; name: string }[];
   resolvedSeniorities: { id: number; slug: string; name: string }[];
@@ -85,11 +88,9 @@ export async function fetchWatchlistPageData(params: {
     .map((slug) => techMap.get(slug))
     .filter((t): t is NonNullable<typeof t> => t != null);
 
-  const { postings, total } = await getWatchlistPostings({
+  const sharedCountsParams = {
     companyIds: filters.anyCompany ? [] : detail.companies.map((c) => c.id),
     anyCompany: filters.anyCompany,
-    offset: 0,
-    limit: 20,
     keywords: filters.keywords,
     locationIds: resolvedLocations.map((l) => l.id),
     occupationIds: resolvedOccupations.map((o) => o.id),
@@ -100,7 +101,11 @@ export async function fetchWatchlistPageData(params: {
     experienceMin: filters.experienceMin,
     experienceMax: filters.experienceMax,
     languages,
-  });
+  };
+  const [{ postings, total }, yearTotal] = await Promise.all([
+    getWatchlistPostings({ ...sharedCountsParams, offset: 0, limit: 20 }),
+    getWatchlistPostingYearCount(sharedCountsParams),
+  ]);
 
   return {
     detail,
@@ -109,6 +114,7 @@ export async function fetchWatchlistPageData(params: {
     limitReached,
     postings,
     total,
+    yearTotal,
     resolvedLocations,
     resolvedOccupations,
     resolvedSeniorities,
