@@ -15,6 +15,8 @@ Pair with the oracle_hcm scraper for description enrichment.
 
 from __future__ import annotations
 
+import asyncio
+import random
 import re
 from urllib.parse import urlparse
 
@@ -25,6 +27,56 @@ from src.core.monitors import DiscoveredJob, register
 from src.core.monitors.api_sniffer import discover as api_sniffer_discover
 
 log = structlog.get_logger()
+
+# Transient upstream failures are common on ``*.fa.em2.oraclecloud.com`` because
+# dozens of Oracle HCM tenants share the same backend. A single Oracle-side
+# hiccup returns 503 for every tenant we hit during that window (issue #2217:
+# 15 distinct boards all 503'd inside a 2m15s window on 2026-04-17 14:31:59Z
+# — one Oracle infra burp, not 15 separate board failures).
+#
+# Retry in-place with jittered exponential backoff before giving up to the
+# board-level backoff (``_RECORD_FAILURE``, which doubles the next-check
+# interval). If Oracle recovers within a few seconds, the monitor run still
+# completes successfully and no ``batch.monitor.error`` fires.
+#
+# Attempts chosen conservatively — 3 × ~6-18s covers Oracle's typical burp
+# window without stretching a single monitor beyond the 10-min lease budget.
+_TRANSIENT_STATUS = frozenset({429, 500, 502, 503, 504})
+_RETRY_ATTEMPTS = 3
+_RETRY_BASE_DELAY_S = 3.0
+
+
+async def _get_with_retry(
+    client: httpx.AsyncClient, url: str, *, timeout: float = 30.0
+) -> httpx.Response:
+    """GET with exponential-jitter backoff on 429/5xx.
+
+    On a non-transient status or after exhausting retries, returns the final
+    response — the caller should still call ``raise_for_status()`` on it so
+    persistent upstream failures still propagate to ``_RECORD_FAILURE``.
+    """
+    resp: httpx.Response | None = None
+    for attempt in range(_RETRY_ATTEMPTS):
+        resp = await client.get(url, timeout=timeout)
+        if resp.status_code not in _TRANSIENT_STATUS:
+            return resp
+        if attempt == _RETRY_ATTEMPTS - 1:
+            break
+        base_delay = _RETRY_BASE_DELAY_S * (2**attempt)
+        jittered = base_delay * random.uniform(0.8, 1.2)
+        log.warning(
+            "oracle_hcm.transient_retry",
+            url=url,
+            status=resp.status_code,
+            attempt=attempt + 1,
+            backoff_s=round(jittered, 2),
+        )
+        await asyncio.sleep(jittered)
+    # resp is guaranteed non-None: the first request always assigns it or raises,
+    # and the loop only breaks on transient status after at least one assignment.
+    assert resp is not None
+    return resp
+
 
 _DEFAULT_FIELDS = {
     "title": "Title",
@@ -161,7 +213,7 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
     total = None
     while total is None or offset < total:
         page_url = f"{api_url},offset={offset}" if offset else api_url
-        resp = await client.get(page_url, timeout=30)
+        resp = await _get_with_retry(client, page_url, timeout=30)
         resp.raise_for_status()
         data = resp.json()
 
