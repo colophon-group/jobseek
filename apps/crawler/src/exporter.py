@@ -415,7 +415,20 @@ async def _upsert_to_typesense(
 
 
 async def _update_typesense_health() -> None:
-    """Probe Typesense /health and /stats.json, update gauges."""
+    """Probe Typesense /health and /metrics.json, update gauges.
+
+    ``client.operations.perform(op)`` in the typesense-python client maps to
+    ``POST /operations/{op}`` — not a GET of the named endpoint — so
+    ``perform("health")`` hits the non-existent ``POST /operations/health``
+    and always returns 404. Use the dedicated convenience methods instead:
+
+    - ``operations.is_healthy()`` → ``GET /health`` (returns ``bool``)
+    - ``metrics.retrieve()``      → ``GET /metrics.json`` (returns dict with
+      ``typesense_memory_active_bytes`` and friends)
+
+    Note: the memory fields live on ``/metrics.json``, not ``/stats.json`` —
+    ``stats.json`` only carries per-second request counts and latencies.
+    """
     from src.typesense_client import get_typesense_client
 
     client = get_typesense_client()
@@ -424,25 +437,27 @@ async def _update_typesense_health() -> None:
 
     loop = asyncio.get_running_loop()
     try:
-        health = await loop.run_in_executor(
+        is_healthy = await loop.run_in_executor(
             None,
-            lambda: client.operations.perform("health"),
+            client.operations.is_healthy,
         )
-        typesense_healthy.set(1 if health.get("ok", False) else 0)
+        typesense_healthy.set(1 if is_healthy else 0)
     except Exception:
         typesense_healthy.set(0)
         log.warning("exporter.typesense_health_error", exc_info=True)
 
     try:
-        stats = await loop.run_in_executor(
+        metrics = await loop.run_in_executor(
             None,
-            lambda: client.operations.perform("stats.json"),
+            client.metrics.retrieve,
         )
-        mem = stats.get("memory_active_bytes") or stats.get("memory_allocated_bytes")
+        mem = metrics.get("typesense_memory_active_bytes") or metrics.get(
+            "typesense_memory_allocated_bytes"
+        )
         if mem is not None:
             typesense_memory_bytes.set(int(mem))
     except Exception:
-        log.warning("exporter.typesense_stats_error", exc_info=True)
+        log.warning("exporter.typesense_metrics_error", exc_info=True)
 
 
 # ---------------------------------------------------------------------------
