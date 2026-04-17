@@ -146,16 +146,9 @@ cd apps/crawler && uv run python ../../scripts/typesense-backfill-local.py [--li
 
 ## SEO and IndexNow
 
-Company pages server-render `<CompanyHead>` with name / description / industry / meta row + `Organization` + `BreadcrumbList` JSON-LD; a horizontal same-industry "Similar companies" strip (streamed under `<Suspense>`) sits between the info row and the stats row. Watchlist detail pages show the shared `<LanguageStatsRow>` ("Showing jobs in {lang} · change … N active · M in the last year") inside the postings column. The posting list itself stays client-rendered by design.
+Company pages server-render stable facts + JSON-LD (posting list stays client-rendered). IndexNow notifies Bing/Yandex/Seznam/Naver/Yep on content changes; Google is out of scope. Crawler side runs a content-hash diff per (company, locale); web side fires from watchlist server actions via `after()`.
 
-IndexNow pushes changed URLs to Bing / Yandex / Seznam / Naver / Microsoft Yep. Google does **not** participate. Two origins:
-
-- **Crawler side** (`apps/crawler/src/indexnow.py`): content-hash diff per (company, locale) against `indexnow_submission`. Runs every `INDEXNOW_INTERVAL` seconds in the `indexnow` container. Descriptions are hashed per-locale — a German-only rewrite re-notifies `/de/company/{slug}` only.
-- **Web side** (`apps/web/src/lib/indexnow.ts`): fires from watchlist server actions (create / update / copy / delete) via Next.js `after()`. No diff table — the mutation is the event.
-
-Env: `INDEXNOW_KEY` (shared) + `INDEXNOW_SITE_URL` / `INDEXNOW_KEY_URL` / `INDEXNOW_INTERVAL` on the crawler. Key rotates via [`/indexnow-key.txt`](apps/web/app/indexnow-key.txt/route.ts) (`force-dynamic`, no cache).
-
-See [docs/13-seo-and-indexnow.md](docs/13-seo-and-indexnow.md) for the full architecture, hash scheme (`_HASH_VERSION = "v2"`), deployment steps, and smoke tests.
+See [docs/13-seo-and-indexnow.md](docs/13-seo-and-indexnow.md).
 
 ## Git Workflow
 

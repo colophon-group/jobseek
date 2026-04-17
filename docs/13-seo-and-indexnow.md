@@ -78,9 +78,24 @@ The key file is served by `apps/web/app/indexnow-key.txt/route.ts` with `dynamic
 
 **Hash scheme details:**
 
-- Per-locale: a German description rewrite re-notifies `/de/company/{slug}` and leaves the other three URLs' stored hashes intact. See `compute_company_locale_hash` in `indexnow.py` and the `TestPerLocaleIsolation` class in `tests/test_indexnow.py`.
-- Versioned prefix (`_HASH_VERSION = "v2"`) so scheme changes force a one-off full resubmit on the next tick rather than silently looking current. Prefix bumps happen in the module, no migration required.
-- Stable fields are hashed once per company; the locale description is appended. Separator is `\x1f` (unit-separator) to avoid collisions when values contain common punctuation.
+- Exact formula (see `compute_company_locale_hash` in `indexnow.py`):
+  ```
+  hash = f"{_HASH_VERSION}:" + sha256_hex(
+      "\x1f".join([
+          str(row["name"] or ""),
+          str(row["website"] or ""),
+          str(row["logo"] or ""),
+          str(row["icon"] or ""),
+          str(row["industry"] or ""),
+          str(row["employee_count_range"] or ""),
+          str(row["founded_year"] or ""),
+          description or "",
+      ])
+  )
+  ```
+  Field order is locked; do not reorder without bumping `_HASH_VERSION`. `\x1f` (unit-separator) is the join delimiter — chosen so values with commas / colons / spaces don't collide.
+- Per-locale: a German description rewrite re-notifies `/de/company/{slug}` and leaves the other three URLs' stored hashes intact. See the `TestPerLocaleIsolation` class in `tests/test_indexnow.py`.
+- Versioned prefix (`_HASH_VERSION = "v2"`) so scheme changes force a one-off full resubmit on the next tick rather than silently looking current. First rollout of v2 to a population already carrying v1 hashes causes one big sweep (N companies × 4 locales) — expected and safe; IndexNow accepts ≤10 000 URLs per POST.
 
 **Why not `updated_at`:** `company.updated_at` is re-stamped by `crawler sync` on every row every run, regardless of whether any column actually changed. It's not a change signal. The hash is the change signal.
 
@@ -155,11 +170,17 @@ psql -c "SELECT url, last_submitted_at FROM indexnow_submission ORDER BY last_su
 
 ## Metrics
 
-The `indexnow` container listens on `METRICS_PORT=9099`. Prometheus scrape + Grafana dashboard is a TODO — the notifier currently emits only structured log events:
+The `notify-indexnow` subcommand starts a Prometheus metrics server on `METRICS_PORT=9099` for the duration of its run — but the container wraps the one-shot command in a shell loop (`while true; do notify-indexnow; sleep $INDEXNOW_INTERVAL; done`), so the server is **only live for the ~1-2 seconds of the actual run once per `$INDEXNOW_INTERVAL`**. A standard Prometheus scrape at 15–30s intervals almost always misses the window. Durable metrics + a Grafana dashboard are a TODO — will require a long-lived sidecar or converting the notifier to a daemon.
 
-- `indexnow.submit.ok` — successful batch
-- `indexnow.submit.rejected` — 4xx (ERROR) or 5xx (WARNING) with status code + truncated response body
-- `indexnow.submit.network_error` — WARNING with error type + detail
-- `indexnow.nothing_to_submit` — INFO, steady state
-- `indexnow.misconfigured` — WARNING, partial env vars set
-- `indexnow.disabled` — INFO, key unset
+Until then, observability is structured log events emitted by `indexnow.py`:
+
+| Event | Level | When |
+|-------|-------|------|
+| `indexnow.submit.ok` | INFO | Batch POST returned 200/202 |
+| `indexnow.submit.rejected` | ERROR (4xx) / WARNING (5xx) | Non-success response; body truncated to 500 chars |
+| `indexnow.submit.network_error` | WARNING | `httpx.HTTPError` or `TimeoutError` during POST |
+| `indexnow.nothing_to_submit` | INFO | All hashes match prior submissions — steady state |
+| `indexnow.misconfigured` | WARNING | Partial env (key set but host/site_url/key_url missing) |
+| `indexnow.disabled` | INFO | `INDEXNOW_KEY` unset — no-op run |
+| `indexnow.dry_run` | INFO | `--dry-run` path, shows would-submit count |
+| `indexnow.run.complete` | INFO | Final tick summary with `submitted` + `unchanged` counts |

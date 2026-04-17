@@ -166,8 +166,7 @@ uv run crawler sync                    # CSV -> local Postgres + Supabase + Redi
 uv run crawler reconcile               # Compare local vs Supabase, fix discrepancies
 uv run crawler backfill-typesense      # Full re-index of job_posting to Typesense
 uv run crawler refresh-typesense       # Refresh Typesense counts + reconcile watchlists
-uv run crawler notify-indexnow         # Push changed company URLs to IndexNow (Bing/Yandex/Seznam/Naver/Yep)
-uv run crawler notify-indexnow --dry-run  # Same diff, no HTTP or DB-write
+uv run crawler notify-indexnow         # Push changed company URLs to IndexNow (see docs/13-seo-and-indexnow.md)
 uv run crawler board <slug>            # Process single board (debug)
 uv run crawler board <slug> --dry-run  # Test without DB writes
 uv run crawler board <slug> --dry-run --verbose  # Show all extracted fields
