@@ -18,15 +18,18 @@ _ALERT_QUERY = """
         jp.enrichment->>'seniority'             AS seniority,
         jp.enrichment                           AS enrichment_json,
         c.name                                  AS company_name,
-        c.slug                                  AS company_slug
+        c.slug                                  AS company_slug,
+        rs.overlap_score,
+        rs.explanation
     FROM job_posting jp
     JOIN company c ON c.id = jp.company_id
+    LEFT JOIN resume_score rs ON rs.posting_id = jp.id
     WHERE jp.is_active = true
       AND jp.enrichment IS NOT NULL
       AND ($4::text IS NULL OR jp.enrichment->>'work_permit_support' = $4)
       AND (jp.experience_max IS NULL OR jp.experience_max <= $1)
       AND (jp.titles[1] IS NULL OR jp.titles[1] !~* $2)
-    ORDER BY jp.first_seen_at DESC
+    ORDER BY rs.overlap_score DESC NULLS LAST, jp.first_seen_at DESC
     LIMIT $3
 """
 

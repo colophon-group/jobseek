@@ -24,3 +24,6 @@ require:
 
 output:
   limit: 100
+
+score:
+  explain_top_n: 20   # number of top-overlap jobs to send to LLM for explanation
