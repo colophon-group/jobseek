@@ -9,6 +9,7 @@ from src.core.monitors import DiscoveredJob  # noqa: F401 — used via mapping r
 from src.core.monitors._pcsx import (
     PcsxDisabled,
     PcsxFetchError,
+    PcsxStableBlock,
     build_sitemap_id_map,
     extract_host_and_domain,
     fetch_all,
@@ -354,12 +355,20 @@ class TestFetchErrors:
             with pytest.raises(PcsxDisabled):
                 await fetch_all("talent.bayer.com", "bayer.com", http)
 
-    async def test_405_raises_fetch_error(self):
-        """Stable block (Starbucks pattern) → PcsxFetchError, not disabled."""
+    async def test_405_raises_stable_block(self):
+        """Stable block (Starbucks pattern) → PcsxStableBlock.
+
+        The exception subclasses ``PcsxFetchError`` so old ``except
+        PcsxFetchError`` catches still work, but callers that want to
+        distinguish the WAF block from a transient 429/5xx can match on the
+        subclass first (see ``eightfold.discover_stream``).
+        """
 
         async def handler(request):
             return httpx.Response(405, text="blocked")
 
         async with _make_client(handler) as http:
-            with pytest.raises(PcsxFetchError):
+            with pytest.raises(PcsxStableBlock):
                 await fetch_all("apply.starbucks.com", "starbucks.com", http)
+            # And backward-compatible — still a PcsxFetchError subclass.
+            assert issubclass(PcsxStableBlock, PcsxFetchError)
