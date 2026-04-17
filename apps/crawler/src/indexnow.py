@@ -1,10 +1,10 @@
 """IndexNow submission notifier.
 
-Runs periodically on the crawler host. For every company in local
-Postgres, derives a content hash over the fields that affect
-bot-visible HTML on ``/<locale>/company/<slug>`` pages. Compares
-against ``indexnow_submission.content_hash``; URLs whose hash changed
-(or that have never been submitted) are POSTed in batches to
+Runs periodically on the crawler host. For every company × locale
+pair, derives a content hash over the fields that affect bot-visible
+HTML on ``/<locale>/company/<slug>`` pages. Compares against
+``indexnow_submission.content_hash``; URLs whose hash changed (or
+that have never been submitted) are POSTed in batches to
 ``api.indexnow.org``.
 
 A single POST propagates to all participating engines (Bing, Yandex,
@@ -21,9 +21,12 @@ Design notes:
 - **Ephemeral posting list is deliberately ignored.** The posting list
   is client-rendered and excluded from our SEO surface, so posting
   churn should not trigger IndexNow notifications.
-- **Per-locale URLs share one row** in ``indexnow_submission`` —
-  company metadata (name, description, logo, etc.) is locale-agnostic
-  today. Revisit if we later translate company descriptions.
+- **Per-locale hashing.** Company descriptions are localized via the
+  ``company_description`` table — a German-only description edit must
+  re-notify ``/de/company/...`` without touching the English URL.
+  Stable fields (name / logo / website / industry / employees / founded
+  year) are hashed once per company; the locale-specific description
+  is appended, so each of the four URLs carries its own hash.
 
 Run via ``crawler notify-indexnow`` (one-shot) or as a loop container
 (``while true; do crawler notify-indexnow; sleep $INDEXNOW_INTERVAL;
@@ -55,12 +58,18 @@ LOCALES: tuple[str, ...] = ("en", "de", "fr", "it")
 # Maximum URLs per submission (protocol cap).
 MAX_URLS_PER_REQUEST = 10_000
 
-# Fields hashed for a company URL. Any change to what
-# ``CompanyHead.tsx`` / ``buildOrganizationJsonLd`` renders should be
-# mirrored here — otherwise bot-visible content can drift from the last
-# submitted hash. Order is locked by the tuple below; do not reorder
-# without a migration (or accept a one-off full-resubmit).
-_COMPANY_HASH_FIELDS: tuple[str, ...] = (
+# Hash scheme version — bumped when the hashed-field set or layout
+# changes, so stored hashes from an older layout force a one-off
+# full-resubmit on the next tick instead of silently looking current.
+# v2 = per-locale description included in the hash.
+_HASH_VERSION = "v2"
+
+# Stable company columns hashed for every URL regardless of locale.
+# Any change to what ``CompanyHead.tsx`` renders should be mirrored
+# here — otherwise bot-visible content can drift from the last
+# submitted hash. Order is locked; do not reorder without a version
+# bump (or accept a one-off full-resubmit).
+_COMPANY_STABLE_FIELDS: tuple[str, ...] = (
     "name",
     "website",
     "logo",
@@ -69,36 +78,73 @@ _COMPANY_HASH_FIELDS: tuple[str, ...] = (
     "employee_count_range",
     "founded_year",
 )
-# Pre-join once — the field tuple is immutable and the select list is
-# a trusted constant, never user input. Keeping it out of f-string SQL
-# removes any appearance of injection risk.
-_COMPANY_SELECT_FIELDS = ", ".join(_COMPANY_HASH_FIELDS)
+# Select list for the driving query, rendered once — fields are a
+# trusted constant, never user input. Kept out of f-string SQL to
+# remove any appearance of injection risk.
+_COMPANY_SELECT_FIELDS = ", ".join(f"c.{f}" for f in _COMPANY_STABLE_FIELDS)
 
 
-def compute_company_hash(row: asyncpg.Record | dict[str, Any]) -> str:
-    """sha256 hex digest over canonical company fields.
+def compute_company_locale_hash(
+    row: asyncpg.Record | dict[str, Any],
+    description: str | None,
+) -> str:
+    """sha256 hex digest for one (company, locale) URL.
 
-    Accepts either an ``asyncpg.Record`` or a plain dict so callers
-    can hash in-memory payloads in tests without constructing records.
+    Includes the stable company fields plus the locale-specific
+    description (``None`` when the company has no entry for that
+    locale — hashed as empty string). The ``_HASH_VERSION`` prefix
+    lets older stored hashes invalidate automatically when the scheme
+    changes.
     """
     parts: list[str] = []
-    for field in _COMPANY_HASH_FIELDS:
-        # asyncpg.Record supports .get(), matching dict semantics.
+    for field in _COMPANY_STABLE_FIELDS:
         value = row.get(field, None)
         parts.append("" if value is None else str(value))
+    parts.append("" if description is None else description)
     joined = "\x1f".join(parts)  # unit separator — avoids collisions with field values
-    return hashlib.sha256(joined.encode("utf-8")).hexdigest()
+    digest = hashlib.sha256(joined.encode("utf-8")).hexdigest()
+    return f"{_HASH_VERSION}:{digest}"
+
+
+def _url_for(slug: str, locale: str, site_url: str) -> str:
+    return f"{site_url}/{locale}/company/{slug}"
 
 
 def company_urls(slug: str, site_url: str) -> list[str]:
     """Expand a company slug to one absolute URL per supported locale."""
-    return [f"{site_url}/{locale}/company/{slug}" for locale in LOCALES]
+    return [_url_for(slug, locale, site_url) for locale in LOCALES]
 
 
 async def _load_submission_hashes(conn: asyncpg.Connection) -> dict[str, str]:
     """Fetch the last-submitted content hash for every tracked URL."""
     rows = await conn.fetch("SELECT url, content_hash FROM indexnow_submission")
     return {r["url"]: r["content_hash"] for r in rows}
+
+
+async def _load_descriptions(
+    conn: asyncpg.Connection,
+) -> dict[str, dict[str, str]]:
+    """Build ``{company_id: {locale: description}}`` for the supported locales.
+
+    A company with no ``company_description`` row for a locale simply
+    has no entry in the inner dict — callers treat the missing entry
+    as ``None`` (hashed as empty, same as an explicit NULL). Rows for
+    locales we don't support are filtered at query time.
+    """
+    rows = await conn.fetch(
+        """
+        SELECT c.id::text AS company_id, cd.locale, cd.description
+        FROM company c
+        JOIN company_description cd ON cd.company_id = c.id
+        WHERE cd.locale = ANY($1::text[])
+        """,
+        list(LOCALES),
+    )
+    out: dict[str, dict[str, str]] = {}
+    for r in rows:
+        cid = r["company_id"]
+        out.setdefault(cid, {})[r["locale"]] = r["description"]
+    return out
 
 
 async def _record_submissions(conn: asyncpg.Connection, entries: list[tuple[str, str]]) -> None:
@@ -198,13 +244,19 @@ async def notify_indexnow(
     # read and the write, recording a hash that no longer matches the
     # DB state. Holding the conn trades one pool slot for consistency.
     async with local_pool.acquire() as conn:
-        company_rows = await conn.fetch(f"SELECT slug, {_COMPANY_SELECT_FIELDS} FROM company")
+        company_rows = await conn.fetch(
+            f"SELECT c.id::text AS id, c.slug, {_COMPANY_SELECT_FIELDS} FROM company c"
+        )
+        descriptions_by_company = await _load_descriptions(conn)
         prior = await _load_submission_hashes(conn)
 
         candidates: list[tuple[str, str]] = []  # (url, content_hash)
         for row in company_rows:
-            content_hash = compute_company_hash(row)
-            for url in company_urls(row["slug"], settings.indexnow_site_url):
+            per_locale = descriptions_by_company.get(row["id"], {})
+            for locale in LOCALES:
+                description = per_locale.get(locale)
+                content_hash = compute_company_locale_hash(row, description)
+                url = _url_for(row["slug"], locale, settings.indexnow_site_url)
                 if prior.get(url) != content_hash:
                     candidates.append((url, content_hash))
 

@@ -53,6 +53,7 @@ uv run crawler sync               # Sync CSVs to local Postgres + Supabase + Red
 uv run crawler board <slug>       # Process single board (debug)
 uv run crawler backfill-typesense # Full re-index of job_posting to Typesense
 uv run crawler refresh-typesense  # Refresh Typesense counts + reconcile watchlists
+uv run crawler notify-indexnow    # Push changed company URLs to IndexNow (see docs/13-seo-and-indexnow.md)
 ```
 
 Web app (from `apps/web/`):
@@ -142,6 +143,19 @@ cd apps/crawler && uv run python ../../scripts/typesense-backfill-local.py [--li
 ### Web App Integration
 
 `TypesenseSearchProvider` replaces `PostgresSearchProvider` (one-shot cutover). Graceful degradation: all errors return empty results, Postgres fallback for watchlist write functions. No Redis cache on main search (Typesense is fast enough); cached for unfiltered homepage (60s) and popular watchlists (120s).
+
+## SEO and IndexNow
+
+Company pages server-render `<CompanyHead>` with name / description / industry / meta row + `Organization` + `BreadcrumbList` JSON-LD; a horizontal same-industry "Similar companies" strip (streamed under `<Suspense>`) sits between the info row and the stats row. Watchlist detail pages show the shared `<LanguageStatsRow>` ("Showing jobs in {lang} · change … N active · M in the last year") inside the postings column. The posting list itself stays client-rendered by design.
+
+IndexNow pushes changed URLs to Bing / Yandex / Seznam / Naver / Microsoft Yep. Google does **not** participate. Two origins:
+
+- **Crawler side** (`apps/crawler/src/indexnow.py`): content-hash diff per (company, locale) against `indexnow_submission`. Runs every `INDEXNOW_INTERVAL` seconds in the `indexnow` container. Descriptions are hashed per-locale — a German-only rewrite re-notifies `/de/company/{slug}` only.
+- **Web side** (`apps/web/src/lib/indexnow.ts`): fires from watchlist server actions (create / update / copy / delete) via Next.js `after()`. No diff table — the mutation is the event.
+
+Env: `INDEXNOW_KEY` (shared) + `INDEXNOW_SITE_URL` / `INDEXNOW_KEY_URL` / `INDEXNOW_INTERVAL` on the crawler. Key rotates via [`/indexnow-key.txt`](apps/web/app/indexnow-key.txt/route.ts) (`force-dynamic`, no cache).
+
+See [docs/13-seo-and-indexnow.md](docs/13-seo-and-indexnow.md) for the full architecture, hash scheme (`_HASH_VERSION = "v2"`), deployment steps, and smoke tests.
 
 ## Git Workflow
 
