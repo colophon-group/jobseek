@@ -314,6 +314,27 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
             metadata_updates=_watermark.to_metadata_patch(wm),
         )
         return
+    except _pcsx.PcsxStableBlock as exc:
+        # HTTP 405 from the tenant's WAF — the same behaviour we already
+        # handle for "PCSX not enabled" tenants (bayer/american-express/…).
+        # Retrying every cycle just burns requests and logs identical
+        # errors; flip ``enabled=False`` so future runs take the
+        # sitemap-only path until an operator resets the watermark.
+        # Checked before ``PcsxFetchError`` because it's a subclass.
+        wm.enabled = False
+        wm.extra = {**wm.extra, "host": host, "domain": domain}
+        log.warning(
+            "eightfold.pcsx_stable_block",
+            host=host,
+            domain=domain,
+            error=str(exc),
+        )
+        yield MonitorResult(
+            urls=sitemap_urls,
+            new_sitemap_url=new_sitemap_url,
+            metadata_updates=_watermark.to_metadata_patch(wm),
+        )
+        return
     except _pcsx.PcsxFetchError as exc:
         # Transient failure (rate limit, 5xx). Emit sitemap-only result
         # with NO metadata_updates so the watermark is preserved and the

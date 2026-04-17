@@ -287,8 +287,19 @@ class TestPcsxDisabled:
 
 
 class TestPcsxFetchError:
-    async def test_405_preserves_watermark(self):
-        """Rate-limit block → sitemap-only yield, no metadata_updates."""
+    async def test_405_flips_watermark_to_disabled(self):
+        """HTTP 405 = WAF stable block → treat like PcsxDisabled.
+
+        The 7 hosts seen in issue #2218 (citi.eightfold.ai,
+        careers.micron.com, jobs.northropgrumman.com, careers.qualcomm.com,
+        eaton.eightfold.ai, apply.tailoredbrands.com, jobs.vodafone.com)
+        return 405 every cycle, even through the proxy. Previously each
+        cycle re-tried and emitted ``eightfold.pcsx_fetch_failed`` at
+        ERROR level (~3 per host per 12h = 39 noise errors). The new
+        behaviour caches ``enabled=False`` in the watermark so the next
+        run takes the sitemap-only path immediately, matching the existing
+        handling for tenants that return "PCSX is not enabled".
+        """
         metadata = {
             "pcsx_watermark": {
                 "max_ts": 500,
@@ -299,12 +310,21 @@ class TestPcsxFetchError:
         handler, _ = _make_handler(SITEMAP_XML, pcsx_pages=None, pcsx_status=405)
         [result] = await _run_discover_stream(handler, metadata=metadata)
 
+        # Sitemap URLs still delivered — this is the whole point of the
+        # hybrid fallback.
         assert len(result.urls) == 3
         assert not result.jobs_by_url
-        # metadata_updates should be None on fetch failure so the
-        # existing watermark is preserved for next run.
-        assert result.metadata_updates is None
-        assert result.hybrid is True  # still hybrid flag to skip touched update
+        # ``hybrid`` matches the PcsxDisabled path: the 405 caches
+        # ``enabled=False`` and future runs take the sitemap-only path,
+        # so this result reflects a pure-sitemap cycle rather than a
+        # hybrid one.
+        assert result.hybrid is False
+        # The watermark is persisted with enabled=False so future runs skip
+        # the PCSX probe entirely. A SQL flip is the documented recovery
+        # path (see AGENTS.md "Rollback paths").
+        assert result.metadata_updates is not None
+        watermark = result.metadata_updates["pcsx_watermark"]
+        assert watermark["enabled"] is False
 
     async def test_transient_probe_failure_does_not_cache_disabled(self):
         """5xx/network errors during probe must NOT cache enabled=False.

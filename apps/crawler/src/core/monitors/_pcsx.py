@@ -75,7 +75,22 @@ class PcsxDisabled(Exception):
 
 
 class PcsxFetchError(Exception):
-    """PCSX request failed after retries, or hit a stable block (405)."""
+    """PCSX request failed after retries on 429/5xx (transient)."""
+
+
+class PcsxStableBlock(PcsxFetchError):
+    """PCSX endpoint is stably refusing us (HTTP 405).
+
+    The tenant's WAF is blocking the PCSX method outright — retrying on the
+    next cycle just produces the same 405. The caller should treat this like
+    :class:`PcsxDisabled` and flip the watermark's ``enabled`` flag off so
+    the board falls back to the sitemap-only path permanently (until the
+    block is reviewed and reset).
+
+    Subclasses ``PcsxFetchError`` so existing ``except PcsxFetchError``
+    callers still catch it — newer callers that want the distinction can
+    pattern-match on the subclass before the base class.
+    """
 
 
 # ── HTTP plumbing ──────────────────────────────────────────────────────
@@ -166,9 +181,10 @@ async def _fetch_page(
             raise PcsxFetchError(f"403 from {host}")
         if resp.status_code == 405:
             # Stable block (Starbucks pattern). Don't retry — the server
-            # is refusing the method entirely. Bubble up so the caller can
-            # fall back to sitemap-only.
-            raise PcsxFetchError(f"405 from {host} (rate-limited / blocked)")
+            # is refusing the method entirely. Bubble up as PcsxStableBlock
+            # so the caller can flip the watermark to ``enabled=False`` and
+            # stop re-trying every cycle.
+            raise PcsxStableBlock(f"405 from {host} (rate-limited / blocked)")
         if resp.status_code in (429, 500, 502, 503, 504):
             # Transient — exponential backoff + jitter then retry. Jitter
             # prevents thundering herd when multiple workers hit the same
