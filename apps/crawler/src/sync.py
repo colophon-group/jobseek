@@ -206,6 +206,26 @@ ON CONFLICT (company_id, locale) DO UPDATE SET
   description = EXCLUDED.description
 """
 
+# When ``board_url`` is renamed in CSV but the slug stays (e.g. changing
+# the Greenhouse token from ``abodo`` to ``apartmentiq`` while keeping
+# slug ``apartmentiq-greenhouse``), ``_UPSERT_BOARDS_SUPA`` below would
+# hit the ``board_slug`` unique constraint: the INSERT path fires for
+# the new URL, and the old-URL row still owns the slug. Run this first
+# to rewrite the URL on the existing row so the subsequent UPSERT can
+# take the ``ON CONFLICT (board_url)`` branch cleanly.
+_REALIGN_RENAMED_BOARD_URLS_SUPA = """
+UPDATE job_board jb
+SET board_url = b.board_url,
+    updated_at = now()
+FROM unnest($1::text[], $2::text[], $3::text[])
+  AS b(company_slug, board_slug, board_url)
+JOIN company c ON c.slug = b.company_slug
+WHERE jb.company_id = c.id
+  AND jb.board_slug IS NOT NULL
+  AND jb.board_slug = b.board_slug
+  AND jb.board_url IS DISTINCT FROM b.board_url
+"""
+
 _UPSERT_BOARDS_SUPA = """
 INSERT INTO job_board (company_id, board_slug, board_url, crawler_type, metadata)
 SELECT c.id, b.board_slug, b.board_url, b.crawler_type, b.metadata::jsonb
@@ -1059,6 +1079,15 @@ async def sync_boards(
         return
 
     # --- Target 1: Supabase (minimal board reference) ---
+    # Realign any stale ``board_url`` before the UPSERT so that a
+    # slug-stable URL rename (see comment on the SQL constant) doesn't
+    # trip the ``board_slug`` unique constraint.
+    await conn.execute(
+        _REALIGN_RENAMED_BOARD_URLS_SUPA,
+        company_slugs,
+        board_slugs,
+        board_urls,
+    )
     await conn.execute(
         _UPSERT_BOARDS_SUPA,
         company_slugs,

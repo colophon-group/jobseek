@@ -18,6 +18,7 @@ jobs:
     outputs:
       code: ${{ steps.filter.outputs.code }}
       crawler_code: ${{ steps.filter.outputs.crawler_code }}
+      boards_csv: ${{ steps.filter.outputs.boards_csv }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
@@ -29,6 +30,7 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "code=true" >> "$GITHUB_OUTPUT"
             echo "crawler_code=false" >> "$GITHUB_OUTPUT"
+            echo "boards_csv=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           if [ "${{ github.event_name }}" = "push" ]; then
@@ -39,10 +41,12 @@ jobs:
           fi
           CODE=false
           CRAWLER_CODE=false
+          BOARDS_CSV=false
           while IFS= read -r f; do
             [ -z "$f" ] && continue
             case "$f" in
               force) CODE=true; CRAWLER_CODE=true ;;
+              apps/crawler/data/boards.csv) BOARDS_CSV=true ;;
               apps/crawler/data/*) ;;
               apps/crawler/traces/*) ;;
               apps/crawler/VERSION) ;;
@@ -53,7 +57,8 @@ jobs:
           done <<< "$FILES"
           echo "code=$CODE" >> "$GITHUB_OUTPUT"
           echo "crawler_code=$CRAWLER_CODE" >> "$GITHUB_OUTPUT"
-          echo "Code changes detected: $CODE (crawler: $CRAWLER_CODE)"
+          echo "boards_csv=$BOARDS_CSV" >> "$GITHUB_OUTPUT"
+          echo "Code changes detected: $CODE (crawler: $CRAWLER_CODE, boards.csv: $BOARDS_CSV)"
         env:
           GH_TOKEN: ${{ github.token }}
 
@@ -197,3 +202,29 @@ jobs:
             echo "::error::apps/crawler/VERSION must be bumped for crawler code changes (main: ${MAIN_VERSION}, PR: ${PR_VERSION})"
             exit 1
           fi
+
+  probe-new-boards:
+    name: Probe new/changed boards
+    needs: changes
+    if: github.event_name == 'pull_request' && needs.changes.outputs.boards_csv == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: "3.13"
+
+      - run: uv sync
+        working-directory: apps/crawler
+
+      - name: Fetch base ref
+        run: git fetch --depth=1 origin ${{ github.base_ref }}
+
+      - name: Probe added/changed boards
+        working-directory: apps/crawler
+        run: uv run python ../../scripts/probe-new-boards.py --base-ref origin/${{ github.base_ref }}

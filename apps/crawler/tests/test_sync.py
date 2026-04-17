@@ -6,6 +6,8 @@ import polars as pl
 import pytest
 
 from src.sync import (
+    _REALIGN_RENAMED_BOARD_URLS_SUPA,
+    _UPSERT_BOARDS_SUPA,
     _UPSERT_COMPANIES,
     _UPSERT_OCCUPATION_DOMAIN_NAMES,
     _UPSERT_OCCUPATION_DOMAINS,
@@ -248,8 +250,8 @@ class TestSyncBoards:
         """Upserts boards to Supabase, no local writes without local_conn."""
         await sync_boards(mock_conn, sample_boards, dry_run=False)
 
-        # Supabase upsert + disable queries
-        assert mock_conn.execute.call_count == 2
+        # Realign stale URLs + Supabase upsert + disable queries
+        assert mock_conn.execute.call_count == 3
 
     async def test_invalid_json_skips_row(self, mock_conn):
         """monitor_config has invalid JSON -> row skipped, valid rows still collected."""
@@ -268,8 +270,8 @@ class TestSyncBoards:
 
         await sync_boards(mock_conn, boards, dry_run=False)
 
-        # Valid row (globex) collected, so Supabase upsert + disable called
-        assert mock_conn.execute.call_count == 2
+        # Valid row (globex) collected, so realign + upsert + disable called
+        assert mock_conn.execute.call_count == 3
 
     async def test_all_invalid_json_skips_upsert(self, mock_conn):
         """All rows have invalid JSON -> no upsert, no disable."""
@@ -308,8 +310,8 @@ class TestSyncBoards:
 
         await sync_boards(mock_conn, boards, dry_run=False)
 
-        # Supabase upsert + disable queries
-        assert mock_conn.execute.call_count == 2
+        # Realign stale URLs + Supabase upsert + disable queries
+        assert mock_conn.execute.call_count == 3
 
     async def test_scraper_fields_embedded_in_metadata(self, mock_conn):
         """scraper_type + scraper_config parsed and upserted to Supabase."""
@@ -328,8 +330,8 @@ class TestSyncBoards:
 
         await sync_boards(mock_conn, boards, dry_run=False)
 
-        # Supabase upsert + disable queries
-        assert mock_conn.execute.call_count == 2
+        # Realign stale URLs + Supabase upsert + disable queries
+        assert mock_conn.execute.call_count == 3
 
     async def test_invalid_scraper_json_skips_row(self, mock_conn):
         boards = pl.DataFrame(
@@ -354,6 +356,36 @@ class TestSyncBoards:
         await sync_boards(mock_conn, sample_boards, dry_run=True)
         mock_conn.execute.assert_not_called()
 
+    async def test_realign_runs_before_upsert_with_slug_url_only(self, mock_conn):
+        """The pre-UPSERT realign step gets (company_slugs, board_slugs, board_urls)
+        — not the full metadata tuple — so renaming a ``board_url`` while keeping
+        the slug stable no longer trips the ``board_slug`` unique constraint.
+        """
+        boards = pl.DataFrame(
+            {
+                "company_slug": ["apartmentiq"],
+                "board_slug": ["apartmentiq-greenhouse"],
+                "board_url": ["https://job-boards.greenhouse.io/apartmentiq"],
+                "monitor_type": ["greenhouse"],
+                "monitor_config": ['{"token": "apartmentiq"}'],
+                "scraper_type": [""],
+                "scraper_config": [""],
+            },
+            schema_overrides=_BOARD_SCHEMA,
+        )
+
+        await sync_boards(mock_conn, boards, dry_run=False)
+
+        calls = mock_conn.execute.call_args_list
+        # Realign is call #0, upsert call #1, disable call #2.
+        assert calls[0].args[0] == _REALIGN_RENAMED_BOARD_URLS_SUPA
+        assert calls[0].args[1] == ["apartmentiq"]
+        assert calls[0].args[2] == ["apartmentiq-greenhouse"]
+        assert calls[0].args[3] == ["https://job-boards.greenhouse.io/apartmentiq"]
+        # No metadata/crawler_type passed to realign — just the 3-tuple.
+        assert len(calls[0].args) == 4
+        assert calls[1].args[0] == _UPSERT_BOARDS_SUPA
+
     async def test_disables_removed_boards(self, mock_conn):
         """Boards upserted and removed boards disabled on Supabase."""
         boards = pl.DataFrame(
@@ -371,8 +403,8 @@ class TestSyncBoards:
 
         await sync_boards(mock_conn, boards, dry_run=False)
 
-        # Supabase upsert + disable queries
-        assert mock_conn.execute.call_count == 2
+        # Realign stale URLs + Supabase upsert + disable queries
+        assert mock_conn.execute.call_count == 3
 
 
 # ---------------------------------------------------------------------------
