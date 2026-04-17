@@ -35,6 +35,18 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # Download Chromium binary
-RUN uv run --no-sync playwright install --only-shell chromium
+#
+# Install the browser by its explicit Playwright name (``chromium-headless-shell``)
+# rather than ``--only-shell chromium``. Both produce the same on-disk layout
+# (``.../chromium_headless_shell-<rev>/chrome-headless-shell-linux64/...``) but
+# the explicit form has been more reliable across Playwright 1.54→1.58 when
+# Docker layer caches are reused — see issue #2213, where the browser binary
+# was missing at runtime despite the build logs claiming success.
+#
+# The post-install ``test`` fails the build loudly if the expected binary
+# isn't on disk; without this guard, the defect only surfaces after the image
+# is deployed and the first ``browser_worker`` task tries to launch.
+RUN uv run --no-sync playwright install chromium-headless-shell \
+    && test -x /root/.cache/ms-playwright/chromium_headless_shell-*/chrome-headless-shell-linux*/chrome-headless-shell
 
 CMD ["uv", "run", "--no-sync", "crawler", "run-browser"]
