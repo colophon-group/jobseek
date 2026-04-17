@@ -48,11 +48,21 @@ DEFAULT_USER_AGENT = (
     "Chrome/131.0.0.0 Safari/537.36"
 )
 
+# Default Accept matches a real Chrome HTML fetch. httpx's own default is
+# ``*/*``, which is a bot-fingerprint signal — ``www.uber.com`` returns
+# HTTP 406 for ``Accept: */*`` on its HTML job pages (issue #2214: 809 ×
+# 406 per 12h on Uber alone). Keeping ``*/*;q=0.8`` at the tail means any
+# endpoint that prefers JSON or another content-type still matches via
+# the wildcard; per-request ``Accept`` overrides from monitor/scraper
+# configs still win (httpx merges client + request headers, with the
+# per-request entry winning on conflict).
+DEFAULT_ACCEPT = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+
 _CLIENT_DEFAULTS = {
     "timeout": httpx.Timeout(30.0),
     "follow_redirects": True,
     "limits": httpx.Limits(max_connections=20, max_keepalive_connections=10),
-    "headers": {"User-Agent": DEFAULT_USER_AGENT},
+    "headers": {"User-Agent": DEFAULT_USER_AGENT, "Accept": DEFAULT_ACCEPT},
     "verify": _make_ssl_context(),
 }
 

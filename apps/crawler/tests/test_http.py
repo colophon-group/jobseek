@@ -5,6 +5,7 @@ import ssl
 import httpx
 
 from src.shared.http import (
+    DEFAULT_ACCEPT,
     DEFAULT_USER_AGENT,
     _client_kwargs,
     _make_ssl_context,
@@ -49,6 +50,34 @@ class TestCreateHttpClient:
         client = create_http_client()
         assert client.follow_redirects is True
         await client.aclose()
+
+    async def test_accept_header_is_browser_default(self):
+        """Regression for #2214: httpx's own default is ``*/*``, which is a
+        bot-fingerprint signal that Uber's HTML surface 406s on. We send the
+        same Accept Chrome sends, with ``*/*;q=0.8`` at the tail so endpoints
+        that prefer JSON still match."""
+        client = create_http_client()
+        assert client.headers["accept"] == DEFAULT_ACCEPT
+        assert "text/html" in client.headers["accept"]
+        assert "*/*" in client.headers["accept"]
+        await client.aclose()
+
+    async def test_per_request_accept_overrides_default(self):
+        """Monitors/scrapers that need a specific Accept (e.g. api_sniffer
+        sending ``application/json``) must still win. httpx merges client +
+        request headers and the request entry wins on conflict."""
+        captured: dict[str, str] = {}
+
+        def handler(request):
+            captured["accept"] = request.headers.get("accept", "")
+            return httpx.Response(200, text="OK")
+
+        client = create_http_client()
+        client._transport = httpx.MockTransport(handler)
+        await client.get("https://example.com/", headers={"Accept": "application/json"})
+        await client.aclose()
+
+        assert captured["accept"] == "application/json"
 
 
 class TestProxyOptIn:
