@@ -15,6 +15,10 @@ const nextConfig: NextConfig = {
       { hostname: "**" }, // fallback logos hosted directly on company domains
     ],
   },
+  rewrites: async () => {
+    const key = process.env.INDEXNOW_KEY;
+    return key ? [{ source: `/${key}.txt`, destination: "/indexnow-key.txt" }] : [];
+  },
   redirects: async () => [
     { source: "/:lang(en|de|fr|it)/app", destination: "/:lang/explore", permanent: true },
     { source: "/:lang(en|de|fr|it)/app/saved", destination: "/:lang/my-jobs", permanent: true },
