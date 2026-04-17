@@ -125,6 +125,36 @@ def parse_args() -> argparse.Namespace:
         help="Output format (default: json)",
     )
 
+    parse_resume_p = sub.add_parser(
+        "parse-resume",
+        help="Extract resume skills profile to ai/resume-parsed.yaml",
+    )
+    parse_resume_p.add_argument(
+        "--resume",
+        required=True,
+        help="Path to resume file (.tex, .pdf, .txt, .md)",
+    )
+    parse_resume_p.add_argument(
+        "--output",
+        default="ai/resume-parsed.yaml",
+        help="Output YAML path (default: ai/resume-parsed.yaml)",
+    )
+
+    score_p = sub.add_parser(
+        "score",
+        help="Score filtered jobs against parsed resume",
+    )
+    score_p.add_argument(
+        "--filters",
+        default="data/alert-filters.yaml",
+        help="Path to filters YAML (default: data/alert-filters.yaml)",
+    )
+    score_p.add_argument(
+        "--resume",
+        default="ai/resume-parsed.yaml",
+        help="Path to parsed resume YAML (default: ai/resume-parsed.yaml)",
+    )
+
     return parser.parse_args()
 
 
@@ -326,6 +356,112 @@ async def run() -> None:
                             f"{str(r.get('work_permit_support') or ''):<8} "
                             f"{str(r.get('first_seen_at') or '')[:10]}"
                         )
+
+        elif args.command == "parse-resume":
+            from src.core.enrich.providers import create_sync_provider
+            from src.core.score.resume import parse_resume_with_llm, save_resume
+
+            provider = create_sync_provider(
+                settings.enrich_provider or "gemini",
+                settings.enrich_model or "gemini-2.0-flash",
+                settings.enrich_api_key,
+            )
+            parsed = await parse_resume_with_llm(args.resume, provider)
+            save_resume(parsed, args.output)
+            print(
+                f"Resume parsed: {len(parsed.technologies)} technologies, "
+                f"{len(parsed.keywords)} keywords → {args.output}"
+            )
+
+        elif args.command == "score":
+            import asyncio as _asyncio
+            from pathlib import Path
+
+            import yaml
+
+            from src.core.enrich.providers import create_sync_provider
+            from src.core.score.explain import explain_match
+            from src.core.score.overlap import compute_overlap
+            from src.core.score.resume import load_resume, resume_hash
+            from src.queries.score import fetch_unscored_jobs, upsert_explanation, upsert_score
+
+            resume_path = Path(args.resume)
+            if not resume_path.exists():
+                print(
+                    f"Error: {resume_path} not found. "
+                    "Run `crawler parse-resume --resume <path>` first."
+                )
+                raise SystemExit(1)
+
+            filters_raw = yaml.safe_load(Path(args.filters).read_text(encoding="utf-8"))
+            exclude_patterns = filters_raw.get("exclude_title_patterns") or []
+            exclude_regex = "|".join(exclude_patterns) if exclude_patterns else "(?!)"
+            experience_max = (filters_raw.get("require") or {}).get("experience_max")
+            explain_top_n = (filters_raw.get("score") or {}).get("explain_top_n", 20)
+            rate_limit_rpm: int = settings.enrich_rate_limit_rpm
+
+            parsed = load_resume(resume_path)
+            r_hash = resume_hash(parsed)
+
+            local_pool = await create_local_pool()
+            async with local_pool.acquire() as conn:
+                jobs = await fetch_unscored_jobs(
+                    conn,
+                    resume_hash=r_hash,
+                    exclude_title_regex=exclude_regex,
+                    experience_max=experience_max,
+                )
+
+            if not jobs:
+                print("No new jobs to score.")
+                raise SystemExit(0)
+
+            scored = [(job, compute_overlap(parsed, job)) for job in jobs]
+            scored.sort(key=lambda x: x[1], reverse=True)
+
+            async with local_pool.acquire() as conn:
+                for job, score in scored:
+                    await upsert_score(
+                        conn,
+                        posting_id=str(job["posting_id"]),
+                        resume_hash=r_hash,
+                        overlap_score=score,
+                    )
+
+            provider = create_sync_provider(
+                settings.enrich_provider or "gemini",
+                settings.enrich_model or "gemini-2.0-flash",
+                settings.enrich_api_key,
+            )
+
+            top_jobs = scored[:explain_top_n]
+            explained = 0
+            for i, (job, _score) in enumerate(top_jobs):
+                if i > 0:
+                    await _asyncio.sleep(60 / rate_limit_rpm)
+                try:
+                    explanation = await explain_match(parsed, job, provider)
+                    async with local_pool.acquire() as conn:
+                        await upsert_explanation(
+                            conn,
+                            posting_id=str(job["posting_id"]),
+                            explanation=explanation,
+                        )
+                    explained += 1
+                except Exception as exc:
+                    log.warning(
+                        "score.explain_failed",
+                        posting_id=str(job["posting_id"]),
+                        error=str(exc),
+                    )
+
+            top = scored[0]
+            print(
+                f"Scored {len(scored)} jobs. "
+                f"Explained top {explained}. "
+                f"Top match: {top[0].get('title')} @ {top[0].get('company_name')} "
+                f"(score {top[1]})"
+            )
 
     finally:
         log.info("cli.shutting_down")
