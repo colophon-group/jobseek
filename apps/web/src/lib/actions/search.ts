@@ -30,11 +30,14 @@ export interface PostingDetail {
   descriptionUrl: string | null;
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function getPostingDetail(params: {
   postingId: string;
   locale: string;
 }): Promise<PostingDetail | null> {
   const { postingId, locale } = params;
+  if (!UUID_RE.test(postingId)) return null;
   const key = `posting-detail:${postingId}:${locale}`;
   return cached(key, () => _fetchPostingDetail(postingId, locale), { ttl: 300 });
 }
