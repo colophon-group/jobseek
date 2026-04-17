@@ -16,6 +16,7 @@ from src.exporter import (
     _reconciliation_loop,
     _save_cursor,
     _update_metrics,
+    _update_typesense_health,
     run_exporter,
     run_exporter_with_reconciliation,
     run_reconciliation,
@@ -439,6 +440,55 @@ class TestUpdateMetrics:
         ):
             # Should not raise
             await _update_metrics(local, supa, cursor)
+
+
+# ---------------------------------------------------------------------------
+# _update_typesense_health
+# ---------------------------------------------------------------------------
+
+
+class TestUpdateTypesenseHealth:
+    async def test_calls_is_healthy_not_operations_perform(self):
+        """Regression test for #2212: the probe must use
+        ``client.operations.is_healthy()`` (GET /health) and
+        ``client.metrics.retrieve()`` (GET /metrics.json). The earlier code
+        used ``operations.perform("health")`` and ``perform("stats.json")``,
+        both of which POST to ``/operations/{op}`` and 404 for these names —
+        producing ~50k warnings per 12h in Loki.
+        """
+        client = MagicMock()
+        client.operations.is_healthy = MagicMock(return_value=True)
+        client.metrics.retrieve = MagicMock(
+            return_value={
+                "typesense_memory_active_bytes": 713715712,
+                "typesense_memory_allocated_bytes": 625816840,
+            }
+        )
+
+        with patch("src.typesense_client.get_typesense_client", return_value=client):
+            await _update_typesense_health()
+
+        client.operations.is_healthy.assert_called_once_with()
+        client.metrics.retrieve.assert_called_once_with()
+        # The old wrong paths must not be called.
+        client.operations.perform.assert_not_called()
+
+    async def test_no_client_is_noop(self):
+        with patch("src.typesense_client.get_typesense_client", return_value=None):
+            await _update_typesense_health()  # should not raise
+
+    async def test_health_failure_does_not_block_metrics(self):
+        """An exception from is_healthy() must not prevent metrics.retrieve()
+        from running — we still want the memory gauge when health is down.
+        """
+        client = MagicMock()
+        client.operations.is_healthy = MagicMock(side_effect=RuntimeError("down"))
+        client.metrics.retrieve = MagicMock(return_value={"typesense_memory_active_bytes": 42})
+
+        with patch("src.typesense_client.get_typesense_client", return_value=client):
+            await _update_typesense_health()
+
+        client.metrics.retrieve.assert_called_once_with()
 
 
 # ---------------------------------------------------------------------------
