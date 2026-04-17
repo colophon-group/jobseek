@@ -1112,7 +1112,7 @@ async function _getPopularWatchlistsTypesense(
     q: "*",
     query_by: "title,description",
     filter_by: "is_public:true",
-    sort_by: "is_featured:desc,mirror_count:desc,has_description:desc,created_at:desc",
+    sort_by: "is_featured:desc,mirror_count:desc,has_description:desc",
     per_page: limit,
     page: Math.floor(offset / limit) + 1,
   });

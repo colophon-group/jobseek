@@ -42,7 +42,7 @@ Three scoped keys. Stored in: `apps/crawler/.env.local` (main branch), GitHub se
 |---------------------|-------|---------|-----------------|
 | `TYPESENSE_ADMIN_KEY` | Full access | Exporter, sync, backfill, setup scripts | Private network (crawler -> Typesense) |
 | `TYPESENSE_SEARCH_KEY` | `documents:search` on all collections | Web app search | Cloudflare tunnel |
-| `TYPESENSE_WRITE_KEY` | `documents:upsert/delete/update` on `watchlist` collection only | Web app watchlist mutations | Cloudflare tunnel |
+| `TYPESENSE_WRITE_KEY` | `documents:create/upsert/delete/update` on `watchlist` collection only | Web app watchlist mutations | Cloudflare tunnel |
 
 ## Collections
 
