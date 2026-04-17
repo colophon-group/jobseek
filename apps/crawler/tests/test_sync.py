@@ -406,6 +406,67 @@ class TestSyncBoards:
         # Realign stale URLs + Supabase upsert + disable queries
         assert mock_conn.execute.call_count == 3
 
+    @patch("src.sync.remove_monitor", new_callable=AsyncMock)
+    @patch("src.sync.enqueue_monitor", new_callable=AsyncMock)
+    async def test_local_path_purges_redis_for_disabled_boards(
+        self,
+        mock_enqueue,
+        mock_remove,
+        mock_conn,
+    ):
+        """When local_conn is provided, sync fetches every disabled/gone board
+        and calls remove_monitor so the Redis queue doesn't keep probing dead
+        URLs after a CSV removal.
+        """
+        import uuid
+
+        boards = pl.DataFrame(
+            {
+                "company_slug": ["acme"],
+                "board_slug": ["acme-careers"],
+                "board_url": ["https://acme.com/careers"],
+                "monitor_type": ["greenhouse"],
+                "monitor_config": ["{}"],
+                "scraper_type": [""],
+                "scraper_config": [""],
+            },
+            schema_overrides=_BOARD_SCHEMA,
+        )
+
+        # Supabase connection returns a resolved (board_id, company_id) for the
+        # upserted row so the local-DB branch executes.
+        board_id = uuid.uuid4()
+        company_id = uuid.uuid4()
+        mock_conn.fetch = AsyncMock(
+            return_value=[
+                {
+                    "id": board_id,
+                    "company_id": company_id,
+                    "board_url": "https://acme.com/careers",
+                }
+            ]
+        )
+
+        mock_local_conn = MagicMock()
+        mock_local_conn.execute = AsyncMock()
+        # Two orphan rows: one from a just-disabled board, one that was already
+        # disabled in a previous sync (covers the historical-orphan case).
+        stale_rows = [
+            {"board_id": "orphan-lever", "throttle_key": "lever"},
+            {"board_id": "orphan-greenhouse", "throttle_key": "greenhouse"},
+            # Missing throttle_key must be skipped — no queue to remove from.
+            {"board_id": "orphan-no-domain", "throttle_key": None},
+        ]
+        mock_local_conn.fetch = AsyncMock(return_value=stale_rows)
+
+        await sync_boards(mock_conn, boards, dry_run=False, local_conn=mock_local_conn)
+
+        # Only the two orphans with a throttle_key should be purged from Redis.
+        assert mock_remove.await_count == 2
+        purged_args = {call.args for call in mock_remove.await_args_list}
+        assert ("lever", "orphan-lever") in purged_args
+        assert ("greenhouse", "orphan-greenhouse") in purged_args
+
 
 # ---------------------------------------------------------------------------
 # TestRunSync

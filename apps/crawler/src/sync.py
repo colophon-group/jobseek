@@ -37,7 +37,7 @@ from src.core.monitors import api_monitor_types, monitor_needs_browser
 from src.core.occupation_resolve import match_occupation
 from src.core.scrapers import scraper_needs_browser
 from src.db import close_all_pools, create_local_pool, create_pool
-from src.redis_queue import close_redis, enqueue_monitor
+from src.redis_queue import close_redis, enqueue_monitor, remove_monitor
 from src.shared.logging import setup_logging
 from src.typesense_client import get_typesense_client
 
@@ -309,6 +309,16 @@ UPDATE job_board
 SET is_enabled = false, board_status = 'disabled', updated_at = now()
 WHERE board_url NOT IN (SELECT unnest($1::text[]))
   AND is_enabled = true
+"""
+
+# Every row that should NOT be in Redis. A board appearing here while its
+# board_id is still live in ``monitors_*:{domain}`` is why dead boards keep
+# producing ``batch.monitor.error`` after being removed from ``boards.csv`` —
+# Postgres gets disabled but the worker claims from Redis, not Postgres.
+_FETCH_DISABLED_BOARDS_FOR_REDIS_CLEANUP = """
+SELECT id::text AS board_id, throttle_key
+FROM job_board
+WHERE is_enabled = false OR board_status IN ('disabled', 'gone')
 """
 
 _FETCH_BOARD_IDS = """
@@ -1169,10 +1179,23 @@ async def sync_boards(
     # Disable removed boards in local Postgres too
     await local_conn.execute(_DISABLE_REMOVED_BOARDS, board_urls)
 
+    # Purge Redis monitor queue for any board that's no longer eligible to run
+    # (just-disabled or previously disabled/gone). Without this, the per-domain
+    # ``monitors_{wtype}:{domain}`` key retains the stale board_id and the
+    # worker keeps claiming it every cycle, producing ``batch.monitor.error``
+    # 404s that no CSV update can silence.
+    orphan_rows = await local_conn.fetch(_FETCH_DISABLED_BOARDS_FOR_REDIS_CLEANUP)
+    for row in orphan_rows:
+        domain = row["throttle_key"] or ""
+        if not domain:
+            continue
+        await remove_monitor(domain, row["board_id"])
+
     log.info(
         "sync.boards.local_redis",
         local_upserted=local_upserted,
         redis_enqueued=redis_enqueued,
+        redis_orphans_removed=len(orphan_rows),
     )
 
 
