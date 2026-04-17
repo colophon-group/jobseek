@@ -53,15 +53,26 @@ from src.shared.langdetect import detect_all_languages, detect_language
 
 log = structlog.get_logger()
 
+# $4 = new hash (post _deep_sort fix), $5 = same content hashed under the
+# pre-fix algorithm. A stored hash matching either counts as "unchanged"
+# so postings whose hash value is still the legacy one migrate their
+# ``descriptions.hash`` column to ``$4`` without triggering an R2 PUT.
+# When callers don't have a distinct legacy hash (rich-monitor path uses
+# a simple content_hash(html)), they pass the same value for $4 and $5
+# and the check collapses to the original single-hash comparison.
 _UPSERT_DESCRIPTION = (
     "INSERT INTO descriptions (posting_id, locale, html, hash, r2_uploaded) "
     "VALUES ($1, $2, $3, $4, false) "
     "ON CONFLICT (posting_id, locale) DO UPDATE "
     "SET html = $3, hash = $4, "
-    "r2_uploaded = CASE WHEN descriptions.hash IS DISTINCT FROM $4 "
-    "THEN false ELSE descriptions.r2_uploaded END, "
-    "updated_at = CASE WHEN descriptions.hash IS DISTINCT FROM $4 "
-    "THEN now() ELSE descriptions.updated_at END"
+    "r2_uploaded = CASE "
+    "  WHEN descriptions.hash = $4 OR descriptions.hash = $5 "
+    "  THEN descriptions.r2_uploaded "
+    "  ELSE false END, "
+    "updated_at = CASE "
+    "  WHEN descriptions.hash = $4 OR descriptions.hash = $5 "
+    "  THEN descriptions.updated_at "
+    "  ELSE now() END"
 )
 
 
@@ -88,7 +99,7 @@ class ScrapeResult:
     job_posting_id: str
     params: tuple  # positional args for the SQL query
     is_enrich: bool
-    staged: tuple[str, str, int] | None = None  # (html, locale, hash) for descriptions table
+    staged: tuple[str, str, int, int] | None = None  # (html, locale, new_hash, legacy_hash)
 
 
 @dataclass
@@ -517,13 +528,14 @@ async def _process_one_enrich_scrape(
                 sen_id,
             )
             if staged:
-                desc_html, locale, desc_hash = staged
+                desc_html, locale, desc_hash, desc_hash_legacy = staged
                 await conn.execute(
                     _UPSERT_DESCRIPTION,
                     item.job_posting_id,
                     locale,
                     desc_html,
                     desc_hash,
+                    desc_hash_legacy,
                 )
             await conn.execute(_RECORD_SCRAPE_SUCCESS, item.job_posting_id)
 
@@ -715,13 +727,14 @@ async def _process_one_scrape(
             if _parse_update_count(update_result) != 1:
                 raise RuntimeError(f"job_posting_not_found:{item.job_posting_id}")
             if staged:
-                desc_html, locale, desc_hash = staged
+                desc_html, locale, desc_hash, desc_hash_legacy = staged
                 await conn.execute(
                     _UPSERT_DESCRIPTION,
                     item.job_posting_id,
                     locale,
                     desc_html,
                     desc_hash,
+                    desc_hash_legacy,
                 )
             await conn.execute(_RECORD_SCRAPE_SUCCESS, item.job_posting_id)
 

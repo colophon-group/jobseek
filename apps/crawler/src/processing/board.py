@@ -641,17 +641,23 @@ async def _process_one_board_streaming(
                                     count=n_rich_dedup,
                                 )
 
-                            # Write descriptions for inserted jobs
+                            # Write descriptions for inserted jobs.
+                            # Rich-monitor path uses a plain HTML-only hash
+                            # (no extras, no metadata), so there's no legacy
+                            # vs new-algo split — pass the same value for
+                            # both hash params.
                             for j, _t_ids, posting_id in inserted_rich:
                                 desc_html = _coerce_text(j.description)
                                 if desc_html:
                                     locale = _coerce_text(j.language) or "en"
+                                    _h = content_hash(desc_html)
                                     await conn.execute(
                                         _UPSERT_DESCRIPTION,
                                         posting_id,
                                         locale,
                                         desc_html,
-                                        content_hash(desc_html),
+                                        _h,
+                                        _h,
                                     )
 
                             # Enqueue scrapes for rich jobs that need enrichment
@@ -748,16 +754,20 @@ async def _process_one_board_streaming(
                             await conn.execute(_BATCH_UPDATE_RICH_CONTENT)
 
                             # Write descriptions for updated postings
+                            # (rich-monitor path — see insert branch above
+                            # for the $4/$5 "same hash twice" rationale).
                             for pid, j, _existing_hash in update_triples:
                                 desc_html = _coerce_text(j.description)
                                 if desc_html:
                                     locale = _coerce_text(j.language) or "en"
+                                    _h = content_hash(desc_html)
                                     await conn.execute(
                                         _UPSERT_DESCRIPTION,
                                         str(pid),
                                         locale,
                                         desc_html,
-                                        content_hash(desc_html),
+                                        _h,
+                                        _h,
                                     )
 
                     # URL-only path -- insert stubs with next_scrape_at.
