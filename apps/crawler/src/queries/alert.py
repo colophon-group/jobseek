@@ -23,7 +23,7 @@ _ALERT_QUERY = """
     JOIN company c ON c.id = jp.company_id
     WHERE jp.is_active = true
       AND jp.enrichment IS NOT NULL
-      AND jp.enrichment->>'work_permit_support' = 'yes'
+      AND ($4::text IS NULL OR jp.enrichment->>'work_permit_support' = $4)
       AND (jp.experience_max IS NULL OR jp.experience_max <= $1)
       AND (jp.titles[1] IS NULL OR jp.titles[1] !~* $2)
     ORDER BY jp.first_seen_at DESC
@@ -37,7 +37,8 @@ async def run_alert_query(
     experience_max: int,
     exclude_title_regex: str,
     limit: int,
+    work_permit_support: str | None = "yes",
 ) -> list[dict[str, Any]]:
     """Return jobs matching all alert filters as plain dicts."""
-    rows = await conn.fetch(_ALERT_QUERY, experience_max, exclude_title_regex, limit)
+    rows = await conn.fetch(_ALERT_QUERY, experience_max, exclude_title_regex, limit, work_permit_support)
     return [dict(r) for r in rows]

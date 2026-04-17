@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import textwrap
-from unittest.mock import AsyncMock, MagicMock, call, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -78,9 +78,9 @@ async def test_mark_candidates_uses_experience_max_from_config(tmp_path):
 
     await mark_candidates_from_yaml(pool, str(config_path))
 
-    # Second call (filter UPDATE) should have experience_max=3 as parameter
+    # Second call (filter UPDATE): positional args are (sql, exclude_regex, experience_max)
     second_call_args = pool.execute.call_args_list[1]
-    assert 3 in second_call_args[0]  # experience_max=3 in positional args
+    assert second_call_args[0][2] == 3  # $2 param is experience_max
 
 
 # ── fetch_html_local ──────────────────────────────────────────────────
@@ -162,3 +162,26 @@ async def test_run_sync_enrich_breaks_when_all_skipped():
     assert result["skipped"] == 1
     assert result["enriched"] == 0
     provider.generate.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_run_sync_enrich_all_errors_exits():
+    """If all claimed postings have HTML but provider always raises, loop exits cleanly."""
+    import uuid
+
+    fake_id = str(uuid.uuid4())
+    row = {"id": fake_id, "title": "Engineer", "locale": "en", "employment_type": "full_time"}
+    pool = MagicMock()
+    pool.fetch = AsyncMock(return_value=[row])  # always returns same row
+    pool.fetchval = AsyncMock(return_value="<p>Job HTML</p>")  # HTML present
+    pool.execute = AsyncMock(return_value=None)
+
+    provider = MagicMock()
+    provider.generate = AsyncMock(side_effect=Exception("API error"))
+
+    with patch("src.core.enrich.batch._persist_results", new_callable=AsyncMock):
+        result = await run_sync_enrich(pool, provider, batch_size=1, rate_limit_rpm=60)
+
+    assert result["enriched"] == 0
+    assert result["failed"] == 1
+    provider.generate.assert_called_once()

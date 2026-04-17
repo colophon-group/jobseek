@@ -1,4 +1,4 @@
-# ai/filters.yaml — personal job alert filters (phase 1)
+# data/alert-filters.yaml — personal job alert filters (phase 1)
 # Run: crawler mark-candidates && crawler enrich-local && crawler alert
 
 # Title-keyword exclusions — case-insensitive regex fragments joined with |

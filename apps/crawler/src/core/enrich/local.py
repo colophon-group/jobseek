@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import re
 from pathlib import Path
 from typing import Literal
 from uuid import uuid4
@@ -11,7 +10,7 @@ from uuid import uuid4
 import asyncpg
 import structlog
 import yaml
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field
 
 log = structlog.get_logger()
 
@@ -166,7 +165,8 @@ async def run_sync_enrich(
 
         results: list[tuple[str, dict | None, object | None]] = []
         posting_ids: list[str] = []
-        gemini_calls_made = 0
+        gemini_calls_made = 0   # successful enrichments this batch (loop-exit guard)
+        gemini_attempts = 0     # API calls attempted this batch (rate-limit sleep)
 
         for row in rows:
             pid = str(row["id"])
@@ -185,9 +185,11 @@ async def run_sync_enrich(
                 total_skipped += 1
                 continue
 
-            # Rate-limit: sleep between calls (not before the first actual call)
-            if gemini_calls_made > 0:
+            # Rate-limit: sleep before every API call except the first attempt.
+            # Track attempts (not successes) so failed calls also contribute to spacing.
+            if gemini_attempts > 0:
                 await asyncio.sleep(60 / rate_limit_rpm)
+            gemini_attempts += 1
 
             user_msg = build_user_message(
                 html,
@@ -216,8 +218,8 @@ async def run_sync_enrich(
                 results.append((pid, None, None))
                 total_failed += 1
 
-        # Break if no Gemini calls were made (all items skipped due to missing HTML).
-        # Without this guard, the loop would re-claim the same re-queued postings forever.
+        # Break if no successful enrichments: all items lacked HTML (re-claim would
+        # spin forever) or all API calls failed (no progress to make continuing).
         if gemini_calls_made == 0:
             break
 

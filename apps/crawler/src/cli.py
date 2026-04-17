@@ -297,6 +297,7 @@ async def run() -> None:
                     experience_max=experience_max,
                     exclude_title_regex=exclude_regex,
                     limit=cfg.output.limit,
+                    work_permit_support=cfg.require.work_permit_support,
                 )
 
             log.info("alert.query", row_count=len(rows))
