@@ -41,7 +41,7 @@ fi
 DEPLOY_DIR="/home/deploy"
 
 # ── Stop any manually-started containers that conflict with compose ──
-docker rm -f redis worker-1 worker-2 worker-3 browser-1 exporter drain alloy 2>/dev/null || true
+docker rm -f redis worker-1 worker-2 worker-3 browser-1 exporter drain indexnow alloy 2>/dev/null || true
 
 # ── Write env file ──────────────────────────────────────────────────
 # Proxy vars are expanded with ``:-`` defaults so missing provider
@@ -69,6 +69,10 @@ TYPESENSE_ADMIN_KEY=${TYPESENSE_ADMIN_KEY}
 PROXY_PROVIDER=${PROXY_PROVIDER:-none}
 WEBSHARE_PROXY_URL=${WEBSHARE_PROXY_URL:-}
 DECODO_PROXY_URL=${DECODO_PROXY_URL:-}
+INDEXNOW_KEY=${INDEXNOW_KEY:-}
+INDEXNOW_SITE_URL=${INDEXNOW_SITE_URL:-}
+INDEXNOW_KEY_URL=${INDEXNOW_KEY_URL:-}
+INDEXNOW_INTERVAL=${INDEXNOW_INTERVAL:-3600}
 EOF
 
 # Lock down the env file — it contains proxy + DB + R2 creds. Default
@@ -82,7 +86,7 @@ docker compose pull
 # Keep Redis up for migrations + sync, but quiesce the rest of the
 # crawler so deploy-time `crawler sync` does not race with live workers
 # claiming work out of Redis while we are reseeding board monitors.
-docker compose stop worker-1 worker-2 worker-3 browser-1 exporter drain alloy 2>/dev/null || true
+docker compose stop worker-1 worker-2 worker-3 browser-1 exporter drain indexnow alloy 2>/dev/null || true
 docker compose up -d redis
 
 # ── Run Alembic migrations on local Postgres ─────────────────────────
