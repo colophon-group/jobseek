@@ -446,7 +446,19 @@ async def _scrape_http(
         data = _jmespath.search(json_path, data)
 
     if not isinstance(data, dict):
-        log.warning("api_sniffer_scraper.no_job_data", url=url)
+        # Distinguish "requisition gone" (json_path resolved to None, e.g.
+        # `items[0]` against `items: []`) from "scraper got unexpected shape".
+        # Oracle HCM returns 200 + empty items for closed requisitions — that's
+        # the steady-state churn for large boards, not a scraper bug. Keep
+        # WARN for genuinely unexpected payloads so real regressions stand out.
+        if data is None:
+            log.info("api_sniffer_scraper.empty_result", url=url)
+        else:
+            log.warning(
+                "api_sniffer_scraper.no_job_data",
+                url=url,
+                shape=type(data).__name__,
+            )
         return JobContent()
 
     return _extract_from_object(data, config)
