@@ -320,27 +320,25 @@ export async function deleteWatchlist(
 
   await db.delete(watchlist).where(eq(watchlist.id, watchlistId));
 
-  // Typesense write hook: delete (fire-and-forget, safe even if doc doesn't exist)
-  tsDeleteWatchlist(watchlistId);
-
-  // IndexNow notification — only for URLs that were indexable (public).
-  // The submission is a re-crawl trigger; engines will discover the 404
-  // and drop the URL from their index. Wrapped in after() so the work
-  // survives the response being flushed without blocking it; calling
-  // notifyIndexNow off a detached .then() loses the request scope.
-  if (wl.isPublic) {
-    after(async () => {
-      try {
+  // Typesense delete + IndexNow re-crawl trigger. Both post-mutation
+  // effects share one after() so registration is synchronous in the
+  // request scope. IndexNow only fires if the URL was indexable; the
+  // Typesense delete is idempotent so it runs unconditionally (safe
+  // even when the doc doesn't exist).
+  after(async () => {
+    try {
+      tsDeleteWatchlist(watchlistId);
+      if (wl.isPublic) {
         const owner = await _getOwnerInfo(userId);
         if (owner?.username) {
           const userSlug = owner.displayUsername ?? owner.username;
           await notifyIndexNow([`/${userSlug}/${wl.slug}`]);
         }
-      } catch (err) {
-        console.error("[deleteWatchlist] IndexNow hook failed", err);
       }
-    });
-  }
+    } catch (err) {
+      console.error("[deleteWatchlist] post-mutation hook failed", err);
+    }
+  });
 
   return { ok: true };
 }

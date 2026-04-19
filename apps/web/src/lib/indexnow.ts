@@ -11,11 +11,12 @@ const INDEXNOW_ENDPOINT = "https://api.indexnow.org/indexnow";
  * to `api.indexnow.org` propagates to Bing, Yandex, Seznam, Naver, and
  * Microsoft Yep. Google does not participate in IndexNow.
  *
- * **Caller responsibility**: invoke from inside an `after()` block in
- * the originating server action / route handler. This function awaits
- * the fetch directly; without `after()`, the unawaited promise is
- * detached and Vercel may terminate the function before the POST
- * completes.
+ * **Caller contract**: this function awaits its fetch directly. In a
+ * Vercel server action / route handler, the caller should invoke it
+ * from inside `after()` (next/server) so the work survives the
+ * response being flushed without blocking it. In contexts where you
+ * can simply `await` to completion (route handlers that don't need to
+ * stream early, scripts, tests), no wrapping is required.
  *
  * Earlier revisions wrapped the fetch in `after()` internally, but
  * call sites were chaining `notifyIndexNow` off detached
