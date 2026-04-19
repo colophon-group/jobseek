@@ -213,27 +213,54 @@ WAF'd hosts but nothing crashes. The provider logs
 empty URL — first thing to check when a `proxy: true` board starts
 returning captcha.
 
-Static residential / ISP is billed **per IP, flat monthly**, so cost
-scales with IPs leased, not traffic volume. A single IP covers the
-current WAF-blocked set; add IPs (and a rotating/failover provider
-impl) only when an origin bans the IP or a provider hits concurrency
-caps.
+### Billing model — per IP, flat monthly (NOT per request)
+
+**Current providers (Webshare, Decodo) are billed per static IP, flat
+monthly. Per-request volume does not affect the bill.** One leased IP
+costs the same at 10 req/day and 10 000 req/day. Cost scales with IPs
+leased, not traffic volume.
+
+This is the opposite of the prior Lightpanda CDP transport (removed in
+PR #2181), which was billed by browser-hours of session clock time, so
+request volume directly mattered. Older mentions of "cost" and
+"bandwidth isn't free" in commit messages and docs are leftovers from
+that era — they **do not** apply to the Webshare/Decodo setup.
+
+A single IP covers the current WAF-blocked set; add IPs (and a
+rotating/failover provider impl) only when an origin bans the IP or a
+provider hits concurrency caps.
 
 Adding a new provider or a new WAF-blocked host is covered in the
 commit that introduced this section (PR #2181) — the PR body has the
 step-by-step and rollback runbook.
 
-### Disabling re-scrapes (cost saver)
+### Disabling re-scrapes on paid-proxy boards
 
-Boards routed through expensive transports usually don't need their
-descriptions re-scraped on the default 24h cadence — the data rarely
-changes and bandwidth/session-time isn't free. Set
-`monitor_config.rescrape_policy = "never"` in `data/boards.csv` and
-`_RECORD_SCRAPE_SUCCESS` will set `next_scrape_at = NULL` after each
-successful scrape. The first scrape still runs (so descriptions get
-filled when a posting is first discovered), and relisted jobs still
-re-scrape once (because `_enqueue_scrapes_for_relisted` directly sets
-`next_scrape_at = now()`); only the periodic refresh tail is suppressed.
+> This is **not** a per-request cost saver — see the billing note
+> above. The proxy provider does not bill per request.
+
+Set `monitor_config.rescrape_policy = "never"` in `data/boards.csv`
+for WAF-blocked boards whose content rarely changes. The reasons are:
+
+1. **Concurrency budget.** Webshare static IPs allow a limited number
+   of concurrent connections per IP. Each needless re-scrape holds a
+   connection slot that another board could use. A board with
+   thousands of postings (Starbucks ~21k, Uber ~1k) will saturate the
+   slot budget at the 24h refresh cadence without contributing new
+   information.
+2. **Origin good-neighborliness.** The proxy exit IP hitting the
+   origin at high volume for stale data is what gets the IP blocked
+   by the origin's WAF, forcing us to lease a new one.
+3. **Future-proofing.** If we ever swap to a bandwidth-metered
+   provider (e.g. Decodo's rotating/BW plans, which are NOT what we
+   run today), this flag is already in the right place.
+
+Mechanics: `_RECORD_SCRAPE_SUCCESS` sets `next_scrape_at = NULL` after
+each successful scrape when the flag is set. The first scrape still
+runs (so descriptions are filled when a posting is first discovered),
+and relisted jobs still re-scrape once (because
+`_enqueue_scrapes_for_relisted` directly sets `next_scrape_at =
+now()`); only the periodic refresh tail is suppressed.
 
 ```csv
 starbucks,starbucks-eightfold,https://starbucks.eightfold.ai/careers,eightfold,"{""url_filter"":""/careers/job/"",""rescrape_policy"":""never""}",json-ld,"{""enrich"":[""description""]}"

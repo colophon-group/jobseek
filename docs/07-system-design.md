@@ -11,7 +11,7 @@ Current design of all major subsystems across the crawler and web apps.
 - [Crawler: Worker Pipeline](#crawler-worker-pipeline)
 - [Crawler: R2 Description Store](#crawler-r2-description-store)
 - [Crawler: Exporter CDC](#crawler-exporter-cdc)
-- [Crawler: Per-Domain Proxy Layer](#crawler-per-domain-proxy-layer)
+- [Crawler: Proxy-Routed Transport](#crawler-proxy-routed-transport)
 - [Crawler: CSV Sync](#crawler-csv-sync)
 - [Web: Authentication](#web-authentication)
 - [Web: Session Caching](#web-session-caching)
@@ -51,7 +51,9 @@ R2_SECRET_ACCESS_KEY            # R2 API token secret
 R2_BUCKET                       # Bucket name (e.g. jobseek-assets)
 R2_DOMAIN_URL                   # Public CDN URL
 LOG_LEVEL                       # structlog level (default: INFO)
-PROXY_MAP                       # JSON dict mapping hostnames to proxy URLs (optional)
+PROXY_PROVIDER                  # Proxy provider: webshare | decodo | none (default: none)
+WEBSHARE_PROXY_URL              # Webshare static IP: http://user:pass@host:port (required when PROXY_PROVIDER=webshare)
+DECODO_PROXY_URL                # Decodo ISP: http://user:pass@host:port (required when PROXY_PROVIDER=decodo)
 WORKER_ID_PREFIX                # Container identity prefix (e.g. hetzner)
 METRICS_PORT                    # Prometheus metrics port (9091-9094)
 
@@ -303,24 +305,32 @@ CLI: `crawler reconcile [--full]`
 
 ---
 
-## Crawler: Per-Domain Proxy Layer
+## Crawler: Proxy-Routed Transport
 
-Optional proxy routing for domains that block direct requests.
+Optional proxy routing for boards whose origins block Hetzner datacenter
+IPs (AWS WAF captchas, Cloudflare challenges, etc.).
 
 ```
-src/shared/proxy.py    # proxy_for_url(), build_httpx_mounts(), build_playwright_proxy()
+src/shared/proxy.py    # ProxyProvider Protocol, StaticProxyProvider impl
 ```
 
-Set `PROXY_MAP` as a JSON dict mapping hostnames to proxy URLs:
+Implementation and config notes live in the canonical doc:
+[apps/crawler/AGENTS.md § Proxy-routed transport](../apps/crawler/AGENTS.md#proxy-routed-transport).
 
-```bash
-PROXY_MAP='{"apply.workable.com": "http://user:pass@gate.smartproxy.com:7777"}'
-```
+Quick summary:
 
-- **httpx**: Transport mounts per domain, wired automatically in `create_http_client()`
-- **Playwright**: `open_page()` accepts `target_url` kwarg, launches browser with proxy when configured
-- Per-domain, not per-board -- avoids CSV schema changes
-- Orthogonal to throttling -- rate limits remain in effect regardless of proxy
+- Per-board opt-in via `"proxy": true` in `monitor_config` and/or
+  `scraper_config` JSON in `data/boards.csv` (the two flags are
+  independent; typically both are set for a WAF-blocked host).
+- Provider chosen by `PROXY_PROVIDER` env (`webshare` in production,
+  `decodo` supported, `none` = fail-safe direct egress).
+- **Billing is flat-monthly per leased IP — not per request.** Older
+  Lightpanda-era docs referring to "cost savers" and "bandwidth isn't
+  free" do not apply to the current Webshare/Decodo setup.
+- `rescrape_policy: "never"` in `monitor_config` disables the 24h
+  refresh tail for WAF-blocked boards whose content rarely changes —
+  conserves shared-IP concurrency slots, not dollars. See AGENTS.md
+  for the full rationale.
 
 ---
 
