@@ -522,3 +522,33 @@ class TestFetchRetry403:
             except httpx.HTTPStatusError as e:
                 assert e.response.status_code == 403
         assert calls["n"] == 2
+
+    async def test_retry_carries_challenge_cookies(self):
+        """The whole point of retrying on the same client is that challenge
+        cookies set by the first response are attached to the retry. This
+        pins that invariant — the RTX soft-WAF pattern only recovers if the
+        challenge cookie set on the 403 makes it back on the retry."""
+        page_html = """<html><head>
+        <script type="application/ld+json">{"@type": "JobPosting", "title": "T"}</script>
+        </head></html>"""
+        calls: list[str] = []  # cookie header captured per call
+
+        def handler(request):
+            calls.append(request.headers.get("cookie", ""))
+            if len(calls) == 1:
+                # First response: 403 + sets a challenge cookie
+                resp = httpx.Response(
+                    403,
+                    text="blocked",
+                    headers={"set-cookie": "challenge=solved; Path=/"},
+                )
+                return resp
+            return httpx.Response(200, text=page_html)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape("https://example.com/job", {}, client)
+        assert len(calls) == 2
+        # First call has no cookies, second call carries the challenge cookie
+        assert calls[0] == ""
+        assert "challenge=solved" in calls[1]
+        assert result.title == "T"
