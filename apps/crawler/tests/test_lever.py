@@ -269,6 +269,29 @@ class TestDiscover:
             titles = {j.title for j in jobs}
             assert titles == {"Job 1", "Job 2"}
 
+    async def test_sends_application_json_accept_header(self):
+        """Lever returns an HTML widget on a browser Accept header. The monitor
+        must force ``Accept: application/json`` on every API call so the shared
+        HTTP client's browser Accept default doesn't flip Lever into HTML mode."""
+        seen_accepts: list[str] = []
+
+        def handler(request):
+            seen_accepts.append(request.headers.get("accept", ""))
+            return httpx.Response(200, json=[])
+
+        browser_accept = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(handler),
+            headers={"Accept": browser_accept},
+        ) as client:
+            board = {"board_url": "https://jobs.lever.co/testco", "metadata": {"token": "testco"}}
+            await discover(board, client)
+            assert seen_accepts, "no request was issued"
+            for accept in seen_accepts:
+                assert accept == "application/json", (
+                    f"expected Lever request to force application/json, got {accept!r}"
+                )
+
     async def test_empty_response(self):
         def handler(request):
             return httpx.Response(200, json=[])

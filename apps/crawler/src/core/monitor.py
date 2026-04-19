@@ -220,13 +220,17 @@ async def _save_raw(
                     )
         elif monitor_type in ("ashby", "greenhouse", "lever"):
             token = monitor_config.get("token", "")
+            # Lever content-negotiates: serves an HTML widget on a browser Accept.
+            # Force JSON for the Lever path. See monitors/lever.py::_API_HEADERS.
+            req_headers: dict[str, str] = {}
             if monitor_type == "ashby":
                 api_url = f"https://api.ashbyhq.com/posting-api/job-board/{token}?includeCompensation=true"
             elif monitor_type == "greenhouse":
                 api_url = f"https://boards-api.greenhouse.io/v1/boards/{token}/jobs?content=true"
             else:
                 api_url = f"https://api.lever.co/v0/postings/{token}?limit=100"
-            resp = await http.get(api_url)
+                req_headers["Accept"] = "application/json"
+            resp = await http.get(api_url, headers=req_headers)
             if resp.status_code == 200:
                 (artifact_dir / "response.json").write_text(
                     json.dumps(resp.json(), indent=2, default=str)
