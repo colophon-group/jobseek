@@ -547,8 +547,62 @@ class TestScrape:
             assert result.title is None
 
     async def test_403_raises(self):
-        """WAF block on Hetzner egress — surface as error so it's retried."""
+        """Bare 403 (real WAF block / auth failure) surfaces as error so it's retried."""
         transport = httpx.MockTransport(lambda r: httpx.Response(403))
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(httpx.HTTPStatusError):
+                await scrape(
+                    "https://co.wd1.myworkdayjobs.com/Site/job/X/JR001",
+                    {},
+                    client,
+                )
+
+    async def test_403_s22_returns_empty(self):
+        """Workday's 'closed requisition' response: 403 + {errorCode: S22}.
+
+        Verified 2026-04-19 against 15 consecutive 403 URLs from Loki —
+        0/15 were in the current LIST output. Treat as soft-fail (same as
+        the documented 404) so delisted jobs drain from the scrape queue
+        without flooding batch.scrape.error.
+        """
+
+        def handler(request):
+            return httpx.Response(
+                403,
+                json={
+                    "errorCode": "S22",
+                    "errorCaseId": "test-case",
+                    "httpStatus": 403,
+                    "message": "permission denied",
+                },
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape(
+                "https://wf.wd1.myworkdayjobs.com/WellsFargoJobs/job/x/JR001",
+                {},
+                client,
+            )
+            assert result.title is None  # empty JobContent, no exception
+
+    async def test_403_other_code_raises(self):
+        """403 with a different errorCode shape is NOT treated as gone —
+        it could be a real auth failure or rate limit, so let it surface."""
+
+        def handler(request):
+            return httpx.Response(403, json={"errorCode": "OTHER", "message": "rate limited"})
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(httpx.HTTPStatusError):
+                await scrape(
+                    "https://co.wd1.myworkdayjobs.com/Site/job/X/JR001",
+                    {},
+                    client,
+                )
+
+    async def test_403_non_json_body_raises(self):
+        """403 with a non-JSON body (HTML WAF page) still raises."""
+        transport = httpx.MockTransport(lambda r: httpx.Response(403, text="<html>blocked</html>"))
         async with httpx.AsyncClient(transport=transport) as client:
             with pytest.raises(httpx.HTTPStatusError):
                 await scrape(
