@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { notifyIndexNow } from "../indexnow";
@@ -60,11 +63,33 @@ describe("notifyIndexNow", () => {
     );
   });
 
-  it("dedupes URLs across paths", async () => {
+  it("dedupes URLs across paths and pins ordering", async () => {
     process.env.INDEXNOW_KEY = "test-key";
     await notifyIndexNow(["/foo", "/foo"]);
     const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
-    expect(body.urlList).toHaveLength(4); // 4 locales × 1 unique path
+    expect(body.urlList).toEqual([
+      "https://jseek.co/en/foo",
+      "https://jseek.co/de/foo",
+      "https://jseek.co/fr/foo",
+      "https://jseek.co/it/foo",
+    ]);
+  });
+
+  it("caps the batch at 10_000 URLs (IndexNow protocol limit)", async () => {
+    process.env.INDEXNOW_KEY = "test-key";
+    // 2_501 paths × 4 locales = 10_004 expanded URLs → must be trimmed.
+    const paths = Array.from({ length: 2_501 }, (_, i) => `/p${i}`);
+    await notifyIndexNow(paths);
+    expect(fetchMock).toHaveBeenCalledOnce();
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    expect(body.urlList).toHaveLength(10_000);
+  });
+
+  it("does not log on a 200 response (success is silent)", async () => {
+    process.env.INDEXNOW_KEY = "test-key";
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    await notifyIndexNow(["/foo"]);
+    expect(errSpy).not.toHaveBeenCalled();
   });
 
   it("logs (does not throw) when the endpoint rejects with 4xx", async () => {
@@ -73,6 +98,7 @@ describe("notifyIndexNow", () => {
     const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     await expect(notifyIndexNow(["/foo"])).resolves.toBeUndefined();
     expect(errSpy).toHaveBeenCalledOnce();
+    expect(String(errSpy.mock.calls[0][0])).toContain("403");
   });
 
   it("logs (does not throw) on network errors", async () => {
@@ -81,6 +107,22 @@ describe("notifyIndexNow", () => {
     const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     await expect(notifyIndexNow(["/foo"])).resolves.toBeUndefined();
     expect(errSpy).toHaveBeenCalledOnce();
+  });
+
+  it("does not import next/server (caller owns after() wrapping)", () => {
+    // Structural regression guard. The original bug was that
+    // notifyIndexNow called after() internally, which silently failed
+    // when callers wrapped it inside a detached `_getOwnerInfo(...)
+    // .then(...)` chain (request scope already torn down). The fix
+    // moved after() up to the call sites in
+    // apps/web/src/lib/actions/watchlists.ts. A future refactor that
+    // re-imports `after` from "next/server" into indexnow.ts would
+    // re-introduce the same failure mode.
+    const src = readFileSync(
+      join(__dirname, "..", "indexnow.ts"),
+      "utf-8",
+    );
+    expect(src).not.toMatch(/from\s+["']next\/server["']/);
   });
 
   it("awaits the fetch (returns only after the POST resolves)", async () => {
