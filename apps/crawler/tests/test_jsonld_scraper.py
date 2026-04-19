@@ -454,3 +454,71 @@ class TestProbe:
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             assert await probe("https://example.com/job", client) is False
+
+
+class TestFetchRetry403:
+    """``_fetch_html`` retries once on 403 to tolerate soft-WAF warmups."""
+
+    async def test_retries_once_on_403_then_succeeds(self):
+        page_html = """<html><head>
+        <script type="application/ld+json">{"@type": "JobPosting", "title": "T"}</script>
+        </head></html>"""
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                return httpx.Response(403, text="blocked")
+            return httpx.Response(200, text=page_html)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape("https://example.com/job", {}, client)
+            assert calls["n"] == 2
+            assert result.title == "T"
+
+    async def test_does_not_retry_on_200(self):
+        page_html = """<html><head>
+        <script type="application/ld+json">{"@type": "JobPosting", "title": "T"}</script>
+        </head></html>"""
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            return httpx.Response(200, text=page_html)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            await scrape("https://example.com/job", {}, client)
+            assert calls["n"] == 1
+
+    async def test_does_not_retry_on_410(self):
+        """4xx statuses other than 403 should surface immediately so the pipeline
+        can distinguish a permanently-gone job from a transient block."""
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            return httpx.Response(410, text="gone")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            try:
+                await scrape("https://example.com/job", {}, client)
+                raise AssertionError("expected HTTPStatusError")
+            except httpx.HTTPStatusError as e:
+                assert e.response.status_code == 410
+        assert calls["n"] == 1
+
+    async def test_raises_if_retry_also_403(self):
+        """A persistent 403 still raises after the single retry."""
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            return httpx.Response(403, text="blocked")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            try:
+                await scrape("https://example.com/job", {}, client)
+                raise AssertionError("expected HTTPStatusError")
+            except httpx.HTTPStatusError as e:
+                assert e.response.status_code == 403
+        assert calls["n"] == 2
