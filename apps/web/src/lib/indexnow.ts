@@ -1,30 +1,37 @@
-import { after } from "next/server";
 import { siteConfig } from "@/content/config";
 import { locales } from "@/lib/i18n";
 
 const INDEXNOW_ENDPOINT = "https://api.indexnow.org/indexnow";
 
 /**
- * Deferred IndexNow notification for one or more app paths.
+ * Submit one or more app paths to IndexNow.
  *
  * Each path is expanded to every supported locale prefix — a single
  * user-facing mutation covers all hreflang alternates. A single POST
  * to `api.indexnow.org` propagates to Bing, Yandex, Seznam, Naver, and
  * Microsoft Yep. Google does not participate in IndexNow.
  *
- * Uses `after()` from `next/server`: the callback runs after the server
- * action's response has been streamed, but before the serverless
- * invocation is allowed to terminate. This avoids the classic
- * "fire-and-forget promise gets killed when the function returns"
- * failure mode on Vercel.
+ * **Caller contract**: this function awaits its fetch directly. In a
+ * Vercel server action / route handler, the caller should invoke it
+ * from inside `after()` (next/server) so the work survives the
+ * response being flushed without blocking it. In contexts where you
+ * can simply `await` to completion (route handlers that don't need to
+ * stream early, scripts, tests), no wrapping is required.
+ *
+ * Earlier revisions wrapped the fetch in `after()` internally, but
+ * call sites were chaining `notifyIndexNow` off detached
+ * `_getOwnerInfo(...).then(...)` promises — by the time the chain
+ * resolved the request scope was gone and the inner `after()` no
+ * longer registered anything. Pulling `after()` up to the call site
+ * keeps the registration synchronous with the request.
  *
  * No-op when `INDEXNOW_KEY` is unset (local dev, preview deploys
- * without the secret). All errors are swallowed and logged — callers
- * must never observe failures.
+ * without the secret) or when `paths` is empty. All errors are caught
+ * and logged — callers must never observe failures.
  *
  * @param paths Locale-less app paths, e.g. ["/user/watchlist-slug"].
  */
-export function notifyIndexNow(paths: string[]): void {
+export async function notifyIndexNow(paths: string[]): Promise<void> {
   const key = process.env.INDEXNOW_KEY;
   if (!key || paths.length === 0) return;
 
@@ -47,23 +54,21 @@ export function notifyIndexNow(paths: string[]): void {
     urlList: unique,
   };
 
-  after(async () => {
-    try {
-      const res = await fetch(INDEXNOW_ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json; charset=utf-8" },
-        body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(10_000),
-      });
-      if (res.status !== 200 && res.status !== 202) {
-        console.error(
-          `[indexnow] submission rejected (${res.status}) for ${unique.length} urls`,
-        );
-      }
-    } catch (err) {
-      console.error("[indexnow] submission failed", err);
+  try {
+    const res = await fetch(INDEXNOW_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json; charset=utf-8" },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (res.status !== 200 && res.status !== 202) {
+      console.error(
+        `[indexnow] submission rejected (${res.status}) for ${unique.length} urls`,
+      );
     }
-  });
+  } catch (err) {
+    console.error("[indexnow] submission failed", err);
+  }
 }
 
 /**

@@ -120,7 +120,7 @@ The key file is served by `apps/web/app/indexnow-key.txt/route.ts` with `dynamic
 Implementation:
 
 - No diff table. The mutation is the event — we know something changed because we just committed to Postgres.
-- Uses `after()` from `next/server` so the POST runs after the response is flushed but before the serverless function terminates on Vercel (avoids the classic "fire-and-forget promise killed at function exit" failure mode).
+- Each call site wraps the post-mutation hook (Typesense upsert / delete + `notifyIndexNow`) in `after()` from `next/server`. `after()` must be invoked **synchronously inside the request scope** — calling it from a detached `.then()` chain (an earlier shape of this code) silently no-ops because the request context is already torn down by the time the chain resolves. `notifyIndexNow` itself is a plain async function and assumes the caller provides `after()`; it does not call `after()` internally.
 - `encodeURIComponent` per path segment guards against user slugs with spaces / unicode / `%`-sequences.
 - Gated on `owner.username` being truthy, matching the sitemap's `WHERE u.username IS NOT NULL` filter — we don't notify URLs the sitemap doesn't expose.
 - No-op if `process.env.INDEXNOW_KEY` is unset (safe locally + on preview deploys without the secret).

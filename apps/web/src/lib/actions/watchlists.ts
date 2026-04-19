@@ -1,5 +1,6 @@
 "use server";
 
+import { after } from "next/server";
 import { eq, and, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
@@ -131,37 +132,43 @@ export async function createWatchlist(params: {
     );
   }
 
-  // Typesense write hook: upsert if public and non-trivial (fire-and-forget)
+  // Typesense + IndexNow hook: upsert if public and non-trivial.
+  // Wrapped in after() so the registration is synchronous in the
+  // request scope — calling notifyIndexNow from a detached .then()
+  // chain (the previous shape) silently broke because next/server's
+  // after() requires a live request context to attach work.
   const isPublic = params.isPublic ?? true;
   const mergedFilters = { anyCompany: true, ...params.filters };
   const trivial = isTrivialWatchlist(mergedFilters, params.companyIds.length);
   if (isPublic && !trivial) {
-    // Fetch owner info for the Typesense doc + IndexNow notification
-    _getOwnerInfo(userId).then((owner) => {
-      if (!owner) return;
-      tsUpsertWatchlist({
-        id: row.id,
-        slug,
-        title: params.title,
-        description: params.description,
-        owner_name: owner.name,
-        owner_username: owner.username ?? undefined,
-        company_count: params.companyIds.length,
-        active_job_count: 0, // will be refreshed by reconciliation cron
-        mirror_count: 0,
-        is_featured: (owner.username ?? "").toLowerCase() === "colophongroup",
-        has_description: !!params.description,
-        created_at: Math.floor(Date.now() / 1000),
-        is_public: true,
-      });
-      // Match sitemap semantics: only notify URLs the sitemap also exposes
-      // (see apps/web/app/sitemap.ts — filters `u.username IS NOT NULL`).
-      if (owner.username) {
-        const userSlug = owner.displayUsername ?? owner.username;
-        notifyIndexNow([`/${userSlug}/${slug}`]);
+    after(async () => {
+      try {
+        const owner = await _getOwnerInfo(userId);
+        if (!owner) return;
+        tsUpsertWatchlist({
+          id: row.id,
+          slug,
+          title: params.title,
+          description: params.description,
+          owner_name: owner.name,
+          owner_username: owner.username ?? undefined,
+          company_count: params.companyIds.length,
+          active_job_count: 0, // will be refreshed by reconciliation cron
+          mirror_count: 0,
+          is_featured: (owner.username ?? "").toLowerCase() === "colophongroup",
+          has_description: !!params.description,
+          created_at: Math.floor(Date.now() / 1000),
+          is_public: true,
+        });
+        // Match sitemap semantics: only notify URLs the sitemap also exposes
+        // (see apps/web/app/sitemap.ts — filters `u.username IS NOT NULL`).
+        if (owner.username) {
+          const userSlug = owner.displayUsername ?? owner.username;
+          await notifyIndexNow([`/${userSlug}/${slug}`]);
+        }
+      } catch (err) {
+        console.error("[createWatchlist] post-mutation hook failed", err);
       }
-    }).catch((err) => {
-      console.error("[createWatchlist] Typesense hook failed", err);
     });
   }
 
@@ -229,64 +236,69 @@ export async function updateWatchlist(params: {
     }
   }
 
-  // Typesense write hook (fire-and-forget).
-  // A doc is indexed when the watchlist is both public and non-trivial.
+  // Typesense + IndexNow hook. A doc is indexed when the watchlist is
+  // both public and non-trivial. after() must be called synchronously
+  // here so it registers in the request scope; the awaited work runs
+  // after the response is flushed but before Vercel terminates the
+  // function.
   const wasPublic = wl.isPublic;
   const nowPublic = params.isPublic !== undefined ? params.isPublic : wasPublic;
   const newFilters = params.filters !== undefined
     ? params.filters
     : (wl.filters ?? {}) as WatchlistFilters;
 
-  (async () => {
-    const newCompanyCount = params.companyIds !== undefined
-      ? params.companyIds.length
-      : await _countWatchlistCompanies(params.watchlistId);
-    const shouldIndex = nowPublic && !isTrivialWatchlist(newFilters, newCompanyCount);
+  after(async () => {
+    try {
+      const newCompanyCount = params.companyIds !== undefined
+        ? params.companyIds.length
+        : await _countWatchlistCompanies(params.watchlistId);
+      const shouldIndex = nowPublic && !isTrivialWatchlist(newFilters, newCompanyCount);
 
-    if (shouldIndex) {
-      // Idempotent upsert — doc may or may not exist (public↔private or
-      // trivial↔non-trivial transitions can leave stale or missing docs).
-      const owner = await _getOwnerInfo(userId);
-      if (!owner) return;
-      const desc = params.description !== undefined ? params.description : wl.description;
-      tsUpsertWatchlist({
-        id: params.watchlistId,
-        slug: newSlug,
-        title: params.title ?? wl.title,
-        description: desc ?? undefined,
-        owner_name: owner.name,
-        owner_username: owner.username ?? undefined,
-        company_count: newCompanyCount,
-        active_job_count: 0, // refreshed by reconciliation cron
-        mirror_count: 0,
-        is_featured: (owner.username ?? "").toLowerCase() === "colophongroup",
-        has_description: !!desc,
-        created_at: Math.floor(Date.now() / 1000),
-        is_public: true,
-      });
-      if (owner.username) {
-        const userSlug = owner.displayUsername ?? owner.username;
-        // Notify the new URL, plus the old slug if the title rename
-        // produced a new slug — the old URL now 404s and we want the
-        // engines to discover that.
-        const urls = [`/${userSlug}/${newSlug}`];
-        if (newSlug !== wl.slug) urls.push(`/${userSlug}/${wl.slug}`);
-        notifyIndexNow(urls);
+      if (shouldIndex) {
+        // Idempotent upsert — doc may or may not exist (public↔private or
+        // trivial↔non-trivial transitions can leave stale or missing docs).
+        const owner = await _getOwnerInfo(userId);
+        if (!owner) return;
+        const desc = params.description !== undefined ? params.description : wl.description;
+        tsUpsertWatchlist({
+          id: params.watchlistId,
+          slug: newSlug,
+          title: params.title ?? wl.title,
+          description: desc ?? undefined,
+          owner_name: owner.name,
+          owner_username: owner.username ?? undefined,
+          company_count: newCompanyCount,
+          active_job_count: 0, // refreshed by reconciliation cron
+          mirror_count: 0,
+          is_featured: (owner.username ?? "").toLowerCase() === "colophongroup",
+          has_description: !!desc,
+          created_at: Math.floor(Date.now() / 1000),
+          is_public: true,
+        });
+        if (owner.username) {
+          const userSlug = owner.displayUsername ?? owner.username;
+          // Notify the new URL, plus the old slug if the title rename
+          // produced a new slug — the old URL now 404s and we want the
+          // engines to discover that.
+          const urls = [`/${userSlug}/${newSlug}`];
+          if (newSlug !== wl.slug) urls.push(`/${userSlug}/${wl.slug}`);
+          await notifyIndexNow(urls);
+        }
+      } else if (wasPublic) {
+        // Was indexed and shouldn't be now — delete from Typesense and
+        // ping IndexNow so engines re-crawl and discover the 404/private
+        // response. IndexNow has no explicit delete; submitting the URL
+        // is the canonical re-crawl trigger.
+        tsDeleteWatchlist(params.watchlistId);
+        const owner = await _getOwnerInfo(userId);
+        if (owner?.username) {
+          const userSlug = owner.displayUsername ?? owner.username;
+          await notifyIndexNow([`/${userSlug}/${wl.slug}`]);
+        }
       }
-    } else if (wasPublic) {
-      // Was indexed and shouldn't be now — delete from Typesense and
-      // ping IndexNow so engines re-crawl and discover the 404/private
-      // response. IndexNow has no explicit delete; submitting the URL
-      // is the canonical re-crawl trigger.
-      tsDeleteWatchlist(params.watchlistId);
-      const owner = await _getOwnerInfo(userId);
-      if (owner?.username) {
-        const userSlug = owner.displayUsername ?? owner.username;
-        notifyIndexNow([`/${userSlug}/${wl.slug}`]);
-      }
+    } catch (err) {
+      console.error("[updateWatchlist] post-mutation hook failed", err);
     }
-  })().catch((err) => {
-    console.error("[updateWatchlist] Typesense hook failed", err);
   });
 
   return { slug: newSlug };
@@ -308,22 +320,25 @@ export async function deleteWatchlist(
 
   await db.delete(watchlist).where(eq(watchlist.id, watchlistId));
 
-  // Typesense write hook: delete (fire-and-forget, safe even if doc doesn't exist)
-  tsDeleteWatchlist(watchlistId);
-
-  // IndexNow notification — only for URLs that were indexable (public).
-  // The submission is a re-crawl trigger; engines will discover the 404
-  // and drop the URL from their index.
-  if (wl.isPublic) {
-    _getOwnerInfo(userId).then((owner) => {
-      if (owner?.username) {
-        const userSlug = owner.displayUsername ?? owner.username;
-        notifyIndexNow([`/${userSlug}/${wl.slug}`]);
+  // Typesense delete + IndexNow re-crawl trigger. Both post-mutation
+  // effects share one after() so registration is synchronous in the
+  // request scope. IndexNow only fires if the URL was indexable; the
+  // Typesense delete is idempotent so it runs unconditionally (safe
+  // even when the doc doesn't exist).
+  after(async () => {
+    try {
+      tsDeleteWatchlist(watchlistId);
+      if (wl.isPublic) {
+        const owner = await _getOwnerInfo(userId);
+        if (owner?.username) {
+          const userSlug = owner.displayUsername ?? owner.username;
+          await notifyIndexNow([`/${userSlug}/${wl.slug}`]);
+        }
       }
-    }).catch((err) => {
-      console.error("[deleteWatchlist] IndexNow hook failed", err);
-    });
-  }
+    } catch (err) {
+      console.error("[deleteWatchlist] post-mutation hook failed", err);
+    }
+  });
 
   return { ok: true };
 }
@@ -386,40 +401,50 @@ export async function copyWatchlist(
     );
   }
 
-  // Typesense write hooks (fire-and-forget):
-  // 1. Upsert the new copy (copies are always public) — unless trivial
+  // Typesense + IndexNow hooks. Wrapped in after() so work registers
+  // in the request scope; the previous detached .then() pattern broke
+  // notifyIndexNow because the inner after() lost its request context
+  // by the time the chain resolved.
   if (!isTrivialWatchlist(sourceFilters, companies.length)) {
-    _getOwnerInfo(userId).then((owner) => {
-      if (!owner) return;
-      tsUpsertWatchlist({
-        id: row.id,
-        slug,
-        title: source.title,
-        description: source.description ?? undefined,
-        owner_name: owner.name,
-        owner_username: owner.username ?? undefined,
-        company_count: companies.length,
-        active_job_count: 0, // refreshed by reconciliation cron
-        mirror_count: 0,
-        is_featured: (owner.username ?? "").toLowerCase() === "colophongroup",
-        has_description: !!source.description,
-        created_at: Math.floor(Date.now() / 1000),
-        is_public: true,
-      });
-      if (owner.username) {
-        const userSlug = owner.displayUsername ?? owner.username;
-        notifyIndexNow([`/${userSlug}/${slug}`]);
+    // 1. Upsert the new copy (copies are always public) — unless trivial.
+    after(async () => {
+      try {
+        const owner = await _getOwnerInfo(userId);
+        if (!owner) return;
+        tsUpsertWatchlist({
+          id: row.id,
+          slug,
+          title: source.title,
+          description: source.description ?? undefined,
+          owner_name: owner.name,
+          owner_username: owner.username ?? undefined,
+          company_count: companies.length,
+          active_job_count: 0, // refreshed by reconciliation cron
+          mirror_count: 0,
+          is_featured: (owner.username ?? "").toLowerCase() === "colophongroup",
+          has_description: !!source.description,
+          created_at: Math.floor(Date.now() / 1000),
+          is_public: true,
+        });
+        if (owner.username) {
+          const userSlug = owner.displayUsername ?? owner.username;
+          await notifyIndexNow([`/${userSlug}/${slug}`]);
+        }
+      } catch (err) {
+        console.error("[copyWatchlist] Typesense upsert hook failed", err);
       }
-    }).catch((err) => {
-      console.error("[copyWatchlist] Typesense upsert hook failed", err);
     });
   }
 
-  // 2. Update source watchlist's mirror_count (increment)
-  _getWatchlistMirrorCount(watchlistId).then((count) => {
-    tsUpdateWatchlistField(watchlistId, { mirror_count: count });
-  }).catch((err) => {
-    console.error("[copyWatchlist] Typesense mirror_count hook failed", err);
+  // 2. Update source watchlist's mirror_count (increment). No IndexNow
+  // here — the source URL hasn't changed visible content.
+  after(async () => {
+    try {
+      const count = await _getWatchlistMirrorCount(watchlistId);
+      tsUpdateWatchlistField(watchlistId, { mirror_count: count });
+    } catch (err) {
+      console.error("[copyWatchlist] Typesense mirror_count hook failed", err);
+    }
   });
 
   return { id: row.id, slug };
