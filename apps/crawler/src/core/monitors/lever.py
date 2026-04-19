@@ -34,6 +34,13 @@ _EU_DOMAIN = re.compile(r"(?:api|jobs)\.eu\.lever\.co/")
 
 _IGNORE_TOKENS = frozenset({"v0", "api", "js", "css", "assets"})
 
+# Lever's API honors the Accept header: with ``Accept: text/html`` it
+# returns a minimal HTML widget ("Derby App") instead of JSON. The
+# default httpx client sends a browser Accept header (see
+# ``shared/http.py``) which was flipping responses to HTML and failing
+# ``response.json()`` with a bare ``JSONDecodeError``. Force JSON.
+_API_HEADERS = {"Accept": "application/json"}
+
 
 def _build_description(posting: dict) -> str | None:
     parts: list[str] = []
@@ -125,7 +132,9 @@ async def _probe_token(
 ) -> tuple[bool, int | None]:
     """Probe the Lever API for a token. Returns (found, job_count)."""
     try:
-        resp = await client.get(_api_url(token, region), params={"limit": 100})
+        resp = await client.get(
+            _api_url(token, region), params={"limit": 100}, headers=_API_HEADERS
+        )
         if resp.status_code != 200:
             return False, None
         data = resp.json()
@@ -144,7 +153,9 @@ async def _fetch_job_count(
 ) -> int | str | None:
     """Lightweight API call to get the job count for a token."""
     try:
-        resp = await client.get(_api_url(token, region), params={"limit": 100})
+        resp = await client.get(
+            _api_url(token, region), params={"limit": 100}, headers=_API_HEADERS
+        )
         if resp.status_code != 200:
             return None
         data = resp.json()
@@ -172,7 +183,9 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
     skip = 0
 
     while True:
-        response = await client.get(url, params={"limit": BATCH_SIZE, "skip": skip})
+        response = await client.get(
+            url, params={"limit": BATCH_SIZE, "skip": skip}, headers=_API_HEADERS
+        )
         response.raise_for_status()
 
         batch: list[dict] = response.json()
