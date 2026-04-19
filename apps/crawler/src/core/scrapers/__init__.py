@@ -173,7 +173,8 @@ def scraper_needs_browser(name: str, config: dict | None = None) -> bool:
 
     When *config* is provided, api_sniffer in HTTP mode (``api_url`` set)
     does not need a browser despite being registered with ``needs_browser=True``.
-    The ``dom`` scraper needs a browser when ``render`` is true in config.
+    The scrapers listed in ``_RENDER_AWARE_SCRAPERS`` use Playwright when
+    ``render`` is true in config.
     """
     entry = _REGISTRY.get(name)
     if not entry:
@@ -182,8 +183,17 @@ def scraper_needs_browser(name: str, config: dict | None = None) -> bool:
         return False
     if entry.needs_browser:
         return True
-    # dom and json-ld scrapers use Playwright when render is enabled
-    return name in ("dom", "json-ld") and bool(config and config.get("render"))
+    return name in _RENDER_AWARE_SCRAPERS and bool(config and config.get("render"))
+
+
+# Scrapers that call ``shared.browser.render`` when ``render: true`` is set
+# in their config. Any board routing to one of these with ``render: true``
+# must be dispatched to a browser worker — otherwise Playwright fails with
+# "Executable doesn't exist" on slim workers that don't ship Chromium.
+#
+# nextdata is a thin wrapper around embedded and goes through the same render
+# path, so both belong here.
+_RENDER_AWARE_SCRAPERS = frozenset({"dom", "json-ld", "embedded", "nextdata"})
 
 
 # Quality fields checked in probe results
