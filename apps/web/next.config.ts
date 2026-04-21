@@ -9,10 +9,15 @@ const nextConfig: NextConfig = {
     // Cache optimized images for 1 year. Company logos rarely change, and
     // Vercel purges its CDN cache on every deploy anyway.
     minimumCacheTTL: 31536000,
+    // 100% of company icons/logos currently resolve to R2 or DDG. The
+    // historical `**` wildcard fallback let any hostname expand source
+    // cardinality for the image optimizer (each distinct host is a new
+    // transformation source), so it's scoped to the two known hosts.
+    // If a new host is ever needed, add it explicitly — do not restore
+    // the wildcard.
     remotePatterns: [
       { hostname: "jobseek-assets.colophon-group.org" },
       { hostname: "icons.duckduckgo.com" },
-      { hostname: "**" }, // fallback logos hosted directly on company domains
     ],
   },
   rewrites: async () => {

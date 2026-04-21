@@ -38,6 +38,7 @@ export function SimilarCompanyCard({ company, locale, preserveParams }: Props) {
             alt=""
             width={28}
             height={28}
+            sizes="28px"
             className="size-7 shrink-0 rounded"
           />
         ) : (

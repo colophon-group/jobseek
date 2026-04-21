@@ -58,6 +58,7 @@ Four env vars, configured symmetrically on the web and crawler sides:
 | `INDEXNOW_SITE_URL` | — | Crawler only (`https://jseek.co`; web derives from `siteConfig.url`) |
 | `INDEXNOW_KEY_URL` | — | Crawler only (`https://jseek.co/indexnow-key.txt`) |
 | `INDEXNOW_INTERVAL` | `3600` | Crawler only; seconds between notifier loops |
+| `INDEXNOW_MAX_URLS_PER_TICK` | `500` | Crawler only; per-tick submission cap; `0` disables |
 
 The key file is served by `apps/web/app/indexnow-key.txt/route.ts` with `dynamic = "force-dynamic"` + `Cache-Control: no-store`, so rotating the key takes effect on the next request (no rebuild required).
 

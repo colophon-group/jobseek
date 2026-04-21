@@ -89,6 +89,11 @@ class Settings(BaseSettings):
     indexnow_site_url: str = ""  # e.g. "https://jseek.co" (no trailing slash)
     indexnow_key_url: str = ""  # e.g. "https://jseek.co/indexnow-key.txt"
     indexnow_interval: int = 3600  # seconds between ticks
+    # Per-tick submission cap. Avoids telling Bing/Yandex/Seznam/Naver/Yep
+    # to recrawl N×4 URLs in one blast — the resulting synchronized bot
+    # sweep hammers Vercel image transforms. Unsubmitted URLs stay
+    # hash-mismatched and return next tick. Set to 0 to disable the cap.
+    indexnow_max_urls_per_tick: int = 500
 
     @model_validator(mode="after")
     def _normalize_indexnow(self) -> Settings:

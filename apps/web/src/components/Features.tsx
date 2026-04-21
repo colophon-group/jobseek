@@ -195,7 +195,7 @@ function FeatureSection1() {
         </div>
         <div className="flex flex-1 justify-start lg:justify-end" style={{ minHeight: 400 }}>
           <ImageWrapper mediaWidth={mediaWidth} inverted={false}>
-            <ThemedImage darkSrc={src.dark} lightSrc={src.light} alt={t({ id: "home.features.s1.screenshot.alt", comment: "Alt text for feature section 1 screenshot", message: "Job Seek search results filtered by role and location" })} width={cfg.screenshot.width} height={cfg.screenshot.height} />
+            <ThemedImage darkSrc={src.dark} lightSrc={src.light} alt={t({ id: "home.features.s1.screenshot.alt", comment: "Alt text for feature section 1 screenshot", message: "Job Seek search results filtered by role and location" })} width={cfg.screenshot.width} height={cfg.screenshot.height} sizes="(max-width: 1200px) 100vw, 1200px" />
           </ImageWrapper>
         </div>
       </div>
@@ -256,7 +256,7 @@ function FeatureSection2() {
         </div>
         <div className="flex flex-1 justify-start" style={{ minHeight: 400 }}>
           <ImageWrapper mediaWidth={mediaWidth} inverted={true}>
-            <ThemedImage darkSrc={src.dark} lightSrc={src.light} alt={t({ id: "home.features.s2.screenshot.alt", comment: "Alt text for feature section 2 screenshot", message: "Job Seek application tracker showing saved jobs and interview details" })} width={cfg.screenshot.width} height={cfg.screenshot.height} />
+            <ThemedImage darkSrc={src.dark} lightSrc={src.light} alt={t({ id: "home.features.s2.screenshot.alt", comment: "Alt text for feature section 2 screenshot", message: "Job Seek application tracker showing saved jobs and interview details" })} width={cfg.screenshot.width} height={cfg.screenshot.height} sizes="(max-width: 1200px) 100vw, 1200px" />
           </ImageWrapper>
         </div>
       </div>
@@ -317,7 +317,7 @@ function FeatureSection3() {
         </div>
         <div className="flex flex-1 justify-start lg:justify-end" style={{ minHeight: 400 }}>
           <ImageWrapper mediaWidth={mediaWidth} inverted={false} sectionId="s3">
-            <ThemedImage darkSrc={src.dark} lightSrc={src.light} alt={t({ id: "home.features.s3.screenshot.alt", comment: "Alt text for feature section 3 screenshot", message: "Job Seek watchlist showing curated robotics engineering roles in Zurich" })} width={cfg.screenshot.width} height={cfg.screenshot.height} />
+            <ThemedImage darkSrc={src.dark} lightSrc={src.light} alt={t({ id: "home.features.s3.screenshot.alt", comment: "Alt text for feature section 3 screenshot", message: "Job Seek watchlist showing curated robotics engineering roles in Zurich" })} width={cfg.screenshot.width} height={cfg.screenshot.height} sizes="(max-width: 1200px) 100vw, 1200px" />
           </ImageWrapper>
         </div>
       </div>

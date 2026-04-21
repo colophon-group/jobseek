@@ -78,6 +78,7 @@ export function CompanyHead({ company, locale }: Props) {
             alt=""
             width={32}
             height={32}
+            sizes="32px"
             className="size-8 shrink-0 rounded"
           />
         ) : (

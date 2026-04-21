@@ -264,16 +264,43 @@ async def notify_indexnow(
 
         if not candidates:
             log.info("indexnow.nothing_to_submit", unchanged=unchanged)
-            return {"submitted": 0, "unchanged": unchanged}
+            return {"submitted": 0, "unchanged": unchanged, "deferred": 0}
+
+        # Per-tick cap: a first-fill or _HASH_VERSION bump otherwise
+        # hands ~N_companies × 4 URLs to five search engines in a single
+        # blast, inviting a synchronized recrawl that hammers Vercel
+        # image transforms. Deterministic sort-then-slice means a
+        # failing batch retries on the same prefix rather than letting
+        # alphabetically-later companies leapfrog. Leftover URLs stay
+        # hash-mismatched and return next tick.
+        total_candidates = len(candidates)
+        deferred = 0
+        cap = settings.indexnow_max_urls_per_tick
+        if cap and total_candidates > cap:
+            candidates.sort(key=lambda c: c[0])
+            deferred = total_candidates - cap
+            candidates = candidates[:cap]
+            log.info(
+                "indexnow.throttled",
+                total=total_candidates,
+                submitting=len(candidates),
+                deferred=deferred,
+            )
 
         if dry_run:
             log.info(
                 "indexnow.dry_run",
                 would_submit=len(candidates),
                 unchanged=unchanged,
+                deferred=deferred,
                 sample=[u for u, _ in candidates[:3]],
             )
-            return {"submitted": 0, "unchanged": unchanged, "dry_run": len(candidates)}
+            return {
+                "submitted": 0,
+                "unchanged": unchanged,
+                "deferred": deferred,
+                "dry_run": len(candidates),
+            }
 
         # Batch, submit, record only on success. 4xx/5xx leave the row
         # untouched so the next tick retries with the same payload.
@@ -285,5 +312,10 @@ async def notify_indexnow(
                 await _record_submissions(conn, chunk)
                 submitted += len(chunk)
 
-    log.info("indexnow.run.complete", submitted=submitted, unchanged=unchanged)
-    return {"submitted": submitted, "unchanged": unchanged}
+    log.info(
+        "indexnow.run.complete",
+        submitted=submitted,
+        unchanged=unchanged,
+        deferred=deferred,
+    )
+    return {"submitted": submitted, "unchanged": unchanged, "deferred": deferred}

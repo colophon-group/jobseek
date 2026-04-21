@@ -180,6 +180,7 @@ export function WatchlistJobList({
             alt={entry.company.name}
             width={24}
             height={24}
+            sizes="24px"
             className="size-6 shrink-0 rounded"
           />
         ) : (

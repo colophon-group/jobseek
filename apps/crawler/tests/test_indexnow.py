@@ -71,11 +71,16 @@ def _set_indexnow_env():
         settings.indexnow_host,
         settings.indexnow_site_url,
         settings.indexnow_key_url,
+        settings.indexnow_max_urls_per_tick,
     )
     settings.indexnow_key = "a" * 32
     settings.indexnow_host = "jseek.test"
     settings.indexnow_site_url = "https://jseek.test"
     settings.indexnow_key_url = "https://jseek.test/indexnow-key.txt"
+    # Disable the per-tick cap by default so existing tests don't have
+    # to account for throttling. Tests exercising the cap opt in by
+    # setting a smaller value explicitly.
+    settings.indexnow_max_urls_per_tick = 10_000_000
     try:
         yield
     finally:
@@ -84,6 +89,7 @@ def _set_indexnow_env():
             settings.indexnow_host,
             settings.indexnow_site_url,
             settings.indexnow_key_url,
+            settings.indexnow_max_urls_per_tick,
         ) = prev
 
 
@@ -386,3 +392,58 @@ class TestNotifyIndexnow:
         for call in http.post.call_args_list:
             _, kwargs = call
             assert len(kwargs["json"]["urlList"]) <= MAX_URLS_PER_REQUEST
+
+    async def test_throttles_large_sweep(self):
+        """Cap truncates the candidate list; leftover URLs defer."""
+        settings.indexnow_max_urls_per_tick = 3
+        rows = [
+            _make_company_row(
+                id=f"00000000-0000-0000-0000-{i:012d}",
+                slug=f"c{i}",
+            )
+            for i in range(5)
+        ]
+        pool = _make_pool()
+        conn = pool.acquire.return_value.__aenter__.return_value
+        conn.fetch = AsyncMock(side_effect=[rows, [], []])
+        conn.executemany = AsyncMock()
+        http = AsyncMock(spec=httpx.AsyncClient)
+        http.post = AsyncMock(return_value=MagicMock(status_code=200))
+
+        result = await notify_indexnow(pool, http)
+
+        total_urls = len(rows) * len(LOCALES)
+        assert result["submitted"] == 3
+        assert result["deferred"] == total_urls - 3
+        # Only one batch goes out (3 URLs, well below MAX_URLS_PER_REQUEST).
+        http.post.assert_awaited_once()
+        _, kwargs = http.post.call_args
+        assert len(kwargs["json"]["urlList"]) == 3
+
+    async def test_throttle_sorts_before_slicing(self):
+        """Sort-then-slice: a retry lands on the same deterministic prefix
+        rather than leapfrogging alphabetically-later candidates."""
+        settings.indexnow_max_urls_per_tick = 4
+        # Build rows in reverse-slug order so natural fetch order differs
+        # from sorted order; if the cap DIDN'T sort, output would start at c4.
+        rows = [
+            _make_company_row(
+                id=f"00000000-0000-0000-0000-{i:012d}",
+                slug=f"c{i}",
+            )
+            for i in reversed(range(5))
+        ]
+        pool = _make_pool()
+        conn = pool.acquire.return_value.__aenter__.return_value
+        conn.fetch = AsyncMock(side_effect=[rows, [], []])
+        conn.executemany = AsyncMock()
+        http = AsyncMock(spec=httpx.AsyncClient)
+        http.post = AsyncMock(return_value=MagicMock(status_code=200))
+
+        result = await notify_indexnow(pool, http)
+
+        assert result["submitted"] == 4
+        _, kwargs = http.post.call_args
+        submitted = kwargs["json"]["urlList"]
+        # Alphabetically sorted: /de/c0 comes before any /en/c*, etc.
+        assert submitted == sorted(submitted)
