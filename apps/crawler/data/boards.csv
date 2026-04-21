@@ -717,6 +717,7 @@ built,built-pinpoint,https://built.pinpointhq.com,pinpoint,"{""slug"": ""built""
 built-in,built-in-greenhouse,https://job-boards.greenhouse.io/builtin,greenhouse,"{""token"": ""builtin""}",skip,
 built-robotics,built-robotics-ashby,https://jobs.ashbyhq.com/built-robotics,ashby,"{""token"": ""built-robotics""}",skip,
 built-technologies,built-technologies-greenhouse,https://job-boards.greenhouse.io/getbuilt,greenhouse,"{""token"": ""getbuilt""}",skip,
+bunq,bunq-careers,https://careers.bunq.com/all-openings,dom,"{""url_filter"": ""/positions/""}",dom,"{""render"": true, ""steps"": [{""tag"": ""title"", ""field"": ""title"", ""regex"": ""^(.+?) at bunq""}, {""text"": ""Ready to get shit done?"", ""field"": ""description"", ""stop"": ""Apply now"", ""html"": true, ""optional"": true}, {""text"": ""Apply now"", ""offset"": 2, ""field"": ""job_location_type""}, {""offset"": 0, ""field"": ""locations"", ""stop"": ""40"", ""stop_count"": 6}]}"
 business-insider,business-insider-greenhouse,https://job-boards.greenhouse.io/insider,greenhouse,"{""token"": ""insider""}",skip,
 butternut-box,butternut-box-greenhouse,https://job-boards.greenhouse.io/butternutbox,greenhouse,"{""token"": ""butternutbox""}",skip,
 buyers-edge-platform-llc,buyers-edge-platform-llc-greenhouse,https://job-boards.greenhouse.io/buyersedgeplatformrecruiting,greenhouse,"{""token"": ""buyersedgeplatformrecruiting""}",skip,
