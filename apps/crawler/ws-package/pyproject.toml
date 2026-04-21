@@ -31,6 +31,12 @@ packages = ["src"]
 "../src/workspace/" = "src/workspace/"
 "../src/shared/" = "src/shared/"
 "../src/core/" = "src/core/"
+# `ws run scraper` imports src.processing.scrape._apply_defaults; that file
+# transitively pulls in src.processing.{cpu,r2_stage} and src.queries.
+# Without these, every `ws run scraper` invocation crashes with
+# ModuleNotFoundError. See pilot agent reports on PR #2346.
+"../src/processing/" = "src/processing/"
+"../src/queries/" = "src/queries/"
 "../src/csvtool.py" = "src/csvtool.py"
 "../src/inspect.py" = "src/inspect.py"
 
