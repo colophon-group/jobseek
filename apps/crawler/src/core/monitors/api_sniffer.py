@@ -790,7 +790,7 @@ async def _discover_http(
                 log.info("api_sniffer.auto_fields", fields=list(fields_map.keys()))
 
         if fields_map:
-            return _extract_rich(items, fields_map, url_field, url_template, board_url)
+            return _extract_rich(items, fields_map, url_field, url_template, board_url, root=data)
         if url_template:
             return _extract_urls_from_template(items, url_template, board_url)
         # Support nested url_field paths (e.g. "data.apply_url")
@@ -1125,6 +1125,7 @@ async def _discover_replay(
                 url_template,
                 board_url,
                 url_map=url_map,
+                root=data,
             )
 
         # URL-only mode
@@ -1211,7 +1212,18 @@ async def _discover_auto(
                         url_map[str(item.get(id_f, ""))] = u
 
         if fields_map:
-            return _extract_rich(items, fields_map, url_field, None, board_url, url_map=url_map)
+            # First-page body is the best available root; lookup tables
+            # typically sit at response level, not per item.
+            root = result.candidate.exchange.body if result and result.candidate else None
+            return _extract_rich(
+                items,
+                fields_map,
+                url_field,
+                None,
+                board_url,
+                url_map=url_map,
+                root=root,
+            )
 
         urls = extract_urls(items, url_field, board_url)
         if not urls and url_map:
@@ -1233,11 +1245,20 @@ def _extract_rich(
     url_template: str | None,
     board_url: str,
     url_map: dict[str, str] | None = None,
+    *,
+    root: dict | None = None,
 ) -> list[DiscoveredJob]:
     """Extract DiscoveredJob objects from items using field mapping.
 
     *url_map* is an optional pre-built mapping from item ID to URL
     (e.g. from DOM cross-reference).
+
+    *root* is the top-level response object; required by field specs
+    that use ``lookup_from`` (sibling-table joins for ATS payloads that
+    ship a compact listing alongside a shared lookup dict). Callers that
+    paginate and stitch items from multiple responses should pass the
+    first page's root — the lookup tables are response-level constants
+    in the ATSes we've seen.
     """
     from urllib.parse import urljoin
 
@@ -1291,12 +1312,12 @@ def _extract_rich(
                 # Multi-field concatenation: extract each path and join
                 parts: list[str] = []
                 for s in spec:
-                    v = extract_field(item, s)
+                    v = extract_field(item, s, root=root)
                     if v is not None:
                         parts.append(v if isinstance(v, str) else " ".join(v))
                 value = "\n\n".join(parts) if parts else None
             else:
-                value = extract_field(item, spec)
+                value = extract_field(item, spec, root=root)
             if value is None:
                 continue
             if target.startswith("metadata."):

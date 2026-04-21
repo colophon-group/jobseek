@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import shutil
+import tempfile
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -85,8 +87,23 @@ BROWSER_KEYS = frozenset(
         "warmup_url",
         "cookies",
         "disable_http2",
+        "persistent_context",
+        "channel",
+        "viewport",
+        "locale",
     }
 )
+
+# Sites that fingerprint the browser (Akamai Bot Manager, PerimeterX,
+# DataDome) reject vanilla ``pw.chromium.launch() + browser.new_context()``
+# because that pair produces a cold Chromium profile with no plugins, no
+# history, no extensions — a shape indistinguishable from automation.
+# ``launch_persistent_context`` with a user-data-dir + ``channel="chrome"``
+# produces a real-Chrome profile that passes most bot-manager challenges.
+# Boards opt in via ``"persistent_context": true`` (and usually
+# ``"channel": "chrome"``) in monitor_config / scraper_config.
+DEFAULT_VIEWPORT = {"width": 1440, "height": 900}
+DEFAULT_LOCALE = "en-US"
 
 # Narrow subset that affects only ``navigate()`` and the action pipeline — not
 # browser launch (``open_page``).  Use this in call sites that historically
@@ -129,33 +146,73 @@ async def open_page(
     attach hooks (e.g. response interception) between page creation and
     navigation.
 
-    Config keys consumed: ``user_agent``, ``headless`` (default ``True``).
+    Config keys consumed: ``user_agent``, ``headless`` (default ``True``),
+    ``persistent_context``, ``channel``, ``viewport``, ``locale``.
 
     When ``use_proxy`` is True, the browser launches through the active
     proxy provider (see :mod:`src.shared.proxy`).
+
+    When ``persistent_context`` is True, uses
+    ``pw.chromium.launch_persistent_context`` with an ephemeral
+    user-data-dir — needed for Akamai / PerimeterX / DataDome sites that
+    reject vanilla ``launch + new_context`` profiles. Usually combined
+    with ``"channel": "chrome"`` to use the system Chrome binary (which
+    is on the trusted-vendor list for most bot managers, unlike
+    Playwright's bundled Chromium).
     """
     config = config or {}
     headless = config.get("headless", True)
     user_agent = config.get("user_agent", DEFAULT_USER_AGENT)
     warmup_url = config.get("warmup_url")
     cookies = config.get("cookies")
+    persistent = bool(config.get("persistent_context"))
+    channel = config.get("channel")
+    viewport = config.get("viewport", DEFAULT_VIEWPORT)
+    locale = config.get("locale", DEFAULT_LOCALE)
 
-    launch_kwargs: dict = {"headless": headless}
-    # Chromium's new headless mode (--headless=new) is less detectable by
-    # anti-bot systems like Cloudflare Turnstile.  Enable via stealth: true.
     extra_args: list[str] = []
     if headless and config.get("stealth"):
+        # Chromium's new headless mode (--headless=new) is less detectable
+        # by anti-bot systems (Cloudflare Turnstile etc.). Enable via
+        # stealth: true.
         extra_args.append("--headless=new")
     if config.get("disable_http2"):
         extra_args.append("--disable-http2")
-    if extra_args:
-        launch_kwargs["args"] = extra_args
+    if persistent:
+        # Real-Chrome-profile shape: mask the ``navigator.webdriver``
+        # blink feature that Akamai's sensor bundle reads before the
+        # stealth init-script has a chance to mask the JS property.
+        extra_args.append("--disable-blink-features=AutomationControlled")
+
+    pw_proxy = None
     if use_proxy:
         from src.shared.proxy import playwright_proxy_for
 
         pw_proxy = playwright_proxy_for(use_proxy=True)
-        if pw_proxy:
-            launch_kwargs["proxy"] = pw_proxy
+
+    if persistent:
+        async with _open_persistent_page(
+            pw,
+            headless=headless,
+            channel=channel,
+            extra_args=extra_args,
+            pw_proxy=pw_proxy,
+            user_agent=user_agent,
+            viewport=viewport,
+            locale=locale,
+            cookies=cookies,
+            warmup_url=warmup_url,
+        ) as page:
+            yield page
+        return
+
+    launch_kwargs: dict = {"headless": headless}
+    if channel:
+        launch_kwargs["channel"] = channel
+    if extra_args:
+        launch_kwargs["args"] = extra_args
+    if pw_proxy:
+        launch_kwargs["proxy"] = pw_proxy
 
     browser = await pw.chromium.launch(**launch_kwargs)
     context = None
@@ -173,6 +230,65 @@ async def open_page(
         if context:
             await context.close()
         await browser.close()
+
+
+@asynccontextmanager
+async def _open_persistent_page(
+    pw,
+    *,
+    headless: bool,
+    channel: str | None,
+    extra_args: list[str],
+    pw_proxy: dict | None,
+    user_agent: str,
+    viewport: dict | None,
+    locale: str | None,
+    cookies: list[dict] | None,
+    warmup_url: str | None,
+) -> AsyncIterator:
+    """``launch_persistent_context`` variant of :func:`open_page`.
+
+    Kept in a separate helper so the vanilla-launch path above stays a
+    straight line. The user-data-dir is an ephemeral tmpdir, cleaned up
+    after the context closes — we don't persist Akamai cookies between
+    runs because (a) ``_abck`` tokens are short-lived and (b) leaking a
+    profile between concurrent board jobs would cause cross-board
+    interference under the browser worker pool.
+    """
+    user_data_dir = tempfile.mkdtemp(prefix="pw_persist_")
+    launch_kwargs: dict = {"headless": headless}
+    if channel:
+        launch_kwargs["channel"] = channel
+    if extra_args:
+        launch_kwargs["args"] = extra_args
+    if pw_proxy:
+        launch_kwargs["proxy"] = pw_proxy
+    # persistent_context takes the context-level knobs directly; there's
+    # no separate ``new_context`` call.
+    if user_agent:
+        launch_kwargs["user_agent"] = user_agent
+    if viewport:
+        launch_kwargs["viewport"] = viewport
+    if locale:
+        launch_kwargs["locale"] = locale
+
+    context = await pw.chromium.launch_persistent_context(user_data_dir, **launch_kwargs)
+    try:
+        context.set_default_timeout(CONTEXT_TIMEOUT)
+        if cookies:
+            await context.add_cookies(_resolve_placeholders(cookies))
+        # launch_persistent_context always opens one blank page; reuse
+        # it rather than open a second (which would look more like a
+        # user typing into a new tab, but also doubles the startup cost).
+        page = context.pages[0] if context.pages else await context.new_page()
+        if warmup_url:
+            log.debug("browser.warmup", url=warmup_url, persistent=True)
+            await page.goto(warmup_url, wait_until="domcontentloaded", timeout=DEFAULT_TIMEOUT)
+        yield page
+    finally:
+        with contextlib.suppress(Exception):
+            await context.close()
+        shutil.rmtree(user_data_dir, ignore_errors=True)
 
 
 async def navigate(
