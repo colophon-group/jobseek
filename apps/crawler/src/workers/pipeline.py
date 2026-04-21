@@ -32,6 +32,8 @@ from src.redis_queue import (
     BoardWork,
     ScrapeWork,
     claim_work,
+    enqueue_monitor,
+    enqueue_scrape,
     reschedule_task,
 )
 
@@ -282,6 +284,45 @@ async def _process_monitor_work(
     worker_log = worker_log.bind(board_id=board_id, crawler_type=config.get("crawler_type"))
 
     try:
+        # Self-heal: a slim worker that claimed a monitor whose CURRENT
+        # config needs a browser would otherwise crash on Playwright launch
+        # (see issue #2250 — same architectural failure mode as the scrape
+        # path). Re-enqueue to the browser monitor queue and return.
+        if not browser:
+            from src.core.monitors import monitor_needs_browser
+
+            crawler_type = config.get("crawler_type") or ""
+            try:
+                metadata_raw = config.get("metadata", "{}")
+                metadata = (
+                    json.loads(metadata_raw)
+                    if isinstance(metadata_raw, str)
+                    else (metadata_raw or {})
+                )
+            except (json.JSONDecodeError, TypeError):
+                metadata = {}
+            if monitor_needs_browser(crawler_type, metadata):
+                try:
+                    reroute_payload = dict(config)
+                    reroute_payload.pop("domain", None)
+                    await enqueue_monitor(
+                        domain,
+                        board_id,
+                        time.time(),
+                        reroute_payload,
+                        browser=True,
+                        first_time=False,
+                    )
+                    tasks_total.labels(kind="monitor", status="rerouted_to_browser").inc()
+                    worker_log.info(
+                        "pipeline.monitor.rerouted_to_browser",
+                        domain=domain,
+                        crawler_type=crawler_type,
+                    )
+                    return
+                except Exception:
+                    worker_log.warning("pipeline.monitor.reroute_failed", exc_info=True)
+
         board_record = _BoardRecord(board_id, config)
 
         from src.processing.board import (
@@ -371,6 +412,7 @@ async def _process_scrape_work(
             scraper_type = "dom"
             scraper_config = None
 
+        from src.core.scrapers import scraper_needs_browser
         from src.processing.scrape import (
             _CLEAR_SCRAPE_FOR_RICH,
             _RECORD_SCRAPE_FAILURE,
@@ -383,6 +425,41 @@ async def _process_scrape_work(
                 await r.delete(f"scrape:{posting_id}")
             except Exception:
                 worker_log.warning("pipeline.scrape.scrape_hash_delete_failed", exc_info=True)
+
+        async def _reroute_to_browser(reason: str) -> None:
+            """Self-heal: a slim worker claimed a task whose current scraper
+            config requires a browser. Re-enqueue to the browser queue so a
+            browser-equipped worker can process it, then drop the in-flight
+            slim claim. Avoids the Playwright-Executable-doesn't-exist
+            failure path on slim images that ship without Chromium.
+
+            Triggers when a board's scraper config flips render/needs_browser
+            after tasks were already enqueued to the simple queue (sync race),
+            or when stale pre-routing-fix tasks linger. See issue #2250.
+            """
+            existing = dict(await r.hgetall(f"scrape:{posting_id}"))
+            # Drop ``domain`` since enqueue_scrape re-injects it from the arg.
+            existing.pop("domain", None)
+            try:
+                await enqueue_scrape(
+                    domain,
+                    posting_id,
+                    time.time(),
+                    existing,
+                    browser=True,
+                    first_time=False,
+                )
+            except Exception:
+                worker_log.warning("pipeline.scrape.reroute_failed", exc_info=True)
+                return
+            tasks_total.labels(kind="scrape", status="rerouted_to_browser").inc()
+            worker_log.info(
+                "pipeline.scrape.rerouted_to_browser",
+                board_id=scrape_work.board_id,
+                domain=domain,
+                reason=reason,
+                scraper_type=scraper_type,
+            )
 
         async def _drop_rich(reason: str) -> None:
             """Rich-monitor path: scoped Postgres clear + drop Redis task.
@@ -441,6 +518,19 @@ async def _process_scrape_work(
         # legitimate schedule (critic-2 regression).
         if not board_config:
             await _fail_stale_task("missing board config in Redis")
+            return
+
+        # Self-heal: a slim worker that claimed a scrape whose CURRENT
+        # board config needs a browser would otherwise call into Playwright
+        # and crash with "Executable doesn't exist". Re-enqueue to the
+        # browser queue and let a browser-equipped worker pick it up. This
+        # absorbs the post-#2237 stale-task tail and any future sync race
+        # where the queue routing was decided before the config change. See
+        # issue #2250.
+        if not browser and scraper_needs_browser(scraper_type, scraper_config):
+            await _reroute_to_browser(
+                "scraper needs browser, re-routing from simple to browser queue"
+            )
             return
 
         success, duration = await _process_one_scrape(
