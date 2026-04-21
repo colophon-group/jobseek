@@ -1701,6 +1701,7 @@ general-matter,general-matter-greenhouse,https://job-boards.greenhouse.io/genera
 generate-biomedicines,generate-biomedicines-greenhouse,https://job-boards.greenhouse.io/generatebiomedicines,greenhouse,"{""token"": ""generatebiomedicines""}",skip,
 genesis-molecular-ai,genesis-molecular-ai-careers,https://jobs.ashbyhq.com/genesis-molecular-ai,ashby,"{""token"": ""genesis-molecular-ai""}",skip,
 genestack,genestack-careers,https://genestack.com/company/careers/,breezy,"{""portal_url"": ""https://genestack-ltd.breezy.hr"", ""slug"": ""genestack-ltd""}",json-ld,
+genesys,genesys-careers-workday,https://genesys.wd1.myworkdayjobs.com/Genesys,workday,"{""tenant"": ""genesys"", ""instance"": ""Genesys""}",workday,
 genetix-biotherapeutics,genetix-biotherapeutics-greenhouse,https://job-boards.greenhouse.io/genetixbiotherapeutics,greenhouse,"{""token"": ""genetixbiotherapeutics""}",skip,
 geneva-trading,geneva-trading-greenhouse,https://job-boards.greenhouse.io/genevatrading,greenhouse,"{""token"": ""genevatrading""}",skip,
 genies,genies-ashby,https://jobs.ashbyhq.com/genies,ashby,"{""token"": ""genies""}",skip,
