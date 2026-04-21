@@ -60,6 +60,7 @@ _DELIST_BOARD_POSTINGS = """
 UPDATE job_posting
 SET is_active = false, next_scrape_at = NULL, updated_at = now()
 WHERE board_id = $1 AND is_active = true
+RETURNING id
 """
 
 _RECORD_BOARD_GONE = """
@@ -117,6 +118,18 @@ WHERE id = $1
 RETURNING board_status
 """
 
+# RETURNING ``last_success_at`` + the post-update ``is_enabled`` lets
+# the Python caller detect the single transition from enabled →
+# disabled and apply a recency gate before delisting. The board record
+# the caller already holds (from ``_FETCH_DUE_BOARDS``) is guaranteed
+# ``is_enabled=true`` (otherwise it wouldn't have been claimed), so
+# any post-update ``is_enabled=false`` is a fresh transition — no need
+# for a fragile ``consecutive_failures = N`` equality check that breaks
+# the moment ops manually re-enables a board without zeroing the
+# counter. Without this hand-off, 5-strike disables left active
+# postings stranded on a board the scheduler never polls again — a
+# phantom-active bleed that also dropped the corresponding ``gone``
+# Prometheus counter on the floor.
 _RECORD_FAILURE = """
 UPDATE job_board
 SET consecutive_failures = consecutive_failures + 1,
@@ -131,6 +144,7 @@ SET consecutive_failures = consecutive_failures + 1,
     leased_until = NULL,
     updated_at = now()
 WHERE id = $1
+RETURNING is_enabled, last_success_at
 """
 
 _DIFF_BATCH = """
