@@ -24,7 +24,9 @@ CMD ["uv", "run", "--no-sync", "crawler", "run"]
 # ── Target: full (browser worker — with Playwright + Chromium) ───────
 FROM base AS full
 
-# OS deps for headless Chromium
+# OS deps for headless Chromium + Google Chrome + xvfb (for boards that
+# require headful real-Chrome to pass Akamai / PerimeterX / DataDome
+# bot managers — see src/shared/browser.py persistent_context path).
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
        libasound2t64 libatk-bridge2.0-0t64 libatk1.0-0t64 libatspi2.0-0t64 \
@@ -32,6 +34,7 @@ RUN apt-get update \
        libnspr4 libnss3 libpango-1.0-0 libx11-6 libxcb1 libxcomposite1 \
        libxdamage1 libxext6 libxfixes3 libxkbcommon0 libxrandr2 \
        libfontconfig1 libfreetype6 fonts-liberation \
+       wget gnupg ca-certificates xvfb xauth \
     && rm -rf /var/lib/apt/lists/*
 
 # Download Chromium binary
@@ -49,4 +52,36 @@ RUN apt-get update \
 RUN uv run --no-sync playwright install chromium-headless-shell \
     && test -x /root/.cache/ms-playwright/chromium_headless_shell-*/chrome-headless-shell-linux*/chrome-headless-shell
 
+# Install Google Chrome stable for boards that need ``channel: "chrome"``
+# (a real Chrome binary, not Chromium-headless-shell). Akamai Bot
+# Manager fingerprints the client-hints (``sec-ch-ua``) and rejects
+# Chromium-shell profiles; Chrome stable passes on a warmed persistent
+# profile. Post-install test is the same guard as above.
+RUN wget -q -O /usr/share/keyrings/google-chrome.asc \
+       https://dl.google.com/linux/linux_signing_key.pub \
+    && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.asc] https://dl.google.com/linux/chrome/deb/ stable main" \
+       > /etc/apt/sources.list.d/google-chrome.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends google-chrome-stable \
+    && rm -rf /var/lib/apt/lists/* \
+    && test -x /usr/bin/google-chrome
+
+# Xvfb virtual display — boards that need headful (Akamai-gated, passed
+# ``headless: false`` in monitor_config) otherwise can't launch Chrome
+# in the container. Manual Xvfb + exec instead of ``xvfb-run`` because
+# xvfb-run buffers stdout until the child exits, which silences structlog
+# progress lines for the whole crawl cycle. The entrypoint script starts
+# Xvfb in the background, exports DISPLAY, and exec's the crawler so
+# signals pass through correctly.
+RUN printf '%s\n' \
+    '#!/bin/sh' \
+    'set -e' \
+    'Xvfb :99 -screen 0 1440x900x24 -nolisten tcp &' \
+    'export DISPLAY=:99' \
+    'sleep 1' \
+    'exec "$@"' \
+    > /usr/local/bin/with-xvfb \
+    && chmod +x /usr/local/bin/with-xvfb
+
+ENTRYPOINT ["/usr/local/bin/with-xvfb"]
 CMD ["uv", "run", "--no-sync", "crawler", "run-browser"]
