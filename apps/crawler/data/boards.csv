@@ -400,6 +400,7 @@ athletics-business-operations,athletics-business-operations-greenhouse,https://j
 atlan,atlan-ashby,https://jobs.ashbyhq.com/atlan,ashby,"{""token"": ""atlan""}",skip,
 atlas,atlas-ashby,https://jobs.ashbyhq.com/atlas,ashby,"{""token"": ""atlas""}",skip,
 atlas-hxm,atlas-hxm-greenhouse,https://job-boards.greenhouse.io/atlasxhm,greenhouse,"{""token"": ""atlasxhm""}",skip,
+atlassian,atlassian-careers,https://www.atlassian.com/company/careers/all-jobs,api_sniffer,"{""api_url"": ""https://www.atlassian.com/endpoint/careers/listings"", ""method"": ""GET"", ""json_path"": """", ""url_field"": ""portalJobPost.portalUrl"", ""fields"": {""title"": ""title"", ""locations"": ""locations"", ""description"": [""overview"", ""responsibilities"", ""qualifications""], ""metadata.team"": ""category""}}",skip,
 atlys,atlys-careers,https://careers.atlys.com/,recruitee,"{""api_base"": ""https://careers.atlys.com""}",skip,
 atmos-cholet,atmos-cholet-join,https://join.com/companies/atmosfr,join,"{""slug"": ""atmosfr""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 atom-computing,atom-computing-lever,https://jobs.lever.co/atomcomputing,lever,"{""token"": ""atomcomputing""}",skip,
