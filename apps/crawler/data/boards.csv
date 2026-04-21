@@ -1361,6 +1361,7 @@ elite-technology,elite-technology-greenhouse,https://job-boards.greenhouse.io/el
 elligint-health,elligint-health-greenhouse,https://job-boards.greenhouse.io/elliginthealth,greenhouse,"{""token"": ""elliginthealth""}",skip,
 ellipsislabs,ellipsislabs-ashby,https://jobs.ashbyhq.com/ellipsislabs,ashby,"{""token"": ""ellipsislabs""}",skip,
 elmi-power-gmbh,elmi-power-gmbh-join,https://join.com/companies/elmipowerde,join,"{""slug"": ""elmipowerde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
+emag,emag-careers,https://teams.emag.ro/jobs/,greenhouse,"{""token"": ""emag""}",skip,
 emarketer,emarketer-greenhouse,https://job-boards.greenhouse.io/emarketer,greenhouse,"{""token"": ""emarketer""}",skip,
 embark,embark-pinpoint,https://embark.pinpointhq.com,pinpoint,"{""slug"": ""embark""}",skip,
 embrace,embrace-greenhouse,https://job-boards.greenhouse.io/embrace,greenhouse,"{""token"": ""embrace""}",skip,
