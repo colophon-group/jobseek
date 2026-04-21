@@ -3,7 +3,11 @@
 import { Loader2 } from "lucide-react";
 
 interface InfiniteScrollSentinelProps {
-  sentinelRef: React.RefObject<HTMLDivElement | null>;
+  // Accept any React ref shape — `useInfiniteScroll` returns a
+  // callback ref (so the observer auto-attaches when the DOM element
+  // appears) but older callers may pass a `useRef` object. `Ref<T>`
+  // is the union type that satisfies the `<div ref={...}>` prop.
+  sentinelRef: React.Ref<HTMLDivElement>;
   isLoading: boolean;
   /** "sm" for nested scroll containers, "md" (default) for page-level lists */
   size?: "sm" | "md";
