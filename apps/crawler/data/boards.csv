@@ -1129,6 +1129,7 @@ d2l,d2l-greenhouse,https://job-boards.greenhouse.io/d2l,greenhouse,"{""token"": 
 d3,d3-greenhouse,https://job-boards.greenhouse.io/d3,greenhouse,"{""token"": ""d3""}",skip,
 daedalean,daedalean-careers,https://jobs.lever.co/daedalean,lever,"{""token"": ""daedalean""}",skip,
 dagster-labs,dagster-labs-greenhouse,https://job-boards.greenhouse.io/dagsterlabs,greenhouse,"{""token"": ""dagsterlabs""}",skip,
+dailymotion,dailymotion-careers,https://careers.smartrecruiters.com/Dailymotion,smartrecruiters,"{""token"": ""Dailymotion""}",smartrecruiters,
 dandelion,dandelion-ashby,https://jobs.ashbyhq.com/dandelion,ashby,"{""token"": ""dandelion""}",skip,
 dark-wolf-solutions,dark-wolf-solutions-greenhouse,https://job-boards.greenhouse.io/darkwolfsolutions,greenhouse,"{""token"": ""darkwolfsolutions""}",skip,
 darktrace,darktrace-careers,https://darktrace.wd3.myworkdayjobs.com/DarktaceExternal,workday,"{""company"": ""darktrace"", ""wd_instance"": ""wd3"", ""site"": ""DarktaceExternal""}",workday,
