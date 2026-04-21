@@ -1255,6 +1255,7 @@ docplanner,docplanner-careers-znany-lekarz,https://jobs.ashbyhq.com/znanyLekarz,
 doctolib,doctolib-greenhouse,https://job-boards.greenhouse.io/doctolib,greenhouse,"{""token"": ""doctolib""}",skip,
 doit,doit-greenhouse,https://job-boards.greenhouse.io/doitintl,greenhouse,"{""token"": ""doitintl""}",skip,
 dome-construction-corporation,dome-construction-corporation-greenhouse,https://job-boards.greenhouse.io/domeconstruction,greenhouse,"{""token"": ""domeconstruction""}",skip,
+domestika,domestika-careers,https://jobs.ashbyhq.com/domestika.org,ashby,"{""token"": ""domestika.org""}",skip,
 domino-data-lab,domino-data-lab-greenhouse,https://job-boards.greenhouse.io/dominodatalab,greenhouse,"{""token"": ""dominodatalab""}",skip,
 done-berlin,done-berlin-join,https://join.com/companies/doneberlin,join,"{""slug"": ""doneberlin""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 donhauser-partner-mbb,donhauser-partner-mbb-join,https://join.com/companies/donhauser-stbde,join,"{""slug"": ""donhauser-stbde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
