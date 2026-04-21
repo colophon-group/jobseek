@@ -196,6 +196,7 @@ alika-personal-gmbh,alika-personal-gmbh-join,https://join.com/companies/alika-pe
 alixpartners,alixpartners-greenhouse,https://job-boards.greenhouse.io/alixpartners,greenhouse,"{""token"": ""alixpartners""}",skip,
 allarahealth,allarahealth-ashby,https://jobs.ashbyhq.com/allarahealth,ashby,"{""token"": ""allarahealth""}",skip,
 allbirds,allbirds-retail,https://boards-api.greenhouse.io/v1/boards/allbirdsretail/jobs,greenhouse,"{""token"": ""allbirdsretail""}",skip,
+allegro,allegro-careers,https://careers.allegro.eu/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.allegro.eu/googlefeed.xml""}",skip,
 allen-control-systems,allen-control-systems-greenhouse,https://job-boards.greenhouse.io/allencontrolsystems,greenhouse,"{""token"": ""allencontrolsystems""}",skip,
 alliance,alliance-pinpoint,https://alliance.pinpointhq.com,pinpoint,"{""slug"": ""alliance""}",skip,
 alliance-defending-freedom,alliance-defending-freedom-greenhouse,https://job-boards.greenhouse.io/alliancedefendingfreedom,greenhouse,"{""token"": ""alliancedefendingfreedom""}",skip,
