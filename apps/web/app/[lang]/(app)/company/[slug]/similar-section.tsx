@@ -1,35 +1,31 @@
+"use client";
+
 import { SimilarCompaniesStrip } from "@/components/company/similar-companies-strip";
-import type { SimilarCompaniesPage } from "@/lib/actions/company";
 import type { Locale } from "@/lib/i18n";
 
 type Props = {
-  /**
-   * Unawaited promise. Rendered under <Suspense> so the rest of the
-   * company page (head + postings list) streams without waiting for
-   * Typesense. Resolving a `hasMore=false` empty result silently hides
-   * the section, matching the behaviour for companies with no
-   * industry or no peers.
-   */
-  promise: Promise<SimilarCompaniesPage>;
   companyId: string;
   industryId: number | null;
   locale: Locale;
 };
 
-export async function SimilarSection({ promise, companyId, industryId, locale }: Props) {
-  const { companies, hasMore, truncated } = await promise;
-  if (companies.length === 0) return null;
+/**
+ * Client wrapper that mounts the similar-companies strip with empty
+ * initial state. The strip fetches page 0 on mount via a server
+ * action; rendering it client-side keeps the parent company page
+ * fully statically prerenderable (no `searchParams` / `headers()` /
+ * `getSession()` reads on the server render path).
+ */
+export function SimilarSection({ companyId, industryId, locale }: Props) {
+  if (industryId == null) return null;
   return (
-    <>
-      <hr className="border-divider" />
-      <SimilarCompaniesStrip
-        companyId={companyId}
-        industryId={industryId}
-        initialCompanies={companies}
-        initialHasMore={hasMore}
-        initialTruncated={truncated ?? false}
-        locale={locale}
-      />
-    </>
+    <SimilarCompaniesStrip
+      companyId={companyId}
+      industryId={industryId}
+      initialCompanies={[]}
+      initialHasMore={true}
+      initialTruncated={false}
+      locale={locale}
+    />
   );
 }

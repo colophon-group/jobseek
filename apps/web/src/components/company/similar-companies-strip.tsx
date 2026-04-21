@@ -39,8 +39,11 @@ export function SimilarCompaniesStrip({
   // Empty string means no filters, matches SSR semantics.
   const paramsKey = searchParams.toString();
   const spObject = useMemo(() => _searchParamsToObject(searchParams), [paramsKey]);
-  // Skip the inaugural refetch (SSR already produced `initialCompanies`).
-  const didHydrate = useRef(false);
+  // Suppress the inaugural fetch only when SSR already produced
+  // cards. When the parent passes `initialCompanies=[]` (the page is
+  // statically prerendered and hands off to the client to load), the
+  // first effect run must fire to actually populate the strip.
+  const skipNextFetch = useRef(initialCompanies.length > 0);
 
   const [companies, setCompanies] = useState<SimilarCompany[]>(initialCompanies);
   const [hasMore, setHasMore] = useState(initialHasMore);
@@ -51,8 +54,8 @@ export function SimilarCompaniesStrip({
   // a filter on the search toolbar). Counts on each card stay in sync
   // with the same filter state that drives the postings list.
   useEffect(() => {
-    if (!didHydrate.current) {
-      didHydrate.current = true;
+    if (skipNextFetch.current) {
+      skipNextFetch.current = false;
       return;
     }
     let cancelled = false;
@@ -107,35 +110,38 @@ export function SimilarCompaniesStrip({
   });
 
   return (
-    <nav aria-labelledby={headingId} className="space-y-2">
-      <h2
-        id={headingId}
-        className="text-xs font-medium uppercase tracking-wide text-muted"
-      >
-        {heading}
-      </h2>
-      <ScrollFade direction="horizontal" scrollRef={scrollRef} deps={[companies.length, truncated]}>
-        <ul role="list" className="flex snap-x snap-mandatory gap-2 pb-2">
-          {companies.map((company) => (
-            <SimilarCompanyCard
-              key={company.id}
-              company={company}
-              locale={locale}
-              preserveParams={paramsKey}
-            />
-          ))}
-          {hasMore && (
-            <InfiniteScrollSentinel
-              sentinelRef={sentinelRef}
-              isLoading={isLoading}
-              size="sm"
-              orientation="horizontal"
-            />
-          )}
-          {!hasMore && truncated && <SignInPromptCard />}
-        </ul>
-      </ScrollFade>
-    </nav>
+    <>
+      <hr className="border-divider" />
+      <nav aria-labelledby={headingId} className="space-y-2">
+        <h2
+          id={headingId}
+          className="text-xs font-medium uppercase tracking-wide text-muted"
+        >
+          {heading}
+        </h2>
+        <ScrollFade direction="horizontal" scrollRef={scrollRef} deps={[companies.length, truncated]}>
+          <ul role="list" className="flex snap-x snap-mandatory gap-2 pb-2">
+            {companies.map((company) => (
+              <SimilarCompanyCard
+                key={company.id}
+                company={company}
+                locale={locale}
+                preserveParams={paramsKey}
+              />
+            ))}
+            {hasMore && (
+              <InfiniteScrollSentinel
+                sentinelRef={sentinelRef}
+                isLoading={isLoading}
+                size="sm"
+                orientation="horizontal"
+              />
+            )}
+            {!hasMore && truncated && <SignInPromptCard />}
+          </ul>
+        </ScrollFade>
+      </nav>
+    </>
   );
 }
 

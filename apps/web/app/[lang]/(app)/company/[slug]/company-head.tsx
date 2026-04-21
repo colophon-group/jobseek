@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Image from "next/image";
 import { Building2 } from "lucide-react";
 import { getI18n } from "@lingui/react/server";
@@ -12,15 +13,14 @@ import {
 import { withUtmSource } from "@/lib/utm";
 import type { CompanyDetail } from "@/lib/actions/company";
 import type { Locale } from "@/lib/i18n";
+import { CompanyBackLink } from "./company-back-link";
 
 type Props = {
   company: CompanyDetail;
   locale: Locale;
-  /** Raw URL search params carried over into the "Search results" back link. */
-  backSearchParams: Record<string, string | string[] | undefined>;
 };
 
-export function CompanyHead({ company, locale, backSearchParams }: Props) {
+export function CompanyHead({ company, locale }: Props) {
   const i18n = getI18n()!;
 
   const metaParts: string[] = [];
@@ -65,9 +65,11 @@ export function CompanyHead({ company, locale, backSearchParams }: Props) {
 
   return (
     <div className="space-y-4">
-      <BackLink href={buildExploreHref(locale, backSearchParams)}>
-        {backLabel}
-      </BackLink>
+      <Suspense
+        fallback={<BackLink href={`/${locale}/explore`}>{backLabel}</BackLink>}
+      >
+        <CompanyBackLink locale={locale} label={backLabel} />
+      </Suspense>
 
       <div className="flex items-center gap-3">
         {company.icon ? (
@@ -130,19 +132,3 @@ export function CompanyHead({ company, locale, backSearchParams }: Props) {
   );
 }
 
-function buildExploreHref(
-  locale: Locale,
-  params: Record<string, string | string[] | undefined>,
-): string {
-  const qs = new URLSearchParams();
-  for (const [key, value] of Object.entries(params)) {
-    if (value === undefined) continue;
-    if (Array.isArray(value)) {
-      for (const v of value) qs.append(key, v);
-    } else {
-      qs.set(key, value);
-    }
-  }
-  const s = qs.toString();
-  return `/${locale}/explore${s ? `?${s}` : ""}`;
-}

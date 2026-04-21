@@ -702,8 +702,15 @@ export async function getSimilarCompanies(
   // actions/search.ts::searchCompanies and TruncationPrompt usage).
   // The cache stays shared between logged-in and anon; the cap is
   // applied outside the cached() boundary so cache keys don't multiply.
-  const userId = await getSessionUserId();
-  if (!userId && offset >= ANON_MAX_COMPANIES) {
+  //
+  // The session lookup (which reads request headers and would force
+  // dynamic rendering on any caller) is gated to the load-more path.
+  // First-page calls never approach the cap, so callers rendered from
+  // a static page can fetch page 0 without tainting the server render.
+  // See issue #2243.
+  const wouldHitCap = offset + limit > ANON_MAX_COMPANIES;
+  const userId = wouldHitCap ? await getSessionUserId() : null;
+  if (wouldHitCap && !userId && offset >= ANON_MAX_COMPANIES) {
     return { companies: [], hasMore: false, truncated: true };
   }
 
@@ -714,7 +721,7 @@ export async function getSimilarCompanies(
     { ttl: 3600 },
   );
 
-  if (!userId && offset + page.companies.length >= ANON_MAX_COMPANIES) {
+  if (wouldHitCap && !userId && offset + page.companies.length >= ANON_MAX_COMPANIES) {
     return { ...page, hasMore: false, truncated: true };
   }
   return page;

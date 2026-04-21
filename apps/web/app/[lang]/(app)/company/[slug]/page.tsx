@@ -1,10 +1,6 @@
-import { Suspense } from "react";
 import type { Metadata } from "next";
 import { isLocale, defaultLocale, loadCatalog, initI18nForPage } from "@/lib/i18n";
-import {
-  getCompanyBySlug,
-  getSimilarCompanies,
-} from "@/lib/actions/company";
+import { getCompanyBySlug } from "@/lib/actions/company";
 import { siteConfig } from "@/content/config";
 import { buildAlternates } from "@/lib/seo";
 import { CompanyHead } from "./company-head";
@@ -15,7 +11,6 @@ export const revalidate = 600; // ISR: cache metadata for 10 minutes
 
 type Props = {
   params: Promise<{ lang: string; slug: string }>;
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -86,39 +81,27 @@ async function CompanyNotFound() {
   );
 }
 
-export default async function CompanyPageRoute({ params, searchParams }: Props) {
+export default async function CompanyPageRoute({ params }: Props) {
   const locale = await initI18nForPage(params);
   const { slug } = await params;
-  const sp = await searchParams;
 
   const company = await getCompanyBySlug(slug, locale);
   if (!company) return <CompanyNotFound />;
 
-  // Fire-and-hold the similar-companies query. We do NOT `await` it
-  // here — the head + postings list must stream to the browser
-  // without waiting for Typesense. The Promise is unwrapped inside
-  // <Suspense>; if Typesense is slow the rest of the page is already
-  // visible by then.
-  const similarPromise = getSimilarCompanies(company.id, company.industryId, {
-    searchParams: sp,
-    locale,
-  });
-
+  // Note: this page must stay statically prerenderable (revalidate=600).
+  // Anything that reads `searchParams`, `headers()`, `cookies()`, or
+  // session state on the server-render path will silently turn the
+  // route dynamic. The back-link (filter-aware) and similar-companies
+  // strip live in client subtrees that read `useSearchParams()` so the
+  // shell here stays a pure ISR target. See issue #2243.
   return (
     <div className="space-y-4">
-      <CompanyHead
-        company={company}
+      <CompanyHead company={company} locale={locale} />
+      <SimilarSection
+        companyId={company.id}
+        industryId={company.industryId}
         locale={locale}
-        backSearchParams={sp}
       />
-      <Suspense fallback={null}>
-        <SimilarSection
-          promise={similarPromise}
-          companyId={company.id}
-          industryId={company.industryId}
-          locale={locale}
-        />
-      </Suspense>
       <CompanyContent locale={locale} slug={slug} />
     </div>
   );
