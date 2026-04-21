@@ -104,6 +104,9 @@ re-adding `useSession()`:
 - **Non-httpOnly cookie hint**: Set a lightweight `logged_in=1` cookie
   (non-httpOnly) at sign-in. Client JS can check `document.cookie` without
   a network request. Clear it on sign-out.
+  Already implemented — see `src/lib/auth.ts` `after` hook and
+  `src/lib/client-cookies.ts`. `AppBootstrapProvider` uses this to skip
+  `fetchAppBootstrap()` entirely for anonymous users (issue #2246).
 - **Deferred component**: Use `next/dynamic` with `ssr: false` to load the
   auth-dependent fragment only after the main page renders, so it doesn't
   block or slow initial paint.

@@ -1,0 +1,56 @@
+/**
+ * Name of the non-httpOnly "hint" cookie that mirrors the presence of a
+ * Better Auth session cookie. It carries no security meaning — the real
+ * session_token is still httpOnly and Secure — but lets client code
+ * skip network round trips for anonymous users by reading
+ * `document.cookie`. See `docs/edge-requests.md` and issue #2246.
+ */
+export const LOGGED_IN_COOKIE = "logged_in";
+
+/**
+ * Parse a raw Cookie-header-style string (either `document.cookie` or a
+ * server `Cookie` request header) and return whether `name` is present
+ * as an actual cookie name — not a substring of another name.
+ *
+ * Accepts missing / whitespace / trailing-semicolon inputs. Refuses to
+ * match values; the caller only cares that the cookie exists.
+ */
+export function hasCookieNamed(cookieHeader: string, name: string): boolean {
+  if (!cookieHeader) return false;
+  // Cookies are separated by `;`. Each entry is `name=value` with
+  // optional leading whitespace. A valid cookie name contains no `=`
+  // and no whitespace (per RFC 6265), so a trimmed segment matching
+  // `name=...` or `name=` or exactly `name` proves existence.
+  for (const raw of cookieHeader.split(";")) {
+    const part = raw.trim();
+    if (part === name) return true;
+    if (part.startsWith(`${name}=`)) return true;
+  }
+  return false;
+}
+
+/**
+ * Client-only: does the current browser have the `logged_in` hint cookie?
+ * Returns `false` on the server (no `document`) so callers get the safe
+ * "assume anonymous" default during SSR.
+ */
+export function hasLoggedInHint(): boolean {
+  if (typeof document === "undefined") return false;
+  return hasCookieNamed(document.cookie, LOGGED_IN_COOKIE);
+}
+
+/**
+ * Clear the `logged_in` hint cookie from the client side. Used to
+ * self-heal a stale hint when the server tells us the session has
+ * actually expired (e.g. `fetchAppBootstrap()` returns `{user: null}`
+ * while the hint was present).
+ */
+export function clearLoggedInHint(): void {
+  if (typeof document === "undefined") return;
+  // Max-Age=0 + Path=/ matches the attributes the server sets, so the
+  // UA removes the cookie. `Secure` is not strictly required to clear,
+  // but matching server behavior avoids creating a "second" cookie.
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
+  document.cookie =
+    `${LOGGED_IN_COOKIE}=; Max-Age=0; Path=/; SameSite=Lax${secure}`;
+}

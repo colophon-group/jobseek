@@ -8,8 +8,15 @@ import { db } from "@/db";
 import { sendVerificationEmail, sendResetPasswordEmail } from "@/lib/email";
 import { type Locale, defaultLocale, isLocale } from "@/lib/i18n";
 import { invalidateSessionCache } from "@/lib/sessionCache";
+import { LOGGED_IN_COOKIE } from "@/lib/client-cookies";
 import { sql } from "drizzle-orm";
 import { usernameFromEmail, withRandomSuffix, isReservedUsername } from "@/lib/username";
+
+// Max age for the `logged_in` hint cookie. Tracks Better Auth's default
+// session TTL (30 days). A slight mismatch here is self-healing:
+// `AppBootstrapProvider` clears the hint client-side if it turns out to
+// be stale (hint present but server says no session).
+const LOGGED_IN_COOKIE_MAX_AGE = 60 * 60 * 24 * 30;
 
 function localeFromRequest(request?: Request): Locale {
   const referer = request?.headers.get("referer") ?? "";
@@ -63,12 +70,13 @@ export const auth = betterAuth({
   },
   hooks: {
     after: createAuthMiddleware(async (ctx) => {
-      if (
+      const isSessionEndingPath =
         ctx.path.startsWith("/sign-out") ||
         ctx.path.startsWith("/revoke-session") ||
         ctx.path.startsWith("/revoke-sessions") ||
-        ctx.path.startsWith("/reset-password")
-      ) {
+        ctx.path.startsWith("/reset-password");
+
+      if (isSessionEndingPath) {
         const cookie = ctx.headers?.get("cookie") ?? "";
         for (const part of cookie.split(";")) {
           const trimmed = part.trim();
@@ -84,6 +92,34 @@ export const auth = betterAuth({
             break;
           }
         }
+      }
+
+      // Maintain the non-httpOnly `logged_in` hint cookie so that
+      // AppBootstrapProvider can skip the bootstrap server action for
+      // anonymous clients without a network round-trip. The real
+      // session token remains httpOnly/Secure — this cookie carries
+      // no security meaning. See docs/edge-requests.md and issue #2246.
+      const baseURL = ctx.context.options.baseURL ?? "";
+      const secure = baseURL.startsWith("https://");
+
+      if (ctx.context.newSession) {
+        // Sign-in (email/OAuth/username), autoSignInAfterVerification,
+        // or any other path where Better Auth established a new session.
+        ctx.setCookie(LOGGED_IN_COOKIE, "1", {
+          httpOnly: false,
+          sameSite: "lax",
+          secure,
+          path: "/",
+          maxAge: LOGGED_IN_COOKIE_MAX_AGE,
+        });
+      } else if (isSessionEndingPath) {
+        ctx.setCookie(LOGGED_IN_COOKIE, "", {
+          httpOnly: false,
+          sameSite: "lax",
+          secure,
+          path: "/",
+          maxAge: 0,
+        });
       }
     }),
   },
