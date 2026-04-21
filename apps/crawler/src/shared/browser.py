@@ -162,13 +162,25 @@ async def open_page(
     """
     config = config or {}
     headless = config.get("headless", True)
-    user_agent = config.get("user_agent", DEFAULT_USER_AGENT)
     warmup_url = config.get("warmup_url")
     cookies = config.get("cookies")
     persistent = bool(config.get("persistent_context"))
     channel = config.get("channel")
     viewport = config.get("viewport", DEFAULT_VIEWPORT)
     locale = config.get("locale", DEFAULT_LOCALE)
+    # When a real-browser channel is used, the binary's own UA string
+    # (e.g. ``Chrome/146.0.0.0``) matches its JS fingerprint. Overriding
+    # with ``DEFAULT_USER_AGENT`` (fixed ``Chrome/133``) creates a client
+    # hint mismatch that Akamai's sensor detects. Keep the default UA
+    # for bundled-Chromium launches (where Playwright's pinned version
+    # doesn't match any real release anyway), but opt-out when channel
+    # pins a shipping Chrome.
+    if "user_agent" in config:
+        user_agent = config["user_agent"]
+    elif channel:
+        user_agent = None
+    else:
+        user_agent = DEFAULT_USER_AGENT
 
     extra_args: list[str] = []
     if headless and config.get("stealth"):
@@ -217,7 +229,10 @@ async def open_page(
     browser = await pw.chromium.launch(**launch_kwargs)
     context = None
     try:
-        context = await browser.new_context(user_agent=user_agent)
+        ctx_kwargs: dict = {}
+        if user_agent:
+            ctx_kwargs["user_agent"] = user_agent
+        context = await browser.new_context(**ctx_kwargs)
         context.set_default_timeout(CONTEXT_TIMEOUT)
         if cookies:
             await context.add_cookies(_resolve_placeholders(cookies))
