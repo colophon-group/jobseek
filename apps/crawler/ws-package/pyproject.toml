@@ -25,6 +25,13 @@ dependencies = [
     # Required by src.processing.{board,scrape}, src.queries.* — DB driver.
     # `ws run scraper` and probe paths import these at module load.
     "asyncpg>=0.30",
+    # Required by src.core.{occupation,seniority,technology,location}_resolve
+    # which src.processing.cpu imports at module load. polars is a heavy
+    # dep but unavoidable for the slim wheel until those resolvers move
+    # to lazy imports.
+    "polars>=1.38.1",
+    # src.metrics imports from prometheus_client (used by src.processing.board).
+    "prometheus-client>=0.21",
 ]
 
 [project.scripts]
@@ -48,6 +55,7 @@ packages = ["src"]
 # ModuleNotFoundError: No module named 'src.processing'.
 "../src/processing/" = "src/processing/"
 "../src/queries/" = "src/queries/"
+"../src/metrics.py" = "src/metrics.py"
 "../src/csvtool.py" = "src/csvtool.py"
 "../src/inspect.py" = "src/inspect.py"
 
