@@ -5,6 +5,21 @@ import { cached } from "@/lib/cache";
 import { siteConfig } from "@/content/config";
 import { locales } from "@/lib/i18n";
 
+/**
+ * ISR window for the generated sitemap.
+ *
+ * The default sitemap.ts behavior in Next.js 16 is "static if possible,
+ * otherwise dynamic on every request". Because this handler hits Postgres
+ * + Typesense at runtime (and the build step has no DB credentials), it
+ * was falling all the way to fully dynamic — every Bing/Yandex/Seznam
+ * crawl regenerated the full ~9 MB XML response. Setting `revalidate`
+ * makes Vercel CDN-cache the rendered response for 1 hour and triggers
+ * background ISR regeneration on expiry; the inner `cached()` Redis
+ * wrapper stays as a defense-in-depth safety net for rare CDN evictions
+ * within the window. See issue #2245.
+ */
+export const revalidate = 3600;
+
 type SitemapCompanyRow = {
   slug: string;
   updated_at: Date;
@@ -106,7 +121,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const CURATED_USERNAME = "colophongroup";
 
   const [companies, watchlists] = await Promise.all([
-    cached("sitemap:companies", fetchSitemapCompanies, { ttl: 3600 }),
+    cached("sitemap:companies", fetchSitemapCompanies, {
+      ttl: 3600,
+      // If the fetcher returns zero rows it almost always means a
+      // transient outage (Typesense alias swap, Postgres timeout) —
+      // not a legitimate "we have no companies". Skip caching so the
+      // next request gets another chance instead of poisoning the
+      // outer ISR window with an empty list. See #2245.
+      skipIf: (rows) => rows.length === 0,
+    }),
     cached("sitemap:watchlists", () => db.execute<{
       user_slug: string;
       watchlist_slug: string;

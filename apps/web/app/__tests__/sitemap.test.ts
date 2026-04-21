@@ -27,7 +27,7 @@ vi.mock("@/lib/search/typesense-client", () => ({
   }),
 }));
 
-import sitemap from "../sitemap";
+import sitemap, { revalidate } from "../sitemap";
 
 function typesensePage(slugs: string[], found: number) {
   return {
@@ -50,6 +50,13 @@ describe("sitemap", () => {
     const result = await sitemap();
     expect(Array.isArray(result)).toBe(true);
     expect(result.length).toBeGreaterThan(0);
+  });
+
+  it("exports `revalidate` so the response is CDN-cached as ISR (issue #2245)", () => {
+    // Without `revalidate`, every crawler hit runs the full handler
+    // (Postgres + Typesense + ~9 MB XML serialization). Regression
+    // guard: a future refactor must not silently drop this export.
+    expect(revalidate).toBe(3600);
   });
 
   it("generates entries for all 4 locales", async () => {
