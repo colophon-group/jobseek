@@ -1817,6 +1817,60 @@ class TestFeedback:
         assert fb["fields"]["description"]["quality"] == "clean"
         assert fb["fields"]["locations"]["quality"] == "clean"
 
+    def test_feedback_no_per_field_data_omits_coverage(self, tmp_path, monkeypatch):
+        """When run.quality is empty (URL-only monitor + no scraper sample),
+        feedback should NOT synthesize misleading "0/N" coverage strings.
+        Quality stored without a fraction; tier summary still computes.
+        """
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(Workspace(slug="urlonly"))
+        board = Board(alias="careers", slug="urlonly-careers", url="https://x.com/jobs")
+        # URL-only monitor: jobs counted, but no per-field quality dict.
+        board.configs["wd"] = {
+            "monitor_type": "workday",
+            "monitor_config": {},
+            "status": "tested",
+            "run": {"jobs": 617},  # no "quality" key — agent's ws run scraper failed
+        }
+        board.active_config = "wd"
+        save_board("urlonly", board)
+        ws_obj = load_workspace("urlonly")
+        ws_obj.active_board = "careers"
+        save_workspace(ws_obj)
+
+        runner = CliRunner()
+        result = runner.invoke(
+            ws,
+            [
+                "feedback",
+                "wd",
+                "urlonly",
+                "--title",
+                "clean",
+                "--description",
+                "clean",
+                "--locations",
+                "clean",
+                "--verdict",
+                "good",
+                "--verdict-notes",
+                "Verified manually via direct API",
+            ],
+        )
+        assert result.exit_code == 0, result.output
+
+        from src.workspace.state import load_board
+
+        board = load_board("urlonly", "careers")
+        fb = board.configs["wd"]["feedback"]
+        # No misleading "0/617" — agent verified manually.
+        assert fb["fields"]["title"]["quality"] == "clean"
+        assert "coverage" not in fb["fields"]["title"], fb["fields"]["title"]
+        assert "coverage" not in fb["fields"]["description"]
+        # Tier summary computes without crashing on missing coverage.
+        assert "required" in fb
+        assert fb["required"]["coverage"] == "0/0"
+
     def test_feedback_default_to_active_config(self, tmp_path, monkeypatch):
         """When name is omitted, uses active config."""
         self._setup(tmp_path, monkeypatch)

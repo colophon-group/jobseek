@@ -2092,6 +2092,13 @@ def feedback_cmd(
         "job_location_type": jlt_notes,
     }
 
+    # When coverage_data is empty, no per-field sample was recorded at all
+    # (e.g. URL-only monitor + ws run scraper crashed). In that case any
+    # synthesized "0/N" coverage misleads reviewers — the agent assessed
+    # quality manually without programmatic sampling. We omit the coverage
+    # fraction and skip the absent-auto-population.
+    has_field_data = bool(coverage_data)
+
     # Build per-field feedback
     fields_fb: dict[str, dict] = {}
     for field_name in _FEEDBACK_FIELDS:
@@ -2101,15 +2108,17 @@ def feedback_cmd(
             total = scraper_total or monitor_total
         else:
             total = monitor_total or scraper_total
-        coverage = f"{count}/{total}" if total else "0/0"
+        coverage = (f"{count}/{total}" if total else "0/0") if has_field_data else ""
 
         # Determine quality: explicit > auto-populate
         q = explicit_quality.get(field_name)
-        if q is None:
-            q = "absent" if count == 0 else None
+        if q is None and has_field_data and count == 0:
+            q = "absent"
 
         if q is not None:
-            entry: dict[str, str] = {"coverage": coverage, "quality": q}
+            entry: dict[str, str] = {"quality": q}
+            if coverage:
+                entry["coverage"] = coverage
             notes = notes_map.get(field_name, "")
             if notes:
                 entry["notes"] = notes
@@ -2147,9 +2156,15 @@ def feedback_cmd(
         for f in tier_fields:
             fb = fields_fb.get(f)
             if fb:
-                c, t = fb["coverage"].split("/")
-                tier_coverage += int(c)
-                tier_total += int(t)
+                # `coverage` is omitted when no per-field sample existed
+                # (manual quality assessment by the agent). Skip the
+                # numeric aggregation in that case but still propagate
+                # the worst quality rating across the tier.
+                cov = fb.get("coverage")
+                if cov:
+                    c, t = cov.split("/")
+                    tier_coverage += int(c)
+                    tier_total += int(t)
                 if q_rank.get(fb["quality"], 0) > q_rank.get(worst_q, 0):
                     worst_q = fb["quality"]
         return {"coverage": f"{tier_coverage}/{tier_total}", "quality": worst_q}
