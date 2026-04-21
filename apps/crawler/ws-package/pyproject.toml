@@ -14,6 +14,24 @@ dependencies = [
     "jmespath>=1.0",
     "playwright>=1.58.0",
     "huggingface_hub>=0.28",
+    # `ws task` renders Jinja2 templates from steps/parallel/orchestrator.md.
+    # Missing this dependency made `ws task --issue N` crash on every fresh
+    # install with `ModuleNotFoundError: No module named 'jinja2'`.
+    "jinja2>=3.1",
+    # Required by src.processing.scrape (HTML parsing) and src.shared.langdetect.
+    # Both are loaded at module-import time by `ws run scraper`.
+    "selectolax>=0.4.7",
+    "fast-langdetect>=0.3",
+    # Required by src.processing.{board,scrape}, src.queries.* — DB driver.
+    # `ws run scraper` and probe paths import these at module load.
+    "asyncpg>=0.30",
+    # Required by src.core.{occupation,seniority,technology,location}_resolve
+    # which src.processing.cpu imports at module load. polars is a heavy
+    # dep but unavoidable for the slim wheel until those resolvers move
+    # to lazy imports.
+    "polars>=1.38.1",
+    # src.metrics imports from prometheus_client (used by src.processing.board).
+    "prometheus-client>=0.21",
 ]
 
 [project.scripts]
@@ -31,6 +49,13 @@ packages = ["src"]
 "../src/workspace/" = "src/workspace/"
 "../src/shared/" = "src/shared/"
 "../src/core/" = "src/core/"
+# `ws run scraper` imports src.processing.scrape._apply_defaults; that file
+# transitively pulls in src.processing.{cpu,r2_stage} and src.queries.
+# Without these, every `ws run scraper` invocation crashes with
+# ModuleNotFoundError: No module named 'src.processing'.
+"../src/processing/" = "src/processing/"
+"../src/queries/" = "src/queries/"
+"../src/metrics.py" = "src/metrics.py"
 "../src/csvtool.py" = "src/csvtool.py"
 "../src/inspect.py" = "src/inspect.py"
 

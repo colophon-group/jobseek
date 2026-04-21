@@ -59,6 +59,9 @@ SKIP_MODULES: frozenset[str] = frozenset(
         "src.core.experience_extract",
         # PDF / pypdf
         "src.core.scrapers.pdf",
+        # src.processing.board imports src.redis_queue (server-side runtime
+        # only — not used by `ws run scraper` or any agent flow).
+        "src.processing.board",
         # enrich providers — optional LLM SDKs imported lazily inside funcs
         "src.core.enrich",
         "src.core.enrich.batch",
