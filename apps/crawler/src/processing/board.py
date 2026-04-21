@@ -7,6 +7,7 @@ import contextlib
 import json
 from collections import defaultdict
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from time import monotonic
 from urllib.parse import urlparse
 
@@ -194,22 +195,64 @@ class BoardError:
     error_msg: str
 
 
-async def _delist_and_count_gone(conn: asyncpg.Connection, board_id: str) -> int:
-    """Delist every active posting for ``board_id`` and emit the matching
-    ``monitor_jobs_discovered{action="gone"}`` Prometheus counter.
+async def _delist_board_postings(conn: asyncpg.Connection, board_id: str) -> int:
+    """Run ``_DELIST_BOARD_POSTINGS`` and return the row count.
 
     Used by the three silent-delist paths that bypass the normal
     ``_MARK_GONE_BY_TIMESTAMP`` flow: empty-check threshold reached,
     BoardGoneError (upstream 404), and 5-strike failure auto-disable.
-    Without this bridge those paths flip rows to ``is_active=false``
-    without touching the Prometheus counter, so the Grafana panel shows
-    ``new >> gone`` even when the DB is well-balanced.
+    Without these paths emitting the matching ``gone`` counter, the
+    Grafana panel showed ``new >> gone`` even when the DB was balanced.
+
+    Critically, the Prometheus increment is intentionally NOT done here:
+    the counter must only fire AFTER the surrounding transaction
+    commits, otherwise a rollback would leave the metric over-reporting
+    deletions that never happened.
     """
     rows = await conn.fetch(_DELIST_BOARD_POSTINGS, board_id)
-    gone_count = len(rows)
+    return len(rows)
+
+
+def _emit_gone_counter(gone_count: int) -> None:
+    """Increment ``monitor_jobs_discovered{action="gone"}`` after a
+    delist transaction has committed. Caller must invoke this OUTSIDE
+    any ``conn.transaction()`` block — see ``_delist_board_postings``.
+    """
     if gone_count:
         monitor_jobs_discovered.labels(profile="simple", action="gone").inc(gone_count)
-    return gone_count
+
+
+# A 5-strike auto-disable doesn't necessarily mean the board is dead.
+# With exponential backoff (5 * 2^n minutes capped at 24h), strike #5
+# fires after ~155 minutes — well inside a single provider outage. If
+# we delisted on every disable, a 3-hour greenhouse blip would tombstone
+# tens of thousands of postings that would all flap back as ``relisted``
+# on recovery, churning search and IndexNow. Gate the delist on
+# ``last_success_at`` so transient outages back off without data loss;
+# only boards that have been failing past this window get delisted.
+_DELIST_AFTER_FAILURE_AGE = timedelta(hours=24)
+
+
+async def _maybe_delist_after_disable(
+    conn: asyncpg.Connection,
+    board_id: str,
+    last_success_at: datetime | None,
+    board_log: structlog.stdlib.BoundLogger,
+) -> int:
+    """Delist a 5-strike-disabled board's postings ONLY if the board
+    has been silent past ``_DELIST_AFTER_FAILURE_AGE``. Returns the
+    count of rows flipped (0 if the recency gate skipped the delist).
+    """
+    # asyncpg returns timezone-aware timestamps for TIMESTAMPTZ
+    now = datetime.now(tz=UTC)
+    if last_success_at is not None and now - last_success_at < _DELIST_AFTER_FAILURE_AGE:
+        board_log.warning(
+            "batch.monitor.five_strike_disable_kept_active",
+            last_success_age_s=int((now - last_success_at).total_seconds()),
+            reason="recent success — likely transient outage",
+        )
+        return 0
+    return await _delist_board_postings(conn, board_id)
 
 
 async def _enqueue_scrapes_for_new(
@@ -857,15 +900,25 @@ async def _process_one_board_streaming(
                 duration_s=round(elapsed, 2),
                 raw_discovered=total_discovered,
             )
+            # _RECORD_EMPTY_CHECK + delist must be atomic: if the
+            # record commits but the delist fails we'd be back to the
+            # exact phantom-active orphan state this PR fixes.
             empty_gone_count = 0
-            async with pool.acquire() as conn:
-                rows = await conn.fetch(_RECORD_EMPTY_CHECK, board_id)
-                if rows and rows[0]["board_status"] == "gone":
-                    empty_gone_count = await _delist_and_count_gone(conn, board_id)
+            try:
+                async with pool.acquire() as conn, conn.transaction():
+                    rows = await conn.fetch(_RECORD_EMPTY_CHECK, board_id)
+                    if rows and rows[0]["board_status"] == "gone":
+                        empty_gone_count = await _delist_board_postings(conn, board_id)
+            except (asyncpg.PostgresError, ConnectionError):
+                board_log.exception("batch.monitor.empty_check_failed")
+            else:
+                # Only emit the metric AFTER the transaction commits —
+                # see ``_delist_board_postings`` docstring.
+                if empty_gone_count:
+                    _emit_gone_counter(empty_gone_count)
                     board_log.warning("batch.monitor.board_gone", gone=empty_gone_count)
-            if empty_gone_count:
-                with contextlib.suppress(Exception):
-                    await _batch.get_redis().delete("cache:platform-stats")
+                    with contextlib.suppress(Exception):
+                        await _batch.get_redis().delete("cache:platform-stats")
             return True, elapsed
 
         # Mark as gone any active posting not seen during this monitor run
@@ -935,13 +988,17 @@ async def _process_one_board_streaming(
         tasks_total.labels(kind="monitor", status="board_gone").inc()
         loc_resolver.drain_location_misses()
         board_gone_count = 0
-        with contextlib.suppress(Exception):
+        try:
             async with pool.acquire() as conn, conn.transaction():
                 await conn.execute(_RECORD_BOARD_GONE, board_id)
-                board_gone_count = await _delist_and_count_gone(conn, board_id)
-        if board_gone_count:
-            with contextlib.suppress(Exception):
-                await _batch.get_redis().delete("cache:platform-stats")
+                board_gone_count = await _delist_board_postings(conn, board_id)
+        except (asyncpg.PostgresError, ConnectionError):
+            board_log.exception("batch.monitor.board_gone_record_failed")
+        else:
+            if board_gone_count:
+                _emit_gone_counter(board_gone_count)
+                with contextlib.suppress(Exception):
+                    await _batch.get_redis().delete("cache:platform-stats")
         # Re-raise so the worker can drop the Redis task instead of
         # rescheduling — otherwise the dead board keeps cycling.
         raise
@@ -956,21 +1013,32 @@ async def _process_one_board_streaming(
         # A 5-strike failure flips ``is_enabled=false`` + ``board_status='disabled'``.
         # _FETCH_DUE_BOARDS won't pick the board again, so active postings
         # would otherwise sit orphaned (``is_active=true``, never to be
-        # refreshed or marked gone). Detect the transition via RETURNING
-        # and run the same delist+metric path as BoardGoneError / empty-check.
+        # refreshed or marked gone). Detect the transition (the pre-fetch
+        # row was ``is_enabled=true``, so any post-update ``false`` is a
+        # fresh disable) and gate the delist on ``last_success_at`` so a
+        # provider outage doesn't mass-tombstone postings that would all
+        # come back on recovery.
         failure_gone_count = 0
-        with contextlib.suppress(Exception):
+        try:
             async with pool.acquire() as conn, conn.transaction():
-                just_disabled = await conn.fetchval(_RECORD_FAILURE, board_id, error_msg)
+                row = await conn.fetchrow(_RECORD_FAILURE, board_id, error_msg)
+                just_disabled = row is not None and not row["is_enabled"]
                 if just_disabled:
-                    failure_gone_count = await _delist_and_count_gone(conn, board_id)
-                    board_log.warning(
-                        "batch.monitor.five_strike_disable",
-                        gone=failure_gone_count,
+                    failure_gone_count = await _maybe_delist_after_disable(
+                        conn, board_id, row["last_success_at"], board_log
                     )
-        if failure_gone_count:
-            with contextlib.suppress(Exception):
-                await _batch.get_redis().delete("cache:platform-stats")
+                    if failure_gone_count:
+                        board_log.warning(
+                            "batch.monitor.five_strike_disable",
+                            gone=failure_gone_count,
+                        )
+        except (asyncpg.PostgresError, ConnectionError):
+            board_log.exception("batch.monitor.record_failure_failed")
+        else:
+            if failure_gone_count:
+                _emit_gone_counter(failure_gone_count)
+                with contextlib.suppress(Exception):
+                    await _batch.get_redis().delete("cache:platform-stats")
         return False, elapsed
     finally:
         if pw and pw_owned:
