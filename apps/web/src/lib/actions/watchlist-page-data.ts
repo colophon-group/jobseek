@@ -10,7 +10,7 @@ import { getUserPlan, PLAN_LIMITS, canCreateWatchlist } from "@/lib/plans";
 import { resolveLocationSlugs } from "@/lib/actions/locations";
 import { resolveOccupationSlugs, resolveSenioritySlugs, resolveTechnologySlugs } from "@/lib/actions/taxonomy";
 import { getPreferences } from "@/lib/actions/preferences";
-import { getViewerLanguages } from "@/lib/viewer";
+import { resolveJobLanguages } from "@/lib/job-languages";
 import type { WatchlistPostingEntry } from "@/lib/actions/watchlists";
 
 export interface WatchlistPageData {
@@ -43,16 +43,16 @@ export async function fetchWatchlistPageData(params: {
   const session = await getSession();
   const isOwner = session?.user?.id === detail.owner.id;
 
-  const [plan, limit, prefs, languages] = await Promise.all([
+  const [plan, limit, prefs] = await Promise.all([
     session ? getUserPlan(session.user.id) : ("free" as const),
     session ? canCreateWatchlist(session.user.id) : { allowed: false, current: 0, max: 0 },
     session ? getPreferences() : Promise.resolve(null),
-    getViewerLanguages(locale),
   ]);
   const isPaidPlan = PLAN_LIMITS[plan].canReceiveAlerts;
   const limitReached = !limit.allowed;
 
   const jobLanguages = prefs?.jobLanguages ?? [];
+  const languages = resolveJobLanguages(jobLanguages, locale);
 
   const filters = detail.filters;
 

@@ -3,7 +3,7 @@
 import { searchJobs, listTopCompanies } from "@/lib/actions/search";
 import { parseSearchFilters, type ParsedSearchFilters } from "@/lib/actions/search-input";
 import { getPreferences } from "@/lib/actions/preferences";
-import { getViewerLanguages } from "@/lib/viewer";
+import { resolveJobLanguages } from "@/lib/job-languages";
 import { firstOf, idsOrUndefined, parseRangeParam, getGeoFromHeaders } from "@/lib/search/params";
 import type { SearchResponse } from "@/lib/search";
 
@@ -41,14 +41,14 @@ export async function fetchExploreData(params: {
 
   const { userLat, userLng } = await getGeoFromHeaders();
 
-  const [parsed, prefs, languages] = await Promise.all([
+  const [parsed, prefs] = await Promise.all([
     parseSearchFilters({ q, loc, occ, sen, tech, locale, userLat, userLng }),
     getPreferences(),
-    getViewerLanguages(locale),
   ]);
 
   const jobLanguages = prefs?.jobLanguages ?? [];
   const displayCurrency = prefs?.displayCurrency ?? "EUR";
+  const languages = resolveJobLanguages(jobLanguages, locale);
 
   const locationIds = idsOrUndefined(parsed.locations);
   const occupationIds = idsOrUndefined(parsed.occupations);
