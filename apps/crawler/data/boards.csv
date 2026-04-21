@@ -649,6 +649,7 @@ bolt,bolt-careers,https://bolt.eu/en/careers/positions/,greenhouse,"{""token"": 
 bolt-new,bolt-new-greenhouse,https://job-boards.greenhouse.io/stackblitz,greenhouse,"{""token"": ""stackblitz""}",skip,
 bombas,bombas-greenhouse,https://job-boards.greenhouse.io/bombas,greenhouse,"{""token"": ""bombas""}",skip,
 booking-com,booking-com-careers,https://jobs.booking.com/booking/jobs,dom,"{""render"": true, ""url_filter"": {""include"": ""jobs\\.booking\\.com/booking/jobs/\\d+""}}",json-ld,
+booksy,booksy-careers,https://apply.workable.com/booksy-1/,workable,"{""token"": ""booksy-1""}",workable,
 boom,boom-ashby,https://jobs.ashbyhq.com/boom,ashby,"{""token"": ""boom""}",skip,
 boom-entertainment,boom-entertainment-greenhouse,https://job-boards.greenhouse.io/boomentertainment,greenhouse,"{""token"": ""boomentertainment""}",skip,
 boomi,boomi-pinpoint,https://boomi.pinpointhq.com,pinpoint,"{""slug"": ""boomi""}",skip,
