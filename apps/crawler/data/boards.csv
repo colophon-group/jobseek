@@ -640,6 +640,7 @@ boeing,boeing-hire,https://boeing.wd1.myworkdayjobs.com/HIRE,workday,"{""company
 boeing,boeing-intern,https://boeing.wd1.myworkdayjobs.com/INTERN,workday,"{""company"": ""boeing"", ""wd_instance"": ""wd1"", ""site"": ""INTERN""}",workday,
 boeing,boeing-mfg,https://boeing.wd1.myworkdayjobs.com/MFG,workday,"{""company"": ""boeing"", ""wd_instance"": ""wd1"", ""site"": ""MFG""}",workday,
 boeing,boeing-subsidiary,https://boeing.wd1.myworkdayjobs.com/external_subsidiary,workday,"{""company"": ""boeing"", ""wd_instance"": ""wd1"", ""site"": ""external_subsidiary""}",workday,
+bol,bol-careers,https://job-boards.greenhouse.io/bolcomen,greenhouse,"{""token"": ""bolcomen""}",skip,
 bold-business,bold-business-greenhouse,https://job-boards.greenhouse.io/boldbusiness,greenhouse,"{""token"": ""boldbusiness""}",skip,
 bolster,bolster-recruitee,https://bolster.recruitee.com,recruitee,"{""token"": ""bolster""}",skip,
 bolt,bolt-careers,https://bolt.eu/en/careers/positions/,greenhouse,"{""token"": ""boltv2""}",skip,
