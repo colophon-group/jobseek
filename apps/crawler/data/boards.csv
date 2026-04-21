@@ -909,6 +909,7 @@ citema-systems-gmbh,citema-systems-gmbh-join,https://join.com/companies/citema,j
 citian,citian-greenhouse,https://job-boards.greenhouse.io/citian,greenhouse,"{""token"": ""citian""}",skip,
 citigroup,citigroup-eightfold,https://citi.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/"", ""proxy"": true}",eightfold,"{""enrich"": [""description""], ""proxy"": true}"
 citigroup,citigroup-workday,https://citi.wd5.myworkdayjobs.com/en-US/2,workday,"{""company"": ""citi"", ""wd_instance"": ""wd5"", ""site"": ""2""}",workday,"{""proxy"": true}"
+citrix,citrix-careers-workday,https://tibco.wd5.myworkdayjobs.com/Cloud_Software_Group,workday,"{""company"": ""tibco"", ""wd_instance"": ""wd5"", ""site"": ""Cloud_Software_Group""}",workday,
 citrus-health-group-inc,citrus-health-group-inc-greenhouse,https://job-boards.greenhouse.io/citrushealthgroup,greenhouse,"{""token"": ""citrushealthgroup""}",skip,
 civil-science,civil-science-greenhouse,https://job-boards.greenhouse.io/civilscience,greenhouse,"{""token"": ""civilscience""}",skip,
 clara,clara-greenhouse,https://job-boards.greenhouse.io/clara,greenhouse,"{""token"": ""clara""}",skip,
