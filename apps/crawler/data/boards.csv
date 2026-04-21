@@ -1321,6 +1321,7 @@ easypost,easypost-recruitee,https://easypost.recruitee.com,recruitee,"{""token""
 easyship,easyship-greenhouse,https://job-boards.greenhouse.io/easyship,greenhouse,"{""token"": ""easyship""}",skip,
 eaton,eaton-eightfold,https://eaton.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/"", ""proxy"": true}",eightfold,"{""enrich"": [""description""], ""proxy"": true}"
 ebanx,ebanx-greenhouse,https://job-boards.greenhouse.io/ebanx,greenhouse,"{""token"": ""ebanx""}",skip,
+ebay,ebay-careers,https://jobs.ebayinc.com/us/en/search-results,sitemap,"{""sitemap_url"": ""https://jobs.ebayinc.com/us/en/sitemap_index.xml"", ""url_filter"": ""/us/en/job/""}",json-ld,
 echo,echo-ashby,https://jobs.ashbyhq.com/echo,ashby,"{""token"": ""echo""}",skip,
 echodyne-corp,echodyne-corp-greenhouse,https://job-boards.greenhouse.io/echodynecorp,greenhouse,"{""token"": ""echodynecorp""}",skip,
 eclinical-solutions,eclinical-solutions-greenhouse,https://job-boards.greenhouse.io/eclinicalsolutions,greenhouse,"{""token"": ""eclinicalsolutions""}",skip,
