@@ -544,6 +544,7 @@ belvo,belvo-ashby,https://jobs.ashbyhq.com/belvo,ashby,"{""token"": ""belvo""}",
 benchling,benchling-ashby,https://jobs.ashbyhq.com/benchling,ashby,"{""token"": ""benchling""}",skip,
 benchmark-physical-therapy,benchmark-physical-therapy-greenhouse,https://job-boards.greenhouse.io/benchmarkpt,greenhouse,"{""token"": ""benchmarkpt""}",skip,
 benchprep,benchprep-greenhouse,https://job-boards.greenhouse.io/benchprep,greenhouse,"{""token"": ""benchprep""}",skip,
+benevolentai,benevolentai-careers,https://apply.workable.com/benevolentai/,workable,"{""token"": ""benevolentai""}",workable,
 berlin-brands-group,berlin-brands-group-greenhouse,https://job-boards.greenhouse.io/berlinbrands,greenhouse,"{""token"": ""berlinbrands""}",skip,
 berlin-city-auto-group,berlin-city-auto-group-greenhouse,https://job-boards.greenhouse.io/berlincity,greenhouse,"{""token"": ""berlincity""}",skip,
 berlin-metropolitan-school,berlin-metropolitan-school-join,https://join.com/companies/metropolitanschoolcom,join,"{""slug"": ""metropolitanschoolcom""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
