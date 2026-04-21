@@ -32,8 +32,7 @@ const webRoot = join(here, "..", "..");
  */
 const ISR_PROTECTED_PAGES = [
   "app/[lang]/(app)/company/[slug]/page.tsx",
-  // TODO(#2244): re-enable once the watchlist-detail fix lands.
-  // "app/[lang]/(app)/[userSlug]/[watchlistSlug]/page.tsx",
+  "app/[lang]/(app)/[userSlug]/[watchlistSlug]/page.tsx",
 ];
 
 /**
