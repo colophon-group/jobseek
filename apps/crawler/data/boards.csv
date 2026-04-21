@@ -1032,6 +1032,7 @@ contentful,contentful-greenhouse,https://job-boards.greenhouse.io/contentful,gre
 contentsquare,contentsquare-lever,https://jobs.lever.co/contentsquare,lever,"{""token"": ""contentsquare""}",skip,
 contentstack,contentstack-greenhouse,https://job-boards.greenhouse.io/contentstack,greenhouse,"{""token"": ""contentstack""}",skip,
 contextual-ai,contextual-ai-greenhouse,https://job-boards.greenhouse.io/contextualai,greenhouse,"{""token"": ""contextualai""}",skip,
+continental,continental-careers,https://jobs.continental.com/en/,api_sniffer,"{""api_url"": ""https://jobs.continental.com/en/api/result-list/pagetype-jobs/?tx_conjobs_api%5BitemsPerPage%5D=100"", ""method"": ""GET"", ""json_path"": ""result.list"", ""url_field"": ""absoluteUrl"", ""total_path"": ""result.numFound"", ""url_transform"": {""find"": ""\\?tx_conjobs_filter.*$"", ""replace"": """"}, ""pagination"": {""param_name"": ""tx_conjobs_api%5BcurrentPage%5D"", ""style"": ""page"", ""start_value"": 1, ""increment"": 1, ""location"": ""query""}, ""request_headers"": {""accept"": ""application/json, text/plain, */*"", ""referer"": ""https://jobs.continental.com/en/""}}",json-ld,
 continue,continue-ashby,https://jobs.ashbyhq.com/continue,ashby,"{""token"": ""continue""}",skip,
 convene,convene-greenhouse,https://job-boards.greenhouse.io/convene,greenhouse,"{""token"": ""convene""}",skip,
 convera,convera-greenhouse,https://job-boards.greenhouse.io/convera,greenhouse,"{""token"": ""convera""}",skip,
