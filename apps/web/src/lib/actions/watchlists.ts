@@ -617,6 +617,78 @@ export async function getWatchlistByUserAndSlug(
   };
 }
 
+/**
+ * Public-only variant of {@link getWatchlistByUserAndSlug} that does not
+ * read the request session. Returns the watchlist iff `is_public=true`,
+ * regardless of viewer; private watchlists return null even for the owner.
+ *
+ * Use this from contexts that must stay statically prerenderable (ISR
+ * pages, `generateMetadata`, sitemaps). The session-aware variant reads
+ * `headers()` via `getSessionUserId()` and tainted the watchlist detail
+ * page's ISR — see issue #2244.
+ */
+export async function getPublicWatchlistByUserAndSlug(
+  userSlug: string,
+  watchlistSlug: string,
+): Promise<WatchlistDetail | null> {
+  type WatchlistJoinRow = {
+    wl_id: string; slug: string; title: string; description: string | null;
+    is_public: boolean; alerts_enabled: boolean; filters: WatchlistFilters | null;
+    source_watchlist_id: string | null; created_at: Date; user_id: string;
+    owner_id: string; username: string | null;
+    display_username: string | null; owner_name: string;
+  };
+
+  const rows = await db.execute<{ [key: string]: unknown } & WatchlistJoinRow>(sql`
+    SELECT
+      w.id AS wl_id, w.slug, w.title, w.description,
+      w.is_public, w.alerts_enabled, w.filters,
+      w.source_watchlist_id, w.created_at, w.user_id,
+      u.id AS owner_id, u.username, u.display_username, u.name AS owner_name
+    FROM watchlist w
+    JOIN "user" u ON u.id = w.user_id
+    WHERE (u.username = ${userSlug} OR u.display_username = ${userSlug})
+      AND w.slug = ${watchlistSlug}
+      AND w.is_public = true
+    ORDER BY (u.username = ${userSlug})::int DESC
+    LIMIT 1
+  `);
+
+  const row = (rows as unknown as WatchlistJoinRow[])[0];
+  if (!row) return null;
+
+  const companies = await db
+    .select({
+      id: company.id,
+      name: company.name,
+      slug: company.slug,
+      icon: company.icon,
+    })
+    .from(watchlistCompany)
+    .innerJoin(company, eq(watchlistCompany.companyId, company.id))
+    .where(eq(watchlistCompany.watchlistId, row.wl_id))
+    .orderBy(company.name);
+
+  return {
+    id: row.wl_id,
+    slug: row.slug,
+    title: row.title,
+    description: row.description,
+    isPublic: row.is_public,
+    alertsEnabled: row.alerts_enabled,
+    filters: (row.filters ?? {}) as WatchlistFilters,
+    sourceWatchlistId: row.source_watchlist_id,
+    createdAt: new Date(row.created_at).toISOString(),
+    owner: {
+      id: row.owner_id,
+      username: row.username,
+      displayUsername: row.display_username,
+      name: row.owner_name,
+    },
+    companies,
+  };
+}
+
 export type PublicWatchlistEntry = WatchlistSummary & {
   ownerName: string;
   ownerUsername: string | null;
