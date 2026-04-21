@@ -24,6 +24,8 @@ export function WatchlistContent({ lang, userSlug, watchlistSlug }: WatchlistCon
   const [data, setData] = useState<WatchlistPageData | null | "not-found">(null);
 
   useEffect(() => {
+    setData(null);
+    window.scrollTo(0, 0);
     fetchWatchlistPageData({ userSlug, watchlistSlug, locale: lang }).then((result) => {
       setData(result ?? "not-found");
     });
@@ -40,11 +42,14 @@ export function WatchlistContent({ lang, userSlug, watchlistSlug }: WatchlistCon
       limitReached={data.limitReached}
       initialPostings={data.postings}
       initialTotal={data.total}
+      yearTotal={data.yearTotal}
       locale={lang}
       resolvedLocations={data.resolvedLocations}
       resolvedOccupations={data.resolvedOccupations}
       resolvedSeniorities={data.resolvedSeniorities}
       resolvedTechnologies={data.resolvedTechnologies}
+      jobLanguages={data.jobLanguages}
+      languages={data.languages}
     />
   );
 }

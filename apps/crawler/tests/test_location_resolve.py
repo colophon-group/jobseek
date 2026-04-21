@@ -2735,6 +2735,73 @@ class TestCompoundResolution:
         assert len(results) == 0
 
 
+class TestCompoundRecursion:
+    """Space-separated "City State Country" with multi-word country.
+
+    Workday tenants like Citi, Tencent, Broadcom, Chevron and Home Depot CA
+    return the ``location`` field as a single-space-joined "City State Country"
+    string (e.g. ``"Tampa Florida United States"``).  The flat compound matcher
+    bails out because ``"Tampa Florida"`` is not a known city name — a single
+    recursive step inside ``_match_compound`` re-splits the left portion into
+    city + region/state and matches the city within the outer country context.
+    """
+
+    def test_houston_texas_us(self, resolver: LocationResolver) -> None:
+        """'Houston Texas United States' → Houston (city in Texas, USA)."""
+        results = resolver.resolve(["Houston Texas United States"])
+        assert len(results) == 1
+        assert results[0].location_id == HOUSTON_ID
+
+    def test_new_york_new_york_us(self, resolver: LocationResolver) -> None:
+        """'New York New York United States' — 2-word city + 2-word state + 2-word country."""
+        results = resolver.resolve(["New York New York United States"])
+        assert len(results) == 1
+        assert results[0].location_id == NY_ID
+
+    def test_mumbai_maharashtra_india(self, resolver: LocationResolver) -> None:
+        """'Mumbai Maharashtra India' → Mumbai."""
+        results = resolver.resolve(["Mumbai Maharashtra India"])
+        assert len(results) == 1
+        assert results[0].location_id == MUMBAI_ID
+
+    def test_chennai_tamil_nadu_india(self, resolver: LocationResolver) -> None:
+        """'Chennai Tamil Nadu India' — 1-word city + 2-word state + 1-word country."""
+        results = resolver.resolve(["Chennai Tamil Nadu India"])
+        assert len(results) == 1
+        assert results[0].location_id == CHENNAI_ID
+
+    def test_bengaluru_karnataka_india(self, resolver: LocationResolver) -> None:
+        """'Bengaluru Karnataka India' → Bengaluru (1-word city + 1-word state + 1-word country)."""
+        results = resolver.resolve(["Bengaluru Karnataka India"])
+        assert len(results) == 1
+        assert results[0].location_id == BENGALURU_ID
+
+    def test_recursion_rejects_unrelated_match(self, resolver: LocationResolver) -> None:
+        """Recursive match must sit within the outer country context.
+
+        ``"Chennai Tamil Nadu Germany"`` has a real left ("Chennai Tamil Nadu")
+        but the country context is Germany — Chennai is not in Germany, so the
+        match must be rejected (not returned as a false positive).
+        """
+        results = resolver.resolve(["Chennai Tamil Nadu Germany"])
+        assert len(results) == 0
+
+    def test_recursion_bounded(self, resolver: LocationResolver) -> None:
+        """Recursion is capped — noise strings must not match via over-eager nesting."""
+        results = resolver.resolve(["Xyz Abc Def United States"])
+        assert len(results) == 0
+
+    def test_recursion_does_not_break_flat_match(self, resolver: LocationResolver) -> None:
+        """Regression: the existing 2-word 'Bremen Germany' flat match still works.
+
+        The recursion branch must only activate when the flat lookup fails —
+        successful flat matches must not fall through into nested scanning.
+        """
+        results = resolver.resolve(["Bremen Germany"])
+        assert len(results) == 1
+        assert results[0].location_id == BREMEN_ID
+
+
 # ── Language Disambiguation ──────────────────────────────────────
 
 
@@ -2798,3 +2865,60 @@ class TestLanguageDisambiguation:
         results = resolver.resolve(["Montana, USA"], posting_language="bg")
         assert len(results) == 1
         assert results[0].location_id == MONTANA_STATE_ID
+
+
+# ── Ancestor ID tests ──────────────────────────────────────────────
+
+
+class TestGetAncestorIds:
+    """Tests for LocationResolver.get_ancestor_ids()."""
+
+    @pytest.fixture()
+    def resolver(self) -> LocationResolver:
+        return _build_resolver(_ENTRIES, _NAMES)
+
+    def test_city_returns_self_and_all_ancestors(self, resolver: LocationResolver) -> None:
+        """Zurich city → Zurich city + Canton of Zurich + Switzerland."""
+        ancestors = set(resolver.get_ancestor_ids(ZH_CITY_ID))
+        assert ZH_CITY_ID in ancestors  # self
+        assert ZH_REGION_ID in ancestors  # Canton of Zurich
+        assert CH_ID in ancestors  # Switzerland
+        assert len(ancestors) == 3
+
+    def test_region_returns_self_and_country(self, resolver: LocationResolver) -> None:
+        """California region → California + United States."""
+        ancestors = set(resolver.get_ancestor_ids(CA_REGION_ID))
+        assert CA_REGION_ID in ancestors
+        assert US_ID in ancestors
+        assert len(ancestors) == 2
+
+    def test_country_returns_only_self(self, resolver: LocationResolver) -> None:
+        """Country with no parent → just itself."""
+        ancestors = resolver.get_ancestor_ids(DE_ID)
+        assert ancestors == [DE_ID]
+
+    def test_macro_returns_only_self(self, resolver: LocationResolver) -> None:
+        """Macro region with no parent → just itself."""
+        ancestors = resolver.get_ancestor_ids(EMEA_ID)
+        assert ancestors == [EMEA_ID]
+
+    def test_deep_hierarchy(self, resolver: LocationResolver) -> None:
+        """Munich → Bavaria → Germany (3 levels)."""
+        ancestors = set(resolver.get_ancestor_ids(MUNICH_ID))
+        assert MUNICH_ID in ancestors
+        assert BY_REGION_ID in ancestors
+        assert DE_ID in ancestors
+        assert len(ancestors) == 3
+
+    def test_unknown_id_returns_self(self, resolver: LocationResolver) -> None:
+        """Unknown location ID returns just that ID (no entry found)."""
+        ancestors = resolver.get_ancestor_ids(999999999)
+        assert ancestors == [999999999]
+
+    def test_us_city_full_chain(self, resolver: LocationResolver) -> None:
+        """Chicago → Illinois → United States."""
+        ancestors = set(resolver.get_ancestor_ids(CHICAGO_ID))
+        assert CHICAGO_ID in ancestors
+        assert IL_REGION_ID in ancestors
+        assert US_ID in ancestors
+        assert len(ancestors) == 3

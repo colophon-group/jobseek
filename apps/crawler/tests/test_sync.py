@@ -6,9 +6,12 @@ import polars as pl
 import pytest
 
 from src.sync import (
+    _REALIGN_RENAMED_BOARD_URLS_SUPA,
+    _UPSERT_BOARDS_SUPA,
     _UPSERT_COMPANIES,
     _UPSERT_OCCUPATION_DOMAIN_NAMES,
     _UPSERT_OCCUPATION_DOMAINS,
+    _is_trivial_watchlist,
     _load_boards,
     _load_companies,
     run_sync,
@@ -244,11 +247,11 @@ class TestSyncCompanies:
 
 class TestSyncBoards:
     async def test_upserts_boards(self, mock_conn, sample_boards):
-        """No Supabase writes (removed), no local writes without local_conn."""
+        """Upserts boards to Supabase, no local writes without local_conn."""
         await sync_boards(mock_conn, sample_boards, dry_run=False)
 
-        # Supabase board writes removed; no local_conn provided -> no execute calls
-        mock_conn.execute.assert_not_called()
+        # Realign stale URLs + Supabase upsert + disable queries
+        assert mock_conn.execute.call_count == 3
 
     async def test_invalid_json_skips_row(self, mock_conn):
         """monitor_config has invalid JSON -> row skipped, valid rows still collected."""
@@ -267,8 +270,8 @@ class TestSyncBoards:
 
         await sync_boards(mock_conn, boards, dry_run=False)
 
-        # Supabase board writes removed; no local_conn -> no execute calls
-        mock_conn.execute.assert_not_called()
+        # Valid row (globex) collected, so realign + upsert + disable called
+        assert mock_conn.execute.call_count == 3
 
     async def test_all_invalid_json_skips_upsert(self, mock_conn):
         """All rows have invalid JSON -> no upsert, no disable."""
@@ -291,7 +294,7 @@ class TestSyncBoards:
         mock_conn.execute.assert_not_called()
 
     async def test_valid_json_parsed(self, mock_conn):
-        """monitor_config='{"key":"value"}' -> parsed without error (no Supabase write)."""
+        """monitor_config='{"key":"value"}' -> parsed and upserted to Supabase."""
         boards = pl.DataFrame(
             {
                 "company_slug": ["acme"],
@@ -307,11 +310,11 @@ class TestSyncBoards:
 
         await sync_boards(mock_conn, boards, dry_run=False)
 
-        # Supabase board writes removed; no local_conn -> no execute calls
-        mock_conn.execute.assert_not_called()
+        # Realign stale URLs + Supabase upsert + disable queries
+        assert mock_conn.execute.call_count == 3
 
     async def test_scraper_fields_embedded_in_metadata(self, mock_conn):
-        """scraper_type + scraper_config parsed without error (no Supabase write)."""
+        """scraper_type + scraper_config parsed and upserted to Supabase."""
         boards = pl.DataFrame(
             {
                 "company_slug": ["acme"],
@@ -327,8 +330,8 @@ class TestSyncBoards:
 
         await sync_boards(mock_conn, boards, dry_run=False)
 
-        # Supabase board writes removed; no local_conn -> no execute calls
-        mock_conn.execute.assert_not_called()
+        # Realign stale URLs + Supabase upsert + disable queries
+        assert mock_conn.execute.call_count == 3
 
     async def test_invalid_scraper_json_skips_row(self, mock_conn):
         boards = pl.DataFrame(
@@ -353,8 +356,38 @@ class TestSyncBoards:
         await sync_boards(mock_conn, sample_boards, dry_run=True)
         mock_conn.execute.assert_not_called()
 
+    async def test_realign_runs_before_upsert_with_slug_url_only(self, mock_conn):
+        """The pre-UPSERT realign step gets (company_slugs, board_slugs, board_urls)
+        — not the full metadata tuple — so renaming a ``board_url`` while keeping
+        the slug stable no longer trips the ``board_slug`` unique constraint.
+        """
+        boards = pl.DataFrame(
+            {
+                "company_slug": ["apartmentiq"],
+                "board_slug": ["apartmentiq-greenhouse"],
+                "board_url": ["https://job-boards.greenhouse.io/apartmentiq"],
+                "monitor_type": ["greenhouse"],
+                "monitor_config": ['{"token": "apartmentiq"}'],
+                "scraper_type": [""],
+                "scraper_config": [""],
+            },
+            schema_overrides=_BOARD_SCHEMA,
+        )
+
+        await sync_boards(mock_conn, boards, dry_run=False)
+
+        calls = mock_conn.execute.call_args_list
+        # Realign is call #0, upsert call #1, disable call #2.
+        assert calls[0].args[0] == _REALIGN_RENAMED_BOARD_URLS_SUPA
+        assert calls[0].args[1] == ["apartmentiq"]
+        assert calls[0].args[2] == ["apartmentiq-greenhouse"]
+        assert calls[0].args[3] == ["https://job-boards.greenhouse.io/apartmentiq"]
+        # No metadata/crawler_type passed to realign — just the 3-tuple.
+        assert len(calls[0].args) == 4
+        assert calls[1].args[0] == _UPSERT_BOARDS_SUPA
+
     async def test_disables_removed_boards(self, mock_conn):
-        """Without local_conn, no disable call happens (Supabase writes removed)."""
+        """Boards upserted and removed boards disabled on Supabase."""
         boards = pl.DataFrame(
             {
                 "company_slug": ["acme", "acme"],
@@ -370,8 +403,69 @@ class TestSyncBoards:
 
         await sync_boards(mock_conn, boards, dry_run=False)
 
-        # Supabase board writes removed; no local_conn -> no execute calls
-        mock_conn.execute.assert_not_called()
+        # Realign stale URLs + Supabase upsert + disable queries
+        assert mock_conn.execute.call_count == 3
+
+    @patch("src.sync.remove_monitor", new_callable=AsyncMock)
+    @patch("src.sync.enqueue_monitor", new_callable=AsyncMock)
+    async def test_local_path_purges_redis_for_disabled_boards(
+        self,
+        mock_enqueue,
+        mock_remove,
+        mock_conn,
+    ):
+        """When local_conn is provided, sync fetches every disabled/gone board
+        and calls remove_monitor so the Redis queue doesn't keep probing dead
+        URLs after a CSV removal.
+        """
+        import uuid
+
+        boards = pl.DataFrame(
+            {
+                "company_slug": ["acme"],
+                "board_slug": ["acme-careers"],
+                "board_url": ["https://acme.com/careers"],
+                "monitor_type": ["greenhouse"],
+                "monitor_config": ["{}"],
+                "scraper_type": [""],
+                "scraper_config": [""],
+            },
+            schema_overrides=_BOARD_SCHEMA,
+        )
+
+        # Supabase connection returns a resolved (board_id, company_id) for the
+        # upserted row so the local-DB branch executes.
+        board_id = uuid.uuid4()
+        company_id = uuid.uuid4()
+        mock_conn.fetch = AsyncMock(
+            return_value=[
+                {
+                    "id": board_id,
+                    "company_id": company_id,
+                    "board_url": "https://acme.com/careers",
+                }
+            ]
+        )
+
+        mock_local_conn = MagicMock()
+        mock_local_conn.execute = AsyncMock()
+        # Two orphan rows: one from a just-disabled board, one that was already
+        # disabled in a previous sync (covers the historical-orphan case).
+        stale_rows = [
+            {"board_id": "orphan-lever", "throttle_key": "lever"},
+            {"board_id": "orphan-greenhouse", "throttle_key": "greenhouse"},
+            # Missing throttle_key must be skipped — no queue to remove from.
+            {"board_id": "orphan-no-domain", "throttle_key": None},
+        ]
+        mock_local_conn.fetch = AsyncMock(return_value=stale_rows)
+
+        await sync_boards(mock_conn, boards, dry_run=False, local_conn=mock_local_conn)
+
+        # Only the two orphans with a throttle_key should be purged from Redis.
+        assert mock_remove.await_count == 2
+        purged_args = {call.args for call in mock_remove.await_args_list}
+        assert ("lever", "orphan-lever") in purged_args
+        assert ("greenhouse", "orphan-greenhouse") in purged_args
 
 
 # ---------------------------------------------------------------------------
@@ -447,6 +541,8 @@ class TestRunSync:
     @patch("src.sync.sync_boards")
     @patch("src.sync.sync_company_descriptions")
     @patch("src.sync.sync_companies")
+    @patch("src.sync._mirror_companies_to_supabase", new_callable=AsyncMock)
+    @patch("src.sync._mirror_companies_to_local", new_callable=AsyncMock)
     @patch("src.sync.sync_industries")
     @patch("src.sync.sync_technologies")
     @patch("src.sync.sync_seniority")
@@ -459,6 +555,8 @@ class TestRunSync:
         mock_sync_seniority,
         mock_sync_technologies,
         mock_sync_industries,
+        _mock_mirror_to_local,
+        _mock_mirror_to_supa,
         mock_sync_companies,
         mock_sync_company_descriptions,
         mock_sync_boards,
@@ -572,7 +670,8 @@ class TestRunSync:
         # technologies/industries: called twice (supa + local) regardless
         assert mock_sync_technologies.call_count == 2
         assert mock_sync_industries.call_count == 2
-        mock_sync_companies.assert_called_once_with(mock_conn, companies_df, False)
+        # companies: called once on local (local-first flow)
+        assert mock_sync_companies.call_count == 1
         mock_sync_company_descriptions.assert_called_once_with(mock_conn, company_descs_df, False)
 
         # Boards: called with supa_conn + local_conn kwarg
@@ -604,10 +703,14 @@ class TestRunSync:
     @patch("src.sync.sync_seniority")
     @patch("src.sync.sync_technologies")
     @patch("src.sync.sync_industries")
+    @patch("src.sync._mirror_companies_to_supabase", new_callable=AsyncMock)
+    @patch("src.sync._mirror_companies_to_local", new_callable=AsyncMock)
     @patch("src.sync.sync_companies")
     async def test_closes_pool_on_error(
         self,
         mock_sync_companies,
+        _mock_mirror_to_local,
+        _mock_mirror_to_supa,
         mock_sync_industries,
         mock_sync_technologies,
         mock_sync_seniority,
@@ -677,3 +780,51 @@ class TestRunSync:
 
         mock_close_all_pools.assert_called_once()
         mock_close_redis.assert_called_once()
+
+
+class TestIsTrivialWatchlist:
+    def test_no_companies_no_filters_is_trivial(self):
+        assert _is_trivial_watchlist({}, 0) is True
+        assert _is_trivial_watchlist(None, 0) is True
+
+    def test_any_company_and_currency_alone_are_trivial(self):
+        # Defaults/prefs don't count as meaningful.
+        assert _is_trivial_watchlist({"anyCompany": True}, 0) is True
+        assert _is_trivial_watchlist({"salaryCurrency": "USD"}, 0) is True
+        assert _is_trivial_watchlist({"anyCompany": True, "salaryCurrency": "USD"}, 0) is True
+
+    def test_companies_make_non_trivial(self):
+        assert _is_trivial_watchlist({}, 1) is False
+        assert _is_trivial_watchlist({"anyCompany": True}, 3) is False
+
+    @pytest.mark.parametrize(
+        "filters",
+        [
+            {"keywords": ["python"]},
+            {"locationSlugs": ["zurich"]},
+            {"occupationSlugs": ["engineer"]},
+            {"senioritySlugs": ["senior"]},
+            {"technologySlugs": ["react"]},
+            {"salaryMin": 100000},
+            {"salaryMax": 200000},
+            {"experienceMin": 2},
+            {"experienceMax": 10},
+            {"experienceMin": 0},
+            {"salaryMin": 0},
+        ],
+    )
+    def test_meaningful_filters_make_non_trivial(self, filters):
+        assert _is_trivial_watchlist(filters, 0) is False
+
+    @pytest.mark.parametrize(
+        "filters",
+        [
+            {"keywords": []},
+            {"locationSlugs": []},
+            {"occupationSlugs": []},
+            {"senioritySlugs": []},
+            {"technologySlugs": []},
+        ],
+    )
+    def test_empty_filter_arrays_are_trivial(self, filters):
+        assert _is_trivial_watchlist(filters, 0) is True

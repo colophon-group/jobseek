@@ -4,14 +4,16 @@ Crawler-specific instructions. See the root [AGENTS.md](../../AGENTS.md) for pro
 
 ## Architecture
 
-Redis-orchestrated workers writing to local Postgres, with CDC export to Supabase:
+Redis-orchestrated workers writing to local Postgres, with CDC export to Supabase + Typesense:
 
 1. **Single Job** (`src/core/`) — pure async functions, no DB awareness
 2. **Workers** (`src/workers/pipeline.py`) — claim from Redis tiered queues, process, write to local Postgres
-3. **Exporter** (`src/exporter.py`) — CDC: local Postgres -> Supabase batch COPY
+3. **Exporter** (`src/exporter.py`) — CDC: local Postgres -> Supabase batch COPY + Typesense upserts (two independent cursors, concurrent writes)
 4. **R2 Drain** (`src/workers/r2_drain.py`) — poll descriptions table, PUT to R2
+5. **Typesense Sync** (`src/sync.py`) — taxonomy + company collections populated after CSV sync; rename detection updates denormalized names on postings
 
 See [docs/03-crawler-architecture.md](../../docs/03-crawler-architecture.md) for full details.
+See [docs/11-typesense.md](../../docs/11-typesense.md) for Typesense deployment details.
 
 ## Key Files
 
@@ -63,8 +65,9 @@ src/
 │   └── lookups.py         # Cached lookup table loaders (locations, technologies, etc.)
 ├── redis_queue.py         # Lua-backed claim/enqueue/reschedule
 ├── lua/                   # claim_work.lua, enqueue_task.lua, reschedule_task.lua
-├── exporter.py            # CDC: local Postgres -> Supabase (job_posting only)
-├── sync.py                # CSV -> local Postgres + Supabase + Redis
+├── exporter.py            # CDC: local Postgres -> Supabase + Typesense (two-cursor)
+├── typesense_client.py    # Shared Typesense client (lazy init, None when unconfigured)
+├── sync.py                # CSV -> local Postgres + Supabase + Redis + Typesense taxonomies
 ├── bootstrap.py           # One-time: Supabase -> local Postgres copy
 ├── cli.py                 # Entry point: crawler run/run-browser/export/drain/sync/board
 ├── config.py              # Settings (pydantic-settings)
@@ -95,7 +98,7 @@ src/
 │   ├── csv_io.py          # CSV read/write utilities
 │   ├── http.py            # httpx client factory
 │   ├── nextdata.py        # Shared field extraction (extract_field, map, list spec, each+wrap)
-│   ├── proxy.py           # Per-domain proxy routing (PROXY_MAP env var)
+│   ├── proxy.py           # Provider-agnostic proxy layer (see Proxy-routed transport)
 │   ├── logging.py         # structlog config
 │   └── slug.py            # slugify utility
 ├── inspect.py             # CSV validation + diagnostic library
@@ -157,17 +160,182 @@ ws reject --reason <key> --message "..."  # Uses active workspace's issue
 # Run crawler workers
 uv run crawler run                     # HTTP worker (claims from simple queues)
 uv run crawler run-browser             # Browser worker (claims from browser queues)
-uv run crawler export                  # CDC exporter loop
+uv run crawler export                  # CDC exporter loop (Supabase + Typesense)
 uv run crawler drain                   # R2 description uploader
-uv run crawler sync                    # CSV -> local Postgres + Supabase + Redis
+uv run crawler sync                    # CSV -> local Postgres + Supabase + Redis + Typesense
 uv run crawler reconcile               # Compare local vs Supabase, fix discrepancies
+uv run crawler backfill-typesense      # Full re-index of job_posting to Typesense
+uv run crawler refresh-typesense       # Refresh Typesense counts + reconcile watchlists
+uv run crawler notify-indexnow         # Push changed company URLs to IndexNow (see docs/13-seo-and-indexnow.md)
 uv run crawler board <slug>            # Process single board (debug)
 uv run crawler board <slug> --dry-run  # Test without DB writes
 uv run crawler board <slug> --dry-run --verbose  # Show all extracted fields
+uv run crawler board <slug> --pcsx-full-crawl  # Force full PCSX crawl for
+                                                # eightfold boards, bypassing
+                                                # the incremental watermark.
+                                                # Used for manual backfills of
+                                                # very large boards (Starbucks).
 
 # Run tests
 uv run pytest tests/
 ```
+
+## Proxy-routed transport
+
+Some hosts (e.g. `apply.starbucks.com`, `citi.eightfold.ai`) block
+Hetzner datacenter IPs with AWS WAF captcha pages. The crawler routes
+httpx requests and Playwright launches for those boards through an
+external HTTP proxy. Implementation: `src/shared/proxy.py` — a
+`ProxyProvider` Protocol with a single `StaticProxyProvider` impl
+covering Webshare / Decodo / any `http://user:pass@host:port` service.
+
+A board opts in by setting `"proxy": true` inside `monitor_config`
+and/or `scraper_config` JSON in `data/boards.csv` — same place as
+`render`, `skip_ssl`, `rescrape_policy`. The two flags are independent;
+typically both are set for a WAF-blocked host.
+
+```csv
+starbucks,starbucks-eightfold,https://starbucks.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/"", ""proxy"": true}",eightfold,"{""enrich"": [""description""], ""proxy"": true}"
+```
+
+Active provider is chosen by env:
+
+```bash
+PROXY_PROVIDER=webshare         # none | webshare | decodo
+WEBSHARE_PROXY_URL=http://user:pass@192.53.69.78:6716
+DECODO_PROXY_URL=http://user:pass@isp.decodo.com:10001
+```
+
+`PROXY_PROVIDER=none` (and missing/empty URLs) are fail-safe — boards
+with `proxy: true` fall back to direct egress, which means captcha on
+WAF'd hosts but nothing crashes. The provider logs
+`proxy.provider.missing_url` at ERROR when a selected provider has an
+empty URL — first thing to check when a `proxy: true` board starts
+returning captcha.
+
+### Billing model — per IP, flat monthly (NOT per request)
+
+**Current providers (Webshare, Decodo) are billed per static IP, flat
+monthly. Per-request volume does not affect the bill.** One leased IP
+costs the same at 10 req/day and 10 000 req/day. Cost scales with IPs
+leased, not traffic volume.
+
+This is the opposite of the prior Lightpanda CDP transport (removed in
+PR #2181), which was billed by browser-hours of session clock time, so
+request volume directly mattered. Older mentions of "cost" and
+"bandwidth isn't free" in commit messages and docs are leftovers from
+that era — they **do not** apply to the Webshare/Decodo setup.
+
+A single IP covers the current WAF-blocked set; add IPs (and a
+rotating/failover provider impl) only when an origin bans the IP or a
+provider hits concurrency caps.
+
+Adding a new provider or a new WAF-blocked host is covered in the
+commit that introduced this section (PR #2181) — the PR body has the
+step-by-step and rollback runbook.
+
+### Disabling re-scrapes on paid-proxy boards
+
+> This is **not** a per-request cost saver — see the billing note
+> above. The proxy provider does not bill per request.
+
+Set `monitor_config.rescrape_policy = "never"` in `data/boards.csv`
+for WAF-blocked boards whose content rarely changes. The reasons are:
+
+1. **Concurrency budget.** Webshare static IPs allow a limited number
+   of concurrent connections per IP. Each needless re-scrape holds a
+   connection slot that another board could use. A board with
+   thousands of postings (Starbucks ~21k, Uber ~1k) will saturate the
+   slot budget at the 24h refresh cadence without contributing new
+   information.
+2. **Origin good-neighborliness.** The proxy exit IP hitting the
+   origin at high volume for stale data is what gets the IP blocked
+   by the origin's WAF, forcing us to lease a new one.
+3. **Future-proofing.** If we ever swap to a bandwidth-metered
+   provider (e.g. Decodo's rotating/BW plans, which are NOT what we
+   run today), this flag is already in the right place.
+
+Mechanics: `_RECORD_SCRAPE_SUCCESS` sets `next_scrape_at = NULL` after
+each successful scrape when the flag is set. The first scrape still
+runs (so descriptions are filled when a posting is first discovered),
+and relisted jobs still re-scrape once (because
+`_enqueue_scrapes_for_relisted` directly sets `next_scrape_at =
+now()`); only the periodic refresh tail is suppressed.
+
+```csv
+starbucks,starbucks-eightfold,https://starbucks.eightfold.ai/careers,eightfold,"{""url_filter"":""/careers/job/"",""rescrape_policy"":""never""}",json-ld,"{""enrich"":[""description""]}"
+```
+
+`inspect.validate_csvs()` rejects unknown values (only `"never"` is
+supported today).
+
+## Eightfold hybrid monitor (sitemap + PCSX incremental)
+
+The `eightfold` monitor runs in a hybrid mode for PCSX-enabled tenants: it
+fetches the sitemap for the canonical URL set (gone detection works
+unchanged) **and** paginates the Eightfold PCSX API (`/api/pcsx/search`)
+incrementally via a high-water mark on `postedTs`. See `ws help monitor
+eightfold` for the full reference.
+
+### Watermark state
+
+Stored as `job_board.metadata.pcsx_watermark` (runtime-written — preserved
+across `crawler sync` by `_UPSERT_BOARD_LOCAL`'s JSONB merge):
+
+```json
+{
+  "max_ts": 1775606400,
+  "last_full_at": "2026-04-08T23:00:00+00:00",
+  "last_incremental_at": "2026-04-09T09:00:00+00:00",
+  "interval_days": 7,
+  "enabled": true,
+  "auto_full_crawl": true,
+  "extra": {"host": "careers.kering.com", "domain": "kering"}
+}
+```
+
+- `max_ts` — drives incremental stop (paginate until all items on a page
+  have `postedTs <= max_ts`, then 3 safety pages for boundary jitter)
+- `last_full_at` / `interval_days` — weekly forced full crawl for drift
+  correction (content changes on existing jobs via json-ld enrichment)
+- `enabled` — cached result of the `/api/pcsx/search` probe. `false` for
+  the 7 tenants that return `"PCSX is not enabled for this user."`
+- `auto_full_crawl` — if `false`, skip the automatic full crawl on first
+  run. Used for boards too large to crawl inside the scheduled worker pool
+
+### Manual backfill for very large boards
+
+Starbucks (~21k jobs) has `monitor_config.pcsx_watermark.auto_full_crawl:
+false` in `data/boards.csv` so scheduled runs don't start a 30-60 minute
+full crawl. Operator runs the backfill manually from the Hetzner box:
+
+```bash
+ssh -i ~/.ssh/hetzner_deploy root@<WORKER_IP>
+docker exec crawler-slim uv run crawler board starbucks-eightfold --pcsx-full-crawl
+```
+
+After success, the watermark is populated and subsequent scheduled runs
+do fast incremental top-ups (~30-60 seconds). The 7 PCSX-disabled boards
+(bayer, american-express, hsbc, stmicroelectronics, symetra, vale, zebra)
+stay on the sitemap-only path automatically — their probes fail and
+`enabled=false` gets cached.
+
+### CSV config for PCSX-enabled eightfold boards
+
+Each PCSX-enabled eightfold board needs `scraper_config: {"enrich":
+["description"]}` in `data/boards.csv` so the pipeline runs a one-shot
+json-ld scrape per new job to fill descriptions (PCSX doesn't return
+them). 15 boards migrated: citigroup, dexcom, eaton, hasbro, kering,
+lam-research, mercado-libre, micron, microsoft, northrop-grumman, ptc,
+qualcomm, starbucks, tailored-brands, vodafone.
+
+### Rollback paths
+
+1. Per-board kill switch — `metadata.pcsx_watermark.enabled = false` via SQL
+2. Disable auto-full-crawl — `metadata.pcsx_watermark.auto_full_crawl = false`
+3. CSV revert — remove `scraper_config: {enrich: [description]}` and sync
+4. Full git revert — safe; the `board.py` partial-rich fix is a strict
+   superset of pre-refactor behaviour
 
 ## Crawler Setup Agent Instruction Sources
 
@@ -290,11 +458,22 @@ All crawler services run on Hetzner. Machine IPs, credentials, and API keys are 
 ### SSH Access
 
 ```bash
-ssh -i ~/.ssh/hetzner_deploy root@<WORKER_IP>    # Worker machine (Redis, workers, exporter, drain, alloy)
-ssh -i ~/.ssh/hetzner_deploy root@<POSTGRES_IP>   # Postgres machine
+ssh -i ~/.ssh/hetzner_deploy root@<WORKER_IP>      # Worker machine (Redis, workers, exporter, drain, alloy)
+ssh -i ~/.ssh/hetzner_deploy root@<POSTGRES_IP>     # Postgres machine
+ssh -i ~/.ssh/hetzner_deploy root@<TYPESENSE_IP>    # Typesense machine
 ```
 
-IPs are in `.env.local` (`HETZNER_HOST` for worker, `LOCAL_DATABASE_URL` contains the Postgres IP).
+IPs are in `.env.local` (`HETZNER_HOST` for worker, `LOCAL_DATABASE_URL` contains the Postgres IP, `TYPESENSE_HOST` for Typesense).
+
+### Private Network Layout
+
+All machines communicate via Hetzner private network (10.0.0.0/16). See `.env.local` for actual IPs.
+
+| Machine | Role |
+|---------|------|
+| Crawler box | Workers, exporter, drain, Redis, Alloy |
+| Postgres box | Local Postgres (source of truth) |
+| Typesense box | Typesense 27.1, Cloudflare tunnel (`cloudflared`) |
 
 ### Container Management
 
@@ -362,6 +541,55 @@ curl -s -X POST "https://colophongroup.grafana.net/api/dashboards/db" \
 ```
 
 `GRAFANA_API_KEY` is in `.env.local`. The dashboard UID is `jobseek-crawler-pipeline`.
+
+### Typesense Operations
+
+Typesense 27.1 runs as a Docker container on a dedicated Hetzner CX22 (4 GB RAM, 2 vCPU). Data stored at `/mnt/typesense-data`. The container runs with `--network host`.
+
+```bash
+# SSH to Typesense machine
+ssh -i ~/.ssh/hetzner_deploy root@<TYPESENSE_IP>
+
+# Check health
+curl -s http://localhost:8108/health -H "X-TYPESENSE-API-KEY: <ADMIN_KEY>"
+
+# View stats
+curl -s http://localhost:8108/stats.json -H "X-TYPESENSE-API-KEY: <ADMIN_KEY>"
+
+# View container
+docker ps --format "table {{.Names}}\t{{.Status}}\t{{.MemUsage}}"
+docker logs typesense 2>&1 | tail -20
+
+# Restart Typesense
+docker rm -f typesense && docker run -d --name typesense --restart unless-stopped \
+  --network host -v /mnt/typesense-data:/data \
+  typesense/typesense:27.1 --data-dir /data --api-key=<ADMIN_KEY>
+```
+
+**Cloudflare tunnel**: `cloudflared` runs as a systemd service, routing `typesense.colophon-group.org` to `localhost:8108`. Auto-starts on reboot.
+
+```bash
+# Check tunnel status
+systemctl status cloudflared
+
+# Restart tunnel
+systemctl restart cloudflared
+```
+
+**Collection management** (from `apps/crawler/` on any machine with connectivity):
+
+```bash
+# Create/recreate collections + aliases
+uv run python ../../scripts/typesense-setup.py [--force]
+
+# Full re-index
+uv run crawler backfill-typesense
+
+# Refresh counts + reconcile watchlists
+uv run crawler refresh-typesense
+```
+
+**Grafana metrics**: `typesense_export_docs_total`, `typesense_export_lag`, `typesense_export_duration_seconds`, `typesense_healthy` (0/1), `typesense_memory_bytes`, `typesense_reconciliation_discrepancies`.
 
 ### Alloy (Metrics + Logs Collector)
 

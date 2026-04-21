@@ -7,8 +7,19 @@ import { account, userPreferences } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { getSession, getSessionUserId } from "@/lib/sessionCache";
 import { cached } from "@/lib/cache";
+import { getLanguage } from "@/lib/job-languages";
 
 const PASSWORD_RESET_COOLDOWN_SECONDS = 60;
+
+/**
+ * jobLanguages flows into Typesense `filter_by` strings and Postgres array
+ * literals via raw interpolation, so we whitelist at the write boundary.
+ * Anything not a known language code (or the "*" all-languages sentinel)
+ * is silently dropped to keep the array shape predictable.
+ */
+function sanitizeJobLanguages(input: string[]): string[] {
+  return input.filter((c) => c === "*" || getLanguage(c) != null);
+}
 
 export async function getPreferences() {
   const session = await getSession();
@@ -63,7 +74,7 @@ export async function updatePreferences(
     }
 
     if (data.jobLanguages !== undefined) {
-      set.jobLanguages = data.jobLanguages;
+      set.jobLanguages = sanitizeJobLanguages(data.jobLanguages);
     }
 
     if (data.displayCurrency !== undefined) {
@@ -110,7 +121,7 @@ export async function updatePreferences(
       userId,
       theme: data.theme ?? "light",
       locale: data.locale ?? "en",
-      jobLanguages: data.jobLanguages ?? [],
+      jobLanguages: data.jobLanguages ? sanitizeJobLanguages(data.jobLanguages) : [],
       displayCurrency: data.displayCurrency ?? "EUR",
       cookieConsent: data.cookieConsent ?? false,
       themeUpdatedAt: data.themeUpdatedAt ? new Date(data.themeUpdatedAt) : new Date(),

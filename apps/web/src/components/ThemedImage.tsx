@@ -13,6 +13,7 @@ type ThemedImageProps = {
   height: number;
   className?: string;
   style?: CSSProperties;
+  sizes?: string;
 };
 
 /**
@@ -39,6 +40,7 @@ export function ThemedImage({
   height,
   className,
   style,
+  sizes,
 }: ThemedImageProps) {
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -54,6 +56,7 @@ export function ThemedImage({
       height={height}
       className={className}
       style={style}
+      sizes={sizes}
     />
   );
 }

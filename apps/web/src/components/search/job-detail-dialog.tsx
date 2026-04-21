@@ -177,6 +177,7 @@ function DetailContent({ detail, descriptionLoaded }: { detail: PostingDetail; d
               alt={company.name}
               width={36}
               height={36}
+              sizes="36px"
               className="size-9 shrink-0 rounded"
             />
           ) : (

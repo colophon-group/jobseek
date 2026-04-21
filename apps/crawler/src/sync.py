@@ -3,10 +3,11 @@
 Reads data/companies.csv and data/boards.csv, upserts rows into the database.
 The DB is derived state — CSVs are the source of truth.
 
-Writes to three targets:
+Writes to four targets:
 - Local Postgres: full board config (scheduling columns)
 - Supabase: minimal board reference (display/admin)
 - Redis: board config hashes + initial schedule
+- Typesense: taxonomy, company, and watchlist collections (fire-and-forget)
 
 Usage:
     uv run python -m src.sync              # sync both CSVs
@@ -25,17 +26,20 @@ from urllib.parse import urlparse
 
 import polars as pl
 import structlog
+from typesense.exceptions import ObjectNotFound
 
 if TYPE_CHECKING:
     import asyncpg
+    import typesense
 
 from src.config import settings
 from src.core.monitors import api_monitor_types, monitor_needs_browser
 from src.core.occupation_resolve import match_occupation
 from src.core.scrapers import scraper_needs_browser
 from src.db import close_all_pools, create_local_pool, create_pool
-from src.redis_queue import close_redis, enqueue_monitor
+from src.redis_queue import close_redis, enqueue_monitor, remove_monitor
 from src.shared.logging import setup_logging
+from src.typesense_client import get_typesense_client
 
 _API_MONITOR_TYPES = api_monitor_types()
 
@@ -202,26 +206,37 @@ ON CONFLICT (company_id, locale) DO UPDATE SET
   description = EXCLUDED.description
 """
 
+# When ``board_url`` is renamed in CSV but the slug stays (e.g. changing
+# the Greenhouse token from ``abodo`` to ``apartmentiq`` while keeping
+# slug ``apartmentiq-greenhouse``), ``_UPSERT_BOARDS_SUPA`` below would
+# hit the ``board_slug`` unique constraint: the INSERT path fires for
+# the new URL, and the old-URL row still owns the slug. Run this first
+# to rewrite the URL on the existing row so the subsequent UPSERT can
+# take the ``ON CONFLICT (board_url)`` branch cleanly.
+_REALIGN_RENAMED_BOARD_URLS_SUPA = """
+UPDATE job_board jb
+SET board_url = b.board_url,
+    updated_at = now()
+FROM unnest($1::text[], $2::text[], $3::text[])
+  AS b(company_slug, board_slug, board_url)
+JOIN company c ON c.slug = b.company_slug
+WHERE jb.company_id = c.id
+  AND jb.board_slug IS NOT NULL
+  AND jb.board_slug = b.board_slug
+  AND jb.board_url IS DISTINCT FROM b.board_url
+"""
+
 _UPSERT_BOARDS_SUPA = """
-INSERT INTO job_board (company_id, board_slug, board_url, crawler_type, metadata,
-                       throttle_key,
-                       monitor_needs_browser, scraper_needs_browser)
-SELECT c.id, b.board_slug, b.board_url, b.crawler_type, b.metadata::jsonb,
-       b.throttle_key,
-       b.monitor_needs_browser::boolean, b.scraper_needs_browser::boolean
-FROM unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::text[], $6::text[],
-            $7::boolean[], $8::boolean[])
-  AS b(company_slug, board_slug, board_url, crawler_type, metadata, throttle_key,
-       monitor_needs_browser, scraper_needs_browser)
+INSERT INTO job_board (company_id, board_slug, board_url, crawler_type, metadata)
+SELECT c.id, b.board_slug, b.board_url, b.crawler_type, b.metadata::jsonb
+FROM unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::text[])
+  AS b(company_slug, board_slug, board_url, crawler_type, metadata)
 JOIN company c ON c.slug = b.company_slug
 ON CONFLICT (board_url) DO UPDATE SET
     company_id = EXCLUDED.company_id,
     board_slug = COALESCE(EXCLUDED.board_slug, job_board.board_slug),
     crawler_type = EXCLUDED.crawler_type,
     metadata = EXCLUDED.metadata,
-    throttle_key = EXCLUDED.throttle_key,
-    monitor_needs_browser = EXCLUDED.monitor_needs_browser,
-    scraper_needs_browser = EXCLUDED.scraper_needs_browser,
     is_enabled = true,
     updated_at = now()
 """
@@ -241,13 +256,64 @@ ON CONFLICT (id) DO UPDATE SET
     board_slug = COALESCE(EXCLUDED.board_slug, job_board.board_slug),
     board_url = EXCLUDED.board_url,
     crawler_type = EXCLUDED.crawler_type,
-    metadata = EXCLUDED.metadata,
+    -- Preserve runtime-written metadata subkeys that the pipeline persists
+    -- via _UPDATE_METADATA during normal operation. Without this, every
+    -- `crawler sync` wipes out:
+    --   * ``sitemap_url`` — written by monitors that discover the sitemap
+    --     URL dynamically (eightfold, api_sniffer-based boards)
+    --   * ``pcsx_watermark`` — the eightfold incremental high-water mark
+    --
+    -- ``sitemap_url`` is a pure runtime signal (CSV never sets it), so
+    -- preserve it verbatim from the existing row.
+    --
+    -- ``pcsx_watermark`` is a mixed subkey: some fields are runtime state
+    -- (``max_ts``, ``last_full_at``, ``last_incremental_at``, ``enabled``,
+    -- ``extra``) and some are CSV-controlled configuration (``auto_full_crawl``,
+    -- ``interval_days``). We layer them so that CSV wins for config and
+    -- runtime wins for state:
+    --
+    --   final_pcsx_watermark = csv_pcsx_watermark
+    --                          || runtime_state_fields_from_existing
+    --
+    -- This means an operator who edits ``auto_full_crawl`` in the CSV and
+    -- re-syncs will see the change take effect immediately, but the watermark
+    -- itself (max_ts and friends) stays intact so the next scheduled run
+    -- still knows where incremental pagination left off.
+    metadata = EXCLUDED.metadata || jsonb_strip_nulls(jsonb_build_object(
+        'sitemap_url', job_board.metadata -> 'sitemap_url',
+        'pcsx_watermark', CASE
+            WHEN job_board.metadata -> 'pcsx_watermark' IS NULL THEN NULL
+            ELSE COALESCE(EXCLUDED.metadata -> 'pcsx_watermark', '{}'::jsonb)
+                 || jsonb_strip_nulls(jsonb_build_object(
+                     'max_ts', job_board.metadata -> 'pcsx_watermark' -> 'max_ts',
+                     'last_full_at',
+                         job_board.metadata -> 'pcsx_watermark' -> 'last_full_at',
+                     'last_incremental_at',
+                         job_board.metadata -> 'pcsx_watermark' -> 'last_incremental_at',
+                     'enabled', job_board.metadata -> 'pcsx_watermark' -> 'enabled',
+                     'extra', job_board.metadata -> 'pcsx_watermark' -> 'extra'
+                 ))
+        END
+    )),
     check_interval_minutes = EXCLUDED.check_interval_minutes,
     scrape_interval_hours = EXCLUDED.scrape_interval_hours,
     throttle_key = EXCLUDED.throttle_key,
     monitor_needs_browser = EXCLUDED.monitor_needs_browser,
     scraper_needs_browser = EXCLUDED.scraper_needs_browser,
-    is_enabled = EXCLUDED.is_enabled,
+    -- Preserve runtime-driven disables. ``_RECORD_FAILURE`` and
+    -- ``_RECORD_BOARD_GONE`` set ``is_enabled = false`` plus a
+    -- ``board_status`` of ``'disabled'`` or ``'gone'`` when the
+    -- board has been failing or its upstream slug returned 404.
+    -- Without this CASE, every ``crawler sync`` resurrects
+    -- ``is_enabled = true`` and the (admittedly already-orthogonal-
+    -- to-the-Redis-claim-path) Postgres state diverges from
+    -- the runtime truth. To re-enable, an operator removes the
+    -- ``board_status`` row via SQL or via deleting+re-adding
+    -- the CSV entry. See issue #2215.
+    is_enabled = CASE
+        WHEN job_board.board_status IN ('disabled', 'gone') THEN false
+        ELSE EXCLUDED.is_enabled
+    END,
     updated_at = now()
 """
 
@@ -256,6 +322,16 @@ UPDATE job_board
 SET is_enabled = false, board_status = 'disabled', updated_at = now()
 WHERE board_url NOT IN (SELECT unnest($1::text[]))
   AND is_enabled = true
+"""
+
+# Every row that should NOT be in Redis. A board appearing here while its
+# board_id is still live in ``monitors_*:{domain}`` is why dead boards keep
+# producing ``batch.monitor.error`` after being removed from ``boards.csv`` —
+# Postgres gets disabled but the worker claims from Redis, not Postgres.
+_FETCH_DISABLED_BOARDS_FOR_REDIS_CLEANUP = """
+SELECT id::text AS board_id, throttle_key
+FROM job_board
+WHERE is_enabled = false OR board_status IN ('disabled', 'gone')
 """
 
 _FETCH_BOARD_IDS = """
@@ -742,6 +818,114 @@ async def sync_company_descriptions(
     log.info("sync.company_descriptions.upserted", count=len(slugs))
 
 
+async def _mirror_companies_to_local(
+    supa_conn: asyncpg.Connection,
+    local_conn: asyncpg.Connection,
+) -> None:
+    """Copy companies from Supabase to local Postgres, preserving UUIDs.
+
+    job_posting.company_id references Supabase-generated UUIDs, so local
+    must have the same IDs for the exporter's company_info lookup to work.
+    """
+    rows = await supa_conn.fetch(
+        "SELECT id, slug, name, website, logo, icon, logo_type, "
+        "industry, employee_count_range, founded_year, extras "
+        "FROM company"
+    )
+    if not rows:
+        return
+
+    # Delete any local rows whose slug matches but UUID differs (stale from
+    # earlier sync that generated new UUIDs instead of preserving Supabase's).
+    await local_conn.execute(
+        "DELETE FROM company WHERE slug = ANY($1::text[]) AND id != ALL($2::uuid[])",
+        [r["slug"] for r in rows],
+        [r["id"] for r in rows],
+    )
+
+    await local_conn.execute(
+        "INSERT INTO company (id, slug, name, website, logo, icon, logo_type, "
+        "industry, employee_count_range, founded_year, extras) "
+        "SELECT * FROM unnest($1::uuid[], $2::text[], $3::text[], $4::text[], "
+        "$5::text[], $6::text[], $7::text[], $8::smallint[], $9::smallint[], "
+        "$10::smallint[], $11::jsonb[]) "
+        "ON CONFLICT (id) DO UPDATE SET "
+        "slug = EXCLUDED.slug, name = EXCLUDED.name, "
+        "website = EXCLUDED.website, logo = EXCLUDED.logo, "
+        "icon = EXCLUDED.icon, logo_type = EXCLUDED.logo_type, "
+        "industry = EXCLUDED.industry, "
+        "employee_count_range = EXCLUDED.employee_count_range, "
+        "founded_year = EXCLUDED.founded_year, "
+        "extras = EXCLUDED.extras, updated_at = now()",
+        [r["id"] for r in rows],
+        [r["slug"] for r in rows],
+        [r["name"] for r in rows],
+        [r.get("website") for r in rows],
+        [r.get("logo") for r in rows],
+        [r.get("icon") for r in rows],
+        [r.get("logo_type") for r in rows],
+        [r.get("industry") for r in rows],
+        [r.get("employee_count_range") for r in rows],
+        [r.get("founded_year") for r in rows],
+        [r.get("extras") for r in rows],
+    )
+    log.info("sync.companies.mirrored_to_local", count=len(rows))
+
+
+async def _mirror_companies_to_supabase(
+    local_conn: asyncpg.Connection,
+    supa_conn: asyncpg.Connection,
+) -> None:
+    """Push all companies from local Postgres to Supabase.
+
+    Local is the source of truth. Uses ON CONFLICT (slug) since Supabase
+    may have rows with different UUIDs from before the migration. Updates
+    the Supabase row's id to match local so all references are consistent.
+    """
+    rows = await local_conn.fetch(
+        "SELECT id, slug, name, website, logo, icon, logo_type, "
+        "industry, employee_count_range, founded_year, extras "
+        "FROM company"
+    )
+    if not rows:
+        return
+
+    # Delete Supabase rows whose slug matches but UUID differs, then upsert
+    await supa_conn.execute(
+        "DELETE FROM company WHERE slug = ANY($1::text[]) AND id != ALL($2::uuid[])",
+        [r["slug"] for r in rows],
+        [r["id"] for r in rows],
+    )
+
+    await supa_conn.execute(
+        "INSERT INTO company (id, slug, name, website, logo, icon, logo_type, "
+        "industry, employee_count_range, founded_year, extras) "
+        "SELECT * FROM unnest($1::uuid[], $2::text[], $3::text[], $4::text[], "
+        "$5::text[], $6::text[], $7::text[], $8::smallint[], $9::smallint[], "
+        "$10::smallint[], $11::jsonb[]) "
+        "ON CONFLICT (id) DO UPDATE SET "
+        "slug = EXCLUDED.slug, name = EXCLUDED.name, "
+        "website = EXCLUDED.website, logo = EXCLUDED.logo, "
+        "icon = EXCLUDED.icon, logo_type = EXCLUDED.logo_type, "
+        "industry = EXCLUDED.industry, "
+        "employee_count_range = EXCLUDED.employee_count_range, "
+        "founded_year = EXCLUDED.founded_year, "
+        "extras = EXCLUDED.extras, updated_at = now()",
+        [r["id"] for r in rows],
+        [r["slug"] for r in rows],
+        [r["name"] for r in rows],
+        [r.get("website") for r in rows],
+        [r.get("logo") for r in rows],
+        [r.get("icon") for r in rows],
+        [r.get("logo_type") for r in rows],
+        [r.get("industry") for r in rows],
+        [r.get("employee_count_range") for r in rows],
+        [r.get("founded_year") for r in rows],
+        [r.get("extras") for r in rows],
+    )
+    log.info("sync.companies.mirrored_to_supabase", count=len(rows))
+
+
 async def sync_companies(conn: asyncpg.Connection, companies: pl.DataFrame, dry_run: bool) -> None:
     """Batch upsert companies."""
     if len(companies) == 0:
@@ -917,8 +1101,27 @@ async def sync_boards(
         log.info("sync.boards.all_skipped", skipped=skipped)
         return
 
-    # Supabase board sync removed — frontend never queries job_board.
-    # Boards are only needed on local Postgres (worker scheduling) and Redis (queue).
+    # --- Target 1: Supabase (minimal board reference) ---
+    # Realign any stale ``board_url`` before the UPSERT so that a
+    # slug-stable URL rename (see comment on the SQL constant) doesn't
+    # trip the ``board_slug`` unique constraint.
+    await conn.execute(
+        _REALIGN_RENAMED_BOARD_URLS_SUPA,
+        company_slugs,
+        board_slugs,
+        board_urls,
+    )
+    await conn.execute(
+        _UPSERT_BOARDS_SUPA,
+        company_slugs,
+        board_slugs,
+        board_urls,
+        crawler_types,
+        metadatas,
+    )
+    log.info("sync.boards.upserted_supa", count=len(board_urls), skipped=skipped)
+
+    await conn.execute(_DISABLE_REMOVED_BOARDS, board_urls)
 
     # --- Targets 2 & 3: local Postgres + Redis ---
     if local_conn is None:
@@ -989,10 +1192,23 @@ async def sync_boards(
     # Disable removed boards in local Postgres too
     await local_conn.execute(_DISABLE_REMOVED_BOARDS, board_urls)
 
+    # Purge Redis monitor queue for any board that's no longer eligible to run
+    # (just-disabled or previously disabled/gone). Without this, the per-domain
+    # ``monitors_{wtype}:{domain}`` key retains the stale board_id and the
+    # worker keeps claiming it every cycle, producing ``batch.monitor.error``
+    # 404s that no CSV update can silence.
+    orphan_rows = await local_conn.fetch(_FETCH_DISABLED_BOARDS_FOR_REDIS_CLEANUP)
+    for row in orphan_rows:
+        domain = row["throttle_key"] or ""
+        if not domain:
+            continue
+        await remove_monitor(domain, row["board_id"])
+
     log.info(
         "sync.boards.local_redis",
         local_upserted=local_upserted,
         redis_enqueued=redis_enqueued,
+        redis_orphans_removed=len(orphan_rows),
     )
 
 
@@ -1207,6 +1423,939 @@ async def sync_lookup_tables_local(
     log.info("sync.lookup_tables_local.complete")
 
 
+# ---------------------------------------------------------------------------
+# Typesense helpers
+# ---------------------------------------------------------------------------
+
+_TYPESENSE_BATCH_SIZE = 1000
+
+
+def _ts_bulk_upsert(
+    client: typesense.Client,
+    collection: str,
+    docs: list[dict],
+) -> None:
+    """Bulk upsert documents to a Typesense collection.
+
+    Splits into batches of ``_TYPESENSE_BATCH_SIZE``. Logs errors but does
+    not raise — Typesense writes are fire-and-forget.
+    """
+    if not docs:
+        return
+    for i in range(0, len(docs), _TYPESENSE_BATCH_SIZE):
+        batch = docs[i : i + _TYPESENSE_BATCH_SIZE]
+        results = client.collections[collection].documents.import_(batch, {"action": "upsert"})
+        errors = [r for r in results if not r.get("success", True)]
+        if errors:
+            log.warning(
+                "typesense.bulk_upsert.errors",
+                collection=collection,
+                error_count=len(errors),
+                sample=errors[:3],
+            )
+    log.info(
+        "typesense.bulk_upsert.done",
+        collection=collection,
+        doc_count=len(docs),
+    )
+
+
+def _ts_bulk_delete_ids(
+    client: typesense.Client,
+    collection: str,
+    ids: list[str],
+) -> None:
+    """Delete documents by id from a Typesense collection.
+
+    Iterates per-id (cheap at the scale this is used — excluding trivial
+    watchlists). 404s are expected for ids that were never indexed.
+    """
+    if not ids:
+        return
+    deleted = 0
+    for doc_id in ids:
+        try:
+            client.collections[collection].documents[doc_id].delete()
+            deleted += 1
+        except ObjectNotFound:
+            # Doc may never have been indexed — that's the whole point.
+            pass
+        except Exception as exc:
+            log.warning(
+                "typesense.delete.error",
+                collection=collection,
+                doc_id=doc_id,
+                error=str(exc),
+            )
+    log.info(
+        "typesense.delete.done",
+        collection=collection,
+        requested=len(ids),
+        deleted=deleted,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Typesense taxonomy sync
+# ---------------------------------------------------------------------------
+
+
+async def sync_locations_typesense(
+    supa_conn: asyncpg.Connection,
+    local_conn: asyncpg.Connection | None,
+    client: typesense.Client,
+) -> None:
+    """Sync locations to the Typesense ``location`` collection.
+
+    Queries Supabase for location data (lat/lng/slug) and local Postgres
+    for active posting counts.
+    """
+    rows = await supa_conn.fetch(
+        """
+        SELECT l.id, l.type, l.lat, l.lng, l.slug, l.population,
+               pn.name AS parent_name
+        FROM location l
+        LEFT JOIN location parent ON parent.id = l.parent_id
+        LEFT JOIN LATERAL (
+            SELECT ln.name
+            FROM location_name ln
+            WHERE ln.location_id = parent.id AND ln.locale = 'en' AND ln.is_display
+            LIMIT 1
+        ) pn ON true
+        """
+    )
+    if not rows:
+        log.info("typesense.locations.empty")
+        return
+
+    # Fetch locale names from Supabase
+    name_rows = await supa_conn.fetch(
+        "SELECT location_id, locale, name FROM location_name WHERE is_display"
+    )
+    names_by_id: dict[int, dict[str, str]] = {}
+    for nr in name_rows:
+        names_by_id.setdefault(nr["location_id"], {})[nr["locale"]] = nr["name"]
+
+    # Count active postings per location from local Postgres
+    counts: dict[int, int] = {}
+    if local_conn is not None:
+        count_rows = await local_conn.fetch(
+            """
+            SELECT unnest(location_ids) AS loc_id, COUNT(*) AS cnt
+            FROM job_posting
+            WHERE is_active
+            GROUP BY 1
+            """
+        )
+        counts = {r["loc_id"]: r["cnt"] for r in count_rows}
+
+    docs: list[dict] = []
+    for r in rows:
+        loc_id = r["id"]
+        loc_names = names_by_id.get(loc_id, {})
+        count = counts.get(loc_id, 0)
+
+        doc: dict = {
+            "id": str(loc_id),
+            "location_id": loc_id,
+            "slug": r["slug"] or "",
+            "name_en": loc_names.get("en", ""),
+            "type": r["type"] or "city",
+            "has_active_postings": count > 0,
+            "active_posting_count": count,
+        }
+        # Optional fields
+        if loc_names.get("de"):
+            doc["name_de"] = loc_names["de"]
+        if loc_names.get("fr"):
+            doc["name_fr"] = loc_names["fr"]
+        if loc_names.get("it"):
+            doc["name_it"] = loc_names["it"]
+        if r["lat"] is not None and r["lng"] is not None:
+            doc["coordinates"] = [float(r["lat"]), float(r["lng"])]
+        if r["parent_name"]:
+            doc["parent_name"] = r["parent_name"]
+        if r["population"] is not None:
+            doc["population"] = r["population"]
+
+        docs.append(doc)
+
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, _ts_bulk_upsert, client, "location", docs)
+    log.info("typesense.locations.synced", count=len(docs))
+
+
+async def sync_occupations_typesense(
+    supa_conn: asyncpg.Connection,
+    local_conn: asyncpg.Connection | None,
+    client: typesense.Client,
+) -> None:
+    """Sync occupations to the Typesense ``occupation`` collection.
+
+    One document per (occupation, locale) pair.
+    """
+    rows = await supa_conn.fetch(
+        """
+        SELECT o.id, o.slug,
+               on2.locale, on2.name, on2.is_display,
+               d.slug AS domain_slug
+        FROM occupation o
+        JOIN occupation_name on2 ON on2.occupation_id = o.id
+        LEFT JOIN occupation_domain d ON d.id = o.domain_id
+        ORDER BY o.id, on2.locale
+        """
+    )
+    if not rows:
+        log.info("typesense.occupations.empty")
+        return
+
+    # Fetch domain display names
+    domain_name_rows = await supa_conn.fetch(
+        "SELECT domain_id, locale, name FROM occupation_domain_name WHERE is_display"
+    )
+    domain_names: dict[int, dict[str, str]] = {}
+    for dr in domain_name_rows:
+        domain_names.setdefault(dr["domain_id"], {})[dr["locale"]] = dr["name"]
+
+    # Domain slug -> id mapping
+    domain_rows = await supa_conn.fetch("SELECT id, slug FROM occupation_domain")
+    domain_slug_to_id = {r["slug"]: r["id"] for r in domain_rows}
+
+    # Active posting counts from local Postgres
+    counts: dict[int, int] = {}
+    if local_conn is not None:
+        count_rows = await local_conn.fetch(
+            """
+            SELECT occupation_id, COUNT(*) AS cnt
+            FROM job_posting
+            WHERE is_active AND occupation_id IS NOT NULL
+            GROUP BY 1
+            """
+        )
+        counts = {r["occupation_id"]: r["cnt"] for r in count_rows}
+
+    # Group by (occupation_id, locale)
+    # display names vs aliases
+    occ_data: dict[tuple[int, str], dict] = {}
+    for r in rows:
+        occ_id = r["id"]
+        locale = r["locale"]
+        key = (occ_id, locale)
+
+        if key not in occ_data:
+            domain_id = domain_slug_to_id.get(r["domain_slug"]) if r["domain_slug"] else None
+            domain_name_map = domain_names.get(domain_id, {}) if domain_id else {}
+            occ_data[key] = {
+                "occ_id": occ_id,
+                "slug": r["slug"],
+                "locale": locale,
+                "name": None,
+                "aliases": [],
+                "domain_name": domain_name_map.get(locale) or domain_name_map.get("en"),
+            }
+
+        if r["is_display"]:
+            occ_data[key]["name"] = r["name"]
+        else:
+            occ_data[key]["aliases"].append(r["name"])
+
+    # Also include wildcard aliases (locale='*') for all real locales
+    wildcard_aliases: dict[int, list[str]] = {}
+    for r in rows:
+        if r["locale"] == "*":
+            wildcard_aliases.setdefault(r["id"], []).append(r["name"])
+
+    docs: list[dict] = []
+    for (occ_id, locale), data in occ_data.items():
+        if locale == "*":
+            continue  # Skip wildcard-only entries
+        if not data["name"]:
+            continue  # Skip occupations without a display name for this locale
+
+        count = counts.get(occ_id, 0)
+        aliases = data["aliases"] + wildcard_aliases.get(occ_id, [])
+
+        doc: dict = {
+            "id": f"{occ_id}-{locale}",
+            "occupation_id": occ_id,
+            "slug": data["slug"],
+            "name": data["name"],
+            "aliases": aliases,
+            "locale": locale,
+            "has_active_postings": count > 0,
+            "active_posting_count": count,
+        }
+        if data["domain_name"]:
+            doc["domain_name"] = data["domain_name"]
+
+        docs.append(doc)
+
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, _ts_bulk_upsert, client, "occupation", docs)
+    log.info("typesense.occupations.synced", count=len(docs))
+
+
+async def sync_seniority_typesense(
+    supa_conn: asyncpg.Connection,
+    local_conn: asyncpg.Connection | None,
+    client: typesense.Client,
+) -> None:
+    """Sync seniorities to the Typesense ``seniority`` collection.
+
+    One document per (seniority, locale) pair.
+    """
+    rows = await supa_conn.fetch(
+        """
+        SELECT s.id, s.slug,
+               sn.locale, sn.name, sn.is_display
+        FROM seniority s
+        JOIN seniority_name sn ON sn.seniority_id = s.id
+        ORDER BY s.id, sn.locale
+        """
+    )
+
+    if not rows:
+        log.info("typesense.seniority.empty")
+        return
+
+    # Active posting counts from local Postgres
+    counts: dict[int, int] = {}
+    if local_conn is not None:
+        count_rows = await local_conn.fetch(
+            """
+            SELECT seniority_id, COUNT(*) AS cnt
+            FROM job_posting
+            WHERE is_active AND seniority_id IS NOT NULL
+            GROUP BY 1
+            """
+        )
+        counts = {r["seniority_id"]: r["cnt"] for r in count_rows}
+
+    # Group by (seniority_id, locale)
+    sen_data: dict[tuple[int, str], dict] = {}
+    for r in rows:
+        sen_id = r["id"]
+        locale = r["locale"]
+        key = (sen_id, locale)
+
+        if key not in sen_data:
+            sen_data[key] = {
+                "sen_id": sen_id,
+                "slug": r["slug"],
+                "locale": locale,
+                "name": None,
+                "aliases": [],
+            }
+
+        if r["is_display"]:
+            sen_data[key]["name"] = r["name"]
+        else:
+            sen_data[key]["aliases"].append(r["name"])
+
+    # Wildcard aliases
+    wildcard_aliases: dict[int, list[str]] = {}
+    for r in rows:
+        if r["locale"] == "*":
+            wildcard_aliases.setdefault(r["id"], []).append(r["name"])
+
+    docs: list[dict] = []
+    for (sen_id, locale), data in sen_data.items():
+        if locale == "*":
+            continue
+        if not data["name"]:
+            continue
+
+        count = counts.get(sen_id, 0)
+        aliases = data["aliases"] + wildcard_aliases.get(sen_id, [])
+
+        doc: dict = {
+            "id": f"{sen_id}-{locale}",
+            "seniority_id": sen_id,
+            "slug": data["slug"],
+            "name": data["name"],
+            "aliases": aliases,
+            "locale": locale,
+            "has_active_postings": count > 0,
+            "active_posting_count": count,
+        }
+        docs.append(doc)
+
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, _ts_bulk_upsert, client, "seniority", docs)
+    log.info("typesense.seniority.synced", count=len(docs))
+
+
+async def sync_technologies_typesense(
+    local_conn: asyncpg.Connection | None,
+    client: typesense.Client,
+) -> None:
+    """Sync technologies to the Typesense ``technology`` collection.
+
+    One document per technology. Queries local Postgres for both
+    technology data and active posting counts.
+    """
+    if local_conn is None:
+        log.info("typesense.technologies.no_local_conn")
+        return
+
+    tech_rows = await local_conn.fetch("SELECT id, slug, name, category FROM technology")
+    if not tech_rows:
+        log.info("typesense.technologies.empty")
+        return
+
+    # Active posting counts
+    count_rows = await local_conn.fetch(
+        """
+        SELECT unnest(technology_ids) AS tech_id, COUNT(*) AS cnt
+        FROM job_posting
+        WHERE is_active
+        GROUP BY 1
+        """
+    )
+    counts = {r["tech_id"]: r["cnt"] for r in count_rows}
+
+    docs: list[dict] = []
+    for r in tech_rows:
+        tech_id = r["id"]
+        count = counts.get(tech_id, 0)
+        doc: dict = {
+            "id": str(tech_id),
+            "technology_id": tech_id,
+            "slug": r["slug"],
+            "name": r["name"] or r["slug"],
+            "has_active_postings": count > 0,
+            "active_posting_count": count,
+        }
+        if r["category"]:
+            doc["category"] = r["category"]
+        docs.append(doc)
+
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, _ts_bulk_upsert, client, "technology", docs)
+    log.info("typesense.technologies.synced", count=len(docs))
+
+
+# ---------------------------------------------------------------------------
+# Typesense company sync
+# ---------------------------------------------------------------------------
+
+
+async def sync_companies_typesense(
+    supa_conn: asyncpg.Connection,
+    local_conn: asyncpg.Connection | None,
+    client: typesense.Client,
+) -> None:
+    """Sync companies to the Typesense ``company`` collection."""
+    rows = await supa_conn.fetch(
+        """
+        SELECT c.id, c.name, c.slug, c.icon, c.industry,
+               i.name AS industry_name
+        FROM company c
+        LEFT JOIN industry i ON i.id = c.industry
+        """
+    )
+    if not rows:
+        log.info("typesense.companies.empty")
+        return
+
+    # Fetch company descriptions (English)
+    desc_rows = await supa_conn.fetch(
+        "SELECT company_id, description FROM company_description WHERE locale = 'en'"
+    )
+    descs = {r["company_id"]: r["description"] for r in desc_rows}
+
+    # Active posting counts from local Postgres
+    active_counts: dict[str, int] = {}
+    year_counts: dict[str, int] = {}
+    if local_conn is not None:
+        active_rows = await local_conn.fetch(
+            """
+            SELECT company_id::text, COUNT(*) AS cnt
+            FROM job_posting
+            WHERE is_active
+            GROUP BY 1
+            """
+        )
+        active_counts = {r["company_id"]: r["cnt"] for r in active_rows}
+
+        year_rows = await local_conn.fetch(
+            """
+            SELECT company_id::text, COUNT(*) AS cnt
+            FROM job_posting
+            WHERE first_seen_at > now() - interval '1 year'
+            GROUP BY 1
+            """
+        )
+        year_counts = {r["company_id"]: r["cnt"] for r in year_rows}
+
+    docs: list[dict] = []
+    for r in rows:
+        company_id = str(r["id"])
+        doc: dict = {
+            "id": company_id,
+            "name": r["name"],
+            "slug": r["slug"],
+            "active_posting_count": active_counts.get(company_id, 0),
+            "year_posting_count": year_counts.get(company_id, 0),
+        }
+        if r["icon"]:
+            doc["icon"] = r["icon"]
+        if descs.get(r["id"]):
+            doc["description"] = descs[r["id"]]
+        if r["industry"] is not None:
+            doc["industry_id"] = r["industry"]
+        if r["industry_name"]:
+            doc["industry_name"] = r["industry_name"]
+        docs.append(doc)
+
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, _ts_bulk_upsert, client, "company", docs)
+    log.info("typesense.companies.synced", count=len(docs))
+
+
+# ---------------------------------------------------------------------------
+# Typesense watchlist sync
+# ---------------------------------------------------------------------------
+
+
+def _is_trivial_watchlist(filters: dict | None, company_count: int) -> bool:
+    """Mirror of the web app's ``isTrivialWatchlist``.
+
+    A watchlist is "trivial" when it tracks no companies and carries no
+    meaningful filters — effectively a blank shell. We exclude these from
+    the public ``watchlist`` collection so they don't dilute search/popular
+    listings. ``anyCompany`` and ``salaryCurrency`` alone don't count
+    (they're defaults/prefs). Keep in sync with
+    ``apps/web/src/lib/watchlist-utils.ts``.
+    """
+    if company_count > 0:
+        return False
+    f = filters or {}
+    return not (
+        f.get("keywords")
+        or f.get("locationSlugs")
+        or f.get("occupationSlugs")
+        or f.get("senioritySlugs")
+        or f.get("technologySlugs")
+        or f.get("salaryMin") is not None
+        or f.get("salaryMax") is not None
+        or f.get("experienceMin") is not None
+        or f.get("experienceMax") is not None
+    )
+
+
+async def sync_watchlists_typesense(
+    supa_conn: asyncpg.Connection,
+    client: typesense.Client,
+) -> None:
+    """Sync public watchlists to the Typesense ``watchlist`` collection.
+
+    Queries from Supabase only (watchlists only exist there). Trivial
+    watchlists (no companies, no meaningful filters) are deleted from
+    Typesense rather than upserted, so they're hidden from public search
+    and popular listings while still existing in Postgres for their owner.
+    """
+    rows = await supa_conn.fetch(
+        """
+        SELECT w.id, w.slug, w.title, w.description,
+               w.is_public, w.created_at, w.filters,
+               u.name AS owner_name, u.username AS owner_username
+        FROM watchlist w
+        JOIN "user" u ON u.id = w.user_id
+        WHERE w.is_public = true
+        """
+    )
+    if not rows:
+        log.info("typesense.watchlists.empty")
+        return
+
+    watchlist_ids = [r["id"] for r in rows]
+
+    # Company counts
+    company_count_rows = await supa_conn.fetch(
+        """
+        SELECT watchlist_id, COUNT(*) AS cnt
+        FROM watchlist_company
+        WHERE watchlist_id = ANY($1::uuid[])
+        GROUP BY 1
+        """,
+        watchlist_ids,
+    )
+    company_counts = {str(r["watchlist_id"]): r["cnt"] for r in company_count_rows}
+
+    # Active job counts (via watchlist companies)
+    job_count_rows = await supa_conn.fetch(
+        """
+        SELECT wc.watchlist_id, COUNT(jp.id) AS cnt
+        FROM watchlist_company wc
+        JOIN job_posting jp ON jp.company_id = wc.company_id AND jp.is_active
+        WHERE wc.watchlist_id = ANY($1::uuid[])
+        GROUP BY 1
+        """,
+        watchlist_ids,
+    )
+    job_counts = {str(r["watchlist_id"]): r["cnt"] for r in job_count_rows}
+
+    # Mirror counts
+    mirror_count_rows = await supa_conn.fetch(
+        """
+        SELECT source_watchlist_id, COUNT(*) AS cnt
+        FROM watchlist
+        WHERE source_watchlist_id = ANY($1::uuid[])
+        GROUP BY 1
+        """,
+        watchlist_ids,
+    )
+    mirror_counts = {str(r["source_watchlist_id"]): r["cnt"] for r in mirror_count_rows}
+
+    docs: list[dict] = []
+    trivial_ids: list[str] = []
+    for r in rows:
+        wid = str(r["id"])
+        created_ts = int(r["created_at"].timestamp()) if r["created_at"] else 0
+        company_count = company_counts.get(wid, 0)
+
+        raw_filters = r["filters"]
+        filters: dict | None
+        if isinstance(raw_filters, str):
+            try:
+                filters = json.loads(raw_filters)
+            except (ValueError, TypeError):
+                filters = None
+        else:
+            filters = raw_filters
+
+        if _is_trivial_watchlist(filters, company_count):
+            trivial_ids.append(wid)
+            continue
+
+        doc: dict = {
+            "id": wid,
+            "slug": r["slug"] or "",
+            "title": r["title"] or "",
+            "owner_name": r["owner_name"] or "",
+            "company_count": company_count,
+            "active_job_count": job_counts.get(wid, 0),
+            "mirror_count": mirror_counts.get(wid, 0),
+            "is_featured": (r["owner_username"] or "").lower() == "colophongroup",
+            "has_description": bool(r["description"]),
+            "created_at": created_ts,
+            "is_public": True,
+        }
+        if r["description"]:
+            doc["description"] = r["description"]
+        if r["owner_username"]:
+            doc["owner_username"] = r["owner_username"]
+        docs.append(doc)
+
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, _ts_bulk_upsert, client, "watchlist", docs)
+    # Drop any trivial watchlists that were previously indexed (e.g. pre-#2177
+    # or a web-side write hook that got skipped). This only touches Typesense;
+    # the rows still exist in Postgres for their owner.
+    await loop.run_in_executor(None, _ts_bulk_delete_ids, client, "watchlist", trivial_ids)
+    log.info(
+        "typesense.watchlists.synced",
+        upserted=len(docs),
+        trivial_deleted=len(trivial_ids),
+    )
+
+
+# ---------------------------------------------------------------------------
+# refresh_typesense_counts
+# ---------------------------------------------------------------------------
+
+
+async def refresh_typesense_counts(
+    local_conn: asyncpg.Connection,
+    client: typesense.Client,
+) -> None:
+    """Refresh active_posting_count on all taxonomy and company collections.
+
+    Idempotent — can be called after each sync run or on a timer.
+    Counts are approximate.
+    """
+    loop = asyncio.get_event_loop()
+
+    # --- Locations ---
+    loc_rows = await local_conn.fetch(
+        """
+        SELECT unnest(location_ids) AS loc_id, COUNT(*) AS cnt
+        FROM job_posting WHERE is_active GROUP BY 1
+        """
+    )
+    if loc_rows:
+        loc_docs = [
+            {
+                "id": str(r["loc_id"]),
+                "active_posting_count": r["cnt"],
+                "has_active_postings": True,
+            }
+            for r in loc_rows
+        ]
+        await loop.run_in_executor(None, _ts_bulk_upsert, client, "location", loc_docs)
+
+    # --- Occupations ---
+    occ_rows = await local_conn.fetch(
+        """
+        SELECT occupation_id, COUNT(*) AS cnt
+        FROM job_posting WHERE is_active AND occupation_id IS NOT NULL GROUP BY 1
+        """
+    )
+    if occ_rows:
+        # Update all locale variants
+        occ_docs: list[dict] = []
+        for r in occ_rows:
+            for locale in ("en", "de", "fr", "it"):
+                occ_docs.append(
+                    {
+                        "id": f"{r['occupation_id']}-{locale}",
+                        "active_posting_count": r["cnt"],
+                        "has_active_postings": True,
+                    }
+                )
+        await loop.run_in_executor(None, _ts_bulk_upsert, client, "occupation", occ_docs)
+
+    # --- Seniorities ---
+    sen_rows = await local_conn.fetch(
+        """
+        SELECT seniority_id, COUNT(*) AS cnt
+        FROM job_posting WHERE is_active AND seniority_id IS NOT NULL GROUP BY 1
+        """
+    )
+    if sen_rows:
+        sen_docs: list[dict] = []
+        for r in sen_rows:
+            for locale in ("en", "de", "fr", "it"):
+                sen_docs.append(
+                    {
+                        "id": f"{r['seniority_id']}-{locale}",
+                        "active_posting_count": r["cnt"],
+                        "has_active_postings": True,
+                    }
+                )
+        await loop.run_in_executor(None, _ts_bulk_upsert, client, "seniority", sen_docs)
+
+    # --- Technologies ---
+    tech_rows = await local_conn.fetch(
+        """
+        SELECT unnest(technology_ids) AS tech_id, COUNT(*) AS cnt
+        FROM job_posting WHERE is_active GROUP BY 1
+        """
+    )
+    if tech_rows:
+        tech_docs = [
+            {
+                "id": str(r["tech_id"]),
+                "active_posting_count": r["cnt"],
+                "has_active_postings": True,
+            }
+            for r in tech_rows
+        ]
+        await loop.run_in_executor(None, _ts_bulk_upsert, client, "technology", tech_docs)
+
+    # --- Companies ---
+    active_rows = await local_conn.fetch(
+        """
+        SELECT company_id::text, COUNT(*) AS cnt
+        FROM job_posting WHERE is_active GROUP BY 1
+        """
+    )
+    year_rows = await local_conn.fetch(
+        """
+        SELECT company_id::text, COUNT(*) AS cnt
+        FROM job_posting WHERE first_seen_at > now() - interval '1 year' GROUP BY 1
+        """
+    )
+    if active_rows or year_rows:
+        active_map = {r["company_id"]: r["cnt"] for r in active_rows}
+        year_map = {r["company_id"]: r["cnt"] for r in year_rows}
+        all_ids = set(active_map) | set(year_map)
+        company_docs = [
+            {
+                "id": cid,
+                "active_posting_count": active_map.get(cid, 0),
+                "year_posting_count": year_map.get(cid, 0),
+            }
+            for cid in all_ids
+        ]
+        await loop.run_in_executor(None, _ts_bulk_upsert, client, "company", company_docs)
+
+    log.info("typesense.refresh_counts.done")
+
+
+# ---------------------------------------------------------------------------
+# Taxonomy rename detection
+# ---------------------------------------------------------------------------
+
+
+async def _snapshot_name_maps(
+    supa_conn: asyncpg.Connection,
+) -> dict[str, dict[int, str]]:
+    """Snapshot current display names for rename detection.
+
+    Returns a dict keyed by taxonomy type with {id: display_name_en} maps.
+    """
+    occ_rows = await supa_conn.fetch(
+        """
+        SELECT o.id, on2.name
+        FROM occupation o
+        JOIN occupation_name on2 ON on2.occupation_id = o.id
+        WHERE on2.is_display AND on2.locale = 'en'
+        """
+    )
+    sen_rows = await supa_conn.fetch(
+        """
+        SELECT s.id, sn.name
+        FROM seniority s
+        JOIN seniority_name sn ON sn.seniority_id = s.id
+        WHERE sn.is_display AND sn.locale = 'en'
+        """
+    )
+    tech_rows = await supa_conn.fetch("SELECT id, name FROM technology")
+
+    return {
+        "occupation": {r["id"]: r["name"] for r in occ_rows},
+        "seniority": {r["id"]: r["name"] for r in sen_rows},
+        "technology": {r["id"]: r["name"] for r in tech_rows},
+    }
+
+
+async def _apply_taxonomy_renames(
+    before: dict[str, dict[int, str]],
+    after: dict[str, dict[int, str]],
+    local_conn: asyncpg.Connection,
+    client: typesense.Client,
+) -> None:
+    """Detect taxonomy renames and update affected job_posting docs in Typesense."""
+    loop = asyncio.get_event_loop()
+
+    # Occupation renames
+    for occ_id, new_name in after.get("occupation", {}).items():
+        old_name = before.get("occupation", {}).get(occ_id)
+        if old_name and old_name != new_name:
+            log.info(
+                "typesense.rename.occupation",
+                id=occ_id,
+                old=old_name,
+                new=new_name,
+            )
+            posting_rows = await local_conn.fetch(
+                "SELECT id FROM job_posting WHERE occupation_id = $1", occ_id
+            )
+            if posting_rows:
+                docs = [{"id": str(r["id"]), "occupation_name": new_name} for r in posting_rows]
+                await loop.run_in_executor(None, _ts_bulk_upsert, client, "job_posting", docs)
+
+    # Seniority renames
+    for sen_id, new_name in after.get("seniority", {}).items():
+        old_name = before.get("seniority", {}).get(sen_id)
+        if old_name and old_name != new_name:
+            log.info(
+                "typesense.rename.seniority",
+                id=sen_id,
+                old=old_name,
+                new=new_name,
+            )
+            posting_rows = await local_conn.fetch(
+                "SELECT id FROM job_posting WHERE seniority_id = $1", sen_id
+            )
+            if posting_rows:
+                docs = [{"id": str(r["id"]), "seniority_name": new_name} for r in posting_rows]
+                await loop.run_in_executor(None, _ts_bulk_upsert, client, "job_posting", docs)
+
+    # Technology renames
+    for tech_id, new_name in after.get("technology", {}).items():
+        old_name = before.get("technology", {}).get(tech_id)
+        if old_name and old_name != new_name:
+            log.info(
+                "typesense.rename.technology",
+                id=tech_id,
+                old=old_name,
+                new=new_name,
+            )
+            posting_rows = await local_conn.fetch(
+                "SELECT id FROM job_posting WHERE technology_ids @> ARRAY[$1]",
+                tech_id,
+            )
+            if posting_rows:
+                # Need to rebuild the full technology_names array for each posting
+                for pr in posting_rows:
+                    posting = await local_conn.fetchrow(
+                        "SELECT technology_ids FROM job_posting WHERE id = $1",
+                        pr["id"],
+                    )
+                    if posting and posting["technology_ids"]:
+                        tech_names = []
+                        for tid in posting["technology_ids"]:
+                            name = after["technology"].get(tid)
+                            if name:
+                                tech_names.append(name)
+                        if tech_names:
+                            await loop.run_in_executor(
+                                None,
+                                _ts_bulk_upsert,
+                                client,
+                                "job_posting",
+                                [{"id": str(pr["id"]), "technology_names": tech_names}],
+                            )
+
+
+# ---------------------------------------------------------------------------
+# Typesense sync orchestrator
+# ---------------------------------------------------------------------------
+
+
+async def sync_typesense(
+    supa_conn: asyncpg.Connection,
+    local_conn: asyncpg.Connection | None,
+    client: typesense.Client,
+) -> None:
+    """Sync all taxonomy, company, and watchlist data to Typesense.
+
+    Called outside the Supabase transaction. Failures are logged but do not
+    break the sync pipeline.
+    """
+    try:
+        await sync_locations_typesense(supa_conn, local_conn, client)
+    except Exception:
+        log.exception("typesense.sync.locations.failed")
+
+    try:
+        await sync_occupations_typesense(supa_conn, local_conn, client)
+    except Exception:
+        log.exception("typesense.sync.occupations.failed")
+
+    try:
+        await sync_seniority_typesense(supa_conn, local_conn, client)
+    except Exception:
+        log.exception("typesense.sync.seniority.failed")
+
+    try:
+        await sync_technologies_typesense(local_conn, client)
+    except Exception:
+        log.exception("typesense.sync.technologies.failed")
+
+    try:
+        await sync_companies_typesense(supa_conn, local_conn, client)
+    except Exception:
+        log.exception("typesense.sync.companies.failed")
+
+    try:
+        await sync_watchlists_typesense(supa_conn, client)
+    except Exception:
+        log.exception("typesense.sync.watchlists.failed")
+
+    # Refresh posting counts
+    if local_conn is not None:
+        try:
+            await refresh_typesense_counts(local_conn, client)
+        except Exception:
+            log.exception("typesense.sync.refresh_counts.failed")
+
+    log.info("typesense.sync.complete")
+
+
 async def run_sync(dry_run: bool = False) -> None:
     setup_logging(settings.log_level)
 
@@ -1223,6 +2372,8 @@ async def run_sync(dry_run: bool = False) -> None:
         log.info("sync.empty", msg="No data in CSVs, nothing to sync")
         return
 
+    ts_client = get_typesense_client()
+
     supa_pool = await create_pool()
     local_pool = None
     if not dry_run:
@@ -1231,6 +2382,15 @@ async def run_sync(dry_run: bool = False) -> None:
         except OSError:
             log.warning("sync.local_pool_unavailable", msg="Cannot reach local Postgres, skipping")
     try:
+        # Snapshot taxonomy names before sync for rename detection
+        name_maps_before: dict[str, dict[int, str]] | None = None
+        if ts_client and not dry_run:
+            try:
+                async with supa_pool.acquire() as snap_conn:
+                    name_maps_before = await _snapshot_name_maps(snap_conn)
+            except Exception:
+                log.exception("typesense.snapshot_before.failed")
+
         async with supa_pool.acquire() as supa_conn, supa_conn.transaction():
             await supa_conn.execute("SET lock_timeout = '30s'")
 
@@ -1241,8 +2401,19 @@ async def run_sync(dry_run: bool = False) -> None:
             await sync_technologies(supa_conn, technologies, dry_run)
             await sync_industries(supa_conn, industries, dry_run)
 
-            # Company data -> Supabase only (display data)
-            await sync_companies(supa_conn, companies, dry_run)
+            # Company data: local Postgres is source of truth.
+            # 1. Bootstrap: align existing Supabase UUIDs into local
+            #    (historical company_ids reference Supabase UUIDs)
+            # 2. Apply CSV updates to local (new companies get local UUIDs)
+            # 3. Mirror local -> Supabase (display layer)
+            if local_pool is not None and not dry_run:
+                async with local_pool.acquire() as lc:
+                    await _mirror_companies_to_local(supa_conn, lc)
+                    await sync_companies(lc, companies, dry_run)
+                    await _mirror_companies_to_supabase(lc, supa_conn)
+            else:
+                # No local pool (dry_run or unreachable) — write to Supabase directly
+                await sync_companies(supa_conn, companies, dry_run)
             await sync_company_descriptions(supa_conn, company_descs, dry_run)
 
             # Boards -> Supabase + local Postgres + Redis
@@ -1287,6 +2458,37 @@ async def run_sync(dry_run: bool = False) -> None:
             boards=len(boards),
             dry_run=dry_run,
         )
+
+        # --- Typesense sync (OUTSIDE the Supabase transaction) ---
+        if ts_client and not dry_run:
+            try:
+                async with supa_pool.acquire() as supa_conn:
+                    local_conn_for_ts = None
+                    if local_pool is not None:
+                        local_conn_for_ts = await local_pool.acquire()
+                    try:
+                        # Detect taxonomy renames
+                        if name_maps_before is not None:
+                            try:
+                                name_maps_after = await _snapshot_name_maps(supa_conn)
+                                if local_conn_for_ts is not None:
+                                    await _apply_taxonomy_renames(
+                                        name_maps_before,
+                                        name_maps_after,
+                                        local_conn_for_ts,
+                                        ts_client,
+                                    )
+                            except Exception:
+                                log.exception("typesense.rename_detection.failed")
+
+                        # Full taxonomy + company + watchlist sync
+                        await sync_typesense(supa_conn, local_conn_for_ts, ts_client)
+                    finally:
+                        if local_conn_for_ts is not None:
+                            await local_pool.release(local_conn_for_ts)
+            except Exception:
+                log.exception("typesense.sync.failed")
+
     finally:
         await close_all_pools()
         await close_redis()

@@ -108,7 +108,7 @@ export function CompanySelector({
                 className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-border-soft cursor-pointer"
               >
                 {s.icon ? (
-                  <Image src={s.icon} alt={s.name} width={20} height={20} className="size-5 rounded" />
+                  <Image src={s.icon} alt={s.name} width={20} height={20} sizes="20px" className="size-5 rounded" />
                 ) : (
                   <div className="flex size-5 items-center justify-center rounded bg-border-soft text-muted">
                     <Building2 size={12} />

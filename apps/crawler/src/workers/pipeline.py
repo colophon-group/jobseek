@@ -22,11 +22,18 @@ import httpx
 import structlog
 
 from src.config import settings
-from src.metrics import monitor_duration_seconds, scrape_duration_seconds, tasks_total
+from src.metrics import (
+    monitor_duration_seconds,
+    scrape_duration_seconds,
+    tasks_total,
+    worker_heartbeat_ts,
+)
 from src.redis_queue import (
     BoardWork,
     ScrapeWork,
     claim_work,
+    enqueue_monitor,
+    enqueue_scrape,
     reschedule_task,
 )
 
@@ -37,6 +44,48 @@ _ERROR_BACKOFF_S = 300  # 5 minutes
 
 # Idle backoff when no work is available (seconds).
 _IDLE_BACKOFF_S = 2.0
+
+
+# ---------------------------------------------------------------------------
+# Scraper resolution from Redis board hash
+# ---------------------------------------------------------------------------
+
+
+def _resolve_scraper(
+    metadata: dict,
+    crawler_type: str | None,
+    scraper_config: dict | None,
+) -> tuple[str, dict | None]:
+    """Resolve (scraper_type, scraper_config) from a board's Redis metadata.
+
+    Precedence: explicit ``metadata.scraper_type`` > monitor's auto-configured
+    scraper (``auto_scraper_type``) > default ``"dom"``.
+
+    Falling straight through to ``crawler_type`` as the scraper name is
+    unsafe — many crawler types (``greenhouse``, ``lever``, ``personio`` …)
+    aren't registered scrapers. Issue #2186 was caused by exactly that
+    fallback: a personio board with no explicit ``scraper_type`` crashed
+    with ``Unknown scraper type: 'personio'``.
+
+    ``auto_scraper_type`` returning ``("skip", None)`` signals a rich
+    monitor — ``_is_skip_no_scrape`` handles those callers separately, so
+    we never invoke the ``skip`` scraper here.  A caller-supplied
+    ``scraper_config`` wins over the auto-configured default, preserving
+    board-level overrides.
+    """
+    from src.workspace._compat import auto_scraper_type
+
+    explicit = metadata.get("scraper_type")
+    if explicit:
+        return explicit, scraper_config
+
+    if crawler_type:
+        auto = auto_scraper_type(crawler_type, metadata)
+        if auto and auto[0] != "skip":
+            resolved_config = scraper_config if scraper_config is not None else auto[1]
+            return auto[0], resolved_config
+
+    return "dom", scraper_config
 
 
 # ---------------------------------------------------------------------------
@@ -105,6 +154,24 @@ def _scrape_item_from_redis(work: ScrapeWork):
 # ---------------------------------------------------------------------------
 
 
+async def _ensure_playwright(worker_log):
+    """Start a Playwright server process. Returns ``(pw, pw_ctx)``."""
+    from playwright.async_api import async_playwright
+
+    pw_ctx = async_playwright()
+    pw = await pw_ctx.start()
+    worker_log.info("pipeline.worker.playwright_started")
+    return pw, pw_ctx
+
+
+async def _stop_playwright(pw, worker_log):
+    """Stop a Playwright server process, suppressing errors."""
+    try:
+        await pw.stop()
+    except Exception:
+        worker_log.warning("pipeline.worker.playwright_stop_error", exc_info=True)
+
+
 async def _discovery_worker(
     worker_id: int,
     local_pool: asyncpg.Pool,
@@ -122,53 +189,75 @@ async def _discovery_worker(
     ``monitor_semaphore`` caps concurrent monitor processing to bound
     peak memory (monitors hold full board results in memory).  Scrapes
     are lightweight and not limited.
+
+    Browser workers create a shared Playwright server process per worker
+    to avoid spawning (and leaking) a new process on every task.
     """
     worker_log = log.bind(worker_id=worker_id, browser=browser)
     worker_log.info("pipeline.worker.started")
 
-    while not shutdown_event.is_set():
+    # Browser workers share one Playwright server per worker coroutine.
+    pw = None
+    if browser:
         try:
-            work = await claim_work(browser=browser)
+            pw, _pw_ctx = await _ensure_playwright(worker_log)
         except Exception:
-            worker_log.warning("pipeline.claim_error", exc_info=True)
-            with contextlib.suppress(TimeoutError):
-                await asyncio.wait_for(shutdown_event.wait(), timeout=_IDLE_BACKOFF_S)
-            continue
+            worker_log.warning("pipeline.worker.playwright_unavailable", exc_info=True)
 
-        if work is None:
-            # No work available — back off
-            with contextlib.suppress(TimeoutError):
-                await asyncio.wait_for(shutdown_event.wait(), timeout=_IDLE_BACKOFF_S)
-            continue
+    try:
+        while not shutdown_event.is_set():
+            worker_heartbeat_ts.labels(worker_id=str(worker_id)).set_to_current_time()
+            try:
+                work = await claim_work(browser=browser)
+            except Exception:
+                worker_log.warning("pipeline.claim_error", exc_info=True)
+                with contextlib.suppress(TimeoutError):
+                    await asyncio.wait_for(shutdown_event.wait(), timeout=_IDLE_BACKOFF_S)
+                continue
 
-        if work.kind == "monitor" and work.board_work is not None:
-            if monitor_semaphore is not None:
-                async with monitor_semaphore:
-                    await _process_monitor_work(
+            if work is None:
+                # No work available — back off
+                with contextlib.suppress(TimeoutError):
+                    await asyncio.wait_for(shutdown_event.wait(), timeout=_IDLE_BACKOFF_S)
+                continue
+
+            try:
+                if work.kind == "monitor" and work.board_work is not None:
+                    if monitor_semaphore is not None:
+                        async with monitor_semaphore:
+                            await _process_monitor_work(
+                                worker_log,
+                                work.board_work,
+                                local_pool,
+                                http,
+                                browser=browser,
+                                pw=pw,
+                            )
+                    else:
+                        await _process_monitor_work(
+                            worker_log,
+                            work.board_work,
+                            local_pool,
+                            http,
+                            browser=browser,
+                            pw=pw,
+                        )
+                elif work.kind == "scrape" and work.scrape_work is not None:
+                    await _process_scrape_work(
                         worker_log,
-                        work.board_work,
+                        work.scrape_work,
                         local_pool,
                         http,
                         browser=browser,
+                        pw=pw,
                     )
-            else:
-                await _process_monitor_work(
-                    worker_log,
-                    work.board_work,
-                    local_pool,
-                    http,
-                    browser=browser,
-                )
-        elif work.kind == "scrape" and work.scrape_work is not None:
-            await _process_scrape_work(
-                worker_log,
-                work.scrape_work,
-                local_pool,
-                http,
-                browser=browser,
-            )
-        else:
-            worker_log.warning("pipeline.unknown_work_kind", kind=work.kind)
+                else:
+                    worker_log.warning("pipeline.unknown_work_kind", kind=work.kind)
+            except Exception:
+                worker_log.exception("pipeline.worker.task_escaped")
+    finally:
+        if pw:
+            await _stop_playwright(pw, worker_log)
 
     worker_log.info("pipeline.worker.stopped")
 
@@ -185,6 +274,7 @@ async def _process_monitor_work(
     http: httpx.AsyncClient,
     *,
     browser: bool = False,
+    pw=None,
 ) -> None:
     """Process a single monitor work item claimed from Redis."""
     board_id = board_work.board_id
@@ -194,17 +284,82 @@ async def _process_monitor_work(
     worker_log = worker_log.bind(board_id=board_id, crawler_type=config.get("crawler_type"))
 
     try:
+        # Self-heal: a board may have already been marked `disabled` /
+        # `gone` in Postgres but the Redis monitor task still exists
+        # (sync only purges between CSV pushes — can be days). Drop the
+        # task without rescheduling so the dead-board loop drains.
+        # See issue #2215.
+        async with local_pool.acquire() as conn:
+            board_status = await conn.fetchval(
+                "SELECT board_status FROM job_board WHERE id = $1::uuid",
+                board_id,
+            )
+        if board_status in ("disabled", "gone"):
+            tasks_total.labels(kind="monitor", status="skipped_disabled").inc()
+            worker_log.info(
+                "pipeline.monitor.skipped_disabled",
+                board_status=board_status,
+            )
+            return
+
+        # Self-heal: a slim worker that claimed a monitor whose CURRENT
+        # config needs a browser would otherwise crash on Playwright launch
+        # (see issue #2250 — same architectural failure mode as the scrape
+        # path). Re-enqueue to the browser monitor queue and return.
+        if not browser:
+            from src.core.monitors import monitor_needs_browser
+
+            crawler_type = config.get("crawler_type") or ""
+            try:
+                metadata_raw = config.get("metadata", "{}")
+                metadata = (
+                    json.loads(metadata_raw)
+                    if isinstance(metadata_raw, str)
+                    else (metadata_raw or {})
+                )
+            except (json.JSONDecodeError, TypeError):
+                metadata = {}
+            if monitor_needs_browser(crawler_type, metadata):
+                try:
+                    reroute_payload = dict(config)
+                    reroute_payload.pop("domain", None)
+                    await enqueue_monitor(
+                        domain,
+                        board_id,
+                        time.time(),
+                        reroute_payload,
+                        browser=True,
+                        first_time=False,
+                    )
+                    tasks_total.labels(kind="monitor", status="rerouted_to_browser").inc()
+                    worker_log.info(
+                        "pipeline.monitor.rerouted_to_browser",
+                        domain=domain,
+                        crawler_type=crawler_type,
+                    )
+                    return
+                except Exception:
+                    worker_log.warning("pipeline.monitor.reroute_failed", exc_info=True)
+
         board_record = _BoardRecord(board_id, config)
 
         from src.processing.board import (
+            BoardGoneError,
             DeadlineExtender,
             _process_one_board_streaming,
         )
 
         extender = DeadlineExtender()
-        success, duration = await _process_one_board_streaming(
-            board_record, local_pool, http, extender
-        )
+        try:
+            success, duration = await _process_one_board_streaming(
+                board_record, local_pool, http, extender, pw=pw
+            )
+        except BoardGoneError:
+            # board.py already recorded gone + delisted postings.
+            # Drop the Redis task instead of rescheduling — the board
+            # is now filtered by the self-heal check above so it
+            # won't return to the queue.
+            return
 
         profile = "browser" if browser else "simple"
         monitor_duration_seconds.labels(profile=profile).observe(duration)
@@ -222,9 +377,12 @@ async def _process_monitor_work(
 
     except Exception:
         worker_log.exception("pipeline.monitor.error", board_id=board_id)
-        # Reschedule with backoff
-        backoff_ts = time.time() + _ERROR_BACKOFF_S
-        await reschedule_task(domain, board_id, "monitor", backoff_ts, browser=browser)
+        # Reschedule with backoff — guard so Redis errors don't kill the worker
+        try:
+            backoff_ts = time.time() + _ERROR_BACKOFF_S
+            await reschedule_task(domain, board_id, "monitor", backoff_ts, browser=browser)
+        except Exception:
+            worker_log.warning("pipeline.monitor.reschedule_failed", exc_info=True)
 
 
 # ---------------------------------------------------------------------------
@@ -239,6 +397,7 @@ async def _process_scrape_work(
     http: httpx.AsyncClient,
     *,
     browser: bool = False,
+    pw=None,
 ) -> None:
     """Process a single scrape work item claimed from Redis."""
     posting_id = scrape_work.posting_id
@@ -263,18 +422,142 @@ async def _process_scrape_work(
             except (json.JSONDecodeError, TypeError):
                 metadata = {}
 
-            scraper_type = metadata.get("scraper_type", board_config.get("crawler_type", "dom"))
+            crawler_type = board_config.get("crawler_type") or None
             scraper_config = metadata.get("scraper_config")
             if isinstance(scraper_config, str):
                 try:
                     scraper_config = json.loads(scraper_config)
                 except (json.JSONDecodeError, TypeError):
                     scraper_config = None
+            if not isinstance(scraper_config, dict):
+                scraper_config = None
+            scraper_type, scraper_config = _resolve_scraper(metadata, crawler_type, scraper_config)
         else:
+            metadata = {}
+            crawler_type = None
             scraper_type = "dom"
             scraper_config = None
 
-        from src.processing.scrape import _process_one_scrape
+        from src.core.scrapers import scraper_needs_browser
+        from src.processing.scrape import (
+            _CLEAR_SCRAPE_FOR_RICH,
+            _RECORD_SCRAPE_FAILURE,
+            _is_skip_no_scrape,
+            _process_one_scrape,
+        )
+
+        async def _delete_scrape_hash() -> None:
+            try:
+                await r.delete(f"scrape:{posting_id}")
+            except Exception:
+                worker_log.warning("pipeline.scrape.scrape_hash_delete_failed", exc_info=True)
+
+        async def _reroute_to_browser(reason: str) -> None:
+            """Self-heal: a slim worker claimed a task whose current scraper
+            config requires a browser. Re-enqueue to the browser queue so a
+            browser-equipped worker can process it, then drop the in-flight
+            slim claim. Avoids the Playwright-Executable-doesn't-exist
+            failure path on slim images that ship without Chromium.
+
+            Triggers when a board's scraper config flips render/needs_browser
+            after tasks were already enqueued to the simple queue (sync race),
+            or when stale pre-routing-fix tasks linger. See issue #2250.
+            """
+            existing = dict(await r.hgetall(f"scrape:{posting_id}"))
+            # Drop ``domain`` since enqueue_scrape re-injects it from the arg.
+            existing.pop("domain", None)
+            try:
+                await enqueue_scrape(
+                    domain,
+                    posting_id,
+                    time.time(),
+                    existing,
+                    browser=True,
+                    first_time=False,
+                )
+            except Exception:
+                worker_log.warning("pipeline.scrape.reroute_failed", exc_info=True)
+                return
+            tasks_total.labels(kind="scrape", status="rerouted_to_browser").inc()
+            worker_log.info(
+                "pipeline.scrape.rerouted_to_browser",
+                board_id=scrape_work.board_id,
+                domain=domain,
+                reason=reason,
+                scraper_type=scraper_type,
+            )
+
+        async def _drop_rich(reason: str) -> None:
+            """Rich-monitor path: scoped Postgres clear + drop Redis task.
+
+            Uses ``_CLEAR_SCRAPE_FOR_RICH`` which requires the board to
+            STILL be rich-no-scrape (race guard for config drift). Does
+            NOT reschedule in Redis — the claim already removed the task
+            from the per-domain ZSET, so returning drains one entry.
+            """
+            async with local_pool.acquire() as conn:
+                await conn.execute(_CLEAR_SCRAPE_FOR_RICH, [posting_id])
+            await _delete_scrape_hash()
+            tasks_total.labels(kind="scrape", status="skipped_rich").inc()
+            worker_log.info(
+                "pipeline.scrape.skipped_rich",
+                board_id=scrape_work.board_id,
+                reason=reason,
+            )
+
+        async def _fail_stale_task(reason: str) -> None:
+            """Fail-safe path: Redis board hash is missing or corrupt.
+
+            We don't know if the board is rich or not, so we can't use the
+            scoped rich clear (which would no-op on a non-rich board and
+            leave the posting re-claim looping). Instead we call
+            ``_RECORD_SCRAPE_FAILURE`` which pushes ``next_scrape_at``
+            forward via exponential backoff (30 m × 2^failures, NULL after
+            3 failures). If Redis is re-synced before backoff expires, the
+            next monitor cycle re-enqueues the posting with fresh config.
+            If not, the posting is eventually dropped from the Postgres
+            schedule anyway.
+            """
+            async with local_pool.acquire() as conn:
+                await conn.execute(_RECORD_SCRAPE_FAILURE, posting_id)
+            await _delete_scrape_hash()
+            tasks_total.labels(kind="scrape", status="stale_config").inc()
+            worker_log.warning(
+                "pipeline.scrape.stale_config",
+                board_id=scrape_work.board_id,
+                reason=reason,
+            )
+
+        # Defense in depth: rich monitors must never invoke the scraper
+        # pipeline. If a stale task (pre-fix data, drift, or a rich-monitor
+        # fallback) reaches this worker, clear the Postgres schedule and
+        # drop the Redis task without rescheduling so the loop drains.
+        if _is_skip_no_scrape(metadata, crawler_type):
+            await _drop_rich("rich monitor, no enrich")
+            return
+
+        # Fail-safe: an empty board config means Redis lost the board hash
+        # (eviction, missing sync). The legacy fallback used to pass
+        # ``crawler_type`` as the scraper name, raising ``KeyError`` for
+        # names like "greenhouse" that aren't registered scrapers. Fail
+        # the task softly so the worker doesn't crash AND doesn't wipe a
+        # legitimate schedule (critic-2 regression).
+        if not board_config:
+            await _fail_stale_task("missing board config in Redis")
+            return
+
+        # Self-heal: a slim worker that claimed a scrape whose CURRENT
+        # board config needs a browser would otherwise call into Playwright
+        # and crash with "Executable doesn't exist". Re-enqueue to the
+        # browser queue and let a browser-equipped worker pick it up. This
+        # absorbs the post-#2237 stale-task tail and any future sync race
+        # where the queue routing was decided before the config change. See
+        # issue #2250.
+        if not browser and scraper_needs_browser(scraper_type, scraper_config):
+            await _reroute_to_browser(
+                "scraper needs browser, re-routing from simple to browser queue"
+            )
+            return
 
         success, duration = await _process_one_scrape(
             item,
@@ -282,6 +565,7 @@ async def _process_scrape_work(
             http,
             scraper_type,
             scraper_config,
+            pw=pw,
             scrape_step=scrape_step,
             scrape_interval=scrape_work.scrape_interval_hours,
         )
@@ -304,9 +588,12 @@ async def _process_scrape_work(
     except Exception:
         worker_log.exception("pipeline.scrape.error", posting_id=posting_id)
         tasks_total.labels(kind="scrape", status="failed").inc()
-        # Reschedule with backoff
-        backoff_ts = time.time() + _ERROR_BACKOFF_S
-        await reschedule_task(domain, posting_id, "scrape", backoff_ts, browser=browser)
+        # Reschedule with backoff — guard so Redis errors don't kill the worker
+        try:
+            backoff_ts = time.time() + _ERROR_BACKOFF_S
+            await reschedule_task(domain, posting_id, "scrape", backoff_ts, browser=browser)
+        except Exception:
+            worker_log.warning("pipeline.scrape.reschedule_failed", exc_info=True)
 
 
 # ---------------------------------------------------------------------------

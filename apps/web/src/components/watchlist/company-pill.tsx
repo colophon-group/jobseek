@@ -18,6 +18,7 @@ export function CompanyPill({
           alt={company.name}
           width={16}
           height={16}
+          sizes="16px"
           className="size-4 shrink-0 rounded"
         />
       ) : (

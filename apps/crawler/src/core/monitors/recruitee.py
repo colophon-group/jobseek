@@ -14,6 +14,7 @@ import httpx
 import structlog
 
 from src.core.monitors import (
+    BoardGoneError,
     DiscoveredJob,
     fetch_page_text,
     register,
@@ -217,6 +218,14 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
 
     url = _api_url(api_base)
     response = await client.get(url, follow_redirects=True)
+    if response.status_code == 404:
+        # Recruitee 404s when the company subdomain (slug) has been
+        # removed. Surface as a "gone" signal for one-shot disable.
+        # See issue #2215.
+        raise BoardGoneError(
+            f"Recruitee API base {api_base!r} returned 404",
+            url=str(response.url),
+        )
     response.raise_for_status()
 
     data = response.json()

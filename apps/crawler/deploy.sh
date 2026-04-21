@@ -20,6 +20,10 @@ required_vars=(
   GRAFANA_LOKI_URL
   GRAFANA_LOKI_USERNAME
   GRAFANA_LOKI_PASSWORD
+  TYPESENSE_HOST
+  TYPESENSE_PORT
+  TYPESENSE_PROTOCOL
+  TYPESENSE_ADMIN_KEY
 )
 
 missing=()
@@ -37,9 +41,12 @@ fi
 DEPLOY_DIR="/home/deploy"
 
 # ── Stop any manually-started containers that conflict with compose ──
-docker rm -f redis worker-1 worker-2 worker-3 browser-1 exporter drain alloy 2>/dev/null || true
+docker rm -f redis worker-1 worker-2 worker-3 browser-1 exporter drain indexnow alloy 2>/dev/null || true
 
 # ── Write env file ──────────────────────────────────────────────────
+# Proxy vars are expanded with ``:-`` defaults so missing provider
+# secrets don't break the deploy — PROXY_PROVIDER=none disables the
+# proxy layer even when the URL envs are empty.
 cat > "$DEPLOY_DIR/.env" <<EOF
 OWNER=${OWNER}
 DATABASE_URL=${DATABASE_URL_UNPOOLED}
@@ -55,12 +62,32 @@ GRAFANA_PROM_PASSWORD=${GRAFANA_PROM_PASSWORD}
 GRAFANA_LOKI_URL=${GRAFANA_LOKI_URL}
 GRAFANA_LOKI_USERNAME=${GRAFANA_LOKI_USERNAME}
 GRAFANA_LOKI_PASSWORD=${GRAFANA_LOKI_PASSWORD}
+TYPESENSE_HOST=${TYPESENSE_HOST}
+TYPESENSE_PORT=${TYPESENSE_PORT}
+TYPESENSE_PROTOCOL=${TYPESENSE_PROTOCOL}
+TYPESENSE_ADMIN_KEY=${TYPESENSE_ADMIN_KEY}
+PROXY_PROVIDER=${PROXY_PROVIDER:-none}
+WEBSHARE_PROXY_URL=${WEBSHARE_PROXY_URL:-}
+DECODO_PROXY_URL=${DECODO_PROXY_URL:-}
+INDEXNOW_KEY=${INDEXNOW_KEY:-}
+INDEXNOW_SITE_URL=${INDEXNOW_SITE_URL:-}
+INDEXNOW_KEY_URL=${INDEXNOW_KEY_URL:-}
+INDEXNOW_INTERVAL=${INDEXNOW_INTERVAL:-3600}
 EOF
+
+# Lock down the env file — it contains proxy + DB + R2 creds. Default
+# umask on some images is 0022, which would leave this world-readable.
+chmod 600 "$DEPLOY_DIR/.env"
 
 # ── Pull images and restart ──────────────────────────────────────────
 cd "$DEPLOY_DIR"
 docker compose pull
-docker compose up -d --remove-orphans
+
+# Keep Redis up for migrations + sync, but quiesce the rest of the
+# crawler so deploy-time `crawler sync` does not race with live workers
+# claiming work out of Redis while we are reseeding board monitors.
+docker compose stop worker-1 worker-2 worker-3 browser-1 exporter drain indexnow alloy 2>/dev/null || true
+docker compose up -d redis
 
 # ── Run Alembic migrations on local Postgres ─────────────────────────
 docker run --rm --env-file "$DEPLOY_DIR/.env" --network host \
@@ -71,6 +98,9 @@ docker run --rm --env-file "$DEPLOY_DIR/.env" --network host \
 docker run --rm --env-file "$DEPLOY_DIR/.env" --network host \
   "ghcr.io/${OWNER}/jobseek-crawler:latest" \
   uv run --no-sync crawler sync
+
+# ── Start the full stack on the freshly seeded Redis state ───────────
+docker compose up -d --remove-orphans
 
 # ── Cleanup ──────────────────────────────────────────────────────────
 docker image prune -f

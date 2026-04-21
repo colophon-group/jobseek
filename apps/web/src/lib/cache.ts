@@ -1,9 +1,11 @@
 import "server-only";
 import { redis } from "@/lib/redis";
 
-interface CacheOptions {
+interface CacheOptions<T = unknown> {
   /** TTL in seconds. */
   ttl: number;
+  /** Skip caching the result if this predicate returns true. */
+  skipIf?: (data: T) => boolean;
 }
 
 /**
@@ -15,7 +17,7 @@ interface CacheOptions {
 export async function cached<T>(
   key: string,
   fetcher: () => Promise<T>,
-  options: CacheOptions,
+  options: CacheOptions<T>,
 ): Promise<T> {
   const fullKey = `cache:${key}`;
 
@@ -28,10 +30,12 @@ export async function cached<T>(
 
   const data = await fetcher();
 
-  try {
-    await redis.set(fullKey, JSON.stringify(data), { ex: options.ttl });
-  } catch {
-    // Redis unavailable — data still returned from fetcher
+  if (!options.skipIf?.(data)) {
+    try {
+      await redis.set(fullKey, JSON.stringify(data), { ex: options.ttl });
+    } catch {
+      // Redis unavailable — data still returned from fetcher
+    }
   }
 
   return data;

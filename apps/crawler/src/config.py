@@ -1,26 +1,33 @@
 from __future__ import annotations
 
-import json
+from urllib.parse import urlparse
 
-from pydantic import field_validator
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     database_url: str = ""
     local_database_url: str = "postgresql://crawler:crawler@postgres:5432/crawler"
-    proxy_map: dict[str, str] = {}
 
-    @field_validator("proxy_map", mode="before")
-    @classmethod
-    def _parse_proxy_map(cls, v):
-        if isinstance(v, str):
-            return json.loads(v) if v.strip() else {}
-        return v
+    # Proxy provider — applies to hosts with ``"proxy": true`` in
+    # ``monitor_config`` / ``scraper_config`` (``data/boards.csv``). See
+    # ``src.shared.proxy`` for the provider registry. Swap provider by
+    # changing ``PROXY_PROVIDER``; credentials for idle providers stay
+    # around for ad-hoc testing / quick fallback.
+    proxy_provider: str = "none"  # none | webshare | decodo
+    webshare_proxy_url: str = ""
+    decodo_proxy_url: str = ""
 
     # Redis (local instance, not Upstash)
     redis_url: str = "redis://localhost:6379/0"
-    redis_max_connections: int = 20
+    # Pool size MUST be >= ``discovery_concurrency + monitor_concurrency``
+    # for a worker process — otherwise concurrent ``claim_work`` calls
+    # exhaust the pool and the 21st task crashes with
+    # ``MaxConnectionsError``. Production runs DISCOVERY_CONCURRENCY=30
+    # and MONITOR_CONCURRENCY=10 → 40 needed; 60 gives headroom for
+    # ad-hoc Redis calls (lookups, metrics) and bursts during reschedule.
+    redis_max_connections: int = 60
     throttle_delay_default: float = 2.0
     throttle_delay_ats: float = 0.5
 
@@ -51,8 +58,11 @@ class Settings(BaseSettings):
     export_batch_limit: int = 2000
     reconciliation_interval: int = 86400
 
-    apify_token: str = ""
-    anthropic_api_key: str = ""
+    # Typesense (disabled when typesense_admin_key is empty)
+    typesense_host: str = ""
+    typesense_port: int = 8108
+    typesense_protocol: str = "http"
+    typesense_admin_key: str = ""
 
     # Enrichment (disabled by default — empty provider means skip)
     enrich_provider: str = ""
@@ -65,6 +75,34 @@ class Settings(BaseSettings):
     enrich_daily_spend_cap_usd: float = 5.0
     enrich_input_price_per_m: float = 0.10
     enrich_output_price_per_m: float = 0.40
+
+    # IndexNow (disabled when indexnow_key is empty). A single POST to
+    # api.indexnow.org propagates to Bing, Yandex, Seznam, Naver, and
+    # Microsoft Yep. Google does NOT participate in IndexNow.
+    # `indexnow_site_url` is the single source of truth — `indexnow_host`
+    # is derived from it on load unless explicitly overridden.
+    indexnow_key: str = ""  # 8-128 hex chars
+    indexnow_host: str = ""  # derived from site_url unless set
+    indexnow_site_url: str = ""  # e.g. "https://jseek.co" (no trailing slash)
+    indexnow_key_url: str = ""  # e.g. "https://jseek.co/indexnow-key.txt"
+    indexnow_interval: int = 3600  # seconds between ticks
+    # Per-tick submission cap. Avoids telling Bing/Yandex/Seznam/Naver/Yep
+    # to recrawl N×4 URLs in one blast — the resulting synchronized bot
+    # sweep hammers Vercel image transforms. Unsubmitted URLs stay
+    # hash-mismatched and return next tick. Set to 0 to disable the cap.
+    indexnow_max_urls_per_tick: int = 500
+
+    @model_validator(mode="after")
+    def _normalize_indexnow(self) -> Settings:
+        # Strip trailing slashes on site_url to avoid double-slash URLs
+        # downstream ("https://jseek.co/" + "/en/..." → "...co//en/...").
+        if self.indexnow_site_url.endswith("/"):
+            self.indexnow_site_url = self.indexnow_site_url.rstrip("/")
+        # Derive host from site_url when unset. Explicit host wins so
+        # operators can still override, e.g. during cutover to www.
+        if not self.indexnow_host and self.indexnow_site_url:
+            self.indexnow_host = urlparse(self.indexnow_site_url).netloc
+        return self
 
     model_config = SettingsConfigDict(env_file=(".env", ".env.local"), extra="ignore")
 

@@ -138,6 +138,20 @@ class TestGBP:
         assert result[0].min == 1285
         assert result[0].period == "hourly"
 
+    def test_range_trailing_sentence_period(self):
+        # Regression: Asana Greenhouse posting had
+        # "...between £98,000.00-£115,500.00. The actual base salary..."
+        # The sentence-ending dot was glued onto the max value and the
+        # greedy [\d,.]+ capture pulled it into _parse_number, raising
+        # "could not convert string to float: '115500.00.'" every cycle.
+        html = (
+            "<p>For this role, the estimated base salary range is between "
+            "£98,000.00-£115,500.00. The actual base salary will vary.</p>"
+        )
+        result = extract_salary(html)
+        assert len(result) == 1
+        assert result[0] == SalaryRange(min=98000, max=115500, currency="GBP", period="yearly")
+
 
 class TestFalsePositives:
     """These must return empty — 0 false positives is the goal."""

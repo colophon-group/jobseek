@@ -132,6 +132,57 @@ async def test_enqueue_monitor_browser():
 
 
 # ---------------------------------------------------------------------------
+# Monitor queue: remove_monitor
+# ---------------------------------------------------------------------------
+
+
+async def test_remove_monitor_drops_board_from_all_queues():
+    """remove_monitor clears both first-time and recurring monitor queues
+    (simple + browser) and deletes the board config hash."""
+    config = {"monitor": "greenhouse"}
+    await rq.enqueue_monitor(
+        "greenhouse", "board-gone", time.time() - 10, config, browser=False, first_time=True
+    )
+    r = rq.get_redis()
+    assert await r.zcard("ft_monitors_simple:greenhouse") == 1
+    assert await r.exists("board:board-gone") == 1
+
+    await rq.remove_monitor("greenhouse", "board-gone")
+
+    assert await r.zcard("ft_monitors_simple:greenhouse") == 0
+    assert await r.zcard("monitors_simple:greenhouse") == 0
+    assert await r.zcard("ft_monitors_browser:greenhouse") == 0
+    assert await r.zcard("monitors_browser:greenhouse") == 0
+    assert await r.exists("board:board-gone") == 0
+
+
+async def test_remove_monitor_is_idempotent_on_missing_board():
+    """remove_monitor on a board that was never enqueued is a no-op."""
+    r = rq.get_redis()
+    await rq.remove_monitor("lever", "never-existed")
+    assert await r.exists("board:never-existed") == 0
+
+
+async def test_remove_monitor_after_claim_clears_domain_on_next_claim():
+    """After remove_monitor, the next claim_work on the emptied domain returns
+    None and the domain is dropped from the ready queue by the claim Lua."""
+    config = {"monitor": "lever"}
+    await rq.enqueue_monitor(
+        "lever", "board-x", time.time() - 10, config, browser=False, first_time=True
+    )
+
+    await rq.remove_monitor("lever", "board-x")
+    r = rq.get_redis()
+    # Domain still present in ready queue until the next claim attempt
+    assert await r.zcard("ready:simple:0") == 1
+
+    work = await rq.claim_work(browser=False)
+    assert work is None
+    # Claim script removed the empty domain from the ready queue
+    assert await r.zcard("ready:simple:0") == 0
+
+
+# ---------------------------------------------------------------------------
 # Scrape queue: enqueue + claim round-trip
 # ---------------------------------------------------------------------------
 

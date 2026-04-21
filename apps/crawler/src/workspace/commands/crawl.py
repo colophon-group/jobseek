@@ -27,6 +27,11 @@ from src.workspace.state import (
 _SUSPICIOUS_ROUND_THRESHOLDS = {1000, 5000, 10000, 50000, 100000}
 
 
+async def _shutdown_http(http) -> None:
+    """Close an httpx client. Idempotent — safe to call multiple times."""
+    await http.aclose()
+
+
 def _warn_suspicious_count(count: int, category: str) -> None:
     """Warn when a job count looks like a server-side cap or is unusually high."""
     if count <= 0:
@@ -335,7 +340,7 @@ def probe_monitors(slug: str | None, board_alias: str | None, current_jobs: int,
                 results = await probe_all_monitors(board.url, http, pw=pw)
             return results
         finally:
-            await http.aclose()
+            await _shutdown_http(http)
 
     results = asyncio.run(_run())
 
@@ -410,7 +415,7 @@ def _probe_all_boards(slug: str, current_jobs: int) -> None:
                         await asyncio.sleep(SAME_HOST_DELAY)
                 return all_results
         finally:
-            await http.aclose()
+            await _shutdown_http(http)
 
     all_results = asyncio.run(_run())
 
@@ -490,7 +495,7 @@ def probe_scraper(slug: str | None, board_alias: str | None, urls: tuple[str, ..
             async with async_playwright() as pw:
                 return await probe_scrapers(target_urls, http, pw=pw)
         finally:
-            await http.aclose()
+            await _shutdown_http(http)
 
     results, spa_suspect = asyncio.run(_run())
 
@@ -665,7 +670,7 @@ def probe_deep(slug: str | None, board_alias: str | None, current_jobs: int):
 
                 return metadata, httpx_ok, diag, cms_results
         finally:
-            await http.aclose()
+            await _shutdown_http(http)
 
     metadata, httpx_ok, diagnostics, cms_results = asyncio.run(_run())
 
@@ -827,7 +832,7 @@ def probe_api(url: str, slug: str | None, board_alias: str | None):
             resp = await http.get(url, timeout=30)
             return resp
         finally:
-            await http.aclose()
+            await _shutdown_http(http)
 
     resp = asyncio.run(_run())
 
@@ -1192,7 +1197,8 @@ def run_monitor(slug: str | None, board_alias: str | None, config_name: str | No
         from src.shared.http import create_logging_http_client
 
         ssl_verify = (board.monitor_config or {}).get("ssl_verify", True)
-        http, http_log = create_logging_http_client(verify=ssl_verify)
+        use_proxy = bool((mon_config or {}).get("proxy"))
+        http, http_log = create_logging_http_client(verify=ssl_verify, use_proxy=use_proxy)
         try:
             async with async_playwright() as pw:
                 start = time.monotonic()
@@ -1207,7 +1213,7 @@ def run_monitor(slug: str | None, board_alias: str | None, config_name: str | No
                 elapsed = time.monotonic() - start
             return result, elapsed, http_log
         finally:
-            await http.aclose()
+            await _shutdown_http(http)
 
     try:
         result, elapsed, http_log = asyncio.run(_run())
@@ -1671,7 +1677,8 @@ def run_scraper(
         from src.shared.http import create_logging_http_client
 
         ssl_verify = (board.monitor_config or {}).get("ssl_verify", True)
-        http, http_log = create_logging_http_client(verify=ssl_verify)
+        use_proxy = bool((scr_config or {}).get("proxy"))
+        http, http_log = create_logging_http_client(verify=ssl_verify, use_proxy=use_proxy)
         results = []
         skipped: list[tuple[str, str]] = []
         try:
@@ -1697,7 +1704,7 @@ def run_scraper(
                     results.append((url, content, elapsed))
             return results, http_log, skipped
         finally:
-            await http.aclose()
+            await _shutdown_http(http)
 
     results, http_log, skipped = asyncio.run(_run())
 
@@ -2085,6 +2092,13 @@ def feedback_cmd(
         "job_location_type": jlt_notes,
     }
 
+    # When coverage_data is empty, no per-field sample was recorded at all
+    # (e.g. URL-only monitor + ws run scraper crashed). In that case any
+    # synthesized "0/N" coverage misleads reviewers — the agent assessed
+    # quality manually without programmatic sampling. We omit the coverage
+    # fraction and skip the absent-auto-population.
+    has_field_data = bool(coverage_data)
+
     # Build per-field feedback
     fields_fb: dict[str, dict] = {}
     for field_name in _FEEDBACK_FIELDS:
@@ -2094,15 +2108,17 @@ def feedback_cmd(
             total = scraper_total or monitor_total
         else:
             total = monitor_total or scraper_total
-        coverage = f"{count}/{total}" if total else "0/0"
+        coverage = (f"{count}/{total}" if total else "0/0") if has_field_data else ""
 
         # Determine quality: explicit > auto-populate
         q = explicit_quality.get(field_name)
-        if q is None:
-            q = "absent" if count == 0 else None
+        if q is None and has_field_data and count == 0:
+            q = "absent"
 
         if q is not None:
-            entry: dict[str, str] = {"coverage": coverage, "quality": q}
+            entry: dict[str, str] = {"quality": q}
+            if coverage:
+                entry["coverage"] = coverage
             notes = notes_map.get(field_name, "")
             if notes:
                 entry["notes"] = notes
@@ -2140,9 +2156,15 @@ def feedback_cmd(
         for f in tier_fields:
             fb = fields_fb.get(f)
             if fb:
-                c, t = fb["coverage"].split("/")
-                tier_coverage += int(c)
-                tier_total += int(t)
+                # `coverage` is omitted when no per-field sample existed
+                # (manual quality assessment by the agent). Skip the
+                # numeric aggregation in that case but still propagate
+                # the worst quality rating across the tier.
+                cov = fb.get("coverage")
+                if cov:
+                    c, t = cov.split("/")
+                    tier_coverage += int(c)
+                    tier_total += int(t)
                 if q_rank.get(fb["quality"], 0) > q_rank.get(worst_q, 0):
                     worst_q = fb["quality"]
         return {"coverage": f"{tier_coverage}/{tier_total}", "quality": worst_q}

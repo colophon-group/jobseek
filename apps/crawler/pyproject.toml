@@ -11,11 +11,11 @@ dependencies = [
     "pydantic-settings>=2.7",
     "pyyaml>=6.0",
     "structlog>=24.4",
-    "python-dotenv>=1.0",
+    "python-dotenv>=1.2.2",
     "polars>=1.38.1",
     "jmespath>=1.0",
     "upstash-redis>=1.6.0",
-    "Pillow>=10.0",
+    "Pillow>=12.2.0",
     "cairosvg>=2.9.0",
     "playwright>=1.58.0",
     "fast-langdetect>=0.3",
@@ -24,10 +24,11 @@ dependencies = [
     "alembic>=1.13",
     "psycopg2-binary>=2.9",
     "selectolax>=0.4.7",
-    "pypdf>=4.0",
+    "pypdf>=6.10.2",
     "jinja2>=3.1",
     "huggingface-hub>=1.7.2",
     "cryptography>=46.0.5",
+    "typesense>=0.21",
 ]
 
 [project.scripts]
@@ -39,7 +40,7 @@ enrich = ["openai>=1.0", "anthropic>=0.40", "google-genai>=1.0"]
 
 [dependency-groups]
 dev = [
-    "pytest>=8.0",
+    "pytest>=9.0.3",
     "pytest-asyncio>=0.25",
     "pytest-timeout>=2.4.0",
     "ruff>=0.15.4",

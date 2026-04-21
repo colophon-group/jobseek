@@ -200,6 +200,93 @@ class TestExtractFieldShared:
         assert result is None
 
 
+class TestExtractFieldLookupJoin:
+    """``lookup_from`` + ``key_from`` — sibling-table resolution.
+
+    Motivated by ATSes that ship a compact listing (``{id, dp, f, l}``)
+    plus a sibling lookup dict (``{lookup: {departments: {...}}}``).
+    Tesla's ``/cua-api/apps/careers/state`` endpoint is the canonical
+    case; eightfold PCSX and some Workday tenants use similar shapes.
+    """
+
+    @staticmethod
+    def _tesla_root() -> dict:
+        return {
+            "lookup": {
+                "regions": {"3": "Europe", "5": "North America"},
+                "sites": {"CH": "Switzerland", "US": "United States"},
+                "departments": {"4": "AI", "10": "Sales & Customer Support"},
+                "locations": {
+                    "401022": "Palo Alto, CA",
+                    "501033": "Cadenazzo, CH",
+                },
+            },
+            "listings": [
+                {"id": "1", "t": "AI Engineer", "dp": "4", "l": 401022},
+                {"id": "2", "t": "Sales Advisor", "dp": "10", "l": 501033},
+            ],
+        }
+
+    def _extract(self, item, spec, root):
+        from src.shared.nextdata import extract_field
+
+        return extract_field(item, spec, root=root)
+
+    def test_resolves_string_key(self):
+        root = self._tesla_root()
+        item = root["listings"][0]
+        v = self._extract(item, {"lookup_from": "lookup.departments", "key_from": "dp"}, root)
+        assert v == "AI"
+
+    def test_resolves_numeric_key_as_string(self):
+        """Listing IDs are often ints in the wire format; lookup keys are
+        always strings (JSON dict keys). Must coerce rather than return
+        None on type mismatch."""
+        root = self._tesla_root()
+        item = root["listings"][0]
+        v = self._extract(item, {"lookup_from": "lookup.locations", "key_from": "l"}, root)
+        assert v == "Palo Alto, CA"
+
+    def test_missing_key_returns_none(self):
+        root = self._tesla_root()
+        item = {"id": "x"}  # no "dp"
+        v = self._extract(item, {"lookup_from": "lookup.departments", "key_from": "dp"}, root)
+        assert v is None
+
+    def test_missing_lookup_table_returns_none(self):
+        root = self._tesla_root()
+        item = root["listings"][0]
+        v = self._extract(item, {"lookup_from": "lookup.nonexistent", "key_from": "dp"}, root)
+        assert v is None
+
+    def test_lookup_path_resolves_to_non_dict_returns_none(self):
+        """If the jmespath lands on a scalar or array, that's a misconfig
+        — return None rather than raise so one bad field doesn't kill
+        the whole listing batch."""
+        root = {"lookup": {"departments": "not-a-dict"}}
+        v = self._extract(
+            {"dp": "4"}, {"lookup_from": "lookup.departments", "key_from": "dp"}, root
+        )
+        assert v is None
+
+    def test_key_not_in_table_returns_none(self):
+        root = self._tesla_root()
+        v = self._extract(
+            {"dp": "999"},
+            {"lookup_from": "lookup.departments", "key_from": "dp"},
+            root,
+        )
+        assert v is None
+
+    def test_no_root_returns_none(self):
+        """When a caller didn't thread root through — common during
+        auto-discover paths that only see a paginated page — the lookup
+        can't resolve. Fail soft and log rather than raise."""
+        item = {"dp": "4"}
+        v = self._extract(item, {"lookup_from": "lookup.departments", "key_from": "dp"}, None)
+        assert v is None
+
+
 class TestBuildUrl:
     def test_basic_substitution(self):
         item = {"id": "abc-123", "text": "Engineer"}

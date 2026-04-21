@@ -6,7 +6,9 @@ No configuration needed — handles all standard schema.org fields automatically
 
 from __future__ import annotations
 
+import asyncio
 import json
+import random
 import re
 from html.parser import HTMLParser
 
@@ -16,6 +18,14 @@ import structlog
 from src.core.scrapers import JobContent, register
 
 log = structlog.get_logger()
+
+# A single 403 on the HTTP path is usually a soft WAF signal: the first request
+# from a cold session gets rate-limited, but the same client (now holding a
+# challenge cookie) passes on the next attempt. Verified on careers.rtx.com:
+# 50% cold-connection failure → 10/10 after a single retry on the same client.
+# Small jittered sleep avoids hammering the WAF.
+_RETRY_403_MAX = 1
+_RETRY_403_BACKOFF_S = 0.5
 
 _CTRL_REPLACEMENTS = {"\n": "\\n", "\r": "\\r", "\t": "\\t"}
 
@@ -263,6 +273,25 @@ def can_handle(htmls: list[str]) -> dict | None:
     return None
 
 
+async def _fetch_html(url: str, http: httpx.AsyncClient) -> str:
+    """GET the page, retrying once on a 403 with jittered backoff.
+
+    Some hosts (e.g. ``careers.rtx.com``) front their job pages with a soft
+    WAF that rejects cold connections with 403 but accepts the retry on the
+    same client — the first response sets challenge cookies that the retry
+    carries. See the jsonld-retry-403 PR for the verification data.
+    Any other non-2xx status still raises via ``raise_for_status``.
+    """
+    response = await http.get(url, follow_redirects=True)
+    if response.status_code == 403 and _RETRY_403_MAX > 0:
+        delay = _RETRY_403_BACKOFF_S + random.random() * _RETRY_403_BACKOFF_S
+        log.info("jsonld.fetch.retry_403", url=url, delay_s=round(delay, 2))
+        await asyncio.sleep(delay)
+        response = await http.get(url, follow_redirects=True)
+    response.raise_for_status()
+    return response.text
+
+
 async def scrape(url: str, config: dict, http: httpx.AsyncClient, pw=None, **kwargs) -> JobContent:
     """Extract job data from JSON-LD on a page.
 
@@ -275,9 +304,7 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, pw=None, **kwa
         browser_config = {k: v for k, v in config.items() if k in BROWSER_KEYS}
         html = await browser_render(url, browser_config, pw=pw)
     else:
-        response = await http.get(url, follow_redirects=True)
-        response.raise_for_status()
-        html = response.text
+        html = await _fetch_html(url, http)
 
     content = parse_html(html, config)
     if content.title:

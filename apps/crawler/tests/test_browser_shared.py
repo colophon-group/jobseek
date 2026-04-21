@@ -6,13 +6,17 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
 from src.shared.browser import (
     _REPEAT_TIMEOUT,
     ACTION_TIMEOUT,
+    BROWSER_KEYS,
     DEFAULT_TIMEOUT,
     DEFAULT_USER_AGENT,
     DEFAULT_WAIT,
+    DEFAULT_WAIT_FALLBACK,
+    NAVIGATE_KEYS,
     OVERLAY_SELECTORS,
     VALID_WAIT_STRATEGIES,
     _resolve_placeholders,
@@ -21,6 +25,7 @@ from src.shared.browser import (
     open_page,
     render,
     run_actions,
+    safe_content,
 )
 
 # ---------------------------------------------------------------------------
@@ -83,6 +88,41 @@ class TestConstants:
         for sel in OVERLAY_SELECTORS:
             assert isinstance(sel, str)
 
+    def test_default_wait_fallback_is_valid_strategy(self):
+        assert DEFAULT_WAIT_FALLBACK in VALID_WAIT_STRATEGIES
+
+    def test_browser_keys_exact_membership(self):
+        # BROWSER_KEYS is the single source of truth for which config keys
+        # reach open_page / navigate / run_actions. A missing entry silently
+        # drops the key at the monitor/scraper boundary — regression guard.
+        expected = frozenset(
+            {
+                "wait",
+                "wait_fallback",
+                "timeout",
+                "user_agent",
+                "headless",
+                "stealth",
+                "actions",
+                "warmup_url",
+                "cookies",
+                "disable_http2",
+                "persistent_context",
+                "channel",
+                "viewport",
+                "locale",
+            }
+        )
+        assert expected == BROWSER_KEYS
+
+    def test_navigate_keys_is_nav_only_subset(self):
+        # NAVIGATE_KEYS is the narrow projection for call sites that should
+        # not silently activate open_page launch flags (stealth, cookies,
+        # user_agent, etc.) on boards that historically had them dropped.
+        expected = frozenset({"wait", "wait_fallback", "timeout", "actions"})
+        assert expected == NAVIGATE_KEYS
+        assert NAVIGATE_KEYS < BROWSER_KEYS
+
 
 # ---------------------------------------------------------------------------
 # TestNavigate
@@ -108,6 +148,128 @@ class TestNavigate:
         page = _make_page()
         with pytest.raises(ValueError, match="Invalid wait strategy"):
             await navigate(page, "https://example.com", {"wait": "bogus"})
+
+
+# ---------------------------------------------------------------------------
+# TestNavigateFallback
+# ---------------------------------------------------------------------------
+
+
+class TestNavigateFallback:
+    """Tests for the wait_fallback retry behaviour added to navigate().
+
+    Background: SPA career sites with persistent analytics/telemetry chatter
+    never reach ``networkidle``, so the 30s primary attempt times out. The
+    fallback retries once with ``domcontentloaded`` (default) and recovers.
+    """
+
+    async def test_fallback_triggers_on_timeout(self):
+        """Primary times out → fallback strategy is tried with same timeout."""
+        page = _make_page()
+        page.goto = AsyncMock(
+            side_effect=[
+                PlaywrightTimeoutError("Page.goto: Timeout 30000ms exceeded."),
+                None,
+            ]
+        )
+        await navigate(
+            page,
+            "https://example.com",
+            {"wait": "networkidle", "wait_fallback": "domcontentloaded", "timeout": 30000},
+        )
+        assert page.goto.await_count == 2
+        first_call = page.goto.await_args_list[0]
+        second_call = page.goto.await_args_list[1]
+        assert first_call.kwargs["wait_until"] == "networkidle"
+        assert second_call.kwargs["wait_until"] == "domcontentloaded"
+        assert second_call.kwargs["timeout"] == 30000
+
+    async def test_default_fallback_applied_when_key_absent(self):
+        """When wait_fallback is not set in config, DEFAULT_WAIT_FALLBACK is used."""
+        page = _make_page()
+        page.goto = AsyncMock(side_effect=[PlaywrightTimeoutError("Timeout"), None])
+        await navigate(page, "https://example.com", {"wait": "networkidle"})
+        assert page.goto.await_count == 2
+        assert page.goto.await_args_list[1].kwargs["wait_until"] == DEFAULT_WAIT_FALLBACK
+
+    async def test_explicit_none_disables_fallback(self):
+        """wait_fallback: None opts the board out of the default retry."""
+        page = _make_page()
+        page.goto = AsyncMock(side_effect=PlaywrightTimeoutError("Timeout"))
+        with pytest.raises(PlaywrightTimeoutError):
+            await navigate(
+                page,
+                "https://example.com",
+                {"wait": "networkidle", "wait_fallback": None},
+            )
+        assert page.goto.await_count == 1
+
+    async def test_fallback_no_op_when_primary_succeeds(self):
+        """When primary succeeds, fallback is never attempted."""
+        page = _make_page()
+        await navigate(
+            page,
+            "https://example.com",
+            {"wait": "networkidle", "wait_fallback": "domcontentloaded"},
+        )
+        assert page.goto.await_count == 1
+        page.goto.assert_awaited_once_with(
+            "https://example.com", wait_until="networkidle", timeout=DEFAULT_TIMEOUT
+        )
+
+    async def test_fallback_both_fail_raises(self):
+        """When both primary and fallback time out, TimeoutError propagates."""
+        page = _make_page()
+        page.goto = AsyncMock(side_effect=PlaywrightTimeoutError("Timeout"))
+        with pytest.raises(PlaywrightTimeoutError):
+            await navigate(
+                page,
+                "https://example.com",
+                {"wait": "networkidle", "wait_fallback": "domcontentloaded"},
+            )
+        assert page.goto.await_count == 2
+
+    async def test_fallback_primary_domcontentloaded_no_retry(self):
+        """Primary already equals DEFAULT_WAIT_FALLBACK — no pointless retry."""
+        page = _make_page()
+        page.goto = AsyncMock(side_effect=PlaywrightTimeoutError("Timeout"))
+        with pytest.raises(PlaywrightTimeoutError):
+            await navigate(page, "https://example.com", {"wait": "domcontentloaded"})
+        # Default fallback is "domcontentloaded", same as primary → skip retry
+        assert page.goto.await_count == 1
+
+    async def test_fallback_same_as_primary_does_not_retry(self):
+        """An explicit fallback equal to the primary strategy is a no-op."""
+        page = _make_page()
+        page.goto = AsyncMock(side_effect=PlaywrightTimeoutError("Timeout"))
+        with pytest.raises(PlaywrightTimeoutError):
+            await navigate(
+                page,
+                "https://example.com",
+                {"wait": "networkidle", "wait_fallback": "networkidle"},
+            )
+        assert page.goto.await_count == 1
+
+    async def test_fallback_non_timeout_error_not_retried(self):
+        """Non-timeout errors propagate without fallback retry."""
+        page = _make_page()
+        page.goto = AsyncMock(side_effect=RuntimeError("network unreachable"))
+        with pytest.raises(RuntimeError, match="network unreachable"):
+            await navigate(
+                page,
+                "https://example.com",
+                {"wait": "networkidle", "wait_fallback": "domcontentloaded"},
+            )
+        assert page.goto.await_count == 1
+
+    async def test_invalid_fallback_raises(self):
+        page = _make_page()
+        with pytest.raises(ValueError, match="Invalid wait_fallback strategy"):
+            await navigate(
+                page,
+                "https://example.com",
+                {"wait": "networkidle", "wait_fallback": "bogus"},
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -294,6 +456,170 @@ class TestOpenPage:
         context.close.assert_awaited_once()
         browser.close.assert_awaited_once()
 
+    async def test_use_proxy_false_does_not_pass_proxy_kwarg(self):
+        pw = _make_pw()
+        async with open_page(pw, use_proxy=False):
+            pass
+        # Default path: no "proxy" key in launch kwargs.
+        kwargs = pw.chromium.launch.await_args.kwargs
+        assert "proxy" not in kwargs
+
+    async def test_use_proxy_true_attaches_provider_dict(self, monkeypatch):
+        from src import config
+
+        monkeypatch.setattr(config.settings, "proxy_provider", "webshare")
+        monkeypatch.setattr(
+            config.settings, "webshare_proxy_url", "http://user:pass@pxy.example:7000"
+        )
+        pw = _make_pw()
+        async with open_page(pw, use_proxy=True):
+            pass
+        kwargs = pw.chromium.launch.await_args.kwargs
+        assert kwargs.get("proxy") == {
+            "server": "http://pxy.example:7000",
+            "username": "user",
+            "password": "pass",
+        }
+
+    async def test_use_proxy_true_but_provider_none_skips_proxy(self, monkeypatch):
+        from src import config
+
+        monkeypatch.setattr(config.settings, "proxy_provider", "none")
+        pw = _make_pw()
+        async with open_page(pw, use_proxy=True):
+            pass
+        kwargs = pw.chromium.launch.await_args.kwargs
+        assert "proxy" not in kwargs
+
+    async def test_channel_forwarded_on_vanilla_launch(self):
+        """``channel: chrome`` opts into system Chrome over bundled Chromium.
+
+        Real-Chrome has a consistent TLS/JS fingerprint trusted by most bot
+        managers; bundled Chromium does not. Regression guard ensures the
+        key reaches ``pw.chromium.launch``.
+        """
+        pw = _make_pw()
+        async with open_page(pw, {"channel": "chrome"}):
+            pass
+        kwargs = pw.chromium.launch.await_args.kwargs
+        assert kwargs.get("channel") == "chrome"
+
+
+class TestOpenPagePersistentContext:
+    """Coverage for the ``persistent_context: true`` branch of open_page.
+
+    Added for Akamai-protected boards (Tesla, future WAF'd employers).
+    ``launch + new_context`` fails the bot-manager fingerprint check;
+    ``launch_persistent_context`` with a user-data-dir passes it.
+    """
+
+    @staticmethod
+    def _make_persist_pw() -> MagicMock:
+        """Playwright mock with launch_persistent_context wired up."""
+        page = _make_page()
+        context = MagicMock()
+        context.new_page = AsyncMock(return_value=page)
+        context.close = AsyncMock()
+        context.add_cookies = AsyncMock()
+        context.set_default_timeout = MagicMock()
+        context.pages = [page]
+        pw = MagicMock()
+        pw.chromium = MagicMock()
+        pw.chromium.launch_persistent_context = AsyncMock(return_value=context)
+        pw.chromium.launch = AsyncMock()  # unused in this path — trip if called
+        return pw
+
+    async def test_uses_launch_persistent_context_not_launch(self):
+        pw = self._make_persist_pw()
+        async with open_page(pw, {"persistent_context": True}):
+            pass
+        pw.chromium.launch_persistent_context.assert_awaited_once()
+        pw.chromium.launch.assert_not_called()
+
+    async def test_user_data_dir_cleaned_up(self):
+        import os
+
+        pw = self._make_persist_pw()
+        async with open_page(pw, {"persistent_context": True}):
+            pass
+        # First positional arg is the user_data_dir path; must not still
+        # exist after the context closes.
+        user_data_dir = pw.chromium.launch_persistent_context.await_args.args[0]
+        assert not os.path.exists(user_data_dir), (
+            f"user_data_dir {user_data_dir} leaked; tmpdirs accumulate "
+            "across browser cycles under the worker pool"
+        )
+
+    async def test_user_data_dir_cleaned_on_exception(self):
+        import os
+
+        pw = self._make_persist_pw()
+        with pytest.raises(RuntimeError):
+            async with open_page(pw, {"persistent_context": True}):
+                raise RuntimeError("boom")
+        user_data_dir = pw.chromium.launch_persistent_context.await_args.args[0]
+        assert not os.path.exists(user_data_dir)
+
+    async def test_channel_viewport_locale_user_agent_forwarded(self):
+        pw = self._make_persist_pw()
+        async with open_page(
+            pw,
+            {
+                "persistent_context": True,
+                "channel": "chrome",
+                "viewport": {"width": 1920, "height": 1080},
+                "locale": "en-GB",
+                "user_agent": "ua/1.0",
+            },
+        ):
+            pass
+        kwargs = pw.chromium.launch_persistent_context.await_args.kwargs
+        assert kwargs["channel"] == "chrome"
+        assert kwargs["viewport"] == {"width": 1920, "height": 1080}
+        assert kwargs["locale"] == "en-GB"
+        assert kwargs["user_agent"] == "ua/1.0"
+
+    async def test_automation_controlled_flag_added(self):
+        """Akamai reads ``navigator.webdriver`` before any init-script.
+
+        ``--disable-blink-features=AutomationControlled`` is the only
+        way to hide that flag from the pre-script JS, so the default
+        must add it whenever persistent_context is on.
+        """
+        pw = self._make_persist_pw()
+        async with open_page(pw, {"persistent_context": True}):
+            pass
+        kwargs = pw.chromium.launch_persistent_context.await_args.kwargs
+        assert "--disable-blink-features=AutomationControlled" in kwargs.get("args", [])
+
+    async def test_proxy_forwarded_to_persistent_context(self, monkeypatch):
+        from src import config
+
+        monkeypatch.setattr(config.settings, "proxy_provider", "webshare")
+        monkeypatch.setattr(config.settings, "webshare_proxy_url", "http://u:p@px.example:7000")
+        pw = self._make_persist_pw()
+        async with open_page(pw, {"persistent_context": True}, use_proxy=True):
+            pass
+        kwargs = pw.chromium.launch_persistent_context.await_args.kwargs
+        assert kwargs["proxy"] == {
+            "server": "http://px.example:7000",
+            "username": "u",
+            "password": "p",
+        }
+
+    async def test_warmup_url_navigated_before_yield(self):
+        pw = self._make_persist_pw()
+        page = pw.chromium.launch_persistent_context.return_value.pages[0]
+        async with open_page(
+            pw,
+            {"persistent_context": True, "warmup_url": "https://example.com/"},
+        ):
+            pass
+        page.goto.assert_awaited_once()
+        args, kwargs = page.goto.await_args
+        assert args[0] == "https://example.com/"
+        assert kwargs["wait_until"] == "domcontentloaded"
+
 
 # ---------------------------------------------------------------------------
 # TestRender
@@ -354,6 +680,82 @@ class TestRender:
         with patch("playwright.async_api.async_playwright", return_value=mock_async_pw):
             html = await render("https://example.com", None)
         assert html == "<html></html>"
+
+
+# ---------------------------------------------------------------------------
+# TestSafeContent
+# ---------------------------------------------------------------------------
+
+
+class TestSafeContent:
+    """Retry behaviour for page.content() when the page is navigating.
+
+    Background: post.ch (issue #2188) reliably hits
+    ``Error: Page.content: Unable to retrieve content because the page is
+    navigating and changing the content.`` The race is transient — waiting
+    for ``domcontentloaded`` and retrying once recovers the HTML. Any other
+    error propagates so real failures are not silently swallowed.
+    """
+
+    @staticmethod
+    def _navigating_error() -> Exception:
+        return Exception(
+            "Page.content: Unable to retrieve content because the "
+            "page is navigating and changing the content."
+        )
+
+    async def test_success_first_try(self):
+        page = _make_page()
+        page.content = AsyncMock(return_value="<html>ok</html>")
+        html = await safe_content(page)
+        assert html == "<html>ok</html>"
+        assert page.content.await_count == 1
+
+    async def test_retries_on_navigation_race_and_recovers(self):
+        page = _make_page()
+        page.content = AsyncMock(side_effect=[self._navigating_error(), "<html>ok</html>"])
+        page.wait_for_load_state = AsyncMock()
+        with patch.object(asyncio, "sleep", new_callable=AsyncMock):
+            html = await safe_content(page)
+        assert html == "<html>ok</html>"
+        assert page.content.await_count == 2
+        page.wait_for_load_state.assert_awaited_once()
+        call = page.wait_for_load_state.await_args
+        assert call.args[0] == "domcontentloaded"
+        assert isinstance(call.kwargs.get("timeout"), int)
+
+    async def test_retries_exhausted_reraises(self):
+        page = _make_page()
+        err = self._navigating_error()
+        page.content = AsyncMock(side_effect=[err, err, err])
+        page.wait_for_load_state = AsyncMock()
+        with (
+            patch.object(asyncio, "sleep", new_callable=AsyncMock),
+            pytest.raises(Exception) as exc_info,
+        ):
+            await safe_content(page)
+        assert "page is navigating" in str(exc_info.value)
+        # 1 initial + 2 retries = 3 attempts
+        assert page.content.await_count == 3
+
+    async def test_non_navigation_error_propagates_without_retry(self):
+        page = _make_page()
+        page.content = AsyncMock(side_effect=RuntimeError("connection closed"))
+        page.wait_for_load_state = AsyncMock()
+        with pytest.raises(RuntimeError, match="connection closed"):
+            await safe_content(page)
+        assert page.content.await_count == 1
+        page.wait_for_load_state.assert_not_awaited()
+
+    async def test_wait_for_load_state_failure_does_not_block_retry(self):
+        """If wait_for_load_state raises, we still retry page.content()."""
+        page = _make_page()
+        page.content = AsyncMock(side_effect=[self._navigating_error(), "<html>ok</html>"])
+        page.wait_for_load_state = AsyncMock(side_effect=PlaywrightTimeoutError("x"))
+        with patch.object(asyncio, "sleep", new_callable=AsyncMock):
+            html = await safe_content(page)
+        assert html == "<html>ok</html>"
+        assert page.content.await_count == 2
 
 
 # ---------------------------------------------------------------------------

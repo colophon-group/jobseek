@@ -15,7 +15,6 @@ _RICH_MONITORS: frozenset[str] = frozenset(
     {
         "accenture",
         "amazon",
-        "apify_meta",
         "ashby",
         "deel",
         "dvinci",
@@ -29,7 +28,6 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "pinpoint",
         "recruitee",
         "rss",
-        "signals",
         "traffit",
     }
 )
@@ -37,6 +35,20 @@ _RICH_MONITORS: frozenset[str] = frozenset(
 # Personio is conditionally rich: XML feed provides descriptions,
 # but the HTML fallback does not.  Richness is determined at runtime
 # by ws run monitor based on actual description coverage.
+
+# Crawler types whose ``auto_scraper_type()`` resolves to ("skip", None) —
+# i.e. rich monitors with no enrichment. This is ``_RICH_MONITORS`` minus
+# ``oracle_hcm``, which auto-resolves to an oracle_hcm scraper with enrich.
+# Used by SQL filters and the ``_is_skip_no_scrape`` classifier so implicit
+# rich boards (``scraper_type`` unset in metadata) are treated the same as
+# explicit ``scraper_type = "skip"`` boards. See issue 01-rich-monitor-scheduling.
+_AUTO_SKIP_CRAWLER_TYPES: frozenset[str] = _RICH_MONITORS - {"oracle_hcm"}
+
+
+def auto_skip_crawler_types() -> frozenset[str]:
+    """Return crawler types that auto-resolve to skip-no-scrape."""
+    return _AUTO_SKIP_CRAWLER_TYPES
+
 
 _ALL_MONITOR_TYPES: frozenset[str] = _RICH_MONITORS | {
     "bite",
@@ -74,6 +86,7 @@ _ALL_SCRAPER_TYPES: frozenset[str] = frozenset(
         "api_sniffer",
         "bite",
         "dom",
+        "eightfold",
         "embedded",
         "json-ld",
         "nextdata",
@@ -234,7 +247,7 @@ def auto_scraper_type(
     if monitor_type == "workday":
         return ("workday", None)
     if monitor_type == "eightfold":
-        return ("json-ld", None)
+        return ("eightfold", None)
     if monitor_type == "softgarden":
         return ("json-ld", None)
     if monitor_type == "ycombinator":

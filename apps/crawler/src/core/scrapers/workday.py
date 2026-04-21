@@ -162,15 +162,38 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, **kwargs) -> J
     api_url = _detail_url(company, wd_instance, site, path)
 
     resp = await http.get(api_url, headers={"Content-Type": "application/json"})
-    if resp.status_code != 200:
-        log.warning(
-            "workday_scraper.detail_failed",
-            url=url,
-            status=resp.status_code,
-        )
+    # Workday soft-fails (posting removed between list + detail fetches):
+    #   - 404 is the documented "not found" case.
+    #   - 403 with errorCode=S22 ("permission denied") is the *undocumented*
+    #     case Workday actually uses for closed/unlisted requisitions.
+    #     Verified 2026-04-19 against 15 consecutive 403 URLs from Loki:
+    #     0/15 were in the current LIST output — all genuinely delisted.
+    # Anything else (real WAF block, 5xx, other S-codes): raise so it
+    # surfaces in batch.scrape.error and gets retried.
+    if resp.status_code == 404:
+        log.info("workday_scraper.detail_gone", url=url, status=404)
         return JobContent()
+    if resp.status_code == 403 and _is_gone_response(resp):
+        log.info("workday_scraper.detail_gone", url=url, status=403, error_code="S22")
+        return JobContent()
+    resp.raise_for_status()
 
     return _parse_detail(resp.json())
+
+
+def _is_gone_response(resp: httpx.Response) -> bool:
+    """Detect Workday's 'gone' response shape.
+
+    Workday's CXS detail endpoint returns 403 with a JSON body of
+    ``{"errorCode": "S22", "message": "permission denied", ...}`` for
+    requisitions that have been closed or unlisted. Any other 403 shape
+    (raw text, HTML, different errorCode) is treated as a real error so
+    actual WAF blocks or auth failures still surface.
+    """
+    try:
+        return resp.json().get("errorCode") == "S22"
+    except Exception:
+        return False
 
 
 register("workday", scrape)

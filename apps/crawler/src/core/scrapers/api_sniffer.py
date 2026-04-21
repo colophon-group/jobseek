@@ -336,7 +336,7 @@ async def probe_pw(
     async def _probe_one(url: str) -> tuple[JobContent | None, dict | None]:
         """Probe a single URL, return (content, job_obj) or (None, None)."""
         try:
-            async with open_page(pw, {}, target_url=url) as page:
+            async with open_page(pw, {}) as page:
                 page_host = urlparse(url).netloc
                 exchanges = await capture_exchanges(page, page_host)
                 await navigate(page, url, {"wait": wait, "timeout": timeout})
@@ -446,7 +446,19 @@ async def _scrape_http(
         data = _jmespath.search(json_path, data)
 
     if not isinstance(data, dict):
-        log.warning("api_sniffer_scraper.no_job_data", url=url)
+        # Distinguish "requisition gone" (json_path resolved to None, e.g.
+        # `items[0]` against `items: []`) from "scraper got unexpected shape".
+        # Oracle HCM returns 200 + empty items for closed requisitions — that's
+        # the steady-state churn for large boards, not a scraper bug. Keep
+        # WARN for genuinely unexpected payloads so real regressions stand out.
+        if data is None:
+            log.info("api_sniffer_scraper.empty_result", url=url)
+        else:
+            log.warning(
+                "api_sniffer_scraper.no_job_data",
+                url=url,
+                shape=type(data).__name__,
+            )
         return JobContent()
 
     return _extract_from_object(data, config)
@@ -470,18 +482,27 @@ async def scrape(
     if config.get("api_url"):
         return await _scrape_http(url, config, http)
 
-    from src.shared.browser import navigate, open_page
+    from src.shared.browser import BROWSER_KEYS, NAVIGATE_KEYS, navigate, open_page
+
+    use_proxy = bool(config.get("proxy"))
 
     async def _do_scrape(p):
-        wait = config.get("wait", _DEFAULT_WAIT)
-        timeout = config.get("timeout", _DEFAULT_TIMEOUT)
         settle = config.get("settle", _DEFAULT_SETTLE)
+        # Narrow projection: wait / wait_fallback / timeout / actions.
+        nav_config = {k: v for k, v in config.items() if k in NAVIGATE_KEYS}
+        nav_config.setdefault("wait", _DEFAULT_WAIT)
+        nav_config.setdefault("timeout", _DEFAULT_TIMEOUT)
+        # Forward launch-time browser keys (channel, persistent_context,
+        # user_agent, warmup_url, cookies, etc.) so scraper configs can
+        # reuse the same Akamai-bypass shape as the monitor. This used to
+        # pass {} and silently dropped keys like persistent_context.
+        browser_config = {k: v for k, v in config.items() if k in BROWSER_KEYS}
 
-        async with open_page(p, {}, target_url=url) as page:
+        async with open_page(p, browser_config, use_proxy=use_proxy) as page:
             page_host = urlparse(url).netloc
             exchanges = await capture_exchanges(page, page_host)
 
-            await navigate(page, url, {"wait": wait, "timeout": timeout})
+            await navigate(page, url, nav_config)
             await asyncio.sleep(settle)
 
             json_path = config.get("json_path")

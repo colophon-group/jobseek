@@ -6,6 +6,8 @@ from typing import Any
 
 import httpx
 
+from src.shared.proxy import httpx_proxy_for
+
 
 def _make_ssl_context() -> ssl.SSLContext:
     """Create an SSL context compatible with CDNs that mishandle TLS session tickets.
@@ -33,42 +35,67 @@ def _make_ssl_context() -> ssl.SSLContext:
     return ctx
 
 
+# Default UA mimics a recent Chrome on Windows. The previous value
+# ``jobseek-crawler/0.1`` was a unique fingerprint that WAF vendors
+# trivially match — it produced the anti-bot /Error and /404/ redirects
+# documented in issue #2193 on apply.deloitte.com, digitalcareers.infosys,
+# careers.loreal.com, careers.tsmc.com, careers.bain.com, and
+# recruitingapp-1619.umantis.com. Individual monitors/scrapers that need a
+# different UA still override via ``headers=`` on the request.
+DEFAULT_USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/131.0.0.0 Safari/537.36"
+)
+
+# Default Accept matches a real Chrome HTML fetch. httpx's own default is
+# ``*/*``, which is a bot-fingerprint signal — ``www.uber.com`` returns
+# HTTP 406 for ``Accept: */*`` on its HTML job pages (issue #2214: 809 ×
+# 406 per 12h on Uber alone). Keeping ``*/*;q=0.8`` at the tail means any
+# endpoint that prefers JSON or another content-type still matches via
+# the wildcard; per-request ``Accept`` overrides from monitor/scraper
+# configs still win (httpx merges client + request headers, with the
+# per-request entry winning on conflict).
+DEFAULT_ACCEPT = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+
 _CLIENT_DEFAULTS = {
     "timeout": httpx.Timeout(30.0),
     "follow_redirects": True,
     "limits": httpx.Limits(max_connections=20, max_keepalive_connections=10),
-    "headers": {"User-Agent": "jobseek-crawler/0.1"},
+    "headers": {"User-Agent": DEFAULT_USER_AGENT, "Accept": DEFAULT_ACCEPT},
     "verify": _make_ssl_context(),
 }
 
 
-def create_http_client(*, verify: bool = True) -> httpx.AsyncClient:
-    from src.shared.proxy import build_httpx_mounts
-
-    mounts = build_httpx_mounts()
-    kwargs = {**_CLIENT_DEFAULTS}
+def _client_kwargs(*, verify: bool, use_proxy: bool) -> dict[str, Any]:
+    kwargs: dict[str, Any] = {**_CLIENT_DEFAULTS}
     if not verify:
         kwargs["verify"] = False
-    return httpx.AsyncClient(**kwargs, **({"mounts": mounts} if mounts else {}))
+    proxy = httpx_proxy_for(use_proxy=use_proxy)
+    if proxy:
+        kwargs["proxy"] = proxy
+    return kwargs
 
 
-def create_nossl_http_client() -> httpx.AsyncClient:
-    """Create an HTTP client that skips SSL certificate verification.
+def create_http_client(*, verify: bool = True, use_proxy: bool = False) -> httpx.AsyncClient:
+    """Create an httpx client, optionally routed through the active proxy provider."""
+    return httpx.AsyncClient(**_client_kwargs(verify=verify, use_proxy=use_proxy))
+
+
+def create_nossl_http_client(*, use_proxy: bool = False) -> httpx.AsyncClient:
+    """HTTP client that skips SSL certificate verification.
 
     Used for boards whose servers have broken certificate chains
-    (e.g. missing intermediate CA).  Enabled per-board via
+    (e.g. missing intermediate CA). Enabled per-board via
     ``skip_ssl: true`` in scraper_config.
     """
-    defaults = {**_CLIENT_DEFAULTS, "verify": False}
-    from src.shared.proxy import build_httpx_mounts
-
-    mounts = build_httpx_mounts()
-    return httpx.AsyncClient(**defaults, **({"mounts": mounts} if mounts else {}))
+    return create_http_client(verify=False, use_proxy=use_proxy)
 
 
 def create_logging_http_client(
     *,
     verify: bool = True,
+    use_proxy: bool = False,
 ) -> tuple[httpx.AsyncClient, list[dict[str, Any]]]:
     """Create an HTTP client that logs request/response metadata.
 
@@ -97,15 +124,8 @@ def create_logging_http_client(
             }
         )
 
-    from src.shared.proxy import build_httpx_mounts
-
-    mounts = build_httpx_mounts()
-    kwargs = {**_CLIENT_DEFAULTS}
-    if not verify:
-        kwargs["verify"] = False
     client = httpx.AsyncClient(
-        **kwargs,
+        **_client_kwargs(verify=verify, use_proxy=use_proxy),
         event_hooks={"request": [_on_request], "response": [_on_response]},
-        **({"mounts": mounts} if mounts else {}),
     )
     return client, log_entries

@@ -49,7 +49,7 @@ meta,meta-careers,https://www.metacareers.com/jobs,sitemap,"{""sitemap_url"":""h
 | `company_slug` | Yes | Foreign key to companies.csv `slug`. |
 | `board_slug` | Yes | Unique board identifier in `{company}-{alias}` format. |
 | `board_url` | Yes | The career page URL to monitor. |
-| `monitor_type` | Yes | How to discover listings. Use any registered monitor type from `ws help monitors` (for example `greenhouse`, `workday`, `dom`, `api_sniffer`, or Meta-only `apify_meta`). |
+| `monitor_type` | Yes | How to discover listings. Use any registered monitor type from `ws help monitors` (for example `greenhouse`, `workday`, `dom`, `api_sniffer`, `sitemap`). |
 | `monitor_config` | No | JSON object with monitor-specific settings. |
 | `scraper_type` | No | How to extract job details. One of: `json-ld`, `dom`, `nextdata`, `embedded`, `api_sniffer`. Empty when API monitor provides full data. |
 | `scraper_config` | No | JSON object with scraper-specific settings. |

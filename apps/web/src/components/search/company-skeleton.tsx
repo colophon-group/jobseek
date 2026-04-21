@@ -1,16 +1,16 @@
 import { SkeletonCards } from "@/components/search/skeleton-card";
 
+/**
+ * Body-only skeleton for the company page. The header (logo, name,
+ * description, meta, similar companies) is server-rendered by CompanyHead
+ * and is always present — this skeleton only covers the toolbar and list
+ * which stream in after client hydration.
+ */
 export function CompanySkeleton() {
   return (
     <div className="space-y-6">
-      {/* Company header */}
-      <div className="flex items-center gap-4">
-        <div className="size-12 animate-pulse rounded-lg bg-border-soft" />
-        <div className="space-y-2">
-          <div className="h-5 w-40 animate-pulse rounded bg-border-soft" />
-          <div className="h-3 w-24 animate-pulse rounded bg-border-soft" />
-        </div>
-      </div>
+      {/* Stats line placeholder */}
+      <div className="h-3 w-32 animate-pulse rounded bg-border-soft" />
       {/* Toolbar placeholder */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="h-8 w-24 animate-pulse rounded-md bg-border-soft" />

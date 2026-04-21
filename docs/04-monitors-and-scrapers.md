@@ -106,7 +106,7 @@ Parses XML sitemaps to discover job URLs.
 1. Walk up the URL path trying `sitemap.xml` at each level
 2. Try common non-standard paths (`/sitemaps/sitemapIndex`, etc.)
 3. Parse `robots.txt` for `Sitemap:` directives
-4. Handle sitemap indexes by finding job-related child sitemaps
+4. Recursively handle sitemap indexes by finding job-related child sitemaps
 
 **Config**:
 ```json

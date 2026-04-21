@@ -72,7 +72,7 @@ Monitor Types (cheapest first):
 
   Type              Cost    Returns           Scraper needed?
   ──────────────────────────────────────────────────────────────
-  eightfold         8       Job URLs          Auto-configured (json-ld)
+  eightfold         8       Hybrid rich+URL   eightfold enrich (description only)
   join              9       Job URLs          Auto-configured
   ashby             10      Full job data     No (skipped)
   bite              10      Job URLs          Auto-configured
@@ -96,7 +96,6 @@ Monitor Types (cheapest first):
   notion            15      Job URLs          Auto-configured
   umantis           15      URL set           Yes
   nextdata          20      URLs or full      If URL-only
-  apify_meta        50      Full job data     No (skipped)
   sitemap           50      URL set           Yes
   api_sniffer       80      URLs or full      If URL-only (no fields)
   dom               100     URL set           Yes
@@ -329,30 +328,66 @@ breezy — Breezy HR Public Listing Endpoint
                     /json validates as a real listing endpoint."""
 
 MONITOR_EIGHTFOLD = """\
-eightfold — Eightfold AI Careers Portal (sitemap wrapper)
+eightfold — Eightfold AI Careers Portal (hybrid sitemap + PCSX)
 
-  Sitemap:  GET https://{host}/careers/sitemap.xml
-  Returns:  Job URLs (sitemap URL set)
-  Scraper:  Auto-configured (json-ld) — no render needed
+  Sources:  Sitemap (URL authority) + PCSX API (rich data, incremental)
+  Returns:  Sitemap URL set + partial rich data (title, locations, date_posted,
+            job_location_type, department, ats_job_id) for new/updated jobs
+  Scraper:  json-ld in "enrich" mode to fill description only
+            (PCSX doesn't return descriptions)
   Cost:     8 — cheapest monitor type
-  Note:     Thin wrapper over the sitemap monitor. Auto-constructs the
-            sitemap URL from the board URL and applies url_filter.
-            JSON-LD JobPosting schema is embedded in static HTML on all
-            Eightfold job pages — no Playwright/render required.
+
+  How it works:
+    1. Fetch the sitemap (canonical URL set — drives gone detection)
+    2. Probe PCSX API availability (cached in board metadata after first run)
+    3. If PCSX enabled: paginate newest-first via postedTs DESC, stopping
+       early when all items on a page are older than the stored watermark
+       (high-water mark). First run + weekly interval = full pagination.
+    4. Correlate PCSX positions to sitemap URLs by numeric job id
+    5. Emit partial rich data (keyed on canonical sitemap URL) + the full
+       sitemap URL set so gone detection continues to work
+
+  PCSX-disabled tenants (403 "PCSX is not enabled"): fall back to sitemap-only
+  mode automatically — same behaviour as the pre-hybrid monitor. Known
+  disabled tenants: bayer, american-express, hsbc, stmicroelectronics,
+  symetra, vale, zebra.
 
   Eightfold AI powers careers portals for 170+ enterprises including
   Starbucks, HSBC, Microsoft, Kering, Citigroup, Micron, etc.
 
-  Config:
-    {}                                            Minimal — sitemap URL auto-derived
+  Config (monitor_config):
     {"url_filter": "/careers/job/"}               Filter non-job URLs (recommended)
     {"sitemap_url": "https://custom.com/sitemap.xml"}  Override auto-derived URL
+    {"pcsx_watermark": {"auto_full_crawl": false}}     Await manual backfill
+                                                        (used for very large boards
+                                                        like Starbucks — see below)
 
-    url_filter     Regex to include only job URLs. Recommended: "/careers/job/"
-                   Eightfold sitemaps include the careers landing page alongside
-                   job URLs — the filter removes it.
-    sitemap_url    Override the auto-derived sitemap URL. Normally not needed —
-                   the monitor constructs it as {board_url_origin}/careers/sitemap.xml.
+  Config (scraper_config):
+    {"enrich": ["description"]}                   REQUIRED for PCSX-enabled tenants
+                                                   so json-ld fills in descriptions
+                                                   (PCSX doesn't return them).
+                                                   Optional for PCSX-disabled
+                                                   tenants (no effect if PCSX is
+                                                   skipped).
+
+  Watermark state (runtime-written in ``metadata.pcsx_watermark``):
+    max_ts               Highest postedTs seen — drives incremental stop
+    last_full_at         Last full crawl time (for 7-day refresh cadence)
+    last_incremental_at  Last successful incremental run
+    enabled              Cached probe result (true/false)
+    auto_full_crawl      If false, skip automatic full crawl on first run
+    extra                Host + domain (derived from sitemap URLs)
+
+  Manual backfill for large boards (Starbucks-scale):
+    Board CSVs with ``monitor_config.pcsx_watermark.auto_full_crawl: false``
+    skip the initial full crawl in scheduled runs. Operator triggers it
+    manually with:
+
+        uv run crawler board <slug> --pcsx-full-crawl
+
+    This bypasses the watermark and does a full PCSX pagination (can take
+    30-60 minutes for very large boards). On success the watermark is
+    populated and subsequent scheduled runs do fast incremental top-ups.
 
   URL patterns:
     *.eightfold.ai subdomains:  starbucks.eightfold.ai/careers
@@ -363,11 +398,27 @@ eightfold — Eightfold AI Careers Portal (sitemap wrapper)
               Detects *.eightfold.ai domains, HTML markers (eightfold.ai, pcsx),
               and PCSX API endpoint probe for white-label domains.
 
-  Why not use the API?
-    The Eightfold PCSX search API (/api/pcsx/search) has a hard 2,000 offset
-    cap — companies with more jobs (Starbucks: 21K) are unreachable via API.
-    The sitemap has no such limit. Some tenants also block the search API
-    entirely (STMicroelectronics returns 403). Sitemap is universally reliable.
+  Observability:
+    eightfold.full_crawl_start       First run or weekly re-sync starting
+    eightfold.full_crawl_done        Completed, N positions fetched
+    eightfold.incremental_start      Steady-state polling, max_ts=<unix>
+    eightfold.incremental_done       Completed, N positions fetched
+    eightfold.pcsx_disabled          Tenant returned 403 / probe failed
+    eightfold.pcsx_fetch_failed      Rate limit (405) or retry exhaustion —
+                                      sitemap-only fallback, watermark preserved
+    eightfold.pcsx_unmatched         N PCSX positions had no sitemap match
+                                      (usually sitemap lag for fresh jobs)
+    eightfold.awaiting_manual_backfill  auto_full_crawl=false + no watermark
+
+  Why the hybrid design?  Two problems in the old sitemap-only path:
+    1. JSON-LD in schema.org HTML has known quality issues on Eightfold —
+       stale datePosted, malformed addressRegion, missing jobLocationType.
+       PCSX returns clean standardizedLocations, accurate postedTs, and
+       explicit workLocationOption.
+    2. Steady-state crawls become O(new jobs) instead of O(total jobs)
+       via watermark-based early termination — the monitor typically
+       fetches only the first ~5-20 PCSX pages per cycle instead of
+       hundreds.
 
   Zero jobs?  Verify the sitemap URL exists: curl {host}/careers/sitemap.xml
               Check url_filter isn't too restrictive."""
@@ -483,36 +534,6 @@ join — JOIN (join.com) Next.js Monitor
   Zero jobs?  Verify board URL is join.com/companies/{slug} and not a
               marketing landing page."""
 
-MONITOR_APIFY_META = """\
-apify_meta — Apify-backed Meta Careers monitor
-
-  Source:    Existing Apify actor run for a Meta Careers scraper actor
-  Returns:   Full job data (title, HTML description, locations,
-             employment_type, job_location_type, date_posted)
-             extras: responsibilities, qualifications
-             metadata: teams, sub_teams
-  Scraper:   Not needed (monitor returns full data, scraper step is skipped)
-  Cap:       Controlled by the Apify actor / dataset
-  Note:      Starts the configured Apify actor, waits for completion, then
-             maps the resulting dataset into canonical DiscoveredJob records.
-
-  Config:
-    {"actor_id": "myuser/meta-careers-scraper"}
-    {"actor_id": "myuser/meta-careers-scraper", "max_jobs": 250}
-    {"actor_id": "myuser/meta-careers-scraper", "fetch_descriptions": false}
-
-    actor_id            Required Apify actor ID.
-    max_jobs            Optional limit passed to the actor. 0 means all jobs.
-    fetch_descriptions  Whether the actor should fetch descriptions
-                        (default: true).
-
-  Environment:
-    APIFY_TOKEN         Required. Used to start and poll the actor run.
-
-  Detection:  Not auto-detected by ws probe. Use when a board is explicitly
-              backed by an Apify actor and you want rich monitor output.
-  Zero jobs?  Verify actor_id and inspect the actor's latest dataset in Apify."""
-
 MONITOR_SITEMAP = """\
 sitemap — XML Sitemap Parser
 
@@ -526,7 +547,7 @@ sitemap — XML Sitemap Parser
                  1. Walking up the board URL path trying sitemap.xml at each level
                  2. Trying non-standard paths (/sitemaps/sitemapIndex, etc.)
                  3. Parsing robots.txt for Sitemap: directives
-                 4. Resolving sitemap indexes (prefers job-related children)
+                 4. Recursively resolving sitemap indexes (prefers job-related children)
                  Discovered URL is cached in board metadata for future runs.
 
   url_filter   Regex filter for discovered URLs (all monitors):
@@ -562,17 +583,22 @@ nextdata — Next.js __NEXT_DATA__ Discovery
       "slug_fields": ["title"]
     }
 
-    path          Dot-notation path to jobs array in __NEXT_DATA__ JSON
-    url_template  URL template with {field_name} placeholders from each item
-                  Special: {slug} built by slugifying + joining slug_fields
-    fields        Dict mapping DiscoveredJob fields to item field paths
-                  Supports dot notation (a.b.c), array index (a[0].b),
-                  array wildcard (a[].b — extracts from all items)
-    slug_fields   List of item fields to slugify + join for {slug} variable
-    render        If true, use Playwright to render page (default: false)
-    actions       Browser action pipeline (auto-enables render)
-    url_filter    Regex filter for discovered URLs (see: ws help monitor sitemap)
-    url_transform Regex find/replace to rewrite URLs (see: ws help monitor sitemap)
+    path           Dot-notation path to jobs array in __NEXT_DATA__ JSON
+    url_template   URL template with {field_name} placeholders from each item
+                   Special: {slug} built by slugifying + joining slug_fields
+    fields         Dict mapping DiscoveredJob fields to item field paths
+                   Supports dot notation (a.b.c), array index (a[0].b),
+                   array wildcard (a[].b — extracts from all items)
+    slug_fields    List of item fields to slugify + join for {slug} variable
+    render         If true, use Playwright to render page (default: false)
+    actions        Browser action pipeline (auto-enables render)
+    wait           Navigation wait strategy (Playwright only)
+    wait_fallback  Fallback wait strategy retried once on Page.goto timeout
+                   (Playwright only). Default: "domcontentloaded". Set to
+                   null to opt out.
+    timeout        Navigation timeout in ms (Playwright only)
+    url_filter     Regex filter for discovered URLs (see: ws help monitor sitemap)
+    url_transform  Regex find/replace to rewrite URLs (see: ws help monitor sitemap)
 
   Detection:  ws probe shows "__NEXT_DATA__ — N items at <path>"
               If "(render)" shown, page needs Playwright to load data.
@@ -667,7 +693,10 @@ inline — Single-Page Extraction (rich)
     defaults     Default field values applied when extracted value is absent.
                  Supports: locations (list), employment_type, job_location_type,
                  date_posted.
-    + browser keys (wait, timeout, user_agent, etc.)
+    + browser keys (wait, wait_fallback, timeout, user_agent, etc. — see
+      `ws help scraper dom` for the full list; wait_fallback defaults to
+      "domcontentloaded" and retries once on Page.goto timeout, set to null
+      to opt out)
 
   Step design tips:
     - Steps run in a loop: after extracting one job, the cursor is where
@@ -690,16 +719,22 @@ dom — Link Extraction (fallback)
   Config:
     {"render": true, "wait": "networkidle", "timeout": 30000}
 
-    render       false (default) = static HTTP, true = Playwright
-    wait         Wait strategy: "load" | "domcontentloaded" | "networkidle" (default) | "commit"
-    timeout      Navigation timeout in ms (default: 30000)
-    user_agent   Custom User-Agent string
-    headless     Run headless (default: true)
-    actions      Browser action pipeline (see: ws help actions)
-    url_filter   Regex filter for discovered URLs (see: ws help monitor sitemap)
-                 Keep patterns broad enough to include URL variants
-    url_transform Regex find/replace to rewrite URLs (see: ws help monitor sitemap)
-                 (numeric suffixes, trailing slash, query params)
+    render         false (default) = static HTTP, true = Playwright
+    wait           Wait strategy: "load" | "domcontentloaded" | "networkidle" (default) | "commit"
+    wait_fallback  Fallback wait strategy retried once on Page.goto timeout.
+                   Default: "domcontentloaded" (applied automatically). Set
+                   to null to opt out. The retry reuses the same timeout, so
+                   worst-case wall-clock is 2*timeout. Use for SPA sites
+                   where "networkidle" never settles (persistent analytics/
+                   telemetry requests).
+    timeout        Navigation timeout in ms (default: 30000)
+    user_agent     Custom User-Agent string
+    headless       Run headless (default: true)
+    actions        Browser action pipeline (see: ws help actions)
+    url_filter     Regex filter for discovered URLs (see: ws help monitor sitemap)
+                   Keep patterns broad enough to include URL variants
+    url_transform  Regex find/replace to rewrite URLs (see: ws help monitor sitemap)
+                   (numeric suffixes, trailing slash, query params)
 
   Pagination (multi-page career sites):
     {
@@ -1115,6 +1150,11 @@ api_sniffer — XHR/Fetch API Capture (Playwright)
     wait             Navigation wait strategy: "load", "domcontentloaded", or
                      "networkidle". Default: "load". Use "networkidle" for sites
                      where XHRs fire late; avoid it on heavy sites (analytics/ads).
+    wait_fallback    Fallback wait strategy retried once on Page.goto timeout.
+                     Default: "domcontentloaded". Set to null to opt out.
+                     Note: sniffer monitors depend on network activity to
+                     capture XHRs — an early fallback may miss late-loading
+                     responses. If API discovery regresses, set to null.
     timeout          Navigation timeout in ms. Default: 20000.
     settle           Seconds to wait after navigation for late XHRs. Default: 3.
 
@@ -1170,10 +1210,13 @@ json-ld — Schema.org JobPosting Extractor
   Uses the first JSON-LD block that contains a JobPosting.
 
   Optional runtime config:
-    render    Use Playwright (default: false)
-    actions   Browser action pipeline (auto-enables render)
-    wait      Navigation wait strategy (Playwright only)
-    timeout   Navigation timeout in ms (Playwright only)
+    render         Use Playwright (default: false)
+    actions        Browser action pipeline (auto-enables render)
+    wait           Navigation wait strategy (Playwright only)
+    wait_fallback  Fallback wait strategy retried once on Page.goto timeout
+                   (Playwright only). Default: "domcontentloaded". Set to
+                   null to opt out.
+    timeout        Navigation timeout in ms (Playwright only)
 
   Fields extracted (from schema.org properties):
     title          ← title or name
@@ -1221,8 +1264,13 @@ nextdata — Next.js __NEXT_DATA__ Page Extractor
               Target fields: title, description, locations, employment_type,
               job_location_type, date_posted, valid_through, qualifications,
               responsibilities, skills. Prefix with "metadata." for extras.
-    render    Use Playwright (default: false)
-    actions   Browser action pipeline (auto-enables render)
+    render        Use Playwright (default: false)
+    actions       Browser action pipeline (auto-enables render)
+    wait          Navigation wait strategy (Playwright only)
+    wait_fallback Fallback wait strategy retried once on Page.goto timeout
+                  (Playwright only). Default: "domcontentloaded". Set to
+                  null to opt out.
+    timeout       Navigation timeout in ms (Playwright only)
 
   When to use:  When job pages are Next.js and embed data in __NEXT_DATA__.
   Empty result? Verify path points to the right data with browser devtools.
@@ -1265,8 +1313,13 @@ embedded — Generalized Embedded Data Extractor
               Target fields: title, description, locations, employment_type,
               job_location_type, date_posted, valid_through, qualifications,
               responsibilities, skills. Prefix with "metadata." for extras.
-    render    Use Playwright (default: false)
-    actions   Browser action pipeline (auto-enables render)
+    render        Use Playwright (default: false)
+    actions       Browser action pipeline (auto-enables render)
+    wait          Navigation wait strategy (Playwright only)
+    wait_fallback Fallback wait strategy retried once on Page.goto timeout
+                  (Playwright only). Default: "domcontentloaded". Set to
+                  null to opt out.
+    timeout       Navigation timeout in ms (Playwright only)
 
   When to use:  Sites with structured job data embedded in JavaScript
                 that isn't Next.js __NEXT_DATA__ (use nextdata for that).
@@ -1295,14 +1348,18 @@ dom — Step-based Extraction Engine
       "wait": "networkidle"
     }
 
-    steps     Extraction step list (see: ws help steps)
-    render    false (default) = static HTTP, true = Playwright
-    wait      Wait strategy (Playwright only): load | domcontentloaded
-              | networkidle (default) | commit
-    timeout   Navigation timeout in ms (default: 30000)
-    user_agent  Custom User-Agent
-    headless  Run headless (default: true)
-    actions   Browser action pipeline (see: ws help actions)
+    steps          Extraction step list (see: ws help steps)
+    render         false (default) = static HTTP, true = Playwright
+    wait           Wait strategy (Playwright only): load | domcontentloaded
+                   | networkidle (default) | commit
+    wait_fallback  Fallback wait strategy retried once on Page.goto timeout.
+                   Default: "domcontentloaded" (applied automatically). Set
+                   to null to opt out. Use for SPA sites where "networkidle"
+                   never settles.
+    timeout        Navigation timeout in ms (default: 30000)
+    user_agent     Custom User-Agent
+    headless       Run headless (default: true)
+    actions        Browser action pipeline (see: ws help actions)
 
   Target fields: title, description, locations, employment_type,
   job_location_type, date_posted, valid_through, qualifications,
@@ -1355,10 +1412,17 @@ api_sniffer — XHR/Fetch API Capture (single page)
               Target fields: title, description, locations, employment_type,
               job_location_type, date_posted, valid_through, qualifications,
               responsibilities, skills. Prefix with "metadata." for extras.
-    wait      (Browser mode only) Navigation wait strategy: "load",
-              "domcontentloaded", or "networkidle". Default: "load".
-    timeout   (Browser mode only) Navigation timeout in ms. Default: 20000.
-    settle    (Browser mode only) Seconds to wait for late XHRs. Default: 3.
+    wait          (Browser mode only) Navigation wait strategy: "load",
+                  "domcontentloaded", or "networkidle". Default: "load".
+    wait_fallback (Browser mode only) Fallback wait strategy retried once on
+                  Page.goto timeout. Default: "domcontentloaded". Set to null
+                  to opt out. Note: the sniffer captures XHRs during both the
+                  primary and fallback navigations, so the retry adds rather
+                  than replaces responses — but if API discovery regresses
+                  on a specific board, set to null to revert to single-attempt
+                  behavior.
+    timeout       (Browser mode only) Navigation timeout in ms. Default: 20000.
+    settle        (Browser mode only) Seconds to wait for late XHRs. Default: 3.
 
   Auto-probed via Playwright in ws probe scraper. Requires Playwright.
   Can also be manually selected: ws select scraper api_sniffer
@@ -1759,12 +1823,6 @@ Feedback Command Reference:
     ws feedback --verdict poor --verdict-notes "Description truncated" \\
         --description unusable"""
 
-MONITOR_SIGNALS = """\
-signals — Signals Discovery Monitor
-
-  Returns:  DiscoveredJob list (rich — no scraper needed)
-  Cost:     200"""
-
 # ── Lookup tables ────────────────────────────────────────────────────────
 
 MONITOR_YCOMBINATOR = """\
@@ -1794,7 +1852,6 @@ ycombinator — YCombinator Jobs (last resort, HTML scraping)
 MONITOR_CARDS: dict[str, str] = {
     "accenture": MONITOR_ACCENTURE,
     "amazon": MONITOR_AMAZON,
-    "apify_meta": MONITOR_APIFY_META,
     "bite": MONITOR_BITE,
     "breezy": MONITOR_BREEZY,
     "deel": MONITOR_DEEL,
@@ -1837,7 +1894,6 @@ oracle_hcm — Oracle Cloud HCM REST API monitor
     "inline": MONITOR_INLINE,
     "api_sniffer": MONITOR_API_SNIFFER,
     "mokahr": MONITOR_MOKAHR,
-    "signals": MONITOR_SIGNALS,
     "ycombinator": MONITOR_YCOMBINATOR,
 }
 
@@ -1873,6 +1929,26 @@ workday — Workday Detail API scraper
   Config:   None needed — parses the job URL to derive API parameters
   Note:     Auto-configured when selecting the workday monitor.
             Runs on the daily scrape schedule (not every monitor cycle).
+"""
+
+SCRAPER_EIGHTFOLD = """\
+eightfold — Eightfold.ai Detail scraper (JSON-LD + position API fallback)
+
+  Fast path: fetch the HTML page and parse schema.org/JobPosting from the
+             inlined <script type="application/ld+json"> block. This is the
+             same path the generic json-ld scraper uses.
+  Fallback:  if the page does not contain a JobPosting block, call the
+             public position API:
+               GET https://{tenant}.eightfold.ai/api/apply/v2/jobs/{id}?domain={d}
+             which returns title, locations, HTML description, t_create, and
+             ats_job_id for every active position id.
+
+  Returns:  title, HTML description, locations, date_posted, metadata
+            (ats_job_id, display_job_id, department, business_unit).
+  Config:   None needed — job id and domain are parsed from the URL.
+  Note:     Auto-configured when selecting the eightfold monitor. Fallback
+            adds a second HTTP call only for pages missing JSON-LD, so the
+            happy-path cost is unchanged.
 """
 
 SCRAPER_RIPPLING = """\
@@ -1964,6 +2040,7 @@ oracle_hcm — Oracle Cloud HCM Detail API scraper
     "smartrecruiters": SCRAPER_SMARTRECRUITERS,
     "workable": SCRAPER_WORKABLE,
     "workday": SCRAPER_WORKDAY,
+    "eightfold": SCRAPER_EIGHTFOLD,
 }
 
 

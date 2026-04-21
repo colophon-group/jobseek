@@ -24,11 +24,17 @@ Jobseek monitors company career pages for new job postings. Companies are config
 │           ├── queries/     # SQL queries for local Postgres
 │           ├── redis_queue.py # Lua-backed claim/enqueue/reschedule
 │           ├── lua/         # Redis Lua scripts
-│           ├── exporter.py  # CDC: local Postgres -> Supabase
-│           ├── sync.py      # CSV -> DB + Redis sync
-│           ├── cli.py       # Entry point (crawler run/export/drain/sync/board)
+│           ├── exporter.py  # CDC: local Postgres -> Supabase + Typesense
+│           ├── typesense_client.py # Shared Typesense client (lazy, feature-flagged)
+│           ├── sync.py      # CSV -> DB + Redis + Typesense taxonomy sync
+│           ├── cli.py       # Entry point (crawler run/export/drain/sync/board/...)
 │           └── config.py    # Settings
+├── scripts/
+│   ├── typesense-setup.py       # Create/recreate Typesense collections + aliases
+│   └── typesense-backfill-local.py  # One-shot backfill from Postgres to Typesense
 ├── docs/                    # Architecture documentation
+│   ├── 11-typesense.md      # Typesense deployment + architecture reference
+│   └── 12-typesense-benchmarks.md  # Performance benchmarks
 └── .github/workflows/       # CI + agent automation
 ```
 
@@ -41,10 +47,13 @@ uv sync                           # Install dependencies
 uv run pytest tests/              # Run tests
 uv run crawler run                # Run HTTP worker (claims from Redis simple queues)
 uv run crawler run-browser        # Run browser worker (claims from Redis browser queues)
-uv run crawler export             # Run CDC exporter (local Postgres -> Supabase)
+uv run crawler export             # Run CDC exporter (local Postgres -> Supabase + Typesense)
 uv run crawler drain              # Run R2 description uploader
-uv run crawler sync               # Sync CSVs to local Postgres + Supabase + Redis
+uv run crawler sync               # Sync CSVs to local Postgres + Supabase + Redis + Typesense taxonomies
 uv run crawler board <slug>       # Process single board (debug)
+uv run crawler backfill-typesense # Full re-index of job_posting to Typesense
+uv run crawler refresh-typesense  # Refresh Typesense counts + reconcile watchlists
+uv run crawler notify-indexnow    # Push changed company URLs to IndexNow (see docs/13-seo-and-indexnow.md)
 ```
 
 Web app (from `apps/web/`):
@@ -76,6 +85,70 @@ orchestrator which tells the agent to spawn subagents for independent work.
 - Workflow gates: `apps/crawler/src/workspace/workflow.yaml`
 
 Developer guidance for agent reasoning style lives in [docs/agents.md](docs/agents.md).
+
+## Typesense (Search Engine)
+
+All search, typeahead, browse-all modals, and watchlist search are served by Typesense. Supabase Postgres still handles non-search reads (posting detail, user data).
+
+See [docs/11-typesense.md](docs/11-typesense.md) for full deployment details.
+
+### Infrastructure
+
+- **Typesense 27.1** on a dedicated Hetzner CX22 (4 GB RAM, 2 vCPU), Docker container with `--network host`, data at `/mnt/typesense-data`
+- **Private network** (10.0.0.0/16) connects Typesense, Postgres, and Crawler machines. Crawler talks to Typesense over the private network (HTTP, no TLS needed)
+- **Cloudflare tunnel** (`typesense.colophon-group.org`) exposes Typesense to the Vercel web app (Vercel has no stable IPs to firewall). Cache bypass rule configured in Cloudflare
+- Port 8108 is firewalled: SSH from anywhere, 8108 from private network only
+
+### API Keys
+
+Three scoped keys (stored in `apps/crawler/.env.local`, GitHub secrets, and Vercel env vars):
+
+| Key | Scope | Used by |
+|-----|-------|---------|
+| `TYPESENSE_ADMIN_KEY` | Full access | Exporter, sync, backfill (crawler machine) |
+| `TYPESENSE_SEARCH_KEY` | `documents:search` on all collections | Web app (via Cloudflare tunnel) |
+| `TYPESENSE_WRITE_KEY` | `documents:upsert/delete/update` on `watchlist` only | Web app watchlist mutations |
+
+### Collections
+
+7 collections, all with versioned names + aliases (e.g., `job_posting_v1` <- `job_posting` alias):
+
+`job_posting`, `location`, `occupation`, `seniority`, `technology`, `company`, `watchlist`
+
+Key design choices:
+- `job_posting` stores **ancestor** `location_ids` and `occupation_ids` (self + all parents + macro regions), enabling hierarchy-free filtering without joins
+- Sentinel values: `experience_min = -1` for NULL, `locales = ["_none"]` for empty arrays
+- Taxonomy names are denormalized onto each posting for search/facet without joins
+
+### Collection Management
+
+```bash
+# Create or recreate collections (from apps/crawler/)
+cd apps/crawler && uv run python ../../scripts/typesense-setup.py [--force]
+
+# Full re-index from Postgres
+uv run crawler backfill-typesense
+
+# One-shot local backfill (dev/testing only)
+cd apps/crawler && uv run python ../../scripts/typesense-backfill-local.py [--limit N]
+```
+
+### Indexing Pipeline
+
+- **Exporter** (CDC): two-cursor design — Supabase and Typesense cursors advance independently. Concurrent upserts via `asyncio.gather`
+- **Sync**: taxonomy collections (location, occupation, seniority, technology, company) populated after CSV sync. Handles taxonomy rename detection
+- **Reconciliation**: daily count check + sample comparison
+- **refresh-typesense**: periodic count refresh for taxonomy/company collections + watchlist reconciliation
+
+### Web App Integration
+
+`TypesenseSearchProvider` replaces `PostgresSearchProvider` (one-shot cutover). Graceful degradation: all errors return empty results, Postgres fallback for watchlist write functions. No Redis cache on main search (Typesense is fast enough); cached for unfiltered homepage (60s) and popular watchlists (120s).
+
+## SEO and IndexNow
+
+Company pages server-render stable facts + JSON-LD (posting list stays client-rendered). IndexNow notifies Bing/Yandex/Seznam/Naver/Yep on content changes; Google is out of scope. Crawler side runs a content-hash diff per (company, locale); web side fires from watchlist server actions via `after()`.
+
+See [docs/13-seo-and-indexnow.md](docs/13-seo-and-indexnow.md).
 
 ## Git Workflow
 

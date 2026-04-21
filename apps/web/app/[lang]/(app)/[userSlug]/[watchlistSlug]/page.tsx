@@ -1,17 +1,15 @@
-import { cache } from "react";
 import type { Metadata } from "next";
 import { isLocale, defaultLocale, loadCatalog } from "@/lib/i18n";
 import {
-  getWatchlistByUserAndSlug as _getWatchlistByUserAndSlug,
+  getPublicWatchlistByUserAndSlug,
+  getWatchlistMatchingCompanyCount,
 } from "@/lib/actions/watchlists";
+import { isTrivialWatchlist } from "@/lib/watchlist-utils";
 import { siteConfig } from "@/content/config";
 import { buildAlternates } from "@/lib/seo";
 import { WatchlistContent } from "./watchlist-content";
 
 export const revalidate = 600; // ISR: cache metadata for 10 minutes
-
-// Deduplicate across generateMetadata + page component within a single render
-const getWatchlistByUserAndSlug = cache(_getWatchlistByUserAndSlug);
 
 type Props = {
   params: Promise<{ lang: string; userSlug: string; watchlistSlug: string }>;
@@ -21,7 +19,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { userSlug, watchlistSlug, lang } = await params;
   const locale = isLocale(lang) ? lang : defaultLocale;
   const [detail, { i18n }] = await Promise.all([
-    getWatchlistByUserAndSlug(userSlug, watchlistSlug),
+    // Public-only fetch: never reads session, so the page stays
+    // statically prerenderable (revalidate=600 above). The session-aware
+    // variant is only used by the client-fired server action that
+    // hydrates the page body. See issue #2244.
+    getPublicWatchlistByUserAndSlug(userSlug, watchlistSlug),
     loadCatalog(locale),
   ]);
   if (!detail) return {};
@@ -65,7 +67,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
           values: { owner: ownerLabel },
         });
   }
-  const companyCount = detail.companies.length;
+  // For `anyCompany` watchlists, `detail.companies` is unrelated to what
+  // the watchlist actually tracks (it holds leftover rows from source
+  // copies). Ask Typesense how many distinct companies currently have
+  // postings matching the filter. Languages are intentionally NOT scoped
+  // to the viewer here — metadata is shared across all viewers via the
+  // CDN cache (ISR), so we use the broadest count (all languages). The
+  // page body re-runs the count scoped to the viewer's language
+  // preference once it hydrates.
+  const companyCount = detail.filters.anyCompany
+    ? await getWatchlistMatchingCompanyCount(detail.filters)
+    : detail.companies.length;
   if (companyCount > 0) {
     description = i18n._({
       id: "watchlist.meta.tracking",
@@ -75,6 +87,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   const path = `/${userSlug}/${watchlistSlug}`;
+  const trivial = isTrivialWatchlist(detail.filters, detail.companies.length);
   return {
     title,
     description,
@@ -85,6 +98,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       url: `${siteConfig.url}/${locale}${path}`,
       type: "website",
     },
+    ...(trivial && { robots: { index: false, follow: true } }),
   };
 }
 

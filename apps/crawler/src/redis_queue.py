@@ -142,7 +142,6 @@ _KNOWN_ATS_DOMAINS = frozenset(
         "eightfold",
         "accenture",
         "deel",
-        "signals",
     }
 )
 
@@ -192,6 +191,28 @@ async def enqueue_monitor(
     await r.set(f"delay:{domain}", str(delay_for_domain(domain)))
 
     return bool(added)
+
+
+async def remove_monitor(domain: str, board_id: str) -> None:
+    """Remove a board monitor task from Redis and delete its config hash.
+
+    Idempotent: clears all four possible monitor queue keys (first-time and
+    recurring, simple and browser) plus the ``board:{board_id}`` config.
+    Used by ``sync`` after a board is removed from ``boards.csv`` — without
+    this, the per-domain queue keeps the stale board_id and workers keep
+    probing the dead URL every cycle.
+
+    The ready-queue entry for the domain self-heals on the next ``claim_work``:
+    when the per-domain queue is empty, the Lua script removes the domain
+    from ``ready:{wtype}:{tier}``.
+    """
+    r = get_redis()
+    pipe = r.pipeline()
+    for wtype in ("simple", "browser"):
+        pipe.zrem(f"ft_monitors_{wtype}:{domain}", board_id)
+        pipe.zrem(f"monitors_{wtype}:{domain}", board_id)
+    pipe.delete(f"board:{board_id}")
+    await pipe.execute()
 
 
 async def enqueue_scrape(

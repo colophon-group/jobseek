@@ -47,8 +47,8 @@ export async function fetchExploreData(params: {
   ]);
 
   const jobLanguages = prefs?.jobLanguages ?? [];
-  const languages = resolveJobLanguages(jobLanguages, locale);
   const displayCurrency = prefs?.displayCurrency ?? "EUR";
+  const languages = resolveJobLanguages(jobLanguages, locale);
 
   const locationIds = idsOrUndefined(parsed.locations);
   const occupationIds = idsOrUndefined(parsed.occupations);

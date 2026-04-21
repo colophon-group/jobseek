@@ -5,6 +5,76 @@ import { cached } from "@/lib/cache";
 import { siteConfig } from "@/content/config";
 import { locales } from "@/lib/i18n";
 
+/**
+ * ISR window for the generated sitemap.
+ *
+ * The default sitemap.ts behavior in Next.js 16 is "static if possible,
+ * otherwise dynamic on every request". Because this handler hits Postgres
+ * + Typesense at runtime (and the build step has no DB credentials), it
+ * was falling all the way to fully dynamic — every Bing/Yandex/Seznam
+ * crawl regenerated the full ~9 MB XML response. Setting `revalidate`
+ * makes Vercel CDN-cache the rendered response for 1 hour and triggers
+ * background ISR regeneration on expiry; the inner `cached()` Redis
+ * wrapper stays as a defense-in-depth safety net for rare CDN evictions
+ * within the window. See issue #2245.
+ */
+export const revalidate = 3600;
+
+type SitemapCompanyRow = {
+  slug: string;
+  updated_at: Date;
+  active_count: number;
+};
+
+async function fetchSitemapCompanies(): Promise<SitemapCompanyRow[]> {
+  // Use Typesense company collection (has precomputed active_posting_count)
+  // instead of correlated subquery on Supabase that was consuming 10% compute.
+  try {
+    const { getSearchClient } = await import("@/lib/search/typesense-client");
+    const client = getSearchClient();
+    const perPage = 250;
+    const companies: SitemapCompanyRow[] = [];
+
+    for (let page = 1; ; page += 1) {
+      const result = await client.collections("company").documents().search({
+        q: "*",
+        query_by: "name",
+        filter_by: "active_posting_count:>0",
+        sort_by: "active_posting_count:desc",
+        per_page: perPage,
+        page,
+        include_fields: "slug,active_posting_count",
+      });
+
+      const hits = result.hits ?? [];
+      for (const hit of hits) {
+        const doc = hit.document as Record<string, unknown>;
+        companies.push({
+          slug: doc.slug as string,
+          updated_at: new Date(),
+          active_count: (doc.active_posting_count as number) ?? 0,
+        });
+      }
+
+      if (hits.length < perPage) break;
+      if (typeof result.found === "number" && page * perPage >= result.found) break;
+    }
+
+    return companies;
+  } catch {
+    // Typesense unavailable — fall back to simple Postgres query without counts
+    const rows = await db.execute<{ slug: string; updated_at: Date }>(sql`
+      SELECT c.slug, c.updated_at FROM company c
+      WHERE EXISTS (SELECT 1 FROM job_posting jp WHERE jp.company_id = c.id AND jp.is_active = true)
+      ORDER BY c.slug
+    `);
+    return (rows as unknown as { slug: string; updated_at: Date }[]).map((r) => ({
+      ...r,
+      active_count: 0,
+    }));
+  }
+}
+
 /** Build hreflang alternates map for a given path (without locale prefix). */
 function langAlternates(path: string): Record<string, string> {
   const languages: Record<string, string> = {};
@@ -51,22 +121,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const CURATED_USERNAME = "colophongroup";
 
   const [companies, watchlists] = await Promise.all([
-    cached("sitemap:companies", () => db.execute<{
-      slug: string;
-      updated_at: Date;
-      active_count: number;
-    }>(sql`
-      SELECT c.slug, c.updated_at,
-        (SELECT count(*) FROM job_posting jp
-         WHERE jp.company_id = c.id AND jp.is_active = true
-        )::int AS active_count
-      FROM company c
-      WHERE EXISTS (
-        SELECT 1 FROM job_posting jp
-        WHERE jp.company_id = c.id AND jp.is_active = true
-      )
-      ORDER BY active_count DESC, c.slug
-    `), { ttl: 3600 }),
+    cached("sitemap:companies", fetchSitemapCompanies, {
+      ttl: 3600,
+      // If the fetcher returns zero rows it almost always means a
+      // transient outage (Typesense alias swap, Postgres timeout) —
+      // not a legitimate "we have no companies". Skip caching so the
+      // next request gets another chance instead of poisoning the
+      // outer ISR window with an empty list. See #2245.
+      skipIf: (rows) => rows.length === 0,
+    }),
     cached("sitemap:watchlists", () => db.execute<{
       user_slug: string;
       watchlist_slug: string;

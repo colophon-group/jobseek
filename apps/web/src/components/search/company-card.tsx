@@ -69,7 +69,7 @@ export function CompanyCard({ result, keywords, locationIds, locations, occupati
     });
   }, [result.postings, extraPostings]);
 
-  const hasMore = !exhausted && !isTruncated && allPostings.length < yearMatches;
+  const hasMore = !exhausted && !isTruncated && allPostings.length < activeMatches;
   const offsetRef = useRef(result.postings.length);
 
   async function handleLoadMore() {
@@ -113,6 +113,7 @@ export function CompanyCard({ result, keywords, locationIds, locations, occupati
               alt={company.name}
               width={32}
               height={32}
+              sizes="32px"
               className="size-8 shrink-0 rounded"
             />
           ) : (

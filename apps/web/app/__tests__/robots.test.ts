@@ -32,6 +32,19 @@ describe("robots", () => {
     expect(disallow).toContain("/sign-up");
   });
 
+  it("disallows locale-prefixed variants of private pages", () => {
+    const result = robots();
+    const rules = Array.isArray(result.rules) ? result.rules : [result.rules];
+    const wildcard = rules.find((r) => r.userAgent === "*");
+    const disallow = wildcard!.disallow as string[];
+    for (const locale of ["en", "de", "fr", "it"]) {
+      expect(disallow).toContain(`/${locale}/dashboard`);
+      expect(disallow).toContain(`/${locale}/sign-in`);
+      expect(disallow).toContain(`/${locale}/sign-up`);
+      expect(disallow).toContain(`/${locale}/settings`);
+    }
+  });
+
   it("disallows private API routes but not public v1", () => {
     const result = robots();
     const rules = Array.isArray(result.rules) ? result.rules : [result.rules];
@@ -41,6 +54,16 @@ describe("robots", () => {
     expect(disallow).toContain("/api/admin/");
     expect(disallow).toContain("/api/stripe/");
     expect(disallow).not.toContain("/api/");
+  });
+
+  it("does not locale-prefix API paths", () => {
+    const result = robots();
+    const rules = Array.isArray(result.rules) ? result.rules : [result.rules];
+    const wildcard = rules.find((r) => r.userAgent === "*");
+    const disallow = wildcard!.disallow as string[];
+    for (const locale of ["en", "de", "fr", "it"]) {
+      expect(disallow).not.toContain(`/${locale}/api/auth/`);
+    }
   });
 
   it("includes sitemap URL", () => {

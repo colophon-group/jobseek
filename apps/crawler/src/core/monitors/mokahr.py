@@ -136,7 +136,7 @@ def _parse_job(job: dict, org_id: str, site_id: int) -> DiscoveredJob | None:
 
 async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[DiscoveredJob]:
     """Fetch all jobs from Mokahr's encrypted API."""
-    config = board.get("monitor_config") or {}
+    config = board.get("metadata") or {}
     if isinstance(config, str):
         config = json.loads(config) if config else {}
 
@@ -149,7 +149,12 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
 
     # Determine the recruitment path from the board URL.
     board_url = board.get("board_url", "")
-    path = "campus-recruitment" if "campus" in board_url else "social-recruitment"
+    m = re.search(r"app\.mokahr\.com/((?:social|campus)[_-](?:recruitment|apply))/", board_url)
+    path = (
+        m.group(1)
+        if m
+        else ("campus-recruitment" if "campus" in board_url else "social-recruitment")
+    )
 
     page_url = _build_board_url(org_id, site_id, path)
     iv = await _get_iv(page_url, client)
@@ -202,7 +207,9 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
 
 async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None) -> dict | None:
     """Detect Mokahr from URL pattern."""
-    m = re.search(r"app\.mokahr\.com/(?:social|campus)-recruitment/([\w-]+)/(\d+)", url)
+    m = re.search(
+        r"app\.mokahr\.com/(?:social|campus)[_-](?:recruitment|apply)/([\w-]+)/(\d+)", url
+    )
     if not m:
         return None
     return {"org_id": m.group(1), "site_id": int(m.group(2))}

@@ -26,6 +26,23 @@ from urllib.parse import parse_qs, urlencode, urljoin, urlparse, urlunparse
 import structlog
 
 from src.core.monitors import DiscoveredJob, register
+
+try:
+    from src.metrics import api_sniffer_fallback_failed_total
+except ImportError:
+    # The slim ``jobseek-crawler-setup`` (ws CLI) wheel does not ship
+    # ``src/metrics.py``. Fall back to a no-op counter so this module
+    # stays importable from the ws install (which never scrapes
+    # Prometheus anyway).
+    class _NoopCounter:
+        def labels(self, **_kwargs):
+            return self
+
+        def inc(self, *_args, **_kwargs):
+            pass
+
+    api_sniffer_fallback_failed_total = _NoopCounter()  # type: ignore[assignment]
+
 from src.shared.api_sniff import (
     JOB_KEYWORDS,
     TITLE_FIELDS,
@@ -57,6 +74,23 @@ if TYPE_CHECKING:
 log = structlog.get_logger()
 
 MAX_ITEMS = 10_000
+
+
+class ApiSnifferFallbackError(RuntimeError):
+    """Raised when every replay path in ``_discover_replay`` has failed.
+
+    Propagates up through ``monitor_one`` → ``_process_one_board_streaming``
+    so the board-level ``_RECORD_FAILURE`` runs, incrementing
+    ``consecutive_failures`` and auto-disabling at 5.  Without this,
+    a persistently-broken sniffer board (e.g. expired CSOD JWT, geo-locked
+    DiDi, CSRF-protected Workday) would silently log an empty check each
+    cycle and never trip the disable threshold.
+    """
+
+    def __init__(self, message: str, *, board_url: str, api_url: str) -> None:
+        super().__init__(message)
+        self.board_url = board_url
+        self.api_url = api_url
 
 
 # ---------------------------------------------------------------------------
@@ -192,7 +226,7 @@ async def can_handle(
     from src.shared.browser import dismiss_overlays, navigate, open_page
 
     try:
-        async with open_page(pw, {}, target_url=url) as page:
+        async with open_page(pw, {}) as page:
             page_host = urlparse(url).netloc
             exchanges = await capture_exchanges(page, page_host)
 
@@ -576,7 +610,7 @@ async def _discover_http(
         browser_config = {k: v for k, v in config.items() if k in BROWSER_KEYS}
 
         route_params = config.get("route_params")
-        async with open_page(pw, browser_config, target_url=board_url) as page:
+        async with open_page(pw, browser_config, use_proxy=bool(config.get("proxy"))) as page:
             fresh_url, captured_data = await _discover_live_url(
                 page,
                 board_url,
@@ -756,7 +790,7 @@ async def _discover_http(
                 log.info("api_sniffer.auto_fields", fields=list(fields_map.keys()))
 
         if fields_map:
-            return _extract_rich(items, fields_map, url_field, url_template, board_url)
+            return _extract_rich(items, fields_map, url_field, url_template, board_url, root=data)
         if url_template:
             return _extract_urls_from_template(items, url_template, board_url)
         # Support nested url_field paths (e.g. "data.apply_url")
@@ -900,7 +934,7 @@ async def _discover_replay(
 
     browser_config = {k: v for k, v in config.items() if k in BROWSER_KEYS}
 
-    async with open_page(pw, browser_config, target_url=board_url) as page:
+    async with open_page(pw, browser_config, use_proxy=bool(config.get("proxy"))) as page:
         # route_params requires upfront navigation to intercept the page's
         # own request and modify its params.  Otherwise, navigate just to
         # establish cookies, then try the stored URL via replay first.
@@ -977,13 +1011,39 @@ async def _discover_replay(
                 using_http = True
                 try:
                     data = await fetch_fn(method, api_url, headers, post_data)
-                except Exception:
-                    log.error("api_sniffer.http_fallback_failed", api_url=api_url, exc_info=True)
-                    return list() if fields_map else set()
+                except Exception as exc:
+                    # Every replay path has now failed: in-browser fetch, live-URL
+                    # rediscovery (if any), and HTTP fallback.  Propagate so the
+                    # board processor records a failure and the consecutive-failure
+                    # counter can trip the auto-disable at 5.
+                    log.warning(
+                        "api_sniffer.http_fallback_failed",
+                        api_url=api_url,
+                        board_url=board_url,
+                        exc_info=True,
+                    )
+                    api_sniffer_fallback_failed_total.labels(reason="http_fallback").inc()
+                    raise ApiSnifferFallbackError(
+                        f"api_sniffer fallback exhausted for {api_url}: {exc}",
+                        board_url=board_url,
+                        api_url=api_url,
+                    ) from exc
 
             if data is None:
-                log.error("api_sniffer.replay_failed", api_url=api_url, exc_info=True)
-                return list() if fields_map else set()
+                # Browser fetch returned None and no HTTP client was available
+                # (or the fallback path consumed the exception without data).
+                log.warning(
+                    "api_sniffer.replay_failed",
+                    api_url=api_url,
+                    board_url=board_url,
+                    exc_info=True,
+                )
+                api_sniffer_fallback_failed_total.labels(reason="replay_failed").inc()
+                raise ApiSnifferFallbackError(
+                    f"api_sniffer replay failed for {api_url} (no data returned)",
+                    board_url=board_url,
+                    api_url=api_url,
+                )
 
         # Decrypt encrypted response field
         decrypt_cfg = config.get("response_decrypt")
@@ -1065,6 +1125,7 @@ async def _discover_replay(
                 url_template,
                 board_url,
                 url_map=url_map,
+                root=data,
             )
 
         # URL-only mode
@@ -1097,7 +1158,7 @@ async def _discover_auto(
 
     browser_config = {k: v for k, v in config.items() if k in BROWSER_KEYS}
 
-    async with open_page(pw, browser_config, target_url=board_url) as page:
+    async with open_page(pw, browser_config, use_proxy=bool(config.get("proxy"))) as page:
         page_host = urlparse(board_url).netloc
         exchanges = await capture_exchanges(page, page_host)
 
@@ -1151,7 +1212,18 @@ async def _discover_auto(
                         url_map[str(item.get(id_f, ""))] = u
 
         if fields_map:
-            return _extract_rich(items, fields_map, url_field, None, board_url, url_map=url_map)
+            # First-page body is the best available root; lookup tables
+            # typically sit at response level, not per item.
+            root = result.candidate.exchange.body if result and result.candidate else None
+            return _extract_rich(
+                items,
+                fields_map,
+                url_field,
+                None,
+                board_url,
+                url_map=url_map,
+                root=root,
+            )
 
         urls = extract_urls(items, url_field, board_url)
         if not urls and url_map:
@@ -1173,11 +1245,20 @@ def _extract_rich(
     url_template: str | None,
     board_url: str,
     url_map: dict[str, str] | None = None,
+    *,
+    root: dict | None = None,
 ) -> list[DiscoveredJob]:
     """Extract DiscoveredJob objects from items using field mapping.
 
     *url_map* is an optional pre-built mapping from item ID to URL
     (e.g. from DOM cross-reference).
+
+    *root* is the top-level response object; required by field specs
+    that use ``lookup_from`` (sibling-table joins for ATS payloads that
+    ship a compact listing alongside a shared lookup dict). Callers that
+    paginate and stitch items from multiple responses should pass the
+    first page's root — the lookup tables are response-level constants
+    in the ATSes we've seen.
     """
     from urllib.parse import urljoin
 
@@ -1231,12 +1312,12 @@ def _extract_rich(
                 # Multi-field concatenation: extract each path and join
                 parts: list[str] = []
                 for s in spec:
-                    v = extract_field(item, s)
+                    v = extract_field(item, s, root=root)
                     if v is not None:
                         parts.append(v if isinstance(v, str) else " ".join(v))
                 value = "\n\n".join(parts) if parts else None
             else:
-                value = extract_field(item, spec)
+                value = extract_field(item, spec, root=root)
             if value is None:
                 continue
             if target.startswith("metadata."):

@@ -8,12 +8,15 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from src.exporter import (
     _EPOCH,
     _ZERO_UUID,
+    TaxonomyMaps,
+    _build_typesense_docs,
     _export_changed_boards,
     _export_changed_postings,
     _get_cursor,
     _reconciliation_loop,
     _save_cursor,
     _update_metrics,
+    _update_typesense_health,
     run_exporter,
     run_exporter_with_reconciliation,
     run_reconciliation,
@@ -286,165 +289,70 @@ class TestExportChangedBoards:
 
 
 class TestReconciliation:
-    async def test_no_boards_returns_zero(self):
+    async def test_empty_sample_returns_zero(self):
         local = _make_pool()
         supa = _make_pool()
 
-        local.fetch = AsyncMock(return_value=[])
+        local.fetchrow = AsyncMock(return_value=_make_record({"cnt": 100}))
+        supa.fetchrow = AsyncMock(return_value=_make_record({"cnt": 100}))
+        local.fetch = AsyncMock(return_value=[])  # empty sample
 
         result = await run_reconciliation(local, supa)
         assert result == 0
 
     async def test_missing_remote_triggers_touch(self):
-        """A posting in local but not in Supabase should be touched."""
+        """A sampled posting missing from Supabase should be touched."""
         local = _make_pool()
         supa = _make_pool()
 
-        board_id = uuid.uuid4()
         posting_id = uuid.uuid4()
+        sample = [_make_record({"id": posting_id, "is_active": True, "description_r2_hash": 111})]
 
-        # local has one board and one posting
-        local_board_row = _make_record({"board_id": board_id})
-        local_posting = _make_record(
-            {
-                "id": posting_id,
-                "source_url": "https://example.com/j/1",
-                "is_active": True,
-                "description_r2_hash": 111,
-            }
-        )
-
-        call_count = 0
-
-        async def fake_local_fetch(query, *args):
-            nonlocal call_count
-            call_count += 1
-            if "DISTINCT board_id" in query:
-                return [local_board_row]
-            return [local_posting]
-
-        local.fetch = AsyncMock(side_effect=fake_local_fetch)
+        local.fetchrow = AsyncMock(return_value=_make_record({"cnt": 100}))
+        supa.fetchrow = AsyncMock(return_value=_make_record({"cnt": 99}))
+        local.fetch = AsyncMock(return_value=sample)
+        supa.fetch = AsyncMock(return_value=[])  # not found in Supabase
         local.execute = AsyncMock()
-
-        # Supabase has no postings for this board
-        supa.fetch = AsyncMock(return_value=[])
 
         result = await run_reconciliation(local, supa)
         assert result == 1
-        # Should have touched updated_at
         local.execute.assert_awaited_once()
-        assert "updated_at = now()" in local.execute.call_args[0][0]
 
     async def test_state_mismatch_triggers_touch(self):
-        """Differing is_active between local and remote triggers a touch."""
+        """Differing is_active triggers a touch."""
         local = _make_pool()
         supa = _make_pool()
 
-        board_id = uuid.uuid4()
         posting_id = uuid.uuid4()
+        local_sample = [
+            _make_record({"id": posting_id, "is_active": True, "description_r2_hash": 111})
+        ]
+        supa_match = [
+            _make_record({"id": posting_id, "is_active": False, "description_r2_hash": 111})
+        ]
 
-        local_board_row = _make_record({"board_id": board_id})
-        local_posting = _make_record(
-            {
-                "id": posting_id,
-                "source_url": "https://example.com/j/1",
-                "is_active": True,
-                "description_r2_hash": 111,
-            }
-        )
-        remote_posting = _make_record(
-            {
-                "id": posting_id,
-                "source_url": "https://example.com/j/1",
-                "is_active": False,  # mismatch
-                "description_r2_hash": 111,
-            }
-        )
-
-        async def fake_local_fetch(query, *args):
-            if "DISTINCT board_id" in query:
-                return [local_board_row]
-            return [local_posting]
-
-        local.fetch = AsyncMock(side_effect=fake_local_fetch)
+        local.fetchrow = AsyncMock(return_value=_make_record({"cnt": 100}))
+        supa.fetchrow = AsyncMock(return_value=_make_record({"cnt": 100}))
+        local.fetch = AsyncMock(return_value=local_sample)
+        supa.fetch = AsyncMock(return_value=supa_match)
         local.execute = AsyncMock()
-        supa.fetch = AsyncMock(return_value=[remote_posting])
-
-        result = await run_reconciliation(local, supa)
-        assert result == 1
-
-    async def test_hash_mismatch_triggers_touch(self):
-        """Differing description_r2_hash triggers a touch."""
-        local = _make_pool()
-        supa = _make_pool()
-
-        board_id = uuid.uuid4()
-        posting_id = uuid.uuid4()
-
-        local_board_row = _make_record({"board_id": board_id})
-        local_posting = _make_record(
-            {
-                "id": posting_id,
-                "source_url": "https://example.com/j/1",
-                "is_active": True,
-                "description_r2_hash": 111,
-            }
-        )
-        remote_posting = _make_record(
-            {
-                "id": posting_id,
-                "source_url": "https://example.com/j/1",
-                "is_active": True,
-                "description_r2_hash": 999,  # different hash
-            }
-        )
-
-        async def fake_local_fetch(query, *args):
-            if "DISTINCT board_id" in query:
-                return [local_board_row]
-            return [local_posting]
-
-        local.fetch = AsyncMock(side_effect=fake_local_fetch)
-        local.execute = AsyncMock()
-        supa.fetch = AsyncMock(return_value=[remote_posting])
 
         result = await run_reconciliation(local, supa)
         assert result == 1
 
     async def test_matching_state_no_touch(self):
-        """When local and remote match, no touch should happen."""
+        """When sampled rows match, no touch should happen."""
         local = _make_pool()
         supa = _make_pool()
 
-        board_id = uuid.uuid4()
         posting_id = uuid.uuid4()
+        sample = [_make_record({"id": posting_id, "is_active": True, "description_r2_hash": 111})]
 
-        local_board_row = _make_record({"board_id": board_id})
-        local_posting = _make_record(
-            {
-                "id": posting_id,
-                "source_url": "https://example.com/j/1",
-                "is_active": True,
-                "description_r2_hash": 111,
-            }
-        )
-        remote_posting = _make_record(
-            {
-                "id": posting_id,
-                "source_url": "https://example.com/j/1",
-                "is_active": True,
-                "description_r2_hash": 111,
-            }
-        )
-
-        async def fake_local_fetch(query, *args):
-            if "DISTINCT board_id" in query:
-                return [local_board_row]
-            return [local_posting]
-
-        local.fetch = AsyncMock(side_effect=fake_local_fetch)
+        local.fetchrow = AsyncMock(return_value=_make_record({"cnt": 100}))
+        supa.fetchrow = AsyncMock(return_value=_make_record({"cnt": 100}))
+        local.fetch = AsyncMock(return_value=sample)
+        supa.fetch = AsyncMock(return_value=sample)
         local.execute = AsyncMock()
-        supa.fetch = AsyncMock(return_value=[remote_posting])
 
         result = await run_reconciliation(local, supa)
         assert result == 0
@@ -535,6 +443,55 @@ class TestUpdateMetrics:
 
 
 # ---------------------------------------------------------------------------
+# _update_typesense_health
+# ---------------------------------------------------------------------------
+
+
+class TestUpdateTypesenseHealth:
+    async def test_calls_is_healthy_not_operations_perform(self):
+        """Regression test for #2212: the probe must use
+        ``client.operations.is_healthy()`` (GET /health) and
+        ``client.metrics.retrieve()`` (GET /metrics.json). The earlier code
+        used ``operations.perform("health")`` and ``perform("stats.json")``,
+        both of which POST to ``/operations/{op}`` and 404 for these names —
+        producing ~50k warnings per 12h in Loki.
+        """
+        client = MagicMock()
+        client.operations.is_healthy = MagicMock(return_value=True)
+        client.metrics.retrieve = MagicMock(
+            return_value={
+                "typesense_memory_active_bytes": 713715712,
+                "typesense_memory_allocated_bytes": 625816840,
+            }
+        )
+
+        with patch("src.typesense_client.get_typesense_client", return_value=client):
+            await _update_typesense_health()
+
+        client.operations.is_healthy.assert_called_once_with()
+        client.metrics.retrieve.assert_called_once_with()
+        # The old wrong paths must not be called.
+        client.operations.perform.assert_not_called()
+
+    async def test_no_client_is_noop(self):
+        with patch("src.typesense_client.get_typesense_client", return_value=None):
+            await _update_typesense_health()  # should not raise
+
+    async def test_health_failure_does_not_block_metrics(self):
+        """An exception from is_healthy() must not prevent metrics.retrieve()
+        from running — we still want the memory gauge when health is down.
+        """
+        client = MagicMock()
+        client.operations.is_healthy = MagicMock(side_effect=RuntimeError("down"))
+        client.metrics.retrieve = MagicMock(return_value={"typesense_memory_active_bytes": 42})
+
+        with patch("src.typesense_client.get_typesense_client", return_value=client):
+            await _update_typesense_health()
+
+        client.metrics.retrieve.assert_called_once_with()
+
+
+# ---------------------------------------------------------------------------
 # _reconciliation_loop
 # ---------------------------------------------------------------------------
 
@@ -589,3 +546,183 @@ class TestCombinedRunner:
 
             mock_exp.assert_awaited_once_with(local, supa, shutdown)
             mock_recon.assert_awaited_once_with(local, supa, shutdown)
+
+
+# ---------------------------------------------------------------------------
+# _build_typesense_docs: ancestor expansion
+# ---------------------------------------------------------------------------
+
+
+def _make_taxonomy_maps() -> TaxonomyMaps:
+    """Build a TaxonomyMaps with test hierarchy data.
+
+    Location hierarchy: city(10) -> region(20) -> country(30)
+    Occupation hierarchy: child_occ(100) -> parent_occ(200)
+    """
+    maps = TaxonomyMaps()
+    maps.location_names = {
+        10: {"en": "Zurich"},
+        20: {"en": "Canton of Zurich"},
+        30: {"en": "Switzerland"},
+    }
+    maps.location_types = {10: "city", 20: "region", 30: "country"}
+    company_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
+    maps.company_info = {company_id: {"name": "TestCo", "slug": "testco", "icon": None}}
+    maps.occupation_names = {100: "Software Engineer", 200: "Engineering"}
+    maps.seniority_names = {1: "Senior"}
+    maps.technology_names = {50: "Python"}
+    # Location ancestors: city -> [city, region, country]
+    maps.location_ancestors = {
+        10: [10, 20, 30],
+        20: [20, 30],
+        30: [30],
+    }
+    # Occupation ancestors: child -> [child, parent]
+    maps.occupation_ancestors = {
+        100: [100, 200],
+        200: [200],
+    }
+    return maps
+
+
+def _make_posting_record(
+    *,
+    location_ids: list[int] | None = None,
+    occupation_id: int | None = None,
+) -> MagicMock:
+    """Simulate an asyncpg.Record for a job_posting row."""
+    company_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
+    posting_id = uuid.uuid4()
+    now = datetime(2025, 6, 15, 12, 0, 0, tzinfo=UTC)
+    data = {
+        "id": posting_id,
+        "company_id": company_id,
+        "titles": ["Test Job"],
+        "is_active": True,
+        "location_ids": location_ids,
+        "location_types": ["onsite"] * len(location_ids or []),
+        "occupation_id": occupation_id,
+        "seniority_id": None,
+        "technology_ids": None,
+        "employment_type": "full-time",
+        "experience_min": None,
+        "locales": ["en"],
+        "first_seen_at": now,
+        "last_seen_at": now,
+        "salary_eur": None,
+        "source_url": "https://example.com/job",
+    }
+    rec = MagicMock()
+    rec.keys.return_value = list(data.keys())
+    rec.__getitem__ = lambda self, k: data[k]
+    rec.__contains__ = lambda self, k: k in data
+    rec.get = lambda k, default=None: data.get(k, default)
+    return rec
+
+
+class TestBuildTypesenseDocsAncestors:
+    """Tests for ancestor expansion in _build_typesense_docs."""
+
+    def test_location_ids_expanded_with_ancestors(self):
+        """Leaf location ID 10 should expand to include region(20) and country(30)."""
+        maps = _make_taxonomy_maps()
+        row = _make_posting_record(location_ids=[10])
+        docs = _build_typesense_docs([row], maps)
+        assert len(docs) == 1
+        loc_ids = set(docs[0]["location_ids"])
+        assert 10 in loc_ids  # leaf (city)
+        assert 20 in loc_ids  # region ancestor
+        assert 30 in loc_ids  # country ancestor
+
+    def test_location_names_only_for_leaf_ids(self):
+        """location_names should only contain names for leaf IDs, not ancestors."""
+        maps = _make_taxonomy_maps()
+        row = _make_posting_record(location_ids=[10])
+        docs = _build_typesense_docs([row], maps)
+        assert docs[0]["location_names"] == ["Zurich"]
+
+    def test_multiple_locations_deduplicated(self):
+        """Two cities in the same country should not duplicate the country ancestor."""
+        maps = _make_taxonomy_maps()
+        # Add a second city in the same region
+        maps.location_names[11] = {"en": "Winterthur"}
+        maps.location_types[11] = "city"
+        maps.location_ancestors[11] = [11, 20, 30]
+
+        row = _make_posting_record(location_ids=[10, 11])
+        docs = _build_typesense_docs([row], maps)
+        loc_ids = docs[0]["location_ids"]
+        # Should have both leaves first, then ancestor-only IDs
+        assert loc_ids[0] == 10
+        assert loc_ids[1] == 11
+        # 20 and 30 should each appear exactly once in the ancestor portion
+        assert loc_ids.count(20) == 1
+        assert loc_ids.count(30) == 1
+
+    def test_occupation_ids_expanded_with_ancestors(self):
+        """occupation_ids should include the leaf occupation and its parent."""
+        maps = _make_taxonomy_maps()
+        row = _make_posting_record(occupation_id=100)
+        docs = _build_typesense_docs([row], maps)
+        assert set(docs[0]["occupation_ids"]) == {100, 200}
+        # occupation_id (singular) should be the leaf
+        assert docs[0]["occupation_id"] == 100
+
+    def test_no_occupation_when_none(self):
+        """No occupation_ids field when occupation_id is None."""
+        maps = _make_taxonomy_maps()
+        row = _make_posting_record(occupation_id=None)
+        docs = _build_typesense_docs([row], maps)
+        assert "occupation_ids" not in docs[0]
+        assert "occupation_id" not in docs[0]
+
+    def test_empty_location_ids(self):
+        """Empty location_ids should not crash or produce ancestors."""
+        maps = _make_taxonomy_maps()
+        row = _make_posting_record(location_ids=[])
+        docs = _build_typesense_docs([row], maps)
+        assert docs[0]["location_ids"] == []
+
+    def test_leaf_ids_come_first(self):
+        """Leaf IDs should be at the start of location_ids (aligned with names/geo_types)."""
+        maps = _make_taxonomy_maps()
+        row = _make_posting_record(location_ids=[10])
+        docs = _build_typesense_docs([row], maps)
+        # First element is the leaf
+        assert docs[0]["location_ids"][0] == 10
+        # location_names and location_geo_types are only for the leaf
+        assert len(docs[0]["location_names"]) == 1
+        assert len(docs[0]["location_geo_types"]) == 1
+
+
+class TestLoadLocationNames:
+    """Tests for TaxonomyMaps._load_location_names is_display filter."""
+
+    async def test_filters_by_is_display(self):
+        """Query must include WHERE is_display=true so alternate names
+        (L.A., Colorado Spgs, Old Line State) cannot leak into Typesense."""
+        pool = _make_pool()
+        # Simulate Postgres returning only is_display=true rows (the filter works).
+        pool.fetch = AsyncMock(
+            return_value=[
+                {"location_id": 5368361, "locale": "en", "name": "Los Angeles"},
+                {"location_id": 5417598, "locale": "en", "name": "Colorado Springs"},
+                {"location_id": 4361885, "locale": "en", "name": "Maryland"},
+                {"location_id": 5368361, "locale": "de", "name": "Los Angeles"},
+            ]
+        )
+
+        maps = TaxonomyMaps()
+        await maps._load_location_names(pool)
+
+        # Query must include the is_display filter — defends against
+        # accidental removal in future refactors.
+        pool.fetch.assert_awaited_once()
+        sql = pool.fetch.await_args.args[0]
+        assert "is_display" in sql
+        assert "WHERE is_display = true" in sql
+
+        # Canonical names picked up for each locale
+        assert maps.location_names[5368361] == {"en": "Los Angeles", "de": "Los Angeles"}
+        assert maps.location_names[5417598] == {"en": "Colorado Springs"}
+        assert maps.location_names[4361885] == {"en": "Maryland"}

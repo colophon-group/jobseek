@@ -2,13 +2,19 @@
 
 from __future__ import annotations
 
+import logging
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import httpx
+import pytest
+import structlog
 
 from src.core.scrapers.api_sniffer import (
     _extract_from_object,
     _extract_heuristic,
     _find_single_job,
     _score_job_object,
+    _scrape_http,
     probe_pw,
 )
 from src.shared.api_sniff import Exchange
@@ -319,3 +325,59 @@ class TestProbePw:
 
         assert metadata is None
         assert "1/3" in comment
+
+
+class TestScrapeHttpEmptyItems:
+    """Pin the INFO/WARN split in _scrape_http (#2227)."""
+
+    @staticmethod
+    def _patched_fetch(body):
+        """Patch http_fetch to return *body* regardless of input."""
+        return patch(
+            "src.core.monitors.api_sniffer.http_fetch",
+            new=AsyncMock(return_value=body),
+        )
+
+    @pytest.mark.asyncio
+    async def test_empty_items_logs_info_empty_result(self, caplog):
+        """`items: []` + `json_path: items[0]` → None → INFO empty_result."""
+        structlog.configure(
+            processors=[structlog.stdlib.add_log_level, structlog.processors.JSONRenderer()],
+            wrapper_class=structlog.make_filtering_bound_logger(logging.DEBUG),
+            logger_factory=structlog.stdlib.LoggerFactory(),
+        )
+        caplog.set_level(logging.DEBUG)
+
+        cfg = {"api_url": "https://x/api", "json_path": "items[0]", "fields": {}}
+        async with httpx.AsyncClient() as http:
+            with self._patched_fetch({"items": []}):
+                result = await _scrape_http("https://x/job/1", cfg, http)
+
+        assert result.title is None
+        records = [r for r in caplog.records if "empty_result" in r.getMessage()]
+        assert records, "expected api_sniffer_scraper.empty_result log"
+        assert records[0].levelname == "INFO"
+        warn_records = [r for r in caplog.records if "no_job_data" in r.getMessage()]
+        assert not warn_records, "empty items should NOT emit no_job_data warning"
+
+    @pytest.mark.asyncio
+    async def test_unexpected_shape_logs_warning_no_job_data(self, caplog):
+        """`items: [{...}]` but `json_path: items[0].broken` → something non-dict → WARN."""
+        structlog.configure(
+            processors=[structlog.stdlib.add_log_level, structlog.processors.JSONRenderer()],
+            wrapper_class=structlog.make_filtering_bound_logger(logging.DEBUG),
+            logger_factory=structlog.stdlib.LoggerFactory(),
+        )
+        caplog.set_level(logging.DEBUG)
+
+        # data resolved via json_path is a string (non-dict, non-None) → WARN
+        cfg = {"api_url": "https://x/api", "json_path": "items[0].name", "fields": {}}
+        async with httpx.AsyncClient() as http:
+            with self._patched_fetch({"items": [{"name": "plain-string"}]}):
+                await _scrape_http("https://x/job/1", cfg, http)
+
+        info_records = [r for r in caplog.records if "empty_result" in r.getMessage()]
+        assert not info_records, "unexpected shape should NOT emit empty_result info"
+        warn_records = [r for r in caplog.records if "no_job_data" in r.getMessage()]
+        assert warn_records, "expected api_sniffer_scraper.no_job_data log"
+        assert warn_records[0].levelname == "WARNING"

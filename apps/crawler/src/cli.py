@@ -63,10 +63,33 @@ def parse_args() -> argparse.Namespace:
 
     sub.add_parser("backfill-locations", help="Enqueue re-scrapes for jobs missing locations")
 
+    sub.add_parser("backfill-typesense", help="Full re-index of job_posting to Typesense")
+
+    sub.add_parser("refresh-typesense", help="Refresh Typesense counts + reconcile watchlists")
+
+    indexnow_p = sub.add_parser(
+        "notify-indexnow",
+        help="Push changed company URLs to IndexNow (Bing/Yandex/Seznam/Naver/Yep)",
+    )
+    indexnow_p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Compute the diff and log the count without POSTing or recording hashes",
+    )
+
     board_p = sub.add_parser("board", help="Dev testing for a single board")
     board_p.add_argument("slug", help="Board slug to process")
     board_p.add_argument("--dry-run", action="store_true", help="No DB writes")
     board_p.add_argument("-v", "--verbose", action="store_true", help="Log all fields")
+    board_p.add_argument(
+        "--pcsx-full-crawl",
+        action="store_true",
+        help=(
+            "Force a full PCSX crawl on eightfold boards, ignoring the "
+            "watermark. Used for manual backfills of large boards (e.g. "
+            "Starbucks) before enabling steady-state incremental mode."
+        ),
+    )
 
     return parser.parse_args()
 
@@ -134,6 +157,39 @@ async def run() -> None:
 
             await backfill_locations(local_pool)
 
+        elif args.command == "backfill-typesense":
+            local_pool = await create_local_pool()
+            supa_pool = await create_pool()
+            from src.exporter import backfill_typesense
+
+            await backfill_typesense(local_pool, supa_pool)
+
+        elif args.command == "refresh-typesense":
+            local_pool = await create_local_pool()
+            supa_pool = await create_pool()
+            from src.sync import refresh_typesense_counts, sync_watchlists_typesense
+            from src.typesense_client import get_typesense_client
+
+            ts_client = get_typesense_client()
+            if not ts_client:
+                log.error("refresh-typesense: Typesense not configured")
+            else:
+                async with local_pool.acquire() as local_conn, supa_pool.acquire() as supa_conn:
+                    await refresh_typesense_counts(local_conn, ts_client)
+                    await sync_watchlists_typesense(supa_conn, ts_client)
+                log.info("refresh-typesense: done")
+
+        elif args.command == "notify-indexnow":
+            start_metrics_server(settings.metrics_port)
+            local_pool = await create_local_pool()
+            http = create_http_client()
+            try:
+                from src.indexnow import notify_indexnow
+
+                await notify_indexnow(local_pool, http, dry_run=args.dry_run)
+            finally:
+                await http.aclose()
+
         elif args.command == "reconcile":
             local_pool = await create_local_pool()
             supa_pool = await create_pool()
@@ -157,9 +213,15 @@ async def run() -> None:
                             args.slug,
                             verbose=args.verbose,
                             pw=pw,
+                            pcsx_force_full_crawl=args.pcsx_full_crawl,
                         )
                 else:
-                    await run_single_board(local_pool, http, args.slug)
+                    await run_single_board(
+                        local_pool,
+                        http,
+                        args.slug,
+                        pcsx_force_full_crawl=args.pcsx_full_crawl,
+                    )
             finally:
                 await http.aclose()
 

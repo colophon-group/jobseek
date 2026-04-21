@@ -14,7 +14,7 @@ from src.core.scrapers import _REGISTRY as SCRAPER_REGISTRY
 from src.core.scrapers import JobContent
 from src.shared.constants import LOGO_TYPES, SLUG_RE, URL_RE, get_data_dir
 from src.shared.csv_io import read_csv
-from src.workspace._compat import all_monitor_types
+from src.workspace._compat import all_monitor_types, auto_scraper_type
 
 _JOBCONTENT_FIELD_NAMES = frozenset(f.name for f in dc_fields(JobContent))
 
@@ -201,12 +201,75 @@ def validate_csvs() -> list[ValidationError]:
                     )
                 )
 
+        # Monitors that don't return rich data and don't auto-configure a
+        # scraper (personio, umantis, notion, nextdata without 'fields') need
+        # an explicit scraper_type. Use 'skip' when the monitor returns full
+        # job data, or name a scraper. Without this the runtime falls back to
+        # json-ld, which silently produces empty descriptions.
+        if (
+            monitor_type
+            and monitor_type in valid_monitor_types
+            and not scraper_type
+            and monitor_type not in url_only_monitors
+            and monitor_type != "api_sniffer"
+        ):
+            mc_obj: dict | None = None
+            if monitor_config:
+                try:
+                    parsed = json.loads(monitor_config)
+                    if isinstance(parsed, dict):
+                        mc_obj = parsed
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            if auto_scraper_type(monitor_type, mc_obj) is None:
+                errors.append(
+                    ValidationError(
+                        "boards.csv",
+                        i,
+                        (
+                            f"monitor_type {monitor_type!r} requires explicit "
+                            "scraper_type (use 'skip' when the monitor returns "
+                            "rich data, or name a scraper)"
+                        ),
+                    )
+                )
+
         # Validate JSON configs
         if monitor_config:
             try:
-                json.loads(monitor_config)
+                mc_obj = json.loads(monitor_config)
             except json.JSONDecodeError:
                 errors.append(ValidationError("boards.csv", i, "Invalid monitor_config JSON"))
+            else:
+                # rescrape_policy controls whether workers re-scrape postings
+                # after a successful scrape (see _RECORD_SCRAPE_SUCCESS).
+                # Only "never" is supported today; absent means default cadence.
+                if isinstance(mc_obj, dict) and "rescrape_policy" in mc_obj:
+                    rp = mc_obj["rescrape_policy"]
+                    if rp not in ("never",):
+                        errors.append(
+                            ValidationError(
+                                "boards.csv",
+                                i,
+                                (
+                                    f"Invalid rescrape_policy={rp!r} in monitor_config "
+                                    "(supported: 'never')"
+                                ),
+                            )
+                        )
+
+                if (
+                    isinstance(mc_obj, dict)
+                    and "proxy" in mc_obj
+                    and not isinstance(mc_obj["proxy"], bool)
+                ):
+                    errors.append(
+                        ValidationError(
+                            "boards.csv",
+                            i,
+                            f"'proxy' in monitor_config must be bool, got {mc_obj['proxy']!r}",
+                        )
+                    )
 
         if scraper_config:
             try:
@@ -219,6 +282,15 @@ def validate_csvs() -> list[ValidationError]:
             try:
                 sc_obj = json.loads(scraper_config)
                 if isinstance(sc_obj, dict):
+                    if "proxy" in sc_obj and not isinstance(sc_obj["proxy"], bool):
+                        errors.append(
+                            ValidationError(
+                                "boards.csv",
+                                i,
+                                f"'proxy' in scraper_config must be bool, got {sc_obj['proxy']!r}",
+                            )
+                        )
+
                     # Validate enrich key
                     enrich = sc_obj.get("enrich")
                     if enrich is not None:
@@ -285,6 +357,18 @@ def validate_csvs() -> list[ValidationError]:
                                         )
                                     )
                     fb_cfg = fb.get("config")
+                    if (
+                        isinstance(fb_cfg, dict)
+                        and "proxy" in fb_cfg
+                        and not isinstance(fb_cfg["proxy"], bool)
+                    ):
+                        errors.append(
+                            ValidationError(
+                                "boards.csv",
+                                i,
+                                f"'proxy' in fallback config must be bool, got {fb_cfg['proxy']!r}",
+                            )
+                        )
                     fb = fb_cfg.get("fallback") if isinstance(fb_cfg, dict) else None
                     depth += 1
             except json.JSONDecodeError:

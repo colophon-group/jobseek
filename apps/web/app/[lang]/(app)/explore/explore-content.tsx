@@ -18,6 +18,7 @@ export function ExploreContent({ locale }: ExploreContentProps) {
   // filter changes and searches — URL sync via replaceState is for
   // bookmarkability only and does not trigger a re-fetch here.
   useEffect(() => {
+    window.scrollTo(0, 0);
     const sp: Record<string, string | undefined> = {};
     searchParams.forEach((value, key) => {
       sp[key] = value;

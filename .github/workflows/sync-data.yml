@@ -1,0 +1,44 @@
+name: Sync CSV data
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/crawler/data/companies.csv'
+      - 'apps/crawler/data/boards.csv'
+      - 'apps/crawler/data/company_descriptions.csv'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          sparse-checkout: apps/crawler/data
+
+      - name: Copy CSV files to Hetzner
+        uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634 # v0.1.7
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: deploy
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          source: apps/crawler/data/
+          target: /home/deploy/csv-overlay/
+          strip_components: 3
+
+      - name: Run sync via SSH
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: deploy
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          script: |
+            docker run --rm \
+              --env-file /home/deploy/.env \
+              --network host \
+              -v /home/deploy/csv-overlay:/app/data \
+              ghcr.io/colophon-group/jobseek-crawler:latest \
+              uv run --no-sync crawler sync

@@ -3,6 +3,9 @@
 import { sql } from "drizzle-orm";
 import { db } from "@/db";
 import { cached } from "@/lib/cache";
+import { getTypesenseClient, type TypesenseHit } from "@/lib/search/typesense-client";
+import { buildFilterString } from "@/lib/search/typesense-filters";
+import { boostByFilterMatches, type TypeaheadBoostFilters } from "@/lib/search/typeahead-boost";
 
 export interface TaxonomySuggestion {
   id: number;
@@ -12,147 +15,190 @@ export interface TaxonomySuggestion {
   matchedName?: string;
 }
 
+// ── suggestOccupations (Typesense) ──────────────────────────────────
+
 export async function suggestOccupations(params: {
   query: string;
   locale: string;
+  filters?: TypeaheadBoostFilters;
 }): Promise<TaxonomySuggestion[]> {
-  const q = params.query.trim().toLowerCase();
+  const q = params.query.trim();
   if (q.length < 2) return [];
 
-  const key = `occ-suggest:${q}:${params.locale}`;
-  return cached(key, () => _queryOccupationSuggestions(q, params.locale), { ttl: 3600 });
+  try {
+    const client = getTypesenseClient();
+    const { locale } = params;
+
+    // Search locale-specific documents first
+    let result = await client.collections("occupation").documents().search({
+      q,
+      query_by: "name,aliases",
+      filter_by: `has_active_postings:true && locale:${locale}`,
+      sort_by: "_text_match:desc,active_posting_count:desc",
+      per_page: 5,
+      prefix: "true",
+      num_typos: "1",
+    });
+
+    // Locale fallback: retry with locale:en if 0 results
+    if ((!result.hits || result.hits.length === 0) && locale !== "en") {
+      result = await client.collections("occupation").documents().search({
+        q,
+        query_by: "name,aliases",
+        filter_by: "has_active_postings:true && locale:en",
+        sort_by: "_text_match:desc,active_posting_count:desc",
+        per_page: 5,
+        prefix: "true",
+        num_typos: "1",
+      });
+    }
+
+    if (!result.hits || result.hits.length === 0) return [];
+
+    const suggestions = result.hits.map((hit) =>
+      _mapOccupationHit(hit as unknown as TypesenseHit),
+    );
+
+    if (!params.filters) return suggestions;
+    return boostByFilterMatches(
+      suggestions,
+      "occupation_id",
+      (s) => s.id,
+      params.filters,
+    );
+  } catch {
+    return [];
+  }
 }
 
-async function _queryOccupationSuggestions(
-  q: string,
-  locale: string,
-): Promise<TaxonomySuggestion[]> {
-  const rows = await db.execute<{
-    [key: string]: unknown;
-    id: number;
-    slug: string;
-    name: string;
-    match_rank: number;
-  }>(sql`
-    WITH prefix_matches AS (
-      SELECT DISTINCT ON (o.id) o.id, o.slug, 1 AS match_rank
-      FROM occupation_name otn
-      JOIN occupation o ON o.id = otn.occupation_id
-      WHERE lower(otn.name) LIKE ${q + "%"}
-        AND EXISTS (SELECT 1 FROM job_posting jp WHERE jp.occupation_id = o.id AND jp.is_active = true)
-      ORDER BY o.id
-    ),
-    fuzzy_matches AS (
-      SELECT DISTINCT ON (o.id) o.id, o.slug, 2 AS match_rank
-      FROM occupation_name otn
-      JOIN occupation o ON o.id = otn.occupation_id
-      WHERE length(${q}) >= 3
-        AND similarity(lower(otn.name), ${q}) > 0.25
-        AND o.id NOT IN (SELECT id FROM prefix_matches)
-        AND EXISTS (SELECT 1 FROM job_posting jp WHERE jp.occupation_id = o.id AND jp.is_active = true)
-      ORDER BY o.id, similarity(lower(otn.name), ${q}) DESC
-    ),
-    matches AS (
-      SELECT * FROM prefix_matches
-      UNION ALL
-      SELECT * FROM fuzzy_matches
-    )
-    SELECT m.id, m.slug, dn.name, mn.matched_name, m.match_rank
-    FROM matches m
-    JOIN LATERAL (
-      SELECT name FROM occupation_name
-      WHERE occupation_id = m.id AND locale IN (${locale}, 'en') AND is_display = true
-      ORDER BY (locale = ${locale})::int DESC LIMIT 1
-    ) dn ON true
-    JOIN LATERAL (
-      SELECT otn.name AS matched_name FROM occupation_name otn
-      WHERE otn.occupation_id = m.id
-        AND (lower(otn.name) LIKE ${q + "%"} OR (length(${q}) >= 3 AND similarity(lower(otn.name), ${q}) > 0.25))
-      ORDER BY (lower(otn.name) LIKE ${q + "%"})::int DESC, similarity(lower(otn.name), ${q}) DESC
-      LIMIT 1
-    ) mn ON true
-    ORDER BY m.match_rank, m.slug
-    LIMIT 5
-  `);
+function _mapOccupationHit(hit: TypesenseHit): TaxonomySuggestion {
+  const doc = hit.document;
+  const aliasHighlight = hit.highlights?.find((h) => h.field === "aliases");
+  const matchedAlias = aliasHighlight?.snippets?.[0]?.replace(/<\/?mark>/g, "");
 
-  return (rows as unknown as { id: number; slug: string; name: string; matched_name: string }[]).map((r) => ({
-    id: r.id,
-    slug: r.slug,
-    name: r.name,
-    matchedName: r.matched_name !== r.name ? r.matched_name : undefined,
-  }));
+  return {
+    id: doc.occupation_id as number,
+    slug: doc.slug as string,
+    name: doc.name as string,
+    matchedName: matchedAlias && matchedAlias !== doc.name ? matchedAlias : undefined,
+  };
 }
+
+// ── suggestSeniorities (Typesense) ──────────────────────────────────
 
 export async function suggestSeniorities(params: {
   query: string;
   locale: string;
+  filters?: TypeaheadBoostFilters;
 }): Promise<TaxonomySuggestion[]> {
-  const q = params.query.trim().toLowerCase();
+  const q = params.query.trim();
   if (q.length < 2) return [];
 
-  const key = `sen-suggest:${q}:${params.locale}`;
-  return cached(key, () => _querySenioritySuggestions(q, params.locale), { ttl: 3600 });
+  try {
+    const client = getTypesenseClient();
+    const { locale } = params;
+
+    let result = await client.collections("seniority").documents().search({
+      q,
+      query_by: "name,aliases",
+      filter_by: `has_active_postings:true && locale:${locale}`,
+      sort_by: "_text_match:desc,active_posting_count:desc",
+      per_page: 5,
+      prefix: "true",
+      num_typos: "1",
+    });
+
+    // Locale fallback: retry with locale:en if 0 results
+    if ((!result.hits || result.hits.length === 0) && locale !== "en") {
+      result = await client.collections("seniority").documents().search({
+        q,
+        query_by: "name,aliases",
+        filter_by: "has_active_postings:true && locale:en",
+        sort_by: "_text_match:desc,active_posting_count:desc",
+        per_page: 5,
+        prefix: "true",
+        num_typos: "1",
+      });
+    }
+
+    if (!result.hits || result.hits.length === 0) return [];
+
+    const suggestions = result.hits.map((hit) =>
+      _mapSeniorityHit(hit as unknown as TypesenseHit),
+    );
+
+    if (!params.filters) return suggestions;
+    return boostByFilterMatches(
+      suggestions,
+      "seniority_id",
+      (s) => s.id,
+      params.filters,
+    );
+  } catch {
+    return [];
+  }
 }
 
-async function _querySenioritySuggestions(
-  q: string,
-  locale: string,
-): Promise<TaxonomySuggestion[]> {
-  const rows = await db.execute<{
-    [key: string]: unknown;
-    id: number;
-    slug: string;
-    name: string;
-    match_rank: number;
-  }>(sql`
-    WITH prefix_matches AS (
-      SELECT DISTINCT ON (s.id) s.id, s.slug, 1 AS match_rank
-      FROM seniority_name stn
-      JOIN seniority s ON s.id = stn.seniority_id
-      WHERE lower(stn.name) LIKE ${q + "%"}
-        AND EXISTS (SELECT 1 FROM job_posting jp WHERE jp.seniority_id = s.id AND jp.is_active = true)
-      ORDER BY s.id
-    ),
-    fuzzy_matches AS (
-      SELECT DISTINCT ON (s.id) s.id, s.slug, 2 AS match_rank
-      FROM seniority_name stn
-      JOIN seniority s ON s.id = stn.seniority_id
-      WHERE length(${q}) >= 3
-        AND similarity(lower(stn.name), ${q}) > 0.25
-        AND s.id NOT IN (SELECT id FROM prefix_matches)
-        AND EXISTS (SELECT 1 FROM job_posting jp WHERE jp.seniority_id = s.id AND jp.is_active = true)
-      ORDER BY s.id, similarity(lower(stn.name), ${q}) DESC
-    ),
-    matches AS (
-      SELECT * FROM prefix_matches
-      UNION ALL
-      SELECT * FROM fuzzy_matches
-    )
-    SELECT m.id, m.slug, dn.name, mn.matched_name, m.match_rank
-    FROM matches m
-    JOIN LATERAL (
-      SELECT name FROM seniority_name
-      WHERE seniority_id = m.id AND locale IN (${locale}, 'en') AND is_display = true
-      ORDER BY (locale = ${locale})::int DESC LIMIT 1
-    ) dn ON true
-    JOIN LATERAL (
-      SELECT stn2.name AS matched_name FROM seniority_name stn2
-      WHERE stn2.seniority_id = m.id
-        AND (lower(stn2.name) LIKE ${q + "%"} OR (length(${q}) >= 3 AND similarity(lower(stn2.name), ${q}) > 0.25))
-      ORDER BY (lower(stn2.name) LIKE ${q + "%"})::int DESC, similarity(lower(stn2.name), ${q}) DESC
-      LIMIT 1
-    ) mn ON true
-    ORDER BY m.match_rank, m.slug
-    LIMIT 5
-  `);
+function _mapSeniorityHit(hit: TypesenseHit): TaxonomySuggestion {
+  const doc = hit.document;
+  const aliasHighlight = hit.highlights?.find((h) => h.field === "aliases");
+  const matchedAlias = aliasHighlight?.snippets?.[0]?.replace(/<\/?mark>/g, "");
 
-  return (rows as unknown as { id: number; slug: string; name: string; matched_name: string }[]).map((r) => ({
-    id: r.id,
-    slug: r.slug,
-    name: r.name,
-    matchedName: r.matched_name !== r.name ? r.matched_name : undefined,
-  }));
+  return {
+    id: doc.seniority_id as number,
+    slug: doc.slug as string,
+    name: doc.name as string,
+    matchedName: matchedAlias && matchedAlias !== doc.name ? matchedAlias : undefined,
+  };
 }
+
+// ── suggestTechnologies (Typesense) ─────────────────────────────────
+
+export async function suggestTechnologies(params: {
+  query: string;
+  locale: string;
+  filters?: TypeaheadBoostFilters;
+}): Promise<TaxonomySuggestion[]> {
+  const q = params.query.trim();
+  if (q.length < 2) return [];
+
+  try {
+    const client = getTypesenseClient();
+
+    const result = await client.collections("technology").documents().search({
+      q,
+      query_by: "name,slug",
+      filter_by: "has_active_postings:true",
+      sort_by: "_text_match:desc,active_posting_count:desc",
+      per_page: 5,
+      prefix: "true",
+      num_typos: "0",  // no typo tolerance — match current prefix-only behavior
+    });
+
+    if (!result.hits || result.hits.length === 0) return [];
+
+    const suggestions = result.hits.map((hit) => {
+      const doc = (hit as unknown as TypesenseHit).document;
+      return {
+        id: doc.technology_id as number,
+        slug: doc.slug as string,
+        name: (doc.name ?? doc.slug) as string,
+      };
+    });
+
+    if (!params.filters) return suggestions;
+    return boostByFilterMatches(
+      suggestions,
+      "technology_ids",
+      (s) => s.id,
+      params.filters,
+    );
+  } catch {
+    return [];
+  }
+}
+
+// ── Resolve functions (kept on Postgres with cached()) ──────────────
 
 export async function resolveOccupationSlugs(
   slugs: string[],
@@ -249,7 +295,30 @@ export async function expandOccupationIds(occupationId: number): Promise<number[
   );
 }
 
-// ── All occupations grouped by domain ─────────────────────────────────
+export async function resolveTechnologySlugs(
+  slugs: string[],
+): Promise<Map<string, TaxonomySuggestion>> {
+  if (slugs.length === 0) return new Map();
+  const key = `tech-resolve:${slugs.sort().join(",")}`;
+  const record = await cached(key, async () => {
+    const pgArray = `{${slugs.join(",")}}`;
+    const rows = await db.execute<{
+      [key: string]: unknown; id: number; slug: string; name: string;
+    }>(sql`
+      SELECT t.id, t.slug, COALESCE(t.name, t.slug) AS name
+      FROM technology t
+      WHERE t.slug = ANY(${pgArray}::text[])
+    `);
+    const result: Record<string, TaxonomySuggestion> = {};
+    for (const r of rows as unknown as { id: number; slug: string; name: string }[]) {
+      result[r.slug] = { id: r.id, slug: r.slug, name: r.name };
+    }
+    return result;
+  }, { ttl: 3600 });
+  return new Map(Object.entries(record));
+}
+
+// ── All occupations grouped by domain (Typesense facets) ─────────────
 
 export interface OccupationItem {
   id: number;
@@ -281,149 +350,284 @@ export async function getAllOccupationsGrouped(
   return cached(key, () => _fetchAllOccupationsGrouped(locale, filters), { ttl: 3600 });
 }
 
+// ── Occupation hierarchy cache ───────────────────────────────────────
+
+interface OccupationMeta {
+  id: number;
+  slug: string;
+  parentId: number | null;
+  domainId: number | null;
+  names: Record<string, string>; // locale -> display name
+}
+
+interface OccupationDomainMeta {
+  id: number;
+  slug: string;
+  names: Record<string, string>;
+}
+
+async function _getOccupationHierarchyCache(): Promise<{
+  occupations: Map<number, OccupationMeta>;
+  domains: Map<number, OccupationDomainMeta>;
+}> {
+  const key = "occ-hierarchy-cache";
+  const record = await cached(
+    key,
+    async () => {
+      // Fetch occupations
+      const occRows = await db.execute<{
+        [key: string]: unknown;
+        id: number;
+        slug: string;
+        parent_id: number | null;
+        domain_id: number | null;
+      }>(sql`SELECT id, slug, parent_id, domain_id FROM occupation`);
+
+      const occNameRows = await db.execute<{
+        [key: string]: unknown;
+        occupation_id: number;
+        locale: string;
+        name: string;
+      }>(sql`SELECT occupation_id, locale, name FROM occupation_name WHERE is_display = true`);
+
+      const occNameMap = new Map<number, Record<string, string>>();
+      for (const nr of occNameRows as unknown as { occupation_id: number; locale: string; name: string }[]) {
+        let names = occNameMap.get(nr.occupation_id);
+        if (!names) { names = {}; occNameMap.set(nr.occupation_id, names); }
+        names[nr.locale] = nr.name;
+      }
+
+      const occupations: Record<string, OccupationMeta> = {};
+      for (const r of occRows as unknown as { id: number; slug: string; parent_id: number | null; domain_id: number | null }[]) {
+        occupations[String(r.id)] = {
+          id: r.id,
+          slug: r.slug,
+          parentId: r.parent_id,
+          domainId: r.domain_id,
+          names: occNameMap.get(r.id) ?? {},
+        };
+      }
+
+      // Fetch domains
+      const domainRows = await db.execute<{
+        [key: string]: unknown;
+        id: number;
+        slug: string;
+      }>(sql`SELECT id, slug FROM occupation_domain`);
+
+      const domainNameRows = await db.execute<{
+        [key: string]: unknown;
+        domain_id: number;
+        locale: string;
+        name: string;
+      }>(sql`SELECT domain_id, locale, name FROM occupation_domain_name WHERE is_display = true`);
+
+      const domainNameMap = new Map<number, Record<string, string>>();
+      for (const nr of domainNameRows as unknown as { domain_id: number; locale: string; name: string }[]) {
+        let names = domainNameMap.get(nr.domain_id);
+        if (!names) { names = {}; domainNameMap.set(nr.domain_id, names); }
+        names[nr.locale] = nr.name;
+      }
+
+      const domains: Record<string, OccupationDomainMeta> = {};
+      for (const r of domainRows as unknown as { id: number; slug: string }[]) {
+        domains[String(r.id)] = {
+          id: r.id,
+          slug: r.slug,
+          names: domainNameMap.get(r.id) ?? {},
+        };
+      }
+
+      return { occupations, domains };
+    },
+    { ttl: 86400 },
+  );
+
+  return {
+    occupations: new Map(Object.entries(record.occupations).map(([k, v]) => [Number(k), v])),
+    domains: new Map(Object.entries(record.domains).map(([k, v]) => [Number(k), v])),
+  };
+}
+
+function _getLocaleName(names: Record<string, string>, locale: string, fallback: string): string {
+  return names[locale] ?? names.en ?? fallback;
+}
+
 async function _fetchAllOccupationsGrouped(
   locale: string,
   filters?: { companyId?: string; keywords?: string[]; locationIds?: number[]; seniorityIds?: number[]; technologyIds?: number[]; languages?: string[] },
 ): Promise<OccupationGroup[]> {
-  const f = filters;
-  const hasKeywords = f?.keywords && f.keywords.length > 0;
-  const rows = await db.execute<{
-    [key: string]: unknown;
-    id: number;
-    slug: string;
-    name: string;
-    cnt: number;
-    parent_id: number | null;
-    domain_id: number | null;
-    domain_slug: string | null;
-    domain_name: string | null;
-  }>(sql`
-    WITH occ_counts AS (
-      SELECT jp.occupation_id, COUNT(*)::int AS cnt
-      FROM job_posting jp
-      WHERE jp.is_active = true AND jp.occupation_id IS NOT NULL
-        AND jp.titles[1] IS NOT NULL AND jp.titles[1] != ''
-        ${f?.companyId ? sql`AND jp.company_id = ${f.companyId}` : sql``}
-        ${hasKeywords ? sql`AND (${sql.join(f!.keywords!.map(k => sql`jp.titles[1] ~* ${`\\m${k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\M`}`), sql` OR `)})` : sql``}
-        ${f?.locationIds && f.locationIds.length > 0 ? sql`AND jp.location_ids && ${`{${f.locationIds.join(",")}}`}::integer[]` : sql``}
-        ${f?.seniorityIds && f.seniorityIds.length > 0 ? sql`AND jp.seniority_id = ANY(${`{${f.seniorityIds.join(",")}}`}::integer[])` : sql``}
-        ${f?.technologyIds && f.technologyIds.length > 0 ? sql`AND jp.technology_ids && ${`{${f.technologyIds.join(",")}}`}::integer[]` : sql``}
-        ${f?.languages && f.languages.length > 0 ? sql`AND (jp.locales && ${`{${f.languages.join(",")}}`}::text[] OR jp.locales = '{}')` : sql``}
-      GROUP BY jp.occupation_id
-    ),
-    relevant AS (
-      SELECT o.id, o.slug, o.parent_id, o.domain_id, COALESCE(oc.cnt, 0) AS cnt
-      FROM occupation o
-      LEFT JOIN occ_counts oc ON oc.occupation_id = o.id
-      WHERE oc.cnt > 0
-        OR EXISTS (
-          SELECT 1 FROM occupation child
-          JOIN occ_counts cc ON cc.occupation_id = child.id
-          WHERE child.parent_id = o.id
-        )
-    )
-    SELECT
-      r.id, r.slug, dn.name, r.cnt,
-      r.parent_id,
-      r.domain_id,
-      od.slug AS domain_slug,
-      odn.name AS domain_name
-    FROM relevant r
-    JOIN LATERAL (
-      SELECT name FROM occupation_name
-      WHERE occupation_id = r.id AND locale IN (${locale}, 'en') AND is_display = true
-      ORDER BY (locale = ${locale})::int DESC LIMIT 1
-    ) dn ON true
-    LEFT JOIN occupation_domain od ON od.id = r.domain_id
-    LEFT JOIN LATERAL (
-      SELECT name FROM occupation_domain_name
-      WHERE domain_id = r.domain_id AND locale IN (${locale}, 'en') AND is_display = true
-      ORDER BY (locale = ${locale})::int DESC LIMIT 1
-    ) odn ON r.domain_id IS NOT NULL
-    ORDER BY r.cnt DESC
-  `);
+  try {
+    const client = getTypesenseClient();
+    const filterStr = buildFilterString(filters);
 
-  type Row = {
-    id: number; slug: string; name: string; cnt: number;
-    parent_id: number | null;
-    domain_id: number | null; domain_slug: string | null; domain_name: string | null;
-  };
-  const all = rows as unknown as Row[];
+    const hasKeywords = filters?.keywords && filters.keywords.length > 0;
+    const q = hasKeywords ? filters!.keywords!.join(" ") : "*";
 
-  // Collect all rows into domain buckets
-  const domainRows = new Map<number, { meta: { id: number; slug: string; name: string }; rows: Row[] }>();
-  const ungrouped: OccupationGroup[] = [];
+    const result = await client.collections("job_posting").documents().search({
+      q,
+      query_by: "title",
+      filter_by: `is_active:true${filterStr ? " && " + filterStr : ""}`,
+      facet_by: "occupation_id",
+      max_facet_values: 500,
+      facet_strategy: "exhaustive",
+      per_page: 0,
+    });
 
-  for (const r of all) {
-    if (r.domain_id != null && r.domain_slug && r.domain_name) {
-      let bucket = domainRows.get(r.domain_id);
-      if (!bucket) {
-        bucket = { meta: { id: r.domain_id, slug: r.domain_slug, name: r.domain_name }, rows: [] };
-        domainRows.set(r.domain_id, bucket);
+    // Extract facet counts: occupation_id -> count
+    const facetCounts = new Map<number, number>();
+    const occFacet = result.facet_counts?.find(
+      (f) => (f as { field_name: string }).field_name === "occupation_id",
+    );
+    if (occFacet) {
+      for (const fc of (occFacet as { counts: Array<{ value: string; count: number }> }).counts) {
+        facetCounts.set(Number(fc.value), fc.count);
       }
-      bucket.rows.push(r);
-    } else {
+    }
+
+    if (facetCounts.size === 0) return [];
+
+    // Load hierarchy metadata
+    const { occupations, domains } = await _getOccupationHierarchyCache();
+
+    // Build items with counts from facet data
+    type OccRow = { id: number; slug: string; name: string; cnt: number; parentId: number | null; domainId: number | null };
+    const items: OccRow[] = [];
+
+    // Include occupations that have counts AND their parents (for sub-grouping)
+    const idsWithCounts = new Set(facetCounts.keys());
+    const parentIdsNeeded = new Set<number>();
+
+    for (const occId of idsWithCounts) {
+      const meta = occupations.get(occId);
+      if (!meta) continue;
+      if (meta.parentId != null && !idsWithCounts.has(meta.parentId)) {
+        parentIdsNeeded.add(meta.parentId);
+      }
+    }
+
+    // Gather all relevant occupations
+    for (const [occId, count] of facetCounts) {
+      const meta = occupations.get(occId);
+      if (!meta) continue;
+      items.push({
+        id: meta.id,
+        slug: meta.slug,
+        name: _getLocaleName(meta.names, locale, meta.slug),
+        cnt: count,
+        parentId: meta.parentId,
+        domainId: meta.domainId,
+      });
+    }
+
+    // Add parent occupations that have children with counts but no direct count themselves
+    for (const parentId of parentIdsNeeded) {
+      const meta = occupations.get(parentId);
+      if (!meta) continue;
+      items.push({
+        id: meta.id,
+        slug: meta.slug,
+        name: _getLocaleName(meta.names, locale, meta.slug),
+        cnt: 0,
+        parentId: meta.parentId,
+        domainId: meta.domainId,
+      });
+    }
+
+    // Group by domain using the same logic as the original
+    const domainRows = new Map<number, { meta: { id: number; slug: string; name: string }; rows: OccRow[] }>();
+    const ungrouped: OccupationGroup[] = [];
+
+    for (const r of items) {
+      if (r.domainId != null) {
+        const domainMeta = domains.get(r.domainId);
+        if (domainMeta) {
+          let bucket = domainRows.get(r.domainId);
+          if (!bucket) {
+            bucket = {
+              meta: {
+                id: domainMeta.id,
+                slug: domainMeta.slug,
+                name: _getLocaleName(domainMeta.names, locale, domainMeta.slug),
+              },
+              rows: [],
+            };
+            domainRows.set(r.domainId, bucket);
+          }
+          bucket.rows.push(r);
+          continue;
+        }
+      }
+      // No domain — standalone
       ungrouped.push({
         domain: { id: r.id, slug: r.slug, name: r.name, count: r.cnt },
         subGroups: [],
         standalone: [{ id: r.id, slug: r.slug, name: r.name, count: r.cnt }],
       });
     }
-  }
 
-  // Build OccupationGroup per domain with parent-child sub-groups
-  const result: OccupationGroup[] = [];
+    // Build OccupationGroup per domain with parent-child sub-groups
+    const groupedResult: OccupationGroup[] = [];
 
-  for (const { meta, rows: domainItems } of domainRows.values()) {
-    const idSet = new Set(domainItems.map((r) => r.id));
-    const parentIds = new Set(domainItems.filter((r) => r.parent_id != null && idSet.has(r.parent_id)).map((r) => r.parent_id!));
+    for (const { meta, rows: domainItems } of domainRows.values()) {
+      const idSet = new Set(domainItems.map((r) => r.id));
+      const parentIds = new Set(
+        domainItems
+          .filter((r) => r.parentId != null && idSet.has(r.parentId))
+          .map((r) => r.parentId!),
+      );
 
-    const subGroupMap = new Map<number, OccupationSubGroup>();
-    const standalone: OccupationItem[] = [];
+      const subGroupMap = new Map<number, OccupationSubGroup>();
+      const standalone: OccupationItem[] = [];
 
-    // First pass: create sub-groups for parents
-    for (const r of domainItems) {
-      if (parentIds.has(r.id)) {
-        subGroupMap.set(r.id, {
-          parent: { id: r.id, slug: r.slug, name: r.name, count: r.cnt },
-          children: [],
-        });
+      // First pass: create sub-groups for parents
+      for (const r of domainItems) {
+        if (parentIds.has(r.id)) {
+          subGroupMap.set(r.id, {
+            parent: { id: r.id, slug: r.slug, name: r.name, count: r.cnt },
+            children: [],
+          });
+        }
       }
-    }
 
-    // Second pass: assign children and standalone
-    for (const r of domainItems) {
-      if (r.parent_id != null && subGroupMap.has(r.parent_id)) {
-        subGroupMap.get(r.parent_id)!.children.push({ id: r.id, slug: r.slug, name: r.name, count: r.cnt });
-      } else if (!parentIds.has(r.id)) {
-        standalone.push({ id: r.id, slug: r.slug, name: r.name, count: r.cnt });
+      // Second pass: assign children and standalone
+      for (const r of domainItems) {
+        if (r.parentId != null && subGroupMap.has(r.parentId)) {
+          subGroupMap.get(r.parentId)!.children.push({
+            id: r.id, slug: r.slug, name: r.name, count: r.cnt,
+          });
+        } else if (!parentIds.has(r.id)) {
+          standalone.push({ id: r.id, slug: r.slug, name: r.name, count: r.cnt });
+        }
       }
+
+      // Sort sub-groups by total count, children within by count
+      const subGroups = [...subGroupMap.values()].sort((a, b) => {
+        const aTotal = a.parent.count + a.children.reduce((s, c) => s + c.count, 0);
+        const bTotal = b.parent.count + b.children.reduce((s, c) => s + c.count, 0);
+        return bTotal - aTotal;
+      });
+      for (const sg of subGroups) {
+        sg.children.sort((a, b) => b.count - a.count);
+      }
+      standalone.sort((a, b) => b.count - a.count);
+
+      const totalCount = domainItems.reduce((s, r) => s + r.cnt, 0);
+      groupedResult.push({
+        domain: { id: meta.id, slug: meta.slug, name: meta.name, count: totalCount },
+        subGroups,
+        standalone,
+      });
     }
 
-    // Sort sub-groups by total count, children within by count
-    const subGroups = [...subGroupMap.values()].sort((a, b) => {
-      const aTotal = a.parent.count + a.children.reduce((s, c) => s + c.count, 0);
-      const bTotal = b.parent.count + b.children.reduce((s, c) => s + c.count, 0);
-      return bTotal - aTotal;
-    });
-    for (const sg of subGroups) {
-      sg.children.sort((a, b) => b.count - a.count);
-    }
-    standalone.sort((a, b) => b.count - a.count);
-
-    const totalCount = domainItems.reduce((s, r) => s + r.cnt, 0);
-    result.push({
-      domain: { id: meta.id, slug: meta.slug, name: meta.name, count: totalCount },
-      subGroups,
-      standalone,
-    });
+    groupedResult.sort((a, b) => b.domain.count - a.domain.count);
+    return [...groupedResult, ...ungrouped];
+  } catch {
+    return [];
   }
-
-  result.sort((a, b) => b.domain.count - a.domain.count);
-  return [...result, ...ungrouped];
 }
 
-// ── All seniorities ──────────────────────────────────────────────────
+// ── All seniorities (Typesense facets) ──────────────────────────────
 
 export interface SeniorityOption {
   id: number;
@@ -441,108 +645,104 @@ export async function getAllSeniorities(
   return cached(key, () => _fetchAllSeniorities(locale, filters), { ttl: 3600 });
 }
 
+// ── Seniority metadata cache ─────────────────────────────────────────
+
+interface SeniorityMeta {
+  id: number;
+  slug: string;
+  names: Record<string, string>;
+}
+
+async function _getSeniorityCache(): Promise<Map<number, SeniorityMeta>> {
+  const key = "sen-hierarchy-cache";
+  const record = await cached(
+    key,
+    async () => {
+      const rows = await db.execute<{
+        [key: string]: unknown;
+        id: number;
+        slug: string;
+      }>(sql`SELECT id, slug FROM seniority`);
+
+      const nameRows = await db.execute<{
+        [key: string]: unknown;
+        seniority_id: number;
+        locale: string;
+        name: string;
+      }>(sql`SELECT seniority_id, locale, name FROM seniority_name WHERE is_display = true`);
+
+      const nameMap = new Map<number, Record<string, string>>();
+      for (const nr of nameRows as unknown as { seniority_id: number; locale: string; name: string }[]) {
+        let names = nameMap.get(nr.seniority_id);
+        if (!names) { names = {}; nameMap.set(nr.seniority_id, names); }
+        names[nr.locale] = nr.name;
+      }
+
+      const result: Record<string, SeniorityMeta> = {};
+      for (const r of rows as unknown as { id: number; slug: string }[]) {
+        result[String(r.id)] = {
+          id: r.id,
+          slug: r.slug,
+          names: nameMap.get(r.id) ?? {},
+        };
+      }
+      return result;
+    },
+    { ttl: 86400 },
+  );
+  return new Map(Object.entries(record).map(([k, v]) => [Number(k), v]));
+}
+
 async function _fetchAllSeniorities(
   locale: string,
   filters?: { companyId?: string; keywords?: string[]; locationIds?: number[]; occupationIds?: number[]; technologyIds?: number[]; languages?: string[] },
 ): Promise<SeniorityOption[]> {
-  const f = filters;
-  const hasKeywords = f?.keywords && f.keywords.length > 0;
-  const rows = await db.execute<{
-    [key: string]: unknown;
-    id: number;
-    slug: string;
-    name: string;
-    cnt: number;
-  }>(sql`
-    WITH sen_counts AS (
-      SELECT jp.seniority_id, COUNT(*)::int AS cnt
-      FROM job_posting jp
-      WHERE jp.is_active = true AND jp.seniority_id IS NOT NULL
-        AND jp.titles[1] IS NOT NULL AND jp.titles[1] != ''
-        ${f?.companyId ? sql`AND jp.company_id = ${f.companyId}` : sql``}
-        ${hasKeywords ? sql`AND (${sql.join(f!.keywords!.map(k => sql`jp.titles[1] ~* ${`\\m${k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\M`}`), sql` OR `)})` : sql``}
-        ${f?.locationIds && f.locationIds.length > 0 ? sql`AND jp.location_ids && ${`{${f.locationIds.join(",")}}`}::integer[]` : sql``}
-        ${f?.occupationIds && f.occupationIds.length > 0 ? sql`AND jp.occupation_id = ANY(${`{${f.occupationIds.join(",")}}`}::integer[])` : sql``}
-        ${f?.technologyIds && f.technologyIds.length > 0 ? sql`AND jp.technology_ids && ${`{${f.technologyIds.join(",")}}`}::integer[]` : sql``}
-        ${f?.languages && f.languages.length > 0 ? sql`AND (jp.locales && ${`{${f.languages.join(",")}}`}::text[] OR jp.locales = '{}')` : sql``}
-      GROUP BY jp.seniority_id
-    )
-    SELECT s.id, s.slug, dn.name, sc.cnt
-    FROM sen_counts sc
-    JOIN seniority s ON s.id = sc.seniority_id
-    JOIN LATERAL (
-      SELECT name FROM seniority_name
-      WHERE seniority_id = s.id AND locale IN (${locale}, 'en') AND is_display = true
-      ORDER BY (locale = ${locale})::int DESC LIMIT 1
-    ) dn ON true
-    ORDER BY s.id
-  `);
+  try {
+    const client = getTypesenseClient();
+    const filterStr = buildFilterString(filters);
 
-  type Row = { id: number; slug: string; name: string; cnt: number };
-  return (rows as unknown as Row[]).map((r) => ({
-    id: r.id,
-    slug: r.slug,
-    name: r.name,
-    count: r.cnt,
-  }));
-}
+    const hasKeywords = filters?.keywords && filters.keywords.length > 0;
+    const q = hasKeywords ? filters!.keywords!.join(" ") : "*";
 
-// ── Technology suggestions ──────────────────────────────────────────
+    const result = await client.collections("job_posting").documents().search({
+      q,
+      query_by: "title",
+      filter_by: `is_active:true${filterStr ? " && " + filterStr : ""}`,
+      facet_by: "seniority_id",
+      max_facet_values: 50,
+      facet_strategy: "exhaustive",
+      per_page: 0,
+    });
 
-export async function suggestTechnologies(params: {
-  query: string;
-  locale: string;
-}): Promise<TaxonomySuggestion[]> {
-  const q = params.query.trim().toLowerCase();
-  if (q.length < 2) return [];
-  const key = `tech-suggest:${q}`;
-  return cached(key, () => _queryTechnologySuggestions(q), { ttl: 3600 });
-}
+    const senFacet = result.facet_counts?.find(
+      (f) => (f as { field_name: string }).field_name === "seniority_id",
+    );
+    if (!senFacet) return [];
 
-async function _queryTechnologySuggestions(q: string): Promise<TaxonomySuggestion[]> {
-  const rows = await db.execute<{
-    [key: string]: unknown; id: number; slug: string; name: string;
-  }>(sql`
-    SELECT t.id, t.slug, COALESCE(t.name, t.slug) AS name
-    FROM technology t
-    WHERE (lower(t.slug) LIKE ${q + "%"} OR lower(t.name) LIKE ${q + "%"})
-      AND EXISTS (
-        SELECT 1 FROM job_posting jp
-        WHERE jp.technology_ids @> ARRAY[t.id]
-          AND jp.is_active = true
-      )
-    ORDER BY t.slug
-    LIMIT 5
-  `);
-  return (rows as unknown as { id: number; slug: string; name: string }[]).map((r) => ({
-    id: r.id, slug: r.slug, name: r.name,
-  }));
-}
+    const senCache = await _getSeniorityCache();
 
-export async function resolveTechnologySlugs(
-  slugs: string[],
-): Promise<Map<string, TaxonomySuggestion>> {
-  if (slugs.length === 0) return new Map();
-  const key = `tech-resolve:${slugs.sort().join(",")}`;
-  const record = await cached(key, async () => {
-    const pgArray = `{${slugs.join(",")}}`;
-    const rows = await db.execute<{
-      [key: string]: unknown; id: number; slug: string; name: string;
-    }>(sql`
-      SELECT t.id, t.slug, COALESCE(t.name, t.slug) AS name
-      FROM technology t
-      WHERE t.slug = ANY(${pgArray}::text[])
-    `);
-    const result: Record<string, TaxonomySuggestion> = {};
-    for (const r of rows as unknown as { id: number; slug: string; name: string }[]) {
-      result[r.slug] = { id: r.id, slug: r.slug, name: r.name };
+    const options: SeniorityOption[] = [];
+    for (const fc of (senFacet as { counts: Array<{ value: string; count: number }> }).counts) {
+      const senId = Number(fc.value);
+      const meta = senCache.get(senId);
+      if (!meta) continue;
+      options.push({
+        id: meta.id,
+        slug: meta.slug,
+        name: _getLocaleName(meta.names, locale, meta.slug),
+        count: fc.count,
+      });
     }
-    return result;
-  }, { ttl: 3600 });
-  return new Map(Object.entries(record));
+
+    // Sort by seniority id (preserve logical order)
+    options.sort((a, b) => a.id - b.id);
+    return options;
+  } catch {
+    return [];
+  }
 }
 
-// ── All technologies grouped by category ────────────────────────────
+// ── All technologies grouped by category (Typesense facets) ──────────
 
 export interface TechnologyItem {
   id: number;
@@ -564,48 +764,99 @@ export async function getAllTechnologiesGrouped(
   return cached(key, () => _fetchAllTechnologiesGrouped(filters), { ttl: 3600 });
 }
 
+// ── Technology metadata cache ────────────────────────────────────────
+
+interface TechnologyMeta {
+  id: number;
+  slug: string;
+  name: string;
+  category: string;
+}
+
+async function _getTechnologyCache(): Promise<Map<number, TechnologyMeta>> {
+  const key = "tech-hierarchy-cache";
+  const record = await cached(
+    key,
+    async () => {
+      const rows = await db.execute<{
+        [key: string]: unknown;
+        id: number;
+        slug: string;
+        name: string | null;
+        category: string | null;
+      }>(sql`SELECT id, slug, name, category FROM technology`);
+
+      const result: Record<string, TechnologyMeta> = {};
+      for (const r of rows as unknown as { id: number; slug: string; name: string | null; category: string | null }[]) {
+        result[String(r.id)] = {
+          id: r.id,
+          slug: r.slug,
+          name: r.name ?? r.slug,
+          category: r.category ?? "other",
+        };
+      }
+      return result;
+    },
+    { ttl: 86400 },
+  );
+  return new Map(Object.entries(record).map(([k, v]) => [Number(k), v]));
+}
+
 async function _fetchAllTechnologiesGrouped(
   filters?: { companyId?: string; keywords?: string[]; locationIds?: number[]; occupationIds?: number[]; seniorityIds?: number[]; languages?: string[] },
 ): Promise<TechnologyGroup[]> {
-  const f = filters;
-  const hasKeywords = f?.keywords && f.keywords.length > 0;
-  const rows = await db.execute<{
-    [key: string]: unknown; id: number; slug: string; name: string; category: string; cnt: number;
-  }>(sql`
-    WITH tech_counts AS (
-      SELECT unnest(jp.technology_ids) AS tech_id, COUNT(*)::int AS cnt
-      FROM job_posting jp
-      WHERE jp.is_active = true AND jp.technology_ids IS NOT NULL
-        AND jp.titles[1] IS NOT NULL AND jp.titles[1] != ''
-        ${f?.companyId ? sql`AND jp.company_id = ${f.companyId}` : sql``}
-        ${hasKeywords ? sql`AND (${sql.join(f!.keywords!.map(k => sql`jp.titles[1] ~* ${`\\m${k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\M`}`), sql` OR `)})` : sql``}
-        ${f?.locationIds && f.locationIds.length > 0 ? sql`AND jp.location_ids && ${`{${f.locationIds.join(",")}}`}::integer[]` : sql``}
-        ${f?.occupationIds && f.occupationIds.length > 0 ? sql`AND jp.occupation_id = ANY(${`{${f.occupationIds.join(",")}}`}::integer[])` : sql``}
-        ${f?.seniorityIds && f.seniorityIds.length > 0 ? sql`AND jp.seniority_id = ANY(${`{${f.seniorityIds.join(",")}}`}::integer[])` : sql``}
-        ${f?.languages && f.languages.length > 0 ? sql`AND (jp.locales && ${`{${f.languages.join(",")}}`}::text[] OR jp.locales = '{}')` : sql``}
-      GROUP BY tech_id
-    )
-    SELECT t.id, t.slug, COALESCE(t.name, t.slug) AS name,
-           COALESCE(t.category, 'other') AS category, tc.cnt
-    FROM tech_counts tc
-    JOIN technology t ON t.id = tc.tech_id
-    ORDER BY tc.cnt DESC
-  `);
-  type Row = { id: number; slug: string; name: string; category: string; cnt: number };
-  const all = rows as unknown as Row[];
+  try {
+    const client = getTypesenseClient();
+    const filterStr = buildFilterString(filters);
 
-  const groups = new Map<string, TechnologyItem[]>();
-  for (const r of all) {
-    const items = groups.get(r.category) ?? [];
-    items.push({ id: r.id, slug: r.slug, name: r.name, count: r.cnt });
-    groups.set(r.category, items);
-  }
+    const hasKeywords = filters?.keywords && filters.keywords.length > 0;
+    const q = hasKeywords ? filters!.keywords!.join(" ") : "*";
 
-  return [...groups.entries()]
-    .map(([category, technologies]) => ({ category, technologies }))
-    .sort((a, b) => {
-      const aTotal = a.technologies.reduce((s, t) => s + t.count, 0);
-      const bTotal = b.technologies.reduce((s, t) => s + t.count, 0);
-      return bTotal - aTotal;
+    const result = await client.collections("job_posting").documents().search({
+      q,
+      query_by: "title",
+      filter_by: `is_active:true${filterStr ? " && " + filterStr : ""}`,
+      facet_by: "technology_ids",
+      max_facet_values: 500,
+      facet_strategy: "exhaustive",
+      per_page: 0,
     });
+
+    const techFacet = result.facet_counts?.find(
+      (f) => (f as { field_name: string }).field_name === "technology_ids",
+    );
+    if (!techFacet) return [];
+
+    const techCache = await _getTechnologyCache();
+
+    // Group by category
+    const groups = new Map<string, TechnologyItem[]>();
+    for (const fc of (techFacet as { counts: Array<{ value: string; count: number }> }).counts) {
+      const techId = Number(fc.value);
+      const meta = techCache.get(techId);
+      if (!meta) continue;
+      const items = groups.get(meta.category) ?? [];
+      items.push({
+        id: meta.id,
+        slug: meta.slug,
+        name: meta.name,
+        count: fc.count,
+      });
+      groups.set(meta.category, items);
+    }
+
+    // Sort each category's items by count desc, then sort groups by total count desc
+    return [...groups.entries()]
+      .map(([category, technologies]) => {
+        technologies.sort((a, b) => b.count - a.count);
+        return { category, technologies };
+      })
+      .sort((a, b) => {
+        const aTotal = a.technologies.reduce((s, t) => s + t.count, 0);
+        const bTotal = b.technologies.reduce((s, t) => s + t.count, 0);
+        return bTotal - aTotal;
+      });
+  } catch {
+    return [];
+  }
 }

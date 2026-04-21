@@ -354,6 +354,67 @@ class TestDiscover:
             assert len(urls) == 1
             assert "https://example.com/jobs/1" in urls
 
+    async def test_resolves_nested_sitemap_index(self):
+        index_xml = """<?xml version="1.0"?>
+        <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+            <sitemap><loc>https://example.com/careers-sitemap.xml</loc></sitemap>
+        </sitemapindex>"""
+
+        nested_index_xml = """<?xml version="1.0"?>
+        <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+            <sitemap><loc>https://example.com/jobs-1.xml</loc></sitemap>
+            <sitemap><loc>https://example.com/jobs-2.xml</loc></sitemap>
+        </sitemapindex>"""
+
+        child_one_xml = """<?xml version="1.0"?>
+        <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+            <url><loc>https://example.com/jobs/1</loc></url>
+        </urlset>"""
+
+        child_two_xml = """<?xml version="1.0"?>
+        <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+            <url><loc>https://example.com/jobs/2</loc></url>
+        </urlset>"""
+
+        def handler(request):
+            url = str(request.url)
+            if "careers-sitemap.xml" in url:
+                return httpx.Response(
+                    200,
+                    text=nested_index_xml,
+                    headers={"content-type": "application/xml"},
+                )
+            if "jobs-1.xml" in url:
+                return httpx.Response(
+                    200,
+                    text=child_one_xml,
+                    headers={"content-type": "application/xml"},
+                )
+            if "jobs-2.xml" in url:
+                return httpx.Response(
+                    200,
+                    text=child_two_xml,
+                    headers={"content-type": "application/xml"},
+                )
+            if "sitemap.xml" in url:
+                return httpx.Response(
+                    200,
+                    text=index_xml,
+                    headers={"content-type": "application/xml"},
+                )
+            return httpx.Response(404)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://example.com/careers",
+                "metadata": {},
+            }
+            urls, _ = await discover(board, client)
+            assert urls == {
+                "https://example.com/jobs/1",
+                "https://example.com/jobs/2",
+            }
+
 
 class TestCanHandle:
     async def test_sitemap_found(self):
@@ -384,3 +445,60 @@ class TestCanHandle:
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             result = await can_handle("https://example.com/careers", client)
             assert result is None
+
+    async def test_nested_sitemap_index_counts_leaf_urls(self):
+        index_xml = """<?xml version="1.0"?>
+        <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+            <sitemap><loc>https://example.com/careers-sitemap.xml</loc></sitemap>
+        </sitemapindex>"""
+
+        nested_index_xml = """<?xml version="1.0"?>
+        <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+            <sitemap><loc>https://example.com/jobs-1.xml</loc></sitemap>
+            <sitemap><loc>https://example.com/jobs-2.xml</loc></sitemap>
+        </sitemapindex>"""
+
+        child_one_xml = """<?xml version="1.0"?>
+        <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+            <url><loc>https://example.com/jobs/1</loc></url>
+        </urlset>"""
+
+        child_two_xml = """<?xml version="1.0"?>
+        <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+            <url><loc>https://example.com/jobs/2</loc></url>
+        </urlset>"""
+
+        def handler(request):
+            url = str(request.url)
+            if "careers-sitemap.xml" in url:
+                return httpx.Response(
+                    200,
+                    text=nested_index_xml,
+                    headers={"content-type": "application/xml"},
+                )
+            if "jobs-1.xml" in url:
+                return httpx.Response(
+                    200,
+                    text=child_one_xml,
+                    headers={"content-type": "application/xml"},
+                )
+            if "jobs-2.xml" in url:
+                return httpx.Response(
+                    200,
+                    text=child_two_xml,
+                    headers={"content-type": "application/xml"},
+                )
+            if "sitemap.xml" in url:
+                return httpx.Response(
+                    200,
+                    text=index_xml,
+                    headers={"content-type": "application/xml"},
+                )
+            return httpx.Response(404)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle("https://example.com/careers", client)
+            assert result == {
+                "sitemap_url": "https://example.com/careers/sitemap.xml",
+                "urls": 2,
+            }

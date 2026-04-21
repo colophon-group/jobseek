@@ -9,6 +9,7 @@ from src.batch import (
     _BATCH_UPDATE_RICH_CONTENT,
     _CREATE_RICH_UPDATES_TEMP,
     _DELIST_BOARD_POSTINGS,
+    _DIFF_BATCH,
     _INSERT_RICH_JOB,
     _INSERT_RICH_JOB_ENRICH,
     _INSERT_URL_ONLY_JOBS,
@@ -267,6 +268,21 @@ def _mock_stream(*results):
     return _gen
 
 
+def _counter_value(metric, **labels):
+    """Read a Prometheus counter's current value via the public collect() API.
+
+    Avoids reaching into ``counter._value.get()`` (private API that may
+    break across ``prometheus-client`` upgrades, and ``pyproject.toml``
+    only pins ``>=0.21``).
+    """
+    expected = labels
+    for family in metric.collect():
+        for sample in family.samples:
+            if sample.name.endswith("_total") and sample.labels == expected:
+                return sample.value
+    return 0.0
+
+
 # ── TestProcessOneBoard ──────────────────────────────────────────────
 
 
@@ -293,18 +309,54 @@ class TestProcessOneBoard:
     async def test_empty_result_board_gone_delists_postings(
         self, mock_monitor, mock_get_redis, mock_pool, mock_http
     ):
-        """Board transitions to 'gone' after repeated empties -> delist all postings."""
+        """Board transitions to 'gone' after repeated empties -> delist all
+        postings AND emit the ``monitor_jobs_discovered{action="gone"}``
+        counter for each row, so the Grafana ``gone`` series doesn't stay
+        stuck at zero while thousands of rows flip to ``is_active=false``.
+        """
+        from src.processing.board import monitor_jobs_discovered
+
         pool, conn = mock_pool
         mock_monitor.side_effect = _mock_stream(MonitorResult(urls=set()))
-        # Simulate board transitioning to gone
-        conn.fetch.return_value = [{"board_status": "gone"}]
+        # First fetch: _RECORD_EMPTY_CHECK -> board_status = 'gone'
+        # Second fetch: _DELIST_BOARD_POSTINGS -> two rows flipped
+        conn.fetch.side_effect = [
+            [{"board_status": "gone"}],
+            [{"id": "jp-1"}, {"id": "jp-2"}],
+        ]
+        mock_redis = AsyncMock()
+        mock_get_redis.return_value = mock_redis
         board = _mock_board()
+        before = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
 
         await _process_one_board(board, pool, mock_http)
 
-        # Both _RECORD_EMPTY_CHECK (via fetch) and _DELIST_BOARD_POSTINGS (via execute) called
-        conn.fetch.assert_awaited_once_with(_RECORD_EMPTY_CHECK, "board-1")
-        conn.execute.assert_awaited_once_with(_DELIST_BOARD_POSTINGS, "board-1")
+        fetch_sqls = [c.args[0] for c in conn.fetch.await_args_list]
+        assert fetch_sqls == [_RECORD_EMPTY_CHECK, _DELIST_BOARD_POSTINGS]
+        after = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
+        assert after - before == 2
+        mock_redis.delete.assert_awaited_with("cache:platform-stats")
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_empty_result_board_suspect_does_not_delist(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """Board still ``suspect`` after empty check -> no delist, no gone counter."""
+        from src.processing.board import monitor_jobs_discovered
+
+        pool, conn = mock_pool
+        mock_monitor.side_effect = _mock_stream(MonitorResult(urls=set()))
+        conn.fetch.return_value = [{"board_status": "suspect"}]
+        board = _mock_board()
+        before = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
+
+        await _process_one_board(board, pool, mock_http)
+
+        fetch_sqls = [c.args[0] for c in conn.fetch.await_args_list]
+        assert _DELIST_BOARD_POSTINGS not in fetch_sqls
+        after = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
+        assert after == before
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
@@ -387,7 +439,10 @@ class TestProcessOneBoard:
             # Third fetch call: MARK_GONE_BY_TIMESTAMP
             [],
         ]
-        board = _mock_board()
+        # Use a genuinely non-rich crawler_type. ``_mock_board()`` defaults to
+        # greenhouse, which the new classifier correctly treats as implicit
+        # rich-no-scrape.
+        board = _mock_board(crawler_type="dom")
 
         await _process_one_board(board, pool, mock_http)
 
@@ -395,6 +450,46 @@ class TestProcessOneBoard:
         assert conn.fetch.await_count == 3
         second_fetch = conn.fetch.await_args_list[1]
         assert second_fetch.args[0] == _INSERT_URL_ONLY_JOBS
+        # Non-rich monitor → never_scrape flag is False, so next_scrape_at is set.
+        assert second_fetch.args[4] is False
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_url_only_on_rich_crawler_type_keeps_next_scrape_null(
+        self,
+        mock_monitor,
+        mock_get_redis,
+        mock_pool,
+        mock_http,
+    ):
+        """Rich crawler_type falling back to URL-only must NOT set next_scrape_at.
+
+        This is the scenario the comment in ``_process_one_board_streaming``
+        called out: a greenhouse/lever/etc monitor emits URLs-only for a
+        cycle (e.g. transient API degradation). Before the fix,
+        ``is_rich_no_scrape = is_rich and not enrich_fields`` was False
+        because ``is_rich`` is False, so ``_INSERT_URL_ONLY_JOBS`` set
+        ``next_scrape_at = now()`` and the postings re-entered the stuck
+        cohort. After the fix, the metadata/crawler-type classifier kicks
+        in and the insert keeps ``next_scrape_at = NULL``.
+        """
+        pool, conn = mock_pool
+        url1 = "https://example.com/job/1"
+        mock_monitor.side_effect = _mock_stream(MonitorResult(urls={url1}, jobs_by_url=None))
+        conn.fetch.side_effect = [
+            [_diff_row("new", url=url1)],
+            [_inserted_row("jp-1", url1)],
+            [],
+        ]
+        # Rich crawler_type, no explicit scraper_type in metadata.
+        board = _mock_board(crawler_type="greenhouse")
+
+        await _process_one_board(board, pool, mock_http)
+
+        second_fetch = conn.fetch.await_args_list[1]
+        assert second_fetch.args[0] == _INSERT_URL_ONLY_JOBS
+        # never_scrape must be True even though the runtime is_rich flag was False.
+        assert second_fetch.args[4] is True
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
@@ -470,19 +565,394 @@ class TestProcessOneBoard:
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
+    async def test_hybrid_partial_rich_falls_through_to_url_only(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """Hybrid monitors return jobs_by_url with rich data for only some URLs.
+
+        URLs in new_urls but NOT in jobs_by_url must fall through to
+        _INSERT_URL_ONLY_JOBS so the scraper picks them up. URLs in
+        jobs_by_url go through the rich insert path as usual.
+        """
+        pool, conn = mock_pool
+        rich_url = "https://example.com/job/rich-1"
+        stub_url = "https://example.com/job/stub-2"
+        rich_job = _discovered_job(url=rich_url, title="Rich Job")
+        mock_monitor.side_effect = _mock_stream(
+            MonitorResult(
+                urls={rich_url, stub_url},
+                jobs_by_url={rich_url: rich_job},  # partial — stub_url absent
+                hybrid=True,
+            )
+        )
+        conn.fetch.side_effect = [
+            # DIFF_BATCH: both new
+            [_diff_row("new", url=rich_url), _diff_row("new", url=stub_url)],
+            # _INSERT_URL_ONLY_JOBS for stub_url
+            [_inserted_row("jp-stub", stub_url)],
+            # _MARK_GONE_BY_TIMESTAMP
+            [],
+        ]
+        conn.fetchrow.return_value = _inserted_row("jp-rich", rich_url)
+        board = _mock_board()
+
+        await _process_one_board(board, pool, mock_http)
+
+        # Rich path: fetchrow called with _INSERT_RICH_JOB for rich_url
+        rich_calls = [c for c in conn.fetchrow.await_args_list if c.args[0] == _INSERT_RICH_JOB]
+        assert len(rich_calls) == 1
+        assert rich_calls[0].args[4] == rich_url  # 4th positional arg is source_url
+
+        # URL-only path: fetch called with _INSERT_URL_ONLY_JOBS for stub_url only
+        url_only_calls = [
+            c for c in conn.fetch.await_args_list if c.args[0] == _INSERT_URL_ONLY_JOBS
+        ]
+        assert len(url_only_calls) == 1
+        assert url_only_calls[0].args[3] == [stub_url]  # 3rd positional is urls list
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_metadata_updates_merged_with_sitemap_url(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """Both new_sitemap_url and metadata_updates go in a SINGLE _UPDATE_METADATA call."""
+        pool, conn = mock_pool
+        url1 = "https://example.com/job/1"
+        mock_monitor.side_effect = _mock_stream(
+            MonitorResult(
+                urls={url1},
+                jobs_by_url=None,
+                new_sitemap_url="https://example.com/sitemap.xml",
+                metadata_updates={"pcsx_watermark": {"max_ts": 12345, "enabled": True}},
+            )
+        )
+        conn.fetch.return_value = []
+        board = _mock_board()
+
+        await _process_one_board(board, pool, mock_http)
+
+        metadata_calls = [c for c in conn.execute.await_args_list if c.args[0] == _UPDATE_METADATA]
+        assert len(metadata_calls) == 1
+        patch_json = metadata_calls[0].args[2]
+        patch_dict = json.loads(patch_json)
+        assert patch_dict["sitemap_url"] == "https://example.com/sitemap.xml"
+        assert patch_dict["pcsx_watermark"]["max_ts"] == 12345
+        assert patch_dict["pcsx_watermark"]["enabled"] is True
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_hybrid_skips_touched_content_update(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """Hybrid monitors must NOT feed 'touched' jobs to _BATCH_UPDATE_RICH_CONTENT.
+
+        That SQL uses plain SET (not COALESCE) for core fields, so feeding
+        partial rich data would null out previously-scraped fields.
+        Relisted jobs still flow through because they need fresh content.
+        """
+        pool, conn = mock_pool
+        touched_url = "https://example.com/job/touched"
+        touched_job = _discovered_job(url=touched_url, title="Partial Data")
+        mock_monitor.side_effect = _mock_stream(
+            MonitorResult(
+                urls={touched_url},
+                jobs_by_url={touched_url: touched_job},
+                hybrid=True,
+            )
+        )
+        conn.fetch.return_value = [
+            _diff_row("touched", row_id="jp-touched", url=touched_url),
+        ]
+        board = _mock_board()
+
+        await _process_one_board(board, pool, mock_http)
+
+        # _BATCH_UPDATE_RICH_CONTENT must NOT be called (nothing to update because
+        # touched jobs are excluded when hybrid=True).
+        rich_update_calls = [
+            c for c in conn.execute.await_args_list if c.args[0] == _BATCH_UPDATE_RICH_CONTENT
+        ]
+        assert len(rich_update_calls) == 0
+        create_temp_calls = [
+            c for c in conn.execute.await_args_list if c.args[0] == _CREATE_RICH_UPDATES_TEMP
+        ]
+        assert len(create_temp_calls) == 0
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_hybrid_skips_relisted_content_update(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """Hybrid monitors must NOT feed 'relisted' jobs to _BATCH_UPDATE_RICH_CONTENT
+        either. That SQL uses plain SET (not COALESCE) for core fields, so PCSX's
+        partial data (no employment_type, salary, experience) would null out the
+        previously-scraped values. Relisted jobs get fresh content via the
+        enrichment re-scrape path instead, which uses COALESCE-safe semantics."""
+        pool, conn = mock_pool
+        relisted_url = "https://example.com/job/back"
+        relisted_job = _discovered_job(url=relisted_url)
+        mock_monitor.side_effect = _mock_stream(
+            MonitorResult(
+                urls={relisted_url},
+                jobs_by_url={relisted_url: relisted_job},
+                hybrid=True,
+            )
+        )
+        conn.fetch.return_value = [
+            _diff_row("relisted", row_id="jp-relisted", url=relisted_url),
+        ]
+        board = _mock_board()
+
+        await _process_one_board(board, pool, mock_http)
+
+        # Neither the temp table nor the bulk update runs for hybrid relisted.
+        execute_calls = conn.execute.await_args_list
+        rich_update_calls = [c for c in execute_calls if c.args[0] == _BATCH_UPDATE_RICH_CONTENT]
+        create_temp_calls = [c for c in execute_calls if c.args[0] == _CREATE_RICH_UPDATES_TEMP]
+        assert len(rich_update_calls) == 0, "hybrid must not touch relisted content"
+        assert len(create_temp_calls) == 0
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_nonhybrid_relisted_still_updates_content(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """Sanity check: non-hybrid rich monitors (greenhouse, lever, etc.) still
+        go through the update path for relisted — they always return full rich
+        data, so SET-based _BATCH_UPDATE_RICH_CONTENT is safe for them."""
+        pool, conn = mock_pool
+        relisted_url = "https://example.com/job/back"
+        relisted_job = _discovered_job(url=relisted_url)
+        mock_monitor.side_effect = _mock_stream(
+            MonitorResult(
+                urls={relisted_url},
+                jobs_by_url={relisted_url: relisted_job},
+                hybrid=False,  # traditional rich monitor
+            )
+        )
+        conn.fetch.return_value = [
+            _diff_row("relisted", row_id="jp-relisted", url=relisted_url),
+        ]
+        board = _mock_board()
+
+        await _process_one_board(board, pool, mock_http)
+
+        execute_calls = conn.execute.await_args_list
+        assert any(c.args[0] == _BATCH_UPDATE_RICH_CONTENT for c in execute_calls)
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
     async def test_error_records_failure(self, mock_monitor, mock_get_redis, mock_pool, mock_http):
         """monitor_one raises -> _RECORD_FAILURE called with truncated error."""
         pool, conn = mock_pool
         long_error = "x" * 1000
         mock_monitor.side_effect = RuntimeError(long_error)
+        # _RECORD_FAILURE returns (is_enabled, last_success_at). Early
+        # failures (consecutive_failures < 5) leave is_enabled=true, so
+        # the just_disabled check (``not is_enabled``) is False and no
+        # delist runs.
+        conn.fetchrow.return_value = {"is_enabled": True, "last_success_at": None}
         board = _mock_board()
 
         await _process_one_board(board, pool, mock_http)
 
-        failure_calls = [c for c in conn.execute.await_args_list if c.args[0] == _RECORD_FAILURE]
+        failure_calls = [c for c in conn.fetchrow.await_args_list if c.args[0] == _RECORD_FAILURE]
         assert len(failure_calls) == 1
         error_arg = failure_calls[0].args[2]
         assert len(error_arg) <= 500
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_five_strike_disable_delists_postings_and_emits_gone(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """5-strike disable AND ``last_success_at`` past the 24h
+        recency gate -> _DELIST_BOARD_POSTINGS runs AND the ``gone``
+        Prometheus counter is incremented by the number of rows
+        delisted.
+
+        Before the fix, 5-strike disables left postings stranded
+        (``is_active=true`` on a board the scheduler never polls again)
+        AND emitted no ``gone`` counter, so the Grafana panel showed
+        ``new >> gone`` even when the DB was balanced.
+        """
+        from datetime import UTC, datetime, timedelta
+
+        from src.processing.board import monitor_jobs_discovered
+
+        pool, conn = mock_pool
+        mock_monitor.side_effect = RuntimeError("boom")
+        # _RECORD_FAILURE returns: just disabled, last success 3 days ago.
+        conn.fetchrow.return_value = {
+            "is_enabled": False,
+            "last_success_at": datetime.now(tz=UTC) - timedelta(days=3),
+        }
+        # _DELIST_BOARD_POSTINGS now returns the set of rows flipped
+        conn.fetch.return_value = [{"id": f"jp-{i}"} for i in range(7)]
+        mock_redis = AsyncMock()
+        mock_get_redis.return_value = mock_redis
+        board = _mock_board()
+        before = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
+
+        await _process_one_board(board, pool, mock_http)
+
+        failure_calls = [c for c in conn.fetchrow.await_args_list if c.args[0] == _RECORD_FAILURE]
+        assert len(failure_calls) == 1
+        delist_calls = [
+            c for c in conn.fetch.await_args_list if c.args[0] == _DELIST_BOARD_POSTINGS
+        ]
+        assert len(delist_calls) == 1
+        after = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
+        assert after - before == 7
+        mock_redis.delete.assert_awaited_with("cache:platform-stats")
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_five_strike_disable_skips_delist_if_recently_successful(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """Recency gate: a board that succeeded inside the 24h window
+        but is now disabled (e.g. a brief greenhouse-wide outage that
+        burned through the 5-strike backoff in ~2.5h) MUST NOT have
+        its postings tombstoned. Mass-deleting them on a transient
+        provider blip would churn search results and IndexNow on
+        recovery for no real signal.
+        """
+        from datetime import UTC, datetime, timedelta
+
+        from src.processing.board import monitor_jobs_discovered
+
+        pool, conn = mock_pool
+        mock_monitor.side_effect = RuntimeError("transient outage")
+        conn.fetchrow.return_value = {
+            "is_enabled": False,
+            "last_success_at": datetime.now(tz=UTC) - timedelta(hours=2),
+        }
+        board = _mock_board()
+        before = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
+
+        await _process_one_board(board, pool, mock_http)
+
+        delist_calls = [
+            c for c in conn.fetch.await_args_list if c.args[0] == _DELIST_BOARD_POSTINGS
+        ]
+        assert delist_calls == []
+        after = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
+        assert after == before
+        mock_get_redis.assert_not_called()
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_five_strike_disable_delists_when_never_succeeded(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """Boards that never had a successful run (NULL last_success_at)
+        bypass the recency gate — they are dead by definition."""
+        from src.processing.board import monitor_jobs_discovered
+
+        pool, conn = mock_pool
+        mock_monitor.side_effect = RuntimeError("never worked")
+        conn.fetchrow.return_value = {"is_enabled": False, "last_success_at": None}
+        conn.fetch.return_value = [{"id": "jp-1"}]
+        mock_redis = AsyncMock()
+        mock_get_redis.return_value = mock_redis
+        board = _mock_board()
+        before = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
+
+        await _process_one_board(board, pool, mock_http)
+
+        delist_calls = [
+            c for c in conn.fetch.await_args_list if c.args[0] == _DELIST_BOARD_POSTINGS
+        ]
+        assert len(delist_calls) == 1
+        after = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
+        assert after - before == 1
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_non_disabling_failure_does_not_delist(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """Consecutive-failure count below threshold -> no delist, no gone counter."""
+        from src.processing.board import monitor_jobs_discovered
+
+        pool, conn = mock_pool
+        mock_monitor.side_effect = RuntimeError("transient")
+        # is_enabled stays True -> not yet disabled -> no delist
+        conn.fetchrow.return_value = {"is_enabled": True, "last_success_at": None}
+        board = _mock_board()
+        before = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
+
+        await _process_one_board(board, pool, mock_http)
+
+        delist_calls = [
+            c for c in conn.fetch.await_args_list if c.args[0] == _DELIST_BOARD_POSTINGS
+        ]
+        assert delist_calls == []
+        after = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
+        assert after == before
+        mock_get_redis.assert_not_called()
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_delist_failure_does_not_inc_gone_counter(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """If the delist transaction rolls back (e.g. asyncpg disconnect
+        mid-write), the ``gone`` counter MUST NOT be incremented. The
+        helper splits read-and-emit so a rollback can't desync the
+        metric from the DB state.
+        """
+        import asyncpg
+
+        from src.processing.board import monitor_jobs_discovered
+
+        pool, conn = mock_pool
+        mock_monitor.side_effect = RuntimeError("boom")
+        conn.fetchrow.return_value = {"is_enabled": False, "last_success_at": None}
+        conn.fetch.side_effect = asyncpg.PostgresError("simulated rollback")
+        board = _mock_board()
+        before = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
+
+        await _process_one_board(board, pool, mock_http)
+
+        after = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
+        assert after == before
+        mock_get_redis.assert_not_called()
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_board_gone_error_delists_and_emits_gone(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """BoardGoneError (upstream 404) -> _RECORD_BOARD_GONE +
+        _DELIST_BOARD_POSTINGS run, and the ``gone`` counter reflects
+        every row delisted. Exception is re-raised afterwards so the
+        Redis worker drops the task rather than rescheduling a dead
+        board every cycle.
+        """
+        from src.core.monitors import BoardGoneError
+        from src.processing.board import monitor_jobs_discovered
+
+        pool, conn = mock_pool
+        mock_monitor.side_effect = BoardGoneError("dead upstream", url="https://example.com/dead")
+        # _DELIST_BOARD_POSTINGS returns three rows
+        conn.fetch.return_value = [{"id": "jp-1"}, {"id": "jp-2"}, {"id": "jp-3"}]
+        mock_redis = AsyncMock()
+        mock_get_redis.return_value = mock_redis
+        board = _mock_board()
+        before = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
+
+        with pytest.raises(BoardGoneError):
+            await _process_one_board(board, pool, mock_http)
+
+        delist_calls = [
+            c for c in conn.fetch.await_args_list if c.args[0] == _DELIST_BOARD_POSTINGS
+        ]
+        assert len(delist_calls) == 1
+        after = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
+        assert after - before == 3
+        mock_redis.delete.assert_awaited_with("cache:platform-stats")
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
@@ -492,11 +962,12 @@ class TestProcessOneBoard:
         """Exceptions with empty str() should still record useful error text."""
         pool, conn = mock_pool
         mock_monitor.side_effect = RuntimeError()
+        conn.fetchrow.return_value = {"is_enabled": True, "last_success_at": None}
         board = _mock_board()
 
         await _process_one_board(board, pool, mock_http)
 
-        failure_calls = [c for c in conn.execute.await_args_list if c.args[0] == _RECORD_FAILURE]
+        failure_calls = [c for c in conn.fetchrow.await_args_list if c.args[0] == _RECORD_FAILURE]
         assert len(failure_calls) == 1
         assert failure_calls[0].args[2] == "RuntimeError"
 
@@ -549,6 +1020,501 @@ class TestProcessOneBoard:
         await _process_one_board(board, pool, mock_http)
 
         mock_get_redis.assert_not_called()
+
+
+# ── TestIsPlausibleJobUrl ────────────────────────────────────────────
+
+
+class TestIsPlausibleJobUrl:
+    """Unit tests for the URL sanity check that drops site-root / bare-hash URLs."""
+
+    def setup_method(self):
+        from src.processing.board import _is_plausible_job_url
+
+        self.is_plausible = _is_plausible_job_url
+
+    def test_real_job_url_accepted(self):
+        assert self.is_plausible("https://example.com/jobs/engineer-123")
+
+    def test_real_job_url_with_query_accepted(self):
+        assert self.is_plausible("https://apply.example.com/index.php?ac=jobad&id=130858")
+
+    def test_bare_host_rejected(self):
+        assert not self.is_plausible("https://krb-sjobs.brassring.com")
+
+    def test_bare_host_with_slash_rejected(self):
+        assert not self.is_plausible("https://krb-sjobs.brassring.com/")
+
+    def test_bare_hash_rejected(self):
+        # Fragments are stripped by urlparse from path; path = "/" → rejected.
+        assert not self.is_plausible("https://krb-sjobs.brassring.com/#")
+
+    def test_hash_with_fragment_rejected(self):
+        assert not self.is_plausible("https://krb-sjobs.brassring.com/#0")
+
+    def test_matches_board_homepage_path_rejected(self):
+        assert not self.is_plausible(
+            "https://example.com/careers",
+            board_url="https://example.com/careers",
+        )
+
+    def test_matches_board_homepage_with_trailing_slash_rejected(self):
+        assert not self.is_plausible(
+            "https://example.com/careers/",
+            board_url="https://example.com/careers",
+        )
+
+    def test_different_host_accepted_even_when_path_matches(self):
+        assert self.is_plausible(
+            "https://jobs.example.com/careers",
+            board_url="https://example.com/careers",
+        )
+
+    def test_empty_string_rejected(self):
+        assert not self.is_plausible("")
+
+    def test_missing_scheme_rejected(self):
+        assert not self.is_plausible("example.com/jobs/123")
+
+    def test_invalid_url_rejected(self):
+        assert not self.is_plausible("not a url at all")
+
+    def test_case_insensitive_host_match(self):
+        # Upper/lower mismatch in host must still trigger the homepage-path
+        # rejection; real DOM extractors sometimes emit mixed-case hosts.
+        assert not self.is_plausible(
+            "https://Example.COM/careers",
+            board_url="https://example.com/careers",
+        )
+
+    def test_query_string_on_board_path_accepted(self):
+        # Query-keyed job URLs that share the board's own listing path
+        # (e.g. Lufthansa ``index.php?ac=jobad&id=...``) must NOT be rejected.
+        assert self.is_plausible(
+            "https://apply.example.com/index.php?ac=jobad&id=130858",
+            board_url="https://apply.example.com/index.php?ac=joblist",
+        )
+
+    def test_mailto_scheme_rejected(self):
+        assert not self.is_plausible("mailto:jobs@example.com")
+
+
+# ── TestClassifyJobUrl ───────────────────────────────────────────────
+
+
+class TestClassifyJobUrl:
+    """Reason codes feed the ``monitor_url_filtered_total`` Prometheus label,
+    so their exact string values are a contract."""
+
+    def setup_method(self):
+        from src.processing.board import _classify_job_url
+
+        self.classify = _classify_job_url
+
+    def test_plausible_returns_none(self):
+        assert self.classify("https://example.com/jobs/123") is None
+
+    def test_invalid_reason(self):
+        assert self.classify("") == "invalid"
+        assert self.classify("not-a-url") == "invalid"
+
+    def test_bare_host_reason(self):
+        assert self.classify("https://example.com/") == "bare_host"
+        assert self.classify("https://example.com/#0") == "bare_host"
+
+    def test_board_homepage_reason(self):
+        assert (
+            self.classify(
+                "https://example.com/careers",
+                board_url="https://example.com/careers",
+            )
+            == "board_homepage"
+        )
+
+
+# ── TestInsertSqlContract ────────────────────────────────────────────
+
+
+class TestInsertSqlContract:
+    """String-level pins on the SQL constants so refactors can't silently
+    drop the duplicate-handling clauses without triggering a test failure.
+    Mock-based integration tests exercise the Python branches but never
+    run the actual SQL — these pins are the only layer that catches
+    'someone deleted ON CONFLICT from _INSERT_RICH_JOB_ENRICH' in CI."""
+
+    def test_insert_rich_job_has_on_conflict(self):
+        assert "ON CONFLICT (source_url) DO NOTHING" in _INSERT_RICH_JOB
+
+    def test_insert_rich_job_enrich_has_on_conflict(self):
+        assert "ON CONFLICT (source_url) DO NOTHING" in _INSERT_RICH_JOB_ENRICH
+
+    def test_insert_url_only_jobs_has_on_conflict(self):
+        assert "ON CONFLICT (source_url) DO NOTHING" in _INSERT_URL_ONLY_JOBS
+
+    def test_diff_batch_has_foreign_touched_cte(self):
+        # Pin the cross-board handling added in the follow-up commit:
+        # without these clauses, the infinite-retry loop and the
+        # last_seen_at ghost-tombstoning both come back.
+        assert "foreign_touched" in _DIFF_BATCH
+        assert "board_id != $2" in _DIFF_BATCH
+        # new_urls must check "any board", not "this board only".
+        assert "NOT EXISTS" in _DIFF_BATCH
+
+    def test_record_failure_returns_disable_signal(self):
+        # The RETURNING clause is what lets the Python layer detect the
+        # enabled→disabled transition (post-update ``is_enabled=false``
+        # against a pre-fetch that was ``is_enabled=true``) and apply
+        # the recency gate before delisting. Dropping the RETURNING
+        # would silently re-introduce the phantom-active-jobs bug.
+        assert "RETURNING" in _RECORD_FAILURE
+        assert "is_enabled" in _RECORD_FAILURE
+        assert "last_success_at" in _RECORD_FAILURE
+
+    def test_delist_board_postings_returns_ids(self):
+        # RETURNING id is what lets _delist_and_count_gone size the
+        # ``monitor_jobs_discovered{action="gone"}`` increment. Without
+        # it, callers have no row count and the Grafana ``gone`` series
+        # stays stuck at zero on silent-delist paths.
+        assert "RETURNING id" in _DELIST_BOARD_POSTINGS
+
+
+# ── TestDuplicateSourceUrl ───────────────────────────────────────────
+
+
+class TestDuplicateSourceUrl:
+    """Fix for issue 02: duplicate source_url must not abort the batch."""
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_url_only_duplicate_skipped_by_on_conflict(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """URL-only batch where ON CONFLICT drops one of two rows still succeeds.
+
+        The monitor yields two new URLs. DIFF_BATCH reports both as new,
+        but _INSERT_URL_ONLY_JOBS returns only one row (the other was a
+        duplicate via another board and silently no-ops). The run must
+        complete without raising, and only the inserted row should get
+        enqueued for scraping.
+        """
+        pool, conn = mock_pool
+        url1 = "https://example.com/job/1"
+        url2 = "https://example.com/job/2"
+        mock_monitor.side_effect = _mock_stream(MonitorResult(urls={url1, url2}, jobs_by_url=None))
+        conn.fetch.side_effect = [
+            # 1. DIFF_BATCH -> both new
+            [_diff_row("new", url=url1), _diff_row("new", url=url2)],
+            # 2. INSERT_URL_ONLY_JOBS with ON CONFLICT -> only url1 inserted
+            [_inserted_row("jp-1", url1)],
+            # 3. MARK_GONE_BY_TIMESTAMP
+            [],
+        ]
+        board = _mock_board()
+
+        # Must not raise.
+        await _process_one_board(board, pool, mock_http)
+
+        # The INSERT call went through with both URLs in the payload.
+        insert_call = conn.fetch.await_args_list[1]
+        assert insert_call.args[0] == _INSERT_URL_ONLY_JOBS
+        assert set(insert_call.args[3]) == {url1, url2}
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_rich_duplicate_keeps_description_aligned(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """Rich-insert path: when the first fetchrow returns None (ON CONFLICT
+        no-op), the description UPSERT must be written against the SECOND
+        job's id AND carry the SECOND job's body — never the first's. This
+        guards against the zip-misalignment bug where dropping inserted_ids[0]
+        silently shifted every description by one row.
+        """
+        pool, conn = mock_pool
+        url1 = "https://example.com/job/1"
+        url2 = "https://example.com/job/2"
+        job1 = _discovered_job(url=url1, description="<p>Job one body</p>")
+        job2 = _discovered_job(url=url2, title="Designer", description="<p>Job two body</p>")
+        mock_monitor.side_effect = _mock_stream(
+            MonitorResult(urls={url1, url2}, jobs_by_url={url1: job1, url2: job2})
+        )
+        conn.fetch.side_effect = [
+            # 1. DIFF_BATCH -> both new
+            [_diff_row("new", url=url1), _diff_row("new", url=url2)],
+            # 2. MARK_GONE_BY_TIMESTAMP
+            [],
+        ]
+
+        # First insert → conflict (None), second insert → success.
+        # DiscoveredJob sets don't preserve insertion order, so we have to
+        # key the fetchrow responses on the source_url that's in the record.
+        insert_order: list[str] = []
+
+        async def _fake_fetchrow(sql, *args):
+            # _INSERT_RICH_JOB uses $4 for source_url (1-indexed → args[3]).
+            source_url = args[3]
+            insert_order.append(source_url)
+            if len(insert_order) == 1:
+                return None  # duplicate collides via another board
+            return {"id": f"jp-for-{source_url}"}
+
+        conn.fetchrow.side_effect = _fake_fetchrow
+        board = _mock_board()
+
+        await _process_one_board(board, pool, mock_http)
+
+        # Two inserts attempted, first no-op, second success.
+        assert len(insert_order) == 2
+        survivor_url = insert_order[1]
+        survivor_body = "<p>Job one body</p>" if survivor_url == url1 else "<p>Job two body</p>"
+
+        # Exactly one description upsert, and it must be BOTH
+        # (a) targeting the surviving row's id, AND
+        # (b) carrying the surviving job's description body.
+        # Asserting only (a) is insufficient — with the pre-fix
+        # zip(r2_staging, inserted_ids, strict=False), the id column would
+        # still match since there's only ever one surviving id, but the
+        # description body would belong to job1. Asserting (b) catches that.
+        desc_calls = [c for c in conn.execute.await_args_list if c.args[0] == _UPSERT_DESCRIPTION]
+        assert len(desc_calls) == 1, "exactly one description write expected"
+        assert desc_calls[0].args[1] == f"jp-for-{survivor_url}"
+        assert desc_calls[0].args[3] == survivor_body, (
+            f"description body should belong to {survivor_url} but got {desc_calls[0].args[3]!r}"
+        )
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_implausible_urls_filtered_before_insert(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """Site-root URL yielded by a DOM monitor is dropped pre-insert."""
+        pool, conn = mock_pool
+        garbage = "https://krb-sjobs.brassring.com/"
+        real = "https://krb-sjobs.brassring.com/TGnewUI/job/123"
+        mock_monitor.side_effect = _mock_stream(
+            MonitorResult(urls={garbage, real}, jobs_by_url=None)
+        )
+        conn.fetch.side_effect = [
+            [_diff_row("new", url=real)],
+            [_inserted_row("jp-1", real)],
+            [],  # MARK_GONE
+        ]
+        board = _mock_board(board_url="https://krb-sjobs.brassring.com/TGnewUI")
+
+        await _process_one_board(board, pool, mock_http)
+
+        # DIFF_BATCH should only see the real URL — garbage was filtered out.
+        diff_call = conn.fetch.await_args_list[0]
+        assert diff_call.args[0] == _DIFF_BATCH
+        assert garbage not in diff_call.args[1]
+        assert real in diff_call.args[1]
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_all_urls_filtered_treated_as_empty_check(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """If every URL is filtered out, fall back to the empty-check path
+        rather than running _MARK_GONE_BY_TIMESTAMP (which would wrongly
+        mark every active posting as gone)."""
+        pool, conn = mock_pool
+        garbage = "https://example.com/"
+        mock_monitor.side_effect = _mock_stream(MonitorResult(urls={garbage}, jobs_by_url=None))
+        conn.fetch.return_value = [{"board_status": "active"}]
+        board = _mock_board(board_url="https://example.com/careers")
+
+        await _process_one_board(board, pool, mock_http)
+
+        # Only _RECORD_EMPTY_CHECK was called — not _DIFF_BATCH or MARK_GONE.
+        assert conn.fetch.await_count == 1
+        conn.fetch.assert_awaited_with(_RECORD_EMPTY_CHECK, "board-1")
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_rich_duplicate_uses_enrich_insert_when_enrich_configured(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """ON CONFLICT must also apply to the ENRICH insert variant — a
+        regression here would re-introduce crashes for boards that have
+        scraper_config.enrich set (the common Workday-plus-description case).
+        """
+        pool, conn = mock_pool
+        url1 = "https://example.com/job/1"
+        job1 = _discovered_job(url=url1, description="<p>body</p>")
+        mock_monitor.side_effect = _mock_stream(
+            MonitorResult(urls={url1}, jobs_by_url={url1: job1})
+        )
+        conn.fetch.side_effect = [
+            [_diff_row("new", url=url1)],
+            [],  # MARK_GONE
+        ]
+        conn.fetchrow.return_value = None  # simulate global conflict
+        board = _mock_board(metadata={"scraper_config": {"enrich": ["description"]}})
+
+        await _process_one_board(board, pool, mock_http)
+
+        # Selected the ENRICH variant (not the base _INSERT_RICH_JOB).
+        insert_sqls = [c.args[0] for c in conn.fetchrow.await_args_list]
+        assert _INSERT_RICH_JOB_ENRICH in insert_sqls
+        assert _INSERT_RICH_JOB not in insert_sqls
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_rich_all_inserts_conflict_no_crash(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """All-rows-deduped edge case: every fetchrow returns None. The loop
+        must complete, no description upserts should fire, and nothing
+        should be enqueued for scraping."""
+        import src.processing.board as board_mod
+        from src.metrics import monitor_dedup_total
+
+        pool, conn = mock_pool
+        url1 = "https://example.com/job/1"
+        url2 = "https://example.com/job/2"
+        mock_monitor.side_effect = _mock_stream(
+            MonitorResult(
+                urls={url1, url2},
+                jobs_by_url={
+                    url1: _discovered_job(url=url1),
+                    url2: _discovered_job(url=url2),
+                },
+            )
+        )
+        conn.fetch.side_effect = [
+            [_diff_row("new", url=url1), _diff_row("new", url=url2)],
+            [],  # MARK_GONE
+        ]
+        conn.fetchrow.return_value = None  # every insert conflicts
+        board = _mock_board()
+
+        # Ensure the label set is registered before we read it.
+        monitor_dedup_total.labels(path="rich")
+        before = _counter_value(monitor_dedup_total, path="rich")
+        enqueue_spy = board_mod._enqueue_scrapes_for_new
+        enqueue_spy.reset_mock()
+
+        await _process_one_board(board, pool, mock_http)
+
+        # No descriptions written.
+        desc_calls = [c for c in conn.execute.await_args_list if c.args[0] == _UPSERT_DESCRIPTION]
+        assert len(desc_calls) == 0
+        # Dedup counter bumped by exactly two.
+        assert _counter_value(monitor_dedup_total, path="rich") - before == 2
+        # Nothing enqueued for scraping (the board has no enrich, so the
+        # enqueue branch wouldn't fire anyway; this is just belt-and-braces).
+        enqueue_spy.assert_not_awaited()
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_rich_enrich_all_inserts_conflict_does_not_enqueue(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """Enrich path + all-conflict: the `if enrich_fields and inserted_rich`
+        branch must NOT fire, so no deduped URLs leak into the scrape queue.
+        This is the branch the base all-conflict test can't reach."""
+        import src.processing.board as board_mod
+
+        pool, conn = mock_pool
+        url1 = "https://example.com/job/1"
+        mock_monitor.side_effect = _mock_stream(
+            MonitorResult(urls={url1}, jobs_by_url={url1: _discovered_job(url=url1)})
+        )
+        conn.fetch.side_effect = [
+            [_diff_row("new", url=url1)],
+            [],  # MARK_GONE
+        ]
+        conn.fetchrow.return_value = None  # conflict
+        board = _mock_board(metadata={"scraper_config": {"enrich": ["description"]}})
+
+        enqueue_spy = board_mod._enqueue_scrapes_for_new
+        enqueue_spy.reset_mock()
+
+        await _process_one_board(board, pool, mock_http)
+
+        # The enrich-path enqueue branch must not fire when every insert
+        # conflicted — nothing to enrich, nothing to scrape.
+        enqueue_spy.assert_not_awaited()
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_url_only_dedup_does_not_enqueue_scrape(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """Silent behaviour contract: when _INSERT_URL_ONLY_JOBS drops a row
+        via ON CONFLICT, that URL must NOT be enqueued for scraping. Only
+        the surviving inserted row should be passed to
+        _enqueue_scrapes_for_new."""
+        import src.processing.board as board_mod
+
+        pool, conn = mock_pool
+        url1 = "https://example.com/job/1"
+        url2 = "https://example.com/job/2"
+        mock_monitor.side_effect = _mock_stream(MonitorResult(urls={url1, url2}, jobs_by_url=None))
+        conn.fetch.side_effect = [
+            [_diff_row("new", url=url1), _diff_row("new", url=url2)],
+            [_inserted_row("jp-1", url1)],  # only url1 survives ON CONFLICT
+            [],  # MARK_GONE
+        ]
+
+        # _enqueue_scrapes_for_new is already AsyncMock() via the autouse
+        # _mock_enqueue_scrapes fixture; inspect its calls directly.
+        enqueue_spy = board_mod._enqueue_scrapes_for_new
+        enqueue_spy.reset_mock()
+        board = _mock_board()
+
+        await _process_one_board(board, pool, mock_http)
+
+        # Called once with the survivor list — NOT with url2.
+        assert enqueue_spy.await_count == 1
+        passed_rows = enqueue_spy.await_args.args[0]
+        passed_urls = {r["source_url"] for r in passed_rows}
+        assert passed_urls == {url1}, f"deduped url2 leaked into scrape queue: {passed_urls}"
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_foreign_action_does_not_insert_or_enqueue(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """_DIFF_BATCH can emit the ``foreign`` action when the URL is
+        already owned by another board (cross-tenant Workday etc.). The
+        application layer must:
+        - NOT call _INSERT_URL_ONLY_JOBS or _INSERT_RICH_JOB for it
+        - NOT enqueue it for scraping
+        - bump monitor_dedup_total{path="cross_board"}
+        The owning row's last_seen_at is refreshed inside _DIFF_BATCH
+        itself, so nothing else is needed from the Python side.
+        """
+        import src.processing.board as board_mod
+        from src.metrics import monitor_dedup_total
+
+        pool, conn = mock_pool
+        foreign = "https://jobs.example.com/foreign/role"
+        mock_monitor.side_effect = _mock_stream(MonitorResult(urls={foreign}, jobs_by_url=None))
+        conn.fetch.side_effect = [
+            [_diff_row("foreign", url=foreign)],
+            [],  # MARK_GONE
+        ]
+
+        enqueue_spy = board_mod._enqueue_scrapes_for_new
+        enqueue_spy.reset_mock()
+        # Ensure label set is registered before reading.
+        monitor_dedup_total.labels(path="cross_board")
+        before = _counter_value(monitor_dedup_total, path="cross_board")
+        board = _mock_board()
+
+        await _process_one_board(board, pool, mock_http)
+
+        # No insert attempted (neither URL-only nor rich).
+        for call in conn.fetch.await_args_list:
+            assert call.args[0] != _INSERT_URL_ONLY_JOBS
+        conn.fetchrow.assert_not_awaited()
+
+        # Nothing enqueued for scraping.
+        enqueue_spy.assert_not_awaited()
+
+        # Metric contract: cross-board dedup counter bumped exactly once.
+        assert _counter_value(monitor_dedup_total, path="cross_board") - before == 1
 
 
 # ── TestMonitorPipeline ──────────────────────────────────────────────
@@ -920,6 +1886,89 @@ class TestProcessOneScrape:
         execute_calls = conn.execute.await_args_list
         failure_calls = [c for c in execute_calls if c.args[0] == _RECORD_SCRAPE_FAILURE]
         assert len(failure_calls) == 1
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_step1_fallback_with_no_title_must_pass_none_not_empty_list(
+        self, mock_scrape, mock_pool, mock_http
+    ):
+        """Regression: dom fallback at step 1 returns no title, MUST pass
+        SQL ``NULL`` (not ``[]``) so COALESCE preserves the title that
+        step 0 wrote. ``COALESCE($3, titles)`` only treats SQL NULL as
+        null — empty arrays pass through and overwrite. This was the
+        Migros/Galaxus/KPMG/L'Oreal title-wipe bug (~800 affected rows).
+        """
+        pool, conn = mock_pool
+        mock_scrape.return_value = _job_content(
+            title=None,  # dom fallback only extracts description
+            description="<p>Long body the dom step extracted</p>",
+            locations=None,
+            employment_type=None,
+            language=None,
+        )
+        item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+
+        ok, _duration = await _process_one_scrape(
+            item,
+            pool,
+            mock_http,
+            "dom",
+            {"steps": [{"tag": "h3", "field": "description"}]},
+            scrape_step=1,
+        )
+
+        assert ok is True
+        update_calls = [
+            c for c in conn.execute.await_args_list if c.args[0] == _UPDATE_ENRICH_CONTENT
+        ]
+        assert len(update_calls) == 1
+        call_args = update_calls[0].args
+        # $3 = titles -> MUST be None so COALESCE preserves existing
+        assert call_args[3] is None, (
+            f"titles param must be None to preserve step-0 title, got {call_args[3]!r}"
+        )
+        # Description-derived language detection still picks 'en' from
+        # the body, so locales may be set legitimately. The bug was
+        # specifically that titles got wiped.
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_step1_fallback_with_no_language_signal_passes_none_locales(
+        self, mock_scrape, mock_pool, mock_http
+    ):
+        """Same shape as the title bug but for locales: when the fallback
+        returns no language and no description (so detect_language has
+        nothing to work with), ``_build_locales`` would default to
+        ``["en"]`` and clobber any real language stored on the row.
+        Pass None instead so COALESCE preserves existing locales.
+        """
+        pool, conn = mock_pool
+        mock_scrape.return_value = _job_content(
+            title=None,
+            description=None,  # nothing to detect language from
+            locations=None,
+            employment_type=None,
+            language=None,
+        )
+        item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+
+        ok, _duration = await _process_one_scrape(
+            item,
+            pool,
+            mock_http,
+            "dom",
+            {"steps": [{"tag": "h3", "field": "description"}]},
+            scrape_step=1,
+        )
+
+        assert ok is True
+        update_calls = [
+            c for c in conn.execute.await_args_list if c.args[0] == _UPDATE_ENRICH_CONTENT
+        ]
+        assert len(update_calls) == 1
+        call_args = update_calls[0].args
+        # $4 = locales -> MUST be None so COALESCE preserves existing
+        assert call_args[4] is None, (
+            f"locales param must be None to preserve step-0 locales, got {call_args[4]!r}"
+        )
 
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
     async def test_garbage_title_treated_as_empty(self, mock_scrape, mock_pool, mock_http):
@@ -1377,7 +2426,11 @@ class TestBoardHasEnrich:
 class TestEnrichmentScrape:
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
     async def test_enrich_only_updates_enriched_fields(self, mock_scrape, mock_pool, mock_http):
-        """Enrich scrape uses _UPDATE_ENRICH_CONTENT, not _UPDATE_JOB_CONTENT."""
+        """Enrich scrape uses _UPDATE_ENRICH_CONTENT, not _UPDATE_JOB_CONTENT.
+
+        When the row is fully populated (title/locations/employment_type all
+        set), backfill-on-empty is a no-op and non-enriched fields stay NULL.
+        """
         pool, conn = mock_pool
         content = _job_content(description="<p>Long description</p>")
         mock_scrape.return_value = content
@@ -1385,8 +2438,9 @@ class TestEnrichmentScrape:
             return_value={
                 "titles": ["Existing Title"],
                 "locales": ["en"],
-                "location_ids": None,
-                "location_types": None,
+                "location_ids": [1, 2],
+                "location_types": ["physical"],
+                "employment_type": "part_time",
             }
         )
         item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
@@ -1452,8 +2506,9 @@ class TestEnrichmentScrape:
             return_value={
                 "titles": ["Eng"],
                 "locales": ["en"],
-                "location_ids": None,
-                "location_types": None,
+                "location_ids": [1],
+                "location_types": ["physical"],
+                "employment_type": "full_time",
             }
         )
         item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
@@ -1647,8 +2702,9 @@ class TestEnrichmentScrape:
             return_value={
                 "titles": ["Old"],
                 "locales": ["en"],
-                "location_ids": None,
-                "location_types": None,
+                "location_ids": [1],
+                "location_types": ["physical"],
+                "employment_type": "part_time",
             }
         )
         item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
@@ -1667,6 +2723,130 @@ class TestEnrichmentScrape:
         # titles enriched → set
         assert call_args[3] == ["Lead Engineer"]
         # description_r2_hash enriched → may be set (R2 upload runs)
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_enrich_backfills_empty_stub_row(self, mock_scrape, mock_pool, mock_http):
+        """Stub row (all core fields empty) → enrich writes title/locations/employment_type.
+
+        Regression test for the Starbucks empty-posting bug: the hybrid
+        eightfold monitor can insert URL-only stubs when PCSX hasn't run,
+        and ``scraper_config: {"enrich":["description"]}`` would previously
+        leave those stubs with empty title forever. Now json-ld values are
+        opportunistically backfilled when the row is empty.
+        """
+        pool, conn = mock_pool
+        mock_scrape.return_value = _job_content(
+            title="Software Engineer",
+            description="<p>Build things</p>",
+            locations=["Berlin"],
+            employment_type="FULL_TIME",
+        )
+        pool.fetchrow = AsyncMock(
+            return_value={
+                "titles": None,
+                "locales": None,
+                "location_ids": None,
+                "location_types": None,
+                "employment_type": None,
+            }
+        )
+        item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+
+        ok, _ = await _process_one_enrich_scrape(
+            item, pool, mock_http, "json-ld", None, ["description"]
+        )
+
+        assert ok is True
+        enrich_calls = [
+            c for c in conn.execute.await_args_list if c.args[0] == _UPDATE_ENRICH_CONTENT
+        ]
+        assert len(enrich_calls) == 1
+        call_args = enrich_calls[0].args
+        # All backfilled from the scraper result
+        assert call_args[2] == "full_time"  # employment_type
+        assert call_args[3] == ["Software Engineer"]  # titles
+        # locations resolve to ids even if the resolver returns empty (at
+        # minimum the call is made — we don't assert the exact ids here
+        # because the resolver is not mocked tightly)
+        # description-derived tech_ids column is still populated
+        # (description is in the enrich list)
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_enrich_does_not_backfill_when_row_is_populated(
+        self, mock_scrape, mock_pool, mock_http
+    ):
+        """Populated row → backfill is a no-op (PCSX-sourced values preserved).
+
+        COALESCE in _UPDATE_ENRICH_CONTENT would already protect existing
+        values, but we explicitly pass None so the UPDATE is a pure no-op
+        for those columns and updated_at doesn't flip.
+        """
+        pool, conn = mock_pool
+        mock_scrape.return_value = _job_content(
+            title="Stale Scraper Title",
+            description="<p>Fresh desc</p>",
+            locations=["Wrong City"],
+            employment_type="PART_TIME",
+        )
+        pool.fetchrow = AsyncMock(
+            return_value={
+                "titles": ["PCSX Title"],
+                "locales": ["en"],
+                "location_ids": [42],
+                "location_types": ["physical"],
+                "employment_type": "full_time",
+            }
+        )
+        item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+
+        ok, _ = await _process_one_enrich_scrape(
+            item, pool, mock_http, "json-ld", None, ["description"]
+        )
+
+        assert ok is True
+        enrich_calls = [
+            c for c in conn.execute.await_args_list if c.args[0] == _UPDATE_ENRICH_CONTENT
+        ]
+        call_args = enrich_calls[0].args
+        assert call_args[2] is None  # employment_type: not overwritten
+        assert call_args[3] is None  # titles: not overwritten
+        assert call_args[5] is None  # location_ids: not overwritten
+        assert call_args[6] is None  # location_types: not overwritten
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_enrich_skips_backfill_for_garbage_scraped_title(
+        self, mock_scrape, mock_pool, mock_http
+    ):
+        """Garbage scraped title → do not backfill, leave row for PCSX to fill later."""
+        pool, conn = mock_pool
+        mock_scrape.return_value = _job_content(
+            title="Page Not Found",  # in _GARBAGE_TITLES
+            description="<p>real desc</p>",
+            locations=None,
+            employment_type=None,
+        )
+        pool.fetchrow = AsyncMock(
+            return_value={
+                "titles": None,
+                "locales": None,
+                "location_ids": None,
+                "location_types": None,
+                "employment_type": None,
+            }
+        )
+        item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+
+        ok, _ = await _process_one_enrich_scrape(
+            item, pool, mock_http, "json-ld", None, ["description"]
+        )
+
+        assert ok is True
+        enrich_calls = [
+            c for c in conn.execute.await_args_list if c.args[0] == _UPDATE_ENRICH_CONTENT
+        ]
+        call_args = enrich_calls[0].args
+        # Garbage title must not be persisted
+        assert call_args[3] is None  # titles
 
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
     async def test_enrich_exception_records_failure(self, mock_scrape, mock_pool, mock_http):
@@ -1941,6 +3121,59 @@ class TestLoadBoardScrapersEnrich:
         cfg = info.scrapers["b-1"]
         assert cfg.scraper_config["enrich"] == ["description"]
         assert cfg.scraper_config["fallback"]["type"] == "dom"
+
+    async def test_use_proxy_derived_from_scraper_config(self, mock_pool):
+        """``scraper_config.proxy = true`` lifts to ``BoardScraperConfig.use_proxy``."""
+        pool, _ = mock_pool
+        pool.fetch.return_value = [
+            {
+                "id": "b-1",
+                "metadata": {
+                    "scraper_type": "json-ld",
+                    "scraper_config": {"enrich": ["description"], "proxy": True},
+                },
+                "crawler_type": "eightfold",
+            }
+        ]
+        info = await _load_board_scrapers(pool, {"b-1"})
+        assert info.scrapers["b-1"].use_proxy is True
+
+    async def test_use_proxy_false_by_default(self, mock_pool):
+        pool, _ = mock_pool
+        pool.fetch.return_value = [
+            {
+                "id": "b-1",
+                "metadata": {
+                    "scraper_type": "json-ld",
+                    "scraper_config": {"enrich": ["description"]},
+                },
+                "crawler_type": "greenhouse",
+            }
+        ]
+        info = await _load_board_scrapers(pool, {"b-1"})
+        assert info.scrapers["b-1"].use_proxy is False
+
+    async def test_use_proxy_ignored_at_top_level_metadata(self, mock_pool):
+        """Top-level ``metadata.proxy`` is for the monitor, not the scraper.
+
+        The scraper only reads ``scraper_config.proxy``. If the operator
+        sets it at the flattened top level by mistake, the scraper must
+        stay direct (and the validator + docs guide them to fix it).
+        """
+        pool, _ = mock_pool
+        pool.fetch.return_value = [
+            {
+                "id": "b-1",
+                "metadata": {
+                    "scraper_type": "json-ld",
+                    "scraper_config": {"enrich": ["description"]},
+                    "proxy": True,  # wrong level — scraper must not pick it up
+                },
+                "crawler_type": "eightfold",
+            }
+        ]
+        info = await _load_board_scrapers(pool, {"b-1"})
+        assert info.scrapers["b-1"].use_proxy is False
 
 
 # ── TestEnrichValidation ───────────────────────────────────────────

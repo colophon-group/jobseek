@@ -4,7 +4,12 @@ import { getCompanyBySlug } from "@/lib/actions/company";
 export const alt = "Company jobs";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-export const revalidate = 86400; // Cache generated image for 1 day
+// 30 days. Company logo/name/description change far less often than
+// daily — a 1-day revalidate multiplied by ~16k (slug × locale) cells
+// churned OG regenerations against the crawl surge. Bump high; a
+// rename/rebrand still propagates within a month, and deploys purge
+// the cache anyway.
+export const revalidate = 2592000;
 
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";

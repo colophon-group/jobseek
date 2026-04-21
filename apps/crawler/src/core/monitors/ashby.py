@@ -12,7 +12,13 @@ import re
 import httpx
 import structlog
 
-from src.core.monitors import DiscoveredJob, fetch_page_text, register, slugs_from_url
+from src.core.monitors import (
+    BoardGoneError,
+    DiscoveredJob,
+    fetch_page_text,
+    register,
+    slugs_from_url,
+)
 
 log = structlog.get_logger()
 
@@ -196,6 +202,14 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
     url = _api_url(token)
     params = {"includeCompensation": "true"}
     response = await client.get(url, params=params)
+    if response.status_code == 404:
+        # Ashby returns 404 when the board token has been removed
+        # upstream. Surface as a "gone" signal for one-shot disable.
+        # See issue #2215.
+        raise BoardGoneError(
+            f"Ashby board token {token!r} returned 404",
+            url=str(response.url),
+        )
     response.raise_for_status()
 
     data = response.json()

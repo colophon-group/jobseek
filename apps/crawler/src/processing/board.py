@@ -7,6 +7,7 @@ import contextlib
 import json
 from collections import defaultdict
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from time import monotonic
 from urllib.parse import urlparse
 
@@ -16,10 +17,15 @@ import structlog
 
 from src.core.description_store import content_hash
 from src.core.enum_normalize import normalize_employment_type
-from src.core.monitors import api_monitor_types
+from src.core.monitors import BoardGoneError, api_monitor_types
 from src.core.scrapers import enrich_description
 from src.core.scrapers import scraper_needs_browser as _scraper_needs_browser
-from src.metrics import monitor_jobs_discovered, tasks_total
+from src.metrics import (
+    monitor_dedup_total,
+    monitor_jobs_discovered,
+    monitor_url_filtered_total,
+    tasks_total,
+)
 from src.processing.cpu import (
     BatchResult,
     JobCPUResult,
@@ -40,6 +46,7 @@ from src.processing.scrape import (
     ScrapeItem,
     _apply_defaults,
     _board_has_enrich,
+    _is_skip_no_scrape,
     _PipelineResult,
 )
 from src.queries.monitor import (
@@ -55,6 +62,7 @@ from src.queries.monitor import (
     _INSERT_RICH_JOB_ENRICH,
     _INSERT_URL_ONLY_JOBS,
     _MARK_GONE_BY_TIMESTAMP,
+    _RECORD_BOARD_GONE,
     _RECORD_EMPTY_CHECK,
     _RECORD_FAILURE,
     _RECORD_SUCCESS_NONEMPTY,
@@ -92,6 +100,61 @@ _API_MONITOR_TYPES = api_monitor_types()
 # Prevents huge first-time runs from timing out. Backfill completes incrementally.
 _SLOW_MONITOR_SECONDS = 30.0
 _SLOW_SCRAPE_SECONDS = 15.0
+
+
+# ── URL sanity check ─────────────────────────────────────────────────
+
+
+def _classify_job_url(url: str, board_url: str | None = None) -> str | None:
+    """Return a rejection reason for *url*, or None if it looks plausible.
+
+    Catches data-quality bugs where DOM-based monitors emit site-root or
+    navigation URLs (e.g. ``https://krb-sjobs.brassring.com/``, ``.../#``)
+    that every monitor run re-discovers and every insert then collides on
+    ``job_posting_source_url_key``. Returning the reason (instead of a
+    plain bool) lets the caller break the dropped-URL counter down by
+    rule so a single noisy DOM monitor is easy to spot in Grafana.
+
+    Rejection reasons (stable metric label values):
+
+    - ``"invalid"`` — empty, malformed, or missing scheme/host.
+    - ``"bare_host"`` — path is empty, ``/``, or a bare hash fragment.
+    - ``"board_homepage"`` — host matches the board's own host and the
+      path (after ``rstrip("/")``) equals the board's own path, which
+      catches hash-only variants like ``.../#0``. The rule is skipped
+      when the discovered URL carries a non-empty query string, since
+      query-keyed job URLs legitimately share the board's listing path
+      (e.g. Lufthansa's ``index.php?ac=jobad&id=...``).
+    """
+    if not url:
+        return "invalid"
+    try:
+        p = urlparse(url)
+    except ValueError:
+        return "invalid"
+    if not p.scheme or not p.netloc:
+        return "invalid"
+    path = (p.path or "").rstrip("/")
+    if not path:
+        return "bare_host"
+    if board_url:
+        try:
+            bp = urlparse(board_url)
+        except ValueError:
+            bp = None
+        if (
+            bp
+            and bp.netloc.lower() == p.netloc.lower()
+            and (bp.path or "").rstrip("/") == path
+            and not p.query
+        ):
+            return "board_homepage"
+    return None
+
+
+def _is_plausible_job_url(url: str, board_url: str | None = None) -> bool:
+    """Thin bool wrapper around :func:`_classify_job_url` for readability."""
+    return _classify_job_url(url, board_url) is None
 
 
 # ── Dataclasses ──────────────────────────────────────────────────────
@@ -132,14 +195,87 @@ class BoardError:
     error_msg: str
 
 
+async def _delist_board_postings(conn: asyncpg.Connection, board_id: str) -> int:
+    """Run ``_DELIST_BOARD_POSTINGS`` and return the row count.
+
+    Used by the three silent-delist paths that bypass the normal
+    ``_MARK_GONE_BY_TIMESTAMP`` flow: empty-check threshold reached,
+    BoardGoneError (upstream 404), and 5-strike failure auto-disable.
+    Without these paths emitting the matching ``gone`` counter, the
+    Grafana panel showed ``new >> gone`` even when the DB was balanced.
+
+    Critically, the Prometheus increment is intentionally NOT done here:
+    the counter must only fire AFTER the surrounding transaction
+    commits, otherwise a rollback would leave the metric over-reporting
+    deletions that never happened.
+    """
+    rows = await conn.fetch(_DELIST_BOARD_POSTINGS, board_id)
+    return len(rows)
+
+
+def _emit_gone_counter(gone_count: int) -> None:
+    """Increment ``monitor_jobs_discovered{action="gone"}`` after a
+    delist transaction has committed. Caller must invoke this OUTSIDE
+    any ``conn.transaction()`` block — see ``_delist_board_postings``.
+    """
+    if gone_count:
+        monitor_jobs_discovered.labels(profile="simple", action="gone").inc(gone_count)
+
+
+# A 5-strike auto-disable doesn't necessarily mean the board is dead.
+# With exponential backoff (5 * 2^n minutes capped at 24h), strike #5
+# fires after ~155 minutes — well inside a single provider outage. If
+# we delisted on every disable, a 3-hour greenhouse blip would tombstone
+# tens of thousands of postings that would all flap back as ``relisted``
+# on recovery, churning search and IndexNow. Gate the delist on
+# ``last_success_at`` so transient outages back off without data loss;
+# only boards that have been failing past this window get delisted.
+_DELIST_AFTER_FAILURE_AGE = timedelta(hours=24)
+
+
+async def _maybe_delist_after_disable(
+    conn: asyncpg.Connection,
+    board_id: str,
+    last_success_at: datetime | None,
+    board_log: structlog.stdlib.BoundLogger,
+) -> int:
+    """Delist a 5-strike-disabled board's postings ONLY if the board
+    has been silent past ``_DELIST_AFTER_FAILURE_AGE``. Returns the
+    count of rows flipped (0 if the recency gate skipped the delist).
+    """
+    # asyncpg returns timezone-aware timestamps for TIMESTAMPTZ
+    now = datetime.now(tz=UTC)
+    if last_success_at is not None and now - last_success_at < _DELIST_AFTER_FAILURE_AGE:
+        board_log.warning(
+            "batch.monitor.five_strike_disable_kept_active",
+            last_success_age_s=int((now - last_success_at).total_seconds()),
+            reason="recent success — likely transient outage",
+        )
+        return 0
+    return await _delist_board_postings(conn, board_id)
+
+
 async def _enqueue_scrapes_for_new(
     posting_rows: list,
     board_id: str,
     metadata: dict,
     board_log: structlog.stdlib.BoundLogger,
+    *,
+    crawler_type: str | None = None,
 ) -> None:
     """Enqueue scrapes for newly inserted postings into Redis."""
     if not posting_rows:
+        return
+    # Rich monitors provide full job data; never route them through the
+    # scrape pipeline or the placeholder ``skip`` scraper will fire.
+    # Pass ``crawler_type`` so implicit rich monitors (no explicit
+    # scraper_type but rich crawler_type) are caught too.
+    if _is_skip_no_scrape(metadata, crawler_type):
+        board_log.debug(
+            "batch.enqueue_scrape.skipped_rich",
+            count=len(posting_rows),
+            reason="rich monitor, no enrich",
+        )
         return
     scraper_type = metadata.get("scraper_type", "json-ld")
     scraper_config = metadata.get("scraper_config")
@@ -171,9 +307,20 @@ async def _enqueue_scrapes_for_relisted(
     board_id: str,
     metadata: dict,
     board_log: structlog.stdlib.BoundLogger,
+    *,
+    crawler_type: str | None = None,
 ) -> None:
     """Enqueue scrapes for relisted postings (came back after gone)."""
     if not relisted:
+        return
+    # Rich monitors provide full job data; never route them through the
+    # scrape pipeline or the placeholder ``skip`` scraper will fire.
+    if _is_skip_no_scrape(metadata, crawler_type):
+        board_log.debug(
+            "batch.enqueue_scrape.skipped_rich",
+            count=len(relisted),
+            reason="rich monitor, no enrich",
+        )
         return
     scraper_type = metadata.get("scraper_type", "json-ld")
     scraper_config = metadata.get("scraper_config")
@@ -243,6 +390,7 @@ async def _process_one_board_streaming(
     pool: asyncpg.Pool,
     http: httpx.AsyncClient,
     extender: object,
+    pw=None,
 ) -> tuple[bool, float]:
     """Run a streaming monitor cycle for a single board. Returns (success, duration_s).
 
@@ -251,6 +399,9 @@ async def _process_one_board_streaming(
     - Runs _DIFF_BATCH (new/touched/relisted only) per batch
     - Fires R2 uploads as background tasks overlapping with discovery
     - Runs _MARK_GONE once after all batches complete
+
+    When *pw* is provided (a running Playwright instance), it is reused
+    instead of spawning a new Playwright server process per monitor cycle.
     """
     board_id = str(board["id"])
     company_id = str(board["company_id"])
@@ -260,8 +411,7 @@ async def _process_one_board_streaming(
     board_log = log.bind(board_id=board_id, board_url=board_url, crawler_type=crawler_type)
     t0 = monotonic()
 
-    pw = None
-    pw_ctx = None
+    pw_owned = False  # True when we created pw ourselves and must stop it
     effective_http = http
 
     try:
@@ -271,20 +421,24 @@ async def _process_one_board_streaming(
 
         enrich_fields = _board_has_enrich(metadata)
 
-        # Use a per-board insecure client when ssl_verify is disabled
+        # Use a per-board http client when the monitor opts out of SSL
+        # verification or into the proxy provider. We reuse the shared
+        # client otherwise.
         ssl_verify = metadata.get("ssl_verify", True)
-        if not ssl_verify:
+        use_proxy = bool(metadata.get("proxy"))
+        if not ssl_verify or use_proxy:
             from src.shared.http import create_http_client
 
-            effective_http = create_http_client(verify=False)
+            effective_http = create_http_client(verify=ssl_verify, use_proxy=use_proxy)
 
-        # Start Playwright if this monitor needs a browser
-        if _batch.monitor_needs_browser(crawler_type, metadata):
+        # Start Playwright if this monitor needs a browser and none was provided
+        if pw is None and _batch.monitor_needs_browser(crawler_type, metadata):
             try:
                 from playwright.async_api import async_playwright
 
                 pw_ctx = async_playwright()
                 pw = await pw_ctx.start()
+                pw_owned = True
                 board_log.info("batch.monitor.playwright_started")
             except Exception:
                 board_log.warning("batch.monitor.playwright_unavailable", exc_info=True)
@@ -300,6 +454,7 @@ async def _process_one_board_streaming(
         monitor_start_ts = await pool.fetchval("SELECT now()")
 
         total_discovered = 0
+        total_processed = 0
         total_new = 0
         total_relisted = 0
         batch_count = 0
@@ -317,31 +472,69 @@ async def _process_one_board_streaming(
             with contextlib.suppress(Exception):
                 await asyncio.shield(pool.execute(_EXTEND_BOARD_LEASE, board_id))
 
-            if not result.urls:
+            # Drop implausible URLs (site roots, bare-hash variants) before
+            # they reach _DIFF_BATCH. These otherwise collide on the
+            # job_posting.source_url unique index every monitor cycle.
+            filtered_urls: list[str] = []
+            drop_reasons: dict[str, int] = {}
+            for u in result.urls:
+                reason = _classify_job_url(u, board_url)
+                if reason is None:
+                    filtered_urls.append(u)
+                else:
+                    drop_reasons[reason] = drop_reasons.get(reason, 0) + 1
+            for reason, count in drop_reasons.items():
+                monitor_url_filtered_total.labels(reason=reason).inc(count)
+                board_log.info(
+                    "batch.monitor.url_filtered",
+                    reason=reason,
+                    count=count,
+                )
+
+            if not filtered_urls:
                 continue
+            total_processed += len(filtered_urls)
+
+            filtered_jobs_by_url = (
+                {u: result.jobs_by_url[u] for u in filtered_urls if u in result.jobs_by_url}
+                if result.jobs_by_url is not None
+                else None
+            )
 
             # Sub-chunk large batches to keep _DIFF_BATCH within the
             # 60s asyncpg command_timeout (e.g. Amazon USA = 8,900 URLs).
             _DB_CHUNK = 500
-            all_urls = list(result.urls)
+            all_urls = filtered_urls
             all_new_urls: list[str] = []
 
             for _chunk_start in range(0, len(all_urls), _DB_CHUNK):
                 chunk_urls = all_urls[_chunk_start : _chunk_start + _DB_CHUNK]
                 chunk_jobs = (
-                    {u: result.jobs_by_url[u] for u in chunk_urls if u in result.jobs_by_url}
-                    if result.jobs_by_url is not None
+                    {u: filtered_jobs_by_url[u] for u in chunk_urls if u in filtered_jobs_by_url}
+                    if filtered_jobs_by_url is not None
                     else None
                 )
 
                 async with pool.acquire() as conn, conn.transaction():
-                    # Persist newly discovered sitemap URL (once per board)
-                    if _chunk_start == 0 and getattr(result, "new_sitemap_url", None):
-                        await conn.execute(
-                            _UPDATE_METADATA,
-                            board_id,
-                            json.dumps({"sitemap_url": result.new_sitemap_url}),
-                        )
+                    # Persist monitor-signalled metadata updates once per batch.
+                    # Merges both the sitemap URL (for monitors that discover it
+                    # dynamically) and arbitrary metadata_updates (used by
+                    # incremental monitors to persist a watermark / probe result)
+                    # into a single JSONB shallow-merge call.
+                    if _chunk_start == 0:
+                        meta_patch: dict = {}
+                        new_sitemap_url = getattr(result, "new_sitemap_url", None)
+                        if new_sitemap_url:
+                            meta_patch["sitemap_url"] = new_sitemap_url
+                        metadata_updates = getattr(result, "metadata_updates", None)
+                        if metadata_updates:
+                            meta_patch.update(metadata_updates)
+                        if meta_patch:
+                            await conn.execute(
+                                _UPDATE_METADATA,
+                                board_id,
+                                json.dumps(meta_patch),
+                            )
 
                     is_rich_no_scrape = is_rich and not enrich_fields
                     rows = await conn.fetch(
@@ -354,6 +547,7 @@ async def _process_one_board_streaming(
                     new_urls: list[str] = []
                     relisted: list[dict] = []
                     touched: list[dict] = []
+                    n_foreign = 0
 
                     for row in rows:
                         action = row["action"]
@@ -377,13 +571,40 @@ async def _process_one_board_streaming(
                                     "r2_hash": int(r2h) if r2h is not None else None,
                                 }
                             )
+                        elif action == "foreign":
+                            # Cross-tenant duplicate — the row is already
+                            # owned by another board and _DIFF_BATCH has
+                            # refreshed its last_seen_at. We don't insert
+                            # and don't enqueue; just count the signal.
+                            n_foreign += 1
+
+                    if n_foreign:
+                        monitor_dedup_total.labels(path="cross_board").inc(n_foreign)
+                        board_log.info(
+                            "batch.monitor.cross_board_duplicate",
+                            count=n_foreign,
+                        )
 
                     total_new += len(new_urls)
                     total_relisted += len(relisted)
                     all_new_urls.extend(new_urls)
 
+                    # Hybrid monitors (eightfold) return a partial chunk_jobs
+                    # dict — rich data only for some new URLs. Split new_urls
+                    # so URLs with rich data go to the rich insert path and
+                    # URLs without rich data fall through to the URL-only stub
+                    # insert path (which enqueues a scrape to fill content).
+                    # When chunk_jobs is None, stub_new_urls == new_urls and
+                    # the behaviour is identical to pre-refactor.
+                    if chunk_jobs is not None:
+                        rich_new_urls = [u for u in new_urls if u in chunk_jobs]
+                        stub_new_urls = [u for u in new_urls if u not in chunk_jobs]
+                    else:
+                        rich_new_urls = []
+                        stub_new_urls = list(new_urls)
+
                     if chunk_jobs:
-                        new_jobs = [chunk_jobs[u] for u in new_urls if u in chunk_jobs]
+                        new_jobs = [chunk_jobs[u] for u in rich_new_urls]
 
                         if new_jobs:
                             # CPU-heavy per-job processing -- run off the event loop
@@ -454,50 +675,89 @@ async def _process_one_board_streaming(
                             if await loc_resolver.backfill_misses():
                                 loc_resolver.drain_location_misses()
 
-                            # Batch insert all new jobs
+                            # Batch insert all new jobs. ON CONFLICT (source_url)
+                            # DO NOTHING is a belt-and-braces safety net for
+                            # the rare race where two workers running DIFF
+                            # concurrently both classify the same URL as new
+                            # (the bulk cross-tenant case is handled upstream
+                            # in _DIFF_BATCH.foreign_touched). We must pair
+                            # each r2_staging entry with its own insert
+                            # outcome in the same pass — a trailing zip would
+                            # silently misalign descriptions with posting ids.
                             insert_sql = (
                                 _INSERT_RICH_JOB_ENRICH if enrich_fields else _INSERT_RICH_JOB
                             )
-                            inserted_ids = []
-                            for rec in records:
+                            inserted_rich: list[tuple[object, object, str]] = []
+                            n_rich_dedup = 0
+                            for rec, (j, t_ids) in zip(records, r2_staging, strict=True):
                                 row = await conn.fetchrow(insert_sql, *rec)
-                                if row:
-                                    inserted_ids.append(str(row["id"]))
+                                if row is None:
+                                    n_rich_dedup += 1
+                                    continue
+                                inserted_rich.append((j, t_ids, str(row["id"])))
+                            if n_rich_dedup:
+                                monitor_dedup_total.labels(path="rich").inc(n_rich_dedup)
+                                board_log.info(
+                                    "batch.monitor.duplicate_source_url",
+                                    path="rich",
+                                    count=n_rich_dedup,
+                                )
 
-                            # Write descriptions for inserted jobs
-                            for (j, _t_ids), posting_id in zip(
-                                r2_staging, inserted_ids, strict=False
-                            ):
+                            # Write descriptions for inserted jobs.
+                            # Rich-monitor path uses a plain HTML-only hash
+                            # (no extras, no metadata), so there's no legacy
+                            # vs new-algo split — pass the same value for
+                            # both hash params.
+                            for j, _t_ids, posting_id in inserted_rich:
                                 desc_html = _coerce_text(j.description)
                                 if desc_html:
                                     locale = _coerce_text(j.language) or "en"
+                                    _h = content_hash(desc_html)
                                     await conn.execute(
                                         _UPSERT_DESCRIPTION,
                                         posting_id,
                                         locale,
                                         desc_html,
-                                        content_hash(desc_html),
+                                        _h,
+                                        _h,
                                     )
 
                             # Enqueue scrapes for rich jobs that need enrichment
-                            if enrich_fields and inserted_ids:
+                            if enrich_fields and inserted_rich:
                                 rich_rows = [
                                     {"id": pid, "source_url": j.url}
-                                    for (j, _), pid in zip(r2_staging, inserted_ids, strict=False)
+                                    for j, _t_ids, pid in inserted_rich
                                 ]
                                 await _enqueue_scrapes_for_new(
                                     rich_rows,
                                     board_id,
                                     metadata,
                                     board_log,
+                                    crawler_type=crawler_type,
                                 )
 
-                        # Update content for relisted and touched
-                        update_triples = [
-                            (item["id"], chunk_jobs[item["url"]], item.get("r2_hash"))
-                            for item in relisted + touched
-                            if item["url"] in chunk_jobs
-                        ]
+                        # Update content for relisted and touched.
+                        # Hybrid monitors (partial rich data) skip BOTH the
+                        # touched AND relisted update paths because
+                        # _BATCH_UPDATE_RICH_CONTENT uses plain SET (not
+                        # COALESCE) for core fields — feeding partial rich
+                        # data would null out previously-scraped fields
+                        # (employment_type, salary_*, experience_*). Relisted
+                        # jobs still get refreshed content via the enrich
+                        # scrape path: _DIFF_BATCH resets ``next_scrape_at
+                        # = now()`` for relisted when ``is_rich_no_scrape``
+                        # is False, and the subsequent json-ld scrape fills
+                        # missing fields via ``_UPDATE_ENRICH_CONTENT``
+                        # (which DOES use COALESCE, so it's safe on partial
+                        # data). See ``_enqueue_scrapes_for_relisted`` below.
+                        if getattr(result, "hybrid", False):
+                            update_triples = []
+                        else:
+                            update_triples = [
+                                (item["id"], chunk_jobs[item["url"]], item.get("r2_hash"))
+                                for item in relisted + touched
+                                if item["url"] in chunk_jobs
+                            ]
                         if update_triples:
                             for _, j, _ in update_triples:
                                 j.description = normalize_description_html(j.description)
@@ -556,33 +816,70 @@ async def _process_one_board_streaming(
                             await conn.execute(_BATCH_UPDATE_RICH_CONTENT)
 
                             # Write descriptions for updated postings
+                            # (rich-monitor path — see insert branch above
+                            # for the $4/$5 "same hash twice" rationale).
                             for pid, j, _existing_hash in update_triples:
                                 desc_html = _coerce_text(j.description)
                                 if desc_html:
                                     locale = _coerce_text(j.language) or "en"
+                                    _h = content_hash(desc_html)
                                     await conn.execute(
                                         _UPSERT_DESCRIPTION,
                                         str(pid),
                                         locale,
                                         desc_html,
-                                        content_hash(desc_html),
+                                        _h,
+                                        _h,
                                     )
 
-                    # URL-only path -- insert stubs with next_scrape_at
-                    if chunk_jobs is None and new_urls:
+                    # URL-only path -- insert stubs with next_scrape_at.
+                    # Runs when chunk_jobs is None (traditional URL-only
+                    # monitor) OR when it's a partial dict and has new URLs
+                    # without rich data (hybrid monitors like eightfold).
+                    if stub_new_urls:
+                        # If a rich-monitor board falls into this path (e.g. an
+                        # API fallback that returns URLs only for a cycle), the
+                        # runtime ``is_rich_no_scrape`` flag is False because
+                        # ``is_rich`` is False. We need the metadata-level
+                        # classifier to catch it too — otherwise ``next_scrape_at``
+                        # gets set to now() and the posting re-enters the skip-
+                        # scraper loop.
+                        never_scrape = is_rich_no_scrape or _is_skip_no_scrape(
+                            metadata, crawler_type
+                        )
                         inserted = await conn.fetch(
                             _INSERT_URL_ONLY_JOBS,
                             company_id,
                             board_id,
-                            new_urls,
+                            stub_new_urls,
+                            never_scrape,
                         )
+                        # _INSERT_URL_ONLY_JOBS uses ON CONFLICT (source_url)
+                        # DO NOTHING — some rows may silently no-op when the
+                        # same URL is already owned by another board.
+                        n_deduped = len(new_urls) - len(inserted)
+                        if n_deduped:
+                            monitor_dedup_total.labels(path="url_only").inc(n_deduped)
+                            board_log.info(
+                                "batch.monitor.duplicate_source_url",
+                                path="url_only",
+                                count=n_deduped,
+                            )
                         board_log.info("batch.inserted_for_scrape", count=len(inserted))
-                        await _enqueue_scrapes_for_new(inserted, board_id, metadata, board_log)
+                        await _enqueue_scrapes_for_new(
+                            inserted, board_id, metadata, board_log, crawler_type=crawler_type
+                        )
 
                     # Enqueue scrapes for relisted jobs (came back after gone)
                     # Skip for rich monitors without enrichment — they already have full data
                     if not is_rich_no_scrape:
-                        await _enqueue_scrapes_for_relisted(relisted, board_id, metadata, board_log)
+                        await _enqueue_scrapes_for_relisted(
+                            relisted,
+                            board_id,
+                            metadata,
+                            board_log,
+                            crawler_type=crawler_type,
+                        )
 
             board_log.info(
                 "batch.monitor.stream_batch",
@@ -592,15 +889,36 @@ async def _process_one_board_streaming(
             )
 
         # After all batches: mark gone postings
-        if total_discovered == 0:
-            # No URLs discovered at all (or all filtered out) -- treat as empty check
+        if total_processed == 0:
+            # Nothing reached _DIFF_BATCH — either the monitor yielded 0 URLs
+            # or every discovered URL was filtered out as implausible. Treat
+            # both as an empty check so we don't mark every active posting
+            # as gone based on a garbage-only run.
             elapsed = monotonic() - t0
-            board_log.warning("batch.monitor.empty", duration_s=round(elapsed, 2))
-            async with pool.acquire() as conn:
-                rows = await conn.fetch(_RECORD_EMPTY_CHECK, board_id)
-                if rows and rows[0]["board_status"] == "gone":
-                    await conn.execute(_DELIST_BOARD_POSTINGS, board_id)
-                    board_log.warning("batch.monitor.board_gone")
+            board_log.warning(
+                "batch.monitor.empty",
+                duration_s=round(elapsed, 2),
+                raw_discovered=total_discovered,
+            )
+            # _RECORD_EMPTY_CHECK + delist must be atomic: if the
+            # record commits but the delist fails we'd be back to the
+            # exact phantom-active orphan state this PR fixes.
+            empty_gone_count = 0
+            try:
+                async with pool.acquire() as conn, conn.transaction():
+                    rows = await conn.fetch(_RECORD_EMPTY_CHECK, board_id)
+                    if rows and rows[0]["board_status"] == "gone":
+                        empty_gone_count = await _delist_board_postings(conn, board_id)
+            except (asyncpg.PostgresError, ConnectionError):
+                board_log.exception("batch.monitor.empty_check_failed")
+            else:
+                # Only emit the metric AFTER the transaction commits —
+                # see ``_delist_board_postings`` docstring.
+                if empty_gone_count:
+                    _emit_gone_counter(empty_gone_count)
+                    board_log.warning("batch.monitor.board_gone", gone=empty_gone_count)
+                    with contextlib.suppress(Exception):
+                        await _batch.get_redis().delete("cache:platform-stats")
             return True, elapsed
 
         # Mark as gone any active posting not seen during this monitor run
@@ -627,6 +945,7 @@ async def _process_one_board_streaming(
         board_log.info(
             "batch.monitor.success",
             discovered=total_discovered,
+            processed=total_processed,
             new=total_new,
             relisted=total_relisted,
             gone=gone_count,
@@ -652,6 +971,38 @@ async def _process_one_board_streaming(
 
         return True, elapsed
 
+    except BoardGoneError as exc:
+        # Upstream confirmed the board no longer exists (404 from
+        # greenhouse/lever/recruitee/ashby per-board API). Skip the
+        # 5-strike `_RECORD_FAILURE` ramp and disable in one shot —
+        # otherwise the Redis monitor task keeps re-firing the dead
+        # endpoint every cycle until sync removes it (which only runs
+        # on CSV pushes). See issue #2215.
+        elapsed = monotonic() - t0
+        board_log.warning(
+            "batch.monitor.board_gone",
+            error=str(exc),
+            url=getattr(exc, "url", None),
+            duration_s=round(elapsed, 2),
+        )
+        tasks_total.labels(kind="monitor", status="board_gone").inc()
+        loc_resolver.drain_location_misses()
+        board_gone_count = 0
+        try:
+            async with pool.acquire() as conn, conn.transaction():
+                await conn.execute(_RECORD_BOARD_GONE, board_id)
+                board_gone_count = await _delist_board_postings(conn, board_id)
+        except (asyncpg.PostgresError, ConnectionError):
+            board_log.exception("batch.monitor.board_gone_record_failed")
+        else:
+            if board_gone_count:
+                _emit_gone_counter(board_gone_count)
+                with contextlib.suppress(Exception):
+                    await _batch.get_redis().delete("cache:platform-stats")
+        # Re-raise so the worker can drop the Redis task instead of
+        # rescheduling — otherwise the dead board keeps cycling.
+        raise
+
     except Exception as exc:
         elapsed = monotonic() - t0
         error_msg = _error_message(exc)
@@ -659,12 +1010,38 @@ async def _process_one_board_streaming(
         tasks_total.labels(kind="monitor", status="failed").inc()
         # Discard stale location misses from this failed board
         loc_resolver.drain_location_misses()
-        with contextlib.suppress(Exception):
-            async with pool.acquire() as conn:
-                await conn.execute(_RECORD_FAILURE, board_id, error_msg)
+        # A 5-strike failure flips ``is_enabled=false`` + ``board_status='disabled'``.
+        # _FETCH_DUE_BOARDS won't pick the board again, so active postings
+        # would otherwise sit orphaned (``is_active=true``, never to be
+        # refreshed or marked gone). Detect the transition (the pre-fetch
+        # row was ``is_enabled=true``, so any post-update ``false`` is a
+        # fresh disable) and gate the delist on ``last_success_at`` so a
+        # provider outage doesn't mass-tombstone postings that would all
+        # come back on recovery.
+        failure_gone_count = 0
+        try:
+            async with pool.acquire() as conn, conn.transaction():
+                row = await conn.fetchrow(_RECORD_FAILURE, board_id, error_msg)
+                just_disabled = row is not None and not row["is_enabled"]
+                if just_disabled:
+                    failure_gone_count = await _maybe_delist_after_disable(
+                        conn, board_id, row["last_success_at"], board_log
+                    )
+                    if failure_gone_count:
+                        board_log.warning(
+                            "batch.monitor.five_strike_disable",
+                            gone=failure_gone_count,
+                        )
+        except (asyncpg.PostgresError, ConnectionError):
+            board_log.exception("batch.monitor.record_failure_failed")
+        else:
+            if failure_gone_count:
+                _emit_gone_counter(failure_gone_count)
+                with contextlib.suppress(Exception):
+                    await _batch.get_redis().delete("cache:platform-stats")
         return False, elapsed
     finally:
-        if pw:
+        if pw and pw_owned:
             await pw.stop()
         if effective_http is not http:
             await effective_http.aclose()
@@ -748,6 +1125,7 @@ async def dry_run_single_board(
     verbose: bool = False,
     scrape_limit: int = 3,
     pw=None,
+    pcsx_force_full_crawl: bool = False,
 ) -> None:
     """Dry-run a single board: monitor + scrape without any DB writes.
 
@@ -756,6 +1134,10 @@ async def dry_run_single_board(
 
     When *pw* is provided, Playwright is available for monitors/scrapers that
     require browser rendering (e.g. replay-mode api_sniffer, rendered nextdata).
+
+    When *pcsx_force_full_crawl* is True, the eightfold hybrid monitor forces
+    a full PCSX crawl regardless of its watermark state. Used for manual
+    backfills of large boards (Starbucks) before enabling incremental mode.
     """
     from dataclasses import fields as dc_fields
 
@@ -765,6 +1147,8 @@ async def dry_run_single_board(
         return
     crawler_type = board["crawler_type"]
     metadata = _parse_metadata(board["metadata"])
+    if pcsx_force_full_crawl:
+        metadata = {**metadata, "pcsx_force_full_crawl": True}
     enrich_fields = _board_has_enrich(metadata)
 
     log.info(
@@ -775,7 +1159,19 @@ async def dry_run_single_board(
     )
 
     # -- Monitor --
-    result = await _batch.monitor_one(board["board_url"], crawler_type, metadata, http, pw=pw)
+    # Catch failures (e.g. ApiSnifferFallbackError from a broken sniffer) so
+    # `crawler board <slug> --dry-run` reports a clean log line instead of
+    # exiting with an unhandled traceback that noises up agent troubleshooting.
+    try:
+        result = await _batch.monitor_one(board["board_url"], crawler_type, metadata, http, pw=pw)
+    except Exception as exc:
+        log.error(
+            "dry_run.monitor.failed",
+            board_slug=board_slug,
+            error=_error_message(exc),
+            exc_info=True,
+        )
+        return
 
     is_rich = result.jobs_by_url is not None
     log.info(
@@ -895,17 +1291,28 @@ async def run_single_board(
     board_slug: str,
     *,
     force_rescrape: bool = False,
+    pcsx_force_full_crawl: bool = False,
 ) -> None:
     """Process a single board end-to-end: monitor then scrape.
 
     Bypasses scheduling -- fetches the board directly by slug and processes
     all due scrape items for that board after the monitor run.
     When *force_rescrape* is True, scrapes all active jobs regardless of schedule.
+    When *pcsx_force_full_crawl* is True, the eightfold hybrid monitor forces
+    a full PCSX crawl regardless of its watermark state.
     """
     board = await pool.fetchrow(_FETCH_BOARD_BY_SLUG, board_slug)
     if not board:
         log.error("single_board.not_found", board_slug=board_slug)
         return
+
+    # asyncpg.Record is immutable — rebuild as a dict so we can inject
+    # the CLI override into the monitor metadata for this run only.
+    board = dict(board)
+    if pcsx_force_full_crawl:
+        md = _parse_metadata(board["metadata"])
+        md["pcsx_force_full_crawl"] = True
+        board["metadata"] = json.dumps(md)
 
     board_id = str(board["id"])
     log.info("single_board.monitor.start", board_slug=board_slug, board_id=board_id)

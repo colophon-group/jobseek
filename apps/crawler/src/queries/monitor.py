@@ -51,62 +51,6 @@ SET leased_until = NULL
 WHERE id = ANY($1::uuid[])
 """
 
-_DIFF_URLS = """
-WITH discovered AS (
-  SELECT unnest($1::text[]) AS url
-),
-touched AS (
-  UPDATE job_posting
-  SET last_seen_at = now(), missing_count = 0
-  FROM discovered d
-  WHERE job_posting.board_id = $2
-    AND job_posting.is_active = true
-    AND job_posting.source_url = d.url
-  RETURNING job_posting.id, job_posting.source_url, job_posting.description_r2_hash
-),
-relisted AS (
-  UPDATE job_posting
-  SET is_active = true, missing_count = 0,
-      last_seen_at = now(),
-      next_scrape_at = CASE WHEN $4::boolean THEN NULL ELSE now() END
-  FROM discovered d
-  WHERE job_posting.board_id = $2
-    AND job_posting.is_active = false
-    AND job_posting.source_url = d.url
-  RETURNING job_posting.id, job_posting.source_url, job_posting.description_r2_hash
-),
-gone AS (
-  UPDATE job_posting
-  SET missing_count = missing_count + 1,
-      is_active = CASE
-          WHEN missing_count + 1 >= $3 THEN false
-          ELSE is_active
-      END,
-      next_scrape_at = CASE
-          WHEN missing_count + 1 >= $3 THEN NULL
-          ELSE next_scrape_at
-      END
-  WHERE job_posting.board_id = $2
-    AND job_posting.is_active = true
-    AND job_posting.source_url NOT IN (SELECT url FROM discovered)
-  RETURNING job_posting.id, job_posting.source_url
-),
-new_urls AS (
-  SELECT d.url
-  FROM discovered d
-  LEFT JOIN job_posting jp
-    ON jp.source_url = d.url AND jp.board_id = $2
-  WHERE jp.id IS NULL
-)
-SELECT 'touched' AS action, id::text, source_url AS url, description_r2_hash FROM touched
-UNION ALL
-SELECT 'relisted' AS action, id::text, source_url AS url, description_r2_hash FROM relisted
-UNION ALL
-SELECT 'gone', id::text, source_url, NULL::bigint FROM gone
-UNION ALL
-SELECT 'new', NULL, url, NULL::bigint FROM new_urls
-"""
-
 # Delist threshold: API monitors are authoritative (1 miss = delist),
 # URL-only monitors are fragile (2 misses before delist).
 _DELIST_THRESHOLD_AUTHORITATIVE = 1
@@ -116,6 +60,7 @@ _DELIST_BOARD_POSTINGS = """
 UPDATE job_posting
 SET is_active = false, next_scrape_at = NULL, updated_at = now()
 WHERE board_id = $1 AND is_active = true
+RETURNING id
 """
 
 _RECORD_BOARD_GONE = """
@@ -173,6 +118,18 @@ WHERE id = $1
 RETURNING board_status
 """
 
+# RETURNING ``last_success_at`` + the post-update ``is_enabled`` lets
+# the Python caller detect the single transition from enabled →
+# disabled and apply a recency gate before delisting. The board record
+# the caller already holds (from ``_FETCH_DUE_BOARDS``) is guaranteed
+# ``is_enabled=true`` (otherwise it wouldn't have been claimed), so
+# any post-update ``is_enabled=false`` is a fresh transition — no need
+# for a fragile ``consecutive_failures = N`` equality check that breaks
+# the moment ops manually re-enables a board without zeroing the
+# counter. Without this hand-off, 5-strike disables left active
+# postings stranded on a board the scheduler never polls again — a
+# phantom-active bleed that also dropped the corresponding ``gone``
+# Prometheus counter on the floor.
 _RECORD_FAILURE = """
 UPDATE job_board
 SET consecutive_failures = consecutive_failures + 1,
@@ -187,6 +144,7 @@ SET consecutive_failures = consecutive_failures + 1,
     leased_until = NULL,
     updated_at = now()
 WHERE id = $1
+RETURNING is_enabled, last_success_at
 """
 
 _DIFF_BATCH = """
@@ -213,16 +171,41 @@ relisted AS (
     AND job_posting.source_url = d.url
   RETURNING job_posting.id, job_posting.source_url, job_posting.description_r2_hash
 ),
+-- Cross-tenant URLs: the same source_url exists under another board
+-- (e.g. ByteDance/TikTok share jobs.bytedance.com, Glencore reaches
+-- GCAA's Workday tenant). Refresh the owning row's last_seen_at so
+-- _MARK_GONE_BY_TIMESTAMP on the OWNING board doesn't tombstone jobs
+-- that are still live via a secondary board. Excluded from new_urls
+-- below so we don't chase an impossible INSERT every cycle.
+--
+-- We deliberately DO NOT gate this on is_active=true: refreshing
+-- last_seen_at on an inactive foreign row is harmless (mark_gone only
+-- operates on active rows) and prevents the URL from falling into an
+-- invisible bucket where it appears in neither new_urls, touched,
+-- relisted, nor foreign_touched.
+foreign_touched AS (
+  UPDATE job_posting
+  SET last_seen_at = now()
+  FROM discovered d
+  WHERE job_posting.source_url = d.url
+    AND job_posting.board_id != $2
+  RETURNING job_posting.source_url
+),
 new_urls AS (
   SELECT d.url
   FROM discovered d
-  LEFT JOIN job_posting jp
-    ON jp.source_url = d.url AND jp.board_id = $2
-  WHERE jp.id IS NULL
+  WHERE NOT EXISTS (
+    SELECT 1 FROM job_posting jp
+    WHERE jp.source_url = d.url
+  )
 )
 SELECT 'touched' AS action, id::text, source_url AS url, description_r2_hash FROM touched
 UNION ALL
 SELECT 'relisted' AS action, id::text, source_url AS url, description_r2_hash FROM relisted
+UNION ALL
+-- id is NULL for foreign rows: the owning board's id has no meaning
+-- for the calling board, and the Python layer only counts this action.
+SELECT 'foreign' AS action, NULL::text, source_url AS url, NULL::bigint FROM foreign_touched
 UNION ALL
 SELECT 'new', NULL, url, NULL::bigint FROM new_urls
 """
@@ -295,6 +278,7 @@ VALUES ($1, $2, $3, $4,
         $9, $10, $11, $12, $13,
         $14, $15, $16,
         $17, $18)
+ON CONFLICT (source_url) DO NOTHING
 RETURNING id
 """
 
@@ -315,6 +299,7 @@ VALUES ($1, $2, $3, $4,
         $9, $10, $11, $12, $13,
         $14, $15, $16,
         $17, $18)
+ON CONFLICT (source_url) DO NOTHING
 RETURNING id
 """
 
@@ -352,9 +337,11 @@ _INSERT_URL_ONLY_JOBS = """
 INSERT INTO job_posting (company_id, board_id, source_url,
                          first_seen_at, last_seen_at, next_scrape_at,
                          is_active, titles, locales)
-SELECT $1, $2, u.url, now(), now(), now(),
+SELECT $1, $2, u.url, now(), now(),
+       CASE WHEN $4::boolean THEN NULL ELSE now() END,
        true, '{}', '{}'
 FROM unnest($3::text[]) AS u(url)
+ON CONFLICT (source_url) DO NOTHING
 RETURNING id, source_url
 """
 

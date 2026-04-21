@@ -51,19 +51,23 @@ export function PreferencesInitializer({
     const urlLocale = pathname.split("/")[1] || "en";
 
     if (localLocaleTs && dbLocaleTs && new Date(localLocaleTs) > new Date(dbLocaleTs)) {
-      // Local wins
+      // Local wins — sync cookie so middleware redirects correctly
+      if (localLocale) {
+        document.cookie = `NEXT_LOCALE=${localLocale}; path=/; max-age=31536000; SameSite=Lax`;
+      }
       if (localLocale && localLocale !== urlLocale) {
         const newPath = pathname.replace(`/${urlLocale}`, `/${localLocale}`);
-        router.push(newPath);
+        router.replace(newPath);
       }
       if (localLocale && localLocale !== dbLocale) {
         void updatePreferences({ locale: localLocale as "en" | "de" | "fr" | "it", localeUpdatedAt: localLocaleTs });
       }
     } else if (dbLocale) {
-      // DB wins
+      // DB wins — sync cookie so middleware redirects correctly on next request
+      document.cookie = `NEXT_LOCALE=${dbLocale}; path=/; max-age=31536000; SameSite=Lax`;
       if (dbLocale !== urlLocale) {
         const newPath = pathname.replace(`/${urlLocale}`, `/${dbLocale}`);
-        router.push(newPath);
+        router.replace(newPath);
       }
       if (dbLocaleTs) localPrefs.localeTimestamp.set(dbLocaleTs);
       localPrefs.locale.set(dbLocale);

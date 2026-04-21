@@ -36,6 +36,24 @@ monitor_jobs_discovered = Counter(
     ["profile", "action"],
 )
 
+monitor_url_filtered_total = Counter(
+    "crawler_monitor_url_filtered_total",
+    "URLs dropped by monitor pre-insert sanity checks",
+    ["reason"],
+)
+
+monitor_dedup_total = Counter(
+    "crawler_monitor_dedup_total",
+    "Insert attempts silently skipped by ON CONFLICT (source_url) DO NOTHING",
+    ["path"],
+)
+
+api_sniffer_fallback_failed_total = Counter(
+    "crawler_api_sniffer_fallback_failed_total",
+    "api_sniffer replay paths that ended with no data (raised ApiSnifferFallbackError)",
+    ["reason"],
+)
+
 monitor_idle_seconds = Counter(
     "crawler_monitor_idle_seconds_total",
     "Time workers spent idle (no work in queue)",
@@ -176,6 +194,96 @@ sync_boards_total = Gauge(
     "Total boards synced to Redis + local Postgres",
 )
 
+# ── Typesense export metrics ───────────────────────────────────────
+
+typesense_export_docs_total = Counter(
+    "crawler_typesense_export_docs_total",
+    "Documents upserted to Typesense",
+    ["status"],
+)
+
+typesense_export_lag = Gauge(
+    "crawler_typesense_export_lag",
+    "Rows behind the Typesense export cursor",
+)
+
+typesense_export_duration_seconds = Histogram(
+    "crawler_typesense_export_duration_seconds",
+    "Time per Typesense upsert batch",
+    buckets=[0.1, 0.25, 0.5, 1, 2, 5, 10, 30],
+)
+
+typesense_backfill_docs_total = Counter(
+    "crawler_typesense_backfill_docs_total",
+    "Documents backfilled to Typesense",
+)
+
+typesense_reconciliation_discrepancies = Gauge(
+    "crawler_typesense_reconciliation_discrepancies",
+    "Discrepancies from last Typesense reconciliation run",
+)
+
+typesense_healthy = Gauge(
+    "crawler_typesense_healthy",
+    "Typesense health status (1=healthy, 0=unhealthy)",
+)
+
+typesense_memory_bytes = Gauge(
+    "crawler_typesense_memory_bytes",
+    "Typesense process memory usage in bytes",
+)
+
+
+worker_heartbeat_ts = Gauge(
+    "crawler_worker_heartbeat_timestamp_seconds",
+    "Unix timestamp of each worker's last loop iteration",
+    ["worker_id"],
+)
+
+# ── Browser metrics ─────────────────────────────────────────────────
+
+browser_navigate_fallback_total = Counter(
+    "crawler_browser_navigate_fallback_total",
+    # Outcomes: success = fallback recovered the navigation; failed = fallback
+    # also timed out or errored; disabled = board opted out via
+    # wait_fallback=None; match = fallback strategy equals primary so no
+    # retry was attempted.
+    "Browser navigate() fallback retries after primary wait-strategy timeout",
+    ["primary", "fallback", "outcome"],
+)
+
+browser_content_retry_total = Counter(
+    "crawler_browser_content_retry_total",
+    # Outcomes: retry = page.content() raised the navigation-race error and a
+    # retry was scheduled; recovered = a subsequent retry succeeded; failed =
+    # all retries exhausted and the error propagated.
+    "page.content() retries after the 'page is navigating' race error",
+    ["outcome"],
+)
+
+
+# Build info — emitted once at startup so Grafana can confirm which
+# ``apps/crawler/VERSION`` each container is running without SSH-ing in.
+# Use via: ``crawler_build_info{version="0.8.13"} 1``.
+build_info = Gauge(
+    "crawler_build_info",
+    "Crawler build info (always 1; inspect the ``version`` label).",
+    ["version"],
+)
+
+
+def _read_version() -> str:
+    """Read ``apps/crawler/VERSION`` relative to this module, or "unknown"."""
+    import pathlib
+
+    # src/metrics.py → src/../VERSION
+    version_file = pathlib.Path(__file__).resolve().parent.parent / "VERSION"
+    try:
+        return version_file.read_text().strip() or "unknown"
+    except OSError:
+        return "unknown"
+
 
 def start_metrics_server(port: int) -> None:
+    build_info.labels(version=_read_version()).set(1)
     start_http_server(port)

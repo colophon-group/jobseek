@@ -6,8 +6,6 @@ import { getSearchProvider } from "@/lib/search";
 import type { SearchResponse, SearchResultPosting, HistogramFilters } from "@/lib/search";
 import { cached } from "@/lib/cache";
 import { getSessionUserId } from "@/lib/sessionCache";
-import { expandLocationIds } from "@/lib/actions/locations";
-import { expandOccupationIds } from "@/lib/actions/taxonomy";
 import { ANON_MAX_COMPANIES, ANON_MAX_CARD_POSTINGS } from "@/lib/search/constants";
 
 // ── Posting detail ──────────────────────────────────────────────────
@@ -32,11 +30,14 @@ export interface PostingDetail {
   descriptionUrl: string | null;
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function getPostingDetail(params: {
   postingId: string;
   locale: string;
 }): Promise<PostingDetail | null> {
   const { postingId, locale } = params;
+  if (!UUID_RE.test(postingId)) return null;
   const key = `posting-detail:${postingId}:${locale}`;
   return cached(key, () => _fetchPostingDetail(postingId, locale), { ttl: 300 });
 }
@@ -199,22 +200,6 @@ async function _fetchPostingDetail(
   };
 }
 
-async function resolveLocationIds(
-  locationIds?: number[],
-): Promise<number[] | undefined> {
-  if (!locationIds || locationIds.length === 0) return undefined;
-  const expanded = await Promise.all(locationIds.map(expandLocationIds));
-  return [...new Set(expanded.flat())];
-}
-
-async function resolveOccupationIds(
-  occupationIds?: number[],
-): Promise<number[] | undefined> {
-  if (!occupationIds || occupationIds.length === 0) return undefined;
-  const expanded = await Promise.all(occupationIds.map(expandOccupationIds));
-  return [...new Set(expanded.flat())];
-}
-
 export async function searchJobs(params: {
   keywords: string[];
   locationIds?: number[];
@@ -238,27 +223,8 @@ export async function searchJobs(params: {
     return { companies: [], totalCompanies: 0, truncated: true };
   }
 
-  const sortedKw = [...params.keywords].sort();
-  const sortedLoc = [...(params.locationIds ?? [])].sort();
-  const sortedOcc = [...(params.occupationIds ?? [])].sort();
-  const sortedSen = [...(params.seniorityIds ?? [])].sort();
-  const sortedTech = [...(params.technologyIds ?? [])].sort().join(",");
-  const sortedEtype = [...(params.employmentTypes ?? [])].sort().join(",");
-  const sortedLangs = [...params.languages].sort();
-  const salKey = `${params.salaryMinEur ?? ""}:${params.salaryMaxEur ?? ""}`;
-  const expKey = `${params.experienceMin ?? ""}:${params.experienceMax ?? ""}`;
-  const key = `search:${sortedKw.join(",")}:${sortedLoc.join(",")}:${sortedOcc.join(",")}:${sortedSen.join(",")}:${sortedTech}:${sortedEtype}:${sortedLangs.join(",")}:${salKey}:${expKey}:${params.locale}:${params.offset}:${params.limit}`;
-  const result = await cached(
-    key,
-    async () => {
-      const [expandedLocs, expandedOccs] = await Promise.all([
-        resolveLocationIds(params.locationIds),
-        resolveOccupationIds(params.occupationIds),
-      ]);
-      return getSearchProvider().search({ ...params, locationIds: expandedLocs, occupationIds: expandedOccs });
-    },
-    { ttl: 300 },
-  );
+  // No expansion needed — ancestor IDs are stored on each Typesense document
+  const result = await getSearchProvider().search(params);
 
   // Mark as truncated if this is the last allowed page for anon
   if (!userId && params.offset + result.companies.length >= ANON_MAX_COMPANIES) {
@@ -289,26 +255,35 @@ export async function listTopCompanies(params: {
     return { companies: [], totalCompanies: 0, truncated: true };
   }
 
-  const sortedLoc = [...(params.locationIds ?? [])].sort();
-  const sortedOcc = [...(params.occupationIds ?? [])].sort();
-  const sortedSen = [...(params.seniorityIds ?? [])].sort();
-  const sortedTech = [...(params.technologyIds ?? [])].sort().join(",");
-  const sortedEtype = [...(params.employmentTypes ?? [])].sort().join(",");
-  const sortedLangs = [...params.languages].sort();
-  const salKey = `${params.salaryMinEur ?? ""}:${params.salaryMaxEur ?? ""}`;
-  const expKey = `${params.experienceMin ?? ""}:${params.experienceMax ?? ""}`;
-  const key = `top-companies:${sortedLoc.join(",")}:${sortedOcc.join(",")}:${sortedSen.join(",")}:${sortedTech}:${sortedEtype}:${sortedLangs.join(",")}:${salKey}:${expKey}:${params.locale}:${params.offset}:${params.limit}`;
-  const result = await cached(
-    key,
-    async () => {
-      const [expandedLocs, expandedOccs] = await Promise.all([
-        resolveLocationIds(params.locationIds),
-        resolveOccupationIds(params.occupationIds),
-      ]);
-      return getSearchProvider().listTopCompanies({ ...params, locationIds: expandedLocs, occupationIds: expandedOccs });
-    },
-    { ttl: 600 },
-  );
+  // Determine if this is a default/unfiltered request (cacheable).
+  // The default case has languages=[locale] (single locale from resolveJobLanguages).
+  // We consider that "unfiltered" since it's the automatic default, not a user choice.
+  const hasNoExplicitFilters =
+    !params.locationIds?.length &&
+    !params.occupationIds?.length &&
+    !params.seniorityIds?.length &&
+    !params.technologyIds?.length &&
+    !params.employmentTypes?.length &&
+    params.salaryMinEur == null &&
+    params.salaryMaxEur == null &&
+    params.experienceMin == null &&
+    params.experienceMax == null;
+
+  const fetch = () => getSearchProvider().listTopCompanies(params);
+
+  // Cache the default homepage (no user-specified filters). Include languages
+  // in the key since different locales produce different language filters.
+  const langKey = [...(params.languages ?? [])].sort().join(",");
+  let result: SearchResponse;
+  if (hasNoExplicitFilters) {
+    result = await cached(
+      `top-companies:${params.locale}:${langKey}:${params.offset}:${params.limit}`,
+      fetch,
+      { ttl: 60, skipIf: (r: SearchResponse) => !!r.degraded },
+    );
+  } else {
+    result = await fetch();
+  }
 
   if (!userId && params.offset + result.companies.length >= ANON_MAX_COMPANIES) {
     return { ...result, truncated: true };
@@ -369,15 +344,8 @@ export async function getSalaryHistogram(filters?: HistogramFilters): Promise<Sa
     key,
     async () => {
       try {
-        const [expandedLocs, expandedOccs] = await Promise.all([
-          resolveLocationIds(f.locationIds),
-          resolveOccupationIds(f.occupationIds),
-        ]);
-        return getSearchProvider().getSalaryHistogram({
-          ...f,
-          locationIds: expandedLocs,
-          occupationIds: expandedOccs,
-        });
+        // No expansion needed — ancestor IDs are stored on each Typesense document
+        return await getSearchProvider().getSalaryHistogram(f);
       } catch {
         return [];
       }
@@ -407,15 +375,8 @@ export async function getExperienceHistogram(filters?: HistogramFilters): Promis
     key,
     async () => {
       try {
-        const [expandedLocs, expandedOccs] = await Promise.all([
-          resolveLocationIds(f.locationIds),
-          resolveOccupationIds(f.occupationIds),
-        ]);
-        return getSearchProvider().getExperienceHistogram({
-          ...f,
-          locationIds: expandedLocs,
-          occupationIds: expandedOccs,
-        });
+        // No expansion needed — ancestor IDs are stored on each Typesense document
+        return await getSearchProvider().getExperienceHistogram(f);
       } catch {
         return [];
       }
@@ -449,26 +410,8 @@ export async function loadMorePostings(params: {
     return { postings: [], truncated: true };
   }
 
-  const sortedKw = [...params.keywords].sort();
-  const sortedLoc = [...(params.locationIds ?? [])].sort();
-  const sortedOcc = [...(params.occupationIds ?? [])].sort();
-  const sortedSen = [...(params.seniorityIds ?? [])].sort();
-  const sortedTech = [...(params.technologyIds ?? [])].sort().join(",");
-  const sortedLangs = [...params.languages].sort();
-  const salKey = `${params.salaryMinEur ?? ""}:${params.salaryMaxEur ?? ""}`;
-  const expKey = `${params.experienceMin ?? ""}:${params.experienceMax ?? ""}`;
-  const key = `postings:${params.companyId}:${sortedKw.join(",")}:${sortedLoc.join(",")}:${sortedOcc.join(",")}:${sortedSen.join(",")}:${sortedTech}:${sortedLangs.join(",")}:${salKey}:${expKey}:${params.locale}:${params.offset}:${params.limit}`;
-  const postings = await cached(
-    key,
-    async () => {
-      const [expandedLocs, expandedOccs] = await Promise.all([
-        resolveLocationIds(params.locationIds),
-        resolveOccupationIds(params.occupationIds),
-      ]);
-      return getSearchProvider().loadPostings({ ...params, locationIds: expandedLocs, occupationIds: expandedOccs });
-    },
-    { ttl: 300 },
-  );
+  // No expansion needed — ancestor IDs are stored on each Typesense document
+  const postings = await getSearchProvider().loadPostings(params);
 
   if (!userId && params.offset + postings.length >= ANON_MAX_CARD_POSTINGS) {
     return { postings, truncated: true };

@@ -12,10 +12,16 @@
   "packageManager": "pnpm@10.30.0",
   "pnpm": {
     "overrides": {
+      "@hono/node-server": ">=1.19.13",
+      "axios": ">=1.15.0",
+      "basic-ftp": ">=5.2.2",
+      "defu": ">=6.1.5",
       "esbuild": ">=0.25.0",
       "flatted": ">=3.4.2",
+      "follow-redirects": ">=1.16.0",
       "minimatch": ">=10.2.3",
       "fast-xml-parser": ">=5.5.7",
+      "hono": ">=4.12.12",
       "kysely": ">=0.28.14",
       "path-to-regexp": ">=8.4.0"
     }

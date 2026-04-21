@@ -20,6 +20,7 @@ __pycache__/
 /apps/crawler/data/geonames/
 /apps/crawler/data/desc_cache.db
 /apps/crawler/data/dual_lang_results.json
+/apps/crawler/data/discovered_employers_ch.csv
 /apps/crawler/traces/
 .vercel
 .mcpregistry_*

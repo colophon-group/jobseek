@@ -43,7 +43,12 @@ def resolve_path(data: dict, path: str) -> object:
     return jmespath.search(path, data)
 
 
-def extract_field(item: dict, spec: str | list | dict) -> str | list[str] | None:
+def extract_field(
+    item: dict,
+    spec: str | list | dict,
+    *,
+    root: dict | None = None,
+) -> str | list[str] | None:
     """Extract a value from *item* using a field spec.
 
     **String** — jmespath expression (unchanged behavior).
@@ -68,6 +73,19 @@ def extract_field(item: dict, spec: str | list | dict) -> str | list[str] | None
       it up in ``map``.  Returns the mapped value or ``None``::
 
           {"path": "homeOffice", "map": {"True": "remote"}}
+
+    **Dict with "lookup_from" + "key_from"** — sibling-table lookup.
+      Resolves ``item[key_from]`` (jmespath), stringifies it, and uses
+      the result as a key into ``root.<lookup_from>`` (also jmespath).
+      Useful for ATS payloads that ship a compact listing plus a sibling
+      ``lookup`` table keyed by ID::
+
+          {"lookup_from": "lookup.departments", "key_from": "dp"}
+
+      Returns the resolved label (``str``) or ``None`` when either the
+      key value or the lookup table is missing. Requires *root* to be
+      passed in from the caller; without *root* the lookup can't be
+      resolved and the extractor returns ``None``.
     """
     if isinstance(spec, list):
         return _extract_concat(item, spec)
@@ -75,10 +93,13 @@ def extract_field(item: dict, spec: str | list | dict) -> str | list[str] | None
     if isinstance(spec, dict) and "concat" in spec:
         return _extract_concat(item, spec["concat"], separator=spec.get("separator", "\n"))
 
+    if isinstance(spec, dict) and "lookup_from" in spec and "key_from" in spec:
+        return _extract_lookup(item, spec, root)
+
     if isinstance(spec, dict) and "path" in spec:
         if "map" in spec:
             return _extract_mapped(item, spec)
-        return extract_field(item, spec["path"])
+        return extract_field(item, spec["path"], root=root)
 
     # Constant string (=prefix) — return literal value
     if isinstance(spec, str) and spec.startswith("="):
@@ -91,6 +112,28 @@ def extract_field(item: dict, spec: str | list | dict) -> str | list[str] | None
         values = [str(v) for v in result if v is not None]
         return values or None
     return str(result)
+
+
+def _extract_lookup(item: dict, spec: dict, root: dict | None) -> str | None:
+    """Resolve ``item[key_from]`` against ``root.<lookup_from>`` dict.
+
+    Returns the label or ``None``. ``None`` when:
+    - *root* is unavailable (caller didn't thread it through — log and
+      fall through; common during auto-discover paths where we only
+      have a paginated page, not the original root)
+    - the key isn't present on *item*
+    - the lookup path resolves to a non-dict
+    - the stringified key isn't in the lookup dict
+    """
+    if root is None:
+        return None
+    key_val = jmespath.search(spec["key_from"], item)
+    if key_val is None:
+        return None
+    table = jmespath.search(spec["lookup_from"], root)
+    if not isinstance(table, dict):
+        return None
+    return table.get(str(key_val))
 
 
 def _extract_mapped(item: dict, spec: dict) -> str | list[str] | None:

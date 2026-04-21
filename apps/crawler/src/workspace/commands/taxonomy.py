@@ -3,11 +3,32 @@
 from __future__ import annotations
 
 import re
+from typing import TYPE_CHECKING
 
 import click
-import polars as pl
 
 from src.shared.constants import get_data_dir
+
+if TYPE_CHECKING:
+    import polars as pl
+
+
+def _require_polars() -> None:
+    """Import polars or raise a clear ClickException.
+
+    polars is a heavy native dependency and is not part of the slim
+    ``jobseek-crawler-setup`` (ws CLI) wheel by default. Anyone running
+    ``ws taxonomy`` from the slim install gets a clean install hint
+    instead of a raw ImportError stack at module-load time.
+    """
+    try:
+        import polars  # noqa: F401
+    except ImportError as exc:
+        raise click.ClickException(
+            "ws taxonomy requires polars. Install it with "
+            "`pip install polars` (it is intentionally excluded from "
+            "the slim jobseek-crawler-setup wheel)."
+        ) from exc
 
 
 def _detect_format(df: pl.DataFrame) -> str:
@@ -24,6 +45,9 @@ def _detect_format(df: pl.DataFrame) -> str:
 
 def _load_taxonomy(name: str) -> tuple[pl.DataFrame, str]:
     """Load a taxonomy CSV by name and detect its format."""
+    _require_polars()
+    import polars as pl
+
     path = get_data_dir() / f"{name}.csv"
     if not path.exists():
         raise click.ClickException(f"Taxonomy file not found: {path}")

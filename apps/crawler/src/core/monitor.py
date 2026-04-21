@@ -28,6 +28,14 @@ class MonitorResult:
     jobs_by_url: dict[str, DiscoveredJob] | None = None
     new_sitemap_url: str | None = None
     filtered_count: int = 0
+    #: JSONB patch to merge into ``job_board.metadata`` after a successful
+    #: batch (e.g. incremental monitors use this to persist a high-water mark).
+    metadata_updates: dict | None = None
+    #: Set to True by hybrid monitors (e.g. eightfold) that provide rich data
+    #: only for a subset of ``urls``. The pipeline uses this flag to skip the
+    #: content-update path for "touched" jobs (which would otherwise overwrite
+    #: previously-scraped fields with nulls from partial rich data).
+    hybrid: bool = False
 
 
 def _normalize_discovered(
@@ -38,7 +46,10 @@ def _normalize_discovered(
     Sitemap returns (set[str], str | None).
     Rich monitors return list[DiscoveredJob].
     URL-only monitors return set[str].
+    Hybrid monitors pre-build and return a MonitorResult directly.
     """
+    if isinstance(discovered, MonitorResult):
+        return discovered
     if isinstance(discovered, tuple):
         urls, sitemap_url = discovered
         return MonitorResult(urls=urls, new_sitemap_url=sitemap_url)
@@ -87,6 +98,8 @@ def _apply_url_filter(result: MonitorResult, config: dict) -> MonitorResult:
         jobs_by_url=filtered_jobs,
         new_sitemap_url=result.new_sitemap_url,
         filtered_count=removed,
+        metadata_updates=result.metadata_updates,
+        hybrid=result.hybrid,
     )
 
 
@@ -125,6 +138,8 @@ def _apply_url_transform(result: MonitorResult, config: dict) -> MonitorResult:
         urls=new_urls,
         jobs_by_url=new_jobs,
         new_sitemap_url=result.new_sitemap_url,
+        metadata_updates=result.metadata_updates,
+        hybrid=result.hybrid,
     )
 
 
@@ -205,13 +220,17 @@ async def _save_raw(
                     )
         elif monitor_type in ("ashby", "greenhouse", "lever"):
             token = monitor_config.get("token", "")
+            # Lever content-negotiates: serves an HTML widget on a browser Accept.
+            # Force JSON for the Lever path. See monitors/lever.py::_API_HEADERS.
+            req_headers: dict[str, str] = {}
             if monitor_type == "ashby":
                 api_url = f"https://api.ashbyhq.com/posting-api/job-board/{token}?includeCompensation=true"
             elif monitor_type == "greenhouse":
                 api_url = f"https://boards-api.greenhouse.io/v1/boards/{token}/jobs?content=true"
             else:
                 api_url = f"https://api.lever.co/v0/postings/{token}?limit=100"
-            resp = await http.get(api_url)
+                req_headers["Accept"] = "application/json"
+            resp = await http.get(api_url, headers=req_headers)
             if resp.status_code == 200:
                 (artifact_dir / "response.json").write_text(
                     json.dumps(resp.json(), indent=2, default=str)

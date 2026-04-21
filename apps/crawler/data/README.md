@@ -32,7 +32,7 @@ Board configurations. One row per job board. A company can have multiple boards.
 | `company_slug` | Yes | References `slug` in companies.csv. |
 | `board_slug` | Yes | Unique board identifier in `{company}-{alias}` format (e.g. `stripe-careers`). |
 | `board_url` | Yes | Career page URL (unique). |
-| `monitor_type` | Yes | How to discover listings. Use any registered monitor type from `ws help monitors` (for example `greenhouse`, `workday`, `dom`, `api_sniffer`, or Meta-only `apify_meta`). |
+| `monitor_type` | Yes | How to discover listings. Use any registered monitor type from `ws help monitors` (for example `greenhouse`, `workday`, `dom`, `api_sniffer`, `sitemap`). |
 | `monitor_config` | No | JSON string with monitor-specific settings. |
 | `scraper_type` | No | How to extract details: `json-ld`, `dom`, `nextdata`, `embedded`, `api_sniffer`. Empty for API monitors. |
 | `scraper_config` | No | JSON string with scraper-specific settings. |

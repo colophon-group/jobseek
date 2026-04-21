@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 #
-# Select the oldest open company-request issue that has no active PR.
+# Select the oldest open company-request issue that has no active PR or claim.
+# Posts a claim comment on the selected issue to prevent concurrent agents
+# from picking the same issue. Stale claims (older than CONFIG_STALE_HOURS)
+# are removed and the issue is re-eligible.
 # If a PR exists but is stale, post a one-time warning comment and select the issue.
 #
 # Required env vars: GH_TOKEN, REPO, GITHUB_OUTPUT
@@ -27,6 +30,27 @@ fi
 SELECTED=""
 for ISSUE_NUM in $ISSUES; do
   echo "--- Checking issue #$ISSUE_NUM ---"
+
+  # Skip issues that have been claimed by another agent (unless claim is stale)
+  CLAIM_INFO=$(gh api "repos/$REPO/issues/$ISSUE_NUM/comments" \
+    --jq '[.[] | select(.body | startswith("<!-- ws-claim -->")) | {id: .id, created_at: .created_at}] | first // empty' 2>/dev/null || echo "")
+
+  if [ -n "$CLAIM_INFO" ]; then
+    CLAIM_DATE=$(echo "$CLAIM_INFO" | jq -r '.created_at')
+    CLAIM_ID=$(echo "$CLAIM_INFO" | jq -r '.id')
+    CLAIM_TS=$(date -d "$CLAIM_DATE" +%s 2>/dev/null \
+      || date -j -f "%Y-%m-%dT%H:%M:%SZ" "$CLAIM_DATE" +%s 2>/dev/null)
+    NOW_TS=$(date +%s)
+    CLAIM_AGE_HOURS=$(( (NOW_TS - CLAIM_TS) / 3600 ))
+
+    if [ "$CLAIM_AGE_HOURS" -lt "$CONFIG_STALE_HOURS" ]; then
+      echo "Issue #$ISSUE_NUM claimed ${CLAIM_AGE_HOURS}h ago — skipping."
+      continue
+    fi
+
+    echo "Issue #$ISSUE_NUM has stale claim (${CLAIM_AGE_HOURS}h old) — removing."
+    gh api --method DELETE "repos/$REPO/issues/comments/$CLAIM_ID" 2>/dev/null || true
+  fi
 
   # Search for open PRs that close this issue on a relevant branch
   MATCHING_PRS=$(gh pr list --repo "$REPO" --state open \
@@ -98,5 +122,12 @@ If work is still in progress, push an update. Otherwise, close this PR to unbloc
     echo "PR #$PR_NUM is active — skipping issue #$ISSUE_NUM."
   fi
 done
+
+# Post a claim comment so concurrent agents skip this issue
+if [ -n "$SELECTED" ]; then
+  gh issue comment "$SELECTED" --repo "$REPO" \
+    --body "<!-- ws-claim -->
+Working on it" 2>/dev/null || true
+fi
 
 echo "selected=$SELECTED" >> "$GITHUB_OUTPUT"

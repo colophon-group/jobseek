@@ -53,15 +53,26 @@ from src.shared.langdetect import detect_all_languages, detect_language
 
 log = structlog.get_logger()
 
+# $4 = new hash (post _deep_sort fix), $5 = same content hashed under the
+# pre-fix algorithm. A stored hash matching either counts as "unchanged"
+# so postings whose hash value is still the legacy one migrate their
+# ``descriptions.hash`` column to ``$4`` without triggering an R2 PUT.
+# When callers don't have a distinct legacy hash (rich-monitor path uses
+# a simple content_hash(html)), they pass the same value for $4 and $5
+# and the check collapses to the original single-hash comparison.
 _UPSERT_DESCRIPTION = (
     "INSERT INTO descriptions (posting_id, locale, html, hash, r2_uploaded) "
     "VALUES ($1, $2, $3, $4, false) "
     "ON CONFLICT (posting_id, locale) DO UPDATE "
     "SET html = $3, hash = $4, "
-    "r2_uploaded = CASE WHEN descriptions.hash IS DISTINCT FROM $4 "
-    "THEN false ELSE descriptions.r2_uploaded END, "
-    "updated_at = CASE WHEN descriptions.hash IS DISTINCT FROM $4 "
-    "THEN now() ELSE descriptions.updated_at END"
+    "r2_uploaded = CASE "
+    "  WHEN descriptions.hash = $4 OR descriptions.hash = $5 "
+    "  THEN descriptions.r2_uploaded "
+    "  ELSE false END, "
+    "updated_at = CASE "
+    "  WHEN descriptions.hash = $4 OR descriptions.hash = $5 "
+    "  THEN descriptions.updated_at "
+    "  ELSE now() END"
 )
 
 
@@ -88,7 +99,7 @@ class ScrapeResult:
     job_posting_id: str
     params: tuple  # positional args for the SQL query
     is_enrich: bool
-    staged: tuple[str, str, int] | None = None  # (html, locale, hash) for descriptions table
+    staged: tuple[str, str, int, int] | None = None  # (html, locale, new_hash, legacy_hash)
 
 
 @dataclass
@@ -126,6 +137,7 @@ class BoardScraperConfig:
     scraper_type: str
     scraper_config: dict | None
     ssl_verify: bool = True
+    use_proxy: bool = False
 
 
 @dataclass
@@ -145,6 +157,55 @@ def _board_has_enrich(metadata: dict) -> list[str] | None:
     if isinstance(enrich, list) and enrich:
         return enrich
     return None
+
+
+def _is_skip_no_scrape(metadata: dict, crawler_type: str | None = None) -> bool:
+    """Return True if this board is 'rich monitor, no scraping needed'.
+
+    A board is skip-no-scrape when it will never use the scrape pipeline:
+
+    1. ``metadata.scraper_type = "skip"`` with no enrichment — explicit.
+    2. ``metadata.scraper_type`` is unset AND ``crawler_type`` auto-resolves
+       to ``("skip", None)`` via ``auto_scraper_type()`` AND no enrichment —
+       implicit rich monitor that relies on CSV defaults. Includes
+       ``api_sniffer``/``nextdata`` when ``fields`` is set in the monitor
+       metadata (conditionally rich).
+
+    Such boards provide full job data from the monitor and must never be
+    sent through the scrape pipeline, or the placeholder ``skip`` scraper
+    raises ``RuntimeError("skip scraper called for …")``.
+
+    ``crawler_type`` is optional so legacy callers keep working. Pass it
+    whenever you have it (board record, Redis config hash) so implicit
+    rich monitors are caught too.
+
+    Use this at every point that writes ``next_scrape_at`` or enqueues a
+    scrape task so rich-monitor postings stay out of the scrape loop.
+    """
+    if _board_has_enrich(metadata) is not None:
+        return False
+    scraper_type = metadata.get("scraper_type")
+    if scraper_type == "skip":
+        return True
+    # Normalize empty string (can come from Redis hash fields) to None so the
+    # implicit-rich branch only fires with a real crawler_type.
+    ct = crawler_type or None
+    if scraper_type is None and ct:
+        # Import here to avoid the workspace._compat dependency at module load
+        from src.workspace._compat import auto_skip_crawler_types
+
+        if ct in auto_skip_crawler_types():
+            return True
+        # api_sniffer / nextdata are conditionally rich: they auto-resolve to
+        # ("skip", None) only when ``fields`` is set in their monitor
+        # metadata. Mirrors ``auto_scraper_type()`` and ``is_rich_monitor()``.
+        # Without this branch a stub URL insert from a partial-rich monitor
+        # cycle (e.g. McKinsey api_sniffer) leaks into the scrape pipeline,
+        # where the worker tries to run the api_sniffer scraper with empty
+        # config and crashes on browser launch from a slim worker.
+        if ct in ("api_sniffer", "nextdata") and bool(metadata.get("fields")):
+            return True
+    return False
 
 
 async def _load_board_scrapers(
@@ -213,6 +274,7 @@ async def _load_board_scrapers(
             scraper_type=scraper_type,
             scraper_config=scraper_config,
             ssl_verify=metadata.get("ssl_verify", True),
+            use_proxy=bool((scraper_config or {}).get("proxy")),
         )
 
     return _BoardScraperInfo(scrapers=resolved, rich_board_ids=rich_board_ids)
@@ -298,7 +360,21 @@ async def _process_one_enrich_scrape(
     enrich_fields: list[str],
     pw=None,
 ) -> tuple[bool, float]:
-    """Run a scrape that only enriches specific fields. Returns (success, duration_s)."""
+    """Run a scrape that only enriches specific fields. Returns (success, duration_s).
+
+    Backfill-on-empty: ``title``, ``employment_type``, and ``locations`` are
+    opportunistically filled from the scraper output when the existing
+    posting row has them empty. This recovers URL-only stubs inserted when
+    a hybrid monitor could not deliver rich data (e.g. the eightfold
+    ``awaiting_manual_backfill`` path on Starbucks, which yields sitemap
+    URLs without any PCSX data). ``_UPDATE_ENRICH_CONTENT`` uses COALESCE
+    on every column, so once PCSX does run, real rich data is preserved
+    and never clobbered by a later json-ld scrape.
+
+    Garbage scraped titles (``_is_garbage_title``) are not backfilled — an
+    obviously-broken page should not poison a still-empty row that PCSX
+    might fill correctly later.
+    """
     t0 = monotonic()
     try:
         cfg = scraper_config or {}
@@ -314,6 +390,37 @@ async def _process_one_enrich_scrape(
             async with pool.acquire() as conn:
                 await conn.execute(_RECORD_SCRAPE_FAILURE, item.job_posting_id)
             return False, monotonic() - t0
+
+        # Fetch existing row once: used for both backfill detection and
+        # R2 staging. ``existing`` may be None in tests or if the row was
+        # concurrently deleted; treat that as "don't backfill".
+        existing = await pool.fetchrow(_FETCH_POSTING_FOR_ENRICH, item.job_posting_id)
+
+        # Expand enrich_fields with any core fields that are currently empty
+        # on the DB row, so the rest of this function naturally populates
+        # them via its existing if-branches. Guarded by a garbage-title
+        # check so a broken page can't poison a stub row.
+        effective_fields = list(enrich_fields)
+        if existing:
+            existing_titles = existing.get("titles")
+            existing_loc_ids = existing.get("location_ids")
+            existing_et = existing.get("employment_type")
+            scraped_title = _coerce_text(content.title)
+            title_is_usable = bool(scraped_title) and not _is_garbage_title(scraped_title)
+            if "title" not in effective_fields and not existing_titles and title_is_usable:
+                effective_fields.append("title")
+            if (
+                "locations" not in effective_fields
+                and not existing_loc_ids
+                and _coerce_locations(content.locations)
+            ):
+                effective_fields.append("locations")
+            if (
+                "employment_type" not in effective_fields
+                and not existing_et
+                and _coerce_text(content.employment_type)
+            ):
+                effective_fields.append("employment_type")
 
         # Detect language if not already set
         language = content.language
@@ -339,10 +446,10 @@ async def _process_one_enrich_scrape(
         occ_id = sen_id = None
         staged = None
 
-        if "employment_type" in enrich_fields:
+        if "employment_type" in effective_fields:
             norm_emp_type = normalize_employment_type(_coerce_text(content.employment_type))
 
-        if "title" in enrich_fields:
+        if "title" in effective_fields:
             title_text = _coerce_text(content.title)
             all_titles = _build_titles(title_text, None) or None
             occ_id, sen_id = _resolve_occupation_seniority(all_titles, occ_ids, sen_ids)
@@ -359,7 +466,7 @@ async def _process_one_enrich_scrape(
                 if lang_text or detected_langs:
                     locales = built
 
-        if "locations" in enrich_fields:
+        if "locations" in effective_fields:
             lang_text = _coerce_text(language)
             loc_ids, loc_types = await _batch._resolve_locations(
                 loc_resolver,
@@ -368,14 +475,13 @@ async def _process_one_enrich_scrape(
                 posting_language=lang_text,
             )
 
-        if "description" in enrich_fields:
+        if "description" in effective_fields:
             desc_text = _coerce_text(content.description)
             tech_ids = _resolve_technology_ids(desc_text, tech_id_map)
             s_min, s_max, s_cur, s_per, s_eur = _extract_salary_fields(desc_text, rates)
             exp_min, exp_max = _extract_experience_fields(desc_text)
 
-            # Fetch existing posting data for R2 extras
-            existing = await pool.fetchrow(_FETCH_POSTING_FOR_ENRICH, item.job_posting_id)
+            # Reuse the earlier fetch for R2 extras.
             r2_title = None
             if existing:
                 titles_arr = existing["titles"]
@@ -422,13 +528,14 @@ async def _process_one_enrich_scrape(
                 sen_id,
             )
             if staged:
-                desc_html, locale, desc_hash = staged
+                desc_html, locale, desc_hash, desc_hash_legacy = staged
                 await conn.execute(
                     _UPSERT_DESCRIPTION,
                     item.job_posting_id,
                     locale,
                     desc_html,
                     desc_hash,
+                    desc_hash_legacy,
                 )
             await conn.execute(_RECORD_SCRAPE_SUCCESS, item.job_posting_id)
 
@@ -581,14 +688,29 @@ async def _process_one_scrape(
             tech_ids=tech_ids,
         )
 
-        # Always use COALESCE save — never erases existing values
+        # Always use COALESCE save — never erases existing values.
+        # ``_build_titles`` returns ``[]`` (not ``None``) when title is
+        # missing, and ``COALESCE($3, titles)`` only treats SQL ``NULL``
+        # as null — empty arrays pass through and overwrite. Pass
+        # ``None`` explicitly so step-N fallbacks (which often only
+        # extract description, e.g. Migros's dom step) don't wipe the
+        # title that step 0 successfully extracted. Same logic for
+        # locales: ``_build_locales`` always returns at least ``["en"]``
+        # via the ``primary or "en"`` default, so without the language-
+        # signal gate it would clobber a real language with the default.
+        all_titles = _build_titles(title_text, None) or None
+        all_locales = (
+            _build_locales(lang_text, None, detected_languages=detected_langs)
+            if (lang_text or detected_langs)
+            else None
+        )
         async with pool.acquire() as conn:
             update_result = await conn.execute(
                 _UPDATE_ENRICH_CONTENT,
                 item.job_posting_id,
                 norm_emp_type,
-                _build_titles(title_text, None),
-                _build_locales(lang_text, None, detected_languages=detected_langs),
+                all_titles,
+                all_locales,
                 loc_ids,
                 loc_types,
                 tech_ids,
@@ -605,13 +727,14 @@ async def _process_one_scrape(
             if _parse_update_count(update_result) != 1:
                 raise RuntimeError(f"job_posting_not_found:{item.job_posting_id}")
             if staged:
-                desc_html, locale, desc_hash = staged
+                desc_html, locale, desc_hash, desc_hash_legacy = staged
                 await conn.execute(
                     _UPSERT_DESCRIPTION,
                     item.job_posting_id,
                     locale,
                     desc_html,
                     desc_hash,
+                    desc_hash_legacy,
                 )
             await conn.execute(_RECORD_SCRAPE_SUCCESS, item.job_posting_id)
 
@@ -675,19 +798,6 @@ async def _process_one_scrape(
         return False, elapsed
 
 
-async def _process_one_scrape_insecure(
-    item: ScrapeItem,
-    pool: asyncpg.Pool,
-    scraper_type: str,
-    scraper_config: dict | None,
-) -> tuple[bool, float]:
-    """Wrapper that creates a temporary insecure HTTP client for boards with ssl_verify=False."""
-    from src.shared.http import create_http_client
-
-    async with create_http_client(verify=False) as http:
-        return await _batch._process_one_scrape(item, pool, http, scraper_type, scraper_config)
-
-
 async def _do_one_enrich_scrape(
     work: _ScrapeWorkItem,
     http: httpx.AsyncClient,
@@ -698,7 +808,11 @@ async def _do_one_enrich_scrape(
     occ_ids: dict[str, int],
     sen_ids: dict[str, int],
 ) -> ScrapeResult | ScrapeError:
-    """Scrape + enrich inline (no threading). Returns ScrapeResult or ScrapeError."""
+    """Scrape + enrich inline (no threading). Returns ScrapeResult or ScrapeError.
+
+    Shares the backfill-on-empty semantics documented on
+    :func:`_process_one_enrich_scrape`. See that docstring for the rationale.
+    """
     item = work.item
     enrich_fields = work.enrich_fields or []
     cfg = work.scraper_config or {}
@@ -713,6 +827,33 @@ async def _do_one_enrich_scrape(
     has_data = any(getattr(content, f, None) is not None for f in enrich_fields)
     if not has_data:
         return ScrapeError(job_posting_id=item.job_posting_id)
+
+    # Fetch existing row once: used for both backfill detection and R2 staging.
+    existing = await pool.fetchrow(_FETCH_POSTING_FOR_ENRICH, item.job_posting_id)
+
+    # Expand enrich_fields with any core fields currently empty on the row
+    # (see _process_one_enrich_scrape for rationale).
+    effective_fields = list(enrich_fields)
+    if existing:
+        existing_titles = existing.get("titles")
+        existing_loc_ids = existing.get("location_ids")
+        existing_et = existing.get("employment_type")
+        scraped_title = _coerce_text(content.title)
+        title_is_usable = bool(scraped_title) and not _is_garbage_title(scraped_title)
+        if "title" not in effective_fields and not existing_titles and title_is_usable:
+            effective_fields.append("title")
+        if (
+            "locations" not in effective_fields
+            and not existing_loc_ids
+            and _coerce_locations(content.locations)
+        ):
+            effective_fields.append("locations")
+        if (
+            "employment_type" not in effective_fields
+            and not existing_et
+            and _coerce_text(content.employment_type)
+        ):
+            effective_fields.append("employment_type")
 
     # Detect language if not already set
     language = content.language
@@ -731,10 +872,10 @@ async def _do_one_enrich_scrape(
     occ_id = sen_id = None
     staged = None
 
-    if "employment_type" in enrich_fields:
+    if "employment_type" in effective_fields:
         norm_emp_type = normalize_employment_type(_coerce_text(content.employment_type))
 
-    if "title" in enrich_fields:
+    if "title" in effective_fields:
         title_text = _coerce_text(content.title)
         all_titles = _build_titles(title_text, None) or None
         occ_id, sen_id = _resolve_occupation_seniority(all_titles, occ_ids, sen_ids)
@@ -747,7 +888,7 @@ async def _do_one_enrich_scrape(
             if lang_text or detected_langs:
                 locales = built
 
-    if "locations" in enrich_fields:
+    if "locations" in effective_fields:
         lang_text = _coerce_text(language)
         loc_ids, loc_types = _resolve_locations_sync(
             loc_resolver,
@@ -756,14 +897,13 @@ async def _do_one_enrich_scrape(
             posting_language=lang_text,
         )
 
-    if "description" in enrich_fields:
+    if "description" in effective_fields:
         desc_text = _coerce_text(content.description)
         tech_ids = _resolve_technology_ids(desc_text, tech_id_map)
         s_min, s_max, s_cur, s_per, s_eur = _extract_salary_fields(desc_text, rates)
         exp_min, exp_max = _extract_experience_fields(desc_text)
 
-        # Fetch existing posting data for R2 extras
-        existing = await pool.fetchrow(_FETCH_POSTING_FOR_ENRICH, item.job_posting_id)
+        # Reuse the earlier fetch for R2 extras.
         r2_title = None
         if existing:
             titles_arr = existing["titles"]
@@ -899,11 +1039,20 @@ async def _do_one_scrape(
         source="scrape",
         tech_ids=tech_ids,
     )
+    # See _process_one_scrape for why title/locales are guarded with
+    # ``or None`` / language-signal gates: COALESCE only treats SQL NULL
+    # as null, so empty arrays would clobber existing values.
+    all_titles = _build_titles(title_text, None) or None
+    all_locales = (
+        _build_locales(lang_text, None, detected_languages=detected_langs)
+        if (lang_text or detected_langs)
+        else None
+    )
     params = (
         item.job_posting_id,
         norm_emp_type,
-        _build_titles(title_text, None),
-        _build_locales(lang_text, None, detected_languages=detected_langs),
+        all_titles,
+        all_locales,
         loc_ids,
         loc_types,
         tech_ids,
@@ -942,6 +1091,7 @@ async def _scrape_pipeline(
     # Check if any item in this pipeline needs a browser-based scraper
     need_browser = False
     needs_insecure = False
+    needs_proxy = False
     for item in items:
         if not board_scrapers or item.board_id not in board_scrapers:
             continue
@@ -950,8 +1100,12 @@ async def _scrape_pipeline(
             need_browser = True
         if not bsc.ssl_verify:
             needs_insecure = True
+        if bsc.use_proxy:
+            needs_proxy = True
 
-    return await _run_scrape_items(items, pool, http, board_scrapers, need_browser, needs_insecure)
+    return await _run_scrape_items(
+        items, pool, http, board_scrapers, need_browser, needs_insecure, needs_proxy
+    )
 
 
 async def _run_scrape_items(
@@ -961,11 +1115,14 @@ async def _run_scrape_items(
     board_scrapers: dict[str, BoardScraperConfig] | None,
     need_browser: bool,
     needs_insecure: bool = False,
+    needs_proxy: bool = False,
 ) -> _PipelineResult:
     """Inner scrape loop, optionally wrapped in a shared Playwright context."""
     pw = None
     pw_ctx = None
     insecure_http = None
+    proxy_http = None
+    insecure_proxy_http = None
 
     if need_browser:
         try:
@@ -977,10 +1134,24 @@ async def _run_scrape_items(
         except Exception:
             log.warning("batch.scrape.playwright_unavailable", exc_info=True)
 
-    if needs_insecure:
+    if needs_insecure or needs_proxy:
         from src.shared.http import create_http_client
 
-        insecure_http = create_http_client(verify=False)
+        if needs_insecure:
+            insecure_http = create_http_client(verify=False)
+        if needs_proxy:
+            proxy_http = create_http_client(use_proxy=True)
+        if needs_insecure and needs_proxy:
+            insecure_proxy_http = create_http_client(verify=False, use_proxy=True)
+
+    def _pick_http(use_insecure: bool, use_proxy: bool) -> httpx.AsyncClient:
+        if use_insecure and use_proxy and insecure_proxy_http is not None:
+            return insecure_proxy_http
+        if use_insecure and insecure_http is not None:
+            return insecure_http
+        if use_proxy and proxy_http is not None:
+            return proxy_http
+        return http
 
     try:
         result = _PipelineResult()
@@ -989,13 +1160,15 @@ async def _run_scrape_items(
                 scraper_type = "json-ld"
                 scraper_config: dict | None = None
                 use_insecure = False
+                use_proxy = False
                 if board_scrapers and item.board_id in board_scrapers:
                     cfg = board_scrapers[item.board_id]
                     scraper_type = cfg.scraper_type
                     scraper_config = cfg.scraper_config
                     use_insecure = not cfg.ssl_verify
+                    use_proxy = cfg.use_proxy
 
-                effective_http = insecure_http if use_insecure and insecure_http else http
+                effective_http = _pick_http(use_insecure, use_proxy)
                 ok, elapsed = await _batch._process_one_scrape(
                     item,
                     pool,
@@ -1014,8 +1187,9 @@ async def _run_scrape_items(
         if pw_ctx is not None:
             with contextlib.suppress(Exception):
                 await pw_ctx.__aexit__(None, None, None)
-        if insecure_http is not None:
-            await insecure_http.aclose()
+        for client in (insecure_http, proxy_http, insecure_proxy_http):
+            if client is not None:
+                await client.aclose()
 
 
 async def process_scrape_batch(

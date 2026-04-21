@@ -170,12 +170,15 @@ def _resolve_locations_sync(
 
     Used by threaded batch processing.  Call ``resolver.backfill_misses()``
     after the thread completes to handle cache misses.
+
+    Returns parallel arrays of (location_ids, location_types) — leaf IDs only.
+    Ancestor expansion for Typesense happens at indexing time in the exporter.
     """
     results = resolver.resolve(locations, job_location_type, posting_language)
     if not results:
         return None, None
-    loc_ids = []
-    loc_types = []
+    loc_ids: list[int] = []
+    loc_types: list[str] = []
     for r in results:
         if r.location_id is not None:
             loc_ids.append(r.location_id)

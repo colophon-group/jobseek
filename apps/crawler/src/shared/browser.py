@@ -9,11 +9,35 @@ in boards.csv — no schema change needed.
 from __future__ import annotations
 
 import asyncio
+import contextlib
+import shutil
+import tempfile
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 import structlog
+from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+
+try:
+    from src import metrics
+except ImportError:
+    # The slim ``jobseek-crawler-setup`` (ws CLI) wheel does not ship
+    # ``src/metrics.py`` — it would pull in prometheus_client, which is
+    # unnecessary for workspace/config-time commands. Fall back to a
+    # no-op stub so this module stays importable from the ws install.
+    class _NoopMetric:
+        def labels(self, **_kwargs):
+            return self
+
+        def inc(self, *_args, **_kwargs):
+            pass
+
+    class _NoopMetricsModule:
+        def __getattr__(self, _name):
+            return _NoopMetric()
+
+    metrics = _NoopMetricsModule()  # type: ignore[assignment]
 
 log = structlog.get_logger()
 
@@ -27,6 +51,14 @@ DEFAULT_USER_AGENT = (
     "Chrome/133.0.0.0 Safari/537.36"
 )
 DEFAULT_WAIT = "networkidle"
+# Default fallback for ``navigate()``: when the primary ``page.goto`` times out
+# (typically because an SPA never reaches ``networkidle`` due to persistent
+# analytics/telemetry chatter), retry once with ``domcontentloaded``. Set
+# ``wait_fallback=None`` in config to explicitly disable for a given board.
+# This is strictly safer than the previous behaviour: the fallback only fires
+# on paths that were already failing, so there is no extra CPU cost vs the
+# status quo, and sites that do settle under ``networkidle`` are untouched.
+DEFAULT_WAIT_FALLBACK = "domcontentloaded"
 DEFAULT_TIMEOUT = 30_000
 CONTEXT_TIMEOUT = 120_000  # hard cap: no single Playwright operation exceeds 2 minutes
 VALID_WAIT_STRATEGIES = frozenset({"load", "domcontentloaded", "networkidle", "commit"})
@@ -46,6 +78,7 @@ OVERLAY_SELECTORS = (
 BROWSER_KEYS = frozenset(
     {
         "wait",
+        "wait_fallback",
         "timeout",
         "user_agent",
         "headless",
@@ -54,8 +87,30 @@ BROWSER_KEYS = frozenset(
         "warmup_url",
         "cookies",
         "disable_http2",
+        "persistent_context",
+        "channel",
+        "viewport",
+        "locale",
     }
 )
+
+# Sites that fingerprint the browser (Akamai Bot Manager, PerimeterX,
+# DataDome) reject vanilla ``pw.chromium.launch() + browser.new_context()``
+# because that pair produces a cold Chromium profile with no plugins, no
+# history, no extensions — a shape indistinguishable from automation.
+# ``launch_persistent_context`` with a user-data-dir + ``channel="chrome"``
+# produces a real-Chrome profile that passes most bot-manager challenges.
+# Boards opt in via ``"persistent_context": true`` (and usually
+# ``"channel": "chrome"``) in monitor_config / scraper_config.
+DEFAULT_VIEWPORT = {"width": 1440, "height": 900}
+DEFAULT_LOCALE = "en-US"
+
+# Narrow subset that affects only ``navigate()`` and the action pipeline — not
+# browser launch (``open_page``).  Use this in call sites that historically
+# only forwarded ``wait``/``timeout``/``actions`` so we can add ``wait_fallback``
+# without silently activating previously-dropped launch-time keys (``stealth``,
+# ``user_agent``, ``cookies``, etc.) on boards that set them.
+NAVIGATE_KEYS = frozenset({"wait", "wait_fallback", "timeout", "actions"})
 
 # ---------------------------------------------------------------------------
 # Config placeholders
@@ -83,7 +138,7 @@ async def open_page(
     pw,  # AsyncPlaywright
     config: dict | None = None,
     *,
-    target_url: str | None = None,
+    use_proxy: bool = False,
 ) -> AsyncIterator:
     """Create browser → context → page.  Yields a Playwright *Page*.
 
@@ -91,38 +146,93 @@ async def open_page(
     attach hooks (e.g. response interception) between page creation and
     navigation.
 
-    Config keys consumed: ``user_agent``, ``headless`` (default ``True``).
+    Config keys consumed: ``user_agent``, ``headless`` (default ``True``),
+    ``persistent_context``, ``channel``, ``viewport``, ``locale``.
 
-    When *target_url* is provided and the target domain has a proxy configured
-    (via ``PROXY_MAP``), the browser is launched through that proxy.
+    When ``use_proxy`` is True, the browser launches through the active
+    proxy provider (see :mod:`src.shared.proxy`).
+
+    When ``persistent_context`` is True, uses
+    ``pw.chromium.launch_persistent_context`` with an ephemeral
+    user-data-dir — needed for Akamai / PerimeterX / DataDome sites that
+    reject vanilla ``launch + new_context`` profiles. Usually combined
+    with ``"channel": "chrome"`` to use the system Chrome binary (which
+    is on the trusted-vendor list for most bot managers, unlike
+    Playwright's bundled Chromium).
     """
     config = config or {}
     headless = config.get("headless", True)
-    user_agent = config.get("user_agent", DEFAULT_USER_AGENT)
     warmup_url = config.get("warmup_url")
     cookies = config.get("cookies")
+    persistent = bool(config.get("persistent_context"))
+    channel = config.get("channel")
+    viewport = config.get("viewport", DEFAULT_VIEWPORT)
+    locale = config.get("locale", DEFAULT_LOCALE)
+    # When a real-browser channel is used, the binary's own UA string
+    # (e.g. ``Chrome/146.0.0.0``) matches its JS fingerprint. Overriding
+    # with ``DEFAULT_USER_AGENT`` (fixed ``Chrome/133``) creates a client
+    # hint mismatch that Akamai's sensor detects. Keep the default UA
+    # for bundled-Chromium launches (where Playwright's pinned version
+    # doesn't match any real release anyway), but opt-out when channel
+    # pins a shipping Chrome.
+    if "user_agent" in config:
+        user_agent = config["user_agent"]
+    elif channel:
+        user_agent = None
+    else:
+        user_agent = DEFAULT_USER_AGENT
 
-    launch_kwargs: dict = {"headless": headless}
-    # Chromium's new headless mode (--headless=new) is less detectable by
-    # anti-bot systems like Cloudflare Turnstile.  Enable via stealth: true.
     extra_args: list[str] = []
     if headless and config.get("stealth"):
+        # Chromium's new headless mode (--headless=new) is less detectable
+        # by anti-bot systems (Cloudflare Turnstile etc.). Enable via
+        # stealth: true.
         extra_args.append("--headless=new")
     if config.get("disable_http2"):
         extra_args.append("--disable-http2")
+    if persistent:
+        # Real-Chrome-profile shape: mask the ``navigator.webdriver``
+        # blink feature that Akamai's sensor bundle reads before the
+        # stealth init-script has a chance to mask the JS property.
+        extra_args.append("--disable-blink-features=AutomationControlled")
+
+    pw_proxy = None
+    if use_proxy:
+        from src.shared.proxy import playwright_proxy_for
+
+        pw_proxy = playwright_proxy_for(use_proxy=True)
+
+    if persistent:
+        async with _open_persistent_page(
+            pw,
+            headless=headless,
+            channel=channel,
+            extra_args=extra_args,
+            pw_proxy=pw_proxy,
+            user_agent=user_agent,
+            viewport=viewport,
+            locale=locale,
+            cookies=cookies,
+            warmup_url=warmup_url,
+        ) as page:
+            yield page
+        return
+
+    launch_kwargs: dict = {"headless": headless}
+    if channel:
+        launch_kwargs["channel"] = channel
     if extra_args:
         launch_kwargs["args"] = extra_args
-    if target_url:
-        from src.shared.proxy import build_playwright_proxy
-
-        pw_proxy = build_playwright_proxy(target_url)
-        if pw_proxy:
-            launch_kwargs["proxy"] = pw_proxy
+    if pw_proxy:
+        launch_kwargs["proxy"] = pw_proxy
 
     browser = await pw.chromium.launch(**launch_kwargs)
     context = None
     try:
-        context = await browser.new_context(user_agent=user_agent)
+        ctx_kwargs: dict = {}
+        if user_agent:
+            ctx_kwargs["user_agent"] = user_agent
+        context = await browser.new_context(**ctx_kwargs)
         context.set_default_timeout(CONTEXT_TIMEOUT)
         if cookies:
             await context.add_cookies(_resolve_placeholders(cookies))
@@ -137,6 +247,65 @@ async def open_page(
         await browser.close()
 
 
+@asynccontextmanager
+async def _open_persistent_page(
+    pw,
+    *,
+    headless: bool,
+    channel: str | None,
+    extra_args: list[str],
+    pw_proxy: dict | None,
+    user_agent: str,
+    viewport: dict | None,
+    locale: str | None,
+    cookies: list[dict] | None,
+    warmup_url: str | None,
+) -> AsyncIterator:
+    """``launch_persistent_context`` variant of :func:`open_page`.
+
+    Kept in a separate helper so the vanilla-launch path above stays a
+    straight line. The user-data-dir is an ephemeral tmpdir, cleaned up
+    after the context closes — we don't persist Akamai cookies between
+    runs because (a) ``_abck`` tokens are short-lived and (b) leaking a
+    profile between concurrent board jobs would cause cross-board
+    interference under the browser worker pool.
+    """
+    user_data_dir = tempfile.mkdtemp(prefix="pw_persist_")
+    launch_kwargs: dict = {"headless": headless}
+    if channel:
+        launch_kwargs["channel"] = channel
+    if extra_args:
+        launch_kwargs["args"] = extra_args
+    if pw_proxy:
+        launch_kwargs["proxy"] = pw_proxy
+    # persistent_context takes the context-level knobs directly; there's
+    # no separate ``new_context`` call.
+    if user_agent:
+        launch_kwargs["user_agent"] = user_agent
+    if viewport:
+        launch_kwargs["viewport"] = viewport
+    if locale:
+        launch_kwargs["locale"] = locale
+
+    context = await pw.chromium.launch_persistent_context(user_data_dir, **launch_kwargs)
+    try:
+        context.set_default_timeout(CONTEXT_TIMEOUT)
+        if cookies:
+            await context.add_cookies(_resolve_placeholders(cookies))
+        # launch_persistent_context always opens one blank page; reuse
+        # it rather than open a second (which would look more like a
+        # user typing into a new tab, but also doubles the startup cost).
+        page = context.pages[0] if context.pages else await context.new_page()
+        if warmup_url:
+            log.debug("browser.warmup", url=warmup_url, persistent=True)
+            await page.goto(warmup_url, wait_until="domcontentloaded", timeout=DEFAULT_TIMEOUT)
+        yield page
+    finally:
+        with contextlib.suppress(Exception):
+            await context.close()
+        shutil.rmtree(user_data_dir, ignore_errors=True)
+
+
 async def navigate(
     page,  # playwright Page
     url: str,
@@ -144,20 +313,76 @@ async def navigate(
 ) -> None:
     """Navigate *page* to *url* respecting wait strategy and timeout.
 
-    Config keys: ``wait`` (default ``"networkidle"``), ``timeout`` (default
-    ``30000``).
+    Config keys:
+        ``wait``           Primary wait strategy (default ``"networkidle"``).
+        ``timeout``        Navigation timeout in ms (default ``30000``).
+        ``wait_fallback``  Fallback wait strategy retried once when the primary
+                           ``page.goto`` raises Playwright's ``TimeoutError``
+                           (non-timeout errors propagate unchanged). Defaults
+                           to ``DEFAULT_WAIT_FALLBACK`` ("domcontentloaded")
+                           so SPA sites that never reach ``networkidle`` still
+                           produce usable HTML. Set to ``None`` in config to
+                           opt out; set to the same value as ``wait`` for an
+                           effective no-op. The fallback reuses the original
+                           timeout, so worst-case wall-clock is ``2 * timeout``.
     """
     config = config or {}
     wait_strategy = config.get("wait", DEFAULT_WAIT)
     timeout = config.get("timeout", DEFAULT_TIMEOUT)
+    # Distinguish "not set" (use default) from "explicitly None" (disable).
+    if "wait_fallback" in config:
+        fallback_strategy = config["wait_fallback"]
+    else:
+        fallback_strategy = DEFAULT_WAIT_FALLBACK
 
     if wait_strategy not in VALID_WAIT_STRATEGIES:
         raise ValueError(
             f"Invalid wait strategy {wait_strategy!r}, "
             f"must be one of {sorted(VALID_WAIT_STRATEGIES)}"
         )
+    if fallback_strategy is not None and fallback_strategy not in VALID_WAIT_STRATEGIES:
+        raise ValueError(
+            f"Invalid wait_fallback strategy {fallback_strategy!r}, "
+            f"must be one of {sorted(VALID_WAIT_STRATEGIES)}"
+        )
 
-    await page.goto(url, wait_until=wait_strategy, timeout=timeout)
+    try:
+        await page.goto(url, wait_until=wait_strategy, timeout=timeout)
+        return
+    except PlaywrightTimeoutError:
+        if not fallback_strategy:
+            # Board opted out via wait_fallback=None. Record separately from
+            # the match-primary case so operators can tell why the retry was
+            # skipped.
+            metrics.browser_navigate_fallback_total.labels(
+                primary=wait_strategy, fallback="none", outcome="disabled"
+            ).inc()
+            raise
+        if fallback_strategy == wait_strategy:
+            # Fallback equals primary — nothing to gain from a second attempt.
+            metrics.browser_navigate_fallback_total.labels(
+                primary=wait_strategy, fallback=fallback_strategy, outcome="match"
+            ).inc()
+            raise
+
+    log.info(
+        "browser.navigate.fallback",
+        url=url,
+        primary=wait_strategy,
+        fallback=fallback_strategy,
+        timeout_ms=timeout,
+    )
+    try:
+        await page.goto(url, wait_until=fallback_strategy, timeout=timeout)
+    except Exception:
+        metrics.browser_navigate_fallback_total.labels(
+            primary=wait_strategy, fallback=fallback_strategy, outcome="failed"
+        ).inc()
+        raise
+    else:
+        metrics.browser_navigate_fallback_total.labels(
+            primary=wait_strategy, fallback=fallback_strategy, outcome="success"
+        ).inc()
 
 
 ACTION_TIMEOUT = 10.0  # seconds
@@ -382,6 +607,53 @@ async def dismiss_overlays(page) -> None:
     )
 
 
+# Playwright raises a plain ``Error`` when ``page.content()`` is called while
+# the page is in the middle of a navigation (SPA route change, client redirect,
+# delayed meta-refresh, late-firing analytics that triggers a reload). The
+# error message is stable across versions — substring match is sufficient.
+# Observed on post.ch (issue #2188); same race can occur on any board whose
+# final actions trigger navigation or whose SPA settles after the configured
+# wait strategy fires.
+_CONTENT_NAVIGATING_MARKER = "page is navigating and changing the content"
+_SAFE_CONTENT_RETRIES = 2
+_SAFE_CONTENT_SETTLE_MS = 500
+
+
+async def safe_content(page) -> str:
+    """Return ``page.content()`` with retry on the navigation-race error.
+
+    Playwright refuses to serialize the DOM when the page is mid-navigation
+    and raises ``Error("... page is navigating and changing the content")``.
+    The race is almost always transient: waiting for ``domcontentloaded``
+    after the error lets the new document settle, and a retry succeeds.
+    Non-matching errors propagate so real failures are not swallowed.
+    """
+    last_exc: Exception | None = None
+    for attempt in range(_SAFE_CONTENT_RETRIES + 1):
+        try:
+            html = await page.content()
+        except Exception as exc:  # noqa: BLE001 — Playwright raises plain Error
+            if _CONTENT_NAVIGATING_MARKER not in str(exc):
+                raise
+            last_exc = exc
+            if attempt == _SAFE_CONTENT_RETRIES:
+                break
+            metrics.browser_content_retry_total.labels(outcome="retry").inc()
+            log.info("browser.content.navigating_retry", attempt=attempt + 1)
+            # Tolerate wait failure — we retry page.content() either way.
+            with contextlib.suppress(Exception):
+                await page.wait_for_load_state("domcontentloaded", timeout=CONTEXT_TIMEOUT)
+            await asyncio.sleep(_SAFE_CONTENT_SETTLE_MS / 1000)
+            continue
+        else:
+            if attempt > 0:
+                metrics.browser_content_retry_total.labels(outcome="recovered").inc()
+            return html
+    metrics.browser_content_retry_total.labels(outcome="failed").inc()
+    assert last_exc is not None
+    raise last_exc
+
+
 async def render(url: str, config: dict | None = None, pw=None) -> str:
     """All-in-one: launch browser → navigate → run actions → return HTML.
 
@@ -393,14 +665,17 @@ async def render(url: str, config: dict | None = None, pw=None) -> str:
     config = config or {}
 
     if pw is not None:
-        async with open_page(pw, config, target_url=url) as page:
+        async with open_page(pw, config, use_proxy=bool(config.get("proxy"))) as page:
             await navigate(page, url, config)
             await run_actions(page, config.get("actions", []))
-            return await page.content()
+            return await safe_content(page)
 
     from playwright.async_api import async_playwright
 
-    async with async_playwright() as _pw, open_page(_pw, config, target_url=url) as page:
+    async with (
+        async_playwright() as _pw,
+        open_page(_pw, config, use_proxy=bool(config.get("proxy"))) as page,
+    ):
         await navigate(page, url, config)
         await run_actions(page, config.get("actions", []))
-        return await page.content()
+        return await safe_content(page)

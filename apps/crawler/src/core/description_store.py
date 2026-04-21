@@ -17,8 +17,6 @@ from urllib.parse import quote
 
 import httpx
 import structlog
-from botocore.auth import S3SigV4Auth
-from botocore.credentials import Credentials
 
 log = structlog.get_logger()
 
@@ -30,12 +28,19 @@ def content_hash(data: str) -> int:
 
 
 _http_client: httpx.AsyncClient | None = None
-_signer: S3SigV4Auth | None = None
+# botocore is a runtime-only dependency (R2 PUT/GET). It is not shipped in
+# the slim ``jobseek-crawler-setup`` (ws CLI) wheel, so the import has to
+# stay lazy — otherwise just importing this module from the workspace CLI
+# install would crash even though the workspace never touches R2.
+_signer: object | None = None
 
 
-def _get_signer() -> S3SigV4Auth:
+def _get_signer() -> object:
     global _signer
     if _signer is None:
+        from botocore.auth import S3SigV4Auth
+        from botocore.credentials import Credentials
+
         creds = Credentials(
             access_key=os.environ["R2_ACCESS_KEY_ID"],
             secret_key=os.environ["R2_SECRET_ACCESS_KEY"],
