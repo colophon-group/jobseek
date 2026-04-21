@@ -284,6 +284,24 @@ async def _process_monitor_work(
     worker_log = worker_log.bind(board_id=board_id, crawler_type=config.get("crawler_type"))
 
     try:
+        # Self-heal: a board may have already been marked `disabled` /
+        # `gone` in Postgres but the Redis monitor task still exists
+        # (sync only purges between CSV pushes — can be days). Drop the
+        # task without rescheduling so the dead-board loop drains.
+        # See issue #2215.
+        async with local_pool.acquire() as conn:
+            board_status = await conn.fetchval(
+                "SELECT board_status FROM job_board WHERE id = $1::uuid",
+                board_id,
+            )
+        if board_status in ("disabled", "gone"):
+            tasks_total.labels(kind="monitor", status="skipped_disabled").inc()
+            worker_log.info(
+                "pipeline.monitor.skipped_disabled",
+                board_status=board_status,
+            )
+            return
+
         # Self-heal: a slim worker that claimed a monitor whose CURRENT
         # config needs a browser would otherwise crash on Playwright launch
         # (see issue #2250 — same architectural failure mode as the scrape
@@ -326,14 +344,22 @@ async def _process_monitor_work(
         board_record = _BoardRecord(board_id, config)
 
         from src.processing.board import (
+            BoardGoneError,
             DeadlineExtender,
             _process_one_board_streaming,
         )
 
         extender = DeadlineExtender()
-        success, duration = await _process_one_board_streaming(
-            board_record, local_pool, http, extender, pw=pw
-        )
+        try:
+            success, duration = await _process_one_board_streaming(
+                board_record, local_pool, http, extender, pw=pw
+            )
+        except BoardGoneError:
+            # board.py already recorded gone + delisted postings.
+            # Drop the Redis task instead of rescheduling — the board
+            # is now filtered by the self-heal check above so it
+            # won't return to the queue.
+            return
 
         profile = "browser" if browser else "simple"
         monitor_duration_seconds.labels(profile=profile).observe(duration)

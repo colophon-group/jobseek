@@ -12,7 +12,13 @@ from urllib.parse import parse_qs, urlparse
 import httpx
 import structlog
 
-from src.core.monitors import DiscoveredJob, fetch_page_text, register, slugs_from_url
+from src.core.monitors import (
+    BoardGoneError,
+    DiscoveredJob,
+    fetch_page_text,
+    register,
+    slugs_from_url,
+)
 
 log = structlog.get_logger()
 
@@ -146,6 +152,16 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
 
     url = _api_url(token)
     response = await client.get(url, params={"content": "true"})
+    if response.status_code == 404:
+        # Greenhouse returns 404 when the board token has been deleted
+        # upstream — i.e. the company removed the board. Surface this
+        # as a structural "gone" signal so the board processor can
+        # disable in one shot instead of grinding through 5 retries.
+        # See issue #2215.
+        raise BoardGoneError(
+            f"Greenhouse board token {token!r} returned 404",
+            url=str(response.url),
+        )
     response.raise_for_status()
 
     data = response.json()

@@ -16,7 +16,7 @@ import structlog
 
 from src.core.description_store import content_hash
 from src.core.enum_normalize import normalize_employment_type
-from src.core.monitors import api_monitor_types
+from src.core.monitors import BoardGoneError, api_monitor_types
 from src.core.scrapers import enrich_description
 from src.core.scrapers import scraper_needs_browser as _scraper_needs_browser
 from src.metrics import (
@@ -61,6 +61,7 @@ from src.queries.monitor import (
     _INSERT_RICH_JOB_ENRICH,
     _INSERT_URL_ONLY_JOBS,
     _MARK_GONE_BY_TIMESTAMP,
+    _RECORD_BOARD_GONE,
     _RECORD_EMPTY_CHECK,
     _RECORD_FAILURE,
     _RECORD_SUCCESS_NONEMPTY,
@@ -894,6 +895,30 @@ async def _process_one_board_streaming(
                 await _batch.get_redis().delete("cache:platform-stats")
 
         return True, elapsed
+
+    except BoardGoneError as exc:
+        # Upstream confirmed the board no longer exists (404 from
+        # greenhouse/lever/recruitee/ashby per-board API). Skip the
+        # 5-strike `_RECORD_FAILURE` ramp and disable in one shot —
+        # otherwise the Redis monitor task keeps re-firing the dead
+        # endpoint every cycle until sync removes it (which only runs
+        # on CSV pushes). See issue #2215.
+        elapsed = monotonic() - t0
+        board_log.warning(
+            "batch.monitor.board_gone",
+            error=str(exc),
+            url=getattr(exc, "url", None),
+            duration_s=round(elapsed, 2),
+        )
+        tasks_total.labels(kind="monitor", status="board_gone").inc()
+        loc_resolver.drain_location_misses()
+        with contextlib.suppress(Exception):
+            async with pool.acquire() as conn, conn.transaction():
+                await conn.execute(_RECORD_BOARD_GONE, board_id)
+                await conn.execute(_DELIST_BOARD_POSTINGS, board_id)
+        # Re-raise so the worker can drop the Redis task instead of
+        # rescheduling — otherwise the dead board keeps cycling.
+        raise
 
     except Exception as exc:
         elapsed = monotonic() - t0

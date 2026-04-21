@@ -12,7 +12,13 @@ import re
 import httpx
 import structlog
 
-from src.core.monitors import DiscoveredJob, fetch_page_text, register, slugs_from_url
+from src.core.monitors import (
+    BoardGoneError,
+    DiscoveredJob,
+    fetch_page_text,
+    register,
+    slugs_from_url,
+)
 
 log = structlog.get_logger()
 
@@ -186,6 +192,14 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
         response = await client.get(
             url, params={"limit": BATCH_SIZE, "skip": skip}, headers=_API_HEADERS
         )
+        if response.status_code == 404 and skip == 0:
+            # Lever returns 404 for the first page when the board slug
+            # has been removed upstream. Surface as a "gone" signal so
+            # the board processor disables in one shot. See issue #2215.
+            raise BoardGoneError(
+                f"Lever board token {token!r} returned 404",
+                url=str(response.url),
+            )
         response.raise_for_status()
 
         batch: list[dict] = response.json()

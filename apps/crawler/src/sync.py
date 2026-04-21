@@ -300,7 +300,20 @@ ON CONFLICT (id) DO UPDATE SET
     throttle_key = EXCLUDED.throttle_key,
     monitor_needs_browser = EXCLUDED.monitor_needs_browser,
     scraper_needs_browser = EXCLUDED.scraper_needs_browser,
-    is_enabled = EXCLUDED.is_enabled,
+    -- Preserve runtime-driven disables. ``_RECORD_FAILURE`` and
+    -- ``_RECORD_BOARD_GONE`` set ``is_enabled = false`` plus a
+    -- ``board_status`` of ``'disabled'`` or ``'gone'`` when the
+    -- board has been failing or its upstream slug returned 404.
+    -- Without this CASE, every ``crawler sync`` resurrects
+    -- ``is_enabled = true`` and the (admittedly already-orthogonal-
+    -- to-the-Redis-claim-path) Postgres state diverges from
+    -- the runtime truth. To re-enable, an operator removes the
+    -- ``board_status`` row via SQL or via deleting+re-adding
+    -- the CSV entry. See issue #2215.
+    is_enabled = CASE
+        WHEN job_board.board_status IN ('disabled', 'gone') THEN false
+        ELSE EXCLUDED.is_enabled
+    END,
     updated_at = now()
 """
 
