@@ -64,9 +64,6 @@ class Settings(BaseSettings):
     typesense_protocol: str = "http"
     typesense_admin_key: str = ""
 
-    apify_token: str = ""
-    anthropic_api_key: str = ""
-
     # Enrichment (disabled by default — empty provider means skip)
     enrich_provider: str = ""
     enrich_model: str = ""

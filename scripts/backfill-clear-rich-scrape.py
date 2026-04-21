@@ -41,7 +41,6 @@ log = structlog.get_logger()
 _AUTO_SKIP_CRAWLER_TYPES: tuple[str, ...] = (
     "accenture",
     "amazon",
-    "apify_meta",
     "ashby",
     "deel",
     "dvinci",
@@ -54,7 +53,6 @@ _AUTO_SKIP_CRAWLER_TYPES: tuple[str, ...] = (
     "pinpoint",
     "recruitee",
     "rss",
-    "signals",
     "traffit",
 )
 

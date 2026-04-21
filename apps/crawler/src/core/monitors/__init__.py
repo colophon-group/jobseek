@@ -525,7 +525,6 @@ from src.core.monitors import (  # noqa: E402
     accenture,  # noqa: F401
     amazon,  # noqa: F401
     api_sniffer,  # noqa: F401
-    apify_meta,  # noqa: F401
     ashby,  # noqa: F401
     bite,  # noqa: F401
     breezy,  # noqa: F401
@@ -548,7 +547,6 @@ from src.core.monitors import (  # noqa: E402
     recruitee,  # noqa: F401
     rippling,  # noqa: F401
     rss,  # noqa: F401
-    signals,  # noqa: F401
     sitemap,  # noqa: F401
     smartrecruiters,  # noqa: F401
     softgarden,  # noqa: F401

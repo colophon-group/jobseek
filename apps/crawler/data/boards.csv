@@ -2618,7 +2618,7 @@ meriton,meriton-greenhouse,https://job-boards.greenhouse.io/meriton,greenhouse,"
 merqube-inc,merqube-inc-greenhouse,https://job-boards.greenhouse.io/merqube,greenhouse,"{""token"": ""merqube""}",skip,
 mesh,mesh-greenhouse,https://job-boards.greenhouse.io/mesh,greenhouse,"{""token"": ""mesh""}",skip,
 meshy,meshy-ashby,https://jobs.ashbyhq.com/meshy,ashby,"{""token"": ""meshy""}",skip,
-meta,meta-careers,https://www.metacareers.com/jobsearch,apify_meta,"{""actor_id"": ""golanger~meta-careers-scraper""}",skip,
+meta,meta-careers,https://www.metacareers.com/jobsearch/sitemap.xml,sitemap,"{""url_filter"": ""/profile/job_details/""}",json-ld,
 metabase,metabase-lever,https://jobs.lever.co/metabase,lever,"{""token"": ""metabase""}",skip,
 metabit-technology-llc,metabit-technology-llc-greenhouse,https://job-boards.greenhouse.io/metabittechnologyllc,greenhouse,"{""token"": ""metabittechnologyllc""}",skip,
 metacore,metacore-greenhouse,https://job-boards.greenhouse.io/metacore,greenhouse,"{""token"": ""metacore""}",skip,

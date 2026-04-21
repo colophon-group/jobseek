@@ -142,7 +142,6 @@ _KNOWN_ATS_DOMAINS = frozenset(
         "eightfold",
         "accenture",
         "deel",
-        "signals",
     }
 )
 

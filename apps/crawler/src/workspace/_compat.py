@@ -15,7 +15,6 @@ _RICH_MONITORS: frozenset[str] = frozenset(
     {
         "accenture",
         "amazon",
-        "apify_meta",
         "ashby",
         "deel",
         "dvinci",
@@ -29,7 +28,6 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "pinpoint",
         "recruitee",
         "rss",
-        "signals",
         "traffit",
     }
 )
