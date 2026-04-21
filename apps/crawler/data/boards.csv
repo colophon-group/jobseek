@@ -974,6 +974,7 @@ coefficient,coefficient-greenhouse,https://job-boards.greenhouse.io/coefficient,
 cofertility,cofertility-greenhouse,https://job-boards.greenhouse.io/cofertility,greenhouse,"{""token"": ""cofertility""}",skip,
 cofra-holding,cofra-holding-greenhouse,https://job-boards.greenhouse.io/cofraholding,greenhouse,"{""token"": ""cofraholding""}",skip,
 cognition,cognition-ashby,https://jobs.ashbyhq.com/cognition,ashby,"{""token"": ""cognition""}",skip,
+cognizant,cognizant-careers,https://careers.cognizant.com/global-en/jobs/,sitemap,"{""sitemap_url"": ""https://careers.cognizant.com/sitemap.xml"", ""url_filter"": ""/global-en/jobs/[^/]+/""}",json-ld,"{""render"": true}"
 cogstate,cogstate-greenhouse,https://job-boards.greenhouse.io/cogstateinc,greenhouse,"{""token"": ""cogstateinc""}",skip,
 cohere,cohere-careers,https://jobs.ashbyhq.com/cohere,ashby,,skip,
 cohere-health,cohere-health-greenhouse,https://job-boards.greenhouse.io/coherehealth,greenhouse,"{""token"": ""coherehealth""}",skip,
