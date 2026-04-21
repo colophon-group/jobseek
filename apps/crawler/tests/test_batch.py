@@ -309,18 +309,54 @@ class TestProcessOneBoard:
     async def test_empty_result_board_gone_delists_postings(
         self, mock_monitor, mock_get_redis, mock_pool, mock_http
     ):
-        """Board transitions to 'gone' after repeated empties -> delist all postings."""
+        """Board transitions to 'gone' after repeated empties -> delist all
+        postings AND emit the ``monitor_jobs_discovered{action="gone"}``
+        counter for each row, so the Grafana ``gone`` series doesn't stay
+        stuck at zero while thousands of rows flip to ``is_active=false``.
+        """
+        from src.processing.board import monitor_jobs_discovered
+
         pool, conn = mock_pool
         mock_monitor.side_effect = _mock_stream(MonitorResult(urls=set()))
-        # Simulate board transitioning to gone
-        conn.fetch.return_value = [{"board_status": "gone"}]
+        # First fetch: _RECORD_EMPTY_CHECK -> board_status = 'gone'
+        # Second fetch: _DELIST_BOARD_POSTINGS -> two rows flipped
+        conn.fetch.side_effect = [
+            [{"board_status": "gone"}],
+            [{"id": "jp-1"}, {"id": "jp-2"}],
+        ]
+        mock_redis = AsyncMock()
+        mock_get_redis.return_value = mock_redis
         board = _mock_board()
+        before = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
 
         await _process_one_board(board, pool, mock_http)
 
-        # Both _RECORD_EMPTY_CHECK (via fetch) and _DELIST_BOARD_POSTINGS (via execute) called
-        conn.fetch.assert_awaited_once_with(_RECORD_EMPTY_CHECK, "board-1")
-        conn.execute.assert_awaited_once_with(_DELIST_BOARD_POSTINGS, "board-1")
+        fetch_sqls = [c.args[0] for c in conn.fetch.await_args_list]
+        assert fetch_sqls == [_RECORD_EMPTY_CHECK, _DELIST_BOARD_POSTINGS]
+        after = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
+        assert after - before == 2
+        mock_redis.delete.assert_awaited_with("cache:platform-stats")
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_empty_result_board_suspect_does_not_delist(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """Board still ``suspect`` after empty check -> no delist, no gone counter."""
+        from src.processing.board import monitor_jobs_discovered
+
+        pool, conn = mock_pool
+        mock_monitor.side_effect = _mock_stream(MonitorResult(urls=set()))
+        conn.fetch.return_value = [{"board_status": "suspect"}]
+        board = _mock_board()
+        before = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
+
+        await _process_one_board(board, pool, mock_http)
+
+        fetch_sqls = [c.args[0] for c in conn.fetch.await_args_list]
+        assert _DELIST_BOARD_POSTINGS not in fetch_sqls
+        after = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
+        assert after == before
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
@@ -711,14 +747,116 @@ class TestProcessOneBoard:
         pool, conn = mock_pool
         long_error = "x" * 1000
         mock_monitor.side_effect = RuntimeError(long_error)
+        # _RECORD_FAILURE now RETURNs ``just_disabled``; early failures
+        # (consecutive_failures < 5) report False, so no delist runs.
+        conn.fetchval.return_value = False
         board = _mock_board()
 
         await _process_one_board(board, pool, mock_http)
 
-        failure_calls = [c for c in conn.execute.await_args_list if c.args[0] == _RECORD_FAILURE]
+        failure_calls = [c for c in conn.fetchval.await_args_list if c.args[0] == _RECORD_FAILURE]
         assert len(failure_calls) == 1
         error_arg = failure_calls[0].args[2]
         assert len(error_arg) <= 500
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_five_strike_disable_delists_postings_and_emits_gone(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """Consecutive-failure threshold reached (``just_disabled = true``)
+        -> _DELIST_BOARD_POSTINGS runs AND the ``gone`` Prometheus counter
+        is incremented by the number of rows delisted.
+
+        Before the fix, 5-strike disables left postings stranded
+        (``is_active=true`` on a board the scheduler never polls again)
+        AND emitted no ``gone`` counter, so the Grafana panel showed
+        ``new >> gone`` even when the DB was balanced.
+        """
+        from src.processing.board import monitor_jobs_discovered
+
+        pool, conn = mock_pool
+        mock_monitor.side_effect = RuntimeError("boom")
+        # RETURNING just_disabled=True on the 5th strike
+        conn.fetchval.return_value = True
+        # _DELIST_BOARD_POSTINGS now returns the set of rows flipped
+        conn.fetch.return_value = [{"id": f"jp-{i}"} for i in range(7)]
+        mock_redis = AsyncMock()
+        mock_get_redis.return_value = mock_redis
+        board = _mock_board()
+        before = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
+
+        await _process_one_board(board, pool, mock_http)
+
+        # _RECORD_FAILURE went through fetchval (RETURNING just_disabled)
+        failure_calls = [c for c in conn.fetchval.await_args_list if c.args[0] == _RECORD_FAILURE]
+        assert len(failure_calls) == 1
+        # _DELIST_BOARD_POSTINGS ran because of just_disabled=True
+        delist_calls = [
+            c for c in conn.fetch.await_args_list if c.args[0] == _DELIST_BOARD_POSTINGS
+        ]
+        assert len(delist_calls) == 1
+        after = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
+        assert after - before == 7
+        mock_redis.delete.assert_awaited_with("cache:platform-stats")
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_non_disabling_failure_does_not_delist(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """Consecutive-failure count below threshold -> no delist, no gone counter."""
+        from src.processing.board import monitor_jobs_discovered
+
+        pool, conn = mock_pool
+        mock_monitor.side_effect = RuntimeError("transient")
+        conn.fetchval.return_value = False  # not yet disabled
+        board = _mock_board()
+        before = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
+
+        await _process_one_board(board, pool, mock_http)
+
+        delist_calls = [
+            c for c in conn.fetch.await_args_list if c.args[0] == _DELIST_BOARD_POSTINGS
+        ]
+        assert delist_calls == []
+        after = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
+        assert after == before
+        mock_get_redis.assert_not_called()
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_board_gone_error_delists_and_emits_gone(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """BoardGoneError (upstream 404) -> _RECORD_BOARD_GONE +
+        _DELIST_BOARD_POSTINGS run, and the ``gone`` counter reflects
+        every row delisted. Exception is re-raised afterwards so the
+        Redis worker drops the task rather than rescheduling a dead
+        board every cycle.
+        """
+        from src.core.monitors import BoardGoneError
+        from src.processing.board import monitor_jobs_discovered
+
+        pool, conn = mock_pool
+        mock_monitor.side_effect = BoardGoneError("dead upstream", url="https://example.com/dead")
+        # _DELIST_BOARD_POSTINGS returns three rows
+        conn.fetch.return_value = [{"id": "jp-1"}, {"id": "jp-2"}, {"id": "jp-3"}]
+        mock_redis = AsyncMock()
+        mock_get_redis.return_value = mock_redis
+        board = _mock_board()
+        before = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
+
+        with pytest.raises(BoardGoneError):
+            await _process_one_board(board, pool, mock_http)
+
+        delist_calls = [
+            c for c in conn.fetch.await_args_list if c.args[0] == _DELIST_BOARD_POSTINGS
+        ]
+        assert len(delist_calls) == 1
+        after = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
+        assert after - before == 3
+        mock_redis.delete.assert_awaited_with("cache:platform-stats")
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
@@ -728,11 +866,12 @@ class TestProcessOneBoard:
         """Exceptions with empty str() should still record useful error text."""
         pool, conn = mock_pool
         mock_monitor.side_effect = RuntimeError()
+        conn.fetchval.return_value = False
         board = _mock_board()
 
         await _process_one_board(board, pool, mock_http)
 
-        failure_calls = [c for c in conn.execute.await_args_list if c.args[0] == _RECORD_FAILURE]
+        failure_calls = [c for c in conn.fetchval.await_args_list if c.args[0] == _RECORD_FAILURE]
         assert len(failure_calls) == 1
         assert failure_calls[0].args[2] == "RuntimeError"
 
@@ -924,6 +1063,22 @@ class TestInsertSqlContract:
         assert "board_id != $2" in _DIFF_BATCH
         # new_urls must check "any board", not "this board only".
         assert "NOT EXISTS" in _DIFF_BATCH
+
+    def test_record_failure_returns_just_disabled(self):
+        # The ``just_disabled`` RETURNING is what lets the Python layer
+        # hook the 5-strike transition and delist stranded postings.
+        # Dropping the RETURNING would silently re-introduce the
+        # phantom-active-jobs bug that this PR fixed.
+        assert "RETURNING" in _RECORD_FAILURE
+        assert "consecutive_failures = 5" in _RECORD_FAILURE
+        assert "just_disabled" in _RECORD_FAILURE
+
+    def test_delist_board_postings_returns_ids(self):
+        # RETURNING id is what lets _delist_and_count_gone size the
+        # ``monitor_jobs_discovered{action="gone"}`` increment. Without
+        # it, callers have no row count and the Grafana ``gone`` series
+        # stays stuck at zero on silent-delist paths.
+        assert "RETURNING id" in _DELIST_BOARD_POSTINGS
 
 
 # ── TestDuplicateSourceUrl ───────────────────────────────────────────

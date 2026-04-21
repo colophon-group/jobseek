@@ -60,6 +60,7 @@ _DELIST_BOARD_POSTINGS = """
 UPDATE job_posting
 SET is_active = false, next_scrape_at = NULL, updated_at = now()
 WHERE board_id = $1 AND is_active = true
+RETURNING id
 """
 
 _RECORD_BOARD_GONE = """
@@ -117,6 +118,13 @@ WHERE id = $1
 RETURNING board_status
 """
 
+# RETURNING ``just_disabled`` lets the Python caller detect the single
+# transition from enabled → disabled (consecutive_failures crossing the
+# 5-strike threshold on this call) and run ``_DELIST_BOARD_POSTINGS``
+# for that board. Without this hand-off, 5-strike disables would leave
+# active postings stranded on a board the scheduler will never poll
+# again — a phantom-active bleed that also dropped the corresponding
+# ``gone`` Prometheus counter on the floor.
 _RECORD_FAILURE = """
 UPDATE job_board
 SET consecutive_failures = consecutive_failures + 1,
@@ -131,6 +139,7 @@ SET consecutive_failures = consecutive_failures + 1,
     leased_until = NULL,
     updated_at = now()
 WHERE id = $1
+RETURNING (consecutive_failures = 5) AS just_disabled
 """
 
 _DIFF_BATCH = """

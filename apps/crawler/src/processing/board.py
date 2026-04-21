@@ -194,6 +194,24 @@ class BoardError:
     error_msg: str
 
 
+async def _delist_and_count_gone(conn: asyncpg.Connection, board_id: str) -> int:
+    """Delist every active posting for ``board_id`` and emit the matching
+    ``monitor_jobs_discovered{action="gone"}`` Prometheus counter.
+
+    Used by the three silent-delist paths that bypass the normal
+    ``_MARK_GONE_BY_TIMESTAMP`` flow: empty-check threshold reached,
+    BoardGoneError (upstream 404), and 5-strike failure auto-disable.
+    Without this bridge those paths flip rows to ``is_active=false``
+    without touching the Prometheus counter, so the Grafana panel shows
+    ``new >> gone`` even when the DB is well-balanced.
+    """
+    rows = await conn.fetch(_DELIST_BOARD_POSTINGS, board_id)
+    gone_count = len(rows)
+    if gone_count:
+        monitor_jobs_discovered.labels(profile="simple", action="gone").inc(gone_count)
+    return gone_count
+
+
 async def _enqueue_scrapes_for_new(
     posting_rows: list,
     board_id: str,
@@ -839,11 +857,15 @@ async def _process_one_board_streaming(
                 duration_s=round(elapsed, 2),
                 raw_discovered=total_discovered,
             )
+            empty_gone_count = 0
             async with pool.acquire() as conn:
                 rows = await conn.fetch(_RECORD_EMPTY_CHECK, board_id)
                 if rows and rows[0]["board_status"] == "gone":
-                    await conn.execute(_DELIST_BOARD_POSTINGS, board_id)
-                    board_log.warning("batch.monitor.board_gone")
+                    empty_gone_count = await _delist_and_count_gone(conn, board_id)
+                    board_log.warning("batch.monitor.board_gone", gone=empty_gone_count)
+            if empty_gone_count:
+                with contextlib.suppress(Exception):
+                    await _batch.get_redis().delete("cache:platform-stats")
             return True, elapsed
 
         # Mark as gone any active posting not seen during this monitor run
@@ -912,10 +934,14 @@ async def _process_one_board_streaming(
         )
         tasks_total.labels(kind="monitor", status="board_gone").inc()
         loc_resolver.drain_location_misses()
+        board_gone_count = 0
         with contextlib.suppress(Exception):
             async with pool.acquire() as conn, conn.transaction():
                 await conn.execute(_RECORD_BOARD_GONE, board_id)
-                await conn.execute(_DELIST_BOARD_POSTINGS, board_id)
+                board_gone_count = await _delist_and_count_gone(conn, board_id)
+        if board_gone_count:
+            with contextlib.suppress(Exception):
+                await _batch.get_redis().delete("cache:platform-stats")
         # Re-raise so the worker can drop the Redis task instead of
         # rescheduling — otherwise the dead board keeps cycling.
         raise
@@ -927,9 +953,24 @@ async def _process_one_board_streaming(
         tasks_total.labels(kind="monitor", status="failed").inc()
         # Discard stale location misses from this failed board
         loc_resolver.drain_location_misses()
+        # A 5-strike failure flips ``is_enabled=false`` + ``board_status='disabled'``.
+        # _FETCH_DUE_BOARDS won't pick the board again, so active postings
+        # would otherwise sit orphaned (``is_active=true``, never to be
+        # refreshed or marked gone). Detect the transition via RETURNING
+        # and run the same delist+metric path as BoardGoneError / empty-check.
+        failure_gone_count = 0
         with contextlib.suppress(Exception):
-            async with pool.acquire() as conn:
-                await conn.execute(_RECORD_FAILURE, board_id, error_msg)
+            async with pool.acquire() as conn, conn.transaction():
+                just_disabled = await conn.fetchval(_RECORD_FAILURE, board_id, error_msg)
+                if just_disabled:
+                    failure_gone_count = await _delist_and_count_gone(conn, board_id)
+                    board_log.warning(
+                        "batch.monitor.five_strike_disable",
+                        gone=failure_gone_count,
+                    )
+        if failure_gone_count:
+            with contextlib.suppress(Exception):
+                await _batch.get_redis().delete("cache:platform-stats")
         return False, elapsed
     finally:
         if pw and pw_owned:
