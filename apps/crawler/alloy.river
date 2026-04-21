@@ -42,11 +42,29 @@ discovery.docker "containers" {
   host = "unix:///var/run/docker.sock"
 }
 
+// Promote the docker container name into a Loki label so log queries
+// can attribute errors to a specific container (worker-1 vs browser-1
+// vs exporter vs drain etc). Without this, every line ships with only
+// `job=crawler` and a Chromium-missing burst can't be tied to the
+// container that produced it. Docker exposes the name as
+// `__meta_docker_container_name` with a leading `/`, e.g. `/deploy-browser-1-1`.
+// We strip the `/deploy-` prefix and the trailing `-1` instance suffix so
+// the label reads as the docker-compose service name (browser-1, worker-2, …).
+discovery.relabel "containers" {
+  targets = discovery.docker.containers.targets
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(?:deploy-)?(.+?)(?:-\\d+)?"
+    target_label  = "container"
+    replacement   = "$1"
+  }
+}
+
 loki.source.docker "containers" {
-  host       = "unix:///var/run/docker.sock"
-  targets    = discovery.docker.containers.targets
-  labels     = { job = "crawler" }
-  forward_to = [loki.process.parse.receiver]
+  host          = "unix:///var/run/docker.sock"
+  targets       = discovery.relabel.containers.output
+  labels        = { job = "crawler" }
+  forward_to    = [loki.process.parse.receiver]
 }
 
 loki.process "parse" {
