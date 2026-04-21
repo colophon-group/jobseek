@@ -482,20 +482,23 @@ async def scrape(
     if config.get("api_url"):
         return await _scrape_http(url, config, http)
 
-    from src.shared.browser import NAVIGATE_KEYS, navigate, open_page
+    from src.shared.browser import BROWSER_KEYS, NAVIGATE_KEYS, navigate, open_page
 
     use_proxy = bool(config.get("proxy"))
 
     async def _do_scrape(p):
         settle = config.get("settle", _DEFAULT_SETTLE)
-        # Narrow projection: wait / wait_fallback / timeout (and actions, if the
-        # scraper ever starts running them). Intentionally does not forward
-        # open_page keys — open_page is still called with {} below.
+        # Narrow projection: wait / wait_fallback / timeout / actions.
         nav_config = {k: v for k, v in config.items() if k in NAVIGATE_KEYS}
         nav_config.setdefault("wait", _DEFAULT_WAIT)
         nav_config.setdefault("timeout", _DEFAULT_TIMEOUT)
+        # Forward launch-time browser keys (channel, persistent_context,
+        # user_agent, warmup_url, cookies, etc.) so scraper configs can
+        # reuse the same Akamai-bypass shape as the monitor. This used to
+        # pass {} and silently dropped keys like persistent_context.
+        browser_config = {k: v for k, v in config.items() if k in BROWSER_KEYS}
 
-        async with open_page(p, {}, use_proxy=use_proxy) as page:
+        async with open_page(p, browser_config, use_proxy=use_proxy) as page:
             page_host = urlparse(url).netloc
             exchanges = await capture_exchanges(page, page_host)
 

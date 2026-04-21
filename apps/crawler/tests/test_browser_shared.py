@@ -107,6 +107,10 @@ class TestConstants:
                 "warmup_url",
                 "cookies",
                 "disable_http2",
+                "persistent_context",
+                "channel",
+                "viewport",
+                "locale",
             }
         )
         assert expected == BROWSER_KEYS
@@ -486,6 +490,135 @@ class TestOpenPage:
             pass
         kwargs = pw.chromium.launch.await_args.kwargs
         assert "proxy" not in kwargs
+
+    async def test_channel_forwarded_on_vanilla_launch(self):
+        """``channel: chrome`` opts into system Chrome over bundled Chromium.
+
+        Real-Chrome has a consistent TLS/JS fingerprint trusted by most bot
+        managers; bundled Chromium does not. Regression guard ensures the
+        key reaches ``pw.chromium.launch``.
+        """
+        pw = _make_pw()
+        async with open_page(pw, {"channel": "chrome"}):
+            pass
+        kwargs = pw.chromium.launch.await_args.kwargs
+        assert kwargs.get("channel") == "chrome"
+
+
+class TestOpenPagePersistentContext:
+    """Coverage for the ``persistent_context: true`` branch of open_page.
+
+    Added for Akamai-protected boards (Tesla, future WAF'd employers).
+    ``launch + new_context`` fails the bot-manager fingerprint check;
+    ``launch_persistent_context`` with a user-data-dir passes it.
+    """
+
+    @staticmethod
+    def _make_persist_pw() -> MagicMock:
+        """Playwright mock with launch_persistent_context wired up."""
+        page = _make_page()
+        context = MagicMock()
+        context.new_page = AsyncMock(return_value=page)
+        context.close = AsyncMock()
+        context.add_cookies = AsyncMock()
+        context.set_default_timeout = MagicMock()
+        context.pages = [page]
+        pw = MagicMock()
+        pw.chromium = MagicMock()
+        pw.chromium.launch_persistent_context = AsyncMock(return_value=context)
+        pw.chromium.launch = AsyncMock()  # unused in this path — trip if called
+        return pw
+
+    async def test_uses_launch_persistent_context_not_launch(self):
+        pw = self._make_persist_pw()
+        async with open_page(pw, {"persistent_context": True}):
+            pass
+        pw.chromium.launch_persistent_context.assert_awaited_once()
+        pw.chromium.launch.assert_not_called()
+
+    async def test_user_data_dir_cleaned_up(self):
+        import os
+
+        pw = self._make_persist_pw()
+        async with open_page(pw, {"persistent_context": True}):
+            pass
+        # First positional arg is the user_data_dir path; must not still
+        # exist after the context closes.
+        user_data_dir = pw.chromium.launch_persistent_context.await_args.args[0]
+        assert not os.path.exists(user_data_dir), (
+            f"user_data_dir {user_data_dir} leaked; tmpdirs accumulate "
+            "across browser cycles under the worker pool"
+        )
+
+    async def test_user_data_dir_cleaned_on_exception(self):
+        import os
+
+        pw = self._make_persist_pw()
+        with pytest.raises(RuntimeError):
+            async with open_page(pw, {"persistent_context": True}):
+                raise RuntimeError("boom")
+        user_data_dir = pw.chromium.launch_persistent_context.await_args.args[0]
+        assert not os.path.exists(user_data_dir)
+
+    async def test_channel_viewport_locale_user_agent_forwarded(self):
+        pw = self._make_persist_pw()
+        async with open_page(
+            pw,
+            {
+                "persistent_context": True,
+                "channel": "chrome",
+                "viewport": {"width": 1920, "height": 1080},
+                "locale": "en-GB",
+                "user_agent": "ua/1.0",
+            },
+        ):
+            pass
+        kwargs = pw.chromium.launch_persistent_context.await_args.kwargs
+        assert kwargs["channel"] == "chrome"
+        assert kwargs["viewport"] == {"width": 1920, "height": 1080}
+        assert kwargs["locale"] == "en-GB"
+        assert kwargs["user_agent"] == "ua/1.0"
+
+    async def test_automation_controlled_flag_added(self):
+        """Akamai reads ``navigator.webdriver`` before any init-script.
+
+        ``--disable-blink-features=AutomationControlled`` is the only
+        way to hide that flag from the pre-script JS, so the default
+        must add it whenever persistent_context is on.
+        """
+        pw = self._make_persist_pw()
+        async with open_page(pw, {"persistent_context": True}):
+            pass
+        kwargs = pw.chromium.launch_persistent_context.await_args.kwargs
+        assert "--disable-blink-features=AutomationControlled" in kwargs.get("args", [])
+
+    async def test_proxy_forwarded_to_persistent_context(self, monkeypatch):
+        from src import config
+
+        monkeypatch.setattr(config.settings, "proxy_provider", "webshare")
+        monkeypatch.setattr(config.settings, "webshare_proxy_url", "http://u:p@px.example:7000")
+        pw = self._make_persist_pw()
+        async with open_page(pw, {"persistent_context": True}, use_proxy=True):
+            pass
+        kwargs = pw.chromium.launch_persistent_context.await_args.kwargs
+        assert kwargs["proxy"] == {
+            "server": "http://px.example:7000",
+            "username": "u",
+            "password": "p",
+        }
+
+    async def test_warmup_url_navigated_before_yield(self):
+        pw = self._make_persist_pw()
+        page = pw.chromium.launch_persistent_context.return_value.pages[0]
+        async with open_page(
+            pw,
+            {"persistent_context": True, "warmup_url": "https://example.com/"},
+        ):
+            pass
+        page.goto.assert_awaited_once()
+        args, kwargs = page.goto.await_args
+        assert args[0] == "https://example.com/"
+        assert kwargs["wait_until"] == "domcontentloaded"
 
 
 # ---------------------------------------------------------------------------
