@@ -4218,6 +4218,7 @@ trace3,trace3-greenhouse,https://job-boards.greenhouse.io/trace3,greenhouse,"{""
 tracebit,tracebit-careers,https://jobs.ashbyhq.com/tracebit,ashby,,skip,
 tracelabs,tracelabs-ashby,https://jobs.ashbyhq.com/tracelabs,ashby,"{""token"": ""tracelabs""}",skip,
 track-omc,track-omc-greenhouse,https://job-boards.greenhouse.io/trackomc,greenhouse,"{""token"": ""trackomc""}",skip,
+trade-republic,trade-republic-careers,https://boards.greenhouse.io/traderepublicbank,greenhouse,"{""token"": ""traderepublicbank""}",skip,
 trading212,trading212-ashby,https://jobs.ashbyhq.com/trading212,ashby,"{""token"": ""trading212""}",skip,
 tradingview,tradingview-careers,https://tradingview.teamtailor.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://tradingview.teamtailor.com/jobs.rss""}",skip,
 trafigura,trafigura-careers-workday,https://trafigura.wd3.myworkdayjobs.com/TrafiguraCareerSite,workday,,workday,
