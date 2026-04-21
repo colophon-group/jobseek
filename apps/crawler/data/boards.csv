@@ -377,6 +377,7 @@ asian-paints,asian-paints-careers,https://careers.asianpaints.com/search/,rss,"{
 asm,asm-greenhouse,https://job-boards.greenhouse.io/asm,greenhouse,"{""token"": ""asm""}",skip,
 asm,asm-recruitee,https://asm.recruitee.com,recruitee,"{""token"": ""asm""}",skip,
 asml,asml-careers,https://careers.smartrecruiters.com/ASML1,smartrecruiters,"{""token"": ""ASML1""}",smartrecruiters,
+asos,asos-careers,https://api.smartrecruiters.com/v1/companies/ASOS/postings,smartrecruiters,"{""token"": ""ASOS""}",smartrecruiters,
 aspect-biosystems,aspect-biosystems-greenhouse,https://job-boards.greenhouse.io/aspectbiosystems,greenhouse,"{""token"": ""aspectbiosystems""}",skip,
 aspire-living-learning,aspire-living-learning-greenhouse,https://job-boards.greenhouse.io/allinc,greenhouse,"{""token"": ""allinc""}",skip,
 aspora,aspora-ashby,https://jobs.ashbyhq.com/aspora,ashby,"{""token"": ""aspora""}",skip,
