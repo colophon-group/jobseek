@@ -3500,6 +3500,7 @@ qualio,qualio-greenhouse,https://job-boards.greenhouse.io/qualio,greenhouse,"{""
 qualtrics,qualtrics-greenhouse,https://job-boards.greenhouse.io/qualtrics,greenhouse,"{""token"": ""qualtrics""}",skip,
 quanata,quanata-greenhouse,https://job-boards.greenhouse.io/quanata,greenhouse,"{""token"": ""quanata""}",skip,
 quantcast,quantcast-pinpoint,https://quantcast.pinpointhq.com,pinpoint,"{""slug"": ""quantcast""}",skip,
+quantexa,quantexa-careers,https://apply.workable.com/quantexa,workable,"{""token"": ""quantexa""}",workable,
 quanthealth,quanthealth-greenhouse,https://job-boards.greenhouse.io/quanthealth,greenhouse,"{""token"": ""quanthealth""}",skip,
 quantum,quantum-ashby,https://jobs.ashbyhq.com/quantum,ashby,"{""token"": ""quantum""}",skip,
 quantum-coffee,quantum-coffee-greenhouse,https://job-boards.greenhouse.io/quantumcoffee,greenhouse,"{""token"": ""quantumcoffee""}",skip,
