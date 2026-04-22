@@ -1270,6 +1270,7 @@ doordash,doordash-careers-mx,https://job-boards.greenhouse.io/doordashmexico,gre
 doordash,doordash-careers-wolt,https://careers.wolt.com/en/jobs,greenhouse,"{""token"": ""wolt""}",skip,
 dorsia,dorsia-greenhouse,https://job-boards.greenhouse.io/dorsia,greenhouse,"{""token"": ""dorsia""}",skip,
 doss,doss-ashby,https://jobs.ashbyhq.com/doss,ashby,"{""token"": ""doss""}",skip,
+dott,dott-careers,https://jobs.deel.com/dott,deel,"{""slug"": ""dott""}",skip,
 double,double-ashby,https://jobs.ashbyhq.com/double,ashby,"{""token"": ""double""}",skip,
 doubleverify,doubleverify-greenhouse,https://job-boards.greenhouse.io/doubleverify,greenhouse,"{""token"": ""doubleverify""}",skip,
 dovetail,dovetail-ashby,https://jobs.ashbyhq.com/dovetail,ashby,"{""token"": ""dovetail""}",skip,
