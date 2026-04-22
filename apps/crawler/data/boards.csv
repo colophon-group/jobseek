@@ -3177,6 +3177,7 @@ pax-historia,pax-historia-ashby,https://jobs.ashbyhq.com/pax-historia,ashby,"{""
 pax-labs,pax-labs-greenhouse,https://job-boards.greenhouse.io/paxlabs,greenhouse,"{""token"": ""paxlabs""}",skip,
 paxos,paxos-ashby,https://jobs.ashbyhq.com/paxos,ashby,"{""token"": ""paxos""}",skip,
 paxoslabs,paxoslabs-ashby,https://jobs.ashbyhq.com/paxoslabs,ashby,"{""token"": ""paxoslabs""}",skip,
+payfit,payfit-careers,https://careers.payfit.com/,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.payfit.com/jobs.rss""}",skip,
 payoneer,payoneer-greenhouse,https://job-boards.greenhouse.io/payoneer,greenhouse,"{""token"": ""payoneer""}",skip,
 paypay,paypay-greenhouse,https://job-boards.greenhouse.io/paypay,greenhouse,"{""token"": ""paypay""}",skip,
 paypay-card,paypay-card-greenhouse,https://job-boards.greenhouse.io/paypaycard,greenhouse,"{""token"": ""paypaycard""}",skip,
