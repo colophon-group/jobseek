@@ -3784,6 +3784,7 @@ serhant,serhant-greenhouse,https://job-boards.greenhouse.io/serhant,greenhouse,"
 sertis,sertis-greenhouse,https://job-boards.greenhouse.io/sertis,greenhouse,"{""token"": ""sertis""}",skip,
 sertrading,sertrading-greenhouse,https://job-boards.greenhouse.io/sertradingsa,greenhouse,"{""token"": ""sertradingsa""}",skip,
 servers-com,servers-com-careers-apply,https://servers-com.breezy.hr/,breezy,"{""portal_url"": ""https://servers-com.breezy.hr"", ""slug"": ""servers-com""}",json-ld,
+servicenow,servicenow-careers,https://careers.smartrecruiters.com/ServiceNow,smartrecruiters,"{""token"": ""ServiceNow""}",smartrecruiters,
 servimo,servimo-join,https://join.com/companies/servimofr,join,"{""slug"": ""servimofr""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 sesame,sesame-ashby,https://jobs.ashbyhq.com/sesame,ashby,"{""token"": ""sesame""}",skip,
 sesame,sesame-lever,https://jobs.lever.co/sesame,lever,"{""token"": ""sesame""}",skip,
