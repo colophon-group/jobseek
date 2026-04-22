@@ -371,20 +371,20 @@ export function WatchlistViewPage({
                   }
                 }}
                 onBlur={saveDescription}
-                maxLength={200}
-                rows={2}
-                className="w-full resize-none rounded-md border border-border-soft bg-transparent px-2 py-1 text-sm text-muted outline-none focus:border-primary"
+                maxLength={1000}
+                rows={5}
+                className="w-full resize-y rounded-md border border-border-soft bg-transparent px-2 py-1 text-sm text-muted outline-none focus:border-primary"
                 placeholder={t({ id: "watchlists.view.descriptionPlaceholder", comment: "Placeholder for watchlist description textarea", message: "Describe this watchlist..." })}
               />
               {savingDescription && <Loader2 size={14} className="mt-1.5 animate-spin text-muted" />}
             </div>
           ) : description ? (
             <p
-              className="group/desc line-clamp-2 cursor-pointer rounded px-2 py-1 -mx-2 -my-1 text-sm text-muted transition-colors hover:bg-border-soft flex items-start gap-2"
+              className="group/desc cursor-pointer rounded px-2 py-1 -mx-2 -my-1 text-sm text-muted transition-colors hover:bg-border-soft flex items-start gap-2"
               onClick={() => setEditingDescription(true)}
               title={t({ id: "watchlists.view.editDescription", comment: "Tooltip for clicking to edit watchlist description", message: "Click to edit description" })}
             >
-              <span className="line-clamp-2">{description}</span>
+              <span className="line-clamp-6 whitespace-pre-wrap">{description}</span>
               <Pencil size={12} className="mt-0.5 shrink-0 text-muted opacity-0 transition-opacity group-hover/desc:opacity-100" />
             </p>
           ) : (
@@ -398,7 +398,7 @@ export function WatchlistViewPage({
             </button>
           )
         ) : description ? (
-          <p className="text-sm text-muted">{description}</p>
+          <p className="whitespace-pre-wrap text-sm text-muted">{description}</p>
         ) : null}
 
         {/* Companies */}
