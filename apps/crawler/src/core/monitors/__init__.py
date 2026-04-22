@@ -435,6 +435,14 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"Personio XML \u2014 slug: {slug}, {jobs} jobs"
         return f"Personio XML \u2014 slug: {slug}"
+    if name == "jobylon":
+        group = metadata.get("company_group_id")
+        company = metadata.get("company_id")
+        label = f"company-group: {group}" if group else f"company: {company}" if company else "?"
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"Jobylon embed \u2014 {label}, {jobs} jobs"
+        return f"Jobylon embed \u2014 {label}"
     if name == "rss":
         preset = metadata.get("preset", "generic")
         feed_url = metadata.get("feed_url", "?")
@@ -536,6 +544,7 @@ from src.core.monitors import (  # noqa: E402
     greenhouse,  # noqa: F401
     hireology,  # noqa: F401
     inline,  # noqa: F401
+    jobylon,  # noqa: F401
     join,  # noqa: F401
     lever,  # noqa: F401
     mokahr,  # noqa: F401

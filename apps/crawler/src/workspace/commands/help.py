@@ -511,6 +511,45 @@ lever — Lever Postings API
   Detection:  ws probe shows "Lever API — token: X, N jobs"
   Zero jobs?  Verify token — try the API URL directly in a browser"""
 
+MONITOR_JOBYLON = """\
+jobylon — Jobylon (Nordic ATS, inline-embed widget)
+
+  Source:   GET https://cdn.jobylon.com/jobs/companies/{company_id}/embed/v2/
+            GET https://cdn.jobylon.com/jobs/company-groups/{group_id}/embed/v2/
+  Returns:  Rich job data — title, locations, language, date_posted,
+            job_location_type (TELECOMMUTE when labeled Remote).
+            metadata: id, company_id, company, function, experience,
+            employment_type_label, workspace, departments, to_date,
+            published_date_raw.
+  Scraper:  Not needed for title/location (rich).  Pair with a json-ld
+            scraper + ``enrich: ["description"]`` when descriptions are
+            wanted — detail pages under emp.jobylon.com serve
+            ``application/ld+json`` JobPosting.
+  Cap:      50,000 jobs
+  Note:     The embed endpoint returns a server-rendered AngularJS
+            widget whose inline ``<script>`` body assigns the full
+            job list to ``JBL.embed_v2['jobs']`` as a JS object literal
+            (unquoted keys).  No separate JSON API exists — the widget
+            ships with the entire dataset per request.
+            Unknown customer IDs 404 (treated as ``BoardGoneError``).
+
+  Config:
+    {"company_id": "1955"}
+    {"company_group_id": "241"}
+
+    company_id         Jobylon numeric customer id (single-brand
+                       customers, e.g. McDonald's Sverige = 1955).
+    company_group_id   Numeric multi-brand group id (e.g. McDonald's
+                       Danmark uses group 241).  Takes precedence over
+                       company_id when both are set.
+
+  Detection:  ws probe shows "Jobylon embed — company: X, N jobs"
+              or "Jobylon embed — company-group: X, N jobs".
+              Detects via direct cdn.jobylon.com URL or iframe
+              reference in the page HTML.
+  Zero jobs?  Verify the customer id by loading the embed URL directly
+              in a browser.  Stale/disabled customers return HTTP 404."""
+
 MONITOR_JOIN = """\
 join — JOIN (join.com) Next.js Monitor
 
@@ -1860,6 +1899,7 @@ MONITOR_CARDS: dict[str, str] = {
     "gem": MONITOR_GEM,
     "greenhouse": MONITOR_GREENHOUSE,
     "hireology": MONITOR_HIREOLOGY,
+    "jobylon": MONITOR_JOBYLON,
     "join": MONITOR_JOIN,
     "lever": MONITOR_LEVER,
     "ashby": MONITOR_ASHBY,
