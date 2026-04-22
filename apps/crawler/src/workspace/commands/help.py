@@ -93,6 +93,7 @@ Monitor Types (cheapest first):
   workable          10      Job URLs          Auto-configured
   workday           10      Job URLs          Auto-configured
   personio          10      Full/partial      If descriptions missing (fallback)
+  talentclue        12      Partial rich      Yes (description)
   notion            15      Job URLs          Auto-configured
   umantis           15      URL set           Yes
   nextdata          20      URLs or full      If URL-only
@@ -1011,6 +1012,40 @@ personio — Personio XML Feed + HTML Fallback
               Also shows language coverage (e.g. "en: 11/19 desc, de: 13/19 desc")
   Zero jobs?  Verify slug — try the listing page in a browser"""
 
+MONITOR_TALENTCLUE = """\
+talentclue — TalentClue ATS (Spanish-market recruiting platform)
+
+  API:      POST https://api.talentclue.com/jswidget-ajax/jswidget/jobs/{client_id}/{b64_filter}
+            Headers: Accept: application/json, Content-Type: application/json
+  Returns:  Partial rich data (title, locations, employment_type,
+            job_location_type, date_posted, language).
+            metadata: id, company_id, parent_company_id,
+            parent_company_name, subgroup, department, discipline,
+            industry, position, vacancies, geolocation
+  Scraper:  Needed — the jobs API doesn't return job descriptions.
+            Pair with ``embedded`` or ``dom`` scraper on the detail page
+            (``{customer}.talentclue.com/{lang}/node/{id}/{variant}``).
+  Cap:      50,000 jobs
+  Note:     The API is content-negotiated — it returns XML by default
+            and JSON when ``Accept: application/json`` is set.  The
+            monitor always requests JSON.  Without an Accept header you
+            will see ``<?xml version...>`` wrappers, which is why the
+            ``api_sniffer`` type is incompatible with this endpoint.
+
+  Config:
+    {"client_id": "3277d5dd7c62b36c4e13b1f9b8a7f3e4", "lang": "es"}
+
+    client_id   32-char hex ID from the ``tc-jswidget`` widget div on the
+                customer careers page.  Auto-filled by ws probe from an
+                HTML scan of the board URL.
+    lang        Widget / API filter language (default: "es").  Also
+                auto-filled from the ``data-lang`` attribute on the
+                widget div.
+
+  Detection:  ws probe shows "TalentClue — client_id: <id>..., N jobs"
+  Zero jobs?  Verify client_id matches the ``data-client-id`` attribute
+              on the tc-jswidget div (view source on the careers page)."""
+
 MONITOR_RSS = """\
 rss — RSS 2.0 Feed Monitor (presets: successfactors, teamtailor, generic)
 
@@ -1867,6 +1902,7 @@ MONITOR_CARDS: dict[str, str] = {
     "rippling": MONITOR_RIPPLING,
     "smartrecruiters": MONITOR_SMARTRECRUITERS,
     "softgarden": MONITOR_SOFTGARDEN,
+    "talentclue": MONITOR_TALENTCLUE,
     "traffit": MONITOR_TRAFFIT,
     "umantis": MONITOR_UMANTIS,
     "workable": MONITOR_WORKABLE,

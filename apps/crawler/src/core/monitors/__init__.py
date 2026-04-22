@@ -384,6 +384,19 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"Umantis \u2014 {label}, {jobs} jobs"
         return f"Umantis \u2014 {label}"
+    if name == "talentclue":
+        client_id = metadata.get("client_id")
+        subdomain = metadata.get("subdomain")
+        jobs = metadata.get("jobs")
+        if client_id:
+            label = f"client_id: {client_id[:12]}..."
+        elif subdomain:
+            label = f"subdomain: {subdomain}"
+        else:
+            label = "?"
+        if jobs is not None:
+            return f"TalentClue \u2014 {label}, {jobs} jobs"
+        return f"TalentClue \u2014 {label}"
     if name == "traffit":
         slug = metadata.get("slug", "?")
         jobs = metadata.get("jobs")
@@ -550,6 +563,7 @@ from src.core.monitors import (  # noqa: E402
     sitemap,  # noqa: F401
     smartrecruiters,  # noqa: F401
     softgarden,  # noqa: F401
+    talentclue,  # noqa: F401
     traffit,  # noqa: F401
     umantis,  # noqa: F401
     workable,  # noqa: F401

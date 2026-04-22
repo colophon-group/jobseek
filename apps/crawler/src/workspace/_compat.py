@@ -59,6 +59,7 @@ _ALL_MONITOR_TYPES: frozenset[str] = _RICH_MONITORS | {
     "rippling",
     "smartrecruiters",
     "softgarden",
+    "talentclue",
     "umantis",
     "workable",
     "workday",
