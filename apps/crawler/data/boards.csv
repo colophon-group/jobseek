@@ -3905,6 +3905,7 @@ snowflake,snowflake-careers,https://careers.snowflake.com/us/en/search-results,a
 snyk,snyk-careers,https://snyk.wd103.myworkdayjobs.com/External,workday,"{""company"": ""snyk"", ""wd_instance"": ""wd103"", ""site"": ""External""}",workday,
 soci,soci-greenhouse,https://job-boards.greenhouse.io/soci,greenhouse,"{""token"": ""soci""}",skip,
 social-discovery-group,social-discovery-group-careers-breezy,https://social-discovery-ventures.breezy.hr/,breezy,"{""portal_url"": ""https://social-discovery-ventures.breezy.hr"", ""slug"": ""social-discovery-ventures""}",json-ld,
+socialpoint,socialpoint-careers,https://job-boards.greenhouse.io/spcareers,greenhouse,"{""token"": ""spcareers""}",skip,
 socket,socket-ashby,https://jobs.ashbyhq.com/socket,ashby,"{""token"": ""socket""}",skip,
 socure,socure-ashby,https://jobs.ashbyhq.com/socure,ashby,"{""token"": ""socure""}",skip,
 sofi,sofi-greenhouse,https://job-boards.greenhouse.io/sofi,greenhouse,"{""token"": ""sofi""}",skip,
