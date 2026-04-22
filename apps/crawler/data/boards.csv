@@ -2564,6 +2564,7 @@ mambu,mambu-pinpoint,https://mambu.pinpointhq.com,pinpoint,"{""slug"": ""mambu""
 mammoth,mammoth-pinpoint,https://mammoth.pinpointhq.com,pinpoint,"{""slug"": ""mammoth""}",skip,
 mammoth-brands,mammoth-brands-greenhouse,https://job-boards.greenhouse.io/mammothbrands,greenhouse,"{""token"": ""mammothbrands""}",skip,
 man-group,man-group-greenhouse,https://job-boards.greenhouse.io/mangroup,greenhouse,"{""token"": ""mangroup""}",skip,
+manomano,manomano-careers,https://careers.manomano.jobs/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.manomano.jobs/jobs.rss""}",skip,
 manscaped,manscaped-greenhouse,https://job-boards.greenhouse.io/manscaped,greenhouse,"{""token"": ""manscaped""}",skip,
 mantra-health,mantra-health-greenhouse,https://job-boards.greenhouse.io/mantrahealth,greenhouse,"{""token"": ""mantrahealth""}",skip,
 manufact,manufact-careers,https://www.ycombinator.com/companies/mcp-use/jobs,ycombinator,"{""slug"": ""manufact""}",json-ld,
