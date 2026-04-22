@@ -3802,6 +3802,7 @@ semrush,semrush-careers-workday,https://semrush.wd5.myworkdayjobs.com/semrushcar
 sendbird,sendbird-greenhouse,https://job-boards.greenhouse.io/sendbird,greenhouse,"{""token"": ""sendbird""}",skip,
 senior-doc,senior-doc-greenhouse,https://job-boards.greenhouse.io/seniordoc,greenhouse,"{""token"": ""seniordoc""}",skip,
 senra-systems,senra-systems-careers,https://job-boards.greenhouse.io/senrasystems,greenhouse,"{""token"": ""senrasystems""}",skip,
+sensirion,sensirion-careers,https://sensirion.com/career/,api_sniffer,"{""api_url"": ""https://sensirion.com/en/api/v2/jobs/"", ""method"": ""GET"", ""json_path"": ""results"", ""url_field"": ""links_direct_link"", ""pagination"": {""param_name"": ""page"", ""style"": ""page"", ""start_value"": 1, ""increment"": 1, ""location"": ""query""}, ""fields"": {""title"": ""sza_title"", ""locations"": ""location.city""}}",json-ld,
 sentilink,sentilink-ashby,https://jobs.ashbyhq.com/sentilink,ashby,"{""token"": ""sentilink""}",skip,
 sentry,sentry-ashby,https://jobs.ashbyhq.com/sentry,ashby,"{""token"": ""sentry""}",skip,
 seo-sponsors-for-educational-opportunity,seo-sponsors-for-educational-opportunity-greenhouse,https://job-boards.greenhouse.io/sponsorsforeducationalopportunity,greenhouse,"{""token"": ""sponsorsforeducationalopportunity""}",skip,
