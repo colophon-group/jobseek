@@ -3558,6 +3558,7 @@ recruitis,recruitis-greenhouse,https://job-boards.greenhouse.io/recruitis,greenh
 rectangle-health,rectangle-health-greenhouse,https://job-boards.greenhouse.io/rectanglehealth,greenhouse,"{""token"": ""rectanglehealth""}",skip,
 recursion,recursion-greenhouse,https://job-boards.greenhouse.io/recursionpharmaceuticals,greenhouse,"{""token"": ""recursionpharmaceuticals""}",skip,
 red-cell-partners,red-cell-partners-greenhouse,https://job-boards.greenhouse.io/redcellpartners,greenhouse,"{""token"": ""redcellpartners""}",skip,
+red-hat,red-hat-careers-workday,https://redhat.wd5.myworkdayjobs.com/jobs,workday,"{""company"": ""redhat"", ""wd_instance"": ""wd5"", ""site"": ""jobs""}",workday,
 reddit,reddit-careers,https://boards.greenhouse.io/reddit,greenhouse,,skip,
 redis,redis-ashby,https://jobs.ashbyhq.com/redis,ashby,"{""token"": ""redis""}",skip,
 redpanda-data,redpanda-data-greenhouse,https://job-boards.greenhouse.io/redpandadata,greenhouse,"{""token"": ""redpandadata""}",skip,
