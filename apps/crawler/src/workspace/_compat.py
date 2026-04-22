@@ -22,6 +22,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "greenhouse",
         "hireology",
         "inline",
+        "jobylon",
         "lever",
         "mokahr",
         "oracle_hcm",
@@ -161,6 +162,10 @@ def detect_ats_from_url(url: str) -> str | None:
     # JOIN — join.com/companies/{slug}
     if host in ("join.com", "www.join.com"):
         return "join"
+
+    # Jobylon — cdn.jobylon.com embed or emp.jobylon.com detail URLs
+    if host == "cdn.jobylon.com" or host == "emp.jobylon.com" or host.endswith(".jobylon.com"):
+        return "jobylon"
 
     # Umantis — recruitingapp-{ID}[.de|.ch].umantis.com
     if host.endswith(".umantis.com"):
