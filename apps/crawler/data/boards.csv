@@ -3802,6 +3802,7 @@ selini-capital,selini-capital-greenhouse,https://job-boards.greenhouse.io/selini
 semafor,semafor-greenhouse,https://job-boards.greenhouse.io/semafor,greenhouse,"{""token"": ""semafor""}",skip,
 semgrep,semgrep-ashby,https://jobs.ashbyhq.com/semgrep,ashby,"{""token"": ""semgrep""}",skip,
 semrush,semrush-careers,https://careers.semrush.com/,recruitee,"{""slug"": ""semrush"", ""api_base"": ""https://semrush.recruitee.com""}",skip,
+semrush,semrush-careers-workday,https://semrush.wd5.myworkdayjobs.com/semrushcareers,workday,"{""company"": ""semrush"", ""wd_instance"": ""wd5"", ""site"": ""semrushcareers""}",workday,
 sendbird,sendbird-greenhouse,https://job-boards.greenhouse.io/sendbird,greenhouse,"{""token"": ""sendbird""}",skip,
 senior-doc,senior-doc-greenhouse,https://job-boards.greenhouse.io/seniordoc,greenhouse,"{""token"": ""seniordoc""}",skip,
 senra-systems,senra-systems-careers,https://job-boards.greenhouse.io/senrasystems,greenhouse,"{""token"": ""senrasystems""}",skip,
