@@ -14,6 +14,7 @@ from __future__ import annotations
 _RICH_MONITORS: frozenset[str] = frozenset(
     {
         "accenture",
+        "almacareer",
         "amazon",
         "ashby",
         "deel",
@@ -160,6 +161,10 @@ def detect_ats_from_url(url: str) -> str | None:
         return "softgarden"
     if host.endswith(".traffit.com"):
         return "traffit"
+
+    # AlmaCareer (Capybara) — *.jobs.cz (CZ) and *.topjobs.sk (SK)
+    if host.endswith(".jobs.cz") or host.endswith(".topjobs.sk"):
+        return "almacareer"
 
     # JOIN — join.com/companies/{slug}
     if host in ("join.com", "www.join.com"):

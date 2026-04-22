@@ -40,6 +40,7 @@ log = structlog.get_logger()
 # agree with this list or the backfill will drift.
 _AUTO_SKIP_CRAWLER_TYPES: tuple[str, ...] = (
     "accenture",
+    "almacareer",
     "amazon",
     "ashby",
     "deel",
