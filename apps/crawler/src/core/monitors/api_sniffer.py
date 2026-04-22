@@ -644,6 +644,11 @@ async def _discover_http(
     content: object = None
     if json_path is not None:
         content = resolve_path(data, json_path) if json_path else data
+        # json_path_values: treat a dict-of-items as its values list.
+        # Some APIs (e.g. TalentClue) return {"jobs": {"<id>": {...}}}
+        # rather than {"jobs": [{...}]}.
+        if config.get("json_path_values") and isinstance(content, dict):
+            content = list(content.values())
     else:
         # Try arrays first (items mode), then HTML strings
         arrays = find_arrays(data)
@@ -1050,7 +1055,17 @@ async def _discover_replay(
         if decrypt_cfg:
             data = _apply_response_decrypt(data, decrypt_cfg)
 
-        items = extract_items(data, json_path)
+        # json_path_values: treat a dict-of-items at json_path as its values list.
+        # Some APIs (e.g. TalentClue) return {"jobs": {"<id>": {...}}} rather
+        # than {"jobs": [{...}]}; coerce before extract_items.
+        items: list[dict] | None = None
+        if config.get("json_path_values") and json_path:
+            resolved = resolve_path(data, json_path)
+            if isinstance(resolved, dict):
+                items = [v for v in resolved.values() if isinstance(v, dict)]
+
+        if items is None:
+            items = extract_items(data, json_path)
         if not items:
             log.warning("api_sniffer.no_items", api_url=api_url, json_path=json_path)
             return list() if fields_map else set()
