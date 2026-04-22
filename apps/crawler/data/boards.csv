@@ -660,6 +660,7 @@ boomi,boomi-pinpoint,https://boomi.pinpointhq.com,pinpoint,"{""slug"": ""boomi""
 bosch,bosch-pinpoint,https://bosch.pinpointhq.com,pinpoint,"{""slug"": ""bosch""}",skip,
 boston-scientific,boston-scientific-careers-all,https://jobs.bostonscientific.com/go/All-Jobs-at-Boston-Scientific/386691/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://jobs.bostonscientific.com/googlefeed.xml""}",skip,
 bot-auto,bot-auto-greenhouse,https://job-boards.greenhouse.io/botauto,greenhouse,"{""token"": ""botauto""}",skip,
+bota-systems,bota-systems-careers,https://bota-systems-ag.breezy.hr/,breezy,"{""slug"": ""bota-systems-ag""}",json-ld,
 bottomline,bottomline-greenhouse,https://job-boards.greenhouse.io/bottomlinetechnologies,greenhouse,"{""token"": ""bottomlinetechnologies""}",skip,
 boulder-care,boulder-care-greenhouse,https://job-boards.greenhouse.io/bouldercare,greenhouse,"{""token"": ""bouldercare""}",skip,
 boulevard,boulevard-greenhouse,https://job-boards.greenhouse.io/boulevard,greenhouse,"{""token"": ""boulevard""}",skip,
