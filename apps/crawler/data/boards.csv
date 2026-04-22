@@ -3964,6 +3964,7 @@ speechmatics,speechmatics-greenhouse,https://job-boards.greenhouse.io/speechmati
 spekit,spekit-ashby,https://jobs.ashbyhq.com/spekit,ashby,"{""token"": ""spekit""}",skip,
 spektr,spektr-join,https://join.com/companies/spektrcom,join,"{""slug"": ""spektrcom""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 spektrum,spektrum-greenhouse,https://job-boards.greenhouse.io/spektrum,greenhouse,"{""token"": ""spektrum""}",skip,
+spendesk,spendesk-careers,https://career.spendesk.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://career.spendesk.com/jobs.rss""}",skip,
 sphinx,sphinx-ashby,https://jobs.ashbyhq.com/sphinx,ashby,"{""token"": ""sphinx""}",skip,
 sphinx-defense,sphinx-defense-greenhouse,https://job-boards.greenhouse.io/sphinxdefense,greenhouse,"{""token"": ""sphinxdefense""}",skip,
 spiegel-media-gmbh,spiegel-media-gmbh-join,https://join.com/companies/spiegel-mediade,join,"{""slug"": ""spiegel-mediade""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
