@@ -50,6 +50,7 @@ _AUTO_SKIP_CRAWLER_TYPES: tuple[str, ...] = (
     "inline",
     "lever",
     "mokahr",
+    "phenom",
     "pinpoint",
     "recruitee",
     "rss",

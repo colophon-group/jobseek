@@ -1,0 +1,274 @@
+{
+  "jobs": [
+    {
+      "sourceID": "b1c86d980e9f6692f64f7cd94b97c5c9",
+      "uniqueID": "PDX_MC_C91B5E11-3D37-4BD7-9B3C-7DA41D64431A_71747",
+      "reference": "P8-126884-0",
+      "title": "17th & Tamarack McDonald's Full-Time Crew Member",
+      "description": "<p><strong style=\"font-size: 20px;\"><u>PLEASE NOTE THAT ONLY ONE POSITION IS AVAILABLE AT 835 TAMARACK WAY AND REMAINING 6 FULL-TIME POSITIONS ARE AVAILABLE AT 950 ORDZE ROAD, SHERWOOD PARK LOCATION WHICH IT 8-10 MIN DRIVE BY CAR. </u></strong></p><p><br></p><p><strong>Full-Time Crew Member </strong></p><p><br></p><p>We are more than just your local restaurant. We are a collection of hardworking small-business owners.</p><p>Did you know that from coast to coast, we serve delicious choices to more than 2.5 million people in over 1,400 locations every day, or that we have proudly helped more than 387,000 Canadian families with sick children through Ronald McDonald House Charities? </p><p><br></p><p><strong>Our offer</strong></p><p><br></p><p>Working with us means that you will have the opportunity to earn and learn, flexibility, and a safe and inclusive work environment. What this means in practice is:</p><p>Access to education and skills development opportunities that take you further</p><p>A total rewards package that includes discounts, incentives, and recognition perks</p><p>Flexible hours/shifts that suit your needs</p><p>A safe, respectful and inclusive workplace</p><p>Bring your authentic self to work \u2013 welcoming people of every age, background, and culture \u2013 just like the guests who visit our restaurants every day</p><p><br></p><p><strong>The job</strong></p><p><br></p><p>We are sure that you have an idea about what working with us is like, but just in case here are some of the highlights on what your job will entail:</p><p>Greeting guests, taking orders and processing payments</p><p>Preparing food and drinks</p><p>Managing delivery and mobile orders</p><p>Assembling orders and packaging take-out and delivery</p><p>Keeping all surfaces clean and sanitary to ensure the safety for our guests, fellow crew members, and yourself</p><p><br></p><p>Whether you are working in the kitchen, at the Drive-Thru, or at the front counter you are a part of a dynamic team that works together to deliver an exceptional guest experience.</p><p><br></p><p><strong>Your vibe and experience</strong></p><p><br></p><p>While previous experience working in food service or retail as a barista, server, sales associate, cashier, team member, or customer sales representative is always helpful and appreciated, what is most important is who you are.</p><p><br></p><p>You are trustworthy and have trust in others. You find joy in the details and believe good quality is what keeps guests coming back. You remain cool, calm and collected in a fast-paced environment. You understand there is no \u201cI\u201d in team and thrive in social situations. You\u2019re always willing to learn and grow. You get that service isn\u2019t a transaction, it\u2019s about connection. That a smile can make all the difference in someone\u2019s day. It\u2019s genuine, and it\u2019s who you are.</p><p><br></p><p><strong>About us</strong></p><p> </p><p>In 1954, an enterprising salesman named Ray Kroc discovered a small burger restaurant in California, and wrote the first page of McDonald\u2019s history. In 1967, the first McDonald\u2019s Canada opened in Richmond, B.C. and we\u2019ve been growing with our communities and serving quality food at great a value ever since. Today, McDonald\u2019s Canada is proud to be one of the world\u2019s leading foodservice retailers, offering job opportunities at corporate-owned restaurants or restaurants owned by independent franchisees. </p><p><br></p><p>McDonald\u2019s Canada and Owner/Operators are committed to a diverse and inclusive workplace for all. Our workplaces have a long-standing policy of providing fair, equitable, and accessible opportunities for all employees and prospective employees. Accommodations during the application process are available upon request.</p>",
+      "companyID": "paradox-api.mchire.com-2094",
+      "companyName": "paradox-api.mchire.com-McDonald's",
+      "accountName": "Adatia ,Hanif",
+      "locations": [
+        {
+          "zipCode": "T6T 0S9",
+          "locationID": "71747",
+          "locationName": "17TH & TAM (40467)",
+          "streetAddress": "835 Tamarack Way N.W.",
+          "city": "Edmonton",
+          "state": "Alberta",
+          "stateAbbr": "AB",
+          "address1": "835 Tamarack Way N.W.",
+          "address2": "",
+          "country": "Canada",
+          "countryAbbr": "CA",
+          "latitude": 53.4794998,
+          "longitude": -113.3664595,
+          "locationText": "835 Tamarack Way N.W., Edmonton AB T6T 0S9, Canada",
+          "locationParsedText": "835 Tamarack Way N.W., Edmonton AB T6T 0S9, Canada",
+          "isRemote": false,
+          "postalCode": "",
+          "distance": -1,
+          "sublocality": "",
+          "cityState": "Edmonton, Alberta",
+          "cityStateAbbr": "Edmonton, AB"
+        }
+      ],
+      "isRemote": false,
+      "employmentType": [],
+      "employmentStatus": [],
+      "postingType": "1",
+      "isInternal": "false",
+      "applyURL": "https://www.mchire.com/co/McDonalds3130/Job?job_id=PDX_MC_C91B5E11-3D37-4BD7-9B3C-7DA41D64431A_71747",
+      "originalURL": "17th-tamarack-mcdonald-s-full-time-crew-member/job/P8-126884-0",
+      "lang": "en",
+      "availableLanguages": [
+        "en"
+      ],
+      "commuteTimeDuration": 0,
+      "customFields": [
+        {
+          "cfKey": "cf_shorten_job_id",
+          "value": "P8-126884-0"
+        },
+        {
+          "cfKey": "cf_parent_organization_name",
+          "value": "McDonald's Canada - Franchisee Owned"
+        },
+        {
+          "cfKey": "cf_job_openings",
+          "value": "0"
+        }
+      ],
+      "facilityName": "",
+      "jobCardExtraFields": [
+        {
+          "attribute_name": "cf_parent_organization_name",
+          "value": "McDonald's Canada - Franchisee Owned",
+          "classname": "results-list__parent-organization-name"
+        }
+      ],
+      "addressFormatTokens": [
+        {
+          "#street": "835 Tamarack Way N.W.",
+          "#street_address": "835 Tamarack Way N.W.",
+          "#address1": "835 Tamarack Way N.W.",
+          "#zip": "T6T 0S9",
+          "#city": "Edmonton",
+          "#city_state": "Edmonton, Alberta",
+          "#city_state_abbr": "Edmonton, AB",
+          "#state_abbr": "AB",
+          "#country": "Canada",
+          "#country_abbr": "CA",
+          "#latitude": 53.4794998,
+          "#longitude": -113.3664595,
+          "#location_id": "71747",
+          "#location_name": "17TH & TAM (40467)",
+          "#location_parsed_text": "835 Tamarack Way N.W., Edmonton AB T6T 0S9, Canada",
+          "#location_text": "835 Tamarack Way N.W., Edmonton AB T6T 0S9, Canada"
+        }
+      ]
+    },
+    {
+      "sourceID": "4a8b7ec687f7d82cccd04aa1e8f22272",
+      "uniqueID": "PDX_MC_4BC55A6A-129E-459D-92DD-9E64907DD8D6_71747",
+      "reference": "P8-272291-0",
+      "title": "17th & Tamarack McDonald's Part-Time Crew Member",
+      "description": "<p>Apply now&nbsp;to immediately connect with our virtual hiring assistant, Olivia!&nbsp;</p><p><br></p><p>Working with us means:</p><ul><li>Access to education and skills development opportunities&nbsp;</li><li>A total rewards package that includes discounts, incentives, and recognition perks</li><li>Flexible hours/shifts&nbsp;</li><li>A safe, respectful, and inclusive workplace</li></ul><p><strong>The job</strong></p><p>Here are some of the role highlights:</p><ul><li>Greeting guests, taking orders and processing payments</li><li>Drink and food preparation</li><li>Communicate effectively with peers and Managers</li><li>Flexible and rotating hours day, night, afternoon, and weekends</li><li>Assembling and managing dine-in, take-out and delivery orders</li></ul><p><br></p><p>Whether you are working in the kitchen, at the Drive-Thru, or at the front counter you are a part of a dynamic team that works together to deliver an exceptional guest experience.</p><p><br></p><p><strong>Your vibe and experience</strong></p><p><br></p><p>No experience needed, while previous experience working in food service or retail as a barista, server, sales associate, cashier, team member, or customer sales representative is always helpful and appreciated. What is most important to us is who you are.</p><p>&nbsp;</p><p>Bring your authentic self to work \u2013 welcoming people of every age, background, and culture \u2013 just like the guests who visit our restaurants every day.</p><p><br></p><p><strong>About us</strong></p><p><strong>&nbsp;</strong></p><p>McDonald\u2019s Canada is proud to be one of the world\u2019s leading foodservice retailers, offering job opportunities at corporate-owned restaurants or restaurants owned by independent franchisees.&nbsp;</p><p><br></p><p>We are more than just your local restaurant. We are a collection of hardworking small-business owners. Did you know that from coast to coast, we serve delicious choices to more than 2.5 million people in over 1,400 locations every day, or that we have proudly helped more than 387,000 Canadian families with sick children through Ronald McDonald House Charities?&nbsp;</p><p><br></p><p><em>McDonald\u2019s Canada and Owner/Operators are committed to a diverse and inclusive workplace for all. Our workplaces have a long-standing policy of providing fair, equitable, and accessible opportunities for all employees and prospective employees. Accommodations during the application process are available upon request.</em></p>",
+      "companyID": "paradox-api.mchire.com-2094",
+      "companyName": "paradox-api.mchire.com-McDonald's",
+      "accountName": "Adatia ,Hanif",
+      "locations": [
+        {
+          "zipCode": "T6T 0S9",
+          "locationID": "71747",
+          "locationName": "17TH & TAM (40467)",
+          "streetAddress": "835 Tamarack Way N.W.",
+          "city": "Edmonton",
+          "state": "Alberta",
+          "stateAbbr": "AB",
+          "address1": "835 Tamarack Way N.W.",
+          "address2": "",
+          "country": "Canada",
+          "countryAbbr": "CA",
+          "latitude": 53.4794998,
+          "longitude": -113.3664595,
+          "locationText": "835 Tamarack Way N.W., Edmonton AB T6T 0S9, Canada",
+          "locationParsedText": "835 Tamarack Way N.W., Edmonton AB T6T 0S9, Canada",
+          "isRemote": false,
+          "postalCode": "",
+          "distance": -1,
+          "sublocality": "",
+          "cityState": "Edmonton, Alberta",
+          "cityStateAbbr": "Edmonton, AB"
+        }
+      ],
+      "isRemote": false,
+      "employmentType": [],
+      "employmentStatus": [],
+      "postingType": "1",
+      "isInternal": "false",
+      "applyURL": "https://www.mchire.com/co/McDonalds3130/Job?job_id=PDX_MC_4BC55A6A-129E-459D-92DD-9E64907DD8D6_71747",
+      "originalURL": "17th-tamarack-mcdonald-s-part-time-crew-member/job/P8-272291-0",
+      "lang": "en",
+      "availableLanguages": [
+        "en",
+        "fr-ca"
+      ],
+      "commuteTimeDuration": 0,
+      "customFields": [
+        {
+          "cfKey": "cf_shorten_job_id",
+          "value": "P8-272291-0"
+        },
+        {
+          "cfKey": "cf_parent_organization_name",
+          "value": "McDonald's Canada - Franchisee Owned"
+        },
+        {
+          "cfKey": "cf_job_openings",
+          "value": "0"
+        }
+      ],
+      "facilityName": "",
+      "jobCardExtraFields": [
+        {
+          "attribute_name": "cf_parent_organization_name",
+          "value": "McDonald's Canada - Franchisee Owned",
+          "classname": "results-list__parent-organization-name"
+        }
+      ],
+      "addressFormatTokens": [
+        {
+          "#street": "835 Tamarack Way N.W.",
+          "#street_address": "835 Tamarack Way N.W.",
+          "#address1": "835 Tamarack Way N.W.",
+          "#zip": "T6T 0S9",
+          "#city": "Edmonton",
+          "#city_state": "Edmonton, Alberta",
+          "#city_state_abbr": "Edmonton, AB",
+          "#state_abbr": "AB",
+          "#country": "Canada",
+          "#country_abbr": "CA",
+          "#latitude": 53.4794998,
+          "#longitude": -113.3664595,
+          "#location_id": "71747",
+          "#location_name": "17TH & TAM (40467)",
+          "#location_parsed_text": "835 Tamarack Way N.W., Edmonton AB T6T 0S9, Canada",
+          "#location_text": "835 Tamarack Way N.W., Edmonton AB T6T 0S9, Canada"
+        }
+      ]
+    },
+    {
+      "sourceID": "92d4cab695d0beb9a70282c3aeb45cda",
+      "uniqueID": "PDX_MC_3D09D8EC-B898-41C6-9FFE-6CDE94EFCE87_72743",
+      "reference": "P8-188474-0",
+      "title": "6 AM available Full-Time Crew Member",
+      "description": "<p><strong>Full-Time Crew Member Available from 6am to 7pm</strong></p><p><br></p><p>We are more than just your local restaurant. We are a collection of hardworking small-business owners.</p><p>Did you know that from coast to coast, we serve delicious choices to more than 2.5 million people in over 1,400 locations every day, or that we have proudly helped more than 387,000 Canadian families with sick children through Ronald McDonald House Charities? </p><p><br></p><p><strong>Our offer</strong></p><p><br></p><p>Working with us means that you will have the opportunity to earn and learn, flexibility, and a safe and inclusive work environment. What this means in practice is:</p><p>Access to education and skills development opportunities that take you further</p><p>A total rewards package that includes discounts, incentives, and recognition perks</p><p>Flexible hours/shifts that suit your needs</p><p>A safe, respectful and inclusive workplace</p><p>Bring your authentic self to work \u2013 welcoming people of every age, background, and culture \u2013 just like the guests who visit our restaurants every day</p><p><br></p><p><strong>The job</strong></p><p><br></p><p>We are sure that you have an idea about what working with us is like, but just in case here are some of the highlights on what your job will entail:</p><p>Greeting guests, taking orders and processing payments</p><p>Preparing food and drinks</p><p>Managing delivery and mobile orders</p><p>Assembling orders and packaging take-out and delivery</p><p>Keeping all surfaces clean and sanitary to ensure the safety for our guests, fellow crew members, and yourself</p><p><br></p><p>Whether you are working in the kitchen, at the Drive-Thru, or at the front counter you are a part of a dynamic team that works together to deliver an exceptional guest experience.</p><p><br></p><p><strong>Your vibe and experience</strong></p><p><br></p><p>While previous experience working in food service or retail as a barista, server, sales associate, cashier, team member, or customer sales representative is always helpful and appreciated, what is most important is who you are.</p><p><br></p><p>You are trustworthy and have trust in others. You find joy in the details and believe good quality is what keeps guests coming back. You remain cool, calm and collected in a fast-paced environment. You understand there is no \u201cI\u201d in team and thrive in social situations. You\u2019re always willing to learn and grow. You get that service isn\u2019t a transaction, it\u2019s about connection. That a smile can make all the difference in someone\u2019s day. It\u2019s genuine, and it\u2019s who you are.</p><p><br></p><p><strong>About us</strong></p><p> </p><p>In 1954, an enterprising salesman named Ray Kroc discovered a small burger restaurant in California, and wrote the first page of McDonald\u2019s history. In 1967, the first McDonald\u2019s Canada opened in Richmond, B.C. and we\u2019ve been growing with our communities and serving quality food at great a value ever since. Today, McDonald\u2019s Canada is proud to be one of the world\u2019s leading foodservice retailers, offering job opportunities at corporate-owned restaurants or restaurants owned by independent franchisees. </p><p><br></p><p>McDonald\u2019s Canada and Owner/Operators are committed to a diverse and inclusive workplace for all. Our workplaces have a long-standing policy of providing fair, equitable, and accessible opportunities for all employees and prospective employees. Accommodations during the application process are available upon request.</p>",
+      "companyID": "paradox-api.mchire.com-2233",
+      "companyName": "paradox-api.mchire.com-McDonald's",
+      "accountName": "CORMIER ,CHANTAL",
+      "locations": [
+        {
+          "zipCode": "E1E 1J1",
+          "locationID": "72743",
+          "locationName": "MAIN ST-MONCTON (06239)",
+          "streetAddress": "1987 Main Street",
+          "city": "MONCTON",
+          "state": "New Brunswick",
+          "stateAbbr": "NB",
+          "address1": "1987 Main Street",
+          "address2": "",
+          "country": "Canada",
+          "countryAbbr": "CA",
+          "latitude": 46.0753495,
+          "longitude": -64.8075361,
+          "locationText": "1987 Main Street, MONCTON NB E1E 1J1, Canada",
+          "locationParsedText": "1987 Main Street, MONCTON NB E1E 1J1, Canada",
+          "isRemote": false,
+          "postalCode": "",
+          "distance": -1,
+          "sublocality": "",
+          "cityState": "MONCTON, New Brunswick",
+          "cityStateAbbr": "MONCTON, NB"
+        }
+      ],
+      "isRemote": false,
+      "employmentType": [],
+      "employmentStatus": [],
+      "postingType": "1",
+      "isInternal": "false",
+      "applyURL": "https://www.mchire.com/co/McDonalds3351/Job?job_id=PDX_MC_3D09D8EC-B898-41C6-9FFE-6CDE94EFCE87_72743",
+      "originalURL": "6-am-available-full-time-crew-member/job/P8-188474-0",
+      "lang": "en",
+      "availableLanguages": [
+        "en"
+      ],
+      "commuteTimeDuration": 0,
+      "customFields": [
+        {
+          "cfKey": "cf_shorten_job_id",
+          "value": "P8-188474-0"
+        },
+        {
+          "cfKey": "cf_parent_organization_name",
+          "value": "McDonald's Canada - Franchisee Owned"
+        },
+        {
+          "cfKey": "cf_job_openings",
+          "value": "0"
+        }
+      ],
+      "facilityName": "",
+      "jobCardExtraFields": [
+        {
+          "attribute_name": "cf_parent_organization_name",
+          "value": "McDonald's Canada - Franchisee Owned",
+          "classname": "results-list__parent-organization-name"
+        }
+      ],
+      "addressFormatTokens": [
+        {
+          "#street": "1987 Main Street",
+          "#street_address": "1987 Main Street",
+          "#address1": "1987 Main Street",
+          "#zip": "E1E 1J1",
+          "#city": "MONCTON",
+          "#city_state": "MONCTON, New Brunswick",
+          "#city_state_abbr": "MONCTON, NB",
+          "#state_abbr": "NB",
+          "#country": "Canada",
+          "#country_abbr": "CA",
+          "#latitude": 46.0753495,
+          "#longitude": -64.8075361,
+          "#location_id": "72743",
+          "#location_name": "MAIN ST-MONCTON (06239)",
+          "#location_parsed_text": "1987 Main Street, MONCTON NB E1E 1J1, Canada",
+          "#location_text": "1987 Main Street, MONCTON NB E1E 1J1, Canada"
+        }
+      ]
+    }
+  ],
+  "facets": [],
+  "totalJob": 3889
+}

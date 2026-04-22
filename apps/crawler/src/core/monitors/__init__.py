@@ -188,11 +188,13 @@ def monitor_needs_browser(name: str, config: dict | None = None) -> bool:
     """Return True if the monitor requires a Playwright browser.
 
     accenture always needs a browser (cookie extraction via Playwright).
+    phenom always needs a browser (Phenom's WAF fingerprints TLS + requires
+    cookies established by a real Chrome profile; direct httpx returns 403).
     api_sniffer needs a browser when ``browser`` is set in config or when
     no ``api_url`` is configured (auto-discover mode).  dom always benefits
     from a browser but falls back to static HTML.
     """
-    if name == "accenture":
+    if name in ("accenture", "phenom"):
         return True
     if name == "api_sniffer":
         cfg = config or {}
@@ -435,6 +437,11 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"Personio XML \u2014 slug: {slug}, {jobs} jobs"
         return f"Personio XML \u2014 slug: {slug}"
+    if name == "phenom":
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"Phenom People \u2014 {jobs} jobs (browser required)"
+        return "Phenom People \u2014 browser required"
     if name == "rss":
         preset = metadata.get("preset", "generic")
         feed_url = metadata.get("feed_url", "?")
@@ -543,6 +550,7 @@ from src.core.monitors import (  # noqa: E402
     notion,  # noqa: F401
     oracle_hcm,  # noqa: F401
     personio,  # noqa: F401
+    phenom,  # noqa: F401
     pinpoint,  # noqa: F401
     recruitee,  # noqa: F401
     rippling,  # noqa: F401

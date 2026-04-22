@@ -1011,6 +1011,38 @@ personio — Personio XML Feed + HTML Fallback
               Also shows language coverage (e.g. "en: 11/19 desc, de: 13/19 desc")
   Zero jobs?  Verify slug — try the listing page in a browser"""
 
+MONITOR_PHENOM = """\
+phenom — Phenom People career-site API
+
+  API:      POST {board_url_origin}/api/get-jobs
+              ?radius=15&page_number=N&enable_kilometers=false
+            Body: {"disable_switch_search_mode": false,
+                   "site_available_languages": ["en", "en-us"]}
+  Returns:  Full job data (title, HTML description, locations,
+            employment_type, job_location_type, language)
+            metadata: sourceID, uniqueID, reference, requisitionID, companyID
+  Scraper:  Not needed (API returns full data, scraper step is skipped)
+  Cap:      50,000 jobs (5,000 API pages of 10)
+  Browser:  Required — Phenom's WAF rejects vanilla httpx (TLS fingerprint
+            + CSRF cookies). The monitor launches persistent_context with
+            channel="chrome" and issues each paginated request via
+            page.evaluate(fetch(...)) so requests inherit the page origin.
+  Note:     Phenom career sites are SPAs with window.__PRELOAD_STATE__
+            embedded in the SSR HTML. The landing page shows the first 10
+            jobs inline and paginates via the /api/get-jobs endpoint.
+            Detection looks for all three signature patterns:
+              - window.__PRELOAD_STATE__
+              - "jobSearch":{
+              - "totalJob":
+
+  Config:
+    {}  (no config required — board_url provides the origin)
+
+  Detection:  ws probe shows "Phenom People — N jobs (browser required)"
+  Zero jobs?  Verify the board URL resolves to a Phenom career site —
+              open in a browser and check the page source for
+              window.__PRELOAD_STATE__"""
+
 MONITOR_RSS = """\
 rss — RSS 2.0 Feed Monitor (presets: successfactors, teamtailor, generic)
 
@@ -1873,6 +1905,7 @@ MONITOR_CARDS: dict[str, str] = {
     "workday": MONITOR_WORKDAY,
     "pinpoint": MONITOR_PINPOINT,
     "personio": MONITOR_PERSONIO,
+    "phenom": MONITOR_PHENOM,
     "rss": MONITOR_RSS,
     "sitemap": MONITOR_SITEMAP,
     "nextdata": MONITOR_NEXTDATA,
