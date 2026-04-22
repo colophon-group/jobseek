@@ -2184,6 +2184,7 @@ jetbrains,jetbrains-careers,https://boards.greenhouse.io/jetbrains,greenhouse,,s
 jetzero,jetzero-greenhouse,https://job-boards.greenhouse.io/jetzero,greenhouse,"{""token"": ""jetzero""}",skip,
 jfrog,jfrog-greenhouse,https://job-boards.greenhouse.io/jfrog,greenhouse,"{""token"": ""jfrog""}",skip,
 job-board,job-board-greenhouse,https://job-boards.greenhouse.io/corelight,greenhouse,"{""token"": ""corelight""}",skip,
+jobandtalent,jobandtalent-careers,https://jobs.lever.co/jobandtalent,lever,"{""token"": ""jobandtalent""}",skip,
 jobber,jobber-ashby,https://jobs.ashbyhq.com/jobber,ashby,"{""token"": ""jobber""}",skip,
 jobhive-ag,jobhive-ag-join,https://join.com/companies/jobhive,join,"{""slug"": ""jobhive""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 joe-nimble-gmbh,joe-nimble-gmbh-join,https://join.com/companies/joe-nimble,join,"{""slug"": ""joe-nimble""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
