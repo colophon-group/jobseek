@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from textwrap import dedent
 
 import httpx
@@ -18,6 +19,8 @@ from src.core.monitors.jobylon import (
     can_handle,
     discover,
 )
+
+FIXTURES = Path(__file__).parent / "fixtures"
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -468,3 +471,291 @@ class TestRegistryParity:
             "jobylon"
         )
         assert detect_ats_from_url("https://emp.jobylon.com/jobs/1/") == "jobylon"
+
+
+# ---------------------------------------------------------------------------
+# Workspace / remote detection (substring-based)
+# ---------------------------------------------------------------------------
+
+
+class TestWorkspaceRemoteDetection:
+    """Verify ``workspace`` strings map to the correct ``job_location_type``.
+
+    Jobylon embeds occasionally wrap the raw label with city qualifiers
+    (``Remote (Stockholm)``) or national synonyms (``Arbete distans``,
+    ``fjernarbejde``, ``etätyö``).  An exact-match check missed these;
+    substring detection is what the production data actually requires.
+    """
+
+    @pytest.mark.parametrize(
+        "workspace",
+        [
+            "Remote",
+            "REMOTE",
+            "Remote (Stockholm)",
+            "Fully remote",
+            "Remote work",
+            "Distans",
+            "Arbete distans",
+            "Distansarbete",
+            "Etätyö",
+            "etätyö kotoa",
+            "Hjemmefra",
+            "Jobb hjemmefra",
+            "Fjernarbejde",
+            "fjernarbejde fra hjemmet",
+        ],
+    )
+    def test_remote_variants_classify_as_telecommute(self, workspace: str):
+        job = _parse_job({"id": "1", "url": "/jobs/1/", "workspace": workspace})
+        assert job is not None
+        assert job.job_location_type == "TELECOMMUTE", (
+            f"workspace={workspace!r} should map to TELECOMMUTE"
+        )
+
+    @pytest.mark.parametrize(
+        "workspace",
+        [
+            "Hybrid",
+            "Hybrid (Copenhagen)",
+            "Hybrid - Oslo",
+            "HYBRID",
+        ],
+    )
+    def test_hybrid_variants_unset_location_type(self, workspace: str):
+        # Hybrid leaves ``job_location_type`` unset (schema.org has no
+        # HYBRID code) but the raw label is preserved in metadata for
+        # downstream normalization.
+        job = _parse_job({"id": "1", "url": "/jobs/1/", "workspace": workspace})
+        assert job is not None
+        assert job.job_location_type is None
+        assert job.metadata is not None
+        assert job.metadata["workspace"] == workspace
+
+    @pytest.mark.parametrize(
+        "workspace",
+        [
+            "On-site",
+            "Onsite",
+            "Arbete på plats",
+            "Lähityö",
+        ],
+    )
+    def test_onsite_variants_leave_none(self, workspace: str):
+        job = _parse_job({"id": "1", "url": "/jobs/1/", "workspace": workspace})
+        assert job is not None
+        assert job.job_location_type is None
+
+
+# ---------------------------------------------------------------------------
+# Tolerant locations parsing
+# ---------------------------------------------------------------------------
+
+
+class TestParseLocationsTolerance:
+    """The embed is authored by hand — ``locations`` shows up as list,
+    dict, int, or missing.  The parser must not raise on any of these.
+    """
+
+    def test_list_of_strings(self):
+        job = _parse_job(
+            {
+                "id": "1",
+                "url": "/jobs/1/",
+                "locations": ["Stockholm", "Solna"],
+            }
+        )
+        assert job is not None
+        assert job.locations == ["Stockholm", "Solna"]
+
+    def test_dict_falls_back_to_locations_text(self):
+        # Non-list ``locations`` (e.g. dict from an older widget schema)
+        # is ignored; ``locations_text`` is used as fallback.
+        job = _parse_job(
+            {
+                "id": "1",
+                "url": "/jobs/1/",
+                "locations": {"city": "Stockholm"},
+                "locations_text": "Stockholm",
+            }
+        )
+        assert job is not None
+        assert job.locations == ["Stockholm"]
+
+    def test_none_locations_uses_fallback(self):
+        job = _parse_job(
+            {
+                "id": "1",
+                "url": "/jobs/1/",
+                "locations": None,
+                "locations_text": "Oslo",
+            }
+        )
+        assert job is not None
+        assert job.locations == ["Oslo"]
+
+    def test_int_locations_no_fallback_returns_none(self):
+        # Pathological data (e.g. a numeric id where a list should be) +
+        # no locations_text → ``locations`` is None, nothing crashes.
+        job = _parse_job({"id": "1", "url": "/jobs/1/", "locations": 42})
+        assert job is not None
+        assert job.locations is None
+
+    def test_empty_list_falls_back_to_text(self):
+        job = _parse_job(
+            {
+                "id": "1",
+                "url": "/jobs/1/",
+                "locations": [],
+                "locations_text": "Malmö",
+            }
+        )
+        assert job is not None
+        assert job.locations == ["Malmö"]
+
+
+# ---------------------------------------------------------------------------
+# Transient errors (5xx)
+# ---------------------------------------------------------------------------
+
+
+class TestTransientErrors:
+    """``_fetch_embed`` maps 404 → BoardGoneError (permanent); any
+    other non-2xx propagates as :class:`httpx.HTTPStatusError` so the
+    worker treats it as retriable rather than a dead board.
+    """
+
+    @pytest.mark.parametrize("status", [500, 502, 503, 504])
+    async def test_5xx_propagates_as_http_status_error(self, status: int):
+        async with httpx.AsyncClient(transport=_transport_for("", status=status)) as client:
+            board = {
+                "board_url": "https://example.com/careers",
+                "metadata": {"company_id": "1955"},
+            }
+            with pytest.raises(httpx.HTTPStatusError):
+                await discover(board, client)
+
+    async def test_429_propagates_as_http_status_error(self):
+        async with httpx.AsyncClient(transport=_transport_for("", status=429)) as client:
+            board = {
+                "board_url": "https://example.com/careers",
+                "metadata": {"company_id": "1955"},
+            }
+            with pytest.raises(httpx.HTTPStatusError):
+                await discover(board, client)
+
+    async def test_transport_error_raises_board_gone(self):
+        # httpx.ConnectError/etc. are swallowed by ``_fetch_embed`` and
+        # surface as BoardGoneError from ``discover`` — documented
+        # behavior of the current implementation.  If this changes in
+        # the future, loosen this test.
+        def handler(request):
+            raise httpx.ConnectError("boom")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://example.com/careers",
+                "metadata": {"company_id": "1955"},
+            }
+            with pytest.raises(BoardGoneError):
+                await discover(board, client)
+
+
+# ---------------------------------------------------------------------------
+# Real-embed fixture (McDonald's SE)
+# ---------------------------------------------------------------------------
+
+
+class TestRealEmbedFixture:
+    """Smoke-test the parser against a real Jobylon widget capture.
+
+    The fixture was fetched from
+    ``https://cdn.jobylon.com/jobs/companies/1955/embed/v2/?page_size=1000``
+    (McDonald's Sverige) on 2026-04-22.  It exercises the JS→JSON
+    translation, date/locale decoding, and ``workspace`` labels against
+    live markup rather than hand-crafted shells.
+    """
+
+    def _html(self) -> str:
+        path = FIXTURES / "jobylon_mcdonalds_se.html"
+        return path.read_text(encoding="utf-8")
+
+    def test_fixture_exists(self):
+        path = FIXTURES / "jobylon_mcdonalds_se.html"
+        assert path.exists(), f"missing fixture: {path}"
+        assert path.stat().st_size > 10_000
+
+    def test_parse_jobs_block_returns_many(self):
+        jobs = _parse_jobs_block(self._html())
+        # McDonald's SE has ~120 postings on a typical day; keep the
+        # lower bound loose so seasonal dips don't break the suite.
+        assert len(jobs) >= 20
+        assert all("id" in j and "url" in j for j in jobs)
+
+    def test_parse_job_produces_discovered_jobs(self):
+        jobs = _parse_jobs_block(self._html())
+        parsed = [_parse_job(j) for j in jobs]
+        parsed_non_null = [p for p in parsed if p is not None]
+        assert len(parsed_non_null) == len(jobs)
+        # Every job has an absolute emp.jobylon.com URL.
+        assert all(p.url.startswith("https://emp.jobylon.com/jobs/") for p in parsed_non_null)
+        # Every job carries a string title.
+        assert all(isinstance(p.title, str) and p.title for p in parsed_non_null)
+        # Language maps from klass → sv for a Swedish company.
+        assert any(p.language == "sv" for p in parsed_non_null)
+
+    async def test_discover_end_to_end_with_fixture(self):
+        html = self._html()
+
+        def handler(request):
+            return httpx.Response(200, text=html)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://cdn.jobylon.com/jobs/companies/1955/embed/v2/",
+                "metadata": {"company_id": "1955"},
+            }
+            jobs = await discover(board, client)
+        assert len(jobs) >= 20
+        # Dedupe invariant holds.
+        assert len({j.url for j in jobs}) == len(jobs)
+
+
+# ---------------------------------------------------------------------------
+# Host allowlist (narrow can_handle)
+# ---------------------------------------------------------------------------
+
+
+class TestHostAllowlist:
+    """The ``can_handle`` short-circuit must only trigger on known
+    first-party Jobylon hosts.  An attacker-controlled subdomain like
+    ``blog.jobylon.com`` or a look-alike like ``jobylon.com.evil.org``
+    must not be treated as a direct embed URL.
+    """
+
+    async def test_known_host_cdn(self):
+        result = await can_handle("https://cdn.jobylon.com/jobs/companies/1955/embed/v2/")
+        assert result == {"company_id": "1955"}
+
+    async def test_known_host_emp(self):
+        # emp.jobylon.com is in the allowlist but the URL shape has no
+        # embed id -> no direct match; ``can_handle`` with no client
+        # short-circuits to None.
+        result = await can_handle("https://emp.jobylon.com/jobs/12345-foo/")
+        assert result is None
+
+    async def test_unknown_subdomain_rejected(self):
+        # ``blog.jobylon.com`` and ``admin.jobylon.com`` are not in the
+        # allowlist — even though the old code's
+        # ``endswith('.jobylon.com')`` would have accepted them.
+        assert await can_handle("https://blog.jobylon.com/jobs/companies/1955/embed/v2/") is None
+        assert (
+            await can_handle("https://admin.jobylon.com/jobs/company-groups/241/embed/v2/") is None
+        )
+
+    async def test_lookalike_host_rejected(self):
+        # Classic suffix-confusion attacks.
+        assert (
+            await can_handle("https://cdn.jobylon.com.attacker.example/jobs/companies/1/embed/v2/")
+            is None
+        )
