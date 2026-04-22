@@ -3757,6 +3757,7 @@ scale-ai,scale-ai-greenhouse,https://job-boards.greenhouse.io/scaleai,greenhouse
 scaled-cognition,scaled-cognition-ashby,https://jobs.ashbyhq.com/scaled-cognition,ashby,"{""token"": ""scaled-cognition""}",skip,
 scalemath,scalemath-ashby,https://jobs.ashbyhq.com/scalemath,ashby,"{""token"": ""scalemath""}",skip,
 scandit,scandit-careers,https://boards.greenhouse.io/scandit,greenhouse,"{""token"": ""scandit""}",skip,
+scewo,scewo-careers,https://scewo-ag.jobs.personio.de/,personio,"{""slug"": ""scewo-ag""}",skip,
 schaffmann-consultants-executive-search,schaffmann-consultants-executive-search-join,https://join.com/companies/schaffmann-consultantsde,join,"{""slug"": ""schaffmann-consultantsde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 schindler,schindler-careers,https://job.schindler.com/search/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://job.schindler.com/googlefeed.xml""}",skip,
 schmelzle-partner,schmelzle-partner-join,https://join.com/companies/schmelzlede,join,"{""slug"": ""schmelzlede""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
