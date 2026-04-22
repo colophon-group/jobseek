@@ -3014,6 +3014,7 @@ ocado,ocado-careers,https://boards.greenhouse.io/ocadogroup,greenhouse,"{""token
 ocrolus-inc,ocrolus-inc-greenhouse,https://job-boards.greenhouse.io/ocrolusinc,greenhouse,"{""token"": ""ocrolusinc""}",skip,
 octa-steuerberater-ralf-sommer,octa-steuerberater-ralf-sommer-join,https://join.com/companies/octa-stbde,join,"{""slug"": ""octa-stbde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 octave,octave-greenhouse,https://job-boards.greenhouse.io/octave,greenhouse,"{""token"": ""octave""}",skip,
+octopus-energy,octopus-energy-careers,https://jobs.lever.co/octoenergy,lever,"{""token"": ""octoenergy""}",skip,
 octus,octus-greenhouse,https://job-boards.greenhouse.io/octus,greenhouse,"{""token"": ""octus""}",skip,
 oddball,oddball-greenhouse,https://job-boards.greenhouse.io/oddball,greenhouse,"{""token"": ""oddball""}",skip,
 odeko,odeko-greenhouse,https://job-boards.greenhouse.io/odeko,greenhouse,"{""token"": ""odeko""}",skip,
