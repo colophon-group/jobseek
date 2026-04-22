@@ -80,9 +80,13 @@ _HOST_RE = re.compile(r'data-host="([^"]+)"')
 
 # widgetId + apiKey are embedded inside script.min.js as a JSON subtree:
 #   "widgets":{"main":{"id":"...","apiKey":"...","detailPath":"...",...}}
-_WIDGET_MAIN_RE = re.compile(
-    r'"widgets"\s*:\s*\{\s*"main"\s*:\s*\{(?P<body>[^{}]*)\}',
-)
+#
+# The minified bundle can contain nested objects inside "main" (``themes``,
+# ``filters``, etc.), so a naive ``[^{}]*`` body match breaks.  Instead we
+# anchor on ``"widgets":{"main":{`` and then search a bounded window after the
+# anchor for each field individually — tolerant to nesting and reordering.
+_WIDGET_ANCHOR_RE = re.compile(r'"widgets"\s*:\s*\{\s*"main"\s*:\s*\{')
+_WIDGET_WINDOW_BYTES = 4096
 _WIDGET_ID_RE = re.compile(r'"id"\s*:\s*"([0-9a-fA-F-]{36})"')
 _API_KEY_RE = re.compile(r'"apiKey"\s*:\s*"([a-fA-F0-9]{32,})"')
 _DETAIL_PATH_RE = re.compile(r'"detailPath"\s*:\s*"([^"]+)"')
@@ -287,18 +291,21 @@ def _extract_widget_config(script_text: str) -> dict | None:
     """Return ``{"id", "apiKey", "detail_path"}`` from a Capybara script bundle.
 
     The tenant's ``script.min.js`` embeds a JSON subtree with the widget
-    configuration.  We slice the ``widgets.main`` object and pull out the
-    three fields we need via independent regexes — tolerant to reordering.
+    configuration.  We anchor on ``"widgets":{"main":{`` and then search a
+    bounded window after the anchor for each field independently — this is
+    tolerant to reordering *and* to nested objects inside ``main`` (themes,
+    filters, etc.) that would otherwise break a balanced-brace match.
     """
-    block = _WIDGET_MAIN_RE.search(script_text)
-    if block is None:
+    anchor = _WIDGET_ANCHOR_RE.search(script_text)
+    if anchor is None:
         return None
-    body = block.group("body")
-    id_match = _WIDGET_ID_RE.search(body)
-    key_match = _API_KEY_RE.search(body)
+    start = anchor.end()
+    window = script_text[start : start + _WIDGET_WINDOW_BYTES]
+    id_match = _WIDGET_ID_RE.search(window)
+    key_match = _API_KEY_RE.search(window)
     if id_match is None or key_match is None:
         return None
-    detail_match = _DETAIL_PATH_RE.search(body)
+    detail_match = _DETAIL_PATH_RE.search(window)
     return {
         "id": id_match.group(1),
         "apiKey": key_match.group(1),
@@ -310,11 +317,17 @@ async def _fetch_widget_config(host: str, client: httpx.AsyncClient) -> dict | N
     url = f"https://{host}/assets/js/script.min.js"
     try:
         resp = await client.get(url, follow_redirects=True)
-        if resp.status_code != 200:
-            return None
-        return _extract_widget_config(resp.text)
-    except Exception:
+    except Exception as exc:
+        log.warning("almacareer.widget_config_fetch_failed", host=host, error=str(exc))
         return None
+    if resp.status_code != 200:
+        log.warning(
+            "almacareer.widget_config_fetch_failed",
+            host=host,
+            status=resp.status_code,
+        )
+        return None
+    return _extract_widget_config(resp.text)
 
 
 # ---------------------------------------------------------------------------
@@ -335,10 +348,15 @@ def _flatten_groups(group: dict | None) -> list[dict]:
 
 
 def _parse_location(loc: dict | None) -> str | None:
-    """Build ``"City, Region, Country"`` — most specific parts first."""
+    """Build ``"CityPart, City, District, Region, Country"`` — most specific first.
+
+    Keeps all non-duplicate parts the backend supplies (up to five).  We used
+    to trim to the first-two + country, but that silently dropped useful
+    district+region context for tenants that populate the full hierarchy.
+    """
     if not loc:
         return None
-    parts = []
+    parts: list[str] = []
     for key in ("cityPart", "city", "district", "region"):
         val = loc.get(key)
         if val and val not in parts:
@@ -346,10 +364,6 @@ def _parse_location(loc: dict | None) -> str | None:
     country = loc.get("country")
     if country and country not in parts:
         parts.append(country)
-    # Avoid emitting ``cityPart, city`` pairs that duplicate each other at
-    # different granularity; keep at most two leading parts.
-    if len(parts) > 3:
-        parts = parts[:2] + parts[-1:]
     return ", ".join(parts) if parts else None
 
 
@@ -485,11 +499,18 @@ async def _post_graphql(
     )
     resp.raise_for_status()
     payload = resp.json()
-    if errors := payload.get("errors"):
-        # Raise the first error's message so board processing surfaces it.
+    errors = payload.get("errors")
+    data = payload.get("data") or {}
+    if errors:
+        # AlmaCareer routinely returns partial ``data`` alongside ``errors``
+        # (e.g. a per-field resolver failure on optional metadata while the
+        # core ``htmlContent`` is still populated).  Prefer partial data if
+        # it's usable; only raise when we have nothing to work with.
         msg = errors[0].get("message") if isinstance(errors, list) and errors else str(errors)
-        raise RuntimeError(f"AlmaCareer GraphQL error: {msg}")
-    return payload.get("data") or {}
+        if not data:
+            raise RuntimeError(f"AlmaCareer GraphQL error: {msg}")
+        log.warning("almacareer.graphql_partial_data", host=host, error=msg)
+    return data
 
 
 async def _fetch_list_page(
@@ -639,7 +660,19 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
             job.description = html
 
     if jobs:
-        await asyncio.gather(*[_hydrate(j) for j in jobs])
+        # ``return_exceptions=True`` so that a single transient detail-fetch
+        # failure (e.g. 429 that slipped past ``_fetch_job_html``'s own
+        # handler, or an asyncio CancelledError) doesn't poison the whole
+        # discover run — we keep teasers for the rest of the batch.
+        results = await asyncio.gather(*[_hydrate(j) for j in jobs], return_exceptions=True)
+        for job, result in zip(jobs, results, strict=True):
+            if isinstance(result, BaseException):
+                log.warning(
+                    "almacareer.hydrate_failed",
+                    host=host,
+                    job_id=(job.metadata or {}).get("id"),
+                    error=str(result),
+                )
 
     return jobs
 
