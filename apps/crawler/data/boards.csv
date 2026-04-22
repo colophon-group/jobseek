@@ -4584,6 +4584,7 @@ vultr,vultr-ashby,https://jobs.ashbyhq.com/vultr,ashby,"{""token"": ""vultr""}",
 w7-managementberatung-gmbh,w7-managementberatung-gmbh-join,https://join.com/companies/w7-managementnet,join,"{""slug"": ""w7-managementnet""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 wachtell,wachtell-careers-workday,https://wd1.myworkdaysite.com/recruiting/vhr_wachtelllipton/wlrk,workday,"{""company"": ""vhr_wachtelllipton"", ""wd_instance"": ""wd1"", ""site"": ""wlrk"", ""ssl_verify"": false}",workday,
 wall-street-prep,wall-street-prep-greenhouse,https://job-boards.greenhouse.io/wallstreetprep,greenhouse,"{""token"": ""wallstreetprep""}",skip,
+wallapop,wallapop-careers,https://job-boards.eu.greenhouse.io/wallapop,greenhouse,"{""token"": ""wallapop""}",skip,
 walleye-capital-full-time,walleye-capital-full-time-greenhouse,https://job-boards.greenhouse.io/walleyecapital-external-fulltime,greenhouse,"{""token"": ""walleyecapital-external-fulltime""}",skip,
 walrusfi,walrusfi-ashby,https://jobs.ashbyhq.com/walrusfi,ashby,"{""token"": ""walrusfi""}",skip,
 waltz-health,waltz-health-greenhouse,https://job-boards.greenhouse.io/waltzhealth,greenhouse,"{""token"": ""waltzhealth""}",skip,
