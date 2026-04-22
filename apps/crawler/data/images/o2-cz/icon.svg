@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:svgjs="http://svgjs.dev/svgjs" width="144" height="144"><svg width="144" height="144" viewBox="0 0 144 144" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="144" height="144" rx="30" fill="#0050FF"></rect>
+<g clip-path="url(#clip0_11988_717)">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M34 68.5317C34 86.3213 46.8686 101.063 65.5695 101.063C84.2704 101.063 97.0182 86.3213 97.0182 68.5317C97.0147 49.6479 84.3876 36 65.5695 36C46.7514 36 34 49.6479 34 68.5317ZM46.1405 68.5317C46.1405 56.7124 53.3047 45.2602 65.566 45.2602C77.8272 45.2602 84.8707 56.7124 84.8707 68.5317C84.8707 79.6204 78.9212 91.8033 65.566 91.8033C52.2107 91.8033 46.1405 79.6204 46.1405 68.5317Z" fill="white"></path>
+<path d="M114 115V110.662H102.804C107.283 106.246 113.137 100.885 113.137 95.0504C113.137 89.6505 109.759 87.0093 104.534 87.0093C101.746 87.0093 98.8759 87.7186 96.4038 88.9804L96.8371 93.5534C98.645 92.37 100.844 91.3471 103.163 91.3471C105.482 91.3471 107.642 92.5304 107.642 95.054C107.642 100.101 98.3325 107.903 95.7786 110.388V115H114.007H114Z" fill="white"></path>
+</g>
+<defs>
+<clipPath id="SvgjsClipPath1013">
+<rect width="80" height="79" fill="white" transform="translate(34 36)"></rect>
+</clipPath>
+</defs>
+</svg><style>@media (prefers-color-scheme: light) { :root { filter: none; } }
+@media (prefers-color-scheme: dark) { :root { filter: none; } }
+</style></svg>
