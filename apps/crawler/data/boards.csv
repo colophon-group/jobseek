@@ -4704,6 +4704,7 @@ wunder-mobility,wunder-mobility-join,https://join.com/companies/wundermobility,j
 wynd-labs,wynd-labs-greenhouse,https://job-boards.greenhouse.io/wyndlabs,greenhouse,"{""token"": ""wyndlabs""}",skip,
 wynd-labs-x-hiring,wynd-labs-x-hiring-greenhouse,https://job-boards.greenhouse.io/xhiring,greenhouse,"{""token"": ""xhiring""}",skip,
 x-ai,x-ai-careers,https://job-boards.greenhouse.io/xai,greenhouse,"{""token"": ""xai""}",skip,
+x-corp,x-corp-careers-workday,https://twitter.wd5.myworkdayjobs.com/en-US/X,workday,"{""company"": ""twitter"", ""wd_instance"": ""wd5"", ""site"": ""X""}",workday,
 xaira-therapeutics,xaira-therapeutics-greenhouse,https://job-boards.greenhouse.io/xairatherapeutics,greenhouse,"{""token"": ""xairatherapeutics""}",skip,
 xantium,xantium-greenhouse,https://job-boards.greenhouse.io/xantium,greenhouse,"{""token"": ""xantium""}",skip,
 xapo-bank,xapo-bank-greenhouse,https://job-boards.greenhouse.io/xapo61,greenhouse,"{""token"": ""xapo61""}",skip,
