@@ -36,7 +36,7 @@ from urllib.parse import urlparse
 import httpx
 import structlog
 
-from src.core.monitors import DiscoveredJob, fetch_page_text, register
+from src.core.monitors import BoardGoneError, DiscoveredJob, fetch_page_text, register
 
 log = structlog.get_logger()
 
@@ -44,6 +44,21 @@ MAX_JOBS = 50_000
 
 _EMBED_HOST = "cdn.jobylon.com"
 _DETAIL_BASE = "https://emp.jobylon.com"
+
+# Explicit allowlist used by ``can_handle`` to decide whether a URL is a
+# first-party Jobylon host.  A broad ``endswith('.jobylon.com')`` check
+# is too loose — any attacker-controlled subdomain could false-positive
+# monitor selection.  The set below matches the known surface: the
+# widget CDN, the detail-page origin, and the employee-facing portal
+# plus the CSS/JS static host.
+_JOBYLON_HOSTS: frozenset[str] = frozenset(
+    {
+        "jobylon.com",
+        "cdn.jobylon.com",
+        "emp.jobylon.com",
+        "static-eu.jobylon.com",
+    }
+)
 
 # Language code mapping — the embed stores human-readable names; the
 # underlying ``klass`` map always has the 2-letter ISO code as
@@ -352,9 +367,18 @@ def _parse_job(job: dict[str, Any]) -> DiscoveredJob | None:
     workspace = job.get("workspace")
     if isinstance(workspace, str):
         ws = workspace.strip().lower()
-        if ws in {"remote", "distans", "etätyö", "hjemmefra"}:
+        # Substring match — Jobylon embeds occasionally wrap the label
+        # with a city ("Remote (Stockholm)"), prefix it ("Arbete distans"),
+        # or append descriptors ("Hybrid - Copenhagen").  Exact-match
+        # missed these; checks are ordered so a "remote" appearing
+        # alongside "hybrid" still classifies as remote.
+        is_remote = any(
+            tok in ws for tok in ("remote", "distans", "etätyö", "hjemmefra", "fjernarbejde")
+        )
+        is_hybrid = "hybrid" in ws
+        if is_remote:
             job_location_type = "TELECOMMUTE"
-        elif "hybrid" in ws or "distans" in ws:
+        elif is_hybrid:
             # Generic hybrid/partial-remote — leave job_location_type alone
             # (schema.org has no hybrid code) but retain the raw label in
             # metadata for downstream normalization.
@@ -435,8 +459,6 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
     url = _embed_url(company_id, company_group_id)
     html = await _fetch_embed(url, client)
     if html is None:
-        from src.core.monitors import BoardGoneError
-
         raise BoardGoneError(
             f"Jobylon embed returned 404 for {url!r}",
             url=url,
@@ -493,8 +515,9 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
     """Detect Jobylon via either a direct cdn.jobylon.com URL or page markers."""
     host = (urlparse(url).hostname or "").lower()
 
-    # Direct embed URL shortcut.
-    if host == _EMBED_HOST or host.endswith(".jobylon.com"):
+    # Direct embed URL shortcut.  Narrowed to an explicit allowlist so
+    # ``attacker.jobylon.com.example.org``-style hosts never match.
+    if host in _JOBYLON_HOSTS:
         company_id, company_group_id = _ids_from_url(url)
         if company_id or company_group_id:
             result: dict[str, Any] = {}
