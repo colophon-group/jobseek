@@ -29,6 +29,7 @@ Job detail pages live at ``https://{customer}.talentclue.com/{lang}/node/
 from __future__ import annotations
 
 import base64
+import datetime
 import json
 import re
 from urllib.parse import urlparse
@@ -156,6 +157,8 @@ _SHIFT_MAP: dict[str, str] = {
     "parcial": "Part-time",
     "full-time": "Full-time",
     "part-time": "Part-time",
+    "full time": "Full-time",
+    "part time": "Part-time",
 }
 
 _CONTRACT_MAP: dict[str, str] = {
@@ -192,8 +195,6 @@ def _parse_date_posted(raw: dict) -> str | None:
         except (TypeError, ValueError):
             return None
         # Fall back to timestamp → date string.
-        import datetime
-
         return datetime.datetime.fromtimestamp(ts_int, tz=datetime.UTC).date().isoformat()
     return None
 
@@ -225,7 +226,7 @@ def _parse_job(job_id: str, raw: dict) -> DiscoveredJob | None:
         if val not in (None, "", False):
             metadata[meta_key] = val
     geo = raw.get("geolocation")
-    if isinstance(geo, dict) and geo.get("lat") and geo.get("lng"):
+    if isinstance(geo, dict) and geo.get("lat") is not None and geo.get("lng") is not None:
         metadata["geolocation"] = {"lat": geo["lat"], "lng": geo["lng"]}
 
     language = raw.get("language") or None
@@ -317,7 +318,7 @@ async def _probe_client_id(client_id: str, lang: str, client: httpx.AsyncClient)
     """Probe the jobs API for a client_id. Returns the job count or None."""
     try:
         jobs = await _fetch_jobs(client_id, lang, client)
-    except Exception:
+    except (httpx.HTTPError, ValueError, KeyError):
         return None
     return len(jobs)
 
