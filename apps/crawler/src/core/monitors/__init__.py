@@ -390,6 +390,13 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"TRAFFIT API \u2014 slug: {slug}, {jobs} jobs"
         return f"TRAFFIT API \u2014 slug: {slug}"
+    if name == "almacareer":
+        slug = metadata.get("slug", "?")
+        country = (metadata.get("country") or "?").upper()
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"AlmaCareer (Capybara) \u2014 {slug} [{country}], {jobs} jobs"
+        return f"AlmaCareer (Capybara) \u2014 {slug} [{country}]"
     if name == "recruitee":
         slug = metadata.get("slug", "?")
         api_base = metadata.get("api_base", "")
@@ -523,6 +530,7 @@ _PROBE_SKIP: frozenset[str] = frozenset({"amazon", "accenture"})
 # Import modules to trigger registration
 from src.core.monitors import (  # noqa: E402
     accenture,  # noqa: F401
+    almacareer,  # noqa: F401
     amazon,  # noqa: F401
     api_sniffer,  # noqa: F401
     ashby,  # noqa: F401

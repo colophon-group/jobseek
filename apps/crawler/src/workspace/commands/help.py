@@ -74,6 +74,7 @@ Monitor Types (cheapest first):
   ──────────────────────────────────────────────────────────────
   eightfold         8       Hybrid rich+URL   eightfold enrich (description only)
   join              9       Job URLs          Auto-configured
+  almacareer        10      Full job data     No (skipped)
   ashby             10      Full job data     No (skipped)
   bite              10      Job URLs          Auto-configured
   breezy            10      Job URLs          Auto-configured
@@ -879,6 +880,46 @@ softgarden — Softgarden ATS (HTML scraping, no auth)
 
   Detection:  ws probe shows "Softgarden — slug: X, N jobs"
   Zero jobs?  Verify slug — visit https://{slug}.softgarden.io directly"""
+
+MONITOR_ALMACAREER = """\
+almacareer — AlmaCareer (Capybara) career portals (CZ + SK)
+
+  API:      POST https://api.capybara.lmc.cz/api/graphql/widget
+            (single GraphQL endpoint shared by CZ and SK)
+  Returns:  Full job data (title, HTML description, locations, employment_type,
+            date_posted, base_salary, language)
+            metadata: id, country (cz|sk), company_name, fields, professions
+  Scraper:  Not needed (API returns full HTML via content.htmlContent)
+  Cap:      50,000 jobs
+
+  Covers:
+    CZ      *.jobs.cz       (LMC / Profesia / Jobs.cz)
+    SK      *.topjobs.sk    (Profesia SK)
+
+  Note:     The GraphQL endpoint requires a per-tenant widgetId + x-api-key.
+            Both are extracted automatically from
+            https://{host}/assets/js/script.min.js (embedded in each
+            tenant's Capybara bundle).
+            Pagination runs at 10 items per page (server-side cap) — the
+            monitor walks every page and then fetches each jobAd's full
+            htmlContent concurrently.
+
+  Config:
+    {"slug": "mcdonalds", "country": "cz"}
+    {"host": "mcdonalds.topjobs.sk"}
+
+    slug     Customer subdomain (e.g. "mcdonalds"). Auto-filled by ws probe
+             from the board URL.
+    country  "cz" for *.jobs.cz or "sk" for *.topjobs.sk. Auto-filled.
+    host     Optional explicit override (e.g. for custom domains).
+    widget_id / api_key / detail_path
+             Optional pre-seeded overrides from ws probe — otherwise
+             re-fetched each monitor cycle from the tenant's script.min.js.
+
+  Detection:  ws probe shows "AlmaCareer (Capybara) — <slug> [<CC>], N jobs"
+  Zero jobs?  Verify the tenant serves jobs on the listing page (the React
+              bundle may render 0 when all widgets are empty).
+              Check https://{host}/assets/js/script.min.js responds 200."""
 
 MONITOR_TRAFFIT = """\
 traffit — TRAFFIT ATS (Public JSON API, no auth)
@@ -1851,6 +1892,7 @@ ycombinator — YCombinator Jobs (last resort, HTML scraping)
 
 MONITOR_CARDS: dict[str, str] = {
     "accenture": MONITOR_ACCENTURE,
+    "almacareer": MONITOR_ALMACAREER,
     "amazon": MONITOR_AMAZON,
     "bite": MONITOR_BITE,
     "breezy": MONITOR_BREEZY,
