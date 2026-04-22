@@ -4722,6 +4722,7 @@ xpeng,xpeng-greenhouse,https://job-boards.greenhouse.io/xpengmotors,greenhouse,"
 xtx-markets,xtx-markets-greenhouse,https://job-boards.greenhouse.io/xtxmarketstechnologies,greenhouse,"{""token"": ""xtxmarketstechnologies""}",skip,
 xund,xund-careers,https://job-boards.eu.greenhouse.io/xund,greenhouse,"{""token"": ""xund""}",skip,
 y-soft,y-soft-greenhouse,https://job-boards.greenhouse.io/ysoftcorporation,greenhouse,"{""token"": ""ysoftcorporation""}",skip,
+yahoo,yahoo-careers,https://ouryahoo.wd5.myworkdayjobs.com/careers,workday,"{""company"": ""ouryahoo"", ""wd_instance"": ""wd5"", ""site"": ""careers""}",workday,
 ycombinator,ycombinator-ashby,https://jobs.ashbyhq.com/ycombinator,ashby,"{""token"": ""ycombinator""}",skip,
 yelp,yelp-icims,https://globalcareers-yelp.icims.com/jobs/search,sitemap,"{""url"": ""https://globalcareers-yelp.icims.com/sitemap.xml"", ""url_filter"": ""/job$""}",json-ld,
 yelp,yelp-main,https://www.yelp.careers/us/en/search-results,pinpoint,"{""slug"": ""yelp""}",skip,
