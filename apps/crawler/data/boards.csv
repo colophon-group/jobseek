@@ -576,6 +576,7 @@ bike-business-hub-slu,bike-business-hub-slu-join,https://join.com/companies/bike
 bill,bill-greenhouse,https://job-boards.greenhouse.io/billcom,greenhouse,"{""token"": ""billcom""}",skip,
 billiontoone,billiontoone-greenhouse,https://job-boards.greenhouse.io/billiontoone,greenhouse,"{""token"": ""billiontoone""}",skip,
 billups,billups-ashby,https://jobs.ashbyhq.com/billups,ashby,"{""token"": ""billups""}",skip,
+binabik-ai,binabik-ai-careers,https://binabik.ai/open-positions,dom,"{""render"": true}",dom,"{""render"": true, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""div"", ""offset"": 0, ""field"": ""locations""}, {""tag"": ""div"", ""offset"": 0, ""field"": ""employment_type""}, {""tag"": ""h2"", ""field"": ""description"", ""stop"": ""How to Apply"", ""html"": true}]}"
 binance,binance-lever,https://jobs.lever.co/binance,lever,"{""token"": ""binance""}",skip,
 binance-us,binance-us-ashby,https://jobs.ashbyhq.com/binance.us,ashby,"{""token"": ""binance.us""}",skip,
 bio,bio-ashby,https://jobs.ashbyhq.com/bio,ashby,"{""token"": ""bio""}",skip,
