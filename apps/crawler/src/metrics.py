@@ -261,6 +261,17 @@ browser_content_retry_total = Counter(
     ["outcome"],
 )
 
+browser_headless_coerced_total = Counter(
+    "crawler_browser_headless_coerced_total",
+    # ``headless: false`` is an Akamai-bypass opt-in that requires an X server.
+    # When DISPLAY is unset at runtime (xvfb entrypoint missing, docker-run
+    # entrypoint override) open_page flips to headless=True instead of
+    # crashing. Any nonzero rate on ``browser-1`` in prod is a deploy/infra
+    # regression — investigate the entrypoint chain. See #2431.
+    "Launches where headless=False was requested but coerced to True (DISPLAY unset)",
+    ["reason"],
+)
+
 
 # Build info — emitted once at startup so Grafana can confirm which
 # ``apps/crawler/VERSION`` each container is running without SSH-ing in.

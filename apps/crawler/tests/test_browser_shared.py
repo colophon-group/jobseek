@@ -19,6 +19,7 @@ from src.shared.browser import (
     NAVIGATE_KEYS,
     OVERLAY_SELECTORS,
     VALID_WAIT_STRATEGIES,
+    _resolve_headless,
     _resolve_placeholders,
     dismiss_overlays,
     navigate,
@@ -413,7 +414,11 @@ class TestOpenPage:
             user_agent=DEFAULT_USER_AGENT
         )
 
-    async def test_custom_config(self):
+    async def test_custom_config(self, monkeypatch):
+        # With DISPLAY set, ``headless: false`` is honoured as-is.
+        # The unset-DISPLAY coercion path is covered in
+        # ``TestHeadlessCoercion`` below.
+        monkeypatch.setenv("DISPLAY", ":99")
         pw = _make_pw()
         async with open_page(pw, {"headless": False, "user_agent": "custom/1.0"}):
             pass
@@ -503,6 +508,84 @@ class TestOpenPage:
             pass
         kwargs = pw.chromium.launch.await_args.kwargs
         assert kwargs.get("channel") == "chrome"
+
+
+class TestHeadlessCoercion:
+    """Coverage for the headless fallback when DISPLAY is unset (#2431).
+
+    Boards that need Akamai/PerimeterX bypass pass ``headless: false`` and
+    rely on the browser-1 container's xvfb entrypoint to provide an X
+    server. When the entrypoint does not run (image predates it, or a
+    ``docker run --entrypoint=""`` override bypasses it) Playwright's
+    ``launch_persistent_context`` crashes every cycle. ``_resolve_headless``
+    coerces ``headless=False`` → ``True`` with a warning when DISPLAY is
+    unset, degrading to bot-manager-blocked rather than crashing.
+    """
+
+    def test_headless_true_passes_through(self, monkeypatch):
+        monkeypatch.delenv("DISPLAY", raising=False)
+        assert _resolve_headless(True) == (True, False)
+
+    def test_headless_false_honoured_when_display_set(self, monkeypatch):
+        monkeypatch.setenv("DISPLAY", ":99")
+        assert _resolve_headless(False) == (False, False)
+
+    def test_headless_false_coerced_when_display_unset(self, monkeypatch):
+        monkeypatch.delenv("DISPLAY", raising=False)
+        assert _resolve_headless(False) == (True, True)
+
+    def test_headless_false_coerced_when_display_empty(self, monkeypatch):
+        # os.environ.get returns "" for empty values, which is falsy —
+        # treat that as "no display" for robustness.
+        monkeypatch.setenv("DISPLAY", "")
+        assert _resolve_headless(False) == (True, True)
+
+    async def test_open_page_coerces_missing_display(self, monkeypatch):
+        """Vanilla launch path: ``headless: false`` + no DISPLAY → headless=True."""
+        monkeypatch.delenv("DISPLAY", raising=False)
+        pw = _make_pw()
+        async with open_page(pw, {"headless": False}):
+            pass
+        kwargs = pw.chromium.launch.await_args.kwargs
+        assert kwargs["headless"] is True
+        # --headless=new is used so anti-bot systems see the less-detectable
+        # headless variant; a plain headless=True would be blocked harder.
+        assert "--headless=new" in kwargs.get("args", [])
+
+    async def test_open_page_preserves_headless_false_with_display(self, monkeypatch):
+        monkeypatch.setenv("DISPLAY", ":99")
+        pw = _make_pw()
+        async with open_page(pw, {"headless": False}):
+            pass
+        kwargs = pw.chromium.launch.await_args.kwargs
+        assert kwargs["headless"] is False
+        # No --headless=new since we're running headful.
+        assert "--headless=new" not in kwargs.get("args", [])
+
+    async def test_open_page_persistent_context_coerces_missing_display(self, monkeypatch):
+        """Persistent-context path (tesla/mcdonalds-it) also coerces."""
+        monkeypatch.delenv("DISPLAY", raising=False)
+        # Need the persistent-context mock shape.
+        page = _make_page()
+        context = MagicMock()
+        context.new_page = AsyncMock(return_value=page)
+        context.close = AsyncMock()
+        context.add_cookies = AsyncMock()
+        context.set_default_timeout = MagicMock()
+        context.pages = [page]
+        pw = MagicMock()
+        pw.chromium = MagicMock()
+        pw.chromium.launch_persistent_context = AsyncMock(return_value=context)
+        pw.chromium.launch = AsyncMock()
+
+        async with open_page(
+            pw,
+            {"headless": False, "persistent_context": True, "channel": "chrome"},
+        ):
+            pass
+        kwargs = pw.chromium.launch_persistent_context.await_args.kwargs
+        assert kwargs["headless"] is True
+        assert "--headless=new" in kwargs.get("args", [])
 
 
 class TestOpenPagePersistentContext:
