@@ -2764,6 +2764,7 @@ motherduck,motherduck-ashby,https://jobs.ashbyhq.com/motherduck,ashby,"{""token"
 motion,motion-ashby,https://jobs.ashbyhq.com/motion,ashby,"{""token"": ""motion""}",skip,
 motional,motional-greenhouse,https://job-boards.greenhouse.io/motional,greenhouse,"{""token"": ""motional""}",skip,
 motive,motive-greenhouse,https://job-boards.greenhouse.io/gomotive,greenhouse,"{""token"": ""gomotive""}",skip,
+motorola-solutions,motorola-solutions-careers-workday,https://motorolasolutions.wd5.myworkdayjobs.com/Careers,workday,"{""tenant"": ""motorolasolutions"", ""job_board"": ""Careers""}",workday,
 moulin-a-miel,moulin-a-miel-join,https://join.com/companies/famillemaryfr,join,"{""slug"": ""famillemaryfr""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 movement-strategy,movement-strategy-greenhouse,https://job-boards.greenhouse.io/movementstrategy,greenhouse,"{""token"": ""movementstrategy""}",skip,
 mozilla,mozilla-greenhouse,https://job-boards.greenhouse.io/mozilla,greenhouse,"{""token"": ""mozilla""}",skip,
