@@ -3723,6 +3723,7 @@ salsify,salsify-greenhouse,https://job-boards.greenhouse.io/salsify,greenhouse,"
 salt,salt-careers,https://www.jobup.ch/masks/salt/list_salt.asp,dom,,json-ld,
 salt-security,salt-security-greenhouse,https://job-boards.greenhouse.io/saltsecurity,greenhouse,"{""token"": ""saltsecurity""}",skip,
 sama,sama-greenhouse,https://job-boards.greenhouse.io/samainc,greenhouse,"{""token"": ""samainc""}",skip,
+sambanova,sambanova-careers,https://boards.greenhouse.io/sambanovasystems,greenhouse,"{""token"": ""sambanovasystems""}",skip,
 samlino-group,samlino-group-greenhouse,https://job-boards.greenhouse.io/ceg,greenhouse,"{""token"": ""ceg""}",skip,
 samsara,samsara-greenhouse,https://job-boards.greenhouse.io/samsara,greenhouse,"{""token"": ""samsara""}",skip,
 samsung,samsung-careers,https://sec.wd3.myworkdayjobs.com/Samsung_Careers,workday,"{""company"": ""sec"", ""wd_instance"": ""wd3"", ""site"": ""Samsung_Careers""}",workday,
