@@ -28,6 +28,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "oracle_hcm",
         "pinpoint",
         "recruitee",
+        "recruiter_co_kr",
         "rss",
         "traffit",
     }
