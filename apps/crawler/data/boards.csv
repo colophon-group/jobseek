@@ -2455,6 +2455,7 @@ lindt-spruengli,lindt-spruengli-careers-workday,https://lindtspruengli.wd103.myw
 lindushealth,lindushealth-ashby,https://jobs.ashbyhq.com/lindushealth,ashby,"{""token"": ""lindushealth""}",skip,
 linear,linear-ashby,https://jobs.ashbyhq.com/linear,ashby,"{""token"": ""linear""}",skip,
 link,link-greenhouse,https://job-boards.greenhouse.io/link,greenhouse,"{""token"": ""link""}",skip,
+linkedin,linkedin-careers,https://careers.smartrecruiters.com/linkedin3,smartrecruiters,"{""token"": ""linkedin3""}",smartrecruiters,
 linklaters,linklaters-careers,https://linklaters.wd3.myworkdayjobs.com/Linklaters,workday,"{""company"": ""linklaters"", ""wd_instance"": ""wd3"", ""site"": ""Linklaters""}",workday,
 linkup,linkup-careers,https://jobs.ashbyhq.com/Linkup,ashby,"{""token"": ""Linkup""}",skip,
 linq,linq-greenhouse,https://job-boards.greenhouse.io/emslinqinc,greenhouse,"{""token"": ""emslinqinc""}",skip,
