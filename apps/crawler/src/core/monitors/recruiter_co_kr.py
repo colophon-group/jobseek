@@ -30,6 +30,7 @@ Config keys:
 from __future__ import annotations
 
 import asyncio
+import random
 from urllib.parse import urlparse
 
 import httpx
@@ -46,6 +47,15 @@ _PAGE_SIZE = 100
 _MAX_JOBS = 50_000
 _DETAIL_CONCURRENCY = 8
 _HARD_PAGE_CAP = 200  # 200 * 100 = 20,000 jobs
+
+# Retry policy for the list endpoint. The shared api-recruiter.recruiter.co.kr
+# host occasionally returns 429/5xx during bursty monitor runs; a short
+# jittered exponential backoff absorbs the blip before failing the whole
+# monitor (which would double the board-level backoff via _RECORD_FAILURE).
+# Mirrors the pattern added to oracle_hcm.py in commit fc9031c1.
+_TRANSIENT_STATUS = frozenset({429, 500, 502, 503, 504})
+_RETRY_ATTEMPTS = 3
+_RETRY_BASE_DELAY_S = 2.0
 
 _IGNORE_SLUGS = frozenset({"www", "api", "api-recruiter", "infra1-static", "cdn"})
 
@@ -122,6 +132,65 @@ def _parse_list_item(item: dict, slug: str) -> dict | None:
     }
 
 
+def _extract_locations(detail: dict, summary: dict) -> list[str]:
+    """Best-effort location extraction from an API payload.
+
+    The live McDonald's-KR and Tokyo-Electron-KR probes (Apr 2026) returned
+    NO location fields in either the list or detail responses — every job
+    is tagged only by ``classificationCode`` ("Headquarters", "Restaurant",
+    "Part-time"). The shared ``/region/v1`` endpoint requires authentication
+    and the list filter ``regionSnList`` suggests region taxonomies are
+    per-tenant and only populated for multi-site customers.
+
+    TODO: once a fixture from a tenant with populated regions is captured
+    (e.g. a retailer with per-branch hiring), update this helper to read
+    the right fields. Likely candidates — inferred from Korean ATS
+    conventions — include ``regionList`` / ``regionName`` / ``workPlace`` /
+    ``workingAreaList`` / ``siteName``. Until then the helper defensively
+    collects anything that looks location-shaped from both list and detail.
+    """
+    names: list[str] = []
+    seen: set[str] = set()
+
+    def _push(value) -> None:
+        if isinstance(value, str):
+            v = value.strip()
+            if v and v not in seen:
+                seen.add(v)
+                names.append(v)
+        elif isinstance(value, dict):
+            # Korean-ATS convention: {regionName, regionSn} or {name, sn}.
+            for key in ("regionName", "name", "cityName", "siteName", "displayName"):
+                if isinstance(value.get(key), str):
+                    _push(value[key])
+                    return
+
+    # Likely location-bearing keys — kept forgiving since we don't yet have a
+    # populated fixture. Merge detail over summary: detail is canonical.
+    for source in (summary, detail):
+        for key in (
+            "regionList",
+            "regionNameList",
+            "workPlace",
+            "workPlaceList",
+            "workingArea",
+            "workingAreaList",
+            "siteList",
+            "locationList",
+        ):
+            value = source.get(key)
+            if isinstance(value, list):
+                for v in value:
+                    _push(v)
+            elif value:
+                _push(value)
+        # Scalar name fields fall through too.
+        for key in ("regionName", "workPlaceName", "siteName", "cityName"):
+            _push(source.get(key))
+
+    return names
+
+
 def _parse_detail(detail: dict, summary: dict, slug: str) -> DiscoveredJob | None:
     """Merge list summary + detail response into a ``DiscoveredJob``."""
     title = detail.get("title") or summary.get("list_title")
@@ -131,8 +200,9 @@ def _parse_detail(detail: dict, summary: dict, slug: str) -> DiscoveredJob | Non
     description = detail.get("jobDescription")
     if detail.get("jobDescriptionType") not in (None, "HTML") and description:
         # Non-HTML content: wrap in a <pre> block so the pipeline still
-        # recognises it as HTML.
-        description = f"<pre>{description}</pre>"
+        # recognises it as HTML. Coerce to ``str`` defensively — the API
+        # is schemaless and could return numbers/lists for this field.
+        description = f"<pre>{str(description)}</pre>"
 
     career_type = detail.get("careerType") or summary.get("careerType")
     employment_type = _CAREER_TYPE_MAP.get((career_type or "").upper())
@@ -140,7 +210,12 @@ def _parse_detail(detail: dict, summary: dict, slug: str) -> DiscoveredJob | Non
     date_posted = _dt_date(detail.get("startDateTime") or summary.get("startDateTime"))
 
     tags = detail.get("tagList") or summary.get("tagList") or []
+    if not isinstance(tags, list):
+        # API is schemaless — if ``tagList`` comes back as a dict/string, skip it.
+        tags = []
     tag_names = [t.get("tagName") for t in tags if isinstance(t, dict) and t.get("tagName")]
+
+    locations = _extract_locations(detail, summary)
 
     metadata: dict = {}
     classification = detail.get("classificationCode") or summary.get("classificationCode")
@@ -162,11 +237,44 @@ def _parse_detail(detail: dict, summary: dict, slug: str) -> DiscoveredJob | Non
         url=summary["url"],
         title=title,
         description=description,
+        locations=locations or None,
         employment_type=employment_type,
         date_posted=date_posted,
         language="ko",
         metadata=metadata or None,
     )
+
+
+async def _post_with_retry(
+    client: httpx.AsyncClient, url: str, *, headers: dict, json: dict
+) -> httpx.Response:
+    """POST with exponential-jitter backoff on 429/5xx.
+
+    On a non-transient status or after exhausting retries, returns the final
+    response — the caller should still call ``raise_for_status()`` so
+    persistent upstream failures propagate to ``_RECORD_FAILURE``.
+    """
+    resp: httpx.Response | None = None
+    for attempt in range(_RETRY_ATTEMPTS):
+        resp = await client.post(url, headers=headers, json=json)
+        if resp.status_code not in _TRANSIENT_STATUS:
+            return resp
+        if attempt == _RETRY_ATTEMPTS - 1:
+            break
+        base_delay = _RETRY_BASE_DELAY_S * (2**attempt)
+        jittered = base_delay * random.uniform(0.8, 1.2)
+        log.warning(
+            "recruiter_co_kr.transient_retry",
+            url=url,
+            status=resp.status_code,
+            attempt=attempt + 1,
+            backoff_s=round(jittered, 2),
+        )
+        await asyncio.sleep(jittered)
+    # resp is guaranteed non-None: the first request always assigns it or raises,
+    # and the loop only breaks on transient status after at least one assignment.
+    assert resp is not None
+    return resp
 
 
 async def _fetch_list_page(
@@ -188,7 +296,9 @@ async def _fetch_list_page(
             "resumeLanguageTypeList": [],
         },
     }
-    resp = await client.post(_API_BASE + _LIST_PATH, headers=_api_headers(slug), json=body)
+    resp = await _post_with_retry(
+        client, _API_BASE + _LIST_PATH, headers=_api_headers(slug), json=body
+    )
     resp.raise_for_status()
     return resp.json()
 
