@@ -4376,6 +4376,7 @@ trulioo,trulioo-ashby,https://jobs.ashbyhq.com/trulioo,ashby,"{""token"": ""trul
 trust-bank,trust-bank-greenhouse,https://job-boards.greenhouse.io/trustbank,greenhouse,"{""token"": ""trustbank""}",skip,
 trust-wallet,trust-wallet-ashby,https://jobs.ashbyhq.com/trust-wallet,ashby,"{""token"": ""trust-wallet""}",skip,
 trust-will,trust-will-greenhouse,https://job-boards.greenhouse.io/trustwill,greenhouse,"{""token"": ""trustwill""}",skip,
+trustpilot,trustpilot-careers,https://boards.greenhouse.io/trustpilot,greenhouse,"{""token"": ""trustpilot""}",skip,
 truveta,truveta-greenhouse,https://job-boards.greenhouse.io/truveta,greenhouse,"{""token"": ""truveta""}",skip,
 tsmc,tsmc-main,https://careers.tsmc.com/en_US/careers,sitemap,"{""sitemap_url"": ""https://careers.tsmc.com/en_US/careers/sitemap.xml"", ""url_filter"": ""/JobDetail/"", ""proxy"": true}",json-ld,"{""proxy"": true}"
 tsmc,tsmc-successfactors,https://ro.careers.tsmc.com/search/?createNewAlert=false&q=&locationsearch=,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://ro.careers.tsmc.com/googlefeed.xml""}",json-ld,
