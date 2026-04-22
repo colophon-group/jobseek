@@ -94,6 +94,7 @@ Monitor Types (cheapest first):
   workday           10      Job URLs          Auto-configured
   personio          10      Full/partial      If descriptions missing (fallback)
   notion            15      Job URLs          Auto-configured
+  recruiter_co_kr   15      Full job data     No (skipped)
   umantis           15      URL set           Yes
   nextdata          20      URLs or full      If URL-only
   sitemap           50      URL set           Yes
@@ -629,6 +630,35 @@ mokahr — Mokahr ATS (Chinese recruitment platform)
     org_id    Organisation slug (e.g. "zte")
     site_id   Numeric site ID (e.g. 47588)
     locale    API locale (default "zh-CN")"""
+
+MONITOR_RECRUITER_CO_KR = """\
+recruiter_co_kr — Recruiter.co.kr ATS (Korean, Public JSON API)
+
+  List:     POST https://api-recruiter.recruiter.co.kr/position/v1/jobflex
+  Detail:   GET  https://api-recruiter.recruiter.co.kr/position/v2/jobflex/{sn}
+  Returns:  Rich (title, HTML description, date_posted, employment_type,
+            language=ko, metadata: classification, tags, valid_through,
+            announcement_type, recruitment_type)
+  Scraper:  Not needed (detail API returns full HTML)
+  Browser:  No — HTTP-only
+  Cost:     15 (paginated list + concurrent detail fetches)
+  Cap:      50,000 jobs
+
+  Tenants are identified via a `prefix: {slug}.recruiter.co.kr` request
+  header — the API itself lives at a shared origin. Board URLs follow the
+  pattern https://{slug}.recruiter.co.kr/career/home. Monitor defaults to
+  only OPEN + IN_SUBMISSION postings; set include_closed to widen.
+
+  Config:
+    {"slug": "mcdonalds"}
+    {"slug": "mcdonalds", "include_closed": true}
+
+    slug             Customer subdomain. Auto-derived from board URL.
+    include_closed   Include postings with openStatus != OPEN or
+                     submissionStatus == POST_SUBMISSION (default false).
+
+  Detection:  ws probe shows "Recruiter.co.kr — slug: X, N jobs"
+  Zero jobs?  Check openStatus filters — try include_closed."""
 
 MONITOR_NOTION = """\
 notion — Notion Site Job Pages
@@ -1894,6 +1924,7 @@ oracle_hcm — Oracle Cloud HCM REST API monitor
     "inline": MONITOR_INLINE,
     "api_sniffer": MONITOR_API_SNIFFER,
     "mokahr": MONITOR_MOKAHR,
+    "recruiter_co_kr": MONITOR_RECRUITER_CO_KR,
     "ycombinator": MONITOR_YCOMBINATOR,
 }
 

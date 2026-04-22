@@ -138,6 +138,7 @@ _KNOWN_ATS_DOMAINS = frozenset(
         "traffit",
         "mokahr",
         "dvinci",
+        "recruiter_co_kr",
         "oracle_hcm",
         "eightfold",
         "accenture",
