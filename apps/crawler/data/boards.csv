@@ -2066,6 +2066,7 @@ incident,incident-ashby,https://jobs.ashbyhq.com/incident,ashby,"{""token"": ""i
 incident-iq,incident-iq-greenhouse,https://job-boards.greenhouse.io/incidentiq,greenhouse,"{""token"": ""incidentiq""}",skip,
 includedhealth,includedhealth-pinpoint,https://includedhealth.pinpointhq.com,pinpoint,"{""slug"": ""includedhealth""}",skip,
 incode,incode-careers-gh,https://job-boards.greenhouse.io/incode,greenhouse,,skip,
+indeed,indeed-careers,https://www.indeed.com/cmp/Indeed/jobs,dom,"{""url"": ""https://www.indeed.com/cmp/Indeed/jobs"", ""render"": true, ""wait"": ""networkidle"", ""timeout"": 45000, ""url_filter"": ""gdc\\.indeed\\.com/conv/orgIndApp\\?jk="", ""url_transform"": {""find"": ""^https://gdc\\.indeed\\.com/conv/orgIndApp\\?jk=([a-f0-9]{16})(&.*)?$"", ""replace"": ""https://www.indeed.com/viewjob?jk=\\1""}, ""pagination"": {""param_name"": ""start"", ""start"": 0, ""increment"": 20, ""max_pages"": 10}}",json-ld,"{""render"": true}"
 indent,indent-ashby,https://jobs.ashbyhq.com/indent,ashby,"{""token"": ""indent""}",skip,
 index-ventures,index-ventures-lever,https://jobs.lever.co/indexventures,lever,"{""token"": ""indexventures""}",skip,
 inductive-bio,inductive-bio-ashby,https://jobs.ashbyhq.com/inductive-bio,ashby,"{""token"": ""inductive-bio""}",skip,
