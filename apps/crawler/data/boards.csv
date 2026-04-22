@@ -4657,6 +4657,7 @@ wix,wix-careers,https://careers.wix.com/positions,sitemap,"{""url_filter"": ""/p
 wiz-inc,wiz-inc-greenhouse,https://job-boards.greenhouse.io/wizinc,greenhouse,"{""token"": ""wizinc""}",skip,
 wizard,wizard-greenhouse,https://job-boards.greenhouse.io/wizardcommerce,greenhouse,"{""token"": ""wizardcommerce""}",skip,
 woflow,woflow-ashby,https://jobs.ashbyhq.com/woflow,ashby,"{""token"": ""woflow""}",skip,
+wolt,wolt-careers,https://boards.greenhouse.io/wolt,greenhouse,"{""token"": ""wolt""}",skip,
 wolters-kluwer,wolters-kluwer-workday,https://wk.wd3.myworkdayjobs.com/External,workday,"{""company"": ""wk"", ""wd_instance"": ""wd3"", ""site"": ""External""}",workday,
 wolve,wolve-pinpoint,https://wolve.pinpointhq.com,pinpoint,"{""slug"": ""wolve""}",skip,
 wonder-studios,wonder-studios-greenhouse,https://job-boards.greenhouse.io/wonderstudios,greenhouse,"{""token"": ""wonderstudios""}",skip,
