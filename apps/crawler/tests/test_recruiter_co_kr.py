@@ -1,16 +1,21 @@
 from __future__ import annotations
 
+from unittest.mock import AsyncMock, patch
+
 import httpx
 import pytest
 
 from src.core.monitors import DiscoveredJob
 from src.core.monitors.recruiter_co_kr import (
+    _RETRY_ATTEMPTS,
     _api_headers,
     _board_url,
     _dt_date,
+    _extract_locations,
     _job_url,
     _parse_detail,
     _parse_list_item,
+    _post_with_retry,
     _slug_from_url,
     can_handle,
     discover,
@@ -437,3 +442,210 @@ class TestRegistration:
 
         assert "recruiter_co_kr" in MONITOR_CARDS
         assert "Recruiter.co.kr" in MONITOR_CARDS["recruiter_co_kr"]
+
+
+class TestTagListTypeGuard:
+    """_parse_detail must not crash on non-list tagList values.
+
+    The API is schemaless: if a misbehaving tenant returns a dict or string
+    for ``tagList``, the monitor should fall back to empty tags instead of
+    raising AttributeError / TypeError.
+    """
+
+    def _summary(self):
+        return {
+            "positionSn": 1,
+            "url": "https://mcdonalds.recruiter.co.kr/career/jobs/1",
+            "list_title": "Sample",
+            "startDateTime": "2026-04-22T00:00:00",
+            "careerType": "CAREER",
+        }
+
+    def test_taglist_as_dict_does_not_crash(self):
+        detail = {"title": "Weird", "tagList": {"oops": "dict"}}
+        job = _parse_detail(detail, self._summary(), "x")
+        assert job is not None
+        assert job.title == "Weird"
+        assert (job.metadata or {}).get("tags") is None
+
+    def test_taglist_as_string_does_not_crash(self):
+        detail = {"title": "Weird2", "tagList": "oops"}
+        job = _parse_detail(detail, self._summary(), "x")
+        assert job is not None
+        assert (job.metadata or {}).get("tags") is None
+
+    def test_summary_taglist_as_dict_still_ignored(self):
+        summary = self._summary()
+        summary["tagList"] = {"bad": "type"}
+        job = _parse_detail({"title": "T"}, summary, "x")
+        assert job is not None
+        assert (job.metadata or {}).get("tags") is None
+
+    def test_non_string_jobdescription_non_html_is_coerced(self):
+        # If an upstream caller returns, say, a list for jobDescription
+        # with a non-HTML content type, the <pre>-wrapping step must not
+        # crash with a TypeError.
+        detail = {
+            "title": "T",
+            "jobDescription": ["line 1", "line 2"],
+            "jobDescriptionType": "TEXT",
+        }
+        job = _parse_detail(detail, self._summary(), "x")
+        assert job is not None
+        assert job.description is not None
+        assert job.description.startswith("<pre>")
+
+
+class TestExtractLocations:
+    def test_empty_detail_returns_empty(self):
+        assert _extract_locations({}, {}) == []
+
+    def test_region_list_with_dicts(self):
+        detail = {
+            "regionList": [
+                {"regionSn": 1, "regionName": "Seoul"},
+                {"regionSn": 2, "regionName": "Busan"},
+            ],
+        }
+        assert _extract_locations(detail, {}) == ["Seoul", "Busan"]
+
+    def test_region_list_with_strings(self):
+        detail = {"regionNameList": ["Seoul", "Busan"]}
+        assert _extract_locations(detail, {}) == ["Seoul", "Busan"]
+
+    def test_work_place_scalar(self):
+        detail = {"workPlace": "Gangnam HQ"}
+        assert _extract_locations(detail, {}) == ["Gangnam HQ"]
+
+    def test_detail_overrides_but_merges_summary(self):
+        summary = {"regionList": [{"regionName": "Seoul"}]}
+        detail = {"regionList": [{"regionName": "Busan"}]}
+        # Both are preserved; dedup preserves order (summary first).
+        assert _extract_locations(detail, summary) == ["Seoul", "Busan"]
+
+    def test_dedupes_identical_entries(self):
+        detail = {"regionList": [{"regionName": "Seoul"}, {"regionName": "Seoul"}]}
+        assert _extract_locations(detail, {}) == ["Seoul"]
+
+    def test_parse_detail_populates_locations(self):
+        detail = {
+            "title": "Engineer",
+            "regionList": [{"regionName": "Seoul"}, {"regionName": "Busan"}],
+        }
+        summary = {
+            "positionSn": 99,
+            "url": "https://mcdonalds.recruiter.co.kr/career/jobs/99",
+            "list_title": "Engineer",
+        }
+        job = _parse_detail(detail, summary, "mcdonalds")
+        assert job is not None
+        assert job.locations == ["Seoul", "Busan"]
+
+    def test_parse_detail_no_locations_stays_none(self):
+        # Matches the real McDonald's-KR payload — no location fields.
+        detail = {"title": "T"}
+        summary = {
+            "positionSn": 1,
+            "url": "https://mcdonalds.recruiter.co.kr/career/jobs/1",
+            "list_title": "T",
+        }
+        job = _parse_detail(detail, summary, "mcdonalds")
+        assert job is not None
+        assert job.locations is None
+
+
+def _response(status: int, *, url: str = "https://example.com/", json_body=None) -> httpx.Response:
+    return httpx.Response(
+        status,
+        json=json_body if json_body is not None else {},
+        request=httpx.Request("POST", url),
+    )
+
+
+class TestPostWithRetry:
+    @pytest.mark.parametrize("status", [200, 400, 404, 410])
+    async def test_returns_immediately_on_non_transient_status(self, status):
+        client = AsyncMock(spec=httpx.AsyncClient)
+        client.post = AsyncMock(return_value=_response(status))
+        resp = await _post_with_retry(client, "https://x/", headers={}, json={})
+        assert resp.status_code == status
+        assert client.post.await_count == 1
+
+    @pytest.mark.parametrize("status", [429, 500, 502, 503, 504])
+    async def test_retries_on_transient_status_then_succeeds(self, status):
+        client = AsyncMock(spec=httpx.AsyncClient)
+        client.post = AsyncMock(side_effect=[_response(status), _response(status), _response(200)])
+        with patch("src.core.monitors.recruiter_co_kr.asyncio.sleep", new_callable=AsyncMock):
+            resp = await _post_with_retry(client, "https://x/", headers={}, json={})
+        assert resp.status_code == 200
+        assert client.post.await_count == 3
+
+    async def test_returns_final_transient_response_after_exhaustion(self):
+        client = AsyncMock(spec=httpx.AsyncClient)
+        client.post = AsyncMock(return_value=_response(503))
+        with patch("src.core.monitors.recruiter_co_kr.asyncio.sleep", new_callable=AsyncMock):
+            resp = await _post_with_retry(client, "https://x/", headers={}, json={})
+        assert resp.status_code == 503
+        assert client.post.await_count == _RETRY_ATTEMPTS
+
+    async def test_does_not_sleep_after_final_failed_attempt(self):
+        client = AsyncMock(spec=httpx.AsyncClient)
+        client.post = AsyncMock(return_value=_response(503))
+        sleep = AsyncMock()
+        with patch("src.core.monitors.recruiter_co_kr.asyncio.sleep", sleep):
+            await _post_with_retry(client, "https://x/", headers={}, json={})
+        assert sleep.await_count == _RETRY_ATTEMPTS - 1
+
+
+class TestDiscoverRetriesListEndpoint:
+    """Integration: discover() should survive a transient 503 on the list
+    endpoint and still return jobs once the upstream recovers."""
+
+    async def test_discover_recovers_from_transient_503(self):
+        # First call returns 503, second returns the list payload.
+        list_responses = [
+            _response(503),
+            _response(
+                200,
+                json_body={
+                    "pagination": {"page": 1, "size": 100, "totalCount": 1, "totalPages": 1},
+                    "list": [{"positionSn": 7, "title": "T", "careerType": "CAREER"}],
+                },
+            ),
+        ]
+        list_iter = iter(list_responses)
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/position/v1/jobflex":
+                return next(list_iter)
+            if request.url.path.startswith("/position/v2/jobflex/"):
+                return httpx.Response(200, json={"title": "Detail-T", "careerType": "CAREER"})
+            return httpx.Response(404)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with patch("src.core.monitors.recruiter_co_kr.asyncio.sleep", new_callable=AsyncMock):
+                board = {
+                    "board_url": "https://mcdonalds.recruiter.co.kr/career/home",
+                    "metadata": {"slug": "mcdonalds"},
+                }
+                jobs = await discover(board, client)
+
+        assert len(jobs) == 1
+        assert jobs[0].title == "Detail-T"
+
+    async def test_discover_persistent_503_raises(self):
+        # All retries return 503 -> resp.raise_for_status() inside
+        # _fetch_list_page should raise HTTPStatusError.
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/position/v1/jobflex":
+                return _response(503)
+            return httpx.Response(404)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with patch("src.core.monitors.recruiter_co_kr.asyncio.sleep", new_callable=AsyncMock):
+                board = {
+                    "board_url": "https://mcdonalds.recruiter.co.kr/career/home",
+                    "metadata": {"slug": "mcdonalds"},
+                }
+                with pytest.raises(httpx.HTTPStatusError):
+                    await discover(board, client)
