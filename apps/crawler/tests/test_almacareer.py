@@ -34,6 +34,11 @@ class TestMatchCountry:
     def test_www_prefix_stripped(self):
         assert _match_country("www.acme.jobs.cz") == ("cz", "acme")
 
+    def test_uppercase_host(self):
+        # Hosts can arrive with mixed-case (e.g. from Redirect headers).
+        assert _match_country("ACME.Jobs.CZ") == ("cz", "acme")
+        assert _match_country("ACME.TopJobs.SK") == ("sk", "acme")
+
     def test_multilevel_slug(self):
         # Slug can contain hyphens or numbers.
         assert _match_country("my-company-123.jobs.cz") == ("cz", "my-company-123")
@@ -119,6 +124,24 @@ class TestExtractWidgetConfig:
         assert cfg is not None
         assert cfg["detail_path"] == "detail-pozice"
 
+    def test_nested_object_before_api_key(self):
+        # Real minified bundles frequently nest objects (``themes``, ``filters``)
+        # between ``id`` and ``apiKey`` inside the ``main`` body.  A naive
+        # balanced-brace match would cut the body short.
+        script = (
+            '"widgets":{"main":{'
+            '"id":"dcc74a07-bcb5-444e-a185-2bf060a49aab",'
+            '"themes":[{"name":"default","variables":{"primary":"#ff0000"}}],'
+            '"filters":{"employment":{"enabled":true,"default":[]}},'
+            '"apiKey":"6b57c70d41a5aff5522c9e4f93a30414ed360b1567930270515de4047bf0b5c3",'
+            '"detailPath":"detail-pozice"}}'
+        )
+        cfg = _extract_widget_config(script)
+        assert cfg is not None
+        assert cfg["id"] == "dcc74a07-bcb5-444e-a185-2bf060a49aab"
+        assert cfg["apiKey"].startswith("6b57c70d41a5")
+        assert cfg["detail_path"] == "detail-pozice"
+
 
 class TestFlattenGroups:
     def test_nested(self):
@@ -141,6 +164,7 @@ class TestFlattenGroups:
 
 class TestParseLocation:
     def test_full(self):
+        # District duplicates city → dropped; cityPart/region/country kept.
         loc = {
             "country": "Slovensko",
             "region": "Košický",
@@ -148,7 +172,21 @@ class TestParseLocation:
             "city": "Košice",
             "cityPart": "Staré Mesto",
         }
-        assert _parse_location(loc) == "Staré Mesto, Košice, Slovensko"
+        assert _parse_location(loc) == "Staré Mesto, Košice, Košický, Slovensko"
+
+    def test_five_distinct_parts(self):
+        # When every level is populated with a distinct value, keep all five.
+        loc = {
+            "country": "Česká republika",
+            "region": "Středočeský kraj",
+            "district": "Praha-východ",
+            "city": "Říčany",
+            "cityPart": "Strašín",
+        }
+        assert (
+            _parse_location(loc)
+            == "Strašín, Říčany, Praha-východ, Středočeský kraj, Česká republika"
+        )
 
     def test_partial(self):
         loc = {"country": "Česká republika", "city": "Praha"}
@@ -590,6 +628,98 @@ class TestDiscover:
             with pytest.raises(RuntimeError, match="AlmaCareer GraphQL error: Boom"):
                 await discover(board, client)
 
+    async def test_empty_listing(self):
+        # Tenant exists and widget config resolves, but no ads are currently
+        # posted — should return an empty list without raising or making
+        # any detail fetches.
+        widget_id = "11111111-2222-3333-4444-555555555555"
+        api_key = "a" * 64
+        script = self._build_script(widget_id, api_key, "detail-pozice")
+
+        call_counter = {"list": 0, "detail": 0}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/assets/js/script.min.js":
+                return httpx.Response(200, text=script)
+            if str(request.url) == GRAPHQL_URL:
+                body = json.loads(request.content)
+                if "JOB_DETAIL" in body["query"]:
+                    call_counter["detail"] += 1
+                    return httpx.Response(200, json={"data": {"widget": {"jobAd": None}}})
+                call_counter["list"] += 1
+                return httpx.Response(
+                    200,
+                    json={
+                        "data": {
+                            "widget": {
+                                "config": {"languageIso": "cs"},
+                                "jobAdList": {
+                                    "paginator": {
+                                        "currentPage": 1,
+                                        "lastPage": 1,
+                                        "totalNumberOfItems": 0,
+                                        "numberOfItemsPerPage": 10,
+                                    },
+                                    "groupedJobAds": {"jobAds": [], "groups": []},
+                                },
+                            }
+                        }
+                    },
+                )
+            return httpx.Response(404)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {"board_url": "https://acme.jobs.cz/x/", "metadata": {}}
+            jobs = await discover(board, client)
+
+        assert jobs == []
+        assert call_counter["list"] == 1
+        assert call_counter["detail"] == 0
+
+    async def test_detail_fetch_returns_none_preserves_teaser(self):
+        # When the detail GraphQL returns no htmlContent, the teaser that was
+        # populated from the listing should remain as the description.
+        widget_id = "11111111-2222-3333-4444-555555555555"
+        api_key = "a" * 64
+        script = self._build_script(widget_id, api_key, "detail-pozice")
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/assets/js/script.min.js":
+                return httpx.Response(200, text=script)
+            if str(request.url) == GRAPHQL_URL:
+                body = json.loads(request.content)
+                if "JOB_DETAIL" in body["query"]:
+                    # htmlContent missing → _fetch_job_html returns None.
+                    return httpx.Response(
+                        200,
+                        json={
+                            "data": {
+                                "widget": {
+                                    "jobAd": {
+                                        "id": "99",
+                                        "languageIso": "cs",
+                                        "content": {"htmlContent": ""},
+                                    }
+                                }
+                            }
+                        },
+                    )
+                ad = {
+                    "id": "99",
+                    "title": "Greeter",
+                    "teaser": "teaser-fallback",
+                }
+                return httpx.Response(200, json=self._listing_response([ad]))
+            return httpx.Response(404)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {"board_url": "https://acme.jobs.cz/x/", "metadata": {}}
+            jobs = await discover(board, client)
+
+        assert len(jobs) == 1
+        # description left at the teaser value from the listing payload.
+        assert jobs[0].description == "teaser-fallback"
+
 
 class TestCanHandle:
     async def test_url_match_triggers_probe(self):
@@ -701,6 +831,65 @@ class TestCanHandle:
         assert result["country"] == "cz"
         # No client => no widget config probe.
         assert "widget_id" not in result
+
+    async def test_page_html_marker_fallback(self):
+        # Custom-domain portal: URL host is ``careers.example.com`` but the
+        # embedded iframe / template sets ``data-host="acme.jobs.cz"`` and
+        # includes the ``cdn.capybara.lmc.cz`` marker.  can_handle should
+        # follow those markers to identify the tenant.
+        widget_id = "11111111-2222-3333-4444-555555555555"
+        api_key = "a" * 64
+        script = (
+            '"widgets":{"main":{"id":"'
+            + widget_id
+            + '","apiKey":"'
+            + api_key
+            + '","detailPath":"detail-pozice"}'
+        )
+        page_html = (
+            '<html data-host="acme.jobs.cz">'
+            '<script src="https://cdn.capybara.lmc.cz/bundle.js"></script>'
+            "</html>"
+        )
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            host = request.url.host
+            path = request.url.path
+            if host == "careers.example.com":
+                return httpx.Response(200, text=page_html)
+            if host == "acme.jobs.cz" and path == "/assets/js/script.min.js":
+                return httpx.Response(200, text=script)
+            if str(request.url) == GRAPHQL_URL:
+                return httpx.Response(
+                    200,
+                    json={
+                        "data": {
+                            "widget": {
+                                "config": {"languageIso": "cs"},
+                                "jobAdList": {
+                                    "paginator": {
+                                        "currentPage": 1,
+                                        "lastPage": 1,
+                                        "totalNumberOfItems": 5,
+                                        "numberOfItemsPerPage": 10,
+                                    },
+                                    "groupedJobAds": {"jobAds": []},
+                                },
+                            }
+                        }
+                    },
+                )
+            return httpx.Response(404)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle("https://careers.example.com/jobs", client)
+
+        assert result is not None
+        assert result["host"] == "acme.jobs.cz"
+        assert result["slug"] == "acme"
+        assert result["country"] == "cz"
+        assert result["widget_id"] == widget_id
+        assert result["jobs"] == 5
 
 
 class TestRegistry:
