@@ -34,7 +34,7 @@ RUN apt-get update \
        libnspr4 libnss3 libpango-1.0-0 libx11-6 libxcb1 libxcomposite1 \
        libxdamage1 libxext6 libxfixes3 libxkbcommon0 libxrandr2 \
        libfontconfig1 libfreetype6 fonts-liberation \
-       wget gnupg ca-certificates xvfb xauth \
+       wget gnupg ca-certificates xvfb xauth x11-utils \
     && rm -rf /var/lib/apt/lists/*
 
 # Download Chromium binary
@@ -71,14 +71,33 @@ RUN wget -q -O /usr/share/keyrings/google-chrome.asc \
 # in the container. Manual Xvfb + exec instead of ``xvfb-run`` because
 # xvfb-run buffers stdout until the child exits, which silences structlog
 # progress lines for the whole crawl cycle. The entrypoint script starts
-# Xvfb in the background, exports DISPLAY, and exec's the crawler so
-# signals pass through correctly.
+# Xvfb in the background, waits for the X server to actually respond to
+# ``xdpyinfo`` (not a blind ``sleep 1``), and exec's the crawler so
+# signals pass through correctly. If Xvfb dies before becoming ready,
+# the entrypoint fails loudly rather than leaving DISPLAY=:99 pointing
+# at a dead server — otherwise Playwright would crash per-cycle with
+# the exact "XServer running" error #2431 was meant to prevent.
 RUN printf '%s\n' \
     '#!/bin/sh' \
     'set -e' \
     'Xvfb :99 -screen 0 1440x900x24 -nolisten tcp &' \
+    'XVFB_PID=$!' \
     'export DISPLAY=:99' \
-    'sleep 1' \
+    'ready=0' \
+    'for i in $(seq 1 50); do' \
+    '    if xdpyinfo -display :99 >/dev/null 2>&1; then' \
+    '        ready=1; break' \
+    '    fi' \
+    '    if ! kill -0 "$XVFB_PID" 2>/dev/null; then' \
+    '        echo "with-xvfb: Xvfb :99 died before becoming ready" >&2' \
+    '        exit 1' \
+    '    fi' \
+    '    sleep 0.2' \
+    'done' \
+    'if [ "$ready" != 1 ]; then' \
+    '    echo "with-xvfb: X server :99 did not respond within 10s" >&2' \
+    '    exit 1' \
+    'fi' \
     'exec "$@"' \
     > /usr/local/bin/with-xvfb \
     && chmod +x /usr/local/bin/with-xvfb

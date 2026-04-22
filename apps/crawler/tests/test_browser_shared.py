@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import subprocess
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -21,6 +22,7 @@ from src.shared.browser import (
     VALID_WAIT_STRATEGIES,
     _resolve_headless,
     _resolve_placeholders,
+    _x_server_alive,
     dismiss_overlays,
     navigate,
     open_page,
@@ -415,10 +417,12 @@ class TestOpenPage:
         )
 
     async def test_custom_config(self, monkeypatch):
-        # With DISPLAY set, ``headless: false`` is honoured as-is.
-        # The unset-DISPLAY coercion path is covered in
+        # With DISPLAY set *and* xdpyinfo reporting the X server alive,
+        # ``headless: false`` is honoured as-is. The unset-DISPLAY and
+        # dead-X-server coercion paths are covered in
         # ``TestHeadlessCoercion`` below.
         monkeypatch.setenv("DISPLAY", ":99")
+        monkeypatch.setattr("src.shared.browser._x_server_alive", lambda _d: True)
         pw = _make_pw()
         async with open_page(pw, {"headless": False, "user_agent": "custom/1.0"}):
             pass
@@ -511,15 +515,23 @@ class TestOpenPage:
 
 
 class TestHeadlessCoercion:
-    """Coverage for the headless fallback when DISPLAY is unset (#2431).
+    """Coverage for the headless fallback when the X server is missing (#2431).
 
     Boards that need Akamai/PerimeterX bypass pass ``headless: false`` and
     rely on the browser-1 container's xvfb entrypoint to provide an X
-    server. When the entrypoint does not run (image predates it, or a
-    ``docker run --entrypoint=""`` override bypasses it) Playwright's
-    ``launch_persistent_context`` crashes every cycle. ``_resolve_headless``
-    coerces ``headless=False`` → ``True`` with a warning when DISPLAY is
-    unset, degrading to bot-manager-blocked rather than crashing.
+    server. Two failure modes need coercion:
+
+    1. ``DISPLAY`` is unset — entrypoint didn't run (image predates it, or
+       ``docker run --entrypoint=""`` bypass).
+    2. ``DISPLAY`` is set but the X server is dead — Xvfb crashed after
+       handing off to the crawler (OOM, segfault). Without probing, a bare
+       env check would wave the launch through to the same Playwright
+       crash #2431 was meant to prevent.
+
+    ``_resolve_headless`` coerces ``headless=False`` → ``True`` with a
+    warning in both cases, degrading to bot-manager-blocked rather than
+    crashing. Reason label distinguishes ``no_display`` from
+    ``display_unresponsive`` for metrics.
     """
 
     def test_headless_true_passes_through(self, monkeypatch):
@@ -527,7 +539,11 @@ class TestHeadlessCoercion:
         assert _resolve_headless(True) == (True, False)
 
     def test_headless_false_honoured_when_display_set(self, monkeypatch):
+        """DISPLAY set + X server alive → honoured (no coercion)."""
         monkeypatch.setenv("DISPLAY", ":99")
+        # Force the probe to report the server alive; the real xdpyinfo
+        # is not available in CI so we need to stub it explicitly.
+        monkeypatch.setattr("src.shared.browser._x_server_alive", lambda _d: True)
         assert _resolve_headless(False) == (False, False)
 
     def test_headless_false_coerced_when_display_unset(self, monkeypatch):
@@ -539,6 +555,77 @@ class TestHeadlessCoercion:
         # treat that as "no display" for robustness.
         monkeypatch.setenv("DISPLAY", "")
         assert _resolve_headless(False) == (True, True)
+
+    def test_headless_false_coerced_when_x_server_dead(self, monkeypatch):
+        """DISPLAY set but X server unresponsive → coerce to headless.
+
+        This is the failure mode the bare-env-check version of #2431
+        missed: Xvfb died mid-run, DISPLAY=:99 still set, Playwright
+        crashes with "XServer running". Now _resolve_headless probes
+        xdpyinfo and coerces on probe failure.
+        """
+        monkeypatch.setenv("DISPLAY", ":99")
+        monkeypatch.setattr("src.shared.browser._x_server_alive", lambda _d: False)
+        assert _resolve_headless(False) == (True, True)
+
+    def test_headless_false_honoured_when_x_server_alive(self, monkeypatch):
+        """DISPLAY set AND X server responding → honour the headful request."""
+        monkeypatch.setenv("DISPLAY", ":99")
+        monkeypatch.setattr("src.shared.browser._x_server_alive", lambda _d: True)
+        assert _resolve_headless(False) == (False, False)
+
+    def test_x_server_alive_success(self, monkeypatch):
+        """Zero exit code → server is alive."""
+        completed = MagicMock()
+        completed.returncode = 0
+        monkeypatch.setattr(
+            "src.shared.browser.subprocess.run",
+            lambda *_a, **_kw: completed,
+        )
+        assert _x_server_alive(":99") is True
+
+    def test_x_server_alive_nonzero_exit(self, monkeypatch):
+        """Non-zero exit (e.g. connection refused) → server is not alive."""
+        completed = MagicMock()
+        completed.returncode = 1
+        monkeypatch.setattr(
+            "src.shared.browser.subprocess.run",
+            lambda *_a, **_kw: completed,
+        )
+        assert _x_server_alive(":99") is False
+
+    def test_x_server_alive_handles_missing_xdpyinfo(self, monkeypatch):
+        """xdpyinfo not installed on dev machines → probe returns False.
+
+        The x11-utils package ships xdpyinfo on the browser-1 image; dev
+        laptops typically don't have it. FileNotFoundError must not
+        crash the probe — it falls through to False (same as a dead X
+        server), so the caller coerces to headless in both cases.
+        """
+
+        def _raise_fnf(*_args, **_kwargs):
+            raise FileNotFoundError("xdpyinfo not found")
+
+        monkeypatch.setattr("src.shared.browser.subprocess.run", _raise_fnf)
+        assert _x_server_alive(":99") is False
+
+    def test_x_server_alive_handles_timeout(self, monkeypatch):
+        """A hung X server trips the 2s timeout → probe returns False."""
+
+        def _raise_timeout(*_args, **_kwargs):
+            raise subprocess.TimeoutExpired(cmd=["xdpyinfo"], timeout=2)
+
+        monkeypatch.setattr("src.shared.browser.subprocess.run", _raise_timeout)
+        assert _x_server_alive(":99") is False
+
+    def test_x_server_alive_handles_oserror(self, monkeypatch):
+        """Other OS-level failures (EACCES, ENOEXEC) → False, not crash."""
+
+        def _raise_os(*_args, **_kwargs):
+            raise OSError("permission denied")
+
+        monkeypatch.setattr("src.shared.browser.subprocess.run", _raise_os)
+        assert _x_server_alive(":99") is False
 
     async def test_open_page_coerces_missing_display(self, monkeypatch):
         """Vanilla launch path: ``headless: false`` + no DISPLAY → headless=True."""
@@ -554,6 +641,7 @@ class TestHeadlessCoercion:
 
     async def test_open_page_preserves_headless_false_with_display(self, monkeypatch):
         monkeypatch.setenv("DISPLAY", ":99")
+        monkeypatch.setattr("src.shared.browser._x_server_alive", lambda _d: True)
         pw = _make_pw()
         async with open_page(pw, {"headless": False}):
             pass
@@ -561,6 +649,17 @@ class TestHeadlessCoercion:
         assert kwargs["headless"] is False
         # No --headless=new since we're running headful.
         assert "--headless=new" not in kwargs.get("args", [])
+
+    async def test_open_page_coerces_when_x_server_dead(self, monkeypatch):
+        """DISPLAY=:99 but xdpyinfo fails → vanilla launch coerced to headless."""
+        monkeypatch.setenv("DISPLAY", ":99")
+        monkeypatch.setattr("src.shared.browser._x_server_alive", lambda _d: False)
+        pw = _make_pw()
+        async with open_page(pw, {"headless": False}):
+            pass
+        kwargs = pw.chromium.launch.await_args.kwargs
+        assert kwargs["headless"] is True
+        assert "--headless=new" in kwargs.get("args", [])
 
     async def test_open_page_persistent_context_coerces_missing_display(self, monkeypatch):
         """Persistent-context path (tesla/mcdonalds-it) also coerces."""
