@@ -4715,6 +4715,7 @@ versaterm,versaterm-greenhouse,https://job-boards.greenhouse.io/versaterm,greenh
 verse,verse-greenhouse,https://job-boards.greenhouse.io/verse,greenhouse,"{""token"": ""verse""}",skip,
 versicherungsagentur-rathje-gmbh-co-kg,versicherungsagentur-rathje-gmbh-co-kg-join,https://join.com/companies/rathjegruppede,join,"{""slug"": ""rathjegruppede""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 verstela,verstela-greenhouse,https://job-boards.greenhouse.io/verstela,greenhouse,"{""token"": ""verstela""}",skip,
+very-good-security,very-good-security-careers,https://jobs.lever.co/verygoodsecurity,lever,"{""token"": ""verygoodsecurity""}",skip,
 vestmark-inc,vestmark-inc-greenhouse,https://job-boards.greenhouse.io/vestmark,greenhouse,"{""token"": ""vestmark""}",skip,
 vestwell,vestwell-greenhouse,https://job-boards.greenhouse.io/vestwell,greenhouse,"{""token"": ""vestwell""}",skip,
 vetcove,vetcove-ashby,https://jobs.ashbyhq.com/vetcove,ashby,"{""token"": ""vetcove""}",skip,
