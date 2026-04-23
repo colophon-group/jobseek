@@ -682,6 +682,7 @@ bota-systems,bota-systems-careers,https://bota-systems-ag.breezy.hr/,breezy,"{""
 bottomline,bottomline-greenhouse,https://job-boards.greenhouse.io/bottomlinetechnologies,greenhouse,"{""token"": ""bottomlinetechnologies""}",skip,
 boulder-care,boulder-care-greenhouse,https://job-boards.greenhouse.io/bouldercare,greenhouse,"{""token"": ""bouldercare""}",skip,
 boulevard,boulevard-greenhouse,https://job-boards.greenhouse.io/boulevard,greenhouse,"{""token"": ""boulevard""}",skip,
+bounce,bounce-careers,https://jobs.ashbyhq.com/bounce,ashby,"{""token"": ""bounce""}",skip,
 bound,bound-join,https://join.com/companies/boundco,join,"{""slug"": ""boundco""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 box,box-greenhouse,https://job-boards.greenhouse.io/boxinc,greenhouse,"{""token"": ""boxinc""}",skip,
 bp,bp-careers,https://bpinternational.wd3.myworkdayjobs.com/bpCareers,workday,,workday,
