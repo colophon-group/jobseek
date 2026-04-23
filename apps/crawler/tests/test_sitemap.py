@@ -6,6 +6,7 @@ import httpx
 
 from src.core.monitors.sitemap import (
     _common_nonstandard_candidates,
+    _detect_ns,
     _extract_child_sitemaps,
     _extract_urls,
     _is_job_related,
@@ -82,6 +83,38 @@ class TestExtractUrls:
         root = ET.fromstring(xml_str)
         urls = _extract_urls(root)
         assert urls == ["https://example.com/job1"]
+
+    def test_https_namespace_variant(self):
+        # Some generators (e.g. TalentsConnect Job Shop) emit https:// instead
+        # of http:// in the xmlns declaration — the parser must handle this.
+        xml_str = """<?xml version="1.0" encoding="UTF-8"?>
+        <urlset xmlns="https://www.sitemaps.org/schemas/sitemap/0.9">
+            <url><loc>https://example.com/offer/job-one/abc-123</loc></url>
+            <url><loc>https://example.com/offer/job-two/def-456</loc></url>
+        </urlset>"""
+        root = ET.fromstring(xml_str)
+        urls = _extract_urls(root)
+        assert len(urls) == 2
+        assert "https://example.com/offer/job-one/abc-123" in urls
+        assert "https://example.com/offer/job-two/def-456" in urls
+
+
+class TestDetectNs:
+    def test_http_namespace(self):
+        xml_str = """<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"/>"""
+        root = ET.fromstring(xml_str)
+        assert _detect_ns(root) == "{http://www.sitemaps.org/schemas/sitemap/0.9}"
+
+    def test_https_namespace(self):
+        xml_str = """<urlset xmlns="https://www.sitemaps.org/schemas/sitemap/0.9"/>"""
+        root = ET.fromstring(xml_str)
+        assert _detect_ns(root) == "{https://www.sitemaps.org/schemas/sitemap/0.9}"
+
+    def test_no_namespace(self):
+        xml_str = """<urlset/>"""
+        root = ET.fromstring(xml_str)
+        # Falls back to canonical NS constant
+        assert _detect_ns(root) == "{http://www.sitemaps.org/schemas/sitemap/0.9}"
 
 
 class TestIsSitemapIndex:
