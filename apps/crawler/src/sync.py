@@ -1131,6 +1131,37 @@ async def sync_boards(
     id_rows = await conn.fetch(_FETCH_BOARD_IDS, board_urls)
     url_to_ids: dict[str, tuple] = {r["board_url"]: (r["id"], r["company_id"]) for r in id_rows}
 
+    # Defensively drop stale local rows whose ``board_slug`` matches one
+    # we're about to upsert but whose ``id`` is not the Supabase-assigned
+    # one. Without this, an earlier partial sync that inserted a
+    # locally-generated UUID into ``job_board`` (before the outer Supa
+    # transaction later rolled back) leaves an orphan row. The next sync
+    # then hits ``job_board_board_slug_key`` as a unique violation, which
+    # propagates out of ``async with supa_conn.transaction()`` and rolls
+    # the whole Supabase mirror back — a self-perpetuating chicken-and-
+    # egg that strands every new company in local-only state. Mirrors
+    # the slug/id defensive DELETE in ``_mirror_companies_to_local``.
+    # ``job_posting.board_id`` uses ``ON DELETE SET NULL`` so postings
+    # survive; they get re-linked by ``board_url`` when this sync
+    # re-inserts the row below.
+    if local_conn is not None:
+        stale_slugs: list[str] = []
+        stale_supa_ids: list[str] = []
+        for i, board_url in enumerate(board_urls):
+            slug = board_slugs[i]
+            ids = url_to_ids.get(board_url)
+            if slug is None or ids is None:
+                continue
+            stale_slugs.append(slug)
+            stale_supa_ids.append(str(ids[0]))
+        if stale_slugs:
+            await local_conn.execute(
+                "DELETE FROM job_board WHERE board_slug = ANY($1::text[]) "
+                "AND id != ALL($2::uuid[])",
+                stale_slugs,
+                stale_supa_ids,
+            )
+
     redis_enqueued = 0
     local_upserted = 0
 
