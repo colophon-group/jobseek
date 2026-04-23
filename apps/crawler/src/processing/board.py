@@ -9,7 +9,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from time import monotonic
-from urllib.parse import urlparse
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 import asyncpg
 import httpx
@@ -155,6 +155,59 @@ def _classify_job_url(url: str, board_url: str | None = None) -> str | None:
 def _is_plausible_job_url(url: str, board_url: str | None = None) -> bool:
     """Thin bool wrapper around :func:`_classify_job_url` for readability."""
     return _classify_job_url(url, board_url) is None
+
+
+# ── URL canonicalization ──────────────────────────────────────────────
+#
+# Some ATS platforms render anchor ``href`` values that embed a
+# session-scoped CSRF token in the query string. Each monitor cycle
+# produces a different token, so ``ON CONFLICT (source_url) DO NOTHING``
+# sees the row as new every time and ``_enqueue_scrapes_for_new``
+# re-enqueues the same posting into ``scrapes_browser:<domain>``. One
+# Pictet Group board on SuccessFactors inflated its browser scrape
+# queue to 27,825 entries for ~a few hundred real postings this way
+# before the pattern was caught.
+#
+# Strip params that are session state (not identity) on known-affected
+# platforms; leave everything else alone.
+
+_SUCCESSFACTORS_VOLATILE_PARAMS = frozenset(
+    {
+        "_s.crb",  # per-render CSRF token
+        "jobAlertController_jobAlertId",
+        "jobAlertController_jobAlertName",
+        "browserTimeZone",
+    }
+)
+
+
+def _canonicalize_url(url: str) -> str:
+    """Strip session-scoped query params from URLs on platforms where a
+    ``<a href>`` embeds a per-render CSRF/session token that otherwise
+    makes every monitor cycle rediscover the same posting as "new".
+
+    Currently handles the SuccessFactors family (``*.successfactors.*``
+    and ``*.sapsf.*``). The canonical form keeps identity-carrying params
+    (``career_job_req_id``, ``company``, ``rcm_site_locale`` …) and only
+    drops the ones listed in :data:`_SUCCESSFACTORS_VOLATILE_PARAMS`.
+    """
+    if not url:
+        return url
+    try:
+        p = urlparse(url)
+    except ValueError:
+        return url
+    host = (p.netloc or "").lower()
+    if not (".successfactors." in host or ".sapsf." in host):
+        return url
+    # keep_blank_values=True preserves stable no-value keys like
+    # ``jobAlertController_jobAlertId=`` — filtering here would
+    # silently reshape URLs on boards we haven't analyzed yet.
+    params = parse_qsl(p.query, keep_blank_values=True)
+    kept = [(k, v) for k, v in params if k not in _SUCCESSFACTORS_VOLATILE_PARAMS]
+    if len(kept) == len(params):
+        return url
+    return urlunparse(p._replace(query=urlencode(kept)))
 
 
 # ── Dataclasses ──────────────────────────────────────────────────────
@@ -475,14 +528,28 @@ async def _process_one_board_streaming(
             # Drop implausible URLs (site roots, bare-hash variants) before
             # they reach _DIFF_BATCH. These otherwise collide on the
             # job_posting.source_url unique index every monitor cycle.
+            #
+            # Also canonicalize URLs that embed session-scoped query
+            # params — the reverse problem, where every monitor cycle
+            # produces a URL the uniqueness check treats as _new_ and
+            # re-enqueues a duplicate scrape (see :func:`_canonicalize_url`
+            # for platform coverage and the Pictet/SuccessFactors case).
             filtered_urls: list[str] = []
             drop_reasons: dict[str, int] = {}
-            for u in result.urls:
+            seen: set[str] = set()
+            for raw in result.urls:
+                u = _canonicalize_url(raw)
                 reason = _classify_job_url(u, board_url)
-                if reason is None:
-                    filtered_urls.append(u)
-                else:
+                if reason is not None:
                     drop_reasons[reason] = drop_reasons.get(reason, 0) + 1
+                    continue
+                # De-dup after canonicalization — without this, a single
+                # monitor batch that emits two query-variants of the same
+                # posting would collide inside _DIFF_BATCH.
+                if u in seen:
+                    continue
+                seen.add(u)
+                filtered_urls.append(u)
             for reason, count in drop_reasons.items():
                 monitor_url_filtered_total.labels(reason=reason).inc(count)
                 board_log.info(
@@ -495,8 +562,16 @@ async def _process_one_board_streaming(
                 continue
             total_processed += len(filtered_urls)
 
+            # Match rich-data keys against the canonicalized URL set so
+            # a rich monitor targeting a canonicalized platform (none
+            # today, but cheap to future-proof) doesn't silently drop
+            # the per-posting data.
             filtered_jobs_by_url = (
-                {u: result.jobs_by_url[u] for u in filtered_urls if u in result.jobs_by_url}
+                {
+                    _canonicalize_url(u): v
+                    for u, v in result.jobs_by_url.items()
+                    if _canonicalize_url(u) in seen
+                }
                 if result.jobs_by_url is not None
                 else None
             )
