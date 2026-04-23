@@ -3959,6 +3959,7 @@ skild-ai,skild-ai-greenhouse,https://job-boards.greenhouse.io/skildai-careers,gr
 skillshare,skillshare-lever,https://jobs.lever.co/skillshare,lever,"{""token"": ""skillshare""}",skip,
 skin-clique,skin-clique-greenhouse,https://job-boards.greenhouse.io/skinclique,greenhouse,"{""token"": ""skinclique""}",skip,
 skin-laundry,skin-laundry-greenhouse,https://job-boards.greenhouse.io/skinlaundry,greenhouse,"{""token"": ""skinlaundry""}",skip,
+sky-mavis,sky-mavis-careers,https://jobs.ashbyhq.com/skymavis,ashby,"{""token"": ""skymavis""}",skip,
 skydio,skydio-careers,https://www.skydio.com/careers,ashby,"{""token"": ""skydio""}",skip,
 skyflow,skyflow-ashby,https://jobs.ashbyhq.com/skyflow,ashby,"{""token"": ""skyflow""}",skip,
 skyguide,skyguide-careers,https://jobs.skyguide.ch/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://jobs.skyguide.ch/googlefeed.xml""}",skip,
