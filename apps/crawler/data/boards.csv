@@ -3573,6 +3573,7 @@ prothesen-orthesenmanufaktur,prothesen-orthesenmanufaktur-join,https://join.com/
 protolabs,protolabs-lever,https://jobs.lever.co/protolabs,lever,"{""token"": ""protolabs""}",skip,
 proton,proton-careers,https://proton.me/careers,greenhouse,"{""token"": ""proton""}",skip,
 prove,prove-greenhouse,https://job-boards.greenhouse.io/prove,greenhouse,"{""token"": ""prove""}",skip,
+pryzm,pryzm-careers,https://jobs.ashbyhq.com/pryzm,ashby,"{""token"": ""pryzm""}",skip,
 psi,psi-ashby,https://jobs.ashbyhq.com/psi,ashby,"{""token"": ""psi""}",skip,
 psi,psi-careers,https://www.psi.ch/en/hr/job-opportunities,dom,"{""render"": true, ""url_filter"": ""(job-opportunities|stellenangebote)/\\d""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""time"", ""field"": ""date_posted"", ""optional"": true}, {""tag"": ""h2"", ""field"": ""description"", ""html"": true, ""stop_count"": 50}], ""defaults"": {""locations"": [""Villigen, CH""]}}"
 psibufet,psibufet-greenhouse,https://job-boards.greenhouse.io/psibufet,greenhouse,"{""token"": ""psibufet""}",skip,
