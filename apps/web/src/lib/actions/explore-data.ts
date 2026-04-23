@@ -31,6 +31,7 @@ export async function fetchExploreData(params: {
   const { searchParams, locale } = params;
 
   const q = firstOf(searchParams.q);
+  const exclude = firstOf(searchParams.exclude);
   const loc = firstOf(searchParams.loc);
   const occ = firstOf(searchParams.occ);
   const sen = firstOf(searchParams.sen);
@@ -42,7 +43,7 @@ export async function fetchExploreData(params: {
   const { userLat, userLng } = await getGeoFromHeaders();
 
   const [parsed, prefs, languages] = await Promise.all([
-    parseSearchFilters({ q, loc, occ, sen, tech, locale, userLat, userLng }),
+    parseSearchFilters({ q, exclude, loc, occ, sen, tech, locale, userLat, userLng }),
     getPreferences(),
     getViewerLanguages(locale),
   ]);
@@ -73,6 +74,7 @@ export async function fetchExploreData(params: {
           salaryMaxEur,
           experienceMin,
           experienceMax,
+          excludeTitles: parsed.excludeTitles.length > 0 ? parsed.excludeTitles : undefined,
           languages,
           locale,
           offset: 0,

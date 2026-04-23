@@ -27,6 +27,7 @@ interface SearchPageProps {
   initialTotalCompanies: number;
   initialTruncated?: boolean;
   initialKeywords: string[];
+  initialExcludeTitles: string[];
   initialLocations: SelectedLocation[];
   initialOccupations: TaxonomyItem[];
   initialSeniorities: TaxonomyItem[];
@@ -51,6 +52,7 @@ export function SearchPage({
   initialTotalCompanies,
   initialTruncated,
   initialKeywords,
+  initialExcludeTitles,
   initialLocations,
   initialOccupations,
   initialSeniorities,
@@ -78,14 +80,18 @@ export function SearchPage({
     initialOccupations.map((o) => o.id),
     initialSeniorities.map((s) => s.id),
     initialTechnologies.map((t) => t.id),
+    initialExcludeTitles,
   );
-  const hasUrlFilters = initialKeywords.length > 0 || initialLocations.length > 0 || initialOccupations.length > 0 || initialSeniorities.length > 0 || initialTechnologies.length > 0;
+  const hasUrlFilters = initialKeywords.length > 0 || initialLocations.length > 0 || initialOccupations.length > 0 || initialSeniorities.length > 0 || initialTechnologies.length > 0 || initialExcludeTitles.length > 0;
   const shouldRestore =
     cached !== null &&
-    (cached.cacheKey === currentCacheKey || !hasUrlFilters);
+    (cached.cacheKey === currentCacheKey || (!hasUrlFilters && cached.companies.length > 0));
 
   const [keywords, setKeywords] = useState<string[]>(
     shouldRestore ? cached.keywords : initialKeywords,
+  );
+  const [excludeTitles, setExcludeTitles] = useState<string[]>(
+    shouldRestore ? (cached.excludeTitles ?? []) : initialExcludeTitles,
   );
   const [locations, setLocations] = useState<SelectedLocation[]>(
     shouldRestore ? cached.locations : initialLocations,
@@ -142,6 +148,7 @@ export function SearchPage({
 
   // Refs for all filter state — single source of truth for updateUrl/runSearch
   const keywordsRef = useRef(keywords);
+  const excludeTitlesRef = useRef(excludeTitles);
   const locationsRef = useRef(locations);
   const occupationsRef = useRef(occupations);
   const senioritiesRef = useRef(seniorities);
@@ -156,6 +163,7 @@ export function SearchPage({
   const totalCompaniesRef = useRef(totalCompanies);
   const showPostingIdRef = useRef(showPostingId);
   keywordsRef.current = keywords;
+  excludeTitlesRef.current = excludeTitles;
   locationsRef.current = locations;
   occupationsRef.current = occupations;
   senioritiesRef.current = seniorities;
@@ -202,6 +210,7 @@ export function SearchPage({
 
     // External navigation: parse URL params and update state
     const q = searchParams.get("q") ?? undefined;
+    const exclude = searchParams.get("exclude") ?? undefined;
     const loc = searchParams.get("loc") ?? undefined;
     const occ = searchParams.get("occ") ?? undefined;
     const sen = searchParams.get("sen") ?? undefined;
@@ -227,8 +236,9 @@ export function SearchPage({
     }
 
     setIsSearching(true);
-    parseSearchFilters({ q, loc, occ, sen, tech, locale, userLat, userLng }).then((parsed) => {
+    parseSearchFilters({ q, exclude, loc, occ, sen, tech, locale, userLat, userLng }).then((parsed) => {
       setKeywords(parsed.keywords); keywordsRef.current = parsed.keywords;
+      setExcludeTitles(parsed.excludeTitles); excludeTitlesRef.current = parsed.excludeTitles;
       setLocations(parsed.locations); locationsRef.current = parsed.locations;
       setOccupations(parsed.occupations); occupationsRef.current = parsed.occupations;
       setSeniorities(parsed.seniorities); senioritiesRef.current = parsed.seniorities;
@@ -250,6 +260,7 @@ export function SearchPage({
     return () => {
       setSearchState({
         keywords: keywordsRef.current,
+        excludeTitles: excludeTitlesRef.current,
         locations: locationsRef.current,
         occupations: occupationsRef.current,
         seniorities: senioritiesRef.current,
@@ -269,6 +280,7 @@ export function SearchPage({
           occupationsRef.current.map((o) => o.id),
           senioritiesRef.current.map((s) => s.id),
           technologiesRef.current.map((t) => t.id),
+          excludeTitlesRef.current,
         ),
       });
       setPageActions(null);
@@ -356,6 +368,7 @@ export function SearchPage({
         cached.occupations,
         cached.seniorities,
         cached.technologies,
+        cached.excludeTitles,
       );
       window.history.replaceState(null, "", url);
 
@@ -404,6 +417,7 @@ export function SearchPage({
       occupationsRef.current,
       senioritiesRef.current,
       technologiesRef.current,
+      excludeTitlesRef.current,
     );
     window.history.replaceState(null, "", url);
   };
@@ -449,6 +463,7 @@ export function SearchPage({
                 salaryMaxEur: salMaxEur,
                 experienceMin: expMin,
                 experienceMax: expMax,
+                excludeTitles: excludeTitlesRef.current.length > 0 ? excludeTitlesRef.current : undefined,
                 languages,
                 locale,
                 offset: 0,
@@ -493,6 +508,24 @@ export function SearchPage({
     },
     [],
   );
+
+  const handleAddExcludeTitle = useCallback((keyword: string) => {
+    const current = excludeTitlesRef.current;
+    if (current.some((k) => k.toLowerCase() === keyword.toLowerCase())) return;
+    const next = [...current, keyword];
+    setExcludeTitles(next);
+    excludeTitlesRef.current = next;
+    updateUrl();
+    runSearch();
+  }, []);
+
+  const handleRemoveExcludeTitle = useCallback((keyword: string) => {
+    const next = excludeTitlesRef.current.filter((k) => k !== keyword);
+    setExcludeTitles(next);
+    excludeTitlesRef.current = next;
+    updateUrl();
+    runSearch();
+  }, []);
 
   const handleAddLocation = useCallback(
     (location: SelectedLocation) => {
@@ -624,6 +657,7 @@ export function SearchPage({
 
   const handleClearAll = useCallback(() => {
     setKeywords([]); keywordsRef.current = [];
+    setExcludeTitles([]); excludeTitlesRef.current = [];
     setLocations([]); locationsRef.current = [];
     setOccupations([]); occupationsRef.current = [];
     setSeniorities([]); senioritiesRef.current = [];
@@ -652,7 +686,7 @@ export function SearchPage({
     const expMin = experienceMinRef.current;
     const expMax = experienceMaxRef.current;
     const result = kws.length > 0
-      ? await searchJobs({ keywords: kws, locationIds, occupationIds, seniorityIds, technologyIds, employmentTypes: etypes, salaryMinEur: salMinEur, salaryMaxEur: salMaxEur, experienceMin: expMin, experienceMax: expMax, languages, locale, offset, limit: PAGE_SIZE })
+      ? await searchJobs({ keywords: kws, locationIds, occupationIds, seniorityIds, technologyIds, employmentTypes: etypes, salaryMinEur: salMinEur, salaryMaxEur: salMaxEur, experienceMin: expMin, experienceMax: expMax, excludeTitles: excludeTitlesRef.current.length > 0 ? excludeTitlesRef.current : undefined, languages, locale, offset, limit: PAGE_SIZE })
       : await listTopCompanies({ locationIds, occupationIds, seniorityIds, technologyIds, employmentTypes: etypes, salaryMinEur: salMinEur, salaryMaxEur: salMaxEur, experienceMin: expMin, experienceMax: expMax, languages, locale, offset, limit: PAGE_SIZE });
 
     if (result.truncated) setIsTruncated(true);
@@ -681,6 +715,9 @@ export function SearchPage({
         userLat={userLat}
         userLng={userLng}
         keywords={keywords}
+        excludeTitles={excludeTitles}
+        onAddExcludeTitle={handleAddExcludeTitle}
+        onRemoveExcludeTitle={handleRemoveExcludeTitle}
         locations={locations}
         occupations={occupations}
         seniorities={seniorities}

@@ -13,6 +13,7 @@ import type { SearchResultCompany } from "@/lib/search";
 
 export interface SearchStateSnapshot {
   keywords: string[];
+  excludeTitles: string[];
   locations: SelectedLocation[];
   occupations: { id: number; slug: string; name: string }[];
   seniorities: { id: number; slug: string; name: string }[];
@@ -35,6 +36,7 @@ export function buildCacheKey(
   occupationIds?: number[],
   seniorityIds?: number[],
   technologyIds?: number[],
+  excludeTitles?: string[],
 ): string {
   const parts = [
     [...keywords].sort().join(","),
@@ -42,6 +44,7 @@ export function buildCacheKey(
     [...(occupationIds ?? [])].sort().join(","),
     [...(seniorityIds ?? [])].sort().join(","),
     [...(technologyIds ?? [])].sort().join(","),
+    [...(excludeTitles ?? [])].map((s) => s.toLowerCase()).sort().join(","),
   ];
   return parts.join("|");
 }

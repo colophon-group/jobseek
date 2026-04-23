@@ -36,6 +36,7 @@ export function ExploreContent({ locale }: ExploreContentProps) {
       initialTotalCompanies={result.totalCompanies}
       initialTruncated={result.truncated}
       initialKeywords={parsed.keywords}
+      initialExcludeTitles={parsed.excludeTitles}
       initialLocations={parsed.locations}
       initialOccupations={parsed.occupations}
       initialSeniorities={parsed.seniorities}
