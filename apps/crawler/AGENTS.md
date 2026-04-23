@@ -511,7 +511,7 @@ ssh ... 'cd /home/deploy/crawler-src && docker build --target full -t crawler-fu
 | exporter | crawler-slim | 9093 | — | — |
 | drain | crawler-slim | 9094 | — | — |
 | alloy | grafana/alloy | 12346 | 0.25 | 256MB |
-| redis | redis:7-alpine | — | — | 320MB |
+| redis | redis:7-alpine | — | — | 1.5GB (1GB maxmemory) |
 
 ### Querying Metrics
 

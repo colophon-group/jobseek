@@ -32,14 +32,15 @@ services:
     image: redis:7-alpine
     restart: unless-stopped
     network_mode: host
-    # Deploy-time sync reseeds ~4.7k board monitors into Redis. 256 MB
-    # leaves too little headroom once steady-state scrape backlog is
-    # already present, so deploys can fail with OOM before sync
-    # completes.
-    command: redis-server --maxmemory 512mb --maxmemory-policy noeviction --bind 127.0.0.1
+    # Sized for the steady-state scrape backlog, not the initial reseed.
+    # ~550k keys at 2026-04-23 used ~373 MB (73% of the old 512 MB cap),
+    # nearly triggering noeviction-stalled writes. 1 GB gives headroom
+    # while the pipeline drains stale per-domain queues (#2526) and the
+    # SuccessFactors URL-canonicalization fix (#2524) cuts cardinality.
+    command: redis-server --maxmemory 1gb --maxmemory-policy noeviction --bind 127.0.0.1
     volumes:
       - redis-data:/data
-    mem_limit: 768m
+    mem_limit: 1536m
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
