@@ -2313,6 +2313,7 @@ just-eat-takeaway,just-eat-takeaway-careers,https://careers.justeattakeaway.com/
 justworks,justworks-greenhouse,https://job-boards.greenhouse.io/justworks,greenhouse,"{""token"": ""justworks""}",skip,
 juul-labs,juul-labs-greenhouse,https://job-boards.greenhouse.io/juullabs,greenhouse,"{""token"": ""juullabs""}",skip,
 k-health,k-health-greenhouse,https://job-boards.greenhouse.io/khealthcareers,greenhouse,"{""token"": ""khealthcareers""}",skip,
+k-id,k-id-careers,https://api.ashbyhq.com/posting-api/job-board/k-id,ashby,"{""token"": ""k-id""}",skip,
 k-water,k-water-careers,https://k-water.recruiter.co.kr/career/home,recruiter_co_kr,"{""slug"": ""k-water""}",skip,
 k2-space,k2-space-greenhouse,https://job-boards.greenhouse.io/k2spacecorporation,greenhouse,"{""token"": ""k2spacecorporation""}",skip,
 kaedim,kaedim-careers,https://join-kaedim.notion.site/,notion,,notion,
