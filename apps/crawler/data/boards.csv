@@ -4978,6 +4978,7 @@ zscaler,zscaler-greenhouse,https://job-boards.greenhouse.io/zscaler,greenhouse,"
 zte,zte-campus,https://app.mokahr.com/campus-recruitment/zte/46903,mokahr,"{""org_id"": ""zte"", ""site_id"": 46903}",skip,
 zte,zte-careers,https://app.mokahr.com/social-recruitment/zte/47588,mokahr,"{""org_id"": ""zte"", ""site_id"": 47588}",skip,
 zulu-alpha-kilo,zulu-alpha-kilo-greenhouse,https://job-boards.greenhouse.io/zulualphakilo,greenhouse,"{""token"": ""zulualphakilo""}",skip,
+zuma,zuma-careers,https://jobs.lever.co/getzuma,lever,"{""token"": ""getzuma""}",skip,
 zuora,zuora-greenhouse,https://job-boards.greenhouse.io/zuora,greenhouse,"{""token"": ""zuora""}",skip,
 zup-innovation,zup-innovation-greenhouse,https://job-boards.greenhouse.io/zupinnovation,greenhouse,"{""token"": ""zupinnovation""}",skip,
 zurich-insurance,zurich-insurance-careers,https://careers.zurich.com/search/,rss,"{""preset"": ""successfactors""}",skip,
