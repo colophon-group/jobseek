@@ -5,6 +5,7 @@ company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scrap
 10a-labs,10a-labs-greenhouse,https://job-boards.greenhouse.io/10alabs,greenhouse,"{""token"": ""10alabs""}",skip,
 10x-genomics,10x-genomics-greenhouse,https://job-boards.greenhouse.io/10xgenomics,greenhouse,"{""token"": ""10xgenomics""}",skip,
 11-bit-studios,11-bit-studios-careers,https://11bitstudios.recruitee.com/,recruitee,"{""slug"": ""11bitstudios"", ""api_base"": ""https://11bitstudios.recruitee.com""}",skip,
+11x,11x-careers-gem,https://jobs.gem.com/11x-ai,gem,"{""token"": ""11x-ai""}",skip,
 12twenty,12twenty-greenhouse,https://job-boards.greenhouse.io/12twenty,greenhouse,"{""token"": ""12twenty""}",skip,
 15five,15five-lever,https://jobs.lever.co/15five,lever,"{""token"": ""15five""}",skip,
 1komma5,1komma5-join,https://join.com/companies/1komma5grad,join,"{""slug"": ""1komma5grad""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
