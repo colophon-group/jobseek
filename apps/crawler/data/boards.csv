@@ -1307,6 +1307,7 @@ doordash,doordash-careers-in,https://job-boards.greenhouse.io/doordashindia,gree
 doordash,doordash-careers-intl,https://boards.greenhouse.io/doordashinternational,greenhouse,"{""token"": ""doordashinternational""}",skip,
 doordash,doordash-careers-mx,https://job-boards.greenhouse.io/doordashmexico,greenhouse,"{""token"": ""doordashmexico""}",skip,
 doordash,doordash-careers-wolt,https://careers.wolt.com/en/jobs,greenhouse,"{""token"": ""wolt""}",skip,
+doppel,doppel-careers,https://boards.greenhouse.io/doppel,greenhouse,"{""token"": ""doppel""}",skip,
 dorsia,dorsia-greenhouse,https://job-boards.greenhouse.io/dorsia,greenhouse,"{""token"": ""dorsia""}",skip,
 doss,doss-ashby,https://jobs.ashbyhq.com/doss,ashby,"{""token"": ""doss""}",skip,
 dott,dott-careers,https://jobs.deel.com/dott,deel,"{""slug"": ""dott""}",skip,
