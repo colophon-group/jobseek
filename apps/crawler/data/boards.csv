@@ -2921,6 +2921,7 @@ netlify,netlify-greenhouse,https://job-boards.greenhouse.io/netlify,greenhouse,"
 netskope,netskope-greenhouse,https://job-boards.greenhouse.io/netskope,greenhouse,"{""token"": ""netskope""}",skip,
 netwealth,netwealth-ashby,https://jobs.ashbyhq.com/netwealth,ashby,"{""token"": ""netwealth""}",skip,
 neuehealth,neuehealth-greenhouse,https://job-boards.greenhouse.io/neuehealth,greenhouse,"{""token"": ""neuehealth""}",skip,
+neura-robotics,neura-robotics-careers,https://jobs.neura-robotics.com/,sitemap,"{""sitemap_url"": ""https://jobs.neura-robotics.com/sitemap.xml"", ""url_filter"": ""/offer/""}",json-ld,
 neuraflash-part-of-accenture,neuraflash-part-of-accenture-greenhouse,https://job-boards.greenhouse.io/neuraflash,greenhouse,"{""token"": ""neuraflash""}",skip,
 neural-concept,neural-concept-careers,https://jobs.ashbyhq.com/neuralconcept,ashby,,skip,
 neural-frames,neural-frames-join,https://join.com/companies/neuralframescom,join,"{""slug"": ""neuralframescom""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
