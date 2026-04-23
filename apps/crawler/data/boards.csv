@@ -1637,6 +1637,7 @@ forum-ventures,forum-ventures-ashby,https://jobs.ashbyhq.com/forum-ventures,ashb
 forward-networks,forward-networks-greenhouse,https://job-boards.greenhouse.io/forwardnetworks,greenhouse,"{""token"": ""forwardnetworks""}",skip,
 fospha,fospha-greenhouse,https://job-boards.greenhouse.io/fosphamarketing,greenhouse,"{""token"": ""fosphamarketing""}",skip,
 fossa,fossa-greenhouse,https://job-boards.greenhouse.io/fossainc,greenhouse,"{""token"": ""fossainc""}",skip,
+fotokite,fotokite-careers,https://fotokite.bamboohr.com/careers,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""url_filter"": ""/careers/\\d+""}",json-ld,"{""render"": true}"
 found,found-greenhouse,https://job-boards.greenhouse.io/found,greenhouse,"{""token"": ""found""}",skip,
 foundation-risk-partners,foundation-risk-partners-greenhouse,https://job-boards.greenhouse.io/foundationriskpartners,greenhouse,"{""token"": ""foundationriskpartners""}",skip,
 founders-green-animal-hospital,founders-green-animal-hospital-greenhouse,https://job-boards.greenhouse.io/founders,greenhouse,"{""token"": ""founders""}",skip,
