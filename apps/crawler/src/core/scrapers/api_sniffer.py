@@ -218,7 +218,10 @@ def _extract_with_mapping(obj: dict, fields_map: dict[str, str]) -> JobContent:
         elif target == "locations":
             kwargs["locations"] = value if isinstance(value, list) else [value]
         elif target in ("skills", "responsibilities", "qualifications"):
-            extras[target] = value if isinstance(value, list) else [value]
+            items = value if isinstance(value, list) else [value]
+            items = [it for it in items if it and (not isinstance(it, str) or it.strip())]
+            if items:
+                extras[target] = items
         elif target == "valid_through":
             extras["valid_through"] = value
         elif target in (

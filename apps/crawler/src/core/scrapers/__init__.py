@@ -52,10 +52,22 @@ class JobContent:
 
 _TAG_RE = re.compile(r"<[^>]+>")
 
+# ATS placeholder strings used when a field is empty — treat as "no content".
+# Publicis/SmashFly JSON-LD emits "UNAVAILABLE" for unset skills/qualifications.
+_SENTINEL_EMPTY = frozenset({"unavailable", "not available", "n/a", "none", "null", "-"})
+
 
 def _plain(html: str) -> str:
     """Strip HTML tags and collapse whitespace."""
     return _TAG_RE.sub(" ", html).strip()
+
+
+def _is_meaningful(item: object) -> bool:
+    """True if *item* has non-placeholder content once HTML is stripped."""
+    text = _plain(str(item)).strip()
+    if not text:
+        return False
+    return text.lower() not in _SENTINEL_EMPTY
 
 
 def enrich_description(obj: object) -> None:
@@ -63,7 +75,9 @@ def enrich_description(obj: object) -> None:
 
     When scrapers extract these as separate structured data, they should also
     appear in the description HTML so it remains self-contained.  Skips any
-    section whose text content already appears in the existing description.
+    section whose text content already appears in the existing description,
+    and skips sections whose items are empty/whitespace or ATS placeholders
+    like "UNAVAILABLE" / "N/A" (Publicis JSON-LD pattern).
     Mutates *obj* in place.
     """
     if not obj.extras:
@@ -82,26 +96,29 @@ def enrich_description(obj: object) -> None:
             continue
 
         if isinstance(items, str):
-            # Check if the string content is already in the description
+            if not _is_meaningful(items):
+                continue
             snippet = _plain(items).lower()
-            if desc_plain and snippet and snippet[:80] in desc_plain:
+            if desc_plain and snippet[:80] in desc_plain:
                 continue
             sections.append(f"<h3>{heading}</h3>\n{items}")
         elif isinstance(items, list):
-            # Check if the first non-trivial item is already in the description
-            for item in items:
+            # Drop empty/whitespace/placeholder items.
+            non_empty = [it for it in items if _is_meaningful(it)]
+            if not non_empty:
+                continue
+            # Skip if the first non-trivial item already appears in the description.
+            already_present = False
+            for item in non_empty:
                 snippet = _plain(str(item)).lower()
                 if len(snippet) >= 10:
                     if desc_plain and snippet[:80] in desc_plain:
-                        break  # already present — skip whole section
-                    else:
-                        li = "".join(f"<li>{it}</li>" for it in items)
-                        sections.append(f"<h3>{heading}</h3>\n<ul>{li}</ul>")
+                        already_present = True
                     break
-            else:
-                # All items too short to check — append anyway
-                li = "".join(f"<li>{it}</li>" for it in items)
-                sections.append(f"<h3>{heading}</h3>\n<ul>{li}</ul>")
+            if already_present:
+                continue
+            li = "".join(f"<li>{it}</li>" for it in non_empty)
+            sections.append(f"<h3>{heading}</h3>\n<ul>{li}</ul>")
 
     if not sections:
         return
