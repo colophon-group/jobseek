@@ -73,7 +73,7 @@ if TYPE_CHECKING:
 
 log = structlog.get_logger()
 
-MAX_ITEMS = 50_000
+MAX_ITEMS = 10_000
 
 
 class ApiSnifferFallbackError(RuntimeError):
@@ -644,6 +644,11 @@ async def _discover_http(
     content: object = None
     if json_path is not None:
         content = resolve_path(data, json_path) if json_path else data
+        # json_path_values: treat a dict-of-items as its values list.
+        # Some APIs (e.g. TalentClue) return {"jobs": {"<id>": {...}}}
+        # rather than {"jobs": [{...}]}.
+        if config.get("json_path_values") and isinstance(content, dict):
+            content = list(content.values())
     else:
         # Try arrays first (items mode), then HTML strings
         arrays = find_arrays(data)
@@ -1050,7 +1055,17 @@ async def _discover_replay(
         if decrypt_cfg:
             data = _apply_response_decrypt(data, decrypt_cfg)
 
-        items = extract_items(data, json_path)
+        # json_path_values: treat a dict-of-items at json_path as its values list.
+        # Some APIs (e.g. TalentClue) return {"jobs": {"<id>": {...}}} rather
+        # than {"jobs": [{...}]}; coerce before extract_items.
+        items: list[dict] | None = None
+        if config.get("json_path_values") and json_path:
+            resolved = resolve_path(data, json_path)
+            if isinstance(resolved, dict):
+                items = [v for v in resolved.values() if isinstance(v, dict)]
+
+        if items is None:
+            items = extract_items(data, json_path)
         if not items:
             log.warning("api_sniffer.no_items", api_url=api_url, json_path=json_path)
             return list() if fields_map else set()
@@ -1084,17 +1099,12 @@ async def _discover_replay(
             )
             default_cap = _HTTP_MAX_PAGES if using_http else MAX_PAGES
             max_pg = pagination_config.get("max_pages", default_cap)
-            # When total_count is known, raise the cap to whatever it takes
-            # to actually reach it — bounded only by MAX_ITEMS. APIs with
-            # small page sizes (Phenom = 10/page) on large tenants (Marriott
-            # = 12k, McDonald's CA = 3.9k) would otherwise silently truncate
-            # at MAX_PAGES (50 → 500 jobs) or _HTTP_MAX_PAGES (200 → 2k).
-            if total_count and len(items) > 0:
+            # When total_count is known, raise cap to _HTTP_MAX_PAGES so
+            # APIs with small page sizes are not silently truncated.
+            if total_count and max_pg < _HTTP_MAX_PAGES:
                 needed = (total_count + len(items) - 1) // len(items)
-                ceiling = (MAX_ITEMS + len(items) - 1) // len(items)
-                target = min(needed, ceiling)
-                if target > max_pg:
-                    max_pg = target
+                if needed > max_pg:
+                    max_pg = min(needed, _HTTP_MAX_PAGES)
             items = await paginate_all(fetch_fn, job_result, max_pg)
 
         # Cap
