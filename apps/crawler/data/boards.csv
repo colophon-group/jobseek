@@ -2522,6 +2522,7 @@ lendingtree,lendingtree-greenhouse,https://job-boards.greenhouse.io/lendingtree,
 lendo,lendo-jobylon,https://cdn.jobylon.com/jobs/companies/1296/embed/v2/?page_size=1000,jobylon,"{""company_id"": ""1296""}",json-ld,
 lenovo,lenovo-careers,https://jobs.lenovo.com/en_US/careers/SearchJobs,dom,"{""render"": true, ""wait"": ""networkidle"", ""url_filter"": ""/careers/JobDetail/"", ""pagination"": {""param_name"": ""jobOffset"", ""start"": 0, ""increment"": 10, ""max_pages"": 100, ""browser"": true}}",dom,"{""render"": true, ""wait"": ""networkidle"", ""steps"": [{""tag"": ""h2"", ""attr"": ""class=banner__text__title"", ""field"": ""title""}, {""text"": ""City:"", ""offset"": 1, ""field"": ""locations""}, {""text"": ""Description and Requirements"", ""offset"": 1, ""field"": ""description"", ""html"": true, ""stop"": ""Additional Locations""}]}"
 lens,lens-ashby,https://jobs.ashbyhq.com/lens,ashby,"{""token"": ""lens""}",skip,
+leona-health,leona-health-careers,https://jobs.ashbyhq.com/leona,ashby,"{""token"": ""leona""}",skip,
 letta,letta-ashby,https://jobs.ashbyhq.com/letta,ashby,"{""token"": ""letta""}",skip,
 levanta,levanta-greenhouse,https://job-boards.greenhouse.io/levanta,greenhouse,"{""token"": ""levanta""}",skip,
 level,level-ashby,https://jobs.ashbyhq.com/level,ashby,"{""token"": ""level""}",skip,
