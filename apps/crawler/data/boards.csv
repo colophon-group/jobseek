@@ -3821,6 +3821,7 @@ rubrik-job-board,rubrik-job-board-greenhouse,https://job-boards.greenhouse.io/ru
 ruf-it-gmbh,ruf-it-gmbh-join,https://join.com/companies/ruf-itcom,join,"{""slug"": ""ruf-itcom""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 ruggable,ruggable-greenhouse,https://job-boards.greenhouse.io/ruggable,greenhouse,"{""token"": ""ruggable""}",skip,
 rula,rula-ashby,https://jobs.ashbyhq.com/rula,ashby,"{""token"": ""rula""}",skip,
+rune-technologies,rune-technologies-careers,https://jobs.ashbyhq.com/runetech,ashby,"{""token"": ""runetech""}",skip,
 runpod-inc,runpod-inc-greenhouse,https://job-boards.greenhouse.io/runpod,greenhouse,"{""token"": ""runpod""}",skip,
 runway,runway-ashby,https://jobs.ashbyhq.com/runway-ml,ashby,"{""token"": ""runway-ml""}",skip,
 runwise,runwise-greenhouse,https://job-boards.greenhouse.io/runwise,greenhouse,"{""token"": ""runwise""}",skip,
