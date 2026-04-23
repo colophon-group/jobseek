@@ -40,7 +40,11 @@ def make_http_fetcher(client) -> FetchJsonFn:
     """Create a FetchJsonFn that uses httpx for plain HTTP requests."""
 
     async def _fetch(method: str, url: str, headers: dict, body: str | None) -> object:
-        req_headers = {**headers, "Accept": "application/json"}
+        # Strip any case-variant of Accept before setting the canonical one,
+        # so user-supplied lowercase "accept" doesn't race Python's case-
+        # sensitive dict against httpx's case-insensitive Headers class.
+        req_headers = {k: v for k, v in headers.items() if k.lower() != "accept"}
+        req_headers["Accept"] = "application/json"
         kw: dict = {"headers": req_headers, "timeout": 30}
         if method.upper() == "POST" and body:
             kw["content"] = body
