@@ -37,6 +37,7 @@ export interface SearchFilters {
   salaryMaxEur?: number;
   experienceMin?: number;
   experienceMax?: number;
+  excludeTitles?: string[];
   languages: string[];
   locale: string;
 }

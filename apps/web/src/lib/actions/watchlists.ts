@@ -29,6 +29,7 @@ import { isTrivialWatchlist } from "@/lib/watchlist-utils";
 
 export type WatchlistFilters = {
   keywords?: string[];
+  excludeTitles?: string[];
   locationSlugs?: string[];
   occupationSlugs?: string[];
   senioritySlugs?: string[];
