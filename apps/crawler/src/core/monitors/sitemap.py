@@ -14,6 +14,8 @@ log = structlog.get_logger()
 
 MAX_URLS = 50_000
 NS = "{http://www.sitemaps.org/schemas/sitemap/0.9}"
+# Some generators emit https:// instead of http:// in the namespace declaration.
+NS_HTTPS = "{https://www.sitemaps.org/schemas/sitemap/0.9}"
 
 _JOB_KEYWORDS = ("job", "career", "posting", "position", "vacancy", "opening")
 
@@ -37,10 +39,23 @@ def _strip_utm(url: str) -> str:
     return parsed._replace(query=urlencode(filtered, doseq=True)).geturl()
 
 
+def _detect_ns(root: ET.Element) -> str:
+    """Return the XML namespace prefix (e.g. ``{http://...}``) from the root tag.
+
+    Falls back to the canonical ``NS`` constant when the tag carries no namespace
+    so that callers always get a usable prefix string.
+    """
+    tag = root.tag
+    if tag.startswith("{"):
+        return tag[: tag.index("}") + 1]
+    return NS
+
+
 def _extract_urls(root: ET.Element) -> list[str]:
+    ns = _detect_ns(root)
     urls: list[str] = []
-    for url_el in root.findall(f"{NS}url"):
-        loc = url_el.find(f"{NS}loc")
+    for url_el in root.findall(f"{ns}url"):
+        loc = url_el.find(f"{ns}loc")
         if loc is not None and loc.text:
             urls.append(_strip_utm(loc.text.strip()))
     if not urls:
@@ -57,9 +72,10 @@ def _is_sitemap_index(root: ET.Element) -> bool:
 
 
 def _extract_child_sitemaps(root: ET.Element) -> list[str]:
+    ns = _detect_ns(root)
     urls: list[str] = []
-    for el in root.findall(f"{NS}sitemap"):
-        loc = el.find(f"{NS}loc")
+    for el in root.findall(f"{ns}sitemap"):
+        loc = el.find(f"{ns}loc")
         if loc is not None and loc.text:
             urls.append(loc.text.strip())
     if not urls:
