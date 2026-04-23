@@ -34,6 +34,22 @@ _PAGE_PATTERNS = [
 
 _IGNORE_TOKENS = frozenset({"embed", "v1", "api", "js", "css", "assets"})
 
+# Href-less anchors whose text is a collapsed-section toggle. Some Greenhouse
+# boards (Varda Space, etc.) paste HTML from WYSIWYG editors that leave
+# stranded ``<a>Read more</a>`` / ``<a>Learn more</a>`` artifacts — no href,
+# purely decorative. Strip them so they don't trail the description.
+_STRAY_TOGGLE_RE = re.compile(
+    r"<a(?![^>]*\shref=)[^>]*>\s*(?:read|learn|show|see|view)\s+more\s*</a>",
+    re.IGNORECASE,
+)
+
+
+def _clean_description(html: str | None) -> str | None:
+    if not html:
+        return html
+    cleaned = _STRAY_TOGGLE_RE.sub("", html)
+    return cleaned
+
 
 def _parse_job(job: dict) -> DiscoveredJob | None:
     url = job.get("absolute_url")
@@ -65,7 +81,7 @@ def _parse_job(job: dict) -> DiscoveredJob | None:
     return DiscoveredJob(
         url=url,
         title=job.get("title"),
-        description=job.get("content"),
+        description=_clean_description(job.get("content")),
         locations=locations or None,
         date_posted=job.get("first_published"),
         language=job.get("language"),
