@@ -4120,6 +4120,7 @@ sumo-logic,sumo-logic-greenhouse,https://job-boards.greenhouse.io/sumologic,gree
 sumup,sumup-greenhouse,https://boards.greenhouse.io/sumup,greenhouse,"{""token"": ""sumup""}",skip,
 sun-pharmaceutical,sun-pharmaceutical-careers,https://careers.sunpharma.com/search/,rss,"{""preset"": ""successfactors""}",skip,
 sun-pharmaceutical,sun-pharmaceutical-careers-na,https://jobs.sunpharma.com/en/search-jobs,sitemap,"{""url_filter"": ""/job/""}",json-ld,
+sunflower-labs,sunflower-labs-careers,https://www.sunflower-labs.com/jobs,dom,"{""url_filter"": ""jobs#(?!notice$)""}",dom,"{""steps"": [{""tag"": ""h2"", ""text"": ""Open positions"", ""from"": 0}, {""tag"": ""h2"", ""field"": ""title""}, {""tag"": ""h3"", ""field"": ""locations""}, {""tag"": ""p"", ""field"": ""description"", ""stop_tag"": ""h3"", ""html"": true}, {""tag"": ""h3"", ""text"": ""Responsibilities""}, {""tag"": ""p"", ""field"": ""responsibilities"", ""stop_tag"": ""h3"", ""html"": true}, {""tag"": ""h3"", ""text"": ""Qualifications""}, {""tag"": ""p"", ""field"": ""qualifications"", ""stop_tag"": ""h2"", ""html"": true}], ""defaults"": {""job_location_type"": ""onsite""}}"
 sunnyside,sunnyside-greenhouse,https://job-boards.greenhouse.io/sunnyside,greenhouse,"{""token"": ""sunnyside""}",skip,
 suno,suno-ashby,https://jobs.ashbyhq.com/suno,ashby,"{""token"": ""suno""}",skip,
 sunrise,sunrise-ashby,https://jobs.ashbyhq.com/sunrise,ashby,"{""token"": ""sunrise""}",skip,
