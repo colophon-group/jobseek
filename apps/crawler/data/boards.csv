@@ -2713,6 +2713,7 @@ maven-clinic,maven-clinic-greenhouse,https://job-boards.greenhouse.io/mavenclini
 maven-emerging-talent,maven-emerging-talent-greenhouse,https://job-boards.greenhouse.io/emergingtalent,greenhouse,"{""token"": ""emergingtalent""}",skip,
 may-mobility,may-mobility-greenhouse,https://job-boards.greenhouse.io/maymobility,greenhouse,"{""token"": ""maymobility""}",skip,
 mayflower,mayflower-careers,https://mayflower.recruitee.com,recruitee,"{""slug"": ""mayflower"", ""api_base"": ""https://mayflower.recruitee.com""}",skip,
+maze-therapeutics,maze-therapeutics-careers,https://boards.greenhouse.io/mazetherapeutics,greenhouse,"{""token"": ""mazetherapeutics""}",skip,
 mcadams,mcadams-greenhouse,https://job-boards.greenhouse.io/mcadams,greenhouse,"{""token"": ""mcadams""}",skip,
 mccullough-robertson,mccullough-robertson-greenhouse,https://job-boards.greenhouse.io/mcculloughrobertson,greenhouse,"{""token"": ""mcculloughrobertson""}",skip,
 mcdonalds,mcdonalds-at,https://careers.smartrecruiters.com/McDonaldsOesterreich,smartrecruiters,"{""token"": ""McDonaldsOesterreich""}",smartrecruiters,
