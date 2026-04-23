@@ -4155,6 +4155,7 @@ spring-health,spring-health-greenhouse,https://job-boards.greenhouse.io/springhe
 springboard,springboard-greenhouse,https://job-boards.greenhouse.io/springboardmentors,greenhouse,"{""token"": ""springboardmentors""}",skip,
 springboard-roles,springboard-roles-greenhouse,https://job-boards.greenhouse.io/springboard,greenhouse,"{""token"": ""springboard""}",skip,
 sprinter-health,sprinter-health-ashby,https://jobs.ashbyhq.com/sprinter-health,ashby,"{""token"": ""sprinter-health""}",skip,
+spruce-systems,spruce-systems-careers,https://api.lever.co/v0/postings/sprucesystems?mode=json,lever,"{""token"": ""sprucesystems""}",skip,
 spruceid,spruceid-ashby,https://jobs.ashbyhq.com/spruceid,ashby,"{""token"": ""spruceid""}",skip,
 sps-north-america,sps-north-america-greenhouse,https://job-boards.greenhouse.io/spsnorthamerica,greenhouse,"{""token"": ""spsnorthamerica""}",skip,
 sps-north-america-opportunities-not-externally-posted-board,sps-north-america-opportunities-not-externally-posted-board-greenhouse,https://job-boards.greenhouse.io/spsnorthamericaselected,greenhouse,"{""token"": ""spsnorthamericaselected""}",skip,
