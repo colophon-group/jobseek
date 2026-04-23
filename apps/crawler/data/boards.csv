@@ -1587,6 +1587,7 @@ five-rings-llc-careers,five-rings-llc-careers-greenhouse,https://job-boards.gree
 five-rings-llc-events,five-rings-llc-events-greenhouse,https://job-boards.greenhouse.io/fiveringsevents,greenhouse,"{""token"": ""fiveringsevents""}",skip,
 five9,five9-greenhouse,https://job-boards.greenhouse.io/five9,greenhouse,"{""token"": ""five9""}",skip,
 fivetran,fivetran-greenhouse,https://job-boards.greenhouse.io/fivetran,greenhouse,"{""token"": ""fivetran""}",skip,
+fixposition,fixposition-careers,https://fixposition.bamboohr.com/careers,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""url_filter"": ""/careers/\\d+""}",json-ld,"{""render"": true}"
 flaglerhealth,flaglerhealth-ashby,https://jobs.ashbyhq.com/flaglerhealth,ashby,"{""token"": ""flaglerhealth""}",skip,
 flagship-pioneering-inc,flagship-pioneering-inc-greenhouse,https://job-boards.greenhouse.io/flagshippioneeringinc,greenhouse,"{""token"": ""flagshippioneeringinc""}",skip,
 flagstone-group-ltd,flagstone-group-ltd-greenhouse,https://job-boards.greenhouse.io/flagstone,greenhouse,"{""token"": ""flagstone""}",skip,
