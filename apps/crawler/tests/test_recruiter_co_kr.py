@@ -389,13 +389,15 @@ class TestCanHandle:
         assert result == {"slug": "mcdonalds", "jobs": 42}
 
     async def test_unknown_tenant_returns_none(self):
+        """400 ``NotFoundCompanyException`` on the list endpoint means
+        the tenant slug doesn't exist — ``can_handle`` must return
+        ``None`` so the auto-detect stack moves on."""
+
         def handler(request: httpx.Request) -> httpx.Response:
-            if request.url.path == "/design/v2":
-                return httpx.Response(
-                    400,
-                    json={"code": "NotFoundCompanyException", "message": "no"},
-                )
-            return httpx.Response(404)
+            return httpx.Response(
+                400,
+                json={"code": "NotFoundCompanyException", "message": "no"},
+            )
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             result = await can_handle("https://nobody.recruiter.co.kr/career/home", client)
@@ -405,14 +407,15 @@ class TestCanHandle:
         result = await can_handle("https://example.com/careers")
         assert result is None
 
-    async def test_api_probe_count_missing_ok(self):
-        """If the list endpoint fails but design/v2 succeeds, still detect."""
+    async def test_api_probe_detects_without_count(self):
+        """If the list endpoint returns 200 but the body lacks the
+        pagination hint, still detect the tenant — just without a count
+        in the returned metadata. Covers partial/slim API responses
+        without regressing detection."""
 
         def handler(request: httpx.Request) -> httpx.Response:
-            if request.url.path == "/design/v2":
-                return httpx.Response(200, json={"title": "X"})
             if request.url.path == "/position/v1/jobflex":
-                return httpx.Response(500)
+                return httpx.Response(200, json={"list": []})  # no "pagination"
             return httpx.Response(404)
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
@@ -649,3 +652,44 @@ class TestDiscoverRetriesListEndpoint:
                 }
                 with pytest.raises(httpx.HTTPStatusError):
                     await discover(board, client)
+
+
+class TestTenantGoneSemantics:
+    """``_fetch_list_page`` must distinguish tenant-gone from generic
+    validation errors. A 400 with ``NotFoundCompanyException`` in the
+    body → ``BoardGoneError`` (board auto-disables after one cycle).
+    A 400 with any other error code → generic ``HTTPStatusError``
+    (retried by the worker).
+    """
+
+    async def test_not_found_company_raises_board_gone(self):
+        from src.core.monitors import BoardGoneError
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                400,
+                json={"code": "NotFoundCompanyException", "message": "no"},
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://gone-tenant.recruiter.co.kr/career/home",
+                "metadata": {"slug": "gone-tenant"},
+            }
+            with pytest.raises(BoardGoneError):
+                await discover(board, client)
+
+    async def test_other_400_propagates_as_http_status_error(self):
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                400,
+                json={"code": "MethodArgumentNotValidException", "message": "no"},
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://mcdonalds.recruiter.co.kr/career/home",
+                "metadata": {"slug": "mcdonalds"},
+            }
+            with pytest.raises(httpx.HTTPStatusError):
+                await discover(board, client)
