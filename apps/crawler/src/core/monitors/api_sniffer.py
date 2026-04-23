@@ -73,7 +73,7 @@ if TYPE_CHECKING:
 
 log = structlog.get_logger()
 
-MAX_ITEMS = 10_000
+MAX_ITEMS = 50_000
 
 
 class ApiSnifferFallbackError(RuntimeError):
@@ -1084,12 +1084,17 @@ async def _discover_replay(
             )
             default_cap = _HTTP_MAX_PAGES if using_http else MAX_PAGES
             max_pg = pagination_config.get("max_pages", default_cap)
-            # When total_count is known, raise cap to _HTTP_MAX_PAGES so
-            # APIs with small page sizes are not silently truncated.
-            if total_count and max_pg < _HTTP_MAX_PAGES:
+            # When total_count is known, raise the cap to whatever it takes
+            # to actually reach it — bounded only by MAX_ITEMS. APIs with
+            # small page sizes (Phenom = 10/page) on large tenants (Marriott
+            # = 12k, McDonald's CA = 3.9k) would otherwise silently truncate
+            # at MAX_PAGES (50 → 500 jobs) or _HTTP_MAX_PAGES (200 → 2k).
+            if total_count and len(items) > 0:
                 needed = (total_count + len(items) - 1) // len(items)
-                if needed > max_pg:
-                    max_pg = min(needed, _HTTP_MAX_PAGES)
+                ceiling = (MAX_ITEMS + len(items) - 1) // len(items)
+                target = min(needed, ceiling)
+                if target > max_pg:
+                    max_pg = target
             items = await paginate_all(fetch_fn, job_result, max_pg)
 
         # Cap
