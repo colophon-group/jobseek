@@ -1030,6 +1030,7 @@ comstock,comstock-greenhouse,https://job-boards.greenhouse.io/comstock,greenhous
 comulate,comulate-ashby,https://jobs.ashbyhq.com/comulate,ashby,"{""token"": ""comulate""}",skip,
 concentric,concentric-greenhouse,https://job-boards.greenhouse.io/concentric,greenhouse,"{""token"": ""concentric""}",skip,
 conductor,conductor-careers,https://jobs.ashbyhq.com/conductor,ashby,"{""token"": ""conductor""}",skip,
+conductor-ai,conductor-ai-careers,https://jobs.ashbyhq.com/conductorai,ashby,"{""token"": ""conductorai""}",skip,
 conduit,conduit-ashby,https://jobs.ashbyhq.com/conduit,ashby,"{""token"": ""conduit""}",skip,
 confluence,confluence-pinpoint,https://confluence.pinpointhq.com,pinpoint,"{""slug"": ""confluence""}",skip,
 confluent,confluent-ashby,https://jobs.ashbyhq.com/confluent,ashby,"{""token"": ""confluent""}",skip,
