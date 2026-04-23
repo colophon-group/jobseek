@@ -1949,6 +1949,7 @@ hear-com-us,hear-com-us-greenhouse,https://job-boards.greenhouse.io/hearcom,gree
 heart-aerospace,heart-aerospace-greenhouse,https://job-boards.greenhouse.io/heartaerospace,greenhouse,"{""token"": ""heartaerospace""}",skip,
 heartflow,heartflow-greenhouse,https://job-boards.greenhouse.io/heartflowinc,greenhouse,"{""token"": ""heartflowinc""}",skip,
 hebbia,hebbia-greenhouse,https://job-boards.greenhouse.io/hebbia,greenhouse,"{""token"": ""hebbia""}",skip,
+hedra,hedra-careers,https://jobs.ashbyhq.com/hedra,ashby,"{""token"": ""hedra""}",skip,
 heim-marketing,heim-marketing-join,https://join.com/companies/heimmarketingde,join,"{""slug"": ""heimmarketingde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 heizm-ller-gmbh,heizm-ller-gmbh-join,https://join.com/companies/heizmuellerde,join,"{""slug"": ""heizmuellerde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 helium-10,helium-10-greenhouse,https://job-boards.greenhouse.io/helium10,greenhouse,"{""token"": ""helium10""}",skip,
