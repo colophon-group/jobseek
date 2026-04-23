@@ -664,6 +664,7 @@ boeing,boeing-intern,https://boeing.wd1.myworkdayjobs.com/INTERN,workday,"{""com
 boeing,boeing-mfg,https://boeing.wd1.myworkdayjobs.com/MFG,workday,"{""company"": ""boeing"", ""wd_instance"": ""wd1"", ""site"": ""MFG""}",workday,
 boeing,boeing-subsidiary,https://boeing.wd1.myworkdayjobs.com/external_subsidiary,workday,"{""company"": ""boeing"", ""wd_instance"": ""wd1"", ""site"": ""external_subsidiary""}",workday,
 bol,bol-careers,https://job-boards.greenhouse.io/bolcomen,greenhouse,"{""token"": ""bolcomen""}",skip,
+bold-ag,bold-ag-careers,https://www.bold.ch/jobs/,dom,,dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""text"": ""Was du tust"", ""field"": ""description"", ""html"": true, ""stop"": ""Und jetzt?""}], ""defaults"": {""locations"": [""Bern, CH""]}}"
 bold-business,bold-business-greenhouse,https://job-boards.greenhouse.io/boldbusiness,greenhouse,"{""token"": ""boldbusiness""}",skip,
 bolster,bolster-recruitee,https://bolster.recruitee.com,recruitee,"{""token"": ""bolster""}",skip,
 bolt,bolt-careers,https://bolt.eu/en/careers/positions/,greenhouse,"{""token"": ""boltv2""}",skip,
