@@ -36,7 +36,7 @@ from urllib.parse import urlparse
 import httpx
 import structlog
 
-from src.core.monitors import DiscoveredJob, fetch_page_text, register
+from src.core.monitors import BoardGoneError, DiscoveredJob, fetch_page_text, register
 
 log = structlog.get_logger()
 
@@ -86,7 +86,11 @@ _HOST_RE = re.compile(r'data-host="([^"]+)"')
 # anchor on ``"widgets":{"main":{`` and then search a bounded window after the
 # anchor for each field individually — tolerant to nesting and reordering.
 _WIDGET_ANCHOR_RE = re.compile(r'"widgets"\s*:\s*\{\s*"main"\s*:\s*\{')
-_WIDGET_WINDOW_BYTES = 4096
+# Large enough to cover apiKey sitting behind a bulky ``themes`` / ``filters``
+# nested object. Empirically both fields are within ~100 bytes of the anchor
+# on current bundles (<300KB total); 64KB leaves ~4 orders of magnitude of
+# headroom while still bounding the regex-backtrack window.
+_WIDGET_WINDOW_BYTES = 65536
 _WIDGET_ID_RE = re.compile(r'"id"\s*:\s*"([0-9a-fA-F-]{36})"')
 _API_KEY_RE = re.compile(r'"apiKey"\s*:\s*"([a-fA-F0-9]{32,})"')
 _DETAIL_PATH_RE = re.compile(r'"detailPath"\s*:\s*"([^"]+)"')
@@ -313,13 +317,27 @@ def _extract_widget_config(script_text: str) -> dict | None:
     }
 
 
+class _WidgetConfigGone(Exception):
+    """Sentinel — the tenant's ``script.min.js`` returned 404.
+
+    Surfaces as ``BoardGoneError`` from ``discover`` so the board
+    auto-disables in one cycle. Separate from transport errors
+    (which propagate as retriable).
+    """
+
+
 async def _fetch_widget_config(host: str, client: httpx.AsyncClient) -> dict | None:
     url = f"https://{host}/assets/js/script.min.js"
     try:
         resp = await client.get(url, follow_redirects=True)
-    except Exception as exc:
-        log.warning("almacareer.widget_config_fetch_failed", host=host, error=str(exc))
-        return None
+    except httpx.HTTPError as exc:
+        # Transport errors propagate (retriable) — don't mask as None
+        # which would look indistinguishable from "widget config
+        # missing" and cause silent empty-crawls.
+        log.warning("almacareer.widget_config_transport_error", host=host, error=str(exc))
+        raise
+    if resp.status_code == 404:
+        raise _WidgetConfigGone(host)
     if resp.status_code != 200:
         log.warning(
             "almacareer.widget_config_fetch_failed",
@@ -536,7 +554,18 @@ async def _fetch_list_page(
         host=host,
     )
     widget = data.get("widget") or {}
-    return widget.get("jobAdList") or {}
+    job_ad_list = widget.get("jobAdList")
+    # A null ``jobAdList`` alongside ``errors`` in the response means the
+    # upstream GraphQL schema drifted on this field (usually a rename).
+    # Treat as a hard error rather than silently terminating the crawl
+    # with 0 jobs — which would otherwise look like a legitimate empty
+    # board and auto-disable after 5 cycles.
+    if job_ad_list is None:
+        raise RuntimeError(
+            f"AlmaCareer GraphQL returned null jobAdList on page {page} "
+            f"for host {host!r} — schema drift?"
+        )
+    return job_ad_list
 
 
 async def _fetch_job_html(
@@ -596,7 +625,13 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
     detail_path = metadata.get("detail_path")
 
     if not widget_id or not api_key:
-        config = await _fetch_widget_config(host, client)
+        try:
+            config = await _fetch_widget_config(host, client)
+        except _WidgetConfigGone:
+            raise BoardGoneError(
+                f"AlmaCareer tenant {host!r} returned 404 on script.min.js",
+                url=f"https://{host}/",
+            ) from None
         if not config:
             raise ValueError(
                 f"AlmaCareer widget config not found at https://{host}/assets/js/script.min.js"
@@ -707,7 +742,14 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
     if client is None:
         return result
 
-    config = await _fetch_widget_config(host, client)
+    try:
+        config = await _fetch_widget_config(host, client)
+    except (_WidgetConfigGone, httpx.HTTPError):
+        # 404 or transport error — not an AlmaCareer tenant from this
+        # vantage point. Collapse both to None at the detection layer;
+        # ``discover`` is stricter about distinguishing gone from
+        # retriable.
+        return None
     if not config:
         # Host matched but no Capybara script — not an AlmaCareer tenant.
         return None

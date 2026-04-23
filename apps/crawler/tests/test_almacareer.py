@@ -602,10 +602,30 @@ class TestDiscover:
             with pytest.raises(ValueError, match="Cannot derive AlmaCareer host"):
                 await discover(board, client)
 
-    async def test_missing_widget_config_raises(self):
+    async def test_script_404_raises_board_gone(self):
+        """A 404 on the tenant's ``script.min.js`` means the tenant no
+        longer exists — surface as ``BoardGoneError`` so the board is
+        auto-disabled in one cycle rather than looping failures."""
+        from src.core.monitors import BoardGoneError
+
         def handler(request: httpx.Request) -> httpx.Response:
             if request.url.path == "/assets/js/script.min.js":
                 return httpx.Response(404)
+            return httpx.Response(200, json={"data": {}})
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {"board_url": "https://acme.jobs.cz/x/", "metadata": {}}
+            with pytest.raises(BoardGoneError):
+                await discover(board, client)
+
+    async def test_malformed_script_raises_value_error(self):
+        """A 200 with a script that has no widget config block is a
+        bug (or AlmaCareer changed their bundle format), not a gone
+        board — keep the ``ValueError`` path so the worker retries."""
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/assets/js/script.min.js":
+                return httpx.Response(200, text="// no widgets here")
             return httpx.Response(200, json={"data": {}})
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
