@@ -1132,6 +1132,74 @@ class TestClassifyJobUrl:
         )
 
 
+# ── TestCanonicalizeUrl ──────────────────────────────────────────────
+
+
+class TestCanonicalizeUrl:
+    """SuccessFactors boards (and similar ATS platforms) embed a
+    per-render CSRF token in anchor ``href`` values. Stripping the
+    volatile params before ``_DIFF_BATCH`` is what keeps the
+    ``scrapes_browser`` queue from ballooning to N × postings every
+    monitor cycle (see the Pictet / career012.successfactors.eu
+    incident that motivated the function)."""
+
+    def setup_method(self):
+        from src.processing.board import _canonicalize_url
+
+        self.canon = _canonicalize_url
+
+    def test_noop_on_unaffected_host(self):
+        u = "https://boards.greenhouse.io/acme/jobs/123?gh_src=foo"
+        assert self.canon(u) == u
+
+    def test_strips_successfactors_csrf_token(self):
+        raw = (
+            "https://career012.successfactors.eu/career?"
+            "career_ns=job_listing&company=banquepict"
+            "&career_job_req_id=123283&rcm_site_locale=en_GB"
+            "&_s.crb=40gHorqpZRDK1wDYhwU3Jy6Imycai0PKSiEuUslUkGY%3D"
+        )
+        out = self.canon(raw)
+        assert "_s.crb" not in out
+        # Identity-carrying params stay intact.
+        assert "career_job_req_id=123283" in out
+        assert "company=banquepict" in out
+        assert "rcm_site_locale=en_GB" in out
+
+    def test_strips_job_alert_controller_and_timezone(self):
+        raw = (
+            "https://career022.sapsf.com/career?career_job_req_id=42"
+            "&jobAlertController_jobAlertId="
+            "&jobAlertController_jobAlertName="
+            "&browserTimeZone=UTC"
+        )
+        out = self.canon(raw)
+        assert "jobAlertController_jobAlertId" not in out
+        assert "jobAlertController_jobAlertName" not in out
+        assert "browserTimeZone" not in out
+        assert "career_job_req_id=42" in out
+
+    def test_two_distinct_renders_canonicalize_equal(self):
+        base = (
+            "https://career012.successfactors.eu/career?"
+            "company=banquepict&career_job_req_id=123283&rcm_site_locale=en_GB"
+            "&browserTimeZone=UTC&_s.crb="
+        )
+        u1 = base + "40gHorqpZRDK1wDYhwU3Jy6Imycai0PKSiEuUslUkGY%3D"
+        u2 = base + "eIL4dww7lTD2ZAhkZlJAyZYzGG3Bc9DEIhGQx1kBrJE%3D"
+        assert self.canon(u1) == self.canon(u2)
+
+    def test_empty_and_malformed_pass_through(self):
+        assert self.canon("") == ""
+        # urlparse doesn't raise on garbage; it returns a URL with no
+        # netloc. The function must not crash or rewrite such URLs.
+        assert self.canon("not-a-url") == "not-a-url"
+
+    def test_sapsf_host_also_handled(self):
+        raw = "https://career042.sapsf.de/career?career_job_req_id=7&_s.crb=abc"
+        assert self.canon(raw) == "https://career042.sapsf.de/career?career_job_req_id=7"
+
+
 # ── TestInsertSqlContract ────────────────────────────────────────────
 
 
