@@ -2275,6 +2275,7 @@ justworks,justworks-greenhouse,https://job-boards.greenhouse.io/justworks,greenh
 juul-labs,juul-labs-greenhouse,https://job-boards.greenhouse.io/juullabs,greenhouse,"{""token"": ""juullabs""}",skip,
 k-health,k-health-greenhouse,https://job-boards.greenhouse.io/khealthcareers,greenhouse,"{""token"": ""khealthcareers""}",skip,
 k2-space,k2-space-greenhouse,https://job-boards.greenhouse.io/k2spacecorporation,greenhouse,"{""token"": ""k2spacecorporation""}",skip,
+kaedim,kaedim-careers,https://join-kaedim.notion.site/,notion,,notion,
 kaib-galldiks-partner-mbb,kaib-galldiks-partner-mbb-join,https://join.com/companies/stb-kgpde,join,"{""slug"": ""stb-kgpde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 kaiko-ai,kaiko-ai-careers,https://jobs.kaiko.ai/,rss,"{""preset"": ""teamtailor""}",skip,
 kairos-power,kairos-power-greenhouse,https://job-boards.greenhouse.io/kairospower,greenhouse,"{""token"": ""kairospower""}",skip,
