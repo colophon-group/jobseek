@@ -10,6 +10,7 @@ import { tooltipClass } from "@/components/ui/tooltip-styles";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { getPostingDetail } from "@/lib/actions/search";
 import type { PostingDetail } from "@/lib/actions/search";
+import { getJobAiSummary } from "@/lib/actions/enrich-job";
 import { SaveButton } from "@/components/search/save-button";
 import { useSavedJobs } from "@/components/SavedJobsProvider";
 import { PendingJobBanner } from "@/components/PendingJobWarning";
@@ -117,6 +118,20 @@ function DetailContent({ detail, descriptionLoaded }: { detail: PostingDetail; d
   const { getStatus, getSavedJobId, setStatus: setTrackingStatus } = useSavedJobs();
   const trackingStatus = getStatus(detail.id);
   const savedJobId = getSavedJobId(detail.id);
+
+  const [aiSummary, setAiSummary] = useState<string | null | "loading">(null);
+
+  // Fetch AI summary once description is available
+  useEffect(() => {
+    if (!descriptionLoaded || !detail.descriptionHtml || !detail.title) return;
+    setAiSummary("loading");
+    getJobAiSummary({
+      postingId: detail.id,
+      title: detail.title,
+      descriptionHtml: detail.descriptionHtml,
+      companyName: company.name,
+    }).then((s) => setAiSummary(s));
+  }, [descriptionLoaded, detail.descriptionHtml]);
 
   const [interviews, setInterviews] = useState<InterviewEntry[]>([]);
   const [interviewsLoaded, setInterviewsLoaded] = useState(false);
@@ -278,6 +293,22 @@ function DetailContent({ detail, descriptionLoaded }: { detail: PostingDetail; d
               )}
             </>
           )}
+        </div>
+      )}
+
+      {/* AI Summary */}
+      {aiSummary === "loading" && (
+        <div className="space-y-1.5 rounded-md border-l-2 border-primary/30 pl-3">
+          <div className="h-2 w-16 animate-pulse rounded bg-border-soft" />
+          <div className="h-3 w-full animate-pulse rounded bg-border-soft" />
+          <div className="h-3 w-5/6 animate-pulse rounded bg-border-soft" />
+          <div className="h-3 w-4/6 animate-pulse rounded bg-border-soft" />
+        </div>
+      )}
+      {typeof aiSummary === "string" && aiSummary && (
+        <div className="rounded-md border-l-2 border-primary/40 pl-3">
+          <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-muted/70">AI Summary</p>
+          <p className="text-xs leading-relaxed text-muted">{aiSummary}</p>
         </div>
       )}
 
