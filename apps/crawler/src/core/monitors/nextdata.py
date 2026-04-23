@@ -29,6 +29,16 @@ Alternative pagination using total_records + page_size (computes page_count)::
         "page_size": 20,
         "page_param": "page"
     }
+
+Offset mode (Phenom Canvas-style ``?from=25&from=50...``)::
+
+    "pagination": {
+        "mode": "offset",
+        "path": "eagerLoadRefineSearch",
+        "total_records": "totalHits",
+        "page_size": 25,
+        "offset_param": "from"
+    }
 """
 
 from __future__ import annotations
@@ -45,6 +55,7 @@ from src.shared.nextdata import (
     extract_embedded_json,
     extract_field,
     extract_next_data,
+    extract_phenom_canvas_data,
     extract_react_router_data,
     extract_rsc_data,
     resolve_path,
@@ -86,6 +97,11 @@ _RSC_PATHS = [
     "allJobs",
     "data.positions",
     "data.jobs",
+]
+
+# Path to jobs array in a Phenom Canvas ``phApp.ddo`` blob.
+_PHENOM_CANVAS_PATHS = [
+    "eagerLoadRefineSearch.data.jobs",
 ]
 
 # Backward-compatible aliases for test imports
@@ -132,6 +148,26 @@ def _add_query_param(url: str, param: str, value: int) -> str:
     params[param] = [str(value)]
     new_query = urlencode(params, doseq=True)
     return urlunparse(parsed._replace(query=new_query))
+
+
+def _pagination_mode(cfg: dict) -> str:
+    """Return "page" (default) or "offset"."""
+    return cfg.get("mode", "page")
+
+
+def _compute_page_urls(board_url: str, page_count: int, cfg: dict) -> list[str]:
+    """Return URLs for pages 2..page_count under the current pagination config.
+
+    Page mode uses ``?page=N`` with N in [2..page_count]. Offset mode uses
+    ``?from=page_size*N`` for N in [1..page_count-1] (page 1 served by
+    ``board_url`` itself).
+    """
+    if _pagination_mode(cfg) == "offset":
+        param = cfg.get("offset_param", "from")
+        page_size = int(cfg.get("page_size") or 0)
+        return [_add_query_param(board_url, param, page_size * n) for n in range(1, page_count)]
+    page_param = cfg.get("page_param", "page")
+    return [_add_query_param(board_url, page_param, p) for p in range(2, page_count + 1)]
 
 
 def _resolve_field(item: dict, spec: str | dict) -> str | list[str] | None:
@@ -243,6 +279,18 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
                 log.info("nextdata.detected", url=url, source="rsc", path=path, count=count)
                 return {"source": "rsc", "path": path, "count": count}
 
+        # Try Phenom Canvas (phApp.ddo = {...})
+        data = extract_phenom_canvas_data(html)
+        if data:
+            result = _find_jobs_path(data, _PHENOM_CANVAS_PATHS)
+            if result:
+                path, count = result
+                meta = _phenom_canvas_meta(data, path, count)
+                log.info(
+                    "nextdata.detected", url=url, path=path, count=count, source="phenom_canvas"
+                )
+                return meta
+
     # Fall back to Playwright (client-rendered)
     try:
         from src.shared.browser import render as browser_render
@@ -252,6 +300,7 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
             ("nextdata", extract_next_data, _COMMON_PATHS),
             ("reactrouter", extract_react_router_data, _REACT_ROUTER_PATHS),
             ("rsc", extract_rsc_data, _RSC_PATHS),
+            ("phenom_canvas", extract_phenom_canvas_data, _PHENOM_CANVAS_PATHS),
         ]:
             data = extractor(rendered_html)
             if data:
@@ -266,7 +315,11 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
                         count=count,
                         render=True,
                     )
-                    meta: dict = {"path": path, "count": count, "render": True}
+                    if source == "phenom_canvas":
+                        meta = _phenom_canvas_meta(data, path, count)
+                        meta["render"] = True
+                        return meta
+                    meta = {"path": path, "count": count, "render": True}
                     if source != "nextdata":
                         meta["source"] = source
                     return meta
@@ -274,6 +327,34 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
         log.debug("nextdata.render_fallback_failed", url=url, exc_info=True)
 
     return None
+
+
+def _phenom_canvas_meta(data: dict, path: str, count: int) -> dict:
+    """Build auto-detection metadata for a Phenom Canvas page.
+
+    Includes the pagination config so ``ws probe`` surfaces a ready-to-run
+    monitor_config (Canvas uses ``?from=N`` offset pagination, where N is
+    computed from ``eagerLoadRefineSearch.totalHits`` and the server-
+    configured page size).
+    """
+    eager = resolve_path(data, "eagerLoadRefineSearch") or {}
+    total = eager.get("totalHits")
+    page_size = eager.get("hits") or count
+    meta: dict = {
+        "source": "phenom_canvas",
+        "path": path,
+        "count": count,
+    }
+    if isinstance(total, int) and isinstance(page_size, int) and page_size > 0:
+        meta["pagination"] = {
+            "mode": "offset",
+            "path": "eagerLoadRefineSearch",
+            "total_records": "totalHits",
+            "page_size": page_size,
+            "offset_param": "from",
+        }
+        meta["total"] = total
+    return meta
 
 
 # ---------------------------------------------------------------------------
@@ -443,12 +524,11 @@ async def discover_stream(
     else:
         yield _extract_urls(items, url_template, slug_fields)
 
-    page_param = pagination_cfg.get("page_param", "page")
+    page_urls = _compute_page_urls(board_url, page_count, pagination_cfg)
     sem = asyncio.Semaphore(_MAX_CONCURRENT_PAGES)
 
-    async def _fetch_page(page_num: int) -> list:
+    async def _fetch_page(page_url: str) -> list:
         async with sem:
-            page_url = _add_query_param(board_url, page_param, page_num)
             page_html = await _fetch_html(
                 page_url,
                 render,
@@ -465,10 +545,9 @@ async def discover_stream(
             return page_items if isinstance(page_items, list) else []
 
     # Fetch remaining pages in batches of _STREAM_BATCH_PAGES
-    remaining = list(range(2, page_count + 1))
-    for i in range(0, len(remaining), _STREAM_BATCH_PAGES):
-        chunk = remaining[i : i + _STREAM_BATCH_PAGES]
-        results = await asyncio.gather(*[_fetch_page(p) for p in chunk])
+    for i in range(0, len(page_urls), _STREAM_BATCH_PAGES):
+        chunk = page_urls[i : i + _STREAM_BATCH_PAGES]
+        results = await asyncio.gather(*[_fetch_page(u) for u in chunk])
         batch_items: list = []
         for page_items in results:
             batch_items.extend(page_items)
@@ -554,43 +633,12 @@ async def _fetch_remaining_pages(
     browser_config: dict | None = None,
 ) -> list:
     """Fetch pages 2..N and merge items with the first page."""
-    pagination_path = pagination_cfg.get("path")
-    page_count_field = pagination_cfg.get("page_count")
-    total_records_field = pagination_cfg.get("total_records")
-    page_size = pagination_cfg.get("page_size")
-    page_param = pagination_cfg.get("page_param", "page")
-
-    if not pagination_path:
-        return first_page_items
-    # Need either page_count or (total_records + page_size)
-    if not page_count_field and not (total_records_field and page_size):
+    page_count = _resolve_page_count(data, pagination_cfg)
+    if page_count is None or page_count <= 1:
         return first_page_items
 
-    pagination_data = resolve_path(data, pagination_path)
-    if not isinstance(pagination_data, dict):
-        return first_page_items
-
-    # Resolve page_count: direct field or computed from total_records / page_size
-    if page_count_field:
-        raw_count = resolve_path(pagination_data, page_count_field)
-        if raw_count is None:
-            return first_page_items
-        try:
-            page_count = int(raw_count)
-        except (ValueError, TypeError):
-            return first_page_items
-    else:
-        raw_total = resolve_path(pagination_data, total_records_field)
-        if raw_total is None:
-            return first_page_items
-        try:
-            import math
-
-            page_count = math.ceil(int(raw_total) / int(page_size))
-        except (ValueError, TypeError):
-            return first_page_items
-
-    if page_count <= 1:
+    page_urls = _compute_page_urls(board_url, page_count, pagination_cfg)
+    if not page_urls:
         return first_page_items
 
     log.info(
@@ -598,13 +646,13 @@ async def _fetch_remaining_pages(
         board_url=board_url,
         page_count=page_count,
         first_page_items=len(first_page_items),
+        mode=_pagination_mode(pagination_cfg),
     )
 
     sem = asyncio.Semaphore(_MAX_CONCURRENT_PAGES)
 
-    async def _fetch_page(page_num: int) -> list:
+    async def _fetch_page(page_url: str) -> list:
         async with sem:
-            page_url = _add_query_param(board_url, page_param, page_num)
             html = await _fetch_html(
                 page_url,
                 render,
@@ -613,7 +661,7 @@ async def _fetch_remaining_pages(
                 browser_config=browser_config,
             )
             if not html:
-                log.warning("nextdata.page_fetch_failed", page=page_num)
+                log.warning("nextdata.page_fetch_failed", url=page_url)
                 return []
             page_data = extract_embedded_json(html, source)
             if not page_data:
@@ -621,7 +669,7 @@ async def _fetch_remaining_pages(
             items = resolve_path(page_data, path)
             return items if isinstance(items, list) else []
 
-    tasks = [_fetch_page(p) for p in range(2, page_count + 1)]
+    tasks = [_fetch_page(u) for u in page_urls]
     results = await asyncio.gather(*tasks)
 
     all_items = list(first_page_items)

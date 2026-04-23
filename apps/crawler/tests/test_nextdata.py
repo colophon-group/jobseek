@@ -1467,3 +1467,238 @@ class TestRscDiscover:
         async with httpx.AsyncClient(transport=_mock_transport(html)) as client:
             result = await discover(BOARD_RSC, client)
         assert result == []
+
+
+# ---------------------------------------------------------------------------
+# Phenom Canvas source
+# ---------------------------------------------------------------------------
+
+
+def _html_with_canvas_ddo(data: dict) -> str:
+    """Wrap a phApp.ddo assignment in a minimal HTML page.
+
+    Trailing JS after the assignment emulates the real Canvas pages
+    (bracket-counting should stop at the correct brace).
+    """
+    payload = json.dumps(data)
+    return (
+        "<html><body><script>"
+        f"phApp.ddo = {payload};"
+        "phApp.somethingElse = true;"
+        "</script></body></html>"
+    )
+
+
+def _canvas_ddo(
+    *,
+    total: int,
+    offset: int,
+    page_size: int,
+    ref_num: str = "TESTREF",
+) -> dict:
+    """Build a Canvas-shaped phApp.ddo for a specific ``?from=<offset>`` page."""
+    remaining = max(0, total - offset)
+    take = min(page_size, remaining)
+    jobs = [
+        {
+            "jobId": f"R{offset + i:04d}",
+            "title": f"Job {offset + i}",
+            "descriptionTeaser": f"Teaser {offset + i}",
+            "multi_location": [f"City{offset + i}"],
+            "type": "Full time",
+            "remote": "On-Site",
+            "postedDate": "2026-04-01T00:00:00.000+0000",
+        }
+        for i in range(take)
+    ]
+    return {
+        "siteConfig": {"data": {"refNum": ref_num, "size": page_size}},
+        "eagerLoadRefineSearch": {
+            "hits": take,
+            "totalHits": total,
+            "data": {"jobs": jobs},
+        },
+    }
+
+
+def _canvas_transport(total: int, page_size: int):
+    """Return HTML pages based on the ``from`` query parameter."""
+
+    def handler(request: httpx.Request):
+        from urllib.parse import parse_qs, urlparse
+
+        parsed = urlparse(str(request.url))
+        qs = parse_qs(parsed.query)
+        offset = int(qs.get("from", ["0"])[0])
+        data = _canvas_ddo(total=total, offset=offset, page_size=page_size)
+        return httpx.Response(200, text=_html_with_canvas_ddo(data))
+
+    return httpx.MockTransport(handler)
+
+
+BOARD_CANVAS = {
+    "board_url": "https://example.com/us/en/search-results",
+    "metadata": {
+        "source": "phenom_canvas",
+        "path": "eagerLoadRefineSearch.data.jobs",
+        "url_template": "https://example.com/us/en/job/{jobId}",
+        "fields": {
+            "title": "title",
+            "description": "descriptionTeaser",
+            "locations": "multi_location",
+            "employment_type": "type",
+        },
+        "pagination": {
+            "mode": "offset",
+            "path": "eagerLoadRefineSearch",
+            "total_records": "totalHits",
+            "page_size": 25,
+            "offset_param": "from",
+        },
+    },
+}
+
+
+class TestPhenomCanvasExtraction:
+    """phApp.ddo is extracted via bracket-counting, not script id."""
+
+    def test_extract_embedded_json_canvas(self):
+        from src.shared.nextdata import extract_embedded_json
+
+        data = {
+            "siteConfig": {"data": {"refNum": "ABC"}},
+            "eagerLoadRefineSearch": {"totalHits": 5},
+        }
+        html = _html_with_canvas_ddo(data)
+        result = extract_embedded_json(html, source="phenom_canvas")
+        assert result == data
+
+    def test_extract_stops_at_correct_brace(self):
+        """Trailing JS with unmatched braces must not confuse the parser."""
+        from src.shared.nextdata import extract_phenom_canvas_data
+
+        html = (
+            '<script>phApp.ddo = {"a": 1, "b": {"c": 2}};'
+            'phApp.other = {"unclosed":'  # trailing junk
+            "</script>"
+        )
+        assert extract_phenom_canvas_data(html) == {"a": 1, "b": {"c": 2}}
+
+    def test_missing_assignment_returns_none(self):
+        from src.shared.nextdata import extract_phenom_canvas_data
+
+        assert extract_phenom_canvas_data("<html>no canvas here</html>") is None
+
+
+class TestCanvasDiscover:
+    async def test_small_board_single_page(self):
+        """22 jobs at page_size=25 → no extra fetches."""
+        transport = _canvas_transport(total=22, page_size=25)
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await discover(BOARD_CANVAS, client)
+        assert isinstance(result, list)
+        assert len(result) == 22
+        ids = {j.url.rsplit("/", 1)[-1] for j in result}
+        assert len(ids) == 22  # all unique
+
+    async def test_multi_page_offset_pagination(self):
+        """157 jobs at page_size=25 → 7 pages; merges to 157 unique URLs."""
+        transport = _canvas_transport(total=157, page_size=25)
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await discover(BOARD_CANVAS, client)
+        assert len(result) == 157
+        ids = {j.url.rsplit("/", 1)[-1] for j in result}
+        assert len(ids) == 157
+
+    async def test_fields_extracted(self):
+        transport = _canvas_transport(total=3, page_size=10)
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await discover(BOARD_CANVAS, client)
+        first = result[0]
+        assert first.title == "Job 0"
+        assert first.description == "Teaser 0"
+        assert first.locations == ["City0"]
+        assert first.employment_type == "Full time"
+
+
+class TestOffsetPaginationHelpers:
+    def test_compute_page_urls_offset(self):
+        from src.core.monitors.nextdata import _compute_page_urls
+
+        cfg = {"mode": "offset", "page_size": 25, "offset_param": "from"}
+        urls = _compute_page_urls("https://x.com/jobs", page_count=4, cfg=cfg)
+        assert urls == [
+            "https://x.com/jobs?from=25",
+            "https://x.com/jobs?from=50",
+            "https://x.com/jobs?from=75",
+        ]
+
+    def test_compute_page_urls_page_mode_default(self):
+        from src.core.monitors.nextdata import _compute_page_urls
+
+        urls = _compute_page_urls("https://x.com/jobs", page_count=3, cfg={})
+        assert urls == [
+            "https://x.com/jobs?page=2",
+            "https://x.com/jobs?page=3",
+        ]
+
+    def test_offset_page_count_one_returns_empty(self):
+        from src.core.monitors.nextdata import _compute_page_urls
+
+        cfg = {"mode": "offset", "page_size": 25}
+        assert _compute_page_urls("https://x.com/jobs", page_count=1, cfg=cfg) == []
+
+
+class TestCanvasAutoDetect:
+    """Monitor and scraper can_handle detect Phenom Canvas from plain HTML."""
+
+    async def test_monitor_can_handle_phenom_canvas(self):
+        """Returns source=phenom_canvas plus a ready pagination stub."""
+        jobs = [{"jobId": f"R{i}", "title": f"Job {i}", "multi_location": ["X"]} for i in range(10)]
+        data = {
+            "siteConfig": {"data": {"refNum": "ACME"}},
+            "eagerLoadRefineSearch": {
+                "hits": 10,
+                "totalHits": 250,
+                "data": {"jobs": jobs},
+            },
+        }
+        html = _html_with_canvas_ddo(data)
+        async with httpx.AsyncClient(transport=_mock_transport(html)) as client:
+            meta = await can_handle("https://x.com/us/en/search-results", client)
+        assert meta is not None
+        assert meta["source"] == "phenom_canvas"
+        assert meta["path"] == "eagerLoadRefineSearch.data.jobs"
+        assert meta["count"] == 10
+        assert meta["total"] == 250
+        assert meta["pagination"]["mode"] == "offset"
+        assert meta["pagination"]["page_size"] == 10
+        assert meta["pagination"]["offset_param"] == "from"
+
+    def test_scraper_can_handle_phenom_canvas_detail(self):
+        """Embedded scraper auto-detects phApp.ddo detail pages at depth 3."""
+        from src.core.scrapers.embedded import can_handle as sc_can_handle
+
+        # jobDetail.data.job — typical Canvas detail shape
+        detail_data = {
+            "siteConfig": {"data": {}},
+            "jobDetail": {
+                "status": "success",
+                "data": {
+                    "job": {
+                        "title": "Engineer",
+                        "description": "<p>Full description</p>",
+                        "multi_location": [{"location": "NYC"}],
+                        "type": "Full time",
+                        "postedDate": "2026-04-01T00:00:00Z",
+                    }
+                },
+            },
+        }
+        html = _html_with_canvas_ddo(detail_data)
+        cfg = sc_can_handle([html, html])  # majority threshold needs >=1/2
+        assert cfg is not None
+        assert cfg["variable"] == "phApp.ddo"
+        assert cfg["path"] == "jobDetail.data.job"
+        assert "title" in cfg["fields"]
+        assert "description" in cfg["fields"]

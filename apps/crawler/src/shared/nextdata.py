@@ -4,6 +4,7 @@ Supports multiple sources:
 - ``nextdata`` — Next.js ``<script id="__NEXT_DATA__">`` (default)
 - ``reactrouter`` — React Router ``window.__staticRouterHydrationData``
 - ``rsc`` — Next.js App Router RSC flight payload (``self.__next_f.push``)
+- ``phenom_canvas`` — Phenom People Canvas ``phApp.ddo = {...}`` assignment
 
 Used by both the nextdata monitor and the nextdata scraper.
 """
@@ -14,6 +15,8 @@ import json
 import re
 
 import jmespath
+
+from src.shared.embedded import find_json_extent
 
 NEXT_DATA_RE = re.compile(
     r'<script\s+id="__NEXT_DATA__"[^>]*>(.*?)</script>',
@@ -27,6 +30,8 @@ REACT_ROUTER_RE = re.compile(
 RSC_PUSH_RE = re.compile(
     r'self\.__next_f\.push\(\[1,"((?:[^"\\]|\\.)*)"\]\)',
 )
+
+PHENOM_CANVAS_RE = re.compile(r"phApp\.ddo\s*=\s*")
 
 
 def resolve_path(data: dict, path: str) -> object:
@@ -335,13 +340,42 @@ def extract_rsc_data(html: str) -> dict | None:
     return merged or None
 
 
+def extract_phenom_canvas_data(html: str) -> dict | None:
+    """Extract the ``phApp.ddo = {...}`` blob from a Phenom Canvas page.
+
+    Canvas is Phenom People's SPA variant that server-renders the initial
+    search payload into a plain JS assignment (not a ``<script id>`` tag and
+    not Next.js). Bracket-counting finds the object extent so trailing JS
+    after the assignment doesn't confuse the parse.
+    """
+    match = PHENOM_CANVAS_RE.search(html)
+    if not match:
+        return None
+    start = match.end()
+    # Skip whitespace to the opening brace.
+    while start < len(html) and html[start] in " \t\r\n":
+        start += 1
+    if start >= len(html) or html[start] != "{":
+        return None
+    end = find_json_extent(html, start)
+    if end is None:
+        return None
+    try:
+        return json.loads(html[start:end])
+    except (json.JSONDecodeError, ValueError):
+        return None
+
+
 def extract_embedded_json(html: str, source: str = "nextdata") -> dict | None:
     """Dispatch to the right extractor based on *source*.
 
-    Supported values: ``"nextdata"`` (default), ``"reactrouter"``, ``"rsc"``.
+    Supported values: ``"nextdata"`` (default), ``"reactrouter"``, ``"rsc"``,
+    ``"phenom_canvas"``.
     """
     if source == "reactrouter":
         return extract_react_router_data(html)
     if source == "rsc":
         return extract_rsc_data(html)
+    if source == "phenom_canvas":
+        return extract_phenom_canvas_data(html)
     return extract_next_data(html)
