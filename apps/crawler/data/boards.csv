@@ -450,6 +450,7 @@ aven,aven-ashby,https://jobs.ashbyhq.com/aven,ashby,"{""token"": ""aven""}",skip
 aviatrix,aviatrix-greenhouse,https://job-boards.greenhouse.io/aviatrix,greenhouse,"{""token"": ""aviatrix""}",skip,
 avid4,avid4-careers-ashby,https://jobs.ashbyhq.com/avid4,ashby,"{""token"": ""avid4""}",skip,
 avidxchange-inc,avidxchange-inc-greenhouse,https://job-boards.greenhouse.io/avidxchangeinc,greenhouse,"{""token"": ""avidxchangeinc""}",skip,
+avientus,avientus-careers,https://avientus.ch/open-positions/,inline,"{""render"": true, ""steps"": [{""tag"": ""h2"", ""attr"": ""style=text-transform"", ""field"": ""title""}, {""tag"": ""p"", ""text"": ""Zurich"", ""field"": ""location"", ""optional"": true, ""regex"": ""^(Zurich)(?:,.*)?$""}, {""tag"": ""p"", ""offset"": 1, ""field"": ""description"", ""stop_tag"": ""h2"", ""html"": true, ""optional"": true}], ""defaults"": {""locations"": [""Zurich, Switzerland""]}}",skip,
 avra,avra-ashby,https://jobs.ashbyhq.com/avra,ashby,"{""token"": ""avra""}",skip,
 avride,avride-greenhouse,https://job-boards.greenhouse.io/avride,greenhouse,"{""token"": ""avride""}",skip,
 away,away-ashby,https://jobs.ashbyhq.com/away,ashby,"{""token"": ""away""}",skip,
