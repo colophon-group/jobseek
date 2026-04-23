@@ -4821,6 +4821,7 @@ woo-x,woo-x-greenhouse,https://job-boards.greenhouse.io/woo,greenhouse,"{""token
 woolpert,woolpert-greenhouse,https://job-boards.greenhouse.io/woolpert,greenhouse,"{""token"": ""woolpert""}",skip,
 wordware-ai,wordware-ai-ashby,https://jobs.ashbyhq.com/wordware.ai,ashby,"{""token"": ""wordware.ai""}",skip,
 workato,workato-greenhouse,https://job-boards.greenhouse.io/workato,greenhouse,"{""token"": ""workato""}",skip,
+workboard,workboard-careers,https://boards.greenhouse.io/workboard,greenhouse,"{""token"": ""workboard""}",skip,
 workday,workday-careers,https://workday.wd5.myworkdayjobs.com/Workday,workday,"{""company"": ""workday"", ""wd_instance"": ""wd5"", ""site"": ""Workday""}",workday,
 workera-ai,workera-ai-greenhouse,https://job-boards.greenhouse.io/workera,greenhouse,"{""token"": ""workera""}",skip,
 workhelix,workhelix-greenhouse,https://job-boards.greenhouse.io/workhelix,greenhouse,"{""token"": ""workhelix""}",skip,
