@@ -1,5 +1,6 @@
 import "server-only";
 import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
 import { hasUpstashRedisConfig, redis } from "@/lib/redis";
 
 interface LimiterLike {
@@ -34,7 +35,7 @@ function createLimiter(
   }
 
   const limiter = new Ratelimit({
-    redis,
+    redis: redis as unknown as Redis,
     limiter: Ratelimit.slidingWindow(maxRequests, window),
     prefix,
   });

@@ -55,12 +55,15 @@ export async function getSavedJobStatuses(): Promise<SavedJobStatus[]> {
   const userId = await getSessionUserId();
   if (!userId) return [];
 
-  const rows = await db
-    .select({ id: savedJob.id, jobPostingId: savedJob.jobPostingId, status: savedJob.status })
-    .from(savedJob)
-    .where(eq(savedJob.userId, userId));
-
-  return rows.map((r) => ({ postingId: r.jobPostingId, savedJobId: r.id, status: r.status }));
+  try {
+    const rows = await db
+      .select({ id: savedJob.id, jobPostingId: savedJob.jobPostingId, status: savedJob.status })
+      .from(savedJob)
+      .where(eq(savedJob.userId, userId));
+    return rows.map((r) => ({ postingId: r.jobPostingId, savedJobId: r.id, status: r.status }));
+  } catch {
+    return [];
+  }
 }
 
 export async function getSavedJobs(params: {

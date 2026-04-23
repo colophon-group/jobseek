@@ -23,7 +23,22 @@ export function ExploreContent({ locale }: ExploreContentProps) {
     searchParams.forEach((value, key) => {
       sp[key] = value;
     });
-    fetchExploreData({ searchParams: sp, locale }).then(setData);
+    fetchExploreData({ searchParams: sp, locale }).then(setData).catch(() => {
+      setData({
+        result: { companies: [], totalCompanies: 0, truncated: false },
+        parsed: { keywords: [], excludeTitles: [], locations: [], occupations: [], seniorities: [], technologies: [] },
+        displayCurrency: "EUR",
+        jobLanguages: [],
+        languages: [],
+        userLat: undefined,
+        userLng: undefined,
+        salaryCurrencyParam: "EUR",
+        salaryMinDisplay: undefined,
+        salaryMaxDisplay: undefined,
+        experienceMin: undefined,
+        experienceMax: undefined,
+      });
+    });
   }, []);
 
   if (!data) return <ExploreSkeleton />;

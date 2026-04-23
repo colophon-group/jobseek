@@ -25,13 +25,17 @@ export async function getPreferences() {
   const session = await getSession();
   if (!session) return null;
 
-  const [row] = await db
-    .select()
-    .from(userPreferences)
-    .where(eq(userPreferences.userId, session.user.id))
-    .limit(1);
-
-  return row ?? null;
+  try {
+    const [row] = await db
+      .select()
+      .from(userPreferences)
+      .where(eq(userPreferences.userId, session.user.id))
+      .limit(1);
+    return row ?? null;
+  } catch {
+    // DB unavailable (e.g. local dev without Postgres) — use defaults
+    return null;
+  }
 }
 
 export async function updatePreferences(

@@ -29,18 +29,22 @@ function getLocalDevUser() {
 
 async function ensureLocalDevUser(): Promise<void> {
   const localUser = getLocalDevUser();
-  await db
-    .insert(user)
-    .values({
-      id: localUser.id,
-      name: localUser.name,
-      email: localUser.email,
-      emailVerified: true,
-      username: localUser.username,
-      displayUsername: localUser.displayUsername,
-      image: null,
-    })
-    .onConflictDoNothing();
+  try {
+    await db
+      .insert(user)
+      .values({
+        id: localUser.id,
+        name: localUser.name,
+        email: localUser.email,
+        emailVerified: true,
+        username: localUser.username,
+        displayUsername: localUser.displayUsername,
+        image: null,
+      })
+      .onConflictDoNothing();
+  } catch {
+    // DB unavailable in local dev (e.g. Postgres not running) — session still works
+  }
 }
 
 async function getLocalDevSession(): Promise<SessionResult> {

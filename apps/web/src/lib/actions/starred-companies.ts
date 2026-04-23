@@ -39,10 +39,13 @@ export async function getStarredCompanyIds(): Promise<string[]> {
   const userId = await getSessionUserId();
   if (!userId) return [];
 
-  const rows = await db
-    .select({ companyId: followedCompany.companyId })
-    .from(followedCompany)
-    .where(eq(followedCompany.userId, userId));
-
-  return rows.map((r) => r.companyId);
+  try {
+    const rows = await db
+      .select({ companyId: followedCompany.companyId })
+      .from(followedCompany)
+      .where(eq(followedCompany.userId, userId));
+    return rows.map((r) => r.companyId);
+  } catch {
+    return [];
+  }
 }
