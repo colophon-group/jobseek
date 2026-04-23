@@ -210,6 +210,45 @@ class TestParseJobsBlock:
         jobs = _parse_jobs_block(html)
         assert "McDonald's" in jobs[0]["title"]
 
+    def test_string_value_containing_close_bracket_semicolon(self):
+        """B1: a job title with ``];`` inside a string must not truncate
+        the array. The previous regex-only extraction (``\\[.*?\\];``)
+        stopped at the first ``];`` — even inside a quoted value.
+        """
+        literal = (
+            "["
+            "{id: '1', title: 'lead with ];', url: '/jobs/1-x/'},"
+            "{id: '2', title: 'second', url: '/jobs/2-y/'}"
+            "]"
+        )
+        html = _embed_html(literal)
+        jobs = _parse_jobs_block(html)
+        assert len(jobs) == 2
+        assert jobs[0]["title"] == "lead with ];"
+        assert jobs[1]["id"] == "2"
+
+    def test_string_value_containing_unquoted_key_pattern(self):
+        """B2: a description containing ``{foo: bar}`` patterns must not
+        get its interior keys quoted. Unquoted-key rewriting has to run
+        *after* single→double-quote conversion so every ``foo:``
+        candidate inside a string is already enclosed in double-quotes
+        and thus ignored by the key regex.
+        """
+        literal = (
+            "[{id: '1', url: '/jobs/1-x/', summary: 'config snippet: {host: localhost, port: 80}'}]"
+        )
+        html = _embed_html(literal)
+        jobs = _parse_jobs_block(html)
+        assert len(jobs) == 1
+        assert jobs[0]["summary"] == "config snippet: {host: localhost, port: 80}"
+
+    def test_unterminated_array_returns_empty(self):
+        """Malformed embed (no closing ``]``) is logged and skipped,
+        not a crash. Ensures ``_find_jobs_array_extent`` fails safely.
+        """
+        html = "<script>JBL.embed_v2['jobs'] = [{id: '1'</script>"
+        assert _parse_jobs_block(html) == []
+
 
 class TestParseJob:
     def test_basic_mapping(self):
@@ -644,11 +683,11 @@ class TestTransientErrors:
             with pytest.raises(httpx.HTTPStatusError):
                 await discover(board, client)
 
-    async def test_transport_error_raises_board_gone(self):
-        # httpx.ConnectError/etc. are swallowed by ``_fetch_embed`` and
-        # surface as BoardGoneError from ``discover`` — documented
-        # behavior of the current implementation.  If this changes in
-        # the future, loosen this test.
+    async def test_transport_error_propagates(self):
+        # Transport errors (ConnectError, ReadTimeout, etc.) must
+        # propagate as retriable, NOT map to BoardGoneError. A
+        # Cloudflare hiccup or a Jobylon outage would otherwise flip a
+        # live board to "gone" and trigger spurious delistings.
         def handler(request):
             raise httpx.ConnectError("boom")
 
@@ -657,7 +696,7 @@ class TestTransientErrors:
                 "board_url": "https://example.com/careers",
                 "metadata": {"company_id": "1955"},
             }
-            with pytest.raises(BoardGoneError):
+            with pytest.raises(httpx.ConnectError):
                 await discover(board, client)
 
 

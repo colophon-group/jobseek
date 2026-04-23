@@ -65,13 +65,13 @@ _JOBYLON_HOSTS: frozenset[str] = frozenset(
 # ``job-lang-XX``.  We prefer the latter.
 _LANG_CODE_RE = re.compile(r"job-lang-([a-z]{2})")
 
-# Top-level embed-jobs block we need to capture.  The delimiter uses
-# single quotes inside a bracketed key to avoid confusion with the
-# widget's ng-init attributes.
-_JOBS_BLOCK_RE = re.compile(
-    r"JBL\.embed_v2\['jobs'\]\s*=\s*(\[.*?\]);",
-    re.DOTALL,
-)
+# Anchor for the top-level embed-jobs assignment.  We locate the
+# ``JBL.embed_v2['jobs'] = [`` prefix via regex, then use a
+# string-aware bracket scanner to find the matching ``]``.  A pure
+# ``(\[.*?\]);`` capture would terminate at the first ``];`` that
+# appears *inside* a string value — verified empirically on fixtures
+# with titles containing ``];``-like glyphs.
+_JOBS_BLOCK_START_RE = re.compile(r"JBL\.embed_v2\['jobs'\]\s*=\s*\[")
 
 # Regex to locate an ``iframe src=""`` pointing at cdn.jobylon.com, used
 # during page-level detection of Jobylon.
@@ -163,26 +163,115 @@ def _single_to_double_quoted(text: str) -> str:
 _TRAILING_COMMA_RE = re.compile(r",(\s*[}\]])")
 
 
+def _quote_unquoted_keys_outside_strings(text: str) -> str:
+    """Run ``_UNQUOTED_KEY_RE`` substitution only outside double-quoted
+    strings. The naive ``re.sub`` would also match ``{foo:`` patterns
+    inside a string value (e.g. a code-snippet description), corrupting
+    it. This pass is string-state-aware.
+    """
+    out: list[str] = []
+    i = 0
+    n = len(text)
+    in_double = False
+    while i < n:
+        ch = text[i]
+        if in_double:
+            if ch == "\\" and i + 1 < n:
+                out.append(ch)
+                out.append(text[i + 1])
+                i += 2
+                continue
+            if ch == '"':
+                in_double = False
+            out.append(ch)
+            i += 1
+            continue
+        if ch == '"':
+            in_double = True
+            out.append(ch)
+            i += 1
+            continue
+        # Not in a string — try the key-quoting regex against this
+        # position. ``_UNQUOTED_KEY_RE`` requires a ``{`` or ``,`` as
+        # the prefix anchor, so we can scan forward cheaply.
+        m = _UNQUOTED_KEY_RE.match(text, i)
+        if m:
+            out.append(f'{m.group("prefix")}"{m.group("key")}":')
+            i = m.end()
+            continue
+        out.append(ch)
+        i += 1
+    return "".join(out)
+
+
 def _js_object_literal_to_json(text: str) -> str:
     """Translate the relevant JS-object-literal subset to valid JSON.
 
-    Steps: quote unquoted keys, rewrite single-quoted strings into
-    double-quoted JSON strings, then strip JS-style trailing commas.
+    Quote-rewrite strings first so the subsequent key-quoting pass can
+    skip every in-string position. The combined pass is linear-time
+    and produces a string that ``json.loads`` accepts (after trailing-
+    comma stripping).
     """
-    quoted_keys = _UNQUOTED_KEY_RE.sub(
-        lambda m: f'{m.group("prefix")}"{m.group("key")}":',
-        text,
-    )
-    double_quoted = _single_to_double_quoted(quoted_keys)
-    return _TRAILING_COMMA_RE.sub(r"\1", double_quoted)
+    double_quoted = _single_to_double_quoted(text)
+    quoted_keys = _quote_unquoted_keys_outside_strings(double_quoted)
+    return _TRAILING_COMMA_RE.sub(r"\1", quoted_keys)
+
+
+def _find_jobs_array_extent(html: str, start: int) -> int | None:
+    """Locate the end of the ``[...]`` array starting at *html[start]*.
+
+    String-aware bracket scanner. Handles both single- and
+    double-quoted strings (Jobylon mixes them) and respects ``\\``
+    escapes inside either. Returns the index one past the closing
+    ``]``, or ``None`` if the array is unterminated.
+    """
+    if start >= len(html) or html[start] != "[":
+        return None
+    depth = 0
+    i = start
+    in_single = False
+    in_double = False
+    while i < len(html):
+        ch = html[i]
+        if in_single or in_double:
+            if ch == "\\" and i + 1 < len(html):
+                i += 2
+                continue
+            if in_single and ch == "'":
+                in_single = False
+            elif in_double and ch == '"':
+                in_double = False
+            i += 1
+            continue
+        if ch == "'":
+            in_single = True
+            i += 1
+            continue
+        if ch == '"':
+            in_double = True
+            i += 1
+            continue
+        if ch == "[":
+            depth += 1
+        elif ch == "]":
+            depth -= 1
+            if depth == 0:
+                return i + 1
+        i += 1
+    return None
 
 
 def _parse_jobs_block(html: str) -> list[dict[str, Any]]:
     """Extract and parse the ``JBL.embed_v2['jobs']`` array from a page."""
-    match = _JOBS_BLOCK_RE.search(html)
+    match = _JOBS_BLOCK_START_RE.search(html)
     if not match:
         return []
-    raw = match.group(1)
+    bracket_start = match.end() - 1  # position of the opening ``[``
+    end = _find_jobs_array_extent(html, bracket_start)
+    if end is None:
+        log.warning("jobylon.parse_unterminated_array", start=bracket_start)
+        return []
+    raw = html[bracket_start:end]
     try:
         as_json = _js_object_literal_to_json(raw)
         data = json.loads(as_json)
@@ -421,16 +510,20 @@ def _ids_from_url(url: str) -> tuple[str | None, str | None]:
 # ── Discovery ────────────────────────────────────────────────────────────
 
 
-async def _fetch_embed(url: str, client: httpx.AsyncClient) -> str | None:
-    try:
-        resp = await client.get(url, follow_redirects=True)
-    except httpx.HTTPError as exc:
-        log.warning("jobylon.fetch_error", url=url, error=str(exc))
-        return None
+class _JobylonGone(Exception):
+    """Sentinel — the Jobylon embed returned 404 (board genuinely gone)."""
+
+
+async def _fetch_embed(url: str, client: httpx.AsyncClient) -> str:
+    """Fetch an embed page. Raises ``_JobylonGone`` on 404, ``HTTPError``
+    on transport failures / non-404 non-2xx. Never returns ``None`` —
+    callers need to distinguish "board deleted" from "Cloudflare hiccup"
+    and silent ``None`` conflates the two.
+    """
+    resp = await client.get(url, follow_redirects=True)
     if resp.status_code == 404:
-        return None
-    if resp.status_code != 200:
-        resp.raise_for_status()
+        raise _JobylonGone(url)
+    resp.raise_for_status()
     return resp.text
 
 
@@ -457,12 +550,16 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
         company_id, company_group_id = _ids_from_url(board.get("board_url") or "")
 
     url = _embed_url(company_id, company_group_id)
-    html = await _fetch_embed(url, client)
-    if html is None:
+    try:
+        html = await _fetch_embed(url, client)
+    except _JobylonGone:
         raise BoardGoneError(
             f"Jobylon embed returned 404 for {url!r}",
             url=url,
-        )
+        ) from None
+    # httpx transport errors / non-404 HTTP errors propagate — the
+    # pipeline retries them; flipping a live board to "gone" on a
+    # transient ConnectError would cause spurious delistings.
 
     raw_jobs = _parse_jobs_block(html)
     jobs: list[DiscoveredJob] = []
@@ -503,10 +600,18 @@ async def _probe_embed(
     company_group_id: str | None,
     client: httpx.AsyncClient,
 ) -> int | None:
-    """Verify a Jobylon embed exists and count its jobs."""
+    """Verify a Jobylon embed exists and count its jobs.
+
+    Returns ``None`` for both 404 and transport errors — this path is
+    used by ``can_handle`` / auto-detection, where either signal means
+    "not a Jobylon board we can use from here," so collapsing them is
+    fine. The ``discover`` path distinguishes them so gone-detection
+    doesn't trip on network flakiness.
+    """
     url = _embed_url(company_id, company_group_id)
-    html = await _fetch_embed(url, client)
-    if html is None:
+    try:
+        html = await _fetch_embed(url, client)
+    except (_JobylonGone, httpx.HTTPError):
         return None
     return len(_parse_jobs_block(html))
 
