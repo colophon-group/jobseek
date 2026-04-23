@@ -63,7 +63,8 @@ def enrich_description(obj: object) -> None:
 
     When scrapers extract these as separate structured data, they should also
     appear in the description HTML so it remains self-contained.  Skips any
-    section whose text content already appears in the existing description.
+    section whose text content already appears in the existing description,
+    and skips sections whose items are all empty/whitespace-only.
     Mutates *obj* in place.
     """
     if not obj.extras:
@@ -84,24 +85,28 @@ def enrich_description(obj: object) -> None:
         if isinstance(items, str):
             # Check if the string content is already in the description
             snippet = _plain(items).lower()
-            if desc_plain and snippet and snippet[:80] in desc_plain:
+            if not snippet:
+                continue  # empty/whitespace-only — skip
+            if desc_plain and snippet[:80] in desc_plain:
                 continue
             sections.append(f"<h3>{heading}</h3>\n{items}")
         elif isinstance(items, list):
-            # Check if the first non-trivial item is already in the description
-            for item in items:
+            # Drop empty/whitespace-only items; skip the section if nothing remains.
+            non_empty = [it for it in items if _plain(str(it)).strip()]
+            if not non_empty:
+                continue
+            # Skip if the first non-trivial item already appears in the description.
+            already_present = False
+            for item in non_empty:
                 snippet = _plain(str(item)).lower()
                 if len(snippet) >= 10:
                     if desc_plain and snippet[:80] in desc_plain:
-                        break  # already present — skip whole section
-                    else:
-                        li = "".join(f"<li>{it}</li>" for it in items)
-                        sections.append(f"<h3>{heading}</h3>\n<ul>{li}</ul>")
+                        already_present = True
                     break
-            else:
-                # All items too short to check — append anyway
-                li = "".join(f"<li>{it}</li>" for it in items)
-                sections.append(f"<h3>{heading}</h3>\n<ul>{li}</ul>")
+            if already_present:
+                continue
+            li = "".join(f"<li>{it}</li>" for it in non_empty)
+            sections.append(f"<h3>{heading}</h3>\n<ul>{li}</ul>")
 
     if not sections:
         return
