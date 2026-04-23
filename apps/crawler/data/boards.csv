@@ -2292,6 +2292,7 @@ josko-services,josko-services-greenhouse,https://job-boards.greenhouse.io/joskoa
 jpmorgan,jpmorgan-careers,https://jpmc.fa.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001/requisitions,oracle_hcm,"{""host"": ""jpmc.fa.oraclecloud.com"", ""site"": ""CX_1001""}",oracle_hcm,"{""host"": ""jpmc.fa.oraclecloud.com"", ""site"": ""CX_1001"", ""enrich"": [""description""]}"
 jti,jti-careers,https://jobs.jti.com/,rss,"{""preset"": ""successfactors""}",skip,
 jua,jua-ashby,https://jobs.ashbyhq.com/jua,ashby,"{""token"": ""jua""}",skip,
+judge,judge-careers,https://careers-judge.icims.com/jobs/search?ss=1&pr=0&in_iframe=1,dom,"{""render"": false, ""url_filter"": ""/jobs/[0-9]+/""}",json-ld,"{""render"": false}"
 judi-health,judi-health-greenhouse,https://job-boards.greenhouse.io/capitalrx,greenhouse,"{""token"": ""capitalrx""}",skip,
 juicebox,juicebox-ashby,https://jobs.ashbyhq.com/juicebox,ashby,"{""token"": ""juicebox""}",skip,
 jukebox-health,jukebox-health-greenhouse,https://job-boards.greenhouse.io/jukeboxhealth,greenhouse,"{""token"": ""jukeboxhealth""}",skip,
