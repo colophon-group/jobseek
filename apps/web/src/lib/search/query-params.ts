@@ -50,6 +50,7 @@ export function buildFilterQuery(
   occupations?: SerializableOccupation[],
   seniorities?: SerializableSeniority[],
   technologies?: SerializableTechnology[],
+  excludeTitles?: string[],
 ): string {
   const params = new URLSearchParams();
   if (keywords.length > 0) params.set("q", keywords.join(","));
@@ -64,6 +65,9 @@ export function buildFilterQuery(
   }
   if (technologies && technologies.length > 0) {
     params.set("tech", technologies.map((t) => t.slug).join(","));
+  }
+  if (excludeTitles && excludeTitles.length > 0) {
+    params.set("exclude", excludeTitles.join(","));
   }
   return params.toString();
 }
@@ -79,6 +83,7 @@ export function buildFilteredPath(
   occupations?: SerializableOccupation[],
   seniorities?: SerializableSeniority[],
   technologies?: SerializableTechnology[],
+  excludeTitles?: string[],
 ): string {
   const params = new URLSearchParams();
   if (keywords.length > 0) params.set("q", keywords.join(","));
@@ -93,6 +98,9 @@ export function buildFilteredPath(
   }
   if (technologies && technologies.length > 0) {
     params.set("tech", technologies.map((t) => t.slug).join(","));
+  }
+  if (excludeTitles && excludeTitles.length > 0) {
+    params.set("exclude", excludeTitles.join(","));
   }
   if (extra) {
     for (const [k, v] of Object.entries(extra)) {

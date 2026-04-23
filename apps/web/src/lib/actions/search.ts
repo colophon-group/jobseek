@@ -208,6 +208,7 @@ export async function searchJobs(params: {
   salaryMaxEur?: number;
   experienceMin?: number;
   experienceMax?: number;
+  excludeTitles?: string[];
   languages: string[];
   locale: string;
   offset: number;

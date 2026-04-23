@@ -2,6 +2,7 @@
 
 import { resolveLocationSlugs, suggestLocations, type LocationSuggestion } from "@/lib/actions/locations";
 import { resolveOccupationSlugs, resolveSenioritySlugs, suggestOccupations, suggestSeniorities, suggestTechnologies, resolveTechnologySlugs } from "@/lib/actions/taxonomy";
+import { parseExcludeParam } from "@/lib/search/exclude-title";
 import type { TaxonomySuggestion } from "@/lib/actions/taxonomy";
 import type { SelectedLocation } from "@/components/search/location-pills";
 
@@ -9,6 +10,7 @@ export type ParsedSearchLocation = SelectedLocation;
 
 export interface ParsedSearchFilters {
   keywords: string[];
+  excludeTitles: string[];
   locations: ParsedSearchLocation[];
   occupations: { id: number; slug: string; name: string }[];
   seniorities: { id: number; slug: string; name: string }[];
@@ -124,6 +126,7 @@ function wordInMultiWordOccupation(
 
 export async function parseSearchFilters(params: {
   q?: string;
+  exclude?: string;
   loc?: string;
   occ?: string;
   sen?: string;
@@ -235,7 +238,7 @@ export async function parseSearchFilters(params: {
   const singles = [...singleSet];
   const allCandidates = [...allCandidateSet];
   if (singles.length === 0) {
-    return { keywords: [], locations, occupations, seniorities, technologies };
+    return { keywords: [], excludeTitles: parseExcludeParam(params.exclude), locations, occupations, seniorities, technologies };
   }
 
   // All three suggest batches run in parallel. Locations use an expensive
@@ -369,6 +372,7 @@ export async function parseSearchFilters(params: {
 
   return {
     keywords: uniqCaseInsensitive(keywords),
+    excludeTitles: parseExcludeParam(params.exclude),
     locations,
     occupations,
     seniorities,
