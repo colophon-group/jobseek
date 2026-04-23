@@ -15,6 +15,7 @@ type TaxonomyItem = { id: number; slug: string; name: string };
 
 interface SaveSearchButtonProps {
   keywords: string[];
+  excludeTitles?: string[];
   locations: SelectedLocation[];
   occupations: TaxonomyItem[];
   seniorities: TaxonomyItem[];
@@ -28,6 +29,7 @@ interface SaveSearchButtonProps {
 
 export function SaveSearchButton({
   keywords,
+  excludeTitles,
   locations,
   occupations,
   seniorities,
@@ -61,6 +63,7 @@ export function SaveSearchButton({
 
       const filters: WatchlistFilters = {};
       if (keywords.length > 0) filters.keywords = keywords;
+      if (excludeTitles && excludeTitles.length > 0) filters.excludeTitles = excludeTitles;
       if (locations.length > 0) filters.locationSlugs = locations.map((l) => l.slug);
       if (occupations.length > 0) filters.occupationSlugs = occupations.map((o) => o.slug);
       if (seniorities.length > 0) filters.senioritySlugs = seniorities.map((s) => s.slug);

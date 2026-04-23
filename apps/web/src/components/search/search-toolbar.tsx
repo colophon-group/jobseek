@@ -1,9 +1,10 @@
 "use client";
 
 import { X, MapPin, Briefcase, BarChart3, CalendarDays, DollarSign, Clock, Code2 } from "lucide-react";
-import { useLingui } from "@lingui/react/macro";
+import { useLingui, Trans } from "@lingui/react/macro";
 import { SearchBar } from "@/components/search/search-bar";
 import { AdvancedSearchPanel } from "@/components/search/advanced-search-panel";
+import { ExcludeTitlePills } from "@/components/search/exclude-title-pills";
 import { LanguageNote } from "@/components/search/language-note";
 import { SaveSearchButton } from "@/components/search/save-search-button";
 import type { SelectedLocation } from "@/components/search/location-pills";
@@ -17,6 +18,9 @@ interface SearchToolbarProps {
   userLng?: number;
   // Filter state
   keywords: string[];
+  excludeTitles?: string[];
+  onAddExcludeTitle?: (keyword: string) => void;
+  onRemoveExcludeTitle?: (keyword: string) => void;
   locations: SelectedLocation[];
   occupations: TaxonomyItem[];
   seniorities: TaxonomyItem[];
@@ -60,6 +64,9 @@ export function SearchToolbar({
   userLat,
   userLng,
   keywords,
+  excludeTitles = [],
+  onAddExcludeTitle = () => {},
+  onRemoveExcludeTitle = () => {},
   locations,
   occupations,
   seniorities,
@@ -92,6 +99,7 @@ export function SearchToolbar({
 
   const hasFilters =
     keywords.length > 0 ||
+    excludeTitles.length > 0 ||
     locations.length > 0 ||
     occupations.length > 0 ||
     seniorities.length > 0 ||
@@ -122,6 +130,18 @@ export function SearchToolbar({
           userLat={userLat}
           userLng={userLng}
           placeholder={searchPlaceholder}
+        />
+      </div>
+      <div className="space-y-1.5">
+        <div className="text-xs text-muted">
+          <Trans id="search.excludeTitles.label" comment="Section label for title exclusion input">
+            Hide jobs with these words in the title
+          </Trans>
+        </div>
+        <ExcludeTitlePills
+          keywords={excludeTitles}
+          onAdd={onAddExcludeTitle}
+          onRemove={onRemoveExcludeTitle}
         />
       </div>
       <AdvancedSearchPanel
@@ -291,6 +311,7 @@ export function SearchToolbar({
         {hasFilters && (
           <SaveSearchButton
             keywords={keywords}
+            excludeTitles={excludeTitles}
             locations={locations}
             occupations={occupations}
             seniorities={seniorities}
