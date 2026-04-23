@@ -2116,6 +2116,7 @@ improvado,improvado-careers-sr,https://careers.smartrecruiters.com/Improvado,sma
 imubit,imubit-greenhouse,https://job-boards.greenhouse.io/imubit,greenhouse,"{""token"": ""imubit""}",skip,
 in-the-pocket,in-the-pocket-greenhouse,https://job-boards.greenhouse.io/inthepocket,greenhouse,"{""token"": ""inthepocket""}",skip,
 inc-innovation-center-gmbh,inc-innovation-center-gmbh-join,https://join.com/companies/innovation-centercom,join,"{""slug"": ""innovation-centercom""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
+inceptive,inceptive-careers,https://boards.greenhouse.io/inceptive,greenhouse,"{""token"": ""inceptive""}",skip,
 incharge-energy,incharge-energy-greenhouse,https://job-boards.greenhouse.io/inchargeenergy,greenhouse,"{""token"": ""inchargeenergy""}",skip,
 incident,incident-ashby,https://jobs.ashbyhq.com/incident,ashby,"{""token"": ""incident""}",skip,
 incident-iq,incident-iq-greenhouse,https://job-boards.greenhouse.io/incidentiq,greenhouse,"{""token"": ""incidentiq""}",skip,
