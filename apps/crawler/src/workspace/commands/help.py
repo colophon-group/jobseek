@@ -606,6 +606,45 @@ sitemap — XML Sitemap Parser
 
   Pair with:     json-ld (try first) or dom scraper"""
 
+MONITOR_PHENOM = """\
+phenom — Phenom People Careers Platform (sitemap + json-ld)
+
+  Returns:  URL set only (needs scraper)
+  Cap:      50,000 URLs (inherited from sitemap)
+
+  Phenom tenants (e.g. careers.marriott.com, careers.nike.com) expose a
+  sitemap-index at /sitemap.xml with per-language child sitemaps named
+  sitemap-<hex>-<lang>.xml. The sitemap is the authoritative URL set.
+  Rich job data comes from the detail page's JSON-LD JobPosting script,
+  extracted by the json-ld scraper.
+
+  Why a dedicated monitor vs. plain sitemap:
+    • Phenom-specific can_handle fingerprint (child naming) avoids
+      mis-detecting generic XML sitemaps as Phenom during ws probe.
+    • Filters discovered URLs to job detail pages (contain "/job/" or
+      "?job_id="), dropping site root, "/jobs" index, language pages.
+
+  No API is used. Phenom's /api/get-jobs has no per-job timestamp and
+  no sort-by-recency, so there's no meaningful incremental signal; the
+  sitemap URL set + last_seen_at in Postgres already give _DIFF_BATCH
+  everything it needs for new/relisted/gone classification.
+
+  Config:
+    {}  — no configuration required. sitemap_url is derived from the
+          board URL's scheme+host (board metadata stores the discovered
+          URL for future runs, as with the sitemap monitor).
+
+  Scrapers:
+    json-ld (default) — works for marriott, nike, nordstrom, elevance,
+                        mondelez. Detail page returns JSON-LD natively.
+    json-ld + render:true — for mcdonalds-* and nationwide detail pages
+                            where Playwright render is needed before
+                            the JobPosting <script> appears in DOM.
+
+  Browser flags on the board (persistent_context, channel=chrome,
+  proxy) only matter for the scraper path; the monitor itself uses
+  plain httpx and runs in ~5 seconds regardless of job count."""
+
 MONITOR_NEXTDATA = """\
 nextdata — Next.js __NEXT_DATA__ Discovery
 
@@ -1945,6 +1984,7 @@ MONITOR_CARDS: dict[str, str] = {
     "personio": MONITOR_PERSONIO,
     "rss": MONITOR_RSS,
     "sitemap": MONITOR_SITEMAP,
+    "phenom": MONITOR_PHENOM,
     "nextdata": MONITOR_NEXTDATA,
     "notion": MONITOR_NOTION,
     "oracle_hcm": """\
