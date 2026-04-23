@@ -383,6 +383,7 @@ asos,asos-careers,https://api.smartrecruiters.com/v1/companies/ASOS/postings,sma
 aspect-biosystems,aspect-biosystems-greenhouse,https://job-boards.greenhouse.io/aspectbiosystems,greenhouse,"{""token"": ""aspectbiosystems""}",skip,
 aspire-living-learning,aspire-living-learning-greenhouse,https://job-boards.greenhouse.io/allinc,greenhouse,"{""token"": ""allinc""}",skip,
 aspora,aspora-ashby,https://jobs.ashbyhq.com/aspora,ashby,"{""token"": ""aspora""}",skip,
+asseco-poland,asseco-poland-careers,https://praca.asseco.pl/OfertyWyszukiwanie,dom,"{""render"": true, ""wait"": ""networkidle"", ""url_filter"": ""/Oferta/""}",dom,"{""render"": false, ""steps"": [{""text"": ""Miejsce pracy"", ""offset"": 1, ""field"": ""locations"", ""split"": "", ""}, {""text"": ""Forma zatrudnienia"", ""offset"": 1, ""field"": ""employment_type""}, {""text"": ""Oferta wazna do"", ""offset"": 1, ""field"": ""valid_through""}, {""tag"": ""div"", ""attr"": ""class=tytul_oferty"", ""field"": ""title""}, {""tag"": ""div"", ""attr"": ""class=aplikujOferta"", ""optional"": true}, {""tag"": ""div"", ""attr"": ""class=sekcjaHeaderText"", ""field"": ""description"", ""stop"": ""Benefity"", ""html"": true}]}"
 assembly,assembly-ashby,https://jobs.ashbyhq.com/assembly,ashby,"{""token"": ""assembly""}",skip,
 assembly,assembly-recruitee,https://assembly.recruitee.com,recruitee,"{""token"": ""assembly""}",skip,
 assemblyai,assemblyai-greenhouse,https://job-boards.greenhouse.io/assemblyai,greenhouse,"{""token"": ""assemblyai""}",skip,
