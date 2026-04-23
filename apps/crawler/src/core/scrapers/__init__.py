@@ -52,10 +52,22 @@ class JobContent:
 
 _TAG_RE = re.compile(r"<[^>]+>")
 
+# ATS placeholder strings used when a field is empty — treat as "no content".
+# Publicis/SmashFly JSON-LD emits "UNAVAILABLE" for unset skills/qualifications.
+_SENTINEL_EMPTY = frozenset({"unavailable", "not available", "n/a", "none", "null", "-"})
+
 
 def _plain(html: str) -> str:
     """Strip HTML tags and collapse whitespace."""
     return _TAG_RE.sub(" ", html).strip()
+
+
+def _is_meaningful(item: object) -> bool:
+    """True if *item* has non-placeholder content once HTML is stripped."""
+    text = _plain(str(item)).strip()
+    if not text:
+        return False
+    return text.lower() not in _SENTINEL_EMPTY
 
 
 def enrich_description(obj: object) -> None:
@@ -64,7 +76,8 @@ def enrich_description(obj: object) -> None:
     When scrapers extract these as separate structured data, they should also
     appear in the description HTML so it remains self-contained.  Skips any
     section whose text content already appears in the existing description,
-    and skips sections whose items are all empty/whitespace-only.
+    and skips sections whose items are empty/whitespace or ATS placeholders
+    like "UNAVAILABLE" / "N/A" (Publicis JSON-LD pattern).
     Mutates *obj* in place.
     """
     if not obj.extras:
@@ -83,16 +96,15 @@ def enrich_description(obj: object) -> None:
             continue
 
         if isinstance(items, str):
-            # Check if the string content is already in the description
+            if not _is_meaningful(items):
+                continue
             snippet = _plain(items).lower()
-            if not snippet:
-                continue  # empty/whitespace-only — skip
             if desc_plain and snippet[:80] in desc_plain:
                 continue
             sections.append(f"<h3>{heading}</h3>\n{items}")
         elif isinstance(items, list):
-            # Drop empty/whitespace-only items; skip the section if nothing remains.
-            non_empty = [it for it in items if _plain(str(it)).strip()]
+            # Drop empty/whitespace/placeholder items.
+            non_empty = [it for it in items if _is_meaningful(it)]
             if not non_empty:
                 continue
             # Skip if the first non-trivial item already appears in the description.

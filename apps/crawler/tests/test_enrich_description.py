@@ -57,3 +57,26 @@ def test_oracle_hcm_empty_responsibilities_regression():
     )
     enrich_description(obj)
     assert obj.description == "<p>Full job description…</p>"
+
+
+def test_publicis_unavailable_sentinel_regression():
+    """Publicis JSON-LD uses literal 'UNAVAILABLE' for empty fields — must be treated as empty."""
+    obj = JobContent(
+        description="<p>Full job description ending correctly.</p>",
+        extras={"skills": ["UNAVAILABLE"], "qualifications": ["n/a"]},
+    )
+    enrich_description(obj)
+    assert "Skills" not in obj.description
+    assert "Qualifications" not in obj.description
+    assert "UNAVAILABLE" not in obj.description
+
+
+def test_sentinel_dropped_from_mixed_list():
+    obj = JobContent(
+        description="<p>About.</p>",
+        extras={"skills": ["UNAVAILABLE", "Python", "SQL"]},
+    )
+    enrich_description(obj)
+    assert "<h3>Skills</h3>" in obj.description
+    assert "<li>Python</li>" in obj.description
+    assert "UNAVAILABLE" not in obj.description
