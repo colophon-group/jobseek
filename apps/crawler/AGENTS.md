@@ -507,7 +507,7 @@ ssh ... 'cd /home/deploy/crawler-src && docker build --target full -t crawler-fu
 | worker-1 | crawler-slim | 9095 | 1 | 1GB |
 | worker-2 | crawler-slim | 9096 | 1 | 1GB |
 | worker-3 | crawler-slim | 9097 | 1 | 1GB |
-| browser-1 | crawler-full | 9098 | 3 | 4GB |
+| browser-1 | crawler-full | 9098 | 3 | 6GB |
 | exporter | crawler-slim | 9093 | — | — |
 | drain | crawler-slim | 9094 | — | — |
 | alloy | grafana/alloy | 12346 | 0.25 | 256MB |
