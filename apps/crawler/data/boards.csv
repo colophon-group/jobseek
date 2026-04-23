@@ -3787,6 +3787,7 @@ scout-ai,scout-ai-greenhouse,https://job-boards.greenhouse.io/scoutai,greenhouse
 scout-motors,scout-motors-greenhouse,https://job-boards.greenhouse.io/scoutmotors,greenhouse,"{""token"": ""scoutmotors""}",skip,
 scout24,scout24-greenhouse,https://job-boards.greenhouse.io/scout24,greenhouse,"{""token"": ""scout24""}",skip,
 scribe,scribe-ashby,https://jobs.ashbyhq.com/scribe,ashby,"{""token"": ""scribe""}",skip,
+sdsc,sdsc-careers,https://www.datascience.ch/careers,inline,"{""render"": false, ""steps"": [{""tag"": ""h3"", ""field"": ""title""}, {""text"": ""Location"", ""offset"": 1, ""field"": ""location""}, {""tag"": ""h4"", ""field"": ""description"", ""html"": true, ""stop"": ""Apply Now""}]}",skip,
 se3,se3-ashby,https://jobs.ashbyhq.com/se3,ashby,"{""token"": ""se3""}",skip,
 seamless,seamless-greenhouse,https://job-boards.greenhouse.io/seamlessai,greenhouse,"{""token"": ""seamlessai""}",skip,
 seatgeek,seatgeek-careers,https://job-boards.greenhouse.io/seatgeek,greenhouse,"{""token"": ""seatgeek""}",skip,
