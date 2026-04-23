@@ -361,3 +361,73 @@ async def get_queue_depths() -> dict[str, int]:
         depths[f"{key}:ready"] = results[i * 2]
         depths[f"{key}:total"] = results[i * 2 + 1]
     return depths
+
+
+async def prune_stale_scrape_queues(
+    *,
+    older_than_days: float = 7.0,
+    dry_run: bool = False,
+) -> dict[str, int]:
+    """Drop entries from ``scrapes_<wtype>:<domain>`` zsets whose score
+    (``next_scrape_at``) is older than ``older_than_days`` plus the
+    ``scrape:<task_id>`` hashes they reference.
+
+    Score semantics — a scheduled rescrape sets the score to the future
+    time at which it's due, so any entry with ``score < now - cutoff``
+    is a task that was enqueued that long ago and never claimed (most
+    commonly because the domain's shared rate limit can't drain faster
+    than the monitor re-enqueues — the head-of-line block behind the
+    Pictet / SuccessFactors cardinality bug; see board.py canonicalize).
+
+    Returns ``{"zset_entries": N, "hashes": M, "keys_scanned": K}``.
+    """
+    r = get_redis()
+    cutoff = time.time() - (older_than_days * 86400)
+
+    zset_removed = 0
+    hashes_removed = 0
+    keys_scanned = 0
+
+    # Both ordinary and first-time scrape queues — both use the same
+    # ZSET layout (score = next_scrape_at).
+    for pattern in (
+        "scrapes_simple:*",
+        "scrapes_browser:*",
+        "ft_scrapes_simple:*",
+        "ft_scrapes_browser:*",
+    ):
+        async for key in r.scan_iter(match=pattern, count=500):
+            keys_scanned += 1
+            stale_ids = await r.zrangebyscore(key, "-inf", cutoff)
+            if not stale_ids:
+                continue
+            if dry_run:
+                zset_removed += len(stale_ids)
+                # Count how many scrape:<id> hashes exist (not all stale
+                # ids necessarily have a hash — a race between ZREM and
+                # DEL elsewhere leaves a zset-only ghost).
+                exists_pipe = r.pipeline()
+                for task_id in stale_ids:
+                    exists_pipe.exists(f"scrape:{task_id}")
+                exists_results = await exists_pipe.execute()
+                hashes_removed += sum(1 for x in exists_results if x)
+                continue
+            # Atomic ZREM + DEL batch per key. Each key's stale set can
+            # be thousands of ids (pictet had 27k), so flush by chunks
+            # to avoid huge multi-arg commands.
+            _CHUNK = 500
+            for start in range(0, len(stale_ids), _CHUNK):
+                chunk = stale_ids[start : start + _CHUNK]
+                pipe = r.pipeline()
+                pipe.zrem(key, *chunk)
+                for task_id in chunk:
+                    pipe.delete(f"scrape:{task_id}")
+                results = await pipe.execute()
+                zset_removed += int(results[0] or 0)
+                hashes_removed += sum(1 for x in results[1:] if x)
+
+    return {
+        "zset_entries": zset_removed,
+        "hashes": hashes_removed,
+        "keys_scanned": keys_scanned,
+    }

@@ -375,3 +375,80 @@ async def test_get_queue_depths_counts():
     assert depths["ready:simple:0:total"] >= 2
     # One first-time scrape in browser tier 0
     assert depths["ready:browser:0:ready"] >= 1
+
+
+# ---------------------------------------------------------------------------
+# prune_stale_scrape_queues
+# ---------------------------------------------------------------------------
+
+
+async def test_prune_removes_old_scrape_entries(mock_redis):
+    """Entries whose score is older than the cutoff should be removed
+    from the zset, and their ``scrape:<id>`` hashes deleted alongside.
+    Entries inside the cutoff stay."""
+    r = mock_redis
+    now = time.time()
+    old = now - 20 * 86400  # 20 days old
+    fresh = now - 1 * 86400  # 1 day old
+
+    await r.zadd("scrapes_browser:old.example", {"task-old-1": old, "task-old-2": old})
+    await r.zadd("scrapes_browser:old.example", {"task-fresh-1": fresh})
+    await r.hset("scrape:task-old-1", "source_url", "https://old.example/1")
+    await r.hset("scrape:task-old-2", "source_url", "https://old.example/2")
+    await r.hset("scrape:task-fresh-1", "source_url", "https://old.example/3")
+
+    result = await rq.prune_stale_scrape_queues(older_than_days=7, dry_run=False)
+
+    assert result["zset_entries"] == 2
+    assert result["hashes"] == 2
+    # Fresh entry and its hash survived.
+    assert await r.zscore("scrapes_browser:old.example", "task-fresh-1") is not None
+    assert await r.hget("scrape:task-fresh-1", "source_url") == "https://old.example/3"
+    # Old entries gone.
+    assert await r.zscore("scrapes_browser:old.example", "task-old-1") is None
+    assert await r.exists("scrape:task-old-1") == 0
+
+
+async def test_prune_dry_run_does_not_write(mock_redis):
+    """``dry_run=True`` reports the counts but makes no writes."""
+    r = mock_redis
+    now = time.time()
+    old = now - 30 * 86400
+
+    await r.zadd("scrapes_simple:stale.example", {"t1": old, "t2": old, "t3": old})
+    await r.hset("scrape:t1", "source_url", "u1")
+    await r.hset("scrape:t2", "source_url", "u2")
+    # t3 is a zset-only ghost with no scrape:<id> hash.
+
+    result = await rq.prune_stale_scrape_queues(older_than_days=7, dry_run=True)
+
+    assert result["zset_entries"] == 3
+    # Only t1 and t2 have existing hashes.
+    assert result["hashes"] == 2
+    # Dry run: nothing actually removed.
+    assert await r.zcard("scrapes_simple:stale.example") == 3
+    assert await r.exists("scrape:t1") == 1
+
+
+async def test_prune_covers_all_four_patterns(mock_redis):
+    """Ordinary and first-time scrape queues for both worker types."""
+    r = mock_redis
+    old = time.time() - 30 * 86400
+    for key in (
+        "scrapes_simple:a.com",
+        "scrapes_browser:b.com",
+        "ft_scrapes_simple:c.com",
+        "ft_scrapes_browser:d.com",
+    ):
+        await r.zadd(key, {"t": old})
+        await r.hset("scrape:t", "source_url", "u")  # intentionally shared id for brevity
+
+    result = await rq.prune_stale_scrape_queues(older_than_days=1, dry_run=False)
+
+    # 4 zset entries removed (one per pattern). Only one scrape hash exists
+    # because all four zsets share the id ``t``.
+    assert result["zset_entries"] == 4
+    assert result["keys_scanned"] == 4
+    # At least one hash delete fired (the others are idempotent no-ops
+    # because the key was already removed).
+    assert result["hashes"] >= 1

@@ -91,6 +91,27 @@ def parse_args() -> argparse.Namespace:
         ),
     )
 
+    prune_p = sub.add_parser(
+        "prune-scrape-queues",
+        help=(
+            "Drop scrapes_<wtype>:<domain> zset entries older than N days "
+            "and their scrape:<task_id> hashes. Operational cleanup for "
+            "domains whose shared rate limit can't drain faster than the "
+            "monitor re-enqueues."
+        ),
+    )
+    prune_p.add_argument(
+        "--older-than-days",
+        type=float,
+        default=7.0,
+        help="Entries with next_scrape_at before now - this many days are purged (default 7).",
+    )
+    prune_p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Count what would be removed; do not write.",
+    )
+
     return parser.parse_args()
 
 
@@ -224,6 +245,15 @@ async def run() -> None:
                     )
             finally:
                 await http.aclose()
+
+        elif args.command == "prune-scrape-queues":
+            from src.redis_queue import prune_stale_scrape_queues
+
+            result = await prune_stale_scrape_queues(
+                older_than_days=args.older_than_days,
+                dry_run=args.dry_run,
+            )
+            log.info("prune.scrape_queues.done", dry_run=args.dry_run, **result)
 
     finally:
         log.info("cli.shutting_down")
