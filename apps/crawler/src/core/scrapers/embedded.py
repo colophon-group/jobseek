@@ -60,22 +60,36 @@ _FIELD_PATTERNS: dict[str, list[str]] = {
 
 
 def _find_job_object(data: dict, prefix: str) -> tuple[str | None, dict | None]:
-    """Walk one level of nesting looking for a dict with title + description keys.
+    """Walk up to three levels of nesting looking for a dict with title + description keys.
 
-    Returns ``(path_suffix, job_dict)`` or ``(None, None)``.
+    Returns ``(path_suffix, job_dict)`` or ``(None, None)``. The suffix is a
+    dot-separated path from *data* to the found object (e.g. ``jobDetail.data.job``).
+
+    Three levels is enough to reach Phenom Canvas detail pages
+    (``jobDetail.data.job``) without making auto-detect unbounded.
     """
     keys = set(data.keys())
-    has_title = bool(keys & _TITLE_KEYS)
-    has_desc = bool(keys & _DESC_KEYS)
-    if has_title and has_desc:
+    if (keys & _TITLE_KEYS) and (keys & _DESC_KEYS):
         return None, data
 
+    # Breadth-first walk with path tracking, capped at depth 3.
+    from collections import deque
+
+    queue: deque[tuple[str, dict, int]] = deque()
     for key, val in data.items():
-        if not isinstance(val, dict):
+        if isinstance(val, dict):
+            queue.append((key, val, 1))
+
+    while queue:
+        path, node, depth = queue.popleft()
+        node_keys = set(node.keys())
+        if (node_keys & _TITLE_KEYS) and (node_keys & _DESC_KEYS):
+            return path, node
+        if depth >= 3:
             continue
-        child_keys = set(val.keys())
-        if (child_keys & _TITLE_KEYS) and (child_keys & _DESC_KEYS):
-            return key, val
+        for k, v in node.items():
+            if isinstance(v, dict):
+                queue.append((f"{path}.{k}", v, depth + 1))
 
     return None, None
 
@@ -166,6 +180,7 @@ def can_handle(htmls: list[str]) -> dict | None:
         "window.__DATA__",
         "window.__INITIAL_STATE__",
         "window.__INITIAL_DATA__",
+        "phApp.ddo",  # Phenom People Canvas detail pages
     ]
 
     # Try AF_initDataCallback
