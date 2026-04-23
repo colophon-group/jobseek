@@ -467,6 +467,63 @@ class TestSyncBoards:
         assert ("lever", "orphan-lever") in purged_args
         assert ("greenhouse", "orphan-greenhouse") in purged_args
 
+    @patch("src.sync.remove_monitor", new_callable=AsyncMock)
+    @patch("src.sync.enqueue_monitor", new_callable=AsyncMock)
+    async def test_local_path_drops_stale_slug_rows_before_upsert(
+        self,
+        mock_enqueue,
+        mock_remove,
+        mock_conn,
+    ):
+        """Before per-board upsert, purge local ``job_board`` rows whose
+        ``board_slug`` matches a row we're about to insert but whose ``id``
+        is not the Supabase-assigned one — otherwise the unique-slug
+        violation rolls back the whole outer Supabase transaction and
+        strands new companies in local-only state.
+        """
+        import uuid
+
+        boards = pl.DataFrame(
+            {
+                "company_slug": ["acme"],
+                "board_slug": ["acme-careers"],
+                "board_url": ["https://acme.com/careers"],
+                "monitor_type": ["greenhouse"],
+                "monitor_config": ["{}"],
+                "scraper_type": [""],
+                "scraper_config": [""],
+            },
+            schema_overrides=_BOARD_SCHEMA,
+        )
+
+        supa_board_id = uuid.uuid4()
+        company_id = uuid.uuid4()
+        mock_conn.fetch = AsyncMock(
+            return_value=[
+                {
+                    "id": supa_board_id,
+                    "company_id": company_id,
+                    "board_url": "https://acme.com/careers",
+                }
+            ]
+        )
+
+        mock_local_conn = MagicMock()
+        mock_local_conn.execute = AsyncMock()
+        mock_local_conn.fetch = AsyncMock(return_value=[])
+
+        await sync_boards(mock_conn, boards, dry_run=False, local_conn=mock_local_conn)
+
+        # First execute on local_conn should be the defensive DELETE.
+        assert mock_local_conn.execute.await_count >= 1
+        first_call = mock_local_conn.execute.await_args_list[0]
+        sql = first_call.args[0]
+        assert "DELETE FROM job_board" in sql
+        assert "board_slug = ANY" in sql
+        assert "id != ALL" in sql
+        assert first_call.args[1] == ["acme-careers"]
+        assert first_call.args[2] == [str(supa_board_id)]
+
 
 # ---------------------------------------------------------------------------
 # TestRunSync
