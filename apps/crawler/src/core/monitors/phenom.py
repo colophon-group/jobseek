@@ -37,6 +37,17 @@ watermark state, no hybrid flag, no API-sort assumption.
 Tenants migrated (2026-04-23): marriott, nike, nordstrom,
 elevance-health, nationwide, mondelez, mcdonalds-au, mcdonalds-canada,
 mcdonalds-us.
+
+Per-board config (in ``monitor_config``):
+
+- ``sitemap_url`` — cached sitemap location. Auto-derived from the
+  board URL on first run and persisted, so subsequent runs skip the
+  implicit ``/sitemap.xml`` lookup. Mirrors the sitemap monitor.
+- ``keep_languages`` — list of locale codes to keep when the sitemap-
+  index carries multiple locales. Defaults to ``["en", "en-us"]``.
+  mchire uses ``["en", "en-us", "es-es", "es-mx"]`` to pick up its
+  Spanish franchisee shards (0.4% overlap with English → ~16k extra
+  jobs, see issue #2548).
 """
 
 from __future__ import annotations
@@ -68,10 +79,16 @@ _JOB_URL_RE = re.compile(r"/job/|[?&]job_id=", re.IGNORECASE)
 # ``sitemap-0a80f330-en.xml``). Used as the fingerprint in ``can_handle``.
 _PHENOM_CHILD_RE = re.compile(r"sitemap-[a-f0-9]+-[a-z-]+\.xml", re.IGNORECASE)
 
-# Languages we keep when the sitemap-index carries multiple locales. Matches
-# the old ``site_available_languages: [en, en-us]`` in the pre-migration
-# api_sniffer configs so the URL set stays equivalent.
-_KEEP_LANGS = frozenset({"en", "en-us"})
+# Default languages we keep when the sitemap-index carries multiple locales.
+# Matches the old ``site_available_languages: [en, en-us]`` in the pre-
+# migration api_sniffer configs so the URL set stays equivalent for tenants
+# that don't opt into a wider set.
+#
+# Override per board via ``monitor_config.keep_languages`` — e.g. mchire
+# ships Spanish franchise listings in ``-es-es`` / ``-es-mx`` shards that
+# carry distinct job URLs (0.4% overlap with English), so its CSV row sets
+# ``keep_languages = ["en", "en-us", "es-es", "es-mx"]`` to opt in.
+_DEFAULT_KEEP_LANGS = frozenset({"en", "en-us"})
 
 
 def _is_phenom_job_url(url: str) -> bool:
@@ -101,11 +118,14 @@ def _child_language(child_url: str) -> str | None:
     return "-".join(parts[2:]).lower()
 
 
-def _select_children(children: list[str]) -> list[str]:
-    """Filter child sitemap URLs to the English-equivalent subset.
+def _select_children(
+    children: list[str],
+    keep_langs: frozenset[str] = _DEFAULT_KEEP_LANGS,
+) -> list[str]:
+    """Filter child sitemap URLs to the configured language subset.
 
     Per-language indexes (marriott = 22 locales, nike = 16 locales) get
-    reduced to ``-en``/``-en-us`` children only. Sharded indexes where
+    reduced to the intersection with *keep_langs*. Sharded indexes where
     every child carries the same language suffix (mcdonalds-*) pass
     through unchanged because there is only one real language in the set.
     Children without a language suffix are always kept — they're
@@ -118,12 +138,13 @@ def _select_children(children: list[str]) -> list[str]:
     # Only one real language → sharded layout, keep everything.
     if len(langs_with_suffix) <= 1:
         return children
-    return [c for c in children if _child_language(c) is None or _child_language(c) in _KEEP_LANGS]
+    return [c for c in children if _child_language(c) is None or _child_language(c) in keep_langs]
 
 
 async def _collect_urls(
     sitemap_url: str,
     client: httpx.AsyncClient,
+    keep_langs: frozenset[str] = _DEFAULT_KEEP_LANGS,
 ) -> tuple[set[str], bool]:
     """Fetch sitemap (index or flat), traverse selectively, return URL set.
 
@@ -138,7 +159,7 @@ async def _collect_urls(
         return set(_extract_urls(root)), False
 
     children = _extract_child_sitemaps(root)
-    selected = _select_children(children)
+    selected = _select_children(children, keep_langs)
     skipped = len(children) - len(selected)
     if skipped:
         log.debug(
@@ -160,7 +181,7 @@ async def _collect_urls(
             continue
         # Nested sitemap-index (rare; defensive): single-level recurse.
         if _is_sitemap_index(child_root):
-            for grandchild in _select_children(_extract_child_sitemaps(child_root)):
+            for grandchild in _select_children(_extract_child_sitemaps(child_root), keep_langs):
                 if len(urls) >= MAX_URLS:
                     truncated = True
                     break
@@ -170,6 +191,18 @@ async def _collect_urls(
         else:
             urls.update(_extract_urls(child_root))
     return urls, truncated
+
+
+def _keep_langs_from_metadata(metadata: dict) -> frozenset[str]:
+    """Read ``monitor_config.keep_languages`` from board metadata, default.
+
+    Empty list or missing key → default (``_DEFAULT_KEEP_LANGS``). Values
+    are lowercased so the CSV can spell locales in any case.
+    """
+    raw = metadata.get("keep_languages")
+    if not raw or not isinstance(raw, list):
+        return _DEFAULT_KEEP_LANGS
+    return frozenset(str(v).lower() for v in raw if v)
 
 
 async def discover(
@@ -193,8 +226,9 @@ async def discover(
     cached = metadata.get("sitemap_url")
     sitemap_url = cached or _default_sitemap_url(board["board_url"])
     new_sitemap_url = None if cached else sitemap_url
+    keep_langs = _keep_langs_from_metadata(metadata)
 
-    urls, truncated = await _collect_urls(sitemap_url, client)
+    urls, truncated = await _collect_urls(sitemap_url, client, keep_langs)
     job_urls = {u for u in urls if _is_phenom_job_url(u)}
 
     log_fn = log.warning if truncated else log.info

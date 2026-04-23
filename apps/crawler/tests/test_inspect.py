@@ -5,6 +5,19 @@ import pytest
 from src.inspect import ValidationError, validate_csvs
 
 
+def test_real_csvs_validate():
+    """Run ``validate_csvs()`` against the real ``apps/crawler/data/`` files.
+
+    The rest of the tests in this module use ``tmp_path`` fixtures to exercise
+    the validator in isolation, which means duplicate board_slugs and similar
+    regressions in the committed ``boards.csv`` can slip past CI (and did —
+    see issue #2550). This test closes that gap by running the validator
+    against the actual data directory with no monkeypatching.
+    """
+    errors = validate_csvs()
+    assert errors == [], "\n".join(str(e) for e in errors)
+
+
 class TestValidationError:
     def test_str_with_row(self):
         err = ValidationError("file.csv", 5, "bad value")
