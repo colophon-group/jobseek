@@ -2160,6 +2160,7 @@ inductive-bio,inductive-bio-ashby,https://jobs.ashbyhq.com/inductive-bio,ashby,"
 industrial-electric-manufacturing,industrial-electric-manufacturing-greenhouse,https://job-boards.greenhouse.io/industrialelectricmanufacturing,greenhouse,"{""token"": ""industrialelectricmanufacturing""}",skip,
 industrious-labs,industrious-labs-greenhouse,https://job-boards.greenhouse.io/industriouslabs,greenhouse,"{""token"": ""industriouslabs""}",skip,
 infineon,infineon-careers,https://jobs.infineon.com/careers,eightfold,"{""url_filter"": ""/careers/job/""}",json-ld,
+infinite-machine,infinite-machine-careers,https://api.ashbyhq.com/posting-api/job-board/infinite-machine,ashby,"{""token"": ""infinite-machine""}",skip,
 infinity-constellation,infinity-constellation-ashby,https://jobs.ashbyhq.com/infinity-constellation,ashby,"{""token"": ""infinity-constellation""}",skip,
 infisical,infisical-ashby,https://jobs.ashbyhq.com/infisical,ashby,"{""token"": ""infisical""}",skip,
 inflection-ai,inflection-ai-greenhouse,https://job-boards.greenhouse.io/inflectionai,greenhouse,"{""token"": ""inflectionai""}",skip,
