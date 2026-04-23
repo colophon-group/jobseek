@@ -1421,6 +1421,7 @@ enhesa,enhesa-greenhouse,https://job-boards.greenhouse.io/enhesa,greenhouse,"{""
 enigma,enigma-greenhouse,https://job-boards.greenhouse.io/enigmaio,greenhouse,"{""token"": ""enigmaio""}",skip,
 ennoble-care,ennoble-care-greenhouse,https://job-boards.greenhouse.io/ennoblecare,greenhouse,"{""token"": ""ennoblecare""}",skip,
 enova-international,enova-international-greenhouse,https://job-boards.greenhouse.io/enova,greenhouse,"{""token"": ""enova""}",skip,
+ens-dynamics,ens-dynamics-careers,https://www.ensdynamics.ch/careers,dom,"{""render"": true, ""url_filter"": ""ensdynamics\\.ch/(computervision|flightdynamics|launcher)""}",dom,"{""render"": true, ""steps"": [{""tag"": ""title"", ""field"": ""title"", ""regex"": ""^(.+?)\\s*\\|""}, {""text"": ""LOCATION"", ""offset"": 1, ""field"": ""locations""}, {""text"": ""EMPLOYMENT TYPE"", ""offset"": 1, ""field"": ""employment_type"", ""regex"": ""(?i)(internship|full.time|part.time|contract)"", ""optional"": true}, {""text"": ""We are seeking"", ""from"": 0, ""field"": ""description"", ""stop"": ""Apply"", ""html"": true}]}"
 ensco-inc,ensco-inc-greenhouse,https://job-boards.greenhouse.io/ensco,greenhouse,"{""token"": ""ensco""}",skip,
 ensemble,ensemble-greenhouse,https://job-boards.greenhouse.io/ensemble,greenhouse,"{""token"": ""ensemble""}",skip,
 entalpic,entalpic-careers,https://entalpic.notion.site/Join-Entalpic-9f29b9a69fb840508cd3f9a7c1c0d057,notion,"{""title_exclude"": ""Stay up to date""}",notion,"{""defaults"": {""locations"": [""Paris, FR""]}}"
