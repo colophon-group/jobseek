@@ -659,6 +659,7 @@ bolster,bolster-recruitee,https://bolster.recruitee.com,recruitee,"{""token"": "
 bolt,bolt-careers,https://bolt.eu/en/careers/positions/,greenhouse,"{""token"": ""boltv2""}",skip,
 bolt-new,bolt-new-greenhouse,https://job-boards.greenhouse.io/stackblitz,greenhouse,"{""token"": ""stackblitz""}",skip,
 bombas,bombas-greenhouse,https://job-boards.greenhouse.io/bombas,greenhouse,"{""token"": ""bombas""}",skip,
+bonfire-studios,bonfire-studios-careers,https://boards.greenhouse.io/bonfirestudios,greenhouse,"{""token"": ""bonfirestudios""}",skip,
 bonnier-news,bonnier-news-jobylon,https://cdn.jobylon.com/jobs/companies/1618/embed/v2/?page_size=1000,jobylon,"{""company_id"": ""1618""}",json-ld,
 booking-com,booking-com-careers,https://jobs.booking.com/booking/jobs,dom,"{""render"": true, ""url_filter"": {""include"": ""jobs\\.booking\\.com/booking/jobs/\\d+""}}",json-ld,
 booksy,booksy-careers,https://apply.workable.com/booksy-1/,workable,"{""token"": ""booksy-1""}",workable,
