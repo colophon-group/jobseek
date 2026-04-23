@@ -1114,6 +1114,7 @@ crunchyroll-llc,crunchyroll-llc-greenhouse,https://job-boards.greenhouse.io/crun
 crux-climate,crux-climate-careers,https://jobs.ashbyhq.com/cruxclimate,ashby,"{""token"": ""cruxclimate""}",skip,
 cryptio,cryptio-ashby,https://jobs.ashbyhq.com/cryptio,ashby,"{""token"": ""cryptio""}",skip,
 crypto-com,crypto-com-lever,https://jobs.lever.co/crypto,lever,"{""token"": ""crypto""}",skip,
+csem,csem-main,https://www.csem.ch/en/jobs/,dom,"{""render"": true, ""url_filter"": ""/en/jobs/[0-9]+""}",json-ld,
 ctc-lateral-website-linkedin,ctc-lateral-website-linkedin-greenhouse,https://job-boards.greenhouse.io/chicagotrading,greenhouse,"{""token"": ""chicagotrading""}",skip,
 cti,cti-greenhouse,https://job-boards.greenhouse.io/cti,greenhouse,"{""token"": ""cti""}",skip,
 ctl-gmbh,ctl-gmbh-join,https://join.com/companies/ctlde,join,"{""slug"": ""ctlde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
