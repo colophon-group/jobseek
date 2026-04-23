@@ -2975,6 +2975,7 @@ near-space-labs,near-space-labs-greenhouse,https://job-boards.greenhouse.io/near
 nearform,nearform-greenhouse,https://job-boards.greenhouse.io/nearform,greenhouse,"{""token"": ""nearform""}",skip,
 nebius,nebius-careers,https://job-boards.greenhouse.io/nebius,greenhouse,"{""token"": ""nebius""}",skip,
 nec-laboratories,nec-laboratories-careers,https://jobs.neclab.eu/jobs/,dom,"{""url_filter"": ""/jobs/get/""}",pdf,"{""title_source"": ""text"", ""title_pattern"": ""is looking for\\s*\\n\\s*(.+?)\\s*\\n""}"
+neighbor,neighbor-careers,https://api.lever.co/v0/postings/neighbor?mode=json,lever,"{""token"": ""neighbor""}",skip,
 neighbors-bank,neighbors-bank-greenhouse,https://job-boards.greenhouse.io/neighborsbank,greenhouse,"{""token"": ""neighborsbank""}",skip,
 neo4j,neo4j-greenhouse,https://job-boards.greenhouse.io/neo4j,greenhouse,"{""token"": ""neo4j""}",skip,
 neon,neon-ashby,https://jobs.ashbyhq.com/neon,ashby,"{""token"": ""neon""}",skip,
