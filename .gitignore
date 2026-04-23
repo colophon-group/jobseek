@@ -26,3 +26,7 @@ __pycache__/
 /apps/crawler/traces/
 .vercel
 .mcpregistry_*
+.playwright-mcp/
+apps/web/test-results/
+apps/web/tsconfig.tsbuildinfo
+/*.png
