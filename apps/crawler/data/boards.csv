@@ -4537,6 +4537,7 @@ true-anomaly,true-anomaly-greenhouse,https://job-boards.greenhouse.io/trueanomal
 true-classic,true-classic-greenhouse,https://job-boards.greenhouse.io/trueclassicteesllc,greenhouse,"{""token"": ""trueclassicteesllc""}",skip,
 truecaller,truecaller-greenhouse,https://job-boards.greenhouse.io/truecaller,greenhouse,"{""token"": ""truecaller""}",skip,
 truelayer,truelayer-greenhouse,https://job-boards.greenhouse.io/truelayer,greenhouse,"{""token"": ""truelayer""}",skip,
+truemed,truemed-careers,https://api.ashbyhq.com/posting-api/job-board/truemed,ashby,"{""token"": ""truemed""}",skip,
 truffle-security,truffle-security-careers,https://boards.greenhouse.io/trufflesecurity,greenhouse,"{""token"": ""trufflesecurity""}",skip,
 trulioo,trulioo-ashby,https://jobs.ashbyhq.com/trulioo,ashby,"{""token"": ""trulioo""}",skip,
 trunk,trunk-careers,https://api.lever.co/v0/postings/trunkio?mode=json,lever,"{""token"": ""trunkio""}",skip,
