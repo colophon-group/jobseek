@@ -2344,6 +2344,7 @@ knowbe4,knowbe4-greenhouse,https://job-boards.greenhouse.io/knowbe4,greenhouse,"
 knowlix,knowlix-ashby,https://jobs.ashbyhq.com/knowlix,ashby,"{""token"": ""knowlix""}",skip,
 known,known-ashby,https://jobs.ashbyhq.com/known,ashby,"{""token"": ""known""}",skip,
 known,known-greenhouse,https://job-boards.greenhouse.io/known,greenhouse,"{""token"": ""known""}",skip,
+knownwell,knownwell-careers,https://jobs.lever.co/knownwell,lever,"{""token"": ""knownwell""}",skip,
 knupfer-lebensmittel-gmbh,knupfer-lebensmittel-gmbh-join,https://join.com/companies/lebensmittel-knupferde,join,"{""slug"": ""lebensmittel-knupferde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 koalafi,koalafi-greenhouse,https://job-boards.greenhouse.io/koalafi,greenhouse,"{""token"": ""koalafi""}",skip,
 kobold-metals,kobold-metals-greenhouse,https://job-boards.greenhouse.io/koboldmetals,greenhouse,"{""token"": ""koboldmetals""}",skip,
