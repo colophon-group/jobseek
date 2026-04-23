@@ -1458,6 +1458,7 @@ espresso,espresso-ashby,https://jobs.ashbyhq.com/espresso,ashby,"{""token"": ""e
 esri,esri-careers,https://job-boards.greenhouse.io/esri,greenhouse,"{""token"": ""esri""}",skip,
 ess,ess-greenhouse,https://job-boards.greenhouse.io/ess,greenhouse,"{""token"": ""ess""}",skip,
 etalytics-gmbh,etalytics-gmbh-join,https://join.com/companies/etalytics,join,"{""slug"": ""etalytics""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
+eth-zurich,eth-zurich-careers,https://jobs.ethz.ch/,dom,"{""render"": false, ""url_filter"": ""/job/view/""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""h4"", ""field"": ""locations"", ""regex"": ""^[^,]+,\\s*([^,]+)"", ""optional"": true}, {""text"": ""Job description"", ""offset"": 0, ""field"": ""description"", ""stop"": ""Profile"", ""html"": true, ""optional"": true}, {""text"": ""Profile"", ""offset"": 0, ""field"": ""qualifications"", ""stop"": ""Workplace"", ""html"": true, ""optional"": true}]}"
 ethereum-foundation,ethereum-foundation-careers,https://jobs.ashbyhq.com/ethereum-foundation,ashby,"{""token"": ""ethereum-foundation""}",skip,
 ethernovia-inc,ethernovia-inc-greenhouse,https://job-boards.greenhouse.io/ethernovia,greenhouse,"{""token"": ""ethernovia""}",skip,
 ethon-ai,ethon-ai-careers,https://ethonai.recruitee.com,recruitee,,skip,
