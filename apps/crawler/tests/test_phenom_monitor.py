@@ -4,9 +4,11 @@ import httpx
 import pytest
 
 from src.core.monitors.phenom import (
+    _DEFAULT_KEEP_LANGS,
     _PHENOM_CHILD_RE,
     _child_language,
     _is_phenom_job_url,
+    _keep_langs_from_metadata,
     _select_children,
     can_handle,
     discover,
@@ -111,6 +113,45 @@ class TestSelectChildren:
 
     def test_empty_unchanged(self):
         assert _select_children([]) == []
+
+    def test_custom_keep_langs_picks_spanish(self):
+        # mchire use case: opt into Spanish shards via per-board override.
+        children = [
+            "https://x/sitemap-abcd-en.xml",
+            "https://x/sitemap-abcd-es-es.xml",
+            "https://x/sitemap-abcd-es-mx.xml",
+            "https://x/sitemap-abcd-fr.xml",
+        ]
+        kept = _select_children(children, frozenset({"en", "en-us", "es-es", "es-mx"}))
+        assert kept == [
+            "https://x/sitemap-abcd-en.xml",
+            "https://x/sitemap-abcd-es-es.xml",
+            "https://x/sitemap-abcd-es-mx.xml",
+        ]
+
+
+class TestKeepLangsFromMetadata:
+    def test_default_when_missing(self):
+        assert _keep_langs_from_metadata({}) == _DEFAULT_KEEP_LANGS
+
+    def test_default_when_empty_list(self):
+        assert _keep_langs_from_metadata({"keep_languages": []}) == _DEFAULT_KEEP_LANGS
+
+    def test_default_when_not_a_list(self):
+        # Defensive: malformed config doesn't crash the monitor.
+        assert _keep_langs_from_metadata({"keep_languages": "en,es-es"}) == _DEFAULT_KEEP_LANGS
+
+    def test_parses_list(self):
+        got = _keep_langs_from_metadata({"keep_languages": ["en", "en-us", "es-es", "es-mx"]})
+        assert got == frozenset({"en", "en-us", "es-es", "es-mx"})
+
+    def test_lowercases_values(self):
+        got = _keep_langs_from_metadata({"keep_languages": ["EN", "EN-US"]})
+        assert got == frozenset({"en", "en-us"})
+
+    def test_drops_falsy_entries(self):
+        got = _keep_langs_from_metadata({"keep_languages": ["en", "", None, "es-es"]})
+        assert got == frozenset({"en", "es-es"})
 
 
 # ── discover() ───────────────────────────────────────────────────────────
@@ -274,6 +315,78 @@ async def test_discover_skips_metadata_write_when_cached():
     async with httpx.AsyncClient(transport=transport) as client:
         _, new_sitemap_url = await discover(board, client)
     assert new_sitemap_url is None
+
+
+_PHENOM_INDEX_MCHIRE = """<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <sitemap><loc>https://careers.example.com/sitemap-0001-en.xml</loc></sitemap>
+  <sitemap><loc>https://careers.example.com/sitemap-0002-es-es.xml</loc></sitemap>
+  <sitemap><loc>https://careers.example.com/sitemap-0003-fr.xml</loc></sitemap>
+</sitemapindex>
+"""
+
+_MCHIRE_EN = """<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://careers.example.com/crew-member/job/EN-1</loc></url>
+</urlset>
+"""
+
+_MCHIRE_ES = """<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://careers.example.com/crew-member/job/ES-1</loc></url>
+</urlset>
+"""
+
+_MCHIRE_FR = """<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://careers.example.com/crew-member/job/FR-1</loc></url>
+</urlset>
+"""
+
+
+@pytest.mark.asyncio
+async def test_discover_keep_languages_override_picks_up_spanish():
+    """mchire-style override: opt in to Spanish shards, skip French."""
+    transport = _transport(
+        {
+            "https://careers.example.com/sitemap.xml": (200, _PHENOM_INDEX_MCHIRE),
+            "https://careers.example.com/sitemap-0001-en.xml": (200, _MCHIRE_EN),
+            "https://careers.example.com/sitemap-0002-es-es.xml": (200, _MCHIRE_ES),
+            "https://careers.example.com/sitemap-0003-fr.xml": (200, _MCHIRE_FR),
+        }
+    )
+    board = {
+        "id": "b1",
+        "board_url": "https://careers.example.com",
+        "metadata": {"keep_languages": ["en", "en-us", "es-es", "es-mx"]},
+    }
+    async with httpx.AsyncClient(transport=transport) as client:
+        urls, _ = await discover(board, client)
+    assert urls == {
+        "https://careers.example.com/crew-member/job/EN-1",
+        "https://careers.example.com/crew-member/job/ES-1",
+    }
+
+
+@pytest.mark.asyncio
+async def test_discover_default_excludes_spanish():
+    """Without override, only English kept — regression guard for the default."""
+    transport = _transport(
+        {
+            "https://careers.example.com/sitemap.xml": (200, _PHENOM_INDEX_MCHIRE),
+            "https://careers.example.com/sitemap-0001-en.xml": (200, _MCHIRE_EN),
+            "https://careers.example.com/sitemap-0002-es-es.xml": (200, _MCHIRE_ES),
+            "https://careers.example.com/sitemap-0003-fr.xml": (200, _MCHIRE_FR),
+        }
+    )
+    board = {
+        "id": "b1",
+        "board_url": "https://careers.example.com",
+        "metadata": {},
+    }
+    async with httpx.AsyncClient(transport=transport) as client:
+        urls, _ = await discover(board, client)
+    assert urls == {"https://careers.example.com/crew-member/job/EN-1"}
 
 
 # ── can_handle() ─────────────────────────────────────────────────────────
