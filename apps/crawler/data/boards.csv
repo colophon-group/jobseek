@@ -2865,6 +2865,7 @@ mill,mill-greenhouse,https://job-boards.greenhouse.io/mill,greenhouse,"{""token"
 million-dollar-baby-co,million-dollar-baby-co-greenhouse,https://job-boards.greenhouse.io/milliondollarbabyco,greenhouse,"{""token"": ""milliondollarbabyco""}",skip,
 milomed-gmbh,milomed-gmbh-join,https://join.com/companies/milomedeu,join,"{""slug"": ""milomedeu""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 mimic,mimic-careers,https://jobs.gem.com/mimicrobotics-com,gem,"{""token"": ""mimicrobotics-com""}",skip,
+mind-robotics,mind-robotics-careers,https://jobs.ashbyhq.com/mindrobotics,ashby,"{""token"": ""mindrobotics""}",skip,
 mindbody,mindbody-greenhouse,https://job-boards.greenhouse.io/mindbody,greenhouse,"{""token"": ""mindbody""}",skip,
 mineralys-therapeutics,mineralys-therapeutics-greenhouse,https://job-boards.greenhouse.io/mineralystherapeutics,greenhouse,"{""token"": ""mineralystherapeutics""}",skip,
 minio,minio-greenhouse,https://job-boards.greenhouse.io/minio,greenhouse,"{""token"": ""minio""}",skip,
