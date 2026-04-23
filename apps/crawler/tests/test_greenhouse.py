@@ -319,3 +319,51 @@ class TestCanHandle:
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             result = await can_handle("https://www.example.com/careers", client)
             assert result is None
+
+
+class TestReadMoreStripping:
+    def test_strips_trailing_readmore_anchor(self):
+        raw = {
+            "absolute_url": "https://boards.greenhouse.io/t/jobs/1",
+            "title": "T",
+            "content": "<p>Body</p><p><a>Read more</a></p>",
+        }
+        r = _parse_job(raw)
+        assert r is not None
+        assert "Read more" not in r.description
+        assert "<p>Body</p>" in r.description
+
+    def test_strips_multiple_variants_case_insensitive(self):
+        raw = {
+            "absolute_url": "https://boards.greenhouse.io/t/jobs/1",
+            "title": "T",
+            "content": "<p>x <a>Read More</a> y <a>Learn more</a> z <a>See More</a></p>",
+        }
+        r = _parse_job(raw)
+        assert "Read More" not in r.description
+        assert "Learn more" not in r.description
+        assert "See More" not in r.description
+
+    def test_keeps_anchors_with_href(self):
+        raw = {
+            "absolute_url": "https://boards.greenhouse.io/t/jobs/1",
+            "title": "T",
+            "content": '<p><a href="https://example.com/details">Read more</a></p>',
+        }
+        r = _parse_job(raw)
+        assert '<a href="https://example.com/details">Read more</a>' in r.description
+
+    def test_varda_style_e_verify_tail(self):
+        """Regression for Varda Space: collapsed E-Verify/Right To Work Notice blocks."""
+        raw = {
+            "absolute_url": "https://boards.greenhouse.io/t/jobs/1",
+            "title": "T",
+            "content": (
+                "<p>Real description content here.</p>"
+                "<p>E-Verify Notice Right To Work Notice <a>Read more</a>"
+                "&nbsp;&nbsp;&nbsp; <a>Read more</a></p>"
+            ),
+        }
+        r = _parse_job(raw)
+        assert "Read more" not in r.description
+        assert "Real description content here." in r.description
