@@ -4134,6 +4134,7 @@ sterlington-pllc,sterlington-pllc-greenhouse,https://job-boards.greenhouse.io/st
 stitch-fix,stitch-fix-greenhouse,https://job-boards.greenhouse.io/stitchfix,greenhouse,"{""token"": ""stitchfix""}",skip,
 stmicroelectronics,stmicroelectronics-careers,https://stmicroelectronics.eightfold.ai/careers,eightfold,,eightfold,
 stockx,stockx-greenhouse,https://job-boards.greenhouse.io/stockx,greenhouse,"{""token"": ""stockx""}",skip,
+stoik,stoik-careers,https://careers.stoik.io,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.stoik.io/jobs.rss""}",skip,
 stoiximan,stoiximan-greenhouse,https://job-boards.greenhouse.io/stoiximan,greenhouse,"{""token"": ""stoiximan""}",skip,
 stone-linkedin,stone-linkedin-greenhouse,https://job-boards.greenhouse.io/stone,greenhouse,"{""token"": ""stone""}",skip,
 store-space-self-storage,store-space-self-storage-greenhouse,https://job-boards.greenhouse.io/storespace,greenhouse,"{""token"": ""storespace""}",skip,
