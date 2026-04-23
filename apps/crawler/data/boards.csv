@@ -3174,6 +3174,7 @@ oscilar,oscilar-ashby,https://jobs.ashbyhq.com/oscilar,ashby,"{""token"": ""osci
 oshi-health,oshi-health-greenhouse,https://job-boards.greenhouse.io/oshihealth,greenhouse,"{""token"": ""oshihealth""}",skip,
 osmo,osmo-ashby,https://jobs.ashbyhq.com/osmo,ashby,"{""token"": ""osmo""}",skip,
 oso,oso-ashby,https://jobs.ashbyhq.com/oso,ashby,"{""token"": ""oso""}",skip,
+ost,ost-careers,https://jobs-ost.ch/,api_sniffer,"{""api_url"": ""https://ohws.prospective.ch/public/v1/medium/1007649/jobs?lang=de&offset=0&limit=999"", ""json_path"": ""jobs"", ""url_field"": ""links.directlink"", ""fields"": {""title"": ""title"", ""locations"": ""szas.\""sza_location.city\"""", ""description"": [""szas.sza_introduction"", ""szas.sza_tasks"", ""szas.sza_requirements""], ""date_posted"": ""start_date""}}",skip,
 otter,otter-greenhouse,https://job-boards.greenhouse.io/otter,greenhouse,"{""token"": ""otter""}",skip,
 otter-ai,otter-ai-greenhouse,https://job-boards.greenhouse.io/otterai,greenhouse,"{""token"": ""otterai""}",skip,
 otto-aerospace,otto-aerospace-greenhouse,https://job-boards.greenhouse.io/ottoaviation,greenhouse,"{""token"": ""ottoaviation""}",skip,
