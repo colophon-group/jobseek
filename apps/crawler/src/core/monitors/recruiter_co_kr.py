@@ -36,7 +36,7 @@ from urllib.parse import urlparse
 import httpx
 import structlog
 
-from src.core.monitors import DiscoveredJob, register
+from src.core.monitors import BoardGoneError, DiscoveredJob, register
 
 log = structlog.get_logger()
 
@@ -44,7 +44,7 @@ _API_BASE = "https://api-recruiter.recruiter.co.kr"
 _LIST_PATH = "/position/v1/jobflex"
 _DETAIL_PATH_FMT = "/position/v2/jobflex/{sn}"
 _PAGE_SIZE = 100
-_MAX_JOBS = 50_000
+_MAX_JOBS = 20_000  # 200 pages * 100/page — kept in sync with _HARD_PAGE_CAP
 _DETAIL_CONCURRENCY = 8
 _HARD_PAGE_CAP = 200  # 200 * 100 = 20,000 jobs
 
@@ -299,6 +299,18 @@ async def _fetch_list_page(
     resp = await _post_with_retry(
         client, _API_BASE + _LIST_PATH, headers=_api_headers(slug), json=body
     )
+    if resp.status_code == 400:
+        # Distinguish tenant-gone from validation errors by inspecting
+        # the error code in the response body.
+        try:
+            code = (resp.json() or {}).get("code")
+        except (ValueError, AttributeError):
+            code = None
+        if code == "NotFoundCompanyException":
+            raise BoardGoneError(
+                f"Recruiter.co.kr tenant {slug!r} returned NotFoundCompanyException",
+                url=_board_url(slug),
+            )
     resp.raise_for_status()
     return resp.json()
 
@@ -399,42 +411,43 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
 async def _probe_api(slug: str, client: httpx.AsyncClient) -> tuple[bool, int | None]:
     """Probe the tenant against the shared API.
 
-    The ``design/v2`` endpoint returns 200 for known tenants and 400
-    ``NotFoundCompanyException`` for unknown ones.
+    Uses the list endpoint as a tenant-validity signal and job-count
+    fetch in one call. The previous ``/design/v2`` probe was a simple
+    200/400 binary, but Recruiter.co.kr tightened CORS/auth on that
+    path in April 2026 — it now returns 401 ``FailedAuthentication``
+    to non-browser requests. ``/position/v1/jobflex`` remains open
+    (the front-end axios client calls it without authentication for
+    guest job browsing) and returns 400 ``NotFoundCompanyException``
+    for unknown tenants, which is what we need for detection.
     """
+    body = {
+        "pageableRq": {"page": 1, "size": 1, "sort": ["CREATED_DATE_TIME"]},
+        "filter": {
+            "keyword": "",
+            "tagSnList": [],
+            "jobGroupSnList": [],
+            "careerTypeList": [],
+            "regionSnList": [],
+            "submissionStatusList": ["IN_SUBMISSION"],
+            "openStatusList": ["OPEN"],
+            "resumeLanguageTypeList": [],
+        },
+    }
     try:
-        resp = await client.get(
-            _API_BASE + "/design/v2",
-            params={"languageType": "KOR"},
-            headers=_api_headers(slug),
-        )
+        resp = await client.post(_API_BASE + _LIST_PATH, headers=_api_headers(slug), json=body)
     except httpx.HTTPError:
+        return False, None
+    if resp.status_code == 400:
+        # NotFoundCompanyException — unknown tenant
         return False, None
     if resp.status_code != 200:
         return False, None
-
-    # Best-effort job count via the list endpoint.
     try:
-        body = {
-            "pageableRq": {"page": 1, "size": 1, "sort": ["CREATED_DATE_TIME"]},
-            "filter": {
-                "keyword": "",
-                "tagSnList": [],
-                "jobGroupSnList": [],
-                "careerTypeList": [],
-                "regionSnList": [],
-                "submissionStatusList": ["IN_SUBMISSION"],
-                "openStatusList": ["OPEN"],
-                "resumeLanguageTypeList": [],
-            },
-        }
-        list_resp = await client.post(_API_BASE + _LIST_PATH, headers=_api_headers(slug), json=body)
-        if list_resp.status_code == 200:
-            total = (list_resp.json().get("pagination") or {}).get("totalCount")
-            if isinstance(total, int):
-                return True, total
-    except httpx.HTTPError:
-        pass
+        total = (resp.json().get("pagination") or {}).get("totalCount")
+    except (ValueError, AttributeError):
+        return True, None
+    if isinstance(total, int):
+        return True, total
     return True, None
 
 
