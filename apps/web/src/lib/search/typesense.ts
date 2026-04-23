@@ -5,6 +5,7 @@ import type {
 } from "typesense/lib/Typesense/Documents";
 import { getSearchClient } from "./typesense-client";
 import { buildFilterString } from "./typesense-filters";
+import { buildExcludeTitleRegex } from "./exclude-title";
 import type {
   PostingLocation,
   SearchFilters,
@@ -205,6 +206,29 @@ const SALARY_FACET_RANGES = [
 
 const SALARY_FACET_BY = `salary_eur(${SALARY_FACET_RANGES})`;
 
+// ── Title exclusion post-filter ────────────────────────────────────
+
+/**
+ * Drop postings whose title matches any excludeTitles keyword (word boundary,
+ * case-insensitive). Companies whose postings all match are dropped entirely.
+ * activeMatches/yearMatches are left untouched — they represent company-wide
+ * totals beyond the preview array and cannot be accurately decremented.
+ */
+export function applyExcludeTitleFilter(
+  companies: SearchResultCompany[],
+  excludeTitles: string[],
+): SearchResultCompany[] {
+  const re = buildExcludeTitleRegex(excludeTitles);
+  if (!re) return companies;
+  const out: SearchResultCompany[] = [];
+  for (const c of companies) {
+    const postings = c.postings.filter((p) => !(p.title && re.test(p.title)));
+    if (postings.length === 0) continue;
+    out.push({ ...c, postings });
+  }
+  return out;
+}
+
 // ── Provider ───────────────────────────────────────────────────────
 
 export class TypesenseSearchProvider implements SearchProvider {
@@ -216,10 +240,15 @@ export class TypesenseSearchProvider implements SearchProvider {
     },
   ): Promise<SearchResponse> {
     try {
-      const { keywords, offset, limit, locationIds } = params;
+      const { keywords, offset, limit, locationIds, excludeTitles } = params;
       const filterStr = buildFilterString(params);
       const activeFilter = `is_active:true${filterStr ? " && " + filterStr : ""}`;
       const client = getSearchClient();
+
+      const hasExclusions = (excludeTitles?.length ?? 0) > 0;
+      const overFetch = hasExclusions
+        ? Math.min(Math.ceil(limit * 1.5), 100)
+        : limit;
 
       // Main grouped search with facet for totalCompanies
       const result: TsSearchResponse<JobPostingDoc> = await client
@@ -232,7 +261,7 @@ export class TypesenseSearchProvider implements SearchProvider {
           sort_by: "_text_match:desc,first_seen_at:desc",
           group_by: "company_id",
           group_limit: 10,
-          per_page: limit,
+          per_page: overFetch,
           page: Math.floor(offset / limit) + 1,
           typo_tokens_threshold: 1,
           drop_tokens_threshold: 1,
@@ -255,7 +284,16 @@ export class TypesenseSearchProvider implements SearchProvider {
         keywords.join(" "),
       );
 
-      return mapGroupedHits(groupedHits, totalCompanies, yearCountMap, locationIds);
+      const mapped = mapGroupedHits(groupedHits, totalCompanies, yearCountMap, locationIds);
+
+      if (!hasExclusions) return mapped;
+
+      const filteredCompanies = applyExcludeTitleFilter(
+        mapped.companies,
+        excludeTitles ?? [],
+      ).slice(0, limit);
+
+      return { ...mapped, companies: filteredCompanies };
     } catch (err) {
       console.error("[typesense] search error", err);
       return emptyResponse();
