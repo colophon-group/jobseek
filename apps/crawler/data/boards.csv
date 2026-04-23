@@ -2213,6 +2213,7 @@ interworks,interworks-greenhouse,https://job-boards.greenhouse.io/interworks,gre
 intesa-sanpaolo,intesa-sanpaolo-careers,https://jobs.intesasanpaolo.com/search/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://jobs.intesasanpaolo.com/googlefeed.xml""}",skip,
 intradiem,intradiem-greenhouse,https://job-boards.greenhouse.io/intradiem,greenhouse,"{""token"": ""intradiem""}",skip,
 intrinsic,intrinsic-careers,https://boards.greenhouse.io/intrinsicrobotics,greenhouse,"{""token"": ""intrinsicrobotics""}",skip,
+intro,intro-careers,https://jobs.ashbyhq.com/intro,ashby,"{""token"": ""intro""}",skip,
 intus,intus-ashby,https://jobs.ashbyhq.com/intus,ashby,"{""token"": ""intus""}",skip,
 inuru,inuru-join,https://join.com/companies/inuru,join,"{""slug"": ""inuru""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 inversion,inversion-greenhouse,https://job-boards.greenhouse.io/inversionspace,greenhouse,"{""token"": ""inversionspace""}",skip,
