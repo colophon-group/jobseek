@@ -2890,6 +2890,7 @@ mochi-health,mochi-health-greenhouse,https://job-boards.greenhouse.io/mochihealt
 modal,modal-careers,https://jobs.ashbyhq.com/modal,ashby,,skip,
 modern-animal,modern-animal-greenhouse,https://job-boards.greenhouse.io/modernanimal,greenhouse,"{""token"": ""modernanimal""}",skip,
 modern-health,modern-health-greenhouse,https://job-boards.greenhouse.io/modernhealth,greenhouse,"{""token"": ""modernhealth""}",skip,
+modernfi,modernfi-careers,https://api.ashbyhq.com/posting-api/job-board/modernfi,ashby,"{""token"": ""modernfi""}",skip,
 modernizing-medicine-inc,modernizing-medicine-inc-workday,https://modmed.wd501.myworkdayjobs.com/ModMed12,workday,,skip,
 moderntreasury,moderntreasury-ashby,https://jobs.ashbyhq.com/moderntreasury,ashby,"{""token"": ""moderntreasury""}",skip,
 modulr,modulr-greenhouse,https://job-boards.greenhouse.io/modulrfinance,greenhouse,"{""token"": ""modulrfinance""}",skip,
