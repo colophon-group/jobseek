@@ -3669,6 +3669,7 @@ roadie,roadie-greenhouse,https://job-boards.greenhouse.io/roadie,greenhouse,"{""
 roadrunner-recycling-inc,roadrunner-recycling-inc-greenhouse,https://job-boards.greenhouse.io/roadrunner,greenhouse,"{""token"": ""roadrunner""}",skip,
 robinhood,robinhood-careers,https://api.greenhouse.io/v1/boards/robinhood/jobs,greenhouse,"{""token"": ""robinhood""}",skip,
 roblox,roblox-greenhouse,https://job-boards.greenhouse.io/roblox,greenhouse,"{""token"": ""roblox""}",skip,
+roboa,roboa-careers,https://sites.google.com/roboa.ch/open-positions/home,dom,"{""render"": false}",dom,"{""render"": true, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""text"": ""Zurich"", ""field"": ""locations"", ""regex"": ""([^|]+)""}, {""tag"": ""h1"", ""from"": 0, ""offset"": 1, ""field"": ""description"", ""stop"": ""How to apply"", ""html"": true}]}"
 roboforce,roboforce-greenhouse,https://job-boards.greenhouse.io/roboforce,greenhouse,"{""token"": ""roboforce""}",skip,
 roboyo,roboyo-greenhouse,https://job-boards.greenhouse.io/roboyo,greenhouse,"{""token"": ""roboyo""}",skip,
 roche,roche-careers,https://roche.wd3.myworkdayjobs.com/roche-ext,workday,"{""company"": ""roche"", ""wd_instance"": ""wd3"", ""site"": ""roche-ext""}",workday,"{""proxy"": true}"
