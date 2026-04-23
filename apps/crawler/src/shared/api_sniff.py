@@ -97,8 +97,11 @@ URL_FIELDS = re.compile(
 )
 
 COUNT_FIELDS = re.compile(
+    # `total[A-Za-z]+` covers vendor-specific suffixes like Phenom's `totalJob`
+    # (job siblings to the array are always int-valued and evaluated in context,
+    # so the broader match stays anchored to the array's parent object).
     r"^(total|count|total_?count|total_?results|total_?items|hits|num_?found|result_?count"
-    r"|size|totalCount|totalResults|totalItems|totalHits|nbHits)$",
+    r"|size|total[A-Za-z]+|nbHits)$",
     re.IGNORECASE,
 )
 

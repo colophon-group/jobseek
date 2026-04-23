@@ -181,6 +181,10 @@ class TestFindTotalCount:
         body = {"data": {"totalItems": 42, "jobs": [{"id": 1}]}}
         assert find_total_count(body, "data.jobs") == 42
 
+    def test_total_job_phenom(self):
+        body = {"totalJob": 12441, "jobs": [{"id": 1}], "facets": []}
+        assert find_total_count(body, "jobs") == 12441
+
 
 class TestScoreCandidate:
     def test_high_score_with_url_and_title(self):

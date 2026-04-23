@@ -441,6 +441,12 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"Personio XML \u2014 slug: {slug}, {jobs} jobs"
         return f"Personio XML \u2014 slug: {slug}"
+    if name == "phenom":
+        sitemap_url = metadata.get("sitemap_url", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"Phenom \u2014 {jobs} jobs at {sitemap_url}"
+        return f"Phenom \u2014 {sitemap_url}"
     if name == "jobylon":
         group = metadata.get("company_group_id")
         company = metadata.get("company_id")
@@ -558,6 +564,7 @@ from src.core.monitors import (  # noqa: E402
     notion,  # noqa: F401
     oracle_hcm,  # noqa: F401
     personio,  # noqa: F401
+    phenom,  # noqa: F401
     pinpoint,  # noqa: F401
     recruitee,  # noqa: F401
     recruiter_co_kr,  # noqa: F401
