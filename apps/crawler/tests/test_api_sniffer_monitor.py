@@ -237,6 +237,149 @@ class TestDiscoverReplay:
         assert len(result) == 0
 
 
+class TestJsonPathValues:
+    """Tests for the ``json_path_values`` flag that coerces a dict-of-items
+    at ``json_path`` to ``list(dict.values())``.
+
+    This supports APIs like TalentClue that return
+    ``{"jobs": {"<id>": {...}, ...}}`` instead of an array.
+    """
+
+    @pytest.mark.asyncio
+    async def test_http_dict_values_mode_yields_items(self):
+        """POST returns {"jobs": {"1": {...}, "2": {...}}}.
+
+        With ``json_path_values: true, json_path: "jobs"``, both items
+        should surface.
+        """
+        api_response = {
+            "jobs": {
+                "101": {"title": "Dev", "url": "/jobs/101"},
+                "102": {"title": "PM", "url": "/jobs/102"},
+            }
+        }
+
+        config = {
+            "api_url": "https://api.example.com/jobs",
+            "method": "POST",
+            "headers": {"Accept": "application/json"},
+            "json_path": "jobs",
+            "json_path_values": True,
+            "url_field": "url",
+            "fields": {"title": "title"},
+        }
+        board = {"board_url": "https://example.com/careers", "metadata": config}
+
+        http = AsyncMock()
+        resp = MagicMock()
+        resp.raise_for_status = MagicMock()
+        resp.json = MagicMock(return_value=api_response)
+        http.request = AsyncMock(return_value=resp)
+
+        result = await discover(board, http, pw=None)
+        assert isinstance(result, list)
+        assert len(result) == 2
+        titles = sorted(job.title for job in result)
+        assert titles == ["Dev", "PM"]
+
+    @pytest.mark.asyncio
+    async def test_http_json_path_values_no_op_on_non_dict(self):
+        """When resolved content is not a dict, ``json_path_values`` is a no-op."""
+        api_response = {
+            "jobs": [
+                {"title": "Dev", "url": "/jobs/1"},
+                {"title": "PM", "url": "/jobs/2"},
+            ]
+        }
+
+        config = {
+            "api_url": "https://api.example.com/jobs",
+            "method": "GET",
+            "json_path": "jobs",
+            "json_path_values": True,  # flag present but content is already a list
+            "url_field": "url",
+            "fields": {"title": "title"},
+        }
+        board = {"board_url": "https://example.com/careers", "metadata": config}
+
+        http = AsyncMock()
+        resp = MagicMock()
+        resp.raise_for_status = MagicMock()
+        resp.json = MagicMock(return_value=api_response)
+        http.request = AsyncMock(return_value=resp)
+
+        result = await discover(board, http, pw=None)
+        assert isinstance(result, list)
+        assert len(result) == 2
+
+    @pytest.mark.asyncio
+    async def test_http_without_flag_dict_response_yields_nothing(self):
+        """Without the flag, a dict at ``json_path`` is not an item list —
+        preserves existing behavior (no items surfaced, empty result).
+        """
+        api_response = {
+            "jobs": {
+                "101": {"title": "Dev", "url": "/jobs/101"},
+                "102": {"title": "PM", "url": "/jobs/102"},
+            }
+        }
+
+        config = {
+            "api_url": "https://api.example.com/jobs",
+            "method": "POST",
+            "json_path": "jobs",
+            # no json_path_values
+            "url_field": "url",
+            "fields": {"title": "title"},
+        }
+        board = {"board_url": "https://example.com/careers", "metadata": config}
+
+        http = AsyncMock()
+        resp = MagicMock()
+        resp.raise_for_status = MagicMock()
+        resp.json = MagicMock(return_value=api_response)
+        http.request = AsyncMock(return_value=resp)
+
+        result = await discover(board, http, pw=None)
+        assert isinstance(result, list)
+        assert len(result) == 0
+
+    @pytest.mark.asyncio
+    async def test_replay_dict_values_mode_yields_items(self):
+        """Replay path: in-browser fetch returns dict-of-items; flag coerces
+        to values list and items surface as DiscoveredJob."""
+        api_response = {
+            "jobs": {
+                "101": {"title": "Dev", "url": "/jobs/101"},
+                "102": {"title": "PM", "url": "/jobs/102"},
+                "103": {"title": "QA", "url": "/jobs/103"},
+            }
+        }
+
+        config = {
+            "api_url": "https://api.example.com/jobs/{CLIENT_ID}/{BASE64}",
+            "method": "POST",
+            "json_path": "jobs",
+            "json_path_values": True,
+            "url_field": "url",
+            "browser": True,
+            "fields": {"title": "title"},
+        }
+        board = {"board_url": "https://example.com/careers", "metadata": config}
+
+        mock_page = AsyncMock()
+        mock_page.evaluate = AsyncMock(return_value=json.dumps(api_response))
+        mock_pw = _make_mock_pw(mock_page)
+
+        http = AsyncMock()
+
+        result = await discover(board, http, pw=mock_pw)
+        assert isinstance(result, list)
+        assert len(result) == 3
+        titles = sorted(job.title for job in result)
+        assert titles == ["Dev", "PM", "QA"]
+
+
 class TestHTTPFallback:
     """Test HTTP fallback behavior when Playwright fails."""
 
