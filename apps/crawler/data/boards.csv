@@ -2503,6 +2503,7 @@ lightning,lightning-ashby,https://jobs.ashbyhq.com/lightning,ashby,"{""token"": 
 lightning-ai,lightning-ai-greenhouse,https://job-boards.greenhouse.io/lightningai,greenhouse,"{""token"": ""lightningai""}",skip,
 lightpanda,lightpanda-careers,https://lightpanda.io/jobs,dom,"{""url_filter"": ""/jobs/.+""}",json-ld,
 lightricks,lightricks-careers,https://boards.greenhouse.io/lightricks,greenhouse,"{""token"": ""lightricks""}",skip,
+lightspark,lightspark-careers,https://jobs.ashbyhq.com/lightspark,ashby,"{""token"": ""lightspark""}",skip,
 lightspeed-commerce,lightspeed-commerce-greenhouse,https://job-boards.greenhouse.io/lightspeedhq,greenhouse,"{""token"": ""lightspeedhq""}",skip,
 lightspeed-commerce-fr,lightspeed-commerce-fr-greenhouse,https://job-boards.greenhouse.io/lightspeedhqfr,greenhouse,"{""token"": ""lightspeedhqfr""}",skip,
 lightspeed-dms,lightspeed-dms-greenhouse,https://job-boards.greenhouse.io/lightspeeddms,greenhouse,"{""token"": ""lightspeeddms""}",skip,
