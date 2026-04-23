@@ -2874,6 +2874,7 @@ mintcode-solutions-gmbh,mintcode-solutions-gmbh-join,https://join.com/companies/
 mintlify,mintlify-ashby,https://jobs.ashbyhq.com/mintlify,ashby,"{""token"": ""mintlify""}",skip,
 mio-partners,mio-partners-greenhouse,https://job-boards.greenhouse.io/miopartners,greenhouse,"{""token"": ""miopartners""}",skip,
 miq-digital,miq-digital-greenhouse,https://job-boards.greenhouse.io/miqdigital,greenhouse,"{""token"": ""miqdigital""}",skip,
+mirage,mirage-careers,https://jobs.ashbyhq.com/mirage,ashby,"{""token"": ""mirage""}",skip,
 mirai-power,mirai-power-join,https://join.com/companies/mirai-powercom,join,"{""slug"": ""mirai-powercom""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 mirai-tech,mirai-tech-careers,https://trymirai.com/careers,dom,,dom,"{""render"": true, ""steps"": [{""tag"": ""title"", ""field"": ""title"", ""regex"": ""Mirai Careers: (.+)""}, {""text"": ""Remote"", ""field"": ""location"", ""from"": 0}, {""text"": ""Full Time"", ""field"": ""employment_type""}, {""text"": ""The Role"", ""field"": ""description"", ""stop"": ""Apply"", ""html"": true}]}"
 mirakl,mirakl-greenhouse,https://job-boards.greenhouse.io/mirakl,greenhouse,"{""token"": ""mirakl""}",skip,
