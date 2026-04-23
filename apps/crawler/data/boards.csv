@@ -4465,6 +4465,7 @@ true-classic,true-classic-greenhouse,https://job-boards.greenhouse.io/trueclassi
 truecaller,truecaller-greenhouse,https://job-boards.greenhouse.io/truecaller,greenhouse,"{""token"": ""truecaller""}",skip,
 truelayer,truelayer-greenhouse,https://job-boards.greenhouse.io/truelayer,greenhouse,"{""token"": ""truelayer""}",skip,
 trulioo,trulioo-ashby,https://jobs.ashbyhq.com/trulioo,ashby,"{""token"": ""trulioo""}",skip,
+trunk,trunk-careers,https://api.lever.co/v0/postings/trunkio?mode=json,lever,"{""token"": ""trunkio""}",skip,
 trust-bank,trust-bank-greenhouse,https://job-boards.greenhouse.io/trustbank,greenhouse,"{""token"": ""trustbank""}",skip,
 trust-wallet,trust-wallet-ashby,https://jobs.ashbyhq.com/trust-wallet,ashby,"{""token"": ""trust-wallet""}",skip,
 trust-will,trust-will-greenhouse,https://job-boards.greenhouse.io/trustwill,greenhouse,"{""token"": ""trustwill""}",skip,
