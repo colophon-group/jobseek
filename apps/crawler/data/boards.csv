@@ -4683,6 +4683,7 @@ vgw,vgw-greenhouse,https://job-boards.greenhouse.io/vgw,greenhouse,"{""token"": 
 via,via-greenhouse,https://job-boards.greenhouse.io/via,greenhouse,"{""token"": ""via""}",skip,
 viam,viam-greenhouse,https://job-boards.greenhouse.io/viamrobotics,greenhouse,"{""token"": ""viamrobotics""}",skip,
 vibe,vibe-ashby,https://jobs.ashbyhq.com/vibe,ashby,"{""token"": ""vibe""}",skip,
+viggle,viggle-careers,https://api.ashbyhq.com/posting-api/job-board/viggle,ashby,"{""token"": ""viggle""}",skip,
 viking-global-investors,viking-global-investors-greenhouse,https://job-boards.greenhouse.io/vikingglobalinvestors,greenhouse,"{""token"": ""vikingglobalinvestors""}",skip,
 vir-biotechnology,vir-biotechnology-greenhouse,https://job-boards.greenhouse.io/virbiotechnologyinc,greenhouse,"{""token"": ""virbiotechnologyinc""}",skip,
 viral-nation-inc,viral-nation-inc-greenhouse,https://job-boards.greenhouse.io/viralnation,greenhouse,"{""token"": ""viralnation""}",skip,
