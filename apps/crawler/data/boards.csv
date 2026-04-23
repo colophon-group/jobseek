@@ -1360,6 +1360,7 @@ echo,echo-ashby,https://jobs.ashbyhq.com/echo,ashby,"{""token"": ""echo""}",skip
 echodyne-corp,echodyne-corp-greenhouse,https://job-boards.greenhouse.io/echodynecorp,greenhouse,"{""token"": ""echodynecorp""}",skip,
 eclinical-solutions,eclinical-solutions-greenhouse,https://job-boards.greenhouse.io/eclinicalsolutions,greenhouse,"{""token"": ""eclinicalsolutions""}",skip,
 eclipse-trading,eclipse-trading-greenhouse,https://job-boards.greenhouse.io/eclipsetrading,greenhouse,"{""token"": ""eclipsetrading""}",skip,
+eclypsium,eclypsium-careers,https://eclypsium.hire.trakstar.com/,dom,"{""render"": true}",json-ld,"{""render"": true}"
 ecoatm-gazelle,ecoatm-gazelle-greenhouse,https://job-boards.greenhouse.io/ecoatmgazelle,greenhouse,"{""token"": ""ecoatmgazelle""}",skip,
 ecomsky-gmbh,ecomsky-gmbh-join,https://join.com/companies/ecomskyde,join,"{""slug"": ""ecomskyde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 editasmedicine,editasmedicine-pinpoint,https://editasmedicine.pinpointhq.com,pinpoint,"{""slug"": ""editasmedicine""}",skip,
