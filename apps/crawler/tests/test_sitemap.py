@@ -239,6 +239,28 @@ class TestTryFetchXml:
             root = await _try_fetch_xml("https://example.com/sitemap.xml", client)
             assert root is None
 
+    async def test_sends_bot_user_agent(self):
+        # Sitemaps are canonically bot-facing. The shared HTTP client uses a
+        # Chrome UA to evade bot detection on HTML, but Meta (metacareers.com)
+        # inverts the gate and returns 400 to browser UAs. The sitemap monitor
+        # must override with a self-identifying crawler UA.
+        seen_headers: dict[str, str] = {}
+
+        def handler(request):
+            seen_headers.update(request.headers)
+            return httpx.Response(
+                200, text="<urlset/>", headers={"content-type": "application/xml"}
+            )
+
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(handler),
+            headers={"User-Agent": "Mozilla/5.0 Chrome/131.0.0.0"},  # sim shared client default
+        ) as client:
+            await _try_fetch_xml("https://example.com/sitemap.xml", client)
+
+        assert "jobseek-crawler" in seen_headers["user-agent"].lower()
+        assert "chrome" not in seen_headers["user-agent"].lower()
+
 
 class TestParseRobotsSitemaps:
     async def test_parses_sitemaps(self):

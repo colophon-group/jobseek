@@ -19,6 +19,21 @@ NS_HTTPS = "{https://www.sitemaps.org/schemas/sitemap/0.9}"
 
 _JOB_KEYWORDS = ("job", "career", "posting", "position", "vacancy", "opening")
 
+# Sitemaps and robots.txt are canonically bot-facing resources. The shared
+# HTTP client sends a Chrome User-Agent to evade bot-detection on regular
+# HTML pages (issue #2193 — Deloitte / Infosys / L'Oreal / TSMC / Bain
+# reject non-browser UAs on /careers). Meta inverts that gate: a Chrome UA
+# gets HTTP 400 on ``metacareers.com/jobsearch/sitemap.xml`` while any
+# identified-bot UA gets the sitemap XML. The shared UA is therefore wrong
+# for this monitor — override with a self-identifying crawler UA and a
+# minimal Accept so we're eligible for both gates (verified on a sample of
+# seven currently-working sitemap boards that return identical XML under
+# either UA).
+_SITEMAP_HEADERS = {
+    "User-Agent": "jobseek-crawler (+https://jseek.co/)",
+    "Accept": "application/xml,text/xml,*/*;q=0.8",
+}
+
 
 class SitemapParseError(Exception):
     """Raised when the sitemap XML cannot be parsed."""
@@ -93,7 +108,7 @@ def _is_job_related(url: str) -> bool:
 
 async def _try_fetch_xml(url: str, client: httpx.AsyncClient) -> ET.Element | None:
     try:
-        resp = await client.get(url)
+        resp = await client.get(url, headers=_SITEMAP_HEADERS)
         if resp.status_code != 200:
             return None
         content_type = resp.headers.get("content-type", "")
@@ -141,7 +156,7 @@ async def _parse_robots_sitemaps(
     parsed = urlparse(board_url)
     robots_url = f"{parsed.scheme}://{parsed.netloc}/robots.txt"
     try:
-        resp = await client.get(robots_url)
+        resp = await client.get(robots_url, headers=_SITEMAP_HEADERS)
         if resp.status_code != 200:
             return []
         if "xml" in resp.headers.get("content-type", ""):
