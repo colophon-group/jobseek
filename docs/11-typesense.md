@@ -76,12 +76,38 @@ Three scoped keys. Stored in: `apps/crawler/.env.local` (main branch), GitHub se
 
 ### Schema Definition
 
-Collection schemas are defined in `scripts/typesense-setup.py`. Run it to create or recreate collections:
+Collection schemas are the single source of truth in `apps/crawler/src/typesense_schema.py` (`COLLECTIONS`). Two callers:
+
+- `scripts/typesense-setup.py` -- operator-facing wrapper for dev workflows.
+- `crawler setup-typesense` CLI subcommand -- exposed inside the crawler image so `deploy.sh` can patch the live cluster on every deploy.
+
+Both are idempotent. On every run, the setup logic:
+
+1. Creates any missing collection + alias (initial setup).
+2. PATCHes existing collections to add fields that appear in `COLLECTIONS` but not on the live cluster -- via `client.collections[name].update({"fields": [...]})` against Typesense's alter API.
+3. Never removes fields automatically (manual operator step).
 
 ```bash
-cd apps/crawler && uv run python ../../scripts/typesense-setup.py         # Create (idempotent)
-cd apps/crawler && uv run python ../../scripts/typesense-setup.py --force  # Drop + recreate
+cd apps/crawler && uv run python ../../scripts/typesense-setup.py         # Idempotent: create + patch
+cd apps/crawler && uv run python ../../scripts/typesense-setup.py --force  # Drop + recreate (data loss)
+uv run --no-sync crawler setup-typesense                                   # Same, from inside the image
 ```
+
+The deploy script (`apps/crawler/deploy.sh`) runs `crawler setup-typesense` between Alembic migrations and `crawler sync`, so a PR that adds new fields ships safely: schema is patched first, then `sync` upserts populate the new fields.
+
+### Company Collection (extended for company detail page)
+
+The `company` collection doubles as the source for the company detail page (see [Read paths](#read-paths-summary)) and therefore carries fields beyond what typeahead/browse needs:
+
+| Field | Type | Purpose |
+|------|------|---------|
+| `id`, `name`, `slug`, `icon` | scalar | shared with typeahead |
+| `logo`, `website`, `employee_count_range`, `founded_year` | scalar | detail page facts |
+| `description` | string (en) | fallback when no per-locale variant |
+| `description_de`, `description_fr`, `description_it` | string | per-locale variants from `company_description`; reader falls back to `description` |
+| `industry_id`, `industry_name` | scalar | en industry name from `industry.name` |
+| `industry_name_de`, `industry_name_fr`, `industry_name_it` | string | per-locale display names from `industry_name`; same fallback rule |
+| `active_posting_count`, `year_posting_count` | int32 | counts (refreshed by `refresh-typesense`) |
 
 ## Indexing Pipeline
 
@@ -143,9 +169,27 @@ Daily reconciliation (run by the exporter loop):
 
 - `TypesenseSearchProvider` implements the `SearchProvider` interface, replacing `PostgresSearchProvider` (one-shot cutover)
 - All search, typeahead, browse-all modals, and watchlist search go through Typesense
+- **Company detail page**: `getCompanyBySlug` reads the `company` collection by slug filter. Postgres is a fallback when Typesense errors or returns 0 hits (so brand-new companies whose Typesense upsert lagged still render)
 - **Graceful degradation**: all Typesense errors return empty results; Postgres fallback for watchlist write functions
-- **Caching**: no Redis cache on main search (Typesense is fast enough). Cached for unfiltered homepage (60s) and popular watchlists (120s)
+- **Caching**: no Redis cache on main search (Typesense is fast enough). Cached for unfiltered homepage (60s) and popular watchlists (120s). `getCompanyBySlug` is wrapped with a Redis cache (`ttl: 600`, key `company-slug:{slug}:{locale}`) that skips storing nulls so brand-new slugs aren't poisoned
 - **Client**: `typesense-js` in the web app, connecting to `typesense.colophon-group.org` (Cloudflare tunnel) with the search-only key
+
+## Read paths summary
+
+Three data tiers, three read paths:
+
+| Tier | Role | Reads |
+|------|------|-------|
+| Local Postgres (Hetzner) | Source of truth for `job_posting`, taxonomies, companies | Crawler workers, exporter, `refresh-typesense` count aggregations, watchlist active-posting counts (via crawler) |
+| Supabase Postgres | Mirror of `job_posting` + companies + taxonomies; **only home** for user-facing tables (`user`, `session`, `watchlist`, `watchlist_company`, ...) | Auth, watchlist mutations, watchlist company-pair lookups, posting detail (full description blob), Postgres fallbacks |
+| Typesense | In-memory search + denormalized read layer | Job search, all typeaheads, browse-all modals, watchlist search, company detail page, similar-company strip |
+
+Aggregation queries against `job_posting` are deliberately kept on local Postgres, not Supabase, to keep Supabase compute reserved for user-facing CRUD. Two notable examples:
+
+- **Watchlist active-posting counts** (`refresh-typesense`): pulls `(watchlist_id, company_id)` pairs from Supabase, runs `COUNT(*) WHERE is_active GROUP BY company_id` on local Postgres restricted to those companies, sums per watchlist in Python. Uses the partial index `idx_jp_company_active ON job_posting(company_id) WHERE is_active`.
+- **Per-company taxonomy counts** (`refresh_typesense_counts`): aggregated against local Postgres directly, then upserted to the `company` / `location` / `occupation` / `seniority` / `technology` collections as `active_posting_count`.
+
+Web pages do not aggregate `job_posting` directly -- they read precomputed counts from the Typesense doc fields above.
 
 ## Monitoring (Grafana/Prometheus)
 

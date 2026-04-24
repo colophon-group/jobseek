@@ -9,7 +9,7 @@ Covers the company-page SSR surface (head metadata, JSON-LD, similar-companies s
 `apps/web/app/[lang]/(app)/company/[slug]/page.tsx` fetches `getCompanyBySlug` on the server and renders `<CompanyHead>` (server component) before the client `<CompanyContent>` wrapper. The head includes, in the initial SSR payload:
 
 - `<h1>` with the company name (optionally wrapped in a `target="_blank" rel="noopener noreferrer"` anchor to the company's own website).
-- Localized description paragraph from `company_description` with `COALESCE(cd.description, c.description)` fallback to the English row.
+- Localized description paragraph: `getCompanyBySlug` reads from the Typesense `company` collection, picking `description_{locale}` and falling back to `description` (English). On Typesense error or 0 hits, the SQL fallback path runs the same `COALESCE(cd.description, c.description)` join against Supabase `company_description` it always did.
 - Meta row: industry / employee-count range / founding year, all resolved to localized strings via `getI18n()` server-side.
 - Back-navigation `<BackLink>` to `/{locale}/explore` preserving the current query string.
 - `Organization` + `BreadcrumbList` JSON-LD blocks, via `<JsonLd>` in `apps/web/src/lib/seo.tsx`. `safeHttpUrl()` guards `logo` and `sameAs` so only http/https URLs reach the payload.

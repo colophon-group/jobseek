@@ -554,10 +554,72 @@ export async function getCompanyBySlug(
   locale: string,
 ): Promise<CompanyDetail | null> {
   const key = `company-slug:${slug}:${locale}`;
-  return cached(key, () => _fetchCompanyBySlug(slug, locale), { ttl: 600 });
+  // skipIf null avoids cache-poisoning a brand-new slug that Typesense hasn't
+  // yet seen — Postgres fallback can fill the gap on the next request.
+  return cached(key, () => _fetchCompanyBySlug(slug, locale), {
+    ttl: 600,
+    skipIf: (d) => d === null,
+  });
 }
 
 async function _fetchCompanyBySlug(slug: string, locale: string): Promise<CompanyDetail | null> {
+  // Primary path: Typesense. Falls back to Postgres on either error or 0 hits
+  // so brand-new companies (whose Typesense upsert lagged the latest sync)
+  // still render. Bot traffic to nonexistent slugs pays the Postgres cost
+  // (a cheap PK lookup on company.slug); cache layer above prevents
+  // poisoning by not storing nulls.
+  try {
+    const fromTypesense = await _fetchCompanyBySlugFromTypesense(slug, locale);
+    if (fromTypesense) return fromTypesense;
+  } catch {
+    // Typesense unreachable — fall through to Postgres.
+  }
+  return _fetchCompanyBySlugFromPostgres(slug, locale);
+}
+
+async function _fetchCompanyBySlugFromTypesense(
+  slug: string,
+  locale: string,
+): Promise<CompanyDetail | null> {
+  const client = getSearchClient();
+  const result = await client.collections("company").documents().search({
+    q: "*",
+    filter_by: `slug:=${slug}`,
+    per_page: 1,
+  });
+  const hit = result.hits?.[0]?.document as Record<string, unknown> | undefined;
+  if (!hit) return null;
+
+  const localeKey = (loc: string, base: string): string =>
+    loc === "en" ? base : `${base}_${loc}`;
+  const pickLocalized = (base: string): string | null => {
+    const localized = hit[localeKey(locale, base)];
+    if (typeof localized === "string" && localized.length > 0) return localized;
+    const en = hit[base];
+    return typeof en === "string" && en.length > 0 ? en : null;
+  };
+
+  return {
+    id: String(hit.id),
+    name: String(hit.name ?? ""),
+    slug: String(hit.slug ?? slug),
+    icon: typeof hit.icon === "string" ? hit.icon : null,
+    logo: typeof hit.logo === "string" ? hit.logo : null,
+    website: typeof hit.website === "string" ? hit.website : null,
+    description: pickLocalized("description"),
+    industryId: typeof hit.industry_id === "number" ? hit.industry_id : null,
+    industryName: pickLocalized("industry_name"),
+    employeeCountRange:
+      typeof hit.employee_count_range === "number" ? hit.employee_count_range : null,
+    foundedYear: typeof hit.founded_year === "number" ? hit.founded_year : null,
+    activeJobCount: typeof hit.active_posting_count === "number" ? hit.active_posting_count : 0,
+  };
+}
+
+async function _fetchCompanyBySlugFromPostgres(
+  slug: string,
+  locale: string,
+): Promise<CompanyDetail | null> {
   const rows = await db.execute<{
     [key: string]: unknown;
     id: string;
@@ -599,26 +661,6 @@ async function _fetchCompanyBySlug(slug: string, locale: string): Promise<Compan
   const row = (rows as unknown as Row[])[0];
   if (!row) return null;
 
-  // Get active job count from Typesense (already computed, avoids expensive
-  // correlated subquery that was consuming 10% of Supabase compute)
-  let activeJobCount = 0;
-  try {
-    const client = getSearchClient();
-    const result = await client.collections("company").documents().search({
-      q: slug,
-      query_by: "slug",
-      filter_by: `slug:=${slug}`,
-      per_page: 1,
-      include_fields: "active_posting_count",
-    });
-    if (result.hits?.length) {
-      const doc = result.hits[0].document as Record<string, unknown>;
-      activeJobCount = (doc.active_posting_count as number) ?? 0;
-    }
-  } catch {
-    // Typesense unavailable — fall back to 0 (graceful degradation)
-  }
-
   return {
     id: row.id,
     name: row.name,
@@ -631,7 +673,11 @@ async function _fetchCompanyBySlug(slug: string, locale: string): Promise<Compan
     industryName: row.industry_name,
     employeeCountRange: row.employee_count_range,
     foundedYear: row.founded_year,
-    activeJobCount,
+    // Postgres fallback skips the active count (the only Typesense-only fact).
+    // Effect on the page: header strip shows "0 open positions" until Typesense
+    // recovers; the postings list itself comes from a separate Typesense call
+    // (getCompanyPostings) so its rendering is unaffected by this path.
+    activeJobCount: 0,
   };
 }
 

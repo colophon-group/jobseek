@@ -67,6 +67,16 @@ def parse_args() -> argparse.Namespace:
 
     sub.add_parser("refresh-typesense", help="Refresh Typesense counts + reconcile watchlists")
 
+    setup_ts_p = sub.add_parser(
+        "setup-typesense",
+        help="Create / update Typesense collections + aliases (idempotent)",
+    )
+    setup_ts_p.add_argument(
+        "--force",
+        action="store_true",
+        help="Drop existing collections and recreate from scratch",
+    )
+
     indexnow_p = sub.add_parser(
         "notify-indexnow",
         help="Push changed company URLs to IndexNow (Bing/Yandex/Seznam/Naver/Yep)",
@@ -199,6 +209,11 @@ async def run() -> None:
                     await refresh_typesense_counts(local_conn, ts_client)
                     await sync_watchlists_typesense(supa_conn, local_conn, ts_client)
                 log.info("refresh-typesense: done")
+
+        elif args.command == "setup-typesense":
+            from src.typesense_schema import run_setup
+
+            run_setup(force=args.force)
 
         elif args.command == "notify-indexnow":
             start_metrics_server(settings.metrics_port)
