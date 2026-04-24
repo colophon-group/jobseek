@@ -1,0 +1,50 @@
+# TASK: extract `preferred` section labels
+
+## Title (context)
+
+{{ title_raw }}
+
+## Section text ({{ section_blocks|length }} blocks)
+
+{% for b in section_blocks -%}
+[{{ b.id }}] ({{ b.tag }}) {{ b.text }}
+{% endfor %}
+
+{% include '_partials/english_normalize.md.j2' %}
+
+## Fields
+
+- `preferred_skills` — array of objects:
+  ```
+  {"skill": "<English-normalized name>", "category": "<one of below>"}
+  ```
+- `preferred_education` — one of: `"none_required"`, `"secondary_school"`, `"vocational"`, `"bachelor"`, `"master"`, `"phd"`, `"professional_degree"`, or `null`.
+- `preferred_certifications` — English-normalized names. Empty array if none.
+- `preferred_years_additional` — integer "extra" years beyond `years_experience_min` (e.g. requirements say 5+, preferred says 7+ → `preferred_years_additional = 2`). `null` if not distinct from requirements.
+
+## Skill categories
+
+{% include '_partials/skill_category.md.j2' %}
+
+## Output
+
+Write JSON to `{{ output_path }}`:
+
+```json
+{
+  "preferred_skills": [],
+  "preferred_education": null,
+  "preferred_certifications": [],
+  "preferred_years_additional": null
+}
+```
+
+{% include '_partials/json_only.md.j2' %}
+
+{% if previous_error -%}
+## Previous attempt failed
+
+```
+{{ previous_error }}
+```
+{% endif %}

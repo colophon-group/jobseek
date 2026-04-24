@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jseek.co/schemas/labeller/sections.schema.json",
+  "title": "Section splitter output (Pass 1)",
+  "type": "object",
+  "required": ["sections"],
+  "additionalProperties": false,
+  "properties": {
+    "sections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kind", "block_ids"],
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "company",
+              "team",
+              "role",
+              "requirements",
+              "preferred",
+              "benefits",
+              "application",
+              "legal"
+            ]
+          },
+          "block_ids": {
+            "type": "array",
+            "minItems": 1,
+            "items": {"type": "integer", "minimum": 0}
+          }
+        }
+      }
+    }
+  }
+}

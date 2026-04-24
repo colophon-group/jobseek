@@ -1,0 +1,50 @@
+# TASK: split posting into sections
+
+Identify which HTML blocks belong to which section kind.
+
+## Title (verbatim, source language)
+
+{{ title_raw }}
+
+## Blocks ({{ blocks|length }})
+
+{% for b in blocks -%}
+[{{ b.id }}] ({{ b.tag }}) {{ b.text[:200] }}{% if b.text|length > 200 %}…{% endif %}
+{% endfor %}
+
+## Section kinds (pick from these only — closed vocab)
+
+{% include '_partials/section_kinds.md.j2' %}
+
+## Rules
+
+- `block_ids` within one section must be contiguous ascending integers.
+- No block may appear in more than one section.
+- Gaps are allowed — blocks with no clear topic (headings, separators, decorative) can be left unassigned.
+- If a kind appears in two non-contiguous ranges, emit two entries (not one entry with a gap).
+
+## Output
+
+Write JSON to `{{ output_path }}`:
+
+```json
+{
+  "sections": [
+    {"kind": "<kind>", "block_ids": [<int>, ...]}
+  ]
+}
+```
+
+{% include '_partials/json_only.md.j2' %}
+
+{% if previous_error -%}
+## Previous attempt failed
+
+The previous attempt failed validation with:
+
+```
+{{ previous_error }}
+```
+
+Correct and try again.
+{% endif %}

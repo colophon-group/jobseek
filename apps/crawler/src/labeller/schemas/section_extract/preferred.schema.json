@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jseek.co/schemas/labeller/section_extract/preferred.schema.json",
+  "title": "Preferred section extraction",
+  "type": "object",
+  "required": [
+    "preferred_skills",
+    "preferred_education",
+    "preferred_certifications",
+    "preferred_years_additional"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "preferred_skills": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["skill", "category"],
+        "additionalProperties": false,
+        "properties": {
+          "skill": {"type": "string", "minLength": 1},
+          "category": {
+            "type": "string",
+            "enum": [
+              "programming_language",
+              "framework",
+              "software",
+              "tool",
+              "equipment",
+              "credential",
+              "domain_knowledge",
+              "methodology",
+              "soft_skill",
+              "physical_ability"
+            ]
+          }
+        }
+      }
+    },
+    "preferred_education": {
+      "type": ["string", "null"],
+      "enum": [
+        null,
+        "none_required",
+        "secondary_school",
+        "vocational",
+        "bachelor",
+        "master",
+        "phd",
+        "professional_degree"
+      ]
+    },
+    "preferred_certifications": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1}
+    },
+    "preferred_years_additional": {"type": ["integer", "null"], "minimum": 0}
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jseek.co/schemas/labeller/globals.schema.json",
+  "title": "Global (cross-section) labels",
+  "type": "object",
+  "required": [
+    "occupation",
+    "seniority",
+    "employment_type",
+    "locales_in_posting",
+    "locations",
+    "technologies_aggregate"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "occupation": {"type": ["string", "null"]},
+    "seniority": {"type": ["string", "null"]},
+    "employment_type": {
+      "type": ["string", "null"],
+      "enum": [
+        null,
+        "full_time",
+        "part_time",
+        "contract",
+        "internship",
+        "fellowship",
+        "apprenticeship",
+        "temporary",
+        "volunteer"
+      ]
+    },
+    "locales_in_posting": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^[a-z]{2}$"}
+    },
+    "locations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["raw", "type"],
+        "additionalProperties": false,
+        "properties": {
+          "raw": {"type": "string", "minLength": 1},
+          "city": {"type": ["string", "null"]},
+          "region": {"type": ["string", "null"]},
+          "country": {
+            "type": ["string", "null"],
+            "pattern": "^[A-Z]{2}$"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["onsite", "hybrid", "remote_region", "remote_global", "unclear"]
+          }
+        }
+      }
+    },
+    "technologies_aggregate": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1}
+    }
+  }
+}

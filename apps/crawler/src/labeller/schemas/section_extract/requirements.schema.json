@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jseek.co/schemas/labeller/section_extract/requirements.schema.json",
+  "title": "Requirements section extraction",
+  "type": "object",
+  "required": [
+    "years_experience_min",
+    "years_experience_max",
+    "education_level",
+    "education_strict",
+    "degree_fields",
+    "required_skills",
+    "required_languages",
+    "required_certifications",
+    "security_clearance",
+    "physical_requirements",
+    "background_check_required",
+    "driving_license_required"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "years_experience_min": {"type": ["integer", "null"], "minimum": 0},
+    "years_experience_max": {"type": ["integer", "null"], "minimum": 0},
+    "education_level": {
+      "type": ["string", "null"],
+      "enum": [
+        null,
+        "none_required",
+        "secondary_school",
+        "vocational",
+        "bachelor",
+        "master",
+        "phd",
+        "professional_degree"
+      ]
+    },
+    "education_strict": {"type": ["boolean", "null"]},
+    "degree_fields": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1}
+    },
+    "required_skills": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["skill", "category"],
+        "additionalProperties": false,
+        "properties": {
+          "skill": {"type": "string", "minLength": 1},
+          "years_min": {"type": ["integer", "null"], "minimum": 0},
+          "category": {
+            "type": "string",
+            "enum": [
+              "programming_language",
+              "framework",
+              "software",
+              "tool",
+              "equipment",
+              "credential",
+              "domain_knowledge",
+              "methodology",
+              "soft_skill",
+              "physical_ability"
+            ]
+          }
+        }
+      }
+    },
+    "required_languages": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^[a-z]{2}$"}
+    },
+    "required_certifications": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1}
+    },
+    "security_clearance": {
+      "type": ["string", "null"],
+      "enum": [null, "none", "us", "uk", "nato", "eu", "other"]
+    },
+    "physical_requirements": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1}
+    },
+    "background_check_required": {"type": ["boolean", "null"]},
+    "driving_license_required": {
+      "type": ["string", "null"],
+      "enum": [null, "none", "standard", "commercial", "hazmat", "other"]
+    }
+  }
+}
