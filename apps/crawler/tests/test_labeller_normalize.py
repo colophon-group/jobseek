@@ -119,6 +119,25 @@ def test_h1_demoted_and_h5_lifted():
     assert "sub" in result.text
 
 
+def test_plaintext_posting_splits_into_paragraphs():
+    """Regression for pitfall N — Workday exports with no HTML tags (just
+    newlines) should produce one block per paragraph, not one giant block."""
+    raw = (
+        "Summary\n\n"
+        "About Acme Corp\n\n"
+        "Acme is a global leader in widgets.\n"
+        "We serve customers worldwide.\n\n"
+        "Your opportunity\n\n"
+        "This role supports the widget team across multiple regions."
+    )
+    result = normalize_html(raw)
+    p_count = result.html.count("<p>")
+    assert p_count >= 3, f"expected >=3 paragraphs, got {p_count}: {result.html!r}"
+    assert "Summary" in result.text
+    assert "Acme" in result.text
+    assert "Your opportunity" in result.text
+
+
 def test_naked_text_gets_wrapped_in_p():
     raw = "<div>naked text</div>other naked text<p>wrapped</p>"
     result = normalize_html(raw)

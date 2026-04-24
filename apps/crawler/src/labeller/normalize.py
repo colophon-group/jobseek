@@ -76,6 +76,28 @@ def normalize_html(raw_html: str) -> Normalized:
         for tag in disallowed:
             tag.unwrap()
 
+    # 4b. Plaintext fallback. Some postings (notably Workday exports) deliver
+    # the description as raw text with newlines and no HTML block tags at all.
+    # After unwrapping, the whole body becomes one naked NavigableString. Rather
+    # than wrapping that into a single giant <p> (which produces a one-block
+    # posting the splitter can't split), we treat double-newlines (and then
+    # single-newlines as a fallback) as paragraph boundaries and emit one <p>
+    # per paragraph.
+    if not any(soup.find(name=bt) for bt in BLOCK_TAGS):
+        flat_text = soup.get_text()
+        if flat_text and flat_text.strip():
+            parts = [p.strip() for p in re.split(r"\n\s*\n+", flat_text) if p.strip()]
+            if len(parts) <= 1:
+                # Fallback: single-newline split, filtering out very short fragments
+                # so a one-word line doesn't get its own paragraph.
+                parts = [p.strip() for p in flat_text.split("\n") if p.strip()]
+            if len(parts) > 1:
+                soup.clear()
+                for part in parts:
+                    p_tag = soup.new_tag("p")
+                    p_tag.string = part
+                    soup.append(p_tag)
+
     # 5. Strip attributes (keep href on <a> only)
     for tag in soup.find_all(True):
         if tag.name == "a":

@@ -66,14 +66,51 @@ For each `POSTING_ID` in `IDS`:
 
 Let `RUN_DIR = data/postings-labelled/_runs/$RUN_DATE/$POSTING_ID`.
 
-### 2a. Prepare
+### 2a. Prepare (two stages around a Sonnet normalize)
+
+**Stage A — load raw HTML**:
 
 ```bash
-labeller prepare $POSTING_ID --date $RUN_DATE
+labeller prepare-pre-llm $POSTING_ID --date $RUN_DATE
 ```
 
-Writes `$RUN_DIR/input.json`. If non-zero exit (posting not found or
-normalizer coverage too low), skip this posting and continue.
+Writes `$RUN_DIR/raw_input.json`. If non-zero exit (posting not found or no
+description), skip this posting and continue.
+
+**Stage B1 — render the normalize prompt**:
+
+```bash
+labeller render-task --task normalize_html \
+    --input  $RUN_DIR/raw_input.json \
+    --out    $RUN_DIR/normalize-in.md \
+    --output-path $RUN_DIR/normalized.html
+```
+
+**Stage B2 — invoke the normalizer subagent**:
+
+```
+Agent(
+  subagent_type="jobseek-labeller-normalizer",
+  prompt="INPUT: $RUN_DIR/normalize-in.md\nOUTPUT: $RUN_DIR/normalized.html",
+  model="sonnet"
+)
+```
+
+The subagent produces `$RUN_DIR/normalized.html` — a clean HTML subset
+with text content preserved verbatim. No JSON validation (output is HTML,
+not JSON); check only that the file is non-empty and starts with `<`.
+
+**Stage C — finalize input.json**:
+
+```bash
+labeller prepare-post-llm $POSTING_ID --date $RUN_DATE
+```
+
+Reads `raw_input.json` + `normalized.html`, runs a deterministic
+tail-pass (attribute-strip, disallowed-tag-unwrap, text-coverage check),
+extracts blocks, writes `$RUN_DIR/input.json`. If the coverage ratio is
+below 0.7 (i.e. the normalizer silently dropped too much content), this
+exits non-zero — skip the posting and continue.
 
 ### 2b. Split sections
 

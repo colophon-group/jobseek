@@ -41,8 +41,50 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--seed", type=int, default=None)
     s.add_argument("--out", type=Path, required=True, help="Output JSON path")
 
-    # --- prepare --------------------------------------------------------
-    pp = sub.add_parser("prepare", help="Load + normalize + blocks for one posting")
+    # --- prepare-pre-llm ------------------------------------------------
+    # Stage A: DB → raw_input.json (+ render normalize prompt in the caller).
+    pre = sub.add_parser(
+        "prepare-pre-llm",
+        help=(
+            "Load raw HTML for one posting and write raw_input.json + raw.html"
+            " (the input to the LLM normalizer)."
+        ),
+    )
+    pre.add_argument("posting_id")
+    pre.add_argument("--date", default="today")
+    pre.add_argument(
+        "--out-dir",
+        type=Path,
+        help="Override run dir (defaults to _runs/<date>/<id>/)",
+    )
+
+    # --- prepare-post-llm -----------------------------------------------
+    # Stage B: read the LLM-normalized HTML + raw_input.json → input.json.
+    post = sub.add_parser(
+        "prepare-post-llm",
+        help=(
+            "Combine raw_input.json (from prepare-pre-llm) with the LLM-"
+            "normalized HTML into the final input.json consumed by the"
+            " splitter + per-section extractors."
+        ),
+    )
+    post.add_argument("posting_id")
+    post.add_argument("--date", default="today")
+    post.add_argument(
+        "--out-dir",
+        type=Path,
+        help="Override run dir (defaults to _runs/<date>/<id>/)",
+    )
+
+    # --- prepare (legacy, deterministic-only — kept for debug use) ------
+    pp = sub.add_parser(
+        "prepare",
+        help=(
+            "DEPRECATED deterministic-only prep (load + normalize + blocks in"
+            " one shot). Prefer prepare-pre-llm + LLM normalizer + prepare-"
+            "post-llm. Kept for quick local debugging of a single posting."
+        ),
+    )
     pp.add_argument("posting_id")
     pp.add_argument("--date", default="today")
     pp.add_argument("--out", type=Path, help="Override input.json path")
@@ -134,17 +176,84 @@ async def _cmd_sample(args: argparse.Namespace) -> int:
     return 0
 
 
-async def _cmd_prepare(args: argparse.Namespace) -> int:
+def _run_date_from(value: str) -> str:
+    if value == "today":
+        return datetime.now(tz=UTC).strftime("%Y-%m-%d")
+    return _parse_iso_date(value).strftime("%Y-%m-%d")
+
+
+async def _cmd_prepare_pre_llm(args: argparse.Namespace) -> int:
     from src.db import close_all_pools, create_local_pool
 
     from .paths import runs_dir
-    from .prepare import build_input, load_posting, write_input
+    from .prepare import RAW_INPUT_FILE, build_raw_input, load_posting, write_json
 
-    run_date = (
-        _parse_iso_date(args.date).strftime("%Y-%m-%d")
-        if args.date != "today"
-        else datetime.now(tz=UTC).strftime("%Y-%m-%d")
-    )
+    run_date = _run_date_from(args.date)
+    base = args.out_dir or runs_dir(run_date, args.posting_id)
+    base.mkdir(parents=True, exist_ok=True)
+
+    pool = await create_local_pool()
+    try:
+        raw = await load_posting(pool, args.posting_id)
+    finally:
+        await close_all_pools()
+
+    if raw is None:
+        print(f"posting {args.posting_id} not found or has no description", file=sys.stderr)
+        return 2
+    payload = build_raw_input(raw, sampled_at=datetime.now(tz=UTC))
+    raw_input_path = base / RAW_INPUT_FILE
+    write_json(raw_input_path, payload)
+    print(f"prepared-pre-llm -> {raw_input_path}")
+    return 0
+
+
+def _cmd_prepare_post_llm(args: argparse.Namespace) -> int:
+    from .paths import runs_dir
+    from .prepare import NORMALIZED_FILE, RAW_INPUT_FILE, finalize_input, write_json
+
+    run_date = _run_date_from(args.date)
+    base = args.out_dir or runs_dir(run_date, args.posting_id)
+    raw_input_path = base / RAW_INPUT_FILE
+    normalized_path = base / NORMALIZED_FILE
+    input_path = base / "input.json"
+
+    if not raw_input_path.exists():
+        print(f"missing {raw_input_path} — run prepare-pre-llm first", file=sys.stderr)
+        return 2
+    if not normalized_path.exists():
+        print(
+            f"missing {normalized_path} — the LLM normalize step must produce it",
+            file=sys.stderr,
+        )
+        return 2
+
+    raw_input = json.loads(raw_input_path.read_text())
+    normalized_html = normalized_path.read_text()
+    try:
+        payload = finalize_input(raw_input, normalized_html)
+    except ValueError as e:
+        print(f"finalize failed: {e}", file=sys.stderr)
+        return 3
+    write_json(input_path, payload)
+    print(f"prepared-post-llm -> {input_path} (blocks={len(payload['input']['blocks'])})")
+    return 0
+
+
+async def _cmd_prepare(args: argparse.Namespace) -> int:
+    """Deterministic-only prep. Kept for quick debugging.
+
+    Shares the DB-load + build_raw_input with prepare-pre-llm, then runs
+    finalize_input with the raw HTML as if it were already normalized. In
+    practice this is equivalent to the old single-shot prepare; use the two-
+    stage flow for production runs.
+    """
+    from src.db import close_all_pools, create_local_pool
+
+    from .paths import runs_dir
+    from .prepare import build_raw_input, finalize_input, load_posting, write_json
+
+    run_date = _run_date_from(args.date)
     out = args.out or (runs_dir(run_date, args.posting_id) / "input.json")
 
     pool = await create_local_pool()
@@ -156,8 +265,13 @@ async def _cmd_prepare(args: argparse.Namespace) -> int:
     if raw is None:
         print(f"posting {args.posting_id} not found or has no description", file=sys.stderr)
         return 2
-    payload = build_input(raw, sampled_at=datetime.now(tz=UTC))
-    write_input(out, payload)
+    raw_input = build_raw_input(raw, sampled_at=datetime.now(tz=UTC))
+    try:
+        payload = finalize_input(raw_input, raw.description_html_raw)
+    except ValueError as e:
+        print(f"finalize failed: {e}", file=sys.stderr)
+        return 3
+    write_json(out, payload)
     print(f"prepared -> {out}")
     return 0
 
@@ -231,10 +345,14 @@ def _cmd_upload(args: argparse.Namespace) -> int:
 def main() -> None:
     args = build_parser().parse_args()
 
-    async_handlers = {"sample", "prepare"}
+    async_handlers = {"sample", "prepare", "prepare-pre-llm"}
 
     if args.command in async_handlers:
-        handlers = {"sample": _cmd_sample, "prepare": _cmd_prepare}
+        handlers = {
+            "sample": _cmd_sample,
+            "prepare": _cmd_prepare,
+            "prepare-pre-llm": _cmd_prepare_pre_llm,
+        }
         rc = asyncio.run(handlers[args.command](args))
     else:
         handlers = {
@@ -242,6 +360,7 @@ def main() -> None:
             "validate": _cmd_validate,
             "merge": _cmd_merge,
             "upload": _cmd_upload,
+            "prepare-post-llm": _cmd_prepare_post_llm,
         }
         rc = handlers[args.command](args)
 

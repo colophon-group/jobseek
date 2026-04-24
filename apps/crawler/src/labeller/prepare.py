@@ -1,8 +1,19 @@
-"""Load a single posting from the local Postgres + normalize + compute blocks.
+"""Load a posting from the local Postgres and turn it into the ``input.json``
+that every downstream task reads.
 
-Output is the ``input.json`` consumed by every downstream task. Every
-subsequent step (splitter, per-section extractors, globals, merge) reads
-this file as its source of truth.
+The routine runs in two stages, with a Sonnet normalize call in between:
+
+    stage A  — load raw HTML from the DB; write raw_input.json (title + raw_html)
+               and render the normalize task prompt.
+    (LLM)    — Sonnet normalizer reads the prompt, writes clean HTML.
+    stage B  — read the normalized HTML, run deterministic tail-cleanup + block
+               extraction, write the final input.json that split_sections and
+               every per-section extractor consume.
+
+Splitting it this way keeps the deterministic code free of network calls while
+letting the LLM take the brittle, HTML-specific judgement calls (paragraph
+inference on plaintext, bullet-marker detection, heading classification,
+scraping-corruption repair).
 """
 
 from __future__ import annotations
@@ -17,6 +28,9 @@ import asyncpg
 
 from .blocks import blocks_to_json, extract_blocks
 from .normalize import NORMALIZER_VERSION, normalize_html, text_coverage_ratio
+
+NORMALIZED_FILE = "normalized.html"
+RAW_INPUT_FILE = "raw_input.json"
 
 
 @dataclass(frozen=True)
@@ -34,12 +48,11 @@ class RawPosting:
 
 
 async def load_posting(pool: asyncpg.Pool, posting_id: str) -> RawPosting | None:
-    """Load the posting row + the first description row that matches a posting locale.
+    """Load the posting row + the first description that matches the posting locale.
 
-    The join is deliberately forgiving — posting.locales[] may use short codes
-    (``en``) or region-tagged codes (``en_US``) depending on the monitor, and
-    ``descriptions.locale`` can be either. We match on the language-prefix
-    (first 2 chars) so ``en_US`` in one table matches ``en`` in the other.
+    The join is forgiving — ``posting.locales[]`` may use short codes (``en``)
+    or region-tagged codes (``en_US``) and ``descriptions.locale`` can be
+    either. We match on language-prefix (first 2 chars).
     """
     row = await pool.fetchrow(
         """
@@ -109,21 +122,13 @@ def _lang_prefix(locale: str | None) -> str | None:
     return m.group(1).lower() if m else None
 
 
-def build_input(raw: RawPosting, *, sampled_at: datetime, min_coverage: float = 0.7) -> dict:
-    """Normalize + block-split + package the ``input.json`` payload.
+def build_raw_input(raw: RawPosting, *, sampled_at: datetime) -> dict:
+    """Stage-A payload: the metadata + raw HTML that feeds the normalize prompt.
 
-    Raises ``ValueError`` if the normalizer coverage ratio is below
-    ``min_coverage`` — the posting should be rejected from today's batch.
+    This is NOT the final input.json consumed by the downstream tasks — it only
+    carries the fields the LLM normalizer needs (title, raw_html) plus the
+    source / identity fields that stage B will copy forward.
     """
-    normalized = normalize_html(raw.description_html_raw)
-    coverage = text_coverage_ratio(raw.description_html_raw, normalized.text)
-    if coverage < min_coverage:
-        raise ValueError(
-            f"normalizer coverage {coverage:.2f} below threshold {min_coverage:.2f}"
-            f" — posting {raw.id} skipped"
-        )
-    blocks = extract_blocks(normalized.html)
-
     return {
         "id": raw.id,
         "schema_version": 1,
@@ -142,15 +147,37 @@ def build_input(raw: RawPosting, *, sampled_at: datetime, min_coverage: float = 
         "input": {
             "title_raw": raw.title_raw,
             "description_html_raw": raw.description_html_raw,
-            "description_html": normalized.html,
-            "description_text": normalized.text,
             "description_locale_detected": _lang_prefix(raw.description_locale),
-            "description_char_count": len(normalized.text),
-            "blocks": blocks_to_json(blocks),
         },
     }
 
 
-def write_input(path: Path, payload: dict) -> None:
+def finalize_input(raw_input: dict, normalized_html: str, *, min_coverage: float = 0.7) -> dict:
+    """Stage-B payload: combine raw_input + LLM-normalized HTML into input.json.
+
+    The deterministic normalizer runs once more as a defensive tail-pass
+    (strips stray attributes, unwraps anything the LLM left in, wraps naked
+    text) so the final output is guaranteed to conform to the allowed tag
+    subset. Blocks are extracted from the tail-pass output.
+    """
+    tail = normalize_html(normalized_html)
+    raw_text = (raw_input.get("input", {}) or {}).get("description_html_raw") or ""
+    coverage = text_coverage_ratio(raw_text, tail.text)
+    if coverage < min_coverage:
+        raise ValueError(
+            f"normalizer coverage {coverage:.2f} below threshold {min_coverage:.2f}"
+            f" — posting {raw_input.get('id', '?')} skipped"
+        )
+    blocks = extract_blocks(tail.html)
+    out = dict(raw_input)
+    out["input"] = dict(raw_input["input"])
+    out["input"]["description_html"] = tail.html
+    out["input"]["description_text"] = tail.text
+    out["input"]["description_char_count"] = len(tail.text)
+    out["input"]["blocks"] = blocks_to_json(blocks)
+    return out
+
+
+def write_json(path: Path, payload: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, ensure_ascii=False, default=str))

@@ -18,6 +18,7 @@ from .validate import SECTION_EXTRACT_KINDS
 
 TASKS: frozenset[str] = frozenset(
     {
+        "normalize_html",
         "split_sections",
         "extract_team",
         "extract_role",
@@ -67,7 +68,9 @@ def render_task(
         "previous_error": previous_error,
     }
 
-    if task == "split_sections":
+    if task == "normalize_html":
+        ctx["raw_html"] = input_data["input"].get("description_html_raw") or ""
+    elif task == "split_sections":
         ctx["blocks"] = input_data["input"]["blocks"]
     elif task.startswith("extract_") and task != "extract_globals":
         section_kind = kind or task.removeprefix("extract_")
