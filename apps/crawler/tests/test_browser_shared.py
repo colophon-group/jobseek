@@ -114,6 +114,7 @@ class TestConstants:
                 "channel",
                 "viewport",
                 "locale",
+                "skip_ssl",
             }
         )
         assert expected == BROWSER_KEYS
