@@ -197,7 +197,7 @@ async def run() -> None:
             else:
                 async with local_pool.acquire() as local_conn, supa_pool.acquire() as supa_conn:
                     await refresh_typesense_counts(local_conn, ts_client)
-                    await sync_watchlists_typesense(supa_conn, ts_client)
+                    await sync_watchlists_typesense(supa_conn, local_conn, ts_client)
                 log.info("refresh-typesense: done")
 
         elif args.command == "notify-indexnow":

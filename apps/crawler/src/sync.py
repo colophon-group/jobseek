@@ -20,6 +20,7 @@ import argparse
 import asyncio
 import json
 import time
+from collections import defaultdict
 from pathlib import Path
 from typing import TYPE_CHECKING
 from urllib.parse import urlparse
@@ -1985,14 +1986,22 @@ def _is_trivial_watchlist(filters: dict | None, company_count: int) -> bool:
 
 async def sync_watchlists_typesense(
     supa_conn: asyncpg.Connection,
+    local_conn: asyncpg.Connection | None,
     client: typesense.Client,
 ) -> None:
     """Sync public watchlists to the Typesense ``watchlist`` collection.
 
-    Queries from Supabase only (watchlists only exist there). Trivial
-    watchlists (no companies, no meaningful filters) are deleted from
-    Typesense rather than upserted, so they're hidden from public search
-    and popular listings while still existing in Postgres for their owner.
+    Watchlists only exist in Supabase, so metadata and ``watchlist_company``
+    pairs come from there. The active-posting count per company is computed
+    against local Postgres (the job_posting source of truth) and aggregated
+    per watchlist in Python; company UUIDs are identical across both DBs
+    (see ``_mirror_companies_*``) so the counts match. This avoids a
+    watchlist_company ⨝ job_posting WHERE is_active hash join on Supabase,
+    which dominated Supabase compute spend. Falls back to the Supabase JOIN
+    when ``local_conn`` is None (dry-run, local Postgres unreachable).
+
+    Trivial watchlists (no companies, no meaningful filters) are deleted
+    from Typesense rather than upserted.
     """
     rows = await supa_conn.fetch(
         """
@@ -2010,30 +2019,48 @@ async def sync_watchlists_typesense(
 
     watchlist_ids = [r["id"] for r in rows]
 
-    # Company counts
-    company_count_rows = await supa_conn.fetch(
+    wc_pairs = await supa_conn.fetch(
         """
-        SELECT watchlist_id, COUNT(*) AS cnt
+        SELECT watchlist_id, company_id
         FROM watchlist_company
         WHERE watchlist_id = ANY($1::uuid[])
-        GROUP BY 1
         """,
         watchlist_ids,
     )
-    company_counts = {str(r["watchlist_id"]): r["cnt"] for r in company_count_rows}
+    company_counts: dict[str, int] = defaultdict(int)
+    for r in wc_pairs:
+        company_counts[str(r["watchlist_id"])] += 1
 
-    # Active job counts (via watchlist companies)
-    job_count_rows = await supa_conn.fetch(
-        """
-        SELECT wc.watchlist_id, COUNT(jp.id) AS cnt
-        FROM watchlist_company wc
-        JOIN job_posting jp ON jp.company_id = wc.company_id AND jp.is_active
-        WHERE wc.watchlist_id = ANY($1::uuid[])
-        GROUP BY 1
-        """,
-        watchlist_ids,
-    )
-    job_counts = {str(r["watchlist_id"]): r["cnt"] for r in job_count_rows}
+    job_counts: dict[str, int]
+    if local_conn is not None:
+        distinct_company_ids = list({r["company_id"] for r in wc_pairs})
+        per_company: dict = {}
+        if distinct_company_ids:
+            active_rows = await local_conn.fetch(
+                """
+                SELECT company_id, COUNT(*) AS cnt
+                FROM job_posting
+                WHERE is_active AND company_id = ANY($1::uuid[])
+                GROUP BY 1
+                """,
+                distinct_company_ids,
+            )
+            per_company = {r["company_id"]: r["cnt"] for r in active_rows}
+        job_counts = defaultdict(int)
+        for r in wc_pairs:
+            job_counts[str(r["watchlist_id"])] += per_company.get(r["company_id"], 0)
+    else:
+        job_count_rows = await supa_conn.fetch(
+            """
+            SELECT wc.watchlist_id, COUNT(jp.id) AS cnt
+            FROM watchlist_company wc
+            JOIN job_posting jp ON jp.company_id = wc.company_id AND jp.is_active
+            WHERE wc.watchlist_id = ANY($1::uuid[])
+            GROUP BY 1
+            """,
+            watchlist_ids,
+        )
+        job_counts = {str(r["watchlist_id"]): r["cnt"] for r in job_count_rows}
 
     # Mirror counts
     mirror_count_rows = await supa_conn.fetch(
@@ -2391,7 +2418,7 @@ async def sync_typesense(
         log.exception("typesense.sync.companies.failed")
 
     try:
-        await sync_watchlists_typesense(supa_conn, client)
+        await sync_watchlists_typesense(supa_conn, local_conn, client)
     except Exception:
         log.exception("typesense.sync.watchlists.failed")
 
