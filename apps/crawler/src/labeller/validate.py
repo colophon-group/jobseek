@@ -32,6 +32,7 @@ KNOWN_KINDS: frozenset[str] = frozenset(
         "globals",
         "posting",
         "qa",
+        "extract_all",
     }
 )
 
@@ -59,6 +60,8 @@ def _load_schema(kind: str) -> dict:
         path = root / "posting.schema.json"
     elif kind == "qa":
         path = root / "qa.schema.json"
+    elif kind == "extract_all":
+        path = root / "extract_all.schema.json"
     elif kind in SECTION_EXTRACT_KINDS:
         path = root / "section_extract" / f"{kind}.schema.json"
     else:
@@ -203,6 +206,38 @@ def qa_report(posting: dict) -> dict:
     return {"posting_id": posting.get("id", "?"), "verdict": verdict, "rules": rules}
 
 
+def _validate_extract_all_custom(data: dict) -> list[str]:
+    """Validate each section's ``extracted`` against its per-kind schema,
+    plus the ``globals`` block against globals.schema.json."""
+    errors: list[str] = []
+    for i, sec in enumerate(data.get("sections") or []):
+        kind = sec.get("kind")
+        extracted = sec.get("extracted")
+        if kind in SECTION_EXTRACT_KINDS:
+            if not isinstance(extracted, dict):
+                errors.append(
+                    f"sections[{i}] (kind={kind}): `extracted` must be an object "
+                    f"(extractable kind cannot be null)"
+                )
+                continue
+            sub_errors = validate_schema(kind, extracted)
+            for e in sub_errors:
+                errors.append(f"sections[{i}].extracted.{e}")
+        elif kind in {"company", "application"}:
+            if extracted is not None:
+                errors.append(
+                    f"sections[{i}] (kind={kind}): `extracted` must be null for"
+                    f" company/application sections"
+                )
+    globals_block = data.get("globals")
+    if not isinstance(globals_block, dict):
+        errors.append("globals: must be an object")
+    else:
+        for e in validate_schema("globals", globals_block):
+            errors.append(f"globals.{e}")
+    return errors
+
+
 def validate_file(kind: str, file_path: Path, context_path: Path | None = None) -> list[str]:
     """Validate a subagent output file. Returns list of errors (empty = valid).
 
@@ -238,5 +273,17 @@ def validate_file(kind: str, file_path: Path, context_path: Path | None = None) 
             errors.append(f"could not load block context from {context_path}")
         else:
             errors.extend(validate_sections_custom(data, block_ids=block_ids))
+
+    if kind == "extract_all":
+        errors.extend(_validate_extract_all_custom(data))
+        if context_path and context_path.exists():
+            try:
+                ctx = json.loads(context_path.read_text())
+                block_ids = {b["id"] for b in ctx.get("input", {}).get("blocks", [])}
+            except (json.JSONDecodeError, KeyError):
+                errors.append(f"could not load block context from {context_path}")
+            else:
+                # Re-use the splitter's custom rules (contiguity, overlap, existence)
+                errors.extend(validate_sections_custom(data, block_ids=block_ids))
 
     return errors

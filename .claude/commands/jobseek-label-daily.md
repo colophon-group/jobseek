@@ -142,28 +142,26 @@ labeller validate --kind sections \
 On failure, retry up to 2 times by re-rendering with
 `--previous-error "<validator stderr>"` and re-invoking.
 
-### 2c. Per-section extraction
+### 2c. Combined per-section extraction + globals (preferred path)
 
-Read `$RUN_DIR/split-out.json`. The extractable kinds are:
-`team, role, requirements, preferred, benefits`. (Sections with kind
-`company` or `application` are identified for span classification only
-and get no structured extraction.)
-
-For each extractable kind that appears in `sections[].kind`:
+One Sonnet call produces per-section `extracted` fields for every
+extractable kind (`team`, `role`, `requirements`, `preferred`,
+`benefits`) AND the cross-section `globals` block. `company` /
+`application` sections are reproduced with `extracted: null` (span
+classification only).
 
 ```bash
-labeller render-task --task extract_$KIND \
+labeller render-task --task extract_all \
     --input    $RUN_DIR/input.json \
     --sections $RUN_DIR/split-out.json \
-    --kind     $KIND \
-    --out      $RUN_DIR/extract-$KIND-in.md \
-    --output-path $RUN_DIR/extract-$KIND-out.json
+    --out      $RUN_DIR/extract-all-in.md \
+    --output-path $RUN_DIR/extract-all-out.json
 ```
 
 ```
 Agent(
-  subagent_type="jobseek-labeller-extract-$KIND",
-  prompt="INPUT: $RUN_DIR/extract-$KIND-in.md\nOUTPUT: $RUN_DIR/extract-$KIND-out.json",
+  subagent_type="jobseek-labeller-extractor",
+  prompt="INPUT: $RUN_DIR/extract-all-in.md\nOUTPUT: $RUN_DIR/extract-all-out.json",
   model="sonnet"
 )
 ```
@@ -171,38 +169,30 @@ Agent(
 Validate:
 
 ```bash
-labeller validate --kind $KIND --file $RUN_DIR/extract-$KIND-out.json
+labeller validate --kind extract_all \
+    --file $RUN_DIR/extract-all-out.json \
+    --context $RUN_DIR/input.json
 ```
+
+The validator schema-checks the outer document, then validates each
+`sections[].extracted` against its per-kind schema and the `globals`
+block against `globals.schema.json`. Block-ID contiguity / overlap /
+existence are re-checked against the splitter's block list.
 
 Retry policy same as 2b.
 
-### 2d. Globals
+#### Granular fallback (rollback path)
 
-Render (the renderer auto-scans `$RUN_DIR` for `extract-*-out.json` files
-and packs them into the task input):
-
-```bash
-labeller render-task --task extract_globals \
-    --input        $RUN_DIR/input.json \
-    --sections     $RUN_DIR/split-out.json \
-    --extracts-dir $RUN_DIR \
-    --out          $RUN_DIR/globals-in.md \
-    --output-path  $RUN_DIR/globals-out.json
-```
-
-```
-Agent(
-  subagent_type="jobseek-labeller-extract-globals",
-  prompt="INPUT: $RUN_DIR/globals-in.md\nOUTPUT: $RUN_DIR/globals-out.json",
-  model="sonnet"
-)
-```
+If you need finer retry granularity (per-section retries), the legacy
+path is still available:
 
 ```bash
-labeller validate --kind globals --file $RUN_DIR/globals-out.json
+# Run 5 per-section extractors in parallel, then one globals call.
+# merge.py falls back to this layout when extract-all-out.json is absent.
 ```
 
-Retry policy same as 2b.
+See the earlier revision of this command file for the full per-section
+commands.
 
 ### 2e. Merge
 

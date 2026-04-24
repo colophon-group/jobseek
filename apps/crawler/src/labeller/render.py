@@ -26,6 +26,7 @@ TASKS: frozenset[str] = frozenset(
         "extract_preferred",
         "extract_benefits",
         "extract_globals",
+        "extract_all",
     }
 )
 
@@ -72,16 +73,6 @@ def render_task(
         ctx["raw_html"] = input_data["input"].get("description_html_raw") or ""
     elif task == "split_sections":
         ctx["blocks"] = input_data["input"]["blocks"]
-    elif task.startswith("extract_") and task != "extract_globals":
-        section_kind = kind or task.removeprefix("extract_")
-        if section_kind not in SECTION_EXTRACT_KINDS:
-            raise ValueError(
-                f"task {task} requires a valid extractable section kind, got {section_kind}"
-            )
-        if sections_data is None:
-            raise ValueError(f"task {task} requires --sections")
-        blocks_by_id = {b["id"]: b for b in input_data["input"]["blocks"]}
-        ctx["section_blocks"] = _blocks_for_kind(sections_data, section_kind, blocks_by_id)
     elif task == "extract_globals":
         if sections_data is None:
             raise ValueError("extract_globals requires --sections")
@@ -92,6 +83,23 @@ def render_task(
         ctx["section_outputs_json"] = json.dumps(
             section_outputs or {}, indent=2, ensure_ascii=False
         )
+    elif task == "extract_all":
+        if sections_data is None:
+            raise ValueError("extract_all requires --sections")
+        ctx["blocks"] = input_data["input"]["blocks"]
+        ctx["sections"] = sections_data.get("sections", [])
+        ctx["description_text"] = input_data["input"].get("description_text") or ""
+        ctx["description_locale_detected"] = input_data["input"].get("description_locale_detected")
+    elif task.startswith("extract_"):
+        section_kind = kind or task.removeprefix("extract_")
+        if section_kind not in SECTION_EXTRACT_KINDS:
+            raise ValueError(
+                f"task {task} requires a valid extractable section kind, got {section_kind}"
+            )
+        if sections_data is None:
+            raise ValueError(f"task {task} requires --sections")
+        blocks_by_id = {b["id"]: b for b in input_data["input"]["blocks"]}
+        ctx["section_blocks"] = _blocks_for_kind(sections_data, section_kind, blocks_by_id)
 
     return template.render(**ctx)
 
