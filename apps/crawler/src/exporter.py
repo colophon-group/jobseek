@@ -508,6 +508,30 @@ def _exc_fields(exc: BaseException) -> dict[str, object]:
     return fields
 
 
+async def _filter_source_url_conflicts(
+    conn: asyncpg.Connection,
+    rows: list,
+) -> list:
+    """Drop rows whose source_url exists in Supabase under a different id.
+
+    Supabase enforces UNIQUE(source_url), but INSERT ... ON CONFLICT (id) only
+    catches id collisions — a same-url-different-id clash would abort the batch.
+    """
+    source_urls = [r["source_url"] for r in rows]
+    existing = await conn.fetch(
+        "SELECT id, source_url FROM job_posting WHERE source_url = ANY($1::text[])",
+        source_urls,
+    )
+    if not existing:
+        return rows
+    existing_id_by_url = {e["source_url"]: e["id"] for e in existing}
+    filtered = [r for r in rows if existing_id_by_url.get(r["source_url"], r["id"]) == r["id"]]
+    dropped = len(rows) - len(filtered)
+    if dropped:
+        log.info("exporter.source_url_collision_skipped", dropped=dropped)
+    return filtered
+
+
 async def _upsert_to_supabase(
     supa_pool: asyncpg.Pool,
     rows: list,
@@ -515,6 +539,10 @@ async def _upsert_to_supabase(
     """Upsert rows to Supabase (extracted from _export_changed_postings)."""
     col_names = _POSTING_COLUMNS.split(", ")
     async with supa_pool.acquire() as conn, conn.transaction():
+        rows = await _filter_source_url_conflicts(conn, rows)
+        if not rows:
+            return
+
         await conn.execute(
             "CREATE TEMP TABLE _export_postings ("
             "  id UUID, company_id UUID, board_id UUID, source_url TEXT,"
@@ -534,12 +562,6 @@ async def _upsert_to_supabase(
             "_export_postings",
             records=[tuple(r[c] for c in col_names) for r in rows],
             columns=col_names,
-        )
-
-        await conn.execute(
-            "DELETE FROM _export_postings t "
-            "USING job_posting jp "
-            "WHERE jp.source_url = t.source_url AND jp.id != t.id"
         )
 
         await conn.execute(
@@ -676,9 +698,19 @@ async def _export_changed_postings(
     if not rows:
         return 0, cursor
 
-    # Strip updated_at from records before COPY to Supabase
+    # Cursor always advances to the last fetched row, even if the pre-filter
+    # drops some — those rows have been accounted for (their source_url already
+    # points at a different id in Supabase, which we leave alone).
+    total = len(rows)
+    last_row = rows[-1]
+    new_cursor = (last_row["updated_at"], last_row["id"])
+
     col_names = _POSTING_COLUMNS.split(", ")
     async with supa_pool.acquire() as conn, conn.transaction():
+        rows = await _filter_source_url_conflicts(conn, rows)
+        if not rows:
+            return total, new_cursor
+
         await conn.execute(
             "CREATE TEMP TABLE _export_postings ("
             "  id UUID, company_id UUID, board_id UUID, source_url TEXT,"
@@ -700,23 +732,13 @@ async def _export_changed_postings(
             columns=col_names,
         )
 
-        # Delete from temp table any rows whose source_url would collide
-        # with an existing row under a different ID (cross-board duplicates).
-        await conn.execute(
-            "DELETE FROM _export_postings t "
-            "USING job_posting jp "
-            "WHERE jp.source_url = t.source_url AND jp.id != t.id"
-        )
-
         await conn.execute(
             f"INSERT INTO job_posting ({_POSTING_COLUMNS}) "
             "SELECT * FROM _export_postings "
             f"ON CONFLICT (id) DO UPDATE SET {_POSTING_UPSERT_SET}"
         )
 
-    last_row = rows[-1]
-    new_cursor = (last_row["updated_at"], last_row["id"])
-    return len(rows), new_cursor
+    return total, new_cursor
 
 
 # ---------------------------------------------------------------------------
