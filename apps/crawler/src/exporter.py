@@ -480,6 +480,34 @@ async def _noop() -> None:
     """No-op coroutine for gather slots."""
 
 
+def _exc_fields(exc: BaseException) -> dict[str, object]:
+    """Structured fields for logging an exception caught by ``asyncio.gather``.
+
+    ``str(exc)`` alone is empty for several common failure modes (CancelledError,
+    bare asyncpg errors, httpx errors with no body), which leaves the log line
+    useless for diagnosis. See issue #2621.
+    """
+    fields: dict[str, object] = {
+        "error_type": type(exc).__name__,
+        "error": str(exc) or repr(exc),
+    }
+    # PostgresError carries richer fields than str(exc) (which is just message).
+    for attr in ("detail", "hint", "sqlstate"):
+        value = getattr(exc, attr, None)
+        if value:
+            fields[attr] = value
+    # httpx.HTTPStatusError — surface the status + body snippet.
+    response = getattr(exc, "response", None)
+    if response is not None:
+        status = getattr(response, "status_code", None)
+        if status is not None:
+            fields["http_status"] = status
+        text = getattr(response, "text", None)
+        if isinstance(text, str) and text:
+            fields["http_body"] = text[:500]
+    return fields
+
+
 async def _upsert_to_supabase(
     supa_pool: asyncpg.Pool,
     rows: list,
@@ -568,7 +596,10 @@ async def _export_postings_dual(
     new_supa_cursor = supa_cursor
     if supa_rows:
         if isinstance(results[0], BaseException):
-            log.error("exporter.supabase_upsert_error", error=str(results[0]))
+            log.error(
+                "exporter.supabase_upsert_error",
+                **_exc_fields(results[0]),
+            )
         else:
             last = supa_rows[-1]
             new_supa_cursor = (last["updated_at"], last["id"])
@@ -576,7 +607,10 @@ async def _export_postings_dual(
     new_ts_cursor = ts_cursor
     if ts_rows:
         if isinstance(results[1], BaseException):
-            log.error("exporter.typesense_upsert_error", error=str(results[1]))
+            log.error(
+                "exporter.typesense_upsert_error",
+                **_exc_fields(results[1]),
+            )
         else:
             last = ts_rows[-1]
             new_ts_cursor = (last["updated_at"], last["id"])

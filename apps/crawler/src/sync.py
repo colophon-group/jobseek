@@ -1465,8 +1465,14 @@ def _ts_bulk_upsert(
     client: typesense.Client,
     collection: str,
     docs: list[dict],
+    action: str = "upsert",
 ) -> None:
-    """Bulk upsert documents to a Typesense collection.
+    """Bulk write documents to a Typesense collection.
+
+    ``action`` is a Typesense import action:
+    - ``"upsert"`` (default): replaces each doc; requires all non-optional fields
+    - ``"update"``: partial merge into an existing doc; 404s if the doc doesn't exist
+    - ``"emplace"``: partial merge if the doc exists, otherwise creates it
 
     Splits into batches of ``_TYPESENSE_BATCH_SIZE``. Logs errors but does
     not raise — Typesense writes are fire-and-forget.
@@ -1475,18 +1481,20 @@ def _ts_bulk_upsert(
         return
     for i in range(0, len(docs), _TYPESENSE_BATCH_SIZE):
         batch = docs[i : i + _TYPESENSE_BATCH_SIZE]
-        results = client.collections[collection].documents.import_(batch, {"action": "upsert"})
+        results = client.collections[collection].documents.import_(batch, {"action": action})
         errors = [r for r in results if not r.get("success", True)]
         if errors:
             log.warning(
                 "typesense.bulk_upsert.errors",
                 collection=collection,
+                action=action,
                 error_count=len(errors),
                 sample=errors[:3],
             )
     log.info(
         "typesense.bulk_upsert.done",
         collection=collection,
+        action=action,
         doc_count=len(docs),
     )
 
@@ -2108,6 +2116,11 @@ async def refresh_typesense_counts(
     """
     loop = asyncio.get_event_loop()
 
+    # Count refresh uses action="update" (partial merge). The taxonomy and
+    # company docs are fully written by sync_*_typesense; here we only touch
+    # the *_posting_count fields, so we must not require the schema's other
+    # non-optional fields like `name`. See issue #2622.
+
     # --- Locations ---
     loc_rows = await local_conn.fetch(
         """
@@ -2124,7 +2137,7 @@ async def refresh_typesense_counts(
             }
             for r in loc_rows
         ]
-        await loop.run_in_executor(None, _ts_bulk_upsert, client, "location", loc_docs)
+        await loop.run_in_executor(None, _ts_bulk_upsert, client, "location", loc_docs, "update")
 
     # --- Occupations ---
     occ_rows = await local_conn.fetch(
@@ -2145,7 +2158,7 @@ async def refresh_typesense_counts(
                         "has_active_postings": True,
                     }
                 )
-        await loop.run_in_executor(None, _ts_bulk_upsert, client, "occupation", occ_docs)
+        await loop.run_in_executor(None, _ts_bulk_upsert, client, "occupation", occ_docs, "update")
 
     # --- Seniorities ---
     sen_rows = await local_conn.fetch(
@@ -2165,7 +2178,7 @@ async def refresh_typesense_counts(
                         "has_active_postings": True,
                     }
                 )
-        await loop.run_in_executor(None, _ts_bulk_upsert, client, "seniority", sen_docs)
+        await loop.run_in_executor(None, _ts_bulk_upsert, client, "seniority", sen_docs, "update")
 
     # --- Technologies ---
     tech_rows = await local_conn.fetch(
@@ -2183,7 +2196,7 @@ async def refresh_typesense_counts(
             }
             for r in tech_rows
         ]
-        await loop.run_in_executor(None, _ts_bulk_upsert, client, "technology", tech_docs)
+        await loop.run_in_executor(None, _ts_bulk_upsert, client, "technology", tech_docs, "update")
 
     # --- Companies ---
     active_rows = await local_conn.fetch(
@@ -2210,7 +2223,7 @@ async def refresh_typesense_counts(
             }
             for cid in all_ids
         ]
-        await loop.run_in_executor(None, _ts_bulk_upsert, client, "company", company_docs)
+        await loop.run_in_executor(None, _ts_bulk_upsert, client, "company", company_docs, "update")
 
     log.info("typesense.refresh_counts.done")
 
@@ -2276,7 +2289,9 @@ async def _apply_taxonomy_renames(
             )
             if posting_rows:
                 docs = [{"id": str(r["id"]), "occupation_name": new_name} for r in posting_rows]
-                await loop.run_in_executor(None, _ts_bulk_upsert, client, "job_posting", docs)
+                await loop.run_in_executor(
+                    None, _ts_bulk_upsert, client, "job_posting", docs, "update"
+                )
 
     # Seniority renames
     for sen_id, new_name in after.get("seniority", {}).items():
@@ -2293,7 +2308,9 @@ async def _apply_taxonomy_renames(
             )
             if posting_rows:
                 docs = [{"id": str(r["id"]), "seniority_name": new_name} for r in posting_rows]
-                await loop.run_in_executor(None, _ts_bulk_upsert, client, "job_posting", docs)
+                await loop.run_in_executor(
+                    None, _ts_bulk_upsert, client, "job_posting", docs, "update"
+                )
 
     # Technology renames
     for tech_id, new_name in after.get("technology", {}).items():
@@ -2329,6 +2346,7 @@ async def _apply_taxonomy_renames(
                                 client,
                                 "job_posting",
                                 [{"id": str(pr["id"]), "technology_names": tech_names}],
+                                "update",
                             )
 
 
