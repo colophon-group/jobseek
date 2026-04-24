@@ -138,7 +138,7 @@ cd apps/crawler && uv run python ../../scripts/typesense-backfill-local.py [--li
 - **Exporter** (CDC): two-cursor design — Supabase and Typesense cursors advance independently. Concurrent upserts via `asyncio.gather`
 - **Sync**: taxonomy collections (location, occupation, seniority, technology, company) populated after CSV sync. Handles taxonomy rename detection
 - **Reconciliation**: daily count check + sample comparison
-- **refresh-typesense**: periodic count refresh for taxonomy/company collections + watchlist reconciliation
+- **refresh-typesense**: periodic count refresh for taxonomy/company collections + watchlist reconciliation. Runs inline at every deploy/CSV sync (via `crawler sync`) and every 4h via `.github/workflows/crawler-scheduled-maintenance.yml` out-of-band
 
 ### Web App Integration
 
