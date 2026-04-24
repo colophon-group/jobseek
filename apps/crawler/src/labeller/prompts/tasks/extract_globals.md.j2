@@ -11,13 +11,13 @@ extractors, derive cross-section fields.
 
 {{ description_locale_detected or 'unknown' }}
 
-## Header blocks (unsectioned blocks + any blocks before the first section)
+## Header blocks (blocks not claimed by any section — usually include the posting header, decorative banners, and loose location/employment metadata)
 
 {% for b in header_blocks -%}
 [{{ b.id }}] ({{ b.tag }}) {{ b.text }}
 {% endfor %}
 
-## Per-section outputs (for reference — do not duplicate fields)
+## Per-section extractor outputs
 
 ```json
 {{ section_outputs_json }}
@@ -37,7 +37,6 @@ extractors, derive cross-section fields.
    "country": "<ISO-3166-1 alpha-2>", "type": "<onsite|hybrid|remote_region|remote_global|unclear>"}
   ```
   Leave `city` / `region` / `country` as `null` where unknown. `raw` is required.
-- `technologies_aggregate` — deduped English union of `role.tools_used`, `required_skills[].skill` where category is `programming_language`/`framework`/`software`/`tool`/`equipment`, and `preferred_skills[].skill` same. **Do not** include soft skills, credentials, or domain knowledge here.
 
 ## Output
 
@@ -49,8 +48,7 @@ Write JSON to `{{ output_path }}`:
   "seniority": null,
   "employment_type": null,
   "locales_in_posting": [],
-  "locations": [],
-  "technologies_aggregate": []
+  "locations": []
 }
 ```
 

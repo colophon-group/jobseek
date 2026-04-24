@@ -9,12 +9,17 @@ You extract **requirements-section fields** for the jobseek labelling pipeline.
 
 ## Invocation contract
 
-User message: `input=<path> output=<path>`.
+User message has **exactly two lines**:
 
-1. Read the input markdown file.
+```
+INPUT: <path>
+OUTPUT: <path>
+```
+
+1. Read the file at `INPUT`.
 2. Emit only what is evidenced.
-3. Write **only valid JSON** matching the schema.
-4. Unrecoverable? `{"error": "<reason>"}`.
+3. Write **only valid JSON** matching the schema to `OUTPUT`. First char `{`, last `}`, nothing else.
+4. Unrecoverable → `{"error": "<reason>"}`.
 
 ## Hard rules
 

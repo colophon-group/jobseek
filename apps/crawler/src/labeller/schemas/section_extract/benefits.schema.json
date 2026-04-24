@@ -11,21 +11,14 @@
     "salary_transparency",
     "compensation_type",
     "equity_offered",
-    "equity_description",
-    "bonus_offered",
-    "signing_bonus_offered",
     "remote_policy",
     "remote_region",
-    "hybrid_days_onsite",
     "relocation_assistance",
     "visa_sponsorship",
-    "healthcare_offered",
     "annual_leave_days",
     "annual_leave_unlimited",
     "parental_leave_weeks",
     "learning_budget_amount_year",
-    "learning_budget_currency",
-    "retirement_plan",
     "other_perks"
   ],
   "additionalProperties": false,
@@ -61,30 +54,20 @@
       ]
     },
     "equity_offered": {"type": ["boolean", "null"]},
-    "equity_description": {"type": ["string", "null"]},
-    "bonus_offered": {"type": ["boolean", "null"]},
-    "signing_bonus_offered": {"type": ["boolean", "null"]},
     "remote_policy": {
       "type": ["string", "null"],
       "enum": [null, "onsite", "hybrid", "remote", "remote_anywhere", "unclear"]
     },
     "remote_region": {"type": ["string", "null"]},
-    "hybrid_days_onsite": {"type": ["integer", "null"], "minimum": 0, "maximum": 7},
     "relocation_assistance": {"type": ["boolean", "null"]},
     "visa_sponsorship": {
       "type": ["string", "null"],
       "enum": [null, "yes", "no", "case_by_case", "unknown"]
     },
-    "healthcare_offered": {"type": ["boolean", "null"]},
     "annual_leave_days": {"type": ["integer", "null"], "minimum": 0},
     "annual_leave_unlimited": {"type": ["boolean", "null"]},
     "parental_leave_weeks": {"type": ["integer", "null"], "minimum": 0},
     "learning_budget_amount_year": {"type": ["integer", "null"], "minimum": 0},
-    "learning_budget_currency": {
-      "type": ["string", "null"],
-      "pattern": "^[A-Z]{3}$"
-    },
-    "retirement_plan": {"type": ["boolean", "null"]},
     "other_perks": {
       "type": "array",
       "items": {"type": "string", "minLength": 1}

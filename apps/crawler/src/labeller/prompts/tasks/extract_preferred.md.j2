@@ -20,7 +20,6 @@
   ```
 - `preferred_education` — one of: `"none_required"`, `"secondary_school"`, `"vocational"`, `"bachelor"`, `"master"`, `"phd"`, `"professional_degree"`, or `null`.
 - `preferred_certifications` — English-normalized names. Empty array if none.
-- `preferred_years_additional` — integer "extra" years beyond `years_experience_min` (e.g. requirements say 5+, preferred says 7+ → `preferred_years_additional = 2`). `null` if not distinct from requirements.
 
 ## Skill categories
 
@@ -34,8 +33,7 @@ Write JSON to `{{ output_path }}`:
 {
   "preferred_skills": [],
   "preferred_education": null,
-  "preferred_certifications": [],
-  "preferred_years_additional": null
+  "preferred_certifications": []
 }
 ```
 

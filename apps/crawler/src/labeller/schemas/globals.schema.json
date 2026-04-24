@@ -8,8 +8,7 @@
     "seniority",
     "employment_type",
     "locales_in_posting",
-    "locations",
-    "technologies_aggregate"
+    "locations"
   ],
   "additionalProperties": false,
   "properties": {
@@ -53,10 +52,6 @@
           }
         }
       }
-    },
-    "technologies_aggregate": {
-      "type": "array",
-      "items": {"type": "string", "minLength": 1}
     }
   }
 }

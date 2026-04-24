@@ -38,7 +38,6 @@ Jobseek monitors company career pages for new job postings. Companies are config
 │               ├── sampling.py      # diverse per-company posting sample
 │               ├── prepare.py       # load posting + normalize + blocks
 │               ├── merge.py         # assemble subagent outputs into posting.json
-│               ├── canonicalize.py  # free-text -> taxonomy IDs (sidecar)
 │               ├── upload.py        # HuggingFace dataset push
 │               ├── prompts/tasks/*.md.j2  # per-task Jinja templates
 │               └── schemas/         # per-task + posting JSON Schemas
@@ -76,7 +75,6 @@ uv run labeller prepare <posting_id> --date today
 uv run labeller render-task --task <task> --input <path> --out <path>
 uv run labeller validate --kind <kind> --file <path>
 uv run labeller merge --posting <id> --date <date> --out <path>
-uv run labeller canonicalize --file <path> --out <path>
 uv run labeller upload --date <date>
 ```
 
@@ -91,8 +89,8 @@ this tool feeds a future production model trained on the dataset.
   samples diverse postings from the last 24h, labels via
   `.claude/agents/jobseek-labeller-*` subagents with tasks rendered from
   Jinja templates at `apps/crawler/src/labeller/prompts/tasks/*.md.j2`,
-  validates, canonicalizes free-text labels, uploads gold to
-  `viktoroo/jobseek-postings-labelled` on HuggingFace.
+  validates (including a concrete QA rule gatekeeper), uploads accepted
+  gold to `viktoroo/jobseek-postings-labelled` on HuggingFace.
 - `docs/14-error-review-routine.md` — daily review of crawler errors on the
   Hetzner box.
 

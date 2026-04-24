@@ -31,7 +31,6 @@ dependencies = [
     "typesense>=0.21",
     "beautifulsoup4>=4.12",
     "jsonschema>=4.23",
-    "rapidfuzz>=3.10",
 ]
 
 [project.scripts]

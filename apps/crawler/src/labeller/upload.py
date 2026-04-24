@@ -1,18 +1,21 @@
-"""Push the local gold + canonical sidecars + schemas to the HuggingFace dataset.
+"""Push the local gold + schemas to the HuggingFace dataset.
 
 HF repo: ``viktoroo/jobseek-postings-labelled`` (dataset type, public).
-Auth: ``HF_TOKEN`` env var (same token as the agent-traces upload).
+Auth: ``HF_TOKEN`` env var (auto-loaded from ``apps/crawler/.env.local`` by
+``labeller/cli.py`` via python-dotenv, same pattern as the agent-traces
+upload in ``src/workspace/trace.py``).
 
-This is a one-shot script — safe to re-run. Re-uploads are deduped by HF
-based on content.
+Uploads only postings with ``labelling_meta.qa_verdict == "accepted"``.
+Rejected postings stay local for inspection and do not leave the machine.
 """
 
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 
-from .paths import canonical_dir, data_root, samples_dir, schemas_dir
+from .paths import data_root, postings_dir, schemas_dir
 
 HF_REPO = "viktoroo/jobseek-postings-labelled"
 
@@ -25,11 +28,9 @@ an improved structured-information extractor for [jseek.co](https://jseek.co).
 
 ## Contents
 
-- `samples/YYYY-MM-DD/<posting_id>.json` — gold labels. Free-text fields are
-  English-normalized; verbatim content (title, description, section text,
-  mission, responsibilities bullets) is preserved in the source language.
-- `canonical/YYYY-MM-DD/<posting_id>.json` — rule-based mapping of free-text
-  labels to internal taxonomy IDs. Sidecar artifact; regenerable.
+- `postings/YYYY-MM-DD/<posting_id>.json` — gold labels. Free-text fields
+  are English-normalized; verbatim content (title, description, section
+  text, responsibilities bullets) is preserved in the source language.
 - `schemas/posting.schema.json` — JSON Schema for a sample record.
 
 ## Source posture
@@ -55,12 +56,37 @@ search indices handle public job postings.
 """
 
 
-def push_to_hub(run_date: str | None = None, *, dry_run: bool = False) -> str:
-    """Push local ``samples/`` + ``canonical/`` + schemas + README to HF.
+def _accepted_only(root: Path, run_date: str | None) -> list[Path]:
+    """Return the list of posting files with ``qa_verdict == "accepted"``.
 
-    If ``run_date`` is set, limits upload to that single date's folder;
-    otherwise uploads the whole ``samples/`` + ``canonical/`` tree.
+    If ``run_date`` is set, limits the scan to that single date.
     """
+    base = postings_dir(run_date) if run_date else root / "postings"
+    out: list[Path] = []
+    if not base.exists():
+        return out
+    for path in base.rglob("*.json"):
+        try:
+            data = json.loads(path.read_text())
+        except json.JSONDecodeError:
+            continue
+        if (data.get("labelling_meta") or {}).get("qa_verdict") == "accepted":
+            out.append(path)
+    return out
+
+
+def push_to_hub(run_date: str | None = None, *, dry_run: bool = False) -> str:
+    """Push local ``postings/`` (accepted only) + schemas to HF.
+
+    ``run_date`` limits the upload to that date's folder; otherwise uploads
+    every accepted posting across all dates.
+    """
+    root = data_root()
+    accepted = _accepted_only(root, run_date)
+
+    if dry_run:
+        return _describe_upload(root, accepted, run_date)
+
     token = os.environ.get("HF_TOKEN")
     if not token:
         raise RuntimeError(
@@ -68,41 +94,29 @@ def push_to_hub(run_date: str | None = None, *, dry_run: bool = False) -> str:
             " Set it in apps/crawler/.env.local."
         )
 
-    from huggingface_hub import HfApi
-
-    api = HfApi(token=token)
-    root = data_root()
-
-    # Ensure README exists locally (overwritten every run to stay in sync)
+    # Prepare local tree for upload (non-dry run side-effects confined here).
     readme_path = root / "README.md"
     readme_path.parent.mkdir(parents=True, exist_ok=True)
     readme_path.write_text(_readme_text())
 
-    allow_patterns = []
-    if run_date:
-        samples = samples_dir(run_date)
-        canonical = canonical_dir(run_date)
-        if samples.exists():
-            allow_patterns.append(f"samples/{run_date}/*.json")
-        if canonical.exists():
-            allow_patterns.append(f"canonical/{run_date}/*.json")
-    else:
-        allow_patterns.extend(["samples/**/*.json", "canonical/**/*.json"])
-    allow_patterns.extend(["schemas/**/*.json", "README.md"])
-
-    # Copy the canonical JSON Schemas into the data root so the upload
-    # picks them up with the same folder convention.
     local_schemas = root / "schemas"
     local_schemas.mkdir(parents=True, exist_ok=True)
-    src_schemas = schemas_dir()
-    for p in src_schemas.rglob("*.json"):
-        rel = p.relative_to(src_schemas)
+    for p in schemas_dir().rglob("*.json"):
+        rel = p.relative_to(schemas_dir())
         dst = local_schemas / rel
         dst.parent.mkdir(parents=True, exist_ok=True)
         dst.write_bytes(p.read_bytes())
 
-    if dry_run:
-        return _describe_upload(root, allow_patterns)
+    from huggingface_hub import HfApi
+
+    api = HfApi(token=token)
+
+    allow_patterns: list[str] = []
+    if run_date:
+        allow_patterns.append(f"postings/{run_date}/*.json")
+    else:
+        allow_patterns.append("postings/**/*.json")
+    allow_patterns.extend(["schemas/**/*.json", "README.md"])
 
     api.upload_folder(
         folder_path=str(root),
@@ -116,9 +130,10 @@ def push_to_hub(run_date: str | None = None, *, dry_run: bool = False) -> str:
     return f"https://huggingface.co/datasets/{HF_REPO}"
 
 
-def _describe_upload(root: Path, patterns: list[str]) -> str:
-    lines = [f"[dry-run] would upload from {root} to {HF_REPO}:"]
-    for pat in patterns:
-        matches = list(root.glob(pat))
-        lines.append(f"  {pat} -> {len(matches)} file(s)")
+def _describe_upload(root: Path, accepted: list[Path], run_date: str | None) -> str:
+    scope = f"date {run_date}" if run_date else "all dates"
+    lines = [f"[dry-run] would upload from {root} to {HF_REPO} ({scope}):"]
+    lines.append(f"  postings (accepted): {len(accepted)} file(s)")
+    lines.append("  schemas/**/*.json  : copied from apps/crawler/src/labeller/schemas/")
+    lines.append("  README.md          : regenerated at upload time")
     return "\n".join(lines)

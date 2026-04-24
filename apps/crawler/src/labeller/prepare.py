@@ -8,6 +8,7 @@ this file as its source of truth.
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -33,26 +34,48 @@ class RawPosting:
 
 
 async def load_posting(pool: asyncpg.Pool, posting_id: str) -> RawPosting | None:
+    """Load the posting row + the first description row that matches a posting locale.
+
+    The join is deliberately forgiving — posting.locales[] may use short codes
+    (``en``) or region-tagged codes (``en_US``) depending on the monitor, and
+    ``descriptions.locale`` can be either. We match on the language-prefix
+    (first 2 chars) so ``en_US`` in one table matches ``en`` in the other.
+    """
     row = await pool.fetchrow(
         """
+        WITH p AS (
+          SELECT
+            id::text AS id,
+            source_url,
+            company_id,
+            board_id,
+            first_seen_at,
+            COALESCE(titles[1], '') AS title_raw,
+            COALESCE(locales[1], 'en') AS locale
+          FROM job_posting
+          WHERE id = $1
+        ),
+        d AS (
+          SELECT html, locale
+          FROM descriptions
+          WHERE posting_id = $1
+          ORDER BY
+            CASE WHEN substr(locale, 1, 2) = substr((SELECT locale FROM p), 1, 2)
+                 THEN 0 ELSE 1 END,
+            locale
+          LIMIT 1
+        )
         SELECT
-          p.id::text AS id,
-          p.source_url,
-          COALESCE(p.titles[1], '') AS title_raw,
-          COALESCE(p.locales[1], 'en') AS locale,
-          p.first_seen_at,
+          p.id, p.source_url, p.title_raw, p.locale, p.first_seen_at,
           c.slug AS company_slug,
           c.name AS company_name,
           jb.board_slug,
           jb.crawler_type AS monitor,
           d.html AS description_html
-        FROM job_posting p
+        FROM p
         LEFT JOIN company c ON c.id = p.company_id
         LEFT JOIN job_board jb ON jb.id = p.board_id
-        LEFT JOIN descriptions d
-               ON d.posting_id = p.id
-              AND d.locale = COALESCE(p.locales[1], 'en')
-        WHERE p.id = $1
+        LEFT JOIN d ON true
         """,
         posting_id,
     )
@@ -75,9 +98,15 @@ async def load_posting(pool: asyncpg.Pool, posting_id: str) -> RawPosting | None
 def _source_url_host(source_url: str) -> str | None:
     if not source_url:
         return None
-    # cheap parse — avoid importing urlparse for one-off
     after_scheme = source_url.split("://", 1)[-1]
     return after_scheme.split("/", 1)[0] or None
+
+
+def _lang_prefix(locale: str | None) -> str | None:
+    if not locale:
+        return None
+    m = re.match(r"^([a-zA-Z]{2})", locale)
+    return m.group(1).lower() if m else None
 
 
 def build_input(raw: RawPosting, *, sampled_at: datetime, min_coverage: float = 0.7) -> dict:
@@ -115,7 +144,7 @@ def build_input(raw: RawPosting, *, sampled_at: datetime, min_coverage: float = 
             "description_html_raw": raw.description_html_raw,
             "description_html": normalized.html,
             "description_text": normalized.text,
-            "description_locale_detected": raw.description_locale,
+            "description_locale_detected": _lang_prefix(raw.description_locale),
             "description_char_count": len(normalized.text),
             "blocks": blocks_to_json(blocks),
         },

@@ -11,7 +11,7 @@ import argparse
 import asyncio
 import json
 import sys
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import dotenv
@@ -23,7 +23,6 @@ dotenv.load_dotenv(".env")
 def _parse_iso_date(value: str) -> datetime:
     if value == "today":
         return datetime.now(tz=UTC).replace(hour=0, minute=0, second=0, microsecond=0)
-    # Accept YYYY-MM-DD; make timezone-aware (UTC)
     dt = datetime.fromisoformat(value)
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=UTC)
@@ -55,38 +54,46 @@ def build_parser() -> argparse.ArgumentParser:
     r.add_argument("--out", type=Path, required=True, help="Path for rendered markdown")
     r.add_argument("--output-path", help="Subagent output JSON path (goes into the template)")
     r.add_argument("--sections", type=Path, help="Path to split-out.json (required for extract*)")
+    r.add_argument(
+        "--extracts-dir",
+        type=Path,
+        help=(
+            "Directory to scan for extract-<kind>-out.json files (for --task extract_globals)."
+            " Defaults to the input.json's parent."
+        ),
+    )
     r.add_argument("--kind", help="Section kind, required for extract_<kind> tasks")
     r.add_argument("--previous-error", default=None)
 
     # --- validate ------------------------------------------------------
     v = sub.add_parser("validate", help="Validate a subagent output file")
-    v.add_argument("--kind", required=True, help="sections|posting|company|team|...|globals")
+    v.add_argument(
+        "--kind",
+        required=True,
+        help="sections|team|role|requirements|preferred|benefits|globals|posting|qa",
+    )
     v.add_argument("--file", type=Path, required=True)
     v.add_argument("--context", type=Path, help="input.json (required for sections)")
+    v.add_argument(
+        "--report",
+        type=Path,
+        help="For --kind qa: write the full QA rule report as JSON to this path",
+    )
 
     # --- merge ---------------------------------------------------------
     m = sub.add_parser("merge", help="Assemble the final posting.json from task outputs")
     m.add_argument("--posting", required=True)
     m.add_argument("--date", required=True)
     m.add_argument("--out", type=Path, required=True)
-    m.add_argument("--verdict", default="accepted", choices=["accepted", "edited", "rejected"])
+    m.add_argument("--verdict", default="accepted", choices=["accepted", "rejected"])
     m.add_argument("--rationale", default=None)
 
-    # --- canonicalize --------------------------------------------------
-    c = sub.add_parser("canonicalize", help="Produce the canonical sidecar for a posting.json")
-    c.add_argument("--file", type=Path, required=True)
-    c.add_argument("--out", type=Path, required=True)
-
     # --- upload --------------------------------------------------------
-    u = sub.add_parser("upload", help="Push samples + canonical + schemas to HuggingFace")
+    u = sub.add_parser("upload", help="Push accepted postings + schemas to HuggingFace")
     u.add_argument("--date", default=None, help="Limit to single date; default: all")
     u.add_argument("--dry-run", action="store_true")
 
     return p
-
-
-def _sync_wrap(coro):
-    return asyncio.run(coro)
 
 
 async def _cmd_sample(args: argparse.Namespace) -> int:
@@ -160,7 +167,6 @@ def _cmd_render_task(args: argparse.Namespace) -> int:
 
     output_hint = args.output_path
     if output_hint is None:
-        # Sensible default: same dir as --out, name derived from --task
         output_hint = str(args.out.parent / f"{args.task.replace('_', '-')}-out.json")
 
     render_to_file(
@@ -168,6 +174,7 @@ def _cmd_render_task(args: argparse.Namespace) -> int:
         args.input,
         args.out,
         sections_path=args.sections,
+        extracts_dir=args.extracts_dir,
         kind=args.kind,
         output_path_hint=output_hint,
         previous_error=args.previous_error,
@@ -177,7 +184,18 @@ def _cmd_render_task(args: argparse.Namespace) -> int:
 
 
 def _cmd_validate(args: argparse.Namespace) -> int:
-    from .validate import validate_file
+    from .validate import qa_report, validate_file
+
+    if args.kind == "qa" and args.report:
+        # Also write the full QA report to the requested path (used by orchestrator).
+        try:
+            data = json.loads(args.file.read_text())
+        except (json.JSONDecodeError, FileNotFoundError) as e:
+            print(f"could not load posting: {e}", file=sys.stderr)
+            return 2
+        report = qa_report(data)
+        args.report.parent.mkdir(parents=True, exist_ok=True)
+        args.report.write_text(json.dumps(report, indent=2, ensure_ascii=False))
 
     errors = validate_file(args.kind, args.file, args.context)
     if errors:
@@ -198,55 +216,31 @@ def _cmd_merge(args: argparse.Namespace) -> int:
         qa_verdict=args.verdict,
         qa_rationale=args.rationale,
     )
-    write_merged(args.date, args.posting, merged, target=args.out)
+    write_merged(args.out, merged)
     print(f"merged -> {args.out}")
-    return 0
-
-
-def _cmd_canonicalize(args: argparse.Namespace) -> int:
-    from .canonicalize import canonicalize_posting
-
-    posting = json.loads(args.file.read_text())
-    sidecar = canonicalize_posting(posting)
-    args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(json.dumps(sidecar, indent=2, ensure_ascii=False))
-    print(f"canonical -> {args.out}")
-    mapped = sum(c["mapped"] for c in sidecar["coverage"].values())
-    unmapped = sum(c["unmapped"] for c in sidecar["coverage"].values())
-    total = mapped + unmapped
-    pct = (mapped / total * 100) if total else 0
-    print(f"coverage: {mapped}/{total} ({pct:.1f}%) ; unmapped: {unmapped}")
     return 0
 
 
 def _cmd_upload(args: argparse.Namespace) -> int:
     from .upload import push_to_hub
 
-    url_or_desc = push_to_hub(run_date=args.date, dry_run=args.dry_run)
-    print(url_or_desc)
+    print(push_to_hub(run_date=args.date, dry_run=args.dry_run))
     return 0
 
 
 def main() -> None:
     args = build_parser().parse_args()
 
-    # Avoid unused-import
-    _ = timezone
-
     async_handlers = {"sample", "prepare"}
 
     if args.command in async_handlers:
-        handlers = {
-            "sample": _cmd_sample,
-            "prepare": _cmd_prepare,
-        }
-        rc = _sync_wrap(handlers[args.command](args))
+        handlers = {"sample": _cmd_sample, "prepare": _cmd_prepare}
+        rc = asyncio.run(handlers[args.command](args))
     else:
         handlers = {
             "render-task": _cmd_render_task,
             "validate": _cmd_validate,
             "merge": _cmd_merge,
-            "canonicalize": _cmd_canonicalize,
             "upload": _cmd_upload,
         }
         rc = handlers[args.command](args)

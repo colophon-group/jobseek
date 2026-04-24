@@ -9,6 +9,8 @@ import pytest
 
 from src.labeller.validate import (
     SECTION_EXTRACT_KINDS,
+    qa_report,
+    run_qa_rules,
     validate_file,
     validate_schema,
     validate_sections_custom,
@@ -39,6 +41,12 @@ def test_sections_schema_rejects_unknown_kind():
     errors = validate_schema("sections", data)
     assert errors
     assert any("enum" in e.lower() or "not" in e.lower() for e in errors)
+
+
+def test_sections_schema_rejects_legal_kind():
+    """`legal` was dropped from the closed vocab."""
+    data = {"sections": [{"kind": "legal", "block_ids": [0]}]}
+    assert validate_schema("sections", data)
 
 
 def test_sections_schema_requires_block_ids():
@@ -108,10 +116,7 @@ def test_validate_file_reports_subagent_error_response(tmp_path: Path):
 def test_validate_file_sections_happy_path(tmp_path: Path):
     ctx_path = _write(
         tmp_path / "input.json",
-        {
-            "id": "x",
-            "input": {"blocks": [{"id": 0, "tag": "p", "html": "", "text": ""}]},
-        },
+        {"id": "x", "input": {"blocks": [{"id": 0, "tag": "p", "html": "", "text": ""}]}},
     )
     out_path = _write(
         tmp_path / "out.json",
@@ -139,20 +144,12 @@ def test_validate_file_sections_catches_invalid_id(tmp_path: Path):
 
 def _minimal_section_payload(kind: str) -> dict:
     """Produce the minimum valid extraction payload per kind."""
-    if kind == "company":
-        return {
-            "industry_tags": [],
-            "size_band": None,
-            "funding_stage": None,
-            "mission_verbatim": None,
-        }
     if kind == "team":
         return {"team_name": None, "team_function_tags": []}
     if kind == "role":
         return {
             "role_summary": None,
             "responsibilities": [],
-            "tools_used": [],
             "collaboration_partners": [],
             "travel_expected": None,
             "shift_pattern": None,
@@ -179,7 +176,6 @@ def _minimal_section_payload(kind: str) -> dict:
             "preferred_skills": [],
             "preferred_education": None,
             "preferred_certifications": [],
-            "preferred_years_additional": None,
         }
     if kind == "benefits":
         return {
@@ -190,25 +186,16 @@ def _minimal_section_payload(kind: str) -> dict:
             "salary_transparency": None,
             "compensation_type": None,
             "equity_offered": None,
-            "equity_description": None,
-            "bonus_offered": None,
-            "signing_bonus_offered": None,
             "remote_policy": None,
             "remote_region": None,
-            "hybrid_days_onsite": None,
             "relocation_assistance": None,
             "visa_sponsorship": None,
-            "healthcare_offered": None,
             "annual_leave_days": None,
             "annual_leave_unlimited": None,
             "parental_leave_weeks": None,
             "learning_budget_amount_year": None,
-            "learning_budget_currency": None,
-            "retirement_plan": None,
             "other_perks": [],
         }
-    if kind == "application":
-        return {"application_deadline": None}
     raise AssertionError(f"unhandled kind {kind}")
 
 
@@ -224,7 +211,27 @@ def test_skill_category_closed_set_enforced():
     assert validate_schema("requirements", payload)
 
 
+def test_cut_fields_rejected_by_benefits_schema():
+    """Fields cut in the slimdown (item 4) must NOT re-appear silently."""
+    payload = _minimal_section_payload("benefits")
+    payload["bonus_offered"] = True
+    errors = validate_schema("benefits", payload)
+    assert errors, "benefits schema should reject cut field 'bonus_offered'"
+
+
 def test_globals_schema_minimal():
+    data = {
+        "occupation": None,
+        "seniority": None,
+        "employment_type": None,
+        "locales_in_posting": [],
+        "locations": [],
+    }
+    assert validate_schema("globals", data) == []
+
+
+def test_globals_schema_rejects_cut_field():
+    """technologies_aggregate was cut; schema must reject it."""
     data = {
         "occupation": None,
         "seniority": None,
@@ -233,7 +240,7 @@ def test_globals_schema_minimal():
         "locations": [],
         "technologies_aggregate": [],
     }
-    assert validate_schema("globals", data) == []
+    assert validate_schema("globals", data)
 
 
 def test_globals_schema_location_type_required():
@@ -243,6 +250,142 @@ def test_globals_schema_location_type_required():
         "employment_type": None,
         "locales_in_posting": [],
         "locations": [{"raw": "Dublin, Ireland"}],  # missing type
-        "technologies_aggregate": [],
     }
     assert validate_schema("globals", data)
+
+
+# ---------- qa validation ----------
+
+
+def _minimal_merged_posting(overrides: dict | None = None) -> dict:
+    base = {
+        "id": "p1",
+        "schema_version": 1,
+        "normalizer_version": "v0.1.0",
+        "sampled_at": "2026-04-24T00:00:00+00:00",
+        "source": {"source_url": "https://example.com/job/1"},
+        "input": {
+            "title_raw": "Senior Engineer",
+            "description_html": "<p>body</p>",
+            "description_text": "body",
+            "blocks": [
+                {"id": 0, "tag": "p", "html": "<p>a</p>", "text": "a"},
+                {"id": 1, "tag": "p", "html": "<p>b</p>", "text": "b"},
+                {"id": 2, "tag": "p", "html": "<p>c</p>", "text": "c"},
+                {"id": 3, "tag": "p", "html": "<p>d</p>", "text": "d"},
+                {"id": 4, "tag": "p", "html": "<p>e</p>", "text": "e"},
+            ],
+        },
+        "labels": {
+            "sections": [
+                {
+                    "kind": "role",
+                    "block_ids": [0, 1],
+                    "extracted": {
+                        "role_summary": "build things",
+                        "responsibilities": ["Ship services"],
+                        "collaboration_partners": ["product"],
+                        "travel_expected": None,
+                        "shift_pattern": None,
+                        "hours_per_week": None,
+                        "on_call_required": None,
+                    },
+                },
+                {
+                    "kind": "requirements",
+                    "block_ids": [2, 3],
+                    "extracted": {
+                        "years_experience_min": 5,
+                        "years_experience_max": None,
+                        "education_level": None,
+                        "education_strict": None,
+                        "degree_fields": [],
+                        "required_skills": [],
+                        "required_languages": [],
+                        "required_certifications": [],
+                        "security_clearance": None,
+                        "physical_requirements": [],
+                        "background_check_required": None,
+                        "driving_license_required": None,
+                    },
+                },
+            ],
+            "globals": {
+                "occupation": "backend engineering",
+                "seniority": "senior",
+                "employment_type": "full_time",
+                "locales_in_posting": ["en"],
+                "locations": [
+                    {"raw": "Dublin, Ireland", "city": "Dublin", "country": "IE", "type": "onsite"}
+                ],
+            },
+        },
+        "labelling_meta": {"qa_verdict": "accepted", "qa_rationale": None, "retries": {}},
+    }
+    if overrides:
+        base = {**base, **overrides}
+    return base
+
+
+def test_qa_accepts_minimal_good_posting():
+    report = qa_report(_minimal_merged_posting())
+    assert report["verdict"] == "accepted", report
+
+
+def test_qa_rejects_missing_occupation():
+    posting = _minimal_merged_posting()
+    posting["labels"]["globals"]["occupation"] = None
+    report = qa_report(posting)
+    assert report["verdict"] == "rejected"
+    failed = [r["name"] for r in report["rules"] if not r["passed"]]
+    assert "occupation_non_empty" in failed
+
+
+def test_qa_rejects_no_locations():
+    posting = _minimal_merged_posting()
+    posting["labels"]["globals"]["locations"] = []
+    assert qa_report(posting)["verdict"] == "rejected"
+
+
+def test_qa_rejects_null_extraction():
+    posting = _minimal_merged_posting()
+    posting["labels"]["sections"][0]["extracted"] = None
+    assert qa_report(posting)["verdict"] == "rejected"
+
+
+def test_qa_rejects_empty_responsibilities_when_role_present():
+    posting = _minimal_merged_posting()
+    posting["labels"]["sections"][0]["extracted"]["responsibilities"] = []
+    assert qa_report(posting)["verdict"] == "rejected"
+
+
+def test_qa_rejects_low_split_coverage():
+    posting = _minimal_merged_posting()
+    # Add 20 unclaimed blocks; only 4 of 25 are covered -> 16%
+    posting["input"]["blocks"].extend(
+        [{"id": i, "tag": "p", "html": "<p>x</p>", "text": "x"} for i in range(5, 25)]
+    )
+    assert qa_report(posting)["verdict"] == "rejected"
+
+
+def test_qa_report_shape_matches_schema():
+    report = qa_report(_minimal_merged_posting())
+    assert validate_schema("qa", report) == []
+
+
+def test_run_qa_rules_returns_list_of_dicts():
+    rules = run_qa_rules(_minimal_merged_posting())
+    assert isinstance(rules, list)
+    assert all(isinstance(r, dict) and "name" in r and "passed" in r for r in rules)
+
+
+def test_validate_file_qa_kind(tmp_path: Path):
+    p = _write(tmp_path / "posting.json", _minimal_merged_posting())
+    assert validate_file("qa", p) == []
+
+    bad = _minimal_merged_posting()
+    bad["labels"]["globals"]["occupation"] = None
+    p2 = _write(tmp_path / "bad.json", bad)
+    errs = validate_file("qa", p2)
+    assert errs
+    assert any("occupation_non_empty" in e for e in errs)

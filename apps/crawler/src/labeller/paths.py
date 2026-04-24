@@ -4,6 +4,14 @@ All paths are rooted at the crawler CWD (``apps/crawler`` when invoked via
 ``labeller``). The default data root is ``data/postings-labelled`` but can
 be overridden via the ``LABELLER_DATA_ROOT`` env var for tests / scratch
 runs.
+
+Layout is intentionally flat:
+
+    data/postings-labelled/
+      _runs/{{date}}/{{id}}/    # per-posting intermediates (Jinja renders + subagent outputs)
+      postings/{{date}}/{{id}}.json   # final gold; `labelling_meta.qa_verdict` is the status
+      schemas/                        # staged copies uploaded to HF
+      README.md
 """
 
 from __future__ import annotations
@@ -25,20 +33,9 @@ def runs_dir(run_date: str, posting_id: str) -> Path:
     return data_root() / "_runs" / run_date / posting_id
 
 
-def staging_dir(run_date: str) -> Path:
-    return data_root() / "staging" / run_date
-
-
-def samples_dir(run_date: str) -> Path:
-    return data_root() / "samples" / run_date
-
-
-def rejected_dir(run_date: str) -> Path:
-    return data_root() / "rejected" / run_date
-
-
-def canonical_dir(run_date: str) -> Path:
-    return data_root() / "canonical" / run_date
+def postings_dir(run_date: str) -> Path:
+    """Directory for final per-posting gold records. Verdict is a field on each file."""
+    return data_root() / "postings" / run_date
 
 
 def schemas_dir() -> Path:

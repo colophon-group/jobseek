@@ -6,7 +6,6 @@
   "required": [
     "role_summary",
     "responsibilities",
-    "tools_used",
     "collaboration_partners",
     "travel_expected",
     "shift_pattern",
@@ -17,10 +16,6 @@
   "properties": {
     "role_summary": {"type": ["string", "null"]},
     "responsibilities": {
-      "type": "array",
-      "items": {"type": "string", "minLength": 1}
-    },
-    "tools_used": {
       "type": "array",
       "items": {"type": "string", "minLength": 1}
     },

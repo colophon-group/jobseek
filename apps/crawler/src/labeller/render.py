@@ -19,13 +19,11 @@ from .validate import SECTION_EXTRACT_KINDS
 TASKS: frozenset[str] = frozenset(
     {
         "split_sections",
-        "extract_company",
         "extract_team",
         "extract_role",
         "extract_requirements",
         "extract_preferred",
         "extract_benefits",
-        "extract_application",
         "extract_globals",
     }
 )
@@ -47,18 +45,23 @@ def render_task(
     *,
     input_data: dict,
     sections_data: dict | None = None,
+    section_outputs: dict[str, dict] | None = None,
     kind: str | None = None,
     output_path: str,
     previous_error: str | None = None,
 ) -> str:
-    """Render a task template. Returns the markdown string."""
+    """Render a task template. Returns the markdown string.
+
+    ``section_outputs`` is a mapping of section-kind → extracted-dict,
+    used only by ``extract_globals`` to expose Pass-2 results to Pass 3.
+    """
     if task not in TASKS:
         raise ValueError(f"unknown task: {task} (known: {sorted(TASKS)})")
 
     env = _env()
     template = env.get_template(f"tasks/{task}.md.j2")
 
-    ctx = {
+    ctx: dict = {
         "title_raw": input_data["input"]["title_raw"],
         "output_path": output_path,
         "previous_error": previous_error,
@@ -69,23 +72,21 @@ def render_task(
     elif task.startswith("extract_") and task != "extract_globals":
         section_kind = kind or task.removeprefix("extract_")
         if section_kind not in SECTION_EXTRACT_KINDS:
-            raise ValueError(f"task {task} requires a valid section kind, got {section_kind}")
+            raise ValueError(
+                f"task {task} requires a valid extractable section kind, got {section_kind}"
+            )
         if sections_data is None:
             raise ValueError(f"task {task} requires --sections")
         blocks_by_id = {b["id"]: b for b in input_data["input"]["blocks"]}
-        matched = _blocks_for_kind(sections_data, section_kind, blocks_by_id)
-        ctx["section_blocks"] = matched
+        ctx["section_blocks"] = _blocks_for_kind(sections_data, section_kind, blocks_by_id)
     elif task == "extract_globals":
         if sections_data is None:
             raise ValueError("extract_globals requires --sections")
         blocks_by_id = {b["id"]: b for b in input_data["input"]["blocks"]}
-        header = _header_blocks(sections_data, blocks_by_id)
-        ctx["header_blocks"] = header
+        ctx["header_blocks"] = _header_blocks(sections_data, blocks_by_id)
         ctx["description_locale_detected"] = input_data["input"].get("description_locale_detected")
-        # Per-section outputs are optional; if the orchestrator hasn't passed them,
-        # use an empty object. In the steady-state, orchestrator injects them.
         ctx["section_outputs_json"] = json.dumps(
-            sections_data.get("_section_outputs", {}), indent=2, ensure_ascii=False
+            section_outputs or {}, indent=2, ensure_ascii=False
         )
 
     return template.render(**ctx)
@@ -100,15 +101,28 @@ def _blocks_for_kind(sections_data: dict, kind: str, blocks_by_id: dict[int, dic
 
 
 def _header_blocks(sections_data: dict, blocks_by_id: dict[int, dict]) -> list[dict]:
-    """Return blocks that are NOT claimed by any section.
-
-    These usually include the title area, decorative headers, separators —
-    and are the most common place location/employment info appears.
-    """
+    """Return blocks that are NOT claimed by any section."""
     claimed: set[int] = set()
     for sec in sections_data.get("sections", []):
         claimed.update(sec["block_ids"])
     return [b for bid, b in sorted(blocks_by_id.items()) if bid not in claimed]
+
+
+def load_section_outputs(run_dir: Path) -> dict[str, dict]:
+    """Collate per-section extract outputs from a run directory.
+
+    Used by the globals-task renderer (bug #1 fix). Scans for
+    ``extract-<kind>-out.json`` files and returns a kind → extracted dict.
+    """
+    out: dict[str, dict] = {}
+    for kind in SECTION_EXTRACT_KINDS:
+        path = run_dir / f"extract-{kind}-out.json"
+        if path.exists():
+            try:
+                out[kind] = json.loads(path.read_text())
+            except json.JSONDecodeError:
+                continue
+    return out
 
 
 def render_to_file(
@@ -117,6 +131,7 @@ def render_to_file(
     out_path: Path,
     *,
     sections_path: Path | None = None,
+    extracts_dir: Path | None = None,
     kind: str | None = None,
     output_path_hint: str | None = None,
     previous_error: str | None = None,
@@ -124,10 +139,16 @@ def render_to_file(
     """Render a task template to a file on disk (CLI helper)."""
     input_data = json.loads(input_path.read_text())
     sections_data = json.loads(sections_path.read_text()) if sections_path else None
+    section_outputs: dict[str, dict] | None = None
+    if task == "extract_globals":
+        scan = extracts_dir or (input_path.parent if input_path.exists() else None)
+        if scan is not None:
+            section_outputs = load_section_outputs(scan)
     rendered = render_task(
         task,
         input_data=input_data,
         sections_data=sections_data,
+        section_outputs=section_outputs,
         kind=kind,
         output_path=output_path_hint or str(out_path.with_suffix(".out.json")),
         previous_error=previous_error,

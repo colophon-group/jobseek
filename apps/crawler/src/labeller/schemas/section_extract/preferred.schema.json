@@ -6,8 +6,7 @@
   "required": [
     "preferred_skills",
     "preferred_education",
-    "preferred_certifications",
-    "preferred_years_additional"
+    "preferred_certifications"
   ],
   "additionalProperties": false,
   "properties": {
@@ -53,7 +52,6 @@
     "preferred_certifications": {
       "type": "array",
       "items": {"type": "string", "minLength": 1}
-    },
-    "preferred_years_additional": {"type": ["integer", "null"], "minimum": 0}
+    }
   }
 }

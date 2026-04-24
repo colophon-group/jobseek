@@ -1,8 +1,11 @@
 """Assemble the full labelled-posting record from per-subagent outputs.
 
 Reads input.json + split-out.json + extract-<kind>-out.json (for every
-kind the splitter identified) + globals-out.json, produces the merged
-posting.json matching ``schemas/posting.schema.json``.
+extractable kind the splitter identified) + globals-out.json, and produces
+the merged posting.json matching ``schemas/posting.schema.json``.
+
+Raises ``FileNotFoundError`` if any expected extract file is missing — do
+not merge a posting silently with null extractions (bug #5 fix).
 """
 
 from __future__ import annotations
@@ -23,34 +26,34 @@ def merge_posting(
     qa_rationale: str | None = None,
     retries: dict[str, int] | None = None,
 ) -> dict:
-    """Assemble the merged posting.json. Returns the dict (caller writes it).
-
-    Expects the following files under ``runs_dir(run_date, posting_id)``:
-      input.json
-      split-out.json
-      extract-<kind>-out.json   (for each kind in sections)
-      globals-out.json
-    """
+    """Assemble the merged posting.json. Returns the dict (caller writes it)."""
     base = runs_dir(run_date, posting_id)
     input_data = json.loads((base / "input.json").read_text())
     sections_data = json.loads((base / "split-out.json").read_text())
     globals_data = json.loads((base / "globals-out.json").read_text())
 
-    sections_with_extracts = []
+    sections_with_extracts: list[dict] = []
+    missing: list[str] = []
     for sec in sections_data.get("sections", []):
         kind = sec["kind"]
         entry = {"kind": kind, "block_ids": list(sec["block_ids"])}
         if kind in SECTION_EXTRACT_KINDS:
             extract_path = base / f"extract-{kind}-out.json"
-            if extract_path.exists():
-                entry["extracted"] = json.loads(extract_path.read_text())
+            if not extract_path.exists():
+                missing.append(f"extract-{kind}-out.json")
             else:
-                entry["extracted"] = None
+                entry["extracted"] = json.loads(extract_path.read_text())
         else:
+            # Non-extractable kinds (currently: none after cuts) get no extracted field.
             entry["extracted"] = None
         sections_with_extracts.append(entry)
 
-    merged: dict = {
+    if missing:
+        raise FileNotFoundError(
+            f"merge({posting_id}): missing required extract files: {', '.join(missing)}"
+        )
+
+    return {
         "id": input_data["id"],
         "schema_version": input_data.get("schema_version", 1),
         "crawler_version": input_data.get("crawler_version"),
@@ -69,9 +72,8 @@ def merge_posting(
             "retries": retries or {},
         },
     }
-    return merged
 
 
-def write_merged(run_date: str, posting_id: str, merged: dict, *, target: Path) -> None:
+def write_merged(target: Path, merged: dict) -> None:
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(merged, indent=2, ensure_ascii=False, default=str))

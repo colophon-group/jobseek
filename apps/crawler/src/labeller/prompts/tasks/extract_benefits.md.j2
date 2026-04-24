@@ -20,29 +20,22 @@
 - `salary_period` — one of: `"hour"`, `"day"`, `"week"`, `"month"`, `"year"`, `"project"`, or `null`.
 - `salary_transparency` — one of: `"shown"`, `"range_in_description"`, `"not_shown"`, or `null`.
 - `compensation_type` — one of: `"salary"`, `"hourly"`, `"commission_only"`, `"salary_plus_commission"`, `"tips_plus_base"`, `"piece_rate"`, `"stipend"`, `"fee_per_service"`, `"retainer"`, `"grant_funded"`, or `null`.
-- `equity_offered` — `true` / `false` / `null`. Null if unmentioned. Common in tech/co-ops/ESOPs; absence of mention ≠ false.
-- `equity_description` — short verbatim excerpt if specific, else `null`.
-- `bonus_offered` — `true` / `false` / `null`.
-- `signing_bonus_offered` — `true` / `false` / `null`.
+- `equity_offered` — `true` / `false` / `null`. `null` when not mentioned; only `false` if the text explicitly denies it.
 
 ## Fields (location / visa)
 
-- `remote_policy` — one of: `"onsite"`, `"hybrid"`, `"remote"`, `"remote_anywhere"`, `"unclear"`, or `null`.
+- `remote_policy` — one of: `"onsite"`, `"hybrid"`, `"remote"`, `"remote_anywhere"`, `"unclear"`, or `null`. Never guess; default to `null` if not clearly stated.
 - `remote_region` — free-text region if remote is region-bounded (e.g. `"EU"`, `"UK"`, `"EEA"`, `"US"`, `"APAC"`, `"LATAM"`, `"MENA"`, `"ANZ"`, `"Nordics"`, country names, `"global"`), else `null`.
-- `hybrid_days_onsite` — integer days/week, 0–7, or `null`.
 - `relocation_assistance` — `true` / `false` / `null`.
 - `visa_sponsorship` — one of: `"yes"`, `"no"`, `"case_by_case"`, `"unknown"`. Covers sponsorship for any jurisdiction (H-1B, Blue Card, Skilled Worker, etc.) — one field.
 
-## Fields (other)
+## Fields (time off / budget / perks)
 
-- `healthcare_offered` — `true` / `false` / `null`. In single-payer markets this is *supplementary* insurance; capture only if the employer specifically offers it.
-- `annual_leave_days` — integer, or `null`. What the employer offers in total (not statutory minimums).
-- `annual_leave_unlimited` — `true` / `false` / `null`.
-- `parental_leave_weeks` — integer, what the employer pays on top of statutory; `null` if not specified as employer-paid.
-- `learning_budget_amount_year` — integer amount per year, or `null`.
-- `learning_budget_currency` — ISO 4217, or `null`.
-- `retirement_plan` — `true` / `false` / `null`. Covers 401(k) (US), pension (UK), bAV (DE), RRSP (CA), superannuation (AU), koseinenkin top-up (JP), etc.
-- `other_perks` — English-normalized tags for anything not captured above, e.g. `["commuter benefits", "mental health stipend", "gym membership"]`.
+- `annual_leave_days` — integer total days offered by the employer, or `null`. Capture the employer's figure; statutory minimums alone don't count unless the text specifies employer-granted extras.
+- `annual_leave_unlimited` — `true` if "unlimited" (or equivalent); else `false` or `null`.
+- `parental_leave_weeks` — only if the employer's contribution is stated. Statutory minimums don't count unless the text specifies the employer pays extra.
+- `learning_budget_amount_year` — integer amount per year, or `null`. Use the currency already captured in `salary_currency` when ambiguous.
+- `other_perks` — English-normalized tags for anything not captured above, e.g. `["commuter benefits", "mental health stipend", "gym membership", "pension contribution", "private healthcare"]`.
 
 ## Output
 
@@ -53,17 +46,13 @@ Write JSON to `{{ output_path }}`:
   "salary_min": null, "salary_max": null, "salary_currency": null,
   "salary_period": null, "salary_transparency": null,
   "compensation_type": null,
-  "equity_offered": null, "equity_description": null,
-  "bonus_offered": null, "signing_bonus_offered": null,
+  "equity_offered": null,
   "remote_policy": null, "remote_region": null,
-  "hybrid_days_onsite": null,
   "relocation_assistance": null,
   "visa_sponsorship": null,
-  "healthcare_offered": null,
   "annual_leave_days": null, "annual_leave_unlimited": null,
   "parental_leave_weeks": null,
-  "learning_budget_amount_year": null, "learning_budget_currency": null,
-  "retirement_plan": null,
+  "learning_budget_amount_year": null,
   "other_perks": []
 }
 ```
