@@ -173,26 +173,34 @@ def run_qa_rules(posting: dict) -> list[dict]:
                 }
             )
 
-    # Rule 6: role section (if present) has at least one responsibility
-    role_sec = next((s for s in sections if s.get("kind") == "role"), None)
-    if role_sec and role_sec.get("extracted"):
-        resp = role_sec["extracted"].get("responsibilities") or []
+    # Rule 6: role sections (if any) have at least one responsibility in TOTAL.
+    # The splitter often emits multiple non-contiguous role entries (intro +
+    # main), and the intro entry naturally has 0 bullets. Summing across all
+    # role sections is the sensible semantic: "this posting has some role
+    # content labelled" regardless of how many sections were emitted.
+    role_secs = [s for s in sections if s.get("kind") == "role" and s.get("extracted")]
+    if role_secs:
+        total_resp = sum(len(s["extracted"].get("responsibilities") or []) for s in role_secs)
         rules.append(
             {
                 "name": "role_responsibilities_non_empty",
-                "passed": len(resp) >= 1,
-                "detail": f"{len(resp)} responsibility/ies",
+                "passed": total_resp >= 1,
+                "detail": (
+                    f"{total_resp} responsibility/ies across {len(role_secs)} role section(s)"
+                ),
             }
         )
 
-    # Rule 7: requirements section (if present) has at least one signal
-    req_sec = next((s for s in sections if s.get("kind") == "requirements"), None)
-    if req_sec and req_sec.get("extracted"):
-        e = req_sec["extracted"]
-        has_signal = bool(
-            e.get("required_skills")
-            or e.get("education_level")
-            or e.get("years_experience_min") is not None
+    # Rule 7: requirements section (if any) has at least one signal. Same
+    # across-all-sections semantics: sum skills / OR any education / OR any
+    # years_min across every requirements entry.
+    req_secs = [s for s in sections if s.get("kind") == "requirements" and s.get("extracted")]
+    if req_secs:
+        has_signal = any(
+            (s["extracted"].get("required_skills"))
+            or s["extracted"].get("education_level")
+            or s["extracted"].get("years_experience_min") is not None
+            for s in req_secs
         )
         rules.append({"name": "requirements_has_signal", "passed": has_signal, "detail": None})
 
