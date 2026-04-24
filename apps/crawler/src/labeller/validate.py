@@ -147,13 +147,7 @@ def run_qa_rules(posting: dict) -> list[dict]:
     et = globals_.get("employment_type")
     rules.append({"name": "employment_type_non_null", "passed": et is not None, "detail": repr(et)})
 
-    # Rule 4: at least one location
-    locs = globals_.get("locations") or []
-    rules.append(
-        {"name": "at_least_one_location", "passed": len(locs) >= 1, "detail": f"{len(locs)} found"}
-    )
-
-    # Rule 5: at least one extractable section
+    # Rule 4: at least one extractable section
     kinds_present = {s.get("kind") for s in sections}
     extractable = SECTION_EXTRACT_KINDS & kinds_present
     rules.append(
@@ -164,7 +158,7 @@ def run_qa_rules(posting: dict) -> list[dict]:
         }
     )
 
-    # Rule 6: every extractable section present has non-null extracted
+    # Rule 5: every extractable section present has non-null extracted
     for s in sections:
         k = s.get("kind")
         if k in SECTION_EXTRACT_KINDS:
@@ -176,7 +170,7 @@ def run_qa_rules(posting: dict) -> list[dict]:
                 }
             )
 
-    # Rule 7: role section (if present) has at least one responsibility
+    # Rule 6: role section (if present) has at least one responsibility
     role_sec = next((s for s in sections if s.get("kind") == "role"), None)
     if role_sec and role_sec.get("extracted"):
         resp = role_sec["extracted"].get("responsibilities") or []
@@ -188,7 +182,7 @@ def run_qa_rules(posting: dict) -> list[dict]:
             }
         )
 
-    # Rule 8: requirements section (if present) has at least one signal
+    # Rule 7: requirements section (if present) has at least one signal
     req_sec = next((s for s in sections if s.get("kind") == "requirements"), None)
     if req_sec and req_sec.get("extracted"):
         e = req_sec["extracted"]

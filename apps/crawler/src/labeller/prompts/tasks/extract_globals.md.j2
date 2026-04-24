@@ -1,7 +1,10 @@
 # TASK: extract global (cross-section) labels
 
-Pass 3. Using the title, header blocks, and the outputs of the per-section
-extractors, derive cross-section fields.
+Pass 3. You are the cross-section arbiter. Use the **full description
+text** below to derive location, employment_type, and any other global
+fields — information often buried inside a specific section's prose
+(e.g. a role paragraph that says "This is an onsite position in
+Berlin"). Do not limit yourself to the header blocks.
 
 ## Title (verbatim, source language — stays verbatim in the final record)
 
@@ -11,13 +14,19 @@ extractors, derive cross-section fields.
 
 {{ description_locale_detected or 'unknown' }}
 
-## Header blocks (blocks not claimed by any section — usually include the posting header, decorative banners, and loose location/employment metadata)
+## Full description text ({{ description_text|length }} chars, source language)
+
+```
+{{ description_text }}
+```
+
+## Header blocks (blocks unclaimed by any section — may contain loose location / employment metadata that wasn't in a labelled section)
 
 {% for b in header_blocks -%}
 [{{ b.id }}] ({{ b.tag }}) {{ b.text }}
 {% endfor %}
 
-## Per-section extractor outputs
+## Per-section extractor outputs (for reference — do not duplicate fields)
 
 ```json
 {{ section_outputs_json }}
@@ -29,14 +38,14 @@ extractors, derive cross-section fields.
 
 - `occupation` — English free-text role family derived from the title + role context. Examples: `"backend engineering"`, `"registered nursing"`, `"store management"`, `"fleet operations"`, `"tax law"`, `"secondary education"`, `"machine operation"`. **Not** the literal title.
 - `seniority` — English free-text seniority / rank. Examples: `"senior"`, `"staff engineer"`, `"junior"`, `"lead"`, `"senior partner"`, `"charge nurse"`, `"department head"`, `"vp"`, `"intern"`. `null` if unclear.
-- `employment_type` — one of: `"full_time"`, `"part_time"`, `"contract"`, `"internship"`, `"fellowship"`, `"apprenticeship"`, `"temporary"`, `"volunteer"`, or `null`.
+- `employment_type` — one of: `"full_time"`, `"part_time"`, `"contract"`, `"internship"`, `"fellowship"`, `"apprenticeship"`, `"temporary"`, `"volunteer"`, or `null`. Inferred from explicit mentions (e.g. "fully onsite role", "full-time permanent", "Praktikum", "CDI"). When the posting implies but does not state full-time, choose `"full_time"` only if the role description is unambiguously a standard salaried position (salaried + benefits mentioned + no mention of part-time / contract); otherwise `null`.
 - `locales_in_posting` — ISO-639-1 codes for the language(s) used in the description. Usually one; sometimes two (multilingual EU postings).
-- `locations` — array of objects, one per distinct location mentioned:
+- `locations` — array of objects, one per distinct location mentioned **anywhere in the full description text**:
   ```
   {"raw": "<verbatim as written>", "city": "<English>", "region": "<state/province code or name>",
    "country": "<ISO-3166-1 alpha-2>", "type": "<onsite|hybrid|remote_region|remote_global|unclear>"}
   ```
-  Leave `city` / `region` / `country` as `null` where unknown. `raw` is required.
+  Leave `city` / `region` / `country` as `null` where unknown. `raw` is required — copy verbatim, including punctuation, from the description. If the posting says "This is a fully onsite role in Jacksonville, FL", emit `{"raw": "Jacksonville, FL", "city": "Jacksonville", "region": "FL", "country": "US", "type": "onsite"}`.
 
 ## Output
 

@@ -64,6 +64,26 @@ def test_blocks_inherit_inline_formatting_in_html():
     assert blocks[0].text == "hello world"
 
 
+def test_list_with_inline_markup_inside_bullets_stays_on_one_line_per_bullet():
+    """Regression for pitfall C — <strong>/<br> inside <li> must not split mid-bullet."""
+    html = (
+        "<ul>"
+        "<li><strong>Strategic Vision</strong>: Develop and execute the GRC strategy.</li>"
+        "<li>Enterprise Risk<br>Oversee the risk program across functions.</li>"
+        "<li>Plain bullet</li>"
+        "</ul>"
+    )
+    blocks = extract_blocks(html)
+    assert len(blocks) == 1
+    lines = blocks[0].text.split("\n")
+    assert len(lines) == 3
+    assert lines[0].startswith("Strategic Vision")
+    assert "Strategic Vision : Develop" in lines[0] or "Strategic Vision: Develop" in lines[0]
+    assert lines[1].startswith("Enterprise Risk")
+    assert "Oversee" in lines[1]
+    assert lines[2] == "Plain bullet"
+
+
 def test_normalize_then_blocks_integration():
     raw = (
         "<div><h2>Senior Engineer</h2>"

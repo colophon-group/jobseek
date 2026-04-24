@@ -85,6 +85,7 @@ def render_task(
         blocks_by_id = {b["id"]: b for b in input_data["input"]["blocks"]}
         ctx["header_blocks"] = _header_blocks(sections_data, blocks_by_id)
         ctx["description_locale_detected"] = input_data["input"].get("description_locale_detected")
+        ctx["description_text"] = input_data["input"].get("description_text") or ""
         ctx["section_outputs_json"] = json.dumps(
             section_outputs or {}, indent=2, ensure_ascii=False
         )

@@ -41,7 +41,19 @@ def extract_blocks(normalized_html: str) -> list[Block]:
             continue
         if child.name not in BLOCK_TAGS:
             continue
-        text = child.get_text(separator=" ", strip=True)
+        # For list blocks, iterate top-level <li> children explicitly so
+        # bullet boundaries survive as newlines while inline formatting
+        # inside a bullet (<strong>, <em>, <br>) joins with spaces — the
+        # naïve ``get_text(separator="\n")`` fragments mid-bullet whenever
+        # a list item contains inline markup.
+        if child.name in ("ul", "ol"):
+            lines = [
+                li.get_text(separator=" ", strip=True)
+                for li in child.find_all("li", recursive=False)
+            ]
+            text = "\n".join(line for line in lines if line)
+        else:
+            text = child.get_text(separator=" ", strip=True)
         if not text:
             continue
         blocks.append(

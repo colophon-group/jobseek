@@ -9,7 +9,7 @@ Identify which HTML blocks belong to which section kind.
 ## Blocks ({{ blocks|length }})
 
 {% for b in blocks -%}
-[{{ b.id }}] ({{ b.tag }}) {{ b.text[:200] }}{% if b.text|length > 200 %}…{% endif %}
+[{{ b.id }}] ({{ b.tag }}) {{ b.text[:200] }}{{ '…' if b.text|length > 200 else '' }}
 {% endfor %}
 
 ## Section kinds (pick from these only — closed vocab)

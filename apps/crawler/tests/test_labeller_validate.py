@@ -341,10 +341,13 @@ def test_qa_rejects_missing_occupation():
     assert "occupation_non_empty" in failed
 
 
-def test_qa_rejects_no_locations():
+def test_qa_accepts_no_locations():
+    """Many ATSes (Lever, Workday) store location outside the description. An empty
+    locations array is acceptable when the description itself doesn't state one.
+    """
     posting = _minimal_merged_posting()
     posting["labels"]["globals"]["locations"] = []
-    assert qa_report(posting)["verdict"] == "rejected"
+    assert qa_report(posting)["verdict"] == "accepted"
 
 
 def test_qa_rejects_null_extraction():
