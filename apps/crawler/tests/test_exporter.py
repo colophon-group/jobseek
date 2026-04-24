@@ -12,7 +12,6 @@ from src.exporter import (
     _build_typesense_docs,
     _export_changed_boards,
     _export_changed_postings,
-    _filter_source_url_conflicts,
     _get_cursor,
     _reconciliation_loop,
     _save_cursor,
@@ -133,69 +132,6 @@ class TestCursorPersistence:
 
 
 # ---------------------------------------------------------------------------
-# _filter_source_url_conflicts
-# ---------------------------------------------------------------------------
-
-
-class TestFilterSourceUrlConflicts:
-    async def test_no_existing_rows_returns_all(self):
-        conn = AsyncMock()
-        conn.fetch = AsyncMock(return_value=[])
-        rows = [
-            _make_record({"id": uuid.uuid4(), "source_url": "https://example.com/a"}),
-            _make_record({"id": uuid.uuid4(), "source_url": "https://example.com/b"}),
-        ]
-
-        result = await _filter_source_url_conflicts(conn, rows)
-        assert result == rows
-        conn.fetch.assert_awaited_once()
-
-    async def test_drops_rows_with_id_mismatch(self):
-        conn = AsyncMock()
-        id_match = uuid.uuid4()
-        id_keep = uuid.uuid4()
-        id_mismatch_local = uuid.uuid4()
-        id_mismatch_supa = uuid.uuid4()  # different id for same url
-
-        rows = [
-            _make_record({"id": id_match, "source_url": "https://example.com/match"}),
-            _make_record({"id": id_keep, "source_url": "https://example.com/new"}),
-            _make_record({"id": id_mismatch_local, "source_url": "https://example.com/ghost"}),
-        ]
-        conn.fetch = AsyncMock(
-            return_value=[
-                _make_record({"id": id_match, "source_url": "https://example.com/match"}),
-                _make_record({"id": id_mismatch_supa, "source_url": "https://example.com/ghost"}),
-            ]
-        )
-
-        result = await _filter_source_url_conflicts(conn, rows)
-
-        kept_ids = [r["id"] for r in result]
-        assert id_match in kept_ids  # same id in Supabase -> safe update
-        assert id_keep in kept_ids  # url not in Supabase -> new insert
-        assert id_mismatch_local not in kept_ids  # url points at different id
-
-    async def test_drops_every_row_returns_empty(self):
-        conn = AsyncMock()
-        url_a = "https://example.com/a"
-        url_b = "https://example.com/b"
-        rows = [
-            _make_record({"id": uuid.uuid4(), "source_url": url_a}),
-            _make_record({"id": uuid.uuid4(), "source_url": url_b}),
-        ]
-        conn.fetch = AsyncMock(
-            return_value=[
-                _make_record({"id": uuid.uuid4(), "source_url": url_a}),
-                _make_record({"id": uuid.uuid4(), "source_url": url_b}),
-            ]
-        )
-
-        result = await _filter_source_url_conflicts(conn, rows)
-        assert result == []
-
-
-# ---------------------------------------------------------------------------
 # _export_changed_postings
 # ---------------------------------------------------------------------------
 
@@ -268,7 +204,6 @@ class TestExportChangedPostings:
         tx_ctx.__aexit__ = AsyncMock(return_value=False)
         conn.transaction = MagicMock(return_value=tx_ctx)
         conn.execute = AsyncMock()
-        conn.fetch = AsyncMock(return_value=[])  # source_url pre-filter SELECT
         conn.copy_records_to_table = AsyncMock()
 
         acq_ctx = MagicMock()
@@ -280,10 +215,8 @@ class TestExportChangedPostings:
 
         assert count == 2
         assert new_cursor == (ts2, posting_id_2)
-        # CREATE TEMP TABLE + INSERT ... ON CONFLICT; the pre-filter SELECT is
-        # mocked empty so no source_url conflicts are skipped.
+        # CREATE TEMP TABLE + INSERT ... ON CONFLICT.
         assert conn.execute.await_count == 2
-        conn.fetch.assert_awaited_once()
         conn.copy_records_to_table.assert_awaited_once()
 
 
