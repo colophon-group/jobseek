@@ -698,9 +698,9 @@ async def _export_changed_postings(
     if not rows:
         return 0, cursor
 
-    # Cursor always advances to the last fetched row, even if the pre-filter
-    # drops some — those rows have been accounted for (their source_url already
-    # points at a different id in Supabase, which we leave alone).
+    # Captured before the filter so a tick that drops every row still advances
+    # the cursor — those rows resolve to an existing Supabase id under the same
+    # source_url and we intentionally leave them alone.
     total = len(rows)
     last_row = rows[-1]
     new_cursor = (last_row["updated_at"], last_row["id"])

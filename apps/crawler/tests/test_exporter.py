@@ -176,6 +176,24 @@ class TestFilterSourceUrlConflicts:
         assert id_keep in kept_ids  # url not in Supabase -> new insert
         assert id_mismatch_local not in kept_ids  # url points at different id
 
+    async def test_drops_every_row_returns_empty(self):
+        conn = AsyncMock()
+        url_a = "https://example.com/a"
+        url_b = "https://example.com/b"
+        rows = [
+            _make_record({"id": uuid.uuid4(), "source_url": url_a}),
+            _make_record({"id": uuid.uuid4(), "source_url": url_b}),
+        ]
+        conn.fetch = AsyncMock(
+            return_value=[
+                _make_record({"id": uuid.uuid4(), "source_url": url_a}),
+                _make_record({"id": uuid.uuid4(), "source_url": url_b}),
+            ]
+        )
+
+        result = await _filter_source_url_conflicts(conn, rows)
+        assert result == []
+
 
 # ---------------------------------------------------------------------------
 # _export_changed_postings
@@ -262,8 +280,8 @@ class TestExportChangedPostings:
 
         assert count == 2
         assert new_cursor == (ts2, posting_id_2)
-        # Should have called CREATE TEMP TABLE + INSERT (DELETE dedup replaced
-        # by an indexed pre-filter SELECT that's mocked empty here).
+        # CREATE TEMP TABLE + INSERT ... ON CONFLICT; the pre-filter SELECT is
+        # mocked empty so no source_url conflicts are skipped.
         assert conn.execute.await_count == 2
         conn.fetch.assert_awaited_once()
         conn.copy_records_to_table.assert_awaited_once()
