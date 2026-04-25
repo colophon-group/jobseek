@@ -577,10 +577,18 @@ async function _fetchCompanyBySlug(slug: string, locale: string): Promise<Compan
   return _fetchCompanyBySlugFromPostgres(slug, locale);
 }
 
+// Canonical company-slug shape: lowercase alphanumeric segments separated
+// by single hyphens (mirrors apps/crawler SLUG_RE). The slug reaches here
+// from a URL path segment, so a hostile caller could craft a string that
+// escapes the Typesense filter clause when raw-interpolated. Reject
+// non-conforming slugs up front; null falls through to a regular 404.
+const SLUG_SHAPE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
 async function _fetchCompanyBySlugFromTypesense(
   slug: string,
   locale: string,
 ): Promise<CompanyDetail | null> {
+  if (!SLUG_SHAPE.test(slug)) return null;
   const client = getSearchClient();
   const result = await client.collections("company").documents().search({
     q: "*",
