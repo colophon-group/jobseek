@@ -1,0 +1,49 @@
+# TASK: extract `role` section labels
+
+## Title (context)
+
+{{ title_raw }}
+
+## Section text ({{ section_blocks|length }} blocks)
+
+{% for b in section_blocks -%}
+[{{ b.id }}] ({{ b.tag }}) {{ b.text }}
+{% endfor %}
+
+{% include '_partials/english_normalize.md.j2' %}
+
+## Fields
+
+- `role_summary` — 1–2 sentence paraphrase of what the role does. English. `null` if the section is too thin to summarize.
+- `responsibilities` — array of **verbatim** strings copied from the section (source language, no paraphrase, no reformatting). Prefer the posting's natural bullet boundaries; if the section is a single paragraph, emit it as a single-element array.
+- `collaboration_partners` — English free-text teams or roles the person works with. Examples: `["design", "product", "data"]`, `["nursing staff", "physicians"]`, `["store team", "merchandising"]`.
+- `travel_expected` — one of: `0`, `25`, `50`, `75`, `100`, or `null`. Use `0` if the posting explicitly says no travel; `null` if not mentioned.
+- `shift_pattern` — one of: `"standard_daytime"`, `"evening"`, `"night"`, `"rotating"`, `"on_call"`, `"weekend_only"`, `"split_shift"`, `"variable"`, or `null` if not mentioned.
+- `hours_per_week` — integer hours per week if stated, else `null`.
+- `on_call_required` — `true` / `false` / `null`.
+
+## Output
+
+Write JSON to `{{ output_path }}`:
+
+```json
+{
+  "role_summary": null,
+  "responsibilities": [],
+  "collaboration_partners": [],
+  "travel_expected": null,
+  "shift_pattern": null,
+  "hours_per_week": null,
+  "on_call_required": null
+}
+```
+
+{% include '_partials/json_only.md.j2' %}
+
+{% if previous_error -%}
+## Previous attempt failed
+
+```
+{{ previous_error }}
+```
+{% endif %}

@@ -1,0 +1,77 @@
+# TASK: extract global (cross-section) labels
+
+Pass 3. You are the cross-section arbiter. Use the **full description
+text** below to derive location, employment_type, and any other global
+fields — information often buried inside a specific section's prose
+(e.g. a role paragraph that says "This is an onsite position in
+Berlin"). Do not limit yourself to the header blocks.
+
+## Title (verbatim, source language — stays verbatim in the final record)
+
+{{ title_raw }}
+
+## Locale detected (deterministic)
+
+{{ description_locale_detected or 'unknown' }}
+
+## Full description text ({{ description_text|length }} chars, source language)
+
+```
+{{ description_text }}
+```
+
+## Header blocks (blocks unclaimed by any section — may contain loose location / employment metadata that wasn't in a labelled section)
+
+{% for b in header_blocks -%}
+[{{ b.id }}] ({{ b.tag }}) {{ b.text }}
+{% endfor %}
+
+## Per-section extractor outputs (for reference — do not duplicate fields)
+
+```json
+{{ section_outputs_json }}
+```
+
+{% include '_partials/english_normalize.md.j2' %}
+
+## Fields
+
+- `profession` — **English noun-form** role title, as **narrow** as the title + role section support. Examples: `"backend engineer"`, `"registered nurse"`, `"store manager"`, `"barista"`, `"site reliability engineer"`. **Not** the literal title (no seniority modifiers like `"senior"` / `"lead"`). **Critical: do NOT duplicate the seniority word** — if `seniority` will be `"director"` / `"manager"` / `"vp"` / `"chief"`, the profession must NOT end in that same word; use the domain noun instead (e.g. `"Tax Director"` → `profession="tax accountant"`, `seniority="director"`). Exceptions where the rank word stays in the profession because it names a recognized role title, not a separate rank: `"account executive"`, `"project manager"`, `"customer success manager"`, `"general manager"`, `"chief of staff"`, `"engineering manager"`.
+- `seniority` — English free-text seniority / rank. **Prefer non-null** when the title or requirements give a clear signal: `"senior"` / `"staff engineer"` / `"principal"` / `"lead"` / `"manager"` / `"director"` / `"vp"` / `"head of"` / `"chief"` / `"senior manager"` if the title contains those words; `"senior"` or `"mid"` if `years_experience_min` is 5+ / 2–5; `"entry"` or `"junior"` for 0–2 years or "graduate" / "Ausbildung" / "apprentice" markers; `"intern"` for explicit internships. Use `null` only when the title is bare (e.g. "Accountant") AND no experience signal is present.
+- `employment_type` — one of: `"full_time"`, `"part_time"`, `"contract"`, `"internship"`, `"fellowship"`, `"apprenticeship"`, `"temporary"`, `"volunteer"`, or `null`. Inferred from explicit mentions (e.g. "fully onsite role", "full-time permanent", "Praktikum", "CDI"). When the posting implies but does not state full-time, choose `"full_time"` only if the role description is unambiguously a standard salaried position (salaried + benefits mentioned + no mention of part-time / contract); otherwise `null`.
+- `locales_in_posting` — ISO-639-1 codes for the language(s) used in the description. Usually one; sometimes two (multilingual EU postings).
+- `locations` — array of objects, one per distinct **work location for this specific role**. Examples of what **counts**: the city / region / country where the work is performed, "Remote (EU)", "San Francisco, CA", "Bangalore, India", "Hybrid — London office". Examples of what does **not** count and must be excluded: "we operate in 10 countries" (company stat, not where the role is), "customers across North America" (market coverage), "#LI-Remote" (LinkedIn recruiter hashtag), company HQ mentioned only in the about-us blurb unless also stated as the role's location, multi-country enumerations like "AL, AZ, AR, CA, …" (generally candidate-eligibility statements, not a list of work locations).
+  Each entry:
+  ```
+  {"raw": "<verbatim as written, cleaned of LinkedIn-style hashtags>", "city": "<English>",
+   "region": "<state/province code or name>", "country": "<ISO-3166-1 alpha-2>",
+   "type": "<onsite|hybrid|remote_region|remote_global|unclear>"}
+  ```
+  Leave `city` / `region` / `country` as `null` where unknown. `raw` is required. If no explicit work location is stated in the description, emit an empty array `[]` — do NOT invent one from company stats or market-coverage phrases. If the posting says "This is a fully onsite role in Jacksonville, FL", emit `{"raw": "Jacksonville, FL", "city": "Jacksonville", "region": "FL", "country": "US", "type": "onsite"}`.
+
+## Output
+
+Write JSON to `{{ output_path }}`:
+
+```json
+{
+  "profession": null,
+  "title_normalized": null,
+  "store_number": null,
+  "reference_number": null,
+  "seniority": null,
+  "employment_type": null,
+  "locales_in_posting": [],
+  "locations": []
+}
+```
+
+{% include '_partials/json_only.md.j2' %}
+
+{% if previous_error -%}
+## Previous attempt failed
+
+```
+{{ previous_error }}
+```
+{% endif %}

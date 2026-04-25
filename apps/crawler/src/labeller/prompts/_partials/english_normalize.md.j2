@@ -1,0 +1,9 @@
+## Language of free-text labels
+
+Emit free-text labels **English-normalized** whenever a canonical English form
+exists (e.g. `"python"`, `"postgres"`, `"project management"`). Keep the value
+in its source language only when there is no clean English equivalent
+(e.g. `"Mittelstand"`, `"Jobrad"`).
+
+Verbatim fields are different — they are copied from source unchanged. This
+rule applies only to fields marked **free-text canonicalizable** in the task.

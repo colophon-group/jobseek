@@ -1,5 +1,9 @@
 .idea
-.claude
+.claude/*
+!.claude/agents/
+!.claude/agents/**
+!.claude/commands/
+!.claude/commands/**
 node_modules
 .next
 dist

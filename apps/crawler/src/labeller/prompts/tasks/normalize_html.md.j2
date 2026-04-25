@@ -1,0 +1,51 @@
+# TASK: normalize raw posting HTML
+
+Convert the raw posting HTML below into a **clean HTML subset** using only these tags:
+
+`<p>`, `<ul>`, `<ol>`, `<li>`, `<h2>`, `<h3>`, `<h4>`, `<strong>`, `<em>`, `<a>`, `<br>`, `<blockquote>`
+
+This is the substrate for a deterministic block-extractor — block boundaries are determined by the top-level tags you emit, so structure matters.
+
+## Hard rules
+
+1. **Preserve text content exactly**. Every word, number, punctuation mark, quote, dash, accent, and non-ASCII character from the input text must appear in your output in the same order. Do **not** paraphrase, summarize, translate, reword, or correct typos. This is the most important rule.
+2. **Infer paragraph boundaries** when the input is plaintext or has broken structure: blank lines become `<p>` boundaries; standalone single-line sections separated by newlines become their own `<p>`. Wrap every paragraph in `<p>`.
+3. **Lists**: recognise bullet markers (`•`, `-`, `*`, `·`, `►`, `✓`, `👉`, `—`, or a consistent numbering pattern). Wrap bullet runs in `<ul><li>…</li></ul>` (or `<ol>` for numbered). Strip the marker characters; the `<li>` boundary encodes the bullet. Keep the bullet text exactly.
+4. **Headings**: use `<h2>`, `<h3>`, or `<h4>` for section headings. Common signals: lines in all-caps, lines ending with `:`, lines that are short (≤ ~6 words) and are followed by a list or paragraph on a clearly different topic. Do **not** invent headings.
+5. **Inline formatting**: keep `<strong>` for bold, `<em>` for italics, `<a href="…">` for links, `<br>` for hard line breaks inside a paragraph. Drop all other inline tags (including `<span>`, `<font>`, `<u>`); keep their text.
+6. **Attributes**: strip all attributes except `href` on `<a>`. No `class`, `style`, `id`, `data-*`, etc.
+7. **Drop entirely** (with their content): `<script>`, `<style>`, `<noscript>`, `<iframe>`, `<img>`, `<svg>`, `<video>`, `<audio>`, `<table>`, `<canvas>`, `<figure>`, `<picture>`, `<form>`, `<input>`, `<button>`. If any text was inside these, it is dropped along with the tag.
+8. **No tables, no code blocks, no horizontal rules** in the output.
+9. **Entity decoding**: decode HTML entities to their literal characters (`&amp;` → `&`, `&euro;` → `€`, `&#39;` → `'`).
+10. **Whitespace**: collapse multiple internal spaces to one; keep `\n` between top-level block tags for readability; no trailing whitespace.
+
+## Title (for context only — do NOT include in output)
+
+{{ title_raw }}
+
+## Raw HTML input ({{ raw_html|length }} chars)
+
+```
+{{ raw_html }}
+```
+
+## Output
+
+Write the cleaned HTML to `{{ output_path }}`.
+
+**Output format**: pure HTML — the first character must be `<` (opening of the first block tag), the last character must be `>` (closing of the last block tag). No markdown fences, no `<html>` / `<body>` / `<!DOCTYPE>` wrappers, no prose commentary, no explanation.
+
+## Self-check before writing
+
+- [ ] Every tag in output is one of the allowed ones.
+- [ ] The plaintext obtained by stripping all tags from your output matches the plaintext obtained by stripping all tags from the input (modulo whitespace and entity decoding). If it doesn't, you paraphrased — redo without paraphrasing.
+- [ ] Top-level structure is a sequence of block elements (`<p>`, `<h2>`–`<h4>`, `<ul>`, `<ol>`, `<blockquote>`). No bare text at top level.
+- [ ] No attributes on any tag except `href` on `<a>`.
+
+{% if previous_error -%}
+## Previous attempt failed
+
+```
+{{ previous_error }}
+```
+{% endif %}

@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jseek.co/schemas/labeller/section_extract/role.schema.json",
+  "title": "Role section extraction",
+  "type": "object",
+  "required": [
+    "role_summary",
+    "responsibilities",
+    "collaboration_partners",
+    "travel_expected",
+    "shift_pattern",
+    "hours_per_week",
+    "on_call_required"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "role_summary": {"type": ["string", "null"]},
+    "responsibilities": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1}
+    },
+    "collaboration_partners": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1}
+    },
+    "travel_expected": {
+      "type": ["integer", "null"],
+      "enum": [null, 0, 25, 50, 75, 100]
+    },
+    "shift_pattern": {
+      "type": ["string", "null"],
+      "enum": [
+        null,
+        "standard_daytime",
+        "evening",
+        "night",
+        "rotating",
+        "on_call",
+        "weekend_only",
+        "split_shift",
+        "variable"
+      ]
+    },
+    "hours_per_week": {"type": ["integer", "null"], "minimum": 0, "maximum": 168},
+    "on_call_required": {"type": ["boolean", "null"]}
+  }
+}

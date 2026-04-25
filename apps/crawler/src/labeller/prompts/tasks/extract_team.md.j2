@@ -1,0 +1,39 @@
+# TASK: extract `team` section labels
+
+## Title (context)
+
+{{ title_raw }}
+
+## Section text ({{ section_blocks|length }} blocks)
+
+{% for b in section_blocks -%}
+[{{ b.id }}] ({{ b.tag }}) {{ b.text }}
+{% endfor %}
+
+{% include '_partials/english_normalize.md.j2' %}
+
+## Fields
+
+- `team_name` — name of the specific team as written, or `null` if none given. Examples: `"Payments Platform"`, `"Oncology Nursing"`, `"Store Operations"`, `"Fleet Operations"`.
+- `team_function_tags` — English-normalized free-text tags describing what the team does. Examples: `["backend", "payments", "infrastructure"]`, `["cardiology"]`, `["customer service", "front-of-house"]`, `["audit", "compliance"]`.
+
+## Output
+
+Write JSON to `{{ output_path }}`:
+
+```json
+{
+  "team_name": null,
+  "team_function_tags": []
+}
+```
+
+{% include '_partials/json_only.md.j2' %}
+
+{% if previous_error -%}
+## Previous attempt failed
+
+```
+{{ previous_error }}
+```
+{% endif %}

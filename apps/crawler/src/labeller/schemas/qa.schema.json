@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jseek.co/schemas/labeller/qa.schema.json",
+  "title": "QA report for a merged posting",
+  "description": "Output shape of `labeller validate --kind qa`. Each rule reports pass/fail + optional detail. A posting is accepted iff every rule passes.",
+  "type": "object",
+  "required": ["posting_id", "rules", "verdict"],
+  "additionalProperties": false,
+  "properties": {
+    "posting_id": {"type": "string"},
+    "verdict": {"type": "string", "enum": ["accepted", "rejected"]},
+    "rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "passed"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {"type": "string"},
+          "passed": {"type": "boolean"},
+          "detail": {"type": ["string", "null"]}
+        }
+      }
+    }
+  }
+}

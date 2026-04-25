@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jseek.co/schemas/labeller/posting.schema.json",
+  "title": "Labelled job posting (merged gold record)",
+  "type": "object",
+  "required": ["id", "schema_version", "sampled_at", "source", "input", "labels", "labelling_meta"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {"type": "string", "minLength": 1},
+    "schema_version": {"type": "integer", "const": 1},
+    "crawler_version": {"type": ["string", "null"]},
+    "normalizer_version": {"type": "string"},
+    "sampled_at": {"type": "string", "format": "date-time"},
+    "labelled_at": {"type": ["string", "null"], "format": "date-time"},
+    "source": {
+      "type": "object",
+      "required": ["source_url"],
+      "additionalProperties": false,
+      "properties": {
+        "company_slug": {"type": ["string", "null"]},
+        "company_name": {"type": ["string", "null"]},
+        "board_slug": {"type": ["string", "null"]},
+        "monitor": {"type": ["string", "null"]},
+        "scraper": {"type": ["string", "null"]},
+        "source_url": {"type": "string"},
+        "source_url_host": {"type": ["string", "null"]},
+        "first_seen_at": {"type": ["string", "null"], "format": "date-time"}
+      }
+    },
+    "input": {
+      "type": "object",
+      "required": [
+        "title_raw",
+        "description_html",
+        "description_text",
+        "blocks"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "title_raw": {"type": "string"},
+        "description_html_raw": {"type": ["string", "null"]},
+        "description_html": {"type": "string"},
+        "description_text": {"type": "string"},
+        "description_locale_detected": {"type": ["string", "null"]},
+        "description_char_count": {"type": ["integer", "null"]},
+        "blocks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "tag", "html", "text"],
+            "additionalProperties": false,
+            "properties": {
+              "id": {"type": "integer", "minimum": 0},
+              "tag": {"type": "string"},
+              "html": {"type": "string"},
+              "text": {"type": "string"}
+            }
+          }
+        }
+      }
+    },
+    "labels": {
+      "type": "object",
+      "required": ["sections", "globals"],
+      "additionalProperties": false,
+      "properties": {
+        "sections": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["kind", "block_ids"],
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "company",
+                  "team",
+                  "role",
+                  "requirements",
+                  "preferred",
+                  "benefits",
+                  "application"
+                ]
+              },
+              "block_ids": {
+                "type": "array",
+                "minItems": 1,
+                "items": {"type": "integer", "minimum": 0}
+              },
+              "extracted": {
+                "description": "Per-section extraction; shape depends on kind. Validated by the per-kind schema during merge.",
+                "type": ["object", "null"]
+              }
+            }
+          }
+        },
+        "globals": {
+          "type": "object",
+          "description": "See globals.schema.json for full shape.",
+          "additionalProperties": true
+        }
+      }
+    },
+    "labelling_meta": {
+      "type": "object",
+      "required": ["qa_verdict", "retries"],
+      "additionalProperties": false,
+      "properties": {
+        "subagents": {
+          "type": "object",
+          "additionalProperties": {"type": "string"}
+        },
+        "qa_verdict": {
+          "type": "string",
+          "enum": ["accepted", "edited", "rejected"]
+        },
+        "qa_rationale": {"type": ["string", "null"]},
+        "retries": {
+          "type": "object",
+          "additionalProperties": {"type": "integer", "minimum": 0}
+        }
+      }
+    }
+  }
+}
