@@ -11,6 +11,7 @@ import { JobDetailPanel } from "@/components/search/job-detail-dialog";
 import { SearchToolbar } from "@/components/search/search-toolbar";
 import { getCurrencyRates, type CurrencyRate } from "@/lib/actions/search";
 import { runSearchJobs, runListTopCompanies } from "@/lib/search/search-runner";
+import { useClearTypesenseOnAuthChange } from "@/lib/search/use-clear-typesense-on-auth-change";
 import { useSession } from "@/components/SessionProvider";
 import { parseSearchFilters } from "@/lib/actions/search-input";
 import { buildFilteredPath } from "@/lib/search/query-params";
@@ -128,19 +129,7 @@ export function SearchPage({
     getCurrencyRates().then(setCurrencyRates);
   }, []);
 
-  // Clear the cached browser-side scoped Typesense key when auth state flips.
-  // Prevents a signed-in user from being held on the anon key (with its anon
-  // truncation soft-cap) and a signed-out user from holding the authed key.
-  useEffect(() => {
-    if (process.env.NEXT_PUBLIC_TYPESENSE_DIRECT !== "1") return;
-    let cancelled = false;
-    import("@/lib/search/typesense-browser-key").then((m) => {
-      if (!cancelled) m.clearTypesenseBrowserConfig();
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [isLoggedIn]);
+  useClearTypesenseOnAuthChange(isLoggedIn);
 
   const [showPostingId, setShowPostingId] = useState<string | null>(
     searchParams.get("show") ?? (shouldRestore ? cached.showPostingId : null),

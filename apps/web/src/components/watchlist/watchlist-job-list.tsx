@@ -6,10 +6,10 @@ import Image from "next/image";
 import { Building2, Bookmark } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { timeAgoShort } from "@/lib/time";
-import {
-  getWatchlistPostings,
-  type WatchlistPostingEntry,
-} from "@/lib/actions/watchlists";
+import { type WatchlistPostingEntry } from "@/lib/actions/watchlists";
+import { runGetWatchlistPostings } from "@/lib/search/search-runner";
+import { useClearTypesenseOnAuthChange } from "@/lib/search/use-clear-typesense-on-auth-change";
+import { useSession } from "@/components/SessionProvider";
 import { useSavedJobs } from "@/components/SavedJobsProvider";
 import { JobDetailPanel } from "@/components/search/job-detail-dialog";
 import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
@@ -76,6 +76,10 @@ export function WatchlistJobList({
   locale: string;
 }) {
   const { t } = useLingui();
+  const { isLoggedIn } = useSession();
+  const isLoggedInRef = useRef(isLoggedIn);
+  isLoggedInRef.current = isLoggedIn;
+  useClearTypesenseOnAuthChange(isLoggedIn);
   const [postings, setPostings] = useState(initialPostings);
   const [total, setTotal] = useState(initialTotal);
   const [exhausted, setExhausted] = useState(initialPostings.length >= initialTotal);
@@ -96,7 +100,7 @@ export function WatchlistJobList({
   // the server already provided initialPostings/initialTotal)
   useEffect(() => {
     if (filtersKey === initialFiltersKey.current) return;
-    getWatchlistPostings({ ...filters, offset: 0, limit: BATCH })
+    runGetWatchlistPostings({ ...filters, offset: 0, limit: BATCH }, isLoggedInRef.current)
       .then(({ postings: p, total: t, truncated }) => {
         setPostings(p);
         setTotal(t);
@@ -106,11 +110,14 @@ export function WatchlistJobList({
   }, [filtersKey]);
 
   async function handleLoadMore() {
-    const result = await getWatchlistPostings({
-      ...filtersRef.current,
-      offset: postings.length,
-      limit: BATCH,
-    });
+    const result = await runGetWatchlistPostings(
+      {
+        ...filtersRef.current,
+        offset: postings.length,
+        limit: BATCH,
+      },
+      isLoggedInRef.current,
+    );
     if (result.truncated) setIsTruncated(true);
     setTotal(result.total);
     if (result.postings.length > 0) {

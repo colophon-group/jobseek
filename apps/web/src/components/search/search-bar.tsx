@@ -5,12 +5,16 @@ import { useParams, usePathname, useRouter, useSearchParams } from "next/navigat
 import { Search, MapPin, Building2, ArrowRight, Briefcase, BarChart3, Code2 } from "lucide-react";
 import Image from "next/image";
 import { useLingui } from "@lingui/react/macro";
-import { suggestLocations } from "@/lib/actions/locations";
 import type { LocationSuggestion } from "@/lib/actions/locations";
 import { suggestCompanies } from "@/lib/actions/company";
 import type { CompanySuggestion } from "@/lib/actions/company";
-import { suggestOccupations, suggestSeniorities, suggestTechnologies } from "@/lib/actions/taxonomy";
 import type { TaxonomySuggestion } from "@/lib/actions/taxonomy";
+import {
+  runSuggestLocations as suggestLocations,
+  runSuggestOccupations as suggestOccupations,
+  runSuggestSeniorities as suggestSeniorities,
+  runSuggestTechnologies as suggestTechnologies,
+} from "@/lib/search/typeahead-runner";
 import { parseSearchFilters } from "@/lib/actions/search-input";
 import type { SelectedLocation } from "@/components/search/location-pills";
 import { buildFilteredPath } from "@/lib/search/query-params";

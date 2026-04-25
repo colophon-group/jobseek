@@ -180,24 +180,39 @@ Daily reconciliation (run by the exporter loop):
 - All search, typeahead, browse-all modals, and watchlist search go through Typesense
 - **Company detail page**: `getCompanyBySlug` reads the `company` collection by slug filter. Postgres is a fallback when Typesense errors or returns 0 hits (so brand-new companies whose Typesense upsert lagged still render)
 - **Graceful degradation**: all Typesense errors return empty results; Postgres fallback for watchlist write functions
-<<<<<<< Updated upstream
 - **Caching**: no Redis cache on main search (Typesense is fast enough). Cached for unfiltered homepage (60s) and popular watchlists (120s). `getCompanyBySlug` is wrapped with a Redis cache (`ttl: 600`, key `company-slug:{slug}:{locale}`) that skips storing nulls so brand-new slugs aren't poisoned
-- **Client**: `typesense-js` in the web app, connecting to `typesense.colophon-group.org` (Cloudflare tunnel) with the search-only key
-=======
-- **Caching**: no Redis cache on main search (Typesense is fast enough). Cached for unfiltered homepage (60s) and popular watchlists (120s)
 - **Server-side client**: `typesense-js` in the web app, connecting to `typesense.colophon-group.org` (Cloudflare tunnel) with the search-only key
 
 ### Direct browser → Typesense (feature-flagged)
 
-For the high-traffic `/explore` client search loop, the web app can bypass the Vercel server-action proxy and call Typesense directly from the browser. Gated by `NEXT_PUBLIC_TYPESENSE_DIRECT=1`.
+The web app can bypass the Vercel server-action proxy and call Typesense directly from the browser for read-heavy surfaces. Gated by `NEXT_PUBLIC_TYPESENSE_DIRECT=1`. Each surface has a server-action fallback for when the browser path errors.
 
-- **Scoped key endpoint**: `GET /api/typesense-key` (route handler `apps/web/app/api/typesense-key/route.ts`). Mints a Typesense scoped search key signed with the parent `TYPESENSE_SEARCH_KEY` (HMAC-SHA256 + base64). Embeds only `use_cache: true` -- the parent search-only scope already restricts to `documents:search`, and `limit_hits` is intentionally **not** embedded because it counts raw hits, not grouped rows, and would block normal anon traffic that uses `group_by company_id` with `group_limit 10`.
-- **TTL**: 5 min for anon, 10 min for authed. The browser caches the key in memory and refreshes 30 s before expiry. The cache is cleared when `useSession().isLoggedIn` flips so a sign-in/out doesn't keep the wrong key.
-- **Browser provider**: `apps/web/src/lib/search/typesense-browser.ts` -- a thin client (no `typesense-js` dependency in the browser bundle) that mirrors the server-side `TypesenseSearchProvider` query shapes.
-- **Anon truncation**: enforced as a soft client-side cap (`ANON_MAX_COMPANIES`) matching the current server-action behaviour. Real abuse protection is the Cloudflare per-IP rate-limit on the tunnel hostname.
-- **Fallback**: if the scoped-key endpoint is down or the browser provider returns a `degraded` result, the runner falls back to the original server-action path (`apps/web/src/lib/search/search-runner.ts`).
-- **Out of scope for direct path**: `getPostingDetail` (R2 URL minting requires server trust), `getCurrencyRates` (DB read, not Typesense), histograms (`getSalaryHistogram`/`getExperienceHistogram`, kept on server actions for the 3600 s cache).
->>>>>>> Stashed changes
+**Surfaces wired direct-browser:**
+
+| Surface | Runner export | Mirrors server action |
+|---------|---------------|----------------------|
+| `/explore` search loop (filter chip changes, load-more) | `runSearchJobs`, `runListTopCompanies` | `searchJobs`, `listTopCompanies` |
+| Header / modal typeahead (per keystroke) | `runSuggestLocations`, `runSuggestOccupations`, `runSuggestSeniorities`, `runSuggestTechnologies` | `suggestLocations`, `suggestOccupations`, `suggestSeniorities`, `suggestTechnologies` |
+| Company detail postings list | `runGetCompanyPostings` | `getCompanyPostings` (calls `loadPostingsWithCounts`) |
+| Public watchlist postings (≤100 companies) | `runGetWatchlistPostings` | `getWatchlistPostings` (≤100 path; >100 falls back) |
+
+**Out of scope for direct path:**
+
+- `getPostingDetail` (Postgres + R2 URL signing — needs server trust)
+- `getCurrencyRates` (DB read, not Typesense)
+- Salary/experience histograms (`getSalaryHistogram`/`getExperienceHistogram`, kept on server actions for the 3600 s cache)
+- `getCompanyBySlug` (server-rendered company page, has Postgres fallback for cold reads)
+- `getSimilarCompanies` (filtered path requires Postgres slug→id resolution)
+- Browse-all modals (`getGlobalLocationsGrouped`, `getAllOccupationsGrouped`, etc. — need Postgres taxonomy hierarchy)
+- Watchlist postings for >100 companies (uses batched-merge logic that's only worth maintaining server-side)
+
+**Infrastructure:**
+
+- **Scoped key endpoint** (`GET /api/typesense-key`): mints a Typesense scoped search key (HMAC-SHA256 + base64) from `TYPESENSE_BROWSER_PARENT_KEY`. Embed is just `{ use_cache: true }`. `limit_hits` is intentionally **not** embedded because Typesense counts raw hits (not grouped rows) and would block normal anon traffic on `group_by company_id` with `group_limit 10`.
+- **TTL**: 5 min for anon, 10 min for authed. Browser caches the key in memory and refreshes 30 s before expiry. The cache is cleared via `useClearTypesenseOnAuthChange(isLoggedIn)` (called from each client surface) so a sign-in/out doesn't keep the wrong key.
+- **Browser provider**: `apps/web/src/lib/search/typesense-browser.ts` (postings/companies), `typesense-browser-typeahead.ts` (taxonomy suggest), `typesense-browser-watchlist.ts`. All thin -- no `typesense-js` runtime dependency in the browser bundle.
+- **Anon truncation**: enforced as a soft client-side cap (`ANON_MAX_COMPANIES`, `ANON_MAX_POSTINGS`, `ANON_MAX_WATCHLIST_POSTINGS`) matching the current server-action behaviour. Real abuse protection is the Cloudflare per-IP rate-limit on the tunnel hostname.
+- **Fallback**: every runner falls back to the corresponding server action when the browser path errors, returns degraded, or hits a code-explicit fallback case (e.g. watchlist >100 companies).
 
 ## Read paths summary
 
