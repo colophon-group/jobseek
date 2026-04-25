@@ -1,7 +1,7 @@
 """Sample diverse job postings from the local Postgres for daily labelling.
 
 Diversity objective: one posting per company first, then fill the remaining
-slots by weighted sampling under-represented occupations/locales.
+slots by weighted sampling under-represented professions/locales.
 """
 
 from __future__ import annotations

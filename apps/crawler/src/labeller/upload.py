@@ -92,7 +92,7 @@ from datasets import load_dataset
 ds = load_dataset("viktoroo/jobseek-postings-labelled", split="train")
 row = ds[0]
 print(row["input"]["title_raw"])
-print(row["labels"]["globals"]["occupation"])
+print(row["labels"]["globals"]["profession"])
 ```
 
 ## Structure
@@ -122,7 +122,7 @@ not published.
   detected locale; char count; numbered `blocks` array
 - `labels.sections` — list of `{kind, block_ids, extracted}` — block-ID
   ranges + per-kind structured fields
-- `labels.globals` — `occupation` (English), `seniority` (English
+- `labels.globals` — `profession` (English), `seniority` (English
   free-text), `employment_type`, `locales_in_posting` (ISO-639-1),
   `locations` (verbatim raw + parsed city/region/country)
 - `labelling_meta` — `qa_verdict`, optional `qa_rationale`, `retries`
@@ -158,7 +158,7 @@ For the extractable kinds (`team`, `role`, `requirements`, `preferred`,
 
 ### Cross-section globals (Pass 3)
 
-English-normalised free-text `occupation`; English free-text
+English-normalised free-text `profession`; English free-text
 `seniority`; ISO-639-1 `locales_in_posting`; `employment_type` enum;
 `locations` list.
 
@@ -173,7 +173,7 @@ English-normalised free-text `occupation`; English free-text
 - **Multilingual gold, not translated gold.** Descriptions stay in the
   source language. Verbatim fields (title, description, responsibilities,
   `location.raw`) keep their original language; derived free-text
-  fields (`occupation`, skills, tools, perks, etc.) are English-
+  fields (`profession`, skills, tools, perks, etc.) are English-
   normalised when a canonical English form exists.
 
 ## Licensing
@@ -196,7 +196,7 @@ to an opt-out list for future runs.
 Every row passed these rules before upload:
 
 - Splitter coverage >= 40% of blocks claimed by some section.
-- `globals.occupation` non-empty.
+- `globals.profession` non-empty.
 - `globals.employment_type` non-null.
 - At least one extractable section with non-null `extracted`.
 - If the role section is present, at least one responsibility.

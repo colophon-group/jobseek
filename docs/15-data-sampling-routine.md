@@ -111,9 +111,8 @@ on a merged posting and emits a structured report matching
 quality, not a judge:
 
 - `split_coverage_min_40pct` — the splitter's sections cover ≥40% of blocks.
-- `occupation_non_empty` — `globals.occupation` is non-null and non-empty.
+- `profession_non_empty` — `globals.profession` is non-null and non-empty.
 - `employment_type_non_null` — `globals.employment_type` is set.
-- `at_least_one_location` — `globals.locations` has ≥1 entry.
 - `has_extractable_section` — at least one of team/role/requirements/preferred/benefits present.
 - `section_<kind>_has_extraction` — every extractable section has non-null `extracted`.
 - `role_responsibilities_non_empty` — when the role section is present, it has ≥1 responsibility.
@@ -155,7 +154,7 @@ README.md
 | bucket | canonicalized? | language |
 |---|---|---|
 | **verbatim** (title, description text/html, section text, responsibilities bullets, location.raw) | no | source |
-| **free-text** (occupation, seniority, technologies, skills, industries, team name/function, certifications, collaboration partners, perks, city/region) | deferred to downstream training — no canonicalizer in this pipeline | English-normalized |
+| **free-text** (profession, seniority, technologies, skills, industries, team name/function, certifications, collaboration partners, perks, city/region) | deferred to downstream training — no canonicalizer in this pipeline | English-normalized |
 | **free-text non-canonicalized** (role_summary, physical_requirements) | no | English or source |
 | **closed primitive** (enums, ints, bools, ISO codes) | n/a | — |
 
@@ -172,7 +171,7 @@ The deterministic normalizer produces a list of top-level HTML blocks (`p`, `ul`
 
 ## Canonicalization (out of scope for this pipeline)
 
-Free-text labels (`occupation`, `seniority`, skills, technologies, industries, etc.) are stored **as-is**. No rule-based canonicalizer runs at upload time.
+Free-text labels (`profession`, `seniority`, skills, technologies, industries, etc.) are stored **as-is**. No rule-based canonicalizer runs at upload time.
 
 Rationale: the dataset's purpose is to *train* a canonicalizer that is better than the current rule-based approach. Running the same rule-based mapping we're trying to replace — as a sidecar — would couple the dataset to the thing it's supposed to make obsolete. Canonical ID resolution is the consumer's concern (training data preprocessing, serving-side mapping, etc.), not this pipeline's.
 

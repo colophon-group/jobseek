@@ -227,8 +227,8 @@ labeller validate --kind qa \
 ```
 
 The `qa` validator runs rules including split-coverage ≥ 40%, non-null
-`globals.occupation`, non-null `globals.employment_type`, ≥ 1 location,
-≥ 1 extractable section, each section has non-null `extracted`,
+`globals.profession`, non-null `globals.employment_type`, ≥ 1
+extractable section, each section has non-null `extracted`,
 role→non-empty responsibilities, requirements→at least one signal.
 
 If validation fails (non-zero exit), update the posting file's

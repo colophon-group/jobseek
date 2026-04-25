@@ -1,6 +1,6 @@
 ---
 name: jobseek-labeller-extract-globals
-description: Derive cross-section labels — occupation (English), seniority (English free-text), employment type, locales, locations. Invoked once per posting after all per-section extractors have run.
+description: Derive cross-section labels — profession (English), seniority (English free-text), employment type, locales, locations. Invoked once per posting after all per-section extractors have run.
 tools: Read, Write
 model: sonnet
 ---
@@ -24,7 +24,7 @@ OUTPUT: <path>
 ## Hard rules
 
 - Use only Read and Write.
-- `occupation` is an English **role family** derived from title + role context — not the literal title. Examples: `"backend engineering"` (not "Senior Backend Engineer"), `"registered nursing"` (not "RN III"), `"store management"`.
+- `profession` is an English **noun-form role title** as narrow as the title + role context support — not the literal title, not seniority-modified. Examples: `"backend engineer"` (not "Senior Backend Engineer"), `"registered nurse"` (not "RN III"), `"store manager"`. Strip seniority words (Senior/Lead/Director/VP/Chief) into the `seniority` field; keep the rank word only when it names a recognized role title (`"account executive"`, `"project manager"`, `"customer success manager"`, `"general manager"`, `"engineering manager"`).
 - `seniority` is English free-text — the rank/level derived from title + evidence. Examples: `"senior"`, `"staff engineer"`, `"charge nurse"`, `"senior partner"`, `"department head"`.
 - `locations`: every distinct location mentioned (usually header or benefits). `raw` is required and **verbatim**. `city`/`region`/`country` are English-normalized where a canonical English form exists.
 - `locales_in_posting`: ISO-639-1 codes for language(s) actually used in the description.
