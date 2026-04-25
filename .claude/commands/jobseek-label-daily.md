@@ -4,9 +4,9 @@ description: Daily labelled-postings routine — sample diverse job postings fro
 allowed-tools:
   - Bash(cd apps/crawler)
   - Bash(labeller *)
-  - Bash(uv run labeller *)
   - Read
   - Write
+  - Edit
   - Agent
 ---
 
@@ -281,12 +281,13 @@ Print a final summary:
 - Never modify the orchestrator's own prompt file or subagent files.
 - Never make direct Anthropic API calls — everything is an `Agent(...)` tool
   call inside this Claude Code session.
-- Never invoke `gh`, `git`, `curl`, or any other external mutation tool
+- Never invoke `gh`, `git`, `curl`, `mkdir`, `rm`, `mv`, `cat`,
+  `python`, or any other shell command outside `labeller *`
   during a labelling run. The pipeline only needs `labeller` CLI, `Read`,
-  `Write`, and `Agent`. The frontmatter pre-approves exactly that surface;
-  anything else falls through to the user's default permission policy and
-  will surface a prompt — treat that prompt as a stop signal, not as a
-  request to approve.
+  `Write`, `Edit`, and `Agent`. The frontmatter pre-approves exactly
+  that surface; anything else falls through to the user's default
+  permission policy and will surface a prompt — treat that prompt as a
+  stop signal, not as a request to approve.
 - If any command fails unexpectedly (non-zero exit that isn't a known
   validate-failed path), stop the run for that posting, record the error,
   continue to the next posting.
@@ -298,9 +299,10 @@ Print a final summary:
 
 The `allowed-tools:` frontmatter at the top of this file is **additive**:
 it pre-approves the legitimate orchestrator surface (`labeller` Bash
-invocations, `Read`, `Write`, `Agent`) so the routine runs without per-
-step prompts. It does **not** deny anything — Claude Code permissions are
-augmentative, not restrictive. The actual containment surface is:
+invocations, `Read`, `Write`, `Edit`, `Agent`) so the routine runs
+without per-step prompts. It does **not** deny anything — Claude Code
+permissions are augmentative, not restrictive. The actual containment
+surface is:
 
 1. The Hard rules above, which forbid out-of-lane invocations.
 2. The user's default permission policy: any tool call outside the
