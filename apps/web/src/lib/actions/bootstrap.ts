@@ -4,6 +4,7 @@ import { getSession } from "@/lib/sessionCache";
 import { getPreferences } from "@/lib/actions/preferences";
 import { getSavedJobStatuses, type SavedJobStatus } from "@/lib/actions/saved-jobs";
 import { getStarredCompanyIds } from "@/lib/actions/starred-companies";
+import { getQueueStatuses } from "@/lib/actions/queue";
 
 export type SessionUser = {
   id: string;
@@ -32,18 +33,20 @@ export type AppBootstrapData = {
   prefs: AppPreferences | null;
   savedStatuses: SavedJobStatus[];
   starredIds: string[];
+  queueStatuses: Array<{ postingId: string; queued: boolean; queueId?: string; analyzed: boolean }>;
 };
 
 export async function fetchAppBootstrap(): Promise<AppBootstrapData> {
   const session = await getSession();
   if (!session) {
-    return { user: null, prefs: null, savedStatuses: [], starredIds: [] };
+    return { user: null, prefs: null, savedStatuses: [], starredIds: [], queueStatuses: [] };
   }
 
-  const [prefs, savedStatuses, starredIds] = await Promise.all([
+  const [prefs, savedStatuses, starredIds, queueStatuses] = await Promise.all([
     getPreferences(),
     getSavedJobStatuses(),
     getStarredCompanyIds(),
+    getQueueStatuses(),
   ]);
 
   return {
@@ -51,5 +54,6 @@ export async function fetchAppBootstrap(): Promise<AppBootstrapData> {
     prefs: prefs as AppPreferences | null,
     savedStatuses,
     starredIds,
+    queueStatuses,
   };
 }

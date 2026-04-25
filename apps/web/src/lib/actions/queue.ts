@@ -174,6 +174,29 @@ export async function getQueueItems(params: {
   return { items, total };
 }
 
+export async function getQueueStatuses(): Promise<
+  Array<{ postingId: string; queued: boolean; queueId?: string; analyzed: boolean }>
+> {
+  const userId = await getSessionUserId();
+  if (!userId) return [];
+
+  const items = await db
+    .select({
+      postingId: jobQueue.postingId,
+      queueId: jobQueue.id,
+      analyzedAt: jobQueue.analyzedAt,
+    })
+    .from(jobQueue)
+    .where(eq(jobQueue.userId, userId));
+
+  return items.map((item) => ({
+    postingId: item.postingId,
+    queued: true,
+    queueId: item.queueId,
+    analyzed: item.analyzedAt !== null,
+  }));
+}
+
 export async function analyzeQueueItem(
   queueId: string,
   postingId: string,

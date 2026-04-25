@@ -5,6 +5,7 @@ import { fetchAppBootstrap, type AppBootstrapData } from "@/lib/actions/bootstra
 import { SessionProvider } from "@/components/SessionProvider";
 import { SavedJobsProvider } from "@/components/SavedJobsProvider";
 import { StarredCompaniesProvider } from "@/components/StarredCompaniesProvider";
+import { QueueProvider } from "@/components/QueueProvider";
 import { SalaryDisplayProvider } from "@/components/SalaryDisplayProvider";
 import { BannerProvider } from "@/components/BannerProvider";
 import { PreferencesInitializer } from "@/components/PreferencesInitializer";
@@ -24,23 +25,25 @@ export function AppBootstrapProvider({ children }: { children: ReactNode }) {
     <SessionProvider user={user} isPending={isPending}>
       <SavedJobsProvider initialStatuses={data?.savedStatuses}>
         <StarredCompaniesProvider initialIds={data?.starredIds}>
-          <SalaryDisplayProvider
-            displayCurrency={prefs?.displayCurrency ?? null}
-            salaryPeriod={prefs?.salaryPeriod ?? null}
-          >
-            <BannerProvider serverDismissed={prefs?.dismissedBanners}>
-              {prefs && (
-                <PreferencesInitializer
-                  theme={prefs.theme}
-                  themeUpdatedAt={prefs.themeUpdatedAt ? String(prefs.themeUpdatedAt) : null}
-                  locale={prefs.locale}
-                  localeUpdatedAt={prefs.localeUpdatedAt ? String(prefs.localeUpdatedAt) : null}
-                  cookieConsent={prefs.cookieConsent}
-                />
-              )}
-              {children}
-            </BannerProvider>
-          </SalaryDisplayProvider>
+          <QueueProvider initialStatuses={data?.queueStatuses}>
+            <SalaryDisplayProvider
+              displayCurrency={prefs?.displayCurrency ?? null}
+              salaryPeriod={prefs?.salaryPeriod ?? null}
+            >
+              <BannerProvider serverDismissed={prefs?.dismissedBanners}>
+                {prefs && (
+                  <PreferencesInitializer
+                    theme={prefs.theme}
+                    themeUpdatedAt={prefs.themeUpdatedAt ? String(prefs.themeUpdatedAt) : null}
+                    locale={prefs.locale}
+                    localeUpdatedAt={prefs.localeUpdatedAt ? String(prefs.localeUpdatedAt) : null}
+                    cookieConsent={prefs.cookieConsent}
+                  />
+                )}
+                {children}
+              </BannerProvider>
+            </SalaryDisplayProvider>
+          </QueueProvider>
         </StarredCompaniesProvider>
       </SavedJobsProvider>
     </SessionProvider>
