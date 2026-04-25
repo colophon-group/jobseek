@@ -4,7 +4,10 @@
   "title": "Global (cross-section) labels",
   "type": "object",
   "required": [
-    "occupation",
+    "profession",
+    "title_normalized",
+    "store_number",
+    "reference_number",
     "seniority",
     "employment_type",
     "locales_in_posting",
@@ -12,7 +15,22 @@
   ],
   "additionalProperties": false,
   "properties": {
-    "occupation": {"type": ["string", "null"]},
+    "profession": {
+      "type": ["string", "null"],
+      "description": "English noun-form role family, as narrow as the title + role section support. Example: 'backend engineer', 'registered nurse', 'store manager', 'barista'. Not the literal title; not the seniority-modified form."
+    },
+    "title_normalized": {
+      "type": ["string", "null"],
+      "description": "The clean display title — modifiers kept (Senior/Lead/Principal/Java/Backend), team/store/region/work-mode/gender suffixes stripped. Source-language preserved when the role term is non-English (e.g. German 'Aushilfe / Abrufkraft als Postbote ...')."
+    },
+    "store_number": {
+      "type": ["string", "null"],
+      "description": "Store / branch / location identifier extracted from the title (e.g. '02209' from 'Store# 02209'). String to preserve leading zeros."
+    },
+    "reference_number": {
+      "type": ["string", "null"],
+      "description": "Internal requisition / job ID extracted from the title (e.g. 'T0305', 'R0430475'). Distinct from store_number."
+    },
     "seniority": {"type": ["string", "null"]},
     "employment_type": {
       "type": ["string", "null"],

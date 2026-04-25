@@ -136,13 +136,13 @@ def run_qa_rules(posting: dict) -> list[dict]:
         }
     )
 
-    # Rule 2: globals.occupation non-null and non-empty
-    occ = globals_.get("occupation")
+    # Rule 2: globals.profession non-null and non-empty
+    prof = globals_.get("profession")
     rules.append(
         {
-            "name": "occupation_non_empty",
-            "passed": bool(occ and str(occ).strip()),
-            "detail": repr(occ),
+            "name": "profession_non_empty",
+            "passed": bool(prof and str(prof).strip()),
+            "detail": repr(prof),
         }
     )
 

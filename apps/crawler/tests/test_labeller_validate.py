@@ -219,38 +219,41 @@ def test_cut_fields_rejected_by_benefits_schema():
     assert errors, "benefits schema should reject cut field 'bonus_offered'"
 
 
-def test_globals_schema_minimal():
-    data = {
-        "occupation": None,
+def _minimal_globals(**overrides: object) -> dict:
+    base = {
+        "profession": None,
+        "title_normalized": None,
+        "store_number": None,
+        "reference_number": None,
         "seniority": None,
         "employment_type": None,
         "locales_in_posting": [],
         "locations": [],
     }
-    assert validate_schema("globals", data) == []
+    base.update(overrides)
+    return base
+
+
+def test_globals_schema_minimal():
+    assert validate_schema("globals", _minimal_globals()) == []
 
 
 def test_globals_schema_rejects_cut_field():
     """technologies_aggregate was cut; schema must reject it."""
-    data = {
-        "occupation": None,
-        "seniority": None,
-        "employment_type": None,
-        "locales_in_posting": [],
-        "locations": [],
-        "technologies_aggregate": [],
-    }
+    data = _minimal_globals()
+    data["technologies_aggregate"] = []
+    assert validate_schema("globals", data)
+
+
+def test_globals_schema_rejects_old_occupation_field():
+    """occupation was renamed to profession in the title-normalization refactor."""
+    data = _minimal_globals()
+    data["occupation"] = "backend engineering"
     assert validate_schema("globals", data)
 
 
 def test_globals_schema_location_type_required():
-    data = {
-        "occupation": None,
-        "seniority": None,
-        "employment_type": None,
-        "locales_in_posting": [],
-        "locations": [{"raw": "Dublin, Ireland"}],  # missing type
-    }
+    data = _minimal_globals(locations=[{"raw": "Dublin, Ireland"}])  # missing type
     assert validate_schema("globals", data)
 
 
@@ -311,7 +314,10 @@ def _minimal_merged_posting(overrides: dict | None = None) -> dict:
                 },
             ],
             "globals": {
-                "occupation": "backend engineering",
+                "profession": "backend engineer",
+                "title_normalized": "Senior Backend Engineer",
+                "store_number": None,
+                "reference_number": None,
                 "seniority": "senior",
                 "employment_type": "full_time",
                 "locales_in_posting": ["en"],
@@ -332,13 +338,13 @@ def test_qa_accepts_minimal_good_posting():
     assert report["verdict"] == "accepted", report
 
 
-def test_qa_rejects_missing_occupation():
+def test_qa_rejects_missing_profession():
     posting = _minimal_merged_posting()
-    posting["labels"]["globals"]["occupation"] = None
+    posting["labels"]["globals"]["profession"] = None
     report = qa_report(posting)
     assert report["verdict"] == "rejected"
     failed = [r["name"] for r in report["rules"] if not r["passed"]]
-    assert "occupation_non_empty" in failed
+    assert "profession_non_empty" in failed
 
 
 def test_qa_accepts_no_locations():
@@ -387,8 +393,8 @@ def test_validate_file_qa_kind(tmp_path: Path):
     assert validate_file("qa", p) == []
 
     bad = _minimal_merged_posting()
-    bad["labels"]["globals"]["occupation"] = None
+    bad["labels"]["globals"]["profession"] = None
     p2 = _write(tmp_path / "bad.json", bad)
     errs = validate_file("qa", p2)
     assert errs
-    assert any("occupation_non_empty" in e for e in errs)
+    assert any("profession_non_empty" in e for e in errs)

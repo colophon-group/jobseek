@@ -110,8 +110,44 @@ Always `null` — these sections are kept for span classification only.
 
 ## Globals field rules
 
-- `occupation`: English free-text role family (e.g. `"backend engineering"`, `"registered nursing"`, `"store management"`, `"tax law"`). **Not** the literal title.
-- `seniority`: English free-text rank. **Prefer non-null** when title or years_experience_min gives a signal: `"senior"` / `"staff engineer"` / `"principal"` / `"lead"` / `"manager"` / `"director"` / `"vp"` / `"head of"` / `"chief"` / `"senior manager"` if the title contains those words; `"senior"` or `"mid"` if `years_experience_min` is 5+ / 2–5; `"entry"` or `"junior"` for 0–2 years or "graduate" / "Ausbildung" / "apprentice" markers; `"intern"` for explicit internships. Use `null` only when the title is bare (e.g. "Accountant") AND no experience signal is present.
+- `profession`: **English noun-form** role family, as **narrow** as the title + role section support. Examples:
+  - `"backend engineer"` (not `"backend engineering"`, not `"software engineer"` if the role is clearly backend)
+  - `"registered nurse"` (not `"registered nursing"`; `"pediatric nurse"` only if pediatrics is explicitly the specialty)
+  - `"store manager"` (not `"store management"`) — note: `"store manager"` IS the profession, "manager" is built-in to the title
+  - `"tax lawyer"` (not `"tax law"`)
+  - `"barista"`, `"warehouse associate"`, `"data scientist"`, `"site reliability engineer"`, `"machine operator"`
+  - **Not** the literal title; **not** seniority-modified (no "senior backend engineer" — seniority is a separate field).
+  - **Critical: do NOT duplicate the seniority word.** If `seniority` will be `"director"` / `"manager"` / `"executive"` / `"vp"` / `"chief"` / `"head of"` / `"lead"` / `"principal"` / `"staff"`, the profession field must NOT end in that same word. Use the underlying domain noun instead.
+    - `"Tax Director"` → `profession="tax accountant"`, `seniority="director"` (NOT `profession="tax director"`)
+    - `"GRC Director"` → `profession="compliance specialist"`, `seniority="director"` (NOT `"grc director"`)
+    - `"Event Marketing Manager"` → `profession="marketing specialist"` (or `"event marketer"`), `seniority="manager"`
+    - `"VP, Global People Enablement"` → `profession="people operations specialist"`, `seniority="vp"`
+    - `"Senior Manager FP&A"` → `profession="financial analyst"`, `seniority="senior manager"`
+    - `"Communications Manager"` → `profession="communications specialist"`, `seniority="manager"`
+  - **Exceptions where the rank word stays in profession** (it's part of the canonical role title, not a separate rank):
+    - `"Account Executive"` → `profession="account executive"` (sales role title); add `seniority` only if title says `"Senior Account Executive"` etc.
+    - `"Project Manager"` → `profession="project manager"` (project mgmt is the discipline)
+    - `"Customer Success Manager"` → `profession="customer success manager"` (recognized role title)
+    - `"General Manager"` → `profession="general manager"` (operations role title)
+    - `"Chief of Staff"` → `profession="chief of staff"` (role title)
+    - `"Engineering Manager"` → `profession="engineering manager"` (people-management track is its own profession)
+    - When in doubt, ask: "is `<word>` here naming the discipline (KEEP) or naming the rank within the discipline (MOVE to seniority)?"
+- `title_normalized`: the clean display title.
+  - **Keep**: seniority modifiers (Senior, Lead, Principal, Manager, Director, VP, Chief), specialty modifiers that change the role meaning (Java, Frontend, Low Voltage, ERP, Tax, Pediatric, Commercial).
+  - **Strip**: store / requisition numbers (route them to `store_number` / `reference_number`); gender-inclusive markers `(m/w/d)`, `(H/F/X)`, `(w/m/d)` (drop entirely); work-mode markers `(Remote)` / `(Onsite)` / `(Hybrid)` (route to `benefits.remote_policy`); redundant acronyms `(RN)` after `Registered Nurse` (drop); region / country / city tags (route to `locations[]`); team / business-unit suffixes (route to `team.team_name`); internal department codes (CNS, AF, GFAC) (drop).
+  - Preserve the **source language** of the role description.
+  - Examples:
+    - `"barista - Store# 02209, FAIRDALE SHOPPES 2305 FAIRVIEW"` → `"Barista"`
+    - `"Account Executive, Western Europe"` → `"Account Executive"`
+    - `"Senior Java Developer - Assistant Vice President"` → `"Senior Java Developer"` (AVP routes to `seniority`)
+    - `"Registered Nurse (RN) - Remote"` → `"Registered Nurse"`
+    - `"Aushilfe / Abrufkraft als Postbote für Pakete und Briefe in Augsburg (m/w/d)"` → `"Aushilfe / Abrufkraft als Postbote für Pakete und Briefe"`
+    - `"Lead R&D Engineer - Low Voltage"` → `"Lead R&D Engineer - Low Voltage"` (substantive specialty kept)
+    - `"Manager Business Analyst - Aladdin - Data - Wealth & Asset Management"` → `"Manager Business Analyst"` (Aladdin → tool, the rest → team)
+    - `"Vice President, Global People Enablement (Consultant)"` → `"Vice President, Global People Enablement"` ("(Consultant)" routes to `employment_type`)
+- `store_number`: string identifier from `Store#`, `Branch#`, `Shop#`, etc. (preserve leading zeros; `null` if absent). Example: `"02209"` from `"Store# 02209"`.
+- `reference_number`: string requisition / job ID from `Req#`, `Req ID`, `(T0305)`, `R0430475`, etc. (`null` if absent). Distinct from store_number.
+- `seniority`: English free-text rank. **Prefer non-null** when title or years_experience_min gives a signal: `"senior"` / `"staff engineer"` / `"principal"` / `"lead"` / `"manager"` / `"director"` / `"vp"` / `"head of"` / `"chief"` / `"senior manager"` / `"assistant vice president"` if the title contains those words; `"senior"` or `"mid"` if `years_experience_min` is 5+ / 2–5; `"entry"` or `"junior"` for 0–2 years or "graduate" / "Ausbildung" / "apprentice" markers; `"intern"` for explicit internships. Use `null` only when the title is bare (e.g. "Accountant") AND no experience signal is present.
 - `employment_type`: one of `"full_time"`, `"part_time"`, `"contract"`, `"internship"`, `"fellowship"`, `"apprenticeship"`, `"temporary"`, `"volunteer"`, or `null`. Title signals: "Interim" / "Fractional" / "Consultant" (as a title prefix) → `"contract"`. "Intern" / "Praktikum" / "Stagiaire" → `"internship"`. "Apprentice" / "Ausbildung" / "Alternance" → `"apprenticeship"`. "Seasonal" / "Summer" (non-intern) / "Holiday" → `"temporary"`. "Part-time" / "0.5 FTE" → `"part_time"`. Standard salaried roles with benefits mentioned and no contrary signal → `"full_time"`. `null` only when the title and body genuinely give no signal (rare).
 - `locales_in_posting[]`: ISO-639-1 codes actually used in the description.
 - `locations[]`: one object per **work location for this specific role**. Excludes: company stats ("we operate in 10 countries"), market coverage, LinkedIn hashtags (`#LI-Remote`), candidate-eligibility state lists. Empty array if nothing explicit.
@@ -127,7 +163,10 @@ Write JSON to `{{ output_path }}`:
     {"kind": "<from splitter>", "block_ids": [<from splitter>], "extracted": {...} | null}
   ],
   "globals": {
-    "occupation": null,
+    "profession": null,
+    "title_normalized": null,
+    "store_number": null,
+    "reference_number": null,
     "seniority": null,
     "employment_type": null,
     "locales_in_posting": [],
