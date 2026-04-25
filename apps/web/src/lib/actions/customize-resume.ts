@@ -86,6 +86,7 @@ Return ONLY the modified LaTeX content. Do not explain or comment.`;
 export async function customizeResume(params: {
   jobTitle: string;
   missingKeywords: string[];
+  originalContent?: string;
 }): Promise<CustomizationResult> {
   const userId = await getSessionUserId();
   if (!userId) throw new Error("Not authenticated");
@@ -95,7 +96,7 @@ export async function customizeResume(params: {
 
   // Try Sonnet first
   let customized = await callLlmForCustomization(
-    resume.filename, // Using filename as placeholder; in real scenario would fetch from R2
+    params.originalContent || resume.filename,
     params.missingKeywords,
     params.jobTitle,
     "sonnet",
@@ -104,7 +105,7 @@ export async function customizeResume(params: {
   // Fallback to GPT-4o
   if (!customized) {
     customized = await callLlmForCustomization(
-      resume.filename,
+      params.originalContent || resume.filename,
       params.missingKeywords,
       params.jobTitle,
       "gpt-4o",
@@ -114,18 +115,15 @@ export async function customizeResume(params: {
   if (!customized) {
     return {
       customized: false,
-      original: resume.filename,
+      original: params.originalContent || resume.filename,
       error: "Failed to customize resume with both models",
     };
   }
 
-  // Generate preview (simplified for now)
-  const preview = `Customized resume with keywords: ${params.missingKeywords.slice(0, 3).join(", ")}${params.missingKeywords.length > 3 ? ` +${params.missingKeywords.length - 3} more` : ""}`;
-
   return {
     customized: true,
-    original: resume.filename,
+    original: params.originalContent || resume.filename,
     customized_content: customized,
-    preview,
+    preview: `Customized resume with keywords: ${params.missingKeywords.slice(0, 3).join(", ")}${params.missingKeywords.length > 3 ? ` +${params.missingKeywords.length - 3} more` : ""}`,
   };
 }

@@ -41,12 +41,21 @@ describe("Resume Customization", () => {
   });
 
   it("should validate keyword compatibility", () => {
-    // Python is compatible with FastAPI, PostgreSQL, Redis, Docker
-    // But NOT with Spring Boot, C#, Java frameworks
     const pythonCompatible = ["FastAPI", "Django", "Flask", "PostgreSQL"];
     const pythonIncompatible = ["Spring Boot", "C#", "ASP.NET"];
 
     expect(pythonCompatible).toContain("PostgreSQL");
     expect(pythonIncompatible).not.toContain("PostgreSQL");
+  });
+
+  it("should accept optional original resume content", () => {
+    const params = {
+      jobTitle: "Senior Engineer",
+      missingKeywords: ["Kubernetes"],
+      originalContent: "test resume content",
+    };
+
+    expect(params).toHaveProperty("originalContent");
+    expect(typeof params.originalContent).toBe("string");
   });
 });
