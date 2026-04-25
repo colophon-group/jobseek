@@ -814,3 +814,42 @@ export const watchlistCompany = pgTable(
   ],
 );
 
+// ── Job Fit Queue ────────────────────────────────────────────────────
+
+export const jobQueue = pgTable(
+  "job_queue",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    postingId: uuid("posting_id")
+      .notNull()
+      .references(() => jobPosting.id, { onDelete: "cascade" }),
+    addedAt: timestamp("added_at", { withTimezone: true }).defaultNow().notNull(),
+    overlapScore: real("overlap_score"),
+    matchedKeywords: text("matched_keywords").array(),
+    missingKeywords: text("missing_keywords").array(),
+    fitExplanation: text("fit_explanation"),
+    analyzedAt: timestamp("analyzed_at", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("idx_jq_user_posting").on(table.userId, table.postingId),
+    index("idx_jq_user_added").on(table.userId, table.addedAt),
+  ],
+);
+
+export const userResume = pgTable("user_resume", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .unique()
+    .references(() => user.id, { onDelete: "cascade" }),
+  filename: text("filename").notNull(),
+  keywords: text("keywords").array().notNull().default([]),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+});
+
