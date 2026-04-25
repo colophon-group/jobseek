@@ -27,6 +27,7 @@ import { sanitizeJobHtml } from "@/lib/sanitize";
 import { InterviewList } from "./interview-list";
 import { timeAgoShort } from "@/lib/time";
 import { SaveButton } from "@/components/search/save-button";
+import { QueueIconButton } from "@/components/queue/QueueIconButton";
 import { ScrollFade } from "@/components/ui/scroll-fade";
 
 function useStatusOptionLabels(): Record<ApplicationStatus, string> {
@@ -326,6 +327,7 @@ function PostingContent({ detail }: { detail: PostingDetail }) {
           {timeAgoShort(detail.firstSeenAt)}
         </span>
         <SaveButton postingId={detail.id} />
+        <QueueIconButton postingId={detail.id} />
       </div>
     </>
   );
