@@ -10,8 +10,6 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-import pytest
-
 from src.retire_stale_boards import (
     _QUERY,
     format_csv_snippets,
@@ -87,20 +85,37 @@ def test_format_csv_empty_returns_friendly_comment() -> None:
     assert format_csv_snippets([]) == "# No retirement candidates found."
 
 
-def test_format_csv_renders_sed_per_row() -> None:
+def test_format_csv_renders_grep_per_row() -> None:
     out = format_csv_snippets([_row()])
-    assert "sed -i.bak" in out
+    assert "grep -vF" in out
     assert "data/boards.csv" in out
     assert "https://boards.greenhouse.io/acme" in out
     assert "# acme acme-careers (disabled)" in out
 
 
-def test_format_csv_uses_pipe_delimiter_to_avoid_url_slash_escaping() -> None:
-    """sed s/// uses `|` as the delimiter so URLs (which contain `/`) don't
-    require escaping."""
+def test_format_csv_uses_fixed_string_match_not_regex() -> None:
+    """`grep -F` is critical: URLs contain `.` which would otherwise be a regex
+    metachar and over-match unrelated rows (e.g. `jobs.x.com` matching
+    `jobsXxXcom`)."""
+    out = format_csv_snippets([_row(board_url="https://jobs.example.com/path")])
+    assert "grep -vF" in out
+    assert "https://jobs.example.com/path" in out
+
+
+def test_format_csv_skips_rows_with_unsafe_quote_in_url() -> None:
+    """Defensive: shell-unsafe URLs (rare; no-op today) emit a SKIP comment
+    rather than a snippet that the operator might paste blindly."""
+    out = format_csv_snippets([_row(board_url="https://x.com/o'brien")])
+    assert "SKIP" in out
+    assert "single quote" in out
+    assert "grep -vF" not in out
+
+
+def test_format_csv_anchors_on_url_with_csv_separators() -> None:
+    """The pattern `,<url>,` ensures we don't accidentally match a substring
+    of a different column (e.g. a URL embedded in scraper_config JSON)."""
     out = format_csv_snippets([_row()])
-    assert "'\\|^" in out
-    assert "|d'" in out
+    assert ",https://boards.greenhouse.io/acme," in out
 
 
 def test_format_csv_includes_operator_instructions_header() -> None:
@@ -124,17 +139,24 @@ def test_query_excludes_boards_with_active_postings() -> None:
 
 
 def test_query_excludes_companies_without_healthy_siblings() -> None:
-    """Retirement must not orphan a company — at least one healthy sibling
-    board must remain."""
+    """Retirement must not orphan a company — at least one live sibling
+    board must remain. Live = active OR suspect (matches the dispatcher's
+    definition in queries/monitor.py)."""
     assert "bs.healthy_siblings >= 1" in _QUERY
-    assert "sib.board_status = 'active'" in _QUERY
+    assert "sib.board_status IN ('active', 'suspect')" in _QUERY
     assert "sib.is_enabled = true" in _QUERY
 
 
+def test_query_treats_never_succeeded_as_strongest_candidate() -> None:
+    """A disabled board with `last_success_at IS NULL` (never succeeded)
+    must be a candidate, not silently excluded. The strip-NOT-NULL bug in
+    an earlier draft would have hidden these from the operator."""
+    assert "jb.last_success_at IS NULL" in _QUERY
+    assert "OR jb.last_success_at <" in _QUERY
+
+
 def test_query_filters_on_last_success_age_with_days_param() -> None:
-    """The --days threshold must apply to last_success_at, not last_checked_at
-    (a board that's been failing for N days but never succeeded long enough ago
-    is exactly the case)."""
+    """The --days threshold must apply to last_success_at."""
     assert "jb.last_success_at <" in _QUERY
     assert "$1::int || ' days'" in _QUERY
 
@@ -144,8 +166,8 @@ def test_query_orders_results_for_stable_diffs() -> None:
     assert "ORDER BY c.slug, bs.board_slug" in _QUERY
 
 
-@pytest.mark.parametrize("status", ["active", "suspect", "discovery"])
-def test_query_excludes_non_dead_statuses(status: str) -> None:
-    """Defensive: a board in `active`/`suspect`/`discovery` must not appear
-    even if last_success_at is old (it's actively being worked on)."""
-    assert f"'{status}'" not in _QUERY.split("WHERE")[1]
+def test_query_only_targets_dead_statuses_in_outer_filter() -> None:
+    """Defensive: the outer `board_status` filter must exclude live statuses.
+    `'active'`/`'suspect'` legitimately appear in the sibling sub-query —
+    use a full-string check on the outer filter clause."""
+    assert "jb.board_status IN ('disabled', 'gone')" in _QUERY

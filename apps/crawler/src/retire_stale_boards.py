@@ -17,10 +17,14 @@ to remove the rows from ``boards.csv``.
 A board is a retirement candidate when ALL of:
 
 - ``board_status IN ('disabled', 'gone')``
-- ``last_success_at < now() - interval '<days>'`` (default 14)
+- ``last_success_at`` is NULL (never succeeded) OR older than ``--days``
+  (default 14). A never-succeeded disabled board is the strongest
+  candidate, not the weakest.
 - Zero active postings remain (``job_posting.is_active = true``)
-- The company has at least one other healthy board so retirement won't
-  orphan it
+- The company has at least one other live board (``board_status IN
+  ('active', 'suspect')``, ``is_enabled = true``) so retirement won't
+  orphan it. Matches the live-board definition used by the dispatcher
+  (``queries/monitor.py``).
 """
 
 from __future__ import annotations
@@ -51,13 +55,15 @@ WITH board_stats AS (
             FROM job_board sib
             WHERE sib.company_id = jb.company_id
               AND sib.id <> jb.id
-              AND sib.board_status = 'active'
+              AND sib.board_status IN ('active', 'suspect')
               AND sib.is_enabled = true
         ) AS healthy_siblings
     FROM job_board jb
     WHERE jb.board_status IN ('disabled', 'gone')
-      AND jb.last_success_at IS NOT NULL
-      AND jb.last_success_at < now() - ($1::int || ' days')::interval
+      AND (
+        jb.last_success_at IS NULL
+        OR jb.last_success_at < now() - ($1::int || ' days')::interval
+      )
 )
 SELECT
     bs.*,
@@ -117,10 +123,13 @@ def format_md(rows: list[dict[str, Any]]) -> str:
 
 
 def format_csv_snippets(rows: list[dict[str, Any]]) -> str:
-    """Render `sed` snippets that delete the matching rows from boards.csv.
+    """Render `grep -vF` snippets that delete the matching rows from boards.csv.
 
-    Targets the ``board_url`` (CSV-unique). Output is a sequence of
-    ``sed -i.bak`` invocations the operator can copy-paste into a shell.
+    Targets the ``board_url`` (CSV-unique within the file) using a fixed-string
+    match, NOT regex — URLs contain `.` and would otherwise trigger
+    over-matching (e.g. `jobs.example.com` matching `jobsXexampleXcom`).
+    Each snippet rewrites the file in place via a temp file rename so the
+    operator can review with `git diff`.
     """
     if not rows:
         return "# No retirement candidates found."
@@ -132,11 +141,20 @@ def format_csv_snippets(rows: list[dict[str, Any]]) -> str:
         "",
     ]
     for r in rows:
-        # sed pattern: anchor on the board_url (column-bounded by `,` or EOL).
-        # Use `|` as the s/// delimiter to avoid escaping `/` in URLs.
-        url = (r["board_url"] or "").replace("|", r"\|")
+        url = r["board_url"] or ""
+        # Single-quote the URL for shell safety; embedded single-quotes
+        # would need escaping, but board URLs in this codebase don't
+        # contain quotes.
+        if "'" in url:
+            # Defensive: skip rows we can't safely shell-quote.
+            lines.append(
+                f"# SKIP {r['company_slug']} {r['board_slug']}: board_url "
+                "contains a single quote — drop the row manually."
+            )
+            continue
         lines.append(
-            f"sed -i.bak '\\|^[^,]*,[^,]*,{url},|d' data/boards.csv  "
+            f"grep -vF -- ',{url},' data/boards.csv > data/boards.csv.new "
+            f"&& mv data/boards.csv.new data/boards.csv  "
             f"# {r['company_slug']} {r['board_slug']} ({r['board_status']})"
         )
     return "\n".join(lines)

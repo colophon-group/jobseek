@@ -105,15 +105,19 @@ def parse_args() -> argparse.Namespace:
         "retire-stale-boards",
         help=(
             "List boards that are dead and safe to retire (board_status "
-            "in ('disabled', 'gone'), stale last_success_at, zero active "
-            "postings, company has at least one healthy sibling board)."
+            "in ('disabled', 'gone'); last_success_at is NULL or older "
+            "than --days; zero active postings; company has at least one "
+            "live sibling board)."
         ),
     )
     retire_p.add_argument(
         "--days",
         type=int,
         default=14,
-        help="Minimum days since last_success_at before a board is a candidate (default 14).",
+        help=(
+            "Minimum days since last_success_at before a board is a candidate "
+            "(default 14). Boards with NULL last_success_at always qualify."
+        ),
     )
     retire_p.add_argument(
         "--format",
