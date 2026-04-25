@@ -34,7 +34,7 @@ Board configurations. One row per job board. A company can have multiple boards.
 | `board_url` | Yes | Career page URL (unique). |
 | `monitor_type` | Yes | How to discover listings. Use any registered monitor type from `ws help monitors` (for example `greenhouse`, `workday`, `dom`, `api_sniffer`, `sitemap`). |
 | `monitor_config` | No | JSON string with monitor-specific settings. |
-| `scraper_type` | No | How to extract details: `json-ld`, `dom`, `nextdata`, `embedded`, `api_sniffer`. Empty for API monitors. |
+| `scraper_type` | No | How to extract details: `json-ld`, `dom`, `nextdata`, `embedded`, `api_sniffer`, or `skip`. Use `skip` only when the monitor returns full job data inline (rich monitors like `greenhouse`, `lever`, `ashby`, `recruitee`, `personio`, or `api_sniffer`/`nextdata` configured with a `fields` map). Pairing `skip` with a URL-only monitor (e.g. `dom`, `workday`, `sitemap`) leaves descriptions empty — `ws validate` rejects this. Leave empty when the monitor auto-resolves a scraper (see `ws help scrapers`). |
 | `scraper_config` | No | JSON string with scraper-specific settings. |
 
 ## Adding a Company

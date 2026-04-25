@@ -248,6 +248,71 @@ class TestValidateCsvs:
         errors = validate_csvs()
         assert not any("Invalid scraper_type" in str(e) for e in errors)
 
+    @pytest.mark.parametrize("monitor_type", ["dom", "workday", "sitemap", "smartrecruiters"])
+    def test_skip_scraper_rejected_for_url_only_monitor(self, tmp_path, monkeypatch, monitor_type):
+        """scraper_type=skip is only valid when the monitor returns rich data.
+
+        Regression guard for issue #2637 ("Broken descriptions from lazy
+        scraper configurers"): URL-only monitors paired with skip leave
+        descriptions silently empty in production.
+        """
+        self._write_csvs(
+            tmp_path,
+            "slug,name,website,logo_url,icon_url,logo_type\ntest,Test,https://test.com,,\n",
+            "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
+            f"test,test-careers,https://example.com,{monitor_type},,skip,\n",
+        )
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
+        errors = validate_csvs()
+        assert any(
+            f"scraper_type='skip' is invalid for monitor_type {monitor_type!r}" in str(e)
+            for e in errors
+        )
+
+    def test_skip_scraper_rejected_for_api_sniffer_without_fields(self, tmp_path, monkeypatch):
+        self._write_csvs(
+            tmp_path,
+            "slug,name,website,logo_url,icon_url,logo_type\ntest,Test,https://test.com,,\n",
+            "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
+            "test,test-careers,https://example.com,api_sniffer,,skip,\n",
+        )
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
+        errors = validate_csvs()
+        assert any(
+            "scraper_type='skip' is invalid for monitor_type 'api_sniffer'" in str(e)
+            for e in errors
+        )
+
+    def test_skip_scraper_allowed_for_api_sniffer_with_fields(self, tmp_path, monkeypatch):
+        cfg = '"{""api_url"": ""https://x"", ""fields"": {""title"": ""title""}}"'
+        self._write_csvs(
+            tmp_path,
+            "slug,name,website,logo_url,icon_url,logo_type\ntest,Test,https://test.com,,\n",
+            "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
+            f"test,test-careers,https://example.com,api_sniffer,{cfg},skip,\n",
+        )
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
+        errors = validate_csvs()
+        assert not any("scraper_type='skip' is invalid" in str(e) for e in errors)
+
+    @pytest.mark.parametrize(
+        "monitor_type", ["greenhouse", "lever", "ashby", "recruitee", "personio"]
+    )
+    def test_skip_scraper_allowed_for_rich_monitors(self, tmp_path, monkeypatch, monitor_type):
+        self._write_csvs(
+            tmp_path,
+            "slug,name,website,logo_url,icon_url,logo_type\ntest,Test,https://test.com,,\n",
+            "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
+            f"test,test-careers,https://example.com,{monitor_type},,skip,\n",
+        )
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
+        errors = validate_csvs()
+        assert not any("scraper_type='skip' is invalid" in str(e) for e in errors)
+
     def test_invalid_monitor_config_json(self, tmp_path, monkeypatch):
         self._write_csvs(
             tmp_path,

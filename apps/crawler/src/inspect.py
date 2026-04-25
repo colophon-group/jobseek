@@ -14,7 +14,11 @@ from src.core.scrapers import _REGISTRY as SCRAPER_REGISTRY
 from src.core.scrapers import JobContent
 from src.shared.constants import LOGO_TYPES, SLUG_RE, URL_RE, get_data_dir
 from src.shared.csv_io import read_csv
-from src.workspace._compat import all_monitor_types, auto_scraper_type
+from src.workspace._compat import (
+    all_monitor_types,
+    api_monitor_types,
+    auto_scraper_type,
+)
 
 _JOBCONTENT_FIELD_NAMES = frozenset(f.name for f in dc_fields(JobContent))
 
@@ -230,6 +234,39 @@ def validate_csvs() -> list[ValidationError]:
                             f"monitor_type {monitor_type!r} requires explicit "
                             "scraper_type (use 'skip' when the monitor returns "
                             "rich data, or name a scraper)"
+                        ),
+                    )
+                )
+
+        # scraper_type=skip is only valid when the monitor returns full job
+        # data inline (rich monitors, api_sniffer/nextdata with 'fields',
+        # or personio whose XML feed includes descriptions). Pairing skip
+        # with a URL-only monitor leaves descriptions empty silently — see
+        # issue #2637 ("Broken descriptions from lazy scraper configurers").
+        if scraper_type == "skip":
+            mc_obj_skip: dict | None = None
+            if monitor_config:
+                try:
+                    parsed = json.loads(monitor_config)
+                    if isinstance(parsed, dict):
+                        mc_obj_skip = parsed
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            skip_allowed = api_monitor_types() | {"personio"}
+            is_skip_ok = monitor_type in skip_allowed or (
+                monitor_type in ("api_sniffer", "nextdata")
+                and bool((mc_obj_skip or {}).get("fields"))
+            )
+            if not is_skip_ok:
+                errors.append(
+                    ValidationError(
+                        "boards.csv",
+                        i,
+                        (
+                            f"scraper_type='skip' is invalid for monitor_type "
+                            f"{monitor_type!r}: this monitor does not return "
+                            "rich job data inline. Pick a scraper_type or "
+                            "switch to a rich monitor."
                         ),
                     )
                 )
