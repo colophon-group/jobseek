@@ -6,8 +6,6 @@ import { jobQueue, jobPosting, company, userResume } from "@/db/schema";
 import { getSessionUserId } from "@/lib/sessionCache";
 import { extractKeywords } from "@/lib/resume/extract-keywords";
 
-export { scoreColor, formatScore } from "@/lib/queue-utils";
-
 export type QueueEntry = {
   id: string;
   addedAt: string;
