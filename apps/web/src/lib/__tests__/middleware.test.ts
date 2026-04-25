@@ -2,8 +2,21 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mockRedirect = vi.fn();
 
+// Headers-like wrapper around a plain Map. We don't need a full Headers
+// implementation — the middleware only calls set(), and tests only need get().
+class MockHeaders {
+  private store = new Map<string, string>();
+  set(name: string, value: string) {
+    this.store.set(name.toLowerCase(), value);
+  }
+  get(name: string): string | null {
+    return this.store.get(name.toLowerCase()) ?? null;
+  }
+}
+
 vi.mock("next/server", () => {
   class MockNextResponse {
+    headers = new MockHeaders();
     static redirect(url: URL) {
       mockRedirect(url);
       return new MockNextResponse();
@@ -19,7 +32,11 @@ vi.mock("next/server", () => {
 import { middleware, config } from "../../../middleware";
 import type { NextRequest } from "next/server";
 
-function createMockRequest(pathname: string, acceptLanguage?: string): NextRequest {
+function createMockRequest(
+  pathname: string,
+  acceptLanguage?: string,
+  cookieLocale?: string,
+): NextRequest {
   const url = new URL(`http://localhost${pathname}`);
   const headersMap = new Map<string, string>();
   if (acceptLanguage) headersMap.set("accept-language", acceptLanguage);
@@ -30,7 +47,10 @@ function createMockRequest(pathname: string, acceptLanguage?: string): NextReque
       forEach: (cb: (value: string, key: string) => void) => headersMap.forEach(cb),
     },
     cookies: {
-      get: (_name: string) => undefined,
+      get: (name: string) =>
+        name === "NEXT_LOCALE" && cookieLocale
+          ? { value: cookieLocale }
+          : undefined,
     },
     nextUrl: {
       clone: () => new URL(url),
@@ -79,6 +99,54 @@ describe("middleware", () => {
     middleware(createMockRequest("/"));
     const redirectUrl = mockRedirect.mock.calls[0][0] as URL;
     expect(redirectUrl.pathname).toBe("/en/");
+  });
+
+  it("uses the cookie locale when present", () => {
+    middleware(createMockRequest("/about", "de-DE,de;q=0.9", "fr"));
+    const redirectUrl = mockRedirect.mock.calls[0][0] as URL;
+    expect(redirectUrl.pathname).toBe("/fr/about");
+  });
+});
+
+describe("middleware caching", () => {
+  beforeEach(() => {
+    mockRedirect.mockClear();
+  });
+
+  it("sets Cache-Control + Vary on Accept-Language redirects", () => {
+    const response = middleware(
+      createMockRequest("/about", "de-DE,de;q=0.9"),
+    ) as unknown as { headers: { get: (n: string) => string | null } };
+    expect(response.headers.get("cache-control")).toBe(
+      "public, max-age=86400, s-maxage=86400",
+    );
+    expect(response.headers.get("vary")).toBe("Accept-Language");
+  });
+
+  it("sets cache headers on the default-locale fallback redirect", () => {
+    const response = middleware(createMockRequest("/")) as unknown as {
+      headers: { get: (n: string) => string | null };
+    };
+    expect(response.headers.get("cache-control")).toBe(
+      "public, max-age=86400, s-maxage=86400",
+    );
+  });
+
+  it("does NOT cache when a NEXT_LOCALE cookie is present", () => {
+    const response = middleware(
+      createMockRequest("/about", undefined, "fr"),
+    ) as unknown as { headers: { get: (n: string) => string | null } };
+    expect(response.headers.get("cache-control")).toBeNull();
+    expect(response.headers.get("vary")).toBeNull();
+  });
+
+  it("ignores an invalid cookie locale and still caches", () => {
+    const response = middleware(
+      createMockRequest("/about", "de-DE,de;q=0.9", "xx"),
+    ) as unknown as { headers: { get: (n: string) => string | null } };
+    expect(response.headers.get("cache-control")).toBe(
+      "public, max-age=86400, s-maxage=86400",
+    );
   });
 });
 

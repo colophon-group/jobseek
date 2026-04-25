@@ -22,10 +22,27 @@ function getLocale(request: NextRequest): string {
 }
 
 export function middleware(request: NextRequest) {
+  const cookieLocale = request.cookies.get(COOKIE_NAME)?.value;
   const locale = getLocale(request);
   const url = request.nextUrl.clone();
   url.pathname = `/${locale}${request.nextUrl.pathname}`;
-  return NextResponse.redirect(url);
+  const response = NextResponse.redirect(url);
+
+  // Cache the redirect at Vercel's CDN when the chosen locale comes from
+  // Accept-Language negotiation. Repeat requests with matching headers (most
+  // bot/shared-link traffic on root URLs) then reuse the redirect without
+  // re-invoking the middleware. We deliberately skip the cache when an
+  // explicit NEXT_LOCALE cookie is set: that path varies per user and Vary:
+  // Cookie would shard the cache by every session token. See issue #2642.
+  if (!cookieLocale || !isLocale(cookieLocale)) {
+    response.headers.set(
+      "Cache-Control",
+      "public, max-age=86400, s-maxage=86400",
+    );
+    response.headers.set("Vary", "Accept-Language");
+  }
+
+  return response;
 }
 
 export const config = {
