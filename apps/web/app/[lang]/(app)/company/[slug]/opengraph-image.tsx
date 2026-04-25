@@ -57,7 +57,14 @@ export async function generateStaticParams(): Promise<
       .map((h) => (h.document as Record<string, unknown>).slug)
       .filter((s): s is string => typeof s === "string");
     return slugs.flatMap((slug) => locales.map((lang) => ({ lang, slug })));
-  } catch {
+  } catch (err) {
+    // Misconfigured TYPESENSE_* in build env, transient Typesense outage,
+    // etc. Don't fail the build — but log so a silent zero-prerender is
+    // visible in CI output and observable as a deploy regression.
+    console.warn(
+      "[opengraph-image] generateStaticParams: skipping prerender",
+      err,
+    );
     return [];
   }
 }
