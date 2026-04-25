@@ -194,3 +194,92 @@ class TestMonitorOne:
         async with httpx.AsyncClient(transport=transport) as client:
             with pytest.raises(ValueError, match="Unknown monitor type"):
                 await monitor_one("https://example.com", "nonexistent", {}, client)
+
+    async def test_skip_ssl_routes_through_nossl_client(self, monkeypatch):
+        # When monitor_config sets skip_ssl: true (DiDi Intl: missing
+        # intermediate CA), the discoverer must receive a verify=False
+        # client, not the default verifying client passed in. Swap
+        # happens via create_nossl_http_client(); intercept that to
+        # confirm it's called and its client is the one threaded through.
+        import src.shared.http as http_mod
+        from src.core.monitors import _REGISTRY, MonitorType, _make_chunked_stream
+
+        captured: dict[str, object] = {}
+        nossl_clients: list[httpx.AsyncClient] = []
+
+        async def stub_discover(board, http, *, pw=None):
+            captured["http"] = http
+            return set()
+
+        real_factory = http_mod.create_nossl_http_client
+
+        def tracking_factory(*, use_proxy: bool = False) -> httpx.AsyncClient:
+            client = real_factory(use_proxy=use_proxy)
+            nossl_clients.append(client)
+            return client
+
+        # monitor_one imports create_nossl_http_client lazily inside the
+        # function body, so the patch must target the source module.
+        monkeypatch.setattr(http_mod, "create_nossl_http_client", tracking_factory)
+
+        probe = MonitorType(
+            name="__skip_ssl_probe__",
+            cost=1,
+            discover=stub_discover,
+            can_handle=None,
+            rich=False,
+            stream=_make_chunked_stream(stub_discover),
+        )
+        _REGISTRY.append(probe)
+        try:
+            outer = httpx.AsyncClient()
+            try:
+                await monitor_one(
+                    "https://example.com",
+                    "__skip_ssl_probe__",
+                    {"skip_ssl": True},
+                    outer,
+                )
+            finally:
+                await outer.aclose()
+        finally:
+            _REGISTRY.remove(probe)
+
+        assert len(nossl_clients) == 1, "skip_ssl monitor must build a nossl client"
+        assert captured["http"] is nossl_clients[0], (
+            "discoverer must receive the nossl client, not the verifying default"
+        )
+
+    async def test_skip_ssl_absent_uses_passed_client(self):
+        # No skip_ssl flag → monitor_one must not allocate a new client.
+        from src.core.monitors import _REGISTRY, MonitorType, _make_chunked_stream
+
+        captured: dict[str, object] = {}
+
+        async def stub_discover(board, http, *, pw=None):
+            captured["http"] = http
+            return set()
+
+        probe = MonitorType(
+            name="__no_skip_ssl_probe__",
+            cost=1,
+            discover=stub_discover,
+            can_handle=None,
+            rich=False,
+            stream=_make_chunked_stream(stub_discover),
+        )
+        _REGISTRY.append(probe)
+        try:
+            outer = httpx.AsyncClient()
+            try:
+                await monitor_one(
+                    "https://example.com",
+                    "__no_skip_ssl_probe__",
+                    {},
+                    outer,
+                )
+            finally:
+                await outer.aclose()
+        finally:
+            _REGISTRY.remove(probe)
+        assert captured["http"] is outer
