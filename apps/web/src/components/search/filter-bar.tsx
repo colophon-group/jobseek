@@ -3,8 +3,8 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { X, MapPin, Search, ChevronDown, ChevronUp, Globe, Briefcase, BarChart3 } from "lucide-react";
 import { useLingui, Trans } from "@lingui/react/macro";
-import { suggestLocations } from "@/lib/actions/locations";
 import type { LocationSuggestion } from "@/lib/actions/locations";
+import { runSuggestLocations as suggestLocations } from "@/lib/search/typeahead-runner";
 import { LocationModal } from "./location-modal";
 import { ScrollFade } from "@/components/ui/scroll-fade";
 

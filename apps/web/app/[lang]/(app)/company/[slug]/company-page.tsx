@@ -8,7 +8,9 @@ import { timeAgoShort } from "@/lib/time";
 import { SaveButton } from "@/components/search/save-button";
 import { JobDetailPanel } from "@/components/search/job-detail-dialog";
 import { SearchToolbar } from "@/components/search/search-toolbar";
-import { getCompanyPostings } from "@/lib/actions/company";
+import { runGetCompanyPostings } from "@/lib/search/search-runner";
+import { useClearTypesenseOnAuthChange } from "@/lib/search/use-clear-typesense-on-auth-change";
+import { useSession } from "@/components/SessionProvider";
 import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
 import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
 import { TruncationPrompt } from "@/components/TruncationPrompt";
@@ -82,6 +84,10 @@ export function CompanyPage({
   const searchParams = useSearchParams();
   const uiLocale = (params.lang as string) ?? locale;
   const { setPageActions } = useSearchStateStore();
+  const { isLoggedIn } = useSession();
+  const isLoggedInRef = useRef(isLoggedIn);
+  isLoggedInRef.current = isLoggedIn;
+  useClearTypesenseOnAuthChange(isLoggedIn);
 
   const [keywords, setKeywords] = useState<string[]>(initialKeywords);
   const [locations, setLocations] = useState<SelectedLocation[]>(initialLocations);
@@ -202,23 +208,26 @@ export function CompanyPage({
     const expMin = experienceMinRef.current;
     const expMax = experienceMaxRef.current;
     startSearch(async () => {
-      const result = await getCompanyPostings({
-        companyId: company.id,
-        keywords: kws,
-        locationIds: locationIds.length > 0 ? locationIds : undefined,
-        occupationIds: occupationIds.length > 0 ? occupationIds : undefined,
-        seniorityIds: seniorityIds.length > 0 ? seniorityIds : undefined,
-        technologyIds: technologyIds.length > 0 ? technologyIds : undefined,
-        employmentTypes: etypes.length > 0 ? etypes : undefined,
-        salaryMinEur: salMinEur,
-        salaryMaxEur: salMaxEur,
-        experienceMin: expMin,
-        experienceMax: expMax,
-        languages,
-        locale: uiLocale,
-        offset: 0,
-        limit: PAGE_SIZE,
-      });
+      const result = await runGetCompanyPostings(
+        {
+          companyId: company.id,
+          keywords: kws,
+          locationIds: locationIds.length > 0 ? locationIds : undefined,
+          occupationIds: occupationIds.length > 0 ? occupationIds : undefined,
+          seniorityIds: seniorityIds.length > 0 ? seniorityIds : undefined,
+          technologyIds: technologyIds.length > 0 ? technologyIds : undefined,
+          employmentTypes: etypes.length > 0 ? etypes : undefined,
+          salaryMinEur: salMinEur,
+          salaryMaxEur: salMaxEur,
+          experienceMin: expMin,
+          experienceMax: expMax,
+          languages,
+          locale: uiLocale,
+          offset: 0,
+          limit: PAGE_SIZE,
+        },
+        isLoggedInRef.current,
+      );
       setPostings(result.postings);
       setActiveCount(result.activeCount);
       setYearCount(result.yearCount);
@@ -463,23 +472,26 @@ export function CompanyPage({
     const salMinEur = toEur(salaryMin);
     const salMaxEur = toEur(salaryMax);
 
-    const result = await getCompanyPostings({
-      companyId: company.id,
-      keywords,
-      locationIds: locationIds.length > 0 ? locationIds : undefined,
-      occupationIds,
-      seniorityIds,
-      technologyIds,
-      employmentTypes: etypes,
-      salaryMinEur: salMinEur,
-      salaryMaxEur: salMaxEur,
-      experienceMin,
-      experienceMax,
-      languages,
-      locale: uiLocale,
-      offset: postings.length,
-      limit: PAGE_SIZE,
-    });
+    const result = await runGetCompanyPostings(
+      {
+        companyId: company.id,
+        keywords,
+        locationIds: locationIds.length > 0 ? locationIds : undefined,
+        occupationIds,
+        seniorityIds,
+        technologyIds,
+        employmentTypes: etypes,
+        salaryMinEur: salMinEur,
+        salaryMaxEur: salMaxEur,
+        experienceMin,
+        experienceMax,
+        languages,
+        locale: uiLocale,
+        offset: postings.length,
+        limit: PAGE_SIZE,
+      },
+      isLoggedInRef.current,
+    );
     if (result.truncated) setIsTruncated(true);
     if (result.postings.length > 0) {
       setPostings((prev) => {

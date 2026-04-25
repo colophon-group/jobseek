@@ -3,8 +3,8 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { X, MapPin } from "lucide-react";
 import { useLingui } from "@lingui/react/macro";
-import { suggestLocations } from "@/lib/actions/locations";
 import type { LocationSuggestion } from "@/lib/actions/locations";
+import { runSuggestLocations as suggestLocations } from "@/lib/search/typeahead-runner";
 import { ScrollFade } from "@/components/ui/scroll-fade";
 
 export interface SelectedLocation {
