@@ -1,0 +1,66 @@
+# TASK: extract `requirements` section labels
+
+## Title (context)
+
+{{ title_raw }}
+
+## Section text ({{ section_blocks|length }} blocks)
+
+{% for b in section_blocks -%}
+[{{ b.id }}] ({{ b.tag }}) {{ b.text }}
+{% endfor %}
+
+{% include '_partials/english_normalize.md.j2' %}
+
+## Fields
+
+- `years_experience_min` — integer, or `null` if not stated.
+- `years_experience_max` — integer, or `null`.
+- `education_level` — one of: `"none_required"`, `"secondary_school"`, `"vocational"`, `"bachelor"`, `"master"`, `"phd"`, `"professional_degree"`, or `null` if not stated.
+- `education_strict` — `true` if the education level is strictly required; `false` if preferred but not required; `null` if no education is mentioned.
+- `degree_fields` — English tags, e.g. `["computer_science", "electrical_engineering"]`, `["nursing"]`, `["business_administration"]`. Empty array if none.
+- `required_skills` — array of objects:
+  ```
+  {"skill": "<English-normalized name>", "years_min": <int|null>, "category": "<one of the categories below>"}
+  ```
+- `required_languages` — ISO-639-1 codes for spoken languages required (e.g. `["en", "de"]`). **Do not put spoken languages in `required_skills`.**
+- `required_certifications` — English-normalized certification names.
+- `security_clearance` — one of: `"none"`, `"us"`, `"uk"`, `"nato"`, `"eu"`, `"other"`, or `null` if not mentioned.
+- `physical_requirements` — array of strings, e.g. `["lift up to 50 lbs", "stand for 8 hours"]`. Verbatim or lightly paraphrased.
+- `background_check_required` — `true` / `false` / `null`.
+- `driving_license_required` — one of: `"none"`, `"standard"`, `"commercial"`, `"hazmat"`, `"other"`, or `null`.
+
+## Skill categories
+
+{% include '_partials/skill_category.md.j2' %}
+
+## Output
+
+Write JSON to `{{ output_path }}`:
+
+```json
+{
+  "years_experience_min": null,
+  "years_experience_max": null,
+  "education_level": null,
+  "education_strict": null,
+  "degree_fields": [],
+  "required_skills": [],
+  "required_languages": [],
+  "required_certifications": [],
+  "security_clearance": null,
+  "physical_requirements": [],
+  "background_check_required": null,
+  "driving_license_required": null
+}
+```
+
+{% include '_partials/json_only.md.j2' %}
+
+{% if previous_error -%}
+## Previous attempt failed
+
+```
+{{ previous_error }}
+```
+{% endif %}

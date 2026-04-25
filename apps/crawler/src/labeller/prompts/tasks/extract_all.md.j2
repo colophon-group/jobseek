@@ -1,0 +1,188 @@
+# TASK: combined per-section extraction + globals
+
+Produce per-section structured fields **and** cross-section globals in a single output. You have:
+
+- the splitter's section assignments (which block IDs belong to which kind),
+- the full description text,
+- the numbered blocks,
+- context (title, detected locale).
+
+Your job is to:
+
+1. Reproduce each section from the splitter's output, and for each **extractable kind** (`team`, `role`, `requirements`, `preferred`, `benefits`) emit the per-kind structured fields under `extracted`. For `company` and `application`, emit `"extracted": null`.
+2. Derive the `globals` block from the whole posting.
+
+## Title (verbatim, source language)
+
+{{ title_raw }}
+
+## Locale detected
+
+{{ description_locale_detected or 'unknown' }}
+
+## Full description text ({{ description_text|length }} chars, source language)
+
+```
+{{ description_text }}
+```
+
+## Blocks ({{ blocks|length }})
+
+{% for b in blocks -%}
+[{{ b.id }}] ({{ b.tag }}) {{ b.text }}
+{% endfor %}
+
+## Sections (from splitter — use these exact kind + block_ids)
+
+{% for s in sections -%}
+- **{{ s.kind }}** → blocks {{ s.block_ids | join(', ') }}
+{% endfor %}
+
+{% include '_partials/english_normalize.md.j2' %}
+
+## Per-section field rules
+
+### `team.extracted`
+- `team_name`: name of the specific team as written, or `null`.
+- `team_function_tags[]`: English-normalized tags describing what the team does.
+
+### `role.extracted`
+- `role_summary`: 1–2 sentence English paraphrase of what the role does. `null` if the section is too thin.
+- `responsibilities[]`: **verbatim bullet list** — copy EACH bullet or responsibility statement from the role section as a separate array entry, in source language, with no paraphrase, summary, or consolidation.
+  - If the role section contains a `<ul>` or `<ol>`, emit one entry **per `<li>`**, text-only (strip the `<li>` tags).
+  - If the role section contains prose paragraphs of responsibilities, emit one entry per sentence or per newline-delimited clause.
+  - **Never return an empty array** if the role section contains any responsibility-like content. The role section always has responsibilities — that's what makes it a role section. Empty `responsibilities` is considered a failure unless the section is literally empty.
+  - DO NOT summarize into `role_summary` instead. Both fields are required and independent.
+
+  Example (role section text is `"<li>Design APIs</li><li>Own on-call</li>"`):
+  ```json
+  "role_summary": "Senior engineer owning API design and the on-call rotation.",
+  "responsibilities": ["Design APIs", "Own on-call"]
+  ```
+- `collaboration_partners[]`: English free-text teams or roles the person works with.
+- `travel_expected`: one of `0`, `25`, `50`, `75`, `100`, or `null`.
+- `shift_pattern`: one of `"standard_daytime"`, `"evening"`, `"night"`, `"rotating"`, `"on_call"`, `"weekend_only"`, `"split_shift"`, `"variable"`, or `null`.
+- `hours_per_week`: integer or `null`.
+- `on_call_required`: `true` / `false` / `null`.
+
+### `requirements.extracted`
+- `years_experience_min`, `years_experience_max`: int or `null`. If the text says "3-5 years", min=3, max=5.
+- `education_level`: one of `"none_required"`, `"secondary_school"`, `"vocational"`, `"bachelor"`, `"master"`, `"phd"`, `"professional_degree"`, or `null`.
+- `education_strict`: `true` if explicitly required; `false` if "preferred"/"nice to have"; `null` if education isn't mentioned.
+- `degree_fields[]`: English tags like `["computer_science", "electrical_engineering"]`, `["nursing"]`.
+- `required_skills[]`: array of `{"skill": "<English name>", "years_min": <int|null>, "category": "<one below>"}`.
+- `required_languages[]`: ISO-639-1 codes for spoken languages (never in `required_skills`).
+- `required_certifications[]`: English-normalized certification names.
+- `security_clearance`: one of `"none"`, `"us"`, `"uk"`, `"nato"`, `"eu"`, `"other"`, or `null`.
+- `physical_requirements[]`: short phrases ("lift up to 50 lbs", "stand for 8 hours").
+- `background_check_required`: `true` / `false` / `null`.
+- `driving_license_required`: one of `"none"`, `"standard"`, `"commercial"`, `"hazmat"`, `"other"`, or `null`.
+
+### `preferred.extracted`
+- `preferred_skills[]`: `{"skill": "<English>", "category": "<one below>"}`.
+- `preferred_education`: same enum as `education_level`, or `null`.
+- `preferred_certifications[]`: English-normalized names.
+
+### `benefits.extracted`
+- `salary_min` / `salary_max`: integer (normalize "€90K" to `90000`) or `null`.
+- `salary_currency`: ISO 4217 (`EUR`, `USD`, etc.) or `null`.
+- `salary_period`: one of `"hour"`, `"day"`, `"week"`, `"month"`, `"year"`, `"project"`, or `null`.
+- `salary_transparency`: one of `"shown"`, `"range_in_description"`, `"not_shown"`, or `null`.
+- `compensation_type`: one of `"salary"`, `"hourly"`, `"commission_only"`, `"salary_plus_commission"`, `"tips_plus_base"`, `"piece_rate"`, `"stipend"`, `"fee_per_service"`, `"retainer"`, `"grant_funded"`, or `null`.
+- `equity_offered`: `true` / `false` / `null`. `null` when not mentioned; only `false` if the text explicitly denies it.
+- `remote_policy`: one of `"onsite"`, `"hybrid"`, `"remote"`, `"remote_anywhere"`, `"unclear"`, or `null`. Never guess.
+- `remote_region`: free-text region (`"EU"`, `"UK"`, `"US"`, `"APAC"`, etc.) or `null`.
+- `relocation_assistance`: `true` / `false` / `null`.
+- `visa_sponsorship`: one of `"yes"`, `"no"`, `"case_by_case"`, `"unknown"`. Covers any jurisdiction.
+- `annual_leave_days`: integer total days offered by the employer, or `null`. Statutory minimums alone don't count.
+- `annual_leave_unlimited`: `true` if "unlimited" (or equivalent); else `false` or `null`.
+- `parental_leave_weeks`: only if the employer's contribution is stated.
+- `learning_budget_amount_year`: integer or `null`.
+- `other_perks[]`: English-normalized short tags for anything not captured above (healthcare supplements, pension, signing bonuses, gym, commuter, mental health stipends, etc.).
+
+### `company.extracted` / `application.extracted`
+
+Always `null` — these sections are kept for span classification only.
+
+## Skill categories (closed vocab for `category` fields)
+
+{% include '_partials/skill_category.md.j2' %}
+
+## Globals field rules
+
+- `profession`: **English noun-form** role family, as **narrow** as the title + role section support. Examples:
+  - `"backend engineer"` (not `"backend engineering"`, not `"software engineer"` if the role is clearly backend)
+  - `"registered nurse"` (not `"registered nursing"`; `"pediatric nurse"` only if pediatrics is explicitly the specialty)
+  - `"store manager"` (not `"store management"`) — note: `"store manager"` IS the profession, "manager" is built-in to the title
+  - `"tax lawyer"` (not `"tax law"`)
+  - `"barista"`, `"warehouse associate"`, `"data scientist"`, `"site reliability engineer"`, `"machine operator"`
+  - **Not** the literal title; **not** seniority-modified (no "senior backend engineer" — seniority is a separate field).
+  - **Critical: do NOT duplicate the seniority word.** If `seniority` will be `"director"` / `"manager"` / `"executive"` / `"vp"` / `"chief"` / `"head of"` / `"lead"` / `"principal"` / `"staff"`, the profession field must NOT end in that same word. Use the underlying domain noun instead.
+    - `"Tax Director"` → `profession="tax accountant"`, `seniority="director"` (NOT `profession="tax director"`)
+    - `"GRC Director"` → `profession="compliance specialist"`, `seniority="director"` (NOT `"grc director"`)
+    - `"Event Marketing Manager"` → `profession="marketing specialist"` (or `"event marketer"`), `seniority="manager"`
+    - `"VP, Global People Enablement"` → `profession="people operations specialist"`, `seniority="vp"`
+    - `"Senior Manager FP&A"` → `profession="financial analyst"`, `seniority="senior manager"`
+    - `"Communications Manager"` → `profession="communications specialist"`, `seniority="manager"`
+  - **Exceptions where the rank word stays in profession** (it's part of the canonical role title, not a separate rank):
+    - `"Account Executive"` → `profession="account executive"` (sales role title); add `seniority` only if title says `"Senior Account Executive"` etc.
+    - `"Project Manager"` → `profession="project manager"` (project mgmt is the discipline)
+    - `"Customer Success Manager"` → `profession="customer success manager"` (recognized role title)
+    - `"General Manager"` → `profession="general manager"` (operations role title)
+    - `"Chief of Staff"` → `profession="chief of staff"` (role title)
+    - `"Engineering Manager"` → `profession="engineering manager"` (people-management track is its own profession)
+    - When in doubt, ask: "is `<word>` here naming the discipline (KEEP) or naming the rank within the discipline (MOVE to seniority)?"
+- `title_normalized`: the clean display title.
+  - **Keep**: seniority modifiers (Senior, Lead, Principal, Manager, Director, VP, Chief), specialty modifiers that change the role meaning (Java, Frontend, Low Voltage, ERP, Tax, Pediatric, Commercial).
+  - **Strip**: store / requisition numbers (route them to `store_number` / `reference_number`); gender-inclusive markers `(m/w/d)`, `(H/F/X)`, `(w/m/d)` (drop entirely); work-mode markers `(Remote)` / `(Onsite)` / `(Hybrid)` (route to `benefits.remote_policy`); redundant acronyms `(RN)` after `Registered Nurse` (drop); region / country / city tags (route to `locations[]`); team / business-unit suffixes (route to `team.team_name`); internal department codes (CNS, AF, GFAC) (drop).
+  - Preserve the **source language** of the role description.
+  - Examples:
+    - `"barista - Store# 02209, FAIRDALE SHOPPES 2305 FAIRVIEW"` → `"Barista"`
+    - `"Account Executive, Western Europe"` → `"Account Executive"`
+    - `"Senior Java Developer - Assistant Vice President"` → `"Senior Java Developer"` (AVP routes to `seniority`)
+    - `"Registered Nurse (RN) - Remote"` → `"Registered Nurse"`
+    - `"Aushilfe / Abrufkraft als Postbote für Pakete und Briefe in Augsburg (m/w/d)"` → `"Aushilfe / Abrufkraft als Postbote für Pakete und Briefe"`
+    - `"Lead R&D Engineer - Low Voltage"` → `"Lead R&D Engineer - Low Voltage"` (substantive specialty kept)
+    - `"Manager Business Analyst - Aladdin - Data - Wealth & Asset Management"` → `"Manager Business Analyst"` (Aladdin → tool, the rest → team)
+    - `"Vice President, Global People Enablement (Consultant)"` → `"Vice President, Global People Enablement"` ("(Consultant)" routes to `employment_type`)
+- `store_number`: string identifier from `Store#`, `Branch#`, `Shop#`, etc. (preserve leading zeros; `null` if absent). Example: `"02209"` from `"Store# 02209"`.
+- `reference_number`: string requisition / job ID from `Req#`, `Req ID`, `(T0305)`, `R0430475`, etc. (`null` if absent). Distinct from store_number.
+- `seniority`: English free-text rank. **Prefer non-null** when title or years_experience_min gives a signal: `"senior"` / `"staff engineer"` / `"principal"` / `"lead"` / `"manager"` / `"director"` / `"vp"` / `"head of"` / `"chief"` / `"senior manager"` / `"assistant vice president"` if the title contains those words; `"senior"` or `"mid"` if `years_experience_min` is 5+ / 2–5; `"entry"` or `"junior"` for 0–2 years or "graduate" / "Ausbildung" / "apprentice" markers; `"intern"` for explicit internships. Use `null` only when the title is bare (e.g. "Accountant") AND no experience signal is present.
+- `employment_type`: one of `"full_time"`, `"part_time"`, `"contract"`, `"internship"`, `"fellowship"`, `"apprenticeship"`, `"temporary"`, `"volunteer"`, or `null`. Title signals: "Interim" / "Fractional" / "Consultant" (as a title prefix) → `"contract"`. "Intern" / "Praktikum" / "Stagiaire" → `"internship"`. "Apprentice" / "Ausbildung" / "Alternance" → `"apprenticeship"`. "Seasonal" / "Summer" (non-intern) / "Holiday" → `"temporary"`. "Part-time" / "0.5 FTE" → `"part_time"`. Standard salaried roles with benefits mentioned and no contrary signal → `"full_time"`. `null` only when the title and body genuinely give no signal (rare).
+- `locales_in_posting[]`: ISO-639-1 codes actually used in the description.
+- `locations[]`: one object per **work location for this specific role**. Excludes: company stats ("we operate in 10 countries"), market coverage, LinkedIn hashtags (`#LI-Remote`), candidate-eligibility state lists. Empty array if nothing explicit.
+  Each entry: `{"raw": "<verbatim>", "city": "<English>", "region": "<state/province>", "country": "<ISO-3166-1 alpha-2>", "type": "<onsite|hybrid|remote_region|remote_global|unclear>"}`. Leave unknown fields `null`.
+
+## Output
+
+Write JSON to `{{ output_path }}`:
+
+```json
+{
+  "sections": [
+    {"kind": "<from splitter>", "block_ids": [<from splitter>], "extracted": {...} | null}
+  ],
+  "globals": {
+    "profession": null,
+    "title_normalized": null,
+    "store_number": null,
+    "reference_number": null,
+    "seniority": null,
+    "employment_type": null,
+    "locales_in_posting": [],
+    "locations": []
+  }
+}
+```
+
+Reproduce **every** section from the splitter's output in your `sections` array, in the same order. For `company` and `application` kinds, set `extracted: null`. For extractable kinds, fill `extracted` per the rules above.
+
+{% include '_partials/json_only.md.j2' %}
+
+{% if previous_error -%}
+## Previous attempt failed
+
+```
+{{ previous_error }}
+```
+{% endif %}

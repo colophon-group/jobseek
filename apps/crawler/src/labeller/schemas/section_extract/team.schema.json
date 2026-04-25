@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jseek.co/schemas/labeller/section_extract/team.schema.json",
+  "title": "Team section extraction",
+  "type": "object",
+  "required": ["team_name", "team_function_tags"],
+  "additionalProperties": false,
+  "properties": {
+    "team_name": {"type": ["string", "null"]},
+    "team_function_tags": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1}
+    }
+  }
+}

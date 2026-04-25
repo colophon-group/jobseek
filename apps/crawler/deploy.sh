@@ -94,7 +94,14 @@ docker run --rm --env-file "$DEPLOY_DIR/.env" --network host \
   "ghcr.io/${OWNER}/jobseek-crawler:latest" \
   uv run --no-sync alembic -c src/migrations/alembic.ini upgrade head
 
-# ── Sync board config from CSV → local Postgres + Redis ──────────────
+# ── Patch Typesense schema (idempotent — adds new fields if missing) ─
+# Must run BEFORE `crawler sync`, otherwise the next sync would upsert
+# docs containing fields that the live schema doesn't know about.
+docker run --rm --env-file "$DEPLOY_DIR/.env" --network host \
+  "ghcr.io/${OWNER}/jobseek-crawler:latest" \
+  uv run --no-sync crawler setup-typesense
+
+# ── Sync board config from CSV → local Postgres + Redis + Typesense ──
 docker run --rm --env-file "$DEPLOY_DIR/.env" --network host \
   "ghcr.io/${OWNER}/jobseek-crawler:latest" \
   uv run --no-sync crawler sync

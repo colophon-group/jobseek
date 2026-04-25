@@ -1,0 +1,68 @@
+# TASK: extract `benefits` section labels
+
+## Title (context)
+
+{{ title_raw }}
+
+## Section text ({{ section_blocks|length }} blocks)
+
+{% for b in section_blocks -%}
+[{{ b.id }}] ({{ b.tag }}) {{ b.text }}
+{% endfor %}
+
+{% include '_partials/english_normalize.md.j2' %}
+
+## Fields (compensation)
+
+- `salary_min` — integer, or `null`.
+- `salary_max` — integer, or `null`.
+- `salary_currency` — ISO 4217 (e.g. `"EUR"`, `"USD"`, `"GBP"`), or `null`.
+- `salary_period` — one of: `"hour"`, `"day"`, `"week"`, `"month"`, `"year"`, `"project"`, or `null`.
+- `salary_transparency` — one of: `"shown"`, `"range_in_description"`, `"not_shown"`, or `null`.
+- `compensation_type` — one of: `"salary"`, `"hourly"`, `"commission_only"`, `"salary_plus_commission"`, `"tips_plus_base"`, `"piece_rate"`, `"stipend"`, `"fee_per_service"`, `"retainer"`, `"grant_funded"`, or `null`.
+- `equity_offered` — `true` / `false` / `null`. `null` when not mentioned; only `false` if the text explicitly denies it.
+
+## Fields (location / visa)
+
+- `remote_policy` — one of: `"onsite"`, `"hybrid"`, `"remote"`, `"remote_anywhere"`, `"unclear"`, or `null`. Never guess; default to `null` if not clearly stated.
+- `remote_region` — free-text region if remote is region-bounded (e.g. `"EU"`, `"UK"`, `"EEA"`, `"US"`, `"APAC"`, `"LATAM"`, `"MENA"`, `"ANZ"`, `"Nordics"`, country names, `"global"`), else `null`.
+- `relocation_assistance` — `true` / `false` / `null`.
+- `visa_sponsorship` — one of: `"yes"`, `"no"`, `"case_by_case"`, `"unknown"`. Covers sponsorship for any jurisdiction (H-1B, Blue Card, Skilled Worker, etc.) — one field.
+
+## Fields (time off / budget / perks)
+
+- `annual_leave_days` — integer total days offered by the employer, or `null`. Capture the employer's figure; statutory minimums alone don't count unless the text specifies employer-granted extras.
+- `annual_leave_unlimited` — `true` if "unlimited" (or equivalent); else `false` or `null`.
+- `parental_leave_weeks` — only if the employer's contribution is stated. Statutory minimums don't count unless the text specifies the employer pays extra.
+- `learning_budget_amount_year` — integer amount per year, or `null`. Use the currency already captured in `salary_currency` when ambiguous.
+- `other_perks` — English-normalized tags for anything not captured above, e.g. `["commuter benefits", "mental health stipend", "gym membership", "pension contribution", "private healthcare"]`.
+
+## Output
+
+Write JSON to `{{ output_path }}`:
+
+```json
+{
+  "salary_min": null, "salary_max": null, "salary_currency": null,
+  "salary_period": null, "salary_transparency": null,
+  "compensation_type": null,
+  "equity_offered": null,
+  "remote_policy": null, "remote_region": null,
+  "relocation_assistance": null,
+  "visa_sponsorship": null,
+  "annual_leave_days": null, "annual_leave_unlimited": null,
+  "parental_leave_weeks": null,
+  "learning_budget_amount_year": null,
+  "other_perks": []
+}
+```
+
+{% include '_partials/json_only.md.j2' %}
+
+{% if previous_error -%}
+## Previous attempt failed
+
+```
+{{ previous_error }}
+```
+{% endif %}

@@ -28,13 +28,27 @@ Jobseek monitors company career pages for new job postings. Companies are config
 │           ├── typesense_client.py # Shared Typesense client (lazy, feature-flagged)
 │           ├── sync.py      # CSV -> DB + Redis + Typesense taxonomy sync
 │           ├── cli.py       # Entry point (crawler run/export/drain/sync/board/...)
-│           └── config.py    # Settings
+│           ├── config.py    # Settings
+│           └── labeller/    # Daily labelled-postings routine (Claude Code driven)
+│               ├── cli.py           # labeller = src.labeller.cli:main
+│               ├── normalize.py     # deterministic HTML normalizer
+│               ├── blocks.py        # HTML -> block list
+│               ├── validate.py      # JSON Schema + custom validators
+│               ├── render.py        # Jinja task-input renderer
+│               ├── sampling.py      # diverse per-company posting sample
+│               ├── prepare.py       # load posting + normalize + blocks
+│               ├── merge.py         # assemble subagent outputs into posting.json
+│               ├── upload.py        # HuggingFace dataset push
+│               ├── prompts/tasks/*.md.j2  # per-task Jinja templates
+│               └── schemas/         # per-task + posting JSON Schemas
 ├── scripts/
 │   ├── typesense-setup.py       # Create/recreate Typesense collections + aliases
 │   └── typesense-backfill-local.py  # One-shot backfill from Postgres to Typesense
 ├── docs/                    # Architecture documentation
 │   ├── 11-typesense.md      # Typesense deployment + architecture reference
-│   └── 12-typesense-benchmarks.md  # Performance benchmarks
+│   ├── 12-typesense-benchmarks.md  # Performance benchmarks
+│   ├── 14-error-review-routine.md  # Daily crawler error-review routine spec
+│   └── 15-data-sampling-routine.md # Daily labelled-postings routine spec
 └── .github/workflows/       # CI + agent automation
 ```
 
@@ -54,7 +68,31 @@ uv run crawler board <slug>       # Process single board (debug)
 uv run crawler backfill-typesense # Full re-index of job_posting to Typesense
 uv run crawler refresh-typesense  # Refresh Typesense counts + reconcile watchlists
 uv run crawler notify-indexnow    # Push changed company URLs to IndexNow (see docs/13-seo-and-indexnow.md)
+
+# Labeller subsystem (daily gold-dataset routine — spec in docs/15-data-sampling-routine.md)
+uv run labeller sample --date today --count 10 --out <path>
+uv run labeller prepare <posting_id> --date today
+uv run labeller render-task --task <task> --input <path> --out <path>
+uv run labeller validate --kind <kind> --file <path>
+uv run labeller merge --posting <id> --date <date> --out <path>
+uv run labeller upload --date <date>
 ```
+
+## Ops routines (Claude Code driven)
+
+Two scheduled routines live as slash-commands + specs — orchestrated by a
+Claude Code session (Opus), with specialized Sonnet subagents invoked via
+the `Agent` tool. **No direct Anthropic API calls** — the data collected by
+this tool feeds a future production model trained on the dataset.
+
+- `.claude/commands/jobseek-label-daily.md` + `docs/15-data-sampling-routine.md` —
+  samples diverse postings from the last 24h, labels via
+  `.claude/agents/jobseek-labeller-*` subagents with tasks rendered from
+  Jinja templates at `apps/crawler/src/labeller/prompts/tasks/*.md.j2`,
+  validates (including a concrete QA rule gatekeeper), uploads accepted
+  gold to `viktoroo/jobseek-postings-labelled` on HuggingFace.
+- `docs/14-error-review-routine.md` — daily review of crawler errors on the
+  Hetzner box.
 
 Web app (from `apps/web/`):
 
@@ -88,9 +126,9 @@ Developer guidance for agent reasoning style lives in [docs/agents.md](docs/agen
 
 ## Typesense (Search Engine)
 
-All search, typeahead, browse-all modals, and watchlist search are served by Typesense. Supabase Postgres still handles non-search reads (posting detail, user data).
+All search, typeahead, browse-all modals, watchlist search, and the **company detail page** are served by Typesense. Supabase Postgres still handles posting detail (full description blob), user/auth data, watchlist mutations, and acts as a graceful fallback when Typesense is unreachable.
 
-See [docs/11-typesense.md](docs/11-typesense.md) for full deployment details.
+See [docs/11-typesense.md](docs/11-typesense.md) for full deployment details, including the read-paths summary.
 
 ### Infrastructure
 
@@ -122,8 +160,13 @@ Key design choices:
 
 ### Collection Management
 
+Schema source of truth: `apps/crawler/src/typesense_schema.py`. Setup is idempotent — it creates missing collections + aliases AND patches existing collections in-place to add any new fields (no rebuild required). Runs automatically on every crawler deploy via `deploy.sh` before `crawler sync`.
+
 ```bash
-# Create or recreate collections (from apps/crawler/)
+# Idempotent create + patch (from inside the crawler image)
+uv run crawler setup-typesense [--force]
+
+# Operator-facing wrapper (dev workflows)
 cd apps/crawler && uv run python ../../scripts/typesense-setup.py [--force]
 
 # Full re-index from Postgres
@@ -136,13 +179,13 @@ cd apps/crawler && uv run python ../../scripts/typesense-backfill-local.py [--li
 ### Indexing Pipeline
 
 - **Exporter** (CDC): two-cursor design — Supabase and Typesense cursors advance independently. Concurrent upserts via `asyncio.gather`
-- **Sync**: taxonomy collections (location, occupation, seniority, technology, company) populated after CSV sync. Handles taxonomy rename detection
+- **Sync**: taxonomy collections (location, occupation, seniority, technology) and the `company` collection populated after CSV sync. Company docs include extended fields (logo, website, employee_count_range, founded_year) and per-locale variants (`description_{de,fr,it}`, `industry_name_{de,fr,it}`) for the company detail page reader. Handles taxonomy rename detection
 - **Reconciliation**: daily count check + sample comparison
-- **refresh-typesense**: periodic count refresh for taxonomy/company collections + watchlist reconciliation
+- **refresh-typesense**: periodic count refresh for taxonomy/company collections + watchlist reconciliation. Runs inline at every deploy/CSV sync (via `crawler sync`) and every 4h via `.github/workflows/crawler-scheduled-maintenance.yml` out-of-band
 
 ### Web App Integration
 
-`TypesenseSearchProvider` replaces `PostgresSearchProvider` (one-shot cutover). Graceful degradation: all errors return empty results, Postgres fallback for watchlist write functions. No Redis cache on main search (Typesense is fast enough); cached for unfiltered homepage (60s) and popular watchlists (120s).
+`TypesenseSearchProvider` replaces `PostgresSearchProvider` (one-shot cutover). The company detail page (`getCompanyBySlug`) reads from the `company` collection, falling back to Supabase on Typesense error or 0 hits. Graceful degradation: all errors return empty results, Postgres fallback for watchlist write functions. No Redis cache on main search (Typesense is fast enough); cached for unfiltered homepage (60s), popular watchlists (120s), and company detail (`ttl: 600`, skip-null to avoid poisoning brand-new slugs).
 
 ## SEO and IndexNow
 

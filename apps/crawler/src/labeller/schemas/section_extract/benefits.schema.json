@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jseek.co/schemas/labeller/section_extract/benefits.schema.json",
+  "title": "Benefits section extraction",
+  "type": "object",
+  "required": [
+    "salary_min",
+    "salary_max",
+    "salary_currency",
+    "salary_period",
+    "salary_transparency",
+    "compensation_type",
+    "equity_offered",
+    "remote_policy",
+    "remote_region",
+    "relocation_assistance",
+    "visa_sponsorship",
+    "annual_leave_days",
+    "annual_leave_unlimited",
+    "parental_leave_weeks",
+    "learning_budget_amount_year",
+    "other_perks"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "salary_min": {"type": ["integer", "null"], "minimum": 0},
+    "salary_max": {"type": ["integer", "null"], "minimum": 0},
+    "salary_currency": {
+      "type": ["string", "null"],
+      "pattern": "^[A-Z]{3}$"
+    },
+    "salary_period": {
+      "type": ["string", "null"],
+      "enum": [null, "hour", "day", "week", "month", "year", "project"]
+    },
+    "salary_transparency": {
+      "type": ["string", "null"],
+      "enum": [null, "shown", "range_in_description", "not_shown"]
+    },
+    "compensation_type": {
+      "type": ["string", "null"],
+      "enum": [
+        null,
+        "salary",
+        "hourly",
+        "commission_only",
+        "salary_plus_commission",
+        "tips_plus_base",
+        "piece_rate",
+        "stipend",
+        "fee_per_service",
+        "retainer",
+        "grant_funded"
+      ]
+    },
+    "equity_offered": {"type": ["boolean", "null"]},
+    "remote_policy": {
+      "type": ["string", "null"],
+      "enum": [null, "onsite", "hybrid", "remote", "remote_anywhere", "unclear"]
+    },
+    "remote_region": {"type": ["string", "null"]},
+    "relocation_assistance": {"type": ["boolean", "null"]},
+    "visa_sponsorship": {
+      "type": ["string", "null"],
+      "enum": [null, "yes", "no", "case_by_case", "unknown"]
+    },
+    "annual_leave_days": {"type": ["integer", "null"], "minimum": 0},
+    "annual_leave_unlimited": {"type": ["boolean", "null"]},
+    "parental_leave_weeks": {"type": ["integer", "null"], "minimum": 0},
+    "learning_budget_amount_year": {"type": ["integer", "null"], "minimum": 0},
+    "other_perks": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1}
+    }
+  }
+}
