@@ -143,7 +143,11 @@ uv run crawler refresh-typesense
 
 - Refreshes `active_posting_count` / `has_active_postings` on all taxonomy and company collections
 - Reconciles the `watchlist` collection against Supabase (upserts missing, deletes stale)
-- Should be run periodically (cron or after sync)
+
+**When it runs in production** (two paths, both version-controlled):
+
+1. **Every deploy / CSV merge — inline.** `crawler sync` calls `refresh_typesense_counts()` as its last step (`apps/crawler/src/sync.py`), so every run of `.github/workflows/deploy-crawler-browser.yml` and `.github/workflows/sync-data.yml` does a refresh.
+2. **Every 4 hours — out-of-band.** `.github/workflows/crawler-scheduled-maintenance.yml` SSHes to the crawler host and runs `crawler refresh-typesense` as a `docker run --rm` one-shot. Keeps counts fresh between deploys.
 
 ### Full Re-index (Backfill)
 
