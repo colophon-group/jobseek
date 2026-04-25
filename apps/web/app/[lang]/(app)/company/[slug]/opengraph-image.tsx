@@ -1,5 +1,6 @@
 import { ImageResponse } from "next/og";
 import { getCompanyBySlug } from "@/lib/actions/company";
+import { locales } from "@/lib/i18n";
 
 export const alt = "Company jobs";
 export const size = { width: 1200, height: 630 };
@@ -13,6 +14,53 @@ export const revalidate = 2592000;
 
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+
+/**
+ * How many top companies (by active posting count) to prerender at build
+ * time, across every supported locale. The actual count of cells baked
+ * into the build is `OG_PRERENDER_TOP_N × locales.length` (4 today). At
+ * ~50 KB per PNG that's a ~40 MB increase to the build artifact for N=200.
+ *
+ * Long-tail companies still generate on first request and then live in
+ * Vercel's CDN for the `revalidate` window. Prebaking the top tier
+ * absorbs Twitter/LinkedIn/Slack crawl spikes that otherwise cold-start
+ * a function per (slug, locale).
+ *
+ * See issue #2645.
+ */
+const OG_PRERENDER_TOP_N = 200;
+
+/**
+ * Pick the top-N companies to prerender. Returns `[]` on any error so a
+ * build environment without Typesense access (or a transient outage)
+ * never fails the build — Next.js will fall back to dynamic rendering on
+ * first request, identical to the existing behavior.
+ */
+export async function generateStaticParams(): Promise<
+  { lang: string; slug: string }[]
+> {
+  try {
+    const { getSearchClient } = await import(
+      "@/lib/search/typesense-client"
+    );
+    const client = getSearchClient();
+    const result = await client.collections("company").documents().search({
+      q: "*",
+      query_by: "name",
+      filter_by: "active_posting_count:>0",
+      sort_by: "active_posting_count:desc",
+      per_page: OG_PRERENDER_TOP_N,
+      page: 1,
+      include_fields: "slug",
+    });
+    const slugs = (result.hits ?? [])
+      .map((h) => (h.document as Record<string, unknown>).slug)
+      .filter((s): s is string => typeof s === "string");
+    return slugs.flatMap((slug) => locales.map((lang) => ({ lang, slug })));
+  } catch {
+    return [];
+  }
+}
 
 // Satori only supports TTF/OTF, not woff2.
 const fontPromise = readFile(
