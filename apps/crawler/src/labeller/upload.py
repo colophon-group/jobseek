@@ -26,6 +26,14 @@ HF_REPO = "viktoroo/jobseek-postings-labelled"
 
 _COUNTS_PLACEHOLDER = "__COUNTS_LINE__"
 
+
+class UploadGuardError(RuntimeError):
+    """Raised when an upload is refused by a safety guard.
+
+    Caller (the CLI) is expected to print the message and exit non-zero.
+    """
+
+
 # Plain string, NOT an f-string — literal ``{`` / ``}`` in the dataset
 # card (e.g. the `{kind, block_ids, extracted}` example rows) should pass
 # through unescaped. The row-count line is injected by a post-render
@@ -254,18 +262,50 @@ def _accepted_by_date(run_date: str | None) -> dict[str, list[dict]]:
     return out
 
 
-def push_to_hub(run_date: str | None = None, *, dry_run: bool = False) -> str:
+def push_to_hub(
+    run_date: str | None = None,
+    *,
+    dry_run: bool = False,
+    confirm: bool = False,
+) -> str:
     """Push accepted postings as JSONL + schemas + README to HF.
 
     If ``run_date`` is set, limits upload to that single date's JSONL file;
     otherwise rewrites every date's JSONL. The README is regenerated every
     upload to keep the row-count line fresh.
+
+    Safety guards (live runs only — ``--dry-run`` skips both):
+
+    - An unscoped run (no ``run_date``) must be acknowledged with
+      ``confirm=True``. Catches the typo'd-``LABELLER_DATA_ROOT``-then-
+      forgot-``--date`` foot-gun that would silently empty every date's
+      JSONL on the public dataset.
+    - Refuse if zero accepted postings were found under the data root.
+      Catches a misconfigured / empty data root before it propagates as
+      an empty refresh.
     """
     root = data_root()
     by_date = _accepted_by_date(run_date)
 
     if dry_run:
         return _describe_upload(root, by_date, run_date)
+
+    if run_date is None and not confirm:
+        raise UploadGuardError(
+            "refusing to upload all dates without --confirm.\n"
+            "  - Pass --date YYYY-MM-DD for a single date, or\n"
+            "  - Pass --dry-run to preview, or\n"
+            "  - Pass --confirm to acknowledge a full-dataset rewrite."
+        )
+
+    if not by_date:
+        scope = f"--date {run_date}" if run_date else "all dates"
+        raise UploadGuardError(
+            f"no accepted postings found under LABELLER_DATA_ROOT={root} "
+            f"(scope: {scope}).\n"
+            "  - Verify LABELLER_DATA_ROOT is set correctly.\n"
+            "  - Use --dry-run to inspect what would be uploaded."
+        )
 
     token = os.environ.get("HF_TOKEN")
     if not token:
