@@ -16,3 +16,14 @@ If a haiku subagent returns BLOCKED or NEEDS_CONTEXT, re-dispatch with sonnet. I
 - **>6 tasks**: use subagent-driven development (`superpowers:subagent-driven-development`) with per-task reviews.
 
 The goal is to avoid spawning subagents for small phases where context reuse saves more than isolation gains.
+
+## Git Workflow — Branch + PR per Task
+
+For each implementation task:
+
+1. **Create feature branch**: `git checkout -b feature/task-description` before starting
+2. **Commit incrementally**: One logical commit per feature or fix
+3. **Raise PR when done**: Push branch and create PR against `main`
+4. **Auto-continue**: Do NOT wait for merge approval — continue with next task after pushing
+
+This keeps work isolated, reviewable, and easy to revert if needed.

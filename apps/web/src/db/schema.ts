@@ -847,9 +847,41 @@ export const userResume = pgTable("user_resume", {
     .references(() => user.id, { onDelete: "cascade" }),
   filename: text("filename").notNull(),
   keywords: text("keywords").array().notNull().default([]),
+  customizedAt: timestamp("customized_at", { withTimezone: true }),
+  customizationCount: integer("customization_count").default(0).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .defaultNow()
     .$onUpdate(() => new Date())
     .notNull(),
 });
+
+export const resumeCustomizationHistory = pgTable(
+  "resume_customization_history",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    queueId: uuid("queue_id")
+      .notNull()
+      .references(() => jobQueue.id, { onDelete: "cascade" }),
+    postingId: uuid("posting_id")
+      .notNull()
+      .references(() => jobPosting.id, { onDelete: "cascade" }),
+    originalR2Key: text("original_r2_key"),
+    customizedR2Key: text("customized_r2_key"),
+    insertedKeywords: text("inserted_keywords").array().notNull().default([]),
+    jobTitle: text("job_title").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("idx_customization_user").on(table.userId),
+    index("idx_customization_queue").on(table.queueId),
+    index("idx_customization_created").on(table.createdAt),
+  ],
+);
 

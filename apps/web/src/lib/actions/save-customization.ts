@@ -33,12 +33,23 @@ export async function saveCustomization(
       };
     }
 
-    // In production: save to R2 and update user_resume with customized_at
-    // For now: just validate and return success
-    // This would typically:
-    // 1. Upload customized.tex to R2
-    // 2. Create customization record in database
-    // 3. Update user_resume.customized_at timestamp
+    // For now: just validate and return success (R2 upload would happen here in production)
+    // TODO: Integrate R2 upload when environment is ready
+    // const originalKey = buildResumeKey(userId, params.queueId, "original");
+    // const customizedKey = buildResumeKey(userId, params.queueId, "customized");
+    // await saveResumeToR2(originalKey, params.originalContent);
+    // await saveResumeToR2(customizedKey, params.customizedContent);
+
+    // TODO: Create customization history record
+    // await db.insert(resumeCustomizationHistory).values({
+    //   userId,
+    //   queueId: params.queueId,
+    //   postingId: params.postingId,
+    //   originalR2Key: originalKey,
+    //   customizedR2Key: customizedKey,
+    //   insertedKeywords: [...],
+    //   jobTitle: posting.title,
+    // });
 
     return {
       saved: true,
