@@ -6,7 +6,7 @@ import { siteConfig } from "@/content/config";
 import { locales } from "@/lib/i18n";
 
 /**
- * ISR window for the generated sitemap.
+ * ISR window for each generated sitemap shard.
  *
  * The default sitemap.ts behavior in Next.js 16 is "static if possible,
  * otherwise dynamic on every request". Because this handler hits Postgres
@@ -20,12 +20,40 @@ import { locales } from "@/lib/i18n";
  */
 export const revalidate = 3600;
 
+/**
+ * Companies emitted per shard. With 4 locales each company yields 4 URLs,
+ * so 200 companies/shard ≈ 800 URLs/shard — comfortably under the
+ * 50,000-URL / 50 MB sitemap.org limits and small enough to render in a
+ * couple of hundred milliseconds. Crossing this threshold creates a new
+ * shard rather than growing the single XML payload.
+ *
+ * The previous monolithic sitemap rendered ~9 MB at 1500+ companies; per
+ * issue #2646 we shard so each crawler fetch loads only the slice it
+ * needs and per-shard ISR regeneration is bounded.
+ */
+const COMPANIES_PER_SHARD = 200;
+
+const CURATED_USERNAME = "colophongroup";
+
 type SitemapCompanyRow = {
   slug: string;
   updated_at: Date;
   active_count: number;
 };
 
+type SitemapWatchlistRow = {
+  user_slug: string;
+  watchlist_slug: string;
+  updated_at: Date;
+  is_curated: boolean;
+};
+
+/**
+ * Fetch all sitemap-eligible companies, paginated through Typesense. The
+ * shard router below slices the returned array — it's still cheaper to
+ * pull the full ordered list once per Redis-cache window than to invoke
+ * Typesense N times per shard regen.
+ */
 async function fetchSitemapCompanies(): Promise<SitemapCompanyRow[]> {
   // Use Typesense company collection (has precomputed active_posting_count)
   // instead of correlated subquery on Supabase that was consuming 10% compute.
@@ -75,6 +103,34 @@ async function fetchSitemapCompanies(): Promise<SitemapCompanyRow[]> {
   }
 }
 
+async function fetchSitemapWatchlists(): Promise<SitemapWatchlistRow[]> {
+  return db.execute<SitemapWatchlistRow>(sql`
+    SELECT
+      COALESCE(u.display_username, u.username) AS user_slug,
+      w.slug AS watchlist_slug,
+      w.updated_at,
+      (u.username = ${CURATED_USERNAME}) AS is_curated
+    FROM watchlist w
+    JOIN "user" u ON u.id = w.user_id
+    WHERE w.is_public = true
+      AND u.username IS NOT NULL
+    ORDER BY is_curated DESC, w.updated_at DESC
+  `) as unknown as Promise<SitemapWatchlistRow[]>;
+}
+
+const cachedCompanies = () =>
+  cached("sitemap:companies", fetchSitemapCompanies, {
+    ttl: 3600,
+    // If the fetcher returns zero rows it almost always means a transient
+    // outage (Typesense alias swap, Postgres timeout) — not a legitimate
+    // "we have no companies". Skip caching so the next request gets
+    // another chance instead of poisoning the outer ISR window. See #2245.
+    skipIf: (rows) => rows.length === 0,
+  });
+
+const cachedWatchlists = () =>
+  cached("sitemap:watchlists", fetchSitemapWatchlists, { ttl: 3600 });
+
 /** Build hreflang alternates map for a given path (without locale prefix). */
 function langAlternates(path: string): Record<string, string> {
   const languages: Record<string, string> = {};
@@ -84,10 +140,9 @@ function langAlternates(path: string): Record<string, string> {
   return languages;
 }
 
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+function staticAndExploreEntries(): MetadataRoute.Sitemap {
   const entries: MetadataRoute.Sitemap = [];
 
-  // ── Static pages ───────────────────────────────────────────────────
   for (const item of siteConfig.seo.sitemap) {
     const suffix = item.path === "/" ? "" : item.path;
     const languages = langAlternates(suffix);
@@ -102,7 +157,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
   }
 
-  // ── Explore page ───────────────────────────────────────────────────
   const exploreLanguages = langAlternates("/explore");
   for (const locale of locales) {
     entries.push({
@@ -114,42 +168,30 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
   }
 
-  // ── Company pages + public watchlists (cached 1h, fetched in parallel) ──
-  // Only include companies that have at least one active job posting.
-  // Ordered by active posting count so high-content pages are crawled first.
-  // If company count exceeds ~500, consider splitting with generateSitemaps().
-  const CURATED_USERNAME = "colophongroup";
+  return entries;
+}
 
-  const [companies, watchlists] = await Promise.all([
-    cached("sitemap:companies", fetchSitemapCompanies, {
-      ttl: 3600,
-      // If the fetcher returns zero rows it almost always means a
-      // transient outage (Typesense alias swap, Postgres timeout) —
-      // not a legitimate "we have no companies". Skip caching so the
-      // next request gets another chance instead of poisoning the
-      // outer ISR window with an empty list. See #2245.
-      skipIf: (rows) => rows.length === 0,
-    }),
-    cached("sitemap:watchlists", () => db.execute<{
-      user_slug: string;
-      watchlist_slug: string;
-      updated_at: Date;
-      is_curated: boolean;
-    }>(sql`
-      SELECT
-        COALESCE(u.display_username, u.username) AS user_slug,
-        w.slug AS watchlist_slug,
-        w.updated_at,
-        (u.username = ${CURATED_USERNAME}) AS is_curated
-      FROM watchlist w
-      JOIN "user" u ON u.id = w.user_id
-      WHERE w.is_public = true
-        AND u.username IS NOT NULL
-      ORDER BY is_curated DESC, w.updated_at DESC
-    `), { ttl: 3600 }),
-  ]);
+function watchlistEntries(rows: SitemapWatchlistRow[]): MetadataRoute.Sitemap {
+  const entries: MetadataRoute.Sitemap = [];
+  for (const row of rows) {
+    const path = `/${row.user_slug}/${row.watchlist_slug}`;
+    const languages = langAlternates(path);
+    for (const locale of locales) {
+      entries.push({
+        url: `${siteConfig.url}/${locale}${path}`,
+        lastModified: new Date(row.updated_at),
+        changeFrequency: row.is_curated ? "daily" : "weekly",
+        priority: row.is_curated ? 0.8 : 0.6,
+        alternates: { languages },
+      });
+    }
+  }
+  return entries;
+}
 
-  for (const row of companies) {
+function companyEntries(rows: SitemapCompanyRow[]): MetadataRoute.Sitemap {
+  const entries: MetadataRoute.Sitemap = [];
+  for (const row of rows) {
     const path = `/company/${row.slug}`;
     const languages = langAlternates(path);
     // Scale priority: 0.9 for 20+ postings, 0.8 for 5+, 0.7 otherwise
@@ -164,20 +206,44 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       });
     }
   }
+  return entries;
+}
 
-  for (const row of watchlists) {
-    const path = `/${row.user_slug}/${row.watchlist_slug}`;
-    const languages = langAlternates(path);
-    for (const locale of locales) {
-      entries.push({
-        url: `${siteConfig.url}/${locale}${path}`,
-        lastModified: new Date(row.updated_at),
-        changeFrequency: row.is_curated ? "daily" : "weekly",
-        priority: row.is_curated ? 0.8 : 0.6,
-        alternates: { languages },
-      });
-    }
+/**
+ * Declare the sitemap shards.
+ *
+ *   shard 0 — static pages + /explore + all public watchlists
+ *   shard 1..N — companies, COMPANIES_PER_SHARD per shard
+ *
+ * Next.js exposes the index at /sitemap.xml and the shards at
+ * /sitemap/<id>.xml. Crawlers follow the index → shards. The shard count
+ * grows with the company catalogue; one company addition only invalidates
+ * its own shard's ISR window.
+ */
+export async function generateSitemaps(): Promise<{ id: number }[]> {
+  const companies = await cachedCompanies();
+  const companyShards = Math.max(
+    1,
+    Math.ceil(companies.length / COMPANIES_PER_SHARD),
+  );
+  // Shard 0 is reserved for static + watchlists, so total = companyShards + 1.
+  return Array.from({ length: companyShards + 1 }, (_, i) => ({ id: i }));
+}
+
+/**
+ * Render one sitemap shard. The function shape is the standard Next.js
+ * sitemap default export; the `id` parameter selects which shard.
+ */
+export default async function sitemap({
+  id,
+}: { id: number } = { id: 0 }): Promise<MetadataRoute.Sitemap> {
+  if (id === 0) {
+    const watchlists = await cachedWatchlists();
+    return [...staticAndExploreEntries(), ...watchlistEntries(watchlists)];
   }
 
-  return entries;
+  const companies = await cachedCompanies();
+  const start = (id - 1) * COMPANIES_PER_SHARD;
+  const slice = companies.slice(start, start + COMPANIES_PER_SHARD);
+  return companyEntries(slice);
 }
