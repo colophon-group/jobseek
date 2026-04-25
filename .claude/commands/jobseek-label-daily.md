@@ -14,7 +14,7 @@ LLM step is an `Agent(...)` invocation; every deterministic step is a
 Parse any arguments passed to the command:
 
 - `--date YYYY-MM-DD` (optional; default: today UTC)
-- `--count N` (optional; default: 10)
+- `--count N` (optional; default: 24)
 
 Bind these to `RUN_DATE` and `SAMPLE_SIZE` for the rest of the run.
 

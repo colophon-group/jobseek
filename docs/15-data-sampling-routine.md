@@ -188,8 +188,11 @@ We store the description as it was publicly posted. No regex scrub. Takedown-on-
 
 ### Invocation
 
-- Manual: `/jobseek-label-daily --date 2026-04-25 --count 10`
-- Scheduled: via the `schedule` skill, firing the slash-command daily at 09:00 UTC.
+- Manual: `/jobseek-label-daily` (defaults: today UTC, 24 postings).
+  Override with `--date 2026-04-25 --count 10`.
+- Scheduled (Claude Code desktop app): point the schedule at the prompt
+  `/jobseek-label-daily`. The slash command file is the source of truth —
+  edits propagate to the next run without re-setting up the schedule.
 
 ### Dependencies
 
