@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import os
+import tempfile
 from pathlib import Path
 
 from .paths import data_root, schemas_dir
@@ -271,18 +272,26 @@ def push_to_hub(
     """Push accepted postings as JSONL + schemas + README to HF.
 
     If ``run_date`` is set, limits upload to that single date's JSONL file;
-    otherwise rewrites every date's JSONL. The README is regenerated every
-    upload to keep the row-count line fresh.
+    otherwise re-stages every date's JSONL from the local data root and
+    uploads the lot. The README is regenerated every upload to keep the
+    row-count line fresh.
+
+    ``upload_folder`` is additive — it does not delete `data/<date>.jsonl`
+    files on HF that the local run didn't stage. So a typo'd
+    ``LABELLER_DATA_ROOT`` would not erase prior dates from the dataset
+    directly; the visible damage is a misleading README (zero-count line)
+    plus any stale JSONLs from a previous failed run that happen to still
+    sit under the wrong root (see the tempdir-staging hardening below).
 
     Safety guards (live runs only — ``--dry-run`` skips both):
 
     - An unscoped run (no ``run_date``) must be acknowledged with
-      ``confirm=True``. Catches the typo'd-``LABELLER_DATA_ROOT``-then-
-      forgot-``--date`` foot-gun that would silently empty every date's
-      JSONL on the public dataset.
+      ``confirm=True``. Catches the operator-typing-by-mistake case where
+      the orchestrator's normal ``--date $RUN_DATE`` invocation is
+      omitted.
     - Refuse if zero accepted postings were found under the data root.
       Catches a misconfigured / empty data root before it propagates as
-      an empty refresh.
+      a zero-count refresh.
     """
     root = data_root()
     by_date = _accepted_by_date(run_date)
@@ -293,9 +302,9 @@ def push_to_hub(
     if run_date is None and not confirm:
         raise UploadGuardError(
             "refusing to upload all dates without --confirm.\n"
-            "  - Pass --date YYYY-MM-DD for a single date, or\n"
-            "  - Pass --dry-run to preview, or\n"
-            "  - Pass --confirm to acknowledge a full-dataset rewrite."
+            "  - Pass --date today (or YYYY-MM-DD) for a single date, or\n"
+            "  - Pass --dry-run to preview what would be uploaded, or\n"
+            "  - Pass --confirm to re-stage every local date."
         )
 
     if not by_date:
@@ -314,46 +323,49 @@ def push_to_hub(
             " Set it in apps/crawler/.env.local."
         )
 
-    # Stage the upload tree under data_root.
-    data_dir = root / "data"
-    data_dir.mkdir(parents=True, exist_ok=True)
-    for date, postings in by_date.items():
-        jsonl_path = data_dir / f"{date}.jsonl"
-        with jsonl_path.open("w") as fh:
-            for p in postings:
-                fh.write(json.dumps(p, ensure_ascii=False, default=str) + "\n")
+    # Stage the upload tree in a tempdir so a previously failed run can't
+    # leak stale `data/<date>.jsonl` files into a later upload (the
+    # ``data/*.jsonl`` allow_pattern would otherwise re-publish them).
+    with tempfile.TemporaryDirectory(prefix="labeller-upload-") as stage_str:
+        stage = Path(stage_str)
+        data_dir = stage / "data"
+        data_dir.mkdir(parents=True)
+        for date, postings in by_date.items():
+            jsonl_path = data_dir / f"{date}.jsonl"
+            with jsonl_path.open("w") as fh:
+                for p in postings:
+                    fh.write(json.dumps(p, ensure_ascii=False, default=str) + "\n")
 
-    counts_by_date = {d: len(rows) for d, rows in by_date.items()}
-    readme_path = root / "README.md"
-    readme_path.write_text(_readme_text(counts_by_date))
+        counts_by_date = {d: len(rows) for d, rows in by_date.items()}
+        (stage / "README.md").write_text(_readme_text(counts_by_date))
 
-    local_schemas = root / "schemas"
-    local_schemas.mkdir(parents=True, exist_ok=True)
-    for p in schemas_dir().rglob("*.json"):
-        rel = p.relative_to(schemas_dir())
-        dst = local_schemas / rel
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        dst.write_bytes(p.read_bytes())
+        local_schemas = stage / "schemas"
+        local_schemas.mkdir(parents=True)
+        for p in schemas_dir().rglob("*.json"):
+            rel = p.relative_to(schemas_dir())
+            dst = local_schemas / rel
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            dst.write_bytes(p.read_bytes())
 
-    from huggingface_hub import HfApi
+        from huggingface_hub import HfApi
 
-    api = HfApi(token=token)
-    allow_patterns: list[str] = []
-    if run_date:
-        allow_patterns.append(f"data/{run_date}.jsonl")
-    else:
-        allow_patterns.append("data/*.jsonl")
-    allow_patterns.extend(["schemas/**/*.json", "README.md"])
+        api = HfApi(token=token)
+        allow_patterns: list[str] = []
+        if run_date:
+            allow_patterns.append(f"data/{run_date}.jsonl")
+        else:
+            allow_patterns.append("data/*.jsonl")
+        allow_patterns.extend(["schemas/**/*.json", "README.md"])
 
-    api.upload_folder(
-        folder_path=str(root),
-        repo_id=HF_REPO,
-        repo_type="dataset",
-        allow_patterns=allow_patterns,
-        commit_message=(
-            f"Add labelled postings for {run_date}" if run_date else "Refresh labelled postings"
-        ),
-    )
+        api.upload_folder(
+            folder_path=str(stage),
+            repo_id=HF_REPO,
+            repo_type="dataset",
+            allow_patterns=allow_patterns,
+            commit_message=(
+                f"Add labelled postings for {run_date}" if run_date else "Refresh labelled postings"
+            ),
+        )
     return f"https://huggingface.co/datasets/{HF_REPO}"
 
 

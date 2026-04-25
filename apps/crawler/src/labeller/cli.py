@@ -137,7 +137,7 @@ def build_parser() -> argparse.ArgumentParser:
     u.add_argument(
         "--confirm",
         action="store_true",
-        help="Acknowledge a full-dataset rewrite when --date is not set",
+        help="Acknowledge a re-stage of every local date when --date is not set",
     )
 
     return p

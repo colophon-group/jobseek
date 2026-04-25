@@ -123,3 +123,23 @@ def test_scoped_run_does_not_require_confirm(data_root: Path, stub_hf: dict) -> 
     push_to_hub(run_date="2026-04-25", dry_run=False, confirm=False)
     assert len(stub_hf["upload_folder"]) == 1
     assert stub_hf["upload_folder"][0]["allow_patterns"][0] == "data/2026-04-25.jsonl"
+
+
+# --- staging tempdir isolates the upload from leftover state -------------
+
+
+def test_staging_does_not_leak_into_data_root(data_root: Path, stub_hf: dict) -> None:
+    """A previously failed run must not leave stale JSONLs under the data root.
+
+    The fix stages to a tempdir; after a successful upload the data root
+    contains only the source `postings/` tree, not a `data/` or `schemas/`
+    or `README.md` artifact.
+    """
+    _write_posting(data_root, "2026-04-25", "p1", verdict="accepted")
+    push_to_hub(run_date="2026-04-25", dry_run=False)
+
+    folder_path = stub_hf["upload_folder"][0]["folder_path"]
+    assert not folder_path.startswith(str(data_root))
+    assert not (data_root / "data").exists()
+    assert not (data_root / "schemas").exists()
+    assert not (data_root / "README.md").exists()
