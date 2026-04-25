@@ -28,5 +28,8 @@ export async function GET(request: NextRequest) {
     url: siteUrl(`/${locale}/company/${c.slug}`),
   }));
 
-  return apiResponse({ companies }, { rateLimit: rl });
+  // Autocomplete suggestions are very stable (a single new company per few
+  // days, slug shape never changes). Bumped from the 300s default to 1h
+  // for higher CDN reuse on common queries — see issue #2644.
+  return apiResponse({ companies }, { maxAge: 3600, rateLimit: rl });
 }
