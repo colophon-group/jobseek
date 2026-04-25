@@ -41,7 +41,7 @@ If no `.tex` source is uploaded, a tooltip on the button reads: "Upload your .te
 1. Fetch `user_resume.latex_source` for the current user.
 2. Fetch `missing_keywords[]`, `matched_keywords[]`, job title, company from `job_queue`.
 3. Fetch JD text from R2.
-4. Send to **Claude claude-opus-4-7** (`claude-opus-4-7`) — the most capable model, chosen for its superior reasoning about tech ecosystem compatibility.
+4. Send to **Claude Sonnet 4.6** (`claude-sonnet-4-6`). Fallback to GPT-4o if Anthropic API is unavailable.
 5. Receive structured JSON response (see LLM Prompt section).
 6. Upload customized `.tex` to R2 at `resumes/{user_id}/{posting_id}.tex`.
 7. Upsert `job_queue.customized_r2_key`, `customized_at`.
@@ -54,7 +54,7 @@ After generation, "Generate resume" button becomes a **"Download .tex"** link po
 
 ## LLM Prompt
 
-**Model:** `claude-opus-4-7`
+**Model:** `claude-sonnet-4-6` (primary). Fallback: GPT-4o (`gpt-4o`) if Anthropic API is unavailable. (User mentioned "GPT 5.4" — no such model exists; GPT-4o used as fallback until clarified.)
 
 ```
 System:
