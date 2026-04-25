@@ -12,9 +12,23 @@ vi.mock("@/db", () => ({
   },
 }));
 
-// Mock the cache — passes through to the fetcher (no Redis in tests)
+// Mock the cache. Memoize per-key within a single test so the sharded
+// pipeline (generateSitemaps + per-shard renders) doesn't call the
+// underlying fetcher repeatedly — that's what real Redis would do, and
+// it matches how the production code expects to share work across shards
+// within an ISR window.
+const cacheStore = new Map<string, unknown>();
 vi.mock("@/lib/cache", () => ({
-  cached: (_key: string, fetcher: () => Promise<unknown>) => fetcher(),
+  cached: async (
+    key: string,
+    fetcher: () => Promise<unknown>,
+    options?: { skipIf?: (data: unknown) => boolean },
+  ) => {
+    if (cacheStore.has(key)) return cacheStore.get(key);
+    const data = await fetcher();
+    if (!options?.skipIf?.(data)) cacheStore.set(key, data);
+    return data;
+  },
 }));
 
 vi.mock("@/lib/search/typesense-client", () => ({
@@ -27,7 +41,7 @@ vi.mock("@/lib/search/typesense-client", () => ({
   }),
 }));
 
-import sitemap, { revalidate } from "../sitemap";
+import sitemap, { revalidate, generateSitemaps } from "../sitemap";
 
 function typesensePage(slugs: string[], found: number) {
   return {
@@ -38,31 +52,45 @@ function typesensePage(slugs: string[], found: number) {
   };
 }
 
+/**
+ * Render every shard returned by `generateSitemaps()` and concatenate the
+ * entries — this is what the crawler ultimately gets across /sitemap.xml
+ * and the /sitemap/<id>.xml shards.
+ */
+async function renderAllShards(): Promise<
+  Awaited<ReturnType<typeof sitemap>>
+> {
+  const shards = await generateSitemaps();
+  const all = await Promise.all(shards.map(({ id }) => sitemap({ id })));
+  return all.flat();
+}
+
 describe("sitemap", () => {
   beforeEach(() => {
     dbExecuteMock.mockReset();
     dbExecuteMock.mockResolvedValue([]);
     searchMock.mockReset();
     searchMock.mockRejectedValue(new Error("Typesense unavailable"));
+    cacheStore.clear();
   });
 
   it("returns an array of entries", async () => {
-    const result = await sitemap();
+    const result = await renderAllShards();
     expect(Array.isArray(result)).toBe(true);
     expect(result.length).toBeGreaterThan(0);
   });
 
-  it("exports `revalidate` so the response is CDN-cached as ISR (issue #2245)", () => {
+  it("exports `revalidate` so each shard is CDN-cached as ISR (issue #2245)", () => {
     // Without `revalidate`, every crawler hit runs the full handler
-    // (Postgres + Typesense + ~9 MB XML serialization). Regression
-    // guard: a future refactor must not silently drop this export.
+    // (Postgres + Typesense + serialization). Regression guard: a future
+    // refactor must not silently drop this export.
     expect(revalidate).toBe(3600);
   });
 
   it("generates entries for all 4 locales", async () => {
-    const result = await sitemap();
-    const locales = ["en", "de", "fr", "it"];
-    for (const locale of locales) {
+    const result = await renderAllShards();
+    const localesToCheck = ["en", "de", "fr", "it"];
+    for (const locale of localesToCheck) {
       const hasLocale = result.some((entry) =>
         entry.url.includes(`/${locale}`)
       );
@@ -71,7 +99,7 @@ describe("sitemap", () => {
   });
 
   it("each entry has required fields", async () => {
-    const result = await sitemap();
+    const result = await renderAllShards();
     for (const entry of result) {
       expect(entry.url).toBeDefined();
       expect(typeof entry.url).toBe("string");
@@ -82,7 +110,7 @@ describe("sitemap", () => {
   });
 
   it("homepage entries have highest priority", async () => {
-    const result = await sitemap();
+    const result = await renderAllShards();
     const homeEntries = result.filter((e) => e.url.match(/\/[a-z]{2}$/));
     for (const entry of homeEntries) {
       expect(entry.priority).toBe(1);
@@ -101,9 +129,8 @@ describe("sitemap", () => {
       ))
       .mockResolvedValueOnce(typesensePage(["company-501"], 501));
 
-    const result = await sitemap();
+    const result = await renderAllShards();
 
-    expect(searchMock).toHaveBeenCalledTimes(3);
     expect(searchMock).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({ page: 1, per_page: 250 }),
@@ -127,9 +154,8 @@ describe("sitemap", () => {
       250,
     ));
 
-    const result = await sitemap();
+    const result = await renderAllShards();
 
-    expect(searchMock).toHaveBeenCalledTimes(1);
     expect(searchMock).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({ page: 1, per_page: 250 }),
@@ -160,10 +186,8 @@ describe("sitemap", () => {
       return [];
     });
 
-    const result = await sitemap();
+    const result = await renderAllShards();
 
-    expect(searchMock).toHaveBeenCalledTimes(2);
-    expect(dbExecuteMock).toHaveBeenCalledTimes(2);
     const fallbackCompanyEntries = result.filter((entry) =>
       entry.url.includes("/company/fallback-"),
     );
@@ -192,23 +216,101 @@ describe("sitemap", () => {
       },
     ]);
 
-    const result = await sitemap();
-    const watchlistEntries = result.filter((entry) =>
+    const result = await renderAllShards();
+    const watchlistRowEntries = result.filter((entry) =>
       entry.url.includes("/curated-user/hot-list") || entry.url.includes("/regular-user/daily-list"),
     );
 
-    expect(watchlistEntries).toHaveLength(8);
-    expect(watchlistEntries.filter((entry) => entry.url.includes("/curated-user/hot-list"))).toHaveLength(4);
-    expect(watchlistEntries.filter((entry) => entry.url.includes("/regular-user/daily-list"))).toHaveLength(4);
-    expect(watchlistEntries.find((entry) => entry.url.endsWith("/en/curated-user/hot-list"))?.changeFrequency).toBe("daily");
-    expect(watchlistEntries.find((entry) => entry.url.endsWith("/en/curated-user/hot-list"))?.priority).toBe(0.8);
-    expect(watchlistEntries.find((entry) => entry.url.endsWith("/en/regular-user/daily-list"))?.changeFrequency).toBe("weekly");
-    expect(watchlistEntries.find((entry) => entry.url.endsWith("/en/regular-user/daily-list"))?.priority).toBe(0.6);
-    expect(watchlistEntries.find((entry) => entry.url.endsWith("/en/curated-user/hot-list"))?.alternates?.languages).toEqual({
+    expect(watchlistRowEntries).toHaveLength(8);
+    expect(watchlistRowEntries.filter((entry) => entry.url.includes("/curated-user/hot-list"))).toHaveLength(4);
+    expect(watchlistRowEntries.filter((entry) => entry.url.includes("/regular-user/daily-list"))).toHaveLength(4);
+    expect(watchlistRowEntries.find((entry) => entry.url.endsWith("/en/curated-user/hot-list"))?.changeFrequency).toBe("daily");
+    expect(watchlistRowEntries.find((entry) => entry.url.endsWith("/en/curated-user/hot-list"))?.priority).toBe(0.8);
+    expect(watchlistRowEntries.find((entry) => entry.url.endsWith("/en/regular-user/daily-list"))?.changeFrequency).toBe("weekly");
+    expect(watchlistRowEntries.find((entry) => entry.url.endsWith("/en/regular-user/daily-list"))?.priority).toBe(0.6);
+    expect(watchlistRowEntries.find((entry) => entry.url.endsWith("/en/curated-user/hot-list"))?.alternates?.languages).toEqual({
       en: expect.stringContaining("/en/curated-user/hot-list"),
       de: expect.stringContaining("/de/curated-user/hot-list"),
       fr: expect.stringContaining("/fr/curated-user/hot-list"),
       it: expect.stringContaining("/it/curated-user/hot-list"),
     });
+  });
+});
+
+describe("sitemap shards (issue #2646)", () => {
+  beforeEach(() => {
+    dbExecuteMock.mockReset();
+    dbExecuteMock.mockResolvedValue([]);
+    searchMock.mockReset();
+    searchMock.mockRejectedValue(new Error("Typesense unavailable"));
+    cacheStore.clear();
+  });
+
+  it("declares one shard per 200-company batch plus one for static + watchlists", async () => {
+    // 450 companies → 3 company shards (200 + 200 + 50) + 1 static-watchlist shard = 4 total.
+    searchMock.mockResolvedValueOnce(typesensePage(
+      Array.from({ length: 250 }, (_, i) => `company-${i + 1}`),
+      450,
+    )).mockResolvedValueOnce(typesensePage(
+      Array.from({ length: 200 }, (_, i) => `company-${i + 251}`),
+      450,
+    ));
+
+    const shards = await generateSitemaps();
+    expect(shards).toEqual([
+      { id: 0 },
+      { id: 1 },
+      { id: 2 },
+      { id: 3 },
+    ]);
+  });
+
+  it("shard 0 contains static pages and watchlists, no company URLs", async () => {
+    dbExecuteMock.mockResolvedValueOnce([
+      {
+        user_slug: "alice",
+        watchlist_slug: "ml-jobs",
+        updated_at: new Date("2026-01-01T00:00:00Z"),
+        is_curated: false,
+      },
+    ]);
+
+    const entries = await sitemap({ id: 0 });
+    expect(entries.some((e) => e.url.includes("/company/"))).toBe(false);
+    expect(entries.some((e) => e.url.endsWith("/en/explore"))).toBe(true);
+    expect(entries.some((e) => e.url.endsWith("/en/alice/ml-jobs"))).toBe(true);
+  });
+
+  it("each company shard contains only its slice", async () => {
+    searchMock.mockResolvedValueOnce(typesensePage(
+      Array.from({ length: 250 }, (_, i) => `co-${i + 1}`),
+      350,
+    )).mockResolvedValueOnce(typesensePage(
+      Array.from({ length: 100 }, (_, i) => `co-${i + 251}`),
+      350,
+    ));
+
+    const shard1 = await sitemap({ id: 1 }); // companies 1..200
+    expect(shard1.some((e) => e.url.endsWith("/en/company/co-1"))).toBe(true);
+    expect(shard1.some((e) => e.url.endsWith("/en/company/co-200"))).toBe(true);
+    expect(shard1.some((e) => e.url.endsWith("/en/company/co-201"))).toBe(false);
+
+    // The memoized `cached()` mock satisfies shard 2's read without
+    // re-invoking Typesense — same as production behavior under one ISR
+    // window.
+    const shard2 = await sitemap({ id: 2 }); // companies 201..350
+    expect(shard2.some((e) => e.url.endsWith("/en/company/co-200"))).toBe(false);
+    expect(shard2.some((e) => e.url.endsWith("/en/company/co-201"))).toBe(true);
+    expect(shard2.some((e) => e.url.endsWith("/en/company/co-350"))).toBe(true);
+  });
+
+  it("returns at least one shard even when there are no companies", async () => {
+    // Typesense empty + Postgres fallback empty: the planner still must
+    // emit shard 0 (static + watchlists). Otherwise crawlers see an empty
+    // sitemap index.
+    searchMock.mockResolvedValueOnce({ found: 0, hits: [] });
+    const shards = await generateSitemaps();
+    expect(shards.length).toBeGreaterThanOrEqual(1);
+    expect(shards[0]).toEqual({ id: 0 });
   });
 });
