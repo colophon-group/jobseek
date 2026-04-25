@@ -9,7 +9,14 @@ import { siteConfig } from "@/content/config";
 import { buildAlternates } from "@/lib/seo";
 import { WatchlistContent } from "./watchlist-content";
 
-export const revalidate = 600; // ISR: cache metadata for 10 minutes
+// ISR window for the rendered metadata + page shell.
+//
+// The previous 10-minute window cycled the (DB lookup + Typesense facet
+// count) on every regen × every public watchlist. Watchlist metadata is
+// shared via the CDN, so freshness from a viewer's perspective comes from
+// the client-hydrated body, not metadata. Search engines re-crawl on a
+// much slower cadence than 10 minutes anyway. See issue #2648.
+export const revalidate = 3600;
 
 type Props = {
   params: Promise<{ lang: string; userSlug: string; watchlistSlug: string }>;
