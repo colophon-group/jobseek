@@ -283,3 +283,60 @@ class TestMonitorOne:
         finally:
             _REGISTRY.remove(probe)
         assert captured["http"] is outer
+
+    @pytest.mark.parametrize(
+        "config,expected_use_proxy",
+        [
+            ({"skip_ssl": True, "proxy": True}, True),
+            ({"skip_ssl": True, "proxy": False}, False),
+            ({"skip_ssl": True}, False),
+        ],
+        ids=["proxy_on", "proxy_off", "proxy_unset"],
+    )
+    async def test_skip_ssl_threads_use_proxy(
+        self, monkeypatch, config: dict, expected_use_proxy: bool
+    ):
+        """A board with `skip_ssl: true` AND `proxy: true` must route the
+        nossl httpx client through the proxy too — otherwise the monitor
+        silently downgrades to direct egress for the API request, defeating
+        the WAF/IP-block rationale for setting `proxy: true` (regression
+        guard for #2659)."""
+        import src.shared.http as http_mod
+        from src.core.monitors import _REGISTRY, MonitorType, _make_chunked_stream
+
+        observed_use_proxy: list[bool] = []
+        real_factory = http_mod.create_nossl_http_client
+
+        def tracking_factory(*, use_proxy: bool = False) -> httpx.AsyncClient:
+            observed_use_proxy.append(use_proxy)
+            return real_factory(use_proxy=use_proxy)
+
+        monkeypatch.setattr(http_mod, "create_nossl_http_client", tracking_factory)
+
+        async def stub_discover(board, http, *, pw=None):
+            return set()
+
+        probe = MonitorType(
+            name="__skip_ssl_proxy_probe__",
+            cost=1,
+            discover=stub_discover,
+            can_handle=None,
+            rich=False,
+            stream=_make_chunked_stream(stub_discover),
+        )
+        _REGISTRY.append(probe)
+        try:
+            outer = httpx.AsyncClient()
+            try:
+                await monitor_one(
+                    "https://example.com",
+                    "__skip_ssl_proxy_probe__",
+                    config,
+                    outer,
+                )
+            finally:
+                await outer.aclose()
+        finally:
+            _REGISTRY.remove(probe)
+
+        assert observed_use_proxy == [expected_use_proxy]
