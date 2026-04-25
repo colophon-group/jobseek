@@ -439,6 +439,66 @@ class TestValidateCsvs:
         assert any("Duplicate board_slug" in str(e) for e in errors)
 
 
+class TestRejectLazyDescriptions:
+    """Reject auto-generated boilerplate company descriptions.
+
+    Issue #2637: a class of bug where the configurer (LLM agent) had no
+    info about the company and emitted boilerplate naming the ATS or
+    admitting failure (e.g. "Recruitee-based career board operating under
+    the X token", "limited public information", "system test board").
+    """
+
+    def _write_descs(self, path, descriptions_csv):
+        (path / "companies.csv").write_text(
+            "slug,name,website,logo_url,icon_url,logo_type\ntest,Test,https://test.com,,\n"
+        )
+        (path / "boards.csv").write_text(
+            "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
+            "test,test-careers,https://example.com,greenhouse,,skip,\n"
+        )
+        (path / "company_descriptions.csv").write_text(descriptions_csv)
+
+    @pytest.mark.parametrize(
+        "lazy_en",
+        [
+            "Recruitee-based career board operating under the Test token. "
+            "No company website was found.",
+            "Test is a company listed on Greenhouse with limited publicly available information.",
+            "Test operates through the Greenhouse job board under the token "
+            "test. Limited public information is available.",
+            "Test recruits through Greenhouse under the token test.",
+            "This is a Greenhouse system test board used for posting jobs "
+            "exclusively to external aggregators and is not an actual company.",
+            "No company website or identifying information was found during automated discovery.",
+        ],
+    )
+    def test_lazy_description_rejected(self, tmp_path, monkeypatch, lazy_en):
+        self._write_descs(
+            tmp_path,
+            f"slug,en,de,fr,it\ntest,{lazy_en},de,fr,it\n",
+        )
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
+        errors = validate_csvs()
+        assert any("Lazy auto-generated description" in str(e) for e in errors), (
+            f"expected lazy detection for: {lazy_en!r}\nerrors: {[str(e) for e in errors]}"
+        )
+
+    def test_factual_description_accepted(self, tmp_path, monkeypatch):
+        good = (
+            "Test is a Vancouver-based digital experience consultancy that "
+            "delivers product design and engineering for enterprise clients."
+        )
+        self._write_descs(
+            tmp_path,
+            f"slug,en,de,fr,it\ntest,{good},de,fr,it\n",
+        )
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
+        errors = validate_csvs()
+        assert not any("Lazy auto-generated description" in str(e) for e in errors)
+
+
 class TestValidateProxyFlag:
     """The ``proxy`` JSON key must be a bool — anywhere it appears.
 

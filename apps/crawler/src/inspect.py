@@ -7,6 +7,7 @@ Used by workspace CLI commands. No standalone CLI entry point — use ``ws`` com
 from __future__ import annotations
 
 import json
+import re
 import time
 from dataclasses import fields as dc_fields
 
@@ -473,7 +474,50 @@ def validate_csvs() -> list[ValidationError]:
                     )
                 )
 
+            # Reject lazy auto-generated descriptions — see issue #2637
+            # ("Broken descriptions from lazy scraper configurers"). These
+            # phrases reliably indicate the configurer (usually an LLM) had
+            # no real information about the company and emitted boilerplate
+            # naming the ATS or admitting failure.
+            en = row.get("en") or ""
+            for pat in _LAZY_DESCRIPTION_PATTERNS:
+                if pat.search(en):
+                    errors.append(
+                        ValidationError(
+                            "company_descriptions.csv",
+                            i,
+                            (
+                                f"Lazy auto-generated description for {desc_slug!r}: "
+                                f"matches {pat.pattern!r}. Replace with a factual 1-2 "
+                                "sentence summary based on the company's website."
+                            ),
+                        )
+                    )
+                    break
+
     return errors
+
+
+_LAZY_DESCRIPTION_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"career board operating under (the )?[\w-]+ token", re.IGNORECASE),
+    re.compile(r"automated discovery", re.IGNORECASE),
+    re.compile(r"limited publicly available information", re.IGNORECASE),
+    re.compile(r"limited public information is available", re.IGNORECASE),
+    re.compile(
+        r"operates through the (Greenhouse|Lever|Ashby|Recruitee|Workable|Workday) job board",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"is a company listed on (Greenhouse|Lever|Ashby|Recruitee|Workable|Workday)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"recruits through (Greenhouse|Lever|Ashby|Recruitee|Workable|Workday) under the token",
+        re.IGNORECASE,
+    ),
+    re.compile(r"is not an actual company", re.IGNORECASE),
+    re.compile(r"system test board", re.IGNORECASE),
+)
 
 
 async def detect_monitor_type(url: str) -> None:
