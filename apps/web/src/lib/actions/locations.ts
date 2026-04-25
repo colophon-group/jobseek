@@ -25,17 +25,59 @@ export async function suggestLocations(params: {
   const q = params.query.trim();
   if (q.length < 2) return [];
 
-  const { locale, userLat, userLng } = params;
-  const hasGeo = userLat != null && userLng != null;
+  // Bucket geo to 1-decimal precision (~10km) so callers in the same city
+  // share a cache slot. Typesense ranks by `coordinates(lat,lng, precision:
+  // 5km)` so this granularity keeps results indistinguishable in practice
+  // while delivering a usable hit rate. See issue #2641.
+  const geoKey =
+    params.userLat != null && params.userLng != null
+      ? `${params.userLat.toFixed(1)},${params.userLng.toFixed(1)}`
+      : "no-geo";
 
+  const cacheKey = `loc-suggest:${q.toLowerCase()}:${params.locale}:${geoKey}`;
+  const cachedResult = await cached(
+    cacheKey,
+    () => _fetchLocationSuggestions(q, params.locale, params.userLat, params.userLng),
+    {
+      ttl: 3600,
+      // Treat null as "Typesense was unavailable" — don't poison the cache.
+      // Empty array is a legitimate "no match" result (e.g. nonsense query)
+      // and is worth caching to absorb crawler noise.
+      skipIf: (r) => r === null,
+    },
+  );
+
+  const suggestions = cachedResult ?? [];
+
+  // Boost is per-call (depends on the user's currently-selected filters),
+  // so it must run *after* the cached layer. Boosting is a pure re-sort
+  // of the suggestion list and does no I/O.
+  if (!params.filters) return suggestions;
+  return boostByFilterMatches(
+    suggestions,
+    "location_ids",
+    (s) => s.id,
+    params.filters,
+  );
+}
+
+/**
+ * Inner fetch + mapping for {@link suggestLocations}. Returns `null` if
+ * Typesense is unreachable so the cache layer can avoid poisoning the slot
+ * with an outage-shaped empty list.
+ */
+async function _fetchLocationSuggestions(
+  q: string,
+  locale: string,
+  userLat: number | undefined,
+  userLng: number | undefined,
+): Promise<LocationSuggestion[] | null> {
+  const hasGeo = userLat != null && userLng != null;
   const sortBy = hasGeo
     ? `_text_match:desc,coordinates(${userLat},${userLng}, precision: 5km):asc,active_posting_count:desc`
     : "_text_match:desc,active_posting_count:desc";
 
-  // Determine query_by fields — prefer user locale, fall back to English
-  const queryByFields = locale !== "en"
-    ? `name_${locale},name_en`
-    : "name_en";
+  const queryByFields = locale !== "en" ? `name_${locale},name_en` : "name_en";
   const queryByWeights = locale !== "en" ? "3,1" : "1";
 
   try {
@@ -53,21 +95,11 @@ export async function suggestLocations(params: {
     });
 
     if (!result.hits || result.hits.length === 0) return [];
-
-    const suggestions = result.hits.map((hit) =>
+    return result.hits.map((hit) =>
       _mapLocationHit(hit as unknown as TypesenseHit, locale),
     );
-
-    if (!params.filters) return suggestions;
-    return boostByFilterMatches(
-      suggestions,
-      "location_ids",
-      (s) => s.id,
-      params.filters,
-    );
   } catch {
-    // Typesense unavailable — return empty (graceful degradation)
-    return [];
+    return null;
   }
 }
 

@@ -25,9 +25,29 @@ export async function suggestOccupations(params: {
   const q = params.query.trim();
   if (q.length < 2) return [];
 
+  const cacheKey = `occ-suggest:${q.toLowerCase()}:${params.locale}`;
+  const cachedResult = await cached(
+    cacheKey,
+    () => _fetchOccupationSuggestions(q, params.locale),
+    { ttl: 3600, skipIf: (r) => r === null },
+  );
+
+  const suggestions = cachedResult ?? [];
+  if (!params.filters) return suggestions;
+  return boostByFilterMatches(
+    suggestions,
+    "occupation_id",
+    (s) => s.id,
+    params.filters,
+  );
+}
+
+async function _fetchOccupationSuggestions(
+  q: string,
+  locale: string,
+): Promise<TaxonomySuggestion[] | null> {
   try {
     const client = getTypesenseClient();
-    const { locale } = params;
 
     // Search locale-specific documents first
     let result = await client.collections("occupation").documents().search({
@@ -54,20 +74,11 @@ export async function suggestOccupations(params: {
     }
 
     if (!result.hits || result.hits.length === 0) return [];
-
-    const suggestions = result.hits.map((hit) =>
+    return result.hits.map((hit) =>
       _mapOccupationHit(hit as unknown as TypesenseHit),
     );
-
-    if (!params.filters) return suggestions;
-    return boostByFilterMatches(
-      suggestions,
-      "occupation_id",
-      (s) => s.id,
-      params.filters,
-    );
   } catch {
-    return [];
+    return null;
   }
 }
 
@@ -94,9 +105,29 @@ export async function suggestSeniorities(params: {
   const q = params.query.trim();
   if (q.length < 2) return [];
 
+  const cacheKey = `sen-suggest:${q.toLowerCase()}:${params.locale}`;
+  const cachedResult = await cached(
+    cacheKey,
+    () => _fetchSenioritySuggestions(q, params.locale),
+    { ttl: 3600, skipIf: (r) => r === null },
+  );
+
+  const suggestions = cachedResult ?? [];
+  if (!params.filters) return suggestions;
+  return boostByFilterMatches(
+    suggestions,
+    "seniority_id",
+    (s) => s.id,
+    params.filters,
+  );
+}
+
+async function _fetchSenioritySuggestions(
+  q: string,
+  locale: string,
+): Promise<TaxonomySuggestion[] | null> {
   try {
     const client = getTypesenseClient();
-    const { locale } = params;
 
     let result = await client.collections("seniority").documents().search({
       q,
@@ -122,20 +153,11 @@ export async function suggestSeniorities(params: {
     }
 
     if (!result.hits || result.hits.length === 0) return [];
-
-    const suggestions = result.hits.map((hit) =>
+    return result.hits.map((hit) =>
       _mapSeniorityHit(hit as unknown as TypesenseHit),
     );
-
-    if (!params.filters) return suggestions;
-    return boostByFilterMatches(
-      suggestions,
-      "seniority_id",
-      (s) => s.id,
-      params.filters,
-    );
   } catch {
-    return [];
+    return null;
   }
 }
 
@@ -162,6 +184,29 @@ export async function suggestTechnologies(params: {
   const q = params.query.trim();
   if (q.length < 2) return [];
 
+  // Technologies are locale-agnostic but the public function accepts locale
+  // for parity with the other taxonomy suggesters. Drop it from the cache
+  // key so all locales share one slot.
+  const cacheKey = `tech-suggest:${q.toLowerCase()}`;
+  const cachedResult = await cached(
+    cacheKey,
+    () => _fetchTechnologySuggestions(q),
+    { ttl: 3600, skipIf: (r) => r === null },
+  );
+
+  const suggestions = cachedResult ?? [];
+  if (!params.filters) return suggestions;
+  return boostByFilterMatches(
+    suggestions,
+    "technology_ids",
+    (s) => s.id,
+    params.filters,
+  );
+}
+
+async function _fetchTechnologySuggestions(
+  q: string,
+): Promise<TaxonomySuggestion[] | null> {
   try {
     const client = getTypesenseClient();
 
@@ -172,12 +217,11 @@ export async function suggestTechnologies(params: {
       sort_by: "_text_match:desc,active_posting_count:desc",
       per_page: 5,
       prefix: "true",
-      num_typos: "0",  // no typo tolerance — match current prefix-only behavior
+      num_typos: "0", // no typo tolerance — match current prefix-only behavior
     });
 
     if (!result.hits || result.hits.length === 0) return [];
-
-    const suggestions = result.hits.map((hit) => {
+    return result.hits.map((hit) => {
       const doc = (hit as unknown as TypesenseHit).document;
       return {
         id: doc.technology_id as number,
@@ -185,16 +229,8 @@ export async function suggestTechnologies(params: {
         name: (doc.name ?? doc.slug) as string,
       };
     });
-
-    if (!params.filters) return suggestions;
-    return boostByFilterMatches(
-      suggestions,
-      "technology_ids",
-      (s) => s.id,
-      params.filters,
-    );
   } catch {
-    return [];
+    return null;
   }
 }
 
