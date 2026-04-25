@@ -7,6 +7,7 @@ Used by workspace CLI commands. No standalone CLI entry point — use ``ws`` com
 from __future__ import annotations
 
 import json
+import re
 import time
 from dataclasses import fields as dc_fields
 
@@ -14,7 +15,11 @@ from src.core.scrapers import _REGISTRY as SCRAPER_REGISTRY
 from src.core.scrapers import JobContent
 from src.shared.constants import LOGO_TYPES, SLUG_RE, URL_RE, get_data_dir
 from src.shared.csv_io import read_csv
-from src.workspace._compat import all_monitor_types, auto_scraper_type
+from src.workspace._compat import (
+    all_monitor_types,
+    api_monitor_types,
+    auto_scraper_type,
+)
 
 _JOBCONTENT_FIELD_NAMES = frozenset(f.name for f in dc_fields(JobContent))
 
@@ -234,6 +239,39 @@ def validate_csvs() -> list[ValidationError]:
                     )
                 )
 
+        # scraper_type=skip is only valid when the monitor returns full job
+        # data inline (rich monitors, api_sniffer/nextdata with 'fields',
+        # or personio whose XML feed includes descriptions). Pairing skip
+        # with a URL-only monitor leaves descriptions empty silently — see
+        # issue #2637 ("Broken descriptions from lazy scraper configurers").
+        if scraper_type == "skip":
+            mc_obj_skip: dict | None = None
+            if monitor_config:
+                try:
+                    parsed = json.loads(monitor_config)
+                    if isinstance(parsed, dict):
+                        mc_obj_skip = parsed
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            skip_allowed = api_monitor_types() | {"personio"}
+            is_skip_ok = monitor_type in skip_allowed or (
+                monitor_type in ("api_sniffer", "nextdata")
+                and bool((mc_obj_skip or {}).get("fields"))
+            )
+            if not is_skip_ok:
+                errors.append(
+                    ValidationError(
+                        "boards.csv",
+                        i,
+                        (
+                            f"scraper_type='skip' is invalid for monitor_type "
+                            f"{monitor_type!r}: this monitor does not return "
+                            "rich job data inline. Pick a scraper_type or "
+                            "switch to a rich monitor."
+                        ),
+                    )
+                )
+
         # Validate JSON configs
         if monitor_config:
             try:
@@ -436,7 +474,50 @@ def validate_csvs() -> list[ValidationError]:
                     )
                 )
 
+            # Reject lazy auto-generated descriptions — see issue #2637
+            # ("Broken descriptions from lazy scraper configurers"). These
+            # phrases reliably indicate the configurer (usually an LLM) had
+            # no real information about the company and emitted boilerplate
+            # naming the ATS or admitting failure.
+            en = row.get("en") or ""
+            for pat in _LAZY_DESCRIPTION_PATTERNS:
+                if pat.search(en):
+                    errors.append(
+                        ValidationError(
+                            "company_descriptions.csv",
+                            i,
+                            (
+                                f"Lazy auto-generated description for {desc_slug!r}: "
+                                f"matches {pat.pattern!r}. Replace with a factual 1-2 "
+                                "sentence summary based on the company's website."
+                            ),
+                        )
+                    )
+                    break
+
     return errors
+
+
+_LAZY_DESCRIPTION_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"career board operating under (the )?[\w-]+ token", re.IGNORECASE),
+    re.compile(r"automated discovery", re.IGNORECASE),
+    re.compile(r"limited publicly available information", re.IGNORECASE),
+    re.compile(r"limited public information is available", re.IGNORECASE),
+    re.compile(
+        r"operates through the (Greenhouse|Lever|Ashby|Recruitee|Workable|Workday) job board",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"is a company listed on (Greenhouse|Lever|Ashby|Recruitee|Workable|Workday)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"recruits through (Greenhouse|Lever|Ashby|Recruitee|Workable|Workday) under the token",
+        re.IGNORECASE,
+    ),
+    re.compile(r"is not an actual company", re.IGNORECASE),
+    re.compile(r"system test board", re.IGNORECASE),
+)
 
 
 async def detect_monitor_type(url: str) -> None:
