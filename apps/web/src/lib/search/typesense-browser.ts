@@ -386,50 +386,47 @@ export class TypesenseBrowserProvider implements SearchProvider {
     activeCount: number;
     yearCount: number;
   }> {
-    try {
-      const cfg = await this.cfg();
-      const { companyId, keywords, offset, limit, locationIds } = params;
-      const filterStr = buildFilterString(params);
-      const baseFilter = `company_id:=${companyId}${filterStr ? ` && ${filterStr}` : ""}`;
-      const q = keywords.length ? keywords.join(" ") : "*";
+    // Throws on transport / Typesense error so the runner can distinguish
+    // "errored, fall back to server action" from "legitimate zero matches".
+    const cfg = await this.cfg();
+    const { companyId, keywords, offset, limit, locationIds } = params;
+    const filterStr = buildFilterString(params);
+    const baseFilter = `company_id:=${companyId}${filterStr ? ` && ${filterStr}` : ""}`;
+    const q = keywords.length ? keywords.join(" ") : "*";
 
-      const [postingsResult, activeResult, yearResult] = await Promise.all([
-        searchOne<JobPostingDoc>(cfg, "job_posting", {
-          q,
-          query_by: "title",
-          filter_by: `is_active:true && ${baseFilter}`,
-          sort_by: keywords.length
-            ? "_text_match:desc,first_seen_at:desc"
-            : "first_seen_at:desc",
-          per_page: limit,
-          page: Math.floor(offset / limit) + 1,
-        }),
-        searchOne<JobPostingDoc>(cfg, "job_posting", {
-          q,
-          query_by: "title",
-          filter_by: `is_active:true && ${baseFilter}`,
-          per_page: 0,
-        }),
-        searchOne<JobPostingDoc>(cfg, "job_posting", {
-          q,
-          query_by: "title",
-          filter_by: `first_seen_at:>${oneYearAgoUnix()} && ${baseFilter}`,
-          per_page: 0,
-        }),
-      ]);
+    const [postingsResult, activeResult, yearResult] = await Promise.all([
+      searchOne<JobPostingDoc>(cfg, "job_posting", {
+        q,
+        query_by: "title",
+        filter_by: `is_active:true && ${baseFilter}`,
+        sort_by: keywords.length
+          ? "_text_match:desc,first_seen_at:desc"
+          : "first_seen_at:desc",
+        per_page: limit,
+        page: Math.floor(offset / limit) + 1,
+      }),
+      searchOne<JobPostingDoc>(cfg, "job_posting", {
+        q,
+        query_by: "title",
+        filter_by: `is_active:true && ${baseFilter}`,
+        per_page: 0,
+      }),
+      searchOne<JobPostingDoc>(cfg, "job_posting", {
+        q,
+        query_by: "title",
+        filter_by: `first_seen_at:>${oneYearAgoUnix()} && ${baseFilter}`,
+        per_page: 0,
+      }),
+    ]);
 
-      const postings = (postingsResult.hits ?? []).map((h) =>
-        mapHitToPosting(h, locationIds),
-      );
-      return {
-        postings,
-        activeCount: activeResult.found ?? 0,
-        yearCount: yearResult.found ?? 0,
-      };
-    } catch (err) {
-      console.error("[typesense-browser] loadPostingsWithCounts error", err);
-      return { postings: [], activeCount: 0, yearCount: 0 };
-    }
+    const postings = (postingsResult.hits ?? []).map((h) =>
+      mapHitToPosting(h, locationIds),
+    );
+    return {
+      postings,
+      activeCount: activeResult.found ?? 0,
+      yearCount: yearResult.found ?? 0,
+    };
   }
 
   async getSalaryHistogram(filters?: HistogramFilters): Promise<SalaryBucket[]> {

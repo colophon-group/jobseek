@@ -146,14 +146,10 @@ export async function runGetCompanyPostings(
     try {
       const provider = await tryBrowserProvider();
       const result = await provider.loadPostingsWithCounts(params);
-      // Browser provider's catch returns activeCount: 0; treat as failure
-      // and fall back to the server action.
-      if (result.postings.length > 0 || result.activeCount > 0) {
-        if (!isLoggedIn && params.offset + result.postings.length >= ANON_MAX_POSTINGS) {
-          return { ...result, truncated: true };
-        }
-        return result;
+      if (!isLoggedIn && params.offset + result.postings.length >= ANON_MAX_POSTINGS) {
+        return { ...result, truncated: true };
       }
+      return result;
     } catch (err) {
       console.error("[search-runner] browser getCompanyPostings failed, falling back", err);
     }

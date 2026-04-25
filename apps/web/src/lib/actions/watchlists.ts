@@ -13,7 +13,7 @@ import { getViewerLanguages } from "@/lib/viewer";
 import { cached } from "@/lib/cache";
 import { canCreateWatchlist, getUserPlan, PLAN_LIMITS } from "@/lib/plans";
 import { generateUniqueSlug } from "@/lib/watchlist-slug";
-import { ANON_MAX_WATCHLIST_POSTINGS } from "@/lib/search/constants";
+import { ANON_MAX_WATCHLIST_POSTINGS, COMPANY_BATCH_SIZE } from "@/lib/search/constants";
 import { expandLocationIds, resolveLocationSlugs } from "@/lib/actions/locations";
 import { expandOccupationIds, resolveOccupationSlugs, resolveSenioritySlugs, resolveTechnologySlugs } from "@/lib/actions/taxonomy";
 import { getSearchClient } from "@/lib/search/typesense-client";
@@ -1290,7 +1290,6 @@ async function _enrichWatchlistsWithRealCounts(
 }
 
 /** Max company IDs per Typesense filter string batch (~7KB ≈ 200 UUIDs). */
-const COMPANY_BATCH_SIZE = 100;
 
 async function _getWatchlistPostingsTypesense(
   params: {

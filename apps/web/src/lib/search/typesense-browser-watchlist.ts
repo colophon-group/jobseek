@@ -1,8 +1,7 @@
 import { getTypesenseBrowserConfig, type TypesenseBrowserConfig } from "./typesense-browser-key";
 import { buildFilterString } from "./typesense-filters";
+import { COMPANY_BATCH_SIZE } from "./constants";
 import type { WatchlistPostingEntry } from "@/lib/actions/watchlists";
-
-export const COMPANY_BATCH_SIZE = 100;
 
 interface JobPostingDoc {
   id: string;

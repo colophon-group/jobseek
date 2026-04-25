@@ -1,20 +1,48 @@
 import { getTypesenseBrowserConfig, type TypesenseBrowserConfig } from "./typesense-browser-key";
 import { buildFilterString } from "./typesense-filters";
 import type { TypeaheadBoostFilters } from "./typeahead-boost";
+import type { LocationSuggestion } from "@/lib/actions/locations";
+import type { TaxonomySuggestion } from "@/lib/actions/taxonomy";
 
-export interface LocationSuggestion {
-  id: number;
-  slug: string;
-  name: string;
-  type: "macro" | "country" | "region" | "city";
-  parentName: string | null;
+export type { LocationSuggestion, TaxonomySuggestion };
+
+/**
+ * Tiny LRU cache for typeahead results. Replaces the 1h server-side
+ * `cached()` wrapper that the original `suggest*` server actions had —
+ * direct browser->Typesense bypasses Redis, so without this every keystroke
+ * cycle re-queries even when the user is just backspacing into a previous
+ * stroke. TTL kept short (the data changes hourly via taxonomy sync); cap
+ * keeps memory bounded across long-lived tabs.
+ */
+const SUGGEST_CACHE_TTL_MS = 60_000;
+const SUGGEST_CACHE_MAX = 80;
+const suggestCache = new Map<string, { at: number; value: unknown }>();
+
+function cacheGet<T>(key: string): T | null {
+  const entry = suggestCache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.at > SUGGEST_CACHE_TTL_MS) {
+    suggestCache.delete(key);
+    return null;
+  }
+  // LRU: move to end on hit
+  suggestCache.delete(key);
+  suggestCache.set(key, entry);
+  return entry.value as T;
 }
 
-export interface TaxonomySuggestion {
-  id: number;
-  slug: string;
-  name: string;
-  matchedName?: string;
+function cacheSet<T>(key: string, value: T): void {
+  if (suggestCache.has(key)) suggestCache.delete(key);
+  suggestCache.set(key, { at: Date.now(), value });
+  while (suggestCache.size > SUGGEST_CACHE_MAX) {
+    const firstKey = suggestCache.keys().next().value;
+    if (firstKey === undefined) break;
+    suggestCache.delete(firstKey);
+  }
+}
+
+function suggestCacheKey(kind: string, ...parts: (string | number | undefined)[]): string {
+  return `${kind}:${parts.map((p) => p ?? "").join("|")}`;
 }
 
 interface SearchHit<T> {
@@ -111,6 +139,26 @@ export async function suggestLocationsBrowser(params: {
   if (q.length < 2) return [];
 
   const { locale, userLat, userLng } = params;
+
+  // Cache the un-boosted suggestions only — boost depends on the live filter
+  // set and would multiply cache keys. Boost runs after cache hit too.
+  const cacheKey = suggestCacheKey(
+    "loc",
+    q,
+    locale,
+    userLat != null ? Math.round(userLat * 100) / 100 : undefined,
+    userLng != null ? Math.round(userLng * 100) / 100 : undefined,
+  );
+  const hit = cacheGet<LocationSuggestion[]>(cacheKey);
+  if (hit) {
+    if (!params.filters) return hit;
+    try {
+      const cfg = await getTypesenseBrowserConfig();
+      return await boost(cfg, hit, "location_ids", (s) => s.id, params.filters);
+    } catch {
+      return hit;
+    }
+  }
   const hasGeo = userLat != null && userLng != null;
   const sortBy = hasGeo
     ? `_text_match:desc,coordinates(${userLat},${userLng}, precision: 5km):asc,active_posting_count:desc`
@@ -131,7 +179,10 @@ export async function suggestLocationsBrowser(params: {
       num_typos: "1",
       drop_tokens_threshold: 0,
     });
-    if (!r.hits || r.hits.length === 0) return [];
+    if (!r.hits || r.hits.length === 0) {
+      cacheSet(cacheKey, []);
+      return [];
+    }
     const suggestions: LocationSuggestion[] = r.hits.map((hit) => {
       const d = hit.document;
       return {
@@ -142,6 +193,7 @@ export async function suggestLocationsBrowser(params: {
         parentName: d.parent_name ?? null,
       };
     });
+    cacheSet(cacheKey, suggestions);
     if (!params.filters) return suggestions;
     return boost(cfg, suggestions, "location_ids", (s) => s.id, params.filters);
   } catch {
@@ -176,6 +228,76 @@ function mapAliasMatch(
   return matched && matched !== displayName ? matched : undefined;
 }
 
+interface LocaleAwareDoc {
+  slug: string;
+  name: string;
+}
+
+async function suggestLocaleAware<D extends LocaleAwareDoc>(opts: {
+  collection: string;
+  locale: string;
+  query: string;
+  filters?: TypeaheadBoostFilters;
+  facetField: string;
+  idOf: (d: D) => number;
+  cacheKind: string;
+}): Promise<TaxonomySuggestion[]> {
+  const cacheKey = suggestCacheKey(opts.cacheKind, opts.query, opts.locale);
+  const hit = cacheGet<TaxonomySuggestion[]>(cacheKey);
+  const finalize = async (
+    cfg: TypesenseBrowserConfig,
+    suggestions: TaxonomySuggestion[],
+  ): Promise<TaxonomySuggestion[]> => {
+    if (!opts.filters) return suggestions;
+    return boost(cfg, suggestions, opts.facetField, (s) => s.id, opts.filters);
+  };
+  if (hit) {
+    if (!opts.filters) return hit;
+    try {
+      const cfg = await getTypesenseBrowserConfig();
+      return await finalize(cfg, hit);
+    } catch {
+      return hit;
+    }
+  }
+
+  try {
+    const cfg = await getTypesenseBrowserConfig();
+    const baseParams = {
+      q: opts.query,
+      query_by: "name,aliases",
+      sort_by: "_text_match:desc,active_posting_count:desc",
+      per_page: 5,
+      prefix: "true",
+      num_typos: "1",
+    };
+    let r = await searchOne<D>(cfg, opts.collection, {
+      ...baseParams,
+      filter_by: `has_active_postings:true && locale:${opts.locale}`,
+    });
+    if ((!r.hits || r.hits.length === 0) && opts.locale !== "en") {
+      r = await searchOne<D>(cfg, opts.collection, {
+        ...baseParams,
+        filter_by: "has_active_postings:true && locale:en",
+      });
+    }
+    if (!r.hits || r.hits.length === 0) {
+      cacheSet(cacheKey, []);
+      return [];
+    }
+    const suggestions: TaxonomySuggestion[] = r.hits.map((h) => ({
+      id: opts.idOf(h.document),
+      slug: h.document.slug,
+      name: h.document.name,
+      matchedName: mapAliasMatch(h, h.document.name),
+    }));
+    cacheSet(cacheKey, suggestions);
+    return finalize(cfg, suggestions);
+  } catch {
+    return [];
+  }
+}
+
 export async function suggestOccupationsBrowser(params: {
   query: string;
   locale: string;
@@ -183,42 +305,15 @@ export async function suggestOccupationsBrowser(params: {
 }): Promise<TaxonomySuggestion[]> {
   const q = params.query.trim();
   if (q.length < 2) return [];
-
-  const { locale } = params;
-  try {
-    const cfg = await getTypesenseBrowserConfig();
-    let r = await searchOne<OccupationDoc>(cfg, "occupation", {
-      q,
-      query_by: "name,aliases",
-      filter_by: `has_active_postings:true && locale:${locale}`,
-      sort_by: "_text_match:desc,active_posting_count:desc",
-      per_page: 5,
-      prefix: "true",
-      num_typos: "1",
-    });
-    if ((!r.hits || r.hits.length === 0) && locale !== "en") {
-      r = await searchOne<OccupationDoc>(cfg, "occupation", {
-        q,
-        query_by: "name,aliases",
-        filter_by: "has_active_postings:true && locale:en",
-        sort_by: "_text_match:desc,active_posting_count:desc",
-        per_page: 5,
-        prefix: "true",
-        num_typos: "1",
-      });
-    }
-    if (!r.hits || r.hits.length === 0) return [];
-    const suggestions: TaxonomySuggestion[] = r.hits.map((hit) => ({
-      id: hit.document.occupation_id,
-      slug: hit.document.slug,
-      name: hit.document.name,
-      matchedName: mapAliasMatch(hit, hit.document.name),
-    }));
-    if (!params.filters) return suggestions;
-    return boost(cfg, suggestions, "occupation_id", (s) => s.id, params.filters);
-  } catch {
-    return [];
-  }
+  return suggestLocaleAware<OccupationDoc>({
+    collection: "occupation",
+    locale: params.locale,
+    query: q,
+    filters: params.filters,
+    facetField: "occupation_id",
+    idOf: (d) => d.occupation_id,
+    cacheKind: "occ",
+  });
 }
 
 export async function suggestSenioritiesBrowser(params: {
@@ -228,42 +323,15 @@ export async function suggestSenioritiesBrowser(params: {
 }): Promise<TaxonomySuggestion[]> {
   const q = params.query.trim();
   if (q.length < 2) return [];
-
-  const { locale } = params;
-  try {
-    const cfg = await getTypesenseBrowserConfig();
-    let r = await searchOne<SeniorityDoc>(cfg, "seniority", {
-      q,
-      query_by: "name,aliases",
-      filter_by: `has_active_postings:true && locale:${locale}`,
-      sort_by: "_text_match:desc,active_posting_count:desc",
-      per_page: 5,
-      prefix: "true",
-      num_typos: "1",
-    });
-    if ((!r.hits || r.hits.length === 0) && locale !== "en") {
-      r = await searchOne<SeniorityDoc>(cfg, "seniority", {
-        q,
-        query_by: "name,aliases",
-        filter_by: "has_active_postings:true && locale:en",
-        sort_by: "_text_match:desc,active_posting_count:desc",
-        per_page: 5,
-        prefix: "true",
-        num_typos: "1",
-      });
-    }
-    if (!r.hits || r.hits.length === 0) return [];
-    const suggestions: TaxonomySuggestion[] = r.hits.map((hit) => ({
-      id: hit.document.seniority_id,
-      slug: hit.document.slug,
-      name: hit.document.name,
-      matchedName: mapAliasMatch(hit, hit.document.name),
-    }));
-    if (!params.filters) return suggestions;
-    return boost(cfg, suggestions, "seniority_id", (s) => s.id, params.filters);
-  } catch {
-    return [];
-  }
+  return suggestLocaleAware<SeniorityDoc>({
+    collection: "seniority",
+    locale: params.locale,
+    query: q,
+    filters: params.filters,
+    facetField: "seniority_id",
+    idOf: (d) => d.seniority_id,
+    cacheKind: "sen",
+  });
 }
 
 export async function suggestTechnologiesBrowser(params: {
@@ -273,6 +341,18 @@ export async function suggestTechnologiesBrowser(params: {
 }): Promise<TaxonomySuggestion[]> {
   const q = params.query.trim();
   if (q.length < 2) return [];
+
+  const cacheKey = suggestCacheKey("tech", q);
+  const hit = cacheGet<TaxonomySuggestion[]>(cacheKey);
+  if (hit) {
+    if (!params.filters) return hit;
+    try {
+      const cfg = await getTypesenseBrowserConfig();
+      return await boost(cfg, hit, "technology_ids", (s) => s.id, params.filters);
+    } catch {
+      return hit;
+    }
+  }
 
   try {
     const cfg = await getTypesenseBrowserConfig();
@@ -285,12 +365,16 @@ export async function suggestTechnologiesBrowser(params: {
       prefix: "true",
       num_typos: "0",
     });
-    if (!r.hits || r.hits.length === 0) return [];
+    if (!r.hits || r.hits.length === 0) {
+      cacheSet(cacheKey, []);
+      return [];
+    }
     const suggestions: TaxonomySuggestion[] = r.hits.map((hit) => ({
       id: hit.document.technology_id,
       slug: hit.document.slug,
       name: hit.document.name ?? hit.document.slug,
     }));
+    cacheSet(cacheKey, suggestions);
     if (!params.filters) return suggestions;
     return boost(cfg, suggestions, "technology_ids", (s) => s.id, params.filters);
   } catch {
