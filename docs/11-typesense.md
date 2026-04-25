@@ -32,17 +32,22 @@ The Vercel-hosted web app has no stable IPs, so it cannot be firewalled into the
 - **Routes to**: `localhost:8108` on the Typesense machine
 - **Daemon**: `cloudflared` running as a systemd service, auto-starts on reboot
 - **Cache bypass rule**: configured in Cloudflare dashboard -- without it, Cloudflare may cache GET search responses and return stale results (Typesense does not set `Cache-Control` headers by default)
+- **Rate-limit rule** (zone `colophon-group.org`, phase `http_ratelimit`): per-IP, 200 requests / 10 s on `(http.host eq "typesense.colophon-group.org")`, action `block` for 10 s. Required because the search key is exposed to browsers (see "Web App Integration") and the origin is a single 4 GB / 2 vCPU box.
+- **CORS**: Typesense container emits `Access-Control-Allow-Origin: *` directly -- no Cloudflare Transform Rule needed. Verified via `curl -X OPTIONS -H 'Origin: https://jseek.co' https://typesense.colophon-group.org/health`.
 - **Latency overhead**: ~10-30 ms per request (acceptable -- Typesense queries take <10 ms)
 
 ## API Keys
 
-Three scoped keys. Stored in: `apps/crawler/.env.local` (main branch), GitHub secrets (CI), Vercel env vars (web app).
+Four scoped keys. Stored in: `apps/crawler/.env.local` (main branch), GitHub secrets (CI), Vercel env vars (web app).
 
 | Environment Variable | Scope | Used By | Connection Path |
 |---------------------|-------|---------|-----------------|
 | `TYPESENSE_ADMIN_KEY` | Full access | Exporter, sync, backfill, setup scripts | Private network (crawler -> Typesense) |
-| `TYPESENSE_SEARCH_KEY` | `documents:search` on all collections | Web app search | Cloudflare tunnel |
+| `TYPESENSE_SEARCH_KEY` | `documents:search` + `documents:get` on all collections | Web app server-side search (server actions) | Cloudflare tunnel |
+| `TYPESENSE_BROWSER_PARENT_KEY` | `documents:search` on all collections (no other action) | Web app `/api/typesense-key` route handler -- mints scoped keys for direct browser->Typesense calls | Cloudflare tunnel (browser, scoped key) |
 | `TYPESENSE_WRITE_KEY` | `documents:create/upsert/delete/update` on `watchlist` collection only | Web app watchlist mutations | Cloudflare tunnel |
+
+`TYPESENSE_BROWSER_PARENT_KEY` is a separate parent because Typesense rejects scoped keys derived from a parent that has any actions other than `documents:search` (the server returns `Forbidden - a valid x-typesense-api-key header must be sent.` when used with a multi-action parent).
 
 ## Collections
 
@@ -175,8 +180,24 @@ Daily reconciliation (run by the exporter loop):
 - All search, typeahead, browse-all modals, and watchlist search go through Typesense
 - **Company detail page**: `getCompanyBySlug` reads the `company` collection by slug filter. Postgres is a fallback when Typesense errors or returns 0 hits (so brand-new companies whose Typesense upsert lagged still render)
 - **Graceful degradation**: all Typesense errors return empty results; Postgres fallback for watchlist write functions
+<<<<<<< Updated upstream
 - **Caching**: no Redis cache on main search (Typesense is fast enough). Cached for unfiltered homepage (60s) and popular watchlists (120s). `getCompanyBySlug` is wrapped with a Redis cache (`ttl: 600`, key `company-slug:{slug}:{locale}`) that skips storing nulls so brand-new slugs aren't poisoned
 - **Client**: `typesense-js` in the web app, connecting to `typesense.colophon-group.org` (Cloudflare tunnel) with the search-only key
+=======
+- **Caching**: no Redis cache on main search (Typesense is fast enough). Cached for unfiltered homepage (60s) and popular watchlists (120s)
+- **Server-side client**: `typesense-js` in the web app, connecting to `typesense.colophon-group.org` (Cloudflare tunnel) with the search-only key
+
+### Direct browser → Typesense (feature-flagged)
+
+For the high-traffic `/explore` client search loop, the web app can bypass the Vercel server-action proxy and call Typesense directly from the browser. Gated by `NEXT_PUBLIC_TYPESENSE_DIRECT=1`.
+
+- **Scoped key endpoint**: `GET /api/typesense-key` (route handler `apps/web/app/api/typesense-key/route.ts`). Mints a Typesense scoped search key signed with the parent `TYPESENSE_SEARCH_KEY` (HMAC-SHA256 + base64). Embeds only `use_cache: true` -- the parent search-only scope already restricts to `documents:search`, and `limit_hits` is intentionally **not** embedded because it counts raw hits, not grouped rows, and would block normal anon traffic that uses `group_by company_id` with `group_limit 10`.
+- **TTL**: 5 min for anon, 10 min for authed. The browser caches the key in memory and refreshes 30 s before expiry. The cache is cleared when `useSession().isLoggedIn` flips so a sign-in/out doesn't keep the wrong key.
+- **Browser provider**: `apps/web/src/lib/search/typesense-browser.ts` -- a thin client (no `typesense-js` dependency in the browser bundle) that mirrors the server-side `TypesenseSearchProvider` query shapes.
+- **Anon truncation**: enforced as a soft client-side cap (`ANON_MAX_COMPANIES`) matching the current server-action behaviour. Real abuse protection is the Cloudflare per-IP rate-limit on the tunnel hostname.
+- **Fallback**: if the scoped-key endpoint is down or the browser provider returns a `degraded` result, the runner falls back to the original server-action path (`apps/web/src/lib/search/search-runner.ts`).
+- **Out of scope for direct path**: `getPostingDetail` (R2 URL minting requires server trust), `getCurrencyRates` (DB read, not Typesense), histograms (`getSalaryHistogram`/`getExperienceHistogram`, kept on server actions for the 3600 s cache).
+>>>>>>> Stashed changes
 
 ## Read paths summary
 

@@ -9,7 +9,9 @@ import { ZeroResults } from "@/components/search/zero-results";
 import { SkeletonCards } from "@/components/search/skeleton-card";
 import { JobDetailPanel } from "@/components/search/job-detail-dialog";
 import { SearchToolbar } from "@/components/search/search-toolbar";
-import { searchJobs, listTopCompanies, getCurrencyRates, type CurrencyRate } from "@/lib/actions/search";
+import { getCurrencyRates, type CurrencyRate } from "@/lib/actions/search";
+import { runSearchJobs, runListTopCompanies } from "@/lib/search/search-runner";
+import { useSession } from "@/components/SessionProvider";
 import { parseSearchFilters } from "@/lib/actions/search-input";
 import { buildFilteredPath } from "@/lib/search/query-params";
 import type { SearchResultCompany, HistogramFilters } from "@/lib/search";
@@ -69,6 +71,9 @@ export function SearchPage({
 }: SearchPageProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { isLoggedIn } = useSession();
+  const isLoggedInRef = useRef(isLoggedIn);
+  isLoggedInRef.current = isLoggedIn;
   const { get: getSearchState, set: setSearchState, setPageActions } = useSearchStateStore();
 
   const cached = getSearchState();
@@ -122,6 +127,20 @@ export function SearchPage({
   useEffect(() => {
     getCurrencyRates().then(setCurrencyRates);
   }, []);
+
+  // Clear the cached browser-side scoped Typesense key when auth state flips.
+  // Prevents a signed-in user from being held on the anon key (with its anon
+  // truncation soft-cap) and a signed-out user from holding the authed key.
+  useEffect(() => {
+    if (process.env.NEXT_PUBLIC_TYPESENSE_DIRECT !== "1") return;
+    let cancelled = false;
+    import("@/lib/search/typesense-browser-key").then((m) => {
+      if (!cancelled) m.clearTypesenseBrowserConfig();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoggedIn]);
 
   const [showPostingId, setShowPostingId] = useState<string | null>(
     searchParams.get("show") ?? (shouldRestore ? cached.showPostingId : null),
@@ -438,37 +457,43 @@ export function SearchPage({
       try {
         const result =
           kws.length > 0
-            ? await searchJobs({
-                keywords: kws,
-                locationIds,
-                occupationIds: occupationIds.length > 0 ? occupationIds : undefined,
-                seniorityIds: seniorityIds.length > 0 ? seniorityIds : undefined,
-                technologyIds: technologyIds.length > 0 ? technologyIds : undefined,
-                employmentTypes: etypes.length > 0 ? etypes : undefined,
-                salaryMinEur: salMinEur,
-                salaryMaxEur: salMaxEur,
-                experienceMin: expMin,
-                experienceMax: expMax,
-                languages,
-                locale,
-                offset: 0,
-                limit: PAGE_SIZE,
-              })
-            : await listTopCompanies({
-                locationIds,
-                occupationIds: occupationIds.length > 0 ? occupationIds : undefined,
-                seniorityIds: seniorityIds.length > 0 ? seniorityIds : undefined,
-                technologyIds: technologyIds.length > 0 ? technologyIds : undefined,
-                employmentTypes: etypes.length > 0 ? etypes : undefined,
-                salaryMinEur: salMinEur,
-                salaryMaxEur: salMaxEur,
-                experienceMin: expMin,
-                experienceMax: expMax,
-                languages,
-                locale,
-                offset: 0,
-                limit: PAGE_SIZE,
-              });
+            ? await runSearchJobs(
+                {
+                  keywords: kws,
+                  locationIds,
+                  occupationIds: occupationIds.length > 0 ? occupationIds : undefined,
+                  seniorityIds: seniorityIds.length > 0 ? seniorityIds : undefined,
+                  technologyIds: technologyIds.length > 0 ? technologyIds : undefined,
+                  employmentTypes: etypes.length > 0 ? etypes : undefined,
+                  salaryMinEur: salMinEur,
+                  salaryMaxEur: salMaxEur,
+                  experienceMin: expMin,
+                  experienceMax: expMax,
+                  languages,
+                  locale,
+                  offset: 0,
+                  limit: PAGE_SIZE,
+                },
+                isLoggedInRef.current,
+              )
+            : await runListTopCompanies(
+                {
+                  locationIds,
+                  occupationIds: occupationIds.length > 0 ? occupationIds : undefined,
+                  seniorityIds: seniorityIds.length > 0 ? seniorityIds : undefined,
+                  technologyIds: technologyIds.length > 0 ? technologyIds : undefined,
+                  employmentTypes: etypes.length > 0 ? etypes : undefined,
+                  salaryMinEur: salMinEur,
+                  salaryMaxEur: salMaxEur,
+                  experienceMin: expMin,
+                  experienceMax: expMax,
+                  languages,
+                  locale,
+                  offset: 0,
+                  limit: PAGE_SIZE,
+                },
+                isLoggedInRef.current,
+              );
         if (searchCounterRef.current !== id) return; // stale
         setCompanies(result.companies);
         serverOffsetRef.current = result.companies.length;
@@ -652,8 +677,8 @@ export function SearchPage({
     const expMin = experienceMinRef.current;
     const expMax = experienceMaxRef.current;
     const result = kws.length > 0
-      ? await searchJobs({ keywords: kws, locationIds, occupationIds, seniorityIds, technologyIds, employmentTypes: etypes, salaryMinEur: salMinEur, salaryMaxEur: salMaxEur, experienceMin: expMin, experienceMax: expMax, languages, locale, offset, limit: PAGE_SIZE })
-      : await listTopCompanies({ locationIds, occupationIds, seniorityIds, technologyIds, employmentTypes: etypes, salaryMinEur: salMinEur, salaryMaxEur: salMaxEur, experienceMin: expMin, experienceMax: expMax, languages, locale, offset, limit: PAGE_SIZE });
+      ? await runSearchJobs({ keywords: kws, locationIds, occupationIds, seniorityIds, technologyIds, employmentTypes: etypes, salaryMinEur: salMinEur, salaryMaxEur: salMaxEur, experienceMin: expMin, experienceMax: expMax, languages, locale, offset, limit: PAGE_SIZE }, isLoggedInRef.current)
+      : await runListTopCompanies({ locationIds, occupationIds, seniorityIds, technologyIds, employmentTypes: etypes, salaryMinEur: salMinEur, salaryMaxEur: salMaxEur, experienceMin: expMin, experienceMax: expMax, languages, locale, offset, limit: PAGE_SIZE }, isLoggedInRef.current);
 
     if (result.truncated) setIsTruncated(true);
     serverOffsetRef.current += result.companies.length;
