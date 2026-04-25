@@ -1,0 +1,4 @@
+{"type":"server-started","port":50952,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:50952","screen_dir":"/Users/weitingli/myWorkSpace/jobseek/.superpowers/brainstorm/11032-1777097537/content","state_dir":"/Users/weitingli/myWorkSpace/jobseek/.superpowers/brainstorm/11032-1777097537/state"}
+{"type":"screen-added","file":"/Users/weitingli/myWorkSpace/jobseek/.superpowers/brainstorm/11032-1777097537/content/queue-layout.html"}
+{"type":"screen-added","file":"/Users/weitingli/myWorkSpace/jobseek/.superpowers/brainstorm/11032-1777097537/content/queue-layout-v2.html"}
+{"type":"server-stopped","reason":"owner process exited"}

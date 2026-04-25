@@ -1,0 +1,132 @@
+<h2>Queue Page + Button Placement</h2>
+<p class="subtitle">Where the queue button lives, and what the Queue page looks like</p>
+
+<div class="section">
+  <h3>Queue button — job detail panel</h3>
+  <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">Sits next to the existing Save button in the job detail header</p>
+  <div class="mockup">
+    <div class="mockup-header">Job Detail Panel — header row</div>
+    <div class="mockup-body" style="padding:12px 16px">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div style="width:32px;height:32px;background:var(--border);border-radius:6px;flex-shrink:0"></div>
+        <span style="font-size:13px;font-weight:600">Stripe</span>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-size:10px;color:var(--text-muted)">2d ago</span>
+          <button class="mock-button" style="padding:3px 10px;font-size:11px;background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:99px">
+            🔖 Save
+          </button>
+          <button class="mock-button" style="padding:3px 10px;font-size:11px;background:transparent;border:1px solid var(--primary);color:var(--primary);border-radius:99px">
+            + Queue
+          </button>
+          <button class="mock-button" style="padding:3px 10px;font-size:11px;background:var(--primary);color:#fff;border-radius:99px">
+            View posting ↗
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Queue button — job card (explore list)</h3>
+  <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">Small icon button on hover, same row as the Save icon</p>
+  <div class="mockup">
+    <div class="mockup-header">Job card — action row</div>
+    <div class="mockup-body" style="padding:10px 16px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:13px;font-weight:600">Backend Engineer</div>
+          <div style="font-size:11px;color:var(--text-muted)">Stripe · Remote · €90-120k</div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button class="mock-button" style="padding:3px 8px;font-size:10px;background:transparent;border:1px solid var(--border);border-radius:99px;color:var(--text-muted)">🔖</button>
+          <button class="mock-button" style="padding:3px 8px;font-size:10px;background:transparent;border:1px solid var(--primary);border-radius:99px;color:var(--primary)">+Q</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Queue page — /queue</h3>
+  <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">Dedicated page accessible from app nav. Shows queued jobs with analysis results.</p>
+  <div class="mockup">
+    <div class="mockup-header">ATS Queue page</div>
+    <div class="mockup-body" style="padding:16px">
+
+      <!-- Header bar -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div>
+          <div style="font-size:15px;font-weight:700">ATS Queue</div>
+          <div style="font-size:11px;color:var(--text-muted)">Resume: Software Engineer · Updated Apr 24</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="mock-button" style="font-size:11px;padding:5px 12px;border:1px solid var(--border);background:transparent;border-radius:6px">Upload resume</button>
+          <button class="mock-button" style="font-size:11px;padding:5px 12px;background:var(--primary);color:#fff;border-radius:6px">Analyze all (4)</button>
+        </div>
+      </div>
+
+      <!-- Analyzed job row -->
+      <div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px;background:var(--surface-alt)">
+        <div style="display:flex;align-items:flex-start;gap:10px">
+          <div style="width:28px;height:28px;background:var(--border);border-radius:5px;flex-shrink:0"></div>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+              <span style="font-size:13px;font-weight:600">Senior Backend Engineer</span>
+              <span style="font-size:11px;background:#22c55e22;color:#16a34a;border-radius:99px;padding:1px 8px;font-weight:600">87%</span>
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px">Stripe · Remote</div>
+            <div style="margin-bottom:6px">
+              <span style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted)">Matched</span>
+              <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">
+                <span style="font-size:10px;background:#22c55e22;color:#16a34a;border-radius:4px;padding:2px 6px">Go</span>
+                <span style="font-size:10px;background:#22c55e22;color:#16a34a;border-radius:4px;padding:2px 6px">PostgreSQL</span>
+                <span style="font-size:10px;background:#22c55e22;color:#16a34a;border-radius:4px;padding:2px 6px">distributed systems</span>
+                <span style="font-size:10px;background:#22c55e22;color:#16a34a;border-radius:4px;padding:2px 6px">REST APIs</span>
+              </div>
+            </div>
+            <div style="margin-bottom:6px">
+              <span style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted)">Missing</span>
+              <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">
+                <span style="font-size:10px;background:#ef444422;color:#dc2626;border-radius:4px;padding:2px 6px">Kafka</span>
+                <span style="font-size:10px;background:#ef444422;color:#dc2626;border-radius:4px;padding:2px 6px">gRPC</span>
+              </div>
+            </div>
+            <p style="font-size:11px;color:var(--text-muted);border-left:2px solid var(--primary);padding-left:8px;margin:0">
+              Strong fit: your Go + distributed systems background maps well to Stripe's payment infrastructure. The only gap is Kafka experience, which you could address directly in a cover letter.
+            </p>
+          </div>
+          <button style="font-size:10px;color:var(--text-muted);background:none;border:none;cursor:pointer;padding:2px 6px;border-radius:4px" title="Remove from queue">✕</button>
+        </div>
+      </div>
+
+      <!-- Unanalyzed job row -->
+      <div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px;opacity:.7">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:28px;height:28px;background:var(--border);border-radius:5px;flex-shrink:0"></div>
+          <div>
+            <div style="font-size:13px;font-weight:600">Staff Engineer, Platform</div>
+            <div style="font-size:11px;color:var(--text-muted)">Vercel · Remote — <em>not yet analyzed</em></div>
+          </div>
+          <button style="margin-left:auto;font-size:10px;color:var(--text-muted);background:none;border:none;cursor:pointer;padding:2px 6px;border-radius:4px">✕</button>
+        </div>
+      </div>
+
+      <!-- Loading row -->
+      <div style="border:1px solid var(--border);border-radius:8px;padding:12px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:28px;height:28px;background:var(--border);border-radius:5px;flex-shrink:0;animation:pulse 1.5s infinite"></div>
+          <div style="flex:1">
+            <div style="height:12px;width:180px;background:var(--border);border-radius:4px;margin-bottom:6px;animation:pulse 1.5s infinite"></div>
+            <div style="height:10px;width:120px;background:var(--border);border-radius:4px;animation:pulse 1.5s infinite"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<p style="font-size:12px;color:var(--text-muted);margin-top:16px">
+  Does this layout and button placement look right? Let me know if you'd like to adjust anything before we move to the data + API design.
+</p>

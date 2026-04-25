@@ -10,7 +10,7 @@ test.describe("Job detail panel", () => {
     await expect(firstPosting).toBeVisible({ timeout: 20_000 });
     await firstPosting.click();
 
-    await expect(page.getByText("Job Details")).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText("Job Details").first()).toBeVisible({ timeout: 5_000 });
   });
 
   test("shows View posting link after detail loads", async ({ page }) => {
@@ -20,10 +20,10 @@ test.describe("Job detail panel", () => {
     const firstPosting = page.locator("div[role='button']").first();
     await expect(firstPosting).toBeVisible({ timeout: 20_000 });
     await firstPosting.click();
-    await expect(page.getByText("Job Details")).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText("Job Details").first()).toBeVisible({ timeout: 5_000 });
 
     // Detail content loads async — wait for the external link to appear
-    await expect(page.getByText("View posting")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("View posting").first()).toBeVisible({ timeout: 10_000 });
   });
 
   // Requires R2_DOMAIN_URL to be set so job descriptions load

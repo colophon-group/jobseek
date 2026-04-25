@@ -68,7 +68,7 @@ Example output: ["JavaScript", "React", "TypeScript"]`,
 
     // Parse JSON array from response
     try {
-      const jsonMatch = content.match(/\[.*\]/s);
+      const jsonMatch = content.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
         if (Array.isArray(parsed) && parsed.every((item) => typeof item === "string")) {
