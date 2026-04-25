@@ -43,6 +43,18 @@ def schemas_dir() -> Path:
     return Path(__file__).parent / "schemas"
 
 
+def optout_file() -> Path:
+    """Path to the per-company opt-out list (one slug per line, ``#`` comments).
+
+    Lives at ``apps/crawler/data/labeller_optout.txt`` (tracked, public). Read
+    by :func:`upload.push_to_hub` to filter takedown-requested companies out
+    of the published HuggingFace dataset.
+    """
+    from src.shared.constants import get_data_dir
+
+    return get_data_dir() / "labeller_optout.txt"
+
+
 def prompts_dir() -> Path:
     """Path to the Jinja prompt templates directory inside the source tree."""
     return Path(__file__).parent / "prompts"

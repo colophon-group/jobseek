@@ -21,7 +21,7 @@ import os
 import tempfile
 from pathlib import Path
 
-from .paths import data_root, schemas_dir
+from .paths import data_root, optout_file, schemas_dir
 
 HF_REPO = "viktoroo/jobseek-postings-labelled"
 
@@ -197,8 +197,10 @@ English-normalised free-text `profession`; English free-text
 
 If you are the owner of content in a posting and wish it removed, open
 an issue at https://github.com/colophon-group/jobseek/issues with the
-posting ID (the `id` field). We will remove the row and add the source
-to an opt-out list for future runs.
+posting ID (the `id` field). We will remove the row and add the company
+slug to the opt-out list at
+[`apps/crawler/data/labeller_optout.txt`](https://github.com/colophon-group/jobseek/blob/main/apps/crawler/data/labeller_optout.txt)
+so future runs do not re-publish postings from that company.
 
 ## Data-quality gatekeeping
 
@@ -239,11 +241,31 @@ def _readme_text(counts_by_date: dict[str, int] | None = None) -> str:
     return _README_TEMPLATE.replace(_COUNTS_PLACEHOLDER, counts_line)
 
 
+def _load_optout() -> set[str]:
+    """Read company slugs from the opt-out list. Returns empty set if absent.
+
+    File format: one slug per line, ``#`` comments and blank lines ignored.
+    Whitespace is trimmed. Slug matching is exact (case-sensitive); the
+    upstream ``companies.csv`` slugs are lowercase by convention.
+    """
+    path = optout_file()
+    if not path.exists():
+        return set()
+    slugs: set[str] = set()
+    for line in path.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        slugs.add(line)
+    return slugs
+
+
 def _accepted_by_date(run_date: str | None) -> dict[str, list[dict]]:
     base = data_root() / "postings"
     out: dict[str, list[dict]] = {}
     if not base.exists():
         return out
+    optout = _load_optout()
     for date_dir in sorted(base.iterdir()):
         if not date_dir.is_dir():
             continue
@@ -256,8 +278,12 @@ def _accepted_by_date(run_date: str | None) -> dict[str, list[dict]]:
                 data = json.loads(path.read_text())
             except json.JSONDecodeError:
                 continue
-            if (data.get("labelling_meta") or {}).get("qa_verdict") == "accepted":
-                accepted.append(data)
+            if (data.get("labelling_meta") or {}).get("qa_verdict") != "accepted":
+                continue
+            slug = (data.get("source") or {}).get("company_slug")
+            if slug in optout:
+                continue
+            accepted.append(data)
         if accepted:
             out[date] = accepted
     return out
