@@ -514,6 +514,26 @@ class TestOpenPage:
         kwargs = pw.chromium.launch.await_args.kwargs
         assert kwargs.get("channel") == "chrome"
 
+    async def test_skip_ssl_enables_ignore_https_errors_on_new_context(self):
+        # Boards with broken cert chains (DiDi Intl: missing intermediate
+        # CA) need ignore_https_errors on the Playwright context, otherwise
+        # the api_sniffer browser path hard-fails on cert verify.
+        pw = _make_pw()
+        browser = pw.chromium.launch.return_value
+        async with open_page(pw, {"skip_ssl": True}):
+            pass
+        ctx_kwargs = browser.new_context.await_args.kwargs
+        assert ctx_kwargs.get("ignore_https_errors") is True
+
+    async def test_skip_ssl_absent_omits_ignore_https_errors(self):
+        # Default path: do not loosen TLS verification.
+        pw = _make_pw()
+        browser = pw.chromium.launch.return_value
+        async with open_page(pw, {}):
+            pass
+        ctx_kwargs = browser.new_context.await_args.kwargs
+        assert "ignore_https_errors" not in ctx_kwargs
+
 
 class TestHeadlessCoercion:
     """Coverage for the headless fallback when the X server is missing (#2431).
@@ -802,6 +822,23 @@ class TestOpenPagePersistentContext:
         args, kwargs = page.goto.await_args
         assert args[0] == "https://example.com/"
         assert kwargs["wait_until"] == "domcontentloaded"
+
+    async def test_skip_ssl_forwarded_to_persistent_context(self):
+        # persistent_context takes context-level knobs at launch time, not
+        # via a separate new_context() call, so ignore_https_errors must
+        # land in launch_persistent_context kwargs instead.
+        pw = self._make_persist_pw()
+        async with open_page(pw, {"persistent_context": True, "skip_ssl": True}):
+            pass
+        kwargs = pw.chromium.launch_persistent_context.await_args.kwargs
+        assert kwargs.get("ignore_https_errors") is True
+
+    async def test_skip_ssl_absent_omits_ignore_https_errors_on_persistent(self):
+        pw = self._make_persist_pw()
+        async with open_page(pw, {"persistent_context": True}):
+            pass
+        kwargs = pw.chromium.launch_persistent_context.await_args.kwargs
+        assert "ignore_https_errors" not in kwargs
 
 
 # ---------------------------------------------------------------------------
