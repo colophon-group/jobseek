@@ -1,0 +1,72 @@
+name: Crawler scheduled maintenance
+
+# Periodic ephemeral crawler CLI runs. Kept in-repo so the cadence is
+# reviewable and version-controlled (see #2630). Dispatches to the Hetzner
+# crawler host via SSH and runs the task as `docker run --rm` using the
+# current `latest` image and `/home/deploy/.env`.
+#
+# What runs here (vs. elsewhere):
+#   refresh-typesense  — this workflow, every 4h + at every deploy (inline
+#                        via `crawler sync` in apps/crawler/deploy.sh).
+#   notify-indexnow    — NOT this workflow. Long-lived `indexnow` service in
+#                        apps/crawler/docker-compose.yml runs it every
+#                        INDEXNOW_INTERVAL seconds (default 3600).
+#   reconcile          — NOT this workflow. Runs daily in-process inside the
+#                        exporter container; see docs/11-typesense.md.
+#   backfill-typesense — NOT scheduled. Full re-index, invoked manually via
+#                        workflow_dispatch below when a schema change or
+#                        count drift requires it.
+
+on:
+  schedule:
+    # 00:17, 04:17, 08:17, 12:17, 16:17, 20:17 UTC — off-the-hour to avoid
+    # clustering with other cron jobs, 4h cadence matches the count-staleness
+    # tolerance (exporter keeps job_posting fresh; counts on company + taxonomy
+    # collections only advance on refresh-typesense).
+    - cron: "17 */4 * * *"
+  workflow_dispatch:
+    inputs:
+      task:
+        description: Which maintenance command to run
+        type: choice
+        default: refresh-typesense
+        options:
+          - refresh-typesense
+          - backfill-typesense
+
+concurrency:
+  # Serialize scheduled runs. A concurrent deploy is fine — it has its own
+  # concurrency group and its inline refresh is idempotent with ours.
+  group: crawler-scheduled-maintenance
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Resolve task
+        id: task
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "task=${{ inputs.task }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "task=refresh-typesense" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run via SSH
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: deploy
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            TASK="${{ steps.task.outputs.task }}"
+            NAME="crawler-${TASK}-$(date -u +%Y%m%dT%H%M%SZ)"
+            docker run --rm \
+              --name "$NAME" \
+              --env-file /home/deploy/.env \
+              --network host \
+              ghcr.io/colophon-group/jobseek-crawler:latest \
+              uv run --no-sync crawler "$TASK"

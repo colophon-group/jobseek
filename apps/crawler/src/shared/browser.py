@@ -93,6 +93,7 @@ BROWSER_KEYS = frozenset(
         "channel",
         "viewport",
         "locale",
+        "skip_ssl",
     }
 )
 
@@ -333,6 +334,7 @@ async def open_page(
             locale=locale,
             cookies=cookies,
             warmup_url=warmup_url,
+            skip_ssl=bool(config.get("skip_ssl")),
         ) as page:
             yield page
         return
@@ -351,6 +353,8 @@ async def open_page(
         ctx_kwargs: dict = {}
         if user_agent:
             ctx_kwargs["user_agent"] = user_agent
+        if config.get("skip_ssl"):
+            ctx_kwargs["ignore_https_errors"] = True
         context = await browser.new_context(**ctx_kwargs)
         context.set_default_timeout(CONTEXT_TIMEOUT)
         if cookies:
@@ -379,6 +383,7 @@ async def _open_persistent_page(
     locale: str | None,
     cookies: list[dict] | None,
     warmup_url: str | None,
+    skip_ssl: bool = False,
 ) -> AsyncIterator:
     """``launch_persistent_context`` variant of :func:`open_page`.
 
@@ -405,6 +410,8 @@ async def _open_persistent_page(
         launch_kwargs["viewport"] = viewport
     if locale:
         launch_kwargs["locale"] = locale
+    if skip_ssl:
+        launch_kwargs["ignore_https_errors"] = True
 
     context = await pw.chromium.launch_persistent_context(user_data_dir, **launch_kwargs)
     try:

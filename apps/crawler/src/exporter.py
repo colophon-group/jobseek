@@ -537,12 +537,6 @@ async def _upsert_to_supabase(
         )
 
         await conn.execute(
-            "DELETE FROM _export_postings t "
-            "USING job_posting jp "
-            "WHERE jp.source_url = t.source_url AND jp.id != t.id"
-        )
-
-        await conn.execute(
             f"INSERT INTO job_posting ({_POSTING_COLUMNS}) "
             "SELECT * FROM _export_postings "
             f"ON CONFLICT (id) DO UPDATE SET {_POSTING_UPSERT_SET}"
@@ -676,7 +670,6 @@ async def _export_changed_postings(
     if not rows:
         return 0, cursor
 
-    # Strip updated_at from records before COPY to Supabase
     col_names = _POSTING_COLUMNS.split(", ")
     async with supa_pool.acquire() as conn, conn.transaction():
         await conn.execute(
@@ -698,14 +691,6 @@ async def _export_changed_postings(
             "_export_postings",
             records=[tuple(r[c] for c in col_names) for r in rows],
             columns=col_names,
-        )
-
-        # Delete from temp table any rows whose source_url would collide
-        # with an existing row under a different ID (cross-board duplicates).
-        await conn.execute(
-            "DELETE FROM _export_postings t "
-            "USING job_posting jp "
-            "WHERE jp.source_url = t.source_url AND jp.id != t.id"
         )
 
         await conn.execute(

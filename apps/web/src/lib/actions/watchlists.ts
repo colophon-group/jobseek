@@ -790,7 +790,10 @@ export async function getWatchlistMatchingCompanyCount(
       console.error("[getWatchlistMatchingCompanyCount] Typesense failed", err);
       return 0;
     }
-  }, { ttl: 600 });
+    // Aligned to the watchlist-detail ISR window (1h, see page.tsx). Bumped
+    // from 600s with #2648 — metadata freshness from a viewer's perspective
+    // comes from the client-hydrated body, not the cached count.
+  }, { ttl: 3600 });
 }
 
 async function resolveFilteredJobCount(

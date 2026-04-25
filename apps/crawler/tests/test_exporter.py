@@ -215,8 +215,8 @@ class TestExportChangedPostings:
 
         assert count == 2
         assert new_cursor == (ts2, posting_id_2)
-        # Should have called CREATE TEMP TABLE, DELETE dedup, INSERT
-        assert conn.execute.await_count == 3  # CREATE + DELETE dedup + INSERT
+        # CREATE TEMP TABLE + INSERT ... ON CONFLICT.
+        assert conn.execute.await_count == 2
         conn.copy_records_to_table.assert_awaited_once()
 
 

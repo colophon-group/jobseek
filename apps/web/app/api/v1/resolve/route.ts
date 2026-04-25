@@ -76,12 +76,16 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // Resolve responses (taxonomy/location autocomplete) are stable — the
+  // taxonomy collections change on a daily-deploy cadence at most. Bumped
+  // from the 300s default to 1h for higher CDN reuse on common queries.
+  // See issue #2644 + alignment with /api/v1/taxonomies which is already 1h.
   return apiResponse(
     {
       type,
       query: q,
       matches: matches.slice(0, 10),
     },
-    { rateLimit: rl },
+    { maxAge: 3600, rateLimit: rl },
   );
 }
