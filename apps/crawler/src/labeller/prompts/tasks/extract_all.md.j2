@@ -131,6 +131,8 @@ Always `null` — these sections are kept for span classification only.
     - `"General Manager"` → `profession="general manager"` (operations role title)
     - `"Chief of Staff"` → `profession="chief of staff"` (role title)
     - `"Engineering Manager"` → `profession="engineering manager"` (people-management track is its own profession)
+    - `"IT Manager"` → `profession="IT manager"` (IT mgmt is its own track; an "IT specialist" is a distinct entry-level individual-contributor role, not a senior IT manager)
+    - `"Partner Sales Manager"` / `"Channel Sales Manager"` → `profession="partner sales manager"` / `"channel sales manager"` (channel/partner mgmt is a track distinct from individual-contributor sales)
     - When in doubt, ask: "is `<word>` here naming the discipline (KEEP) or naming the rank within the discipline (MOVE to seniority)?"
 - `title_normalized`: the clean display title.
   - **Keep**: seniority modifiers (Senior, Lead, Principal, Manager, Director, VP, Chief), specialty modifiers that change the role meaning (Java, Frontend, Low Voltage, ERP, Tax, Pediatric, Commercial).
