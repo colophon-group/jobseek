@@ -66,7 +66,9 @@ The key file is served by `apps/web/app/indexnow-key.txt/route.ts` with `dynamic
 
 ### Crawler-side (companies): content-hash diff
 
-`apps/crawler/src/indexnow.py::notify_indexnow` — runs on the `indexnow` container every `INDEXNOW_INTERVAL` seconds. Single Postgres connection across the whole cycle to avoid TOCTOU races with `crawler sync`:
+`apps/crawler/src/indexnow.py::notify_indexnow` — runs on the `indexnow` container every `INDEXNOW_INTERVAL` seconds. The scheduling mechanism is a shell `while/sleep` loop baked into the compose service command itself (`apps/crawler/docker-compose.yml` → `indexnow` service), not an external cron or timer. This keeps the cadence next to the command that reads it and survives any host-level cron migration.
+
+Single Postgres connection across the whole cycle to avoid TOCTOU races with `crawler sync`:
 
 1. Fetch every company + its stable fields (`name, website, logo, icon, industry, employee_count_range, founded_year`).
 2. Fetch all `company_description` rows for supported locales.

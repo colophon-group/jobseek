@@ -163,10 +163,10 @@ uv run crawler run-browser             # Browser worker (claims from browser que
 uv run crawler export                  # CDC exporter loop (Supabase + Typesense)
 uv run crawler drain                   # R2 description uploader
 uv run crawler sync                    # CSV -> local Postgres + Supabase + Redis + Typesense
-uv run crawler reconcile               # Compare local vs Supabase, fix discrepancies
-uv run crawler backfill-typesense      # Full re-index of job_posting to Typesense
-uv run crawler refresh-typesense       # Refresh Typesense counts + reconcile watchlists
-uv run crawler notify-indexnow         # Push changed company URLs to IndexNow (see docs/13-seo-and-indexnow.md)
+uv run crawler reconcile               # Compare local vs Supabase, fix discrepancies (also runs daily in-process inside the exporter container)
+uv run crawler backfill-typesense      # Full re-index of job_posting to Typesense (manual; workflow_dispatch in .github/workflows/crawler-scheduled-maintenance.yml)
+uv run crawler refresh-typesense       # Refresh Typesense counts + reconcile watchlists (every 4h via .github/workflows/crawler-scheduled-maintenance.yml, plus inline at every deploy/CSV sync)
+uv run crawler notify-indexnow         # Push changed company URLs to IndexNow (scheduled by the indexnow compose service's while/sleep loop; see docs/13-seo-and-indexnow.md)
 uv run crawler board <slug>            # Process single board (debug)
 uv run crawler board <slug> --dry-run  # Test without DB writes
 uv run crawler board <slug> --dry-run --verbose  # Show all extracted fields
