@@ -340,15 +340,24 @@ Quick summary:
 src/sync.py    # CSV -> DB upsert
 ```
 
-CSV files are the source of truth. `sync.py` writes to THREE targets in one pass:
+CSV files are the source of truth. `sync.py` writes to FOUR targets in one pass:
 
-1. **Local Postgres**: full board config (all columns)
-2. **Supabase**: company display data + minimal board reference
+1. **Local Postgres**: full board config (all columns); company + taxonomy mirror with shared UUIDs
+2. **Supabase**: company display data + minimal board reference (UUIDs match local)
 3. **Redis**: board config and initial schedule in ready queues
+4. **Typesense**: taxonomy collections, the `company` collection (incl. per-locale description and industry name variants used by the company detail page), and the `watchlist` collection. `crawler setup-typesense` runs on each deploy and patches the live schema in place before sync upserts populate new fields -- see [docs/11-typesense.md](./11-typesense.md#schema-definition)
 
 - **New rows**: Inserted with staggered `next_check_at` (random offset to prevent thundering herd)
 - **Existing rows**: Config updated, runtime fields preserved
 - **Removed rows**: Disabled (`is_enabled = false`), not deleted
+
+### Read paths (which database serves which page)
+
+See [docs/11-typesense.md#read-paths-summary](./11-typesense.md#read-paths-summary) for the full breakdown. Short version:
+
+- **Job search, typeaheads, browse-all, watchlist search, company detail, similar-company strip** → Typesense
+- **Auth, watchlist mutations, posting detail, watchlist company-pair lookups, Postgres fallbacks** → Supabase Postgres
+- **All `job_posting` aggregations** (active counts per company, per taxonomy, per watchlist) → Local Postgres, then upserted into Typesense doc fields. Web pages never aggregate `job_posting` directly
 
 ---
 

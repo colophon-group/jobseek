@@ -1885,10 +1885,17 @@ async def sync_companies_typesense(
     local_conn: asyncpg.Connection | None,
     client: typesense.Client,
 ) -> None:
-    """Sync companies to the Typesense ``company`` collection."""
+    """Sync companies to the Typesense ``company`` collection.
+
+    Populates the per-locale description / industry_name variants used by the
+    company detail page reader (``getCompanyBySlug``) so that page can serve
+    from Typesense without a Supabase round-trip.
+    """
     rows = await supa_conn.fetch(
         """
-        SELECT c.id, c.name, c.slug, c.icon, c.industry,
+        SELECT c.id, c.name, c.slug, c.icon, c.logo, c.website,
+               c.description, c.industry,
+               c.employee_count_range, c.founded_year,
                i.name AS industry_name
         FROM company c
         LEFT JOIN industry i ON i.id = c.industry
@@ -1898,13 +1905,20 @@ async def sync_companies_typesense(
         log.info("typesense.companies.empty")
         return
 
-    # Fetch company descriptions (English)
     desc_rows = await supa_conn.fetch(
-        "SELECT company_id, description FROM company_description WHERE locale = 'en'"
+        "SELECT company_id, locale, description FROM company_description"
     )
-    descs = {r["company_id"]: r["description"] for r in desc_rows}
+    descs_by_locale: dict[str, dict] = {}
+    for r in desc_rows:
+        descs_by_locale.setdefault(r["locale"], {})[r["company_id"]] = r["description"]
 
-    # Active posting counts from local Postgres
+    ind_name_rows = await supa_conn.fetch(
+        "SELECT industry_id, locale, name FROM industry_name WHERE is_display"
+    )
+    ind_names_by_locale: dict[str, dict] = {}
+    for r in ind_name_rows:
+        ind_names_by_locale.setdefault(r["locale"], {})[r["industry_id"]] = r["name"]
+
     active_counts: dict[str, int] = {}
     year_counts: dict[str, int] = {}
     if local_conn is not None:
@@ -1940,12 +1954,34 @@ async def sync_companies_typesense(
         }
         if r["icon"]:
             doc["icon"] = r["icon"]
-        if descs.get(r["id"]):
-            doc["description"] = descs[r["id"]]
+        if r["logo"]:
+            doc["logo"] = r["logo"]
+        if r["website"]:
+            doc["website"] = r["website"]
+        if r["employee_count_range"] is not None:
+            doc["employee_count_range"] = r["employee_count_range"]
+        if r["founded_year"] is not None:
+            doc["founded_year"] = r["founded_year"]
+
+        # description: per-locale company_description takes precedence over
+        # the canonical c.description (English) for matching locale.
+        en_desc = descs_by_locale.get("en", {}).get(r["id"]) or r["description"]
+        if en_desc:
+            doc["description"] = en_desc
+        for loc in ("de", "fr", "it"):
+            text = descs_by_locale.get(loc, {}).get(r["id"])
+            if text:
+                doc[f"description_{loc}"] = text
+
         if r["industry"] is not None:
             doc["industry_id"] = r["industry"]
         if r["industry_name"]:
             doc["industry_name"] = r["industry_name"]
+        for loc in ("de", "fr", "it"):
+            name = ind_names_by_locale.get(loc, {}).get(r["industry"])
+            if name:
+                doc[f"industry_name_{loc}"] = name
+
         docs.append(doc)
 
     loop = asyncio.get_event_loop()
