@@ -172,7 +172,11 @@ async def _paginate_urls(
     prior tolerant semantics for now; that fetch goes through Playwright,
     not httpx, and Playwright errors there are typically navigation
     issues rather than HTTP transients. Hardening that path is tracked
-    as a follow-up.
+    in #2737 — currently affects the ``lenovo-careers`` board, which
+    is the only configured ``pagination.browser=true`` user. A
+    Playwright fetch timeout there can still produce a partial URL
+    set; until #2737 ships, mitigate operationally via the drop guard
+    (#2723) and blast-radius cap (#2724) introduced in PR #2729.
     """
     from src.shared.api_sniff import set_url_param
     from src.shared.http_retry import fetch_with_retry

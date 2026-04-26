@@ -54,13 +54,33 @@ class PaginationFetchError(Exception):
         super().__init__(f"pagination fetch failed for {url} after {attempts} attempts ({detail})")
 
 
-# Statuses we retry on (transient by convention).
-_RETRYABLE_STATUSES = frozenset({408, 425, 429, 500, 502, 503, 504})
+# Explicitly-retryable non-5xx statuses. Anything in the 500–599 range is
+# also retried — see ``_is_retryable_status`` — covering Cloudflare's 520-526
+# / 530 origin-error codes that real jobs sites behind CDNs commonly emit.
+_EXTRA_RETRYABLE_STATUSES = frozenset({408, 425, 429})
 
 # Statuses that mean "no content here, but the request was understood".
 # Pagination treats these as legitimate end-of-pagination signals so the
 # monitor returns its accumulated set as a successful run.
 _END_OF_PAGINATION_STATUSES = frozenset({404, 410})
+
+
+def _is_retryable_status(status: int) -> bool:
+    """Whether *status* should be retried by ``fetch_with_retry``.
+
+    Retried: any 5xx (Cloudflare 520-526/530 included) plus 408 (request
+    timeout), 425 (too early), 429 (rate-limited). Returning ``True``
+    here will, on retry exhaustion, surface as ``PaginationFetchError``.
+    """
+    if 500 <= status < 600:
+        return True
+    return status in _EXTRA_RETRYABLE_STATUSES
+
+
+# Backward-compatible alias for tests / introspection. Reflects the
+# union of explicit + range-based retryable statuses for documentation
+# purposes; the real check uses ``_is_retryable_status``.
+_RETRYABLE_STATUSES = _EXTRA_RETRYABLE_STATUSES | frozenset(range(500, 600))
 
 
 async def fetch_with_retry(
@@ -109,7 +129,7 @@ async def fetch_with_retry(
                 return resp.text[:max_chars]
             if resp.status_code in _END_OF_PAGINATION_STATUSES:
                 return None
-            if resp.status_code in _RETRYABLE_STATUSES:
+            if _is_retryable_status(resp.status_code):
                 last_exc = None  # status-only, no exception
             else:
                 # Other 4xx (auth, forbidden, bad-request, etc.) — not

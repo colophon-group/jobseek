@@ -291,14 +291,24 @@ class TestFetchChildXml:
             root = await _fetch_child_xml("https://example.com/sitemap-deleted.xml", client)
             assert root is None
 
-    async def test_503_raises_after_retries(self):
+    async def test_503_raises_after_retries(self, monkeypatch):
         """Transient 503 exhausts retries → propagate
         ``PaginationFetchError`` rather than silently returning None
-        (the 2026-04-26 NHS spike root cause)."""
+        (the 2026-04-26 NHS spike root cause). ``asyncio.sleep`` is
+        patched to a no-op so the test runs in milliseconds rather
+        than waiting on real backoff jitter (~2s with defaults).
+        """
+        import asyncio
+
         import pytest
 
         from src.core.monitors.sitemap import _fetch_child_xml
         from src.shared.http_retry import PaginationFetchError
+
+        async def _no_sleep(_):
+            return None
+
+        monkeypatch.setattr(asyncio, "sleep", _no_sleep)
 
         attempts = 0
 
@@ -309,10 +319,6 @@ class TestFetchChildXml:
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             with pytest.raises(PaginationFetchError) as exc:
-                # Use the real fetch_with_retry but with a tiny base_delay
-                # so the test is fast. Patch via env-style isn't easy;
-                # rely on the helper's default 3 attempts being acceptable
-                # at the implicit delay (jittered ~0.5s × 1 + 1s × 1 ≈ 2s).
                 await _fetch_child_xml("https://example.com/sitemap-flaky.xml", client)
             assert exc.value.last_status == 503
             assert attempts == 3

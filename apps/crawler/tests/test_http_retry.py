@@ -153,3 +153,31 @@ class TestFetchWithRetry:
     async def test_constants_disjoint(self):
         """Sanity: a status can't be both retryable and end-of-pagination."""
         assert set() == _RETRYABLE_STATUSES & _END_OF_PAGINATION_STATUSES
+
+    async def test_cloudflare_5xx_codes_retry(self):
+        """Cloudflare-origin 5xx codes (520-526, 530) are retried — they
+        showed up as a silent-truncation hole in PR #2736 review when
+        the explicit allow-list missed them. Range-based check now
+        covers any 5xx; this test pins that contract.
+        """
+        for status in (520, 521, 522, 523, 524, 525, 526, 530):
+            client = AsyncMock()
+            client.get = AsyncMock(side_effect=[_resp(status), _resp(200, "ok")])
+
+            out = await fetch_with_retry(client, "https://example.com/cf", base_delay=0.001)
+
+            assert out == "ok", f"status {status} should be retried"
+            assert client.get.await_count == 2
+
+    async def test_zero_retries_raises_immediately(self):
+        """``retries=0`` means no attempts are made — function raises
+        without consulting the network. Defensive: callers shouldn't
+        configure 0, but the contract is at least predictable.
+        """
+        client = AsyncMock()
+        client.get = AsyncMock()
+
+        with pytest.raises(PaginationFetchError):
+            await fetch_with_retry(client, "https://example.com", retries=0)
+
+        assert client.get.await_count == 0
