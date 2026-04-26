@@ -196,6 +196,62 @@ class TestPaginateUrls:
             else:
                 raise AssertionError("expected PaginationFetchError to propagate")
 
+    async def test_browser_path_propagates_persistent_fetch_error(self, monkeypatch):
+        """Same contract as the static path, but for ``pagination.browser=true``
+        (#2737). A persistent Playwright-side failure must raise rather than
+        truncate — the lenovo-careers board's failure mode.
+        """
+        from src.shared.http_retry import PaginationFetchError
+
+        monkeypatch.setattr("src.core.monitors.dom.asyncio.sleep", AsyncMock())
+        page = MagicMock()
+        # First page succeeds with no new links so we get past the
+        # ``no_new_urls`` short-circuit only on a real failure path —
+        # here every page returns 503 so the very first paginated
+        # fetch raises.
+        page.evaluate = AsyncMock(return_value={"status": 503, "text": ""})
+
+        initial = {"https://example.com/jobs/1"}
+        try:
+            await _paginate_urls(
+                "https://example.com/careers",
+                {"param_name": "p", "max_pages": 5, "browser": True},
+                initial,
+                MagicMock(),
+                page=page,
+            )
+        except PaginationFetchError as exc:
+            assert exc.last_status == 503
+        else:
+            raise AssertionError("expected PaginationFetchError to propagate")
+
+    async def test_browser_path_recovers_on_transient(self, monkeypatch):
+        """Browser path retries through a single 503 and continues paginating."""
+        monkeypatch.setattr("src.core.monitors.dom.asyncio.sleep", AsyncMock())
+        page = MagicMock()
+        page.evaluate = AsyncMock(
+            side_effect=[
+                {"status": 503, "text": ""},
+                {"status": 200, "text": _html_with_links("https://example.com/jobs/2")},
+                # Second pagination loop iteration: page=3 returns 404
+                # (legitimate end of pagination).
+                {"status": 404, "text": ""},
+            ]
+        )
+
+        initial = {"https://example.com/jobs/1"}
+        result = await _paginate_urls(
+            "https://example.com/careers",
+            {"param_name": "p", "max_pages": 5, "browser": True},
+            initial,
+            MagicMock(),
+            page=page,
+        )
+        assert result == {
+            "https://example.com/jobs/1",
+            "https://example.com/jobs/2",
+        }
+
     async def test_respects_max_pages(self):
         """Only fetches up to max_pages."""
         initial = {"https://example.com/jobs/1"}
@@ -310,15 +366,160 @@ class TestPaginateUrls:
 
 
 class TestFetchViaPage:
-    async def test_returns_html(self):
+    """``_fetch_via_page`` mirrors ``fetch_with_retry``'s strict semantics
+    on the Playwright path: 200 → text, 404/410 → None (legit end), other
+    4xx → None (lenient stop), and 5xx / 408 / 425 / 429 / page.evaluate
+    exceptions → retry then raise ``PaginationFetchError``. See #2737.
+    """
+
+    async def test_returns_html_on_200(self):
         page = MagicMock()
-        page.evaluate = AsyncMock(return_value="<html>ok</html>")
+        page.evaluate = AsyncMock(return_value={"status": 200, "text": "<html>ok</html>"})
         result = await _fetch_via_page(page, "https://example.com/page2")
         assert result == "<html>ok</html>"
         page.evaluate.assert_awaited_once()
 
-    async def test_returns_none_on_error(self):
+    async def test_returns_none_on_404(self):
+        """404 / 410 are legitimate end-of-pagination — return None, no retry."""
         page = MagicMock()
-        page.evaluate = AsyncMock(side_effect=Exception("network error"))
-        result = await _fetch_via_page(page, "https://example.com/page2")
+        page.evaluate = AsyncMock(return_value={"status": 404, "text": "not found"})
+        result = await _fetch_via_page(page, "https://example.com/past-end")
         assert result is None
+        assert page.evaluate.await_count == 1
+
+    async def test_returns_none_on_410(self):
+        page = MagicMock()
+        page.evaluate = AsyncMock(return_value={"status": 410, "text": ""})
+        result = await _fetch_via_page(page, "https://example.com/gone")
+        assert result is None
+
+    async def test_returns_none_on_non_retryable_4xx(self):
+        """Non-retryable 4xx (403 etc.) is a lenient stop, parity with httpx path."""
+        page = MagicMock()
+        page.evaluate = AsyncMock(return_value={"status": 403, "text": "forbidden"})
+        result = await _fetch_via_page(page, "https://example.com/forbidden")
+        assert result is None
+        assert page.evaluate.await_count == 1
+
+    async def test_retries_on_503_then_succeeds(self, monkeypatch):
+        """Transient 503 retries, then 200 returns text."""
+        monkeypatch.setattr("src.core.monitors.dom.asyncio.sleep", AsyncMock())
+        page = MagicMock()
+        page.evaluate = AsyncMock(
+            side_effect=[
+                {"status": 503, "text": "down"},
+                {"status": 200, "text": "<html>recovered</html>"},
+            ]
+        )
+        result = await _fetch_via_page(page, "https://example.com/p2")
+        assert result == "<html>recovered</html>"
+        assert page.evaluate.await_count == 2
+
+    async def test_retries_on_429_then_succeeds(self, monkeypatch):
+        monkeypatch.setattr("src.core.monitors.dom.asyncio.sleep", AsyncMock())
+        page = MagicMock()
+        page.evaluate = AsyncMock(
+            side_effect=[
+                {"status": 429, "text": ""},
+                {"status": 200, "text": "ok"},
+            ]
+        )
+        result = await _fetch_via_page(page, "https://example.com/p2")
+        assert result == "ok"
+        assert page.evaluate.await_count == 2
+
+    async def test_raises_after_persistent_5xx(self, monkeypatch):
+        """Persistent 5xx exhausts retries -> PaginationFetchError."""
+        from src.shared.http_retry import PaginationFetchError
+
+        monkeypatch.setattr("src.core.monitors.dom.asyncio.sleep", AsyncMock())
+        page = MagicMock()
+        page.evaluate = AsyncMock(return_value={"status": 503, "text": ""})
+        try:
+            await _fetch_via_page(
+                page,
+                "https://example.com/flaky",
+                retries=3,
+                base_delay=0.001,
+            )
+        except PaginationFetchError as exc:
+            assert exc.url == "https://example.com/flaky"
+            assert exc.attempts == 3
+            assert exc.last_status == 503
+            assert page.evaluate.await_count == 3
+        else:
+            raise AssertionError("expected PaginationFetchError")
+
+    async def test_raises_after_persistent_evaluate_exception(self, monkeypatch):
+        """Playwright ``page.evaluate`` raising (timeout, navigation,
+        page closed) is treated as transient — retry then raise.
+        """
+        from src.shared.http_retry import PaginationFetchError
+
+        monkeypatch.setattr("src.core.monitors.dom.asyncio.sleep", AsyncMock())
+        page = MagicMock()
+        page.evaluate = AsyncMock(side_effect=TimeoutError("evaluate timed out"))
+        try:
+            await _fetch_via_page(
+                page,
+                "https://example.com/p2",
+                retries=2,
+                base_delay=0.001,
+            )
+        except PaginationFetchError as exc:
+            assert exc.last_error == "TimeoutError"
+            assert exc.last_status is None
+            assert page.evaluate.await_count == 2
+        else:
+            raise AssertionError("expected PaginationFetchError")
+
+    async def test_recovers_from_evaluate_exception(self, monkeypatch):
+        """Single transient evaluate exception then success — recovery
+        without raising.
+        """
+        monkeypatch.setattr("src.core.monitors.dom.asyncio.sleep", AsyncMock())
+        page = MagicMock()
+        page.evaluate = AsyncMock(
+            side_effect=[
+                Exception("transient crash"),
+                {"status": 200, "text": "ok"},
+            ]
+        )
+        result = await _fetch_via_page(page, "https://example.com/p2")
+        assert result == "ok"
+        assert page.evaluate.await_count == 2
+
+    async def test_truncates_to_max_chars(self):
+        page = MagicMock()
+        page.evaluate = AsyncMock(return_value={"status": 200, "text": "x" * 1_000_000})
+        result = await _fetch_via_page(page, "https://example.com")
+        # Default cap is _BROWSER_FETCH_MAX_CHARS = 500_000.
+        assert len(result) == 500_000
+        assert set(result) == {"x"}
+
+    async def test_unexpected_result_shape_retries_then_raises(self, monkeypatch):
+        """A malformed ``page.evaluate`` return value (e.g. a string from
+        an injected content script substituting our async function)
+        falls through to the ``except Exception`` branch via natural
+        attribute access — same retry-then-raise contract as a
+        ``page.evaluate`` raise. Pinning the contract here so the
+        absence of a defensive shape-check is intentional.
+        """
+        from src.shared.http_retry import PaginationFetchError
+
+        monkeypatch.setattr("src.core.monitors.dom.asyncio.sleep", AsyncMock())
+        page = MagicMock()
+        page.evaluate = AsyncMock(return_value="not a dict")
+        try:
+            await _fetch_via_page(
+                page,
+                "https://example.com",
+                retries=2,
+                base_delay=0.001,
+            )
+        except PaginationFetchError as exc:
+            # ``"not a dict"["status"]`` raises ``TypeError``.
+            assert exc.last_error == "TypeError"
+            assert page.evaluate.await_count == 2
+        else:
+            raise AssertionError("expected PaginationFetchError")

@@ -10,8 +10,8 @@ import httpx
 import pytest
 
 from src.shared.http_retry import (
-    _END_OF_PAGINATION_STATUSES,
     _RETRYABLE_STATUSES,
+    END_OF_PAGINATION_STATUSES,
     PaginationFetchError,
     fetch_with_retry,
 )
@@ -152,7 +152,7 @@ class TestFetchWithRetry:
 
     async def test_constants_disjoint(self):
         """Sanity: a status can't be both retryable and end-of-pagination."""
-        assert set() == _RETRYABLE_STATUSES & _END_OF_PAGINATION_STATUSES
+        assert set() == _RETRYABLE_STATUSES & END_OF_PAGINATION_STATUSES
 
     async def test_cloudflare_5xx_codes_retry(self):
         """Cloudflare-origin 5xx codes (520-526, 530) are retried — they

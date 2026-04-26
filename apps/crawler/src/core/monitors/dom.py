@@ -11,6 +11,8 @@ Requires playwright when ``render`` is true:
 
 from __future__ import annotations
 
+import asyncio
+import random
 import re
 from html.parser import HTMLParser
 from typing import TYPE_CHECKING
@@ -28,6 +30,25 @@ log = structlog.get_logger()
 
 MAX_URLS = 50_000
 _MAX_PAGINATION_PAGES = 10_000
+
+# Browser-pagination fetch budget. Playwright fetches are slower than
+# httpx (the JS engine + page context add tens of ms), and the page is
+# shared per-board — every retry holds the worker's browser slot. Keep
+# this smaller than ``fetch_with_retry``'s default of 3.
+_BROWSER_FETCH_RETRIES = 2
+_BROWSER_FETCH_BASE_DELAY = 0.5
+_BROWSER_FETCH_MAX_CHARS = 500_000
+
+# JS executed inside the Playwright page. Returns ``{status, text}`` so
+# HTTP-level errors (which ``fetch`` doesn't reject on in JS) are
+# observable on the Python side. ``r.text()`` rejects on a body decode
+# error; that surfaces as a ``page.evaluate`` exception.
+_BROWSER_FETCH_JS = (
+    "async (url) => { "
+    "const r = await fetch(url); "
+    "return { status: r.status, text: await r.text() }; "
+    "}"
+)
 
 _JOB_KEYWORDS = frozenset({"job", "career", "position", "posting", "opening", "role", "vacancy"})
 
@@ -123,16 +144,96 @@ async def _extract_links_rendered(
 # ---------------------------------------------------------------------------
 
 
-async def _fetch_via_page(page, url: str) -> str | None:
-    """Fetch HTML via ``page.evaluate(fetch(...))`` inside a Playwright context."""
-    try:
-        return await page.evaluate(
-            "async (url) => { const r = await fetch(url); return await r.text(); }",
-            url,
-        )
-    except Exception:
-        log.warning("dom.pagination.browser_fetch_failed", url=url)
-        return None
+async def _fetch_via_page(
+    page,
+    url: str,
+    *,
+    retries: int = _BROWSER_FETCH_RETRIES,
+    base_delay: float = _BROWSER_FETCH_BASE_DELAY,
+) -> str | None:
+    """Fetch ``url`` via Playwright ``page.evaluate(fetch(...))`` with bounded retries.
+
+    Returns:
+        - ``str`` (truncated to ``_BROWSER_FETCH_MAX_CHARS``) on HTTP 200.
+        - ``None`` on HTTP 404 / 410 (legitimate end-of-pagination), or
+          any other non-retryable 4xx (lenient stop, mirrors the
+          httpx-side ``fetch_with_retry``).
+
+    Raises:
+        :exc:`PaginationFetchError` when *retries* attempts have all
+        hit a retryable failure (5xx including Cloudflare 520-526/530,
+        408, 425, 429, or a Playwright ``page.evaluate`` exception —
+        timeout, network error, page closed). The caller is expected
+        to propagate so ``_process_one_board_streaming`` records the
+        run as a failure rather than a partial success — the fix for
+        the silent-truncation bug from #2737.
+
+    Backoff: ``base_delay × 2^attempt × (0.5 + random())`` between
+    retries. Fewer retries than the static path (Playwright fetches
+    are slower and share the per-board browser context).
+    """
+    from src.shared.http_retry import (
+        END_OF_PAGINATION_STATUSES,
+        PaginationFetchError,
+        is_retryable_status,
+    )
+
+    last_exc: BaseException | None = None
+    last_status: int | None = None
+
+    for attempt in range(retries):
+        try:
+            result = await page.evaluate(_BROWSER_FETCH_JS, url)
+            # ``result`` is the JS object literal we constructed above —
+            # ``{status, text}``. If something upstream malformed it
+            # (anti-bot script substituting a Promise rejection, page
+            # navigation completing the evaluate with a non-dict value),
+            # ``result["status"]`` raises ``AttributeError`` /
+            # ``TypeError`` and falls through to the ``except Exception``
+            # branch below — retried, then surfaced as
+            # ``PaginationFetchError``. No defensive shape-check needed.
+            status = result["status"]
+            text = result.get("text") or ""
+            last_status = status
+            if status == 200:
+                return text[:_BROWSER_FETCH_MAX_CHARS]
+            if status in END_OF_PAGINATION_STATUSES:
+                return None
+            if is_retryable_status(status):
+                last_exc = None  # status-only, no exception
+            else:
+                # Other 4xx (auth, forbidden, bad-request) — not
+                # transient, not "end of pagination" canonically.
+                # Mirror the httpx path: lenient stop, logged so
+                # anomalies are observable.
+                log.warning(
+                    "dom.pagination.browser_fetch_non_retryable_status",
+                    url=url,
+                    status=status,
+                )
+                return None
+        except Exception as exc:  # page.evaluate raised — timeout, navigation, page closed
+            last_exc = exc
+            last_status = None
+
+        if attempt < retries - 1:
+            delay = base_delay * (2**attempt) * (0.5 + random.random())
+            log.info(
+                "dom.pagination.browser_fetch_backoff",
+                url=url,
+                attempt=attempt + 1,
+                delay_s=round(delay, 2),
+                last_status=last_status,
+                last_error=type(last_exc).__name__ if last_exc else None,
+            )
+            await asyncio.sleep(delay)
+
+    raise PaginationFetchError(
+        url,
+        attempts=retries,
+        last_status=last_status,
+        last_error=type(last_exc).__name__ if last_exc else None,
+    )
 
 
 async def _paginate_urls(
@@ -150,33 +251,35 @@ async def _paginate_urls(
     - ``url_template``: formats a URL template containing ``{page}`` with the
       current page value — for path-based pagination.
 
-    Failure semantics (#2722). Static httpx pagination uses
-    :func:`fetch_with_retry`, which:
+    Failure semantics (#2722, #2737). Both fetch paths use bounded
+    retries with exponential backoff and full jitter. (Empty-200
+    classification is symmetric across the two paths but still
+    "successful end-of-pagination" — see #2739 for the open hole.)
 
-    - Returns ``None`` on 404/410 (legitimate end-of-pagination — break).
-    - Returns the body on 200 (continue).
-    - Returns ``None`` on other 4xx (e.g. 403) — same lenient stop as
-      the prior ``fetch_page_text``, since these aren't transient.
-    - **Raises** :exc:`PaginationFetchError` on persistent 5xx, 429,
-      timeout, or network error after the retry budget. The exception
-      propagates out of ``dom_discover`` and lands in
+    - Static httpx (``pagination.browser=false``) — :func:`fetch_with_retry`.
+    - Browser (``pagination.browser=true``) — :func:`_fetch_via_page`, which
+      runs ``fetch`` inside the Playwright page and inspects the response
+      status. Smaller retry budget than the httpx path because Playwright
+      fetches are slower and share the per-board browser context.
+
+    Both fetchers:
+
+    - Return ``None`` on 404/410 (legitimate end-of-pagination — break).
+    - Return the body on 200 (continue).
+    - Return ``None`` on other 4xx (e.g. 403) — lenient stop so
+      misconfigured paginators don't poison the run as a failure.
+    - **Raise** :exc:`PaginationFetchError` on persistent 5xx, 429,
+      timeout, network error, or Playwright ``page.evaluate`` exception
+      after the retry budget. The exception propagates out of
+      ``dom_discover`` and lands in
       ``_process_one_board_streaming``'s generic ``except Exception``,
       which records the run as a failure (``_RECORD_FAILURE`` →
       consecutive_failures++ with exponential backoff). Critically,
       ``_MARK_GONE_BY_TIMESTAMP`` is **not** called, so a transient
       origin failure mid-pagination cannot tombstone the URLs that
       live on the unfetched pages — the fix for the 2026-04-26 NHS
-      spike (#2722).
-
-    The browser-pagination path (``pagination.browser=True``) keeps the
-    prior tolerant semantics for now; that fetch goes through Playwright,
-    not httpx, and Playwright errors there are typically navigation
-    issues rather than HTTP transients. Hardening that path is tracked
-    in #2737 — currently affects the ``lenovo-careers`` board, which
-    is the only configured ``pagination.browser=true`` user. A
-    Playwright fetch timeout there can still produce a partial URL
-    set; until #2737 ships, mitigate operationally via the drop guard
-    (#2723) and blast-radius cap (#2724) introduced in PR #2729.
+      spike (#2722) and the matching ``pagination.browser=true``
+      hole (#2737, ``lenovo-careers``).
     """
     from src.shared.api_sniff import set_url_param
     from src.shared.http_retry import fetch_with_retry
