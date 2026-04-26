@@ -107,6 +107,14 @@ def _is_job_related(url: str) -> bool:
 
 
 async def _try_fetch_xml(url: str, client: httpx.AsyncClient) -> ET.Element | None:
+    """Lenient XML fetch — returns ``None`` on any error.
+
+    Used by sitemap *discovery* (walking candidate URLs) where any
+    failure should fall through to the next candidate without
+    retries. For *child sitemap* fetching from an index — where a
+    silent failure causes URL truncation (#2722) — use
+    :func:`_fetch_child_xml` instead.
+    """
     try:
         resp = await client.get(url, headers=_SITEMAP_HEADERS)
         if resp.status_code != 200:
@@ -117,6 +125,54 @@ async def _try_fetch_xml(url: str, client: httpx.AsyncClient) -> ET.Element | No
         return ET.fromstring(resp.text)
     except (httpx.HTTPError, ET.ParseError):
         return None
+
+
+async def _fetch_child_xml(url: str, client: httpx.AsyncClient) -> ET.Element | None:
+    """Strict XML fetch for child sitemaps inside a sitemap index.
+
+    Returns the parsed root on 200 + parseable XML, or ``None`` on
+    legitimate not-found (404/410) and on non-parseable bodies. **Raises**
+    :exc:`PaginationFetchError` when transient errors (5xx, 429, timeout,
+    network) persist past the retry budget.
+
+    The 2026-04-26 NHS spike (#2722) showed why this distinction
+    matters: a multi-shard sitemap (e.g. ``sitemap-jobs-1.xml`` …
+    ``sitemap-jobs-12.xml``) where one shard returns 503 silently
+    drops the URLs in that shard. The lenient
+    :func:`_try_fetch_xml` variant treats that as a benign skip,
+    which the caller's ``continue`` loop then converts into a
+    successful run with a partial URL set — and
+    ``_MARK_GONE_BY_TIMESTAMP`` tombstones the missing URLs. Raising
+    here propagates the failure to ``_process_one_board_streaming``'s
+    generic ``except Exception`` so the run is recorded as a
+    failure (no delistings) instead.
+    """
+    from src.shared.http_retry import fetch_with_retry
+
+    text = await fetch_with_retry(client, url, headers=_SITEMAP_HEADERS)
+    if text is None:
+        # 404 / 410 / non-retryable 4xx — child sitemap is gone or
+        # the URL is wrong. Caller's ``continue`` is appropriate: a
+        # genuinely-missing shard is an upstream config issue, not a
+        # silent-truncation bug.
+        return None
+    try:
+        root = ET.fromstring(text)
+    except ET.ParseError:
+        # 200 OK but body isn't well-formed XML. Mirror the lenient
+        # variant — treat as skip rather than failure, since this is
+        # usually a board-config mistake (CDN serving HTML for a
+        # missing sitemap path) rather than a transient error.
+        return None
+    # Sanity check the root tag. Sitemap protocol mandates ``urlset``
+    # or ``sitemapindex``; a CDN serving a parseable HTML 200 (e.g.
+    # an SPA shell) would otherwise be accepted as a valid sitemap
+    # and silently yield zero URLs from the shard.
+    tag = root.tag.lower() if isinstance(root.tag, str) else ""
+    if not (tag.endswith("urlset") or tag.endswith("sitemapindex")):
+        log.warning("sitemap.child_xml.unexpected_root", url=url, tag=root.tag)
+        return None
+    return root
 
 
 def _walk_up_candidates(board_url: str) -> list[str]:
@@ -201,8 +257,13 @@ async def _resolve_sitemap_index(
             log.debug("sitemap.index_cycle_skipped", target=target)
             continue
         seen.add(target)
-        child_root = await _try_fetch_xml(target, client)
+        # Strict fetch — transient errors raise PaginationFetchError
+        # rather than returning None. A silent skip on a 503 child
+        # would drop that shard's URLs and trigger the 2026-04-26
+        # NHS-style truncation tombstoning (#2722).
+        child_root = await _fetch_child_xml(target, client)
         if child_root is None:
+            # 404 / non-XML body — genuinely missing shard, skip.
             continue
         if _is_sitemap_index(child_root):
             results.extend(await _resolve_sitemap_index(child_root, client, seen=seen))

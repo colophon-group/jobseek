@@ -262,6 +262,74 @@ class TestTryFetchXml:
         assert "chrome" not in seen_headers["user-agent"].lower()
 
 
+class TestFetchChildXml:
+    """Strict fetch for child sitemaps inside an index — raises on
+    persistent transient errors so silent shard truncation (#2722)
+    can't tombstone URLs."""
+
+    async def test_success(self):
+        from src.core.monitors.sitemap import _fetch_child_xml
+
+        xml_str = '<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://example.com/j1</loc></url></urlset>'
+
+        def handler(request):
+            return httpx.Response(200, text=xml_str)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            root = await _fetch_child_xml("https://example.com/sitemap-1.xml", client)
+            assert root is not None
+
+    async def test_404_returns_none(self):
+        """Genuinely-missing shard — return None so the caller skips
+        without flagging the run as a failure."""
+        from src.core.monitors.sitemap import _fetch_child_xml
+
+        def handler(request):
+            return httpx.Response(404)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            root = await _fetch_child_xml("https://example.com/sitemap-deleted.xml", client)
+            assert root is None
+
+    async def test_503_raises_after_retries(self):
+        """Transient 503 exhausts retries → propagate
+        ``PaginationFetchError`` rather than silently returning None
+        (the 2026-04-26 NHS spike root cause)."""
+        import pytest
+
+        from src.core.monitors.sitemap import _fetch_child_xml
+        from src.shared.http_retry import PaginationFetchError
+
+        attempts = 0
+
+        def handler(request):
+            nonlocal attempts
+            attempts += 1
+            return httpx.Response(503)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError) as exc:
+                # Use the real fetch_with_retry but with a tiny base_delay
+                # so the test is fast. Patch via env-style isn't easy;
+                # rely on the helper's default 3 attempts being acceptable
+                # at the implicit delay (jittered ~0.5s × 1 + 1s × 1 ≈ 2s).
+                await _fetch_child_xml("https://example.com/sitemap-flaky.xml", client)
+            assert exc.value.last_status == 503
+            assert attempts == 3
+
+    async def test_non_xml_body_returns_none(self):
+        """200 OK with HTML body (e.g., CDN serving a not-found page) —
+        return None as a benign skip rather than raising."""
+        from src.core.monitors.sitemap import _fetch_child_xml
+
+        def handler(request):
+            return httpx.Response(200, text="<html>not a sitemap</html>")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            root = await _fetch_child_xml("https://example.com/sitemap-html.xml", client)
+            assert root is None
+
+
 class TestParseRobotsSitemaps:
     async def test_parses_sitemaps(self):
         robots_txt = "User-agent: *\nDisallow: /admin\nSitemap: https://example.com/sitemap.xml\n"
