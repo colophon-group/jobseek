@@ -68,12 +68,7 @@ from src.shared.api_sniff import (
     set_url_param,
     trigger_interactions,
 )
-
-# TODO(#2740): switch ``_is_retryable_status`` to public name once that
-# PR's rename merges. Underscore-prefixed cross-module import is
-# intentional in the meantime so this PR doesn't depend on #2740's
-# reordering.
-from src.shared.http_retry import PaginationFetchError, _is_retryable_status
+from src.shared.http_retry import PaginationFetchError, is_retryable_status
 from src.shared.nextdata import extract_field, resolve_path
 
 if TYPE_CHECKING:
@@ -590,7 +585,7 @@ async def http_fetch_with_retry(
             last_exc = exc
             if status in (404, 410):
                 return None
-            if not _is_retryable_status(status):
+            if not is_retryable_status(status):
                 # Other 4xx (auth, forbidden, bad-request) — not transient,
                 # not "end of pagination" canonically. Lenient stop with
                 # a warning so anomalies surface in logs.

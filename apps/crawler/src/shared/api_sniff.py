@@ -19,11 +19,7 @@ from urllib.parse import parse_qs, urlencode, urljoin, urlparse, urlunparse
 import httpx
 import structlog
 
-# TODO(#2740): switch ``_is_retryable_status`` to public name once that
-# PR's rename merges. Underscore-prefixed cross-module import is
-# intentional in the meantime so this PR doesn't depend on #2740's
-# reordering.
-from src.shared.http_retry import PaginationFetchError, _is_retryable_status
+from src.shared.http_retry import PaginationFetchError, is_retryable_status
 
 log = structlog.get_logger()
 
@@ -1073,7 +1069,7 @@ async def _fetch_page_with_retry(
 
     - Returns ``fetch_fn``'s normal result on success.
     - Retries on ``httpx.HTTPStatusError`` whose status is retryable
-      (``_is_retryable_status``: 5xx including Cloudflare 520-526/530,
+      (``is_retryable_status``: 5xx including Cloudflare 520-526/530,
       plus 408/425/429), and on any other ``Exception`` (Playwright
       errors, network errors, JSON parse errors).
     - Raises :class:`PaginationFetchError` immediately on a
@@ -1096,7 +1092,7 @@ async def _fetch_page_with_retry(
             status = exc.response.status_code
             last_status = status
             last_exc = exc
-            if not _is_retryable_status(status):
+            if not is_retryable_status(status):
                 # Non-transient — fail loudly so the run is recorded as
                 # a failure rather than truncating to whatever pages
                 # happened to succeed.
