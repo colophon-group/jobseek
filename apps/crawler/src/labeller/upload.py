@@ -299,7 +299,7 @@ def push_to_hub(
     if dry_run:
         return _describe_upload(root, by_date, run_date)
 
-    if run_date is None and not confirm:
+    if not run_date and not confirm:
         raise UploadGuardError(
             "refusing to upload all dates without --confirm.\n"
             "  - Pass --date today (or YYYY-MM-DD) for a single date, or\n"

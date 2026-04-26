@@ -143,3 +143,48 @@ def test_staging_does_not_leak_into_data_root(data_root: Path, stub_hf: dict) ->
     assert not (data_root / "data").exists()
     assert not (data_root / "schemas").exists()
     assert not (data_root / "README.md").exists()
+
+
+def test_pre_existing_stale_data_dir_is_not_uploaded(data_root: Path, stub_hf: dict) -> None:
+    """Stale `data/<date>.jsonl` left by a pre-this-PR run must not be re-published.
+
+    Operators upgrading to this version may have a previous run's
+    `data/`, `schemas/`, and `README.md` sitting under `LABELLER_DATA_ROOT`
+    from before the tempdir-staging change. Since `upload_folder` now uses
+    a tempdir as `folder_path`, those stale artifacts must not appear in
+    the upload set.
+    """
+    stale_data = data_root / "data"
+    stale_data.mkdir()
+    (stale_data / "2020-01-01.jsonl").write_text('{"id":"stale"}\n')
+    (data_root / "README.md").write_text("# stale\n")
+    stale_schemas = data_root / "schemas"
+    stale_schemas.mkdir()
+    (stale_schemas / "stale.json").write_text("{}")
+
+    _write_posting(data_root, "2026-04-25", "p1", verdict="accepted")
+    push_to_hub(run_date="2026-04-25", dry_run=False)
+
+    folder_path = Path(stub_hf["upload_folder"][0]["folder_path"])
+    # The staged folder is a fresh tempdir, not data_root
+    assert folder_path != data_root
+    assert not str(folder_path).startswith(str(data_root))
+    # The staged folder contains only what this run produced — no stale 2020-01-01
+    staged_data = folder_path / "data"
+    if staged_data.exists():
+        assert not (staged_data / "2020-01-01.jsonl").exists()
+        assert (staged_data / "2026-04-25.jsonl").exists()
+
+
+def test_unscoped_run_with_empty_string_date_still_requires_confirm(
+    data_root: Path,
+) -> None:
+    """An empty-string `--date` must not bypass the unscoped-run guard.
+
+    `argparse` with `default=None` normally rules this out, but a caller
+    that passes `run_date=""` (e.g. shell expansion of an unset variable)
+    should hit the same guard as `run_date=None`.
+    """
+    _write_posting(data_root, "2026-04-25", "p1", verdict="accepted")
+    with pytest.raises(UploadGuardError, match="--confirm"):
+        push_to_hub(run_date="", dry_run=False, confirm=False)
