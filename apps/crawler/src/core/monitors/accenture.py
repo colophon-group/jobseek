@@ -26,12 +26,7 @@ import structlog
 from src.core.monitors import DiscoveredJob, register
 from src.shared.api_sniff import FetchJsonFn, set_body_param
 from src.shared.browser import DEFAULT_USER_AGENT, navigate, open_page
-
-# TODO(#2740): switch ``_is_retryable_status`` to public name once that
-# PR's rename merges. Underscore-prefixed cross-module import is
-# intentional in the meantime so this PR doesn't depend on #2740's
-# reordering.
-from src.shared.http_retry import PaginationFetchError, _is_retryable_status
+from src.shared.http_retry import PaginationFetchError, is_retryable_status
 
 log = structlog.get_logger()
 
@@ -258,7 +253,7 @@ async def _fetch_page_with_retry(
             status = exc.response.status_code
             last_status = status
             last_exc = exc
-            if not _is_retryable_status(status):
+            if not is_retryable_status(status):
                 # 4xx — not transient, won't recover. Fail fast so the
                 # whole run is recorded as a failure rather than a
                 # partial-success with one partition silently dropped.
