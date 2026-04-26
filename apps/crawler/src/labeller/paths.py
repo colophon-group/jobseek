@@ -63,3 +63,32 @@ def prompts_dir() -> Path:
 def ensure_parent(path: Path) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     return path
+
+
+class PathSandboxError(ValueError):
+    """Raised when a path argument escapes ``LABELLER_DATA_ROOT``."""
+
+
+def assert_under_data_root(path: Path) -> Path:
+    """Resolve *path* and confirm it is inside the labeller data root.
+
+    Defense-in-depth against a hijacked orchestrator (or a prompt-injected
+    subagent) directing the labeller CLI to read or write outside its
+    sandbox (e.g. ``~/.ssh/authorized_keys`` or ``apps/crawler/.env.local``).
+    Subagents have an unrestricted ``Write`` tool independently of this
+    check, so it is necessary-but-not-sufficient.
+
+    Returns the resolved path on success; raises ``PathSandboxError`` if the
+    resolved path is not inside ``LABELLER_DATA_ROOT``. Uses
+    ``Path.resolve(strict=False)`` so paths that don't exist yet (output
+    files) are accepted as long as their resolved location is in-tree.
+    """
+    resolved = path.resolve()
+    root_resolved = data_root().resolve()
+    try:
+        resolved.relative_to(root_resolved)
+    except ValueError as exc:
+        raise PathSandboxError(
+            f"path {resolved} escapes LABELLER_DATA_ROOT={root_resolved}"
+        ) from exc
+    return resolved
