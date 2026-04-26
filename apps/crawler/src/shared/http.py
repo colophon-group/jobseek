@@ -58,6 +58,93 @@ DEFAULT_USER_AGENT = (
 # per-request entry winning on conflict).
 DEFAULT_ACCEPT = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
 
+# Hosts on the Avature ATS platform whose WAF (Akamai BMP on at least
+# the Deloitte deployment) rejects our minimal browser headers with
+# HTTP 403/406 (issue #2708: 251 × apply.deloitte.com failures in 1h,
+# 169×403 + 82×406; 406 specifically signals Accept rejection). These
+# hosts get a richer Chrome-shape header set applied per-request via
+# ``_avature_request_hook``.
+#
+# Match policy:
+#   * Any hostname ending in ``.avature.net`` (the canonical Avature
+#     domain for tenants like ``bloomberg.avature.net``,
+#     ``dhlconsulting.avature.net``, ``deloitteus.avature.net`` —
+#     apply.deloitte.com 302's into here).
+#   * Explicit allowlist of Deloitte's white-labeled Avature hosts that
+#     do NOT live under ``.avature.net`` directly.
+#
+# A naive ``apply.*`` pattern would bleed to apply.workable.com,
+# apply.refline.ch, applyglobal.deloitte.com, etc. which use unrelated
+# platforms, so we keep the list explicit.
+_AVATURE_HOST_SUFFIXES = (".avature.net",)
+_AVATURE_EXACT_HOSTS = frozenset(
+    {
+        "apply.deloitte.com",
+        "apply.deloitte.ch",
+        "apply.deloitte.co.uk",
+        "apply.deloittece.com",
+    }
+)
+
+# Richer Accept matches what a real Chrome navigation sends — image/avif,
+# image/webp, application/signed-exchange. Some WAF rules fingerprint the
+# absence of these tokens.
+_AVATURE_ACCEPT = (
+    "text/html,application/xhtml+xml,application/xml;q=0.9,"
+    "image/avif,image/webp,image/apng,*/*;q=0.8,"
+    "application/signed-exchange;v=b3;q=0.7"
+)
+
+# Browser-shape ancillary headers Chrome always sends on a top-level
+# navigation. The full Sec-Fetch-* triad is the strongest cheap signal
+# that the request originated from a real navigation rather than a script.
+_AVATURE_EXTRA_HEADERS: dict[str, str] = {
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Sec-Ch-Ua": '"Chromium";v="131", "Not_A Brand";v="24"',
+    "Sec-Ch-Ua-Mobile": "?0",
+    "Sec-Ch-Ua-Platform": '"Windows"',
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Sec-Fetch-User": "?1",
+    "Upgrade-Insecure-Requests": "1",
+}
+
+
+def _is_avature_host(host: str | None) -> bool:
+    """Return True when *host* belongs to the Avature ATS platform."""
+    if not host:
+        return False
+    host = host.lower()
+    if host in _AVATURE_EXACT_HOSTS:
+        return True
+    return any(host.endswith(suffix) for suffix in _AVATURE_HOST_SUFFIXES)
+
+
+async def _avature_request_hook(request: httpx.Request) -> None:
+    """Apply richer Chrome-shape headers when targeting Avature-hosted boards.
+
+    Hypothesis-driven mitigation for issue #2708 (apply.deloitte.com
+    403/406 cluster). The minimal default Accept header is one of the
+    cheapest signals the WAF uses to distinguish scripts from real
+    browsers; supplying the full Chrome navigation header set raises the
+    bar without requiring a browser fallback.
+
+    Only Accept is upgraded when the caller has not already set a custom
+    Accept (e.g. api_sniffer sending ``application/json`` must still
+    win), matching the per-request override contract documented on
+    ``DEFAULT_ACCEPT``. Sec-Fetch-* headers are added unconditionally
+    via ``setdefault`` — no existing caller sets them.
+    """
+    if not _is_avature_host(request.url.host):
+        return
+    if request.headers.get("accept", "") == DEFAULT_ACCEPT:
+        request.headers["Accept"] = _AVATURE_ACCEPT
+    for key, value in _AVATURE_EXTRA_HEADERS.items():
+        request.headers.setdefault(key, value)
+
+
 _CLIENT_DEFAULTS = {
     "timeout": httpx.Timeout(30.0),
     "follow_redirects": True,
@@ -79,7 +166,10 @@ def _client_kwargs(*, verify: bool, use_proxy: bool) -> dict[str, Any]:
 
 def create_http_client(*, verify: bool = True, use_proxy: bool = False) -> httpx.AsyncClient:
     """Create an httpx client, optionally routed through the active proxy provider."""
-    return httpx.AsyncClient(**_client_kwargs(verify=verify, use_proxy=use_proxy))
+    return httpx.AsyncClient(
+        **_client_kwargs(verify=verify, use_proxy=use_proxy),
+        event_hooks={"request": [_avature_request_hook]},
+    )
 
 
 def create_nossl_http_client(*, use_proxy: bool = False) -> httpx.AsyncClient:
@@ -126,6 +216,9 @@ def create_logging_http_client(
 
     client = httpx.AsyncClient(
         **_client_kwargs(verify=verify, use_proxy=use_proxy),
-        event_hooks={"request": [_on_request], "response": [_on_response]},
+        event_hooks={
+            "request": [_avature_request_hook, _on_request],
+            "response": [_on_response],
+        },
     )
     return client, log_entries
