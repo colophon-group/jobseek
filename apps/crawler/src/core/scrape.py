@@ -56,7 +56,7 @@ async def scrape_one(
     if config.get("skip_ssl"):
         from src.shared.http import create_nossl_http_client
 
-        async with create_nossl_http_client() as nossl_http:
+        async with create_nossl_http_client(use_proxy=bool(config.get("proxy"))) as nossl_http:
             if artifact_dir is not None and job_id is not None:
                 artifact_dir.mkdir(parents=True, exist_ok=True)
                 await _save_raw_page(artifact_dir, url, job_id, nossl_http)

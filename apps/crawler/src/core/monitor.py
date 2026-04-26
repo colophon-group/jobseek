@@ -303,7 +303,7 @@ async def monitor_one(
     if config.get("skip_ssl"):
         from src.shared.http import create_nossl_http_client
 
-        async with create_nossl_http_client() as nossl_http:
+        async with create_nossl_http_client(use_proxy=bool(config.get("proxy"))) as nossl_http:
             discovered = await discoverer(board, nossl_http, pw=pw)
     else:
         discovered = await discoverer(board, http, pw=pw)
@@ -344,7 +344,7 @@ async def monitor_one_stream(
     if config.get("skip_ssl"):
         from src.shared.http import create_nossl_http_client
 
-        async with create_nossl_http_client() as nossl_http:
+        async with create_nossl_http_client(use_proxy=bool(config.get("proxy"))) as nossl_http:
             async for batch in stream_fn(board, nossl_http, pw=pw):
                 result = _normalize_discovered(batch)
                 result = _apply_url_filter(result, config)
