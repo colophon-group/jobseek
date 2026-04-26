@@ -2,12 +2,20 @@
 
 from __future__ import annotations
 
+import re
+from unittest.mock import AsyncMock
+
+import httpx
+import pytest
+
 from src.core.monitors.accenture import (
     FINDJOBS,
     JOBSEARCH,
     _build_body,
     _discover_values,
+    _fetch_page_with_retry,
     _make_filter,
+    _paginate,
     _parse_findjobs_job,
     _parse_items,
     _parse_jobsearch_job,
@@ -253,3 +261,191 @@ class TestDedup:
         assert len(deduped) == 2
         assert deduped[0]["title"] == "First"
         assert deduped[1]["title"] == "Second"
+
+
+# ---------------------------------------------------------------------------
+# Pagination failure semantics (#2735)
+# ---------------------------------------------------------------------------
+
+
+def _http_status_error(status: int) -> httpx.HTTPStatusError:
+    """Build an httpx.HTTPStatusError as ``raise_for_status`` would emit."""
+    request = httpx.Request("POST", "https://www.accenture.com/api/x")
+    response = httpx.Response(status, text="error", request=request)
+    return httpx.HTTPStatusError(f"HTTP {status}", request=request, response=response)
+
+
+_START_INDEX_RE = re.compile(r'name="startIndex"\r\n\r\n(\d+)')
+
+
+def _start_index(body: str) -> int | None:
+    """Parse the ``startIndex`` value out of a ``_build_body`` multipart body.
+
+    Robust against changes to surrounding multipart whitespace — used by
+    body-dispatching test handlers below to route per-offset responses.
+    """
+    match = _START_INDEX_RE.search(body)
+    return int(match.group(1)) if match else None
+
+
+class TestFetchPageWithRetry:
+    """``_fetch_page_with_retry`` mirrors ``fetch_with_retry``'s contract on
+    Accenture's POST endpoint: 5xx / 408 / 425 / 429 / network errors are
+    retried, non-retryable 4xx fail fast, and persistent failures raise
+    :class:`PaginationFetchError` so a single broken partition doesn't
+    silently truncate the run (#2735).
+    """
+
+    async def test_returns_on_success(self):
+        fetch_fn = AsyncMock(return_value={"data": [{"guid": "1"}], "totalHits": 1})
+        items, total = await _fetch_page_with_retry(fetch_fn, "body", FINDJOBS)
+        assert items == [{"guid": "1"}]
+        assert total == 1
+        assert fetch_fn.await_count == 1
+
+    async def test_retries_on_503_then_succeeds(self, monkeypatch):
+        from src.core.monitors import accenture as acc_module
+
+        monkeypatch.setattr(acc_module.asyncio, "sleep", AsyncMock())
+        fetch_fn = AsyncMock(
+            side_effect=[
+                _http_status_error(503),
+                _http_status_error(503),
+                {"data": [{"guid": "1"}], "totalHits": 1},
+            ]
+        )
+        items, total = await _fetch_page_with_retry(fetch_fn, "body", FINDJOBS, base_delay=0.001)
+        assert items == [{"guid": "1"}]
+        assert total == 1
+        assert fetch_fn.await_count == 3
+
+    async def test_retries_on_cloudflare_5xx(self, monkeypatch):
+        """Cloudflare origin codes 520-526/530 are retried (parity with
+        dom + sitemap + PCSX). Pinned for one representative code; the
+        full set is exercised by ``test_http_retry`` in PR #2736."""
+        from src.core.monitors import accenture as acc_module
+
+        monkeypatch.setattr(acc_module.asyncio, "sleep", AsyncMock())
+        fetch_fn = AsyncMock()
+        fetch_fn.side_effect = [
+            _http_status_error(520),
+            {"data": [{"guid": "1"}], "totalHits": 1},
+        ]
+        items, _ = await _fetch_page_with_retry(fetch_fn, "body", FINDJOBS, base_delay=0.001)
+        assert items == [{"guid": "1"}]
+        assert fetch_fn.await_count == 2
+
+    async def test_raises_after_persistent_5xx(self, monkeypatch):
+        from src.core.monitors import accenture as acc_module
+        from src.shared.http_retry import PaginationFetchError
+
+        monkeypatch.setattr(acc_module.asyncio, "sleep", AsyncMock())
+        fetch_fn = AsyncMock(side_effect=_http_status_error(503))
+        with pytest.raises(PaginationFetchError) as exc_info:
+            await _fetch_page_with_retry(fetch_fn, "body", FINDJOBS, retries=3, base_delay=0.001)
+        assert exc_info.value.last_status == 503
+        assert exc_info.value.attempts == 3
+        assert fetch_fn.await_count == 3
+
+    async def test_raises_on_non_retryable_4xx_immediately(self, monkeypatch):
+        """A 401 / 403 / 400 indicates a hard error (auth expired,
+        misconfigured request) — no point retrying. Raise
+        ``PaginationFetchError`` on the first attempt so the run is
+        recorded as a failure."""
+        from src.core.monitors import accenture as acc_module
+        from src.shared.http_retry import PaginationFetchError
+
+        monkeypatch.setattr(acc_module.asyncio, "sleep", AsyncMock())
+        fetch_fn = AsyncMock(side_effect=_http_status_error(401))
+        with pytest.raises(PaginationFetchError) as exc_info:
+            await _fetch_page_with_retry(fetch_fn, "body", FINDJOBS, retries=3, base_delay=0.001)
+        assert exc_info.value.last_status == 401
+        # Exactly one attempt — no retry on non-retryable 4xx.
+        assert fetch_fn.await_count == 1
+
+    async def test_raises_after_persistent_network_error(self, monkeypatch):
+        from src.core.monitors import accenture as acc_module
+        from src.shared.http_retry import PaginationFetchError
+
+        monkeypatch.setattr(acc_module.asyncio, "sleep", AsyncMock())
+        fetch_fn = AsyncMock(side_effect=httpx.ConnectError("conn refused"))
+        with pytest.raises(PaginationFetchError) as exc_info:
+            await _fetch_page_with_retry(fetch_fn, "body", FINDJOBS, retries=2, base_delay=0.001)
+        assert exc_info.value.last_status is None
+        assert exc_info.value.last_error == "ConnectError"
+        assert fetch_fn.await_count == 2
+
+
+class TestPaginatePartitionFailure:
+    """Issue #2735 acceptance: a 503 on one partition raises
+    :class:`PaginationFetchError` (the conservative path).
+
+    Previously, ``_paginate`` used ``asyncio.gather(return_exceptions=True)``
+    and silently dropped failed pages with a warning log — a partition
+    failing at offset=2000 would shrink the discovered set and downstream
+    gone-detection would tombstone real jobs. Now the run is recorded
+    as a failure end-to-end.
+    """
+
+    async def test_seed_failure_propagates(self, monkeypatch):
+        from src.core.monitors import accenture as acc_module
+        from src.shared.http_retry import PaginationFetchError
+
+        monkeypatch.setattr(acc_module.asyncio, "sleep", AsyncMock())
+        fetch_fn = AsyncMock(side_effect=_http_status_error(503))
+        with pytest.raises(PaginationFetchError):
+            await _paginate(fetch_fn, "USA", "en", "us-en", FINDJOBS)
+
+    async def test_partition_503_raises_not_silent_truncation(self, monkeypatch):
+        """Seed page returns enough items to trigger pagination
+        (totalHits=1500 → offsets 500, 1000). Offset 500 returns 503
+        persistently; offset 1000 returns success. The run must raise
+        ``PaginationFetchError`` rather than returning the 1000 items
+        from the seed + the second partition (silent truncation).
+        """
+        from src.core.monitors import accenture as acc_module
+        from src.shared.http_retry import PaginationFetchError
+
+        monkeypatch.setattr(acc_module.asyncio, "sleep", AsyncMock())
+
+        async def fake_fetch(method, url, headers, body):
+            offset = _start_index(body)
+            if offset == 0:
+                return {
+                    "data": [{"guid": f"seed-{i}"} for i in range(500)],
+                    "totalHits": 1500,
+                }
+            if offset == 500:
+                # Persistent 503 across all retries on this offset.
+                raise _http_status_error(503)
+            if offset == 1000:
+                return {"data": [{"guid": f"p2-{i}"} for i in range(500)], "totalHits": 1500}
+            raise AssertionError(f"unexpected offset in body: {offset!r}")
+
+        fetch_fn = AsyncMock(side_effect=fake_fetch)
+        with pytest.raises(PaginationFetchError) as exc_info:
+            await _paginate(fetch_fn, "USA", "en", "us-en", FINDJOBS)
+        assert exc_info.value.last_status == 503
+
+    async def test_all_partitions_succeed(self, monkeypatch):
+        """Sanity: when no partition fails, ``_paginate`` returns the
+        aggregated set without raising — confirms the gather contract
+        change didn't break the happy path.
+        """
+        from src.core.monitors import accenture as acc_module
+
+        monkeypatch.setattr(acc_module.asyncio, "sleep", AsyncMock())
+
+        async def fake_fetch(method, url, headers, body):
+            offset = _start_index(body)
+            if offset in (0, 500, 1000):
+                return {
+                    "data": [{"guid": f"o{offset}-{i}"} for i in range(500)],
+                    "totalHits": 1500,
+                }
+            raise AssertionError(f"unexpected offset in body: {offset!r}")
+
+        fetch_fn = AsyncMock(side_effect=fake_fetch)
+        items, hit_ceiling = await _paginate(fetch_fn, "USA", "en", "us-en", FINDJOBS)
+        assert len(items) == 1500
+        assert hit_ceiling is False

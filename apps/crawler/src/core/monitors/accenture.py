@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import random
 from contextlib import asynccontextmanager
 
 import httpx
@@ -25,6 +26,12 @@ import structlog
 from src.core.monitors import DiscoveredJob, register
 from src.shared.api_sniff import FetchJsonFn, set_body_param
 from src.shared.browser import DEFAULT_USER_AGENT, navigate, open_page
+
+# TODO(#2740): switch ``_is_retryable_status`` to public name once that
+# PR's rename merges. Underscore-prefixed cross-module import is
+# intentional in the meantime so this PR doesn't depend on #2740's
+# reordering.
+from src.shared.http_retry import PaginationFetchError, _is_retryable_status
 
 log = structlog.get_logger()
 
@@ -184,7 +191,12 @@ async def _fetch_page(
     endpoint: str,
     content_type: str = _CONTENT_TYPE,
 ) -> tuple[list[dict], int]:
-    """Fetch one page. Returns (items, total_hits)."""
+    """Fetch one page. Returns (items, total_hits).
+
+    Single-shot — does not retry. Callers should use
+    :func:`_fetch_page_with_retry` for the pagination paths so transient
+    upstream failures don't masquerade as end-of-pagination (#2735).
+    """
     url = f"{_API_BASE}/{endpoint}"
     headers = {"Content-Type": content_type}
     data = await fetch_fn("POST", url, headers, body)
@@ -201,6 +213,83 @@ async def _fetch_page(
     return [], 0
 
 
+# Retry budget for paginated Accenture fetches. Matches ``fetch_with_retry``
+# defaults: 3 total attempts, exponential backoff with full jitter starting
+# at 1s (slightly longer than dom's 0.5s — Accenture pages are heavier
+# multipart POSTs and a thundering herd at sub-second cadence is
+# counterproductive on a single tenant).
+_ACCENTURE_FETCH_RETRIES = 3
+_ACCENTURE_FETCH_BASE_DELAY = 1.0
+
+
+async def _fetch_page_with_retry(
+    fetch_fn: FetchJsonFn,
+    body: str,
+    endpoint: str,
+    content_type: str = _CONTENT_TYPE,
+    *,
+    retries: int = _ACCENTURE_FETCH_RETRIES,
+    base_delay: float = _ACCENTURE_FETCH_BASE_DELAY,
+) -> tuple[list[dict], int]:
+    """Fetch one page with bounded retries on transient failures (#2735).
+
+    Wraps :func:`_fetch_page` to add the same retry-then-raise contract
+    used by ``fetch_with_retry`` / dom / sitemap / PCSX:
+
+    - Returns the page on success.
+    - Retries on retryable HTTP statuses (5xx including Cloudflare
+      520-526/530, plus 408/425/429) and arbitrary network exceptions
+      (timeout, connection reset, JSON parse error). Backoff is
+      exponential with full jitter: ``base_delay × 2^attempt × (0.5 + random())``.
+    - Raises :class:`PaginationFetchError` after the budget is exhausted,
+      OR immediately on non-retryable 4xx (auth, bad request) since those
+      won't recover. The caller routes the run through
+      ``_RECORD_FAILURE`` rather than silently truncating the partition
+      output (the bug from PR #2722's NHS spike — same shape).
+    """
+    last_exc: BaseException | None = None
+    last_status: int | None = None
+    url = f"{_API_BASE}/{endpoint}"
+
+    for attempt in range(retries):
+        try:
+            return await _fetch_page(fetch_fn, body, endpoint, content_type)
+        except httpx.HTTPStatusError as exc:
+            status = exc.response.status_code
+            last_status = status
+            last_exc = exc
+            if not _is_retryable_status(status):
+                # 4xx — not transient, won't recover. Fail fast so the
+                # whole run is recorded as a failure rather than a
+                # partial-success with one partition silently dropped.
+                raise PaginationFetchError(
+                    url,
+                    attempts=attempt + 1,
+                    last_status=status,
+                ) from exc
+        except Exception as exc:  # noqa: BLE001 — timeout, network, parse error
+            last_exc = exc
+            last_status = None
+
+        if attempt < retries - 1:
+            delay = base_delay * (2**attempt) * (0.5 + random.random())
+            log.info(
+                "accenture.fetch_backoff",
+                attempt=attempt + 1,
+                delay_s=round(delay, 2),
+                last_status=last_status,
+                last_error=type(last_exc).__name__ if last_exc else None,
+            )
+            await asyncio.sleep(delay)
+
+    raise PaginationFetchError(
+        url,
+        attempts=retries,
+        last_status=last_status,
+        last_error=type(last_exc).__name__ if last_exc else None,
+    )
+
+
 async def _paginate(
     fetch_fn: FetchJsonFn,
     country: str,
@@ -209,9 +298,22 @@ async def _paginate(
     endpoint: str = FINDJOBS,
     filters: list[dict] | None = None,
 ) -> tuple[list[dict], bool]:
-    """Paginate up to PAGINATION_CAP. Returns (raw_items, hit_ceiling)."""
+    """Paginate up to PAGINATION_CAP. Returns (raw_items, hit_ceiling).
+
+    Failure semantics (#2735). The seed page and every parallel
+    pagination task use :func:`_fetch_page_with_retry`, which raises
+    :class:`PaginationFetchError` on persistent transient failures or
+    non-retryable 4xx. ``asyncio.gather`` runs without
+    ``return_exceptions``: the first failed sub-task cancels the
+    remaining pending tasks and propagates the exception out of this
+    function — the caller (``_collect_with_partitioning`` /
+    ``discover_stream``) does not have a try/except, so the run
+    surfaces in ``_process_one_board_streaming``'s generic
+    ``except Exception`` and is recorded as a failure (no silent
+    partition truncation).
+    """
     body = _build_body(0, country, lang, site, filters)
-    items, total = await _fetch_page(fetch_fn, body, endpoint)
+    items, total = await _fetch_page_with_retry(fetch_fn, body, endpoint)
 
     all_items = list(items)
     if not items:
@@ -228,16 +330,17 @@ async def _paginate(
     async def _get(offset: int) -> list[dict]:
         async with semaphore:
             b = _build_body(offset, country, lang, site, filters)
-            page_items, _ = await _fetch_page(fetch_fn, b, endpoint)
+            page_items, _ = await _fetch_page_with_retry(fetch_fn, b, endpoint)
             return page_items
 
     tasks = [_get(off) for off in range(PAGE_SIZE, max_offset, PAGE_SIZE)]
-    results = await asyncio.gather(*tasks, return_exceptions=True)
-
+    # No ``return_exceptions=True``: a persistent failure on any page
+    # raises ``PaginationFetchError`` here, cancels the remaining
+    # pending tasks, and propagates so the run is recorded as a
+    # failure rather than silently truncating to whatever pages
+    # happened to succeed.
+    results = await asyncio.gather(*tasks)
     for result in results:
-        if isinstance(result, Exception):
-            log.warning("accenture.page_error", error=str(result))
-            continue
         all_items.extend(result)
 
     hit_ceiling = len(all_items) >= PAGINATION_CAP
@@ -253,10 +356,14 @@ async def _paginate_jobsearch(
 
     Uses set_body_param to modify startIndex in the captured body format.
     No partitioning — FR/BR boards are small enough.
+
+    Same strict failure semantics as :func:`_paginate` (#2735): a
+    persistent transient on any page raises ``PaginationFetchError``
+    rather than silently truncating to the surviving subset.
     """
     body = set_body_param(body_template, "startIndex", 0)
     body = set_body_param(body, "maxResultSize", PAGE_SIZE)
-    items, total = await _fetch_page(fetch_fn, body, JOBSEARCH, content_type)
+    items, total = await _fetch_page_with_retry(fetch_fn, body, JOBSEARCH, content_type)
 
     all_items = list(items)
     if not items:
@@ -273,16 +380,12 @@ async def _paginate_jobsearch(
         async with semaphore:
             b = set_body_param(body_template, "startIndex", offset)
             b = set_body_param(b, "maxResultSize", PAGE_SIZE)
-            page_items, _ = await _fetch_page(fetch_fn, b, JOBSEARCH, content_type)
+            page_items, _ = await _fetch_page_with_retry(fetch_fn, b, JOBSEARCH, content_type)
             return page_items
 
     tasks = [_get(off) for off in range(PAGE_SIZE, max_offset, PAGE_SIZE)]
-    results = await asyncio.gather(*tasks, return_exceptions=True)
-
+    results = await asyncio.gather(*tasks)
     for result in results:
-        if isinstance(result, Exception):
-            log.warning("accenture.page_error", error=str(result))
-            continue
         all_items.extend(result)
 
     log.info("accenture.paginated", items=len(all_items))
