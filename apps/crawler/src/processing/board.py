@@ -22,6 +22,7 @@ from src.core.scrapers import enrich_description
 from src.core.scrapers import scraper_needs_browser as _scraper_needs_browser
 from src.metrics import (
     monitor_dedup_total,
+    monitor_gone_skipped_total,
     monitor_jobs_discovered,
     monitor_url_filtered_total,
     tasks_total,
@@ -51,11 +52,16 @@ from src.processing.scrape import (
 )
 from src.queries.monitor import (
     _BATCH_UPDATE_RICH_CONTENT,
+    _BLAST_RADIUS_FLOOR_DEFAULT,
+    _COUNT_BOARD_ACTIVE_AND_MISSING,
     _CREATE_RICH_UPDATES_TEMP,
     _DELIST_BOARD_POSTINGS,
     _DELIST_THRESHOLD_AUTHORITATIVE,
     _DELIST_THRESHOLD_FRAGILE,
     _DIFF_BATCH,
+    _DROP_GUARD_HISTORY_WINDOW,
+    _DROP_GUARD_MIN_HISTORY,
+    _DROP_GUARD_THRESHOLD_DEFAULT,
     _EXTEND_BOARD_LEASE,
     _FETCH_DUE_BOARDS,
     _INSERT_RICH_JOB,
@@ -320,6 +326,129 @@ def _resolve_delist_threshold(metadata: dict | None, crawler_type: str) -> int:
     except (TypeError, ValueError):
         return default
     return n if n >= 1 else default
+
+
+def _setting(md: dict, key: str, default: float) -> float:
+    """Read a per-board float override, or fall back to *default*.
+
+    Explicit ``None`` check (rather than ``md.get(key) or default``)
+    so a legitimate override of ``0.0`` survives — e.g. an operator
+    setting ``drop_threshold = 0.0`` to disable the proportional check
+    on a board with naturally volatile counts.
+    """
+    val = md.get(key)
+    return default if val is None else float(val)
+
+
+async def _mark_gone_with_guards(
+    conn: asyncpg.Connection,
+    board_id: str,
+    discovered: int,
+    monitor_start_ts,
+    metadata: dict | None,
+    delist_threshold: int,
+    board_log: structlog.stdlib.BoundLogger,
+) -> tuple[int, str | None]:
+    """Run :data:`_MARK_GONE_BY_TIMESTAMP` behind two resilience guards.
+
+    Both guards exist because a paginating monitor (dom, sitemap-multi-shard,
+    eightfold PCSX, api_sniffer) that silently truncates returns a
+    success-shaped partial URL set. Without these checks the missing URLs
+    get ``missing_count++`` and tombstone after the fragile threshold.
+
+    1. **Drop guard (#2723)** — when ``discovered`` falls more than
+       ``metadata.drop_threshold`` (default :data:`_DROP_GUARD_THRESHOLD_DEFAULT`)
+       below the median of ``metadata.recent_discovered_counts``, skip
+       gone-detection. Needs at least :data:`_DROP_GUARD_MIN_HISTORY` past
+       runs in the rolling window — fresh boards rely on (2).
+    2. **Blast-radius guard (#2724)** — when more than
+       ``metadata.blast_radius_floor`` (default
+       :data:`_BLAST_RADIUS_FLOOR_DEFAULT`) of the board's active postings
+       would be marked missing this cycle, skip. Last-line defense.
+
+    On a skipped cycle the board's metadata gets ``suspect_streak`` bumped
+    so consecutive flaps are visible in the dashboard. On a passing cycle
+    the streak resets to zero and ``recent_discovered_counts`` rolls
+    forward (cap :data:`_DROP_GUARD_HISTORY_WINDOW`).
+
+    Returns ``(gone_count, skip_reason)``. ``skip_reason`` is one of
+    ``"drop"`` / ``"blast_radius"`` / ``None``. Caller must increment
+    :data:`monitor_gone_skipped_total` *after* the surrounding transaction
+    commits — same pattern as :func:`_emit_gone_counter`.
+    """
+    md = metadata or {}
+    history = list(md.get("recent_discovered_counts") or [])
+    streak = int(md.get("suspect_streak") or 0)
+
+    drop_threshold = _setting(md, "drop_threshold", _DROP_GUARD_THRESHOLD_DEFAULT)
+    blast_floor = _setting(md, "blast_radius_floor", _BLAST_RADIUS_FLOOR_DEFAULT)
+
+    skip_reason: str | None = None
+
+    # (1) Drop guard — only fires once we have enough history to compute
+    # a stable expected count.
+    if len(history) >= _DROP_GUARD_MIN_HISTORY:
+        from statistics import median
+
+        expected = median(history)
+        if expected > 0 and discovered < expected * (1.0 - drop_threshold):
+            board_log.warning(
+                "batch.monitor.suspect_drop",
+                discovered=discovered,
+                expected=int(expected),
+                drop_threshold=drop_threshold,
+                history=history,
+                streak=streak + 1,
+            )
+            skip_reason = "drop"
+
+    # (2) Blast-radius guard. Always run when (1) didn't fire so a fresh
+    # board (no history yet) is still protected against catastrophic
+    # truncation.
+    if skip_reason is None:
+        row = await conn.fetchrow(
+            _COUNT_BOARD_ACTIVE_AND_MISSING,
+            board_id,
+            monitor_start_ts,
+        )
+        # Production: asyncpg.Record with int ``active`` / ``missing``
+        # columns (COUNT(*)). Tests wire the same shape via the fixture's
+        # default ``conn.fetchrow`` side_effect dispatcher.
+        active = int(row["active"]) if row is not None else 0
+        missing = int(row["missing"]) if row is not None else 0
+        if active > 0 and missing / active > blast_floor:
+            board_log.warning(
+                "batch.monitor.blast_radius_exceeded",
+                active=active,
+                missing=missing,
+                ratio=round(missing / active, 3),
+                blast_radius_floor=blast_floor,
+                streak=streak + 1,
+            )
+            skip_reason = "blast_radius"
+
+    if skip_reason is not None:
+        await conn.execute(
+            _UPDATE_METADATA,
+            board_id,
+            json.dumps({"suspect_streak": streak + 1}),
+        )
+        return 0, skip_reason
+
+    # Both guards passed — perform gone-detection and roll the baseline.
+    gone_rows = await conn.fetch(
+        _MARK_GONE_BY_TIMESTAMP,
+        board_id,
+        monitor_start_ts,
+        delist_threshold,
+    )
+    new_history = (history + [discovered])[-_DROP_GUARD_HISTORY_WINDOW:]
+    await conn.execute(
+        _UPDATE_METADATA,
+        board_id,
+        json.dumps({"recent_discovered_counts": new_history, "suspect_streak": 0}),
+    )
+    return len(gone_rows), None
 
 
 # A 5-strike auto-disable doesn't necessarily mean the board is dead.
@@ -1051,17 +1180,29 @@ async def _process_one_board_streaming(
         # operators raise/lower the miss count needed to tombstone a posting
         # for boards that flap (NHS pagination) or that we want stricter
         # (a known-stable greenhouse override could go to 1).
+        # Wrapped in resilience guards (#2723 drop, #2724 blast-radius) so a
+        # silently-truncated paginating monitor (#2722) cannot mass-delist
+        # live postings — see ``_mark_gone_with_guards``.
         gone_count = 0
+        gone_skipped_reason: str | None = None
         delist_threshold = _resolve_delist_threshold(metadata, crawler_type)
         async with pool.acquire() as conn, conn.transaction():
-            gone_rows = await conn.fetch(
-                _MARK_GONE_BY_TIMESTAMP,
+            gone_count, gone_skipped_reason = await _mark_gone_with_guards(
+                conn,
                 board_id,
+                total_discovered,
                 monitor_start_ts,
+                metadata,
                 delist_threshold,
+                board_log,
             )
-            gone_count = len(gone_rows)
             await conn.execute(_RECORD_SUCCESS_NONEMPTY, board_id)
+
+        # Emit the skip metric AFTER the transaction commits — same
+        # pattern as ``_emit_gone_counter`` (a rollback would otherwise
+        # over-report skipped cycles).
+        if gone_skipped_reason:
+            monitor_gone_skipped_total.labels(reason=gone_skipped_reason).inc()
 
         # Flush location misses to taxonomy_miss table
         await _batch._flush_location_misses(loc_resolver, pool)
@@ -1074,6 +1215,7 @@ async def _process_one_board_streaming(
             new=total_new,
             relisted=total_relisted,
             gone=gone_count,
+            gone_skipped_reason=gone_skipped_reason,
             batches=batch_count,
             duration_s=round(elapsed, 2),
         )

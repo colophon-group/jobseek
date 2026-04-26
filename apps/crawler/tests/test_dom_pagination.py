@@ -16,8 +16,10 @@ from src.core.monitors.dom import (
 # Helpers
 # ---------------------------------------------------------------------------
 
-# Patch target: _paginate_urls does `from src.core.monitors import fetch_page_text`
-_FETCH_PATCH = "src.core.monitors.fetch_page_text"
+# Patch target: ``_paginate_urls`` does ``from src.shared.http_retry import
+# fetch_with_retry`` (#2722). Earlier patches at ``src.core.monitors.
+# fetch_page_text`` no longer apply.
+_FETCH_PATCH = "src.shared.http_retry.fetch_with_retry"
 
 
 def _html_with_links(*urls: str) -> str:
@@ -27,9 +29,12 @@ def _html_with_links(*urls: str) -> str:
 
 
 def _make_fetch(pages: dict[str, str | None]):
-    """Return an async function mimicking fetch_page_text with per-URL responses."""
+    """Return an async function mimicking ``fetch_with_retry`` with
+    per-URL canned responses. Signature matches the real function:
+    ``(client, url, **kwargs) -> str | None``.
+    """
 
-    async def fake_fetch(url, client, **kwargs):
+    async def fake_fetch(client, url, **kwargs):
         return pages.get(url)
 
     return fake_fetch
@@ -149,8 +154,10 @@ class TestPaginateUrls:
             )
         assert result == {"https://example.com/jobs/1"}
 
-    async def test_stops_on_fetch_error(self):
-        """fetch_page_text returns None -> stops paginating."""
+    async def test_stops_on_legitimate_end(self):
+        """``fetch_with_retry`` returning ``None`` (404/410, empty body)
+        stops pagination cleanly — pagination has reached its natural end.
+        """
         initial = {"https://example.com/jobs/1"}
         with patch(_FETCH_PATCH, new=_make_fetch({})):
             result = await _paginate_urls(
@@ -160,6 +167,34 @@ class TestPaginateUrls:
                 MagicMock(),
             )
         assert result == {"https://example.com/jobs/1"}
+
+    async def test_propagates_persistent_fetch_error(self):
+        """``fetch_with_retry`` raising ``PaginationFetchError`` after
+        retries propagates out of ``_paginate_urls`` instead of being
+        treated as silent end-of-pagination — the fix for the 2026-04-26
+        NHS spike (#2722). The exception lands in
+        ``_process_one_board_streaming``'s generic ``except Exception``
+        which records the run as a failure rather than a partial
+        success, so ``_MARK_GONE_BY_TIMESTAMP`` does not run.
+        """
+        from src.shared.http_retry import PaginationFetchError
+
+        async def transient_fail(client, url, **kwargs):
+            raise PaginationFetchError(url, attempts=3, last_status=503)
+
+        initial = {"https://example.com/jobs/1"}
+        with patch(_FETCH_PATCH, new=transient_fail):
+            try:
+                await _paginate_urls(
+                    "https://example.com/careers",
+                    {"param_name": "p", "max_pages": 5},
+                    initial,
+                    MagicMock(),
+                )
+            except PaginationFetchError as exc:
+                assert exc.last_status == 503
+            else:
+                raise AssertionError("expected PaginationFetchError to propagate")
 
     async def test_respects_max_pages(self):
         """Only fetches up to max_pages."""
@@ -171,7 +206,7 @@ class TestPaginateUrls:
                 f"https://example.com/jobs/{i}"
             )
 
-        async def counting_fetch(url, client, **kwargs):
+        async def counting_fetch(client, url, **kwargs):
             nonlocal call_count
             call_count += 1
             return url_map.get(url)
@@ -193,7 +228,7 @@ class TestPaginateUrls:
         initial = set()
         call_count = 0
 
-        async def counting_fetch(url, client, **kwargs):
+        async def counting_fetch(client, url, **kwargs):
             nonlocal call_count
             call_count += 1
             return _html_with_links(f"https://example.com/jobs/{call_count}")
@@ -213,7 +248,7 @@ class TestPaginateUrls:
         initial = {"https://example.com/jobs/1"}
         fetched_urls = []
 
-        async def tracking_fetch(url, client, **kwargs):
+        async def tracking_fetch(client, url, **kwargs):
             fetched_urls.append(url)
             return _html_with_links(f"https://example.com/jobs/{len(fetched_urls) + 1}")
 
@@ -233,7 +268,7 @@ class TestPaginateUrls:
         initial = {"https://example.com/jobs/1"}
         fetched_urls = []
 
-        async def tracking_fetch(url, client, **kwargs):
+        async def tracking_fetch(client, url, **kwargs):
             fetched_urls.append(url)
             return _html_with_links(f"https://example.com/jobs/{len(fetched_urls) + 1}")
 
@@ -253,7 +288,7 @@ class TestPaginateUrls:
         initial = {"https://example.com/jobs/1"}
         fetched_urls = []
 
-        async def tracking_fetch(url, client, **kwargs):
+        async def tracking_fetch(client, url, **kwargs):
             fetched_urls.append(url)
             return _html_with_links(f"https://example.com/jobs/{len(fetched_urls) + 1}")
 

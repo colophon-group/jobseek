@@ -59,6 +59,30 @@ WHERE id = ANY($1::uuid[])
 _DELIST_THRESHOLD_AUTHORITATIVE = 1
 _DELIST_THRESHOLD_FRAGILE = 4
 
+# Drop guardrail (#2723). Skip _MARK_GONE_BY_TIMESTAMP when the monitor's
+# discovered count drops more than DROP_THRESHOLD below the rolling median
+# of the last HISTORY_WINDOW successful runs. Catches paginating monitors
+# that silently truncate on transient errors (#2722). MIN_HISTORY avoids
+# firing on freshly-onboarded boards before a baseline exists — the
+# blast-radius guard below covers that case.
+_DROP_GUARD_THRESHOLD_DEFAULT = 0.30
+_DROP_GUARD_HISTORY_WINDOW = 5
+_DROP_GUARD_MIN_HISTORY = 3
+
+# Blast-radius cap (#2724). Last-line defense: if the fraction of a board's
+# active postings about to be marked missing in a single cycle exceeds
+# BLAST_RADIUS_FLOOR, skip _MARK_GONE_BY_TIMESTAMP. Independent of (b);
+# fires even with empty discovered-count history.
+_BLAST_RADIUS_FLOOR_DEFAULT = 0.50
+
+_COUNT_BOARD_ACTIVE_AND_MISSING = """
+SELECT
+    COUNT(*) FILTER (WHERE is_active) AS active,
+    COUNT(*) FILTER (WHERE is_active AND last_seen_at < $2) AS missing
+FROM job_posting
+WHERE board_id = $1
+"""
+
 _DELIST_BOARD_POSTINGS = """
 UPDATE job_posting
 SET is_active = false, next_scrape_at = NULL, updated_at = now()
