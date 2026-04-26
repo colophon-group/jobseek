@@ -281,23 +281,16 @@ def _emit_gone_counter(gone_count: int) -> None:
         monitor_jobs_discovered.labels(profile="simple", action="gone").inc(gone_count)
 
 
-def _record_int(row, key: str) -> int:
-    """Return ``row[key]`` only when the column is genuinely an integer.
+def _setting(md: dict, key: str, default: float) -> float:
+    """Read a per-board float override, or fall back to *default*.
 
-    Tolerant of None/missing rows and of test mocks. A default
-    ``MagicMock`` row answers ``int(row[key])`` with ``1`` for any key
-    via ``__int__``, so the guards in :func:`_mark_gone_with_guards`
-    must require an explicit ``isinstance(int)`` to avoid being tricked
-    into firing on every cycle. Production: asyncpg.Record returns
-    Python ``int`` for ``COUNT(*)`` columns.
+    Explicit ``None`` check (rather than ``md.get(key) or default``)
+    so a legitimate override of ``0.0`` survives — e.g. an operator
+    setting ``drop_threshold = 0.0`` to disable the proportional check
+    on a board with naturally volatile counts.
     """
-    if row is None:
-        return 0
-    try:
-        value = row[key]
-    except (KeyError, IndexError, TypeError):
-        return 0
-    return value if isinstance(value, int) and not isinstance(value, bool) else 0
+    val = md.get(key)
+    return default if val is None else float(val)
 
 
 async def _mark_gone_with_guards(
@@ -340,8 +333,8 @@ async def _mark_gone_with_guards(
     history = list(md.get("recent_discovered_counts") or [])
     streak = int(md.get("suspect_streak") or 0)
 
-    drop_threshold = float(md.get("drop_threshold") or _DROP_GUARD_THRESHOLD_DEFAULT)
-    blast_floor = float(md.get("blast_radius_floor") or _BLAST_RADIUS_FLOOR_DEFAULT)
+    drop_threshold = _setting(md, "drop_threshold", _DROP_GUARD_THRESHOLD_DEFAULT)
+    blast_floor = _setting(md, "blast_radius_floor", _BLAST_RADIUS_FLOOR_DEFAULT)
 
     skip_reason: str | None = None
 
@@ -371,15 +364,11 @@ async def _mark_gone_with_guards(
             board_id,
             monitor_start_ts,
         )
-        # Production rows are asyncpg.Record with ``active`` and ``missing``
-        # integer columns (see ``_COUNT_BOARD_ACTIVE_AND_MISSING``). Only
-        # trust an explicit ``int`` value — a default MagicMock used in
-        # tests answers ``int(row["active"])`` with ``1`` for any key,
-        # which would otherwise trip the guard. Anything else (None,
-        # missing key, mock) falls through to ``active=0`` so the guard
-        # cannot fire.
-        active = _record_int(row, "active")
-        missing = _record_int(row, "missing")
+        # Production: asyncpg.Record with int ``active`` / ``missing``
+        # columns (COUNT(*)). Tests wire the same shape via the fixture's
+        # default ``conn.fetchrow`` side_effect dispatcher.
+        active = int(row["active"]) if row is not None else 0
+        missing = int(row["missing"]) if row is not None else 0
         if active > 0 and missing / active > blast_floor:
             board_log.warning(
                 "batch.monitor.blast_radius_exceeded",

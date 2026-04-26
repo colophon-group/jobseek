@@ -183,9 +183,26 @@ async def _process_one_board(board, pool, http):
 @pytest.fixture
 def mock_pool():
     """Return (pool, conn) where pool.acquire() yields conn inside a transaction."""
+    from unittest.mock import DEFAULT
+
     pool = AsyncMock()
     conn = AsyncMock()
     conn.execute = AsyncMock(return_value="UPDATE 1")
+
+    # ``_mark_gone_with_guards`` (#2723/#2724) calls ``conn.fetchrow`` with
+    # ``_COUNT_BOARD_ACTIVE_AND_MISSING`` to compute the blast-radius ratio.
+    # A default MagicMock row would return ``int(row["active"]) == 1`` for
+    # any key (via ``__int__``), forcing the guard to fire on every cycle.
+    # Use a side_effect dispatcher: return the benign row for the COUNT
+    # query, and ``DEFAULT`` (i.e. fall back to ``return_value``) for any
+    # other SQL so test-specific overrides like ``conn.fetchrow.return_value
+    # = _inserted_row(...)`` keep working.
+    async def _default_fetchrow(sql, *args, **kwargs):
+        if sql == _COUNT_BOARD_ACTIVE_AND_MISSING:
+            return {"active": 0, "missing": 0}
+        return DEFAULT
+
+    conn.fetchrow = AsyncMock(side_effect=_default_fetchrow)
     pool.fetch = AsyncMock(return_value=[])
     # monitor_start_ts for timestamp-based gone detection
     pool.fetchval = AsyncMock(return_value="2026-01-01T00:00:00+00:00")
@@ -3586,19 +3603,43 @@ class TestMarkGoneGuards:
         # mark-gone still runs (it'll be a no-op SQL, but the call is made)
         assert _MARK_GONE_BY_TIMESTAMP in [c.args[0] for c in conn.fetch.await_args_list]
 
-    async def test_record_int_rejects_mock_int(self):
-        """``_record_int`` returns 0 for MagicMock rows so the blast-radius
-        guard isn't tricked by ``MagicMock.__int__`` returning 1 by default.
-        Production rows are asyncpg.Record with genuine integer columns."""
-        from src.processing.board import _record_int
+    async def test_zero_threshold_override_survives(self):
+        """``drop_threshold = 0.0`` is an explicit override (any drop
+        suspect) — must not be silently folded into the default by
+        ``or``. Same for ``blast_radius_floor = 0.0`` (any missing
+        URL trips the guard). Regression for the ``or`` footgun.
+        """
+        from src.processing.board import _mark_gone_with_guards
 
-        assert _record_int(None, "active") == 0
-        assert _record_int({}, "active") == 0
-        assert _record_int({"active": 7}, "active") == 7
-        assert _record_int({"active": True}, "active") == 0  # bool excluded
-        assert _record_int(MagicMock(), "active") == 0
-        # Real-shaped row with an unrelated key still returns 0 for missing.
-        assert _record_int({"active": 5, "other": 99}, "missing") == 0
+        # drop_threshold = 0 means "any drop is suspect" → 9499 < 9500 fires.
+        conn = self._conn(active=10000, missing=0)
+        metadata = {
+            "recent_discovered_counts": [9500, 9500, 9500],
+            "drop_threshold": 0.0,
+        }
+        _, reason = await _mark_gone_with_guards(
+            conn,
+            board_id="b-1",
+            discovered=9499,
+            monitor_start_ts="2026-04-26T00:00:00+00:00",
+            metadata=metadata,
+            delist_threshold=2,
+            board_log=MagicMock(),
+        )
+        assert reason == "drop"
+
+        # blast_radius_floor = 0 means "any missing fires the guard".
+        conn = self._conn(active=100, missing=1)
+        _, reason = await _mark_gone_with_guards(
+            conn,
+            board_id="b-1",
+            discovered=99,
+            monitor_start_ts="2026-04-26T00:00:00+00:00",
+            metadata={"blast_radius_floor": 0.0},
+            delist_threshold=2,
+            board_log=MagicMock(),
+        )
+        assert reason == "blast_radius"
 
 
 # ── TestMarkGoneGuardsIntegration ──────────────────────────────────
@@ -3668,9 +3709,8 @@ class TestMarkGoneGuardsIntegration:
             # _MARK_GONE_BY_TIMESTAMP — empty
             [],
         ]
-        # No history & active=0 missing=0 fall through guards (default
-        # mock_pool fetchrow returns a MagicMock; ``_record_int`` reads
-        # it as 0, leaving the blast-radius guard inactive).
+        # No history; default fixture fetchrow returns active=0/missing=0
+        # for the blast-radius guard, which short-circuits to no-fire.
         board = _mock_board()
 
         await _process_one_board(board, pool, mock_http)
@@ -3678,3 +3718,54 @@ class TestMarkGoneGuardsIntegration:
         # _MARK_GONE_BY_TIMESTAMP was called.
         sqls = [c.args[0] for c in conn.fetch.await_args_list]
         assert _MARK_GONE_BY_TIMESTAMP in sqls
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_blast_radius_guard_skips_mark_gone_in_pipeline(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """Pipeline path — fresh board (no history) where the blast-radius
+        guard catches a catastrophic truncation. Confirms the guard is
+        wired through ``_process_one_board`` even when (b) drop guard is
+        inactive due to insufficient history."""
+        from unittest.mock import DEFAULT
+
+        from src.batch import _MARK_GONE_BY_TIMESTAMP
+        from src.metrics import monitor_gone_skipped_total
+        from src.processing.board import monitor_jobs_discovered
+
+        pool, conn = mock_pool
+        url1 = "https://example.com/job/1"
+        mock_monitor.side_effect = _mock_stream(MonitorResult(urls={url1}, jobs_by_url=None))
+        conn.fetch.side_effect = [
+            [_diff_row("touched", row_id="jp-1", url=url1)],
+        ]
+
+        # Override the fixture's fetchrow dispatcher so the COUNT query
+        # reports 80% of active rows would be marked missing — past the
+        # 0.50 default floor.
+        async def _fetchrow_with_blast(sql, *args, **kwargs):
+            if sql == _COUNT_BOARD_ACTIVE_AND_MISSING:
+                return {"active": 100, "missing": 80}
+            return DEFAULT
+
+        conn.fetchrow.side_effect = _fetchrow_with_blast
+
+        # Fresh board: no recent_discovered_counts, no suspect_streak.
+        board = _mock_board(metadata=None)
+        monitor_gone_skipped_total.labels(reason="blast_radius")
+        before_skipped = _counter_value(monitor_gone_skipped_total, reason="blast_radius")
+        before_gone = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
+
+        await _process_one_board(board, pool, mock_http)
+
+        # _MARK_GONE_BY_TIMESTAMP was NOT called.
+        for call in conn.fetch.await_args_list:
+            assert call.args[0] != _MARK_GONE_BY_TIMESTAMP
+        # blast_radius skip metric incremented; gone counter unchanged.
+        assert (
+            _counter_value(monitor_gone_skipped_total, reason="blast_radius") - before_skipped == 1
+        )
+        assert (
+            _counter_value(monitor_jobs_discovered, profile="simple", action="gone") == before_gone
+        )
