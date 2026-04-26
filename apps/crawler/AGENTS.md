@@ -542,6 +542,32 @@ curl -s -X POST "https://colophongroup.grafana.net/api/dashboards/db" \
 
 `GRAFANA_API_KEY` is in `.env.local`. The dashboard UID is `jobseek-crawler-pipeline`.
 
+### Alert Rules
+
+Alert rules are managed as Prometheus YAML at `apps/crawler/alerts.yaml`
+and pushed to Grafana Cloud Mimir. The current set covers the failure
+modes from the 2026-04-25 dark-window incident (#2696):
+`NoMetricsFromCrawler`, `DiskNearFull`, `RedisMemoryPressure`,
+`ExporterStale`, `TaskFailureRateHigh`. Severity is encoded as a label
+(`severity=page` vs `severity=email`); routing is configured in Grafana
+Cloud Alerting separately.
+
+```bash
+# Preferred: push via mimirtool
+mimirtool rules load apps/crawler/alerts.yaml \
+  --address="$MIMIR_URL" \
+  --id="$MIMIR_TENANT" \
+  --key="$MIMIR_KEY"
+
+# Fallback: import via the Grafana Cloud Alerting UI's
+# "Import from Prometheus YAML" flow.
+```
+
+The `RedisMemoryPressure` alert depends on the `redis_exporter` block
+in `apps/crawler/alloy.river`. Removing or moving it will silently
+disable the alert, since `redis_memory_max_bytes` will stop being
+ingested.
+
 ### Typesense Operations
 
 Typesense 27.1 runs as a Docker container on a dedicated Hetzner CX22 (4 GB RAM, 2 vCPU). Data stored at `/mnt/typesense-data`. The container runs with `--network host`.

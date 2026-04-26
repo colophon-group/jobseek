@@ -1,0 +1,137 @@
+# Prometheus alert rules for the jobseek crawler.
+#
+# Source of truth for the alerts described in #2703. Pushed to
+# Grafana Cloud Mimir via the rule API or `mimirtool`; not auto-applied
+# from this file. Operator workflow:
+#
+#   mimirtool rules load apps/crawler/alerts.yaml \
+#     --address="$MIMIR_URL" \
+#     --id="$MIMIR_TENANT" \
+#     --key="$MIMIR_KEY"
+#
+# (Equivalent to the manual Grafana-Cloud-Alerting "import from Prometheus
+# YAML" flow, which works as a fallback if mimirtool isn't available.)
+#
+# Severity convention:
+#   - severity=page  -> route to phone/SMS, on-call worth waking up
+#   - severity=email -> route to low-urgency channel, fix in business hours
+#
+# Each alert's `for:` is sized to debounce deploy-time flapping.
+# `runbook` annotations link to the operator playbook for the failure
+# class. See docs/14-error-review-routine.md for the broader incident
+# response routine.
+
+groups:
+  - name: jobseek_crawler_reliability
+    interval: 30s
+    rules:
+
+      # --- PAGE ----------------------------------------------------
+
+      # Catches the failure mode that took the box dark for 15h on
+      # 2026-04-25: Alloy itself stopped, so no metrics reached
+      # Grafana Cloud at all. The `up{}` series is synthesized by the
+      # scraper, so its absence directly maps to "scrape pipeline
+      # broken" — which is exactly what we want to page on.
+      - alert: NoMetricsFromCrawler
+        expr: absent(up{job="crawler"})
+        for: 5m
+        labels:
+          severity: page
+          service: crawler
+        annotations:
+          summary: "No metrics from any crawler scrape target"
+          description: |
+            No `up{job="crawler"}` samples for >5m. Either Alloy has
+            stopped on the worker box, all containers exited, or
+            remote_write to Grafana Cloud is failing. SSH to the box
+            and check `docker ps`.
+          runbook: |
+            ssh -i ~/.ssh/hetzner_deploy root@$CRAWLER_BROWSER_IPv4
+            docker ps -a --format "{{.Names}}|{{.Status}}"
+            # If everything is exited: `cd /home/deploy && docker compose up -d`
+
+      # Hard-outage prevention. Postgres halts when its data volume
+      # fills (see project_postgres_machine memory). Crawler box also
+      # holds Redis state on `/` and the Typesense data dir; both
+      # warrant a hard alert before they become unrecoverable.
+      - alert: DiskNearFull
+        expr: |
+          node_filesystem_avail_bytes{job="integrations/unix",mountpoint=~"/|/mnt/.*"}
+            / node_filesystem_size_bytes{job="integrations/unix",mountpoint=~"/|/mnt/.*"}
+            < 0.10
+        for: 15m
+        labels:
+          severity: page
+          service: crawler
+        annotations:
+          summary: "Disk <10% free on {{ $labels.instance }} {{ $labels.mountpoint }}"
+          description: |
+            Filesystem `{{ $labels.mountpoint }}` on `{{ $labels.instance }}`
+            is below 10% available. Postgres halts when its data dir
+            fills; the crawler box stops claiming work when Redis can't
+            persist. Investigate before the next deploy.
+
+      # Redis runs with `--maxmemory 1gb --maxmemory-policy noeviction`
+      # (apps/crawler/docker-compose.yml). Pressure → write stalls,
+      # which silently drops queue work. Redis exporter is added to
+      # alloy.river in the same PR as this alert.
+      - alert: RedisMemoryPressure
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.9
+        for: 10m
+        labels:
+          severity: page
+          service: crawler
+        annotations:
+          summary: "Redis memory >90% on crawler box"
+          description: |
+            Redis memory usage above 90% of `maxmemory` for >10m.
+            Policy is `noeviction`, so writes will stall when full.
+            Investigate queue backlog; consider `crawler sync` to
+            reseed if state is stale, or scale `maxmemory` up.
+
+      # --- EMAIL ---------------------------------------------------
+
+      # Catches "exporter container alive but stuck on a Supabase
+      # write" — a partial-failure mode that does not trigger
+      # NoMetricsFromCrawler. Threshold is 10 expected flush cycles
+      # at the natural cadence (<60s p95), with a 5m debounce for
+      # transient network blips.
+      - alert: ExporterStale
+        expr: time() - crawler_exporter_last_flush_ts > 900
+        for: 5m
+        labels:
+          severity: email
+          service: crawler
+        annotations:
+          summary: "Exporter has not flushed in >15m"
+          description: |
+            `crawler_exporter_last_flush_ts` is more than 15 minutes
+            stale. The exporter container is up (otherwise
+            NoMetricsFromCrawler would fire) but its flush loop is
+            stuck — usually a Supabase write backoff or a Typesense
+            outage. Check `docker logs deploy-exporter-1` and the
+            Export Lag panel.
+
+      # Catches steady-state degradation: WAF blocking a major board
+      # source, Postgres going read-only, etc. >50% failure rate is
+      # rare in normal operation; legitimate noisy boards top out
+      # around 20%. Long debounce (30m) so single bad batches don't
+      # page.
+      - alert: TaskFailureRateHigh
+        expr: |
+          sum(rate(crawler_tasks_total{status="failed"}[15m]))
+            / clamp_min(sum(rate(crawler_tasks_total[15m])), 0.001)
+            > 0.5
+        for: 30m
+        labels:
+          severity: email
+          service: crawler
+        annotations:
+          summary: "Crawler task failure rate >50% for 30m"
+          description: |
+            More than half of all crawler tasks are failing.
+            Common causes: WAF block on a high-volume board (Akamai/
+            DataDome), Postgres connection saturation, or a
+            recently-merged scraper that broke a major ATS. See the
+            Task Throughput panels and the daily error-review report.

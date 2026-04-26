@@ -26,6 +26,22 @@ prometheus.scrape "node" {
   scrape_interval = "15s"
 }
 
+// ── Redis metrics ─────────────────────────────────────────
+// Needed for the RedisMemoryPressure alert: Redis runs with
+// ``--maxmemory 1gb --maxmemory-policy noeviction`` (see docker-compose.yml),
+// which means writes stall when memory fills. The redis_exporter
+// surfaces ``redis_memory_used_bytes`` and ``redis_memory_max_bytes``
+// so that pressure is visible before a stall, instead of after.
+prometheus.exporter.redis "redis_local" {
+  redis_addr = "localhost:6379"
+}
+
+prometheus.scrape "redis" {
+  targets        = prometheus.exporter.redis.redis_local.targets
+  forward_to     = [prometheus.remote_write.grafana_cloud.receiver]
+  scrape_interval = "15s"
+}
+
 // ── Remote write ──────────────────────────────────────────
 prometheus.remote_write "grafana_cloud" {
   endpoint {
