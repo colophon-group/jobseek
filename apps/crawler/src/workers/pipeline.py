@@ -16,6 +16,7 @@ import asyncio
 import contextlib
 import json
 import time
+import uuid
 
 import asyncpg
 import httpx
@@ -443,14 +444,18 @@ async def _process_scrape_work(
         # leaks instead (one entry per tombstoned posting, ~100B
         # each); steady-state cost is bounded.
         #
-        # Recovery: the monitor's ``relisted`` CTE re-enqueues to
-        # Redis via ``_enqueue_scrapes_for_relisted``, so a posting
-        # we self-heal here can come back through the monitor side.
-        import uuid
-
+        # Recovery: when Postgres is reachable, the monitor's
+        # ``relisted`` CTE re-enqueues to Redis via
+        # ``_enqueue_scrapes_for_relisted``, so a posting we self-heal
+        # here can come back through the monitor side. (If Postgres is
+        # sustained-down the monitor side also can't write — but
+        # everything else is broken in that scenario too.)
         try:
             uuid.UUID(posting_id)
-        except (ValueError, AttributeError):
+        except (ValueError, AttributeError, TypeError):
+            # AttributeError = non-string lacking ``.replace``.
+            # TypeError = None or other non-stringlike (rare; would be a
+            # Lua bug returning the wrong type from the claim).
             tasks_total.labels(kind="scrape", status="skipped_invalid_id").inc()
             worker_log.warning("pipeline.scrape.skipped_invalid_id", posting_id=posting_id)
             return

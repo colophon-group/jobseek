@@ -132,6 +132,14 @@ The `scrape_failures` reset is load-bearing: without it, a relisted posting come
 
 When the same source URL is owned by board A but also discovered as a `foreign_touched` URL under board B (cross-tenant duplication — ByteDance/TikTok share a careers host; Glencore reaches GCAA's Workday tenant), only `last_seen_at` is refreshed on the foreign-board match (`queries/monitor.py` — `foreign_touched` CTE). `is_active` is never flipped back. A scrape-tombstoned posting on board A whose URL the monitor only finds via board B will stay tombstoned even though the URL is still listed somewhere. This is a pre-existing recovery gap made more visible by the scrape-side authority — flagged as a known limitation rather than a regression.
 
+### 5. Known recovery gap — transient 3-strike on permanently-listed URLs
+
+The transient class backs off via `next_scrape_at = NULL` after 3 consecutive failures, mirroring the budget path. The worker self-heal (`_process_scrape_work`) honours `next_scrape_at = NULL` and stops re-firing. Recovery is only via the monitor's `relisted` CTE — which fires only when a URL re-appears after dropping out of the listing.
+
+For a posting that stays continuously listed (the upstream listing keeps citing it) but happens to hit 3 transient failures in a row (e.g. a 90-minute upstream 5xx incident hits a posting whose backoff schedule lined up with the outage window), the URL stays in the listing throughout, the `relisted` branch never fires, and the posting is permanently un-rescrapable until either a `crawler sync` re-imports the row or an operator runs `crawler backfill-locations` (which atomically promotes `next_scrape_at` to `now()`, see `apps/crawler/src/backfill.py`).
+
+The data already in Postgres (last successful scrape) stays visible to web users, and `is_active` is preserved — so the failure mode is "stale content for this posting" rather than "dead link". An operator-driven `crawler retry-stalled-scrapes` CLI is the natural follow-up; not in scope for the current PR.
+
 ### Why dual authority
 
 Either authority alone is wrong:

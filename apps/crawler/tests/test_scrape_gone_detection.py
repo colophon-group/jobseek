@@ -560,6 +560,76 @@ async def test_pipeline_skips_scrape_when_next_scrape_at_null(
 
 
 @pytest.mark.asyncio
+async def test_eightfold_style_empty_jobcontent_takes_transient_path(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Documented coverage gap: eightfold / workday / api_sniffer
+    scrapers swallow HTTPStatusError and return an empty
+    ``JobContent()`` instead of raising. ``_is_permanent_gone``
+    therefore can't trip on those scrapers' real 404/410s.
+
+    The classification still produces the SAFE outcome — empty
+    content reaches the no-data callsite which routes to TRANSIENT
+    (no false-tombstone). This test locks that contract in: if any
+    of those scrapers ever switches to raising, the test will catch
+    a behaviour change to immediate-tombstone."""
+    from src.processing import scrape as scrape_mod
+
+    posting_id = "00000000-0000-0000-0000-eeeeeeeeeeee"
+
+    # Simulate eightfold's pattern: scraper returns empty JobContent
+    # (no exception). _process_one_enrich_scrape's no-data branch
+    # routes to TRANSIENT.
+    async def _empty(*args, **kwargs):  # type: ignore[no-untyped-def]
+        from src.core.scrapers import JobContent
+
+        return JobContent()
+
+    monkeypatch.setattr(scrape_mod._batch, "scrape_one", _empty, raising=False)
+
+    executed: list[tuple[str, tuple]] = []
+
+    class _StubConn:
+        async def execute(self, sql: str, *args):  # type: ignore[no-untyped-def]
+            executed.append((sql, args))
+
+    class _StubPool:
+        def acquire(self):  # type: ignore[no-untyped-def]
+            class _Ctx:
+                async def __aenter__(self_inner) -> _StubConn:
+                    return _StubConn()
+
+                async def __aexit__(self_inner, *args):  # type: ignore[no-untyped-def]
+                    pass
+
+            return _Ctx()
+
+    item = scrape_mod.ScrapeItem(
+        job_posting_id=posting_id,
+        url="https://starbucks.eightfold.ai/careers/job/123",
+        board_id="board-1",
+        description_r2_hash=None,
+    )
+
+    await scrape_mod._process_one_enrich_scrape(
+        item=item,
+        pool=_StubPool(),  # type: ignore[arg-type]
+        http=None,  # type: ignore[arg-type]
+        scraper_type="eightfold",
+        scraper_config=None,
+        enrich_fields=["description"],
+    )
+
+    # Must take the TRANSIENT path — does NOT contribute to the
+    # tombstone budget. A regression where eightfold starts raising
+    # HTTPStatusError(404) and trips _is_permanent_gone would change
+    # this to _RECORD_SCRAPE_FAILURE with permanent_gone=True.
+    sqls = [c[0] for c in executed]
+    assert _RECORD_SCRAPE_TRANSIENT in sqls, sqls
+    assert _RECORD_SCRAPE_FAILURE not in sqls, sqls
+
+
+@pytest.mark.asyncio
 async def test_pipeline_self_heal_does_not_reschedule_on_db_error(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
