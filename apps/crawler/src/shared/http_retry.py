@@ -55,22 +55,29 @@ class PaginationFetchError(Exception):
 
 
 # Explicitly-retryable non-5xx statuses. Anything in the 500–599 range is
-# also retried — see ``_is_retryable_status`` — covering Cloudflare's 520-526
+# also retried — see ``is_retryable_status`` — covering Cloudflare's 520-526
 # / 530 origin-error codes that real jobs sites behind CDNs commonly emit.
 _EXTRA_RETRYABLE_STATUSES = frozenset({408, 425, 429})
 
 # Statuses that mean "no content here, but the request was understood".
 # Pagination treats these as legitimate end-of-pagination signals so the
-# monitor returns its accumulated set as a successful run.
-_END_OF_PAGINATION_STATUSES = frozenset({404, 410})
+# monitor returns its accumulated set as a successful run. Public so
+# alternate-transport pagination helpers (``dom.py``'s
+# ``_fetch_via_page`` for ``pagination.browser=true``) can match the
+# httpx classification without re-encoding the constant.
+END_OF_PAGINATION_STATUSES = frozenset({404, 410})
 
 
-def _is_retryable_status(status: int) -> bool:
-    """Whether *status* should be retried by ``fetch_with_retry``.
+def is_retryable_status(status: int) -> bool:
+    """Whether *status* should be retried by a pagination fetcher.
 
     Retried: any 5xx (Cloudflare 520-526/530 included) plus 408 (request
     timeout), 425 (too early), 429 (rate-limited). Returning ``True``
     here will, on retry exhaustion, surface as ``PaginationFetchError``.
+
+    Public so that alternate transports (Playwright ``page.evaluate``
+    fetches in ``dom.py``) classify identically to the httpx path —
+    keeping operator-facing semantics symmetric across pagination paths.
     """
     if 500 <= status < 600:
         return True
@@ -79,7 +86,7 @@ def _is_retryable_status(status: int) -> bool:
 
 # Backward-compatible alias for tests / introspection. Reflects the
 # union of explicit + range-based retryable statuses for documentation
-# purposes; the real check uses ``_is_retryable_status``.
+# purposes; the real check uses ``is_retryable_status``.
 _RETRYABLE_STATUSES = _EXTRA_RETRYABLE_STATUSES | frozenset(range(500, 600))
 
 
@@ -127,9 +134,9 @@ async def fetch_with_retry(
             last_status = resp.status_code
             if resp.status_code == 200:
                 return resp.text[:max_chars]
-            if resp.status_code in _END_OF_PAGINATION_STATUSES:
+            if resp.status_code in END_OF_PAGINATION_STATUSES:
                 return None
-            if _is_retryable_status(resp.status_code):
+            if is_retryable_status(resp.status_code):
                 last_exc = None  # status-only, no exception
             else:
                 # Other 4xx (auth, forbidden, bad-request, etc.) — not
