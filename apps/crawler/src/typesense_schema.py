@@ -209,8 +209,11 @@ def _patch_missing_fields(
     except ObjectNotFound:
         return
 
+    # Typesense's implicit ``id`` field never appears in retrieve()['fields'],
+    # so a name-based diff would always flag it missing — and Typesense rejects
+    # any PATCH that touches ``id`` with a 400 ``cannot be altered``.
     existing_names = {f["name"] for f in live.get("fields", [])}
-    missing = [f for f in desired_fields if f["name"] not in existing_names]
+    missing = [f for f in desired_fields if f["name"] != "id" and f["name"] not in existing_names]
     if not missing:
         print(f"  schema up to date for {collection_name}")
         return

@@ -83,10 +83,20 @@ chmod 600 "$DEPLOY_DIR/.env"
 cd "$DEPLOY_DIR"
 docker compose pull
 
+# Recover containers if any step in the migrations/setup-typesense/sync
+# window fails: ``docker compose stop`` sets the explicit "stopped"
+# state, so ``restart: unless-stopped`` will not bring them back on its
+# own. Without this trap, a failure between the stop and the final
+# ``up -d`` leaves the box dark on the previous image.
+trap 'echo "Deploy step failed — restoring crawler containers on previous image" >&2; docker compose up -d --remove-orphans 2>/dev/null || true' ERR
+
 # Keep Redis up for migrations + sync, but quiesce the rest of the
 # crawler so deploy-time `crawler sync` does not race with live workers
 # claiming work out of Redis while we are reseeding board monitors.
-docker compose stop worker-1 worker-2 worker-3 browser-1 exporter drain indexnow alloy 2>/dev/null || true
+# alloy is intentionally left running so deploy-time errors keep
+# shipping to Loki — losing observability across the deploy is what
+# turned a bad PATCH into a 15h dark window.
+docker compose stop worker-1 worker-2 worker-3 browser-1 exporter drain indexnow 2>/dev/null || true
 docker compose up -d redis
 
 # ── Run Alembic migrations on local Postgres ─────────────────────────
@@ -107,6 +117,7 @@ docker run --rm --env-file "$DEPLOY_DIR/.env" --network host \
   uv run --no-sync crawler sync
 
 # ── Start the full stack on the freshly seeded Redis state ───────────
+trap - ERR
 docker compose up -d --remove-orphans
 
 # ── Cleanup ──────────────────────────────────────────────────────────

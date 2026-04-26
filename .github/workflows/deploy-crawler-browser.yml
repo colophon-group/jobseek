@@ -58,6 +58,36 @@ jobs:
           cache-from: type=gha,scope=crawler-browser
           cache-to: type=gha,mode=max,scope=crawler-browser
 
+      # Dry-run setup-typesense against an ephemeral Typesense before
+      # touching prod. Running it twice is the key bit — the second run
+      # exercises the patch path on existing collections, which is what
+      # silently broke a prod deploy and stopped the crawler. This step
+      # gates the SSH deploy on the image's idempotency.
+      - name: Smoke-test setup-typesense (idempotency)
+        env:
+          IMAGE: ghcr.io/${{ github.repository_owner }}/jobseek-crawler:v${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          docker run -d --name ts-smoke --network host \
+            typesense/typesense:27.1 --data-dir /tmp/ts-data --api-key=smoke
+          for _ in $(seq 1 30); do
+            if curl -fsS http://localhost:8108/health >/dev/null 2>&1; then break; fi
+            sleep 1
+          done
+          curl -fsS http://localhost:8108/health -H "X-TYPESENSE-API-KEY: smoke"
+          for run in first second; do
+            echo "── setup-typesense smoke run: $run ──"
+            docker run --rm --network host \
+              -e TYPESENSE_HOST=localhost \
+              -e TYPESENSE_PORT=8108 \
+              -e TYPESENSE_PROTOCOL=http \
+              -e TYPESENSE_ADMIN_KEY=smoke \
+              -e DATABASE_URL=postgresql://stub:stub@localhost:5432/stub \
+              "$IMAGE" \
+              uv run --no-sync crawler setup-typesense
+          done
+          docker rm -f ts-smoke
+
       - name: Copy deploy files
         uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634 # v0.1.7
         with:
