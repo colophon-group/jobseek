@@ -138,7 +138,7 @@ The transient class backs off via `next_scrape_at = NULL` after 3 consecutive fa
 
 For a posting that stays continuously listed (the upstream listing keeps citing it) but happens to hit 3 transient failures in a row (e.g. a 90-minute upstream 5xx incident hits a posting whose backoff schedule lined up with the outage window), the URL stays in the listing throughout, the `relisted` branch never fires, and the posting is permanently un-rescrapable until either a `crawler sync` re-imports the row or an operator runs `crawler backfill-locations` (which atomically promotes `next_scrape_at` to `now()`, see `apps/crawler/src/backfill.py`).
 
-The data already in Postgres (last successful scrape) stays visible to web users, and `is_active` is preserved — so the failure mode is "stale content for this posting" rather than "dead link". An operator-driven `crawler retry-stalled-scrapes` CLI is the natural follow-up; not in scope for the current PR.
+The data already in Postgres (last successful scrape) stays visible to web users, and `is_active` is preserved — so the failure mode is "stale content for this posting" rather than "dead link". An operator-driven recovery CLI is tracked in [#2738](https://github.com/colophon-group/jobseek/issues/2738).
 
 ### Why dual authority
 

@@ -129,6 +129,15 @@ async def backfill_locations(pool: asyncpg.Pool) -> int:
     # Pass 2: rows already scrape-eligible — read-only, walk via OFFSET.
     # The criteria don't change as we enqueue, so OFFSET pagination is
     # required to avoid re-enqueueing the same rows.
+    #
+    # Concurrent-write race: if the monitor's ``relisted`` CTE flips a
+    # row's ``next_scrape_at`` from NULL to non-NULL during this loop —
+    # for an id sorting before the current ``offset`` — the row appears
+    # behind us and we re-enqueue it on the next iteration. The Lua
+    # ``enqueue_scrape`` dedup absorbs the duplicate (returns False),
+    # so the operational effect is just an inflated ``enqueued`` count
+    # in the log. Acceptable; documented here so a future maintainer
+    # doesn't try to "fix" the count drift by adding row-level locks.
     offset = 0
     while True:
         rows = await pool.fetch(_FETCH_ALREADY_DUE_BATCH, _BACKFILL_BATCH_SIZE, offset)
