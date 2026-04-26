@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 
 from src.core.monitors.api_sniffer import (
@@ -14,6 +15,23 @@ from src.core.monitors.api_sniffer import (
     _extract_urls_from_template,
     discover,
 )
+
+
+def _http_status_error_resp(status: int) -> MagicMock:
+    """Build a mock httpx.Response whose ``raise_for_status()`` raises a real
+    :class:`httpx.HTTPStatusError`. The api_sniffer retry classifier
+    (#2733) reads ``exc.response.status_code`` to decide retryable vs.
+    fail-fast, so generic ``Exception("403 Forbidden")`` no longer
+    suffices — it would be caught as a transient and burn the full
+    retry budget. Use this helper for tests simulating an HTTP error.
+    """
+    resp = MagicMock()
+    request = httpx.Request("GET", "https://example.com")
+    response = httpx.Response(status, request=request)
+    resp.raise_for_status.side_effect = httpx.HTTPStatusError(
+        f"HTTP {status}", request=request, response=response
+    )
+    return resp
 
 
 @pytest.fixture(autouse=True)
@@ -1015,9 +1033,7 @@ class TestHttpModeUrlMatchFallback:
         async def http_side_effect(method, url, **kwargs):
             nonlocal call_count
             call_count += 1
-            resp = MagicMock()
-            resp.raise_for_status.side_effect = Exception("403 Forbidden")
-            return resp
+            return _http_status_error_resp(403)
 
         http = AsyncMock()
         http.request = AsyncMock(side_effect=http_side_effect)
@@ -1027,7 +1043,8 @@ class TestHttpModeUrlMatchFallback:
         assert isinstance(result, list)
         assert len(result) == 3
         assert result[0].title == "Dev"
-        # Only one HTTP call (the initial failure); data came from captured response
+        # Only one HTTP call (the initial 403 — non-retryable, no retry);
+        # data came from the captured browser response.
         assert call_count == 1
 
     @pytest.mark.asyncio
@@ -1076,10 +1093,9 @@ class TestHttpModeUrlMatchFallback:
         async def http_side_effect(method, url, **kwargs):
             nonlocal call_count
             call_count += 1
-            resp = MagicMock()
             if "x0old0token" in url:
-                resp.raise_for_status.side_effect = Exception("403 Forbidden")
-                return resp
+                return _http_status_error_resp(403)
+            resp = MagicMock()
             resp.raise_for_status = MagicMock()
             resp.json = MagicMock(return_value=api_response)
             return resp
@@ -1107,10 +1123,8 @@ class TestHttpModeUrlMatchFallback:
         }
         board = {"board_url": "https://www.example.com/careers", "metadata": config}
 
-        mock_resp = MagicMock()
-        mock_resp.raise_for_status.side_effect = Exception("403 Forbidden")
         http = AsyncMock()
-        http.request = AsyncMock(return_value=mock_resp)
+        http.request = AsyncMock(return_value=_http_status_error_resp(403))
 
         mock_pw = _make_mock_pw(AsyncMock())
 
@@ -1130,10 +1144,8 @@ class TestHttpModeUrlMatchFallback:
         }
         board = {"board_url": "https://www.example.com/careers", "metadata": config}
 
-        mock_resp = MagicMock()
-        mock_resp.raise_for_status.side_effect = Exception("403 Forbidden")
         http = AsyncMock()
-        http.request = AsyncMock(return_value=mock_resp)
+        http.request = AsyncMock(return_value=_http_status_error_resp(403))
 
         result = await discover(board, http, pw=None)
         assert isinstance(result, list)
@@ -1180,9 +1192,7 @@ class TestHttpModeUrlMatchFallback:
         async def http_side_effect(method, url, **kwargs):
             nonlocal call_count
             call_count += 1
-            resp = MagicMock()
-            resp.raise_for_status.side_effect = Exception("403 Forbidden")
-            return resp
+            return _http_status_error_resp(403)
 
         http = AsyncMock()
         http.request = AsyncMock(side_effect=http_side_effect)
@@ -1191,5 +1201,139 @@ class TestHttpModeUrlMatchFallback:
         assert isinstance(result, list)
         assert len(result) == 3
         assert result[0].title == "Dev"
-        # Only one HTTP call (the initial failure); data from captured response
+        # Only one HTTP call (the initial 403 — non-retryable); data from
+        # captured browser response.
         assert call_count == 1
+
+
+# ---------------------------------------------------------------------------
+# Pagination retry semantics (#2733)
+# ---------------------------------------------------------------------------
+
+
+class TestHttpFetchWithRetry:
+    """``http_fetch_with_retry`` mirrors ``fetch_with_retry``'s contract on
+    api_sniffer's httpx surface: retryable statuses (5xx, 408/425/429)
+    retry-then-raise, 404/410 return None (legitimate end-of-pagination),
+    other non-retryable 4xx return None with a warning, and arbitrary
+    network exceptions retry-then-raise. Pinned for #2733.
+    """
+
+    @pytest.mark.asyncio
+    async def test_returns_json_on_200(self):
+        from src.core.monitors.api_sniffer import http_fetch_with_retry
+
+        resp = MagicMock()
+        resp.raise_for_status = MagicMock()
+        resp.json = MagicMock(return_value={"items": []})
+        client = AsyncMock()
+        client.request = AsyncMock(return_value=resp)
+        out = await http_fetch_with_retry(client, "GET", "https://x/api")
+        assert out == {"items": []}
+        assert client.request.await_count == 1
+
+    @pytest.mark.asyncio
+    async def test_returns_none_on_404(self):
+        from src.core.monitors.api_sniffer import http_fetch_with_retry
+
+        client = AsyncMock()
+        client.request = AsyncMock(return_value=_http_status_error_resp(404))
+        out = await http_fetch_with_retry(client, "GET", "https://x/api")
+        assert out is None
+        assert client.request.await_count == 1
+
+    @pytest.mark.asyncio
+    async def test_returns_none_on_403(self):
+        """Other non-retryable 4xx — lenient stop with a warning."""
+        from src.core.monitors.api_sniffer import http_fetch_with_retry
+
+        client = AsyncMock()
+        client.request = AsyncMock(return_value=_http_status_error_resp(403))
+        out = await http_fetch_with_retry(client, "GET", "https://x/api")
+        assert out is None
+        assert client.request.await_count == 1
+
+    @pytest.mark.asyncio
+    async def test_retries_on_503_then_succeeds(self, monkeypatch):
+        from src.core.monitors import api_sniffer as api_sniffer_module
+        from src.core.monitors.api_sniffer import http_fetch_with_retry
+
+        monkeypatch.setattr(api_sniffer_module.asyncio, "sleep", AsyncMock())
+        ok_resp = MagicMock()
+        ok_resp.raise_for_status = MagicMock()
+        ok_resp.json = MagicMock(return_value={"items": [1]})
+
+        client = AsyncMock()
+        client.request = AsyncMock(
+            side_effect=[
+                _http_status_error_resp(503),
+                _http_status_error_resp(503),
+                ok_resp,
+            ]
+        )
+        out = await http_fetch_with_retry(client, "GET", "https://x/api", base_delay=0.001)
+        assert out == {"items": [1]}
+        assert client.request.await_count == 3
+
+    @pytest.mark.asyncio
+    async def test_raises_after_persistent_5xx(self, monkeypatch):
+        from src.core.monitors import api_sniffer as api_sniffer_module
+        from src.core.monitors.api_sniffer import http_fetch_with_retry
+        from src.shared.http_retry import PaginationFetchError
+
+        monkeypatch.setattr(api_sniffer_module.asyncio, "sleep", AsyncMock())
+        client = AsyncMock()
+        client.request = AsyncMock(return_value=_http_status_error_resp(503))
+        with pytest.raises(PaginationFetchError) as exc_info:
+            await http_fetch_with_retry(client, "GET", "https://x/api", retries=3, base_delay=0.001)
+        assert exc_info.value.last_status == 503
+        assert exc_info.value.attempts == 3
+        assert client.request.await_count == 3
+
+    @pytest.mark.asyncio
+    async def test_retries_on_cloudflare_5xx(self, monkeypatch):
+        from src.core.monitors import api_sniffer as api_sniffer_module
+        from src.core.monitors.api_sniffer import http_fetch_with_retry
+
+        monkeypatch.setattr(api_sniffer_module.asyncio, "sleep", AsyncMock())
+        ok_resp = MagicMock()
+        ok_resp.raise_for_status = MagicMock()
+        ok_resp.json = MagicMock(return_value={"items": [1]})
+        for status in (520, 525, 530):
+            client = AsyncMock()
+            client.request = AsyncMock(side_effect=[_http_status_error_resp(status), ok_resp])
+            out = await http_fetch_with_retry(client, "GET", "https://x/api", base_delay=0.001)
+            assert out == {"items": [1]}, f"status {status} should retry then succeed"
+            assert client.request.await_count == 2
+
+    @pytest.mark.asyncio
+    async def test_raises_after_persistent_network_error(self, monkeypatch):
+        from src.core.monitors import api_sniffer as api_sniffer_module
+        from src.core.monitors.api_sniffer import http_fetch_with_retry
+        from src.shared.http_retry import PaginationFetchError
+
+        monkeypatch.setattr(api_sniffer_module.asyncio, "sleep", AsyncMock())
+        client = AsyncMock()
+        client.request = AsyncMock(side_effect=httpx.ConnectError("conn refused"))
+        with pytest.raises(PaginationFetchError) as exc_info:
+            await http_fetch_with_retry(client, "GET", "https://x/api", retries=2, base_delay=0.001)
+        assert exc_info.value.last_error == "ConnectError"
+        assert exc_info.value.last_status is None
+        assert client.request.await_count == 2
+
+    @pytest.mark.asyncio
+    async def test_lenient_http_fetch_returns_none_on_persistent_5xx(self, monkeypatch):
+        """The legacy ``http_fetch`` wrapper preserves the "any failure → None"
+        contract by catching ``PaginationFetchError`` from
+        ``http_fetch_with_retry``. Used by the api_sniffer scraper which
+        treats None as "no content found"."""
+        from src.core.monitors import api_sniffer as api_sniffer_module
+        from src.core.monitors.api_sniffer import http_fetch
+
+        monkeypatch.setattr(api_sniffer_module.asyncio, "sleep", AsyncMock())
+        client = AsyncMock()
+        client.request = AsyncMock(return_value=_http_status_error_resp(503))
+        out = await http_fetch(client, "GET", "https://x/api")
+        assert out is None
+        # 3 attempts (default), retries exhausted, exception caught + None returned.
+        assert client.request.await_count == 3
