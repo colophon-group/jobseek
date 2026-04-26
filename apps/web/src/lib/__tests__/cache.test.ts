@@ -9,15 +9,17 @@ vi.mock("@/lib/redis", () => ({
     get: vi.fn(),
     set: vi.fn(),
     del: vi.fn(),
+    scan: vi.fn(),
   },
 }));
 
 import { redis } from "@/lib/redis";
-import { cached, invalidate } from "../cache";
+import { cached, invalidate, invalidatePattern } from "../cache";
 
 const mockGet = redis.get as ReturnType<typeof vi.fn>;
 const mockSet = redis.set as ReturnType<typeof vi.fn>;
 const mockDel = redis.del as ReturnType<typeof vi.fn>;
+const mockScan = redis.scan as ReturnType<typeof vi.fn>;
 
 describe("cached", () => {
   beforeEach(() => {
@@ -202,5 +204,55 @@ describe("invalidate", () => {
     mockDel.mockRejectedValue(new Error("Redis unavailable"));
 
     await expect(invalidate("test-key")).resolves.toBeUndefined();
+  });
+});
+
+describe("invalidatePattern", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("scans + deletes every key matching cache:<prefix>*", async () => {
+    mockScan
+      .mockResolvedValueOnce(["1", ["cache:loc-suggest:a", "cache:loc-suggest:b"]])
+      .mockResolvedValueOnce(["0", ["cache:loc-suggest:c"]]);
+    mockDel.mockResolvedValueOnce(2).mockResolvedValueOnce(1);
+
+    const deleted = await invalidatePattern("loc-suggest:");
+
+    expect(deleted).toBe(3);
+    expect(mockScan).toHaveBeenCalledTimes(2);
+    expect(mockScan.mock.calls[0][0]).toBe(0);
+    expect(mockScan.mock.calls[0][1]).toEqual({
+      match: "cache:loc-suggest:*",
+      count: 100,
+    });
+    expect(mockScan.mock.calls[1][0]).toBe("1");
+    expect(mockDel).toHaveBeenNthCalledWith(
+      1,
+      "cache:loc-suggest:a",
+      "cache:loc-suggest:b",
+    );
+    expect(mockDel).toHaveBeenNthCalledWith(2, "cache:loc-suggest:c");
+  });
+
+  it("returns 0 when no keys match", async () => {
+    mockScan.mockResolvedValueOnce(["0", []]);
+
+    const deleted = await invalidatePattern("nonexistent:");
+
+    expect(deleted).toBe(0);
+    expect(mockDel).not.toHaveBeenCalled();
+  });
+
+  it("returns the partial count when SCAN errors mid-sweep", async () => {
+    mockScan
+      .mockResolvedValueOnce(["1", ["cache:x:a"]])
+      .mockRejectedValueOnce(new Error("redis down"));
+    mockDel.mockResolvedValueOnce(1);
+
+    const deleted = await invalidatePattern("x:");
+
+    expect(deleted).toBe(1);
   });
 });

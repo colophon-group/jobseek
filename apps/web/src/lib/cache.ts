@@ -86,3 +86,36 @@ export async function invalidate(key: string): Promise<void> {
     // Best effort
   }
 }
+
+/**
+ * Delete every cached key whose unprefixed name starts with ``prefix``.
+ *
+ * Used by the post-crawler-sync invalidation hook (`/api/internal/
+ * invalidate-typeahead`) to drop stale typeahead suggestions after
+ * taxonomy mutations. Iterates Upstash via SCAN cursors so a partial
+ * sweep doesn't block on a giant single command.
+ *
+ * Returns the number of keys confirmed deleted (best effort; Redis errors
+ * stop the sweep early and the count reflects what completed).
+ */
+export async function invalidatePattern(prefix: string): Promise<number> {
+  const match = `cache:${prefix}*`;
+  let cursor: string | number = 0;
+  let deleted = 0;
+  try {
+    do {
+      const [next, keys] = (await redis.scan(cursor, {
+        match,
+        count: 100,
+      })) as [string | number, string[]];
+      cursor = next;
+      if (keys.length > 0) {
+        deleted += await redis.del(...keys);
+      }
+      // Upstash returns "0" (string) when iteration is complete.
+    } while (String(cursor) !== "0");
+  } catch {
+    // Partial sweep is acceptable — TTL backstop will catch the rest.
+  }
+  return deleted;
+}

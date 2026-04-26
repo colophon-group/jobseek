@@ -87,6 +87,14 @@ def parse_args() -> argparse.Namespace:
         help="Compute the diff and log the count without POSTing or recording hashes",
     )
 
+    sub.add_parser(
+        "invalidate-typeahead",
+        help=(
+            "POST to the web-side typeahead invalidation endpoint to drop "
+            "stale *-suggest:* caches after a CSV/taxonomy change."
+        ),
+    )
+
     board_p = sub.add_parser("board", help="Dev testing for a single board")
     board_p.add_argument("slug", help="Board slug to process")
     board_p.add_argument("--dry-run", action="store_true", help="No DB writes")
@@ -250,6 +258,17 @@ async def run() -> None:
                 from src.indexnow import notify_indexnow
 
                 await notify_indexnow(local_pool, http, dry_run=args.dry_run)
+            finally:
+                await http.aclose()
+
+        elif args.command == "invalidate-typeahead":
+            from src.notify_invalidate import notify_invalidate_typeahead
+
+            http = create_http_client()
+            try:
+                ok = await notify_invalidate_typeahead(http)
+                if not ok:
+                    log.warning("invalidate-typeahead: completed with warnings")
             finally:
                 await http.aclose()
 

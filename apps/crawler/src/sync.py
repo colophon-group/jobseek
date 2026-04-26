@@ -2465,6 +2465,19 @@ async def sync_typesense(
         except Exception:
             log.exception("typesense.sync.refresh_counts.failed")
 
+    # Bust the web app's typeahead suggest caches so renamed / added /
+    # removed taxonomy entries are reflected in autocomplete within
+    # seconds, not the 1h TTL window. No-op + logs when the env vars
+    # aren't set (e.g. local dev).
+    try:
+        from src.notify_invalidate import notify_invalidate_typeahead
+        from src.shared.http import create_http_client
+
+        async with create_http_client() as http:
+            await notify_invalidate_typeahead(http)
+    except Exception:
+        log.exception("typesense.sync.invalidate_typeahead.failed")
+
     log.info("typesense.sync.complete")
 
 
