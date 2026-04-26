@@ -263,6 +263,10 @@ ON CONFLICT (id) DO UPDATE SET
     --   * ``sitemap_url`` — written by monitors that discover the sitemap
     --     URL dynamically (eightfold, api_sniffer-based boards)
     --   * ``pcsx_watermark`` — the eightfold incremental high-water mark
+    --   * ``recent_discovered_counts`` / ``suspect_streak`` — rolling
+    --     state for the gone-detection guards (#2723/#2724). Wiping
+    --     these every CSV push silently neuters the drop guard for
+    --     ``_DROP_GUARD_MIN_HISTORY`` cycles after each sync.
     --
     -- ``sitemap_url`` is a pure runtime signal (CSV never sets it), so
     -- preserve it verbatim from the existing row.
@@ -280,8 +284,22 @@ ON CONFLICT (id) DO UPDATE SET
     -- re-syncs will see the change take effect immediately, but the watermark
     -- itself (max_ts and friends) stays intact so the next scheduled run
     -- still knows where incremental pagination left off.
+    --
+    -- ``drop_threshold`` and ``blast_radius_floor`` are CSV-controllable
+    -- per-board overrides for the gone-detection guards. CSV wins when
+    -- set; otherwise existing runtime value (typically unset) is kept.
     metadata = EXCLUDED.metadata || jsonb_strip_nulls(jsonb_build_object(
         'sitemap_url', job_board.metadata -> 'sitemap_url',
+        'recent_discovered_counts', job_board.metadata -> 'recent_discovered_counts',
+        'suspect_streak', job_board.metadata -> 'suspect_streak',
+        'drop_threshold', COALESCE(
+            EXCLUDED.metadata -> 'drop_threshold',
+            job_board.metadata -> 'drop_threshold'
+        ),
+        'blast_radius_floor', COALESCE(
+            EXCLUDED.metadata -> 'blast_radius_floor',
+            job_board.metadata -> 'blast_radius_floor'
+        ),
         'pcsx_watermark', CASE
             WHEN job_board.metadata -> 'pcsx_watermark' IS NULL THEN NULL
             ELSE COALESCE(EXCLUDED.metadata -> 'pcsx_watermark', '{}'::jsonb)
