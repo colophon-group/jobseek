@@ -53,19 +53,13 @@ async def scrape_one(
     config = scraper_config or {}
 
     # Use a no-SSL client when the board's cert chain is broken
-    if config.get("skip_ssl"):
-        from src.shared.http import create_nossl_http_client
+    from src.shared.http import client_for
 
-        async with create_nossl_http_client(use_proxy=bool(config.get("proxy"))) as nossl_http:
-            if artifact_dir is not None and job_id is not None:
-                artifact_dir.mkdir(parents=True, exist_ok=True)
-                await _save_raw_page(artifact_dir, url, job_id, nossl_http)
-            content = await scraper(url, config, nossl_http, pw=pw, artifact_dir=artifact_dir)
-    else:
+    async with client_for(http, config) as client:
         if artifact_dir is not None and job_id is not None:
             artifact_dir.mkdir(parents=True, exist_ok=True)
-            await _save_raw_page(artifact_dir, url, job_id, http)
-        content = await scraper(url, config, http, pw=pw, artifact_dir=artifact_dir)
+            await _save_raw_page(artifact_dir, url, job_id, client)
+        content = await scraper(url, config, client, pw=pw, artifact_dir=artifact_dir)
 
     enrich_description(content)
     return content
