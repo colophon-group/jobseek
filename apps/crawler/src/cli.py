@@ -101,6 +101,33 @@ def parse_args() -> argparse.Namespace:
         ),
     )
 
+    retire_p = sub.add_parser(
+        "retire-stale-boards",
+        help=(
+            "List boards that are dead and safe to retire (board_status "
+            "in ('disabled', 'gone'); last_success_at is NULL or older "
+            "than --days; zero active postings; company has at least one "
+            "live sibling board)."
+        ),
+    )
+    retire_p.add_argument(
+        "--days",
+        type=int,
+        default=14,
+        help=(
+            "Minimum days since last_success_at before a board is a candidate "
+            "(default 14). Boards with NULL last_success_at always qualify."
+        ),
+    )
+    retire_p.add_argument(
+        "--format",
+        choices=["md", "shell"],
+        default="md",
+        help="Output format: `md` markdown table for PR descriptions; "
+        "`shell` `grep -vF` snippets that drop the matching rows from "
+        "boards.csv.",
+    )
+
     prune_p = sub.add_parser(
         "prune-scrape-queues",
         help=(
@@ -269,6 +296,14 @@ async def run() -> None:
                 dry_run=args.dry_run,
             )
             log.info("prune.scrape_queues.done", dry_run=args.dry_run, **result)
+
+        elif args.command == "retire-stale-boards":
+            from src.retire_stale_boards import report_stale_boards
+
+            local_pool = await create_local_pool()
+            async with local_pool.acquire() as conn:
+                output = await report_stale_boards(conn, days=args.days, fmt=args.format)
+            print(output)
 
     finally:
         log.info("cli.shutting_down")
