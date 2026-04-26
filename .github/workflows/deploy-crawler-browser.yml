@@ -68,13 +68,27 @@ jobs:
           IMAGE: ghcr.io/${{ github.repository_owner }}/jobseek-crawler:v${{ steps.version.outputs.version }}
         run: |
           set -euo pipefail
+          # Always tear down on exit, including on early failure, so a
+          # leaked container doesn't poison subsequent steps or runs.
+          trap 'docker logs ts-smoke 2>&1 | tail -50 || true; docker rm -f ts-smoke 2>/dev/null || true' EXIT
+
           docker run -d --name ts-smoke --network host \
             typesense/typesense:27.1 --data-dir /tmp/ts-data --api-key=smoke
-          for _ in $(seq 1 30); do
-            if curl -fsS http://localhost:8108/health >/dev/null 2>&1; then break; fi
+
+          ready=0
+          for _ in $(seq 1 90); do
+            if curl -fsS http://localhost:8108/health >/dev/null 2>&1; then
+              ready=1
+              break
+            fi
             sleep 1
           done
-          curl -fsS http://localhost:8108/health -H "X-TYPESENSE-API-KEY: smoke"
+          if [ "$ready" -ne 1 ]; then
+            echo "ERROR: Typesense did not become healthy within 90s" >&2
+            exit 1
+          fi
+          echo "Typesense ready"
+
           for run in first second; do
             echo "── setup-typesense smoke run: $run ──"
             docker run --rm --network host \
@@ -86,7 +100,6 @@ jobs:
               "$IMAGE" \
               uv run --no-sync crawler setup-typesense
           done
-          docker rm -f ts-smoke
 
       - name: Copy deploy files
         uses: appleboy/scp-action@917f8b81dfc1ccd331fef9e2d61bdc6c8be94634 # v0.1.7
