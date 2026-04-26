@@ -3078,6 +3078,7 @@ no-limits-academy-b-v,no-limits-academy-b-v-join,https://join.com/companies/noli
 noise-labs,noise-labs-ashby,https://jobs.ashbyhq.com/noise-labs,ashby,"{""token"": ""noise-labs""}",skip,
 nokia,nokia-careers,https://jobs.nokia.com/en/sites/CX_1/jobs,sitemap,"{""url"": ""https://jobs.nokia.com/sitemaps/sitemapIndex""}",json-ld,"{""render"": true}"
 nomad,nomad-ashby,https://jobs.ashbyhq.com/nomad,ashby,"{""token"": ""nomad""}",skip,
+nomagic,nomagic-careers,https://jobs.lever.co/Nomagic,lever,"{""token"": ""Nomagic""}",skip,
 nomiso,nomiso-greenhouse,https://job-boards.greenhouse.io/nomiso,greenhouse,"{""token"": ""nomiso""}",skip,
 nonprofit-finance-fund,nonprofit-finance-fund-greenhouse,https://job-boards.greenhouse.io/nonprofitfinancefund,greenhouse,"{""token"": ""nonprofitfinancefund""}",skip,
 nord-ostsee-automobile-se-co-kg,nord-ostsee-automobile-se-co-kg-join,https://join.com/companies/nord-ostsee-automobilede,join,"{""slug"": ""nord-ostsee-automobilede""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
