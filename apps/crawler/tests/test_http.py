@@ -9,6 +9,7 @@ from src.shared.http import (
     DEFAULT_USER_AGENT,
     _client_kwargs,
     _make_ssl_context,
+    client_for,
     create_http_client,
     create_logging_http_client,
 )
@@ -132,6 +133,73 @@ class TestProxyOptIn:
             assert isinstance(client, httpx.AsyncClient)
         finally:
             await client.aclose()
+
+
+class TestClientFor:
+    """``client_for(http, config)`` is a thin async-context-manager that
+    dedupes the skip_ssl branch across monitor_one / monitor_one_stream /
+    scrape_one (#2705). Two branches: skip_ssl truthy -> a fresh nossl
+    client (proxied when ``proxy`` is also truthy); falsy -> the outer
+    client passed in, unchanged."""
+
+    async def test_no_skip_ssl_yields_outer_client(self):
+        outer = httpx.AsyncClient()
+        try:
+            async with client_for(outer, {}) as client:
+                assert client is outer
+            async with client_for(outer, {"skip_ssl": False}) as client:
+                assert client is outer
+        finally:
+            await outer.aclose()
+
+    async def test_skip_ssl_yields_fresh_nossl_client(self, monkeypatch):
+        import src.shared.http as http_mod
+
+        nossl_clients: list[httpx.AsyncClient] = []
+        observed_use_proxy: list[bool] = []
+        real_factory = http_mod.create_nossl_http_client
+
+        def tracking_factory(*, use_proxy: bool = False) -> httpx.AsyncClient:
+            observed_use_proxy.append(use_proxy)
+            client = real_factory(use_proxy=use_proxy)
+            nossl_clients.append(client)
+            return client
+
+        monkeypatch.setattr(http_mod, "create_nossl_http_client", tracking_factory)
+
+        outer = httpx.AsyncClient()
+        try:
+            async with client_for(outer, {"skip_ssl": True}) as client:
+                assert client is not outer
+                assert client is nossl_clients[0]
+        finally:
+            await outer.aclose()
+
+        assert observed_use_proxy == [False]
+
+    async def test_skip_ssl_with_proxy_threads_use_proxy(self, monkeypatch):
+        """Regression guard for #2659 (the bug PR #2682 fixed): when both
+        skip_ssl and proxy are set, the nossl client must be built with
+        use_proxy=True so the API request still routes through the proxy."""
+        import src.shared.http as http_mod
+
+        observed_use_proxy: list[bool] = []
+        real_factory = http_mod.create_nossl_http_client
+
+        def tracking_factory(*, use_proxy: bool = False) -> httpx.AsyncClient:
+            observed_use_proxy.append(use_proxy)
+            return real_factory(use_proxy=use_proxy)
+
+        monkeypatch.setattr(http_mod, "create_nossl_http_client", tracking_factory)
+
+        outer = httpx.AsyncClient()
+        try:
+            async with client_for(outer, {"skip_ssl": True, "proxy": True}):
+                pass
+        finally:
+            await outer.aclose()
+
+        assert observed_use_proxy == [True]
 
 
 class TestLoggingHttpClient:

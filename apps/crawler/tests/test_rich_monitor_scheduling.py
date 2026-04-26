@@ -30,7 +30,7 @@ from src.processing.board import (
 )
 from src.processing.scrape import _is_skip_no_scrape
 from src.queries.monitor import _INSERT_URL_ONLY_JOBS
-from src.queries.scrape import _CLEAR_SCRAPE_FOR_RICH, _RECORD_SCRAPE_FAILURE
+from src.queries.scrape import _CLEAR_SCRAPE_FOR_RICH, _RECORD_SCRAPE_TRANSIENT
 from src.redis_queue import ScrapeWork
 from src.workers.pipeline import _process_scrape_work
 
@@ -164,7 +164,10 @@ class TestEnqueueGuards:
     async def test_skip_no_scrape_does_not_enqueue_new(self, mock_enqueue):
         """Rich monitor (skip, no enrich) → no Redis enqueue for new postings."""
         inserted = [
-            {"id": "jp-1", "source_url": "https://example.com/job/1"},
+            {
+                "id": "11111111-1111-1111-1111-111111111111",
+                "source_url": "https://example.com/job/1",
+            },
             {"id": "jp-2", "source_url": "https://example.com/job/2"},
         ]
         metadata = {"scraper_type": "skip"}
@@ -190,7 +193,12 @@ class TestEnqueueGuards:
     @patch("src.processing.board._enqueue_scrape", new_callable=AsyncMock)
     async def test_skip_with_enrich_still_enqueues(self, mock_enqueue):
         """Enrich boards still need scrapes, even with scraper_type=skip."""
-        inserted = [{"id": "jp-1", "source_url": "https://example.com/job/1"}]
+        inserted = [
+            {
+                "id": "11111111-1111-1111-1111-111111111111",
+                "source_url": "https://example.com/job/1",
+            }
+        ]
         metadata = {
             "scraper_type": "skip",
             "scraper_config": {"enrich": ["description"]},
@@ -204,7 +212,12 @@ class TestEnqueueGuards:
     @patch("src.processing.board._enqueue_scrape", new_callable=AsyncMock)
     async def test_non_skip_board_enqueues(self, mock_enqueue):
         """Normal boards (json-ld, dom, …) still enqueue."""
-        inserted = [{"id": "jp-1", "source_url": "https://example.com/job/1"}]
+        inserted = [
+            {
+                "id": "11111111-1111-1111-1111-111111111111",
+                "source_url": "https://example.com/job/1",
+            }
+        ]
         metadata = {"scraper_type": "json-ld"}
         log = MagicMock()
 
@@ -230,7 +243,12 @@ class TestInsertUrlOnlyJobsSql:
 class TestProcessScrapeWorkSkipGuard:
     def _scrape_work(self) -> ScrapeWork:
         return ScrapeWork(
-            posting_id="jp-1",
+            # Valid UUID required: the worker self-heal validates
+            # posting_id with ``uuid.UUID(...)`` before doing the
+            # Postgres SELECT, dropping non-UUID work without
+            # rescheduling. Tests that proceed past the self-heal need
+            # a real UUID.
+            posting_id="11111111-1111-1111-1111-111111111111",
             source_url="https://example.com/job/1",
             board_id="b-1",
             description_r2_hash=None,
@@ -292,10 +310,10 @@ class TestProcessScrapeWorkSkipGuard:
             if c.args and c.args[0] == _CLEAR_SCRAPE_FOR_RICH
         ]
         assert len(clear_calls) == 1
-        assert clear_calls[0].args[1] == ["jp-1"]
+        assert clear_calls[0].args[1] == ["11111111-1111-1111-1111-111111111111"]
 
         # Redis scrape hash is also deleted (no orphan key left behind).
-        redis.delete.assert_awaited_once_with("scrape:jp-1")
+        redis.delete.assert_awaited_once_with("scrape:11111111-1111-1111-1111-111111111111")
 
         # No Redis reschedule — the task is dropped, draining the loop.
         mock_reschedule.assert_not_awaited()
@@ -376,7 +394,7 @@ class TestProcessScrapeWorkSkipGuard:
             if c.args and c.args[0] == _CLEAR_SCRAPE_FOR_RICH
         ]
         assert len(clear_calls) == 1
-        redis.delete.assert_awaited_once_with("scrape:jp-1")
+        redis.delete.assert_awaited_once_with("scrape:11111111-1111-1111-1111-111111111111")
         mock_reschedule.assert_not_awaited()
         assert _counter_value("scrape", "skipped_rich") == before + 1
 
@@ -388,12 +406,13 @@ class TestProcessScrapeWorkSkipGuard:
     ):
         """Missing Redis board hash → fail-safe path, NOT the rich-only clear.
 
-        This is the critic-2 regression fix. When Redis has lost the
-        ``board:{id}`` hash, we don't know whether the board is rich, so
-        we can't use the scoped ``_CLEAR_SCRAPE_FOR_RICH`` — that query
-        no-ops on non-rich boards and leaves the posting in a tight
-        re-claim loop. We use ``_RECORD_SCRAPE_FAILURE`` instead, which
-        backs off ``next_scrape_at`` and bumps the failure counter.
+        When Redis has lost the ``board:{id}`` hash, we don't know
+        whether the board is rich, so we can't use the scoped
+        ``_CLEAR_SCRAPE_FOR_RICH`` — that query no-ops on non-rich
+        boards and leaves the posting in a tight re-claim loop. We
+        use ``_RECORD_SCRAPE_TRANSIENT`` instead: stale config is a
+        transient bookkeeping issue, not a signal the upstream URL
+        is gone, so it must NOT count toward the tombstone budget.
         """
         pool, conn = self._mock_pool()
         http = AsyncMock()
@@ -419,16 +438,17 @@ class TestProcessScrapeWorkSkipGuard:
         ]
         assert clear_calls == []
 
-        # MUST call _RECORD_SCRAPE_FAILURE to push next_scrape_at forward.
+        # MUST call _RECORD_SCRAPE_TRANSIENT to push next_scrape_at
+        # forward without contributing to the tombstone budget.
         fail_calls = [
             c
             for c in conn.execute.await_args_list
-            if c.args and c.args[0] == _RECORD_SCRAPE_FAILURE
+            if c.args and c.args[0] == _RECORD_SCRAPE_TRANSIENT
         ]
         assert len(fail_calls) == 1
-        assert fail_calls[0].args[1] == "jp-1"
+        assert fail_calls[0].args[1] == "11111111-1111-1111-1111-111111111111"
 
-        redis.delete.assert_awaited_once_with("scrape:jp-1")
+        redis.delete.assert_awaited_once_with("scrape:11111111-1111-1111-1111-111111111111")
         mock_reschedule.assert_not_awaited()
 
         # Metric increment: stale_config, not skipped_rich.

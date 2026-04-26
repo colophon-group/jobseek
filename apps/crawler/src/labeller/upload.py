@@ -291,6 +291,48 @@ def _accepted_by_date(run_date: str | None) -> dict[str, list[dict]]:
     return out
 
 
+def _all_local_counts() -> dict[str, int]:
+    """Count accepted postings under data_root for **every** date on disk.
+
+    Used to regenerate the README counts line on every upload — including
+    scoped ``--date X`` runs — so a per-date upload doesn't clobber the
+    multi-date breakdown previously shown on the dataset card. Scans the
+    full ``postings/`` tree regardless of the current run's scope.
+
+    Caveat: this is local-disk truth, not HuggingFace truth. If a previously-
+    uploaded date's local files were deleted or the data root moved, that
+    date will not appear in the regenerated counts line. The orchestrator's
+    daily flow keeps every date's accepted gold on disk, so this is the
+    intended behavior; if the local truth is gone we'd rather show what we
+    have than republish stale numbers. Race-wise, two concurrent ``--date``
+    uploads each see whatever was on disk at scan time; the daily flow
+    serializes uploads so this is not a hot path.
+    """
+    base = data_root() / "postings"
+    counts: dict[str, int] = {}
+    if not base.exists():
+        return counts
+    optout = _load_optout()
+    for date_dir in sorted(base.iterdir()):
+        if not date_dir.is_dir():
+            continue
+        n = 0
+        for path in sorted(date_dir.glob("*.json")):
+            try:
+                data = json.loads(path.read_text())
+            except json.JSONDecodeError:
+                continue
+            if (data.get("labelling_meta") or {}).get("qa_verdict") != "accepted":
+                continue
+            slug = (data.get("source") or {}).get("company_slug")
+            if isinstance(slug, str) and slug.lower() in optout:
+                continue
+            n += 1
+        if n:
+            counts[date_dir.name] = n
+    return counts
+
+
 def push_to_hub(
     run_date: str | None = None,
     *,
@@ -364,7 +406,11 @@ def push_to_hub(
                 for p in postings:
                     fh.write(json.dumps(p, ensure_ascii=False, default=str) + "\n")
 
-        counts_by_date = {d: len(rows) for d, rows in by_date.items()}
+        # README counts cover **every** date on disk, not just the current
+        # scope (issue #2701). A per-date `--date X` upload otherwise rewrote
+        # README.md with a single-date counts line, silently clobbering the
+        # public multi-date breakdown.
+        counts_by_date = _all_local_counts()
         (stage / "README.md").write_text(_readme_text(counts_by_date))
 
         local_schemas = stage / "schemas"
@@ -403,5 +449,10 @@ def _describe_upload(root: Path, by_date: dict[str, list[dict]], run_date: str |
     for date, rows in sorted(by_date.items(), reverse=True):
         lines.append(f"  data/{date}.jsonl  — {len(rows)} accepted posting(s)")
     lines.append("  schemas/**/*.json  : copied from apps/crawler/src/labeller/schemas/")
-    lines.append("  README.md          : regenerated at upload time")
+    all_counts = _all_local_counts()
+    if all_counts:
+        rendered = ", ".join(f"{d}: {n}" for d, n in sorted(all_counts.items(), reverse=True))
+        lines.append(f"  README.md          : regenerated with counts for {rendered}")
+    else:
+        lines.append("  README.md          : regenerated at upload time")
     return "\n".join(lines)
