@@ -170,3 +170,51 @@ def test_rejected_synthesized_record_passes_posting_schema(run_dir: Path) -> Non
 
     merged = merge_posting("2026-04-25", "abc-123", qa_verdict="rejected")
     assert validate_schema("posting", merged) == []
+
+
+# ---------- malformed JSON tolerance on the rejected path --------------
+
+
+def test_rejected_merge_tolerates_truncated_split_json(run_dir: Path) -> None:
+    """A subagent that crashed mid-write may leave a truncated JSON file.
+    The rejected-merge fallback must treat that the same as a missing file
+    — otherwise the escape valve surfaces the very crash it's meant to
+    recover from."""
+    (run_dir / "split-out.json").write_text('{"sections": [{"kind": "rol')  # truncated
+    out = merge_posting("2026-04-25", "abc-123", qa_verdict="rejected")
+    assert out["labels"]["sections"] == []
+    assert "split-out.json" in out["labelling_meta"]["qa_rationale"]
+
+
+def test_rejected_merge_tolerates_truncated_per_kind_extract(run_dir: Path) -> None:
+    (run_dir / "split-out.json").write_text(
+        json.dumps({"sections": [{"kind": "role", "block_ids": [0]}]})
+    )
+    (run_dir / "globals-out.json").write_text(json.dumps({"profession": "x"}))
+    (run_dir / "extract-role-out.json").write_text("{trun")  # truncated
+    out = merge_posting("2026-04-25", "abc-123", qa_verdict="rejected")
+    sections = {s["kind"]: s for s in out["labels"]["sections"]}
+    assert sections["role"]["extracted"] is None
+    assert "extract-role-out.json" in out["labelling_meta"]["qa_rationale"]
+
+
+def test_accepted_merge_does_not_swallow_malformed_json(run_dir: Path) -> None:
+    """Strict mode must NOT silently treat a truncated file as missing."""
+    (run_dir / "split-out.json").write_text('{"sections": [{"kind"')
+    with pytest.raises(json.JSONDecodeError):
+        merge_posting("2026-04-25", "abc-123")
+
+
+# ---------- input.json is non-negotiable in either mode -----------------
+
+
+def test_rejected_merge_still_requires_input_json(tmp_path: Path, monkeypatch) -> None:
+    """input.json carries the posting identity (id, source, sampled_at).
+    Even rejected mode cannot synthesize that — failure to find it is a
+    hard error in both verdicts."""
+    monkeypatch.setenv("LABELLER_DATA_ROOT", str(tmp_path))
+    base = tmp_path / "_runs" / "2026-04-25" / "abc-123"
+    base.mkdir(parents=True)
+    # input.json deliberately absent.
+    with pytest.raises(FileNotFoundError):
+        merge_posting("2026-04-25", "abc-123", qa_verdict="rejected")

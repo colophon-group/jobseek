@@ -37,9 +37,12 @@ def _granular_mode_sections(
     per-kind ``extract-<kind>-out.json`` raises ``FileNotFoundError`` — we
     refuse to silently merge with null extractions.
 
-    When ``allow_missing`` is True (rejected-merge fallback), missing files
-    leave ``extracted=None`` for that section and are reported back to the
-    caller so the qa_rationale can name them.
+    When ``allow_missing`` is True (rejected-merge fallback), missing or
+    malformed files leave ``extracted=None`` for that section and are
+    reported back to the caller so the qa_rationale can name them. A
+    truncated file from a crashed subagent is treated the same as an
+    absent one — the partial-pipeline-failure escape valve has to handle
+    both, otherwise it would surface the same crash it's meant to recover.
     """
     sections_with_extracts: list[dict] = []
     missing: list[str] = []
@@ -48,11 +51,12 @@ def _granular_mode_sections(
         entry: dict = {"kind": kind, "block_ids": list(sec["block_ids"])}
         if kind in SECTION_EXTRACT_KINDS:
             extract_path = base / f"extract-{kind}-out.json"
-            if extract_path.exists():
-                entry["extracted"] = json.loads(extract_path.read_text())
-            else:
+            extract_data = _read_json_tolerant(extract_path, allow_missing=allow_missing)
+            if extract_data is None:
                 missing.append(f"extract-{kind}-out.json")
                 entry["extracted"] = None
+            else:
+                entry["extracted"] = extract_data
         else:
             entry["extracted"] = None
         sections_with_extracts.append(entry)
@@ -63,10 +67,24 @@ def _granular_mode_sections(
     return sections_with_extracts, missing
 
 
-def _read_json_or_none(path: Path) -> dict | None:
+def _read_json_tolerant(path: Path, *, allow_missing: bool) -> dict | None:
+    """Read a JSON file. Strict mode raises on missing/malformed.
+
+    Tolerant mode (``allow_missing=True``) returns ``None`` for both an
+    absent file and a malformed one — a crashed subagent that left a
+    truncated JSON file should be treated the same as one that didn't
+    write the file at all on the rejected-merge fallback path.
+    """
     if not path.exists():
-        return None
-    return json.loads(path.read_text())
+        if allow_missing:
+            return None
+        raise FileNotFoundError(path)
+    try:
+        return json.loads(path.read_text())
+    except json.JSONDecodeError:
+        if allow_missing:
+            return None
+        raise
 
 
 def merge_posting(
@@ -106,17 +124,12 @@ def merge_posting(
         ]
         globals_data = merged_payload.get("globals", {})
     else:
-        sections_payload = _read_json_or_none(base / "split-out.json")
-        globals_payload = _read_json_or_none(base / "globals-out.json")
+        sections_payload = _read_json_tolerant(base / "split-out.json", allow_missing=is_rejected)
+        globals_payload = _read_json_tolerant(base / "globals-out.json", allow_missing=is_rejected)
         if sections_payload is None:
-            if not is_rejected:
-                # Match the prior FileNotFoundError contract for non-rejected.
-                json.loads((base / "split-out.json").read_text())
             fallback_missing.append("split-out.json")
             sections_payload = {"sections": []}
         if globals_payload is None:
-            if not is_rejected:
-                json.loads((base / "globals-out.json").read_text())
             fallback_missing.append("globals-out.json")
             globals_payload = {}
         sections_with_extracts, missing_extracts = _granular_mode_sections(
