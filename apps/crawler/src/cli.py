@@ -229,22 +229,31 @@ async def run() -> None:
             await backfill_locations(local_pool)
 
         elif args.command == "backfill-typesense":
-            local_pool = await create_local_pool()
-            supa_pool = await create_pool()
-            from src.exporter import backfill_typesense
+            from src.cron_metrics import cron_run
 
-            await backfill_typesense(local_pool, supa_pool)
+            async with cron_run("backfill-typesense"):
+                local_pool = await create_local_pool()
+                supa_pool = await create_pool()
+                from src.exporter import backfill_typesense
+
+                await backfill_typesense(local_pool, supa_pool)
 
         elif args.command == "refresh-typesense":
-            local_pool = await create_local_pool()
-            supa_pool = await create_pool()
-            from src.sync import refresh_typesense_counts, sync_watchlists_typesense
-            from src.typesense_client import get_typesense_client
+            from src.cron_metrics import cron_run
 
-            ts_client = get_typesense_client()
-            if not ts_client:
-                log.error("refresh-typesense: Typesense not configured")
-            else:
+            async with cron_run("refresh-typesense"):
+                local_pool = await create_local_pool()
+                supa_pool = await create_pool()
+                from src.sync import refresh_typesense_counts, sync_watchlists_typesense
+                from src.typesense_client import get_typesense_client
+
+                ts_client = get_typesense_client()
+                if not ts_client:
+                    # Treat as failure so the cron metric records a
+                    # non-success — a misconfigured environment isn't
+                    # silent any more.
+                    log.error("refresh-typesense: Typesense not configured")
+                    raise RuntimeError("refresh-typesense: Typesense not configured")
                 async with local_pool.acquire() as local_conn, supa_pool.acquire() as supa_conn:
                     await refresh_typesense_counts(local_conn, ts_client)
                     await sync_watchlists_typesense(supa_conn, local_conn, ts_client)
