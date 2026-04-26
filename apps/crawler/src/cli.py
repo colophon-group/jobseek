@@ -63,6 +63,32 @@ def parse_args() -> argparse.Namespace:
 
     sub.add_parser("backfill-locations", help="Enqueue re-scrapes for jobs missing locations")
 
+    retry_p = sub.add_parser(
+        "retry-stalled-scrapes",
+        help=(
+            "Reset next_scrape_at for postings stuck in transient-3-strike "
+            "state (is_active=true, next_scrape_at IS NULL, scrape_failures "
+            ">= 3, last_scraped_at older than --max-age-days). Operator "
+            "recovery for the gap described in #2738 / "
+            "docs/03-crawler-architecture.md 'Delisting model'."
+        ),
+    )
+    retry_p.add_argument(
+        "--max-age-days",
+        type=int,
+        default=7,
+        help=(
+            "Only target postings whose last_scraped_at is older than this "
+            "many days (default 7). A 0 means 'every stalled posting "
+            "regardless of age' — use with care."
+        ),
+    )
+    retry_p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Report the count that would be affected; make no writes.",
+    )
+
     sub.add_parser("backfill-typesense", help="Full re-index of job_posting to Typesense")
 
     sub.add_parser("refresh-typesense", help="Refresh Typesense counts + reconcile watchlists")
@@ -227,6 +253,20 @@ async def run() -> None:
             from src.backfill import backfill_locations
 
             await backfill_locations(local_pool)
+
+        elif args.command == "retry-stalled-scrapes":
+            local_pool = await create_local_pool()
+            from src.retry_stalled import count_stalled_scrapes, retry_stalled_scrapes
+
+            if args.dry_run:
+                count = await count_stalled_scrapes(local_pool, args.max_age_days)
+                log.info(
+                    "retry_stalled.dry_run",
+                    candidates=count,
+                    max_age_days=args.max_age_days,
+                )
+            else:
+                await retry_stalled_scrapes(local_pool, max_age_days=args.max_age_days)
 
         elif args.command == "backfill-typesense":
             local_pool = await create_local_pool()
