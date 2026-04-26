@@ -39,12 +39,7 @@ import structlog
 
 from src.core.monitors import DiscoveredJob
 from src.core.monitors._incremental import paginate_all, paginate_until_old
-
-# TODO(#2740): switch ``_is_retryable_status`` to public name once that
-# PR's rename merges. Underscore-prefixed cross-module import is
-# intentional in the meantime so this PR doesn't depend on #2740's
-# reordering.
-from src.shared.http_retry import PaginationFetchError, _is_retryable_status
+from src.shared.http_retry import PaginationFetchError, is_retryable_status
 
 log = structlog.get_logger()
 
@@ -232,9 +227,9 @@ async def _fetch_page(
                 url=_api_url(host),
                 last_status=405,
             )
-        if _is_retryable_status(resp.status_code):
+        if is_retryable_status(resp.status_code):
             # Transient — exponential backoff + jitter then retry.
-            # ``_is_retryable_status`` covers 408/425/429 plus any 5xx in
+            # ``is_retryable_status`` covers 408/425/429 plus any 5xx in
             # range — Cloudflare 520-526/530 origin errors included.
             #
             # Backoff cadence (5/10/20s × narrow jitter) is intentionally
