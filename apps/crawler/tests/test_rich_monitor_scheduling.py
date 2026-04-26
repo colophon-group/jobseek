@@ -164,7 +164,10 @@ class TestEnqueueGuards:
     async def test_skip_no_scrape_does_not_enqueue_new(self, mock_enqueue):
         """Rich monitor (skip, no enrich) → no Redis enqueue for new postings."""
         inserted = [
-            {"id": "jp-1", "source_url": "https://example.com/job/1"},
+            {
+                "id": "11111111-1111-1111-1111-111111111111",
+                "source_url": "https://example.com/job/1",
+            },
             {"id": "jp-2", "source_url": "https://example.com/job/2"},
         ]
         metadata = {"scraper_type": "skip"}
@@ -190,7 +193,12 @@ class TestEnqueueGuards:
     @patch("src.processing.board._enqueue_scrape", new_callable=AsyncMock)
     async def test_skip_with_enrich_still_enqueues(self, mock_enqueue):
         """Enrich boards still need scrapes, even with scraper_type=skip."""
-        inserted = [{"id": "jp-1", "source_url": "https://example.com/job/1"}]
+        inserted = [
+            {
+                "id": "11111111-1111-1111-1111-111111111111",
+                "source_url": "https://example.com/job/1",
+            }
+        ]
         metadata = {
             "scraper_type": "skip",
             "scraper_config": {"enrich": ["description"]},
@@ -204,7 +212,12 @@ class TestEnqueueGuards:
     @patch("src.processing.board._enqueue_scrape", new_callable=AsyncMock)
     async def test_non_skip_board_enqueues(self, mock_enqueue):
         """Normal boards (json-ld, dom, …) still enqueue."""
-        inserted = [{"id": "jp-1", "source_url": "https://example.com/job/1"}]
+        inserted = [
+            {
+                "id": "11111111-1111-1111-1111-111111111111",
+                "source_url": "https://example.com/job/1",
+            }
+        ]
         metadata = {"scraper_type": "json-ld"}
         log = MagicMock()
 
@@ -230,7 +243,12 @@ class TestInsertUrlOnlyJobsSql:
 class TestProcessScrapeWorkSkipGuard:
     def _scrape_work(self) -> ScrapeWork:
         return ScrapeWork(
-            posting_id="jp-1",
+            # Valid UUID required: the worker self-heal validates
+            # posting_id with ``uuid.UUID(...)`` before doing the
+            # Postgres SELECT, dropping non-UUID work without
+            # rescheduling. Tests that proceed past the self-heal need
+            # a real UUID.
+            posting_id="11111111-1111-1111-1111-111111111111",
             source_url="https://example.com/job/1",
             board_id="b-1",
             description_r2_hash=None,
@@ -292,10 +310,10 @@ class TestProcessScrapeWorkSkipGuard:
             if c.args and c.args[0] == _CLEAR_SCRAPE_FOR_RICH
         ]
         assert len(clear_calls) == 1
-        assert clear_calls[0].args[1] == ["jp-1"]
+        assert clear_calls[0].args[1] == ["11111111-1111-1111-1111-111111111111"]
 
         # Redis scrape hash is also deleted (no orphan key left behind).
-        redis.delete.assert_awaited_once_with("scrape:jp-1")
+        redis.delete.assert_awaited_once_with("scrape:11111111-1111-1111-1111-111111111111")
 
         # No Redis reschedule — the task is dropped, draining the loop.
         mock_reschedule.assert_not_awaited()
@@ -376,7 +394,7 @@ class TestProcessScrapeWorkSkipGuard:
             if c.args and c.args[0] == _CLEAR_SCRAPE_FOR_RICH
         ]
         assert len(clear_calls) == 1
-        redis.delete.assert_awaited_once_with("scrape:jp-1")
+        redis.delete.assert_awaited_once_with("scrape:11111111-1111-1111-1111-111111111111")
         mock_reschedule.assert_not_awaited()
         assert _counter_value("scrape", "skipped_rich") == before + 1
 
@@ -428,9 +446,9 @@ class TestProcessScrapeWorkSkipGuard:
             if c.args and c.args[0] == _RECORD_SCRAPE_TRANSIENT
         ]
         assert len(fail_calls) == 1
-        assert fail_calls[0].args[1] == "jp-1"
+        assert fail_calls[0].args[1] == "11111111-1111-1111-1111-111111111111"
 
-        redis.delete.assert_awaited_once_with("scrape:jp-1")
+        redis.delete.assert_awaited_once_with("scrape:11111111-1111-1111-1111-111111111111")
         mock_reschedule.assert_not_awaited()
 
         # Metric increment: stale_config, not skipped_rich.

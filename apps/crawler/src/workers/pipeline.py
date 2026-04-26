@@ -416,43 +416,62 @@ async def _process_scrape_work(
         # documented in docs/03-crawler-architecture.md.
         #
         # Read the Postgres state once before doing any work; if the
-        # row is tombstoned or has next_scrape_at=NULL, drop the
-        # Redis hash and skip the reschedule so the loop terminates.
+        # row is tombstoned or has next_scrape_at=NULL, return WITHOUT
+        # calling ``reschedule_task`` so the ZSET entry stays drained.
+        #
+        # ``posting_id`` validation: it comes from a Redis claim and is
+        # supposed to be a UUID string, but a Lua bug or a manual ZADD
+        # could push a non-UUID. Guard the cast — if it fails, drop
+        # the bad work without rescheduling rather than letting the
+        # ``$1::uuid`` cast crash the SELECT and fall through to the
+        # outer except (which would reschedule and reintroduce the
+        # original loop).
+        #
+        # SELECT failure: catch DB errors here too. If the SELECT
+        # crashes (pool exhaustion, query timeout, connection drop),
+        # we still must NOT fall through to the outer except's
+        # reschedule path — that re-fires the work indefinitely. Drop
+        # the work for this cycle; if the posting is still due, the
+        # monitor's relisted path will re-enqueue when the URL is
+        # next discovered.
+        #
+        # Hash-delete is deliberately skipped on the tombstoned path:
+        # if the monitor relists this URL between our SELECT and a
+        # ``r.delete``, the relisted_scrapes enqueue would write a
+        # fresh ``scrape:<id>`` hash that we'd then wipe — silently
+        # losing the relist until the next monitor cycle. The hash
+        # leaks instead (one entry per tombstoned posting, ~100B
+        # each); steady-state cost is bounded.
+        #
         # Recovery: the monitor's ``relisted`` CTE re-enqueues to
         # Redis via ``_enqueue_scrapes_for_relisted``, so a posting
-        # we self-heal here can come back through the monitor side
-        # if it reappears in the upstream listing.
-        async with local_pool.acquire() as conn:
-            posting_state = await conn.fetchrow(
-                "SELECT is_active, next_scrape_at FROM job_posting WHERE id = $1::uuid",
-                posting_id,
-            )
+        # we self-heal here can come back through the monitor side.
+        import uuid
+
+        try:
+            uuid.UUID(posting_id)
+        except (ValueError, AttributeError):
+            tasks_total.labels(kind="scrape", status="skipped_invalid_id").inc()
+            worker_log.warning("pipeline.scrape.skipped_invalid_id", posting_id=posting_id)
+            return
+
+        try:
+            async with local_pool.acquire() as conn:
+                posting_state = await conn.fetchrow(
+                    "SELECT is_active, next_scrape_at FROM job_posting WHERE id = $1::uuid",
+                    posting_id,
+                )
+        except Exception:
+            tasks_total.labels(kind="scrape", status="skipped_db_error").inc()
+            worker_log.warning("pipeline.scrape.self_heal_db_error", exc_info=True)
+            return
 
         if posting_state is None:
-            # Row deleted (rare; should not happen in steady state).
-            from src.redis_queue import get_redis
-
-            r = get_redis()
-            try:
-                await r.delete(f"scrape:{posting_id}")
-            except Exception:
-                worker_log.warning("pipeline.scrape.scrape_hash_delete_failed", exc_info=True)
             tasks_total.labels(kind="scrape", status="skipped_missing").inc()
             worker_log.info("pipeline.scrape.skipped_missing")
             return
 
         if not posting_state["is_active"] or posting_state["next_scrape_at"] is None:
-            # Tombstoned or budget-exhausted. Drop the Redis hash so
-            # ``claim_work`` doesn't return this entry next cycle, and
-            # return WITHOUT calling ``reschedule_task`` so the ZSET
-            # entry stays drained.
-            from src.redis_queue import get_redis
-
-            r = get_redis()
-            try:
-                await r.delete(f"scrape:{posting_id}")
-            except Exception:
-                worker_log.warning("pipeline.scrape.scrape_hash_delete_failed", exc_info=True)
             tasks_total.labels(kind="scrape", status="skipped_tombstoned").inc()
             worker_log.info(
                 "pipeline.scrape.skipped_tombstoned",

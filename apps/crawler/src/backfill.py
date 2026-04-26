@@ -22,12 +22,24 @@ from src.redis_queue import enqueue_scrape, get_redis
 
 log = structlog.get_logger()
 
+# UPDATE-RETURNING (not SELECT): the scrape worker self-heal in
+# `pipeline._process_scrape_work` short-circuits any scrape claim whose
+# Postgres row has `next_scrape_at IS NULL`. Boards with
+# `rescrape_policy = "never"` (Starbucks, Uber, every paid-proxy board)
+# clear `next_scrape_at` after the first successful scrape, so a plain
+# SELECT-and-enqueue would silently no-op for the largest backfill
+# targets — backfill enqueues, worker self-heals on next_scrape_at=NULL,
+# nothing scrapes. Bumping `next_scrape_at = now()` atomically with the
+# fetch opens a one-shot scrape window the worker will honour.
+# `COALESCE(next_scrape_at, now())` preserves a future schedule if one
+# was already set.
 _FETCH_MISSING_LOCATIONS = """
-SELECT jp.id::text, jp.source_url, jp.board_id::text, jp.description_r2_hash
-FROM job_posting jp
+UPDATE job_posting jp
+SET next_scrape_at = COALESCE(jp.next_scrape_at, now())
 WHERE jp.is_active = true
   AND jp.location_ids IS NULL
   AND jp.description_r2_hash IS NOT NULL
+RETURNING jp.id::text, jp.source_url, jp.board_id::text, jp.description_r2_hash
 """
 
 

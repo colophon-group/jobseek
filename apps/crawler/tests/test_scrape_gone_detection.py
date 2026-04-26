@@ -476,10 +476,11 @@ async def test_pipeline_skips_scrape_for_tombstoned_posting(
         pw=None,
     )
 
-    # The scrape:hash was dropped from Redis.
-    assert deleted == [f"scrape:{posting_id}"]
-    # And — critically — reschedule_task was NOT called, so the
-    # ZSET entry stays drained instead of being re-enqueued for 24h.
+    # Hash deletion is intentionally OMITTED to avoid the relist
+    # race (see test_pipeline_self_heal_does_not_delete_redis_hash).
+    assert deleted == []
+    # Critically — reschedule_task was NOT called, so the ZSET entry
+    # stays drained instead of being re-enqueued for 24h.
     assert rescheduled == []
 
 
@@ -555,6 +556,214 @@ async def test_pipeline_skips_scrape_when_next_scrape_at_null(
     )
 
     # Same invariant: no Redis reschedule, so the ZSET drains.
+    assert rescheduled == []
+
+
+@pytest.mark.asyncio
+async def test_pipeline_self_heal_does_not_reschedule_on_db_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """If the self-heal SELECT crashes (pool exhaustion, query timeout,
+    connection drop), the worker MUST NOT fall through to the outer
+    except's reschedule path — that re-fires the work indefinitely
+    and reintroduces the very regression the self-heal exists to fix.
+
+    Drop the work for this cycle; the monitor's relisted path will
+    re-enqueue if the URL is still listed."""
+    from src.redis_queue import ScrapeWork
+    from src.workers import pipeline
+
+    posting_id = "00000000-0000-0000-0000-000000000ddd"
+
+    class _StubConn:
+        async def fetchrow(self, query: str, *args):  # type: ignore[no-untyped-def]
+            raise RuntimeError("simulated DB outage")
+
+    class _StubPool:
+        def acquire(self):  # type: ignore[no-untyped-def]
+            class _Ctx:
+                async def __aenter__(self_inner) -> _StubConn:
+                    return _StubConn()
+
+                async def __aexit__(self_inner, *args):  # type: ignore[no-untyped-def]
+                    pass
+
+            return _Ctx()
+
+    rescheduled: list[tuple] = []
+
+    async def _no_reschedule(*args, **kwargs):  # type: ignore[no-untyped-def]
+        rescheduled.append(args)
+
+    monkeypatch.setattr(pipeline, "reschedule_task", _no_reschedule)
+
+    work = ScrapeWork(
+        posting_id=posting_id,
+        source_url="https://example.com/jobs/x",
+        board_id="board-1",
+        description_r2_hash=None,
+        scraper_needs_browser=False,
+        scrape_interval_hours=24,
+        scrape_step=0,
+        domain="example.com",
+    )
+
+    import structlog
+
+    log = structlog.get_logger("test")
+
+    await pipeline._process_scrape_work(
+        log,
+        work,
+        local_pool=_StubPool(),  # type: ignore[arg-type]
+        http=None,  # type: ignore[arg-type]
+        browser=False,
+        pw=None,
+    )
+
+    # Critical: NO reschedule. Otherwise the loop persists.
+    assert rescheduled == []
+
+
+@pytest.mark.asyncio
+async def test_pipeline_self_heal_skips_invalid_posting_id(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A non-UUID posting_id (Lua bug, manual ZADD, etc.) MUST be
+    dropped without rescheduling — otherwise the ``$1::uuid`` cast
+    would crash the SELECT and the outer except would reschedule
+    the bad work forever."""
+    from src.redis_queue import ScrapeWork
+    from src.workers import pipeline
+
+    pool_acquire_called = []
+
+    class _StubPool:
+        def acquire(self):  # type: ignore[no-untyped-def]
+            pool_acquire_called.append(True)
+
+            class _Ctx:
+                async def __aenter__(self_inner):  # type: ignore[no-untyped-def]
+                    raise AssertionError("must short-circuit before DB acquire")
+
+                async def __aexit__(self_inner, *args):  # type: ignore[no-untyped-def]
+                    pass
+
+            return _Ctx()
+
+    rescheduled: list[tuple] = []
+
+    async def _no_reschedule(*args, **kwargs):  # type: ignore[no-untyped-def]
+        rescheduled.append(args)
+
+    monkeypatch.setattr(pipeline, "reschedule_task", _no_reschedule)
+
+    work = ScrapeWork(
+        posting_id="not-a-uuid-at-all",
+        source_url="https://example.com/jobs/x",
+        board_id="board-1",
+        description_r2_hash=None,
+        scraper_needs_browser=False,
+        scrape_interval_hours=24,
+        scrape_step=0,
+        domain="example.com",
+    )
+
+    import structlog
+
+    log = structlog.get_logger("test")
+
+    await pipeline._process_scrape_work(
+        log,
+        work,
+        local_pool=_StubPool(),  # type: ignore[arg-type]
+        http=None,  # type: ignore[arg-type]
+        browser=False,
+        pw=None,
+    )
+
+    # Pool was never even acquired (UUID validation short-circuited).
+    assert pool_acquire_called == []
+    # And no reschedule of the bad work.
+    assert rescheduled == []
+
+
+@pytest.mark.asyncio
+async def test_pipeline_self_heal_does_not_delete_redis_hash(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The hash-delete on tombstoned-skip is intentionally OMITTED to
+    avoid a race: if the monitor's relisted path enqueues a fresh
+    ``scrape:<id>`` hash between our SELECT and the delete, we'd
+    silently wipe the relisted hash and lose the recovery scrape
+    until the next monitor cycle.
+
+    The hash leaks (one entry per tombstoned posting, ~100B each);
+    steady-state cost is bounded and the recovery path is correct."""
+    from src.redis_queue import ScrapeWork
+    from src.workers import pipeline
+
+    posting_id = "00000000-0000-0000-0000-000000000eee"
+
+    class _StubConn:
+        async def fetchrow(self, query: str, *args):  # type: ignore[no-untyped-def]
+            return {"is_active": False, "next_scrape_at": None}
+
+    class _StubPool:
+        def acquire(self):  # type: ignore[no-untyped-def]
+            class _Ctx:
+                async def __aenter__(self_inner) -> _StubConn:
+                    return _StubConn()
+
+                async def __aexit__(self_inner, *args):  # type: ignore[no-untyped-def]
+                    pass
+
+            return _Ctx()
+
+    deleted: list[str] = []
+
+    class _StubRedis:
+        async def delete(self, key: str) -> None:
+            deleted.append(key)
+
+    import src.redis_queue as rq
+
+    monkeypatch.setattr(rq, "get_redis", lambda: _StubRedis())
+
+    rescheduled: list[tuple] = []
+
+    async def _no_reschedule(*args, **kwargs):  # type: ignore[no-untyped-def]
+        rescheduled.append(args)
+
+    monkeypatch.setattr(pipeline, "reschedule_task", _no_reschedule)
+
+    work = ScrapeWork(
+        posting_id=posting_id,
+        source_url="https://example.com/jobs/x",
+        board_id="board-1",
+        description_r2_hash=None,
+        scraper_needs_browser=False,
+        scrape_interval_hours=24,
+        scrape_step=0,
+        domain="example.com",
+    )
+
+    import structlog
+
+    log = structlog.get_logger("test")
+
+    await pipeline._process_scrape_work(
+        log,
+        work,
+        local_pool=_StubPool(),  # type: ignore[arg-type]
+        http=None,  # type: ignore[arg-type]
+        browser=False,
+        pw=None,
+    )
+
+    # The hash was NOT deleted (relist-race avoidance).
+    assert deleted == []
+    # And no reschedule.
     assert rescheduled == []
 
 
