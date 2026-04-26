@@ -149,9 +149,37 @@ async def _paginate_urls(
     - ``param_name``: appends ``?param=value`` query parameter (default).
     - ``url_template``: formats a URL template containing ``{page}`` with the
       current page value — for path-based pagination.
+
+    Failure semantics (#2722). Static httpx pagination uses
+    :func:`fetch_with_retry`, which:
+
+    - Returns ``None`` on 404/410 (legitimate end-of-pagination — break).
+    - Returns the body on 200 (continue).
+    - Returns ``None`` on other 4xx (e.g. 403) — same lenient stop as
+      the prior ``fetch_page_text``, since these aren't transient.
+    - **Raises** :exc:`PaginationFetchError` on persistent 5xx, 429,
+      timeout, or network error after the retry budget. The exception
+      propagates out of ``dom_discover`` and lands in
+      ``_process_one_board_streaming``'s generic ``except Exception``,
+      which records the run as a failure (``_RECORD_FAILURE`` →
+      consecutive_failures++ with exponential backoff). Critically,
+      ``_MARK_GONE_BY_TIMESTAMP`` is **not** called, so a transient
+      origin failure mid-pagination cannot tombstone the URLs that
+      live on the unfetched pages — the fix for the 2026-04-26 NHS
+      spike (#2722).
+
+    The browser-pagination path (``pagination.browser=True``) keeps the
+    prior tolerant semantics for now; that fetch goes through Playwright,
+    not httpx, and Playwright errors there are typically navigation
+    issues rather than HTTP transients. Hardening that path is tracked
+    in #2737 — currently affects the ``lenovo-careers`` board, which
+    is the only configured ``pagination.browser=true`` user. A
+    Playwright fetch timeout there can still produce a partial URL
+    set; until #2737 ships, mitigate operationally via the drop guard
+    (#2723) and blast-radius cap (#2724) introduced in PR #2729.
     """
-    from src.core.monitors import fetch_page_text
     from src.shared.api_sniff import set_url_param
+    from src.shared.http_retry import fetch_with_retry
 
     url_template = pagination.get("url_template")
     param_name = pagination.get("param_name")
@@ -172,10 +200,13 @@ async def _paginate_urls(
         if use_browser:
             html = await _fetch_via_page(page, page_url)
         else:
-            html = await fetch_page_text(page_url, client)
+            html = await fetch_with_retry(client, page_url)
 
         if not html:
-            log.info("dom.pagination.fetch_failed", page=page_num, url=page_url)
+            # Legitimate end-of-pagination (404/410, empty body, or
+            # browser fetch returned None). Caller's contract: a
+            # successful run with the URLs accumulated so far.
+            log.info("dom.pagination.end", page=page_num, url=page_url)
             break
 
         new_urls = _extract_links_static(html, page_url, url_matcher)
