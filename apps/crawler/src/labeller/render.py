@@ -8,6 +8,7 @@ it contains rules + variables interpolated from the posting's data.
 from __future__ import annotations
 
 import json
+import secrets
 from functools import lru_cache
 from pathlib import Path
 
@@ -42,6 +43,15 @@ def _env() -> Environment:
     )
 
 
+def _make_nonce() -> str:
+    """Per-call random nonce for prompt-injection wrappers.
+
+    16 hex chars (64 bits) is enough that an attacker can't guess the closing
+    tag they'd need to inject to escape the wrapper. Don't shorten this.
+    """
+    return secrets.token_hex(8)
+
+
 def render_task(
     task: str,
     *,
@@ -51,11 +61,16 @@ def render_task(
     kind: str | None = None,
     output_path: str,
     previous_error: str | None = None,
+    nonce: str | None = None,
 ) -> str:
     """Render a task template. Returns the markdown string.
 
     ``section_outputs`` is a mapping of section-kind → extracted-dict,
     used only by ``extract_globals`` to expose Pass-2 results to Pass 3.
+
+    ``nonce`` is the wrapper-tag nonce. Pass an explicit value only for
+    deterministic test renders; production callers should leave it ``None``
+    so a fresh random nonce is generated per call.
     """
     if task not in TASKS:
         raise ValueError(f"unknown task: {task} (known: {sorted(TASKS)})")
@@ -67,6 +82,7 @@ def render_task(
         "title_raw": input_data["input"]["title_raw"],
         "output_path": output_path,
         "previous_error": previous_error,
+        "nonce": nonce or _make_nonce(),
     }
 
     if task == "normalize_html":
