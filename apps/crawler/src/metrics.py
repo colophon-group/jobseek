@@ -129,10 +129,10 @@ redis_r2_stream_length = Gauge(
     "Pending R2 uploads in Redis stream",
 )
 
-redis_connected = Gauge(
-    "crawler_redis_connected",
-    "Redis connection status (1=connected, 0=disconnected)",
-)
+# ``crawler_redis_connected`` and ``crawler_typesense_healthy`` are only set
+# by the exporter (see ``exporter.py``), so they live there instead of here.
+# Defining them at module level would make every container that imports
+# ``metrics`` export a default-0 sample, which is misleading in queries.
 
 # ── R2 drain metrics ────────────────────────────────────────────────
 
@@ -223,10 +223,8 @@ typesense_reconciliation_discrepancies = Gauge(
     "Discrepancies from last Typesense reconciliation run",
 )
 
-typesense_healthy = Gauge(
-    "crawler_typesense_healthy",
-    "Typesense health status (1=healthy, 0=unhealthy)",
-)
+# ``crawler_typesense_healthy`` is defined in ``exporter.py`` — see comment
+# next to ``redis_connected`` above.
 
 typesense_memory_bytes = Gauge(
     "crawler_typesense_memory_bytes",

@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 
 import asyncpg
 import structlog
+from prometheus_client import Gauge
 
 from src.config import settings
 from src.metrics import (
@@ -18,7 +19,6 @@ from src.metrics import (
     local_db_pool_idle,
     local_db_pool_size,
     r2_pending_gauge,
-    redis_connected,
     redis_queue_depth,
     supa_db_pool_idle,
     supa_db_pool_size,
@@ -26,11 +26,25 @@ from src.metrics import (
     typesense_export_docs_total,
     typesense_export_duration_seconds,
     typesense_export_lag,
-    typesense_healthy,
     typesense_memory_bytes,
     typesense_reconciliation_discrepancies,
 )
 from src.redis_queue import get_queue_depths
+
+# These two gauges are only ever set by this module (the exporter), so we
+# define them here instead of in metrics.py. Defining them at metrics.py's
+# module scope would have every crawler container that imports metrics
+# export a default-0 sample, which masquerades as "redis disconnected" or
+# "typesense unhealthy" in queries that don't filter on instance. Keeping
+# them local means only the exporter's /metrics endpoint exposes them.
+redis_connected = Gauge(
+    "crawler_redis_connected",
+    "Redis connection status (1=connected, 0=disconnected)",
+)
+typesense_healthy = Gauge(
+    "crawler_typesense_healthy",
+    "Typesense health status (1=healthy, 0=unhealthy)",
+)
 
 log = structlog.get_logger()
 
