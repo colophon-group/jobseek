@@ -85,6 +85,106 @@ describe("cached", () => {
   });
 });
 
+describe("cached — single-flight stampede protection (#2676)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("collapses N concurrent identical fetches to one upstream call", async () => {
+    /** Cold-start scenario: N concurrent requests for the same key all
+     * miss the Redis cache. Without single-flight, all N would fan out to
+     * the upstream. With single-flight, the first seeds an in-flight
+     * promise and the rest await it. */
+    mockGet.mockResolvedValue(null);
+    mockSet.mockResolvedValue("OK");
+
+    let resolveFetcher: ((value: { v: string }) => void) | undefined;
+    const fetcher = vi.fn(
+      () =>
+        new Promise<{ v: string }>((res) => {
+          resolveFetcher = res;
+        }),
+    );
+
+    const callers = [
+      cached("hot-key", fetcher, { ttl: 60 }),
+      cached("hot-key", fetcher, { ttl: 60 }),
+      cached("hot-key", fetcher, { ttl: 60 }),
+      cached("hot-key", fetcher, { ttl: 60 }),
+      cached("hot-key", fetcher, { ttl: 60 }),
+    ];
+
+    // Yield once so the cached() bodies progress past the await on
+    // redis.get and seed the in-flight map.
+    await Promise.resolve();
+
+    expect(fetcher).toHaveBeenCalledTimes(1);
+
+    resolveFetcher!({ v: "fresh" });
+    const results = await Promise.all(callers);
+
+    expect(results).toEqual([
+      { v: "fresh" },
+      { v: "fresh" },
+      { v: "fresh" },
+      { v: "fresh" },
+      { v: "fresh" },
+    ]);
+    // SET is also single-flighted (only one writer).
+    expect(mockSet).toHaveBeenCalledTimes(1);
+  });
+
+  it("releases the in-flight slot after success so the next call can start fresh", async () => {
+    mockGet.mockResolvedValue(null);
+    mockSet.mockResolvedValue("OK");
+    const fetcher = vi.fn().mockResolvedValue("v1");
+
+    await cached("k", fetcher, { ttl: 60 });
+    // Simulate the next request after the first finished — fetcher should
+    // run again because the in-flight slot was released.
+    fetcher.mockResolvedValueOnce("v2");
+    await cached("k", fetcher, { ttl: 60 });
+
+    expect(fetcher).toHaveBeenCalledTimes(2);
+  });
+
+  it("releases the in-flight slot after rejection so retry isn't permanently blocked", async () => {
+    mockGet.mockResolvedValue(null);
+    const failing = vi.fn().mockRejectedValue(new Error("upstream down"));
+
+    await expect(
+      cached("k", failing, { ttl: 60 }),
+    ).rejects.toThrow("upstream down");
+
+    // Subsequent caller against a recovered upstream must NOT be blocked
+    // by a stale in-flight slot.
+    const recovered = vi.fn().mockResolvedValue({ v: "ok" });
+    mockSet.mockResolvedValue("OK");
+    const result = await cached("k", recovered, { ttl: 60 });
+
+    expect(result).toEqual({ v: "ok" });
+    expect(recovered).toHaveBeenCalledOnce();
+  });
+
+  it("only collapses fetches with the same key", async () => {
+    mockGet.mockResolvedValue(null);
+    mockSet.mockResolvedValue("OK");
+
+    const fetcherA = vi.fn().mockResolvedValue("a");
+    const fetcherB = vi.fn().mockResolvedValue("b");
+
+    const [a, b] = await Promise.all([
+      cached("key-a", fetcherA, { ttl: 60 }),
+      cached("key-b", fetcherB, { ttl: 60 }),
+    ]);
+
+    expect(a).toBe("a");
+    expect(b).toBe("b");
+    expect(fetcherA).toHaveBeenCalledOnce();
+    expect(fetcherB).toHaveBeenCalledOnce();
+  });
+});
+
 describe("invalidate", () => {
   beforeEach(() => {
     vi.clearAllMocks();

@@ -9,7 +9,25 @@ interface CacheOptions<T = unknown> {
 }
 
 /**
- * Redis-backed cache-aside wrapper.
+ * In-process single-flight registry.
+ *
+ * On a cold start, N concurrent requests for the same key all miss the
+ * Redis cache and would otherwise each fan out to the upstream (Typesense /
+ * Postgres). The map collapses concurrent identical fetches **within a
+ * single Node instance** to one upstream call; the others await the same
+ * promise. Per-instance only — across Vercel's autoscaled instances the
+ * Redis cache layer is the cross-instance dedup once it warms up.
+ *
+ * The map is keyed by the user-supplied cache key (NOT the `cache:`-prefixed
+ * Redis key) so callers using identical `cached(...)` inputs share the
+ * same in-flight promise. Entries are deleted in a `finally` block so a
+ * failed upstream call doesn't pin the slot indefinitely.
+ */
+const _inflight = new Map<string, Promise<unknown>>();
+
+/**
+ * Redis-backed cache-aside wrapper with in-process single-flight
+ * stampede protection.
  *
  * Shared across all Vercel serverless instances (unlike `unstable_cache`
  * which is per-process). Falls back to the fetcher on Redis errors.
@@ -28,17 +46,32 @@ export async function cached<T>(
     // Redis unavailable — fall through to fetcher
   }
 
-  const data = await fetcher();
+  // Cold-start stampede protection: collapse concurrent identical fetches
+  // within this instance to a single upstream call. The first concurrent
+  // caller seeds the in-flight map; later callers await its promise.
+  const existing = _inflight.get(key) as Promise<T> | undefined;
+  if (existing !== undefined) return existing;
 
-  if (!options.skipIf?.(data)) {
+  const inflight = (async () => {
     try {
-      await redis.set(fullKey, JSON.stringify(data), { ex: options.ttl });
-    } catch {
-      // Redis unavailable — data still returned from fetcher
+      const data = await fetcher();
+      if (!options.skipIf?.(data)) {
+        try {
+          await redis.set(fullKey, JSON.stringify(data), { ex: options.ttl });
+        } catch {
+          // Redis unavailable — data still returned from fetcher
+        }
+      }
+      return data;
+    } finally {
+      // Always release the slot, even on fetcher rejection, so the next
+      // caller gets a chance to retry against a healthy upstream.
+      _inflight.delete(key);
     }
-  }
+  })();
 
-  return data;
+  _inflight.set(key, inflight);
+  return inflight;
 }
 
 /**
