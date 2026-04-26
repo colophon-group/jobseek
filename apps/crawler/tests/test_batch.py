@@ -3329,6 +3329,124 @@ class TestEnrichValidation:
         assert _board_has_enrich({"scraper_config": {"enrich": "description"}}) is None
 
 
+# ── TestResolveDelistThreshold ─────────────────────────────────────
+#
+# #2725 — default fragile threshold bumped from 2 to 4 + per-board
+# override via ``metadata.delist_threshold``.
+
+
+class TestResolveDelistThreshold:
+    def test_api_monitor_uses_authoritative_default(self):
+        """Authoritative API monitors keep the 1-miss threshold."""
+        from src.processing.board import _resolve_delist_threshold
+        from src.queries.monitor import _DELIST_THRESHOLD_AUTHORITATIVE
+
+        for ct in ("greenhouse", "lever", "ashby", "recruitee"):
+            assert _resolve_delist_threshold(None, ct) == _DELIST_THRESHOLD_AUTHORITATIVE
+            assert _resolve_delist_threshold({}, ct) == _DELIST_THRESHOLD_AUTHORITATIVE
+
+    def test_url_only_monitor_uses_fragile_default(self):
+        """URL-only fragile monitors get the bumped 4-miss default."""
+        from src.processing.board import _resolve_delist_threshold
+        from src.queries.monitor import _DELIST_THRESHOLD_FRAGILE
+
+        for ct in ("dom", "sitemap", "nextdata"):
+            assert _resolve_delist_threshold(None, ct) == _DELIST_THRESHOLD_FRAGILE
+            assert _resolve_delist_threshold({}, ct) == _DELIST_THRESHOLD_FRAGILE
+
+    def test_fragile_default_is_4(self):
+        """Lock the bumped default in tests so a future tweak is conscious."""
+        from src.queries.monitor import _DELIST_THRESHOLD_FRAGILE
+
+        assert _DELIST_THRESHOLD_FRAGILE == 4
+
+    def test_per_board_override_raises_threshold(self):
+        """An override above the default takes precedence."""
+        from src.processing.board import _resolve_delist_threshold
+
+        # Fragile board (dom) bumped to 6 misses for a particularly flaky source.
+        assert _resolve_delist_threshold({"delist_threshold": 6}, "dom") == 6
+        # Authoritative board raised to 3 (override beats type-based default).
+        assert _resolve_delist_threshold({"delist_threshold": 3}, "greenhouse") == 3
+
+    def test_per_board_override_can_lower_threshold(self):
+        """Operators can opt back into the old strict 2-miss behaviour."""
+        from src.processing.board import _resolve_delist_threshold
+
+        assert _resolve_delist_threshold({"delist_threshold": 2}, "dom") == 2
+        # An override of 1 is allowed (immediate delist on first miss) for
+        # boards that want stricter-than-default semantics.
+        assert _resolve_delist_threshold({"delist_threshold": 1}, "dom") == 1
+
+    def test_invalid_override_falls_back_to_default(self):
+        """Negative, zero, non-numeric, or bool override → default.
+
+        ``int(value)`` raises ``TypeError`` on lists/dicts and ``ValueError``
+        on non-numeric strings; both are caught so a malformed CSV row
+        never crashes the monitor cycle.
+        """
+        from src.processing.board import _resolve_delist_threshold
+        from src.queries.monitor import _DELIST_THRESHOLD_FRAGILE
+
+        cases = [
+            {"delist_threshold": 0},  # zero would be instant delist
+            {"delist_threshold": -1},
+            {"delist_threshold": "high"},  # non-numeric string -> ValueError
+            {"delist_threshold": [4]},  # list -> TypeError
+            {"delist_threshold": {"value": 4}},  # dict -> TypeError
+            # Bool is rejected explicitly (isinstance(True, int) is True in Python).
+            {"delist_threshold": True},
+            {"delist_threshold": False},
+        ]
+        for md in cases:
+            assert _resolve_delist_threshold(md, "dom") == _DELIST_THRESHOLD_FRAGILE, md
+
+    def test_float_override_truncates(self):
+        """Float overrides truncate via ``int()`` — documented behaviour.
+
+        JSON has a single number type; ``"delist_threshold": 4.0`` is
+        commonly an integer that round-tripped through a numeric writer.
+        ``4.7 -> 4`` (rounded down). ``0.9 -> 0 -> default`` (would round
+        below the ``>= 1`` minimum so falls through).
+        """
+        from src.processing.board import _resolve_delist_threshold
+        from src.queries.monitor import _DELIST_THRESHOLD_FRAGILE
+
+        assert _resolve_delist_threshold({"delist_threshold": 4.0}, "dom") == 4
+        assert _resolve_delist_threshold({"delist_threshold": 4.7}, "dom") == 4
+        assert _resolve_delist_threshold({"delist_threshold": 1.5}, "dom") == 1
+        # Sub-1 floats truncate to 0, fail the >= 1 minimum, fall back.
+        assert (
+            _resolve_delist_threshold({"delist_threshold": 0.9}, "dom") == _DELIST_THRESHOLD_FRAGILE
+        )
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_pipeline_passes_override_to_mark_gone(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """End-to-end: ``metadata.delist_threshold`` is threaded through
+        ``_process_one_board`` into ``_MARK_GONE_BY_TIMESTAMP``."""
+        from src.queries.monitor import _MARK_GONE_BY_TIMESTAMP
+
+        pool, conn = mock_pool
+        url1 = "https://example.com/job/1"
+        mock_monitor.side_effect = _mock_stream(MonitorResult(urls={url1}, jobs_by_url=None))
+        conn.fetch.side_effect = [
+            [_diff_row("touched", row_id="jp-1", url=url1)],
+            [],  # _MARK_GONE_BY_TIMESTAMP rows
+        ]
+        board = _mock_board(crawler_type="dom", metadata={"delist_threshold": 6})
+
+        await _process_one_board(board, pool, mock_http)
+
+        mark_gone = [c for c in conn.fetch.await_args_list if c.args[0] == _MARK_GONE_BY_TIMESTAMP]
+        assert len(mark_gone) == 1
+        # Threshold is the 3rd positional arg to _MARK_GONE_BY_TIMESTAMP
+        # (after board_id and monitor_start_ts).
+        assert mark_gone[0].args[3] == 6
+
+
 # ── TestMarkGoneGuards ─────────────────────────────────────────────
 #
 # Direct unit tests of ``_mark_gone_with_guards`` (#2723 drop guard +

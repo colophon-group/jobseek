@@ -285,13 +285,19 @@ ON CONFLICT (id) DO UPDATE SET
     -- itself (max_ts and friends) stays intact so the next scheduled run
     -- still knows where incremental pagination left off.
     --
-    -- ``drop_threshold`` and ``blast_radius_floor`` are CSV-controllable
-    -- per-board overrides for the gone-detection guards. CSV wins when
-    -- set; otherwise existing runtime value (typically unset) is kept.
+    -- ``delist_threshold`` (#2725), ``drop_threshold``, and ``blast_radius_floor``
+    -- are CSV-controllable per-board overrides. CSV wins when set; otherwise
+    -- the existing runtime value (typically unset) is kept.
+    -- ``recent_discovered_counts`` and ``suspect_streak`` are runtime state
+    -- preserved verbatim from the existing row.
     metadata = EXCLUDED.metadata || jsonb_strip_nulls(jsonb_build_object(
         'sitemap_url', job_board.metadata -> 'sitemap_url',
         'recent_discovered_counts', job_board.metadata -> 'recent_discovered_counts',
         'suspect_streak', job_board.metadata -> 'suspect_streak',
+        'delist_threshold', COALESCE(
+            EXCLUDED.metadata -> 'delist_threshold',
+            job_board.metadata -> 'delist_threshold'
+        ),
         'drop_threshold', COALESCE(
             EXCLUDED.metadata -> 'drop_threshold',
             job_board.metadata -> 'drop_threshold'

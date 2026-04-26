@@ -281,6 +281,53 @@ def _emit_gone_counter(gone_count: int) -> None:
         monitor_jobs_discovered.labels(profile="simple", action="gone").inc(gone_count)
 
 
+def _resolve_delist_threshold(metadata: dict | None, crawler_type: str) -> int:
+    """Pick the miss-count threshold for ``_MARK_GONE_BY_TIMESTAMP``.
+
+    Default: ``_DELIST_THRESHOLD_AUTHORITATIVE`` (1) for API monitors with
+    definitive list semantics (greenhouse, lever, ashby, …),
+    ``_DELIST_THRESHOLD_FRAGILE`` (4 since #2725) for URL-only monitors
+    where a single missed cycle is often a transient pagination flap.
+
+    Per-board override (#2725): ``metadata.delist_threshold`` accepts an
+    integer ≥ 1. Bool is excluded because ``isinstance(True, int)`` is
+    True in Python and we don't want a spurious ``True`` flag to silently
+    mean ``threshold=1``. Anything invalid (negative, zero, non-numeric,
+    bool) falls through to the type-based default rather than raising,
+    so a malformed CSV row never breaks the monitor cycle.
+
+    Floats truncate via ``int()``: ``4.7 -> 4``, ``0.9 -> 0`` (which then
+    falls back to the default). JSON has a single number type; CSV
+    operators writing ``"delist_threshold": 4`` get an int, ``4.0`` an
+    int (whole), ``4.7`` truncated. Strictness in the float case isn't
+    worth the operator-friction.
+
+    Caveat for ``delist_threshold = 1`` on paginated URL-only monitors:
+    a single failed page during pagination would tombstone every URL
+    beyond the failure point on the same cycle. Pair with the drop /
+    blast-radius guards from #2729 (``metadata.drop_threshold``,
+    ``metadata.blast_radius_floor``) when overriding to 1.
+
+    Clearing an existing override: edit ``boards.csv`` to omit the key
+    AND run a SQL ``UPDATE job_board SET metadata = metadata - 'delist_threshold'``
+    on the affected row, since ``_UPSERT_BOARD_LOCAL`` preserves
+    runtime overrides across CSV-only resyncs (COALESCE pattern).
+    """
+    default = (
+        _DELIST_THRESHOLD_AUTHORITATIVE
+        if crawler_type in _API_MONITOR_TYPES
+        else _DELIST_THRESHOLD_FRAGILE
+    )
+    val = (metadata or {}).get("delist_threshold")
+    if isinstance(val, bool) or val is None:
+        return default
+    try:
+        n = int(val)
+    except (TypeError, ValueError):
+        return default
+    return n if n >= 1 else default
+
+
 def _setting(md: dict, key: str, default: float) -> float:
     """Read a per-board float override, or fall back to *default*.
 
@@ -1129,16 +1176,16 @@ async def _process_one_board_streaming(
             return True, elapsed
 
         # Mark as gone any active posting not seen during this monitor run.
+        # Per-board override (#2725): ``metadata.delist_threshold`` lets
+        # operators raise/lower the miss count needed to tombstone a posting
+        # for boards that flap (NHS pagination) or that we want stricter
+        # (a known-stable greenhouse override could go to 1).
         # Wrapped in resilience guards (#2723 drop, #2724 blast-radius) so a
         # silently-truncated paginating monitor (#2722) cannot mass-delist
         # live postings — see ``_mark_gone_with_guards``.
         gone_count = 0
         gone_skipped_reason: str | None = None
-        delist_threshold = (
-            _DELIST_THRESHOLD_AUTHORITATIVE
-            if crawler_type in _API_MONITOR_TYPES
-            else _DELIST_THRESHOLD_FRAGILE
-        )
+        delist_threshold = _resolve_delist_threshold(metadata, crawler_type)
         async with pool.acquire() as conn, conn.transaction():
             gone_count, gone_skipped_reason = await _mark_gone_with_guards(
                 conn,
