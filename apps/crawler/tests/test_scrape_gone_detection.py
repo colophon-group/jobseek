@@ -1,31 +1,26 @@
-"""Tests for the scrape-side delisting path (#2708 + critic-driven
-revision).
+"""Tests for the scrape-side delisting authority.
 
-Three failure classes:
+Three failure classes (see docs/03-crawler-architecture.md "Delisting
+model — when is a posting 'gone'?" for the full design rationale):
 
 * ``permanent_gone`` (HTTP 404 / 410) — tombstone IMMEDIATELY via
   ``_RECORD_SCRAPE_FAILURE`` with ``permanent_gone=True``.
 * ``budget_eligible`` (4xx other than 401, 403, 429) — counts toward
-  the existing 3-failure tombstone budget, also via
-  ``_RECORD_SCRAPE_FAILURE`` with ``permanent_gone=False``.
+  the 3-failure tombstone budget, also via ``_RECORD_SCRAPE_FAILURE``
+  with ``permanent_gone=False``.
 * ``transient`` (5xx, timeouts, connect errors, 401 / 403 / 429,
   empty extraction) — backs off via ``_RECORD_SCRAPE_TRANSIENT``,
   NEVER tombstones. The monitor authority remains the only delisting
   decision-maker for these.
 
-The transient class exists because the first iteration of #2708 made
-EVERY 3rd consecutive failure tombstone the posting. Critic A2 + C5
-flagged the false-positive risk: a 2-hour upstream 5xx incident or a
-regex break in an extraction config would mass-tombstone live
-postings. The classification protects against both.
-
-403 is in the transient class on purpose: the Avature
-archived-JobDetail 403 (original #2708 trigger) is one signal, but
-transient WAF challenges (Cloudflare/Datadome/Akamai cold-connect
-patterns) also return 403. Tombstoning on any 403 — even after 3
-retries — risks too many false positives on still-live postings, so
-we leave the Avature class to the monitor authority and accept that
-those URLs may stay orphaned briefly.
+403 is in the transient class deliberately. Avature's archived-
+JobDetail 403 (issue #2708) looks like "this posting is gone" — but
+it's indistinguishable from transient WAF 403s (Cloudflare /
+Datadome / Akamai cold-connect challenges). Tombstoning on 403
+risks too many false positives on still-live postings, so we route
+both signals to transient and rely on the monitor authority +
+operator cleanup for archived URLs. The trade-off is documented in
+the architecture doc.
 """
 
 from __future__ import annotations
@@ -60,11 +55,13 @@ def test_404_and_410_signal_permanent_gone(status: int) -> None:
     [400, 401, 403, 408, 429, 500, 502, 503, 504],
 )
 def test_other_status_codes_are_not_permanent_gone(status: int) -> None:
-    """Including 403 — explicitly NOT a permanent-gone signal. The
-    failure-budget tombstone (3 retries -> is_active=false) catches
-    Avature's archived-JobDetail 403 and any other archived-posting
-    403 pattern from any platform. Adding 403 here would over-aggress
-    on transient WAF / rate-limit cases."""
+    """Including 403 — explicitly NOT a permanent-gone signal. 403
+    falls into the transient class (see ``_is_budget_eligible_failure``
+    tests below); it is NOT tombstoned by the scrape side, even after
+    repeated failures. Avature's archived-JobDetail 403 (issue #2708)
+    is the documented case where the trade-off matters: we rely on
+    the monitor authority instead of risking false-tombstone of live
+    postings during transient WAF challenges."""
     assert _is_permanent_gone(_http_error(status, "https://apply.deloitte.com/x")) is False
 
 
@@ -400,6 +397,244 @@ async def test_do_one_scrape_routes_400_to_budget_sql(
     sql, args = executed[0]
     assert sql == _RECORD_SCRAPE_FAILURE
     assert args[1] is False  # budget path, not permanent_gone
+
+
+# ─── Worker-side self-heal: Redis-driven re-fire on tombstone ────────
+
+
+@pytest.mark.asyncio
+async def test_pipeline_skips_scrape_for_tombstoned_posting(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A scrape work item claimed from Redis whose Postgres state is
+    tombstoned (is_active=false) MUST drop the Redis hash and return
+    without rescheduling. Without this, ``reschedule_task`` re-fires
+    the work every ``scrape_interval_hours`` (default 24h) regardless
+    of Postgres state — the central regression critic-E found in the
+    first iteration of #2708's worker-side fix."""
+    from src.redis_queue import ScrapeWork
+    from src.workers import pipeline
+
+    posting_id = "00000000-0000-0000-0000-000000000fff"
+
+    class _StubConn:
+        async def fetchrow(self, query: str, *args):  # type: ignore[no-untyped-def]
+            assert "is_active" in query and "next_scrape_at" in query
+            return {"is_active": False, "next_scrape_at": None}
+
+    class _StubPool:
+        def acquire(self):  # type: ignore[no-untyped-def]
+            class _Ctx:
+                async def __aenter__(self_inner) -> _StubConn:
+                    return _StubConn()
+
+                async def __aexit__(self_inner, *args):  # type: ignore[no-untyped-def]
+                    pass
+
+            return _Ctx()
+
+    deleted: list[str] = []
+    rescheduled: list[tuple] = []
+
+    class _StubRedis:
+        async def delete(self, key: str) -> None:
+            deleted.append(key)
+
+        async def hgetall(self, key: str):  # type: ignore[no-untyped-def]
+            raise AssertionError("must not load board config when tombstoned")
+
+    import src.redis_queue as rq
+
+    monkeypatch.setattr(rq, "get_redis", lambda: _StubRedis())
+
+    async def _no_reschedule(*args, **kwargs):  # type: ignore[no-untyped-def]
+        rescheduled.append(args)
+
+    monkeypatch.setattr(pipeline, "reschedule_task", _no_reschedule)
+
+    work = ScrapeWork(
+        posting_id=posting_id,
+        source_url="https://apply.deloitte.com/en_US/careers/JobDetail/X/305820",
+        board_id="board-1",
+        description_r2_hash=None,
+        scraper_needs_browser=False,
+        scrape_interval_hours=24,
+        scrape_step=0,
+        domain="apply.deloitte.com",
+    )
+
+    import structlog
+
+    log = structlog.get_logger("test")
+
+    await pipeline._process_scrape_work(
+        log,
+        work,
+        local_pool=_StubPool(),  # type: ignore[arg-type]
+        http=None,  # type: ignore[arg-type]
+        browser=False,
+        pw=None,
+    )
+
+    # The scrape:hash was dropped from Redis.
+    assert deleted == [f"scrape:{posting_id}"]
+    # And — critically — reschedule_task was NOT called, so the
+    # ZSET entry stays drained instead of being re-enqueued for 24h.
+    assert rescheduled == []
+
+
+@pytest.mark.asyncio
+async def test_pipeline_skips_scrape_when_next_scrape_at_null(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Same self-heal for a posting that's still is_active=true but has
+    been moved to next_scrape_at=NULL by either the budget tombstone
+    (FAILURE) or the budget exhaustion (TRANSIENT). Either way, the
+    scrape side has decided "stop trying"; the worker must honour
+    that and not let Redis perpetually re-fire."""
+    from src.redis_queue import ScrapeWork
+    from src.workers import pipeline
+
+    posting_id = "00000000-0000-0000-0000-000000000bbb"
+
+    class _StubConn:
+        async def fetchrow(self, query: str, *args):  # type: ignore[no-untyped-def]
+            return {"is_active": True, "next_scrape_at": None}
+
+    class _StubPool:
+        def acquire(self):  # type: ignore[no-untyped-def]
+            class _Ctx:
+                async def __aenter__(self_inner) -> _StubConn:
+                    return _StubConn()
+
+                async def __aexit__(self_inner, *args):  # type: ignore[no-untyped-def]
+                    pass
+
+            return _Ctx()
+
+    rescheduled: list[tuple] = []
+
+    class _StubRedis:
+        async def delete(self, key: str) -> None:
+            pass
+
+        async def hgetall(self, key: str):  # type: ignore[no-untyped-def]
+            raise AssertionError("must not load board config")
+
+    import src.redis_queue as rq
+
+    monkeypatch.setattr(rq, "get_redis", lambda: _StubRedis())
+
+    async def _no_reschedule(*args, **kwargs):  # type: ignore[no-untyped-def]
+        rescheduled.append(args)
+
+    monkeypatch.setattr(pipeline, "reschedule_task", _no_reschedule)
+
+    work = ScrapeWork(
+        posting_id=posting_id,
+        source_url="https://example.com/jobs/x",
+        board_id="board-1",
+        description_r2_hash=None,
+        scraper_needs_browser=False,
+        scrape_interval_hours=24,
+        scrape_step=0,
+        domain="example.com",
+    )
+
+    import structlog
+
+    log = structlog.get_logger("test")
+
+    await pipeline._process_scrape_work(
+        log,
+        work,
+        local_pool=_StubPool(),  # type: ignore[arg-type]
+        http=None,  # type: ignore[arg-type]
+        browser=False,
+        pw=None,
+    )
+
+    # Same invariant: no Redis reschedule, so the ZSET drains.
+    assert rescheduled == []
+
+
+@pytest.mark.asyncio
+async def test_pipeline_proceeds_for_active_posting_with_due_next_scrape(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Sanity check on the self-heal: an active posting with a
+    non-NULL next_scrape_at must NOT be skipped — otherwise the
+    self-heal would silently disable all scraping."""
+    from src.redis_queue import ScrapeWork
+    from src.workers import pipeline
+
+    posting_id = "00000000-0000-0000-0000-000000000ccc"
+    proceeded = []
+
+    class _StubConn:
+        async def fetchrow(self, query: str, *args):  # type: ignore[no-untyped-def]
+            from datetime import UTC, datetime
+
+            return {"is_active": True, "next_scrape_at": datetime.now(UTC)}
+
+    class _StubPool:
+        def acquire(self):  # type: ignore[no-untyped-def]
+            class _Ctx:
+                async def __aenter__(self_inner) -> _StubConn:
+                    return _StubConn()
+
+                async def __aexit__(self_inner, *args):  # type: ignore[no-untyped-def]
+                    pass
+
+            return _Ctx()
+
+    class _StubRedis:
+        async def delete(self, key: str) -> None:
+            pass
+
+        async def hgetall(self, key: str):  # type: ignore[no-untyped-def]
+            # Returning empty triggers the "no board config" path below;
+            # we don't care which path runs — only that we got past the
+            # self-heal short-circuit.
+            proceeded.append("hgetall")
+            return {}
+
+    import src.redis_queue as rq
+
+    monkeypatch.setattr(rq, "get_redis", lambda: _StubRedis())
+
+    # Stub out reschedule_task so the test doesn't hit Redis.
+    async def _noop(*args, **kwargs):  # type: ignore[no-untyped-def]
+        pass
+
+    monkeypatch.setattr(pipeline, "reschedule_task", _noop)
+
+    work = ScrapeWork(
+        posting_id=posting_id,
+        source_url="https://example.com/jobs/x",
+        board_id="board-1",
+        description_r2_hash=None,
+        scraper_needs_browser=False,
+        scrape_interval_hours=24,
+        scrape_step=0,
+        domain="example.com",
+    )
+
+    import structlog
+
+    log = structlog.get_logger("test")
+
+    await pipeline._process_scrape_work(
+        log,
+        work,
+        local_pool=_StubPool(),  # type: ignore[arg-type]
+        http=None,  # type: ignore[arg-type]
+        browser=False,
+        pw=None,
+    )
+
+    # Got past the self-heal — board config lookup ran.
+    assert proceeded == ["hgetall"]
 
 
 @pytest.mark.asyncio

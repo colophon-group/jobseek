@@ -30,7 +30,7 @@ from src.processing.board import (
 )
 from src.processing.scrape import _is_skip_no_scrape
 from src.queries.monitor import _INSERT_URL_ONLY_JOBS
-from src.queries.scrape import _CLEAR_SCRAPE_FOR_RICH, _RECORD_SCRAPE_FAILURE
+from src.queries.scrape import _CLEAR_SCRAPE_FOR_RICH, _RECORD_SCRAPE_TRANSIENT
 from src.redis_queue import ScrapeWork
 from src.workers.pipeline import _process_scrape_work
 
@@ -388,12 +388,13 @@ class TestProcessScrapeWorkSkipGuard:
     ):
         """Missing Redis board hash → fail-safe path, NOT the rich-only clear.
 
-        This is the critic-2 regression fix. When Redis has lost the
-        ``board:{id}`` hash, we don't know whether the board is rich, so
-        we can't use the scoped ``_CLEAR_SCRAPE_FOR_RICH`` — that query
-        no-ops on non-rich boards and leaves the posting in a tight
-        re-claim loop. We use ``_RECORD_SCRAPE_FAILURE`` instead, which
-        backs off ``next_scrape_at`` and bumps the failure counter.
+        When Redis has lost the ``board:{id}`` hash, we don't know
+        whether the board is rich, so we can't use the scoped
+        ``_CLEAR_SCRAPE_FOR_RICH`` — that query no-ops on non-rich
+        boards and leaves the posting in a tight re-claim loop. We
+        use ``_RECORD_SCRAPE_TRANSIENT`` instead: stale config is a
+        transient bookkeeping issue, not a signal the upstream URL
+        is gone, so it must NOT count toward the tombstone budget.
         """
         pool, conn = self._mock_pool()
         http = AsyncMock()
@@ -419,11 +420,12 @@ class TestProcessScrapeWorkSkipGuard:
         ]
         assert clear_calls == []
 
-        # MUST call _RECORD_SCRAPE_FAILURE to push next_scrape_at forward.
+        # MUST call _RECORD_SCRAPE_TRANSIENT to push next_scrape_at
+        # forward without contributing to the tombstone budget.
         fail_calls = [
             c
             for c in conn.execute.await_args_list
-            if c.args and c.args[0] == _RECORD_SCRAPE_FAILURE
+            if c.args and c.args[0] == _RECORD_SCRAPE_TRANSIENT
         ]
         assert len(fail_calls) == 1
         assert fail_calls[0].args[1] == "jp-1"

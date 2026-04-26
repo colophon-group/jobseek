@@ -405,6 +405,62 @@ async def _process_scrape_work(
     worker_log = worker_log.bind(posting_id=posting_id, url=scrape_work.source_url)
 
     try:
+        # Self-heal: production scheduling is via Redis ZSETs, NOT
+        # Postgres ``next_scrape_at``. Without this check, the worker
+        # ignores the Postgres delisting state — a posting that the
+        # scrape side has tombstoned (is_active=false) or exhausted
+        # the 3-failure backoff (next_scrape_at=NULL) would still
+        # fire every ``scrape_interval_hours`` (default 24h) forever
+        # because ``reschedule_task`` re-adds to the ZSET on every
+        # claim. That defeats the dual-authority delisting model
+        # documented in docs/03-crawler-architecture.md.
+        #
+        # Read the Postgres state once before doing any work; if the
+        # row is tombstoned or has next_scrape_at=NULL, drop the
+        # Redis hash and skip the reschedule so the loop terminates.
+        # Recovery: the monitor's ``relisted`` CTE re-enqueues to
+        # Redis via ``_enqueue_scrapes_for_relisted``, so a posting
+        # we self-heal here can come back through the monitor side
+        # if it reappears in the upstream listing.
+        async with local_pool.acquire() as conn:
+            posting_state = await conn.fetchrow(
+                "SELECT is_active, next_scrape_at FROM job_posting WHERE id = $1::uuid",
+                posting_id,
+            )
+
+        if posting_state is None:
+            # Row deleted (rare; should not happen in steady state).
+            from src.redis_queue import get_redis
+
+            r = get_redis()
+            try:
+                await r.delete(f"scrape:{posting_id}")
+            except Exception:
+                worker_log.warning("pipeline.scrape.scrape_hash_delete_failed", exc_info=True)
+            tasks_total.labels(kind="scrape", status="skipped_missing").inc()
+            worker_log.info("pipeline.scrape.skipped_missing")
+            return
+
+        if not posting_state["is_active"] or posting_state["next_scrape_at"] is None:
+            # Tombstoned or budget-exhausted. Drop the Redis hash so
+            # ``claim_work`` doesn't return this entry next cycle, and
+            # return WITHOUT calling ``reschedule_task`` so the ZSET
+            # entry stays drained.
+            from src.redis_queue import get_redis
+
+            r = get_redis()
+            try:
+                await r.delete(f"scrape:{posting_id}")
+            except Exception:
+                worker_log.warning("pipeline.scrape.scrape_hash_delete_failed", exc_info=True)
+            tasks_total.labels(kind="scrape", status="skipped_tombstoned").inc()
+            worker_log.info(
+                "pipeline.scrape.skipped_tombstoned",
+                is_active=posting_state["is_active"],
+                next_scrape_at_null=posting_state["next_scrape_at"] is None,
+            )
+            return
+
         item, scrape_step = _scrape_item_from_redis(scrape_work)
 
         # Load scraper config from the board's Redis hash
@@ -441,7 +497,6 @@ async def _process_scrape_work(
         from src.core.scrapers import scraper_needs_browser
         from src.processing.scrape import (
             _CLEAR_SCRAPE_FOR_RICH,
-            _RECORD_SCRAPE_FAILURE,
             _is_skip_no_scrape,
             _process_one_scrape,
         )
@@ -510,21 +565,16 @@ async def _process_scrape_work(
 
             We don't know if the board is rich or not, so we can't use the
             scoped rich clear (which would no-op on a non-rich board and
-            leave the posting re-claim looping). Instead we call
-            ``_RECORD_SCRAPE_FAILURE`` which pushes ``next_scrape_at``
-            forward via exponential backoff (30 m × 2^failures, NULL after
-            3 failures). If Redis is re-synced before backoff expires, the
-            next monitor cycle re-enqueues the posting with fresh config.
-            If not, the posting is eventually dropped from the Postgres
-            schedule anyway.
+            leave the posting re-claim looping). Use the transient SQL
+            so the existing 30 / 60 / 90-min backoff applies WITHOUT
+            counting toward the tombstone budget — three Redis-eviction
+            blips on the same posting must not flip a live posting to
+            ``is_active = false``.
             """
+            from src.processing.scrape import _RECORD_SCRAPE_TRANSIENT
+
             async with local_pool.acquire() as conn:
-                # Stale config is a transient bookkeeping issue, not a
-                # signal that the upstream URL is gone. Pass
-                # ``permanent_gone=False`` so the existing 30/60-min
-                # backoff applies — Redis re-sync will hand a fresh
-                # config in time. (#2708 SQL signature.)
-                await conn.execute(_RECORD_SCRAPE_FAILURE, posting_id, False)
+                await conn.execute(_RECORD_SCRAPE_TRANSIENT, posting_id)
             await _delete_scrape_hash()
             tasks_total.labels(kind="scrape", status="stale_config").inc()
             worker_log.warning(
@@ -546,7 +596,7 @@ async def _process_scrape_work(
         # ``crawler_type`` as the scraper name, raising ``KeyError`` for
         # names like "greenhouse" that aren't registered scrapers. Fail
         # the task softly so the worker doesn't crash AND doesn't wipe a
-        # legitimate schedule (critic-2 regression).
+        # legitimate schedule.
         if not board_config:
             await _fail_stale_task("missing board config in Redis")
             return

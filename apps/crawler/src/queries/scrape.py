@@ -237,7 +237,7 @@ WHERE jp.id = $1
 # flips is_active back to true AND resets ``scrape_failures = 0`` so
 # the recovered posting gets a fresh budget. Without that reset a
 # scrape-tombstoned-then-relisted posting would re-tombstone on the
-# next single failure (critic-B finding for #2708 / PR #2732).
+# next single failure.
 _RECORD_SCRAPE_FAILURE = """
 UPDATE job_posting
 SET scrape_failures   = scrape_failures + 1,

@@ -1768,9 +1768,8 @@ class TestProcessOneScrape:
         assert ok is False
         execute_calls = conn.execute.await_args_list
         # Non-HTTP failure modes (generic exceptions, missing posting,
-        # extraction-empty) take the TRANSIENT path post-#2708 critic
-        # revision — they don't count toward the tombstone budget.
-        # See feedback_no_overfitting_to_one_signal + the dual-authority
+        # extraction-empty) take the TRANSIENT path — they don't count
+        # toward the tombstone budget. See the dual-authority delisting
         # model in docs/03-crawler-architecture.md.
         failure_calls = [c for c in execute_calls if c.args[0] == _RECORD_SCRAPE_TRANSIENT]
         assert len(failure_calls) == 1
@@ -1788,9 +1787,8 @@ class TestProcessOneScrape:
         assert ok is False
         execute_calls = conn.execute.await_args_list
         # Non-HTTP failure modes (generic exceptions, missing posting,
-        # extraction-empty) take the TRANSIENT path post-#2708 critic
-        # revision — they don't count toward the tombstone budget.
-        # See feedback_no_overfitting_to_one_signal + the dual-authority
+        # extraction-empty) take the TRANSIENT path — they don't count
+        # toward the tombstone budget. See the dual-authority delisting
         # model in docs/03-crawler-architecture.md.
         failure_calls = [c for c in execute_calls if c.args[0] == _RECORD_SCRAPE_TRANSIENT]
         assert len(failure_calls) == 1
@@ -1810,9 +1808,8 @@ class TestProcessOneScrape:
         assert ok is False
         execute_calls = conn.execute.await_args_list
         # Non-HTTP failure modes (generic exceptions, missing posting,
-        # extraction-empty) take the TRANSIENT path post-#2708 critic
-        # revision — they don't count toward the tombstone budget.
-        # See feedback_no_overfitting_to_one_signal + the dual-authority
+        # extraction-empty) take the TRANSIENT path — they don't count
+        # toward the tombstone budget. See the dual-authority delisting
         # model in docs/03-crawler-architecture.md.
         failure_calls = [c for c in execute_calls if c.args[0] == _RECORD_SCRAPE_TRANSIENT]
         assert len(failure_calls) == 1
@@ -1953,9 +1950,8 @@ class TestProcessOneScrape:
         assert ok is False
         execute_calls = conn.execute.await_args_list
         # Non-HTTP failure modes (generic exceptions, missing posting,
-        # extraction-empty) take the TRANSIENT path post-#2708 critic
-        # revision — they don't count toward the tombstone budget.
-        # See feedback_no_overfitting_to_one_signal + the dual-authority
+        # extraction-empty) take the TRANSIENT path — they don't count
+        # toward the tombstone budget. See the dual-authority delisting
         # model in docs/03-crawler-architecture.md.
         failure_calls = [c for c in execute_calls if c.args[0] == _RECORD_SCRAPE_TRANSIENT]
         assert len(failure_calls) == 1
@@ -1973,9 +1969,8 @@ class TestProcessOneScrape:
         assert mock_scrape.await_count == 1
         execute_calls = conn.execute.await_args_list
         # Non-HTTP failure modes (generic exceptions, missing posting,
-        # extraction-empty) take the TRANSIENT path post-#2708 critic
-        # revision — they don't count toward the tombstone budget.
-        # See feedback_no_overfitting_to_one_signal + the dual-authority
+        # extraction-empty) take the TRANSIENT path — they don't count
+        # toward the tombstone budget. See the dual-authority delisting
         # model in docs/03-crawler-architecture.md.
         failure_calls = [c for c in execute_calls if c.args[0] == _RECORD_SCRAPE_TRANSIENT]
         assert len(failure_calls) == 1
@@ -2730,9 +2725,9 @@ class TestEnrichmentScrape:
         )
 
         assert ok is False
-        # Empty enrich → TRANSIENT (post-#2708 critic revision); could
-        # be a real archive page OR broken extraction config, so don't
-        # tombstone live postings.
+        # Empty enrich → TRANSIENT path; could be a real archive page
+        # OR a broken extraction config, indistinguishable here, so
+        # don't tombstone live postings.
         failure_calls = [
             c for c in conn.execute.await_args_list if c.args[0] == _RECORD_SCRAPE_TRANSIENT
         ]
@@ -2743,7 +2738,7 @@ class TestEnrichmentScrape:
         self, mock_scrape, mock_pool, mock_http
     ):
         """Degenerate description (normalize strips to None) → transient
-        failure, not infinite success. TRANSIENT path post-#2708."""
+        failure path (not infinite success)."""
         pool, conn = mock_pool
         # Whitespace-only description passes raw check but normalize returns None
         mock_scrape.return_value = _job_content(title="Title", description="   ")
@@ -2949,8 +2944,8 @@ class TestEnrichmentScrape:
 
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
     async def test_enrich_exception_records_failure(self, mock_scrape, mock_pool, mock_http):
-        """Exception during enrich → TRANSIENT (post-#2708 critic
-        revision; non-HTTP failures are transient by default)."""
+        """Exception during enrich → TRANSIENT (non-HTTP failures are
+        transient by default; never count toward tombstone budget)."""
         pool, conn = mock_pool
         mock_scrape.side_effect = RuntimeError("network error")
         item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")

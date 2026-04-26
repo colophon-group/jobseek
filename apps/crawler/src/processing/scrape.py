@@ -159,11 +159,10 @@ class _BoardScraperInfo:
 #
 # Every scrape failure is classified into one of three buckets, and the
 # bucket decides whether the failure counts toward the 3-failure budget
-# tombstone in ``_RECORD_SCRAPE_FAILURE``. The split exists because the
-# original "every failure counts" policy was unsafe — a 2-hour upstream
-# 5xx incident or a regex break in an extraction config would
-# mass-tombstone live postings (critic findings A2 + C5 against the
-# first iteration of #2708's fix).
+# tombstone in ``_RECORD_SCRAPE_FAILURE``. The split exists because a
+# "every failure counts toward tombstone" policy is unsafe: a 2-hour
+# upstream 5xx incident or a regex break in an extraction config would
+# mass-tombstone live postings.
 #
 #   * ``permanent_gone`` (HTTP 404 / 410): RFC-defined "this resource is
 #     gone". Tombstone IMMEDIATELY, on the first failure, no budget
@@ -220,18 +219,19 @@ def _is_budget_eligible_failure(exc: BaseException) -> bool:
     """Return True for failures that should COUNT toward the 3-failure
     tombstone budget in ``_RECORD_SCRAPE_FAILURE``.
 
-    Eligible: HTTP 4xx other than 401 / 403 / 429.
-    Ineligible (transient): 5xx, network errors, 401 / 403 / 429,
-    non-HTTP exceptions. Those should take the
-    ``_RECORD_SCRAPE_TRANSIENT`` path.
+    Eligible: HTTP 4xx other than 401 / 403 / 404 / 410 / 429.
+    Ineligible: everything else (5xx, network errors, 401 / 403 / 429,
+    non-HTTP exceptions, AND 404 / 410 — those go through the
+    immediate-tombstone short-circuit via ``_is_permanent_gone``, NOT
+    the budget). 404 / 410 are excluded here so the two predicates
+    stay disjoint at the call site: callers test ``permanent_gone``
+    first, then ``budget_eligible``, then fall through to transient.
     """
     if not isinstance(exc, httpx.HTTPStatusError):
         return False
     s = exc.response.status_code
     if s in (404, 410):
-        # Permanent-gone signals are handled by the immediate-tombstone
-        # path, not the budget. Returning False here keeps the
-        # classification disjoint at the call site.
+        # Disjoint from _is_permanent_gone. See docstring.
         return False
     return 400 <= s < 500 and s not in (401, 403, 429)
 
