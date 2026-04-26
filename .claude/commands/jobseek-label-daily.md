@@ -282,12 +282,13 @@ Print a final summary:
 - Never make direct Anthropic API calls — everything is an `Agent(...)` tool
   call inside this Claude Code session.
 - Never invoke `gh`, `git`, `curl`, `mkdir`, `rm`, `mv`, `cat`,
-  `python`, or any other shell command outside `labeller *`
-  during a labelling run. The pipeline only needs `labeller` CLI, `Read`,
-  `Write`, `Edit`, and `Agent`. The frontmatter pre-approves exactly
-  that surface; anything else falls through to the user's default
-  permission policy and will surface a prompt — treat that prompt as a
-  stop signal, not as a request to approve.
+  `python`, or any other shell command outside `cd apps/crawler` and
+  `labeller *` during a labelling run. The pipeline only needs the
+  `labeller` CLI (with `cd apps/crawler` as the cwd-setting prelude in
+  Step 0), plus `Read`, `Write`, `Edit`, and `Agent`. The frontmatter
+  pre-approves exactly that surface; anything else falls through to the
+  user's default permission policy and will surface a prompt — treat
+  that prompt as a stop signal, not as a request to approve.
 - If any command fails unexpectedly (non-zero exit that isn't a known
   validate-failed path), stop the run for that posting, record the error,
   continue to the next posting.
