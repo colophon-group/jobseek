@@ -280,8 +280,16 @@ ON CONFLICT (id) DO UPDATE SET
     -- re-syncs will see the change take effect immediately, but the watermark
     -- itself (max_ts and friends) stays intact so the next scheduled run
     -- still knows where incremental pagination left off.
+    --
+    -- ``delist_threshold`` is a CSV-controllable per-board override
+    -- (#2725). CSV wins when set; otherwise the existing runtime
+    -- value (typically unset, picking the type-based default) is kept.
     metadata = EXCLUDED.metadata || jsonb_strip_nulls(jsonb_build_object(
         'sitemap_url', job_board.metadata -> 'sitemap_url',
+        'delist_threshold', COALESCE(
+            EXCLUDED.metadata -> 'delist_threshold',
+            job_board.metadata -> 'delist_threshold'
+        ),
         'pcsx_watermark', CASE
             WHEN job_board.metadata -> 'pcsx_watermark' IS NULL THEN NULL
             ELSE COALESCE(EXCLUDED.metadata -> 'pcsx_watermark', '{}'::jsonb)

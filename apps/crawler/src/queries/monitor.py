@@ -52,9 +52,12 @@ WHERE id = ANY($1::uuid[])
 """
 
 # Delist threshold: API monitors are authoritative (1 miss = delist),
-# URL-only monitors are fragile (2 misses before delist).
+# URL-only monitors are fragile (#2725: 4 misses before delist; was 2 until
+# the 2026-04-26 NHS spike showed 2 was too tight against transient
+# pagination flaps). Per-board override is read from
+# ``metadata.delist_threshold`` in ``processing/board.py``.
 _DELIST_THRESHOLD_AUTHORITATIVE = 1
-_DELIST_THRESHOLD_FRAGILE = 2
+_DELIST_THRESHOLD_FRAGILE = 4
 
 _DELIST_BOARD_POSTINGS = """
 UPDATE job_posting

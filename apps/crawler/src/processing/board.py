@@ -275,6 +275,36 @@ def _emit_gone_counter(gone_count: int) -> None:
         monitor_jobs_discovered.labels(profile="simple", action="gone").inc(gone_count)
 
 
+def _resolve_delist_threshold(metadata: dict | None, crawler_type: str) -> int:
+    """Pick the miss-count threshold for ``_MARK_GONE_BY_TIMESTAMP``.
+
+    Default: ``_DELIST_THRESHOLD_AUTHORITATIVE`` (1) for API monitors with
+    definitive list semantics (greenhouse, lever, ashby, …),
+    ``_DELIST_THRESHOLD_FRAGILE`` (4 since #2725) for URL-only monitors
+    where a single missed cycle is often a transient pagination flap.
+
+    Per-board override (#2725): ``metadata.delist_threshold`` accepts an
+    integer ≥ 1. Bool is excluded because ``isinstance(True, int)`` is
+    True in Python and we don't want a spurious ``True`` flag to silently
+    mean ``threshold=1``. Anything invalid (negative, zero, non-numeric,
+    bool) falls through to the type-based default rather than raising,
+    so a malformed CSV row never breaks the monitor cycle.
+    """
+    default = (
+        _DELIST_THRESHOLD_AUTHORITATIVE
+        if crawler_type in _API_MONITOR_TYPES
+        else _DELIST_THRESHOLD_FRAGILE
+    )
+    val = (metadata or {}).get("delist_threshold")
+    if isinstance(val, bool) or val is None:
+        return default
+    try:
+        n = int(val)
+    except (TypeError, ValueError):
+        return default
+    return n if n >= 1 else default
+
+
 # A 5-strike auto-disable doesn't necessarily mean the board is dead.
 # With exponential backoff (5 * 2^n minutes capped at 24h), strike #5
 # fires after ~155 minutes — well inside a single provider outage. If
@@ -996,13 +1026,13 @@ async def _process_one_board_streaming(
                         await _batch.get_redis().delete("cache:platform-stats")
             return True, elapsed
 
-        # Mark as gone any active posting not seen during this monitor run
+        # Mark as gone any active posting not seen during this monitor run.
+        # Per-board override (#2725): ``metadata.delist_threshold`` lets
+        # operators raise/lower the miss count needed to tombstone a posting
+        # for boards that flap (NHS pagination) or that we want stricter
+        # (a known-stable greenhouse override could go to 1).
         gone_count = 0
-        delist_threshold = (
-            _DELIST_THRESHOLD_AUTHORITATIVE
-            if crawler_type in _API_MONITOR_TYPES
-            else _DELIST_THRESHOLD_FRAGILE
-        )
+        delist_threshold = _resolve_delist_threshold(metadata, crawler_type)
         async with pool.acquire() as conn, conn.transaction():
             gone_rows = await conn.fetch(
                 _MARK_GONE_BY_TIMESTAMP,
