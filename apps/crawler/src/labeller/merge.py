@@ -28,26 +28,45 @@ def _merged_mode(base: Path) -> dict | None:
     return json.loads(path.read_text())
 
 
-def _granular_mode_sections(base: Path, split_sections: list[dict]) -> list[dict]:
+def _granular_mode_sections(
+    base: Path, split_sections: list[dict], *, allow_missing: bool = False
+) -> tuple[list[dict], list[str]]:
+    """Build the per-section extracted view from per-kind output files.
+
+    When ``allow_missing`` is False (the accepted-merge default), any missing
+    per-kind ``extract-<kind>-out.json`` raises ``FileNotFoundError`` — we
+    refuse to silently merge with null extractions.
+
+    When ``allow_missing`` is True (rejected-merge fallback), missing files
+    leave ``extracted=None`` for that section and are reported back to the
+    caller so the qa_rationale can name them.
+    """
     sections_with_extracts: list[dict] = []
     missing: list[str] = []
     for sec in split_sections:
         kind = sec["kind"]
-        entry = {"kind": kind, "block_ids": list(sec["block_ids"])}
+        entry: dict = {"kind": kind, "block_ids": list(sec["block_ids"])}
         if kind in SECTION_EXTRACT_KINDS:
             extract_path = base / f"extract-{kind}-out.json"
-            if not extract_path.exists():
-                missing.append(f"extract-{kind}-out.json")
-            else:
+            if extract_path.exists():
                 entry["extracted"] = json.loads(extract_path.read_text())
+            else:
+                missing.append(f"extract-{kind}-out.json")
+                entry["extracted"] = None
         else:
             entry["extracted"] = None
         sections_with_extracts.append(entry)
-    if missing:
+    if missing and not allow_missing:
         raise FileNotFoundError(
             f"granular merge: missing required extract files: {', '.join(missing)}"
         )
-    return sections_with_extracts
+    return sections_with_extracts, missing
+
+
+def _read_json_or_none(path: Path) -> dict | None:
+    if not path.exists():
+        return None
+    return json.loads(path.read_text())
 
 
 def merge_posting(
@@ -62,9 +81,18 @@ def merge_posting(
 
     Prefers ``extract-all-out.json`` (merged mode); falls back to the per-kind
     + globals file layout (granular mode) when the merged file is absent.
+
+    When ``qa_verdict='rejected'``, missing per-kind / globals / split files
+    are tolerated: empty shells are synthesized and the names of the missing
+    files are appended to ``qa_rationale``. This lets the orchestrator
+    persist a posting record even after a partial pipeline failure (the
+    record still passes posting.schema.json validation but won't pass QA).
+    For any other verdict, missing files raise ``FileNotFoundError``.
     """
     base = runs_dir(run_date, posting_id)
     input_data = json.loads((base / "input.json").read_text())
+    is_rejected = qa_verdict == "rejected"
+    fallback_missing: list[str] = []
 
     merged_payload = _merged_mode(base)
     if merged_payload is not None:
@@ -78,9 +106,30 @@ def merge_posting(
         ]
         globals_data = merged_payload.get("globals", {})
     else:
-        sections_data = json.loads((base / "split-out.json").read_text())
-        globals_data = json.loads((base / "globals-out.json").read_text())
-        sections_with_extracts = _granular_mode_sections(base, sections_data.get("sections", []))
+        sections_payload = _read_json_or_none(base / "split-out.json")
+        globals_payload = _read_json_or_none(base / "globals-out.json")
+        if sections_payload is None:
+            if not is_rejected:
+                # Match the prior FileNotFoundError contract for non-rejected.
+                json.loads((base / "split-out.json").read_text())
+            fallback_missing.append("split-out.json")
+            sections_payload = {"sections": []}
+        if globals_payload is None:
+            if not is_rejected:
+                json.loads((base / "globals-out.json").read_text())
+            fallback_missing.append("globals-out.json")
+            globals_payload = {}
+        sections_with_extracts, missing_extracts = _granular_mode_sections(
+            base,
+            sections_payload.get("sections", []),
+            allow_missing=is_rejected,
+        )
+        fallback_missing.extend(missing_extracts)
+        globals_data = globals_payload
+
+    if is_rejected and fallback_missing:
+        note = "partial pipeline failure: missing " + ", ".join(fallback_missing)
+        qa_rationale = f"{qa_rationale}; {note}" if qa_rationale else note
 
     return {
         "id": input_data["id"],
