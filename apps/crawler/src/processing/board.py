@@ -289,6 +289,23 @@ def _resolve_delist_threshold(metadata: dict | None, crawler_type: str) -> int:
     mean ``threshold=1``. Anything invalid (negative, zero, non-numeric,
     bool) falls through to the type-based default rather than raising,
     so a malformed CSV row never breaks the monitor cycle.
+
+    Floats truncate via ``int()``: ``4.7 -> 4``, ``0.9 -> 0`` (which then
+    falls back to the default). JSON has a single number type; CSV
+    operators writing ``"delist_threshold": 4`` get an int, ``4.0`` an
+    int (whole), ``4.7`` truncated. Strictness in the float case isn't
+    worth the operator-friction.
+
+    Caveat for ``delist_threshold = 1`` on paginated URL-only monitors:
+    a single failed page during pagination would tombstone every URL
+    beyond the failure point on the same cycle. Pair with the drop /
+    blast-radius guards from #2729 (``metadata.drop_threshold``,
+    ``metadata.blast_radius_floor``) when overriding to 1.
+
+    Clearing an existing override: edit ``boards.csv`` to omit the key
+    AND run a SQL ``UPDATE job_board SET metadata = metadata - 'delist_threshold'``
+    on the affected row, since ``_UPSERT_BOARD_LOCAL`` preserves
+    runtime overrides across CSV-only resyncs (COALESCE pattern).
     """
     default = (
         _DELIST_THRESHOLD_AUTHORITATIVE

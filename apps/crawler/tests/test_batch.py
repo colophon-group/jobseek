@@ -3317,20 +3317,46 @@ class TestResolveDelistThreshold:
         assert _resolve_delist_threshold({"delist_threshold": 1}, "dom") == 1
 
     def test_invalid_override_falls_back_to_default(self):
-        """Negative, zero, non-numeric, or bool override → default."""
+        """Negative, zero, non-numeric, or bool override → default.
+
+        ``int(value)`` raises ``TypeError`` on lists/dicts and ``ValueError``
+        on non-numeric strings; both are caught so a malformed CSV row
+        never crashes the monitor cycle.
+        """
         from src.processing.board import _resolve_delist_threshold
         from src.queries.monitor import _DELIST_THRESHOLD_FRAGILE
 
         cases = [
             {"delist_threshold": 0},  # zero would be instant delist
             {"delist_threshold": -1},
-            {"delist_threshold": "high"},
+            {"delist_threshold": "high"},  # non-numeric string -> ValueError
+            {"delist_threshold": [4]},  # list -> TypeError
+            {"delist_threshold": {"value": 4}},  # dict -> TypeError
             # Bool is rejected explicitly (isinstance(True, int) is True in Python).
             {"delist_threshold": True},
             {"delist_threshold": False},
         ]
         for md in cases:
             assert _resolve_delist_threshold(md, "dom") == _DELIST_THRESHOLD_FRAGILE, md
+
+    def test_float_override_truncates(self):
+        """Float overrides truncate via ``int()`` — documented behaviour.
+
+        JSON has a single number type; ``"delist_threshold": 4.0`` is
+        commonly an integer that round-tripped through a numeric writer.
+        ``4.7 -> 4`` (rounded down). ``0.9 -> 0 -> default`` (would round
+        below the ``>= 1`` minimum so falls through).
+        """
+        from src.processing.board import _resolve_delist_threshold
+        from src.queries.monitor import _DELIST_THRESHOLD_FRAGILE
+
+        assert _resolve_delist_threshold({"delist_threshold": 4.0}, "dom") == 4
+        assert _resolve_delist_threshold({"delist_threshold": 4.7}, "dom") == 4
+        assert _resolve_delist_threshold({"delist_threshold": 1.5}, "dom") == 1
+        # Sub-1 floats truncate to 0, fail the >= 1 minimum, fall back.
+        assert (
+            _resolve_delist_threshold({"delist_threshold": 0.9}, "dom") == _DELIST_THRESHOLD_FRAGILE
+        )
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")

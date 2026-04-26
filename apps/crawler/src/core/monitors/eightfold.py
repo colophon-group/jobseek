@@ -463,5 +463,6 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
 # runtime from the actual result, not from the registration flag, so the
 # hybrid data path still works correctly. Leaving eightfold out of
 # ``api_monitor_types()`` also keeps the delist threshold at the safer
-# ``_DELIST_THRESHOLD_FRAGILE = 2`` rather than the authoritative 1.
+# ``_DELIST_THRESHOLD_FRAGILE`` (4 since #2725, was 2) rather than the
+# authoritative 1.
 register("eightfold", discover, cost=8, can_handle=can_handle, stream=discover_stream)
