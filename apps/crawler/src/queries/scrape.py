@@ -199,32 +199,39 @@ SET scrape_failures  = 0,
 WHERE jp.id = $1
 """
 
-# Failure recording (#2708 — generalised from Avature 403 cluster).
+# Failure recording — scrape-side leg of the dual-authority delisting
+# model. See docs/03-crawler-architecture.md "Delisting model — when is
+# a posting 'gone'?" for the full design rationale.
 #
-# Every scrape failure passes through this UPDATE. The existing backoff
-# was: doubling delay (30/60/120 min), give up after 3 failures
-# (next_scrape_at=NULL). What it was missing: the give-up point left
-# is_active=true, so a posting we'd permanently abandoned stayed
-# visible to web users until the BOARD-level monitor stopped seeing
-# the URL — which for archived URLs the monitor won't even rediscover.
+# Short version: the monitor is the PRIMARY delisting authority
+# (``_MARK_GONE_BY_TIMESTAMP`` in queries/monitor.py — fast, fires
+# within one monitor cycle when the upstream listing stops mentioning
+# the URL). This UPDATE is the SCRAPE-SIDE FALLBACK, needed because
+# some upstream platforms violate the natural model: their listing
+# keeps citing URLs that the per-posting endpoint then refuses to
+# serve. The Avature US Deloitte tenant (issue #2708) is the
+# documented case — SearchJobs lists JobDetail URLs that return 403.
+# Without the fallback, those postings stay ``is_active = true`` forever.
 #
-# Two changes here:
-#   1. When ``scrape_failures + 1 >= 3`` we now ALSO set
-#      ``is_active = false``. Universal — every host gets it. Recovers
-#      cleanly via the monitor's ``relisted`` path
-#      (queries/monitor.py:163) if the URL reappears in a future
-#      monitor cycle.
-#   2. When the failure carried a permanent-gone HTTP status (404 / 410)
-#      the caller passes ``$2 = true`` and we tombstone IMMEDIATELY,
-#      no 90-minute retry budget. Universal-status check; no host
-#      allowlist needed.
+# Two branches in this UPDATE both transition is_active->false:
+#   1. ``scrape_failures + 1 >= 3``  — the existing 3-failure retry
+#      budget is exhausted (≈90 min wall-clock with the 30/60-min
+#      doubling backoff). Universal across every host.
+#   2. ``$2::boolean = true`` (caller passes ``permanent_gone=True``) —
+#      RFC-defined "this resource is gone" responses (404 / 410)
+#      short-circuit the budget. Also universal across every host.
 #
-# Avature's quirky 403-on-archived-JobDetail (issue #2708) is caught by
-# rule #1 — three scrapes (~90 min) then tombstone. We could narrow it
-# further with a host allowlist, but: (a) the 3-failure budget is
-# already cheap, (b) host allowlists rot when new platforms exhibit
-# the same behaviour, (c) generalising means we don't need a new PR
-# every time another ATS does the same thing.
+# Both rules are deliberately host-agnostic. A host allowlist for the
+# Avature 403 pattern was rejected (closed PR #2720) as overfitting:
+# it rots fast as new platforms appear with the same quirk, and the
+# 3-failure budget catches every variant for free.
+#
+# Recovery: a tombstoned posting that the monitor later re-discovers
+# flows through the ``relisted`` branch in queries/monitor.py:163,
+# which flips is_active back to true and resets missing_count. So a
+# transient 3-failure cluster on a still-live URL self-heals on the
+# next monitor cycle; only URLs the monitor *also* doesn't re-list
+# stay tombstoned.
 _RECORD_SCRAPE_FAILURE = """
 UPDATE job_posting
 SET scrape_failures   = scrape_failures + 1,

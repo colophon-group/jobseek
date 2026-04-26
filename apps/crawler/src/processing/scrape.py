@@ -148,30 +148,41 @@ class _BoardScraperInfo:
     rich_board_ids: set[str]  # boards from rich monitors with no explicit scraper
 
 
-# ── Permanent-gone signal (#2708) ──────────────────────────────────────
+# ── Permanent-gone signal (scrape-side delisting fast path) ────────────
 #
-# 404 / 410 from any host means "this posting no longer exists" by
-# RFC 7231 / RFC 9110. Scraper's existing 3-failure backoff would still
-# retry these, taking 90+ minutes to give up and never tombstoning. The
-# ``permanent_gone=True`` arg to ``_RECORD_SCRAPE_FAILURE`` short-circuits
-# both: tombstones immediately, no retry budget consumed.
+# Part of the dual-authority delisting model — see
+# docs/03-crawler-architecture.md "Delisting model — when is a posting
+# 'gone'?" for the full design. This module owns the SCRAPE-SIDE
+# AUTHORITY (the fallback half); the monitor-side primary authority
+# lives in ``queries/monitor.py:_MARK_GONE_BY_TIMESTAMP``.
 #
-# We deliberately do NOT add 403 here. The scraper's existing
-# 3-failure-budget tombstone (added to ``_RECORD_SCRAPE_FAILURE`` in the
-# same change) catches archived-posting 403s — Avature's quirky
-# JobDetail 403 (issue #2708), Workday 403-on-cookieless, etc. — within
-# 90 minutes via the standard path. Adding host-specific 403 handling
-# rots fast as new platforms appear; the budget catches every variant.
+# The scrape-side authority has two triggers, both implemented inside
+# ``_RECORD_SCRAPE_FAILURE`` (queries/scrape.py):
+#   * Budget exhaustion: ``scrape_failures + 1 >= 3``. Universal,
+#     ≈90 min wall-clock. No code change needed at the call site —
+#     every failure already passes through the SQL.
+#   * Permanent-gone short-circuit: caller passes ``permanent_gone=True``.
+#     Tombstones on the first failure, no budget consumed. Used for
+#     RFC-defined "gone" responses (HTTP 404 / 410). The predicate
+#     below decides which exceptions trip this fast path.
+#
+# 403 is deliberately NOT a permanent-gone signal here. The Avature
+# archived-JobDetail 403 (issue #2708) is the original motivation,
+# but adding 403 to the universal list would over-aggress on transient
+# WAF / rate-limit / missing-cookie cases on every other platform.
+# The budget tombstone catches the Avature pattern in 3 retries; the
+# extra latency is the price of not overfitting (see closed PR #2720
+# for the host-allowlist alternative we rejected).
 
 
 def _is_permanent_gone(exc: BaseException) -> bool:
-    """Return True if *exc* indicates the posting is permanently gone.
+    """Return True if *exc* trips the permanent-gone short-circuit in
+    ``_RECORD_SCRAPE_FAILURE``.
 
-    The HTTP scrapers raise ``httpx.HTTPStatusError`` (via
-    ``raise_for_status``). 404 / 410 are universal "not here" signals.
-    Other status codes (incl. 403, 5xx, network timeouts) fall through
-    to the standard scrape-failure backoff, which now also tombstones
-    after the existing 3-failure budget.
+    See module-level comment block above for the design rationale.
+    Strict 404 / 410 only — every other failure (including 403, 5xx,
+    timeouts) falls through to the standard scrape-failure backoff,
+    which still tombstones after the 3-failure budget.
     """
     if not isinstance(exc, httpx.HTTPStatusError):
         return False

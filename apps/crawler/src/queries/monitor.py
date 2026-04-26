@@ -234,6 +234,10 @@ WHERE job_posting.board_id = $2
 RETURNING job_posting.id, job_posting.source_url
 """
 
+# Monitor-side delisting authority — primary half of the dual-authority
+# delisting model. See docs/03-crawler-architecture.md "Delisting model
+# — when is a posting 'gone'?" for the full design and the relationship
+# with the scrape-side fallback (queries/scrape.py:_RECORD_SCRAPE_FAILURE).
 _MARK_GONE_BY_TIMESTAMP = """
 UPDATE job_posting
 SET missing_count = missing_count + 1,

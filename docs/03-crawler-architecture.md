@@ -94,6 +94,39 @@ All monitors now use `_process_one_board_streaming()`:
 6. Stage description for R2 upload
 7. Record success/failure, reschedule in Redis
 
+## Delisting model — when is a posting "gone"?
+
+`job_posting.is_active = true` is the primary user-visible signal: the web app, search, and watchlists all filter on it. Tombstoning correctly is therefore a correctness invariant — a posting that's been removed upstream must flip to `is_active = false` within bounded time, and a posting that's still live must not.
+
+The crawler has **two authorities** for that decision, and they answer the question from different angles:
+
+### 1. Monitor authority (primary) — `_MARK_GONE_BY_TIMESTAMP`
+
+For every board cycle, the monitor produces the current per-board URL set (sitemap parse, API page, rendered DOM). A posting that was previously discovered but does not appear in the latest cycle bumps `missing_count`; once the count crosses the per-monitor threshold (1 for authoritative monitors like APIs / sitemaps; 2 for fragile DOM-based monitors that occasionally render partials), `_MARK_GONE_BY_TIMESTAMP` flips `is_active = false`.
+
+This path implements the natural model: *"the listing is the source of truth — if the upstream listing stops mentioning the URL, the posting is gone."* It works whenever monitor and listing agree.
+
+### 2. Scrape authority (fallback) — `_RECORD_SCRAPE_FAILURE` budget tombstone
+
+Some upstream platforms violate the natural model. Avature's US Deloitte tenant is the documented case (issue #2708): the `apply.deloitte.com` SearchJobs SPA continues to list JobDetail URLs that the application then refuses to serve at the per-posting endpoint, returning 403 with a real Avature error page body. The monitor sees "URL still listed → not gone"; the scraper sees "403 → not fetchable". Without a fallback, the posting stays `is_active = true` forever — a dead link in the web app — because the monitor's signal never trips the delist threshold.
+
+The fallback rule: when the per-posting scraper exhausts its existing 3-failure retry budget (≈90 minutes of doubling backoff: 0/30/60 min), `_RECORD_SCRAPE_FAILURE` *also* flips `is_active = false`, in addition to setting `next_scrape_at = NULL`. RFC-defined "this resource is gone" responses (HTTP 404 / 410) short-circuit the budget via the SQL's `permanent_gone` parameter and tombstone on the first failure. **Both branches are universal — no host allowlist.** The budget catches every variant of the same pattern (Avature 403, Workday cookieless 403, archived-then-403 on any platform). A host allowlist would be guaranteed-stale within a quarter; the budget is fix-it-once.
+
+### 3. Recovery — relisted path
+
+Either authority's tombstone is reversible. The monitor's discovery insert (`queries/monitor.py:163` — the `relisted` branch) flips `is_active = true` and resets `missing_count = 0` when a previously-tombstoned URL reappears in a fresh monitor cycle. So a transient 3-failure cluster on a still-live URL self-heals on the next monitor pass; only URLs that the monitor *also* doesn't re-list stay tombstoned.
+
+### Why dual authority
+
+Either authority alone is wrong:
+
+- **Monitor-only**: leaks dead links forever when the upstream listing lies (the Avature case).
+- **Scrape-only**: too aggressive — a transient 3-failure cluster on a live URL would tombstone it without the monitor's "I just saw it again" recovery signal.
+
+Combining them gives bounded delisting latency in both cases — at most one full monitor cycle for the natural model, at most ≈90 min of scrape budget for the inconsistent-upstream case — with relisted-path recovery as the safety net.
+
+The asymmetry is deliberate: the monitor cycle is the *fast* path (minutes) when the listing is honest; the scrape budget is the *slow but eventual* path (~90 min) when it isn't. We trust the monitor first because per-cycle URL sets are cheaper than 3 per-URL retries; the budget exists because we can't trust every monitor to be authoritative about every URL.
+
 ## R2 Drain
 
 Producer-consumer pipeline polling `descriptions WHERE NOT r2_uploaded`:
