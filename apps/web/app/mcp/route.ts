@@ -31,29 +31,38 @@ async function inspectBody(
   if (req.method !== "POST") {
     return { rpcMethod: null, toolName: null, bodyBytes: 0 };
   }
+  // Read the body first so bodyBytes is preserved even when JSON.parse
+  // later fails — a malformed body is itself a useful observability
+  // signal.
+  let text: string;
   try {
-    const text = await req.clone().text();
-    const bodyBytes = text.length;
-    if (!text) return { rpcMethod: null, toolName: null, bodyBytes };
-    const parsed: unknown = JSON.parse(text);
-    // JSON-RPC body is either a single object or a batch array. Take the
-    // first call's method/tool name as a representative sample — a single
-    // POST nearly always carries one call.
-    const first = Array.isArray(parsed) ? parsed[0] : parsed;
-    if (!first || typeof first !== "object") {
-      return { rpcMethod: null, toolName: null, bodyBytes };
-    }
-    const obj = first as Record<string, unknown>;
-    const rpcMethod = typeof obj.method === "string" ? obj.method : null;
-    let toolName: string | null = null;
-    if (rpcMethod === "tools/call" && obj.params && typeof obj.params === "object") {
-      const params = obj.params as Record<string, unknown>;
-      if (typeof params.name === "string") toolName = params.name;
-    }
-    return { rpcMethod, toolName, bodyBytes };
+    text = await req.clone().text();
   } catch {
     return { rpcMethod: null, toolName: null, bodyBytes: 0 };
   }
+  const bodyBytes = text.length;
+  if (!text) return { rpcMethod: null, toolName: null, bodyBytes };
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return { rpcMethod: null, toolName: null, bodyBytes };
+  }
+  // JSON-RPC body is either a single object or a batch array. Take the
+  // first call's method/tool name as a representative sample — a single
+  // POST nearly always carries one call.
+  const first = Array.isArray(parsed) ? parsed[0] : parsed;
+  if (!first || typeof first !== "object") {
+    return { rpcMethod: null, toolName: null, bodyBytes };
+  }
+  const obj = first as Record<string, unknown>;
+  const rpcMethod = typeof obj.method === "string" ? obj.method : null;
+  let toolName: string | null = null;
+  if (rpcMethod === "tools/call" && obj.params && typeof obj.params === "object") {
+    const params = obj.params as Record<string, unknown>;
+    if (typeof params.name === "string") toolName = params.name;
+  }
+  return { rpcMethod, toolName, bodyBytes };
 }
 
 /**
