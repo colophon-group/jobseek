@@ -372,3 +372,82 @@ class TestFetchErrors:
                 await fetch_all("apply.starbucks.com", "starbucks.com", http)
             # And backward-compatible — still a PcsxFetchError subclass.
             assert issubclass(PcsxStableBlock, PcsxFetchError)
+
+    async def test_persistent_503_raises_pagination_fetch_error(self, monkeypatch):
+        """Persistent 503 exhausts retries and raises ``PcsxFetchError``,
+        which is now a subclass of :class:`PaginationFetchError` (#2734) so
+        callers / monitoring catch the same shape used by dom + sitemap
+        monitors (#2722, #2737). ``last_status`` carries the failing code.
+        """
+        from src.shared.http_retry import PaginationFetchError
+
+        # Skip the real backoff (5 * 2^attempt × jitter ≈ 35s for 3 attempts).
+        async def _instant(_duration):
+            return None
+
+        monkeypatch.setattr("src.core.monitors._pcsx.asyncio.sleep", _instant)
+
+        async def handler(request):
+            return httpx.Response(503, text="upstream down")
+
+        async with _make_client(handler) as http:
+            with pytest.raises(PaginationFetchError) as exc_info:
+                await fetch_all("careers.kering.com", "kering", http)
+        # Both type assertions hold — same class, same instance.
+        assert isinstance(exc_info.value, PcsxFetchError)
+        assert exc_info.value.last_status == 503
+
+    async def test_cloudflare_5xx_codes_retry(self, monkeypatch):
+        """Cloudflare-origin 5xx codes (520-526, 530) are retried (#2734).
+
+        Before this PR, ``_fetch_page`` only retried
+        ``(429, 500, 502, 503, 504)`` — Cloudflare 520-526/530 codes
+        (common when an Eightfold tenant is behind Cloudflare) fell into
+        the "fail fast" branch and produced a single-shot ``PcsxFetchError``.
+        Now classification routes through ``is_retryable_status`` which
+        covers any 5xx in range. This test pins the contract — first
+        call returns the CF status, second returns 200 with positions.
+        """
+
+        async def _instant(_duration):
+            return None
+
+        monkeypatch.setattr("src.core.monitors._pcsx.asyncio.sleep", _instant)
+
+        for status in (520, 521, 522, 523, 524, 525, 526, 530):
+            calls = {"n": 0}
+
+            # Bind both ``status`` and ``calls`` as default args so each
+            # iteration's handler closes over its own values (ruff B023).
+            async def handler(request, _status=status, _calls=calls):
+                _calls["n"] += 1
+                if _calls["n"] == 1:
+                    return httpx.Response(_status, text="cf error")
+                if _calls["n"] == 2:
+                    # Retry of the failing page succeeds with one position.
+                    return _json_response({"data": {"positions": [{"id": 1, "postedTs": 1000}]}})
+                # End of pagination — empty response stops ``fetch_all``.
+                return _json_response({"data": {"positions": []}})
+
+            async with _make_client(handler) as http:
+                result = await fetch_all("careers.kering.com", "kering", http)
+            assert result, f"status {status} should retry then succeed"
+            # Retry of failed page (call 2) + one extra page that returns
+            # empty (call 3, the end-of-pagination signal). Three calls
+            # total = the 5xx was retried once.
+            assert calls["n"] == 3, f"status {status} should be retried"
+
+    async def test_pcsx_fetch_error_carries_paginationfetcherror_attrs(self):
+        """``PcsxFetchError(message, url=..., last_status=...)`` exposes
+        the base-class attributes (``url``, ``attempts``, ``last_status``,
+        ``last_error``) so callers that pattern on
+        :class:`PaginationFetchError` can introspect uniformly.
+        """
+        from src.shared.http_retry import PaginationFetchError
+
+        exc = PcsxFetchError("boom", url="https://example.com/api/pcsx/search", last_status=503)
+        assert isinstance(exc, PaginationFetchError)
+        assert exc.url == "https://example.com/api/pcsx/search"
+        assert exc.last_status == 503
+        assert exc.last_error is None
+        assert str(exc) == "boom"

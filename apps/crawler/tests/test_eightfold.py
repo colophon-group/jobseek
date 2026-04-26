@@ -371,6 +371,73 @@ class TestPcsxFetchError:
         assert result.metadata_updates is None
         assert result.hybrid is True
 
+    async def test_incremental_page_5_persistent_503_preserves_max_ts(self):
+        """Issue #2734 acceptance: a 503 on PCSX page 5 of 20 raises
+        ``PaginationFetchError``; ``metadata.pcsx_watermark.max_ts`` is
+        unchanged after the cycle.
+
+        Watermark before: ``max_ts=500``. Pages 0–3 return jobs with
+        ``postedTs > 500`` (would advance the watermark to 1000 on
+        success). Page 4 (offset=40) returns persistent 503 → after
+        the in-page retry budget is exhausted, ``_fetch_page`` raises
+        ``PcsxFetchError`` (now a ``PaginationFetchError``). The
+        eightfold ``discover_stream`` catches it, emits a sitemap-only
+        ``MonitorResult`` with ``metadata_updates=None`` so the
+        original watermark — ``max_ts=500`` — is preserved for the next
+        cycle to retry from the same starting point.
+        """
+        metadata = {
+            "pcsx_watermark": {
+                "max_ts": 500,
+                "enabled": True,
+                "last_full_at": _iso_now_minus(hours=6),
+                "last_incremental_at": _iso_now_minus(hours=2),
+            }
+        }
+
+        # Pages 0-3 succeed (offsets 0, 10, 20, 30). Page 4 (offset=40)
+        # returns 503 — and keeps returning 503 across the in-page retries.
+        def _make_page_offset_handler():
+            def handler(request: httpx.Request) -> httpx.Response:
+                url = str(request.url)
+                if "sitemap.xml" in url:
+                    return httpx.Response(
+                        200, text=SITEMAP_XML, headers={"content-type": "application/xml"}
+                    )
+                if "api/pcsx/search" in url:
+                    offset = int(request.url.params.get("start", 0))
+                    if offset < 40:
+                        # Advance-the-watermark jobs (postedTs > 500) on
+                        # the first four pages.
+                        return httpx.Response(
+                            200,
+                            json=_pcsx_response(
+                                [_pos(1000 + offset + i, 1000 - offset - i) for i in range(10)],
+                                count=200,
+                            ),
+                        )
+                    return httpx.Response(503, text="upstream down")
+                return httpx.Response(404)
+
+            return handler
+
+        async def _instant(_duration):
+            return None
+
+        with patch("src.core.monitors._pcsx.asyncio.sleep", new=_instant):
+            [result] = await _run_discover_stream(_make_page_offset_handler(), metadata=metadata)
+
+        # Sitemap URLs always delivered — gone-detection works unchanged.
+        assert len(result.urls) == 3
+        # Rich data dropped — the partial run must not surface as success.
+        assert not result.jobs_by_url
+        # Critical invariant: watermark untouched. The next cycle re-runs
+        # from max_ts=500 without skipping the unfetched pages.
+        assert result.metadata_updates is None
+        # Hybrid flag is set so the success-path's "touched" update for
+        # postings on the partial PCSX result is skipped.
+        assert result.hybrid is True
+
 
 class TestForceFullCrawl:
     async def test_force_full_crawl_overrides_incremental(self):
