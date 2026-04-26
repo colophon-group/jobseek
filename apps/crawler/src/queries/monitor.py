@@ -187,6 +187,14 @@ touched AS (
 relisted AS (
   UPDATE job_posting
   SET is_active = true, missing_count = 0,
+      -- Reset scrape_failures so a previously scrape-tombstoned URL
+      -- (queries/scrape.py: _RECORD_SCRAPE_FAILURE budget tombstone
+      -- or _RECORD_SCRAPE_TRANSIENT budget exhaustion) gets a fresh
+      -- budget on its next try. Without this, a relisted posting
+      -- comes back with scrape_failures=3 and the next single
+      -- failure re-tombstones it — a flap loop on chronically slow
+      -- upstreams.
+      scrape_failures = 0,
       last_seen_at = now(),
       next_scrape_at = CASE WHEN $3::boolean THEN NULL ELSE now() END
   FROM discovered d
@@ -258,6 +266,13 @@ WHERE job_posting.board_id = $2
 RETURNING job_posting.id, job_posting.source_url
 """
 
+# Monitor-side delisting authority — primary half of the dual-authority
+# delisting model. See docs/03-crawler-architecture.md "Delisting model
+# — when is a posting 'gone'?" for the full design and the relationship
+# with the scrape-side fallback (queries/scrape.py: _RECORD_SCRAPE_FAILURE
+# for tombstoning failures, _RECORD_SCRAPE_TRANSIENT for non-tombstoning
+# failures — naming preserved for git-blame continuity, but both record
+# failures; the difference is whether they touch is_active).
 _MARK_GONE_BY_TIMESTAMP = """
 UPDATE job_posting
 SET missing_count = missing_count + 1,

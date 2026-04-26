@@ -16,8 +16,8 @@ from src.batch import (
     _INSERT_URL_ONLY_JOBS,
     _RECORD_EMPTY_CHECK,
     _RECORD_FAILURE,
-    _RECORD_SCRAPE_FAILURE,
     _RECORD_SCRAPE_SUCCESS,
+    _RECORD_SCRAPE_TRANSIENT,
     _UPDATE_ENRICH_CONTENT,
     _UPDATE_JOB_CONTENT,
     _UPDATE_METADATA,
@@ -1802,7 +1802,11 @@ class TestProcessOneScrape:
 
         assert ok is False
         execute_calls = conn.execute.await_args_list
-        failure_calls = [c for c in execute_calls if c.args[0] == _RECORD_SCRAPE_FAILURE]
+        # Non-HTTP failure modes (generic exceptions, missing posting,
+        # extraction-empty) take the TRANSIENT path — they don't count
+        # toward the tombstone budget. See the dual-authority delisting
+        # model in docs/03-crawler-architecture.md.
+        failure_calls = [c for c in execute_calls if c.args[0] == _RECORD_SCRAPE_TRANSIENT]
         assert len(failure_calls) == 1
         assert failure_calls[0].args[1] == "jp-missing"
 
@@ -1817,7 +1821,11 @@ class TestProcessOneScrape:
 
         assert ok is False
         execute_calls = conn.execute.await_args_list
-        failure_calls = [c for c in execute_calls if c.args[0] == _RECORD_SCRAPE_FAILURE]
+        # Non-HTTP failure modes (generic exceptions, missing posting,
+        # extraction-empty) take the TRANSIENT path — they don't count
+        # toward the tombstone budget. See the dual-authority delisting
+        # model in docs/03-crawler-architecture.md.
+        failure_calls = [c for c in execute_calls if c.args[0] == _RECORD_SCRAPE_TRANSIENT]
         assert len(failure_calls) == 1
         assert failure_calls[0].args[1] == "jp-1"
 
@@ -1834,7 +1842,11 @@ class TestProcessOneScrape:
 
         assert ok is False
         execute_calls = conn.execute.await_args_list
-        failure_calls = [c for c in execute_calls if c.args[0] == _RECORD_SCRAPE_FAILURE]
+        # Non-HTTP failure modes (generic exceptions, missing posting,
+        # extraction-empty) take the TRANSIENT path — they don't count
+        # toward the tombstone budget. See the dual-authority delisting
+        # model in docs/03-crawler-architecture.md.
+        failure_calls = [c for c in execute_calls if c.args[0] == _RECORD_SCRAPE_TRANSIENT]
         assert len(failure_calls) == 1
         assert failure_calls[0].args[1] == "jp-1"
 
@@ -1972,7 +1984,11 @@ class TestProcessOneScrape:
 
         assert ok is False
         execute_calls = conn.execute.await_args_list
-        failure_calls = [c for c in execute_calls if c.args[0] == _RECORD_SCRAPE_FAILURE]
+        # Non-HTTP failure modes (generic exceptions, missing posting,
+        # extraction-empty) take the TRANSIENT path — they don't count
+        # toward the tombstone budget. See the dual-authority delisting
+        # model in docs/03-crawler-architecture.md.
+        failure_calls = [c for c in execute_calls if c.args[0] == _RECORD_SCRAPE_TRANSIENT]
         assert len(failure_calls) == 1
 
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
@@ -1987,7 +2003,11 @@ class TestProcessOneScrape:
         assert ok is False
         assert mock_scrape.await_count == 1
         execute_calls = conn.execute.await_args_list
-        failure_calls = [c for c in execute_calls if c.args[0] == _RECORD_SCRAPE_FAILURE]
+        # Non-HTTP failure modes (generic exceptions, missing posting,
+        # extraction-empty) take the TRANSIENT path — they don't count
+        # toward the tombstone budget. See the dual-authority delisting
+        # model in docs/03-crawler-architecture.md.
+        failure_calls = [c for c in execute_calls if c.args[0] == _RECORD_SCRAPE_TRANSIENT]
         assert len(failure_calls) == 1
 
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
@@ -2084,8 +2104,10 @@ class TestProcessOneScrape:
 
         assert ok is False
         execute_calls = conn.execute.await_args_list
-        # Should record failure, NOT write content
-        failure_calls = [c for c in execute_calls if c.args[0] == _RECORD_SCRAPE_FAILURE]
+        # Garbage title (no usable content) → TRANSIENT path post-#2708
+        # critic revision; doesn't tombstone live postings due to a
+        # broken extraction config. NOT _UPDATE_JOB_CONTENT.
+        failure_calls = [c for c in execute_calls if c.args[0] == _RECORD_SCRAPE_TRANSIENT]
         content_calls = [c for c in execute_calls if c.args[0] == _UPDATE_JOB_CONTENT]
         assert len(failure_calls) == 1
         assert len(content_calls) == 0
@@ -2738,8 +2760,11 @@ class TestEnrichmentScrape:
         )
 
         assert ok is False
+        # Empty enrich → TRANSIENT path; could be a real archive page
+        # OR a broken extraction config, indistinguishable here, so
+        # don't tombstone live postings.
         failure_calls = [
-            c for c in conn.execute.await_args_list if c.args[0] == _RECORD_SCRAPE_FAILURE
+            c for c in conn.execute.await_args_list if c.args[0] == _RECORD_SCRAPE_TRANSIENT
         ]
         assert len(failure_calls) == 1
 
@@ -2747,7 +2772,8 @@ class TestEnrichmentScrape:
     async def test_enrich_fails_when_description_normalized_to_none(
         self, mock_scrape, mock_pool, mock_http
     ):
-        """Degenerate description (normalize strips to None) → failure, not infinite success."""
+        """Degenerate description (normalize strips to None) → transient
+        failure path (not infinite success)."""
         pool, conn = mock_pool
         # Whitespace-only description passes raw check but normalize returns None
         mock_scrape.return_value = _job_content(title="Title", description="   ")
@@ -2760,7 +2786,7 @@ class TestEnrichmentScrape:
 
         assert ok is False
         failure_calls = [
-            c for c in conn.execute.await_args_list if c.args[0] == _RECORD_SCRAPE_FAILURE
+            c for c in conn.execute.await_args_list if c.args[0] == _RECORD_SCRAPE_TRANSIENT
         ]
         assert len(failure_calls) == 1
 
@@ -2953,7 +2979,8 @@ class TestEnrichmentScrape:
 
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
     async def test_enrich_exception_records_failure(self, mock_scrape, mock_pool, mock_http):
-        """Exception during enrich → _RECORD_SCRAPE_FAILURE, returns False."""
+        """Exception during enrich → TRANSIENT (non-HTTP failures are
+        transient by default; never count toward tombstone budget)."""
         pool, conn = mock_pool
         mock_scrape.side_effect = RuntimeError("network error")
         item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
@@ -2964,7 +2991,7 @@ class TestEnrichmentScrape:
 
         assert ok is False
         failure_calls = [
-            c for c in conn.execute.await_args_list if c.args[0] == _RECORD_SCRAPE_FAILURE
+            c for c in conn.execute.await_args_list if c.args[0] == _RECORD_SCRAPE_TRANSIENT
         ]
         assert len(failure_calls) == 1
         assert failure_calls[0].args[1] == "jp-1"

@@ -18,10 +18,16 @@
 #
 # IMPORTANT — adding a slug here only blocks FUTURE uploads. To actually
 # remove already-published rows from the HuggingFace dataset, the operator
-# must additionally:
-#   1. Add the slug here (this file).
-#   2. Remove the affected rows from `data/<date>.jsonl` on HF (manual edit
-#      via the HF UI, or `huggingface_hub.HfApi().delete_file(...)`).
-# A future improvement (tracked separately) will automate step 2.
+# must additionally run the scrub command:
+#
+#   1. Add the slug to this file (blocks future uploads).
+#   2. Run:  uv run labeller scrub --slug <slug>
+#      (use --dry-run first to preview which dates / rows would change).
+#
+# `scrub` walks every `data/<date>.jsonl` on the HF dataset, drops rows
+# whose `source.company_slug` matches, and re-uploads (or deletes the
+# file outright when nothing survives). The README counts line is
+# refreshed in the same commit set. Implementation:
+# `apps/crawler/src/labeller/scrub.py`.
 #
 # Slugs are matched case-insensitively (lowercased on load).

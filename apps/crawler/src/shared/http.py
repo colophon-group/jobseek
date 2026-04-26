@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import ssl
 import time
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Any
 
 import httpx
@@ -90,6 +92,26 @@ def create_nossl_http_client(*, use_proxy: bool = False) -> httpx.AsyncClient:
     ``skip_ssl: true`` in scraper_config.
     """
     return create_http_client(verify=False, use_proxy=use_proxy)
+
+
+@asynccontextmanager
+async def client_for(http: httpx.AsyncClient, config: dict) -> AsyncIterator[httpx.AsyncClient]:
+    """Yield the right httpx client for *config*.
+
+    If ``config["skip_ssl"]`` is truthy, build a fresh no-SSL-verify
+    client (routed through the active proxy when ``config["proxy"]``
+    is also truthy) and yield it inside an ``async with`` so it gets
+    aclosed on exit. Otherwise yield the outer ``http`` client
+    unchanged.
+
+    Pure refactor of the duplicated branch at three call sites
+    (monitor_one, monitor_one_stream, scrape_one). See #2705.
+    """
+    if config.get("skip_ssl"):
+        async with create_nossl_http_client(use_proxy=bool(config.get("proxy"))) as nossl:
+            yield nossl
+    else:
+        yield http
 
 
 def create_logging_http_client(

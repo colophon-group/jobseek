@@ -49,7 +49,13 @@ monitor_gone_skipped_total = Counter(
 monitor_url_filtered_total = Counter(
     "crawler_monitor_url_filtered_total",
     "URLs dropped by monitor pre-insert sanity checks",
-    ["reason"],
+    # ``board_id`` added in #2704 so a noisy board can be attributed
+    # without grepping logs. Cardinality stays bounded — the counter
+    # only emits when at least one URL is filtered, which in normal
+    # operation is a small minority of boards (URL filters are
+    # symptomatic, not steady-state). The pre-existing ``reason``
+    # aggregation continues to work via PromQL ``sum by (reason)``.
+    ["reason", "board_id"],
 )
 
 monitor_dedup_total = Counter(
@@ -68,6 +74,19 @@ monitor_idle_seconds = Counter(
     "crawler_monitor_idle_seconds_total",
     "Time workers spent idle (no work in queue)",
     ["profile"],
+)
+
+# Per-board monitor failure attribution (#2704). Emitted from the monitor
+# pipeline's outer ``except Exception`` handler — i.e. exactly when an
+# unhandled exception escapes ``_process_one_board_streaming``. Bounded
+# cardinality: only failing boards emit, realistically <100 series in a
+# normal week. The existing per-profile aggregates (``tasks_total``,
+# ``monitor_duration_seconds``) are left untouched so dashboards keep
+# working; this metric strictly adds a new failure-attribution dimension.
+monitor_failed_per_board_total = Counter(
+    "crawler_monitor_failed_per_board_total",
+    "Monitor pipeline failures attributed to a specific board",
+    ["board_id"],
 )
 
 scrape_processed_total = Counter(
