@@ -356,8 +356,49 @@ def _cmd_upload(args: argparse.Namespace) -> int:
     return 0
 
 
+# Per-subcommand list of args holding paths that must be inside
+# LABELLER_DATA_ROOT. Validated up-front in main() before dispatch.
+# Add new subcommand path-args here when extending the CLI; the test
+# suite asserts every path-typed arg in build_parser() is covered.
+_SANDBOXED_PATH_ARGS: dict[str, tuple[str, ...]] = {
+    "sample": ("out",),
+    "prepare-pre-llm": ("out_dir",),
+    "prepare-post-llm": ("out_dir",),
+    "prepare": ("out",),
+    "render-task": ("input", "out", "sections", "extracts_dir"),
+    "validate": ("file", "context", "report"),
+    "merge": ("out",),
+    # `upload` operates only on data_root() / its own staging dir; no
+    # operator-supplied paths.
+    "upload": (),
+}
+
+
+def _sandbox_paths(args: argparse.Namespace) -> int:
+    """Reject any --out / --file / --report path that escapes LABELLER_DATA_ROOT.
+
+    Returns 0 on success, 4 if any path escapes (logged to stderr).
+    """
+    from .paths import PathSandboxError, assert_under_data_root
+
+    for attr in _SANDBOXED_PATH_ARGS.get(args.command, ()):
+        value = getattr(args, attr, None)
+        if value is None:
+            continue
+        try:
+            assert_under_data_root(value)
+        except PathSandboxError as e:
+            print(f"path sandbox: refusing --{attr.replace('_', '-')}: {e}", file=sys.stderr)
+            return 4
+    return 0
+
+
 def main() -> None:
     args = build_parser().parse_args()
+
+    rc = _sandbox_paths(args)
+    if rc != 0:
+        sys.exit(rc)
 
     async_handlers = {"sample", "prepare", "prepare-pre-llm"}
 
