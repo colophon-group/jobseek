@@ -1,0 +1,27 @@
+# Labeller opt-out list.
+#
+# One company slug (matching `company.slug` in companies.csv) per line.
+# Lines starting with `#` and blank lines are ignored.
+#
+# Postings whose `source.company_slug` matches a slug in this file are
+# filtered out at `labeller upload` time (they are NOT pushed to the
+# `viktoroo/jobseek-postings-labelled` HuggingFace dataset). Local labelled
+# JSON files under `data/postings-labelled/postings/<date>/<id>.json` are
+# left in place — only the upload path is gated.
+#
+# Add a slug here when:
+# - The company has filed a takedown request (see README "Takedown" section).
+# - The company has explicitly asked to be excluded from training data.
+#
+# Removing a slug requires the same diligence as adding one. Keep the list
+# alphabetised for review-friendliness.
+#
+# IMPORTANT — adding a slug here only blocks FUTURE uploads. To actually
+# remove already-published rows from the HuggingFace dataset, the operator
+# must additionally:
+#   1. Add the slug here (this file).
+#   2. Remove the affected rows from `data/<date>.jsonl` on HF (manual edit
+#      via the HF UI, or `huggingface_hub.HfApi().delete_file(...)`).
+# A future improvement (tracked separately) will automate step 2.
+#
+# Slugs are matched case-insensitively (lowercased on load).
