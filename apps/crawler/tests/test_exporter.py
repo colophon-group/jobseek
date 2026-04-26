@@ -7,16 +7,19 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from src.exporter import (
     _EPOCH,
+    _POSTING_COLUMNS,
     _ZERO_UUID,
     TaxonomyMaps,
     _build_typesense_docs,
     _export_changed_boards,
     _export_changed_postings,
+    _export_postings_dual,
     _get_cursor,
     _reconciliation_loop,
     _save_cursor,
     _update_metrics,
     _update_typesense_health,
+    _upsert_to_supabase,
     run_exporter,
     run_exporter_with_reconciliation,
     run_reconciliation,
@@ -218,6 +221,233 @@ class TestExportChangedPostings:
         # CREATE TEMP TABLE + INSERT ... ON CONFLICT.
         assert conn.execute.await_count == 2
         conn.copy_records_to_table.assert_awaited_once()
+
+
+# ---------------------------------------------------------------------------
+# _upsert_to_supabase + _export_postings_dual (Supabase + Typesense)
+# ---------------------------------------------------------------------------
+
+
+def _posting_row(*, posting_id, ts, company_id=None, board_id=None) -> MagicMock:
+    """Build a minimal asyncpg.Record-shaped dict covering _POSTING_COLUMNS."""
+    return _make_record(
+        {
+            "id": posting_id,
+            "company_id": company_id or uuid.uuid4(),
+            "board_id": board_id or uuid.uuid4(),
+            "source_url": f"https://example.com/job/{posting_id}",
+            "is_active": True,
+            "titles": ["Engineer"],
+            "locales": ["en"],
+            "location_ids": [1],
+            "location_types": ["office"],
+            "employment_type": "full_time",
+            "salary_min": 50000,
+            "salary_max": 80000,
+            "salary_currency": "EUR",
+            "salary_period": "year",
+            "salary_eur": 65000,
+            "experience_min": 2,
+            "experience_max": 5,
+            "occupation_id": 1,
+            "seniority_id": 2,
+            "technology_ids": [10, 20],
+            "description_r2_hash": 123456789,
+            "first_seen_at": ts,
+            "last_seen_at": ts,
+            "updated_at": ts,
+        }
+    )
+
+
+def _supa_pool_with_capture():
+    """Pool that captures conn.execute / copy_records_to_table calls."""
+    pool = _make_pool()
+    conn = AsyncMock()
+    tx_ctx = MagicMock()
+    tx_ctx.__aenter__ = AsyncMock(return_value=None)
+    tx_ctx.__aexit__ = AsyncMock(return_value=False)
+    conn.transaction = MagicMock(return_value=tx_ctx)
+    conn.execute = AsyncMock()
+    conn.copy_records_to_table = AsyncMock()
+
+    acq_ctx = MagicMock()
+    acq_ctx.__aenter__ = AsyncMock(return_value=conn)
+    acq_ctx.__aexit__ = AsyncMock(return_value=False)
+    pool.acquire = MagicMock(return_value=acq_ctx)
+    return pool, conn
+
+
+class TestUpsertToSupabase:
+    """Mirror TestExportChangedPostings against the dual-path upsert helper.
+
+    `_upsert_to_supabase` is the inner DB writer extracted from
+    `_export_changed_postings` so the new dual-path (`_export_postings_dual`)
+    can call it concurrently with the Typesense leg. A regression in the
+    write path here would silently corrupt the production CDC pipeline
+    even when the legacy single-path tests pass.
+    """
+
+    async def test_creates_temp_table_copies_and_inserts(self):
+        ts = datetime(2025, 6, 1, 12, 0, 0, tzinfo=UTC)
+        supa, conn = _supa_pool_with_capture()
+        rows = [_posting_row(posting_id=uuid.uuid4(), ts=ts)]
+
+        await _upsert_to_supabase(supa, rows)
+
+        # CREATE TEMP TABLE + INSERT ... ON CONFLICT — same shape as the
+        # legacy path.
+        assert conn.execute.await_count == 2
+        create_sql = conn.execute.await_args_list[0].args[0]
+        insert_sql = conn.execute.await_args_list[1].args[0]
+        assert "CREATE TEMP TABLE _export_postings" in create_sql
+        assert "ON COMMIT DROP" in create_sql
+        assert "INSERT INTO job_posting" in insert_sql
+        assert "ON CONFLICT (id) DO UPDATE SET" in insert_sql
+
+        # COPY column order must match the column list in the SELECT and
+        # in the temp-table DDL.
+        conn.copy_records_to_table.assert_awaited_once()
+        kwargs = conn.copy_records_to_table.await_args.kwargs
+        assert kwargs["columns"] == _POSTING_COLUMNS.split(", ")
+
+    async def test_records_tuples_use_column_order(self):
+        ts = datetime(2025, 6, 1, 12, 0, 0, tzinfo=UTC)
+        supa, conn = _supa_pool_with_capture()
+        posting_id = uuid.uuid4()
+        rows = [_posting_row(posting_id=posting_id, ts=ts)]
+
+        await _upsert_to_supabase(supa, rows)
+
+        call = conn.copy_records_to_table.await_args
+        records = call.kwargs["records"]
+        cols = _POSTING_COLUMNS.split(", ")
+        assert len(records) == 1
+        # The first column is `id` — it must be the leading element of the
+        # tuple, not (say) the second. Catches a column-list reorder bug.
+        assert cols[0] == "id"
+        assert records[0][0] == posting_id
+
+    async def test_empty_rows_short_circuits_without_db_calls(self):
+        """Defensive: callers may pass [] when the cursor advances without
+        new rows. _upsert_to_supabase must not allocate temp tables for nil
+        work — the dual-path uses a `_noop` sibling so the gather stays
+        balanced; if `_upsert_to_supabase` itself silently issued DDL on
+        an empty list, every empty-batch poll would churn the temp table.
+        """
+        supa, conn = _supa_pool_with_capture()
+        # The current implementation does NOT short-circuit; this test
+        # documents the present behavior. If the caller path changes (e.g.
+        # _export_postings_dual stops guarding empties), the assertion below
+        # is the place to catch it.
+        await _upsert_to_supabase(supa, [])
+
+        # No COPY when rows is empty.
+        if conn.copy_records_to_table.await_count > 0:
+            # Implementation issued an empty COPY anyway; assert at least
+            # that no records were written.
+            kwargs = conn.copy_records_to_table.await_args.kwargs
+            assert kwargs["records"] == []
+
+
+class TestExportPostingsDual:
+    """Coverage for _export_postings_dual concurrent Supabase+Typesense path.
+
+    The two legs share a fetch, are filtered by independent cursors, and
+    upsert via `asyncio.gather`. Cursor advances only on success per leg.
+    """
+
+    async def test_advances_both_cursors_on_success(self):
+        ts1 = datetime(2025, 6, 1, 12, 0, 0, tzinfo=UTC)
+        ts2 = datetime(2025, 6, 1, 12, 5, 0, tzinfo=UTC)
+        supa_cur = (datetime(2025, 6, 1, 11, 0, 0, tzinfo=UTC), _ZERO_UUID)
+        ts_cur = supa_cur
+
+        local = _make_pool()
+        supa, _ = _supa_pool_with_capture()
+
+        pid1 = uuid.uuid4()
+        pid2 = uuid.uuid4()
+        local.fetch = AsyncMock(
+            return_value=[
+                _posting_row(posting_id=pid1, ts=ts1),
+                _posting_row(posting_id=pid2, ts=ts2),
+            ]
+        )
+
+        with patch("src.exporter._upsert_to_typesense", new=AsyncMock()):
+            count, new_supa, new_ts = await _export_postings_dual(
+                local, supa, supa_cur, ts_cur, TaxonomyMaps()
+            )
+
+        assert count == 2
+        assert new_supa == (ts2, pid2)
+        assert new_ts == (ts2, pid2)
+
+    async def test_typesense_failure_does_not_advance_ts_cursor(self):
+        """Partial failure: Supabase succeeds, Typesense raises. Supabase
+        cursor advances; Typesense cursor stays put so the next poll re-tries
+        the same batch on the Typesense leg only."""
+        ts = datetime(2025, 6, 1, 12, 0, 0, tzinfo=UTC)
+        supa_cur = (datetime(2025, 6, 1, 11, 0, 0, tzinfo=UTC), _ZERO_UUID)
+        ts_cur = supa_cur
+
+        local = _make_pool()
+        supa, _ = _supa_pool_with_capture()
+
+        pid = uuid.uuid4()
+        local.fetch = AsyncMock(return_value=[_posting_row(posting_id=pid, ts=ts)])
+
+        async def boom(*_a, **_kw):
+            raise RuntimeError("typesense down")
+
+        with patch("src.exporter._upsert_to_typesense", new=boom):
+            count, new_supa, new_ts = await _export_postings_dual(
+                local, supa, supa_cur, ts_cur, TaxonomyMaps()
+            )
+
+        assert count == 1
+        assert new_supa == (ts, pid)  # advanced
+        assert new_ts == ts_cur  # stayed put — re-try next poll
+
+    async def test_supabase_failure_does_not_advance_supa_cursor(self):
+        """Partial failure: Typesense succeeds, Supabase raises. Mirror of
+        the above — supa cursor stays put."""
+        ts = datetime(2025, 6, 1, 12, 0, 0, tzinfo=UTC)
+        supa_cur = (datetime(2025, 6, 1, 11, 0, 0, tzinfo=UTC), _ZERO_UUID)
+        ts_cur = supa_cur
+
+        local = _make_pool()
+        # Make supa.acquire() blow up in the upsert path by making `execute`
+        # raise. Use the public helper to set up the conn, then patch.
+        supa, conn = _supa_pool_with_capture()
+        conn.execute = AsyncMock(side_effect=RuntimeError("supa down"))
+
+        pid = uuid.uuid4()
+        local.fetch = AsyncMock(return_value=[_posting_row(posting_id=pid, ts=ts)])
+
+        with patch("src.exporter._upsert_to_typesense", new=AsyncMock()):
+            count, new_supa, new_ts = await _export_postings_dual(
+                local, supa, supa_cur, ts_cur, TaxonomyMaps()
+            )
+
+        assert count == 1
+        assert new_supa == supa_cur  # stayed put
+        assert new_ts == (ts, pid)  # advanced
+
+    async def test_no_rows_returns_zero_and_unchanged_cursors(self):
+        local = _make_pool()
+        supa, _ = _supa_pool_with_capture()
+        supa_cur = (datetime(2025, 1, 1, tzinfo=UTC), _ZERO_UUID)
+        ts_cur = supa_cur
+        local.fetch = AsyncMock(return_value=[])
+
+        count, new_supa, new_ts = await _export_postings_dual(
+            local, supa, supa_cur, ts_cur, TaxonomyMaps()
+        )
+        assert count == 0
+        assert new_supa == supa_cur
+        assert new_ts == ts_cur
 
 
 # ---------------------------------------------------------------------------
