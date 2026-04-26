@@ -1,6 +1,13 @@
 ---
 name: jobseek-label-daily
 description: Daily labelled-postings routine — sample diverse job postings from the last 24h, label them via specialized subagents, upload to HuggingFace. Invoke with optional --date and --count. Spec in docs/15-data-sampling-routine.md.
+allowed-tools:
+  - Bash(cd apps/crawler)
+  - Bash(labeller *)
+  - Read
+  - Write
+  - Edit
+  - Agent
 ---
 
 You are the **orchestrator** for the daily labelled-postings routine. Follow
@@ -274,9 +281,38 @@ Print a final summary:
 - Never modify the orchestrator's own prompt file or subagent files.
 - Never make direct Anthropic API calls — everything is an `Agent(...)` tool
   call inside this Claude Code session.
+- Never invoke `gh`, `git`, `curl`, `mkdir`, `rm`, `mv`, `cat`,
+  `python`, or any other shell command outside `cd apps/crawler` and
+  `labeller *` during a labelling run. The pipeline only needs the
+  `labeller` CLI (with `cd apps/crawler` as the cwd-setting prelude in
+  Step 0), plus `Read`, `Write`, `Edit`, and `Agent`. The frontmatter
+  pre-approves exactly that surface; anything else falls through to the
+  user's default permission policy and will surface a prompt — treat
+  that prompt as a stop signal, not as a request to approve.
 - If any command fails unexpectedly (non-zero exit that isn't a known
   validate-failed path), stop the run for that posting, record the error,
   continue to the next posting.
 - If more than 50% of postings end with `qa_verdict=rejected`, stop after
   the current posting and emit a warning in the summary — the normalizer
   or a subagent may need attention.
+
+## Security model
+
+The `allowed-tools:` frontmatter at the top of this file is **additive**:
+it pre-approves the legitimate orchestrator surface (`labeller` Bash
+invocations, `Read`, `Write`, `Edit`, `Agent`) so the routine runs
+without per-step prompts. It does **not** deny anything — Claude Code
+permissions are augmentative, not restrictive. The actual containment
+surface is:
+
+1. The Hard rules above, which forbid out-of-lane invocations.
+2. The user's default permission policy: any tool call outside the
+   pre-approved set surfaces a permission prompt that the operator can
+   reject. A prompt during a labelling run is itself a red flag — the
+   playbook should never need approval beyond what's pre-approved.
+3. For stronger enforcement, the operator can add `Bash(gh *)`,
+   `Bash(git *)`, `Bash(curl *)` to the `deny` list in
+   `.claude/settings.json` (project-wide) or
+   `.claude/settings.local.json` (operator-local). Project-wide deny is
+   currently *not* set because it would interfere with non-labeller
+   sessions that legitimately need those tools.
