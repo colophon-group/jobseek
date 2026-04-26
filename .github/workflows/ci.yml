@@ -121,6 +121,8 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - run: pnpm --filter @jseek/mcp-server build
+
       - run: pnpm --filter @jobseek/web test
 
   test-crawler:

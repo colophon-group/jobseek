@@ -36,6 +36,16 @@ monitor_jobs_discovered = Counter(
     ["profile", "action"],
 )
 
+# Cycles where _MARK_GONE_BY_TIMESTAMP was bypassed by the resilience guards
+# in ``processing/board.py`` (#2723 drop guard, #2724 blast-radius guard).
+# A non-zero rate is the early signal of a paginating monitor truncating
+# silently (#2722) — the alert in #2726 fires off this counter.
+monitor_gone_skipped_total = Counter(
+    "crawler_monitor_gone_skipped_total",
+    "Cycles where gone-detection was skipped by a resilience guard",
+    ["reason"],
+)
+
 monitor_url_filtered_total = Counter(
     "crawler_monitor_url_filtered_total",
     "URLs dropped by monitor pre-insert sanity checks",
