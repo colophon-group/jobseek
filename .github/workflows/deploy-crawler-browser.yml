@@ -72,8 +72,12 @@ jobs:
           # leaked container doesn't poison subsequent steps or runs.
           trap 'docker logs ts-smoke 2>&1 | tail -50 || true; docker rm -f ts-smoke 2>/dev/null || true' EXIT
 
+          # Typesense fails to start if --data-dir doesn't exist. Use a
+          # tmpfs for a writable, ephemeral data dir without touching the
+          # runner filesystem.
           docker run -d --name ts-smoke --network host \
-            typesense/typesense:27.1 --data-dir /tmp/ts-data --api-key=smoke
+            --tmpfs /data:rw \
+            typesense/typesense:27.1 --data-dir /data --api-key=smoke
 
           ready=0
           for _ in $(seq 1 90); do
