@@ -519,7 +519,12 @@ async def _process_scrape_work(
             schedule anyway.
             """
             async with local_pool.acquire() as conn:
-                await conn.execute(_RECORD_SCRAPE_FAILURE, posting_id)
+                # Stale config is a transient bookkeeping issue, not a
+                # signal that the upstream URL is gone. Pass
+                # ``permanent_gone=False`` so the existing 30/60-min
+                # backoff applies — Redis re-sync will hand a fresh
+                # config in time. (#2708 SQL signature.)
+                await conn.execute(_RECORD_SCRAPE_FAILURE, posting_id, False)
             await _delete_scrape_hash()
             tasks_total.labels(kind="scrape", status="stale_config").inc()
             worker_log.warning(

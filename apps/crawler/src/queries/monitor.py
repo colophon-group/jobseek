@@ -163,6 +163,13 @@ touched AS (
 relisted AS (
   UPDATE job_posting
   SET is_active = true, missing_count = 0,
+      -- Reset scrape_failures so a previously scrape-tombstoned URL
+      -- (queries/scrape.py:_RECORD_SCRAPE_FAILURE budget tombstone)
+      -- gets a fresh budget on its next try. Without this, a relisted
+      -- posting comes back with scrape_failures=3 and the next single
+      -- failure re-tombstones it — a flap loop on chronically slow
+      -- upstreams. See critic-B finding for #2708 / PR #2732.
+      scrape_failures = 0,
       last_seen_at = now(),
       next_scrape_at = CASE WHEN $3::boolean THEN NULL ELSE now() END
   FROM discovered d

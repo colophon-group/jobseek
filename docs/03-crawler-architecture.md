@@ -106,15 +106,31 @@ For every board cycle, the monitor produces the current per-board URL set (sitem
 
 This path implements the natural model: *"the listing is the source of truth — if the upstream listing stops mentioning the URL, the posting is gone."* It works whenever monitor and listing agree.
 
-### 2. Scrape authority (fallback) — `_RECORD_SCRAPE_FAILURE` budget tombstone
+### 2. Scrape authority (fallback) — three failure classes
 
 Some upstream platforms violate the natural model. Avature's US Deloitte tenant is the documented case (issue #2708): the `apply.deloitte.com` SearchJobs SPA continues to list JobDetail URLs that the application then refuses to serve at the per-posting endpoint, returning 403 with a real Avature error page body. The monitor sees "URL still listed → not gone"; the scraper sees "403 → not fetchable". Without a fallback, the posting stays `is_active = true` forever — a dead link in the web app — because the monitor's signal never trips the delist threshold.
 
-The fallback rule: when the per-posting scraper exhausts its existing 3-failure retry budget (≈90 minutes of doubling backoff: 0/30/60 min), `_RECORD_SCRAPE_FAILURE` *also* flips `is_active = false`, in addition to setting `next_scrape_at = NULL`. RFC-defined "this resource is gone" responses (HTTP 404 / 410) short-circuit the budget via the SQL's `permanent_gone` parameter and tombstone on the first failure. **Both branches are universal — no host allowlist.** The budget catches every variant of the same pattern (Avature 403, Workday cookieless 403, archived-then-403 on any platform). A host allowlist would be guaranteed-stale within a quarter; the budget is fix-it-once.
+The scrape side classifies every failure into one of three buckets, decided by `_is_permanent_gone` and `_is_budget_eligible_failure` in `processing/scrape.py`:
+
+- **`permanent_gone`** (HTTP 404 / 410) — `_RECORD_SCRAPE_FAILURE` with `permanent_gone=True`: tombstone IMMEDIATELY on the first failure. RFC-defined "this resource is gone" semantics. Universal across every host.
+- **`budget_eligible`** (HTTP 4xx other than 401, 403, 429) — `_RECORD_SCRAPE_FAILURE` with `permanent_gone=False`: counts toward the 3-failure tombstone budget (≈90 min wall-clock with the 30/60-min doubling backoff). Catches platforms that use 400 / 422 / 405 for an archived posting.
+- **`transient`** (HTTP 5xx, 401, 403, 429, network timeouts, connect errors, and successful HTTP fetch with empty extraction) — `_RECORD_SCRAPE_TRANSIENT`: backs off using the same doubling-then-stop math, but **never** flips `is_active`. The monitor authority remains the only delisting decision-maker for these failures.
+
+The transient bucket exists as a deliberate safety choice. The first iteration of #2708's fix made every 3rd consecutive failure tombstone, regardless of failure shape. Cold-read critics surfaced two false-positive risks: a 2-hour upstream 5xx incident would mass-tombstone live postings cohort-wide, and a regex break in an extraction config would tombstone every posting on the affected board. The transient bucket protects against both.
+
+The cost of the safety: 403 from Avature/similar archived-posting platforms is in the transient bucket and is **not** auto-tombstoned by the scrape side. Those URLs stay orphaned until the monitor authority delists them (Avature's SearchJobs SPA eventually drops archived URLs from the listing) or until an operator runs a one-shot cleanup. We accept this trade-off rather than tombstoning live postings during transient WAF challenges, where Cloudflare / Datadome / Akamai also return 403.
+
+A host allowlist for the Avature 403 pattern was rejected (closed PR #2720) as overfitting: it rots fast as new platforms appear with the same quirk. The classification is universal — no host names anywhere in the decision logic.
 
 ### 3. Recovery — relisted path
 
-Either authority's tombstone is reversible. The monitor's discovery insert (`queries/monitor.py:163` — the `relisted` branch) flips `is_active = true` and resets `missing_count = 0` when a previously-tombstoned URL reappears in a fresh monitor cycle. So a transient 3-failure cluster on a still-live URL self-heals on the next monitor pass; only URLs that the monitor *also* doesn't re-list stay tombstoned.
+Either authority's tombstone is reversible. The monitor's discovery query (`queries/monitor.py` — the `relisted` CTE) flips `is_active = true`, resets `missing_count = 0`, AND resets `scrape_failures = 0` when a previously-tombstoned URL reappears in a fresh monitor cycle. So a transient 3-failure cluster on a still-live URL self-heals on the next monitor pass; only URLs that the monitor *also* doesn't re-list stay tombstoned.
+
+The `scrape_failures` reset is load-bearing: without it, a relisted posting comes back with `scrape_failures = 3`, and the very next failed scrape would re-tombstone it via the budget condition — a flap loop on chronically slow upstreams.
+
+### 4. Known recovery gap — cross-tenant URLs
+
+When the same source URL is owned by board A but also discovered as a `foreign_touched` URL under board B (cross-tenant duplication — ByteDance/TikTok share a careers host; Glencore reaches GCAA's Workday tenant), only `last_seen_at` is refreshed on the foreign-board match (`queries/monitor.py` — `foreign_touched` CTE). `is_active` is never flipped back. A scrape-tombstoned posting on board A whose URL the monitor only finds via board B will stay tombstoned even though the URL is still listed somewhere. This is a pre-existing recovery gap made more visible by the scrape-side authority — flagged as a known limitation rather than a regression.
 
 ### Why dual authority
 

@@ -46,6 +46,7 @@ from src.queries.scrape import (
     _FETCH_POSTING_FOR_ENRICH,
     _RECORD_SCRAPE_FAILURE,
     _RECORD_SCRAPE_SUCCESS,
+    _RECORD_SCRAPE_TRANSIENT,
     _UPDATE_ENRICH_CONTENT,
 )
 from src.shared.html_normalize import normalize_description_html
@@ -148,7 +149,7 @@ class _BoardScraperInfo:
     rich_board_ids: set[str]  # boards from rich monitors with no explicit scraper
 
 
-# ── Permanent-gone signal (scrape-side delisting fast path) ────────────
+# ── Failure classification (scrape-side delisting authority) ───────────
 #
 # Part of the dual-authority delisting model — see
 # docs/03-crawler-architecture.md "Delisting model — when is a posting
@@ -156,37 +157,83 @@ class _BoardScraperInfo:
 # AUTHORITY (the fallback half); the monitor-side primary authority
 # lives in ``queries/monitor.py:_MARK_GONE_BY_TIMESTAMP``.
 #
-# The scrape-side authority has two triggers, both implemented inside
-# ``_RECORD_SCRAPE_FAILURE`` (queries/scrape.py):
-#   * Budget exhaustion: ``scrape_failures + 1 >= 3``. Universal,
-#     ≈90 min wall-clock. No code change needed at the call site —
-#     every failure already passes through the SQL.
-#   * Permanent-gone short-circuit: caller passes ``permanent_gone=True``.
-#     Tombstones on the first failure, no budget consumed. Used for
-#     RFC-defined "gone" responses (HTTP 404 / 410). The predicate
-#     below decides which exceptions trip this fast path.
+# Every scrape failure is classified into one of three buckets, and the
+# bucket decides whether the failure counts toward the 3-failure budget
+# tombstone in ``_RECORD_SCRAPE_FAILURE``. The split exists because the
+# original "every failure counts" policy was unsafe — a 2-hour upstream
+# 5xx incident or a regex break in an extraction config would
+# mass-tombstone live postings (critic findings A2 + C5 against the
+# first iteration of #2708's fix).
 #
-# 403 is deliberately NOT a permanent-gone signal here. The Avature
-# archived-JobDetail 403 (issue #2708) is the original motivation,
-# but adding 403 to the universal list would over-aggress on transient
-# WAF / rate-limit / missing-cookie cases on every other platform.
-# The budget tombstone catches the Avature pattern in 3 retries; the
-# extra latency is the price of not overfitting (see closed PR #2720
-# for the host-allowlist alternative we rejected).
+#   * ``permanent_gone`` (HTTP 404 / 410): RFC-defined "this resource is
+#     gone". Tombstone IMMEDIATELY, on the first failure, no budget
+#     consumed. Caller passes ``permanent_gone=True`` to the SQL.
+#   * ``budget_eligible`` (4xx other than 401, 403, 429): the upstream
+#     said "no" with a status that's typically meaningful — most
+#     archived-posting flows return one of these. Counts toward the
+#     3-failure tombstone budget. Caller passes ``permanent_gone=False``;
+#     the budget condition in the SQL fires after 3 such failures.
+#   * ``transient`` (5xx, timeouts, connect errors, 401/403/429,
+#     successful HTTP fetch with empty extraction): the upstream is
+#     either temporarily unhealthy or our extraction config is broken.
+#     Either way, tombstoning is wrong. Caller takes the
+#     ``_RECORD_SCRAPE_TRANSIENT`` path which backs off without bumping
+#     the tombstone counter.
+#
+# Note: 403 is in ``transient``, not ``budget_eligible``. The Avature
+# archived-JobDetail 403 (issue #2708 trigger) is *not* auto-tombstoned
+# by this path. It tombstones via the monitor authority once Avature's
+# SearchJobs SPA stops citing the URL (eventually), or by a one-shot
+# operator cleanup if the listing lies indefinitely. Adding 403 to
+# budget_eligible would re-introduce the false-positive risk on
+# transient WAF challenges (Cloudflare/Datadome/Akamai cold-connect
+# patterns return 403). Trade-off accepted: a small set of
+# Avature-style URLs may stay orphaned briefly, but no live posting
+# gets falsely tombstoned during a WAF blip.
+#
+# 401 is transient because it usually signals a missing session cookie,
+# not a deleted resource. 429 is transient because it's literally
+# "back off, try later".
 
 
 def _is_permanent_gone(exc: BaseException) -> bool:
-    """Return True if *exc* trips the permanent-gone short-circuit in
-    ``_RECORD_SCRAPE_FAILURE``.
+    """Return True for HTTP 404 / 410 — RFC-defined "this resource is
+    gone". The caller short-circuits the budget and tombstones on the
+    first failure when this returns True.
 
-    See module-level comment block above for the design rationale.
-    Strict 404 / 410 only — every other failure (including 403, 5xx,
-    timeouts) falls through to the standard scrape-failure backoff,
-    which still tombstones after the 3-failure budget.
+    Coverage caveat: this only fires when the underlying scraper raises
+    ``httpx.HTTPStatusError``. Several scrapers swallow the status and
+    return an empty ``JobContent()`` instead — eightfold (jsonld
+    fallback), workday (S22 / 404 returns blank), api_sniffer scraper.
+    For those, a real 404 reaches us as an empty-extraction signal,
+    which the caller correctly classifies as transient (no false
+    tombstone) at the cost of leaving the orphan visible until the
+    monitor delists it. Documented in
+    docs/03-crawler-architecture.md.
     """
     if not isinstance(exc, httpx.HTTPStatusError):
         return False
     return exc.response.status_code in (404, 410)
+
+
+def _is_budget_eligible_failure(exc: BaseException) -> bool:
+    """Return True for failures that should COUNT toward the 3-failure
+    tombstone budget in ``_RECORD_SCRAPE_FAILURE``.
+
+    Eligible: HTTP 4xx other than 401 / 403 / 429.
+    Ineligible (transient): 5xx, network errors, 401 / 403 / 429,
+    non-HTTP exceptions. Those should take the
+    ``_RECORD_SCRAPE_TRANSIENT`` path.
+    """
+    if not isinstance(exc, httpx.HTTPStatusError):
+        return False
+    s = exc.response.status_code
+    if s in (404, 410):
+        # Permanent-gone signals are handled by the immediate-tombstone
+        # path, not the budget. Returning False here keeps the
+        # classification disjoint at the call site.
+        return False
+    return 400 <= s < 500 and s not in (401, 403, 429)
 
 
 def _board_has_enrich(metadata: dict) -> list[str] | None:
@@ -428,12 +475,15 @@ async def _process_one_enrich_scrape(
         # Success check: at least one enriched field is non-empty
         has_data = any(getattr(content, f, None) is not None for f in enrich_fields)
         if not has_data:
-            # No exception raised — this is a successful HTTP fetch
-            # that produced no usable enrichment fields. Treat as a
-            # transient failure (`permanent_gone=False`) so the
-            # standard backoff applies.
+            # Successful HTTP fetch but no usable enrichment fields.
+            # Could mean the page is now an archive shell (real "gone")
+            # OR the extraction config broke. Indistinguishable here,
+            # so we MUST take the transient path — tombstoning a live
+            # posting because of a regex bug would be much worse than
+            # leaving an archived posting visible until the monitor
+            # delists it.
             async with pool.acquire() as conn:
-                await conn.execute(_RECORD_SCRAPE_FAILURE, item.job_posting_id, False)
+                await conn.execute(_RECORD_SCRAPE_TRANSIENT, item.job_posting_id)
             return False, monotonic() - t0
 
         # Fetch existing row once: used for both backfill detection and
@@ -598,6 +648,7 @@ async def _process_one_enrich_scrape(
         elapsed = monotonic() - t0
         error_msg = _error_message(exc)
         permanent_gone = _is_permanent_gone(exc)
+        budget_eligible = _is_budget_eligible_failure(exc)
         # Permanent-gone (#2708): demote to info — the posting is just
         # archived upstream, not a real error worth paging on.
         if permanent_gone:
@@ -618,7 +669,18 @@ async def _process_one_enrich_scrape(
             _lookups_mod._location_resolver.drain_location_misses()
         with contextlib.suppress(Exception):
             async with pool.acquire() as conn:
-                await conn.execute(_RECORD_SCRAPE_FAILURE, item.job_posting_id, permanent_gone)
+                if permanent_gone or budget_eligible:
+                    await conn.execute(
+                        _RECORD_SCRAPE_FAILURE,
+                        item.job_posting_id,
+                        permanent_gone,
+                    )
+                else:
+                    # Transient class — 5xx, timeout, connect, 401 / 403
+                    # / 429, etc. Backs off without bumping the
+                    # tombstone budget, so a brief upstream incident
+                    # cannot mass-tombstone live postings.
+                    await conn.execute(_RECORD_SCRAPE_TRANSIENT, item.job_posting_id)
         return False, elapsed
 
 
@@ -690,11 +752,15 @@ async def _process_one_scrape(
                 )
             else:
                 # Step failed without an HTTP exception (e.g. extraction
-                # produced no title) and no fallback step is configured.
-                # Same transient-failure semantics as the no-data branch
-                # above; standard backoff applies.
+                # produced no title or garbage title) and no fallback
+                # step is configured. Could be a real archive page OR a
+                # broken extraction config. Take the transient path so
+                # a regex regression on a popular board (eightfold,
+                # workday) doesn't tombstone thousands of live postings
+                # — the monitor authority will delist real archives
+                # eventually.
                 async with pool.acquire() as conn:
-                    await conn.execute(_RECORD_SCRAPE_FAILURE, item.job_posting_id, False)
+                    await conn.execute(_RECORD_SCRAPE_TRANSIENT, item.job_posting_id)
             return False, monotonic() - t0
 
         content.description = normalize_description_html(content.description)
@@ -849,6 +915,7 @@ async def _process_one_scrape(
         elapsed = monotonic() - t0
         error_msg = _error_message(exc)
         permanent_gone = _is_permanent_gone(exc)
+        budget_eligible = _is_budget_eligible_failure(exc)
         if permanent_gone:
             log.info(
                 "batch.scrape.gone",
@@ -869,7 +936,14 @@ async def _process_one_scrape(
             _lookups_mod._location_resolver.drain_location_misses()
         with contextlib.suppress(Exception):
             async with pool.acquire() as conn:
-                await conn.execute(_RECORD_SCRAPE_FAILURE, item.job_posting_id, permanent_gone)
+                if permanent_gone or budget_eligible:
+                    await conn.execute(
+                        _RECORD_SCRAPE_FAILURE,
+                        item.job_posting_id,
+                        permanent_gone,
+                    )
+                else:
+                    await conn.execute(_RECORD_SCRAPE_TRANSIENT, item.job_posting_id)
         return False, elapsed
 
 

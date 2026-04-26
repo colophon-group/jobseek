@@ -206,32 +206,38 @@ WHERE jp.id = $1
 # Short version: the monitor is the PRIMARY delisting authority
 # (``_MARK_GONE_BY_TIMESTAMP`` in queries/monitor.py — fast, fires
 # within one monitor cycle when the upstream listing stops mentioning
-# the URL). This UPDATE is the SCRAPE-SIDE FALLBACK, needed because
-# some upstream platforms violate the natural model: their listing
-# keeps citing URLs that the per-posting endpoint then refuses to
-# serve. The Avature US Deloitte tenant (issue #2708) is the
-# documented case — SearchJobs lists JobDetail URLs that return 403.
-# Without the fallback, those postings stay ``is_active = true`` forever.
+# the URL). The two SQL queries below are the SCRAPE-SIDE FALLBACK,
+# needed because some upstream platforms violate the natural model
+# (issue #2708 — the Avature US Deloitte tenant lists JobDetail URLs
+# that return 403 forever).
 #
-# Two branches in this UPDATE both transition is_active->false:
-#   1. ``scrape_failures + 1 >= 3``  — the existing 3-failure retry
-#      budget is exhausted (≈90 min wall-clock with the 30/60-min
-#      doubling backoff). Universal across every host.
-#   2. ``$2::boolean = true`` (caller passes ``permanent_gone=True``) —
-#      RFC-defined "this resource is gone" responses (404 / 410)
-#      short-circuit the budget. Also universal across every host.
+# Three failure paths, decided by the caller's classification (see
+# ``processing/scrape.py: _is_permanent_gone`` /
+# ``_is_budget_eligible_failure``):
 #
-# Both rules are deliberately host-agnostic. A host allowlist for the
-# Avature 403 pattern was rejected (closed PR #2720) as overfitting:
-# it rots fast as new platforms appear with the same quirk, and the
-# 3-failure budget catches every variant for free.
+#   _RECORD_SCRAPE_FAILURE (this UPDATE):
+#     * ``$2::boolean = true`` (caller passes ``permanent_gone=True``,
+#       i.e. HTTP 404 / 410) — tombstone IMMEDIATELY, no budget consumed.
+#     * Otherwise — bumps ``scrape_failures``; tombstones when
+#       ``scrape_failures + 1 >= 3``. Caller only takes this path for
+#       budget-eligible 4xx (excluding 401, 403, 429 — those are
+#       transient, see below).
+#
+#   _RECORD_SCRAPE_TRANSIENT (separate UPDATE):
+#     * Fired for 5xx, network errors, timeouts, 401, 403, 429, and
+#       successful HTTP fetches with empty extraction.
+#     * Backs off WITHOUT bumping the tombstone counter. A 2-hour
+#       upstream 5xx incident (or a regex break in an extraction
+#       config) cannot mass-tombstone live postings via this path.
+#     * The monitor authority remains the only way these URLs can
+#       transition to is_active=false.
 #
 # Recovery: a tombstoned posting that the monitor later re-discovers
-# flows through the ``relisted`` branch in queries/monitor.py:163,
-# which flips is_active back to true and resets missing_count. So a
-# transient 3-failure cluster on a still-live URL self-heals on the
-# next monitor cycle; only URLs the monitor *also* doesn't re-list
-# stay tombstoned.
+# flows through the ``relisted`` branch in queries/monitor.py, which
+# flips is_active back to true AND resets ``scrape_failures = 0`` so
+# the recovered posting gets a fresh budget. Without that reset a
+# scrape-tombstoned-then-relisted posting would re-tombstone on the
+# next single failure (critic-B finding for #2708 / PR #2732).
 _RECORD_SCRAPE_FAILURE = """
 UPDATE job_posting
 SET scrape_failures   = scrape_failures + 1,
@@ -245,8 +251,34 @@ SET scrape_failures   = scrape_failures + 1,
         ELSE is_active
     END,
     updated_at        = CASE
+        -- Only bump on the tombstone branch — that's a state change
+        -- the exporter cursor needs to push to Supabase + Typesense
+        -- (cursor key is ``(updated_at, id)``). For pure backoff
+        -- updates we leave updated_at alone so we don't reflow
+        -- unchanged docs.
         WHEN $2::boolean OR scrape_failures + 1 >= 3 THEN now()
         ELSE updated_at
+    END,
+    leased_until = NULL
+WHERE id = $1
+"""
+
+# Transient-failure path (#2708 follow-up critic findings). Used for
+# 5xx, timeouts, connect errors, 401 / 403 / 429, and empty-extraction
+# results. Bumps scrape_failures so the existing doubling-backoff math
+# still applies, but DOES NOT use scrape_failures as a tombstone
+# trigger — the upper-bound clamp at 3 caps both the backoff and stops
+# perpetual retries (next_scrape_at becomes NULL after 3 such failures
+# just like the legacy behaviour pre-#2708), but is_active stays true
+# so the monitor authority remains the sole delisting decision-maker
+# for transient-class failures.
+_RECORD_SCRAPE_TRANSIENT = """
+UPDATE job_posting
+SET scrape_failures   = scrape_failures + 1,
+    last_scraped_at   = now(),
+    next_scrape_at    = CASE
+        WHEN scrape_failures + 1 >= 3 THEN NULL
+        ELSE now() + (30 * pow(2, scrape_failures)) * interval '1 minute'
     END,
     leased_until = NULL
 WHERE id = $1
