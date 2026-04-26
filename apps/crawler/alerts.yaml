@@ -138,25 +138,46 @@ groups:
 
       # Catches the failure mode from the 2026-04-26 NHS spike (#2722):
       # a paginating monitor silently truncates and tombstones live
-      # postings via _MARK_GONE_BY_TIMESTAMP. Compares the fleet 30m
-      # gone rate against the rolling 7-day median of itself; alerts
-      # when it spikes >3×. Subquery `[7d:30m]` evaluates the inner
-      # expression every 30m for the last 7 days, then quantile_over_time
-      # picks the median.
+      # postings via _MARK_GONE_BY_TIMESTAMP. Two conditions must both
+      # hold:
       #
-      # Fleet-level only — `crawler_monitor_jobs_discovered` does not
-      # carry a `board_id` label (cardinality concern with ~3000
-      # boards). Per-board alerting is a Loki-LogQL follow-up; the
-      # `batch.monitor.success` log line includes board_id and gone
+      # 1. RATIO: fleet 30m gone rate exceeds 3× the rolling 7-day
+      #    median of itself. Subquery `[7d:30m]` evaluates the inner
+      #    expression every 30m for the last 7 days, then
+      #    quantile_over_time(0.5, ...) picks the median (more robust
+      #    to single-cycle outliers polluting the baseline than mean).
+      #
+      # 2. FLOOR: absolute rate above 5 events/sec averaged over the
+      #    same 30m window. Without this, the alert pages 3–7×/day on
+      #    quiet weekends — fleet-wide ``gone`` is bursty (cron-cadenced
+      #    sweeps), and on a quiet baseline 3× median is easy to cross
+      #    on a small board's normal turnover. The floor was chosen
+      #    above the observed normal-day p95 (~3–4/s); the NHS spike
+      #    peaked above 30/s, well clear of the floor. Verified by
+      #    backtest in PR review (#2726).
+      #
+      # Note the metric carries the ``_total`` suffix at the
+      # Prometheus exposition layer (prometheus_client convention),
+      # so the query name is ``crawler_monitor_jobs_discovered_total``
+      # even though the constructor argument is the same.
+      #
+      # Fleet-level only — the counter does not carry a ``board_id``
+      # label (cardinality concern with ~3000 boards). Per-board
+      # alerting is a Loki-LogQL follow-up; the
+      # ``batch.monitor.success`` log line includes board_id and gone
       # count and can be aggregated there.
       - alert: DelistingRateSpike
         expr: |
-          sum(rate(crawler_monitor_jobs_discovered{action="gone"}[30m]))
-            >
-          3 *
-          quantile_over_time(0.5,
-            sum(rate(crawler_monitor_jobs_discovered{action="gone"}[30m]))[7d:30m]
+          (
+            sum(rate(crawler_monitor_jobs_discovered_total{action="gone"}[30m]))
+              >
+            3 *
+            quantile_over_time(0.5,
+              sum(rate(crawler_monitor_jobs_discovered_total{action="gone"}[30m]))[7d:30m]
+            )
           )
+          and
+          sum(rate(crawler_monitor_jobs_discovered_total{action="gone"}[30m])) > 5
         for: 30m
         labels:
           severity: page
@@ -164,12 +185,13 @@ groups:
         annotations:
           summary: "Crawler delisting rate >3× 7d median for 30m"
           description: |
-            Fleet-wide ``crawler_monitor_jobs_discovered{action="gone"}``
-            rate is above 3× the 7-day rolling median for >30 minutes.
-            The 2026-04-26 NHS spike (#2722) is the failure mode this
-            catches: a paginating monitor silently truncates URL
-            discovery and `_MARK_GONE_BY_TIMESTAMP` tombstones live
-            postings.
+            Fleet-wide
+            ``crawler_monitor_jobs_discovered_total{action="gone"}`` rate
+            is above 3× the 7-day rolling median *and* above 5/s for
+            >30 minutes. The 2026-04-26 NHS spike (#2722) is the
+            failure mode this catches: a paginating monitor silently
+            truncates URL discovery and ``_MARK_GONE_BY_TIMESTAMP``
+            tombstones live postings.
           runbook: |
             # 1. Identify the offending board(s) via Loki
             {container=~"worker-.*|browser-.*"} |= "batch.monitor.success"
@@ -190,10 +212,16 @@ groups:
       # notice the underlying monitor bug even when the guards are
       # doing their job.
       #
+      # NOTE: ``crawler_monitor_gone_skipped_total`` is introduced by
+      # PR #2729. Until that ships the metric series doesn't exist
+      # and PromQL returns an empty vector — this alert is silently
+      # no-op. After #2729 lands it becomes active automatically; no
+      # alert-config change needed.
+      #
       # Email severity (not page) because the guards already prevented
       # the user-visible damage; this is "investigate within business
       # hours". Threshold of 5 skips/hour for 1h debounces single
-      # noisy boards. Bump to ≤1 if it turns out to be too quiet.
+      # noisy boards. Bump down if it turns out to be too quiet.
       - alert: GoneDetectionGuardsFiring
         expr: sum(increase(crawler_monitor_gone_skipped_total[1h])) > 5
         for: 1h
