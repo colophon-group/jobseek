@@ -15,3 +15,13 @@
 #
 # Removing a slug requires the same diligence as adding one. Keep the list
 # alphabetised for review-friendliness.
+#
+# IMPORTANT — adding a slug here only blocks FUTURE uploads. To actually
+# remove already-published rows from the HuggingFace dataset, the operator
+# must additionally:
+#   1. Add the slug here (this file).
+#   2. Remove the affected rows from `data/<date>.jsonl` on HF (manual edit
+#      via the HF UI, or `huggingface_hub.HfApi().delete_file(...)`).
+# A future improvement (tracked separately) will automate step 2.
+#
+# Slugs are matched case-insensitively (lowercased on load).

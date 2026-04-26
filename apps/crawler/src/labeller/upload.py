@@ -245,8 +245,10 @@ def _load_optout() -> set[str]:
     """Read company slugs from the opt-out list. Returns empty set if absent.
 
     File format: one slug per line, ``#`` comments and blank lines ignored.
-    Whitespace is trimmed. Slug matching is exact (case-sensitive); the
-    upstream ``companies.csv`` slugs are lowercase by convention.
+    Whitespace is trimmed and slugs are lowercased on load — companies.csv
+    slugs are lowercase by convention, so accepting upper-case entries in
+    the opt-out file would silently fail to match. Lowercasing avoids that
+    foot-gun.
     """
     path = optout_file()
     if not path.exists():
@@ -256,7 +258,7 @@ def _load_optout() -> set[str]:
         line = line.strip()
         if not line or line.startswith("#"):
             continue
-        slugs.add(line)
+        slugs.add(line.lower())
     return slugs
 
 
@@ -281,7 +283,7 @@ def _accepted_by_date(run_date: str | None) -> dict[str, list[dict]]:
             if (data.get("labelling_meta") or {}).get("qa_verdict") != "accepted":
                 continue
             slug = (data.get("source") or {}).get("company_slug")
-            if slug in optout:
+            if isinstance(slug, str) and slug.lower() in optout:
                 continue
             accepted.append(data)
         if accepted:

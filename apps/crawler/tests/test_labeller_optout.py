@@ -60,10 +60,15 @@ def test_load_optout_skips_blank_lines_and_comments(optout_path: Path) -> None:
     assert _load_optout() == {"acme", "widgets-corp", "evil-megacorp"}
 
 
-def test_load_optout_is_case_sensitive(optout_path: Path) -> None:
-    optout_path.write_text("Acme\n")
-    assert _load_optout() == {"Acme"}
-    assert "acme" not in _load_optout()
+def test_load_optout_lowercases_entries(optout_path: Path) -> None:
+    """Slugs are normalised to lowercase on load.
+
+    companies.csv slugs are lowercase by convention; accepting an upper-case
+    typo in the opt-out file would silently fail to match the posting's
+    `source.company_slug`. Lowercasing on both sides avoids that foot-gun.
+    """
+    optout_path.write_text("Acme\nWidgets-Corp\n")
+    assert _load_optout() == {"acme", "widgets-corp"}
 
 
 # --- _accepted_by_date integration ---------------------------------------
@@ -121,3 +126,12 @@ def test_accepted_handles_missing_company_slug_field(
     p.write_text(json.dumps({"id": "p1", "labelling_meta": {"qa_verdict": "accepted"}}))
     out = _accepted_by_date(None)
     assert [r["id"] for r in out["2026-04-25"]] == ["p1"]
+
+
+def test_accepted_filter_is_case_insensitive(isolated_data_root: Path, optout_path: Path) -> None:
+    """An upper-case slug in the file still matches a lower-case posting slug."""
+    optout_path.write_text("Acme\n")
+    _write_posting(isolated_data_root, "2026-04-25", "p1", slug="acme")
+    _write_posting(isolated_data_root, "2026-04-25", "p2", slug="widgets-corp")
+    out = _accepted_by_date(None)
+    assert [r["id"] for r in out["2026-04-25"]] == ["p2"]
