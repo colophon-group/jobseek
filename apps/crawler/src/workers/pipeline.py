@@ -16,6 +16,7 @@ import asyncio
 import contextlib
 import json
 import time
+import uuid
 
 import asyncpg
 import httpx
@@ -24,6 +25,7 @@ import structlog
 from src.config import settings
 from src.metrics import (
     monitor_duration_seconds,
+    monitor_failed_per_board_total,
     scrape_duration_seconds,
     tasks_total,
     worker_heartbeat_ts,
@@ -376,6 +378,10 @@ async def _process_monitor_work(
         )
 
     except Exception:
+        # Per-board failure attribution (#2704). Increment first so a
+        # downstream Redis failure in the reschedule path doesn't hide
+        # the original monitor failure from the metric.
+        monitor_failed_per_board_total.labels(board_id=board_id).inc()
         worker_log.exception("pipeline.monitor.error", board_id=board_id)
         # Reschedule with backoff — guard so Redis errors don't kill the worker
         try:
@@ -405,6 +411,85 @@ async def _process_scrape_work(
     worker_log = worker_log.bind(posting_id=posting_id, url=scrape_work.source_url)
 
     try:
+        # Self-heal: production scheduling is via Redis ZSETs, NOT
+        # Postgres ``next_scrape_at``. Without this check, the worker
+        # ignores the Postgres delisting state — a posting that the
+        # scrape side has tombstoned (is_active=false) or exhausted
+        # the 3-failure backoff (next_scrape_at=NULL) would still
+        # fire every ``scrape_interval_hours`` (default 24h) forever
+        # because ``reschedule_task`` re-adds to the ZSET on every
+        # claim. That defeats the dual-authority delisting model
+        # documented in docs/03-crawler-architecture.md.
+        #
+        # Read the Postgres state once before doing any work; if the
+        # row is tombstoned or has next_scrape_at=NULL, return WITHOUT
+        # calling ``reschedule_task`` so the ZSET entry stays drained.
+        #
+        # ``posting_id`` validation: it comes from a Redis claim and is
+        # supposed to be a UUID string, but a Lua bug or a manual ZADD
+        # could push a non-UUID. Guard the cast — if it fails, drop
+        # the bad work without rescheduling rather than letting the
+        # ``$1::uuid`` cast crash the SELECT and fall through to the
+        # outer except (which would reschedule and reintroduce the
+        # original loop).
+        #
+        # SELECT failure: catch DB errors here too. If the SELECT
+        # crashes (pool exhaustion, query timeout, connection drop),
+        # we still must NOT fall through to the outer except's
+        # reschedule path — that re-fires the work indefinitely. Drop
+        # the work for this cycle; if the posting is still due, the
+        # monitor's relisted path will re-enqueue when the URL is
+        # next discovered.
+        #
+        # Hash-delete is deliberately skipped on the tombstoned path:
+        # if the monitor relists this URL between our SELECT and a
+        # ``r.delete``, the relisted_scrapes enqueue would write a
+        # fresh ``scrape:<id>`` hash that we'd then wipe — silently
+        # losing the relist until the next monitor cycle. The hash
+        # leaks instead (one entry per tombstoned posting, ~100B
+        # each); steady-state cost is bounded.
+        #
+        # Recovery: when Postgres is reachable, the monitor's
+        # ``relisted`` CTE re-enqueues to Redis via
+        # ``_enqueue_scrapes_for_relisted``, so a posting we self-heal
+        # here can come back through the monitor side. (If Postgres is
+        # sustained-down the monitor side also can't write — but
+        # everything else is broken in that scenario too.)
+        try:
+            uuid.UUID(posting_id)
+        except (ValueError, AttributeError, TypeError):
+            # AttributeError = non-string lacking ``.replace``.
+            # TypeError = None or other non-stringlike (rare; would be a
+            # Lua bug returning the wrong type from the claim).
+            tasks_total.labels(kind="scrape", status="skipped_invalid_id").inc()
+            worker_log.warning("pipeline.scrape.skipped_invalid_id", posting_id=posting_id)
+            return
+
+        try:
+            async with local_pool.acquire() as conn:
+                posting_state = await conn.fetchrow(
+                    "SELECT is_active, next_scrape_at FROM job_posting WHERE id = $1::uuid",
+                    posting_id,
+                )
+        except Exception:
+            tasks_total.labels(kind="scrape", status="skipped_db_error").inc()
+            worker_log.warning("pipeline.scrape.self_heal_db_error", exc_info=True)
+            return
+
+        if posting_state is None:
+            tasks_total.labels(kind="scrape", status="skipped_missing").inc()
+            worker_log.info("pipeline.scrape.skipped_missing")
+            return
+
+        if not posting_state["is_active"] or posting_state["next_scrape_at"] is None:
+            tasks_total.labels(kind="scrape", status="skipped_tombstoned").inc()
+            worker_log.info(
+                "pipeline.scrape.skipped_tombstoned",
+                is_active=posting_state["is_active"],
+                next_scrape_at_null=posting_state["next_scrape_at"] is None,
+            )
+            return
+
         item, scrape_step = _scrape_item_from_redis(scrape_work)
 
         # Load scraper config from the board's Redis hash
@@ -441,7 +526,6 @@ async def _process_scrape_work(
         from src.core.scrapers import scraper_needs_browser
         from src.processing.scrape import (
             _CLEAR_SCRAPE_FOR_RICH,
-            _RECORD_SCRAPE_FAILURE,
             _is_skip_no_scrape,
             _process_one_scrape,
         )
@@ -510,16 +594,16 @@ async def _process_scrape_work(
 
             We don't know if the board is rich or not, so we can't use the
             scoped rich clear (which would no-op on a non-rich board and
-            leave the posting re-claim looping). Instead we call
-            ``_RECORD_SCRAPE_FAILURE`` which pushes ``next_scrape_at``
-            forward via exponential backoff (30 m × 2^failures, NULL after
-            3 failures). If Redis is re-synced before backoff expires, the
-            next monitor cycle re-enqueues the posting with fresh config.
-            If not, the posting is eventually dropped from the Postgres
-            schedule anyway.
+            leave the posting re-claim looping). Use the transient SQL
+            so the existing 30 / 60 / 90-min backoff applies WITHOUT
+            counting toward the tombstone budget — three Redis-eviction
+            blips on the same posting must not flip a live posting to
+            ``is_active = false``.
             """
+            from src.processing.scrape import _RECORD_SCRAPE_TRANSIENT
+
             async with local_pool.acquire() as conn:
-                await conn.execute(_RECORD_SCRAPE_FAILURE, posting_id)
+                await conn.execute(_RECORD_SCRAPE_TRANSIENT, posting_id)
             await _delete_scrape_hash()
             tasks_total.labels(kind="scrape", status="stale_config").inc()
             worker_log.warning(
@@ -541,7 +625,7 @@ async def _process_scrape_work(
         # ``crawler_type`` as the scraper name, raising ``KeyError`` for
         # names like "greenhouse" that aren't registered scrapers. Fail
         # the task softly so the worker doesn't crash AND doesn't wipe a
-        # legitimate schedule (critic-2 regression).
+        # legitimate schedule.
         if not board_config:
             await _fail_stale_task("missing board config in Redis")
             return

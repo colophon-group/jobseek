@@ -18,23 +18,36 @@ function _safeBearerEqual(presented: string | null, expected: string): boolean {
 export const runtime = "nodejs";
 
 // Closed list — every cache key prefix that would go stale after a
-// `crawler sync` taxonomy mutation. Defined here (not in the caller) so
-// the crawler can't accidentally request a sweep of an unrelated namespace.
-// Mirrors the keys built in apps/web/src/lib/actions/{locations,taxonomy,company}.ts.
+// `crawler sync` mutation (taxonomy renames, company CSV edits). Defined
+// here (not in the caller) so the crawler can't accidentally request a
+// sweep of an unrelated namespace. Mirrors the keys built in
+// apps/web/src/lib/actions/{locations,taxonomy,company}.ts.
+//
+// company-slug: + company-similar: were added in #2715 — a company
+// rename / industry change otherwise leaves /company/<slug> stale up to
+// the 10-minute company-slug TTL. The posting-derived caches
+// (company-top-locs:, company-locs-grouped:, company-postings:) key off
+// job_posting data, which a CSV sync doesn't touch, so they're left to
+// their TTLs.
 const TYPEAHEAD_PREFIXES = [
   "loc-suggest:",
   "occ-suggest:",
   "sen-suggest:",
   "tech-suggest:",
   "company-suggest:",
+  "company-slug:",
+  "company-similar:",
 ] as const;
 
 /**
  * POST /api/internal/invalidate-typeahead
  *
  * Called by the crawler after `sync_typesense` to drop stale typeahead
- * suggestions across all locales. Authenticated via a bearer token shared
- * out-of-band (`INTERNAL_REVALIDATE_TOKEN` env var on both sides).
+ * suggestions and company-detail caches across all locales (see the
+ * `TYPEAHEAD_PREFIXES` list for the full scope — kept under the original
+ * route name so the crawler caller doesn't need a URL change).
+ * Authenticated via a bearer token shared out-of-band
+ * (`INTERNAL_REVALIDATE_TOKEN` env var on both sides).
  *
  * Returns 200 on success with `{ ok: true, deleted: { <prefix>: <n> } }`.
  * Returns 401 if the bearer token is missing or wrong.
